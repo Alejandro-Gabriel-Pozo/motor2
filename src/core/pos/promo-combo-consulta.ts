@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
+import { precioLocalActivoEn } from "@/core/catalogo/public-servidor";
 import { cargarSelectorCartaPos } from "./selector-carta-consulta";
 import { pediblesDeEntrada } from "./selector-carta";
 import type { CupoPromoDefinicion } from "./promo-combo";
@@ -21,29 +22,30 @@ export interface PromoCartaParaAgregar {
 }
 
 /**
- * Carga una `PromoCarta` ACTIVA y ARMABLE (con uno o más cupos) de la sucursal, con los MISMOS elegibles que el selector del
+ * Carga una `PromoCarta` OFRECIDA en la sucursal (activa en la empresa y prendida acá) y ARMABLE (con uno o más cupos), con su precio vigente acá, con los MISMOS elegibles que el selector del
  * POS ofrece en cada sección de sus cupos (D5) — la fuente ÚNICA, para que `agregarItems` (paso 8a) valide la elección del
  * mozo con la misma información que ve en pantalla, nunca una lista propia que pueda desincronizarse (test de paridad contra
  * el selector, `test/pos/promo-combo-consulta.test.ts`). `null` si la promo no existe en esta sucursal, está apagada, o
  * todavía no tiene ningún cupo (sigue siendo informativa: el POS la ignora).
  */
-export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCartaId: string, db: Db = prisma): Promise<PromoCartaParaAgregar | null> {
+export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCartaId: string, db: Db): Promise<PromoCartaParaAgregar | null> {
   const promo =
     typeof promoCartaId === "string"
       ? await db.promoCarta.findFirst({
-          where: { id: promoCartaId, sucursalId, activa: true },
-          include: { cupos: { include: { seccionCarta: { select: { nombre: true } } }, orderBy: { orden: "asc" } } },
+          where: { id: promoCartaId, ...wherePromoOfrecidaEn(sucursalId) },
+          include: { sucursales: seleccionDeSucursalDePromo(sucursalId), cupos: { include: { seccionCarta: { select: { nombre: true } } }, orderBy: { orden: "asc" } } },
         })
       : null;
   if (!promo || !promo.cupos.length) return null;
 
-  const selector = await cargarSelectorCartaPos(sucursalId, db);
+  const [selector, precioLocalActivo] = await Promise.all([cargarSelectorCartaPos(sucursalId, db), precioLocalActivoEn(sucursalId, db)]);
   const pediblesPorSeccion = new Map(selector.seccionesCarta.map((s) => [s.seccionCartaId, s.entradas.flatMap(pediblesDeEntrada)]));
 
   const precioCartaPorProducto = new Map<string, number>();
   const cupos: CupoPromoDefinicion[] = promo.cupos.map((c) => {
     const pedibles = pediblesPorSeccion.get(c.seccionCartaId) ?? [];
-    for (const p of pedibles) precioCartaPorProducto.set(p.productoId, p.precio);
+    // Los componentes de una promo se prorratean sobre el precio de LISTA: el descuento de producto no aplica dentro de una promo.
+    for (const p of pedibles) precioCartaPorProducto.set(p.productoId, p.precioLista ?? p.precio);
     return {
       seccionCartaId: c.seccionCartaId,
       nombreSeccion: c.seccionCarta.nombre,
@@ -52,5 +54,5 @@ export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCarta
       elegibles: new Set(pedibles.map((p) => p.productoId)),
     };
   });
-  return { id: promo.id, titulo: promo.titulo, precio: Number(promo.precio), cupos, precioCartaPorProducto };
+  return { id: promo.id, titulo: promo.titulo, precio: precioDePromo(promo.precio, promo.sucursales[0], precioLocalActivo), cupos, precioCartaPorProducto };
 }

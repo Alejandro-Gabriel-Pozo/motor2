@@ -1,19 +1,31 @@
 import "dotenv/config";
+import { parseArgs } from "node:util";
 import { prisma } from "../src/lib/db";
+import { dbDeEmpresa, transaccionDeEmpresa } from "../src/core/auth/base";
+import { asegurarInvitacionDeVinculacion, rotarInvitacionPendiente } from "../src/core/features/empresa/invitacion-de-usuario";
+import { enlaceDeInvitacion, urlPublicaDeLaApp } from "../src/core/features/empresa/invitacion";
+import { incorporarPrimerGerente } from "../src/core/permisos/gerencia";
 import { ACCIONES } from "../src/core/permisos/acciones";
 
 async function main() {
+  // La empresa a sembrar se indica (ADR-022: ya no existe «la única empresa activa» como respaldo): `--empresa <slug>`, o, sin argumento, la empresa por defecto que crea
+  // la migración multiempresa_estructura (ADR-007, A2; id `empresa_principal`). `Empresa` no tiene RLS: se la busca con el cliente global.
+  const { values } = parseArgs({ options: { empresa: { type: "string" }, gerente: { type: "string" } }, strict: true });
+  const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: values.empresa ? { slug: values.empresa } : { id: "empresa_principal" } });
+  // Todo lo que sigue es de esa empresa: cada operación corre con `app.empresa_id` fijado (el DEFAULT de `empresaId` y el RLS la ven).
+  const db = dbDeEmpresa(empresaId);
+
   // Roles: catálogo único compartido por todo el negocio (ver plan,
   // "Roles/permisos" — decisión confirmada con el dueño tras investigar
   // ERPNext/Dolibarr).
   const [admin, operador] = await Promise.all([
-    prisma.rol.upsert({ where: { nombre: "admin" }, update: {}, create: { nombre: "admin" } }),
-    prisma.rol.upsert({ where: { nombre: "operador" }, update: {}, create: { nombre: "operador" } }),
+    db.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "admin" } }, update: {}, create: { nombre: "admin", clave: "admin" } }),
+    db.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "operador" } }, update: {}, create: { nombre: "operador", clave: "operador" } }),
   ]);
   const rolesPorNombre = { admin, operador } as const;
 
   for (const accion of ACCIONES) {
-    await prisma.accion.upsert({
+    await db.accion.upsert({
       where: { clave: accion.clave },
       update: { descripcion: accion.descripcion },
       create: { clave: accion.clave, descripcion: accion.descripcion },
@@ -23,7 +35,7 @@ async function main() {
       const puedeEditar = (accion.rolesEditarSemilla as readonly string[]).includes(nombreRol);
       // Ver arranca igual a Editar — mismo estado que "Roles Ver" vacío en
       // Apps Script (Core.js:1283-1287).
-      await prisma.permisoRol.upsert({
+      await db.permisoRol.upsert({
         where: {
           rolId_accionClave: { rolId: rolesPorNombre[nombreRol].id, accionClave: accion.clave },
         },
@@ -40,8 +52,8 @@ async function main() {
 
   // Sucursal inicial — punto de anclaje para el bootstrap del primer admin
   // (ver src/core/auth/bootstrap.ts).
-  await prisma.sucursal.upsert({
-    where: { nombre: "Central" },
+  await db.sucursal.upsert({
+    where: { empresaId_nombre: { empresaId, nombre: "Central" } },
     update: {},
     create: { nombre: "Central" },
   });
@@ -58,7 +70,30 @@ async function main() {
     { nombre: "unidad", magnitud: "CANTIDAD", decimales: 0 },
   ];
   for (const u of unidadesBase) {
-    await prisma.unidad.upsert({ where: { nombre: u.nombre }, update: {}, create: u });
+    await db.unidad.upsert({ where: { empresaId_nombre: { empresaId, nombre: u.nombre } }, update: {}, create: u });
+  }
+
+  // Primer gerente de una instalación LOCAL: reemplaza al viejo BOOTSTRAP_ADMIN_EMAILS (ADR-022). En producción el primer gerente llega por la invitación de la consola de plataforma.
+  if (values.gerente) {
+    const email = values.gerente.trim().toLowerCase();
+    const usuario = await prisma.user.upsert({ where: { email }, update: {}, create: { email } });
+    const r = await incorporarPrimerGerente(db, { empresaId, usuarioId: usuario.id });
+    console.log(r.ok ? `Gerente: ${email} (admin de "${r.sucursalNombre}").` : `Gerente NO asignado: ${r.mensaje}`);
+
+    // E8 (ADR-024): sin el enlace automático de cuentas por email, un usuario que ya existe solo entra con Google si vincula su cuenta con una invitación. Para poder entrar en local se
+    // crea la invitación de vinculación del gerente (a su propio nombre) y se imprime el enlace. Si ya había una pendiente, se renueva (el token no se puede recuperar de la base).
+    const conGoogle = await prisma.account.count({ where: { userId: usuario.id, provider: "google" } });
+    if (r.ok && conGoogle === 0) {
+      const ahora = new Date();
+      const invitacion = await transaccionDeEmpresa(empresaId, async (tx) => {
+        const previa = await tx.invitacion.findFirst({ where: { empresaId, email, estado: "PENDIENTE", rolEmpresa: "vinculacion" }, select: { id: true } });
+        return previa
+          ? rotarInvitacionPendiente(tx, { empresaId, invitacionId: previa.id, actorId: usuario.id, ahora })
+          : asegurarInvitacionDeVinculacion(tx, { empresaId, email, invitadoPorId: usuario.id, ahora });
+      });
+      const base = urlPublicaDeLaApp(process.env.AUTH_URL) ?? "http://localhost:3000";
+      console.log(invitacion.ok && invitacion.token ? `Para entrar con Google la primera vez, abrí: ${enlaceDeInvitacion(base, invitacion.token)}` : "No se pudo crear la invitación de vinculación del gerente.");
+    }
   }
 
   console.log(

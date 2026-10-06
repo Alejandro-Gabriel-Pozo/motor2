@@ -16,7 +16,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * (permiso → guard → este caso de uso → `aResultadoAccion`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo
- * `conPermiso("proceso_transferencia_sucursal")`) ni valida formato (eso lo hizo `guardComandoAprobarYEnviarTraspaso`). Sin idempotencia
+ * `conPermiso("traspaso_aprobar")`) ni valida formato (eso lo hizo `guardComandoAprobarYEnviarTraspaso`). Sin idempotencia
  * I3: la aprobación nunca la tuvo (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §11.5) — un doble clic lo arbitra el
  * aislamiento SERIALIZABLE, y el segundo intento responde «ya está en estado ENVIADA».
  *
@@ -36,13 +36,13 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @sideEffects Ninguno además de la escritura de la salida de Kardex y el cambio de estado del traspaso.
  */
 export async function aprobarYEnviarTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
   comando: ComandoAprobarYEnviarTraspaso
 ): Promise<ResultadoAprobarYEnviarTraspaso> {
-  const seccionOrigen = await obtenerSeccionPropia(comando.seccionOrigenId, actor.sucursalId);
+  const seccionOrigen = await obtenerSeccionPropia(comando.seccionOrigenId, actor.sucursalId, actor.db);
   if (!seccionOrigen) return fracaso("SECCION_NO_PROPIA", MENSAJE_SECCION_ORIGEN_NO_PROPIA);
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoAprobarYEnviarTraspaso> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAprobarYEnviarTraspaso> => {
     const traspaso = await cargarTraspaso(tx, comando.traspasoId);
     if (!traspaso) return fracaso("NO_ENCONTRADO", MENSAJE_TRASPASO_NO_ENCONTRADO);
     const transicion = guardTransicionTraspaso(traspaso, "aprobar", actor.sucursalId);

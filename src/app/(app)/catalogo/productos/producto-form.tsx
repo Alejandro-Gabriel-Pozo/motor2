@@ -35,6 +35,7 @@ export function ProductoForm({
   insumosIniciales,
   categoriasIniciales,
   proveedoresIniciales,
+  puedeCrear,
   productoExistente,
   presentacionesIniciales,
   cantidadSucursales,
@@ -44,6 +45,8 @@ export function ProductoForm({
   insumosIniciales: Opcion[];
   categoriasIniciales: Opcion[];
   proveedoresIniciales: Opcion[];
+  /** Qué botones «+ Nuevo …» de alta rápida se dibujan: cada uno exige su propio permiso de Editar en el servidor. */
+  puedeCrear: { categoria: boolean; insumo: boolean; proveedor: boolean };
   productoExistente?: ProductoExistente;
   presentacionesIniciales?: PresentacionOpcion[];
   /** Solo para el alta (§4.1, docs/plan-disponibilidad-por-sucursal-2026-09-23.md) — sin esto el tilde no dice nada concreto. */
@@ -151,16 +154,18 @@ export function ProductoForm({
             </option>
           ))}
         </select>
-        <QuickCrear
-          triggerLabel="+ Nueva categoría"
-          title="Nueva categoría"
-          campoLabel="Nombre"
-          accion={crearCategoriaProducto}
-          onCreado={(item) => {
-            setCategorias((prev) => [...prev, item]);
-            setCategoriaId(item.id);
-          }}
-        />
+        {puedeCrear.categoria && (
+          <QuickCrear
+            triggerLabel="+ Nueva categoría"
+            title="Nueva categoría"
+            campoLabel="Nombre"
+            accion={crearCategoriaProducto}
+            onCreado={(item) => {
+              setCategorias((prev) => [...prev, item]);
+              setCategoriaId(item.id);
+            }}
+          />
+        )}
       </div>
 
       {tipo === "MP" && (
@@ -174,16 +179,18 @@ export function ProductoForm({
                 </option>
               ))}
             </select>
-            <QuickCrear
-              triggerLabel="+ Nuevo insumo"
-              title="Nuevo insumo"
-              campoLabel="Nombre"
-              accion={crearInsumo}
-              onCreado={(item) => {
-                setInsumos((prev) => [...prev, item]);
-                setInsumoId(item.id);
-              }}
-            />
+            {puedeCrear.insumo && (
+              <QuickCrear
+                triggerLabel="+ Nuevo insumo"
+                title="Nuevo insumo"
+                campoLabel="Nombre"
+                accion={crearInsumo}
+                onCreado={(item) => {
+                  setInsumos((prev) => [...prev, item]);
+                  setInsumoId(item.id);
+                }}
+              />
+            )}
           </div>
           <AsistenteHermanar
             unidadStockId={unidadStockId}
@@ -325,16 +332,18 @@ export function ProductoForm({
                 </option>
               ))}
             </select>
-            <QuickCrear
-              triggerLabel="+ Nuevo proveedor"
-              title="Nuevo proveedor"
-              campoLabel="Nombre"
-              accion={(nombre) => altaProveedor({ nombre })}
-              onCreado={(item) => {
-                setProveedores((prev) => [...prev, item]);
-                setProveedorConsignacionId(item.id);
-              }}
-            />
+            {puedeCrear.proveedor && (
+              <QuickCrear
+                triggerLabel="+ Nuevo proveedor"
+                title="Nuevo proveedor"
+                campoLabel="Nombre"
+                accion={(nombre) => altaProveedor({ nombre })}
+                onCreado={(item) => {
+                  setProveedores((prev) => [...prev, item]);
+                  setProveedorConsignacionId(item.id);
+                }}
+              />
+            )}
           </div>
           <div className="flex flex-col gap-1">
             <CampoNumero

@@ -1,6 +1,6 @@
 # Plan de implementación: "Activo de producto" pasa de global a por sucursal (2026-09-23)
 
-**Estado: diseño, NO implementado.** Nada se tocó ni se escribió en el repo todavía.
+**Estado (2026-10-01): implementado, P1–P14 (commits «paso Pn/15»), incluido el DROP de `Producto.activo` (P13). Verificado contra el código en una auditoría de solo lectura y con la batería completa de 7 comandos del 2026-10-01 (P15).** El texto de abajo es el diseño original; los números de línea que cita están desactualizados (buscar por símbolo).
 El código real y el grounding externo están en `docs/grounding-disponibilidad-por-sucursal-2026-09-23.md`.
 
 Las 3 decisiones del dueño (2026-09-23) son el punto de partida y no se vuelven a discutir:

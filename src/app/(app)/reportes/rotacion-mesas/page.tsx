@@ -3,6 +3,7 @@ import { requierePermisoVer } from "@/core/permisos/gate";
 import { generarReporteRotacionMesas } from "@/core/reportes/rotacion-mesas";
 import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
 import { SelectorRango } from "@/components/selector-rango";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const MINUTOS = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 const UNO = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
@@ -10,19 +11,18 @@ const UNO = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
 /**
  * Reporte de rotación de mesas (módulo POS, docs/plan-comensales-y-limite-mesas-2026-09-26.md): comensales/cuenta promedio,
  * duración de mesa, y rotación por franja horaria (hora LOCAL de Argentina, ver el docstring de `generarReporteRotacionMesas`) y
- * por tamaño de grupo. Mismo permiso que el resto de los reportes operativos (`ver_reportes_operativos`, sin migración de
- * permisos) y mismo selector de rango que Período/Categorías (`SelectorRango`, rango en UTC — solo la franja horaria difiere).
+ * por tamaño de grupo. Su propia clave (`reporte_rotacion_mesas`) y mismo selector de rango que Período/Categorías (`SelectorRango`, rango en UTC — solo la franja horaria difiere).
  */
-export default async function RotacionMesasPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
+export default async function RotacionMesasPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_operativos");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_rotacion_mesas", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp);
-  const rep = await generarReporteRotacionMesas(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO));
+  const rep = await generarReporteRotacionMesas(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.empresaZonaHoraria, ctx.db);
 
   return (
     <div className="flex flex-col gap-6">

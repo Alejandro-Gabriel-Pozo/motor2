@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { aceptarTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/aceptar-traspaso";
 import { rechazarEnvioDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/rechazar-envio-de-traspaso";
 import { confirmarReingresoDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/confirmar-reingreso-de-traspaso";
@@ -26,8 +26,8 @@ describe("casos de uso de la recepción de un traspaso", () => {
   let kgId: string;
   let insumoId: string;
 
-  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central" });
-  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B" });
+  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ...baseDeTest });
+  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ...baseDeTest });
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -47,7 +47,7 @@ describe("casos de uso de la recepción de un traspaso", () => {
   async function asiento(productoId: string, proceso: "COMPRA" | "TRANSFERENCIA_SALIDA_SUCURSAL", cantidad: number, traspasoSucursalId?: string) {
     const op = await prisma.operacion.create({ data: { sucursalId: sucursalAId, proceso, fecha: new Date(), usuarioId: adminAId } });
     await prisma.movimientoStock.create({
-      data: { operacionId: op.id, productoId, seccionId: seccionAId, proceso, cantidad, detalle: proceso, precioTotal: 0, precioPorUnidadStock: 0, traspasoSucursalId },
+      data: { operacionId: op.id, productoId, seccionId: seccionAId, proceso, cantidad, detalle: proceso, precioTotal: 0, precioPorUnidadStock: 0, ...(traspasoSucursalId !== undefined && { traspasoSucursalId }) },
     });
   }
 
@@ -97,7 +97,7 @@ describe("casos de uso de la recepción de un traspaso", () => {
       expect(operacion.movimientos).toHaveLength(1);
       expect(operacion.movimientos[0]).toMatchObject({ productoId: mp.id, seccionId: seccionBId, detalle: 'Transferencia recibida de sucursal "Central".', traspasoSucursalId: env.id });
       expect(Number(operacion.movimientos[0].cantidad)).toBe(4);
-      expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(4);
+      expect(await calcularSaldoTotal(mp.id, seccionBId, prisma)).toBe(4);
 
       const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: env.id } });
       expect(traspaso).toMatchObject({ estado: "ACEPTADA", seccionDestinoId: seccionBId, decididoPorDestinoId: adminBId });
@@ -118,7 +118,7 @@ describe("casos de uso de la recepción de un traspaso", () => {
       expect(operaciones).toHaveLength(1);
       expect(operaciones[0]).toMatchObject({ claveIdempotencia: clave, resultadoMensaje: 'Recibido de "Central".' });
       expect(operaciones[0].payloadHash).toMatch(/^[0-9a-f]{64}$/);
-      expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(4);
+      expect(await calcularSaldoTotal(mp.id, seccionBId, prisma)).toBe(4);
     });
 
     it("CONFLICTO_IDEMPOTENCIA: la misma clave con otra sección de destino", async () => {
@@ -160,7 +160,7 @@ describe("casos de uso de la recepción de un traspaso", () => {
       expect((await aceptarTraspasoCasoDeUso(comoB(), { traspasoId: env.id, seccionDestinoId: seccionBId, claveIdempotencia: null })).ok).toBe(true);
       const r = await aceptarTraspasoCasoDeUso(comoB(), { traspasoId: env.id, seccionDestinoId: seccionBId, claveIdempotencia: null });
       expect(r).toEqual({ ok: false, codigo: "ESTADO", mensaje: 'Este traspaso está en estado "ACEPTADA" — no se puede aceptar.' });
-      expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(4);
+      expect(await calcularSaldoTotal(mp.id, seccionBId, prisma)).toBe(4);
     });
 
     it("PRODUCTO_NO_TRANSFERIBLE: dejó de estar disponible en destino desde el envío", async () => {
@@ -195,8 +195,8 @@ describe("casos de uso de la recepción de un traspaso", () => {
       const t = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: env.id } });
       expect(t).toMatchObject({ estado: "RECHAZADA_DESTINO", decididoPorDestinoId: adminBId, motivoRechazoDestino: "No lo pedimos" });
       expect(t.fechaDecisionDestino).not.toBeNull();
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(6);
-      expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(0);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
+      expect(await calcularSaldoTotal(mp.id, seccionBId, prisma)).toBe(0);
     });
 
     it("sin motivo: queda en null", async () => {
@@ -235,7 +235,7 @@ describe("casos de uso de la recepción de un traspaso", () => {
 
     it("éxito sin clave: datos, mensaje, REINGRESO en la sección de origen y traspaso CERRADO (como antes)", async () => {
       const { mp, env } = await rechazado(4);
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(6);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
 
       const r = await confirmarReingresoDeTraspasoCasoDeUso(comoA(), { traspasoId: env.id, claveIdempotencia: null });
 
@@ -248,7 +248,7 @@ describe("casos de uso de la recepción de un traspaso", () => {
       expect(operacion.movimientos).toHaveLength(1);
       expect(operacion.movimientos[0]).toMatchObject({ productoId: mp.id, seccionId: seccionAId, detalle: 'Reingreso — rechazado por sucursal "Sucursal B".', traspasoSucursalId: env.id });
       expect(Number(operacion.movimientos[0].cantidad)).toBe(4);
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
 
       const t = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: env.id } });
       expect(t).toMatchObject({ estado: "CERRADA", cerradoPorId: adminAId });
@@ -267,7 +267,7 @@ describe("casos de uso de la recepción de un traspaso", () => {
       const operacion = await prisma.operacion.findFirstOrThrow({ where: { proceso: "REINGRESO_TRANSFERENCIA_SUCURSAL" } });
       expect(operacion).toMatchObject({ claveIdempotencia: clave, resultadoMensaje: mensaje });
       expect(await prisma.operacion.count({ where: { proceso: "REINGRESO_TRANSFERENCIA_SUCURSAL" } })).toBe(1);
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
 
       const otro = await rechazado(2, { productoId: mp.id });
       expect(await confirmarReingresoDeTraspasoCasoDeUso(comoA(), { traspasoId: otro.env.id, claveIdempotencia: clave })).toMatchObject({

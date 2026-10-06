@@ -1,0 +1,31 @@
+-- ADR-007 paso A0: rol de ejecución `motor2_app` (sin superusuario, sin BYPASSRLS, no dueño).
+-- Uso (como superusuario, la clave se pasa por variable psql, nunca queda en el repo):
+--   psql -U postgres -h localhost -v clave="<clave nueva>" -f scripts/operaciones/crear-rol-motor2-app.sql
+-- Idempotente: se puede correr de nuevo. Reversa: scripts/operaciones/quitar-rol-motor2-app.sql
+
+SELECT NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'motor2_app') AS crear \gset
+\if :crear
+  CREATE ROLE motor2_app LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD :'clave';
+\else
+  ALTER ROLE motor2_app LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD :'clave';
+\endif
+
+\set ON_ERROR_STOP on
+
+\connect motor2_dev
+GRANT CONNECT ON DATABASE motor2_dev TO motor2_app;
+GRANT USAGE ON SCHEMA public TO motor2_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO motor2_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO motor2_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE motor2 IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO motor2_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE motor2 IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO motor2_app;
+
+\connect motor2_e2e
+GRANT CONNECT ON DATABASE motor2_e2e TO motor2_app;
+GRANT USAGE ON SCHEMA public TO motor2_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO motor2_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO motor2_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE motor2 IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO motor2_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE motor2 IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO motor2_app;
+
+SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'motor2_app';

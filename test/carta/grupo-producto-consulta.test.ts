@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/test-db";
+import { limpiarBaseDeTest, replicarCartaDeSucursal, prisma, sembrarProductoDisponible } from "../setup/test-db";
 import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "../../src/core/carta/grupo-producto-consulta";
 
 /**
@@ -29,19 +29,19 @@ describe("resolverGrupoDeProducto", () => {
       suelto: await pv("GPC_SUELTO", "Tónica 500cc", 5000),
     };
     const seccion = await prisma.seccionCarta.create({ data: { nombre: "Bebidas sin alcohol" } });
-    agId = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500 CC", seccionCartaId: seccion.id } })).id;
+    agId = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId: central, nombre: "Gaseosa 500 CC", seccionCartaId: seccion.id } })).id;
     await prisma.opcionItemAgrupadoCarta.createMany({
-      data: [ids.coca, ids.sprite, ids.fanta].map((productoId, orden) => ({ itemAgrupadoCartaId: agId, productoId, orden })),
+      data: [ids.coca, ids.sprite, ids.fanta].map((productoId, orden) => ({ sucursalId: central, itemAgrupadoCartaId: agId, productoId, orden })),
     });
   });
 
   it("un producto no agrupado → null (y no hay nada para ofrecer)", async () => {
-    expect(await resolverGrupoDeProducto(ids.suelto, central)).toBeNull();
+    expect(await resolverGrupoDeProducto(ids.suelto, central, prisma)).toBeNull();
     expect(ofrecerSincronizarPrecio(null, 5500, "global")).toBeNull();
   });
 
   it("agrupado con hermanos al MISMO precio → el grupo con sus hermanos (sin él mismo), y nada para ofrecer", async () => {
-    const grupo = await resolverGrupoDeProducto(ids.fanta, central);
+    const grupo = await resolverGrupoDeProducto(ids.fanta, central, prisma);
     expect(grupo).toEqual({
       itemAgrupadoCartaId: agId,
       nombreItem: "Gaseosa 500 CC",
@@ -56,7 +56,7 @@ describe("resolverGrupoDeProducto", () => {
 
   it("hermanos a OTRO precio → se listan con su precio real en esa sucursal (el local habilitado cuenta)", async () => {
     await prisma.precioLocalProducto.create({ data: { sucursalId: central, productoId: ids.sprite, precio: 5200, habilitado: true } });
-    const grupo = await resolverGrupoDeProducto(ids.fanta, central);
+    const grupo = await resolverGrupoDeProducto(ids.fanta, central, prisma);
     expect(grupo!.hermanos.find((h) => h.productoId === ids.sprite)).toEqual({ productoId: ids.sprite, nombre: "Sprite 500cc", precioVenta: 5000, precioActual: 5200 });
 
     // Fanta pasa a $5500: "global" compara contra el precio de venta global de cada hermano; "enSucursal", contra el de la carta acá.
@@ -74,17 +74,18 @@ describe("resolverGrupoDeProducto", () => {
 
   it("el precio local de OTRA sucursal no afecta", async () => {
     await prisma.precioLocalProducto.create({ data: { sucursalId: otra, productoId: ids.coca, precio: 9999, habilitado: true } });
-    const grupo = await resolverGrupoDeProducto(ids.fanta, central);
+    const grupo = await resolverGrupoDeProducto(ids.fanta, central, prisma);
     expect(grupo!.hermanos.map((h) => h.precioActual)).toEqual([5000, 5000]);
     expect(ofrecerSincronizarPrecio(grupo, 5000, "enSucursal")).toBeNull();
-    // En la otra sucursal, sí.
-    expect((await resolverGrupoDeProducto(ids.fanta, otra))!.hermanos.find((h) => h.productoId === ids.coca)!.precioActual).toBe(9999);
+    // En la otra sucursal, sí (con su carta propia: ADR-009, C3).
+    await replicarCartaDeSucursal(central, otra);
+    expect((await resolverGrupoDeProducto(ids.fanta, otra, prisma))!.hermanos.find((h) => h.productoId === ids.coca)!.precioActual).toBe(9999);
   });
 
   it("solo lee: no cambia nada", async () => {
     const contar = () => Promise.all([prisma.opcionItemAgrupadoCarta.count(), prisma.itemAgrupadoCarta.count(), prisma.producto.count(), prisma.precioLocalProducto.count()]);
     const antes = await contar();
-    await resolverGrupoDeProducto(ids.coca, central);
+    await resolverGrupoDeProducto(ids.coca, central, prisma);
     expect(await contar()).toEqual(antes);
   });
 });

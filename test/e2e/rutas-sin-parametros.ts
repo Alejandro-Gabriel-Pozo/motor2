@@ -2,6 +2,8 @@
  * Todas las pantallas de la aplicación que abren SIN parámetros de ruta ni de query obligatorios — lista compartida entre
  * `maquetacion-general.spec.ts` (E2E normal, datos mínimos) y `test/e2e-demo/todas-las-pantallas.spec.ts` (proyecto de la
  * demo, datos reales de 6 meses). Un solo lugar para agregar una pantalla nueva: agregarla acá la suma a los dos barridos.
+ * Fuera de la lista, a propósito: `/administracion/gerencia` (solo la ve el gerente y el usuario de las pruebas no lo es: sin título que esperar);
+ * su maquetación la revisa `administracion-gerencia.spec.ts`.
  */
 export const RUTAS_SIN_PARAMETROS = [
   "/inicio",
@@ -11,12 +13,13 @@ export const RUTAS_SIN_PARAMETROS = [
   "/administracion/roles",
   "/administracion/sucursales",
   "/administracion/usuarios",
-  "/catalogo/carta",
-  "/catalogo/carta/agrupados",
-  "/catalogo/carta/portal",
-  "/catalogo/carta/tema",
+  "/carta",
+  "/carta/agrupados",
+  "/carta/portal",
+  "/carta/tema",
   "/catalogo/categorias",
   "/catalogo/insumos-grupos",
+  "/catalogo/margen-objetivo",
   "/catalogo/productos",
   "/catalogo/proveedores",
   "/catalogo/proveedores/comparativa",
@@ -42,7 +45,6 @@ export const RUTAS_SIN_PARAMETROS = [
   "/reportes/margen-promociones",
   "/reportes/perdidas",
   "/reportes/periodo",
-  "/reportes/promociones",
   "/reportes/rendimiento-recetas",
   "/reportes/rendimiento-recetas/por-sucursal",
   "/reportes/salud",
@@ -62,5 +64,5 @@ export const RUTAS_SIN_PARAMETROS = [
   "/traspasos/enviar",
   "/traspasos/solicitar",
   "/reportes/rotacion-mesas",
-  "/reportes/boletas",
+  "/reportes/tickets",
 ];

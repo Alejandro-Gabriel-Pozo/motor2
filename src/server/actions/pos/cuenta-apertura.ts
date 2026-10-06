@@ -1,7 +1,7 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { validarComensales } from "@/core/pos/cuenta";
 import { conPermiso } from "../con-permiso";
@@ -30,11 +30,11 @@ import { cuentaAbiertaDeSucursal } from "./cuenta-comun";
  * `conTransaccionSerializable`), nunca las dos pasan.
  */
 export async function abrirCuenta(mesaId: string, comensales: number): Promise<ResultadoAccion> {
-  return conPermiso("pos_tomar_pedido", async (ctx) => {
-    const mesa = typeof mesaId === "string" ? await prisma.mesa.findFirst({ where: { id: mesaId, sucursalId: ctx.sucursalId }, include: { sucursal: { select: { nombre: true, maxMesasAbiertas: true } } } }) : null;
+  return conPermiso("pos_abrir_cuenta", async (ctx) => {
+    const mesa = typeof mesaId === "string" ? await ctx.db.mesa.findFirst({ where: { id: mesaId, sucursalId: ctx.sucursalId }, include: { sucursal: { select: { nombre: true, maxMesasAbiertas: true } } } }) : null;
     if (!mesa) return error("No se encontró esa mesa en esta sucursal.");
     try {
-      return await conTransaccionSerializable(async (tx) => {
+      return await conTransaccionSerializable(ctx.transaccion, async (tx) => {
         const yaAbierta = await tx.cuenta.findFirst({ where: { mesaId: mesa.id, cerradaEn: null }, select: { id: true } });
         if (yaAbierta) return ok(`La mesa ${mesa.numero} ya tenía una cuenta abierta.`);
 
@@ -64,8 +64,8 @@ export async function abrirCuenta(mesaId: string, comensales: number): Promise<R
  * precio de cada ítem.
  */
 export async function corregirComensales(cuentaId: string, comensales: number): Promise<ResultadoAccion> {
-  return conPermiso("pos_tomar_pedido", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
+  return conPermiso("pos_abrir_cuenta", async (ctx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
 
@@ -93,12 +93,28 @@ export async function corregirComensales(cuentaId: string, comensales: number): 
  */
 export async function asignarClienteACuenta(cuentaId: string, clienteId: string | null): Promise<ResultadoAccion> {
   return conPermiso("pos_asignar_cliente", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
 
+      // Quién puso (o sacó) un cliente con descuento queda en la auditoría: la `Operacion` de la venta solo guarda a quien cerró la cuenta.
+      const anterior = abierta.cuenta.clienteId ? await tx.cliente.findUnique({ where: { id: abierta.cuenta.clienteId }, select: { nombre: true } }) : null;
+      const auditar = async (nuevo: { nombre: string; porcentaje: number } | null) => {
+        const base = { entidad: "Cuenta", entidadId: abierta.cuenta.id, actorId: ctx.usuarioId, sucursalId: ctx.sucursalId } as const;
+        const mesa = abierta.cuenta.mesa.numero;
+        await registrarCambioAuditado(tx, { ...base, campo: "cliente", descripcion: `Mesa ${mesa}: cliente de la cuenta`, valorAnterior: anterior?.nombre ?? null, valorNuevo: nuevo?.nombre ?? null });
+        await registrarCambioAuditado(tx, {
+          ...base,
+          campo: "descuentoPorcentaje",
+          descripcion: `Mesa ${mesa}: % de descuento de la cuenta`,
+          valorAnterior: abierta.cuenta.descuentoPorcentaje === null ? null : Number(abierta.cuenta.descuentoPorcentaje),
+          valorNuevo: nuevo?.porcentaje ?? null,
+        });
+      };
+
       if (clienteId === null) {
         await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { clienteId: null, descuentoPorcentaje: null } });
+        await auditar(null);
         return ok(`Se quitó el cliente de la mesa ${abierta.cuenta.mesa.numero}.`);
       }
 
@@ -107,6 +123,7 @@ export async function asignarClienteACuenta(cuentaId: string, clienteId: string 
       if (!cliente.activo) return error(`«${cliente.nombre}» está desactivado: no se puede asignar a una cuenta.`);
 
       await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { clienteId: cliente.id, descuentoPorcentaje: cliente.descuentoPorcentaje } });
+      await auditar({ nombre: cliente.nombre, porcentaje: Number(cliente.descuentoPorcentaje) });
       return ok(`«${cliente.nombre}» asignado a la mesa ${abierta.cuenta.mesa.numero}, con ${cliente.descuentoPorcentaje}% de descuento.`);
     });
   });
@@ -118,8 +135,8 @@ export async function asignarClienteACuenta(cuentaId: string, clienteId: string 
  * ausencia) registrada.
  */
 export async function liberarMesa(cuentaId: string): Promise<ResultadoAccion> {
-  return conPermiso("pos_tomar_pedido", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
+  return conPermiso("pos_liberar_mesa", async (ctx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
       if ((await tx.cuentaItem.count({ where: { cuentaId: abierta.cuenta.id } })) > 0) {

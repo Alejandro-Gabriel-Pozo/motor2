@@ -37,7 +37,7 @@ describe("generarReporteVentasSinReceta", () => {
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: sinReceta.id, cantidadVendida: 1 }] });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: sinReceta.id, cantidadVendida: 1 }] });
 
-    const filas = await generarReporteVentasSinReceta(sucursalId);
+    const filas = await generarReporteVentasSinReceta(sucursalId, prisma);
     expect(filas.find((f) => f.productoId === sinReceta.id)?.cantidadVentasSinReceta).toBe(2);
     expect(filas.find((f) => f.productoId === conReceta.id)).toBeUndefined();
   });

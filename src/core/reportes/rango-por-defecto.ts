@@ -8,6 +8,7 @@
  * cualquier negocio real, los días 1 y 2 de cada mes la pantalla de entrada se ve casi vacía con "mes en curso"; con 30 días
  * siempre hay algo que mostrar.
  */
+import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
 
 export type OpcionRango = "30d" | "mes" | "personalizado";
 
@@ -24,9 +25,7 @@ export interface RangoDeReporte {
 }
 
 function hoyUtcSinHora(ahora: Date): Date {
-  const d = new Date(ahora);
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
+  return inicioDelDiaDe(ahora, ZONA_UTC);
 }
 
 /** `ahora` es inyectable para que el cálculo sea testeable sin congelar `new Date()` globalmente. */

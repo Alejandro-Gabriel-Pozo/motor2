@@ -1,18 +1,18 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
-import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
+import { prisma } from "./fixtures/db";
+import { menuCartaPublicado } from "./fixtures/carta-menu";
 
 /**
- * Admin de la carta (/catalogo/carta, docs/plan-carta-catalogo-2026-09-24.md, M10) de punta a punta: lo que se carga en la
+ * Admin de la carta (/carta, docs/plan-carta-catalogo-2026-09-24.md, M10) de punta a punta: lo que se carga en la
  * pantalla (sección de carta, contenido del PV con su sección elegida DIRECTO —docs/plan-carta-seccion-directa-2026-09-25.md— y
- * una promo) es lo que devuelve el endpoint público GET /api/carta/[sucursal] — con el precio que se cobra, los tags normalizados
+ * una promo) es lo que resuelve la carta pública (`resolverMenuCarta`) — con el precio que se cobra, los tags normalizados
  * y el ★.
  */
-test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async ({ paginaAutenticada: page, sucursalId, request }) => {
+test("cargar la carta desde el admin la publica en la carta pública", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const nombreSeccion = `E2E Carta Sección ${marca}`;
   const nombrePromo = `E2E Carta Promo ${marca}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Carta Cat ${marca}` } });
   const producto = await prisma.producto.create({
     data: { codigo: `E2E_CARTA_ADMIN_${marca}`, nombre: `E2E Carta Plato ${marca}`, tipo: "PV", categoriaId: categoria.id, precioVenta: 12345, unidadStockId: unidad.id },
@@ -20,7 +20,7 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
 
   try {
-    await page.goto("/catalogo/carta");
+    await page.goto("/carta");
     await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible();
     // D3: un PV disponible acá sin contenido de carta se avisa (si no, pasaría desapercibido que no sale).
     await expect(page.getByRole("heading", { name: /PV disponibles acá sin contenido de carta/ })).toBeVisible();
@@ -58,14 +58,12 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
     await nuevaPromo.getByLabel("Sección de carta").selectOption({ label: nombreSeccion });
     await nuevaPromo.getByLabel("Precio").fill("25000");
     await nuevaPromo.getByRole("button", { name: "Crear promo" }).click();
-    await expect(nuevaPromo.getByRole("status")).toHaveText(`Promo "${nombrePromo}" creada en "${nombreSeccion}".`);
+    await expect(nuevaPromo.getByRole("status")).toHaveText(`Promo "${nombrePromo}" creada en "${nombreSeccion}" y prendida en esta sucursal.`);
 
     // Y la carta pública lo refleja (sin cupos: `CartaV1` nunca los expone, D3 del paso 4 — el contrato público no cambia).
-    const r = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
-    expect(r.status()).toBe(200);
-    const carta = await r.json();
-    const seccion = carta.secciones.find((s: { nombre: string }) => s.nombre === nombreSeccion);
-    expect(seccion, "la sección cargada desde el admin no aparece en la carta pública").toBeTruthy();
+    const carta = await menuCartaPublicado(sucursalId);
+    const seccion = carta.secciones.find((s) => s.nombre === nombreSeccion);
+    if (!seccion) throw new Error("la sección cargada desde el admin no aparece en la carta pública");
     expect(seccion.titulo).toBe("Del fuego");
     expect(seccion.items).toEqual([
       { productoId: producto.id, nombre: producto.nombre, categoria: categoria.nombre, descripcion: "400 g a las brasas", precio: 12345, tags: ["Regional", "Sin TACC"], especial: true, imagenUrl: null },
@@ -90,14 +88,14 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
     await expect(filaPromo.locator(`[data-aviso-peor-caso="${nombrePromo}"]`)).toContainText("el peor caso son 2 unidades y el precio mínimo permitido es $0,02");
     await expect(filaPromo.locator(`[data-aviso-peor-caso="${nombrePromo}"]`)).toContainText("de margen antes de ese piso si subís algún máximo");
 
-    const r2 = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
-    const carta2 = await r2.json();
-    const seccion2 = carta2.secciones.find((s: { nombre: string }) => s.nombre === nombreSeccion);
-    expect(seccion2.promos).toEqual([{ id: expect.any(String), titulo: nombrePromo, descripcion: null, precio: 25000, orden: 0 }]);
+    const carta2 = await menuCartaPublicado(sucursalId);
+    const seccion2 = carta2.secciones.find((s) => s.nombre === nombreSeccion);
+    expect(seccion2?.promos).toEqual([{ id: expect.any(String), titulo: nombrePromo, descripcion: null, precio: 25000, orden: 0 }]);
   } finally {
     const secciones = await prisma.seccionCarta.findMany({ where: { nombre: nombreSeccion }, select: { id: true } });
     const seccionIds = secciones.map((s) => s.id);
     await prisma.promoCartaCupo.deleteMany({ where: { promoCarta: { seccionCartaId: { in: seccionIds } } } });
+    await prisma.promoCartaSucursal.deleteMany({ where: { promoCarta: { seccionCartaId: { in: seccionIds } } } });
     await prisma.promoCarta.deleteMany({ where: { seccionCartaId: { in: seccionIds } } });
     await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.seccionCarta.deleteMany({ where: { id: { in: seccionIds } } });
@@ -105,4 +103,11 @@ test("cargar la carta desde el admin la publica en /api/carta/[sucursal]", async
     await prisma.producto.deleteMany({ where: { id: producto.id } });
     await prisma.categoriaProducto.deleteMany({ where: { id: categoria.id } });
   }
+});
+
+/** ADR-006: /catalogo/carta se movió a /carta — el redirect (next.config.ts) evita romper marcadores guardados. */
+test("un marcador viejo a /catalogo/carta/tema redirige a /carta/tema", async ({ paginaAutenticada: page }) => {
+  await page.goto("/catalogo/carta/tema");
+  await expect(page).toHaveURL(/\/carta\/tema$/);
+  await expect(page.getByRole("heading", { name: "Tema de la carta", level: 1 })).toBeVisible();
 });

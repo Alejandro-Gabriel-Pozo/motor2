@@ -25,7 +25,7 @@ import { vi, describe, it, expect } from "vitest";
 // cualquier test de un server action (ver test/catalogo/recetas.test.ts).
 vi.mock("../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { prisma } from "../src/lib/db";
+import { prisma } from "./demo-seed/cliente";
 import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
 import { getUsuarioActual } from "../src/core/auth/session";
 import { crearSucursalConAdmin } from "../src/server/actions/auth/sucursales";
@@ -133,14 +133,14 @@ describe("seed demo pizzería La Cuadra", () => {
       // 1) Usuario real, admin ya en "Central" (seed base) — se usa para crear la sucursal nueva.
       const usuario = await prisma.user.findUniqueOrThrow({ where: { email: EMAIL_ADMIN } });
       await mock({ id: usuario.id, email: usuario.email, nombre: usuario.name });
-      const central = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } });
+      const central = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } });
       __setCookieDeTestParaSucursal(central.id);
 
-      let sucursal = await prisma.sucursal.findUnique({ where: { nombre: NOMBRE_SUCURSAL } });
+      let sucursal = await prisma.sucursal.findFirst({ where: { nombre: NOMBRE_SUCURSAL } });
       if (!sucursal) {
         const r = await crearSucursalConAdmin({ nombre: NOMBRE_SUCURSAL, emailPrimerAdmin: EMAIL_ADMIN });
         anotarSiFalla("crearSucursalConAdmin", r);
-        sucursal = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: NOMBRE_SUCURSAL } });
+        sucursal = await prisma.sucursal.findFirstOrThrow({ where: { nombre: NOMBRE_SUCURSAL } });
       }
       __setCookieDeTestParaSucursal(sucursal.id);
 
@@ -222,10 +222,10 @@ describe("seed demo pizzería La Cuadra", () => {
       const grupoLimpieza = await resolverGrupo("Limpieza", grupoNoComestibles);
 
       async function resolverInsumoDeGrupo(nombre: string, grupoId: string): Promise<string> {
-        let insumo = await prisma.insumo.findUnique({ where: { nombre } });
+        let insumo = await prisma.insumo.findFirst({ where: { nombre } });
         if (!insumo) {
           anotarSiFalla(`crearInsumo(${nombre})`, await crearInsumo(nombre));
-          insumo = await prisma.insumo.findUniqueOrThrow({ where: { nombre } });
+          insumo = await prisma.insumo.findFirstOrThrow({ where: { nombre } });
         }
         if (insumo.grupoId !== grupoId) anotarSiFalla(`actualizarGrupoDeInsumo(${nombre})`, await actualizarGrupoDeInsumo(insumo.id, grupoId));
         return insumo.id;
@@ -243,11 +243,11 @@ describe("seed demo pizzería La Cuadra", () => {
       // + el reporte de rendimiento compartido con productos DISTINTOS
       // pooleados (no solo "una MP usada por 2 platos", que la propia
       // planilla de recetas ya da gratis en varios insumos).
-      let insumoMorron = await prisma.insumo.findUnique({ where: { nombre: "MORRON" } });
+      let insumoMorron = await prisma.insumo.findFirst({ where: { nombre: "MORRON" } });
       if (!insumoMorron) {
         const r = await crearInsumo("MORRON");
         anotarSiFalla("crearInsumo(MORRON)", r);
-        insumoMorron = await prisma.insumo.findUniqueOrThrow({ where: { nombre: "MORRON" } });
+        insumoMorron = await prisma.insumo.findFirstOrThrow({ where: { nombre: "MORRON" } });
       }
 
       // 7) Productos.
@@ -270,7 +270,7 @@ describe("seed demo pizzería La Cuadra", () => {
         });
         anotarSiFalla(`darDeAltaProducto(${p.codigo})`, r);
         if (r.ok) {
-          const creado = await prisma.producto.findUniqueOrThrow({ where: { codigo: p.codigo } });
+          const creado = await prisma.producto.findFirstOrThrow({ where: { codigo: p.codigo } });
           productoPorCodigo.set(p.codigo, creado);
           if (!p.activo) anotarSiFalla(`actualizarDisponibilidadProducto(${p.codigo})`, await actualizarDisponibilidadProducto(creado.id, false));
         }
@@ -290,7 +290,7 @@ describe("seed demo pizzería La Cuadra", () => {
           seProduce: false,
         });
         anotarSiFalla("darDeAltaProducto(MP011B)", r);
-        if (r.ok) productoPorCodigo.set("MP011B", await prisma.producto.findUniqueOrThrow({ where: { codigo: "MP011B" } }));
+        if (r.ok) productoPorCodigo.set("MP011B", await prisma.producto.findFirstOrThrow({ where: { codigo: "MP011B" } }));
       }
       const idProd = (codigo: string): string => {
         const p = productoPorCodigo.get(codigo);
@@ -636,7 +636,7 @@ describe("seed demo pizzería La Cuadra", () => {
       const fechaMerma = fechaHace(5, 11);
       // La migración expand (plan "motivos de Consumo/Merma como catálogo administrable", P3) ya sembró el catálogo en
       // cualquier base a la que le corrieron `prisma migrate deploy` — no hace falta sembrarlo acá.
-      const motivoRoto = await prisma.motivoMerma.findUniqueOrThrow({ where: { nombre: "Roto o caído" } });
+      const motivoRoto = await prisma.motivoMerma.findFirstOrThrow({ where: { nombre: "Roto o caído" } });
       const rMerma = await registrarMovimiento({
         proceso: "MERMA",
         fecha: fechaMerma,
@@ -654,8 +654,8 @@ describe("seed demo pizzería La Cuadra", () => {
       const desde = fechaHace(30, 0);
       const hasta = fechaHace(1, 23);
       const [simples, compartidas] = await Promise.all([
-        calcularRendimientoRecetasSimples(sucursal.id, desde, hasta),
-        calcularRendimientoRecetasCompartidas(sucursal.id, desde, hasta),
+        calcularRendimientoRecetasSimples(sucursal.id, desde, hasta, prisma),
+        calcularRendimientoRecetasCompartidas(sucursal.id, desde, hasta, prisma),
       ]);
 
       console.log(`\n=== Fase 1 (pool simple): ${simples.length} filas ===`);

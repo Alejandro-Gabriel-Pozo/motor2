@@ -41,16 +41,15 @@ import { crearEnvioDirectoDeTraspasoCasoDeUso } from "./casos-de-uso/crear-envio
  * tabla real (Core) y `ContextoUsuario.sucursalId` ya identifica "quién
  * soy" en cada request — ver el docstring del modelo en schema.prisma.
  *
- * Gate único: 'proceso_transferencia_sucursal' (ya seedeada desde Core,
- * anticipando esta porción) — mismo criterio que Apps Script
- * (requierePermiso_ en cada función de escritura, nunca en la lectura de
- * la Bandeja).
+ * Gate: UNA clave por acción (decisión del dueño, 2026-09-30; reemplazan a 'proceso_transferencia_sucursal', retirada): traspaso_solicitar,
+ * traspaso_enviar_directo, traspaso_aprobar, traspaso_cancelar_solicitud, traspaso_rechazar_solicitud, traspaso_aceptar,
+ * traspaso_rechazar_envio y traspaso_confirmar_reingreso. Ver la Bandeja tiene la suya (traspaso_ver_bandeja, solo Ver).
  *
  * Desde la Task #41 (Fases M11a/M11b/M11c, docs/arquitectura-casos-de-uso-2026-09-27.md) este archivo tiene SOLO las ESCRITURAS, cada
  * una como adaptador fino de su caso de uso (`casos-de-uso/`), y está en `ACCIONES_CON_CASO_DE_USO`
  * (.dependency-cruiser-excepciones.cjs): no puede importar la base, Prisma en runtime, reintento/idempotencia/auditoría ni
  * `server/persistencia/`. Las LECTURAS de la Bandeja y de los selectores (`obtenerBandejaTransferencias`,
- * `listarSucursalesDisponibles`) se mudaron tal cual a `lecturas.ts`, al lado.
+ * `listarSucursalesParaSolicitar`/`listarSucursalesParaEnviar`) se mudaron tal cual a `lecturas.ts`, al lado.
  */
 
 export interface DatosSolicitudTraspaso {
@@ -69,7 +68,7 @@ export interface DatosSolicitudTraspaso {
  * producto transferible, cantidad y escritura, en una transacción) → `{ ok, mensaje, id, nombre }`.
  */
 export async function crearSolicitudTransferencia(datos: DatosSolicitudTraspaso): Promise<ResultadoConId> {
-  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+  return conPermiso("traspaso_solicitar", async (ctx) => {
     const comando = guardComandoCrearSolicitudTraspaso(datos);
     if (!comando.ok) return error(comando.mensaje);
     const r = await crearSolicitudDeTraspasoCasoDeUso(ctx, comando.valor);
@@ -93,7 +92,7 @@ export interface DatosEnvioDirectoTraspaso {
  * traspaso ENVIADO + su SALIDA, en una transacción serializable; sin I3, ver el docstring del caso de uso) → `{ ok, mensaje, id, nombre }`.
  */
 export async function crearEnvioDirectoTransferencia(datos: DatosEnvioDirectoTraspaso): Promise<ResultadoConId> {
-  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+  return conPermiso("traspaso_enviar_directo", async (ctx) => {
     const comando = guardComandoCrearEnvioDirectoTraspaso(datos);
     if (!comando.ok) return error(comando.mensaje);
     const r = await crearEnvioDirectoDeTraspasoCasoDeUso(ctx, comando.valor);
@@ -109,7 +108,7 @@ export async function crearEnvioDirectoTransferencia(datos: DatosEnvioDirectoTra
  * guard de transición, re-chequeo de disponibilidad y stock, escritura) → `aResultadoAccion`.
  */
 export async function aprobarYEnviarTransferencia(id: string, seccionOrigenId: string): Promise<ResultadoAccion> {
-  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+  return conPermiso("traspaso_aprobar", async (ctx) => {
     const comando = guardComandoAprobarYEnviarTraspaso({ id, seccionOrigenId });
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await aprobarYEnviarTraspasoCasoDeUso(ctx, comando.valor));
@@ -136,7 +135,7 @@ export async function aprobarYEnviarTransferencia(id: string, seccionOrigenId: s
  * `aResultadoAccion`.
  */
 export async function cancelarSolicitudTransferencia(id: string): Promise<ResultadoAccion> {
-  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+  return conPermiso("traspaso_cancelar_solicitud", async (ctx) => {
     const comando = guardComandoCancelarSolicitudTraspaso({ id });
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await cancelarSolicitudDeTraspasoCasoDeUso(ctx, comando.valor));
@@ -159,7 +158,7 @@ export async function cancelarSolicitudTransferencia(id: string): Promise<Result
  * motivo) → caso de uso (`casos-de-uso/rechazar-solicitud-de-traspaso.ts`) → `aResultadoAccion`.
  */
 export async function rechazarSolicitudTransferencia(id: string, motivo?: string): Promise<ResultadoAccion> {
-  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+  return conPermiso("traspaso_rechazar_solicitud", async (ctx) => {
     const comando = guardComandoRechazarSolicitudTraspaso({ id, motivo });
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await rechazarSolicitudDeTraspasoCasoDeUso(ctx, comando.valor));
@@ -174,7 +173,7 @@ export async function rechazarSolicitudTransferencia(id: string, motivo?: string
  * I3, guard de transición, re-chequeo de disponibilidad, escritura) → `aResultadoAccion`.
  */
 export async function aceptarTransferencia(id: string, seccionDestinoId: string, claveIdempotencia?: string): Promise<ResultadoAccion> {
-  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+  return conPermiso("traspaso_aceptar", async (ctx) => {
     const comando = guardComandoAceptarTraspaso({ id, seccionDestinoId, claveIdempotencia });
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await aceptarTraspasoCasoDeUso(ctx, comando.valor));
@@ -196,7 +195,7 @@ export async function aceptarTransferencia(id: string, seccionDestinoId: string,
  * `aResultadoAccion`.
  */
 export async function rechazarTransferencia(id: string, motivo?: string): Promise<ResultadoAccion> {
-  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+  return conPermiso("traspaso_rechazar_envio", async (ctx) => {
     const comando = guardComandoRechazarEnvioTraspaso({ id, motivo });
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await rechazarEnvioDeTraspasoCasoDeUso(ctx, comando.valor));
@@ -210,7 +209,7 @@ export async function rechazarTransferencia(id: string, motivo?: string): Promis
  * (`casos-de-uso/confirmar-reingreso-de-traspaso.ts`) → `aResultadoAccion`.
  */
 export async function confirmarReingresoTransferencia(id: string, claveIdempotencia?: string): Promise<ResultadoAccion> {
-  return conPermiso("proceso_transferencia_sucursal", async (ctx) => {
+  return conPermiso("traspaso_confirmar_reingreso", async (ctx) => {
     const comando = guardComandoConfirmarReingresoTraspaso({ id, claveIdempotencia });
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await confirmarReingresoDeTraspasoCasoDeUso(ctx, comando.valor));

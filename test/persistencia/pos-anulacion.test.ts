@@ -34,6 +34,7 @@ describe("persistencia de la anulación de un ítem enviado", () => {
         productoId: s.muzzarella.id,
         cantidad: 1.5,
         precioUnitario: 3000.5,
+        precioCartaUnitario: null,
         numeroEnvio: 3,
         anulaAItemId: null,
         mesaNumero: 4,
@@ -59,7 +60,7 @@ describe("persistencia de la anulación de un ítem enviado", () => {
 
       const espejoId = await prisma.$transaction((tx) =>
         escribirEspejoDeItem(tx, {
-          original: { id: item.id, cuentaId: cuenta.id, productoId: s.milanesa.id, precioUnitario: 9000.25, numeroEnvio: 2 },
+          original: { id: item.id, cuentaId: cuenta.id, productoId: s.milanesa.id, precioUnitario: 9000.25, precioCartaUnitario: null, numeroEnvio: 2 },
           cantidadAnulada: 2,
           motivo: "Salió frío",
           creadoPorId: s.admin.id,

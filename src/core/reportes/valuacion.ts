@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { obtenerCostoActualPorMP, redondearCantidad, type Db } from "./comun";
@@ -35,7 +34,7 @@ export interface ReporteValuacionInventario {
  * pero sin ninguna compra registrada queda `sinCosto` y afuera del total —
  * no se inventa un valor a partir de nada.
  */
-export async function calcularValuacionInventario(sucursalId: string, db: Db = prisma): Promise<ReporteValuacionInventario> {
+export async function calcularValuacionInventario(sucursalId: string, db: Db): Promise<ReporteValuacionInventario> {
   const productos = await db.producto.findMany({
     where: whereDisponibleEn(sucursalId),
     include: { unidadStock: true, insumo: true },

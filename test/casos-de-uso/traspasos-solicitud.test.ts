@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { aprobarYEnviarTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/aprobar-y-enviar-traspaso";
 import { cancelarSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/cancelar-solicitud-de-traspaso";
 import { rechazarSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/rechazar-solicitud-de-traspaso";
@@ -25,8 +25,8 @@ describe("casos de uso de la solicitud de traspaso", () => {
   let kgId: string;
   let insumoId: string;
 
-  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central" });
-  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B" });
+  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ...baseDeTest });
+  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ...baseDeTest });
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -80,7 +80,7 @@ describe("casos de uso de la solicitud de traspaso", () => {
       expect(operacion.movimientos).toHaveLength(1);
       expect(operacion.movimientos[0]).toMatchObject({ productoId: mp.id, seccionId: seccionAId, detalle: 'Transferencia a sucursal "Sucursal B".', traspasoSucursalId: sol.id });
       expect(Number(operacion.movimientos[0].cantidad)).toBe(-4);
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(6);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
 
       const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } });
       expect(traspaso).toMatchObject({ estado: "ENVIADA", seccionOrigenId: seccionAId, decididoPorOrigenId: adminAId });
@@ -112,7 +112,7 @@ describe("casos de uso de la solicitud de traspaso", () => {
       expect((await aprobarYEnviarTraspasoCasoDeUso(comoA(), { traspasoId: sol.id, seccionOrigenId: seccionAId })).ok).toBe(true);
       const r = await aprobarYEnviarTraspasoCasoDeUso(comoA(), { traspasoId: sol.id, seccionOrigenId: seccionAId });
       expect(r).toEqual({ ok: false, codigo: "ESTADO", mensaje: 'Este traspaso ya está en estado "ENVIADA" — no se puede aprobar de nuevo.' });
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(6);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
     });
 
     it("PRODUCTO_NO_TRANSFERIBLE: dejó de estar disponible en destino desde la solicitud", async () => {
@@ -150,7 +150,7 @@ describe("casos de uso de la solicitud de traspaso", () => {
       const t = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } });
       expect(t).toMatchObject({ estado: "CANCELADA", cerradoPorId: adminBId });
       expect(t.fechaCierre).not.toBeNull();
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
     });
 
     it("NO_ENCONTRADO / LADO / ESTADO con los textos de antes", async () => {
@@ -176,7 +176,7 @@ describe("casos de uso de la solicitud de traspaso", () => {
       const t = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } });
       expect(t).toMatchObject({ estado: "RECHAZADA_ORIGEN", decididoPorOrigenId: adminAId, motivoRechazoOrigen: "No tenemos" });
       expect(t.fechaDecisionOrigen).not.toBeNull();
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
     });
 
     it("sin motivo: queda en null", async () => {

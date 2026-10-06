@@ -1,0 +1,98 @@
+import type { CartaV1, EstiloCarta } from "@/core/carta/public";
+import { NavegacionCarta, type PaginaCarta, type RedSocial } from "./navegacion-carta";
+import { Portada } from "./portada";
+import { Seccion } from "./seccion";
+
+/**
+ * ADR-006, Fase 3: compone la carta completa (portada, índice, una página por sección) — reemplaza `CartaView`
+ * (`restaurant-menu-design/components/carta-view.tsx`). Las páginas del slider (`paginas`) se calculan acá, en el
+ * servidor, a partir de `carta.secciones` — nunca descubiertas del DOM (ver `navegacion-carta.tsx`).
+ */
+export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: CartaV1; estilo: EstiloCarta; hrefVolver?: string; embebida?: boolean }) {
+  const restauranteNombre = estilo.valores.restaurante_nombre || carta.sucursal.nombre;
+  const paginas: PaginaCarta[] = [
+    { id: "portada", tipo: "portada" },
+    { id: "indice", tipo: "indice" },
+    ...carta.secciones.map((s) => ({ id: s.id, tipo: "seccion" as const })),
+  ];
+  const redesSociales = construirRedesSociales(estilo.valores);
+  // Pisa los tokens base de `.carta-shell` (src/app/globals.css) con lo cargado en el tema de ESTA sucursal — si algo
+  // no está cargado, la clave sale "" en `variablesCss` y el CSS de `.carta-shell` sigue decidiendo (cascada normal).
+  const variablesCss: Record<string, string> = { ...estilo.variablesCss };
+  if (estilo.valores.color_marca) variablesCss["--carta-primary"] = estilo.valores.color_marca;
+  if (estilo.valores.color_fondo_dia) variablesCss["--carta-bg"] = estilo.valores.color_fondo_dia;
+  // La tinta base sigue al fondo cargado: sin esto, un fondo oscuro dejaba el texto casi negro (el token de `.carta-shell` es para fondo claro).
+  if (estilo.tintaBase) {
+    variablesCss["--carta-ink"] = estilo.tintaBase;
+    variablesCss["--carta-ink-soft"] = `color-mix(in oklch, ${estilo.tintaBase} 70%, var(--carta-bg))`;
+  }
+  if (estilo.colores.navFlechas) variablesCss["--carta-flechas"] = estilo.colores.navFlechas;
+  const c = estilo.colores;
+
+  return (
+    <NavegacionCarta
+      paginas={paginas}
+      hrefVolver={hrefVolver}
+      embebida={embebida}
+      redesSociales={redesSociales}
+      variablesCss={variablesCss}
+      volver={estilo.volver}
+      colorIconos={c.navIconos}
+    >
+      <Portada estilo={estilo} restauranteNombre={restauranteNombre} />
+
+      <div className="carta-pagina flex flex-col px-6 sm:px-10">
+        {estilo.valores.carta_texto_indice_etiqueta && (
+          <p className="mb-0.5 mt-4 text-xs font-light uppercase tracking-[0.5em]" style={{ fontSize: estilo.valores.carta_fuente_indice_etiqueta, color: "var(--carta-primary)" }}>
+            {estilo.valores.carta_texto_indice_etiqueta}
+          </p>
+        )}
+        <h1 className={`carta-titulo font-medium${estilo.valores.carta_texto_indice_etiqueta ? "" : " mt-4"}`} style={{ fontSize: estilo.valores.carta_fuente_indice_titulo, color: c.indiceTitulo ?? undefined }}>
+          {estilo.valores.carta_texto_indice_titulo || "Índice"}
+        </h1>
+        <ol data-carta-indice-lista data-carta-scroll className="mt-4 grid min-h-0 flex-1 grid-cols-1 content-start gap-x-12 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
+          {carta.secciones.map((seccion, i) => (
+            <li key={seccion.id} className="border-b border-dotted" style={{ borderColor: "var(--carta-border)" }}>
+              <button
+                type="button"
+                data-ir-a={seccion.id}
+                className="group flex w-full items-baseline gap-2.5 py-3 text-left transition-opacity hover:opacity-80"
+              >
+                <span className="w-7 shrink-0 font-light tabular-nums" style={{ fontSize: estilo.valores.carta_fuente_indice_numero, color: c.indiceNumeros ?? "var(--carta-primary)" }}>
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span
+                  className="flex-1 carta-titulo font-medium leading-snug"
+                  style={{ fontSize: estilo.valores.carta_fuente_indice_item, color: c.indiceTitulos ?? undefined }}
+                >
+                  {seccion.titulo ?? seccion.nombre}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {carta.secciones.map((seccion, i) => (
+        <Seccion key={seccion.id} seccion={seccion} indice={i} total={carta.secciones.length} estilo={estilo} />
+      ))}
+    </NavegacionCarta>
+  );
+}
+
+function construirRedesSociales(v: EstiloCarta["valores"]): RedSocial[] {
+  const redes: RedSocial[] = [];
+  if (v.restaurante_instagram) {
+    redes.push({ id: "instagram", label: "Instagram", href: v.restaurante_instagram.startsWith("http") ? v.restaurante_instagram : `https://instagram.com/${v.restaurante_instagram.replace("@", "")}` });
+  }
+  if (v.restaurante_whatsapp) {
+    redes.push({ id: "whatsapp", label: "WhatsApp", href: `https://wa.me/${v.restaurante_whatsapp.replace(/\D/g, "")}` });
+  }
+  if (v.restaurante_footer_maps_url) {
+    redes.push({ id: "maps", label: "Google Maps", href: v.restaurante_footer_maps_url });
+  }
+  if (v.restaurante_facebook) {
+    redes.push({ id: "facebook", label: "Facebook", href: v.restaurante_facebook.startsWith("http") ? v.restaurante_facebook : `https://facebook.com/${v.restaurante_facebook}` });
+  }
+  return redes;
+}

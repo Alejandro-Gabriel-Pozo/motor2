@@ -31,10 +31,10 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * @sideEffects Ninguno además de la reversión de Kardex (fila conteoFisicoId) y el cambio de estado del ConteoFisico.
  */
 export async function cancelarConteoFisicoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   conteoId: string
 ): Promise<ResultadoCancelarConteo> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoCancelarConteo> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCancelarConteo> => {
     const conteo = await cargarConteoFisico(tx, conteoId);
     if (!conteo || conteo.sucursalId !== actor.sucursalId) return fracaso("CONTEO_NO_ENCONTRADO", "No se encontró ese conteo.");
     if (conteo.estado === "CANCELADO") return fracaso("CONTEO_YA_CANCELADO", "Ese conteo ya está cancelado.");

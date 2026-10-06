@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { guardSeccionHabitual } from "@/core/features/seccion-habitual/seccion-habitual.guard";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -15,8 +14,8 @@ import { requerirVerEnSucursal } from "../con-sesion";
 
 /** Las filas de esta sucursal — solo las que apuntan a una sección ACTIVA de esta sucursal (una desactivada ya no manda, ver el cierre). */
 export async function listarSeccionesHabituales(sucursalId: string) {
-  await requerirVerEnSucursal(sucursalId, "stock_minimo");
-  return prisma.seccionHabitualProducto.findMany({
+  const ctx = await requerirVerEnSucursal(sucursalId, "stock_seccion_habitual");
+  return ctx.db.seccionHabitualProducto.findMany({
     where: { sucursalId, seccion: { sucursalId, activa: true } },
     include: { producto: true, seccion: true },
     orderBy: [{ producto: { nombre: "asc" } }],
@@ -25,19 +24,19 @@ export async function listarSeccionesHabituales(sucursalId: string) {
 
 /** Alta o reemplazo (una por sucursal × producto). Solo un PV, y solo una sección activa de esta sucursal. */
 export async function setSeccionHabitual(productoId: string, seccionId: string): Promise<ResultadoAccion> {
-  return conPermiso("stock_minimo", async (ctx) => {
+  return conPermiso("stock_seccion_habitual", async (ctx) => {
     const formato = guardSeccionHabitual({ productoId, seccionId });
     if (!formato.ok) return error(formato.mensaje);
 
-    const producto = await prisma.producto.findUnique({ where: { id: formato.valor.productoId } });
+    const producto = await ctx.db.producto.findUnique({ where: { id: formato.valor.productoId } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.tipo !== "PV") return error(`Solo un producto de venta (PV) tiene sección habitual: «${producto.nombre}» es una materia prima.`);
 
-    const seccion = await prisma.seccion.findUnique({ where: { id: formato.valor.seccionId } });
+    const seccion = await ctx.db.seccion.findUnique({ where: { id: formato.valor.seccionId } });
     if (!seccion || seccion.sucursalId !== ctx.sucursalId) return error("No se encontró la sección.");
     if (!seccion.activa) return error(`La sección «${seccion.nombre}» está desactivada: activala o elegí otra.`);
 
-    await prisma.seccionHabitualProducto.upsert({
+    await ctx.db.seccionHabitualProducto.upsert({
       where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId: producto.id } },
       update: { seccionId: seccion.id },
       create: { sucursalId: ctx.sucursalId, productoId: producto.id, seccionId: seccion.id },
@@ -48,10 +47,10 @@ export async function setSeccionHabitual(productoId: string, seccionId: string):
 
 /** Quita la preferencia: el producto vuelve a salir de donde haya stock (por vencimiento). */
 export async function eliminarSeccionHabitual(id: string): Promise<ResultadoAccion> {
-  return conPermiso("stock_minimo", async (ctx) => {
-    const fila = typeof id === "string" ? await prisma.seccionHabitualProducto.findUnique({ where: { id }, include: { producto: { select: { nombre: true } } } }) : null;
+  return conPermiso("stock_seccion_habitual", async (ctx) => {
+    const fila = typeof id === "string" ? await ctx.db.seccionHabitualProducto.findUnique({ where: { id }, include: { producto: { select: { nombre: true } } } }) : null;
     if (!fila || fila.sucursalId !== ctx.sucursalId) return error("No se encontró esa sección habitual.");
-    await prisma.seccionHabitualProducto.delete({ where: { id: fila.id } });
+    await ctx.db.seccionHabitualProducto.delete({ where: { id: fila.id } });
     return ok(`«${fila.producto.nombre}» ya no tiene sección habitual.`);
   });
 }

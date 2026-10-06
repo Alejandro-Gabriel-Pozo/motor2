@@ -55,7 +55,7 @@ describe("registrarMovimiento — paso 6 (Compra): un rechazo NO-Error de upsert
     });
 
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // el Kardex se escribió igual, best-effort no lo afectó
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10); // el Kardex se escribió igual, best-effort no lo afectó
     expect(await prisma.proveedorPorProducto.count({ where: { productoId: mp.id } })).toBe(0); // el hookup mockeado nunca escribió
   });
 });

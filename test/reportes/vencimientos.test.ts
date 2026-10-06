@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
 import { generarReporteLotesProximosAVencer, generarConciliacionVencimientos } from "../../src/core/reportes/vencimientos";
+import { prisma } from "../setup/test-db";
 
 describe("Reporte de vencimientos", () => {
   let sucursalId: string;
@@ -40,7 +41,7 @@ describe("Reporte de vencimientos", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, loteVencimiento: enTreintaDias }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, loteVencimiento: ayer }] });
 
-    const filas = await generarReporteLotesProximosAVencer(sucursalId, 7);
+    const filas = await generarReporteLotesProximosAVencer(sucursalId, 7, prisma);
     const lotes = filas.map((f) => f.loteVencimiento.toISOString().slice(0, 10));
     expect(lotes).toContain(enTresDias.toISOString().slice(0, 10));
     expect(lotes).toContain(ayer.toISOString().slice(0, 10));
@@ -59,7 +60,7 @@ describe("Reporte de vencimientos", () => {
 
     await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
 
-    const conciliacion = await generarConciliacionVencimientos(sucursalId);
+    const conciliacion = await generarConciliacionVencimientos(sucursalId, prisma);
     const fila = conciliacion.find((c) => c.productoNombre === "Harina")!;
     expect(fila.estado).toBe("consistente");
     expect(fila.ventasPeriodo).toBe(10);
@@ -77,7 +78,7 @@ describe("Reporte de vencimientos", () => {
 
     await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
 
-    const conciliacion = await generarConciliacionVencimientos(sucursalId);
+    const conciliacion = await generarConciliacionVencimientos(sucursalId, prisma);
     const fila = conciliacion.find((c) => c.productoNombre === "Harina")!;
     expect(fila.estado).toBe("revisar");
     expect(fila.ventasPeriodo).toBe(3);

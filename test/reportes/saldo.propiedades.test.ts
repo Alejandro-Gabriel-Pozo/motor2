@@ -8,6 +8,8 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 import { obtenerHistorialProducto } from "../../src/core/reportes/historial-producto";
+import { limitadorMutaciones } from "../../src/core/permisos/limitador-tasa";
+import { prisma } from "../setup/test-db";
 
 /**
  * Property-based testing (Task #41, Fase F4): la vista de historial de un producto (`obtenerHistorialProducto`, saldo
@@ -52,6 +54,9 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
   let corrida = 0;
 
   beforeAll(async () => {
+    // Las dos propiedades juntas pueden superar las 300 mutaciones/min del limitador (según la semilla, con el shrinking de
+    // fast-check incluido) y rechazar una acción legítima: intermitente. Acá el límite no es lo que se prueba.
+    vi.spyOn(limitadorMutaciones, "excedeLimite").mockReturnValue(false);
     await limpiarBaseDeTest();
     const base = await sembrarBase();
     sucursalId = base.sucursal.id;
@@ -93,10 +98,10 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
         const productoId = await productoNuevo();
         const { saldoModelo, prefijosAceptados } = await aplicar(productoId, pasos, (i) => new Date(Date.UTC(2026, 0, 1 + i)));
 
-        const saldoDirecto = await calcularSaldoTotal(productoId, seccionId);
+        const saldoDirecto = await calcularSaldoTotal(productoId, seccionId, prisma);
         expect(aCentesimas(saldoDirecto)).toBe(saldoModelo);
 
-        const historial = await obtenerHistorialProducto(sucursalId, productoId, seccionId, undefined, undefined);
+        const historial = await obtenerHistorialProducto(sucursalId, productoId, seccionId, undefined, undefined, prisma);
         const filas = historial!.eventos.filter((e) => e.tipo === "movimiento");
         expect(filas.map((f) => aCentesimas(f.saldoCorriente!))).toEqual(prefijosAceptados);
         expect(historial!.totalMovimientos).toBe(prefijosAceptados.length);
@@ -115,10 +120,10 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
         const fecha = new Date(Date.UTC(2026, 5, 15));
         const { saldoModelo, prefijosAceptados } = await aplicar(productoId, pasos, () => fecha);
 
-        const saldoDirecto = await calcularSaldoTotal(productoId, seccionId);
+        const saldoDirecto = await calcularSaldoTotal(productoId, seccionId, prisma);
         expect(aCentesimas(saldoDirecto)).toBe(saldoModelo);
 
-        const historial = await obtenerHistorialProducto(sucursalId, productoId, seccionId, undefined, undefined);
+        const historial = await obtenerHistorialProducto(sucursalId, productoId, seccionId, undefined, undefined, prisma);
         const filas = historial!.eventos.filter((e) => e.tipo === "movimiento");
         expect(filas).toHaveLength(prefijosAceptados.length);
         expect(aCentesimas(filas.at(-1)?.saldoCorriente ?? 0)).toBe(aCentesimas(saldoDirecto));

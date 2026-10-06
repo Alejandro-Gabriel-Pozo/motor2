@@ -1,5 +1,4 @@
 import type { PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { esNumeroFinito } from "@/core/numero";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 
@@ -135,7 +134,7 @@ export interface MapaDeMesas {
  * ítems + quién la abrió). La página la llama directo, después de `requierePermisoVer(…, "pos_mesas")`: no es una Server Action
  * de lectura (mismo patrón que stock/conteo-frecuencia/page.tsx con `sugerirInsumosClaseA`).
  */
-export async function obtenerMapaDeMesas(sucursalId: string, db: PrismaClient = prisma, ahora: Date = new Date()): Promise<MapaDeMesas> {
+export async function obtenerMapaDeMesas(sucursalId: string, db: PrismaClient, ahora: Date = new Date()): Promise<MapaDeMesas> {
   const filas = await db.mesa.findMany({
     where: { sucursalId },
     orderBy: { numero: "asc" },
@@ -159,7 +158,7 @@ export async function obtenerMapaDeMesas(sucursalId: string, db: PrismaClient = 
       estado: resolverEstadoMesa(cuenta),
       // Redondeo a los 4 decimales de la columna (Decimal(14, 4)): la suma en coma flotante no deja «2,0000000001 productos».
       productosSinEnviar: Math.round(items.filter((i) => i.numeroEnvio === null).reduce((suma, i) => suma + Number(i.cantidad), 0) * 10_000) / 10_000,
-      // Mismo criterio que obtenerDetalleDeMesa/boleta/cerrarCuenta: Σ importeDeLinea, no la suma cruda re-redondeada.
+      // Mismo criterio que obtenerDetalleDeMesa/ticket/cerrarCuenta: Σ importeDeLinea, no la suma cruda re-redondeada.
       total: redondearMoneda(items.reduce((suma, i) => suma + importeDeLinea(Number(i.cantidad), Number(i.precioUnitario)), 0)),
       mesero: cuenta ? nombreDelMesero(cuenta.abiertaPor) : null,
       tiempoAbierta: cuenta ? tiempoDesde(cuenta.abiertaEn, ahora) : null,

@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Comportamiento nuevo de §3 (docs/plan-rendimiento-recetas-2026-09-22.md, paso P10) que
@@ -14,7 +15,7 @@ test("caso real del Agua: Δ stock, banda de ruido, rótulo 'Producto de reventa
   seccionId,
 }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
 
   // Agua: compra de 72 (un solo lote, caja x12), 63 vendidos, receta 1:1 — desvío crudo +14,3%, Δstock +9, banda ±114,3% (cae
@@ -96,7 +97,7 @@ test("caso real del Agua: Δ stock, banda de ruido, rótulo 'Producto de reventa
 
 test("con merma, calibrar «Usar este valor» congela el estimado NETO y la merma EFECTIVA (no el bruto)", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
 
   // Receta neta 2 kg + 25% de merma → teórico bruto 2,5. Compra 30, venta 10 → estimado bruto 3 (+20% de desvío contra el
@@ -143,7 +144,7 @@ test("con merma, calibrar «Usar este valor» congela el estimado NETO y la merm
     expect(Number(override.mermaPorcentaje)).toBe(25);
   } finally {
     await prisma.rendimientoLocalIngrediente.deleteMany({ where: { recetaIngredienteId } });
-    await prisma.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: `${sucursalId}:${pv.id}:${mp.id}` } });
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: `${sucursalId}:${pv.id}:${mp.id}` } });
     await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });
     await prisma.operacion.deleteMany({ where: { id: { in: [compra.id, venta.id] } } });
     await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });

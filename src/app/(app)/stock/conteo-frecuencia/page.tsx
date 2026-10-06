@@ -7,6 +7,8 @@ import { sugerirInsumosClaseA } from "@/core/stock/sugerencia-clase-a";
 import { resolverRangoPorDefecto } from "@/core/reportes/rango-por-defecto";
 import { ConteoFrecuenciaForm } from "./conteo-frecuencia-form";
 import { BotonEliminarFrecuenciaConteo } from "./boton-eliminar";
+import { IconoDeAccion } from "@/components/iconos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Agenda de conteo físico periódico por sucursal × producto (decisión 2 de
@@ -16,18 +18,18 @@ import { BotonEliminarFrecuenciaConteo } from "./boton-eliminar";
  * alta/edición + eliminar. `frecuenciaDias = 0` desactiva la agenda sin
  * borrar la fila.
  */
-export default async function ConteoFrecuenciaPage({ searchParams }: { searchParams: Promise<{ editar?: string; sugerido?: string; sugeridoNombre?: string }> }) {
+export default async function ConteoFrecuenciaPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"editar" | "sugerido" | "sugeridoNombre">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "conteo_frecuencia", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { editar, sugerido, sugeridoNombre } = await searchParams;
+  const { editar, sugerido, sugeridoNombre } = unicosDeUrl(await searchParams);
   const rango = resolverRangoPorDefecto(undefined);
   const [filas, sugerencias] = await Promise.all([
     listarFrecuenciasConteo(ctx.sucursalId),
-    sugerirInsumosClaseA(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO)),
+    sugerirInsumosClaseA(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db),
   ]);
   const filaEnEdicion = editar ? filas.find((f) => f.id === editar) : undefined;
   const idsConAgenda = new Set(filas.filter((f) => f.frecuenciaDias > 0).map((f) => f.productoId));
@@ -84,8 +86,9 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
                 <td>{f.frecuenciaDias === 0 ? "Desactivada" : `${f.frecuenciaDias} día(s)`}</td>
                 <td>
                   {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
-                  <div className="flex gap-3">
-                    <Link href={`/stock/conteo-frecuencia?editar=${f.id}`} className="text-sm underline">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    <Link href={`/stock/conteo-frecuencia?editar=${f.id}`} className="text-sm underline inline-flex items-center gap-1">
+                      <IconoDeAccion id="editar" />
                       Editar
                     </Link>
                     <BotonEliminarFrecuenciaConteo id={f.id} etiqueta={`"${f.producto.nombre}"`} />

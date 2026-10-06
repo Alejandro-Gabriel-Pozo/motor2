@@ -1,22 +1,30 @@
 "use server";
 
-import { prisma } from "@/lib/db";
-import type { AccionClave } from "@/core/permisos/acciones";
-import { MENSAJE_GUARDADO_EN_CONFLICTO, mismoEstado, normalizarPermiso, PREFIJO_CONFLICTO_DE_EDICION, SIN_PERMISO, type EstadoPermiso } from "@/core/permisos/matriz";
+import { claveEnCatalogo, type AccionClave } from "@/core/permisos/acciones";
+import {
+  esCeldaFueraDeNivel,
+  MENSAJE_GUARDADO_EN_CONFLICTO,
+  mismoEstado,
+  nivelesDeLaCelda,
+  normalizarPermiso,
+  PREFIJO_CONFLICTO_DE_EDICION,
+  SIN_PERMISO,
+  type EstadoPermiso,
+} from "@/core/permisos/matriz";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
-import { conPermiso } from "../con-permiso";
+import { conEdicionDePermisos } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
-import { requerirVer } from "../con-sesion";
+import { requerirVerDeEmpresa } from "../con-sesion";
 
 export async function listarMatrizPermisos() {
-  await requerirVer("gestion_permisos");
+  const ctx = await requerirVerDeEmpresa("gestion_permisos");
   const [acciones, roles, permisos] = await Promise.all([
-    prisma.accion.findMany({ orderBy: { clave: "asc" } }),
-    prisma.rol.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
-    prisma.permisoRol.findMany(),
+    ctx.db.accion.findMany({ orderBy: { clave: "asc" } }),
+    ctx.db.rol.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+    ctx.db.permisoRol.findMany(),
   ]);
-  return { acciones, roles, permisos };
+  return { acciones: acciones.filter((a) => claveEnCatalogo(a.clave)), roles, permisos };
 }
 
 export interface CambioPermisoInput {
@@ -51,7 +59,7 @@ const estadoValido = (e: EstadoPermiso | undefined): e is EstadoPermiso => !!e &
  *   lo absorbe (se edita unas pocas veces por semana, el costo es irrelevante).
  */
 export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<ResultadoAccion> {
-  return conPermiso("gestion_permisos", async (ctx) => {
+  return conEdicionDePermisos("gestion_permisos", async (ctx) => {
     if (!Array.isArray(cambios)) return error("No hay cambios para guardar.");
     if (cambios.length > MAXIMO_CAMBIOS) return error("Son demasiados cambios de una vez.");
     for (const c of cambios) {
@@ -67,8 +75,8 @@ export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<Re
     }
 
     const [roles, acciones] = await Promise.all([
-      prisma.rol.findMany({ where: { activo: true, id: { in: cambios.map((c) => c.rolId) } } }),
-      prisma.accion.findMany({ where: { clave: { in: cambios.map((c) => c.accionClave) } } }),
+      ctx.db.rol.findMany({ where: { activo: true, id: { in: cambios.map((c) => c.rolId) } } }),
+      ctx.db.accion.findMany({ where: { clave: { in: cambios.map((c) => c.accionClave) } } }),
     ]);
     const rolPorId = new Map(roles.map((r) => [r.id, r]));
     const accionesConocidas = new Set(acciones.map((a) => a.clave));
@@ -78,8 +86,14 @@ export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<Re
     for (const c of cambios) {
       const rol = rolPorId.get(c.rolId);
       if (!rol) return error("No se encontró uno de los roles (¿está desactivado?). No se guardó nada.");
-      if (!accionesConocidas.has(c.accionClave)) return error(`No se encontró la acción "${c.accionClave}". No se guardó nada.`);
-      const nuevo = normalizarPermiso(rol.nombre, c.accionClave, c.nuevo);
+      if (!claveEnCatalogo(c.accionClave) || !accionesConocidas.has(c.accionClave)) return error(`No se encontró la acción "${c.accionClave}". No se guardó nada.`);
+      // El piso de la acción manda: a un rol por debajo no se le puede dar (sacarle una fila que ya tenía sí). Anti-escalada: un admin no puede
+      // armar un rol operario con una acción de administrador, ni nadie un rol con una de gerente.
+      if ((c.nuevo.puedeVer || c.nuevo.puedeEditar) && esCeldaFueraDeNivel(rol, c.accionClave)) {
+        const n = nivelesDeLaCelda(rol, c.accionClave)!;
+        return error(`El rol «${rol.nombre}» (nivel ${n.delRol}) no puede tener "${c.accionClave}": es una acción de nivel ${n.piso}. No se guardó nada.`);
+      }
+      const nuevo = normalizarPermiso(rol, c.accionClave, c.nuevo);
       if (mismoEstado(nuevo, c.anterior)) continue;
       efectivos.push({ rolId: rol.id, rolNombre: rol.nombre, accionClave: c.accionClave as AccionClave, anterior: c.anterior, nuevo });
     }
@@ -91,7 +105,7 @@ export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<Re
     // desactivado, inocuo (un rol desactivado no otorga acceso). Reintentar este cuerpo es seguro: `efectivos` sale del input y del nombre del
     // rol, no del estado de `PermisoRol`, y lo de adentro son lecturas y upserts idempotentes. El limitador de mutaciones se evalúa en
     // `conPermiso`, por fuera: un guardado que reintenta cuenta como uno.
-    return conTransaccionSerializable(async (tx): Promise<ResultadoAccion> => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx): Promise<ResultadoAccion> => {
       const actuales = await tx.permisoRol.findMany({
         where: { OR: efectivos.map((e) => ({ rolId: e.rolId, accionClave: e.accionClave })) },
       });

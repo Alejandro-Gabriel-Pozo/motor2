@@ -18,6 +18,17 @@ const EXCEPCIONES = require("./.dependency-cruiser-excepciones.cjs");
 /** Los casos de uso de mutaciones (Task #41, Fase M): `src/server/actions/<dominio>/casos-de-uso/<verbo>.ts`. */
 const CASOS_DE_USO = "^src/server/actions/[^/]+/casos-de-uso/";
 
+/**
+ * Lo único de auth/permisos/server que la carta pública (sin sesión) puede ALCANZAR, directa o transitivamente (ADR-006 + ADR-007): la
+ * base por empresa y su verificación de rol (`core/auth/base.ts`, `rol-de-ejecucion.ts`) y el catálogo de claves de permiso
+ * (`core/permisos/acciones.ts`, `capacidades-sucursal.ts`: solo tipos y constantes). Lista CERRADA: un archivo nuevo de `core/auth`,
+ * `core/permisos` o `server` que la carta empiece a alcanzar (la sesión, el gate, una Server Action) rompe `carta-publica-alcance`.
+ */
+const ALCANCE_CARTA_PUBLICA = [
+  "^src/core/auth/(base|rol-de-ejecucion)\\.ts$",
+  "^src/core/permisos/(acciones|capacidades-sucursal)\\.ts$",
+];
+
 /** Ruta literal (con `/`) → expresión regular anclada que matchea ESE archivo y nada más. */
 function rutaExacta(ruta) {
   return `^${ruta.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`;
@@ -30,14 +41,9 @@ function excepcionesDe(regla) {
   return (EXCEPCIONES[regla] ?? []).map((e) => rutaExacta(e.ruta));
 }
 
-/**
- * Dominios de NEGOCIO de `src/core/` — carpetas con lógica/estado propio que en principio no debería filtrarse fuera por sus
- * archivos internos. Excluye a propósito la infraestructura transversal (`auth`, `permisos`, `datos`, `features`, `estadistica`,
- * `navegacion`): esas se consumen desde cualquier lado por diseño, no tienen "internals" que proteger, y forzarlas acá rompería
- * el proyecto entero sin aportar nada (mismo criterio que separa `core/moneda.ts`/`numero.ts`/`texto.ts`, sueltos en la raíz, de
- * las carpetas por dominio).
- */
-const DOMINIOS_DE_NEGOCIO = ["catalogo", "movimientos", "reportes", "pos", "stock", "compras", "carta"];
+/** Dominios de negocio e infraestructura transversal de `src/core/`: ver `.dependency-cruiser-dominios.cjs` (cada carpeta en exactamente una lista; lo verifica `dominios-clasificados.test.ts`). */
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- misma razón que EXCEPCIONES: dependency-cruiser carga esta config como CommonJS.
+const { DOMINIOS_DE_NEGOCIO } = require("./.dependency-cruiser-dominios.cjs");
 
 /**
  * Dominios de negocio que TODAVÍA no tienen su fachada `public.ts`/`public-servidor.ts` — excepción con motivo (2026-09-28,
@@ -54,17 +60,16 @@ const DOMINIOS_DE_NEGOCIO = ["catalogo", "movimientos", "reportes", "pos", "stoc
  *  - C3 (con fachada): `reportes` → core/reportes/public.ts + public-servidor.ts.
  */
 const DOMINIOS_SIN_PUBLIC_TODAVIA = {
-  pos: "5 sitios externos importan core/pos/* directo (confirmado con depcruise: core/reportes/boletas-emitidas.ts → boleta.ts/cuenta.ts/mesas.ts/numeracion-boleta.ts, y server/persistencia/pos/cargar-cuenta-para-corregir-boleta.ts → boleta.ts) — candidato C4, sin construir todavía.",
+  pos: "5 sitios externos importan core/pos/* directo (confirmado con depcruise: core/reportes/tickets-emitidos.ts → ticket.ts/cuenta.ts/mesas.ts/numeracion-ticket.ts, y server/persistencia/pos/cargar-cuenta-para-corregir-ticket.ts → ticket.ts) — candidato C4, sin construir todavía.",
   stock: "4 sitios externos (confirmado con depcruise: core/reportes/salud-por-producto.ts → consolidado.ts/alertas.ts, resumen-operativo.ts → alertas.ts, diferencias-ajustes.ts → frecuencia-conteo.ts) — candidato C5, sin construir todavía.",
   compras: "5 sitios externos (confirmado con depcruise: server/persistencia/compras/{escribir-correccion,escribir-anulacion,cargar-compra-para-corregir,cargar-compra-para-anular}.ts y core/features/compras/compra.schema.ts, todos importando core/compras/{anulacion,correccion}.ts) — sin evaluar todavía si necesita fachada.",
-  carta: "3 sitios externos (confirmado con depcruise: core/pos/selector-carta.ts y selector-carta-consulta.ts, importando core/carta/{armar-menu,menu-consulta}.ts) — sin evaluar todavía si necesita fachada.",
 };
 
 const reglasSinInternalsDeOtroDominio = DOMINIOS_DE_NEGOCIO.filter((dominio) => !(dominio in DOMINIOS_SIN_PUBLIC_TODAVIA)).map((dominio) => ({
   name: "sin-internals-de-otro-dominio",
-  comment: `Fuera de core/${dominio}/ solo se importa su fachada (core/${dominio}/public.ts o public-servidor.ts), nunca sus archivos internos.`,
+  comment: `Fuera de core/${dominio}/ solo se importa su fachada (core/${dominio}/public.ts o public-servidor.ts), nunca sus archivos internos. Las Server Actions de OTRO dominio también (las del propio dominio, server/actions/${dominio}/, sí pueden usar su core).`,
   severity: "error",
-  from: { path: `^src/(core/(?!${dominio}/)|server/consultas/|server/persistencia/)` },
+  from: { path: `^src/(core/(?!${dominio}/)|server/actions/(?!${dominio}/)|server/(consultas|persistencia)/)` },
   to: { path: `^src/core/${dominio}/`, pathNot: `^src/core/${dominio}/public(-servidor)?\\.ts$` },
 }));
 
@@ -99,6 +104,22 @@ module.exports = {
       severity: "error",
       from: { path: "^src/(app|components)/", pathNot: excepcionesDe("ui-sin-prisma") },
       to: { path: ["^src/lib/db\\.ts$", "^node_modules/(@prisma/client|\\.prisma/client)/"], dependencyTypesNot: ["type-only"] },
+    },
+    {
+      name: "db-solo-desde-auth-y-carta-publica",
+      comment:
+        "Solo core/auth, lib/auth.ts y la resolución pública de la carta importan src/lib/db.ts (ADR-007 N2): el resto recibe la base del contexto (ctx.db / ctx.transaccion) o por parámetro (db: Db). Lista con motivo: .dependency-cruiser-excepciones.cjs.",
+      severity: "error",
+      from: { path: "^src/", pathNot: excepcionesDe("db-solo-desde-auth-y-carta-publica") },
+      to: { path: "^src/lib/db\\.ts$" },
+    },
+    {
+      name: "base-solo-desde-lista",
+      comment:
+        "Solo los archivos de IMPORTADORES_DE_BASE importan core/auth/base.ts (dbDeEmpresa/dbDeUsuario/baseDeEmpresa/baseDelContexto): el resto recibe la base del contexto. Lista con motivo: .dependency-cruiser-excepciones.cjs.",
+      severity: "error",
+      from: { path: "^src/", pathNot: excepcionesDe("base-solo-desde-lista") },
+      to: { path: "^src/core/auth/base\.ts$" },
     },
     {
       name: "acciones-sin-ui",
@@ -163,6 +184,99 @@ module.exports = {
       to: { path: "^src/lib/db\\.ts$", reachable: true },
     },
     {
+      name: "casos-de-uso-no-cookies",
+      comment:
+        "Fase 0.4 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): un caso de uso " +
+        "(server/actions/<dominio>/casos-de-uso/) nunca lee cookies()/next/headers directo — solo el resolvedor de contexto " +
+        "(core/auth/contexto.ts, ya excepción documentada de core-sin-react-next) lo hace. Sin violaciones hoy: cierra la puerta " +
+        "a que un caso de uso nuevo empiece a leer sesión por su cuenta en vez de recibirla como parámetro.",
+      severity: "error",
+      from: { path: CASOS_DE_USO },
+      to: { path: "^node_modules/next/" },
+    },
+    {
+      name: "carta-publica-aislada",
+      comment:
+        "ADR-006, Fase 3: la carta pública nueva (sin sesión) no puede alcanzar auth, permisos ni Server Actions — es " +
+        "la disciplina de código que reemplaza al boundary HTTP/token que tenía la app externa. Lee por " +
+        "core/carta/public(-servidor).ts como cualquier otro consumidor externo al dominio.",
+      severity: "error",
+      from: { path: "^src/(app/\\(carta-publica\\)/|components/carta-publica/)" },
+      to: { path: "^src/(core/auth/|server/actions/|core/permisos/)" },
+    },
+    {
+      name: "carta-publica-alcance",
+      comment:
+        "La carta pública no alcanza —ni siquiera transitivamente— sesión, permisos, Server Actions ni lib/auth.ts, salvo lo de ALCANCE_CARTA_PUBLICA (lista cerrada, arriba). `carta-publica-aislada` solo mira imports directos: un helper intermedio los esquivaría.",
+      severity: "error",
+      from: { path: "^src/(app/\\(carta-publica\\)/|components/carta-publica/|core/carta/publica-sin-sesion\\.ts$)" },
+      to: { path: "^src/(core/auth/|core/permisos/|server/|lib/auth\\.ts$)", pathNot: ALCANCE_CARTA_PUBLICA, reachable: true },
+    },
+    {
+      name: "publica-sin-sesion-solo-desde-carta-publica",
+      comment:
+        "core/carta/publica-sin-sesion.ts elige el cliente de base SIN sesión (la empresa sale de la URL): solo lo importan las páginas de app/(carta-publica)/. Importarlo desde la app con sesión o un caso de uso saltearía el contexto de usuario.",
+      severity: "error",
+      from: { path: "^src/", pathNot: "^src/(app/\\(carta-publica\\)/|core/carta/publica-sin-sesion\\.ts$)" },
+      to: { path: "^src/core/carta/publica-sin-sesion\\.ts$" },
+    },
+    {
+      name: "carta-admin-sin-rutas-de-catalogo",
+      comment:
+        "ADR-006 (docs/adr/ADR-006-carta-como-modulo-interno.md): la carta es su propio módulo, separado de catálogo " +
+        "(antes anidada en app/(app)/catalogo/carta sin motivo claro, pese a tener su propio permiso `accion: \"carta\"`). " +
+        "Fija la separación: una pantalla de app/(app)/carta/ no importa de app/(app)/catalogo/.",
+      severity: "error",
+      from: { path: "^src/app/\\(app\\)/carta/" },
+      to: { path: "^src/app/\\(app\\)/catalogo/" },
+    },
+    {
+      name: "politica-solo-desde-plataforma",
+      comment:
+        "Add-on C2 (ADR-008/ADR-010): la política de plataforma de una empresa (permisosEditables, dosPaneles) solo la cambia la plataforma, " +
+        "por scripts/politica-empresa.ts (fuera de src/). Ningún archivo de src/ importa core/features/empresa/cambiar-politica-empresa.ts: " +
+        "ni una Server Action, ni una pantalla, ni otro caso de uso. Complemento: test/arquitectura/politica-de-empresa-solo-plataforma.test.ts.",
+      severity: "error",
+      from: { path: "^src/", pathNot: "^src/core/features/empresa/cambiar-politica-empresa\\.ts$" },
+      to: { path: "^src/core/features/empresa/cambiar-politica-empresa\\.ts$" },
+    },
+    {
+      name: "modulos-solo-desde-plataforma",
+      comment:
+        "Bloque 5A, P9 (ADR-011/ADR-012): el registro de módulos de una empresa solo lo cambia la plataforma, por scripts/modulos-empresa.ts (fuera de src/). " +
+        "Ningún archivo de src/ importa core/features/empresa/cambiar-modulos-de-empresa.ts: ni una Server Action, ni una pantalla, ni otro caso de uso. " +
+        "La base lo exige además (solo el dueño y motor2_plataforma escriben ModuloEmpresa).",
+      severity: "error",
+      from: { path: "^src/", pathNot: "^src/core/features/empresa/cambiar-modulos-de-empresa\\.ts$" },
+      to: { path: "^src/core/features/empresa/cambiar-modulos-de-empresa\\.ts$" },
+    },
+    {
+      name: "app-sin-consola-de-plataforma",
+      comment:
+        "ADR-012/ADR-019: la consola de plataforma (plataforma/) es otra aplicación, con su propio proyecto de Vercel. Nada de src/ la importa.",
+      severity: "error",
+      from: { path: "^src/" },
+      to: { path: "^plataforma/" },
+    },
+    {
+      name: "consola-sin-lo-interno-de-la-app",
+      comment:
+        "ADR-012/ADR-019: la consola de plataforma solo usa del núcleo lo PURO y lo propio (core/plataforma, core/correo, core/seguridad, la cookie de https y el reporte de errores). Nunca alcanza, ni directa ni transitivamente, la base de la aplicación " +
+        "(lib/db.ts, lib/auth.ts, core/auth/{base,contexto,session}), su validación de entorno (env.ts), ni server/, app/ o components/: " +
+        "su única conexión es la del rol motor2_plataforma (plataforma/src/db.ts), y que la aplicación abra la puerta de una empresa desde la consola es justo lo que el diseño prohíbe.",
+      severity: "error",
+      from: { path: "^plataforma/" },
+      to: { path: ["^src/lib/(db|auth)\\.ts$", "^src/env\\.ts$", "^src/core/auth/(base|contexto|session)\\.ts$", "^src/(server|app|components)/"], reachable: true },
+    },
+    {
+      name: "core-plataforma-solo-desde-la-consola",
+      comment:
+        "ADR-019: el login de la consola (códigos, TOTP, sesión) solo lo importa plataforma/. Única excepción: core/plataforma/email-reservado.ts, que crear-empresa usa para rechazar el alta de un gerente con el email de un administrador de plataforma.",
+      severity: "error",
+      from: { path: "^src/", pathNot: "^src/core/plataforma/" },
+      to: { path: "^src/core/plataforma/", pathNot: "^src/core/plataforma/email-reservado\\.ts$" },
+    },
+    {
       name: "sin-ciclos",
       comment:
         "Sin dependencias circulares entre archivos (incluye las de solo tipos). Ciclos preexistentes exceptuados: .dependency-cruiser-excepciones.cjs.",
@@ -189,8 +303,9 @@ module.exports = {
     // `src/` más los paquetes de node_modules COMO HOJAS (doNotFollow): si node_modules quedara afuera de includeOnly/exclude,
     // dependency-cruiser descartaría toda dependencia hacia un paquete y las reglas core-sin-react-next, ui-sin-prisma
     // (@prisma/client) y no-non-package-json nunca verían nada (verificado el 2026-09-27).
-    includeOnly: ["^src/", "^node_modules/"],
-    exclude: { path: ["^\\.next/"] },
+    // `plataforma/` (la consola, ADR-019) también se recorre: sus fronteras son las reglas `consola-*` de arriba.
+    includeOnly: ["^src/", "^plataforma/", "^node_modules/"],
+    exclude: { path: ["^\\.next/", "^plataforma/\\.next/", "^plataforma/node_modules/"] },
     doNotFollow: { path: ["^node_modules/"] },
     reporterOptions: { text: { highlightFocused: true } },
   },

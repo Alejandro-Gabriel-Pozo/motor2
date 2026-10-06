@@ -1,5 +1,6 @@
 "use client";
 
+import { IconoDeAccion } from "@/components/iconos";
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -215,7 +216,8 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
           <span className="ml-1 text-xs text-neutral-500 dark:text-neutral-400">
             ({ETIQUETA_ROTULO[rotulo]})
             <AyudaIcono texto={AYUDA_ROTULO[rotulo]} />{" "}
-            <EnlaceInterno href={`/reportes/historial?productoId=${insumoProductoId}`} className="underline">
+            <EnlaceInterno href={`/reportes/historial?productoId=${insumoProductoId}`} className="underline inline-flex items-center gap-1">
+              <IconoDeAccion id="historial" />
               Ver historial
             </EnlaceInterno>
           </span>

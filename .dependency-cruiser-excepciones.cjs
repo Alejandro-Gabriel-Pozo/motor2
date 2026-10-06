@@ -30,10 +30,56 @@ const CORE_CON_REACT_NEXT = [
       "Adaptador de sesión del pedido: `cache` de react (memoiza getUsuarioActual por request). Ruta fija en GUARDAS_POR_MODULO; 123 archivos lo referencian (casi todos vi.mock de test/).",
   },
   {
+    ruta: "src/core/permisos/modulos-de-empresa.ts",
+    motivo:
+      "Lector del registro de módulos de la empresa para el guard y el menú: `cache` de react lo memoiza por request (una lectura por pedido, no una por acción). Es el único archivo que consulta `ModuloEmpresa`.",
+  },
+  {
     ruta: "src/core/auth/ir-al-login.ts",
     motivo:
       "Adaptador de sesión del pedido: `headers` de next/headers (ruta pedida) + `redirect` de next/navigation (manda al login recordando la pantalla). Lo usan con-permiso.ts y las páginas.",
   },
+];
+
+/**
+ * `db-solo-desde-auth-y-carta-publica` (ADR-007, paso N2): el ÚNICO grupo de archivos de `src/` que puede importar `src/lib/db.ts`
+ * (el cliente Prisma global). Todo el resto recibe la base del contexto (`ctx.db` / `ctx.transaccion` de `ContextoUsuario`, o `db: Db`
+ * por parámetro), de modo que elegir la base de un pedido (hoy `prisma`; con RLS, una transacción con la empresa fijada) es un
+ * único punto: `core/auth/base.ts`. Los crons (`api/cron/`) la piden con `baseDelContexto()`; los seeds, scripts y tests viven fuera
+ * de `src/` y la regla no los alcanza.
+ */
+const IMPORTADORES_DE_DB = [
+  {
+    ruta: "src/core/auth/base.ts",
+    motivo: "`baseDelContexto()`: el único lugar donde un pedido elige su cliente de base (hoy `prisma` + `$transaction`).",
+  },
+  {
+    ruta: "src/core/auth/acceso.ts",
+    motivo: "Resolución de acceso del usuario de sesión (login/jerarquía de roles): corre antes del contexto, así que lee `user`/`session` con el `prisma` global (la sesión abierta de otra cuenta) y el resto con `dbDeEmpresa`/`dbDeUsuario`.",
+  },
+  {
+    ruta: "src/lib/auth.ts",
+    motivo: "Auth.js: `PrismaAdapter(prisma)` — el adaptador de sesiones necesita el cliente global; no hay contexto de usuario durante el login.",
+  },
+  {
+    ruta: "src/core/carta/publica-sin-sesion.ts",
+    motivo: "Resolución PÚBLICA de la carta (empresa, portal, carta de una sucursal): sin sesión no hay contexto que dé la base. Único punto de entrada de las páginas públicas.",
+  },
+];
+
+/**
+ * `base-solo-desde-lista`: el ÚNICO grupo de archivos de `src/` que puede importar `src/core/auth/base.ts` (las funciones que fijan la empresa/el usuario
+ * de la base: `dbDeEmpresa`, `dbDeUsuario`, `baseDeEmpresa`, `baseDelContexto`). Es la frontera que `db-solo-desde-auth-y-carta-publica` deja abierta: sin ella,
+ * cualquier archivo podría pedir una base «de otra empresa» sin pasar por el contexto del usuario. Una importación nueva obliga a decidir y a explicar por qué.
+ */
+const IMPORTADORES_DE_BASE = [
+  { ruta: "src/core/auth/contexto.ts", motivo: "Arma el `ContextoUsuario` de cada pedido: es quien le da `ctx.db` al resto." },
+  { ruta: "src/core/auth/acceso.ts", motivo: "Resolución de acceso previa al contexto (login, jerarquía de roles): lee con la empresa/el usuario fijados." },
+  { ruta: "src/core/auth/invitacion.ts", motivo: "Lectura de la invitación por el hash de su token (`dbDeInvitacion`): ocurre antes de que el invitado tenga empresa ni sesión." },
+  { ruta: "src/core/carta/publica-sin-sesion.ts", motivo: "Carta pública: sin sesión no hay contexto; fija la empresa de la URL con `dbDeEmpresa`." },
+  { ruta: "src/server/actions/auth/empresa-activa.ts", motivo: "Cambio de empresa activa: valida las pertenencias del usuario con `baseDeEmpresa` antes de escribir la cookie." },
+  { ruta: "src/app/api/cron/sincronizar-dolar/route.ts", motivo: "Cron sin sesión (autorizado por CRON_SECRET): pide la base con `baseDelContexto()`." },
+  { ruta: "src/app/api/cron/sincronizar-ipc/route.ts", motivo: "Cron sin sesión (autorizado por CRON_SECRET): pide la base con `baseDelContexto()`." },
 ];
 
 /**
@@ -100,7 +146,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/pos/cuenta-cierre.ts",
     motivo:
-      "M12a + M12b: cerrarCuenta → pos/casos-de-uso/cerrar-cuenta.ts y emitirBoletaCorregida → pos/casos-de-uso/emitir-boleta-corregida.ts (transacción, carga, numeración/ejemplar de la boleta, persistencia y auditoría viven en el caso de uso). El archivo no tiene ninguna otra función.",
+      "M12a + M12b: cerrarCuenta → pos/casos-de-uso/cerrar-cuenta.ts y emitirTicketCorregido → pos/casos-de-uso/emitir-ticket-corregido.ts (transacción, carga, numeración/ejemplar del ticket, persistencia y auditoría viven en el caso de uso). El archivo no tiene ninguna otra función.",
   },
   {
     ruta: "src/server/actions/pos/cuenta-anulacion.ts",
@@ -110,7 +156,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/traspasos/traspasos.ts",
     motivo:
-      "M11a + M11b + M11c: sus ocho escrituras → traspasos/casos-de-uso/ (aprobar-y-enviar, cancelar-solicitud, rechazar-solicitud, aceptar, rechazar-envio, confirmar-reingreso, crear-solicitud, crear-envio-directo; transacción, I3 de aceptar/reingreso, persistencia y guard de transición viven en el caso de uso). Sus lecturas (obtenerBandejaTransferencias, listarSucursalesDisponibles) se mudaron tal cual a traspasos/lecturas.ts, fuera de esta lista.",
+      "M11a + M11b + M11c: sus ocho escrituras → traspasos/casos-de-uso/ (aprobar-y-enviar, cancelar-solicitud, rechazar-solicitud, aceptar, rechazar-envio, confirmar-reingreso, crear-solicitud, crear-envio-directo; transacción, I3 de aceptar/reingreso, persistencia y guard de transición viven en el caso de uso). Sus lecturas (obtenerBandejaTransferencias, listarSucursalesParaSolicitar, listarSucursalesParaEnviar) se mudaron tal cual a traspasos/lecturas.ts, fuera de esta lista.",
   },
   {
     ruta: "src/server/actions/movimientos/movimientos.ts",
@@ -137,6 +183,8 @@ const ACCIONES_CON_CASO_DE_USO = [
 module.exports = {
   "core-sin-react-next": CORE_CON_REACT_NEXT,
   "ui-sin-prisma": PENDIENTES_DE_MIGRAR,
+  "db-solo-desde-auth-y-carta-publica": IMPORTADORES_DE_DB,
+  "base-solo-desde-lista": IMPORTADORES_DE_BASE,
   "sin-ciclos": CICLOS_CONOCIDOS,
   PENDIENTES_DE_MIGRAR,
   ACCIONES_CON_CASO_DE_USO,

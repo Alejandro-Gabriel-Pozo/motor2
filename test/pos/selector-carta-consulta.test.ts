@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/test-db";
+import { limpiarBaseDeTest, replicarCartaDeSucursal, prisma, sembrarProductoDisponible } from "../setup/test-db";
 import { sembrarSalon } from "./salon-fixture";
 import { cargarSelectorCartaPos } from "../../src/core/pos/selector-carta-consulta";
 import { resolverPrecioVenta } from "../../src/core/movimientos/precio-venta";
@@ -44,27 +44,27 @@ describe("cargarSelectorCartaPos", () => {
     const barra = await prisma.seccionCarta.create({ data: { nombre: "Barra", orden: 0, activa: false } });
     await prisma.contenidoCartaProducto.createMany({
       data: [
-        { productoId: s.pizza.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 2 },
-        { productoId: s.milanesa.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 1 },
+        { sucursalId: s.sucursalId, productoId: s.pizza.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 2 },
+        { sucursalId: s.sucursalId, productoId: s.milanesa.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 1 },
         // No visible: aunque tenga sección, va a «Fuera de carta».
-        { productoId: s.flan.id, visibleEnCarta: false, seccionCartaId: platos.id },
+        { sucursalId: s.sucursalId, productoId: s.flan.id, visibleEnCarta: false, seccionCartaId: platos.id },
         // Sección apagada: «Fuera de carta».
-        { productoId: ids.fernet, visibleEnCarta: true, seccionCartaId: barra.id },
+        { sucursalId: s.sucursalId, productoId: ids.fernet, visibleEnCarta: true, seccionCartaId: barra.id },
         // La MP nunca es pedible, aunque tenga contenido visible.
-        { productoId: s.muzzarella.id, visibleEnCarta: true, seccionCartaId: platos.id },
+        { sucursalId: s.sucursalId, productoId: s.muzzarella.id, visibleEnCarta: true, seccionCartaId: platos.id },
       ],
     });
-    agrupadoGaseosa = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500cc", seccionCartaId: bebidas.id } })).id;
+    agrupadoGaseosa = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId: s.sucursalId, nombre: "Gaseosa 500cc", seccionCartaId: bebidas.id } })).id;
     await prisma.opcionItemAgrupadoCarta.createMany({
       data: [
-        { itemAgrupadoCartaId: agrupadoGaseosa, productoId: ids.sprite, orden: 2 },
-        { itemAgrupadoCartaId: agrupadoGaseosa, productoId: ids.coca, orden: 1 },
-        { itemAgrupadoCartaId: agrupadoGaseosa, productoId: ids.fanta, orden: 3 },
+        { sucursalId: s.sucursalId, itemAgrupadoCartaId: agrupadoGaseosa, productoId: ids.sprite, orden: 2 },
+        { sucursalId: s.sucursalId, itemAgrupadoCartaId: agrupadoGaseosa, productoId: ids.coca, orden: 1 },
+        { sucursalId: s.sucursalId, itemAgrupadoCartaId: agrupadoGaseosa, productoId: ids.fanta, orden: 3 },
       ],
     });
     // Un agrupado APAGADO: su opción no sale en la carta, así que va suelta a «Fuera de carta».
-    agrupadoJugos = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Jugos", seccionCartaId: bebidas.id, activo: false } })).id;
-    await prisma.opcionItemAgrupadoCarta.create({ data: { itemAgrupadoCartaId: agrupadoJugos, productoId: ids.jugo } });
+    agrupadoJugos = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId: s.sucursalId, nombre: "Jugos", seccionCartaId: bebidas.id, activo: false } })).id;
+    await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId: s.sucursalId, itemAgrupadoCartaId: agrupadoJugos, productoId: ids.jugo } });
 
     // Precio Local: habilitado en la Milanesa y en la Sprite; deshabilitado en la Pizza (se cobra el global).
     await prisma.precioLocalProducto.createMany({
@@ -81,7 +81,7 @@ describe("cargarSelectorCartaPos", () => {
   const nombresFuera = (sel: SelectorCartaPos) => sel.fueraDeCarta.map((p) => p.nombre);
 
   it("las secciones de carta activas, en su orden, con los sueltos en el suyo y el agrupado con sus opciones disponibles", async () => {
-    const sel = await cargarSelectorCartaPos(s.sucursalId);
+    const sel = await cargarSelectorCartaPos(s.sucursalId, prisma);
     expect(sel.seccionesCarta).toEqual([
       {
         seccionCartaId: expect.any(String),
@@ -113,7 +113,7 @@ describe("cargarSelectorCartaPos", () => {
   });
 
   it("«Fuera de carta»: no visible, sección apagada y agrupado apagado; nunca una MP ni un PV no disponible acá", async () => {
-    const sel = await cargarSelectorCartaPos(s.sucursalId);
+    const sel = await cargarSelectorCartaPos(s.sucursalId, prisma);
     expect(nombresFuera(sel)).toEqual(["Fernet con cola", "Flan", "Jugo de naranja"]);
     const todos = [...sel.seccionesCarta.flatMap((sc) => sc.entradas.flatMap(pediblesDeEntrada).map((p) => p.productoId)), ...sel.fueraDeCarta.map((p) => p.productoId)];
     for (const noPedible of [s.muzzarella.id, ids.fanta, ids.soloNorte]) expect(todos).not.toContain(noPedible);
@@ -122,34 +122,36 @@ describe("cargarSelectorCartaPos", () => {
   });
 
   it("la disponibilidad y los precios de OTRA sucursal no se mezclan", async () => {
-    const central = await cargarSelectorCartaPos(s.sucursalId);
+    const central = await cargarSelectorCartaPos(s.sucursalId, prisma);
     // La Milanesa está apagada en Norte pero en Central se pide; el precio local de Norte del Flan no cuenta en Central.
     expect(central.seccionesCarta[0].entradas[0]).toMatchObject({ producto: { productoId: s.milanesa.id } });
     expect(central.fueraDeCarta.find((p) => p.productoId === s.flan.id)?.precio).toBe(3000);
 
-    const enNorte = await cargarSelectorCartaPos(norte);
+    // Norte arma su carta propia (ADR-009, C3) con la misma estructura que Central; lo que cambia es la disponibilidad.
+    await replicarCartaDeSucursal(s.sucursalId, norte);
+    const enNorte = await cargarSelectorCartaPos(norte, prisma);
     const idsNorte = [...enNorte.seccionesCarta.flatMap((sc) => sc.entradas.flatMap(pediblesDeEntrada).map((p) => p.productoId)), ...enNorte.fueraDeCarta.map((p) => p.productoId)];
     expect(idsNorte.sort()).toEqual([ids.fanta, ids.soloNorte].sort());
     // En Norte la Fanta es la única opción disponible del agrupado.
     expect(enNorte.seccionesCarta).toEqual([
-      { seccionCartaId: expect.any(String), nombre: "Bebidas", entradas: [expect.objectContaining({ tipo: "agrupado", itemAgrupadoCartaId: agrupadoGaseosa, opciones: [expect.objectContaining({ productoId: ids.fanta })] })] },
+      { seccionCartaId: expect.any(String), nombre: "Bebidas", entradas: [expect.objectContaining({ tipo: "agrupado", itemAgrupadoCartaId: expect.not.stringMatching(new RegExp(`^${agrupadoGaseosa}$`)), opciones: [expect.objectContaining({ productoId: ids.fanta })] })] },
     ]);
   });
 
   it("una sucursal inactiva no tiene carta: todo lo pedible va a «Fuera de carta»", async () => {
     await prisma.sucursal.update({ where: { id: s.sucursalId }, data: { activo: false } });
-    const sel = await cargarSelectorCartaPos(s.sucursalId);
+    const sel = await cargarSelectorCartaPos(s.sucursalId, prisma);
     expect(sel.seccionesCarta).toEqual([]);
     expect(nombresFuera(sel)).toEqual(["Coca-Cola 500cc", "Fernet con cola", "Flan", "Jugo de naranja", "Milanesa", "Pizza", "Sprite 500cc"]);
   });
 
   it("paridad: el precio de cada pedible es el que congela agregarItems (resolverPrecioVenta)", async () => {
-    const sel = await cargarSelectorCartaPos(s.sucursalId);
+    const sel = await cargarSelectorCartaPos(s.sucursalId, prisma);
     const pedibles = [...sel.seccionesCarta.flatMap((sc) => sc.entradas.flatMap(pediblesDeEntrada)), ...sel.fueraDeCarta];
     expect(pedibles).toHaveLength(7);
     for (const p of pedibles) {
       const producto = await prisma.producto.findUniqueOrThrow({ where: { id: p.productoId } });
-      expect(p.precio, p.nombre).toBe(await resolverPrecioVenta(s.sucursalId, p.productoId, Number(producto.precioVenta)));
+      expect(p.precio, p.nombre).toBe(await resolverPrecioVenta(s.sucursalId, p.productoId, Number(producto.precioVenta), prisma));
     }
   });
 
@@ -163,14 +165,14 @@ describe("cargarSelectorCartaPos", () => {
     });
 
     it("una promo activa con cupos aparece PRIMERO en su sección, con los elegibles YA resueltos (D5)", async () => {
-      const promo = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: platosId, titulo: "Combo Milanesa", precio: 12000 } });
+      const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: platosId, titulo: "Combo Milanesa", precio: 12000 } });
       await prisma.promoCartaCupo.createMany({
         data: [
           { promoCartaId: promo.id, seccionCartaId: platosId, cantidadMinima: 1, cantidadMaxima: 1, orden: 0 },
           { promoCartaId: promo.id, seccionCartaId: bebidasId, cantidadMinima: 0, cantidadMaxima: 2, orden: 1 },
         ],
       });
-      const sel = await cargarSelectorCartaPos(s.sucursalId);
+      const sel = await cargarSelectorCartaPos(s.sucursalId, prisma);
       const platos = sel.seccionesCarta.find((sc) => sc.nombre === "Platos")!;
       expect(platos.entradas[0]).toMatchObject({ tipo: "promo", promoCartaId: promo.id, titulo: "Combo Milanesa", precio: 12000 });
       const entradaPromo = platos.entradas[0] as { tipo: "promo"; cupos: { seccionCartaId: string; nombreSeccion: string; cantidadMinima: number; cantidadMaximaCupo: number; elegibles: { nombre: string }[] }[] };
@@ -192,25 +194,25 @@ describe("cargarSelectorCartaPos", () => {
     });
 
     it("una promo SIN cupos (informativa) no se ofrece acá: solo el admin de carta la muestra", async () => {
-      await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: platosId, titulo: "Solo informativa", precio: 1 } });
-      const sel = await cargarSelectorCartaPos(s.sucursalId);
+      await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: platosId, titulo: "Solo informativa", precio: 1 } });
+      const sel = await cargarSelectorCartaPos(s.sucursalId, prisma);
       const platos = sel.seccionesCarta.find((sc) => sc.nombre === "Platos")!;
       expect(platos.entradas.every((e) => e.tipo !== "promo")).toBe(true);
     });
 
     it("una promo APAGADA no se ofrece", async () => {
-      const promo = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: platosId, titulo: "Apagada", precio: 1, activa: false } });
+      const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: platosId, titulo: "Apagada", precio: 1, activa: false } });
       await prisma.promoCartaCupo.create({ data: { promoCartaId: promo.id, seccionCartaId: platosId, cantidadMinima: 1, cantidadMaxima: 1 } });
-      const sel = await cargarSelectorCartaPos(s.sucursalId);
+      const sel = await cargarSelectorCartaPos(s.sucursalId, prisma);
       const platos = sel.seccionesCarta.find((sc) => sc.nombre === "Platos")!;
       expect(platos.entradas.every((e) => e.tipo !== "promo")).toBe(true);
     });
 
     it("una promo de OTRA sucursal no se mezcla", async () => {
       const seccionNorte = await prisma.seccionCarta.create({ data: { nombre: "Platos Norte" } });
-      const promoNorte = await prisma.promoCarta.create({ data: { sucursalId: norte, seccionCartaId: seccionNorte.id, titulo: "Solo Norte", precio: 1 } });
+      const promoNorte = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: norte } }, seccionCartaId: seccionNorte.id, titulo: "Solo Norte", precio: 1 } });
       await prisma.promoCartaCupo.create({ data: { promoCartaId: promoNorte.id, seccionCartaId: seccionNorte.id, cantidadMinima: 1, cantidadMaxima: 1 } });
-      const central = await cargarSelectorCartaPos(s.sucursalId);
+      const central = await cargarSelectorCartaPos(s.sucursalId, prisma);
       expect(central.seccionesCarta.flatMap((sc) => sc.entradas).some((e) => e.tipo === "promo")).toBe(false);
     });
   });

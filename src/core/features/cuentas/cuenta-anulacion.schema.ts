@@ -3,7 +3,7 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
 /**
  * Tipos de la ANULACIÓN de lo que ya salió a cocina (feature Cuenta del salón, módulo POS; Task #41, Fase M —
  * docs/arquitectura-casos-de-uso-2026-09-27.md): comandos y resultados de los casos de uso de `src/server/actions/pos/casos-de-uso/` que
- * vienen de `src/server/actions/pos/cuenta-anulacion.ts`. Archivo aparte de `cuenta.schema.ts` (cierre y boleta, `cuenta-cierre.ts`) por
+ * vienen de `src/server/actions/pos/cuenta-anulacion.ts`. Archivo aparte de `cuenta.schema.ts` (cierre y ticket, `cuenta-cierre.ts`) por
  * el mismo corte que ya tienen las Server Actions: acá el sujeto es un ÍTEM (o una promo) de la cuenta, no la cuenta.
  * `anularItemEnviado` (M12c) y `anularPromoEnviada` (M12d): las dos funciones del archivo de acciones.
  */

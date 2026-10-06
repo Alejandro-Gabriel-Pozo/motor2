@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { registrarVentaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
 import type { DatosVentaInput } from "../../src/core/features/ventas/venta.schema";
@@ -18,7 +18,7 @@ describe("registrarVentaCasoDeUso", () => {
   let adminId: string;
   let gaseosaId: string;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId, sucursalNombre });
+  const actor = () => ({ usuarioId: adminId, sucursalId, sucursalNombre, ...baseDeTest });
   const datos = (extra: Partial<DatosVentaInput> = {}): DatosVentaInput => ({
     fecha: new Date("2026-08-06T12:00:00Z"),
     seccionId,

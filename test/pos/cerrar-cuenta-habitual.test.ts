@@ -75,8 +75,8 @@ describe("cerrarCuenta: la sección habitual del PV", () => {
       ["CONSUMO", cocina.id, -0.4, null],
       ["VENTA", cocina.id, -2, null],
     ]);
-    expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id)).toBe(-0.4);
-    expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id)).toBe(0);
+    expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id, prisma)).toBe(-0.4);
+    expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id, prisma)).toBe(0);
     const [auditoria] = await prisma.registroAuditoria.findMany();
     expect(auditoria.descripcion).toContain('el stock de "Muzzarella" en «Cocina» quedó en negativo — tenía 0, la venta consumió 0,4, faltaron 0,4.');
   });
@@ -120,9 +120,9 @@ describe("cerrarCuenta: la sección habitual del PV", () => {
     await comprar(deposito.id, 1);
     await cerrarPizzas(2);
     const hoy = new Date();
-    const enCocina = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: cocina.id });
+    const enCocina = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: cocina.id }, prisma);
     expect(enCocina.items.map((i) => [i.proceso, i.productoId, i.cantidad])).toEqual([["VENTA", s.pizza.id, 2]]);
-    const enDeposito = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: deposito.id });
+    const enDeposito = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: deposito.id }, prisma);
     expect(enDeposito.items.map((i) => [i.proceso, i.productoId]).sort()).toEqual([["COMPRA", s.muzzarella.id], ["CONSUMO", s.muzzarella.id]]);
   });
 });

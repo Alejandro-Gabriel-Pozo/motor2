@@ -24,9 +24,12 @@ build y e2e con Playwright — comandos concretos y criterio de éxito, nunca
 "correr los tests" en abstracto).
 
 Gate de verificación obligatorio (desde 2026-09-27, Task #41 Fase A3; 7
-comandos desde la Fase K3): en la MISMA corrida y todos limpios — `npx tsc
+comandos desde la Fase K3 y 8 desde que existe la consola de plataforma,
+`plataforma:build`): en la MISMA corrida y todos limpios — `npx tsc
 --noEmit`, `npm run lint`, `npm run arquitectura` (dependency-cruiser,
 `.dependency-cruiser.cjs`; excepciones con motivo en
 `.dependency-cruiser-excepciones.cjs`), `npm run analizar:muerto` (knip, CON
 código de salida — 0 hallazgos obligatorio; excepciones legítimas con motivo
-en `knip.jsonc`), `npm test`, `npm run build` y `npm run test:e2e`.
+en `knip.jsonc`), `npm test`, `npm run build`, `npm run plataforma:build` (la
+consola, otra app Next: un fallo de dependencias solo aparece al construirla) y
+`npm run test:e2e`.

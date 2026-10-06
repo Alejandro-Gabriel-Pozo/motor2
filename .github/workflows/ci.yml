@@ -1,0 +1,190 @@
+# Gate de verificación en CI: los mismos 8 comandos que AGENTS.md exige correr limpios en la misma corrida.
+#   estático    → tsc, lint, arquitectura (dependency-cruiser), código muerto (knip)
+#   integración → npm test (Vitest contra Postgres real) + npm run build
+#   e2e         → npm run test:e2e (Playwright, servidor de producción)
+# El job `gate` es el ÚNICO que hay que marcar como requerido en la protección de rama / Vercel Deployment Checks: falla si cualquiera
+# de los otros no terminó en verde (un job omitido o cancelado también lo hace fallar).
+# No usa secretos: las bases son un Postgres descartable del propio runner y las claves de abajo son de ese contenedor, no de ningún entorno real.
+name: CI
+
+on:
+  push:
+    branches: [main, multitenancy-fase-a, "ci/**"]
+  # `main` tiene una regla que exige el job `gate`: sin este disparador un pull request hacia `main` nunca lo ejecutaría y no se podría integrar.
+  pull_request:
+    branches: [main, multitenancy-fase-a]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+  # Rol dueño de las tablas (el que migra) y rol de ejecución sin privilegios (ADR-007, A0), como en local.
+  CLAVE_DUENIO: ci-duenio-descartable
+  CLAVE_APP: ci-app-descartable
+  CLAVE_PLATAFORMA: ci-plataforma-descartable
+  # Variables que Prisma/Auth.js exigen para arrancar; valores de relleno, nunca reales.
+  AUTH_SECRET: ci-auth-secret-de-relleno-0123456789abcdef
+  AUTH_GOOGLE_ID: ci-google-id
+  AUTH_GOOGLE_SECRET: ci-google-secret
+
+jobs:
+  estatico:
+    name: Estático (tipos, lint, arquitectura, código muerto)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # knip carga `playwright.config.ts` para descubrir los specs, y esa config valida (sin conectarse) la forma de estas URLs: sin ellas no se
+    # lee la config y knip da por muertos global-setup/global-teardown. Acá no hay base; son los mismos valores de relleno del job e2e.
+    env:
+      MOTOR2_E2E_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
+      MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # `prisma/fase-a/smoke-test.ts` importa el cliente aislado de la Fase A (node_modules/.prisma/fase-a-client), que solo existe si se genera; sin él knip
+      # lo marca como import sin resolver. No necesita base ni variables: solo lee el schema.
+      - name: Cliente de Prisma de la Fase A (para que knip resuelva su smoke test)
+        run: npx prisma generate --config prisma/fase-a/prisma.config.ts
+      - run: npx tsc --noEmit
+      # ESLint llegó al tope de memoria por defecto de Node en el runner (OOM, código 134) cuando el repo creció con la consola de plataforma: se le da más.
+      - run: npm run lint
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      - run: npm run arquitectura
+      - run: npm run analizar:muerto
+
+  integracion:
+    name: Integración (npm test + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: motor2
+          POSTGRES_PASSWORD: ci-duenio-descartable
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U motor2"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGUSER: motor2
+      PGPASSWORD: ci-duenio-descartable
+      DIRECT_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_dev
+      DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Bases y rol de ejecución
+        run: |
+          createdb motor2_dev
+          createdb motor2_e2e
+          psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -f scripts/operaciones/crear-rol-motor2-app.sql
+      - name: Migrar (como dueño)
+        run: npx prisma migrate deploy
+      # Rol de plataforma (E4, ADR-012 §3): DESPUÉS de migrar, para que el script le dé permiso a las tablas de la consola. Lo usan los tests con el rol real.
+      - name: Rol de plataforma
+        run: psql -d motor2_dev -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
+      # El build verifica el registro de módulos de la base: va ANTES de los tests, que la dejan con empresas y roles de prueba.
+      - name: npm run build
+        run: npm run build
+      # La consola de plataforma (E4) es otra app Next: su build también tiene que compilar. No toca la base.
+      - name: npm run plataforma:build
+        run: npm run plataforma:build
+      - name: npm test
+        run: npm test
+        env:
+          PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_dev
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: motor2
+          POSTGRES_PASSWORD: ci-duenio-descartable
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U motor2"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGUSER: motor2
+      PGPASSWORD: ci-duenio-descartable
+      DIRECT_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
+      DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
+      MOTOR2_E2E_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
+      MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
+      # La consola de plataforma (E4): su servidor y su spec solo se activan con esta variable (el rol se crea más abajo).
+      MOTOR2_E2E_PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_e2e
+      # ADR-025: la SEGUNDA instalación de la consola (otra base, también `_e2e`): el spec consola-instalaciones prueba que una consola opera dos bases sin mezclarlas.
+      MOTOR2_E2E_B_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_b_e2e
+      MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_b_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Bases y rol de ejecución
+        run: |
+          createdb motor2_dev
+          createdb motor2_e2e
+          createdb motor2_b_e2e
+          psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -f scripts/operaciones/crear-rol-motor2-app.sql
+      - name: Migrar la base E2E (como dueño)
+        run: npx prisma migrate deploy
+      - name: Migrar la base E2E B (segunda instalación)
+        run: DIRECT_URL="$MOTOR2_E2E_B_DATABASE_URL" npx prisma migrate deploy
+      # DESPUÉS de migrar (el script da permiso a las tablas de la consola) y sobre la base E2E: el servidor de la consola conecta con este rol.
+      - name: Rol de plataforma (consola)
+        run: psql -d motor2_e2e -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
+      # El rol es del servidor entero (la misma clave); el script es idempotente y le da permiso sobre las tablas de ESTA base.
+      - name: Rol de plataforma en la segunda base
+        run: psql -d motor2_b_e2e -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
+      - run: npx playwright install --with-deps chromium
+      - name: npm run test:e2e
+        run: npm run test:e2e
+      - name: Trazas de los specs que fallaron
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  gate:
+    name: Gate (requerido)
+    if: always()
+    needs: [estatico, integracion, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Todos los jobs terminaron en verde
+        run: |
+          echo "estatico=${{ needs.estatico.result }} integracion=${{ needs.integracion.result }} e2e=${{ needs.e2e.result }}"
+          test "${{ needs.estatico.result }}" = "success" -a "${{ needs.integracion.result }}" = "success" -a "${{ needs.e2e.result }}" = "success"

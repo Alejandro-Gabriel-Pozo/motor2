@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Confirmación de intención en la Bandeja de traspasos (docs/plan-mutaciones-controladas-2026-09-25.md, Pasos 6a/6b): «Cancelar solicitud»
@@ -11,7 +11,7 @@ type Lado = "central-pide" | "le-piden-a-central" | "le-envian-a-central";
 
 async function sembrarTraspaso(sucursalId: string, seccionId: string, lado: Lado) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const otra = await prisma.sucursal.create({ data: { nombre: `E2E Traspasos B ${marca}` } });
   const seccionOtra = await prisma.seccion.create({ data: { sucursalId: otra.id, nombre: `E2E Depósito B ${marca}` } });

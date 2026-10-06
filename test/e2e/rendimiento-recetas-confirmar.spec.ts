@@ -1,5 +1,7 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
+import { crearMembresia } from "../setup/membresia";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * "Usar este valor" (Rendimiento real de recetas) nunca aplica directo: pide confirmación en la misma fila, con el porqué a
@@ -14,7 +16,7 @@ test("pide confirmación con comprado/vendido, calibra SOLO la sucursal activa (
   seccionId,
 }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-RR-MP-${marca}`, nombre: `E2E Salsa Rendimiento ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const pv = await prisma.producto.create({ data: { codigo: `E2E-RR-PV-${marca}`, nombre: `E2E Pizza Rendimiento ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
@@ -30,7 +32,7 @@ test("pide confirmación con comprado/vendido, calibra SOLO la sucursal activa (
   // activa en este spec — sirve para confirmar que calibrar en A no le mueve un solo número.
   const membresiaA = await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: admin.id, sucursalId } });
   const sucursalB = await prisma.sucursal.create({ data: { nombre: `E2E Norte ${marca}` } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: admin.id, sucursalId: sucursalB.id, rolId: membresiaA.rolId, activo: true } });
+  await crearMembresia({ usuarioId: admin.id, sucursalId: sucursalB.id, rolId: membresiaA.rolId, activo: true });
 
   const hoy = new Date();
   const compra = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: hoy, usuarioId: admin.id } });
@@ -103,7 +105,7 @@ test("pide confirmación con comprado/vendido, calibra SOLO la sucursal activa (
     expect(overrideVuelto.cantidad).toBeNull();
     expect(await prisma.registroAuditoria.count({ where: { entidad: "RendimientoLocalIngrediente", entidadId: `${sucursalId}:${pv.id}:${mp.id}`, valorNuevo: null } })).toBeGreaterThanOrEqual(2);
   } finally {
-    await prisma.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: { in: [`${sucursalId}:${pv.id}:${mp.id}`] } } });
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "RendimientoLocalIngrediente", entidadId: { in: [`${sucursalId}:${pv.id}:${mp.id}`] } } });
     await prisma.rendimientoLocalIngrediente.deleteMany({ where: { recetaIngredienteId } });
     await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: admin.id, sucursalId: sucursalB.id } });
     await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });

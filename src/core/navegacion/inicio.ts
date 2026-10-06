@@ -1,9 +1,29 @@
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { accionesQueElUsuarioPuedeVer } from "@/core/permisos/gate";
-import { GRUPOS_NAV, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso } from "./estructura";
+import { accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
+import type { AccionClave } from "@/core/permisos/acciones";
+import { GRUPOS_NAV, accionesDeNavegacion, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso, type GrupoNav } from "./estructura";
+import { tarjetasDeInicio, type TarjetaInicio } from "./tarjetas-inicio";
 
-/** La pantalla a la que se manda al usuario al entrar: la primera que su rol puede abrir en la sucursal activa. */
+async function menuVisibleDe(ctx: ContextoUsuario): Promise<GrupoNav[]> {
+  const puedeVer = await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, accionesDelMenu(), ctx.db);
+  return filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer);
+}
+
+/** La pantalla a la que se manda al usuario al entrar: `/inicio`, o el mapa de mesas si solo tiene el salón (ver `elegirPantallaDeInicio`). */
 export async function pantallaDeInicio(ctx: ContextoUsuario): Promise<string> {
-  const puedeVer = await accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, accionesDelMenu());
-  return elegirPantallaDeInicio(filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer));
+  return elegirPantallaDeInicio(await menuVisibleDe(ctx));
+}
+
+/**
+ * Para el encabezado del salón: la pantalla de inicio del usuario y las acciones de navegación que puede ver en la sucursal activa
+ * (con una sola consulta), que `EnlaceAdministracion` necesita para decidir si la última pantalla de gestión sigue siendo abrible.
+ */
+export async function navegacionDelUsuario(ctx: ContextoUsuario): Promise<{ inicio: string; acciones: AccionClave[] }> {
+  const puedeVer = await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, accionesDeNavegacion(), ctx.db);
+  return { inicio: elegirPantallaDeInicio(filtrarMenuPorPermiso(GRUPOS_NAV, puedeVer)), acciones: [...puedeVer] };
+}
+
+/** Las tarjetas de `/inicio`: un módulo por cada uno que el rol puede abrir en la sucursal activa. */
+export async function tarjetasDelUsuario(ctx: ContextoUsuario): Promise<TarjetaInicio[]> {
+  return tarjetasDeInicio(await menuVisibleDe(ctx));
 }

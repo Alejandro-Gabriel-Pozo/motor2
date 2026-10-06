@@ -1,5 +1,6 @@
+import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { crearSucursalConAdmin, actualizarActivoSucursal, renombrarSucursal, listarSucursales } from "@/server/actions/auth/sucursales";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -8,10 +9,16 @@ export default async function SucursalesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_sucursal");
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_sucursal", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sucursales = await listarSucursales();
+  // La pantalla se abre con `alta_sucursal`; cada control pide la clave de SU acción (una clave por acción): sin ella se ve la lista y no el botón.
+  const [alta, activar, renombrar, sucursales] = await Promise.all([
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_sucursal", ctx.db),
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "activar_sucursal", ctx.db),
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "renombrar_sucursal", ctx.db),
+    listarSucursales(),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -29,35 +36,43 @@ export default async function SucursalesPage() {
           {sucursales.map((s) => (
             <tr key={s.id} className="border-b align-top">
               <td className="py-2">
-                <FormConResultado
-                  accion={async (formData: FormData) => {
-                    "use server";
-                    return renombrarSucursal(s.id, String(formData.get("nombre") ?? ""));
-                  }}
-                  className="flex gap-1"
-                >
-                  <input name="nombre" aria-label={`Nombre de la sucursal "${s.nombre}"`} defaultValue={s.nombre} className="w-40 rounded border px-2 py-1" />
-                  <button type="submit" className="text-sm underline">
-                    Renombrar
-                  </button>
-                </FormConResultado>
+                {renombrar.editar ? (
+                  <FormConResultado
+                    accion={async (formData: FormData) => {
+                      "use server";
+                      return renombrarSucursal(s.id, String(formData.get("nombre") ?? ""));
+                    }}
+                    className="flex gap-1"
+                  >
+                    <input name="nombre" aria-label={`Nombre de la sucursal "${s.nombre}"`} defaultValue={s.nombre} className="w-40 rounded border px-2 py-1" />
+                    <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                      <IconoDeAccion id="editar" />
+                      Renombrar
+                    </button>
+                  </FormConResultado>
+                ) : (
+                  s.nombre
+                )}
               </td>
               <td>{s.activo ? "Sí" : "No"}</td>
               <td>
-                <ActivarDesactivarFila
-                  activo={s.activo}
-                  aviso={`¿Desactivar la sucursal "${s.nombre}"? Sus usuarios dejan de poder entrar a ella.`}
-                  accion={async () => {
-                    "use server";
-                    return actualizarActivoSucursal(s.id, !s.activo);
-                  }}
-                />
+                {activar.editar && (
+                  <ActivarDesactivarFila
+                    activo={s.activo}
+                    aviso={`¿Desactivar la sucursal "${s.nombre}"? Sus usuarios dejan de poder entrar a ella.`}
+                    accion={async () => {
+                      "use server";
+                      return actualizarActivoSucursal(s.id, !s.activo);
+                    }}
+                  />
+                )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
+      {alta.editar && (
       <FormConResultado
         accion={async (formData: FormData) => {
           "use server";
@@ -81,6 +96,7 @@ export default async function SucursalesPage() {
           Crear
         </button>
       </FormConResultado>
+      )}
     </div>
   );
 }

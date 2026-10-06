@@ -19,7 +19,7 @@ describe("persistencia de la anulación de una promo enviada", () => {
     s = await sembrarSalon();
     cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús M12d" } });
-    const promoCarta = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 12000 } });
+    const promoCarta = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 12000 } });
     promoId = (await prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 12000, titulo: "Menú del día", creadoPorId: s.admin.id } })).id;
   });
 
@@ -78,11 +78,11 @@ describe("persistencia de la anulación de una promo enviada", () => {
 
       const espejoId = await prisma.$transaction((tx) =>
         escribirEspejoDeItem(tx, {
-          original: { id: flan.id, cuentaId: cuenta.id, productoId: s.flan.id, precioUnitario: 2000, numeroEnvio: 3 },
+          original: { id: flan.id, cuentaId: cuenta.id, productoId: s.flan.id, precioUnitario: 2000, precioCartaUnitario: 2500.75, numeroEnvio: 3 },
           cantidadAnulada: 2,
           motivo: "Se cayó la mesa",
           creadoPorId: s.admin.id,
-          promo: { promoCuentaId: promoId, precioCartaUnitario: 2500.75 },
+          promo: { promoCuentaId: promoId },
         })
       );
 
@@ -109,11 +109,11 @@ describe("persistencia de la anulación de una promo enviada", () => {
       });
       const espejoId = await prisma.$transaction((tx) =>
         escribirEspejoDeItem(tx, {
-          original: { id: flan.id, cuentaId: cuenta.id, productoId: s.flan.id, precioUnitario: 2000, numeroEnvio: 1 },
+          original: { id: flan.id, cuentaId: cuenta.id, productoId: s.flan.id, precioUnitario: 2000, precioCartaUnitario: null, numeroEnvio: 1 },
           cantidadAnulada: 1,
           motivo: "x",
           creadoPorId: s.admin.id,
-          promo: { promoCuentaId: promoId, precioCartaUnitario: null },
+          promo: { promoCuentaId: promoId },
         })
       );
       expect(await prisma.cuentaItem.findUniqueOrThrow({ where: { id: espejoId } })).toMatchObject({ promoCuentaId: promoId, precioCartaUnitario: null });

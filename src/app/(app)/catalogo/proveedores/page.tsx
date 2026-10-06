@@ -2,9 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { actualizarActivaProveedor, listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { IconoDeAccion } from "@/components/iconos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Lista de proveedores. Ya no comparte pantalla con el formulario: el alta
@@ -12,17 +14,19 @@ import { FormConResultado } from "@/components/form-con-resultado";
  * `/[id]/editar` — mismo patrón F1/F2 de Productos
  * (docs/grounding-lista-ver-editar-2026-09-18.md, F4).
  */
-export default async function ProveedoresPage({ searchParams }: { searchParams: Promise<{ editar?: string }> }) {
+export default async function ProveedoresPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"editar">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proveedores");
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { editar } = await searchParams;
+  const { editar } = unicosDeUrl(await searchParams);
   // Los enlaces y favoritos viejos apuntaban a `/catalogo/proveedores?editar=…` (la edición estaba en esta misma pantalla).
   if (editar) redirect(`/catalogo/proveedores/${encodeURIComponent(editar)}/editar`);
 
+  // `/nuevo` exige `proveedor_alta`: quien solo ve proveedores no recibe el botón para descubrirlo recién al entrar.
+  const { editar: puedeDarDeAlta } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedor_alta", ctx.db);
   const proveedores = await listarProveedores();
 
   return (
@@ -33,9 +37,11 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
           <EnlaceInterno href="/catalogo/proveedores/comparativa" className="text-sm underline">
             Comparativa de precios →
           </EnlaceInterno>
-          <Link href="/catalogo/proveedores/nuevo" className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
-            + Nuevo proveedor
-          </Link>
+          {puedeDarDeAlta && (
+            <Link href="/catalogo/proveedores/nuevo" className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
+              + Nuevo proveedor
+            </Link>
+          )}
         </div>
       </div>
 
@@ -62,7 +68,8 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
               <td>{p.activo ? "Sí" : "No"}</td>
               <td className="py-2">
                 <div className="flex gap-3">
-                  <Link href={`/catalogo/proveedores/${p.id}/editar`} className="text-sm underline">
+                  <Link href={`/catalogo/proveedores/${p.id}/editar`} className="text-sm underline inline-flex items-center gap-1">
+                    <IconoDeAccion id="editar" />
                     Editar
                   </Link>
                   <FormConResultado
@@ -71,7 +78,8 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
                       return actualizarActivaProveedor(p.id, !p.activo);
                     }}
                   >
-                    <button type="submit" className="text-sm underline">
+                    <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                      <IconoDeAccion id="activar" />
                       {p.activo ? "Desactivar" : "Activar"}
                     </button>
                   </FormConResultado>

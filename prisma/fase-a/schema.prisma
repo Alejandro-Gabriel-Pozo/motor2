@@ -1,0 +1,2156 @@
+// ===================================================================
+// SCHEMA OBJETIVO DE LA FASE F (ADR-007 A1) — fotografía histórica generada en A1;
+// desde ADR-007 A2 el objetivo vive en prisma/schema.prisma (este archivo ya no se regenera).
+// Client aislado: nunca pisa @prisma/client. Ver ADR-004 y ADR-007.
+// ===================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/.prisma/fase-a-client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===================================================================
+// IDENTIDAD (Auth.js) — nombres en inglés a propósito: @auth/prisma-adapter
+// espera literalmente los modelos User/Account/Session/VerificationToken
+// (son los accessors que usa internamente, prisma.user/prisma.account/...).
+// Es infraestructura de autenticación, no dominio de negocio — coherente
+// con la convención del proyecto (dominio en español, framework en inglés).
+// ===================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  /// Kill-switch de cuenta a nivel sistema, distinto de "activo" por sucursal
+  /// (ver UsuarioSucursal.activo) — equivalente a poder desactivar a alguien
+  /// sin tener que tocar cada una de sus membresías.
+  activoGlobal  Boolean   @default(true)
+  creadoEn      DateTime  @default(now())
+
+  accounts                  Account[]
+  sessions                  Session[]
+  sucursales                UsuarioSucursal[]
+  operaciones               Operacion[]
+  operacionesAnuladas       Operacion[]         @relation("OperacionAnuladaPor")
+  conteosFisicos            ConteoFisico[]
+  traspasosCreados          TraspasoSucursal[]  @relation("TraspasoCreadoPor")
+  traspasosDecididosOrigen  TraspasoSucursal[]  @relation("TraspasoDecididoOrigen")
+  traspasosDecididosDestino TraspasoSucursal[]  @relation("TraspasoDecididoDestino")
+  traspasosCerrados         TraspasoSucursal[]  @relation("TraspasoCerradoPor")
+  pagosConsignante          PagoConsignante[]
+  registrosAuditoria        RegistroAuditoria[]
+  cuentasAbiertas           Cuenta[]            @relation("CuentaAbiertaPor")
+  cuentasCerradas           Cuenta[]            @relation("CuentaCerradaPor")
+  cuentaItemsCreados        CuentaItem[]        @relation("CuentaItemCreadoPor")
+  ejemplaresBoletaEmitidos  EjemplarBoleta[]    @relation("EjemplarBoletaEmitidoPor")
+  promosCreadas             PromoCuenta[]
+  empresas                  UsuarioEmpresa[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ===================================================================
+// DOMINIO: sucursales, roles y permisos
+//
+// Un solo negocio, varias sucursales (NO multi-tenant SaaS) — ver Contexto
+// del plan. Roles y permisos son un catálogo ÚNICO compartido por todo el
+// negocio (decisión confirmada con el dueño); el alcance por sucursal se
+// resuelve aparte, en CapacidadSucursal y UsuarioSucursal, nunca como
+// columna dentro de la matriz de permisos — patrón validado contra ERPNext
+// ("User Permission" / "Company Restriction") frente a Dolibarr, que no
+// tiene ningún gate de este tipo dentro de una misma empresa.
+// ===================================================================
+
+model Sucursal {
+  id       String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  /// Equivalente a Hosterias.Nombre (Sucursales.js) — nombre visible único.
+  nombre   String
+  activo   Boolean  @default(true)
+  creadoEn DateTime @default(now())
+
+  /// Feature opcional apagada por defecto (Catalogo.js:2183, clave de Config
+  /// "PromocionesHabilitado") — no todos los clientes arman combos; ver
+  /// PromocionProducto abajo (porción Reportes).
+  promocionesHabilitadas Boolean @default(false)
+
+  /// Cupo de mesas ABIERTAS a la vez en esta sucursal (módulo POS, docs/plan-comensales-y-limite-mesas-2026-09-26.md). `null` (default) =
+  /// sin límite. Se cuenta como "abierta" toda `Cuenta` con `cerradaEn IS NULL` de una mesa de esta sucursal — no la cantidad de `Mesa`
+  /// dadas de alta. Se edita con el mismo permiso que da de alta mesas (`pos_mesas`, Editar — src/server/actions/pos/mesas.ts). Bajarlo
+  /// por debajo de las mesas ya abiertas NO cierra ninguna: solo bloquea aperturas nuevas hasta que se libere o cierre alguna
+  /// (`abrirCuenta`, chequeo dentro de la misma transacción serializable que crea la `Cuenta`).
+  maxMesasAbiertas Int?
+
+  usuarios                 UsuarioSucursal[]
+  capacidades              CapacidadSucursal[]
+  secciones                Seccion[]
+  operaciones              Operacion[]
+  conteosFisicos           ConteoFisico[]
+  preciosLocales           PrecioLocalProducto[]
+  stockMinimos             StockMinimoProducto[]
+  seccionesHabituales      SeccionHabitualProducto[]
+  frecuenciasConteo        FrecuenciaConteoProducto[]
+  disponibilidadesProducto DisponibilidadProducto[]
+  promociones              PromocionProducto[]
+  traspasosComoOrigen      TraspasoSucursal[]            @relation("TraspasoOrigen")
+  traspasosComoDestino     TraspasoSucursal[]            @relation("TraspasoDestino")
+  pagosConsignante         PagoConsignante[]
+  registrosAuditoria       RegistroAuditoria[]
+  promosCarta              PromoCarta[]
+  publica                  SucursalPublica?
+  temaCarta                TemaCartaSucursal?
+  mesas                    Mesa[]
+  rendimientosLocales      RendimientoLocalIngrediente[]
+  ejemplaresBoleta         EjemplarBoleta[]
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+model Rol {
+  id     String  @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  /// Catálogo único para todo el negocio — guardar siempre en minúscula,
+  /// mismo criterio que ROLES_VALIDOS/obtenerRolesActivos_ en Core.js.
+  nombre String
+  activo Boolean @default(true)
+
+  usuarios UsuarioSucursal[]
+  permisos PermisoRol[]
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// Reemplaza el 1:1 "un usuario, una hostería" de hoy por N:M: una persona
+/// puede tener rol distinto en cada sucursal donde participa. Análogo al
+/// patrón "User Permission" de ERPNext (usuario restringido/asignado a
+/// valores específicos de una dimensión), aplicado acá a Sucursal.
+model UsuarioSucursal {
+  id         String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  usuarioId  String
+  usuario    User     @relation(fields: [usuarioId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  rolId      String
+  rol        Rol      @relation(fields: [empresaId, rolId], references: [empresaId, id])
+  /// Equivalente a la columna "Activo" de la hoja Usuarios.
+  activo     Boolean  @default(true)
+  notas      String?
+  creadoEn   DateTime @default(now())
+
+  @@unique([usuarioId, sucursalId])
+  @@unique([empresaId, id])
+}
+
+/// Catálogo de acciones gateables — clave global definida por el código
+/// (no por cada sucursal), migrado 1:1 desde las semillas de
+/// inicializarHojaPermisosSiFalta (Core.js:1293-1356).
+model Accion {
+  clave       String @id
+  descripcion String
+
+  permisos    PermisoRol[]
+  capacidades CapacidadSucursal[]
+}
+
+/// Matriz única rol × acción para todo el negocio (normaliza la hoja
+/// Permisos, hoy "Roles Editar"/"Roles Ver" como CSV en una celda).
+/// Invariante de negocio (Core.js:1534, "Ver ⊇ Editar"): puedeEditar=true
+/// implica puedeVer=true — se hace cumplir en la capa de aplicación
+/// (actualizarPermisoDesdeAdmin, equivalente a actualizarPermisoDesdePanel).
+model PermisoRol {
+  id          String  @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  rolId       String
+  rol         Rol     @relation(fields: [empresaId, rolId], references: [empresaId, id])
+  accionClave String
+  accion      Accion  @relation(fields: [accionClave], references: [clave])
+  puedeVer    Boolean @default(false)
+  puedeEditar Boolean @default(false)
+
+  @@unique([rolId, accionClave])
+  @@unique([empresaId, id])
+}
+
+/// Switch "esta acción está habilitada en esta sucursal", independiente del
+/// rol — equivalente directo a CapacidadesSucursal (Sucursales.js) y al
+/// patrón "Company Restriction" de ERPNext. sucursalId NULL = fila default
+/// (mismo significado que "Sucursal" vacío hoy, Sucursales.js:594-601);
+/// la migración inicial agrega un índice único parcial para permitir como
+/// máximo UNA fila default por acción (ver migration.sql).
+model CapacidadSucursal {
+  id          String    @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  accionClave String
+  accion      Accion    @relation(fields: [accionClave], references: [clave])
+  sucursalId  String?
+  sucursal    Sucursal? @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  habilitado  Boolean
+
+  @@unique([accionClave, sucursalId])
+  @@unique([empresaId, id])
+}
+
+/// Auditoría administrativa (A3, Pivote 6 — docs/auditoria-motor2-pivotes-
+/// 2026-09-16.md "Pivote 6", docs/auditoria-motor2-fase6-seguridad-
+/// 2026-09-18.md): catálogo/precios/permisos no pasan por el Kardex y no
+/// tenían NINGÚN rastro de quién cambió qué y cuándo — ni siquiera un
+/// `updatedAt` genérico. Registro append-only GENÉRICO (nunca se edita ni
+/// se borra una fila) — no una tabla de historial por modelo tipo
+/// `RecetaVersion`: cada fila es UN cambio de UN campo escalar puntual
+/// (un precio, un booleano de permiso), no una estructura compuesta, así
+/// que alcanza para reconstruir el valor vigente en cualquier momento
+/// pasado ordenando por `creadoEn`, sin necesidad de versionar la fila
+/// entera. `entidadId` es una referencia liviana (sin FK real — apunta a
+/// modelos distintos según `entidad`, y el registro tiene que sobrevivir
+/// aunque la fila referenciada se borre en el futuro) — `descripcion` ya
+/// viene armada y legible al momento de escribir, para no depender de un
+/// JOIN futuro contra una fila que podría ya no existir.
+model RegistroAuditoria {
+  id            String    @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  /// "Producto" | "PrecioLocalProducto" | "PermisoRol" | "CapacidadSucursal" | "Rol" | "Operacion"
+  entidad       String
+  entidadId     String
+  /// Legible de entrada, ej. `Producto "Pan Francés": precio de venta`.
+  descripcion   String
+  /// Nombre técnico del campo cambiado, ej. "precioVenta" — para filtrar/agrupar.
+  campo         String
+  valorAnterior String?
+  valorNuevo    String?
+  actorId       String
+  actor         User      @relation(fields: [actorId], references: [id])
+  /// Sucursal relevante si el cambio es específico de una (ej. Precio
+  /// Local, Capacidad por sucursal) — null si es global (ej. Producto,
+  /// Rol, Permisos, que son Catálogo Central sin alcance por sucursal).
+  sucursalId    String?
+  sucursal      Sucursal? @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  creadoEn      DateTime  @default(now())
+
+  @@index([entidad, entidadId])
+  @@index([actorId])
+  @@index([creadoEn])
+  @@unique([empresaId, id])
+}
+
+// ===================================================================
+// CATÁLOGO: productos, insumos/grupos, categorías, unidades,
+// presentaciones, proveedores, recetas.
+//
+// Todo esto es Catálogo Central (HOJAS_CATALOGO_CENTRAL, Core.js/
+// Catalogo.js) — compartido por todas las sucursales. Por eso NINGÚN
+// modelo de acá abajo tiene sucursalId: el alcance por sucursal se
+// resuelve, como en el resto del sistema, en CapacidadSucursal (gate de
+// la Accion), nunca acá.
+// ===================================================================
+
+enum TipoProducto {
+  MP
+  PV
+}
+
+enum MagnitudUnidad {
+  PESO
+  VOLUMEN
+  CANTIDAD
+}
+
+/// Reemplaza Hoja listado + Productos (Catalogo.js:213-344): en Sheets eran
+/// dos hojas porque Apps Script no tiene transacciones/FK reales y
+/// necesitaba una vista de lectura rápida aparte de la fuente de escritura.
+/// Acá no hace falta: una sola tabla es fuente de verdad Y de lectura. Esto
+/// elimina de raíz reconstruirProductosDesdeListado (Catalogo.js:72-177) y
+/// la acción de permiso 'reconstruir_productos'.
+model Producto {
+  id     String       @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  /// Clave real, fija desde el alta. Autogenerada como `${tipo}_<uuid6>` si
+  /// no se pasa a mano (Catalogo.js:1151) — ver src/core/catalogo/generar-codigo.ts.
+  codigo String
+  nombre String
+  tipo   TipoProducto
+
+  /// "Uso" (Catalogo.js:1053-1062) NO se persiste: es 100% derivable de
+  /// `tipo` (MP siempre COMPRA, PV siempre VENTA, sesión "eliminar
+  /// COMPRA+VENTA"). Donde hace falta, se deriva de `tipo` en el momento.
+
+  /// Rubro comercial (Catalogo.js:2969-2989) — sin relación con Unidad.magnitud.
+  categoriaId String?
+  categoria   CategoriaProducto? @relation(fields: [empresaId, categoriaId], references: [empresaId, id])
+
+  unidadCompraId   String?
+  unidadCompra     Unidad? @relation("ProductoUnidadCompra", fields: [empresaId, unidadCompraId], references: [empresaId, id])
+  unidadStockId    String
+  unidadStock      Unidad  @relation("ProductoUnidadStock", fields: [empresaId, unidadStockId], references: [empresaId, id])
+  /// Unidades de stock por 1 unidad de compra (Catalogo.js:1083/1095): > 0.
+  factorConversion Decimal @default(1) @db.Decimal(14, 4)
+
+  observaciones String?
+
+  /// Solo tiene sentido si tipo=MP (Catalogo.js:951, 1723-1726) — un PV no
+  /// se compra, no tiene Insumo. Se valida en la capa de aplicación, con el
+  /// mismo criterio no-bloqueante que hoy (avisa, no impide el alta).
+  insumoId String?
+  insumo   Insumo? @relation(fields: [empresaId, insumoId], references: [empresaId, id])
+
+  precioVenta Decimal @default(0) @db.Decimal(14, 2)
+
+  /// Venta fraccionada (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): excepción de venta PUNTUAL de este PV — ej. 0.5
+  /// para "esta pizza se vende de a 1 o de a media". null (default) = comportamiento actual, sin cambios (una unidad entera por
+  /// línea). Solo tiene sentido si tipo=PV (se valida en la capa de aplicación, `validarPasoVenta`, src/core/catalogo/venta-
+  /// fraccionada.ts). Migración puramente aditiva, sin backfill.
+  ///
+  /// R3 (la precondición que cuida `validarPasoVenta`): el paso NUNCA amplía la precisión de algo con STOCK REAL — si este
+  /// producto "se produce" (`seProduce`, stock propio en el Kardex), sus decimales tienen que entrar en los que admite su
+  /// `unidadStock` (si no, se rechaza al guardar); si no se produce (se cocina al momento, sin fila propia en el Kardex), el
+  /// paso es libre. Dos transiciones cuidan esto DESPUÉS del alta: marcar `seProduce` en un producto con un paso ya
+  /// inconsistente, y bajar `Unidad.decimales` por debajo de lo que algún producto "se produce" con paso necesita — las dos se
+  /// revalidan y bloquean (ver `actualizarProducto`/`actualizarDecimalesUnidad`).
+  pasoVenta Decimal? @db.Decimal(14, 4)
+
+  /// Elegibilidad de receta (Catalogo.js:1723-1726): PV siempre elegible;
+  /// MP solo si seProduce=true (se fabrica por lote, ej. una salsa base).
+  seProduce Boolean @default(false)
+
+  esConsignacion          Boolean    @default(false)
+  proveedorConsignacionId String?
+  proveedorConsignacion   Proveedor? @relation("ProveedorConsignacionDe", fields: [empresaId, proveedorConsignacionId], references: [empresaId, id])
+  precioConsignacion      Decimal?   @default(0) @db.Decimal(14, 2)
+
+  creadoEn DateTime @default(now())
+
+  presentaciones          Presentacion[]
+  proveedorPorProducto    ProveedorPorProducto[]
+  recetaVersiones         RecetaVersion[]            @relation("RecetaVersionProducto")
+  usadoComoIngrediente    RecetaIngrediente[]        @relation("RecetaIngredienteInsumo")
+  movimientos             MovimientoStock[]
+  conteosFisicos          ConteoFisico[]
+  preciosLocales          PrecioLocalProducto[]
+  stockMinimos            StockMinimoProducto[]
+  seccionesHabituales     SeccionHabitualProducto[]
+  frecuenciasConteo       FrecuenciaConteoProducto[]
+  disponibilidades        DisponibilidadProducto[]
+  promociones             PromocionProducto[]
+  traspasos               TraspasoSucursal[]
+  contenidoCarta          ContenidoCartaProducto?
+  opcionItemAgrupadoCarta OpcionItemAgrupadoCarta?
+  cuentaItems             CuentaItem[]
+  consumosQueLoSustituyen MovimientoStock[]          @relation("MovimientoSustituyeA")
+
+  @@index([insumoId])
+  @@index([categoriaId])
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, id])
+}
+
+/// Disponibilidad de un producto del Catálogo Central EN UNA SUCURSAL
+/// (decisión del dueño 2026-09-23): reemplaza el booleano GLOBAL
+/// `Producto.activo`, que sacaba un producto de TODO el negocio de una
+/// vez. El producto en sí (nombre, código, unidad, receta, precio de
+/// lista) sigue siendo central y compartido: lo único que se vuelve
+/// local es "¿se usa acá?".
+///
+/// FILA AUSENTE = NO DISPONIBLE. Es lo contrario al criterio de
+/// PrecioLocalProducto/StockMinimoProducto/FrecuenciaConteoProducto
+/// (donde "no hay fila" = valor por defecto benigno) y es a propósito:
+/// la decisión 2 dice que un producto dado de alta SIN el tilde "Activo
+/// en todas las sucursales" no tiene que aparecer en las demás "hasta
+/// que un admin de ESA sucursal lo active ahí a mano" — eso solo se
+/// cumple si la ausencia significa "no". Por eso el alta materializa
+/// filas (todas las sucursales, o solo la del alta) y la migración
+/// inicial hace backfill: sin backfill, todo el catálogo existente
+/// desaparecería de todas las pantallas al aplicar la migración.
+///
+/// `disponible = false` y "sin fila" significan lo mismo para el
+/// sistema (los colapsa `resolverDisponibilidad`, src/core/catalogo/
+/// disponibilidad-producto.ts — un solo criterio, no dos). Se conserva
+/// la fila en false en vez de borrarla, igual que el resto del catálogo
+/// (activo/habilitado, nunca DELETE): la diferencia solo se usa para el
+/// rastro de auditoría ("nunca se configuró acá" vs. "se apagó acá").
+///
+/// Sin precedente directo en ERPNext ni Dolibarr: los dos tienen la
+/// tabla producto × depósito (Item Reorder / llx_product_warehouse_
+/// properties) y ninguno le puso un booleano de disponibilidad; lo más
+/// cercano es Item.restrict_to_companies + Company Restriction de
+/// ERPNext, un nivel más arriba (Company ≙ Sucursal acá). Ver
+/// docs/grounding-disponibilidad-por-sucursal-2026-09-23.md.
+model DisponibilidadProducto {
+  id         String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  productoId String
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  disponible Boolean
+
+  @@unique([sucursalId, productoId])
+  @@unique([empresaId, id])
+}
+
+/// Nombre interno histórico "Familia" (Catalogo.js:180-197) — de cara al
+/// usuario ya es "Insumo" desde v2.3.0; se adopta el nombre nuevo también
+/// acá para no arrastrar la confusión al código nuevo.
+model Insumo {
+  id     String  @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  nombre String
+  activo Boolean @default(true)
+
+  /// Relación PLANA 1:1 (hoy "Grupos de Familia", una fila por Insumo) — no
+  /// forma parte del árbol en sí, solo cuelga de un nodo de Grupo.
+  grupoId String?
+  grupo   Grupo?  @relation(fields: [empresaId, grupoId], references: [empresaId, id])
+
+  productos   Producto[]
+  sustitutoEn SustitutoRecetaIngrediente[]
+
+  @@index([grupoId])
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// Árbol de Grupos sin límite de niveles (self-referencing), inspirado en
+/// ERPNext Item Group (Catalogo.js:2410-2429). La prevención de ciclos
+/// (creariaCicloGrupo_, Catalogo.js:2483-2489) NO es representable como
+/// constraint de Postgres — se porta como función de aplicación (ver
+/// src/core/catalogo/grupo.ts).
+model Grupo {
+  id           String  @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  nombre       String
+  activo       Boolean @default(true)
+  grupoPadreId String?
+  grupoPadre   Grupo?  @relation("GrupoArbol", fields: [empresaId, grupoPadreId], references: [empresaId, id])
+  hijos        Grupo[] @relation("GrupoArbol")
+
+  insumos Insumo[]
+
+  @@index([grupoPadreId])
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// Rubro comercial (Catalogo.js:2969-2989) — catálogo cerrado simple,
+/// aplica a CUALQUIER producto (MP o PV). Sin jerarquía, sin relación con
+/// el árbol de Grupo (ese agrupa Insumos, no productos de venta).
+model CategoriaProducto {
+  id        String     @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  nombre    String
+  activo    Boolean    @default(true)
+  productos Producto[]
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// Catálogo cerrado (Catalogo.js:2634-2810). `magnitud` es solo
+/// organizativo/default de decimales — NO valida conversión real entre
+/// unidades (esa validación fuerte real es validarUnidadInsumo_: todos los
+/// productos de un mismo Insumo deben compartir exactamente unidadStock).
+model Unidad {
+  id        String         @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  nombre    String
+  magnitud  MagnitudUnidad
+  activa    Boolean        @default(true)
+  /// 0-6, validado en la capa de aplicación (Catalogo.js:2777).
+  decimales Int            @default(2)
+
+  productosPorUnidadCompra      Producto[]             @relation("ProductoUnidadCompra")
+  productosPorUnidadStock       Producto[]             @relation("ProductoUnidadStock")
+  presentaciones                Presentacion[]
+  proveedorPorProducto          ProveedorPorProducto[]
+  recetaIngredientes            RecetaIngrediente[]
+  recetaVersionesPorRendimiento RecetaVersion[]        @relation("RecetaVersionRendimientoUnidad")
+  recetaVersionesPorRacion      RecetaVersion[]        @relation("RecetaVersionRacionUnidad")
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// Presentaciones de compra ALTERNATIVAS a la default de Producto
+/// (unidadCompra/factorConversion propios) — Catalogo.js:3322-3472.
+model Presentacion {
+  id               String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  productoId       String
+  producto         Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  unidadCompraId   String
+  unidadCompra     Unidad   @relation(fields: [empresaId, unidadCompraId], references: [empresaId, id])
+  factorConversion Decimal  @db.Decimal(14, 4)
+  activa           Boolean  @default(true)
+
+  @@unique([productoId, unidadCompraId])
+  @@unique([empresaId, id])
+}
+
+/// Maestro de Proveedores (Catalogo.js:3677-3775).
+model Proveedor {
+  id              String  @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  /// `PRV_<uuid6>` (Catalogo.js:3737) — mismo patrón de generación/colisión
+  /// que Producto.codigo.
+  codigo          String
+  nombre          String
+  contacto        String?
+  telefono        String?
+  email           String?
+  cuit            String?
+  condicionesPago String?
+  notas           String?
+  activo          Boolean @default(true)
+
+  productosConsignados Producto[]             @relation("ProveedorConsignacionDe")
+  proveedorPorProducto ProveedorPorProducto[]
+  operaciones          Operacion[]
+  pagosConsignante     PagoConsignante[]
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// Pago registrado a un proveedor de consignación, para saldar (parcial o
+/// totalmente) el "Debido por consignante" de reportes/consignacion.ts.
+/// Append-only, igual que el resto del Kardex: nunca se editan/borran las
+/// líneas LIQUIDACION_CONSIGNACION para "saldarlas" — esto es un registro
+/// aparte, y el reporte resta SUM(pagos) de SUM(liquidaciones) por
+/// proveedor para llegar al saldo debido real.
+model PagoConsignante {
+  id          String    @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId  String
+  sucursal    Sucursal  @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  proveedorId String
+  proveedor   Proveedor @relation(fields: [empresaId, proveedorId], references: [empresaId, id])
+  importe     Decimal   @db.Decimal(14, 4)
+  fecha       DateTime
+  notas       String?
+  usuarioId   String
+  usuario     User      @relation(fields: [usuarioId], references: [id])
+  creadoEn    DateTime  @default(now())
+
+  /// I3 — idempotencia (Task #41, M14, mismo mecanismo que `Operacion`, ver esas columnas más abajo en este archivo): UUID generado
+  /// por el cliente al abrir el modal de pago, reenviado tal cual en reintentos del mismo intento de envío. Nullable durante el
+  /// rollout gradual (mismo criterio que `Operacion.claveIdempotencia`) — un pago sin clave simplemente no participa del mecanismo de
+  /// deduplicación. Único GLOBAL. Validada en la capa de aplicación como UUID antes de llegar acá.
+  claveIdempotencia String? @unique
+
+  /// I3 — hash SHA-256 del payload validado que efectivamente se procesó (incluye sucursalId), para distinguir "mismo intento
+  /// reenviado" de "clave reutilizada con datos distintos" sin comparar objetos JSON campo por campo.
+  payloadHash String?
+
+  /// I3 — Opción B: mensaje de éxito ya formateado, persistido en el MISMO `create` (a diferencia de `Operacion`, acá el mensaje se
+  /// conoce ANTES del insert — proveedor e importe ya están resueltos — así que no hace falta un segundo `update` posterior).
+  resultadoMensaje String?
+
+  @@index([sucursalId, proveedorId])
+  @@unique([empresaId, id])
+}
+
+/// Relación proveedor↔producto con precio normalizado a "precio por unidad
+/// de stock" (Catalogo.js:3210-3320). Clave real: (producto, proveedor,
+/// unidad de compra).
+///
+/// El UNIQUE de abajo + un upsert atómico (INSERT ... ON CONFLICT DO
+/// UPDATE, ver src/server/actions/proveedor-por-producto.ts) hacen
+/// ESTRUCTURALMENTE IMPOSIBLE la carrera cross-hostería documentada en el
+/// propio código de Apps Script (Catalogo.js:3278-3294: dos sucursales
+/// comprando el mismo insumo casi simultáneo duplicaban esta fila, hoy
+/// mitigado DESPUÉS de escribir por fusionarDuplicadosProveedorPorProducto_,
+/// Catalogo.js:3303-3320) — acá no hay nada que detectar ni fusionar.
+model ProveedorPorProducto {
+  id                   String    @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  productoId           String
+  producto             Producto  @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  proveedorId          String
+  proveedor            Proveedor @relation(fields: [empresaId, proveedorId], references: [empresaId, id])
+  unidadCompraId       String
+  unidadCompra         Unidad    @relation(fields: [empresaId, unidadCompraId], references: [empresaId, id])
+  /// Precio "crudo" tal como lo cobra el proveedor en esa unidad de compra.
+  precioUnitario       Decimal   @default(0) @db.Decimal(14, 4)
+  /// Normalizado a precio por unidad de stock del producto — permite
+  /// comparar presentaciones distintas del mismo Insumo.
+  precioPorUnidadStock Decimal   @default(0) @db.Decimal(14, 4)
+  ultimaCompra         DateTime  @default(now())
+  /// Cómo llama ESTE proveedor a este producto (su propio código o
+  /// nombre de catálogo) — nunca existió ni en la planilla vieja, que
+  /// solo guardaba nuestro propio código. Puramente informativo, para
+  /// reconocerlo más fácil al recargar una compra futura.
+  referenciaProveedor  String?
+
+  @@unique([productoId, proveedorId, unidadCompraId])
+  @@unique([empresaId, id])
+}
+
+/// Cliente con % de descuento fijo (Task #14, docs/plan-clientes-descuento-2026-09-26.md): catálogo CENTRAL, sin `sucursalId` —
+/// mismo criterio que `Proveedor` (una hostería con varias sucursales suele compartir sus clientes frecuentes). D1: un único
+/// `descuentoPorcentaje` por cliente, no varía por categoría de producto. Nunca se borra (`activo`, igual que `Proveedor.activo`):
+/// una `Cuenta` ya cerrada referencia su cliente para siempre (FK RESTRICT en `Cuenta.clienteId`/`Operacion.clienteId`).
+///
+/// El % que efectivamente se cobró queda CONGELADO en `Cuenta.descuentoPorcentaje` al asignar el cliente a la cuenta (D7) — cambiar
+/// `descuentoPorcentaje` acá nunca reescribe una cuenta ya abierta ni una ya cerrada.
+model Cliente {
+  id                  String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  nombre              String
+  /// 0 ≤ % < 100 (D4, validarPorcentajeDescuento) — Decimal(5,2): hasta 999,99, sobra para un porcentaje.
+  descuentoPorcentaje Decimal  @db.Decimal(5, 2)
+  activo              Boolean  @default(true)
+  creadoEn            DateTime @default(now())
+
+  cuentas     Cuenta[]
+  operaciones Operacion[]
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// Versionado append-only real (Catalogo.js:1690-1779): NUNCA se pisa ni
+/// borra una versión — una venta pasada referencia esa versión para
+/// costeo/auditoría (Catalogo.js:1696-1706). `version` es un entero simple;
+/// la vigente es SIEMPRE MAX(version) para ese producto, derivado, nunca
+/// un flag a mantener transaccionalmente.
+model RecetaVersion {
+  id         String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  /// El plato (PV) o la MP con seProduce=true.
+  productoId String
+  producto   Producto @relation("RecetaVersionProducto", fields: [empresaId, productoId], references: [empresaId, id])
+  version    Int
+  creadoEn   DateTime @default(now())
+
+  ingredientes RecetaIngrediente[]
+  pasos        RecetaPaso[]
+
+  /// Cabecera informativa — grounded contra Fudo (POS de gastronomía real,
+  /// docs/grounding-ficha-tecnica-tandoor.md §6). Todo opcional: no rompe
+  /// ninguna receta ya cargada, y no bloquea el guardado si se deja vacío.
+  /// Viaja en la MISMA versión que ingredientes/pasos a propósito — es
+  /// parte de la misma "foto" de qué receta exacta se usó (ver
+  /// razonamiento completo en el documento, sección "Interacción con el
+  /// versionado append-only").
+  rendimientoCantidad      Decimal? @db.Decimal(14, 4)
+  rendimientoUnidadId      String?
+  rendimientoUnidad        Unidad?  @relation("RecetaVersionRendimientoUnidad", fields: [empresaId, rendimientoUnidadId], references: [empresaId, id])
+  racionesCantidad         Int?
+  /// Tamaño de CADA ración — distinto de rendimientoCantidad (lo que
+  /// produce la receta ENTERA). Ej.: rendimiento "1 unidad" (la pizza
+  /// entera), racionesCantidad 8, racionTamano 150 (gramos cada porción).
+  racionTamano             Decimal? @db.Decimal(14, 4)
+  racionUnidadId           String?
+  racionUnidad             Unidad?  @relation("RecetaVersionRacionUnidad", fields: [empresaId, racionUnidadId], references: [empresaId, id])
+  tiempoPreparacionMinutos Int?
+  tiempoCoccionMinutos     Int?
+  comentarios              String?
+  /// Cómo se sirve el plato — distinto de los pasos de cocción (Fudo
+  /// separa "Pasos del procedimiento" de "Presentación o emplatado").
+  presentacionEmplatado    String?
+  notasAdicionales         String?
+  /// Texto libre, un renglón = un ítem (ej. "Horno pizzero") — no amerita
+  /// un catálogo de equipos propio, ver §6 del documento de grounding.
+  equipamientoNecesario    String?
+
+  @@unique([productoId, version])
+  @@unique([empresaId, id])
+}
+
+model RecetaIngrediente {
+  id               String        @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  recetaVersionId  String
+  recetaVersion    RecetaVersion @relation(fields: [empresaId, recetaVersionId], references: [empresaId, id], onDelete: Cascade)
+  /// La MP consumida — FK real a Producto. Reemplaza el "renombrar por
+  /// nombre en Recetas" de renombrarProductoEnHistorial_ (Catalogo.js:
+  /// 1270-1314): renombrar un producto ahora es un UPDATE de una fila.
+  insumoProductoId String
+  insumoProducto   Producto      @relation("RecetaIngredienteInsumo", fields: [empresaId, insumoProductoId], references: [empresaId, id])
+  cantidad         Decimal       @db.Decimal(14, 4)
+  unidadId         String
+  unidad           Unidad        @relation(fields: [empresaId, unidadId], references: [empresaId, id])
+  mermaPorcentaje  Decimal       @default(0) @db.Decimal(6, 2)
+  observaciones    String?
+
+  enPasos             RecetaPasoIngrediente[]
+  sustitutos          SustitutoRecetaIngrediente[]
+  rendimientosLocales RendimientoLocalIngrediente[]
+
+  @@index([insumoProductoId])
+  @@unique([empresaId, id])
+}
+
+/// Insumos que pueden reemplazar a la MP de UNA línea de receta cuando ella y sus hermanos se agotan en la venta
+/// (docs/plan-sustitucion-insumos-receta-2026-09-26.md). Por línea, no por Insumo global. Viaja con la versión de la
+/// receta (append-only).
+model SustitutoRecetaIngrediente {
+  id                  String            @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  recetaIngredienteId String
+  recetaIngrediente   RecetaIngrediente @relation(fields: [empresaId, recetaIngredienteId], references: [empresaId, id], onDelete: Cascade)
+  insumoSustitutoId   String
+  insumoSustituto     Insumo            @relation(fields: [empresaId, insumoSustitutoId], references: [empresaId, id])
+  orden               Int
+
+  @@unique([recetaIngredienteId, insumoSustitutoId], map: "SustitutoRecetaIngrediente_ingrediente_insumo_key")
+  @@unique([recetaIngredienteId, orden])
+  @@index([insumoSustitutoId])
+  @@unique([empresaId, id])
+}
+
+/// Paso de preparación — grounded contra Tandoor Recipes (`Step`) y Fudo
+/// (docs/grounding-ficha-tecnica-tandoor.md). La mayoría de los pasos van
+/// a ser instrucciones de texto simple sin ingredientes propios (Fudo ni
+/// lo ofrece) — `ingredientes` (la sub-lista vía RecetaPasoIngrediente) es
+/// la excepción puntual ("marinar con esto, salsa aparte"), no la norma.
+model RecetaPaso {
+  id              String        @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  recetaVersionId String
+  recetaVersion   RecetaVersion @relation(fields: [empresaId, recetaVersionId], references: [empresaId, id], onDelete: Cascade)
+  orden           Int
+  nombre          String?
+  instruccion     String
+  minutos         Int?
+
+  ingredientes RecetaPasoIngrediente[]
+
+  @@index([recetaVersionId])
+  @@unique([empresaId, id])
+}
+
+/// Tabla puente, no un FK simple en RecetaIngrediente — un mismo
+/// ingrediente puede participar de más de un paso (ej. "sal" en dos
+/// preparaciones distintas de la misma receta), mismo criterio que el M2M
+/// real de Tandoor (`Step.ingredients`). No repite cantidad/unidad/merma —
+/// eso sigue viviendo solo en RecetaIngrediente, el paso solo referencia.
+model RecetaPasoIngrediente {
+  id                  String            @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  recetaPasoId        String
+  recetaPaso          RecetaPaso        @relation(fields: [empresaId, recetaPasoId], references: [empresaId, id], onDelete: Cascade)
+  recetaIngredienteId String
+  recetaIngrediente   RecetaIngrediente @relation(fields: [empresaId, recetaIngredienteId], references: [empresaId, id], onDelete: Cascade)
+
+  @@unique([recetaPasoId, recetaIngredienteId])
+  @@unique([empresaId, id])
+}
+
+// ===================================================================
+// MOVIMIENTOS: Kardex (libro mayor de stock), operaciones, secciones,
+// conteo físico y precio local por sucursal.
+//
+// A diferencia de Core/Catálogo (Catálogo Central, SIN sucursalId),
+// TODO acá vive scopeado por sucursal — reemplaza el modelo viejo de
+// "1 container de Apps Script = 1 sucursal, 1 Kardex propio" por
+// sucursalId como columna real en una sola base compartida.
+//
+// Diseño en dos niveles, análogo a ERPNext (Stock Entry → Stock Ledger
+// Entry), pero sin una tabla de "detalle" redundante: Operacion es el
+// encabezado (lo que el usuario INICIÓ — gatea el permiso de Movimientos.js
+// ACCION_POR_PROCESO_), MovimientoStock es cada línea del libro mayor (el
+// EFECTO real sobre el stock: 1 fila = 1 movimiento con signo).
+//
+// Ver docs/plan-migracion.md, sección "Plan de la porción Movimientos",
+// para la investigación completa (anclas archivo:línea) y las decisiones.
+// ===================================================================
+
+/// Los procesos gateables de ACCION_POR_PROCESO_ (Movimientos.js:510-525),
+/// más LIQUIDACION_CONSIGNACION (Movimientos.js:250-258: generada SOLA por
+/// confirmarRegistrarVenta_ConLock_/confirmarRegistrarMovimientos al
+/// producir, nunca un proceso que un usuario elija — por eso no tiene
+/// Accion propia en src/core/permisos/acciones.ts) y RECLASIFICACION
+/// (Stock.js:1899-1991 — agregada en la porción Stock; NUNCA pasa por
+/// TRANSICIONES en Apps Script porque no es una "acción de Permisos" con
+/// su propio filtroTipo/exigeSeccion/etc., sino la primitiva de split
+/// genérico del Conteo Físico — se gatea con 'proceso_control', mismo
+/// permiso que Conteo Físico, no con una Accion propia).
+///
+/// TRANSFERENCIA_SALIDA_SUCURSAL/TRANSFERENCIA_ENTRADA_SUCURSAL/
+/// REINGRESO_TRANSFERENCIA_SUCURSAL (Sucursales.js, porción Traspasos
+/// entre sucursales) agregados acá — igual que RECLASIFICACION
+/// (porción Stock), ninguno pasa por el motor genérico
+/// (`registrarMovimiento`)/`TRANSICIONES`-como-entrada-de-ACCION_POR_PROCESO:
+/// tienen su propio server action (`src/server/actions/traspasos.ts`),
+/// gateado directo con `proceso_transferencia_sucursal` — la entrada en
+/// `TRANSICIONES` (transiciones.ts) existe solo para que
+/// `esSignoFijo`/`tieneStockReal` puedan resolverlas igual que cualquier
+/// otro proceso al construir `MovimientoStock.cantidad` firmado.
+enum Proceso {
+  COMPRA
+  PRODUCCION
+  CONSUMO
+  AJUSTE
+  CONTROL
+  TRANSFERENCIA
+  MERMA
+  VENTA
+  DEVOLUCION_CONSIGNACION
+  LIQUIDACION_CONSIGNACION
+  DEVOLUCION_CLIENTE
+  DEVOLUCION_PROVEEDOR
+  RECLASIFICACION
+  TRANSFERENCIA_SALIDA_SUCURSAL
+  TRANSFERENCIA_ENTRADA_SUCURSAL
+  REINGRESO_TRANSFERENCIA_SUCURSAL
+}
+
+/// Catálogo administrable de motivos de Merma (plan "motivos de Consumo/Merma como catálogo administrable",
+/// 2026-09-23) — reemplazó al enum fijo `MotivoMerma` de antes (renombrado `MotivoMermaLegacy` en la migración expand
+/// P3, borrado en la migración contract P8): antes, agregar un motivo nuevo pedía código + migración; ahora es un
+/// alta más, con el permiso `motivos_movimiento`. Mismo patrón que `CategoriaProducto`/`Insumo`/`Grupo`: nunca
+/// DELETE — desactivar lo saca del selector de Merma, pero un movimiento histórico sigue mostrando su motivo.
+model MotivoMerma {
+  id          String      @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  nombre      String
+  descripcion String?
+  activo      Boolean     @default(true)
+  operaciones Operacion[]
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// Catálogo administrable de destinos de Consumo — ver el docstring de `MotivoMerma`, mismo patrón.
+model DestinoConsumo {
+  id          String      @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  nombre      String
+  descripcion String?
+  activo      Boolean     @default(true)
+  operaciones Operacion[]
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// ACCIONES_CONTEO_FISICO (Stock.js:1066-1088).
+enum AccionConteo {
+  AJUSTAR
+  FALTA_MOVIMIENTO
+  DESCARTAR
+}
+
+/// Estados de ConteoFisico.estado (Stock.js: 'Resuelto'/'Pendiente'/
+/// 'Descartado'/'Cancelado' — este último de cancelarConteoFisico,
+/// Stock.js:2097-2141).
+enum EstadoConteo {
+  RESUELTO
+  PENDIENTE
+  DESCARTADO
+  CANCELADO
+}
+
+/// Reemplaza HOJA_SECCIONES (Stock.js:1316-1415) — antes una hoja POR
+/// CONTENEDOR (cada sucursal ya tenía sus propias Secciones porque cada
+/// una era un spreadsheet separado); acá sucursalId es una columna real
+/// porque ya no hay un contenedor propio que la implique.
+model Seccion {
+  id                      String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId              String
+  sucursal                Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  nombre                  String
+  activa                  Boolean  @default(true)
+  /// ¿El cierre de cuenta del POS puede descontar de acá AUTOMÁTICAMENTE cuando la sección habitual de un producto no alcanza
+  /// (o el producto no tiene habitual)? Default true: todas sirven de respaldo sin configurar nada (decisión del dueño 2026-09-25:
+  /// hoy no se excluye ninguna, pero queda la herramienta). No afecta a la sección HABITUAL de un producto (la preferencia
+  /// explícita manda) ni a la venta de mostrador (ahí la sección la elige una persona). Ver docs/plan-seccion-habitual-stock-2026-09-25.md.
+  sirveDeRespaldoEnVentas Boolean  @default(true)
+
+  operacionesTransferenciaDestino Operacion[]               @relation("OperacionSeccionDestino")
+  movimientos                     MovimientoStock[]
+  conteosFisicos                  ConteoFisico[]
+  stockMinimos                    StockMinimoProducto[]
+  seccionesHabituales             SeccionHabitualProducto[]
+  traspasosComoSeccionOrigen      TraspasoSucursal[]        @relation("TraspasoSeccionOrigen")
+  traspasosComoSeccionDestino     TraspasoSucursal[]        @relation("TraspasoSeccionDestino")
+
+  /// Único índice funcional case/espacio-insensible por sucursal (mismo
+  /// criterio que Producto/Proveedor/Insumo/... en la porción Catálogo) —
+  /// agregar a mano en la migración generada, ver README.
+  @@unique([sucursalId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// Encabezado de una confirmación de movimiento — agrupa 1+ líneas de
+/// MovimientoStock que se escribieron JUNTAS en un solo confirm() (mismo
+/// alcance que "ID Operación" en Kardex, Movimientos.js:963-974, pero como
+/// FK real en vez de un UUID de texto compartido a ciegas entre filas).
+///
+/// GRANULARIDAD (importante, difiere por proceso — ver el comentario de
+/// confirmarRegistrarMovimientos vs. confirmarRegistrarVenta_ConLock_ en
+/// Movimientos.js): Compra/Ajuste/Consumo/Producción/Merma/Transferencia/
+/// Devolución×2/Control → UNA Operacion cubre TODO el lote confirmado en
+/// una sola llamada (varios productos). Venta → una Operacion POR CADA
+/// venta individual del lote (cada línea vendida es su propio evento
+/// económico, con su propia Liquidación de consignación si aplica) — un
+/// solo confirmarRegistrarVenta con 3 ítems crea 3 filas Operacion, no 1.
+///
+/// `proceso` acá es el INICIADO por el usuario (lo que gatea el permiso,
+/// ACCION_POR_PROCESO_) — NO necesariamente el de cada línea: una
+/// Operacion de PRODUCCION o VENTA genera líneas hijas con OTRO proceso en
+/// MovimientoStock.proceso (CONSUMO por cada MP de receta, y
+/// LIQUIDACION_CONSIGNACION si esa MP es consignación) — ver el docstring
+/// de MovimientoStock.proceso.
+model Operacion {
+  id         String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  proceso    Proceso
+  fecha      DateTime
+
+  /// Compra/DevolucionProveedor (a quién se compra/devuelve) o Venta ("a
+  /// quién se vende" — Movimientos.js:1769 usa 'Mostrador' como texto
+  /// libre por defecto cuando no hay proveedor real; se modela como
+  /// nullable en vez de forzar un Proveedor "Mostrador" ficticio).
+  proveedorId String?
+  proveedor   Proveedor? @relation(fields: [empresaId, proveedorId], references: [empresaId, id])
+
+  /// Cliente con descuento de una venta de mesa (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 3/4): NO reusa
+  /// `proveedorId` a propósito — ese campo ya documentado como "a quién se vende" nunca se usó, y mezclaría el catálogo de
+  /// proveedores con el de clientes. FK RESTRICT: una Operacion vieja sigue apuntando a su Cliente aunque se lo desactive.
+  /// SOLO mesas en v1 (D6): `registrarVenta`, la venta de mostrador, todavía no pasa `clienteId` — el campo ya existe para que
+  /// esa extensión, cuando llegue, no pida otra migración.
+  clienteId  String?
+  cliente    Cliente? @relation(fields: [empresaId, clienteId], references: [empresaId, id])
+
+  /// La `PromoCuenta` de la que esta Operacion VENTA es un COMPONENTE (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 7):
+  /// hay UNA Operacion por componente neto, igual que hoy hay una por línea. `null` = una venta suelta de siempre (o
+  /// cualquier proceso que no sea VENTA de mesa). FK RESTRICT: una Operacion vieja sigue apuntando a su promo aunque se
+  /// anule (D4: `anularVenta` anula TODAS las Operaciones hermanas de la misma `PromoCuenta`, nunca las borra). SOLO mesas en
+  /// v1 (D7, mismo criterio que `clienteId`): `registrarVenta` (mostrador) nunca lo pasa.
+  promoCuentaId String?
+  promoCuenta   PromoCuenta? @relation(fields: [empresaId, promoCuentaId], references: [empresaId, id])
+
+  /// Índice único parcial "Operacion_factura_unica_vigente_key" (sucursalId, proveedorId, nroFactura) WHERE
+  /// nroFactura IS NOT NULL AND proceso = 'COMPRA' AND anuladaEn IS NULL — definido FUERA de este schema (Prisma
+  /// no declara índices parciales, ver prisma/migrations/20260921230000_factura_unica_vigente/ y el precedente
+  /// 20260915034450_indices_manuales/). Arbitra la condición de carrera de factura de compra duplicada bajo
+  /// concurrencia real — el chequeo de aplicación (registrarMovimiento) es solo el camino rápido para el caso
+  /// secuencial. Solo cuentan las compras VIGENTES: una compra anulada deja libre su N.º de factura. NO cubre:
+  /// compras sin proveedor, ni diferencias de formato/mayúsculas en el número.
+  nroFactura String?
+
+  /// Solo Transferencia (Movimientos.js:425-431, TRANSICIONES.TRANSFERENCIA
+  /// no tiene exigeSeccion porque el origen YA es un campo obligatorio
+  /// propio, distinto del "elegí sección" de los procesos que reparten
+  /// stock existente). El origen de cada línea ya sale de
+  /// MovimientoStock.seccionId — este campo es solo para no perder cuál
+  /// era el destino elegido a nivel de la operación completa.
+  seccionDestinoId String?
+  seccionDestino   Seccion? @relation("OperacionSeccionDestino", fields: [empresaId, seccionDestinoId], references: [empresaId, id])
+
+  /// Solo MERMA / CONSUMO respectivamente — null para cualquier otro
+  /// proceso, validado en la capa de aplicación (mismo criterio
+  /// no-bloqueante-por-constraint que el resto del proyecto usa para
+  /// reglas condicionadas por otro campo, ej. Producto.insumoId). FK al
+  /// catálogo administrable `MotivoMerma`/`DestinoConsumo` (plan "motivos
+  /// de Consumo/Merma como catálogo administrable", 2026-09-23) — antes un
+  /// enum fijo (`motivo`/`destino`, columnas que existieron entre P3 y P8,
+  /// llamadas `motivoLegacy`/`destinoLegacy` en ese tramo transitorio;
+  /// dropeadas en la migración contract P8 junto con los enums `*Legacy`).
+  motivoId     String?
+  motivo       MotivoMerma?    @relation(fields: [empresaId, motivoId], references: [empresaId, id])
+  destinoId    String?
+  destino      DestinoConsumo? @relation(fields: [empresaId, destinoId], references: [empresaId, id])
+  /// Texto libre adicional (ctx.detalleLibre, Movimientos.js:767) — en
+  /// Apps Script terminaba plegado dentro de "Movimiento detalle" de cada
+  /// fila; acá queda en su propia columna, una vez por operación.
+  detalleLibre String?
+
+  /// NUEVO respecto a Apps Script: no existía ninguna columna "Usuario" en
+  /// Kardex (Session.getActiveUser() del script deployado no se guardaba
+  /// en ningún lado salvo en ConteosFisicos) — acá SÍ hay autenticación
+  /// real por persona (Auth.js, porción Core), así que se agrega a
+  /// propósito: saber quién registró cada operación es valioso y ahora es
+  /// gratis, no es una expansión de alcance de esta porción.
+  usuarioId String
+  usuario   User   @relation(fields: [usuarioId], references: [id])
+
+  creadoEn DateTime @default(now())
+
+  /// VENTA (anularVenta) y COMPRA (anularCompra) — cuándo (y quién) la anuló. null = vigente.
+  /// Mismo criterio append-only que ConteoFisico/cancelarConteoFisico:
+  /// nunca se edita/borra esta fila ni sus MovimientoStock originales, el
+  /// stock se corrige con una Operacion AJUSTE nueva aparte — esto solo
+  /// marca la venta como anulada, para no poder anularla dos veces y para
+  /// que Trazabilidad no la muestre como vigente.
+  anuladaEn    DateTime?
+  anuladaPorId String?
+  anuladaPor   User?     @relation("OperacionAnuladaPor", fields: [anuladaPorId], references: [id])
+
+  /// I3 — idempotencia (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md
+  /// §2, §8, §11): UUID generado por el cliente al abrir el formulario,
+  /// reenviado tal cual en reintentos del mismo intento de envío.
+  /// Nulleable durante el rollout gradual (§9.3) — una Operacion sin
+  /// clave simplemente no participa del mecanismo de deduplicación.
+  /// Validada en la capa de aplicación como UUID (§11.1) antes de llegar
+  /// acá. Único GLOBAL (no compuesto con sucursalId/proceso — §2.2,
+  /// corregido tras revisión: el compuesto dejaba reutilizar la misma
+  /// clave entre procesos distintos sin ningún choque).
+  claveIdempotencia String?
+
+  /// I3 — hash SHA-256 del payload validado que efectivamente se
+  /// procesó (incluye sucursalId y un identificador de proceso — §11.2),
+  /// para distinguir "mismo intento reenviado" de "clave reutilizada con
+  /// datos distintos" (§3) sin comparar objetos JSON campo por campo.
+  payloadHash String?
+
+  /// I3 — Opción B (§4.5): mensaje de éxito ya formateado, persistido
+  /// tal cual se devolvió al cliente la primera vez. Se relee sin
+  /// reprocesar nada ante un duplicado — evita reconstruir lógica
+  /// condicional de negocio (avisoConversion, liquidación de
+  /// consignación) en un segundo lugar del código.
+  resultadoMensaje String?
+
+  movimientos MovimientoStock[]
+  /// POS: ítems de cuenta cuya venta es esta Operación (los enlaza `cerrarCuenta`, src/server/actions/pos/cuenta.ts).
+  cuentaItems CuentaItem[]
+
+  @@unique([claveIdempotencia])
+  @@index([sucursalId, proceso, fecha])
+  @@index([promoCuentaId])
+  @@unique([empresaId, id])
+}
+
+/// Reemplaza Kardex/"Hoja 7" (Core.js:601, CONFIG.SHEETS.HISTORIAL) — el
+/// libro mayor real. 1 fila = 1 movimiento de stock, YA CON EL SIGNO
+/// APLICADO en `cantidad`.
+///
+/// DECISIÓN CLAVE (fuente única del signo, de una vez): en Apps Script
+/// `cantidad` se guardaba SIN signo para los procesos de signo fijo
+/// (Compra/Consumo/Venta/Merma/...) y el signo se aplicaba recién AL LEER
+/// (signoDeProceso_() en acumularMovimientoEnSaldoMap_, Stock.js:214-231)
+/// — eso es EXACTAMENTE lo que causó el bug de MERMA en v2.1.0
+/// (Movimientos.js:433-455: se agregó MERMA a TRANSICIONES con signoStock
+/// -1, pero la lista de signos vivía duplicada aparte y nadie la
+/// actualizó — una merma se registraba pero no descontaba nada). Acá NO
+/// hay una segunda fuente que mantener sincronizada: `cantidad` se graba
+/// YA multiplicada por el signo del proceso en el momento de escribir (ver
+/// el `Proceso`/TRANSICIONES-equivalente en código, a implementar en
+/// src/core/movimientos/), así que el saldo de cualquier producto/sección/
+/// lote es SIEMPRE `SUM(cantidad)` — sin excepción por proceso, sin tabla
+/// paralela, sin lookup al leer.
+///
+/// `proceso` es el efecto REAL de esta línea puntual — para la mayoría de
+/// las Operacion es igual a Operacion.proceso, pero DIFIERE en las dos que
+/// generan hijos (Movimientos.js: generaConsumoDeReceta): una Operacion
+/// PRODUCCION escribe 1 línea proceso=PRODUCCION (+lo producido) y N
+/// líneas proceso=CONSUMO (−cada MP de receta, con LIQUIDACION_CONSIGNACION
+/// extra si esa MP es consignación); una Operacion VENTA escribe 1 línea
+/// proceso=VENTA (el PV vendido) + N líneas proceso=CONSUMO + Liquidación
+/// si aplica. Ver signoDeProceso_/esDeltaConSignoLibre_ (Movimientos.js:
+/// 452-485) para qué procesos son signo fijo vs. delta con signo libre —
+/// para AJUSTE/CONTROL/TRANSFERENCIA el valor YA viene con el signo que
+/// cargó/calculó el usuario, ninguna multiplicación adicional al escribir.
+///
+/// Kardex es APPEND-ONLY, siempre — ni renombrar un producto (ver
+/// Producto.codigo como FK real de abajo, ya no hace falta reescribir
+/// filas viejas como renombrarProductoEnHistorial_) ni cancelar un conteo
+/// (Stock.js:2077-2141) editan una fila existente: cancelar escribe una
+/// fila de REVERSIÓN nueva con el mismo ConteoFisico enlazado.
+model MovimientoStock {
+  id          String    @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  operacionId String
+  operacion   Operacion @relation(fields: [empresaId, operacionId], references: [empresaId, id])
+
+  productoId String
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  seccionId  String
+  seccion    Seccion  @relation(fields: [empresaId, seccionId], references: [empresaId, id])
+  proceso    Proceso
+
+  /// Ya con signo — ver el docstring del modelo. + entra, − sale.
+  cantidad        Decimal   @db.Decimal(14, 4)
+  /// FEFO simplificado (Stock.js:403-425, IDEA-conteo-fisico-por-lote.md):
+  /// a propósito NO hay una entidad "Lote" separada ni tracking FIFO real
+  /// — es la misma simplificación deliberada de Apps Script, portada tal
+  /// cual (una salida sin lote elegido asume el que vence antes; si eso
+  /// queda mal, se corrige con Conteo Físico/Reclasificación).
+  loteVencimiento DateTime? @db.Date
+
+  /// Texto calculado por línea (conversión de unidad, peso real, etc. —
+  /// Movimientos.js:766-812) — el CÓMO, no el POR QUÉ (eso es
+  /// Operacion.motivo/destino/detalleLibre).
+  detalle String
+
+  /// Precio Total = importe real de ESTA línea (Compra: lo que dice la
+  /// factura para esa línea; Venta: cantidadVendida × precioVenta vigente
+  /// al momento — Movimientos.js:1287). 0 para líneas que no representan
+  /// un hecho financiero propio (Consumo, Transferencia, Ajuste/Control).
+  precioTotal          Decimal @default(0) @db.Decimal(14, 2)
+  /// Precio por unidad de STOCK — permite comparar compras en
+  /// presentaciones distintas del mismo producto (mismo criterio que
+  /// ProveedorPorProducto.precioPorUnidadStock, porción Catálogo).
+  precioPorUnidadStock Decimal @default(0) @db.Decimal(14, 4)
+
+  /// Solo proceso VENTA, desde 2026-09-17: costo de la receta del PV
+  /// (calcularCostosYMargenes, BOM recursivo) resuelto EN EL MOMENTO de
+  /// vender — no se recalcula después. Existe para que Reportes → Período
+  /// pueda comparar cada venta contra el costo que regía ESE día, en vez de
+  /// contra el costo de reposición de HOY (ver docs/comparativa-ux-erpnext-
+  /// dolibarr.md §7.3/§9, "margen nominal" vs "margen real"). `null` en dos
+  /// casos: ventas cargadas sin este dato (anteriores al campo, o cargadas por fuera de la aplicación), o el costeo estaba
+  /// incompleto en el momento de vender (mismo criterio que costoIncompleto
+  /// en costos.ts — no se inventa un número parcial). La COLUMNA se queda en null: el reporte de Período reconstruye ese costo
+  /// aparte, con el historial de compras (ver src/core/reportes/costo-historico.ts), y lo rotula «reconstruido».
+  ///
+  /// Sustitución de insumos (docs/plan-sustitucion-insumos-receta-2026-09-26.md, D7): cuando una fila CONSUMO salió de un insumo
+  /// SUSTITUTO (ver `sustituyeAProductoId` abajo), este costo sigue siendo el TEÓRICO de la receta, anclado al producto principal —
+  /// mismo criterio que un consumo de un simple hermano del mismo Insumo. Si el sustituto cuesta bastante distinto del principal
+  /// (a diferencia de los hermanos, que suelen parecerse), el margen de Reportes → Período puede quedar sub/sobreestimado en esas
+  /// ventas puntuales; el costo REAL del producto efectivamente consumido ya lo usa `src/core/reportes/perdidas.ts` por separado.
+  /// Un reporte de "costo real vs. teórico por sustitución" queda como seguimiento posible, apoyado en `sustituyeAProductoId`.
+  costoUnitarioVenta Decimal? @db.Decimal(14, 4)
+
+  /// Precio de LISTA de esta línea, SOLO cuando difiere de lo cobrado (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 3):
+  /// se llena únicamente en la fila proceso VENTA de una venta con descuento de cliente (`precioPorUnidadStock` de esa misma fila
+  /// queda con lo COBRADO, como siempre). `null` = lista y cobrado coinciden (sin descuento, o cualquier proceso que no sea VENTA) —
+  /// no se llena redundante con el mismo valor. Existe para poder medir cuánto se "regaló" (precio de lista − cobrado) sin perder
+  /// ninguno de los dos números: `precioTotal`/`precioPorUnidadStock` de esta misma fila son el importe/precio COBRADO real, la
+  /// fuente de los reportes de dinero de siempre (Período, Costos y márgenes) — esta columna es SOLO para el reporte nuevo de
+  /// descuentos por cliente (`/reportes/descuentos-clientes`), que la resta contra el costo real (`src/core/reportes/margen-real.ts`).
+  precioListaUnitario Decimal? @db.Decimal(14, 2)
+
+  /// Arrastre de redondeo por fracción de venta (Task #27, docs/plan-redondeo-consumo-fraccionado-2026-09-26.md): solo en filas
+  /// CONSUMO de una venta (`registrar-venta.ts`, `cargarDeudaDeRedondeo`/`arrastre-redondeo.ts`) y en su reversión (`anularVenta`) —
+  /// `null` en todo lo demás, y también en un CONSUMO cuya cantidad exacta ya coincidía con lo escrito (sin ruido que guardar).
+  ///
+  /// EL PROBLEMA: redondear cada parte de consumo de CADA venta por separado (a los decimales de `Unidad.decimales` del insumo) sin
+  /// memoria entre ventas hace que el Kardex se aleje del consumo real cuanto más fraccionada es la venta — con una unidad de 0
+  /// decimales, dos ventas de 0,5 escribían 1 + 1 = 2 en vez de 1.
+  ///
+  /// LA FÓRMULA: `cantidadExacta` es la magnitud EXACTA (con el mismo signo que `cantidad`) de la parte que esta fila representa,
+  /// ANTES de redondear — nunca la acumulada. La deuda de un producto en una sucursal, en cualquier momento, es
+  /// `D = Σcantidad − ΣcantidadExacta` (sumando solo las filas CONSUMO con `cantidadExacta` no nulo — las nulas aportan 0 por
+  /// definición, ya que ahí `cantidad` YA es la magnitud exacta). Antes de escribir una parte nueva, se redondea `D + exacto` (no
+  /// `exacto` a secas) a los decimales del insumo, y la deuda pasa a ser `D + exacto − escrito` — así el Kardex sigue siendo enteros
+  /// exactos en su unidad (ninguna fila pierde ni gana precisión), pero el TOTAL de la sucursal converge al consumo real en vez de
+  /// redondear cada parte de forma independiente. El alcance de la deuda es (sucursal, producto consumido): puede cruzar secciones y
+  /// lotes (una sección puede escribir el sobrante que "le tocó" a otra), nunca más de ±1 unidad de la unidad de stock del insumo —
+  /// corregible con Conteo Físico, igual que cualquier redondeo de reparto. Columna aditiva, sin backfill: arranca en `null` para
+  /// todo lo existente, así que la deuda de cualquier producto antes de este cambio es 0 (arreglo solo hacia adelante).
+  cantidadExacta Decimal? @db.Decimal(20, 8)
+
+  /// Solo si esta línea la generó un ajuste de Conteo Físico (incluida su
+  /// eventual reversión al cancelar) — reemplaza la correlación por texto
+  /// "idOperacion === idConteo" (Stock.js:2129, Kardex e HOJA_CONTEOS_FISICOS
+  /// comparten el mismo UUID a ciegas) por una FK real.
+  conteoFisicoId String?
+  conteoFisico   ConteoFisico? @relation(fields: [empresaId, conteoFisicoId], references: [empresaId, id])
+
+  /// Solo si esta línea la generó un paso de un Traspaso entre sucursales
+  /// (salida/entrada/reingreso) — mismo criterio que `conteoFisicoId`: FK
+  /// real en vez de comparar el "ID Operación" de texto contra el ID del
+  /// traspaso (Sucursales.js pasaba `idTraspaso` como `idOperacion` a
+  /// ciegas, ver escribirMovimientoTransferenciaSucursal_).
+  traspasoSucursalId String?
+  traspasoSucursal   TraspasoSucursal? @relation(fields: [empresaId, traspasoSucursalId], references: [empresaId, id])
+
+  /// Solo filas CONSUMO de una venta cuyo consumo salió de un Insumo SUSTITUTO declarado en la línea de receta: el producto
+  /// de la receta al que reemplazó. null en todo lo demás (incluido un consumo de un hermano del mismo Insumo).
+  sustituyeAProductoId String?
+  sustituyeAProducto   Producto? @relation("MovimientoSustituyeA", fields: [empresaId, sustituyeAProductoId], references: [empresaId, id])
+
+  creadoEn DateTime @default(now())
+
+  /// Clave de lectura real: "¿cuánto hay de este producto, en esta
+  /// sección, de este lote?" — SUM(cantidad) filtrando por estos 3 campos.
+  /// A diferencia de Apps Script (HOJA_STOCK, una hoja materializada
+  /// mantenida a mano por aplicarMovimientosAStockIncremental_ porque
+  /// rescanear TODO Kardex en cada venta se volvía proporcional a la
+  /// historia completa de la hostería, Stock.js:268-294), acá Postgres
+  /// puede sumar sobre este índice en tiempo real sin necesidad de
+  /// mantener una segunda tabla a mano — si el volumen real lo justifica
+  /// más adelante, una vista materializada (REFRESH bajo demanda, o
+  /// mantenida por trigger) es una optimización de la porción Stock, no
+  /// una tabla que Movimientos tenga que duplicar y sincronizar él mismo.
+  @@index([productoId, seccionId, loteVencimiento])
+  @@index([operacionId])
+  @@unique([empresaId, id])
+}
+
+/// Reemplaza HOJA_CONTEOS_FISICOS/"ConteosFisicos" (Stock.js:1043-1141) —
+/// la bitácora de auditoría de cada conteo (separada del Kardex: un
+/// conteo con acción FALTA_MOVIMIENTO o DESCARTAR no mueve stock, pero
+/// igual queda registrado que se contó).
+model ConteoFisico {
+  id         String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  fecha      DateTime
+
+  productoId      String
+  producto        Producto  @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  seccionId       String
+  seccion         Seccion   @relation(fields: [empresaId, seccionId], references: [empresaId, id])
+  /// El LOTE contado (puede quedar vacío: "total, sin lote puntual" — ver
+  /// Stock.js:1094-1103), no la fecha del conteo (esa es `fecha` arriba).
+  loteVencimiento DateTime? @db.Date
+
+  saldoSistema Decimal @db.Decimal(14, 4)
+  conteoReal   Decimal @db.Decimal(14, 4)
+  /// = conteoReal − saldoSistema, guardado (no recalculado) porque es
+  /// histórico: referencia el saldo del momento del conteo, no el actual.
+  diferencia   Decimal @db.Decimal(14, 4)
+
+  accion  AccionConteo
+  estado  EstadoConteo
+  detalle String?
+
+  usuarioId String
+  usuario   User   @relation(fields: [usuarioId], references: [id])
+
+  creadoEn DateTime @default(now())
+
+  /// 0, 1 (ajuste original) o 2 (ajuste + reversión al cancelar) líneas de
+  /// Kardex generadas por este conteo — ver el docstring de
+  /// MovimientoStock.conteoFisicoId.
+  movimientos MovimientoStock[]
+
+  @@index([sucursalId, productoId, seccionId])
+  @@unique([empresaId, id])
+}
+
+/// Reemplaza HOJA_PRECIO_LOCAL/"Precio Local" (Catalogo.js:2043-2077) —
+/// HUECO REAL encontrado investigando Venta (armarPreviaVentaDesdeItems_,
+/// Movimientos.js:1751-1759, lee precioVenta YA resuelto con override
+/// local vía resolverPrecioVenta_): la porción Catálogo nunca modeló esto
+/// porque en Apps Script vive en la hoja LOCAL de cada hostería (no en
+/// HOJAS_CATALOGO_CENTRAL), no porque no hiciera falta — sin esto, Venta
+/// no puede calcular el precio real cobrado por sucursal. Se agrega acá,
+/// no en Catálogo, porque el único consumidor funcional es Venta.
+/// `precio_local` ya está seedeado en ACCIONES (acciones.ts) desde Core,
+/// anticipando esta porción.
+model PrecioLocalProducto {
+  id         String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  productoId String
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  precio     Decimal  @db.Decimal(14, 2)
+  /// Local si está cargado Y habilitado; si no, fallback a
+  /// Producto.precioVenta (mismo criterio que resolverPrecioVenta_,
+  /// Catalogo.js:2072-2077) — no se borra la fila al deshabilitar, mismo
+  /// patrón que el resto del catálogo (activo/habilitado, nunca DELETE).
+  habilitado Boolean  @default(true)
+
+  @@unique([sucursalId, productoId])
+  @@unique([empresaId, id])
+}
+
+/// Rendimiento calibrado POR SUCURSAL de UNA línea de receta (override liviano, mismo patrón que PrecioLocalProducto).
+/// La receta (ingredientes/pasos/unidades) sigue siendo una sola, del Catálogo Central; esto solo guarda la cantidad y/o
+/// la merma que ESTA sucursal calibró. Sin fila, o con un campo en null → se usa el valor central de ese campo
+/// (rendimientoEfectivo, src/core/catalogo/rendimiento-local.ts). guardarReceta arrastra las filas a cada versión nueva
+/// (salvo cambio de unidad o ingrediente quitado, que se descartan y se auditan).
+model RendimientoLocalIngrediente {
+  id                  String            @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  recetaIngredienteId String
+  recetaIngrediente   RecetaIngrediente @relation(fields: [empresaId, recetaIngredienteId], references: [empresaId, id], onDelete: Cascade)
+  sucursalId          String
+  sucursal            Sucursal          @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  cantidad            Decimal?          @db.Decimal(14, 4)
+  mermaPorcentaje     Decimal?          @db.Decimal(6, 2)
+  actualizadoEn       DateTime          @updatedAt
+
+  @@unique([recetaIngredienteId, sucursalId])
+  @@index([sucursalId])
+  @@unique([empresaId, id])
+}
+
+/// Cada cuánto toca volver a contar este producto en esta sucursal.
+/// `0` = desactivado, mismo criterio que Odoo `cyclic_inventory_frequency`
+/// (addons/stock/models/stock_location.py, rama 17.0 — el único de los
+/// sistemas de referencia que modela una agenda de conteo; ERPNext,
+/// Dolibarr y Grocy: NO ENCONTRADO). Por sucursal × producto, no por
+/// sección: una agenda de conteo es una política operativa de la sucursal,
+/// no de una sección puntual (a diferencia de StockMinimoProducto, que sí
+/// es por sección — acá esa granularidad no se necesita).
+/// La "próxima fecha" NO se persiste — se deriva de ConteoFisico.fecha más
+/// reciente + frecuenciaDias (mismo criterio que el resto del sistema: no
+/// materializar lo que se puede calcular; ver el docstring de
+/// StockMinimoProducto sobre por qué las vistas de stock no son tablas).
+/// Fila ausente = sin agenda, mismo criterio de "no hay fila" que
+/// PrecioLocalProducto/StockMinimoProducto (docs/plan-rendimiento-recetas-
+/// 2026-09-22.md §E, sub-plan S — decisión 2 de §3, conteos físicos
+/// periódicos, comprometida por el dueño 2026-09-22).
+model FrecuenciaConteoProducto {
+  id             String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId     String
+  sucursal       Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  productoId     String
+  producto       Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  frecuenciaDias Int
+
+  @@unique([sucursalId, productoId])
+  @@unique([empresaId, id])
+}
+
+// ===================================================================
+// STOCK: mínimos por sucursal/sección y la primitiva de Reclasificación.
+//
+// A diferencia de Apps Script (HOJA_STOCK/StockConsolidado/StockFamilia/
+// AlertasStock — hojas MATERIALIZADAS, recalculadas enteras en cada
+// recalcularX(), porque rescanear Kardex en cada lectura era proporcional
+// a toda la historia acumulada), acá esas 3 vistas NO son tablas: son
+// consultas en vivo sobre MovimientoStock/ConteoFisico (ver
+// src/core/stock/*.ts) — el mismo argumento que ya justificó no
+// materializar el saldo simple en la porción Movimientos (ver el
+// docstring de MovimientoStock) aplica con más razón acá: Postgres agrega
+// en tiempo real sobre índices reales, no hay necesidad de una segunda
+// copia de los datos que se pueda desincronizar del Kardex. Lo único que
+// esta porción agrega de verdad como TABLA es la configuración de Stock
+// Mínimo (dato que el sistema no puede derivar de ningún otro lado).
+// ===================================================================
+
+/// Reemplaza HOJA_STOCK_MINIMO/"Stock Minimo" (Catalogo.js:1922-2019) —
+/// mismo patrón que PrecioLocalProducto: vive local a cada sucursal (no es
+/// Catálogo Central). `seccionId` nulo = fila "global" de esa sucursal
+/// (aplica salvo que haya una fila más específica para esa sección) —
+/// mismo criterio de resolución que resolverStockMinimo_ (gana la fila de
+/// la sección exacta si existe, si no la global). El índice único parcial
+/// para "como máximo una fila global por sucursal+producto" se agrega a
+/// mano en la migración (mismo criterio que CapacidadSucursal.sucursalId
+/// NULL) — ver README.
+model StockMinimoProducto {
+  id         String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  productoId String
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  seccionId  String?
+  seccion    Seccion? @relation(fields: [empresaId, seccionId], references: [empresaId, id])
+  minimo     Decimal  @db.Decimal(14, 4)
+
+  @@unique([productoId, seccionId])
+  @@unique([empresaId, id])
+}
+
+/// Sección HABITUAL de la que sale un producto de venta (PV) en una sucursal — `Seccion` de STOCK (Barra/Cocina/Depósito),
+/// NO `SeccionCarta` (categoría del menú). Fila ausente = sin preferencia: el cierre del POS resuelve solo, por vencimiento.
+/// Es una preferencia, no una restricción: si ahí no alcanza, se busca en las secciones marcadas como respaldo
+/// (docs/plan-seccion-habitual-stock-2026-09-25.md). Se usa aunque la sección no sirva de respaldo (Seccion.sirveDeRespaldoEnVentas).
+model SeccionHabitualProducto {
+  id         String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  productoId String
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  seccionId  String
+  seccion    Seccion  @relation(fields: [empresaId, seccionId], references: [empresaId, id])
+
+  @@unique([sucursalId, productoId])
+  @@unique([empresaId, id])
+}
+
+// ===================================================================
+// REPORTES: el resto de la porción (período, costos, pérdidas,
+// devoluciones, vencimientos, diferencias de ajuste, salud por producto,
+// trazabilidad, historial por producto, etc.) es 100% lectura en vivo
+// sobre Operacion/MovimientoStock/ConteoFisico/RecetaVersion ya existentes
+// — no agrega ninguna tabla nueva (ver src/core/reportes/*.ts). Promociones
+// y Combos es la única excepción real: es un catálogo LOCAL (por sucursal,
+// no Catálogo Central — la misma "Menú ejecutivo" puede ser promoción en
+// una sucursal y plato normal en otra, Catalogo.js:2170-2173) que el
+// sistema no puede derivar de ningún otro dato.
+// ===================================================================
+
+/// Reemplaza HOJA_PROMOCIONES/"Promociones" (Catalogo.js:2182-2251) — qué
+/// PV cuenta como Promoción/Combo para obtenerReportePromociones_
+/// (src/core/reportes/promociones.ts). Fila ausente = no marcado (mismo
+/// criterio que "no aparece en el mapa" de Apps Script); no se borra al
+/// desmarcar, se pone `activa=false` (mismo patrón que el resto del
+/// catálogo).
+model PromocionProducto {
+  id         String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  productoId String
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  activa     Boolean  @default(true)
+
+  @@unique([sucursalId, productoId])
+  @@unique([empresaId, id])
+}
+
+// ===================================================================
+// TRASPASOS ENTRE SUCURSALES (Sucursales.js) — última porción funcional.
+//
+// DIFERENCIA CLAVE con Apps Script: ahí cada sucursal ("hostería") es un
+// proyecto Apps Script + planilla separado, sin ningún canal de ejecución
+// directo entre proyectos — por eso `TraspasosSucursales` es una tabla del
+// Catálogo Central que cada lado lee/escribe de forma asincrónica (una
+// bandeja), y hace falta un registro aparte (`Hosterias`) + una hoja
+// Config local (`NombreHosteria`) solo para que cada proyecto sepa "quién
+// es". Acá, motor2 es una única app Next.js sobre una única base
+// Postgres — todas las sucursales ya son filas reales de `Sucursal`
+// (Core), visibles a cualquier request autenticado, y un usuario ya sabe
+// "quién es" vía su `ContextoUsuario.sucursalId` (la sucursal ACTIVA de su
+// sesión, misma noción que "esta hostería" en Apps Script). No hace falta
+// portar ni el registro de hosterías ni el nombre configurable — el WORKFLOW
+// de aprobación (que SÍ importa: el stock no se teletransporta, alguien
+// tiene que confirmar que lo recibió) es lo único que se porta.
+// ===================================================================
+
+/// PULL (el Destino pide) vs. PUSH (el Origen manda directo) — decide qué
+/// lado creó la fila y en qué estado arranca (Sucursales.js:19-25).
+enum IniciadoPorTraspaso {
+  ORIGEN
+  DESTINO
+}
+
+/// Ciclo completo (Sucursales.js:19-25, comentario de cabecera):
+/// PULL: SOLICITADA -(Origen aprueba)-> ENVIADA -(Destino acepta)-> ACEPTADA
+///                   -(Origen rechaza)-> RECHAZADA_ORIGEN (fin, nunca tocó stock)
+/// PUSH: ENVIADA (ya con el stock afuera al crearse) -(Destino acepta)-> ACEPTADA
+///                                                    -(Destino rechaza)-> RECHAZADA_DESTINO -(Origen confirma reingreso)-> CERRADA
+enum EstadoTraspaso {
+  SOLICITADA
+  ENVIADA
+  ACEPTADA
+  RECHAZADA_ORIGEN
+  RECHAZADA_DESTINO
+  CERRADA
+  /// Quien creó una solicitud PULL (SOLICITADA) la cancela ella misma,
+  /// antes de que Origen decida — nunca tocó stock, así que no hace falta
+  /// ningún reingreso. Distinto de RECHAZADA_ORIGEN (decisión de Origen).
+  CANCELADA
+}
+
+/// Reemplaza HOJA_TRASPASOS_SUCURSALES/"TraspasosSucursales"
+/// (Sucursales.js:175-193) — mismas 22 columnas, ahora con FKs reales en
+/// vez de texto (nombre de sucursal, código de producto) y sin la
+/// redundancia "Codigo"/"Unidad" (ya resuelven vía `producto`/
+/// `producto.unidadStock`). `seccionOrigenId`/`seccionDestinoId` quedan
+/// null hasta que ese lado decide (recién Origen sabe de qué Sección sale
+/// al aprobar/enviar; recién Destino sabe a cuál entra al aceptar).
+model TraspasoSucursal {
+  id       String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  creadoEn DateTime @default(now())
+
+  origenSucursalId  String
+  origenSucursal    Sucursal @relation("TraspasoOrigen", fields: [empresaId, origenSucursalId], references: [empresaId, id])
+  destinoSucursalId String
+  destinoSucursal   Sucursal @relation("TraspasoDestino", fields: [empresaId, destinoSucursalId], references: [empresaId, id])
+
+  productoId String
+  producto   Producto @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  cantidad   Decimal  @db.Decimal(14, 4)
+
+  seccionOrigenId  String?
+  seccionOrigen    Seccion? @relation("TraspasoSeccionOrigen", fields: [empresaId, seccionOrigenId], references: [empresaId, id])
+  seccionDestinoId String?
+  seccionDestino   Seccion? @relation("TraspasoSeccionDestino", fields: [empresaId, seccionDestinoId], references: [empresaId, id])
+
+  iniciadoPor IniciadoPorTraspaso
+  estado      EstadoTraspaso      @default(SOLICITADA)
+
+  creadoPorId String
+  creadoPor   User    @relation("TraspasoCreadoPor", fields: [creadoPorId], references: [id])
+  detalle     String?
+
+  /// Decisión de ORIGEN: aprobar+enviar una Solicitada (PULL), o rechazarla
+  /// (-> RECHAZADA_ORIGEN). En un envío directo (PUSH) esto se llena YA en
+  /// el momento de crear la fila (Origen decidió mandar, no hay nada que
+  /// "aprobar" después).
+  fechaDecisionOrigen DateTime?
+  decididoPorOrigenId String?
+  decididoPorOrigen   User?     @relation("TraspasoDecididoOrigen", fields: [decididoPorOrigenId], references: [id])
+  motivoRechazoOrigen String?
+
+  /// Decisión de DESTINO: aceptar una Enviada (-> ACEPTADA), o rechazarla
+  /// (-> RECHAZADA_DESTINO, todavía no devuelve el stock — eso lo confirma
+  /// Origen aparte, `fechaCierre`/`cerradoPor` abajo).
+  fechaDecisionDestino DateTime?
+  decididoPorDestinoId String?
+  decididoPorDestino   User?     @relation("TraspasoDecididoDestino", fields: [decididoPorDestinoId], references: [id])
+  motivoRechazoDestino String?
+
+  /// Solo se llena si Destino rechazó y Origen confirmó el reingreso a su
+  /// propio stock (-> CERRADA) — el único otro cierre real (ACEPTADA) no
+  /// necesita un campo aparte, el `estado` ya lo dice.
+  fechaCierre  DateTime?
+  cerradoPorId String?
+  cerradoPor   User?     @relation("TraspasoCerradoPor", fields: [cerradoPorId], references: [id])
+
+  movimientos MovimientoStock[]
+
+  @@index([origenSucursalId, estado])
+  @@index([destinoSucursalId, estado])
+  @@unique([empresaId, id])
+}
+
+// ===================================================================
+// ÍNDICES ECONÓMICOS — Método 1 de ajuste de margen (docs/comparativa-
+// ux-erpnext-dolibarr.md §9/§10), retroactivo pero con dependencia
+// externa: a diferencia de MovimientoStock.costoUnitarioVenta (Método 3,
+// congela el costo al vender, solo hacia adelante), esto ajusta el
+// INGRESO histórico a poder adquisitivo de HOY vía el IPC del INDEC, así
+// que sí sirve para ventas ya cargadas.
+// ===================================================================
+
+/// Un valor de índice por mes calendario — se sincroniza desde la API de
+/// series de tiempo del Ministerio de Economía (apis.datos.gob.ar, serie
+/// 101.1_I2NG_2016_M_22, IPC GBA Nivel General base dic-2016), nunca a
+/// mano. Un mes ya guardado NUNCA se reescribe (el IPC de un mes cerrado
+/// no cambia) — sincronizarIPC (core/reportes/indices-economicos.ts) solo
+/// inserta los meses que todavía no están.
+model IndicePrecio {
+  id       String   @id @default(cuid())
+  mes      DateTime @unique @db.Date
+  valor    Decimal  @db.Decimal(12, 4)
+  creadoEn DateTime @default(now())
+}
+
+/// Cotización diaria del dólar oficial (Banco Nación) — para ver precios y valores también en dólares. Una fila por día y fuente:
+/// el día de hoy se ACTUALIZA durante el día (la última del día queda), a diferencia de IndicePrecio, que no se reescribe.
+/// `fuente`: "BNA" (dolarapi.com / argentinadatos.com, oficial del Banco Nación) o "BCRA" (respaldo: solo trae un valor, va en `venta`).
+model CotizacionDolar {
+  id       String   @id @default(cuid())
+  fecha    DateTime @db.Date
+  fuente   String
+  compra   Decimal? @db.Decimal(12, 4)
+  venta    Decimal  @db.Decimal(12, 4)
+  creadoEn DateTime @default(now())
+
+  @@unique([fecha, fuente])
+}
+
+// ===================================================================
+// CARTA: el contenido de la carta pública (restaurant-menu-design la lee
+// por GET /api/carta/[sucursal], de solo lectura — ver
+// docs/plan-carta-catalogo-2026-09-24.md y
+// docs/grounding-unificacion-carta-stock-2026-09-23.md).
+//
+// Nada de acá cambia el catálogo: el QUÉ se vende (Producto PV), el
+// precio (precioVenta / PrecioLocalProducto) y el DÓNDE
+// (DisponibilidadProducto) siguen viniendo de donde ya vienen. Estas
+// tablas solo agregan lo que la carta necesita y el catálogo no tiene:
+// las secciones visuales de la carta, el texto de cara al cliente de cada
+// PV y las promos informativas de cada sucursal.
+//
+// OJO con el nombre: `Seccion` (arriba, MOVIMIENTOS) es la sección de
+// STOCK de una sucursal (depósito, cocina…). `SeccionCarta` es la sección
+// de la carta ("Platos Principales"); en código y UI decir siempre
+// "sección de carta".
+// ===================================================================
+
+/// Sección visual de la carta pública (en restaurant-menu-design,
+/// `MenuCategory`). Global — Catálogo Central, como CategoriaProducto —
+/// por decisión D4 del plan: si hiciera falta un título o imagen distinto
+/// por sucursal, se agrega después un override aditivo.
+model SeccionCarta {
+  id          String                   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  /// "Platos Principales" → MenuCategory.label.
+  nombre      String
+  /// "Del fuego" → titulo_seccion (null = se usa `nombre`).
+  titulo      String?
+  descripcion String?
+  /// Solo `https://` sin espacios, comillas ni paréntesis: la carta la mete
+  /// en `backgroundImage: url(...)` (ver src/core/carta/armar-menu.ts).
+  imagenUrl   String?
+  orden       Int                      @default(0)
+  /// Nunca se borra una sección: se apaga (mismo patrón que el catálogo).
+  activa      Boolean                  @default(true)
+  /// Lo que se ubica en esta sección, DIRECTO (docs/plan-carta-seccion-directa-2026-09-25.md): productos sueltos e ítems agrupados.
+  contenidos  ContenidoCartaProducto[]
+  agrupados   ItemAgrupadoCarta[]
+  promos      PromoCarta[]
+  /// Cupos de promos ARMABLES que eligen de ESTA sección (Task #16) — no es lo mismo que `promos` (la promo en sí, ubicada
+  /// en su PROPIA sección): una promo de la sección "Menús" puede tener un cupo que elige de "Postres".
+  cuposDePromo PromoCartaCupo[]
+
+  @@index([activa, orden])
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// El texto de cara al cliente de un PV. FILA AUSENTE = NO SE MUESTRA
+/// (decisión D3, opt-in — mismo criterio que DisponibilidadProducto): nada
+/// interno aparece en la carta pública sin que alguien lo marque. Por eso
+/// la migración NO hace backfill.
+///
+/// Se ubica DIRECTO en su sección de carta (docs/plan-carta-seccion-directa-2026-09-25.md): la Categoría de producto no
+/// tiene ningún papel en la carta. Sin imagen propia: la carta pública solo dibuja la imagen de la SECCIÓN.
+model ContenidoCartaProducto {
+  id             String        @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  productoId     String
+  producto       Producto      @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  visibleEnCarta Boolean       @default(false)
+  /// Obligatoria si `visibleEnCarta` (lo exige la Server Action, DA2); null solo en un contenido oculto.
+  seccionCartaId String?
+  seccionCarta   SeccionCarta? @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
+  descripcion    String?
+  tags           String[]      @default([])
+  /// ★ "especial" de la carta.
+  especial       Boolean       @default(false)
+  /// Orden dentro de su sección de carta (misma escala que ItemAgrupadoCarta.orden).
+  orden          Int           @default(0)
+  /// Carpeta VISUAL de género del POS (docs/plan-genero-carta-2026-09-26.md, G1/G2), opcional. No implica precio ni
+  /// sustituibilidad (eso es ItemAgrupadoCarta) ni tiene nada que ver con Grupo (Insumo/stock) ni con CategoriaProducto (que no
+  /// ubica nada en la carta): solo visual, solo del POS por ahora (G4, la carta pública `CartaV1` no lo usa).
+  generoCartaId  String?
+  generoCarta    GeneroCarta?  @relation(fields: [empresaId, generoCartaId], references: [empresaId, id])
+  actualizadoEn  DateTime      @updatedAt
+
+  @@index([seccionCartaId])
+  @@index([generoCartaId])
+  @@unique([empresaId, productoId])
+  @@unique([empresaId, id])
+}
+
+/// Ítem AGRUPADO de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md): un solo renglón visible ("Gaseosa 500cc") que
+/// agrupa varios PV reales y distintos (Coca-Cola 500cc, Sprite 500cc…). Lleva lo de cara al cliente (como ContenidoCartaProducto).
+/// SIN precio propio (D5): el precio es el de sus opciones, que tienen que coincidir; si no, la carta muestra el mayor y el
+/// admin avisa. Global (Catálogo Central). Se ubica DIRECTO en su sección de carta, igual que un PV suelto
+/// (docs/plan-carta-seccion-directa-2026-09-25.md). Sin imagen propia. Un solo nivel, sin árbol (no es Grupo). Nunca se borra:
+/// se apaga.
+model ItemAgrupadoCarta {
+  id             String                    @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  nombre         String
+  seccionCartaId String
+  seccionCarta   SeccionCarta              @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
+  descripcion    String?
+  tags           String[]                  @default([])
+  especial       Boolean                   @default(false)
+  /// Orden dentro de su sección de carta (misma escala que ContenidoCartaProducto.orden).
+  orden          Int                       @default(0)
+  activo         Boolean                   @default(true)
+  /// Carpeta VISUAL de género del POS (docs/plan-genero-carta-2026-09-26.md, G1/G2), opcional. Las opciones del ítem agrupado
+  /// heredan este género: nunca tienen uno propio.
+  generoCartaId  String?
+  generoCarta    GeneroCarta?              @relation(fields: [empresaId, generoCartaId], references: [empresaId, id])
+  creadoEn       DateTime                  @default(now())
+  actualizadoEn  DateTime                  @updatedAt
+  opciones       OpcionItemAgrupadoCarta[]
+
+  @@index([seccionCartaId])
+  @@index([activo])
+  @@index([generoCartaId])
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// Carpeta VISUAL del POS que agrupa, dentro de una sección de carta, tanto productos sueltos como ítems agrupados que
+/// comparten género (p. ej. "Cerveza"; docs/plan-genero-carta-2026-09-26.md). NO implica precio ni sustituibilidad (eso lo
+/// sigue manejando ItemAgrupadoCarta, que no se toca); NO es Insumo, ni Grupo (que es de stock/Insumo), ni CategoriaProducto
+/// (que no ubica nada en la carta ni en el POS). GLOBAL (como SeccionCarta, G1): "Cerveza" aparece en cualquier sección donde
+/// tenga contenido pedible, no en una sola. SOLO interno del POS por ahora (G4): la carta pública (`CartaV1`) no lo usa.
+/// Nunca se borra: se apaga (mismo patrón que el resto del catálogo/carta).
+model GeneroCarta {
+  id         String                   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  nombre     String
+  orden      Int                      @default(0)
+  activo     Boolean                  @default(true)
+  creadoEn   DateTime                 @default(now())
+  contenidos ContenidoCartaProducto[]
+  agrupados  ItemAgrupadoCarta[]
+
+  @@index([activo, orden])
+  @@unique([empresaId, nombre])
+  @@unique([empresaId, id])
+}
+
+/// Un PV real dentro de un ítem agrupado. `productoId @unique`: un producto está en a lo sumo UN ítem agrupado (D2). Un producto
+/// agrupado nunca sale suelto en la carta, aunque tenga ContenidoCartaProducto visible (D3). Quitarlo = borrar esta fila (es
+/// solo una referencia).
+model OpcionItemAgrupadoCarta {
+  id                  String            @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  itemAgrupadoCartaId String
+  itemAgrupadoCarta   ItemAgrupadoCarta @relation(fields: [empresaId, itemAgrupadoCartaId], references: [empresaId, id])
+  productoId          String
+  producto            Producto          @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  /// Orden de la opción dentro del ítem agrupado.
+  orden               Int               @default(0)
+  creadoEn            DateTime          @default(now())
+
+  @@index([itemAgrupadoCartaId])
+  @@unique([empresaId, productoId])
+  @@unique([empresaId, id])
+}
+
+/// Promo de una sucursal dentro de una sección de carta (título, descripción, precio). No referencia a `Producto` ni mueve
+/// stock directamente. Distinta de `PromocionProducto` (REPORTES), que marca qué PV cuenta como promoción para el reporte de
+/// promociones.
+///
+/// SIN ningún `PromoCartaCupo` (el caso de siempre, y el único hasta Task #16): sigue siendo puramente INFORMATIVA — el POS la
+/// ignora (`selector-carta.ts`: "las promos de la carta se ignoran") y la composición real de "qué lleva" quedaba fuera del
+/// sistema.
+///
+/// CON uno o más `PromoCartaCupo` (Task #16, docs/plan-promo-combo-2026-09-26.md): pasa a ser ARMABLE — aparece en el POS
+/// (`selector-carta-consulta.ts`, cuarto parámetro) para que el mozo elija, cupo por cupo, con qué se arma cada instancia
+/// (D1: mínimo/máximo por cupo). El precio acá sigue siendo el de la CABECERA congelada al agregarla (`PromoCuenta.precio`);
+/// el de cada componente elegido sale de prorratear ese precio (D3, `prorratearPrecioPromo`, `src/core/pos/promo-combo.ts`).
+/// Sin backfill: una promo existente sigue informativa hasta que alguien le agrega cupos a propósito. El contrato público
+/// `CartaV1` no cambia (la carta pública nunca tuvo ni tiene cupos).
+model PromoCarta {
+  id             String           @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId     String
+  sucursal       Sucursal         @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  seccionCartaId String
+  seccionCarta   SeccionCarta     @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
+  titulo         String
+  descripcion    String?
+  precio         Decimal          @db.Decimal(14, 2)
+  orden          Int              @default(0)
+  activa         Boolean          @default(true)
+  creadoEn       DateTime         @default(now())
+  cupos          PromoCartaCupo[]
+  instancias     PromoCuenta[]
+
+  @@index([sucursalId, activa])
+  @@index([seccionCartaId])
+  @@unique([empresaId, id])
+}
+
+/// UN cupo de una promo ARMABLE (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): "elegí entre `cantidadMinima` y
+/// `cantidadMaxima` de la sección `seccionCarta`". Los elegibles de un cupo NO son una lista propia acá — son los mismos que
+/// el selector del POS ya ofrece en esa sección (D5: sueltos visibles + opciones de ítems agrupados activos, disponibles en
+/// la sucursal, sin "Fuera de carta"), resueltos en el momento por `selector-carta-consulta.ts`/`promo-combo.ts`; así un cupo
+/// nunca queda desincronizado de lo que la carta muestra. Un producto pertenece a lo sumo a UNA `SeccionCarta`
+/// (`ContenidoCartaProducto`/`ItemAgrupadoCarta` son cada uno de una sola sección), así que nunca cae en dos cupos de la
+/// misma promo por accidente — `@@unique([promoCartaId, seccionCartaId])` además impide dos cupos de la MISMA sección en la
+/// misma promo (se edita el que ya existe, no se duplica).
+///
+/// FK RESTRICT en las dos direcciones (mismo criterio que el resto de la carta/catálogo): ni la promo ni la sección se
+/// pueden borrar mientras tengan un cupo — se apagan (`PromoCarta.activa`/`SeccionCarta.activa`), nunca se borran.
+model PromoCartaCupo {
+  id             String       @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  promoCartaId   String
+  promoCarta     PromoCarta   @relation(fields: [empresaId, promoCartaId], references: [empresaId, id])
+  seccionCartaId String
+  seccionCarta   SeccionCarta @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
+  /// D1: mínimo por cupo, 0 por defecto — un cupo puede ser opcional ("elegí hasta 2 postres, o ninguno").
+  cantidadMinima Int          @default(0)
+  cantidadMaxima Int
+  /// Orden de este cupo dentro de la promo (misma escala que `PromoCarta.orden`/`ContenidoCartaProducto.orden`).
+  orden          Int          @default(0)
+
+  @@unique([promoCartaId, seccionCartaId])
+  @@unique([empresaId, id])
+}
+
+/// Registro público de una sucursal en el portal/carta (lo que hoy es una fila de la tab "tenant" de la sheet maestra de
+/// restaurant-menu-design; docs/plan-registro-tenants-2026-09-24.md). FILA AUSENTE = esta sucursal no está en el registro de
+/// motor2 (opt-in; sin backfill). Lo lee GET /api/carta/tenants; se carga en /catalogo/carta/portal. Sin onDelete: RESTRICT
+/// (las sucursales nunca se borran, se desactivan).
+model SucursalPublica {
+  id              String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId      String
+  sucursal        Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  /// tenant_id / URL /carta/<slug>. Se genera UNA vez desde Sucursal.nombre (slugTenant) y se puede editar; nunca se recalcula.
+  slug            String
+  /// null = se usa Sucursal.nombre.
+  etiqueta        String?
+  /// Host desnudo, sin esquema ni puerto (hecho externo, manual). NULL no choca con el @unique en Postgres.
+  dominio         String?  @unique
+  /// Público: subtítulo de la tarjeta del portal (restaurant-menu-design lo dibuja como `notas`).
+  subtituloPortal String?
+  /// Posición en el mapa del portal, % 0-100 (centro). x/y/w van juntos; h opcional (la carta usa 5).
+  posX            Decimal? @db.Decimal(5, 2)
+  posY            Decimal? @db.Decimal(5, 2)
+  posW            Decimal? @db.Decimal(5, 2)
+  posH            Decimal? @db.Decimal(5, 2)
+  orden           Int      @default(0)
+  publicada       Boolean  @default(false)
+  /// true = el menú sale de GET /api/carta/[sucursal] (se emite motor2_sucursal_id); false = de la tab `sheetMenuNombre`.
+  menuDesdeMotor2 Boolean  @default(false)
+  /// TRANSICIÓN: spreadsheet del tenant. Hace falta mientras SiteConfig (tab Config) viva en la sheet — para TODOS los tenants.
+  sheetId         String?
+  /// TRANSICIÓN: tab del menú en esa sheet; solo importa con menuDesdeMotor2 = false.
+  sheetMenuNombre String   @default("Menu")
+  actualizadoEn   DateTime @updatedAt
+  @@unique([empresaId, sucursalId])
+  @@unique([empresaId, slug])
+  @@unique([empresaId, id])
+}
+
+/// Tema visual de la carta pública de una sucursal: lo que hoy es la tab "Config" de la sheet de cada tenant de
+/// restaurant-menu-design (las 66 claves por tenant del catálogo CLAVES_TEMA_V1 de src/core/carta/tema.ts; los precios
+/// son convención fija del sistema y no están acá). FILA AUSENTE = la carta sigue con la tab Config (opt-in; sin backfill).
+/// 1:1 con Sucursal y no con SucursalPublica (docs/plan-tema-carta-2026-09-24.md, D1): el tema se puede preparar antes de
+/// agregar la sucursal al portal, y "Quitar del portal" no lo borra. Sin onDelete: RESTRICT (las sucursales nunca se borran).
+model TemaCartaSucursal {
+  id             String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId     String
+  sucursal       Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  /// clave de SiteConfig → valor ya validado. Claves fuera del catálogo se ignoran al servir.
+  valores        Json     @default("{}")
+  /// false = borrador (se edita y previsualiza en motor2; la carta sigue con la sheet). true = la carta usa este tema.
+  aplicarEnCarta Boolean  @default(false)
+  actualizadoEn  DateTime @updatedAt
+  @@unique([empresaId, sucursalId])
+  @@unique([empresaId, id])
+}
+
+// ===================================================================
+// POS: mapa de mesas del salón (docs/plan-mapa-de-mesas-2026-09-24.md) y toma de pedido (docs/plan-tomar-pedido-2026-09-25.md).
+//
+// Tres entidades: la mesa física, la CUENTA abierta de esa mesa y sus ítems. Sin tabla de comanda/KOT propia:
+// - KOT DERIVADO: «Enviar a cocina» le pone `numeroEnvio = max(numeroEnvio) + 1` de la cuenta a los ítems elegidos que seguían
+//   sin enviar (transacción serializable). El «ticket» del envío n son los ítems con ese número. No cierra la puerta a una tabla
+//   `EnvioCocina` futura (impresión, pantalla de cocina, ruteo por estación).
+// - ANULACIÓN = FILA ESPEJO: un ítem ya enviado NUNCA se edita ni se borra. Anularlo (total o parcial) escribe un CuentaItem
+//   NUEVO con cantidad NEGATIVA, el mismo producto/precio/numeroEnvio, `anulaAItemId` apuntando al original, `motivoAnulacion` y
+//   quién lo hizo (más una fila de RegistroAuditoria). Lo que queda se calcula: restante = cantidad + Σ espejos. Mismo criterio
+//   append-only que anularVenta/anularCompra (líneas inversas).
+// - Un ítem SIN enviar (`numeroEnvio` null) es un borrador: se quita con DELETE físico, sin motivo ni auditoría.
+// Invariantes validadas en la APLICACIÓN (src/server/actions/pos/cuenta.ts), no en la base: espejo ⇒ cantidad < 0, mismo
+// numeroEnvio que su original y motivoAnulacion no vacío; original (anulaAItemId null) ⇒ cantidad > 0.
+// - NUMERACIÓN DE LA BOLETA (docs/plan-numeracion-boleta-2026-09-25.md): cada papel impreso de la boleta de cierre es una fila de
+//   `EjemplarBoleta` (control interno, no fiscal). Número base por sucursal = max + 1 dentro de la tx serializable de `cerrarCuenta`
+//   (solo con venta, después de validarla), ejemplar 1 = A. Corrección (`emitirBoletaCorregida`, tras anular una línea con
+//   anularVenta) = fila NUEVA con el mismo número, el ejemplar siguiente, `corrigeAId` → el A y el motivo. Nunca se edita ni se borra.
+// Grounding: docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§3/§6.
+// ===================================================================
+
+/// Mesa física del salón. El estado (libre/en_pedido/ocupada) NO se persiste: se deriva de su Cuenta abierta (src/core/pos/mesas.ts).
+model Mesa {
+  id         String   @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  numero     Int
+  creadoEn   DateTime @default(now())
+  cuentas    Cuenta[]
+
+  @@unique([sucursalId, numero])
+  @@unique([empresaId, id])
+}
+
+/// La CUENTA abierta de una mesa (no la comanda/KOT: ver docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§6).
+/// cerradaEn null = abierta. A lo sumo UNA abierta por mesa (índice único parcial manual "Cuenta_una_abierta_por_mesa_key",
+/// en la migración pos_mesas_cuentas: Prisma no sabe declarar un índice con WHERE). Sin vencimiento automático (§2).
+/// Se cierra con `cerrarCuenta` (registra la venta) o `liberarMesa` (cuenta sin ningún ítem, sin venta).
+model Cuenta {
+  id               String           @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  mesaId           String
+  mesa             Mesa             @relation(fields: [empresaId, mesaId], references: [empresaId, id])
+  abiertaPorId     String
+  abiertaPor       User             @relation("CuentaAbiertaPor", fields: [abiertaPorId], references: [id])
+  abiertaEn        DateTime         @default(now())
+  cerradaEn        DateTime?
+  cerradaPorId     String?
+  cerradaPor       User?            @relation("CuentaCerradaPor", fields: [cerradaPorId], references: [id])
+  items            CuentaItem[]
+  ejemplaresBoleta EjemplarBoleta[]
+  promos           PromoCuenta[]
+
+  /// Cuántos comensales se sentaron (docs/plan-comensales-y-limite-mesas-2026-09-26.md). Obligatorio y SIN valor por defecto al abrir
+  /// la cuenta (`abrirCuenta`) — un default sesgaría la métrica de rotación que existe para medir (Reportes › Rotación de mesas).
+  /// `null` = cuenta abierta ANTES de este cambio (sin backfill: no se inventan datos históricos); una cuenta nunca vuelve a `null`.
+  /// Se puede corregir mientras la cuenta esté ABIERTA (`corregirComensales`: llega gente después, se corrige un error) — una vez
+  /// cerrada, el dato queda congelado, igual que el precio de cada ítem.
+  ///
+  /// SOLO para medir rotación: NO habilita dividir la cuenta por persona. No hay entidad "comensal"/"asiento" ni relación con
+  /// `CuentaItem` — ningún ítem se asocia a un comensal en particular.
+  comensales Int?
+
+  /// Cliente con descuento asignado a esta cuenta (Task #14, docs/plan-clientes-descuento-2026-09-26.md): CUALQUIER mozo con
+  /// `pos_tomar_pedido` puede asignarlo (D3, `asignarClienteACuenta`), sobre una cuenta abierta, en cualquier momento antes de
+  /// cerrarla. FK RESTRICT: una cuenta ya cerrada sigue apuntando a su Cliente para siempre.
+  clienteId           String?
+  cliente             Cliente? @relation(fields: [empresaId, clienteId], references: [empresaId, id])
+  /// SNAPSHOT del `Cliente.descuentoPorcentaje` en el momento de asignarlo (D7): el % se CONGELA acá — si el % del cliente cambia
+  /// después con la cuenta ya abierta, esta cuenta no se entera (nunca se vuelve a leer `Cliente.descuentoPorcentaje` para calcular
+  /// lo cobrado). `null` = sin cliente asignado (el caso de siempre, sin descuento). Es el que usa `precioConDescuento`
+  /// (src/core/moneda.ts) al cerrar la cuenta — `CuentaItem.precioUnitario` sigue siendo el precio de LISTA, sin cambiar de semántica.
+  descuentoPorcentaje Decimal? @db.Decimal(5, 2)
+
+  @@index([mesaId])
+  @@unique([empresaId, id])
+}
+
+/// Una instancia de promo ARMABLE agregada a una cuenta (Task #16, docs/plan-promo-combo-2026-09-26.md, análoga a `Cliente` en
+/// `Cuenta`: la referencia de CATÁLOGO — `PromoCarta` — puede cambiar título/precio después; esta fila congela el snapshot con
+/// el que se cobró ESTA instancia, mismo criterio que `Cuenta.descuentoPorcentaje`). Cada vez que se arma la promo en el POS
+/// (paso 8a) es una fila NUEVA: dos menús del día en la misma cuenta, con elecciones distintas, son dos `PromoCuenta`
+/// separadas, cada una con sus propios `CuentaItem.promoCuentaId`. FK RESTRICT a `PromoCarta`: no se borra mientras haya
+/// alguna instancia vendida con ella (`PromoCarta` de por sí nunca se borra, se apaga). Sin `cerradaEn`/estado propio: el
+/// estado de una promo se deriva de sus `CuentaItem` y de las `Operacion` que enlazan, igual que el resto del POS.
+model PromoCuenta {
+  id           String       @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  cuentaId     String
+  cuenta       Cuenta       @relation(fields: [empresaId, cuentaId], references: [empresaId, id])
+  promoCartaId String
+  promoCarta   PromoCarta   @relation(fields: [empresaId, promoCartaId], references: [empresaId, id])
+  /// Precio CONGELADO al agregarla (`PromoCarta.precio` en ese momento) — lo que se prorratea entre los componentes (D3).
+  precio       Decimal      @db.Decimal(14, 2)
+  /// Snapshot del título en ese momento — la boleta ("1 × Menú del día") usa este, no el actual de `PromoCarta` (que puede
+  /// haber cambiado de nombre después).
+  titulo       String
+  creadoPorId  String
+  creadoPor    User         @relation(fields: [creadoPorId], references: [id])
+  creadoEn     DateTime     @default(now())
+  items        CuentaItem[]
+  operaciones  Operacion[]
+
+  @@index([cuentaId])
+  @@unique([empresaId, id])
+}
+
+model CuentaItem {
+  id              String       @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  cuentaId        String
+  cuenta          Cuenta       @relation(fields: [empresaId, cuentaId], references: [empresaId, id])
+  productoId      String
+  producto        Producto     @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  /// Mismo tipo que MovimientoStock.cantidad: desemboca en la venta al cerrar la cuenta. Negativa SOLO en una fila espejo (anulación).
+  cantidad        Decimal      @db.Decimal(14, 4)
+  /// Precio CONGELADO al agregar el ítem (Precio Local o global de ese momento, prorrateado si es un componente de promo, D3);
+  /// es el que se cobra al cerrar la cuenta (antes del descuento de cliente, D2 — ese se aplica recién ahí, no acá).
+  precioUnitario  Decimal      @db.Decimal(14, 2)
+  /// null = sin enviar a cocina (borrador); 1..n = en qué envío salió (KOT derivado, ver el bloque de arriba).
+  numeroEnvio     Int?
+  creadoEn        DateTime     @default(now())
+  /// Quién cargó el ítem (o quién anuló, en una fila espejo). Null en filas anteriores a «tomar pedido».
+  creadoPorId     String?
+  creadoPor       User?        @relation("CuentaItemCreadoPor", fields: [creadoPorId], references: [id])
+  /// No nulo = esta fila es un ESPEJO que anula (parcial o totalmente) al ítem original indicado. RESTRICT: el original no se borra.
+  anulaAItemId    String?
+  anulaAItem      CuentaItem?  @relation("CuentaItemAnulacion", fields: [empresaId, anulaAItemId], references: [empresaId, id], onDelete: Restrict)
+  anulaciones     CuentaItem[] @relation("CuentaItemAnulacion")
+  /// Obligatorio en una fila espejo (validado en la aplicación).
+  motivoAnulacion String?
+  /// La Operacion VENTA que registró este ítem al cerrar la cuenta (una por línea neta producto+precio+promo). RESTRICT: no se borra.
+  operacionId     String?
+  operacion       Operacion?   @relation(fields: [empresaId, operacionId], references: [empresaId, id], onDelete: Restrict)
+
+  /// Task #16 (docs/plan-promo-combo-2026-09-26.md): la `PromoCuenta` de la que este ítem es un COMPONENTE — null = un
+  /// suelto de siempre. FK RESTRICT: no se borra mientras algún componente siga apuntándola. Junto con `precioUnitario` (y
+  /// `operacionId`), forma la clave que evita mezclar un suelto con un componente del mismo producto al mismo precio
+  /// (`lineasDeVenta`, D4).
+  promoCuentaId String?
+  promoCuenta   PromoCuenta? @relation(fields: [empresaId, promoCuentaId], references: [empresaId, id])
+  /// Precio A LA CARTA de UNA unidad de este componente, al momento de agregarlo (antes de prorratear) — null en un suelto.
+  /// Sirve para comparar "lo que se cobró prorrateado" contra "lo que costaría pedirlo suelto" (paso 12, margen de promos) y
+  /// queda congelado igual que `precioUnitario`: si el precio de carta del producto cambia después, esta fila no se entera.
+  precioCartaUnitario Decimal? @db.Decimal(14, 2)
+
+  @@index([cuentaId])
+  @@index([anulaAItemId])
+  @@index([operacionId])
+  @@index([promoCuentaId])
+  @@unique([empresaId, id])
+}
+
+/// Ejemplar IMPRESO de la boleta de cierre (control interno de comandas / guest check control; NO comprobante fiscal).
+/// numero: secuencial por sucursal, sin huecos (max+1 en la tx serializable de cerrarCuenta). ejemplar: 1 = A (original), 2 = B…
+/// Corrección = fila NUEVA (mismo numero, ejemplar siguiente, corrigeAId → el ejemplar A, motivo); nunca se edita ni se borra.
+model EjemplarBoleta {
+  id           String           @id @default(cuid())
+  empresaId String @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  sucursalId   String
+  sucursal     Sucursal         @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  cuentaId     String
+  cuenta       Cuenta           @relation(fields: [empresaId, cuentaId], references: [empresaId, id])
+  numero       Int
+  ejemplar     Int              @default(1)
+  emitidoEn    DateTime         @default(now())
+  emitidoPorId String
+  emitidoPor   User             @relation("EjemplarBoletaEmitidoPor", fields: [emitidoPorId], references: [id])
+  corrigeAId   String?
+  corrigeA     EjemplarBoleta?  @relation("EjemplarBoletaCorreccion", fields: [empresaId, corrigeAId], references: [empresaId, id], onDelete: Restrict)
+  correcciones EjemplarBoleta[] @relation("EjemplarBoletaCorreccion")
+  motivo       String?
+
+  @@unique([sucursalId, numero, ejemplar])
+  @@unique([cuentaId, ejemplar])
+  @@index([corrigeAId])
+  @@unique([empresaId, id])
+}
+
+// ===================================================================
+// PLATAFORMA (Fase F) — Empresa y su pertenencia de usuarios. Sin RLS por empresa.
+// ===================================================================
+
+enum EstadoEmpresa {
+  PROVISIONING
+  ACTIVE
+  SUSPENDED
+  DELETING
+}
+
+model Empresa {
+  id          String        @id @default(cuid())
+  nombre      String        @unique
+  slug        String        @unique
+  cuit        String?
+  zonaHoraria String
+  moneda      String
+  estado      EstadoEmpresa @default(PROVISIONING)
+  creadoEn    DateTime      @default(now())
+
+  usuarios UsuarioEmpresa[]
+  sucursalRel Sucursal[]
+  rolRel Rol[]
+  usuarioSucursalRel UsuarioSucursal[]
+  permisoRolRel PermisoRol[]
+  capacidadSucursalRel CapacidadSucursal[]
+  registroAuditoriaRel RegistroAuditoria[]
+  productoRel Producto[]
+  disponibilidadProductoRel DisponibilidadProducto[]
+  insumoRel Insumo[]
+  grupoRel Grupo[]
+  categoriaProductoRel CategoriaProducto[]
+  unidadRel Unidad[]
+  presentacionRel Presentacion[]
+  proveedorRel Proveedor[]
+  pagoConsignanteRel PagoConsignante[]
+  proveedorPorProductoRel ProveedorPorProducto[]
+  clienteRel Cliente[]
+  recetaVersionRel RecetaVersion[]
+  recetaIngredienteRel RecetaIngrediente[]
+  sustitutoRecetaIngredienteRel SustitutoRecetaIngrediente[]
+  recetaPasoRel RecetaPaso[]
+  recetaPasoIngredienteRel RecetaPasoIngrediente[]
+  motivoMermaRel MotivoMerma[]
+  destinoConsumoRel DestinoConsumo[]
+  seccionRel Seccion[]
+  operacionRel Operacion[]
+  movimientoStockRel MovimientoStock[]
+  conteoFisicoRel ConteoFisico[]
+  precioLocalProductoRel PrecioLocalProducto[]
+  rendimientoLocalIngredienteRel RendimientoLocalIngrediente[]
+  frecuenciaConteoProductoRel FrecuenciaConteoProducto[]
+  stockMinimoProductoRel StockMinimoProducto[]
+  seccionHabitualProductoRel SeccionHabitualProducto[]
+  promocionProductoRel PromocionProducto[]
+  traspasoSucursalRel TraspasoSucursal[]
+  seccionCartaRel SeccionCarta[]
+  contenidoCartaProductoRel ContenidoCartaProducto[]
+  itemAgrupadoCartaRel ItemAgrupadoCarta[]
+  generoCartaRel GeneroCarta[]
+  opcionItemAgrupadoCartaRel OpcionItemAgrupadoCarta[]
+  promoCartaRel PromoCarta[]
+  promoCartaCupoRel PromoCartaCupo[]
+  sucursalPublicaRel SucursalPublica[]
+  temaCartaSucursalRel TemaCartaSucursal[]
+  mesaRel Mesa[]
+  cuentaRel Cuenta[]
+  promoCuentaRel PromoCuenta[]
+  cuentaItemRel CuentaItem[]
+  ejemplarBoletaRel EjemplarBoleta[]
+}
+
+model UsuarioEmpresa {
+  id         String   @id @default(cuid())
+  usuarioId  String
+  usuario    User     @relation(fields: [usuarioId], references: [id])
+  empresaId  String
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  rolEmpresa String?
+  activo     Boolean  @default(true)
+  creadoEn   DateTime @default(now())
+
+  @@unique([usuarioId, empresaId])
+}

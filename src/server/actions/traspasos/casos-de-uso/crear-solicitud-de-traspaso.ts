@@ -15,7 +15,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * en el MISMO orden y con los MISMOS textos; la Server Action quedó como adaptador fino (permiso → guard → este caso de uso → id/nombre).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo
- * `conPermiso("proceso_transferencia_sucursal")`) ni valida formato (eso lo hizo `guardComandoCrearSolicitudTraspaso`). Sin idempotencia
+ * `conPermiso("traspaso_solicitar")`) ni valida formato (eso lo hizo `guardComandoCrearSolicitudTraspaso`). Sin idempotencia
  * I3 (nunca la tuvo): no toca stock — queda SOLICITADA, pendiente de que Origen decida — y un duplicado por doble clic se cancela desde
  * la Bandeja (`cancelarSolicitudTransferencia`) sin ningún efecto sobre el Kardex.
  *
@@ -35,12 +35,12 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @sideEffects Ninguno — solo la creación del traspaso (nunca tocó Kardex).
  */
 export async function crearSolicitudDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
   comando: ComandoCrearSolicitudTraspaso
 ): Promise<ResultadoCrearSolicitudTraspaso> {
   if (comando.origenSucursalId === actor.sucursalId) return fracaso("MISMA_SUCURSAL", "No podés pedirte una transferencia a vos mismo.");
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoCrearSolicitudTraspaso> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCrearSolicitudTraspaso> => {
     const origen = await cargarSucursalParaTraspaso(tx, comando.origenSucursalId);
     if (!origen || !origen.activo) return fracaso("SUCURSAL_NO_DISPONIBLE", MENSAJE_SUCURSAL_NO_DISPONIBLE);
 

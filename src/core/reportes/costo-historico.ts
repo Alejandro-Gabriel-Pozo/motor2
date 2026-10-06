@@ -1,5 +1,4 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { asegurarIndiceRecetasDeLaSucursal, construirIndiceRecetas, construirMapaProductos, type CostoMP, type Db, type IndiceRecetas, type InfoProductoReporte } from "./comun";
 import { resolverCostoRecetaCompleta } from "./costos";
 
@@ -50,7 +49,7 @@ export function costosDeInsumosPorDia(compras: CompraConPrecio[], dias: string[]
 export async function reconstruirCostosDeVenta(
   sucursalId: string,
   ventas: { productoId: string; fecha: Date }[],
-  db: Db = prisma,
+  db: Db,
   /** El catálogo ya cargado de LA MISMA sucursal, para no volver a leerlo (ver `calcularCostosYMargenes`). */
   productosCargados?: Map<string, InfoProductoReporte>,
   /** El índice de recetas ya cargado, mismo motivo (ver `obtenerReportePorPeriodoConCatalogo`). */

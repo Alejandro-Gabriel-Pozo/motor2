@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
 
@@ -47,7 +46,7 @@ const ORDEN_ESTADO: Record<EstadoStockConsolidado, number> = {
  * después de un ajuste). Entradas/salidas DESDE ese conteo explican por
  * qué el teórico de hoy ya no es el número que se contó ese día.
  */
-export async function calcularStockConsolidado(sucursalId: string, db: Db = prisma): Promise<FilaStockConsolidado[]> {
+export async function calcularStockConsolidado(sucursalId: string, db: Db): Promise<FilaStockConsolidado[]> {
   const productos = await db.producto.findMany({
     where: whereDisponibleEn(sucursalId),
     include: { unidadStock: true, insumo: true },

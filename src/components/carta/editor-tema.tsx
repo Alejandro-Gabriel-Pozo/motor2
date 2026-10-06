@@ -1,13 +1,17 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
+import { CartaVista } from "@/components/carta-publica/carta-vista";
+import { clasesFuentesCarta } from "@/components/carta-publica/fuente-carta";
 import { FormConResultado } from "@/components/form-con-resultado";
-import { CLAVES_TEMA_V1, parsearConfigPegada, validarValorTema, ZONAS_TEMA, type ConfigPegada, type DefinicionClaveTema } from "@/core/carta/tema";
+import { resolverEstiloCarta } from "@/core/carta/public";
+import { CLAVES_TEMA_V1, validarValorTema, ZONAS_TEMA, type DefinicionClaveTema } from "@/core/carta/tema";
 import type { ResultadoAccion } from "@/server/actions/tipos";
-import { VistaPreviaTema } from "./vista-previa-tema";
+import { CampoColor } from "./campo-color";
+import { CARTA_EJEMPLO } from "./carta-ejemplo";
 
 /**
- * Editor del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M9, D11/D12). Formulario NO controlado (`FormConResultado`),
+ * Editor del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M9, D11). Formulario NO controlado (`FormConResultado`),
  * un campo por clave del catálogo `CLAVES_TEMA_V1`, agrupados por zona en `<details>` (solo la primera abierta), con el widget
  * según el tipo y el default de la carta como placeholder (vacío = default de la carta). Al lado, la vista previa en vivo: un
  * `onInput` en el cuerpo vuelve a leer el `FormData`.
@@ -15,9 +19,6 @@ import { VistaPreviaTema } from "./vista-previa-tema";
  * `FormConResultado` hace `form.reset()` cuando la acción sale bien, y la página se refresca con los valores nuevos: por eso el
  * CUERPO se vuelve a montar con `key={version}` (el `actualizadoEn` del tema), así los campos y la vista previa arrancan de lo
  * guardado; el formulario (y su mensaje de resultado) no se desmonta.
- *
- * "Pegar desde la sheet" (D12) rellena el formulario desde el cliente, SIN guardar, con `parsearConfigPegada`, y muestra lo que no
- * entra en cinco listas.
  */
 export function EditorTema({ valoresIniciales, version, accion }: { valoresIniciales: Readonly<Record<string, string>>; version: string; accion: (formData: FormData) => Promise<ResultadoAccion> }) {
   return (
@@ -40,52 +41,16 @@ function leerValores(form: HTMLFormElement): Record<string, string> {
 }
 
 function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<string, string>> }) {
-  const raiz = useRef<HTMLDivElement>(null);
   const [valores, setValores] = useState<Record<string, string>>(() => Object.fromEntries(CLAVES_TEMA_V1.map((d) => [d.clave, valoresIniciales[d.clave] ?? ""])));
-  const [pegado, setPegado] = useState<ConfigPegada | null>(null);
+  const estilo = useMemo(() => resolverEstiloCarta(valores), [valores]);
 
   const releer = (e: FormEvent<HTMLDivElement>) => {
     const form = e.currentTarget.closest("form");
     if (form) setValores(leerValores(form));
   };
 
-  const rellenarDesdeLaSheet = () => {
-    const div = raiz.current;
-    const form = div?.closest("form");
-    const texto = div?.querySelector<HTMLTextAreaElement>("#tema-pegar-sheet")?.value ?? "";
-    if (!form) return;
-    const r = parsearConfigPegada(texto);
-    // Reemplaza TODO el formulario, como la tab Config: lo que no está en lo pegado queda vacío (= default de la carta).
-    for (const d of CLAVES_TEMA_V1) {
-      const campo = form.elements.namedItem(d.clave);
-      if (!(campo instanceof HTMLInputElement || campo instanceof HTMLSelectElement)) continue;
-      campo.value = (r.valores as Record<string, string>)[d.clave] ?? "";
-      // Que se enteren el selector de color de ese campo y la vista previa (onInput).
-      campo.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-    setValores(leerValores(form));
-    setPegado(r);
-  };
-
   return (
-    <div ref={raiz} onInput={releer} onChange={releer} className="flex flex-col gap-4">
-      <section aria-labelledby="titulo-pegar-sheet" className="flex flex-col gap-2 rounded border border-dashed p-3">
-        <h2 id="titulo-pegar-sheet" className="text-sm font-medium">
-          Pegar desde la sheet
-        </h2>
-        <label htmlFor="tema-pegar-sheet" className="text-sm text-neutral-500">
-          Copiá las columnas A y B de la tab Config de la sheet de esta sucursal y pegalas acá. Reemplaza todo el formulario (lo que no esté queda vacío,
-          con el default de la carta) y NO guarda: revisá la vista previa y tocá «Guardar tema».
-        </label>
-        <textarea id="tema-pegar-sheet" rows={4} className={`${CLASE_INPUT} font-mono text-xs`} placeholder={"restaurante_nombre\tLa Parrilla\ncolor_marca\t#8b4513"} />
-        <div>
-          <button type="button" onClick={rellenarDesdeLaSheet} className="rounded border px-3 py-1.5 text-sm">
-            Rellenar el formulario
-          </button>
-        </div>
-        {pegado && <ResultadoPegado r={pegado} />}
-      </section>
-
+    <div onInput={releer} onChange={releer} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-2">
           {ZONAS_TEMA.map((zona, i) => {
@@ -110,11 +75,12 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
           <h2 id="titulo-vista-previa" className="text-sm font-medium">
             Vista previa
           </h2>
-          <VistaPreviaTema valores={valores} />
+          <div className={`carta-shell ${clasesFuentesCarta} overflow-hidden rounded border`} data-vista-previa-tema>
+            <CartaVista carta={CARTA_EJEMPLO} estilo={estilo} embebida />
+          </div>
           <p className="text-xs text-neutral-500">
-            Aproximada: se recorre como la carta, de a una página (portada, índice y una sección de ejemplo) con las flechas ‹ ›, pero no simula el
-            deslizamiento entre páginas ni la vista de escritorio, ni los modos, anchos, posiciones, degradé ni opacidad de la imagen de sección. Los precios
-            usan la convención del sistema (es-AR, $ a la izquierda).
+            Es la carta real con datos de ejemplo (portada, índice y dos secciones): se recorre con las flechas o tocando el índice. La altura de la banda de cada sección
+            (medida en <code>vh</code>) se calcula con la ventana del navegador, no con el alto de este recuadro.
           </p>
         </section>
       </div>
@@ -122,45 +88,25 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
   );
 }
 
-function ResultadoPegado({ r }: { r: ConfigPegada }) {
-  const cargados = Object.keys(r.valores);
-  const listas: { id: keyof ConfigPegada; titulo: string; items: string[] }[] = [
-    { id: "valores", titulo: `Cargadas en el formulario (${cargados.length})`, items: cargados },
-    { id: "fijasDelSistema", titulo: "Fijas del sistema (precios: es-AR, $ a la izquierda; no se importan)", items: r.fijasDelSistema },
-    { id: "noPorTenant", titulo: "No son por sucursal (config de la raíz del portal o del modo single; no se importan)", items: r.noPorTenant },
-    { id: "desconocidas", titulo: "Desconocidas (no son claves de la tab Config)", items: r.desconocidas },
-    { id: "invalidas", titulo: "Inválidas (quedan con el default de la carta)", items: r.invalidas.map((i) => `${i.clave}: ${i.motivo}`) },
-  ];
-  return (
-    <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2" role="status">
-      {listas.map((l) => (
-        <div key={l.id} data-pegado={l.id}>
-          <p className="font-medium">{l.titulo}</p>
-          {l.items.length ? (
-            <ul className="list-disc pl-5 text-xs">
-              {l.items.map((item) => (
-                <li key={item} className="break-all">
-                  {item}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-xs text-neutral-500">Ninguna.</p>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-const ETIQUETAS_OPCION: Record<string, string> = { left: "izquierda", center: "centro", right: "derecha", top: "arriba", bottom: "abajo", si: "sí", no: "no" };
+const ETIQUETAS_OPCION: Record<string, string> = {
+  left: "izquierda",
+  center: "centro",
+  right: "derecha",
+  top: "arriba",
+  bottom: "abajo",
+  si: "sí",
+  no: "no",
+  playfair: "Playfair Display (serif clásica, la de siempre)",
+  lora: "Lora (serif de lectura)",
+  cormorant: "Cormorant Garamond (serif elegante)",
+  montserrat: "Montserrat (sans geométrica)",
+  geist: "Geist (sans moderna)",
+};
 
 const AYUDA: Partial<Record<DefinicionClaveTema["tipo"], string>> = {
   tamanoFuente: "Número = px, o una medida: 0.9rem, 12px, clamp(…).",
   altoBandaMobile: "Número = px (20 a 600), o una medida: 12vh, clamp(…).",
   altoBandaDesktop: "Número = px (20 a 600), o una medida: 18vh, clamp(80px, 18vh, 140px).",
-  anchoImagenMobile: "Número = % del alto de la banda (1 a 400), o una medida: 80px.",
-  tamanoFondo: "contain, cover, auto o dos medidas (ej. auto 100%).",
   colorHeroInk: "claro, oscuro o un color.",
   colorHex: "Solo hex #rrggbb: la carta le suma transparencia cuando hay imagen de fondo.",
   redSocial: "El usuario (@usuario) o la URL https:// del perfil.",
@@ -230,45 +176,6 @@ function Campo({ d, inicial, actual }: { d: DefinicionClaveTema; inicial: string
           No es válido: {error}.
         </p>
       )}
-    </div>
-  );
-}
-
-const RE_HEX6 = /^#[0-9a-f]{6}$/i;
-const RE_HEX3 = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i;
-const hexDelSwatch = (v: string): string | null => {
-  const t = v.trim();
-  if (RE_HEX6.test(t)) return t.toLowerCase();
-  const m = RE_HEX3.exec(t);
-  return m ? `#${m[1]}${m[1]}${m[2]}${m[2]}${m[3]}${m[3]}`.toLowerCase() : null;
-};
-
-/**
- * Color: el campo de texto (con `name`) es el valor; el selector nativo (sin `name`) solo escribe en él. Si el texto no es un hex
- * (oklch, rgb, un nombre, claro/oscuro), el selector queda en un gris neutro y se avisa "formato avanzado".
- */
-function CampoColor({ comun, etiqueta, inicial, placeholder }: { comun: { id: string; name: string; defaultValue: string }; etiqueta: string; inicial: string; placeholder: string }) {
-  const texto = useRef<HTMLInputElement>(null);
-  const [actual, setActual] = useState(inicial);
-  const hex = hexDelSwatch(actual);
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          aria-label={`${etiqueta}: selector de color`}
-          value={hex ?? "#808080"}
-          onInput={(e) => {
-            // Antes de que el onInput del cuerpo relea el FormData (este handler corre primero: es el del elemento).
-            if (texto.current) texto.current.value = e.currentTarget.value;
-            setActual(e.currentTarget.value);
-          }}
-          onChange={() => {}}
-          className="h-8 w-10 shrink-0 cursor-pointer rounded border"
-        />
-        <input {...comun} ref={texto} type="text" placeholder={placeholder} onInput={(e) => setActual(e.currentTarget.value)} className={`${CLASE_INPUT} min-w-0 flex-1 font-mono text-sm`} />
-      </div>
-      {actual.trim() && !hex && <p className="text-xs text-neutral-500">Formato avanzado: el selector no lo muestra.</p>}
     </div>
   );
 }

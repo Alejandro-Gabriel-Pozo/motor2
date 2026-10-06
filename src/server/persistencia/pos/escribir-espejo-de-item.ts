@@ -16,17 +16,17 @@ import type { Prisma } from "@prisma/client";
  * original, el motivo ya validado y quién anuló. El original nunca se edita ni se borra (lo que queda lo calcula `restanteDe`).
  * `cantidadAnulada` va en POSITIVO: el signo lo pone esta función. Devuelve el id de la fila espejo.
  *
- * `promo` (solo para un componente de promo, Task #16): la fila espejo lleva el MISMO `promoCuentaId` y el mismo `precioCartaUnitario`
- * que el componente que anula. Sin `promo` (un ítem suelto) esos dos campos no se escriben, exactamente como antes.
+ * `precioCartaUnitario` del original se copia SIEMPRE (producto con descuento, Fase 2: el precio de lista es parte de la clave de la línea, y el espejo
+ * tiene que netear con su original). `promo` (solo para un componente de promo, Task #16): además, el MISMO `promoCuentaId`.
  */
 export async function escribirEspejoDeItem(
   tx: Prisma.TransactionClient,
   args: {
-    original: { id: string; cuentaId: string; productoId: string; precioUnitario: number; numeroEnvio: number };
+    original: { id: string; cuentaId: string; productoId: string; precioUnitario: number; precioCartaUnitario: number | null; numeroEnvio: number };
     cantidadAnulada: number;
     motivo: string;
     creadoPorId: string;
-    promo?: { promoCuentaId: string; precioCartaUnitario: number | null };
+    promo?: { promoCuentaId: string };
   }
 ): Promise<string> {
   const { id } = await tx.cuentaItem.create({
@@ -35,11 +35,12 @@ export async function escribirEspejoDeItem(
       productoId: args.original.productoId,
       cantidad: -args.cantidadAnulada,
       precioUnitario: args.original.precioUnitario,
+      precioCartaUnitario: args.original.precioCartaUnitario,
       numeroEnvio: args.original.numeroEnvio,
       anulaAItemId: args.original.id,
       motivoAnulacion: args.motivo,
       creadoPorId: args.creadoPorId,
-      ...(args.promo ? { promoCuentaId: args.promo.promoCuentaId, precioCartaUnitario: args.promo.precioCartaUnitario } : {}),
+      ...(args.promo ? { promoCuentaId: args.promo.promoCuentaId } : {}),
     },
     select: { id: true },
   });

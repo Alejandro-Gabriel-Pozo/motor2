@@ -124,7 +124,7 @@ describe("Motivo de Merma / Destino de Consumo (catálogo administrable)", () =>
     });
   });
 
-  describe("un rol sin 'motivos_movimiento' no puede administrar el catálogo", () => {
+  describe("un rol sin 'motivos_merma' ni 'motivos_destino_consumo' no puede administrar el catálogo", () => {
     it("crearMotivoMerma se rechaza con el mensaje de permiso", async () => {
       const sucursal = await prisma.sucursal.create({ data: { nombre: "Otra" } });
       const rolSinPermisos = await prisma.rol.create({ data: { nombre: "sin-permisos" } });

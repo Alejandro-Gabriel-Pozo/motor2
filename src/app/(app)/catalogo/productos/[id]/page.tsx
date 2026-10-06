@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
 import { disponibilidadPorSucursalDeProducto } from "@/core/catalogo/public-servidor";
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -29,20 +30,21 @@ export default async function FichaProductoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ guardado?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"guardado">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_producto");
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_ver_catalogo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
-  // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `editar_producto` en la ruta /editar y en la acción. Es un permiso de EDITAR, así que no
+  // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `producto_editar` en la ruta /editar y en la acción. Es un permiso de EDITAR, así que no
   // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
-  const { editar: puedeEditarProducto } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "editar_producto");
+  const { editar: puedeEditarProducto } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db);
+  const { editar: puedeCambiarDisponibilidad } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db);
 
   const { id } = await params;
-  const { guardado } = await searchParams;
-  const p = await obtenerFichaProducto(id);
+  const { guardado } = unicosDeUrl(await searchParams);
+  const p = await obtenerFichaProducto(id, ctx.db);
   if (!p) notFound();
 
   // Primitivos para el closure "use server" de abajo: lo que captura viaja al cliente y `p` lleva Decimales de Prisma (ver precio-local).
@@ -50,10 +52,10 @@ export default async function FichaProductoPage({
 
   const [presentaciones, disponibilidadPorSucursal, seccionHabitual] = await Promise.all([
     p.tipo === "MP" ? listarPresentaciones(p.id) : Promise.resolve([]),
-    disponibilidadPorSucursalDeProducto(p.id),
+    disponibilidadPorSucursalDeProducto(p.id, ctx.db),
     // Solo lectura (se configura en Stock › Sección habitual): la de ESTA sucursal, y solo si apunta a una sección activa de acá — la misma regla
     // con la que la usa el cierre de cuenta del salón (docs/plan-seccion-habitual-stock-2026-09-25.md).
-    p.tipo === "PV" ? obtenerSeccionHabitualEnSucursal(ctx.sucursalId, p.id) : Promise.resolve(null),
+    p.tipo === "PV" ? obtenerSeccionHabitualEnSucursal(ctx.sucursalId, p.id, ctx.db) : Promise.resolve(null),
   ]);
   const tieneReceta = p.tipo === "PV" || p.seProduce;
   const disponibleAca = disponibilidadPorSucursal.find((d) => d.sucursalId === ctx.sucursalId)?.disponible ?? false;
@@ -160,7 +162,7 @@ export default async function FichaProductoPage({
                   <td>{d.disponible ? "Sí" : "No"}</td>
                   <td className="py-2">
                     {/* Solo la sucursal ACTIVA tiene botón — actualizarDisponibilidadProducto evalúa el gate contra ctx.sucursalId, nunca contra un id que viaje del cliente. */}
-                    {puedeEditarProducto && d.sucursalId === ctx.sucursalId && (
+                    {puedeCambiarDisponibilidad && d.sucursalId === ctx.sucursalId && (
                       <ActivarDesactivarFila
                         activo={d.disponible}
                         aviso="Desactivar lo saca de los selectores, del stock consolidado y de la valuación de esta sucursal; en las demás no cambia nada. El historial se conserva. Si algo todavía depende de él acá (recetas vigentes, saldo), no se deja desactivar."

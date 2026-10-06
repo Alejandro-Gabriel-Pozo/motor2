@@ -1,16 +1,19 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
-import { disponibilidadDeProductos, whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { disponibilidadDeProductos, precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
 import { resolverMenuCartaConDiagnostico } from "./menu-consulta";
+import { whereCartaDeSucursal } from "./carta-de-sucursal";
 import { precioDeCarta, type MenuArmado, type ProductoSinSeccion } from "./armar-menu";
+import { esClavePortal, posicionCompleta, type PosicionPortal } from "./portal";
 import { esClaveTema } from "./tema";
+import { precioDePromo, seleccionDeSucursalDePromo } from "./promo-sucursal";
+import { descuentosConfiguradosEnSucursal } from "./descuento-producto-consulta";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
- * Lectura de las pantallas de admin de la carta (/catalogo/carta, docs/plan-carta-catalogo-2026-09-24.md, M10, y
- * /catalogo/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7, y /catalogo/carta/tema, docs/plan-tema-carta-2026-09-24.md,
- * M9). Solo lectura (la fija el guardián carta-solo-lectura); la pantalla la llama DESPUÉS de su propio `requierePermisoVer(..., "carta")`. No es una
+ * Lectura de las pantallas de admin de la carta (/carta, docs/plan-carta-catalogo-2026-09-24.md, M10, y
+ * /carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7, y /carta/tema, docs/plan-tema-carta-2026-09-24.md,
+ * M9). Solo lectura (la fija el guardián carta-solo-lectura); la pantalla la llama DESPUÉS de su propio `requierePermisoVer*(..., "carta_ver")`. No es una
  * Server Action a propósito: así no queda expuesta como endpoint.
  */
 export interface SeccionCartaAdmin {
@@ -34,6 +37,8 @@ export interface ProductoCartaAdmin {
   /** Nombre de la sección de carta ACTIVA donde está su contenido, o null. */
   seccionCarta: string | null;
   precio: number;
+  /** % de descuento CONFIGURADO de este producto EN esta sucursal (producto con descuento, 2026-10-01), o null. Rige solo con `precioLocalActivo` (R1). */
+  descuento: number | null;
   contenido:
     | { visibleEnCarta: boolean; seccionCartaId: string | null; descripcion: string | null; tags: string[]; especial: boolean; orden: number; generoCartaId: string | null }
     | null;
@@ -43,7 +48,7 @@ export interface ProductoCartaAdmin {
   generoCarta: string | null;
 }
 
-/** Un género de carta (docs/plan-genero-carta-2026-09-26.md): carpeta VISUAL del POS, global. */
+/** Un género de carta (docs/plan-genero-carta-2026-09-26.md): carpeta VISUAL del POS, propia de cada sucursal (ADR-009, C3). */
 export interface GeneroCartaAdmin {
   id: string;
   nombre: string;
@@ -68,14 +73,37 @@ export interface PromoCartaAdmin {
   seccionCarta: string;
   titulo: string;
   descripcion: string | null;
+  /** Precio de la EMPRESA (el mismo para todas las sucursales salvo que alguna tenga el suyo). */
   precio: number;
   orden: number;
+  /** Apagado/prendido GENERAL (de la empresa): apagada, ninguna sucursal la ofrece. */
   activa: boolean;
+  /** Prendida en la sucursal activa (sin fila = no la ofrece: opt-in). */
+  prendidaAca: boolean;
+  /** Precio propio de la sucursal activa, o null si usa el de la empresa. */
+  precioLocal: number | null;
+  /** Lo que se cobra EN ESTA sucursal (precio local o, si no hay, el de la empresa). */
+  precioAca: number;
   /** Vacío = puramente informativa (el POS la ignora). Uno o más = ARMABLE (D1). */
   cupos: CupoPromoCartaAdmin[];
 }
 
+/** Otra sucursal de la empresa que ya tiene carta propia armada: se puede copiar a una sucursal sin carta (ADR-009, C3). */
+export interface SucursalConCartaPropia {
+  id: string;
+  nombre: string;
+  /** Cuántos productos tienen contenido de carta en ella (informativo, para elegir de dónde copiar). */
+  cantidadProductos: number;
+}
+
 export interface DatosAdminCarta {
+  /**
+   * La sucursal activa NO tiene carta propia todavía (ADR-009, C3; familia «opt-in»): ningún contenido de producto, ningún género y ningún
+   * ítem agrupado propios. Su carta pública y el selector del POS salen vacíos hasta que la arme o la copie de otra sucursal.
+   */
+  cartaVacia: boolean;
+  /** Otras sucursales ACTIVAS con carta propia, de donde se puede copiar (solo se usa si `cartaVacia`). */
+  sucursalesConCarta: SucursalConCartaPropia[];
   secciones: SeccionCartaAdmin[];
   /** TODOS los géneros (activos primero, orden, nombre) — para el select "Género (opcional)" de cada contenido. */
   generos: GeneroCartaAdmin[];
@@ -89,17 +117,22 @@ export interface DatosAdminCarta {
   /** Visibles y disponibles que igual no salen porque no tienen sección de carta, o la suya está apagada. */
   visiblesSinSeccion: ProductoSinSeccion[];
   promos: PromoCartaAdmin[];
+  /**
+   * La capacidad `precio_local` de la sucursal (R1, 2026-10-01): apagada, NO rigen el precio local de las promos ni los descuentos de producto
+   * configurados (siguen guardados; el admin los ve y los edita igual). Los precios `precioAca` ya la consideran.
+   */
+  precioLocalActivo: boolean;
 }
 
 /** Las secciones de carta (orden, nombre) con cuántos ítems ya tiene cada una (`cantidadItems`, DA6). */
-async function seccionesConCantidad(db: Db): Promise<SeccionCartaAdmin[]> {
+async function seccionesConCantidad(sucursalId: string, db: Db): Promise<SeccionCartaAdmin[]> {
   const secciones = await db.seccionCarta.findMany({
     include: {
       _count: {
         select: {
-          // Mismo criterio que la carta: un PV agrupado no sale suelto (D3), aunque tenga contenido visible.
-          contenidos: { where: { visibleEnCarta: true, producto: { opcionItemAgrupadoCarta: { is: null } } } },
-          agrupados: { where: { activo: true } },
+          // Mismo criterio que la carta: un PV agrupado no sale suelto (D3), aunque tenga contenido visible. Cuenta solo la carta PROPIA de la sucursal.
+          contenidos: { where: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, producto: { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } } } },
+          agrupados: { where: { ...whereCartaDeSucursal(sucursalId), activo: true } },
         },
       },
     },
@@ -118,22 +151,43 @@ async function seccionesConCantidad(db: Db): Promise<SeccionCartaAdmin[]> {
 }
 
 /** Todos los géneros (docs/plan-genero-carta-2026-09-26.md), activos primero, orden, nombre — reusado por las dos pantallas. */
-async function generosOrdenados(db: Db): Promise<GeneroCartaAdmin[]> {
-  const generos = await db.generoCarta.findMany({ orderBy: [{ activo: "desc" }, { orden: "asc" }, { nombre: "asc" }] });
+async function generosOrdenados(sucursalId: string, db: Db): Promise<GeneroCartaAdmin[]> {
+  const generos = await db.generoCarta.findMany({ where: whereCartaDeSucursal(sucursalId), orderBy: [{ activo: "desc" }, { orden: "asc" }, { nombre: "asc" }] });
   return generos.map((g) => ({ id: g.id, nombre: g.nombre, orden: g.orden, activo: g.activo }));
 }
 
-export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Promise<DatosAdminCarta> {
-  const [secciones, generos, productos, promos, armado] = await Promise.all([
-    seccionesConCantidad(db),
-    generosOrdenados(db),
+/**
+ * Si la sucursal tiene carta propia y cuáles otras sucursales activas tienen la suya. La única lectura de la estructura que cruza sucursales a
+ * propósito (para ofrecer de dónde copiar); va por el conteo de la relación de `Sucursal`, nunca por los modelos de la carta, y el RLS la deja
+ * dentro de la empresa.
+ */
+async function estadoCartaPropia(sucursalId: string, db: Db): Promise<{ cartaVacia: boolean; sucursalesConCarta: SucursalConCartaPropia[] }> {
+  const sucursales = await db.sucursal.findMany({
+    where: { activo: true },
+    select: { id: true, nombre: true, _count: { select: { contenidosCarta: true, generosCarta: true, itemsAgrupadosCarta: true } } },
+    orderBy: { nombre: "asc" },
+  });
+  const tiene = (s: (typeof sucursales)[number]) => s._count.contenidosCarta + s._count.generosCarta + s._count.itemsAgrupadosCarta > 0;
+  const propia = sucursales.find((s) => s.id === sucursalId);
+  return {
+    cartaVacia: propia ? !tiene(propia) : true,
+    sucursalesConCarta: sucursales.filter((s) => s.id !== sucursalId && tiene(s)).map((s) => ({ id: s.id, nombre: s.nombre, cantidadProductos: s._count.contenidosCarta })),
+  };
+}
+
+export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<DatosAdminCarta> {
+  const [secciones, generos, productos, promos, armado, precioLocalActivo, estado] = await Promise.all([
+    seccionesConCantidad(sucursalId, db),
+    generosOrdenados(sucursalId, db),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: {
         id: true,
         nombre: true,
         precioVenta: true,
-        contenidoCarta: {
+        contenidosCarta: {
+          where: whereCartaDeSucursal(sucursalId),
+          take: 1,
           select: {
             visibleEnCarta: true,
             seccionCartaId: true,
@@ -146,29 +200,33 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
             generoCarta: { select: { nombre: true, activo: true } },
           },
         },
-        opcionItemAgrupadoCarta: { select: { itemAgrupadoCarta: { select: { nombre: true } } } },
+        opcionesItemAgrupadoCarta: { where: whereCartaDeSucursal(sucursalId), take: 1, select: { itemAgrupadoCarta: { select: { nombre: true } } } },
       },
       orderBy: { nombre: "asc" },
     }),
     db.promoCarta.findMany({
-      where: { sucursalId },
       include: {
+        sucursales: seleccionDeSucursalDePromo(sucursalId),
         seccionCarta: { select: { nombre: true } },
         cupos: { select: { id: true, seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, orden: true, seccionCarta: { select: { nombre: true } } }, orderBy: { orden: "asc" } },
       },
       orderBy: [{ activa: "desc" }, { orden: "asc" }, { titulo: "asc" }],
     }),
     resolverMenuCartaConDiagnostico(sucursalId, db),
+    precioLocalActivoEn(sucursalId, db),
+    estadoCartaPropia(sucursalId, db),
   ]);
 
+  const descuentos = await descuentosConfiguradosEnSucursal(sucursalId, db, productos.map((p) => p.id));
   const productosAdmin: ProductoCartaAdmin[] = productos.map((p) => {
-    const c = p.contenidoCarta;
+    const c = p.contenidosCarta[0];
     return {
       id: p.id,
       nombre: p.nombre,
       seccionCarta: c?.seccionCarta?.activa ? c.seccionCarta.nombre : null,
       precio: Number(p.precioVenta),
-      contenido: c && {
+      descuento: descuentos.get(p.id) ?? null,
+      contenido: c ? {
         visibleEnCarta: c.visibleEnCarta,
         seccionCartaId: c.seccionCartaId,
         descripcion: c.descripcion,
@@ -176,13 +234,15 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
         especial: c.especial,
         orden: c.orden,
         generoCartaId: c.generoCartaId,
-      },
-      agrupadoEn: p.opcionItemAgrupadoCarta?.itemAgrupadoCarta.nombre ?? null,
+      } : null,
+      agrupadoEn: p.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre ?? null,
       generoCarta: c?.generoCarta?.activo ? c.generoCarta.nombre : null,
     };
   });
 
   return {
+    cartaVacia: estado.cartaVacia,
+    sucursalesConCarta: estado.sucursalesConCarta,
     secciones,
     generos,
     productos: productosAdmin,
@@ -197,13 +257,17 @@ export async function cargarAdminCarta(sucursalId: string, db: Db = prisma): Pro
       precio: Number(pr.precio),
       orden: pr.orden,
       activa: pr.activa,
+      prendidaAca: pr.sucursales[0]?.activa ?? false,
+      precioLocal: pr.sucursales[0]?.precioLocal != null ? Number(pr.sucursales[0].precioLocal) : null,
+      precioAca: precioDePromo(pr.precio, pr.sucursales[0], precioLocalActivo),
       cupos: pr.cupos.map((c) => ({ id: c.id, seccionCartaId: c.seccionCartaId, seccionCarta: c.seccionCarta.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima, orden: c.orden })),
     })),
+    precioLocalActivo,
   };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// Ítems agrupados de la carta (/catalogo/carta/agrupados, docs/plan-agrupacion-items-carta-2026-09-24.md, M6/M7)
+// Ítems agrupados de la carta (/carta/agrupados, docs/plan-agrupacion-items-carta-2026-09-24.md, M6/M7)
 // ---------------------------------------------------------------------------------------------------------------------------
 
 export interface OpcionItemAgrupadoAdmin {
@@ -260,9 +324,10 @@ export interface DatosAdminItemsAgrupados {
 }
 
 /** Todos los ítems agrupados (activos primero, orden, nombre), con lo que se ve y se avisa en la sucursal activa. */
-export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = prisma): Promise<DatosAdminItemsAgrupados> {
+export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db): Promise<DatosAdminItemsAgrupados> {
   const [items, secciones, generos, sinGrupo, armado] = await Promise.all([
     db.itemAgrupadoCarta.findMany({
+      where: whereCartaDeSucursal(sucursalId),
       select: {
         id: true,
         nombre: true,
@@ -285,10 +350,10 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = pri
       },
       orderBy: [{ activo: "desc" }, { orden: "asc" }, { nombre: "asc" }],
     }),
-    seccionesConCantidad(db),
-    generosOrdenados(db),
+    seccionesConCantidad(sucursalId, db),
+    generosOrdenados(sucursalId, db),
     db.producto.findMany({
-      where: { tipo: "PV", ...whereDisponibleEn(sucursalId), opcionItemAgrupadoCarta: { is: null } },
+      where: { tipo: "PV", ...whereDisponibleEn(sucursalId), opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } },
       select: { id: true, nombre: true, precioVenta: true },
       orderBy: { nombre: "asc" },
     }),
@@ -297,13 +362,10 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = pri
 
   const idsOpciones = items.flatMap((it) => it.opciones.map((o) => o.producto.id));
   const idsConPrecio = [...new Set([...idsOpciones, ...sinGrupo.map((p) => p.id)])];
-  const [disponibilidad, locales] = await Promise.all([
+  const [disponibilidad, localPorProducto] = await Promise.all([
     disponibilidadDeProductos(sucursalId, idsOpciones, db),
-    idsConPrecio.length === 0
-      ? Promise.resolve([])
-      : db.precioLocalProducto.findMany({ where: { sucursalId, productoId: { in: idsConPrecio } }, select: { productoId: true, precio: true, habilitado: true } }),
+    preciosLocalesVigentes(sucursalId, db, idsConPrecio),
   ]);
-  const localPorProducto = new Map(locales.map((l) => [l.productoId, { precio: Number(l.precio), habilitado: l.habilitado }]));
   const precioAca = (productoId: string, precioVenta: { toString(): string }) => precioDeCarta(Number(precioVenta), localPorProducto.get(productoId));
   const comparar = (a: string, b: string) => a.localeCompare(b, "es");
 
@@ -357,13 +419,12 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db = pri
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// Portal de sucursales (/catalogo/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7)
+// Portal de sucursales (/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7)
 // ---------------------------------------------------------------------------------------------------------------------------
 
 export interface RegistroPublicoAdmin {
   slug: string;
   etiqueta: string | null;
-  dominio: string | null;
   subtituloPortal: string | null;
   posX: number | null;
   posY: number | null;
@@ -371,23 +432,20 @@ export interface RegistroPublicoAdmin {
   posH: number | null;
   orden: number;
   publicada: boolean;
-  menuDesdeMotor2: boolean;
-  sheetId: string | null;
-  sheetMenuNombre: string;
 }
 
 export interface SucursalPortalAdmin {
   id: string;
   nombre: string;
   activo: boolean;
-  /** null = la sucursal no está en el registro de motor2 (la carta sigue con la fila de la sheet, si la hay). */
+  /** null = la sucursal no está en el registro de motor2 (no sale en el portal). */
   publica: RegistroPublicoAdmin | null;
-  /** true = tiene un tema aplicado en motor2 (/catalogo/carta/tema): el registro emite `temaDesdeMotor2` (docs/plan-tema-carta-2026-09-24.md, M6). */
+  /** true = tiene un tema aplicado en motor2 (/carta/tema): el registro emite `temaDesdeMotor2` (docs/plan-tema-carta-2026-09-24.md, M6). */
   temaDesdeMotor2: boolean;
 }
 
 /** TODAS las sucursales (el mapa del portal es entre sucursales, no depende de la activa), activas primero, con su fila si la tienen. */
-export async function cargarAdminPortal(db: Db = prisma): Promise<SucursalPortalAdmin[]> {
+export async function cargarAdminPortal(db: Db): Promise<SucursalPortalAdmin[]> {
   const sucursales = await db.sucursal.findMany({
     select: { id: true, nombre: true, activo: true, publica: true, temaCarta: { select: { aplicarEnCarta: true } } },
     orderBy: [{ activo: "desc" }, { nombre: "asc" }],
@@ -400,7 +458,6 @@ export async function cargarAdminPortal(db: Db = prisma): Promise<SucursalPortal
     publica: s.publica && {
       slug: s.publica.slug,
       etiqueta: s.publica.etiqueta,
-      dominio: s.publica.dominio,
       subtituloPortal: s.publica.subtituloPortal,
       posX: num(s.publica.posX),
       posY: num(s.publica.posY),
@@ -408,22 +465,19 @@ export async function cargarAdminPortal(db: Db = prisma): Promise<SucursalPortal
       posH: num(s.publica.posH),
       orden: s.publica.orden,
       publicada: s.publica.publicada,
-      menuDesdeMotor2: s.publica.menuDesdeMotor2,
-      sheetId: s.publica.sheetId,
-      sheetMenuNombre: s.publica.sheetMenuNombre,
     },
     temaDesdeMotor2: s.temaCarta?.aplicarEnCarta === true,
   }));
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// Tema de la carta (/catalogo/carta/tema, docs/plan-tema-carta-2026-09-24.md, M4/M9)
+// Tema de la carta (/carta/tema, docs/plan-tema-carta-2026-09-24.md, M4/M9)
 // ---------------------------------------------------------------------------------------------------------------------------
 
 export interface TemaAdmin {
   sucursalId: string;
   nombre: string;
-  /** null = la sucursal todavía no tiene tema en motor2 (la carta usa la tab Config de su sheet). */
+  /** null = la sucursal todavía no tiene tema en motor2 (la carta usa el estilo por defecto). */
   tema: {
     /**
      * Lo guardado TAL CUAL (sin volver a validar), solo las claves del catálogo con valor de texto: si alguien cargó algo inválido
@@ -438,7 +492,7 @@ export interface TemaAdmin {
 }
 
 /** El tema de la sucursal (la activa de quien llama) y su lugar en el portal, en una sola consulta. */
-export async function cargarTemaAdmin(sucursalId: string, db: Db = prisma): Promise<TemaAdmin | null> {
+export async function cargarTemaAdmin(sucursalId: string, db: Db): Promise<TemaAdmin | null> {
   const s = await db.sucursal.findUnique({
     where: { id: sucursalId },
     select: {
@@ -462,4 +516,58 @@ export async function cargarTemaAdmin(sucursalId: string, db: Db = prisma): Prom
     tema: s.temaCarta && { valores, aplicarEnCarta: s.temaCarta.aplicarEnCarta, actualizadoEn: s.temaCarta.actualizadoEn },
     publica: s.publica,
   };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Apariencia del portal de la empresa (/carta/portal, ADR-006)
+// ---------------------------------------------------------------------------------------------------------------------------
+
+export interface PortalEmpresaAdmin {
+  /**
+   * Lo guardado TAL CUAL (sin volver a validar), solo las claves del catálogo del portal con valor de texto: si alguien cargó algo
+   * inválido por `db:studio`, el formulario lo muestra para corregirlo (el portal público, en cambio, cae al default).
+   */
+  valores: Record<string, string>;
+  /** null = todavía no se guardó nada (el portal usa los defaults). Sirve de `key` del formulario para que se reinicie al guardar. */
+  actualizadoEn: Date | null;
+}
+
+/** La apariencia del portal de la empresa activa (una fila por empresa; RLS deja ver solo la propia). */
+export async function cargarPortalEmpresaAdmin(db: Db): Promise<PortalEmpresaAdmin> {
+  const fila = await db.portalCartaEmpresa.findFirst({ select: { valores: true, actualizadoEn: true } });
+  const json = fila?.valores;
+  const obj: Record<string, unknown> = typeof json === "object" && json !== null && !Array.isArray(json) ? (json as Record<string, unknown>) : {};
+  const valores: Record<string, string> = {};
+  for (const clave of Object.keys(obj)) {
+    const v = obj[clave];
+    if (esClavePortal(clave) && typeof v === "string") valores[clave] = v;
+  }
+  return { valores, actualizadoEn: fila?.actualizadoEn ?? null };
+}
+
+export interface EntradaVistaPreviaPortal {
+  id: string;
+  slug: string;
+  etiqueta: string;
+  subtitulo: string | null;
+  posicion: PosicionPortal | null;
+}
+
+/**
+ * Lo que el portal público mostraría hoy (publicada y con la sucursal activa), en el mismo orden (`orden`, después etiqueta): la
+ * vista previa del admin dibuja con esto. Solo lo guardado: cambiar una posición o publicar una sucursal se ve al guardarla.
+ */
+export function entradasVistaPreviaPortal(sucursales: readonly SucursalPortalAdmin[]): EntradaVistaPreviaPortal[] {
+  return sucursales
+    .flatMap((s) => (s.publica?.publicada && s.activo ? [{ s, p: s.publica }] : []))
+    .map(({ s, p }) => ({
+      id: s.id,
+      slug: p.slug,
+      etiqueta: p.etiqueta ?? s.nombre,
+      subtitulo: p.subtituloPortal,
+      posicion: posicionCompleta(p.posX, p.posY, p.posW, p.posH),
+      orden: p.orden,
+    }))
+    .sort((a, b) => a.orden - b.orden || a.etiqueta.localeCompare(b.etiqueta, "es"))
+    .map(({ id, slug, etiqueta, subtitulo, posicion }) => ({ id, slug, etiqueta, subtitulo, posicion }));
 }

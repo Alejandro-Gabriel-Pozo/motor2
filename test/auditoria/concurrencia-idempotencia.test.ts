@@ -64,7 +64,7 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
       expect(fallidos.length).toBe(1);
       expect(fallidos[0]!.mensaje).toMatch(/stock insuficiente/i);
 
-      const saldoFinal = await calcularSaldoTotal(mp.id, seccionId);
+      const saldoFinal = await calcularSaldoTotal(mp.id, seccionId, prisma);
       expect(saldoFinal).toBe(4); // 10 - 6, nunca 10-12=-2 ni 10-6-6 si ambos hubiesen "ganado" mal
     });
 
@@ -94,7 +94,7 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
 
         const cumplidos = settled as PromiseFulfilledResult<Awaited<ReturnType<typeof registrarMovimiento>>>[];
         expect(cumplidos.every((c) => c.value.ok), `intento ${intento}: ambas operaciones deben tener éxito`).toBe(true);
-        expect(await calcularSaldoTotal(mp.id, seccionId)).toBe(8); // 20 - 6 - 6, siempre
+        expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(8); // 20 - 6 - 6, siempre
       }
     });
   });
@@ -151,7 +151,7 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
       const operacionesConsumo = await prisma.operacion.count({ where: { sucursalId, proceso: "CONSUMO" } });
       expect(operacionesConsumo).toBe(2); // dos Operaciones distintas del mismo submit repetido
 
-      expect(await calcularSaldoTotal(mp.id, seccionId)).toBe(4); // 10 - 3 - 3, se descontó dos veces
+      expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(4); // 10 - 3 - 3, se descontó dos veces
     });
   });
 
@@ -172,7 +172,7 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
 
       expect(resultado.ok).toBe(false);
       // El saldo debe seguir en 10: ninguna línea se persistió pese a que la primera era válida.
-      expect(await calcularSaldoTotal(mpValida.id, seccionId)).toBe(10);
+      expect(await calcularSaldoTotal(mpValida.id, seccionId, prisma)).toBe(10);
       const totalMovimientos = await prisma.movimientoStock.count({ where: { productoId: mpValida.id } });
       expect(totalMovimientos).toBe(1); // solo el movimiento de la COMPRA inicial, ningún CONSUMO parcial
     });

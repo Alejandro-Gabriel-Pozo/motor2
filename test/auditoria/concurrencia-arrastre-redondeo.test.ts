@@ -66,7 +66,7 @@ describe("Auditoría — concurrencia del arrastre de redondeo (Task #27)", () =
 
       const sumaEscrito = filas.reduce((s, f) => s + Number(f.cantidad), 0);
       expect(sumaEscrito, `ronda ${ronda}: total consumido debe ser -1 (un bollo), nunca -2 ni 0`).toBe(-1);
-      expect(await calcularSaldoTotal(mp.id, seccionId), `ronda ${ronda}`).toBe(19); // 20 comprados - 1 bollo (2 medias)
+      expect(await calcularSaldoTotal(mp.id, seccionId, prisma), `ronda ${ronda}`).toBe(19); // 20 comprados - 1 bollo (2 medias)
 
       // Invariante D = Σcantidad − ΣcantidadExacta (schema.prisma, docstring de MovimientoStock.cantidadExacta), sumando solo las
       // filas con cantidadExacta no nulo — acá las DOS filas de la ronda difieren de su exacto (0,5 ≠ 1 y 0,5 ≠ 0), así que las dos

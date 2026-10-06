@@ -2,15 +2,22 @@
   "name": "motor2",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "plataforma"
+  ],
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "plataforma:dev": "npm run dev --workspace @motor2/plataforma",
+    "plataforma:build": "npm run build --workspace @motor2/plataforma",
+    "plataforma:start": "npm run start --workspace @motor2/plataforma",
+    "build": "tsx scripts/construir.ts",
     "build:e2e": "prisma generate && next build",
     "start:e2e": "next start",
     "start": "next start",
     "lint": "eslint",
-    "arquitectura": "depcruise src --config .dependency-cruiser.cjs",
+    "arquitectura": "depcruise src plataforma --config .dependency-cruiser.cjs",
     "analizar:muerto": "knip",
+    "auditar:dependencias": "tsx scripts/auditar-dependencias.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
@@ -18,8 +25,17 @@
     "mutacion": "stryker run",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "migrar:aprobar": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "plataforma:crear-admin": "tsx scripts/plataforma/crear-primer-admin.ts",
+    "politica-empresa": "tsx scripts/politica-empresa.ts",
+    "modulos-empresa": "tsx scripts/modulos-empresa.ts",
+    "detectar-cuentas-vinculadas": "tsx scripts/detectar-cuentas-vinculadas.ts",
+    "medir-precargados": "tsx scripts/medir-precargados-sin-google.ts",
+    "medir-zonas": "tsx scripts/medir-zonas-horarias.ts",
+    "medir-cuit": "tsx scripts/medir-cuit.ts",
+    "verificar:modulos": "tsx scripts/verificar-registro-de-modulos.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -30,7 +46,8 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "7.10.0",
     "@sentry/nextjs": "^10.74.0",
-    "next": "16.3.5",
+    "lucide-react": "^1.49.0",
+    "next": "16.3.8",
     "next-auth": "^5.0.0-beta.32",
     "pg": "^8.23.0",
     "prisma": "7.10.0",
@@ -38,7 +55,8 @@
     "react-dom": "19.2.8",
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
-    "write-excel-file": "^4.1.1"
+    "write-excel-file": "^4.1.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
@@ -55,7 +73,7 @@
     "dependency-cruiser": "^18.4.0",
     "dotenv": "^17.4.2",
     "eslint": "^9",
-    "eslint-config-next": "16.3.5",
+    "eslint-config-next": "16.3.8",
     "fast-check": "^4.10.2",
     "fflate": "^0.8.3",
     "knip": "^6.38.0",

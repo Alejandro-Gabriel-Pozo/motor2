@@ -1,15 +1,14 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 
 export async function listarCategoriasProducto() {
-  await requerirSesion();
-  return prisma.categoriaProducto.findMany({ orderBy: { nombre: "asc" } });
+  const ctx = await requerirSesion();
+  return ctx.db.categoriaProducto.findMany({ orderBy: { nombre: "asc" } });
 }
 
 /**
@@ -20,23 +19,23 @@ export async function listarCategoriasProducto() {
  * la ruta con el formulario a medio llenar (ver la regla en refrescar.ts).
  */
 export async function crearCategoriaProducto(nombre: string): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("alta_producto", async () => {
+  return conPermisoDeEmpresa<ResultadoConId>("categoria_alta", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre de la categoría no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre de la categoría");
     if (invalido) return error(invalido);
 
-    const existente = await prisma.categoriaProducto.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
+    const existente = await ctx.db.categoriaProducto.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
     if (existente) return okConId(`Ya existía la categoría "${existente.nombre}" — se reusa.`, existente.id, existente.nombre);
 
-    const creada = await prisma.categoriaProducto.create({ data: { nombre: n } });
+    const creada = await ctx.db.categoriaProducto.create({ data: { nombre: n } });
     return okConId(`Categoría "${creada.nombre}" creada.`, creada.id, creada.nombre);
   });
 }
 
 export async function actualizarActivaCategoriaProducto(categoriaId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("categorias", async () => {
-    await prisma.categoriaProducto.update({ where: { id: categoriaId }, data: { activo } });
+  return conPermisoDeEmpresa("categorias", async (ctx) => {
+    await ctx.db.categoriaProducto.update({ where: { id: categoriaId }, data: { activo } });
     // Se llama desde un closure "use server" de la página de Categorías, sin redirigir: sin esto la columna «Activa» no cambia (ver refrescar.ts).
     refrescarVistaSiHaceFalta();
     return ok(`Categoría ${activo ? "activada" : "desactivada"}.`);

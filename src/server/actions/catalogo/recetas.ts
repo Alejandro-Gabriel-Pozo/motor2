@@ -1,33 +1,19 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
-import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/public";
-import type { IngredienteInput, PasoInput, CabeceraRecetaInput } from "@/core/catalogo/public-servidor";
+import { ALCANCE_CENTRAL, cargarHistorialDeVersiones, cargarRecetaVigente, esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/public";
+import { INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput, type CabeceraRecetaInput, type IngredienteInput, type PasoInput } from "@/core/catalogo/public-servidor";
 import { guardComandoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
-import { requerirVer } from "../con-sesion";
+import { requerirVerDeEmpresa } from "../con-sesion";
 import { guardarVersionDeRecetaCasoDeUso } from "./casos-de-uso/guardar-version-de-receta";
-
-const INCLUDE_RECETA_COMPLETA = {
-  ingredientes: {
-    include: { insumoProducto: true, unidad: true, sustitutos: { orderBy: { orden: "asc" as const }, include: { insumoSustituto: true } } },
-  },
-  pasos: { orderBy: { orden: "asc" as const }, include: { ingredientes: { include: { recetaIngrediente: { include: { insumoProducto: true } } } } } },
-  rendimientoUnidad: true,
-  racionUnidad: true,
-};
 
 /** Equivalente de construirMapaRecetas_ (Catalogo.js:1549-1596): vigente = MAX(version), siempre derivado. */
 export async function obtenerRecetaVigente(productoId: string) {
-  await requerirVer("guardar_receta");
-  return prisma.recetaVersion.findFirst({
-    where: { productoId },
-    orderBy: { version: "desc" },
-    include: INCLUDE_RECETA_COMPLETA,
-  });
+  const ctx = await requerirVerDeEmpresa("guardar_receta");
+  return cargarRecetaVigente(ctx.db, ALCANCE_CENTRAL, productoId, { include: INCLUDE_RECETA_COMPLETA });
 }
 
 /**
@@ -37,60 +23,8 @@ export async function obtenerRecetaVigente(productoId: string) {
  * guardado pero invisible en la UI (que solo mostraba la vigente).
  */
 export async function listarVersionesDeReceta(productoId: string) {
-  await requerirVer("guardar_receta");
-  return prisma.recetaVersion.findMany({
-    where: { productoId },
-    orderBy: { version: "desc" },
-    include: INCLUDE_RECETA_COMPLETA,
-  });
-}
-
-type RecetaVigente = Awaited<ReturnType<typeof obtenerRecetaVigente>>;
-
-/**
- * Round-trip de la receta vigente a los inputs de guardarReceta — usado por cada acción puntual (agregar/editar/quitar UN
- * ingrediente o paso) para no pisar lo que no se está tocando. Copia `insumoSustitutoIds` (ya en su `orden` — la ida y vuelta
- * CRÍTICA de docs/plan-sustitucion-insumos-receta-2026-09-26.md §0.6/D1: sin esto, cualquier edición puntual que no toque el
- * ingrediente sustituido igual le borraría los sustitutos en la próxima versión).
- */
-function mapIngredientesAInput(vigente: RecetaVigente): IngredienteInput[] {
-  if (!vigente) return [];
-  return vigente.ingredientes.map((i) => ({
-    insumoProductoId: i.insumoProductoId,
-    cantidad: Number(i.cantidad),
-    unidadId: i.unidadId,
-    mermaPorcentaje: Number(i.mermaPorcentaje),
-    observaciones: i.observaciones ?? undefined,
-    insumoSustitutoIds: i.sustitutos.map((s) => s.insumoSustitutoId),
-  }));
-}
-
-function mapPasosAInput(vigente: RecetaVigente): PasoInput[] {
-  if (!vigente) return [];
-  return vigente.pasos.map((p) => ({
-    orden: p.orden,
-    nombre: p.nombre ?? undefined,
-    instruccion: p.instruccion,
-    minutos: p.minutos ?? undefined,
-    insumoProductoIds: p.ingredientes.map((pi) => pi.recetaIngrediente.insumoProductoId),
-  }));
-}
-
-function mapCabeceraAInput(vigente: RecetaVigente): CabeceraRecetaInput {
-  if (!vigente) return {};
-  return {
-    rendimientoCantidad: vigente.rendimientoCantidad ? Number(vigente.rendimientoCantidad) : undefined,
-    rendimientoUnidadId: vigente.rendimientoUnidadId ?? undefined,
-    racionesCantidad: vigente.racionesCantidad ?? undefined,
-    racionTamano: vigente.racionTamano ? Number(vigente.racionTamano) : undefined,
-    racionUnidadId: vigente.racionUnidadId ?? undefined,
-    tiempoPreparacionMinutos: vigente.tiempoPreparacionMinutos ?? undefined,
-    tiempoCoccionMinutos: vigente.tiempoCoccionMinutos ?? undefined,
-    comentarios: vigente.comentarios ?? undefined,
-    presentacionEmplatado: vigente.presentacionEmplatado ?? undefined,
-    notasAdicionales: vigente.notasAdicionales ?? undefined,
-    equipamientoNecesario: vigente.equipamientoNecesario ?? undefined,
-  };
+  const ctx = await requerirVerDeEmpresa("guardar_receta");
+  return cargarHistorialDeVersiones(ctx.db, ALCANCE_CENTRAL, productoId, INCLUDE_RECETA_COMPLETA);
 }
 
 /**
@@ -121,7 +55,7 @@ export async function guardarReceta(
   pasos: PasoInput[] = [],
   cabecera: CabeceraRecetaInput = {}
 ): Promise<ResultadoAccion> {
-  return conPermiso("guardar_receta", async (ctx) => {
+  return conPermisoDeEmpresa("guardar_receta", async (ctx) => {
     const comando = guardComandoGuardarVersionDeReceta({ productoId, items, pasos, cabecera });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, comando.valor);
@@ -239,6 +173,7 @@ export async function actualizarPasoDeReceta(
 
 /** Quita un paso de la receta vigente. */
 export async function quitarPasoDeReceta(productoId: string, orden: number): Promise<ResultadoAccion> {
+  if (!Number.isInteger(orden)) return error("El número de paso no es válido.");
   const vigente = await obtenerRecetaVigente(productoId);
   const pasos = mapPasosAInput(vigente).filter((p) => p.orden !== orden);
   return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente));
@@ -275,6 +210,8 @@ export async function reordenarPasosDeReceta(productoId: string, secuencia: numb
  * `orden` duplicado (esa función queda intacta, es el camino "Al final").
  */
 export async function insertarPasoEnReceta(productoId: string, posicion: number, paso: Omit<PasoInput, "orden">): Promise<ResultadoAccion> {
+  // `insertarEnPosicion` recorta una posición fuera de rango (0, 99), pero un NaN lo dejaría en silencio al principio.
+  if (!Number.isInteger(posicion)) return error("La posición del paso no es válida.");
   const vigente = await obtenerRecetaVigente(productoId);
   const pasosExistentes = mapPasosAInput(vigente);
 

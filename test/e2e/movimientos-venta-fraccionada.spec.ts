@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Venta fraccionada en el MOSTRADOR (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): la misma validación de `pasoVenta`
@@ -8,7 +8,7 @@ import { prisma } from "../../src/lib/db";
  */
 async function sembrarPizzaFraccionada(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const pizza = await prisma.producto.create({
     data: { codigo: `E2E-VFM-${marca}`, nombre: `E2E Pizza mostrador ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 12000, pasoVenta: 0.5 },
   });

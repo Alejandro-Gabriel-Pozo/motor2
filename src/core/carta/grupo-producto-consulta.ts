@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 import { precioDeCarta } from "./armar-menu";
+import { whereCartaDeSucursal } from "./carta-de-sucursal";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -31,9 +32,9 @@ export interface GrupoDeProducto {
 }
 
 /** `null` si el producto no está en ningún ítem agrupado. */
-export async function resolverGrupoDeProducto(productoId: string, sucursalId: string, db: Db = prisma): Promise<GrupoDeProducto | null> {
-  const opcion = await db.opcionItemAgrupadoCarta.findUnique({
-    where: { productoId },
+export async function resolverGrupoDeProducto(productoId: string, sucursalId: string, db: Db): Promise<GrupoDeProducto | null> {
+  const opcion = await db.opcionItemAgrupadoCarta.findFirst({
+    where: { productoId, ...whereCartaDeSucursal(sucursalId) },
     select: {
       itemAgrupadoCarta: {
         select: {
@@ -51,11 +52,7 @@ export async function resolverGrupoDeProducto(productoId: string, sucursalId: st
 
   const item = opcion.itemAgrupadoCarta;
   const ids = item.opciones.map((o) => o.producto.id);
-  const locales =
-    ids.length === 0
-      ? []
-      : await db.precioLocalProducto.findMany({ where: { sucursalId, productoId: { in: ids } }, select: { productoId: true, precio: true, habilitado: true } });
-  const localPorProducto = new Map(locales.map((l) => [l.productoId, { precio: Number(l.precio), habilitado: l.habilitado }]));
+  const localPorProducto = await preciosLocalesVigentes(sucursalId, db, ids);
 
   return {
     itemAgrupadoCartaId: item.id,

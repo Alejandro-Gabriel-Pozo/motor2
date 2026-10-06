@@ -1,9 +1,9 @@
 "use server";
 
-import { esNumeroFinito } from "@/core/numero";
+import { esNumeroEstricto } from "@/core/numero";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
-import { describirCalibracion, describirVueltaAlCentral, normalizarOrigen, type OrigenCalibracionInput } from "@/core/catalogo/public";
+import { ALCANCE_CENTRAL, cargarRecetaVigente, describirCalibracion, describirVueltaAlCentral, normalizarOrigen, type OrigenCalibracionInput } from "@/core/catalogo/public";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -14,14 +14,14 @@ const TOPE_MERMA = 9999.99;
 
 function validarCantidad(c: number | null | undefined): string | null {
   if (c === null || c === undefined) return null;
-  if (!esNumeroFinito(c) || !(c > 0)) return "La cantidad tiene que ser un número mayor a 0.";
+  if (!esNumeroEstricto(c) || !(c > 0)) return "La cantidad tiene que ser un número mayor a 0.";
   if (c >= TOPE_CANTIDAD) return "La cantidad es demasiado grande.";
   return null;
 }
 
 function validarMerma(m: number | null | undefined): string | null {
   if (m === null || m === undefined) return null;
-  if (!esNumeroFinito(m)) return "La merma no es un número válido.";
+  if (!esNumeroEstricto(m)) return "La merma no es un número válido.";
   if (m < 0 || m > TOPE_MERMA) return "La merma tiene que estar entre 0 y 9999,99.";
   return null;
 }
@@ -66,11 +66,11 @@ export async function fijarRendimientoLocal(
       return error("Cambiaste de sucursal desde que abriste el reporte; recargalo.");
     }
 
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const ing = await tx.recetaIngrediente.findUnique({ where: { id: recetaIngredienteId }, include: INCLUDE_LINEA });
       if (!ing) return error("No se encontró esa línea de receta.");
 
-      const vigente = await tx.recetaVersion.findFirst({ where: { productoId: ing.recetaVersion.productoId }, orderBy: { version: "desc" }, select: { id: true } });
+      const vigente = await cargarRecetaVigente(tx, ALCANCE_CENTRAL, ing.recetaVersion.productoId, { select: { id: true } });
       if (!vigente || vigente.id !== ing.recetaVersionId) {
         return error("La receta cambió mientras mirabas el reporte; recargá.");
       }
@@ -119,11 +119,11 @@ export async function fijarRendimientoLocal(
 /** D4: "Volver al valor central" — pone los dos campos en `null` (NO borra la fila, mismo criterio append-only del resto del proyecto) y lo audita. */
 export async function volverAlRendimientoCentral(recetaIngredienteId: string): Promise<ResultadoAccion> {
   return conPermiso("calibrar_rendimiento_local", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const ing = await tx.recetaIngrediente.findUnique({ where: { id: recetaIngredienteId }, include: INCLUDE_LINEA });
       if (!ing) return error("No se encontró esa línea de receta.");
 
-      const vigente = await tx.recetaVersion.findFirst({ where: { productoId: ing.recetaVersion.productoId }, orderBy: { version: "desc" }, select: { id: true } });
+      const vigente = await cargarRecetaVigente(tx, ALCANCE_CENTRAL, ing.recetaVersion.productoId, { select: { id: true } });
       if (!vigente || vigente.id !== ing.recetaVersionId) {
         return error("La receta cambió mientras mirabas el reporte; recargá.");
       }

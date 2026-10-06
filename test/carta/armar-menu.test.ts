@@ -52,7 +52,11 @@ describe("precioDeCarta — misma regla que resolverPrecioVenta", () => {
   it("paridad con resolverPrecioVenta (el precio que se cobra) en los tres casos", async () => {
     const casos: Array<{ precio: number; habilitado: boolean } | null> = [null, { precio: 1200, habilitado: true }, { precio: 1200, habilitado: false }, { precio: 0, habilitado: true }];
     for (const fila of casos) {
-      const dbFalsa = { precioLocalProducto: { findUnique: async () => fila } } as unknown as PrismaClient;
+      // Sin ninguna fila de capacidad (`capacidadSucursal.findMany` vacío) = `precio_local` habilitado.
+      const dbFalsa = {
+        capacidadSucursal: { findMany: async () => [] },
+        precioLocalProducto: { findMany: async () => (fila ? [{ productoId: "p1", precio: fila.precio, habilitado: fila.habilitado }] : []) },
+      } as unknown as PrismaClient;
       const cobrado = await resolverPrecioVenta("suc1", "p1", 1000, dbFalsa);
       expect(precioDeCarta(1000, fila), JSON.stringify(fila)).toBe(cobrado);
     }

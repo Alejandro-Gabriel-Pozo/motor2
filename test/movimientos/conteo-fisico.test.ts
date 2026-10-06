@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+// Pasa-través: solo el test de "carrera simulada" le hace devolver null UNA vez (el chequeo previo no ve al ganador).
+vi.mock("../../src/server/persistencia/movimientos/escribir-conteo-fisico", async (original) => {
+  const real = await original<typeof import("../../src/server/persistencia/movimientos/escribir-conteo-fisico")>();
+  return { ...real, cargarConteoFisicoPorClave: vi.fn(real.cargarConteoFisicoPorClave) };
+});
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -9,6 +14,7 @@ import { registrarConteoFisico, registrarConteosFisicos, resolverConteoPendiente
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { getUsuarioActual } from "../../src/core/auth/session";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import { cargarConteoFisicoPorClave } from "../../src/server/persistencia/movimientos/escribir-conteo-fisico";
 
 describe("Conteo Físico", () => {
   let sucursalId: string;
@@ -41,7 +47,7 @@ describe("Conteo Físico", () => {
       productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "AJUSTAR",
     });
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(7);
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(7);
 
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
     expect(conteo.estado).toBe("RESUELTO");
@@ -59,7 +65,7 @@ describe("Conteo Físico", () => {
     if (resultado.ok) return;
     expect(resultado.mensaje).toContain("decimales");
     expect(await prisma.conteoFisico.count()).toBe(0);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(10); // sin cambios
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(10); // sin cambios
   });
 
   it("sigue aceptando un conteo con los decimales exactos que admite la unidad", async () => {
@@ -67,7 +73,7 @@ describe("Conteo Físico", () => {
       productoId: mpId, seccionId, conteoReal: 7.13, fechaConteo: new Date(), accion: "AJUSTAR",
     });
     expect(resultado.ok, resultado.ok ? "" : resultado.mensaje).toBe(true);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(7.13);
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(7.13);
   });
 
   it("FALTA_MOVIMIENTO no toca el stock y queda PENDIENTE", async () => {
@@ -75,7 +81,7 @@ describe("Conteo Físico", () => {
       productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO",
     });
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(10); // sin cambios
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(10); // sin cambios
 
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
     expect(conteo.estado).toBe("PENDIENTE");
@@ -83,7 +89,7 @@ describe("Conteo Físico", () => {
 
   it("DESCARTAR no toca el stock y no cuenta como conteo válido", async () => {
     await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 2, fechaConteo: new Date(), accion: "DESCARTAR" });
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(10);
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(10);
 
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
     expect(conteo.estado).toBe("DESCARTADO");
@@ -101,8 +107,38 @@ describe("Conteo Físico", () => {
 
     const resultado = await resolverConteoPendiente(conteo.id, "resuelto");
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(10);
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(10);
     expect((await prisma.conteoFisico.findUniqueOrThrow({ where: { id: conteo.id } })).estado).toBe("RESUELTO");
+  });
+
+  it("resolverConteoPendiente con un comoResolver que no es 'resuelto' ni 'ajustar' (POST crudo) rechaza: no cierra el conteo ni escribe un ajuste", async () => {
+    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
+    const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
+    const movimientosAntes = await prisma.movimientoStock.count();
+
+    for (const invalido of ["x", null, undefined, "AJUSTAR", "constructor"]) {
+      const r = await resolverConteoPendiente(conteo.id, invalido as never);
+      expect(r.ok, String(invalido)).toBe(false);
+    }
+    expect(await prisma.movimientoStock.count()).toBe(movimientosAntes);
+    expect((await prisma.conteoFisico.findUniqueOrThrow({ where: { id: conteo.id } })).estado).toBe("PENDIENTE");
+  });
+
+  it("registrarConteoFisico con una acción que no existe (POST crudo) rechaza con un mensaje, sin escribir nada", async () => {
+    const r = await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "BORRAR" as never });
+    expect(r.ok).toBe(false);
+    expect(await prisma.conteoFisico.count()).toBe(0);
+  });
+
+  it("cancelarConteoFisico sin un conteoId de texto (POST crudo) rechaza sin cargar ningún conteo", async () => {
+    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "AJUSTAR" });
+    const movimientosAntes = await prisma.movimientoStock.count();
+    for (const invalido of [undefined, null, "", 42]) {
+      const r = await cancelarConteoFisico(invalido as never);
+      expect(r.ok, String(invalido)).toBe(false);
+    }
+    expect(await prisma.movimientoStock.count()).toBe(movimientosAntes);
+    expect((await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } })).estado).toBe("RESUELTO");
   });
 
   it("resolverConteoPendiente('ajustar') ajusta contra el saldo de HOY, no el del día del conteo", async () => {
@@ -114,17 +150,17 @@ describe("Conteo Físico", () => {
 
     const resultado = await resolverConteoPendiente(conteo.id, "ajustar");
     expect(resultado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(15); // 13 (10+3) + ajuste de 2 = 15
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(15); // 13 (10+3) + ajuste de 2 = 15
   });
 
   it("cancelarConteoFisico revierte exactamente el ajuste, y una segunda cancelación falla", async () => {
     await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "AJUSTAR" });
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(7);
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(7);
 
     const cancelado = await cancelarConteoFisico(conteo.id);
     expect(cancelado.ok).toBe(true);
-    expect(await calcularSaldoTotal(mpId, seccionId)).toBe(10); // vuelve al saldo de antes del ajuste
+    expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(10); // vuelve al saldo de antes del ajuste
 
     const segundaCancelacion = await cancelarConteoFisico(conteo.id);
     expect(segundaCancelacion.ok).toBe(false);
@@ -148,7 +184,7 @@ describe("Conteo Físico", () => {
     const otroAdmin = await crearUsuarioConMembresia({
       email: "admin2@test.com",
       sucursalId: otraSucursal.id,
-      rolId: (await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } })).id,
+      rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id,
     });
     await mockearUsuarioActual({ id: otroAdmin.id, email: otroAdmin.email, nombre: null });
 
@@ -168,7 +204,7 @@ describe("Conteo Físico", () => {
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
     const otraSeccion = await sembrarSeccion(otraSucursal.id, "Depósito otra sucursal");
     const otroMp = await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Café", tipo: "MP", unidadStockId: unidadKgId, insumoId }, otraSucursal.id);
-    const otroAdmin = await crearUsuarioConMembresia({ email: "admin2@test.com", sucursalId: otraSucursal.id, rolId: (await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } })).id });
+    const otroAdmin = await crearUsuarioConMembresia({ email: "admin2@test.com", sucursalId: otraSucursal.id, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id });
     await mockearUsuarioActual({ id: otroAdmin.id, email: otroAdmin.email, nombre: null });
     await registrarConteoFisico({ productoId: otroMp.id, seccionId: otraSeccion.id, conteoReal: 3, fechaConteo: new Date(), accion: "AJUSTAR" });
 
@@ -215,6 +251,18 @@ describe("Conteo Físico", () => {
     expect(porFecha.items[0].productoId).toBe(otroMp.id);
   });
 
+  it("obtenerHistorialConteosFisicos rechaza un filtro mal formado en vez de mandarlo al where (objeto en un id, Invalid Date, cursor vacío)", async () => {
+    const mal = [
+      { productoId: { not: "" } },
+      { seccionId: 5 },
+      { cursor: "" },
+      { desde: new Date("basura") },
+      { hasta: "2026-01-01" },
+    ] as unknown as Parameters<typeof obtenerHistorialConteosFisicos>[1][];
+    for (const filtro of mal) await expect(obtenerHistorialConteosFisicos(sucursalId, filtro)).rejects.toThrow();
+    await expect(obtenerHistorialConteosFisicos(sucursalId, null as never)).rejects.toThrow();
+  });
+
   it("Fase 6 (auditoría de seguridad/contratos): rechaza un seccionId de OTRA sucursal aunque el usuario tenga permiso en la suya", async () => {
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
     const seccionAjena = await sembrarSeccion(otraSucursal.id);
@@ -254,8 +302,8 @@ describe("Conteo Físico", () => {
       expect(r.mensaje).toBe("3 de 3 conteo(s) registrado(s).");
 
       expect(await prisma.conteoFisico.count()).toBe(3);
-      expect(await calcularSaldoTotal(mpId, seccionId)).toBe(7); // ajustado
-      expect(await calcularSaldoTotal(c.id, seccionId)).toBe(4); // FALTA_MOVIMIENTO no toca el stock
+      expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(7); // ajustado
+      expect(await calcularSaldoTotal(c.id, seccionId, prisma)).toBe(4); // FALTA_MOVIMIENTO no toca el stock
     });
 
     it("una fila con error no frena a las demás: cada una devuelve su propio resultado", async () => {
@@ -284,7 +332,7 @@ describe("Conteo Físico", () => {
     });
 
     it("sin el permiso de Control no se escribe nada y se avisa (un mensaje, no un redirect)", async () => {
-      const base = await prisma.rol.findUniqueOrThrow({ where: { nombre: "operador" } });
+      const base = await prisma.rol.findFirstOrThrow({ where: { clave: "operador" } });
       await prisma.permisoRol.update({ where: { rolId_accionClave: { rolId: base.id, accionClave: "proceso_control" } }, data: { puedeEditar: false } });
       const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: base.id });
       await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
@@ -308,8 +356,8 @@ describe("Conteo Físico", () => {
       const espia = vi.spyOn(console, "error").mockImplementation(() => {});
       const b = await crearMpConStock("MP_B", 8);
 
-      // Una fecha inválida hace lanzar a Prisma dentro de la transacción (no es un `return error(...)`).
-      const r = await registrarConteosFisicos([fila(mpId, 7), { ...fila(b.id, 5), fechaConteo: new Date("no-es-una-fecha") }, fila(b.id, 6)]);
+      // Un productoId que no es texto hace lanzar a Prisma dentro de la transacción (no es un `return error(...)`); la fecha inválida ya la rechaza el guard.
+      const r = await registrarConteosFisicos([fila(mpId, 7), { ...fila(b.id, 5), productoId: 123 as unknown as string }, fila(b.id, 6)]);
       espia.mockRestore();
 
       expect(r.ok).toBe(true);
@@ -329,6 +377,146 @@ describe("Conteo Físico", () => {
       if (!r.ok) return;
       expect(r.resultados.map((x) => x.ok)).toEqual([true, false]);
       expect(await prisma.conteoFisico.count({ where: { sucursalId: otraSucursal.id } })).toBe(0);
+    });
+  });
+
+  // I3: mismo comando con la misma clave = un solo conteo (antes un doble clic, o reenviar la grilla tras un corte, creaba dos
+  // ConteoFisico y, con AJUSTAR, dos ajustes de Kardex).
+  describe("idempotencia (I3)", () => {
+    const fecha = new Date("2026-10-01T12:00:00.000Z");
+    const comando = (productoId: string, conteoReal: number, claveIdempotencia?: string, accion: "AJUSTAR" | "FALTA_MOVIMIENTO" = "AJUSTAR") => ({
+      productoId,
+      seccionId,
+      conteoReal,
+      fechaConteo: fecha,
+      accion,
+      claveIdempotencia,
+    });
+    const ajustesDeControl = () => prisma.operacion.count({ where: { proceso: "CONTROL" } });
+
+    it("el mismo comando con la misma clave, dos veces seguidas, deja UN conteo y UN ajuste — y devuelve el mismo mensaje", async () => {
+      const clave = crypto.randomUUID();
+      const primero = await registrarConteoFisico(comando(mpId, 7, clave));
+      expect(primero.ok, primero.mensaje).toBe(true);
+      const segundo = await registrarConteoFisico(comando(mpId, 7, clave));
+      expect(segundo.ok, segundo.mensaje).toBe(true);
+      // Si el reenvío recalculara contra el saldo de ahora (7) diría "El stock ya coincidía": devuelve el resultado ORIGINAL.
+      expect(segundo.mensaje).toBe(primero.mensaje);
+      expect(segundo.mensaje).toContain("Diferencia: -3 (ajustada)");
+
+      expect(await prisma.conteoFisico.count()).toBe(1);
+      expect(await ajustesDeControl()).toBe(1);
+      expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(7);
+    });
+
+    it("también cuando el conteo no escribe ninguna Operación (sin diferencia, o FALTA_MOVIMIENTO): la clave vive en el conteo", async () => {
+      const claveSinDiferencia = crypto.randomUUID();
+      await registrarConteoFisico(comando(mpId, 10, claveSinDiferencia));
+      await registrarConteoFisico(comando(mpId, 10, claveSinDiferencia));
+
+      const claveFalta = crypto.randomUUID();
+      await registrarConteoFisico(comando(mpId, 15, claveFalta, "FALTA_MOVIMIENTO"));
+      await registrarConteoFisico(comando(mpId, 15, claveFalta, "FALTA_MOVIMIENTO"));
+
+      expect(await prisma.conteoFisico.count()).toBe(2);
+      expect(await ajustesDeControl()).toBe(0);
+      expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(10);
+    });
+
+    // La carrera de verdad es no determinista: acá se la FUERZA haciendo que el chequeo previo devuelva null (el insert choca con el
+    // @@unique de la clave). El perdedor con OTROS datos no puede recibir el mensaje del ganador como si su conteo ya estuviera hecho.
+    it("carrera simulada (P2002): la misma clave con OTROS datos da conflicto, no el éxito del ganador; con los mismos datos es un reenvío", async () => {
+      const clave = crypto.randomUUID();
+      const ganador = await registrarConteoFisico(comando(mpId, 7, clave));
+      expect(ganador.ok, ganador.mensaje).toBe(true);
+
+      vi.mocked(cargarConteoFisicoPorClave).mockResolvedValueOnce(null);
+      const otrosDatos = await registrarConteoFisico(comando(mpId, 9, clave));
+      expect(otrosDatos.ok, otrosDatos.mensaje).toBe(false);
+
+      vi.mocked(cargarConteoFisicoPorClave).mockResolvedValueOnce(null);
+      const mismosDatos = await registrarConteoFisico(comando(mpId, 7, clave));
+      expect(mismosDatos.ok, mismosDatos.mensaje).toBe(true);
+      expect(mismosDatos.mensaje).toBe(ganador.mensaje);
+
+      expect(await prisma.conteoFisico.count()).toBe(1);
+    });
+
+    it("la misma clave con OTROS datos es un conflicto: se rechaza y no se escribe nada nuevo", async () => {
+      const clave = crypto.randomUUID();
+      expect((await registrarConteoFisico(comando(mpId, 7, clave))).ok).toBe(true);
+
+      const conOtraCantidad = await registrarConteoFisico(comando(mpId, 5, clave));
+      expect(conOtraCantidad.ok).toBe(false);
+      expect(conOtraCantidad.mensaje).toContain("datos distintos");
+
+      expect(await prisma.conteoFisico.count()).toBe(1);
+      expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(7);
+    });
+
+    it("sin clave sigue funcionando como antes (rollout gradual): dos conteos", async () => {
+      await registrarConteoFisico(comando(mpId, 10));
+      await registrarConteoFisico(comando(mpId, 10));
+      expect(await prisma.conteoFisico.count()).toBe(2);
+    });
+
+    it("una clave que no es un UUID se rechaza antes de escribir nada", async () => {
+      const r = await registrarConteoFisico(comando(mpId, 7, "no-es-un-uuid"));
+      expect(r.ok).toBe(false);
+      expect(r.mensaje).toContain("Clave de reintento inválida");
+      expect(await prisma.conteoFisico.count()).toBe(0);
+    });
+
+    // La carrera real (a diferencia de los tests de arriba, que son SECUENCIALES y nunca ejercitan el índice único): dos envíos
+    // genuinamente simultáneos con la misma clave. Uno escribe; el otro tiene que recuperarse (conflicto de serialización o P2002)
+    // y devolver el mismo resultado, sin tirar un error. Un loop, como en consignación: una sola corrida no garantiza que choquen.
+    it("dos conteos SIMULTÁNEOS con la MISMA clave — exactamente uno escribe, ninguno rechaza, los dos devuelven el mismo mensaje", async () => {
+      for (let i = 0; i < 10; i++) {
+        const mp = await sembrarProductoDisponible({ codigo: `MP_CONC_${i}`, nombre: `Concurrente ${i}`, tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+        const clave = crypto.randomUUID();
+
+        const settled = await Promise.allSettled([registrarConteoFisico(comando(mp.id, 7, clave)), registrarConteoFisico(comando(mp.id, 7, clave))]);
+
+        expect(settled.every((s) => s.status === "fulfilled"), `iteración ${i}: ninguna llamada debe rechazar: ${JSON.stringify(settled)}`).toBe(true);
+        const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
+        expect(resultados.every((r) => r.ok), `iteración ${i}: las dos tienen que dar ok:true (una nueva, la otra repetida): ${JSON.stringify(resultados)}`).toBe(true);
+        expect(resultados[0].mensaje, `iteración ${i}: mismo mensaje en las dos`).toBe(resultados[1].mensaje);
+
+        expect(await prisma.conteoFisico.count({ where: { productoId: mp.id } }), `iteración ${i}: exactamente un conteo`).toBe(1);
+        expect(await calcularSaldoTotal(mp.id, seccionId, prisma), `iteración ${i}: exactamente un ajuste`).toBe(7);
+      }
+    });
+
+    it("la grilla reenviada entera (mismas claves por fila) no duplica ninguna fila ni vuelve a ajustar", async () => {
+      const b = await sembrarProductoDisponible({ codigo: "MP_B", nombre: "Producto B", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: b.id, cantidad: 8 }] });
+      const grilla = [comando(mpId, 7, crypto.randomUUID()), comando(b.id, 5, crypto.randomUUID())];
+
+      const primera = await registrarConteosFisicos(grilla);
+      const reenvio = await registrarConteosFisicos(grilla);
+
+      expect(primera.ok && reenvio.ok).toBe(true);
+      if (!primera.ok || !reenvio.ok) return;
+      expect(reenvio.resultados.every((x) => x.ok)).toBe(true);
+      expect(reenvio.resultados.map((x) => x.mensaje)).toEqual(primera.resultados.map((x) => x.mensaje));
+      expect(await prisma.conteoFisico.count()).toBe(2);
+      expect(await ajustesDeControl()).toBe(2);
+      expect(await calcularSaldoTotal(mpId, seccionId, prisma)).toBe(7);
+      expect(await calcularSaldoTotal(b.id, seccionId, prisma)).toBe(5);
+    });
+
+    it("la grilla reenviada tras cargar una fila más escribe SOLO la nueva", async () => {
+      const b = await sembrarProductoDisponible({ codigo: "MP_B", nombre: "Producto B", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: b.id, cantidad: 8 }] });
+      const filaA = comando(mpId, 7, crypto.randomUUID());
+      await registrarConteosFisicos([filaA]);
+
+      const r = await registrarConteosFisicos([filaA, comando(b.id, 5, crypto.randomUUID())]);
+
+      expect(r.ok && r.resultados.every((x) => x.ok)).toBe(true);
+      expect(await prisma.conteoFisico.count()).toBe(2);
+      expect(await ajustesDeControl()).toBe(2);
     });
   });
 });

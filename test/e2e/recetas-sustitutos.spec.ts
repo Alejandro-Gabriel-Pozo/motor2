@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Sustitución de insumos por línea de receta (docs/plan-sustitucion-insumos-receta-2026-09-26.md): declarar un sustituto desde el
@@ -12,7 +12,7 @@ test("declarar un sustituto en el editor sobrevive a editar un paso, se ve en el
   sucursalId,
 }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const insumoBife = await prisma.insumo.create({ data: { nombre: `E2E Bife de chorizo ${marca}` } });
   const insumoOjo = await prisma.insumo.create({ data: { nombre: `E2E Ojo de bife ${marca}` } });
   const bife = await prisma.producto.create({

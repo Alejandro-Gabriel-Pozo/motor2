@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { ROL_DE_PLATAFORMA } from "../../../plataforma/src/entorno";
 
 /**
  * Base de datos DEDICADA a los E2E de Playwright, con reset total.
@@ -44,10 +45,82 @@ export interface BaseE2E {
  * desarrollo es exactamente el accidente que esta guarda existe para impedir.
  */
 export function resolverUrlE2E(env: Record<string, string | undefined>): BaseE2E {
-  const url = env.MOTOR2_E2E_DATABASE_URL;
+  return validarUrlE2E(env, "MOTOR2_E2E_DATABASE_URL");
+}
+
+/**
+ * La URL del RUNTIME de los E2E (ADR-007, A0): el rol `motor2_app` (sin superusuario, sin BYPASSRLS, no dueño) con el que
+ * corren el servidor de Playwright y los specs, contra la MISMA base que `resolverUrlE2E` (el dueño, que solo resetea y migra).
+ * Mismas guardas, y además tiene que apuntar al mismo host y a la misma base que el dueño. No hay fallback al dueño: correr la
+ * app como dueño anularía el RLS sin aviso, que es justo lo que el rol aparte existe para impedir.
+ */
+export function resolverUrlAppE2E(env: Record<string, string | undefined>): BaseE2E {
+  const dueno = resolverUrlE2E(env);
+  const app = validarUrlE2E(env, "MOTOR2_E2E_APP_DATABASE_URL");
+  if (app.host !== dueno.host || app.nombre !== dueno.nombre) {
+    throw new Error(
+      `MOTOR2_E2E_APP_DATABASE_URL (${app.host}/${app.nombre}) tiene que apuntar a la misma base que MOTOR2_E2E_DATABASE_URL (${dueno.host}/${dueno.nombre}).`,
+    );
+  }
+  if (app.url === dueno.url) {
+    throw new Error("MOTOR2_E2E_APP_DATABASE_URL es idéntica a MOTOR2_E2E_DATABASE_URL: el runtime tiene que usar el rol motor2_app, no el dueño.");
+  }
+  return app;
+}
+
+/**
+ * La URL de la CONSOLA de plataforma en los E2E (E4, ADR-019): el rol `motor2_plataforma` sobre la MISMA base, o `null` si no se configuró (el rol solo existe
+ * donde alguien lo creó: en CI sí, en una máquina local solo si el dueño corrió `crear-rol-motor2-plataforma.sql`). Sin ella, el E2E de la consola se omite.
+ * Con ella, mismas guardas que el resto y, además, el usuario tiene que ser exactamente `motor2_plataforma`: ni el dueño ni `motor2_app`.
+ */
+export function resolverUrlPlataformaE2E(env: Record<string, string | undefined>): BaseE2E | null {
+  if (!env.MOTOR2_E2E_PLATAFORMA_DATABASE_URL) return null;
+  const dueno = resolverUrlE2E(env);
+  const plataforma = validarUrlE2E(env, "MOTOR2_E2E_PLATAFORMA_DATABASE_URL");
+  if (plataforma.host !== dueno.host || plataforma.nombre !== dueno.nombre) {
+    throw new Error(
+      `MOTOR2_E2E_PLATAFORMA_DATABASE_URL (${plataforma.host}/${plataforma.nombre}) tiene que apuntar a la misma base que MOTOR2_E2E_DATABASE_URL (${dueno.host}/${dueno.nombre}).`,
+    );
+  }
+  if (decodeURIComponent(new URL(plataforma.url).username) !== ROL_DE_PLATAFORMA) {
+    throw new Error(`MOTOR2_E2E_PLATAFORMA_DATABASE_URL tiene que conectar con el rol ${ROL_DE_PLATAFORMA}.`);
+  }
+  return plataforma;
+}
+
+/**
+ * La SEGUNDA instalación de los E2E (ADR-025): otra base local cuyo nombre también termina en `_e2e` (p. ej. `motor2_b_e2e`), migrada, para probar que UNA consola opera dos bases sin
+ * mezclarlas. `null` si no se configuró (el spec multi-instalación se omite). Tiene que ser OTRA base que la de siempre: operar «las dos» contra la misma no probaría nada.
+ */
+export function resolverUrlE2EB(env: Record<string, string | undefined>): BaseE2E | null {
+  if (!env.MOTOR2_E2E_B_DATABASE_URL) return null;
+  const a = resolverUrlE2E(env);
+  const b = validarUrlE2E(env, "MOTOR2_E2E_B_DATABASE_URL");
+  if (b.host === a.host && b.nombre === a.nombre) {
+    throw new Error("MOTOR2_E2E_B_DATABASE_URL apunta a la misma base que MOTOR2_E2E_DATABASE_URL: la segunda instalación tiene que ser OTRA base.");
+  }
+  return b;
+}
+
+/** La conexión de la consola a la segunda base: el rol `motor2_plataforma` sobre ESA misma base. Solo tiene sentido si hay segunda base. */
+export function resolverUrlPlataformaE2EB(env: Record<string, string | undefined>): BaseE2E | null {
+  const b = resolverUrlE2EB(env);
+  if (!b) return null;
+  const plataforma = validarUrlE2E(env, "MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL");
+  if (plataforma.host !== b.host || plataforma.nombre !== b.nombre) {
+    throw new Error(`MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL (${plataforma.host}/${plataforma.nombre}) tiene que apuntar a la misma base que MOTOR2_E2E_B_DATABASE_URL (${b.host}/${b.nombre}).`);
+  }
+  if (decodeURIComponent(new URL(plataforma.url).username) !== ROL_DE_PLATAFORMA) {
+    throw new Error(`MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL tiene que conectar con el rol ${ROL_DE_PLATAFORMA}.`);
+  }
+  return plataforma;
+}
+
+function validarUrlE2E(env: Record<string, string | undefined>, variable: string): BaseE2E {
+  const url = env[variable];
   if (!url) {
     throw new Error(
-      "Falta MOTOR2_E2E_DATABASE_URL (ver .env.example). Los E2E corren contra una base local dedicada cuyo nombre termina en \"_e2e\"; no hay fallback a DATABASE_URL a propósito.",
+      `Falta ${variable} (ver .env.example). Los E2E corren contra una base local dedicada cuyo nombre termina en "_e2e"; no hay fallback a DATABASE_URL a propósito.`,
     );
   }
   if (env.NODE_ENV === "production" || env.VERCEL || env.VERCEL_ENV) {
@@ -57,14 +130,14 @@ export function resolverUrlE2E(env: Record<string, string | undefined>): BaseE2E
   try {
     parsed = new URL(url);
   } catch {
-    throw new Error("MOTOR2_E2E_DATABASE_URL no es una URL válida.");
+    throw new Error(`${variable} no es una URL válida.`);
   }
   const host = parsed.hostname;
   if (!HOSTS_PERMITIDOS.includes(host)) {
     throw new Error(`Host rechazado (${host}): los E2E solo corren contra un Postgres LOCAL (localhost o 127.0.0.1).`);
   }
   if (PROHIBIDOS.some((p) => url.includes(p))) {
-    throw new Error("MOTOR2_E2E_DATABASE_URL parece apuntar a un proveedor gestionado — rechazada.");
+    throw new Error(`${variable} parece apuntar a un proveedor gestionado — rechazada.`);
   }
   const nombre = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
   if (!nombre || nombre.includes("/") || !nombre.endsWith(SUFIJO_OBLIGATORIO)) {
@@ -111,9 +184,10 @@ export interface ResultadoReset {
  * Segunda barrera, independiente de la de la URL: se pregunta a la conexión
  * REAL cómo se llama la base (`current_database()`), por si la URL dice una
  * cosa y un pooler/proxy termina en otra. `TRUNCATE ... CASCADE` es
- * independiente del orden de las claves foráneas. Kardex y auditoría no son
- * inmutables a nivel de motor (no hay triggers) y Vitest ya los borra, así
- * que vaciarlos acá no rompe ningún invariante de la base.
+ * independiente del orden de las claves foráneas. `RegistroAuditoria` sí es
+ * append-only a nivel de motor (trigger + REVOKE al rol de ejecución, migración
+ * auditoria_inmutable), pero el trigger exime al dueño: este reset corre con
+ * `DIRECT_URL` (dueño) y puede vaciarla, igual que `limpiarBaseDeTest`.
  */
 export async function resetearBaseE2E(prisma: PrismaClient): Promise<ResultadoReset> {
   const [{ db }] = await prisma.$queryRaw<Array<{ db: string }>>`SELECT current_database() AS db`;

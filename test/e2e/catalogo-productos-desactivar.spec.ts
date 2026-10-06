@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Activar / desactivar un producto desde la ficha y desde la lista. Desactivar se BLOQUEA mientras el producto esté en la receta vigente de un plato
@@ -7,7 +8,7 @@ import { prisma } from "../../src/lib/db";
  * Date.now() y limpia en `finally`.
  */
 async function sembrar(marca: number, conReceta: boolean, sucursalId: string) {
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const insumo = await prisma.insumo.create({ data: { nombre: `E2E Insumo Desactivar ${marca}` } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-DS-MP-${marca}`, nombre: `E2E MP Desactivar ${marca}`, tipo: "MP", unidadStockId: kg.id, insumoId: insumo.id } });
   const pv = await prisma.producto.create({ data: { codigo: `E2E-DS-PV-${marca}`, nombre: `E2E Plato Desactivar ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
@@ -20,7 +21,7 @@ async function sembrar(marca: number, conReceta: boolean, sucursalId: string) {
     pv,
     limpiar: async () => {
       await prisma.recetaVersion.deleteMany({ where: { productoId: pv.id } });
-      await prisma.registroAuditoria.deleteMany({ where: { entidad: "DisponibilidadProducto", entidadId: { in: [`${sucursalId}:${mp.id}`, `${sucursalId}:${pv.id}`] } } });
+      await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "DisponibilidadProducto", entidadId: { in: [`${sucursalId}:${mp.id}`, `${sucursalId}:${pv.id}`] } } });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [pv.id, mp.id] } } });
       await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
       await prisma.insumo.deleteMany({ where: { id: insumo.id } });

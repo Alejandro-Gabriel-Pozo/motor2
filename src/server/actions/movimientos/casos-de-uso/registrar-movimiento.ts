@@ -1,10 +1,11 @@
 import "server-only";
-import { prisma } from "@/lib/db";
+import type { Db } from "@/lib/db-tipos";
+import { mensajeSeguro } from "@/lib/mensaje-seguro";
+import { reportarError } from "@/lib/reportar-error";
 import { texto } from "@/core/texto";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { TRANSICIONES, redondearACantidadDeUnidad } from "@/core/movimientos/public";
-import { armarFilasDeMovimiento } from "@/core/movimientos/armar-filas-de-movimiento";
+import { TRANSICIONES, armarFilasDeMovimiento, redondearACantidadDeUnidad } from "@/core/movimientos/public";
 import {
   obtenerSeccionPropia,
   seccionesConStock,
@@ -20,7 +21,7 @@ import {
 } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { DatosMovimientoInput, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
-import { cargarDestinoConsumo, cargarMotivoMerma, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
+import { cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { upsertProveedorPorProducto } from "../../catalogo/upsert-proveedor-por-producto";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
@@ -63,7 +64,7 @@ function sinLineasParaProveedor(resultado: ResultadoRegistrarMovimiento): Result
  *
  * Limitación conocida, decisión DEFERIDA — no un bug (backlog post-cierre de Task #41, 2026-09-28,
  * docs/pendientes-sesion-2026-09-27.md §11): si `upsertProveedorPorProducto` falla para una línea, el catch de más abajo lo
- * `console.error`ea y sigue con la línea siguiente — no hay forma de reintentar SOLO ese hookup después. `upsertProveedorPorProducto`
+ * `console.error`ea, lo manda a Sentry (`reportarError`) y sigue con la línea siguiente — no hay forma de reintentar SOLO ese hookup después. `upsertProveedorPorProducto`
  * no tiene ningún otro punto de entrada en el proyecto (confirmado: es la ÚNICA llamada real, `grep -rn
  * upsertProveedorPorProducto src/`) — ni una pantalla de administración, ni una acción de "reconciliar catálogo de esta compra". Y
  * reintentar la Compra ENTERA no sirve: con la MISMA `claveIdempotencia` el paso 0 (I3) corta antes de llegar acá (`repetida: true`,
@@ -73,11 +74,11 @@ function sinLineasParaProveedor(resultado: ResultadoRegistrarMovimiento): Result
  * mecanismo de reintento dedicado es una decisión de producto (¿vale la pena una acción de administración para esto?, ¿con qué
  * alcance?), no algo para resolver de paso en esta auditoría.
  */
-async function registrarProveedoresDeLaCompra(proveedorId: string, fecha: Date, lineas: LineaParaProveedor[]): Promise<void> {
+async function registrarProveedoresDeLaCompra(db: Db, proveedorId: string, fecha: Date, lineas: LineaParaProveedor[]): Promise<void> {
   for (const l of lineas) {
     if (!l.unidadCompraId) continue;
     try {
-      await upsertProveedorPorProducto({
+      await upsertProveedorPorProducto(db, {
         productoId: l.productoId,
         proveedorId,
         unidadCompraId: l.unidadCompraId,
@@ -90,7 +91,8 @@ async function registrarProveedoresDeLaCompra(proveedorId: string, fecha: Date, 
       // e instanceof Error ? e.message : String(e) (backlog post-cierre de Task #41, 2026-09-28,
       // docs/pendientes-sesion-2026-09-27.md §5): el cast (e as Error).message revienta con TypeError si algo
       // no-Error (ej. null/undefined) se lanza acá adentro — mismo criterio que core/reportes/cotizacion-dolar.ts.
-      console.error(`upsertProveedorPorProducto falló para producto ${l.productoId}: ${e instanceof Error ? e.message : String(e)}`);
+      console.error(`upsertProveedorPorProducto falló para producto ${l.productoId}: ${mensajeSeguro(e)}`);
+      await reportarError(e, "compra-proveedor-por-producto");
     }
   }
 }
@@ -109,7 +111,7 @@ async function registrarProveedoresDeLaCompra(proveedorId: string, fecha: Date, 
  * Orden, igual que antes:
  *  1. sección propia (origen y, si Transferencia, destino) — Fase 6 (auditoría de seguridad/contratos): `conPermiso` ya validó el
  *     permiso en LA SUCURSAL DEL QUE LLAMA, nunca que la sección que mandó el cliente sea realmente de esa sucursal;
- *  2. motivo/destino (catálogos GLOBALES, solo activos) — cliente global `prisma`, fuera de la transacción;
+ *  2. motivo/destino (catálogos GLOBALES, solo activos) y proveedor (de la empresa, solo activo) — cliente global `prisma`, fuera de la transacción;
  *  3. `guardNroFacturaCompra` — DESPUÉS de sección/motivo/destino a propósito (mismo orden que antes: cambiarlo cambiaría qué mensaje
  *     sale primero cuando hay más de un dato inválido a la vez);
  *  4. camino rápido de factura duplicada (`existeCompraVigenteConFactura`, cliente global) — el árbitro real es el índice único
@@ -130,28 +132,37 @@ async function registrarProveedoresDeLaCompra(proveedorId: string, fecha: Date, 
  * @sideEffects registrarProveedoresDeLaCompra (Compra, best-effort, FUERA de la transacción, solo si no es repetida) — un upsertProveedorPorProducto por línea con unidad de compra conocida.
  */
 export async function registrarMovimientoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
   datos: DatosMovimientoInput
 ): Promise<ResultadoRegistrarMovimiento> {
   // Fase 6 (auditoría de seguridad/contratos): conPermiso ya validó el
   // permiso en LA SUCURSAL DEL QUE LLAMA, nunca que la sección que mandó
   // el cliente sea realmente de esa sucursal — sin esto, cualquier
   // seccionId ajeno (de otra sucursal) se aceptaba igual.
-  if (!(await obtenerSeccionPropia(datos.seccionId, actor.sucursalId))) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
-  if (datos.proceso === "TRANSFERENCIA" && !(await obtenerSeccionPropia(datos.seccionDestinoId!, actor.sucursalId))) {
+  if (!(await obtenerSeccionPropia(datos.seccionId, actor.sucursalId, actor.db))) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
+  if (datos.proceso === "TRANSFERENCIA" && !(await obtenerSeccionPropia(datos.seccionDestinoId!, actor.sucursalId, actor.db))) {
     return fracaso("SECCION_DESTINO_NO_ENCONTRADA", "No se encontró la sección destino.");
   }
 
   // Motivo/Destino: catálogos GLOBALES (no por sucursal, a diferencia de Sección) — solo hace falta que la fila
   // exista y siga activa (un motivo desactivado no puede ELEGIRSE de nuevo, pero las Operacion viejas que ya lo
   // usaban lo conservan, mismo criterio "nunca DELETE" que el resto de los catálogos).
-  if (datos.motivoId) {
-    const motivo = await cargarMotivoMerma(prisma, datos.motivoId);
+  // Tanda 6: la base rechaza un motivo fuera de una Merma y un destino fuera de un Consumo (CHECK en Operacion); el cliente solo manda
+  // lo que corresponde, pero un pedido armado a mano que traiga el otro se ignora acá en vez de terminar en un error crudo de la base.
+  const motivoId = datos.proceso === "MERMA" ? datos.motivoId : undefined;
+  const destinoId = datos.proceso === "CONSUMO" ? datos.destinoId : undefined;
+  if (motivoId) {
+    const motivo = await cargarMotivoMerma(actor.db, motivoId);
     if (!motivo?.activo) return fracaso("MOTIVO_NO_DISPONIBLE", "El motivo elegido ya no está disponible.");
   }
-  if (datos.destinoId) {
-    const destino = await cargarDestinoConsumo(prisma, datos.destinoId);
+  if (destinoId) {
+    const destino = await cargarDestinoConsumo(actor.db, destinoId);
     if (!destino?.activo) return fracaso("DESTINO_NO_DISPONIBLE", "El destino elegido ya no está disponible.");
+  }
+  // Mismo criterio que motivo/destino: un id que no existe, es de otra empresa o está desactivado no puede quedar guardado en la operación (antes, un id inexistente reventaba con un error de clave foránea).
+  if (datos.proveedorId) {
+    const proveedor = await cargarProveedor(actor.db, datos.proveedorId);
+    if (!proveedor?.activo) return fracaso("PROVEEDOR_NO_DISPONIBLE", "El proveedor elegido ya no está disponible.");
   }
 
   // El N.º de factura solo se carga en Compra y Devolución a proveedor (los procesos con proveedor): mismo validador que la corrección.
@@ -172,11 +183,11 @@ export async function registrarMovimientoCasoDeUso(
   // fuera de la transacción (ya hizo rollback para cuando el `.catch`
   // la recibe).
   if (datos.proceso === "COMPRA" && datos.proveedorId && nroFactura) {
-    const yaExiste = await existeCompraVigenteConFactura(prisma, { sucursalId: actor.sucursalId, proveedorId: datos.proveedorId, nroFactura });
+    const yaExiste = await existeCompraVigenteConFactura(actor.db, { sucursalId: actor.sucursalId, proveedorId: datos.proveedorId, nroFactura });
     if (yaExiste) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
   }
 
-  const { resultado, lineasParaProveedor } = await conTransaccionSerializable(async (tx): Promise<ResultadoConLineasParaProveedor> => {
+  const { resultado, lineasParaProveedor } = await conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoConLineasParaProveedor> => {
     // 0) I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
     const payloadHash = datos.claveIdempotencia
       ? calcularPayloadHash(datos.proceso, actor.sucursalId, { ...datos, claveIdempotencia: undefined })
@@ -245,8 +256,8 @@ export async function registrarMovimientoCasoDeUso(
       proveedorId: datos.proveedorId ?? null,
       nroFactura,
       seccionDestinoId: datos.proceso === "TRANSFERENCIA" ? (datos.seccionDestinoId ?? null) : null,
-      motivoId: datos.motivoId ?? null,
-      destinoId: datos.destinoId ?? null,
+      motivoId: motivoId ?? null,
+      destinoId: destinoId ?? null,
       detalleLibre: texto(datos.detalleLibre) || null,
       usuarioId: actor.usuarioId,
       claveIdempotencia: datos.claveIdempotencia ?? null,
@@ -305,7 +316,7 @@ export async function registrarMovimientoCasoDeUso(
   // (§12, mismo backlog). Dejarlo explícito acá documenta la regla real ("un duplicado no vuelve a tocar Catálogo"),
   // no solo la garantía estructural.
   if (resultado.ok && !resultado.datos.repetida && datos.proceso === "COMPRA" && datos.proveedorId) {
-    await registrarProveedoresDeLaCompra(datos.proveedorId, datos.fecha, lineasParaProveedor);
+    await registrarProveedoresDeLaCompra(actor.db, datos.proveedorId, datos.fecha, lineasParaProveedor);
   }
 
   return resultado;

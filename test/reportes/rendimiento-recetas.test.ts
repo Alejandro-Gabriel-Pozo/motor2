@@ -41,7 +41,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: panRallado.id, cantidad: 10 }] });
     await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: 20 }] });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     expect(filas).toHaveLength(1);
     expect(filas[0].productoVentaNombre).toBe("Milanesa");
     expect(filas[0].cantidadActual).toBe(0.4);
@@ -61,7 +61,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: casoBebida.id, cantidad: 12 }] });
     await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: bebida.id, cantidadVendida: 10 }] });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     expect(filas).toHaveLength(1);
     expect(filas[0].rotulo).toBe("PRODUCTO_DE_REVENTA");
   });
@@ -73,7 +73,7 @@ describe("calcularRendimientoRecetasSimples", () => {
       data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: salsaBase.id, cantidad: 1, mermaPorcentaje: 0, unidadId: unidadKgId }] } },
     });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     const fila = filas.find((f) => f.productoVentaNombre === "Pizza rótulo")!;
     expect(fila.rotulo).toBe("SUBRECETA_PRODUCIDA");
   });
@@ -87,7 +87,7 @@ describe("calcularRendimientoRecetasSimples", () => {
       data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: caja.id, cantidad: 1, mermaPorcentaje: 0, unidadId: unidadKgId }] } },
     });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     const fila = filas.find((f) => f.productoVentaNombre === "Pizza con caja")!;
     expect(fila.rotulo).toBe("PACKAGING_NO_COMESTIBLE");
   });
@@ -106,7 +106,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: lomo.id, cantidad: 3 }] });
     await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: bife.id, cantidadVendida: 10 }] });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     expect(filas).toHaveLength(1);
     expect(filas[0].totalComprado).toBe(8); // 5 (nalga) + 3 (lomo) — el pool entero
     expect(filas[0].cantidadEstimada).toBe(0.8); // 8 / 10
@@ -127,7 +127,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: huevo.id, cantidad: 10 }] });
     await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: 5 }] });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     expect(filas).toEqual([]);
   });
 
@@ -138,7 +138,7 @@ describe("calcularRendimientoRecetasSimples", () => {
       data: { productoId: papas.id, version: 1, ingredientes: { create: [{ insumoProductoId: sal.id, cantidad: 0.05, unidadId: unidadKgId }] } },
     });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     expect(filas).toHaveLength(1);
     expect(filas[0].cantidadEstimada).toBeNull();
     expect(filas[0].desviacionPorcentaje).toBeNull();
@@ -159,7 +159,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId: otraSeccion.id, items: [{ productoId: queso.id, cantidad: 100 }] });
     await registrarVenta({ fecha: dentroDelRango, seccionId: otraSeccion.id, ventas: [{ productoId: pizza.id, cantidadVendida: 50 }] });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     expect(filas).toHaveLength(1);
     expect(filas[0].cantidadEstimada).toBeNull(); // nada de la sucursal B se filtró acá
   });
@@ -174,7 +174,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2025-12-01"), seccionId, items: [{ productoId: azucar.id, cantidad: 999 }] });
     await registrarVenta({ fecha: new Date("2025-12-01"), seccionId, ventas: [{ productoId: torta.id, cantidadVendida: 999 }] });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     expect(filas[0].cantidadEstimada).toBeNull();
   });
 
@@ -191,7 +191,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: harina.id, cantidad: 13.2 }] });
     await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: pizza.id, cantidadVendida: 10 }] });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     expect(filas).toHaveLength(1);
     expect(filas[0].cantidadEstimada).toBe(1.1); // NETO — antes del fix hubiera comparado 1.32 (bruto) contra 1 (neto): 32%, no 10%
     expect(filas[0].desviacionPorcentaje).toBe(10);
@@ -219,7 +219,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     });
     await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: papas.id, cantidadVendida: 5 }] });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     expect(filas).toHaveLength(1);
     expect(filas[0].totalComprado).toBe(0);
     expect(filas[0].totalVendido).toBe(5);
@@ -246,7 +246,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     expect(produccion.ok, produccion.mensaje).toBe(true);
     await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: pizza.id, cantidadVendida: 10 }] });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     const fila = filas.find((f) => f.productoVentaNombre === "Pizza con salsa")!;
     expect(fila.totalComprado).toBe(0); // la salsa base nunca se COMPRA
     expect(fila.totalProducido).toBe(20);
@@ -267,7 +267,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: aguaCaja.id, cantidad: 72 }] });
     await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: aguaBotella.id, cantidadVendida: 63 }] });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     const fila = filas.find((f) => f.productoVentaNombre === "Agua botella")!;
     expect(fila.stockApertura).toBe(0); // nada antes de `desde`
     expect(fila.stockCierre).toBe(9); // 72 comprados - 63 consumidos por la venta = quedaron 9 en el depósito
@@ -290,7 +290,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     expect(anulacion.ok, anulacion.mensaje).toBe(true);
 
     // El contra-asiento (AJUSTE) se escribe a la fecha REAL de la anulación (ahora), no a la fecha de la compra original — el rango tiene que cubrir las dos.
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, new Date(hoy.getTime() - 86_400_000), new Date(hoy.getTime() + 86_400_000));
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, new Date(hoy.getTime() - 86_400_000), new Date(hoy.getTime() + 86_400_000), prisma);
     const fila = filas.find((f) => f.productoVentaNombre === "Pan anulable")!;
     // Si el Δstock filtrara anuladaEn: null (mal, ver §B4), solo se vería el contra-asiento (AJUSTE, -50) y el saldo daría -50, no 0.
     expect(fila.stockCierre).toBe(0);
@@ -313,7 +313,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: insumoB.id, cantidad: 11 }] }); // sin precio — nunca se inventa un costo
     await registrarVenta({ fecha: dentroDelRango, seccionId, ventas: [{ productoId: platoB.id, cantidadVendida: 10 }] });
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     const filaA = filas.find((f) => f.productoVentaNombre === "Plato con impacto")!;
     const filaB = filas.find((f) => f.productoVentaNombre === "Plato sin costo")!;
     expect(filaA.impactoPesos).toBe(50);
@@ -371,7 +371,7 @@ describe("calcularRendimientoRecetasSimples — método CONTEO (Task #26, Diseñ
     const anclaHasta = await registrarConteoFisico({ productoId: aguaCaja.id, seccionId, conteoReal: 9, fechaConteo: new Date("2026-01-28"), accion: "AJUSTAR" });
     expect(anclaHasta.ok, anclaHasta.mensaje).toBe(true);
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     const fila = filas.find((f) => f.productoVentaNombre === "Agua botella")!;
     expect(fila.metodo).toBe("CONTEO");
     expect(fila.anclaDesde?.toISOString().slice(0, 10)).toBe("2026-01-02");
@@ -392,7 +392,7 @@ describe("calcularRendimientoRecetasSimples — método CONTEO (Task #26, Diseñ
     const control = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: aguaCaja.id, proceso: "CONTROL" } });
     expect(Number(control.cantidad)).toBe(-9); // 72 comprado - 63 consumido = 9 en el sistema; contado 0 → diferencia -9
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     const fila = filas.find((f) => f.productoVentaNombre === "Agua botella")!;
     expect(fila.metodo).toBe("CONTEO");
     expect(fila.consumoReal).toBe(72); // 63 (venta) + 9 (lo que corrigió el CONTROL)
@@ -409,7 +409,7 @@ describe("calcularRendimientoRecetasSimples — método CONTEO (Task #26, Diseñ
     await registrarVenta({ fecha: new Date("2026-01-15"), seccionId, ventas: [{ productoId: aguaBotella.id, cantidadVendida: 63 }] });
     // Sin conteo del 28/01 — solo UNA ancla (02/01): no alcanza (D4).
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     const fila = filas.find((f) => f.productoVentaNombre === "Agua botella")!;
     expect(fila.metodo).toBe("COMPRAS");
     expect(fila.anclaDesde).toBeNull();
@@ -440,7 +440,7 @@ describe("calcularRendimientoRecetasSimples — método CONTEO (Task #26, Diseñ
     const cierre = await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 0, fechaConteo: new Date("2026-01-28"), accion: "AJUSTAR" });
     expect(cierre.ok, cierre.mensaje).toBe(true);
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     const fila = filas.find((f) => f.productoVentaNombre === "Copa de vino")!;
     expect(fila.metodo).toBe("CONTEO");
     expect(fila.consumoReal).toBe(60); // el traspaso NUNCA suma — sin filtrarlo hubiera dado 100 (consumoReal) → +66,7%, no 0%
@@ -468,7 +468,7 @@ describe("calcularRendimientoRecetasSimples — método CONTEO (Task #26, Diseñ
     const control = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: aguaCaja.id, proceso: "CONTROL" } });
     expect(Number(control.cantidad)).toBe(-9); // igual que B — la compra extra se cancela contra su propia reversión antes del conteo
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     const fila = filas.find((f) => f.productoVentaNombre === "Agua botella")!;
     expect(fila.metodo).toBe("CONTEO");
     expect(fila.consumoReal).toBe(72); // idéntico al escenario B
@@ -491,7 +491,7 @@ describe("calcularRendimientoRecetasSimples — método CONTEO (Task #26, Diseñ
     const cierre = await registrarConteoFisico({ productoId: salsaBase.id, seccionId, conteoReal: 15, fechaConteo: new Date("2026-01-28"), accion: "AJUSTAR" });
     expect(cierre.ok, cierre.mensaje).toBe(true);
 
-    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma);
     const fila = filas.find((f) => f.productoVentaNombre === "Pizza con salsa conteo")!;
     expect(fila.metodo).toBe("CONTEO");
     expect(fila.consumoReal).toBe(5); // solo lo que consumió la venta — nunca lo producido de más
@@ -554,7 +554,7 @@ describe("calcularRendimientoRecetasCompartidas", () => {
       await registrarVenta({ fecha: s.fecha, seccionId, ventas: [{ productoId: bife.id, cantidadVendida: s.bife }] });
     }
 
-    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta, prisma);
     expect(filas).toHaveLength(2);
     expect(filas.every((f) => f.resoluble)).toBe(true);
     expect(filas[0].r2).toBeCloseTo(1, 3);
@@ -578,7 +578,7 @@ describe("calcularRendimientoRecetasCompartidas", () => {
       await registrarVenta({ fecha, seccionId, ventas: [{ productoId: bife.id, cantidadVendida: 4 }] });
     }
 
-    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta, prisma);
     expect(filas.every((f) => !f.resoluble)).toBe(true);
     expect(filas.every((f) => f.cantidadEstimada === null)).toBe(true);
     expect(filas[0].motivoNoResoluble).toMatch(/semanas/i);
@@ -601,7 +601,7 @@ describe("calcularRendimientoRecetasCompartidas", () => {
       await registrarVenta({ fecha: s.fecha, seccionId, ventas: [{ productoId: bife.id, cantidadVendida: s.bife }] });
     }
 
-    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta, prisma);
     expect(filas.every((f) => !f.resoluble)).toBe(true);
     expect(filas[0].motivoNoResoluble).toMatch(/mezcla de ventas/i);
   });
@@ -615,7 +615,7 @@ describe("calcularRendimientoRecetasCompartidas", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-10"), seccionId, items: [{ productoId: panRallado.id, cantidad: 10 }] });
     await registrarVenta({ fecha: new Date("2026-01-10"), seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: 20 }] });
 
-    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta, prisma);
     expect(filas).toEqual([]);
   });
 
@@ -641,7 +641,7 @@ describe("calcularRendimientoRecetasCompartidas", () => {
     const totalMilanesa = semanas.reduce((acc, s) => acc + s.milanesa, 0); // 42
     const totalBife = semanas.reduce((acc, s) => acc + s.bife, 0); // 35
 
-    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta, prisma);
     const filaMilanesa = filas.find((f) => f.productoVentaNombre === "Milanesa")!;
     const filaBife = filas.find((f) => f.productoVentaNombre === "Bife")!;
     expect(filaMilanesa.totalVendido).toBe(totalMilanesa);
@@ -691,7 +691,7 @@ describe("calcularRendimientoRecetasCompartidas", () => {
 
     expect(await prisma.movimientoStock.count({ where: { proceso: "CONTROL" } })).toBe(0); // ningún conteo dio diferencia — nunca hizo falta ajustar
 
-    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta, prisma);
     const filaMilanesa = filas.find((f) => f.productoVentaNombre === "Milanesa conteo")!;
     const filaBife = filas.find((f) => f.productoVentaNombre === "Bife conteo")!;
     expect(filaMilanesa.metodo).toBe("CONTEO");
@@ -724,7 +724,7 @@ describe("calcularRendimientoRecetasCompartidas", () => {
       await registrarVenta({ fecha: s.fecha, seccionId, ventas: [{ productoId: bife.id, cantidadVendida: s.bife }] });
     }
 
-    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta);
+    const filas = await calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta, prisma);
     const filaMilanesa = filas.find((f) => f.productoVentaNombre === "Milanesa")!;
     expect(filaMilanesa.metodo).toBe("COMPRAS");
     expect(filaMilanesa.resoluble).toBe(true); // la regresión semanal de siempre sigue funcionando
@@ -885,8 +885,8 @@ describe("escenario realista: 6 insumos × 4 platos, superpuestos entre sí", ()
     }
 
     const [simples, compartidas] = await Promise.all([
-      calcularRendimientoRecetasSimples(sucursalId, desde, hasta),
-      calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta),
+      calcularRendimientoRecetasSimples(sucursalId, desde, hasta, prisma),
+      calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta, prisma),
     ]);
 
     // Pan rallado y Lechuga: caso simple, un solo plato cada uno.

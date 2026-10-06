@@ -7,7 +7,7 @@ import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { abrirCuenta } from "../../src/server/actions/pos/cuenta-apertura";
 import { agregarItems, enviarACocina } from "../../src/server/actions/pos/cuenta-pedido";
 import { anularItemEnviado } from "../../src/server/actions/pos/cuenta-anulacion";
-import { cerrarCuenta, emitirBoletaCorregida } from "../../src/server/actions/pos/cuenta-cierre";
+import { cerrarCuenta, emitirTicketCorregido } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 
 /**
@@ -35,11 +35,11 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
     expect(resultados.filter((r) => r.mensaje === "La cuenta de la mesa 4 ya estaba cerrada.")).toHaveLength(1);
     expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(2);
     expect(await prisma.movimientoStock.count({ where: { proceso: "VENTA" } })).toBe(2);
-    // Una sola boleta numerada: el cierre que perdió la carrera no emite otro ejemplar.
-    expect(await prisma.ejemplarBoleta.findMany({ select: { cuentaId: true, numero: true, ejemplar: true } })).toEqual([{ cuentaId: cuenta.id, numero: 1, ejemplar: 1 }]);
+    // Un solo ticket numerado: el cierre que perdió la carrera no emite otro ejemplar.
+    expect(await prisma.ejemplarTicket.findMany({ select: { cuentaId: true, numero: true, ejemplar: true } })).toEqual([{ cuentaId: cuenta.id, numero: 1, ejemplar: 1 }]);
   });
 
-  it("dos «Emitir boleta corregida» a la vez: un solo ejemplar B; el otro ve que ya refleja las anulaciones (docs/plan-numeracion-boleta-2026-09-25.md)", async () => {
+  it("dos «Emitir ticket corregido» a la vez: un solo ejemplar B; el otro ve que ya refleja las anulaciones (docs/plan-numeracion-ticket-2026-09-25.md)", async () => {
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [
       { productoId: s.milanesa.id, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1 },
       { productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 },
@@ -48,15 +48,15 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
     const flan = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id, productoId: s.flan.id } });
     expect((await anularVenta(flan.operacionId!)).ok).toBe(true);
 
-    const resultados = await Promise.all([emitirBoletaCorregida(cuenta.id, "Cajero A"), emitirBoletaCorregida(cuenta.id, "Cajero B")]);
+    const resultados = await Promise.all([emitirTicketCorregido(cuenta.id, "Cajero A"), emitirTicketCorregido(cuenta.id, "Cajero B")]);
     expect(resultados.filter((r) => r.ok)).toHaveLength(1);
-    expect(resultados.filter((r) => !r.ok).map((r) => r.mensaje)).toEqual(["La boleta N.º 1-B ya refleja las anulaciones."]);
-    expect((await prisma.ejemplarBoleta.findMany({ where: { cuentaId: cuenta.id }, orderBy: { ejemplar: "asc" } })).map((e) => e.ejemplar)).toEqual([1, 2]);
+    expect(resultados.filter((r) => !r.ok).map((r) => r.mensaje)).toEqual(["El ticket N.º 1-B ya refleja las anulaciones."]);
+    expect((await prisma.ejemplarTicket.findMany({ where: { cuentaId: cuenta.id }, orderBy: { ejemplar: "asc" } })).map((e) => e.ejemplar)).toEqual([1, 2]);
     expect(await prisma.registroAuditoria.count({ where: { entidad: "Cuenta" } })).toBe(1);
   });
 
   for (const cuantas of [2, 3]) {
-    it(`${cuantas} cierres de mesas distintas de la misma sucursal a la vez: números 1..${cuantas}, sin repetir ni saltear (docs/plan-numeracion-boleta-2026-09-25.md)`, async () => {
+    it(`${cuantas} cierres de mesas distintas de la misma sucursal a la vez: números 1..${cuantas}, sin repetir ni saltear (docs/plan-numeracion-ticket-2026-09-25.md)`, async () => {
       const cuentas = [];
       for (let i = 0; i < cuantas; i++) {
         const mesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 200 + i } });
@@ -65,7 +65,7 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
       const resultados = await Promise.all(cuentas.map((c) => cerrarCuenta(c.id)));
       expect(resultados.map((r) => r.ok), resultados.map((r) => r.mensaje).join(" / ")).toEqual(cuentas.map(() => true));
 
-      const ejemplares = await prisma.ejemplarBoleta.findMany({ where: { sucursalId: s.sucursalId } });
+      const ejemplares = await prisma.ejemplarTicket.findMany({ where: { sucursalId: s.sucursalId } });
       expect(ejemplares.map((e) => e.numero).sort((a, b) => a - b)).toEqual(Array.from({ length: cuantas }, (_, i) => i + 1));
       expect(ejemplares.every((e) => e.ejemplar === 1)).toBe(true);
       expect(new Set(ejemplares.map((e) => e.cuentaId))).toEqual(new Set(cuentas.map((c) => c.id)));

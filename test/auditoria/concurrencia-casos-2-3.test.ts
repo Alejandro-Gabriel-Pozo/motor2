@@ -60,7 +60,7 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
       const exitosas = settled.filter((s) => s.status === "fulfilled" && s.value.ok);
       expect(exitosas.length).toBeLessThanOrEqual(1); // nunca las dos: eso sería vender el doble del stock real
 
-      const saldoFinal = await calcularSaldoTotal(mpInsumo.id, seccionId);
+      const saldoFinal = await calcularSaldoTotal(mpInsumo.id, seccionId, prisma);
       expect(saldoFinal).toBeGreaterThanOrEqual(0); // nunca negativo — la invariante que más importa
       if (exitosas.length === 1) expect(saldoFinal).toBe(0); // se vendió exactamente lo que había
     });
@@ -89,7 +89,7 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
         if (settled.some((s) => s.status === "rejected")) console.log(`[auditoria] Intento ${intento} (venta):`, resumen(settled as never));
 
         expect(settled.every((s) => s.status === "fulfilled" && s.value.ok), `intento ${intento}: ambas ventas deben tener éxito`).toBe(true);
-        expect(await calcularSaldoTotal(mpInsumo.id, seccionId)).toBe(8); // 20 - 6 - 6, siempre
+        expect(await calcularSaldoTotal(mpInsumo.id, seccionId, prisma)).toBe(8); // 20 - 6 - 6, siempre
       }
     });
   });
@@ -105,7 +105,7 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
       ]);
       console.log("[auditoria] Caso 3a (consumo+merma):", resumen(settled as never));
 
-      const saldoFinal = await calcularSaldoTotal(mp.id, seccionId);
+      const saldoFinal = await calcularSaldoTotal(mp.id, seccionId, prisma);
       expect(saldoFinal).toBeGreaterThanOrEqual(0);
       const exitosas = settled.filter((s) => s.status === "fulfilled" && s.value.ok).length;
       expect(exitosas).toBeLessThanOrEqual(1);
@@ -121,8 +121,8 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
       ]);
       console.log("[auditoria] Caso 3b (consumo+transferencia):", resumen(settled as never));
 
-      const saldoOrigen = await calcularSaldoTotal(mp.id, seccionId);
-      const saldoDestino = await calcularSaldoTotal(mp.id, seccionDestinoId);
+      const saldoOrigen = await calcularSaldoTotal(mp.id, seccionId, prisma);
+      const saldoDestino = await calcularSaldoTotal(mp.id, seccionDestinoId, prisma);
       expect(saldoOrigen).toBeGreaterThanOrEqual(0);
       const exitosas = settled.filter((s) => s.status === "fulfilled" && s.value.ok).length;
       expect(exitosas).toBeLessThanOrEqual(1);

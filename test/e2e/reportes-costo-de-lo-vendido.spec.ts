@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import AxeBuilder from "@axe-core/playwright";
 
 /**
@@ -16,7 +16,7 @@ import AxeBuilder from "@axe-core/playwright";
  */
 async function sembrar(sucursalId: string, seccionId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const harina = await prisma.producto.create({ data: { codigo: `E2E-CV-MP-${marca}`, nombre: `E2E Harina Consumo ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const pan = await prisma.producto.create({ data: { codigo: `E2E-CV-PV-${marca}`, nombre: `E2E Pan Consumo ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });

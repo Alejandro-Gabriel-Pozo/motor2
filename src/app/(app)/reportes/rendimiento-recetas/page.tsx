@@ -8,6 +8,8 @@ import { AyudaIcono } from "@/components/ayuda-campo";
 import { SelectorRango } from "@/components/selector-rango";
 import { FilaRendimientoSimple } from "./fila-simple";
 import { FilaRendimientoCompartida } from "./fila-compartida";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
 
 const AYUDA_RENDIMIENTO_REAL =
   "«Medido» (con dos Conteos Físicos que cubren el insumo, al principio y al final del tramo): el consumo real, sumado directo del Kardex entre esos dos conteos ÷ lo vendido en ese mismo tramo — una medición, no una estimación. «Estimado» (sin esos dos conteos): total comprado ÷ total vendido en el rango elegido — asume que lo que se compra en la ventana es lo que se consume en la ventana, algo que no siempre es cierto si comprás por lote (ej. caja x12). El método de esta fila se muestra debajo del número.";
@@ -19,8 +21,7 @@ const AYUDA_IMPACTO = "(consumo observado − lo que la receta hubiera consumido
 
 /** Mismo criterio que `hoyUtcSinHora`/"29 + hoy" de rango-por-defecto.ts — acá 55 + hoy = 56 días = 8 semanas exactas, inclusive los dos extremos. */
 function fechaUtcIsoHaceNDias(n: number): string {
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
+  const d = inicioDelDiaDe(new Date(), ZONA_UTC);
   d.setUTCDate(d.getUTCDate() - n);
   return d.toISOString().slice(0, 10);
 }
@@ -45,15 +46,15 @@ function fechaUtcIsoHaceNDias(n: number): string {
 export default async function RendimientoRecetasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ desde?: string; hasta?: string; rango?: string; productoId?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango" | "productoId">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_rendimiento_recetas", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
@@ -61,9 +62,9 @@ export default async function RendimientoRecetasPage({
   const hasta = new Date(hastaStr);
 
   const [todasLasSimples, todasLasCompartidas, { editar: puedeCalibrar }] = await Promise.all([
-    calcularRendimientoRecetasSimples(ctx.sucursalId, desde, hasta),
-    calcularRendimientoRecetasCompartidas(ctx.sucursalId, desde, hasta),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "calibrar_rendimiento_local"),
+    calcularRendimientoRecetasSimples(ctx.sucursalId, desde, hasta, ctx.db),
+    calcularRendimientoRecetasCompartidas(ctx.sucursalId, desde, hasta, ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "calibrar_rendimiento_local", ctx.db),
   ]);
   const filasSimples = sp.productoId ? todasLasSimples.filter((f) => f.productoVentaId === sp.productoId) : todasLasSimples;
   const filasCompartidas = sp.productoId ? todasLasCompartidas.filter((f) => f.productoVentaId === sp.productoId) : todasLasCompartidas;

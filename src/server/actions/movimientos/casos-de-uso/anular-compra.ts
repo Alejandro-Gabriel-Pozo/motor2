@@ -40,12 +40,12 @@ import { escribirAnulacionDeCompra } from "@/server/persistencia/compras/escribi
  * @sideEffects registrarCambioAuditado (campo anuladaEn).
  */
 export async function anularCompraCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoAnularCompra
 ): Promise<ResultadoAnularCompra> {
   const { operacionId, claveIdempotencia } = comando;
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoAnularCompra> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAnularCompra> => {
     const payloadHash = claveIdempotencia ? calcularPayloadHash("ANULAR_COMPRA", actor.sucursalId, { operacionId }) : "";
     const chequeo = await chequearIdempotencia(tx, claveIdempotencia ?? undefined, payloadHash);
     if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { compraId: operacionId, reversionId: null, movimientosRevertidos: null, repetida: true });

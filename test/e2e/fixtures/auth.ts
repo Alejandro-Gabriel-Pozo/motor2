@@ -1,10 +1,15 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { test as base, type Page } from "@playwright/test";
-import { prisma } from "../../../src/lib/db";
+import { prisma } from "./db";
 import { ACCIONES } from "../../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../../src/core/movimientos/motivos-semilla";
+import { crearMembresia } from "../../setup/membresia";
+import { activarTodosLosModulos } from "../../setup/modulos";
+import { DATOS_EMPRESA_TESTIGO } from "../../setup/empresa-de-prueba";
 
+const EMPRESA_E2E_ID = "empresa_principal";
+const SLUG_EMPRESA_E2E = "e2e";
 const SUCURSAL_NOMBRE = "Central";
 const SECCION_NOMBRE = "Depósito E2E";
 const EMAIL_ADMIN_E2E = "e2e-admin@local.test";
@@ -33,16 +38,28 @@ const UNIDADES_BASE: Array<{ nombre: string; magnitud: "PESO" | "VOLUMEN" | "CAN
  * /login.
  */
 export async function asegurarBaseSeed() {
+  // resetearBaseE2E trunca TODO (Empresa incluida) y `empresaId` tiene default `app_empresa_actual()` (la única empresa ACTIVE):
+  // sin la empresa por defecto, ninguna fila de dominio se puede crear. Mismo id que la migración multiempresa_estructura; el slug es
+  // `e2e` porque los specs de la carta pública navegan a /carta-publica/e2e/... (ADR-007, A3: la empresa sale de la base, no del env).
+  const { id: empresaId } = await prisma.empresa.upsert({
+    where: { id: EMPRESA_E2E_ID },
+    update: { estado: "ACTIVE", slug: SLUG_EMPRESA_E2E, permisosEditables: true, dosPaneles: true },
+    create: { id: EMPRESA_E2E_ID, nombre: "Empresa principal", slug: SLUG_EMPRESA_E2E, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" },
+  });
+  // La empresa testigo (ADR-022): una segunda empresa ACTIVE y vacía, para que la suite corra como va a correr sin el respaldo «la única empresa activa».
+  await prisma.empresa.upsert({ where: { id: DATOS_EMPRESA_TESTIGO.id }, update: { estado: "ACTIVE" }, create: DATOS_EMPRESA_TESTIGO });
+  // resetearBaseE2E también vació el registro de módulos que dejó la migración: la empresa por defecto vuelve a tener los 9 vendibles ACTIVO.
+  await activarTodosLosModulos(empresaId);
   const [admin, operador] = await Promise.all([
-    prisma.rol.upsert({ where: { nombre: "admin" }, update: {}, create: { nombre: "admin" } }),
-    prisma.rol.upsert({ where: { nombre: "operador" }, update: {}, create: { nombre: "operador" } }),
+    prisma.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "admin" } }, update: {}, create: { nombre: "admin", clave: "admin" } }),
+    prisma.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "operador" } }, update: {}, create: { nombre: "operador", clave: "operador" } }),
   ]);
   const rolesPorNombre = { admin, operador } as const;
 
   for (const accion of ACCIONES) {
     await prisma.accion.upsert({ where: { clave: accion.clave }, update: { descripcion: accion.descripcion }, create: { clave: accion.clave, descripcion: accion.descripcion } });
     for (const nombreRol of ["admin", "operador"] as const) {
-      const puedeEditar = accion.rolesEditarSemilla.includes(nombreRol);
+      const puedeEditar = (accion.rolesEditarSemilla as readonly string[]).includes(nombreRol);
       await prisma.permisoRol.upsert({
         where: { rolId_accionClave: { rolId: rolesPorNombre[nombreRol].id, accionClave: accion.clave } },
         // El admin de las pruebas tiene que poder abrir todo, pase lo que pase con una base que traiga restos de otros tests
@@ -53,19 +70,19 @@ export async function asegurarBaseSeed() {
     }
   }
 
-  const sucursal = await prisma.sucursal.upsert({ where: { nombre: SUCURSAL_NOMBRE }, update: {}, create: { nombre: SUCURSAL_NOMBRE } });
+  const sucursal = await prisma.sucursal.upsert({ where: { empresaId_nombre: { empresaId, nombre: SUCURSAL_NOMBRE } }, update: {}, create: { nombre: SUCURSAL_NOMBRE } });
 
-  for (const u of UNIDADES_BASE) await prisma.unidad.upsert({ where: { nombre: u.nombre }, update: {}, create: u });
+  for (const u of UNIDADES_BASE) await prisma.unidad.upsert({ where: { empresaId_nombre: { empresaId, nombre: u.nombre } }, update: {}, create: u });
 
   // El catálogo Motivo de Merma / Destino de Consumo (plan "motivos de Consumo/Merma como catálogo administrable",
   // 2026-09-23) SÍ lo siembra la migración expand (P3), pero resetearBaseE2E (base-e2e.ts) trunca TODAS las tablas
   // antes de cada corrida — sin esto, cualquier spec que registre una Merma/Consumo por UI no encuentra ninguna
   // opción en el <select>. Mismo dato que sembrarMotivosYDestinos() (test/setup/test-db.ts) para Vitest.
   for (const m of MOTIVOS_MERMA_SEMILLA) {
-    await prisma.motivoMerma.upsert({ where: { nombre: m.nombre }, update: {}, create: { nombre: m.nombre, descripcion: m.descripcion ?? null } });
+    await prisma.motivoMerma.upsert({ where: { empresaId_nombre: { empresaId, nombre: m.nombre } }, update: {}, create: { nombre: m.nombre, descripcion: m.descripcion ?? null } });
   }
   for (const d of DESTINOS_CONSUMO_SEMILLA) {
-    await prisma.destinoConsumo.upsert({ where: { nombre: d.nombre }, update: {}, create: { nombre: d.nombre, descripcion: d.descripcion ?? null } });
+    await prisma.destinoConsumo.upsert({ where: { empresaId_nombre: { empresaId, nombre: d.nombre } }, update: {}, create: { nombre: d.nombre, descripcion: d.descripcion ?? null } });
   }
 
   let seccion = await prisma.seccion.findFirst({ where: { sucursalId: sucursal.id, nombre: SECCION_NOMBRE } });
@@ -84,7 +101,8 @@ async function crearSesionAdmin() {
   });
 
   const membresia = await prisma.usuarioSucursal.findFirst({ where: { usuarioId: user.id, sucursalId: sucursal.id } });
-  if (!membresia) await prisma.usuarioSucursal.create({ data: { usuarioId: user.id, sucursalId: sucursal.id, rolId: admin.id, activo: true } });
+  await prisma.usuarioEmpresa.upsert({ where: { usuarioId_empresaId: { usuarioId: user.id, empresaId: sucursal.empresaId } }, update: { activo: true }, create: { usuarioId: user.id, empresaId: sucursal.empresaId } });
+  if (!membresia) await crearMembresia({ usuarioId: user.id, sucursalId: sucursal.id, rolId: admin.id, activo: true });
 
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: user.id, expires: new Date(Date.now() + 1000 * 60 * 60 * 24) } });

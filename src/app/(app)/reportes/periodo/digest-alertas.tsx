@@ -1,3 +1,4 @@
+import { EnlaceInterno } from "@/components/enlace-interno";
 import type { FilaAlertaDigest } from "@/core/reportes/periodo";
 
 /**
@@ -7,7 +8,8 @@ import type { FilaAlertaDigest } from "@/core/reportes/periodo";
  * textos ya vienen armados de `generarDigestAlertas`), no necesita
  * interactividad.
  */
-export function DigestAlertas({ alertas }: { alertas: FilaAlertaDigest[] }) {
+/** `puedeVerCostos`: la alerta de margen objetivo lleva a Costos solo si quien mira tiene ese reporte. */
+export function DigestAlertas({ alertas, puedeVerCostos }: { alertas: FilaAlertaDigest[]; puedeVerCostos: boolean }) {
   if (!alertas.length) return null;
 
   return (
@@ -15,7 +17,17 @@ export function DigestAlertas({ alertas }: { alertas: FilaAlertaDigest[] }) {
       {alertas.map((a, i) => (
         <li key={i} className="flex items-start gap-2">
           <span className={a.severidad === "alta" ? "text-red-600" : "text-amber-700 dark:text-amber-600"}>{a.severidad === "alta" ? "●" : "○"}</span>
-          <span className="text-neutral-700 dark:text-neutral-300">{a.texto}</span>
+          <span className="text-neutral-700 dark:text-neutral-300">
+            {a.texto}
+            {a.destino === "costos" && puedeVerCostos && (
+              <>
+                {" "}
+                <EnlaceInterno href="/reportes/costos" className="underline">
+                  Ver en Costos
+                </EnlaceInterno>
+              </>
+            )}
+          </span>
         </li>
       ))}
     </ul>

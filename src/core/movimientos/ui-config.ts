@@ -2,6 +2,7 @@ import type { Proceso } from "@prisma/client";
 import { TRANSICIONES } from "./transiciones";
 import type { AccionClave } from "@/core/permisos/acciones";
 import type { FiltroSelectorProducto } from "@/core/catalogo/public";
+import type { PanelNav } from "@/core/navegacion/panel";
 
 /**
  * Config de UI para los 9 procesos que comparten el panel genérico
@@ -78,23 +79,22 @@ export function obtenerConfigProceso(slug: string): ProcesoUiConfig | null {
  * Fuente del grupo Movimientos del menú lateral (`estructura.ts` la filtra) — incluye Venta/Conteo Físico, que tienen ruta propia.
  * `accion` es la acción de «Ver» que protege la página: el menú solo muestra el ítem a quien puede verla.
  */
-export const NAV_MOVIMIENTOS: { href: string; label: string; accion?: AccionClave }[] = [
-  { href: "/movimientos/compra", label: "Compra", accion: "proceso_compra" },
-  { href: "/movimientos/produccion", label: "Producción", accion: "proceso_produccion" },
-  { href: "/movimientos/venta", label: "Venta", accion: "proceso_venta" },
-  { href: "/movimientos/consumo", label: "Consumo", accion: "proceso_consumo" },
-  { href: "/movimientos/merma", label: "Merma", accion: "proceso_merma" },
-  { href: "/movimientos/ajuste", label: "Ajuste", accion: "proceso_ajuste" },
-  { href: "/movimientos/transferencia", label: "Transferencia", accion: "proceso_transferencia" },
-  { href: "/movimientos/devolucion-consignacion", label: "Dev. consignación", accion: "proceso_devolucion_consignacion" },
-  { href: "/movimientos/devolucion-cliente", label: "Dev. cliente", accion: "proceso_devolucion_cliente" },
-  { href: "/movimientos/devolucion-proveedor", label: "Dev. proveedor", accion: "proceso_devolucion_proveedor" },
-  { href: "/movimientos/conteo-fisico", label: "Conteo físico", accion: "proceso_control" },
-  { href: "/movimientos/secciones", label: "Secciones", accion: "secciones" },
-  { href: "/movimientos/precio-local", label: "Precio local", accion: "precio_local" },
-  { href: "/movimientos/motivos", label: "Motivos de Merma / Consumo", accion: "motivos_movimiento" },
-  { href: "/stock/consolidado", label: "Stock →" },
-  { href: "/reportes", label: "Reportes →" },
+export const NAV_MOVIMIENTOS: { href: string; label: string; accion?: AccionClave; panel: PanelNav }[] = [
+  { href: "/movimientos/compra", label: "Compra", accion: "proceso_compra", panel: "sucursal" },
+  { href: "/movimientos/produccion", label: "Producción", accion: "proceso_produccion", panel: "sucursal" },
+  { href: "/movimientos/venta", label: "Venta", accion: "proceso_venta", panel: "sucursal" },
+  { href: "/movimientos/consumo", label: "Consumo", accion: "proceso_consumo", panel: "sucursal" },
+  { href: "/movimientos/merma", label: "Merma", accion: "proceso_merma", panel: "sucursal" },
+  { href: "/movimientos/ajuste", label: "Ajuste", accion: "proceso_ajuste", panel: "sucursal" },
+  { href: "/movimientos/transferencia", label: "Transferencia", accion: "proceso_transferencia", panel: "sucursal" },
+  { href: "/movimientos/devolucion-consignacion", label: "Dev. consignación", accion: "proceso_devolucion_consignacion", panel: "sucursal" },
+  { href: "/movimientos/devolucion-cliente", label: "Dev. cliente", accion: "proceso_devolucion_cliente", panel: "sucursal" },
+  { href: "/movimientos/devolucion-proveedor", label: "Dev. proveedor", accion: "proceso_devolucion_proveedor", panel: "sucursal" },
+  { href: "/movimientos/conteo-fisico", label: "Conteo físico", accion: "proceso_control", panel: "sucursal" },
+  { href: "/movimientos/secciones", label: "Secciones", accion: "secciones", panel: "sucursal" },
+  { href: "/movimientos/precio-local", label: "Precio local", accion: "precio_local", panel: "sucursal" },
+  { href: "/movimientos/motivos-merma", label: "Motivos de Merma", accion: "motivos_merma", panel: "empresa" },
+  { href: "/movimientos/destinos-consumo", label: "Destinos de Consumo", accion: "motivos_destino_consumo", panel: "empresa" },
 ];
 
 // Verificación en tiempo de import: todo slug de PROCESOS_UI tiene que

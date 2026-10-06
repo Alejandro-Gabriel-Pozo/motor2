@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * Compras registradas: una fila por factura, con sus líneas, filtros y el enlace desde «Compras por proveedor» del reporte por período.
@@ -7,7 +8,7 @@ import { prisma } from "../../src/lib/db";
  */
 test("el listado muestra la factura con sus líneas, filtra por proveedor y se llega desde Compras por proveedor", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const producto = await prisma.producto.create({
     data: { codigo: `E2E-CR-${marca}`, nombre: `E2E Harina Compras ${marca}`, tipo: "MP", unidadStockId: unidad.id, unidadCompraId: unidad.id },
@@ -56,9 +57,9 @@ test("el listado está en el menú de Reportes y un usuario sin «Ver» de diner
 
   const { randomUUID } = await import("node:crypto");
   const rol = await prisma.rol.create({ data: { nombre: `e2e-sin-dinero-${Date.now()}` } });
-  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "ver_reportes_operativos", puedeVer: true, puedeEditar: false } });
+  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "reporte_vencimientos", puedeVer: true, puedeEditar: false } });
   const usuario = await prisma.user.create({ data: { email: `e2e-sin-dinero-${Date.now()}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true } });
+  await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
   const contexto = await browser.newContext();

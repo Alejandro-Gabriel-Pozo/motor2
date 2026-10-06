@@ -369,6 +369,23 @@ describe("recetas", () => {
       expect(pasoB.ingredientes.map((i) => i.recetaIngrediente.insumoProductoId)).toEqual([mp2Id]);
     });
 
+    it("insertarPasoEnReceta y quitarPasoDeReceta rechazan una posición o un número de paso que no es entero (NaN no inserta al principio ni guarda una versión idéntica)", async () => {
+      await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }], [{ orden: 1, instruccion: "Paso A" }, { orden: 2, instruccion: "Paso B" }]);
+
+      for (const posicion of [Number.NaN, 1.5, Number.POSITIVE_INFINITY]) {
+        const r = await insertarPasoEnReceta(pvId, posicion, { instruccion: "Paso nuevo" });
+        expect(r.ok, String(posicion)).toBe(false);
+      }
+      for (const orden of [Number.NaN, 1.5, Number.POSITIVE_INFINITY]) {
+        const r = await quitarPasoDeReceta(pvId, orden);
+        expect(r.ok, String(orden)).toBe(false);
+      }
+
+      const vigente = await obtenerRecetaVigente(pvId);
+      expect(vigente?.version).toBe(1);
+      expect(vigente?.pasos.map((p) => p.instruccion)).toEqual(["Paso A", "Paso B"]);
+    });
+
     it("quitarIngredienteDeReceta también lo saca de cualquier paso que lo mencionara", async () => {
       await guardarReceta(
         pvId,

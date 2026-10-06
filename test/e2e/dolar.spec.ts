@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * El dólar oficial (BNA) se ve en el encabezado de toda la aplicación y, en dólares, en el Resumen. Se siembra una cotización con una

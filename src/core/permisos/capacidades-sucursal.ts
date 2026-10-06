@@ -1,6 +1,7 @@
-import type { PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE } from "./acciones";
+
+type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
  * Equivalente directo de sucursalTieneCapacidad_ (Sucursales.js:616-628).
@@ -17,7 +18,7 @@ import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE } from "./acciones";
 export async function sucursalTieneCapacidad(
   sucursalId: string,
   accionClave: string,
-  db: PrismaClient = prisma
+  db: Db
 ): Promise<boolean> {
   // Auto-protección (Sucursales.js:618): la matriz de capacidades nunca
   // puede autobloquearse, si no la Central podría quedar sin forma de
@@ -43,7 +44,7 @@ export async function sucursalTieneCapacidad(
 export async function capacidadesDeSucursal(
   sucursalId: string,
   claves: readonly string[],
-  db: PrismaClient = prisma
+  db: Db
 ): Promise<Set<string>> {
   const candidatas = await db.capacidadSucursal.findMany({
     where: { accionClave: { in: [...claves] }, OR: [{ sucursalId }, { sucursalId: null }] },

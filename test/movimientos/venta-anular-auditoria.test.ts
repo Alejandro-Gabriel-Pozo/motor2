@@ -57,7 +57,7 @@ describe("anularVenta: auditoría", () => {
     const venta = await vender();
     await anularVenta(venta.id);
 
-    const { items } = await listarRegistrosAuditoria({ entidad: "Operacion" });
+    const { items } = await listarRegistrosAuditoria({ entidad: "Operacion", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
     expect(items.map((f) => f.entidadId)).toContain(venta.id);
   });
 
@@ -104,7 +104,7 @@ describe("anularVenta: D4 — anula a los hermanos de la misma promo", () => {
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 1 } });
     const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: adminId } });
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús D4" } });
-    const promoCarta = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 1000 } });
+    const promoCarta = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 1000 } });
     const promoCuenta = await prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 1000, titulo: "Menú del día", creadoPorId: adminId } });
 
     const actor = { usuarioId: adminId, sucursalId, sucursalNombre };

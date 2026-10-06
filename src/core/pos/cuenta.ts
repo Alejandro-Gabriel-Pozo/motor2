@@ -1,8 +1,8 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { esNumeroFinito } from "@/core/numero";
 import { texto, LARGO_MAXIMO_MOTIVO_ANULACION } from "@/core/texto";
-import { importeDeLinea, precioConDescuento, redondearMoneda } from "@/core/moneda";
+import { precioCobradoConDescuentos } from "@/core/carta/public";
+import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { nombreDelMesero, tiempoDesde } from "./mesas";
 import { validarCantidadPedido } from "./cantidad-pedido";
 
@@ -42,6 +42,20 @@ export interface LineaDeVenta {
    *  de esta Task. Suma a la CLAVE de agrupación (ver abajo) para que un suelto y un componente de promo del MISMO producto
    *  al MISMO precio nunca se mezclen en una sola línea/Operacion (`cerrarCuenta`, paso 8c). */
   promoCuentaId?: string;
+  /** Producto con descuento (Fase 2 de «promociones, un solo concepto»): el precio de lista que tenía el ítem ANTES del descuento del producto
+   *  (`CuentaItem.precioCartaUnitario`) — SOLO en un suelto que tuvo descuento de producto. Nunca en un componente de promo (su
+   *  `precioCartaUnitario` es otra cosa: el precio de carta para repartir la promo). Ausente = igual que siempre. */
+  precioCartaUnitario?: number;
+}
+
+/**
+ * La clave con la que se agrupan y se enlazan las líneas de una cuenta (producto, precio congelado, promo y, en un suelto con descuento de
+ * producto, su precio de lista): una sola definición para `lineasDeVenta`, el ticket y el reporte de tickets emitidos.
+ */
+export function claveDeLineaDeVenta(l: { productoId: string; precioUnitario: number; promoCuentaId?: string | null; precioCartaUnitario?: number | null }): string {
+  const promoCuentaId = l.promoCuentaId ?? "";
+  const lista = !promoCuentaId && l.precioCartaUnitario != null ? String(l.precioCartaUnitario) : "";
+  return `${l.productoId}|${l.precioUnitario}|${promoCuentaId}${lista ? `|${lista}` : ""}`;
 }
 
 /**
@@ -53,14 +67,25 @@ export interface LineaDeVenta {
  * línea. Sin ningún `promoCuentaId` en la entrada, la salida es EXACTAMENTE la de antes de esta Task (mismo criterio aditivo
  * que el resto del plan).
  */
-export function lineasDeVenta(items: readonly { productoId: string; cantidad: number; precioUnitario: number; promoCuentaId?: string | null }[]): LineaDeVenta[] {
+export function lineasDeVenta(
+  items: readonly { productoId: string; cantidad: number; precioUnitario: number; promoCuentaId?: string | null; precioCartaUnitario?: number | null }[]
+): LineaDeVenta[] {
   const porClave = new Map<string, LineaDeVenta>();
   for (const item of items) {
     const promoCuentaId = item.promoCuentaId ?? undefined;
-    const clave = `${item.productoId}|${item.precioUnitario}|${promoCuentaId ?? ""}`;
+    const precioCartaUnitario = !promoCuentaId && item.precioCartaUnitario != null ? item.precioCartaUnitario : undefined;
+    const clave = claveDeLineaDeVenta({ productoId: item.productoId, precioUnitario: item.precioUnitario, promoCuentaId, precioCartaUnitario });
     const previa = porClave.get(clave);
     if (previa) previa.cantidad = redondearCantidad(previa.cantidad + item.cantidad);
-    else porClave.set(clave, { productoId: item.productoId, precioUnitario: item.precioUnitario, cantidad: redondearCantidad(item.cantidad), ...(promoCuentaId ? { promoCuentaId } : {}) });
+    else {
+      porClave.set(clave, {
+        productoId: item.productoId,
+        precioUnitario: item.precioUnitario,
+        cantidad: redondearCantidad(item.cantidad),
+        ...(promoCuentaId ? { promoCuentaId } : {}),
+        ...(precioCartaUnitario !== undefined ? { precioCartaUnitario } : {}),
+      });
+    }
   }
   return [...porClave.values()].filter((l) => l.cantidad > 0);
 }
@@ -143,7 +168,11 @@ export interface ItemDeCuenta {
   /** Decimales que acepta la unidad de stock del producto (para la cantidad de una anulación parcial). */
   decimales: number;
   cantidad: number;
+  /** Precio congelado al pedir: con el descuento de PRODUCTO ya aplicado, si lo tenía. */
   precioUnitario: number;
+  /** Producto con descuento: el precio de lista que tenía antes de ese descuento (se muestra tachado); null si no tuvo (y siempre null en un
+   *  componente de promo). */
+  precioListaUnitario: number | null;
   numeroEnvio: number | null;
   anulaAItemId: string | null;
   motivoAnulacion: string | null;
@@ -169,7 +198,7 @@ export interface DetalleDeCuenta {
   /** El % YA CONGELADO en la cuenta (`Cuenta.descuentoPorcentaje`), no el actual del `Cliente` — ver `asignarClienteACuenta`. */
   descuentoPorcentaje: number | null;
   /** Σ cantidad × precio COBRADO de TODAS las filas (espejos incluidos, con el descuento de cliente ya aplicado si hay uno): lo que
-   *  se cobraría si se cerrara AHORA. Mismo cálculo que `cerrarCuenta`/la boleta (`precioConDescuento`, src/core/moneda.ts). */
+   *  se cobraría si se cerrara AHORA. Mismo cálculo que `cerrarCuenta`/el ticket (`precioConDescuento`, src/core/moneda.ts). */
   total: number;
   sinEnviar: ItemDeCuenta[];
   envios: { numero: number; items: ItemEnEnvio<ItemDeCuenta>[] }[];
@@ -186,7 +215,7 @@ export interface DetalleDeMesa {
  * La mesa pedida con su cuenta abierta (si tiene), agrupada por envío — una sola consulta. `null` si la mesa no existe o no es de
  * esta sucursal (el aislamiento por sucursal vive acá, no en quien llama).
  */
-export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, db: Db = prisma, ahora: Date = new Date()): Promise<DetalleDeMesa | null> {
+export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, db: Db, ahora: Date = new Date()): Promise<DetalleDeMesa | null> {
   const mesa = await db.mesa.findFirst({
     where: { id: mesaId, sucursalId },
     include: {
@@ -219,6 +248,7 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
     decimales: i.producto.unidadStock.decimales,
     cantidad: Number(i.cantidad),
     precioUnitario: Number(i.precioUnitario),
+    precioListaUnitario: !i.promoCuenta && i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
     numeroEnvio: i.numeroEnvio,
     anulaAItemId: i.anulaAItemId,
     motivoAnulacion: i.motivoAnulacion,
@@ -241,10 +271,10 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
       clienteId: fila.clienteId,
       cliente: fila.cliente?.nombre ?? null,
       descuentoPorcentaje,
-      // Σ del importe COBRADO de cada línea (importeDeLinea sobre precioConDescuento), no la suma cruda re-redondeada: así el total
-      // en pantalla nunca difiere del que registraría un cierre inmediato (boleta y cerrarCuenta usan el mismo criterio; sin
-      // cliente, precioConDescuento devuelve el precio de lista tal cual). redondearMoneda solo limpia el ruido del float.
-      total: redondearMoneda(items.reduce((suma, i) => suma + importeDeLinea(i.cantidad, precioConDescuento(i.precioUnitario, descuentoPorcentaje)), 0)),
+      // Σ del importe COBRADO de cada línea (importeDeLinea sobre precioCobradoConDescuentos), no la suma cruda re-redondeada: así el total
+      // en pantalla nunca difiere del que registraría un cierre inmediato (ticket y cerrarCuenta usan el mismo criterio; sin cliente ni
+      // descuento de producto, el precio queda tal cual). Con los dos descuentos rige solo el mayor. redondearMoneda solo limpia el ruido del float.
+      total: redondearMoneda(items.reduce((suma, i) => suma + importeDeLinea(i.cantidad, precioCobradoConDescuentos(i.precioUnitario, i.precioListaUnitario, descuentoPorcentaje).precio), 0)),
       sinEnviar,
       envios,
       itemsTotales: items.length,

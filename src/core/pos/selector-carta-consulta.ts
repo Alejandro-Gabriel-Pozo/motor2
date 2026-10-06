@@ -1,8 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
-import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
-import { precioDeCarta } from "@/core/carta/armar-menu";
-import { resolverMenuCarta } from "@/core/carta/menu-consulta";
+import { precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { aplicarDescuentoDeProducto, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal } from "@/core/carta/public";
+import { descuentosDeProductoEnSucursal, resolverMenuCarta } from "@/core/carta/public-servidor";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { armarSelectorCartaPos, type GenerosSelectorCartaPos, type ProductoPedible, type PromoSelectorCartaPos, type SelectorCartaPos } from "./selector-carta";
 
@@ -22,7 +21,8 @@ type Db = PrismaClient | Prisma.TransactionClient;
  *  - Los géneros: los ACTIVOS (uno apagado no forma carpeta: lo que tenía ese género sale suelto, sin error), con el género de
  *    cada `ContenidoCartaProducto` y de cada `ItemAgrupadoCarta` — SOLO interno del POS (G4): la carta pública (`resolverMenuCarta`
  *    / `CartaV1`) no lee `generoCartaId` en absoluto.
- *  - Las promos ARMABLES (Task #16, docs/plan-promo-combo-2026-09-26.md): las `PromoCarta` activas de la sucursal que tengan
+ *  - Las promos ARMABLES (Task #16, docs/plan-promo-combo-2026-09-26.md): las `PromoCarta` ofrecidas en la sucursal (activas en la empresa
+ *    Y prendidas en esta sucursal, con su precio local si lo tienen) que tengan
  *    al menos un cupo (una promo informativa, sin cupos, se ignora acá — sigue siendo solo visual en la carta pública), con
  *    sus cupos tal cual (`PromoCartaCupo`); `armarSelectorCartaPos` resuelve los elegibles de cada cupo con los MISMOS
  *    pedibles que ya ubicó en la sección de ese cupo (D5) — esta consulta no busca elegibles por su cuenta.
@@ -30,24 +30,27 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * La pantalla de la mesa la llama DESPUÉS de su guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`): no hace falta
  * ninguna Server Action nueva.
  */
-export async function cargarSelectorCartaPos(sucursalId: string, db: Db = prisma): Promise<SelectorCartaPos> {
-  const [carta, productos, preciosLocales, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
+export async function cargarSelectorCartaPos(sucursalId: string, db: Db): Promise<SelectorCartaPos> {
+  const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
     resolverMenuCarta(sucursalId, db),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },
     }),
-    db.precioLocalProducto.findMany({ where: { sucursalId, habilitado: true }, select: { productoId: true, precio: true, habilitado: true } }),
-    db.generoCarta.findMany({ where: { activo: true }, select: { id: true, nombre: true, orden: true } }),
-    db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null } }, select: { productoId: true, generoCartaId: true } }),
-    db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null } }, select: { id: true, generoCartaId: true } }),
+    preciosLocalesVigentes(sucursalId, db),
+    descuentosDeProductoEnSucursal(sucursalId, db),
+    precioLocalActivoEn(sucursalId, db),
+    db.generoCarta.findMany({ where: { activo: true, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, nombre: true, orden: true } }),
+    db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true } }),
+    db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, generoCartaId: true } }),
     db.promoCarta.findMany({
-      where: { sucursalId, activa: true, cupos: { some: {} } },
+      where: { ...wherePromoOfrecidaEn(sucursalId), cupos: { some: {} } },
       select: {
         id: true,
         seccionCartaId: true,
         titulo: true,
         precio: true,
+        sucursales: seleccionDeSucursalDePromo(sucursalId),
         cupos: {
           orderBy: { orden: "asc" },
           select: { seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, seccionCarta: { select: { nombre: true } } },
@@ -55,16 +58,21 @@ export async function cargarSelectorCartaPos(sucursalId: string, db: Db = prisma
       },
     }),
   ]);
-  const localPorProducto = new Map(preciosLocales.map((pl) => [pl.productoId, { precio: Number(pl.precio), habilitado: pl.habilitado }]));
-  const pedibles: ProductoPedible[] = productos.map((p) => ({
-    productoId: p.id,
-    codigo: p.codigo,
-    nombre: p.nombre,
-    precio: precioDeCarta(Number(p.precioVenta), localPorProducto.get(p.id)),
-    decimales: p.unidadStock.decimales,
-    pasoVenta: p.pasoVenta !== null ? Number(p.pasoVenta) : null,
-    tieneStockReal: tieneStockReal("PV", p.seProduce),
-  }));
+  const localPorProducto = preciosLocales;
+  const pedibles: ProductoPedible[] = productos.map((p) => {
+    // Producto con descuento (Fase 2): el precio del pedible es el DESCONTADO (el que se congela al agregar); el de lista queda aparte para mostrarlo tachado.
+    const aplicado = aplicarDescuentoDeProducto(precioDeCarta(Number(p.precioVenta), localPorProducto.get(p.id)), descuentos.get(p.id) ?? null);
+    return {
+      productoId: p.id,
+      codigo: p.codigo,
+      nombre: p.nombre,
+      precio: aplicado.precio,
+      ...(aplicado.precioLista !== null ? { precioLista: aplicado.precioLista } : {}),
+      decimales: p.unidadStock.decimales,
+      pasoVenta: p.pasoVenta !== null ? Number(p.pasoVenta) : null,
+      tieneStockReal: tieneStockReal("PV", p.seProduce),
+    };
+  });
   const generos: GenerosSelectorCartaPos = {
     generos: generosActivos,
     generoPorProducto: new Map(contenidosConGenero.map((c) => [c.productoId, c.generoCartaId!])),
@@ -74,7 +82,7 @@ export async function cargarSelectorCartaPos(sucursalId: string, db: Db = prisma
     promoCartaId: p.id,
     seccionCartaId: p.seccionCartaId,
     titulo: p.titulo,
-    precio: Number(p.precio),
+    precio: precioDePromo(p.precio, p.sucursales[0], precioLocalActivo),
     cupos: p.cupos.map((c) => ({
       seccionCartaId: c.seccionCartaId,
       nombreSeccion: c.seccionCarta.nombre,

@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { Browser } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
+import { crearMembresias } from "../setup/membresia";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Circuito completo del alta con el tilde "Activo en todas las sucursales" (§4, P5) y su efecto real en el catálogo de
@@ -15,14 +17,12 @@ import { prisma } from "../../src/lib/db";
 async function abrirEnDosSucursales(browser: Browser, baseURL: string | undefined, sucursalAId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const sucursalB = await prisma.sucursal.create({ data: { nombre: `E2E Disp Norte ${marca}` } });
-  const rolAdmin = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+  const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
   const usuario = await prisma.user.create({ data: { email: `e2e-disp-${marca}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.createMany({
-    data: [
+  await crearMembresias([
       { usuarioId: usuario.id, sucursalId: sucursalAId, rolId: rolAdmin.id, activo: true },
       { usuarioId: usuario.id, sucursalId: sucursalB.id, rolId: rolAdmin.id, activo: true },
-    ],
-  });
+    ]);
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
 
@@ -48,11 +48,12 @@ async function abrirEnDosSucursales(browser: Browser, baseURL: string | undefine
       await pageB.context().close();
       const productos = await prisma.producto.findMany({ where: { nombre: { startsWith: "E2E Disp " } }, select: { id: true } });
       const productoIds = productos.map((p) => p.id);
-      await prisma.registroAuditoria.deleteMany({ where: { actorId: usuario.id } });
+      await prismaAdmin.registroAuditoria.deleteMany({ where: { actorId: usuario.id } });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
       await prisma.session.deleteMany({ where: { userId: usuario.id } });
       await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: usuario.id } });
+      await prisma.usuarioEmpresa.deleteMany({ where: { usuarioId: usuario.id } });
       await prisma.user.deleteMany({ where: { id: usuario.id } });
       await prisma.sucursal.deleteMany({ where: { id: sucursalB.id } });
     },

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
-import { requierePermiso, requierePermisoVer, obtenerMiNivelPermiso } from "../../src/core/permisos/gate";
+import { requierePermiso, requierePermisoDeEmpresa, requierePermisoVer, obtenerMiNivelPermiso } from "../../src/core/permisos/gate";
 
 // Especificación migrada desde Tests.js (~testRequierePermiso*/testSucursalTieneCapacidad*)
 // — mismos casos borde de negocio, contra el schema Postgres nuevo en vez
@@ -21,19 +21,19 @@ describe("gate de permisos", () => {
 
   it("admin puede editar una acción admin-only (proceso_ajuste)", async () => {
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: rolAdminId });
-    const resultado = await requierePermiso(admin.id, sucursalId, "proceso_ajuste");
+    const resultado = await requierePermiso(admin.id, sucursalId, "proceso_ajuste", prisma);
     expect(resultado.ok).toBe(true);
   });
 
   it("operador NO puede editar una acción admin-only (proceso_ajuste)", async () => {
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: rolOperadorId });
-    const resultado = await requierePermiso(operador.id, sucursalId, "proceso_ajuste");
+    const resultado = await requierePermiso(operador.id, sucursalId, "proceso_ajuste", prisma);
     expect(resultado.ok).toBe(false);
   });
 
   it("operador SÍ puede editar una acción abierta (proceso_venta)", async () => {
     const operador = await crearUsuarioConMembresia({ email: "operador2@test.com", sucursalId, rolId: rolOperadorId });
-    const resultado = await requierePermiso(operador.id, sucursalId, "proceso_venta");
+    const resultado = await requierePermiso(operador.id, sucursalId, "proceso_venta", prisma);
     expect(resultado.ok).toBe(true);
   });
 
@@ -44,14 +44,14 @@ describe("gate de permisos", () => {
       rolId: rolAdminId,
       activo: false,
     });
-    const resultado = await requierePermiso(admin.id, sucursalId, "proceso_venta");
+    const resultado = await requierePermiso(admin.id, sucursalId, "proceso_venta", prisma);
     expect(resultado.ok).toBe(false);
   });
 
   it("rol desactivado queda denegado aunque la membresía siga activa", async () => {
     const admin = await crearUsuarioConMembresia({ email: "admin-rol-off@test.com", sucursalId, rolId: rolAdminId });
     await prisma.rol.update({ where: { id: rolAdminId }, data: { activo: false } });
-    const resultado = await requierePermiso(admin.id, sucursalId, "proceso_venta");
+    const resultado = await requierePermiso(admin.id, sucursalId, "proceso_venta", prisma);
     expect(resultado.ok).toBe(false);
   });
 
@@ -60,7 +60,7 @@ describe("gate de permisos", () => {
     await prisma.capacidadSucursal.create({
       data: { accionClave: "proceso_venta", sucursalId, habilitado: false },
     });
-    const resultado = await requierePermiso(admin.id, sucursalId, "proceso_venta");
+    const resultado = await requierePermiso(admin.id, sucursalId, "proceso_venta", prisma);
     expect(resultado.ok).toBe(false);
   });
 
@@ -71,7 +71,8 @@ describe("gate de permisos", () => {
     await prisma.capacidadSucursal.create({
       data: { accionClave: "capacidades_sucursal", sucursalId, habilitado: false },
     });
-    const resultado = await requierePermiso(admin.id, sucursalId, "capacidades_sucursal");
+    const { empresaId } = await prisma.sucursal.findUniqueOrThrow({ where: { id: sucursalId }, select: { empresaId: true } });
+    const resultado = await requierePermisoDeEmpresa(admin.id, empresaId, "capacidades_sucursal", prisma);
     expect(resultado.ok).toBe(true);
   });
 
@@ -80,26 +81,26 @@ describe("gate de permisos", () => {
     await prisma.permisoRol.delete({
       where: { rolId_accionClave: { rolId: rolAdminId, accionClave: "proceso_venta" } },
     });
-    const resultado = await requierePermiso(admin.id, sucursalId, "proceso_venta");
+    const resultado = await requierePermiso(admin.id, sucursalId, "proceso_venta", prisma);
     expect(resultado.ok).toBe(false);
   });
 
   it("requierePermisoVer respeta puedeVer independientemente de puedeEditar", async () => {
     const operador = await crearUsuarioConMembresia({ email: "operador3@test.com", sucursalId, rolId: rolOperadorId });
-    // 'proceso_ajuste': operador no puede editar, pero se le habilita Ver.
+    // 'reporte_salud' (piso operario): operador no puede editar, pero se le habilita Ver.
     await prisma.permisoRol.update({
-      where: { rolId_accionClave: { rolId: rolOperadorId, accionClave: "proceso_ajuste" } },
+      where: { rolId_accionClave: { rolId: rolOperadorId, accionClave: "reporte_salud" } },
       data: { puedeVer: true, puedeEditar: false },
     });
-    const ver = await requierePermisoVer(operador.id, sucursalId, "proceso_ajuste");
-    const editar = await requierePermiso(operador.id, sucursalId, "proceso_ajuste");
+    const ver = await requierePermisoVer(operador.id, sucursalId, "reporte_salud", prisma);
+    const editar = await requierePermiso(operador.id, sucursalId, "reporte_salud", prisma);
     expect(ver.ok).toBe(true);
     expect(editar.ok).toBe(false);
   });
 
   it("obtenerMiNivelPermiso nunca da {editar:true, ver:false}", async () => {
     const admin = await crearUsuarioConMembresia({ email: "admin6@test.com", sucursalId, rolId: rolAdminId });
-    const nivel = await obtenerMiNivelPermiso(admin.id, sucursalId, "proceso_ajuste");
+    const nivel = await obtenerMiNivelPermiso(admin.id, sucursalId, "proceso_ajuste", prisma);
     expect(nivel.editar).toBe(true);
     expect(nivel.ver).toBe(true);
   });

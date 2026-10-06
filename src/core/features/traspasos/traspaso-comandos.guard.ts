@@ -1,6 +1,7 @@
 import { texto } from "@/core/texto";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { LARGO_MAXIMO_DETALLE, validarTextoLibre } from "@/core/datos/limites";
 import type {
   ComandoAceptarTraspaso,
   ComandoAprobarYEnviarTraspaso,
@@ -56,12 +57,14 @@ export function guardComandoCancelarSolicitudTraspaso(entrada: unknown): Resulta
   return aceptar({ traspasoId: traspasoId.valor });
 }
 
-/** Guard del comando «rechazar una solicitud»: el id, y el motivo normalizado como antes (`texto(motivo) || null`). */
+/** Guard del comando «rechazar una solicitud»: el id, y el motivo recortado (vacío → null, con tope de largo). */
 export function guardComandoRechazarSolicitudTraspaso(entrada: unknown): ResultadoDato<ComandoRechazarSolicitudTraspaso> {
   const { id, motivo } = (entrada ?? {}) as { id?: unknown; motivo?: unknown };
   const traspasoId = idDeTraspaso(id);
   if (!traspasoId.ok) return traspasoId;
-  return aceptar({ traspasoId: traspasoId.valor, motivo: texto(motivo) || null });
+  const motivoValido = validarTextoLibre(motivo, "El motivo", LARGO_MAXIMO_DETALLE);
+  if (!motivoValido.ok) return rechazar(motivoValido.codigo, motivoValido.mensaje);
+  return aceptar({ traspasoId: traspasoId.valor, motivo: motivoValido.valor });
 }
 
 /*
@@ -98,12 +101,14 @@ export function guardComandoAceptarTraspaso(entrada: unknown): ResultadoDato<Com
   return aceptar({ traspasoId: traspasoId.valor, seccionDestinoId, claveIdempotencia: clave.valor });
 }
 
-/** Guard del comando «rechazar un envío»: el id, y el motivo normalizado como antes (`texto(motivo) || null`). */
+/** Guard del comando «rechazar un envío»: el id, y el motivo recortado (vacío → null, con tope de largo). */
 export function guardComandoRechazarEnvioTraspaso(entrada: unknown): ResultadoDato<ComandoRechazarEnvioTraspaso> {
   const { id, motivo } = (entrada ?? {}) as { id?: unknown; motivo?: unknown };
   const traspasoId = idDeTraspaso(id);
   if (!traspasoId.ok) return traspasoId;
-  return aceptar({ traspasoId: traspasoId.valor, motivo: texto(motivo) || null });
+  const motivoValido = validarTextoLibre(motivo, "El motivo", LARGO_MAXIMO_DETALLE);
+  if (!motivoValido.ok) return rechazar(motivoValido.codigo, motivoValido.mensaje);
+  return aceptar({ traspasoId: traspasoId.valor, motivo: motivoValido.valor });
 }
 
 /** Guard del comando «confirmar el reingreso»: el id y la clave I3. */
@@ -149,7 +154,9 @@ export function guardComandoCrearSolicitudTraspaso(entrada: unknown): ResultadoD
   if (!origen) return rechazar("vacio", MENSAJE_FALTA_SUCURSAL_ORIGEN);
   if (typeof seccionDestinoId !== "string") return rechazar("formato", MENSAJE_SECCION_DESTINO_SOLICITUD_NO_PROPIA);
   if (typeof productoId !== "string") return rechazar("formato", MENSAJE_PRODUCTO_NO_EXISTE);
-  return aceptar({ origenSucursalId: origen, productoId, cantidad, seccionDestinoId, detalle: texto(detalle) || null });
+  const detalleValido = validarTextoLibre(detalle, "El detalle", LARGO_MAXIMO_DETALLE);
+  if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);
+  return aceptar({ origenSucursalId: origen, productoId, cantidad, seccionDestinoId, detalle: detalleValido.valor });
 }
 
 /** Guard del comando «enviar directo» (PUSH). */
@@ -159,5 +166,7 @@ export function guardComandoCrearEnvioDirectoTraspaso(entrada: unknown): Resulta
   if (!destino) return rechazar("vacio", MENSAJE_FALTA_SUCURSAL_DESTINO);
   if (typeof seccionOrigenId !== "string") return rechazar("formato", MENSAJE_SECCION_ORIGEN_NO_PROPIA);
   if (typeof productoId !== "string") return rechazar("formato", MENSAJE_PRODUCTO_NO_EXISTE);
-  return aceptar({ destinoSucursalId: destino, productoId, cantidad, seccionOrigenId, detalle: texto(detalle) || null });
+  const detalleValido = validarTextoLibre(detalle, "El detalle", LARGO_MAXIMO_DETALLE);
+  if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);
+  return aceptar({ destinoSucursalId: destino, productoId, cantidad, seccionOrigenId, detalle: detalleValido.valor });
 }

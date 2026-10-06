@@ -1,21 +1,22 @@
 "use server";
 
-import { prisma } from "@/lib/db";
-import type { AccionClave } from "@/core/permisos/acciones";
+import { esIdentificador } from "@/core/datos/identificador";
+import { claveEnCatalogo, type AccionClave } from "@/core/permisos/acciones";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, type ResultadoAccion } from "../tipos";
-import { requerirVer } from "../con-sesion";
+import { requerirVerDeEmpresa } from "../con-sesion";
+import { revalidarCartasPublicas } from "../carta/revalidar";
 
 export async function listarCapacidades() {
-  await requerirVer("capacidades_sucursal");
+  const ctx = await requerirVerDeEmpresa("capacidades_sucursal");
   const [acciones, sucursales, capacidades] = await Promise.all([
-    prisma.accion.findMany({ where: { clave: { not: "capacidades_sucursal" } }, orderBy: { clave: "asc" } }),
-    prisma.sucursal.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
-    prisma.capacidadSucursal.findMany(),
+    ctx.db.accion.findMany({ where: { clave: { not: "capacidades_sucursal" } }, orderBy: { clave: "asc" } }),
+    ctx.db.sucursal.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+    ctx.db.capacidadSucursal.findMany(),
   ]);
-  return { acciones, sucursales, capacidades };
+  return { acciones: acciones.filter((a) => claveEnCatalogo(a.clave)), sucursales, capacidades };
 }
 
 /**
@@ -29,10 +30,16 @@ export async function actualizarCapacidad(
   sucursalId: string | null,
   habilitado: boolean
 ): Promise<ResultadoAccion> {
-  return conPermiso("capacidades_sucursal", async (ctx) => {
+  return conPermisoDeEmpresa("capacidades_sucursal", async (ctx) => {
     if (accionClave === "capacidades_sucursal") {
       return error("Esta acción no se puede gobernar a sí misma.");
     }
+
+    // `null` es la fila default a propósito; un `undefined` o un objeto es un argumento roto y con `findFirst({ where: { sucursalId } })` tocaría la fila de cualquier sucursal.
+    if (sucursalId !== null && !esIdentificador(sucursalId)) return error("Sucursal inválida.");
+    if (!claveEnCatalogo(accionClave)) return error("Acción inválida.");
+    if (typeof habilitado !== "boolean") return error("Valor inválido.");
+    if (sucursalId !== null && !(await ctx.db.sucursal.findUnique({ where: { id: sucursalId }, select: { id: true } }))) return error("No se encontró la sucursal.");
 
     // sucursalId puede ser null (fila default) — el tipo generado del
     // unique compuesto accionClave_sucursalId no acepta null ahí (Prisma
@@ -42,23 +49,22 @@ export async function actualizarCapacidad(
     // garantiza el índice único parcial agregado a mano en la migración
     // (ver schema.prisma, comentario en CapacidadSucursal) — Postgres no
     // la garantiza sola sobre una columna nullable dentro de un @@unique.
-    const existente = await prisma.capacidadSucursal.findFirst({ where: { accionClave, sucursalId } });
-    let fila;
-    if (existente) {
-      fila = await prisma.capacidadSucursal.update({ where: { id: existente.id }, data: { habilitado } });
-    } else {
-      fila = await prisma.capacidadSucursal.create({ data: { accionClave, sucursalId, habilitado } });
-    }
-
-    // Auditoría administrativa (A3, Pivote 6).
-    await registrarCambioAuditado(prisma, {
-      entidad: "CapacidadSucursal", entidadId: fila.id, campo: "habilitado",
-      descripcion: `Capacidad "${accionClave}"${sucursalId ? "" : " (default)"}`,
-      valorAnterior: existente?.habilitado ?? null, valorNuevo: habilitado, actorId: ctx.usuarioId, sucursalId,
+    // El cambio y su auditoría (A3, Pivote 6) van en UNA transacción: o quedan los dos o ninguno.
+    await ctx.transaccion(async (tx) => {
+      const existente = await tx.capacidadSucursal.findFirst({ where: { accionClave, sucursalId } });
+      const fila = existente
+        ? await tx.capacidadSucursal.update({ where: { id: existente.id }, data: { habilitado } })
+        : await tx.capacidadSucursal.create({ data: { accionClave, sucursalId, habilitado } });
+      await registrarCambioAuditado(tx, {
+        entidad: "CapacidadSucursal", entidadId: fila.id, campo: "habilitado",
+        descripcion: `Capacidad "${accionClave}"${sucursalId ? "" : " (default)"}`,
+        valorAnterior: existente?.habilitado ?? null, valorNuevo: habilitado, actorId: ctx.usuarioId, sucursalId,
+      });
     });
 
     // Se llama desde un closure "use server" de la página, sin redirigir. Acá el botón ES el estado (✅/⛔): sin esto seguía mostrando el estado
     // viejo después de cambiarlo, hasta recargar a mano (ver refrescar.ts).
+    if (accionClave === "precio_local") revalidarCartasPublicas(); // la carta pública muestra el precio efectivo: cambia con la capacidad
     refrescarVistaSiHaceFalta();
     return ok(`Capacidad de "${accionClave}" actualizada.`);
   });

@@ -1,0 +1,136 @@
+# Pendientes de la sesión del 2026-09-30
+
+Historial de lo que falta, en el formato del `docs/pendientes-sesion-2026-09-27.md`. El tracker de tareas de Claude Code
+(`TaskCreate`/`TaskList`) no está disponible en esta sesión y no es visible desde otra, así que el historial vive acá. Cada
+pendiente lleva su estado; al cerrar uno se actualiza este archivo en el mismo commit.
+
+**Estado vigente (2026-10-02): `docs/pendientes-sesion-2026-10-02.md`** — los ítems 3, 8, 9 y 10 de abajo estaban atrasados y se corrigieron ahí y acá.
+
+Rama de trabajo: `multitenancy-fase-a`. `origin/main` = `72acca5` y no se toca. Commits/push se habilitan por hash y por
+commit, siempre con OK expreso del dueño.
+
+## Hecho en esta sesión (ya en `origin/multitenancy-fase-a`)
+
+- `9e72c9f` Reportes de dinero: sumar solo las sucursales donde el rol puede ver el dinero.
+- `6d07fd1` Flaky e2e `multiempresa-selector`.
+- `3664052` Precio local: la capacidad `precio_local` gobierna de verdad; "la carta acompañó" mide el precio efectivo.
+- `2ef74f4` Tres fugas de alcance de permisos: cuenta apagada por empresa, alta de usuario en la sucursal destino y techo de
+  admin (admin de la sucursal o gerente de empresa), auditoría filtrada por sucursal con las filas de empresa solo para el gerente.
+
+## Decisiones del dueño que ordenan lo que sigue (2026-09-30)
+
+- Una clave de permiso por acción, y una clave por reporte (reemplaza la agrupación `ver_reportes_*` del 2026-09-19).
+- RBAC = acción + contexto (empresa vs sucursal): campo `contexto` en el catálogo, wrapper `conPermisoDeEmpresa`, test guardián.
+- Visión de plataforma: el superadmin elige los permisos desde el inicio; como add-on, la empresa puede o no editar/otorgar permisos.
+- Una migración de datos de permisos no cambia el schema; cualquier cambio de schema requiere autorización expresa.
+
+## En curso
+
+1. **Partición de claves de permisos** (autorizada el 2026-09-30). Tres planes en paralelo, sin código todavía:
+   reportes (una clave por reporte), operaciones/POS/carta/transferencias/stock, y administración + infraestructura
+   (`contexto`, `conPermisoDeEmpresa`, guardianes, claves sin consumidor `ejecutar_tests`/`sincronizar_proveedores`/`notificar_alertas`).
+   Estado: los tres planes están entregados y reconciliados; esperan las decisiones del dueño (ver el resumen de la sesión). Orden
+   propuesto: (1) infraestructura (tipo estrecho de `AccionClave`, inventario AST, `contexto`, `conPermisoDeEmpresa`, molde de migración
+   con `empresaId`), (2) reportes, (3) operaciones/POS/carta/catálogo, (4) administración, (5) contract que borra las claves madre en un
+   deploy posterior. Sin cambios de schema: `contexto` vive solo en código. Hallazgo: ningún usuario migrado tiene `rolEmpresa = "gerente"`.
+
+### Avance de la partición (2026-10-01, sin commitear)
+
+- Infraestructura (lote 1): hecha y verificada con el gate de 7 comandos (317 archivos / 3704 tests; e2e 406).
+- Reportes: hecho y verificado con el gate completo (318 archivos / 3737 tests; e2e 406). 26 claves `reporte_*` reemplazan a las 4
+  `ver_reportes_*`; migración de datos `20261001100000_particion_permisos_reportes` (con `empresaId` explícito, idempotente, probada con 2
+  empresas); guardián «una clave por pantalla» con demo de mutación. Consignación y Promociones no se parten (son gestión). No se creó
+  `pos_ver_importes` (el POS usa `reporte_boletas`).
+- Jerarquía, paso 1 (piso `nivelMinimo` HECHO CUMPLIR): `guardarPermisos` rechaza dar una acción por encima del nivel del rol (todo o nada), el
+  gate ignora la fila de un rol por debajo del piso (permiso, menú y lecturas), y la matriz marca esas celdas con 🚫 y muestra el «Piso». Un rol
+  personalizado es de nivel operario; solo «admin» es de nivel administrador; las de piso gerente las tiene solo el gerente de la empresa
+  (`esGerenteDeEmpresa`, sin matriz ni capacidad de la Central; hoy no existe ninguna, se prueba con un mock). Las filas viejas por encima del
+  piso quedan en la base pero el gate las ignora (no se limpian).
+- Jerarquía, paso 2 (sin schema): un solo gerente por empresa en código (`core/permisos/gerencia.ts`, `conGerenteDeEmpresa`; nadie más que el
+  gerente lo toca, no puede desactivar su cuenta ni su última sucursal; el bootstrap no crea un segundo), acción `transferirGerencia` con
+  auditoría y migración de datos `20261001120000_gerente_unico_por_empresa` (un gerente por empresa: el más antiguo, o el admin activo más
+  antiguo). Falta: la UI del traspaso de gerencia, el índice único en la base (schema, requiere autorización expresa; hoy la asignación
+  concurrente en una empresa SIN gerente no está protegida).
+- Jerarquía, paso 3: `docs/adr/ADR-008-rbac-accion-contexto.md` (decisiones, alternativas descartadas y riesgos abiertos). Con esto el
+  paso de jerarquía queda cerrado.
+- Operaciones/POS/catálogo, grupo A (19 claves nuevas, sin schema): `stock_seccion_habitual`, `conteo_frecuencia`, `stock_reclasificar`,
+  `conteo_resolver_pendiente`, `promociones_activar`, `promociones_marcar_combo`, `producto_ver_catalogo`, `producto_presentaciones`,
+  `producto_disponibilidad`, `insumo_alta`, `insumo_renombrar_fusionar`, `categoria_alta`, `proveedor_alta`, `pos_alta_mesa`,
+  `pos_limite_mesas_abiertas`, `pos_abrir_cuenta`, `pos_enviar_a_cocina`, `pos_liberar_mesa`, `pos_emitir_boleta_corregida`. Migración de datos
+  `20261001130000_particion_permisos_stock_pos_catalogo` (con `down.sql`; probada con 2 empresas por el banco
+  `test/permisos/particion-migracion-harness.ts`, que reusan los grupos siguientes). Los padres NO se borran (expand): `stock_minimo`,
+  `pos_cerrar_cuenta`, `grupos_familia`, `proceso_control`, `promociones_config`, `alta_producto`, `editar_producto`, `pos_mesas` y
+  `pos_tomar_pedido` conservan solo lo que quedó con ellos y 4 cambian de descripción. Gate de 7 comandos limpio en la misma corrida de tests
+  (323 archivos / 3826 tests; e2e 407, tras ajustar un spec que usaba el rol viejo y sumar el caso «Editar y Desactivar son permisos separados»). El «mozo» pasa a necesitar también
+  `pos_abrir_cuenta`, `pos_enviar_a_cocina` y `pos_liberar_mesa` (fixtures de test actualizados; una matriz ya armada a mano se copió sola).
+- Grupo B (11 claves nuevas, sin schema; mismo commit que el grupo A por decisión del dueño): `motivos_movimiento` → `motivos_merma` y
+  `motivos_destino_consumo` (empresa, con la pantalla partida en `/movimientos/motivos-merma` y `/movimientos/destinos-consumo`);
+  `proceso_transferencia_sucursal` → `traspaso_ver_bandeja`, `traspaso_solicitar`, `traspaso_enviar_directo`, `traspaso_aprobar`,
+  `traspaso_cancelar_solicitud`, `traspaso_rechazar_solicitud`, `traspaso_aceptar`, `traspaso_rechazar_envio`, `traspaso_confirmar_reingreso`.
+  Migración `20261001140000_particion_permisos_motivos_traspasos` (con `down.sql`, mismo banco de pruebas). Estos dos padres SÍ se retiran
+  del catálogo (la fila `Accion` queda hasta el contract). La bandeja deshabilita cada botón según su clave. Gate de 7 comandos limpio (A+B juntos): 324 archivos / 3851 tests; e2e 408.
+- Grupo C (8 claves nuevas, sin schema): `carta` → `carta_ver` (entrar a /carta, sucursal), `carta_secciones`, `carta_generos`,
+  `carta_contenido_producto`, `carta_items_agrupados`, `carta_portal` (empresa: son datos globales o del portal de toda la empresa) y
+  `carta_promos`, `carta_tema` (sucursal). Migración `20261001150000_particion_permisos_carta` (con `down.sql`, mismo banco de pruebas,
+  padre «mixto»). `/carta` pide `carta_ver` para entrar y decide por bloque (secciones, géneros, contenido, promos) qué se puede editar;
+  cada pantalla de la carta pide solo su clave. `carta` se retira del catálogo (la fila `Accion` queda hasta el contract). Hueco previo
+  cerrado en el mismo commit: `guardarTemaCarta`/`cambiarAplicacionTema` recibían un `sucursalId` arbitrario (`carta_tema` en una
+  sucursal tocaba el tema de otra); ahora exigen `sucursalId === ctx.sucursalId` y responden «No se encontró la sucursal.» (test nuevo).
+  Gate de 7 comandos limpio con el grupo C: 325 archivos / 3869 tests; e2e 408.
+- Falta de operaciones: nada del bloque (A+B+C hechos). Dudas a revisar: `carta_portal`, `promociones_activar` y
+  `pos_limite_mesas_abiertas` pueden actuar a nivel empresa o de toda la sucursal.
+- Fase de contract (borrar las `Accion` padre, incluidas `ver_reportes_*`) en un deploy posterior.
+- Administración (7 claves nuevas, sin schema): `gestion_usuarios` → `activar_usuario_sucursal`, `notas_usuario_sucursal` (sucursal) y
+  `apagar_cuenta_empresa` (empresa; techo de admin vía membresías); `gestion_permisos` → `gestion_roles` (empresa); `alta_sucursal` →
+  `activar_sucursal`, `renombrar_sucursal` (empresa); `ver_auditoria_empresa` (empresa, PRIMERA acción de piso gerente real, sin padre: la
+  tiene solo el gerente de la empresa). Todas fijas para el admin salvo la de auditoría. Migración
+  `20261001160000_particion_permisos_administracion` (con `down.sql`; el banco de pruebas aprendió `contextoDePadres` «mixto» y
+  `accionesSinPadre`). Se retiran del catálogo `sincronizar_proveedores` y `ejecutar_tests`. Las pantallas de usuarios y sucursales ocultan
+  cada botón según su clave. Los guardianes de guardas reconocen `obtenerMiNivelPermisoDeEmpresa`; `gate-piso-gerente.test.ts` pasó del
+  mock a la clave real.
+- Promociones, un solo concepto (2026-10-01, con schema autorizado): migración `20261001180000_promo_de_empresa`. La promo se define una vez
+  por empresa (precio único, override opcional por sucursal) y cada sucursal la prende/apaga; `carta_promos` → `carta_promo_definir` /
+  `carta_promo_activar` / `carta_promo_precio_local`. Se eliminan `PromocionProducto`, `Sucursal.promocionesHabilitadas`, las claves
+  `promociones_*` y el reporte `/reportes/promociones`. Pendiente Fase 2: «producto con descuento» (porcentaje) en la carta.
+  Al hacer el contract también se borran `carta_promos` y `promociones_config`/`_activar`/`_marcar_combo`.
+- Producto con descuento (Fase 2, 2026-10-01, schema autorizado): tabla `DescuentoProductoSucursal` (% por producto y sucursal), clave
+  `carta_producto_descuento`, reporte `/reportes/descuentos-productos`. Carta y POS lo aplican (precio congelado al agregar; lista en
+  `CuentaItem.precioCartaUnitario`); mostrador no. Con descuento de cliente rige solo el mayor. Nota preexistente sin tocar:
+  `emitir-boleta-corregida` arma la boleta vigente sin descuento y su loader no pasa `promo`.
+- Siguiente en el orden: contract (borrar las `Accion` padre, incluidas `ver_reportes_*`, `carta`, `motivos_movimiento`,
+  `proceso_transferencia_sucursal`, `ejecutar_tests` y `sincronizar_proveedores`, y `editar_producto`) en un deploy posterior.
+- Catálogo, clave mixta `editar_producto` (3 claves nuevas, sin schema): `producto_editar`, `producto_asignar_insumo` y
+  `producto_sincronizar_precio_carta`, las tres de contexto empresa (editan datos de toda la empresa; la disponibilidad por sucursal ya tenía
+  `producto_disponibilidad`). Migración `20261001170000_particion_permisos_producto` (con `down.sql`, mismo banco de pruebas, padre «mixto»).
+  `editar_producto` se retira del catálogo (la fila `Accion` queda hasta el contract). Ya no queda ninguna clave mixta: se sacó
+  `MIXTAS_PENDIENTES` de `matriz-de-fabrica.test.ts`. Efecto a tener presente: con contexto empresa, la clave vale si CUALQUIER membresía activa
+  del usuario en la empresa la tiene (antes, solo la de la sucursal activa).
+
+## Sin empezar (necesitan visto bueno del dueño antes de implementar)
+
+2. Add-on de plataforma: catálogo/«plan» de permisos por empresa e interruptor «puede editar/otorgar permisos». Siguiente peldaño
+   de la partición. **Cableado hecho (2026-10-01, `6d12685`, sin schema):** `politicaDeEmpresa` (hoy siempre `permisosEditables: true`) +
+   gate `conEdicionDePermisos` en `guardarPermisos`/`crearRol`/`actualizarActivoRol`, con guardián
+   `test/arquitectura/escrituras-de-permisos-por-politica.test.ts` y test con la política en false
+   (`test/permisos/con-edicion-de-permisos.test.ts`). **Pendiente:** el dato (dónde se guarda la perilla y el plan/catálogo por empresa) —
+   necesita schema, autorización expresa.
+3. ~~Permisos de carta (corrida 1) y recetas (corrida 1)~~ — HECHOS (`15ca92d`, `2c8c5db`, carta `c055f7e`). Lo que sigue (R2/C2 sin schema, luego receta y carta propias con schema) está en `pendientes-sesion-2026-10-02.md`.
+4. ~~Auditoría de traspasos, compras, clientes, api y cron~~ — HECHO (Lote 1, 2026-10-01). Se verificó contra el código: traspasos y compras
+   ya dejan rastro propio (`TraspasoSucursal`, `Operacion` con su actor); el hueco real eran Clientes (alta/edición/activar) y la asignación
+   de cliente a una cuenta, que ahora auditan, más el filtro "Cuenta" y la lista única `ENTIDADES_AUDITABLES`. Guardián:
+   `test/arquitectura/escrituras-auditadas.test.ts`. El cron queda fuera de alcance (no hay actor humano).
+   Indicador de stock en tránsito (Lote 1): `/stock/consolidado` muestra, solo si hay algo, lo que ya salió del Kardex del origen y todavía no
+   figura en ninguna sucursal (traspaso ENVIADA: por recibir / enviado por aceptar; RECHAZADA_DESTINO: pendiente de reingreso). Cálculo en
+   `src/core/stock/en-transito.ts`; tests `test/stock/en-transito.test.ts` y fila axe en `test/e2e/accesibilidad.spec.ts`.
+5. ~~Iconos lucide en el menú, con medición de bundle antes de decidir~~ — HECHO (Lote 3, tanda A, `c570111`; bundle 1,925,207 B crudo / 621,892 B gzip). Íconos de acciones de tabla: tanda B (P6).
+6. ~~`/inicio` real~~ — HECHO (Lote 3, tanda A, `c570111`).
+7. ~~Plan de cambio de sucursal / salida del salón~~ — HECHO (Lote 3, tanda A, `969e52e`).
+8. ~~Dos paneles, Empresa y Sucursal~~ — HECHO (Lote 3, tanda B, sin commitear): `docs/adr/ADR-010-dos-paneles-empresa-sucursal.md` (opción B, selector en el sidebar, `panel` en cada ítem, `dosPaneles` en `politicaDeEmpresa`). Tests `test/navegacion/paneles.test.ts` y `test/e2e/menu-paneles.spec.ts`. F3 decidida el 2026-10-02: no se mueve nada («Calibrar recetas» ya está en Sucursal) y el selector muestra el nombre de la sucursal activa (HECHO el 2026-10-02: `data-sucursal-activa` en `sidebar-nav.tsx`).
+9. Módulo de margen objetivo. **Etapas 0 y 1 hechas** (`395e0e3`, `3a48990`: modelo `MargenObjetivo`, `/catalogo/margen-objetivo`, reporte de costos). **Alerta pasiva en Período HECHA** (2026-10-02, sin commitear): `resumirFueraDeObjetivo` + alerta «media» con enlace «Ver en Costos» (solo si hay objetivos cargados y el rol ve Costos); tests en `test/reportes/margen-objetivo.test.ts`, `test/reportes/periodo.test.ts` y `test/e2e/margen-objetivo.spec.ts`.
+10. Unificar la semántica de «sin fila» (sin precio local, sin receta propia, sin carta propia).
+    **Tanda 1 hecha (2026-10-01, `c4b2c28`):** `docs/adr/ADR-009-semantica-de-ausencia-por-sucursal.md` (cinco familias, embudo por modelo,
+    inconsistencias R1–R4). Guardianes `test/arquitectura/semantica-sin-fila.test.ts` y `promo-sucursal-en-un-solo-lugar.test.ts`;
+    caracterización en `test/core/semantica-sin-fila.test.ts` y `test/carta/promo-sucursal.test.ts`. R4 resuelta (`elegirMinimo`,
+    `whereSeccionHabitualVigente`). **Pendiente del dueño:** R1 (¿la capacidad `precio_local` apaga también el precio local de la promo y el
+    descuento?) y R2 (qué muestra un reporte sin sucursal: `reportes/comun.ts` asume `disponible: true`). R3 se revisa con la carta propia.
+    **Actualización 2026-10-02:** R1 y R2 ya están resueltas (`35fb344`) y R3 quedó «por diseño» (ver ADR-009).

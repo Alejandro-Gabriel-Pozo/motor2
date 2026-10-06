@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { IconoDeAccion } from "@/components/iconos";
 import { anularVenta } from "@/server/actions/movimientos/venta";
 
 /**
@@ -47,7 +48,8 @@ export function BotonAnularVenta({ idOperacion }: { idOperacion: string }) {
 
   return (
     <div className="mb-2 flex flex-col gap-1">
-      <button type="button" onClick={() => setConfirmando(true)} className="text-sm text-red-600 underline">
+      <button type="button" onClick={() => setConfirmando(true)} className="inline-flex items-center gap-1 text-sm text-red-600 underline">
+        <IconoDeAccion id="anular" />
         Anular venta
       </button>
       {mensaje && <p className={`text-xs ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}

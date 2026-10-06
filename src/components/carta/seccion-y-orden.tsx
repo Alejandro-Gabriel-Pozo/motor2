@@ -6,8 +6,8 @@ import { ordenSugeridoAlElegirSeccion } from "@/core/carta/orden-sugerido";
 const CLASE_INPUT = "rounded border px-2 py-1";
 
 /**
- * El select de sección de carta + el orden dentro de esa sección, de un producto suelto (/catalogo/carta) o de un ítem agrupado
- * (/catalogo/carta/agrupados) — docs/plan-carta-seccion-directa-2026-09-25.md, DA6/M8. Al elegir (o cambiar) de sección, el orden se
+ * El select de sección de carta + el orden dentro de esa sección, de un producto suelto (/carta) o de un ítem agrupado
+ * (/carta/agrupados) — docs/plan-carta-seccion-directa-2026-09-25.md, DA6/M8. Al elegir (o cambiar) de sección, el orden se
  * autocompleta con el sugerido para esa sección (`ordenSugeridoAlElegirSeccion`: la cantidad de ítems que ya tiene, o el guardado si
  * se vuelve a la sección que ya tenía); sigue siendo editable a mano.
  *

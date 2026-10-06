@@ -5,20 +5,22 @@ import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarSeccionesHabituales } from "@/server/actions/stock/seccion-habitual";
 import { SeccionHabitualForm } from "./seccion-habitual-form";
 import { BotonQuitarSeccionHabitual } from "./boton-quitar";
+import { IconoDeAccion } from "@/components/iconos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Sección habitual de cada producto de venta en esta sucursal (docs/plan-seccion-habitual-stock-2026-09-25.md, C2): de qué sección de
  * stock sale PRIMERO lo que consume al cerrar una cuenta del salón. Mismo molde que `/stock/minimo` (tabla + formulario de alta/edición,
- * mismo permiso `stock_minimo`). Un producto sin fila no tiene preferencia: sale de la sección con stock que vence antes.
+ * permiso propio `stock_seccion_habitual`). Un producto sin fila no tiene preferencia: sale de la sección con stock que vence antes.
  */
-export default async function SeccionHabitualPage({ searchParams }: { searchParams: Promise<{ editar?: string }> }) {
+export default async function SeccionHabitualPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"editar">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "stock_minimo");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "stock_seccion_habitual", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const { editar } = await searchParams;
+  const { editar } = unicosDeUrl(await searchParams);
   const [filas, secciones] = await Promise.all([listarSeccionesHabituales(ctx.sucursalId), listarSeccionesActivas(ctx.sucursalId)]);
   const filaEnEdicion = editar ? filas.find((f) => f.id === editar) : undefined;
 
@@ -45,8 +47,9 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
                 <td>{f.seccion.nombre}</td>
                 <td>
                   {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
-                  <div className="flex gap-3">
-                    <Link href={`/stock/seccion-habitual?editar=${f.id}`} className="text-sm underline">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    <Link href={`/stock/seccion-habitual?editar=${f.id}`} className="text-sm underline inline-flex items-center gap-1">
+                      <IconoDeAccion id="editar" />
                       Editar
                     </Link>
                     <BotonQuitarSeccionHabitual id={f.id} producto={f.producto.nombre} />

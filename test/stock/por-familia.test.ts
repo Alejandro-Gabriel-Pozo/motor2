@@ -33,7 +33,7 @@ describe("calcularStockPorFamilia", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: a.id, cantidad: 10 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: b.id, cantidad: 5 }] });
 
-    const filas = await calcularStockPorFamilia(sucursalId);
+    const filas = await calcularStockPorFamilia(sucursalId, prisma);
     const fila = filas.find((f) => f.insumoId === insumo.id);
     expect(fila?.saldo).toBe(15);
     expect(fila?.productos.sort()).toEqual(["Harina Proveedor A", "Harina Proveedor B"]);
@@ -43,7 +43,7 @@ describe("calcularStockPorFamilia", () => {
     const suelto = await sembrarProductoDisponible({ codigo: "MP_SUELTO", nombre: "Suelto", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: suelto.id, cantidad: 10 }] });
 
-    const filas = await calcularStockPorFamilia(sucursalId);
+    const filas = await calcularStockPorFamilia(sucursalId, prisma);
     expect(filas.find((f) => f.productos.includes("Suelto"))).toBeUndefined();
   });
 
@@ -54,7 +54,7 @@ describe("calcularStockPorFamilia", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: enKg.id, cantidad: 5 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: enG.id, cantidad: 500 }] });
 
-    const filas = await calcularStockPorFamilia(sucursalId);
+    const filas = await calcularStockPorFamilia(sucursalId, prisma);
     const fila = filas.find((f) => f.insumoId === insumo.id);
     expect(fila?.unidadesMezcladas).toBe(true);
   });
@@ -66,7 +66,7 @@ describe("calcularStockPorFamilia", () => {
     const producto = await sembrarProductoDisponible({ codigo: "MP_COCA", nombre: "Coca 500ml", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumo.id }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: producto.id, cantidad: 20 }] });
 
-    const filas = await calcularStockPorFamilia(sucursalId);
+    const filas = await calcularStockPorFamilia(sucursalId, prisma);
     const fila = filas.find((f) => f.insumoId === insumo.id);
     expect(fila?.grupoCadena).toBe("Bebidas > Bebidas sin alcohol");
   });

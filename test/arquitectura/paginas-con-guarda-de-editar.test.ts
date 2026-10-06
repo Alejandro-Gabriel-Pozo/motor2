@@ -14,15 +14,17 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "../../src/app/(app)");
 
 const PAGINAS_DE_EDICION = [
-  { pagina: "catalogo/productos/[id]/editar/page.tsx", clave: "editar_producto" },
+  { pagina: "catalogo/productos/[id]/editar/page.tsx", clave: "producto_editar" },
   { pagina: "catalogo/productos/nuevo/page.tsx", clave: "alta_producto" },
+  { pagina: "catalogo/proveedores/[id]/editar/page.tsx", clave: "proveedores" },
+  { pagina: "catalogo/proveedores/nuevo/page.tsx", clave: "proveedor_alta" },
 ];
 
 describe("páginas de edición: exigen el permiso de Editar en el servidor", () => {
   for (const { pagina, clave } of PAGINAS_DE_EDICION) {
     it(`${pagina} llama a requierePermiso(..., "${clave}")`, () => {
       const fuente = readFileSync(join(RAIZ, pagina), "utf8").replace(/\r\n/g, "\n");
-      expect(fuente).toMatch(new RegExp(String.raw`requierePermiso\(\s*[^,]+,\s*[^,]+,\s*"${clave}"\s*\)`));
+      expect(fuente).toMatch(new RegExp(String.raw`requierePermiso(?:DeEmpresa)?\(\s*[^,]+,\s*[^,]+,\s*"${clave}"\s*(?:,\s*[^,)]+)?\)`));
     });
   }
 });

@@ -27,13 +27,27 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-misused-promises": "error",
     },
   },
+  {
+    // Las variantes `*Unsafe` de Prisma interpolan SQL crudo: en `src/` solo van `$queryRaw`/`$executeRaw` con plantilla etiquetada.
+    files: ["src/**/*.ts", "src/**/*.tsx", "plataforma/**/*.ts", "plataforma/**/*.tsx"],
+    rules: {
+      "no-restricted-properties": [
+        "error",
+        { property: "$queryRawUnsafe", message: "Usá $queryRaw con plantilla etiquetada (parametrizada)." },
+        { property: "$executeRawUnsafe", message: "Usá $executeRaw con plantilla etiquetada (parametrizada)." },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    "plataforma/.next/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Prototipo de la Fase A (fuera de tsconfig: su cliente generado solo existe en local).
+    "prisma/fase-a/**",
   ]),
   {
     // test/e2e/ y test/e2e-demo/ no son código React — son fixtures de Playwright, cuyo API

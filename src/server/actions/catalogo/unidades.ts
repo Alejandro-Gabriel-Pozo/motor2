@@ -1,13 +1,12 @@
 "use server";
 
 import type { MagnitudUnidad } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermiso } from "@/core/permisos/gate";
+import { requierePermisoDeEmpresa } from "@/core/permisos/gate";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
 import { decimalesDelPaso } from "@/core/catalogo/public";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
@@ -19,17 +18,17 @@ const DECIMALES_DEFAULT_POR_MAGNITUD: Record<MagnitudUnidad, number> = {
 };
 
 export async function listarUnidadesParaPanel() {
-  await requerirSesion();
-  return prisma.unidad.findMany({ orderBy: { nombre: "asc" } });
+  const ctx = await requerirSesion();
+  return ctx.db.unidad.findMany({ orderBy: { nombre: "asc" } });
 }
 
 export async function listarUnidadesActivas() {
-  await requerirSesion();
-  return prisma.unidad.findMany({ where: { activa: true }, orderBy: { nombre: "asc" } });
+  const ctx = await requerirSesion();
+  return ctx.db.unidad.findMany({ where: { activa: true }, orderBy: { nombre: "asc" } });
 }
 
 export async function crearUnidad(datos: { nombre: string; magnitud: MagnitudUnidad; decimales?: number }): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("unidades", async () => {
+  return conPermisoDeEmpresa<ResultadoConId>("unidades", async (ctx) => {
     const nombre = texto(datos.nombre);
     if (!nombre) return error("El nombre de la unidad no puede estar vacío.");
     const invalido = validarTextoCatalogo(nombre, "El nombre de la unidad");
@@ -40,10 +39,10 @@ export async function crearUnidad(datos: { nombre: string; magnitud: MagnitudUni
       return error("Los decimales tienen que ser un entero entre 0 y 6.");
     }
 
-    const existente = await prisma.unidad.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
+    const existente = await ctx.db.unidad.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
     if (existente) return error(`Ya existe una unidad llamada "${nombre}".`);
 
-    const creada = await prisma.unidad.create({ data: { nombre, magnitud: datos.magnitud, decimales } });
+    const creada = await ctx.db.unidad.create({ data: { nombre, magnitud: datos.magnitud, decimales } });
     // Se llama desde un closure "use server" de la página de Unidades, sin redirigir: sin esto la tabla no cambia (ver refrescar.ts).
     refrescarVistaSiHaceFalta();
     return okConId(`Unidad "${creada.nombre}" creada.`, creada.id, creada.nombre);
@@ -51,8 +50,8 @@ export async function crearUnidad(datos: { nombre: string; magnitud: MagnitudUni
 }
 
 export async function actualizarActivaUnidad(unidadId: string, activa: boolean): Promise<ResultadoAccion> {
-  return conPermiso("unidades", async () => {
-    await prisma.unidad.update({ where: { id: unidadId }, data: { activa } });
+  return conPermisoDeEmpresa("unidades", async (ctx) => {
+    await ctx.db.unidad.update({ where: { id: unidadId }, data: { activa } });
     refrescarVistaSiHaceFalta(); // ver crearUnidad
     return ok(`Unidad ${activa ? "activada" : "desactivada"}.`);
   });
@@ -65,12 +64,12 @@ export async function actualizarActivaUnidad(unidadId: string, activa: boolean):
  * `dependenciasParaDesactivar`, "avisa qué es").
  */
 export async function actualizarDecimalesUnidad(unidadId: string, decimales: number): Promise<ResultadoAccion> {
-  return conPermiso("unidades", async () => {
+  return conPermisoDeEmpresa("unidades", async (ctx) => {
     if (!Number.isInteger(decimales) || decimales < 0 || decimales > 6) {
       return error("Los decimales tienen que ser un entero entre 0 y 6.");
     }
 
-    const productosConStockReal = await prisma.producto.findMany({
+    const productosConStockReal = await ctx.db.producto.findMany({
       where: { unidadStockId: unidadId, tipo: "PV", seProduce: true, pasoVenta: { not: null } },
       select: { nombre: true, pasoVenta: true },
     });
@@ -82,7 +81,7 @@ export async function actualizarDecimalesUnidad(unidadId: string, decimales: num
       );
     }
 
-    await prisma.unidad.update({ where: { id: unidadId }, data: { decimales } });
+    await ctx.db.unidad.update({ where: { id: unidadId }, data: { decimales } });
     refrescarVistaSiHaceFalta(); // ver crearUnidad
     return ok("Decimales actualizados.");
   });
@@ -106,10 +105,10 @@ export async function detectarInsumosConUnidadMezclada(): Promise<
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return { ok: false, mensaje: "No autenticado, o tu usuario no tiene ninguna sucursal asignada." };
 
-  const gate = await requierePermiso(ctx.usuarioId, ctx.sucursalId, "insumos_mezclados");
+  const gate = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "insumos_mezclados", ctx.db);
   if (!gate.ok) return { ok: false, mensaje: gate.mensaje };
 
-  const insumos = await prisma.insumo.findMany({
+  const insumos = await ctx.db.insumo.findMany({
     include: { productos: { where: whereDisponibleEnAlguna(), include: { unidadStock: true } } },
   });
 

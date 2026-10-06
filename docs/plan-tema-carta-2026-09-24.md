@@ -1,5 +1,7 @@
 # Plan: el tema visual de la carta (`SiteConfig`, hoy la tab "Config" de la sheet de cada tenant) pasa a un editor con persistencia en motor2
 
+> **Actualización 2026-09-30:** las 3 claves de miniatura de la imagen de sección (`carta_imagen_modo`, `carta_imagen_ancho_mobile`, `carta_imagen_ancho_desktop`) se retiraron del catálogo (`CLAVES_RETIRADAS`, `src/core/carta/tema.ts`); la imagen de sección se dibuja siempre como fondo de la banda, y se eliminaron los tipos `anchoImagenMobile` y `tamanoFondo` con sus validadores. El catálogo vigente tiene 64 claves por sucursal; lo que sigue es el plan original.
+
 **Versión final para implementar.** Catálogo de 67 claves por tenant; el plan termina en M9 (motor2) y R4 (restaurant-menu-design).
 
 Plan escrito el 2026-09-24 por un agente de planificación (Opus) y actualizado el mismo día con las resoluciones del dueño:

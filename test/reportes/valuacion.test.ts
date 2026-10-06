@@ -32,7 +32,7 @@ describe("calcularValuacionInventario", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }] }); // $10/kg, saldo 10
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-06-01"), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 100 }] }); // $20/kg, más reciente; saldo 15
 
-    const rep = await calcularValuacionInventario(sucursalId);
+    const rep = await calcularValuacionInventario(sucursalId, prisma);
     const fila = rep.filas.find((f) => f.productoId === mp.id)!;
     expect(fila.saldo).toBe(15);
     expect(fila.costoUnitario).toBe(20); // costo de reposición = última compra, no promedio
@@ -46,7 +46,7 @@ describe("calcularValuacionInventario", () => {
     // Entra stock por AJUSTE, nunca por COMPRA: no hay costo de reposición conocido.
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 8 }] });
 
-    const rep = await calcularValuacionInventario(sucursalId);
+    const rep = await calcularValuacionInventario(sucursalId, prisma);
     const fila = rep.filas.find((f) => f.productoId === mp.id)!;
     expect(fila.sinCosto).toBe(true);
     expect(fila.valor).toBeNull();
@@ -60,7 +60,7 @@ describe("calcularValuacionInventario", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }] });
     await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mp.id, cantidad: 10 }] });
 
-    const rep = await calcularValuacionInventario(sucursalId);
+    const rep = await calcularValuacionInventario(sucursalId, prisma);
     expect(rep.filas.find((f) => f.productoId === mp.id)).toBeUndefined();
   });
 
@@ -69,7 +69,7 @@ describe("calcularValuacionInventario", () => {
     const otraSeccion = await sembrarSeccion(otraSucursal.id, "Depósito 2");
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
 
-    const usuarioOtra = await crearUsuarioConMembresia({ email: "otra@test.com", sucursalId: otraSucursal.id, rolId: (await prisma.rol.findFirstOrThrow({ where: { nombre: "admin" } })).id });
+    const usuarioOtra = await crearUsuarioConMembresia({ email: "otra@test.com", sucursalId: otraSucursal.id, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id });
     await prisma.operacion.create({
       data: {
         sucursalId: otraSucursal.id, proceso: "COMPRA", fecha: new Date(), usuarioId: usuarioOtra.id,
@@ -78,7 +78,7 @@ describe("calcularValuacionInventario", () => {
     });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3 }] });
 
-    const rep = await calcularValuacionInventario(sucursalId);
+    const rep = await calcularValuacionInventario(sucursalId, prisma);
     const fila = rep.filas.find((f) => f.productoId === mp.id)!;
     expect(fila.sinCosto).toBe(true); // no toma el $100/kg de la otra sucursal
   });

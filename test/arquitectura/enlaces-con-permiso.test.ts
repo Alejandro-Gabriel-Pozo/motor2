@@ -26,7 +26,7 @@ function accionDeLaPantalla(archivo: string): string | null {
   while (dir.startsWith(RAIZ)) {
     try {
       const fuente = readFileSync(join(dir, "page.tsx"), "utf8");
-      const literal = fuente.match(/requierePermisoVer\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1];
+      const literal = fuente.match(/requierePermisoVer(?:DeEmpresa)?\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1];
       if (literal) return literal;
       if (fuente.includes("ACCION_POR_PROCESO")) return "por-proceso";
     } catch {
@@ -39,10 +39,10 @@ function accionDeLaPantalla(archivo: string): string | null {
 
 describe("accionDeRuta", () => {
   it("resuelve por el ítem del menú de la ruta más larga, ignorando la consulta y el ancla", () => {
-    expect(accionDeRuta("/reportes/historial?productoId=abc")).toBe("ver_reportes_operativos");
-    expect(accionDeRuta("/reportes/trazabilidad?idOperacion=x#fila")).toBe("ver_reportes_operativos");
-    expect(accionDeRuta("/reportes")).toBe("ver_reportes_dinero");
-    expect(accionDeRuta("/reportes/rendimiento-recetas?productoId=1")).toBe("ver_reportes_dinero");
+    expect(accionDeRuta("/reportes/historial?productoId=abc")).toBe("reporte_historial");
+    expect(accionDeRuta("/reportes/trazabilidad?idOperacion=x#fila")).toBe("reporte_trazabilidad");
+    expect(accionDeRuta("/reportes")).toBe("reporte_resumen");
+    expect(accionDeRuta("/reportes/rendimiento-recetas?productoId=1")).toBe("reporte_rendimiento_recetas");
   });
 
   it("las rutas hijas de un ítem del menú usan la acción del ítem", () => {
@@ -50,10 +50,10 @@ describe("accionDeRuta", () => {
     expect(accionDeRuta("/catalogo/recetas/cmu123/historial")).toBe("guardar_receta");
     expect(accionDeRuta("/catalogo/recetas/cmu123?editar=x&sugerido=2")).toBe("guardar_receta");
     expect(accionDeRuta("/movimientos/compra?productoId=p1")).toBe("proceso_compra");
-    expect(accionDeRuta("/catalogo/productos?id=p1")).toBe("alta_producto");
+    expect(accionDeRuta("/catalogo/productos?id=p1")).toBe("producto_ver_catalogo");
     expect(accionDeRuta("/catalogo/productos/nuevo")).toBe("alta_producto");
-    expect(accionDeRuta("/catalogo/productos/p1")).toBe("alta_producto");
-    expect(accionDeRuta("/catalogo/productos/p1/editar")).toBe("alta_producto");
+    expect(accionDeRuta("/catalogo/productos/p1")).toBe("producto_ver_catalogo");
+    expect(accionDeRuta("/catalogo/productos/p1/editar")).toBe("producto_ver_catalogo");
   });
 
   it("la comparativa de precios (fuera del menú) tiene su propia acción, distinta de la de Proveedores", () => {
@@ -74,7 +74,7 @@ describe("accionDeRuta", () => {
   it("la acción de cada ruta fuera del menú es la que pide su página, y se consulta al armar el conjunto de acciones visibles", () => {
     for (const item of RUTAS_FUERA_DEL_MENU) {
       const fuente = readFileSync(join(RAIZ, ...item.href.split("/").filter(Boolean), "page.tsx"), "utf8");
-      expect(fuente.match(/requierePermisoVer\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1], item.href).toBe(item.accion);
+      expect(fuente.match(/requierePermisoVer(?:DeEmpresa)?\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1], item.href).toBe(item.accion);
       expect(accionesDeNavegacion()).toContain(item.accion);
     }
   });

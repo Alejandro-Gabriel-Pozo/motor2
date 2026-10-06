@@ -1,12 +1,10 @@
 import { sanitizeCssColor } from "./color-css";
 import {
   validarAltoBanda,
-  validarAnchoImagenMobile,
   validarEnum,
   validarOpacidad,
   validarPorcentaje,
   validarRedSocial,
-  validarTamanoFondo,
   validarTamanoFuente,
   validarTelefono,
   validarUrlHttps,
@@ -14,18 +12,19 @@ import {
 import { validarImagenUrlCarta, validarTextoLibreCarta, type Resultado } from "./validaciones";
 
 /**
- * Tema visual de la carta pública (docs/plan-tema-carta-2026-09-24.md, M3): lo que hoy es la tab "Config" de la sheet de cada
- * tenant de restaurant-menu-design (`SiteConfig`, lib/get-config.ts), pasado a motor2 (`TemaCartaSucursal.valores`, un Json con
- * las MISMAS claves que `SiteConfig`).
+ * Tema visual de la carta pública (docs/plan-tema-carta-2026-09-24.md, M3): `TemaCartaSucursal.valores`, un Json con las claves de
+ * `SiteConfig` de la carta original (restaurant-menu-design).
  *
- * Puro, sin Prisma: lo importa también el editor de tema (cliente). El catálogo `CLAVES_TEMA_V1` es la única fuente de las 67
- * claves por tenant: alimenta la validación (Server Actions), el formulario y la vista previa (pantalla), el importador ("Pegar
- * desde la sheet") y el contrato `TemaCartaV1` (GET /api/carta/[sucursal]/tema, que lo arma con `armarTemaCarta`).
+ * Puro, sin Prisma: lo importa también el editor de tema (cliente). El catálogo `CLAVES_TEMA_V1` es la única fuente de las 64
+ * claves por tenant: alimenta la validación (Server Actions), el formulario y la vista previa (pantalla) y el contrato `TemaCartaV1` (lo arma
+ * `armarTemaCarta` para la carta pública interna).
  *
  * De las 109 claves de `SiteConfig`:
- *  - 67 son por tenant y tienen efecto en /carta/[sucursal] → `CLAVES_TEMA_V1` (bloques A=6, B=23, C=9, D=29; D3 del plan).
+ *  - 63 son por tenant y tienen efecto en /carta/[sucursal] → `CLAVES_TEMA_V1` (bloques A=6, B=23, C=9, D=25; D3 del plan). Más 1 propia de motor2, sin
+ *    equivalente en `SiteConfig`: `carta_fuente_familia` (D=26) — la familia tipográfica de títulos, nombres y precios.
+ *  - 4 están RETIRADAS (`CLAVES_RETIRADAS`): 1 que el original nunca dibujaba y las 3 de miniatura de la imagen de sección (decisión del dueño).
  *  - 3 son de precio y son CONVENCIÓN FIJA del sistema (es-AR, "$", a la izquierda) → `CLAVES_FIJAS_DEL_SISTEMA`: motor2 no las
- *    guarda ni las emite; la carta las sigue tomando de la sheet o de su default, que es esa misma convención.
+ *    guarda ni las emite; la carta usa esa misma convención.
  *  - 39 no son por tenant (config raíz del portal, SEO, o solo del modo single de `/`) → `CLAVES_NO_POR_TENANT`.
  */
 
@@ -40,8 +39,6 @@ export type TipoValorTema =
   | { tipo: "tamanoFuente" }
   | { tipo: "altoBandaMobile" }
   | { tipo: "altoBandaDesktop" }
-  | { tipo: "anchoImagenMobile" }
-  | { tipo: "tamanoFondo" }
   | { tipo: "porcentaje" }
   | { tipo: "opacidad" }
   | { tipo: "enum"; opciones: readonly string[]; alias?: Readonly<Record<string, string>> }
@@ -53,7 +50,7 @@ export type TipoValorTema =
 
 export type BloqueTema = "A" | "B" | "C" | "D";
 
-/** Las 14 zonas del formulario, en el orden en que se muestran. */
+/** Las 15 zonas del formulario, en el orden en que se muestran. */
 export const ZONAS_TEMA = [
   "Portada e identidad",
   "Colores generales",
@@ -64,6 +61,7 @@ export const ZONAS_TEMA = [
   "Navegación y barra superior",
   "Textos fijos",
   "Contacto",
+  "Tipografía general",
   "Tipografía de portada",
   "Tipografía de índice",
   "Tipografía de banda",
@@ -82,6 +80,10 @@ export type DefinicionClaveTema = TipoValorTema & {
   defaultCarta: string;
 };
 
+/** Familias tipográficas de la carta (`carta_fuente_familia`); la primera es el default. Cada una se carga con `next/font` en `fuente-carta.ts`. */
+export const FAMILIAS_TIPOGRAFICAS = ["playfair", "lora", "cormorant", "montserrat", "geist"] as const;
+export type FamiliaTipografica = (typeof FAMILIAS_TIPOGRAFICAS)[number];
+
 const COLOR = { tipo: "color" } as const;
 const FUENTE = { tipo: "tamanoFuente" } as const;
 const texto = (maximo: number) => ({ tipo: "texto", maximo }) as const;
@@ -90,7 +92,7 @@ const texto = (maximo: number) => ({ tipo: "texto", maximo }) as const;
 const ALIAS_SI_NO: Readonly<Record<string, string>> = { "sí": "si", true: "si", "1": "si", yes: "si", false: "no", "0": "no" };
 
 /**
- * Las 67 claves por tenant (D3). El orden es el del formulario: por zona, y dentro de cada zona como se leen en la carta.
+ * Las 64 claves por tenant (D3 menos las 4 retiradas de `CLAVES_RETIRADAS`, más `carta_fuente_familia`). El orden es el del formulario: por zona, y dentro de cada zona como se leen en la carta.
  */
 export const CLAVES_TEMA_V1 = [
   // Portada e identidad (A + la posición del bloque y del CTA en la portada mobile)
@@ -152,37 +154,36 @@ export const CLAVES_TEMA_V1 = [
   { clave: "restaurante_whatsapp", bloque: "C", zona: "Contacto", etiqueta: "WhatsApp (teléfono con código de país)", defaultCarta: "", tipo: "telefono" },
   { clave: "restaurante_footer_maps_url", bloque: "C", zona: "Contacto", etiqueta: "Link de Google Maps", defaultCarta: "", tipo: "urlHttps" },
 
+  // Tipografía general
+  { clave: "carta_fuente_familia", bloque: "D", zona: "Tipografía general", etiqueta: "Tipografía de títulos, nombres y precios", defaultCarta: "playfair", tipo: "enum", opciones: FAMILIAS_TIPOGRAFICAS },
+
   // Tipografía de portada
-  { clave: "carta_fuente_portada_etiqueta", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño de la etiqueta de la portada", defaultCarta: "0.58rem", ...FUENTE },
+  { clave: "carta_fuente_portada_etiqueta", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño de la etiqueta de la portada", defaultCarta: "0.6875rem", ...FUENTE },
   { clave: "carta_fuente_portada_nombre", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del nombre en la portada", defaultCarta: "clamp(1.7rem, 7vw, 2.1rem)", ...FUENTE },
-  { clave: "carta_fuente_portada_subtitulo", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del subtítulo de la portada", defaultCarta: "0.6rem", ...FUENTE },
+  { clave: "carta_fuente_portada_subtitulo", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del subtítulo de la portada", defaultCarta: "0.6875rem", ...FUENTE },
   { clave: "carta_fuente_portada_descripcion", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño de la descripción de la portada", defaultCarta: "0.75rem", ...FUENTE },
-  { clave: "carta_fuente_portada_cta", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del CTA de la portada", defaultCarta: "0.5rem", ...FUENTE },
+  { clave: "carta_fuente_portada_cta", bloque: "D", zona: "Tipografía de portada", etiqueta: "Tamaño del CTA de la portada", defaultCarta: "0.6875rem", ...FUENTE },
 
   // Tipografía de índice
-  { clave: "carta_fuente_indice_etiqueta", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de la etiqueta del índice", defaultCarta: "0.5rem", ...FUENTE },
+  { clave: "carta_fuente_indice_etiqueta", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de la etiqueta del índice", defaultCarta: "0.6875rem", ...FUENTE },
   { clave: "carta_fuente_indice_titulo", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño del título del índice", defaultCarta: "clamp(1.2rem, 4vw, 1.75rem)", ...FUENTE },
-  { clave: "carta_fuente_indice_numero", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de los números del índice", defaultCarta: "0.6rem", ...FUENTE },
-  { clave: "carta_fuente_indice_categoria", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de la categoría en el índice", defaultCarta: "0.58rem", ...FUENTE },
+  { clave: "carta_fuente_indice_numero", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de los números del índice", defaultCarta: "0.6875rem", ...FUENTE },
   { clave: "carta_fuente_indice_item", bloque: "D", zona: "Tipografía de índice", etiqueta: "Tamaño de las secciones del índice", defaultCarta: "clamp(0.82rem, 2.5vw, 0.95rem)", ...FUENTE },
 
   // Tipografía de banda
-  { clave: "carta_fuente_banda_etiqueta", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño de la etiqueta de la banda", defaultCarta: "0.55rem", ...FUENTE },
+  { clave: "carta_fuente_banda_etiqueta", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño de la etiqueta de la banda", defaultCarta: "0.6875rem", ...FUENTE },
   { clave: "carta_fuente_banda_titulo", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño del título de la banda", defaultCarta: "0.95rem", ...FUENTE },
-  { clave: "carta_fuente_banda_descripcion", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño de la descripción de la banda", defaultCarta: "0.6rem", ...FUENTE },
+  { clave: "carta_fuente_banda_descripcion", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño de la descripción de la banda", defaultCarta: "0.6875rem", ...FUENTE },
 
   // Tipografía de ítems
   { clave: "carta_fuente_item_nombre", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño del nombre del ítem", defaultCarta: "0.88rem", ...FUENTE },
   { clave: "carta_fuente_item_precio", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño del precio del ítem", defaultCarta: "0.88rem", ...FUENTE },
-  { clave: "carta_fuente_item_descripcion", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de la descripción del ítem", defaultCarta: "0.68rem", ...FUENTE },
-  { clave: "carta_fuente_item_tags", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de los tags del ítem", defaultCarta: "0.6rem", ...FUENTE },
+  { clave: "carta_fuente_item_descripcion", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de la descripción del ítem", defaultCarta: "0.6875rem", ...FUENTE },
+  { clave: "carta_fuente_item_tags", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de los tags del ítem", defaultCarta: "0.6875rem", ...FUENTE },
 
   // Banda e imagen de sección
   { clave: "carta_banda_alto_mobile", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Alto de la banda en mobile", defaultCarta: "90", tipo: "altoBandaMobile" },
   { clave: "carta_banda_alto_desktop", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Alto de la banda en desktop", defaultCarta: "clamp(80px, 18vh, 140px)", tipo: "altoBandaDesktop" },
-  { clave: "carta_imagen_modo", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Modo de la imagen de sección", defaultCarta: "fondo", tipo: "enum", opciones: ["fondo", "miniatura", "ambos"] },
-  { clave: "carta_imagen_ancho_mobile", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Alto de la miniatura en mobile (% de la banda)", defaultCarta: "160", tipo: "anchoImagenMobile" },
-  { clave: "carta_imagen_ancho_desktop", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Tamaño de la imagen de fondo en desktop", defaultCarta: "auto 100%", tipo: "tamanoFondo" },
   { clave: "carta_imagen_pos_x", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Posición horizontal de la imagen", defaultCarta: "left", tipo: "enum", opciones: ["left", "center", "right"] },
   { clave: "carta_imagen_pos_y", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Posición vertical de la imagen", defaultCarta: "top", tipo: "enum", opciones: ["top", "center", "bottom"] },
   { clave: "carta_imagen_overlay", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Degradé sobre la imagen", defaultCarta: "si", tipo: "enum", opciones: ["si", "no"], alias: ALIAS_SI_NO },
@@ -203,14 +204,22 @@ export function esClaveTema(clave: string): clave is ClaveTema {
 
 /**
  * Las 3 claves de precio: convención fija del sistema argentino (decisión del dueño). No están en el editor ni en el contrato;
- * la carta las toma de la sheet del tenant o de su default, que es este mismo. Solo se usan para clasificar lo que se pega y para
- * que la vista previa formatee los precios.
+ * la carta usa este valor. Lo usa `precio-carta.ts` para formatear los precios.
  */
 export const CLAVES_FIJAS_DEL_SISTEMA = { precio_locale: "es-AR", precio_simbolo: "$", precio_posicion: "izquierda" } as const;
 
 /**
+ * Claves de `SiteConfig` que existían en el catálogo y se retiraron. `carta_fuente_indice_categoria` nunca tuvo efecto visual
+ * (ni en la carta original ni en la interna). Las 3 `carta_imagen_*` de miniatura (modo, alto mobile, tamaño desktop) se
+ * retiraron por decisión del dueño: la imagen de sección se dibuja siempre como fondo de la banda. Se conservan solo para el test de paridad
+ * con `SiteConfig`.
+ */
+export const CLAVES_RETIRADAS = ["carta_fuente_indice_categoria", "carta_imagen_modo", "carta_imagen_ancho_mobile", "carta_imagen_ancho_desktop"] as const;
+
+/**
  * Las 39 claves de `SiteConfig` que NO son por tenant (A.1/A.2 del plan): la carta las lee de la config raíz (portal, SEO,
- * metadata) o solo las dibuja en el modo single de `/`. Queda como pendiente aparte ("config del portal/raíz").
+ * metadata) o solo las dibuja en el modo single de `/`. Las del portal por empresa ya no son un pendiente: viven en
+ * `CLAVES_PORTAL_V1` (`portal.ts`, tabla `PortalCartaEmpresa`); lo que sigue acá es config raíz/SEO y el modo single.
  */
 export const CLAVES_NO_POR_TENANT = [
   // Solo en MenuHero (modo single de /)
@@ -259,7 +268,7 @@ export const CLAVES_NO_POR_TENANT = [
 ] as const;
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// Contrato v1 (GET /api/carta/[sucursal]/tema)
+// Contrato v1 (tema de la carta pública interna)
 // ---------------------------------------------------------------------------------------------------------------------------
 
 /** Valores cargados (normalizados) por clave del catálogo. Una clave ausente = vacía (default de la carta). */
@@ -270,7 +279,7 @@ export interface TemaCartaV1 {
   generadoEn: string;
   sucursalId: string;
   actualizadoEn: string;
-  /** SIEMPRE las 67 claves del catálogo; `null` = no cargada (la carta usa su default, no la sheet). */
+  /** SIEMPRE las 64 claves del catálogo; `null` = no cargada (la carta usa su default). */
   valores: Record<ClaveTema, string | null>;
 }
 
@@ -282,7 +291,7 @@ const MAXIMO_COLOR = 100;
 const RE_CONTROL = /[\u0000-\u001f\u007f]/;
 const MAXIMO_ERRORES_JUNTOS = 5;
 
-function validarColor(v: string, definicion: DefinicionClaveTema): Resultado<string> {
+function validarColor(v: string, definicion: TipoValorTema): Resultado<string> {
   if (v.length > MAXIMO_COLOR) return { ok: false, mensaje: `no puede superar los ${MAXIMO_COLOR} caracteres` };
   const lower = v.toLowerCase();
   if (definicion.tipo === "colorHeroInk" && (lower === "claro" || lower === "oscuro")) return { ok: true, valor: lower };
@@ -299,7 +308,11 @@ function validarColor(v: string, definicion: DefinicionClaveTema): Resultado<str
   return { ok: true, valor: limpio };
 }
 
-function validarPorTipo(v: string, d: DefinicionClaveTema): Resultado<string> {
+/**
+ * Valida un valor YA recortado y no vacío contra el tipo de una definición. Es la pieza que comparten el tema de la sucursal
+ * (`CLAVES_TEMA_V1`) y la config del portal (`portal.ts`): el que llama decide qué hace con el vacío y con la clave.
+ */
+export function validarValorDefinicion(v: string, d: TipoValorTema & { etiqueta: string }): Resultado<string> {
   switch (d.tipo) {
     case "color":
     case "colorHeroInk":
@@ -311,10 +324,6 @@ function validarPorTipo(v: string, d: DefinicionClaveTema): Resultado<string> {
       return validarAltoBanda(v, { normalizarPx: false });
     case "altoBandaDesktop":
       return validarAltoBanda(v, { normalizarPx: true });
-    case "anchoImagenMobile":
-      return validarAnchoImagenMobile(v);
-    case "tamanoFondo":
-      return validarTamanoFondo(v);
     case "porcentaje":
       return validarPorcentaje(v);
     case "opacidad":
@@ -351,7 +360,7 @@ export function validarValorTema(clave: string, valor: unknown): Resultado<strin
   if (typeof valor !== "string") return { ok: false, mensaje: "tiene que ser texto" };
   const v = valor.trim();
   if (!v) return { ok: true, valor: null };
-  return validarPorTipo(v, d);
+  return validarValorDefinicion(v, d);
 }
 
 /**
@@ -378,69 +387,6 @@ export function validarValoresTema(entrada: Readonly<Record<string, unknown>>): 
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// "Pegar desde la sheet" (D12)
-// ---------------------------------------------------------------------------------------------------------------------------
-
-export interface ConfigPegada {
-  /** Claves del catálogo con valor válido, ya normalizado: rellenan el formulario (sin guardar). */
-  valores: ValoresTema;
-  /** Las 3 de precio: convención fija del sistema, no se importan. */
-  fijasDelSistema: string[];
-  /** De la config raíz o del modo single: no son por tenant. */
-  noPorTenant: string[];
-  /** Ninguna clave de `SiteConfig` (una errata, o una clave vieja). */
-  desconocidas: string[];
-  /** Del catálogo, pero con un valor que no pasa la validación (queda el default de la carta). */
-  invalidas: { clave: string; motivo: string }[];
-}
-
-const FIJAS = new Set<string>(Object.keys(CLAVES_FIJAS_DEL_SISTEMA));
-const NO_POR_TENANT = new Set<string>(CLAVES_NO_POR_TENANT);
-/** Primera columna de un encabezado habitual de la tab Config: no es una clave, no se lista como desconocida. */
-const ENCABEZADOS = new Set(["clave", "claves", "key", "keys", "campo", "config", "parametro", "parámetro", "nombre"]);
-
-/** Una celda copiada de Google Sheets como TSV: si trae comillas (tenía comillas o saltos de línea), se las saca. */
-function celda(c: string | undefined): string {
-  const t = (c ?? "").trim();
-  if (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) return t.slice(1, -1).replace(/""/g, '"').trim();
-  return t;
-}
-
-/**
- * Lee lo que se pega de las columnas A:B de la tab Config (TSV: clave, TAB, valor). Recorta cada celda; ignora las líneas
- * vacías, un encabezado y las filas sin valor (en la sheet, vacío = default). Si una clave se repite gana la última, como en
- * `getConfig`. Pura: no guarda nada.
- */
-export function parsearConfigPegada(textoPegado: string): ConfigPegada {
-  const porClave = new Map<string, string>();
-  const lineas = textoPegado.replace(/\r\n?/g, "\n").split("\n");
-  let primera = true;
-  for (const linea of lineas) {
-    if (!linea.trim()) continue;
-    const [a, b] = linea.split("\t");
-    const clave = celda(a);
-    const valor = celda(b);
-    const esEncabezado = primera && ENCABEZADOS.has(clave.toLowerCase());
-    primera = false;
-    if (!clave || esEncabezado || !valor) continue;
-    porClave.set(clave, valor);
-  }
-
-  const r: ConfigPegada = { valores: {}, fijasDelSistema: [], noPorTenant: [], desconocidas: [], invalidas: [] };
-  for (const [clave, valor] of porClave) {
-    if (FIJAS.has(clave)) r.fijasDelSistema.push(clave);
-    else if (NO_POR_TENANT.has(clave)) r.noPorTenant.push(clave);
-    else if (!esClaveTema(clave)) r.desconocidas.push(clave);
-    else {
-      const v = validarValorTema(clave, valor);
-      if (!v.ok) r.invalidas.push({ clave, motivo: v.mensaje });
-      else if (v.valor !== null) r.valores[clave] = v.valor;
-    }
-  }
-  return r;
-}
-
-// ---------------------------------------------------------------------------------------------------------------------------
 // Armado de la salida (endpoint)
 // ---------------------------------------------------------------------------------------------------------------------------
 
@@ -453,7 +399,7 @@ export interface FilaTemaCarta {
 
 /**
  * Arma `TemaCartaV1` desde la fila, VOLVIENDO A VALIDAR cada valor del Json (una carga por `db:studio` no pasa por las Server
- * Actions): emite siempre las 67 claves del catálogo; un valor inválido, que no es texto o que no está → `null`. Las claves
+ * Actions): emite siempre las 64 claves del catálogo; un valor inválido, que no es texto o que no está → `null`. Las claves
  * ajenas al catálogo se ignoran (incluidas las `precio_*`, si alguien las cargara a mano).
  */
 export function armarTemaCarta(fila: FilaTemaCarta, ahora: Date = new Date()): TemaCartaV1 {

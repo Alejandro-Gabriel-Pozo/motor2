@@ -1,5 +1,4 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
 import { textoCadenaDeGrupos } from "@/core/catalogo/public-servidor";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -26,7 +25,7 @@ export interface FilaStockPorFamilia {
  * el de la MP que lo abastece daría un número sin sentido (mismo bugfix
  * que ya vale para resolverConsumoPorFamilia, porción Movimientos).
  */
-export async function calcularStockPorFamilia(sucursalId: string, db: Db = prisma): Promise<FilaStockPorFamilia[]> {
+export async function calcularStockPorFamilia(sucursalId: string, db: Db): Promise<FilaStockPorFamilia[]> {
   const filas = await db.movimientoStock.groupBy({
     by: ["productoId", "seccionId"],
     where: { seccion: { sucursalId }, producto: { tipo: "MP" } },
@@ -91,7 +90,7 @@ export async function calcularStockPorFamilia(sucursalId: string, db: Db = prism
   const resultado: FilaStockPorFamilia[] = [];
   for (const g of grupos.values()) {
     const grupoRow = g.grupoNombre
-      ? await db.grupo.findUnique({ where: { nombre: g.grupoNombre }, select: { id: true } })
+      ? await db.grupo.findFirst({ where: { nombre: g.grupoNombre }, select: { id: true } })
       : null;
     const grupoCadena = grupoRow ? await textoCadenaDeGrupos(grupoRow.id, db) : "";
     resultado.push({

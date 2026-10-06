@@ -1,6 +1,5 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { conPermiso } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
@@ -16,14 +15,14 @@ import { requerirSesionEnSucursal, requerirVerEnSucursal } from "../con-sesion";
  * `obtenerSeccionesParaCarga` en Apps Script.
  */
 export async function listarSeccionesActivas(sucursalId: string) {
-  await requerirSesionEnSucursal(sucursalId);
-  return prisma.seccion.findMany({ where: { sucursalId, activa: true }, orderBy: { nombre: "asc" } });
+  const ctx = await requerirSesionEnSucursal(sucursalId);
+  return ctx.db.seccion.findMany({ where: { sucursalId, activa: true }, orderBy: { nombre: "asc" } });
 }
 
 /** Todas (activas e inactivas) — para el panel de administración. */
 export async function listarSeccionesParaPanel(sucursalId: string) {
-  await requerirVerEnSucursal(sucursalId, "secciones");
-  return prisma.seccion.findMany({ where: { sucursalId }, orderBy: { nombre: "asc" } });
+  const ctx = await requerirVerEnSucursal(sucursalId, "secciones");
+  return ctx.db.seccion.findMany({ where: { sucursalId }, orderBy: { nombre: "asc" } });
 }
 
 /** Alta de una sección nueva. Admin-only ('secciones'): define el catálogo cerrado que van a usar todos los operadores de esa sucursal. */
@@ -34,14 +33,14 @@ export async function crearSeccion(nombre: string): Promise<ResultadoConId> {
     const invalido = validarTextoCatalogo(nombreLimpio, "El nombre de la sección");
     if (invalido) return error(invalido);
 
-    const existente = await prisma.seccion.findFirst({
+    const existente = await ctx.db.seccion.findFirst({
       where: { sucursalId: ctx.sucursalId, nombre: { equals: nombreLimpio, mode: "insensitive" } },
     });
     if (existente) {
       return error(`Ya existe una sección "${nombreLimpio}" en esta sucursal (las secciones no distinguen mayúsculas/espacios).`);
     }
 
-    const creada = await prisma.seccion.create({ data: { sucursalId: ctx.sucursalId, nombre: nombreLimpio } });
+    const creada = await ctx.db.seccion.create({ data: { sucursalId: ctx.sucursalId, nombre: nombreLimpio } });
     // Se llama desde un closure "use server" de la página, sin redirigir: sin esto la tabla no cambia en un navegador real (ver refrescar.ts).
     refrescarVistaSiHaceFalta();
     return okConId(`Sección "${creada.nombre}" creada.`, creada.id, creada.nombre);
@@ -62,15 +61,15 @@ export async function renombrarSeccion(seccionId: string, nombreNuevo: string): 
     const invalido = validarTextoCatalogo(nombre, "El nombre de la sección");
     if (invalido) return error(invalido);
 
-    const seccion = await prisma.seccion.findUnique({ where: { id: seccionId } });
+    const seccion = await ctx.db.seccion.findUnique({ where: { id: seccionId } });
     if (!seccion || seccion.sucursalId !== ctx.sucursalId) return error("No se encontró la sección.");
 
-    const existente = await prisma.seccion.findFirst({
+    const existente = await ctx.db.seccion.findFirst({
       where: { sucursalId: ctx.sucursalId, nombre: { equals: nombre, mode: "insensitive" }, id: { not: seccionId } },
     });
     if (existente) return error(`Ya existe una sección "${existente.nombre}" en esta sucursal.`);
 
-    await prisma.seccion.update({ where: { id: seccionId }, data: { nombre } });
+    await ctx.db.seccion.update({ where: { id: seccionId }, data: { nombre } });
     refrescarVistaSiHaceFalta(); // ver crearSeccion
     return ok(`Sección renombrada a "${nombre}".`);
   });
@@ -79,10 +78,10 @@ export async function renombrarSeccion(seccionId: string, nombreNuevo: string): 
 /** Activa/desactiva una sección. No se borra: el Kardex ya escrito con esa sección sigue siendo válido, solo deja de ofrecerse para cargas nuevas. */
 export async function actualizarActivaSeccion(seccionId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermiso("secciones", async (ctx) => {
-    const seccion = await prisma.seccion.findUnique({ where: { id: seccionId } });
+    const seccion = await ctx.db.seccion.findUnique({ where: { id: seccionId } });
     if (!seccion || seccion.sucursalId !== ctx.sucursalId) return error("No se encontró la sección.");
 
-    await prisma.seccion.update({ where: { id: seccionId }, data: { activa } });
+    await ctx.db.seccion.update({ where: { id: seccionId }, data: { activa } });
     refrescarVistaSiHaceFalta(); // ver crearSeccion
     return ok(`Sección "${seccion.nombre}" ${activa ? "activada" : "desactivada"}.`);
   });
@@ -96,10 +95,10 @@ export async function actualizarActivaSeccion(seccionId: string, activa: boolean
 export async function actualizarRespaldoSeccion(seccionId: string, sirveDeRespaldoEnVentas: boolean): Promise<ResultadoAccion> {
   return conPermiso("secciones", async (ctx) => {
     if (typeof sirveDeRespaldoEnVentas !== "boolean") return error("Valor inválido.");
-    const seccion = typeof seccionId === "string" ? await prisma.seccion.findUnique({ where: { id: seccionId } }) : null;
+    const seccion = typeof seccionId === "string" ? await ctx.db.seccion.findUnique({ where: { id: seccionId } }) : null;
     if (!seccion || seccion.sucursalId !== ctx.sucursalId) return error("No se encontró la sección.");
 
-    await prisma.seccion.update({ where: { id: seccion.id }, data: { sirveDeRespaldoEnVentas } });
+    await ctx.db.seccion.update({ where: { id: seccion.id }, data: { sirveDeRespaldoEnVentas } });
     refrescarVistaSiHaceFalta(); // ver crearSeccion
     return ok(`Sección "${seccion.nombre}" ${sirveDeRespaldoEnVentas ? "ahora sirve" : "ya no sirve"} de respaldo automático en ventas.`);
   });

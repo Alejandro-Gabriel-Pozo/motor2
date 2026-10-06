@@ -1,18 +1,18 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
-import { TOKEN_CARTA_E2E } from "./fixtures/carta-token";
+import { prisma } from "./fixtures/db";
+import { menuCartaPublicado } from "./fixtures/carta-menu";
 
 /**
- * Ítems agrupados de la carta (/catalogo/carta/agrupados, docs/plan-agrupacion-items-carta-2026-09-24.md, M7) de punta a punta,
+ * Ítems agrupados de la carta (/carta/agrupados, docs/plan-agrupacion-items-carta-2026-09-24.md, M7) de punta a punta,
  * caso «Los Miches» (A.13): se crea «Gaseosa 500 CC» desde la pantalla y se le agregan tres gaseosas a $5000; una cuarta a $5500
- * se RECHAZA (D5: solo se agrupan productos del mismo precio) y sigue suelta; el endpoint público muestra un solo renglón a $5000
+ * se RECHAZA (D5: solo se agrupan productos del mismo precio) y sigue suelta; la carta pública muestra un solo renglón a $5000
  * con las tres opciones. Después se quita una opción y se apaga el ítem (sus opciones no salen sueltas, D3). El ítem elige su
  * sección de carta directo, sin categoría ni imagen (docs/plan-carta-seccion-directa-2026-09-25.md).
  */
-test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo en /api/carta/[sucursal]", async ({ paginaAutenticada: page, sucursalId, request }) => {
+test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo en la carta pública", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const nombreItem = `E2E Gaseosa 500 CC ${marca}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const categoria = await prisma.categoriaProducto.create({ data: { nombre: `E2E Gaseosa 500 CC Cat ${marca}` } });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Bebidas sin alcohol ${marca}`, orden: 1 } });
   const crear = (q: string, precioVenta: number) =>
@@ -21,18 +21,16 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
   const productoIds = [coca, sprite, pomelo, fanta].map((p) => p.id);
   await prisma.disponibilidadProducto.createMany({ data: productoIds.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
   // Fanta ya sale suelta en la carta (con su contenido): el bloqueo la deja así.
-  await prisma.contenidoCartaProducto.create({ data: { productoId: fanta.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
+  await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: fanta.id, visibleEnCarta: true, seccionCartaId: seccion.id } });
 
   const leerSeccion = async () => {
-    const r = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
-    expect(r.status()).toBe(200);
-    const carta = await r.json();
+    const carta = await menuCartaPublicado(sucursalId);
     expect(carta.version).toBe(1);
-    return carta.secciones.find((s: { id: string }) => s.id === seccion.id) as { items: Array<{ productoId: string; nombre: string; precio: number; opciones?: unknown[] }> } | undefined;
+    return carta.secciones.find((s) => s.id === seccion.id);
   };
 
   try {
-    await page.goto("/catalogo/carta/agrupados");
+    await page.goto("/carta/agrupados");
     await expect(page.getByRole("heading", { name: "Ítems agrupados de la carta", level: 1 })).toBeVisible();
     await expect(page.getByText("Solo se pueden agrupar productos del mismo precio (acá).")).toBeVisible();
 
@@ -65,11 +63,11 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
       `«${fanta.nombre}» cuesta $5.500 acá y «${nombreItem}» ya tiene opciones a $5.000: agrupá solo productos del mismo precio, o dejala aparte.`
     );
     await expect(agregar.locator(`option[value="${fanta.id}"]`)).toHaveCount(1);
-    expect(await prisma.opcionItemAgrupadoCarta.findUnique({ where: { productoId: fanta.id } })).toBeNull();
+    expect(await prisma.opcionItemAgrupadoCarta.findFirst({ where: { productoId: fanta.id } })).toBeNull();
 
     // 4. Sin aviso de precios distintos; la carta: un renglón a $5000 con 3 opciones, y Fanta suelta a $5500.
     await expect(fila.getByText(/no cuestan lo mismo/)).toHaveCount(0);
-    const item = await prisma.itemAgrupadoCarta.findUniqueOrThrow({ where: { nombre: nombreItem } });
+    const item = await prisma.itemAgrupadoCarta.findFirstOrThrow({ where: { nombre: nombreItem } });
     let s = await leerSeccion();
     const renglon = s!.items.find((i) => i.productoId === item.id)!;
     expect(renglon).toMatchObject({ nombre: nombreItem, precio: 5000, especial: true, descripcion: "Bien fría" });
@@ -111,10 +109,10 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
  * DA7 (docs/plan-carta-seccion-directa-2026-09-25.md, M9): elegir los productos del ítem agrupado en el mismo alta. Los tres del
  * mismo precio entran; uno de otro precio no entra y el mensaje (uno solo) dice cuál y por qué. La carta muestra un renglón.
  */
-test("crear un ítem agrupado eligiendo sus productos en el alta: entran los del mismo precio, y el mensaje dice cuál no", async ({ paginaAutenticada: page, sucursalId, request }) => {
+test("crear un ítem agrupado eligiendo sus productos en el alta: entran los del mismo precio, y el mensaje dice cuál no", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const nombreItem = `E2E Alta con productos ${marca}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Alta Bebidas ${marca}`, orden: 1 } });
   const crear = (q: string, precioVenta: number) =>
     prisma.producto.create({ data: { codigo: `E2E_AGR_ALTA_${q}_${marca}`, nombre: `E2E Alta ${q} 500cc ${marca}`, tipo: "PV", precioVenta, unidadStockId: unidad.id } });
@@ -123,7 +121,7 @@ test("crear un ítem agrupado eligiendo sus productos en el alta: entran los del
   await prisma.disponibilidadProducto.createMany({ data: productoIds.map((productoId) => ({ sucursalId, productoId, disponible: true })) });
 
   try {
-    await page.goto("/catalogo/carta/agrupados");
+    await page.goto("/carta/agrupados");
     const nuevo = page.locator("form", { has: page.getByRole("heading", { name: "Nuevo ítem agrupado" }) });
     await nuevo.getByLabel("Nombre", { exact: true }).fill(nombreItem);
     await nuevo.getByLabel(/^Sección de carta/).selectOption({ label: seccion.nombre });
@@ -139,10 +137,9 @@ test("crear un ítem agrupado eligiendo sus productos en el alta: entran los del
     await expect(nuevo.getByLabel(/^Productos del ítem/).locator(`option[value="${tonica.id}"]`)).toHaveCount(1);
     await expect(nuevo.getByLabel(/^Productos del ítem/).locator(`option[value="${coca.id}"]`)).toHaveCount(0);
 
-    const item = await prisma.itemAgrupadoCarta.findUniqueOrThrow({ where: { nombre: nombreItem } });
-    const r = await request.get(`/api/carta/${sucursalId}`, { headers: { Authorization: `Bearer ${TOKEN_CARTA_E2E}` } });
-    expect(r.status()).toBe(200);
-    const s = (await r.json()).secciones.find((x: { id: string }) => x.id === seccion.id);
+    const item = await prisma.itemAgrupadoCarta.findFirstOrThrow({ where: { nombre: nombreItem } });
+    const s = (await menuCartaPublicado(sucursalId)).secciones.find((x) => x.id === seccion.id);
+    if (!s) throw new Error("la sección no aparece en la carta pública");
     expect(s.items).toHaveLength(1);
     // El orden de las opciones es el de la lista del select (alfabético por nombre).
     expect(s.items[0]).toMatchObject({ productoId: item.id, nombre: nombreItem, categoria: seccion.nombre, precio: 5000, imagenUrl: null });

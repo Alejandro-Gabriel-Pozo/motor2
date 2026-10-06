@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Validación de datos en Catálogo > Producto (Task #31, docs/plan-validacion-de-datos-2026-09-25.md): precioVenta/

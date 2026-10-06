@@ -1,16 +1,17 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { calcularStockConsolidado } from "@/core/stock/consolidado";
+import { calcularStockEnTransito } from "@/core/stock/en-transito";
 import { ESTADO_STOCK_CONSOLIDADO_LABEL as ESTADO_LABEL, ESTADO_STOCK_CONSOLIDADO_COLOR as ESTADO_COLOR } from "@/core/stock/estado-consolidado-ui";
 
 export default async function StockConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_stock");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_stock", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const filas = await calcularStockConsolidado(ctx.sucursalId);
+  const [filas, enTransito] = await Promise.all([calcularStockConsolidado(ctx.sucursalId, ctx.db), calcularStockEnTransito(ctx.sucursalId, ctx.db)]);
 
   return (
     <div>
@@ -18,6 +19,38 @@ export default async function StockConsolidadoPage() {
       <p className="mb-4 text-sm text-neutral-500">
         Teórico (libro mayor) vs. último conteo físico. &quot;Diferencia&quot; es la del último conteo — se congela ahí, no se recalcula contra el teórico de hoy.
       </p>
+      {enTransito.length > 0 && (
+        <section aria-labelledby="stock-en-transito" className="mb-6 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+          <h2 id="stock-en-transito" className="font-medium">
+            Stock en tránsito entre sucursales
+          </h2>
+          <p className="mb-2">
+            Esta mercadería ya salió de una sucursal y todavía no entró en otra: no suma en el &quot;Teórico&quot; de ninguna, pero no se perdió.
+          </p>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-amber-300 text-left">
+                <th className="py-1">Producto</th>
+                <th>Por recibir (pendiente de aceptar acá)</th>
+                <th>Enviado (el destino todavía no aceptó)</th>
+                <th>Rechazado por el destino (pendiente de reingresar)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {enTransito.map((f) => (
+                <tr key={f.productoId} className="border-b border-amber-200">
+                  <td className="py-1">
+                    {f.productoCodigo} — {f.productoNombre}
+                  </td>
+                  <td>{f.porRecibir ? `${f.porRecibir} ${f.unidadStockNombre}` : "—"}</td>
+                  <td>{f.enviadoPorAceptar ? `${f.enviadoPorAceptar} ${f.unidadStockNombre}` : "—"}</td>
+                  <td>{f.pendienteDeReingreso ? `${f.pendienteDeReingreso} ${f.unidadStockNombre}` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-neutral-500">

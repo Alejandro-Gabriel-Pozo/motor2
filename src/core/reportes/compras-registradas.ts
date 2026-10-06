@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "./comun";
 import { SIN_PROVEEDOR } from "./compras-filtros";
+import { ZONA_UTC, finDelDiaDe, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
 
 /**
  * Listado de compras registradas, una fila por FACTURA (una `Operacion` de proceso COMPRA), con sus líneas. Hasta ahora una compra solo se
@@ -61,18 +61,10 @@ export interface PaginaCompras {
 }
 
 /** Rango inclusivo de días en UTC (00:00:00.000 del primer día a 23:59:59.999 del último), igual que el resto de los reportes (`rangoUtc` de periodo.ts). */
-function inicioDelDiaUtc(fecha: Date): Date {
-  const d = new Date(fecha);
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
-}
-function finDelDiaUtc(fecha: Date): Date {
-  const d = new Date(fecha);
-  d.setUTCHours(23, 59, 59, 999);
-  return d;
-}
+const inicioDelDiaUtc = (fecha: Date): Date => inicioDelDiaDe(fecha, ZONA_UTC);
+const finDelDiaUtc = (fecha: Date): Date => finDelDiaDe(fecha, ZONA_UTC);
 
-export async function listarComprasRegistradas(sucursalId: string, filtro: FiltroCompras = {}, db: Db = prisma): Promise<PaginaCompras> {
+export async function listarComprasRegistradas(sucursalId: string, filtro: FiltroCompras = {}, db: Db): Promise<PaginaCompras> {
   const { desde, hasta, proveedorId, factura, cursor } = filtro;
 
   const operaciones = await db.operacion.findMany({

@@ -50,6 +50,38 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
     expect(Number(venta.precioTotal)).toBe(100);
   });
 
+  it.each([[NaN], [-1], ["2"], [Infinity]])("una cantidad inválida (%s) rechaza TODO el lote en el núcleo y no escribe nada", async (cantidadInvalida) => {
+    const antes = await prisma.movimientoStock.count();
+    const r = await prisma.$transaction((tx) =>
+      registrarVentaEnTx(tx, actor, {
+        fecha: new Date(),
+        origen: { tipo: "seccion", seccionId },
+        lineas: [
+          { productoId: pvGaseosaId, cantidadVendida: 1 },
+          { productoId: pvPanId, cantidadVendida: cantidadInvalida as never },
+        ],
+      })
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.mensaje).toBe("La cantidad vendida no es un número válido.");
+    expect(await prisma.movimientoStock.count()).toBe(antes);
+  });
+
+  it("una cantidad en 0 se sigue salteando sin rechazar el resto del lote", async () => {
+    const r = await prisma.$transaction((tx) =>
+      registrarVentaEnTx(tx, actor, {
+        fecha: new Date(),
+        origen: { tipo: "seccion", seccionId },
+        lineas: [
+          { productoId: pvGaseosaId, cantidadVendida: 1 },
+          { productoId: pvPanId, cantidadVendida: 0 },
+        ],
+      })
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.operacionIds).toHaveLength(1);
+  });
+
   it("con override de precio, cobra ese precio y devuelve una Operacion por línea, en el orden de las líneas", async () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 10 }] });
     const r = await prisma.$transaction((tx) =>
@@ -93,7 +125,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
       const publica = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pvPanId, cantidadVendida: 3 }] });
       expect(publica).toEqual({ ok: false, mensaje: 'Stock insuficiente para "Harina". Actual: 0.5, requerido: 1.5. Tiene stock en: Depósito.' });
       expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(0);
-      expect(await calcularSaldoTotal(mpHarinaId, seccionId)).toBe(0.5);
+      expect(await calcularSaldoTotal(mpHarinaId, seccionId, prisma)).toBe(0.5);
     });
 
     it("true: la venta se registra igual, el insumo queda en negativo y el aviso trae el detalle", async () => {
@@ -105,7 +137,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
       if (!r.ok) return;
       expect(r.operacionIds).toHaveLength(2);
       expect(r.avisosStockNegativo).toEqual([{ productoId: mpHarinaId, nombre: "Harina", seccionId, seccionNombre: "Depósito", actual: 0.5, requerido: 1.5, resultante: -1 }]);
-      expect(await calcularSaldoTotal(mpHarinaId, seccionId)).toBe(-1);
+      expect(await calcularSaldoTotal(mpHarinaId, seccionId, prisma)).toBe(-1);
       expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(2);
     });
 
@@ -122,15 +154,15 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
 
       const r = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, venta, { permitirStockNegativo: true }));
       expect(r).toMatchObject({ ok: true, avisosStockNegativo: [{ productoId: mpHarinaId, nombre: "Harina", seccionId, seccionNombre: "Depósito", actual: 0.5, requerido: 1.1, resultante: -0.6 }] });
-      expect(await calcularSaldoTotal(mpHarinaId, seccionId)).toBe(-0.6);
-      expect(await calcularSaldoTotal(hermana.id, seccionId)).toBe(0);
+      expect(await calcularSaldoTotal(mpHarinaId, seccionId, prisma)).toBe(-0.6);
+      expect(await calcularSaldoTotal(hermana.id, seccionId, prisma)).toBe(0);
     });
 
     it("true pero con stock suficiente: sin avisos", async () => {
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 5 }] });
       const r = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, { fecha: new Date(), origen: { tipo: "seccion", seccionId }, lineas: [{ productoId: pvPanId, cantidadVendida: 3 }] }, { permitirStockNegativo: true }));
       expect(r).toMatchObject({ ok: true, avisosStockNegativo: [] });
-      expect(await calcularSaldoTotal(mpHarinaId, seccionId)).toBe(3.5);
+      expect(await calcularSaldoTotal(mpHarinaId, seccionId, prisma)).toBe(3.5);
     });
   });
 
@@ -141,7 +173,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
       const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 99 } });
       const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: actor.usuarioId } });
       const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús E2E promoCuentaId" } });
-      const promoCarta = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 150 } });
+      const promoCarta = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 150 } });
       return prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 150, titulo: "Menú del día", creadoPorId: actor.usuarioId } });
     }
 
@@ -192,7 +224,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
       expect(r2.ok).toBe(true);
 
       // 2 × 0,5 = 1 exacto, aunque cada parte redondeada individualmente (a 0 decimales) diera 1 + 0 o 0 + 1 según el arrastre.
-      expect(await calcularSaldoTotal(mpHarinaId, seccionId)).toBe(9);
+      expect(await calcularSaldoTotal(mpHarinaId, seccionId, prisma)).toBe(9);
       if (!r1.ok || !r2.ok) return;
       const operacionConPromo = await prisma.operacion.findUniqueOrThrow({ where: { id: r1.operacionIds[0] } });
       expect(operacionConPromo.promoCuentaId).toBe(promoCuenta.id);

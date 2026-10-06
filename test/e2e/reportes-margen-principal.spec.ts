@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * §2 (docs/planes-demo-y-claridad-reportes-2026-09-21.md): la tarjeta de margen de /reportes/periodo muestra como cifra
@@ -18,7 +18,7 @@ test("«Ganancia de lo vendido» muestra el margen Real (congelado), no el nomin
   seccionId,
 }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-MP-${marca}`, nombre: `E2E Insumo Margen ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const pv = await prisma.producto.create({ data: { codigo: `E2E-PV-${marca}`, nombre: `E2E Plato Margen ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });

@@ -28,7 +28,7 @@ describe("reportes con la serie del IPC vencida", () => {
     await prisma.indicePrecio.deleteMany();
     for (const [i, n] of atras.entries()) await prisma.indicePrecio.create({ data: { mes: mesRelativo(n), valor: 100 + i * 5 } });
   }
-  const reporte = () => obtenerReportePorPeriodo(sucursalId, new Date(ahora.getTime() - 86_400_000), new Date(ahora.getTime() + 86_400_000));
+  const reporte = () => obtenerReportePorPeriodo(sucursalId, new Date(ahora.getTime() - 86_400_000), new Date(ahora.getTime() + 86_400_000), undefined, prisma);
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -93,7 +93,7 @@ describe("reportes con la serie del IPC vencida", () => {
   it("comparativa de precios: con la serie vencida NO culpa al INDEC («lo publica a mitad del mes siguiente»), dice que falta sincronizar", async () => {
     await serieConMeses([9, 8]);
     // Período entero en un mes sin publicar (el mes en curso, la vista por defecto): la variación del IPC es «sin dato».
-    const { comparativaPrecios } = await obtenerReportePorPeriodo(sucursalId, mesRelativo(0), new Date(ahora.getTime() + 86_400_000));
+    const { comparativaPrecios } = await obtenerReportePorPeriodo(sucursalId, mesRelativo(0), new Date(ahora.getTime() + 86_400_000), undefined, prisma);
 
     expect(comparativaPrecios.variacionIPCPct, "sigue siendo «sin dato»: no cambia el número").toBeNull();
     expect(comparativaPrecios.antiguedadIPC.estado).toBe("vencida");
@@ -104,7 +104,7 @@ describe("reportes con la serie del IPC vencida", () => {
 
   it("comparativa de precios con rezago normal: sigue diciendo lo de siempre del INDEC", async () => {
     await serieConMeses([2, 1]);
-    const { comparativaPrecios } = await obtenerReportePorPeriodo(sucursalId, mesRelativo(0), new Date(ahora.getTime() + 86_400_000));
+    const { comparativaPrecios } = await obtenerReportePorPeriodo(sucursalId, mesRelativo(0), new Date(ahora.getTime() + 86_400_000), undefined, prisma);
 
     expect(comparativaPrecios.antiguedadIPC.estado).toBe("al-dia");
     expect(comparativaPrecios.avisoIPC).toContain("mitad del mes siguiente");
@@ -112,9 +112,9 @@ describe("reportes con la serie del IPC vencida", () => {
 
   it("resumen operativo (tarjeta de /reportes): ipcVencido sube con la serie vencida, y «provisorio» sigue siendo independiente", async () => {
     await serieConMeses([2, 1]);
-    const alDia = (await obtenerResumenOperativo(sucursalId)).financiero;
+    const alDia = (await obtenerResumenOperativo(sucursalId, prisma)).financiero;
     await serieConMeses([9, 8]);
-    const vencida = (await obtenerResumenOperativo(sucursalId)).financiero;
+    const vencida = (await obtenerResumenOperativo(sucursalId, prisma)).financiero;
 
     expect(alDia.ipcVencido).toBe(false);
     expect(alDia.margenIPCProvisorio).toBe(true);

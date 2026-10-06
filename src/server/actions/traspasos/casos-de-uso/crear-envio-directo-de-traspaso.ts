@@ -15,7 +15,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * orden y con los MISMOS textos; la Server Action quedó como adaptador fino (permiso → guard → este caso de uso → id/nombre).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo
- * `conPermiso("proceso_transferencia_sucursal")`) ni valida formato (eso lo hizo `guardComandoCrearEnvioDirectoTraspaso`).
+ * `conPermiso("traspaso_enviar_directo")`) ni valida formato (eso lo hizo `guardComandoCrearEnvioDirectoTraspaso`).
  *
  * Sin idempotencia I3, igual que antes (decisión de la M11c, ver el documento de la Fase M): el envío directo quedó fuera del alcance de
  * la política I3 (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md), su contrato devuelve `id`/`nombre`, que `resultadoMensaje`
@@ -41,12 +41,12 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @sideEffects Ninguno además de la escritura conjunta de la salida de Kardex y la creación del traspaso.
  */
 export async function crearEnvioDirectoDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
   comando: ComandoCrearEnvioDirectoTraspaso
 ): Promise<ResultadoCrearEnvioDirectoTraspaso> {
   if (comando.destinoSucursalId === actor.sucursalId) return fracaso("MISMA_SUCURSAL", "No podés mandarte una transferencia a vos mismo.");
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoCrearEnvioDirectoTraspaso> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCrearEnvioDirectoTraspaso> => {
     const destino = await cargarSucursalParaTraspaso(tx, comando.destinoSucursalId);
     if (!destino || !destino.activo) return fracaso("SUCURSAL_NO_DISPONIBLE", MENSAJE_SUCURSAL_NO_DISPONIBLE);
 

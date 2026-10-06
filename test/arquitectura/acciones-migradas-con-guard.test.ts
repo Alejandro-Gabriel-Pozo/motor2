@@ -1,0 +1,74 @@
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { join } from "node:path";
+import ts from "typescript";
+import { describe, expect, it } from "vitest";
+const EXCEPCIONES = createRequire(__filename)("../../.dependency-cruiser-excepciones.cjs") as { ACCIONES_CON_CASO_DE_USO: { ruta: string }[] };
+
+const RAIZ = join(__dirname, "../..");
+
+interface Accion {
+  nombre: string;
+  llamadas: string[];
+}
+
+/** Las funciones async exportadas del archivo y los nombres que llama cada una (identificadores y propiedades invocadas). */
+function accionesDe(codigo: string): Accion[] {
+  const fuente = ts.createSourceFile("acciones.ts", codigo, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const acciones: Accion[] = [];
+  for (const nodo of fuente.statements) {
+    if (!ts.isFunctionDeclaration(nodo) || !nodo.name || !nodo.body) continue;
+    if (!nodo.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
+    const llamadas: string[] = [];
+    const visitar = (n: ts.Node) => {
+      if (ts.isCallExpression(n)) {
+        if (ts.isIdentifier(n.expression)) llamadas.push(n.expression.text);
+        else if (ts.isPropertyAccessExpression(n.expression)) llamadas.push(n.expression.name.text);
+      }
+      ts.forEachChild(n, visitar);
+    };
+    visitar(nodo.body);
+    acciones.push({ nombre: nodo.name.text, llamadas });
+  }
+  return acciones;
+}
+
+const llamaAUnCasoDeUso = (a: Accion) => a.llamadas.some((l) => /CasoDeUso$/.test(l));
+const llamaAUnGuard = (a: Accion) => a.llamadas.some((l) => /^guardComando[A-Z]/.test(l));
+
+/** Acciones que llaman a un caso de uso SIN guard de comando, cada una con el motivo. Vacío: ninguna lo necesita hoy. */
+const SIN_GUARD: Record<string, string> = {};
+
+describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {
+  it("el detector ve las acciones y las llamadas (sanidad: no pasa en vacío)", () => {
+    const [a] = accionesDe(`export async function hacer(x: unknown) { const c = guardComandoHacer(x); return aResultadoAccion(await hacerCasoDeUso(ctx, c.valor)); }`);
+    expect(a.nombre).toBe("hacer");
+    expect(llamaAUnCasoDeUso(a) && llamaAUnGuard(a)).toBe(true);
+    const [sinGuard] = accionesDe(`export async function directa(x: unknown) { return aResultadoAccion(await directaCasoDeUso(ctx, x)); }`);
+    expect(llamaAUnCasoDeUso(sinGuard) && !llamaAUnGuard(sinGuard)).toBe(true);
+    expect(accionesDe(`async function interna() { return interCasoDeUso(); }`)).toEqual([]);
+  });
+
+  it("cada acción de ACCIONES_CON_CASO_DE_USO que llama a un caso de uso llama también a un guardComando*", () => {
+    const sinGuard: string[] = [];
+    let conCasoDeUso = 0;
+    for (const { ruta } of EXCEPCIONES.ACCIONES_CON_CASO_DE_USO) {
+      for (const accion of accionesDe(readFileSync(join(RAIZ, ruta), "utf8"))) {
+        if (!llamaAUnCasoDeUso(accion)) continue;
+        conCasoDeUso++;
+        if (!llamaAUnGuard(accion) && !(`${ruta}#${accion.nombre}` in SIN_GUARD)) sinGuard.push(`${ruta}#${accion.nombre}`);
+      }
+    }
+    expect(conCasoDeUso).toBeGreaterThan(10);
+    expect(sinGuard, "una acción llama a su caso de uso sin validar el formato: agregá guardComando<Accion> en core/features/<feature>/ o inventariala en SIN_GUARD con motivo").toEqual([]);
+  });
+
+  it("SIN_GUARD no tiene entradas viejas ni sin motivo", () => {
+    for (const [clave, motivo] of Object.entries(SIN_GUARD)) {
+      const [ruta, nombre] = clave.split("#");
+      const accion = accionesDe(readFileSync(join(RAIZ, ruta), "utf8")).find((a) => a.nombre === nombre);
+      expect(accion && llamaAUnCasoDeUso(accion) && !llamaAUnGuard(accion), `${clave} ya no existe o ya tiene guard`).toBe(true);
+      expect(motivo.trim().length, `${clave} sin motivo`).toBeGreaterThan(10);
+    }
+  });
+});

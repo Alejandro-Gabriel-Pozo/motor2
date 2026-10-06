@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { AccionConteo } from "@/core/movimientos/public";
 import { registrarConteosFisicos } from "@/server/actions/movimientos/conteo-fisico";
 import { obtenerProductoOpcion } from "@/server/actions/catalogo/productos";
@@ -66,6 +66,18 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
   const [pending, startTransition] = useTransition();
   const [progreso, setProgreso] = useState<string | null>(null);
   const [limpiarSelector, setLimpiarSelector] = useState(0);
+  // I3: una clave de reintento POR FILA, atada a lo tipeado (la "firma"). Si la llamada se corta y se vuelve a apretar "Registrar conteo"
+  // con lo mismo, la fila lleva la misma clave y el servidor no la duplica; si se cambió algo de la fila, la firma cambia y nace una
+  // clave nueva (con la vieja el servidor lo rechazaría como "mismos datos distintos").
+  const clavesPorFila = useRef<Record<string, { clave: string; firma: string }>>({});
+
+  function claveDeLaFila(key: string, firma: string): string {
+    const previa = clavesPorFila.current[key];
+    if (previa && previa.firma === firma) return previa.clave;
+    const clave = crypto.randomUUID();
+    clavesPorFila.current[key] = { clave, firma };
+    return clave;
+  }
 
   function estadoDe(key: string): EstadoFila {
     return estados[key] ?? { conteoReal: "", accion: "AJUSTAR", detalle: "" };
@@ -137,6 +149,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
               fechaConteo: new Date(fechaConteo),
               accion: estado.accion,
               detalle: estado.detalle || undefined,
+              claveIdempotencia: claveDeLaFila(f.key, JSON.stringify([f.productoId, f.loteVencimiento, estado.conteoReal, fechaConteo, estado.accion, estado.detalle])),
             }))
           );
           if (!respuesta.ok) {
@@ -150,6 +163,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
             if (resultado.ok) {
               procesados++;
               clavesOk.push(f.key);
+              delete clavesPorFila.current[f.key];
             } else {
               errores.push(`${f.etiqueta}: ${resultado.mensaje}`);
             }
@@ -167,7 +181,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
         // de la tanda en curso se guardaron. Se avisa, en vez de dejar que el error rompa la pantalla y se pierda la grilla.
         setResumen({
           ok: false,
-          texto: `No se pudo confirmar cuántos conteos se registraron${procesados ? ` (hasta el corte, ${procesados} ya estaban guardados)` : ""}. Puede que se hayan guardado algunos: recargá la página y revisá el Historial reciente antes de volver a contar.`,
+          texto: `No se pudo confirmar cuántos conteos se registraron${procesados ? ` (hasta el corte, ${procesados} ya estaban guardados)` : ""}. Puede que se hayan guardado algunos: podés volver a apretar "Registrar conteo" con lo mismo — los que ya se guardaron no se duplican.`,
           errores,
         });
         setProgreso(null);

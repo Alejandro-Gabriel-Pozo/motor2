@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { crearMembresia } from "../setup/membresia";
+import { prisma } from "./fixtures/db";
 
 /**
  * En esta versión de Next un Server Action que no redirige NO re-renderiza la ruta: la pantalla seguía mostrando los datos viejos en un
@@ -64,7 +65,11 @@ test("sucursales: crear y renombrar se ven sin recargar la página", async ({ pa
     await ponerMarca(page);
 
     await page.getByPlaceholder("Nombre de la sucursal").fill(nombre);
-    await page.getByPlaceholder("Email del primer admin").fill(`e2e-refresco-${marca}@local.test`);
+    // E8 (ADR-024): el primer admin de una sucursal nueva tiene que ser alguien que YA es parte de la empresa (a los nuevos se los invita desde Usuarios).
+    const primerAdmin = `e2e-refresco-${marca}@local.test`;
+    const miembro = await prisma.user.create({ data: { email: primerAdmin } });
+    await crearMembresia({ usuarioId: miembro.id, sucursalId: (await prisma.sucursal.findFirstOrThrow({ where: { activo: true } })).id, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "operador" } })).id });
+    await page.getByPlaceholder("Email del primer admin").fill(primerAdmin);
     await page.getByRole("button", { name: "Crear", exact: true }).click();
     await expect(filaDe(nombre)).toHaveCount(1);
 
@@ -229,7 +234,7 @@ test("capacidades por sucursal: el ✅/⛔ cambia sin recargar la página (y sol
 
 test("precio local: habilitar y deshabilitar un precio de la tabla se ve sin recargar la página", async ({ paginaAutenticada: page, sucursalId }) => {
   const nombre = `E2E Precio Local ${Date.now()}`;
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-PL-${Date.now()}`, nombre, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
   await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: producto.id, precio: 50, habilitado: true } });
   const fila = page.locator("tr", { hasText: nombre });

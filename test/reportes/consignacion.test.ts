@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+// Pasa-través: solo el test de "carrera simulada" le hace devolver null UNA vez (el chequeo previo no ve al ganador).
+vi.mock("../../src/server/persistencia/reportes/pago-consignante", async (original) => {
+  const real = await original<typeof import("../../src/server/persistencia/reportes/pago-consignante")>();
+  return { ...real, cargarPagoConsignantePorClave: vi.fn(real.cargarPagoConsignantePorClave) };
+});
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -8,6 +13,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { registrarPagoConsignante } from "../../src/server/actions/reportes/consignacion";
 import { generarReporteConsignacion } from "../../src/core/reportes/consignacion";
+import { cargarPagoConsignantePorClave } from "../../src/server/persistencia/reportes/pago-consignante";
 
 describe("generarReporteConsignacion", () => {
   let sucursalId: string;
@@ -44,7 +50,7 @@ describe("generarReporteConsignacion", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: consignante.id, items: [{ productoId: mp.id, cantidad: 10 }] }); // recepción sin costo real
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 3 }] });
 
-    const rep = await generarReporteConsignacion(sucursalId);
+    const rep = await generarReporteConsignacion(sucursalId, prisma);
     expect(rep.debidoPorConsignante.find((d) => d.proveedor === "Vinos del Valle")?.importe).toBe(3 * 20);
     expect(rep.stockSinVender.find((s) => s.productoId === mp.id)?.stockActual).toBe(7);
   });
@@ -72,7 +78,7 @@ describe("generarReporteConsignacion", () => {
       const resultado = await registrarPagoConsignante(consignante.id, 40, new Date());
       expect(resultado.ok, resultado.mensaje).toBe(true);
 
-      const rep = await generarReporteConsignacion(sucursalId);
+      const rep = await generarReporteConsignacion(sucursalId, prisma);
       const fila = rep.debidoPorConsignante.find((d) => d.proveedorId === consignante.id);
       expect(fila?.liquidado).toBe(60);
       expect(fila?.pagado).toBe(40);
@@ -84,7 +90,7 @@ describe("generarReporteConsignacion", () => {
       await registrarPagoConsignante(consignante.id, 40, new Date());
       await registrarPagoConsignante(consignante.id, 20, new Date());
 
-      const rep = await generarReporteConsignacion(sucursalId);
+      const rep = await generarReporteConsignacion(sucursalId, prisma);
       expect(rep.debidoPorConsignante.find((d) => d.proveedorId === consignante.id)?.importe).toBe(0);
     });
 
@@ -188,6 +194,28 @@ describe("generarReporteConsignacion", () => {
       }
     });
 
+    // La carrera de verdad (el chequeo previo no ve al ganador, el insert choca con el @@unique) es no determinista: acá se la FUERZA
+    // haciendo que el chequeo previo devuelva null. El perdedor con OTRO importe no puede recibir el mensaje del ganador como si su pago
+    // ya estuviera registrado: es un conflicto. Con el MISMO importe sí es un reenvío.
+    it("carrera simulada (P2002): la misma clave con OTRO importe da conflicto, no el éxito del ganador; con el mismo importe es un reenvío", async () => {
+      const consignante = await armarConsignanteConDeuda(60);
+      const claveIdempotencia = crypto.randomUUID();
+      const fecha = new Date();
+      const ganador = await registrarPagoConsignante(consignante.id, 40, fecha, undefined, claveIdempotencia);
+      expect(ganador.ok, ganador.mensaje).toBe(true);
+
+      vi.mocked(cargarPagoConsignantePorClave).mockResolvedValueOnce(null);
+      const otroImporte = await registrarPagoConsignante(consignante.id, 20, fecha, undefined, claveIdempotencia);
+      expect(otroImporte.ok, otroImporte.mensaje).toBe(false);
+
+      vi.mocked(cargarPagoConsignantePorClave).mockResolvedValueOnce(null);
+      const mismoImporte = await registrarPagoConsignante(consignante.id, 40, fecha, undefined, claveIdempotencia);
+      expect(mismoImporte.ok, mismoImporte.mensaje).toBe(true);
+      expect(mismoImporte.mensaje).toBe(ganador.mensaje);
+
+      expect(await prisma.pagoConsignante.count()).toBe(1);
+    });
+
     it("la misma clave con un importe distinto da conflicto, no un segundo pago", async () => {
       const consignante = await armarConsignanteConDeuda(60);
       const claveIdempotencia = "22222222-2222-4222-8222-222222222222";
@@ -210,10 +238,10 @@ describe("generarReporteConsignacion", () => {
 
       const haceUnAño = new Date();
       haceUnAño.setFullYear(haceUnAño.getFullYear() - 1);
-      const repFiltrado = await generarReporteConsignacion(sucursalId, undefined, { desde: haceUnAño, hasta: haceUnAño });
+      const repFiltrado = await generarReporteConsignacion(sucursalId, prisma, { desde: haceUnAño, hasta: haceUnAño });
       expect(repFiltrado.debidoPorConsignante.find((d) => d.proveedorId === consignante.id)).toBeUndefined();
 
-      const repSinFiltro = await generarReporteConsignacion(sucursalId);
+      const repSinFiltro = await generarReporteConsignacion(sucursalId, prisma);
       expect(repSinFiltro.debidoPorConsignante.find((d) => d.proveedorId === consignante.id)?.importe).toBe(40);
     });
   });

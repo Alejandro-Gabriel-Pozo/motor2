@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 async function elegirSelectPorOpcion(page: Page, textoOpcion: string) {
   for (const select of await page.locator("select").all()) {
@@ -99,7 +99,7 @@ test("«+ Nuevo producto» queda deshabilitado mientras se cargan los productos 
  */
 test("si falla la carga de productos del proveedor, se avisa, se vacían las filas y se puede reintentar", async ({ paginaAutenticada: page, seccionId }) => {
   const ahora = Date.now();
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({
     data: { codigo: `E2E-CP-${ahora}`, nombre: `E2E Producto Prov ${ahora}`, tipo: "MP", unidadStockId: unidad.id, unidadCompraId: unidad.id },
   });
@@ -187,7 +187,7 @@ test("un fallo tardío de un proveedor anterior no pisa al proveedor elegido des
  */
 test("?productoId= llega con el producto cargado en la fila («CÓDIGO — Nombre») y la compra se registra con ese producto", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const ahora = Date.now();
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-DL-${ahora}`, nombre: `E2E Insumo Deep Link ${ahora}`, tipo: "MP", unidadStockId: unidad.id } });
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
@@ -216,7 +216,7 @@ test("?productoId= llega con el producto cargado en la fila («CÓDIGO — Nombr
  */
 async function prepararCompraDeUnProducto(page: Page, sucursalId: string, seccionId: string) {
   const ahora = Date.now();
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-VD-${ahora}`, nombre: `E2E Producto Precio ${ahora}`, tipo: "MP", unidadStockId: unidad.id } });
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });

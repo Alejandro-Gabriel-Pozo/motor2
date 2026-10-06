@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/db";
 import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP, redondearCantidad } from "./comun";
+import { ZONA_UTC, inicioDelDiaDe, rangoDeDias } from "@/core/tiempo/zona-horaria";
 import type { CostoMP, Db } from "./comun";
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
-import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { alcanceDeSucursal, cargarRecetasVigentes, rendimientoEfectivo } from "@/core/catalogo/public";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/public";
 import {
@@ -192,9 +192,7 @@ async function calcularStockAperturaYCierre(sucursalId: string, productoIds: str
 
 /** El día calendario (UTC, D3) de `fecha` — medianoche, para agrupar Conteo Físico por día sin importar la hora exacta a la que se registró. */
 function diaUtc(fecha: Date): Date {
-  const d = new Date(fecha);
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
+  return inicioDelDiaDe(fecha, ZONA_UTC);
 }
 
 /**
@@ -307,11 +305,7 @@ function costoUnitarioDePool(productoIds: string[], costos: Map<string, CostoMP>
 }
 
 function rangoUtc(desdeIn: Date, hastaIn: Date): { desde: Date; hasta: Date } {
-  const desde = new Date(desdeIn);
-  desde.setUTCHours(0, 0, 0, 0);
-  const hasta = new Date(hastaIn);
-  hasta.setUTCHours(23, 59, 59, 999);
-  return { desde, hasta };
+  return rangoDeDias(desdeIn, hastaIn, ZONA_UTC);
 }
 
 const MS_POR_SEMANA = 7 * 24 * 60 * 60 * 1000;
@@ -371,30 +365,24 @@ interface Pool {
  * construcción, solo cambia qué se hace con cada pool después.
  */
 async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
-  const [productosConReceta, clasificacion] = await Promise.all([
-    db.producto.findMany({
-      where: { ...whereDisponibleEn(sucursalId), recetaVersiones: { some: {} } },
-      include: {
-        recetaVersiones: {
-          orderBy: { version: "desc" },
-          take: 1,
-          include: {
-            ingredientes: {
-              include: { insumoProducto: { include: { insumo: true } }, unidad: true, rendimientosLocales: { where: { sucursalId } } },
-            },
-          },
-        },
+  const alcance = alcanceDeSucursal(sucursalId);
+  const [productosDisponibles, clasificacion] = await Promise.all([db.producto.findMany({ where: whereDisponibleEn(sucursalId) }), cargarClasificacionNoComestibles(db)]);
+  // La receta EFECTIVA de la sucursal: la propia donde la tiene habilitada, la central (más calibraciones) en los demás platos.
+  const recetaVigente = await cargarRecetasVigentes(db, alcance, {
+    where: { productoId: { in: productosDisponibles.map((p) => p.id) } },
+    include: {
+      ingredientes: {
+        include: { insumoProducto: { include: { insumo: true } }, unidad: true, rendimientosLocales: { where: { sucursalId } } },
       },
-    }),
-    cargarClasificacionNoComestibles(db),
-  ]);
+    },
+  });
 
   const nombrePorClave = new Map<string, string>();
   const productoIdsPorClave = new Map<string, Set<string>>();
   const usosPorClave = new Map<string, UsoDeInsumo[]>();
 
-  for (const pv of productosConReceta) {
-    const vigente = pv.recetaVersiones[0];
+  for (const pv of productosDisponibles) {
+    const vigente = recetaVigente.get(pv.id);
     if (!vigente) continue;
     for (const ing of vigente.ingredientes) {
       const clave = ing.insumoProducto.insumoId ? `insumo:${ing.insumoProducto.insumoId}` : `producto:${ing.insumoProductoId}`;
@@ -464,7 +452,7 @@ export async function calcularRendimientoRecetasSimples(
   sucursalId: string,
   desdeIn: Date,
   hastaIn: Date,
-  db: Db = prisma
+  db: Db
 ): Promise<FilaRendimientoSimple[]> {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
   const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
@@ -655,7 +643,7 @@ export async function calcularRendimientoRecetasCompartidas(
   sucursalId: string,
   desdeIn: Date,
   hastaIn: Date,
-  db: Db = prisma
+  db: Db
 ): Promise<FilaRendimientoCompartido[]> {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
   const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);

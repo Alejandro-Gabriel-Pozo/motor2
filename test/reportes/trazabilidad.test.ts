@@ -32,12 +32,12 @@ describe("Trazabilidad", () => {
     expect(resultado.ok).toBe(true);
     const operacion = await prisma.operacion.findFirstOrThrow({ where: { sucursalId } });
 
-    const traida = await obtenerOperacionPorId(sucursalId, operacion.id);
+    const traida = await obtenerOperacionPorId(sucursalId, operacion.id, prisma);
     expect(traida?.items.length).toBe(1);
     expect(traida?.items[0].productoNombre).toBe("Harina");
 
     const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra" } });
-    const noEncontrada = await obtenerOperacionPorId(otraSucursal.id, operacion.id);
+    const noEncontrada = await obtenerOperacionPorId(otraSucursal.id, operacion.id, prisma);
     expect(noEncontrada).toBeNull();
   });
 
@@ -55,7 +55,7 @@ describe("Trazabilidad", () => {
     expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
 
-    const traida = await obtenerOperacionPorId(sucursalId, venta.id);
+    const traida = await obtenerOperacionPorId(sucursalId, venta.id, prisma);
     const consumo = traida!.items.find((it) => it.proceso === "CONSUMO")!;
     const filaVenta = traida!.items.find((it) => it.proceso === "VENTA")!;
     expect(consumo.productoNombre).toBe("Ojo de bife");
@@ -67,10 +67,10 @@ describe("Trazabilidad", () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_ESPECIAL", nombre: "Harina 000", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }] });
 
-    const porNombre = await buscarOperacionesPorProducto(sucursalId, "harina 000");
+    const porNombre = await buscarOperacionesPorProducto(sucursalId, "harina 000", prisma);
     expect(porNombre.length).toBe(1);
 
-    const porCodigo = await buscarOperacionesPorProducto(sucursalId, "MP_ESPECIAL");
+    const porCodigo = await buscarOperacionesPorProducto(sucursalId, "MP_ESPECIAL", prisma);
     expect(porCodigo.length).toBe(1);
     expect(porCodigo[0].idOperacion).toBe(porNombre[0].idOperacion);
   });

@@ -1,8 +1,8 @@
 import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
-import { abrirComoRol } from "./fixtures/rol-pos";
+import { prisma } from "./fixtures/db";
+import { abrirComoRol, PERMISOS_MOZO } from "./fixtures/rol-pos";
 
 /**
  * «Agregar al pedido» por SECCIÓN DE CARTA en la pantalla de la mesa (docs/plan-selector-carta-pos-2026-09-25.md): la barra de
@@ -19,7 +19,7 @@ import { abrirComoRol } from "./fixtures/rol-pos";
 
 async function sembrarCarta(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const crear = async (clave: string, nombre: string, precioVenta: number, disponible = true) => {
     const p = await prisma.producto.create({ data: { codigo: `E2E-CS-${clave}-${marca}`, nombre: `E2E ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta } });
     if (disponible) await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
@@ -38,13 +38,13 @@ async function sembrarCarta(sucursalId: string) {
   const bebidas = await prisma.seccionCarta.create({ data: { nombre: `E2E Bebidas ${marca}`, orden: 2 } });
   await prisma.contenidoCartaProducto.createMany({
     data: [
-      { productoId: bife.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 1 },
-      { productoId: milanesa.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 2 },
-      { productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1 },
+      { sucursalId, productoId: bife.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 1 },
+      { sucursalId, productoId: milanesa.id, visibleEnCarta: true, seccionCartaId: platos.id, orden: 2 },
+      { sucursalId, productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1 },
     ],
   });
-  const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E Gaseosa 500cc ${marca}`, seccionCartaId: bebidas.id, orden: 2 } });
-  await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite, fanta].map((p, orden) => ({ itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
+  const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: `E2E Gaseosa 500cc ${marca}`, seccionCartaId: bebidas.id, orden: 2 } });
+  await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite, fanta].map((p, orden) => ({ sucursalId, itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
 
   return {
     bife,
@@ -236,7 +236,7 @@ test("un PV sin carta está en «Fuera de carta» y se puede agregar", async ({ 
 test("el mozo (sin permiso de carta) elige por sección de carta y agrega", async ({ browser, baseURL, sucursalId }) => {
   const cat = await sembrarCarta(sucursalId);
   const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 985 } });
-  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "ver", pos_tomar_pedido: "editar" });
+  const mozo = await abrirComoRol(browser, baseURL, sucursalId, PERMISOS_MOZO);
   try {
     const m = mozo.page;
     await m.goto(`/mesas/${mesa.id}`);
@@ -282,7 +282,7 @@ test("a 1024px y a 390px, con un agrupado desplegado, no hay scroll horizontal",
  */
 async function sembrarCartaConGenero(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const crear = async (clave: string, nombre: string, precioVenta: number) => {
     const p = await prisma.producto.create({ data: { codigo: `E2E-GEN-${clave}-${marca}`, nombre: `E2E ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
@@ -297,16 +297,16 @@ async function sembrarCartaConGenero(sucursalId: string) {
 
   const bebidas = await prisma.seccionCarta.create({ data: { nombre: `E2E Bebidas Género ${marca}`, orden: 1 } });
   const postres = await prisma.seccionCarta.create({ data: { nombre: `E2E Postres Género ${marca}`, orden: 2 } });
-  const genero = await prisma.generoCarta.create({ data: { nombre: `E2E Cerveza ${marca}`, orden: 0 } });
+  const genero = await prisma.generoCarta.create({ data: { sucursalId, nombre: `E2E Cerveza ${marca}`, orden: 0 } });
   await prisma.contenidoCartaProducto.createMany({
     data: [
-      { productoId: ipa.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1, generoCartaId: genero.id },
-      { productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 2 },
-      { productoId: flan.id, visibleEnCarta: true, seccionCartaId: postres.id, orden: 1 },
+      { sucursalId, productoId: ipa.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1, generoCartaId: genero.id },
+      { sucursalId, productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 2 },
+      { sucursalId, productoId: flan.id, visibleEnCarta: true, seccionCartaId: postres.id, orden: 1 },
     ],
   });
-  const artesanal = await prisma.itemAgrupadoCarta.create({ data: { nombre: `E2E Cerveza Artesanal ${marca}`, seccionCartaId: bebidas.id, orden: 0, generoCartaId: genero.id } });
-  await prisma.opcionItemAgrupadoCarta.createMany({ data: [stout, rubia].map((p, orden) => ({ itemAgrupadoCartaId: artesanal.id, productoId: p.id, orden })) });
+  const artesanal = await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: `E2E Cerveza Artesanal ${marca}`, seccionCartaId: bebidas.id, orden: 0, generoCartaId: genero.id } });
+  await prisma.opcionItemAgrupadoCarta.createMany({ data: [stout, rubia].map((p, orden) => ({ sucursalId, itemAgrupadoCartaId: artesanal.id, productoId: p.id, orden })) });
 
   return {
     ipa,

@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
 import { construirMapaProductos, redondearCantidad, type Db } from "./comun";
 
@@ -51,7 +50,7 @@ export interface ReporteConsignacion {
  */
 export async function generarReporteConsignacion(
   sucursalId: string,
-  db: Db = prisma,
+  db: Db,
   periodo?: { desde?: Date; hasta?: Date }
 ): Promise<ReporteConsignacion> {
   const filtroFecha =

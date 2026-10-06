@@ -34,13 +34,13 @@ import { escribirCorreccionDeCompra } from "@/server/persistencia/compras/escrib
  * @sideEffects registrarCambioAuditado (uno por cada campo que cambió).
  */
 export async function corregirCompraCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoCorregirCompra
 ): Promise<ResultadoCorregirCompra> {
   const pedida = normalizarCorreccion(comando.nueva);
   const vista = normalizarCorreccion(comando.esperado);
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoCorregirCompra> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCorregirCompra> => {
     const compra = await cargarCompraParaCorregir(tx, { operacionId: comando.operacionId, sucursalId: actor.sucursalId });
     if (!compra) return fracaso("NO_ENCONTRADA", MENSAJE_OPERACION_NO_ENCONTRADA);
     if (compra.proceso !== "COMPRA") return fracaso("NO_ES_COMPRA", `Esa operación no es una Compra — es "${compra.proceso}".`);

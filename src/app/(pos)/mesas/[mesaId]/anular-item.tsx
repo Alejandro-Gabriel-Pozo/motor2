@@ -21,7 +21,7 @@ import { useAccionMesa } from "./usar-accion";
  * es un número — el servidor (`validarCantidadPedido`) sigue siendo quien valida decimales/paso de venta/rango.
  *
  * Al salir bien pide imprimir el aviso para cocina («ANULACIÓN · NO PREPARAR»): la anulación nueva del ítem, la que no estaba entre
- * las que tenía al confirmar (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B4). Quitar un ítem SIN enviar no imprime nada.
+ * las que tenía al confirmar (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B4). Quitar un ítem SIN enviar no imprime nada.
  */
 export function AnularItem({ item, puede }: { item: { id: string; productoNombre: string; restante: number }; puede: boolean }) {
   const { ejecutar, pending, error, setError } = useAccionMesa();

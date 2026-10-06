@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { SIN_PROVEEDOR } from "@/core/reportes/compras-filtros";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
@@ -48,9 +47,9 @@ function columnasCompras(desde?: string, hasta?: string): ColumnaReporte<FilaCom
     valor: (p) => p.proveedor,
     // El nombre lleva al listado de compras de ese proveedor en el mismo período (ver qué se compró, con qué factura y cuándo).
     render: (p) => (
-      <Link href={`/reportes/compras?proveedorId=${p.proveedorId ?? SIN_PROVEEDOR}${desde ? `&desde=${desde}` : ""}${hasta ? `&hasta=${hasta}` : ""}`} className="underline">
+      <EnlaceInterno href={`/reportes/compras?proveedorId=${p.proveedorId ?? SIN_PROVEEDOR}${desde ? `&desde=${desde}` : ""}${hasta ? `&hasta=${hasta}` : ""}`} className="underline">
         {p.proveedor}
-      </Link>
+      </EnlaceInterno>
     ),
   },
   {

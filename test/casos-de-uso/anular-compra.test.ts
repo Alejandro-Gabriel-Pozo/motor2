@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { anularCompraCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/anular-compra";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
@@ -24,7 +24,7 @@ describe("anularCompraCasoDeUso", () => {
   let harinaId: string;
   let proveedorId: string;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId });
+  const actor = () => ({ usuarioId: adminId, sucursalId, ...baseDeTest });
 
   /** Una compra con una línea de `cantidad` kg a $100/kg (el saldo del lote sale del propio Kardex). */
   async function compra(opciones: { cantidad?: number; nroFactura?: string | null; proceso?: "COMPRA" | "MERMA"; sinLineas?: boolean } = {}) {
@@ -35,7 +35,7 @@ describe("anularCompraCasoDeUso", () => {
     if (!opciones.sinLineas) {
       const cantidad = opciones.cantidad ?? 10;
       await prisma.movimientoStock.create({
-        data: { operacionId: op.id, productoId: harinaId, seccionId, proceso, cantidad, detalle: "Compra", precioTotal: cantidad * 100, precioPorUnidadStock: 100 },
+        data: { operacionId: op.id, productoId: harinaId, seccionId, proceso, cantidad: proceso === "MERMA" ? -cantidad : cantidad, detalle: "Compra", precioTotal: cantidad * 100, precioPorUnidadStock: 100 },
       });
     }
     return op;
@@ -151,7 +151,7 @@ describe("anularCompraCasoDeUso", () => {
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa operación en esta sucursal.",
     });
-    expect(await anularCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id }, { operacionId: op.id, claveIdempotencia: null })).toMatchObject({
+    expect(await anularCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ...baseDeTest }, { operacionId: op.id, claveIdempotencia: null })).toMatchObject({
       ok: false,
       codigo: "NO_ENCONTRADA",
     });

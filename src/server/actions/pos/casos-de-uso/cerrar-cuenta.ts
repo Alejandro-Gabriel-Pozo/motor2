@@ -2,14 +2,15 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { MENSAJE_CUENTA_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta.guard";
 import type { ComandoCerrarCuenta, ResultadoCerrarCuenta } from "@/core/features/cuentas/cuenta.schema";
-import { importeDeLinea, precioConDescuento, redondearMoneda } from "@/core/moneda";
+import { precioCobradoConDescuentos } from "@/core/carta/public";
+import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { conTransaccionSerializable, registrarVentaEnTx } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { lineasDeVenta } from "@/core/pos/cuenta";
-import { siguienteNumeroBoleta } from "@/core/pos/numeracion-boleta";
+import { siguienteNumeroTicket } from "@/core/pos/numeracion-ticket";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { cargarCuentaParaCerrar, cargarOperacionDelConsumo, cargarUltimoNumeroDeBoleta } from "@/server/persistencia/pos/cargar-cuenta-para-cerrar";
-import { enlazarItemsConOperaciones, escribirEjemplarOriginalDeBoleta, marcarCuentaCerrada } from "@/server/persistencia/pos/cerrar-cuenta";
+import { cargarCuentaParaCerrar, cargarOperacionDelConsumo, cargarUltimoNumeroDeTicket } from "@/server/persistencia/pos/cargar-cuenta-para-cerrar";
+import { enlazarItemsConOperaciones, escribirEjemplarOriginalDeTicket, marcarCuentaCerrada } from "@/server/persistencia/pos/cerrar-cuenta";
 import { describirAviso, formatearCantidad, MONEDA } from "../cuenta-comun";
 
 /**
@@ -24,7 +25,7 @@ import { describirAviso, formatearCantidad, MONEDA } from "../cuenta-comun";
  * (`YA_CERRADA`) sin escribir nada; la transacción serializable arbitra el doble clic (el segundo reintenta, la ve cerrada y no escribe).
  *
  * Un `fracaso(...)` devuelto desde adentro CONFIRMA la transacción (no hay throw): por eso cada rechazo sale ANTES de escribir nada —
- * igual que el `return error(...)` de antes —, y el número de boleta se asigna recién DESPUÉS de que la venta salió bien (numerar antes
+ * igual que el `return error(...)` de antes —, y el número de ticket se asigna recién DESPUÉS de que la venta salió bien (numerar antes
  * gastaría un número en un cierre rechazado).
  *
  * Todo corre dentro de UNA transacción SERIALIZABLE (`conTransaccionSerializable`, con reintento ante un conflicto de escritura):
@@ -32,23 +33,23 @@ import { describirAviso, formatearCantidad, MONEDA } from "../cuenta-comun";
  *  2. líneas netas (`lineasDeVenta`); neto cero → cierra sin venta;
  *  3. precio cobrado de cada línea (`precioConDescuento` con el snapshot del %, D7);
  *  4. la venta, con el MISMO núcleo que la de mostrador (`registrarVentaEnTx`, sin tocarlo), `permitirStockNegativo`;
- *  5. número de boleta (`max + 1`, ejemplar A), enlace ítem → Operacion y cierre de la cuenta (persistencia);
+ *  5. número de ticket (`max + 1`, ejemplar A), enlace ítem → Operacion y cierre de la cuenta (persistencia);
  *  6. una fila de auditoría por cada insumo que quedó en negativo, y el mensaje.
  *
- * @contract Cierra la cuenta de una mesa, registra la venta (aunque el stock quede negativo) y emite la boleta original.
+ * @contract Cierra la cuenta de una mesa, registra la venta (aunque el stock quede negativo) y emite el ticket original.
  * @idempotency Por estado — una cuenta ya cerrada responde YA_CERRADA sin escribir nada; sin I3 (el aislamiento SERIALIZABLE arbitra el doble clic).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (uno por cada insumo que quedó en negativo, B6bis) — best-effort, no bloquea el cierre.
  */
 export async function cerrarCuentaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "email">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "email" | "transaccion">,
   comando: ComandoCerrarCuenta
 ): Promise<ResultadoCerrarCuenta> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoCerrarCuenta> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCerrarCuenta> => {
     const cuenta = await cargarCuentaParaCerrar(tx, { cuentaId: comando.cuentaId, sucursalId: actor.sucursalId });
     if (!cuenta) return fracaso("NO_ENCONTRADA", MENSAJE_CUENTA_NO_ENCONTRADA);
     const mesa = cuenta.mesaNumero;
-    if (cuenta.cerradaEn) return exito(`La cuenta de la mesa ${mesa} ya estaba cerrada.`, { desenlace: "YA_CERRADA", operacionIds: [], numeroBoleta: null, insumosEnNegativo: 0 });
+    if (cuenta.cerradaEn) return exito(`La cuenta de la mesa ${mesa} ya estaba cerrada.`, { desenlace: "YA_CERRADA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 });
 
     const sinEnviar = cuenta.items.filter((i) => i.numeroEnvio === null).length;
     if (sinEnviar > 0) {
@@ -63,19 +64,22 @@ export async function cerrarCuentaCasoDeUso(
     const lineas = lineasDeVenta(cuenta.items);
     if (!lineas.length) {
       await cerrar();
-      return exito(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`, { desenlace: "SIN_VENTA", operacionIds: [], numeroBoleta: null, insumosEnNegativo: 0 });
+      return exito(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`, { desenlace: "SIN_VENTA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 });
     }
 
     // Cliente con descuento (Task #14, D7): `descuentoPorcentaje` es el SNAPSHOT congelado al asignarlo, nunca el % actual de `Cliente`.
     // `precioConDescuento` hace la aritmética exacta y el piso de 0,01; sin cliente devuelve el precio de lista tal cual.
     const descuento = cuenta.descuentoPorcentaje;
+    // Producto con descuento (Fase 2): si el suelto ya traía un descuento de producto, con el del cliente rige SOLO EL MAYOR (`precioCobradoConDescuentos`).
+    // `precioListaUnitario` del movimiento sigue significando «descuento de CLIENTE»: solo se escribe cuando gana ese (el reporte de descuentos a
+    // clientes lo lee); el descuento de producto vive en `CuentaItem.precioCartaUnitario` y tiene su propio reporte.
     const lineasVenta = lineas.map((l) => {
-      const precioCobrado = precioConDescuento(l.precioUnitario, descuento);
+      const cobro = precioCobradoConDescuentos(l.precioUnitario, l.precioCartaUnitario ?? null, descuento);
       return {
         productoId: l.productoId,
         cantidadVendida: l.cantidad,
-        precioUnitario: precioCobrado,
-        precioListaUnitario: precioCobrado !== l.precioUnitario ? l.precioUnitario : undefined,
+        precioUnitario: cobro.precio,
+        precioListaUnitario: cobro.origen === "cliente" ? (cobro.precioLista ?? undefined) : undefined,
         promoCuentaId: l.promoCuentaId,
       };
     });
@@ -97,20 +101,26 @@ export async function cerrarCuentaCasoDeUso(
     if (!venta.ok) return fracaso("VENTA_RECHAZADA", venta.mensaje);
     if (venta.operacionIds.length !== lineas.length) throw new Error("cerrarCuenta: la venta no devolvió una Operacion por línea.");
 
-    // Número de la boleta (docs/plan-numeracion-boleta-2026-09-25.md): max + 1 de la sucursal, ejemplar A. Recién DESPUÉS de que la venta
+    // Número del ticket (docs/plan-numeracion-ticket-2026-09-25.md): max + 1 de la sucursal, ejemplar A. Recién DESPUÉS de que la venta
     // salió bien (ver el docstring).
-    const numeroBoleta = siguienteNumeroBoleta(await cargarUltimoNumeroDeBoleta(tx, actor.sucursalId));
-    await escribirEjemplarOriginalDeBoleta(tx, { sucursalId: actor.sucursalId, cuentaId: cuenta.id, numero: numeroBoleta, emitidoEn: ahora, emitidoPorId: actor.usuarioId });
+    const numeroTicket = siguienteNumeroTicket(await cargarUltimoNumeroDeTicket(tx, actor.sucursalId));
+    await escribirEjemplarOriginalDeTicket(tx, { sucursalId: actor.sucursalId, cuentaId: cuenta.id, numero: numeroTicket, emitidoEn: ahora, emitidoPorId: actor.usuarioId });
 
     await enlazarItemsConOperaciones(
       tx,
       cuenta.id,
-      lineas.map((linea, i) => ({ productoId: linea.productoId, precioUnitario: linea.precioUnitario, promoCuentaId: linea.promoCuentaId, operacionId: venta.operacionIds[i] }))
+      lineas.map((linea, i) => ({
+        productoId: linea.productoId,
+        precioUnitario: linea.precioUnitario,
+        promoCuentaId: linea.promoCuentaId,
+        precioCartaUnitario: linea.precioCartaUnitario,
+        operacionId: venta.operacionIds[i],
+      }))
     );
     await cerrar();
 
-    const datos = { desenlace: "CON_VENTA" as const, operacionIds: venta.operacionIds, numeroBoleta, insumosEnNegativo: venta.avisosStockNegativo.length };
-    // Σ del importe COBRADO de cada línea VENTA registrada (importeDeLinea, igual que registrarVentaEnTx y la boleta — con descuento ya
+    const datos = { desenlace: "CON_VENTA" as const, operacionIds: venta.operacionIds, numeroTicket, insumosEnNegativo: venta.avisosStockNegativo.length };
+    // Σ del importe COBRADO de cada línea VENTA registrada (importeDeLinea, igual que registrarVentaEnTx y el ticket — con descuento ya
     // aplicado si hay cliente), no la suma cruda re-redondeada: el total del mensaje coincide centavo a centavo con lo registrado.
     const total = redondearMoneda(lineasVenta.reduce((suma, l) => suma + importeDeLinea(l.cantidadVendida, l.precioUnitario), 0));
     const conCliente = cuenta.clienteNombre !== null ? ` (con ${descuento}% de descuento a «${cuenta.clienteNombre}»)` : "";

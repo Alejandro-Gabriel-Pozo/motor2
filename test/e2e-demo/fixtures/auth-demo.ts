@@ -13,7 +13,7 @@ const NOMBRE_SUCURSAL = "La Cuadra";
 const EMAIL_ADMIN = "alepogabriel@gmail.com";
 
 async function crearSesionAdminDemo() {
-  const sucursal = await prisma.sucursal.findUnique({ where: { nombre: NOMBRE_SUCURSAL } });
+  const sucursal = await prisma.sucursal.findFirst({ where: { nombre: NOMBRE_SUCURSAL } });
   if (!sucursal) {
     throw new Error(`No existe la sucursal "${NOMBRE_SUCURSAL}" — corré scripts/seed-demo-pizzeria-6-meses.ts primero (ver docs/planes-demo-y-claridad-reportes-2026-09-21.md §5).`);
   }

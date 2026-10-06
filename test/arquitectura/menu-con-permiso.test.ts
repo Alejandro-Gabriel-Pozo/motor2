@@ -17,7 +17,7 @@ const RAICES = ["(app)", "(pos)"].map((grupo) => join(__dirname, "../../src/app"
 /** La acción con la que se protege una ruta: la literal de su `page.tsx`, o la del proceso si es la ruta dinámica /movimientos/[proceso]. */
 function accionDeLaPagina(href: string): string | undefined {
   const archivo = RAICES.map((raiz) => join(raiz, ...href.split("/").filter(Boolean), "page.tsx")).find((ruta) => existsSync(ruta));
-  if (archivo) return readFileSync(archivo, "utf8").match(/requierePermisoVer\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1];
+  if (archivo) return readFileSync(archivo, "utf8").match(/requierePermisoVer(?:DeEmpresa)?\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1];
 
   const slug = href.match(/^\/movimientos\/([^/]+)$/)?.[1];
   const config = slug ? obtenerConfigProceso(slug) : null;

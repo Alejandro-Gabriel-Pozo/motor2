@@ -5,6 +5,11 @@
 // es el hook explícito para que un test simule "el usuario ya eligió esta
 // sucursal" (ver test/auth/contexto.test.ts).
 let cookieSucursalActiva: string | undefined;
+let cookieEmpresaActiva: string | undefined;
+
+export function __setCookieDeTestParaEmpresa(valor: string | undefined) {
+  cookieEmpresaActiva = valor;
+}
 
 export function __setCookieDeTestParaSucursal(valor: string | undefined) {
   cookieSucursalActiva = valor;
@@ -12,9 +17,36 @@ export function __setCookieDeTestParaSucursal(valor: string | undefined) {
 
 export async function cookies() {
   return {
-    get: (nombre: string) => (nombre === "sucursalActivaId" && cookieSucursalActiva !== undefined ? { name: nombre, value: cookieSucursalActiva } : undefined),
-    set: () => {},
+    get: (nombre: string) => {
+      if (nombre === "sucursalActivaId" && cookieSucursalActiva !== undefined) return { name: nombre, value: cookieSucursalActiva };
+      if (nombre === "empresaActivaId" && cookieEmpresaActiva !== undefined) return { name: nombre, value: cookieEmpresaActiva };
+      return undefined;
+    },
+    set: (nombre: string, valor: string, opciones?: Record<string, unknown>) => {
+      cookiesEscritas.set(nombre, valor);
+      opcionesEscritas.set(nombre, opciones ?? {});
+    },
+    delete: (nombre: string) => {
+      cookiesBorradas.push(nombre);
+    },
   };
+}
+
+// Lo que un server action escribió/borró en las cookies — para verificar cambiarEmpresaActiva sin un request real.
+const cookiesEscritas = new Map<string, string>();
+const opcionesEscritas = new Map<string, Record<string, unknown>>();
+const cookiesBorradas: string[] = [];
+
+export function __cookiesDeTest() {
+  return { escritas: cookiesEscritas, opciones: opcionesEscritas, borradas: cookiesBorradas };
+}
+
+export function __limpiarCookiesDeTest() {
+  cookieSucursalActiva = undefined;
+  cookieEmpresaActiva = undefined;
+  cookiesEscritas.clear();
+  opcionesEscritas.clear();
+  cookiesBorradas.length = 0;
 }
 
 // `headers()` de Next: por defecto, sin encabezados. `__setHeadersDeTest` deja simular, por ejemplo, un `Referer` (ver test/auth/ir-al-login.test.ts).

@@ -267,7 +267,7 @@ describe("obtenerDetalleDeMesa (consulta real)", () => {
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 4 } });
     const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: mozoId } });
     // 0,3 × 1234,55 = 370,365 → 370,37 y 0,5 × 1234,57 = 617,285 → 617,29: por línea suman 987,66; la suma cruda redondeada da 987,65
-    // (mismo caso que test/pos/boleta.test.ts y test/pos/cerrar-cuenta-action.test.ts — el detalle de mesa tiene que coincidir con eso).
+    // (mismo caso que test/pos/ticket.test.ts y test/pos/cerrar-cuenta-action.test.ts — el detalle de mesa tiene que coincidir con eso).
     await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: milanesaId, cantidad: 0.3, precioUnitario: 1234.55, numeroEnvio: 1 } });
     await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: flanId, cantidad: 0.5, precioUnitario: 1234.57, numeroEnvio: 1 } });
 

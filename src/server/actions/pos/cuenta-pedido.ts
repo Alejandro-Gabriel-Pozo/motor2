@@ -4,6 +4,8 @@ import type { Prisma } from "@prisma/client";
 import { redondearMoneda } from "@/core/moneda";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { resolverPrecioVenta, conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { aplicarDescuentoDeProducto } from "@/core/carta/public";
+import { descuentosDeProductoEnSucursal } from "@/core/carta/public-servidor";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { MAXIMO_ITEMS_POR_AGREGADO, validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarEleccionPromo, type ComponentePromoElegido, type EleccionDeCupo, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
@@ -50,7 +52,7 @@ export async function agregarItems(cuentaId: string, items: { productoId: string
     const cantidadDeLineas = items_.length + promos_.reduce((suma, p) => suma + componentesDeEleccion(Array.isArray(p?.elecciones) ? p.elecciones : []).length, 0);
     if (cantidadDeLineas > MAXIMO_ITEMS_POR_AGREGADO) return error(`No se pueden agregar más de ${MAXIMO_ITEMS_POR_AGREGADO} ítems de una vez.`);
 
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
 
@@ -64,8 +66,18 @@ export async function agregarItems(cuentaId: string, items: { productoId: string
         const paso = producto.pasoVenta !== null ? { pasoVenta: Number(producto.pasoVenta), tieneStockReal: tieneStockReal(producto.tipo, producto.seProduce) } : null;
         const cantidad = validarCantidadPedido(item.cantidad, producto.unidadStock.decimales, paso);
         if (!cantidad.ok) return error(`«${producto.nombre}»: ${cantidad.mensaje}`);
-        const precioUnitario = redondearMoneda(await resolverPrecioVenta(ctx.sucursalId, producto.id, Number(producto.precioVenta), tx));
-        filasSueltas.push({ cuentaId: abierta.cuenta.id, productoId: producto.id, cantidad: cantidad.cantidad, precioUnitario, numeroEnvio: null, creadoPorId: ctx.usuarioId });
+        const precioDeLista = redondearMoneda(await resolverPrecioVenta(ctx.sucursalId, producto.id, Number(producto.precioVenta), tx));
+        // Producto con descuento (Fase 2): el descuento de ESTA sucursal se aplica acá y el precio de lista queda congelado aparte en `precioCartaUnitario`.
+        const aplicado = aplicarDescuentoDeProducto(precioDeLista, (await descuentosDeProductoEnSucursal(ctx.sucursalId, tx, [producto.id])).get(producto.id) ?? null);
+        filasSueltas.push({
+          cuentaId: abierta.cuenta.id,
+          productoId: producto.id,
+          cantidad: cantidad.cantidad,
+          precioUnitario: aplicado.precio,
+          precioCartaUnitario: aplicado.precioLista,
+          numeroEnvio: null,
+          creadoPorId: ctx.usuarioId,
+        });
       }
 
       const promosValidadas: { titulo: string; promoCartaId: string; precio: number; componentes: (ComponentePromoElegido & { precioCarta: number })[]; filas: FilaPromoProrrateada[] }[] = [];
@@ -116,7 +128,7 @@ export async function agregarItems(cuentaId: string, items: { productoId: string
  */
 export async function quitarPromoSinEnviar(promoCuentaId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const promoCuenta =
         typeof promoCuentaId === "string"
           ? await tx.promoCuenta.findFirst({ where: { id: promoCuentaId, cuenta: { mesa: { sucursalId: ctx.sucursalId } } }, include: { cuenta: { include: { mesa: { select: { numero: true } } } }, items: true } })
@@ -140,7 +152,7 @@ export async function quitarPromoSinEnviar(promoCuentaId: string): Promise<Resul
  */
 export async function quitarItemSinEnviar(cuentaItemId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const item =
         typeof cuentaItemId === "string"
           ? await tx.cuentaItem.findFirst({ where: { id: cuentaItemId, cuenta: { mesa: { sucursalId: ctx.sucursalId } } }, include: { producto: { select: { nombre: true } }, promoCuenta: { select: { titulo: true } } } })
@@ -167,11 +179,11 @@ export async function quitarItemSinEnviar(cuentaItemId: string): Promise<Resulta
  * envío que creó esta llamada; en el caso idempotente informa el envío en el que ya habían salido, con `envioNuevo: false`.
  */
 export async function enviarACocina(cuentaId: string, itemIds: string[]): Promise<ResultadoEnvioACocina> {
-  return conPermiso("pos_tomar_pedido", async (ctx) => {
+  return conPermiso("pos_enviar_a_cocina", async (ctx) => {
     if (!Array.isArray(itemIds) || itemIds.length === 0 || itemIds.some((id) => typeof id !== "string")) return error("No hay ítems para enviar.");
     if (itemIds.length > MAXIMO_ITEMS_POR_ENVIO) return error(`No se pueden enviar más de ${MAXIMO_ITEMS_POR_ENVIO} ítems de una vez.`);
 
-    return conTransaccionSerializable(async (tx) => {
+    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
       const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
       if (!abierta.ok) return error(abierta.mensaje);
 

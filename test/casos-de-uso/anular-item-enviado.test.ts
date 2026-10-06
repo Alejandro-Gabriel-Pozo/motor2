@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
 import { anularItemEnviadoCasoDeUso } from "../../src/server/actions/pos/casos-de-uso/anular-item-enviado";
 
@@ -17,7 +17,7 @@ describe("anularItemEnviadoCasoDeUso", () => {
   let s: Awaited<ReturnType<typeof sembrarSalon>>;
   let cuenta: Awaited<ReturnType<typeof sembrarCuenta>>;
   let mila: (typeof cuenta.items)[number];
-  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId });
+  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, ...baseDeTest });
   const comando = (cuentaItemId: string, cantidad: unknown, motivo: unknown, restanteVisto: unknown) => ({ cuentaItemId, cantidad, motivo, restanteVisto });
 
   beforeEach(async () => {
@@ -74,7 +74,7 @@ describe("anularItemEnviadoCasoDeUso", () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const esperado = { ok: false, codigo: "NO_ENCONTRADO", mensaje: "No se encontró ese ítem en esta sucursal." };
     expect(await anularItemEnviadoCasoDeUso(actor(), comando("no-existe", 1, "x", 3))).toEqual(esperado);
-    expect(await anularItemEnviadoCasoDeUso({ usuarioId: s.admin.id, sucursalId: norte.id }, comando(mila.id, 1, "x", 3))).toEqual(esperado);
+    expect(await anularItemEnviadoCasoDeUso({ usuarioId: s.admin.id, sucursalId: norte.id, ...baseDeTest }, comando(mila.id, 1, "x", 3))).toEqual(esperado);
     await nadaEscrito();
   });
 
@@ -112,7 +112,7 @@ describe("anularItemEnviadoCasoDeUso", () => {
 
   it("COMPONENTE_DE_PROMO: un componente no se anula suelto (Task #16, D4)", async () => {
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús M12c" } });
-    const promoCarta = await prisma.promoCarta.create({ data: { sucursalId: s.sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 10000 } });
+    const promoCarta = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 10000 } });
     const promo = await prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 10000, titulo: "Menú del día", creadoPorId: s.admin.id } });
     const componente = await prisma.cuentaItem.create({
       data: { cuentaId: cuenta.id, productoId: s.flan.id, cantidad: 1, precioUnitario: 2500, numeroEnvio: 1, promoCuentaId: promo.id, creadoPorId: s.admin.id },

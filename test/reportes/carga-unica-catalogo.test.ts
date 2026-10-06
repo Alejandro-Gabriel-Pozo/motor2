@@ -47,7 +47,7 @@ describe("obtenerReportePorPeriodo — catálogo", () => {
   });
 
   it("caracterización: los números del reporte (fijados ANTES de compartir la carga del catálogo, y no pueden cambiar con ella)", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-02"), d("2026-08-10"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-02"), d("2026-08-10"), undefined, prisma);
 
     expect(rep.ventas.totalFacturado).toBe(200);
     expect(rep.compras.totalGastado).toBe(80);

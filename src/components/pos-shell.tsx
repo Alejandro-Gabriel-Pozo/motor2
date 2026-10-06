@@ -1,6 +1,6 @@
-import Link from "next/link";
+import { EnlaceAdministracion } from "@/components/enlace-administracion";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { pantallaDeInicio } from "@/core/navegacion/inicio";
+import { navegacionDelUsuario } from "@/core/navegacion/inicio";
 import { signOut } from "@/lib/auth";
 import { SelectorSucursal } from "./selector-sucursal";
 
@@ -18,7 +18,7 @@ const RUTA_MAPA_DE_MESAS = "/mesas";
  * aunque el sistema esté en modo oscuro. Van acá y no en `:root` para no ensuciar el namespace de toda la administración.
  */
 export async function PosShell({ ctx, children }: { ctx: ContextoUsuario; children: React.ReactNode }) {
-  const inicio = await pantallaDeInicio(ctx);
+  const { inicio, acciones } = await navegacionDelUsuario(ctx);
 
   return (
     <div className="pos-shell flex flex-1 flex-col">
@@ -29,11 +29,7 @@ export async function PosShell({ ctx, children }: { ctx: ContextoUsuario; childr
             {ctx.membresias.length > 1 ? <SelectorSucursal membresias={ctx.membresias} actual={ctx.sucursalId} /> : ctx.sucursalNombre}
           </span>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            {inicio !== RUTA_MAPA_DE_MESAS && (
-              <Link href={inicio} className="underline hover:text-[var(--ink)]">
-                Administración
-              </Link>
-            )}
+            {inicio !== RUTA_MAPA_DE_MESAS && <EnlaceAdministracion inicio={inicio} sucursalId={ctx.sucursalId} acciones={acciones} />}
             <span>
               {ctx.email} · {ctx.rolNombre}
             </span>

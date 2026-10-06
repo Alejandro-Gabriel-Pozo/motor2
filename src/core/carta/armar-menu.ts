@@ -1,5 +1,5 @@
 /**
- * Carta pública (docs/plan-carta-catalogo-2026-09-24.md, M2): arma la respuesta de `GET /api/carta/[sucursal]` a partir de
+ * Carta pública (docs/plan-carta-catalogo-2026-09-24.md, M2): arma la carta pública (`CartaV1`) a partir de
  * datos ya leídos. Lógica PURA, sin Prisma — mismo criterio que `disponibilidad-producto.ts` / `-consulta.ts`: la lectura
  * vive en `menu-consulta.ts`, un archivo aparte, para que un "use client" que importe un valor de acá (p. ej.
  * `urlImagenSegura` desde la pantalla de admin) nunca arrastre `@/lib/db` al bundle del cliente.
@@ -22,6 +22,8 @@
 // Contrato público v1 (lo que viaja a restaurant-menu-design). Cambiar una forma = subir `version`.
 // ---------------------------------------------------------------------------------------------------------------------
 
+import { aplicarDescuentoDeProducto } from "./descuento-producto";
+
 export interface ItemCartaV1 {
   productoId: string;
   nombre: string;
@@ -31,8 +33,18 @@ export interface ItemCartaV1 {
    */
   categoria: string;
   descripcion: string | null;
-  /** Precio final en pesos, numérico: el local habilitado de la sucursal o, si no, el precio de venta global. */
+  /**
+   * Precio final en pesos, numérico: el local habilitado de la sucursal o, si no, el precio de venta global — y, si el producto tiene descuento
+   * en esta sucursal, ya con el descuento aplicado (lo que se cobra).
+   */
   precio: number;
+  /**
+   * SOLO en un PV suelto con descuento en la sucursal (producto con descuento, 2026-10-01): el precio sin descuento (para mostrarlo tachado).
+   * Un ítem sin descuento no lleva esta clave ni `descuentoPorcentaje`: su JSON queda igual que antes. Campo aditivo de la v1: `version` no cambia.
+   */
+  precioLista?: number;
+  /** SOLO junto a `precioLista`: el % de descuento aplicado. */
+  descuentoPorcentaje?: number;
   tags: string[];
   especial: boolean;
   /**
@@ -142,6 +154,8 @@ export interface EntradaArmarMenu {
   productos: readonly ProductoCartaEntrada[];
   /** Precios locales de la sucursal (puede incluir deshabilitados: los ignora `precioDeCarta`). */
   preciosLocales: readonly PrecioLocalEntrada[];
+  /** % de descuento de los productos en la sucursal (opcional: sin descuentos, la carta sale exactamente igual que antes). */
+  descuentos?: readonly { productoId: string; porcentaje: number }[];
   /** Promos activas de la sucursal. */
   promos: readonly PromoCartaEntrada[];
   /** Ítems agrupados ACTIVOS (opcional: sin agrupados, la carta sale exactamente igual que antes). */
@@ -257,6 +271,7 @@ const comparar = (a: string, b: string) => a.localeCompare(b, "es");
 
 export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
   const precioLocalPorProducto = new Map(entrada.preciosLocales.map((pl) => [pl.productoId, pl]));
+  const descuentoPorProducto = new Map((entrada.descuentos ?? []).map((d) => [d.productoId, d.porcentaje]));
   // Solo llegan las secciones ACTIVAS: un seccionCartaId que no está acá es de una sección apagada (o no tiene).
   const nombreDeSeccion = new Map(entrada.secciones.map((s) => [s.id, s.nombre]));
 
@@ -281,6 +296,7 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
       visiblesSinSeccion.push({ productoId: p.id, nombre: p.nombre });
       continue;
     }
+    const conDescuento = aplicarDescuentoDeProducto(precioDeCarta(p.precioVenta, precioLocalPorProducto.get(p.id)), descuentoPorProducto.get(p.id));
     ubicar(
       p.seccionCartaId,
       {
@@ -288,7 +304,8 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
         nombre: p.nombre,
         categoria: textoONull(p.categoriaNombre) ?? seccionNombre,
         descripcion: textoONull(p.contenido.descripcion),
-        precio: precioDeCarta(p.precioVenta, precioLocalPorProducto.get(p.id)),
+        precio: conDescuento.precio,
+        ...(conDescuento.precioLista !== null ? { precioLista: conDescuento.precioLista, descuentoPorcentaje: conDescuento.porcentaje! } : {}),
         tags: limpiarTags(p.contenido.tags),
         especial: p.contenido.especial,
         imagenUrl: null,

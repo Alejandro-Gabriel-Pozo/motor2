@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 
 /**
@@ -9,7 +9,7 @@ import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
  */
 test("registrar el conteo de varias filas es UNA llamada al servidor, y se registran todas", async ({ paginaAutenticada: page, seccionId }) => {
   const ahora = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const sucursal = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
 
@@ -54,7 +54,7 @@ test("registrar el conteo de varias filas es UNA llamada al servidor, y se regis
 
 test("una grilla de más de 50 filas se manda en tandas (2 llamadas), y se registran todas", async ({ paginaAutenticada: page, seccionId }) => {
   const ahora = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
 
@@ -91,7 +91,7 @@ test("una grilla de más de 50 filas se manda en tandas (2 llamadas), y se regis
 // redondeaba en silencio; ahora se RECHAZA, mismo criterio que Compra/Mesa/Traspasos (src/core/datos/cantidad.ts).
 test("cargar un conteo con más decimales de los que admite la unidad muestra el error y no registra nada", async ({ paginaAutenticada: page, seccionId }) => {
   const ahora = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
   const codigo = `E2E-CD-${ahora}`;
@@ -108,12 +108,12 @@ test("cargar un conteo con más decimales de los que admite la unidad muestra el
 
   await expect(page.getByText(/decimales/)).toBeVisible();
   expect(await prisma.conteoFisico.count({ where: { productoId: producto.id } })).toBe(0);
-  expect(await calcularSaldoTotal(producto.id, seccionId)).toBe(10);
+  expect(await calcularSaldoTotal(producto.id, seccionId, prisma)).toBe(10);
 });
 
 test("con la sesión vencida, «Registrar conteo» lleva al login y no escribe nada (el aviso de corte no se traga el redirect)", async ({ paginaAutenticada: page, seccionId }) => {
   const ahora = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
   const codigo = `E2E-CS-${ahora}`;
@@ -133,4 +133,45 @@ test("con la sesión vencida, «Registrar conteo» lleva al login y no escribe n
 
   await page.waitForURL(/\/login/);
   expect(await prisma.conteoFisico.count({ where: { productoId: producto.id } })).toBe(0);
+});
+
+// I3: si la llamada se corta DESPUÉS de que el servidor guardó (la respuesta no llega), volver a apretar «Registrar conteo» con lo mismo
+// no duplica el conteo: la fila reenvía la misma clave de reintento.
+test("si se corta la respuesta y se vuelve a apretar «Registrar conteo», el conteo queda UNA sola vez", async ({ paginaAutenticada: page, seccionId }) => {
+  const ahora = Date.now();
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+  const codigo = `E2E-CR-${ahora}`;
+  const producto = await prisma.producto.create({ data: { codigo, nombre: `E2E Reintento ${codigo}`, tipo: "MP", unidadStockId: kg.id } });
+  await prisma.disponibilidadProducto.create({ data: { sucursalId: seccion.sucursalId, productoId: producto.id, disponible: true } });
+  const operacion = await prisma.operacion.create({ data: { sucursalId: seccion.sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId: admin.id } });
+  await prisma.movimientoStock.create({
+    data: { operacionId: operacion.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Stock inicial del test", precioTotal: 0, precioPorUnidadStock: 0 },
+  });
+
+  await page.goto(`/movimientos/conteo-fisico?seccionId=${seccionId}`);
+  await page.getByRole("row", { name: new RegExp(codigo) }).locator("input").first().fill("7");
+
+  // Primer envío: el servidor lo procesa (route.fetch) pero la respuesta nunca llega al navegador (abort).
+  let cortadas = 0;
+  await page.route("**/movimientos/conteo-fisico*", async (route) => {
+    if (route.request().method() === "POST" && cortadas === 0) {
+      cortadas++;
+      await route.fetch();
+      await route.abort("connectionreset");
+    } else {
+      await route.continue();
+    }
+  });
+
+  await page.getByRole("button", { name: "Registrar conteo", exact: true }).click();
+  await expect(page.getByText(/No se pudo confirmar cuántos conteos se registraron/)).toBeVisible();
+  expect(await prisma.conteoFisico.count({ where: { productoId: producto.id } })).toBe(1);
+
+  // Reintento con la misma grilla: el servidor reconoce la clave y devuelve el resultado original sin escribir otra vez.
+  await page.getByRole("button", { name: "Registrar conteo", exact: true }).click();
+  await expect(page.getByText(/^1 conteo\(s\) registrado\(s\)\./)).toBeVisible();
+  expect(await prisma.conteoFisico.count({ where: { productoId: producto.id } })).toBe(1);
+  expect(await calcularSaldoTotal(producto.id, seccionId, prisma)).toBe(7);
 });

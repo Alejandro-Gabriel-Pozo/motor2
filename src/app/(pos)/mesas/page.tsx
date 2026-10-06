@@ -1,13 +1,13 @@
 import Link from "next/link";
+import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { esEstadoMesa, filtrarMesas, obtenerMapaDeMesas, type EstadoMesa } from "@/core/pos/mesas";
 import { MesaCard } from "@/components/mesas/mesa-card";
 import { NuevaMesa } from "./nueva-mesa";
 import { LimiteMesasAbiertas } from "./limite-mesas";
+import { formatearHora } from "@/core/tiempo/zona-horaria";
 import { obtenerLimiteMesasAbiertas } from "@/server/consultas/pos/mesas";
-
-const HORA = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" });
 
 /** Pestañas de filtro: `null` = todas. El punto de color usa el color de estado (no es texto); el texto va en la tinta del filtro. */
 const FILTROS: { estado: EstadoMesa | null; label: string; punto?: string }[] = [
@@ -44,7 +44,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pos_mesas");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pos_mesas", ctx.db);
   if (!gate.ok) return <p className="text-red-700">{gate.mensaje}</p>;
 
   const params = await searchParams;
@@ -52,10 +52,11 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
   const estado = esEstadoMesa(estadoPedido) ? estadoPedido : null;
   const q = (primero(params.q) ?? "").trim();
 
-  const [nivel, mapa, sucursal] = await Promise.all([
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_mesas"),
-    obtenerMapaDeMesas(ctx.sucursalId),
-    obtenerLimiteMesasAbiertas(ctx.sucursalId),
+  const [altaMesa, limiteMesas, mapa, sucursal] = await Promise.all([
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_alta_mesa", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_limite_mesas_abiertas", ctx.db),
+    obtenerMapaDeMesas(ctx.sucursalId, ctx.db),
+    obtenerLimiteMesasAbiertas(ctx.sucursalId, ctx.db),
   ]);
   const { metricas } = mapa;
   const visibles = filtrarMesas(mapa.mesas, { estado: estado ?? undefined, q });
@@ -67,13 +68,13 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
         <div>
           <h1 className="mb-1.5 text-[26px] font-extrabold leading-none tracking-tight md:text-[28px]">Mapa de mesas</h1>
           <p className="text-[13.5px] text-[var(--ink-soft)]">
-            {ctx.sucursalNombre} · actualizado a las {HORA.format(new Date())}
+            {ctx.sucursalNombre} · actualizado a las {formatearHora(new Date(), ctx.empresaZonaHoraria)}
           </p>
           <p className="mt-1">
-            <LimiteMesasAbiertas abiertas={metricas.enPedido + metricas.ocupadas} limite={sucursal.maxMesasAbiertas} puedeEditar={nivel.editar} />
+            <LimiteMesasAbiertas abiertas={metricas.enPedido + metricas.ocupadas} limite={sucursal.maxMesasAbiertas} puedeEditar={limiteMesas.editar} />
           </p>
         </div>
-        <NuevaMesa siguienteNumero={mapa.siguienteNumero} puedeCrear={nivel.editar} />
+        <NuevaMesa siguienteNumero={mapa.siguienteNumero} puedeCrear={altaMesa.editar} />
       </header>
 
       <section aria-label="Resumen de mesas" className="mb-6 grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
@@ -99,6 +100,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
                   >
                     {f.punto && <span className="size-1.5 flex-none rounded-full" style={{ background: f.punto }} aria-hidden />}
                     {f.label} · {conteoDe(f.estado)}
+                    <IndicadorDeEnlace />
                   </Link>
                 </li>
               );
@@ -132,7 +134,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
         <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-10 text-center">
           <p className="font-semibold">Todavía no hay mesas en esta sucursal.</p>
           <p className="mt-1 text-[13px] text-[var(--ink-soft)]">
-            {nivel.editar ? "Cargá la primera con «Nueva mesa»." : "Pedile a un admin que las cargue."}
+            {altaMesa.editar ? "Cargá la primera con «Nueva mesa»." : "Pedile a un admin que las cargue."}
           </p>
         </div>
       ) : visibles.length === 0 ? (

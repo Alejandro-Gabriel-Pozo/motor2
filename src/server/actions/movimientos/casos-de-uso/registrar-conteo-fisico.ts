@@ -1,15 +1,22 @@
 import "server-only";
-import type { AccionConteo, EstadoConteo } from "@prisma/client";
+import { Prisma, type AccionConteo, type EstadoConteo } from "@prisma/client";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { texto } from "@/core/texto";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/public";
-import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia, conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import {
+  calcularSaldoPorLote,
+  calcularSaldoTotal,
+  calcularPayloadHash,
+  obtenerSeccionPropia,
+  conTransaccionSerializable,
+  MENSAJE_CONFLICTO_IDEMPOTENCIA,
+} from "@/core/movimientos/public-servidor";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComandoConteoFisico, ResultadoConteoFisico } from "@/core/features/movimientos/conteo-fisico.schema";
 import { cargarProductoConUnidadDeStock } from "@/server/persistencia/movimientos/cargar-producto-con-unidad-de-stock";
-import { escribirConteoFisico } from "@/server/persistencia/movimientos/escribir-conteo-fisico";
+import { cargarConteoFisicoPorClave, cargarGanadorDelConteo, escribirConteoFisico } from "@/server/persistencia/movimientos/escribir-conteo-fisico";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 
 /**
@@ -55,23 +62,43 @@ const ACCIONES_CONTEO: Record<AccionConteo, { ajusta: boolean; estado: EstadoCon
  *     (M13b) con `conteoFisicoId: conteo.id` en la fila — un array de una sola fila es funcionalmente idéntico al
  *     `tx.movimientoStock.create` de una fila que hacía antes en línea.
  *
- * @contract Registra un conteo físico y, según la acción elegida, ajusta el Kardex a la diferencia contra el saldo leído dentro de la transacción.
- * @idempotency No aplica — el schema (conteo-fisico.guard.ts) no tiene claveIdempotencia; un doble clic real crea dos ConteoFisico distintos (limitación conocida, no resuelta acá).
+ * Idempotencia (I3): la clave vive en el propio `ConteoFisico` (no en la `Operacion` del ajuste: un conteo sin diferencia, o con acción
+ * FALTA_MOVIMIENTO/DESCARTAR, no escribe ninguna `Operacion`). Mismo comando con la misma clave = un solo conteo: el reenvío devuelve el
+ * mensaje original sin volver a leer el saldo ni escribir nada; la misma clave con otros datos es un conflicto. La carrera de dos envíos
+ * simultáneos la resuelve el índice único: el perdedor recibe un conflicto de serialización (se reintenta y encuentra al ganador) o un
+ * P2002 (se atrapa abajo y se relee al ganador).
+ *
+ * @contract Registra un conteo físico exactamente una vez por claveIdempotencia y, según la acción elegida, ajusta el Kardex a la diferencia contra el saldo leído dentro de la transacción.
+ * @idempotency I3 (claveIdempotencia + payloadHash en ConteoFisico) — chequeo dentro de la transacción + catch de P2002 fuera de ella.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Escritura del Kardex (Operacion + MovimientoStock) SOLO si la diferencia es != 0 y la acción ajusta; sin auditoría de permisos propia.
  */
 export async function registrarConteoFisicoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
   comando: ComandoConteoFisico
 ): Promise<ResultadoConteoFisico> {
   // Fase 6 (auditoría de seguridad/contratos): conPermiso no valida que la
   // sección sea de ESTA sucursal, solo el permiso de quien llama — ver el
   // mismo chequeo en registrarMovimientoCasoDeUso/reclasificarStockCasoDeUso.
-  if (!(await obtenerSeccionPropia(comando.seccionId, actor.sucursalId))) {
+  if (!(await obtenerSeccionPropia(comando.seccionId, actor.sucursalId, actor.db))) {
     return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
   }
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoConteoFisico> => {
+  const payloadHash = comando.claveIdempotencia
+    ? calcularPayloadHash("CONTEO_FISICO", actor.sucursalId, { ...comando, claveIdempotencia: undefined })
+    : "";
+
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoConteoFisico> => {
+    if (comando.claveIdempotencia) {
+      const existente = await cargarConteoFisicoPorClave(tx, comando.claveIdempotencia);
+      if (existente) {
+        if (existente.payloadHash === payloadHash && existente.resultadoMensaje !== null) {
+          return exito(existente.resultadoMensaje, { repetido: true, conteoId: null, diferencia: null, ajustado: null });
+        }
+        return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
+      }
+    }
+
     const producto = await cargarProductoConUnidadDeStock(tx, comando.productoId);
     if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "El producto no existe.");
     if (!(await productoDisponibleEn(actor.sucursalId, producto.id, tx))) {
@@ -100,6 +127,12 @@ export async function registrarConteoFisicoCasoDeUso(
     const accionInfo = ACCIONES_CONTEO[comando.accion];
     const estado: EstadoConteo = diferencia === 0 ? "RESUELTO" : accionInfo.estado;
 
+    const ajustado = diferencia !== 0 && accionInfo.ajusta;
+    const mensaje =
+      diferencia === 0
+        ? "Conteo registrado. El stock ya coincidía."
+        : `Conteo registrado. Diferencia: ${diferencia > 0 ? "+" : ""}${diferencia}${accionInfo.ajusta ? " (ajustada)" : ""}.`;
+
     const conteo = await escribirConteoFisico(tx, {
       sucursalId: actor.sucursalId,
       fecha: comando.fechaConteo,
@@ -113,9 +146,11 @@ export async function registrarConteoFisicoCasoDeUso(
       estado,
       detalle: texto(comando.detalle) || null,
       usuarioId: actor.usuarioId,
+      claveIdempotencia: comando.claveIdempotencia ?? null,
+      payloadHash: comando.claveIdempotencia ? payloadHash : null,
+      resultadoMensaje: comando.claveIdempotencia ? mensaje : null,
     });
 
-    const ajustado = diferencia !== 0 && accionInfo.ajusta;
     if (ajustado) {
       const operacion = await escribirOperacionDeStock(tx, {
         sucursalId: actor.sucursalId,
@@ -147,10 +182,17 @@ export async function registrarConteoFisicoCasoDeUso(
       ]);
     }
 
-    const mensaje =
-      diferencia === 0
-        ? "Conteo registrado. El stock ya coincidía."
-        : `Conteo registrado. Diferencia: ${diferencia > 0 ? "+" : ""}${diferencia}${accionInfo.ajusta ? " (ajustada)" : ""}.`;
-    return exito(mensaje, { conteoId: conteo.id, diferencia, ajustado });
+    return exito(mensaje, { repetido: false, conteoId: conteo.id, diferencia, ajustado });
+  }).catch(async (e) => {
+    // Carrera real (dos envíos simultáneos con la MISMA clave): el índice único deja pasar a uno y al otro lo rechaza con P2002 (la
+    // transacción ya hizo rollback). Se relee al ganador FUERA de ella; si tiene el MISMO payloadHash y ya dejó su mensaje, es un
+    // reenvío; con otro hash es un conflicto (no se le dice "ya está" a quien mandó otro conteo). Fail closed: si no se puede
+    // confirmar qué pasó, se relanza el error.
+    if (comando.claveIdempotencia && e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      const ganador = await cargarGanadorDelConteo(actor.db, comando.claveIdempotencia);
+      if (ganador && ganador.payloadHash !== payloadHash) return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
+      if (ganador?.resultadoMensaje) return exito(ganador.resultadoMensaje, { repetido: true, conteoId: null, diferencia: null, ajustado: null });
+    }
+    throw e;
   });
 }

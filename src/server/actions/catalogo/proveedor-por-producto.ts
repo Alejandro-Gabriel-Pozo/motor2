@@ -1,8 +1,7 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
-import { requerirVer } from "../con-sesion";
+import { requerirVer, requerirVerDeEmpresa } from "../con-sesion";
 
 export interface ProductoDeProveedor {
   productoId: string;
@@ -28,7 +27,7 @@ export interface ProductoDeProveedor {
  */
 export async function listarProductosDeProveedor(proveedorId: string): Promise<ProductoDeProveedor[]> {
   const ctx = await requerirVer("proceso_compra");
-  const filas = await prisma.proveedorPorProducto.findMany({
+  const filas = await ctx.db.proveedorPorProducto.findMany({
     where: { proveedorId, producto: whereDisponibleEn(ctx.sucursalId) },
     include: { producto: { include: { unidadStock: true } }, unidadCompra: true },
     orderBy: { ultimaCompra: "desc" },
@@ -68,8 +67,8 @@ export interface FilaComparativaPrecios {
  * documentado en el propio código (Catalogo.js:3545-3552).
  */
 export async function obtenerComparativaPreciosPorInsumo(): Promise<FilaComparativaPrecios[]> {
-  await requerirVer("comparar_precios");
-  const filas = await prisma.proveedorPorProducto.findMany({
+  const ctx = await requerirVerDeEmpresa("comparar_precios");
+  const filas = await ctx.db.proveedorPorProducto.findMany({
     include: {
       proveedor: true,
       unidadCompra: true,

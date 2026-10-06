@@ -13,7 +13,7 @@ import { calcularAlertasStock, obtenerResumenAlertasStock } from "../../src/core
 import { calcularStockConsolidado } from "../../src/core/stock/consolidado";
 import { obtenerMapaDeMesas } from "../../src/core/pos/mesas";
 import { obtenerDetalleDeMesa } from "../../src/core/pos/cuenta";
-import { obtenerBoletasRecientes } from "../../src/core/pos/boleta";
+import { obtenerTicketsRecientes } from "../../src/core/pos/ticket";
 
 /**
  * Cierre de cuenta (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 6): registra la venta con el núcleo
@@ -52,7 +52,7 @@ describe("cerrarCuenta (server action)", () => {
     const lineaDe = (productoId: string) => ventas.flatMap((v) => v.movimientos).find((m) => m.proceso === "VENTA" && m.productoId === productoId)!;
     expect([Number(lineaDe(s.pizza.id).cantidad), Number(lineaDe(s.pizza.id).precioPorUnidadStock), Number(lineaDe(s.pizza.id).precioTotal)]).toEqual([-3, 11000, 33000]);
     expect([Number(lineaDe(s.flan.id).cantidad), Number(lineaDe(s.flan.id).precioPorUnidadStock)]).toEqual([-1, 3000]);
-    expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id)).toBe(10 - 3 * 0.25);
+    expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id, prisma)).toBe(10 - 3 * 0.25);
 
     const items = await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id } });
     const operacionDe = (productoId: string) => ventas.find((v) => v.movimientos.some((m) => m.proceso === "VENTA" && m.productoId === productoId))!.id;
@@ -61,7 +61,7 @@ describe("cerrarCuenta (server action)", () => {
     const cerrada = await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } });
     expect(cerrada.cerradaEn).not.toBeNull();
     expect(cerrada.cerradaPorId).toBe(s.admin.id);
-    expect((await obtenerMapaDeMesas(s.sucursalId)).mesas[0]).toMatchObject({ estado: "libre", total: 0 });
+    expect((await obtenerMapaDeMesas(s.sucursalId, prisma)).mesas[0]).toMatchObject({ estado: "libre", total: 0 });
     expect(await prisma.registroAuditoria.count()).toBe(0);
   });
 
@@ -179,7 +179,7 @@ describe("cerrarCuenta (server action)", () => {
       expect(r.mensaje).toMatch(/^Cuenta de la mesa 4 cerrada: se registró la venta por /);
       expect(r.mensaje).toContain('⚠ Quedó stock negativo: "Muzzarella" en «Salón» (tenía 0,5, se consumió 1,5, quedó en -1). Corregilo con un Conteo Físico o un Ajuste.');
 
-      expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id)).toBe(-1);
+      expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id, prisma)).toBe(-1);
       expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).not.toBeNull();
       const ventas = await ventasDeLaMesa();
       expect(ventas).toHaveLength(2);
@@ -207,14 +207,14 @@ describe("cerrarCuenta (server action)", () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad: 6, precioUnitario: 12000, numeroEnvio: 1 }]);
       expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
-      const alertas = await calcularAlertasStock(s.sucursalId);
+      const alertas = await calcularAlertasStock(s.sucursalId, prisma);
       const muzza = alertas.find((a) => a.productoId === s.muzzarella.id);
       expect(muzza).toMatchObject({ saldoActual: -1, stockMinimo: 2, diferencia: -3, estado: "CRITICO", seccionNombre: "Salón" });
-      const resumen = await obtenerResumenAlertasStock(s.sucursalId);
+      const resumen = await obtenerResumenAlertasStock(s.sucursalId, prisma);
       expect(resumen.criticos).toBeGreaterThanOrEqual(1);
       expect(resumen.items.some((a) => a.productoId === s.muzzarella.id)).toBe(true);
 
-      const consolidado = await calcularStockConsolidado(s.sucursalId);
+      const consolidado = await calcularStockConsolidado(s.sucursalId, prisma);
       expect(consolidado.find((f) => f.productoId === s.muzzarella.id && f.seccionId === s.seccion.id)).toMatchObject({ teorico: -1, estado: "NEGATIVO" });
     });
 
@@ -226,8 +226,8 @@ describe("cerrarCuenta (server action)", () => {
 
       const r = await registrarConteoFisico({ productoId: s.muzzarella.id, seccionId: s.seccion.id, conteoReal: 3, fechaConteo: new Date(), accion: "AJUSTAR" });
       expect(r).toEqual({ ok: true, mensaje: "Conteo registrado. Diferencia: +4 (ajustada)." });
-      expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id)).toBe(3);
-      expect((await calcularAlertasStock(s.sucursalId)).some((a) => a.productoId === s.muzzarella.id)).toBe(false);
+      expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id, prisma)).toBe(3);
+      expect((await calcularAlertasStock(s.sucursalId, prisma)).some((a) => a.productoId === s.muzzarella.id)).toBe(false);
       const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: s.muzzarella.id } });
       expect([Number(conteo.saldoSistema), Number(conteo.diferencia), conteo.estado]).toEqual([-1, 4, "RESUELTO"]);
     });
@@ -239,12 +239,12 @@ describe("cerrarCuenta (server action)", () => {
 
       const r = await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 1.5 }] });
       expect(r.ok).toBe(true);
-      expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id)).toBe(0.5);
+      expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id, prisma)).toBe(0.5);
     });
   });
 
-  describe("numeración de la boleta (docs/plan-numeracion-boleta-2026-09-25.md, paso 3): max + 1 por sucursal, siempre ejemplar A", () => {
-    const ejemplaresDe = (cuentaId: string) => prisma.ejemplarBoleta.findMany({ where: { cuentaId }, orderBy: { ejemplar: "asc" } });
+  describe("numeración del ticket (docs/plan-numeracion-ticket-2026-09-25.md, paso 3): max + 1 por sucursal, siempre ejemplar A", () => {
+    const ejemplaresDe = (cuentaId: string) => prisma.ejemplarTicket.findMany({ where: { cuentaId }, orderBy: { ejemplar: "asc" } });
     const cuentaConFlan = (mesaId = s.mesa.id) => sembrarCuenta(mesaId, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
 
     it("el primer cierre con venta de la sucursal recibe el 1-A, el segundo el 2-A; quién lo emitió y cuándo quedan registrados", async () => {
@@ -261,7 +261,7 @@ describe("cerrarCuenta (server action)", () => {
       expect(a1.emitidoEn).toEqual((await prisma.cuenta.findUniqueOrThrow({ where: { id: primera.id } })).cerradaEn);
     });
 
-    it("la numeración es por sucursal: la primera boleta de otra sucursal arranca en 1", async () => {
+    it("la numeración es por sucursal: el primer ticket de otra sucursal arranca en 1", async () => {
       await cerrarCuenta((await cuentaConFlan()).id);
       await cerrarCuenta((await cuentaConFlan()).id);
 
@@ -269,7 +269,7 @@ describe("cerrarCuenta (server action)", () => {
       await sembrarSeccion(norte.id, "Salón Norte");
       await prisma.disponibilidadProducto.create({ data: { sucursalId: norte.id, productoId: s.flan.id, disponible: true } });
       // Solo con membresía en Norte: es su sucursal activa.
-      const rolAdmin = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+      const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
       const cajeroNorte = await crearUsuarioConMembresia({ email: "cajero-norte@test.com", sucursalId: norte.id, rolId: rolAdmin.id });
       const mesaNorte = await prisma.mesa.create({ data: { sucursalId: norte.id, numero: 1 } });
       const cuentaNorte = await sembrarCuenta(mesaNorte.id, cajeroNorte.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
@@ -277,14 +277,14 @@ describe("cerrarCuenta (server action)", () => {
       expect((await cerrarCuenta(cuentaNorte.id)).ok).toBe(true);
 
       expect(await ejemplaresDe(cuentaNorte.id)).toMatchObject([{ sucursalId: norte.id, numero: 1, ejemplar: 1 }]);
-      expect((await prisma.ejemplarBoleta.findMany({ where: { sucursalId: s.sucursalId }, orderBy: { numero: "asc" } })).map((e) => e.numero)).toEqual([1, 2]);
+      expect((await prisma.ejemplarTicket.findMany({ where: { sucursalId: s.sucursalId }, orderBy: { numero: "asc" } })).map((e) => e.numero)).toEqual([1, 2]);
     });
 
     it("un cierre SIN venta (todo anulado) no consume número: el siguiente con venta recibe el 1", async () => {
       const sinVenta = await cuentaConFlan();
       await anularItemEnviado(sinVenta.items[0].id, 1, "Se fueron", 1);
       expect((await cerrarCuenta(sinVenta.id)).mensaje).toBe("Cuenta de la mesa 4 cerrada sin venta: no quedó nada por cobrar.");
-      expect(await prisma.ejemplarBoleta.count()).toBe(0);
+      expect(await prisma.ejemplarTicket.count()).toBe(0);
 
       const conVenta = await cuentaConFlan();
       expect((await cerrarCuenta(conVenta.id)).ok).toBe(true);
@@ -294,14 +294,14 @@ describe("cerrarCuenta (server action)", () => {
     it("un cierre bloqueado (ítems sin enviar) tampoco consume número", async () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000 }]);
       expect((await cerrarCuenta(cuenta.id)).ok).toBe(false);
-      expect(await prisma.ejemplarBoleta.count()).toBe(0);
+      expect(await prisma.ejemplarTicket.count()).toBe(0);
     });
 
     it("el segundo cierre (idempotente, «ya estaba cerrada») no emite otro ejemplar ni otro número", async () => {
       const cuenta = await cuentaConFlan();
       expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
       expect(await cerrarCuenta(cuenta.id)).toEqual({ ok: true, mensaje: "La cuenta de la mesa 4 ya estaba cerrada." });
-      expect(await prisma.ejemplarBoleta.findMany({ select: { cuentaId: true, numero: true, ejemplar: true } })).toEqual([{ cuentaId: cuenta.id, numero: 1, ejemplar: 1 }]);
+      expect(await prisma.ejemplarTicket.findMany({ select: { cuentaId: true, numero: true, ejemplar: true } })).toEqual([{ cuentaId: cuenta.id, numero: 1, ejemplar: 1 }]);
     });
   });
 
@@ -311,8 +311,8 @@ describe("cerrarCuenta (server action)", () => {
     await comprar(s.muzzarella.id, 10);
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: jamon.id, cantidad: 0.3, precioUnitario: 1234.55, numeroEnvio: 1 }]);
 
-    expect.soft((await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id))?.cuenta?.total).toBe(370.37);
-    expect.soft((await obtenerMapaDeMesas(s.sucursalId)).mesas[0].total).toBe(370.37);
+    expect.soft((await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, prisma))?.cuenta?.total).toBe(370.37);
+    expect.soft((await obtenerMapaDeMesas(s.sucursalId, prisma)).mesas[0].total).toBe(370.37);
 
     const r = await cerrarCuenta(cuenta.id);
     const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -321,7 +321,7 @@ describe("cerrarCuenta (server action)", () => {
     expect.soft(Number(venta.movimientos.find((m) => m.proceso === "VENTA")!.precioTotal)).toBe(370.37);
   });
 
-  it("el total del mensaje de cierre y de la boleta es la suma de las líneas VENTA registradas, centavo a centavo (Paso 6)", async () => {
+  it("el total del mensaje de cierre y del ticket es la suma de las líneas VENTA registradas, centavo a centavo (Paso 6)", async () => {
     const jamon = await sembrarProductoDisponible({ codigo: "PV_JAMON", nombre: "Jamón crudo por kg", tipo: "PV", unidadStockId: s.kg.id, precioVenta: 1234.55 }, s.sucursalId);
     const queso = await sembrarProductoDisponible({ codigo: "PV_QUESO", nombre: "Queso por kg", tipo: "PV", unidadStockId: s.kg.id, precioVenta: 1234.57 }, s.sucursalId);
     for (const pv of [jamon, queso]) {
@@ -339,7 +339,7 @@ describe("cerrarCuenta (server action)", () => {
     expect(registrado.sort((a, b) => a - b)).toEqual([370.37, 617.29]);
     const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
     expect.soft(r.mensaje).toContain(MONEDA.format(987.66));
-    const [boleta] = await obtenerBoletasRecientes(s.sucursalId, s.mesa.id);
-    expect.soft(boleta.total).toBe(987.66);
+    const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma);
+    expect.soft(ticket.total).toBe(987.66);
   });
 });

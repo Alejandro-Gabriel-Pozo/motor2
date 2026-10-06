@@ -164,7 +164,7 @@ describe("obtenerMapaDeMesas (contra la base)", () => {
   it("el total del mapa ya coincide centavo a centavo con lo que registraría un cierre (Σ importeDeLinea, no la suma cruda redondeada)", async () => {
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 1 } });
     // 0,3 × 1234,55 = 370,365 → 370,37 y 0,5 × 1234,57 = 617,285 → 617,29: por línea suman 987,66; la suma cruda redondeada da 987,65
-    // (mismo caso que test/pos/boleta.test.ts, test/pos/cerrar-cuenta-action.test.ts y test/pos/cuenta.test.ts).
+    // (mismo caso que test/pos/ticket.test.ts, test/pos/cerrar-cuenta-action.test.ts y test/pos/cuenta.test.ts).
     await prisma.cuenta.create({
       data: {
         mesaId: mesa.id,

@@ -37,12 +37,12 @@ import { escribirReingresoDeTraspaso } from "@/server/persistencia/traspasos/esc
  * @sideEffects Ninguno además de la escritura del reingreso de Kardex y el cierre del traspaso.
  */
 export async function confirmarReingresoDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoConfirmarReingresoTraspaso
 ): Promise<ResultadoConfirmarReingresoTraspaso> {
   const { traspasoId, claveIdempotencia } = comando;
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoConfirmarReingresoTraspaso> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoConfirmarReingresoTraspaso> => {
     const payloadHash = claveIdempotencia ? calcularPayloadHash("REINGRESO_TRASPASO", actor.sucursalId, { id: traspasoId }) : "";
     const chequeo = await chequearIdempotencia(tx, claveIdempotencia ?? undefined, payloadHash);
     if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { traspasoId, operacionId: null, repetida: true });
@@ -73,5 +73,7 @@ export async function confirmarReingresoDeTraspasoCasoDeUso(
     const mensaje = `Reingreso confirmado: se sumó de nuevo ${cantidad} de "${traspaso.productoNombre}" en "${seccionOrigen.nombre}".`;
     if (claveIdempotencia) await registrarResultadoIdempotente(tx, operacionId, mensaje);
     return exito(mensaje, { traspasoId: traspaso.id, operacionId, repetida: false });
-  });
+    // `true`: dos reingresos simultáneos del mismo traspaso leen el mismo estado; el que pierde la carrera recibe el choque del paso único
+    // (`MovimientoStock_traspaso_paso_unico_key`) y, al repetir, ve el traspaso ya CERRADO y responde el error de estado.
+  }, 5, {}, true);
 }

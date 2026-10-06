@@ -1,10 +1,9 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
-import { esNumeroFinito } from "@/core/numero";
+import { esNumeroEstricto } from "@/core/numero";
 import { guardLineaCompra } from "@/core/features/compras/compra.guard";
-import { TRANSICIONES, esSignoFijo, productoValidoParaProceso, redondearACantidadDeUnidad } from "@/core/movimientos/public";
-import type { ConsumoParaFilas } from "@/core/movimientos/armar-filas-de-movimiento";
+import { TRANSICIONES, esSignoFijo, productoValidoParaProceso, redondearACantidadDeUnidad, type ConsumoParaFilas } from "@/core/movimientos/public";
 import {
   obtenerLoteMasProximoAVencer,
   resolverConsumoPorFamilia,
@@ -128,14 +127,20 @@ export async function armarLineaMovimiento(
     pesoReal = validada.valor.pesoReal;
   } else {
     let cant: number | null = item.cantidad;
+    // Solo una cantidad AUSENTE (null) o en 0 saltea la línea (mismo criterio que Apps Script). Una cantidad que no es un número finito
+    // (NaN, Infinity, texto), o negativa donde el proceso no admite signo, rechaza el movimiento: salteada en silencio, el resto se
+    // registraría igual.
+    if (cant !== null && (typeof cant !== "number" || !Number.isFinite(cant))) {
+      return { ok: false, mensaje: `La cantidad de "${producto.nombre}" no es un número válido.` };
+    }
     if (transicion.permiteCero) {
       cant = cant ?? 0;
-    } else if (cant === null || !(cant > 0)) {
-      return { ok: true, linea: null }; // sin cantidad válida: se saltea, mismo criterio que Apps Script
+    } else if (cant === null || cant === 0) {
+      return { ok: true, linea: null };
+    } else if (cant < 0) {
+      return { ok: false, mensaje: `La cantidad de "${producto.nombre}" no puede ser negativa.` };
     }
-    // Llegado acá cant es > 0 (o, en Ajuste, cualquier número): `> 0` no frena Infinity ni NaN en Ajuste.
-    if (!esNumeroFinito(cant)) return { ok: false, mensaje: `La cantidad de "${producto.nombre}" no es un número válido.` };
-    if (item.precioTotal && item.precioTotal > 0 && !esNumeroFinito(item.precioTotal)) {
+    if (item.precioTotal && item.precioTotal > 0 && !esNumeroEstricto(item.precioTotal)) {
       return { ok: false, mensaje: `El precio de "${producto.nombre}" no es un número válido.` };
     }
     numCant = cant;

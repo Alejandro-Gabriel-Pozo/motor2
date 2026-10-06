@@ -99,8 +99,8 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
       ["CONSUMO", s.muzzarella.id, deposito.id, -0.5, null],
       ["VENTA", s.pizza.id, deposito.id, -2, null],
     ]);
-    expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id)).toBe(0.5);
-    expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id)).toBe(0);
+    expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id, prisma)).toBe(0.5);
+    expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id, prisma)).toBe(0);
     expect(await prisma.registroAuditoria.count()).toBe(0);
   });
 
@@ -129,9 +129,9 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", detalleLibre: "Mesa 4" } });
 
     expect((await anularVenta(venta.id)).ok).toBe(true);
-    expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id)).toBe(0.3);
-    expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id)).toBe(0.3);
-    expect(await calcularSaldoTotal(s.pizza.id, deposito.id)).toBe(0);
+    expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id, prisma)).toBe(0.3);
+    expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id, prisma)).toBe(0.3);
+    expect(await calcularSaldoTotal(s.pizza.id, deposito.id, prisma)).toBe(0);
     const reversion = await prisma.movimientoStock.findMany({ where: { operacion: { proceso: "AJUSTE" }, productoId: s.muzzarella.id } });
     expect(reversion.map((m) => [m.seccionId, Number(m.cantidad)]).sort()).toEqual([[cocina.id, 0.2], [deposito.id, 0.3]].sort());
   });
@@ -145,7 +145,7 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
 
       const r = await cerrarCuenta(cuenta.id);
       expect(r.mensaje).toContain('⚠ Quedó stock negativo: "Muzzarella" en «Depósito» (tenía 0,2, se consumió 0,5, quedó en -0,3).');
-      expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id)).toBe(-0.3);
+      expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id, prisma)).toBe(-0.3);
       const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", detalleLibre: "Mesa 4" } });
       const [auditoria] = await prisma.registroAuditoria.findMany();
       expect(auditoria).toMatchObject({ entidad: "Operacion", entidadId: venta.id, campo: "saldoStock", valorAnterior: "0.2", valorNuevo: "-0.3" });
@@ -201,9 +201,9 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
     expect(r.ok).toBe(true);
     expect(r.mensaje).not.toContain("⚠");
     expect(resumen(await movimientosDeLaMesa())).toEqual([["VENTA", torta.id, deposito.id, -5, null]]);
-    expect(await calcularSaldoTotal(torta.id, deposito.id)).toBe(-3);
+    expect(await calcularSaldoTotal(torta.id, deposito.id, prisma)).toBe(-3);
     expect(await prisma.registroAuditoria.count()).toBe(0);
-    const fila = (await calcularStockConsolidado(s.sucursalId)).find((f) => f.productoId === torta.id);
+    const fila = (await calcularStockConsolidado(s.sucursalId, prisma)).find((f) => f.productoId === torta.id);
     expect(fila).toMatchObject({ seccionId: deposito.id, teorico: -3, estado: "NEGATIVO" });
   });
 });

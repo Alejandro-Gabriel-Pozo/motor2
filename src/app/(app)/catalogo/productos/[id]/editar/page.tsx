@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermiso, requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import { ProductoForm, type ProductoExistente } from "../../producto-form";
@@ -12,18 +12,18 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "alta_producto");
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_ver_catalogo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
   // Además de Ver (que ubica la pantalla en su familia), EDITAR: quien solo ve productos no tiene por qué recibir el formulario completo para descubrir
   // recién al guardar que no puede. La barrera es esta, en el servidor; esconder el enlace en la lista y la ficha es solo cortesía de la interfaz.
-  const gateEditar = await requierePermiso(ctx.usuarioId, ctx.sucursalId, "editar_producto");
+  const gateEditar = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db);
   if (!gateEditar.ok) return <p className="text-red-600">{gateEditar.mensaje}</p>;
 
   const { id } = await params;
-  const p = await obtenerProductoPorId(id);
+  const p = await obtenerProductoPorId(id, ctx.db);
   if (!p) notFound();
 
-  const { unidades, insumos, categorias, proveedores } = await cargarOpcionesFormularioProducto();
+  const { unidades, insumos, categorias, proveedores, puedeCrear } = await cargarOpcionesFormularioProducto(ctx);
   const productoExistente: ProductoExistente = {
     id: p.id,
     codigo: p.codigo,
@@ -57,6 +57,7 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
         insumosIniciales={insumos}
         categoriasIniciales={categorias}
         proveedoresIniciales={proveedores}
+        puedeCrear={puedeCrear}
         productoExistente={productoExistente}
         presentacionesIniciales={presentaciones}
       />

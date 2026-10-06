@@ -29,16 +29,13 @@
  *    solo para la demo, en vez de reflejar el catálogo real de la pizzería.
  *  - Sin imagenUrl en las secciones: no hay una URL de imagen real para "La Cuadra" a mano; queda "—" en la carta (campo
  *    opcional) en vez de linkear una imagen de stock inventada.
- *  - `sheetId` del portal es un placeholder que no resuelve a ninguna sheet real: con `menuDesdeMotor2: true` y el tema
- *    aplicado (`aplicarEnCarta: true`), restaurant-menu-design no necesita leer la sheet para nada de esta sucursal — el
- *    campo solo existe hoy porque `guardarSucursalPublica` lo exige para publicar (docs/plan-registro-tenants-2026-09-24.md).
  */
 import "dotenv/config";
 import { vi, describe, it, expect } from "vitest";
 
 vi.mock("../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { prisma } from "../src/lib/db";
+import { prisma } from "./demo-seed/cliente";
 import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
 import { getUsuarioActual } from "../src/core/auth/session";
 import { guardarSeccionCarta } from "../src/server/actions/carta/secciones";
@@ -49,8 +46,6 @@ import type { ResultadoAccion } from "../src/server/actions/tipos";
 
 const EMAIL_ADMIN = "alepogabriel@gmail.com";
 const NOMBRE_SUCURSAL = "La Cuadra";
-/** Placeholder sintáctico (pasa RE_SHEET_ID: 20-128 [A-Za-z0-9_-]) — nunca se lee de verdad, ver docstring arriba. */
-const SHEET_ID_PLACEHOLDER = "demo_la_cuadra_sin_sheet_real";
 
 interface ItemCarta {
   codigo: string;
@@ -95,7 +90,7 @@ describe("seed de carta pública — demo pizzería La Cuadra", () => {
       // --- 0) Precondiciones: "La Cuadra" y sus PV ya sembrados por el seed de catálogo. ---
       const usuario = await prisma.user.findUniqueOrThrow({ where: { email: EMAIL_ADMIN } });
       await mock({ id: usuario.id, email: usuario.email, nombre: usuario.name });
-      const sucursal = await prisma.sucursal.findUnique({ where: { nombre: NOMBRE_SUCURSAL } });
+      const sucursal = await prisma.sucursal.findFirst({ where: { nombre: NOMBRE_SUCURSAL } });
       if (!sucursal) {
         throw new Error(`No existe la sucursal "${NOMBRE_SUCURSAL}": correr primero seed-demo-pizzeria.ts o seed-demo-pizzeria-6-meses.ts.`);
       }
@@ -153,24 +148,22 @@ describe("seed de carta pública — demo pizzería La Cuadra", () => {
       anotarSiFalla("cambiarAplicacionTema", await cambiarAplicacionTema(sucursal.id, true));
 
       // --- 4) Alta y publicación en el portal (idempotente: se salta el alta si ya está). ---
-      const yaEnPortal = await prisma.sucursalPublica.findUnique({ where: { sucursalId: sucursal.id } });
+      const yaEnPortal = await prisma.sucursalPublica.findFirst({ where: { sucursalId: sucursal.id } });
       if (!yaEnPortal) anotarSiFalla("agregarSucursalAlPortal", await agregarSucursalAlPortal(sucursal.id));
-      const enPortal = await prisma.sucursalPublica.findUniqueOrThrow({ where: { sucursalId: sucursal.id } });
+      const enPortal = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: sucursal.id } });
       anotarSiFalla(
         "guardarSucursalPublica",
         await guardarSucursalPublica(sucursal.id, {
           slug: enPortal.slug,
           etiqueta: "La Cuadra",
           publicada: true,
-          menuDesdeMotor2: true,
-          sheetId: SHEET_ID_PLACEHOLDER,
         })
       );
 
       if (fallos.length) console.error(`\nFALLOS (${fallos.length}):\n` + fallos.join("\n"));
       expect(fallos.length, `${fallos.length} fallos — ver arriba`).toBe(0);
 
-      const final = await prisma.sucursalPublica.findUniqueOrThrow({ where: { sucursalId: sucursal.id } });
+      const final = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: sucursal.id } });
       console.log(`\nListo — carta de "${NOMBRE_SUCURSAL}" viva en /carta/${final.slug}.`);
     },
     300_000

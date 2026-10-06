@@ -1,4 +1,6 @@
 import { sincronizarIPC } from "@/core/reportes/indices-economicos";
+import { baseDelContexto } from "@/core/auth/base";
+import { autorizacionCronValida } from "@/core/auth/secreto-cron";
 import { reportarError, reportarErrorUnaVez } from "@/lib/reportar-error";
 
 /**
@@ -13,12 +15,12 @@ export async function GET(request: Request): Promise<Response> {
   const auth = request.headers.get("authorization");
   // Un proyecto sin CRON_SECRET hace que el cron responda 401 SIEMPRE y en silencio: eso es un error de configuración y se avisa.
   if (!process.env.CRON_SECRET) await reportarErrorUnaVez("ipc-cron-sin-secreto", new Error("CRON_SECRET no está configurada: el cron del IPC no puede autenticarse"), "ipc-cron");
-  if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!autorizacionCronValida(auth, process.env.CRON_SECRET)) {
     return Response.json({ error: "No autorizado" }, { status: 401 });
   }
 
   try {
-    const resultado = await sincronizarIPC();
+    const resultado = await sincronizarIPC(baseDelContexto().db);
     // Un cron que responde 200 con `mesesNuevos: 0` todos los días durante meses es indistinguible de uno sano: si la serie GUARDADA quedó más
     // vieja que el máximo previsto (5c), es un incidente y se avisa (una sola vez por instancia, ver reportarErrorUnaVez). La respuesta sigue
     // siendo 200: la corrida hizo lo que pudo. La decisión de reportar vive acá y no en el core, que queda sin efectos.

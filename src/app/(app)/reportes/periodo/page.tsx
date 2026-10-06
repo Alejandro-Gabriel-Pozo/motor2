@@ -9,22 +9,24 @@ import { ComparativaPrecios } from "./comparativa-precios";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { EnDolares } from "@/components/en-dolares";
 import { SelectorRango } from "@/components/selector-rango";
-import { obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
+import { obtenerUltimaCotizacionSinRomper } from "@/core/reportes/cotizacion-dolar";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
-export default async function PeriodoPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
+export default async function PeriodoPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_periodo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
-  const [rep, cotizacion] = await Promise.all([
-    obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr)),
-    obtenerUltimaCotizacion().catch(() => null),
+  const [rep, cotizacion, gateCostos] = await Promise.all([
+    obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), undefined, ctx.db),
+    obtenerUltimaCotizacionSinRomper(ctx.db),
+    requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_costos", ctx.db),
   ]);
 
   return (
@@ -34,7 +36,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
         <SelectorRango opcion={rango.opcion} desdeISO={desdeStr} hastaISO={hastaStr} />
       </div>
 
-      <DigestAlertas alertas={rep.digest} />
+      <DigestAlertas alertas={rep.digest} puedeVerCostos={gateCostos.ok} />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="rounded border p-4">

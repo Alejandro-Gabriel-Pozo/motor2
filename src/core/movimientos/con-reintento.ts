@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import type { Transaccion } from "@/lib/db-tipos";
 import { conReintento, type OpcionesEspera } from "./reintentar";
 
 /**
@@ -51,6 +51,22 @@ export function esConflictoDeEscritura(e: unknown): boolean {
 }
 
 /**
+ * Un choque de índice ÚNICO (SQLSTATE 23505): `P2002` de Prisma, o el `DriverAdapterError` crudo con `cause.kind === "UniqueConstraintViolation"`.
+ * Dentro de una transacción SERIALIZABLE, dos pedidos que leen el mismo estado y luego insertan la misma clave única no siempre reciben el 40001: si el
+ * índice único no fue parte de lo que leyeron, el perdedor recibe directamente el 23505 (confirmado: `MovimientoStock_traspaso_paso_unico_key` en el reingreso
+ * simultáneo de un traspaso). Para ese perdedor es lo mismo que un conflicto de serialización: al repetir ve el estado que dejó el ganador y responde el resultado
+ * de negocio que corresponde. Ver el parámetro `tambienChoqueDeUnico` de `conTransaccionSerializable`.
+ */
+export function esChoqueDeIndiceUnico(e: unknown): boolean {
+  if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return true;
+  if (e instanceof Error && e.name === "DriverAdapterError") {
+    const cause = (e as Error & { cause?: unknown }).cause;
+    if (cause && typeof cause === "object" && "kind" in cause && cause.kind === "UniqueConstraintViolation") return true;
+  }
+  return false;
+}
+
+/**
  * Reintenta, con backoff y jitter entre intentos (ver reintentar.ts), un
  * conflicto de escritura de una transacción SERIALIZABLE. El backoff se agregó
  * el 2026-09-21: la causa del flake de C2 estaba confirmada (5 intentos sin
@@ -63,14 +79,21 @@ export function esConflictoDeEscritura(e: unknown): boolean {
  * recién ahí se decide subir `maxIntentos` — aparte, y con esos datos.
  */
 export async function conTransaccionSerializable<T>(
+  transaccion: Transaccion,
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
   maxIntentos = 5,
   /** Solo para tests: la espera entre reintentos y su aleatoriedad (ver reintentar.ts). */
-  opcionesEspera: OpcionesEspera = {}
+  opcionesEspera: OpcionesEspera = {},
+  /**
+   * `true` SOLO para un caso de uso del tipo «leo el estado, valido y recién después inserto una clave única» (el reingreso de un traspaso, el ticket corregido):
+   * ahí un choque de índice único es la carrera perdida y repetir da el resultado de negocio. NO se enciende donde el choque de unicidad es una regla de negocio
+   * que el caso de uso traduce a su mensaje (factura única, código duplicado): repetir solo demoraría el mismo rechazo.
+   */
+  tambienChoqueDeUnico = false
 ): Promise<T> {
   return conReintento(
     () =>
-      prisma.$transaction(fn, {
+      transaccion(fn, {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         // Default de Prisma (maxWait 2s / timeout 5s) es corto para el caso
         // de latencia de red más alta de lo normal — esto da más margen sin
@@ -83,7 +106,7 @@ export async function conTransaccionSerializable<T>(
     {
       ...opcionesEspera,
       maxIntentos,
-      esReintentable: esConflictoDeEscritura,
+      esReintentable: tambienChoqueDeUnico ? (e) => esConflictoDeEscritura(e) || esChoqueDeIndiceUnico(e) : esConflictoDeEscritura,
       // console.log, no .warn: un solo reintento resuelto es el camino
       // sano de SERIALIZABLE ante dos escrituras genuinamente
       // simultáneas — esperable y frecuente, no un incidente. No

@@ -19,32 +19,32 @@ describe("server/consultas/permisos/roles", () => {
     // Sembrados fuera de orden alfabético a propósito, activos e inactivos intercalados.
     await prisma.rol.create({ data: { nombre: "mozo" } });
     await prisma.rol.create({ data: { nombre: "bartender", activo: false } });
-    await prisma.rol.create({ data: { nombre: "admin" } });
+    await prisma.rol.create({ data: { nombre: "admin", clave: "admin" } });
     await prisma.rol.create({ data: { nombre: "zz_retirado", activo: false } });
     await prisma.rol.create({ data: { nombre: "cajero" } });
   });
 
   describe("listarRolesActivos", () => {
     it("trae SOLO los roles activos, ordenados por nombre ascendente", async () => {
-      const roles = await listarRolesActivos();
+      const roles = await listarRolesActivos(prisma);
       expect(roles.map((r) => r.nombre)).toEqual(["admin", "cajero", "mozo"]);
       expect(roles.every((r) => r.activo)).toBe(true);
     });
 
     it("devuelve los escalares de Rol y NINGUNA relación (ni usuarios ni permisos)", async () => {
-      const [primero] = await listarRolesActivos();
+      const [primero] = await listarRolesActivos(prisma);
       expect(Object.keys(primero).sort()).toEqual(ESCALARES_ROL);
     });
 
     it("un rol que se desactiva deja de aparecer, y uno que se reactiva vuelve en su lugar alfabético", async () => {
-      await prisma.rol.update({ where: { nombre: "cajero" }, data: { activo: false } });
-      await prisma.rol.update({ where: { nombre: "bartender" }, data: { activo: true } });
-      expect((await listarRolesActivos()).map((r) => r.nombre)).toEqual(["admin", "bartender", "mozo"]);
+      await prisma.rol.updateMany({ where: { nombre: "cajero" }, data: { activo: false } });
+      await prisma.rol.updateMany({ where: { nombre: "bartender" }, data: { activo: true } });
+      expect((await listarRolesActivos(prisma)).map((r) => r.nombre)).toEqual(["admin", "bartender", "mozo"]);
     });
 
     it("devuelve [] si no hay ningún rol activo", async () => {
       await prisma.rol.updateMany({ data: { activo: false } });
-      expect(await listarRolesActivos()).toEqual([]);
+      expect(await listarRolesActivos(prisma)).toEqual([]);
     });
 
     it("acepta el cliente de una transacción como `db`", async () => {

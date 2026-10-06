@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { anularVentaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/anular-venta";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
 import { detalleReversionDeVenta } from "../../src/core/movimientos/anulaciones";
@@ -19,7 +19,7 @@ describe("anularVentaCasoDeUso", () => {
   let adminId: string;
   let harinaId: string;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId });
+  const actor = () => ({ usuarioId: adminId, sucursalId, ...baseDeTest });
 
   type Linea = { proceso?: "VENTA" | "CONSUMO" | "LIQUIDACION_CONSIGNACION"; cantidad: number; cantidadExacta?: number | null; precioTotal: number; precioPorUnidadStock: number; detalle: string };
 
@@ -27,7 +27,7 @@ describe("anularVentaCasoDeUso", () => {
   async function operacion(opciones: { proceso?: "VENTA" | "MERMA"; nroFactura?: string | null; promoCuentaId?: string; lineas?: Linea[] } = {}) {
     const proceso = opciones.proceso ?? "VENTA";
     const op = await prisma.operacion.create({
-      data: { sucursalId, proceso, fecha: new Date("2026-08-06T12:00:00Z"), usuarioId: adminId, nroFactura: opciones.nroFactura ?? null, promoCuentaId: opciones.promoCuentaId },
+      data: { sucursalId, proceso, fecha: new Date("2026-08-06T12:00:00Z"), usuarioId: adminId, nroFactura: opciones.nroFactura ?? null, ...(opciones.promoCuentaId !== undefined && { promoCuentaId: opciones.promoCuentaId }) },
     });
     const lineas = opciones.lineas ?? [{ cantidad: -2, precioTotal: 200, precioPorUnidadStock: 100, detalle: "Venta de Harina" }];
     for (const l of lineas) {
@@ -52,7 +52,7 @@ describe("anularVentaCasoDeUso", () => {
     const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 1 } });
     const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: adminId } });
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menús" } });
-    const promoCarta = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 1000 } });
+    const promoCarta = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 1000 } });
     return prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 1000, titulo: "Menú del día", creadoPorId: adminId } });
   }
 
@@ -167,7 +167,7 @@ describe("anularVentaCasoDeUso", () => {
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa operación en esta sucursal.",
     });
-    expect(await anularVentaCasoDeUso({ usuarioId: adminId, sucursalId: otra.id }, { operacionId: venta.id })).toMatchObject({ ok: false, codigo: "NO_ENCONTRADA" });
+    expect(await anularVentaCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ...baseDeTest }, { operacionId: venta.id })).toMatchObject({ ok: false, codigo: "NO_ENCONTRADA" });
     expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).anuladaEn).toBeNull();
     expect(await prisma.registroAuditoria.count()).toBe(0);
   });

@@ -249,13 +249,13 @@ describe("productos", () => {
       expect(r.ok).toBe(true);
       if (!r.ok) return;
 
-      expect(await disponibleEn(r.id, (await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } })).id)).toBe(true);
+      expect(await disponibleEn(r.id, (await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } })).id)).toBe(true);
       expect(await disponibleEn(r.id, otraSucursal.id)).toBe(true);
     });
 
     it("sin tildar: queda disponible SOLO en la sucursal desde la que se da de alta", async () => {
       const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Norte" } });
-      const central = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } });
+      const central = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } });
       const r = await darDeAltaProducto({ nombre: "Insumo exclusivo de Central", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, activoEnTodasLasSucursales: false });
       expect(r.ok).toBe(true);
       if (!r.ok) return;
@@ -266,7 +266,7 @@ describe("productos", () => {
 
     it("sin tildar: el producto no aparece en el selector de otra sucursal (paso P6 — buscarProductosSelector ya filtra por soloDisponibles)", async () => {
       const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Norte" } });
-      const rolAdmin = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+      const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
       await crearUsuarioConMembresia({ email: "otro@test.com", sucursalId: otraSucursal.id, rolId: rolAdmin.id });
 
       const r = await darDeAltaProducto({ nombre: "Solo en Central", tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, activoEnTodasLasSucursales: false });
@@ -289,7 +289,7 @@ describe("productos", () => {
       expect(r.ok).toBe(true);
       if (!r.ok) return;
 
-      expect(await disponibleEn(r.id, (await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } })).id)).toBe(true);
+      expect(await disponibleEn(r.id, (await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } })).id)).toBe(true);
       expect(await disponibleEn(r.id, otraSucursal.id)).toBe(true);
     });
   });
@@ -456,6 +456,23 @@ describe("productos", () => {
       // No se tocó nada: el precio sigue siendo el original (mismo criterio de Compra/Mesa/Mostrador — nunca reprocesa lo ya guardado).
       const sigueIgual = await prisma.producto.findUniqueOrThrow({ where: { id: alta.id } });
       expect(Number(sigueIgual.precioVenta)).toBe(1000);
+    });
+  });
+
+  describe("lo que se guarda es lo validado, no el valor crudo del POST", () => {
+    it("un precio de venta tecleado en es-AR («1.234,5») se guarda normalizado (1234.5)", async () => {
+      const r = await darDeAltaProducto({ nombre: "Pizza tecleada", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: "1.234,5" as never });
+      expect(r.ok, r.mensaje).toBe(true);
+      const creado = await prisma.producto.findFirstOrThrow({ where: { nombre: "Pizza tecleada" } });
+      expect(Number(creado.precioVenta)).toBe(1234.5);
+    });
+
+    it("un precio de consignación negativo o inválido se rechaza aunque el producto NO sea de consignación (antes pasaba crudo)", async () => {
+      for (const precioConsignacion of [-5, "abc", NaN]) {
+        const r = await darDeAltaProducto({ nombre: "Gaseosa " + String(precioConsignacion), tipo: "MP", unidadStockId: unidadKgId, factorConversion: 1, precioConsignacion: precioConsignacion as never });
+        expect(r.ok, String(precioConsignacion)).toBe(false);
+      }
+      expect(await prisma.producto.count({ where: { nombre: { startsWith: "Gaseosa" } } })).toBe(0);
     });
   });
 });

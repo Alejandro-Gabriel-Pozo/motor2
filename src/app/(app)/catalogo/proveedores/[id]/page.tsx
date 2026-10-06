@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer, accionesQueElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa, accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarProductosQueLeCompran, obtenerFichaProveedor } from "@/server/consultas/catalogo/proveedores";
+import { formatearCuit } from "@/core/fiscal/cuit";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -27,22 +29,22 @@ export default async function FichaProveedorPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ guardado?: string }>;
+  searchParams: Promise<ParametrosDeUrl<"guardado">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proveedores");
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { id } = await params;
-  const { guardado } = await searchParams;
-  const p = await obtenerFichaProveedor(id);
+  const { guardado } = unicosDeUrl(await searchParams);
+  const p = await obtenerFichaProveedor(id, ctx.db);
   if (!p) notFound();
 
   const [productosQueLeCompran, puedeVerPrecios] = await Promise.all([
-    listarProductosQueLeCompran(id),
-    accionesQueElUsuarioPuedeVer(ctx.usuarioId, ctx.sucursalId, ["comparar_precios"]),
+    listarProductosQueLeCompran(id, ctx.db),
+    accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, ["comparar_precios"], ctx.db),
   ]);
 
   return (
@@ -75,7 +77,7 @@ export default async function FichaProveedorPage({
           <Dato etiqueta="Contacto">{p.contacto ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
           <Dato etiqueta="Teléfono">{p.telefono ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
           <Dato etiqueta="Email">{p.email ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
-          <Dato etiqueta="CUIT">{p.cuit ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
+          <Dato etiqueta="CUIT">{p.cuit ? formatearCuit(p.cuit) : <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
           <Dato etiqueta="Condiciones de pago">{p.condicionesPago ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
           {p.notas && (
             <div className="sm:col-span-2">

@@ -1,6 +1,6 @@
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import { asegurarBaseSeed } from "./fixtures/auth";
-import { crearPrismaE2E, resetearBaseE2E, resolverUrlE2E } from "./fixtures/base-e2e";
+import { crearPrismaE2E, resetearBaseE2E, resolverUrlAppE2E, resolverUrlE2E, resolverUrlE2EB } from "./fixtures/base-e2e";
 
 /**
  * Antes de cada corrida de Playwright: base E2E vacía + seed mínimo.
@@ -16,8 +16,9 @@ export default async function globalSetup() {
 
   // La app y los specs tienen que estar en LA MISMA base que se acaba de
   // validar: playwright.config.ts la fija en DATABASE_URL antes de llegar acá.
-  if (process.env.DATABASE_URL !== base.url) {
-    throw new Error("DATABASE_URL no coincide con MOTOR2_E2E_DATABASE_URL: los specs escribirían en otra base que la que se limpia.");
+  const baseApp = resolverUrlAppE2E(process.env);
+  if (process.env.DATABASE_URL !== baseApp.url || process.env.DIRECT_URL !== base.url) {
+    throw new Error("DATABASE_URL/DIRECT_URL no coinciden con MOTOR2_E2E_APP_DATABASE_URL/MOTOR2_E2E_DATABASE_URL: los specs escribirían en otra base que la que se limpia o con el rol equivocado.");
   }
 
   const prismaE2E = crearPrismaE2E(base);
@@ -26,6 +27,18 @@ export default async function globalSetup() {
     console.log(`[e2e] Reset previo: ${filasAntes} filas residuales borradas${filasAntes ? ` (${JSON.stringify(detalleAntes)})` : ""}.`);
   } finally {
     await prismaE2E.$disconnect();
+  }
+
+  // La segunda instalación (ADR-025), si se configuró: vacía y migrada de antemano. Los specs de la consola siembran en ella lo que necesitan.
+  const baseB = resolverUrlE2EB(process.env);
+  if (baseB) {
+    const prismaB = crearPrismaE2E(baseB);
+    try {
+      const { filasAntes } = await resetearBaseE2E(prismaB);
+      console.log(`[e2e] Base E2E B: ${baseB.host}/${baseB.nombre} (${filasAntes} filas residuales borradas).`);
+    } finally {
+      await prismaB.$disconnect();
+    }
   }
 
   await asegurarBaseSeed();

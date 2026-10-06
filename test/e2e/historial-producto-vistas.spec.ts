@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { Browser, Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * §4 (docs/planes-demo-y-claridad-reportes-2026-09-21.md) — "Cómo se compró"/"Cómo se vendió", el cartel "Producto de
@@ -13,7 +14,7 @@ const dia = (n: number) => new Date(Date.now() - n * 86_400_000);
 
 test("MP con compras: 'Cómo se compró' muestra la mediana y la variación contra la compra anterior", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_HIST_${marca}`, nombre: `E2E Proveedor Historial ${marca}` } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-HIST-MP-${marca}`, nombre: `E2E Harina Historial ${marca}`, tipo: "MP", unidadStockId: kg.id } });
@@ -51,7 +52,7 @@ test("MP con compras: 'Cómo se compró' muestra la mediana y la variación cont
 
 test("PV sin stock propio: cartel 'Producto de reventa', sin saldo actual en el encabezado ni columna 'Saldo corriente'", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-HIST-REV-MP-${marca}`, nombre: `E2E Agua Caja ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const pv = await prisma.producto.create({ data: { codigo: `E2E-HIST-REV-PV-${marca}`, nombre: `E2E Agua Botella ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 1500 } });
@@ -86,7 +87,7 @@ test("PV sin stock propio: cartel 'Producto de reventa', sin saldo actual en el 
 
 test("filtro 'Qué mostrar' → 'Solo compras' reduce las filas del Kardex, sin cambiar el saldo corriente de las que quedan", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-HIST-FILT-${marca}`, nombre: `E2E Filtro Kardex ${marca}`, tipo: "MP", unidadStockId: kg.id } });
 
@@ -120,7 +121,7 @@ test("filtro 'Qué mostrar' → 'Solo compras' reduce las filas del Kardex, sin 
 
 test("la columna 'Origen' navega a la trazabilidad de la operación", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-HIST-ORIG-${marca}`, nombre: `E2E Origen Kardex ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const compra = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: dia(1), usuarioId: admin.id } });
@@ -140,22 +141,23 @@ test("la columna 'Origen' navega a la trazabilidad de la operación", async ({ p
   }
 });
 
-/** Un operador con ver_reportes_operativos (entra a la pantalla) pero SIN ver_reportes_dinero (no ve precio). A diferencia del
- * helper de reportes-permisos.spec.ts, acá ver_reportes_operativos se deja en `true` a propósito. */
+/** Un operador con reporte_historial (entra a la pantalla) pero SIN reporte_historial_importes (no ve precio). A diferencia del
+ * helper de reportes-permisos.spec.ts, acá reporte_historial se deja en `true` a propósito. */
 async function paginaOperadorSinDinero(browser: Browser, baseURL: string | undefined, sucursalId: string): Promise<Page> {
-  const operador = await prisma.rol.upsert({ where: { nombre: "operador" }, update: { activo: true }, create: { nombre: "operador" } });
+  const { id: empresaId } = await prisma.empresa.findUniqueOrThrow({ where: { id: "empresa_principal" } });
+  const operador = await prisma.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "operador" } }, update: { activo: true }, create: { nombre: "operador", clave: "operador" } });
   await prisma.permisoRol.upsert({
-    where: { rolId_accionClave: { rolId: operador.id, accionClave: "ver_reportes_operativos" } },
+    where: { rolId_accionClave: { rolId: operador.id, accionClave: "reporte_historial" } },
     update: { puedeVer: true },
-    create: { rolId: operador.id, accionClave: "ver_reportes_operativos", puedeVer: true, puedeEditar: false },
+    create: { rolId: operador.id, accionClave: "reporte_historial", puedeVer: true, puedeEditar: false },
   });
   await prisma.permisoRol.upsert({
-    where: { rolId_accionClave: { rolId: operador.id, accionClave: "ver_reportes_dinero" } },
+    where: { rolId_accionClave: { rolId: operador.id, accionClave: "reporte_historial_importes" } },
     update: { puedeVer: false },
-    create: { rolId: operador.id, accionClave: "ver_reportes_dinero", puedeVer: false, puedeEditar: false },
+    create: { rolId: operador.id, accionClave: "reporte_historial_importes", puedeVer: false, puedeEditar: false },
   });
   const usuario = await prisma.user.create({ data: { email: `e2e-operador-historial-${Date.now()}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: operador.id, activo: true } });
+  await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: operador.id, activo: true });
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60 * 24) } });
 
@@ -165,9 +167,9 @@ async function paginaOperadorSinDinero(browser: Browser, baseURL: string | undef
   return context.newPage();
 }
 
-test("un rol con ver_reportes_operativos pero SIN ver_reportes_dinero entra a la pantalla y ve 'Cómo se compró' sin precio ni variación", async ({ browser, baseURL, sucursalId, seccionId }) => {
+test("un rol con reporte_historial pero SIN reporte_historial_importes entra a la pantalla y ve 'Cómo se compró' sin precio ni variación", async ({ browser, baseURL, sucursalId, seccionId }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-HIST-PERM-${marca}`, nombre: `E2E Sin Dinero ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   const compra = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: dia(1), usuarioId: admin.id } });
@@ -185,6 +187,42 @@ test("un rol con ver_reportes_operativos pero SIN ver_reportes_dinero entra a la
     await page.context().close();
     await prisma.movimientoStock.deleteMany({ where: { productoId: mp.id } });
     await prisma.operacion.deleteMany({ where: { id: compra.id } });
+    await prisma.producto.deleteMany({ where: { id: mp.id } });
+  }
+});
+
+test("rango por defecto de 10 días: «Ver más» amplía a 90 días y después a todo el historial", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+  const marca = Date.now();
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const mp = await prisma.producto.create({ data: { codigo: `E2E-HIST-VERMAS-${marca}`, nombre: `E2E Ver Mas ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+
+  const operaciones: string[] = [];
+  async function comprar(hace: number) {
+    const op = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: dia(hace), usuarioId: admin.id } });
+    operaciones.push(op.id);
+    await prisma.movimientoStock.create({ data: { operacionId: op.id, productoId: mp.id, seccionId, proceso: "COMPRA", cantidad: 5, detalle: "Compra", precioTotal: 50, precioPorUnidadStock: 10 } });
+  }
+  await comprar(2); // dentro de los 10 días
+  await comprar(30); // solo con «Ver más» (90 días)
+  await comprar(200); // solo con todo el historial
+
+  try {
+    await page.goto(`/reportes/historial?productoId=${mp.id}`);
+    await expect(page.getByText(/Mostrando los últimos 10 días/)).toBeVisible();
+    await expect(page.getByText("Se compró 1 vez")).toBeVisible();
+
+    await page.getByRole("link", { name: /Ver más/ }).click();
+    await expect(page.getByText(/Mostrando los últimos 90 días/)).toBeVisible();
+    await expect(page.getByText("Se compró 2 veces")).toBeVisible();
+
+    await page.getByRole("link", { name: /Ver más/ }).click();
+    await expect(page.getByText(/Mostrando todo el historial/)).toBeVisible();
+    await expect(page.getByText("Se compró 3 veces")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Ver más/ })).toHaveCount(0);
+  } finally {
+    await prisma.movimientoStock.deleteMany({ where: { productoId: mp.id } });
+    await prisma.operacion.deleteMany({ where: { id: { in: operaciones } } });
     await prisma.producto.deleteMany({ where: { id: mp.id } });
   }
 });

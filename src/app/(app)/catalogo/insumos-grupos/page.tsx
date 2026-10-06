@@ -1,5 +1,6 @@
+import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import {
   crearInsumo,
   actualizarActivoInsumo,
@@ -18,11 +19,11 @@ export default async function InsumosGruposPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "grupos_familia");
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "grupos_familia", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const [insumos, grupos] = await Promise.all([listarInsumos(), listarGrupos()]);
-  const cadenas = await Promise.all(grupos.map((g) => textoCadenaDeGrupos(g.id)));
+  const cadenas = await Promise.all(grupos.map((g) => textoCadenaDeGrupos(g.id, ctx.db)));
 
   return (
     <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
@@ -79,7 +80,8 @@ export default async function InsumosGruposPage() {
                         return actualizarActivoInsumo(i.id, !i.activo);
                       }}
                     >
-                      <button type="submit" className="text-sm underline">
+                      <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                        <IconoDeAccion id="activar" />
                         {i.activo ? "Desactivar" : "Activar"}
                       </button>
                     </FormConResultado>
@@ -133,7 +135,8 @@ export default async function InsumosGruposPage() {
                         return actualizarActivoGrupo(g.id, !g.activo);
                       }}
                     >
-                      <button type="submit" className="text-sm underline">
+                      <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                        <IconoDeAccion id="activar" />
                         {g.activo ? "Desactivar" : "Activar"}
                       </button>
                     </FormConResultado>

@@ -18,7 +18,7 @@ describe("árbol de grupos", () => {
   it("rechaza que un grupo sea su propio padre", async () => {
     await crearOActualizarGrupo("Bebidas", null);
     const bebidas = await prisma.grupo.findFirstOrThrow({ where: { nombre: "Bebidas" } });
-    expect(await creariaCiclo(bebidas.id, bebidas.id)).toBe(true);
+    expect(await creariaCiclo(bebidas.id, bebidas.id, prisma)).toBe(true);
   });
 
   it("rechaza un ciclo por cadena de ancestros (A→B→C: C no puede ser padre de A)", async () => {
@@ -29,7 +29,7 @@ describe("árbol de grupos", () => {
     await crearOActualizarGrupo("C", b.id);
     const c = await prisma.grupo.findFirstOrThrow({ where: { nombre: "C" } });
 
-    expect(await creariaCiclo(a.id, c.id)).toBe(true);
+    expect(await creariaCiclo(a.id, c.id, prisma)).toBe(true);
 
     const resultado = await crearOActualizarGrupo("A", c.id);
     expect(resultado.ok).toBe(false);

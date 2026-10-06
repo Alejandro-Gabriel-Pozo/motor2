@@ -1,5 +1,6 @@
 "use client";
 
+import { IconoDeAccion } from "@/components/iconos";
 import { useState, useTransition } from "react";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
@@ -99,7 +100,8 @@ export function GestionPresentaciones({
                 <td>{p.factorConversion}</td>
                 <td>{p.activa ? "Sí" : "No"}</td>
                 <td>
-                  <button type="button" disabled={pending} className="underline" onClick={() => toggle(p)}>
+                  <button type="button" disabled={pending} className="inline-flex items-center gap-1 underline" onClick={() => toggle(p)}>
+                    <IconoDeAccion id="activar" />
                     {p.activa ? "Desactivar" : "Activar"}
                   </button>
                 </td>

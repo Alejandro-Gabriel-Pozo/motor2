@@ -1,8 +1,9 @@
 import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import { interceptarImpresion } from "./fixtures/impresion";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Promos ARMABLES en la pantalla de la mesa (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 11): tocar la promo destacada
@@ -25,7 +26,7 @@ const barra = (page: Page) => page.getByRole("group", { name: "Secciones de la c
 
 async function sembrarPromoCombo(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "unidad" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
   const crear = async (clave: string, nombre: string, precioVenta: number) => {
     const p = await prisma.producto.create({ data: { codigo: `E2E-PC-${clave}-${marca}`, nombre: `E2E ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
@@ -41,14 +42,14 @@ async function sembrarPromoCombo(sucursalId: string) {
   const bebidas = await prisma.seccionCarta.create({ data: { nombre: `E2E Promo Bebidas ${marca}`, orden: 2 } });
   await prisma.contenidoCartaProducto.createMany({
     data: [
-      { productoId: empanada.id, visibleEnCarta: true, seccionCartaId: entradas.id, orden: 1 },
-      { productoId: tarta.id, visibleEnCarta: true, seccionCartaId: entradas.id, orden: 2 },
-      { productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1 },
-      { productoId: gaseosa.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 2 },
+      { sucursalId, productoId: empanada.id, visibleEnCarta: true, seccionCartaId: entradas.id, orden: 1 },
+      { sucursalId, productoId: tarta.id, visibleEnCarta: true, seccionCartaId: entradas.id, orden: 2 },
+      { sucursalId, productoId: agua.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 1 },
+      { sucursalId, productoId: gaseosa.id, visibleEnCarta: true, seccionCartaId: bebidas.id, orden: 2 },
     ],
   });
   const titulo = `E2E Combo ${marca}`;
-  const promo = await prisma.promoCarta.create({ data: { sucursalId, seccionCartaId: entradas.id, titulo, precio: 4000 } });
+  const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: entradas.id, titulo, precio: 4000 } });
   await prisma.promoCartaCupo.createMany({
     data: [
       { promoCartaId: promo.id, seccionCartaId: entradas.id, cantidadMinima: 1, cantidadMaxima: 1, orden: 0 },
@@ -72,15 +73,16 @@ async function sembrarPromoCombo(sucursalId: string) {
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } }, anulaAItemId: { not: null } } });
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       const cuentaIds = (await prisma.cuenta.findMany({ where: { mesaId: { in: mesaIds } }, select: { id: true } })).map((c) => c.id);
-      await prisma.registroAuditoria.deleteMany({ where: { entidadId: { in: [...operacionIds, ...cuentaIds] } } });
+      await prismaAdmin.registroAuditoria.deleteMany({ where: { entidadId: { in: [...operacionIds, ...cuentaIds] } } });
       await prisma.movimientoStock.deleteMany({ where: { OR: [{ operacionId: { in: operacionIds } }, { productoId: { in: productoIds } }] } });
       await prisma.operacion.deleteMany({ where: { id: { in: operacionIds } } });
       await prisma.promoCuenta.deleteMany({ where: { id: { in: promoCuentaIds } } });
-      // Cerrar la cuenta (test D3/D4) emite una boleta: su ejemplar referencia la cuenta (RESTRICT) — se borra antes.
-      await prisma.ejemplarBoleta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      // Cerrar la cuenta (test D3/D4) emite un ticket: su ejemplar referencia la cuenta (RESTRICT) — se borra antes.
+      await prisma.ejemplarTicket.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.promoCartaCupo.deleteMany({ where: { promoCartaId: promo.id } });
+      await prisma.promoCartaSucursal.deleteMany({ where: { promoCarta: { id: promo.id } } });
       await prisma.promoCarta.deleteMany({ where: { id: promo.id } });
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.seccionCarta.deleteMany({ where: { id: { in: [entradas.id, bebidas.id] } } });

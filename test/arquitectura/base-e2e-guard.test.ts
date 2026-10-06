@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolverUrlE2E } from "../e2e/fixtures/base-e2e";
+import { resolverUrlAppE2E, resolverUrlE2E, resolverUrlE2EB, resolverUrlPlataformaE2E, resolverUrlPlataformaE2EB } from "../e2e/fixtures/base-e2e";
 
 /**
  * Las guardas de la base E2E (test/e2e/fixtures/base-e2e.ts) son lo único que
@@ -45,4 +45,92 @@ describe("resolverUrlE2E — qué base se rechaza (nunca se conecta)", () => {
       expect(() => resolverUrlE2E(env)).toThrow(mensaje);
     });
   }
+});
+
+describe("resolverUrlAppE2E — el runtime de los E2E es motor2_app, no el dueño (ADR-007 A0)", () => {
+  const APP = "postgresql://motor2_app:x@localhost:5432/motor2_e2e";
+  const entorno = (app: string | undefined) => ({ MOTOR2_E2E_DATABASE_URL: OK, MOTOR2_E2E_APP_DATABASE_URL: app });
+
+  it("acepta un rol distinto del dueño sobre la misma base", () => {
+    expect(resolverUrlAppE2E(entorno(APP))).toEqual({ url: APP, host: "localhost", nombre: "motor2_e2e" });
+  });
+
+  it("rechaza si falta (no hay fallback al dueño)", () => {
+    expect(() => resolverUrlAppE2E(entorno(undefined))).toThrow(/Falta MOTOR2_E2E_APP_DATABASE_URL/);
+  });
+
+  it("rechaza si es idéntica a la del dueño", () => {
+    expect(() => resolverUrlAppE2E(entorno(OK))).toThrow(/idéntica/);
+  });
+
+  it("rechaza si apunta a otra base que la del dueño", () => {
+    expect(() => resolverUrlAppE2E(entorno("postgresql://motor2_app:x@localhost:5432/otra_e2e"))).toThrow(/misma base/);
+  });
+
+  it("rechaza si apunta a la base de desarrollo", () => {
+    expect(() => resolverUrlAppE2E(entorno("postgresql://motor2_app:x@localhost:5432/motor2_dev"))).toThrow(/terminar en "_e2e"/);
+  });
+
+  it("rechaza un host remoto", () => {
+    expect(() => resolverUrlAppE2E(entorno("postgresql://motor2_app:x@db.ejemplo.com:5432/motor2_e2e"))).toThrow(/Host rechazado/);
+  });
+});
+
+describe("resolverUrlPlataformaE2E — la consola de plataforma en los E2E (E4, ADR-019)", () => {
+  const PLATAFORMA = "postgresql://motor2_plataforma:x@localhost:5432/motor2_e2e";
+  const entorno = (url: string | undefined) => ({ MOTOR2_E2E_DATABASE_URL: OK, MOTOR2_E2E_PLATAFORMA_DATABASE_URL: url });
+
+  it("sin la variable devuelve null: el E2E de la consola se omite (el rol solo existe donde se creó)", () => {
+    expect(resolverUrlPlataformaE2E(entorno(undefined))).toBeNull();
+    expect(resolverUrlPlataformaE2E(entorno(""))).toBeNull();
+  });
+
+  it("acepta el rol motor2_plataforma sobre la misma base", () => {
+    expect(resolverUrlPlataformaE2E(entorno(PLATAFORMA))).toEqual({ url: PLATAFORMA, host: "localhost", nombre: "motor2_e2e" });
+  });
+
+  it.each([
+    ["el dueño", OK, /rol motor2_plataforma/],
+    ["el rol de la aplicación", "postgresql://motor2_app:x@localhost:5432/motor2_e2e", /rol motor2_plataforma/],
+    ["otra base", "postgresql://motor2_plataforma:x@localhost:5432/otra_e2e", /misma base/],
+    ["la base de desarrollo", "postgresql://motor2_plataforma:x@localhost:5432/motor2_dev", /terminar en "_e2e"/],
+    ["un host remoto", "postgresql://motor2_plataforma:x@db.ejemplo.com:5432/motor2_e2e", /Host rechazado/],
+  ])("rechaza %s", (_nombre, url, mensaje) => {
+    expect(() => resolverUrlPlataformaE2E(entorno(url))).toThrow(mensaje);
+  });
+});
+
+describe("la SEGUNDA instalación de los E2E (ADR-025)", () => {
+  const B = "postgresql://motor2:motor2@localhost:5432/motor2_b_e2e";
+  const B_PLATAFORMA = "postgresql://motor2_plataforma:x@localhost:5432/motor2_b_e2e";
+  const entorno = (b: string | undefined, plataforma?: string) => ({ MOTOR2_E2E_DATABASE_URL: OK, MOTOR2_E2E_B_DATABASE_URL: b, MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL: plataforma });
+
+  it("sin la variable devuelve null: el spec multi-instalación se omite", () => {
+    expect(resolverUrlE2EB(entorno(undefined))).toBeNull();
+    expect(resolverUrlPlataformaE2EB(entorno(""))).toBeNull();
+  });
+
+  it("acepta otra base local `_e2e` y el rol de plataforma sobre ESA base", () => {
+    expect(resolverUrlE2EB(entorno(B))).toEqual({ url: B, host: "localhost", nombre: "motor2_b_e2e" });
+    expect(resolverUrlPlataformaE2EB(entorno(B, B_PLATAFORMA))).toEqual({ url: B_PLATAFORMA, host: "localhost", nombre: "motor2_b_e2e" });
+  });
+
+  it.each([
+    ["la MISMA base que la de siempre", OK, /OTRA base/],
+    ["la base de desarrollo", "postgresql://motor2:x@localhost:5432/motor2_dev", /terminar en "_e2e"/],
+    ["un nombre que no termina en _e2e (motor2_e2e_b)", "postgresql://motor2:x@localhost:5432/motor2_e2e_b", /terminar en "_e2e"/],
+    ["un host remoto", "postgresql://motor2:x@db.ejemplo.com:5432/motor2_b_e2e", /Host rechazado/],
+  ])("rechaza %s como segunda base", (_nombre, url, mensaje) => {
+    // Mutación: aceptar una B igual a A (sacar la comparación) pone el primer caso en rojo.
+    expect(() => resolverUrlE2EB(entorno(url))).toThrow(mensaje);
+  });
+
+  it.each([
+    ["sin la URL de plataforma de B", undefined, /Falta MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL/],
+    ["el dueño", B, /rol motor2_plataforma/],
+    ["otra base", "postgresql://motor2_plataforma:x@localhost:5432/otra_e2e", /misma base/],
+    ["la base de la instalación A", "postgresql://motor2_plataforma:x@localhost:5432/motor2_e2e", /misma base/],
+  ])("la conexión de plataforma de B rechaza %s", (_nombre, url, mensaje) => {
+    expect(() => resolverUrlPlataformaE2EB(entorno(B, url))).toThrow(mensaje);
+  });
 });

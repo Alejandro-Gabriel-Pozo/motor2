@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { corregirCompraCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/corregir-compra";
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
 
@@ -16,7 +16,7 @@ describe("corregirCompraCasoDeUso", () => {
   let molinoId: string;
   let surId: string;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId });
+  const actor = () => ({ usuarioId: adminId, sucursalId, ...baseDeTest });
   const vista = (op: { proveedorId: string | null; nroFactura: string | null; detalleLibre: string | null }) => ({
     proveedorId: op.proveedorId,
     nroFactura: op.nroFactura,
@@ -37,7 +37,7 @@ describe("corregirCompraCasoDeUso", () => {
       },
     });
     await prisma.movimientoStock.create({
-      data: { operacionId: op.id, productoId: harinaId, seccionId, proceso: op.proceso, cantidad: 10, detalle: "Compra", precioTotal: 1000, precioPorUnidadStock: 100 },
+      data: { operacionId: op.id, productoId: harinaId, seccionId, proceso: op.proceso, cantidad: op.proceso === "MERMA" ? -10 : 10, detalle: "Compra", precioTotal: 1000, precioPorUnidadStock: 100 },
     });
     return op;
   }
@@ -94,7 +94,7 @@ describe("corregirCompraCasoDeUso", () => {
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa operación en esta sucursal.",
     });
-    expect(await corregirCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id }, { operacionId: op.id, nueva, esperado: vista(op) })).toMatchObject({
+    expect(await corregirCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ...baseDeTest }, { operacionId: op.id, nueva, esperado: vista(op) })).toMatchObject({
       ok: false,
       codigo: "NO_ENCONTRADA",
     });

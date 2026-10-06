@@ -36,10 +36,10 @@ import { formatearCantidad } from "../cuenta-comun";
  * @sideEffects registrarCambioAuditado (uno por cada componente anulado).
  */
 export async function anularPromoEnviadaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
   comando: ComandoAnularPromoEnviada
 ): Promise<ResultadoAnularPromoEnviada> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoAnularPromoEnviada> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAnularPromoEnviada> => {
     const promo = await cargarPromoParaAnular(tx, { promoCuentaId: comando.promoCuentaId, sucursalId: actor.sucursalId });
     if (!promo) return fracaso("NO_ENCONTRADA", MENSAJE_PROMO_NO_ENCONTRADA);
     const mesa = promo.mesaNumero;
@@ -59,11 +59,11 @@ export async function anularPromoEnviadaCasoDeUso(
     const componentes: DatosAnularPromoEnviada["componentes"] = [];
     for (const { item, restante } of aAnular) {
       const espejoId = await escribirEspejoDeItem(tx, {
-        original: { id: item.id, cuentaId: item.cuentaId, productoId: item.productoId, precioUnitario: item.precioUnitario, numeroEnvio: item.numeroEnvio },
+        original: { id: item.id, cuentaId: item.cuentaId, productoId: item.productoId, precioUnitario: item.precioUnitario, precioCartaUnitario: item.precioCartaUnitario, numeroEnvio: item.numeroEnvio },
         cantidadAnulada: restante,
         motivo: motivoValidado.motivo,
         creadoPorId: actor.usuarioId,
-        promo: { promoCuentaId: promo.id, precioCartaUnitario: item.precioCartaUnitario },
+        promo: { promoCuentaId: promo.id },
       });
       await registrarCambioAuditado(tx, {
         entidad: "CuentaItem",

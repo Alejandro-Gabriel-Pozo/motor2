@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/db";
-import { reportarError } from "@/lib/reportar-error";
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { reportarError, reportarErrorUnaVez } from "@/lib/reportar-error";
 import type { Db } from "./comun";
 
 /**
@@ -38,9 +38,9 @@ export interface UltimaCotizacion {
   fuente: string;
 }
 
-/** Fecha (YYYY-MM-DD) en horario argentino (UTC-3, sin horario de verano) de un instante. */
+/** Fecha (YYYY-MM-DD) en la zona de Argentina (el mercado cambiario) de un instante. */
 export function fechaArgentina(instante: Date): string {
-  return new Date(instante.getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return diaDeCalendario(instante, ZONA_ARGENTINA);
 }
 
 const esNumeroPositivo = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n > 0;
@@ -74,6 +74,25 @@ export function leerHistorial(json: unknown, desdeISO: string): CotizacionDia[] 
   return dias.sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
+/** Variación máxima aceptada contra la última cotización guardada (informe de seguridad 2026-10-01, S-19: una API de terceros comprometida o con un error no puede fijar un dólar absurdo). */
+const VARIACION_MAXIMA_DOLAR = 0.2;
+/** Pasada esta antigüedad de la última cotización guardada ya no se compara (una devaluación real acumula más que eso en un hueco largo). */
+const DIAS_VIGENCIA_COMPARACION = 7;
+/** Dos fuentes independientes que coinciden dentro de este margen confirman un salto grande (una devaluación legítima). */
+const TOLERANCIA_ENTRE_FUENTES = 0.05;
+
+/**
+ * ¿La cotización nueva es creíble frente a la última guardada? Dentro de ±20% (o sin una última reciente, o sin dato previo): sí. Más
+ * allá, solo si otra fuente independiente (`confirmacion`) da un valor dentro del 5% del nuevo; si no, no se guarda y se avisa.
+ */
+export function cotizacionPlausible(nueva: number, ultima: { fecha: Date; venta: number } | null, ahora: Date, confirmacion: number | null = null): boolean {
+  if (!ultima) return true;
+  const dias = (ahora.getTime() - ultima.fecha.getTime()) / 86_400_000;
+  if (dias > DIAS_VIGENCIA_COMPARACION) return true;
+  if (Math.abs(nueva / ultima.venta - 1) <= VARIACION_MAXIMA_DOLAR) return true;
+  return confirmacion !== null && Math.abs(nueva / confirmacion - 1) <= TOLERANCIA_ENTRE_FUENTES;
+}
+
 async function pedir(url: string): Promise<unknown> {
   const resp = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(15_000) });
   if (!resp.ok) throw new Error(`${new URL(url).host} respondió ${resp.status}`);
@@ -101,7 +120,7 @@ export interface ResultadoSincronizacionDolar {
  * es viejo, rellena antes el historial desde argentinadatos. Un fallo de una fuente no tira abajo la corrida: se prueba la siguiente y
  * los errores se devuelven. Si NINGUNA fuente da la cotización de hoy y no se rellenó nada, lanza (el cron responde 502).
  */
-export async function sincronizarDolar(db: Db = prisma, ahora: Date = new Date()): Promise<ResultadoSincronizacionDolar> {
+export async function sincronizarDolar(db: Db, ahora: Date = new Date()): Promise<ResultadoSincronizacionDolar> {
   const errores: string[] = [];
   let diasRellenados = 0;
 
@@ -135,6 +154,23 @@ export async function sincronizarDolar(db: Db = prisma, ahora: Date = new Date()
       errores.push(`BCRA: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
+  if (hoy) {
+    const fila = await db.cotizacionDolar.findFirst({ where: { fecha: { lt: new Date(hoy.fecha) } }, orderBy: [{ fecha: "desc" }, { fuente: "desc" }] });
+    const previa = fila ? { fecha: fila.fecha, venta: Number(fila.venta) } : null;
+    if (!cotizacionPlausible(hoy.venta, previa, ahora)) {
+      let confirmacion: number | null = null;
+      try {
+        const otra = hoy.fuente === "BNA" ? leerBcra(await pedir(URL_BCRA)) : leerDolarApi(await pedir(URL_HOY));
+        confirmacion = otra?.venta ?? null;
+      } catch {
+        // sin segunda fuente no hay confirmación: el salto se descarta
+      }
+      if (!cotizacionPlausible(hoy.venta, previa, ahora, confirmacion)) {
+        errores.push(`cotización descartada: ${hoy.venta} se aparta más de ${VARIACION_MAXIMA_DOLAR * 100}% de la última guardada (${previa?.venta}) y no la confirma otra fuente`);
+        hoy = null;
+      }
+    }
+  }
   if (hoy) await guardarDia(db, hoy);
   else if (diasRellenados === 0) throw new Error(`No se pudo obtener el dólar: ${errores.join("; ")}`);
 
@@ -142,10 +178,23 @@ export async function sincronizarDolar(db: Db = prisma, ahora: Date = new Date()
 }
 
 /** La cotización más reciente guardada (la de BNA si hay; si no, la del BCRA), o `null` si todavía no hay ninguna. */
-export async function obtenerUltimaCotizacion(db: Db = prisma): Promise<UltimaCotizacion | null> {
+export async function obtenerUltimaCotizacion(db: Db): Promise<UltimaCotizacion | null> {
   const fila = await db.cotizacionDolar.findFirst({ orderBy: [{ fecha: "desc" }, { fuente: "desc" }] });
   if (!fila) return null;
   return { fecha: fila.fecha, compra: fila.compra !== null ? Number(fila.compra) : null, venta: Number(fila.venta), fuente: fila.fuente };
+}
+
+/**
+ * Para las pantallas: el dólar es un extra (la equivalencia en US$), así que si la lectura falla la pantalla sigue sin él. Pero un fallo
+ * NO se traga en silencio: queda en Sentry (una vez por arranque, para no gastar la cuota si la base está caída y todas las pantallas lo piden).
+ */
+export async function obtenerUltimaCotizacionSinRomper(db: Db): Promise<UltimaCotizacion | null> {
+  try {
+    return await obtenerUltimaCotizacion(db);
+  } catch (e) {
+    await reportarErrorUnaVez("cotizacion-lectura", e, "dolar-lectura");
+    return null;
+  }
 }
 
 /** Pesos → dólares, con 2 decimales, a la cotización dada (se usa la de VENTA: lo que costaría comprar esos dólares). */
@@ -176,7 +225,7 @@ export function reiniciarLimitadorDolar(): void {
  * pantallas abiertas a la vez no disparan varias sincronizaciones) y NUNCA lanza: un fallo de las APIs de terceros no puede romper la
  * pantalla desde la que se pidió. Devuelve `true` si intentó sincronizar.
  */
-export async function actualizarDolarSiHaceFalta(db: Db = prisma, ahora: Date = new Date()): Promise<boolean> {
+export async function actualizarDolarSiHaceFalta(db: Db, ahora: Date = new Date()): Promise<boolean> {
   if (process.env.MOTOR2_SIN_DOLAR_AUTOMATICO === "1") return false; // las pruebas de navegador no salen a internet
   if (ahora.getTime() - ultimoIntentoMs < MINUTOS_ENTRE_INTENTOS * 60_000) return false;
   ultimoIntentoMs = ahora.getTime();

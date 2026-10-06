@@ -1,11 +1,12 @@
 "use server";
 
 import type { TipoProducto } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import type { Db } from "@/lib/db-tipos";
 import { texto, validarTextoCatalogo } from "@/core/texto";
-import { esNumeroFinito } from "@/core/numero";
+import { esNumeroEstricto } from "@/core/numero";
 import { validarImporte } from "@/core/datos/importe";
 import { validarCantidad } from "@/core/datos/cantidad";
+import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
 import {
   crearConCodigoAutogenerado,
   esErrorDeUnicidad,
@@ -19,8 +20,9 @@ import {
 import { validarPasoVenta, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/grupo-producto-consulta";
-import { conPermiso } from "../con-permiso";
+import { ofrecerSincronizarPrecio, resolverGrupoDeProducto } from "@/core/carta/public-servidor";
+import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
+import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 
@@ -53,7 +55,7 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
     ...(filtro?.esConsignacion !== undefined ? [{ esConsignacion: filtro.esConsignacion }] : []),
     ...(t ? [{ OR: [{ nombre: { contains: t, mode: "insensitive" as const } }, { codigo: { contains: t, mode: "insensitive" as const } }] }] : []),
   ];
-  return prisma.producto.findMany({
+  return ctx.db.producto.findMany({
     where: condiciones.length ? { AND: condiciones } : {},
     select: { id: true, codigo: true, nombre: true },
     orderBy: { nombre: "asc" },
@@ -63,8 +65,8 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
 
 /** Un producto puntual por id, en la misma forma que el combobox — para mostrar su etiqueta después de elegirlo (ej. Conteo Físico, al agregar una fila manual). */
 export async function obtenerProductoOpcion(productoId: string): Promise<ProductoOpcion | null> {
-  await requerirSesion();
-  return prisma.producto.findUnique({ where: { id: productoId }, select: { id: true, codigo: true, nombre: true } });
+  const ctx = await requerirSesion();
+  return ctx.db.producto.findUnique({ where: { id: productoId }, select: { id: true, codigo: true, nombre: true } });
 }
 
 export interface InsumoDeProducto {
@@ -84,8 +86,8 @@ export interface InsumoDeProducto {
  * nuevo y asignárselo retroactivamente.
  */
 export async function obtenerInsumoDeProducto(productoId: string): Promise<InsumoDeProducto | null> {
-  await requerirSesion();
-  const p = await prisma.producto.findUnique({
+  const ctx = await requerirSesion();
+  const p = await ctx.db.producto.findUnique({
     where: { id: productoId },
     include: { insumo: true, unidadStock: true },
   });
@@ -111,23 +113,23 @@ export async function obtenerInsumoDeProducto(productoId: string): Promise<Insum
  * activo del mismo Insumo con otra unidad de stock.
  */
 export async function asignarInsumoAProducto(productoId: string, insumoId: string): Promise<ResultadoAccion> {
-  return conPermiso("editar_producto", async () => {
-    const producto = await prisma.producto.findUnique({ where: { id: productoId } });
+  return conPermisoDeEmpresa("producto_asignar_insumo", async (ctx) => {
+    const producto = await ctx.db.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.tipo !== "MP") return error("Solo una materia prima (MP) puede tener Insumo asignado.");
 
-    const invalido = await validarUnidadInsumo(insumoId, producto.unidadStockId, productoId);
+    const invalido = await validarUnidadInsumo(insumoId, producto.unidadStockId, productoId, ctx.db);
     if (invalido) return error(invalido);
 
-    await prisma.producto.update({ where: { id: productoId }, data: { insumoId } });
+    await ctx.db.producto.update({ where: { id: productoId }, data: { insumoId } });
     return ok("Insumo asignado.");
   });
 }
 
 /** Precio de venta global de un producto puntual — usado por Precio Local para mostrar "precio global actual" sin traer el catálogo entero. */
 export async function obtenerPrecioVentaProducto(productoId: string): Promise<number | null> {
-  await requerirSesion();
-  const p = await prisma.producto.findUnique({ where: { id: productoId }, select: { precioVenta: true } });
+  const ctx = await requerirSesion();
+  const p = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { precioVenta: true } });
   return p ? Number(p.precioVenta) : null;
 }
 
@@ -152,7 +154,7 @@ const TAMANO_PAGINA_CATALOGO = 50;
 export async function listarProductosPagina(cursor?: string, termino?: string): Promise<PaginaProductos> {
   const ctx = await requerirSesion();
   const t = texto(termino ?? "");
-  const items = await prisma.producto.findMany({
+  const items = await ctx.db.producto.findMany({
     where: t ? { OR: [{ nombre: { contains: t, mode: "insensitive" } }, { codigo: { contains: t, mode: "insensitive" } }] } : {},
     select: { id: true, codigo: true, nombre: true, tipo: true },
     orderBy: [{ nombre: "asc" }, { id: "asc" }],
@@ -167,9 +169,9 @@ export async function listarProductosPagina(cursor?: string, termino?: string): 
   // Batch, sin N+1 (una página entera de 50 filas): disponibilidad EN ESTA sucursal + cuántas sucursales en total la
   // tienen, para "Disponible acá" y "Sucursales" (§10/P10, ver disponibilidad-producto-consulta.ts).
   const [disponibleAcaPorProducto, conteos, totalSucursales] = await Promise.all([
-    disponibilidadDeProductos(ctx.sucursalId, ids, prisma),
-    prisma.disponibilidadProducto.groupBy({ by: ["productoId"], where: { productoId: { in: ids }, disponible: true }, _count: { productoId: true } }),
-    prisma.sucursal.count({ where: { activo: true } }),
+    disponibilidadDeProductos(ctx.sucursalId, ids, ctx.db),
+    ctx.db.disponibilidadProducto.groupBy({ by: ["productoId"], where: { productoId: { in: ids }, disponible: true }, _count: { productoId: true } }),
+    ctx.db.sucursal.count({ where: { activo: true } }),
   ]);
   const sucursalesDisponiblesPorProducto = new Map(conteos.map((c) => [c.productoId, c._count.productoId]));
 
@@ -217,63 +219,85 @@ export interface DatosProducto {
   activoEnTodasLasSucursales?: boolean;
 }
 
-async function validarComun(datos: DatosProducto, productoIdExcluir?: string): Promise<string | null> {
+/** Los números del producto ya validados Y NORMALIZADOS: lo que se guarda es esto, nunca el valor crudo del POST (que pudo ser «1.234,5», « 5 » o null). */
+interface NumerosValidados {
+  factorConversion: number;
+  precioVenta: number;
+  precioConsignacion: number;
+  pasoVenta: number | null;
+}
+
+async function validarComun(db: Db, datos: DatosProducto, productoIdExcluir?: string): Promise<{ error: string } | { numeros: NumerosValidados }> {
   const nombre = texto(datos.nombre);
-  if (!nombre) return "El nombre no puede estar vacío.";
+  if (!nombre) return { error: "El nombre no puede estar vacío." };
   const invalido = validarTextoCatalogo(nombre, "El nombre");
-  if (invalido) return invalido;
-  if (!datos.unidadStockId) return "La unidad de stock es obligatoria.";
+  if (invalido) return { error: invalido };
+  const observaciones = validarTextoLibre(datos.observaciones, "Las observaciones", LARGO_MAXIMO_NOTAS);
+  if (!observaciones.ok) return { error: observaciones.mensaje };
+  if (!datos.unidadStockId) return { error: "La unidad de stock es obligatoria." };
   // Unidad de stock, una sola vez: `factorConversion` son "unidades de stock por unidad de compra" (Catalogo.js:1083/1095,
   // prisma/schema.prisma) — sus decimales son los de ESA unidad, igual que `pasoVenta` (R3, validarPasoVenta) más abajo.
-  const unidadStock = await prisma.unidad.findUnique({ where: { id: datos.unidadStockId }, select: { nombre: true, decimales: true } });
-  if (!unidadStock) return "La unidad de stock es obligatoria.";
+  const unidadStock = await db.unidad.findUnique({ where: { id: datos.unidadStockId }, select: { nombre: true, decimales: true } });
+  if (!unidadStock) return { error: "La unidad de stock es obligatoria." };
 
   const factorConversion = validarCantidad(datos.factorConversion, unidadStock, { etiqueta: "El factor de conversión", obligatorio: true });
-  if (!factorConversion.ok) return factorConversion.mensaje;
+  if (!factorConversion.ok) return { error: factorConversion.mensaje };
 
   const precioVenta = validarImporte(datos.precioVenta, { etiqueta: "El precio de venta" });
-  if (!precioVenta.ok) return precioVenta.mensaje;
+  if (!precioVenta.ok) return { error: precioVenta.mensaje };
 
+  let precioConsignacion: number | null;
   if (datos.esConsignacion) {
-    if (!datos.proveedorConsignacionId) return "Falta el proveedor de consignación.";
-    const precioConsignacion = validarImporte(datos.precioConsignacion, { etiqueta: "El precio de consignación", obligatorio: true, permitirCero: false });
-    if (!precioConsignacion.ok) return precioConsignacion.mensaje;
+    if (!datos.proveedorConsignacionId) return { error: "Falta el proveedor de consignación." };
+    const r = validarImporte(datos.precioConsignacion, { etiqueta: "El precio de consignación", obligatorio: true, permitirCero: false });
+    if (!r.ok) return { error: r.mensaje };
+    precioConsignacion = r.valor;
+  } else {
+    // Sin consignación el precio no se usa, pero igual se guarda: tiene que ser un importe válido (antes pasaba crudo, hasta un negativo).
+    const r = validarImporte(datos.precioConsignacion, { etiqueta: "El precio de consignación" });
+    if (!r.ok) return { error: r.mensaje };
+    precioConsignacion = r.valor;
   }
 
+  let pasoVenta: number | null = null;
   if (datos.pasoVenta !== undefined && datos.pasoVenta !== null) {
-    if (datos.tipo !== "PV") return "El paso de venta solo aplica a productos de venta (PV).";
+    if (datos.tipo !== "PV") return { error: "El paso de venta solo aplica a productos de venta (PV)." };
     const r = validarPasoVenta(datos.pasoVenta, { decimalesUnidad: unidadStock.decimales, tieneStockReal: tieneStockReal("PV", datos.seProduce ?? false) });
-    if (!r.ok) return r.mensaje;
+    if (!r.ok) return { error: r.mensaje };
+    pasoVenta = r.paso;
   }
 
-  const dup = await prisma.producto.findFirst({
+  const dup = await db.producto.findFirst({
     where: {
       ...whereDisponibleEnAlguna(),
       nombre: { equals: nombre, mode: "insensitive" },
       ...(productoIdExcluir ? { id: { not: productoIdExcluir } } : {}),
     },
   });
-  if (dup) return `Ya existe un producto disponible llamado "${nombre}".`;
+  if (dup) return { error: `Ya existe un producto disponible llamado "${nombre}".` };
 
-  return validarUnidadInsumo(datos.insumoId, datos.unidadStockId, productoIdExcluir);
+  const errorInsumo = await validarUnidadInsumo(datos.insumoId, datos.unidadStockId, productoIdExcluir, db);
+  if (errorInsumo) return { error: errorInsumo };
+  return { numeros: { factorConversion: factorConversion.valor!, precioVenta: precioVenta.valor ?? 0, precioConsignacion: precioConsignacion ?? 0, pasoVenta } };
 }
 
-function datosParaGuardar(datos: DatosProducto) {
+function datosParaGuardar(datos: DatosProducto, numeros: NumerosValidados) {
   return {
     nombre: texto(datos.nombre),
     categoriaId: datos.categoriaId || null,
     unidadCompraId: datos.unidadCompraId || null,
     unidadStockId: datos.unidadStockId,
-    factorConversion: datos.factorConversion,
+    factorConversion: numeros.factorConversion,
     insumoId: datos.insumoId || null,
-    precioVenta: datos.precioVenta ?? 0,
+    precioVenta: numeros.precioVenta,
     // Defensivo (validarComun ya lo rechaza para MP): un paso de venta nunca se guarda fuera de un PV.
-    pasoVenta: datos.tipo === "PV" ? (datos.pasoVenta ?? null) : null,
+    pasoVenta: datos.tipo === "PV" ? numeros.pasoVenta : null,
     seProduce: datos.seProduce ?? false,
     esConsignacion: datos.esConsignacion ?? false,
     proveedorConsignacionId: datos.proveedorConsignacionId || null,
-    precioConsignacion: datos.precioConsignacion ?? 0,
-    observaciones: datos.observaciones,
+    precioConsignacion: numeros.precioConsignacion,
+    // Sin el campo, Prisma no lo toca (strictUndefinedChecks no admite `undefined`).
+    ...(datos.observaciones !== undefined && { observaciones: datos.observaciones }),
   };
 }
 
@@ -288,23 +312,23 @@ function datosParaGuardar(datos: DatosProducto) {
  * mismo default que usa el form completo cuando no se toca ese campo.
  */
 export async function darDeAltaProductoRapido(nombre: string, unidadStockId: string): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("alta_producto", async () => {
+  return conPermisoDeEmpresa<ResultadoConId>("alta_producto", async (ctx) => {
     const n = texto(nombre);
     if (!n) return error("El nombre no puede estar vacío.");
     const invalido = validarTextoCatalogo(n, "El nombre");
     if (invalido) return error(invalido);
     if (!unidadStockId) return error("La unidad de stock es obligatoria.");
 
-    const dup = await prisma.producto.findFirst({ where: { ...whereDisponibleEnAlguna(), nombre: { equals: n, mode: "insensitive" } } });
+    const dup = await ctx.db.producto.findFirst({ where: { ...whereDisponibleEnAlguna(), nombre: { equals: n, mode: "insensitive" } } });
     if (dup) return error(`Ya existe un producto disponible llamado "${n}".`);
 
     try {
       const producto = await crearConCodigoAutogenerado("MP", undefined, (codigo) =>
-        prisma.producto.create({ data: { codigo, tipo: "MP", nombre: n, unidadStockId, factorConversion: 1 } })
+        ctx.db.producto.create({ data: { codigo, tipo: "MP", nombre: n, unidadStockId, factorConversion: 1 } })
       );
       // Sin formulario donde poner el tilde de §4.1 — sigue su mismo default: activo en todas las sucursales que existen hoy.
-      const sucursalIds = (await prisma.sucursal.findMany({ select: { id: true } })).map((s) => s.id);
-      await prisma.disponibilidadProducto.createMany({ data: sucursalIds.map((sucursalId) => ({ sucursalId, productoId: producto.id, disponible: true })) });
+      const sucursalIds = (await ctx.db.sucursal.findMany({ select: { id: true } })).map((s) => s.id);
+      await ctx.db.disponibilidadProducto.createMany({ data: sucursalIds.map((sucursalId) => ({ sucursalId, productoId: producto.id, disponible: true })) });
       return okConId(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, producto.id, producto.nombre);
     } catch (e) {
       if (esErrorDeUnicidad(e)) return error("Ya existe un producto con ese código.");
@@ -324,17 +348,17 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
  * algunas sucursales sin querer), y se puede arreglar desde `/catalogo/productos`, donde aparece con "0 de N sucursales".
  */
 export async function darDeAltaProducto(datos: DatosProducto): Promise<ResultadoConId> {
-  return conPermiso("alta_producto", async (ctx) => {
-    const invalido = await validarComun(datos);
-    if (invalido) return error(invalido);
+  return conPermisoDeEmpresa("alta_producto", async (ctx) => {
+    const validado = await validarComun(ctx.db, datos);
+    if ("error" in validado) return error(validado.error);
 
     try {
       const producto = await crearConCodigoAutogenerado(datos.tipo, datos.codigo, (codigo) =>
-        prisma.producto.create({ data: { codigo, tipo: datos.tipo, ...datosParaGuardar(datos) } })
+        ctx.db.producto.create({ data: { codigo, tipo: datos.tipo, ...datosParaGuardar(datos, validado.numeros) } })
       );
       const sucursalIds =
-        datos.activoEnTodasLasSucursales !== false ? (await prisma.sucursal.findMany({ select: { id: true } })).map((s) => s.id) : [ctx.sucursalId];
-      await prisma.disponibilidadProducto.createMany({
+        datos.activoEnTodasLasSucursales !== false ? (await ctx.db.sucursal.findMany({ select: { id: true } })).map((s) => s.id) : [ctx.sucursalId];
+      await ctx.db.disponibilidadProducto.createMany({
         data: sucursalIds.map((sucursalId) => ({ sucursalId, productoId: producto.id, disponible: true })),
       });
       return okConId(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, producto.id, producto.nombre);
@@ -356,8 +380,8 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
  * aplicar el mismo precio con un botón aparte (`sincronizarPrecioGrupoCarta`). Nunca se sincroniza solo.
  */
 export async function actualizarProducto(productoId: string, datos: DatosProducto): Promise<ResultadoConSincronizable> {
-  return conPermiso<ResultadoConSincronizable>("editar_producto", async (ctx) => {
-    const existente = await prisma.producto.findUnique({ where: { id: productoId } });
+  return conPermisoDeEmpresa<ResultadoConSincronizable>("producto_editar", async (ctx) => {
+    const existente = await ctx.db.producto.findUnique({ where: { id: productoId } });
     if (!existente) return error("No se encontró el producto.");
     // datosParaGuardar (abajo) no incluye `tipo` a propósito — cambiar el
     // tipo de un producto con historial (recetas, ventas, stock) rompe
@@ -368,14 +392,14 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
       return error(`El tipo no se puede cambiar — este producto ya es "${existente.tipo}". Dado de baja y creá uno nuevo si necesitás el otro tipo.`);
     }
 
-    const invalido = await validarComun(datos, productoId);
-    if (invalido) return error(invalido);
+    const validado = await validarComun(ctx.db, datos, productoId);
+    if ("error" in validado) return error(validado.error);
 
-    const nuevos = datosParaGuardar(datos);
+    const nuevos = datosParaGuardar(datos, validado.numeros);
     const nombreActual = texto(datos.nombre);
     // El `update` y sus filas de auditoría van en UNA transacción (Task #41, M10): antes iban sueltos y, si la auditoría fallaba
     // (o el proceso se caía en el medio), el precio quedaba cambiado sin rastro.
-    await prisma.$transaction(async (tx) => {
+    await ctx.transaccion(async (tx) => {
       await tx.producto.update({ where: { id: productoId }, data: nuevos });
 
       // Auditoría administrativa (A3, Pivote 6) — solo los precios, que son
@@ -401,10 +425,11 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
       });
     });
 
+    revalidarCartasPublicas();
     const mensaje = `Producto "${nombreActual}" actualizado.`;
     const precioNuevo = Number(nuevos.precioVenta);
     if (precioNuevo !== Number(existente.precioVenta)) {
-      const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId), precioNuevo, "global");
+      const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId, ctx.db), precioNuevo, "global");
       if (sincronizable) return { ok: true, mensaje, sincronizable };
     }
     return ok(mensaje);
@@ -417,18 +442,18 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
  * que editar el precio de cada uno a mano. Solo toca los `productoIds` pasados, y solo si son todos del mismo ítem agrupado.
  */
 export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio: number): Promise<ResultadoAccion> {
-  return conPermiso("editar_producto", async (ctx) => {
-    if (!esNumeroFinito(precio)) return error("El precio de venta no es un número válido.");
+  return conPermisoDeEmpresa("producto_sincronizar_precio_carta", async (ctx) => {
+    if (!esNumeroEstricto(precio)) return error("El precio de venta no es un número válido.");
     if (!(precio >= 0)) return error("El precio de venta no puede ser negativo.");
     const ids = [...new Set(productoIds)];
     if (!ids.length) return error("No hay productos para actualizar.");
 
-    const grupo = await resolverGrupoDeProducto(ids[0], ctx.sucursalId);
+    const grupo = await resolverGrupoDeProducto(ids[0], ctx.sucursalId, ctx.db);
     const delGrupo = new Set(grupo ? [ids[0], ...grupo.hermanos.map((h) => h.productoId)] : []);
     if (!grupo || ids.some((id) => !delGrupo.has(id))) return error("Esos productos no están todos en el mismo ítem agrupado de la carta.");
 
     // Todo el grupo en UNA transacción, con su auditoría (Task #41, M10): o quedan todos los precios con su rastro, o ninguno.
-    const productos = await prisma.$transaction(async (tx) => {
+    const productos = await ctx.transaccion(async (tx) => {
       const productos = await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, precioVenta: true }, orderBy: { nombre: "asc" } });
       for (const p of productos) {
         await tx.producto.update({ where: { id: p.id }, data: { precioVenta: precio } });
@@ -440,6 +465,7 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
       }
       return productos;
     });
+    revalidarCartasPublicas();
     return ok(`Precio de venta de ${productos.map((p) => `"${p.nombre}"`).join(", ")} actualizado a $${precio.toLocaleString("es-AR")} («${grupo.nombreItem}»).`);
   });
 }
@@ -461,11 +487,11 @@ function enumerar(items: string[], tope = 4): string {
  * `dependenciasParaDesactivar`.
  */
 export async function actualizarDisponibilidadProducto(productoId: string, disponible: boolean): Promise<ResultadoAccion> {
-  return conPermiso("editar_producto", async (ctx) => {
-    const existente = await prisma.producto.findUnique({ where: { id: productoId } });
+  return conPermiso("producto_disponibilidad", async (ctx) => {
+    const existente = await ctx.db.producto.findUnique({ where: { id: productoId } });
     if (!existente) return error("No se encontró el producto.");
     if (!disponible) {
-      const { recetasVigentes, saldos } = await dependenciasParaDesactivar(productoId, ctx.sucursalId);
+      const { recetasVigentes, saldos } = await dependenciasParaDesactivar(productoId, ctx.sucursalId, ctx.db);
       const motivos: string[] = [];
       if (recetasVigentes.length) motivos.push(`está en la receta vigente de ${enumerar(recetasVigentes.map((r) => r.nombre))}: sacalo de esas recetas`);
       if (saldos.length) {
@@ -476,18 +502,19 @@ export async function actualizarDisponibilidadProducto(productoId: string, dispo
     }
     // El valor anterior se lee ANTES del upsert — registrarCambioAuditado necesita comparar contra el estado previo real, no
     // contra el que se está por escribir (si no, "repetir el mismo estado no deja registro" dejaría de cumplirse).
-    const anterior = await productoDisponibleEn(ctx.sucursalId, productoId);
-    await prisma.disponibilidadProducto.upsert({
+    const anterior = await productoDisponibleEn(ctx.sucursalId, productoId, ctx.db);
+    await ctx.db.disponibilidadProducto.upsert({
       where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } },
       update: { disponible },
       create: { sucursalId: ctx.sucursalId, productoId, disponible },
     });
     // Auditoría administrativa, como el cambio de activo de un rol. No-op si el valor no cambió (registrarCambioAuditado).
-    await registrarCambioAuditado(prisma, {
+    await registrarCambioAuditado(ctx.db, {
       entidad: "DisponibilidadProducto", entidadId: `${ctx.sucursalId}:${productoId}`, campo: "disponible",
       descripcion: `Producto "${existente.nombre}" en "${ctx.sucursalNombre}": disponible`,
       valorAnterior: anterior, valorNuevo: disponible, actorId: ctx.usuarioId,
     });
+    revalidarCartasPublicas();
     return ok(`Producto "${existente.nombre}" ${disponible ? "activado" : "desactivado"} en "${ctx.sucursalNombre}".`);
   });
 }
@@ -506,8 +533,8 @@ export interface PresentacionOpcion {
  * Compra (filtra a `.activa` — ver PanelMovimientoForm).
  */
 export async function listarPresentaciones(productoId: string): Promise<PresentacionOpcion[]> {
-  await requerirSesion();
-  const filas = await prisma.presentacion.findMany({
+  const ctx = await requerirSesion();
+  const filas = await ctx.db.presentacion.findMany({
     where: { productoId },
     include: { unidadCompra: true },
     orderBy: { unidadCompra: { nombre: "asc" } },
@@ -526,8 +553,8 @@ export async function agregarPresentacionAlternativa(
   unidadCompraId: string,
   factorConversion: number
 ): Promise<ResultadoAccion> {
-  return conPermiso("alta_producto", async () => {
-    const producto = await prisma.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
+  return conPermisoDeEmpresa("producto_presentaciones", async (ctx) => {
+    const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
     if (!producto) return error("No se encontró el producto.");
     if (producto.unidadCompraId === unidadCompraId) {
       return error("Esa ya es la unidad de compra por defecto de este producto.");
@@ -537,7 +564,7 @@ export async function agregarPresentacionAlternativa(
     const factor = validarCantidad(factorConversion, producto.unidadStock, { etiqueta: "El factor de conversión", obligatorio: true });
     if (!factor.ok) return error(factor.mensaje);
 
-    await prisma.presentacion.upsert({
+    await ctx.db.presentacion.upsert({
       where: { productoId_unidadCompraId: { productoId, unidadCompraId } },
       update: { factorConversion: factor.valor!, activa: true },
       create: { productoId, unidadCompraId, factorConversion: factor.valor! },
@@ -547,8 +574,8 @@ export async function agregarPresentacionAlternativa(
 }
 
 export async function actualizarActivaPresentacion(presentacionId: string, activa: boolean): Promise<ResultadoAccion> {
-  return conPermiso("alta_producto", async () => {
-    await prisma.presentacion.update({ where: { id: presentacionId }, data: { activa } });
+  return conPermisoDeEmpresa("producto_presentaciones", async (ctx) => {
+    await ctx.db.presentacion.update({ where: { id: presentacionId }, data: { activa } });
     return ok(`Presentación ${activa ? "activada" : "desactivada"}.`);
   });
 }

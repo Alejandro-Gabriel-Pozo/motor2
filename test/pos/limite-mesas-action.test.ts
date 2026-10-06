@@ -8,7 +8,7 @@ import { actualizarMaxMesasAbiertas } from "../../src/server/actions/pos/mesas";
 
 /**
  * Límite de mesas abiertas por sucursal (src/server/actions/pos/mesas.ts, docs/plan-comensales-y-limite-mesas-2026-09-26.md):
- * validación, mismo permiso que dar de alta mesas (`pos_mesas`, Editar) y auditoría.
+ * validación, permiso propio (`pos_limite_mesas_abiertas`, Editar), distinto del de dar de alta mesas y auditoría.
  */
 describe("actualizarMaxMesasAbiertas (server action)", () => {
   let base: Awaited<ReturnType<typeof sembrarBase>>;
@@ -59,7 +59,7 @@ describe("actualizarMaxMesasAbiertas (server action)", () => {
     expect((await sucursal()).maxMesasAbiertas).toBe(10);
   });
 
-  it("un rol sin pos_mesas (el operador de fábrica) no puede", async () => {
+  it("un rol sin pos_limite_mesas_abiertas (el operador de fábrica) no puede", async () => {
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: base.operador.id });
     await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
     const r = await actualizarMaxMesasAbiertas(5);
@@ -68,8 +68,8 @@ describe("actualizarMaxMesasAbiertas (server action)", () => {
     expect((await sucursal()).maxMesasAbiertas).toBeNull();
   });
 
-  it("con Ver pero sin Editar de pos_mesas, tampoco", async () => {
-    await prisma.permisoRol.update({ where: { rolId_accionClave: { rolId: base.operador.id, accionClave: "pos_mesas" } }, data: { puedeVer: true, puedeEditar: false } });
+  it("con Ver pero sin Editar de pos_limite_mesas_abiertas, tampoco", async () => {
+    await prisma.permisoRol.update({ where: { rolId_accionClave: { rolId: base.operador.id, accionClave: "pos_limite_mesas_abiertas" } }, data: { puedeVer: true, puedeEditar: false } });
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: base.operador.id });
     await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
     const r = await actualizarMaxMesasAbiertas(5);
@@ -77,10 +77,10 @@ describe("actualizarMaxMesasAbiertas (server action)", () => {
     expect(r.mensaje).toMatch(/No tenés permiso/);
   });
 
-  it("si la Central deshabilitó pos_mesas para la sucursal, ni el admin puede", async () => {
-    await prisma.capacidadSucursal.create({ data: { accionClave: "pos_mesas", sucursalId, habilitado: false } });
+  it("si la Central deshabilitó pos_limite_mesas_abiertas para la sucursal, ni el admin puede", async () => {
+    await prisma.capacidadSucursal.create({ data: { accionClave: "pos_limite_mesas_abiertas", sucursalId, habilitado: false } });
     const r = await actualizarMaxMesasAbiertas(5);
     expect(r.ok).toBe(false);
-    expect(r.mensaje).toMatch(/no habilitó "pos_mesas"/);
+    expect(r.mensaje).toMatch(/no habilitó "pos_limite_mesas_abiertas"/);
   });
 });

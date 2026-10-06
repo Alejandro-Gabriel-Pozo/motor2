@@ -22,6 +22,7 @@ export {
   redondearACantidadDeUnidad,
   tieneStockReal,
 } from "./transiciones";
+export { DESTINOS_CONSUMO_SEMILLA, MOTIVOS_MERMA_SEMILLA } from "./motivos-semilla";
 export { NAV_MOVIMIENTOS, obtenerConfigProceso } from "./ui-config";
 export type { ProcesoUiConfig } from "./ui-config";
 export {
@@ -34,4 +35,6 @@ export {
   descripcionAuditoriaAnulacionDeVenta,
 } from "./anulaciones";
 export type { ResultadoAnulacionDeVenta, LineaVendida, LineaDeReversionDeVenta } from "./anulaciones";
+export { armarFilasDeMovimiento } from "./armar-filas-de-movimiento";
+export type { ConsumoParaFilas } from "./armar-filas-de-movimiento";
 export type { AccionConteo } from "@prisma/client";

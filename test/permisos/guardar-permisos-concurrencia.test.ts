@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarPermisos } from "../../src/server/actions/permisos/permisos";
 import { ACCIONES } from "../../src/core/permisos/acciones";
+import { rolAlcanzaLaAccion } from "../../src/core/permisos/jerarquia";
 import { SIN_PERMISO } from "../../src/core/permisos/matriz";
 
 /**
@@ -27,7 +28,8 @@ import { SIN_PERMISO } from "../../src/core/permisos/matriz";
 const ITERACIONES = 12;
 
 // Acciones en las que el operador arranca SIN acceso (así el estado inicial de cada celda es SIN_PERMISO y no depende de la semilla exacta).
-const ACCIONES_SIN_ACCESO_DEL_OPERADOR = ACCIONES.filter((a) => !(a.rolesEditarSemilla as readonly string[]).includes("operador")).map((a) => a.clave);
+// Solo las que el rol operador PUEDE tener por su nivel (el piso de la acción manda: las de administrador no se le pueden dar).
+const ACCIONES_SIN_ACCESO_DEL_OPERADOR = ACCIONES.filter((a) => !(a.rolesEditarSemilla as readonly string[]).includes("operador") && rolAlcanzaLaAccion({ clave: "operador" }, a.clave)).map((a) => a.clave);
 
 describe("guardarPermisos — concurrencia real", () => {
   let operadorRolId: string;
@@ -39,7 +41,7 @@ describe("guardarPermisos — concurrencia real", () => {
   /** Deja las celdas en SIN_PERMISO y borra la auditoría, para que cada iteración parta del mismo estado. */
   const reiniciar = async (claves: string[]) => {
     await prisma.permisoRol.updateMany({ where: { rolId: operadorRolId, accionClave: { in: claves } }, data: { puedeVer: false, puedeEditar: false } });
-    await prisma.registroAuditoria.deleteMany({ where: { entidad: "PermisoRol" } });
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "PermisoRol" } });
   };
   const cambio = (accionClave: string, nuevo: { puedeVer: boolean; puedeEditar: boolean }) => ({ rolId: operadorRolId, accionClave, anterior: SIN_PERMISO, nuevo });
 
@@ -109,10 +111,10 @@ describe("guardarPermisos — concurrencia real", () => {
 
   it("todo o nada bajo concurrencia: si el guardado pierde, NO deja escritas las celdas que no chocaban", async () => {
     const libres = ACCIONES_SIN_ACCESO_DEL_OPERADOR;
-    expect(libres.length).toBeGreaterThanOrEqual(21);
+    expect(libres.length).toBeGreaterThanOrEqual(9);
     const compartida = libres[0];
-    const propiasDeA = libres.slice(1, 11);
-    const propiasDeB = libres.slice(11, 21);
+    const propiasDeA = libres.slice(1, 5);
+    const propiasDeB = libres.slice(5, 9);
     const soloVer = { puedeVer: true, puedeEditar: false };
 
     for (let i = 0; i < 4; i++) {

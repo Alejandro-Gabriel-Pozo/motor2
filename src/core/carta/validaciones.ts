@@ -29,7 +29,7 @@ export function validarImagenUrlCarta(valor: unknown, etiqueta = "La URL de la i
 }
 
 /**
- * Acepta una lista o un texto separado por comas (como la columna de la sheet de hoy). Recorta, descarta vacíos y repetidos
+ * Acepta una lista o un texto separado por comas (como en un campo de tags). Recorta, descarta vacíos y repetidos
  * (sin distinguir mayúsculas), y valida cantidad, largo y caracteres.
  */
 export function normalizarTagsCarta(valor: readonly string[] | string | null | undefined): Resultado<string[]> {
@@ -120,22 +120,14 @@ export function validarCantidadCupoPromo(valor: unknown, etiqueta: string, valor
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// Registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M2): lo que se carga en `SucursalPublica`. También
-// los usa `armarRegistroTenants` para sanear la salida del endpoint (una fila cargada a mano por `db:studio` no pasa por acá).
+// Registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M2): lo que se carga en `SucursalPublica`.
 // ---------------------------------------------------------------------------------------------------------------------------
 
 export const LARGO_MAXIMO_SLUG_TENANT = 60;
 export const LARGO_MAXIMO_ETIQUETA_PORTAL = 80;
 export const LARGO_MAXIMO_SUBTITULO_PORTAL = 200;
-const LARGO_MAXIMO_TAB_SHEET = 100;
-export const TAB_MENU_POR_DEFECTO = "Menu";
-/** Minúsculas, dígitos y guiones sueltos entre medio: es el `/carta/<slug>` público (y el `tenant_id` de la sheet). */
+/** Minúsculas, dígitos y guiones sueltos entre medio: es el `/carta/<slug>` público. */
 const RE_SLUG_TENANT = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-/** Id de un Google Spreadsheet (lo que va entre `/d/` y la barra siguiente en su URL). */
-const RE_SHEET_ID = /^[A-Za-z0-9_-]{20,128}$/;
-const RE_URL_SHEET = /^https:\/\/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]+)(?:[/?#].*)?$/;
-const RE_ETIQUETA_DNS = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
-const RE_CONTROL = /[\u0000-\u001f\u007f]/;
 
 /** Slug del portal: se recorta y se pasa a minúsculas; después tiene que cumplir el formato y el largo. */
 export function validarSlugTenant(valor: unknown): Resultado<string> {
@@ -143,40 +135,6 @@ export function validarSlugTenant(valor: unknown): Resultado<string> {
   if (!v) return { ok: false, mensaje: "El slug no puede estar vacío." };
   if (v.length > LARGO_MAXIMO_SLUG_TENANT) return { ok: false, mensaje: `El slug no puede superar los ${LARGO_MAXIMO_SLUG_TENANT} caracteres.` };
   if (!RE_SLUG_TENANT.test(v)) return { ok: false, mensaje: "El slug solo puede tener letras minúsculas sin tilde, números y guiones sueltos entre medio (ej: villa-la-angostura)." };
-  return { ok: true, valor: v };
-}
-
-/**
- * Dominio propio del tenant (hecho externo, manual): vacío → null. Se normaliza a host desnudo — sin `http(s)://`, sin barra
- * final, sin puerto, en minúsculas — y se valida como nombre de host con al menos un punto. Una ruta (`/algo`) no se acepta.
- */
-export function validarDominioPublico(valor: unknown): Resultado<string | null> {
-  let v = texto(valor).toLowerCase();
-  if (!v) return { ok: true, valor: null };
-  v = v.replace(/^https?:\/\//, "").replace(/\/+$/, "").replace(/:\d+$/, "");
-  const mensaje = `El dominio "${texto(valor).slice(0, 60)}" no es válido: tiene que ser un nombre de host como carta.mirestaurante.com.`;
-  if (!v || v.length > 253 || v.includes("/")) return { ok: false, mensaje };
-  const etiquetas = v.split(".");
-  if (etiquetas.length < 2 || !etiquetas.every((e) => RE_ETIQUETA_DNS.test(e)) || /^\d+$/.test(etiquetas[etiquetas.length - 1])) return { ok: false, mensaje };
-  return { ok: true, valor: v };
-}
-
-/** Id del spreadsheet del tenant: vacío → null. Acepta también la URL completa de la sheet y se queda con el id. */
-export function validarSheetId(valor: unknown): Resultado<string | null> {
-  let v = texto(valor);
-  if (!v) return { ok: true, valor: null };
-  const deUrl = RE_URL_SHEET.exec(v);
-  if (deUrl) v = deUrl[1];
-  if (!RE_SHEET_ID.test(v)) return { ok: false, mensaje: "El id de la sheet no es válido: es el texto que va entre /d/ y la barra siguiente en la URL de la sheet (o pegá la URL completa)." };
-  return { ok: true, valor: v };
-}
-
-/** Nombre de la tab del menú en la sheet del tenant: vacío → "Menu"; si no, hasta 100 caracteres sin caracteres de control. */
-export function validarNombreTabSheet(valor: unknown): Resultado<string> {
-  const v = texto(valor);
-  if (!v) return { ok: true, valor: TAB_MENU_POR_DEFECTO };
-  if (v.length > LARGO_MAXIMO_TAB_SHEET) return { ok: false, mensaje: `El nombre de la tab no puede superar los ${LARGO_MAXIMO_TAB_SHEET} caracteres.` };
-  if (RE_CONTROL.test(v)) return { ok: false, mensaje: "El nombre de la tab tiene caracteres no permitidos." };
   return { ok: true, valor: v };
 }
 

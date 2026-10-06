@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 import { abrirComoRol } from "./fixtures/rol-pos";
 
 /**
@@ -18,7 +18,7 @@ const tarjeta = (page: Page, numero: number) => page.locator(`li[data-mesa="${nu
 /** Tres mesas en «Central»: libre, en pedido (1 ítem sin enviar) y ocupada (ítems enviados en los envíos 1 y 2). */
 async function sembrarTresMesas(sucursalId: string, numeros: [number, number, number]) {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-POS-${marca}`, nombre: `E2E Plato Salón ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 18400 } });
   const [libre, enPedido, ocupada] = await Promise.all(numeros.map((numero) => prisma.mesa.create({ data: { sucursalId, numero } })));
@@ -119,7 +119,7 @@ test("las acciones de cada tarjeta llevan a la pantalla de la mesa; «Opciones d
     // Sin el menú lateral de la administración (ni su botón de ocultar, ni sus enlaces); sí el enlace de vuelta para el admin.
     await expect(page.getByRole("button", { name: /menú/ })).toHaveCount(0);
     await expect(page.locator('a[href="/administracion/usuarios"]')).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Administración" })).toHaveAttribute("href", "/reportes");
+    await expect(page.getByRole("link", { name: "Administración" })).toHaveAttribute("href", "/inicio");
   } finally {
     await limpiar();
   }
@@ -175,8 +175,8 @@ test("permisos: con Ver sin Editar se ve el mapa con «Nueva mesa» deshabilitad
   }
 });
 
-test("un rol con solo pos_mesas (el «mozo», creado desde la matriz) entra directo al mapa y no ve el enlace a la administración", async ({ browser, baseURL, sucursalId }) => {
-  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "editar" });
+test("un rol con solo pos_mesas y pos_alta_mesa (el «mozo», creado desde la matriz) entra directo al mapa y no ve el enlace a la administración", async ({ browser, baseURL, sucursalId }) => {
+  const mozo = await abrirComoRol(browser, baseURL, sucursalId, { pos_mesas: "editar", pos_alta_mesa: "editar" });
   try {
     await mozo.page.goto("/");
     await mozo.page.waitForURL(/\/mesas$/);

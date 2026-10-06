@@ -1,7 +1,8 @@
-import { prisma } from "@/lib/db";
 import { esSignoFijo } from "@/core/movimientos/public";
 import { cargarClasificacionNoComestibles, construirIndiceRecetas, construirMapaProductos, type Db } from "./comun";
-import { calcularImpactoRecetasPorPeriodo } from "./costos";
+import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo } from "./costos";
+import { hayObjetivosCargados, resumirFueraDeObjetivo } from "./margen-objetivo";
+import { cargarObjetivosDeMargen } from "./margen-objetivo-consulta";
 import { rangoUtc, type FiltrosPeriodo, type ItemPeriodo } from "./periodo-tipos";
 import { generarDigestAlertas } from "./periodo-alertas";
 import { calcularRatioGastoVentas } from "./periodo-ratio";
@@ -33,7 +34,7 @@ export { agruparVentasPorCategoria, pvSinCategoriaDe } from "./periodo-categoria
  * varios reportes (CSV, margen, compras) necesitan ese detalle línea por
  * línea, no un agregado.
  */
-export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db = prisma) {
+export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db) {
   return (await obtenerReportePorPeriodoConCatalogo(sucursalId, desdeIn, hastaIn, filtros, db)).reporte;
 }
 
@@ -43,7 +44,7 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
  * APARTE del reporte, no adentro: un `Map` dentro de un objeto de reporte se rompe (error de serialización) en cuanto alguien lo pasa
  * entero a un Client Component, y así la forma pública del reporte no cambia.
  */
-export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db = prisma) {
+export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db) {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
 
   // Optimización (Pivote 5, docs/auditoria-motor2-pivotes-2026-09-16.md
@@ -133,8 +134,11 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
   const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, productos, db);
   const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db, productos, indiceRecetas, clasificacionNoComestibles);
   const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db, productos, indiceRecetas);
-  const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(desde, hasta, tendenciaPrecios, ventas.porProducto, db);
-  const digest = generarDigestAlertas(ratioGastoVentas, gastoPorInsumo, tendenciaPrecios, impactoRecetas);
+  const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(sucursalId, desde, hasta, tendenciaPrecios, ventas.porProducto, db);
+  // Alerta pasiva de margen objetivo: solo si la empresa cargó un objetivo (si no, no se calcula nada de más). Reusa el catálogo y el índice de recetas ya cargados.
+  const objetivos = await cargarObjetivosDeMargen(db);
+  const fueraDeObjetivo = hayObjetivosCargados(objetivos) ? resumirFueraDeObjetivo(await calcularCostosYMargenes(sucursalId, db, productos, indiceRecetas, objetivos)) : null;
+  const digest = generarDigestAlertas(ratioGastoVentas, gastoPorInsumo, tendenciaPrecios, impactoRecetas, fueraDeObjetivo);
 
   const reporte = {
     total: items.length,
@@ -160,7 +164,7 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
  * calcularVentasDelPeriodo (vía obtenerReportePorPeriodo) en vez de
  * reimplementar el criterio real-vs-estimado, solo reagrupa por Categoría.
  */
-export async function generarReporteVentasPorCategoria(sucursalId: string, desde: Date, hasta: Date, db: Db = prisma) {
+export async function generarReporteVentasPorCategoria(sucursalId: string, desde: Date, hasta: Date, db: Db) {
   // El catálogo sale del propio reporte (ya lo cargó): no se lee de nuevo. Las ventas anuladas las descarta `calcularVentasDelPeriodo` (`r.anulada`).
   const { reporte: rep, productos } = await obtenerReportePorPeriodoConCatalogo(sucursalId, desde, hasta, { proceso: "VENTA" }, db);
 

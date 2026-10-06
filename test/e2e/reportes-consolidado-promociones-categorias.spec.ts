@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
+import { crearMembresias } from "../setup/membresia";
 
 /**
  * Brecha detectada al planificar la consistencia del margen Real
@@ -16,16 +17,14 @@ test("consolidado: con una sola sucursal explica que no hay nada que consolidar"
 
 test("consolidado: con dos o más sucursales, arma la tabla y suma los totales", async ({ browser, baseURL }) => {
   const marca = Date.now();
-  const central = await prisma.sucursal.findUniqueOrThrow({ where: { nombre: "Central" } });
+  const central = await prisma.sucursal.findFirstOrThrow({ where: { nombre: "Central" } });
   const segunda = await prisma.sucursal.create({ data: { nombre: `E2E Sucursal Dos ${marca}` } });
-  const rol = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+  const rol = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
   const usuario = await prisma.user.create({ data: { email: `e2e-consolidado-${marca}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.createMany({
-    data: [
+  await crearMembresias([
       { usuarioId: usuario.id, sucursalId: central.id, rolId: rol.id, activo: true },
       { usuarioId: usuario.id, sucursalId: segunda.id, rolId: rol.id, activo: true },
-    ],
-  });
+    ]);
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
 
@@ -38,11 +37,6 @@ test("consolidado: con dos o más sucursales, arma la tabla y suma los totales",
   await expect(page.getByRole("cell", { name: "Central" })).toBeVisible();
   await expect(page.getByRole("cell", { name: `E2E Sucursal Dos ${marca}` })).toBeVisible();
   await contexto.close();
-});
-
-test("promociones: la pantalla carga sin error", async ({ paginaAutenticada: page }) => {
-  await page.goto("/reportes/promociones");
-  await expect(page.getByRole("heading", { name: "Promociones y Combos" })).toBeVisible();
 });
 
 test("categorías: la pantalla carga sin error y muestra el total facturado", async ({ paginaAutenticada: page }) => {

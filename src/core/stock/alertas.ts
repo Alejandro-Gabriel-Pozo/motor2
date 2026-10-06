@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { elegirMinimo } from "./stock-minimo";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -39,7 +39,7 @@ export interface FilaAlertaStock {
  * deliberada de esta primera versión, el dato real (quién es el proveedor
  * habitual) ya está en la comparativa de precios de Catálogo.
  */
-export async function calcularAlertasStock(sucursalId: string, db: Db = prisma): Promise<FilaAlertaStock[]> {
+export async function calcularAlertasStock(sucursalId: string, db: Db): Promise<FilaAlertaStock[]> {
   const saldos = await db.movimientoStock.groupBy({
     by: ["productoId", "seccionId"],
     where: { seccion: { sucursalId } },
@@ -71,8 +71,7 @@ export async function calcularAlertasStock(sucursalId: string, db: Db = prisma):
     const seccion = seccionPorId.get(s.seccionId);
     if (!seccion) continue;
 
-    const claveSeccion = `${s.productoId}||${s.seccionId}`;
-    const stockMinimo = minimoPorSeccion.has(claveSeccion) ? minimoPorSeccion.get(claveSeccion)! : minimoGlobal.get(s.productoId);
+    const stockMinimo = elegirMinimo(minimoPorSeccion.get(`${s.productoId}||${s.seccionId}`), minimoGlobal.get(s.productoId));
     if (stockMinimo == null) continue; // ninguna fila de mínimo cargada: no hay alerta posible
 
     const saldoActual = Number(s._sum.cantidad ?? 0);
@@ -103,7 +102,7 @@ export interface ResumenAlertasStock {
 }
 
 /** Port de obtenerResumenAlertasStock (Stock.js:2329-2340). */
-export async function obtenerResumenAlertasStock(sucursalId: string, db: Db = prisma): Promise<ResumenAlertasStock> {
+export async function obtenerResumenAlertasStock(sucursalId: string, db: Db): Promise<ResumenAlertasStock> {
   const data = await calcularAlertasStock(sucursalId, db);
   return {
     total: data.length,

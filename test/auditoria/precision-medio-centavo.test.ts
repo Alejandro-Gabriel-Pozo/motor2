@@ -86,7 +86,7 @@ describe("Precisión — empates de medio centavo (oráculo: Postgres NUMERIC)",
     expect(movCompra.precioPorUnidadStock.toString()).toBe("128.045");
 
     // expect.soft: si falla uno, se ven igual todos los valores del caso (costo, margen, costo al vender, valuación).
-    const costos = await calcularCostosYMargenes(sucursalId);
+    const costos = await calcularCostosYMargenes(sucursalId, prisma);
     const fila = costos.find((f) => f.productoId === pv.id)!;
     expect.soft(fila.costo).toBe(128.05);
     expect.soft(fila.componentes[0].costoUnitario).toBe(128.05);
@@ -97,7 +97,7 @@ describe("Precisión — empates de medio centavo (oráculo: Postgres NUMERIC)",
     const movVenta = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: pv.id, proceso: "VENTA" } });
     expect.soft(Number(movVenta.costoUnitarioVenta)).toBe(128.05);
 
-    const valuacion = await calcularValuacionInventario(sucursalId);
+    const valuacion = await calcularValuacionInventario(sucursalId, prisma);
     const filaLata = valuacion.filas.find((f) => f.productoId === lata.id)!;
     expect.soft(filaLata.costoUnitario).toBe(128.05);
   });
@@ -121,7 +121,7 @@ describe("Precisión — empates de medio centavo (oráculo: Postgres NUMERIC)",
 
     async function liquidacionDe(quesoId: string) {
       const liquidacion = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: quesoId, proceso: "LIQUIDACION_CONSIGNACION" } });
-      const reporte = await generarReporteConsignacion(sucursalId);
+      const reporte = await generarReporteConsignacion(sucursalId, prisma);
       return { precioTotal: Number(liquidacion.precioTotal), liquidado: reporte.debidoPorConsignante.find((d) => d.proveedor === "Quesos del Valle")?.liquidado };
     }
 

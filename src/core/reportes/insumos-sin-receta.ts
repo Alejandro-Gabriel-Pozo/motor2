@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { construirIndiceRecetas, construirMapaProductos, type Db } from "./comun";
 
 export interface FilaInsumoSinReceta {
@@ -17,7 +16,7 @@ export interface FilaInsumoSinReceta {
  * aparece en NINGUNA receta vigente es, por definición, un insumo que se
  * compra pero nada lo consume/revende todavía acá.
  */
-export async function generarReporteInsumosSinRecetaVinculada(sucursalId: string, db: Db = prisma): Promise<FilaInsumoSinReceta[]> {
+export async function generarReporteInsumosSinRecetaVinculada(sucursalId: string, db: Db): Promise<FilaInsumoSinReceta[]> {
   const productos = await construirMapaProductos(sucursalId, db);
   const { mpsEnRecetas } = await construirIndiceRecetas(db);
   const conProveedor = new Set((await db.proveedorPorProducto.findMany({ select: { productoId: true }, distinct: ["productoId"] })).map((p) => p.productoId));

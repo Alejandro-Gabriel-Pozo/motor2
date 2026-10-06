@@ -7,8 +7,8 @@ export default async function ReclasificarPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  // Mismo permiso que Conteo Físico (proceso_control) — reclasificarStock no tiene Accion propia, ver src/server/actions/reclasificacion.ts.
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control");
+  // Clave propia `stock_reclasificar` (antes compartía `proceso_control` con Conteo Físico), ver src/server/actions/stock/reclasificacion.ts.
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "stock_reclasificar", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const secciones = await listarSeccionesActivas(ctx.sucursalId);

@@ -22,9 +22,18 @@
   //   - prisma/seed.ts (plugin de Prisma, vía `prisma.seed` de package.json y `npm run db:seed`),
   //   - vitest.config.ts y sus tests (plugin de Vitest),
   //   - playwright.config.ts y test/e2e/**/*.spec.ts (plugin de Playwright).
+  // Desde E4 (2026-10-03) el repo es un workspace de npm con una app más (`plataforma/`, la consola de plataforma): las entradas y el
+  // proyecto del raíz van bajo `workspaces["."]` (si se dejan arriba, knip las aplica TAMBIÉN a `plataforma/`, donde no existen, y avisa).
+  "workspaces": {
+    ".": {
+      // RESERVADO — `@auth/core` llega con `next-auth` (no es dependencia directa). Lo importa SOLO `test/auth/contrato-authjs-vinculacion.test.ts`, por ruta de archivo,
+      // para fijar el contrato de Auth.js que E8 necesita (`handleLoginOrRegister`, que el paquete no exporta): si una actualización lo cambia, ese test falla.
+      "ignoreDependencies": ["@auth/core"],
   "entry": [
     // Scripts que se corren a mano (con `tsx` o como "test" de una config de Vitest propia): nadie los importa.
     "scripts/*.ts",
+    // Igual, en la subcarpeta de los scripts de la consola de plataforma (`npm run plataforma:crear-admin`).
+    "scripts/plataforma/*.ts",
 
     // Las 4 configs de Vitest que NO son la principal (seed de demo, seed de 6 meses, carta de "La Cuadra", invariantes
     // de la demo) y la config de Playwright de la demo. Se declaran como entradas a secas y NO en la sección `vitest` /
@@ -47,7 +56,18 @@
     // el archivo `server-only-stub.ts` como sin uso y los exports `cookies`/`headers` de `next-headers-stub.ts` como sin
     // uso (en realidad los consume todo el código de src/ que importa `next/headers` cuando corre bajo Vitest).
     "test/setup/server-only-stub.ts",
-    "test/setup/next-headers-stub.ts"
+    "test/setup/next-headers-stub.ts",
+
+    // RESERVADO — prisma/fase-a/: schema y config experimentales de la Fase A de
+    // multi-tenancy (docs/adr/ADR-004-fase-a-schema-aislado.md), deliberadamente
+    // fuera de prisma/schema.prisma para no tocar el Client real ni el Postgres
+    // local. Se invocan a mano vía `--schema`/`--config`, nunca importados desde
+    // código — igual que el resto de esta lista.
+    "prisma/fase-a/schema.prisma",
+    "prisma/fase-a/prisma.config.ts",
+    // Igual motivo: smoke test manual de esa carpeta, se corre a mano con
+    // `npx tsx prisma/fase-a/smoke-test.ts`, nadie lo importa.
+    "prisma/fase-a/smoke-test.ts"
   ],
 
   // Archivos que se analizan: src, test, scripts y prisma. Se incluyen `.css` (el `@import "tailwindcss"` de
@@ -58,17 +78,22 @@
     "test/**/*.{ts,tsx}",
     "scripts/**/*.ts",
     "prisma/**/*.{ts,prisma}"
-  ],
+  ]
+    },
 
-  "ignoreDependencies": [
-    // RESERVADO — driver de Postgres de `@prisma/adapter-pg` (src/lib/db.ts elige PrismaPg para cualquier host que no
-    // sea Neon: local, docker compose, E2E). Nadie hace `import "pg"`: lo carga el adapter. Se declaró a propósito junto
-    // con el adapter (docs/plan-migracion.md, "Bugs de infraestructura...") para fijar la versión del driver que corre en
-    // producción en vez de heredarla transitivamente.
-    "pg",
-    // RESERVADO — tipos del driver anterior, agregados en el mismo cambio y por el mismo motivo que `pg`.
-    "@types/pg"
-  ],
+    // La consola de plataforma: sus entradas (app/, proxy.ts) las descubre el plugin de Next.js. Su código importa del núcleo del raíz por el alias `@/`.
+    "plataforma": {
+      "project": ["src/**/*.{ts,tsx}"],
+      // RESERVADO — la consola no importa `@sentry/nextjs` directamente, pero el envío de correo (`src/core/correo` → `src/lib/reportar-error.ts`)
+      // lo importa de forma dinámica para avisar de un correo que no salió; ese código se compila DENTRO de la consola, así que su paquete
+      // tiene que estar instalado en ese proyecto de Vercel. Sin esta línea, borrar la dependencia rompe el build de la consola en silencio.
+      // RESERVADO — `tailwindcss` y `@tailwindcss/postcss`: los usa el `postcss.config.mjs` de la RAÍZ (que Next toma para la consola, ver `turbopack.root`) y el
+      // `@import "tailwindcss"` de su globals.css; knip no sigue ninguno de los dos. Tienen que estar declaradas en `plataforma/package.json` porque Vercel instala SOLO las de
+      // ese proyecto: sin ellas el build de la consola falla con «Cannot find module '@tailwindcss/postcss'» (verificado clonando limpio, 2026-10-05).
+      "ignoreDependencies": ["@sentry/nextjs", "tailwindcss", "@tailwindcss/postcss"]
+    }
+  },
+
 
   // RESERVADO — tipos e interfaces exportados que solo se usan dentro de su propio archivo. Casi todos describen la forma
   // de lo que devuelve o recibe una función exportada (filas de reportes, entradas de armar-menu, etc.): son parte de la

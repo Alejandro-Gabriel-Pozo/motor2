@@ -1,5 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import type { Db } from "@/lib/db-tipos";
 import { whereDisponibleEnAlguna } from "./disponibilidad-producto-consulta";
 
 /**
@@ -15,8 +14,8 @@ import { whereDisponibleEnAlguna } from "./disponibilidad-producto-consulta";
 export async function validarUnidadInsumo(
   insumoId: string | null | undefined,
   unidadStockId: string,
-  productoIdExcluir?: string,
-  db: PrismaClient = prisma
+  productoIdExcluir: string | undefined,
+  db: Db
 ): Promise<string | null> {
   if (!insumoId) return null; // sin Insumo asignado, no hay nada que comparar
 
@@ -45,7 +44,7 @@ export async function validarUnidadInsumo(
 export async function validarFusionInsumos(
   insumoOrigenId: string,
   insumoDestinoId: string,
-  db: PrismaClient = prisma
+  db: Db
 ): Promise<string | null> {
   const unidadesOrigen = await db.producto.findMany({
     where: { insumoId: insumoOrigenId, ...whereDisponibleEnAlguna() },

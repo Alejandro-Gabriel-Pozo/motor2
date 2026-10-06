@@ -55,14 +55,14 @@ describe("server/consultas/reportes/rendimiento-por-sucursal", () => {
   it("delega: con los datos sembrados devuelve EXACTAMENTE lo mismo que la función de core con el mismo `db`", async () => {
     const sucursales = [central, norte];
     for (const filtro of [{}, { todas: true }, { productoId: tarta.id, todas: true }, { productoId: tarta.id }]) {
-      const deConsulta = await compararRendimientosDeSucursales(sucursales, filtro);
+      const deConsulta = await compararRendimientosDeSucursales(sucursales, filtro, prisma);
       const deCore = await compararRendimientosPorSucursal(sucursales, filtro, prisma);
       expect(deConsulta).toEqual(deCore);
     }
   });
 
   it("sin filtro: solo la línea calibrada (Pan, receta vigente v2), con la columna de cada sucursal pedida y nada de la de afuera", async () => {
-    const filas = await compararRendimientosDeSucursales([central, norte], {});
+    const filas = await compararRendimientosDeSucursales([central, norte], {}, prisma);
 
     expect(filas).toHaveLength(1);
     const [fila] = filas;
@@ -76,27 +76,27 @@ describe("server/consultas/reportes/rendimiento-por-sucursal", () => {
       algunaCalibrada: true,
     });
     expect(Array.from(fila.porSucursal.keys())).toEqual([central.id, norte.id]);
-    expect(fila.porSucursal.get(central.id)).toEqual({ cantidad: 2, mermaPorcentaje: 50, bruto: 3, calibrado: true, desviacionPorcentaje: 140 });
+    expect(fila.porSucursal.get(central.id)).toEqual({ cantidad: 2, mermaPorcentaje: 50, bruto: 3, calibrado: true, desviacionPorcentaje: 140, recetaPropia: false });
     expect(fila.porSucursal.get(norte.id)).toMatchObject({ cantidad: 1, mermaPorcentaje: 25, bruto: 1.25, calibrado: false, desviacionPorcentaje: 0 });
     expect(fila.porSucursal.has(fuera.id)).toBe(false);
   });
 
   it("pasa el filtro tal cual: `todas` suma la línea sin calibrar y `productoId` recorta a ese producto", async () => {
-    const todas = await compararRendimientosDeSucursales([central, norte], { todas: true });
+    const todas = await compararRendimientosDeSucursales([central, norte], { todas: true }, prisma);
     expect(todas.map((f) => f.recetaIngredienteId)).toEqual([lineaPanHarina, lineaTartaHarina]);
 
-    const soloTarta = await compararRendimientosDeSucursales([central, norte], { productoId: tarta.id, todas: true });
+    const soloTarta = await compararRendimientosDeSucursales([central, norte], { productoId: tarta.id, todas: true }, prisma);
     expect(soloTarta.map((f) => f.productoId)).toEqual([tarta.id]);
     expect(soloTarta[0].algunaCalibrada).toBe(false);
 
     // Tarta sin `todas`: no tiene calibración en ninguna sucursal pedida → vacío.
-    await expect(compararRendimientosDeSucursales([central, norte], { productoId: tarta.id })).resolves.toEqual([]);
+    await expect(compararRendimientosDeSucursales([central, norte], { productoId: tarta.id }, prisma)).resolves.toEqual([]);
   });
 
   it("pasa las sucursales tal cual: con solo Norte, la calibración de Central no cuenta y la línea no aparece por defecto", async () => {
-    await expect(compararRendimientosDeSucursales([norte], {})).resolves.toEqual([]);
+    await expect(compararRendimientosDeSucursales([norte], {}, prisma)).resolves.toEqual([]);
 
-    const conFuera = await compararRendimientosDeSucursales([fuera], {});
+    const conFuera = await compararRendimientosDeSucursales([fuera], {}, prisma);
     expect(conFuera).toHaveLength(1);
     expect(conFuera[0].porSucursal.get(fuera.id)).toMatchObject({ cantidad: 99, mermaPorcentaje: 99, calibrado: true });
   });

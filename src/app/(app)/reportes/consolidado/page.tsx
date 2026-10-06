@@ -1,32 +1,35 @@
-import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVer, sucursalesVisiblesPara } from "@/core/permisos/gate";
 import { obtenerResumenConsolidado } from "@/core/reportes/resumen-consolidado";
 import { TablaConsolidado } from "./tabla-consolidado";
+import { EnlaceInterno } from "@/components/enlace-interno";
 
 export default async function ConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_consolidado", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  if (ctx.membresias.length < 2) {
+  // El gate de arriba es de la sucursal activa: las otras se suman solo si allí el rol también puede ver el dinero.
+  const sucursales = await sucursalesVisiblesPara(ctx, "reporte_consolidado");
+
+  if (sucursales.length < 2) {
     return (
       <div>
         <h1 className="mb-1 text-xl font-semibold">Resumen consolidado</h1>
         <p className="text-sm text-neutral-500">
-          Solo pertenecés a una sucursal ({ctx.sucursalNombre}) — no hay nada que consolidar todavía. Mirá{" "}
-          <Link href="/reportes" className="underline">
+          Solo podés ver el dinero de una sucursal ({ctx.sucursalNombre}) — no hay nada que consolidar todavía. Mirá{" "}
+          <EnlaceInterno href="/reportes" className="underline">
             Resumen
-          </Link>{" "}
+          </EnlaceInterno>{" "}
           en vez de este.
         </p>
       </div>
     );
   }
 
-  const filas = await obtenerResumenConsolidado(ctx.membresias.map((m) => ({ id: m.sucursalId, nombre: m.sucursalNombre })));
+  const filas = await obtenerResumenConsolidado(sucursales, ctx.db);
   const totales = filas.reduce(
     (acc, f) => ({
       ventasTotal: acc.ventasTotal + f.ventasTotal,
@@ -40,7 +43,7 @@ export default async function ConsolidadoPage() {
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Resumen consolidado</h1>
-        <p className="text-sm text-neutral-500">Financiero del mes actual, una fila por cada sucursal a la que pertenecés.</p>
+        <p className="text-sm text-neutral-500">Financiero del mes actual, una fila por cada sucursal donde tu rol puede ver el dinero.</p>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

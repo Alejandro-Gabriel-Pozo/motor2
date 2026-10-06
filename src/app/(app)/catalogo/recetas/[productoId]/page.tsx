@@ -2,7 +2,7 @@ import Link from "next/link";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import {
   obtenerRecetaVigente,
   agregarIngredienteAReceta,
@@ -28,34 +28,34 @@ import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
+import { IconoDeAccion } from "@/components/iconos";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { listarSucursalesConRecetaPropia, obtenerEstadoDeRecetaPropia } from "@/server/consultas/catalogo/receta-propia";
+import { RecetaDeLaSucursal } from "./receta-de-la-sucursal";
 
 export default async function RecetaEditorPage({
   params,
   searchParams,
 }: {
   params: Promise<{ productoId: string }>;
-  searchParams: Promise<{
-    editar?: string;
-    editarPaso?: string;
-    editarFicha?: string;
-  }>;
+  searchParams: Promise<ParametrosDeUrl<"editar" | "editarPaso" | "editarFicha" | "editarPropia">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "guardar_receta");
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { productoId } = await params;
   // Rendimiento por sucursal (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 7): "Usar este valor" del
   // reporte de Rendimiento real de recetas YA NO navega acá con `?sugerido=` — calibra la sucursal directo
   // (fijarRendimientoLocal). Este editor solo toca la receta CENTRAL.
-  const { editar, editarPaso, editarFicha } = await searchParams;
+  const { editar, editarPaso, editarFicha, editarPropia } = unicosDeUrl(await searchParams);
   const ordenEnEdicion = editarPaso ? Number(editarPaso) : null;
 
   const [producto, mpDisponibles, unidades] = await Promise.all([
-    obtenerProductoPorId(productoId),
-    listarMpDisponiblesEnAlguna(),
+    obtenerProductoPorId(productoId, ctx.db),
+    listarMpDisponiblesEnAlguna(ctx.db),
     listarUnidadesActivas(),
   ]);
 
@@ -100,7 +100,7 @@ export default async function RecetaEditorPage({
   if (vigente?.ingredientes.length) {
     await Promise.all(
       vigente.ingredientes.map(async (ing) => {
-        const porSucursal = await disponibilidadPorSucursalDeProducto(ing.insumoProductoId);
+        const porSucursal = await disponibilidadPorSucursalDeProducto(ing.insumoProductoId, ctx.db);
         const faltantes = porSucursal.filter((s) => !s.disponible).map((s) => s.sucursalNombre);
         if (faltantes.length) sucursalesSinIngrediente.set(ing.insumoProductoId, faltantes);
 
@@ -108,7 +108,7 @@ export default async function RecetaEditorPage({
           const opciones = await listarOpcionesDeSustituto({
             insumoIdExcluido: ing.insumoProducto.insumoId,
             unidadId: ing.unidadId,
-          });
+          }, ctx.db);
           opcionesSustitutoPorIngrediente.set(ing.insumoProductoId, opciones);
         }
       })
@@ -119,13 +119,22 @@ export default async function RecetaEditorPage({
   // (no una por ingrediente) a RendimientoLocalIngrediente.
   const calibracionesPorIngrediente = new Map<string, string[]>();
   if (vigente?.ingredientes.length) {
-    const calibraciones = await listarCalibracionesDeIngredientes(vigente.ingredientes.map((i) => i.id));
+    const calibraciones = await listarCalibracionesDeIngredientes(vigente.ingredientes.map((i) => i.id), ctx.db);
     for (const c of calibraciones) {
       const lista = calibracionesPorIngrediente.get(c.recetaIngredienteId) ?? [];
       lista.push(c.sucursal.nombre);
       calibracionesPorIngrediente.set(c.recetaIngredienteId, lista);
     }
   }
+
+  // Receta propia de la sucursal activa (ADR-009, R3/R4): estado + qué acciones le tocan a este usuario (una clave por acción).
+  const [estadoPropia, otrasConRecetaPropia, nivelEditar, nivelCopiar, nivelVolver] = await Promise.all([
+    obtenerEstadoDeRecetaPropia(producto.id, ctx.sucursalId, ctx.db),
+    listarSucursalesConRecetaPropia(producto.id, ctx.sucursalId, ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_editar", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_copiar", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_volver_central", ctx.db),
+  ]);
 
   return (
     <div className="flex max-w-2xl flex-col gap-8">
@@ -138,10 +147,12 @@ export default async function RecetaEditorPage({
         </h1>
         {vigente && (
           <div className="flex gap-3">
-            <Link href={`${volver}/historial`} className="text-sm text-neutral-500 underline">
+            <Link href={`${volver}/historial`} className="text-sm text-neutral-500 underline inline-flex items-center gap-1">
+              <IconoDeAccion id="historial" />
               Ver historial de versiones ({vigente.version})
             </Link>
-            <EnlaceInterno href={`/reportes/rendimiento-recetas?productoId=${producto.id}`} className="text-sm text-neutral-500 underline">
+            <EnlaceInterno href={`/reportes/rendimiento-recetas?productoId=${producto.id}`} className="text-sm text-neutral-500 underline inline-flex items-center gap-1">
+              <IconoDeAccion id="ver" />
               Ver rendimiento real
             </EnlaceInterno>
           </div>
@@ -298,7 +309,8 @@ export default async function RecetaEditorPage({
                   {vigente.presentacionEmplatado && <p className="text-neutral-500">Presentación o emplatado: {vigente.presentacionEmplatado}</p>}
                   {vigente.notasAdicionales && <p className="text-neutral-500">Notas adicionales: {vigente.notasAdicionales}</p>}
                   {vigente.equipamientoNecesario && <p className="text-neutral-500">Equipamiento necesario: {vigente.equipamientoNecesario}</p>}
-                  <Link href={`${volver}?editarFicha=1`} className="self-start underline">
+                  <Link href={`${volver}?editarFicha=1`} className="self-start underline inline-flex items-center gap-1">
+                    <IconoDeAccion id="editar" />
                     Editar
                   </Link>
                 </div>
@@ -427,7 +439,8 @@ export default async function RecetaEditorPage({
                         <td>{Number(ing.mermaPorcentaje)}</td>
                         <td>
                           <div className="flex gap-3">
-                            <Link href={`${volver}?editar=${ing.insumoProductoId}`} className="text-sm underline">
+                            <Link href={`${volver}?editar=${ing.insumoProductoId}`} className="text-sm underline inline-flex items-center gap-1">
+                              <IconoDeAccion id="editar" />
                               Editar
                             </Link>
                             <FormConResultado
@@ -436,7 +449,8 @@ export default async function RecetaEditorPage({
                                 return quitarIngredienteDeReceta(producto.id, ing.insumoProductoId);
                               }}
                             >
-                              <button type="submit" className="text-sm underline">
+                              <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                                <IconoDeAccion id="eliminar" />
                                 Quitar
                               </button>
                             </FormConResultado>
@@ -562,7 +576,8 @@ export default async function RecetaEditorPage({
                           </p>
                         )}
                         <div className="flex gap-3">
-                          <Link href={`${volver}?editarPaso=${paso.orden}`} className="text-xs underline">
+                          <Link href={`${volver}?editarPaso=${paso.orden}`} className="text-xs underline inline-flex items-center gap-1">
+                            <IconoDeAccion id="editar" />
                             Editar
                           </Link>
                           <FormConResultado
@@ -659,6 +674,18 @@ export default async function RecetaEditorPage({
           </AgregarColapsable>
         </div>
       )}
+
+      <RecetaDeLaSucursal
+        producto={{ id: producto.id, nombre: producto.nombre }}
+        sucursalNombre={ctx.sucursalNombre}
+        estado={estadoPropia}
+        otrasConRecetaPropia={otrasConRecetaPropia}
+        puede={{ editar: nivelEditar.editar, copiar: nivelCopiar.editar, volverALaCentral: nivelVolver.editar }}
+        unidades={unidades}
+        materiasPrimas={mpDisponibles}
+        ingredienteEnEdicion={editarPropia ?? null}
+        volver={volver}
+      />
     </div>
   );
 }

@@ -92,7 +92,7 @@ describe("Traspasos entre sucursales", () => {
     expect(envio.ok).toBe(false);
     if (envio.ok) return;
     expect(envio.mensaje).toContain("no está disponible en");
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // no se descontó nada
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10); // no se descontó nada
   });
 
   it("crearSolicitudTransferencia rechaza si el producto no está disponible en origen", async () => {
@@ -141,7 +141,7 @@ describe("Traspasos entre sucursales", () => {
     expect(envio.ok).toBe(false);
     if (envio.ok) return;
     expect(envio.mensaje).toContain("decimales");
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(20); // no se descontó nada
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(20); // no se descontó nada
     expect(await prisma.traspasoSucursal.count()).toBe(0);
   });
 
@@ -156,7 +156,7 @@ describe("Traspasos entre sucursales", () => {
     const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: envio.id } });
     expect(Number(traspaso.cantidad)).toBe(5.13);
     // 20 - 5.13 en JS da 14.870000000000001 por ruido de punto flotante; Postgres (Decimal real) guarda 14.87 exacto.
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(14.87);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(14.87);
   });
 
   it("flujo pull completo: B solicita a A, A aprueba (sale de su Sección Origen), B acepta (entra a su Sección Destino)", async () => {
@@ -167,18 +167,18 @@ describe("Traspasos entre sucursales", () => {
     expect(sol.ok).toBe(true);
     if (!sol.ok) return;
 
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(20); // al solicitar, origen todavía no se toca
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(20); // al solicitar, origen todavía no se toca
 
     await comoA();
     const aprobar = await aprobarYEnviarTransferencia(sol.id, seccionAId);
     expect(aprobar.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(15);
-    expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(0); // todavía no entró nada a destino
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(15);
+    expect(await calcularSaldoTotal(mp.id, seccionBId, prisma)).toBe(0); // todavía no entró nada a destino
 
     await comoB();
     const aceptar = await aceptarTransferencia(sol.id, seccionBId);
     expect(aceptar.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(5);
+    expect(await calcularSaldoTotal(mp.id, seccionBId, prisma)).toBe(5);
   });
 
   it("aprobarYEnviarTransferencia re-chequea disponibilidad en destino: si cambió desde la solicitud, no deja salir el stock (§5.5)", async () => {
@@ -197,7 +197,7 @@ describe("Traspasos entre sucursales", () => {
     expect(aprobar.ok).toBe(false);
     if (aprobar.ok) return;
     expect(aprobar.mensaje).toContain("no está disponible en");
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(20); // no se tocó el stock de origen
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(20); // no se tocó el stock de origen
   });
 
   it("flujo push completo: A envía directo a B (sale YA al crear el envío), B acepta", async () => {
@@ -208,12 +208,12 @@ describe("Traspasos entre sucursales", () => {
     expect(envio.ok).toBe(true);
     if (!envio.ok) return;
 
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(6); // ya salió al crear el envío
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6); // ya salió al crear el envío
 
     await comoB();
     const aceptar = await aceptarTransferencia(envio.id, seccionBId);
     expect(aceptar.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionBId)).toBe(4);
+    expect(await calcularSaldoTotal(mp.id, seccionBId, prisma)).toBe(4);
   });
 
   it("si destino rechaza lo que le enviaron, el stock queda 'perdido' hasta que origen confirma el reingreso — y ahí vuelve exacto", async () => {
@@ -222,17 +222,17 @@ describe("Traspasos entre sucursales", () => {
     await comoA();
     const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 3, seccionOrigenId: seccionAId });
     if (!envio.ok) throw new Error("esperaba ok");
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(7);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(7);
 
     await comoB();
     const rechazo = await rechazarTransferencia(envio.id, "No lo necesitamos más");
     expect(rechazo.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(7); // rechazar SOLO no devuelve el stock todavía
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(7); // rechazar SOLO no devuelve el stock todavía
 
     await comoA();
     const reingreso = await confirmarReingresoTransferencia(envio.id);
     expect(reingreso.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // vuelve exacto
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10); // vuelve exacto
   });
 
   it("origen puede rechazar una Solicitud sin que se toque nada de stock (nunca salió)", async () => {
@@ -245,7 +245,7 @@ describe("Traspasos entre sucursales", () => {
     await comoA();
     const rechazo = await rechazarSolicitudTransferencia(sol.id, "No tenemos stock");
     expect(rechazo.ok).toBe(true);
-    expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(8);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(8);
   });
 
   it("el lado equivocado no puede accionar: destino no puede aprobar una Solicitada; origen no puede aceptar una Solicitada", async () => {
@@ -305,11 +305,17 @@ describe("Traspasos entre sucursales", () => {
     await comoA(); // la bandeja de una sucursal solo la puede leer alguien de esa sucursal
     const bandejaATrasAprobar = await obtenerBandejaTransferencias(sucursalAId);
     expect(bandejaATrasAprobar.paraAprobar.map((t) => t.id)).not.toContain(sol.id);
-    expect(bandejaATrasAprobar.historial.map((t) => t.id)).toContain(sol.id);
-    // A ya aprobó y ya no tiene nada más que hacer — un PULL que A aprobó
-    // NO es un envío propio de A (lo inició B), así que sigue siendo
-    // historial para A, no "esperando" (a diferencia de un PUSH directo).
-    expect(bandejaATrasAprobar.esperando.map((t) => t.id)).not.toContain(sol.id);
+    // A ya aprobó y envió: el stock salió de su Kardex y B todavía no lo aceptó, igual que un PUSH propio — queda "esperando" (no historial)
+    // hasta que B decida, aunque la haya iniciado B.
+    expect(bandejaATrasAprobar.historial.map((t) => t.id)).not.toContain(sol.id);
+    expect(bandejaATrasAprobar.esperando.map((t) => t.id)).toContain(sol.id);
+
+    await comoB();
+    expect((await aceptarTransferencia(sol.id, seccionBId)).ok).toBe(true);
+    await comoA();
+    const bandejaATrasAceptar = await obtenerBandejaTransferencias(sucursalAId);
+    expect(bandejaATrasAceptar.esperando.map((t) => t.id)).not.toContain(sol.id);
+    expect(bandejaATrasAceptar.historial.map((t) => t.id)).toContain(sol.id);
   });
 
   it("un PUSH directo propio queda 'esperando' (no historial) para quien lo envió, hasta que la otra sucursal decida", async () => {
@@ -346,7 +352,7 @@ describe("Traspasos entre sucursales", () => {
 
       const traspaso = await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } });
       expect(traspaso.estado).toBe("CANCELADA");
-      expect(await calcularSaldoTotal(mp.id, seccionAId)).toBe(10); // nunca se tocó
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10); // nunca se tocó
 
       await comoA(); // la bandeja de una sucursal solo la puede leer alguien de esa sucursal
       const bandejaA = await obtenerBandejaTransferencias(sucursalAId);

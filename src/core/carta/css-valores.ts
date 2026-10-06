@@ -2,7 +2,7 @@ import type { Resultado } from "./validaciones";
 
 /**
  * Validadores de los valores de tipografía, layout y contacto del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M2, D13).
- * Puros, sin Prisma: los usa `tema.ts` (catálogo de claves) en la entrada (Server Actions, "Pegar desde la sheet") y en la salida
+ * Puros, sin Prisma: los usa `tema.ts` (catálogo de claves) en la entrada (Server Actions) y en la salida
  * (el endpoint vuelve a validar el Json guardado, porque una carga por `db:studio` no pasa por las acciones).
  *
  * Todo lo que es CSS termina en la carta pública dentro de un `style` de React o, en el caso del alto de banda en desktop,
@@ -122,27 +122,6 @@ export function validarAltoBanda(v: unknown, opciones: { normalizarPx: boolean }
     if (n) return n.ok ? ok(opciones.normalizarPx ? `${s}px` : s) : mal(n.mensaje);
   }
   return parsearLongitudCss(v, { funciones: true });
-}
-
-/** Ancho de la imagen de sección en mobile: número solo entre 1 y 400 (% del alto de la banda) o una longitud (sin funciones). */
-export function validarAnchoImagenMobile(v: unknown): Resultado<string> {
-  const s = valorCssSeguro(v);
-  if (s !== null) {
-    const n = numeroSolo(s, 1, 400);
-    if (n) return n.ok ? ok(s) : mal(n.mensaje);
-  }
-  return parsearLongitudCss(v, { funciones: false });
-}
-
-/** `background-size` de la imagen de sección en desktop: contain, cover, auto, o 1-2 tokens que sean `auto` o una longitud. */
-export function validarTamanoFondo(v: unknown): Resultado<string> {
-  const s = valorCssSeguro(v);
-  const mensaje = "tiene que ser contain, cover, auto o una o dos medidas (ej. auto 100%)";
-  if (s === null) return mal(mensaje);
-  if (s === "contain" || s === "cover" || s === "auto") return ok(s);
-  const tokens = s.split(/ +/);
-  if (tokens.length > 2 || !tokens.every((t) => t === "auto" || esLongitud(t))) return mal(mensaje);
-  return ok(tokens.join(" "));
 }
 
 /** Porcentaje de posición (bloque y CTA de la portada): número entre 0 y 100, hasta 2 decimales, sin `%` (la carta se lo agrega). */

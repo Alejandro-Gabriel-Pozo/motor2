@@ -1,7 +1,7 @@
 "use server";
 
-import { prisma } from "@/lib/db";
-import { esNumeroFinito } from "@/core/numero";
+import { esNumeroEstricto } from "@/core/numero";
+import { ENTERO_MAXIMO_RAZONABLE, validarNumeroHasta } from "@/core/datos/limites";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
@@ -15,8 +15,8 @@ import { requerirVerEnSucursal } from "../con-sesion";
  * `/stock/reclasificar`.
  */
 export async function listarFrecuenciasConteo(sucursalId: string) {
-  await requerirVerEnSucursal(sucursalId, "proceso_control");
-  return prisma.frecuenciaConteoProducto.findMany({
+  const ctx = await requerirVerEnSucursal(sucursalId, "conteo_frecuencia");
+  return ctx.db.frecuenciaConteoProducto.findMany({
     where: { sucursalId },
     include: { producto: true },
     orderBy: [{ producto: { nombre: "asc" } }],
@@ -25,14 +25,16 @@ export async function listarFrecuenciasConteo(sucursalId: string) {
 
 /** `frecuenciaDias === 0` desactiva la agenda de este producto (se conserva la fila, mismo criterio "0 es un valor real" de setStockMinimoProducto — no se borra, se pisa). */
 export async function setFrecuenciaConteo(productoId: string, frecuenciaDias: number): Promise<ResultadoAccion> {
-  return conPermiso("proceso_control", async (ctx) => {
+  return conPermiso("conteo_frecuencia", async (ctx) => {
     if (!Number.isInteger(frecuenciaDias) || frecuenciaDias < 0) return error("La frecuencia tiene que ser un número entero de días, 0 o más.");
-    if (!esNumeroFinito(frecuenciaDias)) return error("La frecuencia no es un número válido.");
+    if (!esNumeroEstricto(frecuenciaDias)) return error("La frecuencia no es un número válido.");
+    const alta = validarNumeroHasta(frecuenciaDias, "La frecuencia", ENTERO_MAXIMO_RAZONABLE);
+    if (alta) return error(alta);
 
-    const producto = await prisma.producto.findUnique({ where: { id: productoId } });
+    const producto = await ctx.db.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");
 
-    await prisma.frecuenciaConteoProducto.upsert({
+    await ctx.db.frecuenciaConteoProducto.upsert({
       where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } },
       update: { frecuenciaDias },
       create: { sucursalId: ctx.sucursalId, productoId, frecuenciaDias },
@@ -42,10 +44,10 @@ export async function setFrecuenciaConteo(productoId: string, frecuenciaDias: nu
 }
 
 export async function eliminarFrecuenciaConteo(id: string): Promise<ResultadoAccion> {
-  return conPermiso("proceso_control", async (ctx) => {
-    const fila = await prisma.frecuenciaConteoProducto.findUnique({ where: { id } });
+  return conPermiso("conteo_frecuencia", async (ctx) => {
+    const fila = await ctx.db.frecuenciaConteoProducto.findUnique({ where: { id } });
     if (!fila || fila.sucursalId !== ctx.sucursalId) return error("No se encontró esa fila de Frecuencia de conteo.");
-    await prisma.frecuenciaConteoProducto.delete({ where: { id } });
+    await ctx.db.frecuenciaConteoProducto.delete({ where: { id } });
     return ok("Fila de Frecuencia de conteo eliminada.");
   });
 }

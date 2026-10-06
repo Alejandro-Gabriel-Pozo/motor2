@@ -80,7 +80,7 @@ describe("Margen real reconstruido en el reporte por período", () => {
     await vender("2026-08-04"); // harina a $8 → 2 kg = $16
     await prisma.movimientoStock.updateMany({ where: { productoId: pvId, operacion: { proceso: "VENTA" } }, data: { costoUnitarioVenta: null } }); // como si nunca lo hubieran guardado
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-07-30"), d("2026-08-05"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-07-30"), d("2026-08-05"), undefined, prisma);
 
     expect(rep.margen.ingresoRealReconstruido).toBe(200);
     expect(rep.margen.ingresoConCostoReal).toBe(200);
@@ -91,7 +91,7 @@ describe("Margen real reconstruido en el reporte por período", () => {
   });
 
   it("margen Real por producto: fuente única para cada fila, mezclando costo congelado y reconstruido", async () => {
-    const kgTorta = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+    const kgTorta = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     const huevo = await sembrarProductoDisponible({ codigo: "MP_HUEVO", nombre: "Huevo", tipo: "MP", unidadStockId: kgTorta.id }, sucursalId);
     const torta = await sembrarProductoDisponible({ codigo: "PV_TORTA", nombre: "Torta", tipo: "PV", unidadStockId: kgTorta.id, precioVenta: 200 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: torta.id, version: 1, ingredientes: { create: [{ insumoProductoId: huevo.id, cantidad: 1, unidadId: kgTorta.id }] } } });
@@ -104,7 +104,7 @@ describe("Margen real reconstruido en el reporte por período", () => {
     const ventaTorta = await registrarVenta({ fecha: d("2026-08-04"), seccionId, ventas: [{ productoId: torta.id, cantidadVendida: 1 }] });
     expect(ventaTorta.ok, ventaTorta.mensaje).toBe(true);
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-10"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-10"), undefined, prisma);
 
     const filaPan = rep.margen.porProducto.find((f) => f.productoId === pvId)!;
     expect(filaPan.margenReal).toBe(100 - 16); // 2kg de harina a $8/kg
@@ -124,7 +124,7 @@ describe("Margen real reconstruido en el reporte por período", () => {
 
   it("si la venta guardó su costo, ese manda y no se reconstruye", async () => {
     await vender("2026-08-04"); // guarda el costo de la receta con el costo vigente al vender ($8/kg → $16)
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-05"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-05"), undefined, prisma);
 
     expect(rep.margen.ingresoRealReconstruido).toBe(0);
     expect(rep.margen.ingresoConCostoReal).toBe(100);
@@ -141,7 +141,7 @@ describe("Margen real reconstruido en el reporte por período", () => {
     await vender("2026-08-02");
     await prisma.movimientoStock.updateMany({ where: { productoId: pvId, operacion: { proceso: "VENTA" } }, data: { costoUnitarioVenta: null } });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-02"), d("2026-08-10"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-02"), d("2026-08-10"), undefined, prisma);
 
     // 2kg de harina al precio vigente el 2/8 (la compra del 1/8 a $5/kg, no la del 15/7 a $3/kg) = $10.
     expect(rep.margen.ingresoConCostoReal).toBe(100);
@@ -152,7 +152,7 @@ describe("Margen real reconstruido en el reporte por período", () => {
   it("sin ninguna venta costeable, «Real» sigue sin datos", async () => {
     await vender("2026-07-31");
     await prisma.movimientoStock.updateMany({ where: { productoId: pvId, operacion: { proceso: "VENTA" } }, data: { costoUnitarioVenta: null } });
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-07-30"), d("2026-08-05"));
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-07-30"), d("2026-08-05"), undefined, prisma);
 
     expect(rep.margen.margenRealTotal).toBeNull();
     expect(rep.margen.ingresoSinCostoReal).toBe(100);

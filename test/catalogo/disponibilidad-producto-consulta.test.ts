@@ -48,41 +48,41 @@ describe("disponibilidad-producto-consulta", () => {
 
   describe("productoDisponibleEn", () => {
     it("true cuando la fila existe con disponible: true", async () => {
-      expect(await productoDisponibleEn(sucursalA, disponibleSoloEnA)).toBe(true);
+      expect(await productoDisponibleEn(sucursalA, disponibleSoloEnA, prisma)).toBe(true);
     });
 
     it("false cuando la fila existe con disponible: false", async () => {
-      expect(await productoDisponibleEn(sucursalB, disponibleSoloEnA)).toBe(false);
+      expect(await productoDisponibleEn(sucursalB, disponibleSoloEnA, prisma)).toBe(false);
     });
 
     it("false cuando no hay ninguna fila", async () => {
-      expect(await productoDisponibleEn(sucursalB, noDisponibleEnNinguna)).toBe(false);
+      expect(await productoDisponibleEn(sucursalB, noDisponibleEnNinguna, prisma)).toBe(false);
     });
   });
 
   describe("disponibilidadDeProductos (batch)", () => {
     it("resuelve varios productos de una, con false para los sin fila", async () => {
-      const resultado = await disponibilidadDeProductos(sucursalA, [disponibleSoloEnA, disponibleEnLasDos, noDisponibleEnNinguna]);
+      const resultado = await disponibilidadDeProductos(sucursalA, [disponibleSoloEnA, disponibleEnLasDos, noDisponibleEnNinguna], prisma);
       expect(resultado.get(disponibleSoloEnA)).toBe(true);
       expect(resultado.get(disponibleEnLasDos)).toBe(true);
       expect(resultado.get(noDisponibleEnNinguna)).toBe(false);
     });
 
     it("lista vacía no dispara ninguna consulta y da un Map vacío", async () => {
-      expect((await disponibilidadDeProductos(sucursalA, [])).size).toBe(0);
+      expect((await disponibilidadDeProductos(sucursalA, [], prisma)).size).toBe(0);
     });
   });
 
   describe("disponibilidadPorSucursalDeProducto", () => {
     it("trae el estado en TODAS las sucursales activas, incluida la que no tiene fila propia", async () => {
-      const resultado = await disponibilidadPorSucursalDeProducto(noDisponibleEnNinguna);
+      const resultado = await disponibilidadPorSucursalDeProducto(noDisponibleEnNinguna, prisma);
       expect(resultado).toHaveLength(2);
       expect(resultado.find((r) => r.sucursalId === sucursalA)?.disponible).toBe(false);
       expect(resultado.find((r) => r.sucursalId === sucursalB)?.disponible).toBe(false); // sin fila
     });
 
     it("distingue disponible de no disponible por sucursal", async () => {
-      const resultado = await disponibilidadPorSucursalDeProducto(disponibleSoloEnA);
+      const resultado = await disponibilidadPorSucursalDeProducto(disponibleSoloEnA, prisma);
       expect(resultado.find((r) => r.sucursalId === sucursalA)?.disponible).toBe(true);
       expect(resultado.find((r) => r.sucursalId === sucursalB)?.disponible).toBe(false);
     });

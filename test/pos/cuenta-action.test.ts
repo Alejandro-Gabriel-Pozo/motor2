@@ -8,6 +8,7 @@ import { abrirCuenta, corregirComensales, liberarMesa } from "../../src/server/a
 import { agregarItems, enviarACocina, quitarItemSinEnviar } from "../../src/server/actions/pos/cuenta-pedido";
 import { obtenerMapaDeMesas } from "../../src/core/pos/mesas";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
+import { crearMembresia } from "../setup/membresia";
 
 /** Toma de pedido (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 4): abrir, agregar, quitar, enviar, liberar. */
 describe("tomar pedido (server actions)", () => {
@@ -189,8 +190,8 @@ describe("tomar pedido (server actions)", () => {
         const bebidas = await prisma.seccionCarta.create({ data: { nombre: "Bebidas", orden: 1 } });
         const coca = await sembrarProductoDisponible({ codigo: "PV_COCA", nombre: "Coca-Cola 500cc", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: 5000 }, s.sucursalId);
         const sprite = await sembrarProductoDisponible({ codigo: "PV_SPRITE", nombre: "Sprite 500cc", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: 5000 }, s.sucursalId);
-        const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500cc", seccionCartaId: bebidas.id } });
-        await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite].map((p, orden) => ({ itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
+        const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { sucursalId: s.sucursalId, nombre: "Gaseosa 500cc", seccionCartaId: bebidas.id } });
+        await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite].map((p, orden) => ({ sucursalId: s.sucursalId, itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
         return { coca, sprite, gaseosa };
       }
 
@@ -204,7 +205,7 @@ describe("tomar pedido (server actions)", () => {
       it("una opción del grupo congela SU precio (con su Precio Local), aunque la carta muestre el mayor", async () => {
         const { coca, sprite, gaseosa } = await sembrarGaseosa();
         await prisma.precioLocalProducto.create({ data: { sucursalId: s.sucursalId, productoId: sprite.id, precio: 5500, habilitado: true } });
-        const carta = await resolverMenuCarta(s.sucursalId);
+        const carta = await resolverMenuCarta(s.sucursalId, prisma);
         expect(carta?.secciones[0].items.find((i) => i.productoId === gaseosa.id)?.precio).toBe(5500);
 
         const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
@@ -257,7 +258,7 @@ describe("tomar pedido (server actions)", () => {
       expect(await enviarACocina(cuenta.id, [flan.id, nuevo.id])).toEqual({ ok: true, mensaje: "Envío 2 a cocina: 2 ítems de la mesa 4.", numeroEnvio: 2, envioNuevo: true });
       expect((await itemsDe(cuenta.id)).map((i) => i.numeroEnvio)).toEqual([1, 2, 2]);
 
-      const [m] = (await obtenerMapaDeMesas(s.sucursalId)).mesas;
+      const [m] = (await obtenerMapaDeMesas(s.sucursalId, prisma)).mesas;
       expect(m).toMatchObject({ estado: "ocupada", pedidosEnviados: 2, productosSinEnviar: 0 });
     });
 
@@ -280,7 +281,7 @@ describe("tomar pedido (server actions)", () => {
       expect(cerrada.cerradaEn).not.toBeNull();
       expect(cerrada.cerradaPorId).toBe(s.admin.id);
       expect(await prisma.operacion.count()).toBe(0);
-      expect((await obtenerMapaDeMesas(s.sucursalId)).mesas[0].estado).toBe("libre");
+      expect((await obtenerMapaDeMesas(s.sucursalId, prisma)).mesas[0].estado).toBe("libre");
       expect(await liberarMesa(cuenta.id)).toEqual({ ok: false, mensaje: "La cuenta de la mesa 4 ya está cerrada." });
     });
 
@@ -295,7 +296,7 @@ describe("tomar pedido (server actions)", () => {
     it("un rol sin pos_tomar_pedido (el operador de fábrica) no puede abrir, agregar, quitar, enviar ni liberar", async () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000 }]);
       const operador = await prisma.user.create({ data: { email: "operador@test.com" } });
-      await prisma.usuarioSucursal.create({ data: { usuarioId: operador.id, sucursalId: s.sucursalId, rolId: s.operador.id, activo: true } });
+      await crearMembresia({ usuarioId: operador.id, sucursalId: s.sucursalId, rolId: s.operador.id, activo: true });
       await entrarComo(operador);
       for (const r of [
         await abrirCuenta(s.mesa.id, 2),
@@ -315,6 +316,7 @@ describe("tomar pedido (server actions)", () => {
       const soloVe = await crearUsuarioConRol(s.sucursalId, "solo-ve", [
         { clave: "pos_mesas", ver: true, editar: false },
         { clave: "pos_tomar_pedido", ver: true, editar: false },
+        { clave: "pos_abrir_cuenta", ver: true, editar: false },
       ]);
       await entrarComo(soloVe);
       const r = await abrirCuenta(s.mesa.id, 2);
@@ -323,14 +325,14 @@ describe("tomar pedido (server actions)", () => {
       expect(await prisma.cuenta.count()).toBe(0);
     });
 
-    it("si la Central deshabilitó pos_tomar_pedido para la sucursal, ni el admin puede", async () => {
-      await prisma.capacidadSucursal.create({ data: { accionClave: "pos_tomar_pedido", sucursalId: s.sucursalId, habilitado: false } });
+    it("si la Central deshabilitó pos_abrir_cuenta para la sucursal, ni el admin puede", async () => {
+      await prisma.capacidadSucursal.create({ data: { accionClave: "pos_abrir_cuenta", sucursalId: s.sucursalId, habilitado: false } });
       const r = await abrirCuenta(s.mesa.id, 2);
       expect(r.ok).toBe(false);
-      expect(r.mensaje).toMatch(/no habilitó "pos_tomar_pedido"/);
+      expect(r.mensaje).toMatch(/no habilitó "pos_abrir_cuenta"/);
     });
 
-    it("un «mozo» armado desde la matriz (pos_mesas Ver + pos_tomar_pedido Editar) hace todo el circuito", async () => {
+    it("un «mozo» armado desde la matriz (pos_mesas Ver + las claves del circuito de la mesa Editar) hace todo el circuito", async () => {
       const mozo = await crearMozo(s.sucursalId);
       await entrarComo(mozo);
       expect((await abrirCuenta(s.mesa.id, 2)).ok).toBe(true);

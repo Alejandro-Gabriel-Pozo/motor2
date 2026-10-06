@@ -3,10 +3,10 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerDetalleDeMesa, type ItemDeCuenta, type ItemEnEnvio } from "@/core/pos/cuenta";
 import { armarComandas } from "@/core/pos/comanda";
-import { obtenerBoletasRecientes } from "@/core/pos/boleta";
+import { obtenerTicketsRecientes } from "@/core/pos/ticket";
 import { cargarSelectorCartaPos } from "@/core/pos/selector-carta-consulta";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
-import { listarClientes } from "@/server/actions/clientes/cliente";
+import { listarClientesParaCuenta } from "@/server/actions/clientes/cliente";
 import { AvisoMesaProvider } from "./aviso-mesa";
 import { ImpresionProvider, ReimprimirEnvio } from "./imprimir";
 import { CuentasCerradas } from "./cuentas-cerradas";
@@ -30,9 +30,9 @@ import { formatearCantidad, formatearMonto, nombreDeMesa } from "@/core/pos/form
  * libera la mesa; `pos_anular_item` anula lo que ya salió a cocina; `pos_cerrar_cuenta` cierra la cuenta y registra la venta. Sin el
  * permiso, el botón queda deshabilitado con un `title` que lo explica. Un rol con solo Ver de `pos_mesas` ve la mesa de solo lectura.
  *
- * Impresión (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md): la comanda de cada envío se arma ACÁ, en el servidor y sin precios
+ * Impresión (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md): la comanda de cada envío se arma ACÁ, en el servidor y sin precios
  * (`armarComandas`), y va al proveedor de impresión, que envuelve las dos ramas (mesa libre y cuenta abierta) y «Cuentas cerradas» al
- * pie (las últimas boletas de la mesa, `obtenerBoletasRecientes`): así la boleta se imprime aunque el cierre deje la mesa libre.
+ * pie (las últimas tickets de la mesa, `obtenerTicketsRecientes`): así el ticket se imprime aunque el cierre deje la mesa libre.
  *
  * Ruta dinámica: no va en RUTAS_SIN_PARAMETROS ni en el menú. `params` es una Promise en esta versión de Next
  * (node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/dynamic-routes.md).
@@ -41,11 +41,11 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pos_mesas");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pos_mesas", ctx.db);
   if (!gate.ok) return <p className="text-red-700">{gate.mensaje}</p>;
 
   const { mesaId } = await params;
-  const detalle = await obtenerDetalleDeMesa(ctx.sucursalId, mesaId);
+  const detalle = await obtenerDetalleDeMesa(ctx.sucursalId, mesaId, ctx.db);
   if (!detalle) {
     return (
       <div className="space-y-3">
@@ -57,26 +57,30 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     );
   }
 
-  const [tomarPedido, asignarCliente, anularItem, cerrarCuenta, verReportesDinero, secciones, boletas] = await Promise.all([
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_tomar_pedido"),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_asignar_cliente"),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_anular_item"),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_cerrar_cuenta"),
-    // El shell del POS no filtra `EnlaceInterno` (no hay AccionesVisiblesProvider acá): el link a «Boletas emitidas» se
+  const [tomarPedido, abrirCuenta, enviarACocina, liberarMesa, asignarCliente, anularItem, cerrarCuenta, emitirCorregida, verReportesDinero, secciones, tickets] = await Promise.all([
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_tomar_pedido", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_abrir_cuenta", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_enviar_a_cocina", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_liberar_mesa", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_asignar_cliente", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_anular_item", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_cerrar_cuenta", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_emitir_ticket_corregido", ctx.db),
+    // El shell del POS no filtra `EnlaceInterno` (no hay AccionesVisiblesProvider acá): el link a «Tickets emitidos» se
     // condiciona a mano, del lado del servidor (Task #17).
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero"),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_tickets", ctx.db),
     listarSeccionesActivas(ctx.sucursalId),
-    obtenerBoletasRecientes(ctx.sucursalId, detalle.mesa.id),
+    obtenerTicketsRecientes(ctx.sucursalId, detalle.mesa.id, ctx.db),
   ]);
   const { mesa, cuenta } = detalle;
   // «Agregar al pedido» por sección de CARTA (docs/plan-selector-carta-pos-2026-09-25.md): solo con cuenta abierta y si quien mira
   // puede tomar pedido. Se lee acá, después de la guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`), sin Server
   // Action nueva. Aparte del `Promise.all` de arriba a propósito (no confundir con `secciones`, que son las de STOCK).
-  const selectorCarta = cuenta && tomarPedido.editar ? await cargarSelectorCartaPos(ctx.sucursalId) : null;
+  const selectorCarta = cuenta && tomarPedido.editar ? await cargarSelectorCartaPos(ctx.sucursalId, ctx.db) : null;
   // Cliente con descuento (Task #14): la lista de clientes ACTIVOS solo se trae si hay algo que asignar — mismo criterio que
   // `selectorCarta`. `descuentoPorcentaje` se convierte a `number` acá (server): un `Decimal` de Prisma no se puede pasar tal cual
   // a un Client Component (`ClienteCuenta`).
-  const clientesActivos = cuenta && asignarCliente.editar ? (await listarClientes(true)).map((c) => ({ id: c.id, nombre: c.nombre, descuentoPorcentaje: Number(c.descuentoPorcentaje) })) : [];
+  const clientesActivos = cuenta && asignarCliente.editar ? await listarClientesParaCuenta() : [];
   const titulo = nombreDeMesa(mesa.numero);
   const comandas = cuenta ? armarComandas(cuenta.envios, cuenta.mesero) : [];
 
@@ -97,7 +101,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
             </p>
             {cuenta && (
               <div className="mt-1 flex flex-col gap-1">
-                <ComensalesCuenta cuentaId={cuenta.id} comensales={cuenta.comensales} puede={tomarPedido.editar} />
+                <ComensalesCuenta cuentaId={cuenta.id} comensales={cuenta.comensales} puede={abrirCuenta.editar} />
                 <ClienteCuenta
                   cuentaId={cuenta.id}
                   clienteId={cuenta.clienteId}
@@ -119,11 +123,11 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
           )}
         </header>
 
-        <ImpresionProvider mesa={titulo} sucursal={ctx.sucursalNombre} comandas={comandas} boletas={boletas}>
+        <ImpresionProvider mesa={titulo} sucursal={ctx.sucursalNombre} zonaHoraria={ctx.empresaZonaHoraria} comandas={comandas} tickets={tickets}>
           {!cuenta ? (
             <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-8">
               <p className="mb-4 font-semibold">La mesa está libre.</p>
-              <AbrirCuenta mesaId={mesa.id} puede={tomarPedido.editar} />
+              <AbrirCuenta mesaId={mesa.id} puede={abrirCuenta.editar} />
             </div>
           ) : (
             <div className="flex flex-col gap-5">
@@ -141,10 +145,12 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                   productoNombre: i.productoNombre,
                   cantidad: i.cantidad,
                   precioUnitario: i.precioUnitario,
+                  precioListaUnitario: i.precioListaUnitario,
                   promoCuentaId: i.promoCuentaId,
                   promoTitulo: i.promoTitulo,
                 }))}
                 puede={tomarPedido.editar}
+                puedeEnviar={enviarACocina.editar}
               />
 
               {cuenta.envios.map((envio) => (
@@ -176,15 +182,15 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                   haySecciones={secciones.length > 0}
                   puede={cerrarCuenta.editar}
                 />
-                {cuenta.itemsTotales === 0 && <LiberarMesa cuentaId={cuenta.id} puede={tomarPedido.editar} />}
+                {cuenta.itemsTotales === 0 && <LiberarMesa cuentaId={cuenta.id} puede={liberarMesa.editar} />}
               </div>
             </div>
           )}
-          <CuentasCerradas boletas={boletas} puede={cerrarCuenta.editar} />
+          <CuentasCerradas tickets={tickets} puede={cerrarCuenta.editar} puedeCorregir={emitirCorregida.editar} zonaHoraria={ctx.empresaZonaHoraria} />
           {verReportesDinero.ver && (
             <p className="mt-3 text-[13px]">
-              <Link href={`/reportes/boletas?mesaId=${mesa.id}`} className="text-[var(--ink-soft)] underline hover:text-[var(--ink)]">
-                Ver todas las boletas de esta mesa →
+              <Link href={`/reportes/tickets?mesaId=${mesa.id}`} className="text-[var(--ink-soft)] underline hover:text-[var(--ink)]">
+                Ver todos los tickets de esta mesa →
               </Link>
             </p>
           )}
@@ -205,7 +211,10 @@ function ItemEnviado({ item, puedeAnular }: { item: ItemEnEnvio<ItemDeCuenta>; p
           {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-[12.5px] text-[var(--ink-soft)]"> (pedido {formatearCantidad(item.cantidad)})</span>}
         </span>
         <span className="flex items-center gap-3">
-          <span className="tabular-nums">{anuladoEntero ? "Anulado" : formatearMonto(item.restante * item.precioUnitario)}</span>
+          <span className="tabular-nums">
+            {!anuladoEntero && item.precioListaUnitario !== null && <s data-precio-lista className="mr-1 text-[var(--ink-soft)]">{formatearMonto(item.restante * item.precioListaUnitario)}</s>}
+            {anuladoEntero ? "Anulado" : formatearMonto(item.restante * item.precioUnitario)}
+          </span>
           {!anuladoEntero && <AnularItem item={{ id: item.id, productoNombre: item.productoNombre, restante: item.restante }} puede={puedeAnular} />}
         </span>
       </div>

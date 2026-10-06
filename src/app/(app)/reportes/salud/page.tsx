@@ -7,10 +7,10 @@ export default async function SaludPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_operativos");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_salud", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const filas = await generarReporteSaludPorProducto(ctx.sucursalId);
+  const filas = await generarReporteSaludPorProducto(ctx.sucursalId, ctx.db);
   const conAtencion = filas.filter((f) => f.resumen === "Atención").length;
 
   return (

@@ -1,15 +1,16 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Matriz de permisos con «Guardar»: se abre en solo lectura; el modo edición marca los cambios y no aplica nada hasta «Confirmar y guardar»,
  * que guarda todo junto; si otra persona cambió algo mientras tanto, no guarda nada. Se usa una acción del rol «operador» y se la deja como
- * estaba al terminar.
+ * estaba al terminar (una acción de piso operario: las de piso administrador no se le pueden dar al rol operador).
  */
-const ACCION = "stock_minimo";
+const ACCION = "reporte_salud";
 
 async function operador() {
-  return prisma.rol.upsert({ where: { nombre: "operador" }, update: { activo: true }, create: { nombre: "operador" } });
+  const { id: empresaId } = await prisma.empresa.findUniqueOrThrow({ where: { id: "empresa_principal" } });
+  return prisma.rol.upsert({ where: { empresaId_clave: { empresaId, clave: "operador" } }, update: { activo: true }, create: { nombre: "operador", clave: "operador" } });
 }
 async function fijar(rolId: string, puedeVer: boolean, puedeEditar: boolean) {
   await prisma.permisoRol.upsert({

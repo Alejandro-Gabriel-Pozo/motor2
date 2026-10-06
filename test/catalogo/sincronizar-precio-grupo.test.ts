@@ -47,12 +47,12 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       coca15: await pv("SPG_COCA15", "Coca-Cola 1,5L", 9000),
       suelto: await pv("SPG_SUELTO", "Tónica 500cc", 5000),
     };
-    agId = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 500 CC", seccionCartaId: seccion.id } })).id;
-    otroAgId = (await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa 1,5L", seccionCartaId: seccion.id } })).id;
+    agId = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: "Gaseosa 500 CC", seccionCartaId: seccion.id } })).id;
+    otroAgId = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: "Gaseosa 1,5L", seccionCartaId: seccion.id } })).id;
     await prisma.opcionItemAgrupadoCarta.createMany({
       data: [
-        ...[ids.coca, ids.sprite, ids.fanta].map((productoId, orden) => ({ itemAgrupadoCartaId: agId, productoId, orden })),
-        { itemAgrupadoCartaId: otroAgId, productoId: ids.coca15, orden: 0 },
+        ...[ids.coca, ids.sprite, ids.fanta].map((productoId, orden) => ({ sucursalId, itemAgrupadoCartaId: agId, productoId, orden })),
+        { sucursalId, itemAgrupadoCartaId: otroAgId, productoId: ids.coca15, orden: 0 },
       ],
     });
   });
@@ -88,7 +88,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       expect(await precioVenta(ids.coca)).toBe(5000);
       expect(await precioVenta(ids.sprite)).toBe(5000);
       // Sin confirmar: la red de seguridad de D5 (la carta muestra el mayor, con diagnóstico).
-      const armado = await resolverMenuCartaConDiagnostico(sucursalId);
+      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma);
       expect(armado!.carta.secciones[0].items.find((i) => i.productoId === agId)!.precio).toBe(5500);
       expect(armado!.diagnostico.agrupadosConPreciosDistintos).toEqual([{ id: agId, nombre: "Gaseosa 500 CC", minimo: 5000, maximo: 5500 }]);
     });
@@ -112,7 +112,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       expect(await auditoriasDePrecio(ids.sprite)).toEqual([{ valorAnterior: "5000", valorNuevo: "5500" }]);
       expect(await auditoriasDePrecio(ids.coca15)).toEqual([]);
 
-      const armado = await resolverMenuCartaConDiagnostico(sucursalId);
+      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma);
       expect(armado!.carta.secciones[0].items.find((i) => i.productoId === agId)!.precio).toBe(5500);
       expect(armado!.diagnostico.agrupadosConPreciosDistintos).toEqual([]);
     });
@@ -132,8 +132,8 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       expect(r).toEqual({ ok: true, mensaje: 'Producto "Tónica 500cc" actualizado.' });
     });
 
-    it("permiso: sin `editar_producto` no sincroniza nada", async () => {
-      await prisma.permisoRol.updateMany({ where: { rolId: operadorRolId, accionClave: "editar_producto" }, data: { puedeEditar: false, puedeVer: false } });
+    it("permiso: sin `producto_sincronizar_precio_carta` no sincroniza nada", async () => {
+      await prisma.permisoRol.updateMany({ where: { rolId: operadorRolId, accionClave: "producto_sincronizar_precio_carta" }, data: { puedeEditar: false, puedeVer: false } });
       const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: operadorRolId });
       await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
       const r = await sincronizarPrecioGrupoCarta([ids.coca, ids.sprite], 5500);
@@ -189,7 +189,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
         { campo: "habilitado", valorAnterior: null, valorNuevo: "true", sucursalId },
         { campo: "precio", valorAnterior: null, valorNuevo: "5500", sucursalId },
       ]);
-      const armado = await resolverMenuCartaConDiagnostico(sucursalId);
+      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma);
       expect(armado!.diagnostico.agrupadosConPreciosDistintos).toEqual([]);
       expect(armado!.carta.secciones[0].items.find((i) => i.productoId === agId)!.precio).toBe(5500);
     });

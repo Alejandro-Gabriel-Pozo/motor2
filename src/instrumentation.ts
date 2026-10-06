@@ -1,4 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
+import { validarDominioCartaAlArrancar, validarEmpresaUnicaAlArrancar, validarEntornoAlArrancar } from "@/env";
+import { limpiarEventoSentry } from "@/lib/sentry-limpiar";
 
 /**
  * Observabilidad — hallazgo de la auditoría de backend: nada capturaba ni
@@ -9,9 +11,15 @@ import * as Sentry from "@sentry/nextjs";
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    validarEntornoAlArrancar();
+    validarDominioCartaAlArrancar(process.env, process.env.CARTA_DOMINIO_BASE_COMPILADO);
+    validarEmpresaUnicaAlArrancar(process.env, process.env.CARTA_EMPRESA_UNICA_COMPILADO);
     Sentry.init({
       dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
       tracesSampleRate: 0.1,
+      sendDefaultPii: false,
+      beforeSend: limpiarEventoSentry,
+      beforeSendTransaction: limpiarEventoSentry,
     });
   }
 
@@ -19,6 +27,9 @@ export async function register() {
     Sentry.init({
       dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
       tracesSampleRate: 0.1,
+      sendDefaultPii: false,
+      beforeSend: limpiarEventoSentry,
+      beforeSendTransaction: limpiarEventoSentry,
     });
   }
 }

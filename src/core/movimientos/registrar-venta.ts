@@ -1,9 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
-import { esNumeroFinito } from "@/core/numero";
 import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
 import { crearArrastreDeRedondeo } from "@/core/movimientos/arrastre-redondeo";
-import { cumplePaso, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/core/catalogo/public";
+import { alcanceDeSucursal, cargarRecetaVigente, cumplePaso, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/core/catalogo/public";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { seccionesConStock } from "@/core/movimientos/stock";
 import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, faltantesDe, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
@@ -151,9 +150,11 @@ async function armarLinea(
   obtenerProducto: ReturnType<typeof crearCacheProducto>,
   costoUnitarioPorProducto: Map<string, number | null>
 ): Promise<{ ok: true; linea: LineaArmada | null } | { ok: false; mensaje: string }> {
-  const cantidad = Number(item.cantidadVendida || 0);
-  if (!(cantidad > 0)) return { ok: true, linea: null };
-  if (!esNumeroFinito(cantidad)) return { ok: false, mensaje: "La cantidad vendida no es un número válido." };
+  const cantidad: unknown = item.cantidadVendida;
+  // Una cantidad que no es un número finito y no negativo es un error, no «sin cantidad»: salteada en silencio, el resto de la venta se
+  // registraría igual. Solo el 0 (o la cantidad ausente) saltea la línea.
+  if (cantidad === undefined || cantidad === null || cantidad === 0) return { ok: true, linea: null };
+  if (typeof cantidad !== "number" || !Number.isFinite(cantidad) || cantidad < 0) return { ok: false, mensaje: "La cantidad vendida no es un número válido." };
 
   const producto = await obtenerProducto(item.productoId);
   if (!producto) return { ok: false, mensaje: `El producto no existe.` };
@@ -176,9 +177,7 @@ async function armarLinea(
   const pedidos: LineaArmada["pedidos"] = [];
   if (!producto.seProduce) {
     // Un PV que se produce por lote ya consumió su receta al producirse — la venta solo lo resta (ver registrarMovimiento, PRODUCCION).
-    const receta = await tx.recetaVersion.findFirst({
-      where: { productoId: producto.id },
-      orderBy: { version: "desc" },
+    const receta = await cargarRecetaVigente(tx, alcanceDeSucursal(sucursalId), producto.id, {
       include: {
         ingredientes: {
           orderBy: { id: "asc" },

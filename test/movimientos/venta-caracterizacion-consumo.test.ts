@@ -72,7 +72,7 @@ describe("Caracterización: consumo de una venta mixta (hermanos, seProduce, fal
   });
 
   const filasDeLaVenta = (operacionIds: string[]) =>
-    prisma.movimientoStock.findMany({ where: { operacionId: { in: operacionIds } }, orderBy: { creadoEn: "asc" } });
+    prisma.movimientoStock.findMany({ where: { operacionId: { in: operacionIds } }, orderBy: [{ creadoEn: "asc" }, { id: "asc" }] });
   const resumen = (filas: Awaited<ReturnType<typeof filasDeLaVenta>>) =>
     filas.map((m) => [
       m.proceso,

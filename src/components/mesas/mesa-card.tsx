@@ -7,6 +7,7 @@
 // de la mesa (`href*`); una acción sin `href` se sigue dibujando deshabilitada. El número llega ya formateado por quien llama («01»).
 
 import Link from "next/link";
+import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import type { ReactNode } from "react";
 import type { EstadoMesa } from "@/core/pos/mesas";
 
@@ -126,6 +127,7 @@ export function MesaCard(props: MesaCardProps) {
               className="flex w-full items-center justify-center rounded-lg border border-[var(--border)] py-[9px] text-[13px] font-semibold hover:bg-black/[0.03]"
             >
               Ver pedidos
+              <IndicadorDeEnlace />
             </Link>
           ) : (
             <button type="button" disabled className="w-full rounded-lg border border-[var(--border)] py-[9px] text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50">
@@ -152,6 +154,7 @@ function ActionButton({ color, textColor, href, icon, children }: { color: strin
       >
         {icon}
         {children}
+        <IndicadorDeEnlace />
       </Link>
     );
   }

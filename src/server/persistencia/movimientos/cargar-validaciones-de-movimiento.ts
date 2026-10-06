@@ -7,7 +7,7 @@ import type { Prisma } from "@prisma/client";
  * cuándo llamarlas) lo decide el caso de uso `casos-de-uso/registrar-movimiento.ts`. Sin reglas de negocio.
  *
  * Contrato: el cliente es SIEMPRE el primer parámetro, obligatorio (nunca `db = prisma` por defecto) — salvo la excepción documentada
- * acá, calcada del docstring de `guardar-version-de-receta.ts` de P1: estas tres lecturas corren FUERA de la transacción, con el
+ * acá, calcada del docstring de `guardar-version-de-receta.ts` de P1: estas lecturas corren FUERA de la transacción, con el
  * cliente GLOBAL `prisma` (es el camino rápido previo a la SERIALIZABLE; el árbitro real es un índice único o la propia
  * transacción — nunca esta lectura sola). El caso de uso les pasa el cliente global a propósito.
  */
@@ -24,6 +24,12 @@ export async function cargarDestinoConsumo(db: Prisma.TransactionClient, destino
   const destino = await db.destinoConsumo.findUnique({ where: { id: destinoId } });
   if (!destino) return null;
   return { activo: destino.activo };
+}
+
+/** `null` si el proveedor no existe (o es de otra empresa: la RLS no lo deja ver). Corre FUERA de la transacción (ver el docstring del archivo). */
+export async function cargarProveedor(db: Prisma.TransactionClient, proveedorId: string): Promise<{ activo: boolean } | null> {
+  const proveedor = await db.proveedor.findUnique({ where: { id: proveedorId }, select: { activo: true } });
+  return proveedor ?? null;
 }
 
 /**

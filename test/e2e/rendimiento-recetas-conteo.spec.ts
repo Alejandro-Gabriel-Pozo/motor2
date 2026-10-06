@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Camino CONTEO (Task #26, Diseño B — docs/plan-rendimiento-recetas-2026-09-22.md, sección nueva): con dos
@@ -17,7 +17,7 @@ test("con dos anclas de Conteo Físico que cubren el insumo, la fila se mide (no
   seccionId,
 }) => {
   const marca = Date.now();
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
 
   const aguaCaja = await prisma.producto.create({ data: { codigo: `E2E-CONTEO-MP-${marca}`, nombre: `E2E Conteo Agua caja x12 ${marca}`, tipo: "MP", unidadStockId: kg.id } });

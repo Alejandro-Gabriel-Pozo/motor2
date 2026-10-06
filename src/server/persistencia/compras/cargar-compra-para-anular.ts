@@ -8,7 +8,7 @@ import { claveDeLote, type LineaComprada, type SaldosPorLote } from "@/core/comp
  * (src/server/actions/movimientos/compras.ts): el `findFirst` de la operación de ESTA sucursal con sus líneas, y una sola consulta
  * agrupada con el saldo actual por (producto, sección, lote) de lo que esa compra tocó.
  *
- * Contrato de la capa de persistencia de ESCRITURA (distinto del piloto de LECTURA de `server/consultas/`, que acepta `db = prisma`):
+ * Contrato de la capa de persistencia de ESCRITURA (distinto del piloto de LECTURA de `server/consultas/`, que recibe `db`):
  *  - `tx` OBLIGATORIO como primer parámetro: siempre corre dentro de la transacción SERIALIZABLE de quien la llama (el caso de uso);
  *    nunca abre una conexión ni una transacción propia.
  *  - Devuelve TIPOS DE DOMINIO (`LineaComprada`, `SaldosPorLote` de core/compras/anulacion.ts), no `Prisma.*GetPayload`: los

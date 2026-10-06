@@ -26,17 +26,32 @@ export interface ComandoConteoFisico {
   fechaConteo: Date;
   accion: AccionConteo;
   detalle?: string;
+  /** I3 — UUID que genera el cliente por fila al armar la grilla y reenvía tal cual en un reintento. Opcional durante el rollout. */
+  claveIdempotencia?: string;
 }
 
 /** Por qué no se pudo registrar el conteo (la sección en blanco la rechaza antes el guard). */
-export type CodigoConteoFisico = "SECCION_NO_ENCONTRADA" | "PRODUCTO_NO_ENCONTRADO" | "PRODUCTO_NO_DISPONIBLE" | "SIN_STOCK_REAL" | "CANTIDAD_INVALIDA";
+export type CodigoConteoFisico =
+  | "SECCION_NO_ENCONTRADA"
+  | "PRODUCTO_NO_ENCONTRADO"
+  | "PRODUCTO_NO_DISPONIBLE"
+  | "SIN_STOCK_REAL"
+  | "CANTIDAD_INVALIDA"
+  | "CONFLICTO_IDEMPOTENCIA";
 
-/** `datos` de un conteo registrado con éxito. */
-export interface DatosRegistrarConteoFisico {
-  conteoId: string;
-  diferencia: number;
-  /** true si la diferencia se ajustó de verdad en el Kardex (accion AJUSTAR y diferencia != 0) — false para FALTA_MOVIMIENTO/DESCARTAR o diferencia 0. */
-  ajustado: boolean;
-}
+/**
+ * `datos` de un conteo registrado con éxito — discriminado por `repetido` (mismo criterio que `DatosRegistrarPagoConsignante`): un
+ * reenvío de la misma clave no vuelve a escribir nada, así que no lleva datos propios (el mensaje de éxito original ya viaja en el
+ * resultado).
+ */
+export type DatosRegistrarConteoFisico =
+  | { repetido: true; conteoId: null; diferencia: null; ajustado: null }
+  | {
+      repetido: false;
+      conteoId: string;
+      diferencia: number;
+      /** true si la diferencia se ajustó de verdad en el Kardex (accion AJUSTAR y diferencia != 0) — false para FALTA_MOVIMIENTO/DESCARTAR o diferencia 0. */
+      ajustado: boolean;
+    };
 
 export type ResultadoConteoFisico = ResultadoCaso<DatosRegistrarConteoFisico, CodigoConteoFisico>;

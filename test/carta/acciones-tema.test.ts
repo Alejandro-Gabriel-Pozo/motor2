@@ -5,7 +5,6 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { cambiarAplicacionTema, guardarTemaCarta } from "../../src/server/actions/carta/tema";
-import { resolverTemaCarta } from "../../src/core/carta/tema-consulta";
 import { CLAVES_TEMA_V1, type DefinicionClaveTema } from "../../src/core/carta/tema";
 
 /**
@@ -53,15 +52,15 @@ describe("Server Actions del tema de la carta", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  const guardado = async () => (await prisma.temaCartaSucursal.findUnique({ where: { sucursalId: centralId } }))?.valores;
+  const guardado = async () => (await prisma.temaCartaSucursal.findFirst({ where: { sucursalId: centralId } }))?.valores;
 
-  it("guarda las 67 claves válidas en borrador (al crear no aplica)", async () => {
-    expect(Object.keys(TODAS_VALIDAS)).toHaveLength(67);
+  it("guarda las 64 claves válidas en borrador (al crear no aplica)", async () => {
+    expect(Object.keys(TODAS_VALIDAS)).toHaveLength(64);
     const r = await guardarTemaCarta(centralId, TODAS_VALIDAS);
-    expect(r).toEqual({ ok: true, mensaje: 'Tema de "Central" guardado (67 valores cargados; el resto usa el default de la carta). Es un borrador: la carta sigue con la sheet hasta que lo apliques.' });
-    const fila = await prisma.temaCartaSucursal.findUniqueOrThrow({ where: { sucursalId: centralId } });
+    expect(r).toEqual({ ok: true, mensaje: 'Tema de "Central" guardado (64 valores cargados; el resto usa el default de la carta). Es un borrador: la carta usa el estilo por defecto hasta que lo apliques.' });
+    const fila = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } });
     expect(fila.aplicarEnCarta).toBe(false);
-    expect(Object.keys(fila.valores as object)).toHaveLength(67);
+    expect(Object.keys(fila.valores as object)).toHaveLength(64);
     expect(fila.valores).toEqual(TODAS_VALIDAS);
   });
 
@@ -118,22 +117,22 @@ describe("Server Actions del tema de la carta", () => {
     await cambiarAplicacionTema(centralId, true);
     const r = await guardarTemaCarta(centralId, { color_marca: "blue" });
     expect(r.mensaje).toMatch(/Está aplicado: la carta toma los cambios en hasta 5 minutos\.$/);
-    expect((await prisma.temaCartaSucursal.findUniqueOrThrow({ where: { sucursalId: centralId } })).aplicarEnCarta).toBe(true);
+    expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } })).aplicarEnCarta).toBe(true);
   });
 
   it("aplicar sin fila o con el tema vacío → error; con valores → aplicado (avisa si no está en el portal)", async () => {
     expect(await cambiarAplicacionTema(centralId, true)).toEqual({ ok: false, mensaje: "Esta sucursal todavía no tiene tema: guardalo primero." });
     await guardarTemaCarta(centralId, {});
     expect(await cambiarAplicacionTema(centralId, true)).toEqual({ ok: false, mensaje: "No se puede aplicar un tema vacío: cargá al menos un valor y guardalo." });
-    expect((await prisma.temaCartaSucursal.findUniqueOrThrow({ where: { sucursalId: centralId } })).aplicarEnCarta).toBe(false);
+    expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } })).aplicarEnCarta).toBe(false);
 
     await guardarTemaCarta(centralId, { color_marca: "red" });
     expect(await cambiarAplicacionTema(centralId, true)).toEqual({ ok: true, mensaje: 'Tema de "Central" aplicado, pero sin efecto hasta agregarla al portal (Portal de sucursales).' });
-    expect((await prisma.temaCartaSucursal.findUniqueOrThrow({ where: { sucursalId: centralId } })).aplicarEnCarta).toBe(true);
+    expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } })).aplicarEnCarta).toBe(true);
 
     await prisma.sucursalPublica.create({ data: { sucursalId: centralId, slug: "central" } });
     expect((await cambiarAplicacionTema(centralId, true)).mensaje).toBe('Tema de "Central" aplicado, pero sin efecto hasta publicarla en el portal.');
-    await prisma.sucursalPublica.update({ where: { sucursalId: centralId }, data: { publicada: true } });
+    await prisma.sucursalPublica.updateMany({ where: { sucursalId: centralId }, data: { publicada: true } });
     expect((await cambiarAplicacionTema(centralId, true)).mensaje).toBe('Tema de "Central" aplicado: la carta lo toma en hasta 5 minutos.');
   });
 
@@ -142,24 +141,33 @@ describe("Server Actions del tema de la carta", () => {
     expect((await cambiarAplicacionTema(centralId, true)).ok).toBe(false);
   });
 
-  it("desaplicar conserva los valores (y el endpoint deja de servirlo)", async () => {
+  it("desaplicar conserva los valores (y la carta deja de tomarlos)", async () => {
     await guardarTemaCarta(centralId, { color_marca: "red", restaurante_nombre: "La Parrilla" });
     await cambiarAplicacionTema(centralId, true);
-    expect((await resolverTemaCarta(centralId))?.valores.color_marca).toBe("red");
-    expect(await cambiarAplicacionTema(centralId, false)).toEqual({ ok: true, mensaje: 'Tema de "Central" desaplicado: la carta vuelve a la tab Config de la sheet (los valores guardados se conservan).' });
-    const fila = await prisma.temaCartaSucursal.findUniqueOrThrow({ where: { sucursalId: centralId } });
+    expect(await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } })).toMatchObject({ aplicarEnCarta: true, valores: { color_marca: "red" } });
+    expect(await cambiarAplicacionTema(centralId, false)).toEqual({ ok: true, mensaje: 'Tema de "Central" desaplicado: la carta vuelve al estilo por defecto (los valores guardados se conservan).' });
+    const fila = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } });
     expect(fila.aplicarEnCarta).toBe(false);
     expect(fila.valores).toEqual({ color_marca: "red", restaurante_nombre: "La Parrilla" });
-    expect(await resolverTemaCarta(centralId)).toBeNull();
   });
 
   it("guardar para una sucursal inexistente → error", async () => {
     expect(await guardarTemaCarta("no-existe", { color_marca: "red" })).toEqual({ ok: false, mensaje: "No se encontró la sucursal." });
   });
 
-  it("sin el permiso `carta` (el operador arranca sin él) ninguna acción escribe", async () => {
+  it("con `carta_tema` en esta sucursal no se puede guardar ni aplicar el tema de otra (contexto sucursal)", async () => {
+    const otraId = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
+    await prisma.temaCartaSucursal.create({ data: { sucursalId: otraId, valores: { color_marca: "red" } } });
+    const antes = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: otraId } });
+
+    const intentos = [await guardarTemaCarta(otraId, { color_marca: "blue" }), await cambiarAplicacionTema(otraId, true), await cambiarAplicacionTema(otraId, false)];
+    for (const r of intentos) expect(r).toEqual({ ok: false, mensaje: "No se encontró la sucursal." });
+    expect(await prisma.temaCartaSucursal.findMany()).toEqual([antes]);
+  });
+
+  it("sin el permiso `carta_tema` (el operador arranca sin él) ninguna acción escribe", async () => {
     await guardarTemaCarta(centralId, { color_marca: "red" });
-    const antes = await prisma.temaCartaSucursal.findUniqueOrThrow({ where: { sucursalId: centralId } });
+    const antes = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } });
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: centralId, rolId: operadorRolId });
     await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
 

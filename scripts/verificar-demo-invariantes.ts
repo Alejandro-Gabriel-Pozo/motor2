@@ -34,19 +34,19 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
   let sucursalId: string;
 
   beforeAll(async () => {
-    const sucursal = await prisma.sucursal.findUnique({ where: { nombre: NOMBRE_SUCURSAL } });
+    const sucursal = await prisma.sucursal.findFirst({ where: { nombre: NOMBRE_SUCURSAL } });
     if (!sucursal) throw new Error(`No existe la sucursal "${NOMBRE_SUCURSAL}" en esta base — ¿corriste el seed de 6 meses primero?`);
     sucursalId = sucursal.id;
   });
 
   it("1) Compras: el total del reporte de Período coincide con la suma de 'por proveedor' (mismo reporte)", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, DESDE, HASTA);
+    const rep = await obtenerReportePorPeriodo(sucursalId, DESDE, HASTA, undefined, prisma);
     const sumaPorProveedor = rep.compras.porProveedor.reduce((a, p) => a + p.importe, 0);
     expect(Math.round(sumaPorProveedor)).toBe(Math.round(rep.compras.totalGastado));
   });
 
   it("2) Compras: el total del reporte de Período coincide con una consulta cruda a Postgres (excluyendo anuladas)", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, DESDE, HASTA);
+    const rep = await obtenerReportePorPeriodo(sucursalId, DESDE, HASTA, undefined, prisma);
     const crudo = await prisma.movimientoStock.aggregate({
       where: { seccion: { sucursalId }, proceso: "COMPRA", operacion: { fecha: { gte: DESDE, lte: HASTA }, anuladaEn: null } },
       _sum: { precioTotal: true },
@@ -55,21 +55,21 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
   });
 
   it("3) Ventas: el total del reporte de Período coincide con la suma de 'por producto' (mismo reporte)", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, DESDE, HASTA);
+    const rep = await obtenerReportePorPeriodo(sucursalId, DESDE, HASTA, undefined, prisma);
     const sumaPorProducto = rep.ventas.porProducto.reduce((a, p) => a + p.importe, 0);
     expect(Math.round(sumaPorProducto)).toBe(Math.round(rep.ventas.totalFacturado));
   });
 
   it("4) Ventas: el total del reporte de Período coincide con el de Ventas por categoría — dos reportes INDEPENDIENTES, misma ventana", async () => {
     const [porPeriodo, porCategoria] = await Promise.all([
-      obtenerReportePorPeriodo(sucursalId, DESDE, HASTA),
-      generarReporteVentasPorCategoria(sucursalId, DESDE, HASTA),
+      obtenerReportePorPeriodo(sucursalId, DESDE, HASTA, undefined, prisma),
+      generarReporteVentasPorCategoria(sucursalId, DESDE, HASTA, prisma),
     ]);
     expect(Math.round(porCategoria.totalFacturado)).toBe(Math.round(porPeriodo.ventas.totalFacturado));
   });
 
   it("5) Una compra anulada no suma: el total del reporte es MENOR que 'total + lo que sumaría la anulada sola'", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, DESDE, HASTA);
+    const rep = await obtenerReportePorPeriodo(sucursalId, DESDE, HASTA, undefined, prisma);
     const anuladas = await prisma.movimientoStock.aggregate({
       where: { seccion: { sucursalId }, proceso: "COMPRA", operacion: { fecha: { gte: DESDE, lte: HASTA }, anuladaEn: { not: null } } },
       _sum: { precioTotal: true },
@@ -81,7 +81,7 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
   });
 
   it("6) Stock consolidado (teórico, por sección) y Valuación (saldo, agregado) coinciden por producto — dos reportes independientes del mismo saldo", async () => {
-    const [consolidado, valuacion] = await Promise.all([calcularStockConsolidado(sucursalId), calcularValuacionInventario(sucursalId)]);
+    const [consolidado, valuacion] = await Promise.all([calcularStockConsolidado(sucursalId, prisma), calcularValuacionInventario(sucursalId, prisma)]);
     const teoricoPorProducto = new Map<string, number>();
     for (const fila of consolidado) teoricoPorProducto.set(fila.productoId, (teoricoPorProducto.get(fila.productoId) ?? 0) + fila.teorico);
 
@@ -100,7 +100,7 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
     // saldo real casi nunca baja del mínimo heurístico (40% de la necesidad semanal) — cero alertas es un resultado
     // válido (vacuamente cumple la conciliación), no un error. Lo que este test verifica es la PROPIEDAD: si hay
     // alguna alerta, que sea consistente con un mínimo de verdad configurado y con el saldo real.
-    const alertas = await calcularAlertasStock(sucursalId);
+    const alertas = await calcularAlertasStock(sucursalId, prisma);
     for (const a of alertas) {
       const minimo = await prisma.stockMinimoProducto.findFirst({ where: { sucursalId, productoId: a.productoId, OR: [{ seccionId: a.seccionId }, { seccionId: null }] } });
       expect(minimo, `${a.productoCodigo}/${a.seccionNombre}: alertó sin tener un mínimo configurado`).toBeTruthy();
@@ -111,9 +111,9 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
   });
 
   it("8) PV030 ('se produce'): tiene saldo real positivo en stock consolidado — el saldo de un PV que se produce SÍ significa algo (a diferencia del resto de la carta)", async () => {
-    const pv030 = await prisma.producto.findUniqueOrThrow({ where: { codigo: "PV030" } });
+    const pv030 = await prisma.producto.findFirstOrThrow({ where: { codigo: "PV030" } });
     expect(tieneStockReal(pv030.tipo, pv030.seProduce), "PV030 tiene que estar marcado 'se produce' para que esta conciliación tenga sentido").toBe(true);
-    const consolidado = await calcularStockConsolidado(sucursalId);
+    const consolidado = await calcularStockConsolidado(sucursalId, prisma);
     const filasPv030 = consolidado.filter((f) => f.productoId === pv030.id);
     const teoricoTotal = filasPv030.reduce((a, f) => a + f.teorico, 0);
     expect(teoricoTotal).toBeGreaterThan(0);
@@ -125,7 +125,7 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
     // historial de compra, así que esas ventas del tramo de desorden se RECONSTRUYEN con éxito (ingresoRealReconstruido),
     // no quedan afuera. `ingresoSinCostoReal` mediría algo distinto: un insumo que TODAVÍA hoy no tiene ninguna compra,
     // que no es el caso de esta demo (por diseño: nada queda sin poder costear "para siempre" — ver costo-historico.ts).
-    const rep = await obtenerReportePorPeriodo(sucursalId, DESDE, HASTA);
+    const rep = await obtenerReportePorPeriodo(sucursalId, DESDE, HASTA, undefined, prisma);
     expect(rep.margen.margenRealTotal, "tiene que haber podido costear AL MENOS algunas ventas").not.toBeNull();
     expect(rep.margen.ingresoRealReconstruido, "tiene que haber ventas RECONSTRUIDAS (las de PV020 del tramo de desorden, sin costo congelado al vender)").toBeGreaterThan(0);
     expect(rep.margen.ingresoConCostoReal, "el ingreso reconstruido es una PARTE del ingreso costeado total, no todo").toBeGreaterThan(rep.margen.ingresoRealReconstruido);
@@ -135,7 +135,7 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
   it("10) Contención: el facturado de los últimos 30 días no puede superar el facturado de los 6 meses completos", async () => {
     const hace30 = new Date(HASTA);
     hace30.setUTCDate(hace30.getUTCDate() - 29);
-    const [rep30, rep6m] = await Promise.all([obtenerReportePorPeriodo(sucursalId, hace30, HASTA), obtenerReportePorPeriodo(sucursalId, DESDE, HASTA)]);
+    const [rep30, rep6m] = await Promise.all([obtenerReportePorPeriodo(sucursalId, hace30, HASTA, undefined, prisma), obtenerReportePorPeriodo(sucursalId, DESDE, HASTA, undefined, prisma)]);
     expect(rep30.ventas.totalFacturado).toBeGreaterThan(0);
     expect(rep30.ventas.totalFacturado).toBeLessThanOrEqual(rep6m.ventas.totalFacturado);
   });

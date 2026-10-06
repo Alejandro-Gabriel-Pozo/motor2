@@ -1,0 +1,1433 @@
+{
+  "perfiles": {
+    "admin": {
+      "acciones": [
+        "alta_producto",
+        "alta_sucursal",
+        "capacidades_sucursal",
+        "carta_items_agrupados",
+        "carta_portal",
+        "carta_tema",
+        "carta_ver",
+        "categorias",
+        "clientes",
+        "comparar_precios",
+        "conteo_frecuencia",
+        "gestion_permisos",
+        "gestion_roles",
+        "gestion_usuarios",
+        "grupos_familia",
+        "guardar_receta",
+        "margen_objetivo_editar",
+        "motivos_destino_consumo",
+        "motivos_merma",
+        "pagar_consignante",
+        "pos_mesas",
+        "precio_local",
+        "proceso_ajuste",
+        "proceso_compra",
+        "proceso_consumo",
+        "proceso_control",
+        "proceso_devolucion_cliente",
+        "proceso_devolucion_consignacion",
+        "proceso_devolucion_proveedor",
+        "proceso_merma",
+        "proceso_produccion",
+        "proceso_transferencia",
+        "proceso_venta",
+        "producto_ver_catalogo",
+        "proveedores",
+        "reporte_categorias",
+        "reporte_compras",
+        "reporte_consolidado",
+        "reporte_conteos",
+        "reporte_costos",
+        "reporte_descuentos_clientes",
+        "reporte_descuentos_productos",
+        "reporte_devoluciones",
+        "reporte_diferencias",
+        "reporte_historial",
+        "reporte_huecos_catalogo",
+        "reporte_insumos_sin_receta",
+        "reporte_margen_promociones",
+        "reporte_perdidas",
+        "reporte_periodo",
+        "reporte_rendimiento_recetas",
+        "reporte_rendimiento_sucursal",
+        "reporte_resumen",
+        "reporte_rotacion_mesas",
+        "reporte_salud",
+        "reporte_sin_receta",
+        "reporte_tickets",
+        "reporte_trazabilidad",
+        "reporte_valuacion",
+        "reporte_vencimientos",
+        "reporte_ventas_por_seccion",
+        "secciones",
+        "stock_minimo",
+        "stock_reclasificar",
+        "stock_seccion_habitual",
+        "traspasar_gerencia",
+        "traspaso_enviar_directo",
+        "traspaso_solicitar",
+        "traspaso_ver_bandeja",
+        "unidades",
+        "ver_auditoria",
+        "ver_stock"
+      ],
+      "menu": [
+        "administracion|/administracion/usuarios",
+        "administracion|/administracion/roles",
+        "administracion|/administracion/permisos",
+        "administracion|/administracion/capacidades-sucursal",
+        "administracion|/administracion/sucursales",
+        "administracion|/administracion/auditoria",
+        "administracion|/administracion/gerencia",
+        "catalogo|/catalogo/productos",
+        "catalogo|/catalogo/proveedores",
+        "catalogo|/catalogo/clientes",
+        "catalogo|/catalogo/recetas",
+        "catalogo|/catalogo/insumos-grupos",
+        "catalogo|/catalogo/categorias",
+        "catalogo|/catalogo/unidades",
+        "catalogo|/catalogo/margen-objetivo",
+        "carta|/carta",
+        "carta|/carta/agrupados",
+        "carta|/carta/portal",
+        "carta|/carta/tema",
+        "movimientos|/movimientos/compra",
+        "movimientos|/movimientos/produccion",
+        "movimientos|/movimientos/venta",
+        "movimientos|/movimientos/consumo",
+        "movimientos|/movimientos/merma",
+        "movimientos|/movimientos/ajuste",
+        "movimientos|/movimientos/transferencia",
+        "movimientos|/movimientos/devolucion-consignacion",
+        "movimientos|/movimientos/devolucion-cliente",
+        "movimientos|/movimientos/devolucion-proveedor",
+        "movimientos|/movimientos/conteo-fisico",
+        "movimientos|/movimientos/secciones",
+        "movimientos|/movimientos/precio-local",
+        "movimientos|/movimientos/motivos-merma",
+        "movimientos|/movimientos/destinos-consumo",
+        "stock|/stock/consolidado",
+        "stock|/stock/por-familia",
+        "stock|/stock/alertas",
+        "stock|/stock/minimo",
+        "stock|/stock/seccion-habitual",
+        "stock|/stock/reclasificar",
+        "stock|/stock/conteo-frecuencia",
+        "reportes|/reportes",
+        "reportes|/reportes/consolidado",
+        "reportes|/reportes/periodo",
+        "reportes|/reportes/categorias",
+        "reportes|/reportes/ventas-por-seccion",
+        "reportes|/reportes/costos",
+        "reportes|/reportes/compras",
+        "reportes|/reportes/rendimiento-recetas",
+        "reportes|/reportes/rendimiento-recetas/por-sucursal",
+        "reportes|/reportes/valuacion",
+        "reportes|/reportes/perdidas",
+        "reportes|/reportes/devoluciones",
+        "reportes|/reportes/vencimientos",
+        "reportes|/reportes/diferencias",
+        "reportes|/reportes/sin-receta",
+        "reportes|/reportes/insumos-sin-receta",
+        "reportes|/reportes/consignacion",
+        "reportes|/reportes/salud",
+        "reportes|/reportes/huecos-catalogo",
+        "reportes|/reportes/conteos",
+        "reportes|/reportes/historial",
+        "reportes|/reportes/trazabilidad",
+        "reportes|/reportes/rotacion-mesas",
+        "reportes|/reportes/tickets",
+        "reportes|/reportes/descuentos-clientes",
+        "reportes|/reportes/descuentos-productos",
+        "reportes|/reportes/margen-promociones",
+        "traspasos|/traspasos",
+        "traspasos|/traspasos/solicitar",
+        "traspasos|/traspasos/enviar",
+        "pos|/mesas"
+      ],
+      "panelEmpresa": [
+        "administracion|/administracion/roles",
+        "administracion|/administracion/permisos",
+        "administracion|/administracion/capacidades-sucursal",
+        "administracion|/administracion/sucursales",
+        "administracion|/administracion/gerencia",
+        "catalogo|/catalogo/productos",
+        "catalogo|/catalogo/proveedores",
+        "catalogo|/catalogo/clientes",
+        "catalogo|/catalogo/recetas",
+        "catalogo|/catalogo/insumos-grupos",
+        "catalogo|/catalogo/categorias",
+        "catalogo|/catalogo/unidades",
+        "catalogo|/catalogo/margen-objetivo",
+        "carta|/carta/agrupados",
+        "carta|/carta/portal",
+        "movimientos|/movimientos/motivos-merma",
+        "movimientos|/movimientos/destinos-consumo",
+        "reportes|/reportes/huecos-catalogo"
+      ],
+      "panelSucursal": [
+        "administracion|/administracion/usuarios",
+        "administracion|/administracion/auditoria",
+        "catalogo|/catalogo/productos",
+        "carta|/carta",
+        "carta|/carta/tema",
+        "movimientos|/movimientos/compra",
+        "movimientos|/movimientos/produccion",
+        "movimientos|/movimientos/venta",
+        "movimientos|/movimientos/consumo",
+        "movimientos|/movimientos/merma",
+        "movimientos|/movimientos/ajuste",
+        "movimientos|/movimientos/transferencia",
+        "movimientos|/movimientos/devolucion-consignacion",
+        "movimientos|/movimientos/devolucion-cliente",
+        "movimientos|/movimientos/devolucion-proveedor",
+        "movimientos|/movimientos/conteo-fisico",
+        "movimientos|/movimientos/secciones",
+        "movimientos|/movimientos/precio-local",
+        "stock|/stock/consolidado",
+        "stock|/stock/por-familia",
+        "stock|/stock/alertas",
+        "stock|/stock/minimo",
+        "stock|/stock/seccion-habitual",
+        "stock|/stock/reclasificar",
+        "stock|/stock/conteo-frecuencia",
+        "reportes|/reportes",
+        "reportes|/reportes/consolidado",
+        "reportes|/reportes/periodo",
+        "reportes|/reportes/categorias",
+        "reportes|/reportes/ventas-por-seccion",
+        "reportes|/reportes/costos",
+        "reportes|/reportes/compras",
+        "reportes|/reportes/rendimiento-recetas",
+        "reportes|/reportes/rendimiento-recetas/por-sucursal",
+        "reportes|/reportes/valuacion",
+        "reportes|/reportes/perdidas",
+        "reportes|/reportes/devoluciones",
+        "reportes|/reportes/vencimientos",
+        "reportes|/reportes/diferencias",
+        "reportes|/reportes/sin-receta",
+        "reportes|/reportes/insumos-sin-receta",
+        "reportes|/reportes/consignacion",
+        "reportes|/reportes/salud",
+        "reportes|/reportes/conteos",
+        "reportes|/reportes/historial",
+        "reportes|/reportes/trazabilidad",
+        "reportes|/reportes/rotacion-mesas",
+        "reportes|/reportes/tickets",
+        "reportes|/reportes/descuentos-clientes",
+        "reportes|/reportes/descuentos-productos",
+        "reportes|/reportes/margen-promociones",
+        "traspasos|/traspasos",
+        "traspasos|/traspasos/solicitar",
+        "traspasos|/traspasos/enviar",
+        "pos|/mesas"
+      ],
+      "selectorDePaneles": true
+    },
+    "operador": {
+      "acciones": [
+        "alta_producto",
+        "categoria_alta",
+        "conteo_frecuencia",
+        "conteo_resolver_pendiente",
+        "insumo_alta",
+        "proceso_compra",
+        "proceso_consumo",
+        "proceso_control",
+        "proceso_devolucion_cliente",
+        "proceso_devolucion_consignacion",
+        "proceso_devolucion_proveedor",
+        "proceso_merma",
+        "proceso_produccion",
+        "proceso_transferencia",
+        "proceso_venta",
+        "producto_asignar_insumo",
+        "producto_disponibilidad",
+        "producto_editar",
+        "producto_presentaciones",
+        "producto_sincronizar_precio_carta",
+        "producto_ver_catalogo",
+        "proveedor_alta",
+        "reporte_conteos",
+        "stock_reclasificar",
+        "traspaso_aceptar",
+        "traspaso_aprobar",
+        "traspaso_cancelar_solicitud",
+        "traspaso_confirmar_reingreso",
+        "traspaso_enviar_directo",
+        "traspaso_rechazar_envio",
+        "traspaso_rechazar_solicitud",
+        "traspaso_solicitar",
+        "traspaso_ver_bandeja",
+        "ver_stock"
+      ],
+      "menu": [
+        "catalogo|/catalogo/productos",
+        "movimientos|/movimientos/compra",
+        "movimientos|/movimientos/produccion",
+        "movimientos|/movimientos/venta",
+        "movimientos|/movimientos/consumo",
+        "movimientos|/movimientos/merma",
+        "movimientos|/movimientos/transferencia",
+        "movimientos|/movimientos/devolucion-consignacion",
+        "movimientos|/movimientos/devolucion-cliente",
+        "movimientos|/movimientos/devolucion-proveedor",
+        "movimientos|/movimientos/conteo-fisico",
+        "stock|/stock/consolidado",
+        "stock|/stock/por-familia",
+        "stock|/stock/alertas",
+        "stock|/stock/reclasificar",
+        "stock|/stock/conteo-frecuencia",
+        "reportes|/reportes/conteos",
+        "traspasos|/traspasos",
+        "traspasos|/traspasos/solicitar",
+        "traspasos|/traspasos/enviar"
+      ],
+      "panelEmpresa": [
+        "catalogo|/catalogo/productos"
+      ],
+      "panelSucursal": [
+        "catalogo|/catalogo/productos",
+        "movimientos|/movimientos/compra",
+        "movimientos|/movimientos/produccion",
+        "movimientos|/movimientos/venta",
+        "movimientos|/movimientos/consumo",
+        "movimientos|/movimientos/merma",
+        "movimientos|/movimientos/transferencia",
+        "movimientos|/movimientos/devolucion-consignacion",
+        "movimientos|/movimientos/devolucion-cliente",
+        "movimientos|/movimientos/devolucion-proveedor",
+        "movimientos|/movimientos/conteo-fisico",
+        "stock|/stock/consolidado",
+        "stock|/stock/por-familia",
+        "stock|/stock/alertas",
+        "stock|/stock/reclasificar",
+        "stock|/stock/conteo-frecuencia",
+        "reportes|/reportes/conteos",
+        "traspasos|/traspasos",
+        "traspasos|/traspasos/solicitar",
+        "traspasos|/traspasos/enviar"
+      ],
+      "selectorDePaneles": false
+    },
+    "soloSalon": {
+      "acciones": [
+        "pos_mesas"
+      ],
+      "menu": [
+        "pos|/mesas"
+      ],
+      "panelEmpresa": [],
+      "panelSucursal": [
+        "pos|/mesas"
+      ],
+      "selectorDePaneles": false
+    }
+  },
+  "menuCompleto": [
+    "/administracion/usuarios",
+    "/administracion/roles",
+    "/administracion/permisos",
+    "/administracion/capacidades-sucursal",
+    "/administracion/sucursales",
+    "/administracion/auditoria",
+    "/administracion/gerencia",
+    "/catalogo/productos",
+    "/catalogo/proveedores",
+    "/catalogo/clientes",
+    "/catalogo/recetas",
+    "/catalogo/insumos-grupos",
+    "/catalogo/categorias",
+    "/catalogo/unidades",
+    "/catalogo/margen-objetivo",
+    "/carta",
+    "/carta/agrupados",
+    "/carta/portal",
+    "/carta/tema",
+    "/movimientos/compra",
+    "/movimientos/produccion",
+    "/movimientos/venta",
+    "/movimientos/consumo",
+    "/movimientos/merma",
+    "/movimientos/ajuste",
+    "/movimientos/transferencia",
+    "/movimientos/devolucion-consignacion",
+    "/movimientos/devolucion-cliente",
+    "/movimientos/devolucion-proveedor",
+    "/movimientos/conteo-fisico",
+    "/movimientos/secciones",
+    "/movimientos/precio-local",
+    "/movimientos/motivos-merma",
+    "/movimientos/destinos-consumo",
+    "/stock/consolidado",
+    "/stock/por-familia",
+    "/stock/alertas",
+    "/stock/minimo",
+    "/stock/seccion-habitual",
+    "/stock/reclasificar",
+    "/stock/conteo-frecuencia",
+    "/reportes",
+    "/reportes/consolidado",
+    "/reportes/periodo",
+    "/reportes/categorias",
+    "/reportes/ventas-por-seccion",
+    "/reportes/costos",
+    "/reportes/compras",
+    "/reportes/rendimiento-recetas",
+    "/reportes/rendimiento-recetas/por-sucursal",
+    "/reportes/valuacion",
+    "/reportes/perdidas",
+    "/reportes/devoluciones",
+    "/reportes/vencimientos",
+    "/reportes/diferencias",
+    "/reportes/sin-receta",
+    "/reportes/insumos-sin-receta",
+    "/reportes/consignacion",
+    "/reportes/salud",
+    "/reportes/huecos-catalogo",
+    "/reportes/conteos",
+    "/reportes/historial",
+    "/reportes/trazabilidad",
+    "/reportes/rotacion-mesas",
+    "/reportes/tickets",
+    "/reportes/descuentos-clientes",
+    "/reportes/descuentos-productos",
+    "/reportes/margen-promociones",
+    "/traspasos",
+    "/traspasos/solicitar",
+    "/traspasos/enviar",
+    "/mesas"
+  ],
+  "rutasFueraDelMenu": [
+    "/catalogo/proveedores/comparativa",
+    "/catalogo/productos/nuevo"
+  ],
+  "catalogoDeAcciones": [
+    {
+      "clave": "alta_producto",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "producto_editar",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "guardar_receta",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "grupos_familia",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "secciones",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "unidades",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "proveedores",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "categorias",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "margen_objetivo_editar",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "motivos_merma",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "motivos_destino_consumo",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "carta_ver",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "carta_secciones",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "carta_generos",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "carta_contenido_producto",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "carta_producto_descuento",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "carta_items_agrupados",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "carta_portal",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "carta_promo_definir",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "carta_promo_activar",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "carta_promo_precio_local",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "carta_tema",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "stock_minimo",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "ver_stock",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "precio_local",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "comparar_precios",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "notificar_alertas",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "insumos_mezclados",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "gestion_usuarios",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "activar_usuario_sucursal",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "notas_usuario_sucursal",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "apagar_cuenta_empresa",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "gestion_permisos",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "gestion_roles",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "renombrar_rol",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "proceso_compra",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "proceso_produccion",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "proceso_consumo",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "proceso_ajuste",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "proceso_control",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "proceso_transferencia",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "proceso_merma",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "proceso_venta",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "proceso_devolucion_consignacion",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "proceso_devolucion_cliente",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "proceso_devolucion_proveedor",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "traspaso_ver_bandeja",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "traspaso_solicitar",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "traspaso_enviar_directo",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "traspaso_aprobar",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "traspaso_cancelar_solicitud",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "traspaso_rechazar_solicitud",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "traspaso_aceptar",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "traspaso_rechazar_envio",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "traspaso_confirmar_reingreso",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "cancelar_conteo",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "anular_venta",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "anular_compra",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "corregir_compra",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "capacidades_sucursal",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "alta_sucursal",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "activar_sucursal",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "renombrar_sucursal",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "pagar_consignante",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "ver_auditoria",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "ver_auditoria_empresa",
+      "contexto": "empresa",
+      "nivelMinimo": "gerente",
+      "rolesEditarSemilla": []
+    },
+    {
+      "clave": "traspasar_gerencia",
+      "contexto": "empresa",
+      "nivelMinimo": "gerente",
+      "rolesEditarSemilla": []
+    },
+    {
+      "clave": "reporte_resumen",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_consolidado",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_periodo",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_categorias",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_ventas_por_seccion",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_costos",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_compras",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_rendimiento_recetas",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_rendimiento_sucursal",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_valuacion",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_tickets",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_descuentos_clientes",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_descuentos_productos",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_margen_promociones",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_historial_importes",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_perdidas",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_devoluciones",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_diferencias",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_vencimientos",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_salud",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_historial",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_trazabilidad",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_rotacion_mesas",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_sin_receta",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_insumos_sin_receta",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "reporte_conteos",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "reporte_huecos_catalogo",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "pos_mesas",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "pos_tomar_pedido",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "pos_anular_item",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "pos_cerrar_cuenta",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "calibrar_rendimiento_local",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "receta_sucursal_editar",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "receta_sucursal_copiar",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "receta_sucursal_volver_central",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "carta_copiar_de_sucursal",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "clientes",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "pos_asignar_cliente",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "stock_seccion_habitual",
+      "contexto": "sucursal",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "pos_emitir_ticket_corregido",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "insumo_renombrar_fusionar",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "conteo_resolver_pendiente",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "stock_reclasificar",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "conteo_frecuencia",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "producto_ver_catalogo",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "producto_presentaciones",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "insumo_alta",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "categoria_alta",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "proveedor_alta",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "producto_asignar_insumo",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "producto_sincronizar_precio_carta",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "producto_disponibilidad",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin",
+        "operador"
+      ]
+    },
+    {
+      "clave": "pos_alta_mesa",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "pos_limite_mesas_abiertas",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "pos_abrir_cuenta",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "pos_enviar_a_cocina",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "pos_liberar_mesa",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    }
+  ]
+}

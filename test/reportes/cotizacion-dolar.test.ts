@@ -11,9 +11,11 @@ import {
   leerDolarApi,
   leerHistorial,
   obtenerUltimaCotizacion,
+  obtenerUltimaCotizacionSinRomper,
   pesosADolares,
   reiniciarLimitadorDolar,
   sincronizarDolar,
+  cotizacionPlausible,
 } from "../../src/core/reportes/cotizacion-dolar";
 
 /**
@@ -129,6 +131,24 @@ describe("sincronizarDolar", () => {
   });
 });
 
+describe("obtenerUltimaCotizacionSinRomper: la pantalla sigue sin el dólar, pero el fallo queda en Sentry", () => {
+  beforeEach(() => vi.mocked(Sentry.captureException).mockClear());
+
+  it("con la base sana devuelve la cotización y no reporta nada", async () => {
+    await prisma.cotizacionDolar.create({ data: { fecha: new Date("2026-09-18"), fuente: "BNA", compra: 1485, venta: 1535 } });
+    expect(await obtenerUltimaCotizacionSinRomper(prisma)).toMatchObject({ venta: 1535 });
+    expect(Sentry.captureException).not.toHaveBeenCalled();
+  });
+
+  it("si la lectura falla devuelve null (no tira la pantalla) y reporta el error, una sola vez por arranque", async () => {
+    const rota = { cotizacionDolar: { findFirst: async () => { throw new Error("base caída"); } } } as unknown as typeof prisma;
+    expect(await obtenerUltimaCotizacionSinRomper(rota)).toBeNull();
+    expect(await obtenerUltimaCotizacionSinRomper(rota)).toBeNull();
+    expect(Sentry.captureException).toHaveBeenCalledTimes(1);
+    expect(Sentry.captureException).toHaveBeenCalledWith(expect.objectContaining({ message: "base caída" }), { tags: { area: "dolar-lectura" } });
+  });
+});
+
 describe("cotizacionVencida: ¿falta la de hoy?", () => {
   const ahora = new Date("2026-09-19T15:00:00Z"); // 12:00 del 19/09 en Argentina
 
@@ -182,5 +202,58 @@ describe("actualizarDolarSiHaceFalta: se pone al día sola, sin tirar abajo la p
     expect(await actualizarDolarSiHaceFalta(prisma, new Date("2026-09-18T22:00:00Z"))).toBe(false);
     expect(red).not.toHaveBeenCalled();
     delete process.env.MOTOR2_SIN_DOLAR_AUTOMATICO;
+  });
+});
+
+describe("cotizacionPlausible (informe de seguridad S-19)", () => {
+  const ahora = new Date("2026-09-18T22:00:00Z");
+  const ayer = { fecha: new Date("2026-09-17T00:00:00Z"), venta: 1500 };
+
+  it("sin cotización previa, o con una de hace más de una semana, acepta cualquier valor", () => {
+    expect(cotizacionPlausible(99_999, null, ahora)).toBe(true);
+    expect(cotizacionPlausible(99_999, { fecha: new Date("2026-09-01T00:00:00Z"), venta: 1500 }, ahora)).toBe(true);
+  });
+
+  it("dentro de ±20% de la última acepta; fuera, rechaza (a menos que otra fuente lo confirme al 5%)", () => {
+    expect(cotizacionPlausible(1500 * 1.2, ayer, ahora)).toBe(true);
+    expect(cotizacionPlausible(1500 * 0.8, ayer, ahora)).toBe(true);
+    expect(cotizacionPlausible(1500 * 1.21, ayer, ahora)).toBe(false);
+    expect(cotizacionPlausible(1500 * 0.79, ayer, ahora)).toBe(false);
+    expect(cotizacionPlausible(15_000, ayer, ahora)).toBe(false);
+    expect(cotizacionPlausible(2000, ayer, ahora, 2040)).toBe(true);
+    expect(cotizacionPlausible(2000, ayer, ahora, 1530)).toBe(false);
+  });
+});
+
+describe("sincronizarDolar: salto absurdo de una fuente", () => {
+  beforeEach(limpiarBaseDeTest);
+  afterEach(() => vi.unstubAllGlobals());
+
+  async function sembrarAyer() {
+    await prisma.cotizacionDolar.create({ data: { fecha: new Date("2026-09-17T00:00:00Z"), fuente: "BNA", compra: 1485, venta: 1535 } });
+  }
+
+  it("un valor 10 veces mayor que el de ayer NO se guarda y se avisa (el cron queda en error, no fija un dólar absurdo)", async () => {
+    await sembrarAyer();
+    simularRed({ "dolarapi.com": { ...RESPUESTA_DOLARAPI, compra: 14_850, venta: 15_350 }, "api.bcra.gob.ar": RESPUESTA_BCRA });
+    await expect(sincronizarDolar(prisma, new Date("2026-09-18T22:00:00Z"))).rejects.toThrow(/cotización descartada/);
+    expect(await prisma.cotizacionDolar.count()).toBe(1);
+    expect(await obtenerUltimaCotizacion(prisma)).toMatchObject({ venta: 1535 });
+  });
+
+  it("un salto grande que otra fuente independiente confirma (devaluación real) SÍ se guarda", async () => {
+    await sembrarAyer();
+    simularRed({ "dolarapi.com": { ...RESPUESTA_DOLARAPI, compra: 1990, venta: 2040 }, "api.bcra.gob.ar": { status: 200, results: [{ fecha: "2026-09-18", detalle: [{ codigoMoneda: "USD", tipoCotizacion: 2020 }] }] } });
+    const r = await sincronizarDolar(prisma, new Date("2026-09-18T22:00:00Z"));
+    expect(r.hoy?.venta).toBe(2040);
+    expect(await obtenerUltimaCotizacion(prisma)).toMatchObject({ venta: 2040 });
+  });
+
+  it("una variación normal (+1%) pasa sin pedir la segunda fuente", async () => {
+    await sembrarAyer();
+    simularRed({ "dolarapi.com": { ...RESPUESTA_DOLARAPI, compra: 1500, venta: 1550 } }); // sin api.bcra: si la pidiera, fallaría y no cambiaría el resultado, pero no se la necesita
+    const r = await sincronizarDolar(prisma, new Date("2026-09-18T22:00:00Z"));
+    expect(r.errores).toEqual([]);
+    expect(await obtenerUltimaCotizacion(prisma)).toMatchObject({ venta: 1550 });
   });
 });

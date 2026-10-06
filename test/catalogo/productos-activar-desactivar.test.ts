@@ -45,13 +45,13 @@ describe("actualizarDisponibilidadProducto", () => {
     await expect(actualizarDisponibilidadProducto("no-existe", false)).resolves.toMatchObject({ ok: false, mensaje: "No se encontró el producto." });
   });
 
-  it("un rol que ve productos pero NO tiene editar_producto no puede desactivar: el producto sigue disponible acá", async () => {
+  it("un rol que ve productos pero NO tiene producto_disponibilidad no puede desactivar: el producto sigue disponible acá", async () => {
     const soloVe = await prisma.rol.create({ data: { nombre: "solo-ve-productos" } });
     await prisma.permisoRol.create({ data: { rolId: soloVe.id, accionClave: "alta_producto", puedeVer: true, puedeEditar: true } });
     const usuario = await crearUsuarioConMembresia({ email: "solove@test.com", sucursalId, rolId: soloVe.id });
     await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
 
-    // Ojo: se le da Ver+EDITAR de `alta_producto` a propósito. Si la acción pidiera esa clave en vez de `editar_producto`, este rol podría desactivar.
+    // Ojo: se le da Ver+EDITAR de `alta_producto` a propósito. Si la acción pidiera esa clave en vez de `producto_disponibilidad`, este rol podría desactivar.
     const r = await actualizarDisponibilidadProducto(productoId, false);
     expect(r.ok).toBe(false);
     expect(r.mensaje).toMatch(/No tenés permiso/);

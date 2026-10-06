@@ -11,6 +11,7 @@ import {
   guardarItemAgrupadoCarta,
   quitarOpcionItemAgrupadoCarta,
 } from "../../src/server/actions/carta/items-agrupados";
+import { cargarAdminItemsAgrupados } from "../../src/core/carta/admin-consulta";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
 import { validarNombreItemAgrupadoCarta } from "../../src/core/carta/validaciones";
 
@@ -160,7 +161,7 @@ describe("Server Actions de ítems agrupados", () => {
         mensaje: "«Fanta 500cc» cuesta $5.500 acá y «Gaseosa 500 CC» ya tiene opciones a $5.000: agrupá solo productos del mismo precio, o dejala aparte.",
       });
       expect(await prisma.opcionItemAgrupadoCarta.count({ where: { itemAgrupadoCartaId: agId } })).toBe(2);
-      expect(await prisma.opcionItemAgrupadoCarta.findUnique({ where: { productoId: ids.fanta } })).toBeNull();
+      expect(await prisma.opcionItemAgrupadoCarta.findFirst({ where: { productoId: ids.fanta } })).toBeNull();
 
       // Se corrige el precio en Catálogo (fuera de esta acción) y se reintenta.
       await prisma.producto.update({ where: { id: ids.fanta }, data: { precioVenta: 5000 } });
@@ -182,9 +183,42 @@ describe("Server Actions de ítems agrupados", () => {
       expect((await agregarOpcionItemAgrupadoCarta(agId, ids.sprite)).ok).toBe(true);
     });
 
+    it("R3 por diseño (ADR-009): un descuento en OTRA sucursal bloquea agrupar, aunque en la activa no haya", async () => {
+      const agId = await crearGaseosa();
+      const otra = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
+      await prisma.descuentoProductoSucursal.create({ data: { productoId: ids.coca, sucursalId: otra, porcentaje: 10 } });
+      expect(await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).toEqual({
+        ok: false,
+        mensaje: "«Coca-Cola 500cc» tiene descuento en alguna sucursal: sacale el descuento para agruparlo (el renglón agrupado muestra un solo precio).",
+      });
+      expect(await prisma.opcionItemAgrupadoCarta.count()).toBe(0);
+      await prisma.descuentoProductoSucursal.deleteMany({ where: { productoId: ids.coca } });
+      expect((await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).ok).toBe(true);
+    });
+
+    it("R3 por diseño (ADR-009): un precio local distinto en OTRA sucursal NO bloquea; esa sucursal ve el mayor y el admin lo avisa", async () => {
+      const agId = await crearGaseosa();
+      const otra = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
+      await prisma.disponibilidadProducto.createMany({
+        data: [ids.coca, ids.sprite].map((productoId) => ({ sucursalId: otra, productoId, disponible: true })),
+      });
+      await prisma.precioLocalProducto.create({ data: { sucursalId: otra, productoId: ids.sprite, precio: 5500, habilitado: true } });
+      expect((await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).ok).toBe(true);
+      expect((await agregarOpcionItemAgrupadoCarta(agId, ids.sprite)).ok).toBe(true);
+
+      const enActiva = await cargarAdminItemsAgrupados(sucursalId, prisma);
+      expect(enActiva.diagnostico.agrupadosConPreciosDistintos).toEqual([]);
+      // «Otra» tiene su carta propia (ADR-009, C3): su ítem agrupado, con las mismas opciones, es otro registro.
+      const agIdOtra = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId: otra, nombre: "Gaseosa 500 CC", seccionCartaId: (await prisma.itemAgrupadoCarta.findUniqueOrThrow({ where: { id: agId } })).seccionCartaId } })).id;
+      await prisma.opcionItemAgrupadoCarta.createMany({ data: [ids.coca, ids.sprite].map((productoId, orden) => ({ sucursalId: otra, itemAgrupadoCartaId: agIdOtra, productoId, orden })) });
+      const enOtra = await cargarAdminItemsAgrupados(otra, prisma);
+      expect(enOtra.diagnostico.agrupadosConPreciosDistintos).toEqual([{ id: agIdOtra, nombre: "Gaseosa 500 CC", minimo: 5000, maximo: 5500 }]);
+      expect(enOtra.items[0].precio).toEqual({ minimo: 5000, maximo: 5500 });
+    });
+
     it("agregar, reordenar y quitar; quitar deja intacto el ContenidoCartaProducto", async () => {
       const agId = await crearGaseosa();
-      await prisma.contenidoCartaProducto.create({ data: { productoId: ids.sprite, visibleEnCarta: true, descripcion: "Lima-limón" } });
+      await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: ids.sprite, visibleEnCarta: true, descripcion: "Lima-limón" } });
       expect(await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).toEqual({ ok: true, mensaje: "«Coca-Cola 500cc» agregado a «Gaseosa 500 CC»." });
       expect((await agregarOpcionItemAgrupadoCarta(agId, ids.sprite, "5")).ok).toBe(true);
       const opciones = await prisma.opcionItemAgrupadoCarta.findMany({ orderBy: { orden: "asc" }, select: { id: true, productoId: true, orden: true } });
@@ -201,7 +235,7 @@ describe("Server Actions de ítems agrupados", () => {
 
       expect(await quitarOpcionItemAgrupadoCarta(spriteOpcion)).toEqual({ ok: true, mensaje: "«Sprite 500cc» ya no está en «Gaseosa 500 CC»." });
       expect(await prisma.opcionItemAgrupadoCarta.count()).toBe(1);
-      expect(await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { productoId: ids.sprite } })).toMatchObject({ visibleEnCarta: true, descripcion: "Lima-limón" });
+      expect(await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: ids.sprite } })).toMatchObject({ visibleEnCarta: true, descripcion: "Lima-limón" });
       expect(await quitarOpcionItemAgrupadoCarta(spriteOpcion)).toEqual({ ok: false, mensaje: "No se encontró la opción." });
     });
 
@@ -209,7 +243,7 @@ describe("Server Actions de ítems agrupados", () => {
       const agId = await crearGaseosa();
       expect((await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).ok).toBe(true);
       expect(await agregarOpcionItemAgrupadoCarta(agId, ids.agua)).toEqual({ ok: true, mensaje: "«Agua saborizada 500cc» agregado a «Gaseosa 500 CC»." });
-      const [seccion] = (await resolverMenuCarta(sucursalId))!.secciones;
+      const [seccion] = (await resolverMenuCarta(sucursalId, prisma))!.secciones;
       expect(seccion.nombre).toBe("Bebidas sin alcohol");
       expect(seccion.items.find((i) => i.productoId === agId)!.opciones!.map((o) => o.productoId)).toEqual([ids.coca, ids.agua]);
     });
@@ -243,7 +277,7 @@ describe("Server Actions de ítems agrupados", () => {
         [ids.coca, 0],
         [ids.sprite, 1],
       ]);
-      expect(await prisma.opcionItemAgrupadoCarta.findUnique({ where: { productoId: ids.fanta } })).toBeNull();
+      expect(await prisma.opcionItemAgrupadoCarta.findFirst({ where: { productoId: ids.fanta } })).toBeNull();
     });
 
     it("uno ya agrupado en otro ítem: no entra (mismo criterio que «Agregar producto») y el mensaje lo nombra", async () => {
@@ -256,7 +290,7 @@ describe("Server Actions de ítems agrupados", () => {
       );
       expect(await opcionesDe(r.ok ? r.id : "")).toEqual([[ids.coca, 0]]);
       // Sprite sigue en su grupo.
-      expect((await prisma.opcionItemAgrupadoCarta.findUniqueOrThrow({ where: { productoId: ids.sprite } })).itemAgrupadoCartaId).toBe(otro);
+      expect((await prisma.opcionItemAgrupadoCarta.findFirstOrThrow({ where: { productoId: ids.sprite } })).itemAgrupadoCartaId).toBe(otro);
     });
 
     it("sin productos (o lista vacía/repetidos) = alta de siempre; al editar, productoIds se ignora; un alta rechazada no agrega nada", async () => {
@@ -271,7 +305,7 @@ describe("Server Actions de ítems agrupados", () => {
 
       // Nombre repetido: no se crea el ítem y no se agrega ninguna opción.
       expect(await guardarItemAgrupadoCarta({ nombre: "gaseosa 500 cc", seccionCartaId: sBebidas, productoIds: [ids.sprite] })).toMatchObject({ ok: false });
-      expect(await prisma.opcionItemAgrupadoCarta.findUnique({ where: { productoId: ids.sprite } })).toBeNull();
+      expect(await prisma.opcionItemAgrupadoCarta.findFirst({ where: { productoId: ids.sprite } })).toBeNull();
     });
 
     it("sin el permiso `carta` no crea el ítem ni agrega productos", async () => {
@@ -294,11 +328,11 @@ describe("Server Actions de ítems agrupados", () => {
   });
 
   it("no toca Producto: precioVenta, categoría y ContenidoCartaProducto no cambian", async () => {
-    await prisma.contenidoCartaProducto.create({ data: { productoId: ids.coca, visibleEnCarta: true, descripcion: "Clásica" } });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: ids.coca, visibleEnCarta: true, descripcion: "Clásica" } });
     const leer = () =>
       prisma.producto.findMany({
         orderBy: { codigo: "asc" },
-        select: { id: true, precioVenta: true, categoriaId: true, contenidoCarta: { select: { visibleEnCarta: true, descripcion: true } } },
+        select: { id: true, precioVenta: true, categoriaId: true, contenidosCarta: { select: { visibleEnCarta: true, descripcion: true } } },
       });
     const antes = await leer();
     const agId = await crearGaseosa();
@@ -306,7 +340,7 @@ describe("Server Actions de ítems agrupados", () => {
     await agregarOpcionItemAgrupadoCarta(agId, ids.sprite);
     await agregarOpcionItemAgrupadoCarta(agId, ids.fanta); // rechazado por precio
     await actualizarActivoItemAgrupadoCarta(agId, false);
-    await quitarOpcionItemAgrupadoCarta((await prisma.opcionItemAgrupadoCarta.findUniqueOrThrow({ where: { productoId: ids.coca } })).id);
+    await quitarOpcionItemAgrupadoCarta((await prisma.opcionItemAgrupadoCarta.findFirstOrThrow({ where: { productoId: ids.coca } })).id);
     expect(await leer()).toEqual(antes);
   });
 
@@ -314,7 +348,7 @@ describe("Server Actions de ítems agrupados", () => {
     const agId = await crearGaseosa();
     await agregarOpcionItemAgrupadoCarta(agId, ids.coca);
     await agregarOpcionItemAgrupadoCarta(agId, ids.sprite);
-    const items = (await resolverMenuCarta(sucursalId))!.secciones.flatMap((s) => s.items);
+    const items = (await resolverMenuCarta(sucursalId, prisma))!.secciones.flatMap((s) => s.items);
     expect(items).toEqual([
       {
         productoId: agId,

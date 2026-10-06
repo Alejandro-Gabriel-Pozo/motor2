@@ -73,8 +73,8 @@ describe("venta: consumo de un insumo sustituto declarado en la línea de receta
       detalle: 'Consumo por venta de "Milanesa" — SUSTITUTO de "Bife de chorizo" (no había stock).',
     });
     expect(Number(fila!.cantidad)).toBe(-0.3);
-    expect(await calcularSaldoTotal(bifeId, seccionId)).toBe(0);
-    expect(await calcularSaldoTotal(ojoId, seccionId)).toBe(0.7);
+    expect(await calcularSaldoTotal(bifeId, seccionId, prisma)).toBe(0);
+    expect(await calcularSaldoTotal(ojoId, seccionId, prisma)).toBe(0.7);
   });
 
   it('"Bife a la parrilla" (sin sustitutos declarados): mismo rechazo de siempre cuando Bife no alcanza', async () => {
@@ -99,8 +99,8 @@ describe("venta: consumo de un insumo sustituto declarado en la línea de receta
     );
     expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
 
-    expect(await calcularSaldoTotal(bifeB.id, seccionId)).toBe(0);
-    expect(await calcularSaldoTotal(ojoId, cocina.id)).toBe(1); // sin tocar
+    expect(await calcularSaldoTotal(bifeB.id, seccionId, prisma)).toBe(0);
+    expect(await calcularSaldoTotal(ojoId, cocina.id, prisma)).toBe(1); // sin tocar
     const fila = await filaConsumo(bifeB.id);
     expect(fila).not.toBeNull();
     expect(fila!.sustituyeAProductoId).toBeNull();
@@ -116,7 +116,7 @@ describe("venta: consumo de un insumo sustituto declarado en la línea de receta
     if (!r.ok) return;
     expect(r.avisosStockNegativo).toEqual([{ productoId: bifeId, nombre: "Bife de chorizo", seccionId, seccionNombre: "Depósito", actual: 0, requerido: 0.3, resultante: -0.3 }]);
     // El sustituto no se tocó (todo o nada): sigue con su 0,1 completo.
-    expect(await calcularSaldoTotal(ojoId, seccionId)).toBe(0.1);
+    expect(await calcularSaldoTotal(ojoId, seccionId, prisma)).toBe(0.1);
     const filaBife = await filaConsumo(bifeId);
     expect(filaBife!.sustituyeAProductoId).toBeNull();
   });
@@ -173,13 +173,13 @@ describe("venta: consumo de un insumo sustituto declarado en la línea de receta
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: ojoId, cantidad: 1 }] });
     const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: milanesaId, cantidadVendida: 1 }] });
     expect(r.ok).toBe(true);
-    expect(await calcularSaldoTotal(ojoId, seccionId)).toBe(0.7);
+    expect(await calcularSaldoTotal(ojoId, seccionId, prisma)).toBe(0.7);
 
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
     const anulacion = await anularVenta(venta.id);
     expect(anulacion.ok, anulacion.mensaje).toBe(true);
-    expect(await calcularSaldoTotal(ojoId, seccionId)).toBe(1);
-    expect(await calcularSaldoTotal(bifeId, seccionId)).toBe(0);
+    expect(await calcularSaldoTotal(ojoId, seccionId, prisma)).toBe(1);
+    expect(await calcularSaldoTotal(bifeId, seccionId, prisma)).toBe(0);
   });
 
   it("sustituto en consignación: la fila LIQUIDACION_CONSIGNACION se genera sobre el sustituto, no sobre el principal", async () => {
@@ -214,7 +214,7 @@ describe("venta: consumo de un insumo sustituto declarado en la línea de receta
     if (!r.ok) return;
     // "Ojo a la parrilla" sale completo, sin aviso.
     expect(r.avisosStockNegativo).toEqual([{ productoId: bifeId, nombre: "Bife de chorizo", seccionId, seccionNombre: "Depósito", actual: 0, requerido: 0.3, resultante: -0.3 }]);
-    expect(await calcularSaldoTotal(ojoId, seccionId)).toBe(0);
+    expect(await calcularSaldoTotal(ojoId, seccionId, prisma)).toBe(0);
     const filaOjoConsumida = await prisma.movimientoStock.findFirst({ where: { productoId: ojoId, proceso: "CONSUMO" } });
     expect(filaOjoConsumida!.sustituyeAProductoId).toBeNull(); // fue el consumo DIRECTO de "Ojo a la parrilla", no una sustitución
   });

@@ -40,8 +40,8 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
   it("dos upserts concurrentes sobre la misma clave nunca crean dos filas", async () => {
     await Promise.all([
-      upsertProveedorPorProducto({ productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100 }),
-      upsertProveedorPorProducto({ productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 110, precioPorUnidadStock: 110 }),
+      upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100 }),
+      upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 110, precioPorUnidadStock: 110 }),
     ]);
 
     const cantidad = await prisma.proveedorPorProducto.count({ where: { productoId, proveedorId: proveedorAId, unidadCompraId } });
@@ -49,8 +49,8 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
   });
 
   it("un precio 0 nunca pisa un precio bueno ya cargado", async () => {
-    await upsertProveedorPorProducto({ productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 500, precioPorUnidadStock: 500 });
-    await upsertProveedorPorProducto({ productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 0, precioPorUnidadStock: 0 });
+    await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 500, precioPorUnidadStock: 500 });
+    await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 0, precioPorUnidadStock: 0 });
 
     const fila = await prisma.proveedorPorProducto.findUniqueOrThrow({
       where: { productoId_proveedorId_unidadCompraId: { productoId, proveedorId: proveedorAId, unidadCompraId } },
@@ -59,8 +59,8 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
   });
 
   it("la comparativa nunca elige como 'más barato' una oferta en 0", async () => {
-    await upsertProveedorPorProducto({ productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 0, precioPorUnidadStock: 0 });
-    await upsertProveedorPorProducto({ productoId, proveedorId: proveedorBId, unidadCompraId, precioUnitario: 500, precioPorUnidadStock: 500 });
+    await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 0, precioPorUnidadStock: 0 });
+    await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorBId, unidadCompraId, precioUnitario: 500, precioPorUnidadStock: 500 });
 
     const comparativa = await obtenerComparativaPreciosPorInsumo();
     const fila = comparativa.find((f) => f.insumo === "Harina"); // insumo sembrado en sembrarCatalogoBase
@@ -68,10 +68,10 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
   });
 
   it("un referenciaProveedor vacío nunca pisa uno ya cargado (mismo criterio que el precio)", async () => {
-    await upsertProveedorPorProducto({
+    await upsertProveedorPorProducto(prisma, {
       productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100, referenciaProveedor: "ACE-5L",
     });
-    await upsertProveedorPorProducto({ productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 110, precioPorUnidadStock: 110 });
+    await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 110, precioPorUnidadStock: 110 });
 
     const fila = await prisma.proveedorPorProducto.findUniqueOrThrow({
       where: { productoId_proveedorId_unidadCompraId: { productoId, proveedorId: proveedorAId, unidadCompraId } },
@@ -80,10 +80,10 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
   });
 
   it("referenciaProveedor se puede actualizar mandando un valor nuevo no vacío", async () => {
-    await upsertProveedorPorProducto({
+    await upsertProveedorPorProducto(prisma, {
       productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100, referenciaProveedor: "ACE-5L",
     });
-    await upsertProveedorPorProducto({
+    await upsertProveedorPorProducto(prisma, {
       productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 110, precioPorUnidadStock: 110, referenciaProveedor: "ACEITE-BIDON-5",
     });
 
@@ -97,16 +97,16 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
     it("trae los productos ya comprados a ese proveedor, más recientes primero", async () => {
       const producto2 = await sembrarProductoDisponible({ codigo: "MP_TEST_2", nombre: "Vinagre", tipo: "MP", unidadStockId: unidadCompraId }, sucursalId);
 
-      await upsertProveedorPorProducto({
+      await upsertProveedorPorProducto(prisma, {
         productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100,
         fechaCompra: new Date("2026-01-01"), referenciaProveedor: "ACE-5L",
       });
-      await upsertProveedorPorProducto({
+      await upsertProveedorPorProducto(prisma, {
         productoId: producto2.id, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 50, precioPorUnidadStock: 50,
         fechaCompra: new Date("2026-02-01"),
       });
       // A otro proveedor no debería aparecer en la lista de A.
-      await upsertProveedorPorProducto({ productoId, proveedorId: proveedorBId, unidadCompraId, precioUnitario: 999, precioPorUnidadStock: 999 });
+      await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorBId, unidadCompraId, precioUnitario: 999, precioPorUnidadStock: 999 });
 
       const lista = await listarProductosDeProveedor(proveedorAId);
       expect(lista).toHaveLength(2);
@@ -119,7 +119,7 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
     });
 
     it("no trae productos no disponibles en esta sucursal", async () => {
-      await upsertProveedorPorProducto({ productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100 });
+      await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100 });
       await prisma.disponibilidadProducto.update({ where: { sucursalId_productoId: { sucursalId, productoId } }, data: { disponible: false } });
 
       expect(await listarProductosDeProveedor(proveedorAId)).toEqual([]);

@@ -6,7 +6,13 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, sembrarProduc
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "../../src/server/actions/carta/secciones";
 import { actualizarVisibleEnCarta, guardarContenidoCartaProducto } from "../../src/server/actions/carta/contenido-producto";
-import { actualizarActivaPromoCarta, guardarCuposPromoCarta, guardarPromoCarta } from "../../src/server/actions/carta/promos";
+import {
+  actualizarActivaPromoCarta,
+  actualizarActivaPromoCartaEnSucursal,
+  guardarCuposPromoCarta,
+  guardarPrecioLocalPromoCarta,
+  guardarPromoCarta,
+} from "../../src/server/actions/carta/promos";
 import { resolverMenuCarta } from "../../src/core/carta/menu-consulta";
 import { normalizarTagsCarta, validarImagenUrlCarta, validarOrdenCarta, validarPrecioCarta } from "../../src/core/carta/validaciones";
 
@@ -105,21 +111,21 @@ describe("Server Actions de la carta", () => {
     it("guardar el contenido (con su sección) hace aparecer al PV en la carta (con tags normalizados); ocultarlo lo saca", async () => {
       const s = await guardarSeccionCarta({ nombre: "Platos" });
       const seccionCartaId = s.ok ? s.id : "";
-      expect((await resolverMenuCarta(sucursalId))!.secciones).toEqual([]);
+      expect((await resolverMenuCarta(sucursalId, prisma))!.secciones).toEqual([]);
 
       const r = await guardarContenidoCartaProducto(pvId, { visibleEnCarta: true, seccionCartaId, descripcion: " 400 g ", tags: "Regional, regional,Sin TACC", especial: true, orden: 1 });
       expect(r.ok).toBe(true);
-      const seccion = (await resolverMenuCarta(sucursalId))!.secciones[0];
+      const seccion = (await resolverMenuCarta(sucursalId, prisma))!.secciones[0];
       expect(seccion.nombre).toBe("Platos");
       expect(seccion.items[0]).toMatchObject({ nombre: "Bife de chorizo", descripcion: "400 g", tags: ["Regional", "Sin TACC"], especial: true, precio: 34000, imagenUrl: null });
 
       expect((await actualizarVisibleEnCarta(pvId, false)).ok).toBe(true);
-      expect((await resolverMenuCarta(sucursalId))!.secciones).toEqual([]);
+      expect((await resolverMenuCarta(sucursalId, prisma))!.secciones).toEqual([]);
       // Ocultar no borra lo cargado.
-      expect(await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { productoId: pvId } })).toMatchObject({ descripcion: "400 g", especial: true, seccionCartaId });
+      expect(await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: pvId } })).toMatchObject({ descripcion: "400 g", especial: true, seccionCartaId });
       // Y volver a mostrarlo con el atajo funciona: ya tiene sección.
       expect((await actualizarVisibleEnCarta(pvId, true)).ok).toBe(true);
-      expect((await resolverMenuCarta(sucursalId))!.secciones[0].items.map((i) => i.productoId)).toEqual([pvId]);
+      expect((await resolverMenuCarta(sucursalId, prisma))!.secciones[0].items.map((i) => i.productoId)).toEqual([pvId]);
     });
 
     it("DA2: visible exige sección; oculto se guarda sin ella; una sección inexistente se rechaza", async () => {
@@ -131,10 +137,10 @@ describe("Server Actions de la carta", () => {
 
       // Oculto, sin sección: se guarda (por si se vuelve a mostrar después).
       expect((await guardarContenidoCartaProducto(pvId, { visibleEnCarta: false, descripcion: "Para después" })).ok).toBe(true);
-      expect(await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { productoId: pvId } })).toMatchObject({ visibleEnCarta: false, seccionCartaId: null, descripcion: "Para después" });
+      expect(await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: pvId } })).toMatchObject({ visibleEnCarta: false, seccionCartaId: null, descripcion: "Para después" });
       // Mostrarlo con el atajo, sin sección: se rechaza y sigue oculto.
       expect(await actualizarVisibleEnCarta(pvId, true)).toMatchObject({ ok: false, mensaje: falta });
-      expect((await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { productoId: pvId } })).visibleEnCarta).toBe(false);
+      expect((await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: pvId } })).visibleEnCarta).toBe(false);
       // Sin fila todavía, tampoco se puede mostrar con el atajo.
       await prisma.contenidoCartaProducto.deleteMany();
       expect(await actualizarVisibleEnCarta(pvId, true)).toMatchObject({ ok: false, mensaje: falta });
@@ -145,7 +151,7 @@ describe("Server Actions de la carta", () => {
       const s = await guardarSeccionCarta({ nombre: "Bebidas" });
       await prisma.producto.update({ where: { id: pvId }, data: { categoriaId: null } });
       expect((await guardarContenidoCartaProducto(pvId, { visibleEnCarta: true, seccionCartaId: s.ok ? s.id : "" })).ok).toBe(true);
-      const [seccion] = (await resolverMenuCarta(sucursalId))!.secciones;
+      const [seccion] = (await resolverMenuCarta(sucursalId, prisma))!.secciones;
       expect(seccion.items).toEqual([expect.objectContaining({ productoId: pvId, categoria: "Bebidas" })]);
     });
 
@@ -161,13 +167,14 @@ describe("Server Actions de la carta", () => {
     });
   });
 
-  describe("promos de la sucursal", () => {
-    it("crea en la sucursal activa, edita, y se apaga", async () => {
+  describe("promos (de la empresa, prendidas por sucursal)", () => {
+    it("crea (queda prendida en la sucursal activa), edita, y se apaga en toda la empresa", async () => {
       const s = await guardarSeccionCarta({ nombre: "Promos" });
       const seccionCartaId = s.ok ? s.id : "";
       expect((await guardarPromoCarta({ seccionCartaId, titulo: "1 pizza + coca 1,5L", precio: "25000", orden: 1 })).ok).toBe(true);
       const promo = await prisma.promoCarta.findFirstOrThrow();
-      expect(promo).toMatchObject({ sucursalId, titulo: "1 pizza + coca 1,5L", orden: 1, activa: true });
+      expect(promo).toMatchObject({ titulo: "1 pizza + coca 1,5L", orden: 1, activa: true });
+      expect(await prisma.promoCartaSucursal.findMany({ where: { promoCartaId: promo.id } })).toEqual([expect.objectContaining({ sucursalId, activa: true, precioLocal: null })]);
       expect(Number(promo.precio)).toBe(25000);
 
       expect((await guardarPromoCarta({ id: promo.id, seccionCartaId, titulo: "1 pizza + coca", precio: 26000, descripcion: "Muzza" })).ok).toBe(true);
@@ -177,12 +184,78 @@ describe("Server Actions de la carta", () => {
       expect((await prisma.promoCarta.findUniqueOrThrow({ where: { id: promo.id } })).activa).toBe(false);
     });
 
-    it("una promo de OTRA sucursal no se puede editar ni apagar pasando su id", async () => {
+    it("una promo creada desde otra sucursal es de la empresa: se edita igual, pero NO se ofrece acá hasta prenderla", async () => {
       const s = await guardarSeccionCarta({ nombre: "Promos" });
-      const ajena = await prisma.promoCarta.create({ data: { sucursalId: otraSucursalId, seccionCartaId: s.ok ? s.id : "", titulo: "Ajena", precio: 1 } });
-      expect(await guardarPromoCarta({ id: ajena.id, seccionCartaId: ajena.seccionCartaId, titulo: "Pisada", precio: 2 })).toMatchObject({ ok: false, mensaje: "No se encontró la promo en esta sucursal." });
-      expect(await actualizarActivaPromoCarta(ajena.id, false)).toMatchObject({ ok: false });
-      expect(await prisma.promoCarta.findUniqueOrThrow({ where: { id: ajena.id } })).toMatchObject({ titulo: "Ajena", activa: true });
+      const seccionCartaId = s.ok ? s.id : "";
+      const ajena = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: otraSucursalId } }, seccionCartaId, titulo: "De la otra", precio: 1000 } });
+      const ofrecidas = async () => (await resolverMenuCarta(sucursalId, prisma))!.secciones.flatMap((x) => x.promos).map((p) => p.titulo);
+
+      expect(await ofrecidas()).toEqual([]);
+      expect((await guardarPromoCarta({ id: ajena.id, seccionCartaId, titulo: "Compartida", precio: 2000 })).ok).toBe(true);
+      expect(await prisma.promoCarta.findUniqueOrThrow({ where: { id: ajena.id } })).toMatchObject({ titulo: "Compartida" });
+
+      expect((await actualizarActivaPromoCartaEnSucursal(ajena.id, true)).ok).toBe(true);
+      expect(await ofrecidas()).toEqual(["Compartida"]);
+      // La otra sucursal no se tocó.
+      expect(await prisma.promoCartaSucursal.findUniqueOrThrow({ where: { promoCartaId_sucursalId: { promoCartaId: ajena.id, sucursalId: otraSucursalId } } })).toMatchObject({ activa: true });
+
+      expect((await actualizarActivaPromoCartaEnSucursal(ajena.id, false)).ok).toBe(true);
+      expect(await ofrecidas()).toEqual([]);
+      expect(await actualizarActivaPromoCartaEnSucursal("no-existe", true)).toMatchObject({ ok: false, mensaje: "No se encontró la promo." });
+    });
+
+    it("el apagado general saca la promo de TODAS las sucursales, aunque cada una la tenga prendida", async () => {
+      const s = await guardarSeccionCarta({ nombre: "Promos" });
+      const seccionCartaId = s.ok ? s.id : "";
+      const promo = await prisma.promoCarta.create({
+        data: { sucursales: { create: [{ sucursalId }, { sucursalId: otraSucursalId }] }, seccionCartaId, titulo: "General", precio: 1000 },
+      });
+      const titulos = async (id: string) => (await resolverMenuCarta(id, prisma))!.secciones.flatMap((x) => x.promos).map((p) => p.titulo);
+      expect(await titulos(sucursalId)).toEqual(["General"]);
+      expect(await titulos(otraSucursalId)).toEqual(["General"]);
+
+      expect((await actualizarActivaPromoCarta(promo.id, false)).ok).toBe(true);
+      expect(await titulos(sucursalId)).toEqual([]);
+      expect(await titulos(otraSucursalId)).toEqual([]);
+      // Las filas por sucursal siguen prendidas: al volver a prender la general, vuelve cada una como estaba.
+      expect(await prisma.promoCartaSucursal.count({ where: { promoCartaId: promo.id, activa: true } })).toBe(2);
+      expect((await actualizarActivaPromoCarta(promo.id, true)).ok).toBe(true);
+      expect(await titulos(sucursalId)).toEqual(["General"]);
+    });
+
+    it("precio local: pisa solo en esta sucursal, vacío vuelve al de la empresa, y respeta el piso de $0,01 por unidad", async () => {
+      const s = await guardarSeccionCarta({ nombre: "Promos" });
+      const seccionCartaId = s.ok ? s.id : "";
+      const promo = await prisma.promoCarta.create({
+        data: { sucursales: { create: [{ sucursalId }, { sucursalId: otraSucursalId }] }, seccionCartaId, titulo: "Con local", precio: 1000 },
+      });
+      const precioEn = async (id: string) => (await resolverMenuCarta(id, prisma))!.secciones.flatMap((x) => x.promos)[0]?.precio;
+
+      expect((await guardarPrecioLocalPromoCarta(promo.id, "1200")).ok).toBe(true);
+      expect(await precioEn(sucursalId)).toBe(1200);
+      expect(await precioEn(otraSucursalId)).toBe(1000);
+
+      // Cambiar el precio de la empresa no pisa el local.
+      expect((await guardarPromoCarta({ id: promo.id, seccionCartaId, titulo: "Con local", precio: 1500 })).ok).toBe(true);
+      expect(await precioEn(sucursalId)).toBe(1200);
+      expect(await precioEn(otraSucursalId)).toBe(1500);
+
+      expect((await guardarPrecioLocalPromoCarta(promo.id, null)).ok).toBe(true);
+      expect(await precioEn(sucursalId)).toBe(1500);
+
+      expect((await guardarPrecioLocalPromoCarta(promo.id, "-1")).ok).toBe(false);
+      expect(await guardarPrecioLocalPromoCarta("no-existe", "5")).toMatchObject({ ok: false, mensaje: "No se encontró la promo." });
+    });
+
+    it("precio local en una promo que la sucursal todavía no ofrece: queda guardado pero NO la prende", async () => {
+      const s = await guardarSeccionCarta({ nombre: "Promos" });
+      const seccionCartaId = s.ok ? s.id : "";
+      const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: otraSucursalId } }, seccionCartaId, titulo: "Aún no", precio: 1000 } });
+      expect((await guardarPrecioLocalPromoCarta(promo.id, "900")).ok).toBe(true);
+      expect(await prisma.promoCartaSucursal.findUniqueOrThrow({ where: { promoCartaId_sucursalId: { promoCartaId: promo.id, sucursalId } } })).toMatchObject({ activa: false });
+      expect((await resolverMenuCarta(sucursalId, prisma))!.secciones.flatMap((x) => x.promos)).toEqual([]);
+      expect((await actualizarActivaPromoCartaEnSucursal(promo.id, true)).ok).toBe(true);
+      expect((await resolverMenuCarta(sucursalId, prisma))!.secciones.flatMap((x) => x.promos)[0]).toMatchObject({ titulo: "Aún no", precio: 900 });
     });
 
     it("valida título, precio y sección", async () => {
@@ -271,11 +344,21 @@ describe("Server Actions de la carta", () => {
       expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: promoId } })).toBe(0);
     });
 
-    it("una promo de OTRA sucursal no se puede tocar pasando su id", async () => {
+    it("el piso también vale para el precio LOCAL de cualquier sucursal", async () => {
+      const { promoId, seccionEntradasId, seccionPostresId } = await sembrarPromoConDosSecciones(20000);
+      await prisma.promoCartaSucursal.create({ data: { promoCartaId: promoId, sucursalId: otraSucursalId, precioLocal: 0.03 } });
+      const r = await guardarCuposPromoCarta(promoId, [
+        { seccionCartaId: seccionEntradasId, cantidadMaxima: 2 },
+        { seccionCartaId: seccionPostresId, cantidadMaxima: 2 },
+      ]);
+      expect(r.ok).toBe(false);
+      expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: promoId } })).toBe(0);
+    });
+
+    it("una promo inexistente no se puede tocar", async () => {
       const s = await guardarSeccionCarta({ nombre: "Postres" });
-      const ajena = await prisma.promoCarta.create({ data: { sucursalId: otraSucursalId, seccionCartaId: s.ok ? s.id : "", titulo: "Ajena", precio: 1000 } });
-      const r = await guardarCuposPromoCarta(ajena.id, [{ seccionCartaId: s.ok ? s.id : "", cantidadMaxima: 1 }]);
-      expect(r).toMatchObject({ ok: false, mensaje: "No se encontró la promo en esta sucursal." });
+      const r = await guardarCuposPromoCarta("no-existe", [{ seccionCartaId: s.ok ? s.id : "", cantidadMaxima: 1 }]);
+      expect(r).toMatchObject({ ok: false, mensaje: "No se encontró la promo." });
       expect(await prisma.promoCartaCupo.count()).toBe(0);
     });
   });

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { eliminarSeccionHabitual } from "@/server/actions/stock/seccion-habitual";
+import { IconoDeAccion } from "@/components/iconos";
 
 /** Mismo patrón de confirmación inline que BotonEliminarStockMinimo (stock/minimo/boton-eliminar.tsx) — nunca window.confirm. */
 export function BotonQuitarSeccionHabitual({ id, producto }: { id: string; producto: string }) {
@@ -41,7 +42,8 @@ export function BotonQuitarSeccionHabitual({ id, producto }: { id: string; produ
 
   return (
     <div className="flex flex-col gap-1">
-      <button type="button" onClick={() => setConfirmando(true)} className="text-sm underline" aria-label={`Quitar la sección habitual de ${producto}`}>
+      <button type="button" onClick={() => setConfirmando(true)} className="text-sm underline inline-flex items-center gap-1" aria-label={`Quitar la sección habitual de ${producto}`}>
+        <IconoDeAccion id="eliminar" />
         Quitar
       </button>
       {mensaje && <p className={`text-xs ${ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>{mensaje}</p>}

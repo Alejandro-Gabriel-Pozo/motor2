@@ -1,7 +1,55 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { sucursalesDondeElUsuarioPuedeVer } from "./gate";
 
 type Db = PrismaClient | Prisma.TransactionClient;
+
+/**
+ * Única lista de entidades auditables: el tipo `CambioAuditable["entidad"]` se deriva de acá y la pantalla de auditoría arma su filtro con
+ * la misma lista, así que una entidad nueva aparece en el filtro sin tocar la página (antes "Cuenta" y "DisponibilidadProducto" se
+ * escribían pero no se podían filtrar).
+ */
+export const ENTIDADES_AUDITABLES = [
+  // "RecetaVersion" (paso 2): cada versión nueva de la receta central (`guardarReceta`) — SIEMPRE `sucursalId: null`
+  // (Catálogo Central, no un dato por sucursal). "RendimientoLocalIngrediente" (paso 6): al revés, SIEMPRE lleva
+  // `sucursalId` — es la calibración de UNA sucursal puntual (`entidadId` es la clave estable
+  // `${sucursalId}:${productoId}:${insumoProductoId}`, no el id de la fila, que cambia con el arrastre entre versiones).
+  "Producto",
+  "PrecioLocalProducto",
+  "DisponibilidadProducto",
+  "PermisoRol",
+  "CapacidadSucursal",
+  "Rol",
+  "Operacion",
+  "CuentaItem",
+  // "Cuenta": cambios sobre la cuenta de una mesa (ticket corregido, cliente asignado) — `entidadId` es el id de la Cuenta.
+  "Cuenta",
+  "RecetaVersion",
+  // "RecetaSucursal": una sucursal pasa a usar su receta propia de un plato o vuelve a la central — `entidadId` es `${sucursalId}:${productoId}`, `campo: "habilitada"`, con `sucursalId`.
+  "RecetaSucursal",
+  "RendimientoLocalIngrediente",
+  // "Sucursal" (docs/plan-comensales-y-limite-mesas-2026-09-26.md): el límite de mesas abiertas (`maxMesasAbiertas`) se edita desde
+  // el mapa de mesas con el mismo permiso que da de alta mesas (`pos_mesas`) — `entidadId` es el id de la Sucursal.
+  "Sucursal",
+  // "PagoConsignante" (Task #41, M14): un pago a un proveedor de consignación — `entidadId` es el id del PagoConsignante creado,
+  // `campo: "importe"`, `valorAnterior: null` (siempre una creación, nunca una edición — append-only, igual que el resto del Kardex).
+  "PagoConsignante",
+  // "UsuarioEmpresa": el traspaso de la gerencia de la empresa (`transferirGerencia`) — `entidadId` es el usuario que pasa a ser gerente, `sucursalId` null (es de la empresa).
+  "UsuarioEmpresa",
+  // "DescuentoProductoSucursal": el % de descuento de un producto en UNA sucursal — `entidadId` es el id de la fila (al sacarlo, el de la fila borrada), `campo: "porcentaje"`.
+  "DescuentoProductoSucursal",
+  // "Cliente": alta, edición (nombre y % de descuento) y activar/desactivar — catálogo central, `sucursalId` null. `entidadId` es el id del Cliente.
+  "Cliente",
+  // "Empresa": un cambio de la política de plataforma (`cambiarPoliticaDeEmpresa`) — `entidadId` es el id de la Empresa, `campo` la perilla (`permisosEditables`, `dosPaneles`), `sucursalId` null.
+  "Empresa",
+  // "MargenObjetivo": el food cost objetivo de la empresa (sin categoría) o de una categoría — `entidadId` es la categoría (`empresa` si es el de toda la empresa), `sucursalId` null, `campo: "foodCostObjetivoPct"`.
+  "MargenObjetivo",
+  // "UsuarioSucursal": alta, cambio de rol y activar/desactivar un usuario en una sucursal — `entidadId` es el id de la membresía, `sucursalId` la de la membresía.
+  "UsuarioSucursal",
+  // "CartaSucursal": la carta propia de una sucursal se arma por copia de otra (`copiarCartaDeSucursal`) — `entidadId` es el id de la Sucursal, `campo: "cartaPropia"`, con `sucursalId`.
+  "CartaSucursal",
+  // "ModuloEmpresa": la plataforma activa o desactiva un módulo de la empresa (`cambiarModulosDeEmpresa`) — `entidadId` es `${empresaId}:${modulo}`, `campo: "estado"`, `valorAnterior: null` si el módulo no tenía fila, `sucursalId` null.
+  "ModuloEmpresa",
+] as const;
 
 /**
  * Auditoría administrativa (A3, Pivote 6 — docs/auditoria-motor2-pivotes-
@@ -12,28 +60,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * un solo lugar, nunca una copia divergente en cada Server Action).
  */
 export interface CambioAuditable {
-  // "RecetaVersion" (paso 2): cada versión nueva de la receta central (`guardarReceta`) — SIEMPRE `sucursalId: null`
-  // (Catálogo Central, no un dato por sucursal). "RendimientoLocalIngrediente" (paso 6): al revés, SIEMPRE lleva
-  // `sucursalId` — es la calibración de UNA sucursal puntual (`entidadId` es la clave estable
-  // `${sucursalId}:${productoId}:${insumoProductoId}`, no el id de la fila, que cambia con el arrastre entre versiones).
-  entidad:
-    | "Producto"
-    | "PrecioLocalProducto"
-    | "DisponibilidadProducto"
-    | "PermisoRol"
-    | "CapacidadSucursal"
-    | "Rol"
-    | "Operacion"
-    | "CuentaItem"
-    | "Cuenta"
-    | "RecetaVersion"
-    | "RendimientoLocalIngrediente"
-    // "Sucursal" (docs/plan-comensales-y-limite-mesas-2026-09-26.md): el límite de mesas abiertas (`maxMesasAbiertas`) se edita desde
-    // el mapa de mesas con el mismo permiso que da de alta mesas (`pos_mesas`) — `entidadId` es el id de la Sucursal.
-    | "Sucursal"
-    // "PagoConsignante" (Task #41, M14): un pago a un proveedor de consignación — `entidadId` es el id del PagoConsignante creado,
-    // `campo: "importe"`, `valorAnterior: null` (siempre una creación, nunca una edición — append-only, igual que el resto del Kardex).
-    | "PagoConsignante";
+  entidad: (typeof ENTIDADES_AUDITABLES)[number];
   entidadId: string;
   /** Legible de entrada, ej. `Producto "Pan Francés": precio de venta`. */
   descripcion: string;
@@ -43,6 +70,22 @@ export interface CambioAuditable {
   valorNuevo: unknown;
   actorId: string;
   sucursalId?: string | null;
+}
+
+/**
+ * Claves de acción renombradas («boleta» pasó a «ticket»). La auditoría no se reescribe: las filas viejas conservan en su `descripcion` la clave
+ * de entonces, y la pantalla las muestra con la vigente.
+ */
+export const CLAVES_DE_ACCION_RENOMBRADAS: Readonly<Record<string, string>> = {
+  reporte_boletas: "reporte_tickets",
+  pos_emitir_boleta_corregida: "pos_emitir_ticket_corregido",
+};
+
+/** La descripción de una fila de auditoría con las claves de acción renombradas puestas al día (solo para mostrar). */
+export function descripcionParaMostrar(descripcion: string): string {
+  let texto = descripcion;
+  for (const [vieja, nueva] of Object.entries(CLAVES_DE_ACCION_RENOMBRADAS)) texto = texto.replaceAll(`"${vieja}"`, `"${nueva}"`);
+  return texto;
 }
 
 function aTexto(valor: unknown): string | null {
@@ -79,14 +122,35 @@ const TAMANO_PAGINA_AUDITORIA = 50;
 export interface FiltroAuditoria {
   entidad?: CambioAuditable["entidad"];
   cursor?: string;
+  /**
+   * Obligatorio a propósito: las sucursales cuyas filas se pueden mostrar. Quien llama lo arma con
+   * `sucursalesVisiblesDeAuditoria`; nunca "todas por omisión".
+   */
+  sucursalIds: readonly string[];
+  /**
+   * Obligatorio a propósito: si se muestran también las filas SIN sucursal (cambios de la empresa entera: roles, receta central).
+   * Esas no pertenecen a ninguna sucursal, así que `ver_auditoria` (que es por sucursal) no las cubre: las ve quien tiene
+   * `ver_auditoria_empresa` (acción de piso gerente: el gerente de la empresa).
+   */
+  incluirFilasDeEmpresa: boolean;
+}
+
+/** De las sucursales del usuario, en cuáles su rol tiene «Ver» sobre `ver_auditoria` — el gate de la página mira solo la activa. */
+export async function sucursalesVisiblesDeAuditoria(usuarioId: string, sucursalIds: readonly string[], db: PrismaClient): Promise<string[]> {
+  const visibles = await sucursalesDondeElUsuarioPuedeVer(usuarioId, sucursalIds, "ver_auditoria", db);
+  return sucursalIds.filter((id) => visibles.has(id));
 }
 
 /** Más reciente primero, paginado por cursor — mismo patrón que el resto de los listados largos del proyecto (ver obtenerHistorialConteosFisicos). */
-export async function listarRegistrosAuditoria(filtro: FiltroAuditoria = {}, db: Db = prisma) {
+export async function listarRegistrosAuditoria(filtro: FiltroAuditoria, db: Db) {
   const filas = await db.registroAuditoria.findMany({
-    where: filtro.entidad ? { entidad: filtro.entidad } : undefined,
+    where: {
+      ...(filtro.entidad ? { entidad: filtro.entidad } : {}),
+      OR: [...(filtro.incluirFilasDeEmpresa ? [{ sucursalId: null }] : []), { sucursalId: { in: [...filtro.sucursalIds] } }],
+    },
     include: { actor: { select: { email: true, name: true } }, sucursal: { select: { nombre: true } } },
-    orderBy: { creadoEn: "desc" },
+  // `id` desempata: `creadoEn` se repite (filas de una misma transacción) y, con cursor, un orden no total salta filas.
+    orderBy: [{ creadoEn: "desc" }, { id: "desc" }],
     take: TAMANO_PAGINA_AUDITORIA + 1,
     ...(filtro.cursor ? { cursor: { id: filtro.cursor }, skip: 1 } : {}),
   });

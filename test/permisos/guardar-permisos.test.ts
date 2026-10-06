@@ -13,17 +13,22 @@ import { esCeldaFija, mismoEstado, normalizarPermiso, SIN_PERMISO, textoEstado }
  */
 describe("reglas de la matriz (puras)", () => {
   it("Ver ⊇ Editar: quien puede editar puede ver", () => {
-    expect(normalizarPermiso("operador", "proceso_venta", { puedeVer: false, puedeEditar: true })).toEqual({ puedeVer: true, puedeEditar: true });
-    expect(normalizarPermiso("operador", "proceso_venta", { puedeVer: true, puedeEditar: false })).toEqual({ puedeVer: true, puedeEditar: false });
-    expect(normalizarPermiso("operador", "proceso_venta", SIN_PERMISO)).toEqual(SIN_PERMISO);
+    expect(normalizarPermiso({ clave: "operador" }, "proceso_venta", { puedeVer: false, puedeEditar: true })).toEqual({ puedeVer: true, puedeEditar: true });
+    expect(normalizarPermiso({ clave: "operador" }, "proceso_venta", { puedeVer: true, puedeEditar: false })).toEqual({ puedeVer: true, puedeEditar: false });
+    expect(normalizarPermiso({ clave: "operador" }, "proceso_venta", SIN_PERMISO)).toEqual(SIN_PERMISO);
   });
 
   it("el admin siempre conserva Editar en gestion_permisos y gestion_usuarios; otros roles, no", () => {
-    expect(esCeldaFija("admin", "gestion_permisos")).toBe(true);
-    expect(esCeldaFija("admin", "gestion_usuarios")).toBe(true);
-    expect(esCeldaFija("admin", "proceso_venta")).toBe(false);
-    expect(esCeldaFija("operador", "gestion_permisos")).toBe(false);
-    expect(normalizarPermiso("admin", "gestion_permisos", SIN_PERMISO)).toEqual({ puedeVer: true, puedeEditar: true });
+    expect(esCeldaFija({ clave: "admin" }, "gestion_permisos")).toBe(true);
+    expect(esCeldaFija({ clave: "admin" }, "gestion_usuarios")).toBe(true);
+    expect(esCeldaFija({ clave: "admin" }, "proceso_venta")).toBe(false);
+    expect(esCeldaFija({ clave: "operador" }, "gestion_permisos")).toBe(false);
+    expect(normalizarPermiso({ clave: "admin" }, "gestion_permisos", SIN_PERMISO)).toEqual({ puedeVer: true, puedeEditar: true });
+  });
+
+  it("la salvaguarda es del rol con la CLAVE «admin», no del que se llama «admin» (el nombre se podrá cambiar)", () => {
+    expect(esCeldaFija({ clave: null }, "gestion_permisos")).toBe(false);
+    expect(normalizarPermiso({ clave: null }, "gestion_permisos", SIN_PERMISO)).toEqual(SIN_PERMISO);
   });
 
   it("textos del resumen y comparación de estados", () => {
@@ -61,14 +66,14 @@ describe("guardarPermisos", () => {
 
   it("guarda varios cambios juntos y deja un registro de auditoría por cada campo que cambió", async () => {
     const r = await guardarPermisos([
-      await cambio(operadorRolId, "stock_minimo", { puedeVer: true, puedeEditar: true }),
-      await cambio(operadorRolId, "precio_local", { puedeVer: true, puedeEditar: false }),
+      await cambio(operadorRolId, "reporte_salud", { puedeVer: true, puedeEditar: true }),
+      await cambio(operadorRolId, "reporte_vencimientos", { puedeVer: true, puedeEditar: false }),
     ]);
 
     expect(r.ok, r.mensaje).toBe(true);
     expect(r.mensaje).toBe("2 permiso(s) guardado(s).");
-    expect(await actual(operadorRolId, "stock_minimo")).toEqual({ puedeVer: true, puedeEditar: true });
-    expect(await actual(operadorRolId, "precio_local")).toEqual({ puedeVer: true, puedeEditar: false });
+    expect(await actual(operadorRolId, "reporte_salud")).toEqual({ puedeVer: true, puedeEditar: true });
+    expect(await actual(operadorRolId, "reporte_vencimientos")).toEqual({ puedeVer: true, puedeEditar: false });
 
     const auditoria = await prisma.registroAuditoria.findMany({ where: { entidad: "PermisoRol" } });
     expect(auditoria.length).toBeGreaterThanOrEqual(2);
@@ -76,28 +81,28 @@ describe("guardarPermisos", () => {
   });
 
   it("todo o nada: si un cambio del lote es inválido, no se aplica NINGUNO", async () => {
-    const antes = await actual(operadorRolId, "stock_minimo");
+    const antes = await actual(operadorRolId, "reporte_salud");
     const r = await guardarPermisos([
-      await cambio(operadorRolId, "stock_minimo", { puedeVer: true, puedeEditar: true }),
+      await cambio(operadorRolId, "reporte_salud", { puedeVer: true, puedeEditar: true }),
       { rolId: operadorRolId, accionClave: "accion_que_no_existe", anterior: SIN_PERMISO, nuevo: { puedeVer: true, puedeEditar: false } },
     ]);
 
     expect(r.ok).toBe(false);
     expect(r.mensaje).toContain("No se guardó nada");
-    expect(await actual(operadorRolId, "stock_minimo")).toEqual(antes);
+    expect(await actual(operadorRolId, "reporte_salud")).toEqual(antes);
     expect(await prisma.registroAuditoria.count({ where: { entidad: "PermisoRol" } })).toBe(0);
   });
 
   it("si otra persona cambió un permiso mientras se editaba, no se guarda nada (ni lo que no chocaba) y se dice cuál", async () => {
     const editando = [
-      await cambio(operadorRolId, "stock_minimo", { puedeVer: true, puedeEditar: true }),
-      await cambio(operadorRolId, "precio_local", { puedeVer: true, puedeEditar: false }),
+      await cambio(operadorRolId, "reporte_salud", { puedeVer: true, puedeEditar: true }),
+      await cambio(operadorRolId, "reporte_vencimientos", { puedeVer: true, puedeEditar: false }),
     ];
-    // Mientras tanto, otra persona cambia precio_local.
+    // Mientras tanto, otra persona cambia reporte_vencimientos.
     await prisma.permisoRol.upsert({
-      where: { rolId_accionClave: { rolId: operadorRolId, accionClave: "precio_local" } },
+      where: { rolId_accionClave: { rolId: operadorRolId, accionClave: "reporte_vencimientos" } },
       update: { puedeVer: true, puedeEditar: true },
-      create: { rolId: operadorRolId, accionClave: "precio_local", puedeVer: true, puedeEditar: true },
+      create: { rolId: operadorRolId, accionClave: "reporte_vencimientos", puedeVer: true, puedeEditar: true },
     });
     const stockAntes = editando[0].anterior;
 
@@ -105,16 +110,16 @@ describe("guardarPermisos", () => {
 
     expect(r.ok).toBe(false);
     expect(r.mensaje).toContain("Otra persona cambió");
-    expect(r.mensaje).toContain("precio_local");
+    expect(r.mensaje).toContain("reporte_vencimientos");
     expect(r.mensaje).toContain("No se guardó nada");
-    expect(await actual(operadorRolId, "stock_minimo")).toEqual(stockAntes); // lo que no chocaba tampoco se guardó
-    expect(await actual(operadorRolId, "precio_local")).toEqual({ puedeVer: true, puedeEditar: true }); // queda lo de la otra persona
+    expect(await actual(operadorRolId, "reporte_salud")).toEqual(stockAntes); // lo que no chocaba tampoco se guardó
+    expect(await actual(operadorRolId, "reporte_vencimientos")).toEqual({ puedeVer: true, puedeEditar: true }); // queda lo de la otra persona
   });
 
   it("aplica «Ver ⊇ Editar» al escribir: pedir Editar sin Ver guarda las dos", async () => {
-    const r = await guardarPermisos([await cambio(operadorRolId, "stock_minimo", { puedeVer: false, puedeEditar: true })]);
+    const r = await guardarPermisos([await cambio(operadorRolId, "reporte_salud", { puedeVer: false, puedeEditar: true })]);
     expect(r.ok, r.mensaje).toBe(true);
-    expect(await actual(operadorRolId, "stock_minimo")).toEqual({ puedeVer: true, puedeEditar: true });
+    expect(await actual(operadorRolId, "reporte_salud")).toEqual({ puedeVer: true, puedeEditar: true });
   });
 
   it("la salvaguarda del admin: no se le puede quitar Editar en gestion_permisos, y un cambio que no cambia nada no se guarda", async () => {
@@ -125,21 +130,21 @@ describe("guardarPermisos", () => {
   });
 
   it("crea el permiso si el rol no tenía fila para esa acción", async () => {
-    await prisma.permisoRol.deleteMany({ where: { rolId: operadorRolId, accionClave: "stock_minimo" } });
-    const r = await guardarPermisos([{ rolId: operadorRolId, accionClave: "stock_minimo", anterior: SIN_PERMISO, nuevo: { puedeVer: true, puedeEditar: false } }]);
+    await prisma.permisoRol.deleteMany({ where: { rolId: operadorRolId, accionClave: "reporte_salud" } });
+    const r = await guardarPermisos([{ rolId: operadorRolId, accionClave: "reporte_salud", anterior: SIN_PERMISO, nuevo: { puedeVer: true, puedeEditar: false } }]);
     expect(r.ok, r.mensaje).toBe(true);
-    expect(await actual(operadorRolId, "stock_minimo")).toEqual({ puedeVer: true, puedeEditar: false });
+    expect(await actual(operadorRolId, "reporte_salud")).toEqual({ puedeVer: true, puedeEditar: false });
   });
 
   it("rechaza un rol desactivado, un lote vacío, celdas repetidas y datos mal formados", async () => {
     await prisma.rol.update({ where: { id: operadorRolId }, data: { activo: false } });
-    expect((await guardarPermisos([await cambio(operadorRolId, "stock_minimo", { puedeVer: true, puedeEditar: false })])).ok).toBe(false);
+    expect((await guardarPermisos([await cambio(operadorRolId, "reporte_salud", { puedeVer: true, puedeEditar: false })])).ok).toBe(false);
     await prisma.rol.update({ where: { id: operadorRolId }, data: { activo: true } });
 
     expect((await guardarPermisos([])).mensaje).toBe("No hay cambios para guardar.");
-    const uno = await cambio(operadorRolId, "stock_minimo", { puedeVer: true, puedeEditar: false });
+    const uno = await cambio(operadorRolId, "reporte_salud", { puedeVer: true, puedeEditar: false });
     expect((await guardarPermisos([uno, uno])).mensaje).toBe("Hay dos cambios para la misma celda.");
-    expect((await guardarPermisos([{ rolId: operadorRolId, accionClave: "stock_minimo", anterior: { puedeVer: "sí" }, nuevo: SIN_PERMISO } as never])).mensaje).toBe(
+    expect((await guardarPermisos([{ rolId: operadorRolId, accionClave: "reporte_salud", anterior: { puedeVer: "sí" }, nuevo: SIN_PERMISO } as never])).mensaje).toBe(
       "Los cambios no tienen el formato esperado."
     );
     expect((await guardarPermisos(null as never)).mensaje).toBe("No hay cambios para guardar.");
@@ -150,7 +155,7 @@ describe("guardarPermisos", () => {
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.id, rolId: operadorRolId });
     await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
 
-    const r = await guardarPermisos([await cambio(operadorRolId, "stock_minimo", { puedeVer: true, puedeEditar: true })]);
+    const r = await guardarPermisos([await cambio(operadorRolId, "reporte_salud", { puedeVer: true, puedeEditar: true })]);
 
     expect(r.ok).toBe(false);
     expect(r.mensaje).toMatch(/No tenés permiso/);

@@ -1,4 +1,4 @@
-import type { CartaV1 } from "@/core/carta/armar-menu";
+import type { CartaV1 } from "@/core/carta/public";
 
 /**
  * «Agregar al pedido» del POS organizado por SECCIÓN DE CARTA (docs/plan-selector-carta-pos-2026-09-25.md) y, dentro de cada
@@ -35,7 +35,10 @@ export interface ProductoPedible {
   productoId: string;
   codigo: string;
   nombre: string;
+  /** Lo que se cobra al agregarlo (con el descuento del producto en esta sucursal ya aplicado, si lo tiene — Fase 2). */
   precio: number;
+  /** Producto con descuento: el precio de lista, antes del descuento (se muestra tachado). Ausente = sin descuento. */
+  precioLista?: number;
   /** Decimales que acepta su unidad de stock (docs/plan-pos-agregar-varios-2026-09-26.md): la lista «Por agregar» del POS lo usa
    *  para normalizar la cantidad con la MISMA función que el servidor (`validarCantidadPedido`) ANTES de confirmar. */
   decimales: number;

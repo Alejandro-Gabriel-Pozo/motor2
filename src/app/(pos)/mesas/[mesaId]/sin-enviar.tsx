@@ -11,6 +11,8 @@ export interface ItemSinEnviar {
   productoNombre: string;
   cantidad: number;
   precioUnitario: number;
+  /** Producto con descuento: el precio de lista, antes del descuento (se muestra tachado). */
+  precioListaUnitario: number | null;
   /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 11): la promo de la que este ítem es un componente — null en un suelto. */
   promoCuentaId: string | null;
   promoTitulo: string | null;
@@ -50,10 +52,11 @@ function agruparFilas(items: ItemSinEnviar[]): FilaSinEnviar[] {
  * Al salir bien pide imprimir la comanda del envío que el SERVIDOR dice que creó ESTA llamada (`numeroEnvio` con `envioNuevo`). Si no
  * creó ninguno (pestaña vieja: otro ya los había enviado), no imprime: esa comanda ya salió desde donde se envió.
  */
-export function SinEnviar({ cuentaId, items, puede }: { cuentaId: string; items: ItemSinEnviar[]; puede: boolean }) {
+export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: string; items: ItemSinEnviar[]; puede: boolean; puedeEnviar: boolean }) {
   const { ejecutar, pending, error } = useAccionMesa();
   const { pedir } = useImpresion();
   const sinPermiso = puede ? undefined : "Tu rol puede ver la mesa pero no tomar pedidos.";
+  const sinPermisoEnviar = puedeEnviar ? undefined : "Tu rol puede ver la mesa pero no enviar pedidos a cocina.";
   const filas = agruparFilas(items);
 
   const enviar = () =>
@@ -71,7 +74,7 @@ export function SinEnviar({ cuentaId, items, puede }: { cuentaId: string; items:
           Sin enviar · {items.length}
         </h2>
         {items.length > 0 && (
-          <button type="button" className={BOTON_PRIMARIO} disabled={!puede || pending} title={sinPermiso} onClick={enviar}>
+          <button type="button" className={BOTON_PRIMARIO} disabled={!puedeEnviar || pending} title={sinPermisoEnviar} onClick={enviar}>
             {pending ? "Enviando…" : "Enviar a cocina"}
           </button>
         )}
@@ -87,7 +90,10 @@ export function SinEnviar({ cuentaId, items, puede }: { cuentaId: string; items:
                   <span className="font-semibold tabular-nums">{formatearCantidad(fila.item.cantidad)} ×</span> {fila.item.productoNombre}
                 </span>
                 <span className="flex items-center gap-3">
-                  <span className="tabular-nums">{formatearMonto(fila.item.cantidad * fila.item.precioUnitario)}</span>
+                  <span className="tabular-nums">
+                    {fila.item.precioListaUnitario !== null && <s data-precio-lista className="mr-1 text-[var(--ink-soft)]">{formatearMonto(fila.item.cantidad * fila.item.precioListaUnitario)}</s>}
+                    {formatearMonto(fila.item.cantidad * fila.item.precioUnitario)}
+                  </span>
                   <button
                     type="button"
                     className={BOTON_CHICO}

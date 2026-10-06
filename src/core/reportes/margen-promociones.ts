@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
 import { construirIndiceRecetas, construirMapaProductos, type Db } from "./comun";
 import { calcularMargenRealDelPeriodo, type ItemParaMargenReal } from "./margen-real";
@@ -91,7 +90,7 @@ interface AcumuladoPromo {
   completo: boolean;
 }
 
-export async function obtenerReporteMargenPromociones(sucursalId: string, desde: Date, hasta: Date, db: Db = prisma): Promise<ReporteMargenPromociones> {
+export async function obtenerReporteMargenPromociones(sucursalId: string, desde: Date, hasta: Date, db: Db): Promise<ReporteMargenPromociones> {
   const filas = await db.movimientoStock.findMany({
     where: { proceso: "VENTA", operacion: { sucursalId, fecha: { gte: desde, lte: hasta }, anuladaEn: null, promoCuentaId: { not: null } } },
     select: {

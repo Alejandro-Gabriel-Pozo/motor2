@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * El resultado de una acción tiene que VERSE. Estas pantallas usaban `<form action={async () => { "use server"; await accion(...) }}>`, que hace el
@@ -80,7 +80,7 @@ test("grupos: poner un grupo como su propio padre muestra el error del ciclo", a
 
 test("precio local: un precio inválido muestra el error y la fila no cambia", async ({ paginaAutenticada: page, sucursalId }) => {
   const nombre = `E2E Precio Inválido ${Date.now()}`;
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-PI-${Date.now()}`, nombre, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
   // El schema no tiene un check que impida un precio negativo: así se llega al error de la acción desde la tabla.
   await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: producto.id, precio: -1, habilitado: true } });
@@ -100,7 +100,7 @@ test("precio local: un precio inválido muestra el error y la fila no cambia", a
 });
 
 test("capacidades: si no se pudo cambiar un ✅/⛔ se avisa, y el botón sigue mostrando el estado real", async ({ paginaAutenticada: page }) => {
-  const admin = await prisma.rol.findUniqueOrThrow({ where: { nombre: "admin" } });
+  const admin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
   const where = { rolId: admin.id, accionClave: "capacidades_sucursal" };
 
   try {
@@ -177,7 +177,7 @@ test("precio local: un texto que no es número ('abc') no guarda un precio 0", a
   // `Number("")`, o sea 0. Ahora el campo marca el texto como inválido (validación nativa del navegador) y no sale ningún envío.
   const marca = Date.now();
   const nombre = `E2E Precio Texto ${marca}`;
-  const kg = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-PT-${marca}`, nombre, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
 

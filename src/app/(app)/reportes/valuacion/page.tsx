@@ -2,17 +2,17 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { calcularValuacionInventario } from "@/core/reportes/valuacion";
 import { EnDolares } from "@/components/en-dolares";
-import { obtenerUltimaCotizacion } from "@/core/reportes/cotizacion-dolar";
+import { obtenerUltimaCotizacionSinRomper } from "@/core/reportes/cotizacion-dolar";
 import { TablaValuacionConCosto, TablaValuacionSinCosto } from "./tabla-valuacion";
 
 export default async function ValuacionPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_valuacion", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [rep, cotizacion] = await Promise.all([calcularValuacionInventario(ctx.sucursalId), obtenerUltimaCotizacion().catch(() => null)]);
+  const [rep, cotizacion] = await Promise.all([calcularValuacionInventario(ctx.sucursalId, ctx.db), obtenerUltimaCotizacionSinRomper(ctx.db)]);
   const sinCosto = rep.filas.filter((f) => f.sinCosto);
   const conCosto = rep.filas.filter((f) => !f.sinCosto);
 

@@ -110,18 +110,18 @@ describe("generarReporteVentasPorSeccion (contra Postgres)", () => {
 
     await prisma.contenidoCartaProducto.createMany({
       data: [
-        { productoId: bife.id, visibleEnCarta: true, seccionCartaId: platos.id },
+        { sucursalId, productoId: bife.id, visibleEnCarta: true, seccionCartaId: platos.id },
         // Misma categoría que el bife, en otra sección: sus ventas van a Entradas.
-        { productoId: provoleta.id, visibleEnCarta: true, seccionCartaId: entradas.id },
-        { productoId: emp.id, visibleEnCarta: true, seccionCartaId: entradas.id },
+        { sucursalId, productoId: provoleta.id, visibleEnCarta: true, seccionCartaId: entradas.id },
+        { sucursalId, productoId: emp.id, visibleEnCarta: true, seccionCartaId: entradas.id },
         // Oculto (aunque tenga sección): no se ve en la carta → "Sin sección".
-        { productoId: agua.id, visibleEnCarta: false, seccionCartaId: entradas.id },
+        { sucursalId, productoId: agua.id, visibleEnCarta: false, seccionCartaId: entradas.id },
         // Tiene contenido visible propio, pero está agrupado: se ve (y vende) en la sección del ítem agrupado (D3).
-        { productoId: coca.id, visibleEnCarta: true, seccionCartaId: entradas.id },
+        { sucursalId, productoId: coca.id, visibleEnCarta: true, seccionCartaId: entradas.id },
       ],
     });
-    const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { nombre: "Gaseosa", seccionCartaId: bebidas.id } });
-    await prisma.opcionItemAgrupadoCarta.create({ data: { itemAgrupadoCartaId: gaseosa.id, productoId: coca.id } });
+    const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: "Gaseosa", seccionCartaId: bebidas.id } });
+    await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId, itemAgrupadoCartaId: gaseosa.id, productoId: coca.id } });
 
     const r = await registrarVenta({
       fecha: d("2026-08-04"),
@@ -139,8 +139,8 @@ describe("generarReporteVentasPorSeccion (contra Postgres)", () => {
   });
 
   it("agrupa por la sección real de cada producto; los totales cierran con el reporte por categoría", async () => {
-    const porCategoria = await generarReporteVentasPorCategoria(sucursalId, d("2026-08-01"), d("2026-08-31"));
-    const porSeccion = await generarReporteVentasPorSeccion(sucursalId, d("2026-08-01"), d("2026-08-31"));
+    const porCategoria = await generarReporteVentasPorCategoria(sucursalId, d("2026-08-01"), d("2026-08-31"), prisma);
+    const porSeccion = await generarReporteVentasPorSeccion(sucursalId, d("2026-08-01"), d("2026-08-31"), prisma);
 
     const suma = (xs: readonly { importe: number; cantidad: number }[], k: "importe" | "cantidad") => xs.reduce((a, x) => a + x[k], 0);
     expect(suma(porSeccion.porSeccion, "importe")).toBeCloseTo(suma(porCategoria.porCategoria, "importe"), 6);

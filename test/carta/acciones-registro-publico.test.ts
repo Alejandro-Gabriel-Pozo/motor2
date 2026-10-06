@@ -2,19 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin } from "../setup/test-db";
+import { activarTodosLosModulos } from "../setup/modulos";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { agregarSucursalAlPortal, guardarSucursalPublica, quitarSucursalDelPortal, type DatosSucursalPublica } from "../../src/server/actions/carta/registro-publico";
-import { resolverRegistroTenants } from "../../src/core/carta/registro-consulta";
+import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal, type DatosSucursalPublica } from "../../src/server/actions/carta/registro-publico";
 
 /**
  * Server Actions del registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M6): permiso `carta`, slug
- * derivado del nombre y desambiguado, edición manual del slug, validaciones (dominio, sheetId, posición) y "Quitar del portal"
- * borra la fila. `sheetId` es transición (restaurant-menu-design ya no lee ninguna sheet): no lo exige para publicar.
+ * derivado del nombre y desambiguado, edición manual del slug, validaciones (slug, posición, textos, orden) y "Quitar del portal"
+ * borra la fila.
  */
-const SHEET = "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abc";
-
-const datos = (p: Partial<DatosSucursalPublica> = {}): DatosSucursalPublica => ({ slug: "central", publicada: false, menuDesdeMotor2: false, ...p });
+const datos = (p: Partial<DatosSucursalPublica> = {}): DatosSucursalPublica => ({ slug: "central", publicada: false, ...p });
 
 describe("Server Actions del registro público", () => {
   let centralId: string;
@@ -32,12 +30,9 @@ describe("Server Actions del registro público", () => {
   it("agregar: crea la fila sin publicar con el slug derivado del nombre", async () => {
     const r = await agregarSucursalAlPortal(centralId);
     expect(r).toEqual({ ok: true, mensaje: '"Central" agregada al portal con el slug central (sin publicar todavía).' });
-    expect(await prisma.sucursalPublica.findUniqueOrThrow({ where: { sucursalId: centralId } })).toMatchObject({
+    expect(await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } })).toMatchObject({
       slug: "central",
       publicada: false,
-      menuDesdeMotor2: false,
-      sheetId: null,
-      sheetMenuNombre: "Menu",
       etiqueta: null,
     });
     // Dos veces no: ya está.
@@ -57,18 +52,17 @@ describe("Server Actions del registro público", () => {
   it("renombrar la sucursal después NO cambia el slug guardado", async () => {
     await agregarSucursalAlPortal(centralId);
     await prisma.sucursal.update({ where: { id: centralId }, data: { nombre: "Casa Central" } });
-    const { tenants } = await resolverRegistroTenants();
-    expect(tenants.map((t) => [t.slug, t.etiqueta])).toEqual([["central", "Casa Central"]]);
+    expect(await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } })).toMatchObject({ slug: "central", etiqueta: null });
+    expect((await prisma.sucursal.findUniqueOrThrow({ where: { id: centralId } })).nombre).toBe("Casa Central");
   });
 
-  it("guardar: edita el slug a mano, dominio normalizado, posición y publica con sheetId; el endpoint lo refleja", async () => {
+  it("guardar: edita el slug a mano, posición y publica; queda en la fila", async () => {
     await agregarSucursalAlPortal(centralId);
     const r = await guardarSucursalPublica(
       centralId,
       datos({
         slug: " Varvarco ",
         etiqueta: "Hostería Varvarco",
-        dominio: "https://Carta.Varvarco.com/",
         subtituloPortal: "Frente al río",
         posX: "12,5",
         posY: "40",
@@ -76,69 +70,54 @@ describe("Server Actions del registro público", () => {
         posH: "",
         orden: "2",
         publicada: true,
-        menuDesdeMotor2: true,
-        sheetId: `https://docs.google.com/spreadsheets/d/${SHEET}/edit#gid=0`,
-        sheetMenuNombre: "",
       })
     );
     expect(r).toEqual({ ok: true, mensaje: 'Portal: "Central" guardada y publicada.' });
-    const { tenants } = await resolverRegistroTenants();
-    expect(tenants).toEqual([
-      {
-        slug: "varvarco",
-        etiqueta: "Hostería Varvarco",
-        dominio: "carta.varvarco.com",
-        subtitulo: "Frente al río",
-        posicion: { x: 12.5, y: 40, w: 8, h: null },
-        orden: 2,
-        activo: true,
-        sucursalId: centralId,
-        menuDesdeMotor2: true,
-        temaDesdeMotor2: false,
-        sheetId: SHEET,
-        sheetMenuNombre: "Menu",
-      },
-    ]);
+    const fila = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } });
+    expect(fila).toMatchObject({
+      slug: "varvarco",
+      etiqueta: "Hostería Varvarco",
+      subtituloPortal: "Frente al río",
+      orden: 2,
+      publicada: true,
+    });
+    expect([fila.posX, fila.posY, fila.posW].map(Number)).toEqual([12.5, 40, 8]);
+    expect(fila.posH).toBeNull();
   });
 
-  it("guardar rechaza slug o dominio que ya usa otra sucursal, con su nombre", async () => {
+  it("guardar rechaza un slug que ya usa otra sucursal, con su nombre", async () => {
     const norte = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
     await agregarSucursalAlPortal(centralId);
     await agregarSucursalAlPortal(norte);
-    expect(await guardarSucursalPublica(centralId, datos({ dominio: "carta.x.com" }))).toMatchObject({ ok: true });
+    expect(await guardarSucursalPublica(centralId, datos())).toMatchObject({ ok: true });
     expect(await guardarSucursalPublica(norte, datos({ slug: "central" }))).toEqual({ ok: false, mensaje: 'El slug central ya lo usa "Central".' });
-    expect(await guardarSucursalPublica(norte, datos({ slug: "norte", dominio: "CARTA.X.COM" }))).toEqual({ ok: false, mensaje: 'El dominio carta.x.com ya lo usa "Central".' });
-    // Guardar la propia fila con su mismo slug y dominio no es un choque.
-    expect(await guardarSucursalPublica(centralId, datos({ dominio: "carta.x.com", etiqueta: "Otra etiqueta" }))).toMatchObject({ ok: true });
+    // Guardar la propia fila con su mismo slug no es un choque.
+    expect(await guardarSucursalPublica(centralId, datos({ etiqueta: "Otra etiqueta" }))).toMatchObject({ ok: true });
   });
 
-  it("guardar valida slug, dominio, sheetId, posición, textos y orden sin escribir nada", async () => {
+  it("guardar valida slug, posición, textos y orden sin escribir nada", async () => {
     await agregarSucursalAlPortal(centralId);
-    const antes = await prisma.sucursalPublica.findUniqueOrThrow({ where: { sucursalId: centralId } });
+    const antes = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } });
     const malos: Partial<DatosSucursalPublica>[] = [
       { slug: "" },
       { slug: "con espacios" },
       { slug: "piñón" },
-      { dominio: "carta.x.com/menu" },
-      { dominio: "localhost" },
-      { sheetId: "corto" },
       { posX: 10, posY: 10 },
       { posX: 150, posY: 10, posW: 5 },
       { posH: 5 },
       { etiqueta: "x".repeat(81) },
       { subtituloPortal: "x".repeat(201) },
       { orden: "1.5" },
-      { sheetMenuNombre: "x".repeat(101) },
     ];
     for (const m of malos) expect((await guardarSucursalPublica(centralId, datos(m))).ok, JSON.stringify(m)).toBe(false);
-    expect(await prisma.sucursalPublica.findUniqueOrThrow({ where: { sucursalId: centralId } })).toEqual(antes);
+    expect(await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } })).toEqual(antes);
   });
 
-  it("publicar sin sheetId → ok (restaurant-menu-design ya no lee ninguna sheet)", async () => {
+  it("publicar → ok", async () => {
     await agregarSucursalAlPortal(centralId);
-    const r = await guardarSucursalPublica(centralId, datos({ publicada: true, menuDesdeMotor2: true }));
+    const r = await guardarSucursalPublica(centralId, datos({ publicada: true }));
     expect(r).toMatchObject({ ok: true, mensaje: 'Portal: "Central" guardada y publicada.' });
-    expect((await prisma.sucursalPublica.findUniqueOrThrow({ where: { sucursalId: centralId } })).publicada).toBe(true);
+    expect((await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } })).publicada).toBe(true);
   });
 
   it("guardar una sucursal que no está en el portal → error", async () => {
@@ -155,7 +134,7 @@ describe("Server Actions del registro público", () => {
 
   it("sin el permiso `carta` (el operador arranca sin él) ninguna acción escribe", async () => {
     await agregarSucursalAlPortal(centralId);
-    const antes = await prisma.sucursalPublica.findUniqueOrThrow({ where: { sucursalId: centralId } });
+    const antes = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } });
     const norte = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: centralId, rolId: operadorRolId });
     await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
@@ -165,5 +144,73 @@ describe("Server Actions del registro público", () => {
       expect(r.mensaje).toMatch(/No tenés permiso/);
     }
     expect(await prisma.sucursalPublica.findMany()).toEqual([antes]);
+  });
+
+  describe("moverSucursalEnMapa (arrastrar en la vista previa)", () => {
+    const ubicar = async () => {
+      await agregarSucursalAlPortal(centralId);
+      await guardarSucursalPublica(centralId, datos({ posX: "10", posY: "20", posW: "30", posH: "8", etiqueta: "Central", orden: "3" }));
+    };
+    const fila = () => prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } });
+
+    it("cambia SOLO posX y posY (posW, posH y el resto quedan) y redondea a 2 decimales", async () => {
+      await ubicar();
+      const antes = await fila();
+      const r = await moverSucursalEnMapa(centralId, 55.555, 44.4);
+      expect(r.ok).toBe(true);
+      const despues = await fila();
+      expect(Number(despues.posX)).toBe(55.56);
+      expect(Number(despues.posY)).toBe(44.4);
+      expect({ ...despues, posX: null, posY: null, actualizadoEn: null }).toEqual({ ...antes, posX: null, posY: null, actualizadoEn: null });
+    });
+
+    it("sin posición completa (falta el ancho) → error y no escribe", async () => {
+      await agregarSucursalAlPortal(centralId);
+      const r = await moverSucursalEnMapa(centralId, 10, 10);
+      expect(r).toMatchObject({ ok: false });
+      const f = await fila();
+      expect([f.posX, f.posY, f.posW]).toEqual([null, null, null]);
+    });
+
+    it.each([
+      ["x fuera de rango", 101, 10],
+      ["x negativa", -1, 10],
+      ["y fuera de rango", 10, 100.5],
+      ["NaN", Number.NaN, 10],
+      ["Infinity", 10, Number.POSITIVE_INFINITY],
+    ])("valor inválido (%s) → error y no escribe", async (_n, x, y) => {
+      await ubicar();
+      const r = await moverSucursalEnMapa(centralId, x, y);
+      expect(r.ok).toBe(false);
+      const f = await fila();
+      expect([Number(f.posX), Number(f.posY)]).toEqual([10, 20]);
+    });
+
+    it("sucursal que no existe o que no está en el portal → error", async () => {
+      expect(await moverSucursalEnMapa("no-existe", 10, 10)).toEqual({ ok: false, mensaje: "Esta sucursal no está en el portal." });
+      expect(await moverSucursalEnMapa(centralId, 10, 10)).toEqual({ ok: false, mensaje: "Esta sucursal no está en el portal." });
+    });
+
+    it("no mueve la sucursal de otra empresa (aunque se pase su id)", async () => {
+      await prismaAdmin.empresa.create({ data: { id: "norte", nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+      await activarTodosLosModulos("norte");
+      const ajena = await prismaAdmin.sucursal.create({ data: { nombre: "Ajena", empresaId: "norte" } });
+      await prismaAdmin.sucursalPublica.create({ data: { empresaId: "norte", sucursalId: ajena.id, slug: "ajena", posX: 1, posY: 2, posW: 3 } });
+      const r = await moverSucursalEnMapa(ajena.id, 50, 50);
+      expect(r.ok).toBe(false);
+      const intacta = await prismaAdmin.sucursalPublica.findFirstOrThrow({ where: { sucursalId: ajena.id } });
+      expect([Number(intacta.posX), Number(intacta.posY)]).toEqual([1, 2]);
+    });
+
+    it("sin el permiso `carta` no escribe", async () => {
+      await ubicar();
+      const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: centralId, rolId: operadorRolId });
+      await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
+      const r = await moverSucursalEnMapa(centralId, 50, 50);
+      expect(r.ok).toBe(false);
+      expect(r.mensaje).toMatch(/No tenés permiso/);
+      const f = await fila();
+      expect([Number(f.posX), Number(f.posY)]).toEqual([10, 20]);
+    });
   });
 });

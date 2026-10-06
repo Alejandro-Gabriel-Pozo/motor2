@@ -24,6 +24,7 @@ const OPCIONES_QUE_MOSTRAR: { valor: QueMostrar; etiqueta: string }[] = [
 ];
 
 const OPCIONES_RANGO: { valor: RangoHistorial; etiqueta: string }[] = [
+  { valor: "10d", etiqueta: "Últimos 10 días" },
   { valor: "90d", etiqueta: "Últimos 90 días" },
   { valor: "todo", etiqueta: "Todo el historial" },
   { valor: "personalizado", etiqueta: "Fechas personalizadas" },
@@ -54,13 +55,13 @@ export function HistorialFiltros({
     if (productoId) params.set("productoId", productoId);
     if (seccionId) params.set("seccionId", seccionId);
     if (rango === "personalizado") {
-      params.set("rango", "personalizado"); // así un submit sin tocar los inputs (que recién se muestran acá) sigue siendo "personalizado", no cae a 90d.
+      params.set("rango", "personalizado"); // así un submit sin tocar los inputs (que recién se muestran acá) sigue siendo "personalizado", no cae al default.
       if (desde) params.set("desde", desde);
       if (hasta) params.set("hasta", hasta);
-    } else if (rango === "todo") {
-      params.set("rango", "todo");
+    } else if (rango === "todo" || rango === "90d") {
+      params.set("rango", rango);
     }
-    // rango === "90d": es el default, no se escribe nada (URL limpia — mismo criterio que SelectorRango).
+    // rango === "10d": es el default, no se escribe nada (URL limpia — mismo criterio que SelectorRango).
     if (queMostrar !== "todo") params.set("queMostrar", queMostrar);
     router.push(`/reportes/historial?${params.toString()}`);
   };

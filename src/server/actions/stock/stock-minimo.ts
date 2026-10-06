@@ -1,15 +1,15 @@
 "use server";
 
-import { prisma } from "@/lib/db";
-import { esNumeroFinito } from "@/core/numero";
+import { esNumeroEstricto } from "@/core/numero";
+import { STOCK_MINIMO_MAXIMO, validarNumeroHasta } from "@/core/datos/limites";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
 
 /** Todas las filas (global + por sección) de Stock Mínimo de esta sucursal — para el panel de administración. */
 export async function listarStockMinimo(sucursalId: string) {
-  await requerirVerEnSucursal(sucursalId, "stock_minimo");
-  return prisma.stockMinimoProducto.findMany({
+  const ctx = await requerirVerEnSucursal(sucursalId, "stock_minimo");
+  return ctx.db.stockMinimoProducto.findMany({
     where: { sucursalId },
     include: { producto: true, seccion: true },
     orderBy: [{ producto: { nombre: "asc" } }],
@@ -24,16 +24,18 @@ export async function listarStockMinimo(sucursalId: string) {
 export async function setStockMinimoProducto(productoId: string, minimo: number, seccionId?: string | null): Promise<ResultadoAccion> {
   return conPermiso("stock_minimo", async (ctx) => {
     if (!(minimo >= 0)) return error("El mínimo no puede ser negativo.");
-    if (!esNumeroFinito(minimo)) return error("El mínimo no es un número válido.");
+    if (!esNumeroEstricto(minimo)) return error("El mínimo no es un número válido.");
+    const alto = validarNumeroHasta(minimo, "El mínimo", STOCK_MINIMO_MAXIMO);
+    if (alto) return error(alto);
 
-    const producto = await prisma.producto.findUnique({ where: { id: productoId } });
+    const producto = await ctx.db.producto.findUnique({ where: { id: productoId } });
     if (!producto) return error("No se encontró el producto.");
 
     if (seccionId) {
-      const seccion = await prisma.seccion.findUnique({ where: { id: seccionId } });
+      const seccion = await ctx.db.seccion.findUnique({ where: { id: seccionId } });
       if (!seccion || seccion.sucursalId !== ctx.sucursalId) return error("No se encontró la sección.");
 
-      await prisma.stockMinimoProducto.upsert({
+      await ctx.db.stockMinimoProducto.upsert({
         where: { productoId_seccionId: { productoId, seccionId } },
         update: { minimo },
         create: { sucursalId: ctx.sucursalId, productoId, seccionId, minimo },
@@ -46,11 +48,11 @@ export async function setStockMinimoProducto(productoId: string, minimo: number,
     // manual, README) es el árbitro final; acá se busca a mano porque
     // Prisma no puede expresar un `where` de upsert sobre un índice
     // parcial, solo sobre una @@unique declarada en el schema.
-    const existente = await prisma.stockMinimoProducto.findFirst({ where: { sucursalId: ctx.sucursalId, productoId, seccionId: null } });
+    const existente = await ctx.db.stockMinimoProducto.findFirst({ where: { sucursalId: ctx.sucursalId, productoId, seccionId: null } });
     if (existente) {
-      await prisma.stockMinimoProducto.update({ where: { id: existente.id }, data: { minimo } });
+      await ctx.db.stockMinimoProducto.update({ where: { id: existente.id }, data: { minimo } });
     } else {
-      await prisma.stockMinimoProducto.create({ data: { sucursalId: ctx.sucursalId, productoId, minimo } });
+      await ctx.db.stockMinimoProducto.create({ data: { sucursalId: ctx.sucursalId, productoId, minimo } });
     }
     return ok(`Stock mínimo (global) de "${producto.nombre}" actualizado.`);
   });
@@ -58,9 +60,9 @@ export async function setStockMinimoProducto(productoId: string, minimo: number,
 
 export async function eliminarStockMinimo(id: string): Promise<ResultadoAccion> {
   return conPermiso("stock_minimo", async (ctx) => {
-    const fila = await prisma.stockMinimoProducto.findUnique({ where: { id } });
+    const fila = await ctx.db.stockMinimoProducto.findUnique({ where: { id } });
     if (!fila || fila.sucursalId !== ctx.sucursalId) return error("No se encontró esa fila de Stock Mínimo.");
-    await prisma.stockMinimoProducto.delete({ where: { id } });
+    await ctx.db.stockMinimoProducto.delete({ where: { id } });
     return ok("Stock mínimo eliminado.");
   });
 }

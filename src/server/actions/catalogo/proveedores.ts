@@ -1,17 +1,35 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { texto, validarTextoCatalogo } from "@/core/texto";
+import {
+  LARGO_MAXIMO_CONTACTO,
+  LARGO_MAXIMO_DETALLE,
+  LARGO_MAXIMO_NOTAS,
+  LARGO_MAXIMO_TELEFONO,
+  validarEmailOpcional,
+  validarTextoLibre,
+} from "@/core/datos/limites";
+import type { ContextoUsuario } from "@/core/auth/contexto";
+import { validarCuit } from "@/core/fiscal/cuit";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
-import { conPermiso } from "../con-permiso";
+import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirSesion } from "../con-sesion";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 
+const MENSAJE_CUIT_DUPLICADO = (nombre: string) =>
+  `Ya existe un proveedor con ese CUIT («${nombre}»). Dos proveedores de una misma empresa no pueden compartir CUIT: revisá que esté bien cargado.`;
+
+/** El nombre del OTRO proveedor de la empresa que ya tiene ese CUIT (el RLS acota a la empresa activa), o `null`. */
+async function proveedorConCuit(db: ContextoUsuario["db"], cuit: string | null, excluirId?: string) {
+  if (!cuit) return null;
+  return (await db.proveedor.findFirst({ where: { cuit, ...(excluirId ? { id: { not: excluirId } } : {}) }, select: { nombre: true } }))?.nombre ?? null;
+}
+
 export async function listarProveedores(soloActivos = false) {
-  await requerirSesion();
-  return prisma.proveedor.findMany({
-    where: soloActivos ? { activo: true } : undefined,
+  const ctx = await requerirSesion();
+  return ctx.db.proveedor.findMany({
+    where: soloActivos ? { activo: true } : {},
     orderBy: { nombre: "asc" },
   });
 }
@@ -26,6 +44,23 @@ export interface DatosProveedor {
   notas?: string;
 }
 
+type CamposDeContacto = Omit<DatosProveedor, "nombre">;
+
+/** Largo máximo de cada texto libre y formato del email (S-22). Recortados; vacío → `null`. */
+function validarCamposDeContacto(datos: CamposDeContacto): { ok: true; valores: Record<keyof CamposDeContacto, string | null> } | { ok: false; mensaje: string } {
+  const campos = {
+    contacto: validarTextoLibre(datos.contacto, "El contacto", LARGO_MAXIMO_CONTACTO),
+    telefono: validarTextoLibre(datos.telefono, "El teléfono", LARGO_MAXIMO_TELEFONO),
+    email: validarEmailOpcional(datos.email),
+    cuit: validarCuit(datos.cuit),
+    condicionesPago: validarTextoLibre(datos.condicionesPago, "Las condiciones de pago", LARGO_MAXIMO_DETALLE),
+    notas: validarTextoLibre(datos.notas, "Las notas", LARGO_MAXIMO_NOTAS),
+  };
+  for (const r of Object.values(campos)) if (!r.ok) return { ok: false, mensaje: r.mensaje };
+  const valores = Object.fromEntries(Object.entries(campos).map(([k, r]) => [k, r.ok ? r.valor : null])) as Record<keyof CamposDeContacto, string | null>;
+  return { ok: true, valores };
+}
+
 /**
  * Equivalente de altaProveedor (Catalogo.js:3757-3775). Gatea con
  * 'alta_producto', no con un permiso propio — se preserva la decisión
@@ -33,41 +68,44 @@ export interface DatosProveedor {
  * restringe nada nuevo.
  */
 export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoConId> {
-  return conPermiso<ResultadoConId>("alta_producto", async () => {
+  return conPermisoDeEmpresa<ResultadoConId>("proveedor_alta", async (ctx) => {
     const nombre = texto(datos.nombre);
     if (!nombre) return error("El nombre no puede estar vacío.");
     const invalido = validarTextoCatalogo(nombre, "El nombre");
     if (invalido) return error(invalido);
+    const campos = validarCamposDeContacto(datos);
+    if (!campos.ok) return error(campos.mensaje);
 
-    const dup = await prisma.proveedor.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
+    const dup = await ctx.db.proveedor.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
     if (dup) return error(`Ya existe un proveedor llamado "${nombre}".`);
+    const conMismoCuit = await proveedorConCuit(ctx.db, campos.valores.cuit);
+    if (conMismoCuit) return error(MENSAJE_CUIT_DUPLICADO(conMismoCuit));
 
     try {
       const proveedor = await crearConCodigoAutogenerado("PRV", undefined, (codigo) =>
-        prisma.proveedor.create({
+        ctx.db.proveedor.create({
           data: {
             codigo,
             nombre,
-            contacto: datos.contacto,
-            telefono: datos.telefono,
-            email: datos.email,
-            cuit: datos.cuit,
-            condicionesPago: datos.condicionesPago,
-            notas: datos.notas,
+            ...campos.valores,
           },
         })
       );
       return okConId(`Proveedor "${proveedor.nombre}" creado.`, proveedor.id, proveedor.nombre);
     } catch (e) {
-      if (esErrorDeUnicidad(e)) return error("Colisión generando el código del proveedor — reintentá.");
+      // Carrera: dos altas con el mismo CUIT a la vez pasan el chequeo de arriba y las frena el índice único (empresaId, cuit).
+      if (esErrorDeUnicidad(e)) {
+        const carrera = await proveedorConCuit(ctx.db, campos.valores.cuit);
+        return error(carrera ? MENSAJE_CUIT_DUPLICADO(carrera) : "Colisión generando el código del proveedor — reintentá.");
+      }
       throw e;
     }
   });
 }
 
 export async function actualizarActivaProveedor(proveedorId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("proveedores", async () => {
-    await prisma.proveedor.update({ where: { id: proveedorId }, data: { activo } });
+  return conPermisoDeEmpresa("proveedores", async (ctx) => {
+    await ctx.db.proveedor.update({ where: { id: proveedorId }, data: { activo } });
     // Se llama desde la lista sin redirigir después — sin esto la columna
     // "Activo" no cambiaría en un navegador real hasta recargar a mano
     // (ver src/server/actions/refrescar.ts).
@@ -84,21 +122,22 @@ export async function actualizarActivaProveedor(proveedorId: string, activo: boo
  * renombrarOFusionarInsumo-style, fuera del alcance de este hallazgo.
  */
 export async function actualizarProveedor(proveedorId: string, datos: Omit<DatosProveedor, "nombre">): Promise<ResultadoAccion> {
-  return conPermiso("proveedores", async () => {
-    const proveedor = await prisma.proveedor.findUnique({ where: { id: proveedorId } });
+  return conPermisoDeEmpresa("proveedores", async (ctx) => {
+    const proveedor = await ctx.db.proveedor.findUnique({ where: { id: proveedorId } });
     if (!proveedor) return error("No se encontró ese proveedor.");
+    const campos = validarCamposDeContacto(datos);
+    if (!campos.ok) return error(campos.mensaje);
 
-    await prisma.proveedor.update({
-      where: { id: proveedorId },
-      data: {
-        contacto: texto(datos.contacto ?? "") || null,
-        telefono: texto(datos.telefono ?? "") || null,
-        email: texto(datos.email ?? "") || null,
-        cuit: texto(datos.cuit ?? "") || null,
-        condicionesPago: texto(datos.condicionesPago ?? "") || null,
-        notas: texto(datos.notas ?? "") || null,
-      },
-    });
+    const conMismoCuit = await proveedorConCuit(ctx.db, campos.valores.cuit, proveedorId);
+    if (conMismoCuit) return error(MENSAJE_CUIT_DUPLICADO(conMismoCuit));
+
+    try {
+      await ctx.db.proveedor.update({ where: { id: proveedorId }, data: campos.valores });
+    } catch (e) {
+      if (!esErrorDeUnicidad(e)) throw e;
+      const carrera = await proveedorConCuit(ctx.db, campos.valores.cuit, proveedorId);
+      return error(carrera ? MENSAJE_CUIT_DUPLICADO(carrera) : "No se pudo guardar: el dato choca con otro proveedor.");
+    }
     return ok(`Proveedor "${proveedor.nombre}" actualizado.`);
   });
 }

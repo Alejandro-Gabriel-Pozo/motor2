@@ -96,7 +96,10 @@ export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrir
         className={BOTON_PRODUCTO}
       >
         <span>{p.nombre}</span>
-        <span className={PRECIO}>{formatearMonto(p.precio)}</span>
+        <span className={PRECIO}>
+          {p.precioLista !== undefined && <s data-precio-lista className="mr-1">{formatearMonto(p.precioLista)}</s>}
+          {formatearMonto(p.precio)}
+        </span>
       </button>
     );
   };

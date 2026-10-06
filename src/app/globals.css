@@ -31,6 +31,41 @@
   }
 }
 
+/* Feedback mientras un formulario guarda (`FormConResultado`/`FormConAviso` ponen `aria-busy`): el botón de envío se atenúa y el cursor pasa a espera.
+   No se deshabilita de verdad para no perder el foco del teclado (ver `form-con-resultado.tsx`). */
+form[aria-busy="true"] [type="submit"] {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+/* Indicador de navegación (`IndicadorDeEnlace`, `useLinkStatus`): tamaño fijo siempre presente, solo cambia la opacidad (sin salto de maquetación).
+   Un retardo de 100 ms evita el parpadeo en navegaciones instantáneas; con "reducir movimiento" no hay animación. */
+.indicador-enlace {
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-left: 0.4em;
+  vertical-align: -0.05em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 9999px;
+  opacity: 0;
+  transition: opacity 0.1s 0.1s;
+}
+.indicador-enlace[data-pendiente="true"] {
+  opacity: 0.7;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .indicador-enlace[data-pendiente="true"] {
+    animation: indicador-enlace-giro 0.8s linear infinite;
+  }
+}
+@keyframes indicador-enlace-giro {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Salón (módulo POS, route group `(pos)`): tokens de color del mapa de mesas, aplicados por `PosShell` en `.pos-shell` y NUNCA en
    `:root`. Dos razones: (1) `:root` declara `color-scheme: light dark` y en modo oscuro pinta texto casi blanco (#ededed), pero las
    tarjetas del salón son blancas fijas: el número de mesa y los totales quedarían ilegibles; (2) nombres genéricos como `--border` o
@@ -70,7 +105,199 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Impresión desde la pantalla de la mesa (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B9): la comanda de cocina y la boleta
+/* Carta pública (módulo interno, ADR-006, route group `(carta-publica)`): mismo criterio que `.pos-shell` — tokens propios,
+   NUNCA en `:root`, para no ensuciar el namespace de la administración ni heredar el problema de contraste del tema por
+   defecto de `restaurant-menu-design` (ámbar sobre casi blanco). Sin tema aplicado (`TemaCartaSucursal.aplicarEnCarta`,
+   `resolverEstiloCarta` en `src/core/carta/estilo.ts`), estos son los valores que se ven — ya pensados para contraste WCAG
+   AA. Con tema aplicado, `--carta-color-marca`/`--carta-hero-ink`/etc. (puestos inline por `CartaVista`) los pisan. */
+.carta-shell {
+  color-scheme: light;
+  --carta-bg: #ffffff;
+  --carta-ink: #1c1b19;
+  --carta-ink-soft: #57534e;
+  --carta-primary: #92400e; /* ámbar oscuro: ~5.1:1 sobre --carta-bg, cumple AA para texto normal */
+  --carta-border: #e7e5e4;
+
+  background: var(--carta-bg);
+  color: var(--carta-ink);
+  /* Textos chicos (etiquetas, subtítulos, descripciones, tags, contadores, botones): sans, como la carta original. */
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Títulos, nombres de ítem y precios: la familia de `carta_fuente_familia` (`--carta-fuente-familia`, la pone `resolverEstiloCarta`); donde no
+   hay tema (el portal de la empresa) cae a Playfair, la de siempre. */
+.carta-shell .carta-titulo {
+  font-family: var(--carta-fuente-familia, var(--font-carta-serif, ui-serif, serif), serif);
+}
+
+/* Portal de sucursales (`PortalVista`): colores y tamaños llegan como `--portal-*` desde `resolverEstiloPortal` (config de
+   `PortalCartaEmpresa`). Sin valor cargado cae a los tokens `--carta-*` (contraste AA). */
+.carta-shell .portal {
+  background: var(--portal-fondo-color, transparent);
+}
+.carta-shell .portal-header {
+  background: var(--portal-header-bg, transparent);
+  color: var(--portal-header-color, inherit);
+}
+.carta-shell .portal-etiqueta {
+  color: var(--portal-etiqueta-color, var(--carta-ink-soft));
+}
+.carta-shell .portal-titulo {
+  color: var(--portal-titulo-color, inherit);
+}
+.carta-shell .portal-card {
+  background: var(--portal-card-bg, #ffffff);
+  border: 1px solid var(--portal-card-border, var(--carta-border));
+  color: var(--portal-card-color, var(--carta-ink));
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.08);
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.carta-shell .portal-card:hover,
+.carta-shell .portal-card:focus-visible {
+  border-color: var(--portal-card-border-hover, var(--portal-card-border, var(--carta-border)));
+  color: var(--portal-card-color-hover, var(--portal-card-color, var(--carta-ink)));
+  box-shadow: none;
+}
+.carta-shell .portal-card:focus-visible {
+  outline: 2px solid var(--carta-primary);
+  outline-offset: 2px;
+}
+/* Vista previa del admin (/carta/portal): las tarjetas del mapa se arrastran con el mouse. */
+[data-vista-previa-portal] .portal-mapa [data-portal-slug] { cursor: grab; }
+[data-vista-previa-portal][data-arrastrando] { cursor: grabbing; user-select: none; }
+[data-vista-previa-portal][data-arrastrando] .portal-mapa [data-portal-slug] { cursor: grabbing; }
+.carta-shell .portal-card-mapa {
+  padding: 0 2% 0 3%;
+}
+.carta-shell .portal-card-nombre {
+  font-size: var(--portal-card-fuente-label, clamp(0.75rem, 2.2vw, 0.95rem));
+}
+.carta-shell .portal-card-grilla .portal-card-nombre {
+  font-size: 1.125rem;
+}
+.carta-shell .portal-card-notas {
+  font-size: var(--portal-card-fuente-notas, clamp(0.7rem, 1.8vw, 0.75rem));
+  color: var(--portal-card-notas-color, var(--carta-ink-soft));
+}
+.carta-shell .portal-card-flecha {
+  color: var(--portal-card-flecha-color, currentColor);
+}
+.carta-shell .portal-footer {
+  color: var(--carta-ink-soft);
+}
+
+.carta-shell .carta-slider {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.carta-shell .carta-slider::-webkit-scrollbar {
+  display: none;
+}
+
+/* Las páginas se dibujan DEBAJO del topbar (h-10, absoluto) y de la barra de navegación (absoluta, su alto real lo mide
+   `NavegacionCarta` y lo publica en `--carta-nav-h-local`): sin este relleno, el título de la banda y el último ítem quedaban
+   tapados. `scroll-snap-stop: always` hace que un deslizamiento fuerte pare en la página vecina en vez de saltarse varias. */
+.carta-shell .carta-pagina {
+  min-width: 100%;
+  height: 100%;
+  padding-top: 2.5rem;
+  padding-bottom: var(--carta-nav-h-local, 3.5rem);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  overflow-y: auto;
+}
+
+/* Portada en mobile (< sm = 640px): el bloque (logo, nombre, textos) se ubica por % desde arriba (`carta_pos_bloque`, y se corre
+   su propio alto en la misma proporción: 0 = pegado arriba, 100 = pegado abajo, 50 = centrado) y el CTA por % desde el pie
+   (`carta_pos_cta`). Desde `sm` ninguna regla aplica y ambos quedan en el flujo centrado de siempre. */
+@media (max-width: 39.99rem) {
+  .carta-shell .portada-bloque {
+    position: absolute;
+    left: 50%;
+    top: calc(var(--portada-pos-bloque, 50) * 1%);
+    width: min(calc(100% - 4rem), 32rem);
+    transform: translate(-50%, calc(var(--portada-pos-bloque, 50) * -1%));
+  }
+  .carta-shell .portada-cta {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--portada-pos-cta, 18) * 1%);
+    padding-inline: 2rem;
+  }
+}
+
+/* Carta a pantalla completa (no la vista previa del editor): el documento no scrollea, solo el slider y el contenido de cada
+   página. Solo CSS, sin JS: `:has` engancha con la marca `data-carta-libro` de `NavegacionCarta` (que no la pone si `embebida`),
+   así que /carta/tema, que vive dentro de la administración, nunca queda bloqueada. */
+html:has([data-carta-libro]),
+html:has([data-carta-libro]) body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Empujoncito de la flecha "siguiente" en portada e índice (~5 s: 3 vueltas de 1,6 s); sin él, quien no sabe que se desliza
+   se queda en la portada. Con "reducir movimiento" no hay animación. */
+@keyframes carta-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .carta-shell .carta-nudge {
+    animation: carta-nudge 1.6s ease-in-out 3;
+  }
+}
+
+@media print {
+  .carta-shell [data-carta-nav],
+  .carta-shell [data-carta-topbar],
+  .carta-shell [data-carta-aviso-scroll] {
+    display: none !important;
+  }
+  html:has([data-carta-libro]),
+  html:has([data-carta-libro]) body,
+  .carta-shell [data-carta-libro] {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .carta-shell .carta-slider {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    scroll-snap-type: none !important;
+  }
+  .carta-shell .carta-pagina {
+    width: 100% !important;
+    min-width: unset !important;
+    height: auto !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    scroll-snap-align: none !important;
+    page-break-after: always;
+    break-after: page;
+  }
+  .carta-shell,
+  .carta-shell [data-carta-libro] {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  /* Los colores del tema van inline (texto claro sobre fondo oscuro): sin esto, imprimir sobre papel blanco dejaría texto blanco. */
+  .carta-shell [data-carta-libro] * {
+    color: #000 !important;
+  }
+}
+
+/* Impresión desde la pantalla de la mesa (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B9): la comanda de cocina y el ticket
    del cliente se montan en un portal directo en <body> con `data-imprimible` (src/app/(pos)/mesas/[mesaId]/imprimir.tsx) y se imprimen
    con `window.print()` y el diálogo nativo, que deja elegir la térmica (58/80 mm) o la impresora común.
    - En pantalla NUNCA se ven (fuera del árbol de accesibilidad también).
@@ -115,15 +342,15 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* Sucursal (BoletaCuenta) y los encabezados de estado (COMANDA · COCINA / REIMPRESIÓN / ANULACIÓN / CORRECCIÓN, TicketCocina y
-   BoletaCuenta): 10pt a propósito, más grande que el resto (2026-09-28). */
+/* Sucursal (TicketCuenta) y los encabezados de estado (COMANDA · COCINA / REIMPRESIÓN / ANULACIÓN / CORRECCIÓN, TicketCocina y
+   TicketCuenta): 10pt a propósito, más grande que el resto (2026-09-28). */
 [data-imprimible] .ticket-encabezado {
   font-size: 10pt;
   font-weight: 800;
   letter-spacing: 0.04em;
 }
 
-/* Identifica la mesa (única función de esta clase, TicketCocina y BoletaCuenta): bajado de 20pt a 9pt (2026-09-28) — ya no es un
+/* Identifica la mesa (única función de esta clase, TicketCocina y TicketCuenta): bajado de 20pt a 9pt (2026-09-28) — ya no es un
    título grande, va al mismo tamaño que el resto del ticket. */
 [data-imprimible] .ticket-titulo {
   font-size: 9pt;

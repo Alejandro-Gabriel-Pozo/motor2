@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { generarReporteHuecosCatalogo, obtenerProblemasUnidadMezclada } from "../../src/core/reportes/huecos-catalogo";
-import { requierePermisoVer } from "../../src/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "../../src/core/permisos/gate";
 
 describe("generarReporteHuecosCatalogo", () => {
   let sucursalId: string;
@@ -28,21 +28,21 @@ describe("generarReporteHuecosCatalogo", () => {
 
   it("detecta un PV disponible acá que nunca se vendió en esta sucursal", async () => {
     const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Nunca vendido", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
-    const rep = await generarReporteHuecosCatalogo(sucursalId);
+    const rep = await generarReporteHuecosCatalogo(sucursalId, prisma);
     expect(rep.pvSinVentaNunca.map((p) => p.productoId)).toContain(pv.id);
   });
 
   it("un producto no disponible acá no aparece, aunque nunca se haya vendido", async () => {
     const otraSucursal = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
     const pv = await sembrarProductoDisponible({ codigo: "PV_0", nombre: "Solo en otra", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, otraSucursal);
-    const rep = await generarReporteHuecosCatalogo(sucursalId);
+    const rep = await generarReporteHuecosCatalogo(sucursalId, prisma);
     expect(rep.pvSinVentaNunca.map((p) => p.productoId)).not.toContain(pv.id);
   });
 
   it("un PV vendido no aparece en la lista", async () => {
     const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Vendido", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
-    const rep = await generarReporteHuecosCatalogo(sucursalId);
+    const rep = await generarReporteHuecosCatalogo(sucursalId, prisma);
     expect(rep.pvSinVentaNunca.map((p) => p.productoId)).not.toContain(pv.id);
   });
 
@@ -51,7 +51,7 @@ describe("generarReporteHuecosCatalogo", () => {
     const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
-    const rep = await generarReporteHuecosCatalogo(sucursalId);
+    const rep = await generarReporteHuecosCatalogo(sucursalId, prisma);
     expect(rep.insumosConRecetaSinProveedor.map((p) => p.productoId)).toContain(mp.id);
   });
 
@@ -65,7 +65,7 @@ describe("generarReporteHuecosCatalogo", () => {
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpProducida.id, cantidad: 1, unidadId: unidadKgId }] } },
     });
 
-    const rep = await generarReporteHuecosCatalogo(sucursalId);
+    const rep = await generarReporteHuecosCatalogo(sucursalId, prisma);
     expect(rep.insumosConRecetaSinProveedor.map((p) => p.productoId)).not.toContain(mpProducida.id);
   });
 
@@ -74,13 +74,13 @@ describe("generarReporteHuecosCatalogo", () => {
     await prisma.producto.create({ data: { codigo: "MP_A", nombre: "Producto A", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
     await prisma.producto.create({ data: { codigo: "MP_B", nombre: "Producto B", tipo: "MP", unidadStockId: otroKg.id, insumoId } });
 
-    const problemas = await obtenerProblemasUnidadMezclada();
+    const problemas = await obtenerProblemasUnidadMezclada(prisma);
     expect(problemas.length).toBe(1);
     expect(problemas[0].unidades.length).toBe(2);
 
     const base = await prisma.sucursal.findUniqueOrThrow({ where: { id: sucursalId } });
-    const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: (await prisma.rol.findFirstOrThrow({ where: { nombre: "operador" } })).id });
-    const gate = await requierePermisoVer(operador.id, base.id, "insumos_mezclados");
+    const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "operador" } })).id });
+    const gate = await requierePermisoVerDeEmpresa(operador.id, base.empresaId, "insumos_mezclados", prisma);
     expect(gate.ok).toBe(false);
   });
 });

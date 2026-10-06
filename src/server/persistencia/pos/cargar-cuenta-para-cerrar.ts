@@ -14,6 +14,8 @@ export interface ItemParaCerrar {
   cantidad: number;
   /** Precio de LISTA congelado al pedir (nunca cambia de semántica con el descuento de cliente, Task #14). */
   precioUnitario: number;
+  /** Producto con descuento: el precio de lista antes de ese descuento (`CuentaItem.precioCartaUnitario`); en un componente de promo, el precio de carta. */
+  precioCartaUnitario: number | null;
   promoCuentaId: string | null;
   /** `null` = borrador sin enviar a cocina. */
   numeroEnvio: number | null;
@@ -48,6 +50,7 @@ export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args:
       productoId: i.productoId,
       cantidad: Number(i.cantidad),
       precioUnitario: Number(i.precioUnitario),
+      precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       promoCuentaId: i.promoCuentaId,
       numeroEnvio: i.numeroEnvio,
     })),
@@ -55,12 +58,12 @@ export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args:
 }
 
 /**
- * El número de boleta más alto ya emitido en la sucursal (`null` si todavía no hay ninguno). El siguiente lo calcula
- * `siguienteNumeroBoleta` (core/pos/numeracion-boleta.ts) — docs/plan-numeracion-boleta-2026-09-25.md, D2: `max + 1` dentro de la
+ * El número de ticket más alto ya emitido en la sucursal (`null` si todavía no hay ninguno). El siguiente lo calcula
+ * `siguienteNumeroTicket` (core/pos/numeracion-ticket.ts) — docs/plan-numeracion-ticket-2026-09-25.md, D2: `max + 1` dentro de la
  * transacción serializable, sin tabla contador ni SEQUENCE.
  */
-export async function cargarUltimoNumeroDeBoleta(tx: Prisma.TransactionClient, sucursalId: string): Promise<number | null> {
-  const { _max } = await tx.ejemplarBoleta.aggregate({ where: { sucursalId }, _max: { numero: true } });
+export async function cargarUltimoNumeroDeTicket(tx: Prisma.TransactionClient, sucursalId: string): Promise<number | null> {
+  const { _max } = await tx.ejemplarTicket.aggregate({ where: { sucursalId }, _max: { numero: true } });
   return _max.numero;
 }
 

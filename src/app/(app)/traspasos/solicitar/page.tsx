@@ -1,18 +1,18 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoVer } from "@/core/permisos/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
-import { listarSucursalesDisponibles } from "@/server/actions/traspasos/lecturas";
+import { listarSucursalesParaSolicitar } from "@/server/actions/traspasos/lecturas";
 import { SolicitarForm } from "./solicitar-form";
 
 export default async function SolicitarTraspasoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_transferencia_sucursal");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "traspaso_solicitar", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const [sucursales, secciones] = await Promise.all([
-    listarSucursalesDisponibles(ctx.sucursalId),
+    listarSucursalesParaSolicitar(ctx.sucursalId),
     listarSeccionesActivas(ctx.sucursalId),
   ]);
 

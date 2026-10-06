@@ -8,6 +8,7 @@ export interface ValorPorSucursalPlano {
   mermaPorcentaje: number;
   bruto: number;
   calibrado: boolean;
+  recetaPropia: boolean;
   desviacionPorcentaje: number | null;
 }
 
@@ -24,6 +25,7 @@ export interface FilaComparacionPlana {
 
 function celdaValor(v: ValorPorSucursalPlano | undefined, unidadNombre: string) {
   if (!v) return <span className="text-neutral-500 dark:text-neutral-400">—</span>;
+  if (v.recetaPropia) return <span className="text-xs text-neutral-500 dark:text-neutral-400">Receta propia de la sucursal</span>;
   return (
     <span
       className={desvioEsNotable(v.desviacionPorcentaje) ? "font-medium text-amber-700 dark:text-amber-600" : ""}

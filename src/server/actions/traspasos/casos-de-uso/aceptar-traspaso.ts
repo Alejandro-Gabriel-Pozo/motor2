@@ -22,7 +22,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * los MISMOS textos; la Server Action quedó como adaptador fino (permiso → guard → este caso de uso → `aResultadoAccion`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo
- * `conPermiso("proceso_transferencia_sucursal")`) ni valida formato (eso lo hizo `guardComandoAceptarTraspaso`, clave I3 incluida).
+ * `conPermiso("traspaso_aceptar")`) ni valida formato (eso lo hizo `guardComandoAceptarTraspaso`, clave I3 incluida).
  *
  * Pasos, en el orden de siempre:
  *  1. (fuera de la transacción, como antes) la sección de destino tiene que ser de ESTA sucursal;
@@ -41,15 +41,15 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @sideEffects Ninguno además de la escritura de la entrada de Kardex y el cambio de estado del traspaso — sin auditoría de permisos propia.
  */
 export async function aceptarTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
   comando: ComandoAceptarTraspaso
 ): Promise<ResultadoAceptarTraspaso> {
   const { traspasoId, seccionDestinoId, claveIdempotencia } = comando;
 
-  const seccionDestino = await obtenerSeccionPropia(seccionDestinoId, actor.sucursalId);
+  const seccionDestino = await obtenerSeccionPropia(seccionDestinoId, actor.sucursalId, actor.db);
   if (!seccionDestino) return fracaso("SECCION_NO_PROPIA", MENSAJE_SECCION_DESTINO_NO_PROPIA);
 
-  return conTransaccionSerializable(async (tx): Promise<ResultadoAceptarTraspaso> => {
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAceptarTraspaso> => {
     const payloadHash = claveIdempotencia ? calcularPayloadHash("ACEPTAR_TRASPASO", actor.sucursalId, { id: traspasoId, seccionDestinoId }) : "";
     const chequeo = await chequearIdempotencia(tx, claveIdempotencia ?? undefined, payloadHash);
     if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { traspasoId, operacionId: null, repetida: true });

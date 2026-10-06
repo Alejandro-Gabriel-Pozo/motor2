@@ -1,5 +1,6 @@
 import type { DocumentoImprimible } from "@/core/pos/impresion";
-import { formatearCantidad, formatearFechaHora } from "@/core/pos/formato";
+import { formatearCantidad } from "@/core/pos/formato";
+import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
 
 type DocumentoDeCocina = Extract<DocumentoImprimible, { comanda: unknown }>;
 
@@ -10,20 +11,20 @@ const ENCABEZADO: Record<DocumentoDeCocina["tipo"], string> = {
 };
 
 /**
- * La comanda de cocina impresa (docs/plan-imprimir-comanda-y-boleta-2026-09-25.md, B1): solo presentación. SIN PRECIOS — los datos
+ * La comanda de cocina impresa (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B1): solo presentación. SIN PRECIOS — los datos
  * (`ComandaDeEnvio`) no los tienen. La hora es la de impresión (la del envío no se guarda). Estilos de papel en src/app/globals.css.
  *
  * Componente de una promo (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 10): `promoTitulo` anota "(Menú del día)" al
  * lado del ítem — la cocina lo prepara igual (es un PV real, con su propia receta), pero sabe que forma parte de un combo.
  */
-export function TicketCocina({ documento, mesa, impresoEn }: { documento: DocumentoDeCocina; mesa: string; impresoEn: Date }) {
+export function TicketCocina({ documento, mesa, impresoEn, zonaHoraria }: { documento: DocumentoDeCocina; mesa: string; impresoEn: Date; zonaHoraria: string }) {
   const { comanda } = documento;
   return (
     <div className="ticket">
       <p className="ticket-encabezado">{ENCABEZADO[documento.tipo]}</p>
       <p className="ticket-titulo">{mesa}</p>
       <p className="ticket-dato">
-        Envío {comanda.numero} · {formatearFechaHora(impresoEn)}
+        Envío {comanda.numero} · {formatearFechaHora(impresoEn, zonaHoraria)}
       </p>
 
       {documento.tipo === "anulacion" ? (

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, sembrarSeccion } from "../setup/test-db";
+import { baseDeTest, limpiarBaseDeTest, prisma, sembrarSeccion } from "../setup/test-db";
 import { sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
 import { cerrarCuentaCasoDeUso } from "../../src/server/actions/pos/casos-de-uso/cerrar-cuenta";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
@@ -15,7 +15,7 @@ import { aResultadoAccion } from "../../src/core/resultado-caso";
  */
 describe("cerrarCuentaCasoDeUso", () => {
   let s: Awaited<ReturnType<typeof sembrarSalon>>;
-  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: s.sucursal.nombre, email: "admin@test.com" });
+  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: s.sucursal.nombre, email: "admin@test.com", ...baseDeTest });
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -27,10 +27,10 @@ describe("cerrarCuentaCasoDeUso", () => {
       { productoId: s.milanesa.id, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1 },
       { productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 },
     ]);
-    // Ya hay una boleta N.º 41 en la sucursal: la siguiente es la 42 (max + 1).
+    // Ya hay un ticket N.º 41 en la sucursal: la siguiente es la 42 (max + 1).
     const mesa5 = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 5 } });
     const otra = await prisma.cuenta.create({ data: { mesaId: mesa5.id, abiertaPorId: s.admin.id, cerradaEn: new Date(), cerradaPorId: s.admin.id } });
-    await prisma.ejemplarBoleta.create({ data: { sucursalId: s.sucursalId, cuentaId: otra.id, numero: 41, ejemplar: 1, emitidoEn: new Date(), emitidoPorId: s.admin.id } });
+    await prisma.ejemplarTicket.create({ data: { sucursalId: s.sucursalId, cuentaId: otra.id, numero: 41, ejemplar: 1, emitidoEn: new Date(), emitidoPorId: s.admin.id } });
 
     const r = await cerrarCuentaCasoDeUso(actor(), { cuentaId: cuenta.id });
 
@@ -38,7 +38,7 @@ describe("cerrarCuentaCasoDeUso", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.mensaje).toBe(`Cuenta de la mesa 4 cerrada: se registró la venta por ${total}.`);
-    expect(r.datos).toMatchObject({ desenlace: "CON_VENTA", numeroBoleta: 42, insumosEnNegativo: 0 });
+    expect(r.datos).toMatchObject({ desenlace: "CON_VENTA", numeroTicket: 42, insumosEnNegativo: 0 });
     expect(r.datos.operacionIds).toHaveLength(2);
     expect(aResultadoAccion(r)).toEqual({ ok: true, mensaje: r.mensaje });
 
@@ -46,7 +46,7 @@ describe("cerrarCuentaCasoDeUso", () => {
     expect(ventas.every((v) => v.proceso === "VENTA" && v.detalleLibre === "Mesa 4" && v.sucursalId === s.sucursalId)).toBe(true);
     const items = await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id }, orderBy: { creadoEn: "asc" } });
     expect(items.map((i) => i.operacionId)).toEqual(r.datos.operacionIds);
-    const ejemplar = await prisma.ejemplarBoleta.findFirstOrThrow({ where: { cuentaId: cuenta.id } });
+    const ejemplar = await prisma.ejemplarTicket.findFirstOrThrow({ where: { cuentaId: cuenta.id } });
     expect(ejemplar).toMatchObject({ numero: 42, ejemplar: 1, emitidoPorId: s.admin.id, corrigeAId: null });
     const cerrada = await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } });
     expect(cerrada.cerradaPorId).toBe(s.admin.id);
@@ -74,13 +74,13 @@ describe("cerrarCuentaCasoDeUso", () => {
 
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.datos).toMatchObject({ desenlace: "CON_VENTA", numeroBoleta: 1, insumosEnNegativo: 1 });
+    expect(r.datos).toMatchObject({ desenlace: "CON_VENTA", numeroTicket: 1, insumosEnNegativo: 1 });
     expect(r.mensaje).toContain('⚠ Quedó stock negativo: "Muzzarella" en «Salón» (tenía 0, se consumió 0,5, quedó en -0,5).');
     const [fila] = await prisma.registroAuditoria.findMany();
     expect(fila).toMatchObject({ entidad: "Operacion", entidadId: r.datos.operacionIds[0], campo: "saldoStock", actorId: s.admin.id });
   });
 
-  it("SIN_VENTA: neto cero cierra sin venta ni número de boleta", async () => {
+  it("SIN_VENTA: neto cero cierra sin venta ni número de ticket", async () => {
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [
       { productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 },
       { productoId: s.flan.id, cantidad: -1, precioUnitario: 3000, numeroEnvio: 1 },
@@ -91,27 +91,27 @@ describe("cerrarCuentaCasoDeUso", () => {
     expect(r).toEqual({
       ok: true,
       mensaje: "Cuenta de la mesa 4 cerrada sin venta: no quedó nada por cobrar.",
-      datos: { desenlace: "SIN_VENTA", operacionIds: [], numeroBoleta: null, insumosEnNegativo: 0 },
+      datos: { desenlace: "SIN_VENTA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 },
     });
     expect(await prisma.operacion.count()).toBe(0);
-    expect(await prisma.ejemplarBoleta.count()).toBe(0);
+    expect(await prisma.ejemplarTicket.count()).toBe(0);
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).not.toBeNull();
   });
 
   it("YA_CERRADA (idempotente por estado): ok sin escribir nada", async () => {
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
     expect((await cerrarCuentaCasoDeUso(actor(), { cuentaId: cuenta.id })).ok).toBe(true);
-    const antes = { operaciones: await prisma.operacion.count(), boletas: await prisma.ejemplarBoleta.count(), cuenta: await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } }) };
+    const antes = { operaciones: await prisma.operacion.count(), tickets: await prisma.ejemplarTicket.count(), cuenta: await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } }) };
 
     const r = await cerrarCuentaCasoDeUso(actor(), { cuentaId: cuenta.id });
 
     expect(r).toEqual({
       ok: true,
       mensaje: "La cuenta de la mesa 4 ya estaba cerrada.",
-      datos: { desenlace: "YA_CERRADA", operacionIds: [], numeroBoleta: null, insumosEnNegativo: 0 },
+      datos: { desenlace: "YA_CERRADA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 },
     });
     expect(await prisma.operacion.count()).toBe(antes.operaciones);
-    expect(await prisma.ejemplarBoleta.count()).toBe(antes.boletas);
+    expect(await prisma.ejemplarTicket.count()).toBe(antes.tickets);
     expect(await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).toEqual(antes.cuenta);
   });
 
@@ -140,7 +140,7 @@ describe("cerrarCuentaCasoDeUso", () => {
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).toBeNull();
   });
 
-  it("VENTA_RECHAZADA: el núcleo rechaza (sin sección activa), no se gasta número de boleta y la cuenta sigue abierta", async () => {
+  it("VENTA_RECHAZADA: el núcleo rechaza (sin sección activa), no se gasta número de ticket y la cuenta sigue abierta", async () => {
     await prisma.seccion.update({ where: { id: s.seccion.id }, data: { activa: false } });
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     await sembrarSeccion(norte.id, "Barra Norte");
@@ -152,7 +152,7 @@ describe("cerrarCuentaCasoDeUso", () => {
       mensaje: "Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.",
     });
     expect(await prisma.operacion.count()).toBe(0);
-    expect(await prisma.ejemplarBoleta.count()).toBe(0);
+    expect(await prisma.ejemplarTicket.count()).toBe(0);
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).toBeNull();
   });
 });

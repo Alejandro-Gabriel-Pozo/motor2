@@ -35,13 +35,16 @@ export async function crearUsuarioConRol(sucursalId: string, nombre: string, per
 }
 
 /**
- * El «mozo» del plan: ve el mapa (`pos_mesas` Ver), toma pedidos (`pos_tomar_pedido` Editar) y asigna un cliente con descuento
+ * El «mozo» del plan: ve el mapa (`pos_mesas` Ver), toma pedidos (`pos_tomar_pedido`, `pos_abrir_cuenta`, `pos_enviar_a_cocina`, `pos_liberar_mesa` Editar) y asigna un cliente con descuento
  * (`pos_asignar_cliente` Editar — Task #14, D3: CUALQUIER mozo que ya toma pedido, no solo admin); no anula ni cobra.
  */
 export function crearMozo(sucursalId: string, nombre = "mozo") {
   return crearUsuarioConRol(sucursalId, nombre, [
     { clave: "pos_mesas", ver: true, editar: false },
     { clave: "pos_tomar_pedido", ver: true, editar: true },
+    { clave: "pos_abrir_cuenta", ver: true, editar: true },
+    { clave: "pos_enviar_a_cocina", ver: true, editar: true },
+    { clave: "pos_liberar_mesa", ver: true, editar: true },
     { clave: "pos_asignar_cliente", ver: true, editar: true },
   ]);
 }

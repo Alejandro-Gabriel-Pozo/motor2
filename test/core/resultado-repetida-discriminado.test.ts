@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import type { DatosRegistrarMovimiento } from "../../src/core/features/movimientos/movimiento.schema";
 import type { DatosReclasificarStock } from "../../src/core/features/movimientos/reclasificacion.schema";
 import type { DatosRegistrarPagoConsignante } from "../../src/core/features/reportes/pago-consignante.schema";
+import type { DatosRegistrarConteoFisico } from "../../src/core/features/movimientos/conteo-fisico.schema";
 
 /**
  * `DatosRegistrarMovimiento`/`DatosReclasificarStock`/`DatosRegistrarPagoConsignante` (backlog post-cierre de Task #41, 2026-09-28,
@@ -41,5 +42,15 @@ describe("Datos*: repetida/repetido discrimina — los campos de datos no pueden
     expect([repetido, nuevo, imposible]).toHaveLength(3);
 
     if (nuevo.repetido === false) expectTypeOf(nuevo.pagoId).toEqualTypeOf<string>();
+  });
+
+  it("registrarConteoFisico: las dos combinaciones válidas compilan, la contradictoria no", () => {
+    const repetido: DatosRegistrarConteoFisico = { repetido: true, conteoId: null, diferencia: null, ajustado: null };
+    const nuevo: DatosRegistrarConteoFisico = { repetido: false, conteoId: "conteo-1", diferencia: -3, ajustado: true };
+    // @ts-expect-error — repetido:true no puede llevar conteoId/diferencia/ajustado reales.
+    const imposible: DatosRegistrarConteoFisico = { repetido: true, conteoId: "conteo-1", diferencia: -3, ajustado: true };
+    expect([repetido, nuevo, imposible]).toHaveLength(3);
+
+    if (nuevo.repetido === false) expectTypeOf(nuevo.conteoId).toEqualTypeOf<string>();
   });
 });

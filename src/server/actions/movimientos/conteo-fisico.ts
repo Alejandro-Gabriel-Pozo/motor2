@@ -1,7 +1,11 @@
 "use server";
 
 import { aResultadoAccion } from "@/core/resultado-caso";
+import { mensajeSeguro } from "@/lib/mensaje-seguro";
+import { reportarError } from "@/lib/reportar-error";
 import { guardComandoConteoFisico } from "@/core/features/movimientos/conteo-fisico.guard";
+import { guardComandoCancelarConteo } from "@/core/features/movimientos/cancelar-conteo.guard";
+import { guardComandoResolverConteo } from "@/core/features/movimientos/resolver-conteo.guard";
 import type { ComandoConteoFisico } from "@/core/features/movimientos/conteo-fisico.schema";
 import type { ComoResolverConteo } from "@/core/features/movimientos/resolver-conteo.schema";
 import { conPermiso } from "../con-permiso";
@@ -70,7 +74,8 @@ export async function registrarConteosFisicos(filas: DatosConteoFisico[]): Promi
       } catch (e) {
         // Un error inesperado de una fila (base de datos, etc.) no tira abajo la llamada entera: las filas anteriores ya están
         // escritas y hay que devolver el parcial.
-        console.error("registrarConteosFisicos: falló un conteo", e);
+        console.error(`registrarConteosFisicos: falló un conteo: ${mensajeSeguro(e)}`);
+        await reportarError(e, "conteo-fisico");
         resultados.push(error("No se pudo registrar este conteo (error inesperado). Probá de nuevo."));
       }
     }
@@ -94,12 +99,14 @@ export async function registrarConteosFisicos(filas: DatosConteoFisico[]): Promi
  * "toda mutación pasa por conPermiso" (plan de migración, convenciones).
  *
  * Desde la Task #41 (Fase M, M13e2 — docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
- * (`conPermiso("proceso_control")`) → caso de uso (`casos-de-uso/resolver-conteo-pendiente.ts`: carga del conteo, sección/estado,
- * ramas "resuelto"/"ajustar", persistencia) → `aResultadoAccion`. Sin guard de comando (ver `resolver-conteo.schema.ts`).
+ * (`conPermiso("conteo_resolver_pendiente")`) → formato del comando (`guardComandoResolverConteo`) → caso de uso (`casos-de-uso/resolver-conteo-pendiente.ts`: carga del conteo, sección/estado,
+ * ramas "resuelto"/"ajustar", persistencia) → `aResultadoAccion`.
  */
 export async function resolverConteoPendiente(conteoId: string, comoResolver: ComoResolverConteo): Promise<ResultadoAccion> {
-  return conPermiso("proceso_control", async (ctx) => {
-    return aResultadoAccion(await resolverConteoPendienteCasoDeUso(ctx, conteoId, comoResolver));
+  return conPermiso("conteo_resolver_pendiente", async (ctx) => {
+    const comando = guardComandoResolverConteo({ conteoId, comoResolver });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await resolverConteoPendienteCasoDeUso(ctx, comando.valor.conteoId, comando.valor.comoResolver));
   });
 }
 
@@ -112,8 +119,8 @@ export async function resolverConteoPendiente(conteoId: string, comoResolver: Co
  * la fila original, correlación por string).
  *
  * Desde la Task #41 (Fase M, M13e2 — docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
- * (`conPermiso("cancelar_conteo")`) → caso de uso (`casos-de-uso/cancelar-conteo-fisico.ts`: carga del conteo, sección/estado,
- * reversión, persistencia) → `aResultadoAccion`. Sin guard de comando (ver `cancelar-conteo.schema.ts`).
+ * (`conPermiso("cancelar_conteo")`) → formato del comando (`guardComandoCancelarConteo`) → caso de uso (`casos-de-uso/cancelar-conteo-fisico.ts`: carga del conteo, sección/estado,
+ * reversión, persistencia) → `aResultadoAccion`.
  *
  * `obtenerHistorialConteosFisicos` (solo lectura) se mudó a `lecturas-conteo-fisico.ts`. Con las cuatro mutaciones de este archivo ya
  * migradas a caso de uso y la lectura mudada, `conteo-fisico.ts` no tiene ninguna otra función y **entra en `ACCIONES_CON_CASO_DE_USO`**
@@ -121,6 +128,8 @@ export async function resolverConteoPendiente(conteoId: string, comoResolver: Co
  */
 export async function cancelarConteoFisico(conteoId: string): Promise<ResultadoAccion> {
   return conPermiso("cancelar_conteo", async (ctx) => {
-    return aResultadoAccion(await cancelarConteoFisicoCasoDeUso(ctx, conteoId));
+    const comando = guardComandoCancelarConteo({ conteoId });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await cancelarConteoFisicoCasoDeUso(ctx, comando.valor.conteoId));
   });
 }

@@ -3,30 +3,27 @@ import { requierePermisoVer } from "@/core/permisos/gate";
 import { obtenerReporteMargenPromociones } from "@/core/reportes/margen-promociones";
 import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
 import { SelectorRango } from "@/components/selector-rango";
-import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaMargenPromociones } from "./tabla-margen-promociones";
+import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
  * Margen de promociones armables (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 12): por cada promo de carta, cuánto
  * entró prorrateado (D3) contra lo que hubiera entrado vendiendo cada componente suelto a precio de carta, y el Margen Real
- * de las dos formas (`src/core/reportes/margen-promociones.ts`). Mismo permiso que el resto de los reportes de dinero
- * (`ver_reportes_dinero`) y mismo selector de rango que Período/Descuentos por cliente.
- *
- * Cruza con `/reportes/promociones` (el reporte de promos de PRECIO de siempre, sin componentes): esa es otra cosa —
- * "PromoCarta" armable (Task #16) vs. una promoción de precio de un producto — el link de acá lo aclara para no confundirlas.
+ * de las dos formas (`src/core/reportes/margen-promociones.ts`). Su propia clave
+ * (`reporte_margen_promociones`) y mismo selector de rango que Período/Descuentos por cliente.
  *
  * Sin ninguna venta de una promo armable en el rango: tabla vacía, sin ningún error.
  */
-export default async function MargenPromocionesPage({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; rango?: string }> }) {
+export default async function MargenPromocionesPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_reportes_dinero");
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_margen_promociones", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const sp = await searchParams;
+  const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp);
-  const rep = await obtenerReporteMargenPromociones(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO));
+  const rep = await obtenerReporteMargenPromociones(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db);
 
   return (
     <div className="flex flex-col gap-4">
@@ -35,10 +32,7 @@ export default async function MargenPromocionesPage({ searchParams }: { searchPa
         <p className="text-sm text-neutral-500">
           Cuánto entró de verdad por cada promo ARMABLE (Catálogo › Carta, cupos) contra lo que hubiera entrado vendiendo cada
           componente suelto a precio de carta — y si el precio de la promo deja un margen sano. Una promo sin ninguna venta en
-          el rango no aparece.{" "}
-          <EnlaceInterno href="/reportes/promociones" className="underline">
-            Ver también «Promociones» (rebajas de precio de un producto, sin componentes) →
-          </EnlaceInterno>
+          el rango no aparece.
         </p>
       </div>
 

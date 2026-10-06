@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { setStockMinimoProducto } from "../../src/server/actions/stock/stock-minimo";
 import { calcularAlertasStock, obtenerResumenAlertasStock } from "../../src/core/stock/alertas";
+import { prisma } from "../setup/test-db";
 
 describe("calcularAlertasStock", () => {
   let sucursalId: string;
@@ -36,7 +37,7 @@ describe("calcularAlertasStock", () => {
   });
 
   it("sin Stock Mínimo configurado, nunca alerta aunque el saldo sea 0", async () => {
-    const alertas = await calcularAlertasStock(sucursalId);
+    const alertas = await calcularAlertasStock(sucursalId, prisma);
     expect(alertas.find((a) => a.productoId === mpId)).toBeUndefined();
   });
 
@@ -44,11 +45,11 @@ describe("calcularAlertasStock", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
     await setStockMinimoProducto(mpId, 10);
 
-    let alertas = await calcularAlertasStock(sucursalId);
+    let alertas = await calcularAlertasStock(sucursalId, prisma);
     expect(alertas.find((a) => a.productoId === mpId)?.estado).toBe("BAJO");
 
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 5 }] });
-    alertas = await calcularAlertasStock(sucursalId);
+    alertas = await calcularAlertasStock(sucursalId, prisma);
     expect(alertas.find((a) => a.productoId === mpId)).toBeUndefined(); // 15 > 10: ya no alerta
   });
 
@@ -57,7 +58,7 @@ describe("calcularAlertasStock", () => {
     await setStockMinimoProducto(mpId, 5);
     await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mpId, cantidad: 10 }] });
 
-    const alertas = await calcularAlertasStock(sucursalId);
+    const alertas = await calcularAlertasStock(sucursalId, prisma);
     expect(alertas.find((a) => a.productoId === mpId)?.estado).toBe("CRITICO");
   });
 
@@ -66,7 +67,7 @@ describe("calcularAlertasStock", () => {
     await setStockMinimoProducto(mpId, 0); // "avisame si esto se termina del todo", no "sin mínimo"
     await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mpId, cantidad: 5 }] });
 
-    const alertas = await calcularAlertasStock(sucursalId);
+    const alertas = await calcularAlertasStock(sucursalId, prisma);
     expect(alertas.find((a) => a.productoId === mpId)?.estado).toBe("CRITICO");
   });
 
@@ -74,7 +75,7 @@ describe("calcularAlertasStock", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 5 }] });
     await setStockMinimoProducto(mpId, 0);
 
-    const alertas = await calcularAlertasStock(sucursalId);
+    const alertas = await calcularAlertasStock(sucursalId, prisma);
     expect(alertas.find((a) => a.productoId === mpId)).toBeUndefined();
   });
 
@@ -83,7 +84,7 @@ describe("calcularAlertasStock", () => {
     await setStockMinimoProducto(mpId, 3); // global: 8 > 3, no alertaría
     await setStockMinimoProducto(mpId, 20, seccionId); // por sección: 8 <= 20, sí alerta
 
-    const alertas = await calcularAlertasStock(sucursalId);
+    const alertas = await calcularAlertasStock(sucursalId, prisma);
     expect(alertas.find((a) => a.productoId === mpId)?.estado).toBe("BAJO");
   });
 
@@ -91,7 +92,7 @@ describe("calcularAlertasStock", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionBId, items: [{ productoId: mpId, cantidad: 2 }] });
     await setStockMinimoProducto(mpId, 10); // global, sin fila específica para seccionBId
 
-    const alertas = await calcularAlertasStock(sucursalId);
+    const alertas = await calcularAlertasStock(sucursalId, prisma);
     expect(alertas.find((a) => a.seccionId === seccionBId)?.estado).toBe("BAJO"); // 2 > 0 (no CRITICO) y 2 <= 10 (BAJO)
   });
 
@@ -101,7 +102,7 @@ describe("calcularAlertasStock", () => {
     await setStockMinimoProducto(mpId, 10); // BAJO
     await setStockMinimoProducto(otroMp.id, 5); // sin compra: saldo 0 -> nunca alerta (groupBy no ve productos sin movimientos)
 
-    const resumen = await obtenerResumenAlertasStock(sucursalId);
+    const resumen = await obtenerResumenAlertasStock(sucursalId, prisma);
     expect(resumen.total).toBe(1);
     expect(resumen.bajos).toBe(1);
     expect(resumen.criticos).toBe(0);

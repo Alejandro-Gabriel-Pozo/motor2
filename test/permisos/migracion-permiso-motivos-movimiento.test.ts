@@ -32,8 +32,8 @@ describe("migración de datos del permiso motivos_movimiento", () => {
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
-    adminId = (await prisma.rol.create({ data: { nombre: "admin" } })).id;
-    operadorId = (await prisma.rol.create({ data: { nombre: "operador" } })).id;
+    adminId = (await prisma.rol.create({ data: { nombre: "admin", clave: "admin" } })).id;
+    operadorId = (await prisma.rol.create({ data: { nombre: "operador", clave: "operador" } })).id;
   });
 
   it("tiene las dos sentencias esperadas (la acción y el permiso de admin)", () => {
@@ -68,10 +68,10 @@ describe("migración de datos del permiso motivos_movimiento", () => {
     expect((await prisma.accion.findUniqueOrThrow({ where: { clave: "motivos_movimiento" } })).descripcion).toBe("ya existía");
   });
 
-  it("coincide con lo que declara la fuente única de acciones (la descripción y el rol semilla)", () => {
-    const accion = ACCIONES.find((a) => a.clave === "motivos_movimiento");
-    expect(accion, "motivos_movimiento tiene que estar en ACCIONES").toBeDefined();
-    expect(accion!.rolesEditarSemilla).toEqual(["admin"]);
-    expect(SQL).toContain(`'${accion!.descripcion}'`);
+  it("la clave quedó retirada del catálogo del código: la partición la reemplazó por una clave por catálogo", () => {
+    expect(ACCIONES.find((a) => (a.clave as string) === "motivos_movimiento")).toBeUndefined();
+    expect(ACCIONES.find((a) => a.clave === "motivos_merma")?.rolesEditarSemilla).toEqual(["admin"]);
+    expect(ACCIONES.find((a) => a.clave === "motivos_destino_consumo")?.rolesEditarSemilla).toEqual(["admin"]);
+    expect(SQL).toContain("'motivos_movimiento'");
   });
 });

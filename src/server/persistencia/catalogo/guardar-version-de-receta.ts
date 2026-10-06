@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { ALCANCE_CENTRAL, alcanceDeSucursal, cargarHistorialDeVersiones, cargarRecetaVigente } from "@/core/catalogo/public";
 import type { CabeceraRecetaInput, IngredienteInput, PasoInput } from "@/core/catalogo/public-servidor";
 import { texto } from "@/core/texto";
 
@@ -11,7 +12,7 @@ import { texto } from "@/core/texto";
  *
  * Contrato: el cliente es SIEMPRE el primer parámetro, obligatorio (nunca `db = prisma` por defecto). Excepción documentada respecto del
  * resto de `server/persistencia/`: `cargarProductoParaReceta` y `cargarUltimaVersionDeReceta` corrían FUERA de la transacción en
- * `guardarReceta` (la versión se calcula de forma optimista ANTES de abrir la SERIALIZABLE, y el `@@unique([productoId, version])` es el
+ * `guardarReceta` (la versión se calcula de forma optimista ANTES de abrir la SERIALIZABLE, y los índices únicos parciales de (producto, sucursal, version) son el
  * árbitro — ver el caso de uso), y así se mantiene: el caso de uso les pasa el cliente global a propósito. Las escrituras
  * (`escribirVersionDeReceta`, `copiarCalibracionesLocales`) y `cargarNombresDeSucursales` corren dentro de la transacción.
  *
@@ -42,16 +43,33 @@ const INCLUDE_ULTIMA_VERSION = {
 export type UltimaVersionDeReceta = Prisma.RecetaVersionGetPayload<{ include: typeof INCLUDE_ULTIMA_VERSION }>;
 
 /**
- * La versión vigente (MAX(version)) con sus overrides locales, o `null` si el producto todavía no tiene receta. Corre FUERA de la
- * transacción, una vez por intento del reintento de `guardarReceta` (ver el docstring del archivo; `test/catalogo/recetas-concurrencia`
- * cuenta estas lecturas para saber que hubo reintentos).
+ * La versión vigente (MAX(version)) de la serie en la que se guarda, con sus overrides locales, o `null` si esa serie todavía no tiene
+ * versiones: la CENTRAL con `sucursalId` null, la PROPIA de la sucursal con su id (aunque hoy esté deshabilitada: la numeración sigue sobre
+ * su historial). Corre FUERA de la transacción, una vez por intento del reintento de `guardarReceta` (ver el docstring del archivo;
+ * `test/catalogo/recetas-concurrencia` cuenta las transacciones por intento para saber que hubo reintentos).
  */
-export async function cargarUltimaVersionDeReceta(db: Prisma.TransactionClient, productoId: string): Promise<UltimaVersionDeReceta | null> {
-  return db.recetaVersion.findFirst({
-    where: { productoId },
-    orderBy: { version: "desc" },
-    include: INCLUDE_ULTIMA_VERSION,
+export async function cargarUltimaVersionDeReceta(db: Prisma.TransactionClient, productoId: string, sucursalId: string | null): Promise<UltimaVersionDeReceta | null> {
+  if (sucursalId === null) return cargarRecetaVigente(db, ALCANCE_CENTRAL, productoId, { include: INCLUDE_ULTIMA_VERSION });
+  return (await cargarHistorialDeVersiones(db, alcanceDeSucursal(sucursalId), productoId, INCLUDE_ULTIMA_VERSION))[0] ?? null;
+}
+
+/** El id de la versión CENTRAL vigente del producto, o `null` si no tiene receta central: lo que una receta propia declara como «basada en». */
+export async function cargarIdDeVersionCentralVigente(db: Prisma.TransactionClient, productoId: string): Promise<string | null> {
+  return (await cargarRecetaVigente(db, ALCANCE_CENTRAL, productoId, { select: { id: true } }))?.id ?? null;
+}
+
+/**
+ * Deja la receta propia de la sucursal HABILITADA para el producto (crea la fila si no existía). Devuelve si ya lo estaba antes, o `null`
+ * si no había fila: lo que el caso de uso audita. Dentro de la transacción.
+ */
+export async function habilitarRecetaPropia(tx: Prisma.TransactionClient, sucursalId: string, productoId: string): Promise<boolean | null> {
+  const antes = await tx.recetaSucursal.findUnique({ where: { sucursalId_productoId: { sucursalId, productoId } }, select: { habilitada: true } });
+  await tx.recetaSucursal.upsert({
+    where: { sucursalId_productoId: { sucursalId, productoId } },
+    create: { sucursalId, productoId, habilitada: true },
+    update: { habilitada: true },
   });
+  return antes?.habilitada ?? null;
 }
 
 /** La versión recién creada, con lo que necesita el arrastre de calibraciones y la auditoría. */
@@ -66,20 +84,22 @@ export interface VersionDeRecetaEscrita {
  */
 export async function escribirVersionDeReceta(
   tx: Prisma.TransactionClient,
-  args: { productoId: string; version: number; items: IngredienteInput[]; pasos: PasoInput[]; cabecera: CabeceraRecetaInput }
+  args: { productoId: string; version: number; items: IngredienteInput[]; pasos: PasoInput[]; cabecera: CabeceraRecetaInput; sucursalId: string | null; basadaEnVersionId: string | null }
 ): Promise<VersionDeRecetaEscrita> {
-  const { productoId, version, items, pasos, cabecera } = args;
+  const { productoId, version, items, pasos, cabecera, sucursalId, basadaEnVersionId } = args;
   const creada = await tx.recetaVersion.create({
     data: {
       productoId,
       version,
-      rendimientoCantidad: cabecera.rendimientoCantidad,
+      sucursalId,
+      basadaEnVersionId,
+      ...(cabecera.rendimientoCantidad !== undefined && { rendimientoCantidad: cabecera.rendimientoCantidad }),
       rendimientoUnidadId: cabecera.rendimientoUnidadId || null,
-      racionesCantidad: cabecera.racionesCantidad,
-      racionTamano: cabecera.racionTamano,
+      ...(cabecera.racionesCantidad !== undefined && { racionesCantidad: cabecera.racionesCantidad }),
+      ...(cabecera.racionTamano !== undefined && { racionTamano: cabecera.racionTamano }),
       racionUnidadId: cabecera.racionUnidadId || null,
-      tiempoPreparacionMinutos: cabecera.tiempoPreparacionMinutos,
-      tiempoCoccionMinutos: cabecera.tiempoCoccionMinutos,
+      ...(cabecera.tiempoPreparacionMinutos !== undefined && { tiempoPreparacionMinutos: cabecera.tiempoPreparacionMinutos }),
+      ...(cabecera.tiempoCoccionMinutos !== undefined && { tiempoCoccionMinutos: cabecera.tiempoCoccionMinutos }),
       comentarios: texto(cabecera.comentarios ?? "") || null,
       presentacionEmplatado: texto(cabecera.presentacionEmplatado ?? "") || null,
       notasAdicionales: texto(cabecera.notasAdicionales ?? "") || null,
@@ -90,10 +110,8 @@ export async function escribirVersionDeReceta(
           cantidad: it.cantidad,
           unidadId: it.unidadId,
           mermaPorcentaje: it.mermaPorcentaje ?? 0,
-          observaciones: it.observaciones,
-          sustitutos: it.insumoSustitutoIds?.length
-            ? { create: it.insumoSustitutoIds.map((insumoSustitutoId, i) => ({ insumoSustitutoId, orden: i + 1 })) }
-            : undefined,
+          ...(it.observaciones !== undefined && { observaciones: it.observaciones }),
+          ...(it.insumoSustitutoIds?.length && { sustitutos: { create: it.insumoSustitutoIds.map((insumoSustitutoId, i) => ({ insumoSustitutoId, orden: i + 1 })) } }),
         })),
       },
       pasos: {
@@ -101,7 +119,7 @@ export async function escribirVersionDeReceta(
           orden: p.orden,
           nombre: texto(p.nombre ?? "") || null,
           instruccion: p.instruccion,
-          minutos: p.minutos,
+          ...(p.minutos !== undefined && { minutos: p.minutos }),
         })),
       },
     },

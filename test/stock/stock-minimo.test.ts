@@ -27,22 +27,28 @@ describe("Stock Mínimo", () => {
   });
 
   it("sin ninguna fila cargada, resolverStockMinimo da null (no 0 — son cosas distintas)", async () => {
-    expect(await resolverStockMinimo(sucursalId, mpId, seccionId)).toBeNull();
+    expect(await resolverStockMinimo(sucursalId, mpId, seccionId, prisma)).toBeNull();
+  });
+
+  it.each([[null], [""], [[]], ["5"], [NaN], [Infinity]])("un mínimo que no es un número real (%j) se rechaza sin guardar nada", async (minimo) => {
+    const r = await setStockMinimoProducto(mpId, minimo as never);
+    expect(r.ok).toBe(false);
+    expect(await prisma.stockMinimoProducto.count()).toBe(0);
   });
 
   it("fija el mínimo global y se resuelve para cualquier sección sin fila propia", async () => {
     await setStockMinimoProducto(mpId, 5);
-    expect(await resolverStockMinimo(sucursalId, mpId, seccionId)).toBe(5);
-    expect(await resolverStockMinimo(sucursalId, mpId, null)).toBe(5);
+    expect(await resolverStockMinimo(sucursalId, mpId, seccionId, prisma)).toBe(5);
+    expect(await resolverStockMinimo(sucursalId, mpId, null, prisma)).toBe(5);
   });
 
   it("una fila por sección gana sobre la global", async () => {
     await setStockMinimoProducto(mpId, 5);
     await setStockMinimoProducto(mpId, 20, seccionId);
-    expect(await resolverStockMinimo(sucursalId, mpId, seccionId)).toBe(20);
+    expect(await resolverStockMinimo(sucursalId, mpId, seccionId, prisma)).toBe(20);
 
     const otraSeccion = await sembrarSeccion(sucursalId, "Otra");
-    expect(await resolverStockMinimo(sucursalId, mpId, otraSeccion.id)).toBe(5); // sin fila propia, cae al global
+    expect(await resolverStockMinimo(sucursalId, mpId, otraSeccion.id, prisma)).toBe(5); // sin fila propia, cae al global
   });
 
   it("volver a fijar el global actualiza la misma fila (no duplica)", async () => {
@@ -59,6 +65,6 @@ describe("Stock Mínimo", () => {
 
     const resultado = await eliminarStockMinimo(fila.id);
     expect(resultado.ok).toBe(true);
-    expect(await resolverStockMinimo(sucursalId, mpId, seccionId)).toBeNull();
+    expect(await resolverStockMinimo(sucursalId, mpId, seccionId, prisma)).toBeNull();
   });
 });

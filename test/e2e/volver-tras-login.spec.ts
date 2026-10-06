@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * «Volver a donde estaba»: cuando la sesión vence con la pestaña abierta, el login recuerda la pantalla (`/login?volver=…`) y, al
@@ -27,7 +27,7 @@ test("el login con la sesión válida respeta `volver` (una ruta interna)", asyn
 test("`volver` nunca lleva a otro sitio ni a un lugar inválido (ni da error con letras fuera de ASCII): se ignora y se entra por la pantalla de inicio", async ({ paginaAutenticada: page, baseURL }) => {
   for (const malicioso of ["//sitio-falso.example.com/reportes", "https://sitio-falso.example.com", "/\\sitio-falso.example.com", "javascript:alert(1)", "/login", "/api/auth/signout", "/р", "/x😀"]) {
     await page.goto(`/login?volver=${encodeURIComponent(malicioso)}`);
-    await page.waitForURL(/\/reportes$/); // el admin de pruebas entra por /reportes
+    await page.waitForURL(/\/inicio$/); // el admin de pruebas entra por el panel de inicio
     expect(new URL(page.url()).host).toBe(new URL(baseURL ?? "http://localhost:3000").host); // sigue en este sitio
     expect(page.url()).not.toContain("sitio-falso");
   }

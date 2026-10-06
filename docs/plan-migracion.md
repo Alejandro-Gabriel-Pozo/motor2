@@ -8,8 +8,10 @@ trabajo sin el historial de chat completo.
 
 ## Contexto de negocio
 
-Un solo negocio con varias sucursales — **NO es multi-tenant SaaS**. Esto
-descartó copiar el modelo de aislamiento por tenant y en cambio se validó el
+Un solo negocio con varias sucursales — **NO es multi-tenant SaaS** (al escribirse
+esto; desde ADR-007 la instalación es multiempresa-capable con RLS, activada con
+UNA empresa: ver `docs/adr/ADR-007-instalacion-multiempresa-activada-con-una.md`).
+Esto descartó copiar el modelo de aislamiento por tenant y en cambio se validó el
 diseño de permisos contra dos ERPs de referencia (clonados en
 `Desktop/erps/` en la máquina original — `erpnext-develop`, `dolibarr-develop`):
 

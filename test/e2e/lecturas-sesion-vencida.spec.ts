@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
 
 /**
  * Las lecturas de servidor exigen sesión (src/server/actions/con-sesion.ts). Si la sesión venció, o un admin desactivó
@@ -99,7 +99,7 @@ test("con la sesión vencida, elegir un proveedor en Compra lleva al login (ante
 
 test("con la sesión vencida, el disponible de Reclasificar lleva al login; con la sesión vigente lo muestra", async ({ paginaAutenticada: page, seccionId }) => {
   const ahora = Date.now();
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({
     data: { codigo: `E2E-RC-${ahora}`, nombre: `E2E Producto Reclasif ${ahora}`, tipo: "MP", unidadStockId: unidad.id, unidadCompraId: unidad.id },
   });

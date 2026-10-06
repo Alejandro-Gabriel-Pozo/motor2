@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/db";
 import { redondearMoneda } from "@/core/moneda";
 import { obtenerCostoActualPorMP, redondearCantidad, type Db } from "./comun";
+import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
 
 export interface FilaPerdida {
   idMovimiento: string;
@@ -50,11 +50,11 @@ const SIN_DESTINO = "(automático por receta)";
  * `idOperacion` para el detalle completo (sección, resto de la
  * operación) en Trazabilidad, en vez de duplicar esos datos acá.
  */
-export async function generarReportePerdidas(sucursalId: string, diasAtras: number, db: Db = prisma): Promise<ReportePerdidas> {
+export async function generarReportePerdidas(sucursalId: string, diasAtras: number, db: Db): Promise<ReportePerdidas> {
   const dias = diasAtras > 0 ? diasAtras : 30;
-  const desde = new Date();
-  desde.setUTCDate(desde.getUTCDate() - dias);
-  desde.setUTCHours(0, 0, 0, 0);
+  const haceNDias = new Date();
+  haceNDias.setUTCDate(haceNDias.getUTCDate() - dias);
+  const desde = inicioDelDiaDe(haceNDias, ZONA_UTC);
 
   const costos = await obtenerCostoActualPorMP(sucursalId, db);
   const movimientos = await db.movimientoStock.findMany({

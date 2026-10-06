@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
  * componentes de cliente. Que el error se ve de verdad se comprueba en el navegador (e2e).
  */
 const RAIZ = join(__dirname, "../../src/app");
-const PANTALLAS = ["(app)/error.tsx", "(pos)/error.tsx", "global-error.tsx"];
+const PANTALLAS = ["(app)/error.tsx", "(pos)/error.tsx", "(carta-publica)/error.tsx", "global-error.tsx"];
 
 describe.each(PANTALLAS)("src/app/%s", (archivo) => {
   it("existe y es un componente de cliente con «Reintentar» (retry)", () => {

@@ -9,6 +9,7 @@ import {
   registrarVentaEnTx,
 } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
 
 /**
  * Caso de uso «registrar una venta de mostrador» — SOLO la parte transaccional (Task #41, Fase M; docs/arquitectura-casos-de-uso-2026-09-27.md).
@@ -36,10 +37,14 @@ import { exito, fracaso } from "@/core/resultado-caso";
  * @sideEffects Ninguno además de lo que ya hace registrarVentaEnTx (Operacion + MovimientoStock por línea) — sin auditoría propia acá.
  */
 export async function registrarVentaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
   datos: DatosVentaInput
 ): Promise<ResultadoRegistrarVenta> {
-  return conTransaccionSerializable(async (tx): Promise<ResultadoRegistrarVenta> => {
+  const excedeLineas = validarTopeDeLista(datos.ventas, "Los productos", MAXIMO_LINEAS_POR_OPERACION);
+  if (excedeLineas) return fracaso("VENTA_RECHAZADA", excedeLineas);
+  const detalle = validarTextoLibre(datos.detalle, "El detalle", LARGO_MAXIMO_DETALLE);
+  if (!detalle.ok) return fracaso("VENTA_RECHAZADA", detalle.mensaje);
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRegistrarVenta> => {
     const payloadHash = datos.claveIdempotencia ? calcularPayloadHash("VENTA", actor.sucursalId, { ...datos, claveIdempotencia: undefined }) : "";
     const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);
     if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { operacionIds: null, repetida: true });

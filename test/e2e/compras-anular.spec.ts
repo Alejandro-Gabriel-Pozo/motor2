@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "../../src/lib/db";
+import { prisma } from "./fixtures/db";
+import { crearMembresia } from "../setup/membresia";
+import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Anular una compra desde «Compras registradas» (K1c). Se siembran las compras directo en la base, con un proveedor y un producto propios de cada prueba (marca
@@ -8,7 +11,7 @@ import { prisma } from "../../src/lib/db";
  */
 async function sembrarCompra(sucursalId: string, seccionId: string, opciones: { consumirDeLo?: number } = {}) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const unidad = await prisma.unidad.findUniqueOrThrow({ where: { nombre: "kg" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-AN-${marca}`, nombre: `E2E Harina Anular ${marca}`, tipo: "MP", unidadStockId: unidad.id } });
   const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_AN_${marca}`, nombre: `E2E Proveedor Anular ${marca}` } });
@@ -30,8 +33,10 @@ async function sembrarCompra(sucursalId: string, seccionId: string, opciones: { 
     const ids = (await prisma.movimientoStock.findMany({ where: { productoId: producto.id }, select: { operacionId: true } })).map((m) => m.operacionId);
     await prisma.movimientoStock.deleteMany({ where: { productoId: producto.id } });
     await prisma.operacion.deleteMany({ where: { id: { in: [...new Set([...ids, ...reversiones.map((r) => r.id)])] } } });
-    await prisma.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: operacion.id } });
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: operacion.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
+    // Con FK compuesta la operación ya no queda con proveedor NULL al borrarlo (RESTRICT): también las compras sin movimientos (p. ej. la recarga).
+    await prisma.operacion.deleteMany({ where: { proveedorId: proveedor.id } });
     await prisma.proveedor.deleteMany({ where: { id: proveedor.id } });
   };
   return { marca, producto, proveedor, factura, operacion, limpiar };
@@ -122,10 +127,11 @@ test("si lo comprado ya se consumió, la anulación se rechaza con un mensaje vi
 test("quien puede ver los reportes de dinero pero no tiene «anular_compra» ve la compra sin el botón de anular", async ({ browser, baseURL, sucursalId, seccionId }) => {
   const c = await sembrarCompra(sucursalId, seccionId);
   const marca = Date.now();
-  const rol = await prisma.rol.create({ data: { nombre: `e2e-sin-anular-${marca}` } });
-  await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "ver_reportes_dinero", puedeVer: true, puedeEditar: false } });
+  // «anular_compra» es de piso administrador: «quien no la tiene» se arma sobre el rol «admin», quitándole esa celda (se restaura al final).
+  const admin = await ajustarCeldasDelAdmin({ anular_compra: null });
+  const rol = { id: admin.rolId };
   const usuario = await prisma.user.create({ data: { email: `e2e-sin-anular-${marca}@local.test`, activoGlobal: true } });
-  await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true } });
+  await crearMembresia({ usuarioId: usuario.id, sucursalId, rolId: rol.id, activo: true });
   const sessionToken = randomUUID();
   await prisma.session.create({ data: { sessionToken, userId: usuario.id, expires: new Date(Date.now() + 1000 * 60 * 60) } });
   const contexto = await browser.newContext();
@@ -143,8 +149,8 @@ test("quien puede ver los reportes de dinero pero no tiene «anular_compra» ve 
     await c.limpiar();
     await prisma.session.deleteMany({ where: { userId: usuario.id } });
     await prisma.usuarioSucursal.deleteMany({ where: { usuarioId: usuario.id } });
+    await prisma.usuarioEmpresa.deleteMany({ where: { usuarioId: usuario.id } });
     await prisma.user.deleteMany({ where: { id: usuario.id } });
-    await prisma.permisoRol.deleteMany({ where: { rolId: rol.id } });
-    await prisma.rol.deleteMany({ where: { id: rol.id } });
+    await admin.restaurar();
   }
 });

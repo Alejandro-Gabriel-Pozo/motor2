@@ -1,5 +1,6 @@
+import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { altaCliente, actualizarActivoCliente, actualizarCliente, listarClientes } from "@/server/actions/clientes/cliente";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -15,7 +16,7 @@ export default async function ClientesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return null;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "clientes");
+  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "clientes", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const clientes = await listarClientes();
@@ -47,7 +48,7 @@ export default async function ClientesPage() {
               <td className="py-2">
                 <div className="flex flex-col gap-1">
                   <details>
-                    <summary className="cursor-pointer text-sm underline">Editar</summary>
+                    <summary className="inline-flex cursor-pointer items-center gap-1 text-sm underline"><IconoDeAccion id="editar" />Editar</summary>
                     <FormConResultado
                       accion={async (formData: FormData) => {
                         "use server";
@@ -76,7 +77,8 @@ export default async function ClientesPage() {
                       return actualizarActivoCliente(c.id, !c.activo);
                     }}
                   >
-                    <button type="submit" className="text-sm underline">
+                    <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                      <IconoDeAccion id="activar" />
                       {c.activo ? "Desactivar" : "Activar"}
                     </button>
                   </FormConResultado>

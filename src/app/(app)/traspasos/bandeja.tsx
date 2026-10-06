@@ -45,7 +45,17 @@ function Mensaje({ mensaje, ok }: { mensaje: string | null; ok: boolean }) {
 /** Estilo de los «Rechazar» de la bandeja (el disparador de BotonConConfirmacion va en una columna flex: `self-start` evita que se estire). */
 const CLASE_RECHAZAR = "self-start rounded border px-3 py-1.5 text-sm text-red-600 disabled:opacity-50";
 
-function FilaParaAprobar({ fila, secciones }: { fila: FilaBandeja; secciones: Opcion[] }) {
+/** Qué puede hacer quien mira la bandeja: una clave por acción (traspaso_*); los controles que su rol no puede ejecutar quedan deshabilitados. */
+export interface PermisosBandeja {
+  aprobar: boolean;
+  rechazarSolicitud: boolean;
+  aceptar: boolean;
+  rechazarEnvio: boolean;
+  confirmarReingreso: boolean;
+  cancelarSolicitud: boolean;
+}
+
+function FilaParaAprobar({ fila, secciones, permisos }: { fila: FilaBandeja; secciones: Opcion[]; permisos: PermisosBandeja }) {
   const router = useRouter();
   const producto = `${fila.productoCodigo} — ${fila.productoNombre}`;
   const [seccionOrigenId, setSeccionOrigenId] = useState("");
@@ -89,7 +99,13 @@ function FilaParaAprobar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
             ))}
           </select>
         </label>
-        <button type="button" disabled={pending} onClick={aprobar} className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+        <button
+          type="button"
+          disabled={pending || !permisos.aprobar}
+          title={permisos.aprobar ? undefined : "Tu rol puede ver la bandeja pero no aprobar solicitudes."}
+          onClick={aprobar}
+          className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+        >
           Aprobar y enviar
         </button>
         <label className="flex flex-col gap-1 text-xs text-neutral-500">
@@ -106,7 +122,7 @@ function FilaParaAprobar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
           etiquetaEnCurso="Rechazando…"
           etiquetaVolver="Volver"
           accion={() => rechazarSolicitudTransferencia(fila.id, motivo || undefined)}
-          deshabilitado={pending}
+          deshabilitado={pending || !permisos.rechazarSolicitud}
           claseDisparador={CLASE_RECHAZAR}
         />
       </div>
@@ -115,7 +131,7 @@ function FilaParaAprobar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
   );
 }
 
-function FilaParaAceptar({ fila, secciones }: { fila: FilaBandeja; secciones: Opcion[] }) {
+function FilaParaAceptar({ fila, secciones, permisos }: { fila: FilaBandeja; secciones: Opcion[]; permisos: PermisosBandeja }) {
   const router = useRouter();
   const producto = `${fila.productoCodigo} — ${fila.productoNombre}`;
   const [seccionDestinoId, setSeccionDestinoId] = useState("");
@@ -165,7 +181,13 @@ function FilaParaAceptar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
             ))}
           </select>
         </label>
-        <button type="button" disabled={pending} onClick={aceptar} className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+        <button
+          type="button"
+          disabled={pending || !permisos.aceptar}
+          title={permisos.aceptar ? undefined : "Tu rol puede ver la bandeja pero no aceptar envíos."}
+          onClick={aceptar}
+          className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+        >
           Aceptar
         </button>
         <label className="flex flex-col gap-1 text-xs text-neutral-500">
@@ -181,7 +203,7 @@ function FilaParaAceptar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
           etiquetaEnCurso="Rechazando…"
           etiquetaVolver="Volver"
           accion={() => rechazarTransferencia(fila.id, motivo || undefined)}
-          deshabilitado={pending}
+          deshabilitado={pending || !permisos.rechazarEnvio}
           claseDisparador={CLASE_RECHAZAR}
         />
       </div>
@@ -190,7 +212,7 @@ function FilaParaAceptar({ fila, secciones }: { fila: FilaBandeja; secciones: Op
   );
 }
 
-function FilaParaReingreso({ fila }: { fila: FilaBandeja }) {
+function FilaParaReingreso({ fila, permisos }: { fila: FilaBandeja; permisos: PermisosBandeja }) {
   const router = useRouter();
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
@@ -219,7 +241,13 @@ function FilaParaReingreso({ fila }: { fila: FilaBandeja }) {
         ({fila.fecha}) — {fila.motivoRechazoDestino || "sin motivo"}. Confirmá el reingreso para que vuelva a tu stock.
       </p>
       <div className="mt-2">
-        <button type="button" disabled={pending} onClick={confirmar} className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+        <button
+          type="button"
+          disabled={pending || !permisos.confirmarReingreso}
+          title={permisos.confirmarReingreso ? undefined : "Tu rol puede ver la bandeja pero no confirmar reingresos."}
+          onClick={confirmar}
+          className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+        >
           Confirmar reingreso
         </button>
       </div>
@@ -233,7 +261,7 @@ function FilaParaReingreso({ fila }: { fila: FilaBandeja }) {
  * hay que pedirla de nuevo), así que pide confirmación en el mismo lugar con `BotonConConfirmacion`
  * (docs/plan-mutaciones-controladas-2026-09-25.md, Paso 6a).
  */
-function FilaEsperando({ fila }: { fila: FilaBandeja }) {
+function FilaEsperando({ fila, permisos }: { fila: FilaBandeja; permisos: PermisosBandeja }) {
   const producto = `${fila.productoCodigo} — ${fila.productoNombre}`;
   return (
     <div data-traspaso={fila.id} className="rounded border p-3">
@@ -263,6 +291,7 @@ function FilaEsperando({ fila }: { fila: FilaBandeja }) {
             etiquetaEnCurso="Cancelando…"
             etiquetaVolver="Volver"
             accion={() => cancelarSolicitudTransferencia(fila.id)}
+            deshabilitado={!permisos.cancelarSolicitud}
             claseDisparador="self-start rounded border px-3 py-1.5 text-sm text-red-600 disabled:opacity-50"
           />
         </div>
@@ -279,6 +308,7 @@ export function Bandeja({
   historial,
   nextCursorHistorial,
   secciones,
+  permisos,
 }: {
   paraAprobar: FilaBandeja[];
   paraAceptar: FilaBandeja[];
@@ -287,6 +317,7 @@ export function Bandeja({
   historial: FilaBandeja[];
   nextCursorHistorial: string | null;
   secciones: Opcion[];
+  permisos: PermisosBandeja;
 }) {
   return (
     <div className="flex flex-col gap-8">
@@ -294,7 +325,7 @@ export function Bandeja({
         <h2 className="mb-2 text-sm font-medium">Para aprobar (te lo pidieron, sos Origen)</h2>
         <div className="flex flex-col gap-2">
           {paraAprobar.map((f) => (
-            <FilaParaAprobar key={f.id} fila={f} secciones={secciones} />
+            <FilaParaAprobar key={f.id} fila={f} secciones={secciones} permisos={permisos} />
           ))}
           {!paraAprobar.length && <p className="text-sm text-neutral-500">Nada pendiente de aprobar.</p>}
         </div>
@@ -304,7 +335,7 @@ export function Bandeja({
         <h2 className="mb-2 text-sm font-medium">Para aceptar (te lo enviaron, sos Destino)</h2>
         <div className="flex flex-col gap-2">
           {paraAceptar.map((f) => (
-            <FilaParaAceptar key={f.id} fila={f} secciones={secciones} />
+            <FilaParaAceptar key={f.id} fila={f} secciones={secciones} permisos={permisos} />
           ))}
           {!paraAceptar.length && <p className="text-sm text-neutral-500">Nada pendiente de aceptar.</p>}
         </div>
@@ -314,17 +345,17 @@ export function Bandeja({
         <h2 className="mb-2 text-sm font-medium">Para confirmar reingreso (rechazaron lo que enviaste)</h2>
         <div className="flex flex-col gap-2">
           {paraReingreso.map((f) => (
-            <FilaParaReingreso key={f.id} fila={f} />
+            <FilaParaReingreso key={f.id} fila={f} permisos={permisos} />
           ))}
           {!paraReingreso.length && <p className="text-sm text-neutral-500">Nada pendiente de reingreso.</p>}
         </div>
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-medium">Esperando respuesta (lo iniciaste vos)</h2>
+        <h2 className="mb-2 text-sm font-medium">Esperando respuesta (pediste o enviaste vos)</h2>
         <div className="flex flex-col gap-2">
           {esperando.map((f) => (
-            <FilaEsperando key={f.id} fila={f} />
+            <FilaEsperando key={f.id} fila={f} permisos={permisos} />
           ))}
           {!esperando.length && <p className="text-sm text-neutral-500">Nada propio en curso esperando a la otra sucursal.</p>}
         </div>

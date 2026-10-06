@@ -69,7 +69,7 @@ describe("server/consultas/catalogo/productos", () => {
 
   describe("obtenerFichaProducto", () => {
     it("trae el producto con EXACTAMENTE las 5 relaciones del include (y el grupo dentro del insumo), con los datos sembrados", async () => {
-      const p = await obtenerFichaProducto(mpCompleto);
+      const p = await obtenerFichaProducto(mpCompleto, prisma);
       expect(p).not.toBeNull();
       if (!p) return;
 
@@ -90,7 +90,7 @@ describe("server/consultas/catalogo/productos", () => {
     });
 
     it("las relaciones opcionales vacías vienen como null (siguen presentes como clave)", async () => {
-      const p = await obtenerFichaProducto(pvSinRelaciones);
+      const p = await obtenerFichaProducto(pvSinRelaciones, prisma);
       expect(p).not.toBeNull();
       if (!p) return;
 
@@ -104,7 +104,7 @@ describe("server/consultas/catalogo/productos", () => {
     });
 
     it("un id que no existe devuelve null (findUnique, no lanza)", async () => {
-      await expect(obtenerFichaProducto("no-existe")).resolves.toBeNull();
+      await expect(obtenerFichaProducto("no-existe", prisma)).resolves.toBeNull();
     });
 
     it("acepta el cliente de una transacción como `db`", async () => {
@@ -125,48 +125,48 @@ describe("server/consultas/catalogo/productos", () => {
         ],
       });
 
-      const enA = await obtenerSeccionHabitualEnSucursal(sucursalA, pvSinRelaciones);
+      const enA = await obtenerSeccionHabitualEnSucursal(sucursalA, pvSinRelaciones, prisma);
       expect(enA).toEqual({ seccion: { nombre: "Cocina A" } });
       expect(Object.keys(enA ?? {})).toEqual(["seccion"]);
       expect(Object.keys(enA?.seccion ?? {})).toEqual(["nombre"]);
 
       // Filtra por la sucursal pedida: en B trae la de B, no la de A.
-      await expect(obtenerSeccionHabitualEnSucursal(sucursalB, pvSinRelaciones)).resolves.toEqual({ seccion: { nombre: "Barra B" } });
+      await expect(obtenerSeccionHabitualEnSucursal(sucursalB, pvSinRelaciones, prisma)).resolves.toEqual({ seccion: { nombre: "Barra B" } });
     });
 
     it("null si el producto no tiene sección habitual en esa sucursal (aunque tenga en otra)", async () => {
       const barraB = await prisma.seccion.create({ data: { sucursalId: sucursalB, nombre: "Barra B" } });
       await prisma.seccionHabitualProducto.create({ data: { sucursalId: sucursalB, productoId: pvSinRelaciones, seccionId: barraB.id } });
 
-      await expect(obtenerSeccionHabitualEnSucursal(sucursalA, pvSinRelaciones)).resolves.toBeNull();
+      await expect(obtenerSeccionHabitualEnSucursal(sucursalA, pvSinRelaciones, prisma)).resolves.toBeNull();
     });
 
     it("null si la sección habitual está inactiva", async () => {
       const inactiva = await prisma.seccion.create({ data: { sucursalId: sucursalA, nombre: "Vieja", activa: false } });
       await prisma.seccionHabitualProducto.create({ data: { sucursalId: sucursalA, productoId: pvSinRelaciones, seccionId: inactiva.id } });
 
-      await expect(obtenerSeccionHabitualEnSucursal(sucursalA, pvSinRelaciones)).resolves.toBeNull();
+      await expect(obtenerSeccionHabitualEnSucursal(sucursalA, pvSinRelaciones, prisma)).resolves.toBeNull();
     });
 
     it("null si la fila es de esta sucursal pero apunta a una sección de OTRA (dato inconsistente: no se muestra)", async () => {
       const deB = await prisma.seccion.create({ data: { sucursalId: sucursalB, nombre: "Barra B" } });
       await prisma.seccionHabitualProducto.create({ data: { sucursalId: sucursalA, productoId: pvSinRelaciones, seccionId: deB.id } });
 
-      await expect(obtenerSeccionHabitualEnSucursal(sucursalA, pvSinRelaciones)).resolves.toBeNull();
+      await expect(obtenerSeccionHabitualEnSucursal(sucursalA, pvSinRelaciones, prisma)).resolves.toBeNull();
     });
 
     it("filtra por producto: la habitual de otro producto no se cuela", async () => {
       const cocinaA = await prisma.seccion.create({ data: { sucursalId: sucursalA, nombre: "Cocina A" } });
       await prisma.seccionHabitualProducto.create({ data: { sucursalId: sucursalA, productoId: mpCompleto, seccionId: cocinaA.id } });
 
-      await expect(obtenerSeccionHabitualEnSucursal(sucursalA, pvSinRelaciones)).resolves.toBeNull();
-      await expect(obtenerSeccionHabitualEnSucursal(sucursalA, mpCompleto)).resolves.toEqual({ seccion: { nombre: "Cocina A" } });
+      await expect(obtenerSeccionHabitualEnSucursal(sucursalA, pvSinRelaciones, prisma)).resolves.toBeNull();
+      await expect(obtenerSeccionHabitualEnSucursal(sucursalA, mpCompleto, prisma)).resolves.toEqual({ seccion: { nombre: "Cocina A" } });
     });
   });
 
   describe("obtenerProductoPorId", () => {
     it("trae SOLO los escalares del producto, sin ninguna relación", async () => {
-      const p = await obtenerProductoPorId(mpCompleto);
+      const p = await obtenerProductoPorId(mpCompleto, prisma);
       expect(p).not.toBeNull();
       if (!p) return;
 
@@ -187,22 +187,22 @@ describe("server/consultas/catalogo/productos", () => {
     });
 
     it("un id que no existe devuelve null (findUnique, no lanza)", async () => {
-      await expect(obtenerProductoPorId("no-existe")).resolves.toBeNull();
+      await expect(obtenerProductoPorId("no-existe", prisma)).resolves.toBeNull();
     });
   });
 
   describe("obtenerProductoOpcion", () => {
     it("trae SOLO { id, codigo, nombre } del producto (ningún otro escalar, ninguna relación)", async () => {
-      const p = await obtenerProductoOpcion(mpCompleto);
+      const p = await obtenerProductoOpcion(mpCompleto, prisma);
       expect(p).toEqual({ id: mpCompleto, codigo: "MP_HARINA", nombre: "Harina 000" });
       expect(Object.keys(p ?? {}).sort()).toEqual(["codigo", "id", "nombre"]);
 
       // Filtra por el id pedido: el otro producto trae lo suyo.
-      await expect(obtenerProductoOpcion(pvSinRelaciones)).resolves.toEqual({ id: pvSinRelaciones, codigo: "PV_PIZZA", nombre: "Pizza muzza" });
+      await expect(obtenerProductoOpcion(pvSinRelaciones, prisma)).resolves.toEqual({ id: pvSinRelaciones, codigo: "PV_PIZZA", nombre: "Pizza muzza" });
     });
 
     it("un id que no existe devuelve null (findUnique, no lanza)", async () => {
-      await expect(obtenerProductoOpcion("no-existe")).resolves.toBeNull();
+      await expect(obtenerProductoOpcion("no-existe", prisma)).resolves.toBeNull();
     });
 
     it("acepta el cliente de una transacción como `db`", async () => {

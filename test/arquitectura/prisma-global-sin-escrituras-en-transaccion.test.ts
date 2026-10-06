@@ -14,10 +14,10 @@ import { describe, expect, it } from "vitest";
  * de permisos.ts) — todos intencionales, documentados en su propio docstring como "fuera de la transacción, cliente global". Tampoco
  * prohíbe LECTURAS con `prisma` dentro del callback (no es lo que rompe el aislamiento de una escritura) ni el cliente `tx` mismo.
  * Alcance a propósito acotado a ESCRITURAS (`create`/`update`/`upsert`/`delete`/sus variantes `Many`/`$executeRaw*`/`$transaction`)
- * llamadas sobre `prisma.` (no `tx.`) dentro del cuerpo `{ ... }` del callback — el precedente exacto que confirmó el usuario: "conviene
+ * llamadas sobre `prisma.` o `ctx.db.`/`actor.db.` (no `tx.`) dentro del cuerpo `{ ... }` del callback — el precedente exacto que confirmó el usuario: "conviene
  * empezar con una regla estricta para prisma global [de escritura] y luego ampliar la propagación de tx" si hiciera falta después.
  *
- * DESCUBRE (no una lista a mano) todo archivo de `src/` que importa `{ prisma }` de `@/lib/db` Y llama `conTransaccionSerializable(` —
+ * DESCUBRE (no una lista a mano) todo archivo de `src/` que llama `conTransaccionSerializable(` —
  * mismo esquema fail-closed que `idempotencia-i3-cobertura-concurrente.test.ts`: un archivo nuevo con este patrón queda cubierto solo
  * por existir, sin que nadie tenga que acordarse de agregarlo a una lista.
  */
@@ -47,8 +47,12 @@ function sinComentarios(fuente: string): string {
   return fuente.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
 }
 
-const RE_METODO_ESCRITURA = /\bprisma\.\w+\.(create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany)\s*\(/g;
-const RE_RAW_O_TX_ANIDADA = /\bprisma\.(\$executeRaw\w*|\$transaction)\s*[(`]/g;
+const BASE_FUERA_DE_TX = String.raw`(?:prisma|(?:ctx|actor|contexto)\.db)`;
+const RE_METODO_ESCRITURA = new RegExp(
+  String.raw`\b${BASE_FUERA_DE_TX}\.\w+\.(create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany)\s*\(`,
+  "g"
+);
+const RE_RAW_O_TX_ANIDADA = new RegExp(String.raw`\b${BASE_FUERA_DE_TX}\.(\$executeRaw\w*|\$transaction)\s*[(${"`"}]`, "g");
 
 /**
  * Ubica, desde `desde` (el índice de un `conTransaccionSerializable(`), el cuerpo `{ ... }` del callback que le sigue — el primer
@@ -93,14 +97,14 @@ interface ArchivoConTransaccionYPrismaGlobal {
   violaciones: Violacion[];
 }
 
-/** Descubre TODO archivo que importa `{ prisma }` de `@/lib/db` y llama `conTransaccionSerializable(` — nunca una lista a mano. */
+/** Descubre TODO archivo que llama `conTransaccionSerializable(` — nunca una lista a mano. Desde ADR-007 (paso N2) la "base global" ya no es el `prisma` importado sino `ctx.db`/`actor.db`: ambos cuentan como base fuera de la transacción. */
 function descubrirArchivos(): ArchivoConTransaccionYPrismaGlobal[] {
   const archivos = archivosFuente(SRC);
   const resultado: ArchivoConTransaccionYPrismaGlobal[] = [];
 
   for (const archivo of archivos) {
     const original = readFileSync(archivo, "utf8");
-    if (!/from\s+["']@\/lib\/db["']/.test(original) || !/\bconTransaccionSerializable\s*\(/.test(original)) continue;
+    if (!/\bconTransaccionSerializable\s*\(/.test(original)) continue;
 
     const fuente = sinComentarios(original);
     const violaciones: Violacion[] = [];
@@ -126,7 +130,7 @@ function descubrirArchivos(): ArchivoConTransaccionYPrismaGlobal[] {
 describe("arquitectura: dentro de un callback conTransaccionSerializable, ninguna escritura usa el cliente global `prisma` (tiene que ser `tx`)", () => {
   const archivos = descubrirArchivos();
 
-  it("encuentra archivos que combinan `prisma` global y `conTransaccionSerializable` (si esto da 0, algo rompió el descubrimiento, no que ya no haya ninguno)", () => {
+  it("encuentra archivos que llaman `conTransaccionSerializable` (si esto da 0, algo rompió el descubrimiento, no que ya no haya ninguno)", () => {
     expect(archivos.length).toBeGreaterThan(0);
   });
 
