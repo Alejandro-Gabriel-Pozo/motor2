@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { calcularStockEnTransito } from "../../src/core/stock/en-transito";
+import { calcularStockEnTransito } from "../../src/server/consultas/stock/en-transito";
 import { calcularStockConsolidado } from "../../src/core/stock/consolidado";
 import {
   crearEnvioDirectoTransferencia,

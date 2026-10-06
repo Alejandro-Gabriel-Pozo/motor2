@@ -9,6 +9,8 @@
  * Solo reexports explícitos (nunca `export *`, nunca lógica), y solo lo que hoy se usa desde afuera del dominio.
  */
 export type { EstadoStockConsolidado } from "./consolidado";
+export { armarStockEnTransito } from "./en-transito";
+export type { FilaStockEnTransito, TraspasoEnTransito } from "./en-transito";
 export { resolverProximoConteo } from "./frecuencia-conteo";
 export { whereSeccionHabitualVigente } from "./seccion-habitual";
 export { ESTADO_STOCK_CONSOLIDADO_LABEL } from "./estado-consolidado-ui";

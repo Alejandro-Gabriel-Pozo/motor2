@@ -1,7 +1,3 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
-
-type Db = PrismaClient | Prisma.TransactionClient;
-
 /**
  * Cantidad de un producto que YA salió de una sucursal (el Kardex del origen la descontó) y todavía no figura en ninguna: no aparece
  * en el "Teórico" del stock consolidado de nadie, pero existe. Tres situaciones, todas con el stock fuera de las dos sucursales:
@@ -23,23 +19,16 @@ export interface FilaStockEnTransito {
   pendienteDeReingreso: number;
 }
 
-export async function calcularStockEnTransito(sucursalId: string, db: Db): Promise<FilaStockEnTransito[]> {
-  const traspasos = await db.traspasoSucursal.findMany({
-    where: {
-      OR: [
-        { estado: "ENVIADA", origenSucursalId: sucursalId },
-        { estado: "ENVIADA", destinoSucursalId: sucursalId },
-        { estado: "RECHAZADA_DESTINO", origenSucursalId: sucursalId },
-      ],
-    },
-    select: {
-      estado: true,
-      origenSucursalId: true,
-      cantidad: true,
-      producto: { select: { id: true, codigo: true, nombre: true, unidadStock: { select: { nombre: true } } } },
-    },
-  });
+/** Un traspaso que todavía no se asentó en el Kardex de una de las dos puntas, tal como lo lee la consulta (`server/consultas/stock/en-transito.ts`). */
+export interface TraspasoEnTransito {
+  estado: string;
+  origenSucursalId: string;
+  cantidad: number;
+  producto: { id: string; codigo: string; nombre: string; unidadStock: { nombre: string } };
+}
 
+/** El stock en tránsito de `sucursalId` a partir de sus traspasos ENVIADA / RECHAZADA_DESTINO ya leídos. Puro: no consulta la base. */
+export function armarStockEnTransito(traspasos: readonly TraspasoEnTransito[], sucursalId: string): FilaStockEnTransito[] {
   const porProducto = new Map<string, FilaStockEnTransito>();
   for (const t of traspasos) {
     const fila =
@@ -53,7 +42,7 @@ export async function calcularStockEnTransito(sucursalId: string, db: Db): Promi
         enviadoPorAceptar: 0,
         pendienteDeReingreso: 0,
       } satisfies FilaStockEnTransito);
-    const cantidad = Number(t.cantidad);
+    const cantidad = t.cantidad;
     if (t.estado === "RECHAZADA_DESTINO") fila.pendienteDeReingreso += cantidad;
     else if (t.origenSucursalId === sucursalId) fila.enviadoPorAceptar += cantidad;
     else fila.porRecibir += cantidad;
