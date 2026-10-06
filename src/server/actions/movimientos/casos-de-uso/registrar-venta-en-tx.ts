@@ -12,6 +12,9 @@ import { cargarDatosDeOrigen, prepararOrigen } from "@/core/movimientos/origen-v
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { calcularCostosYMargenes } from "@/core/reportes/public-servidor";
 import { crearCacheProducto } from "@/core/movimientos/producto-cache";
+import { registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
+import { escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
+import { escribirOperacionDeVenta } from "@/server/persistencia/movimientos/escribir-venta";
 import type { ActorVenta, AvisoStockNegativo, DatosVentaEnTx, LineaVentaEnTx, OpcionesVentaEnTx, ResultadoVentaEnTx } from "@/core/movimientos/registrar-venta";
 
 /**
@@ -311,20 +314,17 @@ export async function registrarVentaEnTx(
   const operacionIds: string[] = [];
   for (const venta of ventas) {
     const esPrimera = operacionIds.length === 0;
-    const operacion: { id: string } = await tx.operacion.create({
-      data: {
-        sucursalId: actor.sucursalId,
-        proceso: "VENTA",
-        fecha: datos.fecha,
-        proveedorId: datos.proveedorId ?? null,
-        clienteId: datos.clienteId ?? null,
-        promoCuentaId: venta.promoCuentaId,
-        nroFactura: texto(datos.nroFactura) || null,
-        detalleLibre: texto(datos.detalle) || null,
-        usuarioId: actor.usuarioId,
-        claveIdempotencia: esPrimera && opciones.idempotencia ? opciones.idempotencia.clave : null,
-        payloadHash: esPrimera && opciones.idempotencia ? opciones.idempotencia.payloadHash : null,
-      },
+    const operacion: { id: string } = await escribirOperacionDeVenta(tx, {
+      sucursalId: actor.sucursalId,
+      fecha: datos.fecha,
+      proveedorId: datos.proveedorId ?? null,
+      clienteId: datos.clienteId ?? null,
+      promoCuentaId: venta.promoCuentaId,
+      nroFactura: texto(datos.nroFactura) || null,
+      detalleLibre: texto(datos.detalle) || null,
+      usuarioId: actor.usuarioId,
+      claveIdempotencia: esPrimera && opciones.idempotencia ? opciones.idempotencia.clave : null,
+      payloadHash: esPrimera && opciones.idempotencia ? opciones.idempotencia.payloadHash : null,
     });
     operacionIds.push(operacion.id);
 
@@ -374,11 +374,11 @@ export async function registrarVentaEnTx(
     });
   }
 
-  await tx.movimientoStock.createMany({ data: filas });
+  await escribirLineasDeMovimientoStock(tx, filas);
   const mensaje = `Se registraron ${ventas.length} venta(s) correctamente.`;
 
   if (opciones.idempotencia) {
-    await tx.operacion.update({ where: { id: operacionIds[0] }, data: { resultadoMensaje: mensaje } });
+    await registrarResultadoIdempotente(tx, operacionIds[0]!, mensaje);
   }
 
   return { ok: true, mensaje, operacionIds, avisosStockNegativo };

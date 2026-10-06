@@ -51,12 +51,6 @@ const USOS_PERMITIDOS_DE_OPERACION: UsoSobreOperacion[] = [
     motivo: "I3: guarda el mensaje de resultado ya formateado en la operación que lleva la clave, para que un reenvío exacto lo devuelva tal cual.",
   },
   {
-    archivo: "src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts",
-    operaciones: ["update"],
-    columnas: ["resultadoMensaje"],
-    motivo: "I3 de la venta: mismo `resultadoMensaje` que arriba, escrito en línea hasta que la venta use `registrarResultadoIdempotente`.",
-  },
-  {
     archivo: "src/server/persistencia/compras/escribir-anulacion-de-compra.ts",
     operaciones: ["update"],
     columnas: ["anuladaEn", "anuladaPorId"],
