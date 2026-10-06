@@ -1,5 +1,7 @@
 # Fase 3 del plan de pureza: lecturas fuera de `src/core/` (plan y decisiones)
 
+> **Estado 2026-10-06: HECHA.** Tramo A: PR #73, #74 y #75 (carta pública, con la autorización del dueño). Tramo B: #76. Tramo C: #77 (la mudanza de ubicación de los reportes; ver «Desvíos del plan» abajo). Los N+1 de stock, grupos, validación de recetas, vencimientos y descuentos por cliente se arreglaron con test de conteo; quedan pendientes (de rendimiento, no de pureza) los de `rendimiento-recetas` y las lecturas repetidas del período.
+
 Documento de traspaso (2026-10-06). Resume los tres planes de implementación (tramos A, B y C), verificados contra el código por agentes de planificación, y las decisiones del dueño. Complementa `docs/plan-de-pureza-y-estado.md`. De lo general a lo específico.
 
 ## 1. La idea y el problema central
@@ -72,3 +74,11 @@ Cada paso `.0` escribe tests de caracterización **contra el código viejo** (re
 En la MISMA corrida y sobre el mismo commit, todos limpios, comparados con la línea de base tomada antes del primer cambio: `npx tsc --noEmit` (vacío), `npm run lint` (0), `npm run arquitectura` (leer «no dependency violations found (N modules…)»), `npm run analizar:muerto` (0), `npm test` (contra Postgres real; archivos y tests ≥ base), `npm run build`, `npm run plataforma:build`, `npm run test:e2e` (≥ 509 en local). Cada regla o test nuevo se demuestra por mutación (rojo con archivo y línea → revertir → verde) y queda escrito en la descripción del PR. `git diff --name-only origin/main...HEAD -- prisma/` debe salir vacío: ningún paso de la Fase 3 toca schema ni migraciones.
 
 Local vs. CI (acordado con el dueño el 2026-10-06): en local solo los comandos breves (tsc, lint, arquitectura, knip y los tests de arquitectura y del dominio tocado); build, e2e y la suite completa los corre el CI en cada PR.
+
+## 7. Desvíos del plan (lo que se hizo distinto y por qué)
+
+- **Tramo C, reportes:** en vez de reescribir cada reporte como «armar(filas) puro + leer», un splitter por AST dejó en `core` los tipos y funciones puras y mandó a `server/consultas/reportes` las 39 funciones que reciben la base, con el mismo nombre y firma (mecánico, sin riesgo de cambiar resultados: los 90 archivos de tests de reportes pasan sin tocar aserciones). Se quedaron en `core` `comun`, `costos`, `cotizacion-dolar` e `indices-economicos` (Fase 4, decisión D1).
+- **N+1 de reportes:** arreglados `vencimientos` (conciliación: 1 lectura para todas las ventanas, suma en decimal exacto) y `descuentos-clientes` (el costo reconstruido se calcula 1 vez para todos los clientes: 7 lecturas → 2). **Pendientes**: `rendimiento-recetas` (varias consultas por pool, calculado dos veces por página) y las lecturas repetidas de `periodo` (costo actual ×3, IPC ×2, precios locales ×2). Es una optimización de rendimiento más riesgosa (lotes con aritmética exacta); conviene una tanda propia con caracterización antes.
+- **Lectores bloqueados (reclasificados a Fase 4):** `catalogo/{disponibilidad-producto-consulta, precio-local-consulta, recetas-vigentes}`, `movimientos/{origen-venta-datos, producto-cache, stock}` y `permisos/capacidades-sucursal`: los usa `registrar-venta` dentro de la transacción de la venta; salen cuando la venta pase a caso de uso.
+- **El codemod reutilizable** (`mover-exports.ts` del plan 3B.2) no se versionó: se usaron scripts de una sola vez; para la Fase 6 (161 `vi.mock` de la sesión) conviene versionar uno (decisión D5 pendiente).
+- **Sin `import "server-only"`** en las lecturas que usan scripts con `tsx` o specs de Playwright (las de reportes, las de la carta que usa un e2e).
