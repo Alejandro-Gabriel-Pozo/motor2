@@ -8,7 +8,7 @@
  * compra, que consumen sus casos de uso (`server/actions/movimientos/casos-de-uso/`) y su persistencia (`server/persistencia/compras/`).
  */
 export { claveDeLote, descripcionAuditoriaAnulacion, evaluarAnulacion, mensajeCompraAnulada } from "./anulacion";
-export type { LineaComprada, LineaDeReversion, ResultadoAnulacion, SaldosPorLote } from "./anulacion";
+export type { LineaComprada, LineaDeReversion, SaldosPorLote } from "./anulacion";
 export {
   cabeceraCoincide,
   clavesDeFactura,
