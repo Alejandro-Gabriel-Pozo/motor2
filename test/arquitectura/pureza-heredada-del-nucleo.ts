@@ -59,7 +59,6 @@ export const PUREZA_HEREDADA_DEL_NUCLEO: Record<string, EntradaDePurezaHeredada>
   "src/core/features/traspasos/traspaso.guard.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/features/traspasos/traspaso.schema.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/fiscal/factura-autorizada.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
-  "src/core/moneda.ts": { nivel: "P2", senales: ["prismaDeValor"], pendiente: "Fase 1: dinero propio (decimal.js) y errores de base en server/persistencia" },
   "src/core/movimientos/anulaciones.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/armar-filas-de-movimiento.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/con-reintento.ts": { nivel: "P2", senales: ["prismaDeValor", "prismaDeTipo"], pendiente: "Fase 1: dinero propio (decimal.js) y errores de base en server/persistencia" },

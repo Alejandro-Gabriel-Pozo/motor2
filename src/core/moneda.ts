@@ -1,10 +1,10 @@
-import { Decimal } from "@prisma/client/runtime/index-browser";
+import { Decimal } from "decimal.js";
 
 /**
  * Precisión decimal para dinero (plan de precisión de montos, 2026-09-25).
  *
  * Todo el core sigue trabajando con `number`: entra `number` (de `Number(Decimal)` o de una cantidad ya redondeada a su unidad) y sale
- * `number` redondeado a 2 decimales. La aritmética exacta con `Decimal` (el decimal.js que Prisma ya trae) queda encerrada acá, SOLO en
+ * `number` redondeado a 2 decimales. La aritmética exacta con `Decimal` (decimal.js) queda encerrada acá, SOLO en
  * multiplicar y redondear; ningún objeto `Decimal` sale de este módulo.
  *
  * Por qué hace falta: `Math.round(n * 100) / 100` redondea mal los empates de medio centavo que no son exactos en binario
@@ -16,8 +16,9 @@ import { Decimal } from "@prisma/client/runtime/index-browser";
  * `new Decimal(n)` toma la representación decimal más corta del double (`String(n)`: "128.045"), que es el valor que se cargó o que
  * vino de la base — no la expansión binaria exacta. `NaN` y `±Infinity` pasan igual que con `Math.round` (sin tirar error).
  *
- * Import del subpath `@prisma/client/runtime/index-browser` (apto para navegador, sin motor ni `pg`): este módulo termina en el bundle
- * del cliente vía `transiciones.ts` → `historial-vistas.ts`/`rendimiento-recetas-vistas.ts`, importados por componentes "use client".
+ * Librería propia (`decimal.js`, la MISMA versión exacta que usa Prisma por dentro, 10.5.0: ver `test/core/moneda-equivalencia-prisma.test.ts`): el dominio no
+ * depende del ORM para el dinero (Pureza 1.1). Antes importaba el subpath `@prisma/client/runtime/index-browser`. Este módulo termina en el bundle del
+ * cliente vía `transiciones.ts` → `historial-vistas.ts`/`rendimiento-recetas-vistas.ts`, importados por componentes "use client".
  */
 
 /** Clon propio: no depende de la configuración global de Decimal (20 dígitos). 40 dígitos alcanzan de sobra para el producto de dos
