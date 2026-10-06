@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_SECCION_ORIGEN_NO_PROPIA, MENSAJE_TRASPASO_NO_ENCONTRADO } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import type { ComandoAprobarYEnviarTraspaso, ResultadoAprobarYEnviarTraspaso } from "@/core/features/traspasos/traspaso.schema";
@@ -34,10 +34,10 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @idempotency No aplica (nunca la tuvo) — el aislamiento SERIALIZABLE arbitra el doble clic, el segundo intento ve el estado ya ENVIADA.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de la escritura de la salida de Kardex y el cambio de estado del traspaso.
- * @ficha permiso=traspaso_aprobar transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=NEW_DATE
+ * @ficha permiso=traspaso_aprobar transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
  */
 export async function aprobarYEnviarTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion" | "ahora">,
   comando: ComandoAprobarYEnviarTraspaso
 ): Promise<ResultadoAprobarYEnviarTraspaso> {
   const seccionOrigen = await obtenerSeccionPropia(comando.seccionOrigenId, actor.sucursalId, actor.db);
@@ -74,7 +74,7 @@ export async function aprobarYEnviarTraspasoCasoDeUso(
       cantidad,
       detalle: `Transferencia a sucursal "${destino.nombre}".`,
       estadoNuevo: transicion.estadoNuevo,
-      ahora: new Date(),
+      ahora: actor.ahora,
     });
 
     return exito(`Aprobado y enviado a "${destino.nombre}".`, { traspasoId: traspaso.id, operacionId, seccionOrigenId: seccionOrigen.id, cantidad });

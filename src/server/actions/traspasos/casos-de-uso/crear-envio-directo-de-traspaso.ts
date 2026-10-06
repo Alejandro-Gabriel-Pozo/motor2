@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { MENSAJE_SECCION_ORIGEN_NO_PROPIA, MENSAJE_SUCURSAL_NO_DISPONIBLE } from "@/core/features/traspasos/traspaso-comandos.guard";
 import type { ComandoCrearEnvioDirectoTraspaso, ResultadoCrearEnvioDirectoTraspaso } from "@/core/features/traspasos/traspaso.schema";
@@ -39,10 +39,10 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @idempotency No aplica, decisión explícita (M11c) — fuera del alcance de I3 desde la auditoría original; un duplicado nunca deja el stock inconsistente (se deshace con el ciclo normal de rechazo+reingreso).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de la escritura conjunta de la salida de Kardex y la creación del traspaso.
- * @ficha permiso=traspaso_enviar_directo transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=NEW_DATE
+ * @ficha permiso=traspaso_enviar_directo transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
  */
 export async function crearEnvioDirectoDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion" | "ahora">,
   comando: ComandoCrearEnvioDirectoTraspaso
 ): Promise<ResultadoCrearEnvioDirectoTraspaso> {
   if (comando.destinoSucursalId === actor.sucursalId) return fracaso("MISMA_SUCURSAL", "No podés mandarte una transferencia a vos mismo.");
@@ -82,7 +82,7 @@ export async function crearEnvioDirectoDeTraspasoCasoDeUso(
       usuarioId: actor.usuarioId,
       detalle: comando.detalle,
       detalleSalida: `Transferencia a sucursal "${destino.nombre}".`,
-      ahora: new Date(),
+      ahora: actor.ahora,
     });
 
     return exito(

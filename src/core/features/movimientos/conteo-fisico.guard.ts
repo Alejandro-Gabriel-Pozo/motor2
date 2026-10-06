@@ -22,11 +22,11 @@ const ACCIONES_VALIDAS: Record<AccionConteo, true> = { AJUSTAR: true, FALTA_MOVI
  *
  * Devuelve `aceptar(entrada)` SIN transformar nada.
  */
-export function guardComandoConteoFisico(entrada: unknown): ResultadoDato<ComandoConteoFisico> {
+export function guardComandoConteoFisico(entrada: unknown, ahora: Date): ResultadoDato<ComandoConteoFisico> {
   const { seccionId, claveIdempotencia, fechaConteo, detalle, accion } = (entrada ?? {}) as { seccionId?: unknown; claveIdempotencia?: unknown; fechaConteo?: unknown; detalle?: unknown; accion?: unknown };
   if (!texto(seccionId)) return rechazar("vacio", "Elegí una sección — no se puede dejar en blanco.");
   if (typeof accion !== "string" || !Object.hasOwn(ACCIONES_VALIDAS, accion)) return rechazar("formato", "Elegí qué hacer con la diferencia del conteo.");
-  const fechaValida = validarFechaOperacion(fechaConteo);
+  const fechaValida = validarFechaOperacion(fechaConteo, ahora);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
   const detalleValido = validarTextoLibre(detalle, "El detalle", LARGO_MAXIMO_DETALLE);
   if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);

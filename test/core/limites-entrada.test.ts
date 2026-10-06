@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import {
   ENTERO_MAXIMO_RAZONABLE,
   LARGO_MAXIMO_DETALLE,
@@ -65,22 +66,22 @@ describe("guards: topes de texto y de listas", () => {
 
   it("registrar movimiento: 'constructor' / '__proto__' / 'toString' no son procesos (Object.hasOwn)", () => {
     for (const proceso of ["constructor", "__proto__", "toString", "hasOwnProperty"]) {
-      expect(guardComandoRegistrarMovimiento({ ...movimientoBase, proceso }).ok, proceso).toBe(false);
+      expect(guardComandoRegistrarMovimiento({ ...movimientoBase, proceso }, AHORA_DE_LA_CORRIDA).ok, proceso).toBe(false);
     }
-    expect(guardComandoRegistrarMovimiento(movimientoBase).ok).toBe(true);
+    expect(guardComandoRegistrarMovimiento(movimientoBase, AHORA_DE_LA_CORRIDA).ok).toBe(true);
   });
 
   it("registrar movimiento: tope de líneas y de detalle", () => {
-    const justo = guardComandoRegistrarMovimiento({ ...movimientoBase, items: Array(MAXIMO_LINEAS_POR_OPERACION).fill(item) });
+    const justo = guardComandoRegistrarMovimiento({ ...movimientoBase, items: Array(MAXIMO_LINEAS_POR_OPERACION).fill(item) }, AHORA_DE_LA_CORRIDA);
     expect(justo.ok).toBe(true);
-    const mucho = guardComandoRegistrarMovimiento({ ...movimientoBase, items: Array(MAXIMO_LINEAS_POR_OPERACION + 1).fill(item) });
+    const mucho = guardComandoRegistrarMovimiento({ ...movimientoBase, items: Array(MAXIMO_LINEAS_POR_OPERACION + 1).fill(item) }, AHORA_DE_LA_CORRIDA);
     expect(mucho).toMatchObject({ ok: false, codigo: "rango" });
-    expect(guardComandoRegistrarMovimiento({ ...movimientoBase, detalleLibre: largo(LARGO_MAXIMO_DETALLE) }).ok).toBe(true);
-    expect(guardComandoRegistrarMovimiento({ ...movimientoBase, detalleLibre: largo(LARGO_MAXIMO_DETALLE + 1) })).toMatchObject({ ok: false, codigo: "largo" });
+    expect(guardComandoRegistrarMovimiento({ ...movimientoBase, detalleLibre: largo(LARGO_MAXIMO_DETALLE) }, AHORA_DE_LA_CORRIDA).ok).toBe(true);
+    expect(guardComandoRegistrarMovimiento({ ...movimientoBase, detalleLibre: largo(LARGO_MAXIMO_DETALLE + 1) }, AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, codigo: "largo" });
   });
 
   it("registrar movimiento: la referencia del proveedor de cada línea tiene tope de largo", () => {
-    const con = (referenciaProveedor: unknown) => guardComandoRegistrarMovimiento({ ...movimientoBase, items: [{ ...item, referenciaProveedor }] });
+    const con = (referenciaProveedor: unknown) => guardComandoRegistrarMovimiento({ ...movimientoBase, items: [{ ...item, referenciaProveedor }] }, AHORA_DE_LA_CORRIDA);
     expect(con(largo(LARGO_MAXIMO_DETALLE)).ok).toBe(true);
     expect(con(largo(LARGO_MAXIMO_DETALLE + 1))).toMatchObject({ ok: false, codigo: "largo" });
   });
@@ -94,21 +95,21 @@ describe("guards: topes de texto y de listas", () => {
 
   it("reclasificación: tope de destinos y de detalle", () => {
     const base = { productoId: "p", seccionOrigenId: "s", destinos: [{ seccionId: "d" }], fecha: new Date() };
-    expect(guardComandoReclasificarStock(base).ok).toBe(true);
+    expect(guardComandoReclasificarStock(base, AHORA_DE_LA_CORRIDA).ok).toBe(true);
     const destinos = Array(MAXIMO_DESTINOS_RECLASIFICACION + 1).fill({ seccionId: "d" });
-    expect(guardComandoReclasificarStock({ ...base, destinos })).toMatchObject({ ok: false, codigo: "rango" });
-    expect(guardComandoReclasificarStock({ ...base, detalle: largo(LARGO_MAXIMO_DETALLE + 1) })).toMatchObject({ ok: false, codigo: "largo" });
+    expect(guardComandoReclasificarStock({ ...base, destinos }, AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, codigo: "rango" });
+    expect(guardComandoReclasificarStock({ ...base, detalle: largo(LARGO_MAXIMO_DETALLE + 1) }, AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, codigo: "largo" });
   });
 
   it("conteo físico: tope de detalle", () => {
-    expect(guardComandoConteoFisico({ seccionId: "s", accion: "AJUSTAR", fechaConteo: new Date(), detalle: largo(LARGO_MAXIMO_DETALLE) }).ok).toBe(true);
-    expect(guardComandoConteoFisico({ seccionId: "s", accion: "AJUSTAR", fechaConteo: new Date(), detalle: largo(LARGO_MAXIMO_DETALLE + 1) })).toMatchObject({ ok: false, codigo: "largo" });
+    expect(guardComandoConteoFisico({ seccionId: "s", accion: "AJUSTAR", fechaConteo: new Date(), detalle: largo(LARGO_MAXIMO_DETALLE) }, AHORA_DE_LA_CORRIDA).ok).toBe(true);
+    expect(guardComandoConteoFisico({ seccionId: "s", accion: "AJUSTAR", fechaConteo: new Date(), detalle: largo(LARGO_MAXIMO_DETALLE + 1) }, AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, codigo: "largo" });
   });
 
   it("pago a consignante: tope de notas", () => {
     const base = { proveedorId: "p", importe: 10, fecha: new Date() };
-    expect(guardComandoRegistrarPagoConsignante({ ...base, notas: largo(LARGO_MAXIMO_NOTAS) }).ok).toBe(true);
-    expect(guardComandoRegistrarPagoConsignante({ ...base, notas: largo(LARGO_MAXIMO_NOTAS + 1) })).toMatchObject({ ok: false, codigo: "largo" });
+    expect(guardComandoRegistrarPagoConsignante({ ...base, notas: largo(LARGO_MAXIMO_NOTAS) }, AHORA_DE_LA_CORRIDA).ok).toBe(true);
+    expect(guardComandoRegistrarPagoConsignante({ ...base, notas: largo(LARGO_MAXIMO_NOTAS + 1) }, AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, codigo: "largo" });
   });
 
   it("solicitud de traspaso: tope de detalle", () => {

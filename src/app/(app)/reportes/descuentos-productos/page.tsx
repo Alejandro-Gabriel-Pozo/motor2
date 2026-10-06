@@ -20,7 +20,7 @@ export default async function DescuentosProductosPage({ searchParams }: { search
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const rango = resolverRangoDeReporte(sp);
+  const rango = resolverRangoDeReporte(sp, new Date());
   const rep = await obtenerReporteDescuentosProductos(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db);
 
   return (

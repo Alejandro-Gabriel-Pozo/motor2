@@ -257,7 +257,7 @@ export interface RangoHistorialResuelto {
  *
  * `ahora` inyectable, mismo criterio testeable que `resolverRangoPorDefecto`.
  */
-export function resolverRangoHistorial(sp: { desde?: string; hasta?: string; rango?: string }, ahora: Date = new Date()): RangoHistorialResuelto {
+export function resolverRangoHistorial(sp: { desde?: string; hasta?: string; rango?: string }, ahora: Date): RangoHistorialResuelto {
   if (sp.desde || sp.hasta || sp.rango === "personalizado") {
     return { rango: "personalizado", desde: sp.desde ? new Date(sp.desde) : undefined, hasta: sp.hasta ? new Date(sp.hasta) : undefined };
   }

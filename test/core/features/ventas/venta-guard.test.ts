@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { AHORA_DE_LA_CORRIDA } from "../../../setup/tiempo";
 import { guardComandoAnularVenta, guardComandoRegistrarVenta } from "../../../../src/core/features/ventas/venta.guard";
 
 /** Guard del comando «anular una venta» (src/core/features/ventas/venta.guard.ts; Task #41, Fase M): formato, puro. */
@@ -24,42 +25,42 @@ const venta = (ventas: unknown, resto: Record<string, unknown> = {}) => ({ secci
 describe("guardComandoRegistrarVenta", () => {
   it("una venta bien formada pasa y devuelve la MISMA entrada", () => {
     const entrada = venta([linea(2), linea(0.5)], { nroFactura: "A-1" });
-    const r = guardComandoRegistrarVenta(entrada);
+    const r = guardComandoRegistrarVenta(entrada, AHORA_DE_LA_CORRIDA);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.valor).toBe(entrada);
   });
 
   it("una cantidad en 0 pasa (el núcleo la saltea)", () => {
-    expect(guardComandoRegistrarVenta(venta([linea(0), linea(1)])).ok).toBe(true);
+    expect(guardComandoRegistrarVenta(venta([linea(0), linea(1)]), AHORA_DE_LA_CORRIDA).ok).toBe(true);
   });
 
   it.each([undefined, null, [], "x", {}])("ventas %j: pide cargar al menos un producto", (ventas) => {
-    expect(guardComandoRegistrarVenta(venta(ventas))).toMatchObject({ ok: false, mensaje: "Cargá al menos un producto con cantidad." });
+    expect(guardComandoRegistrarVenta(venta(ventas), AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, mensaje: "Cargá al menos un producto con cantidad." });
   });
 
   it("sin entrada: rechaza igual", () => {
-    expect(guardComandoRegistrarVenta(undefined)).toMatchObject({ ok: false });
+    expect(guardComandoRegistrarVenta(undefined, AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false });
   });
 
   it.each([NaN, Infinity, "2", null, undefined, {}])("cantidad %j: rechaza el lote entero (no la descarta en silencio)", (c) => {
-    expect(guardComandoRegistrarVenta(venta([linea(1), linea(c)]))).toMatchObject({ ok: false, mensaje: "La cantidad vendida no es un número válido." });
+    expect(guardComandoRegistrarVenta(venta([linea(1), linea(c)]), AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, mensaje: "La cantidad vendida no es un número válido." });
   });
 
   it("cantidad negativa, demasiado grande o con más de 4 decimales: rechaza", () => {
-    expect(guardComandoRegistrarVenta(venta([linea(-1)]))).toMatchObject({ ok: false, codigo: "negativo" });
-    expect(guardComandoRegistrarVenta(venta([linea(1e12)]))).toMatchObject({ ok: false, codigo: "rango" });
-    expect(guardComandoRegistrarVenta(venta([linea(0.00001)]))).toMatchObject({ ok: false, codigo: "decimales" });
-    expect(guardComandoRegistrarVenta(venta([linea(0.0001)])).ok).toBe(true);
+    expect(guardComandoRegistrarVenta(venta([linea(-1)]), AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, codigo: "negativo" });
+    expect(guardComandoRegistrarVenta(venta([linea(1e12)]), AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, codigo: "rango" });
+    expect(guardComandoRegistrarVenta(venta([linea(0.00001)]), AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, codigo: "decimales" });
+    expect(guardComandoRegistrarVenta(venta([linea(0.0001)]), AHORA_DE_LA_CORRIDA).ok).toBe(true);
   });
 
   it("una línea sin producto o una sección vacía rechaza", () => {
-    expect(guardComandoRegistrarVenta(venta([linea(1, "")]))).toMatchObject({ ok: false, mensaje: "Hay una línea sin producto." });
-    expect(guardComandoRegistrarVenta(venta([null]))).toMatchObject({ ok: false, mensaje: "Hay una línea sin producto." });
-    expect(guardComandoRegistrarVenta({ ...venta([linea(1)]), seccionId: "" })).toMatchObject({ ok: false, mensaje: "Elegí una sección." });
+    expect(guardComandoRegistrarVenta(venta([linea(1, "")]), AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, mensaje: "Hay una línea sin producto." });
+    expect(guardComandoRegistrarVenta(venta([null]), AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, mensaje: "Hay una línea sin producto." });
+    expect(guardComandoRegistrarVenta({ ...venta([linea(1)]), seccionId: "" }, AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, mensaje: "Elegí una sección." });
   });
 
   it("clave de reintento inválida y N.º de factura demasiado largo rechazan", () => {
-    expect(guardComandoRegistrarVenta(venta([linea(1)], { claveIdempotencia: "no valida!" }))).toMatchObject({ ok: false, mensaje: "Clave de reintento inválida." });
-    expect(guardComandoRegistrarVenta(venta([linea(1)], { nroFactura: "x".repeat(200) }))).toMatchObject({ ok: false, codigo: "largo" });
+    expect(guardComandoRegistrarVenta(venta([linea(1)], { claveIdempotencia: "no valida!" }), AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, mensaje: "Clave de reintento inválida." });
+    expect(guardComandoRegistrarVenta(venta([linea(1)], { nroFactura: "x".repeat(200) }), AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, codigo: "largo" });
   });
 });

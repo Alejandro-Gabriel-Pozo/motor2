@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_CUENTA_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta.guard";
 import type { ComandoEmitirTicketCorregido, ResultadoEmitirTicketCorregido } from "@/core/features/cuentas/cuenta.schema";
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
@@ -34,10 +34,10 @@ import { escribirEjemplarCorregido } from "@/server/persistencia/pos/escribir-ej
  * @idempotency No aplica (nunca la tuvo) — una segunda emisión ve el ejemplar ya vigente y se rechaza (chequeo de estado, no I3).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (campo ejemplarTicket).
- * @ficha permiso=pos_emitir_ticket_corregido transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=NEW_DATE
+ * @ficha permiso=pos_emitir_ticket_corregido transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
  */
 export async function emitirTicketCorregidoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
   comando: ComandoEmitirTicketCorregido
 ): Promise<ResultadoEmitirTicketCorregido> {
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoEmitirTicketCorregido> => {
@@ -63,7 +63,7 @@ export async function emitirTicketCorregidoCasoDeUso(
       sucursalId: original.sucursalId,
       cuentaId: cuenta.id,
       ...nuevo,
-      emitidoEn: new Date(),
+      emitidoEn: actor.ahora,
       emitidoPorId: actor.usuarioId,
       corrigeAId: original.id,
       motivo: motivoValidado.motivo,

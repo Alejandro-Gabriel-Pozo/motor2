@@ -32,7 +32,7 @@ export type DatosConteoFisico = ComandoConteoFisico;
  */
 export async function registrarConteoFisico(datos: DatosConteoFisico): Promise<ResultadoAccion> {
   return conPermiso("proceso_control", async (ctx) => {
-    const comando = guardComandoConteoFisico(datos);
+    const comando = guardComandoConteoFisico(datos, ctx.ahora);
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await registrarConteoFisicoCasoDeUso(ctx, comando.valor));
   });
@@ -69,7 +69,7 @@ export async function registrarConteosFisicos(filas: DatosConteoFisico[]): Promi
     const resultados: ResultadoAccion[] = [];
     for (const fila of filas) {
       try {
-        const comando = guardComandoConteoFisico(fila);
+        const comando = guardComandoConteoFisico(fila, ctx.ahora);
         resultados.push(comando.ok ? aResultadoAccion(await registrarConteoFisicoCasoDeUso(ctx, comando.valor)) : error(comando.mensaje));
       } catch (e) {
         // Un error inesperado de una fila (base de datos, etc.) no tira abajo la llamada entera: las filas anteriores ya están

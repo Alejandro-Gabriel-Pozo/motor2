@@ -4,7 +4,7 @@ import { denegado, requierePermiso, requierePermisoDeEmpresa, type ResultadoGate
 import { limitadorMutaciones } from "@/core/permisos/limitador-tasa";
 import { politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
 import type { AccionDeEmpresa, AccionDeSucursal } from "@/core/permisos/acciones";
-import { error, type ResultadoAccion } from "./tipos";
+import { error, type ContextoDeAccion, type ResultadoAccion } from "./tipos";
 
 /**
  * Envoltorio obligatorio para toda mutación (server action): resuelve la
@@ -16,7 +16,7 @@ import { error, type ResultadoAccion } from "./tipos";
  */
 export async function conPermiso<T extends ResultadoAccion = ResultadoAccion>(
   accionClave: AccionDeSucursal,
-  fn: (ctx: ContextoUsuario) => Promise<T>
+  fn: (ctx: ContextoDeAccion) => Promise<T>
 ): Promise<T> {
   return conGate((ctx) => requierePermiso(ctx.usuarioId, ctx.sucursalId, accionClave, ctx.db), fn);
 }
@@ -28,7 +28,7 @@ export async function conPermiso<T extends ResultadoAccion = ResultadoAccion>(
  */
 export async function conPermisoDeEmpresa<T extends ResultadoAccion = ResultadoAccion>(
   accionClave: AccionDeEmpresa,
-  fn: (ctx: ContextoUsuario) => Promise<T>
+  fn: (ctx: ContextoDeAccion) => Promise<T>
 ): Promise<T> {
   return conGate((ctx) => requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, accionClave, ctx.db), fn);
 }
@@ -41,7 +41,7 @@ export async function conPermisoDeEmpresa<T extends ResultadoAccion = ResultadoA
  */
 export async function conEdicionDePermisos<T extends ResultadoAccion = ResultadoAccion>(
   accionClave: AccionDeEmpresa,
-  fn: (ctx: ContextoUsuario) => Promise<T>
+  fn: (ctx: ContextoDeAccion) => Promise<T>
 ): Promise<T> {
   return conGate(async (ctx) => {
     const gate = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, accionClave, ctx.db);
@@ -53,7 +53,7 @@ export async function conEdicionDePermisos<T extends ResultadoAccion = Resultado
 
 async function conGate<T extends ResultadoAccion>(
   gatear: (ctx: ContextoUsuario) => Promise<ResultadoGate>,
-  fn: (ctx: ContextoUsuario) => Promise<T>
+  fn: (ctx: ContextoDeAccion) => Promise<T>
 ): Promise<T> {
   const ctx = await obtenerContextoUsuario();
   // Sin sesión (venció, o un admin desactivó al usuario con la pestaña abierta), sin ninguna sucursal activa, con la empresa suspendida o con
@@ -65,12 +65,14 @@ async function conGate<T extends ResultadoAccion>(
   // ella al entrar (`irAlLogin`). La redirección lanza, por eso va antes de todo.
   if (!ctx) return irAlLogin();
 
-  if (limitadorMutaciones.excedeLimite(ctx.usuarioId)) {
+  // La hora del pedido se fija ACÁ, una sola vez (Pureza 1.2): el limitador, el dominio y los casos de uso la reciben, no leen el reloj.
+  const ahora = new Date();
+  if (limitadorMutaciones.excedeLimite(ctx.usuarioId, ahora.getTime())) {
     return error("Demasiadas acciones seguidas — esperá un minuto e intentá de nuevo.") as T;
   }
 
   const gate = await gatear(ctx);
   if (!gate.ok) return error(gate.mensaje) as T;
 
-  return fn(ctx);
+  return fn({ ...ctx, ahora });
 }

@@ -47,7 +47,7 @@ export default async function HistorialProductoPage({
   const queMostrar = comoQueMostrar(sp.queMostrar);
   // Un solo rango para TODA la pantalla (decisión 10 de §4): los números de arriba y el Kardex de abajo siempre parten de
   // la MISMA consulta, así que siempre cierran entre sí. Default "10d"; «Ver más» pasa a "90d" y después a "todo".
-  const { rango, desde, hasta } = resolverRangoHistorial(sp);
+  const { rango, desde, hasta } = resolverRangoHistorial(sp, new Date());
 
   // «Ver más»: 10 días → 90 días → todo. En un rango personalizado no hay a dónde ampliar (el usuario ya eligió las fechas).
   const rangoMasAmplio = rango === "10d" ? "90d" : rango === "90d" ? "todo" : null;

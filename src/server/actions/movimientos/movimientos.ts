@@ -40,7 +40,7 @@ export async function registrarMovimiento(datos: DatosMovimientoInput): Promise<
   if (!accionClave) return error(`Proceso "${datos.proceso}" no se registra con esta acción.`);
 
   return conPermiso(accionClave, async (ctx) => {
-    const comando = guardComandoRegistrarMovimiento(datos);
+    const comando = guardComandoRegistrarMovimiento(datos, ctx.ahora);
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await registrarMovimientoCasoDeUso(ctx, comando.valor));
   });
