@@ -246,6 +246,7 @@ export function capaDeArchivo(ruta: string): string {
     [/^src\/server\/actions\/[^/]+\/casos-de-uso\//, "server/casos-de-uso"],
     [/^src\/server\/actions\//, "server/actions"],
     [/^src\/server\/consultas\//, "server/consultas"],
+    [/^src\/server\/lecturas\//, "server/lecturas"],
     [/^src\/server\/persistencia\//, "server/persistencia"],
     [/^src\/core\/features\//, "core/features"],
     [/^src\/core\//, "core"],
