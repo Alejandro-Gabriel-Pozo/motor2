@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { agruparVentasPorDia, filtrarEventosKardex, quitarDineroDeEventos, resolverRangoHistorial, resumirCompras, type QueMostrar, type RangoHistorial } from "@/core/reportes/public";
 import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "@/core/reportes/public-servidor";

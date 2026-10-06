@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { obtenerComparativaPreciosPorInsumo } from "@/server/actions/catalogo/proveedor-por-producto";
 
 export default async function ComparativaPreciosPage() {

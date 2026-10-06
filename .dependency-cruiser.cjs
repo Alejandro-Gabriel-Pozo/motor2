@@ -151,6 +151,23 @@ module.exports = {
       to: { path: ["^src/(app|components)/", "^src/server/actions/", "^src/server/consultas/", "^src/server/persistencia/"] },
     },
     {
+      name: "acceso-capa",
+      comment:
+        "server/acceso/ (el guard de acceso y sus lectores, ADR-011; Pureza Fase 3 tramo B) lee lo que hace falta y le pasa los hechos a la decisión pura de core/permisos: no importa la UI, ni server/actions, consultas, lecturas ni persistencia, ni lib/db, ni Next, ni la sesión (core/auth: contexto, session, ir-al-login; solo tipos), ni la base por empresa (core/auth/base). El acceso recibe ids y un `db`: nunca lee cookies ni la sesión.",
+      severity: "error",
+      from: { path: "^src/server/acceso/" },
+      to: {
+        path: [
+          "^src/(app|components)/",
+          "^src/server/(actions|consultas|lecturas|persistencia)/",
+          "^src/lib/db\\.ts$",
+          "^node_modules/next/",
+          "^src/core/auth/(base|contexto|session|ir-al-login)\\.ts$",
+        ],
+        dependencyTypesNot: ["type-only"],
+      },
+    },
+    {
       name: "persistencia-capa",
       comment: "server/persistencia/ no importa de la UI, de server/actions/ ni de server/consultas/.",
       severity: "error",

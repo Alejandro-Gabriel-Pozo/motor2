@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { formatearCuit } from "@/core/fiscal/public";
-import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { obtenerPerfilDeEmpresa } from "@/server/consultas/empresa/perfil";
 
 export default async function PerfilDeLaEmpresaPage() {

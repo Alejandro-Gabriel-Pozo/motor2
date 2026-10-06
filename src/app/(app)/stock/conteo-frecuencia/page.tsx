@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVer } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarFrecuenciasConteo } from "@/server/actions/stock/frecuencia-conteo";
 import { sugerirInsumosClaseA } from "@/server/consultas/stock/sugerencia-clase-a";

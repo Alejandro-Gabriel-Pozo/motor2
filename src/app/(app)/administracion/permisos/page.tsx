@@ -1,7 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
-import { MENSAJE_PERMISOS_DE_PLATAFORMA, politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
+import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { MENSAJE_PERMISOS_DE_PLATAFORMA } from "@/core/permisos/politica-de-empresa";
+import { politicaDeEmpresa } from "@/server/acceso/politica-de-empresa";
 import { listarMatrizPermisos } from "@/server/actions/permisos/permisos";
 import { PermisosMatriz } from "./permisos-matriz";
 

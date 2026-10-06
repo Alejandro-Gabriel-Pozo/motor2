@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, sembrarProductoDisponible, prisma, prismaAdmin } from "../setup/test-db";
 import { crearMembresia } from "../setup/membresia";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { requierePermiso, requierePermisoDeEmpresa } from "../../src/core/permisos/gate";
+import { requierePermiso, requierePermisoDeEmpresa } from "../../src/server/acceso/gate";
 import { actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto } from "../../src/server/actions/catalogo/productos";
 
 /**

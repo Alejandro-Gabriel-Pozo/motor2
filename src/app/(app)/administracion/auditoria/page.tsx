@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/core/permisos/gate";
-import { ENTIDADES_AUDITABLES, descripcionParaMostrar, listarRegistrosAuditoria, sucursalesVisiblesDeAuditoria, type CambioAuditable } from "@/core/permisos/auditoria";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
+import { ENTIDADES_AUDITABLES, descripcionParaMostrar, type CambioAuditable } from "@/core/permisos/auditoria";
+import { listarRegistrosAuditoria, sucursalesVisiblesDeAuditoria } from "@/server/consultas/permisos/auditoria";
 import { TablaAuditoria, type FilaAuditoria } from "./tabla-auditoria";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 

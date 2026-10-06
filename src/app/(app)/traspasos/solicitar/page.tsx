@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVer } from "@/server/acceso/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarSucursalesParaSolicitar } from "@/server/actions/traspasos/lecturas";
 import { SolicitarForm } from "./solicitar-form";

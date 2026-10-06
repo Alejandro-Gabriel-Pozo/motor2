@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVer, obtenerMiNivelPermiso } from "@/core/permisos/gate";
+import { requierePermisoVer, obtenerMiNivelPermiso } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
 import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "@/core/reportes/public-servidor";

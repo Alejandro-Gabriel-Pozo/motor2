@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVer } from "@/server/acceso/gate";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
 import { generarReporteRotacionMesas } from "@/core/reportes/public-servidor";
 import { SelectorRango } from "@/components/selector-rango";

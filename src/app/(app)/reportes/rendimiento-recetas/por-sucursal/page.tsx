@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVer, sucursalesVisiblesPara } from "@/core/permisos/gate";
+import { requierePermisoVer, sucursalesVisiblesPara } from "@/server/acceso/gate";
 import { compararRendimientosDeSucursales } from "@/server/consultas/reportes/rendimiento-por-sucursal";
 import { TablaPorSucursal, type FilaComparacionPlana } from "./tabla-por-sucursal";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";

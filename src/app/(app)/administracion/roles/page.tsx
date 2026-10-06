@@ -1,7 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
-import { MENSAJE_PERMISOS_DE_PLATAFORMA, politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { MENSAJE_PERMISOS_DE_PLATAFORMA } from "@/core/permisos/politica-de-empresa";
+import { politicaDeEmpresa } from "@/server/acceso/politica-de-empresa";
 import { listarRoles } from "@/server/actions/permisos/roles";
 import { RolesTabla } from "./roles-tabla";
 

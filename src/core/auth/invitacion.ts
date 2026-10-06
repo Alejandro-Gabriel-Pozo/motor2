@@ -3,7 +3,6 @@ import { aceptarInvitacionDeUsuario } from "@/core/features/empresa/aceptar-invi
 import { aceptarInvitacion, ErrorDeAceptacion, MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion } from "@/core/features/empresa/aceptar-invitacion";
 import { conTransaccionSerializable, esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { requierePermiso } from "@/core/permisos/gate";
 import { InvarianteViolada } from "@/core/permisos/invariantes";
 import { hashDeToken } from "@/core/seguridad/tokens";
 import { dbDeEmpresa, dbDeInvitacion, transaccionDeEmpresa, verificarRolDeEjecucionDelProceso } from "./base";
@@ -212,10 +211,20 @@ export async function aceptarInvitacionDelToken(entrada: { token: string; usuari
 }
 
 /**
+ * El guard del permiso «gestionar usuarios» (módulos, capacidades y rol de quien otorgó), tal como lo da `requierePermiso` del gate. Lo recibe quien llama (la Server
+ * Action de la invitación) y no se importa acá: `core` no depende del guard, que lee la base y vive en el servidor (Pureza Fase 3). Una prueba de arquitectura exige que la
+ * única llamada de producción le pase el `requierePermiso` REAL del gate (`test/arquitectura/invitacion-recibe-el-guard.test.ts`).
+ */
+export type ExigirGestionDeUsuarios = (otorganteId: string, sucursalId: string, accion: "gestion_usuarios", db: ReturnType<typeof dbDeEmpresa>) => Promise<{ ok: boolean }>;
+
+/**
  * Acepta una invitación de USUARIO en nombre de `usuario` (ya autenticado con Google): crea sus membresías, revalidando por cada sucursal el permiso y el techo de quien la otorgó
  * (E8, ADR-024). Todo o nada, en una transacción serializable bajo la empresa de la invitación. El permiso `gestion_usuarios` de quien otorgó pasa por el guard (módulos y capacidades).
  */
-export async function aceptarInvitacionDeUsuarioDelToken(entrada: { token: string; usuario: { id: string; email: string }; ahora?: Date }): Promise<ResultadoDeAceptacion> {
+export async function aceptarInvitacionDeUsuarioDelToken(
+  entrada: { token: string; usuario: { id: string; email: string }; ahora?: Date },
+  requierePermiso: ExigirGestionDeUsuarios,
+): Promise<ResultadoDeAceptacion> {
   const ahora = entrada.ahora ?? new Date();
   const vista = await invitacionDelToken(entrada.token, ahora);
   if (!vista || vista.estado !== "PENDIENTE" || vista.tipo !== TIPO_INVITACION_USUARIO) return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };

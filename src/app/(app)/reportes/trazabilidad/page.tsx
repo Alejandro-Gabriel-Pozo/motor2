@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { buscarOperacionesPorProducto, obtenerOperacionPorId } from "@/core/reportes/public-servidor";
 import { TablaOperacionesEncontradas, TablaItemsOperacion } from "./tabla-trazabilidad";
 import { BotonAnularVenta } from "./boton-anular-venta";

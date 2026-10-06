@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { baseDeTest, limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
-import { accionesQueElUsuarioPuedeVer } from "../../src/core/permisos/gate";
+import { accionesQueElUsuarioPuedeVer } from "../../src/server/acceso/gate";
 import { GRUPOS_NAV, RUTA_INICIO, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso } from "../../src/core/navegacion/estructura";
-import { pantallaDeInicio, tarjetasDelUsuario } from "../../src/core/navegacion/inicio";
+import { pantallaDeInicio, tarjetasDelUsuario } from "../../src/server/acceso/menu";
 import { ACCIONES, type AccionClave, type AccionDeSucursal } from "../../src/core/permisos/acciones";
 
 const CLAVES_REPORTES: AccionDeSucursal[] = ["reporte_resumen", "reporte_perdidas", "reporte_vencimientos", "reporte_sin_receta"];

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { formatearCuit } from "@/core/fiscal/public";
 import { obtenerProveedorPorId } from "@/server/consultas/catalogo/proveedores";
 import { ProveedorForm, type ProveedorExistente } from "../../proveedor-form";

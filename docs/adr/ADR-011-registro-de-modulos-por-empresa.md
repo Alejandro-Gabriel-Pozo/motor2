@@ -136,3 +136,13 @@ rol en una empresa completa; ese test tiene que seguir verde después del regist
 - Se agrega una dependencia nueva de cada pedido (los módulos de la empresa), mitigada leyéndola una sola vez.
 - Una empresa nueva queda con **solo el núcleo** hasta que la plataforma le asigne un plan o módulos: el alta nunca otorga módulos por defecto.
 - Las pruebas de integración y e2e crean empresas de prueba con todos los módulos activos, para no volver a escribir cada fixture.
+
+## Actualización 2026-10-06 (Pureza, Fase 3): el guard se separa en decisión pura y cáscara que lee
+
+El guard de acceso dejó de vivir en `core/permisos` mezclando cálculo y lectura de la base:
+
+- **La decisión es pura y sigue en `core/permisos/`**: `decision-de-acceso.ts` (el orden membresía → módulo → capacidad → rol, el piso sobre la fila, los niveles de empresa con el piso gerente, los motivos de denegación) y `modulo-de-la-accion.ts` (qué módulos tiene una empresa dadas sus filas, si una acción es de un módulo que no tiene). Son P0: sin Prisma, base, reloj ni framework.
+- **La cáscara que lee vive en `server/acceso/`** (lista cerrada, todos con `import "server-only"`): `gate.ts` lee lo mismo que antes, en el mismo orden y con las mismas consultas, y le pasa los hechos a la decisión; `modulos-de-empresa.ts` es el único lector del registro (`ModuloEmpresa`, con `cache` por pedido); `menu.ts` arma el menú y la pantalla de inicio; `politica-de-empresa.ts` lee la política de plataforma. La cáscara **no compara ningún rol ni nivel**: por eso `acceso-solo-por-el-guard.test.ts` la analiza sin ninguna excepción. La regla `acceso-capa` le prohíbe importar la UI, las acciones, las consultas, las lecturas, la persistencia, `lib/db`, Next y la sesión.
+- **Red de seguridad**: `test/permisos/caracterizacion-del-acceso.test.ts` congela, contra Postgres real, la respuesta de todas las funciones del gate para las 124 acciones × 9 usuarios con casos borde × 4 registros de módulos, y cuántas consultas hace cada llamada (`caracterizacion/matriz-de-acceso.txt`, versionado; regenerarlo exige una variable explícita). Quedó idéntica en toda la mudanza.
+- La aceptación de una invitación de usuario recibe el guard por parámetro y un test de AST fija que la única llamada de producción le pasa el `requierePermiso` real.
+- Pendiente (tramo C): el lector de capacidades (`core/permisos/capacidades-sucursal.ts`) pasa a `server/acceso/` cuando el embudo del precio local salga de `core`.

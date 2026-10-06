@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { actualizarActivaProveedor, listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { IconoDeAccion } from "@/components/iconos";

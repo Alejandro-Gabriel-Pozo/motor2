@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { crearMozo, entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { anularItemEnviado } from "../../src/server/actions/pos/cuenta-anulacion";
 import { obtenerMapaDeMesas } from "../../src/server/consultas/pos/mesas";
-import { listarRegistrosAuditoria } from "../../src/core/permisos/auditoria";
+import { listarRegistrosAuditoria } from "../../src/server/consultas/permisos/auditoria";
 
 /**
  * Anulación de un ítem ya enviado a cocina (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 5): fila

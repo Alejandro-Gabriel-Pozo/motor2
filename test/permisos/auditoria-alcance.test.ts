@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { crearMembresia } from "../setup/membresia";
-import { listarRegistrosAuditoria, registrarCambioAuditado, sucursalesVisiblesDeAuditoria } from "../../src/core/permisos/auditoria";
+import { registrarCambioAuditado } from "../../src/core/permisos/auditoria";
+import { listarRegistrosAuditoria, sucursalesVisiblesDeAuditoria } from "../../src/server/consultas/permisos/auditoria";
 import { esGerenteDeEmpresa } from "../../src/core/permisos/rol-empresa";
 
 /**

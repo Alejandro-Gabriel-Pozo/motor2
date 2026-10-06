@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { textoDeDenegacion } from "../../src/core/permisos/motivos";
-import { denegado } from "../../src/core/permisos/gate";
+import { denegado } from "../../src/server/acceso/gate";
 
 /**
  * Los textos de SIN_CAPACIDAD y SIN_PERMISO son los de siempre, palabra por palabra: unas 75 pantallas muestran `gate.mensaje` tal cual y

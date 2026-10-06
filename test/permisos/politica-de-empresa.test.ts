@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
-import { MENSAJE_PERMISOS_DE_PLATAFORMA, PERFILES_DE_POLITICA, politicaDeEmpresa } from "../../src/core/permisos/politica-de-empresa";
+import { MENSAJE_PERMISOS_DE_PLATAFORMA, PERFILES_DE_POLITICA } from "../../src/core/permisos/politica-de-empresa";
+import { politicaDeEmpresa } from "../../src/server/acceso/politica-de-empresa";
 
 afterAll(() => prismaAdmin.$disconnect());
 beforeEach(limpiarBaseDeTest);

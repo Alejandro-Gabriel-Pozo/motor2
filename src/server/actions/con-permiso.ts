@@ -1,8 +1,8 @@
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { denegado, requierePermiso, requierePermisoDeEmpresa, type ResultadoGate } from "@/core/permisos/gate";
+import { denegado, requierePermiso, requierePermisoDeEmpresa, type ResultadoGate } from "@/server/acceso/gate";
 import { limitadorMutaciones } from "@/core/permisos/limitador-tasa";
-import { politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
+import { politicaDeEmpresa } from "@/server/acceso/politica-de-empresa";
 import type { AccionDeEmpresa, AccionDeSucursal } from "@/core/permisos/acciones";
 import { error, type ContextoDeAccion, type ResultadoAccion } from "./tipos";
 

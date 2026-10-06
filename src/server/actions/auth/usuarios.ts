@@ -3,7 +3,7 @@
 import { texto } from "@/core/texto";
 import type { TipoDeInvitacion } from "@/core/features/empresa/invitacion";
 import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion, revocarInvitacionPendiente, rotarInvitacionPendiente } from "@/core/features/empresa/invitacion-de-usuario";
-import { requierePermiso } from "@/core/permisos/gate";
+import { requierePermiso } from "@/server/acceso/gate";
 import { transferirGerenciaDeEmpresa } from "@/core/permisos/gerencia";
 import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import {

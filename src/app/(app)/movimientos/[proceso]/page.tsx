@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVer } from "@/server/acceso/gate";
 import { ACCION_POR_PROCESO, obtenerConfigProceso } from "@/core/movimientos/public";
 import { listarProveedores } from "@/server/actions/catalogo/proveedores";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";

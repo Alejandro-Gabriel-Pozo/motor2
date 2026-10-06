@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { generarReporteHuecosCatalogo, obtenerProblemasUnidadMezclada } from "../../src/core/reportes/huecos-catalogo";
-import { requierePermisoVerDeEmpresa } from "../../src/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "../../src/server/acceso/gate";
 
 describe("generarReporteHuecosCatalogo", () => {
   let sucursalId: string;

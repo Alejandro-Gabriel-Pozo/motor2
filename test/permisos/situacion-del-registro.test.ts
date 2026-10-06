@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { activarTodosLosModulos, fijarModulosActivos } from "../setup/modulos";
-import { situacionDelRegistroDeModulos } from "../../src/core/permisos/modulos-de-empresa";
+import { situacionDelRegistroDeModulos } from "../../src/server/acceso/modulos-de-empresa";
 
 /** P8: el aviso del shell distingue una empresa sin ninguna fila (SIN_REGISTRO) de una con filas pero sin vendible disponible. */
 const situacion = () => situacionDelRegistroDeModulos(EMPRESA_POR_DEFECTO_ID, prisma);

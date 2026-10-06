@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prismaAdmin, 
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { crearRol, renombrarRol, actualizarActivoRol } from "../../src/server/actions/permisos/roles";
-import { listarRegistrosAuditoria } from "../../src/core/permisos/auditoria";
+import { listarRegistrosAuditoria } from "../../src/server/consultas/permisos/auditoria";
 import { esRolAdmin } from "../../src/core/permisos/jerarquia";
 import { mensajeSiNombreDeRolNoPermitido, normalizarNombreDeRol } from "../../src/core/permisos/nombres-de-rol";
 

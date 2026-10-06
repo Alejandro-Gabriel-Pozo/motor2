@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
-import { requierePermiso, requierePermisoDeEmpresa, requierePermisoVer, obtenerMiNivelPermiso } from "../../src/core/permisos/gate";
+import { requierePermiso, requierePermisoDeEmpresa, requierePermisoVer, obtenerMiNivelPermiso } from "../../src/server/acceso/gate";
 
 // Especificación migrada desde Tests.js (~testRequierePermiso*/testSucursalTieneCapacidad*)
 // — mismos casos borde de negocio, contra el schema Postgres nuevo en vez

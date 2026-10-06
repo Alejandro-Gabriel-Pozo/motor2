@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { type ItemDeCuenta, type ItemEnEnvio, armarComandas, formatearCantidad, formatearMonto, nombreDeMesa } from "@/core/pos/public";
 import { obtenerDetalleDeMesa } from "@/server/consultas/pos/detalle-de-mesa";
 import { obtenerTicketsRecientes } from "@/server/consultas/pos/tickets";

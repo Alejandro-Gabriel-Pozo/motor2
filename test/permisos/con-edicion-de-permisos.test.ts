@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 const politica = vi.hoisted(() => ({ permisosEditables: true }));
-vi.mock("../../src/core/permisos/politica-de-empresa", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../src/core/permisos/politica-de-empresa")>()),
+vi.mock("../../src/server/acceso/politica-de-empresa", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/server/acceso/politica-de-empresa")>()),
   politicaDeEmpresa: vi.fn(async () => ({ permisosEditables: politica.permisosEditables })),
 }));
 

@@ -1,7 +1,7 @@
 import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { crearSucursalConAdmin, actualizarActivoSucursal, renombrarSucursal, listarSucursales } from "@/server/actions/auth/sucursales";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { FormConResultado } from "@/components/form-con-resultado";

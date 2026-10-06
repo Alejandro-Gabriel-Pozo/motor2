@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { type SucursalPortalAdmin, CLAVES_PORTAL_V1, urlCartaPublicaConEmpresaUnica } from "@/core/carta/public";
 import { cargarAdminPortal, cargarPortalEmpresaAdmin } from "@/server/consultas/carta/admin";
 import { entradasVistaPreviaPortal } from "@/core/carta/public";

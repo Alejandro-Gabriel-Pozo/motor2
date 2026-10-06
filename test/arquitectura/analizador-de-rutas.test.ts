@@ -8,7 +8,7 @@ import { analizarCron, analizarLayoutProtegido, analizarPagina } from "./guardas
 
 const IMPORTS_PAGINA = `
   import { obtenerContextoUsuario } from "@/core/auth/contexto";
-  import { requierePermisoVer } from "@/core/permisos/gate";
+  import { requierePermisoVer } from "@/server/acceso/gate";
   import { leerCosas } from "@/core/cosas/leer";
 `;
 
@@ -174,7 +174,7 @@ describe("analizarPagina", () => {
   it("acepta la guarda de empresa y los nombres de variable propios (gateEditar)", () => {
     const fuente = `
       import { obtenerContextoUsuario } from "@/core/auth/contexto";
-      import { requierePermisoDeEmpresa } from "@/core/permisos/gate";
+      import { requierePermisoDeEmpresa } from "@/server/acceso/gate";
       export default async function P() {
         const ctx = await obtenerContextoUsuario();
         const gateEditar = await requierePermisoDeEmpresa(ctx.usuarioId, "x", ctx.db);

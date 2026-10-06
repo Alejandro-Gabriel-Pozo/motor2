@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { actualizarCapacidad, listarCapacidades } from "@/server/actions/permisos/capacidades-sucursal";
 import type { AccionClave } from "@/core/permisos/acciones";
 import { AvisosDeAccion, FormConAviso } from "@/components/avisos-de-accion";

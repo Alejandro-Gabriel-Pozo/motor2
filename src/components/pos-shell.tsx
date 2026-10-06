@@ -1,6 +1,6 @@
 import { EnlaceAdministracion } from "@/components/enlace-administracion";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { navegacionDelUsuario } from "@/core/navegacion/inicio";
+import { navegacionDelUsuario } from "@/server/acceso/menu";
 import { signOut } from "@/lib/auth";
 import { SelectorSucursal } from "./selector-sucursal";
 

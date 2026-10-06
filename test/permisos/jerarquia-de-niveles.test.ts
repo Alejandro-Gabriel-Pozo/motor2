@@ -14,7 +14,7 @@ import {
   requierePermisoDeEmpresa,
   requierePermisoVer,
   requierePermisoVerDeEmpresa,
-} from "../../src/core/permisos/gate";
+} from "../../src/server/acceso/gate";
 import { nivelDeRolPorClave, rolAlcanzaLaAccion } from "../../src/core/permisos/jerarquia";
 import { esCeldaFueraDeNivel, SIN_PERMISO } from "../../src/core/permisos/matriz";
 import { guardarPermisos } from "../../src/server/actions/permisos/permisos";

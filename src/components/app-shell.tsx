@@ -1,9 +1,9 @@
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { signOut } from "@/lib/auth";
 import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso, hrefsDelMenu } from "@/core/navegacion/estructura";
-import { accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
-import { situacionDelRegistroDeModulos } from "@/core/permisos/modulos-de-empresa";
-import { politicaDeEmpresa } from "@/core/permisos/politica-de-empresa";
+import { accionesDelMenuQueElUsuarioPuedeVer } from "@/server/acceso/gate";
+import { situacionDelRegistroDeModulos } from "@/server/acceso/modulos-de-empresa";
+import { politicaDeEmpresa } from "@/server/acceso/politica-de-empresa";
 import { Suspense } from "react";
 import { after } from "next/server";
 import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacionSinRomper } from "@/core/reportes/public-servidor";

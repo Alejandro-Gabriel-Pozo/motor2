@@ -1,7 +1,7 @@
 import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import {
   crearUnidad,
   actualizarActivaUnidad,

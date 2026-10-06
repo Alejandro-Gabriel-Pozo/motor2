@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { obtenerMiNivelPermiso, requierePermisoVer } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { listarInvitacionesPendientes, listarUsuariosDeSucursal } from "@/server/actions/auth/usuarios";
 import { listarSucursales } from "@/server/actions/auth/sucursales";
 import { listarRolesActivos } from "@/server/consultas/permisos/roles";

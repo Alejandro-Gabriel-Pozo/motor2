@@ -1,8 +1,9 @@
+import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
+import { accionesDelMenuQueElUsuarioPuedeVer } from "@/server/acceso/gate";
 import type { AccionClave } from "@/core/permisos/acciones";
-import { GRUPOS_NAV, accionesDeNavegacion, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso, type GrupoNav } from "./estructura";
-import { tarjetasDeInicio, type TarjetaInicio } from "./tarjetas-inicio";
+import { GRUPOS_NAV, accionesDeNavegacion, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso, type GrupoNav } from "@/core/navegacion/estructura";
+import { tarjetasDeInicio, type TarjetaInicio } from "@/core/navegacion/tarjetas-inicio";
 
 async function menuVisibleDe(ctx: ContextoUsuario): Promise<GrupoNav[]> {
   const puedeVer = await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, accionesDelMenu(), ctx.db);

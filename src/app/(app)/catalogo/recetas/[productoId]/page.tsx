@@ -3,7 +3,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { obtenerMiNivelPermiso, requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
+import { obtenerMiNivelPermiso, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import {
   obtenerRecetaVigente,
   agregarIngredienteAReceta,

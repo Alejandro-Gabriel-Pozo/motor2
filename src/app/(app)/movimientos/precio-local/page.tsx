@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVer } from "@/core/permisos/gate";
+import { requierePermisoVer } from "@/server/acceso/gate";
 import { listarPreciosLocales, setPrecioLocalProducto } from "@/server/actions/movimientos/precio-local";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import { FormConResultado } from "@/components/form-con-resultado";
