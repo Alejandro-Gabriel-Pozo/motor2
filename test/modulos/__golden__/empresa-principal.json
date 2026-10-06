@@ -76,13 +76,13 @@
         "ver_stock"
       ],
       "menu": [
-        "administracion|/administracion/empresa",
         "administracion|/administracion/usuarios",
         "administracion|/administracion/roles",
         "administracion|/administracion/permisos",
         "administracion|/administracion/capacidades-sucursal",
         "administracion|/administracion/sucursales",
         "administracion|/administracion/auditoria",
+        "administracion|/administracion/empresa",
         "administracion|/administracion/gerencia",
         "catalogo|/catalogo/productos",
         "catalogo|/catalogo/proveedores",
@@ -151,11 +151,11 @@
         "pos|/mesas"
       ],
       "panelEmpresa": [
-        "administracion|/administracion/empresa",
         "administracion|/administracion/roles",
         "administracion|/administracion/permisos",
         "administracion|/administracion/capacidades-sucursal",
         "administracion|/administracion/sucursales",
+        "administracion|/administracion/empresa",
         "administracion|/administracion/gerencia",
         "catalogo|/catalogo/productos",
         "catalogo|/catalogo/proveedores",
@@ -331,13 +331,13 @@
     }
   },
   "menuCompleto": [
-    "/administracion/empresa",
     "/administracion/usuarios",
     "/administracion/roles",
     "/administracion/permisos",
     "/administracion/capacidades-sucursal",
     "/administracion/sucursales",
     "/administracion/auditoria",
+    "/administracion/empresa",
     "/administracion/gerencia",
     "/catalogo/productos",
     "/catalogo/proveedores",
