@@ -45,7 +45,7 @@ interface UsoSobreOperacion {
 /** Los ÚNICOS lugares donde se actualiza una `Operacion`. Agregar uno es una decisión de arquitectura: va con su motivo y su ADR/plan. */
 const USOS_PERMITIDOS_DE_OPERACION: UsoSobreOperacion[] = [
   {
-    archivo: "src/core/movimientos/idempotencia.ts",
+    archivo: "src/server/persistencia/movimientos/idempotencia.ts",
     operaciones: ["update"],
     columnas: ["resultadoMensaje"],
     motivo: "I3: guarda el mensaje de resultado ya formateado en la operación que lleva la clave, para que un reenvío exacto lo devuelva tal cual.",

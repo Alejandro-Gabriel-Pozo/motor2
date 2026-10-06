@@ -1,13 +1,8 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { DatosVentaInput, ResultadoRegistrarVenta } from "@/core/features/ventas/venta.schema";
-import {
-  conTransaccionSerializable,
-  calcularPayloadHash,
-  chequearIdempotencia,
-  MENSAJE_CONFLICTO_IDEMPOTENCIA,
-  registrarVentaEnTx,
-} from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable, calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA, registrarVentaEnTx } from "@/core/movimientos/public-servidor";
+import { chequearIdempotencia } from "@/server/persistencia/movimientos/idempotencia";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
 

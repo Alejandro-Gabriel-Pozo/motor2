@@ -2,7 +2,8 @@ import { isDeepStrictEqual } from "node:util";
 import { beforeEach, describe, expect, it } from "vitest";
 import fc from "fast-check";
 import { baseDeTest, limpiarBaseDeTest, prisma } from "../setup/test-db";
-import { calcularPayloadHash, chequearIdempotencia, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
+import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
+import { chequearIdempotencia } from "../../src/server/persistencia/movimientos/idempotencia";
 import { esClaveIdempotenciaValida } from "../../src/core/datos/clave-idempotencia";
 import { conTransaccionSerializable } from "../../src/core/movimientos/con-reintento";
 

@@ -18,7 +18,8 @@
  */
 export { conTransaccionSerializable, esChoqueDeIndiceUnico, esConflictoDeEscritura } from "./con-reintento";
 export { conReintento } from "./reintentar";
-export { MENSAJE_CONFLICTO_IDEMPOTENCIA, calcularPayloadHash, chequearIdempotencia, registrarResultadoIdempotente } from "./idempotencia";
+export { MENSAJE_CONFLICTO_IDEMPOTENCIA, calcularPayloadHash, decidirIdempotencia } from "./idempotencia";
+export type { ResultadoChequeoIdempotencia } from "./idempotencia";
 export { MENSAJE_FACTURA_DUPLICADA, esChoqueDeFacturaUnica } from "./factura-unica";
 export {
   calcularSaldoPorLote,

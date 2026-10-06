@@ -3,15 +3,8 @@ import type { Prisma } from "@prisma/client";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { texto } from "@/core/texto";
 import { validarCantidad } from "@/core/datos/cantidad";
-import {
-  calcularSaldoPorLote,
-  obtenerSeccionPropia,
-  conTransaccionSerializable,
-  calcularPayloadHash,
-  chequearIdempotencia,
-  registrarResultadoIdempotente,
-  MENSAJE_CONFLICTO_IDEMPOTENCIA,
-} from "@/core/movimientos/public-servidor";
+import { calcularSaldoPorLote, obtenerSeccionPropia, conTransaccionSerializable, calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComandoReclasificarStock, ResultadoReclasificarStock } from "@/core/features/movimientos/reclasificacion.schema";

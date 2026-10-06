@@ -43,7 +43,6 @@ export const PUREZA_HEREDADA_DEL_NUCLEO: Record<string, EntradaDePurezaHeredada>
   "src/core/movimientos/anulaciones.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/armar-filas-de-movimiento.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/con-reintento.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
-  "src/core/movimientos/idempotencia.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase", "escribeEnLaBase"], pendiente: "Fase 4: la escritura sale a un caso de uso (server/persistencia); el cálculo queda puro" },
   "src/core/movimientos/origen-venta-datos.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
   "src/core/movimientos/precio-venta.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/producto-cache.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },

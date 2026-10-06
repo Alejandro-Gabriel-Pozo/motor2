@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import type { Prisma } from "@prisma/client";
 
 /**
  * I3 (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md) — mecanismo
@@ -51,38 +50,13 @@ export type ResultadoChequeoIdempotencia =
   | { estado: "conflicto" };
 
 /**
- * §3/§7: se llama DENTRO de `conTransaccionSerializable`, antes de ejecutar
- * cualquier lógica de negocio. `claveIdempotencia` ausente (rollout
- * gradual, §9.3) → siempre "nueva", el mecanismo queda deshabilitado para
- * ese intento. §11.3 — "fail closed": si se encontrara una fila con la
- * clave pero sin payloadHash/resultadoMensaje (no debería poder ocurrir,
- * se escriben siempre juntos), se trata como conflicto, nunca como
- * duplicado.
+ * La decisión del chequeo (§3/§7, §11.3 «fail closed»), pura: dada la fila que ya lleva la clave (o ninguna) y el hash del intento actual. Sin fila → «nueva»;
+ * misma huella y resultado ya guardado → «duplicado» (se devuelve el mensaje ORIGINAL); cualquier otra cosa — otra huella, o una fila con la clave pero sin
+ * `payloadHash`/`resultadoMensaje` (no debería poder ocurrir: se escriben siempre juntos) → «conflicto», nunca duplicado. Quien LEE la fila y la guarda
+ * es `server/persistencia/movimientos/idempotencia.ts` (`chequearIdempotencia`, `registrarResultadoIdempotente`).
  */
-export async function chequearIdempotencia(
-  tx: Prisma.TransactionClient,
-  claveIdempotencia: string | undefined,
-  payloadHash: string
-): Promise<ResultadoChequeoIdempotencia> {
-  if (!claveIdempotencia) return { estado: "nueva" };
-
-  const existente = await tx.operacion.findUnique({
-    where: { claveIdempotencia },
-    select: { payloadHash: true, resultadoMensaje: true },
-  });
+export function decidirIdempotencia(existente: { payloadHash: string | null; resultadoMensaje: string | null } | null, payloadHash: string): ResultadoChequeoIdempotencia {
   if (!existente) return { estado: "nueva" };
-
-  if (existente.payloadHash === payloadHash && existente.resultadoMensaje !== null) {
-    return { estado: "duplicado", mensaje: existente.resultadoMensaje };
-  }
+  if (existente.payloadHash === payloadHash && existente.resultadoMensaje !== null) return { estado: "duplicado", mensaje: existente.resultadoMensaje };
   return { estado: "conflicto" };
-}
-
-/**
- * §3/§7: guarda el mensaje de resultado YA FORMATEADO en la operación que lleva la clave, para que un reenvío exacto lo devuelva tal cual
- * (`chequearIdempotencia` → "duplicado"). Se llama DENTRO de la misma transacción, al final, solo cuando hay clave. Primer uso: el caso de
- * uso `anularCompra` (Task #41, Fase M); las demás acciones I3 siguen escribiendo `resultadoMensaje` en línea hasta migrar.
- */
-export async function registrarResultadoIdempotente(tx: Prisma.TransactionClient, operacionId: string, mensaje: string): Promise<void> {
-  await tx.operacion.update({ where: { id: operacionId }, data: { resultadoMensaje: mensaje } });
 }
