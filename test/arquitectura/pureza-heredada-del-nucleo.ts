@@ -52,7 +52,7 @@ export const PUREZA_HEREDADA_DEL_NUCLEO: Record<string, EntradaDePurezaHeredada>
   "src/core/movimientos/stock.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
   "src/core/movimientos/transiciones.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/ui-config.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
-  "src/core/permisos/auditoria.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase", "escribeEnLaBase"], pendiente: "Fase 4: la escritura sale a un caso de uso (server/persistencia); el cálculo queda puro" },
+  "src/core/permisos/auditoria.ts": { nivel: "P3", senales: ["prismaDeTipo", "escribeEnLaBase"], pendiente: "Fase 4: la escritura sale a un caso de uso (server/persistencia); el cálculo queda puro" },
   "src/core/permisos/capacidades-sucursal.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
   "src/core/permisos/gate.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 3: la lectura sale a server/consultas o a un puerto; el cálculo queda puro" },
   "src/core/permisos/gerencia.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase", "escribeEnLaBase"], pendiente: "Fase 4: la escritura sale a un caso de uso (server/persistencia); el cálculo queda puro" },

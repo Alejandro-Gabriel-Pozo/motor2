@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularVenta, registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { listarRegistrosAuditoria } from "../../src/core/permisos/auditoria";
+import { listarRegistrosAuditoria } from "../../src/server/consultas/permisos/auditoria";
 import { registrarVentaEnTx } from "../../src/core/movimientos/registrar-venta";
 
 /** `anularVenta` deja rastro en la auditoría administrativa, igual que `anularCompra`. */
