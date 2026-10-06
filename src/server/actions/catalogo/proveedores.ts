@@ -10,7 +10,7 @@ import {
   validarTextoLibre,
 } from "@/core/datos/limites";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { validarCuit } from "@/core/fiscal/cuit";
+import { validarCuit } from "@/core/fiscal/public";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";

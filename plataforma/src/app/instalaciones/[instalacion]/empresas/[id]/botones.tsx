@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { normalizarCuit, formatearCuit } from "@/core/fiscal/cuit";
+import { normalizarCuit, formatearCuit } from "@/core/fiscal/public";
 import { confirmar, corregirCuit, invitarOtraVez, quitarCuit, reactivar, reenviar, reenviarAviso, revocar, suspender, type EstadoDeFormulario } from "../acciones";
 import { BotonConConfirmacion } from "./confirmacion";
 

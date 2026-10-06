@@ -8,7 +8,7 @@
  */
 
 /** Dominios de NEGOCIO: carpetas con lógica/estado propio que no deberían filtrarse fuera por sus archivos internos. */
-const DOMINIOS_DE_NEGOCIO = ["catalogo", "movimientos", "reportes", "pos", "stock", "compras", "carta"];
+const DOMINIOS_DE_NEGOCIO = ["catalogo", "movimientos", "reportes", "pos", "stock", "compras", "carta", "fiscal"];
 
 /** Infraestructura transversal: sin "internals" que proteger. Cada una con el motivo de por qué no es un dominio de negocio. */
 const INFRA_TRANSVERSAL = {
@@ -20,7 +20,6 @@ const INFRA_TRANSVERSAL = {
   navegacion: "estructura del menú: la leen las pantallas y los shells.",
   modulos: "catálogo de módulos y su clausura por dependencias (ADR-011/014/015): puro, lo consumen la guarda, el menú y la consola de plataforma.",
   precios: "sincronización de precios: una sola pieza, sin dominio propio todavía; si crece, pasa a DOMINIOS_DE_NEGOCIO con su fachada.",
-  fiscal: "identificadores fiscales puros (CUIT); si crece con ARCA pasa a DOMINIOS_DE_NEGOCIO con su fachada (mismo criterio que precios).",
   tiempo: "zona horaria de la empresa: formato de horas y límites de día con Intl; puro, lo consumen reportes, POS y validaciones de fecha.",
   seguridad: "cabeceras HTTP y auditoría de dependencias: se consumen desde la configuración y los scripts.",
   correo: "envío de mails por canal (avisos / operativo): interfaz con implementaciones Resend, consola y memoria (E3, ADR-018); lo consumen las acciones de servidor y el arranque.",

@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { formatearCuit } from "@/core/fiscal/cuit";
+import { formatearCuit } from "@/core/fiscal/public";
 import { requierePermisoVerDeEmpresa } from "@/core/permisos/gate";
 import { obtenerPerfilDeEmpresa } from "@/server/consultas/empresa/perfil";
 

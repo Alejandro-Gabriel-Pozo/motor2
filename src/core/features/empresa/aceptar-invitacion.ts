@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import { validarCuit } from "@/core/fiscal/cuit";
+import { validarCuit } from "@/core/fiscal/public";
 import { incorporarPrimerGerente } from "@/core/permisos/gerencia";
 import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";

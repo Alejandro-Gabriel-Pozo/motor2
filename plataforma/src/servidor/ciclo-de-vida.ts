@@ -1,8 +1,8 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { confirmarAltaSchema, corregirCuitSchema, mensajeDeEmpresaActiva, motivoSchema } from "@/core/features/empresa/ciclo-de-vida";
 import { esTransicionValida, type EstadoEmpresa } from "@/core/features/empresa/empresa.schema";
-import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "@/core/fiscal/factura-autorizada";
-import { formatearCuit, validarCuit } from "@/core/fiscal/cuit";
+import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "@/core/fiscal/public-servidor";
+import { formatearCuit, validarCuit } from "@/core/fiscal/public";
 import { esChoqueDeIndiceUnico } from "@/core/movimientos/con-reintento";
 import { obtenerGerenteDeEmpresa } from "@/core/permisos/gerencia";
 import type { Db } from "@/lib/db-tipos";

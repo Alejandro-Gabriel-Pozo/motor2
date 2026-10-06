@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { accionesDeCicloDeVida } from "@/core/features/empresa/ciclo-de-vida";
-import { formatearCuit } from "@/core/fiscal/cuit";
-import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "@/core/fiscal/factura-autorizada";
+import { formatearCuit } from "@/core/fiscal/public";
+import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "@/core/fiscal/public-servidor";
 import { dbDeInstalacion } from "../../../../../db";
 import { rutaDeEmpresa, rutaDeEmpresas } from "../../../../../rutas";
 import { contextoDePagina } from "../../../../../servidor/contexto";

@@ -5,7 +5,7 @@ import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa, accionesDelMenuQueElUsuarioPuedeVer } from "@/core/permisos/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarProductosQueLeCompran, obtenerFichaProveedor } from "@/server/consultas/catalogo/proveedores";
-import { formatearCuit } from "@/core/fiscal/cuit";
+import { formatearCuit } from "@/core/fiscal/public";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
