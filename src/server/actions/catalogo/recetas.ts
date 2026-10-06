@@ -1,8 +1,8 @@
 "use server";
 
 import { refrescarVistaSiHaceFalta } from "../refrescar";
-import { ALCANCE_CENTRAL, cargarHistorialDeVersiones, cargarRecetaVigente, esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/public";
-import { INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput, type CabeceraRecetaInput, type IngredienteInput, type PasoInput } from "@/core/catalogo/public-servidor";
+import { esPermutacionExacta, aplicarSecuencia, insertarEnPosicion } from "@/core/catalogo/public";
+import { ALCANCE_CENTRAL, cargarHistorialDeVersiones, cargarRecetaVigente, INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput, type CabeceraRecetaInput, type IngredienteInput, type PasoInput } from "@/core/catalogo/public-servidor";
 import { guardComandoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";

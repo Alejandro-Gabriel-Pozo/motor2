@@ -1,5 +1,5 @@
-import { calcularStockConsolidado, type EstadoStockConsolidado } from "@/core/stock/consolidado";
-import { calcularAlertasStock } from "@/core/stock/alertas";
+import type { EstadoStockConsolidado } from "@/core/stock/public";
+import { calcularStockConsolidado, calcularAlertasStock } from "@/core/stock/public-servidor";
 import type { Db } from "./comun";
 import { generarReporteDiferenciasAjustes } from "./diferencias-ajustes";
 import { generarReporteInsumosSinRecetaVinculada } from "./insumos-sin-receta";

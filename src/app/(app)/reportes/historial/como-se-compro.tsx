@@ -2,7 +2,7 @@
 
 import { IconoDeAccion } from "@/components/iconos";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaCompraHistorial, ResumenCompras } from "@/core/reportes/historial-vistas";
+import type { FilaCompraHistorial, ResumenCompras } from "@/core/reportes/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
 
 function armarProsa(r: ResumenCompras, unidad: string, mostrarDinero: boolean): string {

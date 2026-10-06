@@ -2,8 +2,8 @@
 
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaSaludProducto } from "@/core/reportes/salud-por-producto";
-import { ESTADO_STOCK_CONSOLIDADO_LABEL, ESTADO_STOCK_CONSOLIDADO_COLOR } from "@/core/stock/estado-consolidado-ui";
+import type { FilaSaludProducto } from "@/core/reportes/public";
+import { ESTADO_STOCK_CONSOLIDADO_LABEL, ESTADO_STOCK_CONSOLIDADO_COLOR } from "@/core/stock/public";
 
 const COLUMNAS: ColumnaReporte<FilaSaludProducto>[] = [
   {

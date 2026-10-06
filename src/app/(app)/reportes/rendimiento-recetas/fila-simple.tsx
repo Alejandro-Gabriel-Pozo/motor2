@@ -8,9 +8,8 @@ import { AyudaIcono } from "@/components/ayuda-campo";
 import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { fijarRendimientoLocal, volverAlRendimientoCentral } from "@/server/actions/catalogo/rendimiento-local";
-import { ETIQUETA_ROTULO, desvioEsNotable, explicarConfianza, type Confianza, type RotuloLinea } from "@/core/reportes/rendimiento-recetas-vistas";
+import { ETIQUETA_ROTULO, desvioEsNotable, explicarConfianza, type Confianza, type RotuloLinea, type MetodoRendimiento } from "@/core/reportes/public";
 // rendimiento-conciliado.ts es puro (sin @/lib/db, ver su propio docstring) — importable desde un componente cliente sin arrastrar Prisma al bundle.
-import type { MetodoRendimiento } from "@/core/reportes/rendimiento-conciliado";
 
 /** Mismo criterio de "fecha corta" que compras/page.tsx (`fechaCorta`) — YYYY-MM-DD, no se reinventa un formato nuevo acá. */
 const fechaCorta = (f: Date) => f.toISOString().slice(0, 10);

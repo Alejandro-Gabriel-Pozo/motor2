@@ -1,8 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { obtenerReporteMargenPromociones } from "@/core/reportes/margen-promociones";
-import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
+import { resolverRangoDeReporte } from "@/core/reportes/public";
+import { obtenerReporteMargenPromociones } from "@/core/reportes/public-servidor";
 import { SelectorRango } from "@/components/selector-rango";
 import { TablaMargenPromociones } from "./tabla-margen-promociones";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";

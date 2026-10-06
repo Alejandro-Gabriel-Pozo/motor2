@@ -4,9 +4,7 @@ import { useMemo, useRef, useState, type FormEvent, type PointerEvent as Pointer
 import { clasesFuentesCarta } from "@/components/carta-publica/fuente-carta";
 import { PortalVista } from "@/components/carta-publica/portal-vista";
 import { FormConResultado } from "@/components/form-con-resultado";
-import type { EntradaVistaPreviaPortal } from "@/core/carta/admin-consulta";
-import { decidirLayoutPortal, resolverEstiloPortal } from "@/core/carta/public";
-import { avisoImagenSinMapa, CLAVES_PORTAL_V1, validarValorPortal, ZONAS_PORTAL, type DefinicionClavePortal } from "@/core/carta/portal";
+import { type EntradaVistaPreviaPortal, decidirLayoutPortal, resolverEstiloPortal, avisoImagenSinMapa, CLAVES_PORTAL_V1, validarValorPortal, ZONAS_PORTAL, type DefinicionClavePortal } from "@/core/carta/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoColor } from "./campo-color";
 

@@ -3,7 +3,7 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { RegistrarPagoConsignante } from "./registrar-pago-consignante";
-import type { FilaDebidoConsignante, FilaStockSinVenderConsignacion } from "@/core/reportes/consignacion";
+import type { FilaDebidoConsignante, FilaStockSinVenderConsignacion } from "@/core/reportes/public";
 
 const COLUMNAS_DEBIDO: ColumnaReporte<FilaDebidoConsignante>[] = [
   { clave: "proveedor", etiqueta: "Proveedor", valor: (d) => d.proveedor, render: (d) => d.proveedor },

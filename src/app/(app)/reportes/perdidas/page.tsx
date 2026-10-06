@@ -1,8 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { diasAtrasDeUrl } from "@/core/reportes/dias-atras";
+import { diasAtrasDeUrl } from "@/core/reportes/public";
+import { generarReportePerdidas } from "@/core/reportes/public-servidor";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { generarReportePerdidas } from "@/core/reportes/perdidas";
 import { TablaMermas, TablaConsumoInterno } from "./tabla-perdidas";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 

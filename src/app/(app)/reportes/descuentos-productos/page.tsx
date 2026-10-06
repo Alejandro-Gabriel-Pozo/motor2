@@ -1,8 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { obtenerReporteDescuentosProductos } from "@/core/reportes/descuentos-productos";
-import { resolverRangoDeReporte } from "@/core/reportes/rango-por-defecto";
+import { resolverRangoDeReporte } from "@/core/reportes/public";
+import { obtenerReporteDescuentosProductos } from "@/core/reportes/public-servidor";
 import { SelectorRango } from "@/components/selector-rango";
 import { TablaDescuentosProductos } from "./tabla-descuentos-productos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";

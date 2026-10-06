@@ -1,10 +1,7 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
-import {
-  compararRendimientosPorSucursal,
-  type FiltroComparacionRendimiento,
-  type FilaComparacionRendimiento,
-} from "@/core/reportes/public";
+import type { FiltroComparacionRendimiento, FilaComparacionRendimiento } from "@/core/reportes/public";
+import { compararRendimientosPorSucursal } from "@/core/reportes/public-servidor";
 
 /**
  * Lecturas de Reportes › Rendimiento por sucursal para los Server Components (Task #41, Fase D7). Mismo contrato que

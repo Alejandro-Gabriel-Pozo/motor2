@@ -2,7 +2,8 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/core/permisos/gate";
-import { cargarAdminCarta, type ProductoCartaAdmin } from "@/core/carta/admin-consulta";
+import type { ProductoCartaAdmin } from "@/core/carta/public";
+import { cargarAdminCarta } from "@/core/carta/public-servidor";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "@/server/actions/carta/generos";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
@@ -14,7 +15,7 @@ import {
   guardarPrecioLocalPromoCarta,
   guardarPromoCarta,
 } from "@/server/actions/carta/promos";
-import { precioMinimoPromo } from "@/core/pos/promo-combo";
+import { precioMinimoPromo } from "@/core/pos/public";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { FormConResultado } from "@/components/form-con-resultado";

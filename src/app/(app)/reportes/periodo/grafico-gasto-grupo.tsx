@@ -1,7 +1,7 @@
 "use client";
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
-import type { FilaGastoPorGrupo } from "@/core/reportes/periodo";
+import type { FilaGastoPorGrupo } from "@/core/reportes/public";
 
 /**
  * "¿En qué se me va la plata?" (Grocy "Spendings", ver docs/grounding-

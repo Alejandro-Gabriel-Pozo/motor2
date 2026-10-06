@@ -2,9 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { TicketDeCuenta } from "@/core/pos/ticket";
-import { documentoDeReimpresion, type ComandaDeEnvio } from "@/core/pos/comanda";
-import { resolverImpresion, type DocumentoImprimible, type PedidoImpresion } from "@/core/pos/impresion";
+import { type TicketDeCuenta, documentoDeReimpresion, type ComandaDeEnvio, resolverImpresion, type DocumentoImprimible, type PedidoImpresion } from "@/core/pos/public";
 import { TicketCuenta } from "./ticket-cuenta";
 import { BOTON_CHICO } from "./estilos";
 import { TicketCocina } from "./ticket-cocina";

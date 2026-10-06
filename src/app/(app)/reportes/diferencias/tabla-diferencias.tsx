@@ -2,7 +2,7 @@
 
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaDiferenciaAjuste } from "@/core/reportes/diferencias-ajustes";
+import type { FilaDiferenciaAjuste } from "@/core/reportes/public";
 
 const LABEL_ESTADO: Record<string, string> = { REVISAR: "Revisar", ESPERADO: "Esperado", OK: "OK" };
 

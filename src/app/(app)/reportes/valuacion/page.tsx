@@ -1,9 +1,8 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { calcularValuacionInventario } from "@/core/reportes/valuacion";
+import { calcularValuacionInventario, obtenerUltimaCotizacionSinRomper } from "@/core/reportes/public-servidor";
 import { EnDolares } from "@/components/en-dolares";
-import { obtenerUltimaCotizacionSinRomper } from "@/core/reportes/cotizacion-dolar";
 import { TablaValuacionConCosto, TablaValuacionSinCosto } from "./tabla-valuacion";
 
 export default async function ValuacionPage() {

@@ -1,7 +1,7 @@
 "use client";
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaDescuentoCliente } from "@/core/reportes/descuentos-clientes";
+import type { FilaDescuentoCliente } from "@/core/reportes/public";
 
 const AYUDA_MARGEN =
   'Costo congelado al momento de cada venta, o reconstruido con el historial de compras cuando no se guardó (mismo criterio que Período/Promociones). "parcial" si alguna venta de ese cliente no se pudo costear así.';

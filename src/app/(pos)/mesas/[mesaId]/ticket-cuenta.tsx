@@ -1,6 +1,4 @@
-import type { DocumentoImprimible } from "@/core/pos/impresion";
-import { formatearNumeroTicket } from "@/core/pos/numeracion-ticket";
-import { formatearCantidad, formatearMonto } from "@/core/pos/formato";
+import { type DocumentoImprimible, formatearNumeroTicket, formatearCantidad, formatearMonto } from "@/core/pos/public";
 import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
 
 type DocumentoDeTicket = Extract<DocumentoImprimible, { ticket: unknown }>;

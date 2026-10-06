@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { calcularStockPorFamilia } from "@/core/stock/por-familia";
+import { calcularStockPorFamilia } from "@/core/stock/public-servidor";
 
 export default async function StockPorFamiliaPage() {
   const ctx = await obtenerContextoUsuario();

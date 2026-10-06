@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
-import { descripcionAuditoriaAnulacion, evaluarAnulacion, mensajeCompraAnulada } from "@/core/compras/anulacion";
+import { descripcionAuditoriaAnulacion, evaluarAnulacion, mensajeCompraAnulada } from "@/core/compras/public";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import type { ComandoAnularCompra, ResultadoAnularCompra } from "@/core/features/compras/compra.schema";
 import { detalleReversionDeCompra } from "@/core/movimientos/public";

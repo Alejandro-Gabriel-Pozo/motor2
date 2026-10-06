@@ -2,7 +2,7 @@
 
 import { IconoDeAccion } from "@/components/iconos";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { EventoHistorialProducto } from "@/core/reportes/historial-producto";
+import type { EventoHistorialProducto } from "@/core/reportes/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
 
 /** Mismo texto/estilo que la marca "Anulada" de /reportes/compras (page.tsx) — una compra o venta anulada no ocurrió, esto lo deja a la vista en vez de verse como un "movimiento fantasma". */

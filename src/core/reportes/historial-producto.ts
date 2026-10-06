@@ -1,8 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { ZONA_UTC, finDelDiaDe } from "@/core/tiempo/zona-horaria";
 import { tieneStockReal } from "@/core/movimientos/public";
-import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
-import { alcanceDeSucursal, cargarRecetaVigente, rendimientoEfectivo } from "@/core/catalogo/public";
+import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { disponibilidadDeProductos, alcanceDeSucursal, cargarRecetaVigente } from "@/core/catalogo/public-servidor";
 import { redondearCantidad, type Db } from "./comun";
 
 export interface FilaBusquedaProducto {

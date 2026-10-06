@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { generarReporteDiferenciasAjustes } from "@/core/reportes/diferencias-ajustes";
+import { generarReporteDiferenciasAjustes } from "@/core/reportes/public-servidor";
 import { TablaDiferenciasAjuste } from "./tabla-diferencias";
 
 export default async function DiferenciasPage() {

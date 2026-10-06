@@ -1,9 +1,7 @@
 "use client";
 
-import type { TicketDeCuenta } from "@/core/pos/ticket";
-import { formatearNumeroTicket } from "@/core/pos/numeracion-ticket";
+import { type TicketDeCuenta, formatearNumeroTicket, formatearMonto } from "@/core/pos/public";
 import { BOTON_CHICO } from "./estilos";
-import { formatearMonto } from "@/core/pos/formato";
 import { formatearHora } from "@/core/tiempo/zona-horaria";
 import { useImpresion } from "./imprimir";
 import { EmitirTicketCorregido } from "./emitir-ticket-corregido";

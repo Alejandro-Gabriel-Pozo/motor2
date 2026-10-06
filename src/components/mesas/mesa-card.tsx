@@ -9,7 +9,7 @@
 import Link from "next/link";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import type { ReactNode } from "react";
-import type { EstadoMesa } from "@/core/pos/mesas";
+import type { EstadoMesa } from "@/core/pos/public";
 
 export interface MesaCardProps {
   numero: number | string;

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { generarReporteConsignacion } from "@/core/reportes/consignacion";
+import { generarReporteConsignacion } from "@/core/reportes/public-servidor";
 import { TablaDebidoConsignante, TablaStockSinVenderConsignacion } from "./tabla-consignacion";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 

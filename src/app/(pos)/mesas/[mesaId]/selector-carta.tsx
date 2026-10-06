@@ -1,11 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import type { EntradaCarpetaSelectorCarta, EntradaPromoSelectorCarta, EntradaSelectorCarta, ProductoPedible, SelectorCartaPos } from "@/core/pos/selector-carta";
-import { SECCION_FUERA_DE_CARTA, type AccionSelectorCarta, type EstadoSelectorCarta } from "@/core/pos/selector-carta-estado";
-import { estaEnListaPorAgregar, listaPorAgregarLlena, type EstadoListaPorAgregar } from "@/core/pos/agregar-lista-estado";
-import { MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/cantidad-pedido";
-import { formatearMonto } from "@/core/pos/formato";
+import { type EntradaCarpetaSelectorCarta, type EntradaPromoSelectorCarta, type EntradaSelectorCarta, type ProductoPedible, type SelectorCartaPos, SECCION_FUERA_DE_CARTA, type AccionSelectorCarta, type EstadoSelectorCarta, estaEnListaPorAgregar, listaPorAgregarLlena, type EstadoListaPorAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearMonto } from "@/core/pos/public";
 
 /**
  * «Agregar al pedido» por SECCIÓN DE CARTA (docs/plan-selector-carta-pos-2026-09-25.md, §2.2), por CARPETA DE GÉNERO

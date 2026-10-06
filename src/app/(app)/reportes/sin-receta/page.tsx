@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { generarReporteVentasSinReceta } from "@/core/reportes/ventas-sin-receta";
+import { generarReporteVentasSinReceta } from "@/core/reportes/public-servidor";
 import { TablaVentasSinReceta } from "./tabla-sin-receta";
 
 export default async function VentasSinRecetaPage() {

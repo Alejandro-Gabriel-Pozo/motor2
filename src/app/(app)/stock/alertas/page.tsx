@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/core/permisos/gate";
-import { calcularAlertasStock } from "@/core/stock/alertas";
+import { calcularAlertasStock } from "@/core/stock/public-servidor";
 
 export default async function AlertasStockPage() {
   const ctx = await obtenerContextoUsuario();

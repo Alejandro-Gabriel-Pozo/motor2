@@ -126,6 +126,32 @@ const CICLOS_CONOCIDOS = [
 ];
 
 /**
+ * `ui-sin-internals-de-dominio` (Pureza Fase 2, paso 2.3): app/ y components/ importan de un dominio de negocio SOLO por su fachada
+ * (`core/<dominio>/public.ts` o `public-servidor.ts`). Estas son las que todavía importan un archivo interno. La lista solo se achica.
+ */
+const UI_CON_INTERNALS_DE_DOMINIO = [
+  {
+    ruta: "src/app/(carta-publica)/carta-publica/[empresa]/page.tsx",
+    motivo:
+      "PERMANENTE: la carta pública elige su cliente de base SIN sesión importando `core/carta/publica-sin-sesion.ts` DIRECTO; las reglas `carta-publica-aislada` y `publica-sin-sesion-solo-desde-carta-publica` exigen justamente que ese archivo no salga por ninguna fachada.",
+  },
+  {
+    ruta: "src/app/(carta-publica)/carta-publica/[empresa]/[sucursal]/page.tsx",
+    motivo: "PERMANENTE: ídem, importa `core/carta/publica-sin-sesion.ts` directo por el aislamiento de la carta pública.",
+  },
+  {
+    ruta: "src/app/(app)/reportes/ventas-por-seccion/page.tsx",
+    motivo:
+      "DEUDA (Fase 3): importa `generarReporteVentasPorSeccion` de `core/carta/reporte-secciones.ts`. Exponerlo por la fachada de carta cerraría un ciclo de fachadas carta → reportes → pos → carta (el reporte de secciones de carta vive en carta pero consume reportes). Se resuelve al mover los reportes de la Fase 3.",
+  },
+  {
+    ruta: "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/tabla-por-sucursal.tsx",
+    motivo:
+      "DEUDA (Fase 3): componente de cliente que importa `desvioEsNotable` de `core/reportes/rendimiento-por-sucursal.ts`, un archivo que además hace consultas; por la fachada de servidor arrastraría ese código al navegador. Se resuelve al separar el cálculo de la consulta en la Fase 3 (reportes).",
+  },
+];
+
+/**
  * `accion-migrada-sin-orquestacion` (Task #41, Fase M; docs/arquitectura-casos-de-uso-2026-09-27.md): NO es una lista de
  * excepciones sino la de las Server Actions YA MIGRADAS a casos de uso — la regla se aplica SOLO a estos archivos. Cada uno quedó
  * como adaptador fino (conPermiso → guard → caso de uso → aResultadoAccion): no puede volver a importar la base, Prisma en
@@ -186,6 +212,7 @@ module.exports = {
   "db-solo-desde-auth-y-carta-publica": IMPORTADORES_DE_DB,
   "base-solo-desde-lista": IMPORTADORES_DE_BASE,
   "sin-ciclos": CICLOS_CONOCIDOS,
+  "ui-sin-internals-de-dominio": UI_CON_INTERNALS_DE_DOMINIO,
   PENDIENTES_DE_MIGRAR,
   ACCIONES_CON_CASO_DE_USO,
 };

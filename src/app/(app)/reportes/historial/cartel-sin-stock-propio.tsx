@@ -1,6 +1,6 @@
 import { IconoDeAccion } from "@/components/iconos";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import type { IngredienteRecetaVigente } from "@/core/reportes/historial-producto";
+import type { IngredienteRecetaVigente } from "@/core/reportes/public";
 
 /**
  * Para un PV sin stock propio (`tieneStockReal(tipo, seProduce) === false`

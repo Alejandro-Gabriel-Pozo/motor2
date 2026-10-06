@@ -1,4 +1,3 @@
-import type { ResultadoAnulacion } from "@/core/compras/anulacion";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -32,8 +31,8 @@ export interface ComandoAnularCompra {
   claveIdempotencia: string | null;
 }
 
-/** Por qué `evaluarAnulacion` (src/core/compras/anulacion.ts) rechaza una anulación: la unión tal cual la declara `ResultadoAnulacion`. */
-export type MotivoAnulacionRechazada = Extract<ResultadoAnulacion, { ok: false }>["motivo"];
+/** Por qué `evaluarAnulacion` (src/core/compras/anulacion.ts) rechaza una anulación. Se declara ACÁ y `ResultadoAnulacion` la usa: así `core/compras` depende de su contrato (`features/compras`) y no al revés, sin ciclo. */
+export type MotivoAnulacionRechazada = "NO_ES_COMPRA" | "YA_ANULADA" | "SIN_LINEAS" | "STOCK_CONSUMIDO";
 
 export type CodigoAnularCompra = MotivoAnulacionRechazada | "NO_ENCONTRADA" | "CONFLICTO_IDEMPOTENCIA" | "ENTRADA_INVALIDA";
 

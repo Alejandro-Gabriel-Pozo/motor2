@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import type { ItemConVenta } from "@/core/pos/ticket";
+import type { ItemConVenta } from "@/core/pos/public";
 
 /**
  * Lectura de el TICKET CORREGIDO de una cuenta del salón (Task #41, Fase M12b — docs/arquitectura-casos-de-uso-2026-09-27.md; mismo

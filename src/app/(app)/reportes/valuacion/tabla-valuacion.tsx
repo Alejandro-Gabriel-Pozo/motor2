@@ -1,7 +1,7 @@
 "use client";
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { FilaValuacionInventario } from "@/core/reportes/valuacion";
+import type { FilaValuacionInventario } from "@/core/reportes/public";
 
 const COLUMNAS_CON_COSTO: ColumnaReporte<FilaValuacionInventario>[] = [
   {
