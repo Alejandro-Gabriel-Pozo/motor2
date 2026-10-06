@@ -459,7 +459,7 @@ Preview de Vercel podría migrar producción si apunta a esa base (mitigado: ver
   a los textos se les tapan emails y tokens, y se descartan cuerpo, cookies, cabeceras de autenticación, query string y datos del
   usuario. Los `console.error` de `registrar-movimiento.ts` y `conteo-fisico.ts` siguen imprimiendo el error crudo.
 - **S-20 — entorno al arrancar.** `register()` valida el entorno en producción y falla rápido: `AUTH_SECRET` de 32+ caracteres y
-  `CRON_SECRET` obligatorio. Escape de emergencia: `MOTOR2_ENTORNO_ESTRICTO=0`.
+  `CRON_SECRET` obligatorio. ~~Escape de emergencia: `MOTOR2_ENTORNO_ESTRICTO=0`.~~ **Enmienda 2026-10-06 (Pureza 0.4):** ese escape se eliminó. En Producción de Vercel el arranque se niega si `MOTOR2_ENTORNO_ESTRICTO=0` (o `MOTOR2_ROL_ESTRICTO=0`) está puesta (`escapesProhibidosEnProduccion` en `src/env.ts`); un entorno mal configurado se arregla, no se relaja.
 - **S-28 — Postgres local.** `docker-compose.yml` publica `127.0.0.1:5432:5432`, no en todas las interfaces.
 - **S-22/S-23 — topes de entrada.** `src/core/datos/limites.ts`: largo de textos libres (detalle 200, notas 500, contacto 120,
   textos de receta 2000), email con formato, topes de listas (500 líneas por operación, 100 ingredientes/pasos/destinos/productos
