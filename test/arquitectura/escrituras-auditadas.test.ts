@@ -24,7 +24,8 @@ import { describe, expect, it } from "vitest";
  * Cómo se controla: AST de TypeScript (no texto plano). Que la auditoría se escriba de verdad lo prueban los tests de cada acción.
  */
 const RAIZ = join(__dirname, "../..");
-const CARPETAS = ["src/server/actions", "src/core", "src/server/persistencia"];
+// Incluye la consola de plataforma y las operaciones de plataforma por script (auditoría de la Fase 0, 0.7): hoy no escriben `Decimal`, pero si una tabla de plataforma suma uno, que se vea.
+const CARPETAS = ["src/server/actions", "src/core", "src/server/persistencia", "plataforma/src/servidor", "src/server/operaciones-de-plataforma"];
 /** Donde buscar a quienes llaman a una escritura de la persistencia (la cadena caso de uso → persistencia). */
 const CARPETAS_DE_LLAMADORES = ["src/server", "src/core"];
 const ZONA_PERSISTENCIA = "src/server/persistencia/";
@@ -56,6 +57,8 @@ const COLUMNAS_QUE_NO_SON_DINERO: Record<string, string> = {
 
 /** `archivo|función` que escribe dinero y no audita, con el motivo. Cada una es DEUDA CONOCIDA o una decisión de diseño: la lista solo puede achicarse. */
 const FUNCIONES_EXCEPTUADAS: Record<string, string> = {
+  "plataforma/src/servidor/sembrar-empresa.ts|sembrarEmpresa":
+    "Siembra de una empresa NUEVA (la consola de plataforma): crea sus unidades de fábrica con los decimales de la semilla. No hay un valor anterior que se pierda ni cantidades que ya dependan de ellos (la empresa está en alta, sin movimientos); cada cambio posterior de los decimales de una unidad lo audita `actualizarDecimalesUnidad`. La huella del gobierno (`test/auth/caracterizacion/huella-de-gobierno`) fija lo que siembra.",
   "src/server/persistencia/catalogo/upsert-proveedor-por-producto.ts|upsertProveedorPorProducto":
     "SQL crudo (`INSERT … ON CONFLICT DO UPDATE`) sobre `ProveedorPorProducto.precioUnitario/precioPorUnidadStock`: es un CACHÉ derivado de la compra (el precio verdadero está en el Kardex, que es su propia historia, y desde la parte 2 del vínculo las pantallas ya no lo leen: solo se lee la unidad y la referencia). PENDIENTE DE DECISIÓN DEL DUEÑO: ¿se audita o se exceptúa? (docs/pureza-integracion.md, sección 4, decisión 3); hasta entonces queda exceptuada y declarada acá.",
   "src/server/actions/catalogo/productos.ts|darDeAltaProducto":
