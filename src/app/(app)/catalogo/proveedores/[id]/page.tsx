@@ -102,11 +102,11 @@ export default async function FichaProveedorPage({
             </thead>
             <tbody>
               {productosQueLeCompran.map((pp) => (
-                <tr key={pp.id} className="border-b last:border-0">
+                <tr key={pp.productoId} className="border-b last:border-0">
                   <td className="py-1">
                     {pp.producto.codigo} — {pp.producto.nombre}
                   </td>
-                  <td>{pp.unidadCompra.nombre}</td>
+                  <td>{pp.unidadCompraNombre}</td>
                   <td>{pp.referenciaProveedor ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</td>
                   {puedeVerPrecios.has("comparar_precios") && (
                     <td className="text-right tabular-nums">{Number(pp.precioPorUnidadStock) > 0 ? plata(Number(pp.precioPorUnidadStock)) : "—"}</td>

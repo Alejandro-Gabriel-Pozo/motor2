@@ -64,8 +64,7 @@ export type CabeceraVista = CabeceraVistaSchema;
  * Es naturalmente idempotente: si la compra ya tiene exactamente lo pedido (por ejemplo, un reenvío tras perderse la respuesta), responde que no hay nada
  * que corregir en vez de un conflicto.
  *
- * LIMITACIÓN conocida: al cargar una compra se arma el vínculo proveedor ↔ producto del catálogo (`ProveedorPorProducto`, para comparar precios). Corregir el
- * proveedor NO lo recalcula: ese vínculo se sigue apoyando en lo que se cargó originalmente.
+ * El vínculo proveedor ↔ producto (comparativa, ficha del proveedor, precarga del carrito) se LEE del Kardex vigente, así que corregir el proveedor lo mueve solo: no hay nada que recalcular.
  *
  * Auditoría: una fila por campo que cambió (entidad `Operacion`), con el nombre del proveedor y no su id. Gate: `corregir_compra`, solo admin en la semilla.
  */

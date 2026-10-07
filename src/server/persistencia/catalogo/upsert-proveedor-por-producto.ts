@@ -22,6 +22,10 @@ import type { Db } from "@/lib/db-tipos";
  * Desde Pureza Fase 4 (decisión del dueño, 2026-10-06) corre DENTRO de la transacción de la compra (`tx`). Una compra con FECHA ATRASADA no pisa el último precio ni retrocede
  * `ultimaCompra`: el precio solo se actualiza si la fecha nueva es >= la guardada (ERPNext hace lo mismo: `last_purchase_rate` ignora un documento más viejo) y `ultimaCompra` toma
  * la más reciente; con la misma fecha gana la carga posterior.
+ *
+ * OJO: desde la parte 2 del vínculo (2026-10-07) las pantallas NO leen el precio ni la fecha de esta tabla: la comparativa, la ficha del proveedor, la precarga del carrito y los reportes «tiene
+ * proveedor» se derivan del Kardex vigente (`server/lecturas/catalogo/ofertas-de-proveedor.ts`), que sí se entera de una compra anulada o de un proveedor corregido. De esta tabla solo se lee
+ * la unidad de compra y la referencia del proveedor, que el Kardex no guarda.
  */
 export async function upsertProveedorPorProducto(db: Db, datos: {
   productoId: string;

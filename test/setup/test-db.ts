@@ -263,6 +263,47 @@ export async function sembrarSeccion(sucursalId: string, nombre = "Depósito") {
 }
 
 /**
+ * Una compra (Operación + un movimiento de Kardex) escrita DIRECTO, sin pasar por la acción: para los tests que miran lo que se DERIVA del Kardex vigente (la comparativa, la ficha del
+ * proveedor, el carrito). `precioPorUnidadStock` es el precio ya normalizado; `proceso` permite sembrar una devolución al proveedor; `anulada` la deja anulada.
+ */
+export async function sembrarCompraDeKardex(data: {
+  sucursalId: string;
+  seccionId: string;
+  usuarioId: string;
+  productoId: string;
+  proveedorId: string | null;
+  fecha: string;
+  precioPorUnidadStock: number;
+  proceso?: "COMPRA" | "DEVOLUCION_PROVEEDOR";
+  anulada?: boolean;
+}) {
+  const proceso = data.proceso ?? "COMPRA";
+  const operacion = await prisma.operacion.create({
+    data: {
+      sucursalId: data.sucursalId,
+      proceso,
+      fecha: new Date(data.fecha),
+      usuarioId: data.usuarioId,
+      proveedorId: data.proveedorId,
+      ...(data.anulada ? { anuladaEn: new Date(), anuladaPorId: data.usuarioId } : {}),
+    },
+  });
+  await prisma.movimientoStock.create({
+    data: {
+      operacionId: operacion.id,
+      productoId: data.productoId,
+      seccionId: data.seccionId,
+      proceso,
+      cantidad: proceso === "COMPRA" ? 1 : -1,
+      detalle: proceso === "COMPRA" ? "Compra" : "Devolución",
+      precioTotal: data.precioPorUnidadStock,
+      precioPorUnidadStock: data.precioPorUnidadStock,
+    },
+  });
+  return operacion;
+}
+
+/**
  * Siembra el catálogo Motivo de Merma / Destino de Consumo (motivos-semilla.ts) — necesario para cualquier test que
  * registre una Merma/Consumo con un motivoId/destinoId real: `limpiarBaseDeTest()` vacía las dos tablas en cada test
  * (plan "motivos de Consumo/Merma como catálogo administrable", 2026-09-23, P3/P5), así que no alcanza con lo que

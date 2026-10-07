@@ -216,7 +216,10 @@ export function PanelMovimientoForm({
           pesoReal: "",
           unidadCompraId: "",
           referenciaProveedor: p.referenciaProveedor ?? "",
-          ultimaCompraTexto: p.ultimoPrecioPorUnidadStock > 0 ? `última vez: $${p.ultimoPrecioPorUnidadStock.toLocaleString("es-AR")} / ${p.unidadStockNombre}` : "",
+          ultimaCompraTexto:
+            p.ultimoPrecioPorUnidadStock > 0
+              ? `${p.origenDelPrecio === "EMPRESA" ? "última vez (otra sucursal)" : "última vez"}: $${p.ultimoPrecioPorUnidadStock.toLocaleString("es-AR")} / ${p.unidadStockNombre}`
+              : "",
         }))
       );
       setPresentacionesPorFila({});

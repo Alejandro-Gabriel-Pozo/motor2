@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Prisma } from "@prisma/client";
-import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarCompraDeKardex, crearUsuarioConMembresia, prisma } from "../../setup/test-db";
 import { listarProductosQueLeCompran, obtenerFichaProveedor, obtenerProveedorPorId } from "../../../src/server/consultas/catalogo/proveedores";
 
 /**
@@ -14,8 +14,6 @@ import { listarProductosQueLeCompran, obtenerFichaProveedor, obtenerProveedorPor
 
 const ESCALARES_PROVEEDOR = Object.keys(Prisma.ProveedorScalarFieldEnum).sort();
 const ESCALARES_PRODUCTO = Object.keys(Prisma.ProductoScalarFieldEnum).sort();
-const ESCALARES_UNIDAD = Object.keys(Prisma.UnidadScalarFieldEnum).sort();
-const ESCALARES_PROVEEDOR_POR_PRODUCTO = Object.keys(Prisma.ProveedorPorProductoScalarFieldEnum).sort();
 
 describe("server/consultas/catalogo/proveedores", () => {
   let kg: { id: string; nombre: string };
@@ -71,6 +69,16 @@ describe("server/consultas/catalogo/proveedores", () => {
       data: { codigo: "PV_TORTA", nombre: "Torta", tipo: "PV", unidadStockId: kg.id, esConsignacion: true, proveedorConsignacionId: otroProveedor },
     });
 
+    // «Lo que se le compra» se DERIVA del Kardex vigente (unidad y referencia, de la tabla `ProveedorPorProducto`): cada fila de la tabla tiene su compra.
+    const base = await sembrarBase();
+    const seccionId = (await sembrarSeccion(base.sucursal.id)).id;
+    const usuarioId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).id;
+    const compra = (productoId: string, proveedorId: string, precioPorUnidadStock: number, fecha = "2026-09-10") =>
+      sembrarCompraDeKardex({ sucursalId: base.sucursal.id, seccionId, usuarioId, productoId, proveedorId, fecha, precioPorUnidadStock });
+    await compra(yerba, molino, 100);
+    await compra(harina, molino, 1000);
+    await compra(azucar, molino, 0); // proveedor conocido, sin precio
+    await compra(harina, otroProveedor, 900);
     await prisma.proveedorPorProducto.createMany({
       data: [
         { proveedorId: molino, productoId: yerba, unidadCompraId: kg.id, precioUnitario: 100, precioPorUnidadStock: 100 },
@@ -131,37 +139,23 @@ describe("server/consultas/catalogo/proveedores", () => {
   });
 
   describe("listarProductosQueLeCompran", () => {
-    it("trae SOLO las filas de ese proveedor, ordenadas por nombre de producto, con `producto` y `unidadCompra`", async () => {
+    it("trae SOLO lo que se le compró a ese proveedor, ordenado por nombre de producto, con el precio de la última compra vigente y la unidad y la referencia de la tabla", async () => {
       const filas = await listarProductosQueLeCompran(molino, prisma);
 
       expect(filas.map((f) => f.producto.nombre)).toEqual(["Azúcar", "Harina 000", "Yerba"]);
       expect(filas.every((f) => f.proveedorId === molino)).toBe(true);
-
-      for (const f of filas) {
-        expect(Object.keys(f).sort()).toEqual([...ESCALARES_PROVEEDOR_POR_PRODUCTO, "producto", "unidadCompra"].sort());
-        expect(Object.keys(f.producto).sort()).toEqual(ESCALARES_PRODUCTO);
-        expect(Object.keys(f.unidadCompra).sort()).toEqual(ESCALARES_UNIDAD);
-      }
+      for (const f of filas) expect(Object.keys(f.producto).sort()).toEqual(["codigo", "id", "nombre"]);
 
       const [a, h, y] = filas;
-      expect(a.producto).toMatchObject({ id: azucar, codigo: "MP_AZUCAR" });
-      expect(a.unidadCompra).toMatchObject({ id: kg.id, nombre: "kg" });
-      expect(Number(a.precioPorUnidadStock)).toBe(0);
-      expect(a.referenciaProveedor).toBeNull();
-
-      expect(h.producto).toMatchObject({ id: harina, codigo: "MP_HARINA" });
-      expect(h.unidadCompra).toMatchObject({ id: bolsa.id, nombre: "bolsa" });
-      expect(Number(h.precioUnitario)).toBe(25000);
-      expect(Number(h.precioPorUnidadStock)).toBe(1000);
-      expect(h.referenciaProveedor).toBe("H000-25");
-
-      expect(y.producto).toMatchObject({ id: yerba, codigo: "MP_YERBA" });
+      expect(a).toMatchObject({ productoId: azucar, unidadCompraId: kg.id, unidadCompraNombre: "kg", precioPorUnidadStock: 0, referenciaProveedor: null });
+      expect(h).toMatchObject({ productoId: harina, unidadCompraId: bolsa.id, unidadCompraNombre: "bolsa", precioPorUnidadStock: 1000, referenciaProveedor: "H000-25" });
+      expect(y).toMatchObject({ productoId: yerba, producto: { id: yerba, codigo: "MP_YERBA" }, precioPorUnidadStock: 100 });
     });
 
     it("filtra por proveedor: el otro proveedor ve solo su fila", async () => {
       const filas = await listarProductosQueLeCompran(otroProveedor, prisma);
       expect(filas).toHaveLength(1);
-      expect(filas[0]).toMatchObject({ proveedorId: otroProveedor, productoId: harina, unidadCompraId: kg.id });
+      expect(filas[0]).toMatchObject({ proveedorId: otroProveedor, productoId: harina, unidadCompraId: kg.id, precioPorUnidadStock: 900 });
     });
 
     it("proveedor sin compras (o inexistente) devuelve []", async () => {

@@ -33,7 +33,7 @@ Es, en esencia, una tabla dinámica: elegís "por qué agrupar" y "cada cuánto"
 
 `Purchase Order Analysis` (ciclo orden→recepción→facturación: Qty/Received Qty/Pending Qty/Billed Qty, Amount/Billed Amount/Pending Amount) no aplica a motor2 — motor2 no tiene un flujo de Orden de Compra, registra la Compra ya concretada. Se descarta como referencia para esta pregunta puntual.
 
-`Item Price` (ficha de precio por Insumo×Proveedor×Lista, con `Valid From`/`Valid Upto`) es el equivalente conceptual de `ProveedorPorProducto` en motor2 (ya existe, ya se actualiza en cada Compra) — ERPNext expone un botón "Prices" en el Item que muestra el histórico completo en una tabla; no encontré un gráfico de tendencia nativo (según la documentación, sería una vista custom armada sobre esos datos).
+`Item Price` (ficha de precio por Insumo×Proveedor×Lista, con `Valid From`/`Valid Upto`) es el equivalente conceptual de `ProveedorPorProducto` en motor2 (ya existe, ya se actualiza en cada Compra) — ERPNext expone un botón "Prices" en el Item que muestra el histórico completo en una tabla; no encontré un gráfico de tendencia nativo (según la documentación, sería una vista custom armada sobre esos datos). **Nota (2026-10-07):** el equivalente de `last_purchase_rate` de ERPNext es el precio de la última compra vigente (con la fecha de la factura, no la de carga), y eso es lo que muestran hoy la comparativa y la ficha: se DERIVA del Kardex vigente; `ProveedorPorProducto` solo guarda la unidad de compra y la referencia.
 
 ### Dolibarr — módulo Estadísticas
 
