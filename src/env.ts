@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { esSlugPublicoValido } from "./core/carta/host";
+import { esSlugPublicoValido } from "./core/carta/public";
 import { problemasDeConfiguracionDeCorreo } from "./core/correo/configuracion";
 import { esRemitenteValido } from "./core/correo/direcciones";
 

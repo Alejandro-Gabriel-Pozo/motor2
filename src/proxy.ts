@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { azarDelProceso } from "@/lib/azar";
 import { ENCABEZADO_RUTA_PEDIDA } from "@/core/navegacion/volver";
-import { esHostDeZonaCarta, esMetodoDeLecturaEnHostCarta, esPathPermitidoEnHostCarta, interpretarHostCarta } from "@/core/carta/host";
-import { esHostDeEmpresaUnica } from "@/core/carta/carta-empresa-unica";
+import { esHostDeEmpresaUnica, esHostDeZonaCarta, esMetodoDeLecturaEnHostCarta, esPathPermitidoEnHostCarta, interpretarHostCarta } from "@/core/carta/public";
 import { sirvePorHttps } from "@/core/auth/cookie-sesion";
 import { cabecerasComunes, cspApp, generarNonce } from "@/core/seguridad/cabeceras";
 

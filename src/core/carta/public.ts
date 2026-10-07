@@ -44,7 +44,8 @@ export type { GrupoDeProducto, SincronizablePrecioGrupo } from "./grupo-de-produ
 export { armarMenuCarta } from "./armar-menu";
 export type { MenuArmado } from "./armar-menu";
 export { descuentosVigentes } from "./descuento-producto";
-export { esSlugPublicoValido } from "./host";
+export { esSlugPublicoValido, esHostDeZonaCarta, esMetodoDeLecturaEnHostCarta, esPathPermitidoEnHostCarta, interpretarHostCarta } from "./host";
+export { esHostDeEmpresaUnica } from "./carta-empresa-unica";
 export { estiloCartaPorDefecto } from "./estilo";
 export { posicionCompleta } from "./portal";
 export type { EntradaPortalCarta } from "./portal";

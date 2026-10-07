@@ -66,7 +66,9 @@ const reglasSinInternalsDeOtroDominio = DOMINIOS_DE_NEGOCIO.filter((dominio) => 
   name: "sin-internals-de-otro-dominio",
   comment: `Fuera de core/${dominio}/ solo se importa su fachada (core/${dominio}/public.ts o public-servidor.ts), nunca sus archivos internos. Las Server Actions de OTRO dominio también (las del propio dominio, server/actions/${dominio}/, sí pueden usar su core).`,
   severity: "error",
-  from: { path: `^src/(core/(?!${dominio}/)|server/actions/(?!${dominio}/)|server/(consultas|lecturas|persistencia)/)` },
+  // TODO el código fuera de su propio dominio: el núcleo de otro dominio, las acciones de otro dominio, las capas del servidor (consultas, lecturas, persistencia, acceso, adaptadores, carta pública…),
+  // `src/lib`, el `proxy`, la configuración (`env.ts`) y la consola de plataforma. La UI (`app/`, `components/`) tiene su propia regla (`ui-sin-internals-de-dominio`, con su lista de excepciones).
+  from: { path: `^(src/(?!(core/${dominio}|server/actions/${dominio}|app|components)/)|plataforma/src/)` },
   to: { path: `^src/core/${dominio}/`, pathNot: `^src/core/${dominio}/public(-servidor)?\\.ts$` },
 }));
 

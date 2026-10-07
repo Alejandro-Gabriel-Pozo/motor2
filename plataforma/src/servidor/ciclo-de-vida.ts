@@ -3,7 +3,7 @@ import { confirmarAltaSchema, corregirCuitSchema, mensajeDeEmpresaActiva, motivo
 import { esTransicionValida, type EstadoEmpresa } from "@/core/features/empresa/empresa.schema";
 import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "@/core/fiscal/public-servidor";
 import { formatearCuit, validarCuit } from "@/core/fiscal/public";
-import { esChoqueDeIndiceUnico } from "@/core/movimientos/con-reintento";
+import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { filtroDelGerente } from "@/core/permisos/filtros";
 import type { Db } from "@/lib/db-tipos";
 import { auditarEnTransaccion, type AutorEnInstalacion } from "./auditoria";
