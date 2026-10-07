@@ -1,5 +1,5 @@
 import type { UltimaCotizacion } from "@/core/reportes/public";
-import { pesosADolares } from "@/core/reportes/public-servidor";
+import { pesosADolares } from "@/core/reportes/public";
 
 const formatoFecha = (f: Date) => f.toISOString().slice(0, 10).split("-").reverse().join("/");
 

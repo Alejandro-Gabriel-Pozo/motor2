@@ -12,7 +12,9 @@ import { descubrirCasosDeUsoReales } from "./guardas/casos-de-uso";
  *
  *   @ficha permiso=<acción> transaccion=<SERIALIZABLE|SIMPLE|NINGUNA> idempotencia=<I3|POR_ESTADO|OPTIMISTA|NO_APLICA> auditoria=<REGISTRO_AUDITORIA|DOCUMENTO_PROPIO> reloj=<INYECTADO|NEW_DATE>
  *
- *  - `permiso`: la acción (de `ACCIONES`) con la que la Server Action que lo envuelve lo protege (`conPermiso*("clave", …)`), o `POR_PROCESO` si la elige en ejecución.
+ *  - `permiso`: la acción (de `ACCIONES`) con la que la Server Action que lo envuelve lo protege (`conPermiso*("clave", …)`), o `POR_PROCESO` si la elige en ejecución, o `SISTEMA` si
+ *    corre SIN usuario (un cron o el atajo del encabezado): lo envuelve un archivo que NO es `"use server"` (no es un endpoint) y que ningún `conPermiso*` protege. Quién puede importar esos
+ *    envoltorios lo vigila `sincronizaciones-solo-desde-crons-y-shell.test.ts`.
  *  - `transaccion`: `SERIALIZABLE` si llama a `conTransaccionSerializable`; `SIMPLE` si abre una transacción común; `NINGUNA` si no abre ninguna.
  *  - `idempotencia`: `I3` si y solo si llama a `chequearIdempotencia` (clave + hash del payload); `POR_ESTADO` (el estado del documento arbitra el reintento),
  *    `OPTIMISTA` (versión esperada) y `NO_APLICA` no pueden llamarla.
@@ -67,22 +69,28 @@ function observar(codigo: string): Observado {
 function permisosObservados(fuenteDelCaso: string, envolventes: string[]): string {
   const funciones = [...fuenteDelCaso.matchAll(/export\s+(?:async\s+)?function\s+(\w+)/g)].map((m) => m[1]);
   const permisos = new Set<string>();
+  let sinUsuario = false;
   for (const codigo of envolventes) {
+    const esEndpoint = /^\s*["']use server["']/m.test(codigo);
     const fuente = ts.createSourceFile("accion.ts", codigo, ts.ScriptTarget.Latest, true);
     const buscar = (n: ts.Node): void => {
       if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && funciones.includes(n.expression.text)) {
+        let protegida = false;
         for (let p: ts.Node | undefined = n.parent; p; p = p.parent) {
-          if (ts.isCallExpression(p) && ts.isIdentifier(p.expression) && /^conPermiso/.test(p.expression.text) && p.arguments[0] && ts.isStringLiteralLike(p.arguments[0])) {
-            permisos.add(p.arguments[0].text);
+          if (ts.isCallExpression(p) && ts.isIdentifier(p.expression) && /^conPermiso/.test(p.expression.text)) {
+            protegida = true;
+            if (p.arguments[0] && ts.isStringLiteralLike(p.arguments[0])) permisos.add(p.arguments[0].text);
             break;
           }
         }
+        // Sin ningún conPermiso* alrededor de la llamada: si el archivo no es un endpoint (`"use server"`), el caso de uso corre sin usuario.
+        if (!protegida && !esEndpoint) sinUsuario = true;
       }
       ts.forEachChild(n, buscar);
     };
     buscar(fuente);
   }
-  return [...permisos].sort().join("|") || "POR_PROCESO";
+  return [...permisos].sort().join("|") || (sinUsuario ? "SISTEMA" : "POR_PROCESO");
 }
 
 /** La línea `@ficha` del docstring, como `{campo: valor}`; `null` si no hay (o hay más de una). */
@@ -118,6 +126,9 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
     expect(permisosObservados(caso, ['export async function a() { return conPermiso("anular_compra", async (ctx) => anular(ctx)); }'])).toBe("anular_compra");
     expect(permisosObservados(caso, ['export async function a(x: string) { return conPermisoDeEmpresa<R>("x_y", async (ctx) => anular(ctx)); }'])).toBe("x_y");
     expect(permisosObservados(caso, ["export async function a(accion: string) { return conPermiso(accion, async (ctx) => anular(ctx)); }"])).toBe("POR_PROCESO");
+    // SISTEMA: un envoltorio que NO es un endpoint y que no protege ningún conPermiso* (un cron). Si es un endpoint ("use server") sin permiso, sigue siendo POR_PROCESO.
+    expect(permisosObservados(caso, ["export async function a(db: unknown) { return anular(db); }"])).toBe("SISTEMA");
+    expect(permisosObservados(caso, ['"use server";\nexport async function a(db: unknown) { return anular(db); }'])).toBe("POR_PROCESO");
   });
 
   it("leerFicha: una sola línea @ficha con sus pares; sin línea o con dos, null", () => {
@@ -153,7 +164,7 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
       for (const [campo, valores] of Object.entries(VOCABULARIO)) {
         if (ficha[campo] && !(valores as readonly string[]).includes(ficha[campo])) problemas.push(`${c.ruta}: ${campo}=${ficha[campo]} no es uno de ${valores.join(", ")}`);
       }
-      if (ficha.permiso && ficha.permiso !== "POR_PROCESO") {
+      if (ficha.permiso && ficha.permiso !== "POR_PROCESO" && ficha.permiso !== "SISTEMA") {
         for (const p of ficha.permiso.split("|")) if (!acciones.has(p)) problemas.push(`${c.ruta}: permiso=${p} no es una acción de ACCIONES`);
       }
     }

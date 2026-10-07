@@ -29,7 +29,7 @@ const SRC = join(__dirname, "../../src");
 
 /**
  * Casos de uso reales cuyo wrapper NO envuelve la llamada con `aResultadoAccion` — cada entrada exige motivo. A diferencia de otras
- * excepciones de este proyecto (ej. `DOMINIOS_SIN_PUBLIC_TODAVIA`), estas 2 son PERMANENTES por diseño, no "todavía sin hacer":
+ * excepciones de este proyecto (ej. `DOMINIOS_SIN_PUBLIC_TODAVIA`), estas son PERMANENTES por diseño, no "todavía sin hacer":
  * `crearSolicitudTransferencia`/`crearEnvioDirectoTransferencia` (`src/server/actions/traspasos/traspasos.ts`) devuelven
  * `ResultadoConId` (`{ ok, mensaje, id, nombre }`, `src/server/actions/tipos.ts`), no `ResultadoAccion` — la UI necesita el id/nombre
  * del traspaso recién creado para navegar, algo que `aResultadoAccion` (que solo deja pasar `ok`/`mensaje`) no puede dar. Verificado
@@ -45,6 +45,10 @@ const SIN_ENVOLTORIO_TODAVIA: Record<string, string> = {
     "\"Como aResultadoAccion, pero la pantalla necesita además QUÉ ejemplar se emitió — solo numero y ejemplar de datos, nunca los ids " +
     "internos\") — devuelve ResultadoTicketCorregido, no ResultadoAccion. Mismo criterio de aResultadoAccion (nunca ids internos), con 2 " +
     "campos extra elegidos a mano. Diseño permanente, no un olvido.",
+  "server/actions/reportes/casos-de-uso/sincronizar-dolar.ts":
+    "No tiene Server Action ni navegador: lo invocan los crons y el encabezado de la aplicación (`sincronizaciones.ts`, sin \"use server\", permiso SISTEMA) y devuelve un ResultadoSincronizacionDolar (días rellenados, fuente, errores) o lanza si ninguna fuente responde (el cron contesta 502). Nunca llega al browser. Diseño permanente, no un olvido.",
+  "server/actions/reportes/casos-de-uso/sincronizar-ipc.ts":
+    "No tiene Server Action ni navegador: lo invoca el cron del IPC (`sincronizaciones.ts`, sin \"use server\", permiso SISTEMA) y devuelve un ResultadoSincronizacionIPC (meses nuevos, antigüedad de la serie) o lanza si la API no trae la serie. Nunca llega al browser. Diseño permanente, no un olvido.",
 };
 
 function archivosFuente(dir: string): string[] {

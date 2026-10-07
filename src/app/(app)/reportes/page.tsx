@@ -2,7 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
-import { obtenerUltimaCotizacionSinRomper } from "@/core/reportes/public-servidor";
+import { obtenerUltimaCotizacionSinRomper } from "@/server/consultas/reportes/cotizacion-dolar";
 import { obtenerResumenOperativo } from "@/server/consultas/reportes/resumen-operativo";
 import { TablaTopProductos, TablaTopProveedores, TablaStockBajo } from "./tabla-resumen";
 import { AyudaIcono } from "@/components/ayuda-campo";

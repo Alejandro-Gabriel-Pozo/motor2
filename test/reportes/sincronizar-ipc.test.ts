@@ -5,7 +5,7 @@ const reportarErrorUnaVez = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("../../src/lib/reportar-error", () => ({ reportarErrorUnaVez, reportarError: vi.fn(async () => {}) }));
 
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
-import { sincronizarIPC } from "../../src/core/reportes/indices-economicos";
+import { sincronizarIPC } from "../../src/server/actions/reportes/sincronizaciones";
 import { GET } from "../../src/app/api/cron/sincronizar-ipc/route";
 
 /**
