@@ -4,6 +4,8 @@
 
 ## 1. Reglas de la rama
 
+> Alcance (aclarado por el dueño, 2026-10-07): esta rama es **solo** para corregir lo que quedó con reservas en las Fases 0 a 3 y para lo que falta de la Fase 4. La Fase 5 y todo lo que le sigue vienen después.
+
 1. **Un commit por trabajo**, atómico y revertible por sí solo (un cambio estructural nunca se mezcla con uno de comportamiento). La rama se fusiona a `main` con **merge commit, no squash**: con squash se pierde la reversión paso a paso.
 2. **En cada commit:** verificaciones breves en local (`tsc`, `lint`, `arquitectura`, `knip` y los tests de la zona tocada; las pruebas con base se corren **de a una**). Cada regla o test nuevo con su **mutación demostrada** (rojo → revertido → verde), anotada en la columna «Evidencia».
 3. **En cada hito** (sección 3): el gate completo en local de lo tocado cuando es barato, se sube la rama (una corrida de CI) y se pasa el **auditor independiente** del hito (agente con modelo igual o superior, solo lectura) contra esta lista. Los hallazgos se corrigen **dentro de la rama** antes del hito siguiente.
@@ -54,7 +56,7 @@ Cada fila: **ID**, qué es, fuente en el plan, estado (`[ ]` pendiente, `[x]` he
 | 3.1 | **B3**: nace `server/sesion/` con `acceso`; 2 casos de uso de aceptar invitación | 10.4 fila 2 | [ ] | |
 | 3.2 | **B4a/B4b**: lecturas de decisión a `server/lecturas/permisos`, gerencia, 5 casos de uso de invitaciones de usuario | 10.4 fila 3 | [ ] | |
 | 3.3 | Migración de las acciones de auth y permisos (5 archivos, 12 funciones) | 10.4 fila 3 | [ ] | |
-| 3.4 | **ADR-027** escrito (hoy no existe) y **F1 del RBAC** (piso «administrador de sistema», sin migración) | 10.4 fila 3 | [ ] | |
+| 3.4 | **ADR-027** escrito (hoy no existe) y **F1 del RBAC** (piso «administrador de sistema», sin migración; con D15 = ninguna acción de empresa por defecto y D16 = `ver_auditoria` en ese piso, ya decididas) | 10.4 fila 3 | [ ] | |
 
 ### Hito 4: migración de las acciones (tramo C restante)
 
@@ -69,7 +71,7 @@ Cada fila: **ID**, qué es, fuente en el plan, estado (`[ ]` pendiente, `[x]` he
 | ID | Trabajo | Fuente | Estado | Evidencia |
 |---|---|---|---|---|
 | 5.1 | **Segundo tiempo de la venta** (`armarLinea` y `cargarDeudaDeRedondeo` a `server/lecturas`, lo puro a `core`) | 10.4 fila 5 | [ ] | |
-| 5.2 | **4A-5** precio local y capacidades a `server/acceso` (frontera `ALCANCE_CARTA_PUBLICA`, **requiere autorización del dueño, 4.1**) | 10.4 fila 6 | [ ] | |
+| 5.2 | **4A-5** precio local y capacidades a `server/acceso` (frontera `ALCANCE_CARTA_PUBLICA`; **autorizado el 2026-10-07**, commits propios al final del hito, con las 3 mutaciones de seguridad y revisión del auditor sobre esa frontera) | 10.4 fila 6 | [ ] | |
 | 5.3 | Decidir el destino de `con-reintento` y sacar `core/movimientos` a `core-sin-consultas` | 10.4 fila 7 | [ ] | |
 | 5.4 | **B5**: auditoría a `server/auditoria/` con su regla, cierre de `core-sin-consultas` para todo `core`, documentos de estado | 10.4 fila 8 | [ ] | |
 
@@ -84,10 +86,10 @@ Cada fila: **ID**, qué es, fuente en el plan, estado (`[ ]` pendiente, `[x]` he
 
 ## 4. Decisiones del dueño que condicionan la fusión
 
-1. Autorización de **4A-5** (frontera de la carta pública, D-2).
+1. ~~Autorización de **4A-5** (frontera de la carta pública, D-2)~~ **RESUELTA (2026-10-07): autorizada**, en commits propios y revertibles al final del Hito 5, con las 3 mutaciones de seguridad de la carta pública y la matriz de la venta ampliada antes; el auditor independiente revisa esa frontera antes de fusionar.
 2. Mapa de **H8** (módulo y acción de cada una de las 18 lecturas).
 3. SQL crudo del vínculo proveedor↔producto: ¿se audita o se exceptúa con motivo?
 4. Dinero en `number` dentro de `core`: ¿diseño escrito o paso nuevo?
 5. Campo `periodo` de la ficha: ¿ahora o diferido por escrito a la Etapa A?
 6. Frontera UI → `server/lecturas`.
-7. Confirmar D-4 y D-5 de la Fase 3, D15 y D16 de RBAC.
+7. Confirmar D-4 y D-5 de la Fase 3. ~~D15 y D16 de RBAC~~ **RESUELTAS (2026-10-07):** **D15** = el rango intermedio («encargado», opcional por empresa, D0) no alcanza ninguna acción de empresa por defecto; la empresa se las habilita de a una. **D16** = `ver_auditoria` pasa al piso «administrador de sistema» (F1, sin migración).
