@@ -3,13 +3,8 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_SIN_SECCION_ORIGEN, MENSAJE_TRASPASO_NO_ENCONTRADO } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import type { ComandoConfirmarReingresoTraspaso, ResultadoConfirmarReingresoTraspaso } from "@/core/features/traspasos/traspaso.schema";
-import {
-  calcularPayloadHash,
-  chequearIdempotencia,
-  conTransaccionSerializable,
-  MENSAJE_CONFLICTO_IDEMPOTENCIA,
-  registrarResultadoIdempotente,
-} from "@/core/movimientos/public-servidor";
+import { calcularPayloadHash, conTransaccionSerializable, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarSeccionDelTraspaso, cargarSucursalDelTraspaso, cargarTraspaso } from "@/server/persistencia/traspasos/cargar-traspaso";
 import { escribirReingresoDeTraspaso } from "@/server/persistencia/traspasos/escribir-entrada-de-traspaso";

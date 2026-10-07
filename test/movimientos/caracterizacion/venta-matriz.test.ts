@@ -9,7 +9,8 @@ import { limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarProductoDisponib
 import { mockearUsuarioActual } from "../../setup/mock-sesion";
 import { registrarMovimiento } from "../../../src/server/actions/movimientos/movimientos";
 import { anularVenta } from "../../../src/server/actions/movimientos/venta";
-import { registrarVentaEnTx, type ActorVenta, type DatosVentaEnTx, type OpcionesVentaEnTx, type ResultadoVentaEnTx } from "../../../src/core/movimientos/registrar-venta";
+import { type ActorVenta, type DatosVentaEnTx, type OpcionesVentaEnTx, type ResultadoVentaEnTx } from "../../../src/core/movimientos/registrar-venta";
+import { registrarVentaEnTx } from "../../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 
 /**
  * CARACTERIZACIÓN de la venta (Fase 4 del plan de pureza, tramo A: la venta sale de `core/movimientos` a `server/`). Se escribe ANTES de mover

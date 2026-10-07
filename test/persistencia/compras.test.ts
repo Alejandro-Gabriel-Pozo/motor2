@@ -5,7 +5,7 @@ import { cargarCompraParaAnular } from "../../src/server/persistencia/compras/ca
 import { escribirAnulacionDeCompra } from "../../src/server/persistencia/compras/escribir-anulacion-de-compra";
 import { cargarCompraParaCorregir, cargarProveedorParaCorreccion, hayOtraCompraVigenteConFactura } from "../../src/server/persistencia/compras/cargar-compra-para-corregir";
 import { escribirCorreccionDeCompra } from "../../src/server/persistencia/compras/escribir-correccion-de-compra";
-import { registrarResultadoIdempotente } from "../../src/core/movimientos/idempotencia";
+import { registrarResultadoIdempotente } from "../../src/server/persistencia/movimientos/idempotencia";
 import { claveDeLote, construirReversion } from "../../src/core/compras/anulacion";
 
 /**

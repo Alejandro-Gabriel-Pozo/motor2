@@ -6,7 +6,8 @@ import { limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarProductoDisponib
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
-import { registrarVentaEnTx, type ActorVenta } from "../../src/core/movimientos/registrar-venta";
+import { type ActorVenta } from "../../src/core/movimientos/registrar-venta";
+import { registrarVentaEnTx } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 
 /**

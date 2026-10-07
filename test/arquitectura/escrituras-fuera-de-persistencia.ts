@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 55;
+export const TOPE_DE_ENTRADAS = 53;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -89,16 +89,6 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["accion.createMany", "destinoConsumo.createMany", "motivoMerma.createMany", "permisoRol.createMany", "rol.create", "rol.create", "sucursal.create", "unidad.createMany"],
     fase: "Fase 4",
     motivo: "Tramo B (PR B1): el escritor de la siembra pasa a plataforma/src/servidor; el plan queda puro en core.",
-  },
-  "src/core/movimientos/idempotencia.ts": {
-    escrituras: ["operacion.update"],
-    fase: "Fase 4",
-    motivo: "Tramo A (PR 4A-1): la idempotencia de la venta pasa a server/persistencia/movimientos.",
-  },
-  "src/core/movimientos/registrar-venta.ts": {
-    escrituras: ["movimientoStock.createMany", "operacion.create", "operacion.update"],
-    fase: "Fase 4",
-    motivo: "Tramo A (PR 4A-1): la venta (única escritura del Kardex que sigue en core) pasa a caso de uso + persistencia.",
   },
   "src/core/permisos/auditoria.ts": {
     escrituras: ["registroAuditoria.create"],

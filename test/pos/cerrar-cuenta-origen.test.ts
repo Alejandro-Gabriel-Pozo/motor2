@@ -7,7 +7,8 @@ import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
-import { registrarVentaEnTx, type OrigenVenta } from "../../src/core/movimientos/registrar-venta";
+import { type OrigenVenta } from "../../src/core/movimientos/registrar-venta";
+import { registrarVentaEnTx } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
 

@@ -6,19 +6,9 @@ import { texto } from "@/core/texto";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { TRANSICIONES, armarFilasDeMovimiento, redondearACantidadDeUnidad } from "@/core/movimientos/public";
-import {
-  obtenerSeccionPropia,
-  seccionesConStock,
-  validarStockSuficiente,
-  conTransaccionSerializable,
-  calcularPayloadHash,
-  chequearIdempotencia,
-  MENSAJE_CONFLICTO_IDEMPOTENCIA,
-  crearCacheProducto,
-  esChoqueDeFacturaUnica,
-  MENSAJE_FACTURA_DUPLICADA,
-  registrarResultadoIdempotente,
-} from "@/core/movimientos/public-servidor";
+import { obtenerSeccionPropia, seccionesConStock, validarStockSuficiente, conTransaccionSerializable, calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA, esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/public-servidor";
+import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
+import { chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { DatosMovimientoInput, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
 import { cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";

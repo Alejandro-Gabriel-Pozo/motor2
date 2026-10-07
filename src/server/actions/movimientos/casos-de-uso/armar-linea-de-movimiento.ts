@@ -4,11 +4,8 @@ import { texto } from "@/core/texto";
 import { esNumeroEstricto } from "@/core/numero";
 import { guardLineaCompra } from "@/core/features/compras/compra.guard";
 import { TRANSICIONES, esSignoFijo, productoValidoParaProceso, redondearACantidadDeUnidad, type ConsumoParaFilas } from "@/core/movimientos/public";
-import {
-  obtenerLoteMasProximoAVencer,
-  resolverConsumoPorFamilia,
-  crearCacheProducto,
-} from "@/core/movimientos/public-servidor";
+import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia } from "@/core/movimientos/public-servidor";
+import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
 import { cargarPresentacionActiva, cargarRecetaVigenteParaProducir } from "@/server/persistencia/movimientos/cargar-linea-de-movimiento";
