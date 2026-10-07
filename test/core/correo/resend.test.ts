@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crearEnviadorResend, motivoDeFalloDeResend } from "../../../src/core/correo/resend";
+import { crearEnviadorResend, motivoDeFalloDeResend } from "../../../src/lib/correo/resend";
 import type { MensajeDeCorreo } from "../../../src/core/correo/tipos";
 
 /**

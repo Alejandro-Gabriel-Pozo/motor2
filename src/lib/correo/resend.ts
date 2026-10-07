@@ -1,4 +1,9 @@
-import type { EnviadorDeCorreo, MensajeDeCorreo, MotivoDeFalloDeCorreo, ResultadoDeEnvio } from "./tipos";
+import type { EnviadorDeCorreo, MensajeDeCorreo, MotivoDeFalloDeCorreo, ResultadoDeEnvio } from "@/core/correo/tipos";
+
+/**
+ * El cliente HTTP de Resend: el ADAPTADOR de red del correo (Pureza Fase 4, auditoría de la Fase 1). Vivía en `core/correo/` con `fetchFn = fetch` como valor por defecto —red dentro del
+ * núcleo que el analizador no veía porque solo detectaba llamadas—; ahora vive en `lib/` (lo usan la app y la consola) y el núcleo lo recibe inyectado (`crearEnviadorDelCanal`).
+ */
 
 const URL_DE_ENVIO = "https://api.resend.com/emails";
 const TIEMPO_MAXIMO_MS = 15_000;
