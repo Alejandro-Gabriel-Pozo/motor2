@@ -95,7 +95,7 @@ const entornoEstricto = (source: Record<string, string | undefined>) => source.V
  */
 export function escapesProhibidosEnProduccion(source: Record<string, string | undefined>): string[] {
   const produccion = source.VERCEL_ENV === "production";
-  // Fuera de Vercel, quien pide el entorno estricto (`MOTOR2_ENTORNO_ESTRICTO=1`: un despliegue propio, el `next start` del e2e) tampoco puede dejar apagado el aislamiento por empresa.
+  // Fuera de Vercel, quien pide el entorno estricto (`MOTOR2_ENTORNO_ESTRICTO=1`: un despliegue propio fuera de Vercel) tampoco puede dejar apagado el aislamiento por empresa.
   if (!produccion && source.MOTOR2_ENTORNO_ESTRICTO !== "1") return [];
   const problemas: string[] = [];
   if (source.MOTOR2_ROL_ESTRICTO === "0") problemas.push("MOTOR2_ROL_ESTRICTO=0 (apaga el aislamiento por empresa: está prohibido en Producción y con el entorno estricto)");

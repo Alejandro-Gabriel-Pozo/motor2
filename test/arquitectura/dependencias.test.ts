@@ -211,8 +211,8 @@ describe("paginas-solo-consultas: las excepciones, en las dos direcciones", () =
     expect(CONFIG.forbidden.map((r) => r.name)).toContain("paginas-solo-consultas");
   });
 
-  it("el conjunto de páginas y layouts que importan server/lecturas o server/persistencia es exactamente el de la lista (ni uno nuevo, ni uno ya migrado)", () => {
-    const reales = modulosCon(/^src\/app\/.+\/(page|layout)\.tsx$/, (d) => /^src\/server\/(lecturas|persistencia)\//.test(d.resolved));
+  it("el conjunto de archivos de app/ y components/ que importan server/lecturas o server/persistencia es exactamente el de la lista (ni uno nuevo, ni uno ya migrado)", () => {
+    const reales = modulosCon(RE_UI, (d) => /^src\/server\/(lecturas|persistencia)\//.test(d.resolved));
     const listadas = EXCEPCIONES["paginas-solo-consultas"].map((e) => e.ruta).sort();
     expect(diferencia(reales, listadas), "Estas páginas importan server/lecturas o server/persistencia y no están en la lista (pedí los datos a una consulta en server/consultas):").toEqual([]);
     expect(diferencia(listadas, reales), "Estas páginas ya no importan esas capas: sacalas de la lista (paginas-solo-consultas):").toEqual([]);

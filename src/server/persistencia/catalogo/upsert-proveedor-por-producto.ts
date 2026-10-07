@@ -58,7 +58,7 @@ export async function upsertProveedorPorProducto(db: Db, datos: {
       (id, "productoId", "proveedorId", "unidadCompraId", "precioUnitario", "precioPorUnidadStock", "ultimaCompra", "referenciaProveedor")
     VALUES
       (gen_random_uuid()::text, ${datos.productoId}, ${datos.proveedorId}, ${datos.unidadCompraId},
-       ${datos.precioUnitario}, ${datos.precioPorUnidadStock}, COALESCE(${fecha}::timestamp, now()), ${referencia})
+       ${datos.precioUnitario}, ${datos.precioPorUnidadStock}, COALESCE(${fecha}::timestamp, timezone('utc', now())), ${referencia})
     ON CONFLICT ("productoId", "proveedorId", "unidadCompraId")
     DO UPDATE SET
       "precioUnitario" = CASE WHEN excluded."precioUnitario" > 0 AND excluded."ultimaCompra" >= "ProveedorPorProducto"."ultimaCompra"

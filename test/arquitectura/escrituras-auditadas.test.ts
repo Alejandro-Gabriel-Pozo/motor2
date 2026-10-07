@@ -282,7 +282,10 @@ export function leerEscrituras(codigo: string, archivo: string, decimales: Reado
     // columnas `Decimal` quedaba invisible (auditoría de la Fase 0, hallazgo 0.7). Se lee el texto SQL, se saca la tabla (`INSERT INTO "X"`, `UPDATE "X"`, `DELETE FROM "X"`) y se la trata como
     // una escritura del modelo `x`; las columnas de dinero son las `Decimal` que el SQL nombra (un `DELETE` o un SQL sin columnas nombradas cuenta como cualquier escritura).
     const crudo = escrituraDeSqlCrudo(n, fuente);
-    if (crudo) {
+    if (crudo?.noVerificable) {
+      const funcion = funcionDeNivelSuperior(n);
+      escrituras.push({ archivo, linea: fuente.getLineAndCharacterOfPosition(n.getStart(fuente)).line + 1, funcion, modelo: crudo.modelo, operacion: "$executeRaw", columnas: ["(no verificable)"], audita: audita(funcion) });
+    } else if (crudo) {
       const columnasDeDinero = decimales.get(crudo.modelo);
       if (columnasDeDinero) {
         const nombradas = [...columnasDeDinero].filter((c) => new RegExp(`"${c}"`).test(crudo.sql));
@@ -297,18 +300,29 @@ export function leerEscrituras(codigo: string, archivo: string, decimales: Reado
   return escrituras;
 }
 
-/** Si el nodo es un `$executeRaw`/`$executeRawUnsafe` con SQL de escritura legible, la tabla (como delegado), la operación y el texto SQL; si no, `null`. */
-export function escrituraDeSqlCrudo(n: ts.Node, fuente: ts.SourceFile): { modelo: string; operacion: "INSERT" | "UPDATE" | "DELETE"; sql: string } | null {
+/**
+ * Si el nodo es SQL CRUDO que ESCRIBE (`$executeRaw*` siempre; `$queryRaw*` solo si su texto es un INSERT, UPDATE o DELETE: un `INSERT … RETURNING` es una escritura legítima), la tabla (como
+ * delegado), la operación y el texto SQL. Si es un `$executeRaw*` cuyo SQL no se puede leer (una variable, `Prisma.sql`, `Prisma.raw`), `noVerificable`: falla cerrado, como lo anidado. Si no, `null`.
+ */
+export function escrituraDeSqlCrudo(
+  n: ts.Node,
+  fuente: ts.SourceFile,
+): { modelo: string; operacion: "INSERT" | "UPDATE" | "DELETE"; sql: string; noVerificable?: undefined } | { modelo: string; operacion: "UPDATE"; sql: string; noVerificable: true } | null {
   let sql: string | null = null;
-  if (ts.isTaggedTemplateExpression(n) && ts.isPropertyAccessExpression(n.tag) && /^\$executeRaw(Unsafe)?$/.test(n.tag.name.text)) {
+  let esExecute = false;
+  if (ts.isTaggedTemplateExpression(n) && ts.isPropertyAccessExpression(n.tag) && /^\$(execute|query)Raw(Unsafe)?$/.test(n.tag.name.text)) {
+    esExecute = /^\$executeRaw/.test(n.tag.name.text);
     sql = ts.isNoSubstitutionTemplateLiteral(n.template) ? n.template.text : [n.template.head.text, ...n.template.templateSpans.map((x) => x.literal.text)].join(" ");
-  } else if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && /^\$executeRaw(Unsafe)?$/.test(n.expression.name.text) && n.arguments[0] && ts.isStringLiteralLike(n.arguments[0])) {
-    sql = n.arguments[0].text;
+  } else if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && /^\$(execute|query)Raw(Unsafe)?$/.test(n.expression.name.text)) {
+    esExecute = /^\$executeRaw/.test(n.expression.name.text);
+    if (n.arguments[0] && ts.isStringLiteralLike(n.arguments[0])) sql = n.arguments[0].text;
+    else if (esExecute) return { modelo: "(sql no verificable)", operacion: "UPDATE", sql: "", noVerificable: true };
   }
   if (sql === null) return null;
   const m = /\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:ONLY\s+)?"?(\w+)"?/i.exec(sql);
   if (!m) return null;
   void fuente;
+  void esExecute;
   const operacion = m[1].toUpperCase().startsWith("INSERT") ? "INSERT" : m[1].toUpperCase().startsWith("UPDATE") ? "UPDATE" : "DELETE";
   return { modelo: m[2].charAt(0).toLowerCase() + m[2].slice(1), operacion, sql };
 }
@@ -487,7 +501,16 @@ describe("escrituras auditadas: el SQL crudo también cuenta (era invisible para
   it("no cuenta: una tabla sin columnas Decimal, un SELECT, un set_config ni un $queryRaw", () => {
     expect(leer('export async function f(db: any) { await db.$executeRaw`UPDATE "Proveedor" SET "nombre" = ${1}`; }')).toEqual([]);
     expect(leer("export async function f(db: any) { await db.$executeRaw`SELECT set_config('app.empresa_id', ${1}, true)`; }")).toEqual([]);
-    expect(leer('export async function f(db: any) { await db.$queryRaw`UPDATE "ProveedorPorProducto" SET "precioUnitario" = 1`; }')).toEqual([]);
+    expect(leer('export async function f(db: any) { await db.$queryRaw`SELECT "precioUnitario" FROM "ProveedorPorProducto" WHERE "id" = ${1}`; }')).toEqual([]);
+  });
+
+  it("un $queryRaw que ESCRIBE (INSERT … RETURNING) cuenta; un $executeRaw con SQL que no se puede leer falla cerrado", () => {
+    const returning = leer('export async function f(db: any) { await db.$queryRaw`INSERT INTO "ProveedorPorProducto" ("id", "precioUnitario") VALUES (${1}, ${2}) RETURNING "id"`; }');
+    expect(returning).toHaveLength(1);
+    expect(returning[0]).toMatchObject({ modelo: "proveedorPorProducto", columnas: ["precioUnitario"] });
+    expect(leer("export async function f(db: any, sql: string) { await db.$executeRawUnsafe(sql); }")[0].columnas).toEqual(["(no verificable)"]);
+    expect(leer("export async function f(db: any, Prisma: any) { await db.$executeRaw(Prisma.sql`UPDATE x SET y = 1`); }")[0].columnas).toEqual(["(no verificable)"]);
+    expect(violaciones(leer("export async function f(db: any, sql: string) { await db.$executeRawUnsafe(sql); await registrarCambioAuditado(db, {}); }"))).toEqual([]);
   });
 });
 

@@ -148,7 +148,8 @@ export async function registrarConteoFisicoCasoDeUso(
     });
 
     // Auditoría (decisión del dueño, 2026-10-07): el alta de un conteo deja su fila (saldo del sistema → lo contado). Sin diferencia no cambia nada y no se escribe.
-    await registrarCambioAuditado(tx, {
+    if (diferencia !== 0) {
+      await registrarCambioAuditado(tx, {
       entidad: "ConteoFisico",
       entidadId: conteo.id,
       campo: "conteoReal",
@@ -158,6 +159,7 @@ export async function registrarConteoFisicoCasoDeUso(
       actorId: actor.usuarioId,
       sucursalId: actor.sucursalId,
     });
+    }
 
     if (ajustado) {
       const operacion = await escribirOperacionDeStock(tx, {

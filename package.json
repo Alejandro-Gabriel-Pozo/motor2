@@ -15,7 +15,7 @@
     "start:e2e": "next start",
     "start": "next start",
     "lint": "eslint",
-    "arquitectura": "depcruise src plataforma --config .dependency-cruiser.cjs",
+    "arquitectura": "depcruise src plataforma next.config.ts --config .dependency-cruiser.cjs",
     "analizar:muerto": "knip",
     "inventario:arquitectura": "tsx scripts/arquitectura/inventario.ts",
     "reapuntar:imports": "tsx scripts/arquitectura/reapuntar-imports.ts",

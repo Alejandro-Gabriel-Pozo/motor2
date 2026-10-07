@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
-import { patronHostZonaCarta, reglasRedirectAppACarta, reglasRedirectCarta, reglasRewriteCarta } from "./src/core/carta/host";
-import { reglasRedirectEmpresaUnica, reglasRewriteEmpresaUnica } from "./src/core/carta/carta-empresa-unica";
+import { patronHostZonaCarta, reglasRedirectAppACarta, reglasRedirectCarta, reglasRedirectEmpresaUnica, reglasRewriteCarta, reglasRewriteEmpresaUnica } from "./src/core/carta/public";
 import { sirvePorHttps } from "./src/core/auth/cookie-sesion";
 import { cabecerasCarta, cabecerasComunes } from "./src/core/seguridad/cabeceras";
 

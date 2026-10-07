@@ -47,7 +47,7 @@ export default async function AuditoriaPage({
       <div>
         <h1 className="mb-1 text-xl font-semibold">Auditoría administrativa</h1>
         <p className="text-sm text-neutral-500">
-          Cambios de precios y permisos, con quién y cuándo — catálogo/precios/permisos no pasan por el Kardex, así que este es su propio rastro (hallazgo de auditoría, Pivote 6).
+          Cambios de precios, permisos, conteos físicos y traspasos, con quién y cuándo — catálogo/precios/permisos no pasan por el Kardex, así que este es su propio rastro (hallazgo de auditoría, Pivote 6).
         </p>
       </div>
       <div className="flex flex-wrap gap-2 text-sm">

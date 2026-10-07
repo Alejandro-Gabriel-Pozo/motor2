@@ -82,13 +82,13 @@ const reglaUiSinInternalsDeDominio = {
   to: { path: `^src/core/(${DOMINIOS_DE_NEGOCIO.join("|")})/`, pathNot: "^src/core/[^/]+/public(-servidor)?[.]ts$" },
 };
 
-/** `paginas-solo-consultas` (Pureza, trabajo 1.12): las páginas y los layouts piden los datos a `server/consultas`, no a `server/lecturas` ni a `server/persistencia`. */
+/** `paginas-solo-consultas` (Pureza, trabajo 1.12): la UI (páginas, layouts y componentes de `app/` y `components/`) pide los datos a `server/consultas`, no a `server/lecturas` ni a `server/persistencia`. */
 const reglaPaginasSoloConsultas = {
   name: "paginas-solo-consultas",
   comment:
     "Una página (page.tsx, layout.tsx) lee por `server/consultas`: `server/lecturas` es la capa de las lecturas COMPARTIDAS entre pantalla y escritura (las importan consultas, persistencia y acciones, ADR-026) y `server/persistencia` es de los casos de uso. Las excepciones, con motivo, en `.dependency-cruiser-excepciones.cjs`.",
   severity: "error",
-  from: { path: "^src/app/.+/(page|layout)\\.tsx$", pathNot: excepcionesDe("paginas-solo-consultas") },
+  from: { path: "^src/(app|components)/", pathNot: excepcionesDe("paginas-solo-consultas") },
   to: { path: "^src/server/(lecturas|persistencia)/" },
 };
 
@@ -341,7 +341,7 @@ module.exports = {
     // dependency-cruiser descartaría toda dependencia hacia un paquete y las reglas core-sin-react-next, ui-sin-prisma
     // (@prisma/client) y no-non-package-json nunca verían nada (verificado el 2026-09-27).
     // `plataforma/` (la consola, ADR-019) también se recorre: sus fronteras son las reglas `consola-*` de arriba.
-    includeOnly: ["^src/", "^plataforma/", "^node_modules/"],
+    includeOnly: ["^src/", "^plataforma/", "^next\\.config\\.ts$", "^node_modules/"],
     exclude: { path: ["^\\.next/", "^plataforma/\\.next/", "^plataforma/node_modules/"] },
     doNotFollow: { path: ["^node_modules/"] },
     reporterOptions: { text: { highlightFocused: true } },

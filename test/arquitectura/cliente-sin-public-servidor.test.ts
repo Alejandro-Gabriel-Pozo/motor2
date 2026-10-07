@@ -23,7 +23,7 @@ export function importsDePublicServidorEnUnCliente(codigo: string): string[] {
   if (!esDeCliente) return [];
   const encontrados: string[] = [];
   const mira = (modulo: string) => {
-    if (/(^|\/)public-servidor$/.test(modulo)) encontrados.push(modulo);
+    if (/(^|\/)public-servidor(\.tsx?)?$/.test(modulo)) encontrados.push(modulo);
   };
   const visitar = (n: ts.Node): void => {
     if (ts.isImportDeclaration(n) && ts.isStringLiteral(n.moduleSpecifier)) mira(n.moduleSpecifier.text);
