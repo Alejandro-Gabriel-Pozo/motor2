@@ -4,6 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { crearMembresia } from "../setup/membresia";
+import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import {
@@ -36,7 +37,13 @@ describe("receta propia por sucursal: acciones", () => {
   let rolAdminId: string;
 
   const linea = (insumoProductoId: string, cantidad: number, mermaPorcentaje = 0) => ({ insumoProductoId, cantidad, unidadId: kgId, mermaPorcentaje });
-  const enSucursal = (id: string) => __setCookieDeTestParaSucursal(id);
+  // La sucursal activa del test (la que fija la cookie; sin ella, la primera membresía: Central): de su receta propia es la versión que la pantalla mostraría (`versionVista`, H7).
+  let sucursalActiva: string | undefined;
+  const enSucursal = (id: string) => {
+    sucursalActiva = id;
+    return __setCookieDeTestParaSucursal(id);
+  };
+  const versionPropia = (productoId: string) => versionVigenteDeReceta(productoId, sucursalActiva ?? centralId);
   const propias = (sucursalId: string) => prisma.recetaVersion.findMany({ where: { productoId: pv.id, sucursalId }, orderBy: { version: "asc" }, include: { ingredientes: true } });
   const centrales = () => prisma.recetaVersion.findMany({ where: { productoId: pv.id, sucursalId: null }, orderBy: { version: "asc" }, include: { ingredientes: true } });
   const idsDe = (v: { ingredientes: { insumoProductoId: string }[] }) => v.ingredientes.map((i) => i.insumoProductoId).sort();
@@ -74,7 +81,7 @@ describe("receta propia por sucursal: acciones", () => {
   describe("crear la receta propia a partir de la central", () => {
     it("copia la central vigente como v1 de la serie propia, la habilita y deja la central intacta", async () => {
       const central = (await centrales())[0];
-      const r = await crearRecetaPropiaDesdeLaCentral(pv.id);
+      const r = await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id));
       expect(r.ok, r.mensaje).toBe(true);
 
       const [propia, ...resto] = await propias(centralId);
@@ -87,7 +94,7 @@ describe("receta propia por sucursal: acciones", () => {
     });
 
     it("deja auditoría de la versión y de la habilitación, con la sucursal", async () => {
-      await crearRecetaPropiaDesdeLaCentral(pv.id);
+      await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id));
       const filas = await prisma.registroAuditoria.findMany({ where: { sucursalId: centralId, entidad: { in: ["RecetaVersion", "RecetaSucursal"] } }, orderBy: { entidad: "asc" } });
       expect(filas.map((f) => [f.entidad, f.campo, f.actorId])).toEqual([
         ["RecetaSucursal", "habilitada", adminId],
@@ -98,7 +105,7 @@ describe("receta propia por sucursal: acciones", () => {
 
     it("siempre opera sobre la sucursal ACTIVA de la sesión (no hay parámetro de sucursal)", async () => {
       enSucursal(norteId);
-      const r = await crearRecetaPropiaDesdeLaCentral(pv.id);
+      const r = await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id));
       expect(r.ok, r.mensaje).toBe(true);
       expect(await propias(centralId)).toEqual([]);
       expect((await propias(norteId)).map((v) => v.version)).toEqual([1]);
@@ -106,14 +113,14 @@ describe("receta propia por sucursal: acciones", () => {
     });
 
     it("no se puede crear dos veces, ni sin receta central de la que partir", async () => {
-      expect((await crearRecetaPropiaDesdeLaCentral(pv.id)).ok).toBe(true);
-      const otra = await crearRecetaPropiaDesdeLaCentral(pv.id);
+      expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id))).ok).toBe(true);
+      const otra = await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id));
       expect(otra.ok).toBe(false);
       expect(otra.mensaje).toContain("ya tiene receta propia");
       expect(await propias(centralId)).toHaveLength(1);
 
       const sinCentral = await sembrarProductoDisponible({ codigo: "PV_SIN", nombre: "Sin receta", tipo: "PV", unidadStockId: kgId, precioVenta: 1 }, centralId);
-      const r = await crearRecetaPropiaDesdeLaCentral(sinCentral.id);
+      const r = await crearRecetaPropiaDesdeLaCentral(sinCentral.id, await versionPropia(sinCentral.id));
       expect(r.ok).toBe(false);
       expect(r.mensaje).toContain("no tiene receta central");
     });
@@ -121,13 +128,13 @@ describe("receta propia por sucursal: acciones", () => {
 
   describe("editar la receta propia", () => {
     beforeEach(async () => {
-      expect((await crearRecetaPropiaDesdeLaCentral(pv.id)).ok).toBe(true);
+      expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id))).ok).toBe(true);
     });
 
     it("agregar, actualizar y quitar generan versiones de la serie propia (numeradas por su cuenta); la central no se mueve", async () => {
-      expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 3))).ok).toBe(true);
-      expect((await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 5, unidadId: kgId, mermaPorcentaje: 20 })).ok).toBe(true);
-      expect((await quitarIngredienteDeRecetaPropia(pv.id, harina.id)).ok).toBe(true);
+      expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 3), await versionPropia(pv.id))).ok).toBe(true);
+      expect((await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 5, unidadId: kgId, mermaPorcentaje: 20 }, await versionPropia(pv.id))).ok).toBe(true);
+      expect((await quitarIngredienteDeRecetaPropia(pv.id, harina.id, await versionPropia(pv.id))).ok).toBe(true);
 
       const versiones = await propias(centralId);
       expect(versiones.map((v) => v.version)).toEqual([1, 2, 3, 4]);
@@ -144,29 +151,29 @@ describe("receta propia por sucursal: acciones", () => {
 
     it("la numeración de la propia y la de la central son independientes", async () => {
       expect((await guardarReceta(pv.id, [linea(harina.id, 9)])).ok).toBe(true); // central v2
-      expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 1))).ok).toBe(true); // propia v2
+      expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 1), await versionPropia(pv.id))).ok).toBe(true); // propia v2
       expect((await centrales()).map((v) => v.version)).toEqual([1, 2]);
       expect((await propias(centralId)).map((v) => v.version)).toEqual([1, 2]);
     });
 
     it("rechaza un ingrediente repetido, y editar o quitar uno que no está", async () => {
-      expect((await agregarIngredienteARecetaPropia(pv.id, linea(harina.id, 1))).mensaje).toContain("ya está");
-      expect((await actualizarIngredienteDeRecetaPropia(pv.id, tomate.id, { cantidad: 1, unidadId: kgId })).ok).toBe(false);
-      expect((await quitarIngredienteDeRecetaPropia(pv.id, tomate.id)).ok).toBe(false);
+      expect((await agregarIngredienteARecetaPropia(pv.id, linea(harina.id, 1), await versionPropia(pv.id))).mensaje).toContain("ya está");
+      expect((await actualizarIngredienteDeRecetaPropia(pv.id, tomate.id, { cantidad: 1, unidadId: kgId }, await versionPropia(pv.id))).ok).toBe(false);
+      expect((await quitarIngredienteDeRecetaPropia(pv.id, tomate.id, await versionPropia(pv.id))).ok).toBe(false);
       expect(await propias(centralId)).toHaveLength(1);
     });
 
     it("rechaza una cantidad inválida (la validación es la misma que la de la receta central)", async () => {
-      const r = await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 0, unidadId: kgId });
+      const r = await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 0, unidadId: kgId }, await versionPropia(pv.id));
       expect(r.ok).toBe(false);
       expect(await propias(centralId)).toHaveLength(1);
     });
 
     it("editar, agregar o quitar sin receta propia habilitada se rechaza (no se edita la central por la puerta de atrás)", async () => {
       enSucursal(norteId);
-      expect((await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 1, unidadId: kgId })).ok).toBe(false);
-      expect((await quitarIngredienteDeRecetaPropia(pv.id, queso.id)).ok).toBe(false);
-      const agregar = await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 1));
+      expect((await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 1, unidadId: kgId }, await versionPropia(pv.id))).ok).toBe(false);
+      expect((await quitarIngredienteDeRecetaPropia(pv.id, queso.id, await versionPropia(pv.id))).ok).toBe(false);
+      const agregar = await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 1), await versionPropia(pv.id));
       expect(agregar.ok).toBe(false);
       expect(agregar.mensaje).toContain("Primero creá");
       expect(await propias(norteId)).toEqual([]);
@@ -175,7 +182,7 @@ describe("receta propia por sucursal: acciones", () => {
 
     it("un plato sin receta central admite una receta propia armada desde cero con 'agregar ingrediente'", async () => {
       const sinCentral = await sembrarProductoDisponible({ codigo: "PV_SIN", nombre: "Sin receta", tipo: "PV", unidadStockId: kgId, precioVenta: 1 }, centralId);
-      const r = await agregarIngredienteARecetaPropia(sinCentral.id, linea(harina.id, 4));
+      const r = await agregarIngredienteARecetaPropia(sinCentral.id, linea(harina.id, 4), await versionPropia(sinCentral.id));
       expect(r.ok, r.mensaje).toBe(true);
       const propia = await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: sinCentral.id, sucursalId: centralId } });
       expect(propia).toMatchObject({ version: 1, basadaEnVersionId: null });
@@ -186,8 +193,8 @@ describe("receta propia por sucursal: acciones", () => {
 
   describe("la receta efectiva y el aviso «la central cambió»", () => {
     it("con la propia habilitada rige la propia en esa sucursal; en las otras, la central", async () => {
-      expect((await crearRecetaPropiaDesdeLaCentral(pv.id)).ok).toBe(true);
-      expect((await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 8, unidadId: kgId })).ok).toBe(true);
+      expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id))).ok).toBe(true);
+      expect((await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 8, unidadId: kgId }, await versionPropia(pv.id))).ok).toBe(true);
       const deCentral = await cargarRecetaVigente(prisma, alcanceDeSucursal(centralId), pv.id, { include: { ingredientes: true } });
       expect(deCentral).toMatchObject({ sucursalId: centralId, version: 2 });
       expect(Number(deCentral?.ingredientes.find((i) => i.insumoProductoId === queso.id)?.cantidad)).toBe(8);
@@ -196,7 +203,7 @@ describe("receta propia por sucursal: acciones", () => {
     });
 
     it("avisa cuando la central cambió después de armar la propia, nunca la aplica, y se calla al revisar la propia", async () => {
-      expect((await crearRecetaPropiaDesdeLaCentral(pv.id)).ok).toBe(true);
+      expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id))).ok).toBe(true);
       expect((await obtenerEstadoDeRecetaPropia(pv.id, centralId, prisma)).centralCambio).toBe(false);
 
       expect((await guardarReceta(pv.id, [linea(harina.id, 99)])).ok).toBe(true); // central v2
@@ -206,7 +213,7 @@ describe("receta propia por sucursal: acciones", () => {
       expect(idsDe((await propias(centralId))[0])).toEqual([harina.id, queso.id].sort()); // la propia no se tocó
 
       // Al editar la propia (la revisó), pasa a basarse en la central vigente y el aviso se apaga.
-      expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 1))).ok).toBe(true);
+      expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 1), await versionPropia(pv.id))).ok).toBe(true);
       expect((await obtenerEstadoDeRecetaPropia(pv.id, centralId, prisma)).centralCambio).toBe(false);
     });
 
@@ -219,13 +226,13 @@ describe("receta propia por sucursal: acciones", () => {
   describe("copiar la receta propia de otra sucursal", () => {
     beforeEach(async () => {
       enSucursal(norteId);
-      expect((await crearRecetaPropiaDesdeLaCentral(pv.id)).ok).toBe(true);
-      expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 3))).ok).toBe(true); // propia de Norte v2: harina, queso, tomate
+      expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id))).ok).toBe(true);
+      expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 3), await versionPropia(pv.id))).ok).toBe(true); // propia de Norte v2: harina, queso, tomate
       enSucursal(centralId);
     });
 
     it("exige la confirmación explícita", async () => {
-      const r = await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, false);
+      const r = await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, false, await versionPropia(pv.id));
       expect(r.ok).toBe(false);
       expect(r.mensaje).toContain("Confirmá");
       expect(await propias(centralId)).toEqual([]);
@@ -233,7 +240,7 @@ describe("receta propia por sucursal: acciones", () => {
 
     it("copia la propia de la otra sucursal como versión nueva de la propia de la activa, y la de origen no se toca", async () => {
       const origen = await propias(norteId);
-      const r = await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true);
+      const r = await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true, await versionPropia(pv.id));
       expect(r.ok, r.mensaje).toBe(true);
 
       const [copia] = await propias(centralId);
@@ -247,8 +254,8 @@ describe("receta propia por sucursal: acciones", () => {
     });
 
     it("pisa la propia que hubiera (la anterior queda en el historial) y numera sobre la serie", async () => {
-      expect((await crearRecetaPropiaDesdeLaCentral(pv.id)).ok).toBe(true);
-      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true)).ok).toBe(true);
+      expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id))).ok).toBe(true);
+      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true, await versionPropia(pv.id))).ok).toBe(true);
       const versiones = await propias(centralId);
       expect(versiones.map((v) => v.version)).toEqual([1, 2]);
       expect(idsDe(versiones[0])).toEqual([harina.id, queso.id].sort());
@@ -256,14 +263,14 @@ describe("receta propia por sucursal: acciones", () => {
     });
 
     it("no copia de la misma sucursal, de una sin receta propia, de una deshabilitada, ni de una inexistente", async () => {
-      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, centralId, true)).mensaje).toContain("otra sucursal");
-      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, "no-existe", true)).mensaje).toContain("No se encontró");
+      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, centralId, true, await versionPropia(pv.id))).mensaje).toContain("otra sucursal");
+      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, "no-existe", true, await versionPropia(pv.id))).mensaje).toContain("No se encontró");
 
       const sur = await prisma.sucursal.create({ data: { nombre: "Sur" } });
-      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, sur.id, true)).mensaje).toContain("no tiene receta propia");
+      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, sur.id, true, await versionPropia(pv.id))).mensaje).toContain("no tiene receta propia");
 
       await prisma.recetaSucursal.update({ where: { sucursalId_productoId: { sucursalId: norteId, productoId: pv.id } }, data: { habilitada: false } });
-      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true)).mensaje).toContain("no tiene receta propia");
+      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true, await versionPropia(pv.id))).mensaje).toContain("no tiene receta propia");
       expect(await propias(centralId)).toEqual([]);
     });
 
@@ -277,8 +284,8 @@ describe("receta propia por sucursal: acciones", () => {
 
   describe("volver a la receta central", () => {
     beforeEach(async () => {
-      expect((await crearRecetaPropiaDesdeLaCentral(pv.id)).ok).toBe(true);
-      expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 3))).ok).toBe(true);
+      expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id))).ok).toBe(true);
+      expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 3), await versionPropia(pv.id))).ok).toBe(true);
     });
 
     it("exige la confirmación explícita", async () => {
@@ -306,14 +313,14 @@ describe("receta propia por sucursal: acciones", () => {
       expect((await volverALaRecetaCentral(pv.id, true)).mensaje).toContain("no tiene receta propia habilitada");
       expect((await editarSinPropia()).ok).toBe(false);
 
-      expect((await crearRecetaPropiaDesdeLaCentral(pv.id)).ok).toBe(true);
+      expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id))).ok).toBe(true);
       expect((await propias(centralId)).map((v) => v.version)).toEqual([1, 2, 3]);
       expect(idsDe((await propias(centralId))[2])).toEqual([harina.id, queso.id].sort()); // parte de la central, no de la propia vieja
       expect(await prisma.recetaSucursal.count({ where: { habilitada: true } })).toBe(1);
     });
 
-    function editarSinPropia() {
-      return actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 1, unidadId: kgId });
+    async function editarSinPropia() {
+      return actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 1, unidadId: kgId }, await versionPropia(pv.id));
     }
 
     it("las calibraciones de la sucursal se conservan y vuelven a regir al volver a la central", async () => {
@@ -328,11 +335,11 @@ describe("receta propia por sucursal: acciones", () => {
     it("un operador (sin ninguna de las tres) es rechazado en las seis acciones y no se escribe nada", async () => {
       await mockearUsuarioActual({ id: operadorId, email: "operador@test.com", nombre: null });
       const resultados = [
-        await crearRecetaPropiaDesdeLaCentral(pv.id),
-        await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 1)),
-        await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 1, unidadId: kgId }),
-        await quitarIngredienteDeRecetaPropia(pv.id, queso.id),
-        await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true),
+        await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id)),
+        await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 1), await versionPropia(pv.id)),
+        await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 1, unidadId: kgId }, await versionPropia(pv.id)),
+        await quitarIngredienteDeRecetaPropia(pv.id, queso.id, await versionPropia(pv.id)),
+        await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true, await versionPropia(pv.id)),
         await volverALaRecetaCentral(pv.id, true),
       ];
       expect(resultados.map((r) => r.ok)).toEqual([false, false, false, false, false, false]);
@@ -342,7 +349,7 @@ describe("receta propia por sucursal: acciones", () => {
     it("cada acción responde a SU clave: quien solo puede editar no copia ni vuelve a la central, y al revés", async () => {
       // Norte con receta propia (como admin) para que copiar y volver tengan sobre qué actuar.
       enSucursal(norteId);
-      expect((await crearRecetaPropiaDesdeLaCentral(pv.id)).ok).toBe(true);
+      expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id))).ok).toBe(true);
       enSucursal(centralId);
 
       // Se recorta al admin la matriz a UNA sola clave.
@@ -354,29 +361,30 @@ describe("receta propia por sucursal: acciones", () => {
       };
 
       await conSoloUna("receta_sucursal_editar");
-      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true)).ok).toBe(false);
+      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true, await versionPropia(pv.id))).ok).toBe(false);
       expect((await volverALaRecetaCentral(pv.id, true)).ok).toBe(false);
-      const creada = await crearRecetaPropiaDesdeLaCentral(pv.id);
+      const creada = await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id));
       expect(creada.ok, creada.mensaje).toBe(true);
-      expect((await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 3, unidadId: kgId })).ok).toBe(true);
+      expect((await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 3, unidadId: kgId }, await versionPropia(pv.id))).ok).toBe(true);
 
       await conSoloUna("receta_sucursal_volver_central");
-      expect((await crearRecetaPropiaDesdeLaCentral(pv.id)).ok).toBe(false);
-      expect((await quitarIngredienteDeRecetaPropia(pv.id, queso.id)).ok).toBe(false);
-      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true)).ok).toBe(false);
+      expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id))).ok).toBe(false);
+      expect((await quitarIngredienteDeRecetaPropia(pv.id, queso.id, await versionPropia(pv.id))).ok).toBe(false);
+      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true, await versionPropia(pv.id))).ok).toBe(false);
       expect((await volverALaRecetaCentral(pv.id, true)).ok).toBe(true);
 
       await conSoloUna("receta_sucursal_copiar");
       expect((await volverALaRecetaCentral(pv.id, true)).ok).toBe(false);
-      expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 1))).ok).toBe(false);
-      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true)).ok).toBe(true);
+      expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 1), await versionPropia(pv.id))).ok).toBe(false);
+      expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, norteId, true, await versionPropia(pv.id))).ok).toBe(true);
     });
 
     it("quien tiene el permiso en una sucursal pero no es miembro de la otra no puede operar ahí (cookie ajena se ignora)", async () => {
       const u = await crearUsuarioConMembresia({ email: "soloCentral@test.com", sucursalId: centralId, rolId: rolAdminId });
       await mockearUsuarioActual({ id: u.id, email: u.email, nombre: null });
       enSucursal(norteId);
-      const r = await crearRecetaPropiaDesdeLaCentral(pv.id);
+      // La cookie de Norte se ignora: la acción opera sobre Central, así que la versión que «mostraba la pantalla» es la de la serie de CENTRAL.
+      const r = await crearRecetaPropiaDesdeLaCentral(pv.id, await versionVigenteDeReceta(pv.id, centralId));
       expect(r.ok, r.mensaje).toBe(true);
       expect(await propias(norteId)).toEqual([]);
       expect(await propias(centralId)).toHaveLength(1);
@@ -385,12 +393,12 @@ describe("receta propia por sucursal: acciones", () => {
     it("la Central puede apagar cada acción por sucursal (capacidad de sucursal, como toda acción de sucursal)", async () => {
       await prisma.capacidadSucursal.create({ data: { accionClave: "receta_sucursal_editar", sucursalId: norteId, habilitado: false } });
       enSucursal(norteId);
-      const r = await crearRecetaPropiaDesdeLaCentral(pv.id);
+      const r = await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id));
       expect(r.ok).toBe(false);
       expect(r.mensaje).toContain("no habilitó");
       expect(await propias(norteId)).toEqual([]);
       enSucursal(centralId);
-      expect((await crearRecetaPropiaDesdeLaCentral(pv.id)).ok).toBe(true);
+      expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id))).ok).toBe(true);
     });
   });
 });

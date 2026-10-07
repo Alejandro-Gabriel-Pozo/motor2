@@ -19,6 +19,7 @@ import { calcularStockConsolidado } from "../src/server/consultas/stock/consolid
 import { calcularValuacionInventario } from "../src/server/consultas/reportes/valuacion";
 import { calcularAlertasStock } from "../src/server/consultas/stock/alertas";
 import { tieneStockReal } from "../src/core/movimientos/transiciones";
+import { cargarOfertasDeProveedores } from "../src/server/lecturas/catalogo/ofertas-de-proveedor";
 
 const NOMBRE_SUCURSAL = "La Cuadra";
 // Ventana de 6 meses — mismo criterio que fechaDe en el ejecutor: termina HOY. OJO acá: DESDE se calcula ANTES de fijarle
@@ -138,5 +139,27 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
     const [rep30, rep6m] = await Promise.all([obtenerReportePorPeriodo(sucursalId, hace30, HASTA, undefined, prisma), obtenerReportePorPeriodo(sucursalId, DESDE, HASTA, undefined, prisma)]);
     expect(rep30.ventas.totalFacturado).toBeGreaterThan(0);
     expect(rep30.ventas.totalFacturado).toBeLessThanOrEqual(rep6m.ventas.totalFacturado);
+  });
+
+  it("11) Vínculo proveedor↔producto: todo par con compras vigentes tiene su fila en la tabla (unidad y referencia), y el precio derivado del Kardex coincide con una consulta cruda", async () => {
+    const ofertas = await cargarOfertasDeProveedores(prisma);
+    expect(ofertas.length, "la demo tiene compras con proveedor").toBeGreaterThan(0);
+
+    // FALTA: un par con compra vigente y sin fila en la tabla (la compra escribe el vínculo en su misma transacción, así que no debería pasar; los productos sin unidad de compra definida no lo escriben).
+    const filas = await prisma.proveedorPorProducto.findMany({ select: { productoId: true, proveedorId: true } });
+    const conFila = new Set(filas.map((f) => `${f.productoId}|${f.proveedorId}`));
+    // Las compras ANTERIORES a que toda compra escribiera su fila (un producto sin unidad de compra usa su unidad de stock desde 2026-10-07) pueden no tenerla: se excluyen los productos sin unidad de compra.
+    const sinUnidad = new Set((await prisma.producto.findMany({ where: { unidadCompraId: null }, select: { id: true } })).map((p) => p.id));
+    const faltan = ofertas.filter((o) => !conFila.has(`${o.productoId}|${o.proveedorId}`) && !sinUnidad.has(o.productoId));
+    expect(faltan.map((o) => `${o.productoId}|${o.proveedorId}`), "pares con compra vigente y sin fila en ProveedorPorProducto").toEqual([]);
+
+    // El precio de cada oferta es el de la última compra CON precio de ese par: se recalcula con una consulta cruda, por otro camino.
+    const crudo = await prisma.$queryRaw<Array<{ productoId: string; proveedorId: string; precio: string }>>`
+      SELECT DISTINCT ON (m."productoId", o."proveedorId") m."productoId", o."proveedorId", m."precioPorUnidadStock"::text AS precio
+      FROM "MovimientoStock" m JOIN "Operacion" o ON o."id" = m."operacionId"
+      WHERE m."proceso" = 'COMPRA' AND o."proceso" = 'COMPRA' AND o."anuladaEn" IS NULL AND o."proveedorId" IS NOT NULL AND m."precioPorUnidadStock" > 0
+      ORDER BY m."productoId", o."proveedorId", o."fecha" DESC, m."id" DESC`;
+    const precioCrudo = new Map(crudo.map((c) => [`${c.productoId}|${c.proveedorId}`, Number(c.precio)]));
+    for (const o of ofertas) expect(o.precioPorUnidadStock, `${o.productoId}|${o.proveedorId}`).toBe(precioCrudo.get(`${o.productoId}|${o.proveedorId}`) ?? 0);
   });
 });

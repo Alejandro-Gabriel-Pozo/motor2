@@ -87,6 +87,8 @@ export default async function RecetaEditorPage({
   }
 
   const vigente = await obtenerRecetaVigente(producto.id);
+  // La versión que ESTA pantalla muestra: cada cambio puntual la manda de vuelta, y si mientras tanto alguien guardó otra, el cambio se rechaza con un mensaje en vez de pisarlo (H7).
+  const versionVista = vigente?.version ?? 0;
   const volver = `/catalogo/recetas/${producto.id}`;
   const siguienteOrdenPaso = vigente?.pasos.length ? Math.max(...vigente.pasos.map((p) => p.orden)) + 1 : 1;
 
@@ -181,7 +183,7 @@ export default async function RecetaEditorPage({
                   presentacionEmplatado: String(formData.get("presentacionEmplatado") ?? ""),
                   notasAdicionales: String(formData.get("notasAdicionales") ?? ""),
                   equipamientoNecesario: String(formData.get("equipamientoNecesario") ?? ""),
-                });
+                }, versionVista);
                 // Sale del modo edición al guardar — mismo criterio que Ingredientes/Pasos.
                 if (resultado.ok) redirect(volver);
                 return resultado;
@@ -349,7 +351,7 @@ export default async function RecetaEditorPage({
                               unidadId: String(formData.get("unidadId") ?? ""),
                               mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
                               insumoSustitutoIds: aceptaSustitutos ? formData.getAll("insumoSustitutoIds").map(String).filter((v) => v !== "") : undefined,
-                            });
+                            }, versionVista);
                             // Sale del modo edición al guardar — si no, `editar=` queda pegado en la URL y la fila se muestra siempre editable.
                             if (resultado.ok) redirect(volver);
                             return resultado;
@@ -447,7 +449,7 @@ export default async function RecetaEditorPage({
                             <FormConResultado
                               accion={async () => {
                                 "use server";
-                                return quitarIngredienteDeReceta(producto.id, ing.insumoProductoId);
+                                return quitarIngredienteDeReceta(producto.id, ing.insumoProductoId, versionVista);
                               }}
                             >
                               <button type="submit" className="text-sm underline inline-flex items-center gap-1">
@@ -476,7 +478,7 @@ export default async function RecetaEditorPage({
               cantidad: Number(formData.get("cantidad")),
               unidadId: String(formData.get("unidadId") ?? ""),
               mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
-            });
+            }, versionVista);
           }}
           className="flex max-w-lg flex-col gap-2"
         >
@@ -528,7 +530,7 @@ export default async function RecetaEditorPage({
                             instruccion: String(formData.get("instruccion") ?? ""),
                             minutos: formData.get("minutos") ? Number(formData.get("minutos")) : undefined,
                             insumoProductoIds: formData.getAll("insumoProductoIds").map(String),
-                          });
+                          }, versionVista);
                           if (resultado.ok) redirect(volver);
                           return resultado;
                         }}
@@ -584,7 +586,7 @@ export default async function RecetaEditorPage({
                           <FormConResultado
                             accion={async () => {
                               "use server";
-                              return quitarPasoDeReceta(producto.id, paso.orden);
+                              return quitarPasoDeReceta(producto.id, paso.orden, versionVista);
                             }}
                           >
                             <button type="submit" className="text-xs underline">
@@ -595,7 +597,7 @@ export default async function RecetaEditorPage({
                             <FormConResultado
                               accion={async () => {
                                 "use server";
-                                return reordenarPasosDeReceta(producto.id, secuenciaMoviendo(ordenesVigentes, paso.orden, "arriba"));
+                                return reordenarPasosDeReceta(producto.id, secuenciaMoviendo(ordenesVigentes, paso.orden, "arriba"), versionVista);
                               }}
                             >
                               <button type="submit" className="text-xs underline">
@@ -607,7 +609,7 @@ export default async function RecetaEditorPage({
                             <FormConResultado
                               accion={async () => {
                                 "use server";
-                                return reordenarPasosDeReceta(producto.id, secuenciaMoviendo(ordenesVigentes, paso.orden, "abajo"));
+                                return reordenarPasosDeReceta(producto.id, secuenciaMoviendo(ordenesVigentes, paso.orden, "abajo"), versionVista);
                               }}
                             >
                               <button type="submit" className="text-xs underline">
@@ -635,8 +637,8 @@ export default async function RecetaEditorPage({
                   insumoProductoIds: formData.getAll("insumoProductoIds").map(String),
                 };
                 const posicion = String(formData.get("posicion") ?? "final");
-                if (posicion === "final") return agregarPasoAReceta(producto.id, { orden: siguienteOrdenPaso, ...datos });
-                return insertarPasoEnReceta(producto.id, Number(posicion), datos);
+                if (posicion === "final") return agregarPasoAReceta(producto.id, { orden: siguienteOrdenPaso, ...datos }, versionVista);
+                return insertarPasoEnReceta(producto.id, Number(posicion), datos, versionVista);
               }}
               className="flex max-w-lg flex-col gap-2"
             >

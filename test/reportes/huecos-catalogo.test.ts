@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarCompraDeKardex, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { generarReporteHuecosCatalogo, obtenerProblemasUnidadMezclada } from "../../src/server/consultas/reportes/huecos-catalogo";
@@ -13,6 +13,7 @@ describe("generarReporteHuecosCatalogo", () => {
   let seccionId: string;
   let unidadKgId: string;
   let insumoId: string;
+  let adminId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -23,6 +24,7 @@ describe("generarReporteHuecosCatalogo", () => {
     insumoId = catalogo.insumo.id;
     seccionId = (await sembrarSeccion(sucursalId)).id;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
+    adminId = admin.id;
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
@@ -53,6 +55,19 @@ describe("generarReporteHuecosCatalogo", () => {
 
     const rep = await generarReporteHuecosCatalogo(sucursalId, prisma);
     expect(rep.insumosConRecetaSinProveedor.map((p) => p.productoId)).toContain(mp.id);
+  });
+
+  it("«tiene proveedor» sale del Kardex vigente: una compra con proveedor saca el hueco; si esa compra se anula, el hueco vuelve", async () => {
+    const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_H", nombre: "Molino" } });
+    const mp = await sembrarProductoDisponible({ codigo: "MP_H", nombre: "Con compra", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pv = await sembrarProductoDisponible({ codigo: "PV_H", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
+    await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
+    const compra = await sembrarCompraDeKardex({ sucursalId, seccionId, usuarioId: adminId, productoId: mp.id, proveedorId: proveedor.id, fecha: "2026-09-10", precioPorUnidadStock: 10 });
+
+    expect((await generarReporteHuecosCatalogo(sucursalId, prisma)).insumosConRecetaSinProveedor.map((p) => p.productoId)).not.toContain(mp.id);
+
+    await prisma.operacion.update({ where: { id: compra.id }, data: { anuladaEn: new Date(), anuladaPorId: adminId } });
+    expect((await generarReporteHuecosCatalogo(sucursalId, prisma)).insumosConRecetaSinProveedor.map((p) => p.productoId)).toContain(mp.id);
   });
 
   it("una MP 'Se produce' sin proveedor NO aparece — se fabrica con su propia receta, nunca se compra (§8.7)", async () => {

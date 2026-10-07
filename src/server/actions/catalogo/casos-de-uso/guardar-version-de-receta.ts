@@ -31,9 +31,9 @@ import {
  * Pasos, en el orden de siempre:
  *  1. carga del producto (FUERA de la transacción) → «no encontrado»; elegibilidad (PV, o MP con "Se produce");
  *  2. `validarIngredientes` → `validarPasos` → `validarCabecera` (el primero que falla da el mensaje);
- *  3. reintento (`conReintento`, hasta 5 intentos, ante un choque del UNIQUE (productoId, version) o un conflicto de escritura):
- *     a. relee la versión vigente COMPLETA (FUERA de la transacción) y calcula `version` = MAX + 1, de forma optimista;
- *     b. dentro de UNA transacción SERIALIZABLE (desde D3, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 6: el arrastre
+ *  3. reintento (`conReintento`, hasta 5 intentos, ante un choque del UNIQUE (productoId, version) o un conflicto de escritura), cada intento en UNA transacción SERIALIZABLE:
+ *     a. relee la versión vigente COMPLETA (con sus calibraciones locales) DENTRO de la transacción, la compara con `versionEsperada` y calcula `version` = MAX + 1;
+ *     b. dentro de esa misma transacción (desde D3, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 6: el arrastre
  *        lee/escribe `RendimientoLocalIngrediente`, que una calibración concurrente también puede estar tocando):
  *        - crea la versión con ingredientes, pasos, cabecera y la tabla puente paso↔ingrediente (persistencia);
  *        - D3, arrastre de calibraciones locales por `insumoProductoId`: se COPIAN si el ingrediente sigue y con la misma unidad; si cambió
@@ -49,10 +49,10 @@ import {
  * calibraciones: no las hay sobre una receta propia (cuelgan de las líneas de la central y no rigen mientras la propia está habilitada).
  *
  * @contract Crea una versión NUEVA de la receta (append-only) y arrastra las calibraciones locales compatibles, auditando las que se descartan.
- * @idempotency No aplica — append-only, cada guardado crea una versión nueva; no hay un "duplicado" que detectar.
+ * @idempotency Optimista — `versionEsperada` (la versión sobre la que se armó el reemplazo) se compara con la vigente en cada intento: si otra persona guardó en el medio, se rechaza (`VERSION_DESACTUALIZADA`) en vez de pisarla. Sin ella (seeds, scripts) es un reemplazo a ciegas: cada guardado crea una versión nueva, append-only.
  * @transaction conTransaccionSerializable (SERIALIZABLE), reabierta hasta 5 veces vía conReintento si choca el UNIQUE(productoId, version) o hay conflicto de escritura.
  * @sideEffects registrarCambioAuditado (la versión nueva, y cada calibración local descartada por cambio de unidad o salida de la receta).
- * @ficha permiso=guardar_receta transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=guardar_receta transaccion=SERIALIZABLE idempotencia=OPTIMISTA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
  */
 /** Dónde se guarda la versión: la serie CENTRAL (`sucursalId` null) o la PROPIA de una sucursal. */
 export type DestinoDeVersionDeReceta = { sucursalId: null } | { sucursalId: string; basadaEnVersionId?: string | null; copiadaDeSucursal?: string };
@@ -98,23 +98,27 @@ export async function guardarVersionDeRecetaCasoDeUso(
     async () => {
       descartes = [];
       rechazo.resultado = null;
-      // La versión anterior COMPLETA (con sus overrides locales) — D3: se arrastra a la versión nueva, salvo que el
-      // ingrediente haya cambiado de unidad o haya salido de la receta. Fuera de la transacción, igual que antes.
-      const ultima = await cargarUltimaVersionDeReceta(actor.db, productoId, sucursalId);
-      // H7 (lectura-modificación-escritura): si quien llama armó este reemplazo sobre la versión N y la serie ya va por otra, alguien guardó en el medio y este guardado pisaría su cambio.
-      // Se RECHAZA con un mensaje (decisión del dueño, 2026-10-06) en vez de pisar en silencio. Se chequea en cada intento: si el choque de UNIQUE (dos guardados simultáneos) obliga a
-      // repetir, la relectura ve la versión del ganador y el perdedor termina acá.
-      const versionActual = ultima?.version ?? 0;
-      if (versionEsperada !== null && versionEsperada !== versionActual) {
-        rechazo.resultado = fracaso(
-          "VERSION_DESACTUALIZADA",
-          `La receta de "${producto.nombre}" cambió mientras la editabas (ahora va por la versión ${versionActual}, y partiste de la ${versionEsperada}). Recargá la pantalla y volvé a hacer el cambio.`
-        );
-        return;
-      }
-      version = versionActual + 1;
-      const basadaEnVersionId = sucursalId === null ? null : destino.basadaEnVersionId !== undefined ? destino.basadaEnVersionId : await cargarIdDeVersionCentralVigente(actor.db, productoId);
       await conTransaccionSerializable(actor.transaccion, async (tx) => {
+        // La versión anterior COMPLETA (con sus overrides locales) — D3: se arrastra a la versión nueva, salvo que el ingrediente haya cambiado de unidad o haya salido de la receta.
+        // Se lee DENTRO de la transacción SERIALIZABLE (Pureza Fase 4, H7): si una calibración local (`fijarRendimientoLocal`) se confirmaba entre esta lectura y la escritura, la versión
+        // nueva se llevaba la foto vieja y la calibración quedaba colgada de la versión anterior, sin que nadie lo notara. Leyendo acá, el motor ve el cruce (esta transacción lee
+        // `RendimientoLocalIngrediente` y `RecetaVersion`, la calibración escribe lo primero y lee lo segundo) y aborta a una de las dos con 40001, que el reintento repite.
+        const ultima = await cargarUltimaVersionDeReceta(tx, productoId, sucursalId);
+        // H7 (lectura-modificación-escritura): si quien llama armó este reemplazo sobre la versión N y la serie ya va por otra, alguien guardó en el medio y este guardado pisaría su cambio.
+        // Se RECHAZA con un mensaje (decisión del dueño, 2026-10-06) en vez de pisar en silencio. Se chequea en cada intento: si el choque de UNIQUE (dos guardados simultáneos) obliga a
+        // repetir, la relectura ve la versión del ganador y el perdedor termina acá. Un rechazo confirma la transacción sin haber escrito nada.
+        const versionActual = ultima?.version ?? 0;
+        if (versionEsperada !== null && versionEsperada !== versionActual) {
+          rechazo.resultado = fracaso(
+            "VERSION_DESACTUALIZADA",
+            versionEsperada === 0
+              ? `La receta de "${producto.nombre}" cambió mientras la editabas (cuando abriste la pantalla todavía no tenía receta y ahora va por la versión ${versionActual}). Recargá la pantalla y volvé a hacer el cambio.`
+              : `La receta de "${producto.nombre}" cambió mientras la editabas (ahora va por la versión ${versionActual}, y partiste de la ${versionEsperada}). Recargá la pantalla y volvé a hacer el cambio.`
+          );
+          return;
+        }
+        version = versionActual + 1;
+        const basadaEnVersionId = sucursalId === null ? null : destino.basadaEnVersionId !== undefined ? destino.basadaEnVersionId : await cargarIdDeVersionCentralVigente(tx, productoId);
         const creada = await escribirVersionDeReceta(tx, { productoId, version, items, pasos, cabecera, sucursalId, basadaEnVersionId });
         recetaVersionId = creada.id;
 

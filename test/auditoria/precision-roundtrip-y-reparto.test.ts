@@ -13,6 +13,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { actualizarCabeceraDeReceta } from "../../src/server/actions/catalogo/recetas";
@@ -54,7 +55,7 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
     for (let i = 1; i <= 5; i++) {
       // rendimientoUnidadId es obligatorio junto con rendimientoCantidad desde la guarda de cabecera (fix/validar-cabecera-receta):
       // sin unidad no hay forma de saber cuántos decimales admite el valor.
-      const r = await actualizarCabeceraDeReceta(pv.id, { rendimientoCantidad: i, rendimientoUnidadId: unidadKgId, racionesCantidad: i });
+      const r = await actualizarCabeceraDeReceta(pv.id, { rendimientoCantidad: i, rendimientoUnidadId: unidadKgId, racionesCantidad: i }, await versionVigenteDeReceta(pv.id));
       expect(r.ok, r.mensaje).toBe(true);
     }
 
@@ -78,7 +79,7 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
     });
 
     const { agregarIngredienteAReceta } = await import("../../src/server/actions/catalogo/recetas");
-    const r = await agregarIngredienteAReceta(pv.id, { insumoProductoId: mp2.id, cantidad: 0.25, unidadId: unidadKgId, mermaPorcentaje: 2 });
+    const r = await agregarIngredienteAReceta(pv.id, { insumoProductoId: mp2.id, cantidad: 0.25, unidadId: unidadKgId, mermaPorcentaje: 2 }, await versionVigenteDeReceta(pv.id));
     expect(r.ok, r.mensaje).toBe(true);
 
     const vigente = await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: pv.id }, orderBy: { version: "desc" }, include: { ingredientes: true } });

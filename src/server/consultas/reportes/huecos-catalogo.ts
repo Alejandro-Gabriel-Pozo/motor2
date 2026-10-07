@@ -1,4 +1,5 @@
 import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
+import { cargarProductosConProveedor } from "@/server/lecturas/catalogo/ofertas-de-proveedor";
 import type { Db } from "@/lib/db-tipos";
 import type { ProblemaUnidadMezclada, ReporteHuecosCatalogo } from "@/core/reportes/public";
 
@@ -35,9 +36,8 @@ export async function generarReporteHuecosCatalogo(sucursalId: string, db: Db): 
   });
   const vendidosAlgunaVez = new Set(vendidos.map((v) => v.productoId));
 
-  const conProveedor = new Set(
-    (await db.proveedorPorProducto.findMany({ select: { productoId: true }, distinct: ["productoId"] })).map((p) => p.productoId)
-  );
+  // «Tiene proveedor» sale del Kardex vigente (una compra anulada no cuenta), no de la tabla `ProveedorPorProducto`.
+  const conProveedor = await cargarProductosConProveedor(db);
 
   const pvSinVentaNunca = Array.from(productos.values())
     .filter((info) => info.tipo === "PV" && info.disponible && !vendidosAlgunaVez.has(info.id))

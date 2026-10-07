@@ -33,7 +33,7 @@ Es, en esencia, una tabla dinámica: elegís "por qué agrupar" y "cada cuánto"
 
 `Purchase Order Analysis` (ciclo orden→recepción→facturación: Qty/Received Qty/Pending Qty/Billed Qty, Amount/Billed Amount/Pending Amount) no aplica a motor2 — motor2 no tiene un flujo de Orden de Compra, registra la Compra ya concretada. Se descarta como referencia para esta pregunta puntual.
 
-`Item Price` (ficha de precio por Insumo×Proveedor×Lista, con `Valid From`/`Valid Upto`) es el equivalente conceptual de `ProveedorPorProducto` en motor2 (ya existe, ya se actualiza en cada Compra) — ERPNext expone un botón "Prices" en el Item que muestra el histórico completo en una tabla; no encontré un gráfico de tendencia nativo (según la documentación, sería una vista custom armada sobre esos datos).
+`Item Price` (ficha de precio por Insumo×Proveedor×Lista, con `Valid From`/`Valid Upto`) es el equivalente conceptual de `ProveedorPorProducto` en motor2 (ya existe, ya se actualiza en cada Compra) — ERPNext expone un botón "Prices" en el Item que muestra el histórico completo en una tabla; no encontré un gráfico de tendencia nativo (según la documentación, sería una vista custom armada sobre esos datos). **Nota (2026-10-07):** el equivalente de `last_purchase_rate` de ERPNext es el precio de la última compra vigente (con la fecha de la factura, no la de carga), y eso es lo que muestran hoy la comparativa y la ficha: se DERIVA del Kardex vigente; `ProveedorPorProducto` solo guarda la unidad de compra y la referencia.
 
 ### Dolibarr — módulo Estadísticas
 
@@ -48,7 +48,7 @@ Dos piezas, ambas MUY relevantes para este caso:
 
 ## 3. Lo que motor2 ya tiene y no está usando para esto
 
-- `ProveedorPorProducto.precioPorUnidadStock` + `ultimaCompra`: ya es, literalmente, el dato de "último precio por proveedor" — hoy solo alimenta `/catalogo/proveedores/comparativa` (una foto del momento, sin historia).
+- `ProveedorPorProducto.precioPorUnidadStock` + `ultimaCompra` *(hasta 2026-10-07; hoy la comparativa lee el Kardex vigente)*: ya es, literalmente, el dato de "último precio por proveedor" — hoy solo alimenta `/catalogo/proveedores/comparativa` (una foto del momento, sin historia).
 - `Insumo.grupoId` → `Grupo` (árbol de familias): la dimensión "por categoría/familia" que pide Grocy (Spendings por grupo) ya existe en el modelo — hoy no la usa ningún reporte de Compras.
 - `IndicePrecio`/`cargarSerieIPC`/`resolverCoeficienteIPC` (`src/core/reportes/indices-economicos.ts`): serie real de IPC INDEC ya integrada y funcionando, hoy usada SOLO para ajustar el margen de Ventas (Método 1, `docs/comparativa-ux-erpnext-dolibarr.md` §10). Es exactamente la pieza que NINGUNO de los tres sistemas de referencia tiene de fábrica (están pensados para monedas estables) — reusarla acá permite responder "¿de verdad estoy pagando más por la harina, o es solo inflación general?", una pregunta que en Argentina es más relevante que en cualquiera de los tres sistemas de referencia.
 

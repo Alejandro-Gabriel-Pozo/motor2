@@ -13,11 +13,6 @@ import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerDeEmpresa } from "../con-sesion";
 import { guardarVersionDeRecetaCasoDeUso } from "./casos-de-uso/guardar-version-de-receta";
 
-/** La versión de la receta que se leyó (`0` si todavía no hay ninguna): sobre ella arma su reemplazo cada función que lee y modifica. */
-function versionDe(vigente: { version: number } | null): number {
-  return vigente?.version ?? 0;
-}
-
 /** Equivalente de construirMapaRecetas_ (Catalogo.js:1549-1596): vigente = MAX(version), siempre derivado. */
 export async function obtenerRecetaVigente(productoId: string) {
   const ctx = await requerirVerDeEmpresa("guardar_receta");
@@ -52,7 +47,8 @@ export async function listarVersionesDeReceta(productoId: string) {
  * hacen ese round-trip por vos.
  *
  * `versionEsperada` (H7, Pureza Fase 4): la versión de la receta sobre la que quien llama armó este reemplazo (`0` = todavía no había). Si la receta ya va por otra, alguien guardó en el medio y
- * esto pisaría su cambio: se rechaza con un mensaje. Todo llamador que LEE la receta y la modifica (las funciones de abajo) la manda; solo un reemplazo completo a ciegas (seeds, scripts) la omite.
+ * esto pisaría su cambio: se rechaza con un mensaje. Las funciones puntuales de abajo (agregar/editar/quitar un ingrediente o un paso, la cabecera) piden `versionVista`: la versión que la PANTALLA
+ * mostraba cuando la persona armó su cambio (no la que se lee al ejecutar, que ya sería la nueva). Solo un reemplazo completo a ciegas (seeds, scripts) omite la versión.
  *
  * Desde la Task #41 (P1, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
  * (`conPermiso`) → formato (`guardComandoGuardarVersionDeReceta`) → caso de uso (`casos-de-uso/guardar-version-de-receta.ts`:
@@ -87,7 +83,7 @@ export async function guardarReceta(
  * próxima versión con TODOS los ingredientes juntos, más los pasos y la
  * cabecera vigentes sin tocar).
  */
-export async function agregarIngredienteAReceta(productoId: string, ingrediente: IngredienteInput): Promise<ResultadoAccion> {
+export async function agregarIngredienteAReceta(productoId: string, ingrediente: IngredienteInput, versionVista: number): Promise<ResultadoAccion> {
   const vigente = await obtenerRecetaVigente(productoId);
   const existentes = mapIngredientesAInput(vigente);
 
@@ -95,7 +91,7 @@ export async function agregarIngredienteAReceta(productoId: string, ingrediente:
     return error("Ese insumo ya está en la receta.");
   }
 
-  return guardarReceta(productoId, [...existentes, ingrediente], mapPasosAInput(vigente), mapCabeceraAInput(vigente), versionDe(vigente));
+  return guardarReceta(productoId, [...existentes, ingrediente], mapPasosAInput(vigente), mapCabeceraAInput(vigente), versionVista);
 }
 
 /**
@@ -109,7 +105,8 @@ export async function agregarIngredienteAReceta(productoId: string, ingrediente:
 export async function actualizarIngredienteDeReceta(
   productoId: string,
   insumoProductoId: string,
-  cambios: { cantidad: number; unidadId: string; mermaPorcentaje?: number; insumoSustitutoIds?: string[] }
+  cambios: { cantidad: number; unidadId: string; mermaPorcentaje?: number; insumoSustitutoIds?: string[] },
+  versionVista: number
 ): Promise<ResultadoAccion> {
   const vigente = await obtenerRecetaVigente(productoId);
   const existentes = mapIngredientesAInput(vigente);
@@ -133,7 +130,7 @@ export async function actualizarIngredienteDeReceta(
       : i
   );
 
-  return guardarReceta(productoId, items, mapPasosAInput(vigente), mapCabeceraAInput(vigente), versionDe(vigente));
+  return guardarReceta(productoId, items, mapPasosAInput(vigente), mapCabeceraAInput(vigente), versionVista);
 }
 
 /**
@@ -143,7 +140,7 @@ export async function actualizarIngredienteDeReceta(
  * mencionara (si no, `validarPasos` rechazaría la nueva versión por
  * referenciar un ingrediente que ya no está).
  */
-export async function quitarIngredienteDeReceta(productoId: string, insumoProductoId: string): Promise<ResultadoAccion> {
+export async function quitarIngredienteDeReceta(productoId: string, insumoProductoId: string, versionVista: number): Promise<ResultadoAccion> {
   const vigente = await obtenerRecetaVigente(productoId);
   const items = mapIngredientesAInput(vigente).filter((i) => i.insumoProductoId !== insumoProductoId);
   const pasos = mapPasosAInput(vigente).map((p) => ({
@@ -151,11 +148,11 @@ export async function quitarIngredienteDeReceta(productoId: string, insumoProduc
     insumoProductoIds: p.insumoProductoIds?.filter((id) => id !== insumoProductoId),
   }));
 
-  return guardarReceta(productoId, items, pasos, mapCabeceraAInput(vigente), versionDe(vigente));
+  return guardarReceta(productoId, items, pasos, mapCabeceraAInput(vigente), versionVista);
 }
 
 /** Agrega un paso nuevo — mismo criterio que agregarIngredienteAReceta, preserva ingredientes y cabecera vigentes. */
-export async function agregarPasoAReceta(productoId: string, paso: PasoInput): Promise<ResultadoAccion> {
+export async function agregarPasoAReceta(productoId: string, paso: PasoInput, versionVista: number): Promise<ResultadoAccion> {
   const vigente = await obtenerRecetaVigente(productoId);
   const pasosExistentes = mapPasosAInput(vigente);
 
@@ -163,14 +160,15 @@ export async function agregarPasoAReceta(productoId: string, paso: PasoInput): P
     return error(`Ya hay un paso con el orden ${paso.orden}.`);
   }
 
-  return guardarReceta(productoId, mapIngredientesAInput(vigente), [...pasosExistentes, paso], mapCabeceraAInput(vigente), versionDe(vigente));
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), [...pasosExistentes, paso], mapCabeceraAInput(vigente), versionVista);
 }
 
 /** Edita un paso ya cargado (identificado por su `orden` vigente) en un solo paso, mismo criterio que actualizarIngredienteDeReceta. */
 export async function actualizarPasoDeReceta(
   productoId: string,
   orden: number,
-  cambios: { nombre?: string; instruccion: string; minutos?: number; insumoProductoIds?: string[] }
+  cambios: { nombre?: string; instruccion: string; minutos?: number; insumoProductoIds?: string[] },
+  versionVista: number
 ): Promise<ResultadoAccion> {
   const vigente = await obtenerRecetaVigente(productoId);
   const pasosExistentes = mapPasosAInput(vigente);
@@ -180,15 +178,15 @@ export async function actualizarPasoDeReceta(
   }
 
   const pasos = pasosExistentes.map((p) => (p.orden === orden ? { orden, ...cambios } : p));
-  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente), versionDe(vigente));
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente), versionVista);
 }
 
 /** Quita un paso de la receta vigente. */
-export async function quitarPasoDeReceta(productoId: string, orden: number): Promise<ResultadoAccion> {
+export async function quitarPasoDeReceta(productoId: string, orden: number, versionVista: number): Promise<ResultadoAccion> {
   if (!Number.isInteger(orden)) return error("El número de paso no es válido.");
   const vigente = await obtenerRecetaVigente(productoId);
   const pasos = mapPasosAInput(vigente).filter((p) => p.orden !== orden);
-  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente), versionDe(vigente));
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente), versionVista);
 }
 
 /**
@@ -199,7 +197,7 @@ export async function quitarPasoDeReceta(productoId: string, orden: number): Pro
  * secuencia resultante es idéntica a la vigente no se guarda nada (no
  * ensucia el historial con una versión sin cambios).
  */
-export async function reordenarPasosDeReceta(productoId: string, secuencia: number[]): Promise<ResultadoAccion> {
+export async function reordenarPasosDeReceta(productoId: string, secuencia: number[], versionVista: number): Promise<ResultadoAccion> {
   const vigente = await obtenerRecetaVigente(productoId);
   const pasosExistentes = mapPasosAInput(vigente);
   const ordenesVigentes = pasosExistentes.map((p) => p.orden);
@@ -212,7 +210,7 @@ export async function reordenarPasosDeReceta(productoId: string, secuencia: numb
   }
 
   const pasos = aplicarSecuencia(pasosExistentes, secuencia);
-  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente), versionDe(vigente));
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente), versionVista);
 }
 
 /**
@@ -221,23 +219,23 @@ export async function reordenarPasosDeReceta(productoId: string, secuencia: numb
  * diferencia de `agregarPasoAReceta`, que solo agrega al final y rechaza un
  * `orden` duplicado (esa función queda intacta, es el camino "Al final").
  */
-export async function insertarPasoEnReceta(productoId: string, posicion: number, paso: Omit<PasoInput, "orden">): Promise<ResultadoAccion> {
+export async function insertarPasoEnReceta(productoId: string, posicion: number, paso: Omit<PasoInput, "orden">, versionVista: number): Promise<ResultadoAccion> {
   // `insertarEnPosicion` recorta una posición fuera de rango (0, 99), pero un NaN lo dejaría en silencio al principio.
   if (!Number.isInteger(posicion)) return error("La posición del paso no es válida.");
   const vigente = await obtenerRecetaVigente(productoId);
   const pasosExistentes = mapPasosAInput(vigente);
 
   const pasos = insertarEnPosicion(pasosExistentes, posicion, { ...paso, orden: -1 });
-  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente), versionDe(vigente));
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente), versionVista);
 }
 
 /**
  * Actualiza solo la cabecera informativa (rendimiento/raciones/tiempos/
  * comentarios/etc.) — preserva ingredientes y pasos vigentes sin tocar.
  */
-export async function actualizarCabeceraDeReceta(productoId: string, cabecera: CabeceraRecetaInput): Promise<ResultadoAccion> {
+export async function actualizarCabeceraDeReceta(productoId: string, cabecera: CabeceraRecetaInput, versionVista: number): Promise<ResultadoAccion> {
   const vigente = await obtenerRecetaVigente(productoId);
   if (!vigente) return error('Todavía no hay ninguna receta — agregá al menos un ingrediente antes de completar esto.');
 
-  return guardarReceta(productoId, mapIngredientesAInput(vigente), mapPasosAInput(vigente), cabecera, versionDe(vigente));
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), mapPasosAInput(vigente), cabecera, versionVista);
 }

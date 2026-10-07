@@ -109,6 +109,12 @@ test("si falla la carga de productos del proveedor, se avisa, se vacían las fil
     data: { productoId: producto.id, proveedorId: proveedorA.id, unidadCompraId: unidad.id, precioUnitario: 100, precioPorUnidadStock: 100 },
   });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+  // «Ya le comprás» se deriva del Kardex vigente (no de la tabla `ProveedorPorProducto`): hace falta una compra de verdad al proveedor A.
+  const usuario = await prisma.user.findFirstOrThrow();
+  const compraPrevia = await prisma.operacion.create({ data: { sucursalId: seccion.sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId: usuario.id, proveedorId: proveedorA.id } });
+  await prisma.movimientoStock.create({
+    data: { operacionId: compraPrevia.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 1, detalle: "Compra", precioTotal: 100, precioPorUnidadStock: 100 },
+  });
   // listarProductosDeProveedor filtra whereDisponibleEn(ctx.sucursalId) (P11) — sin esto no aparece como "ya comprado a este proveedor".
   await prisma.disponibilidadProducto.create({ data: { sucursalId: seccion.sucursalId, productoId: producto.id, disponible: true } });
   const rutaCompra = /\/movimientos\/compra(\?.*)?$/;
