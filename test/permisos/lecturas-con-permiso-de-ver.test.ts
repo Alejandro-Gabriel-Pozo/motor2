@@ -12,6 +12,7 @@ import { listarUsuariosDeSucursal } from "../../src/server/actions/auth/usuarios
 import { listarClientes } from "../../src/server/actions/clientes/cliente";
 import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
 import { listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/actions/catalogo/recetas";
+import { listarProductosPagina, obtenerPrecioVentaProducto } from "../../src/server/actions/catalogo/productos";
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
 import { listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
@@ -29,9 +30,11 @@ import { listarSucursalesParaSolicitar, listarSucursalesParaEnviar, obtenerBande
  * lectura es un endpoint que se podía invocar directo y devolvía, por ejemplo, la matriz de permisos o los precios de los
  * proveedores a un rol que no podía abrir esas pantallas.
  *
- * Cada fila: la lectura, la clave que exige y la página (dueña de esos datos) que pide la MISMA clave. Las lecturas de catálogo
- * compartido (secciones activas, unidades, proveedores, buscador de productos…) NO están acá a propósito: son selectores que
- * usan muchas pantallas con claves distintas.
+ * Cada fila: la lectura, la clave que exige y la página (dueña de esos datos) que pide la MISMA clave. Desde H8 (trabajo D.1 de
+ * `pureza-integracion`, decisión del dueño) NINGUNA lectura queda con solo sesión: las que consume UNA sola pantalla (o varias con la
+ * misma clave) están acá; las que consumen pantallas con claves distintas (secciones activas, unidades, proveedores para elegir,
+ * buscador de productos…) exigen el «O» de esas claves (`requerirVerAlguna*`) y se prueban en `lecturas-con-alguna-pantalla.test.ts`.
+ * Qué pantalla consume cada lectura lo fija `test/arquitectura/consumidores-de-lecturas-declarados.test.ts`.
  */
 type Fila = {
   nombre: string;
@@ -63,6 +66,9 @@ const LECTURAS: Fila[] = [
   { nombre: "listarProductosDeProveedor", clave: "proceso_compra", pagina: "movimientos/[proceso]/page.tsx", archivo: "catalogo/proveedor-por-producto.ts", viaProceso: "COMPRA", llamar: () => listarProductosDeProveedor("x") },
   { nombre: "obtenerRecetaVigente", clave: "guardar_receta", pagina: "catalogo/recetas/[productoId]/page.tsx", archivo: "catalogo/recetas.ts", llamar: () => obtenerRecetaVigente("x") },
   { nombre: "listarVersionesDeReceta", clave: "guardar_receta", pagina: "catalogo/recetas/[productoId]/historial/page.tsx", archivo: "catalogo/recetas.ts", llamar: () => listarVersionesDeReceta("x") },
+  // H8 (D.1): lecturas que antes pedían solo sesión.
+  { nombre: "obtenerPrecioVentaProducto", clave: "precio_local", pagina: "movimientos/precio-local/page.tsx", archivo: "catalogo/productos.ts", llamar: () => obtenerPrecioVentaProducto("x") },
+  { nombre: "listarProductosPagina", clave: "producto_ver_catalogo", pagina: "catalogo/productos/page.tsx", archivo: "catalogo/productos.ts", llamar: () => listarProductosPagina() },
 ];
 
 describe("lecturas con permiso de Ver: un rol sin el permiso de la pantalla no las puede invocar", () => {

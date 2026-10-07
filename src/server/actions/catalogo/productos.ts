@@ -21,7 +21,7 @@ import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-produc
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";
-import { requerirSesion } from "../con-sesion";
+import { requerirSesion, requerirVer, requerirVerDeEmpresa } from "../con-sesion";
 
 export interface ProductoOpcion {
   id: string;
@@ -123,9 +123,12 @@ export async function asignarInsumoAProducto(productoId: string, insumoId: strin
   });
 }
 
-/** Precio de venta global de un producto puntual — usado por Precio Local para mostrar "precio global actual" sin traer el catálogo entero. */
+/**
+ * Precio de venta global de un producto puntual — usado por Precio Local para mostrar "precio global actual" sin traer el catálogo entero. Es un dato de
+ * dinero: exige el «Ver» de `precio_local`, la clave de la única pantalla que lo consume (H8; antes bastaba la sesión).
+ */
 export async function obtenerPrecioVentaProducto(productoId: string): Promise<number | null> {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVer("precio_local");
   const p = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { precioVenta: true } });
   return p ? Number(p.precioVenta) : null;
 }
@@ -147,9 +150,9 @@ export interface PaginaProductos {
 
 const TAMANO_PAGINA_CATALOGO = 50;
 
-/** Tabla de administración de catálogo (`/catalogo/productos`) — paginado por cursor, con búsqueda opcional. */
+/** Tabla de administración de catálogo (`/catalogo/productos`) — paginado por cursor, con búsqueda opcional. Exige el «Ver» de `producto_ver_catalogo`, la clave de esa página (H8). */
 export async function listarProductosPagina(cursor?: string, termino?: string): Promise<PaginaProductos> {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVerDeEmpresa("producto_ver_catalogo");
   const t = texto(termino ?? "");
   const items = await ctx.db.producto.findMany({
     where: t ? { OR: [{ nombre: { contains: t, mode: "insensitive" } }, { codigo: { contains: t, mode: "insensitive" } }] } : {},
