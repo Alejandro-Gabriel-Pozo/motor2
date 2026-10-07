@@ -1,6 +1,6 @@
 # Fase 4 del plan de pureza: las escrituras salen de `src/core/` (plan consolidado)
 
-> Estado: **plan, sin implementar** (2026-10-06). Resume tres planes de diseño hechos por separado, cada uno verificado contra el código de `main` en el commit `72925cb0`: Kardex y venta (tramo A), autenticación, empresa y permisos (tramo B), y recetas, regla de cierre y cotizaciones (tramo C). Ningún paso toca `prisma/`: todo lo que necesite migración es la Fase 5 y requiere autorización expresa.
+> Estado: **en ejecución** (actualizado el 2026-10-07; ver la sección 10, que dice qué está hecho, qué falló y qué falta). Plan escrito el 2026-10-06. Resume tres planes de diseño hechos por separado, cada uno verificado contra el código de `main` en el commit `72925cb0`: Kardex y venta (tramo A), autenticación, empresa y permisos (tramo B), y recetas, regla de cierre y cotizaciones (tramo C). Ningún paso toca `prisma/`: todo lo que necesite migración es la Fase 5 y requiere autorización expresa.
 > Reglas de trabajo y estado general: `docs/plan-de-pureza-y-estado.md` y `docs/plan-fase-3-pureza.md`.
 
 ## 1. Qué es la Fase 4 y qué resultado se espera
@@ -69,7 +69,7 @@ Las marcadas «⚠» cambian comportamiento o frontera de seguridad y no se toma
 - **D-7.** Nuevos valores de ficha: `permiso=SISTEMA` (crons) y `permiso=SIN_PERMISO` (aceptar invitación: aún no hay sesión). Recomendado sí.
 - **D-8.** Un caso de uso por función de escritura, también los ~20 «activar/desactivar» (migrando de a un archivo por PR). Recomendado.
 - **D-9.** Auditar `renombrarOFusionarInsumo` al migrarla (hoy escribe varias filas sin auditoría), en commit aparte. `agregarItems` del POS **no tiene idempotencia I3** (un doble clic duplica ítems): se documenta, no se arregla acá. Recomendado.
-- **D-10.** La regla `escrituras-solo-en-persistencia` permite escribir **solo** en `server/persistencia` (hoy los casos de uso no escriben directo). Recomendado; la consola entra con 7 entradas «Consola».
+- **D-10.** La regla `escrituras-solo-en-persistencia` permite escribir **solo** en `server/persistencia` (hoy los casos de uso no escriben directo). Recomendado; la consola entra con 8 entradas (6 iniciales + `sembrar-empresa` + `alta-de-admin`) «Consola».
 - **D-11 (de la Fase 3, pendiente).** Versionar el codemod `mover-exports.ts` (sirve para la Fase 6, 161 `vi.mock` de la sesión). Recomendado sí.
 
 ## 6. Coordinación con la Fase 5 [MIG] (no se ejecuta acá)
@@ -91,3 +91,68 @@ En la misma corrida y sobre el mismo commit, todos limpios, con la línea de bas
 ## 9. Riesgos principales
 
 Frontera multi-tenant (`base.ts`, `invitacionConSuBase`), login de Auth.js (`acceso`, `vincular`), mocks que dejan de interceptar sin aviso (auditoría), `server-only` en archivos que usan seed, scripts o Playwright, conflictos de imports entre PR (se mezcla `origin/main` antes de fusionar), exports muertos de knip, guardianes que fijan rutas (se actualizan en el mismo commit que mueve el archivo, con mutación), y el doble clic en el editor de recetas después de D-1.
+
+## 10. Estado de ejecución y desvíos (2026-10-07)
+
+> Se agrega después de una auditoría independiente (un revisor con un modelo superior, solo lectura, que comparó cada PR fusionado contra este plan). Lo de abajo es lo que pasó de verdad, no lo que se esperaba. Va de lo general a lo específico.
+
+### 10.1 Dónde estamos
+
+La Fase 4 **está en curso**: el tramo A (Kardex y venta), el tramo C (regla de cierre, dólar e IPC, recetas) y el tramo B de plataforma están casi hechos; faltan el login y el gobierno de usuarios (B3, B4), la migración de las acciones (4C-D/E/F), el precio local (4A-5) y el cierre (B5).
+
+| PR | Paso del plan | Estado |
+|---|---|---|
+| #79 | plan | fusionado |
+| #80 | 4C-A regla `escrituras-solo-en-persistencia` | fusionado, conforme |
+| #81 | Car-V caracterización de la venta | fusionado, **parcial** (7 escenarios, el plan decía ~30) |
+| #82 | B0 caracterización de auth | fusionado, **parcial** (falta el login por invitación y la alta de admin) |
+| #83 | 4A-1 la venta sale del núcleo | fusionado, **parcial** (falta el segundo tiempo y `precio-venta`) |
+| #84 | 4A-2 saldos y origen de la venta | fusionado, **parcial** (revirtió `base.ts` a la Fase 4 por un error de fusión; corregido en #88) |
+| #85 | B2 operaciones de plataforma por script | fusionado, conforme |
+| #86 | B1 siembra, gerente y alta de admin | fusionado, **parcial** (movió la alta de admin sin huella previa) |
+| #87 | 4C-C dólar e IPC | fusionado, conforme |
+| #88 | 4A-3 costo congelado | fusionado, conforme |
+| #89 | vínculo proveedor↔producto 1/2 (**fuera de este plan**: decisión del dueño, 2026-10-06) | fusionado |
+| #90 | 4A-4 embudos de catálogo | fusionado, conforme |
+| #91 | 4C-B H7 parte 1 | fusionado, **parcial** (versión reducida; ver 10.2) |
+| #92 | vínculo proveedor↔producto 2/2 (fuera de este plan) | abierto, con revisión independiente aplicada |
+| #93 | 4C-B H7 parte 2 | abierto, con revisión independiente aplicada |
+
+### 10.2 Qué falló y por qué
+
+- **H7 (#91) se entregó reducido y no se avisó.** El plan pedía tres cosas: que la pantalla mande la versión que mostraba (D-1), que el chequeo vaya dentro de la transacción, y cerrar el segundo hueco (la calibración local concurrente que se perdía). El #91 comparó contra la versión que la acción leía al ejecutarse; no cubría una pestaña con la receta vieja. La causa fue de proceso: se implementó desde un resumen de la conversación anterior sin releer este plan. El #93 lo completa: `versionVista` en 9 acciones de la central y 5 de la propia, lectura de la última versión dentro de la transacción, ficha `OPTIMISTA`, test concurrente y e2e con dos pestañas. Queda un límite conocido: `habilitada` de la receta propia no está versionada (alguien vuelve a la central mientras otra persona edita la propia con la pantalla vieja, y el plato no tiene receta central).
+- **La caracterización quedó corta antes de mover código** (B0 y Car-V): sin huella de `vincularCuentaConInvitacion` (la frontera de login) ni de la alta de admin; el golden de la venta tiene 7 pasos, no ~30. La regla del plan es que lo que se mueve tiene su huella antes; en esos dos casos no se cumplió del todo.
+- **La venta no tuvo su «segundo tiempo»** (separar lo puro y mandar `cargarDeudaDeRedondeo` a `server/lecturas`): #83 lo postergó, #84 hizo solo el reparto de stock y #90 dejó de listarlo. Quedó huérfano.
+- **D-4 se violó durante cuatro PR** (#84 a #87): `core/auth/base.ts` volvió a «Fase 4» por resolución de conflictos; ningún test lo detecta porque las dos fases son válidas. Ya está corregido (#88).
+- **Valores y herramientas del plan sin hacer:** `permiso=SIN_PERMISO` en la ficha (D-7), el codemod de imports versionado (D-11), el adaptador de imports de la huella.
+- Otros menores: squash en todos los PR (un commit por PR en `main`, no uno por paso); `core/movimientos` no puede entrar a `core-sin-consultas` mientras `con-reintento` tenga parámetros tipados `Transaccion` (hay que decidir dónde vive antes de B5); el plan decía 7 entradas «Consola» y hay 8.
+
+### 10.3 Reglas de proceso que se agregan a partir de acá
+
+1. **Cada PR lleva en su descripción** una sección «Qué pedía el plan / qué entrega / qué queda», escrita releyendo este documento (no el resumen de la conversación). Un PR que entrega menos que lo pedido lo dice en esa sección.
+2. **Revisión independiente** (un agente con un modelo igual o superior, solo lectura) antes de fusionar todo PR de riesgo medio o alto: dinero, login, permisos, concurrencia, migraciones. Se aplica sobre el PR abierto; sus hallazgos se tratan como datos a verificar. No hace falta en las mudanzas mecánicas de imports con golden idéntico.
+3. **Las pruebas con base de datos se corren de a una** (todas comparten la misma base y la limpian al empezar); la preparación en paralelo de varias ramas locales es posible, pero cada una se verifica por separado.
+4. **`base.ts` se revisa en cada PR hasta la Fase 6** (que su fase no retroceda).
+5. Cada regla o test nuevo se demuestra con una mutación (rojo → revertido → verde), como hasta ahora.
+
+### 10.4 Lo que falta, en el orden recomendado
+
+| # | Qué | Por qué en ese lugar |
+|---|---|---|
+| 1 | **B0b**: huella de `vincularCuentaConInvitacion` (login), huella de la alta de admin con azar inyectado (byte a byte), valor de ficha `SIN_PERMISO` (D-7) | Es la red de seguridad de B3 y de lo que B1 ya movió |
+| 2 | **B3** invitaciones y login: nace `server/sesion/` con `acceso`; 2 casos de uso de aceptar invitación | Riesgo alto; con la huella del paso 1 |
+| 3 | **B4a/B4b** gobierno de usuarios (lecturas a `server/lecturas/permisos`, gerencia, 5 casos de uso) con los contratos RBAC | Ver ADR-027 (propuesto); D15 y D16 del dueño pendientes |
+| 4 | **4C-D/E/F** migración de ~40 acciones: POS (apertura, mesas, pedido) → dinero de carta → configuración de catálogo, stock y carta | Mecánico pero grande; cada tramo con sus tests de caracterización existentes |
+| 5 | **Ampliar la matriz de la venta** (~30 escenarios: precio local, POS sin stock negativo, insumo sustituto, consignación, cierre real del POS) y el **segundo tiempo de la venta** | Antes de 4A-5, que toca el precio local |
+| 6 | **4A-5** precio local y capacidades (`ALCANCE_CARTA_PUBLICA`): PR propio | **Requiere autorización del dueño (D-2)**; corregir el comentario falso de `.dependency-cruiser.cjs` |
+| 7 | **Decidir el destino de `con-reintento`** | Bloquea la entrada de `core/movimientos` a `core-sin-consultas` |
+| 8 | **B5** auditoría a `server/auditoria/`, cierre de `core-sin-consultas`, actualización de los documentos de estado | Siempre al final: toca los imports de ~26 archivos |
+
+Aparte, sin orden fijo: el límite `habilitada` de H7; fusionar en una consulta la derivación del carrito (hoy 3 lecturas por cambio de proveedor); versionar el codemod (D-11, hace falta para la Fase 6); decidir si se sigue con squash o se pasa a merge commit; la huella de `materialDeAltaDeAdmin`; D-9 (documentar que `agregarItems` no tiene I3; auditar `renombrarOFusionarInsumo` en un commit aparte); la preparación de la Fase 5 del §6 (reunir las 2 escrituras de traspasos y las 2 de anulación; `EXPLAIN` del índice).
+
+### 10.5 Qué decide el dueño
+
+- **4A-5** (cuando llegue su turno): autorización para tocar la frontera de la carta pública (D-2).
+- **D15** (qué acciones de empresa alcanza el rango 2 de RBAC; recomendado: ninguna por defecto) y **D16** (piso de `ver_auditoria`; recomendado: administrador de sistema), antes de B4.
+- **Squash o merge commit** (menor): hoy cada PR queda como un solo commit en `main`.
+- Si se hace el arreglo de `habilitada` de H7 antes de cerrar la fase o se deja anotado.
