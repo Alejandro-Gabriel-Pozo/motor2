@@ -2,11 +2,7 @@
   "regions": ["pdx1"],
   "installCommand": "npm ci",
   "git": {
-    "deploymentEnabled": {
-      "main": true,
-      "*": false,
-      "**/*": false
-    }
+    "deploymentEnabled": false
   },
   "crons": [
     { "path": "/api/cron/sincronizar-ipc", "schedule": "0 12 * * *" },
