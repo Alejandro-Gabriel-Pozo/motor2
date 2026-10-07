@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { HAY_ROL_DE_PLATAFORMA, plataformaReal } from "../setup/cliente-plataforma-real";
 import type { PrismaClient } from "@prisma/client";
-import { aceptarInvitacionDelToken } from "../../src/server/sesion/invitacion";
+import { aceptarInvitacionDeGerenteCasoDeUso as aceptarInvitacionDelToken } from "../../src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente";
 import type { MensajeDeCorreo, ResultadoDeEnvio } from "../../src/core/correo/tipos";
 import { darDeAltaEmpresa } from "../../plataforma/src/servidor/empresas";
 import {
@@ -71,7 +71,7 @@ async function empresaConCuitPendiente(slug: string, cuit: string = CUIT_A_CON_G
   if (!r.ok) throw new Error(r.mensaje);
   const token = /#t=(\S+)/.exec(enviados.at(-1)!.texto)![1];
   const usuario = await prismaAdmin.user.upsert({ where: { email }, update: {}, create: { email } });
-  const aceptada = await aceptarInvitacionDelToken({ token, usuario: { id: usuario.id, email }, cuit });
+  const aceptada = await aceptarInvitacionDelToken({ token, usuario: { id: usuario.id, email }, cuit, ahora: new Date() });
   if (!aceptada.ok) throw new Error(aceptada.mensaje);
   enviados = [];
   return { id: r.empresaId, email };

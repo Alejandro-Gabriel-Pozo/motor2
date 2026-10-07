@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
-import { aceptarInvitacionDelToken } from "../../src/server/sesion/invitacion";
+import { aceptarInvitacionDeGerenteCasoDeUso as aceptarInvitacionDelToken } from "../../src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente";
 import { MENSAJE_ENLACE_NO_VALIDO } from "../../src/core/features/empresa/aceptar-invitacion";
 import { sembrarEmpresa } from "../../plataforma/src/servidor/sembrar-empresa";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
@@ -34,7 +34,7 @@ async function usuario(email = EMAIL) {
 
 const aceptar = async (token: string, cuit: unknown = CUIT_VALIDO, email = EMAIL) => {
   const u = await usuario(email);
-  return aceptarInvitacionDelToken({ token, usuario: { id: u.id, email }, cuit });
+  return aceptarInvitacionDelToken({ token, usuario: { id: u.id, email }, cuit, ahora: new Date() });
 };
 
 beforeEach(async () => {

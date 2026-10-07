@@ -180,9 +180,12 @@ function permisosObservados(fuenteDelCaso: string, envolventes: string[]): strin
 
 /**
  * Los casos de uso que corren SIN permiso a propósito (un endpoint sin sesión), con el motivo de cada uno. Lista CERRADA: un caso de uso nuevo con `permiso=SIN_PERMISO` que no esté acá falla,
- * y una entrada que ningún caso de uso real usa también (no se acumulan permisos fantasma). Hoy está vacía: B3 (Fase 4) suma las dos aceptaciones de invitación.
+ * y una entrada que ningún caso de uso real usa también (no se acumulan permisos fantasma). B3 (Hito 3) suma las dos aceptaciones de invitación.
  */
-export const CASOS_SIN_PERMISO: Record<string, string> = {};
+export const CASOS_SIN_PERMISO: Record<string, string> = {
+  "server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts":
+    "Aceptar la invitación del primer gerente (E5, ADR-020; B3-5): quien acepta todavía no tiene empresa ni membresía, así que no hay permiso que pedir. La autoridad es el token del enlace (cookie httpOnly) leído por su hash más el email de la cuenta de Google de la sesión, y los valida el propio caso de uso contra la invitación PENDIENTE (huella-de-aceptacion).",
+};
 
 /** Los casos de uso que declaran `permiso=SIN_PERMISO` y no están en la lista cerrada, y las entradas de la lista que ningún caso real usa. */
 export function problemasDeSinPermiso(declarados: string[], lista: Record<string, string>): string[] {
@@ -319,7 +322,7 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
   const acciones = new Set<string>(ACCIONES.map((a) => a.clave));
 
   it("encuentra los casos de uso reales (si dejan de encontrarse, la regla quedó vacía)", () => {
-    expect(casos.length).toBeGreaterThanOrEqual(23);
+    expect(casos.length).toBeGreaterThanOrEqual(24);
   });
 
   it("todo caso de uso real tiene su ficha completa y de vocabulario cerrado", () => {

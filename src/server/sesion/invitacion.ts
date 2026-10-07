@@ -2,7 +2,7 @@ import "server-only";
 import type { PrismaClient } from "@prisma/client";
 import { estadoEfectivoDeInvitacion, esTokenConFormaValida, type AccesoDeInvitacion } from "@/core/features/empresa/invitacion";
 import { aceptarInvitacionDeUsuario } from "@/core/features/empresa/aceptar-invitacion-de-usuario";
-import { aceptarInvitacion, ErrorDeAceptacion, MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion } from "@/core/features/empresa/aceptar-invitacion";
+import { MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion } from "@/core/features/empresa/aceptar-invitacion";
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { InvarianteViolada } from "@/core/permisos/invariantes";
 import { hashDeToken } from "@/core/seguridad/tokens";
@@ -12,8 +12,8 @@ import { abreLaVia3, TIPO_INVITACION_USUARIO, type VistaDeInvitacion } from "@/c
 
 /**
  * La invitación LEÍDA por su token (Hito 3, B3-3 de `docs/plan-hito-3-pureza.md`): lo que de `core/auth/invitacion.ts` tocaba la base. El invitado todavía no tiene empresa
- * ni sesión (o tiene una de otras empresas), así que se busca por el hash con `dbDeInvitacion` (política `lectura_por_token`). Aceptar vive en
- * `core/features/empresa/aceptar-invitacion{,-de-usuario}.ts`; la vinculación de la cuenta de Google, en `vincular-cuenta.ts`. Las reglas puras (tipos, cookie, clase de
+ * ni sesión (o tiene una de otras empresas), así que se busca por el hash con `dbDeInvitacion` (política `lectura_por_token`). Aceptar la del primer gerente es un caso de uso
+ * (`server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts`, B3-5); la de usuario, `core/features/empresa/aceptar-invitacion-de-usuario.ts`; la vinculación de la cuenta de Google, en `vincular-cuenta.ts`. Las reglas puras (tipos, cookie, clase de
  * invitación) siguen en `core/auth/invitacion.ts`.
  */
 
@@ -75,26 +75,6 @@ export async function invitacionHabilitaElIngreso(token: string | undefined, ema
   const vista = await invitacionDelToken(token, ahora);
   if (!vista || vista.estado !== "PENDIENTE" || !abreLaVia3(vista)) return false;
   return vista.email === emailPerfil.trim().toLowerCase();
-}
-
-/**
- * Acepta la invitación del token en nombre de `usuario` (ya autenticado con Google). Resuelve la empresa por el token y corre `aceptarInvitacion` en una
- * transacción serializable bajo esa empresa. Un fallo de invariantes o de datos de la empresa deshace todo y vuelve como mensaje.
- */
-export async function aceptarInvitacionDelToken(entrada: { token: string; usuario: { id: string; email: string }; cuit: unknown; ahora?: Date }): Promise<ResultadoDeAceptacion> {
-  const ahora = entrada.ahora ?? new Date();
-  const invitacion = await invitacionConSuBase(entrada.token, ahora);
-  if (!invitacion || invitacion.vista.estado !== "PENDIENTE") return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
-  try {
-    return await conTransaccionSerializable(
-      invitacion.transaccion,
-      (tx) => aceptarInvitacion(tx, { token: entrada.token, usuario: entrada.usuario, cuit: entrada.cuit, ahora }),
-    );
-  } catch (e) {
-    if (e instanceof InvarianteViolada) return { ok: false, mensaje: e.mensaje };
-    if (e instanceof ErrorDeAceptacion) return { ok: false, mensaje: e.message };
-    throw e;
-  }
 }
 
 /**

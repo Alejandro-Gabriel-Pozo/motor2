@@ -4,7 +4,10 @@
  * mudanza no obligue a tocar el cuerpo de las huellas —que no se editan—, todas importan lo que prueban DESDE ACÁ: cuando una función cambia de lugar, se cambia un solo `export … from`,
  * en el mismo commit que la mueve, y el golden queda intacto.
  */
-export { aceptarInvitacionDelToken, aceptarInvitacionDeUsuarioDelToken } from "../../../src/server/sesion/invitacion";
+export { aceptarInvitacionDeUsuarioDelToken } from "../../../src/server/sesion/invitacion";
+import { aceptarInvitacionDeGerenteCasoDeUso } from "../../../src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente";
+// B3-5: el caso de uso pide `ahora` (no lee el reloj); la huella de gobierno, escrita antes, no lo pasa: la hora del pedido, como la ponía el valor por defecto viejo.
+export const aceptarInvitacionDelToken = (e: Omit<Parameters<typeof aceptarInvitacionDeGerenteCasoDeUso>[0], "ahora"> & { ahora?: Date }) => aceptarInvitacionDeGerenteCasoDeUso({ ...e, ahora: e.ahora ?? new Date() });
 export { vincularCuentaConInvitacion } from "../../../src/server/sesion/vincular-cuenta";
 export { requierePermiso } from "../../../src/server/acceso/gate";
 export { asegurarInvitacionDeUsuario, revocarInvitacionPendiente, rotarInvitacionPendiente } from "../../../src/core/features/empresa/invitacion-de-usuario";

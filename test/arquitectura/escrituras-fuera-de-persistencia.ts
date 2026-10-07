@@ -65,10 +65,10 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     fase: "Fase 4",
     motivo: "Tramo B (PR B3): la aceptación de invitación de usuario pasa a caso de uso + persistencia.",
   },
-  "src/core/features/empresa/aceptar-invitacion.ts": {
+  "src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts": {
     escrituras: ["invitacion.updateMany"],
     fase: "Fase 4",
-    motivo: "Tramo B (PR B3): la aceptación de invitación de gerente pasa a caso de uso + persistencia.",
+    motivo: "Tramo B (B3-5): la aceptación de invitación de gerente ya es caso de uso (mudada tal cual desde core/features/empresa/aceptar-invitacion.ts); B3-6 lleva su escritura a server/persistencia/invitaciones/.",
   },
   "src/server/operaciones-de-plataforma/cambiar-modulos-de-empresa.ts": {
     escrituras: ["$executeRaw", "moduloEmpresa.upsert"],

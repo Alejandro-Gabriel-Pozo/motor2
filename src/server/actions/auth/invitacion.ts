@@ -5,10 +5,11 @@ import { redirect } from "next/navigation";
 import { getUsuarioActual } from "@/core/auth/session";
 import { requierePermiso } from "@/server/acceso/gate";
 import { nombreCookieInvitacion, opcionesCookieInvitacion } from "@/core/auth/invitacion";
-import { aceptarInvitacionDelToken, aceptarInvitacionDeUsuarioDelToken, invitacionDelToken } from "@/server/sesion/invitacion";
+import { aceptarInvitacionDeUsuarioDelToken, invitacionDelToken } from "@/server/sesion/invitacion";
 import { MENSAJE_ENLACE_NO_VALIDO } from "@/core/features/empresa/aceptar-invitacion";
 import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";
 import { error, type ResultadoAccion } from "../tipos";
+import { aceptarInvitacionDeGerenteCasoDeUso } from "./casos-de-uso/aceptar-invitacion-de-gerente";
 
 /**
  * Invitación del primer gerente, pantalla `/invitacion` (E5, ADR-020). Las dos acciones son previas al contexto de empresa: la primera es pública (su
@@ -30,7 +31,12 @@ export async function abrirInvitacion(token: string): Promise<ResultadoAccion> {
   redirect("/invitacion");
 }
 
-/** Acepta la invitación del token de la cookie con la cuenta de la sesión y el CUIT del formulario. Al salir bien, borra la cookie y manda a `/login`, que explica que la empresa está en alta. */
+/**
+ * Acepta la invitación del token de la cookie con la cuenta de la sesión y el CUIT del formulario. Al salir bien, borra la cookie y manda a `/login`, que explica que la empresa está en alta.
+ * Adaptador de su caso de uso (`casos-de-uso/aceptar-invitacion-de-gerente.ts`, Hito 3, B3-5): sesión, token de la cookie y la hora del pedido entran; los efectos de Next (cookie,
+ * redirect) se quedan acá. Sin `conPermiso*` (quien acepta no tiene membresía todavía: `CASOS_SIN_PERMISO`), sin `guardComando*` (el token lo valida el caso de uso contra la base:
+ * `SIN_GUARD`) y sin `aResultadoAccion` (de su resultado solo sale el mensaje, por `error`: `SIN_ENVOLTORIO_TODAVIA`).
+ */
 export async function aceptarMiInvitacion(formData: FormData): Promise<ResultadoAccion> {
   const usuario = await getUsuarioActual();
   if (!usuario) return error("Tu sesión venció. Entrá de nuevo con Google.");
@@ -38,7 +44,7 @@ export async function aceptarMiInvitacion(formData: FormData): Promise<Resultado
   const token = cookieStore.get(nombreCookieInvitacion(process.env))?.value;
   if (!token) return error(MENSAJE_ENLACE_NO_VALIDO);
   const cuit = formData.get("cuit");
-  const resultado = await aceptarInvitacionDelToken({ token, usuario: { id: usuario.id, email: usuario.email }, cuit: typeof cuit === "string" ? cuit : "" });
+  const resultado = await aceptarInvitacionDeGerenteCasoDeUso({ token, usuario: { id: usuario.id, email: usuario.email }, cuit: typeof cuit === "string" ? cuit : "", ahora: new Date() });
   if (!resultado.ok) return error(resultado.mensaje);
   cookieStore.delete(nombreCookieInvitacion(process.env));
   redirect("/login");
