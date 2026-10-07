@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { sembrarEmpresa } from "../../../src/core/features/empresa/sembrar-empresa";
+import { sembrarEmpresa } from "../../../plataforma/src/servidor/sembrar-empresa";
 import { generarTokenOpaco, hashDeToken } from "../../../src/core/seguridad/tokens";
 import { prismaAdmin } from "../../setup/cliente-duenio";
 import { azarDelProceso } from "../../../src/lib/azar";

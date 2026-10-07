@@ -68,8 +68,6 @@ const FUNCIONES_EXCEPTUADAS: Record<string, string> = {
     "Alta de una solicitud de traspaso: es un DOCUMENTO nuevo con su propio creador y fecha (`creadoPorId`, `creadoEn`) y su máquina de estados; la cantidad es la pedida, no hay un valor anterior que se pierda, y el movimiento real queda en el Kardex al aprobarse. Hallado al extender esta regla a server/persistencia (Fase 4); se exceptúa la función y no el modelo.",
   "src/server/persistencia/traspasos/escribir-creacion-de-traspaso.ts|escribirEnvioDirectoDeTraspaso":
     "Alta de un envío directo de traspaso (PUSH): mismo documento que la solicitud, ya con la decisión de origen tomada; lleva su creador y fecha, no hay un valor anterior que se pierda y el movimiento real queda en el Kardex. Hallado al extender esta regla a server/persistencia (Fase 4); se exceptúa la función y no el modelo.",
-  "src/core/features/empresa/sembrar-empresa.ts|sembrarEmpresa":
-    "Alta de una empresa por la plataforma: siembra el catálogo base (unidades, roles, sucursal) de una empresa recién creada, DENTRO de la misma transacción que deja el rastro «alta-de-empresa» en la auditoría de plataforma (`plataforma/src/servidor/empresas.ts`).",
 };
 
 interface Escritura {

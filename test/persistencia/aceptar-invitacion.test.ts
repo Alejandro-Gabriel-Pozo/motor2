@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 import { aceptarInvitacionDelToken } from "../../src/core/auth/invitacion";
 import { MENSAJE_ENLACE_NO_VALIDO } from "../../src/core/features/empresa/aceptar-invitacion";
-import { sembrarEmpresa } from "../../src/core/features/empresa/sembrar-empresa";
+import { sembrarEmpresa } from "../../plataforma/src/servidor/sembrar-empresa";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
 import { azarDelProceso } from "../../src/lib/azar";
 

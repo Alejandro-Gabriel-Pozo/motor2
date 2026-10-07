@@ -11,11 +11,14 @@ import { describe, expect, it } from "vitest";
  * Escrituras: `<algo>.permisoRol.<create|createMany|update|updateMany|upsert|delete|deleteMany>` y lo mismo sobre `<algo>.rol`.
  *
  * Excepciones, cada una con su motivo:
- *  - `core/features/empresa/sembrar-empresa.ts` (la usan `crearEmpresa` y el alta de la consola): el alta de una empresa siembra sus roles y permisos de fábrica; ahí todavía no existe una
- *    empresa a la que aplicarle una política (la decide la plataforma al crearla). `prisma/seed.ts` queda fuera de `src/`.
+ *  - `plataforma/src/servidor/sembrar-empresa.ts` (la usan `crearEmpresa` y el alta de la consola; vive en la consola desde Pureza Fase 4, tramo B): el alta de una empresa siembra sus
+ *    roles y permisos de fábrica; ahí todavía no existe una empresa a la que aplicarle una política (la decide la plataforma al crearla). `prisma/seed.ts` queda fuera de `src/`.
+ *    Ya no está en `src/`: en `src/` NO queda ninguna excepción, y la consola (`plataforma/src`) solo puede escribir esos modelos en ese archivo (último test de este archivo).
  */
 const RAIZ = join(__dirname, "../../src");
-const EXCEPCIONES = ["core/features/empresa/sembrar-empresa.ts"];
+const EXCEPCIONES: string[] = [];
+const CONSOLA = join(__dirname, "../../plataforma/src");
+const SIEMBRA_EN_LA_CONSOLA = "servidor/sembrar-empresa.ts";
 const MODELOS = new Set(["permisoRol", "rol"]);
 const ESCRITURAS = new Set(["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"]);
 const GATE = "conEdicionDePermisos";
@@ -82,6 +85,15 @@ describe("escrituras de permisos y roles: siempre dentro de conEdicionDePermisos
       for (const m of escriturasSinGate(readFileSync(ruta, "utf8"))) problemas.push(`${nombre} (${m})`);
     }
     expect(problemas, `Estas escrituras de permisos/roles no pasan por conEdicionDePermisos (política de la empresa):\n${problemas.join("\n")}`).toEqual([]);
+  });
+
+  it("la consola de plataforma solo escribe PermisoRol/Rol en la siembra de una empresa nueva (no hay empresa a la que aplicarle una política)", () => {
+    const consola = archivos(CONSOLA).map((r) => ({ nombre: relative(CONSOLA, r).split(sep).join("/"), fuente: readFileSync(r, "utf8") }));
+    expect(consola.length).toBeGreaterThan(20);
+    expect(consola.filter((a) => a.nombre !== SIEMBRA_EN_LA_CONSOLA && escribeModelos(a.fuente)).map((a) => a.nombre)).toEqual([]);
+    const siembra = consola.find((a) => a.nombre === SIEMBRA_EN_LA_CONSOLA);
+    expect(siembra, `${SIEMBRA_EN_LA_CONSOLA} ya no existe: actualizá la excepción`).toBeDefined();
+    expect(escribeModelos(siembra!.fuente), `${SIEMBRA_EN_LA_CONSOLA} ya no escribe PermisoRol/Rol: sacalo de la excepción`).toBe(true);
   });
 
   it("las excepciones existen y siguen escribiendo estos modelos (la lista no quedó desactualizada)", () => {

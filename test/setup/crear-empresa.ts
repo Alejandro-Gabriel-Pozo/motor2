@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { verificarRolDeEjecucion } from "@/core/auth/rol-de-ejecucion";
 import { esEmailReservadoDeAdminPlataforma, MENSAJE_EMAIL_RESERVADO } from "@/core/plataforma/email-reservado";
-import { sembrarEmpresa } from "@/core/features/empresa/sembrar-empresa";
+import { sembrarEmpresa } from "../../plataforma/src/servidor/sembrar-empresa";
 import { crearEmpresaConAdminSchema, esTransicionValida, type ComandoCrearEmpresaConAdmin } from "@/core/features/empresa/empresa.schema";
 
 /** Regla de negocio (ADR-007): quien crea la empresa —su primer admin— es su «gerente». */

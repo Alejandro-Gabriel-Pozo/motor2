@@ -85,10 +85,10 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     fase: "Fase 4",
     motivo: "Tramo B (PR B4b): las invitaciones de usuario pasan a casos de uso + persistencia.",
   },
-  "src/core/features/empresa/sembrar-empresa.ts": {
+  "plataforma/src/servidor/sembrar-empresa.ts": {
     escrituras: ["accion.createMany", "destinoConsumo.createMany", "motivoMerma.createMany", "permisoRol.createMany", "rol.create", "rol.create", "sucursal.create", "unidad.createMany"],
-    fase: "Fase 4",
-    motivo: "Tramo B (PR B1): el escritor de la siembra pasa a plataforma/src/servidor; el plan queda puro en core.",
+    fase: "Consola",
+    motivo: "La siembra de una empresa nueva es de la plataforma (solo la plataforma da de alta una empresa): vive en la consola, que no puede importar src/server; el plan de lo que siembra es puro en core.",
   },
   "src/core/permisos/auditoria.ts": {
     escrituras: ["registroAuditoria.create"],
@@ -100,10 +100,10 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     fase: "Fase 4",
     motivo: "Tramo B (PR B4a): el traspaso de gerencia pasa a caso de uso + persistencia.",
   },
-  "src/core/plataforma/primer-admin.ts": {
+  "plataforma/src/servidor/alta-de-admin.ts": {
     escrituras: ["adminPlataforma.create", "codigoDeRecuperacionPlataforma.createMany"],
-    fase: "Fase 4",
-    motivo: "Tramo B (PR B1): el alta del primer administrador pasa a plataforma/src/servidor/alta-de-admin.ts.",
+    fase: "Consola",
+    motivo: "El alta de un administrador de plataforma es de la plataforma (la corre una persona, una vez, con el rol motor2_plataforma): vive en la consola, que no puede importar src/server; la validación y el material del alta son puros en core/plataforma/primer-admin.ts.",
   },
   "src/server/actions/auth/sucursales.ts": {
     escrituras: ["disponibilidadProducto.createMany", "sucursal.create", "sucursal.update", "sucursal.update", "usuarioEmpresa.update", "usuarioSucursal.create"],
