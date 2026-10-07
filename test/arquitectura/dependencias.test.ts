@@ -196,6 +196,16 @@ describe("ui-sin-internals-de-dominio: las excepciones, en las dos direcciones",
   });
 });
 
+describe("sin-internals-de-otro-dominio: todos los dominios de negocio tienen su fachada y su regla (DOMINIOS_SIN_PUBLIC_TODAVIA, en las dos direcciones)", () => {
+  it("cada dominio de negocio tiene su regla `sin-internals-de-otro-dominio` y su public.ts (no hay un dominio exceptuado que ya pueda protegerse)", () => {
+    const reglas = CONFIG.forbidden.filter((r) => r.name === "sin-internals-de-otro-dominio");
+    // Una regla por dominio: si uno quedara en DOMINIOS_SIN_PUBLIC_TODAVIA, faltaría su regla.
+    expect(reglas, "falta la regla de algún dominio: ¿quedó uno en DOMINIOS_SIN_PUBLIC_TODAVIA? Si ya tiene fachada, sacalo de esa lista").toHaveLength(DOMINIOS_DE_NEGOCIO.length);
+    const sinFachada = DOMINIOS_DE_NEGOCIO.filter((d) => !existsSync(join(RAIZ, "src", "core", d, "public.ts")));
+    expect(sinFachada, `Estos dominios de negocio no tienen core/<dominio>/public.ts: ${sinFachada.join(", ")}`).toEqual([]);
+  });
+});
+
 describe("paginas-solo-consultas: las excepciones, en las dos direcciones", () => {
   it("la regla está en la config", () => {
     expect(CONFIG.forbidden.map((r) => r.name)).toContain("paginas-solo-consultas");
