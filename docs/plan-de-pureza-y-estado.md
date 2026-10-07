@@ -48,15 +48,12 @@ Todas son **sin migración de base**, salvo la 5. Cada paso se verifica con los 
 
 Decisiones ya tomadas por el dueño (no reabrir): dinero con `decimal.js` detrás de `core/moneda`; reloj inyectado; candado del Kardex y tabla de saldos (ambos `[MIG]`, con autorización cuando llegue el momento); documentos nuevos solo por versiones; capas horizontales por dominio con la UI por módulo de producto y `fiscal` como dominio de negocio; exigir módulo y permiso en todas las lecturas que se pueda.
 
-## 4. Estado exacto del repositorio (2026-10-06)
+## 4. Estado exacto del repositorio (2026-10-07)
 
-- `main` en GitHub tiene la Fase 0 completa y el paso 1.1.
-- **La Fase 1 está en una rama LOCAL, sin subir: `pureza-fase-1`** (= `main` + pasos 1.2, 1.3, 1.4, 1.5 y 1.6 integrados, con sus conflictos resueltos). Verificada en local con los 8 comandos: tsc/lint/arquitectura/knip limpios, 509 archivos y 5.962 tests, builds de la app y de la consola, e2e 491 pasan.
-- Existen además ramas sueltas en GitHub (`pureza-1-3-…`, `pureza-1-5-…`, `pureza-1-6-…`) y dos PR abiertos (#68 = paso 1.2, #69 = paso 1.4). Quedan **superados** por `pureza-fase-1`; se cierran cuando esta se integre.
-- **Regla del dueño mientras no haya CI: todo en local, no subir nada.**
-
-### Por qué no hay CI hoy
-El CI de GitHub Actions dejó de arrancar: *«recent account payments have failed or your spending limit needs to be increased»*. El plan incluye 3.000 minutos de Actions por mes y una corrida completa gasta unos **50** (estático 3 + integración 25 + e2e 22), más otra al fusionar a `main`. Se agotaron. Opciones: aumentar el límite de gasto, esperar al ciclo de facturación, o correr el equivalente en local (§6). Con el CI de vuelta: **una sola corrida con `pureza-fase-1`**, no un PR por paso.
+- `main` tiene las Fases 0, 1, 2 y 3 y buena parte de la Fase 4 (PR #80 a #91, más el vínculo proveedor↔producto 1/2 y H7). Los PR #68 y #69 quedaron cerrados, superados por #70. **Ninguna de las cuatro primeras fases está «hecha sin reservas»:** una auditoría independiente del 2026-10-07 encontró agujeros en los guardianes y redes de pruebas sin escribir (`docs/plan-fase-4-pureza.md`, sección 11).
+- El CI de GitHub Actions **funciona** otra vez: cada PR corre el «Gate (requerido)» (estático, integración, e2e) y se fusiona con `squash` cuando está verde. En local se corren solo las verificaciones breves (`tsc`, `lint`, `arquitectura`, `knip`, los tests de la zona y, si es barato, el build y el e2e de lo tocado).
+- Las pruebas con base de datos comparten una sola base local y la limpian al empezar: **se corren de a una**.
+- Qué está hecho, qué falló y qué falta en la Fase 4: `docs/plan-fase-4-pureza.md`, sección 10. Qué corregir de las Fases 0 a 3: la sección 11.
 
 ## 5. Cómo se trabaja (las reglas que se fueron fijando)
 
@@ -101,6 +98,4 @@ y definir en `.env` (nunca subirlo) `MOTOR2_E2E_PLATAFORMA_DATABASE_URL`, `MOTOR
 
 ## 8. Qué sigue, concretamente
 
-1. Cuando haya CI (o el gate local equivalente): integrar `pureza-fase-1` en `main` con **una** corrida y cerrar #68 y #69.
-2. **Fase 2** (sin migraciones): `public.ts`/`public-servidor.ts` para `pos`, `stock` y `compras` (hoy en `DOMINIOS_SIN_PUBLIC_TODAVIA` de `.dependency-cruiser.cjs`), regla que prohíbe que la UI importe archivos internos de un dominio (145 aristas hoy), y que `catalogo/public.ts` deje de reexportar `recetas-vigentes`.
-3. **Punto de control con el dueño** al terminar la Fase 2.
+El orden vigente está en `docs/plan-fase-4-pureza.md`: la sección 10.4 (Fase 4: B0b, B3, B4, 4C-D/E/F, matriz y segundo tiempo de la venta, 4A-5 con tu autorización, destino de `con-reintento`, B5) y la sección 11.3 (correcciones de las Fases 0 a 3, en tandas: documentos, guardianes, redes de pruebas y, con tu decisión, H8 y la frontera UI → `server/lecturas`). Después vienen la Fase 5 [MIG] (cada paso con tu autorización expresa), la Fase 6 y la Etapa A en una rama de integración.

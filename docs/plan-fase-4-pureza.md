@@ -156,3 +156,69 @@ Aparte, sin orden fijo: el límite `habilitada` de H7; fusionar en una consulta 
 - **D15** (qué acciones de empresa alcanza el rango 2 de RBAC; recomendado: ninguna por defecto) y **D16** (piso de `ver_auditoria`; recomendado: administrador de sistema), antes de B4.
 - **Squash o merge commit** (menor): hoy cada PR queda como un solo commit en `main`.
 - Si se hace el arreglo de `habilitada` de H7 antes de cerrar la fase o se deja anotado.
+
+## 11. Auditoría de las Fases 0 a 3 (2026-10-07)
+
+> Cuatro auditores independientes (uno por fase, cada uno con su propio contexto, solo lectura, con un modelo superior) compararon cada PR fusionado de las Fases 0, 1, 2 y 3 contra su plan, y verificaron el estado final contra el código de `main`. Después de recibir los informes se comprobaron a mano contra el código los hallazgos de abajo marcados **(verificado)**; el resto son afirmaciones de los auditores que se tratan como datos hasta que se verifiquen al corregirlos. **Ninguna fase puede darse por «hecha sin reservas».** Lo hecho sí está: la ubicación del código, las fachadas, los guardianes principales. Lo que falta son agujeros de los guardianes, redes de pruebas prometidas y algunas decisiones sin asentar.
+
+### 11.1 Resultado por fase
+
+| Fase | PR | Conformes | Conclusión |
+|---|---|---|---|
+| **0** Guardianes | #59 a #66 (8) | 6 de 8; **parciales #66 (ficha) y #63 (auditoría de dinero)** | Los guardianes existen y funcionan, pero la auditoría de dinero no ve el SQL crudo y faltan el campo `periodo` de la ficha y la clasificación declarada de tablas |
+| **1** Dinero, reloj, entorno, azar, errores | #67, #70 (1.2 a 1.6), #71 | #71 y 1.6 sí; **parciales #67 y 1.2 a 1.5** | Hay azar y red reales dentro de `core` que el analizador no ve, dos casos de uso reconocen un error de la base por clase, y faltan 10 de los 13 tests de hora fija. No existe un plan detallado de la Fase 1: los sub-pasos solo están en los mensajes de los PR |
+| **2** Fachadas y fronteras | #72 (único) | Conforme en lo sustantivo | La regla de internals no cubre `proxy.ts`, `env.ts`, `server/acceso`, `server/carta-publica` ni la consola, y no hay guardián de «el cliente no importa `public-servidor`» |
+| **3** Lecturas fuera del núcleo | #73 a #78 (6) | 2 de 6 (#73, #75); **parciales #74, #76, #77, #78** | La ubicación se cumplió (0 heredados «Fase 3»); quedaron sin hacer y sin declarar H8, las caracterizaciones de reportes y del tramo A, el conteo de N+1 de grupos y las propiedades del guard |
+
+### 11.2 Hallazgos, de lo más serio a lo menor
+
+**A. Comportamiento o seguridad (decisión o corrección con riesgo)**
+
+1. **H8 sin hacer ni rastrear (Fase 3, decisión del dueño)** **(verificado)**: las lecturas que exigen solo sesión (`requerirSesion`, `requerirSesionEnSucursal`) siguen siendo 18 llamadas en 9 archivos de `src/server/actions` (catálogo, movimientos, stock, auth). El plan de la Fase 3 (§3, línea «H8») pedía un PR propio que las pase a exigir módulo y permiso, con un mapa lectura → módulo/acción aprobado por el dueño. No figuraba en ningún documento de estado.
+2. **Dos casos de uso pierden la rama de idempotencia I3 ante un choque de unicidad (Fase 1, 1.6)** **(verificado)**: `registrar-conteo-fisico.ts:186` y `registrar-pago-consignante.ts:96` reconocen el choque con `instanceof Prisma.PrismaClientKnownRequestError`; con el adaptador `pg` el mismo choque puede llegar como `DriverAdapterError`, que esa condición no ve. Es un error real de comportamiento. Lo mismo, de forma más inocua, en `carta/registro-publico.ts:32`. Corrección: usar `esChoqueDeIndiceUnico` de `core/movimientos/con-reintento` (más una regla que prohíba importar `Prisma` como valor en los casos de uso).
+3. **Escritura de precios por SQL crudo sin auditoría ni excepción (Fase 0, 0.7)** **(verificado)**: `server/persistencia/catalogo/upsert-proveedor-por-producto.ts` hace un `$executeRaw` sobre columnas `Decimal` y su único llamador declara `auditoria=DOCUMENTO_PROPIO`. La regla `escrituras-auditadas` solo ve `tx.<modelo>.<operación>`. Hay que decidir si esa escritura (un caché derivado de la compra) se audita o se declara como excepción con motivo, y enseñarle a la regla a ver `$executeRaw`.
+4. **Dinero en `number` dentro de `core` (Fase 1, 1.1)**: la decisión «dinero con `decimal.js`» se cumplió como «`decimal.js` detrás de `core/moneda`» (el propio `core/moneda.ts` lo dice); las sumas en `core/reportes` siguen en `number`. No hay un documento que fije que eso es por diseño. Decisión del dueño: escribirlo o abrir un paso.
+
+**B. Agujeros de los guardianes (el guardián dice vigilar algo que no ve)**
+
+5. **El analizador solo detecta llamadas, no referencias** **(verificado)**: `Math.random` como valor por defecto en `core/movimientos/reintentar.ts:62` (y, a través de `conTransaccionSerializable`, azar no inyectado en toda transacción serializable) y `fetch` como valor por defecto en `core/correo/resend.ts:37` figuran como P0 sin serlo; el cliente HTTP de Resend vive en `core`.
+6. **La regla `sin-internals-de-otro-dominio` no cubre** `src/proxy.ts` (importa `@/core/carta/host` y `carta-empresa-unica`), `src/env.ts` (ruta relativa a `core/carta/host`), `src/server/acceso`, `src/server/carta-publica`, `src/server/adaptadores` ni la consola; la consola importa `core/movimientos/con-reintento` (`plataforma/src/servidor/ciclo-de-vida.ts:6`) **(verificado)**.
+7. **«Un componente de cliente nunca importa `public-servidor.ts`» no tiene guardián** (hoy 0 casos; `catalogo/public-servidor.ts` no lleva `server-only` a propósito).
+8. **Fichas (Fase 0, 0.6)** **(verificado)**: falta el campo `periodo=VERIFICA_CIERRE` que el plan marcaba como la forma mecánica de que el cierre de períodos alcance todas las escrituras de la Etapa A (0 ocurrencias en `ficha-de-caso-de-uso.test.ts`); el descubrimiento de casos de uso es solo por carpeta, así que los flujos de la consola y de `operaciones-de-plataforma` no tienen ficha ni la exigen.
+9. **Otras brechas menores de guardianes:** `consultas-solo-lectura-y-ui-sin-base` no cubre `server/acceso/`; ningún guardián ve el reloj leído desde `server/persistencia` (p. ej. `fechaCompra ?? new Date()` en el upsert del vínculo, hoy un fallback muerto); la regla `paginas-solo-consultas` prometida **(verificado: no existe)**; el comentario falso de `ALCANCE_CARTA_PUBLICA` (ya anotado en 4A-5).
+
+**C. Redes de pruebas prometidas y no escritas**
+
+10. **Tests de hora fija:** el plan de la Fase 1 pedía uno por cada uno de los 13 casos de uso; hay 3 (`anular-compra`, `anular-venta`, `emitir-ticket-corregido`). Faltan los de `cancelar-conteo-fisico`, `resolver-conteo-pendiente`, `cerrar-cuenta` y los 7 de traspasos.
+11. **Caracterización de los reportes antes de moverlos (Fase 3, C0)** y del tramo A («.0»): no se escribió; solo hay conteo de consultas para 4 reportes y nada para ~25.
+12. **Test de conteo del N+1 de grupos de insumos** que la descripción de #74 afirmaba: no existe.
+13. **Propiedades con fast-check del guard de acceso** (Fase 3): no existen (`fast-check` se usa solo en moneda, filas de movimiento y arrastre).
+14. **Clasificación declarada de tablas** (Fase 0, mínimo imprescindible ítem 8): siguen los contadores fijos (`rls-empresa.test.ts`, `multiempresa-estructura.test.ts`).
+
+**D. Fronteras y decisiones sin asentar**
+
+15. **La UI importa `server/lecturas`** **(verificado)**: 5 páginas (`insumos-grupos`, `productos/[id]`, `recetas/[productoId]`, `reportes/costos`, `mesas/[mesaId]`) contra D-1 de la Fase 3 y el ADR-026; `lecturas-capa` solo restringe a quién importa la capa, no quién la importa. Decisión: formalizar en el ADR-026 que las páginas (Server Components) pueden importar la capa, con una regla que lo limite, o mover esas lecturas a `server/consultas`.
+16. **Reloj dentro de consultas y acciones** **(verificado)**: `perdidas.ts:37` y `devoluciones.ts:23` (y otros 3 reportes) leen `new Date()`; el plan de la Fase 3 (C1) pedía `ahora` obligatorio en todos y solo se hizo en tickets. `server/actions/auth/usuarios.ts` lee `new Date()` tres veces dentro de `conPermiso` (líneas 107, 381, 412) en vez de `ctx.ahora`. Falta además el `ORDER BY` explícito en `rendimiento-recetas.ts` **(verificado: 0 `orderBy`)**.
+17. **D-4 y D-5 de la Fase 3 se aplicaron sin decisión registrada** (auth → Fase 6, movimientos → Fase 4); no consta la respuesta del dueño.
+18. **Documentos de estado:** `plan-de-pureza-y-estado.md` §4 y §8 describían un estado anterior a la Fase 1 (corregidos en este PR); `docs/arquitectura-casos-de-uso-2026-09-27.md` habla de `DOMINIOS_CON_PUBLIC` (constante invertida el 2026-09-28); la copia externa del plan de la Fase 3 no tiene el encabezado «HECHA».
+19. **Detalles de la Fase 1:** `core/auth/{acceso,invitacion}.ts` leen el reloj y `acceso`/`base`/`contexto` leen `process.env` (declarados como heredados de las Fases 4 y 6); `core/correo/enviar.ts` importa `@/lib/reportar-error` desde `core`; el #67 rompió el despliegue de la consola (decimal.js no declarado en `plataforma/package.json`, corregido en #71 con test).
+
+### 11.3 Orden de corrección propuesto
+
+Respeta dos reglas: lo que protege lo que viene va antes, y lo que cambia comportamiento no se mezcla con lo estructural. Convive con el orden de la 10.4 (la tanda 1 va junto con B0b y antes de B3 y de 4C-D/E/F).
+
+| Tanda | Qué | Riesgo | Depende de |
+|---|---|---|---|
+| **0. Documentos** | Estado al día (hecho en este PR para `plan-de-pureza-y-estado.md`); registrar D-4/D-5 y la decisión sobre el dinero en `number`; actualizar la copia externa del plan de la Fase 3; corregir `arquitectura-casos-de-uso` | Ninguno | Tu confirmación de D-4/D-5 y del dinero |
+| **1. Guardianes** | (a) el analizador detecta referencias, no solo llamadas, con mutación; (b) `reintentar.ts` y `conTransaccionSerializable` reciben el azar del borde; (c) `resend.ts` sale de `core` a un adaptador; (d) `esChoqueDeIndiceUnico` en los 3 sitios + regla «los casos de uso no importan `Prisma` como valor»; (e) la regla de internals se amplía a `proxy`, `env`, `server/*` y la consola (exponer en `carta/public.ts` lo que usa el proxy); (f) guardián «cliente no importa `public-servidor`»; (g) la auditoría de dinero ve `$executeRaw` (y se decide el vínculo); (h) ficha: `periodo` y fichas de la consola; (i) `consultas-solo-lectura` cubre `server/acceso/` | Bajo (solo estructura y reglas; (d) corrige un camino de idempotencia) | Nada; (a) antes de (b) y (c) |
+| **2. Redes de pruebas** | Los 10 tests de hora fija; caracterización de los reportes (C0) con conteo; conteo del N+1 de grupos; propiedades del guard; clasificación declarada de tablas; matriz de la venta (ya en la 10.4) | Bajo | La tanda 1 para (f)(g) del guardián de la ficha |
+| **3. Con decisión del dueño** | H8 (mapa lectura → módulo/acción, coordinado con B4 y con el RBAC); frontera UI → `server/lecturas`; `ahora` obligatorio en los 5 reportes y `ctx.ahora` en `usuarios.ts`; `ORDER BY` de `rendimiento-recetas` | Medio (H8 cambia seguridad) | Tu decisión; H8 antes de B4 |
+
+### 11.4 Qué decide el dueño (se suma a la 10.5)
+
+- **H8:** aprobar el mapa de las 18 lecturas (módulo y acción de cada una) antes de hacerlo.
+- **UI → `server/lecturas`:** permitirlo o mover esas lecturas.
+- **Dinero en `number` dentro de `core`:** dejarlo escrito como diseño, o abrir un paso.
+- **SQL crudo del vínculo proveedor↔producto:** auditarlo o declararlo como excepción con motivo.
+- **Campo `periodo` de la ficha:** agregarlo ahora o diferirlo por escrito a la Etapa A.
+- **D-4 y D-5 de la Fase 3:** confirmar lo que ya se aplicó.
