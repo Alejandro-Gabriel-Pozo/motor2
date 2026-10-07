@@ -196,7 +196,8 @@ export async function guardarVersionDeRecetaCasoDeUso(
         }
       });
     },
-    { maxIntentos: 5, esReintentable: (e) => esErrorDeUnicidad(e) || esConflictoDeEscritura(e) }
+    // `aleatorio`: el jitter de la espera con la fuente de azar del borde (la de la transacción); sin ella, todos los que chocan a la vez esperarían lo mismo y volverían a chocar en bloque.
+    { maxIntentos: 5, esReintentable: (e) => esErrorDeUnicidad(e) || esConflictoDeEscritura(e), aleatorio: actor.transaccion.aleatorio }
   );
 
   if (rechazo.resultado) return rechazo.resultado;

@@ -25,7 +25,7 @@ const ESPERA_BASE_MS = 25;
 const ESPERA_TOPE_MS = 250;
 /**
  * Sin una fuente de azar inyectada, la espera usa la MITAD del techo (determinista). El núcleo no lee el azar por su cuenta (Pureza 1.5): en producción la fuente la pone el borde que
- * crea la transacción (`Transaccion.aleatorio`, `core/auth/base.ts`); sin ella solo quedan los tests con transacciones armadas a mano.
+ * crea la transacción (`Transaccion.aleatorio`, `core/auth/base.ts`); sin ella (un test con una transacción armada a mano, o un `conReintento` que no la pasa: `test/arquitectura/reintento-con-azar-del-borde.test.ts` lo vigila) la espera es repetible.
  */
 const ESPERA_A_LA_MITAD = () => 0.5;
 
