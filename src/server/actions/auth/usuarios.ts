@@ -1,19 +1,14 @@
 "use server";
 
-import { texto } from "@/core/texto";
 import type { TipoDeInvitacion } from "@/core/features/empresa/invitacion";
-import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion, revocarInvitacionPendiente, rotarInvitacionPendiente } from "@/core/features/empresa/invitacion-de-usuario";
+import { asegurarInvitacionDeVinculacion, revocarInvitacionPendiente, rotarInvitacionPendiente } from "@/core/features/empresa/invitacion-de-usuario";
 import { requierePermiso } from "@/server/acceso/gate";
-import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import {
   actorEnSucursal,
   mensajeSiNoPuedeAsignarRol,
   mensajeSiNoPuedeGestionar,
-  mensajeSiReactivaAdminSinSerGerente,
   objetivoEnSucursal,
-  reactivaAUnAdmin,
 } from "@/core/permisos/gestion-de-usuarios";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { conGobierno } from "../con-gobierno";
 import { enviarInvitacionYAnotar, type InvitacionPorEnviar } from "./casos-de-uso/enviar-invitacion-y-anotar";
@@ -25,6 +20,8 @@ import { actualizarNotasMembresiaCasoDeUso } from "./casos-de-uso/actualizar-not
 import { actualizarActivoMembresiaCasoDeUso } from "./casos-de-uso/actualizar-activo-membresia";
 import { actualizarActivoUsuarioEnEmpresaCasoDeUso } from "./casos-de-uso/actualizar-activo-usuario-en-empresa";
 import { transferirGerenciaCasoDeUso } from "./casos-de-uso/transferir-gerencia";
+import { agregarOActualizarUsuarioCasoDeUso } from "./casos-de-uso/agregar-o-actualizar-usuario";
+import { guardComandoAgregarOActualizarUsuario } from "@/core/features/permisos/usuario.guard";
 
 /**
  * Techo de privilegio y salvaguardas de esta pantalla (Bloque G, G2): las acciones no miran roles ni comparan nombres. Leen el estado y escriben
@@ -89,6 +86,11 @@ export async function listarInvitacionesPendientes(sucursalId: string) {
  * membresías nacen cuando la acepta con su cuenta de Google, revalidando entonces el permiso y el techo de quien la invitó. A quien YA es miembro de la empresa se le suma la
  * sucursal o se le cambia el rol directo, como siempre; si todavía no vinculó su cuenta de Google, se le manda además la invitación de vinculación. El mail sale DESPUÉS del
  * commit (ADR-018); si no sale, la invitación queda hecha y figura sin enviar.
+ *
+ * Desde el Hito 3 (Fase I, I.5j) es un adaptador, en el mismo orden que antes: `conPermiso("gestion_usuarios")` → formato
+ * (`guardComandoAgregarOActualizarUsuario`: el email, DENTRO del envoltorio) → el permiso EXTRA sobre la sucursal pedida si no es la activa (`requierePermiso`
+ * del gate, con `ctx.db`) → caso de uso (`casos-de-uso/agregar-o-actualizar-usuario.ts`: la transacción de gobierno entera) → si dejó una invitación por mandar,
+ * el mail (`enviarInvitacionYAnotar`) recién ahora, con la transacción confirmada → `aResultadoAccion` (o el aviso de que el mail no salió).
  */
 export async function agregarOActualizarUsuario(input: {
   email: string;
@@ -97,98 +99,24 @@ export async function agregarOActualizarUsuario(input: {
   notas?: string;
 }): Promise<ResultadoAccion> {
   return conPermiso("gestion_usuarios", async (ctx) => {
-    const email = texto(input.email).toLowerCase();
-    if (!email) return error("El email es obligatorio.");
+    const comando = guardComandoAgregarOActualizarUsuario(input);
+    if (!comando.ok) return error(comando.mensaje);
 
     // `conPermiso` solo validó la sucursal ACTIVA: el alta apunta a la que eligió el formulario (viene del cliente), y ahí el
     // rol de quien la hace puede no tener `gestion_usuarios` (o no tener ni membresía).
-    if (input.sucursalId !== ctx.sucursalId) {
-      const gate = await requierePermiso(ctx.usuarioId, input.sucursalId, "gestion_usuarios", ctx.db);
+    if (comando.valor.sucursalId !== ctx.sucursalId) {
+      const gate = await requierePermiso(ctx.usuarioId, comando.valor.sucursalId, "gestion_usuarios", ctx.db);
       if (!gate.ok) return error(gate.mensaje);
     }
 
-    // La hora del pedido la fija `conPermiso` una vez (Pureza 1.2; D.3): vencimiento de la invitación y marca de envío salen de ella, no del reloj.
-    const ahora = ctx.ahora;
-    let porEnviar = null as InvitacionPorEnviar | null;
-    const resultado = await conGobierno(ctx, async (tx) => {
-      porEnviar = null; // la transacción puede reintentarse: el mail pendiente es siempre el del último intento
-      const rol = await tx.rol.findFirst({ where: { id: input.rolId, empresaId: ctx.empresaId } });
-      if (!rol || !rol.activo) return error("Rol inválido o inactivo.");
+    const resultado = await agregarOActualizarUsuarioCasoDeUso(ctx, comando.valor, azarDelProceso);
+    if (!resultado.ok) return aResultadoAccion(resultado);
 
-      const sucursal = await tx.sucursal.findFirst({ where: { id: input.sucursalId, empresaId: ctx.empresaId }, select: { id: true, nombre: true } });
-      if (!sucursal) return error("Sucursal inválida.");
-
-      const usuarioPrevio = await tx.user.findUnique({ where: { email }, select: { id: true, activoGlobal: true, accounts: { where: { provider: "google" }, select: { id: true } } } });
-      const pertenenciaPrevia = usuarioPrevio
-        ? await tx.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId: usuarioPrevio.id, empresaId: ctx.empresaId } }, select: { activo: true } })
-        : null;
-      const actor = actorEnSucursal(ctx, input.sucursalId);
-
-      // No es miembro de la empresa: INVITACIÓN. No se crea ningún User ni membresía hasta que acepte.
-      if (!usuarioPrevio || !pertenenciaPrevia) {
-        if (usuarioPrevio && !usuarioPrevio.activoGlobal) return error("La cuenta de ese email está desactivada en toda la plataforma. Consultalo con la plataforma.");
-        const objetivo = await objetivoEnSucursal(tx, ctx.empresaId, usuarioPrevio?.id ?? null, null);
-        const rechazo = mensajeSiNoPuedeAsignarRol(actor, rol) ?? mensajeSiNoPuedeGestionar(actor, objetivo);
-        if (rechazo) return error(rechazo);
-        const invitada = await asegurarInvitacionDeUsuario(tx, { empresaId: ctx.empresaId, email, invitadoPorId: ctx.usuarioId, acceso: { sucursalId: input.sucursalId, rolId: rol.id, ...(input.notas !== undefined && { notas: input.notas }) }, ahora, azar: azarDelProceso });
-        if (!invitada.ok) return error(invitada.mensaje);
-        if (invitada.token) {
-          porEnviar = { invitacionId: invitada.invitacionId, token: invitada.token, tipo: "usuario" };
-          return ok(`Invitación enviada a "${email}": cuando la acepte con su cuenta de Google tendrá acceso a "${sucursal.nombre}". Mientras tanto figura en «Invitaciones pendientes».`);
-        }
-        return ok(`"${email}" ya tenía una invitación pendiente: se sumó "${sucursal.nombre}" a esa misma invitación (el enlace que ya recibió la cubre).`);
-      }
-
-      // Ya es miembro de la empresa: se suma la sucursal o se cambia el rol directo.
-      const existente = await tx.usuarioSucursal.findUnique({ where: { usuarioId_sucursalId: { usuarioId: usuarioPrevio.id, sucursalId: input.sucursalId } }, include: { rol: true } });
-      const objetivo = await objetivoEnSucursal(tx, ctx.empresaId, usuarioPrevio.id, existente?.rol ?? null);
-      const rechazo = mensajeSiNoPuedeAsignarRol(actor, rol) ?? mensajeSiNoPuedeGestionar(actor, objetivo);
-      if (rechazo) return error(rechazo);
-
-      // Reactivar a un administrador (su membresía en esta sucursal, o su cuenta en la empresa) es solo del gerente: si no, quien tiene
-      // `gestion_usuarios` desharía por esta vía lo que el gerente apagó con `apagar_cuenta_empresa`.
-      const reactivaAdmin = await reactivaAUnAdmin(tx, ctx.empresaId, usuarioPrevio.id, { membresia: existente, cuentaDeEmpresa: pertenenciaPrevia });
-      const rechazoReactivar = mensajeSiReactivaAdminSinSerGerente(actor, reactivaAdmin);
-      if (rechazoReactivar) return error(rechazoReactivar);
-
-      return conInvariantesDeGobierno(tx, ctx.empresaId, async () => {
-        // Las dos pertenencias van juntas: sin la de empresa el usuario no tendría contexto (core/auth/contexto.ts). Con su auditoría, en la misma transacción.
-        await tx.usuarioEmpresa.upsert({
-          where: { usuarioId_empresaId: { usuarioId: usuarioPrevio.id, empresaId: ctx.empresaId } },
-          update: { activo: true },
-          create: { usuarioId: usuarioPrevio.id, empresaId: ctx.empresaId },
-        });
-        const membresia = await tx.usuarioSucursal.upsert({
-          where: { usuarioId_sucursalId: { usuarioId: usuarioPrevio.id, sucursalId: input.sucursalId } },
-          update: { rolId: rol.id, ...(input.notas !== undefined && { notas: input.notas }), activo: true },
-          create: { usuarioId: usuarioPrevio.id, sucursalId: input.sucursalId, empresaId: ctx.empresaId, rolId: rol.id, ...(input.notas !== undefined && { notas: input.notas }) },
-        });
-        await registrarCambioAuditado(tx, {
-          entidad: "UsuarioEmpresa", entidadId: usuarioPrevio.id, campo: "activo", descripcion: `Cuenta de "${email}" en la empresa`,
-          valorAnterior: pertenenciaPrevia.activo, valorNuevo: true, actorId: ctx.usuarioId, sucursalId: null,
-        });
-        const descripcion = `Usuario "${email}" en la sucursal "${sucursal.nombre}"`;
-        const comun = { entidad: "UsuarioSucursal", entidadId: membresia.id, actorId: ctx.usuarioId, sucursalId: input.sucursalId } as const;
-        await registrarCambioAuditado(tx, { ...comun, campo: "rol", descripcion: `${descripcion}: rol`, valorAnterior: existente?.rol.nombre ?? null, valorNuevo: rol.nombre });
-        await registrarCambioAuditado(tx, { ...comun, campo: "activo", descripcion: `${descripcion}: activo`, valorAnterior: existente ? existente.activo : null, valorNuevo: true });
-
-        // Si todavía no vinculó su cuenta de Google, necesita la invitación de vinculación para poder entrar.
-        if (usuarioPrevio.accounts.length === 0) {
-          const vinculacion = await asegurarInvitacionDeVinculacion(tx, { empresaId: ctx.empresaId, email, invitadoPorId: ctx.usuarioId, ahora, azar: azarDelProceso });
-          if (vinculacion.ok && vinculacion.token) {
-            porEnviar = { invitacionId: vinculacion.invitacionId, token: vinculacion.token, tipo: "vinculacion" };
-            return ok(`Usuario "${email}" guardado en la sucursal. Todavía no entró con Google: le mandamos una invitación para que vincule su cuenta.`);
-          }
-        }
-        return ok(`Usuario "${email}" guardado en la sucursal.`);
-      });
-    });
-    if (!resultado.ok) return resultado;
-
-    const envio = porEnviar as InvitacionPorEnviar | null;
-    if (!envio) return resultado;
-    const salio = await enviarInvitacionYAnotar(ctx.db, { ...envio, empresaId: ctx.empresaId, emailDeQuienInvita: ctx.email, ahora });
-    return salio.enviado ? resultado : ok(`${resultado.mensaje} El mail NO salió: reenviá la invitación desde «Invitaciones pendientes» o desde la fila del usuario.`);
+    // El mail, DESPUÉS del commit (ADR-018): la transacción del caso de uso pudo reintentarse; un mail no se retira. Sale con la hora del pedido.
+    const envio = resultado.datos.porEnviar;
+    if (!envio) return aResultadoAccion(resultado);
+    const salio = await enviarInvitacionYAnotar(ctx.db, { ...envio, empresaId: ctx.empresaId, emailDeQuienInvita: ctx.email, ahora: ctx.ahora });
+    return salio.enviado ? aResultadoAccion(resultado) : ok(`${resultado.mensaje} El mail NO salió: reenviá la invitación desde «Invitaciones pendientes» o desde la fila del usuario.`);
   });
 }
 

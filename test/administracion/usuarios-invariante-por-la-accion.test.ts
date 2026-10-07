@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { MENSAJE_SIN_ADMIN_ACTIVO } from "../../src/core/permisos/invariantes";
-import { actualizarActivoMembresia, actualizarActivoUsuarioEnEmpresa } from "../../src/server/actions/auth/usuarios";
+import { actualizarActivoMembresia, actualizarActivoUsuarioEnEmpresa, agregarOActualizarUsuario } from "../../src/server/actions/auth/usuarios";
 
 /**
  * Hito 3, Fase I, I.5: las mutaciones de `usuarios.ts` pasan a casos de uso que corren en `conGobierno` con la forma `siSeViola`, que devuelve la invariante
@@ -17,10 +17,12 @@ import { actualizarActivoMembresia, actualizarActivoUsuarioEnEmpresa } from "../
 describe("usuarios: la invariante de gobierno violada vuelve por la acción con su mensaje", () => {
   let unicoId: string;
   let membresiaId: string;
+  let rolOperadorId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
     const base = await sembrarBase();
+    rolOperadorId = base.operador.id;
     const unico = await crearUsuarioConMembresia({ email: "unico-admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     unicoId = unico.id;
     membresiaId = (await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: unico.id } })).id;
@@ -40,6 +42,15 @@ describe("usuarios: la invariante de gobierno violada vuelve por la acción con 
 
     expect(r).toEqual({ ok: false, mensaje: MENSAJE_SIN_ADMIN_ACTIVO });
     expect((await prismaAdmin.usuarioEmpresa.findFirstOrThrow({ where: { usuarioId: unicoId } })).activo).toBe(true);
+    expect(await prismaAdmin.registroAuditoria.count({ where: { actorId: unicoId } })).toBe(0);
+  });
+
+  it("agregarOActualizarUsuario: el único admin se baja a sí mismo a operador → el mensaje de la invariante, sin escribir ni auditar", async () => {
+    const membresia = await prismaAdmin.usuarioSucursal.findUniqueOrThrow({ where: { id: membresiaId } });
+    const r = await agregarOActualizarUsuario({ email: "unico-admin@test.com", sucursalId: membresia.sucursalId, rolId: rolOperadorId });
+
+    expect(r).toEqual({ ok: false, mensaje: MENSAJE_SIN_ADMIN_ACTIVO });
+    expect((await prismaAdmin.usuarioSucursal.findUniqueOrThrow({ where: { id: membresiaId } })).rolId).toBe(membresia.rolId);
     expect(await prismaAdmin.registroAuditoria.count({ where: { actorId: unicoId } })).toBe(0);
   });
 

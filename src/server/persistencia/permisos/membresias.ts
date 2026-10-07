@@ -59,6 +59,24 @@ export async function cambiarNotasDeMembresia(tx: Prisma.TransactionClient, entr
 }
 
 /**
+ * La membresía de alguien que YA es de la empresa en una sucursal, desde Administración › Usuarios: la crea con ese rol, o actualiza la que ya existía (rol, y la deja
+ * activa). Las notas solo se escriben si vinieron (`notas` presente, aunque sea vacía o nula): si no, se conservan las que hubiera. Hito 3, I.5j: la escritura que
+ * `agregarOActualizarUsuario` hacía en línea, mudada tal cual (a diferencia de `asignarMembresiaPorInvitacion`, acá «no tocar las notas» es la AUSENCIA del campo, no
+ * `null`). Devuelve la membresía (el caso de uso usa su id en la auditoría); corre dentro de `conInvariantesDeGobierno`.
+ */
+export async function guardarMembresiaDeMiembro(
+  tx: Prisma.TransactionClient,
+  entrada: { usuarioId: string; sucursalId: string; empresaId: string; rolId: string; notas?: string },
+): Promise<{ id: string }> {
+  const { usuarioId, sucursalId, empresaId, rolId } = entrada;
+  return tx.usuarioSucursal.upsert({
+    where: { usuarioId_sucursalId: { usuarioId, sucursalId } },
+    update: { rolId, ...(entrada.notas !== undefined && { notas: entrada.notas }), activo: true },
+    create: { usuarioId, sucursalId, empresaId, rolId, ...(entrada.notas !== undefined && { notas: entrada.notas }) },
+  });
+}
+
+/**
  * La membresía que da una invitación en una sucursal: la crea, o actualiza la que ya existía (rol y activo; las notas solo si la invitación trae notas, para no borrar las que
  * hubiera). Devuelve la membresía (el caso de uso usa su id en la auditoría).
  */
