@@ -16,7 +16,7 @@ import {
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { conGobierno } from "../con-gobierno";
-import { enviarInvitacionYAnotar, type InvitacionPorEnviar } from "../../invitaciones-de-usuario";
+import { enviarInvitacionYAnotar, type InvitacionPorEnviar } from "./casos-de-uso/enviar-invitacion-y-anotar";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
 import { azarDelProceso } from "@/lib/azar";

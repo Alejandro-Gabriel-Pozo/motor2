@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 45;
+export const TOPE_DE_ENTRADAS = 44;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -239,10 +239,5 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["stockMinimoProducto.create", "stockMinimoProducto.delete", "stockMinimoProducto.update", "stockMinimoProducto.upsert"],
     fase: "Fase 4",
     motivo: "Tramo C (PR 4C-F2): configuración de stock y movimientos; pasa a caso de uso + persistencia.",
-  },
-  "src/server/invitaciones-de-usuario.ts": {
-    escrituras: ["invitacion.updateMany"],
-    fase: "Fase 4",
-    motivo: "Tramo B (PR B3/B4b): escritura de invitaciones de usuario; pasa a persistencia con sus casos de uso.",
   },
 };
