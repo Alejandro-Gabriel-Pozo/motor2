@@ -1,17 +1,8 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/public";
+import { armarFilasStockParaConteo, type FilaStockParaConteo } from "@/core/movimientos/public";
 import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 
 type Db = PrismaClient | Prisma.TransactionClient;
-
-export interface FilaStockParaConteo {
-  productoId: string;
-  productoCodigo: string;
-  productoNombre: string;
-  unidadStockNombre: string;
-  loteVencimiento: Date | null;
-  saldoSistema: number;
-}
 
 /**
  * Productos con saldo != 0 en una sección, uno por (producto, lote) — la
@@ -40,24 +31,9 @@ export async function listarStockParaConteo(seccionId: string, db: Db): Promise<
   const productoPorId = new Map(productos.map((p) => [p.id, p]));
   const disponibilidad = await disponibilidadDeProductos(seccion.sucursalId, productoIds, db);
 
-  const filas: FilaStockParaConteo[] = [];
-  for (const g of conSaldo) {
-    const p = productoPorId.get(g.productoId);
-    if (!p || !disponibilidad.get(p.id) || !tieneStockReal(p.tipo, p.seProduce)) continue;
-    filas.push({
-      productoId: p.id,
-      productoCodigo: p.codigo,
-      productoNombre: p.nombre,
-      unidadStockNombre: p.unidadStock.nombre,
-      loteVencimiento: g.loteVencimiento,
-      saldoSistema: redondearACantidadDeUnidad(Number(g._sum.cantidad ?? 0), p.unidadStock.decimales),
-    });
-  }
-
-  filas.sort(
-    (a, b) =>
-      a.productoNombre.localeCompare(b.productoNombre, "es") ||
-      (a.loteVencimiento?.getTime() ?? -Infinity) - (b.loteVencimiento?.getTime() ?? -Infinity)
+  return armarFilasStockParaConteo(
+    conSaldo.map((g) => ({ productoId: g.productoId, loteVencimiento: g.loteVencimiento, saldo: Number(g._sum.cantidad ?? 0) })),
+    productoPorId,
+    disponibilidad
   );
-  return filas;
 }
