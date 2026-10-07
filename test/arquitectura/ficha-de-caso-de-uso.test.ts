@@ -1,7 +1,11 @@
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { ACCIONES } from "../../src/core/permisos/acciones";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 import { descubrirCasosDeUsoReales } from "./guardas/casos-de-uso";
+import { ESCRITURAS_FUERA_DE_PERSISTENCIA } from "./escrituras-fuera-de-persistencia";
+import { analizarFuente, delegadosDeModelos } from "../../scripts/arquitectura/analizar-fuente";
 
 /**
  * Regla de arquitectura (Fase 0 del plan de pureza, PR 0.6): LA FICHA DE CADA CASO DE USO SE VERIFICA CONTRA EL CÓDIGO.
@@ -23,6 +27,11 @@ import { descubrirCasosDeUsoReales } from "./guardas/casos-de-uso";
  *  - `auditoria`: `REGISTRO_AUDITORIA` si llama a `registrarCambioAuditado`; `DOCUMENTO_PROPIO` si no (el documento que escribe lleva su usuario y su fecha).
  *  - `reloj`: `INYECTADO` si el archivo no lee la hora actual (`new Date()` sin argumentos, `Date.now()`); `NEW_DATE` si la lee. NINGÚN caso de uso lee el reloj (Pureza 1.2):
  *    la hora entra por `actor.ahora`, que `conPermiso` fija una vez por pedido (`ContextoDeAccion`). Un test fija la hora, y el cierre de períodos y `fechaImputacion` la necesitan.
+ *
+ * QUÉ NO ES UN CASO DE USO (queda FUERA de la ficha, a propósito): los flujos de la consola de plataforma (`plataforma/src/servidor/*`) y las operaciones de plataforma por script
+ * (`src/server/operaciones-de-plataforma/*`). No los envuelve una Server Action con `conPermiso*` de la app de empresas (los llama la consola, con su propio ingreso por código y TOTP, o un
+ * script con la conexión del rol de plataforma), así que `permiso`, `periodo` y `reloj` no se aplican como en un caso de uso de empresa. No quedan sin vigilar: cada archivo de esas
+ * carpetas que escribe la base está en la lista `ESCRITURAS_FUERA_DE_PERSISTENCIA` con su fase («Consola») y su motivo, y el test de abajo lo comprueba en las dos direcciones.
  *
  * Qué NO verifica: la prosa de los tags, ni qué modelos escribe (eso lo hace `escrituras-auditadas.test.ts` y `kardex-solo-agrega.test.ts`), ni que la idempotencia
  * funcione (la prueban los tests concurrentes de cada caso). Sí evita que la ficha diga una cosa y el código otra, y que un caso de uso nuevo nazca sin ficha.
@@ -176,6 +185,31 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
     });
     expect(leerFicha("/** sin ficha */")).toBeNull();
     expect(leerFicha("/**\n * @ficha permiso=a\n * @ficha permiso=b\n */")).toBeNull();
+  });
+});
+
+describe("ficha de caso de uso: lo que queda fuera (la consola y las operaciones de plataforma) está declarado con motivo", () => {
+  const RAIZ = join(__dirname, "..", "..");
+  const CARPETAS_FUERA_DE_LA_FICHA = ["plataforma/src/servidor", "src/server/operaciones-de-plataforma"];
+  const delegados = delegadosDeModelos(readFileSync(join(RAIZ, "prisma", "schema.prisma"), "utf8"));
+  const archivos = CARPETAS_FUERA_DE_LA_FICHA.flatMap((carpeta) =>
+    readdirSync(join(RAIZ, carpeta))
+      .filter((n) => /\.tsx?$/.test(n))
+      .map((n) => `${carpeta}/${n}`),
+  );
+
+  it("encuentra los archivos de esas carpetas (si no, el test no mira nada)", () => {
+    expect(archivos.length).toBeGreaterThan(10);
+  });
+
+  it("todo archivo de esas carpetas que escribe la base figura en ESCRITURAS_FUERA_DE_PERSISTENCIA (con su motivo)", () => {
+    const sinDeclarar = archivos.filter((ruta) => analizarFuente(readFileSync(join(RAIZ, ruta), "utf8"), ruta, delegados).escribeEnLaBase && !(ruta in ESCRITURAS_FUERA_DE_PERSISTENCIA));
+    expect(sinDeclarar, `Una escritura nueva en la consola o en las operaciones de plataforma se declara en test/arquitectura/escrituras-fuera-de-persistencia.ts, con su motivo:\n${sinDeclarar.join("\n")}`).toEqual([]);
+  });
+
+  it("ninguno de esos archivos lleva @ficha (la ficha es de los casos de uso de la app de empresas; si uno la lleva, hay que decidir qué es)", () => {
+    const conFicha = archivos.filter((ruta) => /@ficha\b/.test(readFileSync(join(RAIZ, ruta), "utf8")));
+    expect(conFicha.map((r) => relative(RAIZ, join(RAIZ, r)).split(sep).join("/"))).toEqual([]);
   });
 });
 
