@@ -48,6 +48,7 @@ export const SIN_SERVER_ONLY: Record<string, string> = Object.fromEntries(
     "src/server/lecturas/carta/empresa.ts",
     "src/server/lecturas/carta/menu.ts",
     "src/server/lecturas/carta/publica.ts",
+    "src/server/lecturas/catalogo/ofertas-de-proveedor.ts", // lo importa scripts/verificar-demo-invariantes.ts (tsx): con server-only reventaría
     "src/server/lecturas/catalogo/disponibilidad.ts",
     "src/server/lecturas/catalogo/recetas-vigentes.ts",
     "src/server/lecturas/movimientos/saldos.ts",
