@@ -47,8 +47,10 @@ import { detectarCuentasDeGoogleSospechosas, medirPrecargadosSinGoogle } from ".
  *  - `resultado`: el objeto completo devuelto, en una forma JSON estable y ESTRICTA (fechas `<fecha ISO>`, `Decimal` `<decimal x>`, `Map`/`Set` como
  *    lista en su orden de inserción, `undefined` como `<undefined>` para que no se confunda con una clave ausente).
  * Algunas lecturas devuelven listas en el orden en que las entrega la base SIN `ORDER BY` (el árbol de grupos, las cuentas de Google de un usuario, las filas de
- * un `groupBy`): la siembra solo INSERTA (nada se actualiza ni se borra después), así que ese orden es el de inserción y es estable; si una mudanza le agrega
- * un `ORDER BY` que lo cambia, este archivo lo marca, y es a propósito (es un cambio de lo que ve la pantalla).
+ * un `groupBy`): Postgres NO garantiza ese orden (un HashAggregate devuelve en el del hash, un scan secuencial en el físico). Con la misma siembra, ids fijos y la
+ * misma versión de Postgres es estable corrida tras corrida, y es lo que este archivo fija; si una mudanza de versión mayor lo cambiara, o una mudanza de código le
+ * agregara un `ORDER BY`, este archivo lo marca, y es a propósito (es un cambio de lo que ve la pantalla). Donde el CÓDIGO tiene un empate sin definir y el orden
+ * de la base se nota (las alertas de stock de un mismo producto), el caso lo ordena con un criterio total para no depender del plan.
  * Regenerarlo es una decisión de producto, nunca una mudanza: `REGENERAR_CARACTERIZACION_TRAMO_A=1 npx vitest run test/caracterizacion-tramo-a/lecturas-tramo-a.test.ts`.
  * Archivo propio y no los snapshots de Vitest para que `-u` no lo pueda regenerar en silencio.
  *

@@ -12,6 +12,9 @@
  *  - `EMPRESA`: la tabla de empresas misma: sin RLS ni políticas.
  *  - `CONSOLA`: la identidad y la auditoría de la consola de plataforma: RLS con UNA política `solo_plataforma` atada al rol, y sin `empresaId`.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA" | "GLOBAL" | "EMPRESA" | "CONSOLA";
 
 const POR_EMPRESA = [
@@ -66,3 +69,23 @@ export function politicasEsperadas(tabla: string): readonly string[] {
 
 /** La cantidad de políticas que tiene que haber en `public`, derivada de la declaración (no un número escrito a mano). */
 export const CANTIDAD_DE_POLITICAS_ESPERADAS = Object.keys(CLASIFICACION_DE_TABLAS).reduce((n, t) => n + politicasEsperadas(t).length, 0);
+
+/**
+ * Las FK entre tablas POR EMPRESA que declara el esquema de Prisma (`@relation(fields: [...])` de un modelo por empresa hacia otro modelo por empresa): origen, destino y columnas (ordenadas). Es la
+ * lista que la base tiene que reproducir (`multiempresa-estructura.test.ts`): derivarla del esquema reemplaza al contador fijo «105» y ADEMÁS detecta que una migración QUITE una FK compuesta
+ * (con el contador solo se veía el total; con esta lista, cuál faltó o sobró).
+ */
+export function fkEntreTablasPorEmpresaDelEsquema(): { origen: string; destino: string; columnas: string[] }[] {
+  const esquema = readFileSync(join(__dirname, "../../prisma/schema.prisma"), "utf8");
+  const porEmpresa = new Set(tablasDeClase("POR_EMPRESA"));
+  const fks: { origen: string; destino: string; columnas: string[] }[] = [];
+  for (const [, modelo, cuerpo] of esquema.matchAll(/^model (\w+) \{([\s\S]*?)^\}/gm)) {
+    if (!porEmpresa.has(modelo)) continue;
+    for (const linea of cuerpo.split(/\r?\n/)) {
+      const relacion = /@relation\((?:"[^"]*",\s*)?fields:\s*\[([^\]]*)\]/.exec(linea);
+      const destino = linea.trim().split(/\s+/)[1]?.replace("?", "").replace("[]", "");
+      if (relacion && destino && porEmpresa.has(destino)) fks.push({ origen: modelo, destino, columnas: relacion[1].split(",").map((c) => c.trim()).sort() });
+    }
+  }
+  return fks;
+}

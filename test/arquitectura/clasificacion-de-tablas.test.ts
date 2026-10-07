@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CANTIDAD_DE_POLITICAS_ESPERADAS, CLASIFICACION_DE_TABLAS, TABLAS_CON_EMPRESA_ID, politicasEsperadas, tablasDeClase } from "../setup/clasificacion-de-tablas";
+import { CANTIDAD_DE_POLITICAS_ESPERADAS, CLASIFICACION_DE_TABLAS, TABLAS_CON_EMPRESA_ID, fkEntreTablasPorEmpresaDelEsquema, politicasEsperadas, tablasDeClase } from "../setup/clasificacion-de-tablas";
 
 /**
  * Guardián de la clasificación declarada de tablas (Pureza, Hito 2, trabajo 2.6). Sin base de datos: cruza `test/setup/clasificacion-de-tablas.ts` con los modelos de `prisma/schema.prisma`.
@@ -32,5 +32,11 @@ describe("la clasificación declarada de tablas coincide con el esquema de Prism
     expect(CANTIDAD_DE_POLITICAS_ESPERADAS).toBe(
       tablasDeClase("POR_EMPRESA").length + 2 + 2 + 3 + tablasDeClase("CONSOLA").length, // por empresa + UsuarioEmpresa + ModuloEmpresa + Invitacion + consola
     );
+  });
+
+  it("toda FK entre dos tablas por empresa del esquema es compuesta e incluye `empresaId` (y hay muchas: el lector las encuentra)", () => {
+    const fks = fkEntreTablasPorEmpresaDelEsquema();
+    expect(fks.length, "se leyeron las relaciones del esquema").toBeGreaterThan(50);
+    for (const f of fks) expect(f.columnas, `${f.origen} -> ${f.destino}`).toContain("empresaId");
   });
 });

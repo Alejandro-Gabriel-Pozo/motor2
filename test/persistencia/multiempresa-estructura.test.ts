@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
-import { CLASIFICACION_DE_TABLAS, tablasDeClase } from "../setup/clasificacion-de-tablas";
+import { CLASIFICACION_DE_TABLAS, fkEntreTablasPorEmpresaDelEsquema, tablasDeClase } from "../setup/clasificacion-de-tablas";
 
 /**
  * Estructura que deja la migración `multiempresa_estructura` (ADR-007, paso A2): instalación multiempresa-capable activada con UNA
@@ -24,7 +24,7 @@ async function tablasPorEmpresa(): Promise<string[]> {
     SELECT c.table_name AS tabla
       FROM information_schema.columns c
       JOIN information_schema.tables t ON t.table_schema = c.table_schema AND t.table_name = c.table_name AND t.table_type = 'BASE TABLE'
-     WHERE c.table_schema = 'public' AND c.column_name = 'empresaId' AND c.table_name NOT IN ('UsuarioEmpresa', 'ModuloEmpresa', 'Invitacion')
+     WHERE c.table_schema = 'public' AND c.column_name = 'empresaId' AND c.table_name <> ALL(${tablasDeClase("DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA")})
      ORDER BY 1`;
   return filas.map((f) => f.tabla);
 }
@@ -48,7 +48,7 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
       const columnas = await prisma.$queryRaw<Array<{ tabla: string; nullable: string; predeterminado: string | null }>>`
         SELECT table_name AS tabla, is_nullable AS nullable, column_default AS predeterminado
           FROM information_schema.columns
-         WHERE table_schema = 'public' AND column_name = 'empresaId' AND table_name NOT IN ('UsuarioEmpresa', 'ModuloEmpresa', 'Invitacion')`;
+         WHERE table_schema = 'public' AND column_name = 'empresaId' AND table_name <> ALL(${tablasDeClase("DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA")})`;
       for (const c of columnas) {
         expect(c.nullable, c.tabla).toBe("NO");
         expect(c.predeterminado, c.tabla).toContain("app_empresa_actual()");
@@ -74,9 +74,10 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
          WHERE c.contype = 'f' AND c.connamespace = 'public'::regnamespace`;
 
       const entreTablasPorEmpresa = fks.filter((f) => conEmpresa.has(f.origen) && conEmpresa.has(f.destino));
-      // Sin recuento fijo (antes «105», con una nota por cada migración que lo movía): lo que importa es que NINGUNA FK entre tablas por empresa deje de incluir `empresaId`, y eso lo verifica el bucle de abajo
-      // para todas las que existan. Que haya FK entre tablas por empresa es lo único que se exige como mínimo.
-      expect(entreTablasPorEmpresa.length).toBeGreaterThan(0);
+      // Sin recuento fijo (antes «105», con una nota por cada migración que lo movía): las FK que la base tiene entre tablas por empresa son EXACTAMENTE las que declara el esquema de Prisma (misma lista,
+      // no el mismo número): una migración que quite o agregue una FK compuesta aparece acá por nombre. Y el bucle de abajo exige que TODAS incluyan `empresaId`.
+      const clave = (f: { origen: string; destino: string; columnas: string[] }) => `${f.origen} -> ${f.destino} (${[...f.columnas].sort().join(", ")})`;
+      expect(entreTablasPorEmpresa.map(clave).sort()).toEqual(fkEntreTablasPorEmpresaDelEsquema().map(clave).sort());
       for (const f of entreTablasPorEmpresa) {
         expect(f.columnas, f.nombre).toHaveLength(2);
         expect(f.columnas, f.nombre).toContain("empresaId");
