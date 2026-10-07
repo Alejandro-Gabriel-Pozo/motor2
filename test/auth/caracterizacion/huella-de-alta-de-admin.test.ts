@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { PrismaClient } from "@prisma/client";
 import { prismaAdmin } from "../../setup/test-db";
-import { crearAdminDePlataforma } from "../../../plataforma/src/servidor/alta-de-admin";
+import { crearAdminDePlataforma } from "./adaptador-de-imports";
 import type { FuenteDeAzar } from "../../../src/core/seguridad/azar";
 
 /**

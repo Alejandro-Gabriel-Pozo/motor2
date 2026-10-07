@@ -21,7 +21,7 @@ const CASOS_DE_USO = "^src/server/actions/[^/]+/casos-de-uso/";
 /**
  * Lo único de auth/permisos/server que la carta pública (sin sesión) puede ALCANZAR, directa o transitivamente (ADR-006 + ADR-007): la
  * base por empresa y su verificación de rol (`core/auth/base.ts`, `rol-de-ejecucion.ts`) y el catálogo de claves de permiso
- * (`core/permisos/acciones.ts`, `capacidades-sucursal.ts`: solo tipos y constantes). Lista CERRADA: un archivo nuevo de `core/auth`,
+ * (`core/permisos/acciones.ts`: solo constantes; `capacidades-sucursal.ts`: NO es solo tipos y constantes, la carta lo alcanza en ejecución por `lecturas/carta` → `precioLocalActivoEn` → `sucursalTieneCapacidad`, que lee la base: pasa a `server/acceso` en 4A-5, trabajo 5.2 de la rama `pureza-integracion`). Lista CERRADA: un archivo nuevo de `core/auth`,
  * `core/permisos` o `server` que la carta empiece a alcanzar (la sesión, el gate, una Server Action) rompe `carta-publica-alcance`.
  */
 const ALCANCE_CARTA_PUBLICA = [

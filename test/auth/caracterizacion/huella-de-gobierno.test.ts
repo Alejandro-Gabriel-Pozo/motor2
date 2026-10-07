@@ -3,16 +3,22 @@ import { join } from "node:path";
 import { Prisma } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin } from "../../setup/test-db";
-import { aceptarInvitacionDelToken, aceptarInvitacionDeUsuarioDelToken } from "../../../src/core/auth/invitacion";
-import { requierePermiso } from "../../../src/server/acceso/gate";
-import { asegurarInvitacionDeUsuario, revocarInvitacionPendiente, rotarInvitacionPendiente } from "../../../src/core/features/empresa/invitacion-de-usuario";
-import { cambiarModulosDeEmpresa } from "../../../src/server/operaciones-de-plataforma/cambiar-modulos-de-empresa";
-import { cambiarPoliticaDeEmpresa } from "../../../src/server/operaciones-de-plataforma/cambiar-politica-de-empresa";
-import { sembrarEmpresa } from "../../../plataforma/src/servidor/sembrar-empresa";
-import { incorporarPrimerGerente, transferirGerenciaDeEmpresa } from "../../../src/core/permisos/gerencia";
-import { registrarCambioAuditado } from "../../../src/core/permisos/auditoria";
-import { hashDeToken } from "../../../src/core/seguridad/tokens";
-import { azarDelProceso } from "../../../src/lib/azar";
+import {
+  aceptarInvitacionDelToken,
+  aceptarInvitacionDeUsuarioDelToken,
+  requierePermiso,
+  asegurarInvitacionDeUsuario,
+  revocarInvitacionPendiente,
+  rotarInvitacionPendiente,
+  cambiarModulosDeEmpresa,
+  cambiarPoliticaDeEmpresa,
+  sembrarEmpresa,
+  incorporarPrimerGerente,
+  transferirGerenciaDeEmpresa,
+  registrarCambioAuditado,
+  hashDeToken,
+  azarDelProceso,
+} from "./adaptador-de-imports";
 
 /**
  * HUELLA del gobierno de empresa y usuarios (Fase 4 del plan de pureza, tramo B: las escrituras de invitaciones, gerencia, módulos, política, siembra y auditoría salen de

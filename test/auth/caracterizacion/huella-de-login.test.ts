@@ -3,9 +3,7 @@ import { join } from "node:path";
 import { Prisma } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin } from "../../setup/test-db";
-import { vincularCuentaConInvitacion } from "../../../src/core/auth/invitacion";
-import { sembrarEmpresa } from "../../../plataforma/src/servidor/sembrar-empresa";
-import { hashDeToken } from "../../../src/core/seguridad/tokens";
+import { vincularCuentaConInvitacion, sembrarEmpresa, hashDeToken } from "./adaptador-de-imports";
 
 /**
  * HUELLA del login por invitación: `vincularCuentaConInvitacion` (src/core/auth/invitacion.ts), la función que el callback `signIn` de Auth.js llama ANTES de que exista
