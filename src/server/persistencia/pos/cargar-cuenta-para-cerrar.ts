@@ -36,7 +36,7 @@ export interface CuentaParaCerrar {
 export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args: { cuentaId: string; sucursalId: string }): Promise<CuentaParaCerrar | null> {
   const cuenta = await tx.cuenta.findFirst({
     where: { id: args.cuentaId, mesa: { sucursalId: args.sucursalId } },
-    include: { mesa: { select: { numero: true } }, items: true, cliente: { select: { nombre: true } } },
+    include: { mesa: { select: { numero: true } }, items: { orderBy: [{ creadoEn: "asc" }, { id: "asc" }] }, cliente: { select: { nombre: true } } },
   });
   if (!cuenta) return null;
   return {

@@ -122,7 +122,8 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
   };
   /** Un texto que puede citar ids («Anulación de la venta c…»): cada uno se reemplaza por su símbolo. */
   const enTexto = (v: string) => simbolo(v).replace(/c[a-z0-9]{20,}/g, (id) => simbolo(id));
-  const json = (v: unknown) => JSON.stringify(v, (_k, val: unknown) => (typeof val === "string" ? enTexto(val) : val));
+  // El espacio no separable que `Intl` pone entre «$» y el monto (según el ICU de Node) se vuelca como espacio común: el golden no depende del ICU.
+  const json = (v: unknown) => JSON.stringify(v, (_k, val: unknown) => (typeof val === "string" ? enTexto(val).replace(/\u00a0/g, " ") : val));
 
   /** Una fila completa, columna por columna y en orden alfabético. */
   const fila = (f: Record<string, unknown>): string =>

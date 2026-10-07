@@ -75,6 +75,8 @@ export async function cerrarCuentaCasoDeUso(
     // Producto con descuento (Fase 2): si el suelto ya traía un descuento de producto, con el del cliente rige SOLO EL MAYOR (`precioCobradoConDescuentos`).
     // `precioListaUnitario` del movimiento sigue significando «descuento de CLIENTE»: solo se escribe cuando gana ese (el reporte de descuentos a
     // clientes lo lee); el descuento de producto vive en `CuentaItem.precioCartaUnitario` y tiene su propio reporte.
+    // Los componentes de una promo NO traen precio de carta (`precioCartaUnitario` null): reciben el descuento de CLIENTE sobre su precio ya prorrateado. Es lo decidido en D2 de
+    // docs/plan-promo-combo-2026-09-26.md (el descuento por cliente se suma SOBRE lo prorrateado, nunca antes) y lo fija la escena D1 de `venta-matriz-ampliada`.
     const lineasVenta = lineas.map((l) => {
       const cobro = precioCobradoConDescuentos(l.precioUnitario, l.precioCartaUnitario ?? null, descuento);
       return {

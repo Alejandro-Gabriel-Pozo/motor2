@@ -455,15 +455,9 @@ describe("Caracterización del tramo A (Fase 3, paso .0): resultado completo y c
   describe("Stock: consolidado, por familia, alertas y stock mínimo", () => {
     caso("stock.calcularStockConsolidado(Central)", (db) => calcularStockConsolidado(CENTRAL, db));
     caso("stock.calcularStockPorFamilia(Central)", (db) => calcularStockPorFamilia(CENTRAL, db));
-    // El orden de las alertas de un MISMO producto y estado en dos secciones no está definido en el código (el `sort` de `armarAlertasStock` solo mira estado y nombre, y las filas llegan del `groupBy`
-    // sin orden): depende del plan de la base. Se fija acá un orden total (estado, producto, sección) para que el golden no oscile; el empate sin definir queda anotado como hallazgo en el informe del Hito 2.
-    const totalmenteOrdenadas = <T extends { estado: string; productoNombre: string; seccionNombre: string }>(filas: readonly T[]): T[] =>
-      [...filas].sort((x, y) => (x.estado === y.estado ? 0 : x.estado === "CRITICO" ? -1 : 1) || x.productoNombre.localeCompare(y.productoNombre) || x.seccionNombre.localeCompare(y.seccionNombre));
-    caso("stock.calcularAlertasStock(Central)", async (db) => totalmenteOrdenadas(await calcularAlertasStock(CENTRAL, db)));
-    caso("stock.obtenerResumenAlertasStock(Central)", async (db) => {
-      const r = await obtenerResumenAlertasStock(CENTRAL, db);
-      return { ...r, items: totalmenteOrdenadas(r.items) };
-    });
+    // El desempate de las alertas de un mismo producto y estado en dos secciones lo define el código (estado, producto, sección, id: O.40 (4)); este caso fija el resultado de esa regla.
+    caso("stock.calcularAlertasStock(Central)", (db) => calcularAlertasStock(CENTRAL, db));
+    caso("stock.obtenerResumenAlertasStock(Central)", (db) => obtenerResumenAlertasStock(CENTRAL, db));
     caso("stock.resolverStockMinimo(Central, Harina, Depósito: el de la sección)", (db) => resolverStockMinimo(CENTRAL, "mp-harina", "sec-deposito", db));
     caso("stock.resolverStockMinimo(Central, Muzzarella, Salón: el global)", (db) => resolverStockMinimo(CENTRAL, "mp-muzza", "sec-salon", db));
   });
