@@ -42,10 +42,10 @@ Cada fila: **ID**, qué es, fuente en el plan, estado (`[ ]` pendiente, `[x]` he
 
 | ID | Trabajo | Fuente | Estado | Evidencia |
 |---|---|---|---|---|
-| 2.1 | Los 10 tests de hora fija que faltan (cancelar/resolver conteo, cerrar cuenta, 7 de traspasos) | 11.2 #10 | [ ] | |
+| 2.1 | Los 10 tests de hora fija que faltan (cancelar/resolver conteo, cerrar cuenta, 7 de traspasos) | 11.2 #10 | [x] | 13/13 casos de uso con `actor.ahora` tienen su test de hora fija (3 ya estaban, +7 de traspasos, +cancelar/resolver conteo, +cerrar cuenta); mutación OK |
 | 2.2 | Caracterización de los reportes (C0) con conteo de consultas por reporte | 11.2 #11 | [ ] | |
 | 2.3 | Caracterización «.0» del tramo A de la Fase 3 (mesas, cuenta, ticket, ítems agrupados, precargados) | 11.2 #11 | [ ] | |
-| 2.4 | Test de conteo del N+1 de grupos de insumos | 11.2 #12 | [ ] | |
+| 2.4 | Test de conteo del N+1 de grupos de insumos | 11.2 #12 | [x] | `test/catalogo/cadenas-de-grupos-consultas.test.ts` (una sola lectura); mutación OK |
 | 2.5 | Propiedades (`fast-check`) del guard de acceso | 11.2 #13 | [ ] | |
 | 2.6 | Clasificación declarada de tablas (en lugar de contadores fijos) | 11.2 #14 | [ ] | |
 | 2.8 | **Dinero en `core`, medido:** prueba de propiedades que compara las sumas y márgenes de `core/reportes` contra el cálculo exacto (Decimal) en datos realistas; asentada la decisión de diseño (la plata exacta vive en la base y en `core/moneda`; `core/reportes` suma en `number` y redondea al presentar). Si la prueba muestra diferencias de centavos, se abre el paso de migración | Decisión 4 del dueño (2026-10-08) | [ ] | |
@@ -89,8 +89,8 @@ Cada uno se hace en el hito indicado, junto con el trabajo que toca el mismo có
 | O.3 | Clave de cifrado de los closures de Server Actions con más de una instancia (`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`): verificar y documentar | Revisión #93 (8, sospecha) | 4 | [ ] | |
 | O.4 | Docstrings de `guardarReceta` y del caso de uso: ya no dicen «la UNIQUE es el árbitro final» como único mecanismo | Revisión #93 (7) | 4 | [ ] | |
 | O.5 | Carrito de compras: fusionar las derivaciones (empresa y sucursal) en una sola consulta (hoy 3 lecturas por cambio de proveedor) | Revisión #92 (3) | 4 | [ ] | |
-| O.6 | Conciliación 11 de `verificar-demo-invariantes` con un cruce realmente independiente (recorrer las compras del par en memoria y recalcular precio, `ultimaCompra` y la regla del precio 0) | Revisión #92 (6) | 2 | [ ] | |
-| O.7 | Test de volumen de ofertas de proveedor: aserción de tiempo laxa o no bloqueante (propensa a fallar en CI frío) | Revisión #92 (7) | 2 | [ ] | |
+| O.6 | Conciliación 11 de `verificar-demo-invariantes` con un cruce realmente independiente (recorrer las compras del par en memoria y recalcular precio, `ultimaCompra` y la regla del precio 0) | Revisión #92 (6) | 2 | [x] | cruce independiente en memoria (precio, fecha, regla del 0); validado en el test de volumen; mutación OK |
+| O.7 | Test de volumen de ofertas de proveedor: aserción de tiempo laxa o no bloqueante (propensa a fallar en CI frío) | Revisión #92 (7) | 2 | [x] | tope 30 s y tiempo informado por consola; el test fija el resultado |
 | O.8 | Comparativa: listas `in` acotadas y `nombreDe.get(...) ?? ""` → «(proveedor desconocido)» o `continue` | Revisión #92 (8, 9) | 4 | [ ] | |
 | O.9 | Docs: `docs/grounding-lista-ver-editar-2026-09-18.md:57` aún lista `ProveedorPorProducto` como fuente de «Proveedores y precios» | Revisión #92 (10) | 1 | [x] | a0baf619 |
 | O.10 | Precarga del carrito (`panel-movimiento-form.tsx`) sigue poniendo `unidadCompraId: ""`: o se usa el que calcula el lector o se quita del tipo | Revisión #92 (11) | 4 | [ ] | |
