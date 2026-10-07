@@ -103,20 +103,20 @@ La Fase 4 **está en curso**: el tramo A (Kardex y venta), el tramo C (regla de 
 | PR | Paso del plan | Estado |
 |---|---|---|
 | #79 | plan | fusionado |
-| #80 | 4C-A regla `escrituras-solo-en-persistencia` | fusionado, conforme |
+| #80 | 4C-A regla `escrituras-solo-en-persistencia` | fusionado, conforme (la lista inicial fue de 55 archivos; el plan decía 56) |
 | #81 | Car-V caracterización de la venta | fusionado, **parcial** (7 escenarios, el plan decía ~30) |
 | #82 | B0 caracterización de auth | fusionado, **parcial** (falta el login por invitación y la alta de admin) |
 | #83 | 4A-1 la venta sale del núcleo | fusionado, **parcial** (falta el segundo tiempo y `precio-venta`) |
 | #84 | 4A-2 saldos y origen de la venta | fusionado, **parcial** (revirtió `base.ts` a la Fase 4 por un error de fusión; corregido en #88) |
 | #85 | B2 operaciones de plataforma por script | fusionado, conforme |
-| #86 | B1 siembra, gerente y alta de admin | fusionado, **parcial** (movió la alta de admin sin huella previa) |
+| #86 | B1 siembra, gerente y alta de admin | fusionado, **parcial** (movió la alta de admin sin huella byte a byte previa; tenía tests de comportamiento, `test/persistencia/primer-admin-de-plataforma.test.ts`, que el PR tuvo que tocar) |
 | #87 | 4C-C dólar e IPC | fusionado, conforme |
 | #88 | 4A-3 costo congelado | fusionado, conforme |
 | #89 | vínculo proveedor↔producto 1/2 (**fuera de este plan**: decisión del dueño, 2026-10-06) | fusionado |
 | #90 | 4A-4 embudos de catálogo | fusionado, conforme |
 | #91 | 4C-B H7 parte 1 | fusionado, **parcial** (versión reducida; ver 10.2) |
-| #92 | vínculo proveedor↔producto 2/2 (fuera de este plan) | abierto, con revisión independiente aplicada |
-| #93 | 4C-B H7 parte 2 | abierto, con revisión independiente aplicada |
+| #92 | vínculo proveedor↔producto 2/2 (fuera de este plan) | abierto; revisión independiente aplicada (consta en la descripción del PR, no como review de GitHub) |
+| #93 | 4C-B H7 parte 2 | abierto; revisión independiente aplicada (consta en la descripción del PR, no como review de GitHub) |
 
 ### 10.2 Qué falló y por qué
 
@@ -130,7 +130,7 @@ La Fase 4 **está en curso**: el tramo A (Kardex y venta), el tramo C (regla de 
 ### 10.3 Reglas de proceso que se agregan a partir de acá
 
 1. **Cada PR lleva en su descripción** una sección «Qué pedía el plan / qué entrega / qué queda», escrita releyendo este documento (no el resumen de la conversación). Un PR que entrega menos que lo pedido lo dice en esa sección.
-2. **Revisión independiente** (un agente con un modelo igual o superior, solo lectura) antes de fusionar todo PR de riesgo medio o alto: dinero, login, permisos, concurrencia, migraciones. Se aplica sobre el PR abierto; sus hallazgos se tratan como datos a verificar. No hace falta en las mudanzas mecánicas de imports con golden idéntico.
+2. **Revisión independiente** (un agente con un modelo igual o superior, solo lectura; su resultado queda escrito en la descripción del PR y, de ser posible, como comentario) antes de fusionar todo PR de riesgo medio o alto: dinero, login, permisos, concurrencia, migraciones. Se aplica sobre el PR abierto; sus hallazgos se tratan como datos a verificar. No hace falta en las mudanzas mecánicas de imports con golden idéntico.
 3. **Las pruebas con base de datos se corren de a una** (todas comparten la misma base y la limpian al empezar); la preparación en paralelo de varias ramas locales es posible, pero cada una se verifica por separado.
 4. **`base.ts` se revisa en cada PR hasta la Fase 6** (que su fase no retroceda).
 5. Cada regla o test nuevo se demuestra con una mutación (rojo → revertido → verde), como hasta ahora.
@@ -140,15 +140,15 @@ La Fase 4 **está en curso**: el tramo A (Kardex y venta), el tramo C (regla de 
 | # | Qué | Por qué en ese lugar |
 |---|---|---|
 | 1 | **B0b**: huella de `vincularCuentaConInvitacion` (login), huella de la alta de admin con azar inyectado (byte a byte), valor de ficha `SIN_PERMISO` (D-7) | Es la red de seguridad de B3 y de lo que B1 ya movió |
-| 2 | **B3** invitaciones y login: nace `server/sesion/` con `acceso`; 2 casos de uso de aceptar invitación | Riesgo alto; con la huella del paso 1 |
-| 3 | **B4a/B4b** gobierno de usuarios (lecturas a `server/lecturas/permisos`, gerencia, 5 casos de uso) con los contratos RBAC | Ver ADR-027 (propuesto); D15 y D16 del dueño pendientes |
-| 4 | **4C-D/E/F** migración de ~40 acciones: POS (apertura, mesas, pedido) → dinero de carta → configuración de catálogo, stock y carta | Mecánico pero grande; cada tramo con sus tests de caracterización existentes |
+| 2 | **B3** invitaciones y login: nace `server/sesion/` con `acceso`; 2 casos de uso de aceptar invitación | Riesgo alto; con la huella del paso 1. Saca `acceso.ts` de la lista de la Fase 6 (hoy 28 entradas) |
+| 3 | **B4a/B4b** gobierno de usuarios (lecturas a `server/lecturas/permisos`, gerencia, 5 casos de uso) con los contratos RBAC, **más la migración de las acciones de auth y permisos** (5 archivos de la lista «Fase 4»: `auth/sucursales`, `auth/usuarios`, `permisos/capacidades-sucursal`, `permisos/permisos`, `permisos/roles`; 12 funciones), y **F1 del RBAC** (piso «administrador de sistema» y reclasificación de las claves de gobierno, sin migración) | **El ADR-027 todavía no está escrito**: lo pide `para motor 2\_planes\evaluacion-informe-rbac-vs-fase-4-2026-10-06.md` «en paralelo a B3» y hay que escribirlo en este paso. D15 y D16 del dueño pendientes (están definidas en `para motor 2\_planes\grounding-roles-y-autoridad-odoo-erpnext-dolibarr-2026-10-06.md`, no en `docs/`). F1 depende de D3 (vocabulario de pisos) y D16 |
+| 4 | **4C-D/E/F** migración de **28 archivos de acciones** (~61 funciones; los otros 12 de la lista «Fase 4» son del tramo B y van en el paso 3): POS (apertura, mesas, pedido) → dinero de carta → configuración de catálogo y stock. La configuración de carta (19 funciones) queda para después, como dice el §8 | Mecánico pero grande; cada tramo con sus tests de caracterización existentes. D-9 (auditar `renombrarOFusionarInsumo` en un commit aparte) va con el tramo de catálogo |
 | 5 | **Ampliar la matriz de la venta** (~30 escenarios: precio local, POS sin stock negativo, insumo sustituto, consignación, cierre real del POS) y el **segundo tiempo de la venta** | Antes de 4A-5, que toca el precio local |
 | 6 | **4A-5** precio local y capacidades (`ALCANCE_CARTA_PUBLICA`): PR propio | **Requiere autorización del dueño (D-2)**; corregir el comentario falso de `.dependency-cruiser.cjs` |
-| 7 | **Decidir el destino de `con-reintento`** | Bloquea la entrada de `core/movimientos` a `core-sin-consultas` |
-| 8 | **B5** auditoría a `server/auditoria/`, cierre de `core-sin-consultas`, actualización de los documentos de estado | Siempre al final: toca los imports de ~26 archivos |
+| 7 | **Decidir el destino de `con-reintento`** | Junto con `precio-venta` (que sale en el paso 6), bloquea la entrada de `core/movimientos` a `core-sin-consultas`: queda por decidir solo `con-reintento`. Tampoco están hoy en esa lista `core/catalogo`, `core/auth`, `core/features` ni `core/permisos`: entran al cerrar B5 |
+| 8 | **B5** auditoría a `server/auditoria/`, cierre de `core-sin-consultas`, actualización de los documentos de estado | Siempre al final: hoy 35 archivos de `src/` importan `registrarCambioAuditado` (el plan original decía ~26) |
 
-Aparte, sin orden fijo: el límite `habilitada` de H7; fusionar en una consulta la derivación del carrito (hoy 3 lecturas por cambio de proveedor); versionar el codemod (D-11, hace falta para la Fase 6); decidir si se sigue con squash o se pasa a merge commit; la huella de `materialDeAltaDeAdmin`; D-9 (documentar que `agregarItems` no tiene I3; auditar `renombrarOFusionarInsumo` en un commit aparte); la preparación de la Fase 5 del §6 (reunir las 2 escrituras de traspasos y las 2 de anulación; `EXPLAIN` del índice).
+Aparte, sin orden fijo: el límite `habilitada` de H7; fusionar en una consulta la derivación del carrito (hoy 3 lecturas por cambio de proveedor); versionar el codemod (D-11, hace falta para la Fase 6); decidir si se sigue con squash o se pasa a merge commit; D-9 (documentar que `agregarItems` no tiene I3); la preparación de la Fase 5 del §6 (reunir las 2 escrituras de traspasos y las 2 de anulación; `EXPLAIN` del índice).
 
 ### 10.5 Qué decide el dueño
 
