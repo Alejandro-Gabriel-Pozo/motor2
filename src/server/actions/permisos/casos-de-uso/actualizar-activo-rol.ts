@@ -1,7 +1,8 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { invarianteRolDeSistemaIntacto, invarianteRolSinUsuariosActivos } from "@/core/permisos/invariantes";
+import { invarianteRolDeSistemaIntacto } from "@/core/permisos/invariantes";
+import { invarianteRolSinUsuariosActivos } from "@/server/lecturas/permisos/gobierno";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { cambiarActivoDeRol } from "@/server/persistencia/permisos/roles";
 import { conGobierno } from "../../con-gobierno";

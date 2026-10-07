@@ -2,11 +2,10 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { actorEnSucursal, mensajeSiNoPuedeGestionar, mensajeSiReactivaAdminSinSerGerente, objetivoEnSucursal, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
-import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { cambiarActivoDeMembresia } from "@/server/persistencia/permisos/membresias";
-import { conGobierno } from "../../con-gobierno";
+import { conGobierno, conInvariantesDeGobierno } from "../../con-gobierno";
 
 type ResultadoActualizarActivoMembresia = ResultadoCaso<null, "MEMBRESIA_NO_ENCONTRADA" | "TECHO_DE_PRIVILEGIO" | "REACTIVA_ADMIN_SIN_SER_GERENTE" | "INVARIANTE_DE_GOBIERNO">;
 

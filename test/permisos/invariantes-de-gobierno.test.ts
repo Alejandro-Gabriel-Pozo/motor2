@@ -3,23 +3,9 @@ import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, pr
 import { crearMembresia } from "../setup/membresia";
 import type { Transaccion } from "../../src/lib/db-tipos";
 import { conTransaccionSerializable } from "../../src/core/movimientos/con-reintento";
-import {
-  conInvariantesDeGobierno,
-  contarAdminsEfectivos,
-  contarUsuariosActivosDelRol,
-  esAdminEfectivoEnAlgunaSucursal,
-  InvarianteViolada,
-  invarianteGerenteConSucursalActiva,
-  invarianteGerenteEsAdminEfectivo,
-  invarianteQuedaUnAdmin,
-  invarianteRolDeSistemaIntacto,
-  invarianteRolSinUsuariosActivos,
-  medirEstadoDeGobierno,
-  MENSAJE_GERENTE_DEJA_DE_SER_ADMIN,
-  MENSAJE_GERENTE_SIN_SUCURSAL,
-  MENSAJE_SIN_ADMIN_ACTIVO,
-  type EstadoDeGobierno,
-} from "../../src/core/permisos/invariantes";
+import { InvarianteViolada, invarianteGerenteConSucursalActiva, invarianteGerenteEsAdminEfectivo, invarianteQuedaUnAdmin, invarianteRolDeSistemaIntacto, MENSAJE_GERENTE_DEJA_DE_SER_ADMIN, MENSAJE_GERENTE_SIN_SUCURSAL, MENSAJE_SIN_ADMIN_ACTIVO, type EstadoDeGobierno } from "../../src/core/permisos/invariantes";
+import { contarAdminsEfectivos, contarUsuariosActivosDelRol, esAdminEfectivoEnAlgunaSucursal, invarianteRolSinUsuariosActivos, medirEstadoDeGobierno } from "../../src/server/lecturas/permisos/gobierno";
+import { conInvariantesDeGobierno } from "../../src/server/actions/con-gobierno";
 
 const EMPRESA = EMPRESA_POR_DEFECTO_ID;
 const gerenteSano = { conSucursalActiva: true, adminEfectivo: true };

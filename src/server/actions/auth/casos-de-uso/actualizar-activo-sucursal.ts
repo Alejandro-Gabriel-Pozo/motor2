@@ -2,10 +2,9 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { gerentesQueQuedaranSinSucursalActiva } from "@/core/permisos/gerencia";
-import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { cambiarActivoDeSucursal } from "@/server/persistencia/auth/sucursales";
-import { conGobierno } from "../../con-gobierno";
+import { conGobierno, conInvariantesDeGobierno } from "../../con-gobierno";
 
 type ResultadoActualizarActivoSucursal = ResultadoCaso<null, "SUCURSAL_NO_ENCONTRADA" | "SUCURSAL_ACTUAL" | "GERENTE_SIN_SUCURSAL" | "INVARIANTE_DE_GOBIERNO">;
 

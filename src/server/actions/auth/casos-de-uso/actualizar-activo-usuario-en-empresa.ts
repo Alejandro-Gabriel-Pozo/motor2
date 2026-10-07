@@ -9,10 +9,9 @@ import {
   objetivoEnLaEmpresa,
   reactivaAUnAdmin,
 } from "@/core/permisos/gestion-de-usuarios";
-import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { cambiarActivoDeCuentaEnEmpresa } from "@/server/persistencia/permisos/membresias";
-import { conGobierno } from "../../con-gobierno";
+import { conGobierno, conInvariantesDeGobierno } from "../../con-gobierno";
 
 type ResultadoActualizarActivoUsuarioEnEmpresa = ResultadoCaso<null, "USUARIO_NO_ENCONTRADO" | "TECHO_DE_PRIVILEGIO" | "REACTIVA_ADMIN_SIN_SER_GERENTE" | "INVARIANTE_DE_GOBIERNO">;
 

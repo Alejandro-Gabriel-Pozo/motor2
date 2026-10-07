@@ -42,7 +42,6 @@ export const PUREZA_HEREDADA_DEL_NUCLEO: Record<string, EntradaDePurezaHeredada>
   "src/core/permisos/capacidades-sucursal.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 4: su lectura la usa core/catalogo/precio-local-consulta (el embudo del precio local, de la venta); entonces pasa a server/acceso" },
   "src/core/permisos/gerencia.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase", "escribeEnLaBase"], pendiente: "Fase 4: la escritura sale a un caso de uso (server/persistencia); el cálculo queda puro" },
   "src/core/permisos/gestion-de-usuarios.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 4: son lecturas de decisión DENTRO de la transacción de escritura y las usan casos de uso de core/features/empresa; salen junto con esas escrituras" },
-  "src/core/permisos/invariantes.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 4: son lecturas de decisión DENTRO de la transacción de escritura y las usan casos de uso de core/features/empresa; salen junto con esas escrituras" },
   "src/core/reportes/historial-producto.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: los tipos de Prisma se reemplazan por tipos de dominio propios" },
   "src/core/reportes/historial-vistas.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/reportes/margen-real.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },

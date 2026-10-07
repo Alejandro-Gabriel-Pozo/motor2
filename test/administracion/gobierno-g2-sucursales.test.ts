@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prism
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { conGobierno } from "../../src/server/actions/con-gobierno";
-import { conInvariantesDeGobierno } from "../../src/core/permisos/invariantes";
+import { conInvariantesDeGobierno } from "../../src/server/actions/con-gobierno";
 import { ok } from "../../src/server/actions/tipos";
 import { actualizarActivoSucursal, crearSucursalConAdmin } from "../../src/server/actions/auth/sucursales";
 

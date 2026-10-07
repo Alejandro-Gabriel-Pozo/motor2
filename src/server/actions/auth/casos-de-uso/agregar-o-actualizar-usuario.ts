@@ -3,13 +3,12 @@ import type { ComandoAgregarOActualizarUsuario } from "@/core/features/permisos/
 import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion } from "./invitaciones-de-usuario-en-tx";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { actorEnSucursal, mensajeSiNoPuedeDarRolA, mensajeSiReactivaAdminSinSerGerente, objetivoEnSucursal, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
-import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { activarCuentaEnEmpresa, guardarMembresiaDeMiembro } from "@/server/persistencia/permisos/membresias";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
-import { conGobierno } from "../../con-gobierno";
+import { conGobierno, conInvariantesDeGobierno } from "../../con-gobierno";
 import type { InvitacionPorEnviar } from "./enviar-invitacion-y-anotar";
 
 type ResultadoAgregarOActualizarUsuario = ResultadoCaso<

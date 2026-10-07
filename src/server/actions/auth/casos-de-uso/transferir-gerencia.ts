@@ -1,9 +1,8 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
-import { conGobierno } from "../../con-gobierno";
+import { conGobierno, conInvariantesDeGobierno } from "../../con-gobierno";
 import { transferirGerenciaDeEmpresa } from "./transferir-gerencia-en-tx";
 
 type ResultadoTransferirGerencia = ResultadoCaso<null, "DESTINO_NO_ES_DE_LA_EMPRESA" | "EMAIL_NO_COINCIDE" | "TRASPASO_RECHAZADO" | "INVARIANTE_DE_GOBIERNO">;

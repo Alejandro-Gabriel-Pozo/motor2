@@ -25,10 +25,16 @@ eran lo único que impedía que un rol creado a mano se hiciera pasar por uno de
 
 ### 2. Decide la clave, no el nombre (G2)
 
-Solo `core/permisos` lee la clave (`jerarquia.ts`: `CLAVE_ROL_ADMIN`, `esRolAdmin`, `nivelDeRolPorClave`; `invariantes.ts`; `gestion-de-usuarios.ts`;
-`gerencia.ts`). Fuera de esa carpeta nadie compara un rol ni busca un rol de sistema por nombre: lo hace cumplir la regla 4 de
-`test/arquitectura/acceso-solo-por-el-guard.test.ts`. Las invariantes de gobierno (administrador efectivo, gerente con sucursal, rol de sistema no
-desactivable, etc.) se miden por clave y dentro de la transacción de la escritura.
+Solo `core/permisos` lee la clave (`jerarquia.ts`: `CLAVE_ROL_ADMIN`, `esRolAdmin`, `nivelDeRolPorClave`; `filtros.ts`: los filtros por la clave del
+rol administrador; `invariantes.ts`: el rol de sistema intacto; `gestion-de-usuarios.ts`; `gerencia.ts`). Fuera de esa carpeta nadie compara un rol ni
+busca un rol de sistema por nombre: lo hace cumplir la regla 4 de `test/arquitectura/acceso-solo-por-el-guard.test.ts`. Las invariantes de gobierno
+(administrador efectivo, gerente con sucursal, rol de sistema no desactivable, etc.) se miden por clave y dentro de la transacción de la escritura.
+
+> **Rutas movidas (Hito 3, Fase II de la rama `pureza-integracion`, 2026-10-08).** Las lecturas de decisión de gobierno salieron de `core/permisos` a
+> `server/lecturas/permisos` (ADR-026) con el mismo nombre y firma, y no nombran la clave: piden los filtros puros de `core/permisos/filtros.ts`
+> (contrato C1). Las de las invariantes están en `src/server/lecturas/permisos/gobierno.ts`; `conInvariantesDeGobierno` (medir, escribir, volver a
+> medir), en `src/server/actions/con-gobierno.ts`. Desde el contrato C4, un caso de uso o una persistencia tampoco lee `rol.clave` ni la pide en un
+> `select`: el rol se lee con `SELECCION_DE_ROL_PARA_JERARQUIA` y se le pasa entero a `core/permisos` (regla 4 ampliada).
 
 ### 3. Renombrar un rol es una acción propia, `renombrar_rol` (G3)
 

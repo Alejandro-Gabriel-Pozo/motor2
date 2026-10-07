@@ -4,11 +4,10 @@ import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/
 import type { ComandoCrearSucursal } from "@/core/features/sucursales/sucursal.guard";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { actorEnLaEmpresa, buscarRolAdmin, mensajeSiNoPuedeDarRolSinTechoDeGestion, mensajeSiReactivaAdminSinSerGerente, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
-import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { crearSucursal, sembrarDisponibilidadDeSucursalNueva } from "@/server/persistencia/auth/sucursales";
 import { crearMembresiaEnSucursal, reactivarCuentaEnEmpresa } from "@/server/persistencia/permisos/membresias";
-import { conGobierno } from "../../con-gobierno";
+import { conGobierno, conInvariantesDeGobierno } from "../../con-gobierno";
 
 type ResultadoCrearSucursal = ResultadoCaso<
   { sucursalId: string },

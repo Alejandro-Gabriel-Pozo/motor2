@@ -6,7 +6,8 @@ import { ErrorDeAceptacion, MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { incorporarPrimerGerente } from "@/core/permisos/gerencia";
-import { conInvariantesDeGobierno, InvarianteViolada } from "@/core/permisos/invariantes";
+import { InvarianteViolada } from "@/core/permisos/invariantes";
+import { conInvariantesDeGobierno } from "@/server/actions/con-gobierno";
 import { hashDeToken } from "@/core/seguridad/tokens";
 import { marcarInvitacionAceptada } from "@/server/persistencia/invitaciones/marcar-invitacion-aceptada";
 import { invitacionConSuBase } from "@/server/sesion/invitacion";
