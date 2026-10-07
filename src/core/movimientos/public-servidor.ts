@@ -21,15 +21,5 @@ export { conReintento } from "./reintentar";
 export { MENSAJE_CONFLICTO_IDEMPOTENCIA, calcularPayloadHash, decidirIdempotencia } from "./idempotencia";
 export type { ResultadoChequeoIdempotencia } from "./idempotencia";
 export { MENSAJE_FACTURA_DUPLICADA, esChoqueDeFacturaUnica } from "./factura-unica";
-export {
-  calcularSaldoPorLote,
-  calcularSaldoTotal,
-  listarStockParaConteo,
-  obtenerLoteMasProximoAVencer,
-  obtenerSeccionPropia,
-  resolverConsumoPorFamilia,
-  seccionesConStock,
-  validarStockSuficiente,
-} from "./stock";
 export type { AvisoStockNegativo } from "./registrar-venta";
 export { resolverPrecioVenta } from "./precio-venta";

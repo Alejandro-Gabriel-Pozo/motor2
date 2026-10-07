@@ -3,7 +3,7 @@ import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerHistorialConteosFisicos } from "@/server/actions/movimientos/lecturas-conteo-fisico";
-import { listarStockParaConteo } from "@/core/movimientos/public-servidor";
+import { listarStockParaConteo } from "@/server/consultas/movimientos/stock-para-conteo";
 import { ConteoFisicoGrid, type FilaBaseConteo } from "./conteo-fisico-grid";
 import { AccionesConteoPendiente, BotonCancelarConteo } from "./acciones-historial";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";

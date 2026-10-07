@@ -38,3 +38,8 @@ export type { ResultadoAnulacionDeVenta, LineaVendida, LineaDeReversionDeVenta }
 export { armarFilasDeMovimiento } from "./armar-filas-de-movimiento";
 export type { ConsumoParaFilas } from "./armar-filas-de-movimiento";
 export type { AccionConteo } from "@prisma/client";
+export { crearLibroDeStock } from "./origen-venta";
+export type { SeccionCandidata } from "./origen-venta";
+export type { DatosDeOrigen, OrigenPreparado, OrigenVenta } from "./origen-venta-datos";
+export { armarFilasStockParaConteo, elegirLoteMasProximoAVencer, repartirConsumoPorFamilia } from "./reparto-de-stock";
+export type { FilaStockParaConteo, ParteDeReparto } from "./reparto-de-stock";

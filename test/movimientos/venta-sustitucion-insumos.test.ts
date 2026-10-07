@@ -8,7 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
 import { type ActorVenta } from "../../src/core/movimientos/registrar-venta";
 import { registrarVentaEnTx } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
-import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
 
 /**
  * La venta consume el insumo sustituto declarado cuando el principal (y sus hermanos) se agotan (docs/plan-sustitucion-insumos-

@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
 import { setPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
-import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
 
 describe("registrarVenta", () => {
   let sucursalId: string;

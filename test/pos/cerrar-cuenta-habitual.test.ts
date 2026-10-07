@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, prisma, sembrarSeccion } from "../setup/test-db";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 
 /**

@@ -9,7 +9,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 import { type OrigenVenta } from "../../src/core/movimientos/registrar-venta";
 import { registrarVentaEnTx } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
-import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
 
 /**

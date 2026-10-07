@@ -13,7 +13,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarConteoFisico, registrarConteosFisicos, resolverConteoPendiente, cancelarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { getUsuarioActual } from "../../src/core/auth/session";
-import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
 import { cargarConteoFisicoPorClave } from "../../src/server/persistencia/movimientos/escribir-conteo-fisico";
 
 describe("Conteo Físico", () => {
