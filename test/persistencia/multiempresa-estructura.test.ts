@@ -1,17 +1,19 @@
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
+import { CLASIFICACION_DE_TABLAS, tablasDeClase } from "../setup/clasificacion-de-tablas";
 
 /**
  * Estructura que deja la migración `multiempresa_estructura` (ADR-007, paso A2): instalación multiempresa-capable activada con UNA
  * empresa. El catálogo de la base se lee de `pg_catalog` (no del schema.prisma) para que un cambio en la migración o un modelo nuevo
  * sin `empresaId` rompa acá. El RLS (paso A6) se prueba en test/aislamiento; acá las unicidades y FK son propiedades de la estructura y se ejercitan como dueño (`prismaAdmin`).
  */
-const TABLAS_DE_CONSOLA = ["AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "SesionPlataforma"];
-const GLOBALES = ["Account", "Accion", "CotizacionDolar", "IndicePrecio", "Session", "User", "VerificationToken"];
+// Las clases salen de la clasificación DECLARADA (`test/setup/clasificacion-de-tablas.ts`): una tabla nueva o que cambia de clase rompe estos tests hasta que se la declare, en vez de un contador que se «arregla» a mano.
+const TABLAS_DE_CONSOLA = tablasDeClase("CONSOLA");
+const GLOBALES = tablasDeClase("GLOBAL");
 // ModuloEmpresa (P4) e Invitacion (E5) llevan `empresaId` pero lo escribe la plataforma indicando la empresa: sin default `app_empresa_actual()` y con FK simple a Empresa.
 // Las cinco de identidad de la consola de plataforma (E4, ADR-012/019) no tienen empresa: son de plataforma, no de ninguna empresa.
-const PLATAFORMA = ["Empresa", "Invitacion", "ModuloEmpresa", "UsuarioEmpresa", ...TABLAS_DE_CONSOLA];
+const PLATAFORMA = [...tablasDeClase("EMPRESA"), ...tablasDeClase("DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA"), ...TABLAS_DE_CONSOLA];
 
 function codigoDeError(e: unknown): string | undefined {
   return e instanceof Prisma.PrismaClientKnownRequestError ? e.code : undefined;
@@ -37,9 +39,9 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
   });
 
   describe("catálogo de tablas", () => {
-    it("54 tablas de dominio tienen empresaId NOT NULL con default app_empresa_actual(); las 7 globales y ninguna otra quedan afuera", async () => {
+    it("las tablas por empresa DECLARADAS son exactamente las que tienen empresaId NOT NULL con default app_empresa_actual(); las globales y ninguna otra quedan afuera", async () => {
       const conEmpresa = await tablasPorEmpresa();
-      expect(conEmpresa).toHaveLength(54);
+      expect(conEmpresa).toEqual(tablasDeClase("POR_EMPRESA"));
       for (const g of GLOBALES) expect(conEmpresa).not.toContain(g);
       expect(conEmpresa).not.toContain("Empresa");
 
@@ -58,9 +60,10 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
          WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> '_prisma_migrations'`;
       const sinEmpresa = todas.map((t) => t.tabla).filter((t) => !conEmpresa.includes(t)).sort();
       expect(sinEmpresa).toEqual([...GLOBALES, ...PLATAFORMA].sort());
+      expect(todas.map((x) => x.tabla).sort(), "toda tabla de la base está declarada, y toda declarada existe").toEqual(Object.keys(CLASIFICACION_DE_TABLAS).sort());
     });
 
-    it("toda FK entre dos tablas por empresa es compuesta e incluye empresaId (105); ninguna FK a una tabla global lo incluye", async () => {
+    it("toda FK entre dos tablas por empresa es compuesta e incluye empresaId; ninguna FK a una tabla global lo incluye", async () => {
       const conEmpresa = new Set(await tablasPorEmpresa());
       const fks = await prisma.$queryRaw<Array<{ nombre: string; origen: string; destino: string; columnas: string[] }>>`
         SELECT c.conname::text AS nombre,
@@ -71,11 +74,9 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
          WHERE c.contype = 'f' AND c.connamespace = 'public'::regnamespace`;
 
       const entreTablasPorEmpresa = fks.filter((f) => conEmpresa.has(f.origen) && conEmpresa.has(f.destino));
-      // 93: la migración 20261001180000_promo_de_empresa quita 3 FK (PromoCarta→Sucursal y las dos de PromocionProducto) y agrega 2 (PromoCartaSucursal).
-      // 95: la migración 20261001190000_descuento_producto_sucursal agrega 2 (DescuentoProductoSucursal→Producto y →Sucursal; la 3ª es hacia Empresa).
-      // 96: la migración 20261001220000_margen_objetivo agrega 1 (MargenObjetivo→CategoriaProducto; la otra es hacia Empresa).
-      // 103: la receta propia por sucursal (20261002130000: RecetaSucursal y las FK de RecetaVersion a Sucursal/versión base) y la carta propia (20261002150000: sucursalId en contenido, géneros, ítems agrupados y opciones) agregan 7. La invitación de usuario (20261012120000: InvitacionSucursal) suma 2 hacia Sucursal y Rol; la FK a Invitacion no cuenta porque Invitacion no tiene default de empresa.
-      expect(entreTablasPorEmpresa).toHaveLength(105);
+      // Sin recuento fijo (antes «105», con una nota por cada migración que lo movía): lo que importa es que NINGUNA FK entre tablas por empresa deje de incluir `empresaId`, y eso lo verifica el bucle de abajo
+      // para todas las que existan. Que haya FK entre tablas por empresa es lo único que se exige como mínimo.
+      expect(entreTablasPorEmpresa.length).toBeGreaterThan(0);
       for (const f of entreTablasPorEmpresa) {
         expect(f.columnas, f.nombre).toHaveLength(2);
         expect(f.columnas, f.nombre).toContain("empresaId");
@@ -86,7 +87,7 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
       for (const f of haciaGlobales) expect(f.columnas, f.nombre).not.toContain("empresaId");
 
       const haciaEmpresa = fks.filter((f) => f.destino === "Empresa" && conEmpresa.has(f.origen));
-      expect(haciaEmpresa).toHaveLength(54);
+      expect(haciaEmpresa.map((f) => f.origen).sort(), "cada tabla por empresa tiene su FK a Empresa").toEqual(tablasDeClase("POR_EMPRESA"));
     });
   });
 

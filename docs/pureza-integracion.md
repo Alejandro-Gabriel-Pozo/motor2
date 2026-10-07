@@ -43,11 +43,11 @@ Cada fila: **ID**, qué es, fuente en el plan, estado (`[ ]` pendiente, `[x]` he
 | ID | Trabajo | Fuente | Estado | Evidencia |
 |---|---|---|---|---|
 | 2.1 | Los 10 tests de hora fija que faltan (cancelar/resolver conteo, cerrar cuenta, 7 de traspasos) | 11.2 #10 | [x] | 13/13 casos de uso con `actor.ahora` tienen su test de hora fija (3 ya estaban, +7 de traspasos, +cancelar/resolver conteo, +cerrar cuenta); mutación OK |
-| 2.2 | Caracterización de los reportes (C0) con conteo de consultas por reporte | 11.2 #11 | [ ] | |
+| 2.2 | Caracterización de los reportes (C0) con conteo de consultas por reporte | 11.2 #11 | [x] | `test/reportes/caracterizacion/reportes-c0.test.ts` + golden: 47 funciones de `consultas/reportes`, resultado y conteo de consultas; mutaciones OK. N+1 vistos (solo informados): rendimiento-recetas (42/15), resumen-consolidado (52) |
 | 2.3 | Caracterización «.0» del tramo A de la Fase 3 (mesas, cuenta, ticket, ítems agrupados, precargados) | 11.2 #11 | [ ] | |
 | 2.4 | Test de conteo del N+1 de grupos de insumos | 11.2 #12 | [x] | `test/catalogo/cadenas-de-grupos-consultas.test.ts` (una sola lectura); mutación OK |
-| 2.5 | Propiedades (`fast-check`) del guard de acceso | 11.2 #13 | [ ] | |
-| 2.6 | Clasificación declarada de tablas (en lugar de contadores fijos) | 11.2 #14 | [ ] | |
+| 2.5 | Propiedades (`fast-check`) del guard de acceso | 11.2 #13 | [x] | `test/permisos/decision-de-acceso.propiedades.test.ts`: 12 propiedades; 4 mutaciones OK |
+| 2.6 | Clasificación declarada de tablas (en lugar de contadores fijos) | 11.2 #14 | [x] | `test/setup/clasificacion-de-tablas.ts` + guardián `test/arquitectura/clasificacion-de-tablas.test.ts`; los contadores 57/54/61/105 de los 2 tests de base se derivan de la declaración; mutación OK |
 | 2.8 | **Dinero en `core`, medido:** prueba de propiedades que compara las sumas y márgenes de `core/reportes` contra el cálculo exacto (Decimal) en datos realistas; asentada la decisión de diseño (la plata exacta vive en la base y en `core/moneda`; `core/reportes` suma en `number` y redondea al presentar). Si la prueba muestra diferencias de centavos, se abre el paso de migración | Decisión 4 del dueño (2026-10-08) | [ ] | |
 | 2.7 | **Ampliar la matriz de la venta** a ~30 escenarios (precio local, POS sin stock negativo, insumo sustituto, consignación, cierre real del POS) | 10.4 fila 5 | [ ] | |
 

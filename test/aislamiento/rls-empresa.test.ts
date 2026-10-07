@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
 import { dbDeEmpresa, dbDeUsuario, transaccionDeEmpresa } from "../../src/core/auth/base";
+import { CANTIDAD_DE_POLITICAS_ESPERADAS, TABLAS_CON_EMPRESA_ID, politicasEsperadas, tablasDeClase } from "../setup/clasificacion-de-tablas";
 
 /**
  * ADR-007, A6: aislamiento por empresa con RLS contra Postgres real. El código de la app corre como `motor2_app` (`prisma` y
@@ -15,17 +16,18 @@ afterAll(() => prismaAdmin.$disconnect());
 const A = "empresa_principal";
 const B = "norte";
 
-const GLOBALES = ["Account", "Accion", "CotizacionDolar", "IndicePrecio", "Session", "User", "VerificationToken"];
-const PLATAFORMA = ["Empresa"];
+// Las clases de cada tabla salen de la clasificación DECLARADA (`test/setup/clasificacion-de-tablas.ts`), no de contadores escritos acá.
+const GLOBALES = tablasDeClase("GLOBAL");
+const PLATAFORMA = tablasDeClase("EMPRESA");
 // E4 (ADR-012/019): tablas de la consola de plataforma. Tienen RLS (política `solo_plataforma`, por nombre de rol) pero NO por empresa y no llevan `empresaId`.
-const CONSOLA = ["AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "SesionPlataforma"];
+const CONSOLA = tablasDeClase("CONSOLA");
 
 async function unidadesComoDuenio(empresaId: string) {
   return prismaAdmin.unidad.findMany({ where: { empresaId }, orderBy: { nombre: "asc" } });
 }
 
 describe("catálogo: el RLS está en las tablas por empresa y solo en ellas", () => {
-  it("las 57 tablas con `empresaId` (UsuarioEmpresa incluida, S-13; ModuloEmpresa, P4; Invitacion, E5; InvitacionSucursal, E8) tienen RLS habilitado, sin FORCE, y la política de aislamiento", async () => {
+  it("las tablas DECLARADAS con `empresaId` (UsuarioEmpresa incluida, S-13; ModuloEmpresa, P4; Invitacion, E5; InvitacionSucursal, E8) son exactamente las de la base, y tienen RLS habilitado, sin FORCE, y las políticas de su clase", async () => {
     const tablas = await prismaAdmin.$queryRaw<Array<{ tabla: string; rls: boolean; forzado: boolean; politicas: string[] }>>`
       SELECT c.relname::text AS tabla, c.relrowsecurity AS rls, c.relforcerowsecurity AS forzado,
              COALESCE((SELECT array_agg(p.policyname::text ORDER BY p.policyname) FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = c.relname), '{}') AS politicas
@@ -33,11 +35,11 @@ describe("catálogo: el RLS está en las tablas por empresa y solo en ellas", ()
        WHERE n.nspname = 'public' AND c.relkind = 'r'
          AND EXISTS (SELECT 1 FROM information_schema.columns k WHERE k.table_schema = 'public' AND k.table_name = c.relname AND k.column_name = 'empresaId')
        ORDER BY 1`;
-    expect(tablas).toHaveLength(57);
+    expect(tablas.map((t) => t.tabla)).toEqual(TABLAS_CON_EMPRESA_ID);
     for (const t of tablas) {
       expect(t.rls, `${t.tabla}: RLS deshabilitado`).toBe(true);
       expect(t.forzado, `${t.tabla}: FORCE no está en el diseño (el dueño que migra debe poder saltarlo)`).toBe(false);
-      const esperadas = t.tabla === "UsuarioEmpresa" ? ["aislamiento_empresa", "lectura_propia_usuario"] : t.tabla === "ModuloEmpresa" ? ["aislamiento_empresa", "escritura_plataforma"] : t.tabla === "Invitacion" ? ["aislamiento_empresa", "escritura_plataforma", "lectura_por_token"] : ["aislamiento_empresa"];
+      const esperadas = politicasEsperadas(t.tabla);
       expect(t.politicas, `${t.tabla}: política de aislamiento`).toEqual(esperadas);
     }
   });
@@ -45,7 +47,7 @@ describe("catálogo: el RLS está en las tablas por empresa y solo en ellas", ()
   it("la política usa `(SELECT app_empresa_actual())` en USING y en WITH CHECK", async () => {
     const politicas = await prismaAdmin.$queryRaw<Array<{ tabla: string; nombre: string; usando: string; con_check: string }>>`
       SELECT tablename::text AS tabla, policyname::text AS nombre, qual AS usando, with_check AS con_check FROM pg_policies WHERE schemaname = 'public'`;
-    expect(politicas).toHaveLength(61 + CONSOLA.length); // +1: InvitacionSucursal (E8, aislamiento_empresa)
+    expect(politicas, "cantidad de políticas: la que se deriva de la clasificación declarada").toHaveLength(CANTIDAD_DE_POLITICAS_ESPERADAS);
     // ModuloEmpresa (P4): lectura por empresa (solo USING, FOR SELECT) y escritura de plataforma (por nombre de rol); ver registro-de-modulos.test.ts.
     for (const p of politicas.filter((x) => x.nombre !== "lectura_propia_usuario" && x.tabla !== "ModuloEmpresa" && !(x.tabla === "Invitacion" && x.nombre !== "aislamiento_empresa") && !CONSOLA.includes(x.tabla))) {
       expect(p.usando, p.tabla).toContain("app_empresa_actual()");
@@ -67,7 +69,7 @@ describe("catálogo: el RLS está en las tablas por empresa y solo en ellas", ()
     expect(conEmpresa).toEqual([]);
   });
 
-  it("las 7 globales y `Empresa` NO tienen RLS ni políticas", async () => {
+  it("las globales y `Empresa` NO tienen RLS ni políticas", async () => {
     const sin = [...GLOBALES, ...PLATAFORMA];
     const tablas = await prismaAdmin.$queryRaw<Array<{ tabla: string; rls: boolean }>>`
       SELECT c.relname::text AS tabla, c.relrowsecurity AS rls FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -82,7 +84,7 @@ describe("catálogo: el RLS está en las tablas por empresa y solo en ellas", ()
   it("no queda ninguna otra tabla de `public` con RLS", async () => {
     const [{ n }] = await prismaAdmin.$queryRaw<Array<{ n: number }>>`
       SELECT count(*)::int AS n FROM pg_class c JOIN pg_namespace ns ON ns.oid = c.relnamespace WHERE ns.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity`;
-    expect(n).toBe(57 + CONSOLA.length);
+    expect(n).toBe(TABLAS_CON_EMPRESA_ID.length + CONSOLA.length);
   });
 });
 
