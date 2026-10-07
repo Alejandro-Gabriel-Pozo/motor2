@@ -6,6 +6,7 @@ import {
   obtenerProductoOpcion,
   obtenerProductoPorId,
   obtenerSeccionHabitualEnSucursal,
+  contarSucursales,
 } from "../../../src/server/consultas/catalogo/productos";
 
 /**
@@ -208,6 +209,14 @@ describe("server/consultas/catalogo/productos", () => {
     it("acepta el cliente de una transacción como `db`", async () => {
       const p = await prisma.$transaction((tx) => obtenerProductoOpcion(mpCompleto, tx));
       expect(p).toEqual({ id: mpCompleto, codigo: "MP_HARINA", nombre: "Harina 000" });
+    });
+  });
+
+  describe("contarSucursales (H8, D-3: el alta de producto cuenta sin pedir la lista)", () => {
+    it("cuenta todas las sucursales de la empresa, también las inactivas (sin filtro, como `listarSucursales().length`)", async () => {
+      await prisma.sucursal.update({ where: { id: sucursalB }, data: { activo: false } });
+      await expect(contarSucursales(prisma)).resolves.toBe(2);
+      expect(sucursalA).toBeTruthy();
     });
   });
 });

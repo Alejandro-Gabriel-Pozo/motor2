@@ -48,3 +48,12 @@ export async function obtenerProductoPorId(id: string, db: Db) {
 export async function obtenerProductoOpcion(id: string, db: Db) {
   return db.producto.findUnique({ where: { id }, select: { id: true, codigo: true, nombre: true } });
 }
+
+/**
+ * Cuántas sucursales tiene la empresa, activas o no (SIN filtro: el mismo número que daba `listarSucursales().length`), para el texto del alta de producto
+ * (`/catalogo/productos/nuevo`: «disponible en las N sucursales que existen hoy»). H8 (decisión D-3 del dueño): la página dejó de llamar a
+ * `listarSucursales`, que desde entonces exige `gestion_usuarios` o `alta_sucursal`; quien da de alta un producto solo necesita la cuenta.
+ */
+export async function contarSucursales(db: Db): Promise<number> {
+  return db.sucursal.count();
+}

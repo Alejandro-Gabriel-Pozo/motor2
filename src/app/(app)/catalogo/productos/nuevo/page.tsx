@@ -2,7 +2,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { listarSucursales } from "@/server/actions/auth/sucursales";
+import { contarSucursales } from "@/server/consultas/catalogo/productos";
 import { ProductoForm } from "../producto-form";
 import { cargarOpcionesFormularioProducto } from "../opciones-formulario";
 
@@ -18,7 +18,7 @@ export default async function NuevoProductoPage() {
   const gateAlta = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
   if (!gateAlta.ok) return <p className="text-red-600">{gateAlta.mensaje}</p>;
 
-  const [{ unidades, insumos, categorias, proveedores, puedeCrear }, sucursales] = await Promise.all([cargarOpcionesFormularioProducto(ctx), listarSucursales()]);
+  const [{ unidades, insumos, categorias, proveedores, puedeCrear }, cantidadSucursales] = await Promise.all([cargarOpcionesFormularioProducto(ctx), contarSucursales(ctx.db)]);
 
   return (
     <div className="max-w-xl">
@@ -32,7 +32,7 @@ export default async function NuevoProductoPage() {
         categoriasIniciales={categorias}
         proveedoresIniciales={proveedores}
         puedeCrear={puedeCrear}
-        cantidadSucursales={sucursales.length}
+        cantidadSucursales={cantidadSucursales}
         nombreSucursalActual={ctx.sucursalNombre}
       />
     </div>

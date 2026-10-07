@@ -193,12 +193,12 @@ const LECTURAS: Readonly<Record<string, LecturaDeclarada>> = {
       "app/(app)/catalogo/productos/opciones-formulario.ts": { claves: ["alta_producto", "producto_ver_catalogo"], porque: FORMULARIO_DE_PRODUCTO },
     },
   },
+  // D-3: el alta de producto (`catalogo/productos/nuevo`) ya no la consume; cuenta las sucursales con `contarSucursales` (server/consultas).
   listarSucursales: {
     modulo: "server/actions/auth/sucursales",
     consumidores: {
       "app/(app)/administracion/sucursales/page.tsx": { claves: ["alta_sucursal"] },
       "app/(app)/administracion/usuarios/page.tsx": { claves: ["gestion_usuarios"] },
-      "app/(app)/catalogo/productos/nuevo/page.tsx": { claves: ["alta_producto"] },
     },
   },
 };
