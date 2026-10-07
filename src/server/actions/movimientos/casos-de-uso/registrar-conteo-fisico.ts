@@ -4,14 +4,8 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { texto } from "@/core/texto";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/public";
-import {
-  calcularSaldoPorLote,
-  calcularSaldoTotal,
-  calcularPayloadHash,
-  obtenerSeccionPropia,
-  conTransaccionSerializable,
-  MENSAJE_CONFLICTO_IDEMPOTENCIA,
-} from "@/core/movimientos/public-servidor";
+import { calcularPayloadHash, conTransaccionSerializable, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComandoConteoFisico, ResultadoConteoFisico } from "@/core/features/movimientos/conteo-fisico.schema";

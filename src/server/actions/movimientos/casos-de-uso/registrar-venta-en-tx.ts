@@ -6,7 +6,7 @@ import { crearArrastreDeRedondeo } from "@/core/movimientos/arrastre-redondeo";
 import { cumplePaso, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/core/catalogo/public";
 import { alcanceDeSucursal, cargarRecetaVigente, productoDisponibleEn } from "@/core/catalogo/public-servidor";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
-import { seccionesConStock } from "@/core/movimientos/stock";
+import { seccionesConStock } from "@/server/lecturas/movimientos/saldos";
 import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, faltantesDe, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
 import { cargarDatosDeOrigen, prepararOrigen } from "@/server/persistencia/movimientos/cargar-origen-de-venta";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";

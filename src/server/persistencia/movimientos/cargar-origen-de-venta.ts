@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { obtenerSeccionPropia } from "@/core/movimientos/public-servidor";
+import { obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { whereSeccionHabitualVigente } from "@/core/stock/public";
 import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 import { crearLibroDeStock, type SeccionCandidata } from "@/core/movimientos/public";
