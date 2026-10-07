@@ -5,7 +5,7 @@ import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate"
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { SIN_PROVEEDOR } from "@/core/reportes/public-servidor";
 import { listarComprasRegistradas } from "@/server/consultas/reportes/compras-registradas";
-import { listarProveedores } from "@/server/actions/catalogo/proveedores";
+import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";
 import { BotonAnularCompra } from "./boton-anular-compra";
 import { FormularioCorregirCompra } from "./formulario-corregir-compra";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
@@ -45,7 +45,7 @@ export default async function ComprasRegistradasPage({
       factura: sp.factura || undefined,
       cursor: sp.cursor,
     }, ctx.db),
-    listarProveedores(),
+    listarProveedoresParaSelector(),
   ]);
 
   const paramsSiguiente = new URLSearchParams();

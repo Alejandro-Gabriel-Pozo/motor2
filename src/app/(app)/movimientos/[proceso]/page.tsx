@@ -3,7 +3,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { ACCION_POR_PROCESO, obtenerConfigProceso } from "@/core/movimientos/public";
-import { listarProveedores } from "@/server/actions/catalogo/proveedores";
+import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarMotivosMermaActivos, listarDestinosConsumoActivos } from "@/server/actions/movimientos/motivos";
@@ -35,7 +35,7 @@ export default async function MovimientoPage({
 
   const [secciones, proveedores, unidades, motivos, destinos, productoInicial] = await Promise.all([
     listarSeccionesActivas(ctx.sucursalId),
-    config.requiereProveedor ? listarProveedores(true) : Promise.resolve([]),
+    config.requiereProveedor ? listarProveedoresParaSelector(true) : Promise.resolve([]),
     // Alta rápida de producto inline (solo Compra, ver QuickCrearProducto)
     // — no Devolución a proveedor pese a ser también `esCompraLike`: no
     // tiene sentido devolver algo que nunca se compró.

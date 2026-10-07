@@ -1,7 +1,7 @@
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { listarInsumos } from "@/server/actions/catalogo/insumos";
 import { listarCategoriasProducto } from "@/server/actions/catalogo/categorias-producto";
-import { listarProveedores } from "@/server/actions/catalogo/proveedores";
+import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";
 import { obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
 import type { PrismaClient } from "@prisma/client";
 
@@ -14,7 +14,7 @@ export async function cargarOpcionesFormularioProducto(ctx: { usuarioId: string;
     listarUnidadesActivas(),
     listarInsumos(),
     listarCategoriasProducto(),
-    listarProveedores(true),
+    listarProveedoresParaSelector(true),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "categoria_alta", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "insumo_alta", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedor_alta", ctx.db),

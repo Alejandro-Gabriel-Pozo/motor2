@@ -35,6 +35,26 @@ export async function listarProveedores(soloActivos = false) {
   });
 }
 
+/** Lo que necesita un `<select>` de proveedor: sin los datos de la ficha (contacto, teléfono, email, CUIT, condiciones de pago, notas). */
+export interface ProveedorParaSelector {
+  id: string;
+  nombre: string;
+  activo: boolean;
+}
+
+/**
+ * Proveedores para ELEGIR (H8, decisión D-4 del dueño): la compra y la devolución a proveedor, el filtro del reporte de compras y el formulario de producto
+ * (proveedor de consignación) solo necesitan el id, el nombre y si está activo. La ficha completa (`listarProveedores`) es de la pantalla de Proveedores.
+ */
+export async function listarProveedoresParaSelector(soloActivos = false): Promise<ProveedorParaSelector[]> {
+  const ctx = await requerirSesion();
+  return ctx.db.proveedor.findMany({
+    where: soloActivos ? { activo: true } : {},
+    select: { id: true, nombre: true, activo: true },
+    orderBy: { nombre: "asc" },
+  });
+}
+
 export interface DatosProveedor {
   nombre: string;
   contacto?: string;

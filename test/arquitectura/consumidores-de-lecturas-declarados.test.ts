@@ -173,10 +173,14 @@ const LECTURAS: Readonly<Record<string, LecturaDeclarada>> = {
       "app/(pos)/mesas/[mesaId]/page.tsx": { claves: ["pos_mesas"] },
     },
   },
+  // D-4: la ficha completa (contacto, CUIT, email, condiciones, notas) solo para la pantalla de Proveedores; los demás eligen con el selector.
   listarProveedores: {
     modulo: "server/actions/catalogo/proveedores",
+    consumidores: { "app/(app)/catalogo/proveedores/page.tsx": { claves: ["proveedores"] } },
+  },
+  listarProveedoresParaSelector: {
+    modulo: "server/actions/catalogo/proveedores",
     consumidores: {
-      "app/(app)/catalogo/proveedores/page.tsx": { claves: ["proveedores"] },
       "app/(app)/movimientos/[proceso]/page.tsx": { claves: ["proceso_compra", "proceso_devolucion_proveedor"], porque: "los procesos que piden proveedor (`requiereProveedor`)" },
       "app/(app)/reportes/compras/page.tsx": { claves: ["reporte_compras"] },
       "app/(app)/catalogo/productos/opciones-formulario.ts": { claves: ["alta_producto", "producto_ver_catalogo"], porque: FORMULARIO_DE_PRODUCTO },
