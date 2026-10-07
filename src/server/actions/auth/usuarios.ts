@@ -231,7 +231,7 @@ export async function actualizarActivoMembresia(membresiaId: string, activo: boo
  * admin o del gerente tiene el mismo techo que tocarlos (G2, D6).
  *
  * Desde el Hito 3 (Fase I, I.5a) es un adaptador: `conPermiso("notas_usuario_sucursal")` → caso de uso (`casos-de-uso/actualizar-notas-membresia.ts`:
- * la membresía de la sucursal activa, el techo de gestión y la escritura) → `aResultadoAccion`. Sin guard: recibe un id y un texto libre que nunca se
+ * la membresía de la sucursal activa, el techo de gestión y, en una transacción, la escritura con su auditoría —decisión B4 del dueño—) → `aResultadoAccion`. Sin guard: recibe un id y un texto libre que nunca se
  * validó en la acción (`SIN_GUARD`).
  */
 export async function actualizarNotasMembresia(membresiaId: string, notas: string): Promise<ResultadoAccion> {
