@@ -18,6 +18,11 @@ export async function cambiarActivoDeSucursal(tx: Prisma.TransactionClient, entr
   await tx.sucursal.update({ where: { id: entrada.sucursalId }, data: { activo: entrada.activo } });
 }
 
+/** Le cambia el nombre a una sucursal. */
+export async function cambiarNombreDeSucursal(tx: Prisma.TransactionClient, entrada: { sucursalId: string; nombre: string }): Promise<void> {
+  await tx.sucursal.update({ where: { id: entrada.sucursalId }, data: { nombre: entrada.nombre } });
+}
+
 /**
  * La disponibilidad inicial de una sucursal recién creada: los productos que el caso de uso ya resolvió (los «universales», decisión 4 del dueño,
  * docs/plan-disponibilidad-por-sucursal-2026-09-23.md §10), disponibles en ella. Escribir `DisponibilidadProducto` cambia qué se puede vender y mover en la

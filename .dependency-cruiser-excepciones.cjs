@@ -207,6 +207,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 3, Fase I, I.3: guardarPermisos → permisos/casos-de-uso/guardar-permisos.ts (roles y acciones fuera de la transacción a propósito, chequeo optimista, SERIALIZABLE con reintento y el conflicto de escritura como fracaso de negocio, escritura en server/persistencia/permisos/matriz.ts y auditoría); el formato lo valida guardComandoGuardarPermisos dentro de conEdicionDePermisos. listarMatrizPermisos es una lectura (H8).",
   },
+  {
+    ruta: "src/server/actions/auth/sucursales.ts",
+    motivo:
+      "Hito 3, Fase I, I.4: crearSucursalConAdmin → auth/casos-de-uso/crear-sucursal-con-admin.ts, actualizarActivoSucursal → casos-de-uso/actualizar-activo-sucursal.ts y renombrarSucursal → casos-de-uso/renombrar-sucursal.ts (transacción de gobierno e invariantes donde las había, persistencia en server/persistencia/auth/sucursales.ts y permisos/membresias.ts, auditoría en el caso de uso); el formato del alta y del renombre lo validan sus guardComando* dentro de conPermisoDeEmpresa. listarSucursales es una lectura (H8).",
+  },
 ];
 
 module.exports = {

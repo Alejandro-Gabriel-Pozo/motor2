@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 46;
+export const TOPE_DE_ENTRADAS = 45;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -94,11 +94,6 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["adminPlataforma.create", "codigoDeRecuperacionPlataforma.createMany"],
     fase: "Consola",
     motivo: "El alta de un administrador de plataforma es de la plataforma (la corre una persona, una vez, con el rol motor2_plataforma): vive en la consola, que no puede importar src/server; la validación y el material del alta son puros en core/plataforma/primer-admin.ts.",
-  },
-  "src/server/actions/auth/sucursales.ts": {
-    escrituras: ["sucursal.update"],
-    fase: "Fase 4",
-    motivo: "Tramo B: acción de gobierno de usuarios o permisos sin migrar; pasa a caso de uso + persistencia junto con la gerencia y las invitaciones.",
   },
   "src/server/actions/auth/usuarios.ts": {
     escrituras: ["usuarioEmpresa.update", "usuarioEmpresa.upsert", "usuarioSucursal.update", "usuarioSucursal.update", "usuarioSucursal.upsert"],

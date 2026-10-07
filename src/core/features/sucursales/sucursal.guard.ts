@@ -26,3 +26,16 @@ export function guardComandoCrearSucursal(input: { nombre: string; emailPrimerAd
   if (!email) return rechazar("vacio", "El email del primer admin de la sucursal es obligatorio.");
   return aceptar({ nombre, email });
 }
+
+/**
+ * Guard del comando «renombrar una sucursal» (Hito 3, Fase I, I.4): el nombre nuevo, recortado, con EXACTAMENTE las validaciones y los textos que antes
+ * corrían en línea en `renombrarSucursal` (vacío —con su propio mensaje, distinto del alta—, charset y largo de catálogo). Lo llama la Server Action DENTRO
+ * de `conPermisoDeEmpresa("renombrar_sucursal", …)`. Que la sucursal exista y que el nombre esté libre los resuelve el caso de uso contra la base.
+ */
+export function guardComandoRenombrarSucursal(nombreNuevo: string): ResultadoDato<{ nombre: string }> {
+  const nombre = texto(nombreNuevo);
+  if (!nombre) return rechazar("vacio", "El nombre no puede estar vacío.");
+  const invalido = validarTextoCatalogo(nombre, "El nombre de la sucursal");
+  if (invalido) return rechazar("formato", invalido);
+  return aceptar({ nombre });
+}

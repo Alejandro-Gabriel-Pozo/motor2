@@ -1,16 +1,15 @@
 "use server";
 
-import { texto, validarTextoCatalogo } from "@/core/texto";
-import { guardComandoCrearSucursal } from "@/core/features/sucursales/sucursal.guard";
+import { guardComandoCrearSucursal, guardComandoRenombrarSucursal } from "@/core/features/sucursales/sucursal.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { revalidarCartasPublicas } from "../carta/revalidar";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion } from "../tipos";
 import { requerirVerAlguna } from "../con-sesion";
 import { crearSucursalConAdminCasoDeUso } from "./casos-de-uso/crear-sucursal-con-admin";
 import { actualizarActivoSucursalCasoDeUso } from "./casos-de-uso/actualizar-activo-sucursal";
+import { renombrarSucursalCasoDeUso } from "./casos-de-uso/renombrar-sucursal";
 
 /**
  * Todas las sucursales de la empresa (activas o no). H8 (decisión D-3 del dueño): exige el «Ver» de alguna de sus dos pantallas, Usuarios
@@ -68,29 +67,20 @@ export async function actualizarActivoSucursal(sucursalId: string, activo: boole
   });
 }
 
-/** Renombrar una sucursal existente — antes solo se podía elegir el nombre una vez, al crearla. */
+/**
+ * Renombrar una sucursal existente — antes solo se podía elegir el nombre una vez, al crearla. Desde el Hito 3 (Fase I, I.4) es un adaptador:
+ * `conPermisoDeEmpresa("renombrar_sucursal")` → formato (`guardComandoRenombrarSucursal`, DENTRO del envoltorio) → caso de uso
+ * (`casos-de-uso/renombrar-sucursal.ts`) → revalidación de la carta pública y refresco de la vista si salió bien → `aResultadoAccion`.
+ */
 export async function renombrarSucursal(sucursalId: string, nombreNuevo: string): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("renombrar_sucursal", async (ctx) => {
-    const nombre = texto(nombreNuevo);
-    if (!nombre) return error("El nombre no puede estar vacío.");
-    const invalido = validarTextoCatalogo(nombre, "El nombre de la sucursal");
-    if (invalido) return error(invalido);
-
-    const sucursal = await ctx.db.sucursal.findUnique({ where: { id: sucursalId } });
-    if (!sucursal) return error("No se encontró esa sucursal.");
-
-    const existente = await ctx.db.sucursal.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" }, id: { not: sucursalId } } });
-    if (existente) return error(`Ya existe una sucursal "${existente.nombre}".`);
-
-    await ctx.transaccion(async (tx) => {
-      await tx.sucursal.update({ where: { id: sucursalId }, data: { nombre } });
-      await registrarCambioAuditado(tx, {
-        entidad: "Sucursal", entidadId: sucursalId, campo: "nombre", descripcion: `Sucursal "${sucursal.nombre}": nombre`,
-        valorAnterior: sucursal.nombre, valorNuevo: nombre, actorId: ctx.usuarioId, sucursalId: null,
-      });
-    });
-    revalidarCartasPublicas();
-    refrescarVistaSiHaceFalta(); // ver crearSucursalConAdmin
-    return ok(`Sucursal renombrada a "${nombre}".`);
+    const comando = guardComandoRenombrarSucursal(nombreNuevo);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await renombrarSucursalCasoDeUso(ctx, { sucursalId, nombre: comando.valor.nombre });
+    if (resultado.ok) {
+      revalidarCartasPublicas();
+      refrescarVistaSiHaceFalta(); // ver crearSucursalConAdmin
+    }
+    return aResultadoAccion(resultado);
   });
 }
