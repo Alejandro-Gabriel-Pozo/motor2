@@ -4,7 +4,7 @@ import { esTransicionValida, type EstadoEmpresa } from "@/core/features/empresa/
 import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "@/core/fiscal/public-servidor";
 import { formatearCuit, validarCuit } from "@/core/fiscal/public";
 import { esChoqueDeIndiceUnico } from "@/core/movimientos/con-reintento";
-import { obtenerGerenteDeEmpresa } from "@/core/permisos/gerencia";
+import { filtroDelGerente } from "@/core/permisos/filtros";
 import type { Db } from "@/lib/db-tipos";
 import { auditarEnTransaccion, type AutorEnInstalacion } from "./auditoria";
 import type { DependenciasDeEmpresas } from "./empresas";
@@ -81,7 +81,7 @@ async function enviarAvisoDeActivacion(
 /** El gerente actual y su email, leídos DENTRO de la transacción con `app.empresa_id` fijado. */
 async function gerenteConEmail(tx: Prisma.TransactionClient, empresaId: string): Promise<{ email: string; cuentaActiva: boolean } | null> {
   await tx.$executeRaw`SELECT set_config('app.empresa_id', ${empresaId}, true)`;
-  const gerente = await obtenerGerenteDeEmpresa(tx, empresaId);
+  const gerente = await tx.usuarioEmpresa.findFirst({ where: filtroDelGerente(empresaId), select: { usuarioId: true } });
   if (!gerente) return null;
   const usuario = await tx.user.findUnique({ where: { id: gerente.usuarioId }, select: { email: true, activoGlobal: true } });
   return usuario ? { email: usuario.email, cuentaActiva: usuario.activoGlobal } : null;

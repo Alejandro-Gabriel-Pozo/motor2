@@ -22,12 +22,8 @@ import "dotenv/config";
 import { parseArgs } from "node:util";
 import { clienteDePlataforma, prismaPlataforma as prisma } from "../cliente-plataforma";
 import { leerEntornoDePlataforma, leerInstalaciones, variableDeConexionDe } from "../../plataforma/src/entorno";
-import {
-  AdminDePlataformaInvalidoError,
-  crearAdminDePlataforma,
-  InstalacionNoRevisableError,
-  type InstalacionARevisar,
-} from "../../src/core/plataforma/primer-admin";
+import { AdminDePlataformaInvalidoError, InstalacionNoRevisableError } from "../../src/core/plataforma/primer-admin";
+import { crearAdminDePlataforma, type InstalacionARevisar } from "../../plataforma/src/servidor/alta-de-admin";
 
 async function main() {
   const { values } = parseArgs({ options: { email: { type: "string" }, nombre: { type: "string" } }, strict: true });

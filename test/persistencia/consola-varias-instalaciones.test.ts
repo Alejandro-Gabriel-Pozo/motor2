@@ -8,7 +8,8 @@ import { AHORA_DE_LA_CORRIDA, HORA_MS, enElFuturo } from "../setup/tiempo";
 import type { MensajeDeCorreo } from "../../src/core/correo/tipos";
 import { suspenderEmpresa } from "../../plataforma/src/servidor/ciclo-de-vida";
 import { darDeAltaEmpresa, empresasConEseCuit, reenviarInvitacion, type DependenciasDeEmpresas } from "../../plataforma/src/servidor/empresas";
-import { crearAdminDePlataforma, InstalacionNoRevisableError } from "../../src/core/plataforma/primer-admin";
+import { InstalacionNoRevisableError } from "../../src/core/plataforma/primer-admin";
+import { crearAdminDePlataforma } from "../../plataforma/src/servidor/alta-de-admin";
 
 /**
  * UNA consola, DOS bases (ADR-025), contra Postgres real: A es la base de pruebas de siempre y B una base temporal con todas las migraciones. Las dos tienen una `empresa_principal`
