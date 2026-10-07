@@ -1,7 +1,7 @@
 # ADR-027: Piso «administrador de sistema» y escalera de rangos del RBAC
 
-> Redactado el 2026-10-08 (Hito 3 de la rama `pureza-integracion`, trabajo 3.4). **Estado: aceptado por el dueño; la Fase F1 (sin migración) se implementa en
-> el trabajo 3.4** (`docs/plan-hito-3-pureza.md` §9, lista de control `docs/pureza-integracion.md`). Las fases siguientes (F2 a F4) necesitan migraciones y quedan
+> Redactado el 2026-10-08 (Hito 3 de la rama `pureza-integracion`, trabajo 3.4). **Estado: aceptado por el dueño; la Fase F1 (sin migración) está
+> implementada** (trabajo 3.4: `docs/plan-hito-3-pureza.md` §9, lista de control `docs/pureza-integracion.md`; ver «Cómo se verifica» al final). Las fases siguientes (F2 a F4) necesitan migraciones y quedan
 > FUERA de la rama: cada una requiere la autorización expresa del dueño. Corrige ADR-008 (§1, §2 y Consecuencias: la escalera de niveles suma un escalón) y
 > completa ADR-016 (el rol administrador se reconoce por su clave). Decisiones del dueño que recoge: **D0** (2026-10-06, «encargados» como capacidad opcional de
 > cada empresa), **D15** y **D16** (2026-10-07) y el vocabulario y la interpretación de D15/D16 del plan del Hito 3 (2026-10-08). Fuentes: la evaluación del
@@ -135,3 +135,16 @@ test (la lista de las 19).
   empresa, son de gobierno), sin migraciones de datos dobles.
 - El guardián de acceso (`test/arquitectura/acceso-solo-por-el-guard.test.ts`) reconoce el valor nuevo: una comparación con él fuera de `core/permisos`
   es una decisión de acceso fuera del guard.
+
+## Cómo se verifica (F1 hecha, 2026-10-08)
+
+- `test/permisos/piso-de-gobierno.test.ts`: la tabla 4×4 de `nivelAlcanzaElPiso` escrita a mano; quién es administrador de sistema hoy; las etiquetas;
+  la lista literal de las 12 claves de gobierno igual al piso nuevo; piso nuevo si y solo si módulo `administracion` y no gerente; las claves fijas del
+  admin y `capacidades_sucursal` en el piso nuevo; el rol `admin` alcanza las 12 y `operador` o un rol sin clave ninguna; el rango 2 ninguna (D16); las
+  19 acciones de empresa de D15 congeladas; el conteo 51/59/12/2.
+- `test/permisos/guardar-permisos.test.ts`: darle `ver_auditoria` al rol operador se rechaza con el mensaje que nombra «administrador de sistema».
+- `test/permisos/jerarquia-de-niveles.test.ts`, `test/permisos/matriz-de-fabrica.test.ts` (con `test/permisos/matriz-esperada.ts`) y la foto
+  `test/modulos/__golden__/empresa-principal.json` (regenerada a propósito una sola vez: 12 valores de piso).
+- Sin cambio de acceso: `test/permisos/caracterizacion-del-acceso.test.ts` regenerado da un diff vacío sobre
+  `test/permisos/caracterizacion/matriz-de-acceso.txt`, y `test/arquitectura/caracterizaciones-congeladas.test.ts` sigue verde sin regeneraciones.
+- Las mutaciones (rojo → revertido → verde) están anotadas en la fila 3.4 de `docs/pureza-integracion.md`.
