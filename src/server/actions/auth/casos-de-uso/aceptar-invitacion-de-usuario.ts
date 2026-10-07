@@ -8,6 +8,8 @@ import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { actorDesdeLaBase, mensajeSiNoPuedeAsignarRol, mensajeSiNoPuedeGestionar, mensajeSiReactivaAdminSinSerGerente, objetivoEnSucursal, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
 import { conInvariantesDeGobierno, InvarianteViolada } from "@/core/permisos/invariantes";
 import { hashDeToken } from "@/core/seguridad/tokens";
+import { marcarInvitacionAceptada } from "@/server/persistencia/invitaciones/marcar-invitacion-aceptada";
+import { activarCuentaEnEmpresa, asignarMembresiaPorInvitacion } from "@/server/persistencia/permisos/membresias";
 import { invitacionConSuBase } from "@/server/sesion/invitacion";
 
 /**
@@ -104,18 +106,11 @@ async function aceptarEnLaTransaccion(tx: Prisma.TransactionClient, entrada: Ent
     if (rechazoReactivar) return { ok: false, mensaje: `No se puede dar acceso a ${donde}: ${rechazoReactivar} ${PEDIR_REENVIO}` };
   }
 
-  const cambio = await tx.invitacion.updateMany({
-    where: { id: invitacion.id, hashToken, estado: "PENDIENTE", venceEn: { gt: ahora } },
-    data: { estado: "ACEPTADA", aceptadaEn: ahora, aceptadaPorId: usuario.id },
-  });
-  if (cambio.count !== 1) return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
+  // Las escrituras, en la persistencia (B3-8) y en el mismo orden: marcar la invitación, la cuenta en la empresa y su auditoría, y por cada sucursal la membresía y sus dos auditorías.
+  if (!(await marcarInvitacionAceptada(tx, { invitacionId: invitacion.id, hashToken, aceptadaPorId: usuario.id, ahora }))) return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
 
   await conInvariantesDeGobierno(tx, empresa.id, async () => {
-    await tx.usuarioEmpresa.upsert({
-      where: { usuarioId_empresaId: { usuarioId: usuario.id, empresaId: empresa.id } },
-      update: { activo: true },
-      create: { usuarioId: usuario.id, empresaId: empresa.id },
-    });
+    await activarCuentaEnEmpresa(tx, { usuarioId: usuario.id, empresaId: empresa.id });
     const primerOtorgante = invitacion.sucursales[0].invitadoPorId;
     await registrarCambioAuditado(tx, {
       entidad: "UsuarioEmpresa", entidadId: usuario.id, campo: "activo", descripcion: `Cuenta de "${usuario.email}" en la empresa: acepta la invitación`,
@@ -123,11 +118,7 @@ async function aceptarEnLaTransaccion(tx: Prisma.TransactionClient, entrada: Ent
     });
     for (const fila of invitacion.sucursales) {
       const previa = await tx.usuarioSucursal.findUnique({ where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId: fila.sucursalId } }, include: { rol: true } });
-      const membresia = await tx.usuarioSucursal.upsert({
-        where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId: fila.sucursalId } },
-        update: { rolId: fila.rolId, activo: true, ...(fila.notas !== null && { notas: fila.notas }) },
-        create: { usuarioId: usuario.id, sucursalId: fila.sucursalId, empresaId: empresa.id, rolId: fila.rolId, ...(fila.notas !== null && { notas: fila.notas }) },
-      });
+      const membresia = await asignarMembresiaPorInvitacion(tx, { usuarioId: usuario.id, sucursalId: fila.sucursalId, empresaId: empresa.id, rolId: fila.rolId, notas: fila.notas });
       const descripcion = `Usuario "${usuario.email}" en la sucursal "${fila.sucursal.nombre}"`;
       const comun = { entidad: "UsuarioSucursal", entidadId: membresia.id, actorId: fila.invitadoPorId, sucursalId: fila.sucursalId } as const;
       await registrarCambioAuditado(tx, { ...comun, campo: "rol", descripcion: `${descripcion}: rol (alta por invitación)`, valorAnterior: previa?.rol.nombre ?? null, valorNuevo: fila.rol.nombre });

@@ -1,0 +1,36 @@
+import "server-only";
+import type { Prisma } from "@prisma/client";
+
+/**
+ * Persistencia de las MEMBRESÍAS (Hito 3, B3-8 de `docs/plan-hito-3-pureza.md`): la cuenta de una persona en una empresa (`UsuarioEmpresa`) y su membresía en una sucursal
+ * (`UsuarioSucursal`). Son EXACTAMENTE las escrituras que el caso de uso `aceptar-invitacion-de-usuario.ts` hacía en línea; viven en `server/persistencia/permisos/` (y no en
+ * `invitaciones/`) para que las reutilice la migración de `server/actions/auth/usuarios.ts` (Fase I del Hito 3), que escribe las mismas tablas. Sin reglas de negocio: quién,
+ * dónde y con qué rol lo decide el caso de uso, que además audita (estas funciones no auditan: lo vigila la cadena de `escrituras-auditadas`). El cliente es SIEMPRE el primer
+ * parámetro, la transacción del caso de uso (nunca `db = prisma` por defecto), y corre dentro de `conInvariantesDeGobierno`.
+ */
+
+/** Crea la cuenta de la persona en la empresa, o la reactiva si ya existía (apagada o no). */
+export async function activarCuentaEnEmpresa(tx: Prisma.TransactionClient, entrada: { usuarioId: string; empresaId: string }): Promise<void> {
+  const { usuarioId, empresaId } = entrada;
+  await tx.usuarioEmpresa.upsert({
+    where: { usuarioId_empresaId: { usuarioId, empresaId } },
+    update: { activo: true },
+    create: { usuarioId, empresaId },
+  });
+}
+
+/**
+ * La membresía que da una invitación en una sucursal: la crea, o actualiza la que ya existía (rol y activo; las notas solo si la invitación trae notas, para no borrar las que
+ * hubiera). Devuelve la membresía (el caso de uso usa su id en la auditoría).
+ */
+export async function asignarMembresiaPorInvitacion(
+  tx: Prisma.TransactionClient,
+  entrada: { usuarioId: string; sucursalId: string; empresaId: string; rolId: string; notas: string | null },
+): Promise<{ id: string }> {
+  const { usuarioId, sucursalId, empresaId, rolId, notas } = entrada;
+  return tx.usuarioSucursal.upsert({
+    where: { usuarioId_sucursalId: { usuarioId, sucursalId } },
+    update: { rolId, activo: true, ...(notas !== null && { notas }) },
+    create: { usuarioId, sucursalId, empresaId, rolId, ...(notas !== null && { notas }) },
+  });
+}
