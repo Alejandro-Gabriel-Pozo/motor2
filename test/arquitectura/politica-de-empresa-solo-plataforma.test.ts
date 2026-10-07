@@ -8,17 +8,17 @@ import { describe, expect, it } from "vitest";
  * `Empresa.dosPaneles`) la cambia SOLO la plataforma, nunca la propia empresa. El rol de base `motor2_app` necesita UPDATE sobre `Empresa`
  * (el alta de una empresa y su activación lo usan), así que, mientras no se aplique la separación de roles opcional (S-13,
  * scripts/operaciones/crear-rol-motor2-plataforma.sql), la base no puede impedirlo: lo impide el código, con dos candados que se
- * complementan —este guardián y la regla `politica-solo-desde-plataforma` de dependency-cruiser (`npm run arquitectura`), que además
- * prohíbe importar `cambiar-politica-empresa.ts` desde cualquier otro archivo de `src/`.
+ * complementan —este guardián y la regla `operaciones-de-plataforma-solo-desde-scripts` de dependency-cruiser (`npm run arquitectura`), que además
+ * prohíbe importar `server/operaciones-de-plataforma/` desde cualquier otro archivo de `src/`.
  *
  * En `src/`:
  *  1. Ninguna escritura (`create|createMany|update|updateMany|upsert|delete|deleteMany`) sobre `<algo>.empresa` fuera de las EXCEPCIONES.
- *  2. Las excepciones: `cambiar-politica-empresa.ts` (el único que escribe la política; lo llama `scripts/politica-empresa.ts`) y
+ *  2. Las excepciones: `cambiar-politica-de-empresa.ts` (el único que escribe la política; lo llama `scripts/politica-empresa.ts`) y
  *     (`crearEmpresa`, que antes era la segunda excepción, se mudó a `test/setup` en E8: ya no está en `src/`).
  *  3. Ningún otro archivo menciona las perillas dentro de SQL crudo (`$executeRaw*`/`$queryRaw*`).
  */
 const RAIZ = join(__dirname, "../../src");
-const POLITICA = "core/features/empresa/cambiar-politica-empresa.ts";
+const POLITICA = "server/operaciones-de-plataforma/cambiar-politica-de-empresa.ts";
 const EXCEPCIONES = [POLITICA];
 const ESCRITURAS = new Set(["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"]);
 const PERILLAS = ["permisosEditables", "dosPaneles"];
@@ -107,7 +107,7 @@ describe("la política de empresa solo la cambia la plataforma", () => {
     }
   });
 
-  it("la única excepción que escribe las perillas es cambiar-politica-empresa.ts", () => {
+  it("la única excepción que escribe las perillas es cambiar-politica-de-empresa.ts", () => {
     expect(readFileSync(join(RAIZ, POLITICA), "utf8")).toContain("empresa.update");
   });
 

@@ -2,7 +2,8 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
-import { cambiarModulosDeEmpresa, ModulosDeEmpresaError } from "../../src/core/features/empresa/cambiar-modulos-de-empresa";
+import { ModulosDeEmpresaError } from "../../src/core/features/empresa/cambio-de-modulos";
+import { cambiarModulosDeEmpresa } from "../../src/server/operaciones-de-plataforma/cambiar-modulos-de-empresa";
 
 /**
  * Bloque 5A, P9: `cambiarModulosDeEmpresa` contra Postgres real. `motor2_app` no puede escribir `ModuloEmpresa`, así que acá la función corre con el

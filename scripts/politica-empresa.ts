@@ -16,7 +16,8 @@ import "dotenv/config";
 import { parseArgs } from "node:util";
 import { clienteDePlataforma } from "./cliente-plataforma";
 import { ConexionDePlataformaError, describirConexion, resolverConexionDePlataforma } from "./conexion-de-plataforma";
-import { cambiarPoliticaDeEmpresa, PoliticaDeEmpresaError } from "../src/core/features/empresa/cambiar-politica-empresa";
+import { PoliticaDeEmpresaError } from "../src/core/features/empresa/cambio-de-politica";
+import { cambiarPoliticaDeEmpresa } from "../src/server/operaciones-de-plataforma/cambiar-politica-de-empresa";
 import { PERFILES_DE_POLITICA, type NombreDePerfilDePolitica } from "../src/core/permisos/politica-de-empresa";
 import type { PrismaClient } from "@prisma/client";
 

@@ -264,24 +264,15 @@ module.exports = {
       to: { path: "^src/app/\\(app\\)/catalogo/" },
     },
     {
-      name: "politica-solo-desde-plataforma",
+      name: "operaciones-de-plataforma-solo-desde-scripts",
       comment:
-        "Add-on C2 (ADR-008/ADR-010): la política de plataforma de una empresa (permisosEditables, dosPaneles) solo la cambia la plataforma, " +
-        "por scripts/politica-empresa.ts (fuera de src/). Ningún archivo de src/ importa core/features/empresa/cambiar-politica-empresa.ts: " +
-        "ni una Server Action, ni una pantalla, ni otro caso de uso. Complemento: test/arquitectura/politica-de-empresa-solo-plataforma.test.ts.",
+        "Add-on C2 (ADR-008/ADR-010) y Bloque 5A P9 (ADR-011/ADR-012): la política de plataforma de una empresa (permisosEditables, dosPaneles) y el registro de módulos " +
+        "solo los cambia la plataforma, por scripts/politica-empresa.ts y scripts/modulos-empresa.ts (fuera de src/). Esas operaciones viven en src/server/operaciones-de-plataforma/ y " +
+        "ningún otro archivo de src/ las importa: ni una Server Action, ni una pantalla, ni otro caso de uso. La base lo exige además (solo el dueño y motor2_plataforma escriben ModuloEmpresa). " +
+        "Complemento: test/arquitectura/politica-de-empresa-solo-plataforma.test.ts.",
       severity: "error",
-      from: { path: "^src/", pathNot: "^src/core/features/empresa/cambiar-politica-empresa\\.ts$" },
-      to: { path: "^src/core/features/empresa/cambiar-politica-empresa\\.ts$" },
-    },
-    {
-      name: "modulos-solo-desde-plataforma",
-      comment:
-        "Bloque 5A, P9 (ADR-011/ADR-012): el registro de módulos de una empresa solo lo cambia la plataforma, por scripts/modulos-empresa.ts (fuera de src/). " +
-        "Ningún archivo de src/ importa core/features/empresa/cambiar-modulos-de-empresa.ts: ni una Server Action, ni una pantalla, ni otro caso de uso. " +
-        "La base lo exige además (solo el dueño y motor2_plataforma escriben ModuloEmpresa).",
-      severity: "error",
-      from: { path: "^src/", pathNot: "^src/core/features/empresa/cambiar-modulos-de-empresa\\.ts$" },
-      to: { path: "^src/core/features/empresa/cambiar-modulos-de-empresa\\.ts$" },
+      from: { path: "^src/", pathNot: "^src/server/operaciones-de-plataforma/" },
+      to: { path: "^src/server/operaciones-de-plataforma/" },
     },
     {
       name: "app-sin-consola-de-plataforma",

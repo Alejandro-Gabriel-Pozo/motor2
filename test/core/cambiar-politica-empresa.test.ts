@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
-import { cambiarPoliticaDeEmpresa, PoliticaDeEmpresaError } from "../../src/core/features/empresa/cambiar-politica-empresa";
+import { PoliticaDeEmpresaError } from "../../src/core/features/empresa/cambio-de-politica";
+import { cambiarPoliticaDeEmpresa } from "../../src/server/operaciones-de-plataforma/cambiar-politica-de-empresa";
 
 /** Plataforma (add-on C2): `cambiarPoliticaDeEmpresa` contra Postgres real, como `motor2_app` (`prisma`); las verificaciones van como dueño. */
 afterAll(() => prismaAdmin.$disconnect());
