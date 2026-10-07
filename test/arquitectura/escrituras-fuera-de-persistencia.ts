@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 48;
+export const TOPE_DE_ENTRADAS = 47;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -212,11 +212,6 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
   },
   "src/server/actions/permisos/permisos.ts": {
     escrituras: ["permisoRol.upsert"],
-    fase: "Fase 4",
-    motivo: "Tramo B: acción de gobierno de usuarios o permisos sin migrar; pasa a caso de uso + persistencia junto con la gerencia y las invitaciones.",
-  },
-  "src/server/actions/permisos/roles.ts": {
-    escrituras: ["rol.create", "rol.update", "rol.update"],
     fase: "Fase 4",
     motivo: "Tramo B: acción de gobierno de usuarios o permisos sin migrar; pasa a caso de uso + persistencia junto con la gerencia y las invitaciones.",
   },

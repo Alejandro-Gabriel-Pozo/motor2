@@ -197,6 +197,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 3, Fase I, I.1: actualizarCapacidad → permisos/casos-de-uso/actualizar-capacidad.ts (la sucursal existe, escritura en server/persistencia/permisos/capacidades.ts y auditoría en una transacción); el formato lo valida guardComandoActualizarCapacidad dentro de conPermisoDeEmpresa. listarCapacidades es una lectura (H8).",
   },
+  {
+    ruta: "src/server/actions/permisos/roles.ts",
+    motivo:
+      "Hito 3, Fase I, I.2: crearRol → permisos/casos-de-uso/crear-rol.ts (con guardComandoCrearRol dentro de conEdicionDePermisos), renombrarRol → casos-de-uso/renombrar-rol.ts y actualizarActivoRol → casos-de-uso/actualizar-activo-rol.ts (transacción de gobierno, salvaguardas G2, escritura en server/persistencia/permisos/roles.ts y auditoría en el caso de uso). listarRoles es una lectura (H8).",
+  },
 ];
 
 module.exports = {

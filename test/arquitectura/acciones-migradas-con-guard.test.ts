@@ -42,6 +42,10 @@ const SIN_GUARD: Record<string, string> = {
     "Aceptar la invitación del primer gerente (B3-5): el token NO viene del formulario sino de la cookie httpOnly que puso abrirInvitacion (que ya validó su forma), y lo vuelve a validar el caso de uso contra la base (invitacionConSuBase: forma, hash, PENDIENTE). El CUIT lo valida el caso de uso con validarCuit, porque su rechazo es parte del orden de chequeos que fija la huella de aceptación (después del email y del estado de la empresa).",
   "src/server/actions/auth/invitacion.ts#aceptarMiInvitacionDeUsuario":
     "Aceptar una invitación de usuario (B3-7): la acción no recibe ningún dato del formulario; el token sale de la cookie httpOnly que puso abrirInvitacion y lo valida el caso de uso contra la base (invitacionConSuBase: forma, hash, PENDIENTE, tipo usuario).",
+  "src/server/actions/permisos/roles.ts#renombrarRol":
+    "Renombrar un rol (Hito 3, I.2): recibe un id y un nombre, y la regla del nombre depende de la CLAVE del rol (los nombres de fábrica solo los lleva el rol con esa clave), que el caso de uso lee dentro de la transacción serializable; además «No se encontró ese rol» va antes que cualquier rechazo del nombre. Un guard previo cambiaría ese orden de mensajes. El nombre lo normaliza y lo juzga el caso de uso (normalizarNombreDeRol + mensajeSiNombreDeRolNoPermitido), igual que antes.",
+  "src/server/actions/permisos/roles.ts#actualizarActivoRol":
+    "Activar o desactivar un rol (Hito 3, I.2): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró ese rol»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
 };
 
 describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {

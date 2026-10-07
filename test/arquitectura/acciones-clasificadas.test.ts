@@ -47,7 +47,6 @@ const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "movimientos/precio-local.ts": SIN_CASO_DE_USO,
   "movimientos/secciones.ts": SIN_CASO_DE_USO,
   "permisos/permisos.ts": SIN_CASO_DE_USO,
-  "permisos/roles.ts": SIN_CASO_DE_USO,
   "pos/cuenta-apertura.ts": PENDIENTE,
   "pos/cuenta-pedido.ts": PENDIENTE,
   "pos/mesas.ts": SIN_CASO_DE_USO,

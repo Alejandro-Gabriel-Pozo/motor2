@@ -192,9 +192,16 @@ describe("escrituras de permisos y roles: siempre dentro de conEdicionDePermisos
     }
   });
 
-  it("el gate se usa de verdad: hay escrituras dentro de conEdicionDePermisos (la regla no quedó vacía)", () => {
+  it("la regla no quedó vacía: las escrituras de PermisoRol/Rol de src/ son exactamente estas (modo i o modo ii), y a la persistencia de permisos la importan casos de uso", () => {
     const conEscritura = rutas.filter((r) => !EXCEPCIONES.includes(nombreDe(r)) && escribeModelos(readFileSync(r, "utf8")));
-    expect(conEscritura.map(nombreDe).sort()).toEqual(["server/actions/permisos/permisos.ts", "server/actions/permisos/roles.ts"]);
+    // Hito 3, I.2: la escritura de Rol pasó a la persistencia de permisos (modo ii); la de PermisoRol sigue dentro de conEdicionDePermisos hasta I.3.
+    expect(conEscritura.map(nombreDe).sort()).toEqual(["server/actions/permisos/permisos.ts", "server/persistencia/permisos/roles.ts"]);
+    // El modo ii revisa a quién importa la persistencia: si nadie la importara, pasaría en vacío.
+    const archivosDeSrc = new Map(rutas.map((r) => [nombreDe(r), readFileSync(r, "utf8")]));
+    for (const persistencia of PERSISTENCIA_DE_PERMISOS.filter((p) => archivosDeSrc.has(p))) {
+      const casos = [...archivosDeSrc].filter(([ruta, fuente]) => /^server\/actions\/[^/]+\/casos-de-uso\//.test(ruta) && importados(ruta, fuente).has(sinExtension(persistencia)));
+      expect(casos.length, `${persistencia}: ningún caso de uso la importa`).toBeGreaterThan(0);
+    }
   });
 
   describe("el detector (con fuentes sintéticas)", () => {
