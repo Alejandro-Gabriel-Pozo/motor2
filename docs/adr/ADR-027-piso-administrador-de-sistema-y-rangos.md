@@ -1,7 +1,9 @@
 # ADR-027: Piso «administrador de sistema» y escalera de rangos del RBAC
 
 > Redactado el 2026-10-08 (Hito 3 de la rama `pureza-integracion`, trabajo 3.4). **Estado: aceptado por el dueño; la Fase F1 (sin migración) está
-> implementada** (trabajo 3.4: `docs/plan-hito-3-pureza.md` §9, lista de control `docs/pureza-integracion.md`; ver «Cómo se verifica» al final). Las fases siguientes (F2 a F4) necesitan migraciones y quedan
+> implementada** (trabajo 3.4: `docs/plan-hito-3-pureza.md` §9, lista de control `docs/pureza-integracion.md`; ver «Cómo se verifica» al final), **con los
+> contratos de O.35 completos y D13/D14 aplicado** (el mismo día, fila O.35: releer actor y rol dentro de la transacción, regla de «uno mismo», y la matriz del
+> rol administrador solo para el gerente; §6). Las fases siguientes (F2 a F4) necesitan migraciones y quedan
 > FUERA de la rama: cada una requiere la autorización expresa del dueño. Corrige ADR-008 (§1, §2 y Consecuencias: la escalera de niveles suma un escalón) y
 > completa ADR-016 (el rol administrador se reconoce por su clave). Decisiones del dueño que recoge: **D0** (2026-10-06, «encargados» como capacidad opcional de
 > cada empresa), **D15** y **D16** (2026-10-07) y el vocabulario y la interpretación de D15/D16 del plan del Hito 3 (2026-10-08). Fuentes: la evaluación del
@@ -90,9 +92,19 @@ test (la lista de las 19).
 - **C4** ningún caso de uso ni persistencia lee la clave de un rol (regla 4 de `test/arquitectura/acceso-solo-por-el-guard.test.ts`).
 - **C5** las escrituras de `Rol`/`PermisoRol` solo dentro de `conEdicionDePermisos` (`test/arquitectura/escrituras-de-permisos-por-politica.test.ts`).
 - **C6** techo en el alta de sucursal (`test/permisos/techo-en-el-alta-de-sucursal.test.ts`).
-- Pendientes dentro del Hito 3: releer el rol y el actor dentro de la transacción, la regla de «uno mismo» («nunca por encima del rango propio en el
-  contexto, salvo el gerente»), y D13/D14 (la matriz del rol `admin` y de los roles de rango 2 la edita solo el gerente; commit propio al final del hito).
-  Se agregan además una caracterización de los supuestos de hoy (que F3 y D13/D14 editan a propósito) y un guardián de que nadie escribe `Rol.nivel` fuera de
+- **Releer el actor dentro de la transacción** (hecho en el Hito 3): los casos de uso de usuarios y el alta de sucursal miden a quien actúa desde la base
+  (`actorDesdeLaBase` en una sucursal, `objetivoEnLaEmpresa` en la empresa), no con el contexto de la sesión, que pudo quedar viejo. Única diferencia fuera de
+  las carreras, fijada en `test/permisos/actor-desde-la-base-equivalencia.test.ts` y pendiente de decisión del dueño: quien es administrador de una sucursal
+  inactiva cuenta como administrador ahí (como en el gate de sucursal).
+- **Releer el rol dentro de la transacción** (hecho): `guardarPermisos` lee el rol por id, sin `activo` en el `where` (no toma un bloqueo de predicado sobre
+  todos los roles activos), y la acción, dentro de la transacción serializable.
+- **Regla de «uno mismo»** (hecha): «nunca por encima del rango propio en el contexto, salvo el gerente», dentro de `mensajeSiNoPuedeDarRolA` (C2). Hoy solo
+  nombra el motivo (el techo del rol ya rechazaba ese caso); con el rango 2 (F3) queda cerrado por su nombre.
+- **D13/D14** (aplicado, commit propio al final del hito): la matriz del rol `admin` y de los roles de rango 2 la edita solo el gerente
+  (`laMatrizDelRolLaEditaSoloElGerente` y `mensajeSiNoPuedeEditarLaMatrizDelRol` en `src/core/permisos/matriz.ts`; quien actúa se lee de la base dentro de la
+  transacción de `guardarPermisos`). Un administrador que no es el gerente sigue editando el rol operador y los personalizados; el permiso de la pantalla
+  (`gestion_permisos`) no cambió, así que la caracterización del acceso queda igual.
+- Además: una caracterización de los supuestos (que F3 edita a propósito; D13/D14 ya editó su caso (c)) y un guardián de que nadie escribe `Rol.nivel` fuera de
   la futura acción de cambiar el nivel (lista de permitidos vacía hasta F3).
 
 ### 7. Fases
@@ -104,7 +116,8 @@ test (la lista de las 19).
 - **F2 [MIG]:** la columna `Rol.nivel` dormida (aditiva, con valor por defecto operario y relleno del rol `admin`) y el CHECK «editar ⇒ ver» de
   `PermisoRol`. Ningún lector la lee todavía.
 - **F3 (código + migración de datos):** despertar la columna (rango 2 para los roles que la empresa suba), la acción nivel_rol para cambiarlo (citada sin
-  comillas porque todavía no existe), la regla de «uno mismo», limpiar las filas por encima del piso al bajar, y la interfaz.
+  comillas porque todavía no existe), la regla de «uno mismo» medida con cuatro escalones (la regla ya existe desde el Hito 3, con los tres de hoy), limpiar
+  las filas por encima del piso al bajar, y la interfaz.
 - **F4 [MIG]:** el CHECK de los roles de sistema (el rol `admin` no puede quedar con otro nivel) y el diagnóstico en el build.
 
 ## Qué queda fuera (requiere autorización expresa del dueño)
@@ -150,4 +163,8 @@ test (la lista de las 19).
 - Los supuestos de hoy que F3 y D13/D14 van a cambiar quedan fijados en `test/permisos/caracterizacion-supuestos-rbac.test.ts` (se edita a propósito en
   el commit que cambie cada regla), y `test/arquitectura/rol-nivel-solo-desde-cambiar-nivel.test.ts` impide escribir `Rol.nivel` (lista de permitidos
   vacía hasta F3).
+- Contratos de O.35 y D13/D14: `test/permisos/actor-desde-la-base-equivalencia.test.ts` (el actor de la base es el del contexto fuera de las carreras),
+  `test/permisos/actor-releido-en-la-transaccion.test.ts` (un contexto viejo ya no alcanza), `test/permisos/guardar-permisos-lecturas-dentro-de-la-transaccion.test.ts`
+  (rol y acción dentro de la transacción), `test/permisos/dar-rol-a-uno-mismo.test.ts` y `test/permisos/dar-rol-a.propiedades.test.ts` («uno mismo»), y
+  `test/permisos/matriz-del-admin-solo-gerente.test.ts` con el caso (c) de `test/permisos/caracterizacion-supuestos-rbac.test.ts` (D13/D14).
 - Las mutaciones (rojo → revertido → verde) están anotadas en las filas 3.4 y O.35 de `docs/pureza-integracion.md`.
