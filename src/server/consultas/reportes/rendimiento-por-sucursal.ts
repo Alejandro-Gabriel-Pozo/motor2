@@ -1,6 +1,7 @@
 import "server-only";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
-import { ALCANCE_CENTRAL, cargarRecetasPropiasHabilitadas, cargarRecetasVigentes } from "@/core/catalogo/public-servidor";
+import { ALCANCE_CENTRAL } from "@/core/catalogo/public";
+import { cargarRecetasPropiasHabilitadas, cargarRecetasVigentes } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje } from "@/core/reportes/public";
 import type { Db } from "@/lib/db-tipos";
 import type { ValorPorSucursal, FilaComparacionRendimiento, FiltroComparacionRendimiento } from "@/core/reportes/public";

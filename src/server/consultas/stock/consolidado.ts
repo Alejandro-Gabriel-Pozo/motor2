@@ -1,5 +1,5 @@
 import "server-only";
-import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { whereDisponibleEn } from "@/core/catalogo/public";
 import { armarStockConsolidado, movimientosPorLeer, type FilaStockConsolidado, type MovimientoPosteriorAlConteo } from "@/core/stock/public";
 import type { Db } from "@/lib/db-tipos";
 

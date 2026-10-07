@@ -3,7 +3,7 @@ import { tieneStockReal } from "@/core/movimientos/public";
 import { obtenerCostoActualPorMP } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad } from "@/core/reportes/public";
-import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { whereDisponibleEn } from "@/core/catalogo/public";
 import type { FilaValuacionInventario, ReporteValuacionInventario } from "@/core/reportes/public";
 
 /**

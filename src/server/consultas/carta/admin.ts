@@ -1,5 +1,7 @@
 import "server-only";
-import { disponibilidadDeProductos, precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { precioLocalActivoEn, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
+import { whereDisponibleEn } from "@/core/catalogo/public";
 import { esClavePortal, esClaveTema, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, type SeccionCartaAdmin, type ProductoCartaAdmin, type GeneroCartaAdmin, type SucursalConCartaPropia, type DatosAdminCarta, type OpcionItemAgrupadoAdmin, type DatosAdminItemsAgrupados, type SucursalPortalAdmin, type TemaAdmin, type PortalEmpresaAdmin } from "@/core/carta/public";
 import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCartaConDiagnostico } from "@/server/lecturas/carta/menu";

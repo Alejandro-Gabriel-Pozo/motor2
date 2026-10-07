@@ -25,3 +25,7 @@ export { describirCalibracion, describirDescarteArrastre, describirVueltaAlCentr
 export type { OrigenCalibracionInput } from "./origen-cambio-receta";
 export { claveDeUnidadDeSustituto, validarCabecera, validarIngredientes, validarPasos } from "./receta-validacion";
 export type { CabeceraRecetaInput, DatosParaValidarReceta, IngredienteInput, PasoInput } from "./receta-validacion";
+export { resolverDisponibilidad, resolverDisponibilidadPorSucursal } from "./disponibilidad-producto";
+export { whereDisponibleEn, whereDisponibleEnAlguna } from "./disponibilidad-producto-consulta";
+export { ALCANCE_CENTRAL, alcanceDeSucursal, incluirRecetaVigente, quedarseConLaVigente, whereConReceta } from "./recetas-vigentes";
+export type { AlcanceCentral, AlcanceDeReceta } from "./recetas-vigentes";

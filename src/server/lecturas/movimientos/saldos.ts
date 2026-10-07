@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { elegirLoteMasProximoAVencer, repartirConsumoPorFamilia, type ParteDeReparto } from "@/core/movimientos/public";
-import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
+import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 

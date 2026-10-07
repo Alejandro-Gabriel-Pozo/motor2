@@ -1,6 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
-import { cargarRecetasPropiasHabilitadas } from "@/core/catalogo/public-servidor";
+import { cargarRecetasPropiasHabilitadas } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { obtenerEstadoDeRecetaPropia } from "@/server/lecturas/catalogo/receta-propia";
 
 export { obtenerEstadoDeRecetaPropia };

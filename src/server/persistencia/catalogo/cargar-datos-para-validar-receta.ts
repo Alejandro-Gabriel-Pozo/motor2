@@ -1,6 +1,6 @@
 import "server-only";
 import { claveDeUnidadDeSustituto, type CabeceraRecetaInput, type DatosParaValidarReceta, type IngredienteInput } from "@/core/catalogo/public";
-import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
+import { whereDisponibleEnAlguna } from "@/core/catalogo/public";
 import { MAXIMO_INGREDIENTES_RECETA, MAXIMO_SUSTITUTOS_POR_INGREDIENTE } from "@/core/datos/limites";
 import { validarUnidadInsumo } from "@/server/lecturas/catalogo/unidad-de-insumo";
 import type { Db } from "@/lib/db-tipos";

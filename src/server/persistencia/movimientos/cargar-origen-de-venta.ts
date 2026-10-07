@@ -2,7 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { whereSeccionHabitualVigente } from "@/core/stock/public";
-import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
+import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { crearLibroDeStock, type SeccionCandidata } from "@/core/movimientos/public";
 import type { DatosDeOrigen, OrigenPreparado, OrigenVenta } from "@/core/movimientos/public";
 

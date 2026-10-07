@@ -1,6 +1,8 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import fc from "fast-check";
-import { ALCANCE_CENTRAL, alcanceDeSucursal, cargarRecetaVigente, cargarRecetasVigentes, incluirRecetaVigente, quedarseConLaVigente, versionVigentePorProducto, whereConReceta } from "../../src/core/catalogo/recetas-vigentes";
+import { quedarseConLaVigente } from "../../src/core/catalogo/recetas-vigentes";
+import { ALCANCE_CENTRAL, alcanceDeSucursal, incluirRecetaVigente, whereConReceta } from "../../src/core/catalogo/public";
+import { cargarRecetaVigente, cargarRecetasVigentes, versionVigentePorProducto } from "../../src/server/lecturas/catalogo/recetas-vigentes";
 
 /**
  * El embudo de la receta vigente (vigente = la de mayor `version` de cada plato). La lógica pura es `quedarseConLaVigente`; el resto son
