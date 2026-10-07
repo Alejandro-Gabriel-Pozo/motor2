@@ -1,19 +1,15 @@
 import "server-only";
 import type { PrismaClient } from "@prisma/client";
 import { estadoEfectivoDeInvitacion, esTokenConFormaValida, type AccesoDeInvitacion } from "@/core/features/empresa/invitacion";
-import { aceptarInvitacionDeUsuario } from "@/core/features/empresa/aceptar-invitacion-de-usuario";
-import { MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion } from "@/core/features/empresa/aceptar-invitacion";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
-import { InvarianteViolada } from "@/core/permisos/invariantes";
 import { hashDeToken } from "@/core/seguridad/tokens";
 import { dbDeEmpresa, dbDeInvitacion, transaccionDeLaEmpresa, verificarRolDeEjecucionDelProceso } from "@/core/auth/base";
 import type { Transaccion } from "@/lib/db-tipos";
-import { abreLaVia3, TIPO_INVITACION_USUARIO, type VistaDeInvitacion } from "@/core/auth/invitacion";
+import { abreLaVia3, type VistaDeInvitacion } from "@/core/auth/invitacion";
 
 /**
  * La invitación LEÍDA por su token (Hito 3, B3-3 de `docs/plan-hito-3-pureza.md`): lo que de `core/auth/invitacion.ts` tocaba la base. El invitado todavía no tiene empresa
  * ni sesión (o tiene una de otras empresas), así que se busca por el hash con `dbDeInvitacion` (política `lectura_por_token`). Aceptar la del primer gerente es un caso de uso
- * (`server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts`, B3-5); la de usuario, `core/features/empresa/aceptar-invitacion-de-usuario.ts`; la vinculación de la cuenta de Google, en `vincular-cuenta.ts`. Las reglas puras (tipos, cookie, clase de
+ * (`server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts`, B3-5); la de usuario también (`aceptar-invitacion-de-usuario.ts`, B3-7); la vinculación de la cuenta de Google, en `vincular-cuenta.ts`. Las reglas puras (tipos, cookie, clase de
  * invitación) siguen en `core/auth/invitacion.ts`.
  */
 
@@ -75,38 +71,6 @@ export async function invitacionHabilitaElIngreso(token: string | undefined, ema
   const vista = await invitacionDelToken(token, ahora);
   if (!vista || vista.estado !== "PENDIENTE" || !abreLaVia3(vista)) return false;
   return vista.email === emailPerfil.trim().toLowerCase();
-}
-
-/**
- * El guard del permiso «gestionar usuarios» (módulos, capacidades y rol de quien otorgó), tal como lo da `requierePermiso` del gate. Lo recibe quien llama (la Server
- * Action de la invitación) y no se importa acá: la sesión no depende del guard (regla `sesion-capa`). Una prueba de arquitectura exige que la única llamada de producción le
- * pase el `requierePermiso` REAL del gate (`test/arquitectura/invitacion-recibe-el-guard.test.ts`). El `db` se tipa con `PrismaClient` (lo que devuelve `dbDeEmpresa`) y no con
- * `ReturnType<typeof dbDeEmpresa>`: así nombrar el tipo no obliga a importar `core/auth/base` (`base-solo-desde-lista` cuenta también los `import type`).
- */
-export type ExigirGestionDeUsuarios = (otorganteId: string, sucursalId: string, accion: "gestion_usuarios", db: PrismaClient) => Promise<{ ok: boolean }>;
-
-/**
- * Acepta una invitación de USUARIO en nombre de `usuario` (ya autenticado con Google): crea sus membresías, revalidando por cada sucursal el permiso y el techo de quien la otorgó
- * (E8, ADR-024). Todo o nada, en una transacción serializable bajo la empresa de la invitación. El permiso `gestion_usuarios` de quien otorgó pasa por el guard (módulos y capacidades).
- */
-export async function aceptarInvitacionDeUsuarioDelToken(
-  entrada: { token: string; usuario: { id: string; email: string }; ahora?: Date },
-  requierePermiso: ExigirGestionDeUsuarios,
-): Promise<ResultadoDeAceptacion> {
-  const ahora = entrada.ahora ?? new Date();
-  const invitacion = await invitacionConSuBase(entrada.token, ahora);
-  if (!invitacion || invitacion.vista.estado !== "PENDIENTE" || invitacion.vista.tipo !== TIPO_INVITACION_USUARIO) return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
-  const dbEmpresa = invitacion.db;
-  const puedeOtorgar = async (otorganteId: string, sucursalId: string) => (await requierePermiso(otorganteId, sucursalId, "gestion_usuarios", dbEmpresa)).ok;
-  try {
-    return await conTransaccionSerializable(
-      invitacion.transaccion,
-      (tx) => aceptarInvitacionDeUsuario(tx, { token: entrada.token, usuario: entrada.usuario, ahora, puedeOtorgar }),
-    );
-  } catch (e) {
-    if (e instanceof InvarianteViolada) return { ok: false, mensaje: e.mensaje };
-    throw e;
-  }
 }
 
 /**

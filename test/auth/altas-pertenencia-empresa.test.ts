@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { agregarOActualizarUsuario } from "../../src/server/actions/auth/usuarios";
-import { aceptarInvitacionDeUsuarioDelToken } from "../../src/server/sesion/invitacion";
+import { aceptarInvitacionDeUsuarioCasoDeUso as aceptarInvitacionDeUsuarioDelToken } from "../../src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-usuario";
 import { requierePermiso } from "../../src/server/acceso/gate";
 import { enviadorEnMemoriaDelCanal } from "../../src/core/correo/enviar";
 import { crearSucursalConAdmin } from "../../src/server/actions/auth/sucursales";
@@ -39,7 +39,7 @@ describe("altas de usuario — pertenencia a la empresa", () => {
     expect(correo.enviados).toHaveLength(1);
 
     const nuevo = await prismaAdmin.user.create({ data: { email: "nuevo@test.com" } });
-    expect((await aceptarInvitacionDeUsuarioDelToken({ token, usuario: { id: nuevo.id, email: nuevo.email } }, requierePermiso)).ok).toBe(true);
+    expect((await aceptarInvitacionDeUsuarioDelToken({ token, usuario: { id: nuevo.id, email: nuevo.email }, ahora: new Date() }, requierePermiso)).ok).toBe(true);
     const pertenencias = await prismaAdmin.usuarioEmpresa.findMany({ where: { usuarioId: nuevo.id } });
     expect(pertenencias).toHaveLength(1);
     expect(pertenencias[0].empresaId).toBe(base.sucursal.empresaId);

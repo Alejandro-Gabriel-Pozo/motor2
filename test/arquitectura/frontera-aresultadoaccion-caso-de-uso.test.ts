@@ -47,6 +47,8 @@ const SIN_ENVOLTORIO_TODAVIA: Record<string, string> = {
     "campos extra elegidos a mano. Diseño permanente, no un olvido.",
   "server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts":
     "aceptarMiInvitacion (server/actions/auth/invitacion.ts) no devuelve el resultado del caso de uso: si falla devuelve error(resultado.mensaje) (solo el texto) y si sale bien borra la cookie y redirige a /login (redirect de Next, que corta la acción). El ResultadoDeAceptacion ({ ok, empresaId, nombreEmpresa } | { ok, mensaje }) no tiene codigo ni erroresPorCampo y nunca llega entero al navegador. Diseño permanente (B3-5), no un olvido.",
+  "server/actions/auth/casos-de-uso/aceptar-invitacion-de-usuario.ts":
+    "aceptarMiInvitacionDeUsuario (server/actions/auth/invitacion.ts): mismo diseño que la de gerente — si falla devuelve error(resultado.mensaje) y si sale bien borra la cookie y redirige a /login; el ResultadoDeAceptacion nunca llega entero al navegador. Diseño permanente (B3-7), no un olvido.",
   "server/actions/reportes/casos-de-uso/sincronizar-dolar.ts":
     "No tiene Server Action ni navegador: lo invocan los crons y el encabezado de la aplicación (`sincronizaciones.ts`, sin \"use server\", permiso SISTEMA) y devuelve un ResultadoSincronizacionDolar (días rellenados, fuente, errores) o lanza si ninguna fuente responde (el cron contesta 502). Nunca llega al browser. Diseño permanente, no un olvido.",
   "server/actions/reportes/casos-de-uso/sincronizar-ipc.ts":

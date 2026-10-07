@@ -5,11 +5,12 @@ import { redirect } from "next/navigation";
 import { getUsuarioActual } from "@/core/auth/session";
 import { requierePermiso } from "@/server/acceso/gate";
 import { nombreCookieInvitacion, opcionesCookieInvitacion } from "@/core/auth/invitacion";
-import { aceptarInvitacionDeUsuarioDelToken, invitacionDelToken } from "@/server/sesion/invitacion";
+import { invitacionDelToken } from "@/server/sesion/invitacion";
 import { MENSAJE_ENLACE_NO_VALIDO } from "@/core/features/empresa/aceptar-invitacion";
 import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";
 import { error, type ResultadoAccion } from "../tipos";
 import { aceptarInvitacionDeGerenteCasoDeUso } from "./casos-de-uso/aceptar-invitacion-de-gerente";
+import { aceptarInvitacionDeUsuarioCasoDeUso } from "./casos-de-uso/aceptar-invitacion-de-usuario";
 
 /**
  * Invitación del primer gerente, pantalla `/invitacion` (E5, ADR-020). Las dos acciones son previas al contexto de empresa: la primera es pública (su
@@ -52,7 +53,9 @@ export async function aceptarMiInvitacion(formData: FormData): Promise<Resultado
 
 /**
  * Acepta la invitación de USUARIO del token de la cookie con la cuenta de la sesión (E8, ADR-024): se crean sus membresías, revalidando el permiso de quien las otorgó.
- * Al salir bien borra la cookie y manda a `/login`, que lo lleva a la empresa (o a elegir una).
+ * Al salir bien borra la cookie y manda a `/login`, que lo lleva a la empresa (o a elegir una). Adaptador de su caso de uso (`casos-de-uso/aceptar-invitacion-de-usuario.ts`,
+ * Hito 3, B3-7), al que le pasa el `requierePermiso` REAL del gate para revalidar a quien otorgó (`invitacion-recibe-el-guard`). Como la de gerente: sin `conPermiso*`
+ * (`CASOS_SIN_PERMISO`), sin `guardComando*` (`SIN_GUARD`) y sin `aResultadoAccion` (`SIN_ENVOLTORIO_TODAVIA`).
  */
 export async function aceptarMiInvitacionDeUsuario(): Promise<ResultadoAccion> {
   const usuario = await getUsuarioActual();
@@ -60,7 +63,7 @@ export async function aceptarMiInvitacionDeUsuario(): Promise<ResultadoAccion> {
   const cookieStore = await cookies();
   const token = cookieStore.get(nombreCookieInvitacion(process.env))?.value;
   if (!token) return error(MENSAJE_ENLACE_NO_VALIDO);
-  const resultado = await aceptarInvitacionDeUsuarioDelToken({ token, usuario: { id: usuario.id, email: usuario.email } }, requierePermiso);
+  const resultado = await aceptarInvitacionDeUsuarioCasoDeUso({ token, usuario: { id: usuario.id, email: usuario.email }, ahora: new Date() }, requierePermiso);
   if (!resultado.ok) return error(resultado.mensaje);
   cookieStore.delete(nombreCookieInvitacion(process.env));
   redirect("/login");

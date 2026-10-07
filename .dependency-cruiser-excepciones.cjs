@@ -143,6 +143,11 @@ const PAGINAS_CON_LECTURAS_O_PERSISTENCIA = [];
  */
 const ACCIONES_CON_CASO_DE_USO = [
   {
+    ruta: "src/server/actions/auth/invitacion.ts",
+    motivo:
+      "Hito 3, B3-5 + B3-7: aceptarMiInvitacion → auth/casos-de-uso/aceptar-invitacion-de-gerente.ts y aceptarMiInvitacionDeUsuario → auth/casos-de-uso/aceptar-invitacion-de-usuario.ts (transacción serializable, revalidación, persistencia y auditoría viven en el caso de uso). abrirInvitacion solo lee la invitación y escribe la cookie: no escribe la base.",
+  },
+  {
     ruta: "src/server/actions/movimientos/compras.ts",
     motivo:
       "Piloto de la Fase M: anularCompra → casos-de-uso/anular-compra.ts y corregirCompra → casos-de-uso/corregir-compra.ts (transacción, I3, persistencia y auditoría viven en el caso de uso).",

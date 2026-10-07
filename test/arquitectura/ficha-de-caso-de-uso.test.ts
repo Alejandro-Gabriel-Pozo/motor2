@@ -185,6 +185,8 @@ function permisosObservados(fuenteDelCaso: string, envolventes: string[]): strin
 export const CASOS_SIN_PERMISO: Record<string, string> = {
   "server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts":
     "Aceptar la invitación del primer gerente (E5, ADR-020; B3-5): quien acepta todavía no tiene empresa ni membresía, así que no hay permiso que pedir. La autoridad es el token del enlace (cookie httpOnly) leído por su hash más el email de la cuenta de Google de la sesión, y los valida el propio caso de uso contra la invitación PENDIENTE (huella-de-aceptacion).",
+  "server/actions/auth/casos-de-uso/aceptar-invitacion-de-usuario.ts":
+    "Aceptar una invitación de usuario (E8, ADR-024; B3-7): quien acepta todavía no tiene membresía, así que no hay permiso suyo que pedir; la autoridad es el token del enlace (cookie httpOnly) más el email de la cuenta de Google. El permiso que SÍ se exige es el de quien otorgó cada sucursal (gestion_usuarios, por el guard real del gate que recibe por parámetro: invitacion-recibe-el-guard), revalidado al aceptar (huella-de-aceptacion).",
 };
 
 /** Los casos de uso que declaran `permiso=SIN_PERMISO` y no están en la lista cerrada, y las entradas de la lista que ningún caso real usa. */
@@ -322,7 +324,7 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
   const acciones = new Set<string>(ACCIONES.map((a) => a.clave));
 
   it("encuentra los casos de uso reales (si dejan de encontrarse, la regla quedó vacía)", () => {
-    expect(casos.length).toBeGreaterThanOrEqual(24);
+    expect(casos.length).toBeGreaterThanOrEqual(25);
   });
 
   it("todo caso de uso real tiene su ficha completa y de vocabulario cerrado", () => {

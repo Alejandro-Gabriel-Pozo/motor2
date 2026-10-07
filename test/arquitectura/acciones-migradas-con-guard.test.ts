@@ -40,6 +40,8 @@ const llamaAUnGuard = (a: Accion) => a.llamadas.some((l) => /^guardComando[A-Z]/
 const SIN_GUARD: Record<string, string> = {
   "src/server/actions/auth/invitacion.ts#aceptarMiInvitacion":
     "Aceptar la invitación del primer gerente (B3-5): el token NO viene del formulario sino de la cookie httpOnly que puso abrirInvitacion (que ya validó su forma), y lo vuelve a validar el caso de uso contra la base (invitacionConSuBase: forma, hash, PENDIENTE). El CUIT lo valida el caso de uso con validarCuit, porque su rechazo es parte del orden de chequeos que fija la huella de aceptación (después del email y del estado de la empresa).",
+  "src/server/actions/auth/invitacion.ts#aceptarMiInvitacionDeUsuario":
+    "Aceptar una invitación de usuario (B3-7): la acción no recibe ningún dato del formulario; el token sale de la cookie httpOnly que puso abrirInvitacion y lo valida el caso de uso contra la base (invitacionConSuBase: forma, hash, PENDIENTE, tipo usuario).",
 };
 
 describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {

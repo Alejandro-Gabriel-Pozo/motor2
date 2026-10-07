@@ -18,8 +18,6 @@ const PENDIENTE = "abre una transacción dentro de la acción y se protege del d
 
 const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "auth/empresa-activa.ts": SIN_CASO_DE_USO,
-  "auth/invitacion.ts":
-    "Hito 3, B3-5: aceptarMiInvitacion ya llama a su caso de uso (casos-de-uso/aceptar-invitacion-de-gerente.ts); el archivo pasa a ACCIONES_CON_CASO_DE_USO cuando migra su última escritura, aceptarMiInvitacionDeUsuario (B3-7).",
   "auth/sucursal-activa.ts": SIN_CASO_DE_USO,
   "auth/sucursales.ts": SIN_CASO_DE_USO,
   "auth/usuarios.ts": SIN_CASO_DE_USO,
