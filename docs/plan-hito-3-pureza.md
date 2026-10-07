@@ -53,6 +53,8 @@ Cada paso = un commit, con su test escrito ANTES (se ve en rojo) y su **mutació
 
 ## 5. H8 (D.1): las 18 lecturas
 
+> **Ejecutado (2026-10-08)**: H8-1 a H8-9 en la rama, con el e2e opcional; evidencia, mutaciones y desvíos en la fila D.1 de `docs/pureza-integracion.md`. Desvíos: `requerirVerAlgunaEnSucursal` nace en H8-7 (con su consumidor) y no en H8-3; `requerirSesionEnSucursal` deja de exportarse en H8-7b y `requerirSesion` en H8-8b.
+
 Verificado: **exactamente 18 llamadas a `requerirSesion`/`requerirSesionEnSucursal` en 9 archivos** (17 + `listarSeccionesActivas`); no hay más. Hallazgos extra: `lecturas-con-sesion.test.ts` cubre 16 (faltan `listarMotivosMermaActivos` y `listarDestinosConsumoActivos`); los comentarios de `con-sesion.ts:37-38`, `lecturas-con-permiso-de-ver.test.ts:32-34`, `secciones.ts:9-16`, `motivos.ts:12-19` contradicen la decisión y se reescriben; `listarProveedores` entrega la ficha completa a cualquier sesión.
 
 Guarda nuevo en `src/server/actions/con-sesion.ts`: `requerirVerAlguna(claves)` y `requerirVerAlgunaEnSucursal(sucursalId, claves)` (lista literal de claves en cada llamada, para que el inventario por AST la vea). Se registran en `GUARDAS_POR_MODULO["con-sesion"]` (`test/arquitectura/guardas/analizador.ts`) y `GUARDAS_DE_CLAVE` (`inventario.ts`, `{indice:0|1, forma:"lista"}`). Falla cerrado.
