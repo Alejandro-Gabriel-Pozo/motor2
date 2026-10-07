@@ -6,7 +6,8 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMem
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { darDeAltaProducto } from "../../src/server/actions/catalogo/productos";
 import { agregarIngredienteAReceta, guardarReceta } from "../../src/server/actions/catalogo/recetas";
-import { agregarIngredienteARecetaPropia, crearRecetaPropiaDesdeLaCentral } from "../../src/server/actions/catalogo/receta-sucursal";
+import { versionVigenteDeReceta } from "../setup/version-de-receta";
+import { agregarIngredienteARecetaPropia, crearRecetaPropiaDesdeLaCentral, volverALaRecetaCentral } from "../../src/server/actions/catalogo/receta-sucursal";
 
 /**
  * H7 (Pureza Fase 4, decisión del dueño 2026-10-06: «rechazar con mensaje»): una edición de la receta que se armó leyendo la versión N NO puede pisar a otro que guardó N+1 en el medio.
@@ -87,26 +88,54 @@ describe("guardar la receta con versión esperada (H7)", () => {
     }
   });
 
-  it("agregar un ingrediente desde dos pantallas a la vez nunca pierde un cambio: todo guardado que dijo «ok» está en la última versión", async () => {
-    expect((await guardarReceta(pvId, [linea(mp1Id)], [], {}, 0)).ok).toBe(true);
-    const [a, b] = await Promise.all([agregarIngredienteAReceta(pvId, linea(mp2Id)), agregarIngredienteAReceta(pvId, linea(mp3Id))]);
-    expect(a.ok || b.ok, "al menos uno guarda").toBe(true);
-    const ultima = await ingredientesDeLaUltima();
-    if (a.ok) expect(ultima, "el cambio de A").toContain(mp2Id);
-    if (b.ok) expect(ultima, "el cambio de B").toContain(mp3Id);
-    for (const r of [a, b]) if (!r.ok) expect(r.mensaje).toMatch(/cambió mientras la editabas/);
-  });
+  describe("las acciones puntuales piden la versión que la PANTALLA mostraba (`versionVista`)", () => {
+    it("una pantalla vieja no pisa lo que otra persona ya guardó: se rechaza con el mensaje y la receta queda como la dejó la otra", async () => {
+      expect((await guardarReceta(pvId, [linea(mp1Id)], [], {}, 0)).ok).toBe(true); // v1
+      const vistaPorAmbos = await versionVigenteDeReceta(pvId); // las dos personas abren el editor en la v1
 
-  it("la receta PROPIA de la sucursal también: el guardado armado sobre una versión vieja de la serie propia se rechaza", async () => {
-    expect((await guardarReceta(pvId, [linea(mp1Id)], [], {}, 0)).ok).toBe(true);
-    expect((await crearRecetaPropiaDesdeLaCentral(pvId)).ok).toBe(true); // propia v1
-    const sucursalId = (await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: pvId, sucursalId: { not: null } } })).sucursalId;
-    const [a, b] = await Promise.all([agregarIngredienteARecetaPropia(pvId, linea(mp2Id)), agregarIngredienteARecetaPropia(pvId, linea(mp3Id))]);
-    expect(a.ok || b.ok).toBe(true);
-    const ultima = await ingredientesDeLaUltima(sucursalId);
-    if (a.ok) expect(ultima).toContain(mp2Id);
-    if (b.ok) expect(ultima).toContain(mp3Id);
-    for (const r of [a, b]) if (!r.ok) expect(r.mensaje).toMatch(/cambió mientras la editabas/);
-    expect(await versiones(null), "la central no se tocó").toHaveLength(1);
+      expect((await agregarIngredienteAReceta(pvId, linea(mp2Id), vistaPorAmbos)).ok).toBe(true); // la primera guarda: v2
+      const tarde = await agregarIngredienteAReceta(pvId, linea(mp3Id), vistaPorAmbos); // la segunda, con su pantalla vieja
+      expect(tarde.ok).toBe(false);
+      expect(!tarde.ok && tarde.mensaje).toMatch(/cambió mientras la editabas.*versión 2.*partiste de la 1/);
+      expect((await versiones()).map((v) => v.version)).toEqual([1, 2]);
+      expect(await ingredientesDeLaUltima()).toEqual([mp1Id, mp2Id].sort());
+
+      // Con la pantalla recargada (v2) el mismo cambio sí entra, y suma al de la otra persona.
+      expect((await agregarIngredienteAReceta(pvId, linea(mp3Id), await versionVigenteDeReceta(pvId))).ok).toBe(true);
+      expect(await ingredientesDeLaUltima()).toEqual([mp1Id, mp2Id, mp3Id].sort());
+    });
+
+    it("dos pantallas que guardan A LA VEZ sobre la misma versión: gana una y la otra recibe el mensaje; nunca se pierde un cambio", async () => {
+      expect((await guardarReceta(pvId, [linea(mp1Id)], [], {}, 0)).ok).toBe(true);
+      const vista = await versionVigenteDeReceta(pvId);
+      const [a, b] = await Promise.all([agregarIngredienteAReceta(pvId, linea(mp2Id), vista), agregarIngredienteAReceta(pvId, linea(mp3Id), vista)]);
+      expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1);
+      const perdedor = a.ok ? b : a;
+      expect(!perdedor.ok && perdedor.mensaje).toMatch(/cambió mientras la editabas/);
+      expect(await ingredientesDeLaUltima()).toEqual([mp1Id, a.ok ? mp2Id : mp3Id].sort());
+    });
+
+    it("la receta PROPIA de la sucursal también: una pantalla vieja de la serie propia se rechaza", async () => {
+      expect((await guardarReceta(pvId, [linea(mp1Id)], [], {}, 0)).ok).toBe(true);
+      expect((await crearRecetaPropiaDesdeLaCentral(pvId, 0)).ok).toBe(true); // propia v1 (la sucursal no tenía serie propia: la pantalla mostraba 0)
+      const sucursalId = (await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: pvId, sucursalId: { not: null } } })).sucursalId;
+      const vista = await versionVigenteDeReceta(pvId, sucursalId); // las dos pantallas abren la propia en la v1
+
+      expect((await agregarIngredienteARecetaPropia(pvId, linea(mp2Id), vista)).ok).toBe(true);
+      const tarde = await agregarIngredienteARecetaPropia(pvId, linea(mp3Id), vista);
+      expect(tarde.ok).toBe(false);
+      expect(!tarde.ok && tarde.mensaje).toMatch(/cambió mientras la editabas/);
+      expect(await ingredientesDeLaUltima(sucursalId)).toEqual([mp1Id, mp2Id].sort());
+      expect(await versiones(null), "la central no se tocó").toHaveLength(1);
+    });
+
+    it("crear la receta propia con una pantalla que ya no es la vigente también se rechaza (alguien la creó antes)", async () => {
+      expect((await guardarReceta(pvId, [linea(mp1Id)], [], {}, 0)).ok).toBe(true);
+      expect((await crearRecetaPropiaDesdeLaCentral(pvId, 0)).ok).toBe(true);
+      await volverALaRecetaCentral(pvId, true); // la propia queda en el historial, deshabilitada
+      const tarde = await crearRecetaPropiaDesdeLaCentral(pvId, 0); // pantalla que no sabía de esa serie
+      expect(tarde.ok).toBe(false);
+      expect(!tarde.ok && tarde.mensaje).toMatch(/cambió mientras la editabas/);
+    });
   });
 });

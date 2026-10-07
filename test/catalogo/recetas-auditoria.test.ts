@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarReceta, quitarPasoDeReceta, agregarPasoAReceta } from "../../src/server/actions/catalogo/recetas";
 
@@ -75,10 +76,10 @@ describe("Auditoría de la receta central (RecetaVersion)", () => {
 
   it("quitarPasoDeReceta (y cualquier acción puntual que delega en guardarReceta) también queda auditado", async () => {
     await guardarReceta(pv.id, [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }]);
-    const conPaso = await agregarPasoAReceta(pv.id, { orden: 1, instruccion: "Amasar" });
+    const conPaso = await agregarPasoAReceta(pv.id, { orden: 1, instruccion: "Amasar" }, await versionVigenteDeReceta(pv.id));
     expect(conPaso.ok, conPaso.mensaje).toBe(true);
 
-    const r = await quitarPasoDeReceta(pv.id, 1);
+    const r = await quitarPasoDeReceta(pv.id, 1, await versionVigenteDeReceta(pv.id));
     expect(r.ok, r.mensaje).toBe(true);
 
     // 3 versiones en total (alta + agregar paso + quitar paso) → 3 registros de auditoría, uno por versión, sin huecos.

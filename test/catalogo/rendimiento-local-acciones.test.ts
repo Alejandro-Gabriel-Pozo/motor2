@@ -209,6 +209,15 @@ describe("fijarRendimientoLocal / volverAlRendimientoCentral (paso 6, D4/D6(a))"
         // fijarRendimientoLocal puede ganar (ok) o perder la carrera contra el guardado concurrente (rechazado con "cambió").
         if (!rCalibrar.ok) expect(rCalibrar.mensaje, `iteración ${i}`).toContain("cambió");
 
+        // Una calibración que dijo «ok» NUNCA se pierde: tiene que estar sobre la línea de la versión VIGENTE al final (si ganó antes del guardado, se arrastró a la versión nueva; si llegó
+        // después, la línea vieja ya no era la vigente y se rechazó). Antes el guardado leía la versión anterior fuera de su transacción y una calibración confirmada en ese hueco quedaba
+        // colgada de la versión vieja, sin que nadie lo notara (H7, segundo hueco; lo vio la revisión independiente del PR #93).
+        if (rCalibrar.ok) {
+          const vigenteDespues = await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: pv.id }, orderBy: { version: "desc" }, include: { ingredientes: true } });
+          const enLaVigente = await prisma.rendimientoLocalIngrediente.findUnique({ where: { recetaIngredienteId_sucursalId: { recetaIngredienteId: vigenteDespues.ingredientes[0].id, sucursalId } } });
+          expect(Number(enLaVigente?.cantidad), `iteración ${i}: la calibración confirmada se perdió al guardar la versión nueva`).toBe(1 + i);
+        }
+
         // Ningún RendimientoLocalIngrediente queda colgado de un recetaIngredienteId que ya no exista.
         const todos = await prisma.rendimientoLocalIngrediente.findMany({ select: { recetaIngredienteId: true } });
         for (const fila of todos) {

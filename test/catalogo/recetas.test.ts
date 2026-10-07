@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { darDeAltaProducto } from "../../src/server/actions/catalogo/productos";
 import {
@@ -91,13 +92,13 @@ describe("recetas", () => {
   it("agregarIngredienteAReceta preserva los existentes y rechaza duplicado", async () => {
     await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }]);
 
-    const resultado = await agregarIngredienteAReceta(pvId, { insumoProductoId: mp2Id, cantidad: 0.1, unidadId: unidadKgId });
+    const resultado = await agregarIngredienteAReceta(pvId, { insumoProductoId: mp2Id, cantidad: 0.1, unidadId: unidadKgId }, await versionVigenteDeReceta(pvId));
     expect(resultado.ok).toBe(true);
 
     const vigente = await obtenerRecetaVigente(pvId);
     expect(vigente?.ingredientes).toHaveLength(2);
 
-    const duplicado = await agregarIngredienteAReceta(pvId, { insumoProductoId: mp2Id, cantidad: 0.5, unidadId: unidadKgId });
+    const duplicado = await agregarIngredienteAReceta(pvId, { insumoProductoId: mp2Id, cantidad: 0.5, unidadId: unidadKgId }, await versionVigenteDeReceta(pvId));
     expect(duplicado.ok).toBe(false);
   });
 
@@ -107,7 +108,7 @@ describe("recetas", () => {
       { insumoProductoId: mp2Id, cantidad: 0.2, unidadId: unidadKgId },
     ]);
 
-    const resultado = await actualizarIngredienteDeReceta(pvId, mp1Id, { cantidad: 0.15, unidadId: unidadGId, mermaPorcentaje: 5 });
+    const resultado = await actualizarIngredienteDeReceta(pvId, mp1Id, { cantidad: 0.15, unidadId: unidadGId, mermaPorcentaje: 5 }, await versionVigenteDeReceta(pvId));
     expect(resultado.ok).toBe(true);
 
     const versiones = await prisma.recetaVersion.findMany({ where: { productoId: pvId } });
@@ -126,7 +127,7 @@ describe("recetas", () => {
   it("actualizarIngredienteDeReceta rechaza un insumo que no está en la receta vigente", async () => {
     await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }]);
 
-    const resultado = await actualizarIngredienteDeReceta(pvId, mp2Id, { cantidad: 1, unidadId: unidadKgId });
+    const resultado = await actualizarIngredienteDeReceta(pvId, mp2Id, { cantidad: 1, unidadId: unidadKgId }, await versionVigenteDeReceta(pvId));
     expect(resultado.ok).toBe(false);
   });
 
@@ -192,7 +193,7 @@ describe("recetas", () => {
     it("agregarPasoAReceta agrega preservando ingredientes y cabecera vigentes, rechaza orden duplicado", async () => {
       await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }], [], { racionesCantidad: 4 });
 
-      const resultado = await agregarPasoAReceta(pvId, { orden: 1, instruccion: "Estirar la masa" });
+      const resultado = await agregarPasoAReceta(pvId, { orden: 1, instruccion: "Estirar la masa" }, await versionVigenteDeReceta(pvId));
       expect(resultado.ok).toBe(true);
 
       const vigente = await obtenerRecetaVigente(pvId);
@@ -200,7 +201,7 @@ describe("recetas", () => {
       expect(vigente?.racionesCantidad).toBe(4);
       expect(vigente?.pasos).toHaveLength(1);
 
-      const duplicado = await agregarPasoAReceta(pvId, { orden: 1, instruccion: "Otro paso" });
+      const duplicado = await agregarPasoAReceta(pvId, { orden: 1, instruccion: "Otro paso" }, await versionVigenteDeReceta(pvId));
       expect(duplicado.ok).toBe(false);
     });
 
@@ -214,7 +215,7 @@ describe("recetas", () => {
         ]
       );
 
-      const resultado = await actualizarPasoDeReceta(pvId, 1, { instruccion: "Paso A editado", minutos: 7 });
+      const resultado = await actualizarPasoDeReceta(pvId, 1, { instruccion: "Paso A editado", minutos: 7 }, await versionVigenteDeReceta(pvId));
       expect(resultado.ok).toBe(true);
 
       const versiones = await prisma.recetaVersion.findMany({ where: { productoId: pvId } });
@@ -232,7 +233,7 @@ describe("recetas", () => {
     it("actualizarPasoDeReceta rechaza un orden que no está en la receta vigente", async () => {
       await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }], [{ orden: 1, instruccion: "Paso A" }]);
 
-      const resultado = await actualizarPasoDeReceta(pvId, 2, { instruccion: "No existe" });
+      const resultado = await actualizarPasoDeReceta(pvId, 2, { instruccion: "No existe" }, await versionVigenteDeReceta(pvId));
       expect(resultado.ok).toBe(false);
     });
 
@@ -246,7 +247,7 @@ describe("recetas", () => {
         ]
       );
 
-      const resultado = await quitarPasoDeReceta(pvId, 1);
+      const resultado = await quitarPasoDeReceta(pvId, 1, await versionVigenteDeReceta(pvId));
       expect(resultado.ok).toBe(true);
 
       const vigente = await obtenerRecetaVigente(pvId);
@@ -266,7 +267,7 @@ describe("recetas", () => {
         ]
       );
 
-      const resultado = await reordenarPasosDeReceta(pvId, [3, 1, 2]);
+      const resultado = await reordenarPasosDeReceta(pvId, [3, 1, 2], await versionVigenteDeReceta(pvId));
       expect(resultado.ok).toBe(true);
 
       const versiones = await listarVersionesDeReceta(pvId);
@@ -296,7 +297,7 @@ describe("recetas", () => {
         ]
       );
 
-      const resultado = await reordenarPasosDeReceta(pvId, [2, 1]);
+      const resultado = await reordenarPasosDeReceta(pvId, [2, 1], await versionVigenteDeReceta(pvId));
       expect(resultado.ok).toBe(true);
 
       const vigente = await obtenerRecetaVigente(pvId);
@@ -318,9 +319,9 @@ describe("recetas", () => {
         ]
       );
 
-      const repetida = await reordenarPasosDeReceta(pvId, [1, 1]);
+      const repetida = await reordenarPasosDeReceta(pvId, [1, 1], await versionVigenteDeReceta(pvId));
       expect(repetida.ok).toBe(false);
-      const incompleta = await reordenarPasosDeReceta(pvId, [1]);
+      const incompleta = await reordenarPasosDeReceta(pvId, [1], await versionVigenteDeReceta(pvId));
       expect(incompleta.ok).toBe(false);
 
       const versiones = await prisma.recetaVersion.findMany({ where: { productoId: pvId } });
@@ -337,7 +338,7 @@ describe("recetas", () => {
         ]
       );
 
-      const resultado = await reordenarPasosDeReceta(pvId, [1, 2]);
+      const resultado = await reordenarPasosDeReceta(pvId, [1, 2], await versionVigenteDeReceta(pvId));
       expect(resultado.ok).toBe(true);
 
       const versiones = await prisma.recetaVersion.findMany({ where: { productoId: pvId } });
@@ -357,7 +358,7 @@ describe("recetas", () => {
         ]
       );
 
-      const resultado = await insertarPasoEnReceta(pvId, 2, { instruccion: "Paso nuevo" });
+      const resultado = await insertarPasoEnReceta(pvId, 2, { instruccion: "Paso nuevo" }, await versionVigenteDeReceta(pvId));
       expect(resultado.ok).toBe(true);
 
       const vigente = await obtenerRecetaVigente(pvId);
@@ -373,11 +374,11 @@ describe("recetas", () => {
       await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }], [{ orden: 1, instruccion: "Paso A" }, { orden: 2, instruccion: "Paso B" }]);
 
       for (const posicion of [Number.NaN, 1.5, Number.POSITIVE_INFINITY]) {
-        const r = await insertarPasoEnReceta(pvId, posicion, { instruccion: "Paso nuevo" });
+        const r = await insertarPasoEnReceta(pvId, posicion, { instruccion: "Paso nuevo" }, await versionVigenteDeReceta(pvId));
         expect(r.ok, String(posicion)).toBe(false);
       }
       for (const orden of [Number.NaN, 1.5, Number.POSITIVE_INFINITY]) {
-        const r = await quitarPasoDeReceta(pvId, orden);
+        const r = await quitarPasoDeReceta(pvId, orden, await versionVigenteDeReceta(pvId));
         expect(r.ok, String(orden)).toBe(false);
       }
 
@@ -396,7 +397,7 @@ describe("recetas", () => {
         [{ orden: 1, instruccion: "Mezclar todo", insumoProductoIds: [mp1Id, mp2Id] }]
       );
 
-      const resultado = await quitarIngredienteDeReceta(pvId, mp1Id);
+      const resultado = await quitarIngredienteDeReceta(pvId, mp1Id, await versionVigenteDeReceta(pvId));
       expect(resultado.ok).toBe(true);
 
       const vigente = await obtenerRecetaVigente(pvId);
@@ -414,7 +415,7 @@ describe("recetas", () => {
         { racionesCantidad: 4 }
       );
 
-      const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: 6, comentarios: "Ojo con la sal" });
+      const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: 6, comentarios: "Ojo con la sal" }, await versionVigenteDeReceta(pvId));
       expect(resultado.ok).toBe(true);
 
       const vigente = await obtenerRecetaVigente(pvId);
@@ -425,7 +426,7 @@ describe("recetas", () => {
     });
 
     it("actualizarCabeceraDeReceta rechaza si el producto todavía no tiene ninguna receta", async () => {
-      const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: 4 });
+      const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: 4 }, await versionVigenteDeReceta(pvId));
       expect(resultado.ok).toBe(false);
     });
 
@@ -435,49 +436,49 @@ describe("recetas", () => {
       });
 
       it("rechaza rendimientoCantidad sin unidad elegida", async () => {
-        const resultado = await actualizarCabeceraDeReceta(pvId, { rendimientoCantidad: 2 });
+        const resultado = await actualizarCabeceraDeReceta(pvId, { rendimientoCantidad: 2 }, await versionVigenteDeReceta(pvId));
         expect(resultado.ok).toBe(false);
         if (!resultado.ok) expect(resultado.mensaje).toMatch(/unidad del rendimiento/i);
       });
 
       it("rechaza rendimientoCantidad con más decimales que los que admite su unidad (g, 0 decimales)", async () => {
-        const resultado = await actualizarCabeceraDeReceta(pvId, { rendimientoCantidad: 1.5, rendimientoUnidadId: unidadGId });
+        const resultado = await actualizarCabeceraDeReceta(pvId, { rendimientoCantidad: 1.5, rendimientoUnidadId: unidadGId }, await versionVigenteDeReceta(pvId));
         expect(resultado.ok).toBe(false);
       });
 
       it("rechaza rendimientoCantidad en 0 (no tiene sentido un rendimiento nulo)", async () => {
-        const resultado = await actualizarCabeceraDeReceta(pvId, { rendimientoCantidad: 0, rendimientoUnidadId: unidadKgId });
+        const resultado = await actualizarCabeceraDeReceta(pvId, { rendimientoCantidad: 0, rendimientoUnidadId: unidadKgId }, await versionVigenteDeReceta(pvId));
         expect(resultado.ok).toBe(false);
       });
 
       it("rechaza racionTamano sin unidad elegida", async () => {
-        const resultado = await actualizarCabeceraDeReceta(pvId, { racionTamano: 200 });
+        const resultado = await actualizarCabeceraDeReceta(pvId, { racionTamano: 200 }, await versionVigenteDeReceta(pvId));
         expect(resultado.ok).toBe(false);
         if (!resultado.ok) expect(resultado.mensaje).toMatch(/unidad del tamaño de ración/i);
       });
 
       it("rechaza racionesCantidad negativa", async () => {
-        const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: -1 });
+        const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: -1 }, await versionVigenteDeReceta(pvId));
         expect(resultado.ok).toBe(false);
       });
 
       it("rechaza racionesCantidad no entera", async () => {
-        const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: 2.5 });
+        const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: 2.5 }, await versionVigenteDeReceta(pvId));
         expect(resultado.ok).toBe(false);
       });
 
       it("rechaza racionesCantidad NaN — antes llegaba tal cual a la base sin ningún aviso", async () => {
-        const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: Number.NaN });
+        const resultado = await actualizarCabeceraDeReceta(pvId, { racionesCantidad: Number.NaN }, await versionVigenteDeReceta(pvId));
         expect(resultado.ok).toBe(false);
       });
 
       it("rechaza tiempoPreparacionMinutos negativo", async () => {
-        const resultado = await actualizarCabeceraDeReceta(pvId, { tiempoPreparacionMinutos: -5 });
+        const resultado = await actualizarCabeceraDeReceta(pvId, { tiempoPreparacionMinutos: -5 }, await versionVigenteDeReceta(pvId));
         expect(resultado.ok).toBe(false);
       });
 
       it("rechaza tiempoCoccionMinutos no entero", async () => {
-        const resultado = await actualizarCabeceraDeReceta(pvId, { tiempoCoccionMinutos: 12.5 });
+        const resultado = await actualizarCabeceraDeReceta(pvId, { tiempoCoccionMinutos: 12.5 }, await versionVigenteDeReceta(pvId));
         expect(resultado.ok).toBe(false);
       });
 
@@ -489,7 +490,7 @@ describe("recetas", () => {
           racionUnidadId: unidadGId,
           tiempoPreparacionMinutos: 10,
           tiempoCoccionMinutos: 20,
-        });
+        }, await versionVigenteDeReceta(pvId));
         expect(resultado.ok).toBe(true);
 
         const vigente = await obtenerRecetaVigente(pvId);
