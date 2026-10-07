@@ -5,7 +5,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { crearMembresia } from "../setup/membresia";
-import { listarCandidatosAGerente, obtenerGerenteDeEmpresa } from "../../src/core/permisos/gerencia";
+import { obtenerGerenteDeEmpresa } from "../../src/core/permisos/gerencia";
+import { listarCandidatosAGerente } from "../../src/server/consultas/permisos/gerencia";
 import { transferirGerenciaDeEmpresa } from "../../src/server/actions/auth/casos-de-uso/transferir-gerencia-en-tx";
 import {
   actualizarActivoMembresia,

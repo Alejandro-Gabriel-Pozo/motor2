@@ -1,5 +1,4 @@
 import type { Db } from "@/lib/db-tipos";
-import { membresiaDeAdminEfectivo } from "./invariantes";
 import { CLAVE_ROL_ADMIN } from "./jerarquia";
 import { filtroDelGerente } from "./filtros";
 import { ROL_EMPRESA_GERENTE } from "./rol-empresa";
@@ -34,24 +33,6 @@ export async function gerentesQueQuedaranSinSucursalActiva(db: Db, empresaId: st
     if (!otra) sinSucursal.push(g.usuario.email);
   }
   return sinSucursal;
-}
-
-/**
- * Quiénes pueden recibir la gerencia: las mismas condiciones que `transferirGerenciaDeEmpresa` exige al destino (pertenencia y cuenta activas,
- * admin efectivo en alguna sucursal: el MISMO predicado que la validación, `membresiaDeAdminEfectivo`) y que no sea ya el gerente. Alimenta el selector de la pantalla de traspaso; el traspaso vuelve a validar.
- */
-export async function listarCandidatosAGerente(db: Db, empresaId: string) {
-  const filas = await db.usuarioEmpresa.findMany({
-    where: {
-      empresaId,
-      activo: true,
-      OR: [{ rolEmpresa: null }, { rolEmpresa: { not: ROL_EMPRESA_GERENTE } }],
-      usuario: { activoGlobal: true, sucursales: { some: membresiaDeAdminEfectivo(empresaId) } },
-    },
-    select: { usuarioId: true, usuario: { select: { email: true, name: true } } },
-    orderBy: { usuario: { email: "asc" } },
-  });
-  return filas.map((f) => ({ id: f.usuarioId, email: f.usuario.email, nombre: f.usuario.name }));
 }
 
 /** Lo que de la cuenta del destino de un traspaso hace falta para decidir si puede recibir la gerencia (`null`: no pertenece a la empresa). */

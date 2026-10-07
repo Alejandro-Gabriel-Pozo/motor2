@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
-import { listarCandidatosAGerente } from "@/core/permisos/gerencia";
+import { listarCandidatosAGerente } from "@/server/consultas/permisos/gerencia";
 import { TraspasoGerencia } from "./traspaso-gerencia";
 
 export default async function GerenciaPage() {
