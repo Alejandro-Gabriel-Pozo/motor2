@@ -75,6 +75,49 @@ Cada fila: **ID**, qué es, fuente en el plan, estado (`[ ]` pendiente, `[x]` he
 | 5.3 | Decidir el destino de `con-reintento` y sacar `core/movimientos` a `core-sin-consultas` | 10.4 fila 7 | [ ] | |
 | 5.4 | **B5**: auditoría a `server/auditoria/` con su regla, cierre de `core-sin-consultas` para todo `core`, documentos de estado | 10.4 fila 8 | [ ] | |
 
+### Otros hallazgos de las auditorías y de las revisiones (todos entran en la rama; decisión del dueño, 2026-10-07)
+
+Cada uno se hace en el hito indicado, junto con el trabajo que toca el mismo código. Los que dicen «docs» son documentación o comentarios.
+
+| ID | Hallazgo | Origen | Hito | Estado | Evidencia |
+|---|---|---|---|---|---|
+| O.1 | `guardarReceta` en modo «a ciegas» es alcanzable desde la red (la acción pública acepta `undefined`/`null`): separar el modo ciego en una función interna para seeds y scripts y que la acción pública exija un entero ≥ 0 | Revisión #93 (3) | 4 | [ ] | |
+| O.2 | Dos acciones seguidas sin recargar reciben «recargá» aunque la pantalla se refresque sola: distinguir el mensaje o deshabilitar los otros formularios mientras uno está ocupado | Revisión #93 (5) | 4 | [ ] | |
+| O.3 | Clave de cifrado de los closures de Server Actions con más de una instancia (`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`): verificar y documentar | Revisión #93 (8, sospecha) | 4 | [ ] | |
+| O.4 | Docstrings de `guardarReceta` y del caso de uso: ya no dicen «la UNIQUE es el árbitro final» como único mecanismo | Revisión #93 (7) | 4 | [ ] | |
+| O.5 | Carrito de compras: fusionar las derivaciones (empresa y sucursal) en una sola consulta (hoy 3 lecturas por cambio de proveedor) | Revisión #92 (3) | 4 | [ ] | |
+| O.6 | Conciliación 11 de `verificar-demo-invariantes` con un cruce realmente independiente (recorrer las compras del par en memoria y recalcular precio, `ultimaCompra` y la regla del precio 0) | Revisión #92 (6) | 2 | [ ] | |
+| O.7 | Test de volumen de ofertas de proveedor: aserción de tiempo laxa o no bloqueante (propensa a fallar en CI frío) | Revisión #92 (7) | 2 | [ ] | |
+| O.8 | Comparativa: listas `in` acotadas y `nombreDe.get(...) ?? ""` → «(proveedor desconocido)» o `continue` | Revisión #92 (8, 9) | 4 | [ ] | |
+| O.9 | Docs: `docs/grounding-lista-ver-editar-2026-09-18.md:57` aún lista `ProveedorPorProducto` como fuente de «Proveedores y precios» | Revisión #92 (10) | 1 | [ ] | |
+| O.10 | Precarga del carrito (`panel-movimiento-form.tsx`) sigue poniendo `unidadCompraId: ""`: o se usa el que calcula el lector o se quita del tipo | Revisión #92 (11) | 4 | [ ] | |
+| O.11 | Adaptador de imports de la huella de gobierno (B0) | Auditoría Fase 4 (#82) | 1 | [ ] | |
+| O.12 | D-9: documentar que `agregarItems` del POS no tiene I3 | Auditoría Fase 4 (D-9) | 4 | [ ] | |
+| O.13 | Preparación de la Fase 5 **sin migración** (plan §6): reunir las 2 escrituras de traspasos y las 2 de anulación en una sola función; `EXPLAIN` del índice del Kardex | Plan Fase 4 §6 | 5 | [ ] | |
+| O.14 | D-5 del plan (lote de lecturas repetidas de la venta; costo congelado solo de lo vendido): el plan lo deja «explícitamente después» | Plan Fase 4 | — | [d] | Diferido por escrito: se hace después de esta rama |
+| O.15 | Guardián de «la fase de un heredado no retrocede» (D-4 se violó cuatro PR sin que nada lo viera) | Auditoría Fase 4 (D-4) | 1 | [ ] | |
+| O.16 | 0.4: con `MOTOR2_ENTORNO_ESTRICTO=1` fuera de Vercel el escape `MOTOR2_ROL_ESTRICTO=0` no se prohíbe | Auditoría Fase 0 (4) | 1 | [ ] | |
+| O.17 | Asentar la decisión de reemplazar el tipo `FichaCasoDeUso`/`FICHA_PENDIENTE` por la línea `@ficha` (docs) | Auditoría Fase 0 | 1 | [ ] | |
+| O.18 | Docstring de `pureza-del-nucleo.test.ts` dice «117 de 256» (hoy 38 entradas) y vocabulario `core-sin-prisma`/`core-sin-db-tipos` | Auditoría Fase 0 (7) | 1 | [ ] | |
+| O.19 | 0.7: escrituras anidadas por relación (`data: { rel: { create } }`) que `clavesDeData` no recorre | Auditoría Fase 0 (9) | 1 | [ ] | |
+| O.20 | 0.7: alcance a `plataforma/src/servidor` y `operaciones-de-plataforma` si una tabla de plataforma suma `Decimal` | Auditoría Fase 0 (10) | 1 | [ ] | |
+| O.21 | Reloj y `randomUUID` dentro de `server/persistencia` (`upsert-proveedor-por-producto.ts`: `fechaCompra ?? new Date()`, `crypto.randomUUID()`): sacarlos | Auditoría Fases 0 y 1 (D-7) | 1 | [ ] | |
+| O.22 | Reloj con valor por defecto en consultas y acciones (`server/consultas/pos/*`, `server/lecturas/carta/*`, `server/actions/reportes/sincronizaciones.ts`): `ahora` obligatorio, como los 5 reportes | Auditoría Fase 1 (D-8) | 4 | [ ] | |
+| O.23 | Crear el documento de la Fase 1 que nunca existió (sub-pasos 1.1 a 1.6 solo estaban en los mensajes de PR) | Auditoría Fase 1 | 1 | [ ] | |
+| O.24 | `core/auth/{acceso,invitacion}.ts` leen el reloj y `process.env`: B3 saca el reloj de `invitacion.ts` y mueve `acceso.ts` a `server/sesion`; lo de `env` va con la Fase 6 y queda declarado | Auditoría Fase 1 (D-9) | 3 | [ ] | |
+| O.25 | Registrar el «punto de control con el dueño» de la Fase 2 (no consta) | Auditoría Fase 2 (M-1) | 1 | [ ] | |
+| O.26 | P1.4: revisar `DOMINIOS_SIN_PUBLIC_TODAVIA` en dos direcciones | Auditoría Fase 2 (M-4) | 1 | [ ] | |
+| O.27 | Regex con escape inútil `"\.ts$"` en `.dependency-cruiser.cjs:80` y `:129` (usar `[.]`) | Auditoría Fase 2 (M-5) | 1 | [ ] | |
+| O.28 | Ciclo de tipos `pos/comanda ↔ pos/impresion` en `CICLOS_CONOCIDOS` | Auditoría Fase 2 (M-6) | 4 | [ ] | |
+| O.29 | Docs: `arquitectura-casos-de-uso-2026-09-27.md` habla de `DOMINIOS_CON_PUBLIC`; `descuento-producto-en-un-solo-lugar.test.ts:62` cita un archivo que ya no existe | Auditoría Fase 2 (M-7) | 1 | [ ] | |
+| O.30 | C4 y C5 de la Fase 3: N+1 de `rendimiento-recetas` y «la página lo calcula dos veces»; lecturas repetidas de `periodo` (costo actual ×3, IPC ×2, precios locales ×2) | Auditoría Fase 3 (C4, C5) | 4 | [ ] | |
+| O.31 | `server-only` inconsistente (28 de 30 archivos de `server/consultas/reportes` y 4 de `server/lecturas/carta` no lo llevan): guardián de cuáles deben llevarlo | Auditoría Fase 3 (14) | 1 | [ ] | |
+| O.32 | Cabeceras de `core/reportes/public-servidor.ts` y `core/movimientos/public-servidor.ts` citan archivos que ya no existen; retirar la fachada de `core/reportes` si no tiene lecturas | Auditoría Fase 3 (12) | 5 | [ ] | |
+| O.33 | 3B.12 «limitador» sin rastro (`core/permisos/limitador-tasa.ts`) y matriz de acceso «idéntica a lo largo de todo el tramo» no verificable | Auditoría Fase 3 (16) | 3 | [ ] | |
+| O.34 | Confirmar que B0 (#82) cubrió el punto «a verificar» de `invitacion.ts:223` | Auditoría Fase 3 | 3 | [ ] | |
+| O.35 | Contratos C1 a C6 del RBAC: techo en el alta de sucursal, releer rol y actor dentro de la transacción, regla de «uno mismo», matriz de los roles de nivel administrador editable solo por el gerente, guardián de `Rol.nivel` (la migración `Rol.nivel` es [MIG] y queda fuera de la rama) | Evaluación RBAC | 3 | [ ] | |
+| O.36 | Copia externa `para motor 2\_planes\plan-fase-3-pureza.md` sin el encabezado «HECHA» y sin la sección de desvíos | Auditoría Fase 3 (11) | 1 | [ ] | |
+
 ### Fuera de los hitos, con decisión del dueño (sección 4)
 
 | ID | Trabajo | Fuente | Estado | Evidencia |
@@ -92,4 +135,6 @@ Cada fila: **ID**, qué es, fuente en el plan, estado (`[ ]` pendiente, `[x]` he
 4. Dinero en `number` dentro de `core`: ¿diseño escrito o paso nuevo?
 5. Campo `periodo` de la ficha: ¿ahora o diferido por escrito a la Etapa A?
 6. Frontera UI → `server/lecturas`.
+8. Las excepciones por función de la auditoría de dinero que se dejaron en #80 (3 escrituras sin auditar: conteo físico, solicitud y envío directo de traspaso) y `stockMinimoProducto.minimo` exceptuado como «no es dinero»: ¿auditarlas o mantener la excepción con su motivo?
+9. Registrar formalmente D-3 a D-6 de la Fase 3 (D-4 y D-5 se aplicaron sin respuesta registrada).
 7. Confirmar D-4 y D-5 de la Fase 3. ~~D15 y D16 de RBAC~~ **RESUELTAS (2026-10-07):** **D15** = el rango intermedio («encargado», opcional por empresa, D0) no alcanza ninguna acción de empresa por defecto; la empresa se las habilita de a una. **D16** = `ver_auditoria` pasa al piso «administrador de sistema» (F1, sin migración).
