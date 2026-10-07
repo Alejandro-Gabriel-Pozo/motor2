@@ -34,5 +34,5 @@ export function crearLimitadorDeTasa(limite: number, ventanaMs: number) {
   };
 }
 
-const LIMITE_MUTACIONES_POR_MINUTO = 300;
-export const limitadorMutaciones = crearLimitadorDeTasa(LIMITE_MUTACIONES_POR_MINUTO, 60_000);
+// La instancia de las mutaciones (`limitadorMutaciones`, 300 por minuto) vive en `server/actions/limitador-de-mutaciones.ts` (O.33, paso L.2): acá queda
+// solo la fábrica, sin estado de módulo.

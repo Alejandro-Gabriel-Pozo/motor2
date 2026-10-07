@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia } from "../set
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { getUsuarioActual } from "../../src/core/auth/session";
 import { conEdicionDePermisos, conPermiso, conPermisoDeEmpresa } from "../../src/server/actions/con-permiso";
-import { limitadorMutaciones } from "../../src/core/permisos/limitador-tasa";
+import { limitadorMutaciones } from "../../src/server/actions/limitador-de-mutaciones";
 import { ok, type ContextoDeAccion } from "../../src/server/actions/tipos";
 
 /**
