@@ -2,7 +2,8 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { TipoDeInvitacion } from "@/core/features/empresa/invitacion";
-import { actorEnSucursal, mensajeSiNoPuedeAsignarRol, mensajeSiNoPuedeGestionar, objetivoEnSucursal } from "@/core/permisos/gestion-de-usuarios";
+import { actorEnSucursal, mensajeSiNoPuedeDarRolSinTechoDeGestion, mensajeSiNoPuedeGestionar, objetivoEnSucursal } from "@/core/permisos/gestion-de-usuarios";
+import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { requierePermiso } from "@/server/acceso/gate";
 
 const TIPO_DE_USUARIO: TipoDeInvitacion = "usuario";
@@ -29,7 +30,7 @@ export type InvitacionGestionable =
 export async function invitacionGestionable(actor: ActorDeInvitacion, tx: Prisma.TransactionClient, invitacionId: string): Promise<InvitacionGestionable> {
   const inv = await tx.invitacion.findFirst({
     where: { id: invitacionId, empresaId: actor.empresaId, estado: "PENDIENTE", rolEmpresa: { in: ["usuario", "vinculacion"] } },
-    select: { id: true, email: true, rolEmpresa: true, enviadaEn: true, sucursales: { select: { sucursalId: true, rol: { select: { clave: true, activo: true } } } } },
+    select: { id: true, email: true, rolEmpresa: true, enviadaEn: true, sucursales: { select: { sucursalId: true, rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } } } },
   });
   if (!inv) return { ok: false, mensaje: "No se encontró esa invitación pendiente." };
 
@@ -41,13 +42,14 @@ export async function invitacionGestionable(actor: ActorDeInvitacion, tx: Prisma
         const gate = await requierePermiso(actor.usuarioId, fila.sucursalId, "gestion_usuarios", actor.db);
         if (!gate.ok) return { ok: false, mensaje: "Esa invitación da acceso a sucursales donde no podés gestionar usuarios." };
       }
-      const rechazo = mensajeSiNoPuedeAsignarRol(actorEnSucursal(actor, fila.sucursalId), fila.rol);
+      // La persona todavía no es miembro (no hay a quién medir): solo el techo del rol que se ofrece, con la variante declarada (C2, II.2).
+      const rechazo = mensajeSiNoPuedeDarRolSinTechoDeGestion(actorEnSucursal(actor, fila.sucursalId), fila.rol);
       if (rechazo) return { ok: false, mensaje: rechazo };
     }
     return { ok: true, invitacion: { id: inv.id, email: inv.email, tipo: "usuario", enviadaEn: inv.enviadaEn } };
   }
 
-  const membresia = await tx.usuarioSucursal.findFirst({ where: { sucursalId: actor.sucursalId, usuario: { email: inv.email } }, select: { rol: { select: { clave: true } }, usuarioId: true } });
+  const membresia = await tx.usuarioSucursal.findFirst({ where: { sucursalId: actor.sucursalId, usuario: { email: inv.email } }, select: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA }, usuarioId: true } });
   if (!membresia) return { ok: false, mensaje: "No se encontró esa invitación pendiente." };
   const rechazo = mensajeSiNoPuedeGestionar(actorEnSucursal(actor, actor.sucursalId), await objetivoEnSucursal(tx, actor.empresaId, membresia.usuarioId, membresia.rol));
   if (rechazo) return { ok: false, mensaje: rechazo };

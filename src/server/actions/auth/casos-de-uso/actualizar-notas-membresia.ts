@@ -2,6 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { actorEnSucursal, mensajeSiNoPuedeGestionar, objetivoEnSucursal } from "@/core/permisos/gestion-de-usuarios";
+import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { texto } from "@/core/texto";
 import { cambiarNotasDeMembresia } from "@/server/persistencia/permisos/membresias";
@@ -38,7 +39,7 @@ export async function actualizarNotasMembresiaCasoDeUso(
   comando: { membresiaId: string; notas: string },
 ): Promise<ResultadoActualizarNotasMembresia> {
   const { membresiaId, notas } = comando;
-  const membresia = await actor.db.usuarioSucursal.findUnique({ where: { id: membresiaId }, include: { rol: true } });
+  const membresia = await actor.db.usuarioSucursal.findUnique({ where: { id: membresiaId }, include: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } } });
   if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", "No se encontró esa membresía.");
 
   const objetivo = await objetivoEnSucursal(actor.db, actor.empresaId, membresia.usuarioId, membresia.rol);

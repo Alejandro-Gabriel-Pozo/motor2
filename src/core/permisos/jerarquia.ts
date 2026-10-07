@@ -13,6 +13,14 @@ export type NivelDePersona = "operario" | "administrador" | "gerente";
 
 const ORDEN: Record<NivelDePersona, number> = { operario: 1, administrador: 2, gerente: 3 };
 
+/**
+ * Contrato C3 del RBAC (O.35; Hito 3, Fase II, II.2): la ÚNICA selección de un rol que alimenta el techo de privilegio. De un rol, la jerarquía necesita su clave
+ * (`nivelDeRolPorClave`), y quien lo usa, su id, su nombre (mensajes y auditoría) y si está activo. Toda lectura de un rol para ubicar a quien actúa, a quien se toca
+ * o el rol que se da (`select: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } }`) lo pide con esto: un caso de uso o una persistencia no escribe `clave` en un
+ * `select` ni en un `where` (regla 4 de `acceso-solo-por-el-guard`, contrato C4), así que no puede leer de un rol más ni menos que lo que la jerarquía mira.
+ */
+export const SELECCION_DE_ROL_PARA_JERARQUIA = { id: true, nombre: true, clave: true, activo: true } as const;
+
 export function esRolAdmin(rol: { clave: string | null }): boolean {
   return rol.clave === CLAVE_ROL_ADMIN;
 }

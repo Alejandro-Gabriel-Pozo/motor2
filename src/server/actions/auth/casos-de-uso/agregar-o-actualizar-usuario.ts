@@ -2,15 +2,9 @@ import "server-only";
 import type { ComandoAgregarOActualizarUsuario } from "@/core/features/permisos/usuario.guard";
 import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion } from "./invitaciones-de-usuario-en-tx";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import {
-  actorEnSucursal,
-  mensajeSiNoPuedeAsignarRol,
-  mensajeSiNoPuedeGestionar,
-  mensajeSiReactivaAdminSinSerGerente,
-  objetivoEnSucursal,
-  reactivaAUnAdmin,
-} from "@/core/permisos/gestion-de-usuarios";
+import { actorEnSucursal, mensajeSiNoPuedeDarRolA, mensajeSiReactivaAdminSinSerGerente, objetivoEnSucursal, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
 import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
+import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { activarCuentaEnEmpresa, guardarMembresiaDeMiembro } from "@/server/persistencia/permisos/membresias";
@@ -66,7 +60,7 @@ export async function agregarOActualizarUsuarioCasoDeUso(
   return conGobierno(
     actor,
     async (tx): Promise<ResultadoAgregarOActualizarUsuario> => {
-      const rol = await tx.rol.findFirst({ where: { id: comando.rolId, empresaId: actor.empresaId } });
+      const rol = await tx.rol.findFirst({ where: { id: comando.rolId, empresaId: actor.empresaId }, select: SELECCION_DE_ROL_PARA_JERARQUIA });
       if (!rol || !rol.activo) return fracaso("ROL_INVALIDO", "Rol inválido o inactivo.");
 
       const sucursal = await tx.sucursal.findFirst({ where: { id: comando.sucursalId, empresaId: actor.empresaId }, select: { id: true, nombre: true } });
@@ -84,7 +78,7 @@ export async function agregarOActualizarUsuarioCasoDeUso(
           return fracaso("CUENTA_DESACTIVADA_EN_PLATAFORMA", "La cuenta de ese email está desactivada en toda la plataforma. Consultalo con la plataforma.");
         }
         const objetivo = await objetivoEnSucursal(tx, actor.empresaId, usuarioPrevio?.id ?? null, null);
-        const rechazo = mensajeSiNoPuedeAsignarRol(quienActua, rol) ?? mensajeSiNoPuedeGestionar(quienActua, objetivo);
+        const rechazo = mensajeSiNoPuedeDarRolA(quienActua, rol, objetivo);
         if (rechazo) return fracaso("TECHO_DE_PRIVILEGIO", rechazo);
         const invitada = await asegurarInvitacionDeUsuario(tx, {
           empresaId: actor.empresaId, email, invitadoPorId: actor.usuarioId,
@@ -101,9 +95,12 @@ export async function agregarOActualizarUsuarioCasoDeUso(
       }
 
       // Ya es miembro de la empresa: se suma la sucursal o se cambia el rol directo.
-      const existente = await tx.usuarioSucursal.findUnique({ where: { usuarioId_sucursalId: { usuarioId: usuarioPrevio.id, sucursalId: comando.sucursalId } }, include: { rol: true } });
+      const existente = await tx.usuarioSucursal.findUnique({
+        where: { usuarioId_sucursalId: { usuarioId: usuarioPrevio.id, sucursalId: comando.sucursalId } },
+        include: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } },
+      });
       const objetivo = await objetivoEnSucursal(tx, actor.empresaId, usuarioPrevio.id, existente?.rol ?? null);
-      const rechazo = mensajeSiNoPuedeAsignarRol(quienActua, rol) ?? mensajeSiNoPuedeGestionar(quienActua, objetivo);
+      const rechazo = mensajeSiNoPuedeDarRolA(quienActua, rol, objetivo);
       if (rechazo) return fracaso("TECHO_DE_PRIVILEGIO", rechazo);
 
       // Reactivar a un administrador (su membresía en esta sucursal, o su cuenta en la empresa) es solo del gerente: si no, quien tiene

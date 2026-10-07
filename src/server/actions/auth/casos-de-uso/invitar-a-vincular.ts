@@ -2,6 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { mensajeSiSeReenviaMuyPronto } from "@/core/features/empresa/invitacion";
 import { actorEnSucursal, mensajeSiNoPuedeGestionar, objetivoEnSucursal } from "@/core/permisos/gestion-de-usuarios";
+import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
@@ -47,7 +48,7 @@ export async function invitarAVincularCasoDeUso(
     async (tx): Promise<ResultadoInvitarAVincular> => {
       const membresia = await tx.usuarioSucursal.findUnique({
         where: { id: membresiaId },
-        select: { sucursalId: true, usuarioId: true, rol: { select: { clave: true } }, usuario: { select: { email: true, activoGlobal: true, accounts: { where: { provider: "google" }, select: { id: true }, take: 1 } } } },
+        select: { sucursalId: true, usuarioId: true, rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA }, usuario: { select: { email: true, activoGlobal: true, accounts: { where: { provider: "google" }, select: { id: true }, take: 1 } } } },
       });
       if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", "No se encontró esa membresía.");
       if (membresia.usuario.accounts.length > 0) return fracaso("YA_VINCULO_GOOGLE", "Esa persona ya vinculó su cuenta de Google.");

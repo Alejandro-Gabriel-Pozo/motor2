@@ -2,7 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { mensajeSiNombreDeRolNoPermitido, normalizarNombreDeRol } from "@/core/permisos/nombres-de-rol";
+import { mensajeSiNombreNoPermitidoParaElRol, normalizarNombreDeRol } from "@/core/permisos/nombres-de-rol";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { cambiarNombreDeRol } from "@/server/persistencia/permisos/roles";
 import { conGobierno } from "../../con-gobierno";
@@ -39,7 +39,7 @@ export async function renombrarRolCasoDeUso(actor: Pick<ContextoUsuario, "usuari
         const rol = await tx.rol.findUnique({ where: { id: rolId } });
         if (!rol) return fracaso("ROL_NO_ENCONTRADO", "No se encontró ese rol.");
 
-        const rechazo = mensajeSiNombreDeRolNoPermitido(n, rol.clave);
+        const rechazo = mensajeSiNombreNoPermitidoParaElRol(n, rol);
         if (rechazo) return fracaso("NOMBRE_NO_PERMITIDO", rechazo);
 
         const tomado = await tx.rol.findFirst({ where: { nombre: n, id: { not: rolId } }, select: { id: true } });

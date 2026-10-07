@@ -1,7 +1,7 @@
 import type { Db } from "@/lib/db-tipos";
 import { tuvoRolAdminEnLaEmpresa } from "./gerencia";
 import { filtroMembresiaConAutoridadDeAdmin, filtroRolAdmin } from "./filtros";
-import { esRolAdmin, nivelDe, puedeAsignarRol, puedeGestionarA, type PersonaParaJerarquia } from "./jerarquia";
+import { esRolAdmin, nivelDe, puedeAsignarRol, puedeGestionarA, SELECCION_DE_ROL_PARA_JERARQUIA, type PersonaParaJerarquia } from "./jerarquia";
 
 /**
  * Bloque G, G2: el techo de privilegio de la gestión de usuarios, en un solo lugar. Las acciones de `server/actions/auth/usuarios.ts` no miran
@@ -53,9 +53,9 @@ export async function objetivoEnLaEmpresa(db: Db, empresaId: string, usuarioId: 
   return { rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: esAdmin !== null };
 }
 
-/** El rol «admin» de la empresa, buscado por su CLAVE técnica (el nombre se puede cambiar: bloque G3). `null` si la empresa no lo tiene. */
+/** El rol «admin» de la empresa, buscado por su CLAVE técnica (el nombre se puede cambiar: bloque G3), con la selección de la jerarquía (C3). `null` si la empresa no lo tiene. */
 export async function buscarRolAdmin(db: Db, empresaId: string) {
-  return db.rol.findFirst({ where: filtroRolAdmin(empresaId) });
+  return db.rol.findFirst({ where: filtroRolAdmin(empresaId), select: SELECCION_DE_ROL_PARA_JERARQUIA });
 }
 
 /** Se gestiona a quien está en el mismo nivel o más abajo; el mensaje dice a quién protege el techo (el gerente o los administradores). */
@@ -64,9 +64,33 @@ export function mensajeSiNoPuedeGestionar(actor: PersonaParaJerarquia, objetivo:
   return nivelDe(objetivo) === "gerente" ? MENSAJE_SOLO_EL_GERENTE_TOCA_AL_GERENTE : MENSAJE_TECHO_DE_ADMIN;
 }
 
-/** Dar el rol administrador es de un administrador o del gerente. */
+/**
+ * Dar el rol administrador es de un administrador o del gerente. Es MEDIA regla: fuera de `core/permisos` nadie la llama sola (lo vigila
+ * `test/arquitectura/techo-de-dar-un-rol.test.ts`): se da un rol con `mensajeSiNoPuedeDarRolA` o, donde no hay a quién medir, con la variante declarada.
+ */
 export function mensajeSiNoPuedeAsignarRol(actor: PersonaParaJerarquia, rol: { clave: string | null }): string | null {
   return puedeAsignarRol(actor, rol) ? null : MENSAJE_TECHO_DE_ADMIN;
+}
+
+/**
+ * Contrato C2 del RBAC (O.35; Hito 3, Fase II, II.2): DAR un rol a una persona. Dos techos, en este orden: el del rol que se da (`mensajeSiNoPuedeAsignarRol`: el
+ * rol administrador lo da un administrador o el gerente) y el de gestión sobre quien lo recibe (`mensajeSiNoPuedeGestionar`: nadie toca a quien está por encima).
+ * Reemplaza la composición `mensajeSiNoPuedeAsignarRol(…) ?? mensajeSiNoPuedeGestionar(…)` que estaba copiada en tres lugares (alta de usuario, en sus dos ramas,
+ * y aceptación de una invitación de usuario): mismo resultado para todo actor, rol y persona (`test/permisos/dar-rol-a.propiedades.test.ts`), y el orden de los
+ * mensajes queda escrito una vez.
+ */
+export function mensajeSiNoPuedeDarRolA(actor: PersonaParaJerarquia, rol: { clave: string | null }, objetivo: PersonaParaJerarquia): string | null {
+  return mensajeSiNoPuedeAsignarRol(actor, rol) ?? mensajeSiNoPuedeGestionar(actor, objetivo);
+}
+
+/**
+ * La variante DECLARADA de dar un rol sin el techo de gestión sobre quien lo recibe: solo el techo del rol. Hay dos lugares, y solo esos (lista cerrada en
+ * `test/arquitectura/techo-de-dar-un-rol.test.ts`, con su motivo): el alta de una sucursal con su primer admin (contrato C6, I.4b: un administrador tiene que poder
+ * nombrar al gerente primer admin de una sucursal nueva) y el chequeo de una invitación de usuario pendiente (quien la revoca o la reenvía tiene que poder dar
+ * cada rol que ofrece; la persona todavía no es miembro: no hay a quién medir).
+ */
+export function mensajeSiNoPuedeDarRolSinTechoDeGestion(actor: PersonaParaJerarquia, rol: { clave: string | null }): string | null {
+  return mensajeSiNoPuedeAsignarRol(actor, rol);
 }
 
 /** El gerente no apaga su propia cuenta de empresa (sin ella no tendría contexto): primero traspasa la gerencia. Al gerente nadie más lo apaga (techo). */

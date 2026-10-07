@@ -3,6 +3,7 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { actorEnSucursal, mensajeSiNoPuedeGestionar, mensajeSiReactivaAdminSinSerGerente, objetivoEnSucursal, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
 import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
+import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { cambiarActivoDeMembresia } from "@/server/persistencia/permisos/membresias";
 import { conGobierno } from "../../con-gobierno";
@@ -38,7 +39,7 @@ export async function actualizarActivoMembresiaCasoDeUso(
   return conGobierno(
     actor,
     async (tx): Promise<ResultadoActualizarActivoMembresia> => {
-      const membresia = await tx.usuarioSucursal.findUnique({ where: { id: membresiaId }, include: { rol: true } });
+      const membresia = await tx.usuarioSucursal.findUnique({ where: { id: membresiaId }, include: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } } });
       if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", "No se encontró esa membresía.");
 
       const quienActua = actorEnSucursal(actor, actor.sucursalId);

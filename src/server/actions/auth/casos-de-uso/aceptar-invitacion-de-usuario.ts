@@ -5,8 +5,9 @@ import { MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion } from "@/core/fea
 import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { actorDesdeLaBase, mensajeSiNoPuedeAsignarRol, mensajeSiNoPuedeGestionar, mensajeSiReactivaAdminSinSerGerente, objetivoEnSucursal, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
+import { actorDesdeLaBase, mensajeSiNoPuedeDarRolA, mensajeSiReactivaAdminSinSerGerente, objetivoEnSucursal, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
 import { conInvariantesDeGobierno, InvarianteViolada } from "@/core/permisos/invariantes";
+import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { hashDeToken } from "@/core/seguridad/tokens";
 import { marcarInvitacionAceptada } from "@/server/persistencia/invitaciones/marcar-invitacion-aceptada";
 import { activarCuentaEnEmpresa, asignarMembresiaPorInvitacion } from "@/server/persistencia/permisos/membresias";
@@ -76,7 +77,7 @@ async function aceptarEnLaTransaccion(tx: Prisma.TransactionClient, entrada: Ent
 
   const invitacion = await tx.invitacion.findFirst({
     where: { hashToken, rolEmpresa: "usuario", estado: "PENDIENTE" },
-    include: { sucursales: { include: { sucursal: { select: { id: true, nombre: true, activo: true } }, rol: { select: { id: true, nombre: true, clave: true, activo: true } } } } },
+    include: { sucursales: { include: { sucursal: { select: { id: true, nombre: true, activo: true } }, rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } } } },
   });
   if (!invitacion || invitacion.venceEn.getTime() <= ahora.getTime()) return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
   if (invitacion.email !== usuario.email.trim().toLowerCase()) return { ok: false, mensaje: `Esta invitación es para ${invitacion.email}. Entrá con esa cuenta de Google.` };
@@ -97,9 +98,12 @@ async function aceptarEnLaTransaccion(tx: Prisma.TransactionClient, entrada: Ent
     if (!(await entrada.puedeOtorgar(fila.invitadoPorId, fila.sucursalId))) return { ok: false, mensaje: `Quien te dio acceso a ${donde} ya no tiene permiso para hacerlo. ${PEDIR_REENVIO}` };
 
     const actor = await actorDesdeLaBase(tx, empresa.id, fila.invitadoPorId, fila.sucursalId);
-    const membresiaPrevia = await tx.usuarioSucursal.findUnique({ where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId: fila.sucursalId } }, include: { rol: true } });
+    const membresiaPrevia = await tx.usuarioSucursal.findUnique({
+      where: { usuarioId_sucursalId: { usuarioId: usuario.id, sucursalId: fila.sucursalId } },
+      include: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } },
+    });
     const objetivo = await objetivoEnSucursal(tx, empresa.id, usuario.id, membresiaPrevia?.rol ?? null);
-    const rechazo = mensajeSiNoPuedeAsignarRol(actor, fila.rol) ?? mensajeSiNoPuedeGestionar(actor, objetivo);
+    const rechazo = mensajeSiNoPuedeDarRolA(actor, fila.rol, objetivo);
     if (rechazo) return { ok: false, mensaje: `No se puede dar acceso a ${donde}: ${rechazo} ${PEDIR_REENVIO}` };
     const reactivaAdmin = await reactivaAUnAdmin(tx, empresa.id, usuario.id, { membresia: membresiaPrevia, cuentaDeEmpresa: cuentaPrevia });
     const rechazoReactivar = mensajeSiReactivaAdminSinSerGerente(actor, reactivaAdmin);
