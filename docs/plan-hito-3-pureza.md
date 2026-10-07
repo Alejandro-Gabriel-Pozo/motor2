@@ -100,6 +100,8 @@ Riesgos y cobertura: gate de login (≈40 casos de `acceso`/`inicio-de-sesion`/`
 
 > **Fase I-A ejecutada (2026-10-08)**: I.1 a I.4b en la rama (`capacidades-sucursal`, `roles`, `permisos` y `auth/sucursales` migradas enteras); evidencia, mutaciones y desvíos en la fila 3.3 de `docs/pureza-integracion.md`. Desvíos: I.4 numerado I.4a + «2/3» + «3/3» en los commits; los TOPE bajan 49→45 (el plan partía de 51, antes de B3); `conGobierno` suma la forma `siSeViola` para los casos de uso. Falta I.5 (`usuarios.ts`).
 
+> **Fase I-B ejecutada en parte (2026-10-08)**: pre-paso P, I.5a (+ su auditoría, commit aparte), I.5b, I.5c, I.5d0, I.5d, I.5d′, I.5f e I.5j en la rama; evidencia en la fila 3.3. **I.5e/I.5e2 bloqueados** (y con ellos I.5g/h/i): `prisma/seed.ts` importa `asegurarInvitacionDeVinculacion` y `rotarInvitacionPendiente` de `core/features/empresa/invitacion-de-usuario.ts`; moverlo obliga a tocar `prisma/` (fuera de la rama sin autorización expresa) y, después de I.5e2, el seed tendría que importar un archivo `server-only` de `casos-de-uso/`. Desvíos: I.5j se hizo antes que g/h/i; las escrituras de membresía van a `persistencia/permisos/membresias.ts` (no a `auth/`); `enviarInvitacionYAnotar` lo importa la acción y por eso lleva ficha (no es un paso compartido); la marca de envío va a `persistencia/invitaciones/`.
+
 Hechos: «5 archivos, 12 funciones» = 12 con escritura directa; hay **16 mutaciones y 6 lecturas** (`listar*`, terreno de H8). Ninguna pasa hoy por un caso de uso.
 
 | # | Función | Envoltorio y clave | Transacción |
