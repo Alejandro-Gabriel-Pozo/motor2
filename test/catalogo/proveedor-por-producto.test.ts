@@ -280,6 +280,32 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
       expect(de(producto2.id)).toMatchObject({ ultimoPrecioPorUnidadStock: 40, origenDelPrecio: "EMPRESA" });
     });
 
+    it("un par con VARIAS unidades de compra: la unidad es la de la fila más reciente y la referencia, la de la más reciente que tenga una (la ficha muestra una fila por producto)", async () => {
+      const bolsa = await prisma.unidad.create({ data: { nombre: "bolsa", magnitud: "CANTIDAD", decimales: 0 } });
+      await compra(productoId, proveedorAId, "2026-09-10", 500);
+      // Fila VIEJA en kg, con referencia; fila NUEVA en bolsa, sin referencia.
+      await prisma.proveedorPorProducto.create({ data: { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 500, precioPorUnidadStock: 500, ultimaCompra: new Date("2026-08-01"), referenciaProveedor: "ACE-5L" } });
+      await prisma.proveedorPorProducto.create({ data: { productoId, proveedorId: proveedorAId, unidadCompraId: bolsa.id, precioUnitario: 12500, precioPorUnidadStock: 500, ultimaCompra: new Date("2026-09-10") } });
+
+      const lista = await listarProductosDeProveedor(proveedorAId);
+      expect(lista).toHaveLength(1);
+      expect(lista[0]).toMatchObject({ unidadCompraId: bolsa.id, unidadCompraNombre: "bolsa", referenciaProveedor: "ACE-5L" });
+    });
+
+    it("un producto SIN unidad de compra también escribe su fila (con la unidad de stock) y conserva la referencia que se tipeó", async () => {
+      await sembrarMotivosYDestinos();
+      expect((await prisma.producto.findUniqueOrThrow({ where: { id: productoId } })).unidadCompraId).toBeNull();
+      const r = await registrarMovimiento({
+        proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId,
+        items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: "ACE-5L" }],
+      });
+      expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
+
+      const fila = await prisma.proveedorPorProducto.findFirstOrThrow({ where: { productoId, proveedorId: proveedorAId } });
+      expect(fila).toMatchObject({ unidadCompraId, referenciaProveedor: "ACE-5L" });
+      expect((await listarProductosDeProveedor(proveedorAId))[0]).toMatchObject({ unidadCompraNombre: "kg", referenciaProveedor: "ACE-5L", ultimoPrecioPorUnidadStock: 100 });
+    });
+
     it("una oferta sin fila en la tabla usa la unidad de compra del producto (o la de stock si no tiene)", async () => {
       await compra(productoId, proveedorAId, "2026-09-10", 500);
       expect(await prisma.proveedorPorProducto.count()).toBe(0);

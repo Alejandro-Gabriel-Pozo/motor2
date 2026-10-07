@@ -5,12 +5,13 @@ import type { Db } from "@/lib/db-tipos";
  * Lo que cada proveedor le vendió a la empresa, DERIVADO del Kardex vigente (Pureza Fase 4, vínculo proveedor↔producto, parte 2; decisión del dueño 2026-10-06). La comparativa de
  * precios, la ficha del proveedor y la precarga del carrito leían la tabla `ProveedorPorProducto`, un caché que se escribe en cada compra y que NO se entera de que una compra se
  * anuló ni de que se le corrigió el proveedor: mostraba el precio de una factura que ya «no ocurrió», mientras el costo de reposición (`obtenerCostoActualPorMP`) sí la ignoraba — dos
- * verdades distintas. Acá el precio y la fecha salen de las compras VIGENTES, con la misma regla que el costo de reposición:
+ * verdades distintas. Acá el precio y la fecha salen de las compras VIGENTES, con la misma regla que el costo de reposición (que solo mira el movimiento; este lector mira también la operación: hoy no hay caso en que difieran):
  *  - solo cuentan los movimientos y operaciones de proceso COMPRA con proveedor y sin anular (una devolución al proveedor es otro proceso: nunca es «la última compra»);
- *  - la última compra es la de fecha más reciente (empate: la de mayor `id`, es decir, la cargada después);
+ *  - la última compra es la de fecha más reciente (empate: la de mayor `id`, un desempate determinista —el cuid lleva la hora al frente, así que en la práctica es la cargada después—);
  *  - «un precio 0 nunca pisa uno bueno»: el precio es el de la última compra CON precio; si ninguna lo tiene, 0 («proveedor conocido, sin precio»).
  * Hasta acá, lo que SÍ sale de la tabla: la unidad de compra y la referencia del proveedor, que el Kardex no guarda (la tabla es el único lugar donde viven; ver la M3 `[MIG]` del plan).
- * Una oferta cuya fila de la tabla no existe (no debería pasar) usa la unidad de compra del producto, o la de stock si no tiene.
+ * Desde 2026-10-07 toda compra con proveedor escribe su fila (un producto sin unidad de compra usa su unidad de stock), así que una oferta sin fila solo existe para compras ANTERIORES a ese cambio: usa la
+ * unidad de compra del producto, o la de stock si no tiene (y sin referencia, que nunca se guardó).
  *
  * Alcance: la EMPRESA entera (la RLS acota a la empresa) o, con `sucursalId`, solo lo comprado por esa sucursal (el carrito: D-B del dueño, 2026-10-07). Sin `import "server-only"`: lo
  * importan pruebas y scripts.
@@ -75,7 +76,7 @@ export async function cargarOfertasDeProveedores(db: Db, filtro: FiltroDeOfertas
     else delPar.set(clave, [f]);
   }
 
-  // Un par sin fila en la tabla (no debería pasar): la unidad de compra del producto, o la de stock.
+  // Un par sin fila en la tabla (solo compras anteriores a que toda compra escribiera su fila): la unidad de compra del producto, o la de stock.
   const sinFila = derivadas.filter((d) => !delPar.has(`${d.productoId}|${d.proveedorId}`)).map((d) => d.productoId);
   const productos =
     sinFila.length === 0

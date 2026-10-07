@@ -148,6 +148,7 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
     // FALTA: un par con compra vigente y sin fila en la tabla (la compra escribe el vínculo en su misma transacción, así que no debería pasar; los productos sin unidad de compra definida no lo escriben).
     const filas = await prisma.proveedorPorProducto.findMany({ select: { productoId: true, proveedorId: true } });
     const conFila = new Set(filas.map((f) => `${f.productoId}|${f.proveedorId}`));
+    // Las compras ANTERIORES a que toda compra escribiera su fila (un producto sin unidad de compra usa su unidad de stock desde 2026-10-07) pueden no tenerla: se excluyen los productos sin unidad de compra.
     const sinUnidad = new Set((await prisma.producto.findMany({ where: { unidadCompraId: null }, select: { id: true } })).map((p) => p.id));
     const faltan = ofertas.filter((o) => !conFila.has(`${o.productoId}|${o.proveedorId}`) && !sinUnidad.has(o.productoId));
     expect(faltan.map((o) => `${o.productoId}|${o.proveedorId}`), "pares con compra vigente y sin fila en ProveedorPorProducto").toEqual([]);

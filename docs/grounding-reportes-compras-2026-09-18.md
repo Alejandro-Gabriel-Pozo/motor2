@@ -48,7 +48,7 @@ Dos piezas, ambas MUY relevantes para este caso:
 
 ## 3. Lo que motor2 ya tiene y no está usando para esto
 
-- `ProveedorPorProducto.precioPorUnidadStock` + `ultimaCompra`: ya es, literalmente, el dato de "último precio por proveedor" — hoy solo alimenta `/catalogo/proveedores/comparativa` (una foto del momento, sin historia).
+- `ProveedorPorProducto.precioPorUnidadStock` + `ultimaCompra` *(hasta 2026-10-07; hoy la comparativa lee el Kardex vigente)*: ya es, literalmente, el dato de "último precio por proveedor" — hoy solo alimenta `/catalogo/proveedores/comparativa` (una foto del momento, sin historia).
 - `Insumo.grupoId` → `Grupo` (árbol de familias): la dimensión "por categoría/familia" que pide Grocy (Spendings por grupo) ya existe en el modelo — hoy no la usa ningún reporte de Compras.
 - `IndicePrecio`/`cargarSerieIPC`/`resolverCoeficienteIPC` (`src/core/reportes/indices-economicos.ts`): serie real de IPC INDEC ya integrada y funcionando, hoy usada SOLO para ajustar el margen de Ventas (Método 1, `docs/comparativa-ux-erpnext-dolibarr.md` §10). Es exactamente la pieza que NINGUNO de los tres sistemas de referencia tiene de fábrica (están pensados para monedas estables) — reusarla acá permite responder "¿de verdad estoy pagando más por la harina, o es solo inflación general?", una pregunta que en Argentina es más relevante que en cualquiera de los tres sistemas de referencia.
 
