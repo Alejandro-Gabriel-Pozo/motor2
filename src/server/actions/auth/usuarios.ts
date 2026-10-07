@@ -1,11 +1,9 @@
 "use server";
 
-import type { TipoDeInvitacion } from "@/core/features/empresa/invitacion";
-import { asegurarInvitacionDeVinculacion, revocarInvitacionPendiente, rotarInvitacionPendiente } from "@/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx";
+import { asegurarInvitacionDeVinculacion, rotarInvitacionPendiente } from "@/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx";
 import { requierePermiso } from "@/server/acceso/gate";
 import {
   actorEnSucursal,
-  mensajeSiNoPuedeAsignarRol,
   mensajeSiNoPuedeGestionar,
   objetivoEnSucursal,
 } from "@/core/permisos/gestion-de-usuarios";
@@ -22,6 +20,9 @@ import { actualizarActivoUsuarioEnEmpresaCasoDeUso } from "./casos-de-uso/actual
 import { transferirGerenciaCasoDeUso } from "./casos-de-uso/transferir-gerencia";
 import { agregarOActualizarUsuarioCasoDeUso } from "./casos-de-uso/agregar-o-actualizar-usuario";
 import { guardComandoAgregarOActualizarUsuario } from "@/core/features/permisos/usuario.guard";
+import { revocarInvitacionCasoDeUso } from "./casos-de-uso/revocar-invitacion";
+// Transitorio (I.5g → I.5h): reenviar todavía corre en línea y usa el paso compartido; sale con su migración.
+import { invitacionGestionable } from "@/server/actions/auth/casos-de-uso/invitacion-gestionable";
 
 /**
  * Techo de privilegio y salvaguardas de esta pantalla (Bloque G, G2): las acciones no miran roles ni comparan nombres. Leen el estado y escriben
@@ -179,47 +180,6 @@ export async function transferirGerencia(usuarioDestinoId: string, emailConfirma
 const ESPERA_ENTRE_REENVIOS_MS = 60_000;
 const MENSAJE_ESPERAR = "Esa invitación se envió hace menos de un minuto. Esperá un momento antes de reenviarla.";
 
-type Tx = Parameters<Parameters<typeof conGobierno>[1]>[0];
-
-const TIPO_DE_USUARIO: TipoDeInvitacion = "usuario";
-
-/**
- * La invitación pendiente que esta persona puede gestionar desde la sucursal activa, o el motivo por el que no. Una de USUARIO se gestiona si incluye la sucursal activa, y
- * quien la toca tiene que poder otorgar CADA sucursal con su rol (gate por sucursal y techo de privilegio): si no, un administrador de una sucursal tocaría lo que dio otro
- * de otra. Una de VINCULACIÓN se gestiona si el usuario es miembro de la sucursal activa y el techo alcanza a esa persona.
- */
-async function invitacionGestionable(
-  ctx: Parameters<Parameters<typeof conPermiso>[1]>[0],
-  tx: Tx,
-  invitacionId: string,
-): Promise<{ ok: true; invitacion: { id: string; email: string; tipo: "usuario" | "vinculacion"; enviadaEn: Date | null } } | { ok: false; mensaje: string }> {
-  const inv = await tx.invitacion.findFirst({
-    where: { id: invitacionId, empresaId: ctx.empresaId, estado: "PENDIENTE", rolEmpresa: { in: ["usuario", "vinculacion"] } },
-    select: { id: true, email: true, rolEmpresa: true, enviadaEn: true, sucursales: { select: { sucursalId: true, rol: { select: { clave: true, activo: true } } } } },
-  });
-  if (!inv) return { ok: false, mensaje: "No se encontró esa invitación pendiente." };
-
-  const tipoDeInvitacion: string = inv.rolEmpresa;
-  if (tipoDeInvitacion === TIPO_DE_USUARIO) {
-    if (!inv.sucursales.some((s) => s.sucursalId === ctx.sucursalId)) return { ok: false, mensaje: "No se encontró esa invitación pendiente." };
-    for (const fila of inv.sucursales) {
-      if (fila.sucursalId !== ctx.sucursalId) {
-        const gate = await requierePermiso(ctx.usuarioId, fila.sucursalId, "gestion_usuarios", ctx.db);
-        if (!gate.ok) return { ok: false, mensaje: "Esa invitación da acceso a sucursales donde no podés gestionar usuarios." };
-      }
-      const rechazo = mensajeSiNoPuedeAsignarRol(actorEnSucursal(ctx, fila.sucursalId), fila.rol);
-      if (rechazo) return { ok: false, mensaje: rechazo };
-    }
-    return { ok: true, invitacion: { id: inv.id, email: inv.email, tipo: "usuario", enviadaEn: inv.enviadaEn } };
-  }
-
-  const membresia = await tx.usuarioSucursal.findFirst({ where: { sucursalId: ctx.sucursalId, usuario: { email: inv.email } }, select: { rol: { select: { clave: true } }, usuarioId: true } });
-  if (!membresia) return { ok: false, mensaje: "No se encontró esa invitación pendiente." };
-  const rechazo = mensajeSiNoPuedeGestionar(actorEnSucursal(ctx, ctx.sucursalId), await objetivoEnSucursal(tx, ctx.empresaId, membresia.usuarioId, membresia.rol));
-  if (rechazo) return { ok: false, mensaje: rechazo };
-  return { ok: true, invitacion: { id: inv.id, email: inv.email, tipo: "vinculacion", enviadaEn: inv.enviadaEn } };
-}
-
 /** Manda el mail pendiente (si hay) después del commit y devuelve el mensaje final: si no salió, lo dice. */
 async function enviarYResponder(
   ctx: Parameters<Parameters<typeof conPermiso>[1]>[0],
@@ -251,16 +211,13 @@ export async function reenviarInvitacionPendiente(invitacionId: string): Promise
   });
 }
 
-/** Revocar: el enlace deja de servir. Para volver a invitar a esa persona se vuelve a agregar. */
+/**
+ * Revocar: el enlace deja de servir. Para volver a invitar a esa persona se vuelve a agregar. Desde el Hito 3 (Fase I, I.5g) es un adaptador:
+ * `conPermiso("gestion_usuarios")` → caso de uso (`casos-de-uso/revocar-invitacion.ts`: la invitación gestionable desde la sucursal activa y la revocación con su
+ * auditoría, en la transacción de gobierno) → `aResultadoAccion`. Sin guard: solo recibe un id (`SIN_GUARD`).
+ */
 export async function revocarInvitacion(invitacionId: string): Promise<ResultadoAccion> {
-  return conPermiso("gestion_usuarios", async (ctx) =>
-    conGobierno(ctx, async (tx) => {
-      const g = await invitacionGestionable(ctx, tx, invitacionId);
-      if (!g.ok) return error(g.mensaje);
-      const revocada = await revocarInvitacionPendiente(tx, { empresaId: ctx.empresaId, invitacionId, actorId: ctx.usuarioId, ahora: ctx.ahora });
-      return revocada ? ok(`Invitación a "${g.invitacion.email}" revocada.`) : error("No se encontró esa invitación pendiente.");
-    }),
-  );
+  return conPermiso("gestion_usuarios", async (ctx) => aResultadoAccion(await revocarInvitacionCasoDeUso(ctx, { invitacionId })));
 }
 
 /** «Invitar a vincular»: a un miembro que todavía no entró con Google (un precargado) se le manda la invitación para que vincule su cuenta. */
