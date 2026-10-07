@@ -58,6 +58,34 @@ export function mensajeDeInvitacion(datos: { email: string; nombreEmpresa: strin
 /** Los tres tipos de invitación (columna `rolEmpresa`): el primer gerente (E5), sumar a alguien a una empresa y vincular la cuenta de Google de un usuario precargado. */
 export type TipoDeInvitacion = "gerente" | "usuario" | "vinculacion";
 
+/** Qué hacer con la invitación pendiente de un email al asegurar una de usuario o de vinculación. */
+export type DecisionSobreLaPendiente = { accion: "crear" } | { accion: "extender" } | { accion: "rotar" } | { accion: "rechazar"; mensaje: string };
+
+/**
+ * La decisión PURA de `asegurarInvitacionDeUsuario` / `asegurarInvitacionDeVinculacion` (Hito 3, I.5e2: antes en línea en cada una) sobre la invitación pendiente
+ * que ya tiene ese email, en ESTE orden: de otro tipo → no se puede (con el mensaje de cada tipo); vigente (vence después de `ahora`) → extender; vencida → rotar
+ * el token; ninguna → crear. `pendiente.tipo` es la columna `rolEmpresa` de la invitación (su tipo, no un rol de nadie). El email ya viene en minúsculas.
+ */
+export function decidirSobreLaInvitacionPendiente(
+  pendiente: { tipo: string; venceEn: Date } | null,
+  pedida: Extract<TipoDeInvitacion, "usuario" | "vinculacion">,
+  email: string,
+  ahora: Date,
+): DecisionSobreLaPendiente {
+  if (pendiente && pendiente.tipo !== pedida) {
+    return {
+      accion: "rechazar",
+      mensaje:
+        pedida === "usuario"
+          ? `Ya hay una invitación pendiente para ${email} que no es de usuario. Revocala o esperá a que se acepte.`
+          : `Ya hay una invitación pendiente para ${email} que no es de vinculación.`,
+    };
+  }
+  if (pendiente && pendiente.venceEn.getTime() > ahora.getTime()) return { accion: "extender" };
+  if (pendiente) return { accion: "rotar" };
+  return { accion: "crear" };
+}
+
 /** Una sucursal con el rol que da una invitación, tal como se muestra en el mail y en la pantalla. */
 export interface AccesoDeInvitacion {
   sucursal: string;

@@ -3,7 +3,15 @@ import type { Prisma } from "@prisma/client";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { generarTokenOpaco, hashDeToken } from "@/core/seguridad/tokens";
-import { vencimientoDeInvitacion, type TipoDeInvitacion } from "@/core/features/empresa/invitacion";
+import { decidirSobreLaInvitacionPendiente, vencimientoDeInvitacion, type TipoDeInvitacion } from "@/core/features/empresa/invitacion";
+import {
+  crearInvitacion,
+  refirmarSucursalesDeInvitacion,
+  renovarTokenDeInvitacion,
+  revocarInvitacionSiSiguePendiente,
+  sumarAccesoAInvitacion,
+  type AccesoDeLaInvitacion,
+} from "@/server/persistencia/auth/invitaciones-de-usuario";
 
 /**
  * Crear, extender, volver a firmar y revocar invitaciones de USUARIO y de VINCULACIÓN (E8, ADR-024) dentro de una transacción de la empresa. La invitación es una
@@ -11,21 +19,16 @@ import { vencimientoDeInvitacion, type TipoDeInvitacion } from "@/core/features/
  * verifica quien llama (el gate de `gestion_usuarios` y el techo de privilegio); acá solo se mantiene el estado y su auditoría. El mail NO se manda acá: sale DESPUÉS del
  * commit (ADR-018), con el token que devuelven estas funciones (que solo existe en memoria: en la base queda el hash).
  *
- * Hito 3, Fase I, I.5e: el archivo vivía en `core/features/empresa/` (heredado del núcleo: escribía la base) y se mudó ENTERO, sin cambios de lógica, a esta carpeta de casos de
- * uso como paso compartido (sin ficha: lo componen los casos de uso de `usuarios.ts`; la Server Action, las huellas, los tests de persistencia y `prisma/seed.ts` lo
- * importan con su ruta). En I.5e2 sus escrituras pasan a `server/persistencia/auth/invitaciones-de-usuario.ts` y la decisión vigente/vencida/otro tipo a
- * `core/features/empresa/invitacion.ts`; quedan acá la composición y la auditoría. `server-only`: `prisma/seed.ts` lo importa bajo `tsx --conditions=react-server`.
+ * PASO COMPARTIDO (sin ficha: lo componen los casos de uso de esta carpeta). Hito 3, Fase I: el archivo vivía en `core/features/empresa/invitacion-de-usuario.ts`
+ * (heredado del núcleo: escribía la base); en I.5e se mudó entero acá y en I.5e2 se partió, con los MISMOS nombres y firmas (las huellas, los tests de persistencia y
+ * `prisma/seed.ts` —bajo `tsx --conditions=react-server`, por el `server-only`— los llaman directo): la decisión vigente/vencida/otro tipo es la función pura
+ * `decidirSobreLaInvitacionPendiente` (`core/features/empresa/invitacion.ts`), las escrituras están en `server/persistencia/auth/invitaciones-de-usuario.ts`, y acá
+ * quedan las lecturas, el token, la composición y la auditoría, en el mismo orden que antes.
  */
 type Tx = Prisma.TransactionClient;
 
-const TIPO_USUARIO: TipoDeInvitacion = "usuario";
-const TIPO_VINCULACION: TipoDeInvitacion = "vinculacion";
-
-export interface AccesoPedido {
-  sucursalId: string;
-  rolId: string;
-  notas?: string | null;
-}
+const TIPO_USUARIO: Extract<TipoDeInvitacion, "usuario"> = "usuario";
+const TIPO_VINCULACION: Extract<TipoDeInvitacion, "vinculacion"> = "vinculacion";
 
 export type ResultadoDeInvitacion =
   | { ok: true; invitacionId: string; accion: "creada" | "extendida" | "rotada"; token: string | null }
@@ -54,13 +57,8 @@ async function auditar(tx: Tx, entrada: { invitacionId: string; email: string; a
   });
 }
 
-async function sumarAcceso(tx: Tx, empresaId: string, invitacionId: string, acceso: AccesoPedido, invitadoPorId: string) {
-  await tx.invitacionSucursal.upsert({
-    where: { invitacionId_sucursalId: { invitacionId, sucursalId: acceso.sucursalId } },
-    update: { rolId: acceso.rolId, invitadoPorId, ...(acceso.notas !== undefined && { notas: acceso.notas }) },
-    create: { empresaId, invitacionId, sucursalId: acceso.sucursalId, rolId: acceso.rolId, invitadoPorId, ...(acceso.notas !== undefined && { notas: acceso.notas }) },
-  });
-}
+/** La pendiente de una lectura, como la pide la decisión pura (`rolEmpresa` es el TIPO de la invitación). */
+const comoPendiente = (fila: { rolEmpresa: string; venceEn: Date } | null) => (fila ? { tipo: fila.rolEmpresa, venceEn: fila.venceEn } : null);
 
 /**
  * Deja una invitación de USUARIO pendiente para `email` con el acceso pedido (una sucursal y su rol):
@@ -69,35 +67,33 @@ async function sumarAcceso(tx: Tx, empresaId: string, invitacionId: string, acce
  *  - hay una de usuario vencida: rota el token, suma la sucursal y devuelve el token (hay que mandar el mail);
  *  - hay una de gerente o de vinculación pendiente: no se puede, lo explica.
  */
-export async function asegurarInvitacionDeUsuario(tx: Tx, entrada: { empresaId: string; email: string; invitadoPorId: string; acceso: AccesoPedido } & Reloj): Promise<ResultadoDeInvitacion> {
+export async function asegurarInvitacionDeUsuario(tx: Tx, entrada: { empresaId: string; email: string; invitadoPorId: string; acceso: AccesoDeLaInvitacion } & Reloj): Promise<ResultadoDeInvitacion> {
   const email = minuscula(entrada.email);
   const generar = entrada.generarToken ?? (() => generarTokenOpaco(entrada.azar));
   const pendiente = await tx.invitacion.findFirst({ where: { empresaId: entrada.empresaId, email, estado: "PENDIENTE" } });
 
-  const tipoPendiente = pendiente?.rolEmpresa;
-  if (pendiente && tipoPendiente !== TIPO_USUARIO) {
-    return { ok: false, mensaje: `Ya hay una invitación pendiente para ${email} que no es de usuario. Revocala o esperá a que se acepte.` };
-  }
+  const decision = decidirSobreLaInvitacionPendiente(comoPendiente(pendiente), TIPO_USUARIO, email, entrada.ahora);
+  if (decision.accion === "rechazar") return { ok: false, mensaje: decision.mensaje };
 
-  if (pendiente && pendiente.venceEn.getTime() > entrada.ahora.getTime()) {
-    await sumarAcceso(tx, entrada.empresaId, pendiente.id, entrada.acceso, entrada.invitadoPorId);
+  if (pendiente && decision.accion === "extender") {
+    await sumarAccesoAInvitacion(tx, { empresaId: entrada.empresaId, invitacionId: pendiente.id, acceso: entrada.acceso, invitadoPorId: entrada.invitadoPorId });
     await auditar(tx, { invitacionId: pendiente.id, email, actorId: entrada.invitadoPorId, anterior: "pendiente", nuevo: "pendiente (suma una sucursal)" });
     return { ok: true, invitacionId: pendiente.id, accion: "extendida", token: null };
   }
 
-  if (pendiente) {
+  if (pendiente && decision.accion === "rotar") {
     const token = generar();
-    await tx.invitacion.update({ where: { id: pendiente.id }, data: { hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), enviadaEn: null, invitadoPorId: entrada.invitadoPorId } });
-    await sumarAcceso(tx, entrada.empresaId, pendiente.id, entrada.acceso, entrada.invitadoPorId);
+    await renovarTokenDeInvitacion(tx, { invitacionId: pendiente.id, hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), invitadoPorId: entrada.invitadoPorId });
+    await sumarAccesoAInvitacion(tx, { empresaId: entrada.empresaId, invitacionId: pendiente.id, acceso: entrada.acceso, invitadoPorId: entrada.invitadoPorId });
     await auditar(tx, { invitacionId: pendiente.id, email, actorId: entrada.invitadoPorId, anterior: "vencida", nuevo: "pendiente" });
     return { ok: true, invitacionId: pendiente.id, accion: "rotada", token };
   }
 
   const token = generar();
-  const creada = await tx.invitacion.create({
-    data: { empresaId: entrada.empresaId, email, rolEmpresa: TIPO_USUARIO, hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), invitadoPorId: entrada.invitadoPorId },
+  const creada = await crearInvitacion(tx, {
+    empresaId: entrada.empresaId, email, tipo: "usuario", hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), invitadoPorId: entrada.invitadoPorId,
   });
-  await sumarAcceso(tx, entrada.empresaId, creada.id, entrada.acceso, entrada.invitadoPorId);
+  await sumarAccesoAInvitacion(tx, { empresaId: entrada.empresaId, invitacionId: creada.id, acceso: entrada.acceso, invitadoPorId: entrada.invitadoPorId });
   await auditar(tx, { invitacionId: creada.id, email, actorId: entrada.invitadoPorId, anterior: null, nuevo: "pendiente" });
   return { ok: true, invitacionId: creada.id, accion: "creada", token };
 }
@@ -111,22 +107,20 @@ export async function asegurarInvitacionDeVinculacion(tx: Tx, entrada: { empresa
   const generar = entrada.generarToken ?? (() => generarTokenOpaco(entrada.azar));
   const pendiente = await tx.invitacion.findFirst({ where: { empresaId: entrada.empresaId, email, estado: "PENDIENTE" } });
 
-  const tipoPendiente = pendiente?.rolEmpresa;
-  if (pendiente && tipoPendiente !== TIPO_VINCULACION) {
-    return { ok: false, mensaje: `Ya hay una invitación pendiente para ${email} que no es de vinculación.` };
-  }
-  if (pendiente && pendiente.venceEn.getTime() > entrada.ahora.getTime()) return { ok: true, invitacionId: pendiente.id, accion: "extendida", token: null };
+  const decision = decidirSobreLaInvitacionPendiente(comoPendiente(pendiente), TIPO_VINCULACION, email, entrada.ahora);
+  if (decision.accion === "rechazar") return { ok: false, mensaje: decision.mensaje };
+  if (pendiente && decision.accion === "extender") return { ok: true, invitacionId: pendiente.id, accion: "extendida", token: null };
 
-  if (pendiente) {
+  if (pendiente && decision.accion === "rotar") {
     const token = generar();
-    await tx.invitacion.update({ where: { id: pendiente.id }, data: { hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), enviadaEn: null, invitadoPorId: entrada.invitadoPorId } });
+    await renovarTokenDeInvitacion(tx, { invitacionId: pendiente.id, hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), invitadoPorId: entrada.invitadoPorId });
     await auditar(tx, { invitacionId: pendiente.id, email, actorId: entrada.invitadoPorId, anterior: "vencida", nuevo: "pendiente" });
     return { ok: true, invitacionId: pendiente.id, accion: "rotada", token };
   }
 
   const token = generar();
-  const creada = await tx.invitacion.create({
-    data: { empresaId: entrada.empresaId, email, rolEmpresa: TIPO_VINCULACION, hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), invitadoPorId: entrada.invitadoPorId },
+  const creada = await crearInvitacion(tx, {
+    empresaId: entrada.empresaId, email, tipo: "vinculacion", hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), invitadoPorId: entrada.invitadoPorId,
   });
   await auditar(tx, { invitacionId: creada.id, email, actorId: entrada.invitadoPorId, anterior: null, nuevo: "pendiente" });
   return { ok: true, invitacionId: creada.id, accion: "creada", token };
@@ -141,8 +135,8 @@ export async function rotarInvitacionPendiente(tx: Tx, entrada: { empresaId: str
   const inv = await tx.invitacion.findFirst({ where: { id: entrada.invitacionId, empresaId: entrada.empresaId, estado: "PENDIENTE", rolEmpresa: { in: ["usuario", "vinculacion"] } } });
   if (!inv) return { ok: false, mensaje: "No se encontró esa invitación pendiente." };
   const token = generar();
-  await tx.invitacion.update({ where: { id: inv.id }, data: { hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), enviadaEn: null, invitadoPorId: entrada.actorId } });
-  await tx.invitacionSucursal.updateMany({ where: { invitacionId: inv.id }, data: { invitadoPorId: entrada.actorId } });
+  await renovarTokenDeInvitacion(tx, { invitacionId: inv.id, hashToken: hashDeToken(token), venceEn: vencimientoDeInvitacion(entrada.ahora), invitadoPorId: entrada.actorId });
+  await refirmarSucursalesDeInvitacion(tx, { invitacionId: inv.id, invitadoPorId: entrada.actorId });
   await auditar(tx, { invitacionId: inv.id, email: inv.email, actorId: entrada.actorId, anterior: "pendiente", nuevo: "pendiente (reenviada)" });
   return { ok: true, invitacionId: inv.id, accion: "rotada", token };
 }
@@ -151,8 +145,8 @@ export async function rotarInvitacionPendiente(tx: Tx, entrada: { empresaId: str
 export async function revocarInvitacionPendiente(tx: Tx, entrada: { empresaId: string; invitacionId: string; actorId: string; ahora: Date }): Promise<boolean> {
   const inv = await tx.invitacion.findFirst({ where: { id: entrada.invitacionId, empresaId: entrada.empresaId, estado: "PENDIENTE", rolEmpresa: { in: ["usuario", "vinculacion"] } } });
   if (!inv) return false;
-  const r = await tx.invitacion.updateMany({ where: { id: inv.id, estado: "PENDIENTE" }, data: { estado: "REVOCADA", revocadaEn: entrada.ahora } });
-  if (r.count !== 1) return false;
+  const revocadas = await revocarInvitacionSiSiguePendiente(tx, { invitacionId: inv.id, ahora: entrada.ahora });
+  if (revocadas !== 1) return false;
   await auditar(tx, { invitacionId: inv.id, email: inv.email, actorId: entrada.actorId, anterior: "pendiente", nuevo: "revocada" });
   return true;
 }
