@@ -1,5 +1,5 @@
-import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo, nivelMinimoDeAccion, type NivelDeAccion } from "./acciones";
-import { esRolAdmin, nivelDeRolPorClave, rolAlcanzaLaAccion } from "./jerarquia";
+import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo, nivelMinimoDeAccion } from "./acciones";
+import { esRolAdmin, etiquetaDelPiso, nivelDelRolFrenteAlPiso, rolAlcanzaLaAccion } from "./jerarquia";
 
 /** Lo único que la matriz necesita saber de un rol: su clave (el nombre es de la empresa y se puede cambiar). */
 export type RolDeMatriz = { clave: string | null };
@@ -32,9 +32,12 @@ export function esCeldaFueraDeNivel(rol: RolDeMatriz, accionClave: string): bool
   return claveEnCatalogo(accionClave) && !rolAlcanzaLaAccion(rol, accionClave);
 }
 
-/** Piso y nivel del rol, para los mensajes: «una acción de nivel administrador, y el rol es de nivel operario». */
-export function nivelesDeLaCelda(rol: RolDeMatriz, accionClave: string): { piso: NivelDeAccion; delRol: NivelDeAccion } | null {
-  return claveEnCatalogo(accionClave) ? { piso: nivelMinimoDeAccion(accionClave), delRol: nivelDeRolPorClave(rol) } : null;
+/**
+ * Piso y nivel del rol, para los mensajes: «una acción de nivel administrador de sistema, y el rol es de nivel operario». Devuelve las ETIQUETAS para mostrar
+ * (`etiquetaDelPiso`, ADR-027), no los valores: quien arma el mensaje (el caso de uso de `guardarPermisos`) no tiene que saber cómo se escribe cada piso.
+ */
+export function nivelesDeLaCelda(rol: RolDeMatriz, accionClave: string): { piso: string; delRol: string } | null {
+  return claveEnCatalogo(accionClave) ? { piso: etiquetaDelPiso(nivelMinimoDeAccion(accionClave)), delRol: etiquetaDelPiso(nivelDelRolFrenteAlPiso(rol)) } : null;
 }
 
 /** El estado que realmente se guarda: aplica «Ver ⊇ Editar» y la salvaguarda del admin. */

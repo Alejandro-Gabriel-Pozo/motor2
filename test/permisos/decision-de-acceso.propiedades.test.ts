@@ -221,7 +221,7 @@ describe("los hechos del catálogo que las propiedades suponen", () => {
     for (const a of ACCIONES) {
       const clave = a.clave as AccionClave;
       expect(["empresa", "sucursal"]).toContain(contextoDeAccion(clave));
-      expect(["operario", "administrador", "gerente"]).toContain(nivelMinimoDeAccion(clave));
+      expect(["operario", "administrador", "administrador_sistema", "gerente"]).toContain(nivelMinimoDeAccion(clave));
       if (nivelMinimoDeAccion(clave) === "gerente") expect(contextoDeAccion(clave), clave).toBe("empresa");
     }
   });

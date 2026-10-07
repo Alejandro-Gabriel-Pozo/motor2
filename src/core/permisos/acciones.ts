@@ -15,13 +15,19 @@ import type { ModuloId } from "../modulos/catalogo";
 export type ContextoDeAccion = "empresa" | "sucursal";
 
 /**
- * Nivel de quien puede llegar a tener la acción (RBAC con jerarquía, decisión del dueño 2026-09-30): operario < administrador < gerente.
+ * Nivel de quien puede llegar a tener la acción (RBAC con jerarquía, decisión del dueño 2026-09-30; cuarto escalón por ADR-027, 2026-10-08):
+ * operario < administrador < administrador de sistema < gerente (rangos 1 a 4, en `RANGO_DE_PISO` de `jerarquia.ts`, el único lugar que los ordena).
  * Es un PISO y SE HACE CUMPLIR en dos puntos: `guardarPermisos` rechaza darle a un rol por debajo del piso el Ver/Editar de la acción, y el gate
  * (`gate.ts`) ignora la fila aunque exista (una migración o un dato viejo no la convierten en acceso). Los roles personalizados (mozo, cajero…)
- * y «operador» son nivel operario; el rol «admin» es nivel administrador; «gerente» no es un rol de sucursal sino `UsuarioEmpresa.rolEmpresa`
- * (uno por empresa): una acción de piso gerente la tiene SOLO quien es gerente, sin pasar por la matriz, y por eso es de contexto empresa.
+ * y «operador» son de rango operario; el rol de clave «admin» es el administrador de sistema (alcanza los pisos administrador y administrador de
+ * sistema); «gerente» no es un rol de sucursal sino `UsuarioEmpresa.rolEmpresa` (uno por empresa): una acción de piso gerente la tiene SOLO quien
+ * es gerente, sin pasar por la matriz, y por eso es de contexto empresa.
+ * - «administrador»: la autoridad operativa (anular, corregir, catálogos, carta, reportes de dinero). Es el piso que alcanzará un rol propio de la empresa
+ *   de rango 2 («encargado», F3 de ADR-027, cuando exista `Rol.nivel`); hoy no lo tiene nadie más que el rol «admin».
+ * - «administrador_sistema»: el gobierno de la empresa (las claves del módulo `administracion` que no son de gerente: usuarios, roles, matriz,
+ *   sucursales, capacidades y la auditoría de la sucursal, D16). Un rango 2 nunca lo alcanza.
  */
-export type NivelDeAccion = "operario" | "administrador" | "gerente";
+export type NivelDeAccion = "operario" | "administrador" | "administrador_sistema" | "gerente";
 
 export interface AccionSemilla {
   clave: string;

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { guardarPermisos } from "@/server/actions/permisos/permisos";
 import { nivelMinimoDeAccion, claveEnCatalogo } from "@/core/permisos/acciones";
+import { etiquetaDelPiso } from "@/core/permisos/jerarquia";
 import {
   esCeldaFija,
   esCeldaFueraDeNivel,
@@ -219,7 +220,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                   <div className="font-medium">{a.clave}</div>
                   <div className="text-xs text-neutral-500">{a.descripcion}</div>
                   {claveEnCatalogo(a.clave) && nivelMinimoDeAccion(a.clave) !== "operario" && (
-                    <div className="text-xs text-neutral-500">Piso: {nivelMinimoDeAccion(a.clave)}</div>
+                    <div className="text-xs text-neutral-500">Piso: {etiquetaDelPiso(nivelMinimoDeAccion(a.clave))}</div>
                   )}
                 </td>
                 {roles.map((r) => {
@@ -262,7 +263,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
         </table>
       </div>
       <p className="text-xs text-neutral-500">
-        Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos», «gestion_roles», «gestion_usuarios», «activar_usuario_sucursal», «notas_usuario_sucursal» y «apagar_cuenta_empresa» siempre conservan Editar para el rol administrador (🔒). Las acciones con «Piso» (administrador) no se le pueden dar a un rol de nivel operario (🚫).
+        Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos», «gestion_roles», «gestion_usuarios», «activar_usuario_sucursal», «notas_usuario_sucursal» y «apagar_cuenta_empresa» siempre conservan Editar para el rol administrador (🔒). Las acciones con «Piso» no se le pueden dar a un rol de un nivel más bajo (🚫): las de piso «administrador» y «administrador de sistema» (el gobierno de la empresa: usuarios, roles, permisos, sucursales y auditoría) no se le dan a un rol de nivel operario, y las de piso «gerente» las tiene solo el gerente.
         {editando && " Lo marcado en amarillo es lo que cambiaste."}
       </p>
     </div>
