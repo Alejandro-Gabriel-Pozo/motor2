@@ -99,6 +99,8 @@ export async function conTransaccionSerializable<T>(
       }),
     {
       ...opcionesEspera,
+      // La fuente de azar del jitter: la que se pidió (tests) o la que trae la transacción del borde que la creó.
+      aleatorio: opcionesEspera.aleatorio ?? transaccion.aleatorio,
       maxIntentos,
       esReintentable: tambienChoqueDeUnico ? (e) => esConflictoDeEscritura(e) || esChoqueDeIndiceUnico(e) : esConflictoDeEscritura,
       // console.log, no .warn: un solo reintento resuelto es el camino

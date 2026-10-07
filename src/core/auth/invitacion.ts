@@ -5,7 +5,7 @@ import { conTransaccionSerializable, esChoqueDeIndiceUnico } from "@/core/movimi
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { InvarianteViolada } from "@/core/permisos/invariantes";
 import { hashDeToken } from "@/core/seguridad/tokens";
-import { dbDeEmpresa, dbDeInvitacion, transaccionDeEmpresa, verificarRolDeEjecucionDelProceso } from "./base";
+import { dbDeEmpresa, dbDeInvitacion, transaccionDeLaEmpresa, verificarRolDeEjecucionDelProceso } from "./base";
 import { sirvePorHttps } from "./cookie-sesion";
 
 /**
@@ -150,7 +150,7 @@ export async function vincularCuentaConInvitacion(entrada: { token: string | und
   const { cuenta, usuario } = entrada;
   try {
     return await conTransaccionSerializable(
-      (fn, opciones) => transaccionDeEmpresa(vista.empresaId, fn, opciones),
+      transaccionDeLaEmpresa(vista.empresaId),
       async (tx) => {
         const previa = await tx.account.findFirst({ where: { userId: usuario.id, provider: "google" }, select: { providerAccountId: true } });
         if (previa) return previa.providerAccountId === cuenta.providerAccountId;
@@ -200,7 +200,7 @@ export async function aceptarInvitacionDelToken(entrada: { token: string; usuari
   if (!vista || vista.estado !== "PENDIENTE") return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
   try {
     return await conTransaccionSerializable(
-      (fn, opciones) => transaccionDeEmpresa(vista.empresaId, fn, opciones),
+      transaccionDeLaEmpresa(vista.empresaId),
       (tx) => aceptarInvitacion(tx, { token: entrada.token, usuario: entrada.usuario, cuit: entrada.cuit, ahora }),
     );
   } catch (e) {
@@ -232,7 +232,7 @@ export async function aceptarInvitacionDeUsuarioDelToken(
   const puedeOtorgar = async (otorganteId: string, sucursalId: string) => (await requierePermiso(otorganteId, sucursalId, "gestion_usuarios", dbEmpresa)).ok;
   try {
     return await conTransaccionSerializable(
-      (fn, opciones) => transaccionDeEmpresa(vista.empresaId, fn, opciones),
+      transaccionDeLaEmpresa(vista.empresaId),
       (tx) => aceptarInvitacionDeUsuario(tx, { token: entrada.token, usuario: entrada.usuario, ahora, puedeOtorgar }),
     );
   } catch (e) {
