@@ -98,6 +98,8 @@ Riesgos y cobertura: gate de login (≈40 casos de `acceso`/`inicio-de-sesion`/`
 
 ## 7. Fase I: 3.3 y B4b (16 mutaciones → 16 casos de uso)
 
+> **Fase I-A ejecutada (2026-10-08)**: I.1 a I.4b en la rama (`capacidades-sucursal`, `roles`, `permisos` y `auth/sucursales` migradas enteras); evidencia, mutaciones y desvíos en la fila 3.3 de `docs/pureza-integracion.md`. Desvíos: I.4 numerado I.4a + «2/3» + «3/3» en los commits; los TOPE bajan 49→45 (el plan partía de 51, antes de B3); `conGobierno` suma la forma `siSeViola` para los casos de uso. Falta I.5 (`usuarios.ts`).
+
 Hechos: «5 archivos, 12 funciones» = 12 con escritura directa; hay **16 mutaciones y 6 lecturas** (`listar*`, terreno de H8). Ninguna pasa hoy por un caso de uso.
 
 | # | Función | Envoltorio y clave | Transacción |
