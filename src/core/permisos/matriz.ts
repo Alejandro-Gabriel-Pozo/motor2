@@ -1,5 +1,5 @@
 import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo, nivelMinimoDeAccion } from "./acciones";
-import { esRolAdmin, etiquetaDelPiso, nivelDelRolFrenteAlPiso, rolAlcanzaLaAccion } from "./jerarquia";
+import { esRolAdmin, etiquetaDelPiso, nivelAlcanzaElPiso, nivelDe, nivelDelRolFrenteAlPiso, rolAlcanzaLaAccion, type PersonaParaJerarquia } from "./jerarquia";
 
 /** Lo único que la matriz necesita saber de un rol: su clave (el nombre es de la empresa y se puede cambiar). */
 export type RolDeMatriz = { clave: string | null };
@@ -38,6 +38,26 @@ export function esCeldaFueraDeNivel(rol: RolDeMatriz, accionClave: string): bool
  */
 export function nivelesDeLaCelda(rol: RolDeMatriz, accionClave: string): { piso: string; delRol: string } | null {
   return claveEnCatalogo(accionClave) ? { piso: etiquetaDelPiso(nivelMinimoDeAccion(accionClave)), delRol: etiquetaDelPiso(nivelDelRolFrenteAlPiso(rol)) } : null;
+}
+
+const MENSAJE_MATRIZ_SOLO_DEL_GERENTE = "Solo el gerente de la empresa puede editar los permisos del rol administrador. No se guardó nada.";
+
+/**
+ * D13/D14 (aprobado por el dueño el 2026-10-08; ADR-027): ¿la matriz de este rol la edita SOLO el gerente? Sí la de todo rol que, frente al piso de una acción,
+ * alcanza el nivel administrador: hoy el rol `admin` (administrador de sistema, rango 3) y, cuando exista `Rol.nivel` (F3), los de rango 2. Si no, un
+ * administrador que no es el gerente le recortaba acciones al gerente (que usa el mismo rol) o se agrandaba a sí mismo y a sus pares editando su propio rol.
+ * Los roles de nivel operario (`operador` y los personalizados de hoy) los sigue editando quien tiene `gestion_permisos`.
+ */
+export function laMatrizDelRolLaEditaSoloElGerente(rol: RolDeMatriz): boolean {
+  return nivelAlcanzaElPiso(nivelDelRolFrenteAlPiso(rol), "administrador");
+}
+
+/**
+ * D13/D14: el rechazo de `guardarPermisos` cuando quien actúa NO es el gerente de la empresa (`rolEmpresa`, medido desde la base) y el guardado cambia la matriz
+ * de un rol que solo edita el gerente. Pura: quien actúa lo mide el caso de uso; acá no se lee nada.
+ */
+export function mensajeSiNoPuedeEditarLaMatrizDelRol(actor: PersonaParaJerarquia, rol: RolDeMatriz): string | null {
+  return laMatrizDelRolLaEditaSoloElGerente(rol) && nivelDe(actor) !== "gerente" ? MENSAJE_MATRIZ_SOLO_DEL_GERENTE : null;
 }
 
 /** El estado que realmente se guarda: aplica «Ver ⊇ Editar» y la salvaguarda del admin. */

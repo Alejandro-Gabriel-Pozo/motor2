@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
-import { limpiarBaseDeTest, sembrarBase, prisma } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, prisma } from "../setup/test-db";
 import { guardarPermisosCasoDeUso } from "../../src/server/actions/permisos/casos-de-uso/guardar-permisos";
 import { MENSAJE_GUARDADO_EN_CONFLICTO, SIN_PERMISO } from "../../src/core/permisos/matriz";
 
@@ -33,7 +33,7 @@ describe("guardarPermisosCasoDeUso: reintentos agotados y otros errores", () => 
     const transaccion = vi.fn(async () => {
       throw conflictoDeEscritura();
     });
-    const r = await guardarPermisosCasoDeUso({ usuarioId: "u-prueba", transaccion }, cambio());
+    const r = await guardarPermisosCasoDeUso({ usuarioId: "u-prueba", empresaId: EMPRESA_POR_DEFECTO_ID, transaccion }, cambio());
     expect(r).toEqual({ ok: false, codigo: "GUARDADO_EN_CONFLICTO", mensaje: MENSAJE_GUARDADO_EN_CONFLICTO });
     expect(transaccion).toHaveBeenCalledTimes(5);
     expect(await foto()).toEqual(antes);
@@ -44,7 +44,7 @@ describe("guardarPermisosCasoDeUso: reintentos agotados y otros errores", () => 
     const transaccion = vi.fn(async () => {
       throw otro;
     });
-    await expect(guardarPermisosCasoDeUso({ usuarioId: "u-prueba", transaccion }, cambio())).rejects.toBe(otro);
+    await expect(guardarPermisosCasoDeUso({ usuarioId: "u-prueba", empresaId: EMPRESA_POR_DEFECTO_ID, transaccion }, cambio())).rejects.toBe(otro);
     expect(transaccion).toHaveBeenCalledTimes(1);
   });
 });

@@ -20,10 +20,13 @@ import { renombrarRol } from "../../src/server/actions/permisos/roles";
  *
  *  (a) un admin crea una sucursal y se nombra primer admin a sí mismo o nombra a otro miembro de la empresa → se puede;
  *  (b) un admin se baja a sí mismo a operador mientras las invariantes de gobierno se cumplan; un operador no se sube a admin;
- *  (c) un admin que NO es el gerente edita la matriz del rol `admin` (celdas no fijas) → HOY SE PUEDE, y con eso le recorta acciones al gerente, que
- *      usa el mismo rol. D13/D14 (aprobado, commit propio al final del Hito 3) lo prohíbe: ese commit edita este caso a propósito;
+ *  (c) un admin que NO es el gerente edita la matriz del rol `admin` (celdas no fijas) → se podía hasta D13/D14, y con eso le recortaba acciones al
+ *      gerente, que usa el mismo rol. EDITADO A PROPÓSITO por D13/D14 (aprobado por el dueño el 2026-10-08, commit propio al final del Hito 3): ahora se
+ *      rechaza («Solo el gerente de la empresa puede editar los permisos del rol administrador.»), no cambia nada y el gerente conserva la acción; el gerente sí
+ *      edita esa matriz;
  *  (d) el piso de una acción no depende de nada que cambie dentro de la transacción: sale del catálogo en código (la tabla `Accion` no lo guarda) y
- *      de la CLAVE del rol, que ninguna acción cambia (renombrar no la toca). Por eso `guardarPermisos` puede validarlo fuera de la transacción.
+ *      de la CLAVE del rol, que ninguna acción cambia (renombrar no la toca). (Desde O35-C `guardarPermisos` igual lee rol y acción dentro de la transacción.)
+ *      D13/D14 cambió solo QUIÉN actúa en este caso: el gerente, porque edita la matriz del rol admin y este caso no es sobre eso.
  *
  * Hoy ninguno se puede explotar porque solo el rol de clave `admin` alcanza el piso de gobierno. Cuando exista el rango 2 (F3: `Rol.nivel`, con migración y
  * autorización expresa) estos supuestos dejan de valer y este archivo se edita en el MISMO commit que cambia la regla, con el motivo: un cambio de
@@ -96,7 +99,7 @@ describe("caracterización de los supuestos del RBAC (lo que se puede HOY; F3 y 
     expect(await claveDelRolEn(operador.id, base.sucursal.id)).toBe("operador");
   });
 
-  it("(c) HOY un admin que no es el gerente edita la matriz del rol admin (una celda no fija) y le recorta la acción al gerente — D13/D14 lo cambia", async () => {
+  it("(c) D13/D14: un admin que no es el gerente ya NO edita la matriz del rol admin (no le recorta la acción al gerente); el gerente sí", async () => {
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     const gerente = await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     await hacerGerente(gerente.id);
@@ -107,13 +110,21 @@ describe("caracterización de los supuestos del RBAC (lo que se puede HOY; F3 y 
     expect(anterior).toEqual({ puedeVer: true, puedeEditar: true });
     const r = await guardarPermisos([{ rolId: base.admin.id, accionClave: "alta_sucursal", anterior, nuevo: { puedeVer: false, puedeEditar: false } }]);
 
-    expect(r.ok, r.mensaje).toBe(true);
+    expect(r).toEqual({ ok: false, mensaje: "Solo el gerente de la empresa puede editar los permisos del rol administrador. No se guardó nada." });
+    expect(await celda(base.admin.id, "alta_sucursal")).toEqual({ puedeVer: true, puedeEditar: true });
+    expect((await requierePermisoDeEmpresa(gerente.id, EMPRESA_POR_DEFECTO_ID, "alta_sucursal", prisma)).ok).toBe(true);
+
+    // El gerente sí puede (y con eso la acción deja de estar para el rol admin, también para él: es su decisión).
+    await actuarComo(gerente);
+    const delGerente = await guardarPermisos([{ rolId: base.admin.id, accionClave: "alta_sucursal", anterior, nuevo: { puedeVer: false, puedeEditar: false } }]);
+    expect(delGerente.ok, delGerente.mensaje).toBe(true);
     expect(await celda(base.admin.id, "alta_sucursal")).toEqual({ puedeVer: false, puedeEditar: false });
-    expect((await requierePermisoDeEmpresa(gerente.id, EMPRESA_POR_DEFECTO_ID, "alta_sucursal", prisma)).ok).toBe(false);
   });
 
   it("(d) el piso sale del catálogo en código (la tabla Accion no lo guarda) y de la clave del rol, que renombrar no cambia", async () => {
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    // D13/D14: abajo se edita la matriz del rol admin, que solo edita el gerente; este caso no es sobre eso, así que actúa el gerente.
+    await hacerGerente(admin.id);
     await actuarComo(admin);
 
     // Lo único que la base sabe de una acción es su clave y su descripción: el piso no puede cambiar dentro de una transacción.

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase } from "../setup/test-db";
+import { baseDeTest, crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, sembrarBase } from "../setup/test-db";
 import { guardarPermisosCasoDeUso } from "../../src/server/actions/permisos/casos-de-uso/guardar-permisos";
 import { SIN_PERMISO } from "../../src/core/permisos/matriz";
 import type { Transaccion } from "../../src/lib/db-tipos";
@@ -73,7 +73,7 @@ describe("guardarPermisos: lee el rol y la acción dentro de la transacción (O3
       },
       { aleatorio: () => 0 },
     );
-    return { usuarioId: adminId, db, transaccion };
+    return { usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, db, transaccion };
   }
 
   it("abre la transacción antes de leer nada; adentro lee el rol (por id, sin `activo` en el where) y la acción, relee la matriz y recién ahí escribe", async () => {
