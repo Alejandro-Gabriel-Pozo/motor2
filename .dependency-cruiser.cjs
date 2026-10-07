@@ -201,7 +201,7 @@ module.exports = {
     {
       name: "accion-migrada-sin-orquestacion",
       comment:
-        "Una Server Action ya migrada a caso de uso (ACCIONES_CON_CASO_DE_USO, .dependency-cruiser-excepciones.cjs) no usa en runtime src/lib/db.ts, @prisma/client, el reintento/transacción (con-reintento, reintentar), la idempotencia I3 ni la auditoría: todo eso pasa por su caso de uso. `import type` sí se permite. Incluye la fachada core/movimientos/public-servidor.ts (C2), que reexporta reintento, transacción e idempotencia: si no, la regla se esquivaría importándolos por ahí.",
+        "Una Server Action ya migrada a caso de uso (ACCIONES_CON_CASO_DE_USO, .dependency-cruiser-excepciones.cjs) no usa en runtime src/lib/db.ts, @prisma/client, el reintento/transacción (con-reintento, reintentar, y la transacción de gobierno server/actions/con-gobierno.ts: serializable con reintento e invariantes, Hito 3 paso 0.7), la idempotencia I3 ni la auditoría: todo eso pasa por su caso de uso. `import type` sí se permite. Incluye la fachada core/movimientos/public-servidor.ts (C2), que reexporta reintento, transacción e idempotencia: si no, la regla se esquivaría importándolos por ahí.",
       severity: "error",
       from: { path: ACCIONES_MIGRADAS },
       to: {
@@ -210,6 +210,7 @@ module.exports = {
           "^node_modules/(@prisma/client|\\.prisma/client)/",
           "^src/core/movimientos/(con-reintento|reintentar|idempotencia|public-servidor)\\.ts$",
           "^src/core/permisos/auditoria\\.ts$",
+          "^src/server/actions/con-gobierno\\.ts$",
         ],
         dependencyTypesNot: ["type-only"],
       },

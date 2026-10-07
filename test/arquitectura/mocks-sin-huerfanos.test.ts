@@ -55,12 +55,23 @@ function huerfanosDe(archivo: string, codigo: string): string[] {
 
 describe("mocks sin huérfanos", () => {
   const esteArchivo = __filename;
-  const archivos = [...archivosDe(join(RAIZ, "test")), ...archivosDe(join(RAIZ, "src")).filter((f) => /\.(test|spec)\./.test(f))].filter((f) => f !== esteArchivo);
+  // `scripts/` también (Hito 3, paso 0.7): los seeds de la demo corren bajo Vitest y mockean la sesión y el limitador; L.2 mueve el limitador y un mock que se
+  // queda con la ruta vieja dejaría al seed martillando el limitador real sin que nada lo diga.
+  const archivos = [
+    ...archivosDe(join(RAIZ, "test")),
+    ...archivosDe(join(RAIZ, "src")).filter((f) => /\.(test|spec)\./.test(f)),
+    ...archivosDe(join(RAIZ, "scripts")),
+  ].filter((f) => f !== esteArchivo);
 
   it("se revisan archivos de test (si no, el guardián no mira nada)", () => {
     expect(archivos.length).toBeGreaterThan(300);
     const conMocks = archivos.filter((f) => /\bvi\.mock\(/.test(readFileSync(f, "utf8")));
     expect(conMocks.length).toBeGreaterThan(100);
+  });
+
+  it("se revisan los scripts que mockean (los seeds de la demo)", () => {
+    const scriptsConMocks = archivos.filter((f) => relative(RAIZ, f).split(sep)[0] === "scripts" && /\bvi\.mock\(/.test(readFileSync(f, "utf8")));
+    expect(scriptsConMocks.map((f) => relative(RAIZ, f).split(sep).join("/"))).toEqual(expect.arrayContaining(["scripts/seed-demo-pizzeria-6-meses.ts"]));
   });
 
   it("ningún vi.mock / importActual / importOriginal apunta a un archivo que no existe", () => {
