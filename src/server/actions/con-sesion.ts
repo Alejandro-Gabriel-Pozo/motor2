@@ -19,9 +19,10 @@ export async function requerirSesion(): Promise<ContextoUsuario> {
 /**
  * Además de la sesión, exige que el usuario tenga una membresía activa en `sucursalId`. Para las lecturas que reciben la
  * sucursal por parámetro (viene del cliente, no se puede confiar): sin esto, cualquier usuario logueado podría leer los
- * datos de una sucursal a la que no pertenece pasando su id.
+ * datos de una sucursal a la que no pertenece pasando su id. Desde H8 no se exporta: es el primer paso de `requerirVerEnSucursal` y
+ * `requerirVerAlgunaEnSucursal`; ninguna lectura abre solo con esto (test/arquitectura/lecturas-con-sesion-lista-cerrada.test.ts).
  */
-export async function requerirSesionEnSucursal(sucursalId: string): Promise<ContextoUsuario> {
+async function requerirSesionEnSucursal(sucursalId: string): Promise<ContextoUsuario> {
   const ctx = await requerirSesion();
   if (!ctx.membresias.some((m) => m.sucursalId === sucursalId)) throw new Error("No tenés acceso a esa sucursal.");
   return ctx;
