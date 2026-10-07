@@ -87,6 +87,8 @@ Los ADR originales no se reescriben; lo que ya no es cierto se corrige acá y ca
 1. **ADR-008, §3 (gerente único).** Dice que el traspaso de la plataforma «llama a la función del core» y que «queda fila de auditoría».
    La función del core (`transferirGerenciaDeEmpresa`) **no audita**: la fila de auditoría la escribe la acción de usuarios que la invoca
    desde la pantalla de gerencia. Cuando lo haga la consola de plataforma, la auditoría la escribe ella (punto 5).
+   (Hito 3, I.5d: la función ya no es «del core»; es el paso compartido `src/server/actions/auth/casos-de-uso/transferir-gerencia-en-tx.ts`, con sus escrituras en
+   `src/server/persistencia/auth/gerencia.ts`, y sigue sin auditar: audita el caso de uso `transferir-gerencia.ts`.)
 2. **ADR-008, «Superadmin de plataforma».** Dice que no existe como concepto. Queda decidido en este ADR (punto 1), aún sin implementar.
 3. **ADR-007, tablas de plataforma y flujo de contexto.** `UsuarioEmpresa` **sí** tiene RLS desde la migración
    `20261001250000_rls_usuario_empresa` (política de aislamiento por empresa y otra de solo lectura de la propia pertenencia, que usa

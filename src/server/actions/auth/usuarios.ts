@@ -4,7 +4,6 @@ import { texto } from "@/core/texto";
 import type { TipoDeInvitacion } from "@/core/features/empresa/invitacion";
 import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion, revocarInvitacionPendiente, rotarInvitacionPendiente } from "@/core/features/empresa/invitacion-de-usuario";
 import { requierePermiso } from "@/server/acceso/gate";
-import { transferirGerenciaDeEmpresa } from "@/core/permisos/gerencia";
 import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import {
   actorEnSucursal,
@@ -25,6 +24,7 @@ import { aResultadoAccion } from "@/core/resultado-caso";
 import { actualizarNotasMembresiaCasoDeUso } from "./casos-de-uso/actualizar-notas-membresia";
 import { actualizarActivoMembresiaCasoDeUso } from "./casos-de-uso/actualizar-activo-membresia";
 import { actualizarActivoUsuarioEnEmpresaCasoDeUso } from "./casos-de-uso/actualizar-activo-usuario-en-empresa";
+import { transferirGerenciaCasoDeUso } from "./casos-de-uso/transferir-gerencia";
 
 /**
  * Techo de privilegio y salvaguardas de esta pantalla (Bloque G, G2): las acciones no miran roles ni comparan nombres. Leen el estado y escriben
@@ -236,36 +236,13 @@ export async function actualizarActivoUsuarioEnEmpresa(usuarioId: string, activo
  * Traspasa la gerencia de la empresa a otro usuario (el gerente actual deja de serlo). Solo la pide el gerente actual: `traspasar_gerencia`
  * es una acción de piso gerente, que no pasa por la matriz de permisos (la autoridad de empresa no se delega). Se confirma tipeando el email
  * del destino. La baja del actual y el alta del nuevo van en una sola transacción, y queda en la auditoría de la empresa.
+ *
+ * Desde el Hito 3 (Fase I, I.5d) es un adaptador: `conPermisoDeEmpresa("traspasar_gerencia")` → caso de uso (`casos-de-uso/transferir-gerencia.ts`: destino,
+ * email confirmado, invariantes de gobierno, el traspaso —paso compartido `transferir-gerencia-en-tx.ts`— y su auditoría) → `aResultadoAccion`. Sin guard:
+ * recibe un id y el email tipeado, que el caso de uso compara dentro de la transacción después de resolver al destino (`SIN_GUARD`).
  */
 export async function transferirGerencia(usuarioDestinoId: string, emailConfirmado: string): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("traspasar_gerencia", async (ctx) =>
-    conGobierno(ctx, async (tx) => {
-      // Se confirma tipeando el email de quien recibe la gerencia: el gerente que traspasa ya no puede deshacerlo solo.
-      const destino = await tx.usuarioEmpresa.findUnique({
-        where: { usuarioId_empresaId: { usuarioId: usuarioDestinoId, empresaId: ctx.empresaId } },
-        select: { usuario: { select: { email: true } } },
-      });
-      if (!destino) return error("Ese usuario no pertenece a esta empresa.");
-      if (emailConfirmado.trim().toLowerCase() !== destino.usuario.email.trim().toLowerCase()) {
-        return error("El email no coincide con el de la persona elegida: no se traspasó la gerencia.");
-      }
-      return conInvariantesDeGobierno(tx, ctx.empresaId, async () => {
-        const r = await transferirGerenciaDeEmpresa(tx, { empresaId: ctx.empresaId, usuarioDestinoId });
-        if (!r.ok) return error(r.mensaje);
-        await registrarCambioAuditado(tx, {
-          entidad: "UsuarioEmpresa",
-          entidadId: usuarioDestinoId,
-          descripcion: "Gerente de la empresa",
-          campo: "rolEmpresa",
-          valorAnterior: ctx.email,
-          valorNuevo: destino.usuario.email,
-          actorId: ctx.usuarioId,
-          sucursalId: null,
-        });
-        return ok(r.mensaje);
-      });
-    }),
-  );
+  return conPermisoDeEmpresa("traspasar_gerencia", async (ctx) => aResultadoAccion(await transferirGerenciaCasoDeUso(ctx, { usuarioDestinoId, emailConfirmado })));
 }
 
 // ---- Invitaciones de usuario y de vinculación (E8, ADR-024) ----

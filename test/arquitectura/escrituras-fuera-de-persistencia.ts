@@ -86,9 +86,9 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     motivo: "Tramo B (PR B5): registrarCambioAuditado pasa a src/server/auditoria; lo puro (filaDeAuditoria) queda en core. Va al final: 26 archivos lo importan.",
   },
   "src/core/permisos/gerencia.ts": {
-    escrituras: ["usuarioEmpresa.update", "usuarioEmpresa.updateMany", "usuarioEmpresa.upsert", "usuarioSucursal.upsert"],
+    escrituras: ["usuarioEmpresa.upsert", "usuarioSucursal.upsert"],
     fase: "Fase 4",
-    motivo: "Tramo B (PR B4a): el traspaso de gerencia pasa a caso de uso + persistencia.",
+    motivo: "Tramo B (Fase II del Hito 3, II.5): incorporarPrimerGerente pasa a persistencia + paso compartido. El traspaso de gerencia ya salió (I.5d: server/persistencia/auth/gerencia.ts).",
   },
   "plataforma/src/servidor/alta-de-admin.ts": {
     escrituras: ["adminPlataforma.create", "codigoDeRecuperacionPlataforma.createMany"],

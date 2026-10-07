@@ -16,7 +16,8 @@ export { cambiarModulosDeEmpresa } from "../../../src/server/operaciones-de-plat
 export { cambiarPoliticaDeEmpresa } from "../../../src/server/operaciones-de-plataforma/cambiar-politica-de-empresa";
 export { sembrarEmpresa } from "../../../plataforma/src/servidor/sembrar-empresa";
 export { crearAdminDePlataforma } from "../../../plataforma/src/servidor/alta-de-admin";
-export { incorporarPrimerGerente, transferirGerenciaDeEmpresa } from "../../../src/core/permisos/gerencia";
+export { incorporarPrimerGerente } from "../../../src/core/permisos/gerencia";
+export { transferirGerenciaDeEmpresa } from "../../../src/server/actions/auth/casos-de-uso/transferir-gerencia-en-tx";
 export { registrarCambioAuditado } from "../../../src/core/permisos/auditoria";
 export { hashDeToken } from "../../../src/core/seguridad/tokens";
 export { azarDelProceso } from "../../../src/lib/azar";

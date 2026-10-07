@@ -1,5 +1,5 @@
 import type { Db } from "@/lib/db-tipos";
-import { esAdminEfectivoEnAlgunaSucursal, membresiaDeAdminEfectivo } from "./invariantes";
+import { membresiaDeAdminEfectivo } from "./invariantes";
 import { CLAVE_ROL_ADMIN } from "./jerarquia";
 import { filtroDelGerente } from "./filtros";
 import { ROL_EMPRESA_GERENTE } from "./rol-empresa";
@@ -72,37 +72,6 @@ export function mensajeSiElDestinoNoPuedeRecibirLaGerencia(destino: DestinoDeLaG
   if (destino.rolEmpresa === ROL_EMPRESA_GERENTE) return "Esa persona ya es el gerente de la empresa.";
   if (!destino.activo || !destino.usuario.activoGlobal) return "Esa persona tiene la cuenta desactivada: no puede ser gerente.";
   return null;
-}
-
-/**
- * Pasa la gerencia de la empresa a `usuarioDestinoId`: el gerente actual deja de serlo y el destino lo es, en un solo paso. La empresa
- * nunca queda sin gerente ni con dos: la baja del actual es condicional («sigue siendo el gerente»), así que dos traspasos simultáneos
- * no pueden aplicarse los dos. Corre DENTRO de una transacción (`ctx.transaccion`), con el cliente `tx`.
- *
- * Quién puede pedirlo se decide afuera: el gerente actual (`transferirGerencia`) o la plataforma. El destino tiene que ser alguien de la
- * empresa, con cuenta y pertenencia activas y admin activo en alguna sucursal (el gerente está por encima del admin: no se salta el escalón).
- */
-export async function transferirGerenciaDeEmpresa(tx: Db, input: { empresaId: string; usuarioDestinoId: string }): Promise<ResultadoGerencia> {
-  const { empresaId, usuarioDestinoId } = input;
-
-  const destino = await tx.usuarioEmpresa.findUnique({
-    where: { usuarioId_empresaId: { usuarioId: usuarioDestinoId, empresaId } },
-    select: { id: true, activo: true, rolEmpresa: true, usuario: { select: { email: true, activoGlobal: true } } },
-  });
-  const rechazoDelDestino = mensajeSiElDestinoNoPuedeRecibirLaGerencia(destino);
-  // `!destino` solo para que TypeScript lo sepa: con el destino nulo la función ya devolvió su mensaje (el `??` no se alcanza).
-  if (rechazoDelDestino || !destino) return { ok: false, mensaje: rechazoDelDestino ?? "Ese usuario no pertenece a esta empresa." };
-
-  if (!(await esAdminEfectivoEnAlgunaSucursal(tx, empresaId, usuarioDestinoId))) return { ok: false, mensaje: "Para ser gerente primero tiene que ser admin activo en alguna sucursal." };
-
-  const actual = await obtenerGerenteDeEmpresa(tx, empresaId);
-  if (actual) {
-    const baja = await tx.usuarioEmpresa.updateMany({ where: { id: actual.id, rolEmpresa: ROL_EMPRESA_GERENTE }, data: { rolEmpresa: null } });
-    if (baja.count !== 1) return { ok: false, mensaje: "La gerencia cambió mientras tanto. Recargá la pantalla y volvé a intentar." };
-  }
-  await tx.usuarioEmpresa.update({ where: { id: destino.id }, data: { rolEmpresa: ROL_EMPRESA_GERENTE } });
-
-  return { ok: true, mensaje: `«${destino.usuario.email}» es ahora el gerente de la empresa.`, gerenteAnteriorId: actual?.usuarioId ?? null };
 }
 
 /**
