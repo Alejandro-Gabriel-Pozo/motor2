@@ -15,6 +15,9 @@ import { describe, expect, it } from "vitest";
  *
  * Se mira por AST (no por texto): un comentario o un string que nombre la guarda no cuenta; una llamada anidada o sin `await`, sí. La implementación de las guardas
  * (`con-sesion.ts`) no entra en el recorrido: ahí `requerirSesion` es el primer paso de `requerirVer*`, no una lectura.
+ *
+ * Lo que este guardián NO ve: una lectura abierta con `obtenerContextoUsuario()`/`getUsuarioActual()` puestos a mano (también solo sesión). Esa vía la cierra
+ * la lista `GUARDAS_A_MANO` de `acciones-con-guarda.test.ts` (pre-paso P de la Fase I-B del Hito 3, pedido de la auditoría de seguridad).
  */
 const SRC = join(__dirname, "../../src");
 const IMPLEMENTACION = "server/actions/con-sesion.ts";

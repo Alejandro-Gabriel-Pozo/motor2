@@ -187,3 +187,19 @@ describe("analizarFuente: falsos positivos que la regex vieja tenía y el AST no
     expect(estadoDe(fuente, "crearInsumo")).toBe("ok");
   });
 });
+
+describe("analizarFuente: qué guarda abre cada función (lista cerrada de guardas a mano, pre-paso P de la Fase I-B)", () => {
+  it("informa el nombre IMPORTADO de la guarda (aunque tenga alias), también por delegación, y nada si no quedó ok", () => {
+    const fuente = `
+      "use server";
+      import { obtenerContextoUsuario as contexto } from "@/core/auth/contexto";
+      import { requerirVer } from "../con-sesion";
+      export async function aMano() { const ctx = await contexto(); return ctx; }
+      export async function conVer() { const ctx = await requerirVer("precio_local"); return ctx; }
+      export async function delegada() { return aMano(); }
+      export async function sinGuarda() { return 1; }
+    `;
+    const porNombre = Object.fromEntries(analizarFuente("f.ts", fuente).funciones.map((f) => [f.nombre, f.guarda]));
+    expect(porNombre).toEqual({ aMano: "obtenerContextoUsuario", conVer: "requerirVer", delegada: "obtenerContextoUsuario", sinGuarda: undefined });
+  });
+});

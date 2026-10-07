@@ -20,6 +20,11 @@ export interface FuncionAnalizada {
   nombre: string;
   linea: number;
   estado: EstadoFuncion;
+  /**
+   * Con `estado: "ok"`, el nombre IMPORTADO (no el alias local) de la guarda que la abre; si delega en otra función exportada del archivo, la guarda
+   * de esa función. Sirve para la lista cerrada de guardas «puestas a mano» (`acciones-con-guarda.test.ts`, pre-paso P de la Fase I-B del Hito 3).
+   */
+  guarda?: string;
 }
 
 export interface ResultadoAnalisis {
@@ -50,9 +55,9 @@ function nombreDeModulo(especificador: string): string | undefined {
   return Object.keys(GUARDAS_POR_MODULO).find((m) => especificador === m || especificador.endsWith(`/${m}`));
 }
 
-/** Nombres LOCALES (soporta alias de import) que refieren a una guarda reconocida. */
-function nombresDeGuardaImportados(sourceFile: ts.SourceFile): Set<string> {
-  const nombres = new Set<string>();
+/** Nombres LOCALES (soporta alias de import) que refieren a una guarda reconocida, con el nombre importado de cada uno. */
+function nombresDeGuardaImportados(sourceFile: ts.SourceFile): Map<string, string> {
+  const nombres = new Map<string, string>();
   for (const stmt of sourceFile.statements) {
     if (!ts.isImportDeclaration(stmt) || !stmt.importClause || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
     const modulo = nombreDeModulo(stmt.moduleSpecifier.text);
@@ -62,7 +67,7 @@ function nombresDeGuardaImportados(sourceFile: ts.SourceFile): Set<string> {
     if (bindings && ts.isNamedImports(bindings)) {
       for (const el of bindings.elements) {
         const importado = (el.propertyName ?? el.name).text;
-        if (permitidos.has(importado)) nombres.add(el.name.text);
+        if (permitidos.has(importado)) nombres.set(el.name.text, importado);
       }
     }
   }
@@ -170,6 +175,10 @@ export function analizarFuente(nombreArchivo: string, fuente: string): Resultado
   }
 
   const memo = new Map<string, EstadoFuncion>();
+  /** La guarda (nombre importado) que abre cada función que quedó "ok", directa o por delegación. */
+  const guardaDe = new Map<string, string>();
+  /** La guarda de la última llamada que `evaluarLlamada` reconoció (la lee `evaluarFuncion` justo después). */
+  let guardaReconocida: string | undefined;
 
   function evaluarLlamada(candidataExpr: ts.Expression, uso: UsoLlamada, visitados: Set<string>): EstadoFuncion | undefined {
     const { interna, awaited } = desenvolverAwait(candidataExpr);
@@ -177,12 +186,15 @@ export function analizarFuente(nombreArchivo: string, fuente: string): Resultado
     const nombreCallee = nombreDelCallee(interna);
     if (!nombreCallee) return undefined;
 
-    if (guardas.has(nombreCallee)) {
+    const importada = guardas.get(nombreCallee);
+    if (importada) {
+      guardaReconocida = importada;
       return uso === "descartado" && !awaited ? "guarda-descartada" : "ok";
     }
     if (candidatas.has(nombreCallee)) {
       const estadoDelegado = evaluarFuncion(nombreCallee, visitados);
       if (estadoDelegado !== "ok") return undefined; // el delegado no está bien guardado: esta llamada no cuenta como guardia acá.
+      guardaReconocida = guardaDe.get(nombreCallee);
       return uso === "descartado" && !awaited ? "guarda-descartada" : "ok";
     }
     return undefined;
@@ -198,20 +210,25 @@ export function analizarFuente(nombreArchivo: string, fuente: string): Resultado
     if (!fn) return "sin-guarda";
 
     if (fn.cuerpoExpresion) {
+      guardaReconocida = undefined;
       const estado = evaluarLlamada(fn.cuerpoExpresion, "usado", visitados) ?? "sin-guarda";
+      if (estado === "ok" && guardaReconocida) guardaDe.set(nombre, guardaReconocida);
       memo.set(nombre, estado);
       return estado;
     }
     const stmts = fn.cuerpo?.statements ?? [];
     let indiceGuarda = -1;
     let estadoEnGuarda: EstadoFuncion = "sin-guarda";
+    let guardaEnGuarda: string | undefined;
     for (let i = 0; i < stmts.length; i++) {
       const candidata = candidataDeSentencia(stmts[i]);
       if (!candidata) continue;
+      guardaReconocida = undefined;
       const estado = evaluarLlamada(candidata.expresion, candidata.uso, visitados);
       if (estado) {
         indiceGuarda = i;
         estadoEnGuarda = estado;
+        guardaEnGuarda = guardaReconocida;
         break;
       }
     }
@@ -229,15 +246,16 @@ export function analizarFuente(nombreArchivo: string, fuente: string): Resultado
         return "guarda-tardia";
       }
     }
+    if (guardaEnGuarda) guardaDe.set(nombre, guardaEnGuarda);
     memo.set(nombre, "ok");
     return "ok";
   }
 
-  const funciones: FuncionAnalizada[] = [...candidatas.values()].map((f) => ({
-    nombre: f.nombre,
-    linea: f.linea,
-    estado: evaluarFuncion(f.nombre, new Set()),
-  }));
+  const funciones: FuncionAnalizada[] = [...candidatas.values()].map((f) => {
+    const estado = evaluarFuncion(f.nombre, new Set());
+    const guarda = estado === "ok" ? guardaDe.get(f.nombre) : undefined;
+    return { nombre: f.nombre, linea: f.linea, estado, ...(guarda && { guarda }) };
+  });
 
   return { esArchivoDeAcciones, funciones: [...funciones, ...noReconocidas] };
 }
