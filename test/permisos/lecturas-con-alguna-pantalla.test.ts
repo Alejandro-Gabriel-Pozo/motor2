@@ -13,6 +13,8 @@ import { listarInsumos } from "../../src/server/actions/catalogo/insumos";
 import { listarCategoriasProducto } from "../../src/server/actions/catalogo/categorias-producto";
 import { listarUnidadesActivas } from "../../src/server/actions/catalogo/unidades";
 import { listarProveedores, listarProveedoresParaSelector } from "../../src/server/actions/catalogo/proveedores";
+import { listarSeccionesActivas } from "../../src/server/actions/movimientos/secciones";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * Lecturas que consumen pantallas con claves DISTINTAS (H8, trabajo D.1 de `pureza-integracion`; decisión D-1 del dueño): exigen el «Ver» de ALGUNA de esas
@@ -74,6 +76,32 @@ const LECTURAS: Fila[] = [
     nombre: "listarProveedoresParaSelector",
     claves: ["proceso_compra", "proceso_devolucion_proveedor", "reporte_compras", "alta_producto", "producto_ver_catalogo"],
     llamar: () => listarProveedoresParaSelector(),
+  },
+  {
+    nombre: "listarSeccionesActivas",
+    claves: [
+      "proceso_compra",
+      "proceso_produccion",
+      "proceso_consumo",
+      "proceso_ajuste",
+      "proceso_transferencia",
+      "proceso_merma",
+      "proceso_devolucion_consignacion",
+      "proceso_devolucion_cliente",
+      "proceso_devolucion_proveedor",
+      "proceso_venta",
+      "proceso_control",
+      "reporte_conteos",
+      "reporte_historial",
+      "stock_minimo",
+      "stock_reclasificar",
+      "stock_seccion_habitual",
+      "traspaso_ver_bandeja",
+      "traspaso_solicitar",
+      "traspaso_enviar_directo",
+      "pos_mesas",
+    ],
+    llamar: (sucursalId) => listarSeccionesActivas(sucursalId),
   },
 ];
 
@@ -156,6 +184,28 @@ describe("lecturas con el «Ver» de alguna de sus pantallas (H8)", () => {
 
     await prisma.permisoRol.create({ data: { rolId: rolAdminId, accionClave: "proveedores", puedeVer: true, puedeEditar: false } });
     await expect(listarProveedores()).resolves.not.toThrow();
+  });
+
+  it("listarSeccionesActivas evalúa las claves en la sucursal PEDIDA, no en la activa (requerirVerAlgunaEnSucursal)", async () => {
+    // Una segunda sucursal propia con otro rol: la activa sigue siendo la primera (la más vieja), `sucursalId`.
+    const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+    const rolNorteId = (await prisma.rol.create({ data: { nombre: "lector-norte" } })).id;
+    await crearMembresia({ usuarioId, sucursalId: norte.id, rolId: rolNorteId });
+    try {
+      await prisma.permisoRol.create({ data: { rolId: rolNorteId, accionClave: "pos_mesas", puedeVer: true, puedeEditar: false } });
+      await expect(listarSeccionesActivas(norte.id)).resolves.toEqual([]);
+      await expect(listarSeccionesActivas(sucursalId)).rejects.toThrow(/No tenés permiso/);
+
+      await prisma.permisoRol.deleteMany({ where: { rolId: rolNorteId } });
+      await prisma.permisoRol.create({ data: { rolId: rolLectorId, accionClave: "pos_mesas", puedeVer: true, puedeEditar: false } });
+      await expect(listarSeccionesActivas(sucursalId)).resolves.toEqual([]);
+      await expect(listarSeccionesActivas(norte.id)).rejects.toThrow(/No tenés permiso/);
+    } finally {
+      await prisma.usuarioSucursal.deleteMany({ where: { usuarioId, sucursalId: norte.id } });
+      await prisma.permisoRol.deleteMany({ where: { rolId: rolNorteId } });
+      await prisma.rol.delete({ where: { id: rolNorteId } });
+      await prisma.sucursal.delete({ where: { id: norte.id } });
+    }
   });
 
   // Las claves de Administración (módulo fijo) no se apagan: esas lecturas no tienen caso de módulo.

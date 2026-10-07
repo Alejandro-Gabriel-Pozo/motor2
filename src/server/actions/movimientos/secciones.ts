@@ -4,18 +4,41 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { conPermiso } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
-import { requerirSesionEnSucursal, requerirVerEnSucursal } from "../con-sesion";
+import { requerirVerAlgunaEnSucursal, requerirVerEnSucursal } from "../con-sesion";
 
 /**
  * Port de HOJA_SECCIONES (Stock.js:1316-1415) — antes una hoja POR
  * CONTENEDOR (cada sucursal ya tenía sus propias Secciones porque cada una
  * era un spreadsheet separado); acá sucursalId es una columna real. Las
- * acciones de listado son públicas (sin gate propio) para poblar los
- * <select> de los paneles de carga de Movimientos — mismo criterio que
- * `obtenerSeccionesParaCarga` en Apps Script.
+ * secciones activas pueblan los <select> de muchas pantallas (los paneles de
+ * Movimientos, venta, conteo físico, stock, traspasos, reportes y el salón):
+ * desde H8 (decisión del dueño) exigen membresía en la sucursal pedida y el
+ * «Ver» de ALGUNA de esas 20 pantallas, evaluado en esa sucursal (antes
+ * bastaba la sesión, como `obtenerSeccionesParaCarga` en Apps Script).
  */
 export async function listarSeccionesActivas(sucursalId: string) {
-  const ctx = await requerirSesionEnSucursal(sucursalId);
+  const ctx = await requerirVerAlgunaEnSucursal(sucursalId, [
+    "proceso_compra",
+    "proceso_produccion",
+    "proceso_consumo",
+    "proceso_ajuste",
+    "proceso_transferencia",
+    "proceso_merma",
+    "proceso_devolucion_consignacion",
+    "proceso_devolucion_cliente",
+    "proceso_devolucion_proveedor",
+    "proceso_venta",
+    "proceso_control",
+    "reporte_conteos",
+    "reporte_historial",
+    "stock_minimo",
+    "stock_reclasificar",
+    "stock_seccion_habitual",
+    "traspaso_ver_bandeja",
+    "traspaso_solicitar",
+    "traspaso_enviar_directo",
+    "pos_mesas",
+  ]);
   return ctx.db.seccion.findMany({ where: { sucursalId, activa: true }, orderBy: { nombre: "asc" } });
 }
 

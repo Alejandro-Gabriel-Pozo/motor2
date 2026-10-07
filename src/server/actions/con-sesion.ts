@@ -82,6 +82,13 @@ export async function requerirVerAlguna(claves: ClavesDeLasPantallas): Promise<C
   return ctx;
 }
 
+/** Como `requerirVerAlguna` para las lecturas que reciben la sucursal por parámetro: además exige membresía activa en ella, y las claves de sucursal se evalúan ALLÍ. */
+export async function requerirVerAlgunaEnSucursal(sucursalId: string, claves: ClavesDeLasPantallas): Promise<ContextoUsuario> {
+  const ctx = await requerirSesionEnSucursal(sucursalId);
+  await exigirVerAlguna(ctx, sucursalId, claves);
+  return ctx;
+}
+
 async function exigirVer(ctx: ContextoUsuario, sucursalId: string, accion: AccionDeSucursal): Promise<void> {
   const gate = await requierePermisoVer(ctx.usuarioId, sucursalId, accion, ctx.db);
   if (!gate.ok) throw new Error(gate.mensaje);
