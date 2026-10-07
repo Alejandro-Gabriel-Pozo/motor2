@@ -8,7 +8,7 @@ import { requierePermiso } from "../../../src/server/acceso/gate";
 import { asegurarInvitacionDeUsuario, revocarInvitacionPendiente, rotarInvitacionPendiente } from "../../../src/core/features/empresa/invitacion-de-usuario";
 import { cambiarModulosDeEmpresa } from "../../../src/core/features/empresa/cambiar-modulos-de-empresa";
 import { cambiarPoliticaDeEmpresa } from "../../../src/core/features/empresa/cambiar-politica-empresa";
-import { sembrarEmpresa } from "../../../src/core/features/empresa/sembrar-empresa";
+import { sembrarEmpresa } from "../../../plataforma/src/servidor/sembrar-empresa";
 import { incorporarPrimerGerente, transferirGerenciaDeEmpresa } from "../../../src/core/permisos/gerencia";
 import { registrarCambioAuditado } from "../../../src/core/permisos/auditoria";
 import { hashDeToken } from "../../../src/core/seguridad/tokens";

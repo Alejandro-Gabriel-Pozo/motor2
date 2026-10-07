@@ -1,13 +1,14 @@
 import type { Db } from "@/lib/db-tipos";
 import { esAdminEfectivoEnAlgunaSucursal, membresiaDeAdminEfectivo } from "./invariantes";
 import { CLAVE_ROL_ADMIN } from "./jerarquia";
+import { filtroDelGerente } from "./filtros";
 import { ROL_EMPRESA_GERENTE } from "./rol-empresa";
 
 export type ResultadoGerencia = { ok: true; mensaje: string; gerenteAnteriorId: string | null } | { ok: false; mensaje: string };
 
 /** El gerente de la empresa (a lo sumo uno: lo garantiza el índice único parcial de `20261001240000_gerente_unico_indice`). */
 export async function obtenerGerenteDeEmpresa(db: Db, empresaId: string) {
-  return db.usuarioEmpresa.findFirst({ where: { empresaId, rolEmpresa: ROL_EMPRESA_GERENTE }, select: { id: true, usuarioId: true, activo: true } });
+  return db.usuarioEmpresa.findFirst({ where: filtroDelGerente(empresaId), select: { id: true, usuarioId: true, activo: true } });
 }
 
 /** Tiene (o tuvo) el rol admin en alguna sucursal de la empresa, activa o no: la cuenta de alguien así la reactiva solo el gerente. */

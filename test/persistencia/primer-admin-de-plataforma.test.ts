@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { descifrarSecreto } from "../../src/core/plataforma/cifrado";
-import { AdminDePlataformaInvalidoError, crearAdminDePlataforma } from "../../src/core/plataforma/primer-admin";
+import { AdminDePlataformaInvalidoError } from "../../src/core/plataforma/primer-admin";
+import { crearAdminDePlataforma } from "../../plataforma/src/servidor/alta-de-admin";
 import { codigoTotp, pasoDeTotp } from "../../src/core/plataforma/totp";
 import { prepararCodigoDeIngreso, verificarCodigoDeIngreso, verificarSegundoFactor, type DependenciasDeIngreso } from "../../plataforma/src/servidor/ingreso";
 import { prismaAdmin } from "../setup/test-db";

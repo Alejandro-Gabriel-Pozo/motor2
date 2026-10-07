@@ -4,7 +4,7 @@ import type { MensajeDeCorreo, ResultadoDeEnvio } from "@/core/correo/tipos";
 import { altaDeEmpresaSchema } from "@/core/features/empresa/empresa.schema";
 import { enlaceDeInvitacion, estadoEfectivoDeInvitacion, mensajeDeInvitacion, vencimientoDeInvitacion, type EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitacion";
 import { cuitsRepetidos, tieneCuitPendiente } from "@/core/features/empresa/ciclo-de-vida";
-import { sembrarEmpresa } from "@/core/features/empresa/sembrar-empresa";
+import { sembrarEmpresa } from "./sembrar-empresa";
 import { esEmailReservadoDeAdminPlataforma, MENSAJE_EMAIL_RESERVADO, normalizarEmail } from "@/core/plataforma/email-reservado";
 import { generarTokenOpaco, hashDeToken } from "@/core/seguridad/tokens";
 import { auditarEnTransaccion, type AutorEnInstalacion } from "./auditoria";

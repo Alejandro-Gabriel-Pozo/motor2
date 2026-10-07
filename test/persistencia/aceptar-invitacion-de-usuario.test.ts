@@ -4,7 +4,7 @@ import { aceptarInvitacionDeUsuarioDelToken } from "../../src/core/auth/invitaci
 import { requierePermiso } from "../../src/server/acceso/gate";
 import { MENSAJE_ENLACE_NO_VALIDO } from "../../src/core/features/empresa/aceptar-invitacion";
 import { asegurarInvitacionDeUsuario, rotarInvitacionPendiente } from "../../src/core/features/empresa/invitacion-de-usuario";
-import { sembrarEmpresa } from "../../src/core/features/empresa/sembrar-empresa";
+import { sembrarEmpresa } from "../../plataforma/src/servidor/sembrar-empresa";
 import { incorporarPrimerGerente } from "../../src/core/permisos/gerencia";
 import { azarDelProceso } from "../../src/lib/azar";
 
