@@ -18,6 +18,7 @@
     "arquitectura": "depcruise src plataforma --config .dependency-cruiser.cjs",
     "analizar:muerto": "knip",
     "inventario:arquitectura": "tsx scripts/arquitectura/inventario.ts",
+    "reapuntar:imports": "tsx scripts/arquitectura/reapuntar-imports.ts",
     "auditar:dependencias": "tsx scripts/auditar-dependencias.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
