@@ -26,6 +26,7 @@ import { requerirVerEnSucursal } from "../con-sesion";
 import { azarDelProceso } from "@/lib/azar";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { actualizarNotasMembresiaCasoDeUso } from "./casos-de-uso/actualizar-notas-membresia";
+import { actualizarActivoMembresiaCasoDeUso } from "./casos-de-uso/actualizar-activo-membresia";
 
 /**
  * Techo de privilegio y salvaguardas de esta pantalla (Bloque G, G2): las acciones no miran roles ni comparan nombres. Leen el estado y escriben
@@ -193,35 +194,13 @@ export async function agregarOActualizarUsuario(input: {
   });
 }
 
-/** Equivalente de actualizarActivoUsuario (Core.js:1181-1211). */
+/**
+ * Equivalente de actualizarActivoUsuario (Core.js:1181-1211). Desde el Hito 3 (Fase I, I.5b) es un adaptador: `conPermiso("activar_usuario_sucursal")` →
+ * caso de uso (`casos-de-uso/actualizar-activo-membresia.ts`: la membresía de la sucursal activa, el techo, el gerente para reactivar a un admin y las
+ * invariantes de gobierno, en la transacción de gobierno) → `aResultadoAccion`. Sin guard: solo recibe un id y un booleano (`SIN_GUARD`).
+ */
 export async function actualizarActivoMembresia(membresiaId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermiso("activar_usuario_sucursal", async (ctx) =>
-    conGobierno(ctx, async (tx) => {
-      const membresia = await tx.usuarioSucursal.findUnique({ where: { id: membresiaId }, include: { rol: true } });
-      if (!membresia || membresia.sucursalId !== ctx.sucursalId) return error("No se encontró esa membresía.");
-
-      const actor = actorEnSucursal(ctx, ctx.sucursalId);
-      const objetivo = await objetivoEnSucursal(tx, ctx.empresaId, membresia.usuarioId, membresia.rol);
-      const rechazo = mensajeSiNoPuedeGestionar(actor, objetivo);
-      if (rechazo) return error(rechazo);
-      if (activo) {
-        const reactivaAdmin = await reactivaAUnAdmin(tx, ctx.empresaId, membresia.usuarioId, { membresia });
-        const rechazoReactivar = mensajeSiReactivaAdminSinSerGerente(actor, reactivaAdmin);
-        if (rechazoReactivar) return error(rechazoReactivar);
-      }
-
-      // Que la empresa conserve un admin efectivo y que el gerente conserve una sucursal activa lo hacen cumplir las invariantes.
-      return conInvariantesDeGobierno(tx, ctx.empresaId, async () => {
-        await tx.usuarioSucursal.update({ where: { id: membresiaId }, data: { activo } });
-        const usuario = await tx.user.findUniqueOrThrow({ where: { id: membresia.usuarioId }, select: { email: true } });
-        await registrarCambioAuditado(tx, {
-          entidad: "UsuarioSucursal", entidadId: membresiaId, campo: "activo", descripcion: `Usuario "${usuario.email}" en la sucursal "${ctx.sucursalNombre}": activo`,
-          valorAnterior: membresia.activo, valorNuevo: activo, actorId: ctx.usuarioId, sucursalId: membresia.sucursalId,
-        });
-        return ok(`Usuario ${activo ? "activado" : "desactivado"}.`);
-      });
-    }),
-  );
+  return conPermiso("activar_usuario_sucursal", async (ctx) => aResultadoAccion(await actualizarActivoMembresiaCasoDeUso(ctx, { membresiaId, activo })));
 }
 
 /**

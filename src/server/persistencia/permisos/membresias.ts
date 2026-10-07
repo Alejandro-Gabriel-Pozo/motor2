@@ -37,6 +37,11 @@ export async function crearMembresiaEnSucursal(
   return tx.usuarioSucursal.create({ data: { usuarioId, sucursalId, empresaId, rolId, notas } });
 }
 
+/** Activa o desactiva una membresía. Hito 3, I.5b: la escritura que `actualizarActivoMembresia` hacía en línea; corre dentro de `conInvariantesDeGobierno`. */
+export async function cambiarActivoDeMembresia(tx: Prisma.TransactionClient, entrada: { membresiaId: string; activo: boolean }): Promise<void> {
+  await tx.usuarioSucursal.update({ where: { id: entrada.membresiaId }, data: { activo: entrada.activo } });
+}
+
 /**
  * Le pone a una membresía estas notas (`null` = sin notas). Hito 3, I.5a: la escritura que `actualizarNotasMembresia` (`server/actions/auth/usuarios.ts`) hacía en
  * línea, mudada tal cual; el caso de uso decide el texto y el techo.
