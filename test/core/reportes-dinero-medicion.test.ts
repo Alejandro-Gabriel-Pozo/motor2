@@ -14,11 +14,10 @@ import type { ItemPeriodo } from "../../src/core/reportes/periodo-tipos";
  * realistas (importes en centavos, cantidades con hasta 3 decimales, hasta cientos de líneas), y fija el resultado de la medición:
  *  - con importes que ya vienen en centavos (lo que guarda la base en `precioTotal`) la suma en `number` redondeada a centavos es IGUAL a la exacta, siempre (la grilla de centavos es exacta
  *    hasta ~2^53 centavos y el error acumulado de sumar cientos de líneas queda varios órdenes de magnitud por debajo de medio centavo);
- *  - con ventas ESTIMADAS (sin precio guardado: cantidad × precio vigente, sin redondear por línea) el producto tiene hasta 5 decimales y un total que cae justo en un medio centavo puede
- *    redondear al lado contrario por ruido de coma flotante: la prueba exige que NINGUNO difiera en más de un centavo. MEDIDO (20.000 totales de hasta 200 líneas, 2026-10-08): 7 totales
- *    difirieron del exacto, todos por UN centavo (0,035 %), y solo en ventas estimadas (líneas viejas sin precio guardado). Hallazgo para el dueño: si esa diferencia importa, el arreglo es chico
- *    (redondear cada línea estimada con `importeDeLinea` antes de sumar, en vez de migrar los reportes a Decimal), pero cambia un resultado visible y por eso NO se hizo; si la cota de un centavo se
- *    rompe, o aparecen diferencias en los importes ya en centavos, hay que abrir el paso de migración a Decimal.
+ *  - con ventas ESTIMADAS (sin precio guardado: cantidad × precio vigente) el producto tiene hasta 5 decimales. MEDIDO antes del arreglo (20.000 totales de hasta 200 líneas, 2026-10-08): sumar los
+ *    productos sin redondear y redondear una sola vez al final difería del exacto por UN centavo en 7 totales (0,035 %). El dueño aprobó el arreglo (2026-10-08): `calcularVentasDelPeriodo` redondea
+ *    cada línea estimada con `importeDeLinea` (decimal exacto) antes de sumar, como el importe de cualquier línea de un ticket, y desde entonces el total es IGUAL a la suma exacta de esos importes.
+ *    No hace falta migrar los reportes a Decimal: si en algún reporte aparecieran diferencias en importes ya en centavos, recién ahí se abre ese paso.
  * Funciones puras: sin Postgres.
  */
 
@@ -83,14 +82,20 @@ describe("dinero en core/reportes, medido contra el cálculo exacto (Decimal)", 
     );
   });
 
-  it("ventas ESTIMADAS (cantidad × precio vigente, sin redondear por línea): la diferencia contra el exacto nunca pasa de UN centavo (medido: 7 de 20.000 totales difieren, por un centavo)", () => {
+  it("ventas ESTIMADAS, caso fijo: dos líneas de medio centavo (0,5 × $0,01) suman $0,02, como dos importes de ticket redondeados cada uno (antes del arreglo daba $0,01)", () => {
+    const items = [item({ proceso: "VENTA", productoId: "a", cantidad: 0.5 }), item({ proceso: "VENTA", productoId: "b", cantidad: 0.5 })];
+    const r = calcularVentasDelPeriodo(items, productos({ a: 0.01, b: 0.01 }));
+    expect(r.totalFacturado).toBe(0.02);
+    expect(r.porProducto.map((f) => f.importe)).toEqual([0.01, 0.01]);
+  });
+
+  it("ventas ESTIMADAS (cantidad × precio vigente): cada línea se redondea a centavos con `importeDeLinea` y el total es IGUAL a la suma exacta de esos importes (antes diferían por un centavo en 7 de 20.000)", () => {
     fc.assert(
       fc.property(fc.array(fc.record({ cantidad, precio: precioDeVenta }), { minLength: 1, maxLength: 200 }), (lineas) => {
         const items = lineas.map((l, i) => item({ proceso: "VENTA", productoId: `p${i}`, cantidad: l.cantidad, precioTotal: 0 }));
         const r = calcularVentasDelPeriodo(items, productos(Object.fromEntries(lineas.map((l, i) => [`p${i}`, l.precio]))));
-        const exacto = exactoARedondeado(lineas.reduce((s, l) => s.plus(new Decimal(l.cantidad).times(new Decimal(l.precio))), new Decimal(0)));
-        const diferencia = Math.round(Math.abs(r.totalFacturado - exacto) * 100);
-        expect(diferencia, `total ${r.totalFacturado} vs exacto ${exacto}`).toBeLessThanOrEqual(1);
+        const exacto = exactoARedondeado(lineas.reduce((s, l) => s.plus(new Decimal(l.cantidad).times(new Decimal(l.precio)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP)), new Decimal(0)));
+        expect(r.totalFacturado, `total ${r.totalFacturado} vs exacto ${exacto}`).toBe(exacto);
       }),
       { numRuns: 3000 },
     );

@@ -1,4 +1,4 @@
-import { redondearMoneda } from "@/core/moneda";
+import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { type InfoProductoReporte } from "./comun";
 import { redondearCantidad } from "./redondeo";
 import type { ItemPeriodo } from "./periodo-tipos";
@@ -32,7 +32,9 @@ export function calcularVentasDelPeriodo(items: ItemPeriodo[], productos: Map<st
     if (r.proceso !== "VENTA" || r.anulada) continue;
     const esReal = r.precioTotal > 0;
     const precioVentaVigente = productos.get(r.productoId)?.precioVenta ?? 0;
-    const importe = esReal ? r.precioTotal : r.cantidad * precioVentaVigente;
+    // La línea estimada se redondea a centavos ANTES de sumar (como el importe de cualquier línea de un ticket: `importeDeLinea`, en decimal exacto). Sumar los productos sin redondear y redondear
+    // una sola vez al final difería por un centavo en 7 de cada 20.000 totales (medición 2.8, 2026-10-08; decisión del dueño de aplicar el arreglo).
+    const importe = esReal ? r.precioTotal : importeDeLinea(r.cantidad, precioVentaVigente);
     const precioUnitario = esReal ? r.precioPorUnidadStock : precioVentaVigente;
     totalFacturado += importe;
 
