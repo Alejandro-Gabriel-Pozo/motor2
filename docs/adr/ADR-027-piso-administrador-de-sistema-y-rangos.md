@@ -147,4 +147,7 @@ test (la lista de las 19).
   `test/modulos/__golden__/empresa-principal.json` (regenerada a propósito una sola vez: 12 valores de piso).
 - Sin cambio de acceso: `test/permisos/caracterizacion-del-acceso.test.ts` regenerado da un diff vacío sobre
   `test/permisos/caracterizacion/matriz-de-acceso.txt`, y `test/arquitectura/caracterizaciones-congeladas.test.ts` sigue verde sin regeneraciones.
-- Las mutaciones (rojo → revertido → verde) están anotadas en la fila 3.4 de `docs/pureza-integracion.md`.
+- Los supuestos de hoy que F3 y D13/D14 van a cambiar quedan fijados en `test/permisos/caracterizacion-supuestos-rbac.test.ts` (se edita a propósito en
+  el commit que cambie cada regla), y `test/arquitectura/rol-nivel-solo-desde-cambiar-nivel.test.ts` impide escribir `Rol.nivel` (lista de permitidos
+  vacía hasta F3).
+- Las mutaciones (rojo → revertido → verde) están anotadas en las filas 3.4 y O.35 de `docs/pureza-integracion.md`.
