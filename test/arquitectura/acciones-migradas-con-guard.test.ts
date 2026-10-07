@@ -56,6 +56,8 @@ const SIN_GUARD: Record<string, string> = {
     "Traspasar la gerencia (Hito 3, I.5d): recibe un id y el email tipeado como confirmación, que nunca se validaron en la acción: el caso de uso resuelve al destino dentro de la transacción de gobierno («Ese usuario no pertenece a esta empresa») y RECIÉN AHÍ compara el email (recortado, en minúsculas) con el suyo. Un guard previo sobre el email adelantaría su rechazo a ese mensaje.",
   "src/server/actions/auth/usuarios.ts#revocarInvitacion":
     "Revocar una invitación (Hito 3, I.5g): solo recibe un id, que nunca se validó en la acción (lo resuelve el caso de uso dentro de la transacción de gobierno, «No se encontró esa invitación pendiente»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/auth/usuarios.ts#reenviarInvitacionPendiente":
+    "Reenviar una invitación (Hito 3, I.5h): solo recibe un id, que nunca se validó en la acción (lo resuelve el caso de uso dentro de la transacción de gobierno, «No se encontró esa invitación pendiente»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/auth/usuarios.ts#actualizarNotasMembresia":
     "Editar las notas de una membresía (Hito 3, I.5a): recibe un id y un texto libre que nunca se validó en la acción; el texto lo normaliza el caso de uso (`texto(notas) || null`) DESPUÉS de resolver la membresía y el techo, como antes. Un guard previo adelantaría esa normalización a «No se encontró esa membresía».",
 };

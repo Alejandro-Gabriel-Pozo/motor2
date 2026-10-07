@@ -21,8 +21,8 @@ import { transferirGerenciaCasoDeUso } from "./casos-de-uso/transferir-gerencia"
 import { agregarOActualizarUsuarioCasoDeUso } from "./casos-de-uso/agregar-o-actualizar-usuario";
 import { guardComandoAgregarOActualizarUsuario } from "@/core/features/permisos/usuario.guard";
 import { revocarInvitacionCasoDeUso } from "./casos-de-uso/revocar-invitacion";
-// Transitorio (I.5g → I.5h): reenviar todavía corre en línea y usa el paso compartido; sale con su migración.
-import { invitacionGestionable } from "@/server/actions/auth/casos-de-uso/invitacion-gestionable";
+import { reenviarInvitacionPendienteCasoDeUso } from "./casos-de-uso/reenviar-invitacion";
+import { mensajeSiSeReenviaMuyPronto } from "@/core/features/empresa/invitacion";
 
 /**
  * Techo de privilegio y salvaguardas de esta pantalla (Bloque G, G2): las acciones no miran roles ni comparan nombres. Leen el estado y escriben
@@ -176,10 +176,6 @@ export async function transferirGerencia(usuarioDestinoId: string, emailConfirma
 
 // ---- Invitaciones de usuario y de vinculación (E8, ADR-024) ----
 
-/** Un reenvío por minuto como máximo por invitación: acota el mail (el cupo del proveedor es compartido con los códigos de la plataforma). */
-const ESPERA_ENTRE_REENVIOS_MS = 60_000;
-const MENSAJE_ESPERAR = "Esa invitación se envió hace menos de un minuto. Esperá un momento antes de reenviarla.";
-
 /** Manda el mail pendiente (si hay) después del commit y devuelve el mensaje final: si no salió, lo dice. */
 async function enviarYResponder(
   ctx: Parameters<Parameters<typeof conPermiso>[1]>[0],
@@ -192,22 +188,17 @@ async function enviarYResponder(
   return salio.enviado ? resultado : ok(`${resultado.mensaje} El mail NO salió: probá de nuevo con «Reenviar».`);
 }
 
-/** Reenviar: rota el token (el enlace anterior deja de servir), renueva los 7 días y vuelve a firmar la invitación a nombre de quien reenvía. */
+/**
+ * Reenviar: rota el token (el enlace anterior deja de servir), renueva los 7 días y vuelve a firmar la invitación a nombre de quien reenvía. Desde el Hito 3 (Fase I,
+ * I.5h) es un adaptador: `conPermiso("gestion_usuarios")` → caso de uso (`casos-de-uso/reenviar-invitacion.ts`: invitación gestionable, freno de un minuto y rotación
+ * con su auditoría, en la transacción de gobierno) → el mail recién con la transacción confirmada → `aResultadoAccion` (o el aviso de que no salió). Sin guard: solo
+ * recibe un id (`SIN_GUARD`).
+ */
 export async function reenviarInvitacionPendiente(invitacionId: string): Promise<ResultadoAccion> {
   return conPermiso("gestion_usuarios", async (ctx) => {
-    const ahora = ctx.ahora; // la hora del pedido (D.3): el freno de un minuto y el vencimiento renovado se miden contra ella
-    let porEnviar = null as InvitacionPorEnviar | null;
-    const resultado = await conGobierno(ctx, async (tx) => {
-      porEnviar = null;
-      const g = await invitacionGestionable(ctx, tx, invitacionId);
-      if (!g.ok) return error(g.mensaje);
-      if (g.invitacion.enviadaEn && ahora.getTime() - g.invitacion.enviadaEn.getTime() < ESPERA_ENTRE_REENVIOS_MS) return error(MENSAJE_ESPERAR);
-      const rotada = await rotarInvitacionPendiente(tx, { empresaId: ctx.empresaId, invitacionId, actorId: ctx.usuarioId, ahora, azar: azarDelProceso });
-      if (!rotada.ok || !rotada.token) return error(rotada.ok ? "No se pudo reenviar la invitación." : rotada.mensaje);
-      porEnviar = { invitacionId, token: rotada.token, tipo: g.invitacion.tipo };
-      return ok(`Invitación reenviada a "${g.invitacion.email}". El enlace anterior ya no sirve.`);
-    });
-    return enviarYResponder(ctx, resultado, porEnviar as InvitacionPorEnviar | null, ahora);
+    const resultado = await reenviarInvitacionPendienteCasoDeUso(ctx, { invitacionId }, azarDelProceso);
+    if (!resultado.ok) return aResultadoAccion(resultado);
+    return enviarYResponder(ctx, aResultadoAccion(resultado), resultado.datos.porEnviar, ctx.ahora);
   });
 }
 
@@ -238,7 +229,8 @@ export async function invitarAVincular(membresiaId: string): Promise<ResultadoAc
       if (rechazo) return error(rechazo);
       const email = membresia.usuario.email;
       const previa = await tx.invitacion.findFirst({ where: { empresaId: ctx.empresaId, email, estado: "PENDIENTE", rolEmpresa: "vinculacion" }, select: { id: true, enviadaEn: true } });
-      if (previa?.enviadaEn && ahora.getTime() - previa.enviadaEn.getTime() < ESPERA_ENTRE_REENVIOS_MS) return error(MENSAJE_ESPERAR);
+      const muyPronto = mensajeSiSeReenviaMuyPronto(previa?.enviadaEn, ahora);
+      if (muyPronto) return error(muyPronto);
       const v = previa
         ? await rotarInvitacionPendiente(tx, { empresaId: ctx.empresaId, invitacionId: previa.id, actorId: ctx.usuarioId, ahora, azar: azarDelProceso })
         : await asegurarInvitacionDeVinculacion(tx, { empresaId: ctx.empresaId, email, invitadoPorId: ctx.usuarioId, ahora, azar: azarDelProceso });

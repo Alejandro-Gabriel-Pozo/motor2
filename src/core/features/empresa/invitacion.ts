@@ -86,6 +86,18 @@ export function decidirSobreLaInvitacionPendiente(
   return { accion: "crear" };
 }
 
+/** Un reenvío por minuto como máximo por invitación: acota el mail (el cupo del proveedor es compartido con los códigos de la plataforma). */
+const ESPERA_ENTRE_REENVIOS_MS = 60_000;
+
+/**
+ * El freno de un minuto entre dos envíos de la misma invitación (reenviar, invitar a vincular): el rechazo si la última salió hace menos de un minuto respecto de la hora
+ * del pedido, o `null`. Hito 3, I.5h: antes eran dos constantes y la misma comparación en línea en `usuarios.ts`; mismo texto y mismo borde (exactamente un minuto ya
+ * deja reenviar). Sin marca de envío (`null`, nunca salió) no frena.
+ */
+export function mensajeSiSeReenviaMuyPronto(enviadaEn: Date | null | undefined, ahora: Date): string | null {
+  return enviadaEn && ahora.getTime() - enviadaEn.getTime() < ESPERA_ENTRE_REENVIOS_MS ? "Esa invitación se envió hace menos de un minuto. Esperá un momento antes de reenviarla." : null;
+}
+
 /** Una sucursal con el rol que da una invitación, tal como se muestra en el mail y en la pantalla. */
 export interface AccesoDeInvitacion {
   sucursal: string;

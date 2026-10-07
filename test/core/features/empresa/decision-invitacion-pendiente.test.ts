@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decidirSobreLaInvitacionPendiente } from "../../../../src/core/features/empresa/invitacion";
+import { decidirSobreLaInvitacionPendiente, mensajeSiSeReenviaMuyPronto } from "../../../../src/core/features/empresa/invitacion";
 
 /**
  * Hito 3, I.5e2: la decisión sobre la invitación pendiente de un email (otro tipo / vigente / vencida / ninguna), que `asegurarInvitacionDeUsuario` y
@@ -34,5 +34,18 @@ describe("decidirSobreLaInvitacionPendiente", () => {
         mensaje: `Ya hay una invitación pendiente para ${EMAIL} que no es de vinculación.`,
       });
     }
+  });
+});
+
+describe("mensajeSiSeReenviaMuyPronto (I.5h: el freno de un minuto de reenviar e invitar a vincular)", () => {
+  const ESPERAR = "Esa invitación se envió hace menos de un minuto. Esperá un momento antes de reenviarla.";
+  it.each([
+    ["nunca salió (null)", null, null],
+    ["sin invitación previa (undefined)", undefined, null],
+    ["salió hace 59,999 s: frena", new Date(AHORA.getTime() - 59_999), ESPERAR],
+    ["salió hace exactamente un minuto: ya deja", new Date(AHORA.getTime() - 60_000), null],
+    ["salió hace una hora: deja", new Date(AHORA.getTime() - 3_600_000), null],
+  ] as const)("%s", (_caso, enviadaEn, esperado) => {
+    expect(mensajeSiSeReenviaMuyPronto(enviadaEn, AHORA)).toBe(esperado);
   });
 });
