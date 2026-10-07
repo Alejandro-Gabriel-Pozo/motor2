@@ -2,7 +2,7 @@ import "dotenv/config";
 import { parseArgs } from "node:util";
 import { prisma } from "../src/lib/db";
 import { dbDeEmpresa, transaccionDeEmpresa } from "../src/core/auth/base";
-import { asegurarInvitacionDeVinculacion, rotarInvitacionPendiente } from "../src/core/features/empresa/invitacion-de-usuario";
+import { asegurarInvitacionDeVinculacion, rotarInvitacionPendiente } from "../src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx";
 import { enlaceDeInvitacion, urlPublicaDeLaApp } from "../src/core/features/empresa/invitacion";
 import { incorporarPrimerGerente } from "../src/core/permisos/gerencia";
 import { ACCIONES } from "../src/core/permisos/acciones";

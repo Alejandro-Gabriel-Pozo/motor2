@@ -70,10 +70,10 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     fase: "Permanente",
     motivo: "Operación de plataforma que corre por script (nunca desde la app): cambia las perillas de política de una empresa; escritor propio de esas columnas, con su auditoría.",
   },
-  "src/core/features/empresa/invitacion-de-usuario.ts": {
+  "src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx.ts": {
     escrituras: ["invitacion.create", "invitacion.create", "invitacion.update", "invitacion.update", "invitacion.update", "invitacion.updateMany", "invitacionSucursal.updateMany", "invitacionSucursal.upsert"],
     fase: "Fase 4",
-    motivo: "Tramo B (PR B4b): las invitaciones de usuario pasan a casos de uso + persistencia.",
+    motivo: "Tramo B (PR B4b; Hito 3, I.5e): las invitaciones de usuario, ya fuera de core (antes core/features/empresa/invitacion-de-usuario.ts); sus escrituras pasan a server/persistencia/auth/ en I.5e2.",
   },
   "plataforma/src/servidor/sembrar-empresa.ts": {
     escrituras: ["accion.createMany", "destinoConsumo.createMany", "motivoMerma.createMany", "permisoRol.createMany", "rol.create", "rol.create", "sucursal.create", "unidad.createMany"],

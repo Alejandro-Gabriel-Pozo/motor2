@@ -21,7 +21,6 @@ const FASE_REGISTRADA: Record<string, 4 | 6> = {
   "src/core/catalogo/precio-local-consulta.ts": 4,
   "src/core/catalogo/receta-a-input.ts": 6,
   "src/core/catalogo/recetas-vigentes.ts": 6,
-  "src/core/features/empresa/invitacion-de-usuario.ts": 4,
   "src/core/features/movimientos/conteo-fisico.guard.ts": 6,
   "src/core/features/movimientos/conteo-fisico.schema.ts": 6,
   "src/core/features/movimientos/movimiento.schema.ts": 6,

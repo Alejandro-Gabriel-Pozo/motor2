@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 import { hashDeToken } from "../../src/core/seguridad/tokens";
-import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion, revocarInvitacionPendiente, rotarInvitacionPendiente } from "../../src/core/features/empresa/invitacion-de-usuario";
+import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion, revocarInvitacionPendiente, rotarInvitacionPendiente } from "../../src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx";
 import { VIDA_DE_LA_INVITACION_MS } from "../../src/core/features/empresa/invitacion";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import { azarDelProceso } from "../../src/lib/azar";

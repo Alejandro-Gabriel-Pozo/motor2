@@ -87,7 +87,7 @@ reescribe por tipo: la app inserta, rota, revoca y acepta solo lo suyo; **la pla
 
 ## Implementación
 
-`src/core/features/empresa/{invitacion,invitacion-de-usuario}.ts`, `src/core/auth/{invitacion,avisos-de-login}.ts`, `src/server/sesion/{acceso,invitacion,vincular-cuenta}.ts`, `src/server/actions/auth/{usuarios,sucursales}.ts`,
+`src/core/features/empresa/invitacion.ts`, `src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx.ts` (antes en `core/features/empresa/`, Hito 3, I.5e), `src/core/auth/{invitacion,avisos-de-login}.ts`, `src/server/sesion/{acceso,invitacion,vincular-cuenta}.ts`, `src/server/actions/auth/{usuarios,sucursales}.ts`,
 `src/server/actions/auth/casos-de-uso/enviar-invitacion-y-anotar.ts` (antes en `src/server/`, Hito 3, I.5f), `src/app/invitacion/*`, `src/app/(app)/administracion/usuarios/*`, `src/lib/auth.ts`, `prisma/seed.ts` (`--gerente` imprime el enlace de vinculación local).
 Pruebas: `test/auth/{contrato-authjs-vinculacion,vinculacion}.test.ts`, `test/persistencia/{invitacion-de-usuario,aceptar-invitacion-de-usuario}.test.ts`,
 `test/aislamiento/invitacion-de-usuario-rls.test.ts`, `test/administracion/invitacion-de-usuario.test.ts`, `test/arquitectura/sin-enlace-automatico-de-cuentas.test.ts`, `test/e2e/usuarios-invitacion.spec.ts`.

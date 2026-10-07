@@ -28,7 +28,7 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "migrar:aprobar": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "tsx --conditions=react-server prisma/seed.ts",
     "db:studio": "prisma studio",
     "plataforma:crear-admin": "tsx scripts/plataforma/crear-primer-admin.ts",
     "politica-empresa": "tsx scripts/politica-empresa.ts",
@@ -40,7 +40,7 @@
     "verificar:modulos": "tsx scripts/verificar-registro-de-modulos.ts"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx --conditions=react-server prisma/seed.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

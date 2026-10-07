@@ -11,7 +11,7 @@ import { aceptarInvitacionDeUsuarioCasoDeUso } from "../../../src/server/actions
 export const aceptarInvitacionDeUsuarioDelToken = (e: Omit<Parameters<typeof aceptarInvitacionDeUsuarioCasoDeUso>[0], "ahora"> & { ahora?: Date }, guard: Parameters<typeof aceptarInvitacionDeUsuarioCasoDeUso>[1]) => aceptarInvitacionDeUsuarioCasoDeUso({ ...e, ahora: e.ahora ?? new Date() }, guard);
 export { vincularCuentaConInvitacion } from "../../../src/server/sesion/vincular-cuenta";
 export { requierePermiso } from "../../../src/server/acceso/gate";
-export { asegurarInvitacionDeUsuario, revocarInvitacionPendiente, rotarInvitacionPendiente } from "../../../src/core/features/empresa/invitacion-de-usuario";
+export { asegurarInvitacionDeUsuario, revocarInvitacionPendiente, rotarInvitacionPendiente } from "../../../src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx";
 export { cambiarModulosDeEmpresa } from "../../../src/server/operaciones-de-plataforma/cambiar-modulos-de-empresa";
 export { cambiarPoliticaDeEmpresa } from "../../../src/server/operaciones-de-plataforma/cambiar-politica-de-empresa";
 export { sembrarEmpresa } from "../../../plataforma/src/servidor/sembrar-empresa";

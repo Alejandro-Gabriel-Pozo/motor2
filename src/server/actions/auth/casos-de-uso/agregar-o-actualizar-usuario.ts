@@ -1,6 +1,6 @@
 import "server-only";
 import type { ComandoAgregarOActualizarUsuario } from "@/core/features/permisos/usuario.guard";
-import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion } from "@/core/features/empresa/invitacion-de-usuario";
+import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion } from "./invitaciones-de-usuario-en-tx";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import {
   actorEnSucursal,
@@ -46,7 +46,7 @@ type ResultadoAgregarOActualizarUsuario = ResultadoCaso<
  *     invitación de vinculación (`asegurarInvitacionDeVinculacion`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. Escribe por `server/persistencia/permisos/membresias.ts`; las invitaciones, por
- * `core/features/empresa/invitacion-de-usuario.ts` (heredado del núcleo: su mudanza, I.5e/I.5e2, quedó fuera de esta fase porque `prisma/seed.ts` lo importa). La hora es la
+ * el paso compartido `./invitaciones-de-usuario-en-tx.ts` (I.5e, antes en `core`). La hora es la
  * del pedido (`actor.ahora`) y el azar de los tokens lo pasa la Server Action (el borde).
  *
  * @contract Deja a la persona con acceso pendiente (invitación) o efectivo (membresía con ese rol, cuenta de empresa activa) en la sucursal pedida, con su auditoría, si quien actúa puede darle ese rol y gestionarla; devuelve la invitación cuyo mail hay que mandar.

@@ -1,14 +1,20 @@
+import "server-only";
 import type { Prisma } from "@prisma/client";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { generarTokenOpaco, hashDeToken } from "@/core/seguridad/tokens";
-import { vencimientoDeInvitacion, type TipoDeInvitacion } from "./invitacion";
+import { vencimientoDeInvitacion, type TipoDeInvitacion } from "@/core/features/empresa/invitacion";
 
 /**
  * Crear, extender, volver a firmar y revocar invitaciones de USUARIO y de VINCULACIÓN (E8, ADR-024) dentro de una transacción de la empresa. La invitación es una
  * credencial de vinculación: prueba que quien entra controla el buzón del email invitado. NO crea `User` ni membresías (eso pasa al aceptar). El permiso de quien invita lo
  * verifica quien llama (el gate de `gestion_usuarios` y el techo de privilegio); acá solo se mantiene el estado y su auditoría. El mail NO se manda acá: sale DESPUÉS del
  * commit (ADR-018), con el token que devuelven estas funciones (que solo existe en memoria: en la base queda el hash).
+ *
+ * Hito 3, Fase I, I.5e: el archivo vivía en `core/features/empresa/` (heredado del núcleo: escribía la base) y se mudó ENTERO, sin cambios de lógica, a esta carpeta de casos de
+ * uso como paso compartido (sin ficha: lo componen los casos de uso de `usuarios.ts`; la Server Action, las huellas, los tests de persistencia y `prisma/seed.ts` lo
+ * importan con su ruta). En I.5e2 sus escrituras pasan a `server/persistencia/auth/invitaciones-de-usuario.ts` y la decisión vigente/vencida/otro tipo a
+ * `core/features/empresa/invitacion.ts`; quedan acá la composición y la auditoría. `server-only`: `prisma/seed.ts` lo importa bajo `tsx --conditions=react-server`.
  */
 type Tx = Prisma.TransactionClient;
 

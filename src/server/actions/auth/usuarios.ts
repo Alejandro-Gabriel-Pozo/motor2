@@ -1,7 +1,7 @@
 "use server";
 
 import type { TipoDeInvitacion } from "@/core/features/empresa/invitacion";
-import { asegurarInvitacionDeVinculacion, revocarInvitacionPendiente, rotarInvitacionPendiente } from "@/core/features/empresa/invitacion-de-usuario";
+import { asegurarInvitacionDeVinculacion, revocarInvitacionPendiente, rotarInvitacionPendiente } from "@/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx";
 import { requierePermiso } from "@/server/acceso/gate";
 import {
   actorEnSucursal,
