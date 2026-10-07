@@ -35,7 +35,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @idempotency No aplica (nunca la tuvo) — un duplicado por doble clic se cancela desde la Bandeja sin ningún efecto sobre el Kardex.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) — mismo aislamiento que el resto, aunque acá no hay ninguna carrera de agregado que proteger.
  * @sideEffects Ninguno — solo la creación del traspaso (nunca tocó Kardex).
- * @ficha permiso=traspaso_solicitar transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=traspaso_solicitar transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function crearSolicitudDeTraspasoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,

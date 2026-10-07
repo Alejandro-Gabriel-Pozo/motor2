@@ -35,7 +35,7 @@ import { formatearCantidad } from "../cuenta-comun";
  * @idempotency No aplica (nunca la tuvo) — el doble clic lo frena la guarda optimista (restanteVisto tiene que coincidir EXACTO con lo que queda).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (campo cantidadVigente).
- * @ficha permiso=pos_anular_item transaccion=SERIALIZABLE idempotencia=OPTIMISTA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=pos_anular_item transaccion=SERIALIZABLE idempotencia=OPTIMISTA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function anularItemEnviadoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,

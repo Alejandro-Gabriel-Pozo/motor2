@@ -30,7 +30,7 @@ import { escribirReingresoDeTraspaso } from "@/server/persistencia/traspasos/esc
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de la escritura del reingreso de Kardex y el cierre del traspaso.
- * @ficha permiso=traspaso_confirmar_reingreso transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @ficha permiso=traspaso_confirmar_reingreso transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function confirmarReingresoDeTraspasoCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,

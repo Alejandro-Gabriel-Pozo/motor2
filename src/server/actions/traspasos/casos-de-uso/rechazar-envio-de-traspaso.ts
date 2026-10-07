@@ -25,7 +25,7 @@ import { escribirRechazoDeEnvio } from "@/server/persistencia/traspasos/escribir
  * @idempotency No aplica — sin Operación donde guardarla; el aislamiento SERIALIZABLE evita que dos rechazos concurrentes con motivo distinto se pisen en silencio.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno — solo el cambio de estado del traspaso (motivo incluido).
- * @ficha permiso=traspaso_rechazar_envio transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @ficha permiso=traspaso_rechazar_envio transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function rechazarEnvioDeTraspasoCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,

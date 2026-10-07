@@ -67,7 +67,7 @@ const ACCIONES_CONTEO: Record<AccionConteo, { ajusta: boolean; estado: EstadoCon
  * @idempotency I3 (claveIdempotencia + payloadHash en ConteoFisico) — chequeo dentro de la transacción + catch de P2002 fuera de ella.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Escritura del Kardex (Operacion + MovimientoStock) SOLO si la diferencia es != 0 y la acción ajusta; registrarCambioAuditado del alta del conteo (saldo del sistema → lo contado) si hay diferencia.
- * @ficha permiso=proceso_control transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=proceso_control transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function registrarConteoFisicoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,

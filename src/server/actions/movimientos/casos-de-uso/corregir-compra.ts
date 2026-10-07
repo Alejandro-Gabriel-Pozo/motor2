@@ -24,7 +24,7 @@ import { escribirCorreccionDeCompra } from "@/server/persistencia/compras/escrib
  * @idempotency Por estado — si ya tiene exactamente lo pedido responde "nada que corregir" sin escribir (idempotencia natural, sin clave I3).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento), con `.catch(esChoqueDeFacturaUnica)` para el índice único parcial de factura.
  * @sideEffects registrarCambioAuditado (uno por cada campo que cambió).
- * @ficha permiso=corregir_compra transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=corregir_compra transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function corregirCompraCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,

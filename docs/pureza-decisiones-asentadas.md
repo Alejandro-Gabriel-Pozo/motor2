@@ -18,7 +18,7 @@
 
 ## 2. Un tipo `FichaCasoDeUso` fue reemplazado por la línea `@ficha` (decisión de diseño sin registrar)
 
-La auditoría (§12, paso 0.6) pedía un tipo `FichaCasoDeUso` en `core` con un valor `FICHA_PENDIENTE`. El PR #66 lo reemplazó por una **línea `@ficha` en el docstring de cada caso de uso**, de vocabulario cerrado y verificada contra el código por un test (`test/arquitectura/ficha-de-caso-de-uso.test.ts`). Razón: el tipo en `core` no podía observar lo que el archivo hace (transacción, auditoría, reloj, permiso de la Server Action que lo envuelve); la línea sí, por AST. **Queda asentado como decisión de diseño**: la ficha es la línea `@ficha`; no hay tipo en `core`. El campo `periodo` (para el cierre de períodos de la Etapa A) sigue pendiente de decisión del dueño (decisión 5).
+La auditoría (§12, paso 0.6) pedía un tipo `FichaCasoDeUso` en `core` con un valor `FICHA_PENDIENTE`. El PR #66 lo reemplazó por una **línea `@ficha` en el docstring de cada caso de uso**, de vocabulario cerrado y verificada contra el código por un test (`test/arquitectura/ficha-de-caso-de-uso.test.ts`). Razón: el tipo en `core` no podía observar lo que el archivo hace (transacción, auditoría, reloj, permiso de la Server Action que lo envuelve); la línea sí, por AST. **Queda asentado como decisión de diseño**: la ficha es la línea `@ficha`; no hay tipo en `core`. El campo `periodo` (para el cierre de períodos de la Etapa A) se agregó a la ficha el 2026-10-08 por decisión del dueño (decisión 5): `periodo=NO_APLICA` hoy en todas las fichas y `VERIFICA_CIERRE` para el caso de uso que llame a `verificarPeriodoAbierto`, la función de `core/periodos` que trae la Etapa A.
 
 ## 3. El punto de control de la Fase 2
 

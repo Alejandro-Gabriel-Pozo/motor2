@@ -48,7 +48,7 @@ import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movi
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento), con `.catch(esChoqueDeFacturaUnica)` para la factura duplicada.
  * @sideEffects upsertProveedorPorProducto (Compra, DENTRO de la transacción) — un vínculo proveedor↔producto por línea con unidad de compra (la de compra o, si no tiene, la de stock); si falla, falla la compra. registrarCambioAuditado del precio del vínculo cuando cambia.
- * @ficha permiso=POR_PROCESO transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=POR_PROCESO transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function registrarMovimientoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,

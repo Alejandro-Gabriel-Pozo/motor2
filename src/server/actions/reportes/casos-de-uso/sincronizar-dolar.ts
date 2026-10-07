@@ -27,7 +27,7 @@ import type { Db } from "@/lib/db-tipos";
  * @idempotency Por estado: el guardado es un upsert por (día, fuente), así que repetir la corrida no duplica nada.
  * @transaction Ninguna: cada día se guarda por separado (un fallo a la mitad del relleno deja los días ya guardados, que son correctos).
  * @sideEffects Escribe CotizacionDolar (upsert por día y fuente); sale a internet (dolarapi.com, argentinadatos.com, BCRA).
- * @ficha permiso=SISTEMA transaccion=NINGUNA idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @ficha permiso=SISTEMA transaccion=NINGUNA idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function sincronizarDolarCasoDeUso(actor: { db: Db; ahora: Date }): Promise<ResultadoSincronizacionDolar> {
   const { db, ahora } = actor;

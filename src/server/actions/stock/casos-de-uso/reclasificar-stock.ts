@@ -47,7 +47,7 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) — el saldo disponible se lee DENTRO de la transacción.
  * @sideEffects Ninguno además de la escritura del Kardex (un origen negativo + N destinos positivos) — sin auditoría de permisos propia.
- * @ficha permiso=stock_reclasificar transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @ficha permiso=stock_reclasificar transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function reclasificarStockCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,

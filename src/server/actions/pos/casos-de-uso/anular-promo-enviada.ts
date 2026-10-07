@@ -34,7 +34,7 @@ import { formatearCantidad } from "../cuenta-comun";
  * @idempotency No aplica (nunca la tuvo) — un segundo intento ve "ya está anulada entera" (chequeo de estado, no I3).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (uno por cada componente anulado).
- * @ficha permiso=pos_anular_item transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=pos_anular_item transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function anularPromoEnviadaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,

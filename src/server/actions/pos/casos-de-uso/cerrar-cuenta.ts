@@ -41,7 +41,7 @@ import { describirAviso, formatearCantidad, MONEDA } from "../cuenta-comun";
  * @idempotency Por estado — una cuenta ya cerrada responde YA_CERRADA sin escribir nada; sin I3 (el aislamiento SERIALIZABLE arbitra el doble clic).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (uno por cada insumo que quedó en negativo, B6bis) — best-effort, no bloquea el cierre.
- * @ficha permiso=pos_cerrar_cuenta transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=pos_cerrar_cuenta transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function cerrarCuentaCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "email" | "transaccion" | "ahora">,

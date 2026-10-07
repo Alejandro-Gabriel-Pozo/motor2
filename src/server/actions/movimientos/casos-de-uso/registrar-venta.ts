@@ -31,7 +31,7 @@ import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, v
  * @idempotency I3 (claveIdempotencia + payloadHash) — a diferencia de registrarMovimiento, un lote de N ventas guarda la clave/hash/resultado SOLO en la primera Operacion.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de lo que ya hace registrarVentaEnTx (Operacion + MovimientoStock por línea) — sin auditoría propia acá.
- * @ficha permiso=proceso_venta transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @ficha permiso=proceso_venta transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function registrarVentaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,

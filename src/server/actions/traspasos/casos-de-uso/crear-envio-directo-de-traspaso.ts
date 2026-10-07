@@ -41,7 +41,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @idempotency No aplica, decisión explícita (M11c) — fuera del alcance de I3 desde la auditoría original; un duplicado nunca deja el stock inconsistente (se deshace con el ciclo normal de rechazo+reingreso).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de la escritura conjunta de la salida de Kardex y la creación del traspaso.
- * @ficha permiso=traspaso_enviar_directo transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=traspaso_enviar_directo transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function crearEnvioDirectoDeTraspasoCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion" | "ahora">,

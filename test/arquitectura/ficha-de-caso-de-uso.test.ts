@@ -14,7 +14,7 @@ import { analizarFuente, delegadosDeModelos } from "../../scripts/arquitectura/a
  * los cruza con el código, así que podían mentir sin que nada fallara. La ficha es la versión MECÁNICA: una línea `@ficha` en el docstring de cada caso de uso, con
  * cinco campos de vocabulario cerrado, y este test comprueba que lo declarado es lo que el archivo hace:
  *
- *   @ficha permiso=<acción> transaccion=<SERIALIZABLE|SIMPLE|NINGUNA> idempotencia=<I3|POR_ESTADO|OPTIMISTA|NO_APLICA> auditoria=<REGISTRO_AUDITORIA|DOCUMENTO_PROPIO> reloj=<INYECTADO|NEW_DATE>
+ *   @ficha permiso=<acción> transaccion=<SERIALIZABLE|SIMPLE|NINGUNA> idempotencia=<I3|POR_ESTADO|OPTIMISTA|NO_APLICA> auditoria=<REGISTRO_AUDITORIA|DOCUMENTO_PROPIO> reloj=<INYECTADO|NEW_DATE> periodo=<VERIFICA_CIERRE|NO_APLICA>
  *
  *  - `permiso`: la acción (de `ACCIONES`) con la que la Server Action que lo envuelve lo protege (`conPermiso*("clave", …)`), o `POR_PROCESO` si la elige en ejecución, o `SISTEMA` si
  *    corre SIN usuario (un cron o el atajo del encabezado): lo envuelve un archivo que NO es `"use server"` (no es un endpoint) y que ningún `conPermiso*` protege. Quién puede importar esos
@@ -25,6 +25,10 @@ import { analizarFuente, delegadosDeModelos } from "../../scripts/arquitectura/a
  *  - `idempotencia`: `I3` si y solo si llama a `chequearIdempotencia` (clave + hash del payload); `POR_ESTADO` (el estado del documento arbitra el reintento),
  *    `OPTIMISTA` (versión esperada) y `NO_APLICA` no pueden llamarla.
  *  - `auditoria`: `REGISTRO_AUDITORIA` si llama a `registrarCambioAuditado`; `DOCUMENTO_PROPIO` si no (el documento que escribe lleva su usuario y su fecha).
+ *  - `periodo` (decisión del dueño, 2026-10-08): `VERIFICA_CIERRE` si el caso de uso llama a `verificarPeriodoAbierto` (la verificación del cierre de períodos que va a traer la Etapa A en
+ *    `core/periodos`: sin esto el cierre no tiene forma mecánica de alcanzar TODAS las escrituras con fecha de imputación); `NO_APLICA` si no la llama. HOY ningún caso de uso la llama porque la
+ *    función todavía no existe: todos declaran `NO_APLICA`. Cuando nazca, este test ya obliga a que cada caso de uso que la use lo declare, y un caso de uso que escribe un documento con fecha
+ *    de imputación y la omite se verá en la revisión como `NO_APLICA` explícito.
  *  - `reloj`: `INYECTADO` si el archivo no lee la hora actual (`new Date()` sin argumentos, `Date.now()`); `NEW_DATE` si la lee. NINGÚN caso de uso lee el reloj (Pureza 1.2):
  *    la hora entra por `actor.ahora`, que `conPermiso` fija una vez por pedido (`ContextoDeAccion`). Un test fija la hora, y el cierre de períodos y `fechaImputacion` la necesitan.
  *
@@ -41,14 +45,16 @@ const VOCABULARIO = {
   idempotencia: ["I3", "POR_ESTADO", "OPTIMISTA", "NO_APLICA"],
   auditoria: ["REGISTRO_AUDITORIA", "DOCUMENTO_PROPIO"],
   reloj: ["INYECTADO", "NEW_DATE"],
+  periodo: ["VERIFICA_CIERRE", "NO_APLICA"],
 } as const;
-const CAMPOS = ["permiso", "transaccion", "idempotencia", "auditoria", "reloj"] as const;
+const CAMPOS = ["permiso", "transaccion", "idempotencia", "auditoria", "reloj", "periodo"] as const;
 
 interface Observado {
   transaccion: string;
   llamaAChequearIdempotencia: boolean;
   auditoria: string;
   reloj: string;
+  periodo: string;
 }
 
 /** Lo que el código del caso de uso HACE (AST, fuera de los comentarios). */
@@ -73,6 +79,7 @@ function observar(codigo: string): Observado {
     llamaAChequearIdempotencia: llamadas.has("chequearIdempotencia"),
     auditoria: llamadas.has("registrarCambioAuditado") ? "REGISTRO_AUDITORIA" : "DOCUMENTO_PROPIO",
     reloj: reloj ? "NEW_DATE" : "INYECTADO",
+    periodo: llamadas.has("verificarPeriodoAbierto") ? "VERIFICA_CIERRE" : "NO_APLICA",
   };
 }
 
@@ -145,6 +152,12 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
     expect(observar("export async function f(tx: any) { await otraCosa(tx); }").llamaAChequearIdempotencia).toBe(false);
     expect(observar("export async function f(tx: any) { await registrarCambioAuditado(tx, {}); }").auditoria).toBe("REGISTRO_AUDITORIA");
     expect(observar("export async function f(tx: any) { await escribir(tx); }").auditoria).toBe("DOCUMENTO_PROPIO");
+  });
+
+  it("periodo: VERIFICA_CIERRE solo si llama a verificarPeriodoAbierto", () => {
+    expect(observar("export async function f(tx: any) { await verificarPeriodoAbierto(tx, new Date(0)); }").periodo).toBe("VERIFICA_CIERRE");
+    expect(observar("export async function f(tx: any) { await escribir(tx); }").periodo).toBe("NO_APLICA");
+    expect(observar("// verificarPeriodoAbierto(tx)\nexport async function f() { return 1; }").periodo).toBe("NO_APLICA");
   });
 
   it("reloj: new Date() sin argumentos y Date.now() lo leen; new Date(x) y un texto que lo nombra no", () => {
@@ -248,6 +261,7 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
       const visto = observar(c.fuente);
       if (ficha.transaccion !== visto.transaccion) mentiras.push(`${c.ruta}: la ficha dice transaccion=${ficha.transaccion} y el código hace ${visto.transaccion}`);
       if (ficha.auditoria !== visto.auditoria) mentiras.push(`${c.ruta}: la ficha dice auditoria=${ficha.auditoria} y el código hace ${visto.auditoria}`);
+      if (ficha.periodo !== visto.periodo) mentiras.push(`${c.ruta}: la ficha dice periodo=${ficha.periodo} y el código hace ${visto.periodo}`);
       if (ficha.reloj !== visto.reloj) mentiras.push(`${c.ruta}: la ficha dice reloj=${ficha.reloj} y el código hace ${visto.reloj}`);
       if ((ficha.idempotencia === "I3") !== visto.llamaAChequearIdempotencia) {
         mentiras.push(`${c.ruta}: la ficha dice idempotencia=${ficha.idempotencia} y ${visto.llamaAChequearIdempotencia ? "el código llama" : "el código NO llama"} a chequearIdempotencia`);
