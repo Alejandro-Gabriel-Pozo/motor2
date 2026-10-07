@@ -153,13 +153,29 @@ describe("Invariantes de dominio — demo de 6 meses de La Cuadra", () => {
     const faltan = ofertas.filter((o) => !conFila.has(`${o.productoId}|${o.proveedorId}`) && !sinUnidad.has(o.productoId));
     expect(faltan.map((o) => `${o.productoId}|${o.proveedorId}`), "pares con compra vigente y sin fila en ProveedorPorProducto").toEqual([]);
 
-    // El precio de cada oferta es el de la última compra CON precio de ese par: se recalcula con una consulta cruda, por otro camino.
-    const crudo = await prisma.$queryRaw<Array<{ productoId: string; proveedorId: string; precio: string }>>`
-      SELECT DISTINCT ON (m."productoId", o."proveedorId") m."productoId", o."proveedorId", m."precioPorUnidadStock"::text AS precio
-      FROM "MovimientoStock" m JOIN "Operacion" o ON o."id" = m."operacionId"
-      WHERE m."proceso" = 'COMPRA' AND o."proceso" = 'COMPRA' AND o."anuladaEn" IS NULL AND o."proveedorId" IS NOT NULL AND m."precioPorUnidadStock" > 0
-      ORDER BY m."productoId", o."proveedorId", o."fecha" DESC, m."id" DESC`;
-    const precioCrudo = new Map(crudo.map((c) => [`${c.productoId}|${c.proveedorId}`, Number(c.precio)]));
-    for (const o of ofertas) expect(o.precioPorUnidadStock, `${o.productoId}|${o.proveedorId}`).toBe(precioCrudo.get(`${o.productoId}|${o.proveedorId}`) ?? 0);
+    // Cruce INDEPENDIENTE (no la misma consulta reescrita): se traen las compras vigentes con proveedor y se agrupan por par EN MEMORIA, con otro algoritmo (ordenar y recorrer, sin DISTINCT ON).
+    // Para cada par se recalculan los TRES datos del lector: el precio (el de la última compra CON precio; un 0 nunca lo pisa), la fecha de la última compra (la más reciente, aunque tenga
+    // precio 0) y el desempate (misma fecha: la de mayor id).
+    // Solo se TRAEN las filas (sin DISTINCT ON ni agrupar en SQL): un `findMany` con filtro por relación revienta con decenas de miles de compras (límite de parámetros de Prisma 7).
+    const compras = (
+      await prisma.$queryRaw<Array<{ id: string; productoId: string; proveedorId: string; precio: string; fecha: Date }>>`
+        SELECT m."id", m."productoId", o."proveedorId", m."precioPorUnidadStock"::text AS precio, o."fecha"
+        FROM "MovimientoStock" m JOIN "Operacion" o ON o."id" = m."operacionId"
+        WHERE m."proceso" = 'COMPRA' AND o."proceso" = 'COMPRA' AND o."anuladaEn" IS NULL AND o."proveedorId" IS NOT NULL`
+    ).map((c) => ({ id: c.id, productoId: c.productoId, precioPorUnidadStock: Number(c.precio), operacion: { proveedorId: c.proveedorId, fecha: c.fecha } }));
+    const porPar = new Map<string, typeof compras>();
+    for (const c of compras) {
+      const clave = `${c.productoId}|${c.operacion.proveedorId}`;
+      porPar.set(clave, [...(porPar.get(clave) ?? []), c]);
+    }
+    const masReciente = (a: (typeof compras)[number], b: (typeof compras)[number]) => b.operacion.fecha.getTime() - a.operacion.fecha.getTime() || (a.id < b.id ? 1 : -1);
+    expect(ofertas.length, "mismos pares con compra vigente que el lector").toBe(porPar.size);
+    for (const o of ofertas) {
+      const delPar = [...(porPar.get(`${o.productoId}|${o.proveedorId}`) ?? [])].sort(masReciente);
+      expect(delPar.length, `${o.productoId}|${o.proveedorId}: el par existe`).toBeGreaterThan(0);
+      expect(o.ultimaCompra.getTime(), `${o.productoId}|${o.proveedorId}: fecha de la última compra`).toBe(delPar[0].operacion.fecha.getTime());
+      const conPrecio = delPar.find((c) => c.precioPorUnidadStock > 0);
+      expect(o.precioPorUnidadStock, `${o.productoId}|${o.proveedorId}: precio de la última compra con precio`).toBe(conPrecio ? conPrecio.precioPorUnidadStock : 0);
+    }
   });
 });

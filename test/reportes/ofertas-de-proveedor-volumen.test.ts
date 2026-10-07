@@ -59,7 +59,29 @@ describe("ofertas de proveedor con mucha historia", () => {
       while (!(g % 3 === pi && g % 2 === vi && g % 7 !== 0)) g--;
       expect(o.precioPorUnidadStock, `${pi}|${vi}`).toBe(g);
     }
+    // El MISMO cruce independiente de la conciliación 11 de `scripts/verificar-demo-invariantes.ts` (agrupar por par y recorrer en memoria, sin DISTINCT ON), validado acá contra el lector:
+    // si el algoritmo de la conciliación estuviera mal, este test lo vería con datos conocidos.
+    // Solo se TRAEN las filas (sin DISTINCT ON ni agrupar en SQL): un `findMany` con filtro por relación revienta con decenas de miles de compras (límite de parámetros de Prisma 7).
+    const compras = (
+      await prisma.$queryRaw<Array<{ id: string; productoId: string; proveedorId: string; precio: string; fecha: Date }>>`
+        SELECT m."id", m."productoId", o."proveedorId", m."precioPorUnidadStock"::text AS precio, o."fecha"
+        FROM "MovimientoStock" m JOIN "Operacion" o ON o."id" = m."operacionId"
+        WHERE m."proceso" = 'COMPRA' AND o."proceso" = 'COMPRA' AND o."anuladaEn" IS NULL AND o."proveedorId" IS NOT NULL`
+    ).map((c) => ({ id: c.id, productoId: c.productoId, precioPorUnidadStock: Number(c.precio), operacion: { proveedorId: c.proveedorId, fecha: c.fecha } }));
+    const porPar = new Map<string, typeof compras>();
+    for (const c of compras) porPar.set(`${c.productoId}|${c.operacion.proveedorId}`, [...(porPar.get(`${c.productoId}|${c.operacion.proveedorId}`) ?? []), c]);
+    const masReciente = (x: (typeof compras)[number], y: (typeof compras)[number]) => y.operacion.fecha.getTime() - x.operacion.fecha.getTime() || (x.id < y.id ? 1 : -1);
+    expect(porPar.size).toBe(ofertas.length);
+    for (const o of ofertas) {
+      const delPar = [...(porPar.get(`${o.productoId}|${o.proveedorId}`) ?? [])].sort(masReciente);
+      expect(o.ultimaCompra.getTime()).toBe(delPar[0].operacion.fecha.getTime());
+      const conPrecio = delPar.find((c) => c.precioPorUnidadStock > 0);
+      expect(o.precioPorUnidadStock).toBe(conPrecio ? conPrecio.precioPorUnidadStock : 0);
+    }
     expect((await cargarProductosConProveedor(prisma)).size).toBe(3);
-    expect(ms, `la derivación tardó ${ms} ms`).toBeLessThan(5_000);
+    // El tiempo es una MEDICIÓN DE HUMO, no un criterio del gate (en un CI frío o una máquina cargada varía mucho): se informa, y el tope es holgado, solo para atrapar una consulta que se
+    // volvió cuadrática. Lo que el test fija de verdad es el RESULTADO (una fila por par, con el precio de la más reciente con precio).
+    console.info(`[ofertas-de-proveedor] ${CANTIDAD} compras derivadas en ${ms} ms`);
+    expect(ms, `la derivación tardó ${ms} ms`).toBeLessThan(30_000);
   }, 120_000);
 });
