@@ -369,26 +369,41 @@ export function asignarConsumosDeVenta(libro: LibroDeStock, pedidos: readonly Pe
 }
 
 /**
- * Sección del stock PROPIO de un PV que se produce (pizza al corte): la habitual si ahí alcanza; si no, el primer respaldo (mismo
- * orden) donde alcance; si en ninguna, `seccionSiNingunaAlcanzaId`. Sin repartir entre secciones ni lotes (misma simplificación que
- * siempre): todo va al lote con disponible que vence antes en esa sección, o sin lote. Lo anota en el libro.
+ * Dónde sale el stock PROPIO de un PV que se produce (pizza al corte). La SECCIÓN: la habitual si ahí alcanza; si no, el primer respaldo (mismo orden) donde alcance; si en
+ * ninguna, `seccionSiNingunaAlcanzaId`. Sin repartir entre secciones. Los LOTES, en cambio, sí se reparten (Pureza, Hito 2, O.40 (1)): FEFO dentro de la sección, el lote que vence
+ * antes primero y el «sin lote» al final, tomando de cada uno lo que tiene disponible (como `asignarConsumo` con los ingredientes). Antes todo iba al lote que vence antes aunque no
+ * alcanzara, y lo dejaba en negativo con stock en otro lote. Lo que NINGÚN lote cubre (la sección no alcanza) queda en el último lote tomado —o sin lote si no se tomó de ninguno—,
+ * como el faltante de un ingrediente. Devuelve las partes ya juntadas por lote; su suma es `pedido.cantidad`. Lo anota en el libro.
  */
 export function elegirSeccionDeStockPropio(
   libro: LibroDeStock,
   pedido: { productoId: string; cantidad: number; seccionHabitual: SeccionCandidata | null; respaldos: readonly SeccionCandidata[]; seccionSiNingunaAlcanzaId: string }
-): ParteAsignada {
+): ParteAsignada[] {
   const alcanza = seccionesEnOrden(libro, [pedido.productoId], pedido.seccionHabitual, pedido.respaldos).find(
     (s) => disponibleDeProducto(libro, pedido.productoId, s.id) >= r4(pedido.cantidad)
   );
   const seccionId = alcanza?.id ?? pedido.seccionSiNingunaAlcanzaId;
-  const lote =
-    libro
-      .lotes(pedido.productoId, seccionId)
-      .filter((l): l is Date => l !== null && libro.disponible(pedido.productoId, seccionId, l) > 0)
-      .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
-  const parte = { productoId: pedido.productoId, seccionId, loteVencimiento: lote, cantidad: pedido.cantidad };
-  libro.tomar(parte);
-  return parte;
+  const lotes = libro
+    .lotes(pedido.productoId, seccionId)
+    .filter((l) => libro.disponible(pedido.productoId, seccionId, l) > 0)
+    .sort(compararLotes);
+  const partes: ParteAsignada[] = [];
+  let restante = pedido.cantidad;
+  for (const lote of lotes) {
+    if (r4(restante) <= 0) break;
+    const tomar = Math.min(restante, libro.disponible(pedido.productoId, seccionId, lote), disponibleDeProducto(libro, pedido.productoId, seccionId));
+    if (r4(tomar) <= 0) continue;
+    const parte = { productoId: pedido.productoId, seccionId, loteVencimiento: lote, cantidad: tomar };
+    libro.tomar(parte);
+    partes.push(parte);
+    restante -= tomar;
+  }
+  if (r4(restante) > 0) {
+    const resto = { productoId: pedido.productoId, seccionId, loteVencimiento: partes.at(-1)?.loteVencimiento ?? null, cantidad: restante };
+    libro.tomar(resto);
+    partes.push(resto);
+  }
+  return juntarPartes(partes);
 }
 
 /** Cada (producto, sección) de `productoIds` al que la venta le cargó más de lo que tenía, en el orden en que se cargó por primera vez. */

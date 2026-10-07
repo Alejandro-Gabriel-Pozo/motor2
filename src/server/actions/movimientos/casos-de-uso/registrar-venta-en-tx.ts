@@ -7,7 +7,7 @@ import { cumplePaso, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/
 import { alcanceDeSucursal } from "@/core/catalogo/public";
 import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
-import { importeDeLinea, redondearMoneda } from "@/core/moneda";
+import { importeDeLinea, redondearMoneda, repartirImporte } from "@/core/moneda";
 import { seccionesConStock } from "@/server/lecturas/movimientos/saldos";
 import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, faltantesDe, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
 import { cargarDatosDeOrigen, prepararOrigen } from "@/server/persistencia/movimientos/cargar-origen-de-venta";
@@ -52,6 +52,8 @@ interface LineaArmada {
 interface VentaCalculada extends LineaArmada {
   seccionId: string;
   loteVencimiento: Date | null;
+  /** Solo el PV que se produce: de qué lotes (y secciones) sale su stock propio, FEFO. Con más de una parte, la fila VENTA se parte en una por parte (precio repartido con `repartirImporte`). */
+  partesPropias?: ParteAsignada[];
   consumos: ParteConsumo[];
 }
 
@@ -222,7 +224,7 @@ export async function registrarVentaEnTx(
   // PVs que se producen: stock PROPIO, sin sustitutos ni receta — se resuelven en su propio sub-paso, en el orden de las líneas
   // (no interactúan con el consumo de receta de las demás: un PV que se produce nunca es MP de ninguna receta, así que el orden
   // relativo entre este sub-paso y el de abajo no cambia ningún resultado).
-  const propiaPorLinea = new Map<number, ParteAsignada>();
+  const propiaPorLinea = new Map<number, ParteAsignada[]>();
   lineas.forEach((linea, i) => {
     if (!linea.seProduce) return;
     const habitual = origenDatos.habitualDe(linea.productoId);
@@ -268,7 +270,7 @@ export async function registrarVentaEnTx(
   const ventas: VentaCalculada[] = lineas.map((linea, i) => {
     if (linea.seProduce) {
       const propia = propiaPorLinea.get(i)!;
-      return { ...linea, seccionId: propia.seccionId, loteVencimiento: propia.loteVencimiento, consumos: [] };
+      return { ...linea, seccionId: propia[0]!.seccionId, loteVencimiento: propia[0]!.loteVencimiento, partesPropias: propia, consumos: [] };
     }
     const habitual = origenDatos.habitualDe(linea.productoId);
     const { desde, hasta } = rangoPorLinea.get(i)!;
@@ -367,12 +369,21 @@ export async function registrarVentaEnTx(
     // no tiene stock real (no "Se produce"), este saldo negativo es un
     // artefacto contable de las ventas, mismo criterio que hoy.
     const importeVenta = importeDeLinea(venta.cantidadVendida, venta.precioVenta);
-    filas.push({
-      operacionId: operacion.id, productoId: venta.productoId, seccionId: venta.seccionId, proceso: "VENTA",
-      cantidad: -venta.cantidadVendida, loteVencimiento: venta.loteVencimiento,
-      detalle: texto(datos.detalle) || "Venta", precioTotal: importeVenta, precioPorUnidadStock: redondearMoneda(venta.precioVenta),
-      costoUnitarioVenta: venta.costoUnitarioAlVender !== null ? redondearMoneda(venta.costoUnitarioAlVender) : null,
-      precioListaUnitario: venta.precioListaVenta !== null ? redondearMoneda(venta.precioListaVenta) : null,
+    // El PV que se produce y sale de más de un lote (O.40 (1)) deja UNA fila VENTA por lote: la cantidad de cada parte (la última, lo que resta, para que la suma sea exacta) y el importe repartido
+    // con `repartirImporte` por cantidad (la suma de los importes es exactamente `importeVenta`). Un solo lote, o cualquier otro PV: una fila, como siempre.
+    const partes = venta.partesPropias && venta.partesPropias.length > 1 ? venta.partesPropias : [{ seccionId: venta.seccionId, loteVencimiento: venta.loteVencimiento, cantidad: venta.cantidadVendida }];
+    const importes = partes.length > 1 ? repartirImporte(importeVenta, partes.map((p) => p.cantidad)) : [importeVenta];
+    let cantidadAsignada = 0;
+    partes.forEach((parte, k) => {
+      const cantidadDeLaParte = k === partes.length - 1 ? redondearACantidadDeUnidad(venta.cantidadVendida - cantidadAsignada, 4) : redondearACantidadDeUnidad(parte.cantidad, 4);
+      cantidadAsignada += cantidadDeLaParte;
+      filas.push({
+        operacionId: operacion.id, productoId: venta.productoId, seccionId: parte.seccionId, proceso: "VENTA",
+        cantidad: -cantidadDeLaParte, loteVencimiento: parte.loteVencimiento,
+        detalle: texto(datos.detalle) || "Venta", precioTotal: importes[k]!, precioPorUnidadStock: redondearMoneda(venta.precioVenta),
+        costoUnitarioVenta: venta.costoUnitarioAlVender !== null ? redondearMoneda(venta.costoUnitarioAlVender) : null,
+        precioListaUnitario: venta.precioListaVenta !== null ? redondearMoneda(venta.precioListaVenta) : null,
+      });
     });
   }
 
