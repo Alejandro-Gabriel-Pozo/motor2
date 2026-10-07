@@ -1,9 +1,9 @@
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
 import { resolverAccionFaltante, type IndiceRecetas, type InfoProductoReporte, type ItemPeriodo, type VentasDelPeriodo } from "@/core/reportes/public";
-import { antiguedadSerieIPC, esMesSinPublicar, resolverCoeficienteIPC, textoSerieIPCVencida } from "@/core/reportes/public-servidor";
-import { cargarSerieIPC } from "@/core/reportes/public-servidor";
+import { antiguedadSerieIPC, esMesSinPublicar, resolverCoeficienteIPC, textoSerieIPCVencida } from "@/core/reportes/public";
 import { calcularCostosYMargenes } from "@/server/lecturas/reportes/costos";
+import { cargarSerieIPC } from "@/server/lecturas/reportes/serie-ipc";
 import { calcularMargenRealDelPeriodo } from "@/server/consultas/reportes/margen-real";
 import type { FilaMargenProducto, MargenDelPeriodo } from "@/core/reportes/public";
 
@@ -108,7 +108,7 @@ export async function calcularMargenDelPeriodo(
   const serieIPC = await cargarSerieIPC(db);
   // 5c: con la serie VENCIDA (parada hace más del máximo previsto) el ajuste sigue calculándose igual —ningún número cambia—, pero deja
   // de decir que es «de hoy»: está en plata del último mes cargado y subestima el margen ajustado. Mismo cálculo, otro aviso.
-  const antiguedadIPC = antiguedadSerieIPC(serieIPC);
+  const antiguedadIPC = antiguedadSerieIPC(serieIPC, new Date());
   const serieVencida = antiguedadIPC.estado === "vencida";
   const textoBaseAvisoIPC = serieVencida
     ? `Ventas llevadas a poder adquisitivo de ${serieIPC.ultimoMes} (el último mes con IPC cargado), NO de hoy, antes de restar el costo de reposición de HOY. ${textoSerieIPCVencida(antiguedadIPC)} El margen ajustado queda subestimado.`

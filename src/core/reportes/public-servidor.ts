@@ -17,17 +17,5 @@ export {
 } from "./periodo";
 export type { FilaCategoriaVenta } from "./periodo";
 export { SIN_PROVEEDOR } from "./compras-registradas";
-export { obtenerUltimaCotizacionSinRomper } from "./cotizacion-dolar";
 export { leerFiltroTickets } from "./tickets-emitidos";
 export { serializarFiltroTickets } from "./tickets-emitidos";
-export { sincronizarDolar } from "./cotizacion-dolar";
-export { sincronizarIPC } from "./indices-economicos";
-export { actualizarDolarSiHaceFalta } from "./cotizacion-dolar";
-export { cotizacionVencida } from "./cotizacion-dolar";
-export { pesosADolares } from "./cotizacion-dolar";
-export { cargarSerieIPC } from "./indices-economicos";
-export { antiguedadSerieIPC } from "./indices-economicos";
-export { esMesSinPublicar } from "./indices-economicos";
-export { resolverCoeficienteIPC } from "./indices-economicos";
-export { textoSerieIPCVencida } from "./indices-economicos";
-export { resolverVariacionPeriodoIPC } from "./indices-economicos";

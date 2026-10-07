@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularCostosYMargenes } from "../../src/server/lecturas/reportes/costos";
-import { type Db } from "../../src/core/reportes/comun";
+import { type Db } from "../../src/lib/db-tipos";
 import { construirIndiceRecetas } from "../../src/server/lecturas/reportes/comun";
 
 /**

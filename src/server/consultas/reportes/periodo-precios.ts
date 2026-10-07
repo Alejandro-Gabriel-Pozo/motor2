@@ -3,8 +3,8 @@ import { preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad, type InfoProductoReporte, type ItemPeriodo, type FilaVentaProducto } from "@/core/reportes/public";
-import { antiguedadSerieIPC, esMesSinPublicar, resolverVariacionPeriodoIPC, textoSerieIPCVencida } from "@/core/reportes/public-servidor";
-import { cargarSerieIPC } from "@/core/reportes/public-servidor";
+import { antiguedadSerieIPC, esMesSinPublicar, resolverVariacionPeriodoIPC, textoSerieIPCVencida } from "@/core/reportes/public";
+import { cargarSerieIPC } from "@/server/lecturas/reportes/serie-ipc";
 import type { FilaPrecioInsumo, ComparativaPreciosDelPeriodo } from "@/core/reportes/public";
 
 const UMBRAL_VARIACION_SOSPECHOSA_PCT = 200;
@@ -211,7 +211,7 @@ export async function calcularComparativaPreciosDelPeriodo(
 
   const serieIPC = await cargarSerieIPC(db);
   const variacionIPCPct = resolverVariacionPeriodoIPC(desde, hasta, serieIPC);
-  const antiguedadIPC = antiguedadSerieIPC(serieIPC);
+  const antiguedadIPC = antiguedadSerieIPC(serieIPC, new Date());
 
   return {
     variacionInsumosPct,

@@ -1,6 +1,8 @@
-import type { Db } from "./comun";
-
 /**
+ * El cálculo PURO del IPC (Pureza Fase 4, tramo C): sin base, sin red, sin reloj. Pedir la serie a la API, leer y guardar los meses y orquestar la sincronización viven en
+ * `server/` (`server/adaptadores/cotizaciones/ipc.ts`, `server/lecturas/reportes/serie-ipc.ts`, `server/persistencia/reportes/indice-precio.ts` y el caso de uso
+ * `server/actions/reportes/casos-de-uso/sincronizar-ipc.ts`).
+ *
  * Método 1 de ajuste de margen (docs/comparativa-ux-erpnext-dolibarr.md
  * §9/§10) — ver el docstring de IndicePrecio en schema.prisma. A
  * diferencia de MovimientoStock.costoUnitarioVenta (Método 3, solo hacia
@@ -15,14 +17,6 @@ import type { Db } from "./comun";
  * devuelve datos reales, mes más reciente publicado con el rezago habitual
  * de ~1 mes del INDEC.
  */
-const SERIE_IPC_GBA_NIVEL_GENERAL = "101.1_I2NG_2016_M_22";
-// `limit` explícito a propósito: sin él, la API devuelve como máximo 100
-// filas en orden ASCENDENTE (las más viejas primero) — verificado real el
-// 2026-09-17, truncaba la serie completa (125 meses) justo antes de
-// llegar a los meses recientes. 5000 cubre >400 años de datos mensuales,
-// nunca va a ser el límite real.
-const URL_API_SERIES = `https://apis.datos.gob.ar/series/api/series/?ids=${SERIE_IPC_GBA_NIVEL_GENERAL}&format=json&limit=5000`;
-
 export interface SerieIPC {
   /** clave "YYYY-MM" -> valor del índice ese mes. */
   porMes: Map<string, number>;
@@ -31,16 +25,19 @@ export interface SerieIPC {
   ultimoMes: string | null;
 }
 
-function claveMes(fecha: Date): string {
+/** La clave "YYYY-MM" (en UTC) del mes de una fecha. */
+export function claveMes(fecha: Date): string {
   return `${fecha.getUTCFullYear()}-${String(fecha.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-/** Una sola consulta — se llama UNA vez por reporte, nunca por línea (ver resolverCoeficienteIPC, que es puro/en memoria). */
-export async function cargarSerieIPC(db: Db): Promise<SerieIPC> {
-  const filas = await db.indicePrecio.findMany({ orderBy: { mes: "desc" } });
+/**
+ * Arma la serie desde las filas YA LEÍDAS de la tabla, en el orden que llegan (el más reciente primero: `mes` descendente): el valor de cada mes y el último publicado
+ * (la primera fila). Se llama UNA vez por reporte, nunca por línea (ver resolverCoeficienteIPC, que es puro/en memoria).
+ */
+export function armarSerieIPC(filas: readonly { mes: Date; valor: number }[]): SerieIPC {
   const porMes = new Map<string, number>();
-  for (const f of filas) porMes.set(claveMes(f.mes), Number(f.valor));
-  return { porMes, ultimoValor: filas[0] ? Number(filas[0].valor) : null, ultimoMes: filas[0] ? claveMes(filas[0].mes) : null };
+  for (const f of filas) porMes.set(claveMes(f.mes), f.valor);
+  return { porMes, ultimoValor: filas[0] ? filas[0].valor : null, ultimoMes: filas[0] ? claveMes(filas[0].mes) : null };
 }
 
 /**
@@ -82,7 +79,7 @@ export interface AntiguedadSerieIPC {
  *
  * Aritmética en UTC, igual que `claveMes` (que usa `getUTC*`): acá el umbral es de 60 días, 3 horas de diferencia no mueven nada.
  */
-export function antiguedadSerieIPC(serie: SerieIPC, ahora: Date = new Date()): AntiguedadSerieIPC {
+export function antiguedadSerieIPC(serie: SerieIPC, ahora: Date): AntiguedadSerieIPC {
   const maximo = DIAS_MAXIMOS_DE_ATRASO_IPC;
   if (serie.ultimoMes === null) return { estado: "sin-datos", ultimoMes: null, diasDeAtraso: null, maximo };
   const anio = Number(serie.ultimoMes.slice(0, 4));
@@ -163,34 +160,20 @@ export interface ResultadoSincronizacionIPC {
 }
 
 /**
- * Trae la serie completa de la API (es chica, ~10 años de datos mensuales
- * — no hace falta paginar ni pedir solo lo nuevo) e inserta los meses que
- * todavía no están. NUNCA reescribe un mes ya guardado — el IPC de un mes
- * cerrado no cambia, y si alguna vez el INDEC revisa un dato, que sea una
- * decisión explícita, no un sobrescribe silencioso de este job.
+ * Lee la respuesta de la API de series de tiempo (datos.gob.ar): los meses con un valor válido, en el orden en que vienen. Lanza si la respuesta no trae una serie. Una fila con
+ * forma rara de un tercero (fecha que no es texto o no se entiende, valor que no es un número finito y positivo) se saltea, no se guarda (informe de seguridad S-19); no hay
+ * tope de variación: la inflación mensual llegó a 25,5% (dic-2023).
  */
-export async function sincronizarIPC(db: Db): Promise<ResultadoSincronizacionIPC> {
-  const resp = await fetch(URL_API_SERIES, { cache: "no-store", signal: AbortSignal.timeout(15_000) });
-  if (!resp.ok) throw new Error(`API de series de tiempo (datos.gob.ar) respondió ${resp.status}`);
-  const json = (await resp.json()) as { data: [string, number][] };
-  if (!Array.isArray(json?.data)) throw new Error("API de series de tiempo (datos.gob.ar): respuesta sin serie");
-
-  const existentes = await db.indicePrecio.findMany({ select: { mes: true } });
-  const mesesExistentes = new Set(existentes.map((f) => claveMes(f.mes)));
-
-  let mesesNuevos = 0;
-  let ultimoMesDisponible: string | null = null;
-  for (const fila of json.data) {
+export function leerSerieDeLaApi(json: unknown): { mes: Date; valor: number }[] {
+  const data = (json as { data?: unknown } | null)?.data;
+  if (!Array.isArray(data)) throw new Error("API de series de tiempo (datos.gob.ar): respuesta sin serie");
+  const filas: { mes: Date; valor: number }[] = [];
+  for (const fila of data) {
     const [fechaStr, valor]: unknown[] = Array.isArray(fila) ? fila : [];
     if (typeof fechaStr !== "string" || typeof valor !== "number" || !Number.isFinite(valor) || valor <= 0) continue;
     const mes = new Date(fechaStr); // "YYYY-MM-01" — Date() lo interpreta como medianoche UTC, mismo criterio que el resto del proyecto.
-    // Un dato de un tercero con forma rara se saltea, no se guarda (informe de seguridad S-19). No hay tope de variación: la inflación mensual llegó a 25,5% (dic-2023).
     if (Number.isNaN(mes.getTime())) continue;
-    const clave = claveMes(mes);
-    if (!ultimoMesDisponible || clave > ultimoMesDisponible) ultimoMesDisponible = clave;
-    if (mesesExistentes.has(clave)) continue;
-    await db.indicePrecio.create({ data: { mes, valor } });
-    mesesNuevos++;
+    filas.push({ mes, valor });
   }
-  return { mesesNuevos, ultimoMesDisponible, antiguedad: antiguedadSerieIPC(await cargarSerieIPC(db)) };
+  return filas;
 }

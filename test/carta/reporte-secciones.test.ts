@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { generarReporteVentasPorCategoria } from "../../src/server/consultas/reportes/periodo";
 import { generarReporteVentasPorSeccion, reagruparPorSeccion, SIN_SECCION, type VentasParaSeccion } from "../../src/server/consultas/carta/ventas-por-seccion";
-import type { Db } from "../../src/core/reportes/comun";
+import type { Db } from "../../src/lib/db-tipos";
 
 /**
  * Ventas por sección de carta (docs/plan-carta-catalogo-2026-09-24.md, M4; a nivel de PRODUCTO desde

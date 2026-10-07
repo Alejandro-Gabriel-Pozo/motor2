@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type ItemParaMargenReal } from "../../src/core/reportes/margen-real";
 import { calcularMargenRealDelPeriodo } from "../../src/server/consultas/reportes/margen-real";
-import type { Db } from "../../src/core/reportes/comun";
+import type { Db } from "../../src/lib/db-tipos";
 
 /**
  * Extensión ADITIVA de src/core/reportes/margen-real.ts (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 2): `costoPorItem`,

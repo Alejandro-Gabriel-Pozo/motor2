@@ -62,7 +62,19 @@ export type { OperacionEncontrada } from "./trazabilidad";
 export type { ItemOperacion } from "./trazabilidad";
 export type { FilaValuacionInventario } from "./valuacion";
 export { resolverRangoPorDefecto } from "./rango-por-defecto";
-export type { UltimaCotizacion } from "./cotizacion-dolar";
+export type { CotizacionDia, ResultadoSincronizacionDolar, UltimaCotizacion } from "./cotizacion-dolar";
+export { cotizacionPlausible, cotizacionVencida, leerBcra, leerDolarApi, leerHistorial, mensajeDeCotizacionDescartada, pesosADolares, planDeRelleno } from "./cotizacion-dolar";
+export type { ResultadoSincronizacionIPC, SerieIPC } from "./indices-economicos";
+export {
+  antiguedadSerieIPC,
+  armarSerieIPC,
+  claveMes,
+  esMesSinPublicar,
+  leerSerieDeLaApi,
+  resolverCoeficienteIPC,
+  resolverVariacionPeriodoIPC,
+  textoSerieIPCVencida,
+} from "./indices-economicos";
 export type { OpcionRango } from "./rango-por-defecto";
 export { redondearCantidad } from "./redondeo";
 export { TAMANO_PAGINA_COMPRAS } from "./compras-registradas";

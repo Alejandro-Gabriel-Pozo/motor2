@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 53;
+export const TOPE_DE_ENTRADAS = 51;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -104,16 +104,6 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["adminPlataforma.create", "codigoDeRecuperacionPlataforma.createMany"],
     fase: "Fase 4",
     motivo: "Tramo B (PR B1): el alta del primer administrador pasa a plataforma/src/servidor/alta-de-admin.ts.",
-  },
-  "src/core/reportes/cotizacion-dolar.ts": {
-    escrituras: ["cotizacionDolar.upsert"],
-    fase: "Fase 4",
-    motivo: "Tramo C (PR 4C-C): la escritura de la cotización pasa a persistencia, orquestada por el caso de uso sincronizar-dolar.",
-  },
-  "src/core/reportes/indices-economicos.ts": {
-    escrituras: ["indicePrecio.create"],
-    fase: "Fase 4",
-    motivo: "Tramo C (PR 4C-C): la escritura del IPC pasa a persistencia, orquestada por el caso de uso sincronizar-ipc.",
   },
   "src/server/actions/auth/sucursales.ts": {
     escrituras: ["disponibilidadProducto.createMany", "sucursal.create", "sucursal.update", "sucursal.update", "usuarioEmpresa.update", "usuarioSucursal.create"],

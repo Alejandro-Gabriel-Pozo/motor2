@@ -7,9 +7,6 @@ import type { ClasificacionNoComestibles } from "@/core/catalogo/public";
  * `server/lecturas/reportes/comun.ts` y las usan la venta (el costo congelado) y los reportes.
  */
 
-/** El tipo de una base de Prisma (cliente o transacción); lo declaran acá los reportes que todavía lo importan de `./comun`. */
-export type Db = import("@prisma/client").PrismaClient | import("@prisma/client").Prisma.TransactionClient;
-
 export interface InfoProductoReporte {
   id: string;
   codigo: string;
