@@ -100,10 +100,11 @@ function analizarNivelDeRol(fuente: string): Hallazgo[] {
           hallazgos.push({ linea: linea(nodo), que: `escritura de Rol con un argumento que no se puede verificar: \`${texto(nodo)}\`` });
         } else {
           for (const p of arg.properties) {
-            const nombre = ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p) ? nombreDe(p.name) : undefined;
+            if (!ts.isPropertyAssignment(p) && !ts.isShorthandPropertyAssignment(p)) continue;
+            const nombre = nombreDe(p.name);
             if (!nombre || !["data", "create", "update"].includes(nombre)) continue;
-            const valor = ts.isPropertyAssignment(p) ? p.initializer : p.name;
-            const r = escribeNivel(valor, true);
+            // `{ data }` (abreviado) es un identificador: no se puede verificar, igual que `{ data: cambios }`.
+            const r = escribeNivel(ts.isPropertyAssignment(p) ? p.initializer : p.name, true);
             if (r === "nivel") hallazgos.push({ linea: linea(nodo), que: `escritura de Rol.nivel: \`${texto(nodo)}\`` });
             if (r === "opaco") hallazgos.push({ linea: linea(nodo), que: `escritura de Rol cuyo \`${nombre}\` no se puede verificar (no es un objeto literal o tiene un spread): \`${texto(nodo)}\`` });
           }
@@ -173,6 +174,7 @@ describe("el analizador de Rol.nivel detecta lo que dice detectar", () => {
     expect(cuenta(`await tx.rol.update({ where, data: cambios });`)).toBe(1);
     expect(cuenta(`await tx.rol.update({ where, data: { nombre, ...resto } });`)).toBe(1);
     expect(cuenta(`await tx.rol.update(argumentos);`)).toBe(1);
+    expect(cuenta(`await tx.rol.update({ where, data });`)).toBe(1);
   });
 
   it("una escritura anidada de un rol desde otro modelo", () => {
