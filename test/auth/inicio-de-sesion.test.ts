@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
-import { inicioDeSesionPermitido } from "../../src/core/auth/acceso";
+import { inicioDeSesionPermitido } from "../../src/server/sesion/acceso";
 import { detectarCuentasDeGoogleSospechosas } from "../../scripts/lecturas-de-auth";
 
 /** S-01: con una sesión abierta, otra cuenta de Google no puede vincularse al usuario de esa sesión (`allowDangerousEmailAccountLinking`). */

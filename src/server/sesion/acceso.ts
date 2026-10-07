@@ -1,7 +1,14 @@
+import "server-only";
 import { prisma } from "@/lib/db";
-import { dbDeEmpresa, dbDeUsuario } from "./base";
-import { invitacionHabilitaElIngreso, vincularCuentaConInvitacion, type CuentaDeGoogle } from "./invitacion";
+import { dbDeEmpresa, dbDeUsuario } from "@/core/auth/base";
+import { invitacionHabilitaElIngreso, vincularCuentaConInvitacion, type CuentaDeGoogle } from "@/core/auth/invitacion";
 
+/**
+ * El GATE DE LOGIN (Hito 3, B3-2 de `docs/plan-hito-3-pureza.md`; O.24): vivía en `core/auth/acceso.ts` y no era núcleo (lee la base con el `prisma` global y por empresa, el reloj y
+ * `process.env.ALLOWED_EMAIL_DOMAINS`). Es infraestructura de sesión y lo usa solo `lib/auth.ts` (el callback `signIn` de Auth.js): nace con él `server/sesion/`, la capa del login
+ * previa al contexto de empresa (ADR-024). Su reloj (`new Date()` de la sesión abierta) y su entorno (`ALLOWED_EMAIL_DOMAINS`) quedan DECLARADOS hasta la Fase 6 en
+ * `test/arquitectura/server-sesion.test.ts`; lo que la capa no puede importar lo fija la regla `sesion-capa` de `.dependency-cruiser.cjs`.
+ */
 function obtenerDominiosPermitidos(): string[] {
   return (process.env.ALLOWED_EMAIL_DOMAINS ?? "")
     .split(",")

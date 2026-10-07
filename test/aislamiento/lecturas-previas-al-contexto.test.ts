@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { crearMembresia } from "../setup/membresia";
-import { emailPuedeIniciarSesion } from "../../src/core/auth/acceso";
+import { emailPuedeIniciarSesion } from "../../src/server/sesion/acceso";
 
 /**
  * ADR-007, A6: las lecturas que corren ANTES de tener empresa (login, bootstrap) bajo RLS, con DOS empresas ACTIVE. `UsuarioEmpresa` y

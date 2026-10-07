@@ -21,7 +21,7 @@ import { esRemitenteValido } from "./core/correo/direcciones";
  * OAuth — único proveedor de login hoy).
  *
  * Opcionales (el proyecto funciona sin ellas, con la feature correspondiente deshabilitada — confirmado en el código real):
- * `ALLOWED_EMAIL_DOMAINS` (`src/core/auth/acceso.ts` — "hoy no hay dominios configurados"), `CRON_SECRET` (protege los crons de IPC/dólar),
+ * `ALLOWED_EMAIL_DOMAINS` (`src/server/sesion/acceso.ts` — "hoy no hay dominios configurados"), `CRON_SECRET` (protege los crons de IPC/dólar),
  * `CARTA_DOMINIO_BASE` (subdominio de la carta pública), `NEXT_PUBLIC_SENTRY_DSN` (Sentry opcional), y las cuatro del envío de mails
  * (`CORREO_AVISOS_*`, `CORREO_OPERATIVO_*`, E3/ADR-018: sin ellas el canal no envía; en local muestra el mail en la terminal).
  *

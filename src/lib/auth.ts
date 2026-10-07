@@ -3,7 +3,7 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
-import { decidirInicioDeSesion } from "@/core/auth/acceso";
+import { decidirInicioDeSesion } from "@/server/sesion/acceso";
 import { ACTUALIZAR_CADA_S, DURACION_SESION_S } from "@/core/auth/duracion-sesion";
 import { nombreCookieSesion, sirvePorHttps, tokenDeSesionAbierta } from "@/core/auth/cookie-sesion";
 import { nombreCookieInvitacion } from "@/core/auth/invitacion";

@@ -48,7 +48,7 @@ sus sucursales a nombre de quien reenvía (que tiene que poder otorgar todas): e
 
 ### 5. Vincular en el callback `signIn`
 
-El callback corre **antes** de que Auth.js busque o cree nada (`@auth/core` `callback/index.js:55-70`). `decidirInicioDeSesion` (`core/auth/acceso.ts`): email verificado y el gate de
+El callback corre **antes** de que Auth.js busque o cree nada (`@auth/core` `callback/index.js:55-70`). `decidirInicioDeSesion` (`server/sesion/acceso.ts`): email verificado y el gate de
 siempre; usuario inexistente → entra; ya tiene esa cuenta → entra; tiene **otra** cuenta de Google → `/login?aviso=cuenta-distinta` (D2: se bloquea, lo resuelve soporte); existe y no tiene
 Google → `vincularCuentaConInvitacion` crea la `Account` (con `id_token`, que lee el detector S-01) en una transacción serializable si el token sirve; si no, `/login?aviso=falta-invitacion`.
 La de vinculación se consume al vincular; las de gerente y de usuario no (las consume su aceptación). Es idempotente. D3: no se vincula por dominio de Workspace; D4: el enlace nunca se

@@ -182,6 +182,14 @@ module.exports = {
       },
     },
     {
+      name: "sesion-capa",
+      comment:
+        "server/sesion/ (el login previo al contexto de empresa: gate de signIn, invitación por token, vinculación de la cuenta de Google; Hito 3, B3) es una capa de ABAJO: la usan lib/auth.ts, las pantallas y acciones de la invitación y los casos de uso de aceptar, nunca al revés. No importa la UI, ni server/actions (las Server Actions ni los casos de uso), consultas, lecturas, persistencia ni el guard (server/acceso: el guard de quien otorgó entra por parámetro), ni Next (recibe el token ya leído de la cookie). Lista cerrada de archivos: test/arquitectura/server-sesion.test.ts.",
+      severity: "error",
+      from: { path: "^src/server/sesion/" },
+      to: { path: ["^src/(app|components)/", "^src/server/(actions|consultas|lecturas|persistencia|acceso)/", "^node_modules/next/"] },
+    },
+    {
       name: "persistencia-capa",
       comment: "server/persistencia/ no importa de la UI, de server/actions/ ni de server/consultas/.",
       severity: "error",

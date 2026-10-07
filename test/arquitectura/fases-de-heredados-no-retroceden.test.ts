@@ -11,7 +11,6 @@ import { PUREZA_HEREDADA_DEL_NUCLEO } from "./pureza-heredada-del-nucleo";
  * Para cambiar una fase a propósito, se cambia acá en el mismo commit y se explica en el mensaje.
  */
 const FASE_REGISTRADA: Record<string, 4 | 6> = {
-  "src/core/auth/acceso.ts": 6,
   "src/core/auth/base.ts": 6,
   "src/core/auth/contexto.ts": 6,
   "src/core/auth/invitacion.ts": 4,

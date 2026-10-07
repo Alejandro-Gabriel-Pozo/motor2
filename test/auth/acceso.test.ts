@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
-import { emailPuedeIniciarSesion } from "../../src/core/auth/acceso";
+import { emailPuedeIniciarSesion } from "../../src/server/sesion/acceso";
 
 describe("emailPuedeIniciarSesion", () => {
   const envBootstrapOriginal = process.env.BOOTSTRAP_ADMIN_EMAILS;
