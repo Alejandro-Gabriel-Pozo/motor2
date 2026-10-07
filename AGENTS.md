@@ -33,3 +33,18 @@ código de salida — 0 hallazgos obligatorio; excepciones legítimas con motivo
 en `knip.jsonc`), `npm test`, `npm run build`, `npm run plataforma:build` (la
 consola, otra app Next: un fallo de dependencias solo aparece al construirla) y
 `npm run test:e2e`.
+
+## Exploración con Explore
+
+Antes de tocar código en una tarea que obliga a ubicar algo en más de ~10 archivos
+(dónde se usa X, qué acciones no pasan por el caso de uso, qué lecturas exigen qué
+permiso), lanzar primero el agente `Explore` (`Agent`, `subagent_type: "Explore"`)
+con el nivel de profundidad que corresponda ("medium" o "very thorough").
+
+- Explore solo ubica; no audita ni cierra nada. El cierre de cada hito lo decide
+  el auditor independiente, nunca el resultado de Explore.
+- Sus conclusiones son punto de partida: verificar en el código real antes de
+  actuar, sobre todo en seguridad, dinero y permisos.
+- Archivo conocido o búsqueda corta: leer directo, sin Explore.
+- Varias búsquedas independientes: lanzarlas en paralelo.
+

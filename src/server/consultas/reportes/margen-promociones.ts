@@ -51,6 +51,8 @@ export async function obtenerReporteMargenPromociones(sucursalId: string, desde:
   const { costoPorItem } = await calcularMargenRealDelPeriodo(sucursalId, items, db, productos, indiceRecetas);
 
   const porPromo = new Map<string, AcumuladoPromo>();
+  // Un componente es UNA operación aunque su stock propio salga de dos lotes (dos filas VENTA, O.40 (1)): se cuenta la primera fila de cada operación.
+  const operacionesContadas = new Set<string>();
   filas.forEach((f, i) => {
     const promoCartaId = f.operacion.promoCuenta!.promoCartaId;
     const acc = porPromo.get(promoCartaId) ?? {
@@ -75,7 +77,10 @@ export async function obtenerReporteMargenPromociones(sucursalId: string, desde:
     const precioAListaTotal = precioCartaUnitario !== null ? cantidad * precioCartaUnitario : precioCobrado;
 
     acc.instancias.add(f.operacion.promoCuentaId!);
-    acc.cantidadComponentes += 1;
+    if (!operacionesContadas.has(f.operacionId)) {
+      operacionesContadas.add(f.operacionId);
+      acc.cantidadComponentes += 1;
+    }
     acc.ingresoALista += precioAListaTotal;
     acc.ingresoCobrado += precioCobrado;
 

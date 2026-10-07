@@ -22,6 +22,7 @@ export async function obtenerReporteDescuentosClientes(sucursalId: string, desde
       operacion: { sucursalId, fecha: { gte: desde, lte: hasta }, anuladaEn: null, clienteId: { not: null } },
     },
     select: {
+      operacionId: true,
       productoId: true,
       cantidad: true,
       precioTotal: true,
@@ -93,7 +94,8 @@ export async function obtenerReporteDescuentosClientes(sucursalId: string, desde
     clientes.push({
       clienteId,
       cliente: nombre,
-      cantidadVentas: filasCliente.length,
+      // Ventas = operaciones DISTINTAS: un producto que se produce y sale de dos lotes deja dos filas VENTA en la misma operación (O.40 (1)) y cuenta una venta.
+      cantidadVentas: new Set(filasCliente.map((f) => f.operacionId)).size,
       unidadesVendidas: redondearMoneda(unidadesVendidas),
       ingresoALista: redondearMoneda(ingresoAListaCliente),
       ingresoCobrado: redondearMoneda(ingresoCobradoCliente),

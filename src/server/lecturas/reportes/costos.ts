@@ -62,9 +62,10 @@ export async function calcularCostosYMargenes(
 /**
  * Las dos mitades de «Costos y márgenes» (el costo y margen de cada plato, con los objetivos; y qué insumos mueven más el costo total) con UNA sola carga
  * del catálogo, las recetas y el costo de reposición (O.39 de docs/pureza-integracion.md: antes cada mitad leía todo por su cuenta, 8 consultas ×2). Mismo
- * resultado que `calcularCostosYMargenes(…, objetivos)` y `calcularImpactoInsumos` por separado: el impacto se sigue calculando sobre las filas SIN objetivos
+ * resultado que `calcularCostosYMargenes(…, objetivos)` y el impacto de insumos por separado: el impacto se sigue calculando sobre las filas SIN objetivos
  * (el orden de las filas depende del estado, y el estado del objetivo; ese orden fija el de los platos de cada insumo), solo que con lo ya leído.
  */
+// Port de calcularImpactoInsumos_ (Reportes.js:1799-1818): `insumos` es qué insumos mueven más la aguja del costo total (si una MP aparece en muchos platos y pesa mucho, un aumento suyo pega fuerte).
 export async function calcularCostosYMargenesEImpactoInsumos(
   sucursalId: string,
   db: Db,
@@ -75,15 +76,6 @@ export async function calcularCostosYMargenesEImpactoInsumos(
     productos: calcularCostosYMargenesDesde(productos, recetaPorProducto, costos, objetivos),
     insumos: calcularImpactoInsumosDesde(calcularCostosYMargenesDesde(productos, recetaPorProducto, costos)),
   };
-}
-
-/**
- * Port de calcularImpactoInsumos_ (Reportes.js:1799-1818) — qué insumos
- * mueven más la aguja del costo total: si una MP aparece en muchos platos y
- * pesa mucho, un aumento suyo pega fuerte.
- */
-export async function calcularImpactoInsumos(sucursalId: string, db: Db): Promise<FilaImpactoInsumo[]> {
-  return calcularImpactoInsumosDesde(await calcularCostosYMargenes(sucursalId, db));
 }
 
 /**

@@ -20,8 +20,9 @@ import type { FilaRendimientoSimple, FilaRendimientoCompartido, UsoDeInsumo, Poo
 // las entregó (`indexarPorProducto`). El cálculo (anclas, consumo del tramo, regresión) sigue en `core/reportes`, intacto.
 
 /**
- * Índice de filas por `productoId` que devuelve, para un conjunto de productos, sus filas EN EL ORDEN en que vinieron de la base (el mismo orden relativo
- * que hubiera tenido la consulta propia del pool): así las sumas en coma flotante recorren las cantidades igual que antes.
+ * Índice de filas por `productoId` que devuelve, para un conjunto de productos, sus filas EN EL ORDEN en que vinieron de la base
+ * (la consulta, como la de antes, no lleva `ORDER BY`: Postgres no promete ese orden). Las sumas en coma flotante van a `redondearCantidad` y las de saldo son `Decimal`
+ * exactas, así que el orden no cambia el resultado; se conserva para recorrer las cantidades igual que la consulta propia del pool.
  */
 function indexarPorProducto<T extends { productoId: string }>(filas: readonly T[]): (productoIds: Iterable<string>) => T[] {
   const posiciones = new Map<string, number[]>();
