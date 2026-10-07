@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { analizarFuente, delegadosDeModelos, type SenalesDeFuente } from "../../scripts/arquitectura/analizar-fuente";
@@ -73,6 +73,60 @@ function puertasNoDeclaradas(archivo: string, codigo: string): string[] {
   visitar(fuente, "");
   return problemas;
 }
+
+/**
+ * B3-10: QUIÉN importa `server/sesion` (lista cerrada, con motivo, revisada en las dos direcciones). El login previo al contexto lee la base sin sesión: un importador nuevo (una
+ * pantalla, otra acción, una consulta) es una decisión de seguridad, no un atajo para saltear `obtenerContextoUsuario`. Los archivos de la propia carpeta no cuentan.
+ */
+const IMPORTADORES: Record<string, { modulos: string[]; motivo: string }> = {
+  "src/lib/auth.ts": { modulos: ["acceso"], motivo: "El callback signIn de Auth.js decide el ingreso con decidirInicioDeSesion (ADR-024)." },
+  "src/app/invitacion/page.tsx": { modulos: ["invitacion"], motivo: "La pantalla pública de la invitación la lee por el token de la cookie (invitacionConSuBase) y muestra sus sucursales." },
+  "src/server/actions/auth/invitacion.ts": { modulos: ["invitacion"], motivo: "abrirInvitacion lee la invitación del enlace (invitacionDelToken) antes de guardar la cookie; es su guard (GUARDAS_POR_MODULO)." },
+  "src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts": { modulos: ["invitacion"], motivo: "Pide la base de la empresa de la invitación por invitacionConSuBase (B3-4/B3-5)." },
+  "src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-usuario.ts": { modulos: ["invitacion"], motivo: "Pide la base de la empresa de la invitación por invitacionConSuBase (B3-4/B3-7)." },
+};
+
+/** Los módulos de `server/sesion` que importa (o reexporta) un fuente, por sus especificadores con alias o relativos. */
+function modulosDeSesionImportados(rutaRelativa: string, codigo: string): string[] {
+  const fuente = ts.createSourceFile(rutaRelativa, codigo, ts.ScriptTarget.Latest, true, rutaRelativa.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const modulos = new Set<string>();
+  for (const st of fuente.statements) {
+    if (!(ts.isImportDeclaration(st) || ts.isExportDeclaration(st)) || !st.moduleSpecifier || !ts.isStringLiteral(st.moduleSpecifier)) continue;
+    const esp = st.moduleSpecifier.text;
+    const absoluto = esp.startsWith("@/") ? `src/${esp.slice(2)}` : esp.startsWith(".") ? join(rutaRelativa, "..", esp).split(sep).join("/") : null;
+    const m = absoluto && /^src\/server\/sesion\/([^/]+?)(?:\.tsx?)?$/.exec(absoluto);
+    if (m) modulos.add(m[1]);
+  }
+  return [...modulos].sort();
+}
+
+function fuentesDe(dir: string): string[] {
+  return readdirSync(join(RAIZ, dir), { withFileTypes: true }).flatMap((e) => {
+    const rel = `${dir}/${e.name}`;
+    return e.isDirectory() ? fuentesDe(rel) : /\.tsx?$/.test(e.name) ? [rel] : [];
+  });
+}
+
+describe("server/sesion: quién la importa (lista cerrada)", () => {
+  it("los importadores de server/sesion son exactamente los declarados, con los módulos declarados", () => {
+    const reales: Record<string, string[]> = {};
+    for (const rel of [...fuentesDe("src"), ...fuentesDe("plataforma/src")]) {
+      if (rel.startsWith("src/server/sesion/")) continue;
+      const modulos = modulosDeSesionImportados(rel, readFileSync(join(RAIZ, rel), "utf8"));
+      if (modulos.length > 0) reales[rel] = modulos;
+    }
+    const declarados = Object.fromEntries(Object.entries(IMPORTADORES).map(([r, d]) => [r, [...d.modulos].sort()]));
+    expect(reales, "un importador nuevo de server/sesion se declara en IMPORTADORES con su motivo (y uno que ya no importa, se saca)").toEqual(declarados);
+    for (const [r, d] of Object.entries(IMPORTADORES)) expect(d.motivo.trim().length, `${r} sin motivo`).toBeGreaterThan(20);
+  });
+
+  it("el detector de importadores: alias, relativo y reexportación; un comentario no cuenta", () => {
+    expect(modulosDeSesionImportados("src/lib/x.ts", 'import { a } from "@/server/sesion/acceso";')).toEqual(["acceso"]);
+    expect(modulosDeSesionImportados("src/server/actions/auth/x.ts", 'import { a } from "../../sesion/invitacion";')).toEqual(["invitacion"]);
+    expect(modulosDeSesionImportados("src/x.ts", 'export { a } from "./server/sesion/vincular-cuenta";')).toEqual(["vincular-cuenta"]);
+    expect(modulosDeSesionImportados("src/x.ts", '// import { a } from "@/server/sesion/acceso";\nimport { b } from "@/server/acceso/gate";')).toEqual([]);
+  });
+});
 
 describe("server/sesion: lista cerrada, server-only y reloj/entorno declarados", () => {
   it("la base de la empresa de una invitación sale solo de invitacionConSuBase (y cada fábrica de bases, solo de su puerta)", () => {
