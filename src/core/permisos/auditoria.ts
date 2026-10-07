@@ -62,6 +62,9 @@ export const ENTIDADES_AUDITABLES = [
   // "TraspasoSucursal" (Pureza, decisión del dueño 2026-10-07): el alta de una solicitud de traspaso o de un envío directo — `entidadId` es el id del traspaso, `campo: "cantidad"`,
   // `valorAnterior: null`, con la `sucursalId` de quien lo crea (la de destino en una solicitud, la de origen en un envío directo).
   "TraspasoSucursal",
+  // "ProveedorPorProducto" (Pureza, decisión del dueño 2026-10-08): el precio por unidad de stock que quedó en el vínculo proveedor↔producto tras una compra — `entidadId` es
+  // `${productoId}:${proveedorId}:${unidadCompraId}`, `campo: "precioPorUnidadStock"`, `valorAnterior: null` si el par es nuevo, con la `sucursalId` de la compra.
+  "ProveedorPorProducto",
 ] as const;
 
 /**

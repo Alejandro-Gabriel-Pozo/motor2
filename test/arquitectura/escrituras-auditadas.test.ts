@@ -59,8 +59,6 @@ const COLUMNAS_QUE_NO_SON_DINERO: Record<string, string> = {
 const FUNCIONES_EXCEPTUADAS: Record<string, string> = {
   "plataforma/src/servidor/sembrar-empresa.ts|sembrarEmpresa":
     "Siembra de una empresa NUEVA (la consola de plataforma): crea sus unidades de fábrica con los decimales de la semilla. No hay un valor anterior que se pierda ni cantidades que ya dependan de ellos (la empresa está en alta, sin movimientos); cada cambio posterior de los decimales de una unidad lo audita `actualizarDecimalesUnidad`. La huella del gobierno (`test/auth/caracterizacion/huella-de-gobierno`) fija lo que siembra.",
-  "src/server/persistencia/catalogo/upsert-proveedor-por-producto.ts|upsertProveedorPorProducto":
-    "SQL crudo (`INSERT … ON CONFLICT DO UPDATE`) sobre `ProveedorPorProducto.precioUnitario/precioPorUnidadStock`: es un CACHÉ derivado de la compra (el precio verdadero está en el Kardex, que es su propia historia, y desde la parte 2 del vínculo las pantallas ya no lo leen: solo se lee la unidad y la referencia). PENDIENTE DE DECISIÓN DEL DUEÑO: ¿se audita o se exceptúa? (docs/pureza-integracion.md, sección 4, decisión 3); hasta entonces queda exceptuada y declarada acá.",
   "src/server/actions/catalogo/productos.ts|darDeAltaProducto":
     "Alta de un producto: no hay valor anterior que se pierda, y se crea SIN transacción a propósito (reintenta el código ante `P2002`, ver su docstring), así que la auditoría no puede ir atómica con la creación. Cada cambio posterior del precio lo audita `actualizarProducto`.",
   "src/server/actions/catalogo/productos.ts|darDeAltaProductoRapido":

@@ -1,5 +1,6 @@
 import "server-only";
 import { texto } from "@/core/texto";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { TRANSICIONES, armarFilasDeMovimiento, redondearACantidadDeUnidad } from "@/core/movimientos/public";
@@ -46,8 +47,8 @@ import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movi
  * @contract Registra un movimiento de Kardex para cualquiera de los 9 procesos genéricos, con validación de stock agregada por producto+sección ANTES de escribir nada.
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento), con `.catch(esChoqueDeFacturaUnica)` para la factura duplicada.
- * @sideEffects upsertProveedorPorProducto (Compra, DENTRO de la transacción) — un vínculo proveedor↔producto por línea con unidad de compra conocida; si falla, falla la compra.
- * @ficha permiso=POR_PROCESO transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @sideEffects upsertProveedorPorProducto (Compra, DENTRO de la transacción) — un vínculo proveedor↔producto por línea con unidad de compra (la de compra o, si no tiene, la de stock); si falla, falla la compra. registrarCambioAuditado del precio del vínculo cuando cambia.
+ * @ficha permiso=POR_PROCESO transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
  */
 export async function registrarMovimientoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
@@ -204,7 +205,7 @@ export async function registrarMovimientoCasoDeUso(
     if (datos.proceso === "COMPRA" && datos.proveedorId) {
       for (const l of lineas) {
         if (!l.unidadCompraId) continue;
-        await upsertProveedorPorProducto(tx, {
+        const vinculo = await upsertProveedorPorProducto(tx, {
           productoId: l.productoId,
           proveedorId: datos.proveedorId,
           unidadCompraId: l.unidadCompraId,
@@ -212,6 +213,18 @@ export async function registrarMovimientoCasoDeUso(
           precioPorUnidadStock: l.precioPorUnidadStock,
           fechaCompra: datos.fecha,
           referenciaProveedor: l.referenciaProveedor,
+        });
+        // Auditoría (decisión del dueño, 2026-10-08): el precio del vínculo proveedor↔producto es plata que cambia con cada compra; si cambió (o el par es nuevo), deja su fila. Una compra
+        // con fecha atrasada no cambia el precio (el SQL no lo pisa) y por lo tanto no deja fila.
+        await registrarCambioAuditado(tx, {
+          entidad: "ProveedorPorProducto",
+          entidadId: `${l.productoId}:${datos.proveedorId}:${l.unidadCompraId}`,
+          campo: "precioPorUnidadStock",
+          descripcion: `Precio de "${vinculo.productoNombre}" con el proveedor "${vinculo.proveedorNombre}" (compra)`,
+          valorAnterior: vinculo.precioAnterior,
+          valorNuevo: vinculo.precioNuevo,
+          actorId: actor.usuarioId,
+          sucursalId: actor.sucursalId,
         });
       }
     }
