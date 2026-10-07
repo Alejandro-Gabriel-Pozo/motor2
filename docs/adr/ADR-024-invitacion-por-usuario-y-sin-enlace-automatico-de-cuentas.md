@@ -87,7 +87,16 @@ reescribe por tipo: la app inserta, rota, revoca y acepta solo lo suyo; **la pla
 
 ## Implementación
 
-`src/core/features/empresa/{invitacion,invitacion-de-usuario,aceptar-invitacion-de-usuario}.ts`, `src/core/auth/{acceso,invitacion,avisos-de-login}.ts`, `src/server/actions/auth/{usuarios,sucursales}.ts`,
+`src/core/features/empresa/{invitacion,invitacion-de-usuario}.ts`, `src/core/auth/{invitacion,avisos-de-login}.ts`, `src/server/sesion/{acceso,invitacion,vincular-cuenta}.ts`, `src/server/actions/auth/{usuarios,sucursales}.ts`,
 `src/server/invitaciones-de-usuario.ts`, `src/app/invitacion/*`, `src/app/(app)/administracion/usuarios/*`, `src/lib/auth.ts`, `prisma/seed.ts` (`--gerente` imprime el enlace de vinculación local).
 Pruebas: `test/auth/{contrato-authjs-vinculacion,vinculacion}.test.ts`, `test/persistencia/{invitacion-de-usuario,aceptar-invitacion-de-usuario}.test.ts`,
 `test/aislamiento/invitacion-de-usuario-rls.test.ts`, `test/administracion/invitacion-de-usuario.test.ts`, `test/arquitectura/sin-enlace-automatico-de-cuentas.test.ts`, `test/e2e/usuarios-invitacion.spec.ts`.
+
+**Nota (Hito 3 de la pureza, B3, 2026-10-08): nace `server/sesion` y la aceptación es un caso de uso.** Sin cambio de comportamiento (huellas `huella-de-login` y
+`huella-de-aceptacion`, intactas). El login previo al contexto de empresa salió de `core` a `src/server/sesion/`: `acceso.ts` (el gate de `signIn` y `decidirInicioDeSesion`; su reloj y
+`ALLOWED_EMAIL_DOMAINS` quedan declarados hasta la Fase 6), `invitacion.ts` (la lectura por token e `invitacionConSuBase`, la única puerta de un token a la base de su empresa) y
+`vincular-cuenta.ts` (`vincularCuentaConInvitacion`, escritor de infraestructura de login dentro del callback, «Permanente» en la lista de escrituras). Es una capa de abajo, lista cerrada
+de archivos y de importadores (`test/arquitectura/server-sesion.test.ts`, regla `sesion-capa`); `ahora` es obligatorio en la invitación y la vinculación (O.24) y toda entrada verifica el
+rol de ejecución (`test/arquitectura/invitacion-verifica-el-rol.test.ts`). Aceptar una invitación de usuario es el caso de uso
+`src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-usuario.ts` (`permiso=SIN_PERMISO`; el guard de quien otorgó sigue entrando por parámetro: leerlo dentro de la transacción
+es el contrato C2 de O.35), con sus escrituras en `src/server/persistencia/invitaciones/marcar-invitacion-aceptada.ts` y `src/server/persistencia/permisos/membresias.ts`.

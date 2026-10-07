@@ -110,3 +110,9 @@ Núcleo: `src/core/features/empresa/invitacion.ts`, `aceptar-invitacion.ts`, `se
 `plataforma/src/servidor/empresas.ts` y `plataforma/src/app/empresas/`. App: `src/app/invitacion/page.tsx` y `src/server/actions/auth/invitacion.ts`. Migración:
 `prisma/migrations/20261010120000_invitaciones` (con `down.sql`). Pruebas: `test/aislamiento/invitaciones-rls.test.ts`, `test/persistencia/aceptar-invitacion.test.ts`,
 `test/persistencia/alta-de-empresa.test.ts`, `test/auth/invitacion-gate.test.ts`, `test/e2e/invitacion-aceptar.spec.ts`, `test/e2e/consola-alta-de-empresa.spec.ts`.
+
+**Nota (Hito 3 de la pureza, B3, 2026-10-08): dónde vive hoy.** Sin cambio de comportamiento (lo fija `test/auth/caracterizacion/huella-de-aceptacion.test.ts`). Aceptar la invitación del
+primer gerente es un caso de uso, `src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts` (`permiso=SIN_PERMISO`: la autoridad es el token y el email de la cuenta de Google;
+lista cerrada `CASOS_SIN_PERMISO`), y su escritura de la invitación está en `src/server/persistencia/invitaciones/marcar-invitacion-aceptada.ts`. La lectura por token y la base de la
+empresa de la invitación están en `src/server/sesion/invitacion.ts` (`invitacionDelToken` e `invitacionConSuBase`, la única puerta de un token a esa base, que verifica antes el rol de
+ejecución: `test/arquitectura/invitacion-verifica-el-rol.test.ts`). En `src/core/features/empresa/aceptar-invitacion.ts` y `src/core/auth/invitacion.ts` queda solo lo puro.
