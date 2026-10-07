@@ -18,9 +18,11 @@ import { describe, expect, it } from "vitest";
  */
 const RAIZ = join(__dirname, "../../src");
 
-const ROLES = new Set(["admin", "operador", "gerente", "operario", "administrador"]);
+// "administrador_sistema" (ADR-027, Hito 3, 3.4-3): el piso de gobierno es un nivel más; una comparación con él fuera de core/permisos decide acceso por su cuenta.
+const ROLES = new Set(["admin", "operador", "gerente", "operario", "administrador", "administrador_sistema"]);
 const PROPIEDADES_DE_ROL = new Set(["rol", "rolNombre", "rolEmpresa", "nivel", "nivelMinimo"]);
-const FUNCIONES_DE_NIVEL = new Set(["nivelMinimoDeAccion", "nivelDeRolPorClave", "nivelesDeLaCelda"]);
+// `nivelAlcanzaElPiso` y `nivelDelRolFrenteAlPiso` (ADR-027): devuelven o comparan niveles; compararlos a mano fuera del guard es decidir el acceso.
+const FUNCIONES_DE_NIVEL = new Set(["nivelMinimoDeAccion", "nivelDeRolPorClave", "nivelesDeLaCelda", "nivelAlcanzaElPiso", "nivelDelRolFrenteAlPiso"]);
 const MODELOS_DE_ACCESO = new Set(["permisoRol", "capacidadSucursal"]);
 
 /** Dónde vive el guard (no se analiza) y, para la regla 2, el módulo que implementa el registro. */
@@ -245,6 +247,15 @@ describe("el analizador de acceso detecta lo que dice detectar", () => {
     expect(reglas(`if (m.rol.nombre === otro) {}`)).toEqual([1]);
     expect(reglas(`if (nivelMinimoDeAccion(a.clave) !== "operario") {}`)).toEqual([1]);
     expect(reglas(`const ok = ctx.rolEmpresa == null;`)).toEqual([1]);
+  });
+
+  it("regla 1 (ADR-027): el piso «administrador de sistema» y las funciones de rango también son niveles", () => {
+    expect(reglas(`if (piso === "administrador_sistema") {}`)).toEqual([1]);
+    expect(reglas(`if ("administrador_sistema" !== nivel) {}`)).toEqual([1]);
+    expect(reglas(`if (nivelAlcanzaElPiso(n, p) === false) {}`)).toEqual([1]);
+    expect(reglas(`const esGobierno = nivelDelRolFrenteAlPiso(rol) !== otro;`)).toEqual([1]);
+    // Usarlas sin compararlas a mano (preguntarle al núcleo) no es una decisión fuera del guard.
+    expect(reglas(`const t = etiquetaDelPiso(nivelMinimoDeAccion(a.clave));`)).toEqual([]);
   });
 
   it("regla 1: ignora comentarios, textos y comparaciones que no son de rol", () => {
