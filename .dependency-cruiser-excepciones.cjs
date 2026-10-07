@@ -202,6 +202,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 3, Fase I, I.2: crearRol → permisos/casos-de-uso/crear-rol.ts (con guardComandoCrearRol dentro de conEdicionDePermisos), renombrarRol → casos-de-uso/renombrar-rol.ts y actualizarActivoRol → casos-de-uso/actualizar-activo-rol.ts (transacción de gobierno, salvaguardas G2, escritura en server/persistencia/permisos/roles.ts y auditoría en el caso de uso). listarRoles es una lectura (H8).",
   },
+  {
+    ruta: "src/server/actions/permisos/permisos.ts",
+    motivo:
+      "Hito 3, Fase I, I.3: guardarPermisos → permisos/casos-de-uso/guardar-permisos.ts (roles y acciones fuera de la transacción a propósito, chequeo optimista, SERIALIZABLE con reintento y el conflicto de escritura como fracaso de negocio, escritura en server/persistencia/permisos/matriz.ts y auditoría); el formato lo valida guardComandoGuardarPermisos dentro de conEdicionDePermisos. listarMatrizPermisos es una lectura (H8).",
+  },
 ];
 
 module.exports = {

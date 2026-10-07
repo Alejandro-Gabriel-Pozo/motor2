@@ -194,8 +194,8 @@ describe("escrituras de permisos y roles: siempre dentro de conEdicionDePermisos
 
   it("la regla no quedó vacía: las escrituras de PermisoRol/Rol de src/ son exactamente estas (modo i o modo ii), y a la persistencia de permisos la importan casos de uso", () => {
     const conEscritura = rutas.filter((r) => !EXCEPCIONES.includes(nombreDe(r)) && escribeModelos(readFileSync(r, "utf8")));
-    // Hito 3, I.2: la escritura de Rol pasó a la persistencia de permisos (modo ii); la de PermisoRol sigue dentro de conEdicionDePermisos hasta I.3.
-    expect(conEscritura.map(nombreDe).sort()).toEqual(["server/actions/permisos/permisos.ts", "server/persistencia/permisos/roles.ts"]);
+    // Hito 3: la escritura de Rol (I.2) y la de PermisoRol (I.3) pasaron a la persistencia de permisos (modo ii); en src/ ya no queda ninguna en modo i.
+    expect(conEscritura.map(nombreDe).sort()).toEqual(["server/persistencia/permisos/matriz.ts", "server/persistencia/permisos/roles.ts"]);
     // El modo ii revisa a quién importa la persistencia: si nadie la importara, pasaría en vacío.
     const archivosDeSrc = new Map(rutas.map((r) => [nombreDe(r), readFileSync(r, "utf8")]));
     for (const persistencia of PERSISTENCIA_DE_PERMISOS.filter((p) => archivosDeSrc.has(p))) {
