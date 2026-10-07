@@ -24,6 +24,9 @@ describe("casos de uso de la creación de un traspaso", () => {
 
   const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest });
 
+  /** La hora de entrada, tres días atrás: si el caso de uso leyera el reloj, no coincidiría con lo que queda guardado (Pureza 1.2; auditoría de la Fase 1: faltaban 10 de los 13 tests de hora fija). */
+  const fijaHaceTresDias = () => new Date(Date.now() - 3 * 24 * 3_600_000);
+
   beforeEach(async () => {
     await limpiarBaseDeTest();
     const base = await sembrarBase();
@@ -228,6 +231,17 @@ describe("casos de uso de la creación de un traspaso", () => {
       expect(resultados.find((r) => !r.ok)).toMatchObject({ codigo: "STOCK_INSUFICIENTE", mensaje: 'Stock insuficiente de "Harina" en "Depósito A". Actual: 1, requerido: 4.' });
       expect(await prisma.traspasoSucursal.count()).toBe(1);
       expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(1);
+    });
+  });
+
+  describe("la hora entra por actor.ahora, no por el reloj (Pureza 1.2)", () => {
+    it("el envío directo: la decisión de Origen y la fecha de la SALIDA del Kardex son la hora de entrada", async () => {
+      const fija = fijaHaceTresDias();
+      const mp = await producto(10);
+      const r = await crearEnvioDirectoDeTraspasoCasoDeUso({ ...comoA(), ahora: fija }, { destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId, detalle: null });
+      expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
+      expect((await prisma.traspasoSucursal.findFirstOrThrow()).fechaDecisionOrigen?.getTime()).toBe(fija.getTime());
+      expect((await prisma.operacion.findFirstOrThrow({ where: { proceso: "TRANSFERENCIA_SALIDA_SUCURSAL" } })).fecha.getTime()).toBe(fija.getTime());
     });
   });
 });
