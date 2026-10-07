@@ -40,6 +40,7 @@ interface Excepciones {
   "base-solo-desde-lista": ExcepcionDeArchivo[];
   "sin-ciclos": ExcepcionDeCiclo[];
   "ui-sin-internals-de-dominio": ExcepcionDeArchivo[];
+  "paginas-solo-consultas": ExcepcionDeArchivo[];
   PENDIENTES_DE_MIGRAR: ExcepcionDeArchivo[];
   ACCIONES_CON_CASO_DE_USO: ExcepcionDeArchivo[];
 }
@@ -192,6 +193,23 @@ describe("ui-sin-internals-de-dominio: las excepciones, en las dos direcciones",
     const listadas = EXCEPCIONES["ui-sin-internals-de-dominio"].map((e) => e.ruta).sort();
     expect(diferencia(reales, listadas), "Estos archivos de la UI importan un interno de un dominio y no están en la lista (importá la fachada):").toEqual([]);
     expect(diferencia(listadas, reales), "Estos ya no importan un interno: sacalos de la lista (UI_CON_INTERNALS_DE_DOMINIO):").toEqual([]);
+  });
+});
+
+describe("paginas-solo-consultas: las excepciones, en las dos direcciones", () => {
+  it("la regla está en la config", () => {
+    expect(CONFIG.forbidden.map((r) => r.name)).toContain("paginas-solo-consultas");
+  });
+
+  it("el conjunto de páginas y layouts que importan server/lecturas o server/persistencia es exactamente el de la lista (ni uno nuevo, ni uno ya migrado)", () => {
+    const reales = modulosCon(/^src\/app\/.+\/(page|layout)\.tsx$/, (d) => /^src\/server\/(lecturas|persistencia)\//.test(d.resolved));
+    const listadas = EXCEPCIONES["paginas-solo-consultas"].map((e) => e.ruta).sort();
+    expect(diferencia(reales, listadas), "Estas páginas importan server/lecturas o server/persistencia y no están en la lista (pedí los datos a una consulta en server/consultas):").toEqual([]);
+    expect(diferencia(listadas, reales), "Estas páginas ya no importan esas capas: sacalas de la lista (paginas-solo-consultas):").toEqual([]);
+  });
+
+  it("toda excepción lleva su motivo", () => {
+    expect(EXCEPCIONES["paginas-solo-consultas"].filter((e) => !e.motivo || e.motivo.length < 20)).toEqual([]);
   });
 });
 

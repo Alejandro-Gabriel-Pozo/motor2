@@ -128,6 +128,39 @@ const UI_CON_INTERNALS_DE_DOMINIO = [
 ];
 
 /**
+ * `paginas-solo-consultas` (Pureza, auditoría de las Fases 2 y 3; trabajo 1.12 de la rama `pureza-integracion`): una página (`page.tsx`/`layout.tsx`) obtiene sus datos de `server/consultas` y
+ * no de `server/lecturas` ni de `server/persistencia`. ADR-026 fijó que las lecturas compartidas entre pantalla y escritura las importan consultas, persistencia y acciones, «nunca la UI»; hoy 5
+ * páginas la atraviesan. La lista solo se achica: una página nueva que importe esas capas falla.
+ */
+const PAGINAS_CON_LECTURAS_O_PERSISTENCIA = [
+  {
+    ruta: "src/app/(app)/catalogo/insumos-grupos/page.tsx",
+    motivo:
+      "Pendiente de la decisión del dueño sobre la frontera UI → `server/lecturas` (docs/pureza-integracion.md, sección 4, decisión 6, y trabajo D.2): o se formaliza en el ADR-026 que las páginas (Server Components) pueden importar esa capa, o esta lectura se mueve a `server/consultas`. Hasta entonces la lista solo puede achicarse.",
+  },
+  {
+    ruta: "src/app/(app)/catalogo/productos/[id]/page.tsx",
+    motivo:
+      "Pendiente de la decisión del dueño sobre la frontera UI → `server/lecturas` (docs/pureza-integracion.md, sección 4, decisión 6, y trabajo D.2): o se formaliza en el ADR-026 que las páginas (Server Components) pueden importar esa capa, o esta lectura se mueve a `server/consultas`. Hasta entonces la lista solo puede achicarse.",
+  },
+  {
+    ruta: "src/app/(app)/catalogo/recetas/[productoId]/page.tsx",
+    motivo:
+      "Pendiente de la decisión del dueño sobre la frontera UI → `server/lecturas` (docs/pureza-integracion.md, sección 4, decisión 6, y trabajo D.2): o se formaliza en el ADR-026 que las páginas (Server Components) pueden importar esa capa, o esta lectura se mueve a `server/consultas`. Hasta entonces la lista solo puede achicarse.",
+  },
+  {
+    ruta: "src/app/(app)/reportes/costos/page.tsx",
+    motivo:
+      "Pendiente de la decisión del dueño sobre la frontera UI → `server/lecturas` (docs/pureza-integracion.md, sección 4, decisión 6, y trabajo D.2): o se formaliza en el ADR-026 que las páginas (Server Components) pueden importar esa capa, o esta lectura se mueve a `server/consultas`. Hasta entonces la lista solo puede achicarse.",
+  },
+  {
+    ruta: "src/app/(pos)/mesas/[mesaId]/page.tsx",
+    motivo:
+      "Pendiente de la decisión del dueño sobre la frontera UI → `server/lecturas` (docs/pureza-integracion.md, sección 4, decisión 6, y trabajo D.2): o se formaliza en el ADR-026 que las páginas (Server Components) pueden importar esa capa, o esta lectura se mueve a `server/consultas`. Hasta entonces la lista solo puede achicarse.",
+  },
+];
+
+/**
  * `accion-migrada-sin-orquestacion` (Task #41, Fase M; docs/arquitectura-casos-de-uso-2026-09-27.md): NO es una lista de
  * excepciones sino la de las Server Actions YA MIGRADAS a casos de uso — la regla se aplica SOLO a estos archivos. Cada uno quedó
  * como adaptador fino (conPermiso → guard → caso de uso → aResultadoAccion): no puede volver a importar la base, Prisma en
@@ -189,6 +222,7 @@ module.exports = {
   "base-solo-desde-lista": IMPORTADORES_DE_BASE,
   "sin-ciclos": CICLOS_CONOCIDOS,
   "ui-sin-internals-de-dominio": UI_CON_INTERNALS_DE_DOMINIO,
+  "paginas-solo-consultas": PAGINAS_CON_LECTURAS_O_PERSISTENCIA,
   PENDIENTES_DE_MIGRAR,
   ACCIONES_CON_CASO_DE_USO,
 };

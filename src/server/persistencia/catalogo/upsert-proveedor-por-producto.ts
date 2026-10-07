@@ -33,16 +33,17 @@ export async function upsertProveedorPorProducto(db: Db, datos: {
   /** Cómo llama el proveedor a este producto — igual criterio que el precio: un valor vacío nunca pisa uno ya cargado. */
   referenciaProveedor?: string;
 }): Promise<void> {
-  const id = crypto.randomUUID();
-  const fecha = datos.fechaCompra ?? new Date();
+  // Ni el reloj ni el azar se leen acá (Pureza, auditoría de las Fases 0 y 1): el id lo genera la base (`gen_random_uuid()`) y, si el llamador no trae la fecha de la compra, vale la hora de la
+  // base (`now()`, el mismo default de la columna). El único llamador de producción siempre pasa `fechaCompra`.
+  const fecha = datos.fechaCompra ?? null;
   const referencia = datos.referenciaProveedor?.trim() || null;
 
   await db.$executeRaw`
     INSERT INTO "ProveedorPorProducto"
       (id, "productoId", "proveedorId", "unidadCompraId", "precioUnitario", "precioPorUnidadStock", "ultimaCompra", "referenciaProveedor")
     VALUES
-      (${id}, ${datos.productoId}, ${datos.proveedorId}, ${datos.unidadCompraId},
-       ${datos.precioUnitario}, ${datos.precioPorUnidadStock}, ${fecha}, ${referencia})
+      (gen_random_uuid()::text, ${datos.productoId}, ${datos.proveedorId}, ${datos.unidadCompraId},
+       ${datos.precioUnitario}, ${datos.precioPorUnidadStock}, COALESCE(${fecha}::timestamp, now()), ${referencia})
     ON CONFLICT ("productoId", "proveedorId", "unidadCompraId")
     DO UPDATE SET
       "precioUnitario" = CASE WHEN excluded."precioUnitario" > 0 AND excluded."ultimaCompra" >= "ProveedorPorProducto"."ultimaCompra"

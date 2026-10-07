@@ -82,6 +82,16 @@ const reglaUiSinInternalsDeDominio = {
   to: { path: `^src/core/(${DOMINIOS_DE_NEGOCIO.join("|")})/`, pathNot: "^src/core/[^/]+/public(-servidor)?\.ts$" },
 };
 
+/** `paginas-solo-consultas` (Pureza, trabajo 1.12): las páginas y los layouts piden los datos a `server/consultas`, no a `server/lecturas` ni a `server/persistencia`. */
+const reglaPaginasSoloConsultas = {
+  name: "paginas-solo-consultas",
+  comment:
+    "Una página (page.tsx, layout.tsx) lee por `server/consultas`: `server/lecturas` es la capa de las lecturas COMPARTIDAS entre pantalla y escritura (las importan consultas, persistencia y acciones, ADR-026) y `server/persistencia` es de los casos de uso. Las excepciones, con motivo, en `.dependency-cruiser-excepciones.cjs`.",
+  severity: "error",
+  from: { path: "^src/app/.+/(page|layout)\\.tsx$", pathNot: excepcionesDe("paginas-solo-consultas") },
+  to: { path: "^src/server/(lecturas|persistencia)/" },
+};
+
 /**
  * Todos los archivos que forman los ciclos exceptuados (ver `sin-ciclos` más abajo), en UNA sola expresión regular: a
  * diferencia de `from.path`/`to.path`, dependency-cruiser 18 no normaliza un array en `to.via.pathNot` (lo pasaría a
@@ -92,6 +102,7 @@ const ARCHIVOS_EN_CICLOS_CONOCIDOS = (EXCEPCIONES["sin-ciclos"] ?? []).flatMap((
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
+    reglaPaginasSoloConsultas,
     {
       name: "core-sin-capas-superiores",
       comment: "src/core/ (dominio) no importa de app/, components/ ni server/ — ni siquiera con `import type`.",
