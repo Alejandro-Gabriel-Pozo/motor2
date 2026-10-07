@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
-import { causaDeErrorDeDriver, errorConocidoDeBase, esErrorDeBaseConCodigo } from "../../src/core/datos/errores-de-base";
+import { causaDeErrorDeDriver, errorConocidoDeBase, esErrorDeBaseConCodigo, esFalloDeSerializacionEnSqlCrudo } from "../../src/core/datos/errores-de-base";
 import { esChoqueDeIndiceUnico, esConflictoDeEscritura } from "../../src/core/movimientos/con-reintento";
 import { esChoqueDeFacturaUnica } from "../../src/core/movimientos/factura-unica";
 import { esErrorDeUnicidad } from "../../src/core/catalogo/generar-codigo";
@@ -65,5 +65,28 @@ describe("los reconocedores del dominio siguen igual (con instancias reales)", (
     expect(esChoqueDeFacturaUnica(deDriver("UniqueConstraintViolation", { constraint: { index: "Operacion_factura_unica_vigente_key" } }))).toBe(true);
     expect(esChoqueDeFacturaUnica(real("P2002", { target: ["Operacion_claveIdempotencia_key"] }))).toBe(false);
     expect(esChoqueDeFacturaUnica(real("P2002"))).toBe(false); // sin nombre reconocible: no se disfraza de factura duplicada
+  });
+});
+
+describe("esFalloDeSerializacionEnSqlCrudo: un 40001/40P01 de un $executeRaw llega como P2010 y es un conflicto reintentable", () => {
+  const p2010 = (originalCode: string) => real("P2010", { driverAdapterError: { name: "DriverAdapterError", cause: { originalCode, originalMessage: "no se pudo serializar el acceso" } } });
+
+  it("40001 (serialización) y 40P01 (deadlock) dentro de un P2010 son un conflicto de escritura", () => {
+    expect(esFalloDeSerializacionEnSqlCrudo(p2010("40001"))).toBe(true);
+    expect(esFalloDeSerializacionEnSqlCrudo(p2010("40P01"))).toBe(true);
+    expect(esConflictoDeEscritura(p2010("40001"))).toBe(true);
+  });
+
+  it("cualquier OTRO P2010 (sintaxis, columna inexistente, violación) NO se reintenta", () => {
+    expect(esFalloDeSerializacionEnSqlCrudo(p2010("42601"))).toBe(false);
+    expect(esFalloDeSerializacionEnSqlCrudo(p2010("23505"))).toBe(false);
+    expect(esConflictoDeEscritura(p2010("42703"))).toBe(false);
+    expect(esFalloDeSerializacionEnSqlCrudo(real("P2010"))).toBe(false); // sin el código original
+  });
+
+  it("un 40001 dentro de OTRO código de Prisma, o un Error común con esa forma, no cuenta", () => {
+    expect(esFalloDeSerializacionEnSqlCrudo(real("P2002", { driverAdapterError: { cause: { originalCode: "40001" } } }))).toBe(false);
+    expect(esFalloDeSerializacionEnSqlCrudo(Object.assign(new Error("x"), { code: "P2010", meta: { driverAdapterError: { cause: { originalCode: "40001" } } } }))).toBe(false);
+    expect(esFalloDeSerializacionEnSqlCrudo(null)).toBe(false);
   });
 });

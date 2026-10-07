@@ -1,7 +1,4 @@
 import "server-only";
-import type { Db } from "@/lib/db-tipos";
-import { mensajeSeguro } from "@/lib/mensaje-seguro";
-import { reportarError } from "@/lib/reportar-error";
 import { texto } from "@/core/texto";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import type { ContextoUsuario } from "@/core/auth/contexto";
@@ -16,77 +13,6 @@ import { cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraV
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { upsertProveedorPorProducto } from "@/server/persistencia/catalogo/upsert-proveedor-por-producto";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
-
-/** Lo que necesita `registrarProveedoresDeLaCompra` (paso 6, más abajo) de cada línea ya armada. */
-interface LineaParaProveedor {
-  productoId: string;
-  unidadCompraId: string | null;
-  precioUnitario: number;
-  precioPorUnidadStock: number;
-  referenciaProveedor: string | undefined;
-}
-
-/** Lo que devuelve el callback de `conTransaccionSerializable` — el resultado del caso de uso junto con el dato lateral que necesita
- * el paso 6 (Compra), fuera de la transacción. */
-interface ResultadoConLineasParaProveedor {
-  resultado: ResultadoRegistrarMovimiento;
-  lineasParaProveedor: LineaParaProveedor[];
-}
-
-/**
- * Envuelve un `ResultadoRegistrarMovimiento` sin `lineasParaProveedor` — todo camino que NO sea el éxito final del paso 3 (backlog
- * post-cierre de Task #41, 2026-09-28, docs/pendientes-sesion-2026-09-27.md §12): antes `lineasParaProveedor` era una variable
- * mutable del cierre, reasignada solo en el camino de éxito y leída DESPUÉS de que `conTransaccionSerializable` resolviera — segura
- * hoy (cada reintento vuelve a ejecutar el callback completo desde cero, y el uso de `lineasParaProveedor` siempre está condicionado a
- * que `resultado` sea el de ESE MISMO intento exitoso), pero dependía de ese razonamiento en vez de que cada camino de retorno
- * llevara su propio dato completo. Con esta forma, cada `return` es autocontenido: no hace falta razonar sobre qué dejó un intento
- * anterior en una variable de afuera.
- */
-function sinLineasParaProveedor(resultado: ResultadoRegistrarMovimiento): ResultadoConLineasParaProveedor {
-  return { resultado, lineasParaProveedor: [] };
-}
-
-/**
- * Paso 6 (Compra) de `registrarMovimientoCasoDeUso`: engancha `upsertProveedorPorProducto` (Catálogo, sin usar todavía) — FUERA de la
- * transacción principal y sin bloquear su resultado si falla, mismo criterio "best effort" que actualizarProveedoresDesdeCompra_
- * (Catalogo.js:3617-3657, envuelta en try/catch en confirmarRegistrarMovimientos): el Kardex ya quedó bien escrito, esto solo
- * alimenta la comparativa de precios. Se registra la relación en TODOS los casos con unidad de compra conocida (incluso sin precio,
- * mismo bugfix que Catalogo.js:3635-3644: si se cortara acá por falta de precio, ese proveedor nunca acumularía historial).
- *
- * Limitación conocida, decisión DEFERIDA — no un bug (backlog post-cierre de Task #41, 2026-09-28,
- * docs/pendientes-sesion-2026-09-27.md §11): si `upsertProveedorPorProducto` falla para una línea, el catch de más abajo lo
- * `console.error`ea, lo manda a Sentry (`reportarError`) y sigue con la línea siguiente — no hay forma de reintentar SOLO ese hookup después. `upsertProveedorPorProducto`
- * no tiene ningún otro punto de entrada en el proyecto (confirmado: es la ÚNICA llamada real, `grep -rn
- * upsertProveedorPorProducto src/`) — ni una pantalla de administración, ni una acción de "reconciliar catálogo de esta compra". Y
- * reintentar la Compra ENTERA no sirve: con la MISMA `claveIdempotencia` el paso 0 (I3) corta antes de llegar acá (`repetida: true`,
- * el guard del §4 de este mismo backlog no vuelve a llamar a este paso), y con una clave distinta (o sin clave) se escribiría una
- * SEGUNDA Compra real en el Kardex — probablemente peor que el precio faltante en Catálogo que se buscaba arreglar. Hoy, la única
- * vía de recuperación es manual (consola de Prisma / SQL directo) contra `ProveedorPorProducto`. Aceptado así por ahora: agregar un
- * mecanismo de reintento dedicado es una decisión de producto (¿vale la pena una acción de administración para esto?, ¿con qué
- * alcance?), no algo para resolver de paso en esta auditoría.
- */
-async function registrarProveedoresDeLaCompra(db: Db, proveedorId: string, fecha: Date, lineas: LineaParaProveedor[]): Promise<void> {
-  for (const l of lineas) {
-    if (!l.unidadCompraId) continue;
-    try {
-      await upsertProveedorPorProducto(db, {
-        productoId: l.productoId,
-        proveedorId,
-        unidadCompraId: l.unidadCompraId,
-        precioUnitario: l.precioUnitario,
-        precioPorUnidadStock: l.precioPorUnidadStock,
-        fechaCompra: fecha,
-        referenciaProveedor: l.referenciaProveedor,
-      });
-    } catch (e) {
-      // e instanceof Error ? e.message : String(e) (backlog post-cierre de Task #41, 2026-09-28,
-      // docs/pendientes-sesion-2026-09-27.md §5): el cast (e as Error).message revienta con TypeError si algo
-      // no-Error (ej. null/undefined) se lanza acá adentro — mismo criterio que core/reportes/cotizacion-dolar.ts.
-      console.error(`upsertProveedorPorProducto falló para producto ${l.productoId}: ${mensajeSeguro(e)}`);
-      await reportarError(e, "compra-proveedor-por-producto");
-    }
-  }
-}
 
 /**
  * Caso de uso «registrar un movimiento» — el motor genérico de los 9 procesos que lo comparten (Compra, Producción, Consumo, Ajuste,
@@ -108,19 +34,19 @@ async function registrarProveedoresDeLaCompra(db: Db, proveedorId: string, fecha
  *  4. camino rápido de factura duplicada (`existeCompraVigenteConFactura`, cliente global) — el árbitro real es el índice único
  *     parcial, ver el catch de más abajo;
  *  5. `conTransaccionSerializable`, con `.catch(esChoqueDeFacturaUnica)` tal cual: I3, armado de cada línea
- *     (`armarLineaMovimiento`), validación de stock agregada, escritura de `Operacion` + `MovimientoStock[]`;
- *  6. `registrarProveedoresDeLaCompra` (Compra), fuera de la transacción, best-effort: un `upsertProveedorPorProducto` por línea con
- *     unidad de compra conocida.
+ *     (`armarLineaMovimiento`), validación de stock agregada, escritura de `Operacion` + `MovimientoStock[]` y, en una Compra, un
+ *     `upsertProveedorPorProducto` por línea con unidad de compra conocida — TODO dentro de la misma transacción (decisión del dueño, 2026-10-06:
+ *     si falla el vínculo falla la compra entera y se reintenta con la misma clave I3, así nunca queda una compra a medias).
  *
  * M13b ya extrajo a `server/persistencia/movimientos/escribir-movimiento-de-stock.ts` las dos escrituras Prisma de la Operacion y sus
  * líneas (el armado de las filas, que SÍ es lógica de negocio, se queda acá). M13c entró `movimientos.ts` en `ACCIONES_CON_CASO_DE_USO`
  * (su guard, `core/features/movimientos/movimiento.guard.ts`, valida además que `proceso` sea uno de los 9 `ProcesoGenerico` — segunda
- * barrera DENTRO de `conPermiso`, ver su docstring) y nombró el paso 6 de acá arriba (antes, un bloque sin nombre en línea).
+ * barrera DENTRO de `conPermiso`, ver su docstring).
  *
  * @contract Registra un movimiento de Kardex para cualquiera de los 9 procesos genéricos, con validación de stock agregada por producto+sección ANTES de escribir nada.
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento), con `.catch(esChoqueDeFacturaUnica)` para la factura duplicada.
- * @sideEffects registrarProveedoresDeLaCompra (Compra, best-effort, FUERA de la transacción, solo si no es repetida) — un upsertProveedorPorProducto por línea con unidad de compra conocida.
+ * @sideEffects upsertProveedorPorProducto (Compra, DENTRO de la transacción) — un vínculo proveedor↔producto por línea con unidad de compra conocida; si falla, falla la compra.
  * @ficha permiso=POR_PROCESO transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
  */
 export async function registrarMovimientoCasoDeUso(
@@ -179,24 +105,24 @@ export async function registrarMovimientoCasoDeUso(
     if (yaExiste) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
   }
 
-  const { resultado, lineasParaProveedor } = await conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoConLineasParaProveedor> => {
+  const resultado = await conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRegistrarMovimiento> => {
     // 0) I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
     const payloadHash = datos.claveIdempotencia
       ? calcularPayloadHash(datos.proceso, actor.sucursalId, { ...datos, claveIdempotencia: undefined })
       : "";
     const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);
-    if (chequeo.estado === "duplicado") return sinLineasParaProveedor(exito(chequeo.mensaje, { operacionId: null, movimientos: null, repetida: true }));
-    if (chequeo.estado === "conflicto") return sinLineasParaProveedor(fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA));
+    if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { operacionId: null, movimientos: null, repetida: true });
+    if (chequeo.estado === "conflicto") return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
 
     const obtenerProducto = crearCacheProducto(tx);
     // 1) Armar cada línea (validación de producto/proceso, conversión, receta).
     const lineas: LineaCalculada[] = [];
     for (const item of datos.items) {
       const armado = await armarLineaMovimiento(item, datos, tx, obtenerProducto, actor.sucursalId, actor.sucursalNombre);
-      if (!armado.ok) return sinLineasParaProveedor(fracaso("LINEA_INVALIDA", armado.mensaje));
+      if (!armado.ok) return fracaso("LINEA_INVALIDA", armado.mensaje);
       if (armado.linea) lineas.push(armado.linea);
     }
-    if (!lineas.length) return sinLineasParaProveedor(fracaso("SIN_LINEAS_VALIDAS", "Ninguna línea tiene una cantidad válida."));
+    if (!lineas.length) return fracaso("SIN_LINEAS_VALIDAS", "Ninguna línea tiene una cantidad válida.");
 
     // 2) Validación de stock AGREGADA por clave producto+sección dentro
     // de TODO el payload, antes de escribir nada (bugfix C-1,
@@ -233,10 +159,10 @@ export async function registrarMovimientoCasoDeUso(
         const producto = await obtenerProducto(productoId);
         const pista = await seccionesConStock(productoId, actor.sucursalId, tx);
         const detallePista = pista.length ? ` Tiene stock en: ${pista.join(", ")}.` : "";
-        return sinLineasParaProveedor(fracaso(
+        return fracaso(
           "STOCK_INSUFICIENTE",
           `Stock insuficiente para "${producto?.nombre ?? productoId}". Actual: ${chequeoStock.actual}, requerido: ${chequeoStock.requerido}.${detallePista}`
-        ));
+        );
       }
     }
 
@@ -272,6 +198,24 @@ export async function registrarMovimientoCasoDeUso(
 
     await escribirLineasDeMovimientoStock(tx, filas);
 
+    // El vínculo proveedor↔producto de la Compra (comparativa de precios, ficha del proveedor, precarga del carrito), DENTRO de la misma transacción: si falla, falla
+    // TODA la compra (nada queda a medias: ni Kardex sin vínculo ni líneas a medias) y se reintenta con la misma clave I3. Se registra la relación en TODOS los casos con unidad
+    // de compra conocida (incluso sin precio, mismo bugfix que Catalogo.js:3635-3644: si se cortara acá por falta de precio, ese proveedor nunca acumularía historial).
+    if (datos.proceso === "COMPRA" && datos.proveedorId) {
+      for (const l of lineas) {
+        if (!l.unidadCompraId) continue;
+        await upsertProveedorPorProducto(tx, {
+          productoId: l.productoId,
+          proveedorId: datos.proveedorId,
+          unidadCompraId: l.unidadCompraId,
+          precioUnitario: l.precioUnitario,
+          precioPorUnidadStock: l.precioPorUnidadStock,
+          fechaCompra: datos.fecha,
+          referenciaProveedor: l.referenciaProveedor,
+        });
+      }
+    }
+
     const avisoConversion = lineas.some((l) => l.huboConversion)
       ? " Algunas cantidades se convirtieron automáticamente de unidad de compra a unidad de stock."
       : "";
@@ -283,33 +227,15 @@ export async function registrarMovimientoCasoDeUso(
       await registrarResultadoIdempotente(tx, operacion.id, mensaje);
     }
 
-    const lineasParaProveedor: LineaParaProveedor[] = lineas.map((l) => ({
-      productoId: l.productoId,
-      unidadCompraId: l.unidadCompraId,
-      precioUnitario: l.precioUnitario,
-      precioPorUnidadStock: l.precioPorUnidadStock,
-      referenciaProveedor: l.referenciaProveedor,
-    }));
-
-    return { resultado: exito(mensaje, { operacionId: operacion.id, movimientos: filas.length, repetida: false }), lineasParaProveedor };
+    return exito(mensaje, { operacionId: operacion.id, movimientos: filas.length, repetida: false });
   }).catch((e) => {
     // La transacción ya hizo rollback para cuando este catch la recibe — nunca se intenta seguir operando
     // sobre ella. Choque de la carrera de factura duplicada (dos requests simultáneos, ver el comentario del
     // chequeo previo más arriba): mismo mensaje de negocio, no un error 500. Cualquier otro P2002 (ej. la
     // clave de idempotencia en carrera) NO lo reconoce esChoqueDeFacturaUnica — sigue de largo como error real.
-    if (esChoqueDeFacturaUnica(e)) return sinLineasParaProveedor(fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA));
+    if (esChoqueDeFacturaUnica(e)) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
     throw e;
   });
-
-  // Paso 6 (Compra): ver el docstring de `registrarProveedoresDeLaCompra` más arriba. `!resultado.datos.repetida`
-  // explícito (backlog post-cierre de Task #41, 2026-09-28, docs/pendientes-sesion-2026-09-27.md §4): en TODO camino
-  // que no sea el éxito final del paso 3 (`sinLineasParaProveedor`, incluido el de idempotencia "duplicado"),
-  // `lineasParaProveedor` es `[]` por construcción — no un efecto colateral del orden de una variable mutable
-  // (§12, mismo backlog). Dejarlo explícito acá documenta la regla real ("un duplicado no vuelve a tocar Catálogo"),
-  // no solo la garantía estructural.
-  if (resultado.ok && !resultado.datos.repetida && datos.proceso === "COMPRA" && datos.proveedorId) {
-    await registrarProveedoresDeLaCompra(actor.db, datos.proveedorId, datos.fecha, lineasParaProveedor);
-  }
 
   return resultado;
 }

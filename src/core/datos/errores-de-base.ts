@@ -33,3 +33,16 @@ export function causaDeErrorDeDriver(e: unknown): { kind: string; constraint?: u
   if (!causa || typeof causa !== "object" || !("kind" in causa) || typeof causa.kind !== "string") return null;
   return { kind: causa.kind, ...("constraint" in causa ? { constraint: causa.constraint } : {}) };
 }
+
+/**
+ * Un fallo de SERIALIZACIÓN (SQLSTATE 40001) o un deadlock (40P01) que nace en un `$executeRaw`/`$queryRaw` dentro de una transacción SERIALIZABLE: Prisma lo entrega como
+ * `P2010` («raw query failed») con el código original de Postgres en `meta.driverAdapterError.cause.originalCode`, NO como `P2034`. Es lo mismo que un conflicto de escritura (el
+ * perdedor tiene que repetir la transacción), pero sin este reconocimiento se vería como un error 500. Confirmado contra Postgres real con dos compras simultáneas del mismo producto,
+ * proveedor y unidad (`test/movimientos/vinculo-proveedor-concurrencia.test.ts`). Cualquier OTRO `P2010` (una sintaxis rota, una columna que no existe) NO es un conflicto y sigue de largo.
+ */
+export function esFalloDeSerializacionEnSqlCrudo(e: unknown): boolean {
+  const conocido = errorConocidoDeBase(e);
+  if (conocido?.code !== "P2010") return false;
+  const causa = (conocido.meta?.driverAdapterError as { cause?: { originalCode?: unknown } } | undefined)?.cause;
+  return causa?.originalCode === "40001" || causa?.originalCode === "40P01";
+}

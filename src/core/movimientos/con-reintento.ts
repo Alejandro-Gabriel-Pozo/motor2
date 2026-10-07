@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import { causaDeErrorDeDriver, errorConocidoDeBase, esErrorDeBaseConCodigo } from "@/core/datos/errores-de-base";
+import { causaDeErrorDeDriver, errorConocidoDeBase, esErrorDeBaseConCodigo, esFalloDeSerializacionEnSqlCrudo } from "@/core/datos/errores-de-base";
 import type { Transaccion } from "@/lib/db-tipos";
 import { conReintento, type OpcionesEspera } from "./reintentar";
 
@@ -44,6 +44,7 @@ import { conReintento, type OpcionesEspera } from "./reintentar";
  */
 export function esConflictoDeEscritura(e: unknown): boolean {
   if (esErrorDeBaseConCodigo(e, "P2034")) return true;
+  if (esFalloDeSerializacionEnSqlCrudo(e)) return true; // un 40001/40P01 de un `$executeRaw` llega como P2010 (ver su docstring)
   return causaDeErrorDeDriver(e)?.kind === "TransactionWriteConflict";
 }
 
