@@ -192,6 +192,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "M14: registrarPagoConsignante (antes sin transacción, sin I3, sin auditoría — un doble clic real registraba el pago dos veces) → casos-de-uso/registrar-pago-consignante.ts (idempotencia I3 con prisma.$transaction SIMPLE — sin invariante de agregado que proteger, solo un insert con clave única —, persistencia en server/persistencia/reportes/pago-consignante.ts, auditoría). El archivo no tiene ninguna otra función.",
   },
+  {
+    ruta: "src/server/actions/permisos/capacidades-sucursal.ts",
+    motivo:
+      "Hito 3, Fase I, I.1: actualizarCapacidad → permisos/casos-de-uso/actualizar-capacidad.ts (la sucursal existe, escritura en server/persistencia/permisos/capacidades.ts y auditoría en una transacción); el formato lo valida guardComandoActualizarCapacidad dentro de conPermisoDeEmpresa. listarCapacidades es una lectura (H8).",
+  },
 ];
 
 module.exports = {
