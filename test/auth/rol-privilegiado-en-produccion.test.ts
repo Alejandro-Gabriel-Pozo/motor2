@@ -9,6 +9,9 @@ import { permitirRolPrivilegiado } from "../../src/core/auth/rol-de-ejecucion";
 describe("permitirRolPrivilegiado: el escape de rol no existe en Producción", () => {
   it("fuera de Producción, solo el valor «0» lo permite", () => {
     expect(permitirRolPrivilegiado({ MOTOR2_ROL_ESTRICTO: "0" })).toBe(true);
+    // Con el entorno estricto pedido fuera de Vercel el escape tampoco vale (auditoría de la Fase 0, 0.4).
+    expect(permitirRolPrivilegiado({ MOTOR2_ROL_ESTRICTO: "0", MOTOR2_ENTORNO_ESTRICTO: "1" })).toBe(false);
+    expect(permitirRolPrivilegiado({ MOTOR2_ROL_ESTRICTO: "0", MOTOR2_ENTORNO_ESTRICTO: "0" })).toBe(true);
     expect(permitirRolPrivilegiado({ VERCEL_ENV: "preview", MOTOR2_ROL_ESTRICTO: "0" })).toBe(true);
     expect(permitirRolPrivilegiado({ VERCEL_ENV: "development", MOTOR2_ROL_ESTRICTO: "0" })).toBe(true);
   });

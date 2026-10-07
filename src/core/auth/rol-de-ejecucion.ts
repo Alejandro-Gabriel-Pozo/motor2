@@ -29,7 +29,8 @@ export async function datosDelRolDeEjecucion(db: Db): Promise<DatosDelRol> {
  * una variable mal puesta no puede apagar el aislamiento entre empresas.
  */
 export function permitirRolPrivilegiado(source: Record<string, string | undefined>): boolean {
-  return source.MOTOR2_ROL_ESTRICTO === "0" && source.VERCEL_ENV !== "production";
+  // Tampoco con el entorno estricto pedido (`MOTOR2_ENTORNO_ESTRICTO=1`, un despliegue fuera de Vercel): ahí el aislamiento por empresa no se apaga (auditoría de la Fase 0, 0.4).
+  return source.MOTOR2_ROL_ESTRICTO === "0" && source.VERCEL_ENV !== "production" && source.MOTOR2_ENTORNO_ESTRICTO !== "1";
 }
 
 /**

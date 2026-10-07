@@ -79,7 +79,7 @@ const reglaUiSinInternalsDeDominio = {
     "app/ y components/ importan de un dominio de negocio (core/<dominio>/) solo su fachada (public.ts o public-servidor.ts), nunca un archivo interno: así el dominio puede mover su código sin tocar 86 pantallas. Un componente de cliente usa public.ts; public-servidor.ts es para páginas y componentes de servidor. Excepciones (solo se achican): .dependency-cruiser-excepciones.cjs.",
   severity: "error",
   from: { path: "^src/(app|components)/", pathNot: excepcionesDe("ui-sin-internals-de-dominio") },
-  to: { path: `^src/core/(${DOMINIOS_DE_NEGOCIO.join("|")})/`, pathNot: "^src/core/[^/]+/public(-servidor)?\.ts$" },
+  to: { path: `^src/core/(${DOMINIOS_DE_NEGOCIO.join("|")})/`, pathNot: "^src/core/[^/]+/public(-servidor)?[.]ts$" },
 };
 
 /** `paginas-solo-consultas` (Pureza, trabajo 1.12): las páginas y los layouts piden los datos a `server/consultas`, no a `server/lecturas` ni a `server/persistencia`. */
@@ -139,7 +139,7 @@ module.exports = {
         "Solo los archivos de IMPORTADORES_DE_BASE importan core/auth/base.ts (dbDeEmpresa/dbDeUsuario/baseDeEmpresa/baseDelContexto): el resto recibe la base del contexto. Lista con motivo: .dependency-cruiser-excepciones.cjs.",
       severity: "error",
       from: { path: "^src/", pathNot: excepcionesDe("base-solo-desde-lista") },
-      to: { path: "^src/core/auth/base\.ts$" },
+      to: { path: "^src/core/auth/base[.]ts$" },
     },
     {
       name: "acciones-sin-ui",

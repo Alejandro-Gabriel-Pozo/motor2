@@ -103,6 +103,12 @@ describe("validarEntornoAlArrancar (S-20)", () => {
     expect(escapesProhibidosEnProduccion({ VERCEL_ENV: "production", MOTOR2_ROL_ESTRICTO: "0", MOTOR2_ENTORNO_ESTRICTO: "0" })).toHaveLength(2);
   });
 
+  it("con el entorno estricto pedido FUERA de Vercel (MOTOR2_ENTORNO_ESTRICTO=1), el escape del rol tampoco vale y el arranque se niega (auditoría de la Fase 0, 0.4)", () => {
+    expect(escapesProhibidosEnProduccion({ MOTOR2_ENTORNO_ESTRICTO: "1", MOTOR2_ROL_ESTRICTO: "0" })).toEqual([expect.stringContaining("MOTOR2_ROL_ESTRICTO=0")]);
+    expect(escapesProhibidosEnProduccion({ MOTOR2_ENTORNO_ESTRICTO: "1" })).toEqual([]);
+    expect(() => validarEntornoAlArrancar({ ...ENV_VALIDO, MOTOR2_ENTORNO_ESTRICTO: "1", MOTOR2_ROL_ESTRICTO: "0" })).toThrow(/MOTOR2_ROL_ESTRICTO=0/);
+  });
+
   it("el error de los escapes nombra las variables, nunca sus valores ni otros secretos", () => {
     const mensaje = (() => {
       try {
