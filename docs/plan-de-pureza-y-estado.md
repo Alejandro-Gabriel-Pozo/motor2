@@ -41,22 +41,19 @@ Todas son **sin migración de base**, salvo la 5. Cada paso se verifica con los 
 | **1** Dinero, reloj, entorno, azar, errores | `decimal.js` propio; la hora y el azar entran por parámetro; el correo no lee el entorno; los errores de la base se reconocen por forma | **Hecha** (PR #67 y #70, en `main`) |
 | **2** Fachadas y fronteras | `public.ts`/`public-servidor.ts` para `pos`, `stock`, `compras`; `catalogo/public.ts` sin consultas; las `public.ts` no hacen entrada/salida ni arrastran Prisma; la UI importa los dominios solo por su fachada (145 aristas, 85 archivos) | **Hecha** (PR #72, en `main`) |
 | **3** Lecturas fuera del núcleo | un dominio por paso; el cálculo queda puro, la consulta pasa a `server/consultas`, `server/lecturas` (ADR-026) o `server/acceso` | **Hecha** (2026-10-06): tramo A (stock, pos, carta, catálogo parcial, auth, carta pública; PR #73 a #75), tramo B (el guard: decisión pura + cáscara en `server/acceso`; #76) y tramo C (reportes: 39 lecturas a `server/consultas/reportes`; #77). **Ninguna entrada «Fase 3» queda en la lista de heredados.** Pendiente de rendimiento (no de pureza): los N+1 de `rendimiento-recetas` y las lecturas repetidas del período |
-| **4** Escrituras solo desde casos de uso | las escrituras y las lecturas dentro de transacción salen de `core` a casos de uso y persistencia; la venta (Kardex) sale del núcleo; regla `escrituras-solo-en-persistencia` | **Plan hecho (2026-10-06), sin implementar:** ver `docs/plan-fase-4-pureza.md` (orden de PR, decisiones D-1 a D-11) |
+| **4** Escrituras solo desde casos de uso | las escrituras y las lecturas dentro de transacción salen de `core` a casos de uso y persistencia; la venta (Kardex) sale del núcleo; regla `escrituras-solo-en-persistencia` | **En curso (2026-10-07):** PR #80 a #91 fusionados, #92 y #93 abiertos; faltan B0b, B3, B4 (con la migración de auth y permisos y el ADR-027), 4C-D/E/F, ampliar la matriz de la venta y su segundo tiempo, 4A-5, decidir el destino de `con-reintento` y B5. Qué está hecho, qué falló y el orden que sigue: `docs/plan-fase-4-pureza.md`, sección 10 (decisiones D-1 a D-11) |
 | **5** Base `[MIG]` | tabla `SaldoStock`, índice `MovimientoStock(seccionId, productoId)`, candado del Kardex (REVOKE + trigger) | Pendiente. **Cada paso requiere autorización expresa del dueño**, simulación primero, base por base (zuluhub y stockhneuquen), con `down.sql` |
-| **6** Sesión y tipos | `core/auth/{contexto,session,ir-al-login}` pasan a `server/sesion`; tipos de dominio propios en lugar de los de Prisma | Pendiente. 24 archivos heredados |
+| **6** Sesión y tipos | `core/auth/{contexto,session,ir-al-login}` pasan a `server/sesion`; tipos de dominio propios en lugar de los de Prisma | Pendiente. 28 entradas heredadas «Fase 6» (2026-10-07) |
 | Después | **Etapa A** del plan de gastos, compras y ventas (ADR único, funciones puras de IVA con su consumidor, etc.) | Espera a que terminen las fases anteriores |
 
 Decisiones ya tomadas por el dueño (no reabrir): dinero con `decimal.js` detrás de `core/moneda`; reloj inyectado; candado del Kardex y tabla de saldos (ambos `[MIG]`, con autorización cuando llegue el momento); documentos nuevos solo por versiones; capas horizontales por dominio con la UI por módulo de producto y `fiscal` como dominio de negocio; exigir módulo y permiso en todas las lecturas que se pueda.
 
-## 4. Estado exacto del repositorio (2026-10-06)
+## 4. Estado exacto del repositorio (2026-10-07)
 
-- `main` en GitHub tiene la Fase 0 completa y el paso 1.1.
-- **La Fase 1 está en una rama LOCAL, sin subir: `pureza-fase-1`** (= `main` + pasos 1.2, 1.3, 1.4, 1.5 y 1.6 integrados, con sus conflictos resueltos). Verificada en local con los 8 comandos: tsc/lint/arquitectura/knip limpios, 509 archivos y 5.962 tests, builds de la app y de la consola, e2e 491 pasan.
-- Existen además ramas sueltas en GitHub (`pureza-1-3-…`, `pureza-1-5-…`, `pureza-1-6-…`) y dos PR abiertos (#68 = paso 1.2, #69 = paso 1.4). Quedan **superados** por `pureza-fase-1`; se cierran cuando esta se integre.
-- **Regla del dueño mientras no haya CI: todo en local, no subir nada.**
-
-### Por qué no hay CI hoy
-El CI de GitHub Actions dejó de arrancar: *«recent account payments have failed or your spending limit needs to be increased»*. El plan incluye 3.000 minutos de Actions por mes y una corrida completa gasta unos **50** (estático 3 + integración 25 + e2e 22), más otra al fusionar a `main`. Se agotaron. Opciones: aumentar el límite de gasto, esperar al ciclo de facturación, o correr el equivalente en local (§6). Con el CI de vuelta: **una sola corrida con `pureza-fase-1`**, no un PR por paso.
+- `main` tiene las Fases 0, 1, 2 y 3 y buena parte de la Fase 4 (PR #80 a #91, más el vínculo proveedor↔producto 1/2 y H7). Los PR #68 y #69 quedaron cerrados, superados por #70. **Ninguna de las cuatro primeras fases está «hecha sin reservas»:** una auditoría independiente del 2026-10-07 encontró agujeros en los guardianes y redes de pruebas sin escribir (`docs/plan-fase-4-pureza.md`, sección 11).
+- El CI de GitHub Actions **funciona** otra vez: cada PR corre el «Gate (requerido)» (estático, integración, e2e) y se fusiona con `squash` cuando está verde. En local se corren solo las verificaciones breves (`tsc`, `lint`, `arquitectura`, `knip`, los tests de la zona y, si es barato, el build y el e2e de lo tocado).
+- Las pruebas con base de datos comparten una sola base local y la limpian al empezar: **se corren de a una**.
+- Qué está hecho, qué falló y qué falta en la Fase 4: `docs/plan-fase-4-pureza.md`, sección 10. Qué corregir de las Fases 0 a 3: la sección 11.
 
 ## 5. Cómo se trabaja (las reglas que se fueron fijando)
 
@@ -101,6 +98,4 @@ y definir en `.env` (nunca subirlo) `MOTOR2_E2E_PLATAFORMA_DATABASE_URL`, `MOTOR
 
 ## 8. Qué sigue, concretamente
 
-1. Cuando haya CI (o el gate local equivalente): integrar `pureza-fase-1` en `main` con **una** corrida y cerrar #68 y #69.
-2. **Fase 2** (sin migraciones): `public.ts`/`public-servidor.ts` para `pos`, `stock` y `compras` (hoy en `DOMINIOS_SIN_PUBLIC_TODAVIA` de `.dependency-cruiser.cjs`), regla que prohíbe que la UI importe archivos internos de un dominio (145 aristas hoy), y que `catalogo/public.ts` deje de reexportar `recetas-vigentes`.
-3. **Punto de control con el dueño** al terminar la Fase 2.
+El orden vigente está en `docs/plan-fase-4-pureza.md`: la sección 10.4 (Fase 4: B0b, B3, B4, 4C-D/E/F, matriz y segundo tiempo de la venta, 4A-5 con tu autorización, destino de `con-reintento`, B5) y la sección 11.3 (correcciones de las Fases 0 a 3, en tandas: documentos, guardianes, redes de pruebas y, con tu decisión, H8 y la frontera UI → `server/lecturas`). Después vienen la Fase 5 [MIG] (cada paso con tu autorización expresa), la Fase 6 y la Etapa A en una rama de integración.
