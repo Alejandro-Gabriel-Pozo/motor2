@@ -87,6 +87,77 @@ function columnasDecimales(schema: string): Map<string, Set<string>> {
   return salida;
 }
 
+/** Las relaciones del schema: delegado del modelo → nombre del campo de relación → delegado del modelo relacionado (`RecetaVersion.ingredientes` → `recetaIngrediente`). */
+export function relacionesDelSchema(schema: string): Map<string, Map<string, string>> {
+  const modelos = [...schema.matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm)];
+  const nombres = new Set(modelos.map((m) => m[1]));
+  const delegado = (n: string) => n.charAt(0).toLowerCase() + n.slice(1);
+  const salida = new Map<string, Map<string, string>>();
+  for (const m of modelos) {
+    const campos = new Map<string, string>();
+    for (const c of m[2].matchAll(/^\s*(\w+)\s+(\w+)(\[\])?\??\s/gm)) if (nombres.has(c[2])) campos.set(c[1], delegado(c[2]));
+    if (campos.size > 0) salida.set(delegado(m[1]), campos);
+  }
+  return salida;
+}
+
+const OPERACIONES_ANIDADAS = new Set(["create", "createMany", "connectOrCreate", "update", "updateMany", "upsert"]);
+
+/** Las propiedades (clave → valor) de un literal de objeto, o de cada elemento de un array de literales; `null` si algo no se puede leer (spread, propiedad calculada, no literal). */
+function propiedadesDe(nodo: ts.Expression): { clave: string; valor: ts.Expression }[] | null {
+  const filas = ts.isArrayLiteralExpression(nodo) ? [...nodo.elements] : [nodo];
+  const salida: { clave: string; valor: ts.Expression }[] = [];
+  for (const fila of filas) {
+    if (!ts.isObjectLiteralExpression(fila)) return null;
+    for (const p of fila.properties) {
+      if (ts.isPropertyAssignment(p) && ts.isIdentifier(p.name)) salida.push({ clave: p.name.text, valor: p.initializer });
+      else if (ts.isShorthandPropertyAssignment(p)) salida.push({ clave: p.name.text, valor: p.name });
+      else return null;
+    }
+  }
+  return salida;
+}
+
+/**
+ * Las escrituras ANIDADAS de un `data` (`data: { ingredientes: { create: [{ cantidad }] } }`): la regla antes solo miraba las claves de primer nivel del modelo, así que un `Decimal` escrito
+ * a través de una relación quedaba invisible (auditoría de la Fase 0, 0.7). Para cada campo de relación con una operación anidada se devuelven las columnas que escribe en el modelo
+ * relacionado; `null` en `columnas` = no se pudo leer (falla cerrado). Recursivo (una relación dentro de otra).
+ */
+export function escriturasAnidadas(
+  data: ts.Expression,
+  modelo: string,
+  relaciones: ReadonlyMap<string, ReadonlyMap<string, string>>
+): { modelo: string; columnas: string[] | null }[] {
+  const propiedades = propiedadesDe(data);
+  if (propiedades === null) return [];
+  const resultado: { modelo: string; columnas: string[] | null }[] = [];
+  for (const { clave, valor } of propiedades) {
+    const relacionado = relaciones.get(modelo)?.get(clave);
+    if (!relacionado || !ts.isObjectLiteralExpression(valor)) continue;
+    for (const op of valor.properties) {
+      if (!ts.isPropertyAssignment(op) || !ts.isIdentifier(op.name) || !OPERACIONES_ANIDADAS.has(op.name.text)) continue;
+      // Dónde está el `data` de cada operación: create → el valor; createMany → su `data`; update/updateMany → su `data`; upsert → `create` y `update`; connectOrCreate → su `create`.
+      const datas: ts.Expression[] = [];
+      const hijo = ts.isObjectLiteralExpression(op.initializer) ? propiedadesDe(op.initializer) : null;
+      if (op.name.text === "create") datas.push(op.initializer);
+      else if (hijo === null && !ts.isArrayLiteralExpression(op.initializer)) {
+        resultado.push({ modelo: relacionado, columnas: null });
+        continue;
+      } else if (op.name.text === "createMany" || op.name.text === "update" || op.name.text === "updateMany") datas.push(...(hijo ?? []).filter((h) => h.clave === "data").map((h) => h.valor));
+      else if (op.name.text === "upsert" || op.name.text === "connectOrCreate") datas.push(...(hijo ?? []).filter((h) => h.clave === "create" || h.clave === "update").map((h) => h.valor));
+      for (const d of datas) {
+        const props = propiedadesDe(d);
+        if (props === null) resultado.push({ modelo: relacionado, columnas: null });
+        else {
+          resultado.push({ modelo: relacionado, columnas: props.map((x) => x.clave) });
+          resultado.push(...escriturasAnidadas(d, relacionado, relaciones));
+        }
+      }
+    }
+  }
+  return resultado;
+}
+
 function clavesDeData(llamada: ts.CallExpression): string[] | null {
   const argumento = llamada.arguments[0];
   if (!argumento || !ts.isObjectLiteralExpression(argumento)) return null;
@@ -151,7 +222,7 @@ function auditaEnElArchivo(unidades: ReadonlyMap<string, Unidad>, nombre: string
 }
 
 /** Las escrituras de dinero (o de significado) de un archivo, con su función y si esa función audita. */
-export function leerEscrituras(codigo: string, archivo: string, decimales: ReadonlyMap<string, ReadonlySet<string>>): Escritura[] {
+export function leerEscrituras(codigo: string, archivo: string, decimales: ReadonlyMap<string, ReadonlySet<string>>, relaciones: ReadonlyMap<string, ReadonlyMap<string, string>> = new Map()): Escritura[] {
   const fuente = ts.createSourceFile(archivo, codigo, ts.ScriptTarget.Latest, true, archivo.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
 
   // 1) Las funciones de primer nivel, con lo que llaman (para resolver «llama a un helper del archivo que audita»).
@@ -186,6 +257,23 @@ export function leerEscrituras(codigo: string, archivo: string, decimales: Reado
             columnas: tocadas,
             audita: audita(funcion),
           });
+        }
+      }
+    }
+    // Escrituras ANIDADAS por relación (`data: { ingredientes: { create: [...] } }`): el `Decimal` que se escribe en el modelo relacionado cuenta como una escritura de ESE modelo.
+    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && OPERACIONES_DE_ESCRITURA.has(n.expression.name.text) && ts.isPropertyAccessExpression(n.expression.expression)) {
+      const dueño = n.expression.expression.name.text;
+      const argumento = n.arguments[0];
+      const dataNodo = argumento && ts.isObjectLiteralExpression(argumento) ? argumento.properties.find((p): p is ts.PropertyAssignment => ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && ["data", "create", "update"].includes(p.name.text)) : undefined;
+      if (dataNodo && relaciones.size > 0) {
+        for (const anidada of escriturasAnidadas(dataNodo.initializer, dueño, relaciones)) {
+          const columnasDeDinero = decimales.get(anidada.modelo);
+          const significado = COLUMNAS_DE_SIGNIFICADO[anidada.modelo];
+          if (!columnasDeDinero && !significado) continue;
+          const tocadas = anidada.columnas === null ? ["(no verificable)"] : significado === "*" ? ["(cualquier escritura)"] : anidada.columnas.filter((c) => columnasDeDinero?.has(c) || significado?.includes(c));
+          if (tocadas.length === 0) continue;
+          const funcion = funcionDeNivelSuperior(n);
+          escrituras.push({ archivo, linea: fuente.getLineAndCharacterOfPosition(n.getStart(fuente)).line + 1, funcion, modelo: anidada.modelo, operacion: `${n.expression.name.text} (anidada en ${dueño})`, columnas: tocadas, audita: audita(funcion) });
         }
       }
     }
@@ -312,7 +400,9 @@ function archivosDe(dir: string): string[] {
   });
 }
 
-const DECIMALES = columnasDecimales(readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8"));
+const SCHEMA = readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8");
+const DECIMALES = columnasDecimales(SCHEMA);
+const RELACIONES = relacionesDelSchema(SCHEMA);
 const formato = (es: Escritura[]) => es.map((e) => `${e.archivo}:${e.linea}  ${e.funcion}  →  ${e.modelo}.${e.operacion} (${e.columnas.join(", ")})`).join("\n");
 
 describe("escrituras auditadas: el detector ve lo que tiene que ver (la regla no puede quedar ciega)", () => {
@@ -400,6 +490,35 @@ describe("escrituras auditadas: el SQL crudo también cuenta (era invisible para
   });
 });
 
+describe("escrituras auditadas: las escrituras ANIDADAS por relación también cuentan", () => {
+  const leer = (codigo: string) => leerEscrituras(codigo, "src/server/persistencia/x.ts", DECIMALES, RELACIONES);
+
+  it("las relaciones del schema se leen (RecetaVersion.ingredientes → recetaIngrediente)", () => {
+    expect(RELACIONES.get("recetaVersion")?.get("ingredientes")).toBe("recetaIngrediente");
+    expect(RELACIONES.get("recetaVersion")?.get("pasos")).toBe("recetaPaso");
+  });
+
+  it("un Decimal escrito a través de una relación (create, createMany, update, upsert, connectOrCreate) se ve como escritura del modelo relacionado", () => {
+    const e = leer("export async function f(tx: any) { await tx.recetaVersion.create({ data: { productoId: 'a', ingredientes: { create: [{ insumoProductoId: 'b', cantidad: 1 }] } } }); }");
+    expect(e).toHaveLength(1);
+    expect(e[0]).toMatchObject({ modelo: "recetaIngrediente", columnas: ["cantidad"], funcion: "f" });
+    expect(violaciones(e)).toHaveLength(1);
+    expect(leer("export async function f(tx: any) { await tx.recetaVersion.update({ where: {}, data: { ingredientes: { createMany: { data: [{ cantidad: 2 }] } } } }); }")[0].columnas).toEqual(["cantidad"]);
+    expect(leer("export async function f(tx: any) { await tx.recetaVersion.update({ where: {}, data: { ingredientes: { update: { where: {}, data: { mermaPorcentaje: 3 } } } } }); }")[0].columnas).toEqual(["mermaPorcentaje"]);
+    expect(leer("export async function f(tx: any) { await tx.recetaVersion.update({ where: {}, data: { ingredientes: { upsert: { where: {}, create: { cantidad: 1 }, update: { cantidad: 2 } } } } }); }")).toHaveLength(2);
+  });
+
+  it("con registrarCambioAuditado en la misma función ya no es violación; sin Decimal en lo anidado, no cuenta", () => {
+    expect(violaciones(leer("export async function f(tx: any) { await tx.recetaVersion.create({ data: { ingredientes: { create: [{ cantidad: 1 }] } } }); await registrarCambioAuditado(tx, {}); }"))).toEqual([]);
+    expect(leer("export async function f(tx: any) { await tx.recetaVersion.create({ data: { pasos: { create: [{ orden: 1, instruccion: 'x' }] } } }); }")).toEqual([]);
+  });
+
+  it("lo anidado que no se puede leer (spread) falla cerrado", () => {
+    const e = leer("export async function f(tx: any, filas: any) { await tx.recetaVersion.create({ data: { ingredientes: { create: [...filas] } } }); }");
+    expect(e[0].columnas).toEqual(["(no verificable)"]);
+  });
+});
+
 describe("escrituras auditadas: la cadena caso de uso → persistencia", () => {
   const PERSISTENCIA = "src/server/persistencia/pos/escribir-promo.ts";
   const ESCRIBE = "export async function escribirPromo(tx: any) { await tx.promoCarta.update({ data: { precio: 5 } }); }";
@@ -456,7 +575,7 @@ describe("escrituras auditadas: el código del repositorio", () => {
   const rutas = CARPETAS.flatMap((c) => archivosDe(join(RAIZ, c)));
   const escrituras = rutas.flatMap((absoluta) => {
     const archivo = relative(RAIZ, absoluta).split(sep).join("/");
-    return leerEscrituras(readFileSync(absoluta, "utf8"), archivo, DECIMALES);
+    return leerEscrituras(readFileSync(absoluta, "utf8"), archivo, DECIMALES, RELACIONES);
   });
   const usadas = new Set<string>();
   const fuentes = CARPETAS_DE_LLAMADORES.flatMap((c) => archivosDe(join(RAIZ, c))).map((absoluta) =>
