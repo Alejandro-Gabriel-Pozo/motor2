@@ -47,6 +47,8 @@ export async function listarUsuariosDeSucursal(sucursalId: string) {
   const vinculaciones = sinGoogle.length
     ? await ctx.db.invitacion.findMany({ where: { empresaId: ctx.empresaId, rolEmpresa: "vinculacion", estado: "PENDIENTE", email: { in: sinGoogle } }, select: { id: true, email: true, venceEn: true, enviadaEn: true } })
     : [];
+  // Lectura, no mutación: no corre en `conPermiso` y no tiene `ctx.ahora`. La hora se lee acá, en el borde (solo decide si una invitación se MUESTRA vencida); no se
+  // recibe por parámetro porque esta función es un endpoint ("use server") y el cliente elegiría la hora. Se resuelve cuando la lectura pase a `server/consultas` (H8/Fase II).
   const ahora = new Date();
   return filas.map((f) => {
     const { accounts, ...usuario } = f.usuario;
@@ -67,7 +69,7 @@ export async function listarInvitacionesPendientes(sucursalId: string) {
     },
     orderBy: { creadaEn: "asc" },
   });
-  const ahora = new Date();
+  const ahora = new Date(); // lectura en el borde, como en `listarUsuariosDeSucursal`
   return filas.map((f) => ({
     id: f.id,
     email: f.email,
@@ -104,7 +106,8 @@ export async function agregarOActualizarUsuario(input: {
       if (!gate.ok) return error(gate.mensaje);
     }
 
-    const ahora = new Date();
+    // La hora del pedido la fija `conPermiso` una vez (Pureza 1.2; D.3): vencimiento de la invitación y marca de envío salen de ella, no del reloj.
+    const ahora = ctx.ahora;
     let porEnviar = null as InvitacionPorEnviar | null;
     const resultado = await conGobierno(ctx, async (tx) => {
       porEnviar = null; // la transacción puede reintentarse: el mail pendiente es siempre el del último intento
@@ -378,7 +381,7 @@ async function enviarYResponder(
 /** Reenviar: rota el token (el enlace anterior deja de servir), renueva los 7 días y vuelve a firmar la invitación a nombre de quien reenvía. */
 export async function reenviarInvitacionPendiente(invitacionId: string): Promise<ResultadoAccion> {
   return conPermiso("gestion_usuarios", async (ctx) => {
-    const ahora = new Date();
+    const ahora = ctx.ahora; // la hora del pedido (D.3): el freno de un minuto y el vencimiento renovado se miden contra ella
     let porEnviar = null as InvitacionPorEnviar | null;
     const resultado = await conGobierno(ctx, async (tx) => {
       porEnviar = null;
@@ -400,7 +403,7 @@ export async function revocarInvitacion(invitacionId: string): Promise<Resultado
     conGobierno(ctx, async (tx) => {
       const g = await invitacionGestionable(ctx, tx, invitacionId);
       if (!g.ok) return error(g.mensaje);
-      const revocada = await revocarInvitacionPendiente(tx, { empresaId: ctx.empresaId, invitacionId, actorId: ctx.usuarioId, ahora: new Date() });
+      const revocada = await revocarInvitacionPendiente(tx, { empresaId: ctx.empresaId, invitacionId, actorId: ctx.usuarioId, ahora: ctx.ahora });
       return revocada ? ok(`Invitación a "${g.invitacion.email}" revocada.`) : error("No se encontró esa invitación pendiente.");
     }),
   );
@@ -409,7 +412,7 @@ export async function revocarInvitacion(invitacionId: string): Promise<Resultado
 /** «Invitar a vincular»: a un miembro que todavía no entró con Google (un precargado) se le manda la invitación para que vincule su cuenta. */
 export async function invitarAVincular(membresiaId: string): Promise<ResultadoAccion> {
   return conPermiso("gestion_usuarios", async (ctx) => {
-    const ahora = new Date();
+    const ahora = ctx.ahora; // la hora del pedido (D.3)
     let porEnviar = null as InvitacionPorEnviar | null;
     const resultado = await conGobierno(ctx, async (tx) => {
       porEnviar = null;
