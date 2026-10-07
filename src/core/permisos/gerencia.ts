@@ -54,6 +54,26 @@ export async function listarCandidatosAGerente(db: Db, empresaId: string) {
   return filas.map((f) => ({ id: f.usuarioId, email: f.usuario.email, nombre: f.usuario.name }));
 }
 
+/** Lo que de la cuenta del destino de un traspaso hace falta para decidir si puede recibir la gerencia (`null`: no pertenece a la empresa). */
+export interface DestinoDeLaGerencia {
+  activo: boolean;
+  rolEmpresa: string | null;
+  usuario: { activoGlobal: boolean };
+}
+
+/**
+ * Por qué el destino de un traspaso NO puede recibir la gerencia, o `null` si su cuenta lo permite (Hito 3, I.5d0): que pertenezca a la empresa, que no sea ya el
+ * gerente y que su cuenta esté activa en la empresa y en la plataforma, en ESE orden y con esos textos. Puro: la comparación con el rol de empresa queda acá, en
+ * `core/permisos` (la regla 1 de `acceso-solo-por-el-guard` no la admite en otra capa), y la persistencia del traspaso solo escribe. Que además sea admin efectivo
+ * en alguna sucursal es una lectura de la base y la hace quien llama, después de esto.
+ */
+export function mensajeSiElDestinoNoPuedeRecibirLaGerencia(destino: DestinoDeLaGerencia | null): string | null {
+  if (!destino) return "Ese usuario no pertenece a esta empresa.";
+  if (destino.rolEmpresa === ROL_EMPRESA_GERENTE) return "Esa persona ya es el gerente de la empresa.";
+  if (!destino.activo || !destino.usuario.activoGlobal) return "Esa persona tiene la cuenta desactivada: no puede ser gerente.";
+  return null;
+}
+
 /**
  * Pasa la gerencia de la empresa a `usuarioDestinoId`: el gerente actual deja de serlo y el destino lo es, en un solo paso. La empresa
  * nunca queda sin gerente ni con dos: la baja del actual es condicional («sigue siendo el gerente»), así que dos traspasos simultáneos
@@ -69,9 +89,9 @@ export async function transferirGerenciaDeEmpresa(tx: Db, input: { empresaId: st
     where: { usuarioId_empresaId: { usuarioId: usuarioDestinoId, empresaId } },
     select: { id: true, activo: true, rolEmpresa: true, usuario: { select: { email: true, activoGlobal: true } } },
   });
-  if (!destino) return { ok: false, mensaje: "Ese usuario no pertenece a esta empresa." };
-  if (destino.rolEmpresa === ROL_EMPRESA_GERENTE) return { ok: false, mensaje: "Esa persona ya es el gerente de la empresa." };
-  if (!destino.activo || !destino.usuario.activoGlobal) return { ok: false, mensaje: "Esa persona tiene la cuenta desactivada: no puede ser gerente." };
+  const rechazoDelDestino = mensajeSiElDestinoNoPuedeRecibirLaGerencia(destino);
+  // `!destino` solo para que TypeScript lo sepa: con el destino nulo la función ya devolvió su mensaje (el `??` no se alcanza).
+  if (rechazoDelDestino || !destino) return { ok: false, mensaje: rechazoDelDestino ?? "Ese usuario no pertenece a esta empresa." };
 
   if (!(await esAdminEfectivoEnAlgunaSucursal(tx, empresaId, usuarioDestinoId))) return { ok: false, mensaje: "Para ser gerente primero tiene que ser admin activo en alguna sucursal." };
 
