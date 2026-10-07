@@ -64,6 +64,13 @@ const CONGELADAS: Record<string, Congelada> = {
     motivo: "Huella de gobierno (B0, #82). Red de la Fase I y la Fase II: las 16 mutaciones de auth y permisos no cambian.",
     regeneraciones: [],
   },
+  "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
+    blob: "1e34981243c2d5807b4e0492bd05e92d024f356f",
+    desde: "94011900",
+    motivo:
+      "Huella de aceptación (B3-1, O.34): aceptar gerente y aceptar usuario con todos sus rechazos (texto y orden), éxito y segundo uso. Red de B3: mudar las dos aceptaciones a casos de uso no cambia nada.",
+    regeneraciones: [],
+  },
   "test/movimientos/caracterizacion/venta-matriz.golden.txt": {
     blob: "5166de7e5b4db922c884b99e381dbfd52b3021b0",
     desde: "71050ded",
