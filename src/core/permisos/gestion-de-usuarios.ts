@@ -2,8 +2,12 @@ import { esRolAdmin, nivelDe, puedeAsignarRol, puedeGestionarA, type PersonaPara
 
 /**
  * Bloque G, G2: el techo de privilegio de la gestión de usuarios, en un solo lugar. Los casos de uso de usuarios no miran roles ni comparan nombres:
- * arman a quien actúa y a quien se toca (`actorEn…`, `objetivoEn…`) y preguntan acá. Cada función devuelve el mensaje de rechazo, o `null` si se
+ * miden a quien actúa y a quien se toca (`actorDesdeLaBase`, `objetivoEn…`) y preguntan acá. Cada función devuelve el mensaje de rechazo, o `null` si se
  * puede. El permiso de la acción (`gestion_usuarios`, …) lo evalúa el guard aparte: esto es solo el techo.
+ *
+ * Desde O35-B (O.35, Hito 3) a quien actúa ya no se lo mide con el contexto de la sesión (`ctx.rolEmpresa`, `ctx.membresias`; se fueron `actorEnSucursal`,
+ * `actorEnLaEmpresa` y `ActorDelContexto`): los casos de uso lo releen de la base dentro de su transacción, como a quien se toca. La equivalencia fuera de las
+ * carreras (y la única diferencia, la sucursal inactiva) la fija `test/permisos/actor-desde-la-base-equivalencia.test.ts`.
  *
  * Desde la Fase II del Hito 3 (II.4 de `docs/plan-hito-3-pureza.md`) este archivo es PURO (P0). Las lecturas que miden a quien actúa o a quien se toca
  * desde la base (`actorDesdeLaBase`, `objetivoEnSucursal`, `objetivoEnLaEmpresa`, `buscarRolAdmin`, `reactivaAUnAdmin`) viven en
@@ -15,22 +19,6 @@ const MENSAJE_SOLO_EL_GERENTE_TOCA_AL_GERENTE = "Solo el gerente de la empresa p
 const MENSAJE_TECHO_DE_ADMIN = "Solo un administrador o el gerente de la empresa puede dar el rol de administrador o modificar a un administrador.";
 const MENSAJE_SOLO_EL_GERENTE_REACTIVA_ADMIN = "Solo el gerente de la empresa puede reactivar a un administrador.";
 const MENSAJE_GERENTE_NO_APAGA_SU_CUENTA = "El gerente no puede desactivar su propia cuenta: traspasá la gerencia antes.";
-
-/** Lo que de quien actúa sale del contexto de la sesión (`ContextoUsuario`): su rol de empresa y en qué sucursales es administrador. */
-export interface ActorDelContexto {
-  rolEmpresa: string | null;
-  membresias: { sucursalId: string; esAdmin: boolean }[];
-}
-
-/** Quien actúa, medido en la sucursal donde se va a tocar a alguien: ahí es administrador si su membresía de esa sucursal lo es. */
-export function actorEnSucursal(ctx: ActorDelContexto, sucursalId: string): PersonaParaJerarquia {
-  return { rolEmpresa: ctx.rolEmpresa, esAdminEnElContexto: ctx.membresias.some((m) => m.sucursalId === sucursalId && m.esAdmin) };
-}
-
-/** Quien actúa en una acción de contexto empresa: es administrador si lo es en CUALQUIER sucursal (no depende de dónde esté parado). */
-export function actorEnLaEmpresa(ctx: ActorDelContexto): PersonaParaJerarquia {
-  return { rolEmpresa: ctx.rolEmpresa, esAdminEnElContexto: ctx.membresias.some((m) => m.esAdmin) };
-}
 
 /**
  * A quien se toca por su membresía en una sucursal, ya leído su rol de empresa: administrador si el rol de ESA membresía lo es (sin membresía, operario).

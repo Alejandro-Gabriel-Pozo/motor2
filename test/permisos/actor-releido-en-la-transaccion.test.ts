@@ -11,6 +11,7 @@ import { actualizarActivoMembresiaCasoDeUso } from "../../src/server/actions/aut
 import { actualizarActivoUsuarioEnEmpresaCasoDeUso } from "../../src/server/actions/auth/casos-de-uso/actualizar-activo-usuario-en-empresa";
 import { actualizarNotasMembresiaCasoDeUso } from "../../src/server/actions/auth/casos-de-uso/actualizar-notas-membresia";
 import { agregarOActualizarUsuarioCasoDeUso } from "../../src/server/actions/auth/casos-de-uso/agregar-o-actualizar-usuario";
+import { crearSucursalConAdminCasoDeUso } from "../../src/server/actions/auth/casos-de-uso/crear-sucursal-con-admin";
 import { invitarAVincularCasoDeUso } from "../../src/server/actions/auth/casos-de-uso/invitar-a-vincular";
 import { revocarInvitacionCasoDeUso } from "../../src/server/actions/auth/casos-de-uso/revocar-invitacion";
 
@@ -25,7 +26,7 @@ import { revocarInvitacionCasoDeUso } from "../../src/server/actions/auth/casos-
  * rechazo sea por la relectura y no por otra cosa.
  *
  * El permiso de la acción (`conPermiso*`, el gate) lo evalúa la Server Action antes, con la base del momento: por eso se llama al caso de uso directo, que es
- * exactamente lo que pasa cuando el cambio de la base cae entre el gate y la transacción. El alta de sucursal (contexto empresa) va en su propio archivo de O35-B.
+ * exactamente lo que pasa cuando el cambio de la base cae entre el gate y la transacción. El alta de sucursal (contexto empresa) la sumó O35-B2.
  */
 const MENSAJE_TECHO_DE_ADMIN = "Solo un administrador o el gerente de la empresa puede dar el rol de administrador o modificar a un administrador.";
 
@@ -141,5 +142,13 @@ describe.each(CAMBIOS)("O35-B: el contexto de A dice administrador, y en la base
     if (rechaza) expect(r).toEqual({ ok: false, codigo: "INVITACION_NO_GESTIONABLE", mensaje: MENSAJE_TECHO_DE_ADMIN });
     else expect(r.ok, r.mensaje).toBe(true);
     expect((await prismaAdmin.invitacion.findUniqueOrThrow({ where: { id: inv.id } })).estado).toBe(rechaza ? "PENDIENTE" : "REVOCADA");
+  });
+
+  it("crearSucursalConAdmin (contexto empresa, O35-B2): crear una sucursal y nombrar primer admin a un miembro", async () => {
+    await aplicar(e);
+    const r = await crearSucursalConAdminCasoDeUso(viejo, { nombre: "Norte", email: e.m.email });
+    if (rechaza) expect(r).toEqual(rechazoDelTecho);
+    else expect(r.ok, r.mensaje).toBe(true);
+    expect(await prismaAdmin.sucursal.count({ where: { nombre: "Norte" } })).toBe(rechaza ? 0 : 1);
   });
 });

@@ -22,7 +22,11 @@ async function rolEmpresaDe(db: Db, empresaId: string, usuarioId: string | null)
   return fila?.rolEmpresa ?? null;
 }
 
-/** Quien OTORGÓ el acceso a una sucursal, medido desde la base (E8: se revalida su techo al aceptar una invitación, cuando ya no hay sesión suya): administrador si su membresía de esa sucursal lo es. */
+/**
+ * Quien actúa (o quien OTORGÓ el acceso a una sucursal: E8, se revalida su techo al aceptar una invitación, cuando ya no hay sesión suya), medido desde la base en
+ * esa sucursal: administrador si su membresía de esa sucursal lo es. Desde O35-B (O.35) es también la medida de quien actúa en los casos de uso de usuarios,
+ * dentro de su transacción, en lugar del contexto de la sesión.
+ */
 export async function actorDesdeLaBase(db: Db, empresaId: string, usuarioId: string, sucursalId: string): Promise<PersonaParaJerarquia> {
   const admin = await db.usuarioSucursal.findFirst({ where: { ...filtroMembresiaConAutoridadDeAdmin(empresaId, usuarioId), sucursalId }, select: { id: true } });
   return { rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: admin !== null };
@@ -33,7 +37,11 @@ export async function objetivoEnSucursal(db: Db, empresaId: string, usuarioId: s
   return personaEnSucursal(await rolEmpresaDe(db, empresaId, usuarioId), rolDeLaMembresia);
 }
 
-/** A quien se toca por su cuenta en la empresa: administrador si tiene una membresía activa con un rol admin activo en cualquier sucursal. */
+/**
+ * Una persona en el contexto EMPRESA: administrador si tiene una membresía activa con un rol admin activo en cualquier sucursal. Mide a quien se toca por su cuenta
+ * en la empresa y, desde O35-B (O.35), también a quien ACTÚA en una acción de contexto empresa (apagar una cuenta, el alta de sucursal),
+ * dentro de la transacción, en lugar del contexto de la sesión.
+ */
 export async function objetivoEnLaEmpresa(db: Db, empresaId: string, usuarioId: string): Promise<PersonaParaJerarquia> {
   const esAdmin = await db.usuarioSucursal.findFirst({ where: filtroMembresiaConAutoridadDeAdmin(empresaId, usuarioId), select: { id: true } });
   return { rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: esAdmin !== null };

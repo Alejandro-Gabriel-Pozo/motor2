@@ -7,7 +7,6 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { obtenerContextoUsuario, type ContextoUsuario } from "../../src/core/auth/contexto";
 import { conTransaccionSerializable } from "../../src/core/movimientos/public-servidor";
-import { actorEnLaEmpresa, actorEnSucursal } from "../../src/core/permisos/gestion-de-usuarios";
 import type { PersonaParaJerarquia } from "../../src/core/permisos/jerarquia";
 import { requierePermiso, requierePermisoDeEmpresa } from "../../src/server/acceso/gate";
 import { actorDesdeLaBase, objetivoEnLaEmpresa } from "../../src/server/lecturas/permisos/gestion-de-usuarios";
@@ -32,7 +31,22 @@ import { actorDesdeLaBase, objetivoEnLaEmpresa } from "../../src/server/lecturas
  *    es administrador de una inactiva pasa el permiso extra de `agregarOActualizarUsuario` (o el de `invitacionGestionable`) sobre la inactiva, y ahí el techo del
  *    contexto lo mide «operario» (no puede dar el rol admin) mientras que la base lo mide «administrador» (sí puede). Al pasar a la base (O35-B) el techo queda
  *    alineado con el gate de sucursal. Se informa al dueño en el informe del paso.
+ *
+ * Desde O35-B los casos de uso ya no usan el contexto y `core/permisos/gestion-de-usuarios.ts` dejó de exportar `actorEnSucursal` y `actorEnLaEmpresa`: la
+ * medición del contexto quedó acá, copiada TAL CUAL, como la descripción de lo que los casos de uso hacían hasta O35-A (este test sigue diciendo que pasarse a la
+ * base no cambió nada fuera de las carreras, salvo la diferencia fijada).
  */
+type ActorDelContexto = Pick<ContextoUsuario, "rolEmpresa" | "membresias">;
+
+/** Lo que hacía `actorEnSucursal` (hasta O35-B): administrador en la sucursal si su membresía de esa sucursal, en el contexto, lo es. */
+const actorEnSucursal = (ctx: ActorDelContexto, sucursalId: string): PersonaParaJerarquia => ({
+  rolEmpresa: ctx.rolEmpresa,
+  esAdminEnElContexto: ctx.membresias.some((m) => m.sucursalId === sucursalId && m.esAdmin),
+});
+
+/** Lo que hacía `actorEnLaEmpresa` (hasta O35-B): administrador en la empresa si lo es en CUALQUIER sucursal del contexto. */
+const actorEnLaEmpresa = (ctx: ActorDelContexto): PersonaParaJerarquia => ({ rolEmpresa: ctx.rolEmpresa, esAdminEnElContexto: ctx.membresias.some((m) => m.esAdmin) });
+
 type Medicion = { usuario: string; contexto: string; delCtx: PersonaParaJerarquia; deLaBase: PersonaParaJerarquia };
 
 let s1: string;

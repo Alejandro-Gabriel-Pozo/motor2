@@ -3,8 +3,8 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/public";
 import type { ComandoCrearSucursal } from "@/core/features/sucursales/sucursal.guard";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { actorEnLaEmpresa, mensajeSiNoPuedeDarRolSinTechoDeGestion, mensajeSiReactivaAdminSinSerGerente } from "@/core/permisos/gestion-de-usuarios";
-import { buscarRolAdmin, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";
+import { mensajeSiNoPuedeDarRolSinTechoDeGestion, mensajeSiReactivaAdminSinSerGerente } from "@/core/permisos/gestion-de-usuarios";
+import { buscarRolAdmin, objetivoEnLaEmpresa, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { crearSucursal, sembrarDisponibilidadDeSucursalNueva } from "@/server/persistencia/auth/sucursales";
 import { crearMembresiaEnSucursal, reactivarCuentaEnEmpresa } from "@/server/persistencia/permisos/membresias";
@@ -43,7 +43,7 @@ type ResultadoCrearSucursal = ResultadoCaso<
  * @ficha permiso=alta_sucursal transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function crearSucursalConAdminCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "rolEmpresa" | "membresias" | "db" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "db" | "transaccion">,
   comando: ComandoCrearSucursal,
 ): Promise<ResultadoCrearSucursal> {
   const { nombre, email } = comando;
@@ -90,7 +90,9 @@ export async function crearSucursalConAdminCasoDeUso(
         // alguien (ni a sí mismo) administrador. A propósito NO se aplica el techo de GESTIÓN sobre el nombrado: un administrador tiene que poder nombrar al
         // gerente primer admin de una sucursal nueva (lo fija `techo-en-el-alta-de-sucursal.test.ts`). Por eso va la variante declarada (C2, II.2):
         // `mensajeSiNoPuedeDarRolSinTechoDeGestion`, que solo pueden llamar los archivos de la lista cerrada de `techo-de-dar-un-rol.test.ts`.
-        const quienActua = actorEnLaEmpresa(actor);
+        // O35-B de O.35: quien actúa se mide DESDE LA BASE, dentro de esta transacción (admin en alguna sucursal, o gerente), con la misma lectura que mide a
+        // cualquier persona en la empresa; no con el contexto de la sesión, que se armó al principio del pedido y pudo quedar viejo.
+        const quienActua = await objetivoEnLaEmpresa(tx, actor.empresaId, actor.usuarioId);
         const rechazoTecho = mensajeSiNoPuedeDarRolSinTechoDeGestion(quienActua, rolAdmin);
         if (rechazoTecho) return fracaso("TECHO_DE_PRIVILEGIO", rechazoTecho);
         const reactivaAdmin = await reactivaAUnAdmin(tx, actor.empresaId, usuarioPrevio.id, { cuentaDeEmpresa: pertenenciaPrevia });
