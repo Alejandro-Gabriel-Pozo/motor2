@@ -8,6 +8,7 @@ import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { incorporarPrimerGerente } from "@/core/permisos/gerencia";
 import { conInvariantesDeGobierno, InvarianteViolada } from "@/core/permisos/invariantes";
 import { hashDeToken } from "@/core/seguridad/tokens";
+import { marcarInvitacionAceptada } from "@/server/persistencia/invitaciones/marcar-invitacion-aceptada";
 import { invitacionConSuBase } from "@/server/sesion/invitacion";
 
 /**
@@ -24,7 +25,8 @@ import { invitacionConSuBase } from "@/server/sesion/invitacion";
  * transacción puede reintentarse):
  *  1. busca la invitación PENDIENTE por el hash del token y comprueba que sea del email de quien acepta, que no haya vencido y que la empresa siga en alta;
  *  2. valida el CUIT (E2) y que ninguna empresa lo tenga ya;
- *  3. la marca ACEPTADA con un update condicional (`estado = PENDIENTE` y no vencida): dos aceptaciones simultáneas no pueden ganar las dos;
+ *  3. la marca ACEPTADA con un update condicional (`estado = PENDIENTE` y no vencida; `marcarInvitacionAceptada`, `server/persistencia/invitaciones/`, B3-6): dos aceptaciones
+ *     simultáneas no pueden ganar las dos;
  *  4. incorpora al invitado como gerente y admin de la primera sucursal, bajo las invariantes de gobierno;
  *  5. deja el rastro en la auditoría de la empresa, con el nuevo gerente como actor.
  * La empresa NO cambia de estado: sigue `PROVISIONING` hasta que la plataforma confirme el CUIT (E6). El CUIT queda en `Invitacion.cuitDeclarado`. Un fallo de invariantes o de
@@ -76,11 +78,9 @@ async function aceptarEnLaTransaccion(tx: Prisma.TransactionClient, entrada: Ent
     return { ok: false, mensaje: "Ya hay una empresa con ese CUIT. Revisalo; si es correcto, avisá a la plataforma." };
   }
 
-  const cambio = await tx.invitacion.updateMany({
-    where: { id: invitacion.id, hashToken, estado: "PENDIENTE", venceEn: { gt: ahora } },
-    data: { estado: "ACEPTADA", aceptadaEn: ahora, aceptadaPorId: usuario.id, cuitDeclarado: cuit.valor },
-  });
-  if (cambio.count !== 1) return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
+  if (!(await marcarInvitacionAceptada(tx, { invitacionId: invitacion.id, hashToken, aceptadaPorId: usuario.id, ahora, cuitDeclarado: cuit.valor }))) {
+    return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
+  }
 
   const incorporado = await conInvariantesDeGobierno(tx, empresa.id, () => incorporarPrimerGerente(tx, { empresaId: empresa.id, usuarioId: usuario.id }));
   if (!incorporado.ok) throw new ErrorDeAceptacion(incorporado.mensaje);
