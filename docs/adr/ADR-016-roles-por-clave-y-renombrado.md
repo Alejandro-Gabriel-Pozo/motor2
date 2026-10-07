@@ -33,7 +33,8 @@ busca un rol de sistema por nombre: lo hace cumplir la regla 4 de `test/arquitec
 > **Rutas movidas (Hito 3, Fase II de la rama `pureza-integracion`, 2026-10-08).** Las lecturas de decisión de gobierno salieron de `core/permisos` a
 > `server/lecturas/permisos` (ADR-026) con el mismo nombre y firma, y no nombran la clave: piden los filtros puros de `core/permisos/filtros.ts`
 > (contrato C1). Las de las invariantes están en `src/server/lecturas/permisos/gobierno.ts`; `conInvariantesDeGobierno` (medir, escribir, volver a
-> medir), en `src/server/actions/con-gobierno.ts`. Desde el contrato C4, un caso de uso o una persistencia tampoco lee `rol.clave` ni la pide en un
+> medir), en `src/server/actions/con-gobierno.ts`; las del techo de privilegio (quien actúa desde la base, a quien se toca, el rol admin, si se
+> reactiva a un admin), en `src/server/lecturas/permisos/gestion-de-usuarios.ts`. Desde el contrato C4, un caso de uso o una persistencia tampoco lee `rol.clave` ni la pide en un
 > `select`: el rol se lee con `SELECCION_DE_ROL_PARA_JERARQUIA` y se le pasa entero a `core/permisos` (regla 4 ampliada).
 
 ### 3. Renombrar un rol es una acción propia, `renombrar_rol` (G3)

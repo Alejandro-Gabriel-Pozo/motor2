@@ -1,7 +1,8 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { actorEnSucursal, mensajeSiNoPuedeGestionar, objetivoEnSucursal } from "@/core/permisos/gestion-de-usuarios";
+import { actorEnSucursal, mensajeSiNoPuedeGestionar } from "@/core/permisos/gestion-de-usuarios";
+import { objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { texto } from "@/core/texto";

@@ -1,12 +1,14 @@
-import type { Db } from "@/lib/db-tipos";
-import { tuvoRolAdminEnLaEmpresa } from "./gerencia";
-import { filtroMembresiaConAutoridadDeAdmin, filtroRolAdmin } from "./filtros";
-import { esRolAdmin, nivelDe, puedeAsignarRol, puedeGestionarA, SELECCION_DE_ROL_PARA_JERARQUIA, type PersonaParaJerarquia } from "./jerarquia";
+import { esRolAdmin, nivelDe, puedeAsignarRol, puedeGestionarA, type PersonaParaJerarquia } from "./jerarquia";
 
 /**
- * Bloque G, G2: el techo de privilegio de la gestión de usuarios, en un solo lugar. Las acciones de `server/actions/auth/usuarios.ts` no miran
- * roles ni comparan nombres: arman a quien actúa y a quien se toca (`actorEn…`, `objetivoEn…`) y preguntan acá. Cada función devuelve el mensaje
- * de rechazo, o `null` si se puede. El permiso de la acción (`gestion_usuarios`, …) lo evalúa el guard aparte: esto es solo el techo.
+ * Bloque G, G2: el techo de privilegio de la gestión de usuarios, en un solo lugar. Los casos de uso de usuarios no miran roles ni comparan nombres:
+ * arman a quien actúa y a quien se toca (`actorEn…`, `objetivoEn…`) y preguntan acá. Cada función devuelve el mensaje de rechazo, o `null` si se
+ * puede. El permiso de la acción (`gestion_usuarios`, …) lo evalúa el guard aparte: esto es solo el techo.
+ *
+ * Desde la Fase II del Hito 3 (II.4 de `docs/plan-hito-3-pureza.md`) este archivo es PURO (P0). Las lecturas que miden a quien actúa o a quien se toca
+ * desde la base (`actorDesdeLaBase`, `objetivoEnSucursal`, `objetivoEnLaEmpresa`, `buscarRolAdmin`, `reactivaAUnAdmin`) viven en
+ * `server/lecturas/permisos/gestion-de-usuarios.ts` con el mismo nombre y firma; lo que tenían de regla quedó acá (`personaEnSucursal`,
+ * `reactivaLaMembresiaDeUnAdmin`).
  */
 
 const MENSAJE_SOLO_EL_GERENTE_TOCA_AL_GERENTE = "Solo el gerente de la empresa puede modificar al gerente.";
@@ -30,32 +32,12 @@ export function actorEnLaEmpresa(ctx: ActorDelContexto): PersonaParaJerarquia {
   return { rolEmpresa: ctx.rolEmpresa, esAdminEnElContexto: ctx.membresias.some((m) => m.esAdmin) };
 }
 
-async function rolEmpresaDe(db: Db, empresaId: string, usuarioId: string | null): Promise<string | null> {
-  if (!usuarioId) return null;
-  const fila = await db.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId, empresaId } }, select: { rolEmpresa: true } });
-  return fila?.rolEmpresa ?? null;
-}
-
-/** Quien OTORGÓ el acceso a una sucursal, medido desde la base (E8: se revalida su techo al aceptar una invitación, cuando ya no hay sesión suya): administrador si su membresía de esa sucursal lo es. */
-export async function actorDesdeLaBase(db: Db, empresaId: string, usuarioId: string, sucursalId: string): Promise<PersonaParaJerarquia> {
-  const admin = await db.usuarioSucursal.findFirst({ where: { ...filtroMembresiaConAutoridadDeAdmin(empresaId, usuarioId), sucursalId }, select: { id: true } });
-  return { rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: admin !== null };
-}
-
-/** A quien se toca por su membresía en una sucursal: administrador si el rol de ESA membresía lo es (sin membresía o sin usuario todavía, operario). */
-export async function objetivoEnSucursal(db: Db, empresaId: string, usuarioId: string | null, rolDeLaMembresia: { clave: string | null } | null): Promise<PersonaParaJerarquia> {
-  return { rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: rolDeLaMembresia !== null && esRolAdmin(rolDeLaMembresia) };
-}
-
-/** A quien se toca por su cuenta en la empresa: administrador si tiene una membresía activa con un rol admin activo en cualquier sucursal. */
-export async function objetivoEnLaEmpresa(db: Db, empresaId: string, usuarioId: string): Promise<PersonaParaJerarquia> {
-  const esAdmin = await db.usuarioSucursal.findFirst({ where: filtroMembresiaConAutoridadDeAdmin(empresaId, usuarioId), select: { id: true } });
-  return { rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: esAdmin !== null };
-}
-
-/** El rol «admin» de la empresa, buscado por su CLAVE técnica (el nombre se puede cambiar: bloque G3), con la selección de la jerarquía (C3). `null` si la empresa no lo tiene. */
-export async function buscarRolAdmin(db: Db, empresaId: string) {
-  return db.rol.findFirst({ where: filtroRolAdmin(empresaId), select: SELECCION_DE_ROL_PARA_JERARQUIA });
+/**
+ * A quien se toca por su membresía en una sucursal, ya leído su rol de empresa: administrador si el rol de ESA membresía lo es (sin membresía, operario).
+ * Es la regla de `objetivoEnSucursal` (`server/lecturas/permisos/gestion-de-usuarios.ts`), que lee `rolEmpresa` y le pregunta acá.
+ */
+export function personaEnSucursal(rolEmpresa: string | null, rolDeLaMembresia: { clave: string | null } | null): PersonaParaJerarquia {
+  return { rolEmpresa, esAdminEnElContexto: rolDeLaMembresia !== null && esRolAdmin(rolDeLaMembresia) };
 }
 
 /** Se gestiona a quien está en el mismo nivel o más abajo; el mensaje dice a quién protege el techo (el gerente o los administradores). */
@@ -99,18 +81,11 @@ export function mensajeSiSeApagaAlGerente(objetivo: PersonaParaJerarquia): strin
 }
 
 /**
- * ¿Lo que se pide reactiva a un administrador? Su membresía en la sucursal (apagada, con rol admin) o su cuenta en la empresa (apagada, y tiene o tuvo
- * el rol admin: pregunta histórica, `tuvoRolAdminEnLaEmpresa`, que no filtra roles inactivos — Q2). Quien tiene `gestion_usuarios` no puede deshacer
- * por esta vía lo que el gerente apagó con `apagar_cuenta_empresa`.
+ * ¿Activar esta membresía reactiva a un administrador? Sí si está apagada y su rol es el de administrador. Es la primera mitad de `reactivaAUnAdmin`
+ * (`server/lecturas/permisos/gestion-de-usuarios.ts`); la otra, la cuenta en la empresa, es una pregunta histórica a la base.
  */
-export async function reactivaAUnAdmin(
-  db: Db,
-  empresaId: string,
-  usuarioId: string,
-  que: { membresia?: { activo: boolean; rol: { clave: string | null } } | null; cuentaDeEmpresa?: { activo: boolean } | null }
-): Promise<boolean> {
-  if (que.membresia && !que.membresia.activo && esRolAdmin(que.membresia.rol)) return true;
-  return Boolean(que.cuentaDeEmpresa && !que.cuentaDeEmpresa.activo && (await tuvoRolAdminEnLaEmpresa(db, empresaId, usuarioId)));
+export function reactivaLaMembresiaDeUnAdmin(membresia: { activo: boolean; rol: { clave: string | null } } | null | undefined): boolean {
+  return Boolean(membresia && !membresia.activo && esRolAdmin(membresia.rol));
 }
 
 /** Reactivar a un administrador es solo del gerente. */

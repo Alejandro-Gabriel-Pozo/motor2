@@ -2,7 +2,8 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { TipoDeInvitacion } from "@/core/features/empresa/invitacion";
-import { actorEnSucursal, mensajeSiNoPuedeDarRolSinTechoDeGestion, mensajeSiNoPuedeGestionar, objetivoEnSucursal } from "@/core/permisos/gestion-de-usuarios";
+import { actorEnSucursal, mensajeSiNoPuedeDarRolSinTechoDeGestion, mensajeSiNoPuedeGestionar } from "@/core/permisos/gestion-de-usuarios";
+import { objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { requierePermiso } from "@/server/acceso/gate";
 

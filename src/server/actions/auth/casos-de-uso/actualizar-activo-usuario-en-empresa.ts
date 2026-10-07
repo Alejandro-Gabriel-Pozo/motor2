@@ -1,14 +1,8 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import {
-  actorEnLaEmpresa,
-  mensajeSiNoPuedeGestionar,
-  mensajeSiReactivaAdminSinSerGerente,
-  mensajeSiSeApagaAlGerente,
-  objetivoEnLaEmpresa,
-  reactivaAUnAdmin,
-} from "@/core/permisos/gestion-de-usuarios";
+import { actorEnLaEmpresa, mensajeSiNoPuedeGestionar, mensajeSiReactivaAdminSinSerGerente, mensajeSiSeApagaAlGerente } from "@/core/permisos/gestion-de-usuarios";
+import { objetivoEnLaEmpresa, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { cambiarActivoDeCuentaEnEmpresa } from "@/server/persistencia/permisos/membresias";
 import { conGobierno, conInvariantesDeGobierno } from "../../con-gobierno";

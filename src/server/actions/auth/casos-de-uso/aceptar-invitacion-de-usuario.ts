@@ -5,7 +5,8 @@ import { MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion } from "@/core/fea
 import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { actorDesdeLaBase, mensajeSiNoPuedeDarRolA, mensajeSiReactivaAdminSinSerGerente, objetivoEnSucursal, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
+import { mensajeSiNoPuedeDarRolA, mensajeSiReactivaAdminSinSerGerente } from "@/core/permisos/gestion-de-usuarios";
+import { actorDesdeLaBase, objetivoEnSucursal, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { InvarianteViolada } from "@/core/permisos/invariantes";
 import { conInvariantesDeGobierno } from "@/server/actions/con-gobierno";
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";

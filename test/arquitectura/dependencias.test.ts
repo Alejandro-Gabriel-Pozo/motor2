@@ -290,6 +290,15 @@ describe("persistencia-solo-desde-casos-de-uso (Fase M): los casos de uso no son
     expect(sinServerOnly, `Estos casos de uso no abren con import "server-only":\n${sinServerOnly.join("\n")}`).toEqual([]);
   });
 
+  it("todo archivo de server/lecturas/permisos/ (las lecturas de decisión de gobierno, Hito 3 Fase II) abre con import \"server-only\"", () => {
+    // Otras lecturas compartidas no lo llevan a propósito (las importan scripts con `tsx` y Playwright, ADR-026); las de gobierno solo las usan los casos de
+    // uso y la transacción de gobierno (y el seed, que corre con `--conditions=react-server`): ninguna puede terminar en un bundle de cliente.
+    const LECTURAS_DE_GOBIERNO = archivosTs(join(RAIZ, "src/server/lecturas/permisos"));
+    expect(LECTURAS_DE_GOBIERNO.length).toBeGreaterThan(0);
+    const sinServerOnly = LECTURAS_DE_GOBIERNO.filter((r) => !abreConServerOnly(readFileSync(join(RAIZ, r), "utf8")));
+    expect(sinServerOnly, `Estas lecturas de gobierno no abren con import "server-only":\n${sinServerOnly.join("\n")}`).toEqual([]);
+  });
+
   it("el detector de import \"server-only\" (con fuentes sintéticas)", () => {
     expect(abreConServerOnly('import "server-only";\nimport { x } from "y";')).toBe(true);
     expect(abreConServerOnly('// import "server-only";\nimport { x } from "y";')).toBe(false);
