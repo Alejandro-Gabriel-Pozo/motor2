@@ -8,7 +8,8 @@ import { vincularCuentaConInvitacion } from "./vincular-cuenta";
 /**
  * El GATE DE LOGIN (Hito 3, B3-2 de `docs/plan-hito-3-pureza.md`; O.24): vivía en `core/auth/acceso.ts` y no era núcleo (lee la base con el `prisma` global y por empresa, el reloj y
  * `process.env.ALLOWED_EMAIL_DOMAINS`). Es infraestructura de sesión y lo usa solo `lib/auth.ts` (el callback `signIn` de Auth.js): nace con él `server/sesion/`, la capa del login
- * previa al contexto de empresa (ADR-024). Su reloj (`new Date()` de la sesión abierta) y su entorno (`ALLOWED_EMAIL_DOMAINS`) quedan DECLARADOS hasta la Fase 6 en
+ * previa al contexto de empresa (ADR-024). Su reloj (`new Date()` de la sesión abierta y la hora que les pasa a la invitación y a la vinculación, que desde B3-9 la reciben
+ * obligatoria: es el ÚNICO reloj de `server/sesion`) y su entorno (`ALLOWED_EMAIL_DOMAINS`) quedan DECLARADOS hasta la Fase 6 en
  * `test/arquitectura/server-sesion.test.ts`; lo que la capa no puede importar lo fija la regla `sesion-capa` de `.dependency-cruiser.cjs`.
  */
 function obtenerDominiosPermitidos(): string[] {
@@ -57,7 +58,7 @@ export async function emailPuedeIniciarSesion(email: string, hd: string | undefi
 
   if (usuarioExistente && (await tieneSucursalActiva(usuarioExistente.id))) return true;
 
-  return invitacionHabilitaElIngreso(tokenDeInvitacion, emailNorm);
+  return invitacionHabilitaElIngreso(tokenDeInvitacion, emailNorm, new Date());
 }
 
 function normalizar(email: string): string {
@@ -141,6 +142,6 @@ export async function decidirInicioDeSesion(entrada: {
   if (!usuario) return true;
   if (usuario.accounts.some((a) => a.providerAccountId === entrada.cuenta!.providerAccountId)) return true;
   if (usuario.accounts.length > 0) return "/login?aviso=cuenta-distinta";
-  const vinculada = await vincularCuentaConInvitacion({ token: entrada.tokenDeInvitacion, usuario: { id: usuario.id, email: usuario.email }, cuenta: entrada.cuenta });
+  const vinculada = await vincularCuentaConInvitacion({ token: entrada.tokenDeInvitacion, usuario: { id: usuario.id, email: usuario.email }, cuenta: entrada.cuenta, ahora: new Date() });
   return vinculada ? true : "/login?aviso=falta-invitacion";
 }

@@ -26,9 +26,7 @@ const MOTIVO_FASE_6_ENTORNO = "Fase 6: ALLOWED_EMAIL_DOMAINS (la vía 1 del gate
 /** `archivo` → la impureza que tiene declarada y por qué. Lo que no está acá, el archivo NO lo puede leer. */
 const DECLARADAS: Record<string, Partial<Record<Impureza, string>>> = {
   "acceso.ts": { reloj: MOTIVO_FASE_6_RELOJ, entorno: MOTIVO_FASE_6_ENTORNO },
-  // B3-3 los muda tal cual: todavía tienen `ahora = new Date()` como valor por defecto. B3-9 (O.24) vuelve `ahora` obligatorio y saca estas dos declaraciones.
-  "invitacion.ts": { reloj: "B3-9: `ahora` con valor por defecto `new Date()` en invitacionDelToken, invitacionHabilitaElIngreso y las dos aceptaciones; pasa a obligatorio" },
-  "vincular-cuenta.ts": { reloj: "B3-9: `ahora` con valor por defecto `new Date()` en vincularCuentaConInvitacion; pasa a obligatorio" },
+  // invitacion.ts y vincular-cuenta.ts NO leen el reloj: desde B3-9 (O.24) `ahora` es obligatorio y lo pasa el borde (acceso.ts, la pantalla, la acción, el caso de uso).
 };
 
 const IMPUREZAS: Impureza[] = ["reloj", "azar", "entorno"];

@@ -15,9 +15,10 @@ import { abreLaVia3, type VistaDeInvitacion } from "@/core/auth/invitacion";
 
 /**
  * Busca la invitación por el token del enlace. `null` si el token no tiene la forma esperada o no corresponde a ninguna: el que llama no distingue
- * «no existe» de «mal formado», y de afuera tampoco.
+ * «no existe» de «mal formado», y de afuera tampoco. `ahora` es obligatorio (O.24, B3-9): decide si la invitación está VENCIDA, y la fija quien está en el borde (la pantalla,
+ * la acción, el gate de login), no un valor por defecto escondido acá.
  */
-export async function invitacionDelToken(token: string | undefined, ahora: Date = new Date()): Promise<VistaDeInvitacion | null> {
+export async function invitacionDelToken(token: string | undefined, ahora: Date): Promise<VistaDeInvitacion | null> {
   if (!token || !esTokenConFormaValida(token)) return null;
   await verificarRolDeEjecucionDelProceso();
   const hash = hashDeToken(token);
@@ -67,7 +68,7 @@ export async function invitacionConSuBase(token: string | undefined, ahora: Date
  * ¿Esta invitación deja iniciar sesión con la cuenta de Google de `emailPerfil`? Sí cuando sigue pendiente (no aceptada, revocada ni vencida) y el email
  * es EL MISMO que se invitó. Es la cuarta vía del gate de login: no da acceso a nada más que a llegar a la pantalla de aceptación.
  */
-export async function invitacionHabilitaElIngreso(token: string | undefined, emailPerfil: string, ahora: Date = new Date()): Promise<boolean> {
+export async function invitacionHabilitaElIngreso(token: string | undefined, emailPerfil: string, ahora: Date): Promise<boolean> {
   const vista = await invitacionDelToken(token, ahora);
   if (!vista || vista.estado !== "PENDIENTE" || !abreLaVia3(vista)) return false;
   return vista.email === emailPerfil.trim().toLowerCase();

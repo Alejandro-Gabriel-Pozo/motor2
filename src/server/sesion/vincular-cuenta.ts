@@ -17,8 +17,8 @@ import { invitacionConSuBase } from "./invitacion";
  * otra cuenta de Google (con otro identificador NO se vincula nada: lo resuelve soporte, D2). La de vinculación se consume al vincular; las de gerente y de usuario no (las
  * consume la aceptación después). Idempotente si la cuenta ya es la de ese usuario. Devuelve `false` ante cualquier condición que falle.
  */
-export async function vincularCuentaConInvitacion(entrada: { token: string | undefined; usuario: { id: string; email: string }; cuenta: CuentaDeGoogle; ahora?: Date }): Promise<boolean> {
-  const ahora = entrada.ahora ?? new Date();
+export async function vincularCuentaConInvitacion(entrada: { token: string | undefined; usuario: { id: string; email: string }; cuenta: CuentaDeGoogle; ahora: Date }): Promise<boolean> {
+  const { ahora } = entrada;
   const invitacion = await invitacionConSuBase(entrada.token, ahora);
   if (!invitacion) return false;
   const { vista } = invitacion;

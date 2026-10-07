@@ -96,13 +96,13 @@ describe("gate de login con invitación", () => {
 describe("invitacionDelToken", () => {
   it("devuelve la vista sin el hash, con el estado efectivo, y null para un token desconocido o mal formado", async () => {
     const token = await crearInvitacion();
-    const vista = await invitacionDelToken(token);
+    const vista = await invitacionDelToken(token, new Date());
     expect(vista).toMatchObject({ empresaId: EMPRESA, nombreEmpresa: "Nueva en alta", estadoEmpresa: "PROVISIONING", email: EMAIL, estado: "PENDIENTE" });
     expect(JSON.stringify(vista)).not.toContain(hashDeToken(token));
     expect((await invitacionDelToken(token, new Date(Date.now() + 2 * 3_600_000)))?.estado).toBe("VENCIDA");
-    expect(await invitacionDelToken(generarTokenOpaco(azarDelProceso))).toBeNull();
-    expect(await invitacionDelToken("no-es-un-token")).toBeNull();
-    expect(await invitacionDelToken(undefined)).toBeNull();
+    expect(await invitacionDelToken(generarTokenOpaco(azarDelProceso), new Date())).toBeNull();
+    expect(await invitacionDelToken("no-es-un-token", new Date())).toBeNull();
+    expect(await invitacionDelToken(undefined, new Date())).toBeNull();
   });
 });
 
@@ -113,9 +113,9 @@ describe("invitacionDelToken busca por el hash del token, no solo por el RLS", (
     await prismaAdmin.invitacion.create({
       data: { empresaId: "empresa_principal", email: "ya-gerente@gmail.com", rolEmpresa: "gerente", hashToken: hashDeToken("T".repeat(43)), venceEn: new Date(Date.now() + 3_600_000), estado: "ACEPTADA", aceptadaEn: new Date(), aceptadaPorId: u.id },
     });
-    expect(await invitacionDelToken(generarTokenOpaco(azarDelProceso))).toBeNull();
+    expect(await invitacionDelToken(generarTokenOpaco(azarDelProceso), new Date())).toBeNull();
     const token = await crearInvitacion();
-    expect(await invitacionDelToken(token)).toMatchObject({ empresaId: EMPRESA, email: EMAIL });
+    expect(await invitacionDelToken(token, new Date())).toMatchObject({ empresaId: EMPRESA, email: EMAIL });
   });
 });
 
