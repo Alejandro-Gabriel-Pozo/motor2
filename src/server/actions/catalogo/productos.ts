@@ -21,7 +21,7 @@ import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-produc
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";
-import { requerirSesion, requerirVer, requerirVerDeEmpresa } from "../con-sesion";
+import { requerirVer, requerirVerAlguna, requerirVerDeEmpresa } from "../con-sesion";
 
 export interface ProductoOpcion {
   id: string;
@@ -40,7 +40,33 @@ const LIMITE_SELECTOR = 20;
  * vacío); con término, filtra por nombre o código.
  */
 export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto): Promise<ProductoOpcion[]> {
-  const ctx = await requerirSesion();
+  // H8 (D-2): el «O» de las claves de las 24 pantallas que muestran el selector (test/arquitectura/consumidores-de-lecturas-declarados.test.ts).
+  const ctx = await requerirVerAlguna([
+    "proceso_compra",
+    "proceso_produccion",
+    "proceso_consumo",
+    "proceso_ajuste",
+    "proceso_transferencia",
+    "proceso_merma",
+    "proceso_devolucion_consignacion",
+    "proceso_devolucion_cliente",
+    "proceso_devolucion_proveedor",
+    "proceso_venta",
+    "proceso_control",
+    "precio_local",
+    "traspaso_solicitar",
+    "traspaso_enviar_directo",
+    "stock_minimo",
+    "stock_seccion_habitual",
+    "stock_reclasificar",
+    "conteo_frecuencia",
+    "reporte_conteos",
+    "reporte_historial",
+    "guardar_receta",
+    "pos_mesas",
+    "alta_producto",
+    "producto_ver_catalogo",
+  ]);
   const t = texto(termino);
   const condiciones = [
     ...(filtro?.tipo ? [{ tipo: filtro.tipo }] : []),
@@ -60,9 +86,12 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
   });
 }
 
-/** Un producto puntual por id, en la misma forma que el combobox — para mostrar su etiqueta después de elegirlo (ej. Conteo Físico, al agregar una fila manual). */
+/**
+ * Un producto puntual por id, en la misma forma que el combobox — para mostrar su etiqueta después de elegirlo (ej. Conteo Físico, al agregar una fila manual).
+ * Exige el «Ver» de alguna de sus dos pantallas: conteo físico o el reporte de conteos (H8, D-5).
+ */
 export async function obtenerProductoOpcion(productoId: string): Promise<ProductoOpcion | null> {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVerAlguna(["proceso_control", "reporte_conteos"]);
   return ctx.db.producto.findUnique({ where: { id: productoId }, select: { id: true, codigo: true, nombre: true } });
 }
 
@@ -83,7 +112,8 @@ export interface InsumoDeProducto {
  * nuevo y asignárselo retroactivamente.
  */
 export async function obtenerInsumoDeProducto(productoId: string): Promise<InsumoDeProducto | null> {
-  const ctx = await requerirSesion();
+  // H8: el formulario de producto, en alta o en edición.
+  const ctx = await requerirVerAlguna(["alta_producto", "producto_ver_catalogo"]);
   const p = await ctx.db.producto.findUnique({
     where: { id: productoId },
     include: { insumo: true, unidadStock: true },
@@ -530,10 +560,12 @@ export interface PresentacionOpcion {
 /**
  * Solo lectura. La usan tanto la pantalla de gestión (producto-form, lista
  * completa incluyendo inactivas para poder reactivarlas) como el form de
- * Compra (filtra a `.activa` — ver PanelMovimientoForm).
+ * Compra (filtra a `.activa` — ver PanelMovimientoForm). Exige el «Ver» de
+ * alguna de esas pantallas (H8): la ficha o la edición del producto, la
+ * compra o la devolución a proveedor.
  */
 export async function listarPresentaciones(productoId: string): Promise<PresentacionOpcion[]> {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVerAlguna(["producto_ver_catalogo", "proceso_compra", "proceso_devolucion_proveedor"]);
   const filas = await ctx.db.presentacion.findMany({
     where: { productoId },
     include: { unidadCompra: true },
