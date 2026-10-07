@@ -19,7 +19,7 @@ Rutas verificadas contra el repo el 2026-09-27 (base `91f37d3`).
 
 | Documento 1 (propuesta externa) | Convención real en motor2 |
 |---|---|
-| `public.ts` | El de la Fase C: `public.ts` + `public-servidor.ts` por dominio de `core/` (la regla `sin-internals-de-otro-dominio` de `.dependency-cruiser.cjs` ya está preparada; `DOMINIOS_CON_PUBLIC` arranca vacía y ningún dominio tiene todavía su `public.ts`) |
+| `public.ts` | El de la Fase C: `public.ts` + `public-servidor.ts` por dominio de `core/` (la regla `sin-internals-de-otro-dominio` de `.dependency-cruiser.cjs`; desde la Fase 2 de la pureza, 2026-10-06, TODO dominio de negocio tiene su fachada y la lista se invirtió a `DOMINIOS_SIN_PUBLIC_TODAVIA`, hoy vacía) |
 | `contratos.ts`, `proyecciones/` | Tipos en `core/features/<f>/<f>.schema.ts` (hoy: `compras/compra.schema.ts`, `traspasos/traspaso.schema.ts`) |
 | `comandos/`, `guards/` | `<f>.schema.ts` + `<f>.guard.ts` (convención ya usada desde el 2026-09-25) más los módulos de reglas puras de `core/<dominio>/` (ej. `core/compras/anulacion.ts`, `core/compras/correccion.ts`) |
 | `consultas/` | `server/consultas/` (Fase D, piloto `server/consultas/catalogo/productos.ts`) para lecturas de UI; para cargas DENTRO de una mutación, `server/persistencia/<dominio>/cargar-*.ts` |
@@ -402,7 +402,7 @@ nuevo las cruza:
   se esquivaría importando por ahí) — y tampoco importa `server/persistencia/` directo, ni sus tipos. Vale para el
   ARCHIVO entero, no símbolo por símbolo (hallazgo de M11c: obligó a mudar lecturas a un archivo de `lecturas-*.ts`
   aparte cuando convivían con las mutaciones migradas).
-- **`sin-internals-de-otro-dominio`** (una entrada por dominio en `DOMINIOS_CON_PUBLIC`): fuera de `core/<dominio>/`,
+- **`sin-internals-de-otro-dominio`** (una regla por dominio de negocio; desde la Fase 2 no hay dominios exceptuados): fuera de `core/<dominio>/`,
   `server/consultas/` y `server/persistencia/` solo se importa la fachada del dominio (`public.ts`/`public-servidor.ts`),
   nunca sus archivos internos.
 - **`publico-puro`**: `core/<dominio>/public.ts` no alcanza `src/lib/db.ts`, ni directa ni transitivamente.
@@ -421,8 +421,8 @@ migración), `ACCIONES_CON_CASO_DE_USO` (la lista de Server Actions ya migradas 
 
 ### Convención `public.ts` / `public-servidor.ts`
 
-Por dominio de `core/` que la adoptó (`DOMINIOS_CON_PUBLIC` en `.dependency-cruiser.cjs`: hoy `catalogo` (C1, piloto),
-`movimientos` (C2), `reportes` (C3) — `pos`/`stock` quedan pendientes, ver "Fuera de alcance" más abajo):
+Por dominio de `core/` (desde la Fase 2 de la pureza, 2026-10-06, la adoptaron todos los dominios de negocio: `catalogo` (C1, piloto), `movimientos` (C2), `reportes` (C3) y, después, `pos`, `stock`, `compras`, `carta` y `fiscal`;
+`DOMINIOS_CON_PUBLIC` se invirtió a `DOMINIOS_SIN_PUBLIC_TODAVIA`, hoy vacía):
 
 - **`public.ts`** — fachada PURA: solo lo que puede llegar al bundle del cliente (sin `@/lib/db`, sin Prisma, sin
   `node:crypto` ni otro módulo de Node). La importan módulos de otros dominios y, en algunos casos, componentes.

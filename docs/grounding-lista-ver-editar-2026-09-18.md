@@ -54,7 +54,7 @@ Pendiente ya documentado en recetas: los formularios «Agregar ingrediente» y �
 | Datos (código, tipo, categoría, unidades, factor, consignación, observaciones, activo) | `Producto` |
 | Precio y costo (venta global y local por sucursal, costo actual, margen) | `calcularCostosYMargenes` (`core/reportes/costos.ts:122`), `PrecioLocalProducto` |
 | Stock (saldo por sección y lote, mínimo, alertas) | `calcularStockConsolidado`, `calcularAlertasStock` |
-| Proveedores y precios | `ProveedorPorProducto`, `obtenerComparativaPreciosPorInsumo` |
+| Proveedores y precios | `cargarOfertasDeProveedores` (derivado del Kardex vigente; desde 2026-10-07), `obtenerComparativaPreciosPorInsumo`; `ProveedorPorProducto` solo guarda la unidad de compra y la referencia |
 | Presentaciones de compra | `Presentacion` (hoy se editan dentro del formulario) |
 | Receta y usos como ingrediente | `obtenerRecetaVigente`, enlace a `/catalogo/recetas/[id]` |
 | Movimientos recientes | `obtenerHistorialProducto` (`core/reportes/historial-producto.ts:73`), enlace a `/reportes/historial?productoId=` |

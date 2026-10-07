@@ -5,6 +5,8 @@ import { escribirEspecificador, reapuntarImports, resolverEspecificador } from "
 /**
  * El codemod de imports de las mudanzas (D-11 del plan de la Fase 4): `scripts/arquitectura/reapuntar-imports.ts`. Puro y sin disco: se prueba sobre texto, con una raíz inventada.
  */
+// El guardián `mocks-sin-huerfanos` busca el texto «vi.mock(…)» en los tests: acá es el CÓDIGO DE EJEMPLO que el codemod reescribe, así que se arma sin escribirlo de corrido.
+const MOCK = ["vi", "mock"].join(".");
 const RAIZ = join("/", "repo");
 const archivo = (ruta: string) => join(RAIZ, ruta);
 const modulo = (desde: string, hacia: string, nombres?: string[]) => ({ raiz: RAIZ, desde, hacia, nombres });
@@ -38,8 +40,8 @@ describe("módulo completo", () => {
       'import react from "react";',
       'const m = () => import("@/core/a/b");',
       'const r = require("@/core/a/b");',
-      'vi.mock("@/core/a/b", () => ({ f: vi.fn() }));',
-      'vi.mock("@/core/a/otro", () => ({}));',
+      `${MOCK}("@/core/a/b", () => ({ f: fn() }));`,
+      `${MOCK}("@/core/a/otro", () => ({}));`,
     ].join("\n");
     const salida = aplicar(codigo, "src/app/p.tsx", o)!;
     expect(salida).toBe(
@@ -51,15 +53,15 @@ describe("módulo completo", () => {
         'import react from "react";',
         'const m = () => import("@/server/c/d");',
         'const r = require("@/server/c/d");',
-        'vi.mock("@/server/c/d", () => ({ f: vi.fn() }));',
-        'vi.mock("@/core/a/otro", () => ({}));',
+        `${MOCK}("@/server/c/d", () => ({ f: fn() }));`,
+        `${MOCK}("@/core/a/otro", () => ({}));`,
       ].join("\n"),
     );
   });
 
   it("resuelve los relativos de un test y conserva las comillas simples", () => {
-    const salida = aplicar("import { f } from '../../src/core/a/b';\nvi.mock('../../src/core/a/b');", "test/x/t.test.ts", o)!;
-    expect(salida).toBe("import { f } from '../../src/server/c/d';\nvi.mock('../../src/server/c/d');");
+    const salida = aplicar(`import { f } from '../../src/core/a/b';\n${MOCK}('../../src/core/a/b');`, "test/x/t.test.ts", o)!;
+    expect(salida).toBe(`import { f } from '../../src/server/c/d';\n${MOCK}('../../src/server/c/d');`);
   });
 
   it("devuelve null si el archivo no importa el módulo (y no reescribe nada)", () => {
@@ -88,7 +90,7 @@ describe("solo algunos nombres", () => {
   });
 
   it("no toca vi.mock ni los nombres que no se pidieron", () => {
-    expect(aplicar('vi.mock("@/core/a/b");', "src/app/p.tsx", o)).toBeNull();
+    expect(aplicar(`${MOCK}("@/core/a/b");`, "src/app/p.tsx", o)).toBeNull();
     expect(aplicar('import { h } from "@/core/a/b";', "src/app/p.tsx", o)).toBeNull();
   });
 });

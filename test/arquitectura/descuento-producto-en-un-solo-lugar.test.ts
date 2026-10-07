@@ -59,7 +59,7 @@ describe("descuento de producto: un solo lugar decide el % de cada producto en l
     }
     expect(
       problemas,
-      `Estas líneas leen DescuentoProductoSucursal a mano en vez de pasar por descuentosDeProductoEnSucursal (core/carta/public-servidor):\n${problemas.join("\n")}`
+      `Estas líneas leen DescuentoProductoSucursal a mano en vez de pasar por descuentosDeProductoEnSucursal (server/lecturas/carta/descuentos):\n${problemas.join("\n")}`
     ).toEqual([]);
   });
 
