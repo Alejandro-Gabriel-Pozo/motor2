@@ -95,7 +95,9 @@ test (la lista de las 19).
 - **Releer el actor dentro de la transacción** (hecho en el Hito 3): los casos de uso de usuarios y el alta de sucursal miden a quien actúa desde la base
   (`actorDesdeLaBase` en una sucursal, `objetivoEnLaEmpresa` en la empresa), no con el contexto de la sesión, que pudo quedar viejo. Única diferencia fuera de
   las carreras, fijada en `test/permisos/actor-desde-la-base-equivalencia.test.ts` y pendiente de decisión del dueño: quien es administrador de una sucursal
-  inactiva cuenta como administrador ahí (como en el gate de sucursal).
+  inactiva cuenta como administrador ahí (como en el gate de sucursal). **Auditoría del Hito 3 (2026-10-08):** inocua y se deja así: ese admin ya es
+  administrador de la empresa y podría reactivar la sucursal con `activar_sucursal`; agregar `sucursal.activo` al filtro reabriría la discordancia con el gate
+  en sentido contrario. Si el dueño quiere que una sucursal inactiva no cuente, el lugar es el gate de sucursal (trabajo propio, cambia la caracterización).
 - **Releer el rol dentro de la transacción** (hecho): `guardarPermisos` lee el rol por id, sin `activo` en el `where` (no toma un bloqueo de predicado sobre
   todos los roles activos), y la acción, dentro de la transacción serializable.
 - **Regla de «uno mismo»** (hecha): «nunca por encima del rango propio en el contexto, salvo el gerente», dentro de `mensajeSiNoPuedeDarRolA` (C2). Hoy solo
@@ -168,3 +170,8 @@ test (la lista de las 19).
   (rol y acción dentro de la transacción), `test/permisos/dar-rol-a-uno-mismo.test.ts` y `test/permisos/dar-rol-a.propiedades.test.ts` («uno mismo»), y
   `test/permisos/matriz-del-admin-solo-gerente.test.ts` con el caso (c) de `test/permisos/caracterizacion-supuestos-rbac.test.ts` (D13/D14).
 - Las mutaciones (rojo → revertido → verde) están anotadas en las filas 3.4 y O.35 de `docs/pureza-integracion.md`.
+
+### Casos que D13/D14 deja abiertos (auditoría del Hito 3)
+
+- **Empresa sin gerente:** como la matriz del rol admin la edita solo el gerente, en una empresa que no tiene gerente (estado posible: sembrada o heredada, gerente nunca aceptado) nadie puede editarla. No abre nada: cierra. La salida es el traspaso de la gerencia desde la plataforma.
+- **Capacidades por sucursal:** el recorte por la vía de las capacidades sigue abierto, anterior a esta rama. Un administrador no gerente con `capacidades_sucursal` puede apagar `renombrar_rol`, `alta_sucursal`, `activar_sucursal`, `renombrar_sucursal` y `ver_auditoria` en todas las sucursales, y eso alcanza también al gerente (comparte el rol). Pendiente de decisión del dueño: las 12 claves de gobierno siempre habilitadas, o esa perilla solo del gerente (ver la fila O.41 de la lista de control).

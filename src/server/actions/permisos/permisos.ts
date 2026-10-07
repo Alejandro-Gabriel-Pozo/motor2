@@ -28,7 +28,7 @@ export type CambioPermisoInput = CambioDeMatriz;
  *
  * Desde el Hito 3 (Fase I, I.3 de `docs/plan-hito-3-pureza.md`) es un adaptador: `conEdicionDePermisos("gestion_permisos")` (la clave más la política de
  * plataforma, ADR-008) → formato (`guardComandoGuardarPermisos`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/guardar-permisos.ts`: roles y acciones
- * fuera de la transacción a propósito, chequeo optimista contra lo que la persona vio, SERIALIZABLE con reintento, escritura por
+ * leídos DENTRO de la transacción (O.35, releer el rol), chequeo optimista contra lo que la persona vio, SERIALIZABLE con reintento, escritura por
  * `server/persistencia/permisos/matriz.ts` y auditoría; agotar los reintentos vuelve como «justo ahora había otro guardado») → `aResultadoAccion`.
  */
 export async function guardarPermisos(cambios: CambioPermisoInput[]): Promise<ResultadoAccion> {
