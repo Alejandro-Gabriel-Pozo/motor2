@@ -1,8 +1,8 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { actorEnSucursal, mensajeSiNoPuedeGestionar, mensajeSiReactivaAdminSinSerGerente } from "@/core/permisos/gestion-de-usuarios";
-import { objetivoEnSucursal, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";
+import { mensajeSiNoPuedeGestionar, mensajeSiReactivaAdminSinSerGerente } from "@/core/permisos/gestion-de-usuarios";
+import { actorDesdeLaBase, objetivoEnSucursal, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { cambiarActivoDeMembresia } from "@/server/persistencia/permisos/membresias";
@@ -18,7 +18,8 @@ type ResultadoActualizarActivoMembresia = ResultadoCaso<null, "MEMBRESIA_NO_ENCO
  *
  * En la transacción de gobierno (`conGobierno`, serializable con reintento), igual que antes:
  *  1. «No se encontró esa membresía» si no existe o no es de la sucursal activa de quien actúa.
- *  2. El techo de gestión (`mensajeSiNoPuedeGestionar`) sobre la persona de la membresía.
+ *  2. El techo de gestión (`mensajeSiNoPuedeGestionar`) sobre la persona de la membresía, con quien actúa RELEÍDO de la base en la sucursal activa
+ *     (`actorDesdeLaBase`; O35-B de O.35: no con el contexto de la sesión, que pudo quedar viejo).
  *  3. Al ACTIVAR: reactivar a un administrador es solo del gerente (`reactivaAUnAdmin` + `mensajeSiReactivaAdminSinSerGerente`).
  *  4. Que la empresa conserve un admin efectivo y el gerente una sucursal activa lo hacen cumplir las invariantes (`conInvariantesDeGobierno`, antes y después),
  *     alrededor de la escritura (`cambiarActivoDeMembresia`, `server/persistencia/permisos/membresias.ts`) y su auditoría (`UsuarioSucursal.activo`).
@@ -32,7 +33,7 @@ type ResultadoActualizarActivoMembresia = ResultadoCaso<null, "MEMBRESIA_NO_ENCO
  * @ficha permiso=activar_usuario_sucursal transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function actualizarActivoMembresiaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "sucursalId" | "sucursalNombre" | "rolEmpresa" | "membresias" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "sucursalId" | "sucursalNombre" | "transaccion">,
   comando: { membresiaId: string; activo: boolean },
 ): Promise<ResultadoActualizarActivoMembresia> {
   const { membresiaId, activo } = comando;
@@ -42,7 +43,7 @@ export async function actualizarActivoMembresiaCasoDeUso(
       const membresia = await tx.usuarioSucursal.findUnique({ where: { id: membresiaId }, include: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } } });
       if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", "No se encontró esa membresía.");
 
-      const quienActua = actorEnSucursal(actor, actor.sucursalId);
+      const quienActua = await actorDesdeLaBase(tx, actor.empresaId, actor.usuarioId, actor.sucursalId);
       const objetivo = await objetivoEnSucursal(tx, actor.empresaId, membresia.usuarioId, membresia.rol);
       const rechazo = mensajeSiNoPuedeGestionar(quienActua, objetivo);
       if (rechazo) return fracaso("TECHO_DE_PRIVILEGIO", rechazo);

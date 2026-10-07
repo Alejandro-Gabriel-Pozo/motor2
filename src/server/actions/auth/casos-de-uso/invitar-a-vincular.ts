@@ -1,8 +1,8 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { mensajeSiSeReenviaMuyPronto } from "@/core/features/empresa/invitacion";
-import { actorEnSucursal, mensajeSiNoPuedeGestionar } from "@/core/permisos/gestion-de-usuarios";
-import { objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";
+import { mensajeSiNoPuedeGestionar } from "@/core/permisos/gestion-de-usuarios";
+import { actorDesdeLaBase, objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
@@ -24,7 +24,8 @@ type ResultadoInvitarAVincular = ResultadoCaso<
  * Este caso de uso no manda nada: devuelve en `datos.porEnviar` la invitación y su token (los del último intento de la transacción).
  *
  * En la transacción de gobierno (`conGobierno`, serializable con reintento), igual que antes: la membresía de la sucursal activa; que no haya vinculado ya su cuenta de
- * Google; que su cuenta no esté desactivada en toda la plataforma; el techo de gestión sobre esa persona; la invitación de vinculación pendiente que ya tuviera, con el
+ * Google; que su cuenta no esté desactivada en toda la plataforma; el techo de gestión sobre esa persona (con quien actúa RELEÍDO de la base en la sucursal
+ * activa, `actorDesdeLaBase`: O35-B de O.35, no con el contexto de la sesión, que pudo quedar viejo); la invitación de vinculación pendiente que ya tuviera, con el
  * freno de un minuto desde su último envío medido contra la hora del pedido (`mensajeSiSeReenviaMuyPronto`); y, si había una, rotarla
  * (`rotarInvitacionPendiente`), si no, crearla (`asegurarInvitacionDeVinculacion`), con su auditoría (el paso compartido de invitaciones). Sin invariantes de gobierno:
  * `siSeViola` está solo por la forma.
@@ -38,7 +39,7 @@ type ResultadoInvitarAVincular = ResultadoCaso<
  * @ficha permiso=gestion_usuarios transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function invitarAVincularCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "sucursalId" | "rolEmpresa" | "membresias"> & Pick<ContextoDeAccion, "transaccion" | "ahora">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "sucursalId"> & Pick<ContextoDeAccion, "transaccion" | "ahora">,
   comando: { membresiaId: string },
   azar: FuenteDeAzar,
 ): Promise<ResultadoInvitarAVincular> {
@@ -54,7 +55,8 @@ export async function invitarAVincularCasoDeUso(
       if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", "No se encontró esa membresía.");
       if (membresia.usuario.accounts.length > 0) return fracaso("YA_VINCULO_GOOGLE", "Esa persona ya vinculó su cuenta de Google.");
       if (!membresia.usuario.activoGlobal) return fracaso("CUENTA_DESACTIVADA_EN_PLATAFORMA", "La cuenta de ese usuario está desactivada en toda la plataforma.");
-      const rechazo = mensajeSiNoPuedeGestionar(actorEnSucursal(actor, actor.sucursalId), await objetivoEnSucursal(tx, actor.empresaId, membresia.usuarioId, membresia.rol));
+      const quienActua = await actorDesdeLaBase(tx, actor.empresaId, actor.usuarioId, actor.sucursalId);
+      const rechazo = mensajeSiNoPuedeGestionar(quienActua, await objetivoEnSucursal(tx, actor.empresaId, membresia.usuarioId, membresia.rol));
       if (rechazo) return fracaso("TECHO_DE_PRIVILEGIO", rechazo);
       const email = membresia.usuario.email;
       const previa = await tx.invitacion.findFirst({ where: { empresaId: actor.empresaId, email, estado: "PENDIENTE", rolEmpresa: "vinculacion" }, select: { id: true, enviadaEn: true } });

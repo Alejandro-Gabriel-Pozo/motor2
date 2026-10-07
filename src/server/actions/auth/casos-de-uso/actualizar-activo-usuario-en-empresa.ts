@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { actorEnLaEmpresa, mensajeSiNoPuedeGestionar, mensajeSiReactivaAdminSinSerGerente, mensajeSiSeApagaAlGerente } from "@/core/permisos/gestion-de-usuarios";
+import { mensajeSiNoPuedeGestionar, mensajeSiReactivaAdminSinSerGerente, mensajeSiSeApagaAlGerente } from "@/core/permisos/gestion-de-usuarios";
 import { objetivoEnLaEmpresa, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { cambiarActivoDeCuentaEnEmpresa } from "@/server/persistencia/permisos/membresias";
@@ -18,7 +18,9 @@ type ResultadoActualizarActivoUsuarioEnEmpresa = ResultadoCaso<null, "USUARIO_NO
  * Es el cuerpo que antes vivía en línea en la Server Action `actualizarActivoUsuarioEnEmpresa` (`src/server/actions/auth/usuarios.ts`), movido TAL CUAL: mismas
  * consultas, mismo orden, mismos mensajes, todo dentro de la transacción de gobierno. La Server Action quedó como adaptador
  * (`conPermisoDeEmpresa("apagar_cuenta_empresa")` → este caso de uso → `aResultadoAccion`), sin guard de formato: solo recibe un id y un booleano (`SIN_GUARD`).
- * Es una acción de contexto empresa: quien actúa se mide por ser admin en CUALQUIER sucursal de la empresa (o gerente), y a quien se toca, igual.
+ * Es una acción de contexto empresa: quien actúa se mide por ser admin en CUALQUIER sucursal de la empresa (o gerente), y a quien se toca, igual. A los dos se los
+ * mide con la MISMA lectura de la base (`objetivoEnLaEmpresa`), dentro de la transacción: O35-B de O.35, quien actúa ya no sale del contexto de la sesión, que
+ * se armó al principio del pedido y pudo quedar viejo.
  *
  * En la transacción de gobierno (`conGobierno`, serializable con reintento), igual que antes:
  *  1. «No se encontró ese usuario» si no tiene pertenencia en la empresa (`User` no tiene RLS y `UsuarioEmpresa` la tiene recién desde rls_usuario_empresa: el
@@ -37,7 +39,7 @@ type ResultadoActualizarActivoUsuarioEnEmpresa = ResultadoCaso<null, "USUARIO_NO
  * @ficha permiso=apagar_cuenta_empresa transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function actualizarActivoUsuarioEnEmpresaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "rolEmpresa" | "membresias" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "transaccion">,
   comando: { usuarioId: string; activo: boolean },
 ): Promise<ResultadoActualizarActivoUsuarioEnEmpresa> {
   const { usuarioId, activo } = comando;
@@ -52,7 +54,7 @@ export async function actualizarActivoUsuarioEnEmpresaCasoDeUso(
       if (!pertenencia) return fracaso("USUARIO_NO_ENCONTRADO", "No se encontró ese usuario.");
       const usuario = pertenencia.usuario;
 
-      const quienActua = actorEnLaEmpresa(actor);
+      const quienActua = await objetivoEnLaEmpresa(tx, actor.empresaId, actor.usuarioId);
       const objetivo = await objetivoEnLaEmpresa(tx, actor.empresaId, usuarioId);
       const rechazo = mensajeSiNoPuedeGestionar(quienActua, objetivo) ?? (activo ? null : mensajeSiSeApagaAlGerente(objetivo));
       if (rechazo) return fracaso("TECHO_DE_PRIVILEGIO", rechazo);

@@ -2,8 +2,8 @@ import "server-only";
 import type { ComandoAgregarOActualizarUsuario } from "@/core/features/permisos/usuario.guard";
 import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion } from "./invitaciones-de-usuario-en-tx";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { actorEnSucursal, mensajeSiNoPuedeDarRolA, mensajeSiReactivaAdminSinSerGerente } from "@/core/permisos/gestion-de-usuarios";
-import { objetivoEnSucursal, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";
+import { mensajeSiNoPuedeDarRolA, mensajeSiReactivaAdminSinSerGerente } from "@/core/permisos/gestion-de-usuarios";
+import { actorDesdeLaBase, objetivoEnSucursal, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
@@ -32,7 +32,8 @@ type ResultadoAgregarOActualizarUsuario = ResultadoCaso<
  *
  * En la transacción de gobierno (`conGobierno`, serializable con reintento), igual que antes:
  *  1. «Rol inválido o inactivo» y «Sucursal inválida» (de la empresa).
- *  2. La persona por su email y su cuenta en la empresa.
+ *  2. La persona por su email y su cuenta en la empresa, y quien actúa, RELEÍDO de la base en la sucursal pedida (`actorDesdeLaBase`; O35-B de O.35: no se confía
+ *     en el contexto de la sesión, que se armó al principio del pedido y pudo quedar viejo si mientras tanto le bajaron el rol o le apagaron la membresía).
  *  3. No es miembro: cuenta apagada en toda la plataforma → rechazo; techo para dar ese rol y para gestionarla; la invitación (`asegurarInvitacionDeUsuario`, con su
  *     auditoría) y el mensaje según haya que mandar el mail o se haya sumado la sucursal a la invitación pendiente.
  *  4. Es miembro: su membresía en esa sucursal; techo; reactivar a un admin es solo del gerente; y, midiendo las invariantes antes y después
@@ -50,7 +51,7 @@ type ResultadoAgregarOActualizarUsuario = ResultadoCaso<
  * @ficha permiso=gestion_usuarios transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function agregarOActualizarUsuarioCasoDeUso(
-  actor: Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "rolEmpresa" | "membresias" | "transaccion" | "ahora">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "transaccion" | "ahora">,
   comando: ComandoAgregarOActualizarUsuario,
   azar: FuenteDeAzar,
 ): Promise<ResultadoAgregarOActualizarUsuario> {
@@ -70,7 +71,8 @@ export async function agregarOActualizarUsuarioCasoDeUso(
       const pertenenciaPrevia = usuarioPrevio
         ? await tx.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId: usuarioPrevio.id, empresaId: actor.empresaId } }, select: { activo: true } })
         : null;
-      const quienActua = actorEnSucursal(actor, comando.sucursalId);
+      // O35-B: quien actúa se mide desde la base, dentro de esta transacción, en la sucursal pedida (no con `ctx.membresias`).
+      const quienActua = await actorDesdeLaBase(tx, actor.empresaId, actor.usuarioId, comando.sucursalId);
 
       // No es miembro de la empresa: INVITACIÓN. No se crea ningún User ni membresía hasta que acepte.
       if (!usuarioPrevio || !pertenenciaPrevia) {

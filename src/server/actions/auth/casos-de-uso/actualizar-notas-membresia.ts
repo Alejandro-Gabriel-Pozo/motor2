@@ -1,8 +1,8 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { actorEnSucursal, mensajeSiNoPuedeGestionar } from "@/core/permisos/gestion-de-usuarios";
-import { objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";
+import { mensajeSiNoPuedeGestionar } from "@/core/permisos/gestion-de-usuarios";
+import { actorDesdeLaBase, objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { texto } from "@/core/texto";
@@ -18,9 +18,11 @@ type ResultadoActualizarNotasMembresia = ResultadoCaso<null, "MEMBRESIA_NO_ENCON
  * (`conPermiso("notas_usuario_sucursal")` → este caso de uso → `aResultadoAccion`), sin guard de formato: recibe un id y un texto libre que nunca se validó
  * (`SIN_GUARD`, con su motivo).
  *
- * Orden, igual que antes (las dos lecturas con `actor.db`, fuera de la transacción):
+ * Orden, igual que antes (las lecturas con `actor.db`, fuera de la transacción):
  *  1. «No se encontró esa membresía» si no existe o no es de la sucursal activa de quien actúa.
- *  2. El techo de gestión (`mensajeSiNoPuedeGestionar`): las notas de un admin o del gerente las toca solo quien puede tocarlos.
+ *  2. El techo de gestión (`mensajeSiNoPuedeGestionar`): las notas de un admin o del gerente las toca solo quien puede tocarlos. Quien actúa se mide desde la
+ *     base (`actorDesdeLaBase`, O35-B de O.35), junto a quien se toca y con el mismo cliente: no con el contexto de la sesión, que pudo quedar viejo. Este caso de
+ *     uso no tiene transacción serializable (ficha SIMPLE): esa lectura queda fuera de la transacción de la escritura, como las de la membresía y de quien se toca.
  *  3. En UNA transacción: la escritura (`cambiarNotasDeMembresia`, `server/persistencia/permisos/membresias.ts`; el texto recortado, o `null` si queda vacío) y
  *     su fila de auditoría (`UsuarioSucursal.notas`, de las notas anteriores a las nuevas, con la sucursal de la membresía).
  *
@@ -31,12 +33,12 @@ type ResultadoActualizarNotasMembresia = ResultadoCaso<null, "MEMBRESIA_NO_ENCON
  *
  * @contract Deja en la membresía de la sucursal activa las notas pedidas (recortadas; vacías → sin notas) con su registro de auditoría, salvo que quien actúa no pueda gestionar a esa persona.
  * @idempotency No aplica — repetir el pedido vuelve a escribir las mismas notas (sin fila de auditoría nueva: el valor no cambió); no hay documento ni clave que arbitre el reintento.
- * @transaction `actor.transaccion` (READ COMMITTED, la del contexto): escritura y auditoría juntas. Las dos lecturas quedan fuera, como antes.
+ * @transaction `actor.transaccion` (READ COMMITTED, la del contexto): escritura y auditoría juntas. Las lecturas (membresía, quien se toca y quien actúa) quedan fuera, como antes.
  * @sideEffects registrarCambioAuditado (UsuarioSucursal.notas, de las anteriores a las nuevas).
  * @ficha permiso=notas_usuario_sucursal transaccion=SIMPLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function actualizarNotasMembresiaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "sucursalId" | "sucursalNombre" | "rolEmpresa" | "membresias" | "db" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
   comando: { membresiaId: string; notas: string },
 ): Promise<ResultadoActualizarNotasMembresia> {
   const { membresiaId, notas } = comando;
@@ -44,7 +46,7 @@ export async function actualizarNotasMembresiaCasoDeUso(
   if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", "No se encontró esa membresía.");
 
   const objetivo = await objetivoEnSucursal(actor.db, actor.empresaId, membresia.usuarioId, membresia.rol);
-  const rechazo = mensajeSiNoPuedeGestionar(actorEnSucursal(actor, actor.sucursalId), objetivo);
+  const rechazo = mensajeSiNoPuedeGestionar(await actorDesdeLaBase(actor.db, actor.empresaId, actor.usuarioId, actor.sucursalId), objetivo);
   if (rechazo) return fracaso("TECHO_DE_PRIVILEGIO", rechazo);
 
   const nuevas = texto(notas) || null;

@@ -2,15 +2,18 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { TipoDeInvitacion } from "@/core/features/empresa/invitacion";
-import { actorEnSucursal, mensajeSiNoPuedeDarRolSinTechoDeGestion, mensajeSiNoPuedeGestionar } from "@/core/permisos/gestion-de-usuarios";
-import { objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";
+import { mensajeSiNoPuedeDarRolSinTechoDeGestion, mensajeSiNoPuedeGestionar } from "@/core/permisos/gestion-de-usuarios";
+import { actorDesdeLaBase, objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { SELECCION_DE_ROL_PARA_JERARQUIA } from "@/core/permisos/jerarquia";
 import { requierePermiso } from "@/server/acceso/gate";
 
 const TIPO_DE_USUARIO: TipoDeInvitacion = "usuario";
 
-/** Lo que de quien actúa necesita el chequeo: su contexto (sucursal activa, rol de empresa, membresías) y el cliente de la empresa para el gate. */
-export type ActorDeInvitacion = Pick<ContextoUsuario, "usuarioId" | "empresaId" | "sucursalId" | "rolEmpresa" | "membresias" | "db">;
+/**
+ * Lo que de quien actúa necesita el chequeo: quién es, su sucursal activa y el cliente de la empresa para el gate. Su rol de empresa y si es administrador en cada
+ * sucursal NO salen del contexto de la sesión: se releen de la base dentro de la transacción (`actorDesdeLaBase`, O35-B de O.35).
+ */
+export type ActorDeInvitacion = Pick<ContextoUsuario, "usuarioId" | "empresaId" | "sucursalId" | "db">;
 
 export type InvitacionGestionable =
   | { ok: true; invitacion: { id: string; email: string; tipo: "usuario" | "vinculacion"; enviadaEn: Date | null } }
@@ -44,7 +47,7 @@ export async function invitacionGestionable(actor: ActorDeInvitacion, tx: Prisma
         if (!gate.ok) return { ok: false, mensaje: "Esa invitación da acceso a sucursales donde no podés gestionar usuarios." };
       }
       // La persona todavía no es miembro (no hay a quién medir): solo el techo del rol que se ofrece, con la variante declarada (C2, II.2).
-      const rechazo = mensajeSiNoPuedeDarRolSinTechoDeGestion(actorEnSucursal(actor, fila.sucursalId), fila.rol);
+      const rechazo = mensajeSiNoPuedeDarRolSinTechoDeGestion(await actorDesdeLaBase(tx, actor.empresaId, actor.usuarioId, fila.sucursalId), fila.rol);
       if (rechazo) return { ok: false, mensaje: rechazo };
     }
     return { ok: true, invitacion: { id: inv.id, email: inv.email, tipo: "usuario", enviadaEn: inv.enviadaEn } };
@@ -52,7 +55,8 @@ export async function invitacionGestionable(actor: ActorDeInvitacion, tx: Prisma
 
   const membresia = await tx.usuarioSucursal.findFirst({ where: { sucursalId: actor.sucursalId, usuario: { email: inv.email } }, select: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA }, usuarioId: true } });
   if (!membresia) return { ok: false, mensaje: "No se encontró esa invitación pendiente." };
-  const rechazo = mensajeSiNoPuedeGestionar(actorEnSucursal(actor, actor.sucursalId), await objetivoEnSucursal(tx, actor.empresaId, membresia.usuarioId, membresia.rol));
+  const quienActua = await actorDesdeLaBase(tx, actor.empresaId, actor.usuarioId, actor.sucursalId);
+  const rechazo = mensajeSiNoPuedeGestionar(quienActua, await objetivoEnSucursal(tx, actor.empresaId, membresia.usuarioId, membresia.rol));
   if (rechazo) return { ok: false, mensaje: rechazo };
   return { ok: true, invitacion: { id: inv.id, email: inv.email, tipo: "vinculacion", enviadaEn: inv.enviadaEn } };
 }
