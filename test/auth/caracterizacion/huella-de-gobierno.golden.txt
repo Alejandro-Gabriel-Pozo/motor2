@@ -1,0 +1,935 @@
+### 0. Siembra de la empresa (roles, matriz de permisos, unidades, motivos, destinos, sucursal)
+  ROL activo=true clave=admin nombre=admin
+  ROL activo=true clave=operador nombre=operador
+  PERMISO admin:activar_sucursal ver=true editar=true
+  PERMISO admin:activar_usuario_sucursal ver=true editar=true
+  PERMISO admin:alta_producto ver=true editar=true
+  PERMISO admin:alta_sucursal ver=true editar=true
+  PERMISO admin:anular_compra ver=true editar=true
+  PERMISO admin:anular_venta ver=true editar=true
+  PERMISO admin:apagar_cuenta_empresa ver=true editar=true
+  PERMISO admin:calibrar_rendimiento_local ver=true editar=true
+  PERMISO admin:cancelar_conteo ver=true editar=true
+  PERMISO admin:capacidades_sucursal ver=true editar=true
+  PERMISO admin:carta_contenido_producto ver=true editar=true
+  PERMISO admin:carta_copiar_de_sucursal ver=true editar=true
+  PERMISO admin:carta_generos ver=true editar=true
+  PERMISO admin:carta_items_agrupados ver=true editar=true
+  PERMISO admin:carta_portal ver=true editar=true
+  PERMISO admin:carta_producto_descuento ver=true editar=true
+  PERMISO admin:carta_promo_activar ver=true editar=true
+  PERMISO admin:carta_promo_definir ver=true editar=true
+  PERMISO admin:carta_promo_precio_local ver=true editar=true
+  PERMISO admin:carta_secciones ver=true editar=true
+  PERMISO admin:carta_tema ver=true editar=true
+  PERMISO admin:carta_ver ver=true editar=true
+  PERMISO admin:categoria_alta ver=true editar=true
+  PERMISO admin:categorias ver=true editar=true
+  PERMISO admin:clientes ver=true editar=true
+  PERMISO admin:comparar_precios ver=true editar=true
+  PERMISO admin:conteo_frecuencia ver=true editar=true
+  PERMISO admin:conteo_resolver_pendiente ver=true editar=true
+  PERMISO admin:corregir_compra ver=true editar=true
+  PERMISO admin:gestion_permisos ver=true editar=true
+  PERMISO admin:gestion_roles ver=true editar=true
+  PERMISO admin:gestion_usuarios ver=true editar=true
+  PERMISO admin:grupos_familia ver=true editar=true
+  PERMISO admin:guardar_receta ver=true editar=true
+  PERMISO admin:insumo_alta ver=true editar=true
+  PERMISO admin:insumo_renombrar_fusionar ver=true editar=true
+  PERMISO admin:insumos_mezclados ver=true editar=true
+  PERMISO admin:margen_objetivo_editar ver=true editar=true
+  PERMISO admin:motivos_destino_consumo ver=true editar=true
+  PERMISO admin:motivos_merma ver=true editar=true
+  PERMISO admin:notas_usuario_sucursal ver=true editar=true
+  PERMISO admin:notificar_alertas ver=true editar=true
+  PERMISO admin:pagar_consignante ver=true editar=true
+  PERMISO admin:pos_abrir_cuenta ver=true editar=true
+  PERMISO admin:pos_alta_mesa ver=true editar=true
+  PERMISO admin:pos_anular_item ver=true editar=true
+  PERMISO admin:pos_asignar_cliente ver=true editar=true
+  PERMISO admin:pos_cerrar_cuenta ver=true editar=true
+  PERMISO admin:pos_emitir_ticket_corregido ver=true editar=true
+  PERMISO admin:pos_enviar_a_cocina ver=true editar=true
+  PERMISO admin:pos_liberar_mesa ver=true editar=true
+  PERMISO admin:pos_limite_mesas_abiertas ver=true editar=true
+  PERMISO admin:pos_mesas ver=true editar=true
+  PERMISO admin:pos_tomar_pedido ver=true editar=true
+  PERMISO admin:precio_local ver=true editar=true
+  PERMISO admin:proceso_ajuste ver=true editar=true
+  PERMISO admin:proceso_compra ver=true editar=true
+  PERMISO admin:proceso_consumo ver=true editar=true
+  PERMISO admin:proceso_control ver=true editar=true
+  PERMISO admin:proceso_devolucion_cliente ver=true editar=true
+  PERMISO admin:proceso_devolucion_consignacion ver=true editar=true
+  PERMISO admin:proceso_devolucion_proveedor ver=true editar=true
+  PERMISO admin:proceso_merma ver=true editar=true
+  PERMISO admin:proceso_produccion ver=true editar=true
+  PERMISO admin:proceso_transferencia ver=true editar=true
+  PERMISO admin:proceso_venta ver=true editar=true
+  PERMISO admin:producto_asignar_insumo ver=true editar=true
+  PERMISO admin:producto_disponibilidad ver=true editar=true
+  PERMISO admin:producto_editar ver=true editar=true
+  PERMISO admin:producto_presentaciones ver=true editar=true
+  PERMISO admin:producto_sincronizar_precio_carta ver=true editar=true
+  PERMISO admin:producto_ver_catalogo ver=true editar=true
+  PERMISO admin:proveedor_alta ver=true editar=true
+  PERMISO admin:proveedores ver=true editar=true
+  PERMISO admin:receta_sucursal_copiar ver=true editar=true
+  PERMISO admin:receta_sucursal_editar ver=true editar=true
+  PERMISO admin:receta_sucursal_volver_central ver=true editar=true
+  PERMISO admin:renombrar_rol ver=true editar=true
+  PERMISO admin:renombrar_sucursal ver=true editar=true
+  PERMISO admin:reporte_categorias ver=true editar=true
+  PERMISO admin:reporte_compras ver=true editar=true
+  PERMISO admin:reporte_consolidado ver=true editar=true
+  PERMISO admin:reporte_conteos ver=true editar=true
+  PERMISO admin:reporte_costos ver=true editar=true
+  PERMISO admin:reporte_descuentos_clientes ver=true editar=true
+  PERMISO admin:reporte_descuentos_productos ver=true editar=true
+  PERMISO admin:reporte_devoluciones ver=true editar=true
+  PERMISO admin:reporte_diferencias ver=true editar=true
+  PERMISO admin:reporte_historial ver=true editar=true
+  PERMISO admin:reporte_historial_importes ver=true editar=true
+  PERMISO admin:reporte_huecos_catalogo ver=true editar=true
+  PERMISO admin:reporte_insumos_sin_receta ver=true editar=true
+  PERMISO admin:reporte_margen_promociones ver=true editar=true
+  PERMISO admin:reporte_perdidas ver=true editar=true
+  PERMISO admin:reporte_periodo ver=true editar=true
+  PERMISO admin:reporte_rendimiento_recetas ver=true editar=true
+  PERMISO admin:reporte_rendimiento_sucursal ver=true editar=true
+  PERMISO admin:reporte_resumen ver=true editar=true
+  PERMISO admin:reporte_rotacion_mesas ver=true editar=true
+  PERMISO admin:reporte_salud ver=true editar=true
+  PERMISO admin:reporte_sin_receta ver=true editar=true
+  PERMISO admin:reporte_tickets ver=true editar=true
+  PERMISO admin:reporte_trazabilidad ver=true editar=true
+  PERMISO admin:reporte_valuacion ver=true editar=true
+  PERMISO admin:reporte_vencimientos ver=true editar=true
+  PERMISO admin:reporte_ventas_por_seccion ver=true editar=true
+  PERMISO admin:secciones ver=true editar=true
+  PERMISO admin:stock_minimo ver=true editar=true
+  PERMISO admin:stock_reclasificar ver=true editar=true
+  PERMISO admin:stock_seccion_habitual ver=true editar=true
+  PERMISO admin:traspasar_gerencia ver=false editar=false
+  PERMISO admin:traspaso_aceptar ver=true editar=true
+  PERMISO admin:traspaso_aprobar ver=true editar=true
+  PERMISO admin:traspaso_cancelar_solicitud ver=true editar=true
+  PERMISO admin:traspaso_confirmar_reingreso ver=true editar=true
+  PERMISO admin:traspaso_enviar_directo ver=true editar=true
+  PERMISO admin:traspaso_rechazar_envio ver=true editar=true
+  PERMISO admin:traspaso_rechazar_solicitud ver=true editar=true
+  PERMISO admin:traspaso_solicitar ver=true editar=true
+  PERMISO admin:traspaso_ver_bandeja ver=true editar=true
+  PERMISO admin:unidades ver=true editar=true
+  PERMISO admin:ver_auditoria ver=true editar=true
+  PERMISO admin:ver_auditoria_empresa ver=false editar=false
+  PERMISO admin:ver_stock ver=true editar=true
+  PERMISO operador:activar_sucursal ver=false editar=false
+  PERMISO operador:activar_usuario_sucursal ver=false editar=false
+  PERMISO operador:alta_producto ver=true editar=true
+  PERMISO operador:alta_sucursal ver=false editar=false
+  PERMISO operador:anular_compra ver=false editar=false
+  PERMISO operador:anular_venta ver=false editar=false
+  PERMISO operador:apagar_cuenta_empresa ver=false editar=false
+  PERMISO operador:calibrar_rendimiento_local ver=false editar=false
+  PERMISO operador:cancelar_conteo ver=false editar=false
+  PERMISO operador:capacidades_sucursal ver=false editar=false
+  PERMISO operador:carta_contenido_producto ver=false editar=false
+  PERMISO operador:carta_copiar_de_sucursal ver=false editar=false
+  PERMISO operador:carta_generos ver=false editar=false
+  PERMISO operador:carta_items_agrupados ver=false editar=false
+  PERMISO operador:carta_portal ver=false editar=false
+  PERMISO operador:carta_producto_descuento ver=false editar=false
+  PERMISO operador:carta_promo_activar ver=false editar=false
+  PERMISO operador:carta_promo_definir ver=false editar=false
+  PERMISO operador:carta_promo_precio_local ver=false editar=false
+  PERMISO operador:carta_secciones ver=false editar=false
+  PERMISO operador:carta_tema ver=false editar=false
+  PERMISO operador:carta_ver ver=false editar=false
+  PERMISO operador:categoria_alta ver=true editar=true
+  PERMISO operador:categorias ver=false editar=false
+  PERMISO operador:clientes ver=false editar=false
+  PERMISO operador:comparar_precios ver=false editar=false
+  PERMISO operador:conteo_frecuencia ver=true editar=true
+  PERMISO operador:conteo_resolver_pendiente ver=true editar=true
+  PERMISO operador:corregir_compra ver=false editar=false
+  PERMISO operador:gestion_permisos ver=false editar=false
+  PERMISO operador:gestion_roles ver=false editar=false
+  PERMISO operador:gestion_usuarios ver=false editar=false
+  PERMISO operador:grupos_familia ver=false editar=false
+  PERMISO operador:guardar_receta ver=false editar=false
+  PERMISO operador:insumo_alta ver=true editar=true
+  PERMISO operador:insumo_renombrar_fusionar ver=false editar=false
+  PERMISO operador:insumos_mezclados ver=false editar=false
+  PERMISO operador:margen_objetivo_editar ver=false editar=false
+  PERMISO operador:motivos_destino_consumo ver=false editar=false
+  PERMISO operador:motivos_merma ver=false editar=false
+  PERMISO operador:notas_usuario_sucursal ver=false editar=false
+  PERMISO operador:notificar_alertas ver=false editar=false
+  PERMISO operador:pagar_consignante ver=false editar=false
+  PERMISO operador:pos_abrir_cuenta ver=false editar=false
+  PERMISO operador:pos_alta_mesa ver=false editar=false
+  PERMISO operador:pos_anular_item ver=false editar=false
+  PERMISO operador:pos_asignar_cliente ver=false editar=false
+  PERMISO operador:pos_cerrar_cuenta ver=false editar=false
+  PERMISO operador:pos_emitir_ticket_corregido ver=false editar=false
+  PERMISO operador:pos_enviar_a_cocina ver=false editar=false
+  PERMISO operador:pos_liberar_mesa ver=false editar=false
+  PERMISO operador:pos_limite_mesas_abiertas ver=false editar=false
+  PERMISO operador:pos_mesas ver=false editar=false
+  PERMISO operador:pos_tomar_pedido ver=false editar=false
+  PERMISO operador:precio_local ver=false editar=false
+  PERMISO operador:proceso_ajuste ver=false editar=false
+  PERMISO operador:proceso_compra ver=true editar=true
+  PERMISO operador:proceso_consumo ver=true editar=true
+  PERMISO operador:proceso_control ver=true editar=true
+  PERMISO operador:proceso_devolucion_cliente ver=true editar=true
+  PERMISO operador:proceso_devolucion_consignacion ver=true editar=true
+  PERMISO operador:proceso_devolucion_proveedor ver=true editar=true
+  PERMISO operador:proceso_merma ver=true editar=true
+  PERMISO operador:proceso_produccion ver=true editar=true
+  PERMISO operador:proceso_transferencia ver=true editar=true
+  PERMISO operador:proceso_venta ver=true editar=true
+  PERMISO operador:producto_asignar_insumo ver=true editar=true
+  PERMISO operador:producto_disponibilidad ver=true editar=true
+  PERMISO operador:producto_editar ver=true editar=true
+  PERMISO operador:producto_presentaciones ver=true editar=true
+  PERMISO operador:producto_sincronizar_precio_carta ver=true editar=true
+  PERMISO operador:producto_ver_catalogo ver=true editar=true
+  PERMISO operador:proveedor_alta ver=true editar=true
+  PERMISO operador:proveedores ver=false editar=false
+  PERMISO operador:receta_sucursal_copiar ver=false editar=false
+  PERMISO operador:receta_sucursal_editar ver=false editar=false
+  PERMISO operador:receta_sucursal_volver_central ver=false editar=false
+  PERMISO operador:renombrar_rol ver=false editar=false
+  PERMISO operador:renombrar_sucursal ver=false editar=false
+  PERMISO operador:reporte_categorias ver=false editar=false
+  PERMISO operador:reporte_compras ver=false editar=false
+  PERMISO operador:reporte_consolidado ver=false editar=false
+  PERMISO operador:reporte_conteos ver=true editar=true
+  PERMISO operador:reporte_costos ver=false editar=false
+  PERMISO operador:reporte_descuentos_clientes ver=false editar=false
+  PERMISO operador:reporte_descuentos_productos ver=false editar=false
+  PERMISO operador:reporte_devoluciones ver=false editar=false
+  PERMISO operador:reporte_diferencias ver=false editar=false
+  PERMISO operador:reporte_historial ver=false editar=false
+  PERMISO operador:reporte_historial_importes ver=false editar=false
+  PERMISO operador:reporte_huecos_catalogo ver=false editar=false
+  PERMISO operador:reporte_insumos_sin_receta ver=false editar=false
+  PERMISO operador:reporte_margen_promociones ver=false editar=false
+  PERMISO operador:reporte_perdidas ver=false editar=false
+  PERMISO operador:reporte_periodo ver=false editar=false
+  PERMISO operador:reporte_rendimiento_recetas ver=false editar=false
+  PERMISO operador:reporte_rendimiento_sucursal ver=false editar=false
+  PERMISO operador:reporte_resumen ver=false editar=false
+  PERMISO operador:reporte_rotacion_mesas ver=false editar=false
+  PERMISO operador:reporte_salud ver=false editar=false
+  PERMISO operador:reporte_sin_receta ver=false editar=false
+  PERMISO operador:reporte_tickets ver=false editar=false
+  PERMISO operador:reporte_trazabilidad ver=false editar=false
+  PERMISO operador:reporte_valuacion ver=false editar=false
+  PERMISO operador:reporte_vencimientos ver=false editar=false
+  PERMISO operador:reporte_ventas_por_seccion ver=false editar=false
+  PERMISO operador:secciones ver=false editar=false
+  PERMISO operador:stock_minimo ver=false editar=false
+  PERMISO operador:stock_reclasificar ver=true editar=true
+  PERMISO operador:stock_seccion_habitual ver=false editar=false
+  PERMISO operador:traspasar_gerencia ver=false editar=false
+  PERMISO operador:traspaso_aceptar ver=true editar=true
+  PERMISO operador:traspaso_aprobar ver=true editar=true
+  PERMISO operador:traspaso_cancelar_solicitud ver=true editar=true
+  PERMISO operador:traspaso_confirmar_reingreso ver=true editar=true
+  PERMISO operador:traspaso_enviar_directo ver=true editar=true
+  PERMISO operador:traspaso_rechazar_envio ver=true editar=true
+  PERMISO operador:traspaso_rechazar_solicitud ver=true editar=true
+  PERMISO operador:traspaso_solicitar ver=true editar=true
+  PERMISO operador:traspaso_ver_bandeja ver=true editar=true
+  PERMISO operador:unidades ver=false editar=false
+  PERMISO operador:ver_auditoria ver=false editar=false
+  PERMISO operador:ver_auditoria_empresa ver=false editar=false
+  PERMISO operador:ver_stock ver=true editar=true
+  UNIDADES g/PESO/0, kg/PESO/2, l/VOLUMEN/2, ml/VOLUMEN/0, unidad/CANTIDAD/0
+  MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
+  DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
+  SUCURSALES Central/true, Norte/true
+  ACCIONES 124
+### 0b. Primer gerente incorporado
+  resultado: {"ok":true,"sucursalId":"sucursal1","sucursalNombre":"Central","membresiaId":"id#1"}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp1 rolEmpresa=gerente usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc1 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+### 1. Invitar a una persona a dos sucursales
+  resultado: {"ok":true,"invitacionId":"id#2","accion":"extendida","token":null}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=PENDIENTE hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp1 rolEmpresa=gerente usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc1 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+### 2. Rotar el enlace de la invitación pendiente
+  resultado: {"ok":true,"invitacionId":"inv1","accion":"rotada","token":"<token>"}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=PENDIENTE hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp1 rolEmpresa=gerente usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc1 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+### 3. Aceptar la invitación de usuario
+  resultado: {"ok":true,"empresaId":"E","nombreEmpresa":"Empresa huella"}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp1 rolEmpresa=gerente usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc1 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+### 4. Aceptar de nuevo el mismo enlace
+  resultado: {"ok":false,"mensaje":"Este enlace ya no sirve: venció, se usó o la plataforma lo canceló. Pedile a la plataforma que te mande otro."}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp1 rolEmpresa=gerente usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc1 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+### 4b. Un enlace que no existe
+  resultado: {"ok":false,"mensaje":"Este enlace ya no sirve: venció, se usó o la plataforma lo canceló. Pedile a la plataforma que te mande otro."}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp1 rolEmpresa=gerente usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc1 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+### 5. Invitar a otra persona y revocar su invitación
+  resultado: {"invitada":{"ok":true,"invitacionId":"id#10","accion":"creada","token":"<token>"},"revocada":true}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp1 rolEmpresa=gerente usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc1 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+### 6a. Traspaso a alguien que no es de la empresa
+  resultado: {"ok":false,"mensaje":"Ese usuario no pertenece a esta empresa."}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp1 rolEmpresa=gerente usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc1 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+### 6b. Traspaso a quien ya es el gerente
+  resultado: {"ok":false,"mensaje":"Esa persona ya es el gerente de la empresa."}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp1 rolEmpresa=gerente usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc1 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+### 6c. Traspaso a la persona nueva (admin en Norte)
+  resultado: {"ok":true,"mensaje":"«nueva-persona@gmail.com» es ahora el gerente de la empresa.","gerenteAnteriorId":"gerente"}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv1 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp1 rolEmpresa=null usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=gerente usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc1 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+### 7. Siembra de una empresa en alta
+  ROL activo=true clave=admin nombre=admin
+  ROL activo=true clave=operador nombre=operador
+  PERMISO admin:activar_sucursal ver=true editar=true
+  PERMISO admin:activar_usuario_sucursal ver=true editar=true
+  PERMISO admin:alta_producto ver=true editar=true
+  PERMISO admin:alta_sucursal ver=true editar=true
+  PERMISO admin:anular_compra ver=true editar=true
+  PERMISO admin:anular_venta ver=true editar=true
+  PERMISO admin:apagar_cuenta_empresa ver=true editar=true
+  PERMISO admin:calibrar_rendimiento_local ver=true editar=true
+  PERMISO admin:cancelar_conteo ver=true editar=true
+  PERMISO admin:capacidades_sucursal ver=true editar=true
+  PERMISO admin:carta_contenido_producto ver=true editar=true
+  PERMISO admin:carta_copiar_de_sucursal ver=true editar=true
+  PERMISO admin:carta_generos ver=true editar=true
+  PERMISO admin:carta_items_agrupados ver=true editar=true
+  PERMISO admin:carta_portal ver=true editar=true
+  PERMISO admin:carta_producto_descuento ver=true editar=true
+  PERMISO admin:carta_promo_activar ver=true editar=true
+  PERMISO admin:carta_promo_definir ver=true editar=true
+  PERMISO admin:carta_promo_precio_local ver=true editar=true
+  PERMISO admin:carta_secciones ver=true editar=true
+  PERMISO admin:carta_tema ver=true editar=true
+  PERMISO admin:carta_ver ver=true editar=true
+  PERMISO admin:categoria_alta ver=true editar=true
+  PERMISO admin:categorias ver=true editar=true
+  PERMISO admin:clientes ver=true editar=true
+  PERMISO admin:comparar_precios ver=true editar=true
+  PERMISO admin:conteo_frecuencia ver=true editar=true
+  PERMISO admin:conteo_resolver_pendiente ver=true editar=true
+  PERMISO admin:corregir_compra ver=true editar=true
+  PERMISO admin:gestion_permisos ver=true editar=true
+  PERMISO admin:gestion_roles ver=true editar=true
+  PERMISO admin:gestion_usuarios ver=true editar=true
+  PERMISO admin:grupos_familia ver=true editar=true
+  PERMISO admin:guardar_receta ver=true editar=true
+  PERMISO admin:insumo_alta ver=true editar=true
+  PERMISO admin:insumo_renombrar_fusionar ver=true editar=true
+  PERMISO admin:insumos_mezclados ver=true editar=true
+  PERMISO admin:margen_objetivo_editar ver=true editar=true
+  PERMISO admin:motivos_destino_consumo ver=true editar=true
+  PERMISO admin:motivos_merma ver=true editar=true
+  PERMISO admin:notas_usuario_sucursal ver=true editar=true
+  PERMISO admin:notificar_alertas ver=true editar=true
+  PERMISO admin:pagar_consignante ver=true editar=true
+  PERMISO admin:pos_abrir_cuenta ver=true editar=true
+  PERMISO admin:pos_alta_mesa ver=true editar=true
+  PERMISO admin:pos_anular_item ver=true editar=true
+  PERMISO admin:pos_asignar_cliente ver=true editar=true
+  PERMISO admin:pos_cerrar_cuenta ver=true editar=true
+  PERMISO admin:pos_emitir_ticket_corregido ver=true editar=true
+  PERMISO admin:pos_enviar_a_cocina ver=true editar=true
+  PERMISO admin:pos_liberar_mesa ver=true editar=true
+  PERMISO admin:pos_limite_mesas_abiertas ver=true editar=true
+  PERMISO admin:pos_mesas ver=true editar=true
+  PERMISO admin:pos_tomar_pedido ver=true editar=true
+  PERMISO admin:precio_local ver=true editar=true
+  PERMISO admin:proceso_ajuste ver=true editar=true
+  PERMISO admin:proceso_compra ver=true editar=true
+  PERMISO admin:proceso_consumo ver=true editar=true
+  PERMISO admin:proceso_control ver=true editar=true
+  PERMISO admin:proceso_devolucion_cliente ver=true editar=true
+  PERMISO admin:proceso_devolucion_consignacion ver=true editar=true
+  PERMISO admin:proceso_devolucion_proveedor ver=true editar=true
+  PERMISO admin:proceso_merma ver=true editar=true
+  PERMISO admin:proceso_produccion ver=true editar=true
+  PERMISO admin:proceso_transferencia ver=true editar=true
+  PERMISO admin:proceso_venta ver=true editar=true
+  PERMISO admin:producto_asignar_insumo ver=true editar=true
+  PERMISO admin:producto_disponibilidad ver=true editar=true
+  PERMISO admin:producto_editar ver=true editar=true
+  PERMISO admin:producto_presentaciones ver=true editar=true
+  PERMISO admin:producto_sincronizar_precio_carta ver=true editar=true
+  PERMISO admin:producto_ver_catalogo ver=true editar=true
+  PERMISO admin:proveedor_alta ver=true editar=true
+  PERMISO admin:proveedores ver=true editar=true
+  PERMISO admin:receta_sucursal_copiar ver=true editar=true
+  PERMISO admin:receta_sucursal_editar ver=true editar=true
+  PERMISO admin:receta_sucursal_volver_central ver=true editar=true
+  PERMISO admin:renombrar_rol ver=true editar=true
+  PERMISO admin:renombrar_sucursal ver=true editar=true
+  PERMISO admin:reporte_categorias ver=true editar=true
+  PERMISO admin:reporte_compras ver=true editar=true
+  PERMISO admin:reporte_consolidado ver=true editar=true
+  PERMISO admin:reporte_conteos ver=true editar=true
+  PERMISO admin:reporte_costos ver=true editar=true
+  PERMISO admin:reporte_descuentos_clientes ver=true editar=true
+  PERMISO admin:reporte_descuentos_productos ver=true editar=true
+  PERMISO admin:reporte_devoluciones ver=true editar=true
+  PERMISO admin:reporte_diferencias ver=true editar=true
+  PERMISO admin:reporte_historial ver=true editar=true
+  PERMISO admin:reporte_historial_importes ver=true editar=true
+  PERMISO admin:reporte_huecos_catalogo ver=true editar=true
+  PERMISO admin:reporte_insumos_sin_receta ver=true editar=true
+  PERMISO admin:reporte_margen_promociones ver=true editar=true
+  PERMISO admin:reporte_perdidas ver=true editar=true
+  PERMISO admin:reporte_periodo ver=true editar=true
+  PERMISO admin:reporte_rendimiento_recetas ver=true editar=true
+  PERMISO admin:reporte_rendimiento_sucursal ver=true editar=true
+  PERMISO admin:reporte_resumen ver=true editar=true
+  PERMISO admin:reporte_rotacion_mesas ver=true editar=true
+  PERMISO admin:reporte_salud ver=true editar=true
+  PERMISO admin:reporte_sin_receta ver=true editar=true
+  PERMISO admin:reporte_tickets ver=true editar=true
+  PERMISO admin:reporte_trazabilidad ver=true editar=true
+  PERMISO admin:reporte_valuacion ver=true editar=true
+  PERMISO admin:reporte_vencimientos ver=true editar=true
+  PERMISO admin:reporte_ventas_por_seccion ver=true editar=true
+  PERMISO admin:secciones ver=true editar=true
+  PERMISO admin:stock_minimo ver=true editar=true
+  PERMISO admin:stock_reclasificar ver=true editar=true
+  PERMISO admin:stock_seccion_habitual ver=true editar=true
+  PERMISO admin:traspasar_gerencia ver=false editar=false
+  PERMISO admin:traspaso_aceptar ver=true editar=true
+  PERMISO admin:traspaso_aprobar ver=true editar=true
+  PERMISO admin:traspaso_cancelar_solicitud ver=true editar=true
+  PERMISO admin:traspaso_confirmar_reingreso ver=true editar=true
+  PERMISO admin:traspaso_enviar_directo ver=true editar=true
+  PERMISO admin:traspaso_rechazar_envio ver=true editar=true
+  PERMISO admin:traspaso_rechazar_solicitud ver=true editar=true
+  PERMISO admin:traspaso_solicitar ver=true editar=true
+  PERMISO admin:traspaso_ver_bandeja ver=true editar=true
+  PERMISO admin:unidades ver=true editar=true
+  PERMISO admin:ver_auditoria ver=true editar=true
+  PERMISO admin:ver_auditoria_empresa ver=false editar=false
+  PERMISO admin:ver_stock ver=true editar=true
+  PERMISO operador:activar_sucursal ver=false editar=false
+  PERMISO operador:activar_usuario_sucursal ver=false editar=false
+  PERMISO operador:alta_producto ver=true editar=true
+  PERMISO operador:alta_sucursal ver=false editar=false
+  PERMISO operador:anular_compra ver=false editar=false
+  PERMISO operador:anular_venta ver=false editar=false
+  PERMISO operador:apagar_cuenta_empresa ver=false editar=false
+  PERMISO operador:calibrar_rendimiento_local ver=false editar=false
+  PERMISO operador:cancelar_conteo ver=false editar=false
+  PERMISO operador:capacidades_sucursal ver=false editar=false
+  PERMISO operador:carta_contenido_producto ver=false editar=false
+  PERMISO operador:carta_copiar_de_sucursal ver=false editar=false
+  PERMISO operador:carta_generos ver=false editar=false
+  PERMISO operador:carta_items_agrupados ver=false editar=false
+  PERMISO operador:carta_portal ver=false editar=false
+  PERMISO operador:carta_producto_descuento ver=false editar=false
+  PERMISO operador:carta_promo_activar ver=false editar=false
+  PERMISO operador:carta_promo_definir ver=false editar=false
+  PERMISO operador:carta_promo_precio_local ver=false editar=false
+  PERMISO operador:carta_secciones ver=false editar=false
+  PERMISO operador:carta_tema ver=false editar=false
+  PERMISO operador:carta_ver ver=false editar=false
+  PERMISO operador:categoria_alta ver=true editar=true
+  PERMISO operador:categorias ver=false editar=false
+  PERMISO operador:clientes ver=false editar=false
+  PERMISO operador:comparar_precios ver=false editar=false
+  PERMISO operador:conteo_frecuencia ver=true editar=true
+  PERMISO operador:conteo_resolver_pendiente ver=true editar=true
+  PERMISO operador:corregir_compra ver=false editar=false
+  PERMISO operador:gestion_permisos ver=false editar=false
+  PERMISO operador:gestion_roles ver=false editar=false
+  PERMISO operador:gestion_usuarios ver=false editar=false
+  PERMISO operador:grupos_familia ver=false editar=false
+  PERMISO operador:guardar_receta ver=false editar=false
+  PERMISO operador:insumo_alta ver=true editar=true
+  PERMISO operador:insumo_renombrar_fusionar ver=false editar=false
+  PERMISO operador:insumos_mezclados ver=false editar=false
+  PERMISO operador:margen_objetivo_editar ver=false editar=false
+  PERMISO operador:motivos_destino_consumo ver=false editar=false
+  PERMISO operador:motivos_merma ver=false editar=false
+  PERMISO operador:notas_usuario_sucursal ver=false editar=false
+  PERMISO operador:notificar_alertas ver=false editar=false
+  PERMISO operador:pagar_consignante ver=false editar=false
+  PERMISO operador:pos_abrir_cuenta ver=false editar=false
+  PERMISO operador:pos_alta_mesa ver=false editar=false
+  PERMISO operador:pos_anular_item ver=false editar=false
+  PERMISO operador:pos_asignar_cliente ver=false editar=false
+  PERMISO operador:pos_cerrar_cuenta ver=false editar=false
+  PERMISO operador:pos_emitir_ticket_corregido ver=false editar=false
+  PERMISO operador:pos_enviar_a_cocina ver=false editar=false
+  PERMISO operador:pos_liberar_mesa ver=false editar=false
+  PERMISO operador:pos_limite_mesas_abiertas ver=false editar=false
+  PERMISO operador:pos_mesas ver=false editar=false
+  PERMISO operador:pos_tomar_pedido ver=false editar=false
+  PERMISO operador:precio_local ver=false editar=false
+  PERMISO operador:proceso_ajuste ver=false editar=false
+  PERMISO operador:proceso_compra ver=true editar=true
+  PERMISO operador:proceso_consumo ver=true editar=true
+  PERMISO operador:proceso_control ver=true editar=true
+  PERMISO operador:proceso_devolucion_cliente ver=true editar=true
+  PERMISO operador:proceso_devolucion_consignacion ver=true editar=true
+  PERMISO operador:proceso_devolucion_proveedor ver=true editar=true
+  PERMISO operador:proceso_merma ver=true editar=true
+  PERMISO operador:proceso_produccion ver=true editar=true
+  PERMISO operador:proceso_transferencia ver=true editar=true
+  PERMISO operador:proceso_venta ver=true editar=true
+  PERMISO operador:producto_asignar_insumo ver=true editar=true
+  PERMISO operador:producto_disponibilidad ver=true editar=true
+  PERMISO operador:producto_editar ver=true editar=true
+  PERMISO operador:producto_presentaciones ver=true editar=true
+  PERMISO operador:producto_sincronizar_precio_carta ver=true editar=true
+  PERMISO operador:producto_ver_catalogo ver=true editar=true
+  PERMISO operador:proveedor_alta ver=true editar=true
+  PERMISO operador:proveedores ver=false editar=false
+  PERMISO operador:receta_sucursal_copiar ver=false editar=false
+  PERMISO operador:receta_sucursal_editar ver=false editar=false
+  PERMISO operador:receta_sucursal_volver_central ver=false editar=false
+  PERMISO operador:renombrar_rol ver=false editar=false
+  PERMISO operador:renombrar_sucursal ver=false editar=false
+  PERMISO operador:reporte_categorias ver=false editar=false
+  PERMISO operador:reporte_compras ver=false editar=false
+  PERMISO operador:reporte_consolidado ver=false editar=false
+  PERMISO operador:reporte_conteos ver=true editar=true
+  PERMISO operador:reporte_costos ver=false editar=false
+  PERMISO operador:reporte_descuentos_clientes ver=false editar=false
+  PERMISO operador:reporte_descuentos_productos ver=false editar=false
+  PERMISO operador:reporte_devoluciones ver=false editar=false
+  PERMISO operador:reporte_diferencias ver=false editar=false
+  PERMISO operador:reporte_historial ver=false editar=false
+  PERMISO operador:reporte_historial_importes ver=false editar=false
+  PERMISO operador:reporte_huecos_catalogo ver=false editar=false
+  PERMISO operador:reporte_insumos_sin_receta ver=false editar=false
+  PERMISO operador:reporte_margen_promociones ver=false editar=false
+  PERMISO operador:reporte_perdidas ver=false editar=false
+  PERMISO operador:reporte_periodo ver=false editar=false
+  PERMISO operador:reporte_rendimiento_recetas ver=false editar=false
+  PERMISO operador:reporte_rendimiento_sucursal ver=false editar=false
+  PERMISO operador:reporte_resumen ver=false editar=false
+  PERMISO operador:reporte_rotacion_mesas ver=false editar=false
+  PERMISO operador:reporte_salud ver=false editar=false
+  PERMISO operador:reporte_sin_receta ver=false editar=false
+  PERMISO operador:reporte_tickets ver=false editar=false
+  PERMISO operador:reporte_trazabilidad ver=false editar=false
+  PERMISO operador:reporte_valuacion ver=false editar=false
+  PERMISO operador:reporte_vencimientos ver=false editar=false
+  PERMISO operador:reporte_ventas_por_seccion ver=false editar=false
+  PERMISO operador:secciones ver=false editar=false
+  PERMISO operador:stock_minimo ver=false editar=false
+  PERMISO operador:stock_reclasificar ver=true editar=true
+  PERMISO operador:stock_seccion_habitual ver=false editar=false
+  PERMISO operador:traspasar_gerencia ver=false editar=false
+  PERMISO operador:traspaso_aceptar ver=true editar=true
+  PERMISO operador:traspaso_aprobar ver=true editar=true
+  PERMISO operador:traspaso_cancelar_solicitud ver=true editar=true
+  PERMISO operador:traspaso_confirmar_reingreso ver=true editar=true
+  PERMISO operador:traspaso_enviar_directo ver=true editar=true
+  PERMISO operador:traspaso_rechazar_envio ver=true editar=true
+  PERMISO operador:traspaso_rechazar_solicitud ver=true editar=true
+  PERMISO operador:traspaso_solicitar ver=true editar=true
+  PERMISO operador:traspaso_ver_bandeja ver=true editar=true
+  PERMISO operador:unidades ver=false editar=false
+  PERMISO operador:ver_auditoria ver=false editar=false
+  PERMISO operador:ver_auditoria_empresa ver=false editar=false
+  PERMISO operador:ver_stock ver=true editar=true
+  UNIDADES g/PESO/0, kg/PESO/2, l/VOLUMEN/2, ml/VOLUMEN/0, unidad/CANTIDAD/0
+  MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
+  DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
+  SUCURSALES Casa central/true
+  ACCIONES 124
+### 7a. Aceptar con un CUIT inválido
+  resultado: {"ok":false,"mensaje":"El CUIT no tiene un formato válido: son 11 dígitos, por ejemplo 30-12345678-1."}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=dueno@gmail.com empresaId=F enviadaEn=null estado=PENDIENTE hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv3 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp1 rolEmpresa=null usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=gerente usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc1 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc3 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+### 7b. Aceptar con un CUIT válido
+  resultado: {"ok":true,"empresaId":"F","nombreEmpresa":"Empresa en alta"}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv3 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=F id=uemp1 rolEmpresa=gerente usuarioId=dueño
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp3 rolEmpresa=gerente usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=F id=usuc1 notas=Alta por invitación de la plataforma. rolId=id#12 sucursalId=id#13 usuarioId=dueño
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
+  AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
+### 7c. Aceptar otra vez el mismo enlace
+  resultado: {"ok":false,"mensaje":"Este enlace ya no sirve: venció, se usó o la plataforma lo canceló. Pedile a la plataforma que te mande otro."}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv3 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=F id=uemp1 rolEmpresa=gerente usuarioId=dueño
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp3 rolEmpresa=gerente usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=F id=usuc1 notas=Alta por invitación de la plataforma. rolId=id#12 sucursalId=id#13 usuarioId=dueño
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
+  AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
+### 8a. Activar módulos
+  resultado: {"empresaId":"E","cambiados":[{"modulo":"stock","antes":null,"despues":"ACTIVO"},{"modulo":"salon","antes":null,"despues":"ACTIVO"}],"activos":["salon","stock"],"efectivos":["administracion","catalogo_basico","clientes_basico","salon","stock"]}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv3 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=F id=uemp1 rolEmpresa=gerente usuarioId=dueño
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp3 rolEmpresa=gerente usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=F id=usuc1 notas=Alta por invitación de la plataforma. rolId=id#12 sucursalId=id#13 usuarioId=dueño
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#16 modulo=salon
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#17 modulo=stock
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
+  AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Stock empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:stock id=id#18 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#19 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+### 8b. Desactivar un módulo y activar otro
+  resultado: {"empresaId":"E","cambiados":[{"modulo":"carta","antes":null,"despues":"ACTIVO"},{"modulo":"salon","antes":"ACTIVO","despues":"INACTIVO"}],"activos":["carta","stock"],"efectivos":["administracion","carta","catalogo_basico","stock"]}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv3 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=F id=uemp1 rolEmpresa=gerente usuarioId=dueño
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp3 rolEmpresa=gerente usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=F id=usuc1 notas=Alta por invitación de la plataforma. rolId=id#12 sucursalId=id#13 usuarioId=dueño
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#20 modulo=carta
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=INACTIVO id=id#16 modulo=salon
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#17 modulo=stock
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
+  AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Stock empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:stock id=id#18 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#19 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Carta empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:carta id=id#21 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#22 sucursalId=null valorAnterior=ACTIVO valorNuevo=INACTIVO
+### 8c. Repetir el mismo pedido (sin cambios)
+  resultado: {"empresaId":"E","cambiados":[],"activos":["carta","stock"],"efectivos":["administracion","carta","catalogo_basico","stock"]}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv3 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=F id=uemp1 rolEmpresa=gerente usuarioId=dueño
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp3 rolEmpresa=gerente usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=F id=usuc1 notas=Alta por invitación de la plataforma. rolId=id#12 sucursalId=id#13 usuarioId=dueño
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#20 modulo=carta
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=INACTIVO id=id#16 modulo=salon
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#17 modulo=stock
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
+  AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Stock empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:stock id=id#18 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#19 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Carta empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:carta id=id#21 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#22 sucursalId=null valorAnterior=ACTIVO valorNuevo=INACTIVO
+### 8d. Perfil lite de política
+  resultado: {"empresaId":"E","politica":{"permisosEditables":false,"dosPaneles":false},"cambiadas":["permisosEditables","dosPaneles"]}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=false estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=false slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv3 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=F id=uemp1 rolEmpresa=gerente usuarioId=dueño
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp3 rolEmpresa=gerente usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=F id=usuc1 notas=Alta por invitación de la plataforma. rolId=id#12 sucursalId=id#13 usuarioId=dueño
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#20 modulo=carta
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=INACTIVO id=id#16 modulo=salon
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#17 modulo=stock
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
+  AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Stock empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:stock id=id#18 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#19 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Carta empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:carta id=id#21 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#22 sucursalId=null valorAnterior=ACTIVO valorNuevo=INACTIVO
+  AUDITORIA actorId=operador campo=permisosEditables creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": la empresa puede editar permisos empresaId=E entidad=Empresa entidadId=E id=id#23 sucursalId=null valorAnterior=true valorNuevo=false
+  AUDITORIA actorId=operador campo=dosPaneles creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": menú en dos paneles (Empresa y Sucursal) empresaId=E entidad=Empresa entidadId=E id=id#24 sucursalId=null valorAnterior=true valorNuevo=false
+### 8e. Una perilla suelta que pisa el perfil
+  resultado: {"empresaId":"E","politica":{"permisosEditables":false,"dosPaneles":true},"cambiadas":["dosPaneles"]}
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=false slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv3 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=F id=uemp1 rolEmpresa=gerente usuarioId=dueño
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp3 rolEmpresa=gerente usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=F id=usuc1 notas=Alta por invitación de la plataforma. rolId=id#12 sucursalId=id#13 usuarioId=dueño
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#20 modulo=carta
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=INACTIVO id=id#16 modulo=salon
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#17 modulo=stock
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
+  AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Stock empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:stock id=id#18 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#19 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Carta empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:carta id=id#21 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#22 sucursalId=null valorAnterior=ACTIVO valorNuevo=INACTIVO
+  AUDITORIA actorId=operador campo=permisosEditables creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": la empresa puede editar permisos empresaId=E entidad=Empresa entidadId=E id=id#23 sucursalId=null valorAnterior=true valorNuevo=false
+  AUDITORIA actorId=operador campo=dosPaneles creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": menú en dos paneles (Empresa y Sucursal) empresaId=E entidad=Empresa entidadId=E id=id#24 sucursalId=null valorAnterior=true valorNuevo=false
+  AUDITORIA actorId=operador campo=dosPaneles creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": menú en dos paneles (Empresa y Sucursal) empresaId=E entidad=Empresa entidadId=E id=id#25 sucursalId=null valorAnterior=false valorNuevo=true
+### 9. registrarCambioAuditado: no-op, número, booleano, alta y baja
+  resultado: "ver filas AUDITORIA"
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
+  EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=false slug=E zonaHoraria=America/Argentina/Buenos_Aires
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=dueño creadaEn=<enmascarado> cuitDeclarado=30712345671 email=dueno@gmail.com empresaId=F enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv1 invitadoPorId=null revocadaEn=null rolEmpresa=gerente venceEn=<enmascarado>
+  INVITACION aceptadaEn=<enmascarado> aceptadaPorId=persona creadaEn=<enmascarado> cuitDeclarado=null email=nueva-persona@gmail.com empresaId=E enviadaEn=null estado=ACEPTADA hashToken=<enmascarado> id=inv2 invitadoPorId=gerente revocadaEn=null rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION aceptadaEn=null aceptadaPorId=null creadaEn=<enmascarado> cuitDeclarado=null email=otra@gmail.com empresaId=E enviadaEn=null estado=REVOCADA hashToken=<enmascarado> id=inv3 invitadoPorId=gerente revocadaEn=<enmascarado> rolEmpresa=usuario venceEn=<enmascarado>
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#3 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#4 invitacionId=inv2 invitadoPorId=gerente notas=null rolId=rolAdmin sucursalId=sucursal2
+  INVITACION_SUCURSAL creadaEn=<enmascarado> empresaId=E id=id#11 invitacionId=inv3 invitadoPorId=gerente notas=null rolId=rolOperador sucursalId=sucursal1
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=F id=uemp1 rolEmpresa=gerente usuarioId=dueño
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp2 rolEmpresa=null usuarioId=gerente
+  USUARIO_EMPRESA activo=true creadoEn=<enmascarado> empresaId=E id=uemp3 rolEmpresa=gerente usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=F id=usuc1 notas=Alta por invitación de la plataforma. rolId=id#12 sucursalId=id#13 usuarioId=dueño
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc2 notas=Alta por invitación de la plataforma. rolId=rolAdmin sucursalId=sucursal1 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
+  USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#20 modulo=carta
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=INACTIVO id=id#16 modulo=salon
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#17 modulo=stock
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#6 sucursalId=sucursal1 valorAnterior=null valorNuevo=operador
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Central": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc4 id=id#7 sucursalId=sucursal1 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=gerente campo=rol creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": rol (alta por invitación) empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#8 sucursalId=sucursal2 valorAnterior=null valorNuevo=admin
+  AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
+  AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Stock empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:stock id=id#18 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#19 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Carta empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:carta id=id#21 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
+  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#22 sucursalId=null valorAnterior=ACTIVO valorNuevo=INACTIVO
+  AUDITORIA actorId=operador campo=permisosEditables creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": la empresa puede editar permisos empresaId=E entidad=Empresa entidadId=E id=id#23 sucursalId=null valorAnterior=true valorNuevo=false
+  AUDITORIA actorId=operador campo=dosPaneles creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": menú en dos paneles (Empresa y Sucursal) empresaId=E entidad=Empresa entidadId=E id=id#24 sucursalId=null valorAnterior=true valorNuevo=false
+  AUDITORIA actorId=operador campo=dosPaneles creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": menú en dos paneles (Empresa y Sucursal) empresaId=E entidad=Empresa entidadId=E id=id#25 sucursalId=null valorAnterior=false valorNuevo=true
+  AUDITORIA actorId=gerente campo=numero creadoEn=<enmascarado> descripcion=Prueba empresaId=E entidad=Empresa entidadId=E id=id#26 sucursalId=null valorAnterior=5 valorNuevo=7.5
+  AUDITORIA actorId=gerente campo=booleano creadoEn=<enmascarado> descripcion=Prueba empresaId=E entidad=Empresa entidadId=E id=id#27 sucursalId=null valorAnterior=true valorNuevo=false
+  AUDITORIA actorId=gerente campo=alta creadoEn=<enmascarado> descripcion=Prueba empresaId=E entidad=Empresa entidadId=E id=id#28 sucursalId=sucursal1 valorAnterior=null valorNuevo=algo
+  AUDITORIA actorId=gerente campo=baja creadoEn=<enmascarado> descripcion=Prueba empresaId=E entidad=Empresa entidadId=E id=id#29 sucursalId=null valorAnterior=algo valorNuevo=null
