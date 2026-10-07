@@ -1,6 +1,6 @@
 import "server-only";
 import { filtroMembresiaConAutoridadDeAdmin, filtroRolAdmin } from "@/core/permisos/filtros";
-import { tuvoRolAdminEnLaEmpresa } from "@/core/permisos/gerencia";
+import { tuvoRolAdminEnLaEmpresa } from "@/server/lecturas/permisos/gerencia";
 import { personaEnSucursal, reactivaLaMembresiaDeUnAdmin } from "@/core/permisos/gestion-de-usuarios";
 import { SELECCION_DE_ROL_PARA_JERARQUIA, type PersonaParaJerarquia } from "@/core/permisos/jerarquia";
 import type { Db } from "@/lib/db-tipos";

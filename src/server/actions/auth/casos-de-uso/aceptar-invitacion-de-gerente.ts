@@ -5,7 +5,7 @@ import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";
 import { ErrorDeAceptacion, MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion } from "@/core/features/empresa/aceptar-invitacion";
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { incorporarPrimerGerente } from "@/core/permisos/gerencia";
+import { incorporarPrimerGerente } from "./incorporar-primer-gerente-en-tx";
 import { InvarianteViolada } from "@/core/permisos/invariantes";
 import { conInvariantesDeGobierno } from "@/server/actions/con-gobierno";
 import { hashDeToken } from "@/core/seguridad/tokens";

@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { mensajeSiElDestinoNoPuedeRecibirLaGerencia, obtenerGerenteDeEmpresa, type ResultadoGerencia } from "@/core/permisos/gerencia";
+import { mensajeSiElDestinoNoPuedeRecibirLaGerencia, type ResultadoGerencia } from "@/core/permisos/gerencia";
+import { obtenerGerenteDeEmpresa } from "@/server/lecturas/permisos/gerencia";
 import { esAdminEfectivoEnAlgunaSucursal } from "@/server/lecturas/permisos/gobierno";
 import { bajarGerenciaSiSigue, darGerencia } from "@/server/persistencia/auth/gerencia";
 

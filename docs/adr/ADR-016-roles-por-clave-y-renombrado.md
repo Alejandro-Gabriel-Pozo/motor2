@@ -34,7 +34,10 @@ busca un rol de sistema por nombre: lo hace cumplir la regla 4 de `test/arquitec
 > `server/lecturas/permisos` (ADR-026) con el mismo nombre y firma, y no nombran la clave: piden los filtros puros de `core/permisos/filtros.ts`
 > (contrato C1). Las de las invariantes están en `src/server/lecturas/permisos/gobierno.ts`; `conInvariantesDeGobierno` (medir, escribir, volver a
 > medir), en `src/server/actions/con-gobierno.ts`; las del techo de privilegio (quien actúa desde la base, a quien se toca, el rol admin, si se
-> reactiva a un admin), en `src/server/lecturas/permisos/gestion-de-usuarios.ts`. Desde el contrato C4, un caso de uso o una persistencia tampoco lee `rol.clave` ni la pide en un
+> reactiva a un admin), en `src/server/lecturas/permisos/gestion-de-usuarios.ts`; las de la gerencia, en `src/server/lecturas/permisos/gerencia.ts`.
+> El alta del primer gerente (`incorporarPrimerGerente`, que además escribe) pasó al paso compartido
+> `src/server/actions/auth/casos-de-uso/incorporar-primer-gerente-en-tx.ts`, con sus escrituras en `src/server/persistencia/auth/gerencia.ts`.
+> En `core/permisos` (`invariantes.ts`, `gestion-de-usuarios.ts`, `gerencia.ts`) quedan las reglas, puras. Desde el contrato C4, un caso de uso o una persistencia tampoco lee `rol.clave` ni la pide en un
 > `select`: el rol se lee con `SELECCION_DE_ROL_PARA_JERARQUIA` y se le pasa entero a `core/permisos` (regla 4 ampliada).
 
 ### 3. Renombrar un rol es una acción propia, `renombrar_rol` (G3)

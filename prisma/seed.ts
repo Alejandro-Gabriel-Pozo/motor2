@@ -4,7 +4,7 @@ import { prisma } from "../src/lib/db";
 import { dbDeEmpresa, transaccionDeEmpresa } from "../src/core/auth/base";
 import { asegurarInvitacionDeVinculacion, rotarInvitacionPendiente } from "../src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx";
 import { enlaceDeInvitacion, urlPublicaDeLaApp } from "../src/core/features/empresa/invitacion";
-import { incorporarPrimerGerente } from "../src/core/permisos/gerencia";
+import { incorporarPrimerGerente } from "../src/server/actions/auth/casos-de-uso/incorporar-primer-gerente-en-tx";
 import { ACCIONES } from "../src/core/permisos/acciones";
 import { azarDelProceso } from "../src/lib/azar";
 

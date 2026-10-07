@@ -5,7 +5,7 @@ import { requierePermiso } from "../../src/server/acceso/gate";
 import { MENSAJE_ENLACE_NO_VALIDO } from "../../src/core/features/empresa/aceptar-invitacion";
 import { asegurarInvitacionDeUsuario, rotarInvitacionPendiente } from "../../src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx";
 import { sembrarEmpresa } from "../../plataforma/src/servidor/sembrar-empresa";
-import { incorporarPrimerGerente } from "../../src/core/permisos/gerencia";
+import { incorporarPrimerGerente } from "../../src/server/actions/auth/casos-de-uso/incorporar-primer-gerente-en-tx";
 import { azarDelProceso } from "../../src/lib/azar";
 
 /**

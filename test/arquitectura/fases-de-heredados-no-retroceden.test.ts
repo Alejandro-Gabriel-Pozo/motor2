@@ -36,7 +36,6 @@ const FASE_REGISTRADA: Record<string, 4 | 6> = {
   "src/core/movimientos/ui-config.ts": 6,
   "src/core/permisos/auditoria.ts": 4,
   "src/core/permisos/capacidades-sucursal.ts": 4,
-  "src/core/permisos/gerencia.ts": 4,
   "src/core/reportes/historial-producto.ts": 6,
   "src/core/reportes/historial-vistas.ts": 6,
   "src/core/reportes/margen-real.ts": 6,
