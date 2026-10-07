@@ -4,10 +4,11 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
-import { requerirSesion } from "../con-sesion";
+import { requerirVerAlguna } from "../con-sesion";
 
+/** H8: la pantalla de Categorías o el formulario de producto (alta o edición). */
 export async function listarCategoriasProducto() {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVerAlguna(["categorias", "alta_producto", "producto_ver_catalogo"]);
   return ctx.db.categoriaProducto.findMany({ orderBy: { nombre: "asc" } });
 }
 

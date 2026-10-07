@@ -9,6 +9,9 @@ import { contextoDeAccion, moduloDeAccion, nivelMinimoDeAccion, type AccionClave
 import { moduloDelCatalogo } from "../../src/core/modulos/catalogo";
 import { requierePermisoVer, requierePermisoVerDeEmpresa } from "../../src/server/acceso/gate";
 import { buscarProductosSelector, listarPresentaciones, obtenerInsumoDeProducto, obtenerProductoOpcion } from "../../src/server/actions/catalogo/productos";
+import { listarInsumos } from "../../src/server/actions/catalogo/insumos";
+import { listarCategoriasProducto } from "../../src/server/actions/catalogo/categorias-producto";
+import { listarUnidadesActivas } from "../../src/server/actions/catalogo/unidades";
 
 /**
  * Lecturas que consumen pantallas con claves DISTINTAS (H8, trabajo D.1 de `pureza-integracion`; decisión D-1 del dueño): exigen el «Ver» de ALGUNA de esas
@@ -63,6 +66,9 @@ const LECTURAS: Fila[] = [
   { nombre: "obtenerProductoOpcion", claves: ["proceso_control", "reporte_conteos"], llamar: () => obtenerProductoOpcion("x") },
   { nombre: "obtenerInsumoDeProducto", claves: ["alta_producto", "producto_ver_catalogo"], llamar: () => obtenerInsumoDeProducto("x") },
   { nombre: "listarPresentaciones", claves: ["producto_ver_catalogo", "proceso_compra", "proceso_devolucion_proveedor"], llamar: () => listarPresentaciones("x") },
+  { nombre: "listarInsumos", claves: ["grupos_familia", "alta_producto", "producto_ver_catalogo"], llamar: () => listarInsumos() },
+  { nombre: "listarCategoriasProducto", claves: ["categorias", "alta_producto", "producto_ver_catalogo"], llamar: () => listarCategoriasProducto() },
+  { nombre: "listarUnidadesActivas", claves: ["proceso_compra", "guardar_receta", "alta_producto", "producto_ver_catalogo"], llamar: () => listarUnidadesActivas() },
 ];
 
 /** Una clave que ninguna de estas lecturas acepta (de piso operario, así la puede tener el rol de prueba). */

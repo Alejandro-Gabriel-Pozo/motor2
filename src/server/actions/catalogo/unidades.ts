@@ -10,7 +10,7 @@ import { decimalesDelPaso } from "@/core/catalogo/public";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
-import { requerirSesion } from "../con-sesion";
+import { requerirVerAlguna, requerirVerDeEmpresa } from "../con-sesion";
 
 const DECIMALES_DEFAULT_POR_MAGNITUD: Record<MagnitudUnidad, number> = {
   CANTIDAD: 0,
@@ -18,13 +18,15 @@ const DECIMALES_DEFAULT_POR_MAGNITUD: Record<MagnitudUnidad, number> = {
   VOLUMEN: 2,
 };
 
+/** H8: todas (activas e inactivas), para la pantalla de Unidades. */
 export async function listarUnidadesParaPanel() {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVerDeEmpresa("unidades");
   return ctx.db.unidad.findMany({ orderBy: { nombre: "asc" } });
 }
 
+/** H8: la compra (alta rápida de producto), el editor de recetas o el formulario de producto (alta o edición). */
 export async function listarUnidadesActivas() {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVerAlguna(["proceso_compra", "guardar_receta", "alta_producto", "producto_ver_catalogo"]);
   return ctx.db.unidad.findMany({ where: { activa: true }, orderBy: { nombre: "asc" } });
 }
 

@@ -23,13 +23,7 @@ const GUARDAS_DE_SOLO_SESION = new Set(["requerirSesion", "requerirSesionEnSucur
 /** `archivo relativo a src/|función exportada que la llama` de cada lectura que todavía abre con solo sesión. */
 const LECTURAS_CON_SOLO_SESION: readonly string[] = [
   "server/actions/auth/sucursales.ts|listarSucursales",
-  "server/actions/catalogo/categorias-producto.ts|listarCategoriasProducto",
-  "server/actions/catalogo/insumos.ts|listarGrupos",
-  "server/actions/catalogo/insumos.ts|listarInsumos",
-  "server/actions/catalogo/insumos.ts|previsualizarFusionInsumo",
   "server/actions/catalogo/proveedores.ts|listarProveedores",
-  "server/actions/catalogo/unidades.ts|listarUnidadesActivas",
-  "server/actions/catalogo/unidades.ts|listarUnidadesParaPanel",
   "server/actions/movimientos/motivos.ts|listarDestinosConsumoActivos",
   "server/actions/movimientos/motivos.ts|listarMotivosMermaActivos",
   "server/actions/movimientos/secciones.ts|listarSeccionesActivas",

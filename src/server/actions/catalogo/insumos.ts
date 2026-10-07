@@ -7,7 +7,7 @@ import { creariaCiclo } from "@/server/lecturas/catalogo/grupos";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
-import { requerirSesion } from "../con-sesion";
+import { requerirVerAlguna, requerirVerDeEmpresa } from "../con-sesion";
 
 /**
  * D9 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): antes de borrar el Insumo `origenId` en una fusión, reapunta cada
@@ -61,13 +61,15 @@ async function reapuntarSustitutosDeInsumoFusionado(tx: Prisma.TransactionClient
   }
 }
 
+/** H8: la pantalla de Insumos y Grupos o el formulario de producto (alta o edición). */
 export async function listarInsumos() {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVerAlguna(["grupos_familia", "alta_producto", "producto_ver_catalogo"]);
   return ctx.db.insumo.findMany({ include: { grupo: true }, orderBy: { nombre: "asc" } });
 }
 
+/** H8: solo la pantalla de Insumos y Grupos. */
 export async function listarGrupos() {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVerDeEmpresa("grupos_familia");
   return ctx.db.grupo.findMany({ orderBy: { nombre: "asc" } });
 }
 
@@ -118,7 +120,8 @@ export async function actualizarGrupoDeInsumo(insumoId: string, grupoId: string 
  * de una sin que el usuario se entere de qué está pasando.
  */
 export async function previsualizarFusionInsumo(insumoId: string, nombreNuevo: string): Promise<string | null> {
-  const ctx = await requerirSesion();
+  // H8 (D-5): la pide el renombrar de la pantalla de Insumos y Grupos.
+  const ctx = await requerirVerDeEmpresa("grupos_familia");
   const nuevo = texto(nombreNuevo);
   if (!nuevo) return null;
   const existente = await ctx.db.insumo.findFirst({

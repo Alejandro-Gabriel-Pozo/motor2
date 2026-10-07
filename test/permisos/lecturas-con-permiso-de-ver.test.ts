@@ -13,6 +13,8 @@ import { listarClientes } from "../../src/server/actions/clientes/cliente";
 import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
 import { listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/actions/catalogo/recetas";
 import { listarProductosPagina, obtenerPrecioVentaProducto } from "../../src/server/actions/catalogo/productos";
+import { listarGrupos, previsualizarFusionInsumo } from "../../src/server/actions/catalogo/insumos";
+import { listarUnidadesParaPanel } from "../../src/server/actions/catalogo/unidades";
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
 import { listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
@@ -69,6 +71,9 @@ const LECTURAS: Fila[] = [
   // H8 (D.1): lecturas que antes pedían solo sesión.
   { nombre: "obtenerPrecioVentaProducto", clave: "precio_local", pagina: "movimientos/precio-local/page.tsx", archivo: "catalogo/productos.ts", llamar: () => obtenerPrecioVentaProducto("x") },
   { nombre: "listarProductosPagina", clave: "producto_ver_catalogo", pagina: "catalogo/productos/page.tsx", archivo: "catalogo/productos.ts", llamar: () => listarProductosPagina() },
+  { nombre: "listarGrupos", clave: "grupos_familia", pagina: "catalogo/insumos-grupos/page.tsx", archivo: "catalogo/insumos.ts", llamar: () => listarGrupos() },
+  { nombre: "previsualizarFusionInsumo", clave: "grupos_familia", pagina: "catalogo/insumos-grupos/page.tsx", archivo: "catalogo/insumos.ts", llamar: () => previsualizarFusionInsumo("x", "y") },
+  { nombre: "listarUnidadesParaPanel", clave: "unidades", pagina: "catalogo/unidades/page.tsx", archivo: "catalogo/unidades.ts", llamar: () => listarUnidadesParaPanel() },
 ];
 
 describe("lecturas con permiso de Ver: un rol sin el permiso de la pantalla no las puede invocar", () => {
