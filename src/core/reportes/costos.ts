@@ -1,18 +1,12 @@
 import { redondearMoneda } from "@/core/moneda";
-import {
-  asegurarIndiceRecetasDeLaSucursal,
-  cargarClasificacionNoComestibles,
-  construirIndiceRecetas,
-  construirMapaProductos,
-  obtenerCostoActualPorMP,
-  type CostoMP,
-  type Db,
-  type IndiceRecetas,
-  type IngredienteRecetaReporte,
-  type InfoProductoReporte,
-} from "./comun";
-import type { ClasificacionNoComestibles } from "@/core/catalogo/public";
+import type { CostoMP, IngredienteRecetaReporte, InfoProductoReporte } from "./comun";
 import { precioParaObjetivo, resolverObjetivoFoodCost, superaFoodCostObjetivo, type ObjetivosDeMargen } from "./margen-objetivo";
+
+/**
+ * El cálculo de COSTOS y márgenes (Pureza Fase 4, tramo A): PURO. Recibe el catálogo, el índice de recetas y los costos de compra ya leídos (`*Desde`); quien los LEE con base es
+ * `server/lecturas/reportes/costos.ts` (`calcularCostosYMargenes`, `calcularImpactoInsumos`, `calcularImpactoRecetasPorPeriodo`, mismo nombre y firma que antes), que usan la venta
+ * (el costo congelado, dentro de su transacción) y los reportes.
+ */
 
 export type EstadoCosto = "MARGEN_NEGATIVO" | "FOOD_COST_ALTO" | "COSTO_INCOMPLETO" | "SIN_PRECIO_VENTA" | "SIN_RECETA" | "OK";
 
@@ -130,25 +124,13 @@ const ORDEN_ESTADO: Record<EstadoCosto, number> = {
  * un margen parcial — mostrar un número que parece real pero está calculado
  * sobre menos ingredientes de los que hay sería peor que no mostrar nada.
  */
-export async function calcularCostosYMargenes(
-  sucursalId: string,
-  db: Db,
-  /**
-   * El catálogo ya cargado, para no volver a leerlo. TIENE que ser el de LA MISMA sucursal (`precioVenta` sale resuelto con el Precio
-   * Local de esa sucursal): pasar el de otra da márgenes de otra sucursal sin ningún error. `obtenerReportePorPeriodo` lo comparte entre
-   * todas sus funciones; no lo pasa quien llama desde una transacción (ver `registrarVenta`), donde un mapa traído de afuera sería de
-   * otro snapshot.
-   */
-  productosCargados?: Map<string, InfoProductoReporte>,
-  /** El índice de recetas ya cargado, mismo motivo que `productosCargados` — ver `calcularMargenDelPeriodo`/`obtenerReportePorPeriodoConCatalogo`, que lo comparten entre las funciones que lo necesitan. */
-  indiceRecetas?: IndiceRecetas,
-  /** Los food cost objetivo cargados (`cargarObjetivosDeMargen`). Sin ellos rige el de por defecto: así el POS (`registrarVenta`) y el margen del período, que no lo usan, no leen esa tabla. */
+export function calcularCostosYMargenesDesde(
+  productos: Map<string, InfoProductoReporte>,
+  recetaPorProducto: Map<string, IngredienteRecetaReporte[]>,
+  costos: Map<string, CostoMP>,
+  /** Los food cost objetivo cargados. Sin ellos rige el de por defecto. */
   objetivos?: ObjetivosDeMargen
-): Promise<FilaCostoProducto[]> {
-  if (indiceRecetas) asegurarIndiceRecetasDeLaSucursal(indiceRecetas, sucursalId);
-  const productos = productosCargados ?? (await construirMapaProductos(sucursalId, db));
-  const { recetaPorProducto } = indiceRecetas ?? (await construirIndiceRecetas(db, sucursalId));
-  const costos = await obtenerCostoActualPorMP(sucursalId, db);
+): FilaCostoProducto[] {
   // Compartido entre todos los PV de este cálculo: un mismo intermedio
   // fabricado (ej. la prepizza) suele aparecer en varias recetas — no hace
   // falta re-explotar su BOM cada vez.
@@ -244,7 +226,6 @@ export async function calcularCostosYMargenes(
 
   return filas.sort((a, b) => ORDEN_ESTADO[a.estado] - ORDEN_ESTADO[b.estado] || a.productoNombre.localeCompare(b.productoNombre));
 }
-
 export interface FilaImpactoInsumo {
   insumoProductoId: string;
   insumoNombre: string;
@@ -255,13 +236,8 @@ export interface FilaImpactoInsumo {
   proveedorNombre: string | null;
 }
 
-/**
- * Port de calcularImpactoInsumos_ (Reportes.js:1799-1818) — qué insumos
- * mueven más la aguja del costo total: si una MP aparece en muchos platos y
- * pesa mucho, un aumento suyo pega fuerte.
- */
-export async function calcularImpactoInsumos(sucursalId: string, db: Db): Promise<FilaImpactoInsumo[]> {
-  const filas = await calcularCostosYMargenes(sucursalId, db);
+/** El impacto por insumo, desde las filas de costo ya calculadas. */
+export function calcularImpactoInsumosDesde(filas: readonly FilaCostoProducto[]): FilaImpactoInsumo[] {
   const porMP = new Map<string, { insumoNombre: string; platos: Set<string>; costoAcumulado: number; costoUnitario: number | null; proveedorNombre: string | null }>();
 
   for (const f of filas) {
@@ -288,6 +264,7 @@ export async function calcularImpactoInsumos(sucursalId: string, db: Db): Promis
     }))
     .sort((a, b) => b.costoAcumulado - a.costoAcumulado);
 }
+
 
 /** Costo completo de la receta de UN plato — misma recursión que `calcularCostosYMargenes`, pero solo el total (sin armar `componentes`) y con un cache propio por llamada: `costosCompra` cambia entre "antes" y "ahora", así que el cache de una corrida no puede reusarse en la otra. */
 export function resolverCostoRecetaCompleta(
@@ -349,27 +326,16 @@ export interface FilaImpactoRecetaPorPeriodo {
  * ACTUAL para ese producto puntual (no introduce una diferencia donde no
  * hay dato, mismo criterio que el delta `null` de `calcularTendenciaPreciosDelPeriodo`).
  */
-export async function calcularImpactoRecetasPorPeriodo(
-  sucursalId: string,
-  desde: Date,
-  db: Db,
-  /** El catálogo ya cargado de LA MISMA sucursal, para no volver a leerlo (ver `calcularCostosYMargenes`). */
-  productosCargados?: Map<string, InfoProductoReporte>,
-  /** El índice de recetas ya cargado, mismo motivo (ver `obtenerReportePorPeriodoConCatalogo`). */
-  indiceRecetas?: IndiceRecetas,
-  /** La clasificación de grupos "No comestibles" ya cargada, mismo motivo. */
-  clasificacion?: ClasificacionNoComestibles
-): Promise<FilaImpactoRecetaPorPeriodo[]> {
-  if (indiceRecetas) asegurarIndiceRecetasDeLaSucursal(indiceRecetas, sucursalId);
-  const productos = productosCargados ?? (await construirMapaProductos(sucursalId, db));
-  const { recetaPorProducto } = indiceRecetas ?? (await construirIndiceRecetas(db, sucursalId));
-  const costosActuales = await obtenerCostoActualPorMP(sucursalId, db);
-  const costosAntesDelPeriodo = await obtenerCostoActualPorMP(sucursalId, db, desde);
-
+export function calcularImpactoRecetasPorPeriodoDesde(
+  productos: Map<string, InfoProductoReporte>,
+  recetaPorProducto: Map<string, IngredienteRecetaReporte[]>,
+  costosActuales: Map<string, CostoMP>,
+  costosAntesDelPeriodo: Map<string, CostoMP>,
+  /** ¿Existe el grupo «No comestibles»? Sin él no hay nada que sacar del food cost. */
+  hayNoComestibles: boolean
+): FilaImpactoRecetaPorPeriodo[] {
   const costosParaAntes = new Map(costosActuales);
   for (const [productoId, c] of costosAntesDelPeriodo) costosParaAntes.set(productoId, c);
-
-  const hayNoComestibles = (clasificacion ?? (await cargarClasificacionNoComestibles(db))).existeGrupo;
 
   const filas: FilaImpactoRecetaPorPeriodo[] = [];
   for (const info of productos.values()) {

@@ -231,7 +231,7 @@ async function main() {
   const { costosDeInsumosPorDia, diaUtc } = await import("../src/core/reportes/costo-historico");
   const { reconstruirCostosDeVenta } = await import("../src/server/consultas/reportes/costo-historico");
   const { obtenerReportePorPeriodo } = await import("../src/server/consultas/reportes/periodo");
-  const { construirIndiceRecetas, construirMapaProductos } = await import("../src/core/reportes/comun");
+  const { construirIndiceRecetas, construirMapaProductos } = await import("../src/server/lecturas/reportes/comun");
   const { resolverCostoRecetaCompleta } = await import("../src/core/reportes/costos");
 
   // Réplica LITERAL del `reconstruirCostosDeVenta` previo a la optimización (commit 878da7e^) — trae TODA la

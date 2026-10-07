@@ -45,8 +45,6 @@ const CARPETAS_SIN_CONSULTAS: readonly string[] = [
  */
 const CARPETAS_CON_PENDIENTES: Record<string, Record<string, string>> = {
   "src/core/reportes": {
-    "src/core/reportes/comun.ts": "Fase 4: los cargadores de costos y catálogo los comparte registrar-venta (el costo congelado del Kardex, decisión D1 del dueño).",
-    "src/core/reportes/costos.ts": "Fase 4: `calcularCostosYMargenes` con base lo usa registrar-venta dentro de la transacción de la venta (decisión D1 del dueño).",
     "src/core/reportes/cotizacion-dolar.ts": "Fase 4: escribe la cotización (cron y atajo de la pantalla); la escritura sale a un caso de uso.",
     "src/core/reportes/indices-economicos.ts": "Fase 4: escribe la serie del IPC (cron); la escritura sale a un caso de uso.",
   },

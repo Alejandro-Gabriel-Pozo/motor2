@@ -2,7 +2,8 @@ import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
 import { resolverAccionFaltante, type IndiceRecetas, type InfoProductoReporte, type ItemPeriodo, type VentasDelPeriodo } from "@/core/reportes/public";
 import { antiguedadSerieIPC, esMesSinPublicar, resolverCoeficienteIPC, textoSerieIPCVencida } from "@/core/reportes/public-servidor";
-import { calcularCostosYMargenes, cargarSerieIPC } from "@/core/reportes/public-servidor";
+import { cargarSerieIPC } from "@/core/reportes/public-servidor";
+import { calcularCostosYMargenes } from "@/server/lecturas/reportes/costos";
 import { calcularMargenRealDelPeriodo } from "@/server/consultas/reportes/margen-real";
 import type { FilaMargenProducto, MargenDelPeriodo } from "@/core/reportes/public";
 

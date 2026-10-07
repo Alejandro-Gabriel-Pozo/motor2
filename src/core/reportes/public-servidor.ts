@@ -16,9 +16,7 @@ export {
   pvSinCategoriaDe,
 } from "./periodo";
 export type { FilaCategoriaVenta } from "./periodo";
-export { calcularCostosYMargenes } from "./costos";
 export { SIN_PROVEEDOR } from "./compras-registradas";
-export { calcularImpactoInsumos } from "./costos";
 export { obtenerUltimaCotizacionSinRomper } from "./cotizacion-dolar";
 export { leerFiltroTickets } from "./tickets-emitidos";
 export { serializarFiltroTickets } from "./tickets-emitidos";
@@ -27,16 +25,9 @@ export { sincronizarIPC } from "./indices-economicos";
 export { actualizarDolarSiHaceFalta } from "./cotizacion-dolar";
 export { cotizacionVencida } from "./cotizacion-dolar";
 export { pesosADolares } from "./cotizacion-dolar";
-export { construirMapaProductos } from "./comun";
-export { construirIndiceRecetas } from "./comun";
-export { obtenerCostoActualPorMP } from "./comun";
 export { cargarSerieIPC } from "./indices-economicos";
-export { cargarClasificacionNoComestibles } from "./comun";
-export { calcularImpactoRecetasPorPeriodo } from "./costos";
-export { asegurarIndiceRecetasDeLaSucursal } from "./comun";
 export { antiguedadSerieIPC } from "./indices-economicos";
 export { esMesSinPublicar } from "./indices-economicos";
 export { resolverCoeficienteIPC } from "./indices-economicos";
 export { textoSerieIPCVencida } from "./indices-economicos";
 export { resolverVariacionPeriodoIPC } from "./indices-economicos";
-export { resolverCostoRecetaCompleta } from "./costos";

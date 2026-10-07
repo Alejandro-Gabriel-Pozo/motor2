@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { clasificarGruposNoComestibles, normalizarNombreGrupo } from "../../src/core/catalogo/no-comestibles";
-import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo } from "../../src/core/reportes/costos";
+import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo } from "../../src/server/lecturas/reportes/costos";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 
 /**

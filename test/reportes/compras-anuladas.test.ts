@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
-import { obtenerCostoActualPorMP } from "../../src/core/reportes/comun";
+import { obtenerCostoActualPorMP } from "../../src/server/lecturas/reportes/comun";
 import { claveCostoHistorico } from "../../src/core/reportes/costo-historico";
 import { reconstruirCostosDeVenta } from "../../src/server/consultas/reportes/costo-historico";
 import { listarComprasRegistradas } from "../../src/server/consultas/reportes/compras-registradas";

@@ -23,7 +23,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
-import { calcularCostosYMargenes } from "../../src/core/reportes/costos";
+import { calcularCostosYMargenes } from "../../src/server/lecturas/reportes/costos";
 import { calcularValuacionInventario } from "../../src/server/consultas/reportes/valuacion";
 
 /** Aritmética exacta en centavos (BigInt) — la referencia contra la que se compara redondearMoneda. */

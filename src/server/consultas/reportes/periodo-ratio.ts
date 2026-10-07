@@ -1,5 +1,5 @@
 import { redondearMoneda } from "@/core/moneda";
-import { cargarClasificacionNoComestibles } from "@/core/reportes/public-servidor";
+import { cargarClasificacionNoComestibles } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
 import type { InfoProductoReporte } from "@/core/reportes/public";
 import type { ClasificacionNoComestibles } from "@/core/catalogo/public";

@@ -1,4 +1,4 @@
-import { construirIndiceRecetas, construirMapaProductos } from "@/core/reportes/public-servidor";
+import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
 import type { FilaInsumoSinReceta } from "@/core/reportes/public";
 

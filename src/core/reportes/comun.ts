@@ -1,8 +1,14 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
-import { clasificarGruposNoComestibles, rendimientoEfectivo, type ClasificacionNoComestibles } from "@/core/catalogo/public";
-import { alcanceDeSucursal, cargarRecetasVigentes, disponibilidadDeProductos, disponibilidadEnAlgunaSucursal, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { rendimientoEfectivo } from "@/core/catalogo/public";
+import type { ClasificacionNoComestibles } from "@/core/catalogo/public";
 
-export type Db = PrismaClient | Prisma.TransactionClient;
+/**
+ * Lo PURO de los reportes de costos (Pureza Fase 4, tramo A): los tipos del catálogo y del índice de recetas, y cómo se ARMAN el mapa de productos y el índice de recetas a partir
+ * de las filas ya leídas. Los cargadores con base (`construirMapaProductos`, `construirIndiceRecetas`, `obtenerCostoActualPorMP`, `cargarClasificacionNoComestibles`) viven en
+ * `server/lecturas/reportes/comun.ts` y las usan la venta (el costo congelado) y los reportes.
+ */
+
+/** El tipo de una base de Prisma (cliente o transacción); lo declaran acá los reportes que todavía lo importan de `./comun`. */
+export type Db = import("@prisma/client").PrismaClient | import("@prisma/client").Prisma.TransactionClient;
 
 export interface InfoProductoReporte {
   id: string;
@@ -36,10 +42,20 @@ export interface InfoProductoReporte {
   proveedorConsignacionNombre: string | null;
 }
 
-/** Qué grupos del árbol cuentan como «No comestibles» (una consulta chica: la tabla de Grupos es corta). */
-export async function cargarClasificacionNoComestibles(db: Db): Promise<ClasificacionNoComestibles> {
-  const grupos = await db.grupo.findMany({ select: { id: true, nombre: true, grupoPadreId: true } });
-  return clasificarGruposNoComestibles(new Map(grupos.map((g) => [g.id, { nombre: g.nombre, grupoPadreId: g.grupoPadreId }])));
+/** Una fila de producto con lo que el mapa necesita (la forma del `findMany` con `categoria`, `insumo.grupo`, `unidadStock` y `proveedorConsignacion`). */
+export interface FilaDeProductoParaReporte {
+  id: string;
+  codigo: string;
+  nombre: string;
+  tipo: "MP" | "PV";
+  seProduce: boolean;
+  precioVenta: unknown;
+  categoriaId: string | null;
+  categoria: { nombre: string } | null;
+  insumo: { nombre: string; grupoId: string | null; grupo: { nombre: string } | null } | null;
+  unidadStock: { nombre: string };
+  esConsignacion: boolean;
+  proveedorConsignacion: { nombre: string } | null;
 }
 
 /**
@@ -63,22 +79,12 @@ export async function cargarClasificacionNoComestibles(db: Db): Promise<Clasific
  * Sin él, `InfoProductoReporte.disponible` es "disponible en alguna
  * sucursal" (una consulta chica, no por sucursal) — ver su docstring.
  */
-export async function construirMapaProductos(
-  sucursalId: string | undefined,
-  db: Db,
-  /** La clasificación de grupos "No comestibles" ya cargada, para no volver a leerla (ver `obtenerReportePorPeriodoConCatalogo`). */
-  clasificacionCargada?: ClasificacionNoComestibles
-): Promise<Map<string, InfoProductoReporte>> {
-  const [productos, preciosLocales, clasificacion] = await Promise.all([
-    db.producto.findMany({ include: { categoria: true, insumo: { include: { grupo: true } }, unidadStock: true, proveedorConsignacion: true } }),
-    sucursalId ? preciosLocalesVigentes(sucursalId, db) : Promise.resolve(new Map<string, { precio: number }>()),
-    clasificacionCargada ? Promise.resolve(clasificacionCargada) : cargarClasificacionNoComestibles(db),
-  ]);
-  const idsProductos = productos.map((p) => p.id);
-  const disponibilidadPorProducto = sucursalId
-    ? await disponibilidadDeProductos(sucursalId, idsProductos, db)
-    : await disponibilidadEnAlgunaSucursal(idsProductos, db);
-
+export function armarMapaProductos(
+  productos: readonly FilaDeProductoParaReporte[],
+  preciosLocales: ReadonlyMap<string, { precio: number }>,
+  clasificacion: ClasificacionNoComestibles,
+  disponibilidadPorProducto: ReadonlyMap<string, boolean>
+): Map<string, InfoProductoReporte> {
   return new Map(
     productos.map((p) => [
       p.id,
@@ -128,36 +134,27 @@ export interface IndiceRecetas {
   sucursalId: string | null;
 }
 
-/**
- * Equivalente de construirMapaRecetas_ (Catalogo.js:1549-1596): vigente =
- * MAX(version) por producto, derivado — un solo `findMany` ordenado
- * ascendente y `cargarRecetasVigentes` (core/catalogo/recetas-vigentes.ts) se
- * queda con la última versión de cada producto, en bloque, para no hacer
- * 1 query por producto.
- *
- * `sucursalId` (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, D2/R1): con ella, `cantidad`/`mermaPorcentaje`
- * salen EFECTIVOS (con el override de esa sucursal si lo hay); sin ella, quedan en el valor CENTRAL — para quien solo
- * necesita la estructura de la receta (huecos de catálogo, insumos sin receta), sin resolver ningún override.
- * El `include` anidado de `rendimientosLocales` no suma una consulta más (sigue siendo un solo `recetaVersion.findMany`,
- * ver test/reportes/catalogo-una-sola-carga.test.ts).
- */
-export async function construirIndiceRecetas(db: Db, sucursalId?: string): Promise<IndiceRecetas> {
-  const vigentes = await cargarRecetasVigentes(db, alcanceDeSucursal(sucursalId), {
-    include: {
-      ingredientes: {
-        include: {
-          insumoProducto: true,
-          unidad: true,
-          // Sin sucursalId, este where nunca matchea ninguna fila real (cuid válido nunca es "") — el include queda
-          // siempre presente (mismo shape de tipos en las dos ramas), pero vacío.
-          rendimientosLocales: { where: { sucursalId: sucursalId ?? "" } },
-        },
-      },
-    },
-  });
+/** La receta vigente de un producto con lo que el índice necesita (la forma del `findMany` con `insumoProducto`, `unidad` y `rendimientosLocales`). */
+export interface RecetaVigenteParaReporte {
+  productoId: string;
+  ingredientes: readonly {
+    id: string;
+    insumoProductoId: string;
+    insumoProducto: { nombre: string };
+    unidad: { nombre: string };
+    cantidad: unknown;
+    mermaPorcentaje: unknown;
+    rendimientosLocales: readonly { sucursalId: string; cantidad: unknown; mermaPorcentaje: unknown }[];
+  }[];
+}
 
+/**
+ * Arma el índice de recetas desde las recetas vigentes ya leídas. Con `sucursalId`, `cantidad`/`mermaPorcentaje` salen EFECTIVOS (con el override de esa sucursal si lo hay,
+ * `rendimientoEfectivo`); sin ella, quedan en el valor CENTRAL.
+ */
+export function armarIndiceRecetas(vigentes: Iterable<RecetaVigenteParaReporte>, sucursalId?: string): IndiceRecetas {
   const recetaPorProducto = new Map<string, IngredienteRecetaReporte[]>();
-  for (const v of vigentes.values()) {
+  for (const v of vigentes) {
     recetaPorProducto.set(
       v.productoId,
       v.ingredientes.map((it) => {
@@ -210,46 +207,3 @@ export interface CostoMP {
   fecha: Date | null;
 }
 
-/**
- * Port de obtenerCostoActualPorMP_ (Reportes.js:1665-1698) — costo de
- * reposición = precio por unidad de stock de la COMPRA MÁS RECIENTE que
- * ESTA sucursal registró. A diferencia del bug ya documentado en Apps
- * Script (leía `ProveedoresPorProducto`, Catálogo Central compartido por
- * las 5 hosterías), acá no hay bug posible: `MovimientoStock` es LOCAL por
- * construcción (llega a través de `Seccion.sucursalId`), nunca hace falta
- * acordarse de filtrar — es la única fuente que se puede leer.
- *
- * `antesDe` opcional (docs/grounding-reportes-compras-2026-09-18.md, paso
- * 4 — impacto de un cambio de precio en el costo de las recetas): con
- * fecha, la "más reciente" es la más reciente ANTES de esa fecha, no la
- * más reciente en absoluto — para poder recalcular el costo de una receta
- * "como era antes de este período" y compararlo contra el costo de hoy.
- */
-export async function obtenerCostoActualPorMP(sucursalId: string, db: Db, antesDe?: Date): Promise<Map<string, CostoMP>> {
-  // 1 fila por producto (la compra más reciente), no una por compra: traer toda la historia de la sucursal con `include`
-  // superaba el límite de parámetros de Prisma 7 con ~55k compras. Empate de fecha: gana el `m."id"` mayor (determinista).
-  // La sucursal fija la empresa (`Seccion` y `Operacion` la comparten por FK compuesta); el aislamiento entre empresas lo
-  // sigue haciendo el `db` recibido (RLS, A6).
-  const compras = await db.$queryRaw<Array<{ productoId: string; precioPorUnidadStock: Prisma.Decimal; fecha: Date; proveedorNombre: string | null }>>`
-    SELECT DISTINCT ON (m."productoId") m."productoId", m."precioPorUnidadStock", o."fecha", p."nombre" AS "proveedorNombre"
-    FROM "MovimientoStock" m
-    JOIN "Operacion" o ON o."id" = m."operacionId"
-    JOIN "Seccion" s ON s."id" = m."seccionId"
-    LEFT JOIN "Proveedor" p ON p."id" = o."proveedorId"
-    WHERE m."proceso" = 'COMPRA' AND s."sucursalId" = ${sucursalId}
-      AND m."precioPorUnidadStock" > 0
-      AND o."anuladaEn" IS NULL
-      ${antesDe ? Prisma.sql`AND o."fecha" < ${antesDe}` : Prisma.empty}
-    ORDER BY m."productoId", o."fecha" DESC, m."id" DESC
-  `;
-
-  const map = new Map<string, CostoMP>();
-  for (const c of compras) {
-    map.set(c.productoId, {
-      precioPorUnidadStock: Number(c.precioPorUnidadStock),
-      proveedorNombre: c.proveedorNombre,
-      fecha: c.fecha,
-    });
-  }
-  return map;
-}

@@ -1,5 +1,5 @@
 import { redondearMoneda } from "@/core/moneda";
-import { construirMapaProductos } from "@/core/reportes/public-servidor";
+import { construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad } from "@/core/reportes/public";
 import type { ReporteConsignacion } from "@/core/reportes/public";

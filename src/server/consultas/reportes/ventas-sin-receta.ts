@@ -1,4 +1,4 @@
-import { construirMapaProductos } from "@/core/reportes/public-servidor";
+import { construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
 import type { FilaVentaSinReceta } from "@/core/reportes/public";
 

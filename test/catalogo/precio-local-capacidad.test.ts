@@ -8,7 +8,7 @@ import { preciosLocalesVigentes } from "../../src/core/catalogo/public-servidor"
 import { resolverPrecioVenta } from "../../src/core/movimientos/precio-venta";
 import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
-import { construirMapaProductos } from "../../src/core/reportes/comun";
+import { construirMapaProductos } from "../../src/server/lecturas/reportes/comun";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 
 /**

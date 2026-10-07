@@ -40,7 +40,7 @@ interface ArchivoClasificado {
 
 const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
   {
-    ruta: "core/reportes/comun.ts",
+    ruta: "server/lecturas/reportes/comun.ts",
     clase: "efectivo",
     motivo: "construirIndiceRecetas: la fuente única (R1) — efectivo cuando recibe sucursalId, central sin ella (quien solo usa la estructura).",
   },

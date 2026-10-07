@@ -6,8 +6,9 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { calcularCostosYMargenes } from "../../src/core/reportes/costos";
-import { construirIndiceRecetas, type Db } from "../../src/core/reportes/comun";
+import { calcularCostosYMargenes } from "../../src/server/lecturas/reportes/costos";
+import { type Db } from "../../src/core/reportes/comun";
+import { construirIndiceRecetas } from "../../src/server/lecturas/reportes/comun";
 
 /**
  * Paso 5 del plan (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md): el consumo de venta/producción y
