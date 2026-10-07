@@ -1,7 +1,5 @@
-import type { Prisma } from "@prisma/client";
 import type { Db } from "@/lib/db-tipos";
-import { CLAVE_ROL_ADMIN } from "./jerarquia";
-import { ROL_EMPRESA_GERENTE } from "./rol-empresa";
+import { filtroAdminEfectivo, filtroDelGerente } from "./filtros";
 
 /**
  * Bloque G, G2: las invariantes de gobierno de una empresa, con nombre y en un solo lugar. Toda acción que cambie usuarios, roles o sucursales las
@@ -25,28 +23,14 @@ export const MENSAJE_GERENTE_SIN_SUCURSAL = "El gerente no puede quedarse sin ni
 export const MENSAJE_GERENTE_DEJA_DE_SER_ADMIN = "El gerente tiene que ser admin activo en al menos una sucursal: traspasá la gerencia antes de dejar de serlo.";
 const MENSAJE_ROL_DE_SISTEMA = "Un rol de sistema no se puede desactivar, borrar ni cambiar de clave: la empresa lo necesita para gobernarse.";
 
-/**
- * D1 — «admin efectivo»: la membresía que de verdad deja entrar a alguien como administrador. Membresía activa, rol activo con la clave «admin»,
- * sucursal activa, pertenencia a la empresa activa, cuenta activa y empresa ACTIVE. Es la definición ESTRICTA: «queda alguien que pueda entrar».
- */
-export function membresiaDeAdminEfectivo(empresaId: string): Prisma.UsuarioSucursalWhereInput {
-  return {
-    empresaId,
-    activo: true,
-    rol: { clave: CLAVE_ROL_ADMIN, activo: true },
-    sucursal: { activo: true },
-    empresa: { estado: "ACTIVE" },
-    usuario: { activoGlobal: true, empresas: { some: { empresaId, activo: true } } },
-  };
-}
-
+/** D1 — cuántas membresías de «admin efectivo» tiene la empresa (`filtroAdminEfectivo`, `core/permisos/filtros.ts`: la definición ESTRICTA, «queda alguien que pueda entrar»). */
 export async function contarAdminsEfectivos(db: Db, empresaId: string): Promise<number> {
-  return db.usuarioSucursal.count({ where: membresiaDeAdminEfectivo(empresaId) });
+  return db.usuarioSucursal.count({ where: filtroAdminEfectivo(empresaId) });
 }
 
 /** ¿`usuarioId` es admin efectivo en al menos una sucursal? Lo exige quien asume la gerencia (D4) y lo mantiene el gerente (Q1). */
 export async function esAdminEfectivoEnAlgunaSucursal(db: Db, empresaId: string, usuarioId: string): Promise<boolean> {
-  return Boolean(await db.usuarioSucursal.findFirst({ where: { ...membresiaDeAdminEfectivo(empresaId), usuarioId }, select: { id: true } }));
+  return Boolean(await db.usuarioSucursal.findFirst({ where: { ...filtroAdminEfectivo(empresaId), usuarioId }, select: { id: true } }));
 }
 
 /** ¿Tiene al menos una membresía activa en una sucursal activa? (b) del gerente. */
@@ -61,7 +45,7 @@ export interface EstadoDeGobierno {
 }
 
 export async function medirEstadoDeGobierno(db: Db, empresaId: string): Promise<EstadoDeGobierno> {
-  const fila = await db.usuarioEmpresa.findFirst({ where: { empresaId, rolEmpresa: ROL_EMPRESA_GERENTE }, select: { usuarioId: true } });
+  const fila = await db.usuarioEmpresa.findFirst({ where: filtroDelGerente(empresaId), select: { usuarioId: true } });
   return {
     adminsEfectivos: await contarAdminsEfectivos(db, empresaId),
     gerente: fila

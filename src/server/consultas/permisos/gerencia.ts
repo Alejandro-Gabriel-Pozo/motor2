@@ -1,6 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
-import { membresiaDeAdminEfectivo } from "@/core/permisos/invariantes";
+import { filtroAdminEfectivo } from "@/core/permisos/filtros";
 import { ROL_EMPRESA_GERENTE } from "@/core/permisos/rol-empresa";
 
 /**
@@ -12,7 +12,7 @@ import { ROL_EMPRESA_GERENTE } from "@/core/permisos/rol-empresa";
 /**
  * Quiénes pueden recibir la gerencia: las mismas condiciones que el traspaso exige al destino (`transferirGerenciaDeEmpresa`, el paso compartido de
  * `server/actions/auth/casos-de-uso/transferir-gerencia-en-tx.ts`: pertenencia y cuenta activas, admin efectivo en alguna sucursal —el MISMO predicado que la
- * validación, `membresiaDeAdminEfectivo`—) y que no sea ya el gerente. Alimenta el selector de la pantalla de traspaso; el traspaso vuelve a validar.
+ * validación, `filtroAdminEfectivo`—) y que no sea ya el gerente. Alimenta el selector de la pantalla de traspaso; el traspaso vuelve a validar.
  */
 export async function listarCandidatosAGerente(db: Db, empresaId: string) {
   const filas = await db.usuarioEmpresa.findMany({
@@ -20,7 +20,7 @@ export async function listarCandidatosAGerente(db: Db, empresaId: string) {
       empresaId,
       activo: true,
       OR: [{ rolEmpresa: null }, { rolEmpresa: { not: ROL_EMPRESA_GERENTE } }],
-      usuario: { activoGlobal: true, sucursales: { some: membresiaDeAdminEfectivo(empresaId) } },
+      usuario: { activoGlobal: true, sucursales: { some: filtroAdminEfectivo(empresaId) } },
     },
     select: { usuarioId: true, usuario: { select: { email: true, name: true } } },
     orderBy: { usuario: { email: "asc" } },

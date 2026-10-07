@@ -1,6 +1,7 @@
 import type { Db } from "@/lib/db-tipos";
 import { tuvoRolAdminEnLaEmpresa } from "./gerencia";
-import { CLAVE_ROL_ADMIN, esRolAdmin, nivelDe, puedeAsignarRol, puedeGestionarA, type PersonaParaJerarquia } from "./jerarquia";
+import { filtroMembresiaConAutoridadDeAdmin, filtroRolAdmin } from "./filtros";
+import { esRolAdmin, nivelDe, puedeAsignarRol, puedeGestionarA, type PersonaParaJerarquia } from "./jerarquia";
 
 /**
  * Bloque G, G2: el techo de privilegio de la gestión de usuarios, en un solo lugar. Las acciones de `server/actions/auth/usuarios.ts` no miran
@@ -37,7 +38,7 @@ async function rolEmpresaDe(db: Db, empresaId: string, usuarioId: string | null)
 
 /** Quien OTORGÓ el acceso a una sucursal, medido desde la base (E8: se revalida su techo al aceptar una invitación, cuando ya no hay sesión suya): administrador si su membresía de esa sucursal lo es. */
 export async function actorDesdeLaBase(db: Db, empresaId: string, usuarioId: string, sucursalId: string): Promise<PersonaParaJerarquia> {
-  const admin = await db.usuarioSucursal.findFirst({ where: { empresaId, usuarioId, sucursalId, activo: true, rol: { clave: CLAVE_ROL_ADMIN, activo: true } }, select: { id: true } });
+  const admin = await db.usuarioSucursal.findFirst({ where: { ...filtroMembresiaConAutoridadDeAdmin(empresaId, usuarioId), sucursalId }, select: { id: true } });
   return { rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: admin !== null };
 }
 
@@ -48,13 +49,13 @@ export async function objetivoEnSucursal(db: Db, empresaId: string, usuarioId: s
 
 /** A quien se toca por su cuenta en la empresa: administrador si tiene una membresía activa con un rol admin activo en cualquier sucursal. */
 export async function objetivoEnLaEmpresa(db: Db, empresaId: string, usuarioId: string): Promise<PersonaParaJerarquia> {
-  const esAdmin = await db.usuarioSucursal.findFirst({ where: { empresaId, usuarioId, activo: true, rol: { clave: CLAVE_ROL_ADMIN, activo: true } }, select: { id: true } });
+  const esAdmin = await db.usuarioSucursal.findFirst({ where: filtroMembresiaConAutoridadDeAdmin(empresaId, usuarioId), select: { id: true } });
   return { rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: esAdmin !== null };
 }
 
 /** El rol «admin» de la empresa, buscado por su CLAVE técnica (el nombre se puede cambiar: bloque G3). `null` si la empresa no lo tiene. */
 export async function buscarRolAdmin(db: Db, empresaId: string) {
-  return db.rol.findFirst({ where: { empresaId, clave: CLAVE_ROL_ADMIN } });
+  return db.rol.findFirst({ where: filtroRolAdmin(empresaId) });
 }
 
 /** Se gestiona a quien está en el mismo nivel o más abajo; el mensaje dice a quién protege el techo (el gerente o los administradores). */

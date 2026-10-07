@@ -1,6 +1,5 @@
 import type { Db } from "@/lib/db-tipos";
-import { CLAVE_ROL_ADMIN } from "./jerarquia";
-import { filtroDelGerente } from "./filtros";
+import { filtroDelGerente, filtroRolAdmin, filtroTuvoRolAdmin } from "./filtros";
 import { ROL_EMPRESA_GERENTE } from "./rol-empresa";
 
 export type ResultadoGerencia = { ok: true; mensaje: string; gerenteAnteriorId: string | null } | { ok: false; mensaje: string };
@@ -12,7 +11,7 @@ export async function obtenerGerenteDeEmpresa(db: Db, empresaId: string) {
 
 /** Tiene (o tuvo) el rol admin en alguna sucursal de la empresa, activa o no: la cuenta de alguien así la reactiva solo el gerente. */
 export async function tuvoRolAdminEnLaEmpresa(db: Db, empresaId: string, usuarioId: string): Promise<boolean> {
-  return Boolean(await db.usuarioSucursal.findFirst({ where: { empresaId, usuarioId, rol: { clave: CLAVE_ROL_ADMIN } }, select: { id: true } }));
+  return Boolean(await db.usuarioSucursal.findFirst({ where: filtroTuvoRolAdmin(empresaId, usuarioId), select: { id: true } }));
 }
 
 /**
@@ -21,7 +20,7 @@ export async function tuvoRolAdminEnLaEmpresa(db: Db, empresaId: string, usuario
  */
 export async function gerentesQueQuedaranSinSucursalActiva(db: Db, empresaId: string, sucursalId: string): Promise<string[]> {
   const gerentes = await db.usuarioEmpresa.findMany({
-    where: { empresaId, rolEmpresa: ROL_EMPRESA_GERENTE, activo: true },
+    where: { ...filtroDelGerente(empresaId), activo: true },
     select: { usuarioId: true, usuario: { select: { email: true } } },
   });
   const sinSucursal: string[] = [];
@@ -67,7 +66,7 @@ export async function incorporarPrimerGerente(
   const { empresaId, usuarioId } = input;
   if (await obtenerGerenteDeEmpresa(tx, empresaId)) return { ok: false, mensaje: "Esta empresa ya tiene gerente." };
   const sucursal = await tx.sucursal.findFirst({ where: { empresaId, activo: true }, orderBy: { creadoEn: "asc" }, select: { id: true, nombre: true } });
-  const rolAdmin = await tx.rol.findFirst({ where: { empresaId, clave: CLAVE_ROL_ADMIN, activo: true }, select: { id: true } });
+  const rolAdmin = await tx.rol.findFirst({ where: { ...filtroRolAdmin(empresaId), activo: true }, select: { id: true } });
   if (!sucursal || !rolAdmin) return { ok: false, mensaje: "La empresa todavía no tiene sucursal o rol de administración: avisá a la plataforma." };
 
   await tx.usuarioEmpresa.upsert({
