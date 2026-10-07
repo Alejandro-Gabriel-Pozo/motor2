@@ -46,6 +46,21 @@ describe("analizador de pureza: niveles", () => {
     expect(nivel("export const a = () => process.env.X;")).toBe("P2");
   });
 
+  it("P2 y P3: una REFERENCIA cuenta igual que una llamada (valor por defecto, campo, argumento); un nombre declarado o un tipo, no", () => {
+    // El hueco que dejaba pasar por P0 a `reintentar.ts` (`aleatorio = Math.random`) y a `correo/resend.ts` (`fetchFn = fetch`).
+    expect(nivel("export const a = (aleatorio: () => number = Math.random) => aleatorio();")).toBe("P2");
+    expect(nivel("export const a = { ahora: Date.now };")).toBe("P2");
+    expect(nivel('import { randomUUID } from "node:crypto";\nexport const a = { uuid: randomUUID };')).toBe("P2");
+    expect(nivel('import * as crypto from "node:crypto";\nexport const a = crypto.randomBytes;')).toBe("P2");
+    expect(nivel("export const a = (fetchFn: typeof fetch = fetch) => fetchFn;")).toBe("P3");
+    expect(nivel("export const a = globalThis.fetch;")).toBe("P3");
+    // Lo que NO es una referencia al valor global.
+    expect(nivel("export const a = (fetch: number) => 1;")).toBe("P0"); // el NOMBRE declarado de un parámetro (no hay análisis de alcance: usarlo adentro sí se contaría)
+    expect(nivel("export type Cliente = typeof fetch;")).toBe("P0"); // solo el tipo
+    expect(nivel("export const a = { fetch: 1, randomUUID: 2 };")).toBe("P0"); // un nombre de propiedad
+    expect(nivel("export const a = (x: { random: number }) => x.random;")).toBe("P0");
+  });
+
   it("P3: consultar un modelo de Prisma (el delegado sale del schema)", () => {
     expect(nivel("export const a = (db: any) => db.producto.findMany({});")).toBe("P3");
     expect(nivel("export const a = (db: any) => db.movimientoStock.groupBy({});")).toBe("P3");

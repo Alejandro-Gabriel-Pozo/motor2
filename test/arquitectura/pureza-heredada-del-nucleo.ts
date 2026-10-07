@@ -37,6 +37,8 @@ export const PUREZA_HEREDADA_DEL_NUCLEO: Record<string, EntradaDePurezaHeredada>
   "src/core/features/traspasos/traspaso.schema.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/fiscal/factura-autorizada.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/anulaciones.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
+  "src/core/correo/resend.ts": { nivel: "P3", senales: ["red"], pendiente: "Fase 4: trabajo 1.6 de la rama pureza-integracion: el cliente HTTP de Resend (`fetchFn = fetch`) sale de core a un adaptador" },
+  "src/core/movimientos/reintentar.ts": { nivel: "P2", senales: ["azar"], pendiente: "Fase 4: trabajo 1.5 de la rama pureza-integracion: el azar del backoff (`aleatorio = Math.random`) entra del borde" },
   "src/core/movimientos/armar-filas-de-movimiento.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/con-reintento.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/precio-venta.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma. OJO: además llama a preciosLocalesVigentes (lee la base de forma indirecta): esa parte sale en la Fase 4, 4A-5 (PR propio)" },
