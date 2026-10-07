@@ -27,7 +27,7 @@ El problema que condiciona todo: mover una lectura solo sirve si **todos** los q
 | B | Guard de acceso: `server/acceso/` (5 archivos) con diseño «hechos puros + cáscara que lee» (sin puertos: hay una sola implementación) | **Sí** |
 | C | El costeo de la venta (Kardex, `registrar-venta`) queda **fuera** de esta fase (Fase 4) | **Sí** |
 
-Pendientes de decisión (no bloquean el arranque): D-3 reportes que llaman lecturas de stock (recomendado: mover la composición a `server/consultas/reportes/`), D-4 reclasificar `auth/{acceso,rol-de-ejecucion}` a Fase 6, D-5 `movimientos/{stock,origen-venta-datos,producto-cache}` a Fase 4, D-6 mover (no borrar) `resolverStockMinimo`, tramo B D4–D9, tramo C D2–D9.
+**Registro formal del dueño (2026-10-07): D-3, D-4, D-5 y D-6 quedan confirmadas tal como se aplicaron** (D-3: la composición de `salud-por-producto` vive en `server/consultas/reportes`; D-4: `auth/{acceso,rol-de-ejecucion}` a la Fase 6; D-5: `movimientos/{stock,origen-venta-datos,producto-cache}` a la Fase 4; D-6: `resolverStockMinimo` se movió, no se borró). Texto original de las decisiones, hasta ese momento pendientes: D-3 reportes que llaman lecturas de stock (recomendado: mover la composición a `server/consultas/reportes/`), D-4 reclasificar `auth/{acceso,rol-de-ejecucion}` a Fase 6, D-5 `movimientos/{stock,origen-venta-datos,producto-cache}` a Fase 4, D-6 mover (no borrar) `resolverStockMinimo`, tramo B D4–D9, tramo C D2–D9.
 
 **Orden recomendado:** A (stock → pos → carta interna → catálogo parcial → auth) → B (permisos) → C (reportes). B mueve ~80 páginas con un codemod: conviene antes de que C toque reportes. Cada PR se integra a `main` con el Gate (requerido) verde antes de empezar el siguiente.
 

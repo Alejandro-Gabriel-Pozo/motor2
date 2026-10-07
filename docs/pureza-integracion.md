@@ -35,6 +35,7 @@ Cada fila: **ID**, qué es, fuente en el plan, estado (`[ ]` pendiente, `[x]` he
 | 1.10 | La auditoría de dinero ve `$executeRaw` sobre columnas `Decimal` (decisión del dueño sobre el vínculo: 4.3) | 11.2 #3 | [ ] | |
 | 1.11 | Ficha: campo `periodo` (o diferido por escrito a la Etapa A, 4.5) y fichas/exclusión declarada para los flujos de la consola y `operaciones-de-plataforma` | 11.2 #8 | [ ] | |
 | 1.12 | `consultas-solo-lectura-y-ui-sin-base` cubre `server/acceso/`; regla `paginas-solo-consultas`; guardián de reloj leído desde `server/persistencia` | 11.2 #9 | [ ] | |
+| 1.14 | **Auditar** las 3 altas de documentos que `escrituras-auditadas` exceptuaba (conteo físico, solicitud de traspaso, envío directo de traspaso) con `registrarCambioAuditado` en su caso de uso y **sacar las 3 excepciones** de la lista (con mutación: quitar la auditoría pone el test en rojo). **Decidido por el dueño el 2026-10-07**; cambia comportamiento (filas nuevas en el registro de auditoría), commit aparte | #80; 4.8 | [ ] | |
 | 1.13 | Comentario falso de `ALCANCE_CARTA_PUBLICA` corregido; codemod de imports versionado (D-11) | 11.2 #9; D-11 | [ ] | |
 
 ### Hito 2: redes de pruebas (antes de mover más código)
@@ -65,6 +66,7 @@ Cada fila: **ID**, qué es, fuente en el plan, estado (`[ ]` pendiente, `[x]` he
 | 4.1 | POS: apertura y mesas (6 casos de uso) → pedido (4; `agregarItems` al final, con test de conteo) | 10.4 fila 4 | [ ] | |
 | 4.2 | Dinero de carta (11) | 10.4 fila 4 | [ ] | |
 | 4.3 | Configuración de catálogo (19) y stock (14) y restos (7); D-9: auditar `renombrarOFusionarInsumo` en commit aparte | 10.4 fila 4 | [ ] | |
+| 4.4 | **Auditar los cambios de `stockMinimoProducto.minimo`** (hoy exceptuado como «no es dinero») y sacar esa excepción de `escrituras-auditadas`; **decidido por el dueño el 2026-10-07**, con la migración de `actions/stock/stock-minimo.ts`; commit aparte | 4.8 | [ ] | |
 
 ### Hito 5: venta, frontera de la carta y cierre
 
@@ -135,6 +137,6 @@ Cada uno se hace en el hito indicado, junto con el trabajo que toca el mismo có
 4. Dinero en `number` dentro de `core`: ¿diseño escrito o paso nuevo?
 5. Campo `periodo` de la ficha: ¿ahora o diferido por escrito a la Etapa A?
 6. Frontera UI → `server/lecturas`.
-8. Las excepciones por función de la auditoría de dinero que se dejaron en #80 (3 escrituras sin auditar: conteo físico, solicitud y envío directo de traspaso) y `stockMinimoProducto.minimo` exceptuado como «no es dinero»: ¿auditarlas o mantener la excepción con su motivo?
-9. Registrar formalmente D-3 a D-6 de la Fase 3 (D-4 y D-5 se aplicaron sin respuesta registrada).
+8. ~~Las excepciones de la auditoría de dinero (3 altas de documentos y `stockMinimoProducto.minimo`)~~ **RESUELTA (2026-10-07): se auditan** (trabajos 1.14 y 4.4).
+9. ~~Registrar formalmente D-3 a D-6 de la Fase 3~~ **RESUELTA (2026-10-07): registradas** tal como se aplicaron (`para motor 2\_planes\_decisiones-del-dueno-2026-10-07.md` y `docs/plan-fase-3-pureza.md`).
 7. Confirmar D-4 y D-5 de la Fase 3. ~~D15 y D16 de RBAC~~ **RESUELTAS (2026-10-07):** **D15** = el rango intermedio («encargado», opcional por empresa, D0) no alcanza ninguna acción de empresa por defecto; la empresa se las habilita de a una. **D16** = `ver_auditoria` pasa al piso «administrador de sistema» (F1, sin migración).
