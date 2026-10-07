@@ -139,6 +139,23 @@ describe("aceptar la invitación", () => {
     expect(pertenencias.map((p) => [p.empresaId, p.rolEmpresa])).toEqual([[EMPRESA, "gerente"], ["segunda", null]]);
   });
 
+  it("si el invitado ya tenía una cuenta APAGADA en esta empresa (y una membresía apagada de operador en la primera sucursal), aceptar la reactiva: gerente y admin activos", async () => {
+    // Hueco de cobertura informado en la Fase II (`incorporarPrimerGerente`, Hito 3): sin este caso, sacar el `activo: true` del upsert de la cuenta en la
+    // empresa (o de la membresía) no ponía ningún test en rojo. Un gerente con la cuenta apagada no entraría a la empresa que le acaban de dar.
+    const existente = await usuario();
+    await prismaAdmin.usuarioEmpresa.create({ data: { usuarioId: existente.id, empresaId: EMPRESA, rolEmpresa: null, activo: false } });
+    const central = await prismaAdmin.sucursal.findFirstOrThrow({ where: { empresaId: EMPRESA, nombre: "Central" } });
+    const operador = await prismaAdmin.rol.findFirstOrThrow({ where: { empresaId: EMPRESA, clave: "operador" } });
+    await prismaAdmin.usuarioSucursal.create({ data: { usuarioId: existente.id, sucursalId: central.id, empresaId: EMPRESA, rolId: operador.id, activo: false } });
+
+    expect((await aceptar(await invitar())).ok).toBe(true);
+
+    expect(await prismaAdmin.usuarioEmpresa.findUniqueOrThrow({ where: { usuarioId_empresaId: { usuarioId: existente.id, empresaId: EMPRESA } } })).toMatchObject({ rolEmpresa: "gerente", activo: true });
+    const membresia = await prismaAdmin.usuarioSucursal.findUniqueOrThrow({ where: { usuarioId_sucursalId: { usuarioId: existente.id, sucursalId: central.id } }, include: { rol: true } });
+    expect(membresia).toMatchObject({ activo: true });
+    expect(membresia.rol.clave).toBe("admin");
+  });
+
   it("si la empresa ya tiene gerente, deshace todo y la invitación queda pendiente", async () => {
     const otro = await prismaAdmin.user.create({ data: { email: "otro@gmail.com" } });
     await prismaAdmin.usuarioEmpresa.create({ data: { usuarioId: otro.id, empresaId: EMPRESA, rolEmpresa: "gerente" } });
