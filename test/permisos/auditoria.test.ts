@@ -120,6 +120,8 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
   });
 
   it("actualizarCapacidad registra el cambio de habilitado", async () => {
+    // O.41: cambiar una capacidad es solo del gerente; este test es sobre la auditoría, así que quien actúa pasa a ser el gerente.
+    await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: "gerente" } });
     await actualizarCapacidad("proceso_venta", null, false);
 
     const { items } = await listarRegistrosAuditoria({ entidad: "CapacidadSucursal", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);

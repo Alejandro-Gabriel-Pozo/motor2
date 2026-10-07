@@ -60,6 +60,23 @@ export function mensajeSiNoPuedeEditarLaMatrizDelRol(actor: PersonaParaJerarquia
   return laMatrizDelRolLaEditaSoloElGerente(rol) && nivelDe(actor) !== "gerente" ? MENSAJE_MATRIZ_SOLO_DEL_GERENTE : null;
 }
 
+const MENSAJE_CAPACIDADES_SOLO_DEL_GERENTE = "Solo el gerente de la empresa puede cambiar las capacidades de una sucursal. No se guardó nada.";
+
+/**
+ * O.41 (decisión del dueño del 2026-10-08, «esa perilla solo del gerente»; ADR-027, «Casos que D13/D14 deja abiertos»): la otra vía, hermana de D13/D14, para
+ * recortarle acciones al gerente. Las capacidades por sucursal (`CapacidadSucursal`, la matriz acción × sucursal) se aplican también a las acciones de empresa de
+ * piso no gerente (`decision-de-acceso.ts`; `capacidades-sucursal.ts` exime solo a las de `ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE` y a `capacidades_sucursal`):
+ * un administrador que no es el gerente, con `capacidades_sucursal`, apagaba `renombrar_rol`, `alta_sucursal`, `activar_sucursal`, `renombrar_sucursal` o
+ * `ver_auditoria` en todas las sucursales y con eso se las sacaba también al gerente. Desde O.41 cambiar una capacidad (cualquiera, de una sucursal o la fila
+ * default) es SOLO del gerente de la empresa; lo que el gerente apague sigue pudiendo alcanzar al gobierno, y es decisión suya.
+ *
+ * Es el rechazo de `actualizarCapacidad` cuando quien actúa NO es el gerente (`rolEmpresa`, medido desde la base dentro de la transacción). Pura: quien actúa lo
+ * mide el caso de uso; acá no se lee nada. El permiso de la pantalla (`capacidades_sucursal`) no cambia: la matriz de acceso queda igual.
+ */
+export function mensajeSiNoPuedeCambiarCapacidades(actor: PersonaParaJerarquia): string | null {
+  return nivelDe(actor) !== "gerente" ? MENSAJE_CAPACIDADES_SOLO_DEL_GERENTE : null;
+}
+
 /** El estado que realmente se guarda: aplica «Ver ⊇ Editar» y la salvaguarda del admin. */
 export function normalizarPermiso(rol: RolDeMatriz, accionClave: string, deseado: EstadoPermiso): EstadoPermiso {
   const puedeEditar = esCeldaFija(rol, accionClave) ? true : deseado.puedeEditar;

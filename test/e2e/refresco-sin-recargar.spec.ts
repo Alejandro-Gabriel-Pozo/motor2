@@ -1,6 +1,7 @@
 import { test, expect } from "./fixtures/auth";
 import { crearMembresia } from "../setup/membresia";
 import { prisma } from "./fixtures/db";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * En esta versión de Next un Server Action que no redirige NO re-renderiza la ruta: la pantalla seguía mostrando los datos viejos en un
@@ -205,7 +206,12 @@ test("insumos: fusionar uno con otro hace desaparecer la fila del absorbido sin 
 test("capacidades por sucursal: el ✅/⛔ cambia sin recargar la página (y solo se toca la columna de una sucursal propia)", async ({ paginaAutenticada: page }) => {
   const nombre = `E2E Sucursal Capacidad ${Date.now()}`;
   // Sucursal propia y activa (la matriz lista solo las activas): así no se toca la columna «Default», que es global y compartida con otros specs.
-  await prisma.sucursal.create({ data: { nombre } });
+  const { empresaId } = await prisma.sucursal.create({ data: { nombre } });
+  // O.41: cambiar una capacidad es solo del gerente. Este test es sobre el refresco sin recargar, no sobre ese punto: el usuario de las pruebas (que no es gerente
+  // por defecto) pasa a serlo mientras dura, y al terminar la empresa queda sin gerente, como la esperan los demás specs.
+  const admin = await prismaAdmin.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  await prismaAdmin.usuarioEmpresa.updateMany({ where: { empresaId, rolEmpresa: "gerente" }, data: { rolEmpresa: null } });
+  await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: admin.id, empresaId } }, data: { rolEmpresa: "gerente" } });
 
   try {
     await page.goto("/administracion/capacidades-sucursal");
@@ -227,6 +233,7 @@ test("capacidades por sucursal: el ✅/⛔ cambia sin recargar la página (y sol
 
     expect(await marcaSigue(page), "la página se recargó: el cambio no se vio por el refresco de la acción").toBe(true);
   } finally {
+    await prismaAdmin.usuarioEmpresa.updateMany({ where: { empresaId, rolEmpresa: "gerente" }, data: { rolEmpresa: null } });
     // Una sucursal activa de más rompe a otros specs (p. ej. el de Consolidado espera UNA sola): se deja desactivada.
     await prisma.sucursal.updateMany({ where: { nombre }, data: { activo: false } });
   }
