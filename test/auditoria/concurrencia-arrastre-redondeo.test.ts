@@ -14,7 +14,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarProductoDisponib
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
 
 const RONDAS = 10;
 

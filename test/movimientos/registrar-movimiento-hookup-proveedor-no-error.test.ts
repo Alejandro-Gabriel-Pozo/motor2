@@ -14,7 +14,7 @@ vi.mock("../../src/server/persistencia/catalogo/upsert-proveedor-por-producto", 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
 
 /**
  * Backlog post-cierre de Task #41 (2026-09-28, docs/pendientes-sesion-2026-09-27.md §5): el catch de

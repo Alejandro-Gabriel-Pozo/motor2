@@ -200,6 +200,6 @@ describe("`ModuloEmpresa` solo se consulta desde modulos-de-empresa.ts", () => {
       .filter((f) => /moduloEmpresa/.test(readFileSync(f, "utf8")))
       .map((f) => f.slice(raiz.length + 1).replace(/\\/g, "/"));
     // Además del guard, SOLO el escritor de la plataforma (`cambiarModulosDeEmpresa`, P9) toca la tabla: lee las filas de la empresa para diffear y las escribe. No decide acceso.
-    expect(lectores).toEqual(["core/features/empresa/cambiar-modulos-de-empresa.ts", "server/acceso/modulos-de-empresa.ts"]);
+    expect(lectores).toEqual(["server/acceso/modulos-de-empresa.ts", "server/operaciones-de-plataforma/cambiar-modulos-de-empresa.ts"]);
   });
 });

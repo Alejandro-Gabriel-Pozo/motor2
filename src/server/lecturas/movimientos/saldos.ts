@@ -1,8 +1,14 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { redondearACantidadDeUnidad, tieneStockReal } from "./transiciones";
+import { elegirLoteMasProximoAVencer, repartirConsumoPorFamilia, type ParteDeReparto } from "@/core/movimientos/public";
 import { disponibilidadDeProductos } from "@/core/catalogo/public-servidor";
 
 type Db = PrismaClient | Prisma.TransactionClient;
+
+/**
+ * Lectores del saldo del Kardex (Pureza Fase 4, tramo A): saldo por producto, sección y lote, sección propia, FEFO y reparto por familia. Mudados TAL CUAL desde
+ * `core/movimientos/stock.ts` (mismo nombre y misma firma). SIN `import "server-only"` a propósito: los importan un spec de Playwright (`conteo-fisico-grilla`) y un
+ * script de benchmark que corre con `tsx`, donde ese módulo revienta (mismo criterio que las lecturas de la carta y de los reportes).
+ */
 
 /**
  * Saldo TOTAL de un producto en una sección, sumando todos los lotes —
@@ -99,75 +105,7 @@ export async function obtenerLoteMasProximoAVencer(productoId: string, seccionId
     _sum: { cantidad: true },
   });
 
-  const conSaldo = grupos.filter((g) => g.loteVencimiento && Number(g._sum.cantidad ?? 0) > 0);
-  if (!conSaldo.length) return null;
-
-  conSaldo.sort((a, b) => a.loteVencimiento!.getTime() - b.loteVencimiento!.getTime());
-  return conSaldo[0].loteVencimiento;
-}
-
-export interface FilaStockParaConteo {
-  productoId: string;
-  productoCodigo: string;
-  productoNombre: string;
-  unidadStockNombre: string;
-  loteVencimiento: Date | null;
-  saldoSistema: number;
-}
-
-/**
- * Productos con saldo != 0 en una sección, uno por (producto, lote) — la
- * precarga de la grilla de Conteo Físico (mismo criterio que "Fetch Items
- * from Warehouse" de ERPNext, `stock_reconciliation.py::get_items`: solo
- * lo que ya tiene historial de stock ahí, no el catálogo entero). Excluye
- * PV comunes (mismo filtro que registrarConteoFisico, tieneStockReal) y
- * saldo 0 — nada que verificar ahí; si hay algo real que el sistema no
- * sabe (nunca contado, sin factura), se agrega a mano en la grilla, que sí
- * admite contar sobre saldo 0.
- */
-export async function listarStockParaConteo(seccionId: string, db: Db): Promise<FilaStockParaConteo[]> {
-  const grupos = await db.movimientoStock.groupBy({
-    by: ["productoId", "loteVencimiento"],
-    where: { seccionId },
-    _sum: { cantidad: true },
-  });
-  const conSaldo = grupos.filter((g) => Number(g._sum.cantidad ?? 0) !== 0);
-  if (!conSaldo.length) return [];
-
-  const productoIds = Array.from(new Set(conSaldo.map((g) => g.productoId)));
-  const [productos, seccion] = await Promise.all([
-    db.producto.findMany({ where: { id: { in: productoIds } }, include: { unidadStock: true } }),
-    db.seccion.findUniqueOrThrow({ where: { id: seccionId }, select: { sucursalId: true } }),
-  ]);
-  const productoPorId = new Map(productos.map((p) => [p.id, p]));
-  const disponibilidad = await disponibilidadDeProductos(seccion.sucursalId, productoIds, db);
-
-  const filas: FilaStockParaConteo[] = [];
-  for (const g of conSaldo) {
-    const p = productoPorId.get(g.productoId);
-    if (!p || !disponibilidad.get(p.id) || !tieneStockReal(p.tipo, p.seProduce)) continue;
-    filas.push({
-      productoId: p.id,
-      productoCodigo: p.codigo,
-      productoNombre: p.nombre,
-      unidadStockNombre: p.unidadStock.nombre,
-      loteVencimiento: g.loteVencimiento,
-      saldoSistema: redondearACantidadDeUnidad(Number(g._sum.cantidad ?? 0), p.unidadStock.decimales),
-    });
-  }
-
-  filas.sort(
-    (a, b) =>
-      a.productoNombre.localeCompare(b.productoNombre, "es") ||
-      (a.loteVencimiento?.getTime() ?? -Infinity) - (b.loteVencimiento?.getTime() ?? -Infinity)
-  );
-  return filas;
-}
-
-export interface ParteConsumo {
-  productoId: string;
-  loteVencimiento: Date | null;
-  cantidad: number;
+  return elegirLoteMasProximoAVencer(grupos.map((g) => ({ loteVencimiento: g.loteVencimiento, saldo: Number(g._sum.cantidad ?? 0) })));
 }
 
 /**
@@ -200,8 +138,8 @@ export async function resolverConsumoPorFamilia(
   // llamador ya tiene — por defecto pide directo, para los llamadores que
   // no arman receta (o no les importa el round-trip extra).
   obtenerProducto: (id: string) => Promise<{ insumoId: string | null } | null> = (id) => db.producto.findUnique({ where: { id } })
-): Promise<ParteConsumo[]> {
-  const sinReparto = async (): Promise<ParteConsumo[]> => [
+): Promise<ParteDeReparto[]> {
+  const sinReparto = async (): Promise<ParteDeReparto[]> => [
     { productoId, loteVencimiento: await obtenerLoteMasProximoAVencer(productoId, seccionId, db), cantidad: cantidadNecesaria },
   ];
 
@@ -225,39 +163,9 @@ export async function resolverConsumoPorFamilia(
     _sum: { cantidad: true },
   });
 
-  const candidatos = lotes
-    .map((l) => ({ productoId: l.productoId, loteVencimiento: l.loteVencimiento, saldo: Number(l._sum.cantidad ?? 0) }))
-    .filter((c) => c.saldo > 0)
-    .sort((a, b) => {
-      if (a.loteVencimiento && b.loteVencimiento) return a.loteVencimiento.getTime() - b.loteVencimiento.getTime();
-      if (a.loteVencimiento) return -1; // con fecha antes que sin fecha
-      if (b.loteVencimiento) return 1;
-      return 0;
-    });
-
-  // Redondeado a 4 decimales (precisión real de MovimientoStock.cantidad,
-  // Decimal(14,4)) ANTES de comparar — investigado como flake intermitente
-  // de test/auditoria/precision-roundtrip-y-reparto.test.ts ("3 hermanos"):
-  // `candidatos.reduce(...)` suma en el orden que Postgres devuelve el
-  // GROUP BY (sin ORDER BY, no garantizado), y la suma de punto flotante no
-  // es asociativa — sumar 3.37+2.19+1.81 en un orden distinto al que usa
-  // `cantidadNecesaria` (calculado aparte por quien llama) puede aterrizar
-  // en un float de IEEE754 apenas distinto (`7.3700000000000001066` vs.
-  // `7.3700000000000009948`, mismo valor decimal real). Sin este redondeo,
-  // ese ruido de los últimos bits hacía fallar `disponibleInsumo <
-  // cantidadNecesaria` para un pedido que en realidad calzaba justo —
-  // reproducido de forma determinística instrumentando el código real
-  // (no en un script aislado, donde el orden del GROUP BY no variaba).
-  const disponibleInsumo = redondearACantidadDeUnidad(candidatos.reduce((acc, c) => acc + c.saldo, 0), 4);
-  if (disponibleInsumo < redondearACantidadDeUnidad(cantidadNecesaria, 4)) return sinReparto(); // ni el Insumo entero alcanza
-
-  const partes: ParteConsumo[] = [];
-  let restante = cantidadNecesaria;
-  for (const c of candidatos) {
-    if (restante <= 0) break;
-    const tomar = Math.min(restante, c.saldo);
-    partes.push({ productoId: c.productoId, loteVencimiento: c.loteVencimiento, cantidad: tomar });
-    restante -= tomar;
-  }
-  return partes;
+  const partes = repartirConsumoPorFamilia(
+    lotes.map((l) => ({ productoId: l.productoId, loteVencimiento: l.loteVencimiento, saldo: Number(l._sum.cantidad ?? 0) })),
+    cantidadNecesaria
+  );
+  return partes ?? sinReparto(); // ni el Insumo entero alcanza: cae al camino de siempre
 }

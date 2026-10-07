@@ -19,7 +19,7 @@
  */
 import "dotenv/config";
 import { prisma } from "./demo-seed/cliente";
-import { calcularSaldoTotal } from "../src/core/movimientos/stock";
+import { calcularSaldoTotal } from "../src/server/lecturas/movimientos/saldos";
 import { calcularStockConsolidado } from "../src/server/consultas/stock/consolidado";
 import { calcularStockPorFamilia } from "../src/server/consultas/stock/por-familia";
 import { calcularAlertasStock } from "../src/server/consultas/stock/alertas";

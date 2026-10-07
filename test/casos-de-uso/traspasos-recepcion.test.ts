@@ -5,7 +5,7 @@ import { aceptarTraspasoCasoDeUso } from "../../src/server/actions/traspasos/cas
 import { rechazarEnvioDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/rechazar-envio-de-traspaso";
 import { confirmarReingresoDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/confirmar-reingreso-de-traspaso";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
-import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
 
 /**
  * Casos de uso de la RECEPCIÓN de un envío (src/server/actions/traspasos/casos-de-uso/; Task #41, Fase M11b): aceptar, rechazar el

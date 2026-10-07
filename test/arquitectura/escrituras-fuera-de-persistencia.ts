@@ -70,15 +70,15 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     fase: "Fase 4",
     motivo: "Tramo B (PR B3): la aceptación de invitación de gerente pasa a caso de uso + persistencia.",
   },
-  "src/core/features/empresa/cambiar-modulos-de-empresa.ts": {
+  "src/server/operaciones-de-plataforma/cambiar-modulos-de-empresa.ts": {
     escrituras: ["$executeRaw", "moduloEmpresa.upsert"],
-    fase: "Fase 4",
-    motivo: "Tramo B (PR B2): operación de plataforma por script; pasa a src/server/operaciones-de-plataforma.",
+    fase: "Permanente",
+    motivo: "Operación de plataforma que corre por script (nunca desde la app): activa y desactiva módulos con el rol de plataforma; escritor propio de ModuloEmpresa, con su auditoría.",
   },
-  "src/core/features/empresa/cambiar-politica-empresa.ts": {
+  "src/server/operaciones-de-plataforma/cambiar-politica-de-empresa.ts": {
     escrituras: ["$executeRaw", "empresa.update"],
-    fase: "Fase 4",
-    motivo: "Tramo B (PR B2): operación de plataforma por script; pasa a src/server/operaciones-de-plataforma.",
+    fase: "Permanente",
+    motivo: "Operación de plataforma que corre por script (nunca desde la app): cambia las perillas de política de una empresa; escritor propio de esas columnas, con su auditoría.",
   },
   "src/core/features/empresa/invitacion-de-usuario.ts": {
     escrituras: ["invitacion.create", "invitacion.create", "invitacion.update", "invitacion.update", "invitacion.update", "invitacion.updateMany", "invitacionSucursal.updateMany", "invitacionSucursal.upsert"],

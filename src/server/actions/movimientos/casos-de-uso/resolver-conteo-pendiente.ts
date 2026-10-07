@@ -1,7 +1,8 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { redondearACantidadDeUnidad } from "@/core/movimientos/public";
-import { calcularSaldoPorLote, calcularSaldoTotal, conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { calcularSaldoPorLote, calcularSaldoTotal } from "@/server/lecturas/movimientos/saldos";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComoResolverConteo, ResultadoResolverConteo } from "@/core/features/movimientos/resolver-conteo.schema";
 import { cargarConteoFisico } from "@/server/persistencia/movimientos/cargar-conteo-fisico";

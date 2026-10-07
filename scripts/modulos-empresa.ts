@@ -16,7 +16,8 @@ import "dotenv/config";
 import { parseArgs } from "node:util";
 import { clienteDePlataforma } from "./cliente-plataforma";
 import { ConexionDePlataformaError, describirConexion, resolverConexionDePlataforma } from "./conexion-de-plataforma";
-import { cambiarModulosDeEmpresa, ModulosDeEmpresaError } from "../src/core/features/empresa/cambiar-modulos-de-empresa";
+import { ModulosDeEmpresaError } from "../src/core/features/empresa/cambio-de-modulos";
+import { cambiarModulosDeEmpresa } from "../src/server/operaciones-de-plataforma/cambiar-modulos-de-empresa";
 import type { PrismaClient } from "@prisma/client";
 
 function lista(valor: string | undefined): string[] {
