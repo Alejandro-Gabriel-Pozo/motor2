@@ -73,7 +73,10 @@ async function medir(u: { nombre: string; id: string; email: string }): Promise<
   return conTransaccionSerializable(ctx.transaccion, async (tx) => {
     const filas: Medicion[] = [];
     for (const [nombre, sucursalId] of [["Central", s1], ["Norte", s2], ["Cerrada", s3]] as const) {
-      filas.push({ usuario: u.nombre, contexto: nombre, delCtx: actorEnSucursal(ctx, sucursalId), deLaBase: await actorDesdeLaBase(tx, ctx.empresaId, ctx.usuarioId, sucursalId) });
+      const base = await actorDesdeLaBase(tx, ctx.empresaId, ctx.usuarioId, sucursalId);
+      // Desde O35-D la lectura trae además QUIÉN es (`usuarioId`, para la regla de «uno mismo»): se lo compara aparte y se mide lo que el contexto también decía.
+      expect(base.usuarioId).toBe(ctx.usuarioId);
+      filas.push({ usuario: u.nombre, contexto: nombre, delCtx: actorEnSucursal(ctx, sucursalId), deLaBase: { rolEmpresa: base.rolEmpresa, esAdminEnElContexto: base.esAdminEnElContexto } });
     }
     filas.push({ usuario: u.nombre, contexto: "empresa", delCtx: actorEnLaEmpresa(ctx), deLaBase: await objetivoEnLaEmpresa(tx, ctx.empresaId, ctx.usuarioId) });
     return filas;

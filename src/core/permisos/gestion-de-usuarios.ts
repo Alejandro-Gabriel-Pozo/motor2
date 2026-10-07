@@ -43,14 +43,40 @@ export function mensajeSiNoPuedeAsignarRol(actor: PersonaParaJerarquia, rol: { c
 }
 
 /**
- * Contrato C2 del RBAC (O.35; Hito 3, Fase II, II.2): DAR un rol a una persona. Dos techos, en este orden: el del rol que se da (`mensajeSiNoPuedeAsignarRol`: el
- * rol administrador lo da un administrador o el gerente) y el de gestión sobre quien lo recibe (`mensajeSiNoPuedeGestionar`: nadie toca a quien está por encima).
- * Reemplaza la composición `mensajeSiNoPuedeAsignarRol(…) ?? mensajeSiNoPuedeGestionar(…)` que estaba copiada en tres lugares (alta de usuario, en sus dos ramas,
- * y aceptación de una invitación de usuario): mismo resultado para todo actor, rol y persona (`test/permisos/dar-rol-a.propiedades.test.ts`), y el orden de los
- * mensajes queda escrito una vez.
+ * Quien actúa o a quien se toca, con QUIÉN es (O35-D, la regla de «uno mismo»): las lecturas que los miden desde la base (`actorDesdeLaBase`,
+ * `objetivoEnSucursal`) devuelven también su `usuarioId`. `null`: alguien que todavía no tiene cuenta (la persona de una invitación), que nunca es «uno mismo».
  */
-export function mensajeSiNoPuedeDarRolA(actor: PersonaParaJerarquia, rol: { clave: string | null }, objetivo: PersonaParaJerarquia): string | null {
-  return mensajeSiNoPuedeAsignarRol(actor, rol) ?? mensajeSiNoPuedeGestionar(actor, objetivo);
+export interface PersonaIdentificada extends PersonaParaJerarquia {
+  usuarioId: string | null;
+}
+
+const MENSAJE_UNO_MISMO_POR_ENCIMA = "No podés darte a vos mismo un rol por encima del que tenés en esta sucursal: pedíselo a un administrador o al gerente de la empresa.";
+
+/**
+ * O35-D (O.35; regla aprobada en el plan del Hito 3): nadie se da a SÍ MISMO un rol por encima de su rango en el contexto, salvo el gerente de la empresa. «Uno
+ * mismo» es el mismo `usuarioId` en quien actúa y en quien recibe el rol; el rango del rol frente al de la persona es el del techo (`puedeAsignarRol`).
+ *
+ * Hoy no cambia ninguna aceptación ni rechazo: darse un rol por encima del propio ya lo frena el techo del rol (`mensajeSiNoPuedeAsignarRol`) y por las acciones
+ * no se llega (para darse un rol en una sucursal hay que tener ahí `gestion_usuarios`, de piso administrador de sistema). Lo que cambia es el MENSAJE de ese caso,
+ * y que la regla queda escrita por su nombre: cuando exista el rango 2 (F3, ADR-027) y el techo del rol cambie, «uno mismo por encima» sigue cerrado.
+ * Media regla privada: se aplica solo dentro de `mensajeSiNoPuedeDarRolA`.
+ */
+function mensajeSiSeDaASiMismoPorEncima(actor: PersonaIdentificada, rol: { clave: string | null }, objetivo: PersonaIdentificada): string | null {
+  const unoMismo = actor.usuarioId !== null && actor.usuarioId === objetivo.usuarioId;
+  if (!unoMismo || nivelDe(actor) === "gerente") return null;
+  return puedeAsignarRol(actor, rol) ? null : MENSAJE_UNO_MISMO_POR_ENCIMA;
+}
+
+/**
+ * Contrato C2 del RBAC (O.35; Hito 3, Fase II, II.2): DAR un rol a una persona. Tres chequeos, en este orden: la regla de «uno mismo» (O35-D: nadie se da un rol
+ * por encima de su rango, salvo el gerente), el techo del rol que se da (`mensajeSiNoPuedeAsignarRol`: el rol administrador lo da un administrador o el gerente)
+ * y el de gestión sobre quien lo recibe (`mensajeSiNoPuedeGestionar`: nadie toca a quien está por encima). Reemplaza la composición
+ * `mensajeSiNoPuedeAsignarRol(…) ?? mensajeSiNoPuedeGestionar(…)` que estaba copiada en tres lugares (alta de usuario, en sus dos ramas, y aceptación de una
+ * invitación de usuario): mismo resultado para todo actor, rol y persona SALVO «uno mismo por encima de su rango», que antes rechazaba con el techo del rol y
+ * ahora con su propio mensaje (`test/permisos/dar-rol-a.propiedades.test.ts`); el orden de los mensajes queda escrito una vez.
+ */
+export function mensajeSiNoPuedeDarRolA(actor: PersonaIdentificada, rol: { clave: string | null }, objetivo: PersonaIdentificada): string | null {
+  return mensajeSiSeDaASiMismoPorEncima(actor, rol, objetivo) ?? mensajeSiNoPuedeAsignarRol(actor, rol) ?? mensajeSiNoPuedeGestionar(actor, objetivo);
 }
 
 /**
@@ -58,6 +84,11 @@ export function mensajeSiNoPuedeDarRolA(actor: PersonaParaJerarquia, rol: { clav
  * `test/arquitectura/techo-de-dar-un-rol.test.ts`, con su motivo): el alta de una sucursal con su primer admin (contrato C6, I.4b: un administrador tiene que poder
  * nombrar al gerente primer admin de una sucursal nueva) y el chequeo de una invitación de usuario pendiente (quien la revoca o la reenvía tiene que poder dar
  * cada rol que ofrece; la persona todavía no es miembro: no hay a quién medir).
+ *
+ * No lleva la regla de «uno mismo» (O35-D), y no hace falta: en el alta de sucursal el rol que se da es SIEMPRE el administrador y quien actúa se mide en la
+ * empresa, así que «darse a sí mismo un rol por encima del propio» es exactamente «no ser administrador ni gerente», que el techo del rol ya rechaza (y crearse una
+ * sucursal y nombrarse primer admin siendo administrador sigue permitido: caso (a) de `caracterizacion-supuestos-rbac`); en la invitación pendiente la persona
+ * todavía no tiene cuenta en la empresa, no es «uno mismo».
  */
 export function mensajeSiNoPuedeDarRolSinTechoDeGestion(actor: PersonaParaJerarquia, rol: { clave: string | null }): string | null {
   return mensajeSiNoPuedeAsignarRol(actor, rol);

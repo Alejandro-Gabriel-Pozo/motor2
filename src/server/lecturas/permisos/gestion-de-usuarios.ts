@@ -1,7 +1,7 @@
 import "server-only";
 import { filtroMembresiaConAutoridadDeAdmin, filtroRolAdmin } from "@/core/permisos/filtros";
 import { tuvoRolAdminEnLaEmpresa } from "@/server/lecturas/permisos/gerencia";
-import { personaEnSucursal, reactivaLaMembresiaDeUnAdmin } from "@/core/permisos/gestion-de-usuarios";
+import { personaEnSucursal, reactivaLaMembresiaDeUnAdmin, type PersonaIdentificada } from "@/core/permisos/gestion-de-usuarios";
 import { SELECCION_DE_ROL_PARA_JERARQUIA, type PersonaParaJerarquia } from "@/core/permisos/jerarquia";
 import type { Db } from "@/lib/db-tipos";
 
@@ -27,14 +27,17 @@ async function rolEmpresaDe(db: Db, empresaId: string, usuarioId: string | null)
  * esa sucursal: administrador si su membresía de esa sucursal lo es. Desde O35-B (O.35) es también la medida de quien actúa en los casos de uso de usuarios,
  * dentro de su transacción, en lugar del contexto de la sesión.
  */
-export async function actorDesdeLaBase(db: Db, empresaId: string, usuarioId: string, sucursalId: string): Promise<PersonaParaJerarquia> {
+export async function actorDesdeLaBase(db: Db, empresaId: string, usuarioId: string, sucursalId: string): Promise<PersonaIdentificada> {
   const admin = await db.usuarioSucursal.findFirst({ where: { ...filtroMembresiaConAutoridadDeAdmin(empresaId, usuarioId), sucursalId }, select: { id: true } });
-  return { rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: admin !== null };
+  return { usuarioId, rolEmpresa: await rolEmpresaDe(db, empresaId, usuarioId), esAdminEnElContexto: admin !== null };
 }
 
-/** A quien se toca por su membresía en una sucursal: administrador si el rol de ESA membresía lo es (sin membresía o sin usuario todavía, operario). */
-export async function objetivoEnSucursal(db: Db, empresaId: string, usuarioId: string | null, rolDeLaMembresia: { clave: string | null } | null): Promise<PersonaParaJerarquia> {
-  return personaEnSucursal(await rolEmpresaDe(db, empresaId, usuarioId), rolDeLaMembresia);
+/**
+ * A quien se toca por su membresía en una sucursal: administrador si el rol de ESA membresía lo es (sin membresía o sin usuario todavía, operario). Con su
+ * `usuarioId` (O35-D: la regla de «uno mismo» lo compara con el de quien actúa).
+ */
+export async function objetivoEnSucursal(db: Db, empresaId: string, usuarioId: string | null, rolDeLaMembresia: { clave: string | null } | null): Promise<PersonaIdentificada> {
+  return { usuarioId, ...personaEnSucursal(await rolEmpresaDe(db, empresaId, usuarioId), rolDeLaMembresia) };
 }
 
 /**
