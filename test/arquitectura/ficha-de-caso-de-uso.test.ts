@@ -14,7 +14,9 @@ import { descubrirCasosDeUsoReales } from "./guardas/casos-de-uso";
  *
  *  - `permiso`: la acción (de `ACCIONES`) con la que la Server Action que lo envuelve lo protege (`conPermiso*("clave", …)`), o `POR_PROCESO` si la elige en ejecución, o `SISTEMA` si
  *    corre SIN usuario (un cron o el atajo del encabezado): lo envuelve un archivo que NO es `"use server"` (no es un endpoint) y que ningún `conPermiso*` protege. Quién puede importar esos
- *    envoltorios lo vigila `sincronizaciones-solo-desde-crons-y-shell.test.ts`.
+ *    envoltorios lo vigila `sincronizaciones-solo-desde-crons-y-shell.test.ts`. `SIN_PERMISO` si lo envuelve un ENDPOINT (`"use server"`) que no usa ningún `conPermiso*` porque todavía no
+ *    hay sesión ni membresía (aceptar una invitación: la autoridad es el token del enlace, no un permiso). Es un agujero deliberado en la matriz de permisos: por eso hay una LISTA CERRADA
+ *    (`CASOS_SIN_PERMISO`, abajo) con el motivo de cada uno, revisada en las dos direcciones (D-7 del plan de la Fase 4).
  *  - `transaccion`: `SERIALIZABLE` si llama a `conTransaccionSerializable`; `SIMPLE` si abre una transacción común; `NINGUNA` si no abre ninguna.
  *  - `idempotencia`: `I3` si y solo si llama a `chequearIdempotencia` (clave + hash del payload); `POR_ESTADO` (el estado del documento arbitra el reintento),
  *    `OPTIMISTA` (versión esperada) y `NO_APLICA` no pueden llamarla.
@@ -70,6 +72,8 @@ function permisosObservados(fuenteDelCaso: string, envolventes: string[]): strin
   const funciones = [...fuenteDelCaso.matchAll(/export\s+(?:async\s+)?function\s+(\w+)/g)].map((m) => m[1]);
   const permisos = new Set<string>();
   let sinUsuario = false;
+  let sinConPermiso = false;
+  let conConPermisoVariable = false;
   for (const codigo of envolventes) {
     const esEndpoint = /^\s*["']use server["']/m.test(codigo);
     const fuente = ts.createSourceFile("accion.ts", codigo, ts.ScriptTarget.Latest, true);
@@ -80,17 +84,37 @@ function permisosObservados(fuenteDelCaso: string, envolventes: string[]): strin
           if (ts.isCallExpression(p) && ts.isIdentifier(p.expression) && /^conPermiso/.test(p.expression.text)) {
             protegida = true;
             if (p.arguments[0] && ts.isStringLiteralLike(p.arguments[0])) permisos.add(p.arguments[0].text);
+            else conConPermisoVariable = true;
             break;
           }
         }
         // Sin ningún conPermiso* alrededor de la llamada: si el archivo no es un endpoint (`"use server"`), el caso de uso corre sin usuario.
         if (!protegida && !esEndpoint) sinUsuario = true;
+        if (!protegida && esEndpoint) sinConPermiso = true;
       }
       ts.forEachChild(n, buscar);
     };
     buscar(fuente);
   }
-  return [...permisos].sort().join("|") || (sinUsuario ? "SISTEMA" : "POR_PROCESO");
+  if (permisos.size > 0) return [...permisos].sort().join("|");
+  if (sinUsuario) return "SISTEMA";
+  if (conConPermisoVariable) return "POR_PROCESO";
+  // Un endpoint sin ningún `conPermiso*` alrededor de la llamada (ni literal ni variable) no protege nada: SIN_PERMISO.
+  return sinConPermiso ? "SIN_PERMISO" : "POR_PROCESO";
+}
+
+/**
+ * Los casos de uso que corren SIN permiso a propósito (un endpoint sin sesión), con el motivo de cada uno. Lista CERRADA: un caso de uso nuevo con `permiso=SIN_PERMISO` que no esté acá falla,
+ * y una entrada que ningún caso de uso real usa también (no se acumulan permisos fantasma). Hoy está vacía: B3 (Fase 4) suma las dos aceptaciones de invitación.
+ */
+export const CASOS_SIN_PERMISO: Record<string, string> = {};
+
+/** Los casos de uso que declaran `permiso=SIN_PERMISO` y no están en la lista cerrada, y las entradas de la lista que ningún caso real usa. */
+export function problemasDeSinPermiso(declarados: string[], lista: Record<string, string>): string[] {
+  const problemas: string[] = [];
+  for (const ruta of declarados) if (!(ruta in lista)) problemas.push(`${ruta}: declara permiso=SIN_PERMISO y no está en CASOS_SIN_PERMISO (con su motivo)`);
+  for (const ruta of Object.keys(lista)) if (!declarados.includes(ruta)) problemas.push(`${ruta}: está en CASOS_SIN_PERMISO pero ningún caso de uso real declara permiso=SIN_PERMISO con esa ruta`);
+  return problemas;
 }
 
 /** La línea `@ficha` del docstring, como `{campo: valor}`; `null` si no hay (o hay más de una). */
@@ -128,7 +152,18 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
     expect(permisosObservados(caso, ["export async function a(accion: string) { return conPermiso(accion, async (ctx) => anular(ctx)); }"])).toBe("POR_PROCESO");
     // SISTEMA: un envoltorio que NO es un endpoint y que no protege ningún conPermiso* (un cron). Si es un endpoint ("use server") sin permiso, sigue siendo POR_PROCESO.
     expect(permisosObservados(caso, ["export async function a(db: unknown) { return anular(db); }"])).toBe("SISTEMA");
-    expect(permisosObservados(caso, ['"use server";\nexport async function a(db: unknown) { return anular(db); }'])).toBe("POR_PROCESO");
+    expect(permisosObservados(caso, ['"use server";\nexport async function a(db: unknown) { return anular(db); }'])).toBe("SIN_PERMISO");
+    // Con un conPermiso* de clave variable, la clave se elige en ejecución: sigue siendo POR_PROCESO.
+    expect(permisosObservados(caso, ['"use server";\nexport async function a(db: unknown, accion: string) { return conPermiso(accion, async () => anular(db)); }'])).toBe("POR_PROCESO");
+    // Un endpoint con una llamada protegida por un literal y otra sin proteger: se prefiere el literal (una de las dos sí exige permiso).
+    expect(permisosObservados(caso, ['"use server";\nexport async function a(db: unknown) { return conPermiso("x_y", async () => anular(db)); }\nexport async function b(db: unknown) { return anular(db); }'])).toBe("x_y");
+  });
+
+  it("problemasDeSinPermiso: la lista cerrada se revisa en las dos direcciones", () => {
+    expect(problemasDeSinPermiso([], {})).toEqual([]);
+    expect(problemasDeSinPermiso(["a.ts"], { "a.ts": "motivo" })).toEqual([]);
+    expect(problemasDeSinPermiso(["a.ts"], {})).toEqual([expect.stringContaining("no está en CASOS_SIN_PERMISO")]);
+    expect(problemasDeSinPermiso([], { "a.ts": "motivo" })).toEqual([expect.stringContaining("ningún caso de uso real declara")]);
   });
 
   it("leerFicha: una sola línea @ficha con sus pares; sin línea o con dos, null", () => {
@@ -164,7 +199,7 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
       for (const [campo, valores] of Object.entries(VOCABULARIO)) {
         if (ficha[campo] && !(valores as readonly string[]).includes(ficha[campo])) problemas.push(`${c.ruta}: ${campo}=${ficha[campo]} no es uno de ${valores.join(", ")}`);
       }
-      if (ficha.permiso && ficha.permiso !== "POR_PROCESO" && ficha.permiso !== "SISTEMA") {
+      if (ficha.permiso && ficha.permiso !== "POR_PROCESO" && ficha.permiso !== "SISTEMA" && ficha.permiso !== "SIN_PERMISO") {
         for (const p of ficha.permiso.split("|")) if (!acciones.has(p)) problemas.push(`${c.ruta}: permiso=${p} no es una acción de ACCIONES`);
       }
     }
@@ -187,6 +222,11 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
       if (ficha.permiso !== permiso) mentiras.push(`${c.ruta}: la ficha dice permiso=${ficha.permiso} y la Server Action lo protege con ${permiso}`);
     }
     expect(mentiras, `La ficha miente (o el código cambió y la ficha no):\n${mentiras.join("\n")}`).toEqual([]);
+  });
+
+  it("los casos de uso con permiso=SIN_PERMISO están todos en la lista cerrada CASOS_SIN_PERMISO (con su motivo)", () => {
+    const declarados = casos.filter((c) => leerFicha(c.fuente)?.permiso === "SIN_PERMISO").map((c) => c.ruta);
+    expect(problemasDeSinPermiso(declarados, CASOS_SIN_PERMISO)).toEqual([]);
   });
 
   it("ningún caso de uso lee el reloj: la hora entra por actor.ahora (Pureza 1.2)", () => {
