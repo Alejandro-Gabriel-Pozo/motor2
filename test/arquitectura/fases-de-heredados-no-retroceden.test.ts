@@ -13,7 +13,6 @@ import { PUREZA_HEREDADA_DEL_NUCLEO } from "./pureza-heredada-del-nucleo";
 const FASE_REGISTRADA: Record<string, 4 | 6> = {
   "src/core/auth/base.ts": 6,
   "src/core/auth/contexto.ts": 6,
-  "src/core/auth/invitacion.ts": 4,
   "src/core/auth/ir-al-login.ts": 6,
   "src/core/auth/rol-de-ejecucion.ts": 6,
   "src/core/auth/session.ts": 6,

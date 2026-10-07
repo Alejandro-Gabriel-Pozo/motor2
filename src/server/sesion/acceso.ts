@@ -1,7 +1,9 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { dbDeEmpresa, dbDeUsuario } from "@/core/auth/base";
-import { invitacionHabilitaElIngreso, vincularCuentaConInvitacion, type CuentaDeGoogle } from "@/core/auth/invitacion";
+import type { CuentaDeGoogle } from "@/core/auth/invitacion";
+import { invitacionHabilitaElIngreso } from "./invitacion";
+import { vincularCuentaConInvitacion } from "./vincular-cuenta";
 
 /**
  * El GATE DE LOGIN (Hito 3, B3-2 de `docs/plan-hito-3-pureza.md`; O.24): vivía en `core/auth/acceso.ts` y no era núcleo (lee la base con el `prisma` global y por empresa, el reloj y

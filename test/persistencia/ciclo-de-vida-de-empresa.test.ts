@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { HAY_ROL_DE_PLATAFORMA, plataformaReal } from "../setup/cliente-plataforma-real";
 import type { PrismaClient } from "@prisma/client";
-import { aceptarInvitacionDelToken } from "../../src/core/auth/invitacion";
+import { aceptarInvitacionDelToken } from "../../src/server/sesion/invitacion";
 import type { MensajeDeCorreo, ResultadoDeEnvio } from "../../src/core/correo/tipos";
 import { darDeAltaEmpresa } from "../../plataforma/src/servidor/empresas";
 import {

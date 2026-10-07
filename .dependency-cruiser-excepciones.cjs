@@ -70,7 +70,8 @@ const IMPORTADORES_DE_DB = [
 const IMPORTADORES_DE_BASE = [
   { ruta: "src/core/auth/contexto.ts", motivo: "Arma el `ContextoUsuario` de cada pedido: es quien le da `ctx.db` al resto." },
   { ruta: "src/server/sesion/acceso.ts", motivo: "Resolución de acceso previa al contexto (login, jerarquía de roles): lee con la empresa/el usuario fijados." },
-  { ruta: "src/core/auth/invitacion.ts", motivo: "Lectura de la invitación por el hash de su token (`dbDeInvitacion`): ocurre antes de que el invitado tenga empresa ni sesión." },
+  { ruta: "src/server/sesion/invitacion.ts", motivo: "Lectura de la invitación por el hash de su token (`dbDeInvitacion`) y de sus sucursales bajo su empresa: ocurre antes de que el invitado tenga empresa ni sesión (Hito 3, B3-3: antes en core/auth/invitacion.ts)." },
+  { ruta: "src/server/sesion/vincular-cuenta.ts", motivo: "Vincula la cuenta de Google en el callback signIn de Auth.js (sin sesión ni contexto): abre la transacción bajo la empresa de la invitación con `transaccionDeLaEmpresa` (Hito 3, B3-3: antes en core/auth/invitacion.ts)." },
   { ruta: "src/server/carta-publica/sin-sesion.ts", motivo: "Carta pública: sin sesión no hay contexto; fija la empresa de la URL con `dbDeEmpresa`." },
   { ruta: "src/server/actions/auth/empresa-activa.ts", motivo: "Cambio de empresa activa: valida las pertenencias del usuario con `baseDeEmpresa` antes de escribir la cookie." },
   { ruta: "src/app/api/cron/sincronizar-dolar/route.ts", motivo: "Cron sin sesión (autorizado por CRON_SECRET): pide la base con `baseDelContexto()`." },

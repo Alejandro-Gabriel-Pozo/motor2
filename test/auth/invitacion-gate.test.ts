@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 import { inicioDeSesionPermitido } from "../../src/server/sesion/acceso";
-import { invitacionDelToken, nombreCookieInvitacion, opcionesCookieInvitacion } from "../../src/core/auth/invitacion";
+import { nombreCookieInvitacion, opcionesCookieInvitacion } from "../../src/core/auth/invitacion";
+import { invitacionDelToken } from "../../src/server/sesion/invitacion";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
 import { azarDelProceso } from "../../src/lib/azar";
 

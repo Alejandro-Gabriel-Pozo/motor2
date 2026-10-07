@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
-import { aceptarInvitacionDeUsuarioDelToken } from "../../src/core/auth/invitacion";
+import { aceptarInvitacionDeUsuarioDelToken } from "../../src/server/sesion/invitacion";
 import { requierePermiso } from "../../src/server/acceso/gate";
 import { MENSAJE_ENLACE_NO_VALIDO } from "../../src/core/features/empresa/aceptar-invitacion";
 import { asegurarInvitacionDeUsuario, rotarInvitacionPendiente } from "../../src/core/features/empresa/invitacion-de-usuario";

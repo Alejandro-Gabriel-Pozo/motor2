@@ -34,7 +34,7 @@ const GUARDAS_POR_MODULO: Record<string, string[]> = {
   "core/auth/contexto": ["obtenerContextoUsuario"],
   "core/auth/session": ["getUsuarioActual"],
   // Acciones previas al login (E5): su control de acceso es conocer el token de la invitación, que `invitacionDelToken` valida contra la base antes de cualquier escritura.
-  "core/auth/invitacion": ["invitacionDelToken"],
+  "server/sesion/invitacion": ["invitacionDelToken"],
   "server/acceso/gate": ["requierePermiso", "requierePermisoVer", "requierePermisoDeEmpresa", "requierePermisoVerDeEmpresa"],
 };
 

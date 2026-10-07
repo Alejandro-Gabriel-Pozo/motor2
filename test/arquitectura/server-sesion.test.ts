@@ -15,7 +15,7 @@ import { analizarFuente, delegadosDeModelos, type SenalesDeFuente } from "../../
  */
 const RAIZ = join(__dirname, "../..");
 const CARPETA = join(RAIZ, "src/server/sesion");
-const PERMITIDOS = ["acceso.ts"];
+const PERMITIDOS = ["acceso.ts", "invitacion.ts", "vincular-cuenta.ts"];
 
 type Impureza = "reloj" | "azar" | "entorno";
 const MOTIVO_FASE_6_RELOJ =
@@ -25,6 +25,9 @@ const MOTIVO_FASE_6_ENTORNO = "Fase 6: ALLOWED_EMAIL_DOMAINS (la vía 1 del gate
 /** `archivo` → la impureza que tiene declarada y por qué. Lo que no está acá, el archivo NO lo puede leer. */
 const DECLARADAS: Record<string, Partial<Record<Impureza, string>>> = {
   "acceso.ts": { reloj: MOTIVO_FASE_6_RELOJ, entorno: MOTIVO_FASE_6_ENTORNO },
+  // B3-3 los muda tal cual: todavía tienen `ahora = new Date()` como valor por defecto. B3-9 (O.24) vuelve `ahora` obligatorio y saca estas dos declaraciones.
+  "invitacion.ts": { reloj: "B3-9: `ahora` con valor por defecto `new Date()` en invitacionDelToken, invitacionHabilitaElIngreso y las dos aceptaciones; pasa a obligatorio" },
+  "vincular-cuenta.ts": { reloj: "B3-9: `ahora` con valor por defecto `new Date()` en vincularCuentaConInvitacion; pasa a obligatorio" },
 };
 
 const IMPUREZAS: Impureza[] = ["reloj", "azar", "entorno"];

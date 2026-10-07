@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { agregarOActualizarUsuario } from "../../src/server/actions/auth/usuarios";
-import { aceptarInvitacionDeUsuarioDelToken } from "../../src/core/auth/invitacion";
+import { aceptarInvitacionDeUsuarioDelToken } from "../../src/server/sesion/invitacion";
 import { requierePermiso } from "../../src/server/acceso/gate";
 import { enviadorEnMemoriaDelCanal } from "../../src/core/correo/enviar";
 import { crearSucursalConAdmin } from "../../src/server/actions/auth/sucursales";

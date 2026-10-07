@@ -55,10 +55,10 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     fase: "Fase 6",
     motivo: "No escribe datos: es el set_config local a la transacción (infraestructura de la base por empresa); sale UNA vez a server/sesion junto con contexto y rol-de-ejecucion.",
   },
-  "src/core/auth/invitacion.ts": {
+  "src/server/sesion/vincular-cuenta.ts": {
     escrituras: ["account.create", "invitacion.updateMany"],
-    fase: "Fase 4",
-    motivo: "Tramo B (PR B3): vincular la cuenta con una invitación (login) pasa a server/sesion como escritor de infraestructura de login.",
+    fase: "Permanente",
+    motivo: "Escritor de infraestructura de LOGIN, no un caso de uso (Hito 3, B3-3): vincula la cuenta de Google (Account) y consume la invitación de vinculación DENTRO del callback signIn de Auth.js (decidirInicioDeSesion), sin Server Action, sin sesión ni contexto de empresa, en una transacción serializable bajo la empresa de la invitación y con su auditoría.",
   },
   "src/core/features/empresa/aceptar-invitacion-de-usuario.ts": {
     escrituras: ["invitacion.updateMany", "usuarioEmpresa.upsert", "usuarioSucursal.upsert"],

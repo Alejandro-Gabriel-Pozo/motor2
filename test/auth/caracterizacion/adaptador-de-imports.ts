@@ -4,7 +4,8 @@
  * mudanza no obligue a tocar el cuerpo de las huellas —que no se editan—, todas importan lo que prueban DESDE ACÁ: cuando una función cambia de lugar, se cambia un solo `export … from`,
  * en el mismo commit que la mueve, y el golden queda intacto.
  */
-export { aceptarInvitacionDelToken, aceptarInvitacionDeUsuarioDelToken, vincularCuentaConInvitacion } from "../../../src/core/auth/invitacion";
+export { aceptarInvitacionDelToken, aceptarInvitacionDeUsuarioDelToken } from "../../../src/server/sesion/invitacion";
+export { vincularCuentaConInvitacion } from "../../../src/server/sesion/vincular-cuenta";
 export { requierePermiso } from "../../../src/server/acceso/gate";
 export { asegurarInvitacionDeUsuario, revocarInvitacionPendiente, rotarInvitacionPendiente } from "../../../src/core/features/empresa/invitacion-de-usuario";
 export { cambiarModulosDeEmpresa } from "../../../src/server/operaciones-de-plataforma/cambiar-modulos-de-empresa";
