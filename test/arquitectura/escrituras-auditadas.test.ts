@@ -56,6 +56,8 @@ const COLUMNAS_QUE_NO_SON_DINERO: Record<string, string> = {
 
 /** `archivo|función` que escribe dinero y no audita, con el motivo. Cada una es DEUDA CONOCIDA o una decisión de diseño: la lista solo puede achicarse. */
 const FUNCIONES_EXCEPTUADAS: Record<string, string> = {
+  "src/server/persistencia/catalogo/upsert-proveedor-por-producto.ts|upsertProveedorPorProducto":
+    "SQL crudo (`INSERT … ON CONFLICT DO UPDATE`) sobre `ProveedorPorProducto.precioUnitario/precioPorUnidadStock`: es un CACHÉ derivado de la compra (el precio verdadero está en el Kardex, que es su propia historia, y desde la parte 2 del vínculo las pantallas ya no lo leen: solo se lee la unidad y la referencia). PENDIENTE DE DECISIÓN DEL DUEÑO: ¿se audita o se exceptúa? (docs/pureza-integracion.md, sección 4, decisión 3); hasta entonces queda exceptuada y declarada acá.",
   "src/server/actions/catalogo/productos.ts|darDeAltaProducto":
     "Alta de un producto: no hay valor anterior que se pierda, y se crea SIN transacción a propósito (reintenta el código ante `P2002`, ver su docstring), así que la auditoría no puede ir atómica con la creación. Cada cambio posterior del precio lo audita `actualizarProducto`.",
   "src/server/actions/catalogo/productos.ts|darDeAltaProductoRapido":
@@ -193,10 +195,39 @@ export function leerEscrituras(codigo: string, archivo: string, decimales: Reado
         }
       }
     }
+    // SQL CRUDO (`$executeRaw` con plantilla, o `$executeRawUnsafe("…")`): la regla antes solo veía `x.<modelo>.<operación>`, así que un `INSERT … ON CONFLICT DO UPDATE` sobre una tabla con
+    // columnas `Decimal` quedaba invisible (auditoría de la Fase 0, hallazgo 0.7). Se lee el texto SQL, se saca la tabla (`INSERT INTO "X"`, `UPDATE "X"`, `DELETE FROM "X"`) y se la trata como
+    // una escritura del modelo `x`; las columnas de dinero son las `Decimal` que el SQL nombra (un `DELETE` o un SQL sin columnas nombradas cuenta como cualquier escritura).
+    const crudo = escrituraDeSqlCrudo(n, fuente);
+    if (crudo) {
+      const columnasDeDinero = decimales.get(crudo.modelo);
+      if (columnasDeDinero) {
+        const nombradas = [...columnasDeDinero].filter((c) => new RegExp(`"${c}"`).test(crudo.sql));
+        const tocadas = crudo.operacion === "DELETE" || nombradas.length === 0 ? ["(cualquier escritura)"] : nombradas;
+        const funcion = funcionDeNivelSuperior(n);
+        escrituras.push({ archivo, linea: fuente.getLineAndCharacterOfPosition(n.getStart(fuente)).line + 1, funcion, modelo: crudo.modelo, operacion: `$executeRaw ${crudo.operacion}`, columnas: tocadas, audita: audita(funcion) });
+      }
+    }
     ts.forEachChild(n, visitar);
   };
   visitar(fuente);
   return escrituras;
+}
+
+/** Si el nodo es un `$executeRaw`/`$executeRawUnsafe` con SQL de escritura legible, la tabla (como delegado), la operación y el texto SQL; si no, `null`. */
+export function escrituraDeSqlCrudo(n: ts.Node, fuente: ts.SourceFile): { modelo: string; operacion: "INSERT" | "UPDATE" | "DELETE"; sql: string } | null {
+  let sql: string | null = null;
+  if (ts.isTaggedTemplateExpression(n) && ts.isPropertyAccessExpression(n.tag) && /^\$executeRaw(Unsafe)?$/.test(n.tag.name.text)) {
+    sql = ts.isNoSubstitutionTemplateLiteral(n.template) ? n.template.text : [n.template.head.text, ...n.template.templateSpans.map((x) => x.literal.text)].join(" ");
+  } else if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && /^\$executeRaw(Unsafe)?$/.test(n.expression.name.text) && n.arguments[0] && ts.isStringLiteralLike(n.arguments[0])) {
+    sql = n.arguments[0].text;
+  }
+  if (sql === null) return null;
+  const m = /\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:ONLY\s+)?"?(\w+)"?/i.exec(sql);
+  if (!m) return null;
+  void fuente;
+  const operacion = m[1].toUpperCase().startsWith("INSERT") ? "INSERT" : m[1].toUpperCase().startsWith("UPDATE") ? "UPDATE" : "DELETE";
+  return { modelo: m[2].charAt(0).toLowerCase() + m[2].slice(1), operacion, sql };
 }
 
 /** Juzga las escrituras contra las excepciones. `usadas` recibe las excepciones que sí hicieron falta (para la revisión en las dos direcciones). */
@@ -343,6 +374,35 @@ describe("escrituras auditadas: el detector ve lo que tiene que ver (la regla no
 
   it("un delete no cuenta como escritura de este test (lo cubre kardex-solo-agrega y la baja deja su fila)", () => {
     expect(leer("export async function f(tx: any) { await tx.promoCarta.delete({ where: { id: 'a' } }); }")).toEqual([]);
+  });
+});
+
+describe("escrituras auditadas: el SQL crudo también cuenta (era invisible para la regla)", () => {
+  const leer = (codigo: string) => leerEscrituras(codigo, "src/server/persistencia/x.ts", DECIMALES);
+
+  it("un $executeRaw con plantilla que escribe columnas Decimal sin auditar es una violación, con las columnas que nombra", () => {
+    const codigo = 'export async function f(db: any) { await db.$executeRaw`INSERT INTO "ProveedorPorProducto" ("id", "precioUnitario") VALUES (${1}, ${2}) ON CONFLICT DO UPDATE SET "precioUnitario" = 1`; }';
+    const e = leer(codigo);
+    expect(e).toHaveLength(1);
+    expect(e[0]).toMatchObject({ modelo: "proveedorPorProducto", operacion: "$executeRaw INSERT", columnas: ["precioUnitario"] });
+    expect(violaciones(e)).toHaveLength(1);
+  });
+
+  it("con registrarCambioAuditado en la misma función ya no es violación", () => {
+    const codigo = 'export async function f(db: any) { await db.$executeRaw`UPDATE "ProveedorPorProducto" SET "precioUnitario" = ${1}`; await registrarCambioAuditado(db, {}); }';
+    expect(violaciones(leer(codigo))).toEqual([]);
+  });
+
+  it("$executeRawUnsafe con texto, UPDATE y DELETE; un DELETE o un SQL sin columnas nombradas cuenta como cualquier escritura", () => {
+    expect(leer('export async function f(db: any) { await db.$executeRawUnsafe("UPDATE \\"ProveedorPorProducto\\" SET \\"precioUnitario\\" = 1"); }')).toHaveLength(1);
+    expect(leer('export async function f(db: any) { await db.$executeRaw`DELETE FROM "ProveedorPorProducto" WHERE "id" = ${1}`; }')[0].columnas).toEqual(["(cualquier escritura)"]);
+    expect(leer('export async function f(db: any) { await db.$executeRaw`UPDATE "ProveedorPorProducto" SET "referenciaProveedor" = ${1}`; }')[0].columnas).toEqual(["(cualquier escritura)"]);
+  });
+
+  it("no cuenta: una tabla sin columnas Decimal, un SELECT, un set_config ni un $queryRaw", () => {
+    expect(leer('export async function f(db: any) { await db.$executeRaw`UPDATE "Proveedor" SET "nombre" = ${1}`; }')).toEqual([]);
+    expect(leer("export async function f(db: any) { await db.$executeRaw`SELECT set_config('app.empresa_id', ${1}, true)`; }")).toEqual([]);
+    expect(leer('export async function f(db: any) { await db.$queryRaw`UPDATE "ProveedorPorProducto" SET "precioUnitario" = 1`; }')).toEqual([]);
   });
 });
 
