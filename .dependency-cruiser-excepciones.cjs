@@ -212,6 +212,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 3, Fase I, I.4: crearSucursalConAdmin → auth/casos-de-uso/crear-sucursal-con-admin.ts, actualizarActivoSucursal → casos-de-uso/actualizar-activo-sucursal.ts y renombrarSucursal → casos-de-uso/renombrar-sucursal.ts (transacción de gobierno e invariantes donde las había, persistencia en server/persistencia/auth/sucursales.ts y permisos/membresias.ts, auditoría en el caso de uso); el formato del alta y del renombre lo validan sus guardComando* dentro de conPermisoDeEmpresa. listarSucursales es una lectura (H8).",
   },
+  {
+    ruta: "src/server/actions/auth/usuarios.ts",
+    motivo:
+      "Hito 3, Fase I, I.5: las 8 mutaciones pasan a auth/casos-de-uso/ (agregar-o-actualizar-usuario, actualizar-notas-membresia, actualizar-activo-membresia, actualizar-activo-usuario-en-empresa, transferir-gerencia, revocar-invitacion, reenviar-invitacion, invitar-a-vincular), con la transacción de gobierno, las invariantes, la persistencia (server/persistencia/{permisos/membresias,auth/gerencia,auth/invitaciones-de-usuario}.ts) y la auditoría en el caso de uso o sus pasos compartidos. La acción conserva el envoltorio y la clave, el guard del alta, el requierePermiso extra sobre la sucursal pedida y el mail DESPUÉS de confirmar (enviarInvitacionYAnotar). listarUsuariosDeSucursal y listarInvitacionesPendientes son lecturas (H8).",
+  },
 ];
 
 module.exports = {

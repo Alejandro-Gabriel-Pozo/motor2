@@ -1,14 +1,7 @@
 "use server";
 
-import { asegurarInvitacionDeVinculacion, rotarInvitacionPendiente } from "@/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx";
 import { requierePermiso } from "@/server/acceso/gate";
-import {
-  actorEnSucursal,
-  mensajeSiNoPuedeGestionar,
-  objetivoEnSucursal,
-} from "@/core/permisos/gestion-de-usuarios";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
-import { conGobierno } from "../con-gobierno";
 import { enviarInvitacionYAnotar, type InvitacionPorEnviar } from "./casos-de-uso/enviar-invitacion-y-anotar";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
@@ -22,13 +15,14 @@ import { agregarOActualizarUsuarioCasoDeUso } from "./casos-de-uso/agregar-o-act
 import { guardComandoAgregarOActualizarUsuario } from "@/core/features/permisos/usuario.guard";
 import { revocarInvitacionCasoDeUso } from "./casos-de-uso/revocar-invitacion";
 import { reenviarInvitacionPendienteCasoDeUso } from "./casos-de-uso/reenviar-invitacion";
-import { mensajeSiSeReenviaMuyPronto } from "@/core/features/empresa/invitacion";
+import { invitarAVincularCasoDeUso } from "./casos-de-uso/invitar-a-vincular";
 
 /**
- * Techo de privilegio y salvaguardas de esta pantalla (Bloque G, G2): las acciones no miran roles ni comparan nombres. Leen el estado y escriben
- * dentro de `conGobierno` (transacción serializable con reintento) y preguntan a `core/permisos/gestion-de-usuarios` (el techo: nadie toca a quien
- * está por encima, el rol admin lo da un admin o el gerente, reactivar a un admin es del gerente) y a `core/permisos/invariantes` (la empresa
- * conserva un admin efectivo, el gerente una sucursal activa y su condición de admin). Adentro no va ningún efecto externo: el bloque puede reintentarse.
+ * Techo de privilegio y salvaguardas de esta pantalla (Bloque G, G2): las acciones no miran roles ni comparan nombres. Desde el Hito 3 (Fase I, I.5) cada mutación
+ * es un adaptador de su caso de uso (`./casos-de-uso/`), que lee el estado y escribe dentro de `conGobierno` (transacción serializable con reintento) y pregunta a
+ * `core/permisos/gestion-de-usuarios` (el techo: nadie toca a quien está por encima, el rol admin lo da un admin o el gerente, reactivar a un admin es del gerente) y
+ * a `core/permisos/invariantes` (la empresa conserva un admin efectivo, el gerente una sucursal activa y su condición de admin). Adentro no va ningún efecto
+ * externo: el bloque puede reintentarse. Por eso el mail de una invitación lo manda la acción, DESPUÉS de que el caso de uso confirmó.
  */
 
 /** Cómo está la cuenta de Google de una membresía: vinculada, o sin vincular con el estado de su invitación de vinculación. */
@@ -211,34 +205,16 @@ export async function revocarInvitacion(invitacionId: string): Promise<Resultado
   return conPermiso("gestion_usuarios", async (ctx) => aResultadoAccion(await revocarInvitacionCasoDeUso(ctx, { invitacionId })));
 }
 
-/** «Invitar a vincular»: a un miembro que todavía no entró con Google (un precargado) se le manda la invitación para que vincule su cuenta. */
+/**
+ * «Invitar a vincular»: a un miembro que todavía no entró con Google (un precargado) se le manda la invitación para que vincule su cuenta. Desde el Hito 3 (Fase I, I.5i)
+ * es un adaptador: `conPermiso("gestion_usuarios")` → caso de uso (`casos-de-uso/invitar-a-vincular.ts`: membresía, techo, freno de un minuto e invitación con su
+ * auditoría, en la transacción de gobierno) → el mail recién con la transacción confirmada → `aResultadoAccion` (o el aviso de que no salió). Sin guard: solo recibe un id
+ * (`SIN_GUARD`).
+ */
 export async function invitarAVincular(membresiaId: string): Promise<ResultadoAccion> {
   return conPermiso("gestion_usuarios", async (ctx) => {
-    const ahora = ctx.ahora; // la hora del pedido (D.3)
-    let porEnviar = null as InvitacionPorEnviar | null;
-    const resultado = await conGobierno(ctx, async (tx) => {
-      porEnviar = null;
-      const membresia = await tx.usuarioSucursal.findUnique({
-        where: { id: membresiaId },
-        select: { sucursalId: true, usuarioId: true, rol: { select: { clave: true } }, usuario: { select: { email: true, activoGlobal: true, accounts: { where: { provider: "google" }, select: { id: true }, take: 1 } } } },
-      });
-      if (!membresia || membresia.sucursalId !== ctx.sucursalId) return error("No se encontró esa membresía.");
-      if (membresia.usuario.accounts.length > 0) return error("Esa persona ya vinculó su cuenta de Google.");
-      if (!membresia.usuario.activoGlobal) return error("La cuenta de ese usuario está desactivada en toda la plataforma.");
-      const rechazo = mensajeSiNoPuedeGestionar(actorEnSucursal(ctx, ctx.sucursalId), await objetivoEnSucursal(tx, ctx.empresaId, membresia.usuarioId, membresia.rol));
-      if (rechazo) return error(rechazo);
-      const email = membresia.usuario.email;
-      const previa = await tx.invitacion.findFirst({ where: { empresaId: ctx.empresaId, email, estado: "PENDIENTE", rolEmpresa: "vinculacion" }, select: { id: true, enviadaEn: true } });
-      const muyPronto = mensajeSiSeReenviaMuyPronto(previa?.enviadaEn, ahora);
-      if (muyPronto) return error(muyPronto);
-      const v = previa
-        ? await rotarInvitacionPendiente(tx, { empresaId: ctx.empresaId, invitacionId: previa.id, actorId: ctx.usuarioId, ahora, azar: azarDelProceso })
-        : await asegurarInvitacionDeVinculacion(tx, { empresaId: ctx.empresaId, email, invitadoPorId: ctx.usuarioId, ahora, azar: azarDelProceso });
-      if (!v.ok) return error(v.mensaje);
-      if (!v.token) return error("No se pudo generar la invitación.");
-      porEnviar = { invitacionId: v.invitacionId, token: v.token, tipo: "vinculacion" };
-      return ok(`Invitación para vincular la cuenta de Google enviada a "${email}".`);
-    });
-    return enviarYResponder(ctx, resultado, porEnviar as InvitacionPorEnviar | null, ahora);
+    const resultado = await invitarAVincularCasoDeUso(ctx, { membresiaId }, azarDelProceso);
+    if (!resultado.ok) return aResultadoAccion(resultado);
+    return enviarYResponder(ctx, aResultadoAccion(resultado), resultado.datos.porEnviar, ctx.ahora);
   });
 }
