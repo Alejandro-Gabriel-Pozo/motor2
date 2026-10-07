@@ -50,6 +50,8 @@ const SIN_GUARD: Record<string, string> = {
     "Activar o desactivar una sucursal (Hito 3, I.4): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso dentro de la transacción de gobierno, «No se encontró esa sucursal»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/auth/usuarios.ts#actualizarActivoMembresia":
     "Activar o desactivar a un usuario en la sucursal activa (Hito 3, I.5b): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso dentro de la transacción de gobierno, «No se encontró esa membresía»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/auth/usuarios.ts#actualizarActivoUsuarioEnEmpresa":
+    "Apagar o reactivar la cuenta de una persona en la empresa (Hito 3, I.5c): solo recibe un id de usuario y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso dentro de la transacción de gobierno, «No se encontró ese usuario»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/auth/usuarios.ts#actualizarNotasMembresia":
     "Editar las notas de una membresía (Hito 3, I.5a): recibe un id y un texto libre que nunca se validó en la acción; el texto lo normaliza el caso de uso (`texto(notas) || null`) DESPUÉS de resolver la membresía y el techo, como antes. Un guard previo adelantaría esa normalización a «No se encontró esa membresía».",
 };

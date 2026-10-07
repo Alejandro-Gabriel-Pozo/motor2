@@ -37,6 +37,14 @@ export async function crearMembresiaEnSucursal(
   return tx.usuarioSucursal.create({ data: { usuarioId, sucursalId, empresaId, rolId, notas } });
 }
 
+/**
+ * Apaga o reactiva la cuenta de la persona en la empresa (`UsuarioEmpresa.activo`, por el id de la pertenencia). Hito 3, I.5c: la escritura que
+ * `actualizarActivoUsuarioEnEmpresa` hacía en línea; corre dentro de `conInvariantesDeGobierno`.
+ */
+export async function cambiarActivoDeCuentaEnEmpresa(tx: Prisma.TransactionClient, entrada: { pertenenciaId: string; activo: boolean }): Promise<void> {
+  await tx.usuarioEmpresa.update({ where: { id: entrada.pertenenciaId }, data: { activo: entrada.activo } });
+}
+
 /** Activa o desactiva una membresía. Hito 3, I.5b: la escritura que `actualizarActivoMembresia` hacía en línea; corre dentro de `conInvariantesDeGobierno`. */
 export async function cambiarActivoDeMembresia(tx: Prisma.TransactionClient, entrada: { membresiaId: string; activo: boolean }): Promise<void> {
   await tx.usuarioSucursal.update({ where: { id: entrada.membresiaId }, data: { activo: entrada.activo } });

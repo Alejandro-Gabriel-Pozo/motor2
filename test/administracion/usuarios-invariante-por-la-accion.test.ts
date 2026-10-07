@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { MENSAJE_SIN_ADMIN_ACTIVO } from "../../src/core/permisos/invariantes";
-import { actualizarActivoMembresia } from "../../src/server/actions/auth/usuarios";
+import { actualizarActivoMembresia, actualizarActivoUsuarioEnEmpresa } from "../../src/server/actions/auth/usuarios";
 
 /**
  * Hito 3, Fase I, I.5: las mutaciones de `usuarios.ts` pasan a casos de uso que corren en `conGobierno` con la forma `siSeViola`, que devuelve la invariante
@@ -33,5 +33,24 @@ describe("usuarios: la invariante de gobierno violada vuelve por la acción con 
     expect(r).toEqual({ ok: false, mensaje: MENSAJE_SIN_ADMIN_ACTIVO });
     expect((await prismaAdmin.usuarioSucursal.findUniqueOrThrow({ where: { id: membresiaId } })).activo).toBe(true);
     expect(await prismaAdmin.registroAuditoria.count({ where: { actorId: unicoId } })).toBe(0);
+  });
+
+  it("actualizarActivoUsuarioEnEmpresa: el único admin apaga su propia cuenta en la empresa → el mensaje de la invariante, sin escribir ni auditar", async () => {
+    const r = await actualizarActivoUsuarioEnEmpresa(unicoId, false);
+
+    expect(r).toEqual({ ok: false, mensaje: MENSAJE_SIN_ADMIN_ACTIVO });
+    expect((await prismaAdmin.usuarioEmpresa.findFirstOrThrow({ where: { usuarioId: unicoId } })).activo).toBe(true);
+    expect(await prismaAdmin.registroAuditoria.count({ where: { actorId: unicoId } })).toBe(0);
+  });
+
+  it("actualizarActivoUsuarioEnEmpresa: el gerente que apaga su propia cuenta recibe el rechazo PROPIO (antes que la invariante, que también lo frenaría con otro texto)", async () => {
+    // El mismo único admin, ahora gerente: la invariante (b) también lo frenaría, pero con «no puede quedarse sin ninguna sucursal activa»; `gerente-unico`
+    // solo mira /traspas/, que matchea las dos. Este fija cuál de los dos gana, y con eso que el chequeo propio sigue en su lugar.
+    await prismaAdmin.usuarioEmpresa.updateMany({ where: { usuarioId: unicoId }, data: { rolEmpresa: "gerente" } });
+
+    const r = await actualizarActivoUsuarioEnEmpresa(unicoId, false);
+
+    expect(r).toEqual({ ok: false, mensaje: "El gerente no puede desactivar su propia cuenta: traspasá la gerencia antes." });
+    expect((await prismaAdmin.usuarioEmpresa.findFirstOrThrow({ where: { usuarioId: unicoId } })).activo).toBe(true);
   });
 });

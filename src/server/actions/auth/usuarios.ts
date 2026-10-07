@@ -7,13 +7,10 @@ import { requierePermiso } from "@/server/acceso/gate";
 import { transferirGerenciaDeEmpresa } from "@/core/permisos/gerencia";
 import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import {
-  actorEnLaEmpresa,
   actorEnSucursal,
   mensajeSiNoPuedeAsignarRol,
   mensajeSiNoPuedeGestionar,
   mensajeSiReactivaAdminSinSerGerente,
-  mensajeSiSeApagaAlGerente,
-  objetivoEnLaEmpresa,
   objetivoEnSucursal,
   reactivaAUnAdmin,
 } from "@/core/permisos/gestion-de-usuarios";
@@ -27,6 +24,7 @@ import { azarDelProceso } from "@/lib/azar";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { actualizarNotasMembresiaCasoDeUso } from "./casos-de-uso/actualizar-notas-membresia";
 import { actualizarActivoMembresiaCasoDeUso } from "./casos-de-uso/actualizar-activo-membresia";
+import { actualizarActivoUsuarioEnEmpresaCasoDeUso } from "./casos-de-uso/actualizar-activo-usuario-en-empresa";
 
 /**
  * Techo de privilegio y salvaguardas de esta pantalla (Bloque G, G2): las acciones no miran roles ni comparan nombres. Leen el estado y escriben
@@ -225,37 +223,13 @@ export async function actualizarNotasMembresia(membresiaId: string, notas: strin
  *
  * Es una acción de contexto empresa (`apagar_cuenta_empresa`): no depende de en qué sucursal esté parado quien la pide. Por eso quien actúa
  * se mide por ser admin en CUALQUIER sucursal de la empresa (o gerente), y a quien se toca, igual.
+ *
+ * Desde el Hito 3 (Fase I, I.5c) es un adaptador: `conPermisoDeEmpresa("apagar_cuenta_empresa")` → caso de uso
+ * (`casos-de-uso/actualizar-activo-usuario-en-empresa.ts`: la pertenencia, el techo, el gerente que no se apaga, el gerente para reactivar a un admin y las
+ * invariantes de gobierno, en la transacción de gobierno) → `aResultadoAccion`. Sin guard: solo recibe un id y un booleano (`SIN_GUARD`).
  */
 export async function actualizarActivoUsuarioEnEmpresa(usuarioId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("apagar_cuenta_empresa", async (ctx) =>
-    conGobierno(ctx, async (tx) => {
-      // `User` no tiene RLS (y `UsuarioEmpresa` tiene RLS recién desde la migración rls_usuario_empresa): el `empresaId` de la clave sigue siendo obligatorio.
-      const pertenencia = await tx.usuarioEmpresa.findUnique({
-        where: { usuarioId_empresaId: { usuarioId, empresaId: ctx.empresaId } },
-        include: { usuario: true },
-      });
-      if (!pertenencia) return error("No se encontró ese usuario.");
-      const usuario = pertenencia.usuario;
-
-      const actor = actorEnLaEmpresa(ctx);
-      const objetivo = await objetivoEnLaEmpresa(tx, ctx.empresaId, usuarioId);
-      const rechazo = mensajeSiNoPuedeGestionar(actor, objetivo) ?? (activo ? null : mensajeSiSeApagaAlGerente(objetivo));
-      if (rechazo) return error(rechazo);
-      if (activo && !pertenencia.activo) {
-        const rechazoReactivar = mensajeSiReactivaAdminSinSerGerente(actor, await reactivaAUnAdmin(tx, ctx.empresaId, usuarioId, { cuentaDeEmpresa: pertenencia }));
-        if (rechazoReactivar) return error(rechazoReactivar);
-      }
-
-      return conInvariantesDeGobierno(tx, ctx.empresaId, async () => {
-        await tx.usuarioEmpresa.update({ where: { id: pertenencia.id }, data: { activo } });
-        await registrarCambioAuditado(tx, {
-          entidad: "UsuarioEmpresa", entidadId: usuarioId, campo: "activo", descripcion: `Cuenta de "${usuario.email}" en la empresa`,
-          valorAnterior: pertenencia.activo, valorNuevo: activo, actorId: ctx.usuarioId, sucursalId: null,
-        });
-        return ok(`Cuenta de "${usuario.email}" ${activo ? "reactivada" : "desactivada"} en la empresa.`);
-      });
-    }),
-  );
+  return conPermisoDeEmpresa("apagar_cuenta_empresa", async (ctx) => aResultadoAccion(await actualizarActivoUsuarioEnEmpresaCasoDeUso(ctx, { usuarioId, activo })));
 }
 
 /**
