@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/lib/auth";
 import { getUsuarioActual } from "@/core/auth/session";
 import { claseDeInvitacion, nombreCookieInvitacion } from "@/core/auth/invitacion";
-import { accesosDeLaInvitacion, invitacionDelToken } from "@/server/sesion/invitacion";
+import { accesosDeLaInvitacion, invitacionConSuBase } from "@/server/sesion/invitacion";
 import { MENSAJE_ENLACE_NO_VALIDO } from "@/core/features/empresa/aceptar-invitacion";
 import { AbrirInvitacion } from "./abrir-invitacion";
 import { AceptarDeUsuario } from "./aceptar-de-usuario";
@@ -33,10 +33,10 @@ const BOTON = "w-full rounded-md bg-neutral-900 px-4 py-2 text-white hover:bg-ne
 export default async function InvitacionPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(nombreCookieInvitacion(process.env))?.value;
-  const vista = await invitacionDelToken(token);
+  const invitacion = await invitacionConSuBase(token, new Date());
 
   // Sin cookie (o con una que no corresponde a nada): el token puede estar todavía en el fragmento de la URL, que solo ve el navegador.
-  if (!vista) {
+  if (!invitacion) {
     return (
       <Pantalla>
         <h1 className="text-2xl font-semibold">Invitación</h1>
@@ -45,6 +45,7 @@ export default async function InvitacionPage() {
     );
   }
 
+  const { vista } = invitacion;
   const usuario = await getUsuarioActual();
   const clase = claseDeInvitacion(vista);
 
@@ -118,7 +119,7 @@ export default async function InvitacionPage() {
   if (clase === "vinculacion") redirect("/");
 
   if (clase === "acceso-a-empresa") {
-    const accesos = await accesosDeLaInvitacion(vista);
+    const accesos = await accesosDeLaInvitacion(invitacion);
     return (
       <Pantalla>
         <h1 className="text-2xl font-semibold">Invitación</h1>

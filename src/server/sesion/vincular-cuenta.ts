@@ -2,9 +2,8 @@ import "server-only";
 import { conTransaccionSerializable, esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { InvarianteViolada } from "@/core/permisos/invariantes";
-import { transaccionDeLaEmpresa } from "@/core/auth/base";
 import { sirveParaVincular, TIPO_INVITACION_VINCULACION, type CuentaDeGoogle } from "@/core/auth/invitacion";
-import { invitacionDelToken } from "./invitacion";
+import { invitacionConSuBase } from "./invitacion";
 
 /**
  * Vincula la cuenta de Google al `User` EXISTENTE, con el token de una invitación (E8, ADR-024). Auth.js no lo hace solo (el enlace automático por email está apagado):
@@ -20,13 +19,15 @@ import { invitacionDelToken } from "./invitacion";
  */
 export async function vincularCuentaConInvitacion(entrada: { token: string | undefined; usuario: { id: string; email: string }; cuenta: CuentaDeGoogle; ahora?: Date }): Promise<boolean> {
   const ahora = entrada.ahora ?? new Date();
-  const vista = await invitacionDelToken(entrada.token, ahora);
-  if (!vista || vista.estado !== "PENDIENTE" || !sirveParaVincular(vista)) return false;
+  const invitacion = await invitacionConSuBase(entrada.token, ahora);
+  if (!invitacion) return false;
+  const { vista } = invitacion;
+  if (vista.estado !== "PENDIENTE" || !sirveParaVincular(vista)) return false;
   if (vista.email !== entrada.usuario.email.trim().toLowerCase()) return false;
   const { cuenta, usuario } = entrada;
   try {
     return await conTransaccionSerializable(
-      transaccionDeLaEmpresa(vista.empresaId),
+      invitacion.transaccion,
       async (tx) => {
         const previa = await tx.account.findFirst({ where: { userId: usuario.id, provider: "google" }, select: { providerAccountId: true } });
         if (previa) return previa.providerAccountId === cuenta.providerAccountId;

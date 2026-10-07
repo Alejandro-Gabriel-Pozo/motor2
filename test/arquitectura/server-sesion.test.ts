@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { analizarFuente, delegadosDeModelos, type SenalesDeFuente } from "../../scripts/arquitectura/analizar-fuente";
 
@@ -42,7 +43,54 @@ function impurezasSinDeclarar(archivo: string, senales: Pick<SenalesDeFuente, Im
   return problemas;
 }
 
+/**
+ * B3-4: de qué función de `server/sesion` sale cada base de `core/auth/base` (frontera multiempresa del login). Desde un token de invitación, la base de SU empresa solo la da
+ * `invitacionConSuBase` (la empresa sale de la invitación leída por el hash, nunca de un id del llamador); la base por hash, solo `invitacionDelToken`; el gate solo mira las
+ * pertenencias del propio usuario. Una llamada a una fábrica de bases desde otra función (o a una que no está acá) falla.
+ */
+const PUERTAS_A_LA_BASE: Record<string, Record<string, string[]>> = {
+  dbDeInvitacion: { "invitacion.ts": ["invitacionDelToken"] },
+  dbDeEmpresa: { "invitacion.ts": ["invitacionConSuBase"], "acceso.ts": ["tieneSucursalActiva"] },
+  transaccionDeLaEmpresa: { "invitacion.ts": ["invitacionConSuBase"] },
+  dbDeUsuario: { "acceso.ts": ["tieneSucursalActiva"] },
+  transaccionDeEmpresa: {},
+  baseDeEmpresa: {},
+  baseDelContexto: {},
+};
+
+/** Las llamadas a una fábrica de bases que no salen de su puerta declarada: `archivo:funcion → fabrica`. */
+function puertasNoDeclaradas(archivo: string, codigo: string): string[] {
+  const fuente = ts.createSourceFile(archivo, codigo, ts.ScriptTarget.Latest, true);
+  const problemas: string[] = [];
+  const visitar = (n: ts.Node, funcion: string): void => {
+    let dentro = funcion;
+    if (ts.isFunctionDeclaration(n) && n.name) dentro = n.name.text;
+    if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer && (ts.isArrowFunction(n.initializer) || ts.isFunctionExpression(n.initializer))) dentro = n.name.text;
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text in PUERTAS_A_LA_BASE) {
+      const fabrica = n.expression.text;
+      if (!(PUERTAS_A_LA_BASE[fabrica][archivo] ?? []).includes(dentro)) problemas.push(`${archivo}:${dentro || "(módulo)"} → ${fabrica}`);
+    }
+    ts.forEachChild(n, (h) => visitar(h, dentro));
+  };
+  visitar(fuente, "");
+  return problemas;
+}
+
 describe("server/sesion: lista cerrada, server-only y reloj/entorno declarados", () => {
+  it("la base de la empresa de una invitación sale solo de invitacionConSuBase (y cada fábrica de bases, solo de su puerta)", () => {
+    const problemas = readdirSync(CARPETA)
+      .filter((f) => /\.tsx?$/.test(f))
+      .flatMap((f) => puertasNoDeclaradas(f, readFileSync(join(CARPETA, f), "utf8")));
+    expect(problemas, "pedí la base por invitacionConSuBase (B3-4), o declarala en PUERTAS_A_LA_BASE con su motivo").toEqual([]);
+  });
+
+  it("el detector de puertas: una fábrica de bases fuera de su función declarada", () => {
+    expect(puertasNoDeclaradas("invitacion.ts", "export async function invitacionConSuBase(t: string) { return { db: dbDeEmpresa(t), tx: transaccionDeLaEmpresa(t) }; }")).toEqual([]);
+    expect(puertasNoDeclaradas("vincular-cuenta.ts", "export async function vincular(e: string) { return transaccionDeLaEmpresa(e); }")).toEqual(["vincular-cuenta.ts:vincular → transaccionDeLaEmpresa"]);
+    expect(puertasNoDeclaradas("invitacion.ts", "export const accesos = async (v: { empresaId: string }) => dbDeEmpresa(v.empresaId).x;")).toEqual(["invitacion.ts:accesos → dbDeEmpresa"]);
+    expect(puertasNoDeclaradas("invitacion.ts", "const db = baseDeEmpresa('e');")).toEqual(["invitacion.ts:(módulo) → baseDeEmpresa"]);
+  });
+
   const archivos = readdirSync(CARPETA).filter((f) => /\.tsx?$/.test(f)).sort();
   const delegados = delegadosDeModelos(readFileSync(join(RAIZ, "prisma", "schema.prisma"), "utf8"));
 

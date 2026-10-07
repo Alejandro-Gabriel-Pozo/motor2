@@ -7,6 +7,7 @@ import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { InvarianteViolada } from "@/core/permisos/invariantes";
 import { hashDeToken } from "@/core/seguridad/tokens";
 import { dbDeEmpresa, dbDeInvitacion, transaccionDeLaEmpresa, verificarRolDeEjecucionDelProceso } from "@/core/auth/base";
+import type { Transaccion } from "@/lib/db-tipos";
 import { abreLaVia3, TIPO_INVITACION_USUARIO, type VistaDeInvitacion } from "@/core/auth/invitacion";
 
 /**
@@ -45,6 +46,27 @@ export async function invitacionDelToken(token: string | undefined, ahora: Date 
   };
 }
 
+/** Una invitación leída por su token, con la base de SU empresa: la única forma de llegar desde un token a esa base. */
+export interface InvitacionConSuBase {
+  vista: VistaDeInvitacion;
+  /** La base fijada en la empresa de la invitación (RLS `aislamiento_empresa`), para leer fuera de la transacción (el guard de quien otorgó, las sucursales). */
+  db: PrismaClient;
+  /** La transacción bajo esa misma empresa. */
+  transaccion: Transaccion;
+}
+
+/**
+ * La ÚNICA puerta de un token de invitación a la base de su empresa (Hito 3, B3-4 de `docs/plan-hito-3-pureza.md`). Quien acepta todavía no tiene contexto de empresa: la
+ * empresa sale de la invitación misma, leída por el hash del token (`invitacionDelToken`), nunca de un id que mande el llamador. Las aceptaciones, la vinculación de la cuenta
+ * y las sucursales de la invitación piden la base por acá; `server-sesion.test.ts` vigila que en `server/sesion` nadie más fije una empresa a partir de una invitación.
+ * `null` si el token no corresponde a ninguna invitación (mismo criterio que `invitacionDelToken`: no se distingue «no existe» de «mal formado»).
+ */
+export async function invitacionConSuBase(token: string | undefined, ahora: Date): Promise<InvitacionConSuBase | null> {
+  const vista = await invitacionDelToken(token, ahora);
+  if (!vista) return null;
+  return { vista, db: dbDeEmpresa(vista.empresaId), transaccion: transaccionDeLaEmpresa(vista.empresaId) };
+}
+
 /**
  * ¿Esta invitación deja iniciar sesión con la cuenta de Google de `emailPerfil`? Sí cuando sigue pendiente (no aceptada, revocada ni vencida) y el email
  * es EL MISMO que se invitó. Es la cuarta vía del gate de login: no da acceso a nada más que a llegar a la pantalla de aceptación.
@@ -61,11 +83,11 @@ export async function invitacionHabilitaElIngreso(token: string | undefined, ema
  */
 export async function aceptarInvitacionDelToken(entrada: { token: string; usuario: { id: string; email: string }; cuit: unknown; ahora?: Date }): Promise<ResultadoDeAceptacion> {
   const ahora = entrada.ahora ?? new Date();
-  const vista = await invitacionDelToken(entrada.token, ahora);
-  if (!vista || vista.estado !== "PENDIENTE") return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
+  const invitacion = await invitacionConSuBase(entrada.token, ahora);
+  if (!invitacion || invitacion.vista.estado !== "PENDIENTE") return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
   try {
     return await conTransaccionSerializable(
-      transaccionDeLaEmpresa(vista.empresaId),
+      invitacion.transaccion,
       (tx) => aceptarInvitacion(tx, { token: entrada.token, usuario: entrada.usuario, cuit: entrada.cuit, ahora }),
     );
   } catch (e) {
@@ -92,13 +114,13 @@ export async function aceptarInvitacionDeUsuarioDelToken(
   requierePermiso: ExigirGestionDeUsuarios,
 ): Promise<ResultadoDeAceptacion> {
   const ahora = entrada.ahora ?? new Date();
-  const vista = await invitacionDelToken(entrada.token, ahora);
-  if (!vista || vista.estado !== "PENDIENTE" || vista.tipo !== TIPO_INVITACION_USUARIO) return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
-  const dbEmpresa = dbDeEmpresa(vista.empresaId);
+  const invitacion = await invitacionConSuBase(entrada.token, ahora);
+  if (!invitacion || invitacion.vista.estado !== "PENDIENTE" || invitacion.vista.tipo !== TIPO_INVITACION_USUARIO) return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
+  const dbEmpresa = invitacion.db;
   const puedeOtorgar = async (otorganteId: string, sucursalId: string) => (await requierePermiso(otorganteId, sucursalId, "gestion_usuarios", dbEmpresa)).ok;
   try {
     return await conTransaccionSerializable(
-      transaccionDeLaEmpresa(vista.empresaId),
+      invitacion.transaccion,
       (tx) => aceptarInvitacionDeUsuario(tx, { token: entrada.token, usuario: entrada.usuario, ahora, puedeOtorgar }),
     );
   } catch (e) {
@@ -109,11 +131,11 @@ export async function aceptarInvitacionDeUsuarioDelToken(
 
 /**
  * Las sucursales (con su rol) que da una invitación de USUARIO, para mostrárselas a quien la va a aceptar. `InvitacionSucursal` solo se lee bajo la empresa, no por el hash:
- * por eso se llama recién DESPUÉS de comprobar que la sesión es del email invitado.
+ * por eso se llama recién DESPUÉS de comprobar que la sesión es del email invitado, y con la base que dio `invitacionConSuBase` (nunca con una empresa que mande el llamador).
  */
-export async function accesosDeLaInvitacion(vista: Pick<VistaDeInvitacion, "id" | "empresaId">): Promise<AccesoDeInvitacion[]> {
-  const filas = await dbDeEmpresa(vista.empresaId).invitacionSucursal.findMany({
-    where: { invitacionId: vista.id },
+export async function accesosDeLaInvitacion(invitacion: InvitacionConSuBase): Promise<AccesoDeInvitacion[]> {
+  const filas = await invitacion.db.invitacionSucursal.findMany({
+    where: { invitacionId: invitacion.vista.id },
     orderBy: { creadaEn: "asc" },
     select: { sucursal: { select: { nombre: true } }, rol: { select: { nombre: true } } },
   });
