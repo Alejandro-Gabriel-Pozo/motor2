@@ -13,6 +13,11 @@ export async function crearSucursal(tx: Prisma.TransactionClient, entrada: { nom
   return tx.sucursal.create({ data: { nombre: entrada.nombre, empresaId: entrada.empresaId } });
 }
 
+/** Activa o desactiva una sucursal. */
+export async function cambiarActivoDeSucursal(tx: Prisma.TransactionClient, entrada: { sucursalId: string; activo: boolean }): Promise<void> {
+  await tx.sucursal.update({ where: { id: entrada.sucursalId }, data: { activo: entrada.activo } });
+}
+
 /**
  * La disponibilidad inicial de una sucursal recién creada: los productos que el caso de uso ya resolvió (los «universales», decisión 4 del dueño,
  * docs/plan-disponibilidad-por-sucursal-2026-09-23.md §10), disponibles en ella. Escribir `DisponibilidadProducto` cambia qué se puede vender y mover en la

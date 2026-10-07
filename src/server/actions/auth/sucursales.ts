@@ -5,14 +5,12 @@ import { guardComandoCrearSucursal } from "@/core/features/sucursales/sucursal.g
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { gerentesQueQuedaranSinSucursalActiva } from "@/core/permisos/gerencia";
-import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
-import { conGobierno } from "../con-gobierno";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerAlguna } from "../con-sesion";
 import { crearSucursalConAdminCasoDeUso } from "./casos-de-uso/crear-sucursal-con-admin";
+import { actualizarActivoSucursalCasoDeUso } from "./casos-de-uso/actualizar-activo-sucursal";
 
 /**
  * Todas las sucursales de la empresa (activas o no). H8 (decisión D-3 del dueño): exige el «Ver» de alguna de sus dos pantallas, Usuarios
@@ -55,44 +53,18 @@ export async function crearSucursalConAdmin(input: {
  * hallazgo de la auditoría de motor2, con impacto real: Sucursal.activo ya
  * se usa como filtro (ej. el listado de sucursales destino en traspasos) pero
  * no había ningún botón para ponerlo en false.
+ *
+ * Desde el Hito 3 (Fase I, I.4) es un adaptador: `conPermisoDeEmpresa("activar_sucursal")` → caso de uso (`casos-de-uso/actualizar-activo-sucursal.ts`:
+ * la sucursal del que actúa, el gerente sin sucursal activa y las invariantes de gobierno, en la transacción de gobierno) → revalidación de la carta
+ * pública si salió bien → `aResultadoAccion`. Sin guard: solo recibe un id y un booleano (`SIN_GUARD`).
  */
 export async function actualizarActivoSucursal(sucursalId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("activar_sucursal", async (ctx) => {
-    const resultado = await conGobierno(ctx, async (tx) => {
-      const sucursal = await tx.sucursal.findUnique({ where: { id: sucursalId } });
-      if (!sucursal) return error("No se encontró esa sucursal.");
-
-      // `obtenerContextoUsuario` solo cuenta las membresías de sucursales activas: quien desactiva la suya (y no tiene otra)
-      // queda sin contexto en toda la aplicación y ya no puede volver a activarla, solo desde la base de datos.
-      if (!activo && sucursalId === ctx.sucursalId) {
-        return error(
-          `No podés desactivar la sucursal en la que estás ahora ("${sucursal.nombre}"): te quedarías sin acceso a la aplicación. Hacelo desde otra sucursal, o pedile a otro admin.`
-        );
-      }
-
-      // El gerente también necesita contexto: apagar la última sucursal activa donde tiene membresía lo deja sin acceso y la empresa sin quien la gestione.
-      if (!activo && sucursal.activo) {
-        const gerentes = await gerentesQueQuedaranSinSucursalActiva(tx, ctx.empresaId, sucursalId);
-        if (gerentes.length) {
-          return error(`No se puede desactivar "${sucursal.nombre}": el gerente de la empresa (${gerentes.join(", ")}) se quedaría sin ninguna sucursal activa. Asignale antes otra sucursal activa.`);
-        }
-      }
-
-      // D9: apagar una sucursal también puede dejar a la empresa sin admin efectivo (a) o sin sucursal al gerente (b): se mide antes y después.
-      await conInvariantesDeGobierno(tx, ctx.empresaId, async () => {
-        await tx.sucursal.update({ where: { id: sucursalId }, data: { activo } });
-        await registrarCambioAuditado(tx, {
-          entidad: "Sucursal", entidadId: sucursalId, campo: "activo", descripcion: `Sucursal "${sucursal.nombre}": activa`,
-          valorAnterior: sucursal.activo, valorNuevo: activo, actorId: ctx.usuarioId, sucursalId: null,
-        });
-      });
-      return ok(`Sucursal "${sucursal.nombre}" ${activo ? "activada" : "desactivada"}.`);
-    });
-    if (!resultado.ok) return resultado;
-    revalidarCartasPublicas(); // la carta pública de una sucursal desactivada tiene que dejar de verse al instante, no a los 5 minutos
+    const resultado = await actualizarActivoSucursalCasoDeUso(ctx, { sucursalId, activo });
+    if (resultado.ok) revalidarCartasPublicas(); // la carta pública de una sucursal desactivada tiene que dejar de verse al instante, no a los 5 minutos
     // A propósito SIN `refrescarVistaSiHaceFalta()`: su único llamador (`ActivarDesactivarFila`) ya hace `router.refresh()` en el cliente, y
     // otras pantallas que reusen ese componente heredan lo mismo (ver la regla en refrescar.ts).
-    return resultado;
+    return aResultadoAccion(resultado);
   });
 }
 

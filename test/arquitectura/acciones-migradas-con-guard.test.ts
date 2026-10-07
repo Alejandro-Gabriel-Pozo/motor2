@@ -46,6 +46,8 @@ const SIN_GUARD: Record<string, string> = {
     "Renombrar un rol (Hito 3, I.2): recibe un id y un nombre, y la regla del nombre depende de la CLAVE del rol (los nombres de fábrica solo los lleva el rol con esa clave), que el caso de uso lee dentro de la transacción serializable; además «No se encontró ese rol» va antes que cualquier rechazo del nombre. Un guard previo cambiaría ese orden de mensajes. El nombre lo normaliza y lo juzga el caso de uso (normalizarNombreDeRol + mensajeSiNombreDeRolNoPermitido), igual que antes.",
   "src/server/actions/permisos/roles.ts#actualizarActivoRol":
     "Activar o desactivar un rol (Hito 3, I.2): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró ese rol»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/auth/sucursales.ts#actualizarActivoSucursal":
+    "Activar o desactivar una sucursal (Hito 3, I.4): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso dentro de la transacción de gobierno, «No se encontró esa sucursal»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
 };
 
 describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {
