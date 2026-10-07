@@ -18,11 +18,20 @@ export async function precioLocalActivoEn(sucursalId: string, db: Db): Promise<b
  * (capacidad `precio_local` + fila habilitada, ver `filtrarPreciosLocalesVigentes`), en 2 consultas para todo el lote. Todo
  * id que no esté en el mapa se cobra y se muestra al precio central. Sin `productoIds`, trae los de toda la sucursal.
  * Fijado por el guardián `test/arquitectura/precio-local-en-un-solo-lugar.test.ts`.
+ *
+ * `precioLocalActivo`: la capacidad ya leída (`precioLocalActivoEn(sucursalId, db)`, o la promesa de esa lectura, para no esperar a que termine) de ESTA
+ * sucursal, para no volver a leerla — una pantalla que resuelve varios precios (el selector de carta del POS) la leía hasta seis veces (O.39 de
+ * docs/pureza-integracion.md). Sin ella se lee acá, como siempre.
  */
-export async function preciosLocalesVigentes(sucursalId: string, db: Db, productoIds?: readonly string[]): Promise<Map<string, PrecioLocalVigente>> {
+export async function preciosLocalesVigentes(
+  sucursalId: string,
+  db: Db,
+  productoIds?: readonly string[],
+  precioLocalActivo?: boolean | Promise<boolean>
+): Promise<Map<string, PrecioLocalVigente>> {
   if (productoIds && productoIds.length === 0) return new Map();
   const [capacidadActiva, filas] = await Promise.all([
-    precioLocalActivoEn(sucursalId, db),
+    precioLocalActivo ?? precioLocalActivoEn(sucursalId, db),
     db.precioLocalProducto.findMany({
       where: { sucursalId, habilitado: true, ...(productoIds ? { productoId: { in: [...productoIds] } } : {}) },
       select: { productoId: true, precio: true, habilitado: true },

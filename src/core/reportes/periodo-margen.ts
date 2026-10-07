@@ -1,5 +1,8 @@
-import { type AccionFaltante } from "./accion-faltante";
+import { redondearMoneda } from "@/core/moneda";
+import { resolverAccionFaltante, type AccionFaltante } from "./accion-faltante";
+import { type FilaCostoProducto } from "./costos";
 import { type AntiguedadSerieIPC } from "./indices-economicos";
+import { type VentasDelPeriodo } from "./periodo-ventas";
 
 export interface FilaMargenProducto {
   productoId: string;
@@ -98,4 +101,56 @@ export interface MargenDelPeriodo {
   avisoIPC: string;
   /** Cuán vieja es la serie del IPC (5c). Con `vencida` el ajuste está en plata del último mes cargado, no de hoy. */
   antiguedadIPC: AntiguedadSerieIPC;
+}
+/**
+ * El margen NOMINAL del período (la primera mitad de `calcularMargenDelPeriodo`, en server/consultas/reportes/periodo-margen.ts): el costo de HOY de cada
+ * plato vendido (`costos`, las filas de `calcularCostosYMargenes`) por lo vendido, línea por producto, en el orden de `ventasDelPeriodo.porProducto`. Puro;
+ * vive acá para que el Consolidado (O.38 de docs/pureza-integracion.md), que solo muestra el margen total, lo calcule SIN armar el resto del reporte del
+ * período (margen Real, IPC, tendencia de precios…). `costoTotal` sale SIN redondear: lo redondea quien lo muestra, como siempre.
+ */
+export function calcularMargenNominalDelPeriodo(
+  ventasDelPeriodo: VentasDelPeriodo,
+  costos: readonly FilaCostoProducto[]
+): {
+  porProductoNominal: Omit<FilaMargenProducto, "margenReal" | "margenRealPct" | "ingresoRealReconstruido" | "margenRealCompleto">[];
+  costoTotal: number;
+  hayCostoIncompleto: boolean;
+  ingresoTotal: number;
+  margenTotal: number;
+} {
+  const costoPorProducto = new Map(costos.map((c) => [c.productoId, c]));
+
+  let costoTotal = 0;
+  let hayCostoIncompleto = false;
+
+  const porProductoNominal = ventasDelPeriodo.porProducto
+    .map((v) => {
+      const infoCosto = costoPorProducto.get(v.productoId);
+      const costoUnitario = infoCosto && !infoCosto.costoIncompleto ? Number(infoCosto.costo ?? 0) : null;
+      const costoLinea = costoUnitario === null ? null : redondearMoneda(costoUnitario * v.cantidad);
+
+      if (costoLinea === null) hayCostoIncompleto = true;
+      else costoTotal += costoLinea;
+
+      const margen = costoLinea === null ? null : redondearMoneda(v.importe - costoLinea);
+
+      return {
+        productoId: v.productoId,
+        producto: v.producto,
+        cantidad: v.cantidad,
+        ingreso: v.importe,
+        ingresoEstimado: v.estimado,
+        costoUnitario: costoUnitario === null ? null : redondearMoneda(costoUnitario),
+        costo: costoLinea,
+        costoIncompleto: costoLinea === null,
+        accionFaltante: infoCosto ? resolverAccionFaltante(infoCosto) : null,
+        margen,
+        margenPct: margen !== null && v.importe > 0 ? Math.round((margen / v.importe) * 1000) / 10 : null,
+      };
+    })
+    .sort((a, b) => (b.margen ?? -Infinity) - (a.margen ?? -Infinity));
+
+  const ingresoTotal = ventasDelPeriodo.totalFacturado;
+  const margenTotal = redondearMoneda(ingresoTotal - costoTotal);
+  return { porProductoNominal, costoTotal, hayCostoIncompleto, ingresoTotal, margenTotal };
 }

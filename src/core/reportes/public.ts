@@ -110,6 +110,7 @@ export type { ReportePerdidas } from "./perdidas";
 export type { ItemPeriodo } from "./periodo-tipos";
 export type { VentasDelPeriodo } from "./periodo-ventas";
 export type { MargenDelPeriodo } from "./periodo-margen";
+export { calcularMargenNominalDelPeriodo } from "./periodo-margen";
 export type { FilaVentaProducto } from "./periodo-ventas";
 export type { RatioGastoVentas } from "./periodo-ratio";
 export { hayObjetivosCargados } from "./margen-objetivo";

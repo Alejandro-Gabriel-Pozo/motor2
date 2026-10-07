@@ -20,6 +20,17 @@ export async function cargarClasificacionNoComestibles(db: Db): Promise<Clasific
 }
 
 /**
+ * El catálogo entero, crudo, tal como lo necesita `construirMapaProductos` (todos los productos con su categoría, Insumo y grupo, unidad y consignante). No
+ * depende de la sucursal: el Consolidado lo lee UNA vez y arma con él el mapa de cada sucursal (O.38), y los reportes que componen varios lo comparten (O.39).
+ */
+export function cargarCatalogoDeProductos(db: Db) {
+  return db.producto.findMany({ include: { categoria: true, insumo: { include: { grupo: true } }, unidadStock: true, proveedorConsignacion: true } });
+}
+
+/** El catálogo crudo de `cargarCatalogoDeProductos`. */
+export type CatalogoDeProductos = Awaited<ReturnType<typeof cargarCatalogoDeProductos>>;
+
+/**
  * Equivalente de construirMapaProductosConTipo_ (Catalogo.js:1468-1499) — a
  * diferencia de Apps Script, acá se indexa por productoId real (FK), nunca
  * por nombre: elimina de raíz la clase de bugs de colisión/rename que
@@ -44,11 +55,18 @@ export async function construirMapaProductos(
   sucursalId: string | undefined,
   db: Db,
   /** La clasificación de grupos "No comestibles" ya cargada, para no volver a leerla (ver `obtenerReportePorPeriodoConCatalogo`). */
-  clasificacionCargada?: ClasificacionNoComestibles
+  clasificacionCargada?: ClasificacionNoComestibles,
+  /**
+   * Lo que quien llama ya leyó, para no volver a leerlo (O.38/O.39 de docs/pureza-integracion.md): el catálogo crudo (`cargarCatalogoDeProductos`, el
+   * MISMO para todas las sucursales: se puede leer una vez y armar con él el mapa de cada una) y los Precios Locales vigentes de ESTA sucursal
+   * (`preciosLocalesVigentes(sucursalId, db)`, sin filtro de productos: pasar los de otra sucursal, o un subconjunto, daría otros precios sin ningún
+   * error). Lo que falte se lee acá, como siempre.
+   */
+  cargado: { catalogo?: CatalogoDeProductos; preciosLocales?: ReadonlyMap<string, { precio: number }> } = {}
 ): Promise<Map<string, InfoProductoReporte>> {
   const [productos, preciosLocales, clasificacion] = await Promise.all([
-    db.producto.findMany({ include: { categoria: true, insumo: { include: { grupo: true } }, unidadStock: true, proveedorConsignacion: true } }),
-    sucursalId ? preciosLocalesVigentes(sucursalId, db) : Promise.resolve(new Map<string, { precio: number }>()),
+    cargado.catalogo ? Promise.resolve(cargado.catalogo) : cargarCatalogoDeProductos(db),
+    cargado.preciosLocales ? Promise.resolve(cargado.preciosLocales) : sucursalId ? preciosLocalesVigentes(sucursalId, db) : Promise.resolve(new Map<string, { precio: number }>()),
     clasificacionCargada ? Promise.resolve(clasificacionCargada) : cargarClasificacionNoComestibles(db),
   ]);
   const idsProductos = productos.map((p) => p.id);

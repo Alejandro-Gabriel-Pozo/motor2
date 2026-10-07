@@ -331,7 +331,7 @@
     "resultado": []
   },
   "pos.cargarSelectorCartaDeLaMesa(Central)": {
-    "consultas": "20: capacidadSucursal.findMany×6, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×1",
+    "consultas": "15: capacidadSucursal.findMany×1, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×1",
     "resultado": {
       "seccionesCarta": [
         {
@@ -506,7 +506,7 @@
     }
   },
   "pos.cargarSelectorCartaDeLaMesa(Norte)": {
-    "consultas": "20: capacidadSucursal.findMany×6, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×1",
+    "consultas": "15: capacidadSucursal.findMany×1, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×1",
     "resultado": {
       "seccionesCarta": [
         {
@@ -562,7 +562,7 @@
     }
   },
   "pos.cargarPromoCartaParaAgregar(Central, Menú del día)": {
-    "consultas": "22: capacidadSucursal.findMany×7, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findFirst×1, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×1",
+    "consultas": "16: capacidadSucursal.findMany×1, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findFirst×1, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×1",
     "resultado": {
       "id": "pc-menu",
       "titulo": "Menú del día",
@@ -619,7 +619,7 @@
     "resultado": null
   },
   "carta.cargarAdminCarta(Central)": {
-    "consultas": "17: capacidadSucursal.findMany×4, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×2, sucursal.findMany×1, sucursal.findUnique×1",
+    "consultas": "15: capacidadSucursal.findMany×2, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×2, sucursal.findMany×1, sucursal.findUnique×1",
     "resultado": {
       "cartaVacia": false,
       "sucursalesConCarta": [
@@ -872,7 +872,7 @@
     }
   },
   "carta.cargarAdminCarta(Norte)": {
-    "consultas": "17: capacidadSucursal.findMany×4, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×2, sucursal.findMany×1, sucursal.findUnique×1",
+    "consultas": "15: capacidadSucursal.findMany×2, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×2, sucursal.findMany×1, sucursal.findUnique×1",
     "resultado": {
       "cartaVacia": false,
       "sucursalesConCarta": [
@@ -1058,7 +1058,7 @@
     }
   },
   "carta.cargarAdminItemsAgrupados(Central)": {
-    "consultas": "17: capacidadSucursal.findMany×4, descuentoProductoSucursal.findMany×1, disponibilidadProducto.findMany×1, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×1, seccionCarta.findMany×2, sucursal.findUnique×1",
+    "consultas": "15: capacidadSucursal.findMany×2, descuentoProductoSucursal.findMany×1, disponibilidadProducto.findMany×1, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×1, seccionCarta.findMany×2, sucursal.findUnique×1",
     "resultado": {
       "items": [
         {
@@ -1419,7 +1419,7 @@
     }
   },
   "carta.generarReporteVentasPorSeccion(Central, el día)": {
-    "consultas": "23: $queryRaw×4, capacidadSucursal.findMany×2, disponibilidadProducto.findMany×1, grupo.findMany×1, indicePrecio.findMany×2, margenObjetivo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×1, precioLocalProducto.findMany×2, producto.findMany×2, recetaSucursal.findMany×1, recetaVersion.findMany×2, registroAuditoria.findMany×2",
+    "consultas": "7: capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×1, precioLocalProducto.findMany×1, producto.findMany×2",
     "resultado": {
       "desde": "<fecha 2026-09-30T00:00:00.000Z>",
       "hasta": "<fecha 2026-09-30T23:59:59.999Z>",
@@ -1479,7 +1479,7 @@
     }
   },
   "carta.resolverMenuCartaConDiagnostico(Central)": {
-    "consultas": "10: capacidadSucursal.findMany×3, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1",
+    "consultas": "8: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1",
     "resultado": {
       "carta": {
         "version": 1,
@@ -1632,7 +1632,7 @@
     "resultado": null
   },
   "carta.resolverMenuCarta(Norte)": {
-    "consultas": "10: capacidadSucursal.findMany×3, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1",
+    "consultas": "8: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1",
     "resultado": {
       "version": 1,
       "generadoEn": "2026-09-30T15:00:00.000Z",
@@ -1751,7 +1751,7 @@
     }
   },
   "carta.resolverCartaPublica(empresa, «central»)": {
-    "consultas": "11: capacidadSucursal.findMany×3, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1, sucursalPublica.findUnique×1",
+    "consultas": "9: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1, sucursalPublica.findUnique×1",
     "resultado": {
       "carta": {
         "version": 1,
@@ -2041,7 +2041,7 @@
     }
   },
   "carta.resolverCartaPublica(empresa, «norte»: sin tema)": {
-    "consultas": "11: capacidadSucursal.findMany×3, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1, sucursalPublica.findUnique×1",
+    "consultas": "9: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1, sucursalPublica.findUnique×1",
     "resultado": {
       "carta": {
         "version": 1,

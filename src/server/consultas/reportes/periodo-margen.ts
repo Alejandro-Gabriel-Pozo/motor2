@@ -1,7 +1,8 @@
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
-import { resolverAccionFaltante, type IndiceRecetas, type InfoProductoReporte, type ItemPeriodo, type VentasDelPeriodo } from "@/core/reportes/public";
+import { calcularMargenNominalDelPeriodo, type CostoMP, type IndiceRecetas, type InfoProductoReporte, type ItemPeriodo, type SerieIPC, type VentasDelPeriodo } from "@/core/reportes/public";
 import { antiguedadSerieIPC, esMesSinPublicar, resolverCoeficienteIPC, textoSerieIPCVencida } from "@/core/reportes/public";
+import { construirIndiceRecetas } from "@/server/lecturas/reportes/comun";
 import { calcularCostosYMargenes } from "@/server/lecturas/reportes/costos";
 import { cargarSerieIPC } from "@/server/lecturas/reportes/serie-ipc";
 import { calcularMargenRealDelPeriodo } from "@/server/consultas/reportes/margen-real";
@@ -21,43 +22,20 @@ export async function calcularMargenDelPeriodo(
   db: Db,
   productos: Map<string, InfoProductoReporte>,
   /** El índice de recetas ya cargado, para no volver a leerlo — lo necesitan tanto el margen nominal como el Real reconstruido (ver `obtenerReportePorPeriodoConCatalogo`). */
-  indiceRecetas?: IndiceRecetas
+  indiceRecetasCargado?: IndiceRecetas,
+  /**
+   * Lo demás que quien llama ya leyó (O.39 de docs/pureza-integracion.md), para no volver a leerlo: la serie del IPC (`cargarSerieIPC`, la misma para todas
+   * las sucursales) y el costo de reposición de HOY de LA MISMA sucursal (`obtenerCostoActualPorMP(sucursalId, db)`). Lo que falte se lee acá.
+   */
+  cargado: { serieIPC?: SerieIPC; costosActuales?: Map<string, CostoMP> } = {}
 ): Promise<MargenDelPeriodo> {
-  const costos = await calcularCostosYMargenes(sucursalId, db, productos, indiceRecetas);
+  // Sin índice precargado se lee UNA vez y se pasa a las dos mitades (O.39: antes el nominal y el Real lo leían cada uno por su cuenta).
+  const indiceRecetas = indiceRecetasCargado ?? (await construirIndiceRecetas(db, sucursalId));
+  const costos = await calcularCostosYMargenes(sucursalId, db, productos, indiceRecetas, undefined, cargado.costosActuales);
   const costoPorProducto = new Map(costos.map((c) => [c.productoId, c]));
 
-  let costoTotal = 0;
-  let hayCostoIncompleto = false;
-
-  const porProductoNominal = ventasDelPeriodo.porProducto
-    .map((v) => {
-      const infoCosto = costoPorProducto.get(v.productoId);
-      const costoUnitario = infoCosto && !infoCosto.costoIncompleto ? Number(infoCosto.costo ?? 0) : null;
-      const costoLinea = costoUnitario === null ? null : redondearMoneda(costoUnitario * v.cantidad);
-
-      if (costoLinea === null) hayCostoIncompleto = true;
-      else costoTotal += costoLinea;
-
-      const margen = costoLinea === null ? null : redondearMoneda(v.importe - costoLinea);
-
-      return {
-        productoId: v.productoId,
-        producto: v.producto,
-        cantidad: v.cantidad,
-        ingreso: v.importe,
-        ingresoEstimado: v.estimado,
-        costoUnitario: costoUnitario === null ? null : redondearMoneda(costoUnitario),
-        costo: costoLinea,
-        costoIncompleto: costoLinea === null,
-        accionFaltante: infoCosto ? resolverAccionFaltante(infoCosto) : null,
-        margen,
-        margenPct: margen !== null && v.importe > 0 ? Math.round((margen / v.importe) * 1000) / 10 : null,
-      };
-    })
-    .sort((a, b) => (b.margen ?? -Infinity) - (a.margen ?? -Infinity));
-
-  const ingresoTotal = ventasDelPeriodo.totalFacturado;
-  const margenTotal = redondearMoneda(ingresoTotal - costoTotal);
+  // El margen nominal (puro, en core: lo comparte el Consolidado, que solo muestra el total).
+  const { porProductoNominal, costoTotal, hayCostoIncompleto, ingresoTotal, margenTotal } = calcularMargenNominalDelPeriodo(ventasDelPeriodo, costos);
 
   // Margen real: línea por línea (no por producto agregado, a diferencia de arriba) porque dos ventas del MISMO producto en fechas
   // distintas pueden tener costoUnitarioVenta distinto si la receta cambió entre medio. Motor compartido, extraído a
@@ -105,7 +83,7 @@ export async function calcularMargenDelPeriodo(
   // costoPorProducto (costo de HOY) que usa el margen nominal arriba, a
   // propósito: acá se ajusta el ingreso para que los dos lados de la
   // resta queden en plata de hoy.
-  const serieIPC = await cargarSerieIPC(db);
+  const serieIPC = cargado.serieIPC ?? (await cargarSerieIPC(db));
   // 5c: con la serie VENCIDA (parada hace más del máximo previsto) el ajuste sigue calculándose igual —ningún número cambia—, pero deja
   // de decir que es «de hoy»: está en plata del último mes cargado y subestima el margen ajustado. Mismo cálculo, otro aviso.
   const antiguedadIPC = antiguedadSerieIPC(serieIPC, new Date());

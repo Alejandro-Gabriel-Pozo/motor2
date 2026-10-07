@@ -415,7 +415,7 @@
   consultas (1): margenObjetivo.findMany×1
   resultado: {empresaPct: 35, porCategoria: Map{"#37" => 30}}
 ### 6. costos.cargarCostosYMargenes(Central, objetivos cargados)
-  consultas (16): $queryRaw×2, capacidadSucursal.findMany×2, disponibilidadProducto.findMany×2, grupo.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, recetaSucursal.findMany×2, recetaVersion.findMany×2
+  consultas (8): $queryRaw×1, capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, recetaSucursal.findMany×1, recetaVersion.findMany×1
   resultado: {
     insumos: [
       {
@@ -1607,7 +1607,7 @@
     totalMerma: 3000
   }
 ### 23. periodo-margen.calcularMargenDelPeriodo(Central, líneas y ventas del período, catálogo cargado, SIN índice de recetas)
-  consultas (8): $queryRaw×2, indicePrecio.findMany×1, movimientoStock.findMany×1, recetaSucursal.findMany×2, recetaVersion.findMany×2
+  consultas (6): $queryRaw×2, indicePrecio.findMany×1, movimientoStock.findMany×1, recetaSucursal.findMany×1, recetaVersion.findMany×1
   resultado: {
     antiguedadIPC: {diasDeAtraso: 14, estado: "al-dia", maximo: 60, ultimoMes: "2026-02"},
     aviso: "Costo calculado con la receta y el costo de reposición VIGENTES hoy (mismo criterio que Costos y Márgenes), no con los que regían en el momento de cada venta. Algunos productos vendidos no tienen costo completo y quedan afuera del costo/margen total.",
@@ -1761,7 +1761,7 @@
     porcentajePeriodoAnterior: 394.6
   }
 ### 27. periodo.obtenerReportePorPeriodo(Central, 16-feb → 15-mar, sin filtros)
-  consultas (22): $queryRaw×6, capacidadSucursal.findMany×2, disponibilidadProducto.findMany×1, grupo.findMany×1, indicePrecio.findMany×2, margenObjetivo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×1, precioLocalProducto.findMany×2, producto.findMany×1, recetaSucursal.findMany×1, recetaVersion.findMany×1, registroAuditoria.findMany×1
+  consultas (17): $queryRaw×4, capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, indicePrecio.findMany×1, margenObjetivo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×1, precioLocalProducto.findMany×1, producto.findMany×1, recetaSucursal.findMany×1, recetaVersion.findMany×1, registroAuditoria.findMany×1
   resultado: {
     comparativaPrecios: {
       antiguedadIPC: {diasDeAtraso: 14, estado: "al-dia", maximo: 60, ultimoMes: "2026-02"},
@@ -3595,7 +3595,7 @@
     }
   }
 ### 28. periodo.obtenerReportePorPeriodoConCatalogo(Central, 16-feb → 15-mar, sin filtros)
-  consultas (22): $queryRaw×6, capacidadSucursal.findMany×2, disponibilidadProducto.findMany×1, grupo.findMany×1, indicePrecio.findMany×2, margenObjetivo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×1, precioLocalProducto.findMany×2, producto.findMany×1, recetaSucursal.findMany×1, recetaVersion.findMany×1, registroAuditoria.findMany×1
+  consultas (17): $queryRaw×4, capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, indicePrecio.findMany×1, margenObjetivo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×1, precioLocalProducto.findMany×1, producto.findMany×1, recetaSucursal.findMany×1, recetaVersion.findMany×1, registroAuditoria.findMany×1
   resultado.reporte: idéntico al de obtenerReportePorPeriodo
   resultado.productos: Map{
     "#39" => {
@@ -3838,7 +3838,7 @@
     }
   }
 ### 29. periodo.generarReporteVentasPorCategoria(Central, período)
-  consultas (21): $queryRaw×5, capacidadSucursal.findMany×2, disponibilidadProducto.findMany×1, grupo.findMany×1, indicePrecio.findMany×2, margenObjetivo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×1, precioLocalProducto.findMany×2, producto.findMany×1, recetaSucursal.findMany×1, recetaVersion.findMany×1, registroAuditoria.findMany×1
+  consultas (6): capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1
   resultado: {
     aviso: "Importe real registrado en cada venta (no una estimación).",
     desde: Date(2026-02-16T00:00:00.000Z),
@@ -3977,7 +3977,7 @@
     }
   ]
 ### 32. rendimiento-recetas.calcularRendimientoRecetasSimples(Central, período)
-  consultas (42): $queryRaw×1, conteoFisico.findMany×5, grupo.findMany×1, movimientoStock.aggregate×10, movimientoStock.findMany×14, movimientoStock.groupBy×4, producto.findMany×5, recetaSucursal.findMany×1, recetaVersion.findMany×1
+  consultas (15): $queryRaw×1, conteoFisico.findMany×1, grupo.findMany×1, movimientoStock.findMany×5, movimientoStock.groupBy×3, producto.findMany×2, recetaSucursal.findMany×1, recetaVersion.findMany×1
   resultado: [
     {
       anclaDesde: null,
@@ -4136,7 +4136,7 @@
     }
   ]
 ### 33. rendimiento-recetas.calcularRendimientoRecetasCompartidas(Central, período)
-  consultas (15): $queryRaw×1, conteoFisico.findMany×1, grupo.findMany×1, movimientoStock.aggregate×2, movimientoStock.findMany×3, producto.findMany×5, recetaSucursal.findMany×1, recetaVersion.findMany×1
+  consultas (11): $queryRaw×1, conteoFisico.findMany×1, grupo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×2, producto.findMany×2, recetaSucursal.findMany×1, recetaVersion.findMany×1
   resultado: [
     {
       bandaRuidoPct: 30,
@@ -4200,7 +4200,7 @@
     }
   ]
 ### 34. resumen-operativo.obtenerResumenOperativo(Central, ahora, rango por defecto)
-  consultas (27): $queryRaw×6, capacidadSucursal.findMany×2, disponibilidadProducto.findMany×1, grupo.findMany×1, indicePrecio.findMany×2, margenObjetivo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×3, precioLocalProducto.findMany×2, producto.findMany×2, recetaSucursal.findMany×1, recetaVersion.findMany×1, registroAuditoria.findMany×1, seccion.findMany×1, stockMinimoProducto.findMany×1
+  consultas (22): $queryRaw×4, capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, indicePrecio.findMany×1, margenObjetivo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×3, precioLocalProducto.findMany×1, producto.findMany×2, recetaSucursal.findMany×1, recetaVersion.findMany×1, registroAuditoria.findMany×1, seccion.findMany×1, stockMinimoProducto.findMany×1
   resultado: {
     alertas: {bajos: 1, criticos: 0, total: 1},
     financiero: {
@@ -4265,7 +4265,7 @@
     ]
   }
 ### 35. resumen-consolidado.obtenerResumenConsolidado(Central + Norte, ahora)
-  consultas (52): $queryRaw×11, capacidadSucursal.findMany×4, disponibilidadProducto.findMany×2, grupo.findMany×2, indicePrecio.findMany×4, margenObjetivo.findMany×2, movimientoStock.findMany×3, movimientoStock.groupBy×6, precioLocalProducto.findMany×4, producto.findMany×4, recetaSucursal.findMany×2, recetaVersion.findMany×2, registroAuditoria.findMany×2, seccion.findMany×2, stockMinimoProducto.findMany×2
+  consultas (19): $queryRaw×2, capacidadSucursal.findMany×2, disponibilidadProducto.findMany×2, grupo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×1, precioLocalProducto.findMany×2, producto.findMany×1, recetaSucursal.findMany×2, recetaVersion.findMany×2, seccion.findMany×1, stockMinimoProducto.findMany×1
   resultado: [
     {
       alertasBajas: 1,
@@ -4300,7 +4300,7 @@
     porTamanoGrupo: [{cantidad: 1, duracionPromedioMin: 70, grupo: "2"}, {cantidad: 1, duracionPromedioMin: 90, grupo: "4"}]
   }
 ### 37. salud-por-producto.generarReporteSaludPorProducto(Central)
-  consultas (25): $queryRaw×1, capacidadSucursal.findMany×2, conteoFisico.findMany×1, disponibilidadProducto.findMany×2, frecuenciaConteoProducto.findMany×1, grupo.findMany×2, movimientoStock.findMany×2, movimientoStock.groupBy×2, precioLocalProducto.findMany×2, producto.findMany×4, recetaSucursal.findMany×1, recetaVersion.findMany×2, seccion.findMany×2, stockMinimoProducto.findMany×1
+  consultas (18): $queryRaw×1, capacidadSucursal.findMany×1, conteoFisico.findMany×1, disponibilidadProducto.findMany×1, frecuenciaConteoProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×2, precioLocalProducto.findMany×1, producto.findMany×2, recetaSucursal.findMany×1, recetaVersion.findMany×2, seccion.findMany×1, stockMinimoProducto.findMany×1
   resultado: [
     {
       codigo: "MP_ACEITE",

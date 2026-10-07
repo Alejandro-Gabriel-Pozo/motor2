@@ -36,7 +36,9 @@ export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCarta
       : null;
   if (!promo || !promo.cupos.length) return null;
 
-  const [selector, precioLocalActivo] = await Promise.all([cargarSelectorCartaPos(sucursalId, db), precioLocalActivoEn(sucursalId, db)]);
+  // La capacidad `precio_local` se lee una vez y la comparten el selector y el precio de la promo (O.39: antes 7 lecturas por carga).
+  const precioLocalActivoLeido = precioLocalActivoEn(sucursalId, db);
+  const [selector, precioLocalActivo] = await Promise.all([cargarSelectorCartaPos(sucursalId, db, precioLocalActivoLeido), precioLocalActivoLeido]);
   const pediblesPorSeccion = new Map(selector.seccionesCarta.map((s) => [s.seccionCartaId, s.entradas.flatMap(pediblesDeEntrada)]));
 
   const precioCartaPorProducto = new Map<string, number>();

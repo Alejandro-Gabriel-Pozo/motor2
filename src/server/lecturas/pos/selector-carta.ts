@@ -31,16 +31,25 @@ import type { Db } from "@/lib/db-tipos";
  * La pantalla de la mesa la llama DESPUÉS de su guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`): no hace falta
  * ninguna Server Action nueva.
  */
-export async function cargarSelectorCartaPos(sucursalId: string, db: Db): Promise<SelectorCartaPos> {
+export async function cargarSelectorCartaPos(
+  sucursalId: string,
+  db: Db,
+  /** La capacidad `precio_local` de ESTA sucursal ya leída (o la promesa de esa lectura): `cargarPromoCartaParaAgregar` la comparte con el selector (O.39). */
+  precioLocalActivoCargado?: boolean | Promise<boolean>
+): Promise<SelectorCartaPos> {
+  // La capacidad `precio_local` se lee UNA vez (o se toma la de quien llama) y la usan todos: la carta, los precios locales, los descuentos y el precio de
+  // las promos. Antes cada uno la leía por su cuenta: 6 lecturas de `capacidadSucursal` por carga del selector (O.39 de docs/pureza-integracion.md).
+  // Se pasa la PROMESA, no el valor, para que todo siga saliendo en paralelo como antes.
+  const precioLocalActivoLeido = precioLocalActivoCargado ?? precioLocalActivoEn(sucursalId, db);
   const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
-    resolverMenuCarta(sucursalId, db),
+    resolverMenuCarta(sucursalId, db, undefined, precioLocalActivoLeido),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },
     }),
-    preciosLocalesVigentes(sucursalId, db),
-    descuentosDeProductoEnSucursal(sucursalId, db),
-    precioLocalActivoEn(sucursalId, db),
+    preciosLocalesVigentes(sucursalId, db, undefined, precioLocalActivoLeido),
+    descuentosDeProductoEnSucursal(sucursalId, db, undefined, precioLocalActivoLeido),
+    precioLocalActivoLeido,
     db.generoCarta.findMany({ where: { activo: true, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, nombre: true, orden: true } }),
     db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true } }),
     db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, generoCartaId: true } }),
