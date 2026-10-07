@@ -8,8 +8,8 @@ import { MENSAJE_GUARDADO_EN_CONFLICTO, SIN_PERMISO } from "../../src/core/permi
  * Hito 3, Fase I, I.3: el `.catch(esConflictoDeEscritura)` de `guardarPermisos` pasó de la Server Action al caso de uso (`casos-de-uso/guardar-permisos.ts`).
  * Ningún test lo cubría: agotar los reintentos de SERIALIZABLE (la transacción ya hizo rollback, no se guardó nada) tiene que volver como el mensaje de negocio
  * `MENSAJE_GUARDADO_EN_CONFLICTO` —la pantalla lo reconoce para ofrecer reintentar sin perder el borrador—, y cualquier OTRO error tiene que seguir de largo
- * (no se disfraza de conflicto). Se prueba el caso de uso con una transacción armada a mano que falla en cada intento; las lecturas de roles y acciones (fuera
- * de la transacción, a propósito) van a la base de prueba.
+ * (no se disfraza de conflicto). Se prueba el caso de uso con una transacción armada a mano que falla en cada intento (desde O35-C las lecturas de roles y
+ * acciones también van dentro de la transacción, así que el actor no necesita `db`).
  */
 const conflictoDeEscritura = () => new Prisma.PrismaClientKnownRequestError("Transaction failed due to a write conflict", { code: "P2034", clientVersion: "test" });
 
@@ -33,7 +33,7 @@ describe("guardarPermisosCasoDeUso: reintentos agotados y otros errores", () => 
     const transaccion = vi.fn(async () => {
       throw conflictoDeEscritura();
     });
-    const r = await guardarPermisosCasoDeUso({ usuarioId: "u-prueba", db: prisma, transaccion }, cambio());
+    const r = await guardarPermisosCasoDeUso({ usuarioId: "u-prueba", transaccion }, cambio());
     expect(r).toEqual({ ok: false, codigo: "GUARDADO_EN_CONFLICTO", mensaje: MENSAJE_GUARDADO_EN_CONFLICTO });
     expect(transaccion).toHaveBeenCalledTimes(5);
     expect(await foto()).toEqual(antes);
@@ -44,7 +44,7 @@ describe("guardarPermisosCasoDeUso: reintentos agotados y otros errores", () => 
     const transaccion = vi.fn(async () => {
       throw otro;
     });
-    await expect(guardarPermisosCasoDeUso({ usuarioId: "u-prueba", db: prisma, transaccion }, cambio())).rejects.toBe(otro);
+    await expect(guardarPermisosCasoDeUso({ usuarioId: "u-prueba", transaccion }, cambio())).rejects.toBe(otro);
     expect(transaccion).toHaveBeenCalledTimes(1);
   });
 });
