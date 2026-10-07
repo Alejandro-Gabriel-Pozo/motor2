@@ -383,7 +383,8 @@ describe("receta propia por sucursal: acciones", () => {
       const u = await crearUsuarioConMembresia({ email: "soloCentral@test.com", sucursalId: centralId, rolId: rolAdminId });
       await mockearUsuarioActual({ id: u.id, email: u.email, nombre: null });
       enSucursal(norteId);
-      const r = await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id));
+      // La cookie de Norte se ignora: la acción opera sobre Central, así que la versión que «mostraba la pantalla» es la de la serie de CENTRAL.
+      const r = await crearRecetaPropiaDesdeLaCentral(pv.id, await versionVigenteDeReceta(pv.id, centralId));
       expect(r.ok, r.mensaje).toBe(true);
       expect(await propias(norteId)).toEqual([]);
       expect(await propias(centralId)).toHaveLength(1);

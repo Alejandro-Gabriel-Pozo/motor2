@@ -12,10 +12,9 @@ import { texto } from "@/core/texto";
  * `casos-de-uso/guardar-version-de-receta.ts`. Sin reglas de negocio.
  *
  * Contrato: el cliente es SIEMPRE el primer parámetro, obligatorio (nunca `db = prisma` por defecto). Excepción documentada respecto del
- * resto de `server/persistencia/`: `cargarProductoParaReceta` y `cargarUltimaVersionDeReceta` corrían FUERA de la transacción en
- * `guardarReceta` (la versión se calcula de forma optimista ANTES de abrir la SERIALIZABLE, y los índices únicos parciales de (producto, sucursal, version) son el
- * árbitro — ver el caso de uso), y así se mantiene: el caso de uso les pasa el cliente global a propósito. Las escrituras
- * (`escribirVersionDeReceta`, `copiarCalibracionesLocales`) y `cargarNombresDeSucursales` corren dentro de la transacción.
+ * resto de `server/persistencia/`: `cargarProductoParaReceta` corre FUERA de la transacción (el producto no cambia el versionado y se carga una sola vez, antes de validar). Todo lo demás
+ * corre DENTRO de la SERIALIZABLE (desde H7, Pureza Fase 4): `cargarUltimaVersionDeReceta` y `cargarIdDeVersionCentralVigente` —leer la última versión fuera de ella dejaba que una
+ * calibración local confirmada entre la lectura y la escritura se perdiera—, las escrituras (`escribirVersionDeReceta`, `copiarCalibracionesLocales`) y `cargarNombresDeSucursales`.
  *
  * Los `Decimal` de las calibraciones locales NO se convierten a `number` en el borde (a diferencia del resto de la persistencia): se
  * copian tal cual a la versión nueva, y pasar por `number` podría perder precisión en la ida y vuelta.
@@ -46,8 +45,8 @@ export type UltimaVersionDeReceta = Prisma.RecetaVersionGetPayload<{ include: ty
 /**
  * La versión vigente (MAX(version)) de la serie en la que se guarda, con sus overrides locales, o `null` si esa serie todavía no tiene
  * versiones: la CENTRAL con `sucursalId` null, la PROPIA de la sucursal con su id (aunque hoy esté deshabilitada: la numeración sigue sobre
- * su historial). Corre FUERA de la transacción, una vez por intento del reintento de `guardarReceta` (ver el docstring del archivo;
- * `test/catalogo/recetas-concurrencia` cuenta las transacciones por intento para saber que hubo reintentos).
+ * su historial). Corre DENTRO de la transacción, una vez por intento del reintento de `guardarReceta`
+ * (`test/catalogo/recetas-concurrencia` cuenta las transacciones por intento para saber que hubo reintentos).
  */
 export async function cargarUltimaVersionDeReceta(db: Prisma.TransactionClient, productoId: string, sucursalId: string | null): Promise<UltimaVersionDeReceta | null> {
   if (sucursalId === null) return cargarRecetaVigente(db, ALCANCE_CENTRAL, productoId, { include: INCLUDE_ULTIMA_VERSION });
