@@ -1,3 +1,4 @@
+import "server-only";
 import { armarAlertasStock, resumirAlertasStock } from "@/core/stock/public";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad, resolverRangoPorDefecto } from "@/core/reportes/public";

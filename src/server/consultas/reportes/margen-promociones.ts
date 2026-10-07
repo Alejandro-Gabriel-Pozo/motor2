@@ -1,3 +1,4 @@
+import "server-only";
 import { redondearMoneda } from "@/core/moneda";
 import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";

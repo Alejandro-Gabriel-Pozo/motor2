@@ -1,3 +1,4 @@
+import "server-only";
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/public";
 import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";

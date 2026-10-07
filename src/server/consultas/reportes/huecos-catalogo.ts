@@ -1,3 +1,4 @@
+import "server-only";
 import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import { cargarProductosConProveedor } from "@/server/lecturas/catalogo/ofertas-de-proveedor";
 import type { Db } from "@/lib/db-tipos";

@@ -1,3 +1,4 @@
+import "server-only";
 import { rangoDeDias, ZONA_UTC } from "@/core/tiempo/zona-horaria";
 import type { Db } from "@/lib/db-tipos";
 import { calcularRotacionMesas, type ReporteRotacionMesas } from "@/core/reportes/public";

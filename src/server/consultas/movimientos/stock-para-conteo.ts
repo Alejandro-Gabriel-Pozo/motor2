@@ -1,3 +1,4 @@
+import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { armarFilasStockParaConteo, type FilaStockParaConteo } from "@/core/movimientos/public";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";

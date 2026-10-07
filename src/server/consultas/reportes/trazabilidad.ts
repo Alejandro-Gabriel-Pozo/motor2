@@ -1,3 +1,4 @@
+import "server-only";
 import type { Db } from "@/lib/db-tipos";
 import type { DatosOperacion, OperacionEncontrada } from "@/core/reportes/public";
 

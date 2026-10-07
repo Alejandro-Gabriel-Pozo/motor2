@@ -6,57 +6,36 @@ import ts from "typescript";
 /**
  * `import "server-only"` en las consultas y las lecturas del servidor (Pureza, auditoría de la Fase 3: 39 de 67 archivos de `server/consultas` y `server/lecturas` no lo llevan y ningún test
  * decía cuáles debían llevarlo). `server-only` hace fallar el BUILD si un componente de cliente llega a importar el archivo: es la red de seguridad de que una lectura con la base nunca viaje
- * al navegador. Algunos archivos lo omiten a propósito porque los importan scripts con `tsx` y los e2e de Playwright, donde `server-only` revienta (plan de la Fase 3, §7).
+ * al navegador. Algunos lo omiten a propósito porque los alcanza (directa o transitivamente) un script con `tsx`, un spec de Playwright o `prisma/`, donde `server-only` revienta; el resto (19 de los 40 que no lo tenían, 2026-10-08) lo recibió en la auditoría del Hito 1.
  *
- * Regla: todo archivo de `src/server/consultas/**` y `src/server/lecturas/**` abre con `import "server-only"`, salvo los de `SIN_SERVER_ONLY` (los de hoy, congelados). La lista solo se achica:
+ * Regla: todo archivo de `src/server/consultas/**` y `src/server/lecturas/**` abre con `import "server-only"`, salvo los de `SIN_SERVER_ONLY` (cada uno con el punto de entrada que lo alcanza). La lista solo se achica:
  * un archivo nuevo que no lleve `server-only` falla hasta que se lo agregue acá con su motivo, y una entrada cuyo archivo ya lo lleva (o ya no existe) también falla. Por AST: un comentario no cuenta.
  */
 const RAIZ = join(__dirname, "..", "..");
-const MOTIVO = 'Sin `import "server-only"` desde antes de esta regla (plan de la Fase 3, §7: los importan scripts con tsx y los e2e de Playwright). Congelado: la lista solo se achica.';
-export const SIN_SERVER_ONLY: Record<string, string> = Object.fromEntries(
-  [
-    "src/server/consultas/movimientos/stock-para-conteo.ts",
-    "src/server/consultas/reportes/compras-registradas.ts",
-    "src/server/consultas/reportes/consignacion.ts",
-    "src/server/consultas/reportes/costo-historico.ts",
-    "src/server/consultas/reportes/cotizacion-dolar.ts",
-    "src/server/consultas/reportes/descuentos-clientes.ts",
-    "src/server/consultas/reportes/descuentos-productos.ts",
-    "src/server/consultas/reportes/devoluciones.ts",
-    "src/server/consultas/reportes/diferencias-ajustes.ts",
-    "src/server/consultas/reportes/historial-producto.ts",
-    "src/server/consultas/reportes/huecos-catalogo.ts",
-    "src/server/consultas/reportes/insumos-sin-receta.ts",
-    "src/server/consultas/reportes/margen-objetivo-consulta.ts",
-    "src/server/consultas/reportes/margen-promociones.ts",
-    "src/server/consultas/reportes/margen-real.ts",
-    "src/server/consultas/reportes/perdidas.ts",
-    "src/server/consultas/reportes/periodo-margen.ts",
-    "src/server/consultas/reportes/periodo-precios.ts",
-    "src/server/consultas/reportes/periodo-ratio.ts",
-    "src/server/consultas/reportes/periodo.ts",
-    "src/server/consultas/reportes/rendimiento-recetas.ts",
-    "src/server/consultas/reportes/resumen-consolidado.ts",
-    "src/server/consultas/reportes/resumen-operativo.ts",
-    "src/server/consultas/reportes/rotacion-mesas.ts",
-    "src/server/consultas/reportes/tickets-emitidos.ts",
-    "src/server/consultas/reportes/trazabilidad.ts",
-    "src/server/consultas/reportes/valuacion.ts",
-    "src/server/consultas/reportes/vencimientos.ts",
-    "src/server/consultas/reportes/ventas-sin-receta.ts",
-    "src/server/lecturas/carta/descuentos.ts",
-    "src/server/lecturas/carta/empresa.ts",
-    "src/server/lecturas/carta/menu.ts",
-    "src/server/lecturas/carta/publica.ts",
-    "src/server/lecturas/catalogo/ofertas-de-proveedor.ts", // lo importa scripts/verificar-demo-invariantes.ts (tsx): con server-only reventaría
-    "src/server/lecturas/catalogo/disponibilidad.ts",
-    "src/server/lecturas/catalogo/recetas-vigentes.ts",
-    "src/server/lecturas/movimientos/saldos.ts",
-    "src/server/lecturas/reportes/comun.ts",
-    "src/server/lecturas/reportes/costos.ts",
-    "src/server/lecturas/reportes/serie-ipc.ts",
-  ].map((ruta) => [ruta, MOTIVO]),
-);
+/** Cada archivo que NO lleva `import "server-only"` y por qué: lo alcanza, directa o transitivamente, un punto de entrada que no corre bajo Next ni bajo Vitest (un script con `tsx`, un spec de Playwright o `prisma/`), donde `server-only` revienta. El valor es ese punto de entrada. */
+export const SIN_SERVER_ONLY: Record<string, string> = {
+  "src/server/consultas/reportes/costo-historico.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/consultas/reportes/historial-producto.ts": "scripts/auditoria-benchmark-reportes.ts",
+  "src/server/consultas/reportes/margen-objetivo-consulta.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/consultas/reportes/margen-real.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/consultas/reportes/periodo-margen.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/consultas/reportes/periodo-precios.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/consultas/reportes/periodo-ratio.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/consultas/reportes/periodo.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/consultas/reportes/rendimiento-recetas.ts": "scripts/seed-demo-pizzeria.ts",
+  "src/server/consultas/reportes/valuacion.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/lecturas/carta/descuentos.ts": "test/e2e/fixtures/carta-menu.ts",
+  "src/server/lecturas/carta/empresa.ts": "test/e2e/carta-portal-admin.spec.ts",
+  "src/server/lecturas/carta/menu.ts": "test/e2e/fixtures/carta-menu.ts",
+  "src/server/lecturas/carta/publica.ts": "test/e2e/carta-portal-admin.spec.ts",
+  "src/server/lecturas/catalogo/disponibilidad.ts": "test/e2e/conteo-fisico-grilla.spec.ts",
+  "src/server/lecturas/catalogo/ofertas-de-proveedor.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/lecturas/catalogo/recetas-vigentes.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/lecturas/movimientos/saldos.ts": "test/e2e/conteo-fisico-grilla.spec.ts",
+  "src/server/lecturas/reportes/comun.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/lecturas/reportes/costos.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/lecturas/reportes/serie-ipc.ts": "scripts/verificar-demo-invariantes.ts",
+};
 
 /** ¿La PRIMERA sentencia del archivo es exactamente `import "server-only";`? */
 export function abreConServerOnly(codigo: string): boolean {

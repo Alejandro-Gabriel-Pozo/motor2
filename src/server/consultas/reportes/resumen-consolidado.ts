@@ -1,3 +1,4 @@
+import "server-only";
 import { obtenerResumenOperativo } from "@/server/consultas/reportes/resumen-operativo";
 import type { Db } from "@/lib/db-tipos";
 import type { FilaResumenConsolidado } from "@/core/reportes/public";

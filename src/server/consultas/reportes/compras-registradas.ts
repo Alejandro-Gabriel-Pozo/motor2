@@ -1,3 +1,4 @@
+import "server-only";
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
 import { SIN_PROVEEDOR } from "@/core/reportes/public";
