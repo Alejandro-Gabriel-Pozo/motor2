@@ -1,17 +1,18 @@
 "use server";
 
 import { texto, validarTextoCatalogo } from "@/core/texto";
-import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/public";
+import { guardComandoCrearSucursal } from "@/core/features/sucursales/sucursal.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { gerentesQueQuedaranSinSucursalActiva } from "@/core/permisos/gerencia";
-import { actorEnLaEmpresa, buscarRolAdmin, mensajeSiReactivaAdminSinSerGerente, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
 import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import { conGobierno } from "../con-gobierno";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerAlguna } from "../con-sesion";
+import { crearSucursalConAdminCasoDeUso } from "./casos-de-uso/crear-sucursal-con-admin";
 
 /**
  * Todas las sucursales de la empresa (activas o no). H8 (decisión D-3 del dueño): exige el «Ver» de alguna de sus dos pantallas, Usuarios
@@ -30,93 +31,22 @@ export async function listarSucursales() {
  * admin ya existente, que crea la sucursal Y asigna su primer admin en la
  * MISMA transacción — nunca queda una sucursal sin ningún admin (mismo
  * principio que ya protege usuarios.ts/roles.ts).
+ *
+ * Desde el Hito 3 (Fase I, I.4 de `docs/plan-hito-3-pureza.md`) es un adaptador: `conPermisoDeEmpresa("alta_sucursal")` → formato
+ * (`guardComandoCrearSucursal`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/crear-sucursal-con-admin.ts`: nombre libre, disponibilidad
+ * inicial, transacción de gobierno con las invariantes, persistencia y auditoría) → refresco de la vista → `aResultadoAccion`.
  */
 export async function crearSucursalConAdmin(input: {
   nombre: string;
   emailPrimerAdmin: string;
 }): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("alta_sucursal", async (ctx) => {
-    const nombre = texto(input.nombre);
-    if (!nombre) return error("El nombre de la sucursal no puede estar vacío.");
-    const invalido = validarTextoCatalogo(nombre, "El nombre de la sucursal");
-    if (invalido) return error(invalido);
-
-    const email = texto(input.emailPrimerAdmin).toLowerCase();
-    if (!email) return error("El email del primer admin de la sucursal es obligatorio.");
-
-    const existente = await ctx.db.sucursal.findFirst({ where: { empresaId: ctx.empresaId, nombre } });
-    if (existente) return error(`Ya existe una sucursal "${nombre}".`);
-
-    // Decisión 4 del dueño (2026-09-23, docs/plan-disponibilidad-por-sucursal-2026-09-23.md §10): la sucursal nueva arranca
-    // SOLO con los productos que ya son "universales" — disponibles en TODAS las sucursales activas de hoy, sin excepción.
-    // Nunca con los que son mayoría pero no unanimidad: un producto sucursal-específico no se contagia solo por ser común.
-    // Se resuelve ANTES de la transacción (lectura pura, no hace falta el aislamiento) y con `sucursalIdsActivas` vacío
-    // (la primerísima sucursal del sistema) `productosUniversales` da siempre `[]` — arranca en cero, no en "todos".
-    const sucursalIdsActivas = (await ctx.db.sucursal.findMany({ where: { empresaId: ctx.empresaId, activo: true }, select: { id: true } })).map((s) => s.id);
-    const filasDisponibilidad = sucursalIdsActivas.length
-      ? await ctx.db.disponibilidadProducto.findMany({ where: { sucursalId: { in: sucursalIdsActivas } }, select: { productoId: true, sucursalId: true, disponible: true } })
-      : [];
-    const disponibilidadPorProducto = new Map<string, FilaDisponibilidadEnSucursal[]>();
-    for (const f of filasDisponibilidad) {
-      const lista = disponibilidadPorProducto.get(f.productoId) ?? [];
-      lista.push(f);
-      disponibilidadPorProducto.set(f.productoId, lista);
-    }
-    const universales = productosUniversales(disponibilidadPorProducto, sucursalIdsActivas);
-
-    const resultado = await conGobierno(ctx, (tx) => conInvariantesDeGobierno(tx, ctx.empresaId, async () => {
-      const rolAdmin = await buscarRolAdmin(tx, ctx.empresaId);
-      if (!rolAdmin || !rolAdmin.activo) {
-        return error("No se encontró el rol de administrador de la empresa (¿corriste el seed?) — no se puede asignar el primer admin.");
-      }
-
-      // Nombrar primer admin a alguien cuya cuenta en la empresa está apagada la reactivaría: si fue admin, eso es solo del gerente (mismo criterio que `usuarios.ts`).
-      const usuarioPrevio = await tx.user.findUnique({ where: { email }, select: { id: true } });
-      const pertenenciaPrevia = usuarioPrevio
-        ? await tx.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId: usuarioPrevio.id, empresaId: ctx.empresaId } }, select: { activo: true } })
-        : null;
-      // E8 (ADR-024): la sucursal nace con un admin que YA es parte de la empresa. A alguien nuevo no se lo da de alta acá (no hay User ni membresía hasta que acepte una invitación):
-      // primero se lo invita desde Usuarios. Así tampoco existe nunca una sucursal sin administrador.
-      if (!usuarioPrevio || !pertenenciaPrevia) {
-        return error(`"${email}" todavía no forma parte de la empresa. Creá la sucursal con vos o con un administrador que ya esté en la empresa y después invitá a "${email}" desde Usuarios.`);
-      }
-      const reactivaAdmin = await reactivaAUnAdmin(tx, ctx.empresaId, usuarioPrevio.id, { cuentaDeEmpresa: pertenenciaPrevia });
-      const rechazoReactivar = mensajeSiReactivaAdminSinSerGerente(actorEnLaEmpresa(ctx), reactivaAdmin);
-      if (rechazoReactivar) return error(rechazoReactivar);
-
-      const sucursal = await tx.sucursal.create({ data: { nombre, empresaId: ctx.empresaId } });
-      await tx.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: usuarioPrevio.id, empresaId: ctx.empresaId } }, data: { activo: true } });
-      const membresia = await tx.usuarioSucursal.create({
-        data: {
-          usuarioId: usuarioPrevio.id,
-          sucursalId: sucursal.id,
-          empresaId: ctx.empresaId,
-          rolId: rolAdmin.id,
-          notas: "Alta automática al crear la sucursal.",
-        },
-      });
-      await registrarCambioAuditado(tx, {
-        entidad: "Sucursal", entidadId: sucursal.id, campo: "activo", descripcion: `Sucursal "${nombre}": alta`,
-        valorAnterior: null, valorNuevo: true, actorId: ctx.usuarioId, sucursalId: null,
-      });
-      await registrarCambioAuditado(tx, {
-        entidad: "UsuarioEmpresa", entidadId: usuarioPrevio.id, campo: "activo", descripcion: `Cuenta de "${email}" en la empresa`,
-        valorAnterior: pertenenciaPrevia.activo, valorNuevo: true, actorId: ctx.usuarioId, sucursalId: null,
-      });
-      await registrarCambioAuditado(tx, {
-        entidad: "UsuarioSucursal", entidadId: membresia.id, campo: "rol", descripcion: `Usuario "${email}" en la sucursal "${nombre}": rol`,
-        valorAnterior: null, valorNuevo: rolAdmin.nombre, actorId: ctx.usuarioId, sucursalId: sucursal.id,
-      });
-      if (universales.length) {
-        await tx.disponibilidadProducto.createMany({ data: universales.map((productoId) => ({ sucursalId: sucursal.id, empresaId: ctx.empresaId, productoId, disponible: true })) });
-      }
-      return ok("");
-    }));
-    if (!resultado.ok) return resultado;
-
+    const comando = guardComandoCrearSucursal(input);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await crearSucursalConAdminCasoDeUso(ctx, comando.valor);
     // Se llama desde un closure "use server" de la página, sin redirigir: sin esto la tabla no cambia en un navegador real (ver refrescar.ts).
-    refrescarVistaSiHaceFalta();
-    return ok(`Sucursal "${nombre}" creada, con "${email}" como primer admin.`);
+    if (resultado.ok) refrescarVistaSiHaceFalta();
+    return aResultadoAccion(resultado);
   });
 }
 

@@ -96,7 +96,7 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     motivo: "El alta de un administrador de plataforma es de la plataforma (la corre una persona, una vez, con el rol motor2_plataforma): vive en la consola, que no puede importar src/server; la validación y el material del alta son puros en core/plataforma/primer-admin.ts.",
   },
   "src/server/actions/auth/sucursales.ts": {
-    escrituras: ["disponibilidadProducto.createMany", "sucursal.create", "sucursal.update", "sucursal.update", "usuarioEmpresa.update", "usuarioSucursal.create"],
+    escrituras: ["sucursal.update", "sucursal.update"],
     fase: "Fase 4",
     motivo: "Tramo B: acción de gobierno de usuarios o permisos sin migrar; pasa a caso de uso + persistencia junto con la gerencia y las invitaciones.",
   },

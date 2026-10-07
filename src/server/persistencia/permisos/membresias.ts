@@ -20,6 +20,24 @@ export async function activarCuentaEnEmpresa(tx: Prisma.TransactionClient, entra
 }
 
 /**
+ * Reactiva la cuenta YA EXISTENTE de la persona en la empresa (un `update`: si no existiera, falla; quien llama ya leyó que existe). Hito 3, I.4: la usa el alta
+ * de sucursal con su primer admin, que solo nombra a alguien que ya forma parte de la empresa (E8, ADR-024).
+ */
+export async function reactivarCuentaEnEmpresa(tx: Prisma.TransactionClient, entrada: { usuarioId: string; empresaId: string }): Promise<void> {
+  const { usuarioId, empresaId } = entrada;
+  await tx.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId, empresaId } }, data: { activo: true } });
+}
+
+/** Crea la membresía de la persona en una sucursal, con ese rol y esas notas (Hito 3, I.4: el primer admin de una sucursal recién creada). Devuelve la membresía. */
+export async function crearMembresiaEnSucursal(
+  tx: Prisma.TransactionClient,
+  entrada: { usuarioId: string; sucursalId: string; empresaId: string; rolId: string; notas: string },
+): Promise<{ id: string }> {
+  const { usuarioId, sucursalId, empresaId, rolId, notas } = entrada;
+  return tx.usuarioSucursal.create({ data: { usuarioId, sucursalId, empresaId, rolId, notas } });
+}
+
+/**
  * La membresía que da una invitación en una sucursal: la crea, o actualiza la que ya existía (rol y activo; las notas solo si la invitación trae notas, para no borrar las que
  * hubiera). Devuelve la membresía (el caso de uso usa su id en la auditoría).
  */
