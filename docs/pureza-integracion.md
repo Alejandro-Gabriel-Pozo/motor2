@@ -62,6 +62,11 @@ Detalle de ejecución (pasos, mapa de H8, decisiones y orden): `docs/plan-hito-3
 | 3.3 | Migración de las acciones de auth y permisos (5 archivos, 12 funciones) | 10.4 fila 3 | [ ] | |
 | 3.4 | **ADR-027** escrito (hoy no existe) y **F1 del RBAC** (piso «administrador de sistema», sin migración; con D15 = ninguna acción de empresa por defecto y D16 = `ver_auditoria` en ese piso, ya decididas) | 10.4 fila 3 | [ ] | |
 
+**Paso 0 del Hito 3 (redes y guardianes, sin fila propia): evidencia por paso.**
+
+- **H3-0.1/0.2** (`caracterizaciones-congeladas`, evidencia de la matriz): ver la fila O.33.
+- **H3-0.3** `test/permisos/gobierno-rechaza-sin-permiso.test.ts` (39 casos): las 16 mutaciones rechazan con el texto exacto del guard al operador de fábrica y a un rol propio con la fila de las 13 claves pero bajo el piso; las 4 de `conEdicionDePermisos` rechazan a un admin con la política de plataforma apagada; un admin no gerente no traspasa la gerencia; en todos, la foto de 12 tablas de gobierno queda idéntica. Mutaciones: `conPermisoDeEmpresa` sin gate → 13 rojos; `conPermiso` sin gate → 12 rojos; `conEdicionDePermisos` sin la política → 4 rojos; `renombrarRol` con `conPermisoDeEmpresa` en vez de `conEdicionDePermisos` → 1 rojo; revertido → 39 verdes.
+
 ### Hito 4: migración de las acciones (tramo C restante)
 
 | ID | Trabajo | Fuente | Estado | Evidencia |
