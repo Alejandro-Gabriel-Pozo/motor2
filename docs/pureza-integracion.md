@@ -66,6 +66,7 @@ Detalle de ejecución (pasos, mapa de H8, decisiones y orden): `docs/plan-hito-3
 
 - **H3-0.1/0.2** (`caracterizaciones-congeladas`, evidencia de la matriz): ver la fila O.33.
 - **H3-0.3** `test/permisos/gobierno-rechaza-sin-permiso.test.ts` (39 casos): las 16 mutaciones rechazan con el texto exacto del guard al operador de fábrica y a un rol propio con la fila de las 13 claves pero bajo el piso; las 4 de `conEdicionDePermisos` rechazan a un admin con la política de plataforma apagada; un admin no gerente no traspasa la gerencia; en todos, la foto de 12 tablas de gobierno queda idéntica. Mutaciones: `conPermisoDeEmpresa` sin gate → 13 rojos; `conPermiso` sin gate → 12 rojos; `conEdicionDePermisos` sin la política → 4 rojos; `renombrarRol` con `conPermisoDeEmpresa` en vez de `conEdicionDePermisos` → 1 rojo; revertido → 39 verdes.
+- **H3-0.4** `test/arquitectura/gobierno-envoltorio-y-clave.test.ts`: por AST, en los 5 archivos de auth/permisos, cada función exportada que llama a un envoltorio de mutación es una de las 16 declaradas y su PRIMERA sentencia es `return <envoltorio>("<clave>", …)` con el envoltorio y la clave declarados. Mutaciones: `renombrarRol` con `conPermisoDeEmpresa` → rojo (`conEdicionDePermisos:renombrar_rol` vs `conPermisoDeEmpresa:renombrar_rol`); `actualizarActivoRol` con `"renombrar_rol"` → rojo; una sentencia antes del `return conPermiso(…)` de `actualizarNotasMembresia` → rojo; revertido → verde.
 
 ### Hito 4: migración de las acciones (tramo C restante)
 
