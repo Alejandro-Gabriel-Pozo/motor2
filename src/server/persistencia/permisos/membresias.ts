@@ -38,6 +38,14 @@ export async function crearMembresiaEnSucursal(
 }
 
 /**
+ * Le pone a una membresía estas notas (`null` = sin notas). Hito 3, I.5a: la escritura que `actualizarNotasMembresia` (`server/actions/auth/usuarios.ts`) hacía en
+ * línea, mudada tal cual; el caso de uso decide el texto y el techo.
+ */
+export async function cambiarNotasDeMembresia(tx: Prisma.TransactionClient, entrada: { membresiaId: string; notas: string | null }): Promise<void> {
+  await tx.usuarioSucursal.update({ where: { id: entrada.membresiaId }, data: { notas: entrada.notas } });
+}
+
+/**
  * La membresía que da una invitación en una sucursal: la crea, o actualiza la que ya existía (rol y activo; las notas solo si la invitación trae notas, para no borrar las que
  * hubiera). Devuelve la membresía (el caso de uso usa su id en la auditoría).
  */

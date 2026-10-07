@@ -24,6 +24,8 @@ import { enviarInvitacionYAnotar, type InvitacionPorEnviar } from "../../invitac
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
 import { azarDelProceso } from "@/lib/azar";
+import { aResultadoAccion } from "@/core/resultado-caso";
+import { actualizarNotasMembresiaCasoDeUso } from "./casos-de-uso/actualizar-notas-membresia";
 
 /**
  * Techo de privilegio y salvaguardas de esta pantalla (Bloque G, G2): las acciones no miran roles ni comparan nombres. Leen el estado y escriben
@@ -227,19 +229,13 @@ export async function actualizarActivoMembresia(membresiaId: string, activo: boo
  * por flujos automáticos de bootstrap) pero no se podía ver ni editar
  * desde la UI — hallazgo de la auditoría de motor2. Editar las notas de un
  * admin o del gerente tiene el mismo techo que tocarlos (G2, D6).
+ *
+ * Desde el Hito 3 (Fase I, I.5a) es un adaptador: `conPermiso("notas_usuario_sucursal")` → caso de uso (`casos-de-uso/actualizar-notas-membresia.ts`:
+ * la membresía de la sucursal activa, el techo de gestión y la escritura) → `aResultadoAccion`. Sin guard: recibe un id y un texto libre que nunca se
+ * validó en la acción (`SIN_GUARD`).
  */
 export async function actualizarNotasMembresia(membresiaId: string, notas: string): Promise<ResultadoAccion> {
-  return conPermiso("notas_usuario_sucursal", async (ctx) => {
-    const membresia = await ctx.db.usuarioSucursal.findUnique({ where: { id: membresiaId }, include: { rol: true } });
-    if (!membresia || membresia.sucursalId !== ctx.sucursalId) return error("No se encontró esa membresía.");
-
-    const objetivo = await objetivoEnSucursal(ctx.db, ctx.empresaId, membresia.usuarioId, membresia.rol);
-    const rechazo = mensajeSiNoPuedeGestionar(actorEnSucursal(ctx, ctx.sucursalId), objetivo);
-    if (rechazo) return error(rechazo);
-
-    await ctx.db.usuarioSucursal.update({ where: { id: membresiaId }, data: { notas: texto(notas) || null } });
-    return ok("Notas actualizadas.");
-  });
+  return conPermiso("notas_usuario_sucursal", async (ctx) => aResultadoAccion(await actualizarNotasMembresiaCasoDeUso(ctx, { membresiaId, notas })));
 }
 
 /**

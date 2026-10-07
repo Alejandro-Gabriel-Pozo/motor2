@@ -48,6 +48,8 @@ const SIN_GUARD: Record<string, string> = {
     "Activar o desactivar un rol (Hito 3, I.2): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró ese rol»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/auth/sucursales.ts#actualizarActivoSucursal":
     "Activar o desactivar una sucursal (Hito 3, I.4): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso dentro de la transacción de gobierno, «No se encontró esa sucursal»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/auth/usuarios.ts#actualizarNotasMembresia":
+    "Editar las notas de una membresía (Hito 3, I.5a): recibe un id y un texto libre que nunca se validó en la acción; el texto lo normaliza el caso de uso (`texto(notas) || null`) DESPUÉS de resolver la membresía y el techo, como antes. Un guard previo adelantaría esa normalización a «No se encontró esa membresía».",
 };
 
 describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {
