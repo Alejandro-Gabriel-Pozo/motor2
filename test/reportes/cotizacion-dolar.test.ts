@@ -3,20 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(), flush: vi.fn(async () => true) }));
 import * as Sentry from "@sentry/nextjs";
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
-import {
-  actualizarDolarSiHaceFalta,
-  cotizacionVencida,
-  fechaArgentina,
-  leerBcra,
-  leerDolarApi,
-  leerHistorial,
-  obtenerUltimaCotizacion,
-  obtenerUltimaCotizacionSinRomper,
-  pesosADolares,
-  reiniciarLimitadorDolar,
-  sincronizarDolar,
-  cotizacionPlausible,
-} from "../../src/core/reportes/cotizacion-dolar";
+import { cotizacionPlausible, cotizacionVencida, fechaArgentina, leerBcra, leerDolarApi, leerHistorial, pesosADolares } from "../../src/core/reportes/cotizacion-dolar";
+import { obtenerUltimaCotizacion, obtenerUltimaCotizacionSinRomper } from "../../src/server/consultas/reportes/cotizacion-dolar";
+import { actualizarDolarSiHaceFalta, reiniciarLimitadorDolar, sincronizarDolar } from "../../src/server/actions/reportes/sincronizaciones";
 
 /**
  * Dólar oficial del BNA: se guarda una fila por día. Las respuestas de las APIs están copiadas de las reales (verificadas el
@@ -45,15 +34,15 @@ function simularRed(rutas: Record<string, unknown | Error>) {
 
 describe("lectura de las respuestas", () => {
   it("dolarapi: compra, venta y el día en horario argentino (18:55 UTC es 15:55 del mismo día)", () => {
-    expect(leerDolarApi(RESPUESTA_DOLARAPI)).toEqual({ fecha: "2026-09-18", compra: 1485, venta: 1535, fuente: "BNA" });
+    expect(leerDolarApi(RESPUESTA_DOLARAPI, new Date("2026-09-18T22:00:00Z"))).toEqual({ fecha: "2026-09-18", compra: 1485, venta: 1535, fuente: "BNA" });
     expect(fechaArgentina(new Date("2026-09-19T02:30:00Z"))).toBe("2026-09-18"); // 23:30 del 18 en Argentina
   });
 
   it("dolarapi: una respuesta sin venta válida no sirve", () => {
-    expect(leerDolarApi({ compra: 1485, venta: null })).toBeNull();
-    expect(leerDolarApi({ venta: 0 })).toBeNull();
-    expect(leerDolarApi(null)).toBeNull();
-    expect(leerDolarApi({ venta: 1535, fechaActualizacion: "no es una fecha" })).toBeNull();
+    expect(leerDolarApi({ compra: 1485, venta: null }, new Date("2026-09-18T22:00:00Z"))).toBeNull();
+    expect(leerDolarApi({ venta: 0 }, new Date("2026-09-18T22:00:00Z"))).toBeNull();
+    expect(leerDolarApi(null, new Date("2026-09-18T22:00:00Z"))).toBeNull();
+    expect(leerDolarApi({ venta: 1535, fechaActualizacion: "no es una fecha" }, new Date("2026-09-18T22:00:00Z"))).toBeNull();
   });
 
   it("BCRA: un solo valor, que va en venta", () => {

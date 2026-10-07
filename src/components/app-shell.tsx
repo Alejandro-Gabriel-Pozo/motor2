@@ -6,7 +6,9 @@ import { situacionDelRegistroDeModulos } from "@/server/acceso/modulos-de-empres
 import { politicaDeEmpresa } from "@/server/acceso/politica-de-empresa";
 import { Suspense } from "react";
 import { after } from "next/server";
-import { actualizarDolarSiHaceFalta, cotizacionVencida, obtenerUltimaCotizacionSinRomper } from "@/core/reportes/public-servidor";
+import { actualizarDolarSiHaceFalta } from "@/server/actions/reportes/sincronizaciones";
+import { cotizacionVencida } from "@/core/reportes/public";
+import { obtenerUltimaCotizacionSinRomper } from "@/server/consultas/reportes/cotizacion-dolar";
 import { reportarErrorUnaVez } from "@/lib/reportar-error";
 import { CotizacionEncabezado } from "./en-dolares";
 import { AccionesVisiblesProvider } from "./enlace-interno";
@@ -33,7 +35,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
   // El dólar del encabezado es informativo: si no se puede leer (tabla sin migrar, base lenta), la pantalla sigue igual.
   const cotizacion = await obtenerUltimaCotizacionSinRomper(ctx.db);
   // Si falta la cotización de hoy (el cron diario puede no haber corrido), la aplicación se pone al día sola DESPUÉS de responder.
-  if (cotizacionVencida(cotizacion)) after(() => actualizarDolarSiHaceFalta(ctx.db));
+  if (cotizacionVencida(cotizacion, new Date())) after(() => actualizarDolarSiHaceFalta(ctx.db));
   // Una empresa sin ningún módulo vendible disponible solo tiene Administración: se le dice por qué (si no, el menú vacío parece una falla). Si ni
   // siquiera tiene filas en el registro se avisa además a Sentry, una vez por empresa y arranque: puede ser un registro que se perdió.
   const registro = await situacionDelRegistroDeModulos(ctx.empresaId, ctx.db);
