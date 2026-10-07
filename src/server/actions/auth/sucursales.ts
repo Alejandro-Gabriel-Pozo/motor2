@@ -11,10 +11,15 @@ import { conGobierno } from "../con-gobierno";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, type ResultadoAccion } from "../tipos";
-import { requerirSesion } from "../con-sesion";
+import { requerirVerAlguna } from "../con-sesion";
 
+/**
+ * Todas las sucursales de la empresa (activas o no). H8 (decisión D-3 del dueño): exige el «Ver» de alguna de sus dos pantallas, Usuarios
+ * (`gestion_usuarios`, en la sucursal activa) o Sucursales (`alta_sucursal`, de empresa); el operador deja de ver la lista. El alta de producto,
+ * que solo necesitaba cuántas son, las cuenta con `contarSucursales` (server/consultas).
+ */
 export async function listarSucursales() {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVerAlguna(["gestion_usuarios", "alta_sucursal"]);
   return ctx.db.sucursal.findMany({ orderBy: { nombre: "asc" } });
 }
 

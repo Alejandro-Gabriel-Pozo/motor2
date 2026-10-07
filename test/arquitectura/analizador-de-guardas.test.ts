@@ -103,9 +103,9 @@ describe("analizarFuente: falsos negativos que la regex vieja tenía y el AST no
   it("una guarda dentro de código muerto (if(false)) no cuenta como guarda de la función", () => {
     const fuente = `
       "use server";
-      import { requerirSesion } from "../con-sesion";
+      import { requerirVer } from "../con-sesion";
       export async function crearRol() {
-        if (false) { await requerirSesion(); }
+        if (false) { await requerirVer("gestion_roles"); }
         return { ok: true };
       }
     `;

@@ -34,8 +34,9 @@ import { listarSucursalesParaEnviar, listarSucursalesParaSolicitar, obtenerBande
 
 /**
  * Las lecturas de servidor (server actions que devuelven datos) se pueden invocar directo, sin pasar por la página que
- * las usa: la página las protege, pero el endpoint no. Cada una abre con `requerirSesion()` o, si recibe la sucursal por
- * parámetro (que viene del cliente), con `requerirSesionEnSucursal(id)`. Ver src/server/actions/con-sesion.ts.
+ * las usa: la página las protege, pero el endpoint no. Cada una abre con una guarda de src/server/actions/con-sesion.ts que
+ * empieza por la sesión y, si recibe la sucursal por parámetro (que viene del cliente), por la membresía en ella; después
+ * pide el permiso de Ver (eso lo prueban lecturas-con-permiso-de-ver.test.ts y lecturas-con-alguna-pantalla.test.ts).
  *
  * Los argumentos son irrelevantes: la guarda corre antes que cualquier otra cosa. La regla de que ninguna función
  * exportada quede sin guarda la hace cumplir test/arquitectura/acciones-con-guarda.test.ts.

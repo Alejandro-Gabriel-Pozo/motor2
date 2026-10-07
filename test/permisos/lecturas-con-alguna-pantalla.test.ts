@@ -15,6 +15,7 @@ import { listarUnidadesActivas } from "../../src/server/actions/catalogo/unidade
 import { listarProveedores, listarProveedoresParaSelector } from "../../src/server/actions/catalogo/proveedores";
 import { listarSeccionesActivas } from "../../src/server/actions/movimientos/secciones";
 import { crearMembresia } from "../setup/membresia";
+import { listarSucursales } from "../../src/server/actions/auth/sucursales";
 
 /**
  * Lecturas que consumen pantallas con claves DISTINTAS (H8, trabajo D.1 de `pureza-integracion`; decisión D-1 del dueño): exigen el «Ver» de ALGUNA de esas
@@ -103,6 +104,8 @@ const LECTURAS: Fila[] = [
     ],
     llamar: (sucursalId) => listarSeccionesActivas(sucursalId),
   },
+  // D-3: Usuarios (de sucursal) o Sucursales (de empresa); las dos de Administración, así que no tiene caso de módulo.
+  { nombre: "listarSucursales", claves: ["gestion_usuarios", "alta_sucursal"], llamar: () => listarSucursales() },
 ];
 
 /** Una clave que ninguna de estas lecturas acepta (de piso operario, así la puede tener el rol de prueba). */

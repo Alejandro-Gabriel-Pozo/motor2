@@ -9,8 +9,10 @@ import { analizarFuente } from "./guardas/analizador";
  * recorre `src/server/actions` y falla si aparece una función exportada sin ninguna de las guardas reconocidas:
  *
  * - `conPermiso(...)`: mutaciones, con permiso de Editar (ver con-permiso.ts).
- * - `requerirSesion()` / `requerirSesionEnSucursal(id)`: lecturas, con sesión y membresía (ver con-sesion.ts).
- * - `requerirVer(clave)` / `requerirVerEnSucursal(id, clave)`: lecturas de los datos propios de una pantalla: además, su permiso de Ver.
+ * - `requerirVer(clave)` / `requerirVerEnSucursal(id, clave)` / `requerirVerDeEmpresa(clave)`: lecturas, con sesión (y membresía en la
+ *   sucursal pedida) y el permiso de Ver de su pantalla (ver con-sesion.ts).
+ * - `requerirVerAlguna(claves)` / `requerirVerAlgunaEnSucursal(id, claves)`: lecturas que consumen pantallas con claves distintas: el
+ *   «Ver» de alguna de ellas (H8). Desde H8 ninguna lectura abre con solo sesión (`requerirSesion` ya no se exporta).
  * - `getUsuarioActual()` / `obtenerContextoUsuario()` / `requierePermiso*(...)` puestos a mano: casos puntuales.
  * - Delegación: llamar a otra función exportada del mismo archivo que a su vez esté guardada (ej. `agregarIngredienteAReceta`
  *   delega en `guardarReceta`).

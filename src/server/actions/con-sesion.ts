@@ -3,14 +3,19 @@ import { contextoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDe
 import { accionesDelMenuQueElUsuarioPuedeVer, requierePermisoVer, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 
 /**
- * Guarda de las LECTURAS de servidor (server actions que devuelven datos y no pasan por `conPermiso`, que es el
+ * Guardas de las LECTURAS de servidor (server actions que devuelven datos y no pasan por `conPermiso`, que es el
  * envoltorio de las mutaciones). Una server action es un endpoint que se puede invocar directo, sin pasar por la
- * página que la usa: proteger solo la página deja la lectura abierta. Esta guarda exige, como primera línea de cada
- * lectura, una sesión con al menos una sucursal activa. Si no la hay, lanza: la llamada del cliente se rechaza.
+ * página que la usa: proteger solo la página deja la lectura abierta. Cada lectura abre con una de las guardas
+ * exportadas de este archivo: `requerirVer*` (la clave de su pantalla) o `requerirVerAlguna*` (el «O» de las claves
+ * de sus pantallas). Todas empiezan por la sesión: sin una sesión con al menos una sucursal activa, lanzan y la
+ * llamada del cliente se rechaza.
+ *
+ * `requerirSesion` (este primer paso) NO se exporta desde H8 (trabajo D.1 de `pureza-integracion`, decisión del
+ * dueño): ninguna lectura abre con solo sesión (test/arquitectura/lecturas-con-sesion-lista-cerrada.test.ts).
  *
  * No es un archivo `"use server"` a propósito: así sus exports no se vuelven endpoints.
  */
-export async function requerirSesion(): Promise<ContextoUsuario> {
+async function requerirSesion(): Promise<ContextoUsuario> {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) throw new Error("No autenticado, o tu usuario no tiene ninguna sucursal asignada.");
   return ctx;
