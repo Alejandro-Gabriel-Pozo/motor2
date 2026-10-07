@@ -43,7 +43,6 @@ export const PUREZA_HEREDADA_DEL_NUCLEO: Record<string, EntradaDePurezaHeredada>
   "src/core/movimientos/anulaciones.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/armar-filas-de-movimiento.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/con-reintento.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
-  "src/core/movimientos/origen-venta-datos.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 4: lee el Kardex dentro de la transacción de la venta; se coordina con registrar-venta (y SaldoStock, Fase 5)" },
   "src/core/movimientos/precio-venta.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/public.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/movimientos/stock.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 4: lee el Kardex y lo usan registrar-venta y varios casos de uso dentro de su transacción; se coordina con SaldoStock (Fase 5)" },

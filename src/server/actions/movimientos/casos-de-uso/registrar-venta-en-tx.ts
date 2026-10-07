@@ -8,7 +8,7 @@ import { alcanceDeSucursal, cargarRecetaVigente, productoDisponibleEn } from "@/
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { seccionesConStock } from "@/core/movimientos/stock";
 import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, faltantesDe, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
-import { cargarDatosDeOrigen, prepararOrigen } from "@/core/movimientos/origen-venta-datos";
+import { cargarDatosDeOrigen, prepararOrigen } from "@/server/persistencia/movimientos/cargar-origen-de-venta";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { calcularCostosYMargenes } from "@/core/reportes/public-servidor";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
