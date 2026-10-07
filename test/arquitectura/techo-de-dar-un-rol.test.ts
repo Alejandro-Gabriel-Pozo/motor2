@@ -12,9 +12,11 @@ import { describe, expect, it } from "vitest";
  *  2. La variante sin el techo de gestión, `mensajeSiNoPuedeDarRolSinTechoDeGestion`, la usan solo los archivos de la lista cerrada de abajo, cada uno con su
  *     motivo (y cada uno la usa de verdad: una entrada que ya no hace falta se borra).
  *
- * `mensajeSiNoPuedeGestionar` sola sigue siendo pública: es el techo de los flujos que TOCAN a una persona sin darle un rol (activarla o desactivarla en una
- * sucursal, sus notas, su cuenta en la empresa, invitarla a vincular Google, una invitación de vinculación pendiente). Sin rol que dar, no hay media regla que
- * olvidar. Aproximación estática por AST: los comentarios y los textos no cuentan.
+ *  3. `mensajeSiNoPuedeGestionar` sola (decisión del dueño, 2026-10-08: que también se vigile) es el techo de los flujos que TOCAN a una persona sin darle un rol
+ *     (activarla o desactivarla en una sucursal, sus notas, su cuenta en la empresa, invitarla a vincular Google, una invitación de usuario pendiente). La usan
+ *     solo los archivos de la lista cerrada `USAN_GESTIONAR_SOLA`, cada uno con su motivo: un flujo nuevo que toque a una persona sin esa regla, o que la use
+ *     sola donde en realidad da un rol (y tendría que pasar por `mensajeSiNoPuedeDarRolA`), obliga a declararlo y justificarlo.
+ * Aproximación estática por AST: los comentarios y los textos no cuentan.
  */
 const RAIZ = join(__dirname, "../../src");
 const CARPETA_DE_LA_REGLA = "core/permisos/";
@@ -27,6 +29,18 @@ const USAN_LA_VARIANTE: Record<string, string> = {
     "Contrato C6 (I.4b): el alta de una sucursal nombra a su primer admin con el techo del rol y SIN el de gestión sobre el nombrado, porque un administrador tiene que poder nombrar al gerente (lo fija techo-en-el-alta-de-sucursal.test.ts).",
   "server/actions/auth/casos-de-uso/invitacion-gestionable.ts":
     "Revocar o reenviar una invitación de USUARIO pendiente exige poder dar cada rol que ofrece; la persona todavía no es miembro de la empresa: no hay a quién medir con el techo de gestión.",
+};
+
+const GESTIONAR_SOLA = "mensajeSiNoPuedeGestionar";
+
+/** Archivo (relativo a `src/`) → motivo. Lista CERRADA de quién toca a una persona con el techo de gestión SOLO, porque no le da ningún rol. */
+const USAN_GESTIONAR_SOLA: Record<string, string> = {
+  "server/actions/auth/casos-de-uso/actualizar-activo-membresia.ts": "Activar o desactivar la membresía de una persona en una sucursal: la toca, no le da un rol.",
+  "server/actions/auth/casos-de-uso/actualizar-activo-usuario-en-empresa.ts": "Activar o desactivar la cuenta de una persona en la empresa: la toca, no le da un rol.",
+  "server/actions/auth/casos-de-uso/actualizar-notas-membresia.ts": "Editar las notas de una membresía: las de un admin o del gerente las toca solo quien puede gestionarlo; no se da ningún rol.",
+  "server/actions/auth/casos-de-uso/invitacion-gestionable.ts":
+    "Revocar o reenviar una invitación de VINCULACIÓN de un miembro que ya existe: se mide el techo de gestión sobre ese miembro y no hay rol que dar (la rama de usuario usa la variante declarada arriba).",
+  "server/actions/auth/casos-de-uso/invitar-a-vincular.ts": "Invitar a un miembro a vincular su cuenta de Google: lo toca, no le da un rol.",
 };
 
 function archivos(dir: string): string[] {
@@ -76,6 +90,23 @@ describe("dar un rol pasa por mensajeSiNoPuedeDarRolA (C2)", () => {
     expect(sinDeclarar, `Dan un rol sin medir a quien lo recibe y no están en USAN_LA_VARIANTE (con su motivo):\n${sinDeclarar.join("\n")}`).toEqual([]);
     expect(usan).toEqual(Object.keys(USAN_LA_VARIANTE).sort());
     for (const nombre of Object.keys(USAN_LA_VARIANTE)) expect(existsSync(join(RAIZ, nombre)), `${nombre} no existe: sacalo de la lista`).toBe(true);
+  });
+
+  it("el techo de gestión suelto (mensajeSiNoPuedeGestionar) lo usan solo los archivos declarados, y todos los declarados lo usan", () => {
+    const usan = fuera.filter((ruta) => usosDe(readFileSync(ruta, "utf8"), new Set([GESTIONAR_SOLA])).length > 0).map(nombreDe).sort();
+    const sinDeclarar = usan.filter((n) => !(n in USAN_GESTIONAR_SOLA));
+    expect(
+      sinDeclarar,
+      `Miden a una persona con el techo de gestión suelto y no están en USAN_GESTIONAR_SOLA (con su motivo). Si le dan un rol, tiene que pasar por mensajeSiNoPuedeDarRolA:\n${sinDeclarar.join("\n")}`,
+    ).toEqual([]);
+    expect(usan).toEqual(Object.keys(USAN_GESTIONAR_SOLA).sort());
+    for (const nombre of Object.keys(USAN_GESTIONAR_SOLA)) expect(existsSync(join(RAIZ, nombre)), `${nombre} no existe: sacalo de la lista`).toBe(true);
+  });
+
+  it("el detector ve el techo de gestión suelto importado con alias o por espacio de nombres", () => {
+    const gestionar = new Set([GESTIONAR_SOLA]);
+    expect(usosDe(`import { mensajeSiNoPuedeGestionar as techo } from "@/core/permisos/gestion-de-usuarios";`, gestionar)).toHaveLength(1);
+    expect(usosDe(`import * as g from "@/core/permisos/gestion-de-usuarios";\nconst r = g.mensajeSiNoPuedeGestionar(a, b);`, gestionar)).toEqual([{ nombre: GESTIONAR_SOLA, linea: 2 }]);
   });
 
   it("el detector ve el import, el alias y el espacio de nombres, y no los comentarios ni los textos", () => {
