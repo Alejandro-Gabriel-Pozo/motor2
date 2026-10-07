@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarReceta, agregarPasoAReceta, actualizarIngredienteDeReceta, quitarIngredienteDeReceta, actualizarCabeceraDeReceta, obtenerRecetaVigente, listarVersionesDeReceta } from "../../src/server/actions/catalogo/recetas";
 
@@ -68,19 +69,19 @@ describe("recetas: sustitutos por línea de ingrediente", () => {
     expect(await sustitutosDeBife()).toEqual([insumoOjoId, insumoVacioId]);
 
     // Agregar un paso nuevo (no toca ingredientes).
-    await agregarPasoAReceta(pvId, { orden: 1, instruccion: "Sellar a fuego fuerte." });
+    await agregarPasoAReceta(pvId, { orden: 1, instruccion: "Sellar a fuego fuerte." }, await versionVigenteDeReceta(pvId));
     expect(await sustitutosDeBife()).toEqual([insumoOjoId, insumoVacioId]);
 
     // Editar la cabecera/ficha (no toca ingredientes).
-    await actualizarCabeceraDeReceta(pvId, { comentarios: "Servir caliente." });
+    await actualizarCabeceraDeReceta(pvId, { comentarios: "Servir caliente." }, await versionVigenteDeReceta(pvId));
     expect(await sustitutosDeBife()).toEqual([insumoOjoId, insumoVacioId]);
 
     // Editar OTRO ingrediente (Vacío, sin sustitutos) — Bife no se toca.
-    await actualizarIngredienteDeReceta(pvId, vacioId, { cantidad: 0.15, unidadId: kgId });
+    await actualizarIngredienteDeReceta(pvId, vacioId, { cantidad: 0.15, unidadId: kgId }, await versionVigenteDeReceta(pvId));
     expect(await sustitutosDeBife()).toEqual([insumoOjoId, insumoVacioId]);
 
     // Quitar el OTRO ingrediente.
-    await quitarIngredienteDeReceta(pvId, vacioId);
+    await quitarIngredienteDeReceta(pvId, vacioId, await versionVigenteDeReceta(pvId));
     expect(await sustitutosDeBife()).toEqual([insumoOjoId, insumoVacioId]);
 
     const vigente = await obtenerRecetaVigente(pvId);
@@ -89,7 +90,7 @@ describe("recetas: sustitutos por línea de ingrediente", () => {
 
   it("la versión vieja conserva los suyos aunque una versión nueva cambie los sustitutos", async () => {
     await guardarReceta(pvId, [{ insumoProductoId: bifeId, cantidad: 0.2, unidadId: kgId, insumoSustitutoIds: [insumoOjoId] }]);
-    await actualizarIngredienteDeReceta(pvId, bifeId, { cantidad: 0.2, unidadId: kgId, insumoSustitutoIds: [insumoVacioId] });
+    await actualizarIngredienteDeReceta(pvId, bifeId, { cantidad: 0.2, unidadId: kgId, insumoSustitutoIds: [insumoVacioId] }, await versionVigenteDeReceta(pvId));
 
     const versiones = await listarVersionesDeReceta(pvId);
     const v1 = versiones.find((v) => v.version === 1)!;
@@ -103,7 +104,7 @@ describe("recetas: sustitutos por línea de ingrediente", () => {
       { insumoProductoId: bifeId, cantidad: 0.2, unidadId: kgId, insumoSustitutoIds: [insumoOjoId] },
       { insumoProductoId: vacioId, cantidad: 0.1, unidadId: kgId },
     ]);
-    await quitarIngredienteDeReceta(pvId, bifeId);
+    await quitarIngredienteDeReceta(pvId, bifeId, await versionVigenteDeReceta(pvId));
 
     const vigente = await obtenerRecetaVigente(pvId);
     expect(vigente!.ingredientes.map((i) => i.insumoProductoId)).toEqual([vacioId]);
@@ -152,7 +153,7 @@ describe("recetas: sustitutos por línea de ingrediente", () => {
     // ingrediente, quitarIngredienteDeReceta de OTRO ingrediente) perdería los sustitutos de Bife en la próxima versión — el test
     // "regresión de ida y vuelta" de arriba lo detecta en rojo.
     await guardarReceta(pvId, [{ insumoProductoId: bifeId, cantidad: 0.2, unidadId: kgId, insumoSustitutoIds: [insumoOjoId] }]);
-    await actualizarCabeceraDeReceta(pvId, { comentarios: "x" });
+    await actualizarCabeceraDeReceta(pvId, { comentarios: "x" }, await versionVigenteDeReceta(pvId));
     const vigente = await obtenerRecetaVigente(pvId);
     expect(vigente!.ingredientes[0].sustitutos).toHaveLength(1);
   });

@@ -32,11 +32,6 @@ import { guardarVersionDeRecetaCasoDeUso, type DestinoDeVersionDeReceta } from "
 
 type OpcionesDeDestino = Omit<Extract<DestinoDeVersionDeReceta, { sucursalId: string }>, "sucursalId">;
 
-/** La versión más nueva de la serie PROPIA de la sucursal (aunque hoy esté deshabilitada; `0` si nunca tuvo): sobre ella se arma cada guardado, para que otro guardado en el medio se rechace. */
-function versionPropiaDe(estado: { propia: { version: number } | null }): number {
-  return estado.propia?.version ?? 0;
-}
-
 async function guardarEnLaPropia(
   ctx: ContextoUsuario,
   productoId: string,
@@ -54,13 +49,13 @@ async function guardarEnLaPropia(
 }
 
 /** Crea la receta propia de la sucursal partiendo de la central vigente (una copia que de acá en más se edita por su lado). */
-export async function crearRecetaPropiaDesdeLaCentral(productoId: string): Promise<ResultadoAccion> {
+export async function crearRecetaPropiaDesdeLaCentral(productoId: string, versionVista: number): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
     const estado = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
     if (estado.habilitada) return error("Esta sucursal ya tiene receta propia para este producto.");
     const central = await cargarRecetaVigente(ctx.db, ALCANCE_CENTRAL, productoId, { include: INCLUDE_RECETA_COMPLETA });
     if (!central) return error("Este producto no tiene receta central de la que partir: agregá el primer ingrediente para armar la receta de la sucursal desde cero.");
-    return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(central), central, versionPropiaDe(estado), { basadaEnVersionId: central.id });
+    return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(central), central, versionVista, { basadaEnVersionId: central.id });
   });
 }
 
@@ -68,14 +63,14 @@ export async function crearRecetaPropiaDesdeLaCentral(productoId: string): Promi
  * Agrega un ingrediente a la receta propia habilitada. Si la sucursal todavía no tiene una y el producto tampoco tiene receta central, la
  * crea desde cero con ese ingrediente; si hay central, hay que crear la propia desde ella primero (no se parte de una receta vacía por descuido).
  */
-export async function agregarIngredienteARecetaPropia(productoId: string, ingrediente: IngredienteInput): Promise<ResultadoAccion> {
+export async function agregarIngredienteARecetaPropia(productoId: string, ingrediente: IngredienteInput, versionVista: number): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
     const estado = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
     if (!estado.habilitada && estado.centralVigente) return error("Primero creá la receta propia de la sucursal a partir de la central.");
     const base = estado.habilitada ? estado.propia : null;
     const existentes = mapIngredientesAInput(base);
     if (existentes.some((i) => i.insumoProductoId === ingrediente.insumoProductoId)) return error("Ese insumo ya está en la receta.");
-    return guardarEnLaPropia(ctx, productoId, [...existentes, ingrediente], base, versionPropiaDe(estado));
+    return guardarEnLaPropia(ctx, productoId, [...existentes, ingrediente], base, versionVista);
   });
 }
 
@@ -83,7 +78,8 @@ export async function agregarIngredienteARecetaPropia(productoId: string, ingred
 export async function actualizarIngredienteDeRecetaPropia(
   productoId: string,
   insumoProductoId: string,
-  cambios: { cantidad: number; unidadId: string; mermaPorcentaje?: number }
+  cambios: { cantidad: number; unidadId: string; mermaPorcentaje?: number },
+  versionVista: number
 ): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
     const estado = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
@@ -91,12 +87,12 @@ export async function actualizarIngredienteDeRecetaPropia(
     const existentes = mapIngredientesAInput(estado.propia);
     if (!existentes.some((i) => i.insumoProductoId === insumoProductoId)) return error("Ese insumo no está en la receta propia vigente.");
     const items = existentes.map((i) => (i.insumoProductoId === insumoProductoId ? { ...i, cantidad: cambios.cantidad, unidadId: cambios.unidadId, mermaPorcentaje: cambios.mermaPorcentaje ?? 0 } : i));
-    return guardarEnLaPropia(ctx, productoId, items, estado.propia, versionPropiaDe(estado));
+    return guardarEnLaPropia(ctx, productoId, items, estado.propia, versionVista);
   });
 }
 
 /** Quita un ingrediente de la receta propia habilitada (y lo saca de los pasos que lo mencionaran, como en la central). */
-export async function quitarIngredienteDeRecetaPropia(productoId: string, insumoProductoId: string): Promise<ResultadoAccion> {
+export async function quitarIngredienteDeRecetaPropia(productoId: string, insumoProductoId: string, versionVista: number): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
     const estado = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
     if (!estado.habilitada) return error("Esta sucursal no tiene receta propia para este producto.");
@@ -105,7 +101,7 @@ export async function quitarIngredienteDeRecetaPropia(productoId: string, insumo
     if (items.length === existentes.length) return error("Ese insumo no está en la receta propia vigente.");
     // validarPasos rechaza un paso que referencie un ingrediente que ya no está: el round-trip de los pasos lo saca de ahí.
     const pasos = mapPasosAInput(estado.propia).map((p) => ({ ...p, insumoProductoIds: p.insumoProductoIds?.filter((id) => id !== insumoProductoId) }));
-    return guardarEnLaPropia(ctx, productoId, items, estado.propia, versionPropiaDe(estado), { pasos });
+    return guardarEnLaPropia(ctx, productoId, items, estado.propia, versionVista, { pasos });
   });
 }
 
@@ -114,7 +110,7 @@ export async function quitarIngredienteDeRecetaPropia(productoId: string, insumo
  * propia habilitada de otra sucursal — nunca de la central, que ya es la base de la propia — y pisa la propia que hubiera: por eso exige la
  * confirmación explícita. Conserva la versión central en la que se basaba el original, así el aviso «la central cambió» sigue siendo cierto.
  */
-export async function copiarRecetaPropiaDeOtraSucursal(productoId: string, sucursalOrigenId: string, confirmado: boolean): Promise<ResultadoAccion> {
+export async function copiarRecetaPropiaDeOtraSucursal(productoId: string, sucursalOrigenId: string, confirmado: boolean, versionVista: number): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_copiar", async (ctx) => {
     if (!confirmado) return error("Confirmá que querés reemplazar la receta de esta sucursal por la copia.");
     if (sucursalOrigenId === ctx.sucursalId) return error("Elegí otra sucursal: no se puede copiar de la misma.");
@@ -122,9 +118,7 @@ export async function copiarRecetaPropiaDeOtraSucursal(productoId: string, sucur
     if (!origen) return error("No se encontró esa sucursal.");
     const estadoOrigen = await obtenerEstadoDeRecetaPropia(productoId, sucursalOrigenId, ctx.db);
     if (!estadoOrigen.habilitada || !estadoOrigen.propia) return error(`«${origen.nombre}» no tiene receta propia para este producto: no hay nada que copiar.`);
-    // La versión esperada es la de la serie de ESTA sucursal (la que se va a pisar), no la del origen: se lee ahora, junto con lo demás.
-    const estadoPropio = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
-    return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(estadoOrigen.propia), estadoOrigen.propia, versionPropiaDe(estadoPropio), {
+    return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(estadoOrigen.propia), estadoOrigen.propia, versionVista, {
       basadaEnVersionId: estadoOrigen.propia.basadaEnVersionId,
       copiadaDeSucursal: origen.nombre,
     });
