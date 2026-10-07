@@ -132,33 +132,7 @@ const UI_CON_INTERNALS_DE_DOMINIO = [
  * no de `server/lecturas` ni de `server/persistencia`. ADR-026 fijó que las lecturas compartidas entre pantalla y escritura las importan consultas, persistencia y acciones, «nunca la UI»; hoy 5
  * páginas la atraviesan. La lista solo se achica: una página nueva que importe esas capas falla.
  */
-const PAGINAS_CON_LECTURAS_O_PERSISTENCIA = [
-  {
-    ruta: "src/app/(app)/catalogo/insumos-grupos/page.tsx",
-    motivo:
-      "Pendiente de la decisión del dueño sobre la frontera UI → `server/lecturas` (docs/pureza-integracion.md, sección 4, decisión 6, y trabajo D.2): o se formaliza en el ADR-026 que las páginas (Server Components) pueden importar esa capa, o esta lectura se mueve a `server/consultas`. Hasta entonces la lista solo puede achicarse.",
-  },
-  {
-    ruta: "src/app/(app)/catalogo/productos/[id]/page.tsx",
-    motivo:
-      "Pendiente de la decisión del dueño sobre la frontera UI → `server/lecturas` (docs/pureza-integracion.md, sección 4, decisión 6, y trabajo D.2): o se formaliza en el ADR-026 que las páginas (Server Components) pueden importar esa capa, o esta lectura se mueve a `server/consultas`. Hasta entonces la lista solo puede achicarse.",
-  },
-  {
-    ruta: "src/app/(app)/catalogo/recetas/[productoId]/page.tsx",
-    motivo:
-      "Pendiente de la decisión del dueño sobre la frontera UI → `server/lecturas` (docs/pureza-integracion.md, sección 4, decisión 6, y trabajo D.2): o se formaliza en el ADR-026 que las páginas (Server Components) pueden importar esa capa, o esta lectura se mueve a `server/consultas`. Hasta entonces la lista solo puede achicarse.",
-  },
-  {
-    ruta: "src/app/(app)/reportes/costos/page.tsx",
-    motivo:
-      "Pendiente de la decisión del dueño sobre la frontera UI → `server/lecturas` (docs/pureza-integracion.md, sección 4, decisión 6, y trabajo D.2): o se formaliza en el ADR-026 que las páginas (Server Components) pueden importar esa capa, o esta lectura se mueve a `server/consultas`. Hasta entonces la lista solo puede achicarse.",
-  },
-  {
-    ruta: "src/app/(pos)/mesas/[mesaId]/page.tsx",
-    motivo:
-      "Pendiente de la decisión del dueño sobre la frontera UI → `server/lecturas` (docs/pureza-integracion.md, sección 4, decisión 6, y trabajo D.2): o se formaliza en el ADR-026 que las páginas (Server Components) pueden importar esa capa, o esta lectura se mueve a `server/consultas`. Hasta entonces la lista solo puede achicarse.",
-  },
-];
+const PAGINAS_CON_LECTURAS_O_PERSISTENCIA = [];
 
 /**
  * `accion-migrada-sin-orquestacion` (Task #41, Fase M; docs/arquitectura-casos-de-uso-2026-09-27.md): NO es una lista de

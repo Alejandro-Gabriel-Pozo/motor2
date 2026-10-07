@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/server/acceso/gate";
-import { calcularCostosYMargenes, calcularImpactoInsumos } from "@/server/lecturas/reportes/costos";
+import { cargarCostosYMargenes } from "@/server/consultas/reportes/costos";
 import { cargarObjetivosDeMargen } from "@/server/consultas/reportes/margen-objetivo-consulta";
 import { TablaCostosProductos, TablaImpactoInsumos } from "./tabla-costos";
 
@@ -13,10 +13,7 @@ export default async function CostosPage() {
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const objetivos = await cargarObjetivosDeMargen(ctx.db);
-  const [productos, insumos] = await Promise.all([
-    calcularCostosYMargenes(ctx.sucursalId, ctx.db, undefined, undefined, objetivos),
-    calcularImpactoInsumos(ctx.sucursalId, ctx.db),
-  ]);
+  const { productos, insumos } = await cargarCostosYMargenes(ctx.sucursalId, ctx.db, objetivos);
 
   return (
     <div className="flex flex-col gap-6">

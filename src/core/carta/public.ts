@@ -6,7 +6,7 @@
  * runtime de Prisma, ni directa ni transitivamente (regla `publico-puro`). Lo que sí toca la base va en `public-servidor.ts`.
  *
  * Solo reexports explícitos (nunca `export *`, nunca lógica), y solo lo que hoy se usa desde afuera del dominio (`core/pos/selector-carta.ts`, `selector-carta-consulta.ts`, y desde la
- * Fase 4 el `proxy`, `env.ts` y `next.config.ts`, que importan lo del host y de la empresa única por esta fachada y no por los archivos internos).
+ * Fase 4 el `proxy` y `env.ts`, que importan lo del host y de la empresa única por esta fachada y no por los archivos internos; `next.config.ts` no puede: ver su comentario).
  */
 export type { CartaV1, ItemCartaV1, PromoCartaV1, SeccionCartaV1 } from "./armar-menu";
 export { precioDeCarta } from "./armar-menu";
@@ -45,8 +45,7 @@ export { armarMenuCarta } from "./armar-menu";
 export type { MenuArmado } from "./armar-menu";
 export { descuentosVigentes } from "./descuento-producto";
 export { esSlugPublicoValido, esHostDeZonaCarta, esMetodoDeLecturaEnHostCarta, esPathPermitidoEnHostCarta, interpretarHostCarta } from "./host";
-export { esHostDeEmpresaUnica, reglasRedirectEmpresaUnica, reglasRewriteEmpresaUnica } from "./carta-empresa-unica";
-export { patronHostZonaCarta, reglasRedirectAppACarta, reglasRedirectCarta, reglasRewriteCarta } from "./host";
+export { esHostDeEmpresaUnica } from "./carta-empresa-unica";
 export { estiloCartaPorDefecto } from "./estilo";
 export { posicionCompleta } from "./portal";
 export type { EntradaPortalCarta } from "./portal";

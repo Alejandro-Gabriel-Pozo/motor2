@@ -68,6 +68,7 @@ const reglasSinInternalsDeOtroDominio = DOMINIOS_DE_NEGOCIO.filter((dominio) => 
   severity: "error",
   // TODO el código fuera de su propio dominio: el núcleo de otro dominio, las acciones de otro dominio, las capas del servidor (consultas, lecturas, persistencia, acceso, adaptadores, carta pública…),
   // `src/lib`, el `proxy`, la configuración (`env.ts`) y la consola de plataforma. La UI (`app/`, `components/`) tiene su propia regla (`ui-sin-internals-de-dominio`, con su lista de excepciones).
+  // `next.config.ts` queda afuera de esta regla a propósito: lo carga Node sin los alias de TypeScript, así que no puede importar la fachada (que usa `@/…`); importa los dos archivos hoja de carta.
   from: { path: `^(src/(?!(core/${dominio}|server/actions/${dominio}|app|components)/)|plataforma/src/)` },
   to: { path: `^src/core/${dominio}/`, pathNot: `^src/core/${dominio}/public(-servidor)?\\.ts$` },
 }));

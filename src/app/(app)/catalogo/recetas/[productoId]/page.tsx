@@ -17,7 +17,7 @@ import {
   actualizarCabeceraDeReceta,
 } from "@/server/actions/catalogo/recetas";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
-import { disponibilidadPorSucursalDeProducto } from "@/server/lecturas/catalogo/disponibilidad";
+import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
 import { secuenciaMoviendo } from "@/core/catalogo/public";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import {

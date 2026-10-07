@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { resolverDisponibilidad, resolverDisponibilidadPorSucursal } from "@/core/catalogo/public";
+import { resolverDisponibilidad } from "@/core/catalogo/public";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -32,20 +32,4 @@ export async function disponibilidadEnAlgunaSucursal(productoIds: readonly strin
   const filas = await db.disponibilidadProducto.findMany({ where: { disponible: true }, select: { productoId: true }, distinct: ["productoId"] });
   const conAlguna = new Set(filas.map((f) => f.productoId));
   return new Map(productoIds.map((id) => [id, conAlguna.has(id)]));
-}
-
-export interface DisponibilidadEnSucursal {
-  sucursalId: string;
-  sucursalNombre: string;
-  disponible: boolean;
-}
-
-/** Para la ficha de producto: el estado en TODAS las sucursales activas, incluidas las que no tienen fila propia (quedan en `false`). */
-export async function disponibilidadPorSucursalDeProducto(productoId: string, db: Db): Promise<DisponibilidadEnSucursal[]> {
-  const [sucursales, filas] = await Promise.all([
-    db.sucursal.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
-    db.disponibilidadProducto.findMany({ where: { productoId } }),
-  ]);
-  const porSucursal = resolverDisponibilidadPorSucursal(filas, sucursales.map((s) => s.id));
-  return sucursales.map((s) => ({ sucursalId: s.id, sucursalNombre: s.nombre, disponible: porSucursal.get(s.id) === true }));
 }

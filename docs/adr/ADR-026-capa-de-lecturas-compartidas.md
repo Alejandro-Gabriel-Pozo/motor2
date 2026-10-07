@@ -33,3 +33,7 @@ Una capa nueva, **`src/server/lecturas/<dominio>/`**, para lecturas que se compa
 
 - Ninguna regla existente se afloja; se suma una (`lecturas-capa`) y el analizador reconoce la capa (`server/lecturas`).
 - La carta pública sigue su propio régimen (ADR-006 y ADR-007): sus lecturas no entran a esta capa sin una decisión aparte (decisión D-2, PR propio).
+
+## Aclaración (2026-10-08, rama `pureza-integracion`)
+
+La UI **no** importa `server/lecturas`, ni con excepciones: las páginas, los layouts y los componentes piden sus datos a `server/consultas`. Cuando una pantalla necesita una lectura compartida, una consulta la compone o la envuelve (`cadenasDeGrupos`, `cargarCostosYMargenes`, `cargarSelectorCartaDeLaMesa`); lo que solo usan las pantallas vive directamente en `server/consultas` (la disponibilidad de un producto por sucursal). Lo vigila la regla `paginas-solo-consultas` de dependency-cruiser, con la lista de excepciones vacía. Decisión del dueño, 2026-10-08.

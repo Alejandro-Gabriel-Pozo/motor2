@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
-import { patronHostZonaCarta, reglasRedirectAppACarta, reglasRedirectCarta, reglasRedirectEmpresaUnica, reglasRewriteCarta, reglasRewriteEmpresaUnica } from "./src/core/carta/public";
+// OJO: estos dos son archivos HOJA a propósito y NO van por `core/carta/public.ts`: Next carga este archivo con Node, sin los alias de TypeScript (`@/…`), y la fachada arrastra media aplicación
+// (`@/core/moneda`, `decimal.js`…): el build revienta con «Cannot find module». La regla `sin-internals-de-otro-dominio` lo exceptúa por eso (`.dependency-cruiser.cjs`).
+import { patronHostZonaCarta, reglasRedirectAppACarta, reglasRedirectCarta, reglasRewriteCarta } from "./src/core/carta/host";
+import { reglasRedirectEmpresaUnica, reglasRewriteEmpresaUnica } from "./src/core/carta/carta-empresa-unica";
 import { sirvePorHttps } from "./src/core/auth/cookie-sesion";
 import { cabecerasCarta, cabecerasComunes } from "./src/core/seguridad/cabeceras";
 

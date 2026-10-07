@@ -4,7 +4,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { whereDisponibleEn, whereDisponibleEnAlguna } from "../../src/core/catalogo/public";
-import { productoDisponibleEn, disponibilidadDeProductos, disponibilidadPorSucursalDeProducto } from "../../src/server/lecturas/catalogo/disponibilidad";
+import { productoDisponibleEn, disponibilidadDeProductos } from "../../src/server/lecturas/catalogo/disponibilidad";
+import { disponibilidadPorSucursalDeProducto } from "../../src/server/consultas/catalogo/disponibilidad";
 
 describe("disponibilidad-producto-consulta", () => {
   let sucursalA: string;

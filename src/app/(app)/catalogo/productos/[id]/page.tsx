@@ -6,7 +6,7 @@ import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoV
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
-import { disponibilidadPorSucursalDeProducto } from "@/server/lecturas/catalogo/disponibilidad";
+import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
