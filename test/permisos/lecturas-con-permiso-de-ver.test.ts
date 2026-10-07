@@ -19,7 +19,8 @@ import { listarProveedores } from "../../src/server/actions/catalogo/proveedores
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
 import { listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
-import { listarMotivosMermaParaPanel, listarDestinosConsumoParaPanel } from "../../src/server/actions/movimientos/motivos";
+import { listarMotivosMermaParaPanel, listarDestinosConsumoParaPanel, listarMotivosMermaActivos, listarDestinosConsumoActivos } from "../../src/server/actions/movimientos/motivos";
+import { obtenerSaldoDisponibleParaReclasificar } from "../../src/server/actions/stock/lecturas-reclasificacion";
 import { listarCapacidades } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { listarMatrizPermisos } from "../../src/server/actions/permisos/permisos";
 import { listarRoles } from "../../src/server/actions/permisos/roles";
@@ -45,7 +46,7 @@ type Fila = {
   pagina: string;
   archivo: string;
   /** La página no escribe la clave: la toma del proceso (ACCION_POR_PROCESO). */
-  viaProceso?: "COMPRA";
+  viaProceso?: "COMPRA" | "MERMA" | "CONSUMO";
   llamar: (sucursalId: string) => Promise<unknown> };
 
 const LECTURAS: Fila[] = [
@@ -76,6 +77,15 @@ const LECTURAS: Fila[] = [
   { nombre: "previsualizarFusionInsumo", clave: "grupos_familia", pagina: "catalogo/insumos-grupos/page.tsx", archivo: "catalogo/insumos.ts", llamar: () => previsualizarFusionInsumo("x", "y") },
   { nombre: "listarUnidadesParaPanel", clave: "unidades", pagina: "catalogo/unidades/page.tsx", archivo: "catalogo/unidades.ts", llamar: () => listarUnidadesParaPanel() },
   { nombre: "listarProveedores", clave: "proveedores", pagina: "catalogo/proveedores/page.tsx", archivo: "catalogo/proveedores.ts", llamar: () => listarProveedores() },
+  { nombre: "listarMotivosMermaActivos", clave: "proceso_merma", pagina: "movimientos/[proceso]/page.tsx", archivo: "movimientos/motivos.ts", viaProceso: "MERMA", llamar: () => listarMotivosMermaActivos() },
+  { nombre: "listarDestinosConsumoActivos", clave: "proceso_consumo", pagina: "movimientos/[proceso]/page.tsx", archivo: "movimientos/motivos.ts", viaProceso: "CONSUMO", llamar: () => listarDestinosConsumoActivos() },
+  {
+    nombre: "obtenerSaldoDisponibleParaReclasificar",
+    clave: "stock_reclasificar",
+    pagina: "stock/reclasificar/page.tsx",
+    archivo: "stock/lecturas-reclasificacion.ts",
+    llamar: () => obtenerSaldoDisponibleParaReclasificar("x", "y", null),
+  },
 ];
 
 describe("lecturas con permiso de Ver: un rol sin el permiso de la pantalla no las puede invocar", () => {

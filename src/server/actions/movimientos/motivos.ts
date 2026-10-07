@@ -4,26 +4,26 @@ import { texto, validarTextoCatalogo, validarLargoTexto } from "@/core/texto";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
-import { requerirSesion, requerirVerDeEmpresa } from "../con-sesion";
+import { requerirVer, requerirVerDeEmpresa } from "../con-sesion";
 
 /** Igual que LARGO_MAXIMO_TEXTO_CATALOGO (texto.ts) pero para `descripcion`: no usa RE_TEXTO_CATALOGO (su charset prohíbe «» y :, y la nota de negocio de BUGFIX A-3 usa ambos) — solo se acota el largo. Mismo tope que ya fija motivos-semilla.test.ts. */
 const LARGO_MAXIMO_DESCRIPCION = 300;
 
 /**
  * Lecturas de los catálogos Motivo de Merma / Destino de Consumo (plan "motivos de Consumo/Merma como catálogo
- * administrable", 2026-09-23, P5/P6) — a diferencia de Secciones/Proveedores/Unidades, estos dos catálogos son
- * GLOBALES (no por sucursal, mismo criterio que Insumo/Grupo/CategoriaProducto). Lecturas *Activos públicas (solo
- * exigen sesión, sin `requerirVer`) para poblar el <select> del panel de Merma/Consumo — mismo criterio que
- * `listarSeccionesActivas`/`listarProveedores`/`listarUnidadesActivas` (secciones.ts). Lecturas *ParaPanel gateadas
- * con la clave de SU catálogo ('motivos_merma' / 'motivos_destino_consumo', una por catálogo) — para la pantalla de administración (P6), que también necesita ver los desactivados.
+ * administrable", 2026-09-23, P5/P6) — a diferencia de Secciones, estos dos catálogos son GLOBALES (no por sucursal,
+ * mismo criterio que Insumo/Grupo/CategoriaProducto). Las *Activos pueblan el <select> del panel de Merma / de Consumo
+ * y exigen el «Ver» de ESE proceso (`proceso_merma` / `proceso_consumo`), la clave de la única pantalla que las consume
+ * (H8, decisión del dueño: ninguna lectura queda con solo sesión). Las *ParaPanel exigen la clave de SU catálogo
+ * ('motivos_merma' / 'motivos_destino_consumo') — para la pantalla de administración (P6), que también necesita ver los desactivados.
  */
 export async function listarMotivosMermaActivos() {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVer("proceso_merma");
   return ctx.db.motivoMerma.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } });
 }
 
 export async function listarDestinosConsumoActivos() {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVer("proceso_consumo");
   return ctx.db.destinoConsumo.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } });
 }
 
