@@ -1,8 +1,8 @@
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { ACCIONES } from "../../src/core/permisos/acciones";
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { dirname, join, relative, sep } from "node:path";
 import { descubrirCasosDeUsoReales } from "./guardas/casos-de-uso";
 import { ESCRITURAS_FUERA_DE_PERSISTENCIA } from "./escrituras-fuera-de-persistencia";
 import { analizarFuente, delegadosDeModelos } from "../../scripts/arquitectura/analizar-fuente";
@@ -21,10 +21,12 @@ import { analizarFuente, delegadosDeModelos } from "../../scripts/arquitectura/a
  *    envoltorios lo vigila `sincronizaciones-solo-desde-crons-y-shell.test.ts`. `SIN_PERMISO` si lo envuelve un ENDPOINT (`"use server"`) que no usa ningún `conPermiso*` porque todavía no
  *    hay sesión ni membresía (aceptar una invitación: la autoridad es el token del enlace, no un permiso). Es un agujero deliberado en la matriz de permisos: por eso hay una LISTA CERRADA
  *    (`CASOS_SIN_PERMISO`, abajo) con el motivo de cada uno, revisada en las dos direcciones (D-7 del plan de la Fase 4).
- *  - `transaccion`: `SERIALIZABLE` si llama a `conTransaccionSerializable`; `SIMPLE` si abre una transacción común; `NINGUNA` si no abre ninguna.
+ *  - `transaccion`: `SERIALIZABLE` si llama a `conTransaccionSerializable` (o a `conGobierno`, mientras `con-gobierno.ts` la llame: se deriva del código); `SIMPLE` si abre
+ *    una transacción común; `NINGUNA` si no abre ninguna.
  *  - `idempotencia`: `I3` si y solo si llama a `chequearIdempotencia` (clave + hash del payload); `POR_ESTADO` (el estado del documento arbitra el reintento),
  *    `OPTIMISTA` (versión esperada) y `NO_APLICA` no pueden llamarla.
- *  - `auditoria`: `REGISTRO_AUDITORIA` si llama a `registrarCambioAuditado`; `DOCUMENTO_PROPIO` si no (el documento que escribe lleva su usuario y su fecha).
+ *  - `auditoria`: `REGISTRO_AUDITORIA` si llama a `registrarCambioAuditado` (él o un paso compartido que importa de su misma carpeta `casos-de-uso/`, `./<archivo>`);
+ *    `DOCUMENTO_PROPIO` si no (el documento que escribe lleva su usuario y su fecha).
  *  - `periodo` (decisión del dueño, 2026-10-08): `VERIFICA_CIERRE` si el caso de uso llama a `verificarPeriodoAbierto` (la verificación del cierre de períodos que va a traer la Etapa A en
  *    `core/periodos`: sin esto el cierre no tiene forma mecánica de alcanzar TODAS las escrituras con fecha de imputación); `NO_APLICA` si no la llama. HOY ningún caso de uso la llama porque la
  *    función todavía no existe: todos declaran `NO_APLICA`. Cuando nazca, este test ya obliga a que cada caso de uso que la use lo declare, y un caso de uso que escribe un documento con fecha
@@ -57,8 +59,8 @@ interface Observado {
   periodo: string;
 }
 
-/** Lo que el código del caso de uso HACE (AST, fuera de los comentarios). */
-function observar(codigo: string): Observado {
+/** Las funciones que el código llama (por nombre o por la última propiedad: `ctx.transaccion(…)` → `transaccion`) y si lee el reloj (AST, fuera de los comentarios). */
+function llamadasDe(codigo: string): { llamadas: Set<string>; reloj: boolean } {
   const fuente = ts.createSourceFile("caso.ts", codigo, ts.ScriptTarget.Latest, true);
   const llamadas = new Set<string>();
   let reloj = false;
@@ -74,14 +76,71 @@ function observar(codigo: string): Observado {
     ts.forEachChild(n, visitar);
   };
   visitar(fuente);
+  return { llamadas, reloj };
+}
+
+/**
+ * Las funciones que abren una transacción SERIALIZABLE: `conTransaccionSerializable` y, mientras `server/actions/con-gobierno.ts` la llame (Hito 3, paso 0.5),
+ * `conGobierno` (la transacción de gobierno de usuarios, roles y sucursales: serializable con reintento). Se DERIVA del código de `con-gobierno.ts`, no se
+ * declara: si `conGobierno` dejara de ser serializable, un caso de uso que lo usa y declara `transaccion=SERIALIZABLE` pasaría a mentir y este test lo vería.
+ */
+function serializablesDelRepositorio(fuenteDeConGobierno: string): ReadonlySet<string> {
+  const serializables = new Set(["conTransaccionSerializable"]);
+  if (llamadasDe(fuenteDeConGobierno).llamadas.has("conTransaccionSerializable")) serializables.add("conGobierno");
+  return serializables;
+}
+const SERIALIZABLES = serializablesDelRepositorio(readFileSync(join(__dirname, "../../src/server/actions/con-gobierno.ts"), "utf8"));
+
+/**
+ * Los PASOS COMPARTIDOS que un caso de uso importa de su misma carpeta `casos-de-uso/` (`import … from "./<archivo>"`), recorridos de forma transitiva: la
+ * auditoría de un caso de uso puede vivir en un paso compartido (Fase I del Hito 3: la gerencia, las invitaciones de usuario), y sin seguirlo la ficha tendría que
+ * mentir `DOCUMENTO_PROPIO`. `leer(nombre)` devuelve la fuente del hermano `nombre` (sin extensión), o `null` si no existe.
+ */
+function pasosCompartidos(codigo: string, leer: (nombre: string) => string | null, vistos: Set<string> = new Set()): string[] {
+  const fuente = ts.createSourceFile("caso.ts", codigo, ts.ScriptTarget.Latest, true);
+  const pasos: string[] = [];
+  for (const stmt of fuente.statements) {
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+    const m = /^\.\/([^/]+?)(?:\.tsx?)?$/.exec(stmt.moduleSpecifier.text);
+    if (!m || vistos.has(m[1])) continue;
+    vistos.add(m[1]);
+    const hermano = leer(m[1]);
+    if (hermano === null) continue;
+    pasos.push(hermano, ...pasosCompartidos(hermano, leer, vistos));
+  }
+  return pasos;
+}
+
+/** Lee un hermano de la carpeta `dir` (`<nombre>.ts` o `.tsx`), o `null`. */
+const leerHermanoDe =
+  (dir: string) =>
+  (nombre: string): string | null => {
+    for (const ext of [".ts", ".tsx"]) {
+      const ruta = join(dir, `${nombre}${ext}`);
+      if (existsSync(ruta)) return readFileSync(ruta, "utf8");
+    }
+    return null;
+  };
+
+/** Lo que el código del caso de uso HACE (AST, fuera de los comentarios). La auditoría también cuenta si la hace un paso compartido (`pasos`). */
+function observar(codigo: string, opciones: { serializables?: ReadonlySet<string>; pasos?: readonly string[] } = {}): Observado {
+  const { llamadas, reloj } = llamadasDe(codigo);
+  const serializables = opciones.serializables ?? SERIALIZABLES;
+  const auditaUnPaso = (opciones.pasos ?? []).some((p) => llamadasDe(p).llamadas.has("registrarCambioAuditado"));
   return {
-    transaccion: llamadas.has("conTransaccionSerializable") ? "SERIALIZABLE" : llamadas.has("transaccion") || llamadas.has("$transaction") ? "SIMPLE" : "NINGUNA",
+    transaccion: [...serializables].some((f) => llamadas.has(f)) ? "SERIALIZABLE" : llamadas.has("transaccion") || llamadas.has("$transaction") ? "SIMPLE" : "NINGUNA",
     llamaAChequearIdempotencia: llamadas.has("chequearIdempotencia"),
-    auditoria: llamadas.has("registrarCambioAuditado") ? "REGISTRO_AUDITORIA" : "DOCUMENTO_PROPIO",
+    auditoria: llamadas.has("registrarCambioAuditado") || auditaUnPaso ? "REGISTRO_AUDITORIA" : "DOCUMENTO_PROPIO",
     reloj: reloj ? "NEW_DATE" : "INYECTADO",
     periodo: llamadas.has("verificarPeriodoAbierto") ? "VERIFICA_CIERRE" : "NO_APLICA",
   };
 }
+
+/**
+ * Los envoltorios de permiso de una Server Action: `conPermiso`, `conPermisoDeEmpresa` y `conEdicionDePermisos` (el de la matriz y los roles, que además exige la
+ * política de plataforma). Hito 3, paso 0.5: antes solo se reconocía `/^conPermiso/`, y un caso de uso de roles o de la matriz habría salido `SIN_PERMISO`.
+ */
+const ES_ENVOLTORIO_DE_PERMISO = /^(?:conPermiso\w*|conEdicionDePermisos)$/;
 
 /** Los permisos con los que la Server Action que envuelve al caso de uso lo protege (`conPermiso*("clave", …)` alrededor de la llamada); `POR_PROCESO` si ninguno es literal. */
 function permisosObservados(fuenteDelCaso: string, envolventes: string[]): string {
@@ -97,7 +156,7 @@ function permisosObservados(fuenteDelCaso: string, envolventes: string[]): strin
       if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && funciones.includes(n.expression.text)) {
         let protegida = false;
         for (let p: ts.Node | undefined = n.parent; p; p = p.parent) {
-          if (ts.isCallExpression(p) && ts.isIdentifier(p.expression) && /^conPermiso/.test(p.expression.text)) {
+          if (ts.isCallExpression(p) && ts.isIdentifier(p.expression) && ES_ENVOLTORIO_DE_PERMISO.test(p.expression.text)) {
             protegida = true;
             if (p.arguments[0] && ts.isStringLiteralLike(p.arguments[0])) permisos.add(p.arguments[0].text);
             else conConPermisoVariable = true;
@@ -147,6 +206,33 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
     expect(observar("export async function f() { return 1; }").transaccion).toBe("NINGUNA");
   });
 
+  it("transacción: conGobierno es SERIALIZABLE mientras con-gobierno.ts llame a conTransaccionSerializable (se deriva del código)", () => {
+    const caso = "export async function f(ctx: any) { return conGobierno(ctx, async (tx: any) => 1); }";
+    expect(SERIALIZABLES.has("conGobierno")).toBe(true);
+    expect(observar(caso).transaccion).toBe("SERIALIZABLE");
+    // Si con-gobierno.ts abriera una transacción común, conGobierno dejaría de contar como serializable.
+    const conGobiernoComun = serializablesDelRepositorio("export async function conGobierno(ctx: any, cuerpo: any) { return ctx.transaccion(cuerpo); }");
+    expect(conGobiernoComun.has("conGobierno")).toBe(false);
+    expect(observar(caso, { serializables: conGobiernoComun }).transaccion).toBe("NINGUNA");
+  });
+
+  it("auditoría: cuenta si la hace un paso compartido de la misma carpeta casos-de-uso/ (también de forma transitiva)", () => {
+    const hermanos: Record<string, string> = {
+      "paso-que-audita": "export async function p(tx: any) { await registrarCambioAuditado(tx, {}); }",
+      "paso-intermedio": 'import { p } from "./paso-que-audita";\nexport async function q(tx: any) { await p(tx); }',
+      "paso-sin-auditoria": "export async function r(tx: any) { await escribir(tx); }",
+    };
+    const leer = (nombre: string) => hermanos[nombre] ?? null;
+    const caso = (desde: string) => `import { x } from "${desde}";\nexport async function f(tx: any) { await x(tx); }`;
+    const auditoria = (desde: string) => observar(caso(desde), { pasos: pasosCompartidos(caso(desde), leer) }).auditoria;
+    expect(auditoria("./paso-que-audita")).toBe("REGISTRO_AUDITORIA");
+    expect(auditoria("./paso-intermedio")).toBe("REGISTRO_AUDITORIA");
+    expect(auditoria("./paso-sin-auditoria")).toBe("DOCUMENTO_PROPIO");
+    // Solo la MISMA carpeta: un import de otra carpeta (o de un alias) no es un paso compartido del caso de uso.
+    expect(pasosCompartidos(caso("../otra/paso-que-audita"), leer)).toEqual([]);
+    expect(pasosCompartidos(caso("@/core/permisos/auditoria"), leer)).toEqual([]);
+  });
+
   it("idempotencia I3 solo si llama a chequearIdempotencia; auditoría solo si llama a registrarCambioAuditado", () => {
     expect(observar("export async function f(tx: any) { await chequearIdempotencia(tx, 'k'); }").llamaAChequearIdempotencia).toBe(true);
     expect(observar("export async function f(tx: any) { await otraCosa(tx); }").llamaAChequearIdempotencia).toBe(false);
@@ -172,6 +258,8 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
     expect(permisosObservados(caso, ['export async function a() { return conPermiso("anular_compra", async (ctx) => anular(ctx)); }'])).toBe("anular_compra");
     expect(permisosObservados(caso, ['export async function a(x: string) { return conPermisoDeEmpresa<R>("x_y", async (ctx) => anular(ctx)); }'])).toBe("x_y");
     expect(permisosObservados(caso, ["export async function a(accion: string) { return conPermiso(accion, async (ctx) => anular(ctx)); }"])).toBe("POR_PROCESO");
+    // conEdicionDePermisos (roles y matriz de permisos) también es un envoltorio de permiso, con su clave.
+    expect(permisosObservados(caso, ['"use server";\nexport async function a() { return conEdicionDePermisos("gestion_roles", async (ctx) => anular(ctx)); }'])).toBe("gestion_roles");
     // SISTEMA: un envoltorio que NO es un endpoint y que no protege ningún conPermiso* (un cron). Si es un endpoint ("use server") sin permiso, sigue siendo POR_PROCESO.
     expect(permisosObservados(caso, ["export async function a(db: unknown) { return anular(db); }"])).toBe("SISTEMA");
     expect(permisosObservados(caso, ['"use server";\nexport async function a(db: unknown) { return anular(db); }'])).toBe("SIN_PERMISO");
@@ -258,7 +346,7 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
     for (const c of casos) {
       const ficha = leerFicha(c.fuente);
       if (!ficha) continue;
-      const visto = observar(c.fuente);
+      const visto = observar(c.fuente, { pasos: pasosCompartidos(c.fuente, leerHermanoDe(dirname(c.absoluta))) });
       if (ficha.transaccion !== visto.transaccion) mentiras.push(`${c.ruta}: la ficha dice transaccion=${ficha.transaccion} y el código hace ${visto.transaccion}`);
       if (ficha.auditoria !== visto.auditoria) mentiras.push(`${c.ruta}: la ficha dice auditoria=${ficha.auditoria} y el código hace ${visto.auditoria}`);
       if (ficha.periodo !== visto.periodo) mentiras.push(`${c.ruta}: la ficha dice periodo=${ficha.periodo} y el código hace ${visto.periodo}`);
