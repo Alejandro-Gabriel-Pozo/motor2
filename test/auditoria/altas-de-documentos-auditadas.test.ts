@@ -13,7 +13,6 @@ describe("las altas de conteo físico y de traspaso dejan su fila de auditoría"
   let sucursalAId: string;
   let sucursalBId: string;
   let seccionAId: string;
-  let seccionBId: string;
   let adminId: string;
   let kgId: string;
   let insumoId: string;
@@ -31,7 +30,6 @@ describe("las altas de conteo físico y de traspaso dejan su fila de auditoría"
     insumoId = catalogo.insumo.id;
     seccionAId = (await sembrarSeccion(sucursalAId, "Depósito A")).id;
     sucursalBId = (await prisma.sucursal.create({ data: { nombre: "Sucursal B" } })).id;
-    seccionBId = (await sembrarSeccion(sucursalBId, "Depósito B")).id;
     adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: sucursalAId, rolId: base.admin.id })).id;
     harinaId = (await prisma.producto.create({ data: { codigo: "MP_HARINA_AUD", nombre: "Harina", tipo: "MP", unidadStockId: kgId, insumoId } })).id;
     await prisma.disponibilidadProducto.createMany({ data: [sucursalAId, sucursalBId].map((sucursalId) => ({ sucursalId, productoId: harinaId, disponible: true })) });
