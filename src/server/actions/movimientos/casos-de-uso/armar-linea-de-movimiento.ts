@@ -153,7 +153,8 @@ export async function armarLineaMovimiento(
   let detalle = "";
 
   if (transicion.aplicaFactorConversion) {
-    unidadCompraId = producto.unidadCompraId;
+    // Un producto sin unidad de compra se compra en su unidad de stock (factor 1): el vínculo con el proveedor (unidad y referencia) se escribe igual, en vez de no existir.
+    unidadCompraId = producto.unidadCompraId ?? producto.unidadStockId;
     if (presentacion) {
       unidadCompraId = presentacion.unidadCompraId;
       factor = presentacion.factorConversion;

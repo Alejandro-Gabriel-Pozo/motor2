@@ -1,4 +1,5 @@
 import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
+import { cargarProductosConProveedor } from "@/server/lecturas/catalogo/ofertas-de-proveedor";
 import type { Db } from "@/lib/db-tipos";
 import type { FilaInsumoSinReceta } from "@/core/reportes/public";
 
@@ -13,7 +14,7 @@ import type { FilaInsumoSinReceta } from "@/core/reportes/public";
 export async function generarReporteInsumosSinRecetaVinculada(sucursalId: string, db: Db): Promise<FilaInsumoSinReceta[]> {
   const productos = await construirMapaProductos(sucursalId, db);
   const { mpsEnRecetas } = await construirIndiceRecetas(db);
-  const conProveedor = new Set((await db.proveedorPorProducto.findMany({ select: { productoId: true }, distinct: ["productoId"] })).map((p) => p.productoId));
+  const conProveedor = await cargarProductosConProveedor(db); // del Kardex vigente: una compra anulada no cuenta
 
   return Array.from(productos.values())
     .filter((info) => info.tipo === "MP" && info.disponible && !mpsEnRecetas.has(info.id))
