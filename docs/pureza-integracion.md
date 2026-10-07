@@ -53,6 +53,8 @@ Cada fila: **ID**, qué es, fuente en el plan, estado (`[ ]` pendiente, `[x]` he
 
 ### Hito 3: login y gobierno (tramo B)
 
+Detalle de ejecución (pasos, mapa de H8, decisiones y orden): `docs/plan-hito-3-pureza.md`. Orden: Paso 0 (redes) → O.33 → H8 → B3 → Fase I (3.3 y B4b) → Fase II (B4a) → ADR-027 + F1 y O.35 → D13/D14 → gate + auditor independiente. **Decisiones del dueño (2026-10-08):** H8 D-1 a D-5 aprobadas; D13/D14 en commit propio al final; auditar notas de membresía y `ctx.ahora` en `usuarios.ts`; solo el argumento `ahora` en 11 llamadas de tests de seguridad.
+
 | ID | Trabajo | Fuente | Estado | Evidencia |
 |---|---|---|---|---|
 | 3.1 | **B3**: nace `server/sesion/` con `acceso`; 2 casos de uso de aceptar invitación | 10.4 fila 2 | [ ] | |
