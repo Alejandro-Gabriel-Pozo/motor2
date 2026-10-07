@@ -15,6 +15,11 @@ export interface ComandoGuardarVersionDeReceta {
   items: IngredienteInput[];
   pasos: PasoInput[];
   cabecera: CabeceraRecetaInput;
+  /**
+   * La versión de la serie (central o propia) sobre la que quien llama armó este reemplazo (`0` = todavía no había ninguna), o `null` si es un reemplazo completo a ciegas (seeds, scripts: no
+   * parte de ninguna lectura previa). Si cuando se guarda la serie ya va por OTRA versión, alguien guardó en el medio y este guardado pisaría su cambio: se rechaza (`VERSION_DESACTUALIZADA`).
+   */
+  versionEsperada: number | null;
 }
 
 export type CodigoGuardarVersionDeReceta =
@@ -22,7 +27,8 @@ export type CodigoGuardarVersionDeReceta =
   | "PRODUCTO_NO_ELEGIBLE"
   | "INGREDIENTES_INVALIDOS"
   | "PASOS_INVALIDOS"
-  | "CABECERA_INVALIDA";
+  | "CABECERA_INVALIDA"
+  | "VERSION_DESACTUALIZADA";
 
 /**
  * `datos` de un guardado exitoso. `calibracionesDescartadas`: una entrada por calibración local (`RendimientoLocalIngrediente`) que NO

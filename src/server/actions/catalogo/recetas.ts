@@ -13,6 +13,11 @@ import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerDeEmpresa } from "../con-sesion";
 import { guardarVersionDeRecetaCasoDeUso } from "./casos-de-uso/guardar-version-de-receta";
 
+/** La versión de la receta que se leyó (`0` si todavía no hay ninguna): sobre ella arma su reemplazo cada función que lee y modifica. */
+function versionDe(vigente: { version: number } | null): number {
+  return vigente?.version ?? 0;
+}
+
 /** Equivalente de construirMapaRecetas_ (Catalogo.js:1549-1596): vigente = MAX(version), siempre derivado. */
 export async function obtenerRecetaVigente(productoId: string) {
   const ctx = await requerirVerDeEmpresa("guardar_receta");
@@ -46,6 +51,9 @@ export async function listarVersionesDeReceta(productoId: string) {
  * `agregarIngredienteAReceta` y las funciones de pasos/cabecera de abajo
  * hacen ese round-trip por vos.
  *
+ * `versionEsperada` (H7, Pureza Fase 4): la versión de la receta sobre la que quien llama armó este reemplazo (`0` = todavía no había). Si la receta ya va por otra, alguien guardó en el medio y
+ * esto pisaría su cambio: se rechaza con un mensaje. Todo llamador que LEE la receta y la modifica (las funciones de abajo) la manda; solo un reemplazo completo a ciegas (seeds, scripts) la omite.
+ *
  * Desde la Task #41 (P1, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
  * (`conPermiso`) → formato (`guardComandoGuardarVersionDeReceta`) → caso de uso (`casos-de-uso/guardar-version-de-receta.ts`:
  * validación, versionado con reintento, transacción SERIALIZABLE, arrastre de calibraciones locales y auditoría) →
@@ -56,10 +64,11 @@ export async function guardarReceta(
   productoId: string,
   items: IngredienteInput[],
   pasos: PasoInput[] = [],
-  cabecera: CabeceraRecetaInput = {}
+  cabecera: CabeceraRecetaInput = {},
+  versionEsperada?: number
 ): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("guardar_receta", async (ctx) => {
-    const comando = guardComandoGuardarVersionDeReceta({ productoId, items, pasos, cabecera });
+    const comando = guardComandoGuardarVersionDeReceta({ productoId, items, pasos, cabecera, versionEsperada });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, comando.valor);
     // Sin esto la página no refleja el cambio en un navegador real hasta
@@ -86,7 +95,7 @@ export async function agregarIngredienteAReceta(productoId: string, ingrediente:
     return error("Ese insumo ya está en la receta.");
   }
 
-  return guardarReceta(productoId, [...existentes, ingrediente], mapPasosAInput(vigente), mapCabeceraAInput(vigente));
+  return guardarReceta(productoId, [...existentes, ingrediente], mapPasosAInput(vigente), mapCabeceraAInput(vigente), versionDe(vigente));
 }
 
 /**
@@ -124,7 +133,7 @@ export async function actualizarIngredienteDeReceta(
       : i
   );
 
-  return guardarReceta(productoId, items, mapPasosAInput(vigente), mapCabeceraAInput(vigente));
+  return guardarReceta(productoId, items, mapPasosAInput(vigente), mapCabeceraAInput(vigente), versionDe(vigente));
 }
 
 /**
@@ -142,7 +151,7 @@ export async function quitarIngredienteDeReceta(productoId: string, insumoProduc
     insumoProductoIds: p.insumoProductoIds?.filter((id) => id !== insumoProductoId),
   }));
 
-  return guardarReceta(productoId, items, pasos, mapCabeceraAInput(vigente));
+  return guardarReceta(productoId, items, pasos, mapCabeceraAInput(vigente), versionDe(vigente));
 }
 
 /** Agrega un paso nuevo — mismo criterio que agregarIngredienteAReceta, preserva ingredientes y cabecera vigentes. */
@@ -154,7 +163,7 @@ export async function agregarPasoAReceta(productoId: string, paso: PasoInput): P
     return error(`Ya hay un paso con el orden ${paso.orden}.`);
   }
 
-  return guardarReceta(productoId, mapIngredientesAInput(vigente), [...pasosExistentes, paso], mapCabeceraAInput(vigente));
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), [...pasosExistentes, paso], mapCabeceraAInput(vigente), versionDe(vigente));
 }
 
 /** Edita un paso ya cargado (identificado por su `orden` vigente) en un solo paso, mismo criterio que actualizarIngredienteDeReceta. */
@@ -171,7 +180,7 @@ export async function actualizarPasoDeReceta(
   }
 
   const pasos = pasosExistentes.map((p) => (p.orden === orden ? { orden, ...cambios } : p));
-  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente));
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente), versionDe(vigente));
 }
 
 /** Quita un paso de la receta vigente. */
@@ -179,7 +188,7 @@ export async function quitarPasoDeReceta(productoId: string, orden: number): Pro
   if (!Number.isInteger(orden)) return error("El número de paso no es válido.");
   const vigente = await obtenerRecetaVigente(productoId);
   const pasos = mapPasosAInput(vigente).filter((p) => p.orden !== orden);
-  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente));
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente), versionDe(vigente));
 }
 
 /**
@@ -203,7 +212,7 @@ export async function reordenarPasosDeReceta(productoId: string, secuencia: numb
   }
 
   const pasos = aplicarSecuencia(pasosExistentes, secuencia);
-  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente));
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente), versionDe(vigente));
 }
 
 /**
@@ -219,7 +228,7 @@ export async function insertarPasoEnReceta(productoId: string, posicion: number,
   const pasosExistentes = mapPasosAInput(vigente);
 
   const pasos = insertarEnPosicion(pasosExistentes, posicion, { ...paso, orden: -1 });
-  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente));
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), pasos, mapCabeceraAInput(vigente), versionDe(vigente));
 }
 
 /**
@@ -230,5 +239,5 @@ export async function actualizarCabeceraDeReceta(productoId: string, cabecera: C
   const vigente = await obtenerRecetaVigente(productoId);
   if (!vigente) return error('Todavía no hay ninguna receta — agregá al menos un ingrediente antes de completar esto.');
 
-  return guardarReceta(productoId, mapIngredientesAInput(vigente), mapPasosAInput(vigente), cabecera);
+  return guardarReceta(productoId, mapIngredientesAInput(vigente), mapPasosAInput(vigente), cabecera, versionDe(vigente));
 }

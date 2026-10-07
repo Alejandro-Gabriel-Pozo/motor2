@@ -40,6 +40,7 @@ import {
  *          la unidad o salió de la receta se DESCARTAN (nunca se arrastran "resucitadas" con otra unidad) y cada descarte se audita
  *          (cantidad y merma, en la sucursal de la calibración). Un cambio de cantidad/merma CENTRAL no descarta nada;
  *        - auditoría de la versión nueva (D6(b), paso 2): `RecetaVersion`/`version`, `sucursalId` siempre `null` (Catálogo Central);
+ *     (si la serie ya va por una versión distinta de `comando.versionEsperada`, se corta acá con `VERSION_DESACTUALIZADA` y no se escribe nada);
  *  4. el mensaje de éxito, con el aviso de las calibraciones descartadas si hubo.
  *
  * RECETA PROPIA (ADR-009, receta propia por sucursal): con `destino.sucursalId` el caso de uso guarda en la serie PROPIA de esa sucursal en vez de la central —
@@ -61,7 +62,7 @@ export async function guardarVersionDeRecetaCasoDeUso(
   comando: ComandoGuardarVersionDeReceta,
   destino: DestinoDeVersionDeReceta = { sucursalId: null }
 ): Promise<ResultadoGuardarVersionDeReceta> {
-  const { productoId, items, pasos, cabecera } = comando;
+  const { productoId, items, pasos, cabecera, versionEsperada } = comando;
   const sucursalId = destino.sucursalId;
 
   const producto = await cargarProductoParaReceta(actor.db, productoId);
@@ -92,13 +93,26 @@ export async function guardarVersionDeRecetaCasoDeUso(
   let version = 0;
   let recetaVersionId = "";
   let descartes: string[] = [];
+  const rechazo: { resultado: ResultadoGuardarVersionDeReceta | null } = { resultado: null };
   await conReintento(
     async () => {
       descartes = [];
+      rechazo.resultado = null;
       // La versión anterior COMPLETA (con sus overrides locales) — D3: se arrastra a la versión nueva, salvo que el
       // ingrediente haya cambiado de unidad o haya salido de la receta. Fuera de la transacción, igual que antes.
       const ultima = await cargarUltimaVersionDeReceta(actor.db, productoId, sucursalId);
-      version = (ultima?.version ?? 0) + 1;
+      // H7 (lectura-modificación-escritura): si quien llama armó este reemplazo sobre la versión N y la serie ya va por otra, alguien guardó en el medio y este guardado pisaría su cambio.
+      // Se RECHAZA con un mensaje (decisión del dueño, 2026-10-06) en vez de pisar en silencio. Se chequea en cada intento: si el choque de UNIQUE (dos guardados simultáneos) obliga a
+      // repetir, la relectura ve la versión del ganador y el perdedor termina acá.
+      const versionActual = ultima?.version ?? 0;
+      if (versionEsperada !== null && versionEsperada !== versionActual) {
+        rechazo.resultado = fracaso(
+          "VERSION_DESACTUALIZADA",
+          `La receta de "${producto.nombre}" cambió mientras la editabas (ahora va por la versión ${versionActual}, y partiste de la ${versionEsperada}). Recargá la pantalla y volvé a hacer el cambio.`
+        );
+        return;
+      }
+      version = versionActual + 1;
       const basadaEnVersionId = sucursalId === null ? null : destino.basadaEnVersionId !== undefined ? destino.basadaEnVersionId : await cargarIdDeVersionCentralVigente(actor.db, productoId);
       await conTransaccionSerializable(actor.transaccion, async (tx) => {
         const creada = await escribirVersionDeReceta(tx, { productoId, version, items, pasos, cabecera, sucursalId, basadaEnVersionId });
@@ -180,6 +194,8 @@ export async function guardarVersionDeRecetaCasoDeUso(
     },
     { maxIntentos: 5, esReintentable: (e) => esErrorDeUnicidad(e) || esConflictoDeEscritura(e) }
   );
+
+  if (rechazo.resultado) return rechazo.resultado;
 
   const avisoDescartes = descartes.length ? ` Se descartó la calibración local de ${descartes.join(", ")}.` : "";
   return exito(`Receta de "${producto.nombre}" guardada como versión ${version}.${avisoDescartes}`, {
