@@ -48,6 +48,7 @@ Cada fila: **ID**, qué es, fuente en el plan, estado (`[ ]` pendiente, `[x]` he
 | 2.4 | Test de conteo del N+1 de grupos de insumos | 11.2 #12 | [ ] | |
 | 2.5 | Propiedades (`fast-check`) del guard de acceso | 11.2 #13 | [ ] | |
 | 2.6 | Clasificación declarada de tablas (en lugar de contadores fijos) | 11.2 #14 | [ ] | |
+| 2.8 | **Dinero en `core`, medido:** prueba de propiedades que compara las sumas y márgenes de `core/reportes` contra el cálculo exacto (Decimal) en datos realistas; asentada la decisión de diseño (la plata exacta vive en la base y en `core/moneda`; `core/reportes` suma en `number` y redondea al presentar). Si la prueba muestra diferencias de centavos, se abre el paso de migración | Decisión 4 del dueño (2026-10-08) | [ ] | |
 | 2.7 | **Ampliar la matriz de la venta** a ~30 escenarios (precio local, POS sin stock negativo, insumo sustituto, consignación, cierre real del POS) | 10.4 fila 5 | [ ] | |
 
 ### Hito 3: login y gobierno (tramo B)
@@ -132,9 +133,9 @@ Cada uno se hace en el hito indicado, junto con el trabajo que toca el mismo có
 ## 4. Decisiones del dueño que condicionan la fusión
 
 1. ~~Autorización de **4A-5** (frontera de la carta pública, D-2)~~ **RESUELTA (2026-10-07): autorizada**, en commits propios y revertibles al final del Hito 5, con las 3 mutaciones de seguridad de la carta pública y la matriz de la venta ampliada antes; el auditor independiente revisa esa frontera antes de fusionar.
-2. Mapa de **H8** (módulo y acción de cada una de las 18 lecturas).
+2. ~~Mapa de **H8**~~ **RESUELTA (2026-10-08): lo arma Claude y lo revisa el dueño antes de fusionar**; ccada lectura exige el permiso de la pantalla que la consume, sin claves nuevas; va en el Hito 3 con el RBAC (trabajo D.1). Es el único cambio de seguridad de la rama.
 3. ~~SQL crudo del vínculo proveedor↔producto: ¿se audita o se exceptúa con motivo?~~ **RESUELTA (2026-10-08): se audita** (trabajo 1.10).
-4. Dinero en `number` dentro de `core`: ¿diseño escrito o paso nuevo?
+4. ~~Dinero en `number` dentro de `core`: ¿diseño escrito o paso nuevo?~~ **RESUELTA (2026-10-08): se escribe como diseño y se mide** (trabajo 2.8); solo se abre un paso de migración a Decimal si la medición muestra diferencias de centavos.
 5. ~~Campo `periodo` de la ficha: ¿ahora o diferido por escrito a la Etapa A?~~ **RESUELTA (2026-10-08): ahora** (trabajo 1.11).
 6. ~~Frontera UI → `server/lecturas`.~~ **RESUELTA (2026-10-08): la UI no importa `server/lecturas`**; pasa por `server/consultas` (trabajo 1.12; D.2 cerrado).
 8. ~~Las excepciones de la auditoría de dinero (3 altas de documentos y `stockMinimoProducto.minimo`)~~ **RESUELTA (2026-10-07): se auditan** (trabajos 1.14 y 4.4).

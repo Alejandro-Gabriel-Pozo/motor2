@@ -27,3 +27,7 @@ El plan decía «punto de control con el dueño al terminar la Fase 2». **No co
 ## 4. Vocabulario de los guardianes de la Fase 0, paso 0.5
 
 La auditoría pedía reglas de dependency-cruiser llamadas `core-sin-prisma` y `core-sin-db-tipos`. No existen con esos nombres: la cobertura la da el test AST `test/arquitectura/pureza-del-nucleo.test.ts` (más estricto: por archivo, y `Db` cuenta como tipo de Prisma). Queda asentado que **la regla es el test, no una regla de dependency-cruiser**.
+
+## 5. El dinero dentro de `core` es `number` por diseño (decisión del dueño, 2026-10-08)
+
+La decisión «dinero con `decimal.js`» (2026-10-06) se cumplió como **`decimal.js` detrás de `core/moneda`**: ningún objeto `Decimal` sale de ese módulo y el resto de `core` trabaja con `number`. El dueño decidió el 2026-10-08 **dejarlo escrito como diseño y medir**: la plata exacta vive en la base (columnas `Decimal`, el Kardex) y en `core/moneda` (multiplicar, repartir y redondear con `decimal.js`); `core/reportes` suma en `number` y redondea al presentar. No se migra por adelantado: una prueba de propiedades (trabajo 2.8 de `docs/pureza-integracion.md`) compara los reportes contra el cálculo exacto, y **solo si muestra diferencias de centavos** se abre el paso de migración a `Decimal`.
