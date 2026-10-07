@@ -98,7 +98,7 @@ function exportadas(fuente: string): Set<string> {
   const sf = ts.createSourceFile("x.ts", fuente, ts.ScriptTarget.Latest, true);
   const nombres = new Set<string>();
   for (const stmt of sf.statements) {
-    if (!stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
+    if (!ts.canHaveModifiers(stmt) || !ts.getModifiers(stmt)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
     if (ts.isFunctionDeclaration(stmt) && stmt.name) nombres.add(stmt.name.text);
     if (ts.isVariableStatement(stmt)) for (const d of stmt.declarationList.declarations) if (ts.isIdentifier(d.name)) nombres.add(d.name.text);
   }
