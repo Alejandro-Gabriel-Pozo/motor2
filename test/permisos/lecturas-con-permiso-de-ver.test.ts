@@ -15,6 +15,7 @@ import { listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/
 import { listarProductosPagina, obtenerPrecioVentaProducto } from "../../src/server/actions/catalogo/productos";
 import { listarGrupos, previsualizarFusionInsumo } from "../../src/server/actions/catalogo/insumos";
 import { listarUnidadesParaPanel } from "../../src/server/actions/catalogo/unidades";
+import { listarProveedores } from "../../src/server/actions/catalogo/proveedores";
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
 import { listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
@@ -74,6 +75,7 @@ const LECTURAS: Fila[] = [
   { nombre: "listarGrupos", clave: "grupos_familia", pagina: "catalogo/insumos-grupos/page.tsx", archivo: "catalogo/insumos.ts", llamar: () => listarGrupos() },
   { nombre: "previsualizarFusionInsumo", clave: "grupos_familia", pagina: "catalogo/insumos-grupos/page.tsx", archivo: "catalogo/insumos.ts", llamar: () => previsualizarFusionInsumo("x", "y") },
   { nombre: "listarUnidadesParaPanel", clave: "unidades", pagina: "catalogo/unidades/page.tsx", archivo: "catalogo/unidades.ts", llamar: () => listarUnidadesParaPanel() },
+  { nombre: "listarProveedores", clave: "proveedores", pagina: "catalogo/proveedores/page.tsx", archivo: "catalogo/proveedores.ts", llamar: () => listarProveedores() },
 ];
 
 describe("lecturas con permiso de Ver: un rol sin el permiso de la pantalla no las puede invocar", () => {

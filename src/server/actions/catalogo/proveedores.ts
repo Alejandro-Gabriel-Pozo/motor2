@@ -15,7 +15,7 @@ import { validarCuit } from "@/core/fiscal/public";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
-import { requerirSesion } from "../con-sesion";
+import { requerirVerAlguna, requerirVerDeEmpresa } from "../con-sesion";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 
 const MENSAJE_CUIT_DUPLICADO = (nombre: string) =>
@@ -27,8 +27,9 @@ async function proveedorConCuit(db: ContextoUsuario["db"], cuit: string | null, 
   return (await db.proveedor.findFirst({ where: { cuit, ...(excluirId ? { id: { not: excluirId } } : {}) }, select: { nombre: true } }))?.nombre ?? null;
 }
 
+/** La ficha completa de cada proveedor (H8, D-4): solo para la pantalla de Proveedores, con su clave. Para elegir un proveedor, `listarProveedoresParaSelector`. */
 export async function listarProveedores(soloActivos = false) {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVerDeEmpresa("proveedores");
   return ctx.db.proveedor.findMany({
     where: soloActivos ? { activo: true } : {},
     orderBy: { nombre: "asc" },
@@ -47,7 +48,7 @@ export interface ProveedorParaSelector {
  * (proveedor de consignación) solo necesitan el id, el nombre y si está activo. La ficha completa (`listarProveedores`) es de la pantalla de Proveedores.
  */
 export async function listarProveedoresParaSelector(soloActivos = false): Promise<ProveedorParaSelector[]> {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVerAlguna(["proceso_compra", "proceso_devolucion_proveedor", "reporte_compras", "alta_producto", "producto_ver_catalogo"]);
   return ctx.db.proveedor.findMany({
     where: soloActivos ? { activo: true } : {},
     select: { id: true, nombre: true, activo: true },

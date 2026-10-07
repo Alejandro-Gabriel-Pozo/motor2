@@ -23,9 +23,6 @@ const GUARDAS_DE_SOLO_SESION = new Set(["requerirSesion", "requerirSesionEnSucur
 /** `archivo relativo a src/|función exportada que la llama` de cada lectura que todavía abre con solo sesión. */
 const LECTURAS_CON_SOLO_SESION: readonly string[] = [
   "server/actions/auth/sucursales.ts|listarSucursales",
-  "server/actions/catalogo/proveedores.ts|listarProveedores",
-  // H8-5a: nace con la misma guarda que la lectura que reemplaza en los selectores; H8-5b la gatea.
-  "server/actions/catalogo/proveedores.ts|listarProveedoresParaSelector",
   "server/actions/movimientos/motivos.ts|listarDestinosConsumoActivos",
   "server/actions/movimientos/motivos.ts|listarMotivosMermaActivos",
   "server/actions/movimientos/secciones.ts|listarSeccionesActivas",

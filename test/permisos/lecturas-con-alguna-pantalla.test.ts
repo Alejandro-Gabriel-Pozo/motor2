@@ -12,6 +12,7 @@ import { buscarProductosSelector, listarPresentaciones, obtenerInsumoDeProducto,
 import { listarInsumos } from "../../src/server/actions/catalogo/insumos";
 import { listarCategoriasProducto } from "../../src/server/actions/catalogo/categorias-producto";
 import { listarUnidadesActivas } from "../../src/server/actions/catalogo/unidades";
+import { listarProveedores, listarProveedoresParaSelector } from "../../src/server/actions/catalogo/proveedores";
 
 /**
  * Lecturas que consumen pantallas con claves DISTINTAS (H8, trabajo D.1 de `pureza-integracion`; decisión D-1 del dueño): exigen el «Ver» de ALGUNA de esas
@@ -69,6 +70,11 @@ const LECTURAS: Fila[] = [
   { nombre: "listarInsumos", claves: ["grupos_familia", "alta_producto", "producto_ver_catalogo"], llamar: () => listarInsumos() },
   { nombre: "listarCategoriasProducto", claves: ["categorias", "alta_producto", "producto_ver_catalogo"], llamar: () => listarCategoriasProducto() },
   { nombre: "listarUnidadesActivas", claves: ["proceso_compra", "guardar_receta", "alta_producto", "producto_ver_catalogo"], llamar: () => listarUnidadesActivas() },
+  {
+    nombre: "listarProveedoresParaSelector",
+    claves: ["proceso_compra", "proceso_devolucion_proveedor", "reporte_compras", "alta_producto", "producto_ver_catalogo"],
+    llamar: () => listarProveedoresParaSelector(),
+  },
 ];
 
 /** Una clave que ninguna de estas lecturas acepta (de piso operario, así la puede tener el rol de prueba). */
@@ -139,6 +145,17 @@ describe("lecturas con el «Ver» de alguna de sus pantallas (H8)", () => {
     expect((await gateVer(CLAVE_AJENA)).ok).toBe(true);
     expect(await gatesQuePasan(claves)).toEqual([]);
     await expect(llamar(sucursalId)).rejects.toThrow(/No tenés permiso/);
+  });
+
+  it("D-4: quien elige proveedores (las 5 claves del selector) no lee la ficha completa; esa es solo de la pantalla de Proveedores", async () => {
+    const claves = LECTURAS.find((l) => l.nombre === "listarProveedoresParaSelector")!.claves;
+    await prisma.usuarioSucursal.updateMany({ where: { usuarioId }, data: { rolId: rolAdminId } });
+    await prisma.permisoRol.createMany({ data: claves.map((accionClave) => ({ rolId: rolAdminId, accionClave, puedeVer: true, puedeEditar: false })) });
+    await expect(listarProveedoresParaSelector()).resolves.not.toThrow();
+    await expect(listarProveedores()).rejects.toThrow(/No tenés permiso/);
+
+    await prisma.permisoRol.create({ data: { rolId: rolAdminId, accionClave: "proveedores", puedeVer: true, puedeEditar: false } });
+    await expect(listarProveedores()).resolves.not.toThrow();
   });
 
   // Las claves de Administración (módulo fijo) no se apagan: esas lecturas no tienen caso de módulo.
