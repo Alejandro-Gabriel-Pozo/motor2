@@ -3,6 +3,7 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { MENSAJE_SECCION_DESTINO_SOLICITUD_NO_PROPIA, MENSAJE_SUCURSAL_NO_DISPONIBLE } from "@/core/features/traspasos/traspaso-comandos.guard";
 import type { ComandoCrearSolicitudTraspaso, ResultadoCrearSolicitudTraspaso } from "@/core/features/traspasos/traspaso.schema";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -34,7 +35,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @idempotency No aplica (nunca la tuvo) — un duplicado por doble clic se cancela desde la Bandeja sin ningún efecto sobre el Kardex.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) — mismo aislamiento que el resto, aunque acá no hay ninguna carrera de agregado que proteger.
  * @sideEffects Ninguno — solo la creación del traspaso (nunca tocó Kardex).
- * @ficha permiso=traspaso_solicitar transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @ficha permiso=traspaso_solicitar transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
  */
 export async function crearSolicitudDeTraspasoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
@@ -68,6 +69,18 @@ export async function crearSolicitudDeTraspasoCasoDeUso(
       seccionDestinoId: seccionDestino.id,
       usuarioId: actor.usuarioId,
       detalle: comando.detalle,
+    });
+
+    // Auditoría (decisión del dueño, 2026-10-07): el alta de la solicitud (la cantidad pedida) deja su fila, en la sucursal de destino, que es quien la pide.
+    await registrarCambioAuditado(tx, {
+      entidad: "TraspasoSucursal",
+      entidadId: traspasoId,
+      campo: "cantidad",
+      descripcion: `Solicitud de traspaso de "${producto.nombre}" desde "${origen.nombre}" hacia "${actor.sucursalNombre}"`,
+      valorAnterior: null,
+      valorNuevo: cantidad,
+      actorId: actor.usuarioId,
+      sucursalId: actor.sucursalId,
     });
 
     return exito(`Solicitud enviada a "${origen.nombre}".`, { traspasoId, productoNombre: producto.nombre });

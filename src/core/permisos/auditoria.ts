@@ -56,6 +56,12 @@ export const ENTIDADES_AUDITABLES = [
   "Unidad",
   // "ModuloEmpresa": la plataforma activa o desactiva un módulo de la empresa (`cambiarModulosDeEmpresa`) — `entidadId` es `${empresaId}:${modulo}`, `campo: "estado"`, `valorAnterior: null` si el módulo no tenía fila, `sucursalId` null.
   "ModuloEmpresa",
+  // "ConteoFisico" (Pureza, decisión del dueño 2026-10-07): el alta de un conteo físico de stock — `entidadId` es el id del conteo, `campo: "conteoReal"`, `valorAnterior` el saldo del sistema
+  // y `valorNuevo` lo contado, con `sucursalId`. Un conteo sin diferencia no deja fila (no cambia nada).
+  "ConteoFisico",
+  // "TraspasoSucursal" (Pureza, decisión del dueño 2026-10-07): el alta de una solicitud de traspaso o de un envío directo — `entidadId` es el id del traspaso, `campo: "cantidad"`,
+  // `valorAnterior: null`, con la `sucursalId` de quien lo crea (la de destino en una solicitud, la de origen en un envío directo).
+  "TraspasoSucursal",
 ] as const;
 
 /**

@@ -3,6 +3,7 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { MENSAJE_SECCION_ORIGEN_NO_PROPIA, MENSAJE_SUCURSAL_NO_DISPONIBLE } from "@/core/features/traspasos/traspaso-comandos.guard";
 import type { ComandoCrearEnvioDirectoTraspaso, ResultadoCrearEnvioDirectoTraspaso } from "@/core/features/traspasos/traspaso.schema";
+import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -40,7 +41,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @idempotency No aplica, decisión explícita (M11c) — fuera del alcance de I3 desde la auditoría original; un duplicado nunca deja el stock inconsistente (se deshace con el ciclo normal de rechazo+reingreso).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de la escritura conjunta de la salida de Kardex y la creación del traspaso.
- * @ficha permiso=traspaso_enviar_directo transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @ficha permiso=traspaso_enviar_directo transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
  */
 export async function crearEnvioDirectoDeTraspasoCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion" | "ahora">,
@@ -84,6 +85,18 @@ export async function crearEnvioDirectoDeTraspasoCasoDeUso(
       detalle: comando.detalle,
       detalleSalida: `Transferencia a sucursal "${destino.nombre}".`,
       ahora: actor.ahora,
+    });
+
+    // Auditoría (decisión del dueño, 2026-10-07): el alta del envío directo (la cantidad enviada) deja su fila, en la sucursal de origen, que es quien lo manda.
+    await registrarCambioAuditado(tx, {
+      entidad: "TraspasoSucursal",
+      entidadId: traspasoId,
+      campo: "cantidad",
+      descripcion: `Envío directo de "${producto.nombre}" desde "${actor.sucursalNombre}" hacia "${destino.nombre}"`,
+      valorAnterior: null,
+      valorNuevo: cantidad,
+      actorId: actor.usuarioId,
+      sucursalId: actor.sucursalId,
     });
 
     return exito(
