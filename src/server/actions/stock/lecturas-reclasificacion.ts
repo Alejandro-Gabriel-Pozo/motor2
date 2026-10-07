@@ -1,6 +1,6 @@
 "use server";
 
-import { calcularSaldoPorLote, obtenerSeccionPropia } from "@/core/movimientos/public-servidor";
+import { calcularSaldoPorLote, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { requerirSesion } from "../con-sesion";
 
 /**

@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { listarStockParaConteo } from "../../src/core/movimientos/stock";
+import { listarStockParaConteo } from "../../src/server/consultas/movimientos/stock-para-conteo";
 
 describe("listarStockParaConteo", () => {
   let sucursalId: string;

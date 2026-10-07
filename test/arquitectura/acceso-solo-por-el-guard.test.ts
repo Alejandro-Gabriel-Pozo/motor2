@@ -45,7 +45,8 @@ const EXCEPCIONES_DE_ROL_Y_GUARD: Record<string, Excepcion> = {
 /** Archivo → motivo. Regla 2: la consola de plataforma muestra el estado de los módulos de cada empresa; se declara acá cuando exista. */
 const EXCEPCIONES_DEL_REGISTRO_DE_MODULOS: Record<string, string> = {
   "server/acceso/modulos-de-empresa.ts": "es EL LECTOR del registro de módulos (con `cache` por pedido): lo leen el guard y el menú a través de él; es el único archivo que consulta `ModuloEmpresa` para decidir acceso y no decide nada por su cuenta (lo exige modulos-en-el-guard.test.ts).",
-  "core/features/empresa/cambiar-modulos-de-empresa.ts": "es QUIEN ESCRIBE el registro, y solo lo llama scripts/modulos-empresa.ts (regla `modulos-solo-desde-plataforma` de dependency-cruiser); no decide acceso.",
+  "core/features/empresa/cambio-de-modulos.ts": "es el CÁLCULO PURO de qué filas del registro cambian (usa la clausura para validar el pedido); solo lo llama el escritor de la plataforma (server/operaciones-de-plataforma/cambiar-modulos-de-empresa.ts); no decide acceso.",
+  "server/operaciones-de-plataforma/cambiar-modulos-de-empresa.ts": "es QUIEN ESCRIBE el registro, y solo lo llama scripts/modulos-empresa.ts (regla `operaciones-de-plataforma-solo-desde-scripts` de dependency-cruiser); no decide acceso.",
 };
 
 export interface Hallazgo {

@@ -16,7 +16,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { actualizarCabeceraDeReceta } from "../../src/server/actions/catalogo/recetas";
-import { resolverConsumoPorFamilia } from "../../src/core/movimientos/stock";
+import { resolverConsumoPorFamilia } from "../../src/server/lecturas/movimientos/saldos";
 import { redondearACantidadDeUnidad } from "../../src/core/movimientos/transiciones";
 
 describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (cero tolerancia)", () => {

@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
-import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
 
 /**
  * Conteo físico: «Registrar conteo» manda TODA la grilla al servidor en una sola llamada (registrarConteosFisicos). Antes era una

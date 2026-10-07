@@ -16,7 +16,7 @@ import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { sembrarCuenta } from "../pos/salon-fixture";
-import { calcularSaldoTotal } from "../../src/core/movimientos/stock";
+import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
 
 /**
  * Task #27 (docs/plan-redondeo-consumo-fraccionado-2026-09-26.md): sin el arrastre de redondeo, dos ventas separadas de media pizza
