@@ -1,10 +1,10 @@
 import "server-only";
-import { Prisma, type AccionConteo, type EstadoConteo } from "@prisma/client";
+import type { AccionConteo, EstadoConteo } from "@prisma/client";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { texto } from "@/core/texto";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/public";
-import { calcularPayloadHash, conTransaccionSerializable, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { calcularPayloadHash, conTransaccionSerializable, esChoqueDeIndiceUnico, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -183,7 +183,7 @@ export async function registrarConteoFisicoCasoDeUso(
     // transacción ya hizo rollback). Se relee al ganador FUERA de ella; si tiene el MISMO payloadHash y ya dejó su mensaje, es un
     // reenvío; con otro hash es un conflicto (no se le dice "ya está" a quien mandó otro conteo). Fail closed: si no se puede
     // confirmar qué pasó, se relanza el error.
-    if (comando.claveIdempotencia && e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+    if (comando.claveIdempotencia && esChoqueDeIndiceUnico(e)) {
       const ganador = await cargarGanadorDelConteo(actor.db, comando.claveIdempotencia);
       if (ganador && ganador.payloadHash !== payloadHash) return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
       if (ganador?.resultadoMensaje) return exito(ganador.resultadoMensaje, { repetido: true, conteoId: null, diferencia: null, ajustado: null });

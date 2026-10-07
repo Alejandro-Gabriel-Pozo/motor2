@@ -1,7 +1,7 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
 import { esIdentificador } from "@/core/datos/identificador";
+import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { slugTenant, slugTenantUnico } from "@/core/carta/registro-tenants";
 import {
   LARGO_MAXIMO_ETIQUETA_PORTAL,
@@ -29,7 +29,7 @@ const MAXIMO_INTENTOS_SLUG = 5;
 const SUCURSAL_INVALIDA = "Sucursal inválida.";
 
 function esChoqueDeUnicidad(e: unknown): boolean {
-  return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
+  return esChoqueDeIndiceUnico(e);
 }
 
 /**

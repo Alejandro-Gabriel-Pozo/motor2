@@ -1,7 +1,6 @@
 import "server-only";
-import { Prisma } from "@prisma/client";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { calcularPayloadHash, esChoqueDeIndiceUnico, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComandoRegistrarPagoConsignante, ResultadoRegistrarPagoConsignante } from "@/core/features/reportes/pago-consignante.schema";
@@ -93,7 +92,7 @@ export async function registrarPagoConsignanteCasoDeUso(
     // `@@unique` — se relee fuera de la transacción fallida. Solo se devuelve éxito repetido si el ganador tiene el MISMO payloadHash
     // (igual que el chequeo previo): con otro hash es un CONFLICTO, no un reenvío — decirle "ya está" a quien mandó otro importe
     // sería perder su pago en silencio. Fail closed (mismo criterio que el resto de I3): si no se puede confirmar qué pasó, se relanza.
-    if (comando.claveIdempotencia && e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+    if (comando.claveIdempotencia && esChoqueDeIndiceUnico(e)) {
       const ganador = await actor.db.pagoConsignante.findUnique({
         where: { claveIdempotencia: comando.claveIdempotencia },
         select: { payloadHash: true, resultadoMensaje: true },
