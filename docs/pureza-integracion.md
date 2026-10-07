@@ -23,20 +23,20 @@ Cada fila: **ID**, qué es, fuente en el plan, estado (`[ ]` pendiente, `[x]` he
 
 | ID | Trabajo | Fuente | Estado | Evidencia |
 |---|---|---|---|---|
-| 1.1 | Huella de `vincularCuentaConInvitacion` (login) | 10.4 fila 1; auditoría de #82 | [ ] | |
-| 1.2 | Huella de la alta de admin con azar inyectado (byte a byte) | 10.4 fila 1; auditoría de #86 | [ ] | |
-| 1.3 | Valor de ficha `permiso=SIN_PERMISO` (D-7) | plan §5 D-7 | [ ] | |
-| 1.4 | El analizador detecta **referencias** (`Math.random`, `fetch`, `Date.now`, `randomUUID` usados como valor), no solo llamadas; con mutación | 11.2 #5 | [ ] | |
-| 1.5 | `reintentar.ts` y `conTransaccionSerializable` reciben el azar del borde (sin `Math.random` por defecto en core) | 11.2 #5 | [ ] | |
-| 1.6 | `core/correo/resend.ts` sale de `core` a un adaptador; `core/correo/enviar.ts` deja de importar `@/lib/reportar-error` | 11.2 #5, #19 | [ ] | |
-| 1.7 | `esChoqueDeIndiceUnico` en `registrar-conteo-fisico`, `registrar-pago-consignante` y `carta/registro-publico` + regla «los casos de uso no importan `Prisma` como valor» (**corrige un camino de idempotencia**) | 11.2 #2 | [ ] | |
-| 1.8 | La regla de internals se amplía a `proxy.ts`, `env.ts`, `server/{acceso,carta-publica,adaptadores}` y la consola; `carta/public.ts` expone lo que usa el proxy; `ciclo-de-vida.ts` usa `public-servidor` | 11.2 #6 | [ ] | |
-| 1.9 | Guardián: un componente `"use client"` no importa `public-servidor.ts` | 11.2 #7 | [ ] | |
-| 1.10 | La auditoría de dinero ve `$executeRaw` sobre columnas `Decimal` (decisión del dueño sobre el vínculo: 4.3) | 11.2 #3 | [ ] | |
-| 1.11 | Ficha: campo `periodo` (o diferido por escrito a la Etapa A, 4.5) y fichas/exclusión declarada para los flujos de la consola y `operaciones-de-plataforma` | 11.2 #8 | [ ] | |
-| 1.12 | `consultas-solo-lectura-y-ui-sin-base` cubre `server/acceso/`; regla `paginas-solo-consultas`; guardián de reloj leído desde `server/persistencia` | 11.2 #9 | [ ] | |
-| 1.14 | **Auditar** las 3 altas de documentos que `escrituras-auditadas` exceptuaba (conteo físico, solicitud de traspaso, envío directo de traspaso) con `registrarCambioAuditado` en su caso de uso y **sacar las 3 excepciones** de la lista (con mutación: quitar la auditoría pone el test en rojo). **Decidido por el dueño el 2026-10-07**; cambia comportamiento (filas nuevas en el registro de auditoría), commit aparte | #80; 4.8 | [ ] | |
-| 1.13 | Comentario falso de `ALCANCE_CARTA_PUBLICA` corregido; codemod de imports versionado (D-11) | 11.2 #9; D-11 | [ ] | |
+| 1.1 | Huella de `vincularCuentaConInvitacion` (login) | 10.4 fila 1; auditoría de #82 | [x] | c12a6b78; huella-de-login (15 pasos, estable en dos corridas); mutaciones: sin comparar emails, cualquier cuenta previa sirve |
+| 1.2 | Huella de la alta de admin con azar inyectado (byte a byte) | 10.4 fila 1; auditoría de #86 | [x] | 31459b18; huella-de-alta-de-admin con azar fijo; mutaciones: sin conflicto propio, un código de recuperación menos |
+| 1.3 | Valor de ficha `permiso=SIN_PERMISO` (D-7) | plan §5 D-7 | [x] | 42a0c3db; SIN_PERMISO + CASOS_SIN_PERMISO (vacía); mutación: cerrar-cuenta declarado SIN_PERMISO |
+| 1.4 | El analizador detecta **referencias** (`Math.random`, `fetch`, `Date.now`, `randomUUID` usados como valor), no solo llamadas; con mutación | 11.2 #5 | [x] | 57be2ed7; el analizador detecta referencias; mutación: sin identificadores, falla |
+| 1.5 | `reintentar.ts` y `conTransaccionSerializable` reciben el azar del borde (sin `Math.random` por defecto en core) | 11.2 #5 | [x] | 546ddccc; Transaccion.aleatorio desde core/auth/base.ts; mutaciones: sin tomar el azar de la transacción, Math.random de vuelta |
+| 1.6 | `core/correo/resend.ts` sale de `core` a un adaptador; `core/correo/enviar.ts` deja de importar `@/lib/reportar-error` | 11.2 #5, #19 | [x] | d19f38f6; resend a src/lib/correo; mutación: fetch dentro de core/correo |
+| 1.7 | `esChoqueDeIndiceUnico` en `registrar-conteo-fisico`, `registrar-pago-consignante` y `carta/registro-publico` + regla «los casos de uso no importan `Prisma` como valor» (**corrige un camino de idempotencia**) | 11.2 #2 | [x] | 0bfa8c48; esChoqueDeIndiceUnico en 3 sitios + acciones-sin-prisma-como-valor; mutación: vuelve el instanceof |
+| 1.8 | La regla de internals se amplía a `proxy.ts`, `env.ts`, `server/{acceso,carta-publica,adaptadores}` y la consola; `carta/public.ts` expone lo que usa el proxy; `ciclo-de-vida.ts` usa `public-servidor` | 11.2 #6 | [x] | a8c6e33c; sin-internals cubre proxy, env, server/*, lib y la consola; mutaciones en proxy, consola y server/acceso |
+| 1.9 | Guardián: un componente `"use client"` no importa `public-servidor.ts` | 11.2 #7 | [x] | e9e13eed; cliente-sin-public-servidor; mutación: un cliente importa public-servidor |
+| 1.10 | La auditoría de dinero ve `$executeRaw` sobre columnas `Decimal` (decisión del dueño sobre el vínculo: 4.3) | 11.2 #3 | [x] | 015d8be4; escrituras-auditadas lee $executeRaw; el vínculo queda EXCEPTUADO y marcado pendiente de la decisión 3 del dueño |
+| 1.11 | Ficha: campo `periodo` (o diferido por escrito a la Etapa A, 4.5) y fichas/exclusión declarada para los flujos de la consola y `operaciones-de-plataforma` | 11.2 #8 | [~] | d56f34a0; la consola queda fuera de la ficha, declarada y vigilada; el campo `periodo` queda diferido por escrito hasta la decisión 5 del dueño |
+| 1.12 | `consultas-solo-lectura-y-ui-sin-base` cubre `server/acceso/`; regla `paginas-solo-consultas`; guardián de reloj leído desde `server/persistencia` | 11.2 #9 | [x] | ecfbe4f1; paginas-solo-consultas (5 excepciones, decisión 6), server/acceso de solo lectura, reloj-y-azar-en-el-servidor (11 consultas en lista) |
+| 1.14 | **Auditar** las 3 altas de documentos que `escrituras-auditadas` exceptuaba (conteo físico, solicitud de traspaso, envío directo de traspaso) con `registrarCambioAuditado` en su caso de uso y **sacar las 3 excepciones** de la lista (con mutación: quitar la auditoría pone el test en rojo). **Decidido por el dueño el 2026-10-07**; cambia comportamiento (filas nuevas en el registro de auditoría), commit aparte | #80; 4.8 | [x] | 899d109a y 87c79198; ConteoFisico y TraspasoSucursal auditables; mutación: el envío directo sin auditoría |
+| 1.13 | Comentario falso de `ALCANCE_CARTA_PUBLICA` corregido; codemod de imports versionado (D-11) | 11.2 #9; D-11 | [x] | d70e2f99 (comentario de ALCANCE_CARTA_PUBLICA) y e2243962 (codemod reapuntar-imports, 10 pruebas) |
 
 ### Hito 2: redes de pruebas (antes de mover más código)
 
@@ -91,34 +91,34 @@ Cada uno se hace en el hito indicado, junto con el trabajo que toca el mismo có
 | O.6 | Conciliación 11 de `verificar-demo-invariantes` con un cruce realmente independiente (recorrer las compras del par en memoria y recalcular precio, `ultimaCompra` y la regla del precio 0) | Revisión #92 (6) | 2 | [ ] | |
 | O.7 | Test de volumen de ofertas de proveedor: aserción de tiempo laxa o no bloqueante (propensa a fallar en CI frío) | Revisión #92 (7) | 2 | [ ] | |
 | O.8 | Comparativa: listas `in` acotadas y `nombreDe.get(...) ?? ""` → «(proveedor desconocido)» o `continue` | Revisión #92 (8, 9) | 4 | [ ] | |
-| O.9 | Docs: `docs/grounding-lista-ver-editar-2026-09-18.md:57` aún lista `ProveedorPorProducto` como fuente de «Proveedores y precios» | Revisión #92 (10) | 1 | [ ] | |
+| O.9 | Docs: `docs/grounding-lista-ver-editar-2026-09-18.md:57` aún lista `ProveedorPorProducto` como fuente de «Proveedores y precios» | Revisión #92 (10) | 1 | [x] | a0baf619 |
 | O.10 | Precarga del carrito (`panel-movimiento-form.tsx`) sigue poniendo `unidadCompraId: ""`: o se usa el que calcula el lector o se quita del tipo | Revisión #92 (11) | 4 | [ ] | |
-| O.11 | Adaptador de imports de la huella de gobierno (B0) | Auditoría Fase 4 (#82) | 1 | [ ] | |
+| O.11 | Adaptador de imports de la huella de gobierno (B0) | Auditoría Fase 4 (#82) | 1 | [x] | d70e2f99; adaptador-de-imports de las tres huellas, goldens intactos |
 | O.12 | D-9: documentar que `agregarItems` del POS no tiene I3 | Auditoría Fase 4 (D-9) | 4 | [ ] | |
 | O.13 | Preparación de la Fase 5 **sin migración** (plan §6): reunir las 2 escrituras de traspasos y las 2 de anulación en una sola función; `EXPLAIN` del índice del Kardex | Plan Fase 4 §6 | 5 | [ ] | |
 | O.14 | D-5 del plan (lote de lecturas repetidas de la venta; costo congelado solo de lo vendido): el plan lo deja «explícitamente después» | Plan Fase 4 | — | [d] | Diferido por escrito: se hace después de esta rama |
-| O.15 | Guardián de «la fase de un heredado no retrocede» (D-4 se violó cuatro PR sin que nada lo viera) | Auditoría Fase 4 (D-4) | 1 | [ ] | |
-| O.16 | 0.4: con `MOTOR2_ENTORNO_ESTRICTO=1` fuera de Vercel el escape `MOTOR2_ROL_ESTRICTO=0` no se prohíbe | Auditoría Fase 0 (4) | 1 | [ ] | |
-| O.17 | Asentar la decisión de reemplazar el tipo `FichaCasoDeUso`/`FICHA_PENDIENTE` por la línea `@ficha` (docs) | Auditoría Fase 0 | 1 | [ ] | |
-| O.18 | Docstring de `pureza-del-nucleo.test.ts` dice «117 de 256» (hoy 38 entradas) y vocabulario `core-sin-prisma`/`core-sin-db-tipos` | Auditoría Fase 0 (7) | 1 | [ ] | |
-| O.19 | 0.7: escrituras anidadas por relación (`data: { rel: { create } }`) que `clavesDeData` no recorre | Auditoría Fase 0 (9) | 1 | [ ] | |
-| O.20 | 0.7: alcance a `plataforma/src/servidor` y `operaciones-de-plataforma` si una tabla de plataforma suma `Decimal` | Auditoría Fase 0 (10) | 1 | [ ] | |
-| O.21 | Reloj y `randomUUID` dentro de `server/persistencia` (`upsert-proveedor-por-producto.ts`: `fechaCompra ?? new Date()`, `crypto.randomUUID()`): sacarlos | Auditoría Fases 0 y 1 (D-7) | 1 | [ ] | |
+| O.15 | Guardián de «la fase de un heredado no retrocede» (D-4 se violó cuatro PR sin que nada lo viera) | Auditoría Fase 4 (D-4) | 1 | [x] | 33e6ffcd; fases-de-heredados-no-retroceden; mutación: base.ts a la Fase 4 |
+| O.16 | 0.4: con `MOTOR2_ENTORNO_ESTRICTO=1` fuera de Vercel el escape `MOTOR2_ROL_ESTRICTO=0` no se prohíbe | Auditoría Fase 0 (4) | 1 | [x] | fb200771; mutación: otra vez solo Producción |
+| O.17 | Asentar la decisión de reemplazar el tipo `FichaCasoDeUso`/`FICHA_PENDIENTE` por la línea `@ficha` (docs) | Auditoría Fase 0 | 1 | [x] | a0baf619; docs/pureza-decisiones-asentadas.md §2 |
+| O.18 | Docstring de `pureza-del-nucleo.test.ts` dice «117 de 256» (hoy 38 entradas) y vocabulario `core-sin-prisma`/`core-sin-db-tipos` | Auditoría Fase 0 (7) | 1 | [x] | a0baf619 |
+| O.19 | 0.7: escrituras anidadas por relación (`data: { rel: { create } }`) que `clavesDeData` no recorre | Auditoría Fase 0 (9) | 1 | [x] | f4f93642; escrituras anidadas por relación |
+| O.20 | 0.7: alcance a `plataforma/src/servidor` y `operaciones-de-plataforma` si una tabla de plataforma suma `Decimal` | Auditoría Fase 0 (10) | 1 | [x] | 1a281baf; sembrarEmpresa exceptuada con motivo |
+| O.21 | Reloj y `randomUUID` dentro de `server/persistencia` (`upsert-proveedor-por-producto.ts`: `fechaCompra ?? new Date()`, `crypto.randomUUID()`): sacarlos | Auditoría Fases 0 y 1 (D-7) | 1 | [x] | ecfbe4f1; el id lo genera la base y sin fecha vale now() |
 | O.22 | Reloj con valor por defecto en consultas y acciones (`server/consultas/pos/*`, `server/lecturas/carta/*`, `server/actions/reportes/sincronizaciones.ts`): `ahora` obligatorio, como los 5 reportes | Auditoría Fase 1 (D-8) | 4 | [ ] | |
-| O.23 | Crear el documento de la Fase 1 que nunca existió (sub-pasos 1.1 a 1.6 solo estaban en los mensajes de PR) | Auditoría Fase 1 | 1 | [ ] | |
+| O.23 | Crear el documento de la Fase 1 que nunca existió (sub-pasos 1.1 a 1.6 solo estaban en los mensajes de PR) | Auditoría Fase 1 | 1 | [x] | a0baf619; docs/pureza-decisiones-asentadas.md §1 |
 | O.24 | `core/auth/{acceso,invitacion}.ts` leen el reloj y `process.env`: B3 saca el reloj de `invitacion.ts` y mueve `acceso.ts` a `server/sesion`; lo de `env` va con la Fase 6 y queda declarado | Auditoría Fase 1 (D-9) | 3 | [ ] | |
-| O.25 | Registrar el «punto de control con el dueño» de la Fase 2 (no consta) | Auditoría Fase 2 (M-1) | 1 | [ ] | |
-| O.26 | P1.4: revisar `DOMINIOS_SIN_PUBLIC_TODAVIA` en dos direcciones | Auditoría Fase 2 (M-4) | 1 | [ ] | |
-| O.27 | Regex con escape inútil `"\.ts$"` en `.dependency-cruiser.cjs:80` y `:129` (usar `[.]`) | Auditoría Fase 2 (M-5) | 1 | [ ] | |
+| O.25 | Registrar el «punto de control con el dueño» de la Fase 2 (no consta) | Auditoría Fase 2 (M-1) | 1 | [x] | a0baf619; docs/pureza-decisiones-asentadas.md §3 |
+| O.26 | P1.4: revisar `DOMINIOS_SIN_PUBLIC_TODAVIA` en dos direcciones | Auditoría Fase 2 (M-4) | 1 | [x] | f137d720 |
+| O.27 | Regex con escape inútil `"\.ts$"` en `.dependency-cruiser.cjs:80` y `:129` (usar `[.]`) | Auditoría Fase 2 (M-5) | 1 | [x] | fb200771 |
 | O.28 | Ciclo de tipos `pos/comanda ↔ pos/impresion` en `CICLOS_CONOCIDOS` | Auditoría Fase 2 (M-6) | 4 | [ ] | |
-| O.29 | Docs: `arquitectura-casos-de-uso-2026-09-27.md` habla de `DOMINIOS_CON_PUBLIC`; `descuento-producto-en-un-solo-lugar.test.ts:62` cita un archivo que ya no existe | Auditoría Fase 2 (M-7) | 1 | [ ] | |
+| O.29 | Docs: `arquitectura-casos-de-uso-2026-09-27.md` habla de `DOMINIOS_CON_PUBLIC`; `descuento-producto-en-un-solo-lugar.test.ts:62` cita un archivo que ya no existe | Auditoría Fase 2 (M-7) | 1 | [x] | a0baf619 |
 | O.30 | C4 y C5 de la Fase 3: N+1 de `rendimiento-recetas` y «la página lo calcula dos veces»; lecturas repetidas de `periodo` (costo actual ×3, IPC ×2, precios locales ×2) | Auditoría Fase 3 (C4, C5) | 4 | [ ] | |
-| O.31 | `server-only` inconsistente (28 de 30 archivos de `server/consultas/reportes` y 4 de `server/lecturas/carta` no lo llevan): guardián de cuáles deben llevarlo | Auditoría Fase 3 (14) | 1 | [ ] | |
+| O.31 | `server-only` inconsistente (28 de 30 archivos de `server/consultas/reportes` y 4 de `server/lecturas/carta` no lo llevan): guardián de cuáles deben llevarlo | Auditoría Fase 3 (14) | 1 | [x] | f137d720; server-only-en-consultas-y-lecturas (39 congelados); mutación: una consulta sin server-only |
 | O.32 | Cabeceras de `core/reportes/public-servidor.ts` y `core/movimientos/public-servidor.ts` citan archivos que ya no existen; retirar la fachada de `core/reportes` si no tiene lecturas | Auditoría Fase 3 (12) | 5 | [ ] | |
 | O.33 | 3B.12 «limitador» sin rastro (`core/permisos/limitador-tasa.ts`) y matriz de acceso «idéntica a lo largo de todo el tramo» no verificable | Auditoría Fase 3 (16) | 3 | [ ] | |
 | O.34 | Confirmar que B0 (#82) cubrió el punto «a verificar» de `invitacion.ts:223` | Auditoría Fase 3 | 3 | [ ] | |
 | O.35 | Contratos C1 a C6 del RBAC: techo en el alta de sucursal, releer rol y actor dentro de la transacción, regla de «uno mismo», matriz de los roles de nivel administrador editable solo por el gerente, guardián de `Rol.nivel` (la migración `Rol.nivel` es [MIG] y queda fuera de la rama) | Evaluación RBAC | 3 | [ ] | |
-| O.36 | Copia externa `para motor 2\_planes\plan-fase-3-pureza.md` sin el encabezado «HECHA» y sin la sección de desvíos | Auditoría Fase 3 (11) | 1 | [ ] | |
+| O.36 | Copia externa `para motor 2\_planes\plan-fase-3-pureza.md` sin el encabezado «HECHA» y sin la sección de desvíos | Auditoría Fase 3 (11) | 1 | [x] | la copia externa ya coincide con docs/plan-fase-3-pureza.md (verificado con diff) |
 
 ### Fuera de los hitos, con decisión del dueño (sección 4)
 
