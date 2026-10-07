@@ -95,13 +95,13 @@ export const ACCIONES = [
   // para importar un histórico externo; la segunda, la suite de tests de Apps Script) y una clave sin acción es una promesa falsa en la matriz.
   // Administración: una clave por acción. `gestion_usuarios` queda para agregar gente a la sucursal y cambiarle el rol (el resto de lo que
   // hacía se partió); `gestion_permisos`, para la matriz de permisos (la gestión de roles pasó a `gestion_roles`).
-  { clave: "gestion_usuarios", modulo: "administracion", descripcion: "Agregar usuarios a la sucursal y cambiarles el rol", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "activar_usuario_sucursal", modulo: "administracion", descripcion: "Activar o desactivar a un usuario en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "notas_usuario_sucursal", modulo: "administracion", descripcion: "Editar las notas de un usuario en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "apagar_cuenta_empresa", modulo: "administracion", descripcion: "Apagar o reactivar la cuenta de un usuario en toda la empresa", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "gestion_permisos", modulo: "administracion", descripcion: "Gestionar la matriz de permisos de los roles", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "gestion_roles", modulo: "administracion", descripcion: "Crear, activar y desactivar roles", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "renombrar_rol", modulo: "administracion", descripcion: "Cambiar el nombre de un rol (nunca su clave técnica)", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "gestion_usuarios", modulo: "administracion", descripcion: "Agregar usuarios a la sucursal y cambiarles el rol", contexto: "sucursal", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
+  { clave: "activar_usuario_sucursal", modulo: "administracion", descripcion: "Activar o desactivar a un usuario en la sucursal", contexto: "sucursal", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
+  { clave: "notas_usuario_sucursal", modulo: "administracion", descripcion: "Editar las notas de un usuario en la sucursal", contexto: "sucursal", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
+  { clave: "apagar_cuenta_empresa", modulo: "administracion", descripcion: "Apagar o reactivar la cuenta de un usuario en toda la empresa", contexto: "empresa", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
+  { clave: "gestion_permisos", modulo: "administracion", descripcion: "Gestionar la matriz de permisos de los roles", contexto: "empresa", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
+  { clave: "gestion_roles", modulo: "administracion", descripcion: "Crear, activar y desactivar roles", contexto: "empresa", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
+  { clave: "renombrar_rol", modulo: "administracion", descripcion: "Cambiar el nombre de un rol (nunca su clave técnica)", contexto: "empresa", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
   { clave: "proceso_compra", modulo: "compras", descripcion: "Registrar una Compra", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proceso_produccion", modulo: "produccion", descripcion: "Registrar una Producción", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "proceso_consumo", modulo: "stock", descripcion: "Registrar un Consumo", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
@@ -129,16 +129,16 @@ export const ACCIONES = [
   { clave: "anular_compra", modulo: "compras", descripcion: "Anular una compra ya confirmada", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   // Corregir solo la CABECERA de una compra ya confirmada (proveedor, N.º de factura, detalle); nunca sus líneas. Mismo criterio restrictivo que `anular_compra`.
   { clave: "corregir_compra", modulo: "compras", descripcion: "Corregir el proveedor, el N.º de factura o el detalle de una compra ya confirmada", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "capacidades_sucursal", modulo: "administracion", descripcion: "Habilitar/deshabilitar qué puede gestionar cada sucursal", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "capacidades_sucursal", modulo: "administracion", descripcion: "Habilitar/deshabilitar qué puede gestionar cada sucursal", contexto: "empresa", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
   // Nueva (no existía en Apps Script — ver plan, "Bootstrap de admin"):
   // reemplaza el paso manual crear-contenedor.js por una acción real del
   // sistema, exclusiva de admin, que crea la sucursal y asigna su primer
   // admin en la misma transacción (nunca queda una sucursal sin admin).
-  { clave: "alta_sucursal", modulo: "administracion", descripcion: "Dar de alta una sucursal nueva y asignar su primer admin", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "activar_sucursal", modulo: "administracion", descripcion: "Activar o desactivar una sucursal", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "renombrar_sucursal", modulo: "administracion", descripcion: "Renombrar una sucursal", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "alta_sucursal", modulo: "administracion", descripcion: "Dar de alta una sucursal nueva y asignar su primer admin", contexto: "empresa", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
+  { clave: "activar_sucursal", modulo: "administracion", descripcion: "Activar o desactivar una sucursal", contexto: "empresa", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
+  { clave: "renombrar_sucursal", modulo: "administracion", descripcion: "Renombrar una sucursal", contexto: "empresa", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
   { clave: "pagar_consignante", modulo: "consignacion", descripcion: "Registrar un pago a un proveedor de consignación", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "ver_auditoria", modulo: "administracion", descripcion: "Ver el registro de auditoría administrativa de la sucursal (precios y permisos)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "ver_auditoria", modulo: "administracion", descripcion: "Ver el registro de auditoría administrativa de la sucursal (precios y permisos)", contexto: "sucursal", nivelMinimo: "administrador_sistema", rolesEditarSemilla: ["admin"] },
   // Primera acción de piso gerente: la tiene solo el gerente de la empresa, sin pasar por la matriz (reemplaza el `esGerenteDeEmpresa` suelto de la
   // pantalla de Auditoría). No tiene padre: no existía como clave, así que la migración solo la da de alta y nadie la hereda.
   { clave: "ver_auditoria_empresa", modulo: "administracion", descripcion: "Ver las filas de auditoría de la empresa (las que no son de una sucursal)", contexto: "empresa", nivelMinimo: "gerente", rolesEditarSemilla: [] },

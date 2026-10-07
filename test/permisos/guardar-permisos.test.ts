@@ -150,6 +150,15 @@ describe("guardarPermisos", () => {
     expect((await guardarPermisos(null as never)).mensaje).toBe("No hay cambios para guardar.");
   });
 
+  it("ADR-027 / D16: darle `ver_auditoria` al rol operador se rechaza con un mensaje que nombra el piso «administrador de sistema», y no guarda nada", async () => {
+    const r = await guardarPermisos([await cambio(operadorRolId, "ver_auditoria", { puedeVer: true, puedeEditar: false })]);
+
+    expect(r.ok).toBe(false);
+    expect(r.mensaje).toBe('El rol «operador» (nivel operario) no puede tener "ver_auditoria": es una acción de nivel administrador de sistema. No se guardó nada.');
+    expect(await actual(operadorRolId, "ver_auditoria")).toEqual(SIN_PERMISO);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "PermisoRol" } })).toBe(0);
+  });
+
   it("solo la puede usar quien tiene «Editar» de gestion_permisos", async () => {
     const base = await prisma.sucursal.findFirstOrThrow();
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.id, rolId: operadorRolId });

@@ -640,7 +640,7 @@
     {
       "clave": "gestion_usuarios",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "administrador_sistema",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -648,7 +648,7 @@
     {
       "clave": "activar_usuario_sucursal",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "administrador_sistema",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -656,7 +656,7 @@
     {
       "clave": "notas_usuario_sucursal",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "administrador_sistema",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -664,7 +664,7 @@
     {
       "clave": "apagar_cuenta_empresa",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "administrador_sistema",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -672,7 +672,7 @@
     {
       "clave": "gestion_permisos",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "administrador_sistema",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -680,7 +680,7 @@
     {
       "clave": "gestion_roles",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "administrador_sistema",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -688,7 +688,7 @@
     {
       "clave": "renombrar_rol",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "administrador_sistema",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -907,7 +907,7 @@
     {
       "clave": "capacidades_sucursal",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "administrador_sistema",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -915,7 +915,7 @@
     {
       "clave": "alta_sucursal",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "administrador_sistema",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -923,7 +923,7 @@
     {
       "clave": "activar_sucursal",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "administrador_sistema",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -931,7 +931,7 @@
     {
       "clave": "renombrar_sucursal",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "administrador_sistema",
       "rolesEditarSemilla": [
         "admin"
       ]
@@ -947,7 +947,7 @@
     {
       "clave": "ver_auditoria",
       "contexto": "sucursal",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "administrador_sistema",
       "rolesEditarSemilla": [
         "admin"
       ]
