@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
+import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { MENSAJE_PRODUCTO_NO_EXISTE } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { cargarProductoParaTraspaso, type ProductoParaTraspaso } from "@/server/persistencia/traspasos/cargar-traspaso";

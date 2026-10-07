@@ -1,6 +1,6 @@
 "use server";
 
-import { whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { whereDisponibleEn } from "@/core/catalogo/public";
 import { requerirVer, requerirVerDeEmpresa } from "../con-sesion";
 
 export interface ProductoDeProveedor {

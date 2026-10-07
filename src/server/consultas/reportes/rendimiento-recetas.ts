@@ -3,7 +3,8 @@ import { redondearCantidad, bandaDeRuidoDeLote, calcularCantidadEstimadaNeta, ca
 import { ZONA_UTC, inicioDelDiaDe, rangoDeDias } from "@/core/tiempo/zona-horaria";
 import type { Db } from "@/lib/db-tipos";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
-import { whereDisponibleEn, alcanceDeSucursal, cargarRecetasVigentes } from "@/core/catalogo/public-servidor";
+import { whereDisponibleEn, alcanceDeSucursal } from "@/core/catalogo/public";
+import { cargarRecetasVigentes } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/public";
 import type { FilaRendimientoSimple, FilaRendimientoCompartido, UsoDeInsumo, Pool, ResultadoPoolCompartido } from "@/core/reportes/public";

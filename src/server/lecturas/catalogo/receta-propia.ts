@@ -1,5 +1,7 @@
 import "server-only";
-import { ALCANCE_CENTRAL, INCLUDE_RECETA_COMPLETA, alcanceDeSucursal, cargarHistorialDeVersiones, cargarRecetaVigente } from "@/core/catalogo/public-servidor";
+import { INCLUDE_RECETA_COMPLETA } from "@/core/catalogo/public-servidor";
+import { ALCANCE_CENTRAL, alcanceDeSucursal } from "@/core/catalogo/public";
+import { cargarHistorialDeVersiones, cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
 import type { Db } from "@/lib/db-tipos";
 
 /**

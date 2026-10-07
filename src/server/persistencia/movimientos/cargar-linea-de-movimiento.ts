@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
-import { alcanceDeSucursal, cargarRecetaVigente } from "@/core/catalogo/public-servidor";
+import { alcanceDeSucursal } from "@/core/catalogo/public";
+import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
 
 /**
  * Persistencia de las dos lecturas que hace `armarLineaMovimiento`/`calcularConsumosProduccion` DENTRO de la transacción (Task #41,

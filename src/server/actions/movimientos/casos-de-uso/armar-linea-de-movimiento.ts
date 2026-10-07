@@ -6,7 +6,7 @@ import { guardLineaCompra } from "@/core/features/compras/compra.guard";
 import { TRANSICIONES, esSignoFijo, productoValidoParaProceso, redondearACantidadDeUnidad, type ConsumoParaFilas } from "@/core/movimientos/public";
 import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia } from "@/server/lecturas/movimientos/saldos";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
-import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
+import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
 import { cargarPresentacionActiva, cargarRecetaVigenteParaProducir } from "@/server/persistencia/movimientos/cargar-linea-de-movimiento";
 import type { DatosMovimientoInput, ItemMovimientoInput } from "@/core/features/movimientos/movimiento.schema";

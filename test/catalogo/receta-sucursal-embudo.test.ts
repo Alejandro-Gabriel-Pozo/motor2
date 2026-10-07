@@ -1,15 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  ALCANCE_CENTRAL,
-  alcanceDeSucursal,
-  cargarHistorialDeVersiones,
-  cargarRecetasPropiasHabilitadas,
-  cargarRecetasVigentes,
-  cargarRecetaVigente,
-  incluirRecetaVigente,
-  versionVigentePorProducto,
-  whereConReceta,
-} from "../../src/core/catalogo/recetas-vigentes";
+import { ALCANCE_CENTRAL, alcanceDeSucursal, incluirRecetaVigente, whereConReceta } from "../../src/core/catalogo/public";
+import { cargarHistorialDeVersiones, cargarRecetasPropiasHabilitadas, cargarRecetasVigentes, cargarRecetaVigente, versionVigentePorProducto } from "../../src/server/lecturas/catalogo/recetas-vigentes";
 import { dependenciasParaDesactivar } from "../../src/server/lecturas/catalogo/dependencias-para-desactivar";
 import { compararRendimientosPorSucursal } from "../../src/server/consultas/reportes/rendimiento-por-sucursal";
 import { limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";

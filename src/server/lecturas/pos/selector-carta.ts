@@ -1,5 +1,6 @@
 import "server-only";
-import { precioLocalActivoEn, preciosLocalesVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { precioLocalActivoEn, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { whereDisponibleEn } from "@/core/catalogo/public";
 import { aplicarDescuentoDeProducto, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal } from "@/core/carta/public";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCarta } from "@/server/lecturas/carta/menu";

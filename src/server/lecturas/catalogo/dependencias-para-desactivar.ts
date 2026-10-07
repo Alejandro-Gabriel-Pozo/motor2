@@ -1,5 +1,6 @@
 import "server-only";
-import { alcanceDeSucursal, cargarRecetasVigentes, whereDisponibleEn } from "@/core/catalogo/public-servidor";
+import { alcanceDeSucursal, whereDisponibleEn } from "@/core/catalogo/public";
+import { cargarRecetasVigentes } from "@/server/lecturas/catalogo/recetas-vigentes";
 import type { Db } from "@/lib/db-tipos";
 
 export interface DependenciasDeProducto {

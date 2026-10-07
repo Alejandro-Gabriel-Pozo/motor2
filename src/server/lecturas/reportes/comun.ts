@@ -1,6 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { clasificarGruposNoComestibles, type ClasificacionNoComestibles } from "@/core/catalogo/public";
-import { alcanceDeSucursal, cargarRecetasVigentes, disponibilidadDeProductos, disponibilidadEnAlgunaSucursal, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { alcanceDeSucursal } from "@/core/catalogo/public";
+import { cargarRecetasVigentes } from "@/server/lecturas/catalogo/recetas-vigentes";
+import { disponibilidadDeProductos, disponibilidadEnAlgunaSucursal } from "@/server/lecturas/catalogo/disponibilidad";
 import { armarIndiceRecetas, armarMapaProductos, type CostoMP, type IndiceRecetas, type InfoProductoReporte } from "@/core/reportes/public";
 import type { Db } from "@/lib/db-tipos";
 

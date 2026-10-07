@@ -6,7 +6,7 @@ import { validarCantidad } from "@/core/datos/cantidad";
 import { conTransaccionSerializable, calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { calcularSaldoPorLote, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
-import { productoDisponibleEn } from "@/core/catalogo/public-servidor";
+import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComandoReclasificarStock, ResultadoReclasificarStock } from "@/core/features/movimientos/reclasificacion.schema";
 import { cargarProductoConUnidadDeStock } from "@/server/persistencia/movimientos/cargar-producto-con-unidad-de-stock";

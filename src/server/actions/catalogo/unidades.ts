@@ -5,7 +5,7 @@ import { texto, validarTextoCatalogo } from "@/core/texto";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoDeEmpresa } from "@/server/acceso/gate";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
+import { whereDisponibleEnAlguna } from "@/core/catalogo/public";
 import { decimalesDelPaso } from "@/core/catalogo/public";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";

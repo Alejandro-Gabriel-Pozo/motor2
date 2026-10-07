@@ -29,8 +29,10 @@ import { describe, expect, it } from "vitest";
  * lee la receta (se refactorizó) también es una desincronización a corregir, y el embudo mismo tiene que seguir leyendo `RecetaVersion`.
  */
 const SRC = join(__dirname, "../../src");
-const EMBUDO = "core/catalogo/recetas-vigentes.ts";
-const FACHADA = "core/catalogo/public-servidor.ts";
+/** El embudo vive en DOS archivos desde la Fase 4: el LECTOR con base (el único que elige la versión vigente) y las reglas PURAS (alcance, `quedarseConLaVigente`, `whereConReceta`, `incluirRecetaVigente`). */
+const EMBUDO = "server/lecturas/catalogo/recetas-vigentes.ts";
+const EMBUDO_PURO = "core/catalogo/recetas-vigentes.ts";
+const FACHADA = "core/catalogo/public.ts";
 
 interface ArchivoClasificado {
   ruta: string;
@@ -198,10 +200,10 @@ describe("lectores de receta: el embudo es el único que elige la versión vigen
   });
 
   it("ningún archivo fuera del embudo lee, ordena o agrupa RecetaVersion por su cuenta", () => {
-    const sueltos = [...fuentes].filter(([nombre, fuente]) => nombre !== EMBUDO && leeVersionesDeRecetaPorSuCuenta(fuente)).map(([nombre]) => nombre);
+    const sueltos = [...fuentes].filter(([nombre, fuente]) => nombre !== EMBUDO && nombre !== EMBUDO_PURO && leeVersionesDeRecetaPorSuCuenta(fuente)).map(([nombre]) => nombre);
     expect(
       sueltos,
-      `Estos archivos eligen o leen versiones de receta sin pasar por core/catalogo/recetas-vigentes.ts (usá cargarRecetasVigentes / cargarRecetaVigente / cargarHistorialDeVersiones / versionVigentePorProducto / incluirRecetaVigente / whereConReceta):\n${sueltos.join("\n")}`
+      `Estos archivos eligen o leen versiones de receta sin pasar por server/lecturas/catalogo/recetas-vigentes.ts (usá cargarRecetasVigentes / cargarRecetaVigente / cargarHistorialDeVersiones / versionVigentePorProducto / incluirRecetaVigente / whereConReceta):\n${sueltos.join("\n")}`
     ).toEqual([]);
   });
 
@@ -216,7 +218,7 @@ describe("lectores de receta: todo archivo que consume el embudo o lee RecetaIng
   const fuentes = new Map(archivosFuente(SRC).map((ruta) => [relative(SRC, ruta).split(sep).join("/"), readFileSync(ruta, "utf8")]));
 
   it("todo consumidor está en la lista, y ninguno de la lista dejó de serlo", () => {
-    const encontrados = new Set([...fuentes].filter(([nombre, fuente]) => nombre !== EMBUDO && nombre !== FACHADA && necesitaClasificacion(fuente)).map(([nombre]) => nombre));
+    const encontrados = new Set([...fuentes].filter(([nombre, fuente]) => nombre !== EMBUDO && nombre !== EMBUDO_PURO && nombre !== FACHADA && necesitaClasificacion(fuente)).map(([nombre]) => nombre));
 
     const sinClasificar = [...encontrados].filter((n) => !RUTAS_CLASIFICADAS.has(n));
     expect(
@@ -228,7 +230,7 @@ describe("lectores de receta: todo archivo que consume el embudo o lee RecetaIng
     expect(yaNoLeen, `Estos ya no consumen el embudo ni leen RecetaIngrediente: sacalos de ARCHIVOS_CLASIFICADOS:\n${yaNoLeen.join("\n")}`).toEqual([]);
   });
 
-  it("la fachada de servidor del dominio reexporta el embudo sin consumirlo (no entra en la clasificación)", () => {
+  it("la fachada del dominio reexporta las reglas puras del embudo sin consumirlas (no entra en la clasificación)", () => {
     expect(fuentes.get(FACHADA)).toMatch(/recetas-vigentes/);
   });
 });

@@ -16,7 +16,8 @@ import {
 } from "../../src/server/actions/catalogo/receta-sucursal";
 import { guardarReceta } from "../../src/server/actions/catalogo/recetas";
 import { listarSucursalesConRecetaPropia, obtenerEstadoDeRecetaPropia } from "../../src/server/consultas/catalogo/receta-propia";
-import { ALCANCE_CENTRAL, alcanceDeSucursal, cargarRecetaVigente } from "../../src/core/catalogo/recetas-vigentes";
+import { ALCANCE_CENTRAL, alcanceDeSucursal } from "../../src/core/catalogo/public";
+import { cargarRecetaVigente } from "../../src/server/lecturas/catalogo/recetas-vigentes";
 
 /**
  * Receta propia por sucursal (ADR-009 override, R3/R4) de punta a punta contra Postgres real: las seis acciones de

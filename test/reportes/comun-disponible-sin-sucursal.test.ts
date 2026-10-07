@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, prisma } from "../setup/test-db";
 import { construirMapaProductos } from "../../src/server/lecturas/reportes/comun";
-import { disponibilidadEnAlgunaSucursal } from "../../src/core/catalogo/public-servidor";
+import { disponibilidadEnAlgunaSucursal } from "../../src/server/lecturas/catalogo/disponibilidad";
 
 /**
  * R2 (decisión del dueño, 2026-10-01): `construirMapaProductos` SIN sucursal (reportes de Catálogo Central) deja `disponible` en

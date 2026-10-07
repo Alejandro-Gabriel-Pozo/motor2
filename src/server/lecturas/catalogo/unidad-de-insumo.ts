@@ -1,5 +1,5 @@
 import "server-only";
-import { whereDisponibleEnAlguna } from "@/core/catalogo/public-servidor";
+import { whereDisponibleEnAlguna } from "@/core/catalogo/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**

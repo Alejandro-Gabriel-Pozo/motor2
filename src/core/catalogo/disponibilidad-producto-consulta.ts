@@ -1,7 +1,8 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
-import { resolverDisponibilidad, resolverDisponibilidadPorSucursal } from "./disponibilidad-producto";
-
-type Db = PrismaClient | Prisma.TransactionClient;
+/**
+ * El criterio de «disponible en esta sucursal» como `where` de Prisma (Pureza Fase 4, tramo A): PURO (objetos planos, sin base). Los lectores que consultan la tabla
+ * (`productoDisponibleEn`, `disponibilidadDeProductos`, `disponibilidadEnAlgunaSucursal`, `disponibilidadPorSucursalDeProducto`) viven en `server/lecturas/catalogo/disponibilidad.ts`.
+ * Se devuelven `as const` (sin tipos de Prisma) para que este archivo no arrastre el cliente de base.
+ */
 
 /**
  * Capa de consulta de `disponibilidad-producto.ts` (pura) — separada a propósito en su PROPIO archivo, aunque el plan
@@ -15,52 +16,11 @@ type Db = PrismaClient | Prisma.TransactionClient;
  */
 
 /** El ÚNICO lugar donde se escribe el criterio como `where` de Prisma para "disponible en ESTA sucursal". */
-export function whereDisponibleEn(sucursalId: string): Prisma.ProductoWhereInput {
-  return { disponibilidades: { some: { sucursalId, disponible: true } } };
+export function whereDisponibleEn(sucursalId: string) {
+  return { disponibilidades: { some: { sucursalId, disponible: true } } } as const;
 }
 
 /** El equivalente del `activo: true` global de antes — para las validaciones del catálogo central (nombre único, unidad de un Insumo, etc.), que no son decisiones de una sucursal puntual. */
-export function whereDisponibleEnAlguna(): Prisma.ProductoWhereInput {
-  return { disponibilidades: { some: { disponible: true } } };
-}
-
-export async function productoDisponibleEn(sucursalId: string, productoId: string, db: Db): Promise<boolean> {
-  const fila = await db.disponibilidadProducto.findUnique({ where: { sucursalId_productoId: { sucursalId, productoId } } });
-  return resolverDisponibilidad(fila);
-}
-
-/** Batch — para listados/reportes, sin N+1. Todo id que no tenga fila para `sucursalId` cae en `false`. */
-export async function disponibilidadDeProductos(sucursalId: string, productoIds: readonly string[], db: Db): Promise<Map<string, boolean>> {
-  if (productoIds.length === 0) return new Map();
-  const filas = await db.disponibilidadProducto.findMany({ where: { sucursalId, productoId: { in: [...productoIds] } } });
-  const porProducto = new Map(filas.map((f) => [f.productoId, f.disponible]));
-  return new Map(productoIds.map((id) => [id, porProducto.get(id) === true]));
-}
-
-/**
- * Batch — "¿está disponible en ALGUNA sucursal?" (el equivalente en memoria de `whereDisponibleEnAlguna`), para quien arma un mapa de
- * productos sin una sucursal puntual (reportes de Catálogo Central). Una sola consulta `distinct` sobre las filas disponibles — sin
- * `in: [ids]`, que con un catálogo grande toparía el límite de parámetros de Prisma. Todo id sin ninguna fila disponible cae en `false`.
- */
-export async function disponibilidadEnAlgunaSucursal(productoIds: readonly string[], db: Db): Promise<Map<string, boolean>> {
-  if (productoIds.length === 0) return new Map();
-  const filas = await db.disponibilidadProducto.findMany({ where: { disponible: true }, select: { productoId: true }, distinct: ["productoId"] });
-  const conAlguna = new Set(filas.map((f) => f.productoId));
-  return new Map(productoIds.map((id) => [id, conAlguna.has(id)]));
-}
-
-export interface DisponibilidadEnSucursal {
-  sucursalId: string;
-  sucursalNombre: string;
-  disponible: boolean;
-}
-
-/** Para la ficha de producto: el estado en TODAS las sucursales activas, incluidas las que no tienen fila propia (quedan en `false`). */
-export async function disponibilidadPorSucursalDeProducto(productoId: string, db: Db): Promise<DisponibilidadEnSucursal[]> {
-  const [sucursales, filas] = await Promise.all([
-    db.sucursal.findMany({ where: { activo: true }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
-    db.disponibilidadProducto.findMany({ where: { productoId } }),
-  ]);
-  const porSucursal = resolverDisponibilidadPorSucursal(filas, sucursales.map((s) => s.id));
-  return sucursales.map((s) => ({ sucursalId: s.id, sucursalNombre: s.nombre, disponible: porSucursal.get(s.id) === true }));
+export function whereDisponibleEnAlguna() {
+  return { disponibilidades: { some: { disponible: true } } } as const;
 }
