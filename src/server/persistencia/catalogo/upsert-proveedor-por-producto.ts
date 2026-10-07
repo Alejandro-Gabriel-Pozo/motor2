@@ -18,6 +18,10 @@ import type { Db } from "@/lib/db-tipos";
  * esto reemplaza. El UNIQUE(productoId, proveedorId, unidadCompraId) hace
  * que dos ejecuciones concurrentes sobre la misma clave nunca produzcan
  * dos filas — ver Catalogo.js:3278-3294 para el bug real que esto cierra.
+ *
+ * Desde Pureza Fase 4 (decisión del dueño, 2026-10-06) corre DENTRO de la transacción de la compra (`tx`). Una compra con FECHA ATRASADA no pisa el último precio ni retrocede
+ * `ultimaCompra`: el precio solo se actualiza si la fecha nueva es >= la guardada (ERPNext hace lo mismo: `last_purchase_rate` ignora un documento más viejo) y `ultimaCompra` toma
+ * la más reciente; con la misma fecha gana la carga posterior.
  */
 export async function upsertProveedorPorProducto(db: Db, datos: {
   productoId: string;
@@ -41,11 +45,11 @@ export async function upsertProveedorPorProducto(db: Db, datos: {
        ${datos.precioUnitario}, ${datos.precioPorUnidadStock}, ${fecha}, ${referencia})
     ON CONFLICT ("productoId", "proveedorId", "unidadCompraId")
     DO UPDATE SET
-      "precioUnitario" = CASE WHEN excluded."precioUnitario" > 0
+      "precioUnitario" = CASE WHEN excluded."precioUnitario" > 0 AND excluded."ultimaCompra" >= "ProveedorPorProducto"."ultimaCompra"
         THEN excluded."precioUnitario" ELSE "ProveedorPorProducto"."precioUnitario" END,
-      "precioPorUnidadStock" = CASE WHEN excluded."precioPorUnidadStock" > 0
+      "precioPorUnidadStock" = CASE WHEN excluded."precioPorUnidadStock" > 0 AND excluded."ultimaCompra" >= "ProveedorPorProducto"."ultimaCompra"
         THEN excluded."precioPorUnidadStock" ELSE "ProveedorPorProducto"."precioPorUnidadStock" END,
-      "ultimaCompra" = excluded."ultimaCompra",
+      "ultimaCompra" = GREATEST("ProveedorPorProducto"."ultimaCompra", excluded."ultimaCompra"),
       "referenciaProveedor" = CASE WHEN excluded."referenciaProveedor" IS NOT NULL
         THEN excluded."referenciaProveedor" ELSE "ProveedorPorProducto"."referenciaProveedor" END
   `;

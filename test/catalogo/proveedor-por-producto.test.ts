@@ -58,6 +58,43 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
     expect(Number(fila.precioPorUnidadStock)).toBe(500);
   });
 
+  describe("una compra con fecha atrasada no pisa el último precio (decisión del dueño, 2026-10-06; ERPNext hace lo mismo)", () => {
+    const fila = () =>
+      prisma.proveedorPorProducto.findUniqueOrThrow({ where: { productoId_proveedorId_unidadCompraId: { productoId, proveedorId: proveedorAId, unidadCompraId } } });
+    const comprar = (fechaCompra: string, precio: number) =>
+      upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: precio, precioPorUnidadStock: precio, fechaCompra: new Date(fechaCompra) });
+
+    it("una compra MÁS VIEJA no cambia el precio ni retrocede `ultimaCompra`", async () => {
+      await comprar("2026-09-10", 500);
+      await comprar("2026-08-01", 300); // la factura de hace más de un mes, cargada hoy
+      const f = await fila();
+      expect(Number(f.precioPorUnidadStock)).toBe(500);
+      expect(f.ultimaCompra.toISOString().slice(0, 10)).toBe("2026-09-10");
+    });
+
+    it("una compra MÁS NUEVA sí actualiza el precio y la fecha", async () => {
+      await comprar("2026-09-10", 500);
+      await comprar("2026-09-20", 650);
+      const f = await fila();
+      expect(Number(f.precioPorUnidadStock)).toBe(650);
+      expect(f.ultimaCompra.toISOString().slice(0, 10)).toBe("2026-09-20");
+    });
+
+    it("con la MISMA fecha gana la carga posterior", async () => {
+      await comprar("2026-09-10", 500);
+      await comprar("2026-09-10", 520);
+      expect(Number((await fila()).precioPorUnidadStock)).toBe(520);
+    });
+
+    it("la referencia del proveedor tipeada en una compra vieja sí se guarda si no había una (un valor vacío nunca pisa)", async () => {
+      await comprar("2026-09-10", 500);
+      await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 300, precioPorUnidadStock: 300, fechaCompra: new Date("2026-08-01"), referenciaProveedor: "COD-77" });
+      const f = await fila();
+      expect(f.referenciaProveedor).toBe("COD-77");
+      expect(Number(f.precioPorUnidadStock)).toBe(500);
+    });
+  });
+
   it("la comparativa nunca elige como 'más barato' una oferta en 0", async () => {
     await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 0, precioPorUnidadStock: 0 });
     await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorBId, unidadCompraId, precioUnitario: 500, precioPorUnidadStock: 500 });
