@@ -3,7 +3,7 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/public";
 import type { ComandoCrearSucursal } from "@/core/features/sucursales/sucursal.guard";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { actorEnLaEmpresa, buscarRolAdmin, mensajeSiReactivaAdminSinSerGerente, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
+import { actorEnLaEmpresa, buscarRolAdmin, mensajeSiNoPuedeAsignarRol, mensajeSiReactivaAdminSinSerGerente, reactivaAUnAdmin } from "@/core/permisos/gestion-de-usuarios";
 import { conInvariantesDeGobierno } from "@/core/permisos/invariantes";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { crearSucursal, sembrarDisponibilidadDeSucursalNueva } from "@/server/persistencia/auth/sucursales";
@@ -12,7 +12,7 @@ import { conGobierno } from "../../con-gobierno";
 
 type ResultadoCrearSucursal = ResultadoCaso<
   { sucursalId: string },
-  "NOMBRE_TOMADO" | "SIN_ROL_ADMIN" | "NO_ES_DE_LA_EMPRESA" | "REACTIVA_ADMIN_SIN_SER_GERENTE" | "INVARIANTE_DE_GOBIERNO"
+  "NOMBRE_TOMADO" | "SIN_ROL_ADMIN" | "NO_ES_DE_LA_EMPRESA" | "TECHO_DE_PRIVILEGIO" | "REACTIVA_ADMIN_SIN_SER_GERENTE" | "INVARIANTE_DE_GOBIERNO"
 >;
 
 /**
@@ -31,8 +31,8 @@ type ResultadoCrearSucursal = ResultadoCaso<
  *     del sistema) `productosUniversales` da siempre `[]`: arranca en cero, no en «todos».
  *  3. En la transacción de gobierno (`conGobierno`, serializable con reintento) y midiendo las invariantes antes y después (`conInvariantesDeGobierno`): el rol
  *     admin de la empresa (por su clave), la persona por su email y su cuenta en la empresa —E8 (ADR-024): la sucursal nace con un admin que YA es parte de la
- *     empresa; a alguien nuevo primero se lo invita desde Usuarios—, y si nombrarlo reactivaría a un admin apagado, eso es solo del gerente (mismo criterio que
- *     `usuarios.ts`). Después las escrituras (sucursal, cuenta reactivada, membresía con el rol admin, disponibilidad) con sus tres auditorías.
+ *     empresa; a alguien nuevo primero se lo invita desde Usuarios—, el techo para dar el rol admin (contrato C6, I.4b: `mensajeSiNoPuedeAsignarRol`, SIN el
+ *     techo de gestión sobre el nombrado), y si nombrarlo reactivaría a un admin apagado, eso es solo del gerente (mismo criterio que `usuarios.ts`). Después las escrituras (sucursal, cuenta reactivada, membresía con el rol admin, disponibilidad) con sus tres auditorías.
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. Escribe por `server/persistencia/auth/sucursales.ts` y `server/persistencia/permisos/membresias.ts`.
  *
@@ -84,8 +84,16 @@ export async function crearSucursalConAdminCasoDeUso(
             `"${email}" todavía no forma parte de la empresa. Creá la sucursal con vos o con un administrador que ya esté en la empresa y después invitá a "${email}" desde Usuarios.`
           );
         }
+        // Contrato C6 del RBAC (O.35; I.4b): el techo de privilegio para DAR el rol admin, el mismo que aplican la alta de usuarios y la aceptación de una
+        // invitación (`mensajeSiNoPuedeAsignarRol`). Hoy no rechaza a nadie (`alta_sucursal` tiene piso administrador y solo el rol `admin` lo alcanza), pero
+        // deja de depender de ese supuesto: si un rol que no es admin llegara a tener `alta_sucursal`, no podría crearse una sucursal y nombrar a alguien
+        // (ni a sí mismo) administrador. A propósito NO se aplica el techo de GESTIÓN sobre el nombrado (`mensajeSiNoPuedeGestionar`): un administrador tiene
+        // que poder nombrar al gerente primer admin de una sucursal nueva (lo fija `techo-en-el-alta-de-sucursal.test.ts`).
+        const quienActua = actorEnLaEmpresa(actor);
+        const rechazoTecho = mensajeSiNoPuedeAsignarRol(quienActua, rolAdmin);
+        if (rechazoTecho) return fracaso("TECHO_DE_PRIVILEGIO", rechazoTecho);
         const reactivaAdmin = await reactivaAUnAdmin(tx, actor.empresaId, usuarioPrevio.id, { cuentaDeEmpresa: pertenenciaPrevia });
-        const rechazoReactivar = mensajeSiReactivaAdminSinSerGerente(actorEnLaEmpresa(actor), reactivaAdmin);
+        const rechazoReactivar = mensajeSiReactivaAdminSinSerGerente(quienActua, reactivaAdmin);
         if (rechazoReactivar) return fracaso("REACTIVA_ADMIN_SIN_SER_GERENTE", rechazoReactivar);
 
         const sucursal = await crearSucursal(tx, { nombre, empresaId: actor.empresaId });
