@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/server/acceso/gate";
-import { calcularCostosYMargenes, calcularImpactoInsumos } from "@/core/reportes/public-servidor";
+import { calcularCostosYMargenes, calcularImpactoInsumos } from "@/server/lecturas/reportes/costos";
 import { cargarObjetivosDeMargen } from "@/server/consultas/reportes/margen-objetivo-consulta";
 import { TablaCostosProductos, TablaImpactoInsumos } from "./tabla-costos";
 

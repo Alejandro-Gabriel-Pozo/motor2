@@ -318,7 +318,7 @@ describe("anularCompra", () => {
     });
 
     it("el costo de reposición vuelve a valer el de la compra que quedó vigente, no el de la anulada", async () => {
-      const { obtenerCostoActualPorMP } = await import("../../src/core/reportes/comun");
+      const { obtenerCostoActualPorMP } = await import("../../src/server/lecturas/reportes/comun");
       await comprar({ cantidad: 10, precioTotal: 100, nroFactura: "R-1" }); // $10/kg
       const cara = await comprar({ cantidad: 10, precioTotal: 1000, nroFactura: "R-2" }); // $100/kg, más reciente
       expect((await obtenerCostoActualPorMP(sucursalId, prisma)).get(harinaId)?.precioPorUnidadStock).toBe(100);

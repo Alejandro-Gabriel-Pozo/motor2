@@ -1,5 +1,5 @@
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
-import { construirIndiceRecetas, construirMapaProductos } from "@/core/reportes/public-servidor";
+import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
 import { reconstruirCostosDeVenta } from "@/server/consultas/reportes/costo-historico";
 import { calcularMargenRealDelPeriodo } from "@/server/consultas/reportes/margen-real";

@@ -1,4 +1,4 @@
-import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP } from "@/core/reportes/public-servidor";
+import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP } from "@/server/lecturas/reportes/comun";
 import { redondearCantidad, bandaDeRuidoDeLote, calcularCantidadEstimadaNeta, calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, compararPorImpacto, impactoDelDesvio, motivoSinEstimacion as calcularMotivoSinEstimacion, motivoSinEstimacionConteo as calcularMotivoSinEstimacionConteo, rotularLineaDeReceta, anclasValidasEnVentana, clavePar, consumoRealDelTramo, elegirAnclas, finDelDiaUtc, limitesDelTramo, type CostoMP, type Anclas, type CandidatoAncla, type MetodoRendimiento, type MovimientoParaConciliar } from "@/core/reportes/public";
 import { ZONA_UTC, inicioDelDiaDe, rangoDeDias } from "@/core/tiempo/zona-horaria";
 import type { Db } from "@/lib/db-tipos";

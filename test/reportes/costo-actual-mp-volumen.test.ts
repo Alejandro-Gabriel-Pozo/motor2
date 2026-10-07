@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, vaciarOperacionesPorVolumen, analizarDespuesDeCargaMasiva, prisma } from "../setup/test-db";
-import { obtenerCostoActualPorMP } from "../../src/core/reportes/comun";
+import { obtenerCostoActualPorMP } from "../../src/server/lecturas/reportes/comun";
 
 /**
  * El costo de reposición trae 1 fila por producto (la compra más reciente), no una por compra: con ~55k compras (3 años de una

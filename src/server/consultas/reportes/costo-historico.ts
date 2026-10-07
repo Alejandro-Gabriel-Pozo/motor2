@@ -1,8 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { type IndiceRecetas, type InfoProductoReporte } from "@/core/reportes/public";
-import { resolverCostoRecetaCompleta } from "@/core/reportes/public-servidor";
-import { asegurarIndiceRecetasDeLaSucursal } from "@/core/reportes/public-servidor";
-import { construirIndiceRecetas, construirMapaProductos } from "@/core/reportes/public-servidor";
+import { resolverCostoRecetaCompleta } from "@/core/reportes/public";
+import { asegurarIndiceRecetasDeLaSucursal } from "@/core/reportes/public";
+import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
 import { diaUtc, costosDeInsumosPorDia, claveCostoHistorico } from "@/core/reportes/public";
 

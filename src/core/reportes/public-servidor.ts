@@ -16,15 +16,6 @@ export {
   pvSinCategoriaDe,
 } from "./periodo";
 export type { FilaCategoriaVenta } from "./periodo";
-export { calcularCostosYMargenes } from "./costos";
 export { SIN_PROVEEDOR } from "./compras-registradas";
-export { calcularImpactoInsumos } from "./costos";
 export { leerFiltroTickets } from "./tickets-emitidos";
 export { serializarFiltroTickets } from "./tickets-emitidos";
-export { construirMapaProductos } from "./comun";
-export { construirIndiceRecetas } from "./comun";
-export { obtenerCostoActualPorMP } from "./comun";
-export { cargarClasificacionNoComestibles } from "./comun";
-export { calcularImpactoRecetasPorPeriodo } from "./costos";
-export { asegurarIndiceRecetasDeLaSucursal } from "./comun";
-export { resolverCostoRecetaCompleta } from "./costos";

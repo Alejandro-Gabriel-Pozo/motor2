@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
-import type { Db } from "../../src/core/reportes/comun";
+import type { Db } from "../../src/lib/db-tipos";
 
 /**
  * Una corrida de `obtenerReportePorPeriodo` toca la tabla de versiones de receta UNA sola vez, con CUALQUIER operación.

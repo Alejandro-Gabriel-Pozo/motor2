@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { calcularCostosYMargenes } from "../../src/core/reportes/costos";
+import { calcularCostosYMargenes } from "../../src/server/lecturas/reportes/costos";
 import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "../../src/server/consultas/reportes/rendimiento-recetas";
 import { generarReporteDiferenciasAjustes } from "../../src/server/consultas/reportes/diferencias-ajustes";
 import { claveCostoHistorico } from "../../src/core/reportes/costo-historico";

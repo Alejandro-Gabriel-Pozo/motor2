@@ -1,5 +1,6 @@
 import { esSignoFijo } from "@/core/movimientos/public";
-import { cargarClasificacionNoComestibles, construirIndiceRecetas, construirMapaProductos, calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo } from "@/core/reportes/public-servidor";
+import { cargarClasificacionNoComestibles, construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
+import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo } from "@/server/lecturas/reportes/costos";
 import type { Db } from "@/lib/db-tipos";
 import { hayObjetivosCargados, resumirFueraDeObjetivo, rangoUtc, generarDigestAlertas, calcularComprasDelPeriodo, calcularGastoPorInsumoDelPeriodo, calcularVentasDelPeriodo, agruparVentasPorCategoria, pvSinCategoriaDe, type FiltrosPeriodo, type ItemPeriodo } from "@/core/reportes/public";
 import { cargarObjetivosDeMargen } from "@/server/consultas/reportes/margen-objetivo-consulta";

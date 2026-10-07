@@ -6,7 +6,8 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { construirIndiceRecetas, type IndiceRecetas } from "../../src/core/reportes/comun";
+import { type IndiceRecetas } from "../../src/core/reportes/comun";
+import { construirIndiceRecetas } from "../../src/server/lecturas/reportes/comun";
 import { obtenerIngredientesRecetaVigente } from "../../src/server/consultas/reportes/historial-producto";
 import { compararRendimientosPorSucursal } from "../../src/server/consultas/reportes/rendimiento-por-sucursal";
 import { calcularRendimientoRecetasSimples } from "../../src/server/consultas/reportes/rendimiento-recetas";

@@ -34,6 +34,7 @@ const CARPETAS_SIN_CONSULTAS: readonly string[] = [
   "src/core/navegacion",
   "src/core/precios",
   "src/core/plataforma",
+  "src/core/reportes",
   "src/core/pos",
   "src/core/seguridad",
   "src/core/stock",
@@ -44,12 +45,7 @@ const CARPETAS_SIN_CONSULTAS: readonly string[] = [
  * Carpetas que YA no consultan salvo ciertos archivos que se mudan en una fase posterior (cada uno con su motivo). Se verifica en las DOS direcciones: fuera de la
  * lista, ni un hallazgo; y cada archivo de la lista tiene que seguir teniéndolos (si ya no, se saca). La lista solo se achica.
  */
-const CARPETAS_CON_PENDIENTES: Record<string, Record<string, string>> = {
-  "src/core/reportes": {
-    "src/core/reportes/comun.ts": "Fase 4: los cargadores de costos y catálogo los comparte registrar-venta (el costo congelado del Kardex, decisión D1 del dueño).",
-    "src/core/reportes/costos.ts": "Fase 4: `calcularCostosYMargenes` con base lo usa registrar-venta dentro de la transacción de la venta (decisión D1 del dueño).",
-  },
-};
+const CARPETAS_CON_PENDIENTES: Record<string, Record<string, string>> = {};
 
 const TIPOS_DE_BASE = new Set(["Db", "PrismaClient", "TransactionClient", "Transaccion"]);
 
@@ -108,6 +104,10 @@ describe("core-sin-consultas: las carpetas de la lista no consultan la base", ()
 });
 
 describe("core-sin-consultas: carpetas con archivos pendientes (la lista solo se achica)", () => {
+  it("las carpetas con pendientes y las limpias no se pisan (una carpeta no está en las dos listas)", () => {
+    expect(Object.keys(CARPETAS_CON_PENDIENTES).filter((c) => CARPETAS_SIN_CONSULTAS.includes(c))).toEqual([]);
+  });
+
   it.each(Object.keys(CARPETAS_CON_PENDIENTES))("%s: solo los archivos de la lista consultan, y todos los de la lista todavía lo hacen", (carpeta) => {
     const pendientes = CARPETAS_CON_PENDIENTES[carpeta]!;
     const hallazgos = hallazgosDeCarpeta(carpeta);

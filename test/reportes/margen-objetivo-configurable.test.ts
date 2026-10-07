@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { guardarMargenObjetivo } from "../../src/server/actions/reportes/margen-objetivo";
-import { calcularCostosYMargenes } from "../../src/core/reportes/costos";
+import { calcularCostosYMargenes } from "../../src/server/lecturas/reportes/costos";
 import { cargarObjetivosDeMargen } from "../../src/server/consultas/reportes/margen-objetivo-consulta";
 import { FOOD_COST_OBJETIVO_PCT } from "../../src/core/reportes/margen-objetivo";
 

@@ -1,5 +1,5 @@
 import { redondearMoneda } from "@/core/moneda";
-import { obtenerCostoActualPorMP } from "@/core/reportes/public-servidor";
+import { obtenerCostoActualPorMP } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad, resolverAccionSinCostoReposicion } from "@/core/reportes/public";
 import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";

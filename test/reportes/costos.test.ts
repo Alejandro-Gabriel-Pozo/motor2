@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { calcularCostosYMargenes, calcularImpactoInsumos, calcularImpactoRecetasPorPeriodo } from "../../src/core/reportes/costos";
+import { calcularCostosYMargenes, calcularImpactoInsumos, calcularImpactoRecetasPorPeriodo } from "../../src/server/lecturas/reportes/costos";
 
 describe("calcularCostosYMargenes", () => {
   let sucursalId: string;

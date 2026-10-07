@@ -16,7 +16,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { redondearMoneda } from "../../src/core/movimientos/transiciones";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { calcularCostosYMargenes } from "../../src/core/reportes/costos";
+import { calcularCostosYMargenes } from "../../src/server/lecturas/reportes/costos";
 import { calcularValuacionInventario } from "../../src/server/consultas/reportes/valuacion";
 import { generarReporteConsignacion } from "../../src/server/consultas/reportes/consignacion";
 

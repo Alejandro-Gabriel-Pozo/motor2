@@ -1,5 +1,5 @@
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/public";
-import { construirIndiceRecetas, construirMapaProductos } from "@/core/reportes/public-servidor";
+import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad } from "@/core/reportes/public";
 import { resolverProximoConteo } from "@/core/stock/public";

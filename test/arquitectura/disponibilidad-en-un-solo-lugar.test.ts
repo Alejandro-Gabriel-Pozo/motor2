@@ -67,7 +67,7 @@ describe("disponibilidad de producto: un solo lugar escribe el filtro { disponib
   });
 
   it("construirMapaProductos resuelve `disponible` sin sucursal con disponibilidadEnAlgunaSucursal, no con un `true` fijo (R2, 2026-10-01)", () => {
-    const fuente = readFileSync(join(RAIZ, "core/reportes/comun.ts"), "utf8").replace(/\r\n/g, "\n");
+    const fuente = readFileSync(join(RAIZ, "server/lecturas/reportes/comun.ts"), "utf8").replace(/\r\n/g, "\n");
     expect(fuente).toMatch(/disponibilidadEnAlgunaSucursal\(/);
     const fijas = fuente.split("\n").filter((l) => !esComentario(l) && /\bdisponible:\s*.*:\s*true\b/.test(l));
     expect(fijas, "`disponible` volvió a tener una rama con `true` fijo: sin sucursal debe ser «en alguna sucursal»").toEqual([]);

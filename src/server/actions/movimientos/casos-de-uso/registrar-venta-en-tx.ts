@@ -10,7 +10,7 @@ import { seccionesConStock } from "@/server/lecturas/movimientos/saldos";
 import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, faltantesDe, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
 import { cargarDatosDeOrigen, prepararOrigen } from "@/server/persistencia/movimientos/cargar-origen-de-venta";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
-import { calcularCostosYMargenes } from "@/core/reportes/public-servidor";
+import { calcularCostosYMargenes } from "@/server/lecturas/reportes/costos";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";

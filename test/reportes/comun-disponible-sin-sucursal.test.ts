@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, prisma } from "../setup/test-db";
-import { construirMapaProductos } from "../../src/core/reportes/comun";
+import { construirMapaProductos } from "../../src/server/lecturas/reportes/comun";
 import { disponibilidadEnAlgunaSucursal } from "../../src/core/catalogo/public-servidor";
 
 /**
