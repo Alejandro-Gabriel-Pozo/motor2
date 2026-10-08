@@ -2,18 +2,12 @@
 
 import type { TipoProducto } from "@prisma/client";
 import { azarDelProceso } from "@/lib/azar";
-import type { Db } from "@/lib/db-tipos";
-import { texto, validarTextoCatalogo } from "@/core/texto";
+import { texto } from "@/core/texto";
 import { esNumeroEstricto } from "@/core/numero";
-import { validarImporte } from "@/core/datos/importe";
-import { validarCantidad } from "@/core/datos/cantidad";
-import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
-import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
-import { whereDisponibleEn, whereDisponibleEnAlguna } from "@/core/catalogo/public";
-import { validarUnidadInsumo } from "@/server/lecturas/catalogo/unidad-de-insumo";
-import { validarPasoVenta, type FiltroSelectorProducto } from "@/core/catalogo/public";
-import { tieneStockReal } from "@/core/movimientos/public";
+import { datosParaGuardar, validarDatosDeProducto } from "@/server/lecturas/catalogo/datos-de-producto";
+import { whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
+import { guardComandoDarDeAltaProductoRapido } from "@/core/features/catalogo/productos.guard";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { ofrecerSincronizarPrecio } from "@/core/carta/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
@@ -26,6 +20,8 @@ import { actualizarActivaPresentacionCasoDeUso } from "./casos-de-uso/actualizar
 import { actualizarDisponibilidadProductoCasoDeUso } from "./casos-de-uso/actualizar-disponibilidad-producto";
 import { agregarPresentacionAlternativaCasoDeUso } from "./casos-de-uso/agregar-presentacion-alternativa";
 import { asignarInsumoAProductoCasoDeUso } from "./casos-de-uso/asignar-insumo-a-producto";
+import { darDeAltaProductoCasoDeUso } from "./casos-de-uso/dar-de-alta-producto";
+import { darDeAltaProductoRapidoCasoDeUso } from "./casos-de-uso/dar-de-alta-producto-rapido";
 
 export interface ProductoOpcion {
   id: string;
@@ -246,88 +242,6 @@ export interface DatosProducto {
   activoEnTodasLasSucursales?: boolean;
 }
 
-/** Los números del producto ya validados Y NORMALIZADOS: lo que se guarda es esto, nunca el valor crudo del POST (que pudo ser «1.234,5», « 5 » o null). */
-interface NumerosValidados {
-  factorConversion: number;
-  precioVenta: number;
-  precioConsignacion: number;
-  pasoVenta: number | null;
-}
-
-async function validarComun(db: Db, datos: DatosProducto, productoIdExcluir?: string): Promise<{ error: string } | { numeros: NumerosValidados }> {
-  const nombre = texto(datos.nombre);
-  if (!nombre) return { error: "El nombre no puede estar vacío." };
-  const invalido = validarTextoCatalogo(nombre, "El nombre");
-  if (invalido) return { error: invalido };
-  const observaciones = validarTextoLibre(datos.observaciones, "Las observaciones", LARGO_MAXIMO_NOTAS);
-  if (!observaciones.ok) return { error: observaciones.mensaje };
-  if (!datos.unidadStockId) return { error: "La unidad de stock es obligatoria." };
-  // Unidad de stock, una sola vez: `factorConversion` son "unidades de stock por unidad de compra" (Catalogo.js:1083/1095,
-  // prisma/schema.prisma) — sus decimales son los de ESA unidad, igual que `pasoVenta` (R3, validarPasoVenta) más abajo.
-  const unidadStock = await db.unidad.findUnique({ where: { id: datos.unidadStockId }, select: { nombre: true, decimales: true } });
-  if (!unidadStock) return { error: "La unidad de stock es obligatoria." };
-
-  const factorConversion = validarCantidad(datos.factorConversion, unidadStock, { etiqueta: "El factor de conversión", obligatorio: true });
-  if (!factorConversion.ok) return { error: factorConversion.mensaje };
-
-  const precioVenta = validarImporte(datos.precioVenta, { etiqueta: "El precio de venta" });
-  if (!precioVenta.ok) return { error: precioVenta.mensaje };
-
-  let precioConsignacion: number | null;
-  if (datos.esConsignacion) {
-    if (!datos.proveedorConsignacionId) return { error: "Falta el proveedor de consignación." };
-    const r = validarImporte(datos.precioConsignacion, { etiqueta: "El precio de consignación", obligatorio: true, permitirCero: false });
-    if (!r.ok) return { error: r.mensaje };
-    precioConsignacion = r.valor;
-  } else {
-    // Sin consignación el precio no se usa, pero igual se guarda: tiene que ser un importe válido (antes pasaba crudo, hasta un negativo).
-    const r = validarImporte(datos.precioConsignacion, { etiqueta: "El precio de consignación" });
-    if (!r.ok) return { error: r.mensaje };
-    precioConsignacion = r.valor;
-  }
-
-  let pasoVenta: number | null = null;
-  if (datos.pasoVenta !== undefined && datos.pasoVenta !== null) {
-    if (datos.tipo !== "PV") return { error: "El paso de venta solo aplica a productos de venta (PV)." };
-    const r = validarPasoVenta(datos.pasoVenta, { decimalesUnidad: unidadStock.decimales, tieneStockReal: tieneStockReal("PV", datos.seProduce ?? false) });
-    if (!r.ok) return { error: r.mensaje };
-    pasoVenta = r.paso;
-  }
-
-  const dup = await db.producto.findFirst({
-    where: {
-      ...whereDisponibleEnAlguna(),
-      nombre: { equals: nombre, mode: "insensitive" },
-      ...(productoIdExcluir ? { id: { not: productoIdExcluir } } : {}),
-    },
-  });
-  if (dup) return { error: `Ya existe un producto disponible llamado "${nombre}".` };
-
-  const errorInsumo = await validarUnidadInsumo(datos.insumoId, datos.unidadStockId, productoIdExcluir, db);
-  if (errorInsumo) return { error: errorInsumo };
-  return { numeros: { factorConversion: factorConversion.valor!, precioVenta: precioVenta.valor ?? 0, precioConsignacion: precioConsignacion ?? 0, pasoVenta } };
-}
-
-function datosParaGuardar(datos: DatosProducto, numeros: NumerosValidados) {
-  return {
-    nombre: texto(datos.nombre),
-    categoriaId: datos.categoriaId || null,
-    unidadCompraId: datos.unidadCompraId || null,
-    unidadStockId: datos.unidadStockId,
-    factorConversion: numeros.factorConversion,
-    insumoId: datos.insumoId || null,
-    precioVenta: numeros.precioVenta,
-    // Defensivo (validarComun ya lo rechaza para MP): un paso de venta nunca se guarda fuera de un PV.
-    pasoVenta: datos.tipo === "PV" ? numeros.pasoVenta : null,
-    seProduce: datos.seProduce ?? false,
-    esConsignacion: datos.esConsignacion ?? false,
-    proveedorConsignacionId: datos.proveedorConsignacionId || null,
-    precioConsignacion: numeros.precioConsignacion,
-    // Sin el campo, Prisma no lo toca (strictUndefinedChecks no admite `undefined`).
-    ...(datos.observaciones !== undefined && { observaciones: datos.observaciones }),
-  };
-}
-
 /**
  * Alta rápida inline de una MP nueva, sin salir del wizard de Compra por
  * proveedor (docs/plan-migracion.md §4 — refinamiento de UX, "el panel
@@ -337,62 +251,34 @@ function datosParaGuardar(datos: DatosProducto, numeros: NumerosValidados) {
  * completar después en el catálogo si hace falta, no bloquean la compra
  * de HOY. `factorConversion: 1` (compra y stock en la misma unidad),
  * mismo default que usa el form completo cuando no se toca ese campo.
+ *
+ * Desde el Hito 4 (H4C-12): permiso (`conPermisoDeEmpresa("alta_producto")`) → formato (`guardComandoDarDeAltaProductoRapido`,
+ * core/features/catalogo/productos.guard.ts, DENTRO del envoltorio) → caso de uso (`casos-de-uso/dar-de-alta-producto-rapido.ts`: el nombre libre, el código
+ * autogenerado con reintento y la disponibilidad), con la fuente de azar del proceso (`azarDelProceso`: el caso de uso no la lee por su cuenta) →
+ * `aResultadoAccion`, y si salió bien el id y el nombre del producto (`okConId`).
  */
 export async function darDeAltaProductoRapido(nombre: string, unidadStockId: string): Promise<ResultadoConId> {
   return conPermisoDeEmpresa<ResultadoConId>("alta_producto", async (ctx) => {
-    const n = texto(nombre);
-    if (!n) return error("El nombre no puede estar vacío.");
-    const invalido = validarTextoCatalogo(n, "El nombre");
-    if (invalido) return error(invalido);
-    if (!unidadStockId) return error("La unidad de stock es obligatoria.");
-
-    const dup = await ctx.db.producto.findFirst({ where: { ...whereDisponibleEnAlguna(), nombre: { equals: n, mode: "insensitive" } } });
-    if (dup) return error(`Ya existe un producto disponible llamado "${n}".`);
-
-    try {
-      const producto = await crearConCodigoAutogenerado("MP", undefined, (codigo) =>
-        ctx.db.producto.create({ data: { codigo, tipo: "MP", nombre: n, unidadStockId, factorConversion: 1 } })
-      , azarDelProceso);
-      // Sin formulario donde poner el tilde de §4.1 — sigue su mismo default: activo en todas las sucursales que existen hoy.
-      const sucursalIds = (await ctx.db.sucursal.findMany({ select: { id: true } })).map((s) => s.id);
-      await ctx.db.disponibilidadProducto.createMany({ data: sucursalIds.map((sucursalId) => ({ sucursalId, productoId: producto.id, disponible: true })) });
-      return okConId(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, producto.id, producto.nombre);
-    } catch (e) {
-      if (esErrorDeUnicidad(e)) return error("Ya existe un producto con ese código.");
-      throw e;
-    }
+    const comando = guardComandoDarDeAltaProductoRapido({ nombre, unidadStockId });
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await darDeAltaProductoRapidoCasoDeUso(ctx, comando.valor, azarDelProceso);
+    const base = aResultadoAccion(r);
+    return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
 }
 
 /**
  * Devuelve también el id del producto creado: al guardar, la pantalla lleva a su ficha.
  *
- * El `createMany` de disponibilidad va DESPUÉS de crear el producto, fuera de una transacción interactiva con él a propósito
- * (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §4.2): `crearConCodigoAutogenerado` reintenta hasta 5 veces atrapando el
- * `P2002` del INSERT, y dentro de una transacción interactiva de Postgres el primer INSERT fallido aborta la transacción
- * entera, así que los reintentos fallarían todos. Si el `createMany` fallara después de crear el producto, éste queda sin
- * ninguna fila de disponibilidad ⇒ no disponible en ninguna sucursal ⇒ invisible pero inofensivo (nunca a medias activo en
- * algunas sucursales sin querer), y se puede arreglar desde `/catalogo/productos`, donde aparece con "0 de N sucursales".
+ * Desde el Hito 4 (H4C-12): permiso (`conPermisoDeEmpresa("alta_producto")`) → caso de uso (`casos-de-uso/dar-de-alta-producto.ts`: la validación de los
+ * datos, el código con reintento —SIN transacción a propósito, ver su docstring— y DESPUÉS la disponibilidad según el tilde), con la fuente de azar del proceso →
+ * `aResultadoAccion`, y si salió bien el id y el nombre (`okConId`). Sin guard (`SIN_GUARD`: la validación lee la unidad de stock a mitad de camino).
  */
 export async function darDeAltaProducto(datos: DatosProducto): Promise<ResultadoConId> {
   return conPermisoDeEmpresa("alta_producto", async (ctx) => {
-    const validado = await validarComun(ctx.db, datos);
-    if ("error" in validado) return error(validado.error);
-
-    try {
-      const producto = await crearConCodigoAutogenerado(datos.tipo, datos.codigo, (codigo) =>
-        ctx.db.producto.create({ data: { codigo, tipo: datos.tipo, ...datosParaGuardar(datos, validado.numeros) } })
-      , azarDelProceso);
-      const sucursalIds =
-        datos.activoEnTodasLasSucursales !== false ? (await ctx.db.sucursal.findMany({ select: { id: true } })).map((s) => s.id) : [ctx.sucursalId];
-      await ctx.db.disponibilidadProducto.createMany({
-        data: sucursalIds.map((sucursalId) => ({ sucursalId, productoId: producto.id, disponible: true })),
-      });
-      return okConId(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, producto.id, producto.nombre);
-    } catch (e) {
-      if (esErrorDeUnicidad(e)) return error("Ya existe un producto con ese código.");
-      throw e;
-    }
+    const r = await darDeAltaProductoCasoDeUso(ctx, datos, azarDelProceso);
+    const base = aResultadoAccion(r);
+    return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
 }
 
@@ -419,7 +305,7 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
       return error(`El tipo no se puede cambiar — este producto ya es "${existente.tipo}". Dado de baja y creá uno nuevo si necesitás el otro tipo.`);
     }
 
-    const validado = await validarComun(ctx.db, datos, productoId);
+    const validado = await validarDatosDeProducto(ctx.db, datos, productoId);
     if ("error" in validado) return error(validado.error);
 
     const nuevos = datosParaGuardar(datos, validado.numeros);

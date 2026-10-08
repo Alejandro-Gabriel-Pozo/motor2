@@ -6,6 +6,50 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
  * criterio que `core/features/mesas/mesas.schema.ts`.
  */
 
+/**
+ * Los datos de un producto tal como llegan del formulario de alta o edición: los MISMOS campos que `DatosProducto` de la Server Action
+ * (`src/server/actions/catalogo/productos.ts`, que es la que documenta cada uno), escritos acá porque el núcleo nace sin tipos de Prisma (`pureza-del-nucleo`;
+ * mismo criterio que `EntradaPromoCarta` de `core/features/carta/promos.guard.ts`). `tipo` son los valores del enum `TipoProducto` de prisma/schema.prisma. SIN
+ * validar: los valida `validarDatosDeProducto` (server/lecturas/catalogo/datos-de-producto.ts), que lee la unidad de stock a mitad de camino.
+ */
+export interface EntradaProducto {
+  codigo?: string;
+  nombre: string;
+  tipo: "MP" | "PV";
+  categoriaId?: string | null;
+  unidadCompraId?: string | null;
+  unidadStockId: string;
+  factorConversion: number;
+  observaciones?: string;
+  insumoId?: string | null;
+  precioVenta?: number;
+  pasoVenta?: number | null;
+  seProduce?: boolean;
+  esConsignacion?: boolean;
+  proveedorConsignacionId?: string | null;
+  precioConsignacion?: number;
+  activoEnTodasLasSucursales?: boolean;
+}
+
+/** Comando «alta rápida de una MP desde el wizard de compra»: el nombre YA recortado y validado y la unidad de stock presente (`guardComandoDarDeAltaProductoRapido`). */
+export interface ComandoDarDeAltaProductoRapido {
+  nombre: string;
+  unidadStockId: string;
+}
+
+/** El id y el nombre del producto creado, para el `ResultadoConId` de la Server Action (la pantalla lleva a su ficha; el wizard lo pone en la fila). */
+export interface DatosProductoCreado {
+  id: string;
+  nombre: string;
+}
+
+/**
+ *  - `DATOS_INVALIDOS`: algún dato del formulario no es válido (`validarDatosDeProducto`; solo el alta completa);
+ *  - `YA_EXISTE`: ya hay un producto DISPONIBLE (en alguna sucursal) con ese nombre;
+ *  - `CODIGO_REPETIDO`: el código (manual, o el autogenerado agotados los reintentos) ya es de otro producto.
+ */
+export type ResultadoDarDeAltaProducto = ResultadoCaso<DatosProductoCreado, "DATOS_INVALIDOS" | "YA_EXISTE" | "CODIGO_REPETIDO">;
+
 /** Comando «asignar un insumo a una materia prima existente» (la mitad retroactiva del asistente de hermanar): los dos ids, sin validar (sin guard). */
 export interface ComandoAsignarInsumoAProducto {
   productoId: string;

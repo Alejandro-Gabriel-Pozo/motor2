@@ -88,6 +88,8 @@ const SIN_GUARD: Record<string, string> = {
     "Activar o desactivar una presentación (Hito 4, H4C-11): solo recibe un id y un booleano, que nunca se validaron en la acción (un id roto hace lanzar a Prisma: hallazgo conocido, migrado tal cual); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/catalogo/productos.ts#actualizarDisponibilidadProducto":
     "Disponibilidad en la sucursal (Hito 4, H4C-11): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró el producto.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/catalogo/productos.ts#darDeAltaProducto":
+    "Alta completa de un producto (Hito 4, H4C-12): la validación de los datos (validarDatosDeProducto, server/lecturas/catalogo/datos-de-producto.ts) lee la unidad de stock a mitad de camino (sus decimales validan el factor y el paso de venta) y un nombre repetido después; un guard previo solo podría adelantar una parte y cambiaría el orden de los mensajes.",
   "src/server/actions/catalogo/insumos.ts#actualizarActivoGrupo":
     "Activar o desactivar un grupo de insumos (Hito 4, H4C-9): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
 };

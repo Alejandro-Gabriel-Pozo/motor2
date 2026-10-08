@@ -59,10 +59,12 @@ const COLUMNAS_QUE_NO_SON_DINERO: Record<string, string> = {
 const FUNCIONES_EXCEPTUADAS: Record<string, string> = {
   "plataforma/src/servidor/sembrar-empresa.ts|sembrarEmpresa":
     "Siembra de una empresa NUEVA (la consola de plataforma): crea sus unidades de fábrica con los decimales de la semilla. No hay un valor anterior que se pierda ni cantidades que ya dependan de ellos (la empresa está en alta, sin movimientos); cada cambio posterior de los decimales de una unidad lo audita `actualizarDecimalesUnidad`. La huella del gobierno (`test/auth/caracterizacion/huella-de-gobierno`) fija lo que siembra.",
-  "src/server/actions/catalogo/productos.ts|darDeAltaProducto":
-    "Alta de un producto: no hay valor anterior que se pierda, y se crea SIN transacción a propósito (reintenta el código ante `P2002`, ver su docstring), así que la auditoría no puede ir atómica con la creación. Cada cambio posterior del precio lo audita `actualizarProducto`.",
-  "src/server/actions/catalogo/productos.ts|darDeAltaProductoRapido":
-    "Alta rápida de una MP con factor 1 (sin precio): misma razón que `darDeAltaProducto` (creación sin transacción por el reintento del código).",
+  // Hito 4, H4C-12: las dos excepciones de las altas (`actions/catalogo/productos.ts|darDeAltaProducto` y `|darDeAltaProductoRapido`) pasan a las dos escrituras de
+  // la persistencia que las dos altas comparten (las llaman solo `casos-de-uso/dar-de-alta-producto.ts` y `dar-de-alta-producto-rapido.ts`).
+  "src/server/persistencia/catalogo/productos.ts|crearProductoNuevo":
+    "Alta de un producto (completa, o rápida de una MP con factor 1 y sin precio): no hay valor anterior que se pierda, y se crea SIN transacción a propósito (reintenta el código ante `P2002`, ver el docstring de `dar-de-alta-producto.ts`), así que la auditoría no puede ir atómica con la creación. Cada cambio posterior del precio lo audita `actualizarProducto`.",
+  "src/server/persistencia/catalogo/productos.ts|sembrarDisponibilidadDeProductoNuevo":
+    "La disponibilidad inicial de un producto recién dado de alta (una fila por sucursal): misma razón que `crearProductoNuevo` (va después de la creación, sin transacción por el reintento del código), y no hay valor anterior. Cada cambio posterior lo audita `actualizarDisponibilidadProducto`.",
   // Hito 4, H4C-8: la escritura del alta pasó de `actions/catalogo/unidades.ts|crearUnidad` a la persistencia (la llama solo `casos-de-uso/crear-unidad.ts`).
   "src/server/persistencia/catalogo/unidades.ts|crearUnidadNueva":
     "Alta de una unidad nueva: todavía nada la usa, así que no hay un valor anterior ni cantidades cuyo significado cambie. Cada cambio posterior de sus decimales lo audita `actualizarDecimalesUnidad`.",
