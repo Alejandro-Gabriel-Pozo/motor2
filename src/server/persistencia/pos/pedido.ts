@@ -16,3 +16,12 @@ export async function borrarItemSinEnviar(tx: Prisma.TransactionClient, args: { 
   const borrados = await tx.cuentaItem.deleteMany({ where: { id: args.cuentaItemId, numeroEnvio: null, anulaAItemId: null } });
   return borrados.count;
 }
+
+/**
+ * Borra una promo que TODAVÍA NO SALIÓ a cocina, entera: primero TODOS sus `CuentaItem` componentes y después la `PromoCuenta` (en ese orden: los
+ * componentes la referencian y la relación no borra en cascada). Que ningún componente haya salido lo chequea antes el caso de uso, en la misma transacción.
+ */
+export async function borrarPromoSinEnviar(tx: Prisma.TransactionClient, args: { promoCuentaId: string }): Promise<void> {
+  await tx.cuentaItem.deleteMany({ where: { promoCuentaId: args.promoCuentaId } });
+  await tx.promoCuenta.delete({ where: { id: args.promoCuentaId } });
+}

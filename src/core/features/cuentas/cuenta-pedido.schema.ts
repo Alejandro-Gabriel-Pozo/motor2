@@ -23,3 +23,16 @@ export interface ComandoQuitarItemSinEnviar {
  *  - `YA_ENVIADO`: el borrado condicional no borró nada (otro mozo lo envió un instante antes, o es una fila espejo): se anula con motivo.
  */
 export type ResultadoQuitarItemSinEnviar = ResultadoCaso<null, "NO_ENCONTRADO" | "COMPONENTE_DE_PROMO" | "CUENTA_NO_ABIERTA" | "YA_ENVIADO">;
+
+/** Comando «quitar una promo entera que todavía no salió a cocina»: lo que recibe `quitarPromoSinEnviarCasoDeUso`. */
+export interface ComandoQuitarPromoSinEnviar {
+  promoCuentaId: string;
+}
+
+/**
+ * Solo lo que produce el caso de uso (un `promoCuentaId` que no es un texto lo rechaza antes el guard), en este orden:
+ *  - `NO_ENCONTRADA`: no hay promo con ese id en una mesa de esta sucursal;
+ *  - `CUENTA_CERRADA`: la cuenta de la promo ya está cerrada;
+ *  - `YA_ENVIADA`: algún componente ya salió a cocina (o es una fila espejo): la promo se anula entera con motivo (`anularPromoEnviada`).
+ */
+export type ResultadoQuitarPromoSinEnviar = ResultadoCaso<null, "NO_ENCONTRADA" | "CUENTA_CERRADA" | "YA_ENVIADA">;

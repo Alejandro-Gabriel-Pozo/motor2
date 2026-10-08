@@ -10,11 +10,12 @@ import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad"
 import { MAXIMO_ITEMS_POR_AGREGADO, validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarEleccionPromo, type ComponentePromoElegido, type EleccionDeCupo, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
 import { cargarPromoCartaParaAgregar } from "@/server/lecturas/pos/promo-para-agregar";
-import { guardComandoQuitarItemSinEnviar } from "@/core/features/cuentas/cuenta-pedido.guard";
+import { guardComandoQuitarItemSinEnviar, guardComandoQuitarPromoSinEnviar } from "@/core/features/cuentas/cuenta-pedido.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoEnvioACocina } from "../tipos";
 import { quitarItemSinEnviarCasoDeUso } from "./casos-de-uso/quitar-item-sin-enviar";
+import { quitarPromoSinEnviarCasoDeUso } from "./casos-de-uso/quitar-promo-sin-enviar";
 import { cuentaAbiertaDeSucursal } from "./cuenta-comun";
 
 /**
@@ -128,23 +129,17 @@ export async function agregarItems(cuentaId: string, items: { productoId: string
  * Quita una promo entera que TODAVÍA NO SALIÓ a cocina: borra la `PromoCuenta` y TODOS sus `CuentaItem` componentes juntos, de
  * verdad (borradores, sin motivo ni auditoría — mismo criterio que `quitarItemSinEnviar`). Si algún componente ya salió a
  * cocina, no se borra nada: hay que anular la promo entera (`anularPromoEnviada`, D4).
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.1, paso 10) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_tomar_pedido")`) → formato del
+ * `promoCuentaId` (`guardComandoQuitarPromoSinEnviar`, core/features/cuentas/cuenta-pedido.guard.ts, DENTRO del envoltorio) → caso de uso
+ * (`casos-de-uso/quitar-promo-sin-enviar.ts`: transacción serializable, la promo, la cuenta abierta, que nada haya salido y el borrado en
+ * server/persistencia/pos/pedido.ts) → `aResultadoAccion`.
  */
 export async function quitarPromoSinEnviar(promoCuentaId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
-    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
-      const promoCuenta =
-        typeof promoCuentaId === "string"
-          ? await tx.promoCuenta.findFirst({ where: { id: promoCuentaId, cuenta: { mesa: { sucursalId: ctx.sucursalId } } }, include: { cuenta: { include: { mesa: { select: { numero: true } } } }, items: true } })
-          : null;
-      if (!promoCuenta) return error("No se encontró esa promo en esta sucursal.");
-      if (promoCuenta.cuenta.cerradaEn) return error(`La cuenta de la mesa ${promoCuenta.cuenta.mesa.numero} ya está cerrada.`);
-      if (promoCuenta.items.some((i) => i.numeroEnvio !== null || i.anulaAItemId !== null)) {
-        return error("Esa promo ya salió a cocina: anulala con motivo.");
-      }
-      await tx.cuentaItem.deleteMany({ where: { promoCuentaId: promoCuenta.id } });
-      await tx.promoCuenta.delete({ where: { id: promoCuenta.id } });
-      return ok(`Se quitó «${promoCuenta.titulo}» de la mesa ${promoCuenta.cuenta.mesa.numero}.`);
-    });
+    const comando = guardComandoQuitarPromoSinEnviar({ promoCuentaId });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await quitarPromoSinEnviarCasoDeUso(ctx, comando.valor));
   });
 }
 
