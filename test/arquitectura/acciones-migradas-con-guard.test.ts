@@ -110,6 +110,8 @@ const SIN_GUARD: Record<string, string> = {
     "Activar o desactivar una sección (Hito 4, H4C-18): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró la sección.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/stock/frecuencia-conteo.ts#eliminarFrecuenciaConteo":
     "Borrar una fila de la agenda de conteo (Hito 4, H4C-19): solo recibe un id, que nunca se validó en la acción (lo resuelve el caso de uso, «No se encontró esa fila…»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/stock/stock-minimo.ts#eliminarStockMinimo":
+    "Borrar una fila de stock mínimo (Hito 4, H4C-21): solo recibe un id, que nunca se validó en la acción (lo resuelve el caso de uso, «No se encontró esa fila de Stock Mínimo.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
 };
 
 describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {

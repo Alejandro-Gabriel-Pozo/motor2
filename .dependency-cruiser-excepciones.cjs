@@ -309,6 +309,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque C, H4C-20: setSeccionHabitual (con guardComandoSeccionHabitual, antes guardSeccionHabitual: el prefijo guardComando es el que reconoce acciones-migradas-con-guard) y eliminarSeccionHabitual (con guardComandoEliminarSeccionHabitual: un id que no es texto es «no encontrada», sin leer) → stock/casos-de-uso/{set-seccion-habitual,eliminar-seccion-habitual}.ts; escrituras en server/persistencia/stock/seccion-habitual.ts, sin transacción ni auditoría y sin refrescar (como antes). La lectura (H8) sigue en la acción.",
   },
+  {
+    ruta: "src/server/actions/stock/stock-minimo.ts",
+    motivo:
+      "Hito 4, bloque C, H4C-21: setStockMinimoProducto (con guardComandoSetStockMinimo: el mínimo, antes de leer el producto) y eliminarStockMinimo → stock/casos-de-uso/{set-stock-minimo-producto,eliminar-stock-minimo}.ts; escrituras en server/persistencia/stock/stock-minimo.ts (las de fijar devuelven el id y el mínimo anterior). Sin refrescar la vista (como antes). La lectura (H8) sigue en la acción.",
+  },
 ];
 
 module.exports = {
