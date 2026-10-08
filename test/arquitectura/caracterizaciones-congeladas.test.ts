@@ -125,6 +125,13 @@ const CONGELADAS: Record<string, Congelada> = {
       "Huella del POS (Hito 4, paso 0.1): las 10 Server Actions del POS sin caso de uso (apertura, mesas y pedido) como admin, mozo y operador, con los rechazos de dos fallas a la vez. Red de 4.1: mudar esas acciones a casos de uso no cambia nada (salvo lo aprobado: liberarMesa con ctx.ahora no cambia el golden, que solo dice si hay fecha).",
     regeneraciones: [],
   },
+  "test/persistencia/__golden__/kardex-escritores.golden.json": {
+    blob: "4ba48f056c55dbfc6c49ba4c8acac8adf67f9d1a",
+    desde: "4af23e8b",
+    motivo:
+      "Huella de los escritores del Kardex (Hito 5, pieza 5.4, A2; O.13): cada escritura (modelo, operación, args con la presencia o ausencia de cada clave) y el estado final de Operacion, MovimientoStock y TraspasoSucursal en ocho casos (aprobación, envío directo, aceptación con y sin clave I3, reingreso, anulación de compra con y sin clave, anulación de venta). Red de A4 y A5: reunir las dos escrituras de traspasos y las dos de anulación en una función cada una no cambia NADA de lo que llega a la base.",
+    regeneraciones: [],
+  },
   "test/catalogo/caracterizacion/dinero-tramo-c.golden.txt": {
     blob: "ae6ec3b65f5c3bf20391493b64ebae0b036f7442",
     desde: "18bdd881",
