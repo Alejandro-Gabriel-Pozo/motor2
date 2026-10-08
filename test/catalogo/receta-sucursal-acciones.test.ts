@@ -15,7 +15,7 @@ import {
   quitarIngredienteDeRecetaPropia,
   volverALaRecetaCentral,
 } from "../../src/server/actions/catalogo/receta-sucursal";
-import { guardarReceta } from "../../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 import { listarSucursalesConRecetaPropia, obtenerEstadoDeRecetaPropia } from "../../src/server/consultas/catalogo/receta-propia";
 import { ALCANCE_CENTRAL, alcanceDeSucursal } from "../../src/core/catalogo/public";
 import { cargarRecetaVigente } from "../../src/server/lecturas/catalogo/recetas-vigentes";

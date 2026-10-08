@@ -5,7 +5,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { guardarReceta, agregarPasoAReceta, actualizarIngredienteDeReceta, quitarIngredienteDeReceta, actualizarCabeceraDeReceta, obtenerRecetaVigente, listarVersionesDeReceta } from "../../src/server/actions/catalogo/recetas";
+import { agregarPasoAReceta, actualizarIngredienteDeReceta, quitarIngredienteDeReceta, actualizarCabeceraDeReceta, obtenerRecetaVigente, listarVersionesDeReceta } from "../../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 
 /**
  * Sustitutos por línea de ingrediente (docs/plan-sustitucion-insumos-receta-2026-09-26.md, paso 6): se crean con su orden, viajan

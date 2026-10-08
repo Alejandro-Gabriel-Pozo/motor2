@@ -37,7 +37,7 @@ import { crearUnidad } from "../src/server/actions/catalogo/unidades";
 import { altaProveedor, actualizarActivaProveedor } from "../src/server/actions/catalogo/proveedores";
 import { crearInsumo, crearOActualizarGrupo, actualizarGrupoDeInsumo } from "../src/server/actions/catalogo/insumos";
 import { darDeAltaProducto, actualizarDisponibilidadProducto } from "../src/server/actions/catalogo/productos";
-import { guardarReceta } from "../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas as guardarReceta } from "../src/server/actions/catalogo/receta-a-ciegas";
 import { registrarMovimiento } from "../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../src/server/actions/movimientos/venta";
 import { registrarConteoFisico } from "../src/server/actions/movimientos/conteo-fisico";

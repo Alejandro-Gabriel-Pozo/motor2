@@ -48,7 +48,11 @@ export async function listarVersionesDeReceta(productoId: string) {
  *
  * `versionEsperada` (H7, Pureza Fase 4): la versión de la receta sobre la que quien llama armó este reemplazo (`0` = todavía no había). Si la receta ya va por otra, alguien guardó en el medio y
  * esto pisaría su cambio: se rechaza con un mensaje. Las funciones puntuales de abajo (agregar/editar/quitar un ingrediente o un paso, la cabecera) piden `versionVista`: la versión que la PANTALLA
- * mostraba cuando la persona armó su cambio (no la que se lee al ejecutar, que ya sería la nueva). Solo un reemplazo completo a ciegas (seeds, scripts) omite la versión.
+ * mostraba cuando la persona armó su cambio (no la que se lee al ejecutar, que ya sería la nueva).
+ *
+ * O.1 (Hito 4, paso H4C-23, autorizado por el dueño): la versión es OBLIGATORIA en esta acción pública (un entero ≥ 0; `undefined`, `null` u omitida se rechazan con
+ * «La versión de la receta que se esperaba no es válida.» — `guardComandoGuardarVersionDeReceta` con `exigirVersion`). El reemplazo completo a ciegas (seeds,
+ * scripts, tests) ya no es alcanzable desde la red: vive en `guardarRecetaACiegas` (`./receta-a-ciegas.ts`, `server-only` y SIN `"use server"`).
  *
  * Desde la Task #41 (P1, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
  * (`conPermiso`) → formato (`guardComandoGuardarVersionDeReceta`) → caso de uso (`casos-de-uso/guardar-version-de-receta.ts`:
@@ -59,12 +63,13 @@ export async function listarVersionesDeReceta(productoId: string) {
 export async function guardarReceta(
   productoId: string,
   items: IngredienteInput[],
-  pasos: PasoInput[] = [],
-  cabecera: CabeceraRecetaInput = {},
-  versionEsperada?: number
+  pasos: PasoInput[],
+  cabecera: CabeceraRecetaInput,
+  versionEsperada: number
 ): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("guardar_receta", async (ctx) => {
-    const comando = guardComandoGuardarVersionDeReceta({ productoId, items, pasos, cabecera, versionEsperada });
+    // Desde la red puede llegar cualquier cosa: un `pasos`/`cabecera` ausente sigue valiendo «sin pasos» / «sin cabecera», como cuando tenían valor por defecto.
+    const comando = guardComandoGuardarVersionDeReceta({ productoId, items, pasos: pasos ?? [], cabecera: cabecera ?? {}, versionEsperada }, { exigirVersion: true });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, comando.valor);
     // Sin esto la página no refleja el cambio en un navegador real hasta

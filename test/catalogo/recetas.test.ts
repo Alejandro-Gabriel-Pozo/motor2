@@ -6,8 +6,8 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMem
 import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { darDeAltaProducto } from "../../src/server/actions/catalogo/productos";
+import { guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 import {
-  guardarReceta,
   agregarIngredienteAReceta,
   actualizarIngredienteDeReceta,
   quitarIngredienteDeReceta,

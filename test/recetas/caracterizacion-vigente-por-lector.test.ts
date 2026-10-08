@@ -13,7 +13,8 @@ import { compararRendimientosPorSucursal } from "../../src/server/consultas/repo
 import { calcularRendimientoRecetasSimples } from "../../src/server/consultas/reportes/rendimiento-recetas";
 import { listarProductosConReceta } from "../../src/server/consultas/catalogo/recetas";
 import { dependenciasParaDesactivar } from "../../src/server/lecturas/catalogo/dependencias-para-desactivar";
-import { guardarReceta, listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/actions/catalogo/recetas";
+import { listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 import { fijarRendimientoLocal } from "../../src/server/actions/catalogo/rendimiento-local";
 
 /**

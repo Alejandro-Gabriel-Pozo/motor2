@@ -6,6 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMem
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { darDeAltaProducto } from "../../src/server/actions/catalogo/productos";
 import { agregarIngredienteAReceta, guardarReceta } from "../../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas } from "../../src/server/actions/catalogo/receta-a-ciegas";
 import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { agregarIngredienteARecetaPropia, crearRecetaPropiaDesdeLaCentral, volverALaRecetaCentral } from "../../src/server/actions/catalogo/receta-sucursal";
 
@@ -60,8 +61,9 @@ describe("guardar la receta con versión esperada (H7)", () => {
   });
 
   it("sin versión esperada es un reemplazo completo a ciegas (seeds y scripts): guarda sobre lo que haya", async () => {
-    expect((await guardarReceta(pvId, [linea(mp1Id)])).ok).toBe(true);
-    expect((await guardarReceta(pvId, [linea(mp2Id)])).ok).toBe(true);
+    // O.1 (H4C-23): el reemplazo a ciegas ya no es la acción pública sin versión, es la función interna `guardarRecetaACiegas`.
+    expect((await guardarRecetaACiegas(pvId, [linea(mp1Id)])).ok).toBe(true);
+    expect((await guardarRecetaACiegas(pvId, [linea(mp2Id)])).ok).toBe(true);
     expect((await versiones()).map((v) => v.version)).toEqual([1, 2]);
   });
 

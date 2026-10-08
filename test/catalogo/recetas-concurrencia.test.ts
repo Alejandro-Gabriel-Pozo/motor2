@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma, prismaSinEmpresa } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { darDeAltaProducto } from "../../src/server/actions/catalogo/productos";
-import { guardarReceta } from "../../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 
 /**
  * Concurrencia REAL de `guardarReceta` (Promise.allSettled contra Postgres, sin mocks de base).
