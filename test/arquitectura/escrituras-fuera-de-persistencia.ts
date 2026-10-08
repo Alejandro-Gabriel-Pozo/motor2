@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 14;
+export const TOPE_DE_ENTRADAS = 13;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -84,10 +84,5 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["adminPlataforma.create", "codigoDeRecuperacionPlataforma.createMany"],
     fase: "Consola",
     motivo: "El alta de un administrador de plataforma es de la plataforma (la corre una persona, una vez, con el rol motor2_plataforma): vive en la consola, que no puede importar src/server; la validación y el material del alta son puros en core/plataforma/primer-admin.ts.",
-  },
-  "src/server/actions/carta/copiar-carta.ts": {
-    escrituras: ["contenidoCartaProducto.createMany", "generoCarta.create", "itemAgrupadoCarta.create", "opcionItemAgrupadoCarta.createMany"],
-    fase: "Fase 4",
-    motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
   },
 };

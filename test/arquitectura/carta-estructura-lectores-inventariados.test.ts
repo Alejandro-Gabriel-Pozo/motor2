@@ -43,7 +43,8 @@ const ARCHIVOS_PERMITIDOS = [
   // Hito 4, H4C-2 y H4C-3: las secciones de las promos (la de la promo y las de sus cupos) las leen sus casos de uso (antes, server/actions/carta/promos.ts).
   "server/actions/carta/casos-de-uso/guardar-promo-carta.ts",
   "server/actions/carta/casos-de-uso/guardar-cupos-promo-carta.ts",
-  "server/actions/carta/copiar-carta.ts",
+  // Hito 5, bloque D: copiar la carta de otra sucursal la lee su caso de uso (antes, server/actions/carta/copiar-carta.ts).
+  "server/actions/carta/casos-de-uso/copiar-carta-de-sucursal.ts",
 ];
 const LECTURA = /\b(seccionCarta|generoCarta|itemAgrupadoCarta|contenidoCartaProducto|opcionItemAgrupadoCarta)\s*\.\s*(find|count|aggregate|groupBy)/;
 /** Los modelos PROPIOS de la sucursal: SeccionCarta queda afuera a propósito (es de la empresa). */

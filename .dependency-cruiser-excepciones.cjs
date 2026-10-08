@@ -348,6 +348,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 5, bloque D (D12): agregarSucursalAlPortal (con guardComandoAgregarSucursalAlPortal), guardarSucursalPublica (con guardComandoGuardarSucursalPublica), quitarSucursalDelPortal (con guardComandoQuitarSucursalDelPortal) y moverSucursalEnMapa (con guardComandoMoverSucursalEnMapa: solo el id, porque la posición se valida DESPUÉS de leer la fila) → carta/casos-de-uso/{agregar-sucursal-al-portal,guardar-sucursal-publica,quitar-sucursal-del-portal,mover-sucursal-en-mapa}.ts; escrituras en server/persistencia/carta/registro-publico.ts, con la base del contexto y sin transacción ni auditoría (el registro del portal no es plata), como antes. El bucle de hasta 5 intentos del slug y los catch de la carrera del índice único (esChoqueDeIndiceUnico) viven en los casos de uso, tal cual. La acción revalida la carta pública solo si salió bien. El archivo no tiene ninguna otra mutación.",
   },
+  {
+    ruta: "src/server/actions/carta/copiar-carta.ts",
+    motivo:
+      "Hito 5, bloque D (D13): copiarCartaDeSucursal (con guardComandoCopiarCartaDeSucursal: la confirmación y que el origen no sea la sucursal activa, antes de leer, con la sucursal activa del contexto) → carta/casos-de-uso/copiar-carta-de-sucursal.ts; las cuatro escrituras de la copia (género, ítem agrupado, sus opciones y los contenidos) en server/persistencia/carta/copiar-carta.ts. El origen se lee fuera de la transacción y todo lo demás, incluida la auditoría (registrarCambioAuditado con el tx del callback), va en UNA transacción SERIALIZABLE con reintento (conTransaccionSerializable) y el .catch del conflicto agotado, tal cual. Ordena que dos copias a la vez no se mezclen. La acción revalida la carta pública solo si salió bien: antes lo hacía dentro del callback, antes de confirmar (mismo precedente que fijarRendimientoLocal, H4C-5). El archivo no tiene ninguna otra mutación.",
+  },
 ];
 
 module.exports = {
