@@ -9,7 +9,6 @@
  *
  * Solo reexports explícitos (nunca `export *`, nunca lógica), y solo lo que hoy se usa desde afuera del dominio.
  */
-export { precioLocalActivoEn, preciosLocalesVigentes } from "./precio-local-consulta";
 export { crearConCodigoAutogenerado, esErrorDeUnicidad } from "./generar-codigo";
 export { INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput } from "./receta-a-input";
 export type { RecetaCompleta } from "./receta-a-input";

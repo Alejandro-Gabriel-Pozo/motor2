@@ -21,12 +21,14 @@ const CASOS_DE_USO = "^src/server/actions/[^/]+/casos-de-uso/";
 /**
  * Lo único de auth/permisos/server que la carta pública (sin sesión) puede ALCANZAR, directa o transitivamente (ADR-006 + ADR-007): la
  * base por empresa y su verificación de rol (`core/auth/base.ts`, `rol-de-ejecucion.ts`) y el catálogo de claves de permiso
- * (`core/permisos/acciones.ts`: solo constantes; `capacidades-sucursal.ts`: NO es solo tipos y constantes, la carta lo alcanza en ejecución por `lecturas/carta` → `precioLocalActivoEn` → `sucursalTieneCapacidad`, que lee la base: pasa a `server/acceso` en 4A-5, trabajo 5.2 de la rama `pureza-integracion`). Lista CERRADA: un archivo nuevo de `core/auth`,
- * `core/permisos` o `server` que la carta empiece a alcanzar (la sesión, el gate, una Server Action) rompe `carta-publica-alcance`.
+ * (`core/permisos/acciones.ts`: solo constantes; `capacidades-sucursal.ts`: NO es solo tipos y constantes, la carta lo alcanza en ejecución por `lecturas/carta` → `precioLocalActivoEn` → `sucursalTieneCapacidad`, que lee la base: pasa a `server/acceso` en el bloque 2 de la pieza 5.2 del Hito 5, rama `pureza-integracion`) y el embudo del
+ * precio local (`server/lecturas/catalogo/precio-local.ts`: `precioLocalActivoEn` y `preciosLocalesVigentes`, que la carta llama para mostrar el precio que rige; desde el paso 2 de la pieza 5.2 vive acá y no en `core/catalogo`, y es un archivo de LECTURA que recibe el `db` por parámetro: no importa la sesión, el gate ni ninguna acción). Lista CERRADA: un archivo nuevo
+ * de `core/auth`, `core/permisos` o `server` que la carta empiece a alcanzar (la sesión, el gate, una Server Action) rompe `carta-publica-alcance`; que un archivo de la lista deje de alcanzarse o que una entrada nombre una carpeta lo ve `test/arquitectura/dependencias.test.ts`.
  */
 const ALCANCE_CARTA_PUBLICA = [
   "^src/core/auth/(base|rol-de-ejecucion)\\.ts$",
   "^src/core/permisos/(acciones|capacidades-sucursal)\\.ts$",
+  "^src/server/lecturas/catalogo/precio-local\\.ts$",
   // Pureza Fase 3 (PR de la carta pública): sus lecturas y el archivo que elige el cliente SIN sesión salieron de `core/carta` a `server/`. Misma lista cerrada, solo
   // cambian las rutas: son EXACTAMENTE los cinco archivos de antes (menu-consulta, descuento-producto-consulta, empresa-carta, publica-consulta, publica-sin-sesion).
   "^src/server/lecturas/carta/(menu|descuentos|empresa|publica)\\.ts$",

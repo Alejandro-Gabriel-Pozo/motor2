@@ -1,6 +1,6 @@
 import { esSignoFijo } from "@/core/movimientos/public";
 import type { ClasificacionNoComestibles } from "@/core/catalogo/public";
-import { preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { cargarClasificacionNoComestibles, construirIndiceRecetas, construirMapaProductos, obtenerCostoActualPorMP, type CatalogoDeProductos } from "@/server/lecturas/reportes/comun";
 import { cargarSerieIPC } from "@/server/lecturas/reportes/serie-ipc";
 import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo } from "@/server/lecturas/reportes/costos";

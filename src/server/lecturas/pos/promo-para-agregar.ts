@@ -1,6 +1,6 @@
 import "server-only";
 import { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
-import { precioLocalActivoEn } from "@/core/catalogo/public-servidor";
+import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
 import { pediblesDeEntrada, type CupoPromoDefinicion } from "@/core/pos/public";
 import { cargarSelectorCartaPos } from "@/server/lecturas/pos/selector-carta";
 import type { Db } from "@/lib/db-tipos";

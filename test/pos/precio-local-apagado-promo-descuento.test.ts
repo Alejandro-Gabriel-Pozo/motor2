@@ -13,7 +13,7 @@ import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-c
 import { cargarPromoCartaParaAgregar } from "../../src/server/lecturas/pos/promo-para-agregar";
 import { descuentosConfiguradosEnSucursal } from "../../src/server/lecturas/carta/descuentos";
 import { descuentosDeProductoEnSucursal } from "../../src/server/lecturas/carta/descuentos";
-import { precioLocalActivoEn } from "../../src/core/catalogo/public-servidor";
+import { precioLocalActivoEn } from "../../src/server/lecturas/catalogo/precio-local";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**

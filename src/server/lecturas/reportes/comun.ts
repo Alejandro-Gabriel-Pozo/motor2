@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { clasificarGruposNoComestibles, type ClasificacionNoComestibles } from "@/core/catalogo/public";
-import { preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { alcanceDeSucursal } from "@/core/catalogo/public";
 import { cargarRecetasVigentes } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { disponibilidadDeProductos, disponibilidadEnAlgunaSucursal } from "@/server/lecturas/catalogo/disponibilidad";

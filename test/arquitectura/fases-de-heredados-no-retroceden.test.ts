@@ -18,7 +18,6 @@ const FASE_REGISTRADA: Record<string, 4 | 6> = {
   "src/core/auth/session.ts": 6,
   "src/core/carta/promo-sucursal.ts": 6,
   "src/core/catalogo/filtro-selector-producto.ts": 6,
-  "src/core/catalogo/precio-local-consulta.ts": 4,
   "src/core/catalogo/receta-a-input.ts": 6,
   "src/core/catalogo/recetas-vigentes.ts": 6,
   "src/core/features/movimientos/conteo-fisico.guard.ts": 6,

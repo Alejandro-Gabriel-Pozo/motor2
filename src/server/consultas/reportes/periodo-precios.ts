@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad, type InfoProductoReporte, type ItemPeriodo, type FilaVentaProducto, type SerieIPC } from "@/core/reportes/public";

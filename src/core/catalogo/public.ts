@@ -18,6 +18,7 @@ export type { ClasificacionNoComestibles } from "./no-comestibles";
 export type { FiltroSelectorProducto } from "./filtro-selector-producto";
 export { aplicarSecuencia, esPermutacionExacta, insertarEnPosicion, secuenciaMoviendo } from "./pasos-receta";
 export { filtrarPreciosLocalesVigentes } from "./precio-local";
+export type { PrecioLocalVigente } from "./precio-local";
 export { productosUniversales } from "./disponibilidad-producto";
 export type { FilaDisponibilidadEnSucursal } from "./disponibilidad-producto";
 export { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirRecetaPropiaGuardada, describirVueltaALaRecetaCentral } from "./describir-cambio-receta";

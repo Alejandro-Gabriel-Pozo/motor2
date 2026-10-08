@@ -1,7 +1,8 @@
 "use server";
 
 import type { Db } from "@/lib/db-tipos";
-import { esErrorDeUnicidad, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
+import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { precioDeCarta } from "@/core/carta/armar-menu";
 import { productoTieneDescuentoEnAlgunaSucursal } from "@/server/lecturas/carta/descuentos";
 import {

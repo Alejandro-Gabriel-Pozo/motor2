@@ -1,5 +1,5 @@
 import { descuentosVigentes } from "@/core/carta/public";
-import { precioLocalActivoEn } from "@/core/catalogo/public-servidor";
+import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
 import type { Db } from "@/lib/db-tipos";
 
 /**

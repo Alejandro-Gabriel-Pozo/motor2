@@ -30,6 +30,7 @@ export const SIN_SERVER_ONLY: Record<string, string> = {
   "src/server/lecturas/carta/publica.ts": "test/e2e/carta-portal-admin.spec.ts",
   "src/server/lecturas/catalogo/disponibilidad.ts": "test/e2e/conteo-fisico-grilla.spec.ts",
   "src/server/lecturas/catalogo/ofertas-de-proveedor.ts": "scripts/verificar-demo-invariantes.ts",
+  "src/server/lecturas/catalogo/precio-local.ts": "test/e2e/fixtures/carta-menu.ts",
   "src/server/lecturas/catalogo/recetas-vigentes.ts": "scripts/verificar-demo-invariantes.ts",
   "src/server/lecturas/movimientos/saldos.ts": "test/e2e/conteo-fisico-grilla.spec.ts",
   "src/server/lecturas/reportes/comun.ts": "scripts/verificar-demo-invariantes.ts",
