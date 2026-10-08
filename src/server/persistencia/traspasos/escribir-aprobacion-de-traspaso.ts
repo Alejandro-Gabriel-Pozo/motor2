@@ -1,5 +1,6 @@
 import "server-only";
 import type { EstadoTraspaso, Prisma } from "@prisma/client";
+import { escribirMovimientoDeTraspaso } from "./escribir-movimiento-de-traspaso";
 
 /**
  * Escritura de la APROBACIÓN de una solicitud de traspaso por Origen (Task #41, Fase M11a; mismo contrato que `cargar-traspaso.ts`:
@@ -29,37 +30,25 @@ export interface AprobacionDeTraspasoAEscribir {
  * La SALIDA de un traspaso en el Kardex de Origen: la `Operacion` TRANSFERENCIA_SALIDA_SUCURSAL (sin clave de idempotencia: ni la
  * aprobación ni el envío directo tienen I3) y su única línea, la cantidad en NEGATIVO en la sección de origen, a precio 0, atada al
  * traspaso. La comparten la aprobación (acá abajo) y el envío directo (`escribir-creacion-de-traspaso.ts`, Task #41, Fase M11c): es lo
- * que antes escribía el helper `escribirMovimientoTraspaso` de src/server/actions/traspasos/traspasos.ts, ya borrado.
+ * que antes escribía el helper `escribirMovimientoTraspaso` de src/server/actions/traspasos/traspasos.ts, ya borrado. Desde la pieza 5.4 (A4) las dos
+ * escrituras las hace `escribirMovimientoDeTraspaso` (`escribir-movimiento-de-traspaso.ts`), que comparte con la entrada de Destino y el reingreso.
  */
 export async function escribirSalidaDeTraspaso(
   tx: Prisma.TransactionClient,
   s: Omit<AprobacionDeTraspasoAEscribir, "estadoNuevo">
 ): Promise<{ operacionId: string }> {
-  const proceso = "TRANSFERENCIA_SALIDA_SUCURSAL";
-  const operacion = await tx.operacion.create({
-    data: {
-      sucursalId: s.sucursalId,
-      proceso,
-      fecha: s.ahora,
-      usuarioId: s.usuarioId,
-      claveIdempotencia: null,
-      payloadHash: null,
-    },
+  return escribirMovimientoDeTraspaso(tx, {
+    proceso: "TRANSFERENCIA_SALIDA_SUCURSAL",
+    sucursalId: s.sucursalId,
+    usuarioId: s.usuarioId,
+    ahora: s.ahora,
+    idempotencia: null,
+    productoId: s.productoId,
+    seccionId: s.seccionOrigenId,
+    cantidadConSigno: -s.cantidad,
+    detalle: s.detalle,
+    traspasoId: s.traspasoId,
   });
-  await tx.movimientoStock.create({
-    data: {
-      operacionId: operacion.id,
-      productoId: s.productoId,
-      seccionId: s.seccionOrigenId,
-      proceso,
-      cantidad: -s.cantidad,
-      detalle: s.detalle,
-      precioTotal: 0,
-      precioPorUnidadStock: 0,
-      traspasoSucursalId: s.traspasoId,
-    },
-  });
-  return { operacionId: operacion.id };
 }
 
 export async function escribirAprobacionDeTraspaso(tx: Prisma.TransactionClient, a: AprobacionDeTraspasoAEscribir): Promise<{ operacionId: string }> {
