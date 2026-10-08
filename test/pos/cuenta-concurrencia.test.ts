@@ -5,7 +5,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { abrirCuenta } from "../../src/server/actions/pos/cuenta-apertura";
-import { agregarItems, enviarACocina } from "../../src/server/actions/pos/cuenta-pedido";
+import { crearMesa } from "../../src/server/actions/pos/mesas";
+import { agregarItems, enviarACocina, quitarItemSinEnviar } from "../../src/server/actions/pos/cuenta-pedido";
 import { anularItemEnviado } from "../../src/server/actions/pos/cuenta-anulacion";
 import { cerrarCuenta, emitirTicketCorregido } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
@@ -123,5 +124,60 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
     expect(resultados.map((r) => (r.ok ? [r.numeroEnvio, r.envioNuevo] : null)).sort()).toEqual([[1, false], [1, true]]);
     const items = await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id } });
     expect(new Set(items.map((i) => i.numeroEnvio))).toEqual(new Set([1]));
+  });
+
+  // ── Hito 4, paso 0.4 (`docs/plan-hito-4-pureza.md` §5): las carreras que faltaban, escritas contra el código ANTERIOR a mudar el POS a casos de uso. ──────────
+
+  // Medido al escribirlo (3 corridas × 3 vueltas): la carrera la arbitra la transacción SERIALIZABLE (la que pierde reintenta y ve `yaAbierta`); el `catch` del
+  // choque del índice único parcial no se alcanzó nunca (respondiendo error ahí, el test sigue verde). Es el respaldo, no el árbitro.
+  it("(a) dos «Abrir cuenta» a la vez sobre la MISMA mesa: las dos responden ok y queda una sola cuenta abierta", async () => {
+    for (let vuelta = 0; vuelta < 3; vuelta++) {
+      const mesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 300 + vuelta } });
+      const resultados = await Promise.all([abrirCuenta(mesa.id, 2), abrirCuenta(mesa.id, 3)]);
+      expect(resultados.map((r) => r.ok), `vuelta ${vuelta}: ${resultados.map((r) => r.mensaje).join(" / ")}`).toEqual([true, true]);
+      expect(resultados.filter((r) => r.mensaje === `La mesa ${300 + vuelta} ya tenía una cuenta abierta.`), `vuelta ${vuelta}`).toHaveLength(1);
+      expect(await prisma.cuenta.count({ where: { mesaId: mesa.id, cerradaEn: null } }), `vuelta ${vuelta}`).toBe(1);
+    }
+  });
+
+  it("(b) dos «Nueva mesa» a la vez con el MISMO número: una se crea y la otra recibe «Ya existe la mesa N» (el índice único (sucursal, número) arbitra)", async () => {
+    for (let vuelta = 0; vuelta < 3; vuelta++) {
+      const numero = 400 + vuelta;
+      const resultados = await Promise.all([crearMesa(numero), crearMesa(numero)]);
+      expect(resultados.filter((r) => r.ok), `vuelta ${vuelta}: ${resultados.map((r) => r.mensaje).join(" / ")}`).toEqual([{ ok: true, mensaje: `Mesa ${numero} creada.` }]);
+      expect(resultados.filter((r) => !r.ok)).toEqual([{ ok: false, mensaje: `Ya existe la mesa ${numero} en esta sucursal.` }]);
+      expect(await prisma.mesa.count({ where: { sucursalId: s.sucursalId, numero } }), `vuelta ${vuelta}`).toBe(1);
+    }
+  });
+
+  it("(c) «Quitar» un ítem sin enviar contra «Enviar a cocina» ese mismo ítem: nunca las dos; el ítem queda borrado o enviado, nunca las dos cosas", async () => {
+    for (let vuelta = 0; vuelta < 3; vuelta++) {
+      const mesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 500 + vuelta } });
+      const cuenta = await sembrarCuenta(mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000 }]);
+      const item = cuenta.items[0];
+      const [quitado, enviado] = await Promise.all([quitarItemSinEnviar(item.id), enviarACocina(cuenta.id, [item.id])]);
+      const final = await prisma.cuentaItem.findUnique({ where: { id: item.id } });
+      const detalle = `vuelta ${vuelta}: ${quitado.mensaje} / ${enviado.mensaje}`;
+      // Que «Enviar» responda ok no alcanza para decir que envió: si el ítem ya no estaba, contesta «Esos ítems ya estaban enviados.» sin crear el envío.
+      const envioNuevo = enviado.ok && enviado.envioNuevo;
+      expect([quitado.ok, envioNuevo], detalle).not.toEqual([true, true]);
+      if (quitado.ok) expect(final, detalle).toBeNull();
+      if (envioNuevo) expect(final?.numeroEnvio, detalle).toBe(1);
+      expect(quitado.ok || envioNuevo, detalle).toBe(true);
+    }
+  });
+
+  it("(d) O.12: dos «Agregar» IGUALES a la vez DUPLICAN los ítems (agregarItems no tiene I3; se fija el comportamiento de hoy, no se arregla)", async () => {
+    const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
+    const resultados = await Promise.all([agregarItems(cuenta.id, [{ productoId: s.milanesa.id, cantidad: 1 }]), agregarItems(cuenta.id, [{ productoId: s.milanesa.id, cantidad: 1 }])]);
+    expect(resultados).toEqual([
+      { ok: true, mensaje: "Se agregó 1 ítem a la mesa 4." },
+      { ok: true, mensaje: "Se agregó 1 ítem a la mesa 4." },
+    ]);
+    const items = await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id } });
+    expect(items.map((i) => [i.productoId, Number(i.cantidad), i.numeroEnvio])).toEqual([
+      [s.milanesa.id, 1, null],
+      [s.milanesa.id, 1, null],
+    ]);
   });
 });
