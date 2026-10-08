@@ -30,7 +30,7 @@ import { copiarContenidosDeCarta, copiarGeneroDeCarta, copiarItemAgrupadoDeCarta
  * @contract Deja en la sucursal activa una copia de la carta propia del origen (géneros, ítems agrupados con sus opciones y contenidos), solo si estaba vacía y el origen tiene algo; todo o nada; devuelve cuánto se copió.
  * @idempotency Por estado — repetir el pedido encuentra la carta ya copiada y se rechaza («ya tiene carta propia»).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento); agotados los reintentos, el conflicto vuelve como «La carta cambió mientras la copiabas; recargá e intentá de nuevo.».
- * @sideEffects registrarCambioAuditado (CartaSucursal.cartaPropia, con la cuenta de lo copiado), en la misma transacción. La invalidación de la carta pública la hace la Server Action.
+ * @sideEffects registrarCambioAuditado (CartaSucursal.cartaPropia, con la cuenta de lo copiado), en la misma transacción. La invalidación de la carta pública la hace la Server Action DESPUÉS de confirmar; si esa invalidación lanzara, la copia ya está hecha y la acción lanza igual (decisión M1(b), no se captura: es un error de programación y tiene que verse).
  * @ficha permiso=carta_copiar_de_sucursal transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function copiarCartaDeSucursalCasoDeUso(
