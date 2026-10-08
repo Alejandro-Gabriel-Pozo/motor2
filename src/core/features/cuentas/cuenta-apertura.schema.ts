@@ -34,3 +34,19 @@ export interface ComandoCorregirComensales {
  * - `COMENSALES_INVALIDOS`: no es un entero entre 1 y 99 (`validarComensales`).
  */
 export type ResultadoCorregirComensales = ResultadoCaso<null, "CUENTA_NO_ABIERTA" | "COMENSALES_INVALIDOS">;
+
+/**
+ * Comando «asignar (o quitar, con `null`) el cliente con descuento de una cuenta abierta»: `clienteId` CRUDO, como llegó (`null` quita; un texto se busca; otra
+ * cosa responde «No se encontró ese cliente.», como antes).
+ */
+export interface ComandoAsignarClienteACuenta {
+  cuentaId: string;
+  clienteId: unknown;
+}
+
+/**
+ * - `CUENTA_NO_ABIERTA`: no es una cuenta de una mesa de esta sucursal, o ya está cerrada (gana sobre un cliente inexistente);
+ * - `CLIENTE_NO_ENCONTRADO`: no hay cliente con ese id (o el id no es un texto);
+ * - `CLIENTE_DESACTIVADO`: el cliente existe pero está desactivado (quitarlo de una cuenta que ya lo tenía sí se puede).
+ */
+export type ResultadoAsignarClienteACuenta = ResultadoCaso<null, "CUENTA_NO_ABIERTA" | "CLIENTE_NO_ENCONTRADO" | "CLIENTE_DESACTIVADO">;

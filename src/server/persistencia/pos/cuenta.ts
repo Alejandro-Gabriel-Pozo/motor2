@@ -12,3 +12,15 @@ import type { Prisma } from "@prisma/client";
 export async function cambiarComensalesDeCuenta(tx: Prisma.TransactionClient, args: { cuentaId: string; comensales: number }): Promise<void> {
   await tx.cuenta.update({ where: { id: args.cuentaId }, data: { comensales: args.comensales } });
 }
+
+/**
+ * Fija el cliente con descuento de la cuenta y el SNAPSHOT de su % (`Cuenta.descuentoPorcentaje`, D7 de docs/plan-clientes-descuento-2026-09-26.md), o los
+ * limpia los dos (`null`, `null`). Es plata (`Decimal`): la llama SOLO el caso de uso de asignar el cliente, que escribe la auditoría en la misma transacción
+ * (lo vigila `escrituras-auditadas.test.ts`: todo llamador de esta escritura tiene que auditar).
+ */
+export async function fijarClienteDeCuenta(
+  tx: Prisma.TransactionClient,
+  args: { cuentaId: string; clienteId: string | null; descuentoPorcentaje: Prisma.Decimal | null },
+): Promise<void> {
+  await tx.cuenta.update({ where: { id: args.cuentaId }, data: { clienteId: args.clienteId, descuentoPorcentaje: args.descuentoPorcentaje } });
+}

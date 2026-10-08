@@ -635,7 +635,8 @@ describe("escrituras auditadas: el código del repositorio", () => {
   });
 
   it("los archivos con auditoría obligatoria existen y la llaman", () => {
-    const OBLIGATORIOS = ["src/server/actions/pos/cuenta-apertura.ts", "src/server/actions/catalogo/casos-de-uso/guardar-version-de-receta.ts"];
+    // Hito 4, bloque 4.1 (paso 7): la auditoría de asignar el cliente de una cuenta pasó de la acción (`pos/cuenta-apertura.ts`) a su caso de uso.
+    const OBLIGATORIOS = ["src/server/actions/pos/casos-de-uso/asignar-cliente-a-cuenta.ts", "src/server/actions/catalogo/casos-de-uso/guardar-version-de-receta.ts"];
     for (const nombre of OBLIGATORIOS) {
       const absoluta = join(RAIZ, nombre);
       expect(statSync(absoluta, { throwIfNoEntry: false }), `${nombre} ya no existe: actualizá la lista`).toBeDefined();
