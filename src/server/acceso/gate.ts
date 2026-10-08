@@ -1,6 +1,6 @@
 import "server-only";
 import type { PrismaClient } from "@prisma/client";
-import { capacidadesDeSucursal, sucursalTieneCapacidad } from "@/core/permisos/capacidades-sucursal";
+import { capacidadesDeSucursal, sucursalTieneCapacidad } from "@/server/acceso/capacidades-sucursal";
 import { contextoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "@/core/permisos/acciones";
 import {
   accesoDeSucursal,

@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { sucursalTieneCapacidad } from "@/core/permisos/capacidades-sucursal";
+import { sucursalTieneCapacidad } from "@/server/acceso/capacidades-sucursal";
 import { filtrarPreciosLocalesVigentes, type PrecioLocalVigente } from "@/core/catalogo/public";
 
 type Db = PrismaClient | Prisma.TransactionClient;

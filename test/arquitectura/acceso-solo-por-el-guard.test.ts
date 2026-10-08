@@ -43,6 +43,7 @@ const EXCEPCIONES_DE_ROL_Y_GUARD: Record<string, Excepcion> = {
   "server/persistencia/permisos/matriz.ts": { tipo: "permanente", motivo: "lee y escribe las celdas de PermisoRol para el caso de uso guardar-permisos (Hito 3, I.3): es su trabajo; la decisión de acceso la toma el guard.", esperados: 2 },
   "server/actions/permisos/capacidades-sucursal.ts": { tipo: "permanente", motivo: "administra las capacidades por sucursal (CapacidadSucursal): es su trabajo (la lista de la pantalla; la escritura vive en su persistencia desde I.1 del Hito 3).", esperados: 1 },
   "server/persistencia/permisos/capacidades.ts": { tipo: "permanente", motivo: "guarda la perilla de CapacidadSucursal (findFirst + create/update) para el caso de uso actualizar-capacidad (Hito 3, I.1): es su trabajo; la decisión de acceso la toma el guard.", esperados: 3 },
+  "server/acceso/capacidades-sucursal.ts": { tipo: "permanente", motivo: "es EL LECTOR de CapacidadSucursal: lo usan el gate y precioLocalActivoEn; la decisión es core/permisos (Hito 5, pieza 5.2: salió de core/permisos, donde esta regla no lo analizaba). Dos findMany: sucursalTieneCapacidad y capacidadesDeSucursal.", esperados: 2 },
   "core/auth/contexto.ts": { tipo: "permanente", motivo: "arma el contexto de la sesión: marca cada membresía como admin o no por la clave de su rol, una sola vez, para que nadie más lo calcule.", esperados: 2 },
   "app/(app)/administracion/permisos/permisos-matriz.tsx": { tipo: "permanente", motivo: "solo MUESTRA la columna «Piso» de la matriz; no decide acceso.", esperados: 1 },
 };

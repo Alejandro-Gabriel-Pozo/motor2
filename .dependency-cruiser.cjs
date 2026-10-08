@@ -20,14 +20,17 @@ const CASOS_DE_USO = "^src/server/actions/[^/]+/casos-de-uso/";
 
 /**
  * Lo único de auth/permisos/server que la carta pública (sin sesión) puede ALCANZAR, directa o transitivamente (ADR-006 + ADR-007): la
- * base por empresa y su verificación de rol (`core/auth/base.ts`, `rol-de-ejecucion.ts`) y el catálogo de claves de permiso
- * (`core/permisos/acciones.ts`: solo constantes; `capacidades-sucursal.ts`: NO es solo tipos y constantes, la carta lo alcanza en ejecución por `lecturas/carta` → `precioLocalActivoEn` → `sucursalTieneCapacidad`, que lee la base: pasa a `server/acceso` en el bloque 2 de la pieza 5.2 del Hito 5, rama `pureza-integracion`) y el embudo del
+ * base por empresa y su verificación de rol (`core/auth/base.ts`, `rol-de-ejecucion.ts`), el catálogo de claves de permiso
+ * (`core/permisos/acciones.ts`: solo constantes) y las dos reglas PURAS de las capacidades por sucursal (`core/permisos/capacidades-sucursal.ts`: `esCapacidadSiempreHabilitada` y `resolverCapacidad`, sin base), el LECTOR de esas capacidades
+ * (`server/acceso/capacidades-sucursal.ts`: `sucursalTieneCapacidad` y `capacidadesDeSucursal`, que leen `CapacidadSucursal` con el `db` que reciben por parámetro; la carta lo alcanza en ejecución por `lecturas/carta` → `precioLocalActivoEn` → `sucursalTieneCapacidad`;
+ * salió de `core/permisos` en el bloque 2 de la pieza 5.2 del Hito 5, rama `pureza-integracion`, y es el ÚNICO archivo de `server/acceso` que la carta alcanza: no el gate, ni el menú, ni los módulos, ni la política) y el embudo del
  * precio local (`server/lecturas/catalogo/precio-local.ts`: `precioLocalActivoEn` y `preciosLocalesVigentes`, que la carta llama para mostrar el precio que rige; desde el paso 2 de la pieza 5.2 vive acá y no en `core/catalogo`, y es un archivo de LECTURA que recibe el `db` por parámetro: no importa la sesión, el gate ni ninguna acción). Lista CERRADA: un archivo nuevo
  * de `core/auth`, `core/permisos` o `server` que la carta empiece a alcanzar (la sesión, el gate, una Server Action) rompe `carta-publica-alcance`; que un archivo de la lista deje de alcanzarse o que una entrada nombre una carpeta lo ve `test/arquitectura/dependencias.test.ts`.
  */
 const ALCANCE_CARTA_PUBLICA = [
   "^src/core/auth/(base|rol-de-ejecucion)\\.ts$",
   "^src/core/permisos/(acciones|capacidades-sucursal)\\.ts$",
+  "^src/server/acceso/capacidades-sucursal\\.ts$",
   "^src/server/lecturas/catalogo/precio-local\\.ts$",
   // Pureza Fase 3 (PR de la carta pública): sus lecturas y el archivo que elige el cliente SIN sesión salieron de `core/carta` a `server/`. Misma lista cerrada, solo
   // cambian las rutas: son EXACTAMENTE los cinco archivos de antes (menu-consulta, descuento-producto-consulta, empresa-carta, publica-consulta, publica-sin-sesion).
