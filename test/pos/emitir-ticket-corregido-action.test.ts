@@ -48,7 +48,7 @@ describe("emitirTicketCorregido (server action)", () => {
     expect(b).toMatchObject({ sucursalId: s.sucursalId, numero: 1, ejemplar: 2, corrigeAId: a.id, motivo: "No quiso el flan", emitidoPorId: s.admin.id });
     expect(b.emitidoEn.getTime()).toBeGreaterThanOrEqual(a.emitidoEn.getTime());
 
-    const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma);
+    const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma, undefined, new Date());
     expect(ticket).toMatchObject({ estado: "vigente", numero: { numero: 1, ejemplar: 2 }, corrigeA: { numero: 1, ejemplar: 1 }, total: 27500 });
     expect(ticket.lineas.map((l) => l.producto)).toEqual(["Milanesa", "Milanesa"]);
 
@@ -78,7 +78,7 @@ describe("emitirTicketCorregido (server action)", () => {
     const [a, , c] = await ejemplaresDe(cuenta.id);
     expect(c).toMatchObject({ numero: 1, ejemplar: 3, corrigeAId: a.id, motivo: "La segunda milanesa no salió" });
     expect((await auditoriaDeCuentas()).map((f) => [f.valorAnterior, f.valorNuevo])).toEqual([["1-A", "1-B"], ["1-B", "1-C"]]);
-    expect((await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma))[0]).toMatchObject({ estado: "vigente", numero: { numero: 1, ejemplar: 3 }, corrigeA: { numero: 1, ejemplar: 1 }, total: 18000 });
+    expect((await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma, undefined, new Date()))[0]).toMatchObject({ estado: "vigente", numero: { numero: 1, ejemplar: 3 }, corrigeA: { numero: 1, ejemplar: 1 }, total: 18000 });
   });
 
   it("sin anulaciones (ticket vigente) se rechaza", async () => {

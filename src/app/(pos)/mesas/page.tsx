@@ -54,11 +54,13 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
   const estadoPedido = primero(params.estado);
   const estado = esEstadoMesa(estadoPedido) ? estadoPedido : null;
   const q = (primero(params.q) ?? "").trim();
+  // El reloj se lee UNA vez, acá en el borde (O.22-a, Hito 4): el mapa (tiempo abierta de cada mesa) y el «actualizado a las» usan la misma hora.
+  const ahora = new Date();
 
   const [altaMesa, limiteMesas, mapa, sucursal] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_alta_mesa", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_limite_mesas_abiertas", ctx.db),
-    obtenerMapaDeMesas(ctx.sucursalId, ctx.db),
+    obtenerMapaDeMesas(ctx.sucursalId, ctx.db, ahora),
     obtenerLimiteMesasAbiertas(ctx.sucursalId, ctx.db),
   ]);
   const { metricas } = mapa;
@@ -71,7 +73,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
         <div>
           <h1 className="mb-1.5 text-[26px] font-extrabold leading-none tracking-tight md:text-[28px]">Mapa de mesas</h1>
           <p className="text-[13.5px] text-[var(--ink-soft)]">
-            {ctx.sucursalNombre} · actualizado a las {formatearHora(new Date(), ctx.empresaZonaHoraria)}
+            {ctx.sucursalNombre} · actualizado a las {formatearHora(ahora, ctx.empresaZonaHoraria)}
           </p>
           <p className="mt-1">
             <LimiteMesasAbiertas abiertas={metricas.enPedido + metricas.ocupadas} limite={sucursal.maxMesasAbiertas} puedeEditar={limiteMesas.editar} />

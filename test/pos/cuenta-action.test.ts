@@ -258,7 +258,7 @@ describe("tomar pedido (server actions)", () => {
       expect(await enviarACocina(cuenta.id, [flan.id, nuevo.id])).toEqual({ ok: true, mensaje: "Envío 2 a cocina: 2 ítems de la mesa 4.", numeroEnvio: 2, envioNuevo: true });
       expect((await itemsDe(cuenta.id)).map((i) => i.numeroEnvio)).toEqual([1, 2, 2]);
 
-      const [m] = (await obtenerMapaDeMesas(s.sucursalId, prisma)).mesas;
+      const [m] = (await obtenerMapaDeMesas(s.sucursalId, prisma, new Date())).mesas;
       expect(m).toMatchObject({ estado: "ocupada", pedidosEnviados: 2, productosSinEnviar: 0 });
     });
 
@@ -281,7 +281,7 @@ describe("tomar pedido (server actions)", () => {
       expect(cerrada.cerradaEn).not.toBeNull();
       expect(cerrada.cerradaPorId).toBe(s.admin.id);
       expect(await prisma.operacion.count()).toBe(0);
-      expect((await obtenerMapaDeMesas(s.sucursalId, prisma)).mesas[0].estado).toBe("libre");
+      expect((await obtenerMapaDeMesas(s.sucursalId, prisma, new Date())).mesas[0].estado).toBe("libre");
       expect(await liberarMesa(cuenta.id)).toEqual({ ok: false, mensaje: "La cuenta de la mesa 4 ya está cerrada." });
     });
 

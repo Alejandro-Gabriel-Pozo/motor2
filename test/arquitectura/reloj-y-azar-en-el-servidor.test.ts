@@ -23,9 +23,6 @@ export const RELOJ_EN_CONSULTAS: Record<string, string> = Object.fromEntries(
   [
     "src/server/lecturas/carta/menu.ts",
     "src/server/lecturas/carta/publica.ts",
-    "src/server/consultas/pos/detalle-de-mesa.ts",
-    "src/server/consultas/pos/mesas.ts",
-    "src/server/consultas/pos/tickets.ts",
     "src/server/consultas/reportes/devoluciones.ts",
     "src/server/consultas/reportes/diferencias-ajustes.ts",
     "src/server/consultas/reportes/perdidas.ts",

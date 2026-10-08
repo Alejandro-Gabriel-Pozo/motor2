@@ -45,7 +45,9 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   if (!gate.ok) return <p className="text-red-700">{gate.mensaje}</p>;
 
   const { mesaId } = await params;
-  const detalle = await obtenerDetalleDeMesa(ctx.sucursalId, mesaId, ctx.db);
+  // El reloj se lee UNA vez, acá en el borde (O.22-a, Hito 4): el detalle (tiempos de la cuenta) y los tickets recientes usan la misma hora.
+  const ahora = new Date();
+  const detalle = await obtenerDetalleDeMesa(ctx.sucursalId, mesaId, ctx.db, ahora);
   if (!detalle) {
     return (
       <div className="space-y-3">
@@ -70,7 +72,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     // condiciona a mano, del lado del servidor (Task #17).
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_tickets", ctx.db),
     listarSeccionesActivas(ctx.sucursalId),
-    obtenerTicketsRecientes(ctx.sucursalId, detalle.mesa.id, ctx.db),
+    obtenerTicketsRecientes(ctx.sucursalId, detalle.mesa.id, ctx.db, undefined, ahora),
   ]);
   const { mesa, cuenta } = detalle;
   // «Agregar al pedido» por sección de CARTA (docs/plan-selector-carta-pos-2026-09-25.md): solo con cuenta abierta y si quien mira
