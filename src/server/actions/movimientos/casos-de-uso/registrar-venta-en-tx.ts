@@ -1,7 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
-import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
 import { crearArrastreDeRedondeo } from "@/core/movimientos/arrastre-redondeo";
 import {
   leerCantidadVendida,
@@ -18,7 +17,7 @@ import { seccionesConStock } from "@/server/lecturas/movimientos/saldos";
 import { cargarDeudaDeRedondeo } from "@/server/lecturas/movimientos/deuda-de-redondeo";
 import { faltantesDe } from "@/core/movimientos/origen-venta";
 import { filasDeUnaVenta } from "@/core/movimientos/filas-de-venta";
-import { asignarOrigenDeLaVenta, rechazoSinRespaldo, type LineaArmada } from "@/core/movimientos/plan-de-la-venta";
+import { asignarOrigenDeLaVenta, avisoDeStockNegativo, mensajeStockInsuficiente, rechazoSinRespaldo, type LineaArmada } from "@/core/movimientos/plan-de-la-venta";
 import { cargarDatosDeOrigen, prepararOrigen } from "@/server/persistencia/movimientos/cargar-origen-de-venta";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
 import { calcularCostosYMargenes } from "@/server/lecturas/reportes/costos";
@@ -155,21 +154,12 @@ export async function registrarVentaEnTx(
   for (const faltante of faltantesDe(libro, familiasIds)) {
     const producto = await obtenerProducto(faltante.productoId);
     if (opciones.permitirStockNegativo) {
-      const decimales = producto?.unidadStock.decimales ?? 2;
-      avisosStockNegativo.push({
-        productoId: faltante.productoId,
-        nombre: producto?.nombre ?? faltante.productoId,
-        seccionId: faltante.seccionId,
-        seccionNombre: origenDatos.nombreDeSeccion(faltante.seccionId),
-        actual: faltante.actual,
-        requerido: redondearACantidadDeUnidad(faltante.requerido, decimales),
-        resultante: redondearACantidadDeUnidad(faltante.actual - faltante.requerido, decimales),
-      });
+      // El aviso y el texto del rechazo son puros (`avisoDeStockNegativo`, `mensajeStockInsuficiente`, en `core/movimientos/plan-de-la-venta.ts`); acá queda la decisión de cuál corresponde y la lectura de la pista.
+      avisosStockNegativo.push(avisoDeStockNegativo(faltante, producto, origenDatos.nombreDeSeccion(faltante.seccionId)));
       continue;
     }
     const pista = await seccionesConStock(faltante.productoId, actor.sucursalId, tx);
-    const detallePista = pista.length ? ` Tiene stock en: ${pista.join(", ")}.` : "";
-    return fallo(`Stock insuficiente para "${producto?.nombre ?? faltante.productoId}". Actual: ${faltante.actual}, requerido: ${faltante.requerido}.${detallePista}`);
+    return fallo(mensajeStockInsuficiente(faltante, producto, pista));
   }
 
   // Arrastre de redondeo (Task #27, docs/plan-redondeo-consumo-fraccionado-2026-09-26.md): UNA sola carga para la venta ENTERA (todos

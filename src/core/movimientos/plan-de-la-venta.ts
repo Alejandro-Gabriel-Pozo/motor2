@@ -1,5 +1,7 @@
-import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
+import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, type FaltanteDeStock, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
 import type { DatosDeOrigen } from "@/core/movimientos/origen-venta-datos";
+import type { AvisoStockNegativo } from "@/core/movimientos/registrar-venta";
+import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
 
 /**
  * El PLAN DE ORIGEN de una venta (Hito 5, pieza 5.1, bloque B: mudado TAL CUAL desde `registrarVentaEnTx`, que vive en `server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts`).
@@ -123,4 +125,39 @@ export function asignarOrigenDeLaVenta(lineas: readonly LineaArmada[], origenDat
   });
 
   return { ventas, pedidosPlanos };
+}
+
+/**
+ * Lo único que los avisos y el rechazo de stock miran del producto faltante: su nombre y los decimales de su unidad de stock. Sin ficha (el producto ya no existe), el nombre es su id y
+ * los decimales son 2.
+ */
+interface ProductoFaltante {
+  nombre: string;
+  unidadStock: { decimales: number };
+}
+
+/**
+ * El aviso de stock negativo de un faltante, cuando la venta se deja registrar igual (`permitirStockNegativo`, B6bis): el saldo de la sección antes de la venta, lo que la venta le cargó y
+ * con qué saldo queda, redondeados a los decimales de la unidad de stock del producto. `seccionNombre` lo resuelve quien llama (`origenDatos.nombreDeSeccion`).
+ */
+export function avisoDeStockNegativo(faltante: FaltanteDeStock, producto: ProductoFaltante | null | undefined, seccionNombre: string): AvisoStockNegativo {
+  const decimales = producto?.unidadStock.decimales ?? 2;
+  return {
+    productoId: faltante.productoId,
+    nombre: producto?.nombre ?? faltante.productoId,
+    seccionId: faltante.seccionId,
+    seccionNombre,
+    actual: faltante.actual,
+    requerido: redondearACantidadDeUnidad(faltante.requerido, decimales),
+    resultante: redondearACantidadDeUnidad(faltante.actual - faltante.requerido, decimales),
+  };
+}
+
+/**
+ * El rechazo por stock insuficiente de un faltante (sin `permitirStockNegativo`): nombra al producto, lo que había y lo que se pedía EXACTO (sin redondear), y —si el producto tiene stock
+ * en otras secciones de la sucursal— cuáles son (`seccionesConStock`, que lee quien llama: este mensaje solo lo escribe).
+ */
+export function mensajeStockInsuficiente(faltante: FaltanteDeStock, producto: Pick<ProductoFaltante, "nombre"> | null | undefined, seccionesConStock: readonly string[]): string {
+  const detallePista = seccionesConStock.length ? ` Tiene stock en: ${seccionesConStock.join(", ")}.` : "";
+  return `Stock insuficiente para "${producto?.nombre ?? faltante.productoId}". Actual: ${faltante.actual}, requerido: ${faltante.requerido}.${detallePista}`;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { crearLibroDeStock, type SaldoLote, type SeccionCandidata } from "../../src/core/movimientos/origen-venta";
 import type { DatosDeOrigen } from "../../src/core/movimientos/origen-venta-datos";
-import { asignarOrigenDeLaVenta, rechazoSinRespaldo, type LineaArmada } from "../../src/core/movimientos/plan-de-la-venta";
+import { asignarOrigenDeLaVenta, avisoDeStockNegativo, mensajeStockInsuficiente, rechazoSinRespaldo, type LineaArmada } from "../../src/core/movimientos/plan-de-la-venta";
 
 /**
  * El plan de origen de la venta (Hito 5, 5.1 bloque B1: `core/movimientos/plan-de-la-venta.ts`, mudado tal cual desde `registrarVentaEnTx`): sin base. Fija el TEXTO del rechazo sin
@@ -156,5 +156,38 @@ describe("asignarOrigenDeLaVenta: el orden de las mutaciones del libro", () => {
     expect(ventas[0]!.consumos.map((c) => c.cantidad)).toEqual([2]);
     expect(ventas[1]!.consumos.map((c) => c.cantidad)).toEqual([2]);
     expect(datos.libro.cargado("HARINA", COCINA.id)).toBe(4);
+  });
+});
+
+describe("avisoDeStockNegativo y mensajeStockInsuficiente (B3)", () => {
+  const faltante = { productoId: "mp-harina", seccionId: COCINA.id, actual: 0.4, requerido: 0.6666666 };
+
+  it("el aviso redondea lo requerido y el saldo resultante a los decimales de la unidad del producto, y deja el saldo previo tal cual", () => {
+    const harina = { nombre: "Harina", unidadStock: { decimales: 3 } };
+    expect(avisoDeStockNegativo(faltante, harina, "Cocina")).toEqual({
+      productoId: "mp-harina", nombre: "Harina", seccionId: COCINA.id, seccionNombre: "Cocina", actual: 0.4, requerido: 0.667, resultante: -0.267,
+    });
+    expect(avisoDeStockNegativo(faltante, { nombre: "Harina", unidadStock: { decimales: 0 } }, "Cocina")).toMatchObject({ requerido: 1 });
+    expect(avisoDeStockNegativo(faltante, { nombre: "Harina", unidadStock: { decimales: 1 } }, "Cocina")).toMatchObject({ requerido: 0.7, resultante: -0.3 });
+  });
+
+  it("el aviso conserva el ORDEN de las claves de siempre", () => {
+    expect(Object.keys(avisoDeStockNegativo(faltante, { nombre: "Harina", unidadStock: { decimales: 2 } }, "Cocina"))).toEqual([
+      "productoId", "nombre", "seccionId", "seccionNombre", "actual", "requerido", "resultante",
+    ]);
+  });
+
+  it("sin ficha del producto, el nombre es su id y se redondea a 2 decimales", () => {
+    for (const sinFicha of [null, undefined]) {
+      expect(avisoDeStockNegativo(faltante, sinFicha, "Cocina")).toMatchObject({ nombre: "mp-harina", requerido: 0.67, resultante: -0.27 });
+    }
+  });
+
+  it("el rechazo por stock insuficiente: el texto exacto, con lo requerido SIN redondear y con o sin la pista de las secciones", () => {
+    expect(mensajeStockInsuficiente(faltante, { nombre: "Harina" }, [])).toBe('Stock insuficiente para "Harina". Actual: 0.4, requerido: 0.6666666.');
+    expect(mensajeStockInsuficiente(faltante, { nombre: "Harina" }, ["Cocina", "Depósito"])).toBe(
+      'Stock insuficiente para "Harina". Actual: 0.4, requerido: 0.6666666. Tiene stock en: Cocina, Depósito.'
+    );
+    expect(mensajeStockInsuficiente(faltante, null, [])).toBe('Stock insuficiente para "mp-harina". Actual: 0.4, requerido: 0.6666666.');
   });
 });
