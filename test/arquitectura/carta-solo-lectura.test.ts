@@ -114,7 +114,7 @@ describe("carta: solo lectura", () => {
   it("tampoco escribe nada de lo que la carta pública ALCANZA fuera de sus carpetas (catálogo, auth, lib), salvo lo tolerado con motivo", () => {
     const alcance = alcanceDeLaCartaPublica();
     const nombres = alcance.map((r) => relative(SRC, r).split(sep).join("/"));
-    expect(nombres, "el cálculo de alcance no llega al catálogo: la prueba pasaría en vacío").toContain("core/catalogo/public-servidor.ts");
+    expect(nombres, "el cálculo de alcance no llega al catálogo: la prueba pasaría en vacío").toContain("core/permisos/capacidades-sucursal.ts");
     expect(nombres).toContain("core/auth/base.ts");
     const problemas = alcance.flatMap((ruta) => {
       const nombre = relative(SRC, ruta).split(sep).join("/");
