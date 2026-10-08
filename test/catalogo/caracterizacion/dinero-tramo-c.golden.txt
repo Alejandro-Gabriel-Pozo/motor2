@@ -167,12 +167,9 @@
 ### promo: cupos que dejan el precio local bajo el piso
   resultado: {"ok":false,"mensaje":"El precio de \"Menú del día\" ($0.05) no alcanza el piso de $0,01 por unidad en el peor caso (10 unidades si se elige el máximo de cada cupo: hace falta al menos $0.1). Subí el precio o bajá los máximos."}
   efectos: revalidarCartasPublicas=0 refrescar=0
-### promo: precio de la empresa bajo el piso de sus cupos (hoy la edición NO mira el piso: hallazgo, se fija tal cual)
-  resultado: {"ok":true,"mensaje":"Promo \"Menú del día\" guardada."}
-  efectos: revalidarCartasPublicas=1 refrescar=0
-  - PROMO menu activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos titulo=Menú del día
-  + PROMO menu activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=0.01 seccionCartaId=platos titulo=Menú del día
-  AUDITORIA actorId=admin campo=precio descripcion=Promo "Menú del día": precio empresaId=empresa entidad=PromoCarta entidadId=menu sucursalId=null valorAnterior=10000 valorNuevo=0.01
+### promo: precio de la empresa bajo el piso de sus cupos (desde O.42 la edición mira el piso: se rechaza)
+  resultado: {"ok":false,"mensaje":"El precio de \"Menú del día\" ($0.01) no alcanza el piso de $0,01 por unidad en el peor caso (3 unidades si se elige el máximo de cada cupo: hace falta al menos $0.03). Subí el precio o bajá los máximos."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
 ### promo: cupos con la sección repetida
   resultado: {"ok":false,"mensaje":"No se puede repetir la misma sección de carta en dos cupos de la misma promo."}
   efectos: revalidarCartasPublicas=0 refrescar=0

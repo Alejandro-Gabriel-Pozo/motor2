@@ -306,7 +306,7 @@ describe("Huella de dinero del tramo C", () => {
         { seccionCartaId: postres.id, cantidadMaxima: 5 },
       ]),
     );
-    await paso("promo: precio de la empresa bajo el piso de sus cupos (hoy la edición NO mira el piso: hallazgo, se fija tal cual)", await guardarPromoCarta({ id: menu.id, seccionCartaId: platos.id, titulo: "Menú del día", precio: 0.01 }));
+    await paso("promo: precio de la empresa bajo el piso de sus cupos (desde O.42 la edición mira el piso: se rechaza)", await guardarPromoCarta({ id: menu.id, seccionCartaId: platos.id, titulo: "Menú del día", precio: 0.01 }));
     await paso("promo: cupos con la sección repetida", await guardarCuposPromoCarta(menu.id, [{ seccionCartaId: platos.id, cantidadMaxima: 1 }, { seccionCartaId: platos.id, cantidadMaxima: 1 }]));
     await paso("promo: cupo con mínimo mayor que el máximo", await guardarCuposPromoCarta(menu.id, [{ seccionCartaId: platos.id, cantidadMinima: 3, cantidadMaxima: 2 }]));
     await paso("promo: cupo de una sección inexistente", await guardarCuposPromoCarta(menu.id, [{ seccionCartaId: "no-existe", cantidadMaxima: 1 }]));

@@ -22,9 +22,10 @@ export interface ComandoGuardarPromoCarta {
 /**
  * Solo lo que produce el caso de uso (el formato lo rechaza antes el guard):
  *  - `SECCION_NO_ENCONTRADA`: la sección de carta elegida no existe;
- *  - `PROMO_NO_ENCONTRADA`: la promo a editar no existe.
+ *  - `PROMO_NO_ENCONTRADA`: la promo a editar no existe;
+ *  - `BAJO_EL_PISO`: el precio nuevo de una promo con cupos no alcanza su piso de $0,01 por unidad del peor caso (O.42).
  */
-export type ResultadoGuardarPromoCarta = ResultadoCaso<null, "SECCION_NO_ENCONTRADA" | "PROMO_NO_ENCONTRADA">;
+export type ResultadoGuardarPromoCarta = ResultadoCaso<null, "SECCION_NO_ENCONTRADA" | "PROMO_NO_ENCONTRADA" | "BAJO_EL_PISO">;
 
 /**
  * Comando «fijar el precio de una promo en la sucursal activa»: lo que recibe `guardarPrecioLocalPromoCartaCasoDeUso`, CRUDO. No hay guard (`SIN_GUARD` en
