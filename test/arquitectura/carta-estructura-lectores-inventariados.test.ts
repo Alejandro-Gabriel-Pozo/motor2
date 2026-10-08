@@ -27,9 +27,9 @@ const ARCHIVOS_PERMITIDOS = [
   "server/actions/carta/generos-compartido.ts",
   "server/actions/carta/contenido-producto.ts",
   "server/actions/carta/items-agrupados.ts",
-  "server/actions/carta/promos.ts",
-  // Hito 4, H4C-2: la sección de la promo (alta o edición) la lee su caso de uso.
+  // Hito 4, H4C-2 y H4C-3: las secciones de las promos (la de la promo y las de sus cupos) las leen sus casos de uso (antes, server/actions/carta/promos.ts).
   "server/actions/carta/casos-de-uso/guardar-promo-carta.ts",
+  "server/actions/carta/casos-de-uso/guardar-cupos-promo-carta.ts",
   "server/actions/carta/copiar-carta.ts",
 ];
 const LECTURA = /\b(seccionCarta|generoCarta|itemAgrupadoCarta|contenidoCartaProducto|opcionItemAgrupadoCarta)\s*\.\s*(find|count|aggregate|groupBy)/;

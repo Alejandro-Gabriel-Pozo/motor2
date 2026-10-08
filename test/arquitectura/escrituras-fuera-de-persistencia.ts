@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 37;
+export const TOPE_DE_ENTRADAS = 36;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -109,11 +109,6 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["portalCartaEmpresa.upsert"],
     fase: "Fase 4",
     motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
-  },
-  "src/server/actions/carta/promos.ts": {
-    escrituras: ["promoCarta.update", "promoCartaCupo.createMany", "promoCartaCupo.deleteMany", "promoCartaSucursal.upsert"],
-    fase: "Fase 4",
-    motivo: "Tramo C (PR 4C-E): dinero de carta (promos, descuentos, precio local); pasa a caso de uso + persistencia con auditoría.",
   },
   "src/server/actions/carta/registro-publico.ts": {
     escrituras: ["sucursalPublica.create", "sucursalPublica.deleteMany", "sucursalPublica.update", "sucursalPublica.update"],

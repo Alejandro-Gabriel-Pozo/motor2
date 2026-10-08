@@ -1,11 +1,12 @@
 "use server";
 
-import { mensajePisoDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
-import { validarCantidadCupoPromo } from "@/core/carta/validaciones";
 import { guardComandoGuardarPromoCarta } from "@/core/features/carta/promos.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion } from "../tipos";
+import { actualizarActivaPromoCartaCasoDeUso } from "./casos-de-uso/actualizar-activa-promo-carta";
+import { actualizarActivaPromoCartaEnSucursalCasoDeUso } from "./casos-de-uso/actualizar-activa-promo-carta-en-sucursal";
+import { guardarCuposPromoCartaCasoDeUso } from "./casos-de-uso/guardar-cupos-promo-carta";
 import { guardarPrecioLocalPromoCartaCasoDeUso } from "./casos-de-uso/guardar-precio-local-promo-carta";
 import { guardarPromoCartaCasoDeUso } from "./casos-de-uso/guardar-promo-carta";
 import { revalidarCartasPublicas } from "./revalidar";
@@ -20,6 +21,11 @@ import { revalidarCartasPublicas } from "./revalidar";
  * SIN ningún cupo (`guardarCuposPromoCarta` nunca la tocó, o se le guardó una lista vacía): sigue siendo puramente
  * INFORMATIVA, no referencia productos ni mueve stock — el POS la ignora (`selector-carta.ts`). CON uno o más cupos
  * (Task #16, docs/plan-promo-combo-2026-09-26.md): pasa a ser ARMABLE, ver el docstring de `PromoCarta` en schema.prisma.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.2, pasos H4C-2 y H4C-3) las cinco acciones son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{guardar-promo-carta,actualizar-activa-promo-carta,actualizar-activa-promo-carta-en-sucursal,guardar-precio-local-promo-carta,
+ * guardar-cupos-promo-carta}.ts`; escrituras en server/persistencia/carta/promos.ts): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las cuatro primeras
+ * revalidan la carta pública si el caso de uso sale bien, como antes; la de los cupos no (como antes: los cupos no se muestran en la carta).
  */
 
 export interface DatosPromoCarta {
@@ -48,29 +54,27 @@ export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<Resulta
   });
 }
 
-/** Apagado GENERAL de la promo (todas las sucursales): una promo apagada en la empresa no se ofrece en ninguna, tenga lo que tenga cada sucursal. */
+/**
+ * Apagado GENERAL de la promo (todas las sucursales): una promo apagada en la empresa no se ofrece en ninguna, tenga lo que tenga cada sucursal. Desde H4C-3:
+ * permiso → caso de uso (`casos-de-uso/actualizar-activa-promo-carta.ts`) → revalidar si salió bien → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
+ */
 export async function actualizarActivaPromoCarta(promoCartaId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
-    const existente = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId } });
-    if (!existente) return error("No se encontró la promo.");
-    await ctx.db.promoCarta.update({ where: { id: promoCartaId }, data: { activa } });
-    revalidarCartasPublicas();
-    return ok(`Promo "${existente.titulo}" ${activa ? "activada" : "desactivada"} en toda la empresa.`);
+    const resultado = await actualizarActivaPromoCartaCasoDeUso(ctx, { promoCartaId, activa });
+    if (resultado.ok) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
 }
 
-/** Prende o apaga la promo EN LA SUCURSAL ACTIVA (apagada no va en la carta ni en el POS de esta sucursal; las demás no se tocan). */
+/**
+ * Prende o apaga la promo EN LA SUCURSAL ACTIVA (apagada no va en la carta ni en el POS de esta sucursal; las demás no se tocan). Desde H4C-3: permiso →
+ * caso de uso (`casos-de-uso/actualizar-activa-promo-carta-en-sucursal.ts`) → revalidar si salió bien → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
+ */
 export async function actualizarActivaPromoCartaEnSucursal(promoCartaId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta_promo_activar", async (ctx) => {
-    const existente = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId } });
-    if (!existente) return error("No se encontró la promo.");
-    await ctx.db.promoCartaSucursal.upsert({
-      where: { promoCartaId_sucursalId: { promoCartaId, sucursalId: ctx.sucursalId } },
-      create: { promoCartaId, sucursalId: ctx.sucursalId, activa },
-      update: { activa },
-    });
-    revalidarCartasPublicas();
-    return ok(`Promo "${existente.titulo}" ${activa ? "prendida" : "apagada"} en esta sucursal.`);
+    const resultado = await actualizarActivaPromoCartaEnSucursalCasoDeUso(ctx, { promoCartaId, activa });
+    if (resultado.ok) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
 }
 
@@ -112,51 +116,14 @@ export interface DatosCupoPromoCarta {
  *   `precioMinimoPromo` (`src/core/pos/promo-combo.ts`, D3): sin esto, una elección real podría no tener forma de prorratear
  *   sin dejar algún componente en $0 (`prorratearPrecioPromo` vuelve a validarlo, por si la composición real de una
  *   instancia queda más chica que el peor caso, D1).
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-3) es un adaptador fino: permiso (`conPermisoDeEmpresa("carta_promo_definir")`) → caso de uso
+ * (`casos-de-uso/guardar-cupos-promo-carta.ts`: la promo, la validación de cada cupo, las secciones, el piso y el reemplazo en server/persistencia/carta/promos.ts)
+ * → `aResultadoAccion`. Sin guard: los cupos se validan DESPUÉS de leer la promo (`SIN_GUARD`). NO revalida la carta pública (hallazgo informado por el plan,
+ * migrado tal cual).
  */
 export async function guardarCuposPromoCarta(promoCartaId: string, cupos: readonly DatosCupoPromoCarta[]): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
-    const promo = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId }, include: { sucursales: { select: { precioLocal: true } } } });
-    if (!promo) return error("No se encontró la promo.");
-
-    const seccionIds = new Set<string>();
-    const cuposValidados: { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number; orden: number }[] = [];
-    for (const [i, c] of cupos.entries()) {
-      if (!c.seccionCartaId) return error("Elegí la sección de cada cupo.");
-      if (seccionIds.has(c.seccionCartaId)) return error("No se puede repetir la misma sección de carta en dos cupos de la misma promo.");
-      seccionIds.add(c.seccionCartaId);
-
-      const minima = validarCantidadCupoPromo(c.cantidadMinima, "La cantidad mínima", 0);
-      if (!minima.ok) return error(minima.mensaje);
-      const maxima = validarCantidadCupoPromo(c.cantidadMaxima, "La cantidad máxima");
-      if (!maxima.ok) return error(maxima.mensaje);
-      if (maxima.valor < 1) return error("La cantidad máxima de un cupo tiene que ser al menos 1.");
-      if (minima.valor > maxima.valor) return error("En cada cupo, el mínimo no puede ser mayor que el máximo.");
-
-      cuposValidados.push({ seccionCartaId: c.seccionCartaId, cantidadMinima: minima.valor, cantidadMaxima: maxima.valor, orden: i });
-    }
-
-    if (cuposValidados.length) {
-      const secciones = await ctx.db.seccionCarta.findMany({ where: { id: { in: [...seccionIds] } }, select: { id: true } });
-      if (secciones.length !== seccionIds.size) return error("Alguna sección de carta de los cupos no existe.");
-
-      // D3: peor caso = todos los cupos en su máximo — el precio tiene que alcanzar el piso de $0,01 por unidad ahí también,
-      // no solo en la elección mínima.
-      // Vale para el precio de la empresa y para el precio local de CUALQUIER sucursal que lo tenga.
-      const piso = pisoDePrecioDePromo(cuposValidados)!;
-      for (const precio of [Number(promo.precio), ...promo.sucursales.flatMap((s) => (s.precioLocal !== null ? [Number(s.precioLocal)] : []))]) {
-        if (precio < piso.minimo) return error(mensajePisoDePromo(promo.titulo, precio, piso));
-      }
-    }
-
-    await ctx.transaccion(async (tx) => {
-      await tx.promoCartaCupo.deleteMany({ where: { promoCartaId } });
-      if (cuposValidados.length) await tx.promoCartaCupo.createMany({ data: cuposValidados.map((c) => ({ promoCartaId, ...c })) });
-    });
-
-    return ok(
-      cuposValidados.length
-        ? `Cupos de "${promo.titulo}" guardados (${cuposValidados.length}): ahora es una promo armable en el POS.`
-        : `"${promo.titulo}" volvió a ser informativa (sin cupos): el POS deja de ofrecerla para armar.`
-    );
+    return aResultadoAccion(await guardarCuposPromoCartaCasoDeUso(ctx, { promoCartaId, cupos }));
   });
 }

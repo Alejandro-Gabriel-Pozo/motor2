@@ -234,6 +234,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque 4.2, H4C-1: guardarDescuentoProducto → carta/casos-de-uso/guardar-descuento-producto.ts (el producto, la fila actual, el ítem agrupado, la escritura en server/persistencia/carta/descuento-producto.ts y su auditoría en la misma transacción); el formato del % lo valida guardComandoGuardarDescuentoProducto (core/features/carta) dentro de conPermiso, y la acción revalida la carta pública solo si el caso de uso escribió (datos.huboCambio). El archivo no tiene ninguna otra función.",
   },
+  {
+    ruta: "src/server/actions/carta/promos.ts",
+    motivo:
+      "Hito 4, bloque 4.2, H4C-2 y H4C-3: guardarPromoCarta → carta/casos-de-uso/guardar-promo-carta.ts (con guardComandoGuardarPromoCarta), guardarPrecioLocalPromoCarta → guardar-precio-local-promo-carta.ts, actualizarActivaPromoCarta → actualizar-activa-promo-carta.ts, actualizarActivaPromoCartaEnSucursal → actualizar-activa-promo-carta-en-sucursal.ts y guardarCuposPromoCarta → guardar-cupos-promo-carta.ts (las lecturas, la validación que va después de leer la promo, el piso de core/carta/piso-de-promo.ts, las escrituras en server/persistencia/carta/promos.ts y la auditoría del precio viven en el caso de uso). La acción revalida la carta pública si sale bien, salvo la de los cupos (como antes). El archivo no tiene ninguna otra función.",
+  },
 ];
 
 module.exports = {

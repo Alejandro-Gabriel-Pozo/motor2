@@ -64,6 +64,12 @@ const SIN_GUARD: Record<string, string> = {
     "Editar las notas de una membresía (Hito 3, I.5a): recibe un id y un texto libre que nunca se validó en la acción; el texto lo normaliza el caso de uso (`texto(notas) || null`) DESPUÉS de resolver la membresía y el techo, como antes. Un guard previo adelantaría esa normalización a «No se encontró esa membresía».",
   "src/server/actions/carta/promos.ts#guardarPrecioLocalPromoCarta":
     "Precio de una promo en la sucursal (Hito 4, H4C-2): la acción leía la promo ANTES de validar el precio (una promo inexistente gana sobre un precio inválido, y el piso depende de los cupos que se leen), así que la validación vive en el caso de uso, en el mismo orden. Un guard previo adelantaría el rechazo del precio a «No se encontró la promo».",
+  "src/server/actions/carta/promos.ts#actualizarActivaPromoCarta":
+    "Apagado general de una promo (Hito 4, H4C-3): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró la promo.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/carta/promos.ts#actualizarActivaPromoCartaEnSucursal":
+    "Prender o apagar una promo en la sucursal (Hito 4, H4C-3): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró la promo.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/carta/promos.ts#guardarCuposPromoCarta":
+    "Cupos de una promo (Hito 4, H4C-3): la acción leía la promo ANTES de validar los cupos (una promo inexistente gana sobre un cupo inválido) y el piso depende de los precios que se leen, así que la validación vive en el caso de uso, en el mismo orden. Un guard previo adelantaría el rechazo de un cupo a «No se encontró la promo.».",
 };
 
 describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {

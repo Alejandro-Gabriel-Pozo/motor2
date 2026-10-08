@@ -43,6 +43,36 @@ export async function crearPromoPrendidaEnSucursal(db: Prisma.TransactionClient,
   return { id: creada.id };
 }
 
+/** Apagado (o prendido) GENERAL de la promo en la empresa: una promo apagada no se ofrece en ninguna sucursal, tenga lo que tenga cada una. */
+export async function fijarActivaDePromo(db: Prisma.TransactionClient, args: { id: string; activa: boolean }): Promise<void> {
+  await db.promoCarta.update({ where: { id: args.id }, data: { activa: args.activa } });
+}
+
+/** Prende o apaga la promo en UNA sucursal (si la sucursal todavía no tenía fila, la crea con ese estado y sin precio local). */
+export async function fijarActivaDePromoEnSucursal(db: Prisma.TransactionClient, args: { promoCartaId: string; sucursalId: string; activa: boolean }): Promise<void> {
+  await db.promoCartaSucursal.upsert({
+    where: { promoCartaId_sucursalId: { promoCartaId: args.promoCartaId, sucursalId: args.sucursalId } },
+    create: { promoCartaId: args.promoCartaId, sucursalId: args.sucursalId, activa: args.activa },
+    update: { activa: args.activa },
+  });
+}
+
+/**
+ * Reemplaza TODOS los cupos de la promo por la lista dada (todo o nada: lo llama el caso de uso dentro de su transacción). Una lista vacía deja la promo sin
+ * cupos (informativa).
+ */
+export async function reemplazarCuposDePromo(
+  db: Prisma.TransactionClient,
+  args: { promoCartaId: string; cupos: readonly { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number; orden: number }[] },
+): Promise<void> {
+  await db.promoCartaCupo.deleteMany({ where: { promoCartaId: args.promoCartaId } });
+  if (args.cupos.length) {
+    await db.promoCartaCupo.createMany({
+      data: args.cupos.map((c) => ({ promoCartaId: args.promoCartaId, seccionCartaId: c.seccionCartaId, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima, orden: c.orden })),
+    });
+  }
+}
+
 /**
  * Fija el precio de la promo en UNA sucursal (`null` = vuelve al precio de la empresa). Si la sucursal todavía no tenía fila, la crea APAGADA: el precio queda
  * guardado pero no la prende (prender es otra acción, con su propia clave).
