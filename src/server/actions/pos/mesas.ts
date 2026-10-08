@@ -42,7 +42,7 @@ export async function crearMesa(numero: number): Promise<ResultadoAccion> {
  *
  * Desde el Hito 4 de la pureza (bloque 4.1, paso 4) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_limite_mesas_abiertas")`) → formato del
  * límite (`guardComandoActualizarMaxMesasAbiertas`, core/features/mesas/mesas.guard.ts, DENTRO del envoltorio) → caso de uso
- * (`casos-de-uso/actualizar-max-mesas-abiertas.ts`: la sucursal, la auditoría y el cambio en server/persistencia/pos/mesas.ts, sin transacción como antes) →
+ * (`casos-de-uso/actualizar-max-mesas-abiertas.ts`: la sucursal, la auditoría y el cambio en server/persistencia/pos/mesas.ts, en UNA transacción desde B1) →
  * `aResultadoAccion`. Con `crearMesa` (paso 3) también migrada, el archivo entero está en `ACCIONES_CON_CASO_DE_USO`.
  */
 export async function actualizarMaxMesasAbiertas(limite: number | null): Promise<ResultadoAccion> {
