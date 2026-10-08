@@ -294,6 +294,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque C, H4C-17: crearMotivoMerma y crearDestinoConsumo → movimientos/casos-de-uso/crear-{motivo-merma,destino-consumo}.ts (con guardComandoCrearMotivoMerma / guardComandoCrearDestinoConsumo; la acción arma el ResultadoConId) y las dos de activar → actualizar-activo-{motivo-merma,destino-consumo}.ts; escrituras en server/persistencia/movimientos/motivos.ts, sin transacción ni auditoría (como antes). La acción refresca la vista solo si salió bien, como antes. Las lecturas (H8) siguen en la acción.",
   },
+  {
+    ruta: "src/server/actions/movimientos/secciones.ts",
+    motivo:
+      "Hito 4, bloque C, H4C-18: crearSeccion (con guardComandoCrearSeccion; la acción arma el ResultadoConId), renombrarSeccion (con guardComandoRenombrarSeccion: el nombre, antes de leer), actualizarActivaSeccion y actualizarRespaldoSeccion (con guardComandoActualizarRespaldoSeccion: el booleano y que el id sea un texto) → movimientos/casos-de-uso/{crear-seccion,renombrar-seccion,actualizar-activa-seccion,actualizar-respaldo-seccion}.ts; escrituras en server/persistencia/movimientos/secciones.ts, sin transacción ni auditoría (como antes). La acción refresca la vista solo si salió bien, como antes. Las lecturas (H8) siguen en la acción.",
+  },
 ];
 
 module.exports = {

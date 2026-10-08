@@ -1,10 +1,15 @@
 "use server";
 
-import { texto, validarTextoCatalogo } from "@/core/texto";
+import { guardComandoActualizarRespaldoSeccion, guardComandoCrearSeccion, guardComandoRenombrarSeccion } from "@/core/features/movimientos/secciones.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
-import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirVerAlgunaEnSucursal, requerirVerEnSucursal } from "../con-sesion";
+import { actualizarActivaSeccionCasoDeUso } from "./casos-de-uso/actualizar-activa-seccion";
+import { actualizarRespaldoSeccionCasoDeUso } from "./casos-de-uso/actualizar-respaldo-seccion";
+import { crearSeccionCasoDeUso } from "./casos-de-uso/crear-seccion";
+import { renombrarSeccionCasoDeUso } from "./casos-de-uso/renombrar-seccion";
 
 /**
  * Port de HOJA_SECCIONES (Stock.js:1316-1415) — antes una hoja POR
@@ -15,6 +20,11 @@ import { requerirVerAlgunaEnSucursal, requerirVerEnSucursal } from "../con-sesio
  * desde H8 (decisión del dueño) exigen membresía en la sucursal pedida y el
  * «Ver» de ALGUNA de esas 20 pantallas, evaluado en esa sucursal (antes
  * bastaba la sesión, como `obtenerSeccionesParaCarga` en Apps Script).
+ *
+ * Desde el Hito 4 de la pureza (bloque C de la pieza carta/catálogo/stock, paso H4C-18) las cuatro mutaciones son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{crear-seccion,renombrar-seccion,actualizar-activa-seccion,actualizar-respaldo-seccion}.ts`; escrituras en
+ * server/persistencia/movimientos/secciones.ts; el formato en core/features/movimientos/secciones.guard.ts): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`.
+ * Las lecturas (H8) siguen acá con sus guardas. La acción refresca la vista en los mismos caminos que antes (solo si salió bien).
  */
 export async function listarSeccionesActivas(sucursalId: string) {
   const ctx = await requerirVerAlgunaEnSucursal(sucursalId, [
@@ -51,22 +61,13 @@ export async function listarSeccionesParaPanel(sucursalId: string) {
 /** Alta de una sección nueva. Admin-only ('secciones'): define el catálogo cerrado que van a usar todos los operadores de esa sucursal. */
 export async function crearSeccion(nombre: string): Promise<ResultadoConId> {
   return conPermiso<ResultadoConId>("secciones", async (ctx) => {
-    const nombreLimpio = texto(nombre);
-    if (!nombreLimpio) return error("El nombre de la sección no puede estar vacío.");
-    const invalido = validarTextoCatalogo(nombreLimpio, "El nombre de la sección");
-    if (invalido) return error(invalido);
-
-    const existente = await ctx.db.seccion.findFirst({
-      where: { sucursalId: ctx.sucursalId, nombre: { equals: nombreLimpio, mode: "insensitive" } },
-    });
-    if (existente) {
-      return error(`Ya existe una sección "${nombreLimpio}" en esta sucursal (las secciones no distinguen mayúsculas/espacios).`);
-    }
-
-    const creada = await ctx.db.seccion.create({ data: { sucursalId: ctx.sucursalId, nombre: nombreLimpio } });
+    const comando = guardComandoCrearSeccion({ nombre });
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await crearSeccionCasoDeUso(ctx, comando.valor);
     // Se llama desde un closure "use server" de la página, sin redirigir: sin esto la tabla no cambia en un navegador real (ver refrescar.ts).
-    refrescarVistaSiHaceFalta();
-    return okConId(`Sección "${creada.nombre}" creada.`, creada.id, creada.nombre);
+    if (r.ok) refrescarVistaSiHaceFalta();
+    const base = aResultadoAccion(r);
+    return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
 }
 
@@ -79,34 +80,23 @@ export async function crearSeccion(nombre: string): Promise<ResultadoConId> {
  */
 export async function renombrarSeccion(seccionId: string, nombreNuevo: string): Promise<ResultadoAccion> {
   return conPermiso("secciones", async (ctx) => {
-    const nombre = texto(nombreNuevo);
-    if (!nombre) return error("El nombre no puede estar vacío.");
-    const invalido = validarTextoCatalogo(nombre, "El nombre de la sección");
-    if (invalido) return error(invalido);
-
-    const seccion = await ctx.db.seccion.findUnique({ where: { id: seccionId } });
-    if (!seccion || seccion.sucursalId !== ctx.sucursalId) return error("No se encontró la sección.");
-
-    const existente = await ctx.db.seccion.findFirst({
-      where: { sucursalId: ctx.sucursalId, nombre: { equals: nombre, mode: "insensitive" }, id: { not: seccionId } },
-    });
-    if (existente) return error(`Ya existe una sección "${existente.nombre}" en esta sucursal.`);
-
-    await ctx.db.seccion.update({ where: { id: seccionId }, data: { nombre } });
-    refrescarVistaSiHaceFalta(); // ver crearSeccion
-    return ok(`Sección renombrada a "${nombre}".`);
+    const comando = guardComandoRenombrarSeccion({ seccionId, nombreNuevo });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await renombrarSeccionCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) refrescarVistaSiHaceFalta(); // ver crearSeccion
+    return aResultadoAccion(resultado);
   });
 }
 
-/** Activa/desactiva una sección. No se borra: el Kardex ya escrito con esa sección sigue siendo válido, solo deja de ofrecerse para cargas nuevas. */
+/**
+ * Activa/desactiva una sección. No se borra: el Kardex ya escrito con esa sección sigue siendo válido, solo deja de ofrecerse para cargas nuevas. Sin guard
+ * (`SIN_GUARD`: solo recibe un id y un booleano).
+ */
 export async function actualizarActivaSeccion(seccionId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermiso("secciones", async (ctx) => {
-    const seccion = await ctx.db.seccion.findUnique({ where: { id: seccionId } });
-    if (!seccion || seccion.sucursalId !== ctx.sucursalId) return error("No se encontró la sección.");
-
-    await ctx.db.seccion.update({ where: { id: seccionId }, data: { activa } });
-    refrescarVistaSiHaceFalta(); // ver crearSeccion
-    return ok(`Sección "${seccion.nombre}" ${activa ? "activada" : "desactivada"}.`);
+    const resultado = await actualizarActivaSeccionCasoDeUso(ctx, { seccionId, activa });
+    if (resultado.ok) refrescarVistaSiHaceFalta(); // ver crearSeccion
+    return aResultadoAccion(resultado);
   });
 }
 
@@ -117,12 +107,10 @@ export async function actualizarActivaSeccion(seccionId: string, activa: boolean
  */
 export async function actualizarRespaldoSeccion(seccionId: string, sirveDeRespaldoEnVentas: boolean): Promise<ResultadoAccion> {
   return conPermiso("secciones", async (ctx) => {
-    if (typeof sirveDeRespaldoEnVentas !== "boolean") return error("Valor inválido.");
-    const seccion = typeof seccionId === "string" ? await ctx.db.seccion.findUnique({ where: { id: seccionId } }) : null;
-    if (!seccion || seccion.sucursalId !== ctx.sucursalId) return error("No se encontró la sección.");
-
-    await ctx.db.seccion.update({ where: { id: seccion.id }, data: { sirveDeRespaldoEnVentas } });
-    refrescarVistaSiHaceFalta(); // ver crearSeccion
-    return ok(`Sección "${seccion.nombre}" ${sirveDeRespaldoEnVentas ? "ahora sirve" : "ya no sirve"} de respaldo automático en ventas.`);
+    const comando = guardComandoActualizarRespaldoSeccion({ seccionId, sirveDeRespaldoEnVentas });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await actualizarRespaldoSeccionCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) refrescarVistaSiHaceFalta(); // ver crearSeccion
+    return aResultadoAccion(resultado);
   });
 }
