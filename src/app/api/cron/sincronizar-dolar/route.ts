@@ -17,7 +17,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
-    const resultado = await sincronizarDolar(baseDelContexto().db);
+    const resultado = await sincronizarDolar(baseDelContexto().db, new Date());
     // Una fuente que falló (aunque otra haya respondido) queda registrada: hoy solo se veía en la respuesta del cron.
     if (resultado.errores.length) await reportarError(new Error(`Sincronización del dólar con errores: ${resultado.errores.join("; ")}`), "dolar-cron");
     return Response.json(resultado);

@@ -35,7 +35,9 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
   // El dólar del encabezado es informativo: si no se puede leer (tabla sin migrar, base lenta), la pantalla sigue igual.
   const cotizacion = await obtenerUltimaCotizacionSinRomper(ctx.db);
   // Si falta la cotización de hoy (el cron diario puede no haber corrido), la aplicación se pone al día sola DESPUÉS de responder.
-  if (cotizacionVencida(cotizacion, new Date())) after(() => actualizarDolarSiHaceFalta(ctx.db));
+  // El reloj lo lee este borde (O.22-b, Hito 4): `actualizarDolarSiHaceFalta` ya no tiene hora por defecto. La de la sincronización se toma cuando corre el
+  // `after`, como antes (no la de armar la pantalla).
+  if (cotizacionVencida(cotizacion, new Date())) after(() => actualizarDolarSiHaceFalta(ctx.db, new Date()));
   // Una empresa sin ningún módulo vendible disponible solo tiene Administración: se le dice por qué (si no, el menú vacío parece una falla). Si ni
   // siquiera tiene filas en el registro se avisa además a Sentry, una vez por empresa y arranque: puede ser un registro que se perdió.
   const registro = await situacionDelRegistroDeModulos(ctx.empresaId, ctx.db);

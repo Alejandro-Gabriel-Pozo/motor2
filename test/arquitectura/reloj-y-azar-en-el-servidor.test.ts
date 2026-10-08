@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import { analizarFuente, delegadosDeModelos } from "../../scripts/arquitectura/analizar-fuente";
@@ -68,6 +68,24 @@ describe("server/persistencia no lee el reloj ni el azar", () => {
   it("ninguno, sin excepciones: la hora la trae el caso de uso (`actor.ahora`) y los ids los pone la base", () => {
     const infractores = todos.filter(conRelojOAzar);
     expect(infractores, `La persistencia no lee la hora ni el azar: recibe la fecha por parámetro y deja el id a la base (gen_random_uuid()):\n${infractores.join("\n")}`).toEqual([]);
+  });
+});
+
+/**
+ * Archivos del servidor FUERA de `persistencia`, `consultas`, `lecturas` y `acceso` que ya NO leen el reloj ni el azar (O.22-b, Hito 4): tenían la hora por un
+ * valor por defecto (`ahora: Date = new Date()`) y pasaron a recibirla obligatoria, fijada en su borde. LISTA CERRADA: cada entrada se verifica (que exista y que no
+ * lea el reloj), así que volver a poner el valor por defecto la pone en rojo. Se le suma un archivo cuando se le saca el reloj escondido.
+ */
+const SIN_RELOJ_FUERA_DE_CONSULTAS: Record<string, string> = {
+  "src/server/actions/reportes/sincronizaciones.ts":
+    "sincronizarDolar, sincronizarIPC y actualizarDolarSiHaceFalta (sin usuario: crons y encabezado) reciben `ahora` obligatorio; el reloj lo leen las dos rutas de cron y app-shell.tsx.",
+};
+
+describe("archivos del servidor fuera de las consultas que ya no leen el reloj (lista cerrada, O.22-b)", () => {
+  it.each(Object.entries(SIN_RELOJ_FUERA_DE_CONSULTAS))("%s no lee la hora ni el azar", (ruta, motivo) => {
+    expect(existsSync(join(RAIZ, ruta)), `${ruta} ya no existe: sacala de SIN_RELOJ_FUERA_DE_CONSULTAS`).toBe(true);
+    expect(motivo.trim().length).toBeGreaterThan(10);
+    expect(conRelojOAzar(ruta), `${ruta} volvió a leer el reloj (¿un \`ahora = new Date()\` por defecto?): recibí la hora por parámetro, fijada en el borde`).toBe(false);
   });
 });
 

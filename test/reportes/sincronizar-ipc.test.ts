@@ -33,7 +33,7 @@ describe("sincronizarIPC — antigüedad de la serie guardada", () => {
 
   it("la API trae solo meses viejos: la serie guardada queda VENCIDA", async () => {
     simularApi([12, 11, 10]);
-    const r = await sincronizarIPC(prisma);
+    const r = await sincronizarIPC(prisma, new Date());
 
     expect(r.mesesNuevos).toBe(3);
     expect(r.antiguedad.estado).toBe("vencida");
@@ -42,7 +42,7 @@ describe("sincronizarIPC — antigüedad de la serie guardada", () => {
 
   it("la API trae el mes anterior (rezago normal): al día", async () => {
     simularApi([3, 2, 1]);
-    const r = await sincronizarIPC(prisma);
+    const r = await sincronizarIPC(prisma, new Date());
 
     expect(r.antiguedad.estado).toBe("al-dia");
     expect(r.antiguedad.ultimoMes).toBe(mesApi(1).slice(0, 7));
@@ -50,9 +50,9 @@ describe("sincronizarIPC — antigüedad de la serie guardada", () => {
 
   it("el caso que nadie ve: la API no trae nada nuevo, mesesNuevos es 0 y la serie guardada SIGUE vencida", async () => {
     simularApi([12, 11, 10]);
-    await sincronizarIPC(prisma); // primera corrida: carga los meses viejos
+    await sincronizarIPC(prisma, new Date()); // primera corrida: carga los meses viejos
     simularApi([]); // el cron de todos los días: la API no trae nada (caída parcial, serie vacía…)
-    const segunda = await sincronizarIPC(prisma);
+    const segunda = await sincronizarIPC(prisma, new Date());
 
     expect(segunda.mesesNuevos).toBe(0);
     expect(segunda.ultimoMesDisponible, "la API no dijo nada").toBeNull();
@@ -106,15 +106,15 @@ describe("sincronizarIPC — respuestas de un tercero con forma rara (informe de
       inits.push(args[1]);
       return { ok: true, status: 200, json: async () => ({ data: [] }) };
     });
-    await sincronizarIPC(prisma);
+    await sincronizarIPC(prisma, new Date());
     expect(inits[0]?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("una respuesta sin serie lanza (el cron responde error) y no guarda nada", async () => {
     vi.stubGlobal("fetch", async () => ({ ok: true, status: 200, json: async () => ({ data: "x" }) }));
-    await expect(sincronizarIPC(prisma)).rejects.toThrow(/sin serie/);
+    await expect(sincronizarIPC(prisma, new Date())).rejects.toThrow(/sin serie/);
     vi.stubGlobal("fetch", async () => ({ ok: true, status: 200, json: async () => null }));
-    await expect(sincronizarIPC(prisma)).rejects.toThrow(/sin serie/);
+    await expect(sincronizarIPC(prisma, new Date())).rejects.toThrow(/sin serie/);
     expect(await prisma.indicePrecio.count()).toBe(0);
   });
 
@@ -124,7 +124,7 @@ describe("sincronizarIPC — respuestas de un tercero con forma rara (informe de
       status: 200,
       json: async () => ({ data: [["2026-01-01", 100], ["basura", 101], ["2026-02-01", -5], ["2026-03-01", 0], ["2026-04-01", "120"], ["2026-05-01", null], null, ["2026-06-01", 130]] }),
     }));
-    const r = await sincronizarIPC(prisma);
+    const r = await sincronizarIPC(prisma, new Date());
     expect(r.mesesNuevos).toBe(2);
     expect(await prisma.indicePrecio.count()).toBe(2);
   });

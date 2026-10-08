@@ -10,16 +10,18 @@ import { sincronizarIPCCasoDeUso } from "./casos-de-uso/sincronizar-ipc";
  * la aplicación. NO es una Server Action (sin `"use server"`: nada de acá es un endpoint que se pueda invocar directo) ni lleva `conPermiso`: el permiso es `SISTEMA`
  * (ver la `@ficha` de los casos de uso). Solo lo importan esos tres (lo vigila `test/arquitectura/sincronizaciones-solo-desde-crons-y-shell.test.ts`).
  *
- * El reloj vive ACÁ, en el borde: los casos de uso reciben `ahora`. Mismos nombres y firmas que cuando vivían en `core/reportes`.
+ * Los casos de uso reciben `ahora`, y desde O.22-b (Hito 4) estas tres funciones también lo reciben OBLIGATORIO: el reloj lo leen los que las llaman (las dos
+ * rutas de cron y el encabezado), no un valor por defecto escondido acá. Este archivo no lee el reloj ni el azar: lo fija `reloj-y-azar-en-el-servidor.test.ts`
+ * (lista cerrada `SIN_RELOJ_FUERA_DE_CONSULTAS`).
  */
 
 /** Guarda la cotización de hoy y rellena el historial si falta (ver `sincronizarDolarCasoDeUso`). */
-export function sincronizarDolar(db: Db, ahora: Date = new Date()): Promise<ResultadoSincronizacionDolar> {
+export function sincronizarDolar(db: Db, ahora: Date): Promise<ResultadoSincronizacionDolar> {
   return sincronizarDolarCasoDeUso({ db, ahora });
 }
 
 /** Trae la serie del IPC y guarda los meses nuevos (ver `sincronizarIPCCasoDeUso`). */
-export function sincronizarIPC(db: Db, ahora: Date = new Date()): Promise<ResultadoSincronizacionIPC> {
+export function sincronizarIPC(db: Db, ahora: Date): Promise<ResultadoSincronizacionIPC> {
   return sincronizarIPCCasoDeUso({ db, ahora });
 }
 
@@ -36,7 +38,7 @@ export function reiniciarLimitadorDolar(): void {
  * pantallas abiertas a la vez no disparan varias sincronizaciones) y NUNCA lanza: un fallo de las APIs de terceros no puede romper la
  * pantalla desde la que se pidió. Devuelve `true` si intentó sincronizar.
  */
-export async function actualizarDolarSiHaceFalta(db: Db, ahora: Date = new Date()): Promise<boolean> {
+export async function actualizarDolarSiHaceFalta(db: Db, ahora: Date): Promise<boolean> {
   if (process.env.MOTOR2_SIN_DOLAR_AUTOMATICO === "1") return false; // las pruebas de navegador no salen a internet
   if (ahora.getTime() - ultimoIntentoMs < MINUTOS_ENTRE_INTENTOS * 60_000) return false;
   ultimoIntentoMs = ahora.getTime();
