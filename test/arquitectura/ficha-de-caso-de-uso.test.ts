@@ -325,7 +325,7 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
 
   it("encuentra los casos de uso reales (si dejan de encontrarse, la regla quedó vacía)", () => {
     // Piso = los casos de uso reales a la fecha (sube con cada mudanza; Hito 4, bloque 4.1: estaba en 25 con 44 reales; bloque 4.2 desde 54).
-    expect(casos.length).toBeGreaterThanOrEqual(105);
+    expect(casos.length).toBeGreaterThanOrEqual(107);
   });
 
   it("todo caso de uso real tiene su ficha completa y de vocabulario cerrado", () => {
