@@ -103,7 +103,7 @@ const MAXIMO_LIMITE_MESAS_ABIERTAS = 9999;
 /**
  * Límite de mesas ABIERTAS a la vez en una sucursal (`Sucursal.maxMesasAbiertas`, docs/plan-comensales-y-limite-mesas-2026-09-26.md):
  * `null` = sin límite (default, y también lo que deja vacío el campo del formulario). Si no es `null`, entero entre 1 y
- * {@link MAXIMO_LIMITE_MESAS_ABIERTAS} (mismo tope que `NUMERO_MESA_MAXIMO` en src/server/actions/pos/mesas.ts: no puede hacer falta
+ * {@link MAXIMO_LIMITE_MESAS_ABIERTAS} (mismo tope que `NUMERO_MESA_MAXIMO` en src/core/features/mesas/mesas.guard.ts: no puede hacer falta
  * un límite mayor que la mesa más alta que se puede dar de alta).
  */
 export function validarMaxMesasAbiertas(valor: unknown): { ok: true; limite: number | null } | { ok: false; mensaje: string } {

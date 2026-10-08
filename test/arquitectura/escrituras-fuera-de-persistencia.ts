@@ -201,7 +201,7 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     motivo: "Tramo C (PR 4C-D): acción de POS sin migrar; pasa a caso de uso + persistencia.",
   },
   "src/server/actions/pos/mesas.ts": {
-    escrituras: ["mesa.create", "sucursal.update"],
+    escrituras: ["sucursal.update"],
     fase: "Fase 4",
     motivo: "Tramo C (PR 4C-D): acción de POS sin migrar; pasa a caso de uso + persistencia.",
   },
