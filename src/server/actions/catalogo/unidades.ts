@@ -1,22 +1,24 @@
 "use server";
 
 import type { MagnitudUnidad } from "@prisma/client";
-import { texto, validarTextoCatalogo } from "@/core/texto";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { requierePermisoDeEmpresa } from "@/server/acceso/gate";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/public";
-import { decimalesDelPaso } from "@/core/catalogo/public";
+import { guardComandoActualizarDecimalesUnidad, guardComandoCrearUnidad } from "@/core/features/catalogo/unidades.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
-import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirVerAlguna, requerirVerDeEmpresa } from "../con-sesion";
+import { actualizarActivaUnidadCasoDeUso } from "./casos-de-uso/actualizar-activa-unidad";
+import { actualizarDecimalesUnidadCasoDeUso } from "./casos-de-uso/actualizar-decimales-unidad";
+import { crearUnidadCasoDeUso } from "./casos-de-uso/crear-unidad";
 
-const DECIMALES_DEFAULT_POR_MAGNITUD: Record<MagnitudUnidad, number> = {
-  CANTIDAD: 0,
-  PESO: 2,
-  VOLUMEN: 2,
-};
+/**
+ * Desde el Hito 4 de la pureza (bloque 4.3, paso H4C-8) las tres mutaciones son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{crear-unidad,actualizar-activa-unidad,actualizar-decimales-unidad}.ts`; escrituras en server/persistencia/catalogo/unidades.ts): el archivo
+ * entero está en `ACCIONES_CON_CASO_DE_USO`. Las lecturas de abajo (H8 y `detectarInsumosConUnidadMezclada`, con su gate inline) siguen acá.
+ */
 
 /** H8: todas (activas e inactivas), para la pantalla de Unidades. */
 export async function listarUnidadesParaPanel() {
@@ -30,33 +32,29 @@ export async function listarUnidadesActivas() {
   return ctx.db.unidad.findMany({ where: { activa: true }, orderBy: { nombre: "asc" } });
 }
 
+/**
+ * Desde el Hito 4 (H4C-8): permiso (`conPermisoDeEmpresa("unidades")`) → formato del nombre y de los decimales (`guardComandoCrearUnidad`,
+ * core/features/catalogo/unidades.guard.ts, DENTRO del envoltorio) → caso de uso (`casos-de-uso/crear-unidad.ts`: que el nombre esté libre y el alta) → refrescar
+ * la vista si salió bien → `aResultadoAccion`, y si salió bien el id y el nombre de la unidad (`okConId`).
+ */
 export async function crearUnidad(datos: { nombre: string; magnitud: MagnitudUnidad; decimales?: number }): Promise<ResultadoConId> {
   return conPermisoDeEmpresa<ResultadoConId>("unidades", async (ctx) => {
-    const nombre = texto(datos.nombre);
-    if (!nombre) return error("El nombre de la unidad no puede estar vacío.");
-    const invalido = validarTextoCatalogo(nombre, "El nombre de la unidad");
-    if (invalido) return error(invalido);
-
-    const decimales = datos.decimales ?? DECIMALES_DEFAULT_POR_MAGNITUD[datos.magnitud];
-    if (!Number.isInteger(decimales) || decimales < 0 || decimales > 6) {
-      return error("Los decimales tienen que ser un entero entre 0 y 6.");
-    }
-
-    const existente = await ctx.db.unidad.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
-    if (existente) return error(`Ya existe una unidad llamada "${nombre}".`);
-
-    const creada = await ctx.db.unidad.create({ data: { nombre, magnitud: datos.magnitud, decimales } });
+    const comando = guardComandoCrearUnidad(datos);
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await crearUnidadCasoDeUso(ctx, comando.valor);
     // Se llama desde un closure "use server" de la página de Unidades, sin redirigir: sin esto la tabla no cambia (ver refrescar.ts).
-    refrescarVistaSiHaceFalta();
-    return okConId(`Unidad "${creada.nombre}" creada.`, creada.id, creada.nombre);
+    if (r.ok) refrescarVistaSiHaceFalta();
+    const base = aResultadoAccion(r);
+    return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
 }
 
+/** Desde el Hito 4 (H4C-8): permiso → caso de uso (`casos-de-uso/actualizar-activa-unidad.ts`) → refrescar la vista → `aResultadoAccion`. Sin guard (`SIN_GUARD`). */
 export async function actualizarActivaUnidad(unidadId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("unidades", async (ctx) => {
-    await ctx.db.unidad.update({ where: { id: unidadId }, data: { activa } });
+    const resultado = await actualizarActivaUnidadCasoDeUso(ctx, { unidadId, activa });
     refrescarVistaSiHaceFalta(); // ver crearUnidad
-    return ok(`Unidad ${activa ? "activada" : "desactivada"}.`);
+    return aResultadoAccion(resultado);
   });
 }
 
@@ -65,44 +63,18 @@ export async function actualizarActivaUnidad(unidadId: string, activa: boolean):
  * prisma/schema.prisma): bajar los decimales de una Unidad no puede dejar a un producto "Se produce" (stock real) con un
  * `pasoVenta` que ya no entra en esos decimales — se rechaza, nombrando el primero que rompería (mismo criterio que
  * `dependenciasParaDesactivar`, "avisa qué es").
+ *
+ * Desde el Hito 4 (H4C-8): permiso → rango de los decimales (`guardComandoActualizarDecimalesUnidad`, DENTRO del envoltorio) → caso de uso
+ * (`casos-de-uso/actualizar-decimales-unidad.ts`: los productos «Se produce», la unidad, y el cambio con su auditoría en UNA transacción) → refrescar la vista si
+ * salió bien → `aResultadoAccion`.
  */
 export async function actualizarDecimalesUnidad(unidadId: string, decimales: number): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("unidades", async (ctx) => {
-    if (!Number.isInteger(decimales) || decimales < 0 || decimales > 6) {
-      return error("Los decimales tienen que ser un entero entre 0 y 6.");
-    }
-
-    const productosConStockReal = await ctx.db.producto.findMany({
-      where: { unidadStockId: unidadId, tipo: "PV", seProduce: true, pasoVenta: { not: null } },
-      select: { nombre: true, pasoVenta: true },
-    });
-    const inconsistente = productosConStockReal.find((p) => decimalesDelPaso(Number(p.pasoVenta)) > decimales);
-    if (inconsistente) {
-      return error(
-        `No se puede bajar a ${decimales} decimal(es): "${inconsistente.nombre}" "se produce" (tiene stock propio) y su paso de venta ` +
-          `(${Number(inconsistente.pasoVenta)}) necesita más precisión — cambiale el paso de venta, desmarcá "Se produce", o dale una unidad propia.`
-      );
-    }
-
-    const unidad = await ctx.db.unidad.findUnique({ where: { id: unidadId }, select: { nombre: true, decimales: true } });
-    if (!unidad) return error("No se encontró la unidad.");
-    // El cambio y su rastro van en UNA transacción (Pureza 0.7): los decimales fijan la precisión de toda cantidad que use esta unidad.
-    await ctx.transaccion(async (tx) => {
-      await tx.unidad.update({ where: { id: unidadId }, data: { decimales } });
-      if (unidad.decimales !== decimales) {
-        await registrarCambioAuditado(tx, {
-          entidad: "Unidad",
-          entidadId: unidadId,
-          campo: "decimales",
-          descripcion: `Unidad "${unidad.nombre}": decimales`,
-          valorAnterior: unidad.decimales,
-          valorNuevo: decimales,
-          actorId: ctx.usuarioId,
-        });
-      }
-    });
-    refrescarVistaSiHaceFalta(); // ver crearUnidad
-    return ok("Decimales actualizados.");
+    const comando = guardComandoActualizarDecimalesUnidad({ unidadId, decimales });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await actualizarDecimalesUnidadCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) refrescarVistaSiHaceFalta(); // ver crearUnidad
+    return aResultadoAccion(resultado);
   });
 }
 

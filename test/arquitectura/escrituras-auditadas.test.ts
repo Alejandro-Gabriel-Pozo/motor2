@@ -63,7 +63,8 @@ const FUNCIONES_EXCEPTUADAS: Record<string, string> = {
     "Alta de un producto: no hay valor anterior que se pierda, y se crea SIN transacción a propósito (reintenta el código ante `P2002`, ver su docstring), así que la auditoría no puede ir atómica con la creación. Cada cambio posterior del precio lo audita `actualizarProducto`.",
   "src/server/actions/catalogo/productos.ts|darDeAltaProductoRapido":
     "Alta rápida de una MP con factor 1 (sin precio): misma razón que `darDeAltaProducto` (creación sin transacción por el reintento del código).",
-  "src/server/actions/catalogo/unidades.ts|crearUnidad":
+  // Hito 4, H4C-8: la escritura del alta pasó de `actions/catalogo/unidades.ts|crearUnidad` a la persistencia (la llama solo `casos-de-uso/crear-unidad.ts`).
+  "src/server/persistencia/catalogo/unidades.ts|crearUnidadNueva":
     "Alta de una unidad nueva: todavía nada la usa, así que no hay un valor anterior ni cantidades cuyo significado cambie. Cada cambio posterior de sus decimales lo audita `actualizarDecimalesUnidad`.",
 };
 

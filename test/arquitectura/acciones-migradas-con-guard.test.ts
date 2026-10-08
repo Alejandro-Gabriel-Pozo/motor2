@@ -74,6 +74,8 @@ const SIN_GUARD: Record<string, string> = {
     "Volver al valor central (Hito 4, H4C-5): solo recibe el id de la línea, que nunca se validó en la acción (lo resuelve el caso de uso dentro de la transacción serializable, «No se encontró esa línea de receta.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/catalogo/categorias-producto.ts#actualizarActivaCategoriaProducto":
     "Activar o desactivar una categoría (Hito 4, H4C-7): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/catalogo/unidades.ts#actualizarActivaUnidad":
+    "Activar o desactivar una unidad (Hito 4, H4C-8): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
 };
 
 describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {

@@ -259,6 +259,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque 4.3, H4C-7: crearCategoriaProducto → catalogo/casos-de-uso/crear-categoria-producto.ts (con guardComandoCrearCategoriaProducto: buscar por nombre, reusar o crear en server/persistencia/catalogo/categorias-producto.ts; la acción arma el ResultadoConId con el id y el nombre que devuelve) y actualizarActivaCategoriaProducto → actualizar-activa-categoria-producto.ts (la acción refresca la vista, como antes). La lectura listarCategoriasProducto (H8) sigue en la acción.",
   },
+  {
+    ruta: "src/server/actions/catalogo/unidades.ts",
+    motivo:
+      "Hito 4, bloque 4.3, H4C-8: crearUnidad → catalogo/casos-de-uso/crear-unidad.ts (con guardComandoCrearUnidad; la acción arma el ResultadoConId), actualizarActivaUnidad → actualizar-activa-unidad.ts y actualizarDecimalesUnidad → actualizar-decimales-unidad.ts (con guardComandoActualizarDecimalesUnidad; los productos «Se produce», la unidad y el cambio con su auditoría en UNA transacción); escrituras en server/persistencia/catalogo/unidades.ts. La acción refresca la vista en los mismos caminos que antes. Las lecturas (H8 y detectarInsumosConUnidadMezclada, con su gate inline) siguen en la acción.",
+  },
 ];
 
 module.exports = {
