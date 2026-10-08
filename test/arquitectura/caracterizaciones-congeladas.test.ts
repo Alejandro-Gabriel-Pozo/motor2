@@ -44,7 +44,16 @@ const CONGELADAS: Record<string, Congelada> = {
     desde: "01adabd9",
     motivo:
       "Matriz de acceso (3B.1). Idéntica en los 8 commits del tramo B de `origin/pureza-fase-3c-permisos` (01adabd9 a 7a2a3894) y en `main` desde la fusión 7cd594af (#76). F1 (3.4) NO la regenera.",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "684138a1d1b209b5ab09755c856d6b3d96dc6a28",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, «S-12 (D8): el costo de consignacion (precio y consignante) solo lo ve y lo edita quien tiene pagar_consignante».
+        // El commit que regenera es el de S-41 (fila O.90 de la lista de control, que lo cita por su hash).
+        commit: "5c18eb8b",
+        motivo:
+          "S-41/D4 (O.90; CAMBIA COMPORTAMIENTO, plan de endurecimiento de seguridad T2): la semilla de `producto_sincronizar_precio_carta` pasa de [admin, operador] a [admin] (piso operario intacto: clase O, delegable por configuración). Cambia SOLO lo que dice esa clave para el usuario «operador» (y los roles que lo incluyen), en 18 líneas: 16 donde sale de `ok`/`ver=true editar=true`/`sucursalesDondeElUsuarioPuedeVer` y entra a los grupos de SIN_PERMISO/`ver=false editar=false`, en los 4 registros de módulos; y 2 mensajes de denegación del usuario «operador + especial», que nombran la primera clave que le falta (ahora esta, antes `insumo_renombrar_fusionar`). Ninguna respuesta de otra clave cambia (comprobado quitando la clave de ambas versiones: la única diferencia que queda son esos 2 mensajes).",
+      },
+    ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
     blob: "233ac7baa0d982f4e01a0b87776810955f85c9ed",
@@ -62,7 +71,15 @@ const CONGELADAS: Record<string, Congelada> = {
     blob: "1c0366bde31dabd25a3b773386ed978f9c7046fa",
     desde: "44f1909f",
     motivo: "Huella de gobierno (B0, #82). Red de la Fase I y la Fase II: las 16 mutaciones de auth y permisos no cambian.",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "334d34b8a738cd073d463b708ce03941949749b6",
+        // El commit PADRE de este (ver la entrada de la matriz de acceso).
+        commit: "5c18eb8b",
+        motivo:
+          "S-41/D4 (O.90; CAMBIA COMPORTAMIENTO; REGENERACIÓN NO PREVISTA EN EL PLAN, consecuencia directa de la misma semilla, a revisar por el orquestador): la huella siembra los permisos de fábrica de las empresas que da de alta, así que el rol «operador» ya no recibe `producto_sincronizar_precio_carta`. Cambia SOLO 2 líneas, una por empresa sembrada: `PERMISO operador:producto_sincronizar_precio_carta ver=true editar=true` → `ver=false editar=false`. Ningún resultado, mensaje ni otra fila cambia.",
+      },
+    ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
     blob: "1e34981243c2d5807b4e0492bd05e92d024f356f",

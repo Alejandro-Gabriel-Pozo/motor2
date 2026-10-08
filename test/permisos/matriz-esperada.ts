@@ -19,7 +19,7 @@ export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   alta_producto: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
   producto_editar: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
   producto_asignar_insumo: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
-  producto_sincronizar_precio_carta: { modulo: "carta", contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
+  producto_sincronizar_precio_carta: { modulo: "carta", contexto: "empresa", nivelMinimo: "operario", roles: ["admin"] },
   guardar_receta: { modulo: "recetas", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   grupos_familia: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   secciones: { modulo: "stock", contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] },

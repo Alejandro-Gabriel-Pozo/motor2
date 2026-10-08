@@ -195,7 +195,7 @@
   PERMISO operador:producto_disponibilidad ver=true editar=true
   PERMISO operador:producto_editar ver=true editar=true
   PERMISO operador:producto_presentaciones ver=true editar=true
-  PERMISO operador:producto_sincronizar_precio_carta ver=true editar=true
+  PERMISO operador:producto_sincronizar_precio_carta ver=false editar=false
   PERMISO operador:producto_ver_catalogo ver=true editar=true
   PERMISO operador:proveedor_alta ver=true editar=true
   PERMISO operador:proveedores ver=false editar=false
@@ -602,7 +602,7 @@
   PERMISO operador:producto_disponibilidad ver=true editar=true
   PERMISO operador:producto_editar ver=true editar=true
   PERMISO operador:producto_presentaciones ver=true editar=true
-  PERMISO operador:producto_sincronizar_precio_carta ver=true editar=true
+  PERMISO operador:producto_sincronizar_precio_carta ver=false editar=false
   PERMISO operador:producto_ver_catalogo ver=true editar=true
   PERMISO operador:proveedor_alta ver=true editar=true
   PERMISO operador:proveedores ver=false editar=false
