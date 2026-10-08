@@ -19,8 +19,10 @@ const MENSAJE_VERSION_ESPERADA_INVALIDA = "La versión de la receta que se esper
  * sale primero cuando hay más de un dato inválido).
  *
  * `exigirVersion` (O.1, Hito 4, paso H4C-23): la acción PÚBLICA `guardarReceta` lo pide — una versión esperada ausente (`undefined` o `null`) se rechaza con el MISMO
- * texto que una inválida, así el modo «a ciegas» no es alcanzable desde la red. Sin la opción (la receta propia de una sucursal, y `guardarRecetaACiegas` de
- * `server/actions/catalogo/receta-a-ciegas.ts`, solo para seeds, scripts y tests) la ausencia sigue siendo «a ciegas».
+ * texto que una inválida, así el modo «a ciegas» no es alcanzable desde la red. Desde O.45 (cierre del Hito 4) también lo piden las cinco acciones de la receta
+ * propia de una sucursal (`server/actions/catalogo/receta-sucursal.ts`, `versionVistaExigida`, antes de su primera lectura). Sin la opción (`guardarRecetaACiegas` de
+ * `server/actions/catalogo/receta-a-ciegas.ts`, solo para seeds, scripts y tests, y el segundo paso de la receta propia, que ya recibe la versión validada) la
+ * ausencia sigue siendo «a ciegas».
  */
 export function guardComandoGuardarVersionDeReceta(entrada: unknown, opciones: { exigirVersion?: boolean } = {}): ResultadoDato<ComandoGuardarVersionDeReceta> {
   const { productoId, items, pasos, cabecera, versionEsperada } = (entrada ?? {}) as {

@@ -32,12 +32,27 @@ import { volverALaRecetaCentralCasoDeUso } from "./casos-de-uso/volver-a-la-rece
  * (`versionVista`, H7), si la mostraba HABILITADA (`habilitadaVista`, D.4, obligatorio en las cinco por decisión del dueño): volver a la central deshabilita la
  * propia sin crear una versión, y sin esto una pantalla vieja la volvía a habilitar con una versión armada sobre otra base. El caso de uso lo compara dentro
  * de su transacción.
+ *
+ * O.45 (cierre del Hito 4, mismo hueco que cerró O.1 en la central): la versión vista es OBLIGATORIA en las cinco. Antes `guardarEnLaPropia` llamaba al guard SIN
+ * `exigirVersion`, así que una llamada armada a mano con `versionVista` `undefined`/`null` (u omitida) guardaba «a ciegas» sobre la serie propia, sin chequeo de
+ * versión. Ahora cada una la valida con `versionVistaExigida` (el MISMO guard con `exigirVersion` y el MISMO texto que la acción pública `guardarReceta`: «La versión de
+ * la receta que se esperaba no es válida.») DENTRO del envoltorio de permiso y ANTES de su primera lectura; la receta propia no tiene modo a ciegas (ningún seed,
+ * script ni test lo usaba, así que no hay función interna como `guardarRecetaACiegas`).
  */
 
 type OpcionesDeDestino = Omit<Extract<DestinoDeVersionDeReceta, { sucursalId: string }>, "sucursalId" | "habilitadaEsperada">;
 
 /** Cuando `habilitadaVista` no es un booleano (una llamada armada a mano: la pantalla siempre lo manda). */
 const MENSAJE_SIN_HABILITADA_VISTA = "No se pudo saber qué receta mostraba la pantalla. Recargá la pantalla y volvé a hacer el cambio.";
+
+/**
+ * O.45: la versión que mostraba la pantalla, EXIGIDA (un entero ≥ 0; `undefined`, `null`, omitida, negativa o no entera → el texto de versión inválida). Va antes de
+ * cualquier lectura, así que también mira el `productoId` como el guard de siempre (uno que no es texto → «No se encontró el producto.», en lugar del error crudo de
+ * Prisma que daba la primera lectura). Después `guardarEnLaPropia` recibe una versión ya validada.
+ */
+function versionVistaExigida(productoId: string, versionVista: number) {
+  return guardComandoGuardarVersionDeReceta({ productoId, versionEsperada: versionVista }, { exigirVersion: true });
+}
 
 async function guardarEnLaPropia(
   ctx: ContextoUsuario,
@@ -60,6 +75,8 @@ async function guardarEnLaPropia(
 /** Crea la receta propia de la sucursal partiendo de la central vigente (una copia que de acá en más se edita por su lado). */
 export async function crearRecetaPropiaDesdeLaCentral(productoId: string, versionVista: number, habilitadaVista: boolean): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
+    const vista = versionVistaExigida(productoId, versionVista);
+    if (!vista.ok) return error(vista.mensaje);
     const estado = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
     if (estado.habilitada) return error("Esta sucursal ya tiene receta propia para este producto.");
     const central = await cargarRecetaVigente(ctx.db, ALCANCE_CENTRAL, productoId, { include: INCLUDE_RECETA_COMPLETA });
@@ -74,6 +91,8 @@ export async function crearRecetaPropiaDesdeLaCentral(productoId: string, versio
  */
 export async function agregarIngredienteARecetaPropia(productoId: string, ingrediente: IngredienteInput, versionVista: number, habilitadaVista: boolean): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
+    const vista = versionVistaExigida(productoId, versionVista);
+    if (!vista.ok) return error(vista.mensaje);
     const estado = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
     if (!estado.habilitada && estado.centralVigente) return error("Primero creá la receta propia de la sucursal a partir de la central.");
     const base = estado.habilitada ? estado.propia : null;
@@ -92,6 +111,8 @@ export async function actualizarIngredienteDeRecetaPropia(
   habilitadaVista: boolean
 ): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
+    const vista = versionVistaExigida(productoId, versionVista);
+    if (!vista.ok) return error(vista.mensaje);
     const estado = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
     if (!estado.habilitada) return error("Esta sucursal no tiene receta propia para este producto.");
     const existentes = mapIngredientesAInput(estado.propia);
@@ -104,6 +125,8 @@ export async function actualizarIngredienteDeRecetaPropia(
 /** Quita un ingrediente de la receta propia habilitada (y lo saca de los pasos que lo mencionaran, como en la central). */
 export async function quitarIngredienteDeRecetaPropia(productoId: string, insumoProductoId: string, versionVista: number, habilitadaVista: boolean): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
+    const vista = versionVistaExigida(productoId, versionVista);
+    if (!vista.ok) return error(vista.mensaje);
     const estado = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
     if (!estado.habilitada) return error("Esta sucursal no tiene receta propia para este producto.");
     const existentes = mapIngredientesAInput(estado.propia);
@@ -130,6 +153,9 @@ export async function copiarRecetaPropiaDeOtraSucursal(
   return conPermiso("receta_sucursal_copiar", async (ctx) => {
     if (!confirmado) return error("Confirmá que querés reemplazar la receta de esta sucursal por la copia.");
     if (sucursalOrigenId === ctx.sucursalId) return error("Elegí otra sucursal: no se puede copiar de la misma.");
+    // Después de las dos comprobaciones que no leen nada (su orden de mensajes no cambia) y antes de la primera lectura.
+    const vista = versionVistaExigida(productoId, versionVista);
+    if (!vista.ok) return error(vista.mensaje);
     const origen = await ctx.db.sucursal.findUnique({ where: { id: sucursalOrigenId }, select: { nombre: true } });
     if (!origen) return error("No se encontró esa sucursal.");
     const estadoOrigen = await obtenerEstadoDeRecetaPropia(productoId, sucursalOrigenId, ctx.db);
