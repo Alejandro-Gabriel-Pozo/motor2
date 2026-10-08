@@ -22,3 +22,15 @@ export interface ComandoLiberarMesa {
  *  - `CON_ITEMS`: la cuenta tiene alguna fila (aunque esté anulada): se cierra con «Cerrar la cuenta», no se libera.
  */
 export type ResultadoLiberarMesa = ResultadoCaso<null, "CUENTA_NO_ABIERTA" | "CON_ITEMS">;
+
+/** Comando «corregir los comensales de una cuenta abierta»: `comensales` CRUDO, lo valida el caso de uso DESPUÉS de encontrar la cuenta (como antes). */
+export interface ComandoCorregirComensales {
+  cuentaId: string;
+  comensales: unknown;
+}
+
+/**
+ * - `CUENTA_NO_ABIERTA`: no es una cuenta de una mesa de esta sucursal, o ya está cerrada (gana sobre un valor inválido de comensales);
+ * - `COMENSALES_INVALIDOS`: no es un entero entre 1 y 99 (`validarComensales`).
+ */
+export type ResultadoCorregirComensales = ResultadoCaso<null, "CUENTA_NO_ABIERTA" | "COMENSALES_INVALIDOS">;

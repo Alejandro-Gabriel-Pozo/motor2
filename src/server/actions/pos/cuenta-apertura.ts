@@ -4,11 +4,12 @@ import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { validarComensales } from "@/core/pos/cuenta";
-import { guardComandoLiberarMesa } from "@/core/features/cuentas/cuenta-apertura.guard";
+import { guardComandoCorregirComensales, guardComandoLiberarMesa } from "@/core/features/cuentas/cuenta-apertura.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { cuentaAbiertaDeSucursal } from "./cuenta-comun";
+import { corregirComensalesCasoDeUso } from "./casos-de-uso/corregir-comensales";
 import { liberarMesaCasoDeUso } from "./casos-de-uso/liberar-mesa";
 
 /**
@@ -65,19 +66,16 @@ export async function abrirCuenta(mesaId: string, comensales: number): Promise<R
  * Corrige los comensales de una cuenta que sigue ABIERTA (docs/plan-comensales-y-limite-mesas-2026-09-26.md: llega gente después, o
  * se cargó mal al abrir). Mismo permiso que abrir la cuenta. Una cuenta ya cerrada no se toca: el dato queda congelado, igual que el
  * precio de cada ítem.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.1, paso 6) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_abrir_cuenta")`) → formato del
+ * `cuentaId` (`guardComandoCorregirComensales`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/corregir-comensales.ts`: transacción serializable, la
+ * cuenta abierta, los comensales y la escritura en server/persistencia/pos/cuenta.ts) → `aResultadoAccion`.
  */
 export async function corregirComensales(cuentaId: string, comensales: number): Promise<ResultadoAccion> {
   return conPermiso("pos_abrir_cuenta", async (ctx) => {
-    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
-      const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
-      if (!abierta.ok) return error(abierta.mensaje);
-
-      const val = validarComensales(comensales);
-      if (!val.ok) return error(val.mensaje);
-
-      await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { comensales: val.comensales } });
-      return ok(`Comensales de la mesa ${abierta.cuenta.mesa.numero} actualizados a ${val.comensales}.`);
-    });
+    const comando = guardComandoCorregirComensales({ cuentaId, comensales });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await corregirComensalesCasoDeUso(ctx, comando.valor));
   });
 }
 

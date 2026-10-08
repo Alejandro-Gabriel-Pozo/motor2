@@ -1,6 +1,6 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { MENSAJE_CUENTA_NO_ENCONTRADA } from "./cuenta.guard";
-import type { ComandoLiberarMesa } from "./cuenta-apertura.schema";
+import type { ComandoCorregirComensales, ComandoLiberarMesa } from "./cuenta-apertura.schema";
 
 /**
  * Guard de la APERTURA de la cuenta de una mesa (feature Cuenta del salón; convención «guard por feature»; Hito 4, bloque 4.1). Formato del comando, ANTES de
@@ -16,4 +16,11 @@ export function guardComandoLiberarMesa(entrada: unknown): ResultadoDato<Comando
   const { cuentaId } = (entrada ?? {}) as { cuentaId?: unknown };
   if (typeof cuentaId !== "string") return rechazar("formato", MENSAJE_CUENTA_NO_ENCONTRADA);
   return aceptar({ cuentaId });
+}
+
+/** Guard del comando «corregir los comensales»: los `comensales` pasan TAL CUAL (los valida el caso de uso después de encontrar la cuenta abierta). */
+export function guardComandoCorregirComensales(entrada: unknown): ResultadoDato<ComandoCorregirComensales> {
+  const { cuentaId, comensales } = (entrada ?? {}) as { cuentaId?: unknown; comensales?: unknown };
+  if (typeof cuentaId !== "string") return rechazar("formato", MENSAJE_CUENTA_NO_ENCONTRADA);
+  return aceptar({ cuentaId, comensales });
 }
