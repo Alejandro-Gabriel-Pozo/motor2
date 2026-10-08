@@ -1,66 +1,17 @@
 "use server";
 
-import { whereDisponibleEn } from "@/core/catalogo/public";
-import { cargarOfertasDeProveedores } from "@/server/lecturas/catalogo/ofertas-de-proveedor";
+import { cargarOfertasDeProveedores, cargarProductosDeProveedorParaElCarrito, type ProductoDeProveedor } from "@/server/lecturas/catalogo/ofertas-de-proveedor";
 import { requerirVer, requerirVerDeEmpresa } from "../con-sesion";
-
-export interface ProductoDeProveedor {
-  productoId: string;
-  productoCodigo: string;
-  productoNombre: string;
-  // O.10 (Hito 4): sin `unidadCompraId`/`unidadCompraNombre`. La precarga del carrito no los usaba (pone `unidadCompraId: ""` = la unidad por defecto del
-  // producto, a propósito: ver `panel-movimiento-form.tsx`); la unidad de la última compra al proveedor sigue en `cargarOfertasDeProveedores` (la ficha y la comparativa).
-  unidadStockNombre: string;
-  referenciaProveedor: string | null;
-  ultimoPrecioPorUnidadStock: number;
-  ultimaCompra: Date;
-  /** De dónde sale el precio: lo último que compró ESTA sucursal a este proveedor, o (si nunca le compró este producto) lo último que compró la empresa —otra sucursal—. La pantalla lo rotula. */
-  origenDelPrecio: "SUCURSAL" | "EMPRESA";
-}
 
 /**
  * Productos ya comprados a este proveedor, más recientes primero — para precargar el carrito de una Compra sin buscar de nuevo lo que ya se le compra siempre a este proveedor
- * (mismo dato que `obtenerProductosDeProveedor`, Catalogo.js:3901, del proyecto viejo).
- *
- * Sale del Kardex VIGENTE (`cargarOfertasDeProveedores`), no de la tabla `ProveedorPorProducto`: una compra anulada o de un proveedor corregido ya no aparece ni da precio. Los productos
- * son los que la EMPRESA le compró a este proveedor y están disponibles en esta sucursal; el PRECIO es el de la última compra de ESTA sucursal y, si esta sucursal nunca le compró ese
- * producto, el de la última de la empresa (otra sucursal), marcado con `origenDelPrecio: "EMPRESA"` para que la pantalla lo diga (decisión del dueño, 2026-10-07).
+ * (mismo dato que `obtenerProductosDeProveedor`, Catalogo.js:3901, del proyecto viejo). Del Kardex VIGENTE, con el precio de ESTA sucursal o, si nunca le compró ese producto, el
+ * de la empresa (rotulado): la regla está en `cargarProductosDeProveedorParaElCarrito` (`server/lecturas/catalogo/ofertas-de-proveedor.ts`), adonde se mudó la composición en el
+ * Hito 4 (paso A2, sin cambiar nada) para poder contar sus consultas. Esta acción solo exige el permiso y pasa la base y la sucursal del contexto.
  */
 export async function listarProductosDeProveedor(proveedorId: string): Promise<ProductoDeProveedor[]> {
   const ctx = await requerirVer("proceso_compra");
-  const [deLaEmpresa, deLaSucursal] = await Promise.all([
-    cargarOfertasDeProveedores(ctx.db, { proveedorId }),
-    cargarOfertasDeProveedores(ctx.db, { proveedorId, sucursalId: ctx.sucursalId }),
-  ]);
-  if (deLaEmpresa.length === 0) return [];
-  const propias = new Map(deLaSucursal.map((o) => [o.productoId, o]));
-  const productos = new Map(
-    (
-      await ctx.db.producto.findMany({
-        where: { id: { in: deLaEmpresa.map((o) => o.productoId) }, ...whereDisponibleEn(ctx.sucursalId) },
-        include: { unidadStock: true },
-      })
-    ).map((p) => [p.id, p])
-  );
-
-  return deLaEmpresa
-    .filter((o) => productos.has(o.productoId))
-    .map((o) => {
-      const producto = productos.get(o.productoId)!;
-      const propia = propias.get(o.productoId);
-      const elegida = propia ?? o;
-      return {
-        productoId: o.productoId,
-        productoCodigo: producto.codigo,
-        productoNombre: producto.nombre,
-        unidadStockNombre: producto.unidadStock.nombre,
-        referenciaProveedor: o.referenciaProveedor,
-        ultimoPrecioPorUnidadStock: elegida.precioPorUnidadStock,
-        ultimaCompra: elegida.ultimaCompra,
-        origenDelPrecio: propia ? ("SUCURSAL" as const) : ("EMPRESA" as const),
-      };
-    })
-    .sort((a, b) => b.ultimaCompra.getTime() - a.ultimaCompra.getTime() || a.productoNombre.localeCompare(b.productoNombre));
+  return cargarProductosDeProveedorParaElCarrito(ctx.db, proveedorId, ctx.sucursalId);
 }
 
 interface OfertaComparativa {

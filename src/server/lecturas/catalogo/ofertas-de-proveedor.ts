@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { whereDisponibleEn } from "@/core/catalogo/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -103,6 +104,63 @@ export async function cargarOfertasDeProveedores(db: Db, filtro: FiltroDeOfertas
       referenciaProveedor: propias?.find((f) => f.referenciaProveedor !== null)?.referenciaProveedor ?? null,
     };
   });
+}
+
+/** Una fila del carrito de una Compra precargado con lo que ya se le compra a un proveedor (`cargarProductosDeProveedorParaElCarrito`). */
+export interface ProductoDeProveedor {
+  productoId: string;
+  productoCodigo: string;
+  productoNombre: string;
+  // O.10 (Hito 4): sin `unidadCompraId`/`unidadCompraNombre`. La precarga del carrito no los usaba (pone `unidadCompraId: ""` = la unidad por defecto del
+  // producto, a propósito: ver `panel-movimiento-form.tsx`); la unidad de la última compra al proveedor sigue en `cargarOfertasDeProveedores` (la ficha y la comparativa).
+  unidadStockNombre: string;
+  referenciaProveedor: string | null;
+  ultimoPrecioPorUnidadStock: number;
+  ultimaCompra: Date;
+  /** De dónde sale el precio: lo último que compró ESTA sucursal a este proveedor, o (si nunca le compró este producto) lo último que compró la empresa —otra sucursal—. La pantalla lo rotula. */
+  origenDelPrecio: "SUCURSAL" | "EMPRESA";
+}
+
+/**
+ * La precarga del carrito de una Compra (la usa `listarProductosDeProveedor`, `src/server/actions/catalogo/proveedor-por-producto.ts`, que exige el permiso): los productos que la
+ * EMPRESA le compró a este proveedor y están disponibles en esta sucursal, más recientes primero. Sale del Kardex VIGENTE (`cargarOfertasDeProveedores`), no de la tabla
+ * `ProveedorPorProducto`: una compra anulada o de un proveedor corregido ya no aparece ni da precio. El PRECIO es el de la última compra de ESTA sucursal y, si esta sucursal nunca le
+ * compró ese producto, el de la última de la empresa (otra sucursal), marcado con `origenDelPrecio: "EMPRESA"` para que la pantalla lo diga (decisión del dueño, 2026-10-07).
+ *
+ * Hito 4, paso A2: es la composición que vivía en la Server Action, mudada TAL CUAL (mismas lecturas, mismo orden, mismo resultado) para poder contar sus consultas con una base
+ * espiada (`test/catalogo/carrito-de-proveedor-consultas.test.ts`).
+ */
+export async function cargarProductosDeProveedorParaElCarrito(db: Db, proveedorId: string, sucursalId: string): Promise<ProductoDeProveedor[]> {
+  const [deLaEmpresa, deLaSucursal] = await Promise.all([cargarOfertasDeProveedores(db, { proveedorId }), cargarOfertasDeProveedores(db, { proveedorId, sucursalId })]);
+  if (deLaEmpresa.length === 0) return [];
+  const propias = new Map(deLaSucursal.map((o) => [o.productoId, o]));
+  const productos = new Map(
+    (
+      await db.producto.findMany({
+        where: { id: { in: deLaEmpresa.map((o) => o.productoId) }, ...whereDisponibleEn(sucursalId) },
+        include: { unidadStock: true },
+      })
+    ).map((p) => [p.id, p])
+  );
+
+  return deLaEmpresa
+    .filter((o) => productos.has(o.productoId))
+    .map((o) => {
+      const producto = productos.get(o.productoId)!;
+      const propia = propias.get(o.productoId);
+      const elegida = propia ?? o;
+      return {
+        productoId: o.productoId,
+        productoCodigo: producto.codigo,
+        productoNombre: producto.nombre,
+        unidadStockNombre: producto.unidadStock.nombre,
+        referenciaProveedor: o.referenciaProveedor,
+        ultimoPrecioPorUnidadStock: elegida.precioPorUnidadStock,
+        ultimaCompra: elegida.ultimaCompra,
+        origenDelPrecio: propia ? ("SUCURSAL" as const) : ("EMPRESA" as const),
+      };
+    })
+    .sort((a, b) => b.ultimaCompra.getTime() - a.ultimaCompra.getTime() || a.productoNombre.localeCompare(b.productoNombre));
 }
 
 /**
