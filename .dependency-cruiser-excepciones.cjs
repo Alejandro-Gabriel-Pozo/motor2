@@ -289,6 +289,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque C, H4C-16: guardarMargenObjetivo → reportes/casos-de-uso/guardar-margen-objetivo.ts (con guardComandoGuardarMargenObjetivo: la categoría y el porcentaje; crear, cambiar o borrar en server/persistencia/reportes/margen-objetivo.ts con su auditoría en UNA transacción; con el mismo valor no escribe). La acción refresca la vista solo si hubo cambio (datos.huboCambio), como antes.",
   },
+  {
+    ruta: "src/server/actions/movimientos/motivos.ts",
+    motivo:
+      "Hito 4, bloque C, H4C-17: crearMotivoMerma y crearDestinoConsumo → movimientos/casos-de-uso/crear-{motivo-merma,destino-consumo}.ts (con guardComandoCrearMotivoMerma / guardComandoCrearDestinoConsumo; la acción arma el ResultadoConId) y las dos de activar → actualizar-activo-{motivo-merma,destino-consumo}.ts; escrituras en server/persistencia/movimientos/motivos.ts, sin transacción ni auditoría (como antes). La acción refresca la vista solo si salió bien, como antes. Las lecturas (H8) siguen en la acción.",
+  },
 ];
 
 module.exports = {
