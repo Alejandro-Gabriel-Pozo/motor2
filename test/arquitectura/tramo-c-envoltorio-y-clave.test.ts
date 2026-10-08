@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { envoltoriosDe, type Envoltorio } from "./guardas/envoltorio-y-clave";
+import { envoltoriosDe, exportadasSinEnvoltorio, problemasSinEnvoltorio, type Envoltorio } from "./guardas/envoltorio-y-clave";
 
 /**
  * Server Action de la pieza «carta, catálogo y stock» → envoltorio y clave (Hito 4, paso H4C-0.2 de `docs/plan-hito-4-pureza.md` §3; mismo guardián que
@@ -121,6 +121,67 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
   },
 };
 
+/**
+ * Sin punto ciego (cierre del Hito 4, observación menor 3 de la auditoría independiente): `envoltoriosDe` no ve una función exportada que no llame a un
+ * envoltorio de mutación, así que una mutación NUEVA abierta con un `requerirVer*` (solo el «Ver» de la pantalla) o declarada como `export const … = async …`
+ * pasaba por al lado de este guardián (`acciones-con-guarda` solo exige que tenga ALGUNA guarda). Lista CERRADA, por archivo de DECLARADAS, de las exportadas
+ * sin envoltorio: función → `"<guarda> — <motivo>"` (`exportadasSinEnvoltorio`/`problemasSinEnvoltorio`, `guardas/envoltorio-y-clave.ts`). Una exportada nueva
+ * sin envoltorio, una que cambia de guarda o una de la lista que ya no existe → rojo.
+ */
+const LECTURA_H8 = "lectura (H8): pide el «Ver» de las pantallas que la consumen (con-sesion.ts); la clave la fijan lecturas-con-permiso-de-ver y lecturas-con-alguna-pantalla";
+const lectura = (guarda: string) => `${guarda} — ${LECTURA_H8}`;
+/** Las puntuales del editor de la receta central: leen la vigente con `obtenerRecetaVigente` (su «Ver») y GUARDAN delegando en `guardarReceta`. */
+const DELEGA_EN_GUARDAR_RECETA =
+  "requerirVerDeEmpresa — mutación puntual del editor de la receta central: lee la vigente con obtenerRecetaVigente y guarda delegando en guardarReceta (conPermisoDeEmpresa guardar_receta, declarada arriba); la delegación la exige acciones-con-guarda";
+const SIN_ENVOLTORIO: Record<string, Readonly<Record<string, string>>> = {
+  "movimientos/precio-local.ts": { obtenerPrecioLocalProducto: lectura("requerirVerEnSucursal"), listarPreciosLocales: lectura("requerirVerEnSucursal") },
+  "catalogo/categorias-producto.ts": { listarCategoriasProducto: lectura("requerirVerAlguna") },
+  "catalogo/insumos.ts": {
+    listarInsumos: lectura("requerirVerAlguna"),
+    listarGrupos: lectura("requerirVerDeEmpresa"),
+    previsualizarFusionInsumo: lectura("requerirVerDeEmpresa"),
+  },
+  "catalogo/productos.ts": {
+    buscarProductosSelector: lectura("requerirVerAlguna"),
+    obtenerProductoOpcion: lectura("requerirVerAlguna"),
+    obtenerInsumoDeProducto: lectura("requerirVerAlguna"),
+    obtenerPrecioVentaProducto: lectura("requerirVer"),
+    listarProductosPagina: lectura("requerirVerDeEmpresa"),
+    listarPresentaciones: lectura("requerirVerAlguna"),
+  },
+  "catalogo/unidades.ts": {
+    listarUnidadesParaPanel: lectura("requerirVerDeEmpresa"),
+    listarUnidadesActivas: lectura("requerirVerAlguna"),
+    detectarInsumosConUnidadMezclada:
+      "obtenerContextoUsuario — lectura con el gate inline de insumos_mezclados (requierePermisoDeEmpresa) porque devuelve datos y no un ResultadoAccion; anotada en GUARDAS_A_MANO de acciones-con-guarda",
+  },
+  "catalogo/proveedores.ts": { listarProveedores: lectura("requerirVerDeEmpresa"), listarProveedoresParaSelector: lectura("requerirVerAlguna") },
+  "clientes/cliente.ts": { listarClientes: lectura("requerirVerDeEmpresa"), listarClientesParaCuenta: lectura("requerirVer") },
+  "movimientos/motivos.ts": {
+    listarMotivosMermaActivos: lectura("requerirVer"),
+    listarDestinosConsumoActivos: lectura("requerirVer"),
+    listarMotivosMermaParaPanel: lectura("requerirVerDeEmpresa"),
+    listarDestinosConsumoParaPanel: lectura("requerirVerDeEmpresa"),
+  },
+  "movimientos/secciones.ts": { listarSeccionesActivas: lectura("requerirVerAlgunaEnSucursal"), listarSeccionesParaPanel: lectura("requerirVerEnSucursal") },
+  "stock/frecuencia-conteo.ts": { listarFrecuenciasConteo: lectura("requerirVerEnSucursal") },
+  "stock/seccion-habitual.ts": { listarSeccionesHabituales: lectura("requerirVerEnSucursal") },
+  "stock/stock-minimo.ts": { listarStockMinimo: lectura("requerirVerEnSucursal") },
+  "catalogo/recetas.ts": {
+    obtenerRecetaVigente: lectura("requerirVerDeEmpresa"),
+    listarVersionesDeReceta: lectura("requerirVerDeEmpresa"),
+    agregarIngredienteAReceta: DELEGA_EN_GUARDAR_RECETA,
+    actualizarIngredienteDeReceta: DELEGA_EN_GUARDAR_RECETA,
+    quitarIngredienteDeReceta: DELEGA_EN_GUARDAR_RECETA,
+    agregarPasoAReceta: DELEGA_EN_GUARDAR_RECETA,
+    actualizarPasoDeReceta: DELEGA_EN_GUARDAR_RECETA,
+    quitarPasoDeReceta: DELEGA_EN_GUARDAR_RECETA,
+    reordenarPasosDeReceta: DELEGA_EN_GUARDAR_RECETA,
+    insertarPasoEnReceta: DELEGA_EN_GUARDAR_RECETA,
+    actualizarCabeceraDeReceta: DELEGA_EN_GUARDAR_RECETA,
+  },
+};
+
 /** Las 5 de la receta propia que ya pasaban por un caso de uso antes de esta pieza (están declaradas porque viven en un archivo de la pieza). */
 const RECETA_PROPIA_YA_MIGRADAS = ["crearRecetaPropiaDesdeLaCentral", "agregarIngredienteARecetaPropia", "actualizarIngredienteDeRecetaPropia", "quitarIngredienteDeRecetaPropia", "copiarRecetaPropiaDeOtraSucursal"];
 
@@ -139,5 +200,43 @@ describe("tramo C (carta, catálogo y stock): cada Server Action entra por su en
     expect(total).toBe(51 + 1 + RECETA_PROPIA_YA_MIGRADAS.length);
     expect(Object.keys(DECLARADAS).filter((a) => a !== "catalogo/recetas.ts")).toHaveLength(17);
     for (const f of RECETA_PROPIA_YA_MIGRADAS) expect(DECLARADAS["catalogo/receta-sucursal.ts"][f], f).toBeDefined();
+  });
+});
+
+describe("tramo C: ninguna función exportada queda fuera del guardián de envoltorio y clave", () => {
+  it.each(Object.keys(DECLARADAS))("%s: las exportadas sin envoltorio de mutación son las declaradas, con su guarda", (archivo) => {
+    const problemas = problemasSinEnvoltorio(exportadasSinEnvoltorio(readFileSync(join(RAIZ, archivo), "utf8")), SIN_ENVOLTORIO[archivo] ?? {});
+    expect(problemas, `${archivo}:\n${problemas.join("\n")}`).toEqual([]);
+  });
+
+  it("la lista de exportadas sin envoltorio solo nombra archivos del guardián", () => {
+    expect(Object.keys(SIN_ENVOLTORIO).filter((a) => !(a in DECLARADAS))).toEqual([]);
+  });
+
+  it("el detector del punto ciego: sin envoltorio ni entrada → rojo; con su guarda declarada → verde; guarda cambiada, entrada vieja o `export const` → rojo", () => {
+    const fuente = [
+      '"use server";',
+      'import { conPermiso } from "../con-permiso";',
+      'import { requerirVerAlguna, requerirVer } from "../con-sesion";',
+      'export async function mutacion() { return conPermiso("secciones", async () => ok("")); }',
+      'export async function lectura() { const ctx = await requerirVerAlguna(["a", "b"]); return ctx; }',
+      'export async function borrarConSoloVer(id: string) { const ctx = await requerirVer("secciones"); await ctx.db.seccion.delete({ where: { id } }); }',
+      'export const mutacionComoConst = async () => conPermiso("secciones", async () => ok(""));',
+    ].join("\n");
+    const encontradas = exportadasSinEnvoltorio(fuente);
+    expect(encontradas).toEqual({ lectura: "requerirVerAlguna", borrarConSoloVer: "requerirVer", mutacionComoConst: "conPermiso" });
+    // La lectura declarada con su guarda → verde; la mutación abierta con solo el «Ver» y la `export const` (que envoltoriosDe no mira) sin declarar → rojo.
+    expect(problemasSinEnvoltorio(encontradas, { lectura: "requerirVerAlguna — lectura" })).toEqual([
+      "borrarConSoloVer: exportada sin envoltorio de mutación y sin declarar (abre con requerirVer); si es una mutación, abrila con su envoltorio y su clave; si no, declarala con su motivo",
+      "mutacionComoConst: exportada sin envoltorio de mutación y sin declarar (abre con conPermiso); si es una mutación, abrila con su envoltorio y su clave; si no, declarala con su motivo",
+    ]);
+    expect(problemasSinEnvoltorio({ lectura: "requerirVerAlguna" }, { lectura: "requerirVerAlguna — lectura" })).toEqual([]);
+    // La guarda cambió, o la entrada quedó vieja → rojo.
+    expect(problemasSinEnvoltorio({ lectura: "requerirVer" }, { lectura: "requerirVerAlguna — lectura" })).toEqual(['lectura: la guarda cambió (ahora requerirVer; anotada: «requerirVerAlguna — lectura»)']);
+    expect(problemasSinEnvoltorio({}, { lectura: "requerirVerAlguna — lectura" })).toEqual([
+      "lectura: declarada sin envoltorio pero ya no está así (no existe o ahora llama a un envoltorio): sacala de la lista",
+    ]);
+    // Una exportada sin ninguna guarda también aparece (con su estado), para que nunca se saltee en silencio.
+    expect(exportadasSinEnvoltorio('"use server";\nexport async function abierta() { return 1; }')).toEqual({ abierta: "sin-guarda" });
   });
 });

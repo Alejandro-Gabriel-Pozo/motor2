@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { envoltoriosDe, type Envoltorio } from "./guardas/envoltorio-y-clave";
+import { envoltoriosDe, exportadasSinEnvoltorio, problemasSinEnvoltorio, type Envoltorio } from "./guardas/envoltorio-y-clave";
 
 /**
  * Server Action de gobierno → envoltorio y clave (Hito 3, paso 0.4 de `docs/plan-hito-3-pureza.md`).
@@ -45,6 +45,33 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
     invitarAVincular: { envoltorio: "conPermiso", clave: "gestion_usuarios" },
   },
 };
+
+/**
+ * Sin punto ciego (cierre del Hito 4, observación menor 3 de la auditoría independiente): `envoltoriosDe` no ve una función exportada que no llame a un
+ * envoltorio de mutación, así que una mutación NUEVA abierta con un `requerirVer*` (solo el «Ver» de la pantalla) pasaba por al lado de este guardián. Lista
+ * CERRADA, por archivo de DECLARADAS, de las exportadas sin envoltorio: función → `"<guarda> — <motivo>"` (`exportadasSinEnvoltorio`/`problemasSinEnvoltorio`,
+ * `guardas/envoltorio-y-clave.ts`). Se agrega con un `it` nuevo: las aserciones de arriba no cambian.
+ */
+const LECTURA_H8 = "lectura (H8): pide el «Ver» de las pantallas que la consumen (con-sesion.ts); la clave la fijan lecturas-con-permiso-de-ver y lecturas-con-alguna-pantalla";
+const lectura = (guarda: string) => `${guarda} — ${LECTURA_H8}`;
+const SIN_ENVOLTORIO: Record<string, Readonly<Record<string, string>>> = {
+  "permisos/capacidades-sucursal.ts": { listarCapacidades: lectura("requerirVerDeEmpresa") },
+  "permisos/roles.ts": { listarRoles: lectura("requerirVerDeEmpresa") },
+  "permisos/permisos.ts": { listarMatrizPermisos: lectura("requerirVerDeEmpresa") },
+  "auth/sucursales.ts": { listarSucursales: lectura("requerirVerAlguna") },
+  "auth/usuarios.ts": { listarUsuariosDeSucursal: lectura("requerirVerEnSucursal"), listarInvitacionesPendientes: lectura("requerirVerEnSucursal") },
+};
+
+describe("gobierno: ninguna función exportada queda fuera del guardián de envoltorio y clave", () => {
+  it.each(Object.keys(DECLARADAS))("%s: las exportadas sin envoltorio de mutación son las declaradas, con su guarda", (archivo) => {
+    const problemas = problemasSinEnvoltorio(exportadasSinEnvoltorio(readFileSync(join(RAIZ, archivo), "utf8")), SIN_ENVOLTORIO[archivo] ?? {});
+    expect(problemas, `${archivo}:\n${problemas.join("\n")}`).toEqual([]);
+  });
+
+  it("la lista de exportadas sin envoltorio solo nombra archivos del guardián", () => {
+    expect(Object.keys(SIN_ENVOLTORIO).filter((a) => !(a in DECLARADAS))).toEqual([]);
+  });
+});
 
 describe("gobierno: cada Server Action entra por su envoltorio y su clave", () => {
   it.each(Object.keys(DECLARADAS))("%s: las mutaciones son las declaradas, con su envoltorio y su clave como primera sentencia", (archivo) => {

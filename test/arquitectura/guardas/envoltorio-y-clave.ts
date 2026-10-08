@@ -1,4 +1,5 @@
 import ts from "typescript";
+import { analizarFuente } from "./analizador";
 
 /**
  * Analizador AST del ENVOLTORIO Y LA CLAVE con que entra cada Server Action de mutación (Hito 3, paso 0.4: nació en `gobierno-envoltorio-y-clave.test.ts`;
@@ -54,4 +55,37 @@ export function envoltoriosDe(fuente: string): Record<string, Encontrada> {
     };
   }
   return resultado;
+}
+
+/**
+ * El PUNTO CIEGO de `envoltoriosDe` (cierre del Hito 4, observación menor 3 de la auditoría independiente): una función exportada que no llama a ningún
+ * envoltorio de mutación no aparece en su resultado, así que una mutación NUEVA abierta con otra guarda (p. ej. un `requerirVer*`, que solo pide el «Ver» de
+ * la pantalla) o declarada como `export const … = async …` (que `envoltoriosDe` no mira) pasaba por al lado de los guardianes de envoltorio y clave
+ * (`acciones-con-guarda` solo exige que tenga ALGUNA guarda). Esto devuelve TODAS las funciones exportadas que reconoce `analizarFuente` (también las
+ * `export const`) que `envoltoriosDe` no ve, cada una con la guarda que la abre según `analizarFuente` (la importada, o la de la función del archivo en la que
+ * delega) o, si no tiene, su estado (`sin-guarda`, `guarda-tardia`…). Los guardianes de cada dominio las comparan con su lista cerrada (`problemasSinEnvoltorio`).
+ */
+export function exportadasSinEnvoltorio(fuente: string): Record<string, string> {
+  const conEnvoltorio = envoltoriosDe(fuente);
+  const resultado: Record<string, string> = {};
+  for (const f of analizarFuente("x.ts", fuente).funciones) {
+    if (f.nombre in conEnvoltorio) continue;
+    resultado[f.nombre] = f.estado === "ok" && f.guarda ? f.guarda : f.estado;
+  }
+  return resultado;
+}
+
+/**
+ * Compara las exportadas sin envoltorio de UN archivo (`exportadasSinEnvoltorio`) con su lista cerrada: función → `"<guarda> — <motivo>"` (mismo formato que
+ * `GUARDAS_A_MANO` de `acciones-con-guarda.test.ts`). Devuelve un problema por cada función sin declarar, por cada declarada que ya no está (o que ahora sí
+ * llama a un envoltorio) y por cada una cuya guarda ya no es la anotada. Vacío = el archivo no tiene puntos ciegos.
+ */
+export function problemasSinEnvoltorio(encontradas: Record<string, string>, declaradas: Readonly<Record<string, string>>): string[] {
+  const problemas: string[] = [];
+  for (const [f, guarda] of Object.entries(encontradas)) {
+    if (!(f in declaradas)) problemas.push(`${f}: exportada sin envoltorio de mutación y sin declarar (abre con ${guarda}); si es una mutación, abrila con su envoltorio y su clave; si no, declarala con su motivo`);
+    else if (!declaradas[f].startsWith(`${guarda} — `)) problemas.push(`${f}: la guarda cambió (ahora ${guarda}; anotada: «${declaradas[f]}»)`);
+  }
+  for (const f of Object.keys(declaradas)) if (!(f in encontradas)) problemas.push(`${f}: declarada sin envoltorio pero ya no está así (no existe o ahora llama a un envoltorio): sacala de la lista`);
+  return problemas;
 }

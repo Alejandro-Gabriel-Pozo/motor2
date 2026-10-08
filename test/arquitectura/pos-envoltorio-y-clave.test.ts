@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { envoltoriosDe, type Envoltorio } from "./guardas/envoltorio-y-clave";
+import { envoltoriosDe, exportadasSinEnvoltorio, problemasSinEnvoltorio, type Envoltorio } from "./guardas/envoltorio-y-clave";
 
 /**
  * Server Action del POS → envoltorio y clave (Hito 4, paso 0.3 de `docs/plan-hito-4-pureza.md` §5; mismo guardián que `gobierno-envoltorio-y-clave.test.ts`
@@ -52,6 +52,14 @@ describe("POS: cada Server Action entra por su envoltorio y su clave", () => {
       encontradas,
       `pos/${archivo}: una mutación cambió de envoltorio o de clave, hay una sentencia antes del envoltorio, o hay una mutación nueva sin declarar. Todas las claves del salón compilan en cualquier conPermiso: si el cambio es a propósito, declaralo acá.`
     ).toEqual(esperadas);
+  });
+
+  // Sin punto ciego (cierre del Hito 4, observación menor 3 de la auditoría independiente): `envoltoriosDe` no ve una exportada que no llame a un envoltorio
+  // (p. ej. una mutación nueva abierta con un `requerirVer*`, o una `export const … = async …`). En el POS no hay ninguna (ni lecturas: viven en
+  // server/consultas/pos): la lista cerrada está VACÍA y cualquier exportada sin envoltorio pone esto en rojo.
+  it.each(Object.keys(DECLARADAS))("%s: ninguna función exportada queda sin envoltorio de mutación", (archivo) => {
+    const problemas = problemasSinEnvoltorio(exportadasSinEnvoltorio(readFileSync(join(RAIZ, archivo), "utf8")), {});
+    expect(problemas, `pos/${archivo}:\n${problemas.join("\n")}`).toEqual([]);
   });
 
   it("son las 14 mutaciones del POS", () => {
