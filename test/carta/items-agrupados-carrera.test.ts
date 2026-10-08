@@ -63,7 +63,10 @@ describe("ítems agrupados: la carrera del índice único (el segundo en llegar 
     expect((await guardarItemAgrupadoCarta({ nombre: "Otro", seccionCartaId: seccionId })).ok).toBe(true);
   });
 
-  it("agregar una opción: otro agrupó el producto entre el chequeo y la escritura → «ya está en un ítem agrupado» (el re-leer no ve al ganador: su fila se deshizo con el INSERT fallido), no deja nada escrito ni revalida", async () => {
+  // El texto de RESERVA («ya está en un ítem agrupado») sale acá porque el trigger inserta la «ganadora» DENTRO de la misma sentencia que falla: esa fila se deshace con el INSERT
+  // fallido y el re-leer no tiene nada que encontrar. NO es un defecto de la acción (O.49): con una ganadora confirmada de verdad el mensaje nombra el ítem
+  // (`items-agrupados-carrera-real.test.ts`). Este test fija solo la rama de reserva y que la carrera no deja nada escrito ni revalida.
+  it("agregar una opción: otro agrupó el producto entre el chequeo y la escritura → texto de reserva «ya está en un ítem agrupado» (artefacto del trigger: sin ganadora confirmada que releer), no deja nada escrito ni revalida", async () => {
     const agrupado = await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: "Gaseosa", seccionCartaId: seccionId } });
     await armarCarrera("OpcionItemAgrupadoCarta", "opcion", `NEW."productoId" = '${ids.coca}'`);
     expect(await agregarOpcionItemAgrupadoCarta(agrupado.id, ids.coca)).toEqual({ ok: false, mensaje: "«Coca-Cola 500cc» ya está en un ítem agrupado." });
