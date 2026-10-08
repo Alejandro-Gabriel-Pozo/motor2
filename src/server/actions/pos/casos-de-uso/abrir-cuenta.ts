@@ -1,9 +1,8 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { MENSAJE_MESA_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta-apertura.guard";
 import type { ComandoAbrirCuenta, ResultadoAbrirCuenta } from "@/core/features/cuentas/cuenta-apertura.schema";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable, esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { validarComensales } from "@/core/pos/cuenta";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { abrirCuentaDeMesa } from "@/server/persistencia/pos/cuenta";
@@ -24,9 +23,11 @@ import { abrirCuentaDeMesa } from "@/server/persistencia/pos/cuenta";
  *     comensales ni mira el límite: reabrir la MISMA mesa nunca falla); `validarComensales`; el límite (las cuentas abiertas de la sucursal, contadas dentro de
  *     esta misma transacción: dos aperturas a mesas distintas que juntas lo superarían chocan, nunca pasan las dos); la cuenta nueva (`abrirCuentaDeMesa`,
  *     server/persistencia/pos/cuenta.ts);
- *  3. fuera de la transacción: el choque del índice único parcial (`Cuenta_una_abierta_por_mesa_key`, P2002 → `esErrorDeUnicidad`) es ok, «ya tenía una cuenta
- *     abierta». Medido en el Hito 4 (`cuenta-concurrencia`, (a)): la carrera la gana la transacción serializable (la que pierde reintenta y ve la cuenta); el
- *     `catch` es el respaldo. Pasar a `esChoqueDeIndiceUnico` es el paso B2 aprobado, en un commit propio.
+ *  3. fuera de la transacción: el choque del índice único parcial (`Cuenta_una_abierta_por_mesa_key`) es ok, «ya tenía una cuenta abierta». Medido en el
+ *     Hito 4 (`cuenta-concurrencia`, (a)): la carrera la gana la transacción serializable (la que pierde reintenta y ve la cuenta); el `catch` es el respaldo.
+ *     Desde B2 (aprobado por el dueño) lo reconoce `esChoqueDeIndiceUnico` (el helper de 1.7: `P2002` o el `DriverAdapterError` crudo con
+ *     `UniqueConstraintViolation`, la forma en que puede llegar con el adaptador `pg`); antes era `esErrorDeUnicidad`, solo `P2002`
+ *     (`test/pos/choque-de-unicidad-del-driver.test.ts`).
  *
  * @contract Deja la mesa de la sucursal con su cuenta abierta (a nombre de quien la abre y con sus comensales), salvo que se haya alcanzado el límite de mesas abiertas.
  * @idempotency Por estado — si la mesa ya tenía su cuenta abierta responde ok sin escribir (la transacción serializable y el índice único parcial arbitran la carrera).
@@ -59,7 +60,7 @@ export async function abrirCuentaCasoDeUso(
       return exito(`Cuenta de la mesa ${mesa.numero} abierta.`, null);
     });
   } catch (e) {
-    if (esErrorDeUnicidad(e)) return exito(`La mesa ${mesa.numero} ya tenía una cuenta abierta.`, null);
+    if (esChoqueDeIndiceUnico(e)) return exito(`La mesa ${mesa.numero} ya tenía una cuenta abierta.`, null);
     throw e;
   }
 }

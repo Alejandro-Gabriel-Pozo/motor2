@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
+import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import type { ComandoCrearMesa, ResultadoCrearMesa } from "@/core/features/mesas/mesas.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { escribirMesaNueva } from "@/server/persistencia/pos/mesas";
@@ -13,9 +13,10 @@ import { escribirMesaNueva } from "@/server/persistencia/pos/mesas";
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso`) ni el rango del número (`guardComandoCrearMesa`).
  *
- * El número repetido lo detecta la BASE (índice único `(sucursalId, numero)`, P2002 → `esErrorDeUnicidad`) y no una lectura previa: dos altas simultáneas del
- * mismo número no pueden pasar las dos (`test/pos/cuenta-concurrencia.test.ts`, (b)). El reconocimiento del choque es el de siempre (`esErrorDeUnicidad`, solo
- * P2002); pasar a `esChoqueDeIndiceUnico` es el paso B2 aprobado, en un commit propio.
+ * El número repetido lo detecta la BASE (índice único `(sucursalId, numero)`) y no una lectura previa: dos altas simultáneas del mismo número no pueden pasar
+ * las dos (`test/pos/cuenta-concurrencia.test.ts`, (b)). Desde B2 (aprobado por el dueño) el choque lo reconoce `esChoqueDeIndiceUnico` (el helper de 1.7:
+ * `P2002` o el `DriverAdapterError` crudo con `UniqueConstraintViolation`); antes era `esErrorDeUnicidad`, solo `P2002`
+ * (`test/pos/choque-de-unicidad-del-driver.test.ts`).
  *
  * @contract Da de alta en la sucursal activa la mesa con el número pedido, salvo que ese número ya exista en la sucursal.
  * @idempotency Por estado — el índice único `(sucursalId, numero)` arbitra el reintento: un segundo pedido con el mismo número responde «Ya existe la mesa N» sin escribir.
@@ -28,7 +29,7 @@ export async function crearMesaCasoDeUso(actor: Pick<ContextoUsuario, "sucursalI
   try {
     await escribirMesaNueva(actor.db, { sucursalId: actor.sucursalId, numero });
   } catch (e) {
-    if (esErrorDeUnicidad(e)) return fracaso("NUMERO_REPETIDO", `Ya existe la mesa ${numero} en esta sucursal.`);
+    if (esChoqueDeIndiceUnico(e)) return fracaso("NUMERO_REPETIDO", `Ya existe la mesa ${numero} en esta sucursal.`);
     throw e;
   }
   return exito(`Mesa ${numero} creada.`, null);
