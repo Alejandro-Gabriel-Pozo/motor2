@@ -58,8 +58,11 @@ export interface CartaPublicaResuelta {
  * criterio que `docs/setup-sucursal.md` sección 3); sin eso, o sin fila de tema, el estilo es el default del catálogo.
  *
  * El slug es único POR empresa (`@@unique([empresaId, slug])`): dos empresas pueden tener una sucursal `central`.
+ *
+ * `ahora` (O.22-c de docs/pureza-integracion.md) es obligatorio: la fija la página pública y llega por `cartaPublica` (`server/carta-publica/sin-sesion.ts`);
+ * solo alimenta el `generadoEn` de la carta.
  */
-export async function resolverCartaPublica(empresa: EmpresaCarta, slug: string, db: Db, ahora: Date = new Date()): Promise<CartaPublicaResuelta | null> {
+export async function resolverCartaPublica(empresa: EmpresaCarta, slug: string, db: Db, ahora: Date): Promise<CartaPublicaResuelta | null> {
   if (!esSlugPublicoValido(slug)) return null;
   const publica = await db.sucursalPublica.findUnique({
     where: { empresaId_slug: { empresaId: empresa.id, slug } },

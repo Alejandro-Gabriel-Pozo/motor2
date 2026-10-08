@@ -78,7 +78,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   // «Agregar al pedido» por sección de CARTA (docs/plan-selector-carta-pos-2026-09-25.md): solo con cuenta abierta y si quien mira
   // puede tomar pedido. Se lee acá, después de la guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`), sin Server
   // Action nueva. Aparte del `Promise.all` de arriba a propósito (no confundir con `secciones`, que son las de STOCK).
-  const selectorCarta = cuenta && tomarPedido.editar ? await cargarSelectorCartaDeLaMesa(ctx.sucursalId, ctx.db) : null;
+  const selectorCarta = cuenta && tomarPedido.editar ? await cargarSelectorCartaDeLaMesa(ctx.sucursalId, ctx.db, ahora) : null;
   // Cliente con descuento (Task #14): la lista de clientes ACTIVOS solo se trae si hay algo que asignar — mismo criterio que
   // `selectorCarta`. `descuentoPorcentaje` se convierte a `number` acá (server): un `Decimal` de Prisma no se puede pasar tal cual
   // a un Client Component (`ClienteCuenta`).

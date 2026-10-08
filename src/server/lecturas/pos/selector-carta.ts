@@ -34,6 +34,8 @@ import type { Db } from "@/lib/db-tipos";
 export async function cargarSelectorCartaPos(
   sucursalId: string,
   db: Db,
+  /** La hora de la carta (O.22-c): obligatoria, la fija quien llama; solo alimenta el `generadoEn` de la carta, que el selector descarta. */
+  ahora: Date,
   /** La capacidad `precio_local` de ESTA sucursal ya leída (o la promesa de esa lectura): `cargarPromoCartaParaAgregar` la comparte con el selector (O.39). */
   precioLocalActivoCargado?: boolean | Promise<boolean>
 ): Promise<SelectorCartaPos> {
@@ -42,7 +44,7 @@ export async function cargarSelectorCartaPos(
   // Se pasa la PROMESA, no el valor, para que todo siga saliendo en paralelo como antes.
   const precioLocalActivoLeido = precioLocalActivoCargado ?? precioLocalActivoEn(sucursalId, db);
   const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
-    resolverMenuCarta(sucursalId, db, undefined, precioLocalActivoLeido),
+    resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },

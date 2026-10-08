@@ -58,7 +58,8 @@ async function estadoCartaPropia(sucursalId: string, db: Db): Promise<{ cartaVac
   };
 }
 
-export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<DatosAdminCarta> {
+/** La pantalla de administración de la carta. `ahora` obligatorio (O.22-c): lo fija la página; solo llega al `generadoEn` del menú armado, que acá se descarta. */
+export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date): Promise<DatosAdminCarta> {
   const [secciones, generos, productos, promos, armado, precioLocalActivo, estado] = await Promise.all([
     seccionesConCantidad(sucursalId, db),
     generosOrdenados(sucursalId, db),
@@ -95,7 +96,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
       },
       orderBy: [{ activa: "desc" }, { orden: "asc" }, { titulo: "asc" }],
     }),
-    resolverMenuCartaConDiagnostico(sucursalId, db),
+    resolverMenuCartaConDiagnostico(sucursalId, db, ahora),
     precioLocalActivoEn(sucursalId, db),
     estadoCartaPropia(sucursalId, db),
   ]);
@@ -149,8 +150,8 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
   };
 }
 
-/** Todos los ítems agrupados (activos primero, orden, nombre), con lo que se ve y se avisa en la sucursal activa. */
-export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db): Promise<DatosAdminItemsAgrupados> {
+/** Todos los ítems agrupados (activos primero, orden, nombre), con lo que se ve y se avisa en la sucursal activa. `ahora` obligatorio (O.22-c), como `cargarAdminCarta`. */
+export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db, ahora: Date): Promise<DatosAdminItemsAgrupados> {
   const [items, secciones, generos, sinGrupo, armado] = await Promise.all([
     db.itemAgrupadoCarta.findMany({
       where: whereCartaDeSucursal(sucursalId),
@@ -183,7 +184,7 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db): Pro
       select: { id: true, nombre: true, precioVenta: true },
       orderBy: { nombre: "asc" },
     }),
-    resolverMenuCartaConDiagnostico(sucursalId, db),
+    resolverMenuCartaConDiagnostico(sucursalId, db, ahora),
   ]);
 
   const idsOpciones = items.flatMap((it) => it.opciones.map((o) => o.producto.id));

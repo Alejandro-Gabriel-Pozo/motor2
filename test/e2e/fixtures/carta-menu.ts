@@ -6,7 +6,7 @@ import { resolverMenuCarta } from "../../../src/server/lecturas/carta/menu";
  * única empresa activa de la base e2e ve lo mismo que la carta pública). Tira si la sucursal no tiene carta publicable.
  */
 export async function menuCartaPublicado(sucursalId: string) {
-  const carta = await resolverMenuCarta(sucursalId, prisma);
+  const carta = await resolverMenuCarta(sucursalId, prisma, new Date());
   if (!carta) throw new Error(`La sucursal ${sucursalId} no tiene carta publicable`);
   return carta;
 }

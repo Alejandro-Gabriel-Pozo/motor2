@@ -3,6 +3,7 @@ import { limpiarBaseDeTest, prisma, sembrarProductoDisponible } from "../setup/t
 import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { cargarAdminCarta } from "../../src/server/consultas/carta/admin";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Carta PROPIA de cada sucursal (ADR-009, C3/C4; decisión del dueño 2026-10-02). Este archivo era la caracterización «la estructura de la carta
@@ -28,14 +29,14 @@ describe("La estructura de la carta es propia de cada sucursal", () => {
   });
 
   it("la carta pública solo muestra items en la sucursal que armó su carta", async () => {
-    const [a, b] = await Promise.all([resolverMenuCarta(sucursalA, prisma), resolverMenuCarta(sucursalB, prisma)]);
+    const [a, b] = await Promise.all([resolverMenuCarta(sucursalA, prisma, AHORA_DE_LA_CORRIDA), resolverMenuCarta(sucursalB, prisma, AHORA_DE_LA_CORRIDA)]);
     const resumen = (c: typeof a) => c!.secciones.map((s) => ({ seccion: s.nombre, items: s.items.map((i) => i.nombre) }));
     expect(resumen(a)).toEqual([{ seccion: "Platos", items: ["Pizza"] }]);
     expect(resumen(b)).toEqual([]);
   });
 
   it("el admin de carta: las secciones son de la empresa, los géneros y el estado de la carta son de cada sucursal", async () => {
-    const [a, b] = await Promise.all([cargarAdminCarta(sucursalA, prisma), cargarAdminCarta(sucursalB, prisma)]);
+    const [a, b] = await Promise.all([cargarAdminCarta(sucursalA, prisma, AHORA_DE_LA_CORRIDA), cargarAdminCarta(sucursalB, prisma, AHORA_DE_LA_CORRIDA)]);
     expect(a.secciones.map((s) => s.nombre)).toEqual(["Platos"]);
     expect(b.secciones.map((s) => s.id)).toEqual(a.secciones.map((s) => s.id));
     expect(a.secciones.map((s) => s.cantidadItems)).toEqual([1]);
@@ -49,7 +50,7 @@ describe("La estructura de la carta es propia de cada sucursal", () => {
   });
 
   it("el selector del POS: la sucursal sin carta propia no arma secciones y deja el producto fuera de carta", async () => {
-    const [a, b] = await Promise.all([cargarSelectorCartaPos(sucursalA, prisma), cargarSelectorCartaPos(sucursalB, prisma)]);
+    const [a, b] = await Promise.all([cargarSelectorCartaPos(sucursalA, prisma, AHORA_DE_LA_CORRIDA), cargarSelectorCartaPos(sucursalB, prisma, AHORA_DE_LA_CORRIDA)]);
     expect(a.seccionesCarta.map((s) => s.nombre)).toEqual(["Platos"]);
     expect(a.fueraDeCarta).toEqual([]);
     expect(b.seccionesCarta).toEqual([]);
@@ -62,7 +63,7 @@ describe("La estructura de la carta es propia de cada sucursal", () => {
     await prisma.contenidoCartaProducto.update({ where: { sucursalId_productoId: { sucursalId: sucursalA, productoId: pizza.id } }, data: { descripcion: "de A" } });
     await prisma.contenidoCartaProducto.create({ data: { sucursalId: sucursalB, productoId: pizza.id, visibleEnCarta: true, seccionCartaId: postres.id, descripcion: "de B" } });
 
-    const [a, b] = await Promise.all([resolverMenuCarta(sucursalA, prisma), resolverMenuCarta(sucursalB, prisma)]);
+    const [a, b] = await Promise.all([resolverMenuCarta(sucursalA, prisma, AHORA_DE_LA_CORRIDA), resolverMenuCarta(sucursalB, prisma, AHORA_DE_LA_CORRIDA)]);
     const resumen = (c: typeof a) => c!.secciones.map((s) => ({ seccion: s.nombre, items: s.items.map((i) => [i.nombre, i.descripcion]) }));
     expect(resumen(a)).toEqual([{ seccion: "Platos", items: [["Pizza", "de A"]] }]);
     expect(resumen(b)).toEqual([{ seccion: "Postres", items: [["Pizza", "de B"]] }]);

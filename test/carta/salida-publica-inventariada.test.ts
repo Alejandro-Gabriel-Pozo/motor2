@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { dbDeEmpresa } from "../../src/core/auth/base";
 import { resolverCartaPublica, resolverConfigPortal, resolverPortalCarta } from "../../src/server/lecturas/carta/publica";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Lo que la carta pública devuelve SIN sesión está inventariado: cada clave que sale hacia el navegador figura en una lista cerrada
@@ -91,7 +92,7 @@ describe("la salida de la carta pública está inventariada", () => {
   });
 
   it("carta: cada clave que sale está en la lista cerrada, y el costo/consignación/observaciones internos no viajan", async () => {
-    const resuelta = await resolverCartaPublica(empresa, "central", dbDeEmpresa(empresa.id));
+    const resuelta = await resolverCartaPublica(empresa, "central", dbDeEmpresa(empresa.id), AHORA_DE_LA_CORRIDA);
     expect(resuelta).not.toBeNull();
     const { carta, estilo } = resuelta!;
     expect(carta.secciones[0].items.some((i) => i.precioLista !== undefined)).toBe(true);

@@ -52,11 +52,12 @@ describe("punto público sin sesión", () => {
 
     await real.portalCartaPublico(EMPRESA);
     await real.configPortalPublica(EMPRESA);
-    await real.cartaPublica(EMPRESA, "central");
+    const ahora = new Date();
+    await real.cartaPublica(EMPRESA, "central", ahora);
 
     expect(resolverPortalCarta).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
     expect(resolverConfigPortal).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
-    expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", { dbDeEmpresa: EMPRESA.id });
+    expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", { dbDeEmpresa: EMPRESA.id }, ahora);
   });
 });
 
@@ -76,7 +77,7 @@ describe("páginas de la carta pública", () => {
   it("la sucursal pasa a la consulta la empresa que resolvió del segmento de ruta", async () => {
     cartaPublica.mockResolvedValueOnce({ carta: {}, estilo: {} } as never);
     await CartaPage({ params: Promise.resolve({ empresa: "la-cuadra", sucursal: "central" }) });
-    expect(cartaPublica).toHaveBeenCalledWith(EMPRESA, "central");
+    expect(cartaPublica).toHaveBeenCalledWith(EMPRESA, "central", expect.any(Date));
   });
 
   it("la sucursal no consulta nada si la empresa no resuelve", async () => {

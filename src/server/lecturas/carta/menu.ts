@@ -27,7 +27,11 @@ import type { Db } from "@/lib/db-tipos";
 export async function resolverMenuCartaConDiagnostico(
   sucursalId: string,
   db: Db,
-  ahora: Date = new Date(),
+  /**
+   * La hora de la carta (O.22-c de docs/pureza-integracion.md): obligatoria, sin valor por defecto, la fija el borde (la página, la carta pública sin sesión
+   * o el caso de uso con `actor.ahora`). Solo alimenta `generadoEn`; no decide qué entra en la carta.
+   */
+  ahora: Date,
   /** La capacidad `precio_local` de ESTA sucursal ya leída (o la promesa de esa lectura), para no volver a leerla (el selector del POS la comparte, O.39). */
   precioLocalActivoCargado?: boolean | Promise<boolean>
 ): Promise<MenuArmado | null> {
@@ -121,8 +125,8 @@ export async function resolverMenuCartaConDiagnostico(
   });
 }
 
-/** La carta pública de una sucursal, tal como la consume la página pública (sin el diagnóstico interno). */
-export async function resolverMenuCarta(sucursalId: string, db: Db, ahora: Date = new Date(), precioLocalActivoCargado?: boolean | Promise<boolean>): Promise<CartaV1 | null> {
+/** La carta pública de una sucursal, tal como la consume la página pública (sin el diagnóstico interno). `ahora` obligatorio (O.22-c): ver arriba. */
+export async function resolverMenuCarta(sucursalId: string, db: Db, ahora: Date, precioLocalActivoCargado?: boolean | Promise<boolean>): Promise<CartaV1 | null> {
   const armado = await resolverMenuCartaConDiagnostico(sucursalId, db, ahora, precioLocalActivoCargado);
   return armado ? armado.carta : null;
 }

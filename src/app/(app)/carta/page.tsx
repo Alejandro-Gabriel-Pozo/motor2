@@ -79,7 +79,8 @@ export default async function CartaPage() {
   const puedeCopiarCarta = nivelCopiar.editar;
   const puedeEditarAlgo = puedeEditarSecciones || puedeEditarGeneros || puedeEditarContenido || puedeDefinirPromos || puedeActivarPromos || puedePrecioLocalPromos || puedeDescuento;
 
-  const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db);
+  // La hora se fija acá, en el borde (O.22-c).
+  const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db, new Date());
   const seccionesActivas = datos.secciones.filter((s) => s.activa);
   const ubicacion: UbicacionEnCarta = {
     secciones: datos.secciones.map((s) => ({ id: s.id, nombre: s.nombre, activa: s.activa })),

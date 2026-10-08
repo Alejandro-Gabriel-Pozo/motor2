@@ -13,6 +13,7 @@ import { resolverPrecioVenta } from "../../src/core/movimientos/precio-venta";
 import { obtenerDetalleDeMesa } from "../../src/server/consultas/pos/detalle-de-mesa";
 import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Producto con descuento en el POS (Fase 2), contra Postgres real y con las acciones reales: al AGREGAR el ítem se congela el precio descontado (y
@@ -71,7 +72,7 @@ describe("producto con descuento en el POS", () => {
 
   it("el selector de carta del POS muestra el precio descontado y el de lista tachado", async () => {
     await guardarDescuentoProducto(s.flan.id, 15);
-    const selector = await cargarSelectorCartaPos(s.sucursalId, prisma);
+    const selector = await cargarSelectorCartaPos(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     const productos = [
       ...selector.fueraDeCarta,
       ...selector.seccionesCarta.flatMap((sec) => sec.entradas.flatMap((e) => (e.tipo === "producto" ? [e.producto] : []))),

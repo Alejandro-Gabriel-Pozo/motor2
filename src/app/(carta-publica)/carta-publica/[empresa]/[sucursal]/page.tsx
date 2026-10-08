@@ -17,7 +17,8 @@ export function generateStaticParams() {
 const resolver = cache(async (empresa: string, sucursal: string) => {
   const empresaCarta = await empresaCartaPublica(empresa);
   if (!empresaCarta) return null;
-  return cartaPublica(empresaCarta, sucursal);
+  // La hora de la carta se fija acá, en el borde (O.22-c): solo alimenta su `generadoEn`.
+  return cartaPublica(empresaCarta, sucursal, new Date());
 });
 
 export async function generateMetadata({ params }: { params: Promise<{ empresa: string; sucursal: string }> }): Promise<Metadata> {

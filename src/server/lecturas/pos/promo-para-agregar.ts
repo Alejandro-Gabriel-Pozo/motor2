@@ -25,8 +25,11 @@ export interface PromoCartaParaAgregar {
  * mozo con la misma información que ve en pantalla, nunca una lista propia que pueda desincronizarse (test de paridad contra
  * el selector, `test/pos/promo-combo-consulta.test.ts`). `null` si la promo no existe en esta sucursal, está apagada, o
  * todavía no tiene ningún cupo (sigue siendo informativa: el POS la ignora).
+ *
+ * `ahora` (O.22-c de docs/pureza-integracion.md) es obligatorio: el caso de uso de agregar ítems pasa `actor.ahora`; solo llega al `generadoEn` de la carta
+ * del selector, que acá no se usa.
  */
-export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCartaId: string, db: Db): Promise<PromoCartaParaAgregar | null> {
+export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCartaId: string, db: Db, ahora: Date): Promise<PromoCartaParaAgregar | null> {
   const promo =
     typeof promoCartaId === "string"
       ? await db.promoCarta.findFirst({
@@ -38,7 +41,7 @@ export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCarta
 
   // La capacidad `precio_local` se lee una vez y la comparten el selector y el precio de la promo (O.39: antes 7 lecturas por carga).
   const precioLocalActivoLeido = precioLocalActivoEn(sucursalId, db);
-  const [selector, precioLocalActivo] = await Promise.all([cargarSelectorCartaPos(sucursalId, db, precioLocalActivoLeido), precioLocalActivoLeido]);
+  const [selector, precioLocalActivo] = await Promise.all([cargarSelectorCartaPos(sucursalId, db, ahora, precioLocalActivoLeido), precioLocalActivoLeido]);
   const pediblesPorSeccion = new Map(selector.seccionesCarta.map((s) => [s.seccionCartaId, s.entradas.flatMap(pediblesDeEntrada)]));
 
   const precioCartaPorProducto = new Map<string, number>();

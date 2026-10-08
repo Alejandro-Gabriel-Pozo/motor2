@@ -19,12 +19,11 @@ const RAIZ = join(__dirname, "..", "..");
 const DELEGADOS = delegadosDeModelos(readFileSync(join(RAIZ, "prisma", "schema.prisma"), "utf8"));
 
 const MOTIVO_AHORA_OBLIGATORIO = "Lee la hora por su cuenta: el plan de la Fase 3 (C1) pedía `ahora` obligatorio, fijado en el borde de la pantalla. Se corrige en el trabajo D.3/O.22 de la rama `pureza-integracion`; la lista solo se achica.";
-export const RELOJ_EN_CONSULTAS: Record<string, string> = Object.fromEntries(
-  [
-    "src/server/lecturas/carta/menu.ts",
-    "src/server/lecturas/carta/publica.ts",
-  ].map((ruta) => [ruta, MOTIVO_AHORA_OBLIGATORIO]),
-);
+/**
+ * VACÍA desde O.22-c (Hito 4, bloque E1): los reportes (D.3, C1 y C2) y la carta (`menu.ts`, `publica.ts`) reciben `ahora` obligatorio. Como la lista solo se
+ * achica, ninguna consulta/lectura/acceso puede volver a leer el reloj: un `ahora: Date = new Date()` nuevo pone en rojo «ninguno lee la hora…».
+ */
+export const RELOJ_EN_CONSULTAS: Record<string, string> = Object.fromEntries(([] as string[]).map((ruta) => [ruta, MOTIVO_AHORA_OBLIGATORIO]));
 
 function archivos(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -73,6 +72,8 @@ describe("server/persistencia no lee el reloj ni el azar", () => {
 const SIN_RELOJ_FUERA_DE_CONSULTAS: Record<string, string> = {
   "src/server/actions/reportes/sincronizaciones.ts":
     "sincronizarDolar, sincronizarIPC y actualizarDolarSiHaceFalta (sin usuario: crons y encabezado) reciben `ahora` obligatorio; el reloj lo leen las dos rutas de cron y app-shell.tsx.",
+  "src/server/carta-publica/sin-sesion.ts":
+    "O.22-c: `cartaPublica` recibe `ahora` obligatorio y se lo pasa a `resolverCartaPublica` (antes la llamaba sin hora y el valor por defecto de `publica.ts` leía el reloj); lo fija la página pública.",
 };
 
 describe("archivos del servidor fuera de las consultas que ya no leen el reloj (lista cerrada, O.22-b)", () => {

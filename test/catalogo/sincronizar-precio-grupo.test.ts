@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto } from "../../src/server/actions/catalogo/productos";
 import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../src/server/actions/movimientos/precio-local";
 import { resolverMenuCartaConDiagnostico } from "../../src/server/lecturas/carta/menu";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Sincronizar el precio de un producto agrupado (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8): al cambiar el precio en
@@ -88,7 +89,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       expect(await precioVenta(ids.coca)).toBe(5000);
       expect(await precioVenta(ids.sprite)).toBe(5000);
       // Sin confirmar: la red de seguridad de D5 (la carta muestra el mayor, con diagnóstico).
-      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma);
+      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
       expect(armado!.carta.secciones[0].items.find((i) => i.productoId === agId)!.precio).toBe(5500);
       expect(armado!.diagnostico.agrupadosConPreciosDistintos).toEqual([{ id: agId, nombre: "Gaseosa 500 CC", minimo: 5000, maximo: 5500 }]);
     });
@@ -112,7 +113,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       expect(await auditoriasDePrecio(ids.sprite)).toEqual([{ valorAnterior: "5000", valorNuevo: "5500" }]);
       expect(await auditoriasDePrecio(ids.coca15)).toEqual([]);
 
-      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma);
+      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
       expect(armado!.carta.secciones[0].items.find((i) => i.productoId === agId)!.precio).toBe(5500);
       expect(armado!.diagnostico.agrupadosConPreciosDistintos).toEqual([]);
     });
@@ -189,7 +190,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
         { campo: "habilitado", valorAnterior: null, valorNuevo: "true", sucursalId },
         { campo: "precio", valorAnterior: null, valorNuevo: "5500", sucursalId },
       ]);
-      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma);
+      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
       expect(armado!.diagnostico.agrupadosConPreciosDistintos).toEqual([]);
       expect(armado!.carta.secciones[0].items.find((i) => i.productoId === agId)!.precio).toBe(5500);
     });

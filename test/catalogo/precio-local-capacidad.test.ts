@@ -10,6 +10,7 @@ import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
 import { construirMapaProductos } from "../../src/server/lecturas/reportes/comun";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Precio Local y la capacidad `precio_local` de la sucursal, contra Postgres real: "la empresa lo tiene o no lo tiene, y punto". Sin
@@ -29,7 +30,7 @@ describe("Precio Local y la capacidad precio_local", () => {
   }
 
   async function precioEnCartaPublica(): Promise<number | undefined> {
-    const carta = await resolverMenuCarta(sucursalId, prisma);
+    const carta = await resolverMenuCarta(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     return carta?.secciones.flatMap((s) => s.items).find((i) => i.nombre === "Pizza")?.precio;
   }
 
@@ -45,7 +46,7 @@ describe("Precio Local y la capacidad precio_local", () => {
   }
 
   async function precioEnSelectorPos(): Promise<number | undefined> {
-    const selector = await cargarSelectorCartaPos(sucursalId, prisma);
+    const selector = await cargarSelectorCartaPos(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     return precioDe(selector);
   }
 

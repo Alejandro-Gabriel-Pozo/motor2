@@ -9,6 +9,7 @@ import { agregarItems, enviarACocina, quitarItemSinEnviar } from "../../src/serv
 import { obtenerMapaDeMesas } from "../../src/server/consultas/pos/mesas";
 import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { crearMembresia } from "../setup/membresia";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /** Toma de pedido (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 4): abrir, agregar, quitar, enviar, liberar. */
 describe("tomar pedido (server actions)", () => {
@@ -205,7 +206,7 @@ describe("tomar pedido (server actions)", () => {
       it("una opción del grupo congela SU precio (con su Precio Local), aunque la carta muestre el mayor", async () => {
         const { coca, sprite, gaseosa } = await sembrarGaseosa();
         await prisma.precioLocalProducto.create({ data: { sucursalId: s.sucursalId, productoId: sprite.id, precio: 5500, habilitado: true } });
-        const carta = await resolverMenuCarta(s.sucursalId, prisma);
+        const carta = await resolverMenuCarta(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA);
         expect(carta?.secciones[0].items.find((i) => i.productoId === gaseosa.id)?.precio).toBe(5500);
 
         const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);

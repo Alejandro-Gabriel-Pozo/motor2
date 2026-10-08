@@ -415,17 +415,17 @@ describe("Caracterización del tramo A (Fase 3, paso .0): resultado completo y c
     caso("pos.obtenerTicketsRecientes(Central, mesa 4)", (db) => obtenerTicketsRecientes(CENTRAL, "mesa-4", db, undefined, AHORA));
     caso("pos.obtenerTicketsRecientes(Central, mesa 4, límite 1)", (db) => obtenerTicketsRecientes(CENTRAL, "mesa-4", db, 1, AHORA));
     caso("pos.obtenerTicketsRecientes(Norte, mesa 4 de Central: vacío)", (db) => obtenerTicketsRecientes(NORTE, "mesa-4", db, undefined, AHORA));
-    caso("pos.cargarSelectorCartaDeLaMesa(Central)", (db) => cargarSelectorCartaDeLaMesa(CENTRAL, db));
-    caso("pos.cargarSelectorCartaDeLaMesa(Norte)", (db) => cargarSelectorCartaDeLaMesa(NORTE, db));
-    caso("pos.cargarPromoCartaParaAgregar(Central, Menú del día)", (db) => cargarPromoCartaParaAgregar(CENTRAL, "pc-menu", db));
-    caso("pos.cargarPromoCartaParaAgregar(Central, informativa sin cupos: null)", (db) => cargarPromoCartaParaAgregar(CENTRAL, "pc-info", db));
-    caso("pos.cargarPromoCartaParaAgregar(Norte, apagada ahí: null)", (db) => cargarPromoCartaParaAgregar(NORTE, "pc-menu", db));
+    caso("pos.cargarSelectorCartaDeLaMesa(Central)", (db) => cargarSelectorCartaDeLaMesa(CENTRAL, db, AHORA));
+    caso("pos.cargarSelectorCartaDeLaMesa(Norte)", (db) => cargarSelectorCartaDeLaMesa(NORTE, db, AHORA));
+    caso("pos.cargarPromoCartaParaAgregar(Central, Menú del día)", (db) => cargarPromoCartaParaAgregar(CENTRAL, "pc-menu", db, AHORA));
+    caso("pos.cargarPromoCartaParaAgregar(Central, informativa sin cupos: null)", (db) => cargarPromoCartaParaAgregar(CENTRAL, "pc-info", db, AHORA));
+    caso("pos.cargarPromoCartaParaAgregar(Norte, apagada ahí: null)", (db) => cargarPromoCartaParaAgregar(NORTE, "pc-menu", db, AHORA));
   });
 
   describe("Carta interna: administración, ítems agrupados, grupo de un producto, portal, tema y ventas por sección", () => {
-    caso("carta.cargarAdminCarta(Central)", (db) => cargarAdminCarta(CENTRAL, db));
-    caso("carta.cargarAdminCarta(Norte)", (db) => cargarAdminCarta(NORTE, db));
-    caso("carta.cargarAdminItemsAgrupados(Central)", (db) => cargarAdminItemsAgrupados(CENTRAL, db));
+    caso("carta.cargarAdminCarta(Central)", (db) => cargarAdminCarta(CENTRAL, db, AHORA));
+    caso("carta.cargarAdminCarta(Norte)", (db) => cargarAdminCarta(NORTE, db, AHORA));
+    caso("carta.cargarAdminItemsAgrupados(Central)", (db) => cargarAdminItemsAgrupados(CENTRAL, db, AHORA));
     caso("carta.resolverGrupoDeProducto(Sprite, Central)", (db) => resolverGrupoDeProducto("pv-sprite", CENTRAL, db));
     caso("carta.resolverGrupoDeProducto(Pizza, Central: suelta, null)", (db) => resolverGrupoDeProducto("pv-pizza", CENTRAL, db));
     caso("carta.cargarAdminPortal()", (db) => cargarAdminPortal(db));

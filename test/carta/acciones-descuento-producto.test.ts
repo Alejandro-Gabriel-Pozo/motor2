@@ -8,6 +8,7 @@ import { guardarDescuentoProducto } from "../../src/server/actions/carta/descuen
 import { agregarOpcionItemAgrupadoCarta, guardarItemAgrupadoCarta } from "../../src/server/actions/carta/items-agrupados";
 import { descuentosDeProductoEnSucursal, productoTieneDescuentoEnAlgunaSucursal } from "../../src/server/lecturas/carta/descuentos";
 import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Producto con descuento (Fase 2): `guardarDescuentoProducto` pone, cambia o saca el % de UN PV EN LA SUCURSAL ACTIVA. Exige `carta_producto_descuento`,
@@ -126,7 +127,7 @@ describe("guardarDescuentoProducto", () => {
 
   it("la carta pública muestra el precio descontado y el de lista (redondeo a centavos), y un producto sin descuento queda igual que antes", async () => {
     await guardarDescuentoProducto(pv2Id, 15);
-    const carta = (await resolverMenuCarta(sucursalId, prisma))!;
+    const carta = (await resolverMenuCarta(sucursalId, prisma, AHORA_DE_LA_CORRIDA))!;
     const items = carta.secciones.flatMap((s) => s.items);
     const flan = items.find((i) => i.nombre === "Flan")!;
     expect(flan.precio).toBe(1049.37); // 1234,55 × 0,85 = 1049,3675
@@ -141,7 +142,7 @@ describe("guardarDescuentoProducto", () => {
     await guardarDescuentoProducto(pv2Id, 15);
     await prisma.disponibilidadProducto.create({ data: { sucursalId: otraSucursalId, productoId: pv2Id, disponible: true } });
     await prisma.contenidoCartaProducto.create({ data: { sucursalId: otraSucursalId, productoId: pv2Id, visibleEnCarta: true, seccionCartaId: seccionId, orden: 2 } });
-    const cartaOtra = (await resolverMenuCarta(otraSucursalId, prisma))!;
+    const cartaOtra = (await resolverMenuCarta(otraSucursalId, prisma, AHORA_DE_LA_CORRIDA))!;
     const flan = cartaOtra.secciones.flatMap((s) => s.items).find((i) => i.nombre === "Flan")!;
     expect(flan.precio).toBe(1234.55);
     expect(flan).not.toHaveProperty("precioLista");

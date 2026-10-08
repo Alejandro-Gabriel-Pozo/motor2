@@ -22,4 +22,5 @@ export const empresaCartaPublica = (slug: string) => conRolVerificado(() => reso
 /** Con empresa conocida (páginas `(carta-publica)`), bajo el contexto de ESA empresa: RLS sostiene el aislamiento aunque un filtro falle. */
 export const portalCartaPublico = (empresa: EmpresaCarta) => conRolVerificado(() => resolverPortalCarta(empresa, dbDeEmpresa(empresa.id)));
 export const configPortalPublica = (empresa: EmpresaCarta) => conRolVerificado(() => resolverConfigPortal(empresa, dbDeEmpresa(empresa.id)));
-export const cartaPublica = (empresa: EmpresaCarta, slug: string) => conRolVerificado(() => resolverCartaPublica(empresa, slug, dbDeEmpresa(empresa.id)));
+/** `ahora` obligatorio (O.22-c): lo fija la página pública, en el borde; este módulo no lee el reloj (lo vigila `SIN_RELOJ_FUERA_DE_CONSULTAS`). */
+export const cartaPublica = (empresa: EmpresaCarta, slug: string, ahora: Date) => conRolVerificado(() => resolverCartaPublica(empresa, slug, dbDeEmpresa(empresa.id), ahora));
