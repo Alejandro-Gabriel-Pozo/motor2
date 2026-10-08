@@ -26,8 +26,9 @@ import type { CostoMP, FilaResumenConsolidado, InfoProductoReporte, ItemPeriodo 
  * (`obtenerCostoActualPorMPDeSucursales`) y la disponibilidad (`disponibilidadDeProductosEnSucursales`) de todas las sucursales salen de UNA lectura cada
  * uno, con la misma implementación que usa el reporte (y la venta) de una sucursal con un solo elemento: 8 + 4N lecturas. Lo que sigue creciendo con las
  * sucursales (4 lecturas cada una) es el Precio Local con su capacidad y las recetas vigentes (propia y central), DIFERIDOS por decisión del dueño hasta
- * después de 4A-5 y del segundo tiempo de la venta: `sucursalTieneCapacidad` la usa también el gate, `preciosLocalesVigentes` es la frontera de la carta
- * pública, y las recetas propias se leen por par (sucursal, producto), donde un filtro mal armado elegiría una serie deshabilitada.
+ * después de 4A-5 y del segundo tiempo de la venta (D5 de O.38b queda DESTRABADO desde la pieza 5.2 del Hito 5, pero NO está hecho): `sucursalTieneCapacidad`
+ * (hoy en `server/acceso/capacidades-sucursal.ts`) la usa también el gate, `preciosLocalesVigentes` (hoy en `server/lecturas/catalogo/precio-local.ts`) es la
+ * frontera de la carta pública, y las recetas propias se leen por par (sucursal, producto), donde un filtro mal armado elegiría una serie deshabilitada.
  */
 export async function obtenerResumenConsolidado(
   sucursales: { id: string; nombre: string }[],
