@@ -14,11 +14,15 @@ import {
 } from "@/core/carta/validaciones";
 import { MAXIMO_PRODUCTOS_POR_ITEM_AGRUPADO, validarTopeDeLista } from "@/core/datos/limites";
 import { whereCartaDeSucursal } from "@/core/carta/public";
+import { guardComandoActualizarOrdenOpcionItemAgrupadoCarta } from "@/core/features/carta/items-agrupados.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { validarGeneroCartaOpcional } from "./generos-compartido";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { actualizarActivoItemAgrupadoCartaCasoDeUso } from "./casos-de-uso/actualizar-activo-item-agrupado-carta";
+import { actualizarOrdenOpcionItemAgrupadoCartaCasoDeUso } from "./casos-de-uso/actualizar-orden-opcion-item-agrupado-carta";
+import { quitarOpcionItemAgrupadoCartaCasoDeUso } from "./casos-de-uso/quitar-opcion-item-agrupado-carta";
 import { revalidarCartasPublicas } from "./revalidar";
-
 /**
  * Ítems AGRUPADOS de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M5): un renglón visible ("Gaseosa 500 CC") que
  * agrupa varios PV reales (Coca-Cola, Sprite, Fanta 500cc). PROPIOS de cada sucursal (ADR-009, C3): se crean y se editan siempre en la
@@ -131,11 +135,9 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
 /** Nunca se borra un ítem agrupado: se apaga (deja de salir en la carta, y sus opciones tampoco salen sueltas, D3). */
 export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
-    const existente = await ctx.db.itemAgrupadoCarta.findUnique({ where: { id: itemAgrupadoCartaId, ...whereCartaDeSucursal(ctx.sucursalId) } });
-    if (!existente) return error("No se encontró el ítem agrupado.");
-    await ctx.db.itemAgrupadoCarta.update({ where: { id: itemAgrupadoCartaId }, data: { activo } });
-    revalidarCartasPublicas();
-    return ok(`Ítem agrupado "${existente.nombre}" ${activo ? "prendido" : "apagado"}.`);
+    const resultado = await actualizarActivoItemAgrupadoCartaCasoDeUso(ctx, { itemAgrupadoCartaId, activo });
+    if (resultado.ok) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
 }
 
@@ -214,26 +216,19 @@ async function agregarOpcion(db: Db, sucursalId: string, itemAgrupadoCartaId: st
 
 export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, orden: number | string | null): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
-    const o = validarOrdenCarta(orden);
-    if (!o.ok) return error(o.mensaje);
-    const opcion = await ctx.db.opcionItemAgrupadoCarta.findUnique({ where: { id: opcionId, ...whereCartaDeSucursal(ctx.sucursalId) }, select: { producto: { select: { nombre: true } } } });
-    if (!opcion) return error("No se encontró la opción.");
-    await ctx.db.opcionItemAgrupadoCarta.update({ where: { id: opcionId }, data: { orden: o.valor } });
-    revalidarCartasPublicas();
-    return ok(`Orden de «${opcion.producto.nombre}» guardado.`);
+    const comando = guardComandoActualizarOrdenOpcionItemAgrupadoCarta({ opcionId, orden });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await actualizarOrdenOpcionItemAgrupadoCartaCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
 }
 
 /** Saca un producto de su ítem agrupado: se borra solo la referencia. El producto y su ContenidoCartaProducto no se tocan (D3). */
 export async function quitarOpcionItemAgrupadoCarta(opcionId: string): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
-    const opcion = await ctx.db.opcionItemAgrupadoCarta.findUnique({
-      where: { id: opcionId, ...whereCartaDeSucursal(ctx.sucursalId) },
-      select: { producto: { select: { nombre: true } }, itemAgrupadoCarta: { select: { nombre: true } } },
-    });
-    if (!opcion) return error("No se encontró la opción.");
-    await ctx.db.opcionItemAgrupadoCarta.deleteMany({ where: { id: opcionId } });
-    revalidarCartasPublicas();
-    return ok(`«${opcion.producto.nombre}» ya no está en «${opcion.itemAgrupadoCarta.nombre}».`);
+    const resultado = await quitarOpcionItemAgrupadoCartaCasoDeUso(ctx, { opcionId });
+    if (resultado.ok) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
 }

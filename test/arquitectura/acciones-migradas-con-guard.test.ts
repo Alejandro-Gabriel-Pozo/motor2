@@ -118,6 +118,10 @@ const SIN_GUARD: Record<string, string> = {
     "Guardar el contenido de carta de un producto (Hito 5, bloque D): la acción LEE el producto antes de validar nada (un producto inexistente, o uno que no es PV, gana sobre una descripción larga, unos tags inválidos o un orden roto), así que la validación vive en el caso de uso, en el mismo orden; un guard previo adelantaría esos rechazos y cambiaría qué mensaje gana.",
   "src/server/actions/carta/contenido-producto.ts#actualizarVisibleEnCarta":
     "Mostrar u ocultar un producto en la carta (Hito 5, bloque D): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró el producto.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/carta/items-agrupados.ts#actualizarActivoItemAgrupadoCarta":
+    "Apagar o prender un ítem agrupado (Hito 5, bloque D): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró el ítem agrupado.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/carta/items-agrupados.ts#quitarOpcionItemAgrupadoCarta":
+    "Quitar una opción de un ítem agrupado (Hito 5, bloque D): solo recibe un id, que nunca se validó en la acción (lo resuelve el caso de uso, «No se encontró la opción.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/stock/stock-minimo.ts#eliminarStockMinimo":
     "Borrar una fila de stock mínimo (Hito 4, H4C-21): solo recibe un id, que nunca se validó en la acción (lo resuelve el caso de uso, «No se encontró esa fila de Stock Mínimo.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
 };

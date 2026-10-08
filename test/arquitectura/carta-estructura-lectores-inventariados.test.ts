@@ -33,6 +33,10 @@ const ARCHIVOS_PERMITIDOS = [
   // (`actualizar-visible-en-carta.ts` solo lee por la RELACIÓN del producto, con el filtro de sucursal: la regla de relaciones lo mira en todo src/, no necesita estar en este inventario.)
   "server/actions/carta/casos-de-uso/guardar-contenido-carta-producto.ts",
   "server/actions/carta/items-agrupados.ts",
+  // Hito 5, bloque D: apagar o prender un ítem agrupado, cambiar el orden de una opción y quitarla las leen sus casos de uso (antes, server/actions/carta/items-agrupados.ts).
+  "server/actions/carta/casos-de-uso/actualizar-activo-item-agrupado-carta.ts",
+  "server/actions/carta/casos-de-uso/actualizar-orden-opcion-item-agrupado-carta.ts",
+  "server/actions/carta/casos-de-uso/quitar-opcion-item-agrupado-carta.ts",
   // Hito 4, H4C-2 y H4C-3: las secciones de las promos (la de la promo y las de sus cupos) las leen sus casos de uso (antes, server/actions/carta/promos.ts).
   "server/actions/carta/casos-de-uso/guardar-promo-carta.ts",
   "server/actions/carta/casos-de-uso/guardar-cupos-promo-carta.ts",
