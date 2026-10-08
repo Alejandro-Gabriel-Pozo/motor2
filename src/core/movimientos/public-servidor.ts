@@ -22,4 +22,3 @@ export { MENSAJE_CONFLICTO_IDEMPOTENCIA, calcularPayloadHash, decidirIdempotenci
 export type { ResultadoChequeoIdempotencia } from "./idempotencia";
 export { MENSAJE_FACTURA_DUPLICADA, esChoqueDeFacturaUnica } from "./factura-unica";
 export type { AvisoStockNegativo } from "./registrar-venta";
-export { resolverPrecioVenta } from "./precio-venta";

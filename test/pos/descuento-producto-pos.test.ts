@@ -9,7 +9,7 @@ import { agregarItems, enviarACocina } from "../../src/server/actions/pos/cuenta
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { guardarDescuentoProducto } from "../../src/server/actions/carta/descuento-producto";
 import { altaCliente } from "../../src/server/actions/clientes/cliente";
-import { resolverPrecioVenta } from "../../src/core/movimientos/precio-venta";
+import { resolverPrecioVenta } from "../../src/server/lecturas/movimientos/precio-venta";
 import { obtenerDetalleDeMesa } from "../../src/server/consultas/pos/detalle-de-mesa";
 import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";

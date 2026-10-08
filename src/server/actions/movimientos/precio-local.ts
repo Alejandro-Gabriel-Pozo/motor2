@@ -15,7 +15,7 @@ import { sincronizarPrecioLocalGrupoCartaCasoDeUso } from "./casos-de-uso/sincro
  * Port de HOJA_PRECIO_LOCAL/"Precio Local" (Catalogo.js:2043-2077) — hueco
  * encontrado investigando Venta (porción Movimientos): Producto.precioVenta
  * es el precio GLOBAL, esto es el override por sucursal. `resolverPrecioVenta`
- * (src/core/movimientos/precio-venta.ts) es quien lee esto — acá solo el CRUD.
+ * (src/server/lecturas/movimientos/precio-venta.ts) es quien lee esto — acá solo el CRUD.
  *
  * Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-4) las dos mutaciones son adaptadores finos de sus casos de uso
  * (`./casos-de-uso/{set-precio-local-producto,sincronizar-precio-local-grupo-carta}.ts`, con el paso compartido `guardar-precio-local-en-tx.ts` que escribe en

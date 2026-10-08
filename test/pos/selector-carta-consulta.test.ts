@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, replicarCartaDeSucursal, prisma, sembrarProductoDisponible } from "../setup/test-db";
 import { sembrarSalon } from "./salon-fixture";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
-import { resolverPrecioVenta } from "../../src/core/movimientos/precio-venta";
+import { resolverPrecioVenta } from "../../src/server/lecturas/movimientos/precio-venta";
 import { pediblesDeEntrada, type SelectorCartaPos } from "../../src/core/pos/selector-carta";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 

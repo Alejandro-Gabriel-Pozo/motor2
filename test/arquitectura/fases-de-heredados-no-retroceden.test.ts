@@ -30,7 +30,6 @@ const FASE_REGISTRADA: Record<string, 4 | 6> = {
   "src/core/movimientos/anulaciones.ts": 6,
   "src/core/movimientos/armar-filas-de-movimiento.ts": 6,
   "src/core/movimientos/con-reintento.ts": 6,
-  "src/core/movimientos/precio-venta.ts": 6,
   "src/core/movimientos/public.ts": 6,
   "src/core/movimientos/transiciones.ts": 6,
   "src/core/movimientos/ui-config.ts": 6,

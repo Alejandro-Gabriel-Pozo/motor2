@@ -19,7 +19,7 @@ import { faltantesDe } from "@/core/movimientos/origen-venta";
 import { filasDeUnaVenta } from "@/core/movimientos/filas-de-venta";
 import { asignarOrigenDeLaVenta, avisoDeStockNegativo, mensajeStockInsuficiente, rechazoSinRespaldo, type LineaArmada } from "@/core/movimientos/plan-de-la-venta";
 import { cargarDatosDeOrigen, prepararOrigen } from "@/server/persistencia/movimientos/cargar-origen-de-venta";
-import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
+import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
 import { calcularCostosYMargenes } from "@/server/lecturas/reportes/costos";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";

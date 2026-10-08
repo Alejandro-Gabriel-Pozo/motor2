@@ -7,7 +7,7 @@ import {
   type EntradaArmarMenu,
   type ProductoCartaEntrada,
 } from "@/core/carta/armar-menu";
-import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
+import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
 
 const contenido = (extra: Partial<ProductoCartaEntrada["contenido"]> = {}): ProductoCartaEntrada["contenido"] => ({
   descripcion: null,

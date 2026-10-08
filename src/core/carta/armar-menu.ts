@@ -220,8 +220,8 @@ export interface MenuArmado {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * El precio que muestra la carta = el que se cobra. MISMA regla que `resolverPrecioVenta` (src/core/movimientos/
- * precio-venta.ts, port de resolverPrecioVenta_ de Catalogo.js): el Precio Local si está cargado Y habilitado, si no el
+ * El precio que muestra la carta = el que se cobra. MISMA regla que `resolverPrecioVenta` (src/server/lecturas/
+ * movimientos/precio-venta.ts, port de resolverPrecioVenta_ de Catalogo.js): el Precio Local si está cargado Y habilitado, si no el
  * precio de venta global. Fijado por un test de paridad en test/carta/armar-menu.test.ts.
  */
 export function precioDeCarta(precioVenta: number, local: { precio: number; habilitado: boolean } | null | undefined): number {
