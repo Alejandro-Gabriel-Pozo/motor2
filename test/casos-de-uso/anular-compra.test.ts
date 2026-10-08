@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { DIA_MS, enElPasado } from "../setup/tiempo";
+import { DIA_MS, enElFuturo, enElPasado } from "../setup/tiempo";
 import { beforeEach, describe, expect, it } from "vitest";
 import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { anularCompraCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/anular-compra";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
 import { detalleReversionDeCompra } from "../../src/core/movimientos/anulaciones";
+import { crearEnvioDirectoDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/crear-envio-directo-de-traspaso";
+import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
 
 /** sha256 de `{ payload: { operacionId: "operacion-fija" }, procesoTag: "ANULAR_COMPRA", sucursalId: "sucursal-fija" }` (canónico, claves ordenadas). */
 const HASH_ANTERIOR_DE_PAYLOAD_FIJO = "966df3691f4ce3b6a64f54e0745bbfaf3b68a970c610c8472087752636a9fe40";
@@ -205,6 +207,94 @@ describe("anularCompraCasoDeUso", () => {
     expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(0);
     expect((await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).anuladaEn).toBeNull();
     expect(await prisma.registroAuditoria.count()).toBe(0);
+  });
+
+  /**
+   * S-02 (O.51 de docs/pureza-integracion.md, tanda T1 del plan de endurecimiento): el saldo TOTAL (producto, sección) también tiene que cubrir lo comprado.
+   * Antes `evaluarAnulacion` miraba solo el bucket del lote: con la compra de 10 kg del lote L, un traspaso o una merma SIN lote que se llevó los 10 dejaba el
+   * lote L en 10 y el total en 0, y anular escribía −10 en el lote y dejaba el total del producto en −10 (stock negativo en el Kardex).
+   */
+  describe("S-02: el saldo total por (producto, sección) tiene que cubrir lo comprado", () => {
+    const LOTE = enElFuturo(120 * DIA_MS);
+
+    async function compraConLote(cantidad = 10) {
+      const op = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: new Date("2026-08-10T12:00:00Z"), usuarioId: adminId, proveedorId, nroFactura: "L-0001" } });
+      await prisma.movimientoStock.create({
+        data: { operacionId: op.id, productoId: harinaId, seccionId, proceso: "COMPRA", cantidad, detalle: "Compra con lote", precioTotal: cantidad * 100, precioPorUnidadStock: 100, loteVencimiento: LOTE },
+      });
+      return op;
+    }
+
+    async function nadaEscrito(operacionId: string) {
+      expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(0);
+      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: operacionId } })).anuladaEn).toBeNull();
+      expect(await prisma.registroAuditoria.count({ where: { entidadId: operacionId } })).toBe(0);
+    }
+
+    it("ataque (traspaso): el stock salió por un envío directo SIN lote → STOCK_CONSUMIDO, saldo total intacto, ninguna Operación nueva", async () => {
+      const op = await compraConLote(10);
+      const otra = await prisma.sucursal.create({ data: { nombre: "Sucursal B" } });
+      await prisma.disponibilidadProducto.createMany({ data: [sucursalId, otra.id].map((s) => ({ sucursalId: s, productoId: harinaId, disponible: true })) });
+      const envio = await crearEnvioDirectoDeTraspasoCasoDeUso(
+        { ...actor(), sucursalNombre: "Central" },
+        { destinoSucursalId: otra.id, productoId: harinaId, cantidad: 10, seccionOrigenId: seccionId, detalle: null },
+      );
+      expect(envio.ok).toBe(true);
+      expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(0);
+
+      const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.codigo).toBe("STOCK_CONSUMIDO");
+      expect(r.mensaje).toContain("Harina (Depósito)");
+      expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(0);
+      await nadaEscrito(op.id);
+    });
+
+    it("ataque (merma sin lote): una salida de 10 sin lote → STOCK_CONSUMIDO y el total no queda negativo", async () => {
+      const op = await compraConLote(10);
+      await consumir(10);
+
+      const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.codigo).toBe("STOCK_CONSUMIDO");
+      expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(0);
+      await nadaEscrito(op.id);
+    });
+
+    it("salida parcial sin lote (4 de 10): el total (6) ya no cubre lo comprado → STOCK_CONSUMIDO, y el mensaje dice cuánto queda", async () => {
+      const op = await compraConLote(10);
+      await consumir(4);
+
+      const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.mensaje).toContain("se compraron 10 y hoy quedan 6");
+      await nadaEscrito(op.id);
+    });
+
+    it("control: con stock previo SIN lote que cubre la salida (total 20 ≥ 10) la anulación pasa y el total queda en 10, nunca negativo", async () => {
+      await compra({ cantidad: 10, nroFactura: "PREVIA-1" }); // 10 sin lote (la compra común)
+      const op = await compraConLote(10);
+      await consumir(10); // sale del "sin lote": el lote L queda en 10 y el total en 10
+      expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(10);
+
+      const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+
+      expect(r.ok).toBe(true);
+      expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(0);
+    });
+
+    it("control: la compra con lote sin ninguna salida se anula como siempre", async () => {
+      const op = await compraConLote(10);
+      const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+      expect(r.ok).toBe(true);
+      expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(0);
+    });
   });
 
   it("aResultadoAccion sobre el resultado del caso de uso: la pantalla recibe solo { ok, mensaje }", async () => {

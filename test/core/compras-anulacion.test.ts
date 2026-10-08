@@ -176,3 +176,50 @@ describe("mensajeCompraAnulada / descripcionAuditoriaAnulacion", () => {
     expect(descripcionAuditoriaAnulacion(fecha, null, null)).toBe("Compra del 2026-08-10: anulación");
   });
 });
+
+/** S-02 (O.51): además del bucket del lote, el saldo TOTAL del (producto, sección) tiene que cubrir lo comprado. */
+describe("evaluarAnulacion — el saldo total por (producto, sección) (S-02)", () => {
+  const lote = new Date("2026-12-01T00:00:00.000Z");
+  const sinLote = (l: LineaComprada, saldo: number): [LineaComprada, number] => [{ ...l, loteVencimiento: null }, saldo];
+
+  it("lote lleno pero salida SIN lote que dejó el total corto: se bloquea y dice que es el total", () => {
+    const l = linea({ loteVencimiento: lote });
+    // Bucket del lote en 10 (intacto), bucket sin lote en −10 (un traspaso se llevó 10 sin lote): total 0.
+    const r = evaluarAnulacion(compra([l]), saldos([l, 10], sinLote(l, -10)));
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.motivo).toBe("STOCK_CONSUMIDO");
+    expect(r.faltantes).toEqual([{ productoNombre: "Harina", seccionNombre: "Depósito", loteVencimiento: null, comprado: 10, disponible: 0, enTotal: true }]);
+    expect(r.mensaje).toContain("se compraron 10 y hoy quedan 0 en total");
+  });
+
+  it("con stock previo sin lote que cubre la salida (total 20 ≥ 10) se puede anular", () => {
+    const l = linea({ loteVencimiento: lote });
+    expect(evaluarAnulacion(compra([l]), saldos([l, 10], sinLote(l, 10))).ok).toBe(true);
+  });
+
+  it("el total es POR PAR: el negativo de otra sección no cuenta", () => {
+    const l = linea({ loteVencimiento: lote });
+    const otraSeccion = linea({ seccionId: "cocina", loteVencimiento: null });
+    expect(evaluarAnulacion(compra([l]), saldos([l, 10], [otraSeccion, -50])).ok).toBe(true);
+  });
+
+  it("si el bucket YA falta no se repite el faltante del total (un solo aviso por par)", () => {
+    const l = linea({ loteVencimiento: lote });
+    const r = evaluarAnulacion(compra([l]), saldos([l, 4]));
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.faltantes).toHaveLength(1);
+    expect(r.faltantes[0].enTotal).toBeUndefined();
+  });
+
+  it("dos lotes de la misma compra en el mismo par se comparan JUNTOS contra el total", () => {
+    const a = linea({ cantidad: 6, loteVencimiento: lote });
+    const b = linea({ cantidad: 6, loteVencimiento: new Date("2027-01-01T00:00:00.000Z") });
+    // Cada bucket cubre su parte (6 y 6), pero una salida sin lote de 8 deja el total en 4 < 12.
+    const r = evaluarAnulacion(compra([a, b]), saldos([a, 6], [b, 6], sinLote(a, -8)));
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.faltantes).toEqual([{ productoNombre: "Harina", seccionNombre: "Depósito", loteVencimiento: null, comprado: 12, disponible: 4, enTotal: true }]);
+  });
+});

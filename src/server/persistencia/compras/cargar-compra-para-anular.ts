@@ -44,7 +44,8 @@ export async function cargarCompraParaAnular(
   });
   if (!operacion) return null;
 
-  // Saldo actual por (producto, sección, lote) de lo que esta compra tocó: una sola consulta agrupada.
+  // Saldo actual por (producto, sección, lote) de lo que esta compra tocó: una sola consulta agrupada. Trae TODOS los lotes (y el «sin lote») de cada par: de ahí
+  // sale también el saldo TOTAL del (producto, sección) que exige `evaluarAnulacion` (S-02), sin una consulta nueva. NO filtrar por lote acá.
   const saldosAgrupados = await tx.movimientoStock.groupBy({
     by: ["productoId", "seccionId", "loteVencimiento"],
     where: {
