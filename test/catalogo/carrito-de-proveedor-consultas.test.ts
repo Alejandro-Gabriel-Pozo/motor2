@@ -9,7 +9,8 @@ import type { Db } from "../../src/lib/db-tipos";
  * contaría dos veces), cada una como `modelo.operación` (o `$queryRaw` para el SQL crudo), ordenadas (las dos lecturas de ofertas van en paralelo).
  *
  * Dos escenarios por tamaño: con la fila de `ProveedorPorProducto` de cada par (lo normal desde 2026-10-07: toda compra con proveedor la escribe) y sin ninguna (compras viejas:
- * el lector lee además la unidad de compra de los productos). Fija el conteo de HOY; O.5 (paso A4) lo baja y cambia este test a propósito.
+ * el lector lee además la unidad de compra de los productos). Nació (paso A3) fijando el conteo de entonces: 5 y 7, con DOS lecturas de ofertas (la de la empresa y la filtrada
+ * por la sucursal). O.5 (paso A4) las fusionó en una (`precioDeLaSucursal`): 3 y 4, igual con 2 y 5 productos y 2 y 5 sucursales.
  */
 describe("carrito de una Compra: consultas de la precarga por proveedor", () => {
   let sucursalId: string;
@@ -63,29 +64,21 @@ describe("carrito de una Compra: consultas de la precarga por proveedor", () => 
     [2, 5],
     [5, 5],
   ])("%i productos, %i sucursales", (productos, sucursales) => {
-    it("con la fila de cada par en la tabla: 5 consultas (2 por cada lectura de ofertas + los productos)", async () => {
+    it("con la fila de cada par en la tabla: 3 consultas (UNA lectura de ofertas con la sucursal adentro + su tabla + los productos)", async () => {
       await sembrar(productos, sucursales, true);
       const { db, consultas } = contando();
       const filas = await cargarProductosDeProveedorParaElCarrito(db, proveedorId, sucursalId);
       expect(filas).toHaveLength(productos);
       expect(new Set(filas.map((f) => f.origenDelPrecio))).toEqual(new Set(["SUCURSAL", "EMPRESA"])); // los dos orígenes del precio
-      expect(consultas.sort()).toEqual(["$queryRaw", "$queryRaw", "Producto.findMany", "ProveedorPorProducto.findMany", "ProveedorPorProducto.findMany"]);
+      expect(consultas.sort()).toEqual(["$queryRaw", "Producto.findMany", "ProveedorPorProducto.findMany"]);
     });
 
-    it("sin filas en la tabla (compras viejas): 7 consultas (cada lectura de ofertas suma la unidad de los productos)", async () => {
+    it("sin filas en la tabla (compras viejas): 4 consultas (la lectura de ofertas suma la unidad de los productos)", async () => {
       await sembrar(productos, sucursales, false);
       const { db, consultas } = contando();
       const filas = await cargarProductosDeProveedorParaElCarrito(db, proveedorId, sucursalId);
       expect(filas).toHaveLength(productos);
-      expect(consultas.sort()).toEqual([
-        "$queryRaw",
-        "$queryRaw",
-        "Producto.findMany",
-        "Producto.findMany",
-        "Producto.findMany",
-        "ProveedorPorProducto.findMany",
-        "ProveedorPorProducto.findMany",
-      ]);
+      expect(consultas.sort()).toEqual(["$queryRaw", "Producto.findMany", "Producto.findMany", "ProveedorPorProducto.findMany"]);
     });
   });
 });
