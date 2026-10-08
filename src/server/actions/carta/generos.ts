@@ -1,9 +1,11 @@
 "use server";
 
-import { validarNombreGeneroCarta, validarOrdenCarta } from "@/core/carta/validaciones";
-import { whereCartaDeSucursal } from "@/core/carta/public";
+import { guardComandoGuardarGeneroCarta } from "@/core/features/carta/generos.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
-import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { actualizarActivoGeneroCartaCasoDeUso } from "./casos-de-uso/actualizar-activo-genero-carta";
+import { guardarGeneroCartaCasoDeUso } from "./casos-de-uso/guardar-genero-carta";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
@@ -12,6 +14,10 @@ import { revalidarCartasPublicas } from "./revalidar";
  * implican precio ni sustituibilidad (eso lo sigue manejando `ItemAgrupadoCarta`); no son `Grupo` (Insumo/stock) ni
  * `CategoriaProducto` (que no ubica nada en la carta). Solo escriben en `GeneroCarta`. Son PROPIOS de cada sucursal (ADR-009, C3): se crean y
  * se editan siempre en la sucursal activa. Gate: `carta_generos`.
+ *
+ * Desde el Hito 5 de la pureza (bloque D, `docs/plan-hito-5-pureza.md` §6.1) las dos acciones son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{guardar-genero-carta,actualizar-activo-genero-carta}.ts`; escrituras en server/persistencia/carta/generos.ts; el formato en
+ * core/features/carta/generos.guard.ts): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las dos revalidan la carta pública solo si salió bien, como antes.
  */
 
 export interface DatosGeneroCarta {
@@ -21,39 +27,30 @@ export interface DatosGeneroCarta {
   orden?: number | string | null;
 }
 
+/**
+ * Alta (sin `id`) o edición (con `id`) de un género de la sucursal activa. Permiso (`conPermisoDeEmpresa("carta_generos")`) → formato de los datos
+ * (`guardComandoGuardarGeneroCarta`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/guardar-genero-carta.ts`) → revalidar la carta pública si salió bien →
+ * `aResultadoAccion` y el id y el nombre para el `ResultadoConId`.
+ */
 export async function guardarGeneroCarta(datos: DatosGeneroCarta): Promise<ResultadoConId> {
   return conPermisoDeEmpresa<ResultadoConId>("carta_generos", async (ctx) => {
-    const nombre = validarNombreGeneroCarta(datos.nombre);
-    if (!nombre.ok) return error(nombre.mensaje);
-    const orden = validarOrdenCarta(datos.orden);
-    if (!orden.ok) return error(orden.mensaje);
-
-    const repetido = await ctx.db.generoCarta.findFirst({
-      where: { nombre: { equals: nombre.valor, mode: "insensitive" }, ...whereCartaDeSucursal(ctx.sucursalId), ...(datos.id ? { NOT: { id: datos.id } } : {}) },
-    });
-    if (repetido) return error(`Ya existe el género "${repetido.nombre}".`);
-
-    const data = { nombre: nombre.valor, orden: orden.valor };
-    if (datos.id) {
-      const existente = await ctx.db.generoCarta.findUnique({ where: { id: datos.id, ...whereCartaDeSucursal(ctx.sucursalId) } });
-      if (!existente) return error("No se encontró el género.");
-      const g = await ctx.db.generoCarta.update({ where: { id: datos.id }, data });
-      revalidarCartasPublicas();
-      return okConId(`Género "${g.nombre}" guardado.`, g.id, g.nombre);
-    }
-    const g = await ctx.db.generoCarta.create({ data: { sucursalId: ctx.sucursalId, ...data } });
-    revalidarCartasPublicas();
-    return okConId(`Género "${g.nombre}" creado.`, g.id, g.nombre);
+    const comando = guardComandoGuardarGeneroCarta(datos);
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await guardarGeneroCartaCasoDeUso(ctx, comando.valor);
+    if (r.ok) revalidarCartasPublicas();
+    const base = aResultadoAccion(r);
+    return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
 }
 
-/** Nunca se borra un género: se apaga (deja de mostrarse como carpeta; lo que tenía ese género queda suelto, sin error, D). */
+/**
+ * Nunca se borra un género: se apaga (deja de mostrarse como carpeta; lo que tenía ese género queda suelto, sin error, D). Permiso → caso de uso
+ * (`casos-de-uso/actualizar-activo-genero-carta.ts`) → revalidar si salió bien → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
+ */
 export async function actualizarActivoGeneroCarta(generoCartaId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_generos", async (ctx) => {
-    const existente = await ctx.db.generoCarta.findUnique({ where: { id: generoCartaId, ...whereCartaDeSucursal(ctx.sucursalId) } });
-    if (!existente) return error("No se encontró el género.");
-    await ctx.db.generoCarta.update({ where: { id: generoCartaId }, data: { activo } });
-    revalidarCartasPublicas();
-    return ok(`Género "${existente.nombre}" ${activo ? "activado" : "desactivado"}.`);
+    const resultado = await actualizarActivoGeneroCartaCasoDeUso(ctx, { generoCartaId, activo });
+    if (resultado.ok) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
 }

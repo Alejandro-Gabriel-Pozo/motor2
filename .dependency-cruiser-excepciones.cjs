@@ -318,6 +318,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 5, bloque D (D3): guardarSeccionCarta (con guardComandoGuardarSeccionCarta; la acción arma el ResultadoConId) y actualizarActivaSeccionCarta → carta/casos-de-uso/{guardar-seccion-carta,actualizar-activa-seccion-carta}.ts; escrituras en server/persistencia/carta/secciones.ts, con la base del contexto y sin transacción ni auditoría (una sección no es plata), como antes. El formato lo valida core/features/carta/secciones.guard.ts dentro de conPermisoDeEmpresa y la acción revalida la carta pública solo si salió bien. El archivo no tiene ninguna otra mutación.",
   },
+  {
+    ruta: "src/server/actions/carta/generos.ts",
+    motivo:
+      "Hito 5, bloque D (D5): guardarGeneroCarta (con guardComandoGuardarGeneroCarta; la acción arma el ResultadoConId) y actualizarActivoGeneroCarta → carta/casos-de-uso/{guardar-genero-carta,actualizar-activo-genero-carta}.ts; escrituras en server/persistencia/carta/generos.ts, con la base del contexto y sin transacción ni auditoría (un género es una carpeta visual del POS), como antes. Los géneros son propios de cada sucursal: las lecturas llevan whereCartaDeSucursal. El formato lo valida core/features/carta/generos.guard.ts dentro de conPermisoDeEmpresa y la acción revalida la carta pública solo si salió bien. El archivo no tiene ninguna otra mutación.",
+  },
 ];
 
 module.exports = {

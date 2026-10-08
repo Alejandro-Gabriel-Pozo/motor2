@@ -112,6 +112,8 @@ const SIN_GUARD: Record<string, string> = {
     "Borrar una fila de la agenda de conteo (Hito 4, H4C-19): solo recibe un id, que nunca se validó en la acción (lo resuelve el caso de uso, «No se encontró esa fila…»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/carta/secciones.ts#actualizarActivaSeccionCarta":
     "Apagar o prender una sección de la carta (Hito 5, bloque D): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró la sección de carta.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/carta/generos.ts#actualizarActivoGeneroCarta":
+    "Apagar o prender un género de la carta (Hito 5, bloque D): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró el género.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/stock/stock-minimo.ts#eliminarStockMinimo":
     "Borrar una fila de stock mínimo (Hito 4, H4C-21): solo recibe un id, que nunca se validó en la acción (lo resuelve el caso de uso, «No se encontró esa fila de Stock Mínimo.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
 };

@@ -25,7 +25,9 @@ const ARCHIVOS_PERMITIDOS = [
   // Hito 5, bloque D: las secciones de la carta las leen sus casos de uso (antes, server/actions/carta/secciones.ts).
   "server/actions/carta/casos-de-uso/guardar-seccion-carta.ts",
   "server/actions/carta/casos-de-uso/actualizar-activa-seccion-carta.ts",
-  "server/actions/carta/generos.ts",
+  // Hito 5, bloque D: los géneros de la carta los leen sus casos de uso (antes, server/actions/carta/generos.ts).
+  "server/actions/carta/casos-de-uso/guardar-genero-carta.ts",
+  "server/actions/carta/casos-de-uso/actualizar-activo-genero-carta.ts",
   "server/actions/carta/generos-compartido.ts",
   "server/actions/carta/contenido-producto.ts",
   "server/actions/carta/items-agrupados.ts",
