@@ -68,9 +68,14 @@ export interface DatosActualizarProducto {
 /**
  *  - `PRODUCTO_NO_ENCONTRADO`: el id no es de un producto;
  *  - `TIPO_DISTINTO`: el formulario trae otro tipo (MP/PV) que el del producto: no se puede cambiar;
- *  - `DATOS_INVALIDOS`: algún dato del formulario no es válido (`validarDatosDeProducto`).
+ *  - `DATOS_INVALIDOS`: algún dato del formulario no es válido (`validarDatosDeProducto`);
+ *  - `UNIDAD_CON_HISTORIA`: el formulario trae otra unidad de stock y el producto ya tiene historia (movimientos, recetas, presentaciones, proveedores…; CAT-1, S-05);
+ *  - `CONSIGNANTE_CON_HISTORIA`: el formulario cambia el consignante (o el «es consignación») de un producto que ya tiene liquidaciones (S-05).
  */
-export type ResultadoActualizarProducto = ResultadoCaso<DatosActualizarProducto, "PRODUCTO_NO_ENCONTRADO" | "TIPO_DISTINTO" | "DATOS_INVALIDOS">;
+export type ResultadoActualizarProducto = ResultadoCaso<
+  DatosActualizarProducto,
+  "PRODUCTO_NO_ENCONTRADO" | "TIPO_DISTINTO" | "DATOS_INVALIDOS" | "UNIDAD_CON_HISTORIA" | "CONSIGNANTE_CON_HISTORIA"
+>;
 
 /**
  * Comando «aplicar el mismo precio de venta global a varios productos de un ítem agrupado de la carta»: los ids SIN repetir (al menos uno) y el precio, YA

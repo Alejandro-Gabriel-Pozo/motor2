@@ -83,6 +83,14 @@ export async function versionVigentePorProducto(db: Db, _alcance: AlcanceCentral
 }
 
 /**
+ * ¿El producto tiene ALGUNA versión de receta, central o propia de una sucursal? Una existencia y nada más (no elige ninguna versión): la pregunta «¿tiene historia?» de
+ * `historia-de-producto.ts` (CAT-1, S-05): una receta ya expresa cantidades en la unidad de stock del producto, y por la regla del embudo solo este archivo lee `RecetaVersion`.
+ */
+export async function productoTieneRecetas(db: Db, productoId: string): Promise<boolean> {
+  return (await db.recetaVersion.findFirst({ where: { productoId }, select: { id: true } })) !== null;
+}
+
+/**
  * De los `productoIds` (o de todos, sin lista) y las `sucursalIds`, los pares (sucursal, producto) con la receta propia HABILITADA, como
  * `"<sucursalId>:<productoId>"`. Lo usan los reportes que miran la estructura central y tienen que saber en qué sucursales no rige.
  */
