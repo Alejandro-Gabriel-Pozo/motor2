@@ -180,6 +180,17 @@ export async function registrarVentaEnTx(
   const productosConsumidosIds = Array.from(new Set(ventas.flatMap((v) => v.consumos.map((c) => c.productoId))));
   const arrastreDeRedondeo = crearArrastreDeRedondeo(await cargarDeudaDeRedondeo(tx, actor.sucursalId, productosConsumidosIds));
 
+  // Las fichas de los productos que el bucle de abajo necesita (cada producto consumido y, si la parte salió de un sustituto, el producto al que reemplazó) se leen ACÁ, en el orden de las
+  // ventas y de sus consumos, y no adentro del bucle: así lo que arma las filas de una venta ya no lee nada. DESPUÉS de la validación de stock (un rechazo no suma lecturas) y la caché de
+  // `obtenerProducto` deduplica: el multiconjunto de lecturas de la transacción es el mismo que cuando se leía adentro del bucle.
+  const productos = new Map<string, Awaited<ReturnType<typeof obtenerProducto>>>();
+  for (const venta of ventas) {
+    for (const c of venta.consumos) {
+      productos.set(c.productoId, await obtenerProducto(c.productoId));
+      if (c.sustituyeAProductoId) productos.set(c.sustituyeAProductoId, await obtenerProducto(c.sustituyeAProductoId));
+    }
+  }
+
   const filas: Prisma.MovimientoStockCreateManyInput[] = [];
   const operacionIds: string[] = [];
   for (const venta of ventas) {
@@ -199,7 +210,7 @@ export async function registrarVentaEnTx(
     operacionIds.push(operacion.id);
 
     for (const c of venta.consumos) {
-      const consumido = await obtenerProducto(c.productoId);
+      const consumido = productos.get(c.productoId);
       // Redondeo CON ARRASTRE (Task #27, docs/plan-redondeo-consumo-fraccionado-2026-09-26.md) — reemplaza el redondeo "a secas" de
       // cada parte por separado (`redondearACantidadDeUnidad(c.cantidad, decimales)`, el bug: dos medias pizzas consumían 2 bollos
       // en vez de 1). Con deuda 0 (el caso de siempre para un producto que nunca dejó resto) el resultado es IDÉNTICO al de antes;
@@ -211,7 +222,7 @@ export async function registrarVentaEnTx(
       // D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): solo si esta parte vino de un sustituto — un consumo de un
       // HERMANO del mismo Insumo (el caso de siempre) deja el objeto IDÉNTICO a hoy, sin la columna ni el detalle distinto.
       const detalle = c.sustituyeAProductoId
-        ? `Consumo por venta de "${venta.nombre}" — SUSTITUTO de "${(await obtenerProducto(c.sustituyeAProductoId))?.nombre ?? c.sustituyeAProductoId}" (no había stock).`
+        ? `Consumo por venta de "${venta.nombre}" — SUSTITUTO de "${productos.get(c.sustituyeAProductoId)?.nombre ?? c.sustituyeAProductoId}" (no había stock).`
         : `Consumo por venta de "${venta.nombre}".`;
       filas.push({
         operacionId: operacion.id, productoId: c.productoId, seccionId: c.seccionId, proceso: "CONSUMO",
