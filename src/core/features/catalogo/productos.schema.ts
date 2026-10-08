@@ -50,6 +50,40 @@ export interface DatosProductoCreado {
  */
 export type ResultadoDarDeAltaProducto = ResultadoCaso<DatosProductoCreado, "DATOS_INVALIDOS" | "YA_EXISTE" | "CODIGO_REPETIDO">;
 
+/** Comando «editar un producto»: el id y los datos del formulario, SIN validar (sin guard: `validarDatosDeProducto` lee la unidad de stock a mitad de camino). */
+export interface ComandoActualizarProducto {
+  productoId: string;
+  datos: EntradaProducto;
+}
+
+/**
+ * El precio de venta global de antes y el que quedó (como número): la Server Action, DESPUÉS de revalidar la carta pública, ofrece sincronizar el precio con los
+ * hermanos del ítem agrupado solo si cambió (como antes de la mudanza).
+ */
+export interface DatosActualizarProducto {
+  precioAnterior: number;
+  precioNuevo: number;
+}
+
+/**
+ *  - `PRODUCTO_NO_ENCONTRADO`: el id no es de un producto;
+ *  - `TIPO_DISTINTO`: el formulario trae otro tipo (MP/PV) que el del producto: no se puede cambiar;
+ *  - `DATOS_INVALIDOS`: algún dato del formulario no es válido (`validarDatosDeProducto`).
+ */
+export type ResultadoActualizarProducto = ResultadoCaso<DatosActualizarProducto, "PRODUCTO_NO_ENCONTRADO" | "TIPO_DISTINTO" | "DATOS_INVALIDOS">;
+
+/**
+ * Comando «aplicar el mismo precio de venta global a varios productos de un ítem agrupado de la carta»: los ids SIN repetir (al menos uno) y el precio, YA
+ * validados por `guardComandoSincronizarPrecioGrupoCarta` (un número estricto, no negativo).
+ */
+export interface ComandoSincronizarPrecioGrupoCarta {
+  productoIds: string[];
+  precio: number;
+}
+
+/** `NO_MISMO_ITEM`: los productos no son todos del mismo ítem agrupado de la carta (en la sucursal activa). */
+export type ResultadoSincronizarPrecioGrupoCarta = ResultadoCaso<null, "NO_MISMO_ITEM">;
+
 /** Comando «asignar un insumo a una materia prima existente» (la mitad retroactiva del asistente de hermanar): los dos ids, sin validar (sin guard). */
 export interface ComandoAsignarInsumoAProducto {
   productoId: string;

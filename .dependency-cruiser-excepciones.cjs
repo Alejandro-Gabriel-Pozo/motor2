@@ -269,6 +269,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque 4.3, H4C-9: crearInsumo → catalogo/casos-de-uso/crear-insumo.ts (con guardComandoCrearInsumo; la acción arma el ResultadoConId), actualizarActivoInsumo → actualizar-activo-insumo.ts, actualizarGrupoDeInsumo → actualizar-grupo-de-insumo.ts, renombrarOFusionarInsumo → renombrar-o-fusionar-insumo.ts (con guardComandoRenombrarOFusionarInsumo; la fusión en UNA transacción con reapuntarSustitutosDeInsumoFusionado, mudada tal cual a la persistencia; desde H4C-10, D-9, la fusión y el renombre se auditan en su transacción), crearOActualizarGrupo → crear-o-actualizar-grupo.ts (con guardComandoCrearOActualizarGrupo) y actualizarActivoGrupo → actualizar-activo-grupo.ts; escrituras en server/persistencia/catalogo/{insumos,grupos}.ts. La acción refresca la vista en los mismos caminos que antes. Las lecturas (H8 y previsualizarFusionInsumo) siguen en la acción.",
   },
+  {
+    ruta: "src/server/actions/catalogo/productos.ts",
+    motivo:
+      "Hito 4, bloque 4.3, H4C-11 a H4C-13: asignarInsumoAProducto, agregarPresentacionAlternativa, actualizarActivaPresentacion y actualizarDisponibilidadProducto (H4C-11, tal cual: la disponibilidad escribe y audita sin transacción), darDeAltaProductoRapido (con guardComandoDarDeAltaProductoRapido) y darDeAltaProducto (H4C-12: sin transacción a propósito por el reintento del código; la acción pasa azarDelProceso y arma el ResultadoConId), actualizarProducto y sincronizarPrecioGrupoCarta (H4C-13, con guardComandoSincronizarPrecioGrupoCarta; la auditoría en la transacción del caso de uso) → catalogo/casos-de-uso/; escrituras en server/persistencia/catalogo/productos.ts; validarDatosDeProducto en server/lecturas/catalogo/datos-de-producto.ts. La acción revalida la carta pública en los mismos caminos que antes y calcula el sincronizable de la edición DESPUÉS de revalidar. Las lecturas (H8) siguen en la acción.",
+  },
 ];
 
 module.exports = {

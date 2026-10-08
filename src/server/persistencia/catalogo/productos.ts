@@ -11,11 +11,11 @@ import type { Prisma } from "@prisma/client";
  */
 
 /**
- * Los campos de un producto nuevo además de su código y su tipo: los que arma `datosParaGuardar` (server/lecturas/catalogo/datos-de-producto.ts) en el alta
- * completa, o solo nombre, unidad de stock y factor en el alta rápida de una MP (los demás quedan en su valor por defecto del esquema). Un campo AUSENTE no se
- * escribe (strictUndefinedChecks no admite `undefined`).
+ * Los campos de un producto además de su código y su tipo: los que arma `datosParaGuardar` (server/lecturas/catalogo/datos-de-producto.ts) en el alta completa y
+ * en la edición, o solo nombre, unidad de stock y factor en el alta rápida de una MP (los demás quedan en su valor por defecto del esquema). Un campo AUSENTE no
+ * se escribe (strictUndefinedChecks no admite `undefined`).
  */
-interface CamposDeProductoNuevo {
+interface CamposDeProducto {
   nombre: string;
   unidadStockId: string;
   factorConversion: number;
@@ -40,10 +40,26 @@ interface CamposDeProductoNuevo {
  */
 export async function crearProductoNuevo(
   db: Prisma.TransactionClient,
-  args: { codigo: string; tipo: "MP" | "PV"; campos: CamposDeProductoNuevo },
+  args: { codigo: string; tipo: "MP" | "PV"; campos: CamposDeProducto },
 ): Promise<{ id: string; codigo: string; nombre: string }> {
   const creado = await db.producto.create({ data: { codigo: args.codigo, tipo: args.tipo, ...args.campos } });
   return { id: creado.id, codigo: creado.codigo, nombre: creado.nombre };
+}
+
+/**
+ * La edición de un producto: le escribe los campos dados (sin `tipo` ni código: no se cambian). La llama `actualizar-producto.ts` dentro de su transacción, junto
+ * con las filas de auditoría de los precios y el paso de venta (escrituras-auditadas: la cadena exige que su llamador audite).
+ */
+export async function actualizarCamposDeProducto(db: Prisma.TransactionClient, args: { id: string; campos: CamposDeProducto }): Promise<void> {
+  await db.producto.update({ where: { id: args.id }, data: args.campos });
+}
+
+/**
+ * El precio de venta GLOBAL de un producto (la sincronización de un ítem agrupado de la carta). La llama `sincronizar-precio-grupo-carta.ts` dentro de su
+ * transacción, junto con la fila de auditoría de cada producto.
+ */
+export async function fijarPrecioVentaDeProducto(db: Prisma.TransactionClient, args: { id: string; precioVenta: number }): Promise<void> {
+  await db.producto.update({ where: { id: args.id }, data: { precioVenta: args.precioVenta } });
 }
 
 /**

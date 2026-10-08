@@ -3,25 +3,32 @@
 import type { TipoProducto } from "@prisma/client";
 import { azarDelProceso } from "@/lib/azar";
 import { texto } from "@/core/texto";
-import { esNumeroEstricto } from "@/core/numero";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
-import { datosParaGuardar, validarDatosDeProducto } from "@/server/lecturas/catalogo/datos-de-producto";
 import { whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
-import { guardComandoDarDeAltaProductoRapido } from "@/core/features/catalogo/productos.guard";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { guardComandoDarDeAltaProductoRapido, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
 import { ofrecerSincronizarPrecio } from "@/core/carta/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { revalidarCartasPublicas } from "../carta/revalidar";
-import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";
+import { error, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";
 import { requerirVer, requerirVerAlguna, requerirVerDeEmpresa } from "../con-sesion";
 import { actualizarActivaPresentacionCasoDeUso } from "./casos-de-uso/actualizar-activa-presentacion";
 import { actualizarDisponibilidadProductoCasoDeUso } from "./casos-de-uso/actualizar-disponibilidad-producto";
+import { actualizarProductoCasoDeUso } from "./casos-de-uso/actualizar-producto";
 import { agregarPresentacionAlternativaCasoDeUso } from "./casos-de-uso/agregar-presentacion-alternativa";
 import { asignarInsumoAProductoCasoDeUso } from "./casos-de-uso/asignar-insumo-a-producto";
 import { darDeAltaProductoCasoDeUso } from "./casos-de-uso/dar-de-alta-producto";
 import { darDeAltaProductoRapidoCasoDeUso } from "./casos-de-uso/dar-de-alta-producto-rapido";
+import { sincronizarPrecioGrupoCartaCasoDeUso } from "./casos-de-uso/sincronizar-precio-grupo-carta";
+
+/**
+ * Desde el Hito 4 de la pureza (bloque 4.3, pasos H4C-11 a H4C-13) las ocho mutaciones de este archivo son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{asignar-insumo-a-producto,dar-de-alta-producto-rapido,dar-de-alta-producto,actualizar-producto,sincronizar-precio-grupo-carta,
+ * actualizar-disponibilidad-producto,agregar-presentacion-alternativa,actualizar-activa-presentacion}.ts`; escrituras en server/persistencia/catalogo/productos.ts):
+ * el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las lecturas (H8: `buscarProductosSelector`, `obtener*`, `listar*`) siguen acá con sus guardas. La acción
+ * conserva los efectos de Next (revalidar la carta pública) y el `sincronizable` de la edición, después de revalidar; las altas, la fuente de azar del proceso.
+ */
 
 export interface ProductoOpcion {
   id: string;
@@ -291,61 +298,25 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
  * Si cambió el precio de venta de un producto que está en un ítem agrupado de la carta y sus hermanos del grupo quedaron a OTRO
  * precio, el resultado trae además `sincronizable` (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8): la pantalla ofrece
  * aplicar el mismo precio con un botón aparte (`sincronizarPrecioGrupoCarta`). Nunca se sincroniza solo.
+ *
+ * Desde el Hito 4 (H4C-13): permiso (`conPermisoDeEmpresa("producto_editar")`) → caso de uso (`casos-de-uso/actualizar-producto.ts`: el producto, el tipo, la
+ * validación, y el `update` con sus tres auditorías en UNA transacción) → si salió bien, revalidar la carta pública y DESPUÉS, si el precio de venta cambió, el
+ * `sincronizable` (lee el ítem agrupado con la base del contexto, como antes) → el resultado sin `datos` ni `codigo` (`aResultadoAccion`, más el `sincronizable`
+ * elegido a mano). Sin guard (`SIN_GUARD`: la validación lee la unidad de stock a mitad de camino).
  */
 export async function actualizarProducto(productoId: string, datos: DatosProducto): Promise<ResultadoConSincronizable> {
   return conPermisoDeEmpresa<ResultadoConSincronizable>("producto_editar", async (ctx) => {
-    const existente = await ctx.db.producto.findUnique({ where: { id: productoId } });
-    if (!existente) return error("No se encontró el producto.");
-    // datosParaGuardar (abajo) no incluye `tipo` a propósito — cambiar el
-    // tipo de un producto con historial (recetas, ventas, stock) rompe
-    // invariantes reales, así que se rechaza explícito en vez de
-    // silenciarlo (antes: se ignoraba sin aviso, "Producto actualizado"
-    // mostraba éxito con el tipo viejo intacto).
-    if (datos.tipo !== existente.tipo) {
-      return error(`El tipo no se puede cambiar — este producto ya es "${existente.tipo}". Dado de baja y creá uno nuevo si necesitás el otro tipo.`);
-    }
-
-    const validado = await validarDatosDeProducto(ctx.db, datos, productoId);
-    if ("error" in validado) return error(validado.error);
-
-    const nuevos = datosParaGuardar(datos, validado.numeros);
-    const nombreActual = texto(datos.nombre);
-    // El `update` y sus filas de auditoría van en UNA transacción (Task #41, M10): antes iban sueltos y, si la auditoría fallaba
-    // (o el proceso se caía en el medio), el precio quedaba cambiado sin rastro.
-    await ctx.transaccion(async (tx) => {
-      await tx.producto.update({ where: { id: productoId }, data: nuevos });
-
-      // Auditoría administrativa (A3, Pivote 6) — solo los precios, que son
-      // los campos de mayor impacto de negocio/control interno (ver
-      // docs/auditoria-motor2-fase6-seguridad-2026-09-18.md).
-      await registrarCambioAuditado(tx, {
-        entidad: "Producto", entidadId: productoId, campo: "precioVenta",
-        descripcion: `Producto "${nombreActual}": precio de venta`,
-        valorAnterior: Number(existente.precioVenta), valorNuevo: Number(nuevos.precioVenta), actorId: ctx.usuarioId,
-      });
-      await registrarCambioAuditado(tx, {
-        entidad: "Producto", entidadId: productoId, campo: "precioConsignacion",
-        descripcion: `Producto "${nombreActual}": precio de consignación`,
-        valorAnterior: Number(existente.precioConsignacion), valorNuevo: Number(nuevos.precioConsignacion), actorId: ctx.usuarioId,
-      });
-      // Venta fraccionada (Task #25): se audita igual que el resto de los campos de mayor impacto de negocio.
-      await registrarCambioAuditado(tx, {
-        entidad: "Producto", entidadId: productoId, campo: "pasoVenta",
-        descripcion: `Producto "${nombreActual}": paso de venta`,
-        valorAnterior: existente.pasoVenta !== null ? Number(existente.pasoVenta) : null,
-        valorNuevo: nuevos.pasoVenta,
-        actorId: ctx.usuarioId,
-      });
-    });
-
+    const r = await actualizarProductoCasoDeUso(ctx, { productoId, datos });
+    const base = aResultadoAccion(r);
+    if (!r.ok) return base;
     revalidarCartasPublicas();
-    const mensaje = `Producto "${nombreActual}" actualizado.`;
-    const precioNuevo = Number(nuevos.precioVenta);
-    if (precioNuevo !== Number(existente.precioVenta)) {
+
+    const { precioAnterior, precioNuevo } = r.datos;
+    if (precioNuevo !== precioAnterior) {
       const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId, ctx.db), precioNuevo, "global");
-      if (sincronizable) return { ok: true, mensaje, sincronizable };
+      if (sincronizable) return { ok: true, mensaje: base.mensaje, sincronizable };
     }
-    return ok(mensaje);
+    return base;
   });
 }
 
@@ -353,33 +324,19 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
  * Aplica el mismo precio de venta GLOBAL a varios productos de UN mismo ítem agrupado de la carta (el paso que ofrece
  * `actualizarProducto` con `sincronizable`; docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8). Mismo permiso y misma auditoría
  * que editar el precio de cada uno a mano. Solo toca los `productoIds` pasados, y solo si son todos del mismo ítem agrupado.
+ *
+ * Desde el Hito 4 (H4C-13): permiso (`conPermisoDeEmpresa("producto_sincronizar_precio_carta")`) → formato del precio y de la lista
+ * (`guardComandoSincronizarPrecioGrupoCarta`, core/features/catalogo/productos.guard.ts, DENTRO del envoltorio) → caso de uso
+ * (`casos-de-uso/sincronizar-precio-grupo-carta.ts`: el ítem agrupado, y los precios con su auditoría en UNA transacción) → revalidar la carta pública si salió
+ * bien → `aResultadoAccion`.
  */
 export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio: number): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("producto_sincronizar_precio_carta", async (ctx) => {
-    if (!esNumeroEstricto(precio)) return error("El precio de venta no es un número válido.");
-    if (!(precio >= 0)) return error("El precio de venta no puede ser negativo.");
-    const ids = [...new Set(productoIds)];
-    if (!ids.length) return error("No hay productos para actualizar.");
-
-    const grupo = await resolverGrupoDeProducto(ids[0], ctx.sucursalId, ctx.db);
-    const delGrupo = new Set(grupo ? [ids[0], ...grupo.hermanos.map((h) => h.productoId)] : []);
-    if (!grupo || ids.some((id) => !delGrupo.has(id))) return error("Esos productos no están todos en el mismo ítem agrupado de la carta.");
-
-    // Todo el grupo en UNA transacción, con su auditoría (Task #41, M10): o quedan todos los precios con su rastro, o ninguno.
-    const productos = await ctx.transaccion(async (tx) => {
-      const productos = await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, precioVenta: true }, orderBy: { nombre: "asc" } });
-      for (const p of productos) {
-        await tx.producto.update({ where: { id: p.id }, data: { precioVenta: precio } });
-        await registrarCambioAuditado(tx, {
-          entidad: "Producto", entidadId: p.id, campo: "precioVenta",
-          descripcion: `Producto "${p.nombre}": precio de venta`,
-          valorAnterior: Number(p.precioVenta), valorNuevo: precio, actorId: ctx.usuarioId,
-        });
-      }
-      return productos;
-    });
-    revalidarCartasPublicas();
-    return ok(`Precio de venta de ${productos.map((p) => `"${p.nombre}"`).join(", ")} actualizado a $${precio.toLocaleString("es-AR")} («${grupo.nombreItem}»).`);
+    const comando = guardComandoSincronizarPrecioGrupoCarta({ productoIds, precio });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await sincronizarPrecioGrupoCartaCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
 }
 
