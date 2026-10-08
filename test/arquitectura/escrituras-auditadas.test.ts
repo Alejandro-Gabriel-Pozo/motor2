@@ -52,7 +52,8 @@ const COLUMNAS_QUE_NO_SON_DINERO: Record<string, string> = {
   "sucursalPublica.posY": "Coordenada del mapa del portal de cartas: posición en pantalla, no plata.",
   "sucursalPublica.posW": "Ancho de un recuadro del mapa del portal de cartas: no es plata.",
   "sucursalPublica.posH": "Alto de un recuadro del mapa del portal de cartas: no es plata.",
-  "stockMinimoProducto.minimo": "Umbral de la alerta de stock bajo: no mueve plata ni el costo (no entra a ninguna valuación).",
+  // 4.4 (decisión del dueño, 2026-10-07; Hito 4, H4C-22): "stockMinimoProducto.minimo" ya NO es excepción — el alta, el cambio y el borrado del stock mínimo se
+  // auditan en su caso de uso (`stock/casos-de-uso/set-stock-minimo-producto.ts`), así que sus escrituras de la persistencia entran a la cadena.
 };
 
 /** `archivo|función` que escribe dinero y no audita, con el motivo. Cada una es DEUDA CONOCIDA o una decisión de diseño: la lista solo puede achicarse. */
@@ -471,7 +472,12 @@ describe("escrituras auditadas: el detector ve lo que tiene que ver (la regla no
   it("los modelos que son su propia historia y las columnas que no son dinero se exceptúan (con motivo)", () => {
     expect(violaciones(leer("export async function f(tx: any) { await tx.movimientoStock.createMany({ data: [] }); }"))).toEqual([]);
     expect(violaciones(leer("export async function f(tx: any) { await tx.sucursalPublica.update({ data: { posX: 1 } }); }"))).toEqual([]);
-    expect(violaciones(leer("export async function f(tx: any) { await tx.stockMinimoProducto.update({ data: { minimo: 1 } }); }"))).toEqual([]);
+  });
+
+  it("el stock mínimo ya no es una excepción (4.4, H4C-22): escribirlo sin auditar es una violación", () => {
+    // Antes de 4.4 este caso daba `[]` («stockMinimoProducto.minimo» estaba en COLUMNAS_QUE_NO_SON_DINERO); se editó a propósito al sacar la excepción.
+    expect(violaciones(leer("export async function f(tx: any) { await tx.stockMinimoProducto.update({ data: { minimo: 1 } }); }"))).toHaveLength(1);
+    expect(violaciones(leer("export async function f(tx: any) { await tx.stockMinimoProducto.update({ data: { minimo: 1 } }); await registrarCambioAuditado(tx, {}); }"))).toEqual([]);
   });
 
   it("un delete no cuenta como escritura de este test (lo cubre kardex-solo-agrega y la baja deja su fila)", () => {

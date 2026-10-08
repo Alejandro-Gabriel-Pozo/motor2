@@ -11,7 +11,8 @@ import { setStockMinimoProductoCasoDeUso } from "./casos-de-uso/set-stock-minimo
 /**
  * Desde el Hito 4 de la pureza (bloque C de la pieza carta/catálogo/stock, paso H4C-21) las dos mutaciones son adaptadores finos de sus casos de uso
  * (`./casos-de-uso/{set-stock-minimo-producto,eliminar-stock-minimo}.ts`; escrituras en server/persistencia/stock/stock-minimo.ts): el archivo entero está en
- * `ACCIONES_CON_CASO_DE_USO`. La lectura (H8) sigue acá con su guarda. Ninguna refresca la vista (como antes).
+ * `ACCIONES_CON_CASO_DE_USO`. La lectura (H8) sigue acá con su guarda. Ninguna refresca la vista (como antes). Desde 4.4 (H4C-22) el alta, el cambio y el borrado
+ * del mínimo se auditan en la transacción de su caso de uso (entidad «StockMinimoProducto»).
  */
 
 /** Todas las filas (global + por sección) de Stock Mínimo de esta sucursal — para el panel de administración. */

@@ -69,6 +69,10 @@ export const ENTIDADES_AUDITABLES = [
   // (`campo: "fusion"`, sobre el insumo que DESAPARECE, del nombre de origen al de destino, con la cantidad de productos reasignados en la descripción) —
   // `entidadId` es el id del insumo, `sucursalId` null (catálogo central).
   "Insumo",
+  // "StockMinimoProducto" (4.4, decisión del dueño 2026-10-07; Hito 4, H4C-22): el alta, el cambio y el borrado del stock mínimo de un producto en una sucursal
+  // (el global de la sucursal o el de una sección) — `entidadId` es el id de la fila (al borrar, el de la fila borrada), `campo: "minimo"`, `valorAnterior: null` si la
+  // fila no existía y `valorNuevo: null` si se borró, con `sucursalId`; la descripción dice si es el global o de qué sección.
+  "StockMinimoProducto",
 ] as const;
 
 /**

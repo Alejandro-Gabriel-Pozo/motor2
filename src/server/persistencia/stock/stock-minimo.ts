@@ -8,6 +8,9 @@ import type { Prisma } from "@prisma/client";
  * `src/server/actions/stock/stock-minimo.ts`; las llaman los casos de uso `set-stock-minimo-producto.ts` y `eliminar-stock-minimo.ts`. Las dos de «fijar» devuelven
  * el id de la fila que quedó y el mínimo que tenía ANTES (`null` si no había fila): es lo que necesita la auditoría del cambio (4.4). Para eso la de una sección
  * lee la fila por su clave única antes del upsert (la global ya la leía para elegir entre cambiar y crear).
+ *
+ * Auditoría (4.4, H4C-22): el mínimo ya no es una excepción de `escrituras-auditadas`; las escrituras de acá las llama `set-stock-minimo-producto.ts` DENTRO de su
+ * transacción y junto con su fila de auditoría (la cadena caso de uso → persistencia), y el borrado lo audita `eliminar-stock-minimo.ts` en su transacción.
  */
 
 /** El id de la fila que quedó escrita y el mínimo que tenía antes (`null` si la fila no existía). */
