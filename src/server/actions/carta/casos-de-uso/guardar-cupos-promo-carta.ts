@@ -113,7 +113,11 @@ async function auditarCupos(
   const despues = new Map(datos.nuevos.map((c) => [c.seccionCartaId, c]));
   for (const seccionCartaId of new Set([...antes.keys(), ...despues.keys()])) {
     const nombreDeSeccion = datos.nombresDeSecciones.get(seccionCartaId) ?? seccionCartaId;
-    for (const [campo, etiqueta] of [["cantidadMinima", "cantidad mínima"], ["cantidadMaxima", "cantidad máxima"]] as const) {
+    const columnas = [
+      { campo: "cantidadMinima", etiqueta: "cantidad mínima" },
+      { campo: "cantidadMaxima", etiqueta: "cantidad máxima" },
+    ] as const;
+    for (const { campo, etiqueta } of columnas) {
       await registrarCambioAuditado(tx, {
         entidad: "PromoCartaCupo",
         entidadId: `${datos.promoCartaId}:${seccionCartaId}`,
