@@ -54,7 +54,7 @@ export function resolverConexionDePlataforma(source: Record<string, string | und
 
   // S-33: NUNCA cae en `DATABASE_URL` (la conexión de la app, o la del dueño en un `.env` local): un script de plataforma que opera con otro rol que `motor2_plataforma` se salta sus grants y su RLS por rol.
   const databaseUrl = source.PLATAFORMA_DATABASE_URL || "";
-  if (!databaseUrl) throw new ConexionDePlataformaError("Falta PLATAFORMA_DATABASE_URL en el archivo de entorno: no hay base a la que conectarse (no se usa DATABASE_URL: es la conexión de la app).");
+  if (!databaseUrl) throw new ConexionDePlataformaError("Falta PLATAFORMA_DATABASE_URL en el archivo de entorno: no hay base a la que conectarse (no se usa la conexión de la app ni la del dueño).");
   return { origen: "archivo-de-entorno", databaseUrl };
 }
 

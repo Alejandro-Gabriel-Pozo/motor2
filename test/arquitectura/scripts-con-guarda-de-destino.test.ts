@@ -29,6 +29,18 @@ describe("GT-22: los seeds pasan por las guardas de destino", () => {
   });
 });
 
+describe("GT-22: ningún script de plataforma cae en DATABASE_URL", () => {
+  it.each(["scripts/cliente-plataforma.ts", "scripts/conexion-de-plataforma.ts", "scripts/politica-empresa.ts", "scripts/modulos-empresa.ts", "scripts/plataforma/crear-primer-admin.ts"])(
+    "%s no lee DATABASE_URL (la conexión de la app o del dueño)",
+    (ruta) => {
+      const sinComentarios = leer(ruta)
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/^\s*\/\/.*$/gm, "");
+      expect(sinComentarios).not.toMatch(/(?<![A-Z_])DATABASE_URL\b/);
+    },
+  );
+});
+
 describe("GT-22: los scripts de plataforma exigen un administrador de plataforma como actor", () => {
   it.each([
     ["scripts/politica-empresa.ts", "cambiarPoliticaDeEmpresa("],
