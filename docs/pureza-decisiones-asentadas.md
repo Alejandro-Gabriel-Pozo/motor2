@@ -41,3 +41,57 @@ La decisión «dinero con `decimal.js`» (2026-10-06) se cumplió como **`decima
 ## 7. El descuento de cliente alcanza a los componentes de una promo (O.40 (2))
 
 No es un error: es D2 de `docs/plan-promo-combo-2026-09-26.md` (el descuento por cliente se suma sobre el precio ya prorrateado de cada componente). Lo fija la escena D1 de `venta-matriz-ampliada`.
+
+## 8. El escritor de la auditoría vive en `server/auditoria/`, entrada «Permanente», sin `server-only` (Hito 5, pieza 5.4, B3 y B5; 2026-10-08)
+
+`registrarCambioAuditado`, el único punto que escribe `RegistroAuditoria`, salió de `core/permisos/auditoria.ts` a `src/server/auditoria/registrar-cambio-auditado.ts` (mismo nombre, firma y cuerpo; `5dcfb088`). En `core` quedó lo puro, incluida `filaDeAuditoria` (el cálculo de la fila, `142b04b2`). La capa la fija la regla `auditoria-capa` de `.dependency-cruiser.cjs` y la lista cerrada de `test/arquitectura/server-auditoria.test.ts` (`17587f6b`); el detalle está en la nota de ADR-026.
+
+- **«Permanente» en `escrituras-fuera-de-persistencia`.** El escritor de la auditoría escribe una tabla fuera de `server/persistencia` a propósito: lo llama el caso de uso dentro de la transacción del cambio que audita (y las operaciones de plataforma y la sesión), nunca la persistencia. No es una deuda de ninguna fase: queda con fase «Permanente» y el motivo escrito. Al mudarlo, la clave de la lista se reemplazó (no se sumó), así que `TOPE_DE_ENTRADAS` no cambió por esto.
+- **Sin `import "server-only"`.** Lo cargan dos scripts que corren con `tsx` fuera de Next (`scripts/modulos-empresa.ts` y `scripts/politica-empresa.ts`, a través de las operaciones de plataforma), donde ese paquete tira al importarse. Ponérselo obligaba a correrlos con `--conditions=react-server` y a editar `package.json`. Se verificó en la mudanza: con el `import` puesto, el primer script revienta; sin él, los dos terminan con «Faltan --slug y --actor…». No hace falta protegerlo: recibe la base por parámetro y no lee sesión, cookies ni entorno. Un test (`server-auditoria`) exige que NO lo tenga y que su cabecera diga por qué.
+
+## 9. `core-sin-consultas` mira todo `core`; quedan 4 pendientes de la Fase 6 (Hito 5, 5.4-B6, `60c96804`)
+
+Hasta esta rama la regla «`core` no consulta la base» se activaba por carpeta (14 carpetas en la apertura de la rama, 16 antes de B6). Ahora `test/arquitectura/core-sin-consultas.test.ts` recorre TODO `src/core/` (incluidos los archivos sueltos `excel.ts`, `moneda.ts`, `numero.ts`, `resultado-caso.ts` y `texto.ts`). La única excepción es `ARCHIVOS_PENDIENTES`, con su motivo, verificada en las dos direcciones, y con un chequeo cruzado: cada pendiente tiene que figurar en `PUREZA_HEREDADA_DEL_NUCLEO` con un `pendiente` que empiece con «Fase 6» (así un resto de la Fase 4 no se esconde acá). Los 4 pendientes:
+
+- `core/auth/base.ts`, `core/auth/contexto.ts` y `core/auth/rol-de-ejecucion.ts`: la sesión y la base por empresa; la Fase 6 los muda juntos a `server/sesion`, sin tocar su código.
+- `core/fiscal/factura-autorizada.ts`: recibe `Db` y la usa la consola de plataforma, que no puede importar `src/server`; queda para la Fase 6.
+
+Si el test marca un archivo que no está en la lista, NO se agrega a pendientes: se frena y se informa. Límite conocido: el detector no ve el tipo de la base escrito como `import("…").Db`.
+
+## 10. El Kardex queda con 3 escritores (O.13) y el `EXPLAIN` de sus índices (Hito 5, 5.4-A; 2026-10-08)
+
+Las escrituras de líneas del Kardex (`movimientoStock.create*`) pasaron de 5 funciones a 3, que es la condición para que la Fase 5 [MIG] tenga UN solo escritor por cada forma de escribir (y `SaldoStock`, después, uno solo): `escribirLineasDeMovimientoStock` (el motor genérico y la venta), `escribirContraAsiento` (las dos anulaciones, `a6f4ae6a`) y `escribirMovimientoDeTraspaso` (las dos escrituras de traspasos, `96ecd0c8`). Las dos mudanzas se apoyan en una huella de las escrituras (`4af23e8b`, congelada en `159cca95`) que registra la presencia o ausencia de cada clave (la anulación de venta NO manda `claveIdempotencia`; la de compra la manda siempre, con `null` si no hay). La lista es cerrada: `ESCRITORES_DEL_KARDEX` en `test/arquitectura/kardex-solo-agrega.test.ts` (`c2af2cdd`), en las dos direcciones.
+
+El `EXPLAIN` (sin `ANALYZE`) de las dos lecturas que la Fase 5 tocaría —`seccionesConStock` y la deuda de redondeo— es un test versionado (`test/persistencia/kardex-indices-de-saldo.test.ts`, `bd5670ab` y `a81c7107`): ambas usan `MovimientoStock_productoId_seccionId_loteVencimiento_idx` solo por `productoId`. **Desvío del «solo lectura» del plan, declarado:** con la tabla vacía el planner no elige ese índice ni con el escaneo secuencial apagado (el predicado de RLS le hace creer que el índice por `empresaId` ya deja una fila), así que el test SIEMBRA ~24.000 líneas de Kardex por SQL en la base LOCAL de tests y corre el `ANALYZE` antes de mirar el plan. Escribe, pero solo en la base de pruebas (nunca contra producción). La medición con volumen real y el índice `(seccionId, productoId)` quedan para la simulación de la Fase 5.
+
+## 11. El lector de capacidades en `server/acceso` sin `server-only`; el precio local en `server/lecturas/catalogo` (Hito 5, 5.2; 2026-10-08)
+
+Autorizado por el dueño el 2026-10-07 (4A-5). `sucursalTieneCapacidad` y `capacidadesDeSucursal` salieron de `core/permisos` a `src/server/acceso/capacidades-sucursal.ts` (`6eed7686`); en `core` quedaron las dos reglas puras. **Sin `server-only`, por excepción declarada:** la carta pública llega hasta ese archivo y a la carta la cargan fixtures de Playwright y un script `tsx`, donde el paquete tira. La excepción está en `SIN_SERVER_ONLY` de `test/arquitectura/server-acceso-lista-cerrada.test.ts` (verificada en las dos direcciones) y como excepción permanente `esperados: 2` en `test/arquitectura/acceso-solo-por-el-guard.test.ts` (regla 3, igual que `modulos-de-empresa.ts`). El **precio local** (`precioLocalActivoEn`, `preciosLocalesVigentes`) fue a `src/server/lecturas/catalogo/precio-local.ts` (`96346787`), no a `server/acceso`: es lectura compartida entre pantalla y escritura (ADR-026) y así la carta alcanza un solo archivo de `acceso`. También sin `server-only` (entrada propia de `SIN_SERVER_ONLY` de consultas y lecturas). `ALCANCE_CARTA_PUBLICA` suma exactamente esos dos archivos (de 4 a 6 entradas) y un guardián nuevo calcula lo que la carta alcanza y exige que sea EXACTAMENTE esa lista (`4370da2f`). `resolverPrecioVenta` salió aparte a `server/lecturas/movimientos/precio-venta.ts` (con `server-only`; la carta no lo alcanza).
+
+## 12. `con-reintento` se parte (Hito 5, 5.3-1, `240d29a1`)
+
+Los clasificadores de errores (`esConflictoDeEscritura`, `esChoqueDeIndiceUnico`) quedan en `core/movimientos/con-reintento.ts`, ahora puros (sin Prisma ni `lib`). `conTransaccionSerializable`, que abre la transacción y escribe en la consola, salió a `src/lib/transaccion-serializable.ts` (como `lib/correo`, `lib/azar` y `lib/db-tipos`), sin `server-only` (la cargan tests y scripts). Descartado: dejarlo en `core` con otro nombre (esquiva la regla que cierra ese hueco) y llevar todo a `lib` (amplía lo que alcanza la consola, que importa `esChoqueDeIndiceUnico` por la fachada de `core/movimientos`). La regla `accion-migrada-sin-orquestacion` suma `src/lib/transaccion-serializable.ts` para que una acción ya migrada no lo esquive. La pureza total de `core/movimientos` (5 archivos que todavía importan tipos de Prisma) queda para la Fase 6.
+
+## 13. Los commits que no pasan el gate solos, y por qué NO se aplastan (cierre de la rama)
+
+La regla de la rama es «un commit, un cambio, verde por sí solo». Seis commits no la cumplen; todos se arreglaron en un commit posterior de la misma rama (no se enmendaron: ya estaban referenciados como evidencia):
+
+| Commit | Qué deja mal | Lo arregla |
+|---|---|---|
+| `fdd0d146` (B3-7) | no compila: quedó solo con el `git mv`; el contenido no entró | `d1530499` (B3-7b), el commit que le sigue |
+| `e1925c89` (O35-1) | `tsc` en rojo (el propio test usa `p.name` sin estrechar el tipo; vitest no tipa y por eso corría verde) | `f40f32fe` (O35-1b) |
+| `1cb0fb14` (H8-7) | `knip` en rojo (un export sin uso: `requerirSesionEnSucursal`); compila y los tests pasan | `21eb933f` (H8-7b) |
+| `4af23e8b` (A2) y `159cca95` (A3) | `test/arquitectura` en rojo (`fechas-fijas-en-tests-con-base` no declaraba la fecha de lote de la huella del Kardex) | `3f3f0f48` (A3b) |
+| `bd5670ab` (A7) | `test/arquitectura` en rojo (`sin-empresa-por-defecto` admite el preset de empresa solo en `test/setup/empresa-de-prueba.ts`) | `a81c7107` (A7b) |
+
+**Decisión:** no se aplastan ni se reescriben. Reescribir la historia (309 commits al empezar este bloque) invalidaría todos los hashes que las filas de `docs/pureza-integracion.md` citan como evidencia, y la fusión es con merge commit justamente para conservar la reversión paso a paso. **Indicación:** al usar `git bisect` en esta rama, saltar esos seis con `git bisect skip fdd0d146 e1925c89 1cb0fb14 4af23e8b 159cca95 bd5670ab`. Límite de lo verificado: la lista sale de los mensajes de los commits que se auto-corrigen; no se corrió el gate completo en cada uno de los 309 commits.
+
+## 14. Las 8 acciones de configuración de carta se migraron en la rama, y una revalidación cambió de momento (Hito 5, bloque D; 2026-10-08)
+
+Eran resto de la Fase 4 (que es el alcance de la rama) y seguían marcadas «Fase 4» en `escrituras-fuera-de-persistencia`: `contenido-producto`, `copiar-carta`, `generos`, `items-agrupados`, `portal-empresa`, `registro-publico`, `secciones` y `tema` (19 funciones). **El dueño decidió el 2026-10-08 migrarlas ahora**, con el molde del Hito 4 (red de caracterización antes, un archivo por commit); el detalle y los hashes están en la fila 5.4-D de `docs/pureza-integracion.md`. Resultado: `TOPE_DE_ENTRADAS` 21 → 13 y 0 entradas «Fase 4».
+
+Un matiz que cambia de comportamiento sin cambiar el resultado para el usuario: **`copiarCartaDeSucursal` ahora revalida la carta pública en la Server Action, DESPUÉS de confirmar la transacción y UNA sola vez.** Antes lo hacía adentro del callback serializable, antes de confirmar, y una vez por intento (si la transacción se reintentaba, invalidaba la caché varias veces, y la primera podía correr antes de que los datos nuevos estuvieran confirmados). Es el mismo criterio que `fijarRendimientoLocal` (H4C-5) y lo fija la red `copiar-carta-mensajes`. Otro matiz de forma: el alta de un ítem agrupado con productos recibe un tercer parámetro `avisos` para conservar la cuenta de invalidaciones sin importar Next en el caso de uso.
+
+## 15. Hueco anterior que la rama NO arregla: O.47 (filtro de empresa en la fila «por defecto» de capacidades)
+
+`sucursalTieneCapacidad` y `capacidadesDeSucursal` leen la fila «por defecto» de `CapacidadSucursal` (`sucursalId: null`) sin filtrar por empresa. Con RLS no se cruzan empresas; con un cliente que se saltea RLS sí (el mismo hueco que S-11 cerró para el menú). Es anterior a la rama y se hizo explícito al planificar la pieza 5.2, que debía ser mudanza pura: arreglarlo cambia el SQL que comparten el gate de acceso y la carta pública. Queda como fila `[ ]` (O.47) de `docs/pureza-integracion.md`, con propuesta, aprobación del dueño y commit propio.
