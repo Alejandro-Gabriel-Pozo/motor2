@@ -15,3 +15,8 @@ import type { Prisma } from "@prisma/client";
 export async function escribirMesaNueva(db: Prisma.TransactionClient, args: { sucursalId: string; numero: number }): Promise<void> {
   await db.mesa.create({ data: { sucursalId: args.sucursalId, numero: args.numero } });
 }
+
+/** Fija el cupo de mesas ABIERTAS a la vez de la sucursal (`Sucursal.maxMesasAbiertas`; `null` = sin límite). La auditoría la escribe el caso de uso. */
+export async function fijarMaxMesasAbiertas(db: Prisma.TransactionClient, args: { sucursalId: string; maxMesasAbiertas: number | null }): Promise<void> {
+  await db.sucursal.update({ where: { id: args.sucursalId }, data: { maxMesasAbiertas: args.maxMesasAbiertas } });
+}

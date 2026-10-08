@@ -19,7 +19,7 @@ export type { DetalleDeMesa, ItemDeCuenta, ItemEnEnvio } from "./cuenta";
 export { formatearCantidad, formatearMonto, nombreDeMesa } from "./formato";
 export { documentoDeReimpresion, resolverImpresion } from "./impresion";
 export type { DocumentoImprimible, PedidoImpresion } from "./impresion";
-export { armarMapaDeMesas, esEstadoMesa, filtrarMesas, nombreDelMesero } from "./mesas";
+export { armarMapaDeMesas, esEstadoMesa, filtrarMesas, nombreDelMesero, validarMaxMesasAbiertas } from "./mesas";
 export type { EstadoMesa, MapaDeMesas } from "./mesas";
 export { formatearNumeroTicket } from "./numeracion-ticket";
 export type { NumeroDeTicket } from "./numeracion-ticket";

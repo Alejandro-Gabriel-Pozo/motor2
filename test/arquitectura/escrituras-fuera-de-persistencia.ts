@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 41;
+export const TOPE_DE_ENTRADAS = 40;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -197,11 +197,6 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
   },
   "src/server/actions/pos/cuenta-pedido.ts": {
     escrituras: ["cuentaItem.createMany", "cuentaItem.deleteMany", "cuentaItem.deleteMany", "cuentaItem.updateMany", "promoCuenta.create", "promoCuenta.delete"],
-    fase: "Fase 4",
-    motivo: "Tramo C (PR 4C-D): acción de POS sin migrar; pasa a caso de uso + persistencia.",
-  },
-  "src/server/actions/pos/mesas.ts": {
-    escrituras: ["sucursal.update"],
     fase: "Fase 4",
     motivo: "Tramo C (PR 4C-D): acción de POS sin migrar; pasa a caso de uso + persistencia.",
   },

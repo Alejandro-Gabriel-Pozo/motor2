@@ -1,11 +1,10 @@
 "use server";
 
-import { validarMaxMesasAbiertas } from "@/core/pos/mesas";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { guardComandoCrearMesa } from "@/core/features/mesas/mesas.guard";
+import { guardComandoActualizarMaxMesasAbiertas, guardComandoCrearMesa } from "@/core/features/mesas/mesas.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion } from "../tipos";
+import { actualizarMaxMesasAbiertasCasoDeUso } from "./casos-de-uso/actualizar-max-mesas-abiertas";
 import { crearMesaCasoDeUso } from "./casos-de-uso/crear-mesa";
 
 /**
@@ -33,30 +32,23 @@ export async function crearMesa(numero: number): Promise<ResultadoAccion> {
 
 /**
  * Edita el límite de mesas ABIERTAS a la vez en la sucursal activa (`Sucursal.maxMesasAbiertas`,
- * docs/plan-comensales-y-limite-mesas-2026-09-26.md, D6: bloqueo en seco, sin excepción de permiso especial). Mismo permiso que dar
- * de alta mesas (`pos_mesas`): no hace falta uno nuevo. `limite: null` = sin límite. Bajarlo por debajo de las mesas ya abiertas no
- * cierra ninguna: `abrirCuenta` es quien lo hace cumplir, dentro de su propia transacción.
+ * docs/plan-comensales-y-limite-mesas-2026-09-26.md, D6: bloqueo en seco, sin excepción de permiso especial). Con su propia clave,
+ * `pos_limite_mesas_abiertas` (desde la partición de claves del 2026-09-30, `20261001130000_particion_permisos_stock_pos_catalogo`; hasta el Hito 4 este
+ * comentario todavía decía `pos_mesas`). `limite: null` = sin límite. Bajarlo por
+ * debajo de las mesas ya abiertas no cierra ninguna: `abrirCuenta` es quien lo hace cumplir, dentro de su propia transacción.
  *
  * Auditado (entidad "Sucursal", campo "maxMesasAbiertas"): es un cambio de configuración de negocio, igual que un precio o un
  * permiso.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.1, paso 4) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_limite_mesas_abiertas")`) → formato del
+ * límite (`guardComandoActualizarMaxMesasAbiertas`, core/features/mesas/mesas.guard.ts, DENTRO del envoltorio) → caso de uso
+ * (`casos-de-uso/actualizar-max-mesas-abiertas.ts`: la sucursal, la auditoría y el cambio en server/persistencia/pos/mesas.ts, sin transacción como antes) →
+ * `aResultadoAccion`. Con `crearMesa` (paso 3) también migrada, el archivo entero está en `ACCIONES_CON_CASO_DE_USO`.
  */
 export async function actualizarMaxMesasAbiertas(limite: number | null): Promise<ResultadoAccion> {
   return conPermiso("pos_limite_mesas_abiertas", async (ctx) => {
-    const val = validarMaxMesasAbiertas(limite);
-    if (!val.ok) return error(val.mensaje);
-
-    const sucursal = await ctx.db.sucursal.findUniqueOrThrow({ where: { id: ctx.sucursalId } });
-    await registrarCambioAuditado(ctx.db, {
-      entidad: "Sucursal",
-      entidadId: sucursal.id,
-      descripcion: `Sucursal "${sucursal.nombre}": límite de mesas abiertas`,
-      campo: "maxMesasAbiertas",
-      valorAnterior: sucursal.maxMesasAbiertas,
-      valorNuevo: val.limite,
-      actorId: ctx.usuarioId,
-      sucursalId: ctx.sucursalId,
-    });
-    await ctx.db.sucursal.update({ where: { id: sucursal.id }, data: { maxMesasAbiertas: val.limite } });
-    return ok(val.limite === null ? `Sin límite de mesas abiertas en «${sucursal.nombre}».` : `Máximo de mesas abiertas en «${sucursal.nombre}»: ${val.limite}.`);
+    const comando = guardComandoActualizarMaxMesasAbiertas(limite);
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await actualizarMaxMesasAbiertasCasoDeUso(ctx, comando.valor));
   });
 }

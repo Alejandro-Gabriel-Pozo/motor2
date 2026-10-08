@@ -160,6 +160,11 @@ const ACCIONES_CON_CASO_DE_USO = [
       "M12a + M12b: cerrarCuenta → pos/casos-de-uso/cerrar-cuenta.ts y emitirTicketCorregido → pos/casos-de-uso/emitir-ticket-corregido.ts (transacción, carga, numeración/ejemplar del ticket, persistencia y auditoría viven en el caso de uso). El archivo no tiene ninguna otra función.",
   },
   {
+    ruta: "src/server/actions/pos/mesas.ts",
+    motivo:
+      "Hito 4, bloque 4.1 (pasos 3 y 4): crearMesa → pos/casos-de-uso/crear-mesa.ts y actualizarMaxMesasAbiertas → pos/casos-de-uso/actualizar-max-mesas-abiertas.ts (la escritura en server/persistencia/pos/mesas.ts, la traducción del número repetido y la auditoría del límite viven en el caso de uso); el formato lo validan guardComandoCrearMesa y guardComandoActualizarMaxMesasAbiertas dentro de conPermiso. El archivo no tiene ninguna otra función.",
+  },
+  {
     ruta: "src/server/actions/pos/cuenta-anulacion.ts",
     motivo:
       "M12c + M12d: anularItemEnviado → pos/casos-de-uso/anular-item-enviado.ts y anularPromoEnviada → pos/casos-de-uso/anular-promo-enviada.ts (transacción, carga, guardas de estado, fila espejo y auditoría viven en el caso de uso). El archivo no tiene ninguna otra función.",

@@ -1,6 +1,7 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { esNumeroEstricto } from "@/core/numero";
-import type { ComandoCrearMesa } from "./mesas.schema";
+import { validarMaxMesasAbiertas } from "@/core/pos/public";
+import type { ComandoActualizarMaxMesasAbiertas, ComandoCrearMesa } from "./mesas.schema";
 
 /**
  * Guard de la feature Mesas del salón (convención «guard por feature», 2026-09-25; Hito 4, bloque 4.1). Formato del comando, ANTES de tocar la base; lo
@@ -20,4 +21,14 @@ export function guardComandoCrearMesa(numero: unknown): ResultadoDato<ComandoCre
     return rechazar("rango", `El número de mesa tiene que ser un entero entre 1 y ${NUMERO_MESA_MAXIMO}.`);
   }
   return aceptar({ numero });
+}
+
+/**
+ * Guard del comando «fijar el límite de mesas abiertas». Es EXACTAMENTE la validación que antes era lo primero de `actualizarMaxMesasAbiertas`, antes de leer
+ * la sucursal: `validarMaxMesasAbiertas` (core/pos/mesas.ts, por la fachada pública del dominio), con su mismo texto. `null` pasa: es «sin límite».
+ */
+export function guardComandoActualizarMaxMesasAbiertas(limite: unknown): ResultadoDato<ComandoActualizarMaxMesasAbiertas> {
+  const val = validarMaxMesasAbiertas(limite);
+  if (!val.ok) return rechazar("rango", val.mensaje);
+  return aceptar({ limite: val.limite });
 }

@@ -16,3 +16,14 @@ export interface ComandoCrearMesa {
  *  - `NUMERO_REPETIDO`: ya hay una mesa con ese número en la sucursal (el índice único `(sucursalId, numero)` lo detecta en la base).
  */
 export type ResultadoCrearMesa = ResultadoCaso<null, "NUMERO_REPETIDO">;
+
+/**
+ * Comando «fijar el límite de mesas abiertas de la sucursal»: lo que recibe `actualizarMaxMesasAbiertasCasoDeUso`, con el límite YA validado por
+ * `guardComandoActualizarMaxMesasAbiertas` (`null` = sin límite; si no, entero entre 1 y 9999).
+ */
+export interface ComandoActualizarMaxMesasAbiertas {
+  limite: number | null;
+}
+
+/** El caso de uso no rechaza nada propio: el formato lo rechaza antes el guard y la sucursal es la activa (si no existiera, lanza, como antes). */
+export type ResultadoActualizarMaxMesasAbiertas = ResultadoCaso<null, never>;
