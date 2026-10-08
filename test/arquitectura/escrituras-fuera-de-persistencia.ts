@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 23;
+export const TOPE_DE_ENTRADAS = 22;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -124,11 +124,6 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["temaCartaSucursal.update", "temaCartaSucursal.update", "temaCartaSucursal.upsert"],
     fase: "Fase 4",
     motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
-  },
-  "src/server/actions/stock/seccion-habitual.ts": {
-    escrituras: ["seccionHabitualProducto.delete", "seccionHabitualProducto.upsert"],
-    fase: "Fase 4",
-    motivo: "Tramo C (PR 4C-F2): configuración de stock y movimientos; pasa a caso de uso + persistencia.",
   },
   "src/server/actions/stock/stock-minimo.ts": {
     escrituras: ["stockMinimoProducto.create", "stockMinimoProducto.delete", "stockMinimoProducto.update", "stockMinimoProducto.upsert"],
