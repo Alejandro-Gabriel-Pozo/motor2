@@ -33,9 +33,11 @@ export async function crearProveedorNuevo(
   return { id: creado.id, nombre: creado.nombre };
 }
 
-/** Activa o desactiva el proveedor. Un id que no existe hace lanzar a Prisma (como antes). */
-export async function fijarActivoDeProveedor(db: Prisma.TransactionClient, args: { id: string; activo: boolean }): Promise<void> {
-  await db.proveedor.update({ where: { id: args.id }, data: { activo: args.activo } });
+/** Activa o desactiva el proveedor. Devuelve si había uno con ese id (O.44: `updateMany` + `count`, y S-07: lo que no es texto no escribe; ver `fijarActivaDeCategoria`). */
+export async function fijarActivoDeProveedor(db: Prisma.TransactionClient, args: { id: string; activo: boolean }): Promise<boolean> {
+  if (typeof args.id !== "string") return false;
+  const { count } = await db.proveedor.updateMany({ where: { id: args.id }, data: { activo: args.activo } });
+  return count > 0;
 }
 
 /** Reescribe los datos de contacto del proveedor (el nombre no se edita). Un CUIT que ya tiene otro proveedor hace lanzar el P2002 del índice único. */

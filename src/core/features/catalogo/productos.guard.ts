@@ -13,6 +13,9 @@ import type { ComandoDarDeAltaProductoRapido, ComandoSincronizarPrecioGrupoCarta
  * esas no tienen guard.
  */
 
+/** O.44: el «no encontrado» de activar o desactivar una presentación de compra con un id que no existe (o de otra empresa). */
+export const MENSAJE_PRESENTACION_NO_ENCONTRADA = "No se encontró la presentación.";
+
 /**
  * Guard del comando «alta rápida de una MP» (el wizard de compra): EXACTAMENTE lo que antes era lo primero de `darDeAltaProductoRapido`
  * (src/server/actions/catalogo/productos.ts), con los MISMOS textos y en el MISMO orden: el nombre (recortado, no vacío, charset y largo de catálogo) y que venga

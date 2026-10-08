@@ -38,8 +38,8 @@ export interface ComandoActualizarActivaUnidad {
   activa: boolean;
 }
 
-/** Sin fracasos propios: un id que no existe hace lanzar a Prisma (como antes de la mudanza; lo fija `catalogo-sin-test-unitario`). */
-export type ResultadoActualizarActivaUnidad = ResultadoCaso<null, never>;
+/** `UNIDAD_NO_ENCONTRADA`: no hay una unidad con ese id (o es de otra empresa). Desde O.44; antes un id así hacía lanzar a Prisma. */
+export type ResultadoActualizarActivaUnidad = ResultadoCaso<null, "UNIDAD_NO_ENCONTRADA">;
 
 /** Comando «cambiar los decimales de una unidad»: los decimales YA validados por `guardComandoActualizarDecimalesUnidad` (un entero entre 0 y 6). */
 export interface ComandoActualizarDecimalesUnidad {

@@ -57,12 +57,12 @@ describe("productos: mensajes de asignar insumo y de presentaciones", () => {
     expect(await prisma.presentacion.count()).toBe(0);
   });
 
-  it("actualizarActivaPresentacion: activa y desactiva; un id que no existe hace lanzar a Prisma (hallazgo conocido)", async () => {
+  it("actualizarActivaPresentacion: activa y desactiva; un id que no existe no se encuentra (O.44; antes hacía lanzar a Prisma)", async () => {
     const harina = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kgId, unidadCompraId: kgId }, sucursalId);
     const p = await prisma.presentacion.create({ data: { productoId: harina.id, unidadCompraId: gId, factorConversion: 1 } });
     expect(await actualizarActivaPresentacion(p.id, false)).toEqual({ ok: true, mensaje: "Presentación desactivada." });
     expect(await actualizarActivaPresentacion(p.id, true)).toEqual({ ok: true, mensaje: "Presentación activada." });
-    await expect(actualizarActivaPresentacion("no-existe", true)).rejects.toThrow();
+    expect(await actualizarActivaPresentacion("no-existe", true)).toEqual({ ok: false, mensaje: "No se encontró la presentación." });
   });
 
   it("sincronizarPrecioGrupoCarta: el precio se valida antes que la lista, y la lista vacía se rechaza", async () => {

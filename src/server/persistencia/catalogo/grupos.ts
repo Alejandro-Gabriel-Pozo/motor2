@@ -19,7 +19,9 @@ export async function fijarPadreDeGrupo(db: Prisma.TransactionClient, args: { id
   await db.grupo.update({ where: { id: args.id }, data: { grupoPadreId: args.grupoPadreId } });
 }
 
-/** Activa o desactiva el grupo. Un id que no existe hace lanzar a Prisma (como antes). */
-export async function fijarActivoDeGrupo(db: Prisma.TransactionClient, args: { id: string; activo: boolean }): Promise<void> {
-  await db.grupo.update({ where: { id: args.id }, data: { activo: args.activo } });
+/** Activa o desactiva el grupo. Devuelve si había uno con ese id (O.44: `updateMany` + `count`, y S-07: lo que no es texto no escribe; ver `fijarActivaDeCategoria`). */
+export async function fijarActivoDeGrupo(db: Prisma.TransactionClient, args: { id: string; activo: boolean }): Promise<boolean> {
+  if (typeof args.id !== "string") return false;
+  const { count } = await db.grupo.updateMany({ where: { id: args.id }, data: { activo: args.activo } });
+  return count > 0;
 }

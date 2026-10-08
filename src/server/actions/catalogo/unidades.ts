@@ -49,11 +49,14 @@ export async function crearUnidad(datos: { nombre: string; magnitud: MagnitudUni
   });
 }
 
-/** Desde el Hito 4 (H4C-8): permiso → caso de uso (`casos-de-uso/actualizar-activa-unidad.ts`) → refrescar la vista → `aResultadoAccion`. Sin guard (`SIN_GUARD`). */
+/**
+ * Desde el Hito 4 (H4C-8): permiso → caso de uso (`casos-de-uso/actualizar-activa-unidad.ts`) → si salió bien, refrescar la vista → `aResultadoAccion`. Sin guard
+ * (`SIN_GUARD`). Desde O.44 un id que no existe devuelve «No se encontró la unidad.» (antes: 500).
+ */
 export async function actualizarActivaUnidad(unidadId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("unidades", async (ctx) => {
     const resultado = await actualizarActivaUnidadCasoDeUso(ctx, { unidadId, activa });
-    refrescarVistaSiHaceFalta(); // ver crearUnidad
+    if (resultado.ok) refrescarVistaSiHaceFalta(); // ver crearUnidad
     return aResultadoAccion(resultado);
   });
 }

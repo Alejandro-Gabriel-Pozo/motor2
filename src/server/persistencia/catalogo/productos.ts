@@ -94,9 +94,14 @@ export async function guardarPresentacion(
   return { id: fila.id };
 }
 
-/** Activa o desactiva una presentación de compra. NO chequea que exista: un id roto hace lanzar a Prisma (como antes). */
-export async function fijarActivaDePresentacion(db: Prisma.TransactionClient, args: { id: string; activa: boolean }): Promise<void> {
-  await db.presentacion.update({ where: { id: args.id }, data: { activa: args.activa } });
+/**
+ * Activa o desactiva una presentación de compra. Devuelve si había una con ese id (O.44: `updateMany` + `count` en vez del `update` que hacía lanzar a Prisma con
+ * un id roto, y S-07: lo que no es texto no escribe; ver `fijarActivaDeCategoria` en `categorias-producto.ts`).
+ */
+export async function fijarActivaDePresentacion(db: Prisma.TransactionClient, args: { id: string; activa: boolean }): Promise<boolean> {
+  if (typeof args.id !== "string") return false;
+  const { count } = await db.presentacion.updateMany({ where: { id: args.id }, data: { activa: args.activa } });
+  return count > 0;
 }
 
 /** Disponibilidad del producto en UNA sucursal (si la sucursal no tenía fila, la crea con ese estado). */

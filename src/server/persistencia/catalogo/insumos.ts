@@ -16,9 +16,11 @@ export async function crearInsumoNuevo(db: Prisma.TransactionClient, args: { nom
   return { id: creado.id, nombre: creado.nombre };
 }
 
-/** Activa o desactiva el insumo. Un id que no existe hace lanzar a Prisma (como antes). */
-export async function fijarActivoDeInsumo(db: Prisma.TransactionClient, args: { id: string; activo: boolean }): Promise<void> {
-  await db.insumo.update({ where: { id: args.id }, data: { activo: args.activo } });
+/** Activa o desactiva el insumo. Devuelve si había uno con ese id (O.44: `updateMany` + `count`, y S-07: lo que no es texto no escribe; ver `fijarActivaDeCategoria`). */
+export async function fijarActivoDeInsumo(db: Prisma.TransactionClient, args: { id: string; activo: boolean }): Promise<boolean> {
+  if (typeof args.id !== "string") return false;
+  const { count } = await db.insumo.updateMany({ where: { id: args.id }, data: { activo: args.activo } });
+  return count > 0;
 }
 
 /** Pone el insumo en un grupo (`null` = sin grupo). Un id que no existe hace lanzar a Prisma (como antes). */

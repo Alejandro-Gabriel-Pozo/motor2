@@ -55,8 +55,8 @@ export interface ComandoActualizarActivaProveedor {
   activo: boolean;
 }
 
-/** Sin fracasos propios: un id que no existe hace lanzar a Prisma (como antes de la mudanza). */
-export type ResultadoActualizarActivaProveedor = ResultadoCaso<null, never>;
+/** `NO_ENCONTRADO` (el mismo código que la edición): no hay un proveedor con ese id (o es de otra empresa). Desde O.44; antes un id así hacía lanzar a Prisma. */
+export type ResultadoActualizarActivaProveedor = ResultadoCaso<null, "NO_ENCONTRADO">;
 
 /**
  * Comando «corregir los datos de contacto de un proveedor»: el id y los datos SIN validar (sin guard: la acción leía el proveedor ANTES de validar, así que un

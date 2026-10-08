@@ -73,11 +73,11 @@ const SIN_GUARD: Record<string, string> = {
   "src/server/actions/catalogo/rendimiento-local.ts#volverAlRendimientoCentral":
     "Volver al valor central (Hito 4, H4C-5): solo recibe el id de la línea, que nunca se validó en la acción (lo resuelve el caso de uso dentro de la transacción serializable, «No se encontró esa línea de receta.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/catalogo/categorias-producto.ts#actualizarActivaCategoriaProducto":
-    "Activar o desactivar una categoría (Hito 4, H4C-7): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+    "Activar o desactivar una categoría (Hito 4, H4C-7): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso: desde O.44, «No se encontró la categoría.» por el `count` del `updateMany`); un guard de formato no tiene nada que mirar.",
   "src/server/actions/catalogo/unidades.ts#actualizarActivaUnidad":
-    "Activar o desactivar una unidad (Hito 4, H4C-8): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+    "Activar o desactivar una unidad (Hito 4, H4C-8): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso: desde O.44, «No se encontró la unidad.» por el `count` del `updateMany`); un guard de formato no tiene nada que mirar.",
   "src/server/actions/catalogo/insumos.ts#actualizarActivoInsumo":
-    "Activar o desactivar un insumo (Hito 4, H4C-9): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+    "Activar o desactivar un insumo (Hito 4, H4C-9): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso: desde O.44, «No se encontró el insumo.» por el `count` del `updateMany`); un guard de formato no tiene nada que mirar.",
   "src/server/actions/catalogo/insumos.ts#actualizarGrupoDeInsumo":
     "Cambiar el grupo de un insumo (Hito 4, H4C-9): solo recibe dos ids (el grupo puede ser null), que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/catalogo/productos.ts#asignarInsumoAProducto":
@@ -85,7 +85,7 @@ const SIN_GUARD: Record<string, string> = {
   "src/server/actions/catalogo/productos.ts#agregarPresentacionAlternativa":
     "Presentación de compra alternativa (Hito 4, H4C-11): la acción leía el producto ANTES de validar el factor (sus decimales son los de la unidad de STOCK del producto, y un producto inexistente gana sobre un factor inválido), así que la validación vive en el caso de uso, en el mismo orden.",
   "src/server/actions/catalogo/productos.ts#actualizarActivaPresentacion":
-    "Activar o desactivar una presentación (Hito 4, H4C-11): solo recibe un id y un booleano, que nunca se validaron en la acción (un id roto hace lanzar a Prisma: hallazgo conocido, migrado tal cual); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+    "Activar o desactivar una presentación (Hito 4, H4C-11): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso: desde O.44, «No se encontró la presentación.» por el `count` del `updateMany`; antes un id roto hacía lanzar a Prisma); un guard de formato no tiene nada que mirar.",
   "src/server/actions/catalogo/productos.ts#actualizarDisponibilidadProducto":
     "Disponibilidad en la sucursal (Hito 4, H4C-11): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró el producto.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/catalogo/productos.ts#darDeAltaProducto":
@@ -93,9 +93,9 @@ const SIN_GUARD: Record<string, string> = {
   "src/server/actions/catalogo/productos.ts#actualizarProducto":
     "Edición de un producto (Hito 4, H4C-13): la acción leía el producto ANTES de validar (un producto inexistente y el tipo distinto ganan sobre un dato inválido) y la validación (validarDatosDeProducto) lee la unidad de stock a mitad de camino; un guard previo cambiaría el orden de los mensajes.",
   "src/server/actions/catalogo/insumos.ts#actualizarActivoGrupo":
-    "Activar o desactivar un grupo de insumos (Hito 4, H4C-9): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+    "Activar o desactivar un grupo de insumos (Hito 4, H4C-9): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso: desde O.44, «No se encontró el grupo.» por el `count` del `updateMany`); un guard de formato no tiene nada que mirar.",
   "src/server/actions/catalogo/proveedores.ts#actualizarActivaProveedor":
-    "Activar o desactivar un proveedor (Hito 4, H4C-14): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+    "Activar o desactivar un proveedor (Hito 4, H4C-14): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso: desde O.44, «No se encontró ese proveedor.» por el `count` del `updateMany`); un guard de formato no tiene nada que mirar.",
   "src/server/actions/catalogo/proveedores.ts#actualizarProveedor":
     "Corregir los datos de contacto de un proveedor (Hito 4, H4C-14): la acción leía el proveedor ANTES de validar (un proveedor inexistente gana sobre un dato inválido), así que la validación (validarContactoDeProveedor) vive en el caso de uso, en el mismo orden.",
   "src/server/actions/clientes/cliente.ts#actualizarCliente":

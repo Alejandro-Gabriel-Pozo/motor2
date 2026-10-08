@@ -121,10 +121,10 @@ export interface ComandoActualizarActivaPresentacion {
 }
 
 /**
- * Sin fracasos propios: NO se chequea que la presentación exista — un id roto hace lanzar a Prisma (un 500), como antes de la mudanza (hallazgo informado por el
- * plan, migrado tal cual).
+ * `PRESENTACION_NO_ENCONTRADA`: no hay una presentación con ese id (o es de otra empresa). Desde O.44; antes un id roto hacía lanzar a Prisma (un 500: hallazgo
+ * informado por el plan y migrado tal cual en H4C-11).
  */
-export type ResultadoActualizarActivaPresentacion = ResultadoCaso<null, never>;
+export type ResultadoActualizarActivaPresentacion = ResultadoCaso<null, "PRESENTACION_NO_ENCONTRADA">;
 
 /** Comando «disponibilidad de un producto en la sucursal activa»: el id y el booleano, sin validar (sin guard). */
 export interface ComandoActualizarDisponibilidadProducto {

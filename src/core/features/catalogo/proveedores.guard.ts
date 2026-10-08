@@ -11,6 +11,9 @@ import type { ComandoAltaProveedor, EntradaContactoDeProveedor } from "./proveed
  * sobre un dato inválido) y la activación solo recibe un id y un booleano: esas no tienen guard (`SIN_GUARD`).
  */
 
+/** O.44: el «no encontrado» de activar o desactivar un proveedor con un id que no existe (o de otra empresa). Mismo texto que el de la edición. */
+export const MENSAJE_PROVEEDOR_NO_ENCONTRADO = "No se encontró ese proveedor.";
+
 /**
  * Guard del comando «alta de un proveedor»: EXACTAMENTE lo que antes era lo primero de `altaProveedor` (src/server/actions/catalogo/proveedores.ts), con los MISMOS
  * textos y en el MISMO orden: el nombre (recortado, no vacío, charset y largo de catálogo) y después los datos de contacto (`validarContactoDeProveedor`). Que el

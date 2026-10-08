@@ -14,7 +14,13 @@ export async function crearCategoriaNueva(db: Prisma.TransactionClient, args: { 
   return { id: creada.id, nombre: creada.nombre };
 }
 
-/** Activa o desactiva la categoría. Un id que no existe hace lanzar a Prisma (como antes). */
-export async function fijarActivaDeCategoria(db: Prisma.TransactionClient, args: { id: string; activo: boolean }): Promise<void> {
-  await db.categoriaProducto.update({ where: { id: args.id }, data: { activo: args.activo } });
+/**
+ * Activa o desactiva la categoría. Devuelve si había una con ese id (visible por RLS): O.44 (Hito 4, bloque D) cambió el `update` —que hacía lanzar a Prisma con
+ * un id inexistente o ajeno— por un `updateMany` (atómico, sin una lectura más) cuyo `count` decide el «no encontrado» del caso de uso. Lo que no es texto se
+ * descarta ANTES de escribir: en un `where` de `updateMany`, un `undefined` o un objeto (`{ not: "x" }`) no es «ningún id» sino «todas las filas» (S-07).
+ */
+export async function fijarActivaDeCategoria(db: Prisma.TransactionClient, args: { id: string; activo: boolean }): Promise<boolean> {
+  if (typeof args.id !== "string") return false;
+  const { count } = await db.categoriaProducto.updateMany({ where: { id: args.id }, data: { activo: args.activo } });
+  return count > 0;
 }

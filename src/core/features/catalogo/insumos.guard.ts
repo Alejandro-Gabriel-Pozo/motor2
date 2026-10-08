@@ -10,6 +10,12 @@ import { nombreDeCatalogo } from "./nombre-de-catalogo";
  * (solo reciben ids y un booleano).
  */
 
+/** O.44: el «no encontrado» de activar o desactivar un insumo con un id que no existe (o de otra empresa). Mismo texto que el de `renombrarOFusionarInsumo`. */
+export const MENSAJE_INSUMO_NO_ENCONTRADO = "No se encontró el insumo.";
+
+/** O.44: el «no encontrado» de activar o desactivar un grupo de insumos con un id que no existe (o de otra empresa). */
+export const MENSAJE_GRUPO_NO_ENCONTRADO = "No se encontró el grupo.";
+
 /** Guard del comando «crear (o reusar) un insumo». */
 export function guardComandoCrearInsumo(entrada: { nombre: unknown }): ResultadoDato<ComandoCrearInsumo> {
   const nombre = nombreDeCatalogo(entrada.nombre, "El nombre del insumo no puede estar vacío.", "El nombre del insumo");

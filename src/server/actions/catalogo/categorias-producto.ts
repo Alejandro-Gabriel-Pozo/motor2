@@ -43,14 +43,14 @@ export async function crearCategoriaProducto(nombre: string): Promise<ResultadoC
 }
 
 /**
- * Desde el Hito 4 (H4C-7): permiso → caso de uso (`casos-de-uso/actualizar-activa-categoria-producto.ts`) → refrescar la vista → `aResultadoAccion`. Sin guard
- * (`SIN_GUARD`: solo recibe un id y un booleano).
+ * Desde el Hito 4 (H4C-7): permiso → caso de uso (`casos-de-uso/actualizar-activa-categoria-producto.ts`) → si salió bien, refrescar la vista →
+ * `aResultadoAccion`. Sin guard (`SIN_GUARD`: solo recibe un id y un booleano). Desde O.44 un id que no existe devuelve «No se encontró la categoría.» (antes: 500).
  */
 export async function actualizarActivaCategoriaProducto(categoriaId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("categorias", async (ctx) => {
     const resultado = await actualizarActivaCategoriaProductoCasoDeUso(ctx, { categoriaId, activo });
     // Se llama desde un closure "use server" de la página de Categorías, sin redirigir: sin esto la columna «Activa» no cambia (ver refrescar.ts).
-    refrescarVistaSiHaceFalta();
+    if (resultado.ok) refrescarVistaSiHaceFalta();
     return aResultadoAccion(resultado);
   });
 }

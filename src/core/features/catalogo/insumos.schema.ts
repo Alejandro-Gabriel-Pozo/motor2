@@ -65,5 +65,11 @@ export interface ComandoActualizarActivoGrupo {
   activo: boolean;
 }
 
-/** Sin fracasos propios (activar un insumo o un grupo, o cambiar el grupo de un insumo): un id que no existe hace lanzar a Prisma, como antes de la mudanza. */
+/** Sin fracasos propios (cambiar el grupo de un insumo): un id que no existe hace lanzar a Prisma, como antes de la mudanza (O.44 solo tocó las de activar). */
 export type ResultadoSinFracasosDeInsumos = ResultadoCaso<null, never>;
+
+/** `INSUMO_NO_ENCONTRADO`: no hay un insumo con ese id (o es de otra empresa). Desde O.44; antes un id así hacía lanzar a Prisma. */
+export type ResultadoActualizarActivoInsumo = ResultadoCaso<null, "INSUMO_NO_ENCONTRADO">;
+
+/** `GRUPO_NO_ENCONTRADO`: no hay un grupo con ese id (o es de otra empresa). Desde O.44; antes un id así hacía lanzar a Prisma. */
+export type ResultadoActualizarActivoGrupo = ResultadoCaso<null, "GRUPO_NO_ENCONTRADO">;

@@ -18,6 +18,9 @@ const DECIMALES_DEFAULT_POR_MAGNITUD: Record<MagnitudUnidad, number> = {
 
 const MENSAJE_DECIMALES = "Los decimales tienen que ser un entero entre 0 y 6.";
 
+/** O.44: el «no encontrado» de activar o desactivar una unidad con un id que no existe (o de otra empresa). Mismo texto que el de `actualizarDecimalesUnidad`. */
+export const MENSAJE_UNIDAD_NO_ENCONTRADA = "No se encontró la unidad.";
+
 const decimalesValidos = (decimales: number): boolean => Number.isInteger(decimales) && decimales >= 0 && decimales <= 6;
 
 /**

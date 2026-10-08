@@ -78,8 +78,8 @@ export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoCon
 }
 
 /**
- * Desde el Hito 4 (H4C-14): permiso → caso de uso (`casos-de-uso/actualizar-activa-proveedor.ts`) → refrescar la vista → `aResultadoAccion`. Sin guard
- * (`SIN_GUARD`: solo recibe un id y un booleano).
+ * Desde el Hito 4 (H4C-14): permiso → caso de uso (`casos-de-uso/actualizar-activa-proveedor.ts`) → si salió bien, refrescar la vista → `aResultadoAccion`. Sin
+ * guard (`SIN_GUARD`: solo recibe un id y un booleano). Desde O.44 un id que no existe devuelve «No se encontró ese proveedor.» (antes: 500).
  */
 export async function actualizarActivaProveedor(proveedorId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("proveedores", async (ctx) => {
@@ -87,7 +87,7 @@ export async function actualizarActivaProveedor(proveedorId: string, activo: boo
     // Se llama desde la lista sin redirigir después — sin esto la columna
     // "Activo" no cambiaría en un navegador real hasta recargar a mano
     // (ver src/server/actions/refrescar.ts).
-    refrescarVistaSiHaceFalta();
+    if (resultado.ok) refrescarVistaSiHaceFalta();
     return aResultadoAccion(resultado);
   });
 }

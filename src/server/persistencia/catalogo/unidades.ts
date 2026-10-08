@@ -20,9 +20,11 @@ export async function crearUnidadNueva(
   return { id: creada.id, nombre: creada.nombre };
 }
 
-/** Activa o desactiva la unidad. Un id que no existe hace lanzar a Prisma (como antes). */
-export async function fijarActivaDeUnidad(db: Prisma.TransactionClient, args: { id: string; activa: boolean }): Promise<void> {
-  await db.unidad.update({ where: { id: args.id }, data: { activa: args.activa } });
+/** Activa o desactiva la unidad. Devuelve si había una con ese id (O.44: `updateMany` + `count`, y S-07: lo que no es texto no escribe; ver `fijarActivaDeCategoria`). */
+export async function fijarActivaDeUnidad(db: Prisma.TransactionClient, args: { id: string; activa: boolean }): Promise<boolean> {
+  if (typeof args.id !== "string") return false;
+  const { count } = await db.unidad.updateMany({ where: { id: args.id }, data: { activa: args.activa } });
+  return count > 0;
 }
 
 /** Cambia los decimales de la unidad. La llama el caso de uso dentro de su transacción, junto con su fila de auditoría. */

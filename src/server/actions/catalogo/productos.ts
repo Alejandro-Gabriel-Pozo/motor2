@@ -404,8 +404,8 @@ export async function agregarPresentacionAlternativa(
 }
 
 /**
- * Desde el Hito 4 (H4C-11): permiso → caso de uso (`casos-de-uso/actualizar-activa-presentacion.ts`) → `aResultadoAccion`. Sin guard (`SIN_GUARD`). NO chequea que
- * la presentación exista: un id roto da un 500 de Prisma (hallazgo conocido, migrado tal cual).
+ * Desde el Hito 4 (H4C-11): permiso → caso de uso (`casos-de-uso/actualizar-activa-presentacion.ts`) → `aResultadoAccion`. Sin guard (`SIN_GUARD`). Desde O.44 un
+ * id roto devuelve «No se encontró la presentación.» (antes: un 500 de Prisma, hallazgo que H4C-11 migró tal cual).
  */
 export async function actualizarActivaPresentacion(presentacionId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("producto_presentaciones", async (ctx) => {

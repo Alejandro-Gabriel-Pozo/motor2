@@ -13,7 +13,8 @@ import { actualizarActivaProveedor, actualizarProveedor, altaProveedor } from ".
  * Los textos EXACTOS de los caminos de las tres mutaciones de proveedores, el ORDEN de sus chequeos y CUÁNDO refrescan la vista (Hito 4, bloque C, paso H4C-14).
  * `proveedores.test.ts` mira `ok`, las filas y pedazos de algunos textos (el CUIT), pero no el nombre repetido, el orden entre el nombre y los datos de contacto,
  * el «no encontrado» que gana sobre un dato inválido de la edición ni el refresco de la activación. Verde contra el código de antes de la mudanza y después.
- * Fija además el hallazgo conocido de la activación (un id que no existe hace lanzar a Prisma: se migró tal cual, se arregla aparte).
+ * Fijaba además el hallazgo conocido de la activación (un id que no existe hacía lanzar a Prisma: se migró tal cual); desde O.44 (Hito 4, bloque D, aprobado
+ * por el dueño) devuelve «No se encontró ese proveedor.» — cambió SOLO esa aserción.
  */
 const CUIT_A = "30-70308853-4";
 const CUIT_B = "20-12345678-6";
@@ -59,13 +60,13 @@ describe("proveedores: mensajes, orden de los chequeos y refresco", () => {
     expect(refrescos()).toBe(0);
   });
 
-  it("activar: mensaje y UN refresco por llamada; un id que no existe lanza (hallazgo conocido, tal cual)", async () => {
+  it("activar: mensaje y UN refresco por llamada; un id que no existe no se encuentra (O.44)", async () => {
     const p = await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Norte" } });
     expect(await actualizarActivaProveedor(p.id, false)).toEqual({ ok: true, mensaje: "Proveedor desactivado." });
     expect(refrescos()).toBe(1);
     expect(await actualizarActivaProveedor(p.id, true)).toEqual({ ok: true, mensaje: "Proveedor activado." });
     expect(refrescos()).toBe(1);
-    await expect(actualizarActivaProveedor("cnoexiste000000000000000", false)).rejects.toThrow();
+    expect(await actualizarActivaProveedor("cnoexiste000000000000000", false)).toEqual({ ok: false, mensaje: "No se encontró ese proveedor." });
   });
 
   it("editar: «no encontrado» gana sobre un dato inválido; dato inválido; CUIT de otro; éxito con el nombre guardado; sin refrescar", async () => {

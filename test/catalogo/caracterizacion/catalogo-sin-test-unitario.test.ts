@@ -17,7 +17,10 @@ import { actualizarActivaUnidad } from "../../../src/server/actions/catalogo/uni
  * insumos (`crearInsumo`, `actualizarActivoInsumo`, `actualizarGrupoDeInsumo`), la de activar un grupo (`actualizarActivoGrupo`) y la de activar una unidad
  * (`actualizarActivaUnidad`). Fija los mensajes exactos, las filas que quedan, el camino «se reusa» de las dos altas (un nombre que ya existe, sin distinguir
  * mayúsculas ni espacios de los bordes, devuelve la fila existente sin crear otra), cuántas veces cada una refresca la vista (`refresh` de Next, contado) y lo
- * que pasa con un id que no existe (las de activar no lo chequean: el `update` de Prisma lanza; hallazgo conocido, se fija tal cual).
+ * que pasa con un id que no existe (las de activar no lo chequeaban: el `update` de Prisma lanzaba; hallazgo conocido, se fijó tal cual).
+ *
+ * O.44 (Hito 4, bloque D; cambio de comportamiento aprobado por el dueño): las 4 de activar devuelven ahora su «no encontrado» con un id que no existe. Cambió
+ * SOLO esa aserción de cada una (y el título que la describía); la de `actualizarGrupoDeInsumo` sigue lanzando (no es de activar). Red: `activar-id-inexistente`.
  */
 describe("catálogo: las 7 acciones sin test unitario (caracterización)", () => {
   beforeEach(async () => {
@@ -53,7 +56,7 @@ describe("catálogo: las 7 acciones sin test unitario (caracterización)", () =>
     expect(refrescos()).toBe(0);
   });
 
-  it("actualizarActivaCategoriaProducto: desactiva y activa, refresca una vez cada una; un id que no existe lanza", async () => {
+  it("actualizarActivaCategoriaProducto: desactiva y activa, refresca una vez cada una; un id que no existe no se encuentra (O.44)", async () => {
     const c = await prisma.categoriaProducto.create({ data: { nombre: "Almacén" } });
     expect(await actualizarActivaCategoriaProducto(c.id, false)).toEqual({ ok: true, mensaje: "Categoría desactivada." });
     expect((await prisma.categoriaProducto.findUniqueOrThrow({ where: { id: c.id } })).activo).toBe(false);
@@ -61,7 +64,7 @@ describe("catálogo: las 7 acciones sin test unitario (caracterización)", () =>
     expect(await actualizarActivaCategoriaProducto(c.id, true)).toEqual({ ok: true, mensaje: "Categoría activada." });
     expect((await prisma.categoriaProducto.findUniqueOrThrow({ where: { id: c.id } })).activo).toBe(true);
     expect(refrescos()).toBe(1);
-    await expect(actualizarActivaCategoriaProducto("no-existe", false)).rejects.toThrow();
+    expect(await actualizarActivaCategoriaProducto("no-existe", false)).toEqual({ ok: false, mensaje: "No se encontró la categoría." });
     expect(refrescos()).toBe(0);
   });
 
@@ -81,14 +84,14 @@ describe("catálogo: las 7 acciones sin test unitario (caracterización)", () =>
     expect(refrescos()).toBe(0);
   });
 
-  it("actualizarActivoInsumo: desactiva y activa, refresca una vez cada una; un id que no existe lanza", async () => {
+  it("actualizarActivoInsumo: desactiva y activa, refresca una vez cada una; un id que no existe no se encuentra (O.44)", async () => {
     const i = await prisma.insumo.create({ data: { nombre: "Harina" } });
     expect(await actualizarActivoInsumo(i.id, false)).toEqual({ ok: true, mensaje: "Insumo desactivado." });
     expect((await prisma.insumo.findUniqueOrThrow({ where: { id: i.id } })).activo).toBe(false);
     expect(refrescos()).toBe(1);
     expect(await actualizarActivoInsumo(i.id, true)).toEqual({ ok: true, mensaje: "Insumo activado." });
     expect(refrescos()).toBe(1);
-    await expect(actualizarActivoInsumo("no-existe", false)).rejects.toThrow();
+    expect(await actualizarActivoInsumo("no-existe", false)).toEqual({ ok: false, mensaje: "No se encontró el insumo." });
     expect(refrescos()).toBe(0);
   });
 
@@ -104,24 +107,24 @@ describe("catálogo: las 7 acciones sin test unitario (caracterización)", () =>
     await expect(actualizarGrupoDeInsumo("no-existe", null)).rejects.toThrow();
   });
 
-  it("actualizarActivoGrupo: desactiva y activa, refresca una vez cada una; un id que no existe lanza", async () => {
+  it("actualizarActivoGrupo: desactiva y activa, refresca una vez cada una; un id que no existe no se encuentra (O.44)", async () => {
     const g = await prisma.grupo.create({ data: { nombre: "Secos" } });
     expect(await actualizarActivoGrupo(g.id, false)).toEqual({ ok: true, mensaje: "Grupo desactivado." });
     expect((await prisma.grupo.findUniqueOrThrow({ where: { id: g.id } })).activo).toBe(false);
     expect(refrescos()).toBe(1);
     expect(await actualizarActivoGrupo(g.id, true)).toEqual({ ok: true, mensaje: "Grupo activado." });
     expect(refrescos()).toBe(1);
-    await expect(actualizarActivoGrupo("no-existe", false)).rejects.toThrow();
+    expect(await actualizarActivoGrupo("no-existe", false)).toEqual({ ok: false, mensaje: "No se encontró el grupo." });
   });
 
-  it("actualizarActivaUnidad: desactiva y activa, refresca una vez cada una; un id que no existe lanza", async () => {
+  it("actualizarActivaUnidad: desactiva y activa, refresca una vez cada una; un id que no existe no se encuentra (O.44)", async () => {
     const u = await prisma.unidad.create({ data: { nombre: "caja", magnitud: "CANTIDAD", decimales: 0 } });
     expect(await actualizarActivaUnidad(u.id, false)).toEqual({ ok: true, mensaje: "Unidad desactivada." });
     expect((await prisma.unidad.findUniqueOrThrow({ where: { id: u.id } })).activa).toBe(false);
     expect(refrescos()).toBe(1);
     expect(await actualizarActivaUnidad(u.id, true)).toEqual({ ok: true, mensaje: "Unidad activada." });
     expect(refrescos()).toBe(1);
-    await expect(actualizarActivaUnidad("no-existe", false)).rejects.toThrow();
+    expect(await actualizarActivaUnidad("no-existe", false)).toEqual({ ok: false, mensaje: "No se encontró la unidad." });
   });
 
   it("ninguna de las 7 deja filas de auditoría (no son dinero)", async () => {

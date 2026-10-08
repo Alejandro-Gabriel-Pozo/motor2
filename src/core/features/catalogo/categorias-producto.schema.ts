@@ -29,5 +29,5 @@ export interface ComandoActualizarActivaCategoriaProducto {
   activo: boolean;
 }
 
-/** Sin fracasos propios: un id que no existe hace lanzar a Prisma (como antes de la mudanza; lo fija `catalogo-sin-test-unitario`). */
-export type ResultadoActualizarActivaCategoriaProducto = ResultadoCaso<null, never>;
+/** `CATEGORIA_NO_ENCONTRADA`: no hay una categoría con ese id (o es de otra empresa). Desde O.44; antes un id así hacía lanzar a Prisma. */
+export type ResultadoActualizarActivaCategoriaProducto = ResultadoCaso<null, "CATEGORIA_NO_ENCONTRADA">;

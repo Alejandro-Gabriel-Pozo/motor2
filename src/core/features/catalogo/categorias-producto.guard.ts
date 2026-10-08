@@ -11,6 +11,10 @@ import { nombreDeCatalogo } from "./nombre-de-catalogo";
  * nombre: el nombre recortado no vacío y con el charset y el largo de catálogo, con los MISMOS textos y en el MISMO orden. `actualizarActivaCategoriaProducto` no
  * tiene guard (solo recibe un id y un booleano).
  */
+
+/** O.44: el «no encontrado» de activar o desactivar una categoría con un id que no existe (o de otra empresa). Mismo texto que el de `guardarMargenObjetivo`. */
+export const MENSAJE_CATEGORIA_NO_ENCONTRADA = "No se encontró la categoría.";
+
 export function guardComandoCrearCategoriaProducto(entrada: { nombre: unknown }): ResultadoDato<ComandoCrearCategoriaProducto> {
   const nombre = nombreDeCatalogo(entrada.nombre, "El nombre de la categoría no puede estar vacío.", "El nombre de la categoría");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);

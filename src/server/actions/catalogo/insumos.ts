@@ -53,12 +53,15 @@ export async function crearInsumo(nombre: string): Promise<ResultadoConId> {
   });
 }
 
-/** Desde el Hito 4 (H4C-9): permiso → caso de uso (`casos-de-uso/actualizar-activo-insumo.ts`) → refrescar la vista → `aResultadoAccion`. Sin guard (`SIN_GUARD`). */
+/**
+ * Desde el Hito 4 (H4C-9): permiso → caso de uso (`casos-de-uso/actualizar-activo-insumo.ts`) → si salió bien, refrescar la vista → `aResultadoAccion`. Sin guard
+ * (`SIN_GUARD`). Desde O.44 un id que no existe devuelve «No se encontró el insumo.» (antes: 500).
+ */
 export async function actualizarActivoInsumo(insumoId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
     const resultado = await actualizarActivoInsumoCasoDeUso(ctx, { insumoId, activo });
     // Se llama desde un closure "use server" de la página de Insumos, sin redirigir: sin esto la columna «Activo» no cambia (ver refrescar.ts).
-    refrescarVistaSiHaceFalta();
+    if (resultado.ok) refrescarVistaSiHaceFalta();
     return aResultadoAccion(resultado);
   });
 }
@@ -136,11 +139,14 @@ export async function crearOActualizarGrupo(nombre: string, grupoPadreId: string
   });
 }
 
-/** Desde el Hito 4 (H4C-9): permiso → caso de uso (`casos-de-uso/actualizar-activo-grupo.ts`) → refrescar la vista → `aResultadoAccion`. Sin guard (`SIN_GUARD`). */
+/**
+ * Desde el Hito 4 (H4C-9): permiso → caso de uso (`casos-de-uso/actualizar-activo-grupo.ts`) → si salió bien, refrescar la vista → `aResultadoAccion`. Sin guard
+ * (`SIN_GUARD`). Desde O.44 un id que no existe devuelve «No se encontró el grupo.» (antes: 500).
+ */
 export async function actualizarActivoGrupo(grupoId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
     const resultado = await actualizarActivoGrupoCasoDeUso(ctx, { grupoId, activo });
-    refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
+    if (resultado.ok) refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
     return aResultadoAccion(resultado);
   });
 }
