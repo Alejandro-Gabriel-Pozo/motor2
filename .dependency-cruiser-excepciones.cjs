@@ -284,6 +284,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque C, H4C-15: altaCliente → clientes/casos-de-uso/alta-cliente.ts (con guardComandoAltaCliente; la acción arma el ResultadoConId), actualizarCliente → actualizar-cliente.ts y actualizarActivoCliente → actualizar-activo-cliente.ts (la acción refresca la vista solo si salió bien, como antes); cada uno con su escritura (server/persistencia/clientes/clientes.ts) y sus filas de auditoría (cambioDeCliente, core/features/clientes/auditoria-de-cliente.ts) en UNA transacción. Las lecturas (H8) siguen en la acción.",
   },
+  {
+    ruta: "src/server/actions/reportes/margen-objetivo.ts",
+    motivo:
+      "Hito 4, bloque C, H4C-16: guardarMargenObjetivo → reportes/casos-de-uso/guardar-margen-objetivo.ts (con guardComandoGuardarMargenObjetivo: la categoría y el porcentaje; crear, cambiar o borrar en server/persistencia/reportes/margen-objetivo.ts con su auditoría en UNA transacción; con el mismo valor no escribe). La acción refresca la vista solo si hubo cambio (datos.huboCambio), como antes.",
+  },
 ];
 
 module.exports = {

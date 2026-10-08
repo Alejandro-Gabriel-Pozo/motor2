@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 27;
+export const TOPE_DE_ENTRADAS = 26;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -134,11 +134,6 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["seccion.create", "seccion.update", "seccion.update", "seccion.update"],
     fase: "Fase 4",
     motivo: "Tramo C (PR 4C-F2): configuración de stock y movimientos; pasa a caso de uso + persistencia.",
-  },
-  "src/server/actions/reportes/margen-objetivo.ts": {
-    escrituras: ["margenObjetivo.create", "margenObjetivo.delete", "margenObjetivo.update"],
-    fase: "Fase 4",
-    motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
   },
   "src/server/actions/stock/frecuencia-conteo.ts": {
     escrituras: ["frecuenciaConteoProducto.delete", "frecuenciaConteoProducto.upsert"],
