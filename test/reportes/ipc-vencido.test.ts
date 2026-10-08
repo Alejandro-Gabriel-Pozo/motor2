@@ -29,7 +29,7 @@ describe("reportes con la serie del IPC vencida", () => {
     await prisma.indicePrecio.deleteMany();
     for (const [i, n] of atras.entries()) await prisma.indicePrecio.create({ data: { mes: mesRelativo(n), valor: 100 + i * 5 } });
   }
-  const reporte = () => obtenerReportePorPeriodo(sucursalId, new Date(ahora.getTime() - 86_400_000), new Date(ahora.getTime() + 86_400_000), undefined, prisma);
+  const reporte = () => obtenerReportePorPeriodo(sucursalId, new Date(ahora.getTime() - 86_400_000), new Date(ahora.getTime() + 86_400_000), undefined, prisma, ahora);
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -64,6 +64,22 @@ describe("reportes con la serie del IPC vencida", () => {
     expect(margen.avisoIPC).not.toContain("los dos lados de la resta quedan en la misma plata");
   });
 
+  it("D.3b: la antigüedad de la serie se mide contra el `ahora` que recibe el reporte (margen y comparativa), no contra el reloj", async () => {
+    await serieConMeses([2, 1]);
+    // El último publicado es el mes anterior: su fin es el primer día del mes en curso. 100 días después, la serie está vencida (máximo 60).
+    const ahoraFijo = new Date(mesRelativo(0).getTime() + 100 * 86_400_000);
+    const desde = new Date(ahora.getTime() - 86_400_000);
+    const hasta = new Date(ahora.getTime() + 86_400_000);
+
+    const conHoraFija = await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma, ahoraFijo);
+    expect(conHoraFija.margen.antiguedadIPC).toMatchObject({ estado: "vencida", diasDeAtraso: 100 });
+    expect(conHoraFija.comparativaPrecios.antiguedadIPC).toMatchObject({ estado: "vencida", diasDeAtraso: 100 });
+
+    const conRelojReal = await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma, ahora);
+    expect(conRelojReal.margen.antiguedadIPC.estado).toBe("al-dia");
+    expect(conRelojReal.comparativaPrecios.antiguedadIPC.estado).toBe("al-dia");
+  });
+
   it("rezago normal del INDEC (el último mes publicado es el anterior): sigue siendo «provisorio», con el aviso de siempre", async () => {
     await serieConMeses([2, 1]);
 
@@ -94,7 +110,7 @@ describe("reportes con la serie del IPC vencida", () => {
   it("comparativa de precios: con la serie vencida NO culpa al INDEC («lo publica a mitad del mes siguiente»), dice que falta sincronizar", async () => {
     await serieConMeses([9, 8]);
     // Período entero en un mes sin publicar (el mes en curso, la vista por defecto): la variación del IPC es «sin dato».
-    const { comparativaPrecios } = await obtenerReportePorPeriodo(sucursalId, mesRelativo(0), new Date(ahora.getTime() + 86_400_000), undefined, prisma);
+    const { comparativaPrecios } = await obtenerReportePorPeriodo(sucursalId, mesRelativo(0), new Date(ahora.getTime() + 86_400_000), undefined, prisma, ahora);
 
     expect(comparativaPrecios.variacionIPCPct, "sigue siendo «sin dato»: no cambia el número").toBeNull();
     expect(comparativaPrecios.antiguedadIPC.estado).toBe("vencida");
@@ -105,7 +121,7 @@ describe("reportes con la serie del IPC vencida", () => {
 
   it("comparativa de precios con rezago normal: sigue diciendo lo de siempre del INDEC", async () => {
     await serieConMeses([2, 1]);
-    const { comparativaPrecios } = await obtenerReportePorPeriodo(sucursalId, mesRelativo(0), new Date(ahora.getTime() + 86_400_000), undefined, prisma);
+    const { comparativaPrecios } = await obtenerReportePorPeriodo(sucursalId, mesRelativo(0), new Date(ahora.getTime() + 86_400_000), undefined, prisma, ahora);
 
     expect(comparativaPrecios.antiguedadIPC.estado).toBe("al-dia");
     expect(comparativaPrecios.avisoIPC).toContain("mitad del mes siguiente");

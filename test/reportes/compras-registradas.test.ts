@@ -8,6 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { SIN_PROVEEDOR, TAMANO_PAGINA_COMPRAS } from "../../src/core/reportes/compras-registradas";
 import { listarComprasRegistradas } from "../../src/server/consultas/reportes/compras-registradas";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Listado de compras por factura: qué se compró, a quién, con qué factura, cuándo y por cuánto. Solo lectura.
@@ -157,7 +158,7 @@ describe("Compras por proveedor (Período) lleva el id del proveedor para enlaza
     await registrarMovimiento({ proceso: "COMPRA", fecha, seccionId, proveedorId: prov.id, items: [{ productoId: harina.id, cantidad: 1, precioTotal: 5 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha, seccionId, items: [{ productoId: harina.id, cantidad: 1, precioTotal: 6 }] });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-07-30"), new Date("2026-08-05"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-07-30"), new Date("2026-08-05"), undefined, prisma, AHORA_DE_LA_CORRIDA);
     const porNombre = new Map(rep.compras.porProveedor.map((p) => [p.proveedor, p.proveedorId]));
     expect(porNombre.get("Molino A")).toBe(prov.id);
     expect(porNombre.get("Sin proveedor")).toBeNull();

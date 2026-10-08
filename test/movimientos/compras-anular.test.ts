@@ -12,6 +12,7 @@ import { calcularSaldoPorLote, calcularSaldoTotal } from "../../src/server/lectu
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 import { MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /** K1c: anular una compra ya confirmada (Postgres real, sin mocks de base). */
 describe("anularCompra", () => {
@@ -137,9 +138,9 @@ describe("anularCompra", () => {
     const desde = new Date(Date.now() - 86_400_000);
     const hasta = new Date(Date.now() + 86_400_000);
 
-    expect((await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma)).compras.totalGastado).toBe(1300);
+    expect((await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma, AHORA_DE_LA_CORRIDA)).compras.totalGastado).toBe(1300);
     await anularCompra(compra.id);
-    expect((await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma)).compras.totalGastado).toBe(300);
+    expect((await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma, AHORA_DE_LA_CORRIDA)).compras.totalGastado).toBe(300);
   });
 
   describe("stock ya consumido", () => {
@@ -307,7 +308,7 @@ describe("anularCompra", () => {
 
       const desde = new Date(Date.now() - 86_400_000);
       const hasta = new Date(Date.now() + 86_400_000);
-      const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma);
+      const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma, AHORA_DE_LA_CORRIDA);
       expect(rep.compras.totalGastado).toBe(100);
       expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(10);
 

@@ -8,6 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 import type { Db } from "../../src/lib/db-tipos";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Una corrida de `obtenerReportePorPeriodo` toca la tabla de versiones de receta UNA sola vez, con CUALQUIER operación.
@@ -57,7 +58,7 @@ describe("obtenerReportePorPeriodo — una sola operación sobre recetaVersion",
       },
     }) as unknown as Db;
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-02"), d("2026-08-10"), {}, dbContado);
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-02"), d("2026-08-10"), {}, dbContado, AHORA_DE_LA_CORRIDA);
 
     expect(rep.impactoRecetas.length, "no corrió el impacto de recetas").toBeGreaterThan(0);
     expect(rep.margen.costoTotal, "no corrió el margen nominal").toBeGreaterThan(0);

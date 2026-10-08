@@ -8,6 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { guardarMargenObjetivo } from "../../src/server/actions/reportes/margen-objetivo";
 import { obtenerReportePorPeriodo, generarReporteVentasPorCategoria } from "../../src/server/consultas/reportes/periodo";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 describe("obtenerReportePorPeriodo", () => {
   let sucursalId: string;
@@ -40,7 +41,7 @@ describe("obtenerReportePorPeriodo", () => {
     // Afuera del rango: 31 de julio.
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-07-31T20:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 99, precioTotal: 1 }] });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-05"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-05"), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.total).toBe(2);
     expect(rep.compras.totalGastado).toBe(160);
   });
@@ -62,7 +63,7 @@ describe("obtenerReportePorPeriodo", () => {
 
     const desde = new Date(hoy); desde.setDate(desde.getDate() - 1);
     const hasta = new Date(hoy); hasta.setDate(hasta.getDate() + 1);
-    const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.ventas.totalFacturado).toBe(2 * 100 + 1 * 100); // real (2×100) + estimado (1×precioVenta vigente)
     const fila = rep.ventas.porProducto.find((v) => v.productoId === pv.id)!;
@@ -76,7 +77,7 @@ describe("obtenerReportePorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 500 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 5 }] }); // sin precio, MISMO producto: otra compra, no otro producto
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.compras.totalGastado).toBe(500);
     expect(rep.compras.hayComprasSinPrecio).toBe(true);
     expect(rep.compras.porProveedor[0].proveedor).toBe("Molino SA");
@@ -102,7 +103,7 @@ describe("obtenerReportePorPeriodo", () => {
       ],
     });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     const fila = rep.compras.porProveedor.find((p) => p.proveedor === "Distribuidora")!;
     expect(fila.cantidadCompras).toBe(1);
     expect(fila.cantidadProductos).toBe(2);
@@ -119,7 +120,7 @@ describe("obtenerReportePorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedorA.id, items: [{ productoId: mp1.id, cantidad: 10, precioTotal: 300 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedorB.id, items: [{ productoId: mp2.id, cantidad: 5, precioTotal: 200 }] });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     // Los dos productos son el MISMO insumo ("Harina") — se juntan en una sola fila, a diferencia de compras.porProveedor (2 filas, una por proveedor).
     expect(rep.gastoPorInsumo.porInsumo).toHaveLength(1);
@@ -144,7 +145,7 @@ describe("obtenerReportePorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp2.id, cantidad: 1, precioTotal: 750 }] }); // 75% del gasto
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp1.id, cantidad: 1, precioTotal: 250 }] }); // 25% del gasto
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.gastoPorInsumo.porInsumo.map((f) => f.insumo)).toEqual(["Muzzarella", "Harina"]); // mayor gasto primero
     expect(rep.gastoPorInsumo.porInsumo[0]!.porcentaje).toBe(75);
@@ -163,7 +164,7 @@ describe("obtenerReportePorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpA.id, cantidad: 1, precioTotal: 900 }] }); // 90 %
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpB.id, cantidad: 1, precioTotal: 100 }] }); // 10 %
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.gastoPorInsumo.porInsumo.map((f) => [f.insumo, f.dentroDel80])).toEqual([["Grande", true], ["Chico", false]]);
   });
@@ -172,7 +173,7 @@ describe("obtenerReportePorPeriodo", () => {
     const mpSinInsumo = await sembrarProductoDisponible({ codigo: "MP_SUELTO", nombre: "Producto suelto", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSinInsumo.id, cantidad: 1, precioTotal: 50 }] });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.gastoPorInsumo.porInsumo).toEqual([
       expect.objectContaining({ insumo: "Sin insumo asignado", grupo: null, importe: 50 }),
@@ -188,7 +189,7 @@ describe("obtenerReportePorPeriodo", () => {
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.margen.hayCostoIncompleto).toBe(true);
     expect(rep.margen.porProducto[0].costoIncompleto).toBe(true);
     expect(rep.margen.porProducto[0].margen).toBeNull();
@@ -206,7 +207,7 @@ describe("obtenerReportePorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-10T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 100 }] });
     await registrarVenta({ fecha: new Date("2026-08-10T12:00:00.000Z"), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-10"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-10"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.ratioGastoVentas.porcentaje).toBe(50);
     expect(rep.ratioGastoVentas.porcentajePeriodoAnterior).toBe(80);
@@ -216,7 +217,7 @@ describe("obtenerReportePorPeriodo", () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 100 }] });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.ratioGastoVentas.porcentaje).toBeNull();
   });
 
@@ -234,7 +235,7 @@ describe("obtenerReportePorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 50000 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 55000 }] });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.tendenciaPrecios.map((f) => f.insumo)).toEqual(["Muzzarella", "Orégano"]); // el impacto en $ manda, no el %
     const muzza = rep.tendenciaPrecios[0]!;
@@ -258,7 +259,7 @@ describe("obtenerReportePorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(Date.now() - 172800000), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10 }] }); // $1/kg, antes del período
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50 }] }); // $50/kg — +4900%, probable error de carga
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     const nuevo = rep.tendenciaPrecios.find((f) => f.insumo === "Insumo nuevo")!;
     expect(nuevo.precioUnitarioAnterior).toBeNull();
@@ -274,7 +275,7 @@ describe("obtenerReportePorPeriodo", () => {
     const mpSuelto = await sembrarProductoDisponible({ codigo: "MP_SUELTO", nombre: "Producto suelto", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSuelto.id, cantidad: 1, precioTotal: 50 }] });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.tendenciaPrecios).toEqual([]);
   });
 
@@ -290,7 +291,7 @@ describe("obtenerReportePorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10 }] }); // $1/kg
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50 }] }); // $50/kg — sospechoso, se excluye del agregado
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.comparativaPrecios.variacionInsumosPct).toBe(10); // solo Muzzarella entra: 5000/50000 = 10%
   });
@@ -312,7 +313,7 @@ describe("obtenerReportePorPeriodo", () => {
       },
     });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBe(10); // (1100-1000)/1000
     expect(rep.comparativaPrecios.cantidadProductosConCambioCarta).toBe(1);
@@ -336,14 +337,14 @@ describe("obtenerReportePorPeriodo", () => {
 
     it("con el precio local vigente, la suba del precio global NO cuenta: se mide el cambio del precio local", async () => {
       await pizzaConPrecioLocalVendida(false);
-      const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma);
+      const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
       expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBe(10); // (880-800)/800, no (1500-1000)/1000
       expect(rep.comparativaPrecios.cantidadProductosConCambioCarta).toBe(1);
     });
 
     it("con la capacidad precio_local apagada, se mide el precio global (el local no se cobra) y el cambio del local no cuenta", async () => {
       await pizzaConPrecioLocalVendida(true);
-      const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma);
+      const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
       expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBe(50); // (1500-1000)/1000
       expect(rep.comparativaPrecios.cantidadProductosConCambioCarta).toBe(1);
     });
@@ -355,13 +356,13 @@ describe("obtenerReportePorPeriodo", () => {
       await prisma.registroAuditoria.create({
         data: { entidad: "PrecioLocalProducto", entidadId: filaOtra.id, descripcion: "otra", campo: "precio", valorAnterior: "500", valorNuevo: "1000", actorId: adminId, sucursalId: otra.id, creadoEn: new Date("2026-08-11T14:00:00.000Z") },
       });
-      const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma);
+      const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
       expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBe(10);
     });
   });
 
   it("comparativaPrecios: sin cambios de precio de venta registrados en el período, variacionCartaPropiaPct es null", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBeNull();
     expect(rep.comparativaPrecios.cantidadProductosConCambioCarta).toBe(0);
   });
@@ -381,7 +382,7 @@ describe("obtenerReportePorPeriodo", () => {
       },
     });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.comparativaPrecios.cantidadProductosConCambioCarta).toBe(1);
     expect(rep.comparativaPrecios.variacionCartaPropiaPct).toBeNull(); // no se vendió en el período, no hay con qué ponderar
@@ -391,18 +392,18 @@ describe("obtenerReportePorPeriodo", () => {
     await prisma.indicePrecio.create({ data: { mes: new Date("2026-07-01"), valor: 100 } });
     await prisma.indicePrecio.create({ data: { mes: new Date("2026-08-01"), valor: 105 } });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-07-10"), new Date("2026-08-10"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-07-10"), new Date("2026-08-10"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.comparativaPrecios.variacionIPCPct).toBe(5);
   });
 
   it("comparativaPrecios: variacionIPCPct es null si falta el IPC de algún mes del rango", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.comparativaPrecios.variacionIPCPct).toBeNull();
   });
 
   it("digest queda vacío sin ninguna señal (sin compras/ventas en el período)", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.digest).toEqual([]);
   });
 
@@ -412,7 +413,7 @@ describe("obtenerReportePorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(Date.now() - 172800000), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10 }] }); // $1/kg antes
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50 }] }); // $50/kg — sospechoso
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.digest.length).toBeGreaterThan(0);
     expect(rep.digest[0]!.severidad).toBe("alta");
@@ -427,7 +428,7 @@ describe("obtenerReportePorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 20 }] });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.digest.some((a) => a.texto.includes("Pan Especial"))).toBe(true);
     expect(rep.digest.some((a) => a.texto.includes("se encareció"))).toBe(true);
@@ -441,7 +442,7 @@ describe("obtenerReportePorPeriodo", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 20 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }] });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     const alerta = rep.digest.find((a) => a.texto.includes("Pan Especial"));
     expect(alerta).toBeDefined();
@@ -463,14 +464,14 @@ describe("obtenerReportePorPeriodo", () => {
 
     it("sin objetivo cargado no avisa nada, aunque haya un plato con food cost altísimo", async () => {
       await sembrarPlatoCaro(1000);
-      const rep = await obtenerReportePorPeriodo(sucursalId, ...rango(), undefined, prisma);
+      const rep = await obtenerReportePorPeriodo(sucursalId, ...rango(), undefined, prisma, AHORA_DE_LA_CORRIDA);
       expect(rep.digest.some((a) => a.destino === "costos")).toBe(false);
     });
 
     it("con objetivo cargado avisa cuántos platos pasan y cuál es el peor, con severidad media y destino Costos", async () => {
       await sembrarPlatoCaro(1000);
       expect((await guardarMargenObjetivo(null, 35)).ok).toBe(true);
-      const rep = await obtenerReportePorPeriodo(sucursalId, ...rango(), undefined, prisma);
+      const rep = await obtenerReportePorPeriodo(sucursalId, ...rango(), undefined, prisma, AHORA_DE_LA_CORRIDA);
       const alerta = rep.digest.find((a) => a.destino === "costos");
       expect(alerta).toBeDefined();
       expect(alerta!.severidad).toBe("media");
@@ -481,13 +482,13 @@ describe("obtenerReportePorPeriodo", () => {
     it("con objetivo cargado pero todos los platos dentro, no avisa", async () => {
       await sembrarPlatoCaro(1000);
       expect((await guardarMargenObjetivo(null, 70)).ok).toBe(true);
-      const rep = await obtenerReportePorPeriodo(sucursalId, ...rango(), undefined, prisma);
+      const rep = await obtenerReportePorPeriodo(sucursalId, ...rango(), undefined, prisma, AHORA_DE_LA_CORRIDA);
       expect(rep.digest.some((a) => a.destino === "costos")).toBe(false);
     });
   });
 
   it("digest nunca tiene más de 5 alertas", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.digest.length).toBeLessThanOrEqual(5);
   });
 });

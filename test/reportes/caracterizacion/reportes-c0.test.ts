@@ -205,7 +205,7 @@ describe("Caracterización de los reportes (C0): resultado y conteo de consultas
     const S1 = E.S1;
     // Entradas que algunas funciones reciben ya calculadas (en la página las arma otra consulta): se leen con el cliente SIN contar.
     const objetivos = await cargarObjetivosDeMargen(prisma);
-    const { reporte: repCrudo, productos } = await obtenerReportePorPeriodoConCatalogo(S1, DESDE_DIA, HASTA_DIA, {}, prisma);
+    const { reporte: repCrudo, productos } = await obtenerReportePorPeriodoConCatalogo(S1, DESDE_DIA, HASTA_DIA, {}, prisma, AHORA);
 
     // `items` sale ordenado por `Operacion.fecha`: las líneas de UNA misma operación (consumos + venta, renglones de una compra) empatan y la base las
     // entrega en cualquier orden (visto en la práctica: dos corridas seguidas con los mismos datos las dieron distinto). Se desempata por proceso,
@@ -272,18 +272,18 @@ describe("Caracterización de los reportes (C0): resultado y conteo de consultas
     });
 
     // periodo-margen.ts / periodo-precios.ts / periodo-ratio.ts (con las entradas que les arma `obtenerReportePorPeriodoConCatalogo`)
-    await reporte("periodo-margen.calcularMargenDelPeriodo(Central, líneas y ventas del período, catálogo cargado, SIN índice de recetas)", (db) => calcularMargenDelPeriodo(S1, rep.items, rep.ventas, db, productos));
+    await reporte("periodo-margen.calcularMargenDelPeriodo(Central, líneas y ventas del período, catálogo cargado, SIN índice de recetas)", (db) => calcularMargenDelPeriodo(S1, rep.items, rep.ventas, db, productos, AHORA));
     const tendencia = await reporte("periodo-precios.calcularTendenciaPreciosDelPeriodo(Central, desde 16-feb)", (db) => calcularTendenciaPreciosDelPeriodo(S1, rep.desde, rep.items, productos, db));
-    await reporte("periodo-precios.calcularComparativaPreciosDelPeriodo(Central, período, tendencia de arriba)", (db) => calcularComparativaPreciosDelPeriodo(S1, rep.desde, rep.hasta, tendencia, rep.ventas.porProducto, db));
+    await reporte("periodo-precios.calcularComparativaPreciosDelPeriodo(Central, período, tendencia de arriba)", (db) => calcularComparativaPreciosDelPeriodo(S1, rep.desde, rep.hasta, tendencia, rep.ventas.porProducto, db, AHORA));
     await reporte("periodo-ratio.calcularRatioGastoVentas(Central, período, totales del reporte, SIN clasificación precargada)", (db) =>
       calcularRatioGastoVentas(S1, rep.desde, rep.hasta, rep.compras.totalGastado, rep.compras.totalNoComestibles, rep.ventas.totalFacturado, productos, db)
     );
 
     // periodo.ts
-    const periodo = await medir((db) => obtenerReportePorPeriodo(S1, DESDE_DIA, HASTA_DIA, {}, db));
+    const periodo = await medir((db) => obtenerReportePorPeriodo(S1, DESDE_DIA, HASTA_DIA, {}, db, AHORA));
     n += 1;
     lineas.push(`### ${n}. periodo.obtenerReportePorPeriodo(Central, 16-feb → 15-mar, sin filtros)`, resumenDeConsultas(periodo.consultas), `  resultado: ${volcar(ordenarItems(periodo.resultado), 1)}`);
-    const conCatalogo = await medir((db) => obtenerReportePorPeriodoConCatalogo(S1, DESDE_DIA, HASTA_DIA, {}, db));
+    const conCatalogo = await medir((db) => obtenerReportePorPeriodoConCatalogo(S1, DESDE_DIA, HASTA_DIA, {}, db, AHORA));
     n += 1;
     const mismoReporte = volcar(ordenarItems(conCatalogo.resultado.reporte), 1) === volcar(ordenarItems(periodo.resultado), 1);
     lineas.push(

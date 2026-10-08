@@ -8,6 +8,7 @@ import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * El cierre del POS PREFIERE la sección habitual del PV (`SeccionHabitualProducto`, docs/plan-seccion-habitual-stock-2026-09-25.md
@@ -120,9 +121,9 @@ describe("cerrarCuenta: la sección habitual del PV", () => {
     await comprar(deposito.id, 1);
     await cerrarPizzas(2);
     const hoy = new Date();
-    const enCocina = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: cocina.id }, prisma);
+    const enCocina = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: cocina.id }, prisma, AHORA_DE_LA_CORRIDA);
     expect(enCocina.items.map((i) => [i.proceso, i.productoId, i.cantidad])).toEqual([["VENTA", s.pizza.id, 2]]);
-    const enDeposito = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: deposito.id }, prisma);
+    const enDeposito = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: deposito.id }, prisma, AHORA_DE_LA_CORRIDA);
     expect(enDeposito.items.map((i) => [i.proceso, i.productoId]).sort()).toEqual([["COMPRA", s.muzzarella.id], ["CONSUMO", s.muzzarella.id]]);
   });
 });

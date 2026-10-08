@@ -336,9 +336,9 @@ async function main() {
 
   const hoy = new Date();
   const haceDiezDias = new Date(hoy.getTime() - DIAS_VENTANA_VENTAS * 86_400_000);
-  await obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, dbConContador); // calentamiento, no cuenta.
+  await obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, dbConContador, new Date()); // calentamiento, no cuenta.
   llamadasAProductoFindMany = 0;
-  await obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, dbConContador); // 1 sola corrida, para contar exacto.
+  await obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, dbConContador, new Date()); // 1 sola corrida, para contar exacto.
   console.log(`  Llamadas a producto.findMany en 1 sola corrida de obtenerReportePorPeriodo: ${llamadasAProductoFindMany}`);
   if (llamadasAProductoFindMany > 1) {
     console.log(
@@ -348,7 +348,7 @@ async function main() {
         `test/reportes/catalogo-una-sola-carga.test.ts: si aparece acá es que alguien lo rompió y ese test no lo cubre.`
     );
   }
-  const { medianaMs: medianaPeriodo } = await medir("obtenerReportePorPeriodo (10 días)", () => obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, dbConContador), 3);
+  const { medianaMs: medianaPeriodo } = await medir("obtenerReportePorPeriodo (10 días)", () => obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, dbConContador, new Date()), 3);
   console.log(`  Tiempo mediana del reporte completo: ${medianaPeriodo.toFixed(1)}ms\n`);
 
   // Sobrecosto del contexto de empresa (ADR-007, A5). Réplica LITERAL de `dbDeEmpresa` (src/core/auth/base.ts) sobre el cliente del
@@ -365,8 +365,8 @@ async function main() {
     },
   }) as unknown as PrismaClient;
 
-  const { medianaMs: reporteSin } = await medir("obtenerReportePorPeriodo sin contexto", () => obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, db), 7);
-  const { medianaMs: reporteCon } = await medir("obtenerReportePorPeriodo con contexto", () => obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, dbConEmpresa), 7);
+  const { medianaMs: reporteSin } = await medir("obtenerReportePorPeriodo sin contexto", () => obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, db, new Date()), 7);
+  const { medianaMs: reporteCon } = await medir("obtenerReportePorPeriodo con contexto", () => obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, dbConEmpresa, new Date()), 7);
   console.log(`  Reporte completo: +${(reporteCon - reporteSin).toFixed(1)}ms (${((reporteCon / reporteSin - 1) * 100).toFixed(1)}%)\n`);
 
   const LECTURAS = 200;

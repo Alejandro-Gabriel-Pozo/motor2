@@ -23,8 +23,6 @@ export const RELOJ_EN_CONSULTAS: Record<string, string> = Object.fromEntries(
   [
     "src/server/lecturas/carta/menu.ts",
     "src/server/lecturas/carta/publica.ts",
-    "src/server/consultas/reportes/periodo-margen.ts",
-    "src/server/consultas/reportes/periodo-precios.ts",
   ].map((ruta) => [ruta, MOTIVO_AHORA_OBLIGATORIO]),
 );
 

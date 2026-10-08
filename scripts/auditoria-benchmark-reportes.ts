@@ -200,12 +200,12 @@ async function main() {
   console.log("\n6) Reporte por período (obtenerReportePorPeriodo, rango amplio: 3 años completos):");
   const hace3Anios = new Date();
   hace3Anios.setFullYear(hace3Anios.getFullYear() - 3);
-  await medir("obtenerReportePorPeriodo (3 años, toda la sucursal)", () => obtenerReportePorPeriodo(sucursales[0]!.id, hace3Anios, new Date(), undefined, prisma));
+  await medir("obtenerReportePorPeriodo (3 años, toda la sucursal)", () => obtenerReportePorPeriodo(sucursales[0]!.id, hace3Anios, new Date(), undefined, prisma, new Date()));
 
   console.log("\n7) Reporte por período — rango angosto (últimos 7 días, para comparar):");
   const hace7Dias = new Date();
   hace7Dias.setDate(hace7Dias.getDate() - 7);
-  await medir("obtenerReportePorPeriodo (7 días)", () => obtenerReportePorPeriodo(sucursales[0]!.id, hace7Dias, new Date(), undefined, prisma));
+  await medir("obtenerReportePorPeriodo (7 días)", () => obtenerReportePorPeriodo(sucursales[0]!.id, hace7Dias, new Date(), undefined, prisma, new Date()));
 
   console.log("\n8) Query plan de la agregación base (SUM sobre el índice compuesto):");
   const plan = await prisma.$queryRawUnsafe<{ "QUERY PLAN": string }[]>(

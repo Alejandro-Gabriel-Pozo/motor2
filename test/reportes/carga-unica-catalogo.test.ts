@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * `obtenerReportePorPeriodo` y el catálogo de productos.
@@ -47,7 +48,7 @@ describe("obtenerReportePorPeriodo — catálogo", () => {
   });
 
   it("caracterización: los números del reporte (fijados ANTES de compartir la carga del catálogo, y no pueden cambiar con ella)", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-02"), d("2026-08-10"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-02"), d("2026-08-10"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.ventas.totalFacturado).toBe(200);
     expect(rep.compras.totalGastado).toBe(80);

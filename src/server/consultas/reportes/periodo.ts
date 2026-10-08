@@ -18,9 +18,11 @@ import { calcularMargenDelPeriodo } from "@/server/consultas/reportes/periodo-ma
  * Postgres; el resultado sigue siendo "1 fila = 1 línea de Kardex" porque
  * varios reportes (CSV, margen, compras) necesitan ese detalle línea por
  * línea, no un agregado.
+ *
+ * `ahora` (D.3b de docs/pureza-integracion.md) es obligatorio: lo usan el margen y la comparativa de precios (la antigüedad de la serie del IPC).
  */
-export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db) {
-  return (await obtenerReportePorPeriodoConCatalogo(sucursalId, desdeIn, hastaIn, filtros, db)).reporte;
+export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db, ahora: Date) {
+  return (await obtenerReportePorPeriodoConCatalogo(sucursalId, desdeIn, hastaIn, filtros, db, ahora)).reporte;
 }
 
 /**
@@ -116,9 +118,9 @@ export async function cargarLineasDelPeriodo(
  * Lo mismo que `obtenerReportePorPeriodo`, pero además devuelve el catálogo de productos que el reporte YA cargó, para que Promociones y
  * Categorías —que necesitan el mismo mapa— no lo vuelvan a leer (hacían 2 consultas `producto.findMany` por reporte en vez de 1). El mapa va
  * APARTE del reporte, no adentro: un `Map` dentro de un objeto de reporte se rompe (error de serialización) en cuanto alguien lo pasa
- * entero a un Client Component, y así la forma pública del reporte no cambia.
+ * entero a un Client Component, y así la forma pública del reporte no cambia. `ahora` obligatorio (D.3b): ver `obtenerReportePorPeriodo`.
  */
-export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db) {
+export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db, ahora: Date) {
   // Los Precios Locales vigentes de la sucursal, UNA vez: los usan el mapa de productos (el `precioVenta` resuelto) y la comparativa de precios
   // (qué cambio de precio cuenta), y antes cada uno los leía con su capacidad por su cuenta (O.39 de docs/pureza-integracion.md).
   const preciosLocales = await preciosLocalesVigentes(sucursalId, db);
@@ -146,8 +148,8 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
   const ratioGastoVentas = await calcularRatioGastoVentas(sucursalId, desde, hasta, compras.totalGastado, compras.totalNoComestibles, ventas.totalFacturado, productos, db, clasificacionNoComestibles);
   const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, productos, db);
   const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db, productos, indiceRecetas, clasificacionNoComestibles, costosActuales);
-  const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db, productos, indiceRecetas, { serieIPC, costosActuales });
-  const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(sucursalId, desde, hasta, tendenciaPrecios, ventas.porProducto, db, { preciosLocales, serieIPC });
+  const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db, productos, ahora, indiceRecetas, { serieIPC, costosActuales });
+  const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(sucursalId, desde, hasta, tendenciaPrecios, ventas.porProducto, db, ahora, { preciosLocales, serieIPC });
   // Alerta pasiva de margen objetivo: solo si la empresa cargó un objetivo (si no, no se calcula nada de más). Reusa el catálogo y el índice de recetas ya cargados.
   const objetivos = await cargarObjetivosDeMargen(db);
   const fueraDeObjetivo = hayObjetivosCargados(objetivos) ? resumirFueraDeObjetivo(await calcularCostosYMargenes(sucursalId, db, productos, indiceRecetas, objetivos, costosActuales)) : null;

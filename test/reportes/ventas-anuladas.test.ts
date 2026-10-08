@@ -35,7 +35,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
   let panId: string;
 
   const d = (iso: string) => new Date(`${iso}T12:00:00Z`);
-  const agosto = () => obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma);
+  const agosto = () => obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
   async function comprarHarina(fecha: string) {
     const r = await registrarMovimiento({ proceso: "COMPRA", fecha: d(fecha), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }] });

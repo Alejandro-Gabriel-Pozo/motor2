@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * «Margen real» = el costo que quedó CONGELADO en cada venta al registrarla (MovimientoStock.costoUnitarioVenta). Una venta
@@ -51,7 +52,7 @@ describe("Margen real: el costo congelado al vender", () => {
     await prisma.movimientoStock.update({ where: { id: sinDato[0].id }, data: { costoUnitarioVenta: null } });
 
     const hoy = new Date();
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(hoy.getTime() - 86_400_000), new Date(hoy.getTime() + 86_400_000), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date(hoy.getTime() - 86_400_000), new Date(hoy.getTime() + 86_400_000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     // 3 panes con costo guardado ($10) + 1 pan reconstruido con la compra de hoy ($5/kg x 2 kg = $10).
     expect(rep.margen.margenRealTotal).toBe(400 - 40);

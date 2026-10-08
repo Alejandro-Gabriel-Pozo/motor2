@@ -21,11 +21,13 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const rango = resolverRangoDeReporte(sp, new Date());
+  // La hora se fija acá, en el borde (D.3b): el rango por defecto y la antigüedad del IPC del reporte se miden contra la misma.
+  const ahora = new Date();
+  const rango = resolverRangoDeReporte(sp, ahora);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
   const [rep, cotizacion, gateCostos] = await Promise.all([
-    obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), undefined, ctx.db),
+    obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), undefined, ctx.db, ahora),
     obtenerUltimaCotizacionSinRomper(ctx.db),
     requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_costos", ctx.db),
   ]);

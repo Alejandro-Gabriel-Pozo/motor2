@@ -14,6 +14,9 @@ import type { FilaMargenProducto, MargenDelPeriodo } from "@/core/reportes/publi
  * de insumos de HOY, no los que regían cuando se vendió cada unidad. Ver
  * `margenRealTotal` para la alternativa que no tiene este descalce
  * temporal (a costo de solo cubrir ventas recientes).
+ *
+ * `ahora` (D.3b de docs/pureza-integracion.md) es obligatorio: la antigüedad de la serie del IPC (si está vencida) se mide contra la hora que fija el
+ * borde, no contra un reloj leído acá.
  */
 export async function calcularMargenDelPeriodo(
   sucursalId: string,
@@ -21,6 +24,7 @@ export async function calcularMargenDelPeriodo(
   ventasDelPeriodo: VentasDelPeriodo,
   db: Db,
   productos: Map<string, InfoProductoReporte>,
+  ahora: Date,
   /** El índice de recetas ya cargado, para no volver a leerlo — lo necesitan tanto el margen nominal como el Real reconstruido (ver `obtenerReportePorPeriodoConCatalogo`). */
   indiceRecetasCargado?: IndiceRecetas,
   /**
@@ -86,7 +90,7 @@ export async function calcularMargenDelPeriodo(
   const serieIPC = cargado.serieIPC ?? (await cargarSerieIPC(db));
   // 5c: con la serie VENCIDA (parada hace más del máximo previsto) el ajuste sigue calculándose igual —ningún número cambia—, pero deja
   // de decir que es «de hoy»: está en plata del último mes cargado y subestima el margen ajustado. Mismo cálculo, otro aviso.
-  const antiguedadIPC = antiguedadSerieIPC(serieIPC, new Date());
+  const antiguedadIPC = antiguedadSerieIPC(serieIPC, ahora);
   const serieVencida = antiguedadIPC.estado === "vencida";
   const textoBaseAvisoIPC = serieVencida
     ? `Ventas llevadas a poder adquisitivo de ${serieIPC.ultimoMes} (el último mes con IPC cargado), NO de hoy, antes de restar el costo de reposición de HOY. ${textoSerieIPCVencida(antiguedadIPC)} El margen ajustado queda subestimado.`

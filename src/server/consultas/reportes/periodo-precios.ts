@@ -135,6 +135,8 @@ export async function calcularTendenciaPreciosDelPeriodo(
  * Mide el precio que ESTA sucursal realmente cobra: un producto con Precio Local vigente (capacidad `precio_local` + fila
  * habilitada) se mide por los cambios de su precio local; los demás, por los del precio global. Una suba del global no cuenta
  * para un producto que la sucursal cobra a su precio local.
+ *
+ * `ahora` (D.3b de docs/pureza-integracion.md) es obligatorio: la antigüedad de la serie del IPC se mide contra la hora que fija el borde.
  */
 export async function calcularComparativaPreciosDelPeriodo(
   sucursalId: string,
@@ -143,6 +145,7 @@ export async function calcularComparativaPreciosDelPeriodo(
   tendenciaPrecios: FilaPrecioInsumo[],
   ventasPorProducto: FilaVentaProducto[],
   db: Db,
+  ahora: Date,
   /**
    * Lo que quien llama ya leyó (O.39 de docs/pureza-integracion.md), para no volver a leerlo: los Precios Locales vigentes de ESTA sucursal
    * (`preciosLocalesVigentes(sucursalId, db)`, sin filtro de productos) y la serie del IPC (`cargarSerieIPC`). Lo que falte se lee acá.
@@ -216,7 +219,7 @@ export async function calcularComparativaPreciosDelPeriodo(
 
   const serieIPC = cargado.serieIPC ?? (await cargarSerieIPC(db));
   const variacionIPCPct = resolverVariacionPeriodoIPC(desde, hasta, serieIPC);
-  const antiguedadIPC = antiguedadSerieIPC(serieIPC, new Date());
+  const antiguedadIPC = antiguedadSerieIPC(serieIPC, ahora);
 
   return {
     variacionInsumosPct,
