@@ -8,7 +8,7 @@ import { tieneStockReal } from "@/core/movimientos/public";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
 import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
-import { componentesDeEleccion, prorratearPrecioPromo, validarEleccionPromo, type ComponentePromoElegido, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
+import { prorratearPrecioPromo, validarYAplanarEleccionPromo, type ComponentePromoElegido, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
@@ -84,9 +84,10 @@ export async function agregarItemsCasoDeUso(
       const def = typeof p?.promoCartaId === "string" ? await cargarPromoCartaParaAgregar(actor.sucursalId, p.promoCartaId, tx, actor.ahora) : null;
       if (!def) return fracaso("PROMO_INVALIDA", "No se encontró esa promo, o ya no está disponible.");
       const elecciones = Array.isArray(p.elecciones) ? p.elecciones : [];
-      const validacion = validarEleccionPromo(def.cupos, elecciones);
+      // S-01 (O.50): los componentes salen de la elección YA VALIDADA (cupos, elegibles, sin repetidos), nunca de aplanar lo que mandó el cliente.
+      const validacion = validarYAplanarEleccionPromo(def.cupos, elecciones);
       if (!validacion.ok) return fracaso("PROMO_INVALIDA", `«${def.titulo}»: ${validacion.mensaje}`);
-      const componentes = componentesDeEleccion(elecciones).map((c) => ({ ...c, precioCarta: def.precioCartaPorProducto.get(c.productoId) ?? 0 }));
+      const componentes = validacion.componentes.map((c) => ({ ...c, precioCarta: def.precioCartaPorProducto.get(c.productoId) ?? 0 }));
       const prorrateo = prorratearPrecioPromo(def.precio, componentes);
       if (!prorrateo.ok) return fracaso("PROMO_INVALIDA", `«${def.titulo}»: ${prorrateo.mensaje}`);
       promosValidadas.push({ titulo: def.titulo, promoCartaId: def.id, precio: def.precio, componentes, filas: prorrateo.filas });
