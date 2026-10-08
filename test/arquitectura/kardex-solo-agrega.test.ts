@@ -51,16 +51,11 @@ const USOS_PERMITIDOS_DE_OPERACION: UsoSobreOperacion[] = [
     motivo: "I3: guarda el mensaje de resultado ya formateado en la operación que lleva la clave, para que un reenvío exacto lo devuelva tal cual.",
   },
   {
-    archivo: "src/server/persistencia/compras/escribir-anulacion-de-compra.ts",
+    archivo: "src/server/persistencia/movimientos/escribir-contra-asiento.ts",
     operaciones: ["update"],
     columnas: ["anuladaEn", "anuladaPorId"],
-    motivo: "Anular una compra: marca la cabecera como anulada (`anuladaEn` = «no existió y se revirtió»); las líneas del Kardex se REVIERTEN con filas nuevas.",
-  },
-  {
-    archivo: "src/server/persistencia/movimientos/escribir-anulacion-de-venta.ts",
-    operaciones: ["update"],
-    columnas: ["anuladaEn", "anuladaPorId"],
-    motivo: "Anular una venta: marca la cabecera como anulada; las líneas del Kardex se REVIERTEN con filas nuevas.",
+    motivo:
+      "Anular una compra o una venta (Hito 5, 5.4-A5: un solo escritor para las dos): marca la cabecera como anulada (`anuladaEn` = «no existió y se revirtió»); las líneas del Kardex se REVIERTEN con filas nuevas.",
   },
   {
     archivo: "src/server/persistencia/compras/escribir-correccion-de-compra.ts",
