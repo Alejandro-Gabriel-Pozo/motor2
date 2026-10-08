@@ -13,6 +13,11 @@ export async function fijarActivoDeItemAgrupadoCarta(db: Prisma.TransactionClien
   await db.itemAgrupadoCarta.update({ where: { id: args.id }, data: { activo: args.activo } });
 }
 
+/** Agrega un producto como opción de un ítem agrupado (`productoId` es único por sucursal: un producto va en a lo sumo un ítem, D2). Si hay un choque, el error de unicidad sube tal cual. */
+export async function crearOpcionDeItemAgrupado(db: Prisma.TransactionClient, args: { sucursalId: string; itemAgrupadoCartaId: string; productoId: string; orden: number }): Promise<void> {
+  await db.opcionItemAgrupadoCarta.create({ data: { sucursalId: args.sucursalId, itemAgrupadoCartaId: args.itemAgrupadoCartaId, productoId: args.productoId, orden: args.orden } });
+}
+
 /** Cambia el orden de una opción de un ítem agrupado. */
 export async function cambiarOrdenDeOpcionDeItemAgrupado(db: Prisma.TransactionClient, args: { id: string; orden: number }): Promise<void> {
   await db.opcionItemAgrupadoCarta.update({ where: { id: args.id }, data: { orden: args.orden } });

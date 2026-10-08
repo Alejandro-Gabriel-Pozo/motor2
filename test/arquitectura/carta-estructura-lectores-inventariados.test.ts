@@ -36,6 +36,8 @@ const ARCHIVOS_PERMITIDOS = [
   // Hito 5, bloque D: apagar o prender un ítem agrupado, cambiar el orden de una opción y quitarla las leen sus casos de uso (antes, server/actions/carta/items-agrupados.ts).
   "server/actions/carta/casos-de-uso/actualizar-activo-item-agrupado-carta.ts",
   "server/actions/carta/casos-de-uso/actualizar-orden-opcion-item-agrupado-carta.ts",
+  // Hito 5, bloque D: agregar un producto como opción de un ítem agrupado lo lee su caso de uso (antes, la función privada `agregarOpcion` de server/actions/carta/items-agrupados.ts).
+  "server/actions/carta/casos-de-uso/agregar-opcion-item-agrupado-carta.ts",
   "server/actions/carta/casos-de-uso/quitar-opcion-item-agrupado-carta.ts",
   // Hito 4, H4C-2 y H4C-3: las secciones de las promos (la de la promo y las de sus cupos) las leen sus casos de uso (antes, server/actions/carta/promos.ts).
   "server/actions/carta/casos-de-uso/guardar-promo-carta.ts",

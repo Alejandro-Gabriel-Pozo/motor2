@@ -7,6 +7,32 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
  * sucursal ACTIVA, con `whereCartaDeSucursal`.
  */
 
+/**
+ * Comando «agregar un producto como opción de un ítem agrupado»: lo que recibe `agregarOpcionItemAgrupadoCartaCasoDeUso`, CRUDO. No hay guard (`SIN_GUARD` en
+ * `acciones-migradas-con-guard.test.ts`): el ítem se lee ANTES de mirar el producto y el orden se valida después de varias lecturas (un ítem inexistente gana sobre
+ * «elegí el producto»; un producto ya agrupado, sobre un orden roto), así que la validación vive en el caso de uso, en el mismo orden que antes.
+ */
+export interface ComandoAgregarOpcionItemAgrupadoCarta {
+  itemAgrupadoCartaId: string;
+  productoId: string;
+  /** `null` = al final (la cantidad de opciones que ya tiene el ítem); vacío vale 0. */
+  orden: number | string | null;
+}
+
+/**
+ *  - `ITEM_NO_ENCONTRADO`: el ítem no existe en esta sucursal (gana sobre todo lo del producto);
+ *  - `FALTA_PRODUCTO`: no se eligió producto;
+ *  - `PRODUCTO_NO_ENCONTRADO` / `NO_ES_PV`: el producto no existe, o no es un producto de venta (solo un PV puede ir en la carta);
+ *  - `CON_DESCUENTO`: el producto tiene descuento en ALGUNA sucursal (el renglón agrupado muestra un solo precio);
+ *  - `YA_AGRUPADO`: el producto ya está en un ítem agrupado de esta sucursal, el mismo u otro (D2), también si lo ganó otro pedido a la vez (la carrera del índice único);
+ *  - `ORDEN_INVALIDO`: el orden no es un entero;
+ *  - `PRECIO_DISTINTO`: el precio del producto en la sucursal activa (`precioDeCarta`) no coincide con el de todas las opciones del ítem (D5).
+ */
+export type ResultadoAgregarOpcionItemAgrupadoCarta = ResultadoCaso<
+  null,
+  "ITEM_NO_ENCONTRADO" | "FALTA_PRODUCTO" | "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "CON_DESCUENTO" | "YA_AGRUPADO" | "ORDEN_INVALIDO" | "PRECIO_DISTINTO"
+>;
+
 /** Comando «apagar o prender un ítem agrupado»: solo un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso). */
 export interface ComandoActualizarActivoItemAgrupadoCarta {
   itemAgrupadoCartaId: string;

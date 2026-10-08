@@ -91,7 +91,7 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
   },
   "src/server/actions/carta/items-agrupados.ts": {
-    escrituras: ["itemAgrupadoCarta.create", "itemAgrupadoCarta.update", "opcionItemAgrupadoCarta.create"],
+    escrituras: ["itemAgrupadoCarta.create", "itemAgrupadoCarta.update"],
     fase: "Fase 4",
     motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
   },

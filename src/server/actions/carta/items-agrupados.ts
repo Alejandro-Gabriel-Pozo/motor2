@@ -1,10 +1,6 @@
 "use server";
 
-import type { Db } from "@/lib/db-tipos";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
-import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
-import { precioDeCarta } from "@/core/carta/armar-menu";
-import { productoTieneDescuentoEnAlgunaSucursal } from "@/server/lecturas/carta/descuentos";
 import {
   normalizarTagsCarta,
   validarNombreItemAgrupadoCarta,
@@ -18,11 +14,13 @@ import { guardComandoActualizarOrdenOpcionItemAgrupadoCarta } from "@/core/featu
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { validarGeneroCartaOpcional } from "./generos-compartido";
 import { conPermisoDeEmpresa } from "../con-permiso";
-import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { actualizarActivoItemAgrupadoCartaCasoDeUso } from "./casos-de-uso/actualizar-activo-item-agrupado-carta";
+import { agregarOpcionItemAgrupadoCartaCasoDeUso } from "./casos-de-uso/agregar-opcion-item-agrupado-carta";
 import { actualizarOrdenOpcionItemAgrupadoCartaCasoDeUso } from "./casos-de-uso/actualizar-orden-opcion-item-agrupado-carta";
 import { quitarOpcionItemAgrupadoCartaCasoDeUso } from "./casos-de-uso/quitar-opcion-item-agrupado-carta";
 import { revalidarCartasPublicas } from "./revalidar";
+
 /**
  * Ítems AGRUPADOS de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M5): un renglón visible ("Gaseosa 500 CC") que
  * agrupa varios PV reales (Coca-Cola, Sprite, Fanta 500cc). PROPIOS de cada sucursal (ADR-009, C3): se crean y se editan siempre en la
@@ -63,8 +61,6 @@ export interface DatosItemAgrupadoCarta {
    */
   productoIds?: readonly string[] | null;
 }
-
-const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
 export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): Promise<ResultadoConId> {
   return conPermisoDeEmpresa<ResultadoConId>("carta_items_agrupados", async (ctx) => {
@@ -122,8 +118,9 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
     // entraron). Un rechazo no frena a los demás ni deshace el alta: se junta todo en un solo mensaje.
     const rechazos: string[] = [];
     for (const productoId of productoIds) {
-      const r = await agregarOpcion(ctx.db, ctx.sucursalId, it.id, productoId, null);
-      if (!r.ok) rechazos.push(r.mensaje);
+      const r = aResultadoAccion(await agregarOpcionItemAgrupadoCartaCasoDeUso(ctx, { itemAgrupadoCartaId: it.id, productoId, orden: null }));
+      if (r.ok) revalidarCartasPublicas();
+      else rechazos.push(r.mensaje);
     }
     const entraron = productoIds.length - rechazos.length;
     const resumen = `Ítem agrupado "${it.nombre}" creado con ${entraron} de ${productoIds.length} producto${productoIds.length === 1 ? "" : "s"}.`;
@@ -141,77 +138,18 @@ export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: str
   });
 }
 
-/** El mensaje cuando el producto ya está en un ítem agrupado (el mismo u otro): un producto va en a lo sumo uno (D2). */
-async function mensajeYaAgrupado(db: Db, sucursalId: string, productoId: string, productoNombre: string, itemAgrupadoCartaId: string): Promise<string | null> {
-  const ya = await db.opcionItemAgrupadoCarta.findFirst({ where: { productoId, ...whereCartaDeSucursal(sucursalId) }, select: { itemAgrupadoCartaId: true, itemAgrupadoCarta: { select: { nombre: true } } } });
-  if (!ya) return null;
-  if (ya.itemAgrupadoCartaId === itemAgrupadoCartaId) return `«${productoNombre}» ya está en «${ya.itemAgrupadoCarta.nombre}».`;
-  return `«${productoNombre}» ya está en «${ya.itemAgrupadoCarta.nombre}»: quitalo de ahí primero.`;
-}
-
 /**
  * Agrega un PV como opción de un ítem agrupado. BLOQUEA (D5) si su precio en la sucursal activa no coincide con el de TODAS las
  * opciones ya cargadas (calculado igual que la carta, `precioDeCarta`). El primer producto de un ítem sin opciones entra siempre.
- * La categoría del producto no importa: la opción sale (y sus ventas se cuentan) en la sección del ítem agrupado.
+ * La categoría del producto no importa: la opción sale (y sus ventas se cuentan) en la sección del ítem agrupado. Permiso → caso de uso
+ * (`casos-de-uso/agregar-opcion-item-agrupado-carta.ts`) → revalidar si salió bien → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
  */
 export async function agregarOpcionItemAgrupadoCarta(itemAgrupadoCartaId: string, productoId: string, orden: number | string | null = null): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("carta_items_agrupados", (ctx) => agregarOpcion(ctx.db, ctx.sucursalId, itemAgrupadoCartaId, productoId, orden));
-}
-
-/**
- * El cuerpo de `agregarOpcionItemAgrupadoCarta`, SIN el gate (lo pone quien llama: esa acción, o `guardarItemAgrupadoCarta` en el
- * alta con productos, DA7). No se exporta: en un archivo "use server" todo lo exportado es un endpoint.
- */
-async function agregarOpcion(db: Db, sucursalId: string, itemAgrupadoCartaId: string, productoId: string, orden: number | string | null): Promise<ResultadoAccion> {
-  const item = await db.itemAgrupadoCarta.findUnique({
-    where: { id: itemAgrupadoCartaId, ...whereCartaDeSucursal(sucursalId) },
-    select: {
-      id: true,
-      nombre: true,
-      opciones: { select: { orden: true, producto: { select: { id: true, nombre: true, precioVenta: true } } } },
-    },
+  return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
+    const resultado = await agregarOpcionItemAgrupadoCartaCasoDeUso(ctx, { itemAgrupadoCartaId, productoId, orden });
+    if (resultado.ok) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
-  if (!item) return error("No se encontró el ítem agrupado.");
-  if (!productoId) return error("Elegí el producto a agregar.");
-  const producto = await db.producto.findUnique({
-    where: { id: productoId },
-    select: { id: true, nombre: true, tipo: true, precioVenta: true },
-  });
-  if (!producto) return error("No se encontró el producto.");
-  if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
-  if (await productoTieneDescuentoEnAlgunaSucursal(producto.id, db)) return error(`«${producto.nombre}» tiene descuento en alguna sucursal: sacale el descuento para agruparlo (el renglón agrupado muestra un solo precio).`);
-
-  const yaAgrupado = await mensajeYaAgrupado(db, sucursalId, producto.id, producto.nombre, item.id);
-  if (yaAgrupado) return error(yaAgrupado);
-
-  const o = validarOrdenCarta(orden ?? item.opciones.length);
-  if (!o.ok) return error(o.mensaje);
-
-  // D5: mismo precio que las opciones ya cargadas, en la sucursal activa de quien administra (con su precio local, si lo hay).
-  if (item.opciones.length > 0) {
-    const idsAComparar = [producto.id, ...item.opciones.map((op) => op.producto.id)];
-    const localPorProducto = await preciosLocalesVigentes(sucursalId, db, idsAComparar);
-    const precioCandidato = precioDeCarta(Number(producto.precioVenta), localPorProducto.get(producto.id));
-    const preciosGrupo = item.opciones.map((op) => precioDeCarta(Number(op.producto.precioVenta), localPorProducto.get(op.producto.id)));
-    if (preciosGrupo.some((p) => p !== precioCandidato)) {
-      const minimo = Math.min(...preciosGrupo);
-      const maximo = Math.max(...preciosGrupo);
-      const delGrupo = minimo === maximo ? pesos(minimo) : `${pesos(minimo)} a ${pesos(maximo)}`;
-      return error(
-        `«${producto.nombre}» cuesta ${pesos(precioCandidato)} acá y «${item.nombre}» ya tiene opciones a ${delGrupo}: agrupá solo productos del mismo precio, o dejala aparte.`
-      );
-    }
-  }
-
-  try {
-    await db.opcionItemAgrupadoCarta.create({ data: { sucursalId, itemAgrupadoCartaId: item.id, productoId: producto.id, orden: o.valor } });
-  } catch (e) {
-    // Carrera: otro admin lo agregó a un grupo entre la verificación y el alta (`productoId` es único).
-    if (esErrorDeUnicidad(e)) return error((await mensajeYaAgrupado(db, sucursalId, producto.id, producto.nombre, item.id)) ?? `«${producto.nombre}» ya está en un ítem agrupado.`);
-    throw e;
-  }
-  revalidarCartasPublicas();
-  return ok(`«${producto.nombre}» agregado a «${item.nombre}».`);
 }
 
 export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, orden: number | string | null): Promise<ResultadoAccion> {
