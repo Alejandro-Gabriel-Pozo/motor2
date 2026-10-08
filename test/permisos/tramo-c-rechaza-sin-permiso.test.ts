@@ -49,6 +49,20 @@ import { eliminarFrecuenciaConteo, setFrecuenciaConteo } from "../../src/server/
 import { eliminarSeccionHabitual, setSeccionHabitual } from "../../src/server/actions/stock/seccion-habitual";
 import { eliminarStockMinimo, setStockMinimoProducto } from "../../src/server/actions/stock/stock-minimo";
 import { guardarReceta } from "../../src/server/actions/catalogo/recetas";
+import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "../../src/server/actions/carta/secciones";
+import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "../../src/server/actions/carta/generos";
+import { actualizarVisibleEnCarta, guardarContenidoCartaProducto } from "../../src/server/actions/carta/contenido-producto";
+import {
+  actualizarActivoItemAgrupadoCarta,
+  actualizarOrdenOpcionItemAgrupadoCarta,
+  agregarOpcionItemAgrupadoCarta,
+  guardarItemAgrupadoCarta,
+  quitarOpcionItemAgrupadoCarta,
+} from "../../src/server/actions/carta/items-agrupados";
+import { guardarPortalEmpresa } from "../../src/server/actions/carta/portal-empresa";
+import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal } from "../../src/server/actions/carta/registro-publico";
+import { cambiarAplicacionTema, guardarTemaCarta } from "../../src/server/actions/carta/tema";
+import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-carta";
 
 /**
  * Red del Hito 4, pieza «carta, catálogo y stock» (paso H4C-0.1 de `docs/plan-hito-4-pureza.md` §3), ANTES de mover ninguna de sus acciones a un caso de uso:
@@ -63,6 +77,13 @@ import { guardarReceta } from "../../src/server/actions/catalogo/recetas";
  *     una sucursal no se presta a otra. Un `conPermiso` cambiado por `conPermisoDeEmpresa` lo dejaría pasar (la empresa mira todas sus membresías).
  *
  * Antes de este test, ~38 de las 52 no tenían ningún test de rechazo (entre ellas las 5 de promos y `setPrecioLocalProducto`, que son dinero).
+ *
+ * Hito 5, bloque D (`docs/plan-hito-5-pureza.md` §6.1): se suman las 19 funciones de las 8 acciones de configuración de la carta (`secciones`, `generos`,
+ * `contenido-producto`, `items-agrupados`, `portal-empresa`, `registro-publico`, `tema`, `copiar-carta`), con su red ANTES de mudarlas: 71 en total. 16 son de
+ * contexto empresa y 3 de sucursal (`copiarCartaDeSucursal`, `guardarTemaCarta`, `cambiarAplicacionTema`). La foto suma las 8 tablas de la carta que escriben
+ * (`seccionCarta`, `generoCarta`, `contenidoCartaProducto`, `itemAgrupadoCarta`, `opcionItemAgrupadoCarta`, `portalCartaEmpresa`, `sucursalPublica`,
+ * `temaCartaSucursal`). `copiarCartaDeSucursal` tiene un `preparar`: solo escribe sobre una carta VACÍA, así que antes de la foto se vacía la carta de Central y se
+ * le da una carta propia a Norte (si no, sin el guard igual terminaría en «ya tiene carta propia» sin escribir y la foto no distinguiría nada).
  *
  * Los argumentos apuntan a filas REALES en el estado en que cada acción escribe (un producto en un ítem agrupado de la carta para las sincronizaciones, una
  * línea de la receta vigente con su calibración, una receta propia habilitada, filas de frecuencia, sección habitual y stock mínimo para borrar…): sin el
@@ -97,6 +118,12 @@ interface Escenario {
   seccionCartaId: string;
   promoId: string;
   lineaDeRecetaId: string;
+  // Bloque D (configuración de la carta).
+  norteId: string;
+  generoId: string;
+  itemVacioId: string;
+  opcionPizzaId: string;
+  opcionFainaId: string;
 }
 
 type Contexto = "sucursal" | "empresa";
@@ -107,6 +134,8 @@ interface Mutacion {
   /** Con qué envoltorio entra: `sucursal` = `conPermiso` (mira la sucursal activa), `empresa` = `conPermisoDeEmpresa` (alguna membresía de la empresa). */
   contexto: Contexto;
   llamar: (e: Escenario) => Promise<ResultadoAccion>;
+  /** Deja la base en el estado en que la mutación ESCRIBIRÍA sin el guard; corre antes de la foto. */
+  preparar?: (e: Escenario) => Promise<void>;
 }
 
 const linea = (e: Escenario, cantidad: number) => ({ insumoProductoId: e.harina000Id, cantidad, unidadId: e.kgId, mermaPorcentaje: 0 });
@@ -194,6 +223,53 @@ const MUTACIONES: Mutacion[] = [
   { nombre: "eliminarStockMinimo", clave: "stock_minimo", contexto: "sucursal", llamar: (e) => eliminarStockMinimo(e.stockMinimoId) },
   // O.1: la receta central.
   { nombre: "guardarReceta", clave: "guardar_receta", contexto: "empresa", llamar: (e) => guardarReceta(e.fainaId, [linea(e, 0.1)], [], {}, 0) },
+  // Hito 5, bloque D: la configuración de la carta (las 8 acciones que siguen sin caso de uso al arrancar el bloque).
+  { nombre: "guardarSeccionCarta", clave: "carta_secciones", contexto: "empresa", llamar: () => guardarSeccionCarta({ nombre: "Postres" }) },
+  { nombre: "actualizarActivaSeccionCarta", clave: "carta_secciones", contexto: "empresa", llamar: (e) => actualizarActivaSeccionCarta(e.seccionCartaId, false) },
+  { nombre: "guardarGeneroCarta", clave: "carta_generos", contexto: "empresa", llamar: () => guardarGeneroCarta({ nombre: "Cervezas" }) },
+  { nombre: "actualizarActivoGeneroCarta", clave: "carta_generos", contexto: "empresa", llamar: (e) => actualizarActivoGeneroCarta(e.generoId, false) },
+  {
+    nombre: "guardarContenidoCartaProducto",
+    clave: "carta_contenido_producto",
+    contexto: "empresa",
+    llamar: (e) => guardarContenidoCartaProducto(e.flanId, { visibleEnCarta: true, seccionCartaId: e.seccionCartaId, descripcion: "Con dulce de leche" }),
+  },
+  { nombre: "actualizarVisibleEnCarta", clave: "carta_contenido_producto", contexto: "empresa", llamar: (e) => actualizarVisibleEnCarta(e.flanId, false) },
+  {
+    nombre: "guardarItemAgrupadoCarta",
+    clave: "carta_items_agrupados",
+    contexto: "empresa",
+    llamar: (e) => guardarItemAgrupadoCarta({ nombre: "Gaseosas", seccionCartaId: e.seccionCartaId }),
+  },
+  { nombre: "actualizarActivoItemAgrupadoCarta", clave: "carta_items_agrupados", contexto: "empresa", llamar: (e) => actualizarActivoItemAgrupadoCarta(e.itemVacioId, false) },
+  { nombre: "agregarOpcionItemAgrupadoCarta", clave: "carta_items_agrupados", contexto: "empresa", llamar: (e) => agregarOpcionItemAgrupadoCarta(e.itemVacioId, e.flanId) },
+  { nombre: "actualizarOrdenOpcionItemAgrupadoCarta", clave: "carta_items_agrupados", contexto: "empresa", llamar: (e) => actualizarOrdenOpcionItemAgrupadoCarta(e.opcionPizzaId, 7) },
+  { nombre: "quitarOpcionItemAgrupadoCarta", clave: "carta_items_agrupados", contexto: "empresa", llamar: (e) => quitarOpcionItemAgrupadoCarta(e.opcionFainaId) },
+  { nombre: "guardarPortalEmpresa", clave: "carta_portal", contexto: "empresa", llamar: () => guardarPortalEmpresa({ portal_titulo: "Nuestras sucursales" }) },
+  { nombre: "agregarSucursalAlPortal", clave: "carta_portal", contexto: "empresa", llamar: (e) => agregarSucursalAlPortal(e.norteId) },
+  {
+    nombre: "guardarSucursalPublica",
+    clave: "carta_portal",
+    contexto: "empresa",
+    llamar: (e) => guardarSucursalPublica(e.centralId, { slug: "central-nueva", etiqueta: "Casa central", publicada: true }),
+  },
+  { nombre: "quitarSucursalDelPortal", clave: "carta_portal", contexto: "empresa", llamar: (e) => quitarSucursalDelPortal(e.centralId) },
+  { nombre: "moverSucursalEnMapa", clave: "carta_portal", contexto: "empresa", llamar: (e) => moverSucursalEnMapa(e.centralId, 30, 40) },
+  { nombre: "guardarTemaCarta", clave: "carta_tema", contexto: "sucursal", llamar: (e) => guardarTemaCarta(e.centralId, { restaurante_nombre: "La Esquina" }) },
+  { nombre: "cambiarAplicacionTema", clave: "carta_tema", contexto: "sucursal", llamar: (e) => cambiarAplicacionTema(e.centralId, false) },
+  {
+    nombre: "copiarCartaDeSucursal",
+    clave: "carta_copiar_de_sucursal",
+    contexto: "sucursal",
+    llamar: (e) => copiarCartaDeSucursal(e.norteId, true),
+    // Solo copia sobre una carta vacía: se vacía la de Central (sus ítems agrupados, sus opciones y sus géneros) y Norte tiene una propia.
+    preparar: async (e) => {
+      await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { sucursalId: e.centralId } });
+      await prisma.itemAgrupadoCarta.deleteMany({ where: { sucursalId: e.centralId } });
+      await prisma.generoCarta.deleteMany({ where: { sucursalId: e.centralId } });
+      await prisma.generoCarta.create({ data: { sucursalId: e.norteId, nombre: "Carta de Norte" } });
+    },
+  },
 ];
 
 /** El piso de cada clave, del catálogo (`core/permisos/acciones.ts`). */
@@ -241,6 +317,15 @@ async function fotoDeLaPieza() {
     recetaSucursal: await prismaAdmin.recetaSucursal.findMany(porId),
     recetaVersion: await prismaAdmin.recetaVersion.findMany(porId),
     recetaIngrediente: await prismaAdmin.recetaIngrediente.findMany(porId),
+    // Bloque D: las tablas de la configuración de la carta.
+    seccionCarta: await prismaAdmin.seccionCarta.findMany(porId),
+    generoCarta: await prismaAdmin.generoCarta.findMany(porId),
+    contenidoCartaProducto: await prismaAdmin.contenidoCartaProducto.findMany(porId),
+    itemAgrupadoCarta: await prismaAdmin.itemAgrupadoCarta.findMany(porId),
+    opcionItemAgrupadoCarta: await prismaAdmin.opcionItemAgrupadoCarta.findMany(porId),
+    portalCartaEmpresa: await prismaAdmin.portalCartaEmpresa.findMany(porId),
+    sucursalPublica: await prismaAdmin.sucursalPublica.findMany(porId),
+    temaCartaSucursal: await prismaAdmin.temaCartaSucursal.findMany(porId),
     registroAuditoria: await prismaAdmin.registroAuditoria.findMany(porId),
   };
 }
@@ -301,6 +386,14 @@ beforeEach(async () => {
   await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId: centralId, itemAgrupadoCartaId: item.id, productoId: pizza.id, orden: 1 } });
   await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId: centralId, itemAgrupadoCartaId: item.id, productoId: faina.id, orden: 2 } });
   const promo = await prisma.promoCarta.create({ data: { seccionCartaId: seccionCarta.id, titulo: "Menú del día", precio: 10000, sucursales: { create: { sucursalId: centralId } } } });
+  // Bloque D: un género, un ítem agrupado vacío (para agregarle una opción), las opciones que se reordenan y se quitan, la sucursal en el portal (con su posición en
+  // el mapa) y un tema aplicado en Central. Norte no tiene nada: el alta en el portal y la copia de carta parten de ahí.
+  const genero = await prisma.generoCarta.create({ data: { sucursalId: centralId, nombre: "Gaseosas" } });
+  const itemVacio = await prisma.itemAgrupadoCarta.create({ data: { sucursalId: centralId, nombre: "Vacío", seccionCartaId: seccionCarta.id } });
+  const opcionPizza = await prisma.opcionItemAgrupadoCarta.findFirstOrThrow({ where: { sucursalId: centralId, productoId: pizza.id } });
+  const opcionFaina = await prisma.opcionItemAgrupadoCarta.findFirstOrThrow({ where: { sucursalId: centralId, productoId: faina.id } });
+  await prisma.sucursalPublica.create({ data: { sucursalId: centralId, slug: "central", posX: 10, posY: 10, posW: 20, posH: 20 } });
+  await prisma.temaCartaSucursal.create({ data: { sucursalId: centralId, valores: { restaurante_nombre: "Central" }, aplicarEnCarta: true } });
 
   // Restos y stock.
   const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV-0001", nombre: "Distribuidora" } });
@@ -339,6 +432,11 @@ beforeEach(async () => {
     seccionCartaId: seccionCarta.id,
     promoId: promo.id,
     lineaDeRecetaId,
+    norteId,
+    generoId: genero.id,
+    itemVacioId: itemVacio.id,
+    opcionPizzaId: opcionPizza.id,
+    opcionFainaId: opcionFaina.id,
   };
 });
 
@@ -349,6 +447,7 @@ afterAll(() => {
 /** Llama a la mutación como `actor` y comprueba el texto del guard y que la foto de la pieza (y el conteo de la auditoría) no cambie. */
 async function rechazaSinTocarNada(actor: { id: string; email: string }, m: Mutacion, rol: string) {
   await mockearUsuarioActual({ id: actor.id, email: actor.email, nombre: null });
+  await m.preparar?.(e);
   const antes = await fotoDeLaPieza();
   const auditoriaAntes = await prismaAdmin.registroAuditoria.count();
   const resultado = await m.llamar(e);
@@ -360,13 +459,13 @@ async function rechazaSinTocarNada(actor: { id: string; email: string }, m: Muta
 const BAJO_EL_PISO = MUTACIONES.filter((m) => PISO.get(m.clave) === "administrador");
 const DE_SUCURSAL = MUTACIONES.filter((m) => m.contexto === "sucursal");
 
-describe("tramo C (carta, catálogo y stock): las 52 mutaciones rechazan sin el permiso y no cambian ninguna tabla", () => {
-  it("la lista son las 52 (las 51 de la pieza más guardarReceta), con el contexto del catálogo y los pisos esperados", () => {
-    expect(MUTACIONES).toHaveLength(52);
-    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(52);
+describe("tramo C (carta, catálogo y stock): las 71 mutaciones rechazan sin el permiso y no cambian ninguna tabla", () => {
+  it("la lista son las 71 (las 51 de la pieza, guardarReceta y las 19 de configuración de la carta), con el contexto del catálogo y los pisos esperados", () => {
+    expect(MUTACIONES).toHaveLength(71);
+    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(71);
     for (const m of MUTACIONES) expect(m.contexto, `${m.nombre}: el contexto declarado no es el del catálogo`).toBe(CONTEXTO.get(m.clave));
-    expect(BAJO_EL_PISO.length).toBe(39);
-    expect(DE_SUCURSAL.length).toBe(19);
+    expect(BAJO_EL_PISO.length).toBe(39 + 19);
+    expect(DE_SUCURSAL.length).toBe(19 + 3);
   });
 
   it.each(MUTACIONES.map((m) => [m.nombre, m] as const))("un rol sin ninguna fila: %s rechaza con el texto del guard", async (_n, m) => {

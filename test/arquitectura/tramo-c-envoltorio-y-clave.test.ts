@@ -18,6 +18,10 @@ import { envoltoriosDe, exportadasSinEnvoltorio, problemasSinEnvoltorio, type En
  * Archivo completo: `receta-sucursal.ts` declara también sus 5 acciones de la receta propia que ya pasan por `guardar-version-de-receta` (no son de la pieza,
  * pero viven en el mismo archivo y el analizador las ve), y `recetas.ts` solo `guardarReceta` (las acciones puntuales del editor delegan en ella, no llaman a
  * ningún envoltorio). Son las 52 de `test/permisos/tramo-c-rechaza-sin-permiso.test.ts` más esas 5.
+ *
+ * Hito 5, bloque D (`docs/plan-hito-5-pureza.md` §6.1): se suman las 19 funciones de las 8 acciones de configuración de la carta (`secciones`, `generos`,
+ * `contenido-producto`, `items-agrupados`, `portal-empresa`, `registro-publico`, `tema`, `copiar-carta`), ANTES de mudarlas a casos de uso: 16 entran por
+ * `conPermisoDeEmpresa` y 3 (`copiarCartaDeSucursal`, `guardarTemaCarta`, `cambiarAplicacionTema`) por `conPermiso`.
  */
 const RAIZ = join(__dirname, "../../src/server/actions");
 
@@ -119,6 +123,42 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
   "catalogo/recetas.ts": {
     guardarReceta: EMP("guardar_receta"),
   },
+  // Hito 5, bloque D (5.4-D): las 8 acciones de configuración de la carta (19 funciones; solo `copiar-carta` y `tema` son de contexto sucursal).
+  "carta/secciones.ts": {
+    guardarSeccionCarta: EMP("carta_secciones"),
+    actualizarActivaSeccionCarta: EMP("carta_secciones"),
+  },
+  "carta/generos.ts": {
+    guardarGeneroCarta: EMP("carta_generos"),
+    actualizarActivoGeneroCarta: EMP("carta_generos"),
+  },
+  "carta/contenido-producto.ts": {
+    guardarContenidoCartaProducto: EMP("carta_contenido_producto"),
+    actualizarVisibleEnCarta: EMP("carta_contenido_producto"),
+  },
+  "carta/items-agrupados.ts": {
+    guardarItemAgrupadoCarta: EMP("carta_items_agrupados"),
+    actualizarActivoItemAgrupadoCarta: EMP("carta_items_agrupados"),
+    agregarOpcionItemAgrupadoCarta: EMP("carta_items_agrupados"),
+    actualizarOrdenOpcionItemAgrupadoCarta: EMP("carta_items_agrupados"),
+    quitarOpcionItemAgrupadoCarta: EMP("carta_items_agrupados"),
+  },
+  "carta/portal-empresa.ts": {
+    guardarPortalEmpresa: EMP("carta_portal"),
+  },
+  "carta/registro-publico.ts": {
+    agregarSucursalAlPortal: EMP("carta_portal"),
+    guardarSucursalPublica: EMP("carta_portal"),
+    quitarSucursalDelPortal: EMP("carta_portal"),
+    moverSucursalEnMapa: EMP("carta_portal"),
+  },
+  "carta/tema.ts": {
+    guardarTemaCarta: SUC("carta_tema"),
+    cambiarAplicacionTema: SUC("carta_tema"),
+  },
+  "carta/copiar-carta.ts": {
+    copiarCartaDeSucursal: SUC("carta_copiar_de_sucursal"),
+  },
 };
 
 /**
@@ -195,11 +235,15 @@ describe("tramo C (carta, catálogo y stock): cada Server Action entra por su en
     ).toEqual(esperadas);
   });
 
-  it("son las 51 mutaciones de la pieza en 17 archivos, más guardarReceta (y las 5 de la receta propia que comparten archivo)", () => {
+  it("son las 51 mutaciones de la pieza en 17 archivos, más guardarReceta (y las 5 de la receta propia que comparten archivo), más las 19 de configuración de la carta en 8 archivos", () => {
     const total = Object.values(DECLARADAS).reduce((n, fs) => n + Object.keys(fs).length, 0);
-    expect(total).toBe(51 + 1 + RECETA_PROPIA_YA_MIGRADAS.length);
-    expect(Object.keys(DECLARADAS).filter((a) => a !== "catalogo/recetas.ts")).toHaveLength(17);
+    expect(total).toBe(51 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 19);
+    expect(Object.keys(DECLARADAS).filter((a) => a !== "catalogo/recetas.ts")).toHaveLength(17 + 8);
     for (const f of RECETA_PROPIA_YA_MIGRADAS) expect(DECLARADAS["catalogo/receta-sucursal.ts"][f], f).toBeDefined();
+    // Bloque D: de las 19, 16 son de empresa y 3 de sucursal (copiar la carta y las dos del tema).
+    const delBloqueD = ["carta/secciones.ts", "carta/generos.ts", "carta/contenido-producto.ts", "carta/items-agrupados.ts", "carta/portal-empresa.ts", "carta/registro-publico.ts", "carta/tema.ts", "carta/copiar-carta.ts"].flatMap((a) => Object.values(DECLARADAS[a]));
+    expect(delBloqueD).toHaveLength(19);
+    expect(delBloqueD.filter((d) => d.envoltorio === "conPermiso")).toHaveLength(3);
   });
 });
 
