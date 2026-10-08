@@ -1,10 +1,10 @@
 "use server";
 
-import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
-import { validarPorcentajeDescuento } from "@/core/datos/porcentaje-descuento";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { guardComandoGuardarDescuentoProducto } from "@/core/features/carta/descuento-producto.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion } from "../tipos";
+import { guardarDescuentoProductoCasoDeUso } from "./casos-de-uso/guardar-descuento-producto";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
@@ -12,57 +12,19 @@ import { revalidarCartasPublicas } from "./revalidar";
  * (no es una promoción: la promo es la armable de la carta). Fila ausente = sin descuento; vacío o 0 la borra. Se aplica en la carta pública y en el
  * POS, no en la venta de mostrador. Gate: `carta_producto_descuento` (sucursal). Un producto que es opción de un ítem agrupado no admite descuento:
  * el renglón agrupado muestra un solo precio, así que `agregarOpcionItemAgrupadoCarta` bloquea el camino inverso.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-1) esta Server Action es un adaptador fino: permiso (`conPermiso("carta_producto_descuento")`) → formato
+ * del % (`guardComandoGuardarDescuentoProducto`, core/features/carta/descuento-producto.guard.ts, DENTRO del envoltorio) → caso de uso
+ * (`casos-de-uso/guardar-descuento-producto.ts`: el producto, la fila actual, el ítem agrupado, la escritura en server/persistencia/carta/descuento-producto.ts y
+ * su auditoría en la misma transacción) → revalidar la carta pública SOLO si el caso de uso escribió (`datos.huboCambio`: sacar un descuento que no había no
+ * revalida, como antes) → `aResultadoAccion`. Es la única función del archivo: está entero en `ACCIONES_CON_CASO_DE_USO`.
  */
 export async function guardarDescuentoProducto(productoId: string, porcentaje: number | string | null): Promise<ResultadoAccion> {
   return conPermiso("carta_producto_descuento", async (ctx) => {
-    const validado = validarPorcentajeDescuento(porcentaje, { obligatorio: false });
-    if (!validado.ok) return error(validado.mensaje);
-    const valor = validado.valor && validado.valor > 0 ? validado.valor : null;
-
-    const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true } });
-    if (!producto) return error("No se encontró el producto.");
-    if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede tener descuento.");
-
-    const clave = { productoId_sucursalId: { productoId, sucursalId: ctx.sucursalId } };
-    const existente = await ctx.db.descuentoProductoSucursal.findUnique({ where: clave });
-    if (valor === null) {
-      if (!existente) return ok(`«${producto.nombre}» no tenía descuento en esta sucursal.`);
-      await ctx.transaccion(async (tx) => {
-        await tx.descuentoProductoSucursal.delete({ where: { id: existente.id } });
-        await auditar(tx, ctx, existente.id, producto.nombre, Number(existente.porcentaje), null);
-      });
-      revalidarCartasPublicas();
-      return ok(`«${producto.nombre}» vuelve a su precio, sin descuento en esta sucursal.`);
-    }
-
-    const grupo = await resolverGrupoDeProducto(productoId, ctx.sucursalId, ctx.db);
-    if (grupo) return error(`«${producto.nombre}» es opción del ítem agrupado «${grupo.nombreItem}»: sacala de ahí para ponerle descuento.`);
-
-    await ctx.transaccion(async (tx) => {
-      const fila = await tx.descuentoProductoSucursal.upsert({ where: clave, create: { productoId, sucursalId: ctx.sucursalId, porcentaje: valor }, update: { porcentaje: valor } });
-      await auditar(tx, ctx, fila.id, producto.nombre, existente ? Number(existente.porcentaje) : null, valor);
-    });
-    revalidarCartasPublicas();
-    return ok(`«${producto.nombre}» con ${valor} % de descuento en esta sucursal.`);
-  });
-}
-
-async function auditar(
-  tx: Parameters<typeof registrarCambioAuditado>[0],
-  ctx: { usuarioId: string; sucursalId: string },
-  entidadId: string,
-  nombre: string,
-  anterior: number | null,
-  nuevo: number | null
-) {
-  await registrarCambioAuditado(tx, {
-    entidad: "DescuentoProductoSucursal",
-    entidadId,
-    campo: "porcentaje",
-    descripcion: `Descuento de "${nombre}"`,
-    valorAnterior: anterior,
-    valorNuevo: nuevo,
-    actorId: ctx.usuarioId,
-    sucursalId: ctx.sucursalId,
+    const comando = guardComandoGuardarDescuentoProducto({ productoId, porcentaje });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await guardarDescuentoProductoCasoDeUso(ctx, comando.valor);
+    if (resultado.ok && resultado.datos.huboCambio) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
 }

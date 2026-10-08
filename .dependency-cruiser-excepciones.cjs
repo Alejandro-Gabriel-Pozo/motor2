@@ -229,6 +229,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 3, Fase I, I.5: las 8 mutaciones pasan a auth/casos-de-uso/ (agregar-o-actualizar-usuario, actualizar-notas-membresia, actualizar-activo-membresia, actualizar-activo-usuario-en-empresa, transferir-gerencia, revocar-invitacion, reenviar-invitacion, invitar-a-vincular), con la transacción de gobierno, las invariantes, la persistencia (server/persistencia/{permisos/membresias,auth/gerencia,auth/invitaciones-de-usuario}.ts) y la auditoría en el caso de uso o sus pasos compartidos. La acción conserva el envoltorio y la clave, el guard del alta, el requierePermiso extra sobre la sucursal pedida y el mail DESPUÉS de confirmar (enviarInvitacionYAnotar). listarUsuariosDeSucursal y listarInvitacionesPendientes son lecturas (H8).",
   },
+  {
+    ruta: "src/server/actions/carta/descuento-producto.ts",
+    motivo:
+      "Hito 4, bloque 4.2, H4C-1: guardarDescuentoProducto → carta/casos-de-uso/guardar-descuento-producto.ts (el producto, la fila actual, el ítem agrupado, la escritura en server/persistencia/carta/descuento-producto.ts y su auditoría en la misma transacción); el formato del % lo valida guardComandoGuardarDescuentoProducto (core/features/carta) dentro de conPermiso, y la acción revalida la carta pública solo si el caso de uso escribió (datos.huboCambio). El archivo no tiene ninguna otra función.",
+  },
 ];
 
 module.exports = {
