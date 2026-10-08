@@ -214,7 +214,7 @@ module.exports = {
     {
       name: "accion-migrada-sin-orquestacion",
       comment:
-        "Una Server Action ya migrada a caso de uso (ACCIONES_CON_CASO_DE_USO, .dependency-cruiser-excepciones.cjs) no usa en runtime src/lib/db.ts, @prisma/client, el reintento/transacción (con-reintento, reintentar, y la transacción de gobierno server/actions/con-gobierno.ts: serializable con reintento e invariantes, Hito 3 paso 0.7), la idempotencia I3 ni la auditoría: todo eso pasa por su caso de uso. `import type` sí se permite. Incluye la fachada core/movimientos/public-servidor.ts (C2), que reexporta los clasificadores del reintento, el ciclo y la idempotencia, y `src/lib/transaccion-serializable.ts` (Hito 5, pieza 5.3: `conTransaccionSerializable` salió de `core/movimientos/con-reintento.ts` a `lib`): si no, la regla se esquivaría importándolos por ahí.",
+        "Una Server Action ya migrada a caso de uso (ACCIONES_CON_CASO_DE_USO, .dependency-cruiser-excepciones.cjs) no usa en runtime src/lib/db.ts, @prisma/client, el reintento/transacción (con-reintento, reintentar, y la transacción de gobierno server/actions/con-gobierno.ts: serializable con reintento e invariantes, Hito 3 paso 0.7), la idempotencia I3 ni la auditoría (el escritor `registrarCambioAuditado`, en `src/server/auditoria/`; Hito 5, pieza 5.4: salió de `core/permisos/auditoria.ts`, que ahora es solo lo puro): todo eso pasa por su caso de uso. `import type` sí se permite. Incluye la fachada core/movimientos/public-servidor.ts (C2), que reexporta los clasificadores del reintento, el ciclo y la idempotencia, y `src/lib/transaccion-serializable.ts` (Hito 5, pieza 5.3: `conTransaccionSerializable` salió de `core/movimientos/con-reintento.ts` a `lib`): si no, la regla se esquivaría importándolos por ahí.",
       severity: "error",
       from: { path: ACCIONES_MIGRADAS },
       to: {
@@ -223,7 +223,7 @@ module.exports = {
           "^node_modules/(@prisma/client|\\.prisma/client)/",
           "^src/core/movimientos/(con-reintento|reintentar|idempotencia|public-servidor)\\.ts$",
           "^src/lib/transaccion-serializable\\.ts$",
-          "^src/core/permisos/auditoria\\.ts$",
+          "^src/server/auditoria/",
           "^src/server/actions/con-gobierno\\.ts$",
         ],
         dependencyTypesNot: ["type-only"],

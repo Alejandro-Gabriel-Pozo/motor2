@@ -6,7 +6,7 @@ import { precioCobradoConDescuentos } from "@/core/carta/public";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarVentaEnTx } from "@/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { lineasDeVenta } from "@/core/pos/cuenta";
 import { siguienteNumeroTicket } from "@/core/pos/numeracion-ticket";
 import { exito, fracaso } from "@/core/resultado-caso";

@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { escribirPrecioLocal } from "@/server/persistencia/movimientos/precio-local";
 
 /**
@@ -11,7 +11,7 @@ import { escribirPrecioLocal } from "@/server/persistencia/movimientos/precio-lo
  * producto) y `sincronizarPrecioLocalGrupoCartaCasoDeUso` (cada producto del ítem agrupado, en la misma transacción).
  *
  * Recibe el cliente de la transacción de quien llama (Task #41, M10): el upsert y sus dos filas de auditoría quedan o todos o ninguno. Importa
- * `registrarCambioAuditado` de `@/core/permisos/auditoria`: `test/catalogo/precio-auditoria-atomica.test.ts` reemplaza ese módulo para simular la caída de la
+ * `registrarCambioAuditado` de `@/server/auditoria/registrar-cambio-auditado`: `test/catalogo/precio-auditoria-atomica.test.ts` reemplaza ese módulo para simular la caída de la
  * auditoría y tiene que seguir interceptándola.
  */
 export async function guardarPrecioLocalEnTx(

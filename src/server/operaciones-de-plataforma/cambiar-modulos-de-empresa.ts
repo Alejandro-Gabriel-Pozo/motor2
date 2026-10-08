@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { ModulosDeEmpresaError, descripcionDeCambioDeModulo, normalizarPedidoDeModulos, planDeCambioDeModulos, type CambioDeModulosHecho, type CambioDeModulosPedido } from "@/core/features/empresa/cambio-de-modulos";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 
 /**
  * Activa y desactiva módulos vendibles de una empresa en el registro `ModuloEmpresa` (ADR-011, ADR-014, ADR-015). SOLO la plataforma lo hace: lo llama el script

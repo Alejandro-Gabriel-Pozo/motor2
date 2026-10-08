@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { ComandoRenombrarOFusionarInsumo, ResultadoRenombrarOFusionarInsumo } from "@/core/features/catalogo/insumos.schema";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { validarFusionInsumos } from "@/server/lecturas/catalogo/unidad-de-insumo";
 import { borrarInsumo, reapuntarSustitutosDeInsumoFusionado, reasignarProductosDeInsumo, renombrarInsumo } from "@/server/persistencia/catalogo/insumos";

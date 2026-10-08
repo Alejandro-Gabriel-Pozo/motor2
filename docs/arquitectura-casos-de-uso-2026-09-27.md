@@ -56,7 +56,7 @@ Pantalla ─► Server Action ("use server", adaptador fino)
                                                          ├─ cargar-*   (server/persistencia/compras/, tx obligatorio)
                                                          ├─ reglas puras (core/compras/anulacion.ts, correccion.ts)
                                                          ├─ escribir-* (server/persistencia/compras/, tx obligatorio)
-                                                         ├─ auditoría (core/permisos/auditoria.ts)
+                                                         ├─ auditoría (server/auditoria/registrar-cambio-auditado.ts)
                                                          └─ ResultadoCaso (core/resultado-caso.ts)
 ```
 

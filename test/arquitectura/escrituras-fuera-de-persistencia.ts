@@ -75,10 +75,10 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     fase: "Consola",
     motivo: "La siembra de una empresa nueva es de la plataforma (solo la plataforma da de alta una empresa): vive en la consola, que no puede importar src/server; el plan de lo que siembra es puro en core.",
   },
-  "src/core/permisos/auditoria.ts": {
+  "src/server/auditoria/registrar-cambio-auditado.ts": {
     escrituras: ["registroAuditoria.create"],
-    fase: "Fase 4",
-    motivo: "Tramo B (PR B5): registrarCambioAuditado pasa a src/server/auditoria; lo puro (filaDeAuditoria) queda en core. Va al final: 26 archivos lo importan.",
+    fase: "Permanente",
+    motivo: "Escritor único del registro de auditoría; lo llaman casos de uso, la sesión y las operaciones de plataforma (Hito 5, pieza 5.4, B3: salió de core/permisos/auditoria.ts; su capa y su lista cerrada de archivos las fija auditoria-capa y test/arquitectura/server-auditoria.test.ts).",
   },
   "plataforma/src/servidor/alta-de-admin.ts": {
     escrituras: ["adminPlataforma.create", "codigoDeRecuperacionPlataforma.createMany"],

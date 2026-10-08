@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { ComandoGuardarDescuentoProducto, ResultadoGuardarDescuentoProducto } from "@/core/features/carta/descuento-producto.schema";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { borrarDescuentoProducto, fijarDescuentoProducto } from "@/server/persistencia/carta/descuento-producto";

@@ -3,7 +3,7 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_CUENTA_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta.guard";
 import type { ComandoEmitirTicketCorregido, ResultadoEmitirTicketCorregido } from "@/core/features/cuentas/cuenta.schema";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { armarTicketVigente, estadoDeTicket } from "@/core/pos/ticket";
 import { validarMotivoAnulacion } from "@/core/pos/cuenta";
 import { formatearNumeroTicket } from "@/core/pos/numeracion-ticket";

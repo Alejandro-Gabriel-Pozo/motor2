@@ -7,7 +7,7 @@ import { detalleReversionDeCompra } from "@/core/movimientos/public";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarCompraParaAnular } from "@/server/persistencia/compras/cargar-compra-para-anular";
 import { escribirAnulacionDeCompra } from "@/server/persistencia/compras/escribir-anulacion-de-compra";

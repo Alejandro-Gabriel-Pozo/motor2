@@ -4,7 +4,7 @@ import { mensajePisoDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-pr
 import { seleccionDeSucursalDePromo } from "@/core/carta/promo-sucursal";
 import { validarPrecioCarta } from "@/core/carta/validaciones";
 import type { ComandoGuardarPrecioLocalPromoCarta, ResultadoGuardarPrecioLocalPromoCarta } from "@/core/features/carta/promos.schema";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { fijarPrecioLocalDePromo } from "@/server/persistencia/carta/promos";
 

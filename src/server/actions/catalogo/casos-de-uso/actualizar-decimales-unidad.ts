@@ -2,7 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { decimalesDelPaso } from "@/core/catalogo/public";
 import type { ComandoActualizarDecimalesUnidad, ResultadoActualizarDecimalesUnidad } from "@/core/features/catalogo/unidades.schema";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { fijarDecimalesDeUnidad } from "@/server/persistencia/catalogo/unidades";
 

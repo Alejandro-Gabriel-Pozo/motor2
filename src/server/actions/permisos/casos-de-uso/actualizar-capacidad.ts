@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { ComandoActualizarCapacidad } from "@/core/features/permisos/capacidad.guard";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { mensajeSiNoPuedeCambiarCapacidades } from "@/core/permisos/matriz";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { objetivoEnLaEmpresa } from "@/server/lecturas/permisos/gestion-de-usuarios";
@@ -21,7 +21,7 @@ type ResultadoActualizarCapacidad = ResultadoCaso<{ capacidadId: string }, "SUCU
  *
  * Orden, igual que antes: (1) si no es la fila default, que la sucursal exista (con `actor.db`, fuera de la transacción, como antes); (2) en UNA transacción,
  * la escritura (`guardarCapacidadSucursal`, `server/persistencia/permisos/capacidades.ts`) y su auditoría (A3, Pivote 6): o quedan los dos o ninguno (S-26,
- * `test/seguridad/capacidad-auditoria-atomica.test.ts`, que intercepta `registrarCambioAuditado` en `core/permisos/auditoria`: este archivo lo importa de
+ * `test/seguridad/capacidad-auditoria-atomica.test.ts`, que intercepta `registrarCambioAuditado` en `server/auditoria/registrar-cambio-auditado`: este archivo lo importa de
  * ESA ruta para que el `vi.mock` siga alcanzándolo).
  *
  * O.41 (decisión del dueño del 2026-10-08, «esa perilla solo del gerente»; ADR-027): cambiar una capacidad es SOLO del gerente de la empresa

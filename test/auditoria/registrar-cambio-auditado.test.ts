@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
-import { registrarCambioAuditado, type CambioAuditable } from "../../src/core/permisos/auditoria";
+import { type CambioAuditable } from "../../src/core/permisos/auditoria";
+import { registrarCambioAuditado } from "../../src/server/auditoria/registrar-cambio-auditado";
 
 /**
  * Red del ESCRITOR de la auditoría (Hito 5, pieza 5.4, B1 de `docs/plan-hito-5-pureza.md`; B5 de `docs/pureza-integracion.md`). SIN base: una `db` falsa captura la única escritura

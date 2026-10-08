@@ -4,7 +4,7 @@ import { ALCANCE_CENTRAL, describirCalibracion } from "@/core/catalogo/public";
 import type { ComandoFijarRendimientoLocal, ResultadoFijarRendimientoLocal } from "@/core/features/catalogo/rendimiento-local.schema";
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { fijarRendimientoLocalDeLinea } from "@/server/persistencia/catalogo/rendimiento-local";

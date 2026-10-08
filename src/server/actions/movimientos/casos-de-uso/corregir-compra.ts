@@ -5,7 +5,7 @@ import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.
 import type { ComandoCorregirCompra, ResultadoCorregirCompra } from "@/core/features/compras/compra.schema";
 import { esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarCompraParaCorregir, cargarProveedorParaCorreccion, hayOtraCompraVigenteConFactura } from "@/server/persistencia/compras/cargar-compra-para-corregir";
 import { escribirCorreccionDeCompra } from "@/server/persistencia/compras/escribir-correccion-de-compra";

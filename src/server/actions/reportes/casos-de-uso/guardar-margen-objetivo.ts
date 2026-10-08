@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { ComandoGuardarMargenObjetivo, ResultadoGuardarMargenObjetivo } from "@/core/features/reportes/margen-objetivo.schema";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { borrarMargenObjetivo, crearMargenObjetivo, fijarMargenObjetivo } from "@/server/persistencia/reportes/margen-objetivo";
 

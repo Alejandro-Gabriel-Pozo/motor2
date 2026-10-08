@@ -18,6 +18,6 @@ export { sembrarEmpresa } from "../../../plataforma/src/servidor/sembrar-empresa
 export { crearAdminDePlataforma } from "../../../plataforma/src/servidor/alta-de-admin";
 export { incorporarPrimerGerente } from "../../../src/server/actions/auth/casos-de-uso/incorporar-primer-gerente-en-tx";
 export { transferirGerenciaDeEmpresa } from "../../../src/server/actions/auth/casos-de-uso/transferir-gerencia-en-tx";
-export { registrarCambioAuditado } from "../../../src/core/permisos/auditoria";
+export { registrarCambioAuditado } from "../../../src/server/auditoria/registrar-cambio-auditado";
 export { hashDeToken } from "../../../src/core/seguridad/tokens";
 export { azarDelProceso } from "../../../src/lib/azar";

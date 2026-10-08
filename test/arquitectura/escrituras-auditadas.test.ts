@@ -624,7 +624,7 @@ describe("escrituras auditadas: el código del repositorio", () => {
   it("toda función que escribe dinero o cambia el significado de una cantidad deja su fila en la auditoría (registrarCambioAuditado)", () => {
     expect(
       pendientes,
-      `Estas funciones escriben dinero sin dejar quién ni cuándo. Auditá el cambio en la MISMA transacción con registrarCambioAuditado (core/permisos/auditoria), o declará el motivo en este test:\n${formato(pendientes)}`
+      `Estas funciones escriben dinero sin dejar quién ni cuándo. Auditá el cambio en la MISMA transacción con registrarCambioAuditado (server/auditoria/registrar-cambio-auditado), o declará el motivo en este test:\n${formato(pendientes)}`
     ).toEqual([]);
   });
 

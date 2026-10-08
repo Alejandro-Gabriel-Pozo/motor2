@@ -4,7 +4,7 @@ import type { CambioDeMatriz } from "@/core/features/permisos/matriz.guard";
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { claveEnCatalogo, type AccionClave } from "@/core/permisos/acciones";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import {
   esCeldaFueraDeNivel,
   laMatrizDelRolLaEditaSoloElGerente,

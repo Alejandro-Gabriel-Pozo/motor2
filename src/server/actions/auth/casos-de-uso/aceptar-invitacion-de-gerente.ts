@@ -4,7 +4,7 @@ import { validarCuit } from "@/core/fiscal/public";
 import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";
 import { ErrorDeAceptacion, MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion } from "@/core/features/empresa/aceptar-invitacion";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { incorporarPrimerGerente } from "./incorporar-primer-gerente-en-tx";
 import { InvarianteViolada } from "@/core/permisos/invariantes";
 import { conInvariantesDeGobierno } from "@/server/actions/con-gobierno";

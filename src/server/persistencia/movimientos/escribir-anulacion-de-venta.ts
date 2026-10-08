@@ -13,7 +13,7 @@ import { escribirContraAsiento, type FilaDeContraAsiento } from "./escribir-cont
  * Desde la pieza 5.4 (A5) esos tres pasos los hace `escribirContraAsiento` (`escribir-contra-asiento.ts`, compartido con la anulación de compra); acá
  * queda armar las filas de la venta (proceso y `cantidadExacta` de cada línea) y NO pasar claves de idempotencia.
  *
- * La fila de auditoría NO se escribe acá: la registra el caso de uso con `registrarCambioAuditado` (core/permisos/auditoria.ts) justo
+ * La fila de auditoría NO se escribe acá: la registra el caso de uso con `registrarCambioAuditado` (server/auditoria/registrar-cambio-auditado.ts) justo
  * después de cada llamada — el mismo orden que antes.
  */
 export interface AnulacionDeVentaAEscribir {

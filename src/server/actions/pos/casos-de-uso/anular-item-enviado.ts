@@ -4,7 +4,7 @@ import { MENSAJE_ITEM_NO_ENCONTRADO } from "@/core/features/cuentas/cuenta-anula
 import type { ComandoAnularItemEnviado, ResultadoAnularItemEnviado } from "@/core/features/cuentas/cuenta-anulacion.schema";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { restanteDe, validarMotivoAnulacion } from "@/core/pos/cuenta";
 import { exito, fracaso } from "@/core/resultado-caso";

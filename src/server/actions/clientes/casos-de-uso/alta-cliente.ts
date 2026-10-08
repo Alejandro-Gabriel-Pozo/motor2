@@ -2,7 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { cambioDeCliente } from "@/core/features/clientes/auditoria-de-cliente";
 import type { ComandoAltaCliente, ResultadoAltaCliente } from "@/core/features/clientes/clientes.schema";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { crearClienteNuevo } from "@/server/persistencia/clientes/clientes";
 

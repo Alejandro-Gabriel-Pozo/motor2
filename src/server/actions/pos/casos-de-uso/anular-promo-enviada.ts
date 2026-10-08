@@ -3,7 +3,7 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { MENSAJE_PROMO_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta-anulacion.guard";
 import type { ComandoAnularPromoEnviada, DatosAnularPromoEnviada, ResultadoAnularPromoEnviada } from "@/core/features/cuentas/cuenta-anulacion.schema";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { restanteDe, validarMotivoAnulacion } from "@/core/pos/cuenta";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarPromoParaAnular } from "@/server/persistencia/pos/cargar-promo-para-anular";

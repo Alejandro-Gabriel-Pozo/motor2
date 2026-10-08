@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { ComandoActualizarMaxMesasAbiertas, ResultadoActualizarMaxMesasAbiertas } from "@/core/features/mesas/mesas.schema";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito } from "@/core/resultado-caso";
 import { fijarMaxMesasAbiertas } from "@/server/persistencia/pos/mesas";
 

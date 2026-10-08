@@ -5,12 +5,12 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 /**
  * Interruptor para romper la auditoría A MITAD DE CAMINO (mismo molde que `test/catalogo/precio-auditoria-atomica.test.ts`): `fallarEnLlamada = N` hace que la
  * N-ésima llamada a `registrarCambioAuditado` tire, DESPUÉS de que el caso de uso ya escribió. El resto delega en la implementación real. El caso de uso importa
- * `registrarCambioAuditado` de `@/core/permisos/auditoria`, el mismo módulo que reemplaza este `vi.mock`.
+ * `registrarCambioAuditado` de `@/server/auditoria/registrar-cambio-auditado`, el mismo módulo que reemplaza este `vi.mock`.
  */
 const interruptor = vi.hoisted(() => ({ fallarEnLlamada: null as number | null, llamadas: 0 }));
 
-vi.mock("../../src/core/permisos/auditoria", async (importOriginal) => {
-  const real = await importOriginal<typeof import("../../src/core/permisos/auditoria")>();
+vi.mock("../../src/server/auditoria/registrar-cambio-auditado", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../../src/server/auditoria/registrar-cambio-auditado")>();
   return {
     ...real,
     registrarCambioAuditado: async (...args: Parameters<typeof real.registrarCambioAuditado>) => {

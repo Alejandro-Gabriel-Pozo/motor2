@@ -4,7 +4,7 @@ import { describirVueltaALaRecetaCentral } from "@/core/catalogo/public";
 import type { ComandoVolverALaRecetaCentral, ResultadoVolverALaRecetaCentral } from "@/core/features/catalogo/receta-sucursal.schema";
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { deshabilitarRecetaPropia } from "@/server/persistencia/catalogo/receta-sucursal";
 

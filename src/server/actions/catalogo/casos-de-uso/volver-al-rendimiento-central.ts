@@ -4,7 +4,7 @@ import { ALCANCE_CENTRAL, describirVueltaAlCentral } from "@/core/catalogo/publi
 import type { ComandoVolverAlRendimientoCentral, ResultadoVolverAlRendimientoCentral } from "@/core/features/catalogo/rendimiento-local.schema";
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { volverRendimientoLocalAlCentral } from "@/server/persistencia/catalogo/rendimiento-local";

@@ -4,7 +4,7 @@ import { validarPorcentajeDescuento } from "@/core/datos/porcentaje-descuento";
 import { cambioDeCliente } from "@/core/features/clientes/auditoria-de-cliente";
 import { nombreDeCliente } from "@/core/features/clientes/clientes.guard";
 import type { ComandoActualizarCliente, ResultadoActualizarCliente } from "@/core/features/clientes/clientes.schema";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { guardarDatosDeCliente } from "@/server/persistencia/clientes/clientes";
 

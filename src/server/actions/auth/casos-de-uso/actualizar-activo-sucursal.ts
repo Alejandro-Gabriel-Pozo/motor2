@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { gerentesQueQuedaranSinSucursalActiva } from "@/server/lecturas/permisos/gerencia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { cambiarActivoDeSucursal } from "@/server/persistencia/auth/sucursales";

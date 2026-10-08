@@ -235,7 +235,7 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
     expect(auditoria("./paso-sin-auditoria")).toBe("DOCUMENTO_PROPIO");
     // Solo la MISMA carpeta: un import de otra carpeta (o de un alias) no es un paso compartido del caso de uso.
     expect(pasosCompartidos(caso("../otra/paso-que-audita"), leer)).toEqual([]);
-    expect(pasosCompartidos(caso("@/core/permisos/auditoria"), leer)).toEqual([]);
+    expect(pasosCompartidos(caso("@/server/auditoria/registrar-cambio-auditado"), leer)).toEqual([]);
   });
 
   it("idempotencia I3 solo si llama a chequearIdempotencia; auditoría solo si llama a registrarCambioAuditado", () => {

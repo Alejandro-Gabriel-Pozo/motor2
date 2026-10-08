@@ -1,7 +1,7 @@
 import "server-only";
 import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { InvarianteViolada } from "@/core/permisos/invariantes";
 import { sirveParaVincular, TIPO_INVITACION_VINCULACION, type CuentaDeGoogle } from "@/core/auth/invitacion";
 import { invitacionConSuBase } from "./invitacion";

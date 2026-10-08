@@ -1,7 +1,3 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
-
-type Db = PrismaClient | Prisma.TransactionClient;
-
 /**
  * Única lista de entidades auditables: el tipo `CambioAuditable["entidad"]` se deriva de acá y la pantalla de auditoría arma su filtro con
  * la misma lista, así que una entidad nueva aparece en el filtro sin tocar la página (antes "Cuenta" y "DisponibilidadProducto" se
@@ -80,9 +76,12 @@ export const ENTIDADES_AUDITABLES = [
  * Auditoría administrativa (A3, Pivote 6 — docs/auditoria-motor2-pivotes-
  * 2026-09-16.md "Pivote 6", docs/auditoria-motor2-fase6-seguridad-
  * 2026-09-18.md): catálogo/precios/permisos no dejaban ningún rastro de
- * quién cambió qué y cuándo. Este es el único punto de escritura del
- * registro (mismo criterio que `conPermiso`/`conTransaccionSerializable`:
- * un solo lugar, nunca una copia divergente en cada Server Action).
+ * quién cambió qué y cuándo. El único punto de escritura del registro
+ * (mismo criterio que `conPermiso`/`conTransaccionSerializable`: un solo
+ * lugar, nunca una copia divergente en cada Server Action) es
+ * `registrarCambioAuditado`, en `src/server/auditoria/registrar-cambio-auditado.ts`
+ * (Hito 5, pieza 5.4, B3: salió de `core`). Acá queda lo puro: el catálogo de
+ * entidades auditables, la forma de un cambio y el texto para mostrar.
  */
 export interface CambioAuditable {
   entidad: (typeof ENTIDADES_AUDITABLES)[number];
@@ -111,33 +110,4 @@ export function descripcionParaMostrar(descripcion: string): string {
   let texto = descripcion;
   for (const [vieja, nueva] of Object.entries(CLAVES_DE_ACCION_RENOMBRADAS)) texto = texto.replaceAll(`"${vieja}"`, `"${nueva}"`);
   return texto;
-}
-
-function aTexto(valor: unknown): string | null {
-  if (valor === null || valor === undefined) return null;
-  return String(valor);
-}
-
-/**
- * No-op si el valor no cambió en absoluto — evita ensuciar el registro
- * con "cambios" de un `update`/`upsert` que en realidad reescribió el
- * mismo valor (ej. guardar un formulario sin tocar ese campo puntual).
- */
-export async function registrarCambioAuditado(db: Db, cambio: CambioAuditable): Promise<void> {
-  const anterior = aTexto(cambio.valorAnterior);
-  const nuevo = aTexto(cambio.valorNuevo);
-  if (anterior === nuevo) return;
-
-  await db.registroAuditoria.create({
-    data: {
-      entidad: cambio.entidad,
-      entidadId: cambio.entidadId,
-      descripcion: cambio.descripcion,
-      campo: cambio.campo,
-      valorAnterior: anterior,
-      valorNuevo: nuevo,
-      actorId: cambio.actorId,
-      sucursalId: cambio.sucursalId ?? null,
-    },
-  });
 }

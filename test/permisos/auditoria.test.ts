@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, prisma, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarCambioAuditado } from "../../src/core/permisos/auditoria";
+import { registrarCambioAuditado } from "../../src/server/auditoria/registrar-cambio-auditado";
 import { listarRegistrosAuditoria } from "../../src/server/consultas/permisos/auditoria";
 import { actualizarProducto } from "../../src/server/actions/catalogo/productos";
 import { setPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";

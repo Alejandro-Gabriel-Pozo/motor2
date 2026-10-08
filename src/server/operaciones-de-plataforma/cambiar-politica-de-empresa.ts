@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { PoliticaDeEmpresaError, descripcionDeCambioDePerilla, perillasPedidas, planDeCambioDePolitica, type CambioDePoliticaHecho, type CambioDePoliticaPedido } from "@/core/features/empresa/cambio-de-politica";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import type { PoliticaDeEmpresa } from "@/core/permisos/politica-de-empresa";
 
 /**

@@ -2,7 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/public";
 import type { ComandoCrearSucursal } from "@/core/features/sucursales/sucursal.guard";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { mensajeSiNoPuedeDarRolSinTechoDeGestion, mensajeSiReactivaAdminSinSerGerente } from "@/core/permisos/gestion-de-usuarios";
 import { buscarRolAdmin, objetivoEnLaEmpresa, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
