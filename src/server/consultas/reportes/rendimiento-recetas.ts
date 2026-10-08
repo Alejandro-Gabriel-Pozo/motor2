@@ -19,10 +19,19 @@ import type { FilaRendimientoSimple, FilaRendimientoCompartido, UsoDeInsumo, Poo
 // mismas filas; las sumas de saldo se hacen en `Decimal` (igual de exactas que el `_sum` de la base) y las de cantidades conservan el orden en que la base
 // las entregó (`indexarPorProducto`). El cálculo (anclas, consumo del tramo, regresión) sigue en `core/reportes`, intacto.
 
+// ── Orden explícito en TODA lectura (D.3 de docs/pureza-integracion.md) ──────────────────────────────────────────────────────────────────────────────────────
+//
+// Ninguna lectura de este archivo depende del orden en que Postgres entrega las filas: cada una lleva su `orderBy` (los `groupBy` por sus claves; los
+// movimientos por la fecha de su operación y el id; los conteos por fecha e id; los productos por id), así el recorrido de las cantidades —y las sumas en
+// coma flotante que van a `redondearCantidad`— es siempre el mismo, sin importar el plan de la base. `orden-en-rendimiento-recetas.test.ts` lo vigila.
+
+/** Orden de toda lectura de movimientos: por la fecha de su operación y, empatados, por id (el mismo de `historial-producto`). */
+const ORDEN_DE_MOVIMIENTOS: Prisma.MovimientoStockOrderByWithRelationInput[] = [{ operacion: { fecha: "asc" } }, { id: "asc" }];
+
 /**
- * Índice de filas por `productoId` que devuelve, para un conjunto de productos, sus filas EN EL ORDEN en que vinieron de la base
- * (la consulta, como la de antes, no lleva `ORDER BY`: Postgres no promete ese orden). Las sumas en coma flotante van a `redondearCantidad` y las de saldo son `Decimal`
- * exactas, así que el orden no cambia el resultado; se conserva para recorrer las cantidades igual que la consulta propia del pool.
+ * Índice de filas por `productoId` que devuelve, para un conjunto de productos, sus filas EN EL ORDEN en que vinieron de la base (el `orderBy` de cada
+ * lectura, D.3). Las sumas en coma flotante van a `redondearCantidad` y las de saldo son `Decimal` exactas; se conserva el orden para recorrer las cantidades
+ * igual que la consulta propia del pool.
  */
 function indexarPorProducto<T extends { productoId: string }>(filas: readonly T[]): (productoIds: Iterable<string>) => T[] {
   const posiciones = new Map<string, number[]>();
@@ -79,8 +88,8 @@ async function cargarStockAperturaYCierreDePools(sucursalId: string, pools: read
   const productoIds = unionDeProductos(pools.map((p) => p.productoIds));
   if (productoIds.length === 0) return resultado;
   const [antes, durante] = await Promise.all([
-    db.movimientoStock.groupBy({ by: ["productoId"], where: { seccion: { sucursalId }, productoId: { in: productoIds }, operacion: { fecha: { lt: desde } } }, _sum: { cantidad: true } }),
-    db.movimientoStock.groupBy({ by: ["productoId"], where: { seccion: { sucursalId }, productoId: { in: productoIds }, operacion: { fecha: { gte: desde, lte: hasta } } }, _sum: { cantidad: true } }),
+    db.movimientoStock.groupBy({ by: ["productoId"], where: { seccion: { sucursalId }, productoId: { in: productoIds }, operacion: { fecha: { lt: desde } } }, _sum: { cantidad: true }, orderBy: { productoId: "asc" } }),
+    db.movimientoStock.groupBy({ by: ["productoId"], where: { seccion: { sucursalId }, productoId: { in: productoIds }, operacion: { fecha: { gte: desde, lte: hasta } } }, _sum: { cantidad: true }, orderBy: { productoId: "asc" } }),
   ]);
   const aperturaPorProducto = new Map(antes.map((g) => [g.productoId, new Prisma.Decimal(g._sum.cantidad ?? 0)]));
   const deltaPorProducto = new Map(durante.map((g) => [g.productoId, new Prisma.Decimal(g._sum.cantidad ?? 0)]));
@@ -121,6 +130,7 @@ async function cargarCandidatosAnclaDePools(sucursalId: string, pools: readonly 
   const conteos = await db.conteoFisico.findMany({
     where: { sucursalId, productoId: { in: productoIds }, estado: "RESUELTO", fecha: { gte: desde, lte: hasta } },
     select: { productoId: true, seccionId: true, fecha: true },
+    orderBy: [{ fecha: "asc" }, { id: "asc" }],
   });
   if (conteos.length === 0) return resultado;
   const conteosDe = indexarPorProducto(conteos);
@@ -156,12 +166,14 @@ async function cargarCandidatosAnclaDePools(sucursalId: string, pools: readonly 
       by: ["productoId", "seccionId"],
       where: { seccion: { sucursalId }, productoId: { in: ids }, operacion: { fecha: { lte: primerCorte } } },
       _sum: { cantidad: true },
+      orderBy: [{ productoId: "asc" }, { seccionId: "asc" }],
     }),
     // Con un solo día no hay nada entre el primer corte y el último: no se consulta.
     cortes.length > 1
       ? db.movimientoStock.findMany({
           where: { seccion: { sucursalId }, productoId: { in: ids }, operacion: { fecha: { gt: primerCorte, lte: ultimoCorte } } },
           select: { productoId: true, seccionId: true, cantidad: true, operacion: { select: { fecha: true } } },
+          orderBy: ORDEN_DE_MOVIMIENTOS,
         })
       : Promise.resolve([]),
   ]);
@@ -218,6 +230,7 @@ async function cargarEntradasDeLaVentana(sucursalId: string, productoIds: readon
       : await db.movimientoStock.findMany({
           where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: { in: ["COMPRA", "PRODUCCION"] }, productoId: { in: [...productoIds] } },
           select: { productoId: true, cantidad: true, proceso: true, operacion: { select: { fecha: true } } },
+          orderBy: ORDEN_DE_MOVIMIENTOS,
         });
   return indexarPorProducto(filas);
 }
@@ -231,6 +244,7 @@ async function cargarVentasDeLaVentana(sucursalId: string, platoIds: readonly st
       : await db.movimientoStock.findMany({
           where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: "VENTA", productoId: { in: ids } },
           select: { productoId: true, cantidad: true, operacion: { select: { fecha: true } } },
+          orderBy: ORDEN_DE_MOVIMIENTOS,
         });
   return indexarPorProducto(filas);
 }
@@ -283,10 +297,12 @@ async function cargarTramos(sucursalId: string, pedidos: readonly PedidoDeTramos
         operacion: { anuladaEn: null, fecha: { gt: desde, lte: hasta }, ...OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION },
       },
       select: { productoId: true, cantidad: true, proceso: true, operacion: { select: { proceso: true, fecha: true } } },
+      orderBy: ORDEN_DE_MOVIMIENTOS,
     }),
     db.movimientoStock.findMany({
       where: { seccion: { sucursalId }, productoId: { in: platoIds }, proceso: "VENTA", operacion: { fecha: { gt: desde, lte: hasta }, anuladaEn: null } },
       select: { productoId: true, cantidad: true, operacion: { select: { fecha: true } } },
+      orderBy: ORDEN_DE_MOVIMIENTOS,
     }),
   ]);
   const movimientosDe = indexarPorProducto(movimientos);
@@ -362,7 +378,7 @@ function calcularConfianza(semanas: number): FilaRendimientoSimple["confianza"] 
  */
 async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
   const alcance = alcanceDeSucursal(sucursalId);
-  const [productosDisponibles, clasificacion] = await Promise.all([db.producto.findMany({ where: whereDisponibleEn(sucursalId) }), cargarClasificacionNoComestibles(db)]);
+  const [productosDisponibles, clasificacion] = await Promise.all([db.producto.findMany({ where: whereDisponibleEn(sucursalId), orderBy: { id: "asc" } }), cargarClasificacionNoComestibles(db)]);
   // La receta EFECTIVA de la sucursal: la propia donde la tiene habilitada, la central (más calibraciones) en los demás platos.
   const recetaVigente = await cargarRecetasVigentes(db, alcance, {
     where: { productoId: { in: productosDisponibles.map((p) => p.id) } },
@@ -422,7 +438,7 @@ async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
   // Insumo), repartidos por su `insumoId`; sin pools de Insumo no se consulta.
   const insumoIds = Array.from(productoIdsPorClave.keys()).filter((clave) => clave.startsWith("insumo:")).map((clave) => clave.slice("insumo:".length));
   if (insumoIds.length > 0) {
-    const hermanos = await db.producto.findMany({ where: { insumoId: { in: insumoIds }, tipo: "MP", ...whereDisponibleEn(sucursalId) }, select: { id: true, insumoId: true } });
+    const hermanos = await db.producto.findMany({ where: { insumoId: { in: insumoIds }, tipo: "MP", ...whereDisponibleEn(sucursalId) }, select: { id: true, insumoId: true }, orderBy: { id: "asc" } });
     for (const h of hermanos) productoIdsPorClave.get(`insumo:${h.insumoId}`)?.add(h.id);
   }
 
