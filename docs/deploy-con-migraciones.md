@@ -10,8 +10,9 @@ Siempre corre `prisma generate` y `next build`. Entre los dos, según `modoDeMig
 | Entorno | Modo | Qué pasa |
 |---|---|---|
 | Local, gate, CI, Producción de Vercel (default) | `verificar` | `prisma migrate status`. Sin pendientes, sigue. **Con pendientes (o si no puede consultar la base) el build falla** y dice cómo aprobarlas. |
-| `MOTOR2_MIGRAR_EN_BUILD=1` (cualquier entorno) | `aplicar` | `prisma migrate deploy`. Es la aprobación explícita «solo para este deploy». |
+| `MOTOR2_MIGRAR_EN_BUILD=1` en local o en Producción de Vercel | `aplicar` | `prisma migrate deploy`. Es la aprobación explícita «solo para este deploy». |
 | `MOTOR2_MIGRAR_EN_BUILD=0`, o Vercel con `VERCEL_ENV` ≠ `production` | `omitir` | No toca la base ni la mira (el Preview de `stockhneuquen` comparte la base de producción, ADR-007). |
+| `MOTOR2_MIGRAR_EN_BUILD=1` en Vercel con `VERCEL_ENV` ≠ `production` (S-31) | `rechazar` | **El build falla** antes de tocar nada: un Preview comparte la base de producción y no puede migrarla. `VERCEL_ENV` se mira antes que la variable. Se saca la variable de ese entorno. |
 
 `npm run build:e2e` (el que usa Playwright) nunca migra ni verifica: la base E2E la migra el workflow o quien corre la suite.
 
