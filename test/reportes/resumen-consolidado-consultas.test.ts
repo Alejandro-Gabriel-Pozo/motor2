@@ -18,8 +18,8 @@ import { obtenerResumenOperativo } from "../../src/server/consultas/reportes/res
  * lee una vez lo común (clasificación, catálogo, y las alertas de stock de todas las sucursales en bloque) y, por sucursal, solo lo que es de ella (líneas
  * del período, su Precio Local y su disponibilidad, sus recetas y su costo de reposición). Este test fija esa forma con 2 y con 5 sucursales:
  *  - lo común aparece UNA vez, sean 2 o 5 (si alguien vuelve a leer el catálogo o los saldos por sucursal, se pone en rojo);
- *  - lo propio de cada sucursal aparece exactamente una vez POR sucursal (7 lecturas: lo que todavía crece, porque esos cargadores no tienen versión en
- *    bloque), y nada del reporte del período que el Consolidado no muestra (IPC, objetivos de margen, auditoría de precios, margen Real…);
+ *  - lo propio de cada sucursal aparece exactamente una vez POR sucursal (`POR_SUCURSAL`: lo que todavía crece, porque esos cargadores no aceptan N
+ *    sucursales), y nada del reporte del período que el Consolidado no muestra (IPC, objetivos de margen, auditoría de precios, margen Real…);
  *  - y cada fila da lo MISMO que el resumen operativo de esa sucursal (la fuente de verdad de esos números).
  */
 
@@ -68,9 +68,12 @@ async function sembrar(n: number) {
   return sucursales;
 }
 
-/** Lo que se lee UNA vez para todas las sucursales, y lo que se lee una vez por sucursal. */
-const COMUNES = ["Grupo.findMany", "Producto.findMany", "MovimientoStock.groupBy", "Seccion.findMany", "StockMinimoProducto.findMany"];
-const POR_SUCURSAL = ["MovimientoStock.findMany", "CapacidadSucursal.findMany", "PrecioLocalProducto.findMany", "DisponibilidadProducto.findMany", "RecetaSucursal.findMany", "RecetaVersion.findMany", "$queryRaw"];
+/**
+ * Lo que se lee UNA vez para todas las sucursales, y lo que se lee una vez por sucursal. O.38b (docs/plan-hito-4-pureza.md §4) pasa a comunes, paso a paso,
+ * los cargadores generalizados a N sucursales con UNA implementación: D1 las líneas del período (`MovimientoStock.findMany`).
+ */
+const COMUNES = ["Grupo.findMany", "Producto.findMany", "MovimientoStock.groupBy", "Seccion.findMany", "StockMinimoProducto.findMany", "MovimientoStock.findMany"];
+const POR_SUCURSAL = ["CapacidadSucursal.findMany", "PrecioLocalProducto.findMany", "DisponibilidadProducto.findMany", "RecetaSucursal.findMany", "RecetaVersion.findMany", "$queryRaw"];
 
 describe("Consolidado: lo común se lee una vez y por sucursal solo lo suyo (O.38)", () => {
   it("con 2 y con 5 sucursales: lo común una vez, lo propio una vez por sucursal, nada más — y los mismos números que el resumen operativo", async () => {

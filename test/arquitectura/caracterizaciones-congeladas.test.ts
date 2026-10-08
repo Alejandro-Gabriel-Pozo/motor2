@@ -88,7 +88,15 @@ const CONGELADAS: Record<string, Congelada> = {
     blob: "ce02d51f612cd043f0b5b4d423472aaf226d75c2",
     desde: "0b08f2f4",
     motivo: "Caracterización C0 de los reportes (2.2): resultado y conteo de consultas. Regenerada en 0b08f2f4 (O.37-O.39: solo bajan los conteos).",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "1a6b47514a6ec4c9f136674267eb7f94c01c4342",
+        // Un commit no puede llevar su propio hash: es el commit HIJO de este, «Hito 4 (H4E2-2, O.38b D1): las líneas del período de N sucursales en una lectura».
+        commit: "87d63d2d",
+        motivo:
+          "O.38b D1 (refactor, sin cambio de resultado): el Consolidado lee las líneas del período de todas las sucursales en UNA lectura. Cambia SOLO la línea de conteo de la entrada 35 (resumen-consolidado): 19 → 18 consultas, `movimientoStock.findMany` ×2 → ×1; el resultado y las demás entradas, byte a byte.",
+      },
+    ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {
     blob: "8e1e3e873cb7804aa9cc4245eb1fccd38d66fb3a",

@@ -31,6 +31,8 @@ export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date
  * (`obtenerReportePorPeriodoConCatalogo`) y los que solo muestran una parte —las ventas por categoría/sección, el Consolidado—, que así no arman el reporte
  * entero (margen Real, IPC, tendencia de precios, impacto de recetas…) para tirar casi todo (O.38/O.39 de docs/pureza-integracion.md). Mismas lecturas, en el
  * mismo orden, que el principio del reporte completo.
+ *
+ * Es la de N sucursales (`cargarLineasDelPeriodoDeSucursales`) con un solo elemento: UNA implementación (O.38b, regla del dueño «si duplica, no va»).
  */
 export async function cargarLineasDelPeriodo(
   sucursalId: string,
@@ -39,10 +41,44 @@ export async function cargarLineasDelPeriodo(
   filtros: FiltrosPeriodo = {},
   db: Db,
   /**
-   * Lo que quien llama ya leyó, para no volver a leerlo: la clasificación de «No comestibles» y el catálogo crudo (los mismos para todas las sucursales:
-   * el Consolidado los lee una vez) y los Precios Locales vigentes de ESTA sucursal (ver `construirMapaProductos`).
+   * Lo que quien llama ya leyó, para no volver a leerlo: la clasificación de «No comestibles» y el catálogo crudo (los mismos para todas las sucursales) y
+   * los Precios Locales vigentes de ESTA sucursal (ver `construirMapaProductos`).
    */
   cargado: { clasificacion?: ClasificacionNoComestibles; catalogo?: CatalogoDeProductos; preciosLocales?: ReadonlyMap<string, { precio: number }> } = {}
+) {
+  const { desde, hasta, clasificacionNoComestibles, porSucursal } = await cargarLineasDelPeriodoDeSucursales([sucursalId], desdeIn, hastaIn, filtros, db, {
+    clasificacion: cargado.clasificacion,
+    catalogo: cargado.catalogo,
+    preciosLocales: cargado.preciosLocales ? new Map([[sucursalId, cargado.preciosLocales]]) : undefined,
+  });
+  const { items, productos } = porSucursal.get(sucursalId)!;
+  return { desde, hasta, items, productos, clasificacionNoComestibles };
+}
+
+/**
+ * `cargarLineasDelPeriodo` de VARIAS sucursales a la vez (O.38b de docs/pureza-integracion.md, D1 de docs/plan-hito-4-pureza.md §4): las líneas de Kardex del
+ * rango de todas en UNA lectura (`seccion: { sucursalId: { in } }`, que trae de qué sucursal es cada línea) repartidas en memoria, y el catálogo de cada una
+ * (`productos`, con SU Precio Local y SU disponibilidad). Con un solo elemento hace exactamente las lecturas de antes (Postgres resuelve `IN ($1)` como
+ * `= $1`): la de una sucursal es esta con `[id]`. El Consolidado la llama con todas sus sucursales.
+ *
+ * El reparto conserva el orden de la consulta (`operacion.fecha` ascendente) dentro de cada sucursal. Cada sucursal sale en `porSucursal` aunque no tenga
+ * ninguna línea.
+ */
+export async function cargarLineasDelPeriodoDeSucursales(
+  sucursalIds: readonly string[],
+  desdeIn: Date,
+  hastaIn: Date,
+  filtros: FiltrosPeriodo = {},
+  db: Db,
+  /**
+   * Lo que quien llama ya leyó: la clasificación de «No comestibles» y el catálogo crudo (los mismos para todas las sucursales) y los Precios Locales
+   * vigentes de cada sucursal, POR sucursal (`sucursalId` → los de esa sucursal; ver `construirMapaProductos`).
+   */
+  cargado: {
+    clasificacion?: ClasificacionNoComestibles;
+    catalogo?: CatalogoDeProductos;
+    preciosLocales?: ReadonlyMap<string, ReadonlyMap<string, { precio: number }>>;
+  } = {}
 ) {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
 
@@ -57,7 +93,7 @@ export async function cargarLineasDelPeriodo(
   // devuelta ni el resultado final.
   const movimientos = await db.movimientoStock.findMany({
     where: {
-      seccion: { sucursalId },
+      seccion: { sucursalId: { in: [...sucursalIds] } },
       operacion: { fecha: { gte: desde, lte: hasta } },
       ...(filtros.proceso ? { proceso: filtros.proceso } : {}),
       ...(filtros.seccionId ? { seccionId: filtros.seccionId } : {}),
@@ -76,42 +112,50 @@ export async function cargarLineasDelPeriodo(
       precioPorUnidadStock: true,
       costoUnitarioVenta: true,
       producto: { select: { nombre: true, codigo: true } },
-      seccion: { select: { nombre: true } },
+      seccion: { select: { nombre: true, sucursalId: true } },
       operacion: { select: { fecha: true, nroFactura: true, proveedorId: true, anuladaEn: true, proveedor: { select: { nombre: true } } } },
     },
     orderBy: { operacion: { fecha: "asc" } },
   });
 
-  const items: ItemPeriodo[] = movimientos.map((m) => ({
-    fecha: m.operacion.fecha,
-    productoId: m.productoId,
-    productoNombre: m.producto.nombre,
-    productoCodigo: m.producto.codigo,
-    detalle: m.detalle,
-    // Magnitud (no el delta firmado) para los procesos de signo fijo — la
-    // columna "Cantidad" de la Hoja 7 original también guardaba una
-    // magnitud sin signo para estos casos (el signo se aplicaba solo al
-    // sumar stock, nunca acá). Ajuste/Control/Transferencia SÍ quedan con
-    // su delta firmado tal cual, mismo criterio que el original.
-    cantidad: esSignoFijo(m.proceso) ? Math.abs(Number(m.cantidad)) : Number(m.cantidad),
-    loteVencimiento: m.loteVencimiento,
-    proveedorNombre: m.operacion.proveedor?.nombre ?? null,
-    proveedorId: m.operacion.proveedorId,
-    nroFactura: m.operacion.nroFactura,
-    proceso: m.proceso,
-    seccionId: m.seccionId,
-    seccionNombre: m.seccion.nombre,
-    idMovimiento: m.id,
-    idOperacion: m.operacionId,
-    precioTotal: Number(m.precioTotal),
-    precioPorUnidadStock: Number(m.precioPorUnidadStock),
-    costoUnitarioVenta: m.costoUnitarioVenta !== null ? Number(m.costoUnitarioVenta) : null,
-    anulada: m.operacion.anuladaEn !== null,
-  }));
+  // El reparto: cada línea a la lista de su sucursal (la de la sección), en el orden de la consulta.
+  const itemsPorSucursal = new Map<string, ItemPeriodo[]>(sucursalIds.map((id) => [id, []]));
+  for (const m of movimientos) {
+    itemsPorSucursal.get(m.seccion.sucursalId)?.push({
+      fecha: m.operacion.fecha,
+      productoId: m.productoId,
+      productoNombre: m.producto.nombre,
+      productoCodigo: m.producto.codigo,
+      detalle: m.detalle,
+      // Magnitud (no el delta firmado) para los procesos de signo fijo — la
+      // columna "Cantidad" de la Hoja 7 original también guardaba una
+      // magnitud sin signo para estos casos (el signo se aplicaba solo al
+      // sumar stock, nunca acá). Ajuste/Control/Transferencia SÍ quedan con
+      // su delta firmado tal cual, mismo criterio que el original.
+      cantidad: esSignoFijo(m.proceso) ? Math.abs(Number(m.cantidad)) : Number(m.cantidad),
+      loteVencimiento: m.loteVencimiento,
+      proveedorNombre: m.operacion.proveedor?.nombre ?? null,
+      proveedorId: m.operacion.proveedorId,
+      nroFactura: m.operacion.nroFactura,
+      proceso: m.proceso,
+      seccionId: m.seccionId,
+      seccionNombre: m.seccion.nombre,
+      idMovimiento: m.id,
+      idOperacion: m.operacionId,
+      precioTotal: Number(m.precioTotal),
+      precioPorUnidadStock: Number(m.precioPorUnidadStock),
+      costoUnitarioVenta: m.costoUnitarioVenta !== null ? Number(m.costoUnitarioVenta) : null,
+      anulada: m.operacion.anuladaEn !== null,
+    });
+  }
 
   const clasificacionNoComestibles = cargado.clasificacion ?? (await cargarClasificacionNoComestibles(db));
-  const productos = await construirMapaProductos(sucursalId, db, clasificacionNoComestibles, { catalogo: cargado.catalogo, preciosLocales: cargado.preciosLocales });
-  return { desde, hasta, items, productos, clasificacionNoComestibles };
+  // El catálogo de CADA sucursal (su Precio Local y su disponibilidad): con un solo elemento, la misma única llamada de antes.
+  const mapas = await Promise.all(
+    sucursalIds.map((id) => construirMapaProductos(id, db, clasificacionNoComestibles, { catalogo: cargado.catalogo, preciosLocales: cargado.preciosLocales?.get(id) }))
+  );
+  const porSucursal = new Map(sucursalIds.map((id, i) => [id, { items: itemsPorSucursal.get(id)!, productos: mapas[i] }]));
+  return { desde, hasta, clasificacionNoComestibles, porSucursal };
 }
 
 /**
