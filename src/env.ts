@@ -17,8 +17,9 @@ import { esRemitenteValido } from "./core/correo/direcciones";
  * `validarEntornoAlArrancar`, y solo en Producción de Vercel (ver abajo): dev, build, tests y e2e no la ejecutan.
  *
  * Requeridas (confirmadas en el `.env` real: sin ellas, Prisma o Auth.js ya fallan hoy, esto solo lo hace explícito y con un
- * mensaje más claro): `DATABASE_URL`/`DIRECT_URL` (Prisma), `AUTH_SECRET`/`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (Auth.js, Google
- * OAuth — único proveedor de login hoy).
+ * mensaje más claro): `DATABASE_URL` (Prisma), `AUTH_SECRET`/`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (Auth.js, Google OAuth — único proveedor de login hoy).
+ * `DIRECT_URL` (la conexión del DUEÑO de las tablas, que salta el RLS) NO es del runtime (S-32): la usan `prisma.config.ts` (migraciones) y los scripts, y el schema no la declara ni la exige.
+ * Residuo conocido: Vercel no permite limitar una variable al build, así que `DIRECT_URL` sigue cargada en Producción porque el build la usa para `migrate status`.
  *
  * Opcionales (el proyecto funciona sin ellas, con la feature correspondiente deshabilitada — confirmado en el código real):
  * `ALLOWED_EMAIL_DOMAINS` (`src/server/sesion/acceso.ts` — "hoy no hay dominios configurados"), `CRON_SECRET` (protege los crons de IPC/dólar),
@@ -33,7 +34,6 @@ const remitente = z.string().refine(esRemitenteValido, "no es un remitente váli
 
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
-  DIRECT_URL: z.string().min(1),
   AUTH_SECRET: z.string().min(1),
   AUTH_GOOGLE_ID: z.string().min(1),
   AUTH_GOOGLE_SECRET: z.string().min(1),
@@ -85,20 +85,26 @@ export function parseEnv(source: Record<string, string | undefined>, produccion 
   return (produccion ? schemaDeProduccion : envSchema).parse(source);
 }
 
+/** ¿Es un despliegue de Vercel (de cualquier entorno)? Vercel fija `VERCEL=1` y `VERCEL_ENV`; basta que haya cualquiera de las dos. Mismo criterio que `permitirRolPrivilegiado` (core/auth/rol-de-ejecucion.ts). */
+const estaEnVercel = (source: Record<string, string | undefined>) => Boolean(source.VERCEL) || Boolean(source.VERCEL_ENV);
+
 const entornoEstricto = (source: Record<string, string | undefined>) => source.VERCEL_ENV === "production" || source.MOTOR2_ENTORNO_ESTRICTO === "1";
 
 /**
  * Los dos escapes que apagan una garantía de seguridad NO pueden existir en Producción de Vercel (Pureza 0.4, hallazgo H1 de la auditoría):
  *  - `MOTOR2_ROL_ESTRICTO=0` deja operar con un rol de base que salta el RLS: sin aislamiento entre empresas.
  *  - `MOTOR2_ENTORNO_ESTRICTO=0` relajaba esta misma validación (dejaba arrancar sin `CRON_SECRET` ni `AUTH_SECRET` largo).
- * Ambos siguen valiendo fuera de Producción (herramientas de demo, local). Devuelve los problemas por NOMBRE de variable, nunca por valor.
+ * `MOTOR2_ROL_ESTRICTO=0` además está prohibido en TODO despliegue de Vercel (Preview y Development: S-32); `MOTOR2_ENTORNO_ESTRICTO=0` solo en Producción. Ambos siguen valiendo fuera de
+ * Vercel (herramientas de demo, local; y el rol, solo sobre una base descartable: `permitirRolPrivilegiado`). Devuelve los problemas por NOMBRE de variable, nunca por valor.
  */
 export function escapesProhibidosEnProduccion(source: Record<string, string | undefined>): string[] {
   const produccion = source.VERCEL_ENV === "production";
-  // Fuera de Vercel, quien pide el entorno estricto (`MOTOR2_ENTORNO_ESTRICTO=1`: un despliegue propio fuera de Vercel) tampoco puede dejar apagado el aislamiento por empresa.
-  if (!produccion && source.MOTOR2_ENTORNO_ESTRICTO !== "1") return [];
+  // S-32: `MOTOR2_ROL_ESTRICTO=0` está prohibido en CUALQUIER despliegue de Vercel, no solo en Producción: el Preview de `stockhneuquen` comparte la base de producción (ADR-007) y un
+  // entorno menos confiable no puede ejecutar con el privilegio de uno más confiable. Fuera de Vercel, quien pide el entorno estricto (`MOTOR2_ENTORNO_ESTRICTO=1`: un despliegue propio)
+  // tampoco puede dejar apagado el aislamiento por empresa.
+  if (!estaEnVercel(source) && source.MOTOR2_ENTORNO_ESTRICTO !== "1") return [];
   const problemas: string[] = [];
-  if (source.MOTOR2_ROL_ESTRICTO === "0") problemas.push("MOTOR2_ROL_ESTRICTO=0 (apaga el aislamiento por empresa: está prohibido en Producción y con el entorno estricto)");
+  if (source.MOTOR2_ROL_ESTRICTO === "0") problemas.push("MOTOR2_ROL_ESTRICTO=0 (apaga el aislamiento por empresa: está prohibido en todo despliegue de Vercel y con el entorno estricto)");
   if (produccion && source.MOTOR2_ENTORNO_ESTRICTO === "0") problemas.push("MOTOR2_ENTORNO_ESTRICTO=0 (relaja esta validación: está prohibido en Producción)");
   return problemas;
 }
@@ -109,7 +115,12 @@ export function escapesProhibidosEnProduccion(source: Record<string, string | un
  * Preview) no hace nada. El error lista solo los nombres de las variables, nunca sus valores.
  */
 export function validarEntornoAlArrancar(source: Record<string, string | undefined> = process.env): void {
-  if (!entornoEstricto(source)) return;
+  if (!entornoEstricto(source)) {
+    // Fuera del entorno estricto no se valida el schema, pero un escape prohibido en todo Vercel (S-32: un Preview) igual impide arrancar.
+    const escapes = escapesProhibidosEnProduccion(source);
+    if (escapes.length > 0) throw new Error(`Configuración inválida: ${escapes.join(", ")}. El proceso no arranca.`);
+    return;
+  }
   const resultado = schemaDeProduccion.safeParse(source);
   const problemas = [
     ...escapesProhibidosEnProduccion(source),

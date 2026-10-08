@@ -22,6 +22,7 @@ const FUERA_DEL_SCHEMA: Record<string, string> = {
   VERCEL_ENV: "la fija Vercel; es la que decide si el schema se aplica al arrancar",
   CARTA_DOMINIO_BASE_COMPILADO: "la copia de CARTA_DOMINIO_BASE que next.config.ts incrusta al compilar; la compara el arranque, no la configura el operador",
   CARTA_EMPRESA_UNICA_COMPILADO: "la copia de CARTA_EMPRESA_UNICA que next.config.ts incrusta al compilar (add-on de la empresa única); la compara el arranque, no la configura el operador",
+  DIRECT_URL: "la conexión del DUEÑO de las tablas (salta el RLS): la lee `prisma.config.ts` para migrar y la usan los scripts, nunca el runtime de la app (S-32); por eso el schema de runtime no la declara ni la exige",
   MOTOR2_SIN_DOLAR_AUTOMATICO: "flag de pruebas de navegador (no salir a internet); no es configuración de la app",
 };
 

@@ -10,6 +10,8 @@ import { cabecerasCarta, cabecerasComunes } from "./src/core/seguridad/cabeceras
 const dominioBaseCarta = process.env.CARTA_DOMINIO_BASE?.trim().toLowerCase();
 
 const nextConfig: NextConfig = {
+  // S-32: sin `X-Powered-By: Next.js` (no anunciar el framework ni su versión a quien escanea).
+  poweredByHeader: false,
   // Copia de CARTA_DOMINIO_BASE tal como la vio el build (se incrusta en el bundle): `instrumentation.ts` la compara con la del arranque.
   env: { CARTA_DOMINIO_BASE_COMPILADO: dominioBaseCarta ?? "", CARTA_EMPRESA_UNICA_COMPILADO: process.env.CARTA_EMPRESA_UNICA ?? "" },
   // Silencia el warning de Turbopack: hay otro package-lock.json en la raíz
