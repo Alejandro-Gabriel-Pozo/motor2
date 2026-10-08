@@ -463,7 +463,9 @@ describe("Caracterización del tramo A (Fase 3, paso .0): resultado completo y c
   });
 
   describe("Catálogo: árbol de grupos y receta propia", () => {
-    caso("catalogo.cargarArbolDeGrupos()", (db) => cargarArbolDeGrupos(db));
+    // El árbol sale de un `findMany` sin `ORDER BY`, así que el orden de las entradas del mapa es el que entregue Postgres (varió en una corrida de la verificación del Hito 4). Nadie lo
+    // usa por orden (se consulta por id), por eso el caso lo fija ordenado por id: el resultado que importa —qué grupos hay y cómo se enlazan— no cambia.
+    caso("catalogo.cargarArbolDeGrupos()", async (db) => new Map([...(await cargarArbolDeGrupos(db))].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))));
     caso("catalogo.creariaCiclo(Lácteos bajo Quesos: sí)", (db) => creariaCiclo("grp-lacteos", "grp-quesos", db));
     caso("catalogo.obtenerEstadoDeRecetaPropia(Pizza, Central: la central cambió)", (db) => obtenerEstadoDeRecetaPropia("pv-pizza", CENTRAL, db));
   });
