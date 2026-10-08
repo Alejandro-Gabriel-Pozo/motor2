@@ -61,8 +61,12 @@ export async function construirMapaProductos(
    * MISMO para todas las sucursales: se puede leer una vez y armar con él el mapa de cada una) y los Precios Locales vigentes de ESTA sucursal
    * (`preciosLocalesVigentes(sucursalId, db)`, sin filtro de productos: pasar los de otra sucursal, o un subconjunto, daría otros precios sin ningún
    * error). Lo que falte se lee acá, como siempre.
+   *
+   * `disponibilidad` (O.38b, D3): la disponibilidad de ESTA sucursal para los productos del catálogo (`disponibilidadDeProductosEnSucursales`, que el
+   * Consolidado lee una vez para todas sus sucursales y reparte). Mismo cuidado que los Precios Locales: la de otra sucursal daría otra disponibilidad sin
+   * ningún error. Solo tiene sentido con `sucursalId`.
    */
-  cargado: { catalogo?: CatalogoDeProductos; preciosLocales?: ReadonlyMap<string, { precio: number }> } = {}
+  cargado: { catalogo?: CatalogoDeProductos; preciosLocales?: ReadonlyMap<string, { precio: number }>; disponibilidad?: ReadonlyMap<string, boolean> } = {}
 ): Promise<Map<string, InfoProductoReporte>> {
   const [productos, preciosLocales, clasificacion] = await Promise.all([
     cargado.catalogo ? Promise.resolve(cargado.catalogo) : cargarCatalogoDeProductos(db),
@@ -70,9 +74,8 @@ export async function construirMapaProductos(
     clasificacionCargada ? Promise.resolve(clasificacionCargada) : cargarClasificacionNoComestibles(db),
   ]);
   const idsProductos = productos.map((p) => p.id);
-  const disponibilidadPorProducto = sucursalId
-    ? await disponibilidadDeProductos(sucursalId, idsProductos, db)
-    : await disponibilidadEnAlgunaSucursal(idsProductos, db);
+  const disponibilidadPorProducto =
+    cargado.disponibilidad ?? (sucursalId ? await disponibilidadDeProductos(sucursalId, idsProductos, db) : await disponibilidadEnAlgunaSucursal(idsProductos, db));
 
   return armarMapaProductos(productos, preciosLocales, clasificacion, disponibilidadPorProducto);
 }

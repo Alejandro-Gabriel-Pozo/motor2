@@ -4,7 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { whereDisponibleEn, whereDisponibleEnAlguna } from "../../src/core/catalogo/public";
-import { productoDisponibleEn, disponibilidadDeProductos } from "../../src/server/lecturas/catalogo/disponibilidad";
+import { productoDisponibleEn, disponibilidadDeProductos, disponibilidadDeProductosEnSucursales } from "../../src/server/lecturas/catalogo/disponibilidad";
 import { disponibilidadPorSucursalDeProducto } from "../../src/server/consultas/catalogo/disponibilidad";
 
 describe("disponibilidad-producto-consulta", () => {
@@ -72,6 +72,38 @@ describe("disponibilidad-producto-consulta", () => {
 
     it("lista vacía no dispara ninguna consulta y da un Map vacío", async () => {
       expect((await disponibilidadDeProductos(sucursalA, [], prisma)).size).toBe(0);
+    });
+  });
+
+  describe("disponibilidadDeProductosEnSucursales (O.38b, D3: varias sucursales en una consulta)", () => {
+    const todos = () => [disponibleSoloEnA, disponibleEnLasDos, noDisponibleEnNinguna];
+
+    it("da, para CADA sucursal, lo mismo que la de una sucursal (fila en false y sin fila: false), en una sola consulta", async () => {
+      let consultas = 0;
+      const db = prisma.$extends({
+        query: {
+          disponibilidadProducto: {
+            findMany({ args, query }) {
+              consultas += 1;
+              return query(args);
+            },
+          },
+        },
+      }) as unknown as typeof prisma;
+      const resultado = await disponibilidadDeProductosEnSucursales([sucursalA, sucursalB], todos(), db);
+      expect(consultas).toBe(1);
+      expect([...resultado.keys()]).toEqual([sucursalA, sucursalB]);
+      expect(Object.fromEntries(resultado.get(sucursalA)!)).toEqual({ [disponibleSoloEnA]: true, [disponibleEnLasDos]: true, [noDisponibleEnNinguna]: false });
+      expect(Object.fromEntries(resultado.get(sucursalB)!)).toEqual({ [disponibleSoloEnA]: false, [disponibleEnLasDos]: true, [noDisponibleEnNinguna]: false });
+      for (const s of [sucursalA, sucursalB]) expect(resultado.get(s)).toEqual(await disponibilidadDeProductos(s, todos(), prisma));
+    });
+
+    it("sin productos no consulta y cada sucursal sale con un Map vacío", async () => {
+      const resultado = await disponibilidadDeProductosEnSucursales([sucursalA, sucursalB], [], prisma);
+      expect([...resultado.entries()].map(([s, m]) => [s, m.size])).toEqual([
+        [sucursalA, 0],
+        [sucursalB, 0],
+      ]);
     });
   });
 

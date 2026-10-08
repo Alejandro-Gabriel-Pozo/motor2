@@ -4,6 +4,7 @@ import { calcularComprasDelPeriodo, calcularMargenNominalDelPeriodo, calcularVen
 import { cargarCatalogoDeProductos, cargarClasificacionNoComestibles, obtenerCostoActualPorMPDeSucursales, type CatalogoDeProductos } from "@/server/lecturas/reportes/comun";
 import { calcularCostosYMargenes } from "@/server/lecturas/reportes/costos";
 import { cargarLineasDelPeriodoDeSucursales } from "@/server/consultas/reportes/periodo";
+import { disponibilidadDeProductosEnSucursales } from "@/server/lecturas/catalogo/disponibilidad";
 import type { Db } from "@/lib/db-tipos";
 import type { CostoMP, FilaResumenConsolidado, InfoProductoReporte, ItemPeriodo } from "@/core/reportes/public";
 
@@ -21,9 +22,12 @@ import type { CostoMP, FilaResumenConsolidado, InfoProductoReporte, ItemPeriodo 
  *  - por sucursal queda solo lo que es de ella: su Precio Local y su disponibilidad (el mapa de productos), sus recetas (la propia o la central con sus
  *    calibraciones) y su costo de reposición — y se calcula solo lo que se muestra: ventas (`calcularVentasDelPeriodo`), gastado
  *    (`calcularComprasDelPeriodo`) y el margen NOMINAL (`calcularMargenNominalDelPeriodo`, el mismo `margenTotal` del reporte del período).
- * O.38b (D1 y D2 de docs/plan-hito-4-pureza.md §4): las líneas del período (`cargarLineasDelPeriodoDeSucursales`) y el costo de reposición
- * (`obtenerCostoActualPorMPDeSucursales`) de todas las sucursales salen de UNA lectura cada uno, con la misma implementación que usa el reporte (y la venta)
- * de una sucursal con un solo elemento. Lo que sigue creciendo con las sucursales (5 lecturas cada una) son los demás cargadores por sucursal.
+ * O.38b (D1, D2 y D3 de docs/plan-hito-4-pureza.md §4): las líneas del período (`cargarLineasDelPeriodoDeSucursales`), el costo de reposición
+ * (`obtenerCostoActualPorMPDeSucursales`) y la disponibilidad (`disponibilidadDeProductosEnSucursales`) de todas las sucursales salen de UNA lectura cada
+ * uno, con la misma implementación que usa el reporte (y la venta) de una sucursal con un solo elemento: 8 + 4N lecturas. Lo que sigue creciendo con las
+ * sucursales (4 lecturas cada una) es el Precio Local con su capacidad y las recetas vigentes (propia y central), DIFERIDOS por decisión del dueño hasta
+ * después de 4A-5 y del segundo tiempo de la venta: `sucursalTieneCapacidad` la usa también el gate, `preciosLocalesVigentes` es la frontera de la carta
+ * pública, y las recetas propias se leen por par (sucursal, producto), donde un filtro mal armado elegiría una serie deshabilitada.
  */
 export async function obtenerResumenConsolidado(
   sucursales: { id: string; nombre: string }[],
@@ -40,8 +44,13 @@ export async function obtenerResumenConsolidado(
   const sucursalIds = sucursales.map((s) => s.id);
   const [alertasPorSucursal, lineas, costos] = await Promise.all([
     resumirAlertasDeSucursales(sucursalIds, catalogo, db),
-    // Las líneas del período de TODAS las sucursales en una lectura, y el catálogo de cada una (O.38b, D1).
-    cargarLineasDelPeriodoDeSucursales(sucursalIds, desde, hasta, {}, db, { clasificacion, catalogo }),
+    // La disponibilidad de los productos del catálogo en TODAS las sucursales en una lectura (O.38b, D3), y con ella las líneas del período de todas en
+    // otra (D1) y el catálogo de cada una (que así solo lee su Precio Local).
+    disponibilidadDeProductosEnSucursales(
+      sucursalIds,
+      catalogo.map((p) => p.id),
+      db
+    ).then((disponibilidad) => cargarLineasDelPeriodoDeSucursales(sucursalIds, desde, hasta, {}, db, { clasificacion, catalogo, disponibilidad })),
     // El costo de reposición de HOY de todas las sucursales en una lectura (O.38b, D2).
     obtenerCostoActualPorMPDeSucursales(sucursalIds, db),
   ]);

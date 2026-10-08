@@ -103,6 +103,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "O.38b D2 (refactor, sin cambio de resultado): el Consolidado lee el costo de reposición de todas las sucursales en UNA consulta. Cambia SOLO la línea de conteo de la entrada 35: 18 → 17 consultas, `$queryRaw` ×2 → ×1; el resultado y las demás entradas (que leen el costo de una sucursal con la misma implementación), byte a byte.",
       },
+      {
+        blob: "1b3a6bfeea63b685aa970d9b3dafdcbce8325f93",
+        // El commit HIJO de este, «Hito 4 (H4E2-4, O.38b D3): la disponibilidad de N sucursales en una consulta».
+        commit: "9d5d1adf",
+        motivo:
+          "O.38b D3 (refactor, sin cambio de resultado): el Consolidado lee la disponibilidad de todas las sucursales en UNA consulta. Cambia SOLO la línea de conteo de la entrada 35: 17 → 16 consultas (8 + 4N con N = 2), `disponibilidadProducto.findMany` ×2 → ×1; el resultado y las demás entradas, byte a byte.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {

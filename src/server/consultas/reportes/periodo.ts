@@ -71,13 +71,14 @@ export async function cargarLineasDelPeriodoDeSucursales(
   filtros: FiltrosPeriodo = {},
   db: Db,
   /**
-   * Lo que quien llama ya leyó: la clasificación de «No comestibles» y el catálogo crudo (los mismos para todas las sucursales) y los Precios Locales
-   * vigentes de cada sucursal, POR sucursal (`sucursalId` → los de esa sucursal; ver `construirMapaProductos`).
+   * Lo que quien llama ya leyó: la clasificación de «No comestibles» y el catálogo crudo (los mismos para todas las sucursales) y, POR sucursal
+   * (`sucursalId` → lo de esa sucursal), los Precios Locales vigentes y la disponibilidad de los productos del catálogo (ver `construirMapaProductos`).
    */
   cargado: {
     clasificacion?: ClasificacionNoComestibles;
     catalogo?: CatalogoDeProductos;
     preciosLocales?: ReadonlyMap<string, ReadonlyMap<string, { precio: number }>>;
+    disponibilidad?: ReadonlyMap<string, ReadonlyMap<string, boolean>>;
   } = {}
 ) {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
@@ -152,7 +153,9 @@ export async function cargarLineasDelPeriodoDeSucursales(
   const clasificacionNoComestibles = cargado.clasificacion ?? (await cargarClasificacionNoComestibles(db));
   // El catálogo de CADA sucursal (su Precio Local y su disponibilidad): con un solo elemento, la misma única llamada de antes.
   const mapas = await Promise.all(
-    sucursalIds.map((id) => construirMapaProductos(id, db, clasificacionNoComestibles, { catalogo: cargado.catalogo, preciosLocales: cargado.preciosLocales?.get(id) }))
+    sucursalIds.map((id) =>
+      construirMapaProductos(id, db, clasificacionNoComestibles, { catalogo: cargado.catalogo, preciosLocales: cargado.preciosLocales?.get(id), disponibilidad: cargado.disponibilidad?.get(id) })
+    )
   );
   const porSucursal = new Map(sucursalIds.map((id, i) => [id, { items: itemsPorSucursal.get(id)!, productos: mapas[i] }]));
   return { desde, hasta, clasificacionNoComestibles, porSucursal };

@@ -71,10 +71,20 @@ async function sembrar(n: number) {
 /**
  * Lo que se lee UNA vez para todas las sucursales, y lo que se lee una vez por sucursal. O.38b (docs/plan-hito-4-pureza.md §4) pasa a comunes, paso a paso,
  * los cargadores generalizados a N sucursales con UNA implementación: D1 las líneas del período (`MovimientoStock.findMany`), D2 el costo de reposición
- * (`$queryRaw`).
+ * (`$queryRaw`), D3 la disponibilidad (`DisponibilidadProducto.findMany`): 8 + 4N. Quedan por sucursal el Precio Local con su capacidad y las recetas
+ * vigentes (D4/D5, diferidos por decisión del dueño).
  */
-const COMUNES = ["Grupo.findMany", "Producto.findMany", "MovimientoStock.groupBy", "Seccion.findMany", "StockMinimoProducto.findMany", "MovimientoStock.findMany", "$queryRaw"];
-const POR_SUCURSAL = ["CapacidadSucursal.findMany", "PrecioLocalProducto.findMany", "DisponibilidadProducto.findMany", "RecetaSucursal.findMany", "RecetaVersion.findMany"];
+const COMUNES = [
+  "Grupo.findMany",
+  "Producto.findMany",
+  "MovimientoStock.groupBy",
+  "Seccion.findMany",
+  "StockMinimoProducto.findMany",
+  "MovimientoStock.findMany",
+  "$queryRaw",
+  "DisponibilidadProducto.findMany",
+];
+const POR_SUCURSAL = ["CapacidadSucursal.findMany", "PrecioLocalProducto.findMany", "RecetaSucursal.findMany", "RecetaVersion.findMany"];
 
 describe("Consolidado: lo común se lee una vez y por sucursal solo lo suyo (O.38)", () => {
   it("con 2 y con 5 sucursales: lo común una vez, lo propio una vez por sucursal, nada más — y los mismos números que el resumen operativo", async () => {

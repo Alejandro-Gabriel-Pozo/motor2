@@ -4265,7 +4265,7 @@
     ]
   }
 ### 35. resumen-consolidado.obtenerResumenConsolidado(Central + Norte, ahora)
-  consultas (17): $queryRaw×1, capacidadSucursal.findMany×2, disponibilidadProducto.findMany×2, grupo.findMany×1, movimientoStock.findMany×1, movimientoStock.groupBy×1, precioLocalProducto.findMany×2, producto.findMany×1, recetaSucursal.findMany×2, recetaVersion.findMany×2, seccion.findMany×1, stockMinimoProducto.findMany×1
+  consultas (16): $queryRaw×1, capacidadSucursal.findMany×2, disponibilidadProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×1, movimientoStock.groupBy×1, precioLocalProducto.findMany×2, producto.findMany×1, recetaSucursal.findMany×2, recetaVersion.findMany×2, seccion.findMany×1, stockMinimoProducto.findMany×1
   resultado: [
     {
       alertasBajas: 1,
