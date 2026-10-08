@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import { limpiarEventoSentry } from "@/lib/sentry-limpiar";
+import { limpiarEventoSentry, limpiarMigaSentry } from "@/lib/sentry-limpiar";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -7,6 +7,7 @@ Sentry.init({
   sendDefaultPii: false,
   beforeSend: limpiarEventoSentry,
   beforeSendTransaction: limpiarEventoSentry,
+  beforeBreadcrumb: limpiarMigaSentry,
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

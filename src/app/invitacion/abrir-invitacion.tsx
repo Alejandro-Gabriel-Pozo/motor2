@@ -13,7 +13,7 @@ export function AbrirInvitacion() {
 
   useEffect(() => {
     const token = tokenDelFragmento(window.location.hash);
-    // Sale del fragmento antes de pedir: así el token no queda en el historial ni a la vista. Sin token válido la acción responde con el mismo mensaje de «enlace no válido».
+    // Sale del fragmento antes de pedir: así el token no queda en el historial ni a la vista. Sin token válido la acción responde con el mismo mensaje de «enlace no válido». Esto NO alcanza para Sentry: el SDK ya tomó la dirección con fragmento (pedido, migas, span de carga); lo recorta `lib/sentry-limpiar` (S-29, GT-17).
     window.history.replaceState(null, "", window.location.pathname);
     void abrirInvitacion(token ?? "").then((r) => {
       if (r && !r.ok) setMensaje(r.mensaje);
