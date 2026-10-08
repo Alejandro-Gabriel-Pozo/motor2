@@ -1,21 +1,25 @@
 "use server";
 
-import type { Prisma } from "@prisma/client";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { validarImporte } from "@/core/datos/importe";
 import { ofrecerSincronizarPrecio } from "@/core/carta/public";
+import { guardComandoSetPrecioLocalProducto, guardComandoSincronizarPrecioLocalGrupoCarta } from "@/core/features/movimientos/precio-local.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
-import type { ContextoUsuario } from "@/core/auth/contexto";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion, type ResultadoConSincronizable } from "../tipos";
+import { error, type ResultadoAccion, type ResultadoConSincronizable } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
 import { revalidarCartasPublicas } from "../carta/revalidar";
+import { setPrecioLocalProductoCasoDeUso } from "./casos-de-uso/set-precio-local-producto";
+import { sincronizarPrecioLocalGrupoCartaCasoDeUso } from "./casos-de-uso/sincronizar-precio-local-grupo-carta";
 
 /**
  * Port de HOJA_PRECIO_LOCAL/"Precio Local" (Catalogo.js:2043-2077) — hueco
  * encontrado investigando Venta (porción Movimientos): Producto.precioVenta
  * es el precio GLOBAL, esto es el override por sucursal. `resolverPrecioVenta`
  * (src/core/movimientos/precio-venta.ts) es quien lee esto — acá solo el CRUD.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-4) las dos mutaciones son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{set-precio-local-producto,sincronizar-precio-local-grupo-carta}.ts`, con el paso compartido `guardar-precio-local-en-tx.ts` que escribe en
+ * server/persistencia/movimientos/precio-local.ts y audita): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las dos lecturas de abajo siguen acá.
  */
 export async function obtenerPrecioLocalProducto(sucursalId: string, productoId: string) {
   const ctx = await requerirVerEnSucursal(sucursalId, "precio_local");
@@ -28,55 +32,29 @@ export async function listarPreciosLocales(sucursalId: string) {
 }
 
 /**
- * Upsert del precio local de un producto en la sucursal activa, con su auditoría (A3, Pivote 6). Sin guarda: la ponen quienes lo llaman.
- * Recibe el cliente de la transacción de quien llama (Task #41, M10): el upsert y sus dos filas de auditoría quedan o todos o ninguno.
- */
-async function guardarPrecioLocal(tx: Prisma.TransactionClient, ctx: ContextoUsuario, producto: { id: string; nombre: string }, precio: number, habilitado: boolean) {
-  const productoId = producto.id;
-  const existente = await tx.precioLocalProducto.findUnique({ where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } } });
-  const fila = await tx.precioLocalProducto.upsert({
-    where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } },
-    update: { precio, habilitado },
-    create: { sucursalId: ctx.sucursalId, productoId, precio, habilitado },
-  });
-
-  // Auditoría administrativa (A3, Pivote 6).
-  await registrarCambioAuditado(tx, {
-    entidad: "PrecioLocalProducto", entidadId: fila.id, campo: "precio",
-    descripcion: `Precio local de "${producto.nombre}"`,
-    valorAnterior: existente ? Number(existente.precio) : null, valorNuevo: Number(precio), actorId: ctx.usuarioId, sucursalId: ctx.sucursalId,
-  });
-  await registrarCambioAuditado(tx, {
-    entidad: "PrecioLocalProducto", entidadId: fila.id, campo: "habilitado",
-    descripcion: `Precio local de "${producto.nombre}": habilitado`,
-    valorAnterior: existente?.habilitado ?? null, valorNuevo: habilitado, actorId: ctx.usuarioId, sucursalId: ctx.sucursalId,
-  });
-}
-
-/**
  * Si el producto está en un ítem agrupado de la carta y, con el precio local HABILITADO, sus hermanos quedaron a otro precio EN ESTA
  * SUCURSAL, el resultado trae además `sincronizable` (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8): la pantalla ofrece
  * aplicar el mismo precio local con un botón aparte (`sincronizarPrecioLocalGrupoCarta`). Nunca se sincroniza solo.
+ *
+ * Desde el Hito 4 (H4C-4): permiso (`conPermiso("precio_local")`) → formato del precio (`guardComandoSetPrecioLocalProducto`,
+ * core/features/movimientos/precio-local.guard.ts, DENTRO del envoltorio) → caso de uso (`casos-de-uso/set-precio-local-producto.ts`) → revalidar la carta
+ * pública → y DESPUÉS de revalidar, el `sincronizable` (lee el ítem agrupado con la base del contexto, como antes) → el resultado sin `datos` ni `codigo`
+ * (`aResultadoAccion`, más el `sincronizable` elegido a mano).
  */
 export async function setPrecioLocalProducto(productoId: string, precio: number, habilitado: boolean): Promise<ResultadoConSincronizable> {
   return conPermiso<ResultadoConSincronizable>("precio_local", async (ctx) => {
-    // Mismo validador que el formulario (CampoNumero tipo="importe"): número, no negativo, a lo sumo 2 decimales, dentro del tope.
-    const validado = validarImporte(precio, { etiqueta: "El precio", obligatorio: true });
-    if (!validado.ok) return error(validado.mensaje);
-    precio = validado.valor!; // obligatorio: nunca null
-
-    const producto = await ctx.db.producto.findUnique({ where: { id: productoId } });
-    if (!producto) return error("No se encontró el producto.");
-
-    await ctx.transaccion((tx) => guardarPrecioLocal(tx, ctx, producto, precio, habilitado));
+    const comando = guardComandoSetPrecioLocalProducto({ productoId, precio, habilitado });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await setPrecioLocalProductoCasoDeUso(ctx, comando.valor);
+    const base = aResultadoAccion(resultado);
+    if (!base.ok) return base;
     revalidarCartasPublicas();
 
-    const mensaje = `Precio local de "${producto.nombre}" ${habilitado ? `fijado en ${precio}` : "cargado (deshabilitado, se usa el precio global)"}.`;
     if (habilitado) {
-      const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId, ctx.db), Number(precio), "enSucursal");
-      if (sincronizable) return { ok: true, mensaje, sincronizable };
+      const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId, ctx.db), Number(comando.valor.precio), "enSucursal");
+      if (sincronizable) return { ok: true, mensaje: base.mensaje, sincronizable };
     }
-    return ok(mensaje);
+    return base;
   });
 }
 
@@ -85,26 +63,16 @@ export async function setPrecioLocalProducto(productoId: string, precio: number,
  * `setPrecioLocalProducto` con `sincronizable` (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8). Mismo permiso, mismo upsert y
  * misma auditoría que fijarlo a mano en cada uno. `sucursalId` tiene que ser la sucursal activa (la que vio la pantalla): si cambió en
  * el medio, no se escribe nada.
+ *
+ * Desde el Hito 4 (H4C-4): permiso → formato (`guardComandoSincronizarPrecioLocalGrupoCarta`: la sucursal de la pantalla, el precio y la lista, en ese orden,
+ * DENTRO del envoltorio) → caso de uso (`casos-de-uso/sincronizar-precio-local-grupo-carta.ts`) → revalidar la carta pública si salió bien → `aResultadoAccion`.
  */
 export async function sincronizarPrecioLocalGrupoCarta(sucursalId: string, productoIds: string[], precio: number, habilitado: boolean): Promise<ResultadoAccion> {
   return conPermiso("precio_local", async (ctx) => {
-    if (sucursalId !== ctx.sucursalId) return error("La sucursal activa cambió desde que se cargó la pantalla: recargala y volvé a intentar.");
-    const validado = validarImporte(precio, { etiqueta: "El precio", obligatorio: true });
-    if (!validado.ok) return error(validado.mensaje);
-    precio = validado.valor!; // obligatorio: nunca null
-    const ids = [...new Set(productoIds)];
-    if (!ids.length) return error("No hay productos para actualizar.");
-
-    const grupo = await resolverGrupoDeProducto(ids[0], ctx.sucursalId, ctx.db);
-    const delGrupo = new Set(grupo ? [ids[0], ...grupo.hermanos.map((h) => h.productoId)] : []);
-    if (!grupo || ids.some((id) => !delGrupo.has(id))) return error("Esos productos no están todos en el mismo ítem agrupado de la carta.");
-
-    const productos = await ctx.db.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } });
-    // Todo el grupo en UNA transacción (Task #41, M10): o quedan todos los precios locales con su auditoría, o ninguno.
-    await ctx.transaccion(async (tx) => {
-      for (const p of productos) await guardarPrecioLocal(tx, ctx, p, precio, habilitado);
-    });
-    revalidarCartasPublicas();
-    return ok(`Precio local de ${productos.map((p) => `"${p.nombre}"`).join(", ")} fijado en ${precio} en "${ctx.sucursalNombre}" («${grupo.nombreItem}»).`);
+    const comando = guardComandoSincronizarPrecioLocalGrupoCarta({ sucursalId, sucursalActivaId: ctx.sucursalId, productoIds, precio, habilitado });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await sincronizarPrecioLocalGrupoCartaCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
 }

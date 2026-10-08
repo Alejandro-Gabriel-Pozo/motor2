@@ -39,7 +39,6 @@ const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "clientes/cliente.ts": SIN_CASO_DE_USO,
   "movimientos/lecturas-conteo-fisico.ts": SOLO_LECTURA,
   "movimientos/motivos.ts": SIN_CASO_DE_USO,
-  "movimientos/precio-local.ts": SIN_CASO_DE_USO,
   "movimientos/secciones.ts": SIN_CASO_DE_USO,
   "reportes/margen-objetivo.ts": SIN_CASO_DE_USO,
   "stock/frecuencia-conteo.ts": SIN_CASO_DE_USO,

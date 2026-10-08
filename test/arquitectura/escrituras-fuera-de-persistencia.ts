@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 36;
+export const TOPE_DE_ENTRADAS = 35;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -169,11 +169,6 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["destinoConsumo.create", "destinoConsumo.update", "motivoMerma.create", "motivoMerma.update"],
     fase: "Fase 4",
     motivo: "Tramo C (PR 4C-F2): configuración de stock y movimientos; pasa a caso de uso + persistencia.",
-  },
-  "src/server/actions/movimientos/precio-local.ts": {
-    escrituras: ["precioLocalProducto.upsert"],
-    fase: "Fase 4",
-    motivo: "Tramo C (PR 4C-E): dinero de carta (promos, descuentos, precio local); pasa a caso de uso + persistencia con auditoría.",
   },
   "src/server/actions/movimientos/secciones.ts": {
     escrituras: ["seccion.create", "seccion.update", "seccion.update", "seccion.update"],

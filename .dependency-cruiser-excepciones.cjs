@@ -239,6 +239,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque 4.2, H4C-2 y H4C-3: guardarPromoCarta → carta/casos-de-uso/guardar-promo-carta.ts (con guardComandoGuardarPromoCarta), guardarPrecioLocalPromoCarta → guardar-precio-local-promo-carta.ts, actualizarActivaPromoCarta → actualizar-activa-promo-carta.ts, actualizarActivaPromoCartaEnSucursal → actualizar-activa-promo-carta-en-sucursal.ts y guardarCuposPromoCarta → guardar-cupos-promo-carta.ts (las lecturas, la validación que va después de leer la promo, el piso de core/carta/piso-de-promo.ts, las escrituras en server/persistencia/carta/promos.ts y la auditoría del precio viven en el caso de uso). La acción revalida la carta pública si sale bien, salvo la de los cupos (como antes). El archivo no tiene ninguna otra función.",
   },
+  {
+    ruta: "src/server/actions/movimientos/precio-local.ts",
+    motivo:
+      "Hito 4, bloque 4.2, H4C-4: setPrecioLocalProducto → movimientos/casos-de-uso/set-precio-local-producto.ts y sincronizarPrecioLocalGrupoCarta → sincronizar-precio-local-grupo-carta.ts, con el paso compartido guardar-precio-local-en-tx.ts (escritura en server/persistencia/movimientos/precio-local.ts y sus dos filas de auditoría en la misma transacción); el formato lo validan sus guardComando* (core/features/movimientos/precio-local.guard.ts) dentro de conPermiso. La acción revalida la carta pública y, después, calcula el sincronizable con el ítem agrupado (como antes). obtenerPrecioLocalProducto y listarPreciosLocales son lecturas.",
+  },
 ];
 
 module.exports = {
