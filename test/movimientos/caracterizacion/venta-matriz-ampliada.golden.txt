@@ -205,7 +205,7 @@
   KARDEX cantidad=-1.5 cantidadExacta=null conteoFisicoId=null costoUnitarioVenta=100 creadoEn=<enmascarado> detalle=Venta empresaId=<empresa> id=<id> loteVencimiento=null operacionId=op12 precioListaUnitario=null precioPorUnidadStock=1500 precioTotal=2250 proceso=VENTA productoId=empanada seccionId=deposito sustituyeAProductoId=null traspasoSucursalId=null
 ### A8. Anular la venta fraccionada (la reversión usa la cantidad exacta)
   resultado: {"ok":true,"mensaje":"Venta anulada. Se revirtieron 2 movimiento(s) de stock.","datos":{"ventaId":"op12","operacionesAnuladas":["op12"],"reversionIds":["op13"],"movimientosRevertidos":2,"huboLiquidacionConsignacion":false}}
-  lecturas (1): operacion.findFirst×1
+  lecturas (2): movimientoStock.findMany×1, operacion.findFirst×1
   escrituras en secuencia (4): operacion.create → movimientoStock.createMany → operacion.update → registroAuditoria.create
   OPERACION anuladaEn=null anuladaPorId=null claveIdempotencia=null clienteId=null creadoEn=<enmascarado> destinoId=null detalleLibre=null empresaId=<empresa> fecha=2026-09-20T00:00:00.000Z id=op1 motivoId=null nroFactura=null payloadHash=null proceso=COMPRA promoCuentaId=null proveedorId=null resultadoMensaje=null seccionDestinoId=null sucursalId=sucursal usuarioId=usuario
   OPERACION anuladaEn=null anuladaPorId=null claveIdempotencia=null clienteId=null creadoEn=<enmascarado> destinoId=null detalleLibre=null empresaId=<empresa> fecha=2026-09-21T00:00:00.000Z id=op2 motivoId=null nroFactura=null payloadHash=null proceso=COMPRA promoCuentaId=null proveedorId=null resultadoMensaje=null seccionDestinoId=null sucursalId=sucursal usuarioId=usuario
@@ -503,7 +503,7 @@
   KARDEX cantidad=-1 cantidadExacta=null conteoFisicoId=null costoUnitarioVenta=null creadoEn=<enmascarado> detalle=Venta empresaId=<empresa> id=<id> loteVencimiento=2026-10-04T00:00:00.000Z operacionId=op6 precioListaUnitario=null precioPorUnidadStock=5000 precioTotal=5000 proceso=VENTA productoId=torta seccionId=deposito sustituyeAProductoId=null traspasoSucursalId=null
 ### C5. Anular la venta de Tortas (la reversión vuelve al mismo lote)
   resultado: {"ok":true,"mensaje":"Venta anulada. Se revirtieron 2 movimiento(s) de stock.","datos":{"ventaId":"op6","operacionesAnuladas":["op6"],"reversionIds":["op7"],"movimientosRevertidos":2,"huboLiquidacionConsignacion":false}}
-  lecturas (1): operacion.findFirst×1
+  lecturas (2): movimientoStock.findMany×1, operacion.findFirst×1
   escrituras en secuencia (4): operacion.create → movimientoStock.createMany → operacion.update → registroAuditoria.create
   OPERACION anuladaEn=null anuladaPorId=null claveIdempotencia=null clienteId=null creadoEn=<enmascarado> destinoId=null detalleLibre=null empresaId=<empresa> fecha=2026-09-20T00:00:00.000Z id=op1 motivoId=null nroFactura=null payloadHash=null proceso=PRODUCCION promoCuentaId=null proveedorId=null resultadoMensaje=null seccionDestinoId=null sucursalId=sucursal usuarioId=usuario
   OPERACION anuladaEn=null anuladaPorId=null claveIdempotencia=null clienteId=null creadoEn=<enmascarado> destinoId=null detalleLibre=null empresaId=<empresa> fecha=2026-09-21T00:00:00.000Z id=op2 motivoId=null nroFactura=null payloadHash=null proceso=PRODUCCION promoCuentaId=null proveedorId=null resultadoMensaje=null seccionDestinoId=null sucursalId=sucursal usuarioId=usuario
@@ -525,7 +525,7 @@
   AUDITORIA actorId=usuario campo=anuladaEn creadoEn=<enmascarado> descripcion=Venta del 2026-09-29: anulación empresaId=<empresa> entidad=Operacion entidadId=op6 id=<id> sucursalId=sucursal valorAnterior=null valorNuevo=2026-09-30T12:38:00.000Z
 ### C6. Anular SOLO la primera Operación de la venta I3 (la Empanada, otra Operación, sigue vigente)
   resultado: {"ok":true,"mensaje":"Venta anulada. Se revirtieron 1 movimiento(s) de stock.","datos":{"ventaId":"op4","operacionesAnuladas":["op4"],"reversionIds":["op8"],"movimientosRevertidos":1,"huboLiquidacionConsignacion":false}}
-  lecturas (1): operacion.findFirst×1
+  lecturas (2): movimientoStock.findMany×1, operacion.findFirst×1
   escrituras en secuencia (4): operacion.create → movimientoStock.createMany → operacion.update → registroAuditoria.create
   OPERACION anuladaEn=null anuladaPorId=null claveIdempotencia=null clienteId=null creadoEn=<enmascarado> destinoId=null detalleLibre=null empresaId=<empresa> fecha=2026-09-20T00:00:00.000Z id=op1 motivoId=null nroFactura=null payloadHash=null proceso=PRODUCCION promoCuentaId=null proveedorId=null resultadoMensaje=null seccionDestinoId=null sucursalId=sucursal usuarioId=usuario
   OPERACION anuladaEn=null anuladaPorId=null claveIdempotencia=null clienteId=null creadoEn=<enmascarado> destinoId=null detalleLibre=null empresaId=<empresa> fecha=2026-09-21T00:00:00.000Z id=op2 motivoId=null nroFactura=null payloadHash=null proceso=PRODUCCION promoCuentaId=null proveedorId=null resultadoMensaje=null seccionDestinoId=null sucursalId=sucursal usuarioId=usuario
@@ -707,7 +707,7 @@
   AUDITORIA actorId=usuario campo=saldoStock creadoEn=<enmascarado> descripcion=Mesa 4: al cerrar la cuenta (admin@test.com) el stock de "HarinaA" en «Depósito» quedó en negativo — tenía 0,3, la venta consumió 0,75, faltaron 0,45. La venta se registró igual; corregí el saldo con un Conteo Físico o un Ajuste. empresaId=<empresa> entidad=Operacion entidadId=op3 id=<id> sucursalId=sucursal valorAnterior=0.3 valorNuevo=-0.45
 ### D5. Anular un componente de la promo: se anulan las dos hermanas
   resultado: {"ok":true,"mensaje":"Venta anulada. Se revirtieron 3 movimiento(s) de stock. Era una promo con 2 componentes: se anularon todos juntos.","datos":{"ventaId":"op6","operacionesAnuladas":["op6","op7"],"reversionIds":["op8","op9"],"movimientosRevertidos":3,"huboLiquidacionConsignacion":false}}
-  lecturas (2): operacion.findFirst×1, operacion.findMany×1
+  lecturas (3): movimientoStock.findMany×1, operacion.findFirst×1, operacion.findMany×1
   escrituras en secuencia (8): operacion.create → movimientoStock.createMany → operacion.update → registroAuditoria.create → operacion.create → movimientoStock.createMany → operacion.update → registroAuditoria.create
   OPERACION anuladaEn=null anuladaPorId=null claveIdempotencia=null clienteId=null creadoEn=<enmascarado> destinoId=null detalleLibre=null empresaId=<empresa> fecha=2026-09-20T00:00:00.000Z id=op1 motivoId=null nroFactura=null payloadHash=null proceso=COMPRA promoCuentaId=null proveedorId=null resultadoMensaje=null seccionDestinoId=null sucursalId=sucursal usuarioId=usuario
   OPERACION anuladaEn=null anuladaPorId=null claveIdempotencia=null clienteId=null creadoEn=<enmascarado> destinoId=null detalleLibre=null empresaId=<empresa> fecha=2026-09-20T00:00:00.000Z id=op2 motivoId=null nroFactura=null payloadHash=null proceso=COMPRA promoCuentaId=null proveedorId=null resultadoMensaje=null seccionDestinoId=null sucursalId=sucursal usuarioId=usuario
@@ -753,7 +753,7 @@
   AUDITORIA actorId=usuario campo=anuladaEn creadoEn=<enmascarado> descripcion=Venta del 2026-09-30: anulación (promo, junto con sus otros componentes) empresaId=<empresa> entidad=Operacion entidadId=op7 id=<id> sucursalId=sucursal valorAnterior=null valorNuevo=2026-09-30T13:02:00.000Z
 ### D6. Anular la Copa (consignación con descuento de cliente): revierte también la liquidación
   resultado: {"ok":true,"mensaje":"Venta anulada. Se revirtieron 3 movimiento(s) de stock y la liquidación de consignación.","datos":{"ventaId":"op5","operacionesAnuladas":["op5"],"reversionIds":["op10"],"movimientosRevertidos":3,"huboLiquidacionConsignacion":true}}
-  lecturas (1): operacion.findFirst×1
+  lecturas (4): movimientoStock.findMany×1, operacion.findFirst×1, pagoConsignante.findMany×1, producto.findMany×1
   escrituras en secuencia (4): operacion.create → movimientoStock.createMany → operacion.update → registroAuditoria.create
   OPERACION anuladaEn=null anuladaPorId=null claveIdempotencia=null clienteId=null creadoEn=<enmascarado> destinoId=null detalleLibre=null empresaId=<empresa> fecha=2026-09-20T00:00:00.000Z id=op1 motivoId=null nroFactura=null payloadHash=null proceso=COMPRA promoCuentaId=null proveedorId=null resultadoMensaje=null seccionDestinoId=null sucursalId=sucursal usuarioId=usuario
   OPERACION anuladaEn=null anuladaPorId=null claveIdempotencia=null clienteId=null creadoEn=<enmascarado> destinoId=null detalleLibre=null empresaId=<empresa> fecha=2026-09-20T00:00:00.000Z id=op2 motivoId=null nroFactura=null payloadHash=null proceso=COMPRA promoCuentaId=null proveedorId=null resultadoMensaje=null seccionDestinoId=null sucursalId=sucursal usuarioId=usuario

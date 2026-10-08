@@ -45,7 +45,7 @@ export interface VentaAAnular {
   anuladaEn: Date | null;
 }
 
-export type ResultadoAnulacionDeVenta = { ok: true } | { ok: false; motivo: "NO_ES_VENTA" | "YA_ANULADA"; mensaje: string };
+export type ResultadoAnulacionDeVenta = { ok: true } | { ok: false; motivo: "NO_ES_VENTA" | "YA_ANULADA" | "CONTEO_POSTERIOR" | "PAGO_CONSIGNANTE_POSTERIOR"; mensaje: string };
 
 /**
  * Si la operación se puede anular como venta: tiene que ser una VENTA y no estar anulada (en ese orden). `operacionId` es el que se
@@ -54,6 +54,43 @@ export type ResultadoAnulacionDeVenta = { ok: true } | { ok: false; motivo: "NO_
 export function evaluarAnulacionDeVenta(operacionId: string, venta: VentaAAnular): ResultadoAnulacionDeVenta {
   if (venta.proceso !== "VENTA") return { ok: false, motivo: "NO_ES_VENTA", mensaje: `La operación "${operacionId}" no es una Venta — es "${venta.proceso}".` };
   if (venta.anuladaEn) return { ok: false, motivo: "YA_ANULADA", mensaje: "Esta venta ya está anulada." };
+  return { ok: true };
+}
+
+/**
+ * Lo que pasó DESPUÉS de una venta (o de las ventas que se anulan juntas, si es una promo) y que anularla desharía a ciegas (S-03, O.52 de
+ * docs/pureza-integracion.md; D7 del plan de endurecimiento, decidida por el dueño el 2026-10-08). Lo arma `cargarPosterioresDeVentas`
+ * (server/persistencia/movimientos/cargar-venta-para-anular.ts), ya sin repetidos y con los nombres para el mensaje.
+ */
+export interface PosterioresALaVenta {
+  /** Los (producto, sección) de la venta que tuvieron un CONTROL o un AJUSTE vigente después de ella (un conteo físico aplicado, un ajuste manual). */
+  controlesOAjustes: readonly { productoNombre: string; seccionNombre: string }[];
+  /** Los consignantes, con mercadería consumida por la venta, a quienes se les registró un pago después de ella. */
+  pagosAConsignantes: readonly string[];
+}
+
+/**
+ * D7: una venta NO se anula si después hubo un conteo/ajuste del mismo producto en la misma sección (el stock ya se reconcilió con lo contado: deshacer la
+ * venta suma de nuevo lo que el conteo ya absorbió, y el saldo queda mal) ni si se le pagó al consignante de una mercadería que la venta consumió (anular
+ * movería la deuda que ese pago ya saldó). El historial no se reescribe: se corrige con un ajuste. Fallo cerrado, sin pedir confirmación. El conteo manda
+ * sobre el pago cuando hay los dos (un solo motivo por rechazo).
+ */
+export function evaluarPosterioresAAnularVenta(p: PosterioresALaVenta): ResultadoAnulacionDeVenta {
+  if (p.controlesOAjustes.length) {
+    const donde = p.controlesOAjustes.map((c) => `${c.productoNombre} (${c.seccionNombre})`).join(", ");
+    return {
+      ok: false,
+      motivo: "CONTEO_POSTERIOR",
+      mensaje: `No se puede anular esta venta: después de hacerse hubo un conteo físico o un ajuste de stock de ${donde}, y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.`,
+    };
+  }
+  if (p.pagosAConsignantes.length) {
+    return {
+      ok: false,
+      motivo: "PAGO_CONSIGNANTE_POSTERIOR",
+      mensaje: `No se puede anular esta venta: consumió mercadería en consignación de ${p.pagosAConsignantes.join(", ")}, a quien se le registró un pago después de la venta. Corregí la diferencia con un ajuste en lugar de anularla.`,
+    };
+  }
   return { ok: true };
 }
 

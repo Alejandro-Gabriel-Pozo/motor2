@@ -82,7 +82,16 @@ const CONGELADAS: Record<string, Congelada> = {
     desde: "b7ec61b2",
     motivo:
       "Matriz de la venta ampliada (2.7). Regenerada dentro del Hito 2 antes de congelarla (0b8aa59b: golden sin ICU; b7ec61b2: FEFO del PV que se produce, O.40 1).",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "f69bb57cc57c90eccdb333690f0fb284d37868c2",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, «S-02: anular una compra con lote exige que el saldo TOTAL del producto en la seccion la cubra».
+        // El commit que regenera es el de S-03 (fila O.52 de la lista de control, que lo cita por su hash).
+        commit: "48cc066a",
+        motivo:
+          "S-03/D7 (O.52; CAMBIA COMPORTAMIENTO, decidido por el dueño el 2026-10-08): anularVenta lee, antes de escribir, lo POSTERIOR a la venta (un CONTROL/AJUSTE del mismo producto y sección, y un pago al consignante de lo que consumió). Cambia SOLO la línea `lecturas` de los 5 pasos de anulación (las lecturas nuevas son `movimientoStock.findMany` ×1 y, si la venta consumió una MP en consignación, `producto.findMany` ×1 y `pagoConsignante.findMany` ×1); ni un resultado, ni una fila, ni una escritura, ni un mensaje cambian. Regeneración NO prevista en el plan de endurecimiento (decía que venta-matriz* no cambiaba): queda declarada para la revisión del orquestador.",
+      },
+    ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
     blob: "ce02d51f612cd043f0b5b4d423472aaf226d75c2",

@@ -4,6 +4,9 @@ import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembra
 import { anularVentaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/anular-venta";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
 import { detalleReversionDeVenta } from "../../src/core/movimientos/anulaciones";
+import { registrarConteoFisicoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-conteo-fisico";
+import { cancelarConteoFisicoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/cancelar-conteo-fisico";
+import { registrarPagoConsignanteCasoDeUso } from "../../src/server/actions/reportes/casos-de-uso/registrar-pago-consignante";
 
 /**
  * Caso de uso `anularVentaCasoDeUso` (src/server/actions/movimientos/casos-de-uso/anular-venta.ts; Task #41, Fase M). Postgres real,
@@ -202,6 +205,202 @@ describe("anularVentaCasoDeUso", () => {
     expect(r).toEqual({ ok: false, codigo: "YA_ANULADA", mensaje: "Esta venta ya está anulada." });
     expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(1);
     expect(await prisma.registroAuditoria.count({ where: { entidadId: venta.id } })).toBe(1);
+  });
+
+  /**
+   * S-03 (O.52 de docs/pureza-integracion.md, tanda T1 del plan de endurecimiento; D7 decidida por el dueño el 2026-10-08): anular una venta DESHACE a ciegas
+   * lo que pasó después. Con un conteo físico/ajuste del mismo producto y sección posterior, el stock ya se reconcilió con lo contado y la reversión lo desarma
+   * (el saldo queda mal); con un pago al consignante posterior, se mueve una deuda que el pago ya saldó. Se RECHAZA (no pide confirmación) y el mensaje manda a
+   * corregir con un ajuste. «Después» se mide con `creadoEn` (el reloj de la base), no con `fecha`, que un conteo puede fijar para atrás.
+   */
+  describe("S-03: no se anula una venta con un conteo/ajuste o un pago al consignante POSTERIOR", () => {
+    const pausa = () => new Promise((resolver) => setTimeout(resolver, 15)); // el orden se mide en milisegundos de la base
+    const comoA = () => ({ ...actor(), sucursalNombre: "Central" });
+
+    beforeEach(async () => {
+      await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: harinaId, disponible: true } });
+    });
+
+    async function nadaEscrito(operacionId: string) {
+      expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(0);
+      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: operacionId } })).anuladaEn).toBeNull();
+      expect(await prisma.registroAuditoria.count({ where: { entidadId: operacionId } })).toBe(0);
+    }
+
+    async function contar(productoId: string, conteoReal: number, extra: { fechaConteo?: Date } = {}) {
+      const r = await registrarConteoFisicoCasoDeUso(comoA(), { productoId, seccionId, conteoReal, fechaConteo: extra.fechaConteo ?? new Date(), accion: "AJUSTAR" });
+      expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
+      return prisma.conteoFisico.findFirstOrThrow({ orderBy: { creadoEn: "desc" } });
+    }
+
+    /** Un producto en consignación del proveedor dado, con una venta que lo consumió (línea LIQUIDACION_CONSIGNACION). */
+    async function ventaConConsignacion() {
+      const harina = await prisma.producto.findUniqueOrThrow({ where: { id: harinaId } });
+      const consignante = await prisma.proveedor.create({ data: { codigo: "PRV_CONS", nombre: "Bodega Don Pepe" } });
+      const copa = await prisma.producto.create({
+        data: { codigo: "MP_COPA", nombre: "Copa", tipo: "MP", unidadStockId: harina.unidadStockId, insumoId: harina.insumoId, esConsignacion: true, proveedorConsignacionId: consignante.id, precioConsignacion: 30 },
+      });
+      const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId: adminId } });
+      await prisma.movimientoStock.create({
+        data: { operacionId: venta.id, productoId: copa.id, seccionId, proceso: "LIQUIDACION_CONSIGNACION", cantidad: 0, detalle: "Liquidación", precioTotal: 30, precioPorUnidadStock: 30 },
+      });
+      return { venta, consignante, copa };
+    }
+
+    it("ataque 1: venta de 5, conteo físico que AJUSTA al real, y anular → CONTEO_POSTERIOR sin escribir nada", async () => {
+      const venta = await operacion({ lineas: [{ cantidad: -5, precioTotal: 500, precioPorUnidadStock: 100, detalle: "Venta de Harina" }] });
+      await pausa();
+      await contar(harinaId, 3);
+
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.codigo).toBe("CONTEO_POSTERIOR");
+      expect(r.mensaje).toContain("Harina (Depósito)");
+      expect(r.mensaje).toContain("ajuste");
+      await nadaEscrito(venta.id);
+    });
+
+    it("ataque 1b: el conteo fechado PARA ATRÁS (antes de la venta) también cuenta: «después» es cuándo se escribió, no la fecha que se le puso", async () => {
+      const venta = await operacion();
+      await pausa();
+      await contar(harinaId, 3, { fechaConteo: enElPasado(30 * DIA_MS) });
+
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+
+      expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
+      await nadaEscrito(venta.id);
+    });
+
+    it("ataque 1c: un AJUSTE manual posterior del mismo producto y sección también frena la anulación", async () => {
+      const venta = await operacion();
+      await pausa();
+      const ajuste = await prisma.operacion.create({ data: { sucursalId, proceso: "AJUSTE", fecha: new Date(), usuarioId: adminId } });
+      await prisma.movimientoStock.create({ data: { operacionId: ajuste.id, productoId: harinaId, seccionId, proceso: "AJUSTE", cantidad: 4, detalle: "Ajuste manual", precioTotal: 0, precioPorUnidadStock: 0 } });
+
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+
+      expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
+      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).anuladaEn).toBeNull();
+      expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(1); // solo el ajuste manual
+    });
+
+    it("ataque 2: venta que consumió una MP en consignación, pago al consignante posterior, y anular → PAGO_CONSIGNANTE_POSTERIOR sin escribir nada", async () => {
+      const { venta, consignante } = await ventaConConsignacion();
+      await pausa();
+      const pago = await registrarPagoConsignanteCasoDeUso(comoA(), { proveedorId: consignante.id, importe: 30, fecha: new Date() });
+      expect(pago.ok).toBe(true);
+
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.codigo).toBe("PAGO_CONSIGNANTE_POSTERIOR");
+      expect(r.mensaje).toContain("Bodega Don Pepe");
+      await nadaEscrito(venta.id);
+    });
+
+    it("ataque 2b: el pago fechado PARA ATRÁS también cuenta", async () => {
+      const { venta, consignante } = await ventaConConsignacion();
+      await pausa();
+      await prisma.pagoConsignante.create({ data: { sucursalId, proveedorId: consignante.id, importe: 30, fecha: enElPasado(30 * DIA_MS), usuarioId: adminId } });
+
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+
+      expect(r).toMatchObject({ ok: false, codigo: "PAGO_CONSIGNANTE_POSTERIOR" });
+      await nadaEscrito(venta.id);
+    });
+
+    it("promo: un conteo posterior sobre el producto de una HERMANA frena la anulación de toda la promo", async () => {
+      const promo = await promoCuenta();
+      const pedida = await operacion({ promoCuentaId: promo.id });
+      const queso = await prisma.producto.create({ data: { codigo: "MP_QUESO", nombre: "Queso", tipo: "MP", unidadStockId: (await prisma.producto.findUniqueOrThrow({ where: { id: harinaId } })).unidadStockId, insumoId: (await prisma.producto.findUniqueOrThrow({ where: { id: harinaId } })).insumoId } });
+      await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: queso.id, disponible: true } });
+      const hermana = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId: adminId, promoCuentaId: promo.id } });
+      await prisma.movimientoStock.create({ data: { operacionId: hermana.id, productoId: queso.id, seccionId, proceso: "VENTA", cantidad: -1, detalle: "Venta de Queso", precioTotal: 100, precioPorUnidadStock: 100 } });
+      await pausa();
+      await contar(queso.id, 0);
+
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: pedida.id });
+
+      expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
+      expect(r.ok === false && r.mensaje).toContain("Queso");
+      await nadaEscrito(pedida.id);
+      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: hermana.id } })).anuladaEn).toBeNull();
+    });
+
+    it("control: sin nada posterior, la venta se anula como siempre", async () => {
+      const venta = await operacion();
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+      expect(r.ok).toBe(true);
+    });
+
+    it("control: un conteo ANTERIOR a la venta no la frena", async () => {
+      await contar(harinaId, 3);
+      await pausa();
+      const venta = await operacion();
+
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+    });
+
+    it("control: un conteo posterior de OTRO producto, o de la misma producto en OTRA sección, no la frena", async () => {
+      const venta = await operacion();
+      const otroProducto = await prisma.producto.create({
+        data: { codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: (await prisma.producto.findUniqueOrThrow({ where: { id: harinaId } })).unidadStockId, insumoId: (await prisma.producto.findUniqueOrThrow({ where: { id: harinaId } })).insumoId },
+      });
+      await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: otroProducto.id, disponible: true } });
+      const otraSeccion = await sembrarSeccion(sucursalId, "Cocina");
+      await pausa();
+      await contar(otroProducto.id, 3);
+      expect((await registrarConteoFisicoCasoDeUso(comoA(), { productoId: harinaId, seccionId: otraSeccion.id, conteoReal: 2, fechaConteo: new Date(), accion: "AJUSTAR" })).ok).toBe(true);
+
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+    });
+
+    it("control: un conteo posterior CANCELADO (el ajuste y su reversión se anulan entre sí) no la frena", async () => {
+      const venta = await operacion();
+      await pausa();
+      const conteo = await contar(harinaId, 3);
+      expect((await cancelarConteoFisicoCasoDeUso(comoA(), conteo.id)).ok).toBe(true);
+
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+    });
+
+    it("control: anular DOS ventas del mismo producto, una atrás de la otra: la reversión de la primera no cuenta como ajuste posterior de la segunda", async () => {
+      const a = await operacion();
+      const b = await operacion();
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: a.id })).ok).toBe(true);
+
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: b.id })).ok).toBe(true);
+    });
+
+    it("control: un pago a OTRO proveedor, o un pago ANTERIOR a la venta, no la frena", async () => {
+      const antes = await prisma.proveedor.create({ data: { codigo: "PRV_ANT", nombre: "Proveedor Anterior" } });
+      const otro = await prisma.proveedor.create({ data: { codigo: "PRV_OTRO", nombre: "Proveedor Ajeno" } });
+      await prisma.pagoConsignante.create({ data: { sucursalId, proveedorId: antes.id, importe: 10, fecha: new Date(), usuarioId: adminId } });
+      await pausa();
+      const { venta, consignante } = await ventaConConsignacion();
+      await prisma.pagoConsignante.deleteMany({ where: { proveedorId: consignante.id } });
+      await pausa();
+      await prisma.pagoConsignante.create({ data: { sucursalId, proveedorId: otro.id, importe: 10, fecha: new Date(), usuarioId: adminId } });
+
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+    });
+
+    it("control: el pago al MISMO consignante anterior a la venta no la frena", async () => {
+      const harina = await prisma.producto.findUniqueOrThrow({ where: { id: harinaId } });
+      const consignante = await prisma.proveedor.create({ data: { codigo: "PRV_CONS", nombre: "Bodega Don Pepe" } });
+      await prisma.pagoConsignante.create({ data: { sucursalId, proveedorId: consignante.id, importe: 10, fecha: new Date(), usuarioId: adminId } });
+      await pausa();
+      const copa = await prisma.producto.create({
+        data: { codigo: "MP_COPA", nombre: "Copa", tipo: "MP", unidadStockId: harina.unidadStockId, insumoId: harina.insumoId, esConsignacion: true, proveedorConsignacionId: consignante.id, precioConsignacion: 30 },
+      });
+      const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId: adminId } });
+      await prisma.movimientoStock.create({ data: { operacionId: venta.id, productoId: copa.id, seccionId, proceso: "LIQUIDACION_CONSIGNACION", cantidad: 0, detalle: "Liquidación", precioTotal: 30, precioPorUnidadStock: 30 } });
+
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+    });
   });
 
   it("aResultadoAccion sobre el resultado del caso de uso: la pantalla recibe solo { ok, mensaje }", async () => {

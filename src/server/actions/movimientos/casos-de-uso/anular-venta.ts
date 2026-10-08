@@ -7,12 +7,13 @@ import {
   descripcionAuditoriaAnulacionDeVenta,
   detalleReversionDeVenta,
   evaluarAnulacionDeVenta,
+  evaluarPosterioresAAnularVenta,
   mensajeVentaAnulada,
 } from "@/core/movimientos/public";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { cargarHermanasDePromo, cargarVentaParaAnular } from "@/server/persistencia/movimientos/cargar-venta-para-anular";
+import { cargarHermanasDePromo, cargarPosterioresDeVentas, cargarVentaParaAnular } from "@/server/persistencia/movimientos/cargar-venta-para-anular";
 import { escribirAnulacionDeVenta } from "@/server/persistencia/movimientos/escribir-anulacion-de-venta";
 
 /**
@@ -29,6 +30,9 @@ import { escribirAnulacionDeVenta } from "@/server/persistencia/movimientos/escr
  *  2. reglas puras: `evaluarAnulacionDeVenta` (no es VENTA / ya anulada);
  *  3. hermanas de promo (Task #16, D4): si la venta tiene `promoCuentaId`, las otras Operaciones vigentes de la misma `PromoCuenta` se
  *     anulan en esta misma transacción — una promo nunca queda anulada a medias, se elija el componente que se elija;
+ *  3b. lo POSTERIOR (S-03, D7 decidida por el dueño el 2026-10-08): se RECHAZA (`CONTEO_POSTERIOR`, `PAGO_CONSIGNANTE_POSTERIOR`) si después de la venta o de
+ *     sus hermanas hubo un CONTROL o AJUSTE vigente del mismo producto en la misma sección, o un pago al consignante de lo que consumieron: el historial no se
+ *     reescribe, se corrige con un ajuste. `cargarPosterioresDeVentas` + `evaluarPosterioresAAnularVenta`;
  *  4. por cada Operación a anular (la pedida primero): contra-asiento AJUSTE + marca de anulada (persistencia), y su fila de auditoría;
  *  5. el mensaje de éxito.
  *
@@ -53,6 +57,11 @@ export async function anularVentaCasoDeUso(
 
     const hermanas = venta.promoCuentaId ? await cargarHermanasDePromo(tx, { promoCuentaId: venta.promoCuentaId, excluirOperacionId: venta.id }) : [];
     const aAnular = [venta, ...hermanas];
+
+    // S-03 / D7: si después de la venta (o de cualquiera de sus hermanas) hubo un conteo/ajuste del mismo producto y sección, o un pago al consignante de lo que
+    // consumió, anular la desharía a ciegas: se rechaza ANTES de escribir nada y se corrige con un ajuste.
+    const posteriores = evaluarPosterioresAAnularVenta(await cargarPosterioresDeVentas(tx, { ventas: aAnular, sucursalId: actor.sucursalId }));
+    if (!posteriores.ok) return fracaso(posteriores.motivo, posteriores.mensaje);
 
     const ahora = actor.ahora;
     let movimientosRevertidos = 0;
