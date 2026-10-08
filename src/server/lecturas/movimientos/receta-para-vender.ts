@@ -1,21 +1,8 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { alcanceDeSucursal } from "@/core/catalogo/public";
+import type { IngredienteParaVender } from "@/core/movimientos/public";
 import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
-
-/**
- * Un ingrediente de la receta VIGENTE de un PV, ya en números planos (los `Decimal` de Prisma convertidos con `Number()` acá, en el borde de la lectura): lo que `armarLinea` necesita
- * para validar la materia prima y calcular lo que consume la venta. `rendimientosLocales` trae SOLO las calibraciones de la sucursal que vende (el `where` de la lectura); `cantidad` y
- * `mermaPorcentaje` son los CENTRALES — el efectivo lo resuelve `rendimientoEfectivo` (D2, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md).
- */
-interface IngredienteParaVender {
-  insumoProductoId: string;
-  cantidad: number;
-  mermaPorcentaje: number;
-  rendimientosLocales: { sucursalId: string; cantidad: number | null; mermaPorcentaje: number | null }[];
-  /** Insumos sustitutos declarados en ESTA línea de receta, en orden (docs/plan-sustitucion-insumos-receta-2026-09-26.md, D1). */
-  insumoSustitutoIds: string[];
-}
 
 /**
  * La receta vigente de un PV para venderlo en una sucursal (Hito 5, 5.1-2: mudada TAL CUAL desde `armarLinea`, en `server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts`):

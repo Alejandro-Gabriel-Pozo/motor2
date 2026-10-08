@@ -3,8 +3,15 @@ import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
 import { crearArrastreDeRedondeo } from "@/core/movimientos/arrastre-redondeo";
-import { rendimientoEfectivo } from "@/core/catalogo/public";
-import { leerCantidadVendida, MENSAJE_PRODUCTO_NO_EXISTE, mensajeNoDisponibleEnSucursal, rechazoDelProductoVendido } from "@/core/movimientos/linea-de-venta";
+import {
+  leerCantidadVendida,
+  MENSAJE_PRODUCTO_NO_EXISTE,
+  mensajeMateriaPrimaNoDisponible,
+  mensajeNoDisponibleEnSucursal,
+  pedidoDeIngrediente,
+  rechazoDelProductoVendido,
+  revisarMateriaPrima,
+} from "@/core/movimientos/linea-de-venta";
 import { cargarRecetaVigenteParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { importeDeLinea, redondearMoneda, repartirImporte } from "@/core/moneda";
@@ -98,23 +105,14 @@ async function armarLinea(
     // Un PV que se produce por lote ya consumió su receta al producirse — la venta solo lo resta (ver registrarMovimiento, PRODUCCION).
     const ingredientes = await cargarRecetaVigenteParaVender(tx, { productoId: producto.id, sucursalId });
     for (const ing of ingredientes) {
-      const mp = await obtenerProducto(ing.insumoProductoId);
-      if (!mp || mp.tipo !== "MP") {
-        return { ok: false, mensaje: `La materia prima de la receta de "${producto.nombre}" no está marcada como MP.` };
-      }
+      const revisada = revisarMateriaPrima(await obtenerProducto(ing.insumoProductoId), producto.nombre);
+      if (!revisada.ok) return { ok: false, mensaje: revisada.mensaje };
+      const mp = revisada.materiaPrima;
       if (!(await productoDisponibleEn(sucursalId, mp.id, tx))) {
-        return { ok: false, mensaje: `La receta de «${producto.nombre}» usa «${mp.nombre}», que no está disponible en «${sucursalNombre}»: activala acá o cambiá la receta.` };
+        return { ok: false, mensaje: mensajeMateriaPrimaNoDisponible(producto.nombre, mp.nombre, sucursalNombre) };
       }
-      // rendimientoEfectivo (D2, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md): la fórmula queda TEXTUALMENTE
-      // igual, solo cambia de dónde salen los dos operandos — sin ninguna calibración de ESTA sucursal, ef.* es
-      // exactamente ing.cantidad/ing.mermaPorcentaje (Object.is), así que el cálculo de siempre no se mueve un bit.
-      const ef = rendimientoEfectivo({ cantidad: ing.cantidad, mermaPorcentaje: ing.mermaPorcentaje }, ing.rendimientosLocales, sucursalId);
-      pedidos.push({
-        productoId: ing.insumoProductoId,
-        cantidad: cantidad * ef.cantidad * (1 + ef.mermaPorcentaje / 100),
-        insumoSustitutoIds: ing.insumoSustitutoIds,
-        unidadStockId: mp.unidadStockId,
-      });
+      // El consumo con el rendimiento efectivo de ESTA sucursal (D2) es una regla pura: `pedidoDeIngrediente`, en `core/movimientos/linea-de-venta.ts`.
+      pedidos.push(pedidoDeIngrediente(cantidad, ing, mp.unidadStockId, sucursalId));
     }
   }
 

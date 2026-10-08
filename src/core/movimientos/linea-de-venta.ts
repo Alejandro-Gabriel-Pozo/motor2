@@ -1,4 +1,4 @@
-import { cumplePaso, mensajeCantidadNoCumplePaso } from "@/core/catalogo/public";
+import { cumplePaso, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/core/catalogo/public";
 
 /**
  * Las REGLAS PURAS de una línea de venta (Hito 5, pieza 5.1: mudadas TAL CUAL desde `armarLinea`, que vive en `server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts`).
@@ -50,4 +50,50 @@ export function rechazoDelProductoVendido(producto: ProductoVendido, cantidad: n
     if (!cumplePaso(cantidad, producto.pasoVenta)) return `"${producto.nombre}": ${mensajeCantidadNoCumplePaso(producto.pasoVenta)}`;
   }
   return null;
+}
+
+/**
+ * Un ingrediente de la receta VIGENTE de un PV, ya en números planos (los `Decimal` de Prisma convertidos con `Number()` en el borde de la lectura, `server/lecturas/movimientos/receta-para-vender.ts`):
+ * lo que `armarLinea` necesita para validar la materia prima y calcular lo que consume la venta. `rendimientosLocales` trae SOLO las calibraciones de la sucursal que vende; `cantidad` y
+ * `mermaPorcentaje` son los CENTRALES — el efectivo lo resuelve `rendimientoEfectivo` (D2, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md).
+ */
+export interface IngredienteParaVender {
+  insumoProductoId: string;
+  cantidad: number;
+  mermaPorcentaje: number;
+  rendimientosLocales: { sucursalId: string; cantidad: number | null; mermaPorcentaje: number | null }[];
+  /** Insumos sustitutos declarados en ESTA línea de receta, en orden (docs/plan-sustitucion-insumos-receta-2026-09-26.md, D1). */
+  insumoSustitutoIds: string[];
+}
+
+/**
+ * ¿La materia prima de un ingrediente se puede vender? El ingrediente tiene que existir y estar marcado «MP»; si no, el rechazo nombra al PV (no al ingrediente). Devuelve la propia
+ * materia prima ya sin `null` cuando está bien, para que quien llama siga con ella sin volver a preguntar.
+ */
+export function revisarMateriaPrima<T extends { tipo: string }>(mp: T | null | undefined, nombrePV: string): { ok: true; materiaPrima: T } | { ok: false; mensaje: string } {
+  if (!mp || mp.tipo !== "MP") {
+    return { ok: false, mensaje: `La materia prima de la receta de "${nombrePV}" no está marcada como MP.` };
+  }
+  return { ok: true, materiaPrima: mp };
+}
+
+/** El rechazo cuando la materia prima de la receta existe pero no está disponible en la sucursal que vende: nombra al PV, a la materia prima y a la sucursal. */
+export function mensajeMateriaPrimaNoDisponible(nombrePV: string, nombreMP: string, sucursalNombre: string): string {
+  return `La receta de «${nombrePV}» usa «${nombreMP}», que no está disponible en «${sucursalNombre}»: activala acá o cambiá la receta.`;
+}
+
+/**
+ * El pedido de consumo de un ingrediente para `cantidad` unidades vendidas del PV. rendimientoEfectivo (D2, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md): la fórmula queda
+ * TEXTUALMENTE igual (`cantidad * ef.cantidad * (1 + ef.mermaPorcentaje / 100)`, ni una reasociación: el orden de las multiplicaciones cambia los últimos bits del `number`), solo cambia
+ * de dónde salen los dos operandos — sin ninguna calibración de ESTA sucursal, `ef.*` es exactamente `ing.cantidad`/`ing.mermaPorcentaje` (`Object.is`), así que el cálculo de siempre
+ * no se mueve un bit. `unidadStockId` es el de la MP principal: la familia sustituta se filtra a esa misma unidad (D8).
+ */
+export function pedidoDeIngrediente(cantidad: number, ing: IngredienteParaVender, unidadStockId: string, sucursalId: string) {
+  const ef = rendimientoEfectivo({ cantidad: ing.cantidad, mermaPorcentaje: ing.mermaPorcentaje }, ing.rendimientosLocales, sucursalId);
+  return {
+    productoId: ing.insumoProductoId,
+    cantidad: cantidad * ef.cantidad * (1 + ef.mermaPorcentaje / 100),
+    insumoSustitutoIds: ing.insumoSustitutoIds,
+    unidadStockId,
+  };
 }
