@@ -103,6 +103,13 @@ const CONGELADAS: Record<string, Congelada> = {
       "Huella del POS (Hito 4, paso 0.1): las 10 Server Actions del POS sin caso de uso (apertura, mesas y pedido) como admin, mozo y operador, con los rechazos de dos fallas a la vez. Red de 4.1: mudar esas acciones a casos de uso no cambia nada (salvo lo aprobado: liberarMesa con ctx.ahora no cambia el golden, que solo dice si hay fecha).",
     regeneraciones: [],
   },
+  "test/catalogo/caracterizacion/dinero-tramo-c.golden.txt": {
+    blob: "ae6ec3b65f5c3bf20391493b64ebae0b036f7442",
+    desde: "18bdd881",
+    motivo:
+      "Huella de dinero del tramo C (Hito 4, H4C-0.3): las 11 Server Actions de dinero de carta (4.2: descuento, promos, precio local, rendimiento local, volver a la receta central) y las de dinero de los bloques B y C (alta y edición de producto, sincronizar precio, presentaciones, unidades, clientes, margen objetivo), con filas tocadas, auditoría y cuántas veces revalidan o refrescan. Red de 4.2 y 4.3: mudar esas acciones a casos de uso no cambia nada.",
+    regeneraciones: [],
+  },
 };
 
 /** `git hash-object` del contenido normalizado a LF (lo que `core.autocrlf=true` guarda en el blob). */
