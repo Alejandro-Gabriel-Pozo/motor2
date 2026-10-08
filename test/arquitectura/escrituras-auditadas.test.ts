@@ -35,6 +35,9 @@ const OPERACIONES_DE_ESCRITURA = new Set(["create", "createMany", "update", "upd
 const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
   unidad: ["decimales"],
   disponibilidadProducto: "*",
+  // S-06 (plan de endurecimiento de seguridad, GT-5): los cupos de una promo fijan cuántas unidades de cada sección entran por su precio (`Int`, no `Decimal`, así que la regla
+  // de dinero no los veía): toda escritura de `PromoCartaCupo` tiene que tener su cadena de auditoría (`guardar-cupos-promo-carta.ts`).
+  promoCartaCupo: "*",
 };
 
 /** Modelos cuya fila ES el rastro (un documento propio o un dato de fuente externa): no hay un valor anterior que se pierda al escribirlos. */

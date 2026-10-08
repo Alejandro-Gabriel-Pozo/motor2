@@ -46,6 +46,9 @@ export const ENTIDADES_AUDITABLES = [
   "PromoCarta",
   // "PromoCartaSucursal" (Pureza 0.7): el precio propio de una promo en UNA sucursal — `entidadId` es `${promoCartaId}:${sucursalId}`, `campo: "precioLocal"`, con `sucursalId`. Vacío = vuelve al de la empresa (`valorNuevo: null`).
   "PromoCartaSucursal",
+  // "PromoCartaCupo" (S-06, plan de endurecimiento de seguridad): los cupos de una promo armable (cuántas unidades de cada sección entran por su precio) — `entidadId` es `${promoCartaId}:${seccionCartaId}`
+  // (la clave natural del cupo: el reemplazo borra y recrea las filas), `campo` `cantidadMinima` o `cantidadMaxima`, `valorAnterior: null` si el cupo es nuevo y `valorNuevo: null` si se quitó, `sucursalId` null (la promo es de la empresa).
+  "PromoCartaCupo",
   // "Presentacion" (Pureza 0.7): el factor de conversión de una presentación de compra (cuántas unidades de stock trae una unidad de compra: mueve el costo por unidad) — `entidadId` es el id de la presentación, `campo: "factorConversion"`.
   "Presentacion",
   // "Unidad" (Pureza 0.7): los decimales de una unidad de medida (fijan la precisión de toda cantidad que la usa) — `entidadId` es el id de la unidad, `campo: "decimales"`, `sucursalId` null.

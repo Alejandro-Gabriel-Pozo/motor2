@@ -155,6 +155,10 @@
   efectos: revalidarCartasPublicas=0 refrescar=0
   + PROMO_CUPO cupo1 cantidadMaxima=1 cantidadMinima=1 empresaId=empresa orden=1 promoCartaId=menu seccionCartaId=postres
   + PROMO_CUPO cupo2 cantidadMaxima=2 cantidadMinima=0 empresaId=empresa orden=0 promoCartaId=menu seccionCartaId=platos
+  AUDITORIA actorId=admin campo=cantidadMinima descripcion=Promo "Menú del día": cupo de la sección "Platos", cantidad mínima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:platos sucursalId=null valorAnterior=null valorNuevo=0
+  AUDITORIA actorId=admin campo=cantidadMaxima descripcion=Promo "Menú del día": cupo de la sección "Platos", cantidad máxima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:platos sucursalId=null valorAnterior=null valorNuevo=2
+  AUDITORIA actorId=admin campo=cantidadMinima descripcion=Promo "Menú del día": cupo de la sección "Postres", cantidad mínima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:postres sucursalId=null valorAnterior=null valorNuevo=1
+  AUDITORIA actorId=admin campo=cantidadMaxima descripcion=Promo "Menú del día": cupo de la sección "Postres", cantidad máxima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:postres sucursalId=null valorAnterior=null valorNuevo=1
 ### promo: precio local por debajo del piso (3 unidades)
   resultado: {"ok":false,"mensaje":"El precio de \"Menú del día\" ($0.02) no alcanza el piso de $0,01 por unidad en el peor caso (3 unidades si se elige el máximo de cada cupo: hace falta al menos $0.03). Subí el precio o bajá los máximos."}
   efectos: revalidarCartasPublicas=0 refrescar=0
@@ -187,6 +191,10 @@
   efectos: revalidarCartasPublicas=0 refrescar=0
   - PROMO_CUPO cupo1 cantidadMaxima=1 cantidadMinima=1 empresaId=empresa orden=1 promoCartaId=menu seccionCartaId=postres
   - PROMO_CUPO cupo2 cantidadMaxima=2 cantidadMinima=0 empresaId=empresa orden=0 promoCartaId=menu seccionCartaId=platos
+  AUDITORIA actorId=admin campo=cantidadMinima descripcion=Promo "Menú del día": cupo de la sección "Platos", cantidad mínima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:platos sucursalId=null valorAnterior=0 valorNuevo=null
+  AUDITORIA actorId=admin campo=cantidadMaxima descripcion=Promo "Menú del día": cupo de la sección "Platos", cantidad máxima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:platos sucursalId=null valorAnterior=2 valorNuevo=null
+  AUDITORIA actorId=admin campo=cantidadMinima descripcion=Promo "Menú del día": cupo de la sección "Postres", cantidad mínima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:postres sucursalId=null valorAnterior=1 valorNuevo=null
+  AUDITORIA actorId=admin campo=cantidadMaxima descripcion=Promo "Menú del día": cupo de la sección "Postres", cantidad máxima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:postres sucursalId=null valorAnterior=1 valorNuevo=null
 ### precio local: alta de la Pizza en $13000 (ofrece sincronizar)
   resultado: {"ok":true,"mensaje":"Precio local de \"Pizza\" fijado en 13000.","sincronizable":{"itemAgrupadoCartaId":"paraPicar","nombreItem":"Para picar","precioNuevo":13000,"hermanos":[{"productoId":"faina","nombre":"Fainá","precioActual":5000}]}}
   efectos: revalidarCartasPublicas=1 refrescar=0
