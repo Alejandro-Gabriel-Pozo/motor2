@@ -264,6 +264,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque 4.3, H4C-8: crearUnidad → catalogo/casos-de-uso/crear-unidad.ts (con guardComandoCrearUnidad; la acción arma el ResultadoConId), actualizarActivaUnidad → actualizar-activa-unidad.ts y actualizarDecimalesUnidad → actualizar-decimales-unidad.ts (con guardComandoActualizarDecimalesUnidad; los productos «Se produce», la unidad y el cambio con su auditoría en UNA transacción); escrituras en server/persistencia/catalogo/unidades.ts. La acción refresca la vista en los mismos caminos que antes. Las lecturas (H8 y detectarInsumosConUnidadMezclada, con su gate inline) siguen en la acción.",
   },
+  {
+    ruta: "src/server/actions/catalogo/insumos.ts",
+    motivo:
+      "Hito 4, bloque 4.3, H4C-9: crearInsumo → catalogo/casos-de-uso/crear-insumo.ts (con guardComandoCrearInsumo; la acción arma el ResultadoConId), actualizarActivoInsumo → actualizar-activo-insumo.ts, actualizarGrupoDeInsumo → actualizar-grupo-de-insumo.ts, renombrarOFusionarInsumo → renombrar-o-fusionar-insumo.ts (con guardComandoRenombrarOFusionarInsumo; la fusión en UNA transacción con reapuntarSustitutosDeInsumoFusionado, mudada tal cual a la persistencia), crearOActualizarGrupo → crear-o-actualizar-grupo.ts (con guardComandoCrearOActualizarGrupo) y actualizarActivoGrupo → actualizar-activo-grupo.ts; escrituras en server/persistencia/catalogo/{insumos,grupos}.ts. La acción refresca la vista en los mismos caminos que antes. Las lecturas (H8 y previsualizarFusionInsumo) siguen en la acción.",
+  },
 ];
 
 module.exports = {

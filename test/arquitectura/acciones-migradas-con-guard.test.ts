@@ -76,6 +76,12 @@ const SIN_GUARD: Record<string, string> = {
     "Activar o desactivar una categoría (Hito 4, H4C-7): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/catalogo/unidades.ts#actualizarActivaUnidad":
     "Activar o desactivar una unidad (Hito 4, H4C-8): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/catalogo/insumos.ts#actualizarActivoInsumo":
+    "Activar o desactivar un insumo (Hito 4, H4C-9): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/catalogo/insumos.ts#actualizarGrupoDeInsumo":
+    "Cambiar el grupo de un insumo (Hito 4, H4C-9): solo recibe dos ids (el grupo puede ser null), que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/catalogo/insumos.ts#actualizarActivoGrupo":
+    "Activar o desactivar un grupo de insumos (Hito 4, H4C-9): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
 };
 
 describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {

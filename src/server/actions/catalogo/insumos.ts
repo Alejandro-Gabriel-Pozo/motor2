@@ -1,65 +1,25 @@
 "use server";
 
-import type { Prisma } from "@prisma/client";
-import { texto, validarTextoCatalogo } from "@/core/texto";
-import { validarFusionInsumos } from "@/server/lecturas/catalogo/unidad-de-insumo";
-import { creariaCiclo } from "@/server/lecturas/catalogo/grupos";
+import { texto } from "@/core/texto";
+import { guardComandoCrearInsumo, guardComandoCrearOActualizarGrupo, guardComandoRenombrarOFusionarInsumo } from "@/core/features/catalogo/insumos.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
-import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirVerAlguna, requerirVerDeEmpresa } from "../con-sesion";
+import { actualizarActivoGrupoCasoDeUso } from "./casos-de-uso/actualizar-activo-grupo";
+import { actualizarActivoInsumoCasoDeUso } from "./casos-de-uso/actualizar-activo-insumo";
+import { actualizarGrupoDeInsumoCasoDeUso } from "./casos-de-uso/actualizar-grupo-de-insumo";
+import { crearInsumoCasoDeUso } from "./casos-de-uso/crear-insumo";
+import { crearOActualizarGrupoCasoDeUso } from "./casos-de-uso/crear-o-actualizar-grupo";
+import { renombrarOFusionarInsumoCasoDeUso } from "./casos-de-uso/renombrar-o-fusionar-insumo";
 
 /**
- * D9 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): antes de borrar el Insumo `origenId` en una fusión, reapunta cada
- * `SustitutoRecetaIngrediente` que lo declaraba como sustituto hacia `destinoId` — la FK es RESTRICT, así que sin esto la fusión de
- * un Insumo usado como sustituto en alguna receta fallaba en vez de arrastrarlo (mismo criterio que ya aplica
- * `producto.updateMany` con `Producto.insumoId` unas líneas arriba). Por cada línea de receta afectada:
- * - si YA tenía un sustituto apuntando a `destinoId` (duplicado tras la fusión), se borra el del origen y se conserva el otro;
- * - si el destino termina siendo el mismo Insumo que el propio ingrediente principal de esa línea (redundante — D8 nunca lo
- *   permitiría al guardar), se borra;
- * - se renumera `orden` de lo que quede, sin huecos.
+ * Desde el Hito 4 de la pureza (bloque 4.3, paso H4C-9) las seis mutaciones de insumos y grupos son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{crear-insumo,actualizar-activo-insumo,actualizar-grupo-de-insumo,renombrar-o-fusionar-insumo,crear-o-actualizar-grupo,
+ * actualizar-activo-grupo}.ts`; escrituras en server/persistencia/catalogo/{insumos,grupos}.ts): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las
+ * lecturas de abajo (H8 y `previsualizarFusionInsumo`) siguen acá.
  */
-async function reapuntarSustitutosDeInsumoFusionado(tx: Prisma.TransactionClient, origenId: string, destinoId: string): Promise<void> {
-  const afectados = await tx.sustitutoRecetaIngrediente.findMany({
-    where: { insumoSustitutoId: { in: [origenId, destinoId] } },
-    include: { recetaIngrediente: { include: { insumoProducto: true } } },
-  });
-  const porIngrediente = new Map<string, typeof afectados>();
-  for (const fila of afectados) {
-    const lista = porIngrediente.get(fila.recetaIngredienteId) ?? [];
-    lista.push(fila);
-    porIngrediente.set(fila.recetaIngredienteId, lista);
-  }
-
-  for (const [, filas] of porIngrediente) {
-    const principalInsumoId = filas[0].recetaIngrediente.insumoProducto.insumoId;
-    // Como mucho una fila por (ingrediente, insumo) — el UNIQUE ya lo garantiza — así que hay a lo sumo una del origen y una del
-    // destino. La del destino (si existía) sobrevive tal cual; si no, sobrevive la del origen, reapuntada.
-    const delDestino = filas.find((f) => f.insumoSustitutoId === destinoId);
-    const delOrigen = filas.find((f) => f.insumoSustitutoId === origenId);
-    const sobrevive = delDestino ?? delOrigen;
-    const aBorrar = filas.filter((f) => f.id !== sobrevive?.id);
-    if (aBorrar.length) await tx.sustitutoRecetaIngrediente.deleteMany({ where: { id: { in: aBorrar.map((f) => f.id) } } });
-
-    if (!sobrevive) continue;
-    if (destinoId === principalInsumoId) {
-      // Redundante: el destino de la fusión ES el Insumo del propio ingrediente principal — ya no tiene sentido como sustituto.
-      await tx.sustitutoRecetaIngrediente.delete({ where: { id: sobrevive.id } });
-      continue;
-    }
-    if (sobrevive.insumoSustitutoId !== destinoId) {
-      await tx.sustitutoRecetaIngrediente.update({ where: { id: sobrevive.id }, data: { insumoSustitutoId: destinoId } });
-    }
-  }
-
-  // Renumerar sin huecos — en orden ascendente para no chocar nunca con el UNIQUE (recetaIngredienteId, orden) a mitad de camino.
-  for (const recetaIngredienteId of porIngrediente.keys()) {
-    const restantes = await tx.sustitutoRecetaIngrediente.findMany({ where: { recetaIngredienteId }, orderBy: { orden: "asc" } });
-    for (let i = 0; i < restantes.length; i++) {
-      if (restantes[i].orden !== i + 1) await tx.sustitutoRecetaIngrediente.update({ where: { id: restantes[i].id }, data: { orden: i + 1 } });
-    }
-  }
-}
 
 /** H8: la pantalla de Insumos y Grupos o el formulario de producto (alta o edición). */
 export async function listarInsumos() {
@@ -79,36 +39,36 @@ export async function listarGrupos() {
  * NO pide el refresco de la vista: la llaman TRES flujos y a dos les sobraría — la pantalla de Insumos (closure "use server" de la página, que
  * sí lo pide ahí), el alta rápida inline del formulario de Producto (QuickCrear) y el AsistenteHermanar (un modal dentro de ese formulario).
  * Esos dos devuelven el insumo por callback y NO deben re-renderizar la ruta con el formulario a medio llenar (ver la regla en refrescar.ts).
+ *
+ * Desde el Hito 4 (H4C-9): permiso (`conPermisoDeEmpresa("insumo_alta")`) → formato del nombre (`guardComandoCrearInsumo`, core/features/catalogo/insumos.guard.ts,
+ * DENTRO del envoltorio) → caso de uso (`casos-de-uso/crear-insumo.ts`) → `aResultadoAccion`, y si salió bien el id y el nombre del insumo (`okConId`).
  */
 export async function crearInsumo(nombre: string): Promise<ResultadoConId> {
   return conPermisoDeEmpresa<ResultadoConId>("insumo_alta", async (ctx) => {
-    const n = texto(nombre);
-    if (!n) return error("El nombre del insumo no puede estar vacío.");
-    const invalido = validarTextoCatalogo(n, "El nombre del insumo");
-    if (invalido) return error(invalido);
-
-    const existente = await ctx.db.insumo.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
-    if (existente) return okConId(`Ya existía el insumo "${existente.nombre}" — se reusa.`, existente.id, existente.nombre);
-
-    const creado = await ctx.db.insumo.create({ data: { nombre: n } });
-    return okConId(`Insumo "${creado.nombre}" creado.`, creado.id, creado.nombre);
+    const comando = guardComandoCrearInsumo({ nombre });
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await crearInsumoCasoDeUso(ctx, comando.valor);
+    const base = aResultadoAccion(r);
+    return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
 }
 
+/** Desde el Hito 4 (H4C-9): permiso → caso de uso (`casos-de-uso/actualizar-activo-insumo.ts`) → refrescar la vista → `aResultadoAccion`. Sin guard (`SIN_GUARD`). */
 export async function actualizarActivoInsumo(insumoId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
-    await ctx.db.insumo.update({ where: { id: insumoId }, data: { activo } });
+    const resultado = await actualizarActivoInsumoCasoDeUso(ctx, { insumoId, activo });
     // Se llama desde un closure "use server" de la página de Insumos, sin redirigir: sin esto la columna «Activo» no cambia (ver refrescar.ts).
     refrescarVistaSiHaceFalta();
-    return ok(`Insumo ${activo ? "activado" : "desactivado"}.`);
+    return aResultadoAccion(resultado);
   });
 }
 
+/** Desde el Hito 4 (H4C-9): permiso → caso de uso (`casos-de-uso/actualizar-grupo-de-insumo.ts`) → refrescar la vista → `aResultadoAccion`. Sin guard (`SIN_GUARD`). */
 export async function actualizarGrupoDeInsumo(insumoId: string, grupoId: string | null): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
-    await ctx.db.insumo.update({ where: { id: insumoId }, data: { grupoId } });
+    const resultado = await actualizarGrupoDeInsumoCasoDeUso(ctx, { insumoId, grupoId });
     refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
-    return ok("Grupo del insumo actualizado.");
+    return aResultadoAccion(resultado);
   });
 }
 
@@ -142,6 +102,10 @@ export async function previsualizarFusionInsumo(insumoId: string, nombreNuevo: s
  * por eso exige confirmarFusion=true explícito (ver previsualizarFusionInsumo
  * y validarFusionInsumos, que además bloquea fusionar unidades de stock
  * mezcladas bajo el mismo Insumo).
+ *
+ * Desde el Hito 4 (H4C-9): permiso (`conPermisoDeEmpresa("insumo_renombrar_fusionar")`) → formato del nombre nuevo (`guardComandoRenombrarOFusionarInsumo`,
+ * DENTRO del envoltorio) → caso de uso (`casos-de-uso/renombrar-o-fusionar-insumo.ts`: los dos insumos, el choque de unidades, la confirmación, y la fusión en
+ * UNA transacción o el renombre) → `aResultadoAccion`.
  */
 export async function renombrarOFusionarInsumo(
   insumoId: string,
@@ -149,74 +113,34 @@ export async function renombrarOFusionarInsumo(
   confirmarFusion = false
 ): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("insumo_renombrar_fusionar", async (ctx) => {
-    const nuevo = texto(nombreNuevo);
-    if (!nuevo) return error("El nombre nuevo no puede estar vacío.");
-    const invalido = validarTextoCatalogo(nuevo, "El nombre del insumo");
-    if (invalido) return error(invalido);
-
-    const actual = await ctx.db.insumo.findUnique({ where: { id: insumoId } });
-    if (!actual) return error("No se encontró el insumo.");
-
-    const existente = await ctx.db.insumo.findFirst({
-      where: { nombre: { equals: nuevo, mode: "insensitive" }, id: { not: insumoId } },
-    });
-
-    if (existente) {
-      const chocaUnidad = await validarFusionInsumos(insumoId, existente.id, ctx.db);
-      if (chocaUnidad) return error(chocaUnidad);
-
-      // `=== true`, no truthy: el argumento llega del navegador, y un "false" o un 1 no es una confirmación.
-      if (confirmarFusion !== true) {
-        return error(`Ya existe el insumo "${existente.nombre}" — hace falta confirmar la fusión antes de aplicarla.`);
-      }
-
-      await ctx.transaccion(async (tx) => {
-        await tx.producto.updateMany({ where: { insumoId }, data: { insumoId: existente.id } });
-        await reapuntarSustitutosDeInsumoFusionado(tx, insumoId, existente.id);
-        // DESPUÉS de reapuntar los sustitutos (FK RESTRICT: docs/plan-sustitucion-insumos-receta-2026-09-26.md, D9) — sin esto, la
-        // fusión de un Insumo usado como sustituto en alguna receta fallaba por la FK en vez de arrastrarlo como corresponde.
-        await tx.insumo.delete({ where: { id: insumoId } });
-      });
-      return ok(`"${actual.nombre}" se fusionó con el insumo existente "${existente.nombre}".`);
-    }
-
-    await ctx.db.insumo.update({ where: { id: insumoId }, data: { nombre: nuevo } });
-    return ok(`Insumo renombrado a "${nuevo}".`);
+    const comando = guardComandoRenombrarOFusionarInsumo({ insumoId, nombreNuevo, confirmarFusion });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await renombrarOFusionarInsumoCasoDeUso(ctx, comando.valor));
   });
 }
 
-/** Equivalente de crearOActualizarGrupo/actualizarGrupoPadre_ (Catalogo.js:2483-2519), con la misma validación de ciclo. */
+/**
+ * Equivalente de crearOActualizarGrupo/actualizarGrupoPadre_ (Catalogo.js:2483-2519), con la misma validación de ciclo.
+ *
+ * Desde el Hito 4 (H4C-9): permiso (`conPermisoDeEmpresa("grupos_familia")`) → formato del nombre (`guardComandoCrearOActualizarGrupo`, DENTRO del envoltorio) →
+ * caso de uso (`casos-de-uso/crear-o-actualizar-grupo.ts`) → refrescar la vista si salió bien (la «Cadena» de cada grupo se calcula en el servidor: sin refresco no
+ * cambia hasta recargar) → `aResultadoAccion`.
+ */
 export async function crearOActualizarGrupo(nombre: string, grupoPadreId: string | null): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
-    const n = texto(nombre);
-    if (!n) return error("El nombre del grupo no puede estar vacío.");
-    const invalido = validarTextoCatalogo(n, "El nombre del grupo");
-    if (invalido) return error(invalido);
-
-    const existente = await ctx.db.grupo.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
-
-    if (existente) {
-      if (grupoPadreId && (await creariaCiclo(existente.id, grupoPadreId, ctx.db))) {
-        return error(`Ese padre ya desciende de "${n}", o es el mismo grupo — crearía un ciclo.`);
-      }
-      await ctx.db.grupo.update({ where: { id: existente.id }, data: { grupoPadreId } });
-      // La «Cadena» de cada grupo se calcula en el servidor: sin refresco no cambia hasta recargar (ver actualizarActivoInsumo).
-      refrescarVistaSiHaceFalta();
-      return ok(`Grupo "${n}" actualizado.`);
-    }
-
-    // Un grupo recién creado nunca puede formar un ciclo consigo mismo
-    // (su id todavía no existe), así que no hace falta validar acá.
-    const creado = await ctx.db.grupo.create({ data: { nombre: n, grupoPadreId } });
-    refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
-    return ok(`Grupo "${creado.nombre}" creado.`);
+    const comando = guardComandoCrearOActualizarGrupo({ nombre, grupoPadreId });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await crearOActualizarGrupoCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
+    return aResultadoAccion(resultado);
   });
 }
 
+/** Desde el Hito 4 (H4C-9): permiso → caso de uso (`casos-de-uso/actualizar-activo-grupo.ts`) → refrescar la vista → `aResultadoAccion`. Sin guard (`SIN_GUARD`). */
 export async function actualizarActivoGrupo(grupoId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
-    await ctx.db.grupo.update({ where: { id: grupoId }, data: { activo } });
+    const resultado = await actualizarActivoGrupoCasoDeUso(ctx, { grupoId, activo });
     refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
-    return ok(`Grupo ${activo ? "activado" : "desactivado"}.`);
+    return aResultadoAccion(resultado);
   });
 }
