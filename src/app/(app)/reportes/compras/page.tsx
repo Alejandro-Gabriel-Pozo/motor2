@@ -3,7 +3,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { SIN_PROVEEDOR } from "@/core/reportes/public-servidor";
+import { SIN_PROVEEDOR } from "@/core/reportes/public";
 import { listarComprasRegistradas } from "@/server/consultas/reportes/compras-registradas";
 import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";
 import { BotonAnularCompra } from "./boton-anular-compra";

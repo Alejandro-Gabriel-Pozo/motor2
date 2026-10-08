@@ -106,14 +106,13 @@ const PENDIENTES_DE_MIGRAR = [].map((ruta) => ({ ruta, motivo: MOTIVO_PENDIENTE 
  * necesita `ComandaDeEnvio`.
  */
 /*
- * Ciclo entre DOMINIOS de `core/` (no de archivos), documentado acá aunque no lleve entrada — Task #41, Fase C2/C3:
+ * Ciclos entre DOMINIOS de `core/` (no de archivos): ya no hay ninguno. El único que hubo (Task #41, Fase C2/C3) era
  * `core/movimientos/registrar-venta.ts` → `core/reportes/public-servidor.ts` (`calcularCostosYMargenes`) mientras
- * `core/reportes/periodo.ts` importa `core/movimientos/public.ts` (`esSignoFijo`). Es LEGÍTIMO (la venta congela su costo
- * dentro de la misma transacción) y es el ÚNICO ciclo real entre dominios de `core/`. No es un ciclo de ARCHIVOS
- * (`public-servidor.ts` no alcanza nada de `core/movimientos/`), así que `sin-ciclos` no lo ve y no va en CICLOS_CONOCIDOS:
- * el complemento de Vitest exige que esa lista sea exactamente la de los ciclos de archivos reales. Resuelto en C3: ambos
- * lados ya pasan por la fachada del otro dominio (`sin-internals-de-otro-dominio` no lo marca porque ninguna arista toca
- * un archivo interno).
+ * `core/reportes/periodo.ts` importaba `core/movimientos/public.ts` (`esSignoFijo`). Se cortó antes del Hito 5 (hoy `core/movimientos`
+ * no importa nada de `core/reportes`) y en la pieza 5.4 (A1)
+ * `core/reportes/public-servidor.ts` se retiró del todo, así que `core/reportes` solo tiene su fachada pura `public.ts`. Esta
+ * nota se conserva para que nadie busque ese ciclo ni ese archivo: `CICLOS_CONOCIDOS` es la lista de los ciclos de ARCHIVOS
+ * reales y el complemento de Vitest exige que sea exactamente esa (hoy vacía).
  */
 const CICLOS_CONOCIDOS = [];
 

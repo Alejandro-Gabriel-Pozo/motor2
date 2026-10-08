@@ -46,7 +46,7 @@ describe("el detector de public-servidor en un componente de cliente ve lo que d
   it("import de valor, import de tipo, reexport e import dinámico en un archivo de cliente", () => {
     const cliente = (cuerpo: string) => `"use client";\n${cuerpo}`;
     expect(importsDePublicServidorEnUnCliente(cliente('import { f } from "@/core/catalogo/public-servidor";'))).toEqual(["@/core/catalogo/public-servidor"]);
-    expect(importsDePublicServidorEnUnCliente(cliente('import type { T } from "@/core/reportes/public-servidor";'))).toEqual(["@/core/reportes/public-servidor"]);
+    expect(importsDePublicServidorEnUnCliente(cliente('import type { T } from "@/core/compras/public-servidor";'))).toEqual(["@/core/compras/public-servidor"]);
     expect(importsDePublicServidorEnUnCliente(cliente('export { f } from "../core/movimientos/public-servidor";'))).toEqual(["../core/movimientos/public-servidor"]);
     expect(importsDePublicServidorEnUnCliente(cliente('const m = () => import("@/core/stock/public-servidor");'))).toEqual(["@/core/stock/public-servidor"]);
   });

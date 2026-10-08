@@ -1,12 +1,13 @@
 /**
  * Fachada PÚBLICA y PURA del dominio `reportes` (Task #41, Fase C3).
  *
- * Fuera de `core/reportes/` se importa esta fachada o `public-servidor.ts`, nunca un archivo interno (regla
- * `sin-internals-de-otro-dominio` de `.dependency-cruiser.cjs`). Acá van SOLO los módulos que no alcanzan `@/lib/db` ni el
- * runtime de Prisma, ni directa ni transitivamente (regla `publico-puro`). Lo que sí toca la base va en
- * `public-servidor.ts`.
+ * Fuera de `core/reportes/` se importa esta fachada, nunca un archivo interno (regla `sin-internals-de-otro-dominio` de
+ * `.dependency-cruiser.cjs`). Acá van SOLO los módulos que no alcanzan `@/lib/db` ni el runtime de Prisma, ni directa ni
+ * transitivamente (regla `publico-puro`).
  *
- * Solo TIPOS (se borran al compilar): la función `compararRendimientosPorSucursal` hace consultas y va en `public-servidor.ts` (Pureza Fase 2, paso 2.2).
+ * `core/reportes` ya no tiene fachada de servidor (Hito 5, pieza 5.4, A1): `public-servidor.ts` solo reexportaba cosas puras
+ * (el ciclo con `core/movimientos` que su cabecera citaba ya no existe) y se retiró. Las consultas de los reportes viven en
+ * `server/consultas/reportes/` (por ejemplo `compararRendimientosPorSucursal`, Pureza Fase 2, paso 2.2); no entran por acá.
  *
  * Solo reexports explícitos (nunca `export *`, nunca lógica), y solo lo que hoy se usa desde afuera del dominio.
  */
@@ -121,6 +122,7 @@ export { generarDigestAlertas } from "./periodo-alertas";
 export { calcularComprasDelPeriodo } from "./periodo-compras";
 export { calcularGastoPorInsumoDelPeriodo } from "./periodo-compras";
 export { calcularVentasDelPeriodo } from "./periodo-ventas";
+export type { FilaCategoriaVenta } from "./periodo-categorias";
 export { agruparVentasPorCategoria } from "./periodo-categorias";
 export { pvSinCategoriaDe } from "./periodo-categorias";
 export { calcularCantidadTeoricaBruta } from "./rendimiento-recetas-vistas";
@@ -153,6 +155,7 @@ export type { ResumenOperativo } from "./resumen-operativo";
 export type { ReporteRotacionMesas } from "./rotacion-mesas";
 export { calcularRotacionMesas } from "./rotacion-mesas";
 export { TAMANO_PAGINA_TICKETS } from "./tickets-emitidos";
+export { leerFiltroTickets, serializarFiltroTickets } from "./tickets-emitidos";
 export type { FiltroTickets } from "./tickets-emitidos";
 export type { LineaTicketEmitido } from "./tickets-emitidos";
 export type { FilaTicketEmitido } from "./tickets-emitidos";

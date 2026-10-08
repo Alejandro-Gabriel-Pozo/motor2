@@ -3,7 +3,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { leerFiltroTickets, serializarFiltroTickets } from "@/core/reportes/public-servidor";
+import { leerFiltroTickets, serializarFiltroTickets } from "@/core/reportes/public";
 import { listarTicketsEmitidos, obtenerNumeroDeMesa } from "@/server/consultas/reportes/tickets-emitidos";
 import { formatearMonto, nombreDeMesa, formatearNumeroTicket } from "@/core/pos/public";
 import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
