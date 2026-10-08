@@ -337,6 +337,45 @@ describe("accion-migrada-sin-orquestacion (Fase M): ACCIONES_CON_CASO_DE_USO", (
 });
 
 /**
+ * `auditoria-capa` (Hito 5, pieza 5.4, B5): la capa del escritor de la auditoría (`src/server/auditoria/`) son DOS entradas de la misma regla de dependency-cruiser (como `persistencia-capa`):
+ * lo que la capa no puede importar y quién no puede importarla. dependency-cruiser falla cuando aparece una dependencia prohibida, pero NO cuando alguien borra una entrada o le saca una
+ * carpeta a la lista (la regla queda más floja y todo sigue verde): acá se exigen las dos entradas con sus listas EXACTAS. Los archivos de la carpeta, `server-only`, las impurezas y la única
+ * escritura permitida las fija `server-auditoria.test.ts`.
+ */
+describe("auditoria-capa (Hito 5, 5.4-B5): las dos entradas con sus listas exactas", () => {
+  interface ReglaConRutas {
+    name: string;
+    severity: string;
+    from: { path: string | string[] };
+    to: { path: string | string[] };
+  }
+  const entradas = CONFIG.forbidden.filter((r) => r.name === "auditoria-capa") as unknown as ReglaConRutas[];
+  const rutas = (p: string | string[]) => (Array.isArray(p) ? p : [p]);
+  const saliente = entradas.find((e) => rutas(e.from.path).join("|") === "^src/server/auditoria/");
+  const entrante = entradas.find((e) => rutas(e.to.path).join("|") === "^src/server/auditoria/");
+
+  it("la regla tiene exactamente dos entradas, las dos en error", () => {
+    expect(entradas).toHaveLength(2);
+    expect(entradas.map((e) => e.severity)).toEqual(["error", "error"]);
+  });
+
+  it("(1) desde server/auditoria no se puede ir a la UI, lib, lo demás de server, Next ni la sesión (core/auth)", () => {
+    expect(saliente, "falta la entrada que sale de ^src/server/auditoria/").toBeDefined();
+    expect(rutas(saliente!.to.path)).toEqual([
+      "^src/(app|components|lib)/",
+      "^src/server/(actions|consultas|lecturas|persistencia|acceso|sesion|carta-publica|adaptadores|operaciones-de-plataforma)/",
+      "^node_modules/next/",
+      "^src/core/auth/",
+    ]);
+  });
+
+  it("(2) a server/auditoria no llegan la UI, lib, el proxy, el entorno ni consultas, lecturas, persistencia, acceso, carta pública o adaptadores", () => {
+    expect(entrante, "falta la entrada que llega a ^src/server/auditoria/").toBeDefined();
+    expect(rutas(entrante!.from.path)).toEqual(["^src/(app|components|lib)/|^src/server/(consultas|lecturas|persistencia|acceso|carta-publica|adaptadores)/|^src/(proxy|env)\\.ts$"]);
+  });
+});
+
+/**
  * `carta-publica-alcance` + `ALCANCE_CARTA_PUBLICA` (Hito 5, pieza 5.2, paso 0.1; frontera de seguridad autorizada por el dueño el 2026-10-07).
  *
  * La regla de dependency-cruiser prohíbe que la carta pública (sin sesión) ALCANCE auth, permisos o `server/` salvo una lista cerrada de archivos, pero NO dice

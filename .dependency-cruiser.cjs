@@ -194,6 +194,30 @@ module.exports = {
       from: { path: "^src/server/sesion/" },
       to: { path: ["^src/(app|components)/", "^src/server/(actions|consultas|lecturas|persistencia|acceso)/", "^node_modules/next/"] },
     },
+    // Dos entradas con el mismo nombre (como las de `persistencia-capa`): lo que la capa NO puede importar y quién NO puede importar la capa.
+    {
+      name: "auditoria-capa",
+      comment:
+        "server/auditoria/ (el escritor de la auditoría, `registrarCambioAuditado`; Hito 5, pieza 5.4, B3 y B5) es una capa de ABAJO: recibe un `db` y escribe una fila, nada más. No importa la UI, ni lib/ (ni lib/db: la base entra por parámetro), ni lo demás de server/ (acciones, consultas, lecturas, persistencia, acceso, sesión, carta pública, adaptadores, operaciones de plataforma), ni Next, ni la sesión (core/auth). Solo puede depender de core/ (la forma de un cambio y la fila). Lista cerrada de archivos: test/arquitectura/server-auditoria.test.ts.",
+      severity: "error",
+      from: { path: "^src/server/auditoria/" },
+      to: {
+        path: [
+          "^src/(app|components|lib)/",
+          "^src/server/(actions|consultas|lecturas|persistencia|acceso|sesion|carta-publica|adaptadores|operaciones-de-plataforma)/",
+          "^node_modules/next/",
+          "^src/core/auth/",
+        ],
+      },
+    },
+    {
+      name: "auditoria-capa",
+      comment:
+        "A server/auditoria/ no llegan la UI, lib/, el proxy, el entorno ni las capas de LECTURA o de acceso (consultas, lecturas, persistencia, acceso, carta pública, adaptadores): la auditoría la registra el CASO DE USO (o la operación de plataforma, o la sesión) dentro de la transacción del cambio que audita, nunca la persistencia ni una lectura. Un escritor de auditoría llamado desde la persistencia se escribiría sin que el caso de uso lo sepa y fuera del orden que fija su ficha.",
+      severity: "error",
+      from: { path: "^src/(app|components|lib)/|^src/server/(consultas|lecturas|persistencia|acceso|carta-publica|adaptadores)/|^src/(proxy|env)\\.ts$" },
+      to: { path: "^src/server/auditoria/" },
+    },
     {
       name: "persistencia-capa",
       comment: "server/persistencia/ no importa de la UI, de server/actions/ ni de server/consultas/.",
