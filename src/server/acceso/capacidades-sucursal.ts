@@ -39,10 +39,18 @@ export async function sucursalTieneCapacidad(
   if (esCapacidadSiempreHabilitada(accionClave)) return true;
 
   const candidatas = await db.capacidadSucursal.findMany({
-    where: { accionClave, OR: [{ sucursalId }, { sucursalId: null }] },
+    where: { accionClave, OR: [{ sucursalId }, filaPorDefectoDeLaEmpresaDe(sucursalId)] },
   });
 
   return resolverCapacidad(candidatas, sucursalId);
+}
+
+// O.47 (reserva M3 de la auditoría del Hito 5; docs/pureza-integracion.md): la fila «por defecto» (`sucursalId: null`) es UNA POR EMPRESA (índice único parcial `(empresaId, accionClave)`). Sin este filtro la
+// rama `sucursalId: null` traía la fila por defecto de TODAS las empresas, y con un cliente que se saltea el RLS (rol dueño, solo con `MOTOR2_ROL_ESTRICTO=0` fuera de producción) la de otra empresa apagaba
+// o encendía la capacidad en esta. Se limita a la empresa de la sucursal pedida con un filtro de relación DENTRO del mismo `where`: la MISMA consulta (una sola, mismas filas con una sola empresa o con RLS),
+// así que no cambia el conteo de consultas del gate ni de la matriz de acceso. Es todo lo que cambió en este archivo (frontera de la carta pública: `ALCANCE_CARTA_PUBLICA` no se toca).
+function filaPorDefectoDeLaEmpresaDe(sucursalId: string): Prisma.CapacidadSucursalWhereInput {
+  return { sucursalId: null, empresa: { sucursalRel: { some: { id: sucursalId } } } };
 }
 
 /**
@@ -55,7 +63,7 @@ export async function capacidadesDeSucursal(
   db: Db
 ): Promise<Set<string>> {
   const candidatas = await db.capacidadSucursal.findMany({
-    where: { accionClave: { in: [...claves] }, OR: [{ sucursalId }, { sucursalId: null }] },
+    where: { accionClave: { in: [...claves] }, OR: [{ sucursalId }, filaPorDefectoDeLaEmpresaDe(sucursalId)] },
   });
   const habilitadas = new Set<string>();
   for (const clave of claves) {
