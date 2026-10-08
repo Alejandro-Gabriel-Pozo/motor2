@@ -10,6 +10,7 @@ import {
   actualizarActivoItemAgrupadoCarta,
   actualizarOrdenOpcionItemAgrupadoCarta,
   agregarOpcionItemAgrupadoCarta,
+  guardarItemAgrupadoCarta,
   quitarOpcionItemAgrupadoCarta,
 } from "../../src/server/actions/carta/items-agrupados";
 
@@ -55,6 +56,81 @@ describe("ítems agrupados de la carta: mensajes, orden de los chequeos, sucursa
   const itemEn = async (sucursal: string, nombre = "Gaseosa") => (await prisma.itemAgrupadoCarta.create({ data: { sucursalId: sucursal, nombre, seccionCartaId: seccionId } })).id;
   const opcionEn = async (sucursal: string, itemAgrupadoCartaId: string, productoId: string, orden = 0) =>
     (await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId: sucursal, itemAgrupadoCartaId, productoId, orden } })).id;
+
+  describe("alta y edición", () => {
+    it("cada validación en su orden (nombre, descripción, tags, orden, tope de productos, sección vacía), sin leer ni revalidar ni escribir", async () => {
+      const datos: Parameters<typeof guardarItemAgrupadoCarta>[0] = {
+        nombre: "  ",
+        seccionCartaId: "",
+        descripcion: "d".repeat(501),
+        tags: "<script>",
+        orden: "x",
+        productoIds: Array.from({ length: 101 }, (_, i) => `p${i}`),
+      };
+      expect(await guardarItemAgrupadoCarta(datos)).toEqual({ ok: false, mensaje: "El nombre del ítem agrupado no puede estar vacío." });
+      datos.nombre = "Gaseosa";
+      expect(await guardarItemAgrupadoCarta(datos)).toEqual({ ok: false, mensaje: "La descripción no puede superar los 500 caracteres." });
+      datos.descripcion = null;
+      expect(await guardarItemAgrupadoCarta(datos)).toEqual({ ok: false, mensaje: 'El tag "<script>" tiene caracteres no permitidos.' });
+      datos.tags = ["Fría"];
+      expect(await guardarItemAgrupadoCarta(datos)).toEqual({ ok: false, mensaje: "El orden tiene que ser un número entero." });
+      datos.orden = 2;
+      expect(await guardarItemAgrupadoCarta(datos)).toEqual({ ok: false, mensaje: "Los productos no pueden ser más de 100 por vez." });
+      datos.productoIds = [];
+      expect(await guardarItemAgrupadoCarta(datos)).toEqual({ ok: false, mensaje: "Elegí la sección de carta del ítem agrupado." });
+      expect(revalidaciones()).toBe(0);
+      expect(await prisma.itemAgrupadoCarta.count()).toBe(0);
+    });
+
+    it("después de leer: la sección inexistente gana sobre el género, el género sobre el nombre repetido y el repetido sobre «no se encontró el ítem»", async () => {
+      await itemEn(sucursalId, "Gaseosa");
+      const generoApagado = (await prisma.generoCarta.create({ data: { sucursalId, nombre: "Cerveza", activo: false } })).id;
+      const generoAjeno = (await prisma.generoCarta.create({ data: { sucursalId: otraId, nombre: "Del otro lado" } })).id;
+      const base = { nombre: "gaseosa", seccionCartaId: seccionId };
+
+      expect(await guardarItemAgrupadoCarta({ ...base, seccionCartaId: "cnoexiste000000000000000", generoCartaId: generoAjeno })).toEqual({ ok: false, mensaje: "No se encontró la sección de carta." });
+      expect(await guardarItemAgrupadoCarta({ ...base, generoCartaId: generoAjeno })).toEqual({ ok: false, mensaje: "No se encontró el género." });
+      expect(await guardarItemAgrupadoCarta({ ...base, generoCartaId: generoApagado })).toEqual({ ok: false, mensaje: "Ese género está apagado: elegí uno activo, o ninguno." });
+      expect(await guardarItemAgrupadoCarta(base)).toEqual({ ok: false, mensaje: 'Ya existe el ítem agrupado "Gaseosa".' });
+      expect(await guardarItemAgrupadoCarta({ ...base, id: "cnoexiste000000000000000" })).toEqual({ ok: false, mensaje: 'Ya existe el ítem agrupado "Gaseosa".' });
+      expect(revalidaciones()).toBe(0);
+      expect(await prisma.itemAgrupadoCarta.count()).toBe(1);
+    });
+
+    it("«no se encontró el ítem» (inexistente o de OTRA sucursal) sin revalidar; el éxito dice creado o guardado y revalida UNA vez; un género en blanco es «sin género»", async () => {
+      const ajeno = await itemEn(otraId, "Del otro lado");
+      expect(await guardarItemAgrupadoCarta({ id: "cnoexiste000000000000000", nombre: "X", seccionCartaId: seccionId })).toEqual({ ok: false, mensaje: "No se encontró el ítem agrupado." });
+      expect(await guardarItemAgrupadoCarta({ id: ajeno, nombre: "X", seccionCartaId: seccionId })).toEqual({ ok: false, mensaje: "No se encontró el ítem agrupado." });
+      expect(revalidaciones()).toBe(0);
+      expect((await prisma.itemAgrupadoCarta.findUniqueOrThrow({ where: { id: ajeno } })).nombre).toBe("Del otro lado");
+
+      const alta = await guardarItemAgrupadoCarta({ nombre: " Gaseosa ", seccionCartaId: seccionId, generoCartaId: "  " });
+      expect(alta).toEqual({ ok: true, mensaje: 'Ítem agrupado "Gaseosa" creado.', id: expect.any(String), nombre: "Gaseosa" });
+      expect(revalidaciones()).toBe(1);
+      const id = alta.ok ? alta.id : "";
+      expect((await prisma.itemAgrupadoCarta.findUniqueOrThrow({ where: { id } })).generoCartaId).toBeNull();
+      expect(await guardarItemAgrupadoCarta({ id, nombre: "Gaseosa 500", seccionCartaId: seccionId })).toEqual({ ok: true, mensaje: 'Ítem agrupado "Gaseosa 500" guardado.', id, nombre: "Gaseosa 500" });
+      expect(revalidaciones()).toBe(1);
+    });
+
+    it("alta con productos: revalida UNA vez por el ítem y UNA por cada producto que entra (los rechazados no), y un nombre repetido no revalida ni agrega nada", async () => {
+      expect(await guardarItemAgrupadoCarta({ nombre: "Gaseosa", seccionCartaId: seccionId, productoIds: [ids.coca, ids.sprite, ids.fanta] })).toMatchObject({
+        ok: true,
+        mensaje: 'Ítem agrupado "Gaseosa" creado con 3 de 3 productos.',
+      });
+      expect(revalidaciones()).toBe(4);
+
+      const conRechazos = await guardarItemAgrupadoCarta({ nombre: "Otro", seccionCartaId: seccionId, productoIds: [ids.agua, ids.mp, "cnoexiste000000000000000"] });
+      expect(conRechazos).toMatchObject({
+        ok: true,
+        mensaje: 'Ítem agrupado "Otro" creado con 1 de 3 productos. No entraron: Solo un producto de venta (PV) puede ir en la carta. No se encontró el producto.',
+      });
+      expect(revalidaciones()).toBe(2);
+
+      expect(await guardarItemAgrupadoCarta({ nombre: "GASEOSA", seccionCartaId: seccionId, productoIds: [ids.mp] })).toEqual({ ok: false, mensaje: 'Ya existe el ítem agrupado "Gaseosa".' });
+      expect(revalidaciones()).toBe(0);
+    });
+  });
 
   describe("agregar una opción", () => {
     it("el ítem se busca ANTES de mirar el producto (ítem inexistente o de OTRA sucursal gana sobre «elegí el producto»), sin revalidar", async () => {
