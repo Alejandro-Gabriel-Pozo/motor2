@@ -1,10 +1,12 @@
 "use server";
 
-import { esNumeroEstricto } from "@/core/numero";
-import { ENTERO_MAXIMO_RAZONABLE, validarNumeroHasta } from "@/core/datos/limites";
+import { guardComandoSetFrecuenciaConteo } from "@/core/features/stock/frecuencia-conteo.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
+import { eliminarFrecuenciaConteoCasoDeUso } from "./casos-de-uso/eliminar-frecuencia-conteo";
+import { setFrecuenciaConteoCasoDeUso } from "./casos-de-uso/set-frecuencia-conteo";
 
 /**
  * Agenda de conteo físico periódico por sucursal × producto (sub-plan S,
@@ -13,6 +15,10 @@ import { requerirVerEnSucursal } from "../con-sesion";
  * nuevo (decisión S2 del plan): quien cuenta es quien configura cada
  * cuánto — mismo criterio que ya gatea `/reportes/conteos` y
  * `/stock/reclasificar`.
+ *
+ * Desde el Hito 4 de la pureza (bloque C de la pieza carta/catálogo/stock, paso H4C-19) las dos mutaciones son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{set-frecuencia-conteo,eliminar-frecuencia-conteo}.ts`; escrituras en server/persistencia/stock/frecuencia-conteo.ts): el archivo entero está en
+ * `ACCIONES_CON_CASO_DE_USO`. La lectura (H8) sigue acá con su guarda. Ninguna de las dos refresca la vista (como antes).
  */
 export async function listarFrecuenciasConteo(sucursalId: string) {
   const ctx = await requerirVerEnSucursal(sucursalId, "conteo_frecuencia");
@@ -23,31 +29,23 @@ export async function listarFrecuenciasConteo(sucursalId: string) {
   });
 }
 
-/** `frecuenciaDias === 0` desactiva la agenda de este producto (se conserva la fila, mismo criterio "0 es un valor real" de setStockMinimoProducto — no se borra, se pisa). */
+/**
+ * `frecuenciaDias === 0` desactiva la agenda de este producto (se conserva la fila, mismo criterio "0 es un valor real" de setStockMinimoProducto — no se borra, se pisa).
+ *
+ * Desde el Hito 4 (H4C-19): permiso → formato (`guardComandoSetFrecuenciaConteo`, core/features/stock/frecuencia-conteo.guard.ts, DENTRO del envoltorio) → caso de
+ * uso (`casos-de-uso/set-frecuencia-conteo.ts`: el producto y el alta o reemplazo de la fila) → `aResultadoAccion`.
+ */
 export async function setFrecuenciaConteo(productoId: string, frecuenciaDias: number): Promise<ResultadoAccion> {
   return conPermiso("conteo_frecuencia", async (ctx) => {
-    if (!Number.isInteger(frecuenciaDias) || frecuenciaDias < 0) return error("La frecuencia tiene que ser un número entero de días, 0 o más.");
-    if (!esNumeroEstricto(frecuenciaDias)) return error("La frecuencia no es un número válido.");
-    const alta = validarNumeroHasta(frecuenciaDias, "La frecuencia", ENTERO_MAXIMO_RAZONABLE);
-    if (alta) return error(alta);
-
-    const producto = await ctx.db.producto.findUnique({ where: { id: productoId } });
-    if (!producto) return error("No se encontró el producto.");
-
-    await ctx.db.frecuenciaConteoProducto.upsert({
-      where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } },
-      update: { frecuenciaDias },
-      create: { sucursalId: ctx.sucursalId, productoId, frecuenciaDias },
-    });
-    return ok(frecuenciaDias === 0 ? `Agenda de conteo de "${producto.nombre}" desactivada.` : `Agenda de conteo de "${producto.nombre}" fijada cada ${frecuenciaDias} día(s).`);
+    const comando = guardComandoSetFrecuenciaConteo({ productoId, frecuenciaDias });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await setFrecuenciaConteoCasoDeUso(ctx, comando.valor));
   });
 }
 
+/** Desde el Hito 4 (H4C-19): permiso → caso de uso (`casos-de-uso/eliminar-frecuencia-conteo.ts`) → `aResultadoAccion`. Sin guard (`SIN_GUARD`: solo recibe un id). */
 export async function eliminarFrecuenciaConteo(id: string): Promise<ResultadoAccion> {
   return conPermiso("conteo_frecuencia", async (ctx) => {
-    const fila = await ctx.db.frecuenciaConteoProducto.findUnique({ where: { id } });
-    if (!fila || fila.sucursalId !== ctx.sucursalId) return error("No se encontró esa fila de Frecuencia de conteo.");
-    await ctx.db.frecuenciaConteoProducto.delete({ where: { id } });
-    return ok("Fila de Frecuencia de conteo eliminada.");
+    return aResultadoAccion(await eliminarFrecuenciaConteoCasoDeUso(ctx, { id }));
   });
 }

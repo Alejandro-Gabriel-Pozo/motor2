@@ -299,6 +299,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque C, H4C-18: crearSeccion (con guardComandoCrearSeccion; la acción arma el ResultadoConId), renombrarSeccion (con guardComandoRenombrarSeccion: el nombre, antes de leer), actualizarActivaSeccion y actualizarRespaldoSeccion (con guardComandoActualizarRespaldoSeccion: el booleano y que el id sea un texto) → movimientos/casos-de-uso/{crear-seccion,renombrar-seccion,actualizar-activa-seccion,actualizar-respaldo-seccion}.ts; escrituras en server/persistencia/movimientos/secciones.ts, sin transacción ni auditoría (como antes). La acción refresca la vista solo si salió bien, como antes. Las lecturas (H8) siguen en la acción.",
   },
+  {
+    ruta: "src/server/actions/stock/frecuencia-conteo.ts",
+    motivo:
+      "Hito 4, bloque C, H4C-19: setFrecuenciaConteo (con guardComandoSetFrecuenciaConteo: la frecuencia, antes de leer el producto) y eliminarFrecuenciaConteo → stock/casos-de-uso/{set-frecuencia-conteo,eliminar-frecuencia-conteo}.ts; escrituras en server/persistencia/stock/frecuencia-conteo.ts, sin transacción ni auditoría y sin refrescar la vista (como antes). La lectura (H8) sigue en la acción.",
+  },
 ];
 
 module.exports = {
