@@ -17,6 +17,9 @@ export type { Resultado } from "./validaciones";
 export { LARGO_MAXIMO_DESCRIPCION_CARTA, LARGO_MAXIMO_TITULO_CARTA, validarOrdenCarta, validarPrecioCarta, validarTextoLibreCarta } from "./validaciones";
 // Hito 5, bloque D: los guards de la configuración de la carta (`core/features/carta/{secciones,generos,…}.guard.ts`) validan con los mismos validadores que usaban las Server Actions.
 export { normalizarTagsCarta, validarImagenUrlCarta, validarNombreGeneroCarta, validarNombreItemAgrupadoCarta, validarNombreSeccionCarta } from "./validaciones";
+// Hito 5, bloque D: el guard del registro público del portal (`core/features/carta/registro-publico.guard.ts`) valida con los mismos validadores que usaba la Server Action.
+export { LARGO_MAXIMO_ETIQUETA_PORTAL, LARGO_MAXIMO_SUBTITULO_PORTAL, validarPosicionPortal, validarSlugTenant } from "./validaciones";
+export type { PosicionPortal } from "./validaciones";
 export { formatearPrecioCarta } from "./precio-carta";
 export { whereCartaDeSucursal } from "./carta-de-sucursal";
 export type { EstiloCarta } from "./estilo";
