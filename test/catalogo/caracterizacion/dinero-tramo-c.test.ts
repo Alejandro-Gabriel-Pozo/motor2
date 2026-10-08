@@ -276,7 +276,7 @@ describe("Huella de dinero del tramo C", () => {
     await paso("promo: sección inexistente", await guardarPromoCarta({ seccionCartaId: "no-existe", titulo: "X", precio: 100 }));
     await paso("promo: sin título", await guardarPromoCarta({ seccionCartaId: platos.id, titulo: "  ", precio: 100 }));
     await paso("promo: precio inválido", await guardarPromoCarta({ seccionCartaId: platos.id, titulo: "X", precio: "abc" }));
-    await paso("promo: precio con coma (el validador de la carta no la acepta: el mensaje dice «negativo», se fija tal cual)", await guardarPrecioLocalPromoCarta(menu.id, "9000,5"));
+    await paso("promo: precio con coma (el validador de la carta no la acepta; desde O.43 el mensaje pide el punto)", await guardarPrecioLocalPromoCarta(menu.id, "9000,5"));
     await paso("promo: apagado general del Menú", await actualizarActivaPromoCarta(menu.id, false));
     await paso("promo: prendido general del Menú", await actualizarActivaPromoCarta(menu.id, true));
     await paso("promo: apagado general de una inexistente", await actualizarActivaPromoCarta("no-existe", false));

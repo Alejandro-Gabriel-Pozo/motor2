@@ -94,10 +94,16 @@ export function validarOrdenCarta(valor: unknown): Resultado<number> {
   return { ok: true, valor: n };
 }
 
-/** Precio de una promo: número finito, >= 0, con a lo sumo 2 decimales (se guarda como Decimal(14, 2)). */
+/**
+ * Precio de una promo: número finito, >= 0, con a lo sumo 2 decimales (se guarda como Decimal(14, 2)).
+ *
+ * O.43 (Hito 4, bloque D; aprobado por el dueño, criterio conservador): `Number(...)` NO acepta la coma decimal y eso NO cambia (el parseo es el de siempre); lo
+ * que cambió es el mensaje de lo que no tiene forma de número («12,5», «abc»): antes caía en `!(n >= 0)` y decía «no puede ser negativo».
+ */
 export function validarPrecioCarta(valor: unknown): Resultado<number> {
   if (valor === null || valor === undefined || texto(valor) === "") return { ok: false, mensaje: "Falta el precio." };
   const n = Number(valor);
+  if (Number.isNaN(n)) return { ok: false, mensaje: "El precio no tiene un formato válido: usá el punto como separador decimal (por ejemplo, 12.5)." };
   if (!(n >= 0)) return { ok: false, mensaje: "El precio no puede ser negativo." };
   if (!esNumeroFinito(n) || n >= 1e12) return { ok: false, mensaje: "El precio no es un número válido." };
   return { ok: true, valor: Math.round(n * 100) / 100 };

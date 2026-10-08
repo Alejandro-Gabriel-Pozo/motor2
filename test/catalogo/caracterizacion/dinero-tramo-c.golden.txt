@@ -96,10 +96,10 @@
   resultado: {"ok":false,"mensaje":"La promo necesita un título."}
   efectos: revalidarCartasPublicas=0 refrescar=0
 ### promo: precio inválido
-  resultado: {"ok":false,"mensaje":"El precio no puede ser negativo."}
+  resultado: {"ok":false,"mensaje":"El precio no tiene un formato válido: usá el punto como separador decimal (por ejemplo, 12.5)."}
   efectos: revalidarCartasPublicas=0 refrescar=0
-### promo: precio con coma (el validador de la carta no la acepta: el mensaje dice «negativo», se fija tal cual)
-  resultado: {"ok":false,"mensaje":"El precio no puede ser negativo."}
+### promo: precio con coma (el validador de la carta no la acepta; desde O.43 el mensaje pide el punto)
+  resultado: {"ok":false,"mensaje":"El precio no tiene un formato válido: usá el punto como separador decimal (por ejemplo, 12.5)."}
   efectos: revalidarCartasPublicas=0 refrescar=0
 ### promo: apagado general del Menú
   resultado: {"ok":true,"mensaje":"Promo \"Menú del día\" desactivada en toda la empresa."}
