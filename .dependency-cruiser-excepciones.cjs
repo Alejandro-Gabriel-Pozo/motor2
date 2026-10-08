@@ -279,6 +279,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque C, H4C-14: altaProveedor → catalogo/casos-de-uso/alta-proveedor.ts (con guardComandoAltaProveedor; sin transacción a propósito por el reintento del código; la acción pasa azarDelProceso y arma el ResultadoConId), actualizarActivaProveedor → actualizar-activa-proveedor.ts (la acción refresca la vista, como antes) y actualizarProveedor → actualizar-proveedor.ts (lee, valida y escribe en el mismo orden); escrituras en server/persistencia/catalogo/proveedores.ts y la lectura del CUIT repetido en server/lecturas/catalogo/proveedor-con-cuit.ts. Las lecturas (H8) siguen en la acción.",
   },
+  {
+    ruta: "src/server/actions/clientes/cliente.ts",
+    motivo:
+      "Hito 4, bloque C, H4C-15: altaCliente → clientes/casos-de-uso/alta-cliente.ts (con guardComandoAltaCliente; la acción arma el ResultadoConId), actualizarCliente → actualizar-cliente.ts y actualizarActivoCliente → actualizar-activo-cliente.ts (la acción refresca la vista solo si salió bien, como antes); cada uno con su escritura (server/persistencia/clientes/clientes.ts) y sus filas de auditoría (cambioDeCliente, core/features/clientes/auditoria-de-cliente.ts) en UNA transacción. Las lecturas (H8) siguen en la acción.",
+  },
 ];
 
 module.exports = {

@@ -98,6 +98,10 @@ const SIN_GUARD: Record<string, string> = {
     "Activar o desactivar un proveedor (Hito 4, H4C-14): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/catalogo/proveedores.ts#actualizarProveedor":
     "Corregir los datos de contacto de un proveedor (Hito 4, H4C-14): la acción leía el proveedor ANTES de validar (un proveedor inexistente gana sobre un dato inválido), así que la validación (validarContactoDeProveedor) vive en el caso de uso, en el mismo orden.",
+  "src/server/actions/clientes/cliente.ts#actualizarCliente":
+    "Corregir nombre y % de un cliente (Hito 4, H4C-15): la acción leía el cliente ANTES de validar (un cliente inexistente gana sobre un dato inválido), así que la validación (nombreDeCliente y validarPorcentajeDescuento) vive en el caso de uso, en el mismo orden.",
+  "src/server/actions/clientes/cliente.ts#actualizarActivoCliente":
+    "Activar o desactivar un cliente (Hito 4, H4C-15): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró ese cliente.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
 };
 
 describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {

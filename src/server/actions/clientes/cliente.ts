@@ -1,12 +1,14 @@
 "use server";
 
-import { texto, validarTextoCatalogo } from "@/core/texto";
-import { validarPorcentajeDescuento } from "@/core/datos/porcentaje-descuento";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { guardComandoAltaCliente } from "@/core/features/clientes/clientes.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
-import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { requerirVer, requerirVerDeEmpresa } from "../con-sesion";
+import { actualizarActivoClienteCasoDeUso } from "./casos-de-uso/actualizar-activo-cliente";
+import { actualizarClienteCasoDeUso } from "./casos-de-uso/actualizar-cliente";
+import { altaClienteCasoDeUso } from "./casos-de-uso/alta-cliente";
 
 /**
  * Cliente con % de descuento fijo (Task #14, docs/plan-clientes-descuento-2026-09-26.md). Catálogo CENTRAL, sin `sucursalId` — mismo
@@ -16,21 +18,11 @@ import { requerirVer, requerirVerDeEmpresa } from "../con-sesion";
  *
  * Todo cambio deja su fila en la auditoría administrativa (entidad "Cliente", sin sucursal: es del catálogo central), en la MISMA transacción
  * que el cambio: el % mueve plata (se congela en cada cuenta al asignarlo), así que tiene que quedar quién lo cargó o lo cambió y cuándo.
+ *
+ * Desde el Hito 4 de la pureza (bloque C de la pieza carta/catálogo/stock, paso H4C-15) las tres mutaciones son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{alta-cliente,actualizar-cliente,actualizar-activo-cliente}.ts`; escrituras en server/persistencia/clientes/clientes.ts y la fila de auditoría
+ * en core/features/clientes/auditoria-de-cliente.ts): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las lecturas (H8) siguen acá con sus guardas.
  */
-
-type Tx = Parameters<typeof registrarCambioAuditado>[0];
-
-async function auditarCliente(tx: Tx, actorId: string, clienteId: string, nombre: string, campo: string, anterior: unknown, nuevo: unknown) {
-  await registrarCambioAuditado(tx, {
-    entidad: "Cliente",
-    entidadId: clienteId,
-    campo,
-    descripcion: `Cliente "${nombre}": ${campo === "descuentoPorcentaje" ? "% de descuento" : campo === "activo" ? "activo" : "nombre"}`,
-    valorAnterior: anterior,
-    valorNuevo: nuevo,
-    actorId,
-  });
-}
 
 /** Lista completa del catálogo (pantalla «Clientes»): pide el «Ver» de `clientes`, no alcanza con estar logueado. */
 export async function listarClientes() {
@@ -45,69 +37,45 @@ export async function listarClientesParaCuenta(): Promise<{ id: string; nombre: 
   return clientes.map((c) => ({ id: c.id, nombre: c.nombre, descuentoPorcentaje: Number(c.descuentoPorcentaje) }));
 }
 
-/** Equivalente de crearCategoriaProducto (mismo dedup case-insensible), con el % de descuento validado (validarPorcentajeDescuento). */
+/**
+ * Equivalente de crearCategoriaProducto (mismo dedup case-insensible), con el % de descuento validado (validarPorcentajeDescuento).
+ *
+ * Desde el Hito 4 (H4C-15): permiso (`conPermisoDeEmpresa("clientes")`) → formato (`guardComandoAltaCliente`, core/features/clientes/clientes.guard.ts, DENTRO
+ * del envoltorio: el nombre y el %) → caso de uso (`casos-de-uso/alta-cliente.ts`: nombre libre, el alta y sus dos filas de auditoría en una transacción) →
+ * `aResultadoAccion`, y si salió bien el id y el nombre (`okConId`).
+ */
 export async function altaCliente(nombre: string, descuentoPorcentaje: unknown): Promise<ResultadoConId> {
   return conPermisoDeEmpresa<ResultadoConId>("clientes", async (ctx) => {
-    const n = texto(nombre);
-    if (!n) return error("El nombre del cliente no puede estar vacío.");
-    const invalido = validarTextoCatalogo(n, "El nombre del cliente");
-    if (invalido) return error(invalido);
-
-    const pct = validarPorcentajeDescuento(descuentoPorcentaje);
-    if (!pct.ok) return error(pct.mensaje);
-
-    const existente = await ctx.db.cliente.findFirst({ where: { nombre: { equals: n, mode: "insensitive" } } });
-    if (existente) return error(`Ya existe un cliente llamado "${existente.nombre}".`);
-
-    const creado = await ctx.transaccion(async (tx) => {
-      const c = await tx.cliente.create({ data: { nombre: n, descuentoPorcentaje: pct.valor! } });
-      await auditarCliente(tx, ctx.usuarioId, c.id, c.nombre, "nombre", null, c.nombre);
-      await auditarCliente(tx, ctx.usuarioId, c.id, c.nombre, "descuentoPorcentaje", null, pct.valor);
-      return c;
-    });
-    return okConId(`Cliente "${creado.nombre}" creado, con ${pct.valor}% de descuento.`, creado.id, creado.nombre);
+    const comando = guardComandoAltaCliente({ nombre, descuentoPorcentaje });
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await altaClienteCasoDeUso(ctx, comando.valor);
+    const base = aResultadoAccion(r);
+    return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
 }
 
 /**
  * Corrige nombre y/o % de un cliente ya creado. El % nuevo NO reescribe ninguna `Cuenta` ya asignada (D7 — el % queda congelado en
  * `Cuenta.descuentoPorcentaje` al asignar el cliente): solo aplica a asignaciones futuras.
+ *
+ * Desde el Hito 4 (H4C-15): permiso → caso de uso (`casos-de-uso/actualizar-cliente.ts`: leer el cliente, validar, nombre libre, escribir y auditar) →
+ * `aResultadoAccion`. Sin guard (`SIN_GUARD`: la acción leía el cliente ANTES de validar).
  */
 export async function actualizarCliente(clienteId: string, nombre: string, descuentoPorcentaje: unknown): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("clientes", async (ctx) => {
-    const cliente = await ctx.db.cliente.findUnique({ where: { id: clienteId } });
-    if (!cliente) return error("No se encontró ese cliente.");
-
-    const n = texto(nombre);
-    if (!n) return error("El nombre del cliente no puede estar vacío.");
-    const invalido = validarTextoCatalogo(n, "El nombre del cliente");
-    if (invalido) return error(invalido);
-
-    const pct = validarPorcentajeDescuento(descuentoPorcentaje);
-    if (!pct.ok) return error(pct.mensaje);
-
-    const dup = await ctx.db.cliente.findFirst({ where: { id: { not: clienteId }, nombre: { equals: n, mode: "insensitive" } } });
-    if (dup) return error(`Ya existe un cliente llamado "${dup.nombre}".`);
-
-    await ctx.transaccion(async (tx) => {
-      await tx.cliente.update({ where: { id: clienteId }, data: { nombre: n, descuentoPorcentaje: pct.valor! } });
-      await auditarCliente(tx, ctx.usuarioId, clienteId, n, "nombre", cliente.nombre, n);
-      await auditarCliente(tx, ctx.usuarioId, clienteId, n, "descuentoPorcentaje", Number(cliente.descuentoPorcentaje), pct.valor);
-    });
-    return ok(`Cliente "${n}" actualizado.`);
+    return aResultadoAccion(await actualizarClienteCasoDeUso(ctx, { clienteId, nombre, descuentoPorcentaje }));
   });
 }
 
+/**
+ * Desde el Hito 4 (H4C-15): permiso → caso de uso (`casos-de-uso/actualizar-activo-cliente.ts`: leer el cliente, cambiar y auditar) → si salió bien, refrescar la
+ * vista → `aResultadoAccion`. Sin guard (`SIN_GUARD`: solo recibe un id y un booleano).
+ */
 export async function actualizarActivoCliente(clienteId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("clientes", async (ctx) => {
-    const cliente = await ctx.db.cliente.findUnique({ where: { id: clienteId } });
-    if (!cliente) return error("No se encontró ese cliente.");
-    await ctx.transaccion(async (tx) => {
-      await tx.cliente.update({ where: { id: clienteId }, data: { activo } });
-      await auditarCliente(tx, ctx.usuarioId, clienteId, cliente.nombre, "activo", cliente.activo, activo);
-    });
-    // Se llama desde la lista sin redirigir después (ver src/server/actions/refrescar.ts).
-    refrescarVistaSiHaceFalta();
-    return ok(`Cliente "${cliente.nombre}" ${activo ? "activado" : "desactivado"}.`);
+    const resultado = await actualizarActivoClienteCasoDeUso(ctx, { clienteId, activo });
+    // Se llama desde la lista sin redirigir después (ver src/server/actions/refrescar.ts). Un cliente que no existe no refresca (como antes).
+    if (resultado.ok) refrescarVistaSiHaceFalta();
+    return aResultadoAccion(resultado);
   });
 }
