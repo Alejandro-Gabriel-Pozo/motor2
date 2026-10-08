@@ -26,10 +26,11 @@ vi.mock("../../src/core/permisos/auditoria", async (importOriginal) => {
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarDescuentoProducto } from "../../src/server/actions/carta/descuento-producto";
+import { guardarPrecioLocalPromoCarta, guardarPromoCarta } from "../../src/server/actions/carta/promos";
 
 /**
  * Dinero de la carta y su auditoría, atómicos (Hito 4, bloque 4.2): el cambio y su fila de auditoría van en UNA transacción del caso de uso. Si la auditoría
- * falla, no queda NADA: ni el valor nuevo ni la fila de auditoría. Nació en H4C-1 porque la mutación «auditoría en otra transacción» del caso de uso del descuento
+ * falla, no queda NADA: ni el valor nuevo ni la fila de auditoría (descuento de producto desde H4C-1; alta, edición y precio local de una promo desde H4C-2). Nació en H4C-1 porque la mutación «auditoría en otra transacción» del caso de uso del descuento
  * no la veía ningún test (la huella de dinero solo mira el camino feliz: con la auditoría fuera de la transacción las filas finales son las mismas).
  */
 describe("dinero de carta: el cambio y su auditoría son atómicos", () => {
@@ -71,6 +72,34 @@ describe("dinero de carta: el cambio y su auditoría son atómicos", () => {
     await expect(guardarDescuentoProducto(flanId, null)).rejects.toThrow("auditoría caída");
     expect(await porcentajes()).toEqual([10]);
     expect(await prismaAdmin.registroAuditoria.count()).toBe(1);
+  });
+
+  it("promo: si falla la auditoría del alta, no queda la promo ni su fila de la sucursal", async () => {
+    const seccion = await prisma.seccionCarta.create({ data: { nombre: "Platos" } });
+    interruptor.fallarEnLlamada = 1;
+    await expect(guardarPromoCarta({ seccionCartaId: seccion.id, titulo: "Combo", precio: 8000 })).rejects.toThrow("auditoría caída");
+    expect(await prismaAdmin.promoCarta.count()).toBe(0);
+    expect(await prismaAdmin.promoCartaSucursal.count()).toBe(0);
+    expect(await prismaAdmin.registroAuditoria.count()).toBe(0);
+  });
+
+  it("promo: si falla la auditoría del cambio de precio, la promo queda como estaba", async () => {
+    const seccion = await prisma.seccionCarta.create({ data: { nombre: "Platos" } });
+    const promo = await prisma.promoCarta.create({ data: { seccionCartaId: seccion.id, titulo: "Combo", precio: 8000 } });
+    interruptor.fallarEnLlamada = 1;
+    await expect(guardarPromoCarta({ id: promo.id, seccionCartaId: seccion.id, titulo: "Combo grande", precio: 9000 })).rejects.toThrow("auditoría caída");
+    const despues = await prismaAdmin.promoCarta.findUniqueOrThrow({ where: { id: promo.id } });
+    expect([despues.titulo, Number(despues.precio)]).toEqual(["Combo", 8000]);
+    expect(await prismaAdmin.registroAuditoria.count()).toBe(0);
+  });
+
+  it("promo: si falla la auditoría del precio local, no queda el precio (ni la fila nueva de la sucursal)", async () => {
+    const seccion = await prisma.seccionCarta.create({ data: { nombre: "Platos" } });
+    const promo = await prisma.promoCarta.create({ data: { seccionCartaId: seccion.id, titulo: "Combo", precio: 8000 } });
+    interruptor.fallarEnLlamada = 1;
+    await expect(guardarPrecioLocalPromoCarta(promo.id, 7000)).rejects.toThrow("auditoría caída");
+    expect(await prismaAdmin.promoCartaSucursal.count()).toBe(0);
+    expect(await prismaAdmin.registroAuditoria.count()).toBe(0);
   });
 
   it("control: sin falla, el cambio y su auditoría quedan", async () => {

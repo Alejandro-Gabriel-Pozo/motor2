@@ -111,7 +111,7 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
   },
   "src/server/actions/carta/promos.ts": {
-    escrituras: ["promoCarta.create", "promoCarta.update", "promoCarta.update", "promoCartaCupo.createMany", "promoCartaCupo.deleteMany", "promoCartaSucursal.upsert", "promoCartaSucursal.upsert"],
+    escrituras: ["promoCarta.update", "promoCartaCupo.createMany", "promoCartaCupo.deleteMany", "promoCartaSucursal.upsert"],
     fase: "Fase 4",
     motivo: "Tramo C (PR 4C-E): dinero de carta (promos, descuentos, precio local); pasa a caso de uso + persistencia con auditoría.",
   },

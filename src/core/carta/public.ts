@@ -13,6 +13,8 @@ export { precioDeCarta } from "./armar-menu";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "./promo-sucursal";
 export { aplicarDescuentoDeProducto, precioCobradoConDescuentos } from "./descuento-producto";
 export type { Resultado } from "./validaciones";
+// Hito 4, H4C-2: el guard de las promos (`core/features/carta/promos.guard.ts`) valida con los mismos validadores de la carta que usaba la Server Action.
+export { LARGO_MAXIMO_DESCRIPCION_CARTA, LARGO_MAXIMO_TITULO_CARTA, validarOrdenCarta, validarPrecioCarta, validarTextoLibreCarta } from "./validaciones";
 export { formatearPrecioCarta } from "./precio-carta";
 export { whereCartaDeSucursal } from "./carta-de-sucursal";
 export type { EstiloCarta } from "./estilo";

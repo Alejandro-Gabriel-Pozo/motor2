@@ -62,6 +62,8 @@ const SIN_GUARD: Record<string, string> = {
     "Invitar a vincular (Hito 3, I.5i): solo recibe un id de membresía, que nunca se validó en la acción (lo resuelve el caso de uso dentro de la transacción de gobierno, «No se encontró esa membresía»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/auth/usuarios.ts#actualizarNotasMembresia":
     "Editar las notas de una membresía (Hito 3, I.5a): recibe un id y un texto libre que nunca se validó en la acción; el texto lo normaliza el caso de uso (`texto(notas) || null`) DESPUÉS de resolver la membresía y el techo, como antes. Un guard previo adelantaría esa normalización a «No se encontró esa membresía».",
+  "src/server/actions/carta/promos.ts#guardarPrecioLocalPromoCarta":
+    "Precio de una promo en la sucursal (Hito 4, H4C-2): la acción leía la promo ANTES de validar el precio (una promo inexistente gana sobre un precio inválido, y el piso depende de los cupos que se leen), así que la validación vive en el caso de uso, en el mismo orden. Un guard previo adelantaría el rechazo del precio a «No se encontró la promo».",
 };
 
 describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {
