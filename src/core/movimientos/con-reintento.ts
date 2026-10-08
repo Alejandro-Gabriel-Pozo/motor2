@@ -36,13 +36,7 @@ export function esConflictoDeEscritura(e: unknown): boolean {
 }
 
 /**
- * Un choque de índice ÚNICO (SQLSTATE 23505): `P2002` de Prisma, o el `DriverAdapterError` crudo con `cause.kind === "UniqueConstraintViolation"`.
- * Dentro de una transacción SERIALIZABLE, dos pedidos que leen el mismo estado y luego insertan la misma clave única no siempre reciben el 40001: si el
- * índice único no fue parte de lo que leyeron, el perdedor recibe directamente el 23505 (confirmado: `MovimientoStock_traspaso_paso_unico_key` en el reingreso
- * simultáneo de un traspaso). Para ese perdedor es lo mismo que un conflicto de serialización: al repetir ve el estado que dejó el ganador y responde el resultado
- * de negocio que corresponde. Ver el parámetro `tambienChoqueDeUnico` de `conTransaccionSerializable` (`src/lib/transaccion-serializable.ts`).
+ * El choque de índice ÚNICO (`P2002` o `UniqueConstraintViolation` del driver) se clasifica en `core/datos/errores-de-base.ts` (O.48, Hito 5: una sola implementación, también para
+ * `esErrorDeUnicidad` de catálogo); acá se reexporta para que sigan valiendo los imports de siempre (la fachada del dominio y los tests).
  */
-export function esChoqueDeIndiceUnico(e: unknown): boolean {
-  if (esErrorDeBaseConCodigo(e, "P2002")) return true;
-  return causaDeErrorDeDriver(e)?.kind === "UniqueConstraintViolation";
-}
+export { esChoqueDeIndiceUnico } from "@/core/datos/errores-de-base";

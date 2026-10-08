@@ -50,12 +50,23 @@ describe("los reconocedores del dominio siguen igual (con instancias reales)", (
     expect(esConflictoDeEscritura(real("P2002"))).toBe(false);
   });
 
-  it("choque de índice único: P2002 o UniqueConstraintViolation; y esErrorDeUnicidad solo P2002", () => {
+  it("choque de índice único: P2002 o UniqueConstraintViolation; y esErrorDeUnicidad reconoce lo mismo (O.48: antes solo P2002)", () => {
     expect(esChoqueDeIndiceUnico(real("P2002"))).toBe(true);
     expect(esChoqueDeIndiceUnico(deDriver("UniqueConstraintViolation"))).toBe(true);
     expect(esChoqueDeIndiceUnico(real("P2034"))).toBe(false);
     expect(esErrorDeUnicidad(real("P2002"))).toBe(true);
+    expect(esErrorDeUnicidad(deDriver("UniqueConstraintViolation"))).toBe(true); // el DriverAdapterError crudo del adaptador `pg`
     expect(esErrorDeUnicidad(real("P2025"))).toBe(false);
+    expect(esErrorDeUnicidad(real("P2034"))).toBe(false);
+    expect(esErrorDeUnicidad(deDriver("TransactionWriteConflict"))).toBe(false); // otro kind del driver no se disfraza de unicidad
+    expect(esErrorDeUnicidad(deDriver("ConnectionClosed"))).toBe(false);
+    expect(esErrorDeUnicidad(new Error("UniqueConstraintViolation"))).toBe(false);
+    expect(esErrorDeUnicidad(null)).toBe(false);
+  });
+
+  it("esErrorDeUnicidad y esChoqueDeIndiceUnico dan siempre lo mismo (una sola clasificación)", () => {
+    const casos = [real("P2002"), real("P2025"), real("P2034"), deDriver("UniqueConstraintViolation"), deDriver("TransactionWriteConflict"), deDriver("ConnectionClosed"), new Error("x"), "P2002", null, undefined];
+    for (const e of casos) expect(esErrorDeUnicidad(e)).toBe(esChoqueDeIndiceUnico(e));
   });
 
   it("factura duplicada: SOLO el índice de factura única, por target, por el driver anidado o por el driver crudo; nunca otro índice", () => {

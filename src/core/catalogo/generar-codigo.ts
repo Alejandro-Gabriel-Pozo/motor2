@@ -1,4 +1,4 @@
-import { esErrorDeBaseConCodigo } from "@/core/datos/errores-de-base";
+import { esChoqueDeIndiceUnico } from "@/core/datos/errores-de-base";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 
 /**
@@ -30,7 +30,7 @@ export async function crearConCodigoAutogenerado<T>(
     try {
       return await intentar(codigo);
     } catch (e) {
-      const esColision = esErrorDeBaseConCodigo(e, "P2002");
+      const esColision = esErrorDeUnicidad(e);
       if (esColision && intento < maxIntentos - 1) continue;
       throw e;
     }
@@ -38,7 +38,11 @@ export async function crearConCodigoAutogenerado<T>(
   throw new Error("No se pudo generar un código único tras varios intentos.");
 }
 
-/** true si `e` es un choque de UNIQUE constraint de Postgres (P2002) — sirve tanto para código duplicado como para una versión de receta chocada en carrera. */
+/**
+ * true si `e` es un choque de UNIQUE constraint de Postgres — sirve tanto para código duplicado como para una versión de receta chocada en carrera, un nombre repetido, etc. Desde O.48
+ * (Hito 5) reconoce las DOS formas en que el adaptador `pg` entrega el mismo choque (`P2002` y el `DriverAdapterError` crudo con `UniqueConstraintViolation`): es la misma clasificación que
+ * `esChoqueDeIndiceUnico` (`core/datos/errores-de-base.ts`), no una copia. Antes solo veía `P2002` y un choque con la otra forma salía como fallo genérico en lugar del mensaje de negocio.
+ */
 export function esErrorDeUnicidad(e: unknown): boolean {
-  return esErrorDeBaseConCodigo(e, "P2002");
+  return esChoqueDeIndiceUnico(e);
 }

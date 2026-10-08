@@ -35,6 +35,20 @@ export function causaDeErrorDeDriver(e: unknown): { kind: string; constraint?: u
 }
 
 /**
+ * Un choque de índice ÚNICO (SQLSTATE 23505): `P2002` de Prisma, o el `DriverAdapterError` crudo con `cause.kind === "UniqueConstraintViolation"` (la otra forma en que el adaptador `pg` de
+ * Prisma 7 entrega el MISMO choque). Es LA clasificación del choque de unicidad de todo el repo (O.48, Hito 5): vive acá, en la capa neutral `core/datos`, para que la usen por igual el dominio de
+ * movimientos (`esChoqueDeIndiceUnico`, reexportada por `core/movimientos/con-reintento.ts`) y el de catálogo (`esErrorDeUnicidad`, `core/catalogo/generar-codigo.ts`), que no puede importar los
+ * archivos internos de otro dominio. Dentro de una transacción SERIALIZABLE, dos pedidos que leen el mismo estado y luego insertan la misma clave única no siempre reciben el 40001: si el
+ * índice único no fue parte de lo que leyeron, el perdedor recibe directamente el 23505 (confirmado: `MovimientoStock_traspaso_paso_unico_key` en el reingreso simultáneo de un traspaso). Para ese
+ * perdedor es lo mismo que un conflicto de serialización: al repetir ve el estado que dejó el ganador y responde el resultado de negocio que corresponde. Ver el parámetro `tambienChoqueDeUnico`
+ * de `conTransaccionSerializable` (`src/lib/transaccion-serializable.ts`).
+ */
+export function esChoqueDeIndiceUnico(e: unknown): boolean {
+  if (esErrorDeBaseConCodigo(e, "P2002")) return true;
+  return causaDeErrorDeDriver(e)?.kind === "UniqueConstraintViolation";
+}
+
+/**
  * Un fallo de SERIALIZACIÓN (SQLSTATE 40001) o un deadlock (40P01) que nace en un `$executeRaw`/`$queryRaw` dentro de una transacción SERIALIZABLE: Prisma lo entrega como
  * `P2010` («raw query failed») con el código original de Postgres en `meta.driverAdapterError.cause.originalCode`, NO como `P2034`. Es lo mismo que un conflicto de escritura (el
  * perdedor tiene que repetir la transacción), pero sin este reconocimiento se vería como un error 500. Confirmado contra Postgres real con dos compras simultáneas del mismo producto,
