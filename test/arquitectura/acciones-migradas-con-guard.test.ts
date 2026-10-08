@@ -72,6 +72,8 @@ const SIN_GUARD: Record<string, string> = {
     "Cupos de una promo (Hito 4, H4C-3): la acción leía la promo ANTES de validar los cupos (una promo inexistente gana sobre un cupo inválido) y el piso depende de los precios que se leen, así que la validación vive en el caso de uso, en el mismo orden. Un guard previo adelantaría el rechazo de un cupo a «No se encontró la promo.».",
   "src/server/actions/catalogo/rendimiento-local.ts#volverAlRendimientoCentral":
     "Volver al valor central (Hito 4, H4C-5): solo recibe el id de la línea, que nunca se validó en la acción (lo resuelve el caso de uso dentro de la transacción serializable, «No se encontró esa línea de receta.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/catalogo/categorias-producto.ts#actualizarActivaCategoriaProducto":
+    "Activar o desactivar una categoría (Hito 4, H4C-7): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
 };
 
 describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {

@@ -254,6 +254,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque 4.2, H4C-6: volverALaRecetaCentral → catalogo/casos-de-uso/volver-a-la-receta-central.ts (transacción SERIALIZABLE con reintento, la propia habilitada, la escritura en server/persistencia/catalogo/receta-sucursal.ts, la auditoría y el .catch del conflicto agotado; la confirmación la exige guardComandoVolverALaRecetaCentral dentro de conPermiso). Las otras cinco (crear, agregar, editar, quitar, copiar la receta propia) ya escribían por casos-de-uso/guardar-version-de-receta.ts; acá solo leen el estado de la propia y la central para armar la versión nueva.",
   },
+  {
+    ruta: "src/server/actions/catalogo/categorias-producto.ts",
+    motivo:
+      "Hito 4, bloque 4.3, H4C-7: crearCategoriaProducto → catalogo/casos-de-uso/crear-categoria-producto.ts (con guardComandoCrearCategoriaProducto: buscar por nombre, reusar o crear en server/persistencia/catalogo/categorias-producto.ts; la acción arma el ResultadoConId con el id y el nombre que devuelve) y actualizarActivaCategoriaProducto → actualizar-activa-categoria-producto.ts (la acción refresca la vista, como antes). La lectura listarCategoriasProducto (H8) sigue en la acción.",
+  },
 ];
 
 module.exports = {
