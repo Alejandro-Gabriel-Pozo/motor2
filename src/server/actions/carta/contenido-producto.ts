@@ -1,10 +1,10 @@
 "use server";
 
-import { normalizarTagsCarta, validarOrdenCarta, validarTextoLibreCarta, LARGO_MAXIMO_DESCRIPCION_CARTA } from "@/core/carta/validaciones";
-import { whereCartaDeSucursal } from "@/core/carta/public";
-import { validarGeneroCartaOpcional } from "./generos-compartido";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import type { ResultadoAccion } from "../tipos";
+import { actualizarVisibleEnCartaCasoDeUso } from "./casos-de-uso/actualizar-visible-en-carta";
+import { guardarContenidoCartaProductoCasoDeUso } from "./casos-de-uso/guardar-contenido-carta-producto";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
@@ -14,9 +14,11 @@ import { revalidarCartasPublicas } from "./revalidar";
  * en `ContenidoCartaProducto`; el producto (nombre, precio, categoría, disponibilidad) se sigue editando donde siempre. Sin fila =
  * no se muestra (D3): guardar el contenido de un PV es lo que lo hace aparecer. La carta es PROPIA de cada sucursal (ADR-009, C3): escribe siempre en
  * la sucursal activa (`ctx.sucursalId`), nunca en otra. Gate: `carta_contenido_producto`.
+ *
+ * Desde el Hito 5 de la pureza (bloque D, `docs/plan-hito-5-pureza.md` §6.1) las dos acciones son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{guardar-contenido-carta-producto,actualizar-visible-en-carta}.ts`; escrituras en server/persistencia/carta/contenido-producto.ts): el archivo
+ * entero está en `ACCIONES_CON_CASO_DE_USO`. Las dos son `SIN_GUARD` (el producto se lee antes de validar nada) y revalidan la carta pública solo si salió bien.
  */
-
-const MENSAJE_FALTA_SECCION = "Elegí la sección de carta donde se muestra (sin sección no puede salir en la carta).";
 
 export interface DatosContenidoCarta {
   visibleEnCarta: boolean;
@@ -31,57 +33,24 @@ export interface DatosContenidoCarta {
   generoCartaId?: string | null;
 }
 
+/** Permiso → caso de uso (`casos-de-uso/guardar-contenido-carta-producto.ts`: el producto, la validación, la sección, el género y el `upsert`) → revalidar si salió bien → `aResultadoAccion`. */
 export async function guardarContenidoCartaProducto(productoId: string, datos: DatosContenidoCarta): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_contenido_producto", async (ctx) => {
-    const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true } });
-    if (!producto) return error("No se encontró el producto.");
-    if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
-
-    const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
-    if (!descripcion.ok) return error(descripcion.mensaje);
-    const tags = normalizarTagsCarta(datos.tags);
-    if (!tags.ok) return error(tags.mensaje);
-    const orden = validarOrdenCarta(datos.orden);
-    if (!orden.ok) return error(orden.mensaje);
-
-    const visibleEnCarta = datos.visibleEnCarta === true;
-    const seccionCartaId = datos.seccionCartaId?.trim() || null;
-    // DA2: visible exige sección; oculto se puede guardar sin ella (por si se vuelve a mostrar después).
-    if (visibleEnCarta && !seccionCartaId) return error(MENSAJE_FALTA_SECCION);
-    if (seccionCartaId) {
-      const seccion = await ctx.db.seccionCarta.findUnique({ where: { id: seccionCartaId }, select: { id: true } });
-      if (!seccion) return error("No se encontró la sección de carta.");
-    }
-    const genero = await validarGeneroCartaOpcional(ctx.db, ctx.sucursalId, datos.generoCartaId);
-    if (!genero.ok) return error(genero.mensaje);
-
-    const data = {
-      visibleEnCarta,
-      seccionCartaId,
-      descripcion: descripcion.valor,
-      tags: tags.valor,
-      especial: datos.especial === true,
-      orden: orden.valor,
-      generoCartaId: genero.valor,
-    };
-    await ctx.db.contenidoCartaProducto.upsert({ where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } }, update: data, create: { sucursalId: ctx.sucursalId, productoId, ...data } });
-    revalidarCartasPublicas();
-    return ok(`Carta: "${producto.nombre}" ${data.visibleEnCarta ? "se muestra" : "queda oculto"}.`);
+    const resultado = await guardarContenidoCartaProductoCasoDeUso(ctx, { productoId, datos });
+    if (resultado.ok) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
 }
 
 /**
  * Atajo para mostrar/ocultar sin tocar el resto del contenido (crea la fila si no existía, con el resto vacío). Mostrar exige que
- * el contenido ya tenga sección de carta (DA2): si no, hay que elegirla con `guardarContenidoCartaProducto`.
+ * el contenido ya tenga sección de carta (DA2): si no, hay que elegirla con `guardarContenidoCartaProducto`. Permiso → caso de uso
+ * (`casos-de-uso/actualizar-visible-en-carta.ts`) → revalidar si salió bien → `aResultadoAccion`.
  */
 export async function actualizarVisibleEnCarta(productoId: string, visibleEnCarta: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_contenido_producto", async (ctx) => {
-    const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true, contenidosCarta: { where: whereCartaDeSucursal(ctx.sucursalId), take: 1, select: { seccionCartaId: true } } } });
-    if (!producto) return error("No se encontró el producto.");
-    if (producto.tipo !== "PV") return error("Solo un producto de venta (PV) puede ir en la carta.");
-    if (visibleEnCarta && !producto.contenidosCarta[0]?.seccionCartaId) return error(MENSAJE_FALTA_SECCION);
-    await ctx.db.contenidoCartaProducto.upsert({ where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } }, update: { visibleEnCarta }, create: { sucursalId: ctx.sucursalId, productoId, visibleEnCarta } });
-    revalidarCartasPublicas();
-    return ok(`Carta: "${producto.nombre}" ${visibleEnCarta ? "se muestra" : "queda oculto"}.`);
+    const resultado = await actualizarVisibleEnCartaCasoDeUso(ctx, { productoId, visibleEnCarta });
+    if (resultado.ok) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
 }

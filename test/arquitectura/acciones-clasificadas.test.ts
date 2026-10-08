@@ -18,7 +18,6 @@ const SIN_CASO_DE_USO = "todavía sin caso de uso: `accion-migrada-sin-orquestac
 const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "auth/empresa-activa.ts": SIN_CASO_DE_USO,
   "auth/sucursal-activa.ts": SIN_CASO_DE_USO,
-  "carta/contenido-producto.ts": SIN_CASO_DE_USO,
   "carta/copiar-carta.ts": SIN_CASO_DE_USO,
   "carta/items-agrupados.ts": SIN_CASO_DE_USO,
   "carta/portal-empresa.ts": SIN_CASO_DE_USO,

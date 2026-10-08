@@ -29,7 +29,9 @@ const ARCHIVOS_PERMITIDOS = [
   "server/actions/carta/casos-de-uso/guardar-genero-carta.ts",
   "server/actions/carta/casos-de-uso/actualizar-activo-genero-carta.ts",
   "server/actions/carta/generos-compartido.ts",
-  "server/actions/carta/contenido-producto.ts",
+  // Hito 5, bloque D: el contenido de carta de un producto lo leen sus casos de uso (antes, server/actions/carta/contenido-producto.ts).
+  // (`actualizar-visible-en-carta.ts` solo lee por la RELACIÓN del producto, con el filtro de sucursal: la regla de relaciones lo mira en todo src/, no necesita estar en este inventario.)
+  "server/actions/carta/casos-de-uso/guardar-contenido-carta-producto.ts",
   "server/actions/carta/items-agrupados.ts",
   // Hito 4, H4C-2 y H4C-3: las secciones de las promos (la de la promo y las de sus cupos) las leen sus casos de uso (antes, server/actions/carta/promos.ts).
   "server/actions/carta/casos-de-uso/guardar-promo-carta.ts",

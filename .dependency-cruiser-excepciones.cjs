@@ -323,6 +323,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 5, bloque D (D5): guardarGeneroCarta (con guardComandoGuardarGeneroCarta; la acción arma el ResultadoConId) y actualizarActivoGeneroCarta → carta/casos-de-uso/{guardar-genero-carta,actualizar-activo-genero-carta}.ts; escrituras en server/persistencia/carta/generos.ts, con la base del contexto y sin transacción ni auditoría (un género es una carpeta visual del POS), como antes. Los géneros son propios de cada sucursal: las lecturas llevan whereCartaDeSucursal. El formato lo valida core/features/carta/generos.guard.ts dentro de conPermisoDeEmpresa y la acción revalida la carta pública solo si salió bien. El archivo no tiene ninguna otra mutación.",
   },
+  {
+    ruta: "src/server/actions/carta/contenido-producto.ts",
+    motivo:
+      "Hito 5, bloque D (D6): guardarContenidoCartaProducto y actualizarVisibleEnCarta → carta/casos-de-uso/{guardar-contenido-carta-producto,actualizar-visible-en-carta}.ts; escrituras en server/persistencia/carta/contenido-producto.ts (un upsert por (sucursal, producto)), con la base del contexto y sin transacción ni auditoría, como antes. Las dos leen el producto ANTES de validar nada, así que ninguna tiene guard de formato (SIN_GUARD con motivo): la validación vive en el caso de uso, en el mismo orden. La carta es propia de cada sucursal: las lecturas llevan whereCartaDeSucursal. La acción revalida la carta pública solo si salió bien. El archivo no tiene ninguna otra mutación.",
+  },
 ];
 
 module.exports = {
