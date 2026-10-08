@@ -25,3 +25,16 @@ export async function borrarPromoSinEnviar(tx: Prisma.TransactionClient, args: {
   await tx.cuentaItem.deleteMany({ where: { promoCuentaId: args.promoCuentaId } });
   await tx.promoCuenta.delete({ where: { id: args.promoCuentaId } });
 }
+
+/**
+ * «Enviar a cocina»: los ítems pedidos (los ids que calculó el caso de uso, ya con los hermanos de promo) que sigan SIN enviar y no sean filas espejo pasan al
+ * envío `numeroEnvio` de la cuenta. La condición vive en el MISMO `UPDATE`: un ítem que otro mozo envió o quitó un instante antes no se toca. Devuelve cuántas
+ * filas cambió (con 0, el caso de uso responde el caso idempotente).
+ */
+export async function enviarItemsACocina(tx: Prisma.TransactionClient, args: { cuentaId: string; itemIds: string[]; numeroEnvio: number }): Promise<number> {
+  const enviados = await tx.cuentaItem.updateMany({
+    where: { id: { in: args.itemIds }, cuentaId: args.cuentaId, numeroEnvio: null, anulaAItemId: null },
+    data: { numeroEnvio: args.numeroEnvio },
+  });
+  return enviados.count;
+}

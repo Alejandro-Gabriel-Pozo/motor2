@@ -191,7 +191,7 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     motivo: "Tramo C (PR 4C-F2): configuración de stock y movimientos; pasa a caso de uso + persistencia.",
   },
   "src/server/actions/pos/cuenta-pedido.ts": {
-    escrituras: ["cuentaItem.createMany", "cuentaItem.updateMany", "promoCuenta.create"],
+    escrituras: ["cuentaItem.createMany", "promoCuenta.create"],
     fase: "Fase 4",
     motivo: "Tramo C (PR 4C-D): acción de POS sin migrar; pasa a caso de uso + persistencia.",
   },

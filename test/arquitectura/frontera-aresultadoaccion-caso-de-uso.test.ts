@@ -45,6 +45,10 @@ const SIN_ENVOLTORIO_TODAVIA: Record<string, string> = {
     "\"Como aResultadoAccion, pero la pantalla necesita además QUÉ ejemplar se emitió — solo numero y ejemplar de datos, nunca los ids " +
     "internos\") — devuelve ResultadoTicketCorregido, no ResultadoAccion. Mismo criterio de aResultadoAccion (nunca ids internos), con 2 " +
     "campos extra elegidos a mano. Diseño permanente, no un olvido.",
+  "server/actions/pos/casos-de-uso/enviar-a-cocina.ts":
+    "enviarACocina (server/actions/pos/cuenta-pedido.ts; Hito 4, bloque 4.1, paso 11) arma { ...ok(r.mensaje), numeroEnvio: r.datos.numeroEnvio, envioNuevo: " +
+    "r.datos.envioNuevo } a mano — devuelve ResultadoEnvioACocina, no ResultadoAccion: la pantalla imprime la comanda solo del envío que creó ESTA llamada " +
+    "(envioNuevo) y necesita su número. Mismo criterio que emitir-ticket-corregido.ts: nunca ids internos, solo esos 2 campos de datos. Diseño permanente, no un olvido.",
   "server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts":
     "aceptarMiInvitacion (server/actions/auth/invitacion.ts) no devuelve el resultado del caso de uso: si falla devuelve error(resultado.mensaje) (solo el texto) y si sale bien borra la cookie y redirige a /login (redirect de Next, que corta la acción). El ResultadoDeAceptacion ({ ok, empresaId, nombreEmpresa } | { ok, mensaje }) no tiene codigo ni erroresPorCampo y nunca llega entero al navegador. Diseño permanente (B3-5), no un olvido.",
   "server/actions/auth/casos-de-uso/aceptar-invitacion-de-usuario.ts":

@@ -36,3 +36,25 @@ export interface ComandoQuitarPromoSinEnviar {
  *  - `YA_ENVIADA`: algún componente ya salió a cocina (o es una fila espejo): la promo se anula entera con motivo (`anularPromoEnviada`).
  */
 export type ResultadoQuitarPromoSinEnviar = ResultadoCaso<null, "NO_ENCONTRADA" | "CUENTA_CERRADA" | "YA_ENVIADA">;
+
+/**
+ * Comando «enviar a cocina»: lo que recibe `enviarACocinaCasoDeUso`, con los `itemIds` ya validados por `guardComandoEnviarACocina` (una lista no vacía de
+ * textos, a lo sumo `MAXIMO_ITEMS_POR_ENVIO`) y el `cuentaId` ya visto como texto (ese chequeo va DESPUÉS de los de la lista, como antes).
+ */
+export interface ComandoEnviarACocina {
+  cuentaId: string;
+  itemIds: string[];
+}
+
+/**
+ * `datos` de un envío: el número de envío y si lo creó ESTA llamada (la pantalla imprime la comanda solo de un envío nuevo). En el caso idempotente (ningún id
+ * seguía sin enviar) `numeroEnvio` es el envío en el que ya habían salido, o `null` si ninguno está enviado en esta cuenta, y `envioNuevo` es `false`. La
+ * Server Action los copia a mano en su `ResultadoEnvioACocina` (solo estos dos campos: nunca ids internos).
+ */
+export interface DatosEnviarACocina {
+  numeroEnvio: number | null;
+  envioNuevo: boolean;
+}
+
+/** Solo lo que produce el caso de uso: `CUENTA_NO_ABIERTA` (no es una cuenta de una mesa de esta sucursal, o ya está cerrada; `cuentaAbiertaDeSucursal`). */
+export type ResultadoEnviarACocina = ResultadoCaso<DatosEnviarACocina, "CUENTA_NO_ABIERTA">;

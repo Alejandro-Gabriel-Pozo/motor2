@@ -10,10 +10,11 @@ import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad"
 import { MAXIMO_ITEMS_POR_AGREGADO, validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarEleccionPromo, type ComponentePromoElegido, type EleccionDeCupo, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
 import { cargarPromoCartaParaAgregar } from "@/server/lecturas/pos/promo-para-agregar";
-import { guardComandoQuitarItemSinEnviar, guardComandoQuitarPromoSinEnviar } from "@/core/features/cuentas/cuenta-pedido.guard";
+import { guardComandoEnviarACocina, guardComandoQuitarItemSinEnviar, guardComandoQuitarPromoSinEnviar } from "@/core/features/cuentas/cuenta-pedido.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoEnvioACocina } from "../tipos";
+import { enviarACocinaCasoDeUso } from "./casos-de-uso/enviar-a-cocina";
 import { quitarItemSinEnviarCasoDeUso } from "./casos-de-uso/quitar-item-sin-enviar";
 import { quitarPromoSinEnviarCasoDeUso } from "./casos-de-uso/quitar-promo-sin-enviar";
 import { cuentaAbiertaDeSucursal } from "./cuenta-comun";
@@ -24,10 +25,8 @@ import { cuentaAbiertaDeSucursal } from "./cuenta-comun";
  * refrescar la vista) y ayudantes compartidos: ./cuenta-comun.ts.
  */
 
-// Sin `export`: un archivo "use server" solo puede exportar funciones async (cada export es un endpoint).
 // MAXIMO_ITEMS_POR_AGREGADO vive en @/core/pos/cantidad-pedido (pura): así el cliente puede deshabilitar sumar el ítem #51 con el
-// MISMO número, sin duplicarlo.
-const MAXIMO_ITEMS_POR_ENVIO = 200;
+// MISMO número, sin duplicarlo. El tope de un envío a cocina (200) vive en su guard (core/features/cuentas/cuenta-pedido.guard.ts).
 
 /** Una promo armada por el mozo, para el tercer parámetro de `agregarItems` (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 8a). */
 export interface PromoParaAgregar {
@@ -168,44 +167,18 @@ export async function quitarItemSinEnviar(cuentaItemId: string): Promise<Resulta
  *
  * Además de `{ ok, mensaje }` devuelve `numeroEnvio` y `envioNuevo` (`ResultadoEnvioACocina`): la pantalla imprime la comanda solo del
  * envío que creó esta llamada; en el caso idempotente informa el envío en el que ya habían salido, con `envioNuevo: false`.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.1, paso 11) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_enviar_a_cocina")`) → formato de la
+ * lista y del `cuentaId` (`guardComandoEnviarACocina`, core/features/cuentas/cuenta-pedido.guard.ts, DENTRO del envoltorio: la lista primero, como antes) → caso
+ * de uso (`casos-de-uso/enviar-a-cocina.ts`: transacción serializable, la cuenta abierta, los hermanos de promo, el número de envío y el `UPDATE` condicional en
+ * server/persistencia/pos/pedido.ts). No usa `aResultadoAccion` (la pantalla necesita además el envío): copia a mano SOLO `numeroEnvio` y `envioNuevo` de
+ * `datos`, como `emitirTicketCorregido`.
  */
 export async function enviarACocina(cuentaId: string, itemIds: string[]): Promise<ResultadoEnvioACocina> {
   return conPermiso("pos_enviar_a_cocina", async (ctx) => {
-    if (!Array.isArray(itemIds) || itemIds.length === 0 || itemIds.some((id) => typeof id !== "string")) return error("No hay ítems para enviar.");
-    if (itemIds.length > MAXIMO_ITEMS_POR_ENVIO) return error(`No se pueden enviar más de ${MAXIMO_ITEMS_POR_ENVIO} ítems de una vez.`);
-
-    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
-      const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
-      if (!abierta.ok) return error(abierta.mensaje);
-
-      // Task #16 (docs/plan-promo-combo-2026-09-26.md, D del paso 2.5, "una promo nunca sale a medias"): si algún id pedido es
-      // un componente de una promo, se suman TODOS los hermanos de esa MISMA PromoCuenta que sigan sin enviar — el mozo pudo
-      // no tenerlos a todos en pantalla (o no haberlos tocado), pero una promo nunca se manda parcial a cocina.
-      const pedidos = await tx.cuentaItem.findMany({ where: { id: { in: itemIds }, cuentaId: abierta.cuenta.id }, select: { promoCuentaId: true } });
-      const promoCuentaIds = [...new Set(pedidos.flatMap((i) => (i.promoCuentaId ? [i.promoCuentaId] : [])))];
-      const hermanos = promoCuentaIds.length
-        ? await tx.cuentaItem.findMany({ where: { promoCuentaId: { in: promoCuentaIds }, cuentaId: abierta.cuenta.id, numeroEnvio: null, anulaAItemId: null }, select: { id: true } })
-        : [];
-      const idsAEnviar = [...new Set([...itemIds, ...hermanos.map((h) => h.id)])];
-
-      const { _max } = await tx.cuentaItem.aggregate({ where: { cuentaId: abierta.cuenta.id }, _max: { numeroEnvio: true } });
-      const numeroEnvio = (_max.numeroEnvio ?? 0) + 1;
-      const enviados = await tx.cuentaItem.updateMany({
-        where: { id: { in: idsAEnviar }, cuentaId: abierta.cuenta.id, numeroEnvio: null, anulaAItemId: null },
-        data: { numeroEnvio },
-      });
-      if (enviados.count === 0) {
-        const previo = await tx.cuentaItem.aggregate({
-          where: { id: { in: idsAEnviar }, cuentaId: abierta.cuenta.id, anulaAItemId: null, numeroEnvio: { not: null } },
-          _max: { numeroEnvio: true },
-        });
-        return { ...ok("Esos ítems ya estaban enviados."), numeroEnvio: previo._max.numeroEnvio, envioNuevo: false };
-      }
-      return {
-        ...ok(`Envío ${numeroEnvio} a cocina: ${enviados.count === 1 ? "1 ítem" : `${enviados.count} ítems`} de la mesa ${abierta.cuenta.mesa.numero}.`),
-        numeroEnvio,
-        envioNuevo: true,
-      };
-    });
+    const comando = guardComandoEnviarACocina({ cuentaId, itemIds });
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await enviarACocinaCasoDeUso(ctx, comando.valor);
+    return r.ok ? { ...ok(r.mensaje), numeroEnvio: r.datos.numeroEnvio, envioNuevo: r.datos.envioNuevo } : error(r.mensaje);
   });
 }
