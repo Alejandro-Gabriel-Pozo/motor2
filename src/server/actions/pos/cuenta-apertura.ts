@@ -133,6 +133,9 @@ export async function asignarClienteACuenta(cuentaId: string, clienteId: string 
  * Libera una mesa cuya cuenta se abrió pero quedó SIN NINGÚN ítem (se sentaron y se fueron, o se abrió por error): la cierra sin
  * venta. Con cualquier fila — aunque todo esté anulado — no: esa cuenta se cierra con `cerrarCuenta`, que deja la venta (o su
  * ausencia) registrada.
+ *
+ * `cerradaEn` es la hora del PEDIDO (`ctx.ahora`, la que fija `conPermiso` una vez; Pureza 1.2), igual que en `cerrarCuenta`: antes leía el reloj por su
+ * cuenta (`new Date()`). Cambio aprobado por el dueño (Hito 4, 2026-10-08); lo fija `test/pos/liberar-mesa-hora-del-pedido.test.ts`.
  */
 export async function liberarMesa(cuentaId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_liberar_mesa", async (ctx) => {
@@ -142,7 +145,7 @@ export async function liberarMesa(cuentaId: string): Promise<ResultadoAccion> {
       if ((await tx.cuentaItem.count({ where: { cuentaId: abierta.cuenta.id } })) > 0) {
         return error(`La cuenta de la mesa ${abierta.cuenta.mesa.numero} tiene ítems cargados: cerrá la cuenta en vez de liberar la mesa.`);
       }
-      await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { cerradaEn: new Date(), cerradaPorId: ctx.usuarioId } });
+      await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { cerradaEn: ctx.ahora, cerradaPorId: ctx.usuarioId } });
       return ok(`Mesa ${abierta.cuenta.mesa.numero} liberada.`);
     });
   });
