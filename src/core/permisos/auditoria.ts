@@ -96,6 +96,45 @@ export interface CambioAuditable {
   sucursalId?: string | null;
 }
 
+/** La fila que se guarda en `RegistroAuditoria` por un cambio: los 8 campos, con los valores ya pasados a texto y `sucursalId` siempre presente (`null` si el cambio es de la empresa). */
+export interface FilaDeAuditoria {
+  entidad: CambioAuditable["entidad"];
+  entidadId: string;
+  descripcion: string;
+  campo: string;
+  valorAnterior: string | null;
+  valorNuevo: string | null;
+  actorId: string;
+  sucursalId: string | null;
+}
+
+function aTexto(valor: unknown): string | null {
+  if (valor === null || valor === undefined) return null;
+  return String(valor);
+}
+
+/**
+ * La fila de auditoría de un cambio, o `null` si el valor no cambió en absoluto (Hito 5, pieza 5.4, B4: lo PURO del escritor, que salió de
+ * `registrarCambioAuditado`; ahí queda solo la escritura). `null` y `undefined` son «sin valor» (se guardan como `null`, distintos de `0`, `false` o `""`);
+ * todo lo demás se pasa con `String(valor)`; si el texto anterior y el nuevo son iguales no hay fila — evita ensuciar el registro con «cambios» de un
+ * `update`/`upsert` que en realidad reescribió el mismo valor (ej. guardar un formulario sin tocar ese campo puntual).
+ */
+export function filaDeAuditoria(cambio: CambioAuditable): FilaDeAuditoria | null {
+  const anterior = aTexto(cambio.valorAnterior);
+  const nuevo = aTexto(cambio.valorNuevo);
+  if (anterior === nuevo) return null;
+  return {
+    entidad: cambio.entidad,
+    entidadId: cambio.entidadId,
+    descripcion: cambio.descripcion,
+    campo: cambio.campo,
+    valorAnterior: anterior,
+    valorNuevo: nuevo,
+    actorId: cambio.actorId,
+    sucursalId: cambio.sucursalId ?? null,
+  };
+}
+
 /**
  * Claves de acción renombradas («boleta» pasó a «ticket»). La auditoría no se reescribe: las filas viejas conservan en su `descripcion` la clave
  * de entonces, y la pantalla las muestra con la vigente.
