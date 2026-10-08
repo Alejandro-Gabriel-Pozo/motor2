@@ -96,3 +96,20 @@ npm run test:e2e                  # >= 513 en verde (más los nuevos)
 ```
 
 Además: `git diff --name-only <base>...HEAD -- prisma/ package.json` vacío (salvo lo autorizado); `caracterizaciones-congeladas` en verde con sus regeneraciones declaradas (en C0 solo la línea de conteo de la entrada 35 puede cambiar por O.38b D1-D3); el golden del tramo A sin cambios; `TOPE_DE_ENTRADAS` baja a lo anunciado. Después, **auditor independiente** del hito.
+
+## 7. Cierre del Hito 4 (2026-10-08)
+
+**Resultado del gate y de la auditoría.** Gate de 8 comandos en verde en la MISMA corrida sobre `39425653` (`tsc`, `lint`, `arquitectura`, knip 0, `npm test` 639 archivos y 7.069 tests, `build`, `plataforma:build` y `test:e2e` 514). Auditoría independiente del rango `82ccb904..39425653`: **fusionable, sin hallazgos importantes**, con cuatro observaciones menores que se corrigieron dentro de la rama, cada una en su commit (decisiones del orquestador con el criterio del dueño: fallo cerrado, auditar todo cambio de significado, no ampliar acceso; asentadas en las filas 25 y 26 de `_decisiones-del-dueno-2026-10-07.md`, fuera del repo):
+
+1. **O.45** `ca6b3a18` (CAMBIA COMPORTAMIENTO): las 5 acciones de la receta propia exigen `versionVista` entera ≥ 0 (`versionVistaExigida`: el guard con `exigirVersion` y el texto de `guardarReceta`), dentro de `conPermiso` y antes de su primera lectura; sin función interna a ciegas (no había ningún llamador sin versión). Test `receta-propia-exige-version` (7), e2e aislado 9 passed.
+2. **D-9** `8e49d884`: la fusión de insumos SIEMPRE deja su fila (si los dos nombres coinciden, cada valor lleva el id de su insumo); `registrarCambioAuditado` sin cambios. Test `insumo-fusion-mismo-nombre` (1, simula el duplicado).
+3. **O.46** `8017f59e` (solo tests): el guardián de envoltorio y clave sin punto ciego (`exportadasSinEnvoltorio`/`problemasSinEnvoltorio`; listas cerradas por dominio: POS 0, gobierno 6, tramo C 39).
+4. **Documentos** (este commit): la fila D.3 decía que en `RELOJ_EN_CONSULTAS` quedaban `menu.ts` y `publica.ts`; O.22-c la vació (corregido también el «Falta O.22-c» de la historia de O.22); hashes de O.45 y D-9 en `docs/pureza-integracion.md`.
+
+Tras la tanda: `test/arquitectura` 110 archivos y 1.104 tests verdes; `tsc`, `eslint` de lo tocado, `arquitectura` y knip (0) verdes en cada commit; los tests de base de la zona corridos de a uno. Se esperan 641 archivos y unos 7.108 tests en la próxima corrida del gate (2 archivos y 39 tests nuevos; la suite entera NO se corrió en esta tanda: una sola base compartida). Ningún golden, huella ni caracterización cambió; `prisma/`, `package.json` y `src/server/acceso/gate.ts` intactos.
+
+**Desvíos y hallazgos de esta tanda.**
+- O.45: los TIPOS de las 5 acciones ya pedían `versionVista: number` (desde H7): el hueco era solo en tiempo de ejecución. Efecto lateral declarado: un `productoId` que no es texto ahora devuelve «No se encontró el producto.» antes de leer (antes, el error crudo de Prisma de la primera lectura). En `copiar` la versión se valida después de las dos comprobaciones que no leen (confirmación y misma sucursal), para no cambiar su orden de mensajes.
+- D-9: el escenario de la observación (dos insumos de nombre idéntico, «por una carrera en `crearInsumo`») **no se puede dar hoy**: el índice único `Insumo_nombre_lower_key` `(empresaId, lower(nombre))` lo impide (la carrera termina en el P2002 del segundo). El arreglo es defensa en profundidad y el test simula el duplicado. No se usaron los ids SIEMPRE como valores (lo que sugería el pedido) porque `insumo-auditado.test.ts` fija los nombres en una fusión común y no debía cambiar.
+- O.46: el guardián de gobierno ganó un `it` y su lista (sus aserciones no se tocaron). El cuerpo del commit `8017f59e` dice «tramo C 31»: son 39 (error de cuenta en el mensaje; el código y este documento dicen 39).
+- Los trailers de los commits dicen `Claude Opus 5.5` (el modelo que los hizo), no `Claude Sonnet 5.5` como pedía la consigna.
