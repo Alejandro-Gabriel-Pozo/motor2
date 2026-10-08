@@ -335,3 +335,107 @@ describe("accion-migrada-sin-orquestacion (Fase M): ACCIONES_CON_CASO_DE_USO", (
     expect(fuera).toEqual([]);
   });
 });
+
+/**
+ * `carta-publica-alcance` + `ALCANCE_CARTA_PUBLICA` (Hito 5, pieza 5.2, paso 0.1; frontera de seguridad autorizada por el dueño el 2026-10-07).
+ *
+ * La regla de dependency-cruiser prohíbe que la carta pública (sin sesión) ALCANCE auth, permisos o `server/` salvo una lista cerrada de archivos, pero NO dice
+ * nada de una entrada de la lista que sobra: un patrón que se ensancha (una carpeta entera en lugar de un archivo, un `gate.ts` agregado «por las dudas») deja de
+ * proteger y `npm run arquitectura` sigue verde, porque solo falla ante una dependencia prohibida, nunca ante un permiso de más. Acá se calcula, sobre el grafo REAL
+ * que dependency-cruiser arma (mismas opciones que el CLI), qué alcanza la carta dentro de la zona prohibida y se exige que sea EXACTAMENTE lo permitido:
+ *
+ *  1. Nada alcanzado dentro de la zona queda fuera de la lista (lo mismo que ya exige la regla; así también lo ve el test).
+ *  2. Nada de lo que la lista permite deja de ser alcanzado: todo archivo que existe y cumple una entrada tiene que estar en el alcance de la carta, y cada
+ *     entrada tiene que cubrir al menos un archivo alcanzado. Es la dirección que la regla no puede ver.
+ *  3. Cada entrada nombra ARCHIVOS (`\.ts$`), no carpetas: una carpeta entera permite todo lo que mañana se le agregue.
+ */
+interface ReglaDeAlcance {
+  from: { path: string };
+  to: { path: string; pathNot: string[] };
+}
+interface ModuloDelGrafo {
+  source: string;
+  dependencies: { resolved: string }[];
+}
+
+/** El alcance de `desde` (cierre transitivo por imports, reexports e imports dinámicos; los puntos de entrada incluidos) contra la lista `permitidas` de la `zona`. */
+function revisarAlcance(grafo: readonly ModuloDelGrafo[], desde: RegExp, zona: RegExp, permitidas: readonly RegExp[]) {
+  const porRuta = new Map(grafo.map((m) => [m.source, m]));
+  const vistos = new Set(grafo.filter((m) => desde.test(m.source)).map((m) => m.source));
+  const pendientes = [...vistos];
+  while (pendientes.length) {
+    for (const d of porRuta.get(pendientes.pop()!)?.dependencies ?? []) {
+      if (!vistos.has(d.resolved)) {
+        vistos.add(d.resolved);
+        pendientes.push(d.resolved);
+      }
+    }
+  }
+  const permitido = (ruta: string) => permitidas.some((p) => p.test(ruta));
+  const alcanzadosEnZona = [...vistos].filter((r) => zona.test(r)).sort();
+  return {
+    alcanzadosEnZona,
+    /** Alcanzados dentro de la zona que ninguna entrada permite. */
+    sinPermiso: alcanzadosEnZona.filter((r) => !permitido(r)),
+    /** Archivos que existen, caen en la zona y cumplen una entrada, pero la carta NO alcanza: permiso de más. */
+    sobran: grafo
+      .map((m) => m.source)
+      .filter((r) => zona.test(r) && permitido(r) && !vistos.has(r))
+      .sort(),
+    /** Entradas que no cubren ningún archivo alcanzado. */
+    entradasSinUso: permitidas.filter((p) => !alcanzadosEnZona.some((r) => p.test(r))).map((p) => p.source),
+  };
+}
+
+describe("carta-publica-alcance: ALCANCE_CARTA_PUBLICA es exactamente lo que la carta alcanza (Hito 5, 5.2 paso 0.1)", () => {
+  const regla = CONFIG.forbidden.find((r) => r.name === "carta-publica-alcance") as unknown as ReglaDeAlcance | undefined;
+
+  it("la regla existe y su lista cerrada no está vacía", () => {
+    expect(regla, "no está la regla carta-publica-alcance en la config").toBeDefined();
+    expect(regla!.to.pathNot.length).toBeGreaterThan(0);
+  });
+
+  it("cada entrada de la lista nombra un ARCHIVO (termina en `\\.ts$`), nunca una carpeta", () => {
+    const carpetas = regla!.to.pathNot.filter((e) => !e.endsWith("\\.ts$"));
+    expect(carpetas, `ALCANCE_CARTA_PUBLICA: estas entradas no terminan en \\.ts$ (¿una carpeta?):\n${carpetas.join("\n")}`).toEqual([]);
+  });
+
+  it("la carta alcanza, dentro de la zona prohibida, exactamente lo que la lista permite (ni un archivo sin permiso, ni un permiso sin uso)", () => {
+    const r = revisarAlcance(modulos, new RegExp(regla!.from.path), new RegExp(regla!.to.path), regla!.to.pathNot.map((e) => new RegExp(e)));
+    expect(r.alcanzadosEnZona.length, "el cálculo de alcance no llega a la zona prohibida: la prueba pasaría en vacío").toBeGreaterThan(5);
+    expect(r.sinPermiso, `La carta alcanza esto y ALCANCE_CARTA_PUBLICA no lo permite:\n${r.sinPermiso.join("\n")}`).toEqual([]);
+    expect(r.sobran, `ALCANCE_CARTA_PUBLICA permite estos archivos que la carta NO alcanza (sobra permiso: ¿un patrón ensanchado?):\n${r.sobran.join("\n")}`).toEqual([]);
+    expect(r.entradasSinUso, `Estas entradas de ALCANCE_CARTA_PUBLICA no cubren ningún archivo que la carta alcance:\n${r.entradasSinUso.join("\n")}`).toEqual([]);
+  });
+
+  describe("el cálculo (con un grafo sintético)", () => {
+    const modulo = (source: string, ...deps: string[]): ModuloDelGrafo => ({ source, dependencies: deps.map((resolved) => ({ resolved })) });
+    const grafo = [
+      modulo("src/app/pagina.tsx", "src/server/a.ts"),
+      modulo("src/server/a.ts", "src/lib/ayuda.ts", "src/server/b.ts"),
+      modulo("src/server/b.ts"),
+      modulo("src/server/c.ts"),
+      modulo("src/lib/ayuda.ts"),
+    ];
+    const desde = /^src\/app\//;
+    const zona = /^src\/server\//;
+
+    it("todo permitido y alcanzado: sin hallazgos", () => {
+      const r = revisarAlcance(grafo, desde, zona, [/^src\/server\/(a|b)\.ts$/]);
+      expect([r.sinPermiso, r.sobran, r.entradasSinUso]).toEqual([[], [], []]);
+    });
+
+    it("un alcanzado sin permiso se marca (y se sigue por los intermedios fuera de la zona)", () => {
+      expect(revisarAlcance(grafo, desde, zona, [/^src\/server\/a\.ts$/]).sinPermiso).toEqual(["src/server/b.ts"]);
+    });
+
+    it("una entrada ensanchada permite un archivo que nadie alcanza: sobra", () => {
+      const r = revisarAlcance(grafo, desde, zona, [/^src\/server\//]);
+      expect(r.sobran).toEqual(["src/server/c.ts"]);
+    });
+
+    it("una entrada que no cubre nada alcanzado se marca", () => {
+      expect(revisarAlcance(grafo, desde, zona, [/^src\/server\/(a|b)\.ts$/, /^src\/server\/c\.ts$/]).entradasSinUso).toEqual(["^src\\/server\\/c\\.ts$"]);
+    });
+  });
+});
