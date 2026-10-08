@@ -10,6 +10,19 @@ import { borrarInsumo, reapuntarSustitutosDeInsumoFusionado, reasignarProductosD
 const productosReasignados = (cantidad: number): string => (cantidad === 1 ? "1 producto reasignado" : `${cantidad} productos reasignados`);
 
 /**
+ * Anterior y nuevo de la fila de una FUSIÓN (D-9; cierre del Hito 4, observación menor 2 de la auditoría independiente). Una fusión siempre es un hecho —
+ * productos reasignados y un insumo borrado—, pero `registrarCambioAuditado` no escribe nada cuando anterior y nuevo son textualmente iguales (su regla para
+ * un `update` que reescribió el mismo valor, que sigue igual para todo el resto). Con los NOMBRES como valores, dos insumos de nombre idéntico se fusionaban
+ * sin dejar rastro. Hoy el índice único `(empresaId, lower(nombre))` (`Insumo_nombre_lower_key`) impide que convivan en una empresa, pero el rastro de la
+ * fusión no tiene que depender de un índice: cuando los nombres coinciden, cada valor lleva además el id de su insumo (el que desaparece y el que queda), así
+ * los dos textos siempre difieren. Cuando difieren —todos los casos que se pueden dar hoy— la fila queda exactamente como antes (los nombres).
+ */
+function valoresDeLaFusion(origen: { id: string; nombre: string }, destino: { id: string; nombre: string }): { valorAnterior: string; valorNuevo: string } {
+  if (origen.nombre !== destino.nombre) return { valorAnterior: origen.nombre, valorNuevo: destino.nombre };
+  return { valorAnterior: `${origen.nombre} (${origen.id})`, valorNuevo: `${destino.nombre} (${destino.id})` };
+}
+
+/**
  * Caso de uso «renombrar un insumo, o fusionarlo con otro» (equivalente de renombrarFamilia, Catalogo.js:2565-2618; Hito 4 de la pureza, bloque 4.3: mudado TAL
  * CUAL en H4C-9 desde la Server Action `renombrarOFusionarInsumo` de `src/server/actions/catalogo/insumos.ts`, y auditado en H4C-10 — D-9, ver abajo).
  *
@@ -22,7 +35,7 @@ const productosReasignados = (cantidad: number): string => (cantidad === 1 ? "1 
  *
  * D-9 (decisión del dueño, 2026-10-07; H4C-10, commit aparte — CAMBIÓ COMPORTAMIENTO): las dos ramas se auditan en la MISMA transacción que el cambio. La fusión
  * (productos, sustitutos de receta, borrado del origen) deja UNA fila sobre el insumo que desaparece (`campo: "fusion"`, del nombre de origen al de destino, con
- * la cantidad de productos reasignados en la descripción). El renombre, que antes era una sola escritura SIN transacción, ahora va en una transacción SIMPLE
+ * la cantidad de productos reasignados en la descripción; SIEMPRE, aunque los dos nombres coincidan: ver `valoresDeLaFusion`). El renombre, que antes era una sola escritura SIN transacción, ahora va en una transacción SIMPLE
  * con su fila (`campo: "nombre"`, del anterior al nuevo; renombrar al mismo nombre no deja fila: `registrarCambioAuditado` no registra lo que no cambió).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos ni el formato del nombre (el guard).
@@ -66,8 +79,7 @@ export async function renombrarOFusionarInsumoCasoDeUso(
         entidadId: insumoId,
         campo: "fusion",
         descripcion: `Insumo "${actual.nombre}" fusionado con "${existente.nombre}" (${productosReasignados(reasignados)})`,
-        valorAnterior: actual.nombre,
-        valorNuevo: existente.nombre,
+        ...valoresDeLaFusion(actual, existente),
         actorId: actor.usuarioId,
       });
     });
