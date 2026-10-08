@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import ts from "typescript";
 import { describe, expect, it } from "vitest";
+import { envoltoriosDe, type Envoltorio } from "./guardas/envoltorio-y-clave";
 
 /**
  * Server Action de gobierno → envoltorio y clave (Hito 3, paso 0.4 de `docs/plan-hito-3-pureza.md`).
@@ -11,12 +11,10 @@ import { describe, expect, it } from "vitest";
  * política de plataforma (ADR-008) sin que tsc diga nada; y cambiar `"gestion_roles"` por otra clave de empresa también compila. Este guardián lee el AST de
  * cada archivo y exige, por cada función exportada que llama a un envoltorio de mutación: que sea una de la lista (lista cerrada: una mutación nueva en estos
  * archivos se declara acá), que su PRIMERA sentencia sea `return <envoltorio>("<clave>", …)` (el guard antes que todo) y que envoltorio y clave sean los
- * declarados. Las lecturas (`listar*`) no llaman envoltorios de mutación y no entran (las cubre H8).
+ * declarados. Las lecturas (`listar*`) no llaman envoltorios de mutación y no entran (las cubre H8). El analizador (`envoltoriosDe`) vive desde el Hito 4
+ * (paso 0.3) en `guardas/envoltorio-y-clave.ts`, movido tal cual: lo comparte con `pos-envoltorio-y-clave.test.ts`.
  */
 const RAIZ = join(__dirname, "../../src/server/actions");
-const ENVOLTORIOS = new Set(["conPermiso", "conPermisoDeEmpresa", "conEdicionDePermisos"]);
-
-type Envoltorio = "conPermiso" | "conPermisoDeEmpresa" | "conEdicionDePermisos";
 
 /** `archivo` (relativo a `src/server/actions`) → función exportada → envoltorio y clave. */
 const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave: string }>> = {
@@ -47,50 +45,6 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
     invitarAVincular: { envoltorio: "conPermiso", clave: "gestion_usuarios" },
   },
 };
-
-interface Encontrada {
-  /** `<envoltorio>:<clave>` de la primera sentencia, o el motivo por el que no tiene esa forma. */
-  entrada: string;
-}
-
-function nombreDeLlamada(llamada: ts.CallExpression): string | null {
-  return ts.isIdentifier(llamada.expression) ? llamada.expression.text : null;
-}
-
-function llamaAUnEnvoltorio(nodo: ts.Node): boolean {
-  let encontro = false;
-  const visitar = (n: ts.Node): void => {
-    if (encontro) return;
-    if (ts.isCallExpression(n) && ENVOLTORIOS.has(nombreDeLlamada(n) ?? "")) encontro = true;
-    else ts.forEachChild(n, visitar);
-  };
-  visitar(nodo);
-  return encontro;
-}
-
-/** Funciones exportadas que llaman a un envoltorio de mutación, con el envoltorio y la clave de su primera sentencia. */
-function envoltoriosDe(fuente: string): Record<string, Encontrada> {
-  const sf = ts.createSourceFile("x.ts", fuente, ts.ScriptTarget.Latest, true);
-  const resultado: Record<string, Encontrada> = {};
-  for (const stmt of sf.statements) {
-    if (!ts.isFunctionDeclaration(stmt) || !stmt.name || !stmt.body) continue;
-    if (!stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
-    if (!llamaAUnEnvoltorio(stmt.body)) continue;
-    const primera = stmt.body.statements[0];
-    const llamada = primera && ts.isReturnStatement(primera) && primera.expression && ts.isCallExpression(primera.expression) ? primera.expression : null;
-    const envoltorio = llamada ? nombreDeLlamada(llamada) : null;
-    const clave = llamada?.arguments[0];
-    resultado[stmt.name.text] = {
-      entrada:
-        !llamada || !envoltorio || !ENVOLTORIOS.has(envoltorio)
-          ? "la primera sentencia no es `return <envoltorio>(…)`"
-          : !clave || !ts.isStringLiteral(clave)
-            ? `${envoltorio}: la clave no es un literal`
-            : `${envoltorio}:${clave.text}`,
-    };
-  }
-  return resultado;
-}
 
 describe("gobierno: cada Server Action entra por su envoltorio y su clave", () => {
   it.each(Object.keys(DECLARADAS))("%s: las mutaciones son las declaradas, con su envoltorio y su clave como primera sentencia", (archivo) => {
