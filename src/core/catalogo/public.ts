@@ -31,3 +31,6 @@ export { resolverDisponibilidad, resolverDisponibilidadPorSucursal } from "./dis
 export { whereDisponibleEn, whereDisponibleEnAlguna } from "./disponibilidad-producto-consulta";
 export { ALCANCE_CENTRAL, alcanceDeSucursal, incluirRecetaVigente, quedarseConLaVigente, whereConReceta } from "./recetas-vigentes";
 export type { AlcanceCentral, AlcanceDeReceta } from "./recetas-vigentes";
+// Hito 4, paso A5 (O.8a): el armado puro de la comparativa de precios por insumo (lo usa el lector de la comparativa, server/lecturas/catalogo/ofertas-de-proveedor.ts).
+export { armarComparativaDePrecios } from "./comparativa-de-precios";
+export type { FilaComparativaPrecios } from "./comparativa-de-precios";

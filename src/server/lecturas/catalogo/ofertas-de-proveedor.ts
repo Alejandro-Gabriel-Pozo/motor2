@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { whereDisponibleEn } from "@/core/catalogo/public";
+import { armarComparativaDePrecios, whereDisponibleEn, type FilaComparativaPrecios } from "@/core/catalogo/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -210,6 +210,30 @@ export async function cargarProductosDeProveedorParaElCarrito(db: Db, proveedorI
       };
     })
     .sort((a, b) => b.ultimaCompra.getTime() - a.ultimaCompra.getTime() || a.productoNombre.localeCompare(b.productoNombre));
+}
+
+/**
+ * La comparativa de precios por insumo de la EMPRESA (la usa `obtenerComparativaPreciosPorInsumo`, que exige el permiso): las ofertas del Kardex vigente
+ * (`cargarOfertasDeProveedores`, toda la empresa), el insumo de cada producto y el nombre de cada proveedor, armadas por la función pura `armarComparativaDePrecios`
+ * (`core/catalogo`). Hito 4, paso A5 (O.8a): antes los productos y los proveedores se leían con una lista `in` de ids tan larga como las ofertas (sin tope); ahora se leen
+ * ACOTADOS POR EL CATÁLOGO —los productos con insumo y los proveedores de la empresa— y el cruce lo hace el armado (un producto sin insumo o un proveedor que no esté, igual que
+ * antes: el producto no entra; el proveedor, ver `armarComparativaDePrecios`). Mismas consultas que antes, sin listas `in`.
+ */
+export async function cargarComparativaDePrecios(db: Db): Promise<FilaComparativaPrecios[]> {
+  const ofertas = await cargarOfertasDeProveedores(db);
+  if (ofertas.length === 0) return [];
+  const [productos, proveedores] = await Promise.all([
+    db.producto.findMany({
+      where: { insumoId: { not: null } },
+      select: { id: true, insumo: { select: { id: true, nombre: true, grupo: { select: { nombre: true } } } } },
+    }),
+    db.proveedor.findMany({ select: { id: true, nombre: true } }),
+  ]);
+  return armarComparativaDePrecios(
+    ofertas,
+    new Map(productos.map((p) => [p.id, p.insumo])),
+    new Map(proveedores.map((p) => [p.id, p.nombre])),
+  );
 }
 
 /**
