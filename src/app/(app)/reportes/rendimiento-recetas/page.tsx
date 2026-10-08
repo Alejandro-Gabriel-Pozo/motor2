@@ -4,7 +4,7 @@ import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer, obtenerMiNivelPermiso } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
-import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "@/server/consultas/reportes/rendimiento-recetas";
+import { calcularRendimientoRecetas } from "@/server/consultas/reportes/rendimiento-recetas";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { SelectorRango } from "@/components/selector-rango";
 import { FilaRendimientoSimple } from "./fila-simple";
@@ -62,9 +62,9 @@ export default async function RendimientoRecetasPage({
   const desde = new Date(desdeStr);
   const hasta = new Date(hastaStr);
 
-  const [todasLasSimples, todasLasCompartidas, { editar: puedeCalibrar }] = await Promise.all([
-    calcularRendimientoRecetasSimples(ctx.sucursalId, desde, hasta, ctx.db),
-    calcularRendimientoRecetasCompartidas(ctx.sucursalId, desde, hasta, ctx.db),
+  // Las dos tablas con UNA construcción de pools y UNA lectura del costo (O.30): antes se llamaba a las dos fases por separado y cada una repetía las suyas.
+  const [{ simples: todasLasSimples, compartidas: todasLasCompartidas }, { editar: puedeCalibrar }] = await Promise.all([
+    calcularRendimientoRecetas(ctx.sucursalId, desde, hasta, ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "calibrar_rendimiento_local", ctx.db),
   ]);
   const filasSimples = sp.productoId ? todasLasSimples.filter((f) => f.productoVentaId === sp.productoId) : todasLasSimples;

@@ -434,6 +434,33 @@ async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
   }));
 }
 
+// ── El reporte entero con UNA construcción de pools (O.30 de docs/pureza-integracion.md) ────────────────────────────────────────────────────────────────────
+//
+// La página mostraba las dos tablas llamando a `calcularRendimientoRecetasSimples` Y a `calcularRendimientoRecetasCompartidas`, y cada una corría
+// `construirPools` (5 lecturas: los productos disponibles, la clasificación de no comestibles, las recetas vigentes —2— y los hermanos de los Insumos) y
+// `obtenerCostoActualPorMP` (1): 6 lecturas repetidas por cada carga de la pantalla. `calcularRendimientoRecetas` las hace UNA vez y reparte los pools a
+// `simplesDesde` (los de un solo uso) y `compartidasDesde` (los de 2+), que son el cuerpo de siempre de cada fase, sin tocar. Las dos funciones de antes
+// quedan como envoltorios (construyen pools y costo y llaman a su mitad) con el mismo resultado y las mismas consultas: las usan la caracterización C0, los
+// tests de cada fase y el seed de la demo. `rendimiento-recetas-consultas.test.ts` fija que la combinada da lo mismo que las dos por separado y cuántas
+// consultas hace.
+
+/** Las dos tablas del reporte: los pools de un solo plato (Fase 1) y los compartidos entre varios (Fase 2). */
+interface RendimientoDeRecetas {
+  simples: FilaRendimientoSimple[];
+  compartidas: FilaRendimientoCompartido[];
+}
+
+/**
+ * El reporte de rendimiento de recetas entero (las dos fases) de UNA sucursal: construye los pools y lee el costo de reposición UNA sola vez para las dos
+ * tablas. Mismo resultado que `calcularRendimientoRecetasSimples` + `calcularRendimientoRecetasCompartidas` por separado (las mismas filas, en el mismo orden).
+ */
+export async function calcularRendimientoRecetas(sucursalId: string, desdeIn: Date, hastaIn: Date, db: Db): Promise<RendimientoDeRecetas> {
+  const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
+  const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
+  const [simples, compartidas] = await Promise.all([simplesDesde(sucursalId, pools, costos, desde, hasta, db), compartidasDesde(sucursalId, pools, costos, desde, hasta, db)]);
+  return { simples, compartidas };
+}
+
 /**
  * Fase 1 del diseño (docs/diseno-rendimiento-recetas-por-sucursal.md §3.3):
  * solo el caso simple, un único PV consume de un pool — ahí el
@@ -443,6 +470,8 @@ async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
  * Corre SIEMPRE para UNA sola sucursal — nunca mezclado entre sucursales
  * (mismo motivo del diseño: mezclar promedia al cocinero que gasta poco
  * con el que gasta mucho y destruye la comparación que se busca).
+ *
+ * Envoltorio (O.30): la pantalla usa `calcularRendimientoRecetas`, que comparte los pools y el costo con la Fase 2.
  */
 export async function calcularRendimientoRecetasSimples(
   sucursalId: string,
@@ -452,6 +481,11 @@ export async function calcularRendimientoRecetasSimples(
 ): Promise<FilaRendimientoSimple[]> {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
   const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
+  return simplesDesde(sucursalId, pools, costos, desde, hasta, db);
+}
+
+/** El cuerpo de la Fase 1 con los pools y el costo ya leídos y el rango ya expandido (`rangoUtc`). */
+async function simplesDesde(sucursalId: string, pools: readonly Pool[], costos: Map<string, CostoMP>, desde: Date, hasta: Date, db: Db): Promise<FilaRendimientoSimple[]> {
   const filas: FilaRendimientoSimple[] = [];
   const simples = pools.filter((pool) => pool.usos.length === 1); // 2+ usos es la Fase 2 — ver calcularRendimientoRecetasCompartidas.
 
@@ -624,6 +658,8 @@ function resolverPoolPorConteo(pool: Pool, intervalos: readonly Anclas[] | null,
  * ajuste no es confiable), NINGUNA fila del pool devuelve una
  * cantidadEstimada: se marca `resoluble: false` con el motivo, en vez de
  * inventar un número.
+ *
+ * Envoltorio (O.30): la pantalla usa `calcularRendimientoRecetas`, que comparte los pools y el costo con la Fase 1.
  */
 export async function calcularRendimientoRecetasCompartidas(
   sucursalId: string,
@@ -633,6 +669,11 @@ export async function calcularRendimientoRecetasCompartidas(
 ): Promise<FilaRendimientoCompartido[]> {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
   const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
+  return compartidasDesde(sucursalId, pools, costos, desde, hasta, db);
+}
+
+/** El cuerpo de la Fase 2 con los pools y el costo ya leídos y el rango ya expandido (`rangoUtc`). */
+async function compartidasDesde(sucursalId: string, pools: readonly Pool[], costos: Map<string, CostoMP>, desde: Date, hasta: Date, db: Db): Promise<FilaRendimientoCompartido[]> {
   const filas: FilaRendimientoCompartido[] = [];
   const compartidos = pools.filter((pool) => pool.usos.length >= 2); // un solo uso es la Fase 1 — ver calcularRendimientoRecetasSimples.
 

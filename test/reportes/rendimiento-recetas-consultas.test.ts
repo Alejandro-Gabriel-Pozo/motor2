@@ -8,7 +8,7 @@ import type { Db } from "../../src/lib/db-tipos";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
-import { calcularRendimientoRecetasCompartidas, calcularRendimientoRecetasSimples } from "../../src/server/consultas/reportes/rendimiento-recetas";
+import { calcularRendimientoRecetas, calcularRendimientoRecetasCompartidas, calcularRendimientoRecetasSimples } from "../../src/server/consultas/reportes/rendimiento-recetas";
 
 /**
  * O.37 (docs/pureza-integracion.md): el reporte de rendimiento de recetas leía POR POOL dentro de un bucle (apertura/cierre, entradas, ventas, conteos, un
@@ -62,7 +62,8 @@ async function sembrar(n: number) {
     const botella = await producto(`PV_AGUA_${i}`, "PV");
     await prisma.recetaVersion.create({ data: { productoId: botella.id, version: 1, ingredientes: { create: [{ insumoProductoId: caja.id, cantidad: 1, unidadId: kg.id }] } } });
     await conteo(caja.id, 0, dia("2026-01-02", i));
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-10"), seccionId, items: [{ productoId: caja.id, cantidad: 10 }] });
+    // Con precio (O.30): así el costo de reposición entra al resultado (`impactoPesos`, `sinCosto`) y la comparación de la combinada lo ve.
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-10"), seccionId, items: [{ productoId: caja.id, cantidad: 10, precioTotal: 50 }] });
     await registrarVenta({ fecha: new Date("2026-01-15"), seccionId, ventas: [{ productoId: botella.id, cantidadVendida: 6 }] });
     await conteo(caja.id, 4, dia("2026-01-25", i));
   }
@@ -75,7 +76,7 @@ async function sembrar(n: number) {
     const bife = await producto(`PV_BIFE_${j}`, "PV");
     await prisma.recetaVersion.create({ data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: nalga.id, cantidad: 0.1, unidadId: kg.id }] } } });
     await prisma.recetaVersion.create({ data: { productoId: bife.id, version: 1, ingredientes: { create: [{ insumoProductoId: lomo.id, cantidad: 0.1, unidadId: kg.id }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2025-12-01"), seccionId, items: [{ productoId: nalga.id, cantidad: 1000 }, { productoId: lomo.id, cantidad: 1000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2025-12-01"), seccionId, items: [{ productoId: nalga.id, cantidad: 1000, precioTotal: 5000 }, { productoId: lomo.id, cantidad: 1000, precioTotal: 8000 }] });
     await conteo(nalga.id, 1000, dia("2026-01-02", j));
     await conteo(lomo.id, 1000, dia("2026-01-02", j));
     // Mismos pares (m, b) que el test de CONTEO de `rendimiento-recetas.test.ts`: la mezcla varía y la regresión resuelve.
@@ -111,5 +112,48 @@ describe("rendimiento de recetas: la cantidad de consultas no crece con la canti
     // Y el número, para que una lectura de más (aunque no crezca con N) también se vea.
     expect(medido[2].simples).toHaveLength(15);
     expect(medido[2].compartidas).toHaveLength(15);
+  }, 120_000);
+});
+
+/**
+ * Las lecturas que las dos fases por separado repetían (O.30): `construirPools` (los productos disponibles, la clasificación de no comestibles —`grupo`—,
+ * las recetas vigentes —`recetaSucursal` y `recetaVersion`— y los hermanos de los Insumos —el segundo `producto.findMany`—) y `obtenerCostoActualPorMP`
+ * (`$queryRaw`). La combinada las hace una sola vez. (`contarConsultas` anota el modelo como lo entrega Prisma, con mayúscula.)
+ */
+const LECTURAS_COMPARTIDAS_ENTRE_FASES = ["$queryRaw", "Grupo.findMany", "Producto.findMany", "Producto.findMany", "RecetaSucursal.findMany", "RecetaVersion.findMany"];
+
+/** `todas` sin UNA copia de cada elemento de `quitar` (multiconjunto); falla si alguno no estaba. */
+function sinUnaCopiaDe(todas: readonly string[], quitar: readonly string[]): string[] {
+  const restantes = [...todas];
+  for (const q of quitar) {
+    const i = restantes.indexOf(q);
+    expect(i, `falta ${q} entre las consultas de las dos fases`).toBeGreaterThanOrEqual(0);
+    restantes.splice(i, 1);
+  }
+  return restantes.sort();
+}
+
+describe("rendimiento de recetas: la pantalla construye los pools y lee el costo UNA vez para las dos tablas (O.30)", () => {
+  it("calcularRendimientoRecetas da lo mismo que las dos fases por separado, con una sola construcción de pools, con 2 y con 5 pools", async () => {
+    const medido: Record<number, string[]> = {};
+    for (const n of [2, 5]) {
+      const sucursalId = await sembrar(n);
+      const simples = await contarConsultas((db) => calcularRendimientoRecetasSimples(sucursalId, desde, hasta, db));
+      const compartidas = await contarConsultas((db) => calcularRendimientoRecetasCompartidas(sucursalId, desde, hasta, db));
+      const combinada = await contarConsultas((db) => calcularRendimientoRecetas(sucursalId, desde, hasta, db));
+      // Mismas filas, en el mismo orden, que las dos funciones de antes (las que usaba la página).
+      expect(combinada.resultado).toStrictEqual({ simples: simples.resultado, compartidas: compartidas.resultado });
+      expect(combinada.resultado.simples).toHaveLength(n);
+      expect(combinada.resultado.compartidas).toHaveLength(2 * n);
+      // El costo de reposición (la lectura que la combinada comparte) llega a las dos tablas: un costo mal pasado cambiaría estas filas.
+      expect(combinada.resultado.simples.every((f) => !f.sinCosto)).toBe(true);
+      expect(combinada.resultado.compartidas.every((f) => !f.sinCosto)).toBe(true);
+      // Exactamente las consultas de las dos fases menos UNA copia de las que repetían (pools y costo).
+      expect(combinada.consultas).toEqual(sinUnaCopiaDe([...simples.consultas, ...compartidas.consultas], LECTURAS_COMPARTIDAS_ENTRE_FASES));
+      medido[n] = combinada.consultas;
+    }
+    expect(medido[5]).toEqual(medido[2]);
+    // 15 + 15 − 6: el número exacto, para que una lectura de más (p. ej. construir los pools dos veces) se vea.
+    expect(medido[2]).toHaveLength(24);
   }, 120_000);
 });
