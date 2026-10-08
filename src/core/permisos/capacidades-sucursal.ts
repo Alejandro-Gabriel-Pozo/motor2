@@ -56,12 +56,12 @@ export async function capacidadesDeSucursal(
   return habilitadas;
 }
 
-function esCapacidadSiempreHabilitada(accionClave: string): boolean {
+export function esCapacidadSiempreHabilitada(accionClave: string): boolean {
   return accionClave === "capacidades_sucursal" || (ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE as readonly string[]).includes(accionClave);
 }
 
 /** Regla de una acción, dadas sus filas candidatas (la de la sucursal y/o la «default»). */
-function resolverCapacidad(candidatas: Array<{ sucursalId: string | null; habilitado: boolean }>, sucursalId: string): boolean {
+export function resolverCapacidad(candidatas: Array<{ sucursalId: string | null; habilitado: boolean }>, sucursalId: string): boolean {
   const especifica = candidatas.find((c) => c.sucursalId === sucursalId);
   if (especifica) return especifica.habilitado;
 
