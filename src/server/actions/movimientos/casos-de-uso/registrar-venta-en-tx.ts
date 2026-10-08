@@ -14,10 +14,10 @@ import {
 } from "@/core/movimientos/linea-de-venta";
 import { cargarRecetaVigenteParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
-import { importeDeLinea, redondearMoneda, repartirImporte } from "@/core/moneda";
 import { seccionesConStock } from "@/server/lecturas/movimientos/saldos";
 import { cargarDeudaDeRedondeo } from "@/server/lecturas/movimientos/deuda-de-redondeo";
 import { faltantesDe } from "@/core/movimientos/origen-venta";
+import { filasDeUnaVenta } from "@/core/movimientos/filas-de-venta";
 import { asignarOrigenDeLaVenta, rechazoSinRespaldo, type LineaArmada } from "@/core/movimientos/plan-de-la-venta";
 import { cargarDatosDeOrigen, prepararOrigen } from "@/server/persistencia/movimientos/cargar-origen-de-venta";
 import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
@@ -209,59 +209,9 @@ export async function registrarVentaEnTx(
     });
     operacionIds.push(operacion.id);
 
-    for (const c of venta.consumos) {
-      const consumido = productos.get(c.productoId);
-      // Redondeo CON ARRASTRE (Task #27, docs/plan-redondeo-consumo-fraccionado-2026-09-26.md) — reemplaza el redondeo "a secas" de
-      // cada parte por separado (`redondearACantidadDeUnidad(c.cantidad, decimales)`, el bug: dos medias pizzas consumían 2 bollos
-      // en vez de 1). Con deuda 0 (el caso de siempre para un producto que nunca dejó resto) el resultado es IDÉNTICO al de antes;
-      // con deuda, la parte que sobró o faltó de consumos anteriores del MISMO producto en esta sucursal (`cargarDeudaDeRedondeo`,
-      // en `server/lecturas/movimientos/deuda-de-redondeo.ts`) se suma antes de redondear, así que el TOTAL de la sucursal converge al consumo exacto en vez de que cada parte
-      // redondee de forma independiente. `cantidadExacta` (con el mismo signo que `cantidad`) solo se llena cuando difiere de lo
-      // escrito — alimenta la deuda de la PRÓXIMA venta (`cargarDeudaDeRedondeo`) y la reversión exacta de esta (`anularVenta`).
-      const { cantidad: cantidadRedondeada, cantidadExacta } = arrastreDeRedondeo.consumir(c.productoId, c.cantidad, consumido?.unidadStock.decimales ?? 2);
-      // D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): solo si esta parte vino de un sustituto — un consumo de un
-      // HERMANO del mismo Insumo (el caso de siempre) deja el objeto IDÉNTICO a hoy, sin la columna ni el detalle distinto.
-      const detalle = c.sustituyeAProductoId
-        ? `Consumo por venta de "${venta.nombre}" — SUSTITUTO de "${productos.get(c.sustituyeAProductoId)?.nombre ?? c.sustituyeAProductoId}" (no había stock).`
-        : `Consumo por venta de "${venta.nombre}".`;
-      filas.push({
-        operacionId: operacion.id, productoId: c.productoId, seccionId: c.seccionId, proceso: "CONSUMO",
-        cantidad: -cantidadRedondeada, cantidadExacta: cantidadExacta === null ? null : -cantidadExacta, loteVencimiento: c.loteVencimiento,
-        detalle, precioTotal: 0, precioPorUnidadStock: 0,
-        ...(c.sustituyeAProductoId ? { sustituyeAProductoId: c.sustituyeAProductoId } : {}),
-      });
-
-      if (consumido?.esConsignacion) {
-        filas.push({
-          operacionId: operacion.id, productoId: c.productoId, seccionId: c.seccionId, proceso: "LIQUIDACION_CONSIGNACION",
-          cantidad: 0, loteVencimiento: null,
-          detalle: `Liquidación consignación por venta de "${venta.nombre}".`,
-          precioTotal: importeDeLinea(cantidadRedondeada, Number(consumido.precioConsignacion ?? 0)),
-          precioPorUnidadStock: redondearMoneda(Number(consumido.precioConsignacion ?? 0)),
-        });
-      }
-    }
-
-    // El PV vendido en sí: signoStock -1 (Movimientos.js:190-205) — si
-    // no tiene stock real (no "Se produce"), este saldo negativo es un
-    // artefacto contable de las ventas, mismo criterio que hoy.
-    const importeVenta = importeDeLinea(venta.cantidadVendida, venta.precioVenta);
-    // El PV que se produce y sale de más de un lote (O.40 (1)) deja UNA fila VENTA por lote: la cantidad de cada parte (la última, lo que resta, para que la suma sea exacta) y el importe repartido
-    // con `repartirImporte` por cantidad (la suma de los importes es exactamente `importeVenta`). Un solo lote, o cualquier otro PV: una fila, como siempre.
-    const partes = venta.partesPropias && venta.partesPropias.length > 1 ? venta.partesPropias : [{ seccionId: venta.seccionId, loteVencimiento: venta.loteVencimiento, cantidad: venta.cantidadVendida }];
-    const importes = partes.length > 1 ? repartirImporte(importeVenta, partes.map((p) => p.cantidad)) : [importeVenta];
-    let cantidadAsignada = 0;
-    partes.forEach((parte, k) => {
-      const cantidadDeLaParte = k === partes.length - 1 ? redondearACantidadDeUnidad(venta.cantidadVendida - cantidadAsignada, 4) : redondearACantidadDeUnidad(parte.cantidad, 4);
-      cantidadAsignada += cantidadDeLaParte;
-      filas.push({
-        operacionId: operacion.id, productoId: venta.productoId, seccionId: parte.seccionId, proceso: "VENTA",
-        cantidad: -cantidadDeLaParte, loteVencimiento: parte.loteVencimiento,
-        detalle: texto(datos.detalle) || "Venta", precioTotal: importes[k]!, precioPorUnidadStock: redondearMoneda(venta.precioVenta),
-        costoUnitarioVenta: venta.costoUnitarioAlVender !== null ? redondearMoneda(venta.costoUnitarioAlVender) : null,
-        precioListaUnitario: venta.precioListaVenta !== null ? redondearMoneda(venta.precioListaVenta) : null,
-      });
-    });
+    // Las filas de esta venta —CONSUMO con el redondeo CON ARRASTRE, LIQUIDACION_CONSIGNACION y VENTA, una por lote si el PV que se produce sale de más de uno— son una regla pura sobre lo ya leído:
+    // `filasDeUnaVenta`, en `core/movimientos/filas-de-venta.ts` (el docstring del arrastre y de la repartición del importe viven ahí). Acá queda el ORDEN: la `Operacion` primero, después sus filas, y UN solo `createMany` al final.
+    filas.push(...filasDeUnaVenta(venta, operacion.id, { detalle: datos.detalle, productoDe: (productoId) => productos.get(productoId), arrastre: arrastreDeRedondeo }));
   }
 
   await escribirLineasDeMovimientoStock(tx, filas);
