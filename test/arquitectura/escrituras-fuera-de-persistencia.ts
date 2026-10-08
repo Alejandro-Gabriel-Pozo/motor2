@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 34;
+export const TOPE_DE_ENTRADAS = 33;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -142,11 +142,6 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
   },
   "src/server/actions/catalogo/proveedores.ts": {
     escrituras: ["proveedor.create", "proveedor.update", "proveedor.update"],
-    fase: "Fase 4",
-    motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
-  },
-  "src/server/actions/catalogo/receta-sucursal.ts": {
-    escrituras: ["recetaSucursal.update"],
     fase: "Fase 4",
     motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
   },

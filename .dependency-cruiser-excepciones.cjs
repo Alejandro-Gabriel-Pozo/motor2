@@ -249,6 +249,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque 4.2, H4C-5: fijarRendimientoLocal → catalogo/casos-de-uso/fijar-rendimiento-local.ts (con guardComandoFijarRendimientoLocal, core/features/catalogo) y volverAlRendimientoCentral → volver-al-rendimiento-central.ts (transacción SERIALIZABLE con reintento, la línea vigente, la escritura en server/persistencia/catalogo/rendimiento-local.ts, la auditoría y el .catch del conflicto agotado viven en el caso de uso); la acción refresca la vista si salió bien (volver, solo si hubo cambio). El archivo no tiene ninguna otra función.",
   },
+  {
+    ruta: "src/server/actions/catalogo/receta-sucursal.ts",
+    motivo:
+      "Hito 4, bloque 4.2, H4C-6: volverALaRecetaCentral → catalogo/casos-de-uso/volver-a-la-receta-central.ts (transacción SERIALIZABLE con reintento, la propia habilitada, la escritura en server/persistencia/catalogo/receta-sucursal.ts, la auditoría y el .catch del conflicto agotado; la confirmación la exige guardComandoVolverALaRecetaCentral dentro de conPermiso). Las otras cinco (crear, agregar, editar, quitar, copiar la receta propia) ya escribían por casos-de-uso/guardar-version-de-receta.ts; acá solo leen el estado de la propia y la central para armar la versión nueva.",
+  },
 ];
 
 module.exports = {

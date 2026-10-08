@@ -2,9 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 import { fijarRendimientoLocalCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/fijar-rendimiento-local";
 import { volverAlRendimientoCentralCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/volver-al-rendimiento-central";
+import { volverALaRecetaCentralCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/volver-a-la-receta-central";
 
 /**
- * Hito 4, bloque 4.2 (H4C-5): el `.catch(esConflictoDeEscritura)` de las acciones de la receta por sucursal que corren en una transacción SERIALIZABLE pasó de la
+ * Hito 4, bloque 4.2 (H4C-5 y H4C-6: rendimiento local y volver a la receta central): el `.catch(esConflictoDeEscritura)` de las acciones de la receta por sucursal que corren en una transacción SERIALIZABLE pasó de la
  * Server Action al caso de uso (precedente: `test/permisos/guardar-permisos-reintentos-agotados.test.ts`, Hito 3, I.3). Ningún test cubría ese camino: agotar los
  * reintentos (la transacción ya hizo rollback, no se guardó nada) tiene que volver como el MISMO mensaje de negocio que el choque de versión, y cualquier OTRO
  * error tiene que seguir de largo (no se disfraza de conflicto). Se prueba el caso de uso con una transacción armada a mano que falla en cada intento: no
@@ -25,6 +26,11 @@ const CASOS = [
     nombre: "volverAlRendimientoCentral",
     llamar: (t: ReturnType<typeof vi.fn>) => volverAlRendimientoCentralCasoDeUso(actor(t), { recetaIngredienteId: "linea" }),
     mensaje: "La receta cambió mientras mirabas el reporte; recargá.",
+  },
+  {
+    nombre: "volverALaRecetaCentral",
+    llamar: (t: ReturnType<typeof vi.fn>) => volverALaRecetaCentralCasoDeUso(actor(t), { productoId: "producto" }),
+    mensaje: "La receta cambió mientras la mirabas; recargá e intentá de nuevo.",
   },
 ];
 

@@ -1,20 +1,19 @@
 "use server";
 
-import { describirVueltaALaRecetaCentral } from "@/core/catalogo/public";
 import { INCLUDE_RECETA_COMPLETA, mapCabeceraAInput, mapIngredientesAInput, mapPasosAInput, type RecetaCompleta } from "@/core/catalogo/public-servidor";
 import { ALCANCE_CENTRAL } from "@/core/catalogo/public";
 import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { type IngredienteInput, type PasoInput } from "@/core/catalogo/public";
 import { obtenerEstadoDeRecetaPropia } from "@/server/lecturas/catalogo/receta-propia";
 import { guardComandoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.guard";
-import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { guardComandoVolverALaRecetaCentral } from "@/core/features/catalogo/receta-sucursal.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion } from "../tipos";
 import { guardarVersionDeRecetaCasoDeUso, type DestinoDeVersionDeReceta } from "./casos-de-uso/guardar-version-de-receta";
+import { volverALaRecetaCentralCasoDeUso } from "./casos-de-uso/volver-a-la-receta-central";
 
 /**
  * Receta PROPIA de la sucursal activa (ADR-009, familia override, R3/R4): una serie de versiones de la receta de un producto que
@@ -125,30 +124,21 @@ export async function copiarRecetaPropiaDeOtraSucursal(productoId: string, sucur
   });
 }
 
-/** Vuelve a la receta central: deshabilita la propia (sus versiones quedan como historial, no se borra nada). Pide confirmación explícita. */
+/**
+ * Vuelve a la receta central: deshabilita la propia (sus versiones quedan como historial, no se borra nada). Pide confirmación explícita.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-6) es un adaptador fino: permiso (`conPermiso("receta_sucursal_volver_central")`) → la confirmación
+ * (`guardComandoVolverALaRecetaCentral`, core/features/catalogo/receta-sucursal.guard.ts, DENTRO del envoltorio) → caso de uso
+ * (`casos-de-uso/volver-a-la-receta-central.ts`: la transacción serializable, la propia habilitada, la escritura en server/persistencia/catalogo/receta-sucursal.ts,
+ * la auditoría y el conflicto agotado) → refrescar la vista si salió bien (antes se refrescaba dentro del callback, en ese mismo camino) → `aResultadoAccion`.
+ * Con esta, las seis acciones del archivo pasan por un caso de uso: está entero en `ACCIONES_CON_CASO_DE_USO`.
+ */
 export async function volverALaRecetaCentral(productoId: string, confirmado: boolean): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_volver_central", async (ctx) => {
-    if (!confirmado) return error("Confirmá que querés volver a la receta central.");
-    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
-      const fila = await tx.recetaSucursal.findUnique({ where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } }, select: { id: true, habilitada: true } });
-      if (!fila?.habilitada) return error("Esta sucursal no tiene receta propia habilitada para este producto.");
-      const producto = await tx.producto.findUnique({ where: { id: productoId }, select: { nombre: true } });
-      await tx.recetaSucursal.update({ where: { id: fila.id }, data: { habilitada: false } });
-      await registrarCambioAuditado(tx, {
-        entidad: "RecetaSucursal",
-        entidadId: `${ctx.sucursalId}:${productoId}`,
-        campo: "habilitada",
-        descripcion: describirVueltaALaRecetaCentral(producto?.nombre ?? productoId, ctx.sucursalNombre),
-        valorAnterior: true,
-        valorNuevo: false,
-        actorId: ctx.usuarioId,
-        sucursalId: ctx.sucursalId,
-      });
-      refrescarVistaSiHaceFalta();
-      return ok(`«${ctx.sucursalNombre}» vuelve a usar la receta central. La receta propia queda en el historial.`);
-    }).catch((e) => {
-      if (esConflictoDeEscritura(e)) return error("La receta cambió mientras la mirabas; recargá e intentá de nuevo.");
-      throw e;
-    });
+    const comando = guardComandoVolverALaRecetaCentral({ productoId, confirmado });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await volverALaRecetaCentralCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) refrescarVistaSiHaceFalta();
+    return aResultadoAccion(resultado);
   });
 }
