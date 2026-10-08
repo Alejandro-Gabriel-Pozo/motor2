@@ -100,7 +100,10 @@ const PENDIENTES_DE_MIGRAR = [].map((ruta) => ({ ruta, motivo: MOTIVO_PENDIENTE 
 /**
  * `sin-ciclos`: ciclos que ya existían al activar la regla (corrida en modo informe el 2026-09-27: 1 ciclo en todo `src/`).
  * NO se arreglan en esta fase; cada entrada lista los archivos EXACTOS del ciclo (el complemento de Vitest exige que el
- * conjunto de ciclos reales sea exactamente el de esta lista).
+ * conjunto de ciclos reales sea exactamente el de esta lista). VACÍA desde el Hito 4 (O.28): el único ciclo, de solo tipos,
+ * era `core/pos/comanda.ts ↔ core/pos/impresion.ts`; se cortó mudando `documentoDeReimpresion` (la única razón por la que
+ * `comanda.ts` importaba de `impresion.ts`) a `impresion.ts`. Un módulo de solo tipos no alcanzaba: `DocumentoImprimible`
+ * necesita `ComandaDeEnvio`.
  */
 /*
  * Ciclo entre DOMINIOS de `core/` (no de archivos), documentado acá aunque no lleve entrada — Task #41, Fase C2/C3:
@@ -112,13 +115,7 @@ const PENDIENTES_DE_MIGRAR = [].map((ruta) => ({ ruta, motivo: MOTIVO_PENDIENTE 
  * lados ya pasan por la fachada del otro dominio (`sin-internals-de-otro-dominio` no lo marca porque ninguna arista toca
  * un archivo interno).
  */
-const CICLOS_CONOCIDOS = [
-  {
-    ciclo: ["src/core/pos/comanda.ts", "src/core/pos/impresion.ts"],
-    motivo:
-      "Ciclo de SOLO TIPOS (import type en las dos direcciones, sin efecto en runtime): comanda.ts usa DocumentoImprimible de impresion.ts, e impresion.ts usa ComandaDeEnvio/AnulacionDeComanda de comanda.ts. Se corta moviendo los tipos compartidos a un módulo propio (fase futura).",
-  },
-];
+const CICLOS_CONOCIDOS = [];
 
 /**
  * `ui-sin-internals-de-dominio` (Pureza Fase 2, paso 2.3): app/ y components/ importan de un dominio de negocio SOLO por su fachada

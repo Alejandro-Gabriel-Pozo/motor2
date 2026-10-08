@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { armarComandas, documentoDeReimpresion, type ItemParaComanda } from "../../src/core/pos/comanda";
+import { armarComandas, type ItemParaComanda } from "../../src/core/pos/comanda";
+import { documentoDeReimpresion } from "../../src/core/pos/impresion";
 
 /** Comanda de cocina (KOT) por envío (src/core/pos/comanda.ts, docs/plan-imprimir-comanda-y-ticket-2026-09-25.md B1): núcleo puro, sin precios. */
 

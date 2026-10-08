@@ -40,6 +40,16 @@ export interface DatosDeImpresion {
 
 export type ResolucionImpresion = { accion: "imprimir"; documento: DocumentoImprimible } | { accion: "descartar" } | { accion: "esperar" };
 
+/**
+ * La copia de un envío ya impreso («Reimprimir»): la comanda tal como está hoy (cantidades vigentes y lo anulado), marcada como reimpresión. Vivía en
+ * `./comanda` y se mudó tal cual (O.28, Hito 4): devuelve un `DocumentoImprimible` de este módulo, así que estando allá `comanda` importaba de `impresion` y
+ * `impresion` de `comanda` (el único ciclo de archivos de `src/`).
+ */
+export function documentoDeReimpresion(comandas: readonly ComandaDeEnvio[], numero: number): DocumentoImprimible | null {
+  const comanda = comandas.find((c) => c.numero === numero);
+  return comanda ? { tipo: "reimpresion", comanda } : null;
+}
+
 const ESPERAR: ResolucionImpresion = { accion: "esperar" };
 const DESCARTAR: ResolucionImpresion = { accion: "descartar" };
 

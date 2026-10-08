@@ -1,5 +1,3 @@
-import type { DocumentoImprimible } from "./impresion";
-
 /**
  * Comanda de cocina (KOT) de cada envío de una cuenta: lo que se imprime para la cocina al enviar, al reimprimir y al anular
  * (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B1). Núcleo PURO: la página la arma en el servidor a partir de los envíos
@@ -9,7 +7,10 @@ import type { DocumentoImprimible } from "./impresion";
  * campo (nunca con spread del ítem), así que un precio no puede colarse en la comanda aunque el ítem de entrada lo traiga. El ticket
  * del cliente (con precios) es otro documento, con su propio armador (src/core/pos/ticket.ts).
  *
- * Sin importar `./cuenta` (que trae el cliente de Prisma): `documentoDeReimpresion` corre en el navegador, dentro del proveedor.
+ * Sin importar `./cuenta` (que trae el cliente de Prisma): estos tipos los usa el proveedor de impresión, que corre en el navegador.
+ *
+ * Sin importar `./impresion` (O.28, Hito 4): la comanda es la HOJA del grafo; `impresion.ts` usa sus tipos y no al revés. La reimpresión de un envío
+ * (`documentoDeReimpresion`, que devuelve un `DocumentoImprimible`) vive en `./impresion`: estando acá cerraba el ciclo `comanda ↔ impresion`.
  */
 
 /** Cantidades de la columna `Decimal(14, 4)`: mismo redondeo que `restanteDe` (src/core/pos/cuenta.ts). */
@@ -90,10 +91,4 @@ export function armarComandas(envios: readonly { numero: number; items: readonly
     );
     return { numero: envio.numero, itemIds: envio.items.map((i) => i.id), tomo: autores.length ? autores : [mesero], lineas, anulaciones };
   });
-}
-
-/** La copia de un envío ya impreso («Reimprimir»): la comanda tal como está hoy (cantidades vigentes y lo anulado), marcada como reimpresión. */
-export function documentoDeReimpresion(comandas: readonly ComandaDeEnvio[], numero: number): DocumentoImprimible | null {
-  const comanda = comandas.find((c) => c.numero === numero);
-  return comanda ? { tipo: "reimpresion", comanda } : null;
 }
