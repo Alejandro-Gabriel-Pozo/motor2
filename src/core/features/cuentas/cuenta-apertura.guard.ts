@@ -1,6 +1,6 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { MENSAJE_CUENTA_NO_ENCONTRADA } from "./cuenta.guard";
-import type { ComandoAsignarClienteACuenta, ComandoCorregirComensales, ComandoLiberarMesa } from "./cuenta-apertura.schema";
+import type { ComandoAbrirCuenta, ComandoAsignarClienteACuenta, ComandoCorregirComensales, ComandoLiberarMesa } from "./cuenta-apertura.schema";
 
 /**
  * Guard de la APERTURA de la cuenta de una mesa (feature Cuenta del salón; convención «guard por feature»; Hito 4, bloque 4.1). Formato del comando, ANTES de
@@ -10,6 +10,16 @@ import type { ComandoAsignarClienteACuenta, ComandoCorregirComensales, ComandoLi
  * que no es texto, `cuentaAbiertaDeSucursal` salteaba la lectura y devolvía ese error). Todo lo demás (comensales, cliente) lo sigue validando el caso de uso
  * en el lugar de siempre: un guard que lo adelantara cambiaría qué mensaje gana cuando hay dos fallas a la vez (lo fija `huella-del-pos`).
  */
+
+/** El texto que ya usaba `abrirCuenta` para una mesa que no es de la sucursal activa (o no existe, o un id que no es texto). */
+export const MENSAJE_MESA_NO_ENCONTRADA = "No se encontró esa mesa en esta sucursal.";
+
+/** Guard del comando «abrir la cuenta de una mesa»: los `comensales` pasan TAL CUAL (los valida el caso de uso después de mirar si la mesa ya estaba abierta). */
+export function guardComandoAbrirCuenta(entrada: unknown): ResultadoDato<ComandoAbrirCuenta> {
+  const { mesaId, comensales } = (entrada ?? {}) as { mesaId?: unknown; comensales?: unknown };
+  if (typeof mesaId !== "string") return rechazar("formato", MENSAJE_MESA_NO_ENCONTRADA);
+  return aceptar({ mesaId, comensales });
+}
 
 /** Guard del comando «liberar la mesa sin venta». */
 export function guardComandoLiberarMesa(entrada: unknown): ResultadoDato<ComandoLiberarMesa> {

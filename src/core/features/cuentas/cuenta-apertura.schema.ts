@@ -11,6 +11,21 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
  * el mismo mensaje.
  */
 
+/** Comando «abrir la cuenta de una mesa»: `comensales` CRUDO, lo valida el caso de uso DESPUÉS de mirar si la mesa ya tenía su cuenta abierta (como antes). */
+export interface ComandoAbrirCuenta {
+  mesaId: string;
+  comensales: unknown;
+}
+
+/**
+ * Solo lo que produce el caso de uso (un `mesaId` que no es un texto lo rechaza antes el guard). Reabrir una mesa que ya tenía su cuenta abierta NO es un
+ * fracaso: responde ok sin tocar nada (por estado, o por el choque del índice único parcial si otro mozo la abrió un instante antes).
+ *  - `MESA_NO_ENCONTRADA`: no hay mesa con ese id en esta sucursal;
+ *  - `COMENSALES_INVALIDOS`: no es un entero entre 1 y 99 (`validarComensales`);
+ *  - `LIMITE_DE_MESAS`: la sucursal ya tiene `maxMesasAbiertas` cuentas abiertas.
+ */
+export type ResultadoAbrirCuenta = ResultadoCaso<null, "MESA_NO_ENCONTRADA" | "COMENSALES_INVALIDOS" | "LIMITE_DE_MESAS">;
+
 /** Comando «liberar la mesa sin venta»: lo que recibe `liberarMesaCasoDeUso`. */
 export interface ComandoLiberarMesa {
   cuentaId: string;

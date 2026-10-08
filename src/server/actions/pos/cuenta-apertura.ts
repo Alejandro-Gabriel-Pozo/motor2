@@ -1,12 +1,15 @@
 "use server";
 
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
-import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
-import { validarComensales } from "@/core/pos/cuenta";
-import { guardComandoAsignarClienteACuenta, guardComandoCorregirComensales, guardComandoLiberarMesa } from "@/core/features/cuentas/cuenta-apertura.guard";
+import {
+  guardComandoAbrirCuenta,
+  guardComandoAsignarClienteACuenta,
+  guardComandoCorregirComensales,
+  guardComandoLiberarMesa,
+} from "@/core/features/cuentas/cuenta-apertura.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion } from "../tipos";
+import { abrirCuentaCasoDeUso } from "./casos-de-uso/abrir-cuenta";
 import { asignarClienteACuentaCasoDeUso } from "./casos-de-uso/asignar-cliente-a-cuenta";
 import { corregirComensalesCasoDeUso } from "./casos-de-uso/corregir-comensales";
 import { liberarMesaCasoDeUso } from "./casos-de-uso/liberar-mesa";
@@ -14,7 +17,8 @@ import { liberarMesaCasoDeUso } from "./casos-de-uso/liberar-mesa";
 /**
  * Toma de pedido en el salón — abrir la cuenta de una mesa, corregir sus comensales, asignarle un cliente y liberar la mesa sin venta.
  * Criterio común de todas las acciones de «tomar pedido» (transacción SERIALIZABLE, mesa de la sucursal activa, cuenta abierta, sin
- * refrescar la vista) y ayudantes compartidos: ./cuenta-comun.ts.
+ * refrescar la vista) y ayudantes compartidos: ./cuenta-comun.ts. Desde el Hito 4 de la pureza (bloque 4.1) cada acción es un adaptador fino de su
+ * caso de uso (./casos-de-uso/{abrir-cuenta,corregir-comensales,asignar-cliente-a-cuenta,liberar-mesa}.ts).
  */
 
 /**
@@ -31,33 +35,18 @@ import { liberarMesaCasoDeUso } from "./casos-de-uso/liberar-mesa";
  * `cerradaEn IS NULL` de la sucursal DENTRO de esta misma transacción SERIALIZABLE que crea la nueva — dos aperturas a mesas
  * DISTINTAS que juntas superarían el límite chocan como cualquier otra escritura en conflicto (Postgres aborta una y se reintenta,
  * `conTransaccionSerializable`), nunca las dos pasan.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.1, paso 8) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_abrir_cuenta")`) → formato del
+ * `mesaId` (`guardComandoAbrirCuenta`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/abrir-cuenta.ts`: la mesa fuera de la transacción, la transacción
+ * serializable con la idempotencia, los comensales y el límite, la escritura en server/persistencia/pos/cuenta.ts y el choque del índice único) →
+ * `aResultadoAccion`. Con `corregirComensales`, `asignarClienteACuenta` y `liberarMesa` (pasos 5 a 7) también migradas, el archivo entero está en
+ * `ACCIONES_CON_CASO_DE_USO`.
  */
 export async function abrirCuenta(mesaId: string, comensales: number): Promise<ResultadoAccion> {
   return conPermiso("pos_abrir_cuenta", async (ctx) => {
-    const mesa = typeof mesaId === "string" ? await ctx.db.mesa.findFirst({ where: { id: mesaId, sucursalId: ctx.sucursalId }, include: { sucursal: { select: { nombre: true, maxMesasAbiertas: true } } } }) : null;
-    if (!mesa) return error("No se encontró esa mesa en esta sucursal.");
-    try {
-      return await conTransaccionSerializable(ctx.transaccion, async (tx) => {
-        const yaAbierta = await tx.cuenta.findFirst({ where: { mesaId: mesa.id, cerradaEn: null }, select: { id: true } });
-        if (yaAbierta) return ok(`La mesa ${mesa.numero} ya tenía una cuenta abierta.`);
-
-        const val = validarComensales(comensales);
-        if (!val.ok) return error(val.mensaje);
-
-        if (mesa.sucursal.maxMesasAbiertas !== null) {
-          const abiertas = await tx.cuenta.count({ where: { cerradaEn: null, mesa: { sucursalId: ctx.sucursalId } } });
-          if (abiertas >= mesa.sucursal.maxMesasAbiertas) {
-            return error(`Se alcanzó el máximo de ${mesa.sucursal.maxMesasAbiertas} mesas abiertas en «${mesa.sucursal.nombre}». Cerrá o liberá una antes de abrir otra.`);
-          }
-        }
-
-        await tx.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: ctx.usuarioId, comensales: val.comensales } });
-        return ok(`Cuenta de la mesa ${mesa.numero} abierta.`);
-      });
-    } catch (e) {
-      if (esErrorDeUnicidad(e)) return ok(`La mesa ${mesa.numero} ya tenía una cuenta abierta.`);
-      throw e;
-    }
+    const comando = guardComandoAbrirCuenta({ mesaId, comensales });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await abrirCuentaCasoDeUso(ctx, comando.valor));
   });
 }
 

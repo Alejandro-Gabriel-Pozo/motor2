@@ -8,6 +8,14 @@ import type { Prisma } from "@prisma/client";
  * `src/server/actions/pos/casos-de-uso/`. Liberar la mesa no tiene escritura propia acá: reutiliza `marcarCuentaCerrada` (./cerrar-cuenta.ts).
  */
 
+/**
+ * Abre la cuenta de la mesa, a nombre de quien la abre y con sus comensales. A lo sumo una abierta por mesa (índice único parcial
+ * `Cuenta_una_abierta_por_mesa_key`): si otro mozo la abrió un instante antes, el choque lo traduce el caso de uso.
+ */
+export async function abrirCuentaDeMesa(tx: Prisma.TransactionClient, args: { mesaId: string; abiertaPorId: string; comensales: number }): Promise<void> {
+  await tx.cuenta.create({ data: { mesaId: args.mesaId, abiertaPorId: args.abiertaPorId, comensales: args.comensales } });
+}
+
 /** Cambia los comensales de la cuenta (la cuenta sigue abierta: lo chequea el caso de uso). */
 export async function cambiarComensalesDeCuenta(tx: Prisma.TransactionClient, args: { cuentaId: string; comensales: number }): Promise<void> {
   await tx.cuenta.update({ where: { id: args.cuentaId }, data: { comensales: args.comensales } });
