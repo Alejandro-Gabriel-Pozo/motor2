@@ -177,8 +177,10 @@ test("el formulario de producto no ofrece «+ Nueva categoría», «+ Nuevo insu
   try {
     await page.goto("/catalogo/productos/nuevo");
     await expect(page.locator('input[name="nombre"]')).toBeVisible();
-    await page.getByLabel("Es consignación").check();
-    await expect(page.getByLabel("Proveedor de consignación")).toBeVisible(); // el bloque de consignación está desplegado
+    // S-12 (D8): el bloque de consignación (donde vive el selector de proveedor y su «+ Nuevo proveedor») es de quien tiene `pagar_consignante`, que un rol propio no puede tener (piso
+    // administrador): este rol ni siquiera ve la casilla. Antes el test la tildaba para desplegar el bloque.
+    await expect(page.getByLabel("Es consignación")).toHaveCount(0);
+    await expect(page.getByLabel("Proveedor de consignación")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "+ Nueva categoría" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "+ Nuevo insumo" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "+ Nuevo proveedor" })).toHaveCount(0);
@@ -193,11 +195,20 @@ test("un rol CON los permisos de alta de categoría, insumo y proveedor ve los t
   try {
     await page.goto("/catalogo/productos/nuevo");
     await expect(page.locator('input[name="nombre"]')).toBeVisible();
-    await page.getByLabel("Es consignación").check();
     await expect(page.getByRole("button", { name: "+ Nueva categoría" })).toBeVisible();
     await expect(page.getByRole("button", { name: "+ Nuevo insumo" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "+ Nuevo proveedor" })).toBeVisible();
+    // El proveedor se da de alta desde el bloque de consignación, que este rol no ve (S-12): el contraespejo del proveedor es el del administrador, justo abajo.
+    await expect(page.getByLabel("Es consignación")).toHaveCount(0);
   } finally {
     await limpiar();
   }
+});
+
+test("el administrador (con pagar_consignante y proveedor_alta) ve la consignación y su «+ Nuevo proveedor» en el formulario de alta", async ({ paginaAutenticada: page }) => {
+  // Contraespejo de S-12/D8: la consignación se esconde a quien no tiene `pagar_consignante`, no a todos.
+  await page.goto("/catalogo/productos/nuevo");
+  await expect(page.locator('input[name="nombre"]')).toBeVisible();
+  await page.getByLabel("Es consignación").check();
+  await expect(page.getByLabel("Proveedor de consignación")).toBeVisible();
+  await expect(page.getByRole("button", { name: "+ Nuevo proveedor" })).toBeVisible();
 });
