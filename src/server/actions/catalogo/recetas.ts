@@ -33,10 +33,11 @@ export async function listarVersionesDeReceta(productoId: string) {
 /**
  * Equivalente de guardarReceta (Catalogo.js:1711-1779): versionado
  * append-only real — NUNCA pisa ni borra una versión vieja. `version` se
- * calcula de forma optimista (MAX(version)+1); el
- * `@@unique([productoId, version])` es el árbitro final ante dos
- * ediciones simultáneas de la misma receta (se reintenta el cálculo, con
- * backoff y jitter entre intentos — `conReintento`).
+ * calcula de forma optimista (MAX(version)+1).
+ *
+ * Qué evita pisar el cambio de otra persona (O.4, Hito 4, paso H4C-24): `versionEsperada`, que el caso de uso compara con la versión vigente DENTRO de su
+ * transacción SERIALIZABLE; si alguien guardó en el medio, se rechaza sin escribir. El `@@unique([productoId, version])` con el reintento (`conReintento`, backoff
+ * y jitter) NO es ese árbitro: solo ordena dos guardados A CIEGAS simultáneos que calcularon el mismo número de versión (el segundo queda encima, sin aviso).
  *
  * `pasos`/`cabecera` viajan en la MISMA versión que `items` — reemplazo
  * completo de los tres a la vez, igual criterio que ya tenían los

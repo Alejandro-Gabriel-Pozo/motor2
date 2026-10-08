@@ -48,8 +48,15 @@ import {
  * la central vigente de hoy, o la que pase quien llama, p. ej. al copiar de otra sucursal) y la auditoría lleva la sucursal. No arrastra ni descarta
  * calibraciones: no las hay sobre una receta propia (cuelgan de las líneas de la central y no rigen mientras la propia está habilitada).
  *
+ * QUÉ EVITA PISAR UN CAMBIO AJENO (O.4, Revisión #93 (7); Hito 4, paso H4C-24): es `versionEsperada`, comparada con la versión vigente DENTRO de la transacción
+ * SERIALIZABLE de cada intento (paso 3.a): si otra persona guardó entre la lectura de la pantalla y este guardado, la serie ya va por otra versión y se rechaza con
+ * `VERSION_DESACTUALIZADA` sin escribir nada. El `@@unique([productoId, version])` (más el reintento de `conReintento`) NO protege eso: solo ORDENA dos guardados que
+ * calcularon el mismo MAX + 1 a la vez para que no queden dos versiones con el mismo número — en un guardado a ciegas (sin versión esperada:
+ * `guardarRecetaACiegas`, solo seeds, scripts y tests, O.1) el segundo se reintenta y queda ENCIMA del primero, sin aviso. Desde O.1 la acción pública siempre manda
+ * la versión.
+ *
  * @contract Crea una versión NUEVA de la receta (append-only) y arrastra las calibraciones locales compatibles, auditando las que se descartan.
- * @idempotency Optimista — `versionEsperada` (la versión sobre la que se armó el reemplazo) se compara con la vigente en cada intento: si otra persona guardó en el medio, se rechaza (`VERSION_DESACTUALIZADA`) en vez de pisarla. Sin ella (seeds, scripts) es un reemplazo a ciegas: cada guardado crea una versión nueva, append-only.
+ * @idempotency Optimista — `versionEsperada` (la versión sobre la que se armó el reemplazo) se compara con la vigente en cada intento: si otra persona guardó en el medio, se rechaza (`VERSION_DESACTUALIZADA`) en vez de pisarla. Sin ella (`guardarRecetaACiegas`: seeds, scripts, tests) es un reemplazo a ciegas: cada guardado crea una versión nueva, append-only, y el UNIQUE con el reintento solo los ordena.
  * @transaction conTransaccionSerializable (SERIALIZABLE), reabierta hasta 5 veces vía conReintento si choca el UNIQUE(productoId, version) o hay conflicto de escritura.
  * @sideEffects registrarCambioAuditado (la versión nueva, y cada calibración local descartada por cambio de unidad o salida de la receta).
  * @ficha permiso=guardar_receta transaccion=SERIALIZABLE idempotencia=OPTIMISTA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
