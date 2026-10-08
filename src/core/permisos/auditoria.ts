@@ -65,6 +65,10 @@ export const ENTIDADES_AUDITABLES = [
   // "ProveedorPorProducto" (Pureza, decisión del dueño 2026-10-08): el precio por unidad de stock que quedó en el vínculo proveedor↔producto tras una compra — `entidadId` es
   // `${productoId}:${proveedorId}:${unidadCompraId}`, `campo: "precioPorUnidadStock"`, `valorAnterior: null` si el par es nuevo, con la `sucursalId` de la compra.
   "ProveedorPorProducto",
+  // "Insumo" (D-9, decisión del dueño 2026-10-07; Hito 4, H4C-10): renombrar un insumo (`campo: "nombre"`, del nombre anterior al nuevo) o fusionarlo con otro
+  // (`campo: "fusion"`, sobre el insumo que DESAPARECE, del nombre de origen al de destino, con la cantidad de productos reasignados en la descripción) —
+  // `entidadId` es el id del insumo, `sucursalId` null (catálogo central).
+  "Insumo",
 ] as const;
 
 /**

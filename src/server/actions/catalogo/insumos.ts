@@ -104,8 +104,8 @@ export async function previsualizarFusionInsumo(insumoId: string, nombreNuevo: s
  * mezcladas bajo el mismo Insumo).
  *
  * Desde el Hito 4 (H4C-9): permiso (`conPermisoDeEmpresa("insumo_renombrar_fusionar")`) → formato del nombre nuevo (`guardComandoRenombrarOFusionarInsumo`,
- * DENTRO del envoltorio) → caso de uso (`casos-de-uso/renombrar-o-fusionar-insumo.ts`: los dos insumos, el choque de unidades, la confirmación, y la fusión en
- * UNA transacción o el renombre) → `aResultadoAccion`.
+ * DENTRO del envoltorio) → caso de uso (`casos-de-uso/renombrar-o-fusionar-insumo.ts`: los dos insumos, el choque de unidades, la confirmación, y la fusión o el
+ * renombre en UNA transacción con su fila de auditoría — D-9, H4C-10) → `aResultadoAccion`.
  */
 export async function renombrarOFusionarInsumo(
   insumoId: string,

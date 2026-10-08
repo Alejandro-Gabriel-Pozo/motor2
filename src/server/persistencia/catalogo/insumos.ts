@@ -6,7 +6,8 @@ import type { Prisma } from "@prisma/client";
  * 4.3, paso H4C-9 — `docs/plan-hito-4-pureza.md` §3; mismo contrato que el resto de `server/persistencia/`: el cliente es el PRIMER parámetro, `data` literal,
  * sin reglas de negocio). Son EXACTAMENTE las escrituras que antes hacía en línea `src/server/actions/catalogo/insumos.ts` (con `reapuntarSustitutosDeInsumoFusionado`
  * movida tal cual, lecturas incluidas); las llaman los casos de uso `crear-insumo.ts`, `actualizar-activo-insumo.ts`, `actualizar-grupo-de-insumo.ts` y
- * `renombrar-o-fusionar-insumo.ts`. Un insumo no es plata ni cambia el significado de una cantidad: no se exige auditoría (las de grupos están en `grupos.ts`).
+ * `renombrar-o-fusionar-insumo.ts`. Un insumo no es plata ni cambia el significado de una cantidad: `escrituras-auditadas` no exige auditoría; aun así el renombre y
+ * la fusión los audita su caso de uso, en la misma transacción (D-9, H4C-10). Las de grupos están en `grupos.ts`.
  */
 
 /** Crea el insumo con ese nombre (ya recortado y validado). Devuelve el id y el nombre guardado. */
