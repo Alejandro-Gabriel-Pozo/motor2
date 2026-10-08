@@ -11,7 +11,7 @@ import { EMPRESA_TESTIGO_ID } from "../setup/empresa-de-prueba";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { revalidarCartasPublicas } from "../../src/server/actions/carta/revalidar";
 import { actualizarActivaCategoriaProducto } from "../../src/server/actions/catalogo/categorias-producto";
-import { actualizarActivoGrupo, actualizarActivoInsumo } from "../../src/server/actions/catalogo/insumos";
+import { actualizarActivoGrupo, actualizarActivoInsumo, actualizarGrupoDeInsumo } from "../../src/server/actions/catalogo/insumos";
 import { actualizarActivaPresentacion } from "../../src/server/actions/catalogo/productos";
 import { actualizarActivaProveedor } from "../../src/server/actions/catalogo/proveedores";
 import { actualizarActivaUnidad } from "../../src/server/actions/catalogo/unidades";
@@ -133,7 +133,8 @@ describe("O.44: activar o desactivar con un id que no existe o es ajeno", () => 
     sinEfectos();
   });
 
-  it.each(CASOS.filter((c) => c.arreglada))("$accion: un id que no es texto (S-07) → «$mensaje», sin tocar ninguna fila", async ({ llamar, mensaje }) => {
+  // O.44b (Hito 4, bloque E1): también las seis que ya leían la fila (antes, con un id `undefined` o un objeto, su `findUnique` hacía lanzar a Prisma: un 500).
+  it.each(CASOS)("$accion: un id que no es texto (S-07) → «$mensaje», sin tocar ninguna fila", async ({ llamar, mensaje }) => {
     const antes = await foto();
     for (const roto of [undefined, { not: "x" }]) expect(await llamar(roto as unknown as string)).toEqual({ ok: false, mensaje });
     expect(await foto()).toEqual(antes);
@@ -168,5 +169,46 @@ describe("O.44: activar o desactivar con un id que no existe o es ajeno", () => 
     // Las filas de la otra empresa siguen activas.
     expect((await prismaAdmin.unidad.findUniqueOrThrow({ where: { id: ajenas.unidad } })).activa).toBe(true);
     expect((await prismaAdmin.proveedor.findUniqueOrThrow({ where: { id: ajenas.proveedor } })).activo).toBe(true);
+  });
+
+  /**
+   * O.44b (Hito 4, bloque E1; arreglo chico aprobado por el principio de fallo cerrado): cambiar el grupo de un insumo con un id roto —el insumo o el grupo—
+   * hacía lanzar a Prisma (un `update` sobre un insumo que no existe, o la FK compuesta `(empresaId, grupoId)` con un grupo inexistente o ajeno). Ahora
+   * devuelve el «no encontrado» de cada uno, sin escribir y sin refrescar la vista.
+   */
+  describe("actualizarGrupoDeInsumo con un id roto (O.44b)", () => {
+    const NO_INSUMO = { ok: false, mensaje: "No se encontró el insumo." };
+    const NO_GRUPO = { ok: false, mensaje: "No se encontró el grupo." };
+
+    it("un insumo que no existe, ajeno o que no es texto → «No se encontró el insumo.», sin escribir ni refrescar", async () => {
+      const grupo = await prisma.grupo.create({ data: { nombre: "Harinas" } });
+      const antes = await foto();
+      for (const insumoId of ["cnoexiste000000000000000", ajenas.insumo, undefined, { not: "x" }]) {
+        expect(await actualizarGrupoDeInsumo(insumoId as unknown as string, grupo.id), JSON.stringify(insumoId)).toEqual(NO_INSUMO);
+        expect(await actualizarGrupoDeInsumo(insumoId as unknown as string, null), JSON.stringify(insumoId)).toEqual(NO_INSUMO);
+      }
+      expect(await foto()).toEqual(antes);
+      sinEfectos();
+    });
+
+    it("un grupo que no existe, ajeno o que no es texto (ni null) → «No se encontró el grupo.», sin escribir ni refrescar", async () => {
+      const insumo = await prisma.insumo.create({ data: { nombre: "Harina" } });
+      const antes = await foto();
+      for (const grupoId of ["cnoexiste000000000000000", ajenas.grupo, undefined, { not: "x" }]) {
+        expect(await actualizarGrupoDeInsumo(insumo.id, grupoId as unknown as string), JSON.stringify(grupoId)).toEqual(NO_GRUPO);
+      }
+      expect(await foto()).toEqual(antes);
+      sinEfectos();
+    });
+
+    it("control: con ids propios asigna y saca el grupo, y refresca una vez cada una", async () => {
+      const insumo = await prisma.insumo.create({ data: { nombre: "Harina" } });
+      const grupo = await prisma.grupo.create({ data: { nombre: "Harinas" } });
+      expect(await actualizarGrupoDeInsumo(insumo.id, grupo.id)).toEqual({ ok: true, mensaje: "Grupo del insumo actualizado." });
+      expect((await prisma.insumo.findUniqueOrThrow({ where: { id: insumo.id } })).grupoId).toBe(grupo.id);
+      expect(await actualizarGrupoDeInsumo(insumo.id, null)).toEqual({ ok: true, mensaje: "Grupo del insumo actualizado." });
+      expect((await prisma.insumo.findUniqueOrThrow({ where: { id: insumo.id } })).grupoId).toBeNull();
+      expect(vi.mocked(refresh)).toHaveBeenCalledTimes(2);
+    });
   });
 });

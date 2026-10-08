@@ -23,6 +23,8 @@ export async function actualizarActivoDestinoConsumoCasoDeUso(
   actor: Pick<ContextoUsuario, "db">,
   comando: ComandoActualizarActivoMotivo,
 ): Promise<ResultadoActualizarActivoMotivo> {
+  // O.44b (fallo cerrado): un id que no es texto (`undefined`, un objeto) hacía lanzar a `findUnique` (un 500); se descarta antes de leer, con el mismo «no encontrado».
+  if (typeof comando.id !== "string") return fracaso("NO_ENCONTRADO", "No se encontró el destino.");
   const destino = await actor.db.destinoConsumo.findUnique({ where: { id: comando.id } });
   if (!destino) return fracaso("NO_ENCONTRADO", "No se encontró el destino.");
 

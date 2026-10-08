@@ -23,9 +23,23 @@ export async function fijarActivoDeInsumo(db: Prisma.TransactionClient, args: { 
   return count > 0;
 }
 
-/** Pone el insumo en un grupo (`null` = sin grupo). Un id que no existe hace lanzar a Prisma (como antes). */
-export async function fijarGrupoDeInsumo(db: Prisma.TransactionClient, args: { id: string; grupoId: string | null }): Promise<void> {
-  await db.insumo.update({ where: { id: args.id }, data: { grupoId: args.grupoId } });
+/**
+ * Pone el insumo en un grupo (`null` = sin grupo) y dice qué faltó. O.44b (Hito 4, bloque E1; fallo cerrado): antes un id roto hacía lanzar a Prisma (un 500).
+ * Ahora, en este orden y sin escribir nada si algo falta:
+ *  1. lo que no es texto se descarta ANTES de tocar la base (S-07: en un `where` de `updateMany` un `undefined` o un objeto como `{ not: "x" }` significa
+ *     «todas las filas», y en `data` un `grupoId: undefined` significa «no lo cambies»): el insumo → `"sin-insumo"`; el grupo (si no es `null`) → `"sin-grupo"`;
+ *  2. el grupo pedido tiene que existir y ser de la empresa (la cuenta va bajo RLS): si no → `"sin-grupo"` (antes, la FK compuesta `(empresaId, grupoId)`
+ *     hacía lanzar; con un grupo ajeno también);
+ *  3. la escritura es un `updateMany` (atómico, sin otra lectura) y su `count` en 0 → `"sin-insumo"` (no existe o es de otra empresa).
+ */
+export async function fijarGrupoDeInsumo(db: Prisma.TransactionClient, args: { id: string; grupoId: string | null }): Promise<"ok" | "sin-insumo" | "sin-grupo"> {
+  if (typeof args.id !== "string") return "sin-insumo";
+  if (args.grupoId !== null) {
+    if (typeof args.grupoId !== "string") return "sin-grupo";
+    if ((await db.grupo.count({ where: { id: args.grupoId } })) === 0) return "sin-grupo";
+  }
+  const { count } = await db.insumo.updateMany({ where: { id: args.id }, data: { grupoId: args.grupoId } });
+  return count > 0 ? "ok" : "sin-insumo";
 }
 
 /** Le cambia el nombre al insumo (el renombre sin fusión). */

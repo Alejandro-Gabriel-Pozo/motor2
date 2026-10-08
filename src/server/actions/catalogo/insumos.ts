@@ -70,7 +70,8 @@ export async function actualizarActivoInsumo(insumoId: string, activo: boolean):
 export async function actualizarGrupoDeInsumo(insumoId: string, grupoId: string | null): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("grupos_familia", async (ctx) => {
     const resultado = await actualizarGrupoDeInsumoCasoDeUso(ctx, { insumoId, grupoId });
-    refrescarVistaSiHaceFalta(); // ver actualizarActivoInsumo
+    // Ver actualizarActivoInsumo. Desde O.44b solo si salió bien: un id roto devuelve su «no encontrado» sin escribir, no hay nada que refrescar.
+    if (resultado.ok) refrescarVistaSiHaceFalta();
     return aResultadoAccion(resultado);
   });
 }

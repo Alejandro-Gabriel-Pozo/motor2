@@ -24,6 +24,8 @@ export async function actualizarActivaSeccionCasoDeUso(
   comando: ComandoActualizarActivaSeccion,
 ): Promise<ResultadoActualizarActivaSeccion> {
   const { seccionId, activa } = comando;
+  // O.44b (fallo cerrado): un id que no es texto (`undefined`, un objeto) hacía lanzar a `findUnique` (un 500); se descarta antes de leer, con el mismo «no encontrado».
+  if (typeof seccionId !== "string") return fracaso("NO_ENCONTRADA", "No se encontró la sección.");
   const seccion = await actor.db.seccion.findUnique({ where: { id: seccionId } });
   if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró la sección.");
 

@@ -79,7 +79,7 @@ const SIN_GUARD: Record<string, string> = {
   "src/server/actions/catalogo/insumos.ts#actualizarActivoInsumo":
     "Activar o desactivar un insumo (Hito 4, H4C-9): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso: desde O.44, «No se encontró el insumo.» por el `count` del `updateMany`); un guard de formato no tiene nada que mirar.",
   "src/server/actions/catalogo/insumos.ts#actualizarGrupoDeInsumo":
-    "Cambiar el grupo de un insumo (Hito 4, H4C-9): solo recibe dos ids (el grupo puede ser null), que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+    "Cambiar el grupo de un insumo (Hito 4, H4C-9): solo recibe dos ids (el grupo puede ser null), que nunca se validaron en la acción (los resuelve el caso de uso: desde O.44b, «No se encontró el insumo.» / «No se encontró el grupo.», sin escribir); un guard de formato no tiene nada que mirar.",
   "src/server/actions/catalogo/productos.ts#asignarInsumoAProducto":
     "Asignar el insumo a una MP (Hito 4, H4C-11): solo recibe dos ids, que nunca se validaron en la acción (los resuelve el caso de uso: «No se encontró el producto.», que sea MP y el choque de unidades); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/catalogo/productos.ts#agregarPresentacionAlternativa":

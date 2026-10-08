@@ -20,6 +20,8 @@ import { fijarActivaDePromo } from "@/server/persistencia/carta/promos";
  */
 export async function actualizarActivaPromoCartaCasoDeUso(actor: Pick<ContextoUsuario, "db">, comando: ComandoActivarPromoCarta): Promise<ResultadoActivarPromoCarta> {
   const { promoCartaId, activa } = comando;
+  // O.44b (fallo cerrado): un id que no es texto (`undefined`, un objeto) hacía lanzar a `findUnique` (un 500); se descarta antes de leer, con el mismo «no encontrado».
+  if (typeof promoCartaId !== "string") return fracaso("PROMO_NO_ENCONTRADA", "No se encontró la promo.");
   const existente = await actor.db.promoCarta.findUnique({ where: { id: promoCartaId } });
   if (!existente) return fracaso("PROMO_NO_ENCONTRADA", "No se encontró la promo.");
   await fijarActivaDePromo(actor.db, { id: promoCartaId, activa });

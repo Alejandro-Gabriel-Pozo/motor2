@@ -26,6 +26,8 @@ export async function actualizarActivoClienteCasoDeUso(
   comando: ComandoActualizarActivoCliente,
 ): Promise<ResultadoActualizarActivoCliente> {
   const { clienteId, activo } = comando;
+  // O.44b (fallo cerrado): un id que no es texto (`undefined`, un objeto) hacía lanzar a `findUnique` (un 500); se descarta antes de leer, con el mismo «no encontrado».
+  if (typeof clienteId !== "string") return fracaso("NO_ENCONTRADO", "No se encontró ese cliente.");
   const cliente = await actor.db.cliente.findUnique({ where: { id: clienteId } });
   if (!cliente) return fracaso("NO_ENCONTRADO", "No se encontró ese cliente.");
   await actor.transaccion(async (tx) => {

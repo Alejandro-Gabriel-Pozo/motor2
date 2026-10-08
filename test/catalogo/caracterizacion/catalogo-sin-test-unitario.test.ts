@@ -20,7 +20,8 @@ import { actualizarActivaUnidad } from "../../../src/server/actions/catalogo/uni
  * que pasa con un id que no existe (las de activar no lo chequeaban: el `update` de Prisma lanzaba; hallazgo conocido, se fijó tal cual).
  *
  * O.44 (Hito 4, bloque D; cambio de comportamiento aprobado por el dueño): las 4 de activar devuelven ahora su «no encontrado» con un id que no existe. Cambió
- * SOLO esa aserción de cada una (y el título que la describía); la de `actualizarGrupoDeInsumo` sigue lanzando (no es de activar). Red: `activar-id-inexistente`.
+ * SOLO esa aserción de cada una (y el título que la describía); la de `actualizarGrupoDeInsumo` siguió lanzando (no es de activar) hasta O.44b (Hito 4, bloque
+ * E1), que cambió SOLO su última aserción: ahora «No se encontró el insumo.». Red: `activar-id-inexistente`.
  */
 describe("catálogo: las 7 acciones sin test unitario (caracterización)", () => {
   beforeEach(async () => {
@@ -104,7 +105,7 @@ describe("catálogo: las 7 acciones sin test unitario (caracterización)", () =>
     expect(await actualizarGrupoDeInsumo(i.id, null)).toEqual({ ok: true, mensaje: "Grupo del insumo actualizado." });
     expect((await prisma.insumo.findUniqueOrThrow({ where: { id: i.id } })).grupoId).toBeNull();
     expect(refrescos()).toBe(1);
-    await expect(actualizarGrupoDeInsumo("no-existe", null)).rejects.toThrow();
+    expect(await actualizarGrupoDeInsumo("no-existe", null)).toEqual({ ok: false, mensaje: "No se encontró el insumo." }); // O.44b: antes lanzaba
   });
 
   it("actualizarActivoGrupo: desactiva y activa, refresca una vez cada una; un id que no existe no se encuentra (O.44)", async () => {
