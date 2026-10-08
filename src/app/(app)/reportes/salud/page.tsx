@@ -11,7 +11,9 @@ export default async function SaludPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_salud", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const filas = await generarReporteSaludPorProducto(ctx.sucursalId, ctx.db);
+  // La hora se fija acá, en el borde (D.3a): el reporte la recibe por parámetro.
+  const ahora = new Date();
+  const filas = await generarReporteSaludPorProducto(ctx.sucursalId, ctx.db, ahora);
   const conAtencion = filas.filter((f) => f.resumen === "Atención").length;
 
   return (

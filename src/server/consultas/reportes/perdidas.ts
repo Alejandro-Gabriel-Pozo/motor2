@@ -32,10 +32,13 @@ const SIN_DESTINO = "(automático por receta)";
  * tenía respuesta sin ir a mirar la base. Cada fila linkea a
  * `idOperacion` para el detalle completo (sección, resto de la
  * operación) en Trazabilidad, en vez de duplicar esos datos acá.
+ *
+ * `ahora` (D.3a de docs/pureza-integracion.md) es obligatorio: el «hace N días» se cuenta desde la hora que fija el borde (la página), no desde un reloj
+ * leído acá.
  */
-export async function generarReportePerdidas(sucursalId: string, diasAtras: number, db: Db): Promise<ReportePerdidas> {
+export async function generarReportePerdidas(sucursalId: string, diasAtras: number, db: Db, ahora: Date): Promise<ReportePerdidas> {
   const dias = diasAtras > 0 ? diasAtras : 30;
-  const haceNDias = new Date();
+  const haceNDias = new Date(ahora);
   haceNDias.setUTCDate(haceNDias.getUTCDate() - dias);
   const desde = inicioDelDiaDe(haceNDias, ZONA_UTC);
 

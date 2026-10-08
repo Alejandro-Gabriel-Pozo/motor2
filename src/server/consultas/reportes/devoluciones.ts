@@ -18,10 +18,12 @@ import type { FilaDevolucionProducto, ReporteDevoluciones, AccProducto } from "@
  * `sinPrecio`, cada fila dice qué hacer y dónde en vez de solo avisar que
  * falta un dato — mismo criterio "Se produce" que `resolverAccionFaltante`
  * (Costos) y `generarReporteHuecosCatalogo` (§8.7).
+ *
+ * `ahora` (D.3a de docs/pureza-integracion.md) es obligatorio: el «hace N días» se cuenta desde la hora que fija el borde (la página).
  */
-export async function generarReporteDevoluciones(sucursalId: string, diasAtras: number, db: Db): Promise<ReporteDevoluciones> {
+export async function generarReporteDevoluciones(sucursalId: string, diasAtras: number, db: Db, ahora: Date): Promise<ReporteDevoluciones> {
   const dias = diasAtras > 0 ? diasAtras : 30;
-  const haceNDias = new Date();
+  const haceNDias = new Date(ahora);
   haceNDias.setUTCDate(haceNDias.getUTCDate() - dias);
   const desde = inicioDelDiaDe(haceNDias, ZONA_UTC);
 

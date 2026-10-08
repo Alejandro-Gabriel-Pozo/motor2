@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
 import { generarReporteSaludPorProducto } from "../../src/server/consultas/reportes/salud-por-producto";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 describe("generarReporteSaludPorProducto", () => {
   let sucursalId: string;
@@ -30,7 +31,7 @@ describe("generarReporteSaludPorProducto", () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Sin receta", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
 
-    const filas = await generarReporteSaludPorProducto(sucursalId, prisma);
+    const filas = await generarReporteSaludPorProducto(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     const fila = filas.find((f) => f.productoId === mp.id)!;
     expect(fila.sinRecetaVinculada).toBe(true);
     expect(fila.resumen).toBe("Atención");
@@ -44,7 +45,7 @@ describe("generarReporteSaludPorProducto", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
     await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" }); // diferencia 0 -> CONCILIADO
 
-    const filas = await generarReporteSaludPorProducto(sucursalId, prisma);
+    const filas = await generarReporteSaludPorProducto(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     const fila = filas.find((f) => f.productoId === mp.id)!;
     expect(fila.estadoConsolidado).toBe("CONCILIADO");
     expect(fila.estadoAlerta).toBe("OK");

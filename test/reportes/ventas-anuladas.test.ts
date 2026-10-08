@@ -14,6 +14,7 @@ import { generarReporteVentasSinReceta } from "../../src/server/consultas/report
 import { generarReportePerdidas } from "../../src/server/consultas/reportes/perdidas";
 import { generarReporteDiferenciasAjustes } from "../../src/server/consultas/reportes/diferencias-ajustes";
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "../../src/core/movimientos/anulaciones";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Una VENTA anulada es una venta que no ocurrió: ningún reporte de dinero ni de consumo la cuenta. Antes `anularVenta` escribía el contra-asiento (stock bien) pero
@@ -166,13 +167,13 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }] });
       const registrada = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: panId, cantidadVendida: 1 }] });
       expect(registrada.ok, registrada.mensaje).toBe(true);
-      const antes = await generarReportePerdidas(sucursalId, 30, prisma);
+      const antes = await generarReportePerdidas(sucursalId, 30, prisma, AHORA_DE_LA_CORRIDA);
       expect(antes.consumos.length).toBeGreaterThan(0);
       expect(antes.totalConsumo).toBe(10); // 2 kg de harina a $5
 
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
       await anularVenta(op.id);
-      const despues = await generarReportePerdidas(sucursalId, 30, prisma);
+      const despues = await generarReportePerdidas(sucursalId, 30, prisma, AHORA_DE_LA_CORRIDA);
       expect(despues.consumos).toEqual([]);
       expect(despues.totalConsumo).toBe(0);
     });
@@ -180,7 +181,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
 
   describe("Diferencias de ajuste: la reversión por anulación no es un ajuste manual", () => {
     async function ajusteDeHarina() {
-      const fila = (await generarReporteDiferenciasAjustes(sucursalId, prisma)).find((f) => f.productoId === harinaId);
+      const fila = (await generarReporteDiferenciasAjustes(sucursalId, prisma, AHORA_DE_LA_CORRIDA)).find((f) => f.productoId === harinaId);
       return { suma: fila?.sumaAjustesManuales ?? 0, sugerencia: fila?.sugerenciaMerma ?? null };
     }
 

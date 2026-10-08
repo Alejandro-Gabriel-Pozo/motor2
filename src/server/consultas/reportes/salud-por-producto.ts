@@ -12,7 +12,8 @@ import type { Db } from "@/lib/db-tipos";
  * Diferencias de Ajuste e Insumos sin receta. Esta consulta junta los cuatro; el cruce es puro y vive en `core/reportes/salud-por-producto.ts` (Pureza Fase 3).
  * Sin guarda de permiso adentro: la página la pone antes.
  */
-export async function generarReporteSaludPorProducto(sucursalId: string, db: Db): Promise<FilaSaludProducto[]> {
+export async function generarReporteSaludPorProducto(sucursalId: string, db: Db, ahora: Date): Promise<FilaSaludProducto[]> {
+  // `ahora` (D.3a): lo usa Diferencias de ajuste (el vencimiento de la agenda de conteo); antes se le pasaba `undefined` y leía el reloj por su cuenta.
   // Lo que los cuatro leían cada uno por su cuenta se lee UNA vez y se les pasa (O.39 de docs/pureza-integracion.md): el mapa de productos de la sucursal
   // (Diferencias e Insumos sin receta armaban el mismo, 5 consultas cada uno; Alertas toma de él los productos que nombra) y las secciones de la sucursal
   // (Stock Consolidado y Alertas hacían la misma lectura). Cada reporte sigue calculando lo suyo con sus propias funciones.
@@ -20,7 +21,7 @@ export async function generarReporteSaludPorProducto(sucursalId: string, db: Db)
   const [consolidado, alertas, diferencias, sinReceta] = await Promise.all([
     calcularStockConsolidado(sucursalId, db, secciones),
     calcularAlertasStock(sucursalId, db, { productos: Array.from(productos.values()), secciones }),
-    generarReporteDiferenciasAjustes(sucursalId, db, undefined, productos),
+    generarReporteDiferenciasAjustes(sucursalId, db, ahora, productos),
     generarReporteInsumosSinRecetaVinculada(sucursalId, db, productos),
   ]);
   return armarSaludPorProducto(consolidado, alertas, diferencias, sinReceta);

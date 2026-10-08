@@ -15,7 +15,9 @@ export default async function DevolucionesPage({ searchParams }: { searchParams:
 
   const sp = unicosDeUrl(await searchParams);
   const dias = diasAtrasDeUrl(sp.dias, 30);
-  const rep = await generarReporteDevoluciones(ctx.sucursalId, dias, ctx.db);
+  // La hora se fija acá, en el borde (D.3a): el reporte la recibe por parámetro.
+  const ahora = new Date();
+  const rep = await generarReporteDevoluciones(ctx.sucursalId, dias, ctx.db, ahora);
 
   return (
     <div className="flex flex-col gap-6">

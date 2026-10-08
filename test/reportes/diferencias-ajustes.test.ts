@@ -40,7 +40,7 @@ describe("generarReporteDiferenciasAjustes", () => {
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mpSinReceta.id, cantidad: -2 }] });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mpConReceta.id, cantidad: -2 }] });
 
-    const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma);
+    const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
     expect(filas.find((f) => f.productoId === mpSinReceta.id)).toMatchObject({ grupo: "a", estado: "REVISAR" });
     expect(filas.find((f) => f.productoId === mpConReceta.id)).toMatchObject({ grupo: "b", estado: "ESPERADO" });
   });
@@ -52,7 +52,7 @@ describe("generarReporteDiferenciasAjustes", () => {
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -1 }] });
     await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 6, fechaConteo: new Date(), accion: "AJUSTAR" }); // saldoSistema=9, diferencia=-3
 
-    const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma);
+    const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
     const fila = filas.find((f) => f.productoId === mp.id)!;
     expect(fila.sumaAjustesManuales).toBe(-1);
     expect(fila.sumaConteosFisicos).toBe(-3);
@@ -62,7 +62,7 @@ describe("generarReporteDiferenciasAjustes", () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
 
-    const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma);
+    const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
     expect(filas.find((f) => f.productoId === mp.id)).toMatchObject({ grupo: "a", estado: "OK" });
   });
 
@@ -80,7 +80,7 @@ describe("generarReporteDiferenciasAjustes", () => {
     it("lista la receta que usa el insumo, con su merma % vigente", async () => {
       const { mp, pv } = await armarMpConReceta(5);
 
-      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma);
+      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
       const fila = filas.find((f) => f.productoId === mp.id)!;
       expect(fila.recetasQueLoUsan).toEqual([{ productoVentaId: pv.id, productoVentaNombre: "Pan", mermaPorcentajeActual: 5 }]);
     });
@@ -89,7 +89,7 @@ describe("generarReporteDiferenciasAjustes", () => {
       const { mp } = await armarMpConReceta(5);
       await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -2 }] });
 
-      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma);
+      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
       expect(filas.find((f) => f.productoId === mp.id)?.sugerenciaMerma).toBe("aumentar");
     });
 
@@ -97,14 +97,14 @@ describe("generarReporteDiferenciasAjustes", () => {
       const { mp } = await armarMpConReceta(5);
       await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 2 }] });
 
-      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma);
+      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
       expect(filas.find((f) => f.productoId === mp.id)?.sugerenciaMerma).toBe("disminuir");
     });
 
     it("sin ningún Ajuste/Conteo, no hay sugerencia (nada para recalibrar)", async () => {
       const { mp } = await armarMpConReceta(5);
 
-      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma);
+      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
       expect(filas.find((f) => f.productoId === mp.id)?.sugerenciaMerma).toBeNull();
     });
 
@@ -113,7 +113,7 @@ describe("generarReporteDiferenciasAjustes", () => {
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
       await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -2 }] });
 
-      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma);
+      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
       const fila = filas.find((f) => f.productoId === mp.id)!;
       expect(fila.recetasQueLoUsan).toEqual([]);
       expect(fila.sugerenciaMerma).toBeNull();
@@ -123,7 +123,7 @@ describe("generarReporteDiferenciasAjustes", () => {
   describe("proximaFechaConteo / conteoVencido (sub-plan S6 — la agenda de conteo periódico)", () => {
     it("sin ninguna fila de FrecuenciaConteoProducto, no hay agenda: null, nunca vencido", async () => {
       const mp = await sembrarProductoDisponible({ codigo: "MP_SIN_AGENDA", nombre: "Sin agenda", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma);
+      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
       const fila = filas.find((f) => f.productoId === mp.id)!;
       expect(fila.proximaFechaConteo).toBeNull();
       expect(fila.conteoVencido).toBe(false);
@@ -146,7 +146,7 @@ describe("generarReporteDiferenciasAjustes", () => {
       const mp = await sembrarProductoDisponible({ codigo: "MP_AGENDA_NUNCA", nombre: "Agenda sin conteo", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       await setFrecuenciaConteo(mp.id, 7);
 
-      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma);
+      const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
       const fila = filas.find((f) => f.productoId === mp.id)!;
       expect(fila.conteoVencido).toBe(true);
       expect(fila.proximaFechaConteo).toBeNull();

@@ -239,10 +239,10 @@ describe("Caracterización de los reportes (C0): resultado y conteo de consultas
     await reporte("descuentos-productos.obtenerReporteDescuentosProductos(Central, período)", (db) => obtenerReporteDescuentosProductos(S1, DESDE_DIA, HASTA_FIN, db));
 
     // devoluciones.ts
-    await reporte("devoluciones.generarReporteDevoluciones(Central, 30 días)", (db) => generarReporteDevoluciones(S1, 30, db));
+    await reporte("devoluciones.generarReporteDevoluciones(Central, 30 días)", (db) => generarReporteDevoluciones(S1, 30, db, AHORA));
 
     // diferencias-ajustes.ts
-    await reporte("diferencias-ajustes.generarReporteDiferenciasAjustes(Central, hoy = reloj)", (db) => generarReporteDiferenciasAjustes(S1, db));
+    await reporte("diferencias-ajustes.generarReporteDiferenciasAjustes(Central, hoy = reloj)", (db) => generarReporteDiferenciasAjustes(S1, db, AHORA));
 
     // historial-producto.ts
     await reporte("historial-producto.buscarProductoParaHistorial(Central, «pizza»)", (db) => buscarProductoParaHistorial(S1, "pizza", db));
@@ -267,7 +267,7 @@ describe("Caracterización de los reportes (C0): resultado y conteo de consultas
     await reporte("margen-real.calcularMargenRealDelPeriodo(Central, las líneas del período, sin catálogo precargado)", (db) => calcularMargenRealDelPeriodo(S1, itemsMargen, db));
 
     // perdidas.ts — ordenado por `Operacion.fecha` desc: los consumos automáticos de UNA venta empatan; se desempata por producto.
-    await reporte("perdidas.generarReportePerdidas(Central, 30 días)", (db) => generarReportePerdidas(S1, 30, db), {
+    await reporte("perdidas.generarReportePerdidas(Central, 30 días)", (db) => generarReportePerdidas(S1, 30, db, AHORA), {
       normalizar: (r) => ({ ...r, mermas: ordenar(r.mermas, (x) => -x.fecha.getTime(), (x) => x.producto), consumos: ordenar(r.consumos, (x) => -x.fecha.getTime(), (x) => x.producto) }),
     });
 
@@ -309,7 +309,7 @@ describe("Caracterización de los reportes (C0): resultado y conteo de consultas
 
     // rotacion-mesas.ts / salud-por-producto.ts
     await reporte("rotacion-mesas.generarReporteRotacionMesas(Central, 1-mar → 15-mar, Buenos Aires)", (db) => generarReporteRotacionMesas(S1, new Date("2026-03-01T00:00:00Z"), HASTA_DIA, "America/Argentina/Buenos_Aires", db));
-    await reporte("salud-por-producto.generarReporteSaludPorProducto(Central)", (db) => generarReporteSaludPorProducto(S1, db));
+    await reporte("salud-por-producto.generarReporteSaludPorProducto(Central)", (db) => generarReporteSaludPorProducto(S1, db, AHORA));
 
     // tickets-emitidos.ts
     await reporte("tickets-emitidos.listarTicketsEmitidos(Central, sin filtro)", (db) => listarTicketsEmitidos(S1, {}, db));
@@ -325,9 +325,9 @@ describe("Caracterización de los reportes (C0): resultado y conteo de consultas
     await reporte("valuacion.calcularValuacionInventario(Central)", (db) => calcularValuacionInventario(S1, db));
 
     // vencimientos.ts
-    await reporte("vencimientos.generarReporteLotesProximosAVencer(Central, 7 días)", (db) => generarReporteLotesProximosAVencer(S1, 7, db));
+    await reporte("vencimientos.generarReporteLotesProximosAVencer(Central, 7 días)", (db) => generarReporteLotesProximosAVencer(S1, 7, db, AHORA));
     await reporte("vencimientos.generarConciliacionVencimientos(Central)", (db) => generarConciliacionVencimientos(S1, db));
-    await reporte("vencimientos.obtenerReporteVencimientosDatos(Central, 7 días)", (db) => obtenerReporteVencimientosDatos(S1, 7, db));
+    await reporte("vencimientos.obtenerReporteVencimientosDatos(Central, 7 días)", (db) => obtenerReporteVencimientosDatos(S1, 7, db, AHORA));
 
     // ventas-sin-receta.ts
     await reporte("ventas-sin-receta.generarReporteVentasSinReceta(Central)", (db) => generarReporteVentasSinReceta(S1, db));
