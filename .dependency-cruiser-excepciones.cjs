@@ -244,6 +244,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 4, bloque 4.2, H4C-4: setPrecioLocalProducto → movimientos/casos-de-uso/set-precio-local-producto.ts y sincronizarPrecioLocalGrupoCarta → sincronizar-precio-local-grupo-carta.ts, con el paso compartido guardar-precio-local-en-tx.ts (escritura en server/persistencia/movimientos/precio-local.ts y sus dos filas de auditoría en la misma transacción); el formato lo validan sus guardComando* (core/features/movimientos/precio-local.guard.ts) dentro de conPermiso. La acción revalida la carta pública y, después, calcula el sincronizable con el ítem agrupado (como antes). obtenerPrecioLocalProducto y listarPreciosLocales son lecturas.",
   },
+  {
+    ruta: "src/server/actions/catalogo/rendimiento-local.ts",
+    motivo:
+      "Hito 4, bloque 4.2, H4C-5: fijarRendimientoLocal → catalogo/casos-de-uso/fijar-rendimiento-local.ts (con guardComandoFijarRendimientoLocal, core/features/catalogo) y volverAlRendimientoCentral → volver-al-rendimiento-central.ts (transacción SERIALIZABLE con reintento, la línea vigente, la escritura en server/persistencia/catalogo/rendimiento-local.ts, la auditoría y el .catch del conflicto agotado viven en el caso de uso); la acción refresca la vista si salió bien (volver, solo si hubo cambio). El archivo no tiene ninguna otra función.",
+  },
 ];
 
 module.exports = {

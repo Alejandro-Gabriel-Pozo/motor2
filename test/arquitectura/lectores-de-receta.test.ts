@@ -85,9 +85,16 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
       "cargarUltimaVersionDeReceta (Task #41, P1) / cargarIdDeVersionCentralVigente (R3): la última versión de UNA serie —la central o la propia de una sucursal— para calcular MAX(version)+1 de ESA serie, y la central vigente en la que se basa una propia; el arrastre de D3 es solo de la central — lee las series por separado, nunca resuelve ningún efectivo.",
   },
   {
-    ruta: "server/actions/catalogo/rendimiento-local.ts",
+    ruta: "server/actions/catalogo/casos-de-uso/fijar-rendimiento-local.ts",
     clase: "central",
-    motivo: "fijarRendimientoLocal/volverAlRendimientoCentral leen la línea (RecetaIngrediente) y la versión vigente para VALIDAR que la calibración apunte a la versión actual — no resuelven ningún rendimiento efectivo, escriben el override tal cual.",
+    motivo:
+      "fijarRendimientoLocal (Hito 4, H4C-5: antes en server/actions/catalogo/rendimiento-local.ts) lee la línea (RecetaIngrediente) y la versión vigente para VALIDAR que la calibración apunte a la versión actual — no resuelve ningún rendimiento efectivo, escribe el override tal cual.",
+  },
+  {
+    ruta: "server/actions/catalogo/casos-de-uso/volver-al-rendimiento-central.ts",
+    clase: "central",
+    motivo:
+      "volverAlRendimientoCentral (Hito 4, H4C-5: antes en server/actions/catalogo/rendimiento-local.ts) lee la línea y la versión vigente para VALIDAR que la calibración apunte a la versión actual — no resuelve ningún rendimiento efectivo.",
   },
   {
     ruta: "server/consultas/catalogo/recetas.ts",
