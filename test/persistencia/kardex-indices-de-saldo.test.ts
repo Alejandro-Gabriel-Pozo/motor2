@@ -1,7 +1,5 @@
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { EMPRESA_DE_PRUEBA_ID } from "../setup/empresa-de-prueba";
+import { clienteConEmpresaDePruebaConLogDeQueries, EMPRESA_DE_PRUEBA_ID } from "../setup/empresa-de-prueba";
 import { analizarDespuesDeCargaMasiva, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, sembrarCatalogoBase, sembrarSeccion, vaciarOperacionesPorVolumen } from "../setup/test-db";
 import { cargarDeudaDeRedondeo } from "../../src/server/lecturas/movimientos/deuda-de-redondeo";
 import { seccionesConStock } from "../../src/server/lecturas/movimientos/saldos";
@@ -38,7 +36,7 @@ interface ConsultaCapturada {
 
 describe("índice de saldo del Kardex: lo que usan seccionesConStock y la deuda de redondeo", () => {
   const consultas: ConsultaCapturada[] = [];
-  let capturador: PrismaClient<{ log: [{ emit: "event"; level: "query" }] }>;
+  let capturador: ReturnType<typeof clienteConEmpresaDePruebaConLogDeQueries>;
   let sucursalId: string;
   let productoId: string;
 
@@ -70,10 +68,7 @@ describe("índice de saldo del Kardex: lo que usan seccionesConStock y la deuda 
     await analizarDespuesDeCargaMasiva();
 
     // Un cliente aparte (mismo rol y misma empresa de prueba que el resto de los tests) con el log de queries: el SQL que llega a Postgres, con sus `$n`.
-    capturador = new PrismaClient({
-      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "", options: `-c app.empresa_id=${EMPRESA_DE_PRUEBA_ID}` }),
-      log: [{ emit: "event", level: "query" }],
-    });
+    capturador = clienteConEmpresaDePruebaConLogDeQueries(process.env.DATABASE_URL ?? "");
     capturador.$on("query", (e) => {
       consultas.push({ query: e.query, params: JSON.parse(e.params) as unknown[] });
     });
