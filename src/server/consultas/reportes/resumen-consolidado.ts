@@ -1,11 +1,11 @@
 import "server-only";
 import { armarAlertasStock, resumirAlertasStock } from "@/core/stock/public";
 import { calcularComprasDelPeriodo, calcularMargenNominalDelPeriodo, calcularVentasDelPeriodo, resolverRangoPorDefecto } from "@/core/reportes/public";
-import { cargarCatalogoDeProductos, cargarClasificacionNoComestibles, type CatalogoDeProductos } from "@/server/lecturas/reportes/comun";
+import { cargarCatalogoDeProductos, cargarClasificacionNoComestibles, obtenerCostoActualPorMPDeSucursales, type CatalogoDeProductos } from "@/server/lecturas/reportes/comun";
 import { calcularCostosYMargenes } from "@/server/lecturas/reportes/costos";
 import { cargarLineasDelPeriodoDeSucursales } from "@/server/consultas/reportes/periodo";
 import type { Db } from "@/lib/db-tipos";
-import type { FilaResumenConsolidado, InfoProductoReporte, ItemPeriodo } from "@/core/reportes/public";
+import type { CostoMP, FilaResumenConsolidado, InfoProductoReporte, ItemPeriodo } from "@/core/reportes/public";
 
 /**
  * Un resumen por sucursal, lado a lado — para quien pertenece a varias (ver src/core/auth/contexto.ts, `membresias`). Muestra SOLO ventas, margen, gastado y
@@ -21,9 +21,9 @@ import type { FilaResumenConsolidado, InfoProductoReporte, ItemPeriodo } from "@
  *  - por sucursal queda solo lo que es de ella: su Precio Local y su disponibilidad (el mapa de productos), sus recetas (la propia o la central con sus
  *    calibraciones) y su costo de reposición — y se calcula solo lo que se muestra: ventas (`calcularVentasDelPeriodo`), gastado
  *    (`calcularComprasDelPeriodo`) y el margen NOMINAL (`calcularMargenNominalDelPeriodo`, el mismo `margenTotal` del reporte del período).
- * O.38b (D1 de docs/plan-hito-4-pureza.md §4): las líneas del período de todas las sucursales salen de UNA lectura (`cargarLineasDelPeriodoDeSucursales`, la
- * misma implementación que usa el reporte de una sucursal con un solo elemento). Lo que sigue creciendo con las sucursales (6 lecturas cada una) son los
- * demás cargadores por sucursal.
+ * O.38b (D1 y D2 de docs/plan-hito-4-pureza.md §4): las líneas del período (`cargarLineasDelPeriodoDeSucursales`) y el costo de reposición
+ * (`obtenerCostoActualPorMPDeSucursales`) de todas las sucursales salen de UNA lectura cada uno, con la misma implementación que usa el reporte (y la venta)
+ * de una sucursal con un solo elemento. Lo que sigue creciendo con las sucursales (5 lecturas cada una) son los demás cargadores por sucursal.
  */
 export async function obtenerResumenConsolidado(
   sucursales: { id: string; nombre: string }[],
@@ -38,12 +38,14 @@ export async function obtenerResumenConsolidado(
 
   const [clasificacion, catalogo] = await Promise.all([cargarClasificacionNoComestibles(db), cargarCatalogoDeProductos(db)]);
   const sucursalIds = sucursales.map((s) => s.id);
-  const [alertasPorSucursal, lineas] = await Promise.all([
+  const [alertasPorSucursal, lineas, costos] = await Promise.all([
     resumirAlertasDeSucursales(sucursalIds, catalogo, db),
     // Las líneas del período de TODAS las sucursales en una lectura, y el catálogo de cada una (O.38b, D1).
     cargarLineasDelPeriodoDeSucursales(sucursalIds, desde, hasta, {}, db, { clasificacion, catalogo }),
+    // El costo de reposición de HOY de todas las sucursales en una lectura (O.38b, D2).
+    obtenerCostoActualPorMPDeSucursales(sucursalIds, db),
   ]);
-  const financieros = await Promise.all(sucursales.map((s) => financieroDeLaSucursal(s.id, lineas.porSucursal.get(s.id)!, db)));
+  const financieros = await Promise.all(sucursales.map((s) => financieroDeLaSucursal(s.id, lineas.porSucursal.get(s.id)!, costos.get(s.id)!, db)));
   return sucursales.map((s, i) => {
     const alertas = alertasPorSucursal.get(s.id) ?? { criticos: 0, bajos: 0 };
     return {
@@ -66,12 +68,13 @@ export async function obtenerResumenConsolidado(
 async function financieroDeLaSucursal(
   sucursalId: string,
   { items, productos }: { items: ItemPeriodo[]; productos: Map<string, InfoProductoReporte> },
+  costosActuales: Map<string, CostoMP>,
   db: Db
 ): Promise<{ ventasTotal: number; margenTotal: number; gastadoTotal: number }> {
   const ventas = calcularVentasDelPeriodo(items, productos);
   const compras = calcularComprasDelPeriodo(items, productos);
-  // El costo de HOY de cada plato (receta efectiva de la sucursal + su costo de reposición), sin objetivos: lo mismo que usa el margen del período.
-  const { margenTotal } = calcularMargenNominalDelPeriodo(ventas, await calcularCostosYMargenes(sucursalId, db, productos));
+  // El costo de HOY de cada plato (receta efectiva de la sucursal + su costo de reposición, ya leído), sin objetivos: lo mismo que usa el margen del período.
+  const { margenTotal } = calcularMargenNominalDelPeriodo(ventas, await calcularCostosYMargenes(sucursalId, db, productos, undefined, undefined, costosActuales));
   return { ventasTotal: ventas.totalFacturado, margenTotal, gastadoTotal: compras.totalGastado };
 }
 

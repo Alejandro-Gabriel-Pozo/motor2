@@ -122,32 +122,47 @@ export async function construirIndiceRecetas(db: Db, sucursalId?: string): Promi
  * fecha, la "más reciente" es la más reciente ANTES de esa fecha, no la
  * más reciente en absoluto — para poder recalcular el costo de una receta
  * "como era antes de este período" y compararlo contra el costo de hoy.
+ *
+ * Es la de N sucursales (`obtenerCostoActualPorMPDeSucursales`) con un solo elemento: UNA implementación (O.38b de docs/pureza-integracion.md, D2).
+ * La usan la venta (el costo congelado, dentro de su transacción) y los reportes de una sucursal.
  */
 export async function obtenerCostoActualPorMP(sucursalId: string, db: Db, antesDe?: Date): Promise<Map<string, CostoMP>> {
-  // 1 fila por producto (la compra más reciente), no una por compra: traer toda la historia de la sucursal con `include`
+  return (await obtenerCostoActualPorMPDeSucursales([sucursalId], db, antesDe)).get(sucursalId)!;
+}
+
+/**
+ * `obtenerCostoActualPorMP` de VARIAS sucursales en UNA consulta (O.38b, D2 de docs/plan-hito-4-pureza.md §4): la compra más reciente de cada producto
+ * EN CADA sucursal (`DISTINCT ON (sucursal, producto)`), repartida por sucursal. Cada sucursal sale en el resultado aunque no tenga compras (mapa vacío).
+ * Con un solo elemento lee lo mismo que antes (`IN ($1)` es `= $1` para Postgres, y la sucursal constante no cambia ni el orden ni el desempate). El
+ * Consolidado la llama con todas sus sucursales.
+ */
+export async function obtenerCostoActualPorMPDeSucursales(sucursalIds: readonly string[], db: Db, antesDe?: Date): Promise<Map<string, Map<string, CostoMP>>> {
+  const porSucursal = new Map(sucursalIds.map((id) => [id, new Map<string, CostoMP>()]));
+  // `Prisma.join` de una lista vacía no es SQL válido: sin sucursales no hay nada que leer.
+  if (sucursalIds.length === 0) return porSucursal;
+  // 1 fila por (sucursal, producto) (la compra más reciente), no una por compra: traer toda la historia de la sucursal con `include`
   // superaba el límite de parámetros de Prisma 7 con ~55k compras. Empate de fecha: gana el `m."id"` mayor (determinista).
   // La sucursal fija la empresa (`Seccion` y `Operacion` la comparten por FK compuesta); el aislamiento entre empresas lo
   // sigue haciendo el `db` recibido (RLS, A6).
-  const compras = await db.$queryRaw<Array<{ productoId: string; precioPorUnidadStock: Prisma.Decimal; fecha: Date; proveedorNombre: string | null }>>`
-    SELECT DISTINCT ON (m."productoId") m."productoId", m."precioPorUnidadStock", o."fecha", p."nombre" AS "proveedorNombre"
+  const compras = await db.$queryRaw<Array<{ sucursalId: string; productoId: string; precioPorUnidadStock: Prisma.Decimal; fecha: Date; proveedorNombre: string | null }>>`
+    SELECT DISTINCT ON (s."sucursalId", m."productoId") s."sucursalId", m."productoId", m."precioPorUnidadStock", o."fecha", p."nombre" AS "proveedorNombre"
     FROM "MovimientoStock" m
     JOIN "Operacion" o ON o."id" = m."operacionId"
     JOIN "Seccion" s ON s."id" = m."seccionId"
     LEFT JOIN "Proveedor" p ON p."id" = o."proveedorId"
-    WHERE m."proceso" = 'COMPRA' AND s."sucursalId" = ${sucursalId}
+    WHERE m."proceso" = 'COMPRA' AND s."sucursalId" IN (${Prisma.join(sucursalIds)})
       AND m."precioPorUnidadStock" > 0
       AND o."anuladaEn" IS NULL
       ${antesDe ? Prisma.sql`AND o."fecha" < ${antesDe}` : Prisma.empty}
-    ORDER BY m."productoId", o."fecha" DESC, m."id" DESC
+    ORDER BY s."sucursalId", m."productoId", o."fecha" DESC, m."id" DESC
   `;
 
-  const map = new Map<string, CostoMP>();
   for (const c of compras) {
-    map.set(c.productoId, {
+    porSucursal.get(c.sucursalId)?.set(c.productoId, {
       precioPorUnidadStock: Number(c.precioPorUnidadStock),
       proveedorNombre: c.proveedorNombre,
       fecha: c.fecha,
     });
   }
-  return map;
+  return porSucursal;
 }
