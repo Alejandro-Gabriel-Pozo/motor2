@@ -10,6 +10,7 @@ import { conReintento, conTransaccionSerializable, esConflictoDeEscritura } from
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { exito, fracaso } from "@/core/resultado-caso";
 import {
+  cargarHabilitadaDeRecetaPropia,
   cargarIdDeVersionCentralVigente,
   cargarNombresDeSucursales,
   cargarProductoParaReceta,
@@ -46,7 +47,8 @@ import {
  * RECETA PROPIA (ADR-009, receta propia por sucursal): con `destino.sucursalId` el caso de uso guarda en la serie PROPIA de esa sucursal en vez de la central —
  * la versión se numera sobre SU historial, la receta propia queda habilitada, la versión declara en qué versión central se basó (`basadaEnVersionId`:
  * la central vigente de hoy, o la que pase quien llama, p. ej. al copiar de otra sucursal) y la auditoría lleva la sucursal. No arrastra ni descarta
- * calibraciones: no las hay sobre una receta propia (cuelgan de las líneas de la central y no rigen mientras la propia está habilitada).
+ * calibraciones: no las hay sobre una receta propia (cuelgan de las líneas de la central y no rigen mientras la propia está habilitada). Además de la versión,
+ * compara DENTRO de la transacción el estado `habilitada` que la pantalla mostraba (`destino.habilitadaEsperada`, D.4): volver a la central no crea versión.
  *
  * QUÉ EVITA PISAR UN CAMBIO AJENO (O.4, Revisión #93 (7); Hito 4, paso H4C-24): es `versionEsperada`, comparada con la versión vigente DENTRO de la transacción
  * SERIALIZABLE de cada intento (paso 3.a): si otra persona guardó entre la lectura de la pantalla y este guardado, la serie ya va por otra versión y se rechaza con
@@ -61,8 +63,14 @@ import {
  * @sideEffects registrarCambioAuditado (la versión nueva, y cada calibración local descartada por cambio de unidad o salida de la receta).
  * @ficha permiso=guardar_receta transaccion=SERIALIZABLE idempotencia=OPTIMISTA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
-/** Dónde se guarda la versión: la serie CENTRAL (`sucursalId` null) o la PROPIA de una sucursal. */
-export type DestinoDeVersionDeReceta = { sucursalId: null } | { sucursalId: string; basadaEnVersionId?: string | null; copiadaDeSucursal?: string };
+/**
+ * Dónde se guarda la versión: la serie CENTRAL (`sucursalId` null) o la PROPIA de una sucursal. La propia lleva además `habilitadaEsperada` (D.4): si la
+ * pantalla de quien guarda veía la receta propia habilitada. Volver a la central la deshabilita SIN crear una versión, así que `versionEsperada` no alcanza para
+ * verlo: dentro de la transacción se compara con `RecetaSucursal.habilitada` y, si no coincide, se rechaza (`VERSION_DESACTUALIZADA`) sin escribir nada.
+ */
+export type DestinoDeVersionDeReceta =
+  | { sucursalId: null }
+  | { sucursalId: string; habilitadaEsperada: boolean; basadaEnVersionId?: string | null; copiadaDeSucursal?: string };
 
 export async function guardarVersionDeRecetaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalNombre" | "db" | "transaccion">,
@@ -123,6 +131,22 @@ export async function guardarVersionDeRecetaCasoDeUso(
               : `La receta de "${producto.nombre}" cambió mientras la editabas (ahora va por la versión ${versionActual}, y partiste de la ${versionEsperada}). Recargá la pantalla y volvé a hacer el cambio.`
           );
           return;
+        }
+        // D.4: en la serie PROPIA, además, el estado `habilitada` que la pantalla mostraba. Volver a la central la deshabilita sin crear una versión, y una
+        // pantalla vieja pasaba el chequeo de arriba: armaba la versión siguiente sobre «no rige la propia» (en un plato sin central, SOLO con su ingrediente)
+        // y la volvía a habilitar. Se lee acá, en la misma SERIALIZABLE: si alguien vuelve a la central mientras esto guarda, una de las dos aborta (40001),
+        // el reintento repite y la relectura rechaza.
+        if (destino.sucursalId !== null) {
+          const habilitada = await cargarHabilitadaDeRecetaPropia(tx, destino.sucursalId, productoId);
+          if (habilitada !== destino.habilitadaEsperada) {
+            rechazo.resultado = fracaso(
+              "VERSION_DESACTUALIZADA",
+              destino.habilitadaEsperada
+                ? `La receta de "${producto.nombre}" en esta sucursal cambió mientras la editabas (alguien volvió a la receta central). Recargá la pantalla y volvé a hacer el cambio.`
+                : `La receta de "${producto.nombre}" en esta sucursal cambió mientras la editabas (alguien activó la receta propia). Recargá la pantalla y volvé a hacer el cambio.`
+            );
+            return;
+          }
         }
         version = versionActual + 1;
         const basadaEnVersionId = sucursalId === null ? null : destino.basadaEnVersionId !== undefined ? destino.basadaEnVersionId : await cargarIdDeVersionCentralVigente(tx, productoId);

@@ -8,3 +8,12 @@ export async function versionVigenteDeReceta(productoId: string, sucursalId: str
   const ultima = await prisma.recetaVersion.findFirst({ where: { productoId, sucursalId }, orderBy: { version: "desc" }, select: { version: true } });
   return ultima?.version ?? 0;
 }
+
+/**
+ * Si la receta PROPIA de la sucursal está habilitada hoy para el producto (`false` sin fila): lo que la pantalla mostraría y que las acciones de la receta propia
+ * piden de vuelta junto con la versión (`habilitadaVista`, D.4).
+ */
+export async function habilitadaDeRecetaPropia(productoId: string, sucursalId: string): Promise<boolean> {
+  const fila = await prisma.recetaSucursal.findFirst({ where: { productoId, sucursalId }, select: { habilitada: true } });
+  return fila?.habilitada ?? false;
+}
