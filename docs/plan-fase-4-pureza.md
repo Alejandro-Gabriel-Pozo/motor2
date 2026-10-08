@@ -1,15 +1,17 @@
 # Fase 4 del plan de pureza: las escrituras salen de `src/core/` (plan consolidado)
 
-> Estado: **en ejecución** (actualizado el 2026-10-07; ver la sección 10, que dice qué está hecho, qué falló y qué falta). Plan escrito el 2026-10-06. Resume tres planes de diseño hechos por separado, cada uno verificado contra el código de `main` en el commit `72925cb0`: Kardex y venta (tramo A), autenticación, empresa y permisos (tramo B), y recetas, regla de cierre y cotizaciones (tramo C). Ningún paso toca `prisma/`: todo lo que necesite migración es la Fase 5 y requiere autorización expresa.
+> Estado: **HECHA en la rama `pureza-integracion`** (2026-10-08), **pendiente de fusión a `main`**: falta el gate final de 8 comandos en una corrida, la auditoría independiente de la rama y la autorización expresa del dueño (la fusión despliega a producción). La lista de control es `docs/pureza-integracion.md` y los cierres por hito están en `docs/plan-hito-3-pureza.md`, `docs/plan-hito-4-pureza.md` y `docs/plan-hito-5-pureza.md`. La sección 10 es la historia de cómo llegó la Fase 4 hasta la rama (se actualizó el 2026-10-07) y ahora lleva el cierre en cada punto. Plan escrito el 2026-10-06. Resume tres planes de diseño hechos por separado, cada uno verificado contra el código de `main` en el commit `72925cb0`: Kardex y venta (tramo A), autenticación, empresa y permisos (tramo B), y recetas, regla de cierre y cotizaciones (tramo C). Ningún paso toca `prisma/`: todo lo que necesite migración es la Fase 5 y requiere autorización expresa.
 > Reglas de trabajo y estado general: `docs/plan-de-pureza-y-estado.md` y `docs/plan-fase-3-pureza.md`.
 
 ## 1. Qué es la Fase 4 y qué resultado se espera
 
-Hoy 25 archivos de `src/core/` escriben la base o leen dentro de una transacción de escritura (lista «Fase 4» de `test/arquitectura/pureza-heredada-del-nucleo.ts`). La meta: `core` queda puro. La escritura pasa a un **caso de uso** (`src/server/actions/<dominio>/casos-de-uso/`, con su `@ficha`) y su **persistencia** (`src/server/persistencia/<dominio>/`); las lecturas de decisión dentro de la transacción pasan a `src/server/lecturas/`; el cálculo queda puro en `core`.
+Al escribirse el plan, 25 archivos de `src/core/` escribían la base o leen dentro de una transacción de escritura (lista «Fase 4» de `test/arquitectura/pureza-heredada-del-nucleo.ts`). La meta: `core` queda puro. La escritura pasa a un **caso de uso** (`src/server/actions/<dominio>/casos-de-uso/`, con su `@ficha`) y su **persistencia** (`src/server/persistencia/<dominio>/`); las lecturas de decisión dentro de la transacción pasan a `src/server/lecturas/`; el cálculo queda puro en `core`.
 
 Además, 34 Server Actions escriben con `ctx.db.<modelo>.<create|update|…>` directo (107 llamadas): se migran a casos de uso, y una regla nueva (`escrituras-solo-en-persistencia`) impide que vuelva a pasar.
 
-**Resultado:** la lista de heredados baja de 51 a unas 25 entradas (las que quedan son sesión de la Fase 6 y la consola); `core/movimientos`, `core/catalogo`, `core/reportes`, `core/plataforma` y `core/features` entran a la regla `core-sin-consultas`.
+**Resultado esperado (en el plan):** la lista de heredados baja de 51 a unas 25 entradas (las que quedan son sesión de la Fase 6 y la consola); `core/movimientos`, `core/catalogo`, `core/reportes`, `core/plataforma` y `core/features` entran a la regla `core-sin-consultas`.
+
+**Resultado medido (cierre de la rama, 2026-10-08):** las entradas de `PUREZA_HEREDADA_DEL_NUCLEO` (`test/arquitectura/pureza-heredada-del-nucleo.ts`) bajaron de 51 (inicio de la Fase 4, 2026-10-06) a 38 (en `main`, al abrirse la rama) y a **25** hoy; las 25 dicen «Fase 6» y ninguna dice «Fase 4» (se midió con `npm run inventario:arquitectura`: de 311 archivos de `src/core/`, 286 son P0 y 25 no). Lo que queda es la sesión (`core/auth/{base,contexto,ir-al-login,rol-de-ejecucion,session}`), `core/fiscal/factura-autorizada.ts` (recibe `Db`, lo usa la consola) y archivos que solo importan tipos de Prisma (22 archivos de `core` tienen esa señal: 20 de nivel P1 y 2 de P3). Contra lo esperado, la regla `core-sin-consultas` no quedó en «unas carpetas» sino que cubre TODO `src/core/`, con 4 pendientes de la Fase 6 (`core/auth/{base,contexto,rol-de-ejecucion}` y `core/fiscal/factura-autorizada`; `docs/pureza-decisiones-asentadas.md` §9). Además de lo previsto, se migraron las 8 acciones de configuración de carta (19 funciones), que el plan dejaba «para después»: `TOPE_DE_ENTRADAS` (escrituras fuera de persistencia) pasó de 51 en `main` a 13, y ya no hay entradas «Fase 4» (quedan 8 «Consola», 1 «Fase 6» y 4 «Permanente»).
 
 ## 2. Correcciones a la auditoría que salieron del código
 
@@ -76,6 +78,8 @@ Las marcadas «⚠» cambian comportamiento o frontera de seguridad y no se toma
 
 Al terminar el PR 4, toda escritura del Kardex está en 6 archivos de persistencia: esa es la condición para que `SaldoStock` tenga **un único escritor**. Antes de la Fase 5 conviene reunir las 2 escrituras de traspasos y las 2 de anulación en una sola función (sin migración). Las lecturas de saldo de la venta quedan aisladas en `cargar-origen-de-venta.ts` y `lecturas/movimientos/saldos.ts` (ahí se cambiaría por `SaldoStock`). El índice `(seccionId, productoId)` se evalúa con `EXPLAIN` sobre `seccionesConStock` y la deuda de redondeo. El candado (REVOKE + trigger) rompe la limpieza de los tests. Todo eso: simulación primero, base por base (zuluhub y stockhneuquen), con `down.sql` y autorización expresa.
 
+**Resultado de la preparación (O.13, Hito 5, pieza 5.4, bloque A; 2026-10-08; sin migración):** los escritores de líneas del Kardex pasaron de 5 funciones a 3, que es lo que la Fase 5 tendrá que autorizar en la base: `escribirLineasDeMovimientoStock` (el motor genérico y la venta), `escribirContraAsiento` (las dos anulaciones, en una: `a6f4ae6a`) y `escribirMovimientoDeTraspaso` (las dos escrituras de traspasos, en una: `96ecd0c8`). Una huella de las escrituras (`4af23e8b`, congelada en `159cca95`) las protege, y la lista `ESCRITORES_DEL_KARDEX` de `kardex-solo-agrega` es cerrada (`c2af2cdd`). **`EXPLAIN` medido** (`bd5670ab`, `a81c7107`; `test/persistencia/kardex-indices-de-saldo.test.ts`, sin `ANALYZE`): `seccionesConStock` y la lectura de la deuda de redondeo usan ambas `MovimientoStock_productoId_seccionId_loteVencimiento_idx`, por la sola condición de `productoId`; `empresaId` (RLS), `cantidadExacta` y `seccion.sucursalId` se filtran después. Dos salvedades: (1) con la tabla vacía el planner no elige ese índice ni con el escaneo secuencial apagado, así que el test siembra ~24.000 líneas de Kardex en la base LOCAL de tests (un desvío del «solo lectura»: escribe, pero solo en la base de pruebas, nunca en producción); (2) esa es una base chica: la medición con volumen real, y la decisión sobre el índice `(seccionId, productoId)`, quedan para la simulación de la Fase 5. Con esto, la Fase 5 [MIG] queda lista para arrancar, pero cada paso (`SaldoStock`, el índice, el candado) pide autorización expresa del dueño.
+
 ## 7. Gate obligatorio de cada PR
 
 En la misma corrida y sobre el mismo commit, todos limpios, con la línea de base medida antes de tocar: `npx tsc --noEmit` (vacío), `npm run lint` (0), `npm run arquitectura` (leer «no dependency violations found»), `npm run analizar:muerto` (knip, 0), `npm test` (0 fallan, conteo ≥ base + nuevos), `npm run build`, `npm run plataforma:build`, `npm run test:e2e` (0 fallan, ≥ 509 en local). Además: `git diff --name-only origin/main...HEAD -- prisma/schema.prisma prisma/migrations` vacío; el inventario de arquitectura baja exactamente lo anunciado; las mutaciones del PR documentadas.
@@ -98,7 +102,11 @@ Frontera multi-tenant (`base.ts`, `invitacionConSuBase`), login de Auth.js (`acc
 
 ### 10.1 Dónde estamos
 
-La Fase 4 **está en curso**: el tramo A (Kardex y venta), el tramo C (regla de cierre, dólar e IPC, recetas) y el tramo B de plataforma están casi hechos; faltan el login y el gobierno de usuarios (B3, B4), la migración de las acciones (4C-D/E/F), el precio local (4A-5) y el cierre (B5).
+**Cierre (2026-10-08): la Fase 4 está HECHA en la rama `pureza-integracion`, pendiente de fusión a `main`.** Lo que decía esta sección al 2026-10-07 («está en curso: faltan el login y el gobierno de usuarios, la migración de las acciones, el precio local y el cierre») ya está entregado: B3 y B4 en el Hito 3 (filas 3.1 a 3.4 de `docs/pureza-integracion.md`), la migración de las acciones en el Hito 4 (filas 4.1 a 4.4) y en el bloque D del Hito 5 (las 8 de configuración de carta), 4A-5 en la pieza 5.2, `con-reintento` en la 5.3 y B5 en la 5.4. La tabla de abajo queda como estaba a esa fecha: es la historia de los PR que llegaron a `main`.
+
+Dónde está cada PR que no se había fusionado: #92 (vínculo proveedor↔producto 2/2) y #93 (H7 parte 2) no pasaron por `main` como PR: llegaron a la rama como sus propios commits (`fc6c756a` y `e2d4afb7`).
+
+Estado al 2026-10-07 (histórico): el tramo A (Kardex y venta), el tramo C (regla de cierre, dólar e IPC, recetas) y el tramo B de plataforma estaban casi hechos.
 
 | PR | Paso del plan | Estado |
 |---|---|---|
@@ -115,16 +123,16 @@ La Fase 4 **está en curso**: el tramo A (Kardex y venta), el tramo C (regla de 
 | #89 | vínculo proveedor↔producto 1/2 (**fuera de este plan**: decisión del dueño, 2026-10-06) | fusionado |
 | #90 | 4A-4 embudos de catálogo | fusionado, conforme |
 | #91 | 4C-B H7 parte 1 | fusionado, **parcial** (versión reducida; ver 10.2) |
-| #92 | vínculo proveedor↔producto 2/2 (fuera de este plan) | abierto; revisión independiente aplicada (consta en la descripción del PR, no como review de GitHub) |
-| #93 | 4C-B H7 parte 2 | abierto; revisión independiente aplicada (consta en la descripción del PR, no como review de GitHub) |
+| #92 | vínculo proveedor↔producto 2/2 (fuera de este plan) | abierto al 2026-10-07 (hoy es el commit `fc6c756a` de la rama); revisión independiente aplicada (consta en la descripción del PR, no como review de GitHub) |
+| #93 | 4C-B H7 parte 2 | abierto al 2026-10-07 (hoy es el commit `e2d4afb7` de la rama); revisión independiente aplicada (consta en la descripción del PR, no como review de GitHub) |
 
 ### 10.2 Qué falló y por qué
 
-- **H7 (#91) se entregó reducido y no se avisó.** El plan pedía tres cosas: que la pantalla mande la versión que mostraba (D-1), que el chequeo vaya dentro de la transacción, y cerrar el segundo hueco (la calibración local concurrente que se perdía). El #91 comparó contra la versión que la acción leía al ejecutarse; no cubría una pestaña con la receta vieja. La causa fue de proceso: se implementó desde un resumen de la conversación anterior sin releer este plan. El #93 lo completa: `versionVista` en 9 acciones de la central y 5 de la propia, lectura de la última versión dentro de la transacción, ficha `OPTIMISTA`, test concurrente y e2e con dos pestañas. Queda un límite conocido: `habilitada` de la receta propia no está versionada (alguien vuelve a la central mientras otra persona edita la propia con la pantalla vieja, y el plato no tiene receta central).
+- **H7 (#91) se entregó reducido y no se avisó.** El plan pedía tres cosas: que la pantalla mande la versión que mostraba (D-1), que el chequeo vaya dentro de la transacción, y cerrar el segundo hueco (la calibración local concurrente que se perdía). El #91 comparó contra la versión que la acción leía al ejecutarse; no cubría una pestaña con la receta vieja. La causa fue de proceso: se implementó desde un resumen de la conversación anterior sin releer este plan. El #93 lo completa: `versionVista` en 9 acciones de la central y 5 de la propia, lectura de la última versión dentro de la transacción, ficha `OPTIMISTA`, test concurrente y e2e con dos pestañas. Queda un límite conocido: `habilitada` de la receta propia no está versionada (alguien vuelve a la central mientras otra persona edita la propia con la pantalla vieja, y el plato no tiene receta central). **[Resuelto en la rama: fila D.4, `440dbdff`, 2026-10-08.]**
 - **La caracterización quedó corta antes de mover código** (B0 y Car-V): sin huella de `vincularCuentaConInvitacion` (la frontera de login) ni de la alta de admin; el golden de la venta tiene 7 pasos, no ~30. La regla del plan es que lo que se mueve tiene su huella antes; en esos dos casos no se cumplió del todo.
-- **La venta no tuvo su «segundo tiempo»** (separar lo puro y mandar `cargarDeudaDeRedondeo` a `server/lecturas`): #83 lo postergó, #84 hizo solo el reparto de stock y #90 dejó de listarlo. Quedó huérfano.
+- **La venta no tuvo su «segundo tiempo»** (separar lo puro y mandar `cargarDeudaDeRedondeo` a `server/lecturas`): #83 lo postergó, #84 hizo solo el reparto de stock y #90 dejó de listarlo. Quedó huérfano. **[Resuelto en la rama: fila 5.1, bloques A y B del Hito 5.]**
 - **D-4 se violó durante cuatro PR** (#84 a #87): `core/auth/base.ts` volvió a «Fase 4» por resolución de conflictos; ningún test lo detecta porque las dos fases son válidas. Ya está corregido (#88).
-- **Valores y herramientas del plan sin hacer:** `permiso=SIN_PERMISO` en la ficha (D-7), el codemod de imports versionado (D-11), el adaptador de imports de la huella.
+- **Valores y herramientas del plan sin hacer:** `permiso=SIN_PERMISO` en la ficha (D-7), el codemod de imports versionado (D-11), el adaptador de imports de la huella. **[Resueltos en la rama: 1.3 (`SIN_PERMISO`), 1.13 (codemod, `e2243962`) y O.11 (adaptador).]**
 - Otros menores: squash en todos los PR (un commit por PR en `main`, no uno por paso); `core/movimientos` no puede entrar a `core-sin-consultas` mientras `con-reintento` tenga parámetros tipados `Transaccion` (hay que decidir dónde vive antes de B5 **[resuelto en la pieza 5.3 del Hito 5: se partió, ver §10.4 fila 7]**); el plan decía 7 entradas «Consola» y hay 8.
 
 ### 10.3 Reglas de proceso que se agregan a partir de acá
@@ -148,14 +156,30 @@ La Fase 4 **está en curso**: el tramo A (Kardex y venta), el tramo C (regla de 
 | 7 | **Decidir el destino de `con-reintento`** | Junto con `precio-venta` (que sale en el paso 6), bloquea la entrada de `core/movimientos` a `core-sin-consultas`: queda por decidir solo `con-reintento`. Tampoco están hoy en esa lista `core/catalogo`, `core/auth`, `core/features` ni `core/permisos`: entran al cerrar B5. **RESUELTA (Hito 5, pieza 5.3, 2026-10-08; fila 5.3 de `docs/pureza-integracion.md`):** `con-reintento` se partió (`conTransaccionSerializable` a `src/lib/transaccion-serializable.ts`; los dos clasificadores quedan en `core/movimientos/con-reintento.ts`, P0), `precio-venta` salió en 5.2 y `core/movimientos` entró a `core-sin-consultas` (`core/catalogo` entró en 5.2). Siguen afuera `core/auth`, `core/features` y `core/permisos`: B5 (pieza 5.4) |
 | 8 | **B5** auditoría a `server/auditoria/`, cierre de `core-sin-consultas`, actualización de los documentos de estado | Siempre al final: hoy 35 archivos de `src/` importan `registrarCambioAuditado` (el plan original decía ~26) |
 
-Aparte, sin orden fijo: el límite `habilitada` de H7; fusionar en una consulta la derivación del carrito (hoy 3 lecturas por cambio de proveedor); versionar el codemod (D-11, hace falta para la Fase 6); decidir si se sigue con squash o se pasa a merge commit; D-9 (documentar que `agregarItems` no tiene I3); la preparación de la Fase 5 del §6 (reunir las 2 escrituras de traspasos y las 2 de anulación; `EXPLAIN` del índice).
+**Cierre de cada fila (2026-10-08; las 8 están hechas en la rama, con la evidencia en `docs/pureza-integracion.md`):**
+
+| # | Dónde se hizo |
+|---|---|
+| 1 | Hito 1: filas 1.1 (`c12a6b78`, huella del login), 1.2 (`31459b18`, huella de la alta de admin) y 1.3 (`42a0c3db`, `SIN_PERMISO`) |
+| 2 | Hito 3, fila 3.1 (B3: `server/sesion/` y los casos de uso de aceptar invitación) |
+| 3 | Hito 3, filas 3.2, 3.3 y 3.4 (B4a y B4b, las acciones de auth y permisos, ADR-027 y F1 del RBAC); D15 y D16 resueltas el 2026-10-07 |
+| 4 | Hito 4, filas 4.1 a 4.4 (POS, dinero de carta, configuración de catálogo y stock, restos) y, además, el bloque D del Hito 5 (fila 5.4-D): las 8 acciones de configuración de carta (19 funciones), que esta fila dejaba «para después» |
+| 5 | Hito 2, fila 2.7 (`dc16c0d4`, matriz de la venta ampliada) y Hito 5, fila 5.1 (el segundo tiempo de la venta: bloque A `ce321f5e`..`9e4e2a4f`, bloque B `c13a019c`..`abd9e60a`) |
+| 6 | Hito 5, fila 5.2 (ver arriba) |
+| 7 | Hito 5, fila 5.3 (ver arriba); `core/auth`, `core/features` y `core/permisos`, que la fila decía que quedaban afuera hasta B5, entraron a `core-sin-consultas` en B6 (`60c96804`), junto con el resto de `core` |
+| 8 | Hito 5, fila 5.4, bloque B: el escritor a `server/auditoria/` (`5dcfb088`, que reapuntó 54 archivos de `src`; el plan decía ~26 y esta tabla 35), la regla `auditoria-capa` (`17587f6b`) y `core-sin-consultas` sobre todo `core` (`60c96804`); y el bloque C (estos documentos) |
+
+Aparte, sin orden fijo (**todo hecho en la rama**: `habilitada` de H7 en la fila D.4; el carrito en O.5; el codemod en 1.13; merge commit en lugar de squash, decisión del dueño del 2026-10-07; D-9 en O.12; la preparación de la Fase 5 en O.13): el límite `habilitada` de H7; fusionar en una consulta la derivación del carrito (hoy 3 lecturas por cambio de proveedor); versionar el codemod (D-11, hace falta para la Fase 6); decidir si se sigue con squash o se pasa a merge commit; D-9 (documentar que `agregarItems` no tiene I3); la preparación de la Fase 5 del §6 (reunir las 2 escrituras de traspasos y las 2 de anulación; `EXPLAIN` del índice).
 
 ### 10.5 Qué decide el dueño
 
-- **4A-5** (cuando llegue su turno): autorización para tocar la frontera de la carta pública (D-2).
-- **D15** (qué acciones de empresa alcanza el rango 2 de RBAC; recomendado: ninguna por defecto) y **D16** (piso de `ver_auditoria`; recomendado: administrador de sistema), antes de B4.
-- **Squash o merge commit** (menor): hoy cada PR queda como un solo commit en `main`.
-- Si se hace el arreglo de `habilitada` de H7 antes de cerrar la fase o se deja anotado.
+**Al 2026-10-08 todo esto está resuelto** (las decisiones están en `para motor 2\_planes\_decisiones-del-dueno-2026-10-07.md` y `-08.md`); queda solo la autorización de la fusión, al final.
+
+- ~~**4A-5**: autorización para tocar la frontera de la carta pública (D-2).~~ **Autorizada el 2026-10-07** (fila 5 de las decisiones del 2026-10-07); hecha en la pieza 5.2, con las 3 mutaciones de seguridad en rojo.
+- ~~**D15** y **D16**, antes de B4.~~ **Resueltas el 2026-10-07**: D15 = el rango intermedio no alcanza ninguna acción de empresa por defecto; D16 = `ver_auditoria` pasa al piso «administrador de sistema» (filas 3 y 4 de las decisiones del 2026-10-07; hechas en la fila 3.4).
+- ~~**Squash o merge commit** (menor).~~ **Merge commit, no squash** (fila 1 de las decisiones del 2026-10-07): la rama integra y se fusiona entera, para conservar la reversión paso a paso.
+- ~~Si se hace el arreglo de `habilitada` de H7.~~ **Hecho** (fila D.4, aprobado el 2026-10-08).
+- **Pendiente (lo único):** la **autorización expresa del dueño para fusionar `pureza-integracion` a `main`**, porque despliega a producción; antes, el gate de 8 comandos en una corrida, el CI en verde y la auditoría independiente (lista de verificación en la sección «Cierre de la rama» de `docs/pureza-integracion.md`).
 
 ## 11. Auditoría de las Fases 0 a 3 (2026-10-07)
 
