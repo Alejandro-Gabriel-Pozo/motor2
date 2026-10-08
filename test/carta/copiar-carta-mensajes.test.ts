@@ -14,7 +14,8 @@ import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-car
  * `.catch` de agotado) (Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1), ANTES de mudarla a un caso de uso. `carta-propia-por-sucursal.test.ts` cubre qué se copia y
  * a dónde, pero no los textos exactos de cada rechazo, ni la auditoría, ni cuántas veces se revalida, ni el conflicto. El conflicto se simula con un trigger de la base DE
  * PRUEBA que tira un fallo de serialización (40001) las primeras N veces que se inserta un género (la cuenta la lleva una secuencia, que NO se deshace con la transacción).
- * Verde contra el código de antes de la mudanza y después.
+ * Verde contra el código de antes de la mudanza y después, SALVO los dos últimos tests (reserva M1(a)): el conflicto AL CONFIRMAR (trigger diferido) discrimina CUÁNDO se revalida y
+ * da rojo contra el código de antes de la mudanza, que revalidaba dentro del callback, antes de confirmar (ver el comentario sobre `armarTrampa`).
  */
 async function limpiarTrampas() {
   await prismaAdmin.$executeRawUnsafe('DROP TRIGGER IF EXISTS test_d13_conflicto ON "GeneroCarta"');
@@ -135,7 +136,44 @@ describe("copiar la carta de otra sucursal: mensajes, orden de los chequeos, aud
     expect(revalidaciones()).toBe(0);
   });
 
-  async function armarTrampa(hasta: number) {
+  // Reserva M1(a) de la auditoría del Hito 5 (fila 5.6 de docs/pureza-integracion.md): los dos tests de arriba (fallo durante una escritura) pasaban IGUAL con el código de antes de la mudanza
+  // (que invalidaba dentro del callback, antes de confirmar) y con el de ahora, porque ese fallo ocurre antes de llegar a la invalidación. Para probar CUÁNDO se invalida hace falta un
+  // fallo que ocurra DESPUÉS de que el callback terminó entero: un CONSTRAINT TRIGGER «DEFERRABLE INITIALLY DEFERRED» corre recién al COMMIT, y ahí levanta el 40001. Con la invalidación
+  // dentro del callback (el código viejo) se llamaría una vez por intento (5 si no cede, 2 si cede en el segundo); con la de ahora, 0 y 1. Esos números son lo que discrimina.
+  it("conflicto AL CONFIRMAR que no cede en 5 intentos: ningún intento revalida (la invalidación va después del commit, no dentro del callback)", async () => {
+    await armarCartaDeCentral();
+    await armarTrampa(99, "al-confirmar");
+    const consola = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      expect(await copiarCartaDeSucursal(centralId, true)).toEqual({ ok: false, mensaje: "La carta cambió mientras la copiabas; recargá e intentá de nuevo." });
+    } finally {
+      consola.mockRestore();
+    }
+    expect(await invocaciones()).toBe(5);
+    expect(await cartaDe(destinoId)).toEqual({ generos: 0, items: 0, opciones: 0, contenidos: 0, auditoria: 0 });
+    expect(revalidaciones()).toBe(0);
+  });
+
+  it("conflicto AL CONFIRMAR que cede en el reintento: se revalida exactamente UNA vez y con la copia ya confirmada (visible desde otra conexión)", async () => {
+    await armarCartaDeCentral();
+    await armarTrampa(1, "al-confirmar");
+    // La revalidación es síncrona: al llamarse, se dispara (sin esperarla) una lectura por OTRA conexión. Si la copia ya estaba confirmada, la ve; si seguía dentro de la transacción, no.
+    let visibleAlRevalidar: Promise<number> | undefined;
+    vi.mocked(revalidarCartasPublicas).mockImplementation(() => {
+      visibleAlRevalidar = prismaAdmin.generoCarta.count({ where: { sucursalId: destinoId } });
+    });
+    try {
+      expect((await copiarCartaDeSucursal(centralId, true)).ok).toBe(true);
+    } finally {
+      vi.mocked(revalidarCartasPublicas).mockImplementation(() => undefined);
+    }
+    expect(await invocaciones()).toBe(2);
+    expect(await cartaDe(destinoId)).toEqual({ generos: 1, items: 1, opciones: 1, contenidos: 1, auditoria: 1 });
+    expect(revalidaciones()).toBe(1);
+    expect(await visibleAlRevalidar).toBe(1);
+  });
+
+  async function armarTrampa(hasta: number, cuando: "al-escribir" | "al-confirmar" = "al-escribir") {
     await prismaAdmin.$executeRawUnsafe("CREATE SEQUENCE test_d13_intentos");
     await prismaAdmin.$executeRawUnsafe(`
       CREATE FUNCTION test_d13_conflicto() RETURNS trigger AS $$
@@ -145,7 +183,13 @@ describe("copiar la carta de otra sucursal: mensajes, orden de los chequeos, aud
         END IF;
         RETURN NEW;
       END $$ LANGUAGE plpgsql`);
-    await prismaAdmin.$executeRawUnsafe('CREATE TRIGGER test_d13_conflicto BEFORE INSERT ON "GeneroCarta" FOR EACH ROW EXECUTE FUNCTION test_d13_conflicto()');
+    // «al-escribir»: BEFORE INSERT, falla DURANTE la escritura del género. «al-confirmar»: CONSTRAINT TRIGGER diferido, corre al COMMIT, cuando el callback ya terminó.
+    // Límite: el trigger diferido dispara una vez por fila de género insertada; la carta de estos tests tiene un solo género, así que cada intento consume una sola vez la secuencia.
+    await prismaAdmin.$executeRawUnsafe(
+      cuando === "al-escribir"
+        ? 'CREATE TRIGGER test_d13_conflicto BEFORE INSERT ON "GeneroCarta" FOR EACH ROW EXECUTE FUNCTION test_d13_conflicto()'
+        : 'CREATE CONSTRAINT TRIGGER test_d13_conflicto AFTER INSERT ON "GeneroCarta" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION test_d13_conflicto()'
+    );
   }
   const invocaciones = async () => Number((await prismaAdmin.$queryRawUnsafe<{ last_value: bigint }[]>("SELECT last_value FROM test_d13_intentos"))[0].last_value);
 });
