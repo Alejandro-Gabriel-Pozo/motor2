@@ -94,6 +94,10 @@ const SIN_GUARD: Record<string, string> = {
     "Edición de un producto (Hito 4, H4C-13): la acción leía el producto ANTES de validar (un producto inexistente y el tipo distinto ganan sobre un dato inválido) y la validación (validarDatosDeProducto) lee la unidad de stock a mitad de camino; un guard previo cambiaría el orden de los mensajes.",
   "src/server/actions/catalogo/insumos.ts#actualizarActivoGrupo":
     "Activar o desactivar un grupo de insumos (Hito 4, H4C-9): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/catalogo/proveedores.ts#actualizarActivaProveedor":
+    "Activar o desactivar un proveedor (Hito 4, H4C-14): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/catalogo/proveedores.ts#actualizarProveedor":
+    "Corregir los datos de contacto de un proveedor (Hito 4, H4C-14): la acción leía el proveedor ANTES de validar (un proveedor inexistente gana sobre un dato inválido), así que la validación (validarContactoDeProveedor) vive en el caso de uso, en el mismo orden.",
 };
 
 describe("toda Server Action migrada a caso de uso valida el formato con un guardComando* antes de llamarlo", () => {
