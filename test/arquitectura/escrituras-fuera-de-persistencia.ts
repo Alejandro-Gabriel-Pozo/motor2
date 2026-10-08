@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 18;
+export const TOPE_DE_ENTRADAS = 17;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -92,11 +92,6 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
   },
   "src/server/actions/carta/items-agrupados.ts": {
     escrituras: ["itemAgrupadoCarta.create", "itemAgrupadoCarta.update", "itemAgrupadoCarta.update", "opcionItemAgrupadoCarta.create", "opcionItemAgrupadoCarta.deleteMany", "opcionItemAgrupadoCarta.update"],
-    fase: "Fase 4",
-    motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
-  },
-  "src/server/actions/carta/portal-empresa.ts": {
-    escrituras: ["portalCartaEmpresa.upsert"],
     fase: "Fase 4",
     motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
   },

@@ -328,6 +328,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 5, bloque D (D6): guardarContenidoCartaProducto y actualizarVisibleEnCarta → carta/casos-de-uso/{guardar-contenido-carta-producto,actualizar-visible-en-carta}.ts; escrituras en server/persistencia/carta/contenido-producto.ts (un upsert por (sucursal, producto)), con la base del contexto y sin transacción ni auditoría, como antes. Las dos leen el producto ANTES de validar nada, así que ninguna tiene guard de formato (SIN_GUARD con motivo): la validación vive en el caso de uso, en el mismo orden. La carta es propia de cada sucursal: las lecturas llevan whereCartaDeSucursal. La acción revalida la carta pública solo si salió bien. El archivo no tiene ninguna otra mutación.",
   },
+  {
+    ruta: "src/server/actions/carta/portal-empresa.ts",
+    motivo:
+      "Hito 5, bloque D (D7): guardarPortalEmpresa (con guardComandoGuardarPortalEmpresa) → carta/casos-de-uso/guardar-portal-empresa.ts; el upsert por empresa vive en server/persistencia/carta/portal-empresa.ts, con la base del contexto y sin transacción ni auditoría (la apariencia no es plata), como antes. El formato lo valida core/features/carta/portal-empresa.guard.ts dentro de conPermisoDeEmpresa. NO revalida la carta pública, a propósito: el portal lee la fila en cada pedido, sin caché. El archivo no tiene ninguna otra mutación.",
+  },
 ];
 
 module.exports = {

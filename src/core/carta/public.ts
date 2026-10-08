@@ -34,6 +34,9 @@ export { entradasVistaPreviaPortal } from "./admin-tipos";
 export type { EntradaVistaPreviaPortal } from "./admin-tipos";
 export { avisoImagenSinMapa } from "./portal";
 export { validarValorPortal } from "./portal";
+// Hito 5, bloque D: el guard de la apariencia del portal (`core/features/carta/portal-empresa.guard.ts`) valida con el mismo validador que usaba la Server Action.
+export { validarValoresPortal } from "./portal";
+export type { ValoresPortal } from "./portal";
 export { ZONAS_PORTAL } from "./portal";
 export type { DefinicionClavePortal } from "./portal";
 export { validarValorTema } from "./tema";

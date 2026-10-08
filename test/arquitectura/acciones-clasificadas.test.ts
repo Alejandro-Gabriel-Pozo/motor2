@@ -20,7 +20,6 @@ const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "auth/sucursal-activa.ts": SIN_CASO_DE_USO,
   "carta/copiar-carta.ts": SIN_CASO_DE_USO,
   "carta/items-agrupados.ts": SIN_CASO_DE_USO,
-  "carta/portal-empresa.ts": SIN_CASO_DE_USO,
   "carta/registro-publico.ts": SIN_CASO_DE_USO,
   "carta/tema.ts": SIN_CASO_DE_USO,
   "catalogo/proveedor-por-producto.ts": SIN_CASO_DE_USO,
