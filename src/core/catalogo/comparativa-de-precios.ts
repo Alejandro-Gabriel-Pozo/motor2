@@ -8,6 +8,13 @@
  * producto y el nombre de cada proveedor, ya leídos.
  */
 
+/**
+ * O.8b (Hito 4, paso A6): el rótulo de una oferta cuyo proveedor no está entre los leídos. Hoy es inalcanzable (la FK de la operación al proveedor es compuesta con la empresa y no
+ * hay borrado de proveedores), pero si pasara, la fila diría esto en vez de un nombre vacío (que en la pantalla parecía un proveedor sin nombre). Se eligió rotular y no omitir la
+ * oferta (`continue`): el precio sigue siendo una compra real.
+ */
+const PROVEEDOR_DESCONOCIDO = "(proveedor desconocido)";
+
 /** Lo que la comparativa usa de una oferta (`OfertaDeProveedor` de `server/lecturas/catalogo/ofertas-de-proveedor.ts`, que `core` no importa). */
 interface OfertaParaComparar {
   productoId: string;
@@ -55,7 +62,7 @@ export function armarComparativaDePrecios(
 
     const entrada = porInsumo.get(insumo.id) ?? { insumo: insumo.nombre, grupo: insumo.grupo?.nombre ?? null, ofertas: [] };
     entrada.ofertas.push({
-      proveedorNombre: nombreDe.get(oferta.proveedorId) ?? "",
+      proveedorNombre: nombreDe.get(oferta.proveedorId) ?? PROVEEDOR_DESCONOCIDO,
       precioPorUnidadStock: oferta.precioPorUnidadStock,
       unidadCompraNombre: oferta.unidadCompraNombre,
       ultimaCompra: oferta.ultimaCompra,

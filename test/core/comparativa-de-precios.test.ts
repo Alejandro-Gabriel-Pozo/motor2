@@ -44,6 +44,12 @@ describe("armarComparativaDePrecios", () => {
     ]);
   });
 
+  it("O.8b: un proveedor sin nombre conocido se rotula «(proveedor desconocido)», no con un texto vacío (hoy inalcanzable: FK compuesta y no hay borrado de proveedores)", () => {
+    const filas = armarComparativaDePrecios([oferta("p-000", "v-borrado", 300), oferta("p-000", "v-a", 400)], insumoDe, nombreDe);
+    expect(filas[0].todas.map((o) => o.proveedorNombre)).toEqual(["(proveedor desconocido)", "Proveedor A"]);
+    expect(filas[0].masBarato?.proveedorNombre).toBe("(proveedor desconocido)");
+  });
+
   it("sin ofertas, sin filas", () => {
     expect(armarComparativaDePrecios([], insumoDe, nombreDe)).toEqual([]);
   });
