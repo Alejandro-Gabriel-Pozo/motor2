@@ -1,38 +1,26 @@
 "use server";
 
-import type { Prisma } from "@prisma/client";
-import { redondearMoneda } from "@/core/moneda";
-import { tieneStockReal } from "@/core/movimientos/public";
-import { resolverPrecioVenta, conTransaccionSerializable } from "@/core/movimientos/public-servidor";
-import { aplicarDescuentoDeProducto } from "@/core/carta/public";
-import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
-import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
-import { MAXIMO_ITEMS_POR_AGREGADO, validarCantidadPedido } from "@/core/pos/cantidad-pedido";
-import { componentesDeEleccion, prorratearPrecioPromo, validarEleccionPromo, type ComponentePromoElegido, type EleccionDeCupo, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
-import { cargarPromoCartaParaAgregar } from "@/server/lecturas/pos/promo-para-agregar";
-import { guardComandoEnviarACocina, guardComandoQuitarItemSinEnviar, guardComandoQuitarPromoSinEnviar } from "@/core/features/cuentas/cuenta-pedido.guard";
+import type { ItemParaAgregar, PromoParaAgregar } from "@/core/features/cuentas/cuenta-pedido.schema";
+import { guardComandoAgregarItems, guardComandoEnviarACocina, guardComandoQuitarItemSinEnviar, guardComandoQuitarPromoSinEnviar } from "@/core/features/cuentas/cuenta-pedido.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoEnvioACocina } from "../tipos";
+import { agregarItemsCasoDeUso } from "./casos-de-uso/agregar-items";
 import { enviarACocinaCasoDeUso } from "./casos-de-uso/enviar-a-cocina";
 import { quitarItemSinEnviarCasoDeUso } from "./casos-de-uso/quitar-item-sin-enviar";
 import { quitarPromoSinEnviarCasoDeUso } from "./casos-de-uso/quitar-promo-sin-enviar";
-import { cuentaAbiertaDeSucursal } from "./cuenta-comun";
 
 /**
  * Toma de pedido en el salón — cargar el pedido: agregar ítems y promos sin enviar, quitarlos mientras no salieron y enviarlos a cocina.
  * Criterio común de todas las acciones de «tomar pedido» (transacción SERIALIZABLE, mesa de la sucursal activa, cuenta abierta, sin
- * refrescar la vista) y ayudantes compartidos: ./cuenta-comun.ts.
+ * refrescar la vista) y ayudantes compartidos: ./cuenta-comun.ts. Desde el Hito 4 de la pureza (bloque 4.1, pasos 9 a 12) cada acción es un adaptador fino
+ * de su caso de uso (./casos-de-uso/{agregar-items,quitar-promo-sin-enviar,quitar-item-sin-enviar,enviar-a-cocina}.ts).
  */
 
 // MAXIMO_ITEMS_POR_AGREGADO vive en @/core/pos/cantidad-pedido (pura): así el cliente puede deshabilitar sumar el ítem #51 con el
-// MISMO número, sin duplicarlo. El tope de un envío a cocina (200) vive en su guard (core/features/cuentas/cuenta-pedido.guard.ts).
-
-/** Una promo armada por el mozo, para el tercer parámetro de `agregarItems` (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 8a). */
-export interface PromoParaAgregar {
-  promoCartaId: string;
-  elecciones: EleccionDeCupo[];
-}
+// MISMO número, sin duplicarlo; lo aplica guardComandoAgregarItems. El tope de un envío a cocina (200) vive en su guard
+// (core/features/cuentas/cuenta-pedido.guard.ts). Los tipos de los parámetros (ItemParaAgregar, PromoParaAgregar) viven en
+// core/features/cuentas/cuenta-pedido.schema.ts.
 
 /**
  * Agrega ítems SIN ENVIAR a una cuenta abierta: todo o nada. Cada producto tiene que ser un PV disponible en la sucursal; la cantidad
@@ -46,81 +34,20 @@ export interface PromoParaAgregar {
  * escritura, mismo criterio que `registrarVentaEnTx`: un rechazo no deja nada escrito, sin importar en qué promo/ítem ocurrió.
  * `MAXIMO_ITEMS_POR_AGREGADO` cuenta también los componentes de cada promo (una elección con 3 productos elegidos cuenta 3),
  * no las promos en sí.
+ *
+ * Sin idempotencia I3 (O.12, documentado y fijado en el Hito 4): dos llamadas iguales DUPLICAN los ítems; solo la pantalla, que deshabilita el botón mientras
+ * la acción está pendiente, frena el doble clic (no cubre dos pestañas ni un reintento de red). Ver el caso de uso.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.1, paso 12) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_tomar_pedido")`) → formato de las listas,
+ * el tope y el `cuentaId` (`guardComandoAgregarItems`, core/features/cuentas/cuenta-pedido.guard.ts, DENTRO del envoltorio: los mismos chequeos de antes de la
+ * transacción, en el mismo orden) → caso de uso (`casos-de-uso/agregar-items.ts`: transacción serializable, la cuenta abierta, la validación de cada ítem y
+ * cada promo y las escrituras) → `aResultadoAccion`.
  */
-export async function agregarItems(cuentaId: string, items: { productoId: string; cantidad: number }[], promos?: PromoParaAgregar[]): Promise<ResultadoAccion> {
+export async function agregarItems(cuentaId: string, items: ItemParaAgregar[], promos?: PromoParaAgregar[]): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
-    const items_ = Array.isArray(items) ? items : [];
-    const promos_ = Array.isArray(promos) ? promos : [];
-    if (items_.length === 0 && promos_.length === 0) return error("Elegí al menos un producto.");
-    const cantidadDeLineas = items_.length + promos_.reduce((suma, p) => suma + componentesDeEleccion(Array.isArray(p?.elecciones) ? p.elecciones : []).length, 0);
-    if (cantidadDeLineas > MAXIMO_ITEMS_POR_AGREGADO) return error(`No se pueden agregar más de ${MAXIMO_ITEMS_POR_AGREGADO} ítems de una vez.`);
-
-    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
-      const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
-      if (!abierta.ok) return error(abierta.mensaje);
-
-      // Fase 1: VALIDAR todo, sin escribir nada — ni los sueltos ni las promos (mismo criterio que registrarVentaEnTx).
-      const filasSueltas: Prisma.CuentaItemCreateManyInput[] = [];
-      for (const item of items_) {
-        const producto = typeof item?.productoId === "string" ? await tx.producto.findUnique({ where: { id: item.productoId }, include: { unidadStock: { select: { decimales: true } } } }) : null;
-        if (!producto) return error("El producto no existe.");
-        if (producto.tipo !== "PV") return error(`«${producto.nombre}» no se puede pedir: solo se piden productos de venta (PV).`);
-        if (!(await productoDisponibleEn(ctx.sucursalId, producto.id, tx))) return error(`«${producto.nombre}» no está disponible en «${ctx.sucursalNombre}».`);
-        const paso = producto.pasoVenta !== null ? { pasoVenta: Number(producto.pasoVenta), tieneStockReal: tieneStockReal(producto.tipo, producto.seProduce) } : null;
-        const cantidad = validarCantidadPedido(item.cantidad, producto.unidadStock.decimales, paso);
-        if (!cantidad.ok) return error(`«${producto.nombre}»: ${cantidad.mensaje}`);
-        const precioDeLista = redondearMoneda(await resolverPrecioVenta(ctx.sucursalId, producto.id, Number(producto.precioVenta), tx));
-        // Producto con descuento (Fase 2): el descuento de ESTA sucursal se aplica acá y el precio de lista queda congelado aparte en `precioCartaUnitario`.
-        const aplicado = aplicarDescuentoDeProducto(precioDeLista, (await descuentosDeProductoEnSucursal(ctx.sucursalId, tx, [producto.id])).get(producto.id) ?? null);
-        filasSueltas.push({
-          cuentaId: abierta.cuenta.id,
-          productoId: producto.id,
-          cantidad: cantidad.cantidad,
-          precioUnitario: aplicado.precio,
-          precioCartaUnitario: aplicado.precioLista,
-          numeroEnvio: null,
-          creadoPorId: ctx.usuarioId,
-        });
-      }
-
-      const promosValidadas: { titulo: string; promoCartaId: string; precio: number; componentes: (ComponentePromoElegido & { precioCarta: number })[]; filas: FilaPromoProrrateada[] }[] = [];
-      for (const p of promos_) {
-        const def = typeof p?.promoCartaId === "string" ? await cargarPromoCartaParaAgregar(ctx.sucursalId, p.promoCartaId, tx) : null;
-        if (!def) return error("No se encontró esa promo, o ya no está disponible.");
-        const elecciones = Array.isArray(p.elecciones) ? p.elecciones : [];
-        const validacion = validarEleccionPromo(def.cupos, elecciones);
-        if (!validacion.ok) return error(`«${def.titulo}»: ${validacion.mensaje}`);
-        const componentes = componentesDeEleccion(elecciones).map((c) => ({ ...c, precioCarta: def.precioCartaPorProducto.get(c.productoId) ?? 0 }));
-        const prorrateo = prorratearPrecioPromo(def.precio, componentes);
-        if (!prorrateo.ok) return error(`«${def.titulo}»: ${prorrateo.mensaje}`);
-        promosValidadas.push({ titulo: def.titulo, promoCartaId: def.id, precio: def.precio, componentes, filas: prorrateo.filas });
-      }
-
-      // Fase 2: ESCRIBIR — recién acá, con todo ya validado. Una PromoCuenta por promo (necesita su id antes de poder crear los
-      // CuentaItem que la referencian); todos los CuentaItem (sueltos y componentes) en UN solo createMany al final.
-      const filas = [...filasSueltas];
-      for (const p of promosValidadas) {
-        const promoCuenta = await tx.promoCuenta.create({ data: { cuentaId: abierta.cuenta.id, promoCartaId: p.promoCartaId, precio: p.precio, titulo: p.titulo, creadoPorId: ctx.usuarioId } });
-        const precioCartaDe = (productoId: string) => p.componentes.find((c) => c.productoId === productoId)?.precioCarta ?? null;
-        for (const fila of p.filas) {
-          filas.push({
-            cuentaId: abierta.cuenta.id,
-            productoId: fila.productoId,
-            cantidad: fila.cantidad,
-            precioUnitario: fila.precioUnitario,
-            numeroEnvio: null,
-            creadoPorId: ctx.usuarioId,
-            promoCuentaId: promoCuenta.id,
-            precioCartaUnitario: precioCartaDe(fila.productoId),
-          });
-        }
-      }
-
-      await tx.cuentaItem.createMany({ data: filas });
-      const mensaje = `${filas.length === 1 ? "Se agregó 1 ítem" : `Se agregaron ${filas.length} ítems`} a la mesa ${abierta.cuenta.mesa.numero}.`;
-      const nombresPromos = promosValidadas.map((p) => `«${p.titulo}»`);
-      return ok(nombresPromos.length ? `${mensaje} Incluye ${nombresPromos.join(", ")}.` : mensaje);
-    });
+    const comando = guardComandoAgregarItems({ cuentaId, items, promos });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await agregarItemsCasoDeUso(ctx, comando.valor));
   });
 }
 

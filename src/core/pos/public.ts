@@ -23,8 +23,8 @@ export { armarMapaDeMesas, esEstadoMesa, filtrarMesas, nombreDelMesero, validarM
 export type { EstadoMesa, MapaDeMesas } from "./mesas";
 export { formatearNumeroTicket } from "./numeracion-ticket";
 export type { NumeroDeTicket } from "./numeracion-ticket";
-export { precioMinimoPromo } from "./promo-combo";
-export type { CupoPromoDefinicion } from "./promo-combo";
+export { componentesDeEleccion, precioMinimoPromo } from "./promo-combo";
+export type { CupoPromoDefinicion, EleccionDeCupo } from "./promo-combo";
 export { armarSelectorCartaPos, pediblesDeEntrada } from "./selector-carta";
 export type { EntradaCarpetaSelectorCarta, EntradaPromoSelectorCarta, EntradaSelectorCarta, GenerosSelectorCartaPos, ProductoPedible, PromoSelectorCartaPos, SelectorCartaPos } from "./selector-carta";
 export { SECCION_FUERA_DE_CARTA, estadoInicialSelectorCarta, reducirSelectorCarta } from "./selector-carta-estado";
