@@ -4,9 +4,12 @@ import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { validarComensales } from "@/core/pos/cuenta";
+import { guardComandoLiberarMesa } from "@/core/features/cuentas/cuenta-apertura.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { cuentaAbiertaDeSucursal } from "./cuenta-comun";
+import { liberarMesaCasoDeUso } from "./casos-de-uso/liberar-mesa";
 
 /**
  * Toma de pedido en el salón — abrir la cuenta de una mesa, corregir sus comensales, asignarle un cliente y liberar la mesa sin venta.
@@ -136,17 +139,15 @@ export async function asignarClienteACuenta(cuentaId: string, clienteId: string 
  *
  * `cerradaEn` es la hora del PEDIDO (`ctx.ahora`, la que fija `conPermiso` una vez; Pureza 1.2), igual que en `cerrarCuenta`: antes leía el reloj por su
  * cuenta (`new Date()`). Cambio aprobado por el dueño (Hito 4, 2026-10-08); lo fija `test/pos/liberar-mesa-hora-del-pedido.test.ts`.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.1, paso 5) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_liberar_mesa")`) → formato del
+ * `cuentaId` (`guardComandoLiberarMesa`, core/features/cuentas/cuenta-apertura.guard.ts, DENTRO del envoltorio) → caso de uso (`casos-de-uso/liberar-mesa.ts`:
+ * transacción serializable, la cuenta abierta, que no tenga filas y el cierre en server/persistencia/pos/) → `aResultadoAccion`.
  */
 export async function liberarMesa(cuentaId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_liberar_mesa", async (ctx) => {
-    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
-      const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
-      if (!abierta.ok) return error(abierta.mensaje);
-      if ((await tx.cuentaItem.count({ where: { cuentaId: abierta.cuenta.id } })) > 0) {
-        return error(`La cuenta de la mesa ${abierta.cuenta.mesa.numero} tiene ítems cargados: cerrá la cuenta en vez de liberar la mesa.`);
-      }
-      await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { cerradaEn: ctx.ahora, cerradaPorId: ctx.usuarioId } });
-      return ok(`Mesa ${abierta.cuenta.mesa.numero} liberada.`);
-    });
+    const comando = guardComandoLiberarMesa({ cuentaId });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await liberarMesaCasoDeUso(ctx, comando.valor));
   });
 }
