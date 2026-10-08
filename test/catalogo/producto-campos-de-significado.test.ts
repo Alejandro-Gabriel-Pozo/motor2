@@ -50,6 +50,9 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
   }
 
   const comoOperador = () => mockearUsuarioActual({ id: operadorId, email: "operador@test.com", nombre: null });
+  // El costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante` (S-12): las pruebas que lo cambian actúan como administrador.
+  const comoAdmin = () => mockearUsuarioActual({ id: adminId, email: "admin@test.com", nombre: null });
+  const comando = (datosDelFormulario: DatosProducto) => ({ productoId: quesoId, datos: datosDelFormulario, puedeGestionarConsignacion: true });
   const filas = async (campo: string) => prismaAdmin.registroAuditoria.findMany({ where: { entidad: "Producto", entidadId: quesoId, campo } });
   const unidadDelProducto = async () => (await prisma.producto.findUniqueOrThrow({ where: { id: quesoId } })).unidadStockId;
 
@@ -108,19 +111,20 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
       expect(f[0]).toMatchObject({ valorAnterior: "25", valorNuevo: "20", actorId: operadorId, sucursalId: null });
     });
 
-    type CasoDeColumna = [campo: string, cambios: () => Partial<DatosProducto>, anterior: () => string, nuevo: () => string];
+    type CasoDeColumna = [campo: string, cambios: () => Partial<DatosProducto>, anterior: () => string, nuevo: () => string, esDeConsignacion: boolean];
     const COLUMNAS: CasoDeColumna[] = [
-      ["unidadStockId", () => ({ unidadStockId: gId }), () => kgId, () => gId],
-      ["unidadCompraId", () => ({ unidadCompraId: kgId }), () => gId, () => kgId],
-      ["seProduce", () => ({ seProduce: true }), () => "false", () => "true"],
-      ["proveedorConsignacionId", () => ({ proveedorConsignacionId: proveedorBId }), () => proveedorAId, () => proveedorBId],
-      ["esConsignacion", () => ({ esConsignacion: false, proveedorConsignacionId: null }), () => "true", () => "false"],
+      ["unidadStockId", () => ({ unidadStockId: gId }), () => kgId, () => gId, false],
+      ["unidadCompraId", () => ({ unidadCompraId: kgId }), () => gId, () => kgId, false],
+      ["seProduce", () => ({ seProduce: true }), () => "false", () => "true", false],
+      ["proveedorConsignacionId", () => ({ proveedorConsignacionId: proveedorBId }), () => proveedorAId, () => proveedorBId, true],
+      ["esConsignacion", () => ({ esConsignacion: false, proveedorConsignacionId: null }), () => "true", () => "false", true],
     ];
-    it.each(COLUMNAS)("cambiar %s deja una fila con el anterior y el nuevo", async (campo, cambios, anterior, nuevo) => {
+    it.each(COLUMNAS)("cambiar %s deja una fila con el anterior y el nuevo", async (campo, cambios, anterior, nuevo, esDeConsignacion) => {
+      if (esDeConsignacion) await comoAdmin();
       expect((await actualizarProducto(quesoId, await datos(cambios()))).ok).toBe(true);
       const f = await filas(campo);
       expect(f).toHaveLength(1);
-      expect(f[0]).toMatchObject({ valorAnterior: anterior(), valorNuevo: nuevo(), actorId: operadorId });
+      expect(f[0]).toMatchObject({ valorAnterior: anterior(), valorNuevo: nuevo(), actorId: esDeConsignacion ? adminId : operadorId });
     });
 
     it("la descripción de la unidad dice los nombres (se lee en la pantalla de auditoría)", async () => {
@@ -183,7 +187,7 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
 
     it.each(FUENTES)("con %s, cambiar la unidad de stock se rechaza (UNIDAD_CON_HISTORIA) y no escribe nada", async (_nombre, sembrar) => {
       await sembrar();
-      const r = await actualizarProductoCasoDeUso(actor(operadorId), { productoId: quesoId, datos: await datos({ unidadStockId: gId }) });
+      const r = await actualizarProductoCasoDeUso(actor(operadorId), comando(await datos({ unidadStockId: gId })));
       expect(r.ok).toBe(false);
       if (r.ok) return;
       expect(r.codigo).toBe("UNIDAD_CON_HISTORIA");
@@ -214,12 +218,14 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
     }
     const consignanteDelProducto = async () => (await prisma.producto.findUniqueOrThrow({ where: { id: quesoId } })).proveedorConsignacionId;
     const debidoA = async () => (await generarReporteConsignacion(sucursalId, prisma)).debidoPorConsignante.map((d) => ({ proveedor: d.proveedor, liquidado: d.liquidado }));
+    // Lo que se prueba acá es el bloqueo por HISTORIA, no el permiso: quien intenta cambiar el consignante es el administrador (S-12 ya frena al operador).
+    beforeEach(comoAdmin);
 
     it("EL ATAQUE: con una liquidación, pasar el producto de A a B se rechaza (CONSIGNANTE_CON_HISTORIA) y la deuda sigue siendo de A", async () => {
       await conLiquidacion();
       expect(await debidoA()).toEqual([{ proveedor: "Lácteos A", liquidado: 30 }]);
 
-      const r = await actualizarProductoCasoDeUso(actor(operadorId), { productoId: quesoId, datos: await datos({ proveedorConsignacionId: proveedorBId }) });
+      const r = await actualizarProductoCasoDeUso(actor(adminId), comando(await datos({ proveedorConsignacionId: proveedorBId })));
       expect(r.ok).toBe(false);
       if (r.ok) return;
       expect(r.codigo).toBe("CONSIGNANTE_CON_HISTORIA");
@@ -232,7 +238,7 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
 
     it("con una liquidación, dejar de ser consignación también se rechaza (la deuda caería en «sin proveedor»)", async () => {
       await conLiquidacion();
-      const r = await actualizarProductoCasoDeUso(actor(operadorId), { productoId: quesoId, datos: await datos({ esConsignacion: false, proveedorConsignacionId: null }) });
+      const r = await actualizarProductoCasoDeUso(actor(adminId), comando(await datos({ esConsignacion: false, proveedorConsignacionId: null })));
       expect(r.ok).toBe(false);
       if (r.ok) return;
       expect(r.codigo).toBe("CONSIGNANTE_CON_HISTORIA");

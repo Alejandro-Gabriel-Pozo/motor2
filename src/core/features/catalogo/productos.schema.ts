@@ -46,14 +46,20 @@ export interface DatosProductoCreado {
 /**
  *  - `DATOS_INVALIDOS`: algún dato del formulario no es válido (`validarDatosDeProducto`; solo el alta completa);
  *  - `YA_EXISTE`: ya hay un producto DISPONIBLE (en alguna sucursal) con ese nombre;
- *  - `CODIGO_REPETIDO`: el código (manual, o el autogenerado agotados los reintentos) ya es de otro producto.
+ *  - `CODIGO_REPETIDO`: el código (manual, o el autogenerado agotados los reintentos) ya es de otro producto;
+ *  - `SIN_PERMISO_COSTO`: el alta trae un costo de consignación (es consignación, proveedor o precio) y quien la pide no tiene `pagar_consignante` (S-12, D8).
  */
-export type ResultadoDarDeAltaProducto = ResultadoCaso<DatosProductoCreado, "DATOS_INVALIDOS" | "YA_EXISTE" | "CODIGO_REPETIDO">;
+export type ResultadoDarDeAltaProducto = ResultadoCaso<DatosProductoCreado, "DATOS_INVALIDOS" | "YA_EXISTE" | "CODIGO_REPETIDO" | "SIN_PERMISO_COSTO">;
 
-/** Comando «editar un producto»: el id y los datos del formulario, SIN validar (sin guard: `validarDatosDeProducto` lee la unidad de stock a mitad de camino). */
+/**
+ * Comando «editar un producto»: el id y los datos del formulario, SIN validar (sin guard: `validarDatosDeProducto` lee la unidad de stock a mitad de camino), y si quien lo pide
+ * puede gestionar el costo de consignación (S-12, D8 del dueño: tiene `pagar_consignante` EDITAR en la sucursal activa; lo calcula la Server Action con el gate, el caso de
+ * uso no chequea permisos). Sin eso, el costo de consignación (es consignación, proveedor y precio) no se cambia: un campo que no viene queda como estaba, uno distinto es `SIN_PERMISO_COSTO`.
+ */
 export interface ComandoActualizarProducto {
   productoId: string;
   datos: EntradaProducto;
+  puedeGestionarConsignacion: boolean;
 }
 
 /**
@@ -70,11 +76,12 @@ export interface DatosActualizarProducto {
  *  - `TIPO_DISTINTO`: el formulario trae otro tipo (MP/PV) que el del producto: no se puede cambiar;
  *  - `DATOS_INVALIDOS`: algún dato del formulario no es válido (`validarDatosDeProducto`);
  *  - `UNIDAD_CON_HISTORIA`: el formulario trae otra unidad de stock y el producto ya tiene historia (movimientos, recetas, presentaciones, proveedores…; CAT-1, S-05);
- *  - `CONSIGNANTE_CON_HISTORIA`: el formulario cambia el consignante (o el «es consignación») de un producto que ya tiene liquidaciones (S-05).
+ *  - `CONSIGNANTE_CON_HISTORIA`: el formulario cambia el consignante (o el «es consignación») de un producto que ya tiene liquidaciones (S-05);
+ *  - `SIN_PERMISO_COSTO`: el formulario cambia el costo de consignación (es consignación, proveedor o precio) y quien lo pide no tiene `pagar_consignante` (S-12, D8).
  */
 export type ResultadoActualizarProducto = ResultadoCaso<
   DatosActualizarProducto,
-  "PRODUCTO_NO_ENCONTRADO" | "TIPO_DISTINTO" | "DATOS_INVALIDOS" | "UNIDAD_CON_HISTORIA" | "CONSIGNANTE_CON_HISTORIA"
+  "PRODUCTO_NO_ENCONTRADO" | "TIPO_DISTINTO" | "DATOS_INVALIDOS" | "UNIDAD_CON_HISTORIA" | "CONSIGNANTE_CON_HISTORIA" | "SIN_PERMISO_COSTO"
 >;
 
 /**

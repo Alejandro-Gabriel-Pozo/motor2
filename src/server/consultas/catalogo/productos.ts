@@ -16,12 +16,27 @@ import { whereSeccionHabitualVigente } from "@/core/stock/public";
  *  - CUÁNDO se llama cada consulta (ternarios, `if`, `Promise.all`) lo decide la página, no este archivo.
  */
 
-/** Ficha de un producto (`/catalogo/productos/[id]`): el producto con categoría, unidades, insumo (con su grupo) y proveedor de consignación. `null` si no existe. */
-export async function obtenerFichaProducto(id: string, db: Db) {
-  return db.producto.findUnique({
+/**
+ * S-12 (plan de endurecimiento de seguridad, T2; D8 del dueño): el COSTO DE CONSIGNACIÓN de un producto —`precioConsignacion`, `proveedorConsignacionId` y el proveedor
+ * mismo— es de quien tiene `pagar_consignante` en la sucursal activa. La consulta es el último punto antes de la página: DENIEGA POR DEFECTO. Sin
+ * `conCostoDeConsignacion: true` los tres vuelven en `null` (el «es consignación» sí queda: no es el costo); la página lo pasa en `true` solo cuando el gate de su
+ * usuario lo dice. `esConsignacion` no se toca.
+ */
+interface OpcionesDeCostoDeConsignacion {
+  conCostoDeConsignacion?: boolean;
+}
+
+/**
+ * Ficha de un producto (`/catalogo/productos/[id]`): el producto con categoría, unidades, insumo (con su grupo) y proveedor de consignación (SOLO `id` y `nombre`: la ficha
+ * no necesita el CUIT, el correo ni las condiciones de pago del proveedor). `null` si no existe. El costo de consignación solo con `conCostoDeConsignacion`.
+ */
+export async function obtenerFichaProducto(id: string, db: Db, opciones: OpcionesDeCostoDeConsignacion = {}) {
+  const p = await db.producto.findUnique({
     where: { id },
-    include: { categoria: true, unidadCompra: true, unidadStock: true, insumo: { include: { grupo: true } }, proveedorConsignacion: true },
+    include: { categoria: true, unidadCompra: true, unidadStock: true, insumo: { include: { grupo: true } }, proveedorConsignacion: { select: { id: true, nombre: true } } },
   });
+  if (p === null || opciones.conCostoDeConsignacion === true) return p;
+  return { ...p, precioConsignacion: null, proveedorConsignacionId: null, proveedorConsignacion: null };
 }
 
 /**
@@ -36,9 +51,14 @@ export async function obtenerSeccionHabitualEnSucursal(sucursalId: string, produ
   });
 }
 
-/** El producto solo, sin relaciones (formulario de edición, `/catalogo/productos/[id]/editar`). `null` si no existe. */
-export async function obtenerProductoPorId(id: string, db: Db) {
-  return db.producto.findUnique({ where: { id } });
+/**
+ * El producto solo, sin relaciones (formulario de edición, `/catalogo/productos/[id]/editar`, y las cabeceras de receta). `null` si no existe. El costo de consignación
+ * solo con `conCostoDeConsignacion` (ver `OpcionesDeCostoDeConsignacion`): el formulario de edición lo manda como prop a un componente de cliente, y los props viajan al navegador.
+ */
+export async function obtenerProductoPorId(id: string, db: Db, opciones: OpcionesDeCostoDeConsignacion = {}) {
+  const p = await db.producto.findUnique({ where: { id } });
+  if (p === null || opciones.conCostoDeConsignacion === true) return p;
+  return { ...p, precioConsignacion: null, proveedorConsignacionId: null };
 }
 
 /**

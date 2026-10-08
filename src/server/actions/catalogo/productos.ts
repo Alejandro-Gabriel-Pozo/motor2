@@ -1,7 +1,8 @@
 "use server";
 
-import type { TipoProducto } from "@prisma/client";
+import type { PrismaClient, TipoProducto } from "@prisma/client";
 import { azarDelProceso } from "@/lib/azar";
+import { obtenerMiNivelPermiso } from "@/server/acceso/gate";
 import { texto } from "@/core/texto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
@@ -29,6 +30,15 @@ import { sincronizarPrecioGrupoCartaCasoDeUso } from "./casos-de-uso/sincronizar
  * el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las lecturas (H8: `buscarProductosSelector`, `obtener*`, `listar*`) siguen acá con sus guardas. La acción
  * conserva los efectos de Next (revalidar la carta pública) y el `sincronizable` de la edición, después de revalidar; las altas, la fuente de azar del proceso.
  */
+
+/**
+ * S-12 (D8 del dueño): ¿puede quien llama gestionar el COSTO DE CONSIGNACIÓN de un producto (si es de consignación, su proveedor y su precio)? Es `pagar_consignante` EDITAR en la
+ * sucursal activa (piso administrador): la pantalla donde ese precio se vuelve deuda. La alta y la edición lo calculan acá, con el gate, y los casos de uso —que no chequean
+ * permisos— lo reciben como dato. No se exporta: este archivo es `"use server"` y toda función exportada es un endpoint.
+ */
+async function puedeGestionarConsignacion(ctx: { usuarioId: string; sucursalId: string; db: PrismaClient }): Promise<boolean> {
+  return (await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db)).editar;
+}
 
 export interface ProductoOpcion {
   id: string;
@@ -283,7 +293,7 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
  */
 export async function darDeAltaProducto(datos: DatosProducto): Promise<ResultadoConId> {
   return conPermisoDeEmpresa("alta_producto", async (ctx) => {
-    const r = await darDeAltaProductoCasoDeUso(ctx, datos, azarDelProceso);
+    const r = await darDeAltaProductoCasoDeUso(ctx, datos, azarDelProceso, await puedeGestionarConsignacion(ctx));
     const base = aResultadoAccion(r);
     return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
@@ -306,7 +316,7 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
  */
 export async function actualizarProducto(productoId: string, datos: DatosProducto): Promise<ResultadoConSincronizable> {
   return conPermisoDeEmpresa<ResultadoConSincronizable>("producto_editar", async (ctx) => {
-    const r = await actualizarProductoCasoDeUso(ctx, { productoId, datos });
+    const r = await actualizarProductoCasoDeUso(ctx, { productoId, datos, puedeGestionarConsignacion: await puedeGestionarConsignacion(ctx) });
     const base = aResultadoAccion(r);
     if (!r.ok) return base;
     revalidarCartasPublicas();

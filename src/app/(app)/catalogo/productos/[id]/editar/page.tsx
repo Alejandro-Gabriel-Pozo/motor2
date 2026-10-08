@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import { ProductoForm, type ProductoExistente } from "../../producto-form";
@@ -20,8 +20,13 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
   const gateEditar = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db);
   if (!gateEditar.ok) return <p className="text-red-600">{gateEditar.mensaje}</p>;
 
+  // S-12 (D8 del dueño): el costo de consignación (precio y consignante) solo viaja al formulario —un componente de cliente: sus props van al navegador— si el usuario tiene
+  // `pagar_consignante` EDITAR en la sucursal activa. La consulta no lo devuelve sin la bandera, y la lista de proveedores del selector (solo se usa para elegir el consignante)
+  // tampoco se manda.
+  const { editar: puedeGestionarConsignacion } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
+
   const { id } = await params;
-  const p = await obtenerProductoPorId(id, ctx.db);
+  const p = await obtenerProductoPorId(id, ctx.db, { conCostoDeConsignacion: puedeGestionarConsignacion });
   if (!p) notFound();
 
   const { unidades, insumos, categorias, proveedores, puedeCrear } = await cargarOpcionesFormularioProducto(ctx);
@@ -57,8 +62,9 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
         unidades={unidades}
         insumosIniciales={insumos}
         categoriasIniciales={categorias}
-        proveedoresIniciales={proveedores}
+        proveedoresIniciales={puedeGestionarConsignacion ? proveedores : []}
         puedeCrear={puedeCrear}
+        puedeGestionarConsignacion={puedeGestionarConsignacion}
         productoExistente={productoExistente}
         presentacionesIniciales={presentaciones}
       />

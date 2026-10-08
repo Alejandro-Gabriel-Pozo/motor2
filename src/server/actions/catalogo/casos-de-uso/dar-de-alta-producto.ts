@@ -26,6 +26,9 @@ import { crearProductoNuevo, sembrarDisponibilidadDeProductoNuevo } from "@/serv
  * La Server Action quedó como adaptador (`conPermisoDeEmpresa("alta_producto")` → este caso de uso, con la fuente de azar del proceso → `aResultadoAccion` y el id y
  * el nombre para su `ResultadoConId`). Sin guard: la validación lee la unidad de stock a mitad de camino.
  *
+ * S-12 (D8 del dueño): sin `pagar_consignante` (`puedeGestionarConsignacion`, que calcula la Server Action) el alta no puede traer costo de consignación (es consignación, proveedor o precio):
+ * `SIN_PERMISO_COSTO`, antes de leer o escribir nada.
+ *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos. No lee el azar por su cuenta: lo recibe (`azar`).
  *
  * @contract Crea el producto (con un código único) y lo deja disponible donde pide el tilde, salvo que los datos no sean válidos o ya haya uno disponible con ese nombre; devuelve su id y su nombre.
@@ -38,7 +41,16 @@ export async function darDeAltaProductoCasoDeUso(
   actor: Pick<ContextoUsuario, "db" | "sucursalId">,
   datos: EntradaProducto,
   azar: FuenteDeAzar,
+  /** S-12 (D8): si quien da de alta tiene `pagar_consignante` EDITAR en la sucursal activa (lo calcula la Server Action con el gate; este caso de uso no chequea permisos). */
+  puedeGestionarConsignacion: boolean,
 ): Promise<ResultadoDarDeAltaProducto> {
+  // S-12 (D8 del dueño): crear un producto en consignación, con su proveedor o con un precio de consignación, es fijar su costo: solo con `pagar_consignante`. Fallo cerrado, antes de leer nada.
+  if (!puedeGestionarConsignacion && (datos.esConsignacion || datos.proveedorConsignacionId || (datos.precioConsignacion !== undefined && Number(datos.precioConsignacion) !== 0))) {
+    return fracaso(
+      "SIN_PERMISO_COSTO",
+      "El costo de consignación (si el producto es de consignación, su proveedor y su precio) lo gestiona quien puede pagar a consignantes: no tenés permiso para fijarlo.",
+    );
+  }
   const validado = await validarDatosDeProducto(actor.db, datos);
   if ("error" in validado) return fracaso("DATOS_INVALIDOS", validado.error);
 

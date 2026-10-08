@@ -28,13 +28,16 @@ import { actualizarCamposDeProducto } from "@/server/persistencia/catalogo/produ
  *  - `CONSIGNANTE_CON_HISTORIA`: ni el consignante ni el «es consignación» se cambian si el producto ya tiene liquidaciones (`productoTieneLiquidaciones`): el reporte
  *    de consignación atribuye cada liquidación al consignante ACTUAL del producto, así que cambiarlo pasaría la deuda ya devengada a otro proveedor.
  *
+ * S-12 (D8 del dueño): el costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante`. El caso de uso no chequea permisos: la Server Action
+ * calcula `comando.puedeGestionarConsignacion` con el gate y acá, sin él, un campo de consignación que no viene queda como estaba y uno distinto del guardado es `SIN_PERMISO_COSTO`.
+ *
  * La Server Action quedó como adaptador (`conPermisoDeEmpresa("producto_editar")` → este caso de uso → `aResultadoAccion` → si salió bien, revalidar la carta
  * pública y DESPUÉS, si el precio de venta cambió (`datos.precioAnterior`/`precioNuevo`), ofrecer sincronizarlo con los hermanos del ítem agrupado —
  * `sincronizable`, docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8—, como antes). Sin guard: la validación lee la unidad de stock a mitad de camino.
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos.
  *
- * @contract Deja el producto con los datos pedidos (sin cambiar su tipo, ni su unidad de stock si ya tiene historia, ni su consignante si ya tiene liquidaciones) y una fila de auditoría por cada uno de sus valores de mayor impacto que cambió: todo o nada.
+ * @contract Deja el producto con los datos pedidos (sin cambiar su tipo, ni su unidad de stock si ya tiene historia, ni su consignante si ya tiene liquidaciones, ni su costo de consignación sin el permiso) y una fila de auditoría por cada uno de sus valores de mayor impacto que cambió: todo o nada.
  * @idempotency No aplica — repetir el pedido vuelve a escribir los mismos datos (sin filas de auditoría nuevas: no cambió nada).
  * @transaction `actor.transaccion` (READ COMMITTED): la lectura del producto, la validación, la pregunta por su historia, el `update` y sus auditorías, todo junto.
  * @sideEffects registrarCambioAuditado (Producto.precioVenta, .precioConsignacion, .pasoVenta, .factorConversion, .unidadStockId, .unidadCompraId, .seProduce, .esConsignacion y .proveedorConsignacionId, del anterior al nuevo), en la misma transacción. La revalidación de
@@ -45,11 +48,28 @@ export async function actualizarProductoCasoDeUso(
   actor: Pick<ContextoUsuario, "transaccion" | "usuarioId">,
   comando: ComandoActualizarProducto,
 ): Promise<ResultadoActualizarProducto> {
-  const { productoId, datos } = comando;
+  const { productoId } = comando;
   // Los rechazos devuelven ANTES de escribir, así que la transacción no deja nada. `actor.transaccion` puede reintentar el cuerpo: no tiene efectos fuera de la base.
   return actor.transaccion(async (tx): Promise<ResultadoActualizarProducto> => {
     const existente = await tx.producto.findUnique({ where: { id: productoId } });
     if (!existente) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
+
+    // S-12 (D8 del dueño): el costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante`. Sin esa clave un campo que NO viene queda como estaba
+    // (la pantalla del operador no lo manda) y uno que viene DISTINTO del guardado se rechaza: nunca se confía en lo que manda el cliente.
+    let datos = comando.datos;
+    if (!comando.puedeGestionarConsignacion) {
+      const intentaCambiarlo =
+        (datos.esConsignacion !== undefined && datos.esConsignacion !== existente.esConsignacion) ||
+        (datos.proveedorConsignacionId !== undefined && (datos.proveedorConsignacionId || null) !== existente.proveedorConsignacionId) ||
+        (datos.precioConsignacion !== undefined && Number(datos.precioConsignacion) !== Number(existente.precioConsignacion ?? 0));
+      if (intentaCambiarlo) {
+        return fracaso(
+          "SIN_PERMISO_COSTO",
+          "El costo de consignación (si el producto es de consignación, su proveedor y su precio) lo gestiona quien puede pagar a consignantes: no tenés permiso para cambiarlo.",
+        );
+      }
+      datos = { ...datos, esConsignacion: existente.esConsignacion, proveedorConsignacionId: existente.proveedorConsignacionId, precioConsignacion: Number(existente.precioConsignacion ?? 0) };
+    }
     // datosParaGuardar (abajo) no incluye `tipo` a propósito — cambiar el
     // tipo de un producto con historial (recetas, ventas, stock) rompe
     // invariantes reales, así que se rechaza explícito en vez de

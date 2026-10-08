@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { contarSucursales } from "@/server/consultas/catalogo/productos";
 import { ProductoForm } from "../producto-form";
@@ -19,6 +19,9 @@ export default async function NuevoProductoPage() {
   if (!gateAlta.ok) return <p className="text-red-600">{gateAlta.mensaje}</p>;
 
   const [{ unidades, insumos, categorias, proveedores, puedeCrear }, cantidadSucursales] = await Promise.all([cargarOpcionesFormularioProducto(ctx), contarSucursales(ctx.db)]);
+  // S-12 (D8 del dueño): crear un producto en consignación es fijar su costo (proveedor y precio): solo con `pagar_consignante` EDITAR en la sucursal activa. Sin la clave el formulario no
+  // ofrece la consignación ni manda la lista de proveedores del selector; el servidor la rechaza igual (`darDeAltaProducto`).
+  const { editar: puedeGestionarConsignacion } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
 
   return (
     <div className="max-w-xl">
@@ -30,8 +33,9 @@ export default async function NuevoProductoPage() {
         unidades={unidades}
         insumosIniciales={insumos}
         categoriasIniciales={categorias}
-        proveedoresIniciales={proveedores}
+        proveedoresIniciales={puedeGestionarConsignacion ? proveedores : []}
         puedeCrear={puedeCrear}
+        puedeGestionarConsignacion={puedeGestionarConsignacion}
         cantidadSucursales={cantidadSucursales}
         nombreSucursalActual={ctx.sucursalNombre}
       />

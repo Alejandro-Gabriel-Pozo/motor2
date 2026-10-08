@@ -70,7 +70,8 @@ describe("server/consultas/catalogo/productos", () => {
 
   describe("obtenerFichaProducto", () => {
     it("trae el producto con EXACTAMENTE las 5 relaciones del include (y el grupo dentro del insumo), con los datos sembrados", async () => {
-      const p = await obtenerFichaProducto(mpCompleto, prisma);
+      // S-12: el costo de consignación solo vuelve con la bandera que la página prende cuando el usuario tiene `pagar_consignante`.
+      const p = await obtenerFichaProducto(mpCompleto, prisma, { conCostoDeConsignacion: true });
       expect(p).not.toBeNull();
       if (!p) return;
 
@@ -106,6 +107,23 @@ describe("server/consultas/catalogo/productos", () => {
 
     it("un id que no existe devuelve null (findUnique, no lanza)", async () => {
       await expect(obtenerFichaProducto("no-existe", prisma)).resolves.toBeNull();
+    });
+
+    it("S-12: el proveedor de consignación viene SOLO con { id, nombre } (antes, la fila entera: CUIT, correo, condiciones de pago…)", async () => {
+      const p = await obtenerFichaProducto(mpCompleto, prisma, { conCostoDeConsignacion: true });
+      expect(Object.keys(p?.proveedorConsignacion ?? {}).sort()).toEqual(["id", "nombre"]);
+    });
+
+    it("S-12: SIN la bandera niega por defecto — ni el precio, ni el consignante, ni el proveedor; el «es consignación» queda", async () => {
+      for (const p of [await obtenerFichaProducto(mpCompleto, prisma), await obtenerFichaProducto(mpCompleto, prisma, { conCostoDeConsignacion: false })]) {
+        expect(p?.precioConsignacion).toBeNull();
+        expect(p?.proveedorConsignacionId).toBeNull();
+        expect(p?.proveedorConsignacion).toBeNull();
+        expect(p?.esConsignacion).toBe(true);
+        expect(p?.nombre).toBe("Harina 000");
+        expect(JSON.stringify(p)).not.toContain("Molino Consignador");
+        expect(JSON.stringify(p)).not.toContain("1500");
+      }
     });
 
     it("acepta el cliente de una transacción como `db`", async () => {
@@ -167,7 +185,7 @@ describe("server/consultas/catalogo/productos", () => {
 
   describe("obtenerProductoPorId", () => {
     it("trae SOLO los escalares del producto, sin ninguna relación", async () => {
-      const p = await obtenerProductoPorId(mpCompleto, prisma);
+      const p = await obtenerProductoPorId(mpCompleto, prisma, { conCostoDeConsignacion: true });
       expect(p).not.toBeNull();
       if (!p) return;
 
@@ -185,6 +203,15 @@ describe("server/consultas/catalogo/productos", () => {
         proveedorConsignacionId: proveedorId,
         observaciones: "Bolsa de 25 kg",
       });
+    });
+
+    it("S-12: SIN la bandera niega por defecto el costo de consignación (el formulario de edición lo manda a un componente de cliente)", async () => {
+      const p = await obtenerProductoPorId(mpCompleto, prisma);
+      expect(p?.precioConsignacion).toBeNull();
+      expect(p?.proveedorConsignacionId).toBeNull();
+      expect(p?.esConsignacion).toBe(true);
+      expect(p?.nombre).toBe("Harina 000");
+      expect(Object.keys(p ?? {}).sort()).toEqual(ESCALARES_PRODUCTO);
     });
 
     it("un id que no existe devuelve null (findUnique, no lanza)", async () => {

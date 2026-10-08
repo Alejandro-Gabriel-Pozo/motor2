@@ -42,10 +42,13 @@ export default async function FichaProductoPage({
   // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
   const { editar: puedeEditarProducto } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db);
   const { editar: puedeCambiarDisponibilidad } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db);
+  // S-12 (D8 del dueño): el costo de consignación (lo que se le paga al proveedor por unidad vendida, y quién es) es de quien tiene `pagar_consignante` en la sucursal activa — la
+  // pantalla donde ese precio se vuelve deuda. Acá no se esconde: la consulta ni lo devuelve sin esta bandera (deniega por defecto).
+  const { ver: puedeVerCostoDeConsignacion } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
 
   const { id } = await params;
   const { guardado } = unicosDeUrl(await searchParams);
-  const p = await obtenerFichaProducto(id, ctx.db);
+  const p = await obtenerFichaProducto(id, ctx.db, { conCostoDeConsignacion: puedeVerCostoDeConsignacion });
   if (!p) notFound();
 
   // Primitivos para el closure "use server" de abajo: lo que captura viaja al cliente y `p` lleva Decimales de Prisma (ver precio-local).
