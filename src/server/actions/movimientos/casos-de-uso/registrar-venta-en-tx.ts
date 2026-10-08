@@ -3,7 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
 import { crearArrastreDeRedondeo } from "@/core/movimientos/arrastre-redondeo";
-import { cumplePaso, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/core/catalogo/public";
+import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { leerCantidadVendida, MENSAJE_PRODUCTO_NO_EXISTE, mensajeNoDisponibleEnSucursal, rechazoDelProductoVendido } from "@/core/movimientos/linea-de-venta";
 import { cargarRecetaVigenteParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { importeDeLinea, redondearMoneda, repartirImporte } from "@/core/moneda";
@@ -77,29 +78,20 @@ async function armarLinea(
   obtenerProducto: ReturnType<typeof crearCacheProducto>,
   costoUnitarioPorProducto: Map<string, number | null>
 ): Promise<{ ok: true; linea: LineaArmada | null } | { ok: false; mensaje: string }> {
-  const cantidad: unknown = item.cantidadVendida;
-  // Una cantidad que no es un número finito y no negativo es un error, no «sin cantidad»: salteada en silencio, el resto de la venta se
-  // registraría igual. Solo el 0 (o la cantidad ausente) saltea la línea.
-  if (cantidad === undefined || cantidad === null || cantidad === 0) return { ok: true, linea: null };
-  if (typeof cantidad !== "number" || !Number.isFinite(cantidad) || cantidad < 0) return { ok: false, mensaje: "La cantidad vendida no es un número válido." };
+  // Las reglas (qué cantidad saltea la línea, cuál es un error, qué mensaje gana) son puras y viven en `core/movimientos/linea-de-venta.ts`; acá queda el ORDEN: cada una se llama
+  // en el mismo lugar donde estaba el `if`, antes o después de la lectura que le toca (los goldens registran las lecturas también en los rechazos).
+  const leida = leerCantidadVendida(item.cantidadVendida);
+  if (leida.tipo === "saltear") return { ok: true, linea: null };
+  if (leida.tipo === "invalida") return { ok: false, mensaje: leida.mensaje };
+  const cantidad = leida.cantidad;
 
   const producto = await obtenerProducto(item.productoId);
-  if (!producto) return { ok: false, mensaje: `El producto no existe.` };
+  if (!producto) return { ok: false, mensaje: MENSAJE_PRODUCTO_NO_EXISTE };
   if (!(await productoDisponibleEn(sucursalId, producto.id, tx))) {
-    return { ok: false, mensaje: `«${producto.nombre}» no está disponible en «${sucursalNombre}».` };
+    return { ok: false, mensaje: mensajeNoDisponibleEnSucursal(producto.nombre, sucursalNombre) };
   }
-  if (producto.tipo !== "PV") {
-    return { ok: false, mensaje: `"${producto.nombre}" no está habilitado para venta: solo se puede vender un PV (vinculado por receta a la materia prima que consume).` };
-  }
-  // Venta fraccionada (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): validación ADICIONAL, específica del paso — no
-  // reemplaza ninguna validación de decimales general (mostrador no tenía ninguna, y sigue sin tenerla). Comparte este núcleo con
-  // `cerrarCuenta` (POS): cada línea que llega acá ya pasó por `validarCantidadPedido` al cargarse (múltiplo exacto del paso), y la
-  // SUMA de múltiplos exactos sigue siendo un múltiplo exacto — así que esto nunca debería disparar desde el POS, solo desde la
-  // venta de mostrador directa (`registrarVenta`), que hoy no valida nada de esto.
-  if (producto.pasoVenta !== null) {
-    const paso = Number(producto.pasoVenta);
-    if (!cumplePaso(cantidad, paso)) return { ok: false, mensaje: `"${producto.nombre}": ${mensajeCantidadNoCumplePaso(paso)}` };
-  }
+  const rechazo = rechazoDelProductoVendido({ nombre: producto.nombre, tipo: producto.tipo, pasoVenta: producto.pasoVenta === null ? null : Number(producto.pasoVenta) }, cantidad);
+  if (rechazo !== null) return { ok: false, mensaje: rechazo };
 
   const pedidos: LineaArmada["pedidos"] = [];
   if (!producto.seProduce) {
