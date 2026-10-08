@@ -1,4 +1,4 @@
-import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal } from "@/core/tiempo/zona-horaria";
 
 /**
  * Dólar oficial del Banco Nación, para ver precios y valores también en dólares (Resumen, Período, Valuación y el encabezado): el cálculo PURO. Sin base, sin red, sin
@@ -41,33 +41,47 @@ export function fechaArgentina(instante: Date): string {
   return diaDeCalendario(instante, ZONA_ARGENTINA);
 }
 
-const esNumeroPositivo = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n > 0;
+/**
+ * Tope de una cotización aceptada de un tercero (S-30): el dólar vale ~1.500 pesos y la columna es `Decimal(12,4)` (hasta 99.999.999,9999). Un valor mayor es un error o un
+ * ataque, nunca un dólar real, y uno que no entra en la columna revienta el guardado de TODA la corrida.
+ */
+const COTIZACION_MAXIMA = 1_000_000;
+const esCotizacionValida = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n > 0 && n <= COTIZACION_MAXIMA;
 
-/** Lee la respuesta de dolarapi.com; `null` si no trae una cotización válida. Sin `fechaActualizacion`, el día es el de `ahora`. */
+/**
+ * Lee la respuesta de dolarapi.com; `null` si no trae una cotización válida (venta positiva y acotada, fecha que se entienda y que no sea del futuro: lo que escribe un
+ * tercero lo leen todas las empresas, S-30). Sin `fechaActualizacion`, el día es el de `ahora`.
+ */
 export function leerDolarApi(json: unknown, ahora: Date): CotizacionDia | null {
   const j = json as { compra?: unknown; venta?: unknown; fechaActualizacion?: unknown } | null;
-  if (!j || !esNumeroPositivo(j.venta)) return null;
+  if (!j || !esCotizacionValida(j.venta)) return null;
   const instante = typeof j.fechaActualizacion === "string" ? new Date(j.fechaActualizacion) : ahora;
   if (Number.isNaN(instante.getTime())) return null;
-  return { fecha: fechaArgentina(instante), compra: esNumeroPositivo(j.compra) ? j.compra : null, venta: j.venta, fuente: "BNA" };
+  const fecha = fechaArgentina(instante);
+  if (fecha > fechaArgentina(ahora)) return null;
+  return { fecha, compra: esCotizacionValida(j.compra) ? j.compra : null, venta: j.venta, fuente: "BNA" };
 }
 
-/** Lee la respuesta del BCRA (un solo valor: va en `venta`); `null` si no trae una cotización válida. */
-export function leerBcra(json: unknown): CotizacionDia | null {
+/** Lee la respuesta del BCRA (un solo valor: va en `venta`); `null` si no trae una cotización válida (fecha «AAAA-MM-DD» real y no futura, valor acotado). */
+export function leerBcra(json: unknown, ahora: Date): CotizacionDia | null {
   const j = json as { results?: { fecha?: unknown; detalle?: { tipoCotizacion?: unknown }[] }[] } | null;
   const r = j?.results?.[0];
   const valor = r?.detalle?.[0]?.tipoCotizacion;
-  if (!r || typeof r.fecha !== "string" || !esNumeroPositivo(valor)) return null;
+  if (!r || !esDiaISOReal(r.fecha) || r.fecha > fechaArgentina(ahora) || !esCotizacionValida(valor)) return null;
   return { fecha: r.fecha, compra: null, venta: valor, fuente: "BCRA" };
 }
 
-/** Días del historial de argentinadatos desde `desdeISO` (inclusive), en orden. */
-export function leerHistorial(json: unknown, desdeISO: string): CotizacionDia[] {
+/**
+ * Días del historial de argentinadatos desde `desdeISO` (inclusive) hasta HOY en Argentina (inclusive), en orden. Se saltea la fila con una fecha que no existe o que es del
+ * futuro y la de un valor fuera de rango (S-30); la plausibilidad contra el día anterior (`cotizacionPlausible`) la aplica el caso de uso al guardar.
+ */
+export function leerHistorial(json: unknown, desdeISO: string, ahora: Date): CotizacionDia[] {
   if (!Array.isArray(json)) return [];
+  const hastaISO = fechaArgentina(ahora);
   const dias: CotizacionDia[] = [];
   for (const f of json as { fecha?: unknown; compra?: unknown; venta?: unknown }[]) {
-    if (typeof f?.fecha !== "string" || f.fecha < desdeISO || !esNumeroPositivo(f.venta)) continue;
-    dias.push({ fecha: f.fecha, compra: esNumeroPositivo(f.compra) ? f.compra : null, venta: f.venta, fuente: "BNA" });
+    if (!esDiaISOReal(f?.fecha) || f.fecha < desdeISO || f.fecha > hastaISO || !esCotizacionValida(f.venta)) continue;
+    dias.push({ fecha: f.fecha, compra: esCotizacionValida(f.compra) ? f.compra : null, venta: f.venta, fuente: "BNA" });
   }
   return dias.sort((a, b) => a.fecha.localeCompare(b.fecha));
 }

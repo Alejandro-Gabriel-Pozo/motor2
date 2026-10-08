@@ -27,7 +27,7 @@ function simularRed(rutas: Record<string, unknown | Error>) {
       const host = new URL(url).host;
       const r = rutas[host];
       if (r === undefined || r instanceof Error) throw r ?? new Error(`sin ruta simulada para ${host}`);
-      return { ok: true, status: 200, json: async () => r };
+      return new Response(JSON.stringify(r), { status: 200 }); // una Response real: el adaptador lee su `body` de a trozos (S-30)
     })
   );
 }
@@ -46,14 +46,14 @@ describe("lectura de las respuestas", () => {
   });
 
   it("BCRA: un solo valor, que va en venta", () => {
-    expect(leerBcra(RESPUESTA_BCRA)).toEqual({ fecha: "2026-09-18", compra: null, venta: 1514.5, fuente: "BCRA" });
-    expect(leerBcra({ results: [] })).toBeNull();
+    expect(leerBcra(RESPUESTA_BCRA, new Date("2026-09-18T22:00:00Z"))).toEqual({ fecha: "2026-09-18", compra: null, venta: 1514.5, fuente: "BCRA" });
+    expect(leerBcra({ results: [] }, new Date("2026-09-18T22:00:00Z"))).toBeNull();
   });
 
   it("historial: desde una fecha, en orden, ignorando filas inválidas", () => {
-    const dias = leerHistorial([...HISTORIAL].reverse().concat([{ casa: "oficial", compra: 1, venta: NaN as unknown as number, fecha: "2026-09-19" }]), "2026-01-01");
+    const dias = leerHistorial([...HISTORIAL].reverse().concat([{ casa: "oficial", compra: 1, venta: NaN as unknown as number, fecha: "2026-09-19" }]), "2026-01-01", new Date("2026-09-18T22:00:00Z"));
     expect(dias.map((d) => d.fecha)).toEqual(["2026-09-16", "2026-09-17", "2026-09-18"]);
-    expect(leerHistorial("no es una lista", "2026-01-01")).toEqual([]);
+    expect(leerHistorial("no es una lista", "2026-01-01", new Date("2026-09-18T22:00:00Z"))).toEqual([]);
   });
 
   it("pesos a dólares con 2 decimales", () => {

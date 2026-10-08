@@ -22,7 +22,7 @@ import type { Db } from "@/lib/db-tipos";
  */
 export async function sincronizarIPCCasoDeUso(actor: { db: Db; ahora: Date }): Promise<ResultadoSincronizacionIPC> {
   const { db, ahora } = actor;
-  const filas = leerSerieDeLaApi(await pedirSerieDelIPC());
+  const filas = leerSerieDeLaApi(await pedirSerieDelIPC(), ahora);
 
   const mesesExistentes = new Set((await cargarMesesDelIPC(db)).map(claveMes));
 

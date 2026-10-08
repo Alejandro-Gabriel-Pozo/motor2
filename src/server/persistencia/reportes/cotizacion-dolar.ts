@@ -8,9 +8,10 @@ import type { Db } from "@/lib/db-tipos";
  * fuente probar, qué descartar) es del caso de uso `sincronizar-dolar.ts`.
  */
 
-/** La última cotización de BNA guardada, para decidir si hay que rellenar el historial. `null` si no hay ninguna. */
-export async function cargarUltimaCotizacionBna(db: Db): Promise<{ fecha: Date } | null> {
-  return db.cotizacionDolar.findFirst({ where: { fuente: "BNA" }, orderBy: { fecha: "desc" }, select: { fecha: true } });
+/** La última cotización de BNA guardada, para decidir si hay que rellenar el historial y para comparar contra ella el primer día que se rellena (S-30). `null` si no hay ninguna. */
+export async function cargarUltimaCotizacionBna(db: Db): Promise<{ fecha: Date; venta: number } | null> {
+  const fila = await db.cotizacionDolar.findFirst({ where: { fuente: "BNA" }, orderBy: { fecha: "desc" }, select: { fecha: true, venta: true } });
+  return fila ? { fecha: fila.fecha, venta: Number(fila.venta) } : null;
 }
 
 /** La cotización guardada inmediatamente ANTERIOR al día dado (la de BNA gana el empate de fecha), para comparar un salto. `null` si no hay. */

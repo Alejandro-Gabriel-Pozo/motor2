@@ -38,9 +38,18 @@ export async function sincronizarDolarCasoDeUso(actor: { db: Db; ahora: Date }):
   const relleno = planDeRelleno(ultima?.fecha ?? null, ahora);
   if (relleno.rellenar) {
     try {
-      for (const dia of leerHistorial(await pedirHistorialDelDolar(), relleno.desde)) {
+      // S-30: cada día se compara con el ÚLTIMO ACEPTADO (el guardado antes de la corrida o el día anterior de este relleno) con la misma regla que la cotización de hoy:
+      // un salto de más de 20 % sin otra fuente que lo confirme se descarta (y se avisa), sin frenar el resto. Una API comprometida no puede escribir un historial entero.
+      let previo: { fecha: Date; venta: number } | null = ultima;
+      for (const dia of leerHistorial(await pedirHistorialDelDolar(), relleno.desde, ahora)) {
+        const instante = new Date(dia.fecha);
+        if (!cotizacionPlausible(dia.venta, previo, instante)) {
+          errores.push(`historial ${dia.fecha}: ${mensajeDeCotizacionDescartada(dia.venta, previo?.venta)}`);
+          continue;
+        }
         await guardarDiaDeCotizacion(db, dia);
         diasRellenados++;
+        previo = { fecha: instante, venta: dia.venta };
       }
     } catch (e) {
       errores.push(`historial: ${e instanceof Error ? e.message : String(e)}`);
@@ -56,7 +65,7 @@ export async function sincronizarDolarCasoDeUso(actor: { db: Db; ahora: Date }):
   }
   if (!hoy) {
     try {
-      hoy = leerBcra(await pedirDolarDelBcra());
+      hoy = leerBcra(await pedirDolarDelBcra(), ahora);
       if (!hoy) errores.push("BCRA no trajo una cotización válida");
     } catch (e) {
       errores.push(`BCRA: ${e instanceof Error ? e.message : String(e)}`);
@@ -67,7 +76,7 @@ export async function sincronizarDolarCasoDeUso(actor: { db: Db; ahora: Date }):
     if (!cotizacionPlausible(hoy.venta, previa, ahora)) {
       let confirmacion: number | null = null;
       try {
-        const otra = hoy.fuente === "BNA" ? leerBcra(await pedirDolarDelBcra()) : leerDolarApi(await pedirDolarDeHoy(), ahora);
+        const otra = hoy.fuente === "BNA" ? leerBcra(await pedirDolarDelBcra(), ahora) : leerDolarApi(await pedirDolarDeHoy(), ahora);
         confirmacion = otra?.venta ?? null;
       } catch {
         // sin segunda fuente no hay confirmación: el salto se descarta
