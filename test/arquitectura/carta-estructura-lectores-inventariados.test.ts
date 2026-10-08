@@ -32,8 +32,9 @@ const ARCHIVOS_PERMITIDOS = [
   // Hito 5, bloque D: el contenido de carta de un producto lo leen sus casos de uso (antes, server/actions/carta/contenido-producto.ts).
   // (`actualizar-visible-en-carta.ts` solo lee por la RELACIÓN del producto, con el filtro de sucursal: la regla de relaciones lo mira en todo src/, no necesita estar en este inventario.)
   "server/actions/carta/casos-de-uso/guardar-contenido-carta-producto.ts",
-  "server/actions/carta/items-agrupados.ts",
-  // Hito 5, bloque D: apagar o prender un ítem agrupado, cambiar el orden de una opción y quitarla las leen sus casos de uso (antes, server/actions/carta/items-agrupados.ts).
+  // Hito 5, bloque D: los ítems agrupados y sus opciones los leen sus casos de uso (antes, server/actions/carta/items-agrupados.ts): el alta y la edición, apagar o prender,
+  // cambiar el orden de una opción y quitarla.
+  "server/actions/carta/casos-de-uso/guardar-item-agrupado-carta.ts",
   "server/actions/carta/casos-de-uso/actualizar-activo-item-agrupado-carta.ts",
   "server/actions/carta/casos-de-uso/actualizar-orden-opcion-item-agrupado-carta.ts",
   // Hito 5, bloque D: agregar un producto como opción de un ítem agrupado lo lee su caso de uso (antes, la función privada `agregarOpcion` de server/actions/carta/items-agrupados.ts).

@@ -338,6 +338,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 5, bloque D (D8): guardarTemaCarta (con guardComandoGuardarTemaCarta) y cambiarAplicacionTema (con guardComandoCambiarAplicacionTema) → carta/casos-de-uso/{guardar-tema-carta,cambiar-aplicacion-tema}.ts; escrituras en server/persistencia/carta/tema.ts (el upsert por sucursal y el cambio de aplicarEnCarta), con la base del contexto y sin transacción ni auditoría (el tema visual no es plata), como antes. Los guards reciben la sucursal activa del contexto y la comparan ANTES de leer (otra sucursal responde «No se encontró la sucursal.»), dentro de conPermiso; la acción revalida la carta pública solo si salió bien (también en los avisos «sin efecto»). El archivo no tiene ninguna otra mutación.",
   },
+  {
+    ruta: "src/server/actions/carta/items-agrupados.ts",
+    motivo:
+      "Hito 5, bloque D (D9 a D11): guardarItemAgrupadoCarta (con guardComandoGuardarItemAgrupadoCarta; la acción arma el ResultadoConId), actualizarActivoItemAgrupadoCarta, agregarOpcionItemAgrupadoCarta, actualizarOrdenOpcionItemAgrupadoCarta (con guardComandoActualizarOrdenOpcionItemAgrupadoCarta) y quitarOpcionItemAgrupadoCarta → carta/casos-de-uso/{guardar-item-agrupado-carta,actualizar-activo-item-agrupado-carta,agregar-opcion-item-agrupado-carta,actualizar-orden-opcion-item-agrupado-carta,quitar-opcion-item-agrupado-carta}.ts; escrituras en server/persistencia/carta/items-agrupados.ts, con la base del contexto y sin transacción ni auditoría (un ítem agrupado no es plata), como antes. Los ítems y sus opciones son propios de cada sucursal: las lecturas llevan whereCartaDeSucursal. El alta con productos (DA7) llama al caso de uso de agregar una opción, como hermano, y revalida la carta pública por el tercer parámetro `avisos` (una vez por el ítem y una por cada producto que entra: un caso de uso no puede importar Next). Activar, agregar una opción y quitar son SIN_GUARD con motivo. La acción revalida la carta pública solo si salió bien. El archivo no tiene ninguna otra mutación.",
+  },
 ];
 
 module.exports = {

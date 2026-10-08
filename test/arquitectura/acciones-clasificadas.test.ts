@@ -19,7 +19,6 @@ const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "auth/empresa-activa.ts": SIN_CASO_DE_USO,
   "auth/sucursal-activa.ts": SIN_CASO_DE_USO,
   "carta/copiar-carta.ts": SIN_CASO_DE_USO,
-  "carta/items-agrupados.ts": SIN_CASO_DE_USO,
   "carta/registro-publico.ts": SIN_CASO_DE_USO,
   "catalogo/proveedor-por-producto.ts": SIN_CASO_DE_USO,
   "catalogo/recetas.ts": "la escritura de la receta ya vive en casos-de-uso/guardar-version-de-receta.ts (lo exige escrituras-auditadas.test.ts); el resto son lecturas.",

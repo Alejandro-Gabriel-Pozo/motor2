@@ -8,6 +8,29 @@ import type { Prisma } from "@prisma/client";
  * del contexto y sin transacción, como antes (un ítem agrupado no es plata: sin auditoría).
  */
 
+/** Los campos editables de un ítem agrupado (siempre todos, alta y edición). */
+interface DatosDeItemAgrupadoCarta {
+  nombre: string;
+  seccionCartaId: string;
+  descripcion: string | null;
+  tags: string[];
+  especial: boolean;
+  orden: number;
+  generoCartaId: string | null;
+}
+
+/** Da de alta un ítem agrupado PROPIO de la sucursal. Si el nombre choca con el índice único `(sucursal, nombre)`, el error de unicidad sube tal cual. Devuelve su id y el nombre que quedó guardado. */
+export async function crearItemAgrupadoDeCarta(db: Prisma.TransactionClient, args: { sucursalId: string; datos: DatosDeItemAgrupadoCarta }): Promise<{ id: string; nombre: string }> {
+  const it = await db.itemAgrupadoCarta.create({ data: { sucursalId: args.sucursalId, ...args.datos } });
+  return { id: it.id, nombre: it.nombre };
+}
+
+/** Cambia los campos de un ítem agrupado existente. Si el nombre choca con el índice único, el error de unicidad sube tal cual. Devuelve su id y el nombre que quedó guardado. */
+export async function cambiarDatosDeItemAgrupadoCarta(db: Prisma.TransactionClient, args: { id: string; datos: DatosDeItemAgrupadoCarta }): Promise<{ id: string; nombre: string }> {
+  const it = await db.itemAgrupadoCarta.update({ where: { id: args.id }, data: args.datos });
+  return { id: it.id, nombre: it.nombre };
+}
+
 /** Apaga o prende un ítem agrupado (nunca se borra: apagado deja de salir en la carta, y sus opciones tampoco salen sueltas, D3). */
 export async function fijarActivoDeItemAgrupadoCarta(db: Prisma.TransactionClient, args: { id: string; activo: boolean }): Promise<void> {
   await db.itemAgrupadoCarta.update({ where: { id: args.id }, data: { activo: args.activo } });

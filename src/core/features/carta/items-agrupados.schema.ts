@@ -8,6 +8,51 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
  */
 
 /**
+ * Comando «alta o edición de un ítem agrupado» (sin `id` = alta; con `id` = edición): lo que recibe `guardarItemAgrupadoCartaCasoDeUso`, con los textos y el orden
+ * YA validados por `guardComandoGuardarItemAgrupadoCarta` (nombre recortado y válido, descripción en largo o `null`, tags normalizados, orden entero, tope de productos
+ * y sección elegida). El `generoCartaId` y los `productoIds` pasan CRUDOS (el caso de uso los resuelve contra la base, en el mismo lugar que antes).
+ */
+export interface ComandoGuardarItemAgrupadoCarta {
+  id?: string;
+  nombre: string;
+  seccionCartaId: string;
+  descripcion: string | null;
+  tags: string[];
+  especial: boolean;
+  orden: number;
+  /** Carpeta de género del POS, OPCIONAL: vacío o en blanco = sin género. Las opciones del ítem heredan este género. */
+  generoCartaId?: string | null;
+  /** SOLO en el alta (DA7): productos a agregar como opciones apenas se crea el ítem, en este orden; al editar se ignora. */
+  productoIds: readonly string[];
+}
+
+/** El id y el nombre del ítem guardado (creado o editado), para el `ResultadoConId` de la Server Action. */
+export interface DatosItemAgrupadoCartaGuardado {
+  id: string;
+  nombre: string;
+}
+
+/**
+ * Solo lo que produce el caso de uso (el formato lo rechaza antes el guard):
+ *  - `SECCION_NO_ENCONTRADA`: la sección elegida no existe (gana sobre el género);
+ *  - `GENERO_INVALIDO`: el género no existe en esta sucursal o está apagado (gana sobre el nombre repetido);
+ *  - `NOMBRE_REPETIDO`: OTRO ítem de esta sucursal ya tiene ese nombre (sin distinguir mayúsculas), también si lo ganó otro pedido a la vez (la carrera del índice único);
+ *    gana sobre `ITEM_NO_ENCONTRADO`;
+ *  - `ITEM_NO_ENCONTRADO`: el ítem a editar no existe en esta sucursal (uno de otra sucursal responde igual).
+ * Un producto de `productoIds` que no entra NO es un fracaso: el alta sale bien y el mensaje dice cuáles no entraron y por qué (DA7).
+ */
+export type ResultadoGuardarItemAgrupadoCarta = ResultadoCaso<DatosItemAgrupadoCartaGuardado, "SECCION_NO_ENCONTRADA" | "GENERO_INVALIDO" | "NOMBRE_REPETIDO" | "ITEM_NO_ENCONTRADO">;
+
+/**
+ * Los avisos que el caso de uso le da a quien lo llama (la Server Action) CUANDO la carta pública cambia: un caso de uso no puede importar Next (`casos-de-uso-no-cookies`)
+ * y el alta con productos invalida la carta una vez por el ítem y otra por cada producto que entra, así que no alcanza con revalidar al final. La acción lo llena con
+ * `revalidarCartasPublicas`.
+ */
+export interface AvisosDeItemAgrupado {
+  cartaCambio(): void;
+}
+
+/**
  * Comando «agregar un producto como opción de un ítem agrupado»: lo que recibe `agregarOpcionItemAgrupadoCartaCasoDeUso`, CRUDO. No hay guard (`SIN_GUARD` en
  * `acciones-migradas-con-guard.test.ts`): el ítem se lee ANTES de mirar el producto y el orden se valida después de varias lecturas (un ítem inexistente gana sobre
  * «elegí el producto»; un producto ya agrupado, sobre un orden roto), así que la validación vive en el caso de uso, en el mismo orden que antes.
