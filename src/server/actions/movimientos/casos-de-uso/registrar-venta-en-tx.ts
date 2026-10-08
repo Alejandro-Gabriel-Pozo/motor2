@@ -4,8 +4,7 @@ import { texto } from "@/core/texto";
 import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
 import { crearArrastreDeRedondeo } from "@/core/movimientos/arrastre-redondeo";
 import { cumplePaso, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/core/catalogo/public";
-import { alcanceDeSucursal } from "@/core/catalogo/public";
-import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
+import { cargarRecetaVigenteParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { importeDeLinea, redondearMoneda, repartirImporte } from "@/core/moneda";
 import { seccionesConStock } from "@/server/lecturas/movimientos/saldos";
@@ -105,15 +104,8 @@ async function armarLinea(
   const pedidos: LineaArmada["pedidos"] = [];
   if (!producto.seProduce) {
     // Un PV que se produce por lote ya consumió su receta al producirse — la venta solo lo resta (ver registrarMovimiento, PRODUCCION).
-    const receta = await cargarRecetaVigente(tx, alcanceDeSucursal(sucursalId), producto.id, {
-      include: {
-        ingredientes: {
-          orderBy: { id: "asc" },
-          include: { sustitutos: { orderBy: { orden: "asc" } }, rendimientosLocales: { where: { sucursalId } } },
-        },
-      },
-    });
-    for (const ing of receta?.ingredientes ?? []) {
+    const ingredientes = await cargarRecetaVigenteParaVender(tx, { productoId: producto.id, sucursalId });
+    for (const ing of ingredientes) {
       const mp = await obtenerProducto(ing.insumoProductoId);
       if (!mp || mp.tipo !== "MP") {
         return { ok: false, mensaje: `La materia prima de la receta de "${producto.nombre}" no está marcada como MP.` };
@@ -124,15 +116,11 @@ async function armarLinea(
       // rendimientoEfectivo (D2, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md): la fórmula queda TEXTUALMENTE
       // igual, solo cambia de dónde salen los dos operandos — sin ninguna calibración de ESTA sucursal, ef.* es
       // exactamente ing.cantidad/ing.mermaPorcentaje (Object.is), así que el cálculo de siempre no se mueve un bit.
-      const ef = rendimientoEfectivo(
-        { cantidad: Number(ing.cantidad), mermaPorcentaje: Number(ing.mermaPorcentaje) },
-        ing.rendimientosLocales.map((r) => ({ sucursalId: r.sucursalId, cantidad: r.cantidad !== null ? Number(r.cantidad) : null, mermaPorcentaje: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null })),
-        sucursalId
-      );
+      const ef = rendimientoEfectivo({ cantidad: ing.cantidad, mermaPorcentaje: ing.mermaPorcentaje }, ing.rendimientosLocales, sucursalId);
       pedidos.push({
         productoId: ing.insumoProductoId,
         cantidad: cantidad * ef.cantidad * (1 + ef.mermaPorcentaje / 100),
-        insumoSustitutoIds: ing.sustitutos.map((s) => s.insumoSustitutoId),
+        insumoSustitutoIds: ing.insumoSustitutoIds,
         unidadStockId: mp.unidadStockId,
       });
     }
