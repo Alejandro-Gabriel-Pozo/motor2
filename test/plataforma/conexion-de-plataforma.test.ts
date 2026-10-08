@@ -72,8 +72,18 @@ describe("resolverConexionDePlataforma", () => {
     expect(resolverConexionDePlataforma(BASE, undefined)).toEqual({ origen: "archivo-de-entorno", databaseUrl: BASE.PLATAFORMA_DATABASE_URL });
   });
 
-  it("sin --instalacion, sin PLATAFORMA_DATABASE_URL pero con DATABASE_URL, usa esa (compatibilidad explícita)", () => {
-    expect(resolverConexionDePlataforma(SOLO_DATABASE_URL, undefined)).toEqual({ origen: "archivo-de-entorno", databaseUrl: SOLO_DATABASE_URL.DATABASE_URL });
+  // S-33: `DATABASE_URL` es la conexión de la APP (o la del dueño en un `.env` local): un script de plataforma que cae en ella opera con un rol que NO es `motor2_plataforma`, sin las
+  // garantías de la consola (grants, RLS por rol, trigger de la máquina de estados). Nunca cae ahí: sin `PLATAFORMA_DATABASE_URL` el script no se conecta a nada.
+  it("S-33: sin --instalacion y sin PLATAFORMA_DATABASE_URL, NO cae en DATABASE_URL: falla nombrando PLATAFORMA_DATABASE_URL y sin repetir la clave", () => {
+    const m = mensaje(SOLO_DATABASE_URL, undefined);
+    expect(m).toContain("PLATAFORMA_DATABASE_URL");
+    expect(m).not.toContain("clave-del-duenio");
+    expect(() => resolverConexionDePlataforma({ ...SOLO_DATABASE_URL, PLATAFORMA_DATABASE_URL: "" }, undefined)).toThrow(ConexionDePlataformaError);
+  });
+
+  it("S-33: con las dos variables, usa PLATAFORMA_DATABASE_URL y no la de la app", () => {
+    const c = resolverConexionDePlataforma({ ...BASE, ...SOLO_DATABASE_URL }, undefined);
+    expect(c).toEqual({ origen: "archivo-de-entorno", databaseUrl: BASE.PLATAFORMA_DATABASE_URL });
   });
 
   it("sin --instalacion y sin ninguna de las dos variables, falla nombrando las variables", () => {

@@ -10,7 +10,9 @@
  *
  * Conexión (ADR-025): con `--instalacion <id>`, esa instalación de `PLATAFORMA_INSTALACIONES_ADICIONALES` (o la principal); sin el flag, si el archivo de
  * entorno administra varias instalaciones hay que elegir una (no cae en la principal en silencio); sin el flag y sin instalaciones adicionales, el
- * comportamiento de siempre: PLATAFORMA_DATABASE_URL o, si no está, DATABASE_URL (con el rol de ejecución falla: no tiene permiso de escritura).
+ * comportamiento de siempre: PLATAFORMA_DATABASE_URL (sin ella falla: no cae en DATABASE_URL, S-33).
+ *
+ * `--actor` tiene que ser un administrador de plataforma ACTIVO (`AdminPlataforma`, S-33): no alcanza con ser un usuario de la app. Además tiene que existir como usuario (el cambio queda a su nombre en la auditoría).
  */
 import "dotenv/config";
 import { parseArgs } from "node:util";
@@ -18,6 +20,7 @@ import { clienteDePlataforma } from "./cliente-plataforma";
 import { ConexionDePlataformaError, describirConexion, resolverConexionDePlataforma } from "./conexion-de-plataforma";
 import { ModulosDeEmpresaError } from "../src/core/features/empresa/cambio-de-modulos";
 import { cambiarModulosDeEmpresa } from "../src/server/operaciones-de-plataforma/cambiar-modulos-de-empresa";
+import { ActorDePlataformaError, requerirAdminDePlataforma } from "../src/server/operaciones-de-plataforma/requerir-admin-de-plataforma";
 import type { PrismaClient } from "@prisma/client";
 
 function lista(valor: string | undefined): string[] {
@@ -36,6 +39,7 @@ async function main() {
   const conexion = resolverConexionDePlataforma(process.env, values.instalacion);
   console.log(`Instalación: ${describirConexion(conexion)}.`);
   prisma = clienteDePlataforma(conexion.databaseUrl);
+  await requerirAdminDePlataforma(prisma, values.actor);
 
   const resultado = await cambiarModulosDeEmpresa(prisma, {
     slug: values.slug,
@@ -56,7 +60,7 @@ async function main() {
 
 main()
   .catch((error: unknown) => {
-    if (error instanceof ModulosDeEmpresaError || error instanceof ConexionDePlataformaError) console.error(`Error: ${error.message}`);
+    if (error instanceof ModulosDeEmpresaError || error instanceof ConexionDePlataformaError || error instanceof ActorDePlataformaError) console.error(`Error: ${error.message}`);
     else console.error(error);
     process.exitCode = 1;
   })

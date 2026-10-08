@@ -28,7 +28,7 @@ function instalacionesValidadas(source: Record<string, string | undefined>) {
  * Resuelve qué base operar: con `--instalacion <id>`, esa instalación de la lista configurada (nunca cae en la principal ante un id desconocido). Sin
  * el flag, si el archivo de entorno administra varias instalaciones (`PLATAFORMA_INSTALACIONES_ADICIONALES`), falla pidiendo que se elija una —operar
  * la principal en silencio es justo el riesgo que ADR-025 §1 señala. Sin el flag y sin instalaciones adicionales, el comportamiento de siempre:
- * `PLATAFORMA_DATABASE_URL` o, si no está, `DATABASE_URL`.
+ * `PLATAFORMA_DATABASE_URL`; sin ella falla (S-33: ya no cae en `DATABASE_URL`).
  */
 export function resolverConexionDePlataforma(source: Record<string, string | undefined>, instalacionPedida: string | undefined): ConexionDePlataforma {
   if (instalacionPedida !== undefined) {
@@ -52,8 +52,9 @@ export function resolverConexionDePlataforma(source: Record<string, string | und
     );
   }
 
-  const databaseUrl = source.PLATAFORMA_DATABASE_URL || source.DATABASE_URL || "";
-  if (!databaseUrl) throw new ConexionDePlataformaError("Falta PLATAFORMA_DATABASE_URL (o DATABASE_URL) en el archivo de entorno: no hay base a la que conectarse.");
+  // S-33: NUNCA cae en `DATABASE_URL` (la conexión de la app, o la del dueño en un `.env` local): un script de plataforma que opera con otro rol que `motor2_plataforma` se salta sus grants y su RLS por rol.
+  const databaseUrl = source.PLATAFORMA_DATABASE_URL || "";
+  if (!databaseUrl) throw new ConexionDePlataformaError("Falta PLATAFORMA_DATABASE_URL en el archivo de entorno: no hay base a la que conectarse (no se usa DATABASE_URL: es la conexión de la app).");
   return { origen: "archivo-de-entorno", databaseUrl };
 }
 
