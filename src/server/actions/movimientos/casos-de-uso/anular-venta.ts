@@ -9,7 +9,7 @@ import {
   evaluarAnulacionDeVenta,
   mensajeVentaAnulada,
 } from "@/core/movimientos/public";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarHermanasDePromo, cargarVentaParaAnular } from "@/server/persistencia/movimientos/cargar-venta-para-anular";

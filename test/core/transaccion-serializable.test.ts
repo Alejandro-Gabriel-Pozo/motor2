@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { conTransaccionSerializable } from "../../src/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "../../src/lib/transaccion-serializable";
 import type { Transaccion } from "../../src/lib/db-tipos";
 
 /**

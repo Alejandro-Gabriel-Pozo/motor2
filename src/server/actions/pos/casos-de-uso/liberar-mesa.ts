@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import type { ComandoLiberarMesa, ResultadoLiberarMesa } from "@/core/features/cuentas/cuenta-apertura.schema";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { marcarCuentaCerrada } from "@/server/persistencia/pos/cerrar-cuenta";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";

@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { InvarianteViolada, primeraInvarianteViolada } from "@/core/permisos/invariantes";
 import type { Db } from "@/lib/db-tipos";
 import { medirEstadoDeGobierno } from "@/server/lecturas/permisos/gobierno";

@@ -4,7 +4,8 @@ import { descripcionAuditoriaAnulacion, evaluarAnulacion, mensajeCompraAnulada }
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import type { ComandoAnularCompra, ResultadoAnularCompra } from "@/core/features/compras/compra.schema";
 import { detalleReversionDeCompra } from "@/core/movimientos/public";
-import { conTransaccionSerializable, calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { exito, fracaso } from "@/core/resultado-caso";

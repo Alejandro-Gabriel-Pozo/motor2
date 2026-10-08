@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { ComandoCorregirComensales, ResultadoCorregirComensales } from "@/core/features/cuentas/cuenta-apertura.schema";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { validarComensales } from "@/core/pos/cuenta";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cambiarComensalesDeCuenta } from "@/server/persistencia/pos/cuenta";

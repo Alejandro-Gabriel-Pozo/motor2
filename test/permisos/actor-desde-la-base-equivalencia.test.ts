@@ -6,7 +6,7 @@ import { crearMembresia } from "../setup/membresia";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { obtenerContextoUsuario, type ContextoUsuario } from "../../src/core/auth/contexto";
-import { conTransaccionSerializable } from "../../src/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "../../src/lib/transaccion-serializable";
 import type { PersonaParaJerarquia } from "../../src/core/permisos/jerarquia";
 import { requierePermiso, requierePermisoDeEmpresa } from "../../src/server/acceso/gate";
 import { actorDesdeLaBase, objetivoEnLaEmpresa } from "../../src/server/lecturas/permisos/gestion-de-usuarios";

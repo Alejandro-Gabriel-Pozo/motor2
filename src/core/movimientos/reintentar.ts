@@ -1,9 +1,10 @@
 /**
  * Loop de reintento genérico, SIN dependencias (ni Prisma ni base de datos):
- * `con-reintento.ts` es el envoltorio que sabe de Prisma y de qué error cuenta
- * como conflicto de escritura; acá vive solo el ciclo. Separado a propósito:
- * `con-reintento.ts` importa `@/lib/db`, que construye el cliente al importarse,
- * y un test del ciclo no tiene por qué depender de eso.
+ * `con-reintento.ts` dice de qué error cuenta como conflicto de escritura (sus
+ * dos clasificadores, puros) y `src/lib/transaccion-serializable.ts` es el
+ * envoltorio que abre la transacción de Prisma; acá vive solo el ciclo. Separado
+ * a propósito: el ciclo no importa ni Prisma ni `@/lib/db` (que construye el
+ * cliente al importarse), y un test del ciclo no tiene por qué depender de eso.
  *
  * BACKOFF CON JITTER (entre intentos, nunca antes del primero ni después del
  * último). Causa confirmada del flake de C2 (docs/auditoria-motor2-deuda-tecnica-

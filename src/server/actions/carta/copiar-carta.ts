@@ -1,7 +1,8 @@
 "use server";
 
 import { whereCartaDeSucursal } from "@/core/carta/public";
-import { conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
+import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion } from "../tipos";

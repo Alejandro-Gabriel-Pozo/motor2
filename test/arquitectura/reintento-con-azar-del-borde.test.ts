@@ -6,7 +6,7 @@ import ts from "typescript";
 /**
  * Todo `conReintento(…)` fuera del núcleo del reintento le pasa la fuente de azar del borde (`aleatorio`) (auditoría independiente del Hito 1 de la rama `pureza-integracion`).
  *
- * El jitter de la espera entre dos intentos usa una fuente de azar INYECTADA (Pureza 1.5): `conTransaccionSerializable` la toma de `transaccion.aleatorio`, que la pone el borde que crea la
+ * El jitter de la espera entre dos intentos usa una fuente de azar INYECTADA (Pureza 1.5): `conTransaccionSerializable` (`src/lib/transaccion-serializable.ts`) la toma de `transaccion.aleatorio`, que la pone el borde que crea la
  * transacción (`core/auth/base.ts`). Pero un caso de uso que arma su PROPIO bucle con `conReintento` directo —hoy `guardar-version-de-receta.ts`, que reintenta el choque del UNIQUE
  * `(productoId, version)`— no pasa por esa vía: si no pasa `aleatorio`, la espera cae en la mitad del techo, igual para todos los que chocan a la vez, y vuelven a chocar en bloque. Esta regla
  * obliga a pasar `aleatorio` en cada llamada (o a la excepción, con motivo).

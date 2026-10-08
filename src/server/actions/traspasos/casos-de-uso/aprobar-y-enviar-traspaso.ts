@@ -3,7 +3,7 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_SECCION_ORIGEN_NO_PROPIA, MENSAJE_TRASPASO_NO_ENCONTRADO } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import type { ComandoAprobarYEnviarTraspaso, ResultadoAprobarYEnviarTraspaso } from "@/core/features/traspasos/traspaso.schema";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarSucursalDelTraspaso, cargarTraspaso } from "@/server/persistencia/traspasos/cargar-traspaso";

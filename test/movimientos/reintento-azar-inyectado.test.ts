@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
-import { conTransaccionSerializable } from "../../src/core/movimientos/con-reintento";
+import { conTransaccionSerializable } from "../../src/lib/transaccion-serializable";
 import { calcularEsperaBackoffMs, conReintento } from "../../src/core/movimientos/reintentar";
 import { numeroEnUnidad, type FuenteDeAzar } from "../../src/core/seguridad/azar";
 import { baseDeEmpresa, baseDelContexto, transaccionDeLaEmpresa } from "../../src/core/auth/base";

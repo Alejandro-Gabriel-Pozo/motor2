@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ResultadoCancelarConteo } from "@/core/features/movimientos/cancelar-conteo.schema";
 import { cargarConteoFisico } from "@/server/persistencia/movimientos/cargar-conteo-fisico";

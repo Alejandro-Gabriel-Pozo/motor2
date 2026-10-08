@@ -2,7 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { MENSAJE_ITEM_NO_ENCONTRADO } from "@/core/features/cuentas/cuenta-anulacion.guard";
 import type { ComandoQuitarItemSinEnviar, ResultadoQuitarItemSinEnviar } from "@/core/features/cuentas/cuenta-pedido.schema";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { borrarItemSinEnviar } from "@/server/persistencia/pos/pedido";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";

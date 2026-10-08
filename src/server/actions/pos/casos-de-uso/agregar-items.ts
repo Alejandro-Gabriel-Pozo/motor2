@@ -5,7 +5,7 @@ import { aplicarDescuentoDeProducto } from "@/core/carta/public";
 import type { ComandoAgregarItems, ResultadoAgregarItems } from "@/core/features/cuentas/cuenta-pedido.schema";
 import { redondearMoneda } from "@/core/moneda";
 import { tieneStockReal } from "@/core/movimientos/public";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
 import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarEleccionPromo, type ComponentePromoElegido, type FilaPromoProrrateada } from "@/core/pos/promo-combo";

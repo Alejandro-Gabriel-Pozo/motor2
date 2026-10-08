@@ -4,7 +4,7 @@ import { validarCantidad } from "@/core/datos/cantidad";
 import { MENSAJE_SECCION_DESTINO_SOLICITUD_NO_PROPIA, MENSAJE_SUCURSAL_NO_DISPONIBLE } from "@/core/features/traspasos/traspaso-comandos.guard";
 import type { ComandoCrearSolicitudTraspaso, ResultadoCrearSolicitudTraspaso } from "@/core/features/traspasos/traspaso.schema";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarSucursalParaTraspaso } from "@/server/persistencia/traspasos/cargar-traspaso";

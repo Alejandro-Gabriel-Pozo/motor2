@@ -6,7 +6,8 @@ import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { cargarDatosParaValidarReceta } from "@/server/persistencia/catalogo/cargar-datos-para-validar-receta";
 import { MENSAJE_PRODUCTO_NO_ENCONTRADO } from "@/core/features/catalogo/receta-version.guard";
 import type { ComandoGuardarVersionDeReceta, ResultadoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.schema";
-import { conReintento, conTransaccionSerializable, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
+import { conReintento, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { exito, fracaso } from "@/core/resultado-caso";
 import {

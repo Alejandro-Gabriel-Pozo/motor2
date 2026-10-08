@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { ComandoEnviarACocina, ResultadoEnviarACocina } from "@/core/features/cuentas/cuenta-pedido.schema";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { enviarItemsACocina } from "@/server/persistencia/pos/pedido";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";

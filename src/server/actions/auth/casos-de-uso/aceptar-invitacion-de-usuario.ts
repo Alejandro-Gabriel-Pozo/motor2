@@ -3,7 +3,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { TIPO_INVITACION_USUARIO } from "@/core/auth/invitacion";
 import { MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion } from "@/core/features/empresa/aceptar-invitacion";
 import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { mensajeSiNoPuedeDarRolA, mensajeSiReactivaAdminSinSerGerente } from "@/core/permisos/gestion-de-usuarios";
 import { actorDesdeLaBase, objetivoEnSucursal, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";

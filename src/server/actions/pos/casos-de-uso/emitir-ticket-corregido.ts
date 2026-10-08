@@ -2,7 +2,7 @@ import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_CUENTA_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta.guard";
 import type { ComandoEmitirTicketCorregido, ResultadoEmitirTicketCorregido } from "@/core/features/cuentas/cuenta.schema";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { armarTicketVigente, estadoDeTicket } from "@/core/pos/ticket";
 import { validarMotivoAnulacion } from "@/core/pos/cuenta";

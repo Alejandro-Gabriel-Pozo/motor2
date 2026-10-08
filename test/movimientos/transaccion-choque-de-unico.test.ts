@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
-import { conTransaccionSerializable, esChoqueDeIndiceUnico } from "../../src/core/movimientos/con-reintento";
+import { esChoqueDeIndiceUnico } from "../../src/core/movimientos/con-reintento";
+import { conTransaccionSerializable } from "../../src/lib/transaccion-serializable";
 import type { Transaccion } from "../../src/lib/db-tipos";
 
 /**
