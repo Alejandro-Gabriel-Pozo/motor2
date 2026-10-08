@@ -214,6 +214,8 @@ export function PanelMovimientoForm({
           loteVencimiento: "",
           precioTotal: "",
           pesoReal: "",
+          // Vacío A PROPÓSITO = «la unidad de compra por defecto del producto» (como al elegir un producto a mano). O.10 (Hito 4): la precarga NO usa la
+          // unidad de la última compra al proveedor (eso cambiaría el factor de conversión sin que la fila lo muestre); por eso el lector del carrito ya no la manda.
           unidadCompraId: "",
           referenciaProveedor: p.referenciaProveedor ?? "",
           ultimaCompraTexto:

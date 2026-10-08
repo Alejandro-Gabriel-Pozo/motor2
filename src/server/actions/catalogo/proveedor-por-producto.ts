@@ -8,8 +8,8 @@ export interface ProductoDeProveedor {
   productoId: string;
   productoCodigo: string;
   productoNombre: string;
-  unidadCompraId: string;
-  unidadCompraNombre: string;
+  // O.10 (Hito 4): sin `unidadCompraId`/`unidadCompraNombre`. La precarga del carrito no los usaba (pone `unidadCompraId: ""` = la unidad por defecto del
+  // producto, a propósito: ver `panel-movimiento-form.tsx`); la unidad de la última compra al proveedor sigue en `cargarOfertasDeProveedores` (la ficha y la comparativa).
   unidadStockNombre: string;
   referenciaProveedor: string | null;
   ultimoPrecioPorUnidadStock: number;
@@ -53,8 +53,6 @@ export async function listarProductosDeProveedor(proveedorId: string): Promise<P
         productoId: o.productoId,
         productoCodigo: producto.codigo,
         productoNombre: producto.nombre,
-        unidadCompraId: o.unidadCompraId,
-        unidadCompraNombre: o.unidadCompraNombre,
         unidadStockNombre: producto.unidadStock.nombre,
         referenciaProveedor: o.referenciaProveedor,
         ultimoPrecioPorUnidadStock: elegida.precioPorUnidadStock,
