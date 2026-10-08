@@ -82,14 +82,32 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
 
   it("solo quitar-rol-motor2-plataforma.sql devuelve la escritura; crear-rol-motor2-plataforma.sql la quita con restringir=1", () => {
     const operaciones = join(RAIZ, "scripts/operaciones");
+    // S-35 (B-C20): también cuenta el GRANT masivo (`ON ALL TABLES`), que antes se descartaba y volvía a darle `UPDATE "Empresa"` a la app cada vez que se corría
+    // `crear-rol-motor2-app.sql`. Ese script lo da (es el que arma las bases locales de prueba, donde los tests escriben `Empresa` con `motor2_app`) pero lo QUITA a continuación si se
+    // pasa `-v restringir=1` (el mismo interruptor que `crear-rol-motor2-plataforma.sql`): lo verifica el test de abajo.
     const conGrant = readdirSync(operaciones)
-      .filter((n) => n.endsWith(".sql") && grantsDeEscrituraSobreEmpresa(readFileSync(join(operaciones, n), "utf8")).some((g) => /"Empresa"(?!\w)/.test(g)))
+      .filter((n) => n.endsWith(".sql") && grantsDeEscrituraSobreEmpresa(readFileSync(join(operaciones, n), "utf8")).length > 0)
       .sort();
-    expect(conGrant).toEqual(["quitar-rol-motor2-plataforma.sql"]);
+    expect(conGrant).toEqual(["crear-rol-motor2-app.sql", "quitar-rol-motor2-plataforma.sql"]);
 
     const crear = leer("scripts/operaciones/crear-rol-motor2-plataforma.sql");
     expect(crear).toMatch(/REVOKE INSERT, UPDATE, DELETE ON "Empresa" FROM motor2_app/);
     expect(crear).toMatch(/CREATE ROLE motor2_plataforma LOGIN NOSUPERUSER NOBYPASSRLS/);
+  });
+
+  it("S-35 (B-C20): crear-rol-motor2-app.sql, después de cada GRANT masivo, quita la escritura de Empresa si se pasa restringir=1 (volver a correrlo no desarma la separación)", () => {
+    const secciones = leer("scripts/operaciones/crear-rol-motor2-app.sql").split(/^\\connect\b.*$/m).slice(1);
+    expect(secciones.length, "una sección por base (motor2_dev y motor2_e2e)").toBeGreaterThanOrEqual(2);
+    for (const [i, seccion] of secciones.entries()) {
+      const grant = seccion.search(/GRANT[^;]*\bON\s+ALL\s+TABLES\b[^;]*\bTO\s+motor2_app\b/i);
+      const revoke = seccion.search(/REVOKE\s+INSERT,\s*UPDATE,\s*DELETE\s+ON\s+"Empresa"\s+FROM\s+motor2_app\s*;/i);
+      expect(grant, `sección ${i + 1}: falta el GRANT masivo`).toBeGreaterThanOrEqual(0);
+      expect(revoke, `sección ${i + 1}: falta el REVOKE de la escritura de Empresa`).toBeGreaterThan(grant);
+      // y solo con restringir=1: sin el interruptor, las bases locales de prueba siguen dejando que los tests escriban `Empresa` como motor2_app
+      const antes = seccion.slice(0, revoke).split("\n").filter((l) => /^\s*\\(if|endif)\b/.test(l)).pop() ?? "";
+      expect(antes.trim(), `sección ${i + 1}: el REVOKE va dentro de \\if :{?restringir}`).toBe("\\if :{?restringir}");
+      expect(seccion.slice(revoke).split("\n").find((l) => /^\s*\\(if|endif)\b/.test(l))?.trim()).toBe("\\endif");
+    }
   });
 
   it("crear-rol-motor2-plataforma.sql da privilegios tabla por tabla: nunca DELETE ni TRUNCATE ni ON ALL TABLES a motor2_plataforma (ADR-012 §3)", () => {
