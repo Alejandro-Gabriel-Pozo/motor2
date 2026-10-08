@@ -4,7 +4,7 @@ import type { ComandoEnviarACocina, ResultadoEnviarACocina } from "@/core/featur
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { enviarItemsACocina } from "@/server/persistencia/pos/pedido";
-import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
+import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
 
 /**
  * Caso de uso «enviar a cocina» (Hito 4 de la pureza, bloque 4.1, paso 11 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que antes vivía en línea en la
@@ -17,7 +17,7 @@ import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (`conPermiso`) ni el formato de la lista (el guard).
  *
  * En UNA transacción SERIALIZABLE (`conTransaccionSerializable`, con reintento ante un conflicto de escritura):
- *  1. la cuenta, de una mesa de ESTA sucursal y abierta (`cuentaAbiertaDeSucursal`, de `../cuenta-comun.ts`);
+ *  1. la cuenta, de una mesa de ESTA sucursal y abierta (`cuentaAbiertaDeSucursal`, server/persistencia/pos/cargar-cuenta-abierta.ts);
  *  2. los hermanos: si algún id pedido es un componente de una promo, se suman TODOS los componentes de esa MISMA `PromoCuenta` que sigan sin enviar (Task #16,
  *     docs/plan-promo-combo-2026-09-26.md, D del paso 2.5: una promo nunca se manda parcial a cocina);
  *  3. el número de envío siguiente de la cuenta (`max(numeroEnvio) + 1`) y el envío CONDICIONAL (`enviarItemsACocina`, server/persistencia/pos/pedido.ts);

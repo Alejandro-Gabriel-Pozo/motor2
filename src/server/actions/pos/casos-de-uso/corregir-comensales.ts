@@ -5,7 +5,7 @@ import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { validarComensales } from "@/core/pos/cuenta";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cambiarComensalesDeCuenta } from "@/server/persistencia/pos/cuenta";
-import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
+import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
 
 /**
  * Caso de uso «corregir los comensales de una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 6 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que
@@ -16,7 +16,7 @@ import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (`conPermiso`) ni que el id sea un texto (el guard).
  *
- * Orden, igual que antes, dentro de la transacción: 1. la cuenta, de una mesa de ESTA sucursal y abierta (`cuentaAbiertaDeSucursal`, de `../cuenta-comun.ts`):
+ * Orden, igual que antes, dentro de la transacción: 1. la cuenta, de una mesa de ESTA sucursal y abierta (`cuentaAbiertaDeSucursal`, server/persistencia/pos/cargar-cuenta-abierta.ts):
  * gana sobre un valor inválido de comensales; 2. `validarComensales`; 3. el cambio (`cambiarComensalesDeCuenta`, server/persistencia/pos/cuenta.ts).
  *
  * @contract Deja en la cuenta abierta de una mesa de la sucursal la cantidad de comensales pedida (un entero entre 1 y 99).

@@ -1,6 +1,5 @@
 import "server-only";
 
-import type { Prisma } from "@prisma/client";
 import type { AvisoStockNegativo } from "@/core/movimientos/public-servidor";
 
 /**
@@ -13,10 +12,11 @@ import type { AvisoStockNegativo } from "@/core/movimientos/public-servidor";
  * es un borrador y se quita con DELETE físico; uno ya enviado solo se anula con motivo (`anularItemEnviado`, permiso propio).
  */
 
-// Este archivo NO lleva `"use server"` a propósito: son ayudantes compartidos por las acciones de «tomar pedido»
-// (cuenta-apertura.ts, cuenta-pedido.ts, cuenta-anulacion.ts, cuenta-cierre.ts), sin guarda propia — todo lo que exporta un
-// archivo `"use server"` es un endpoint que se puede invocar directo. `server-only` hace fallar el build si un componente de
-// cliente lo importa.
+// Este archivo NO lleva `"use server"` a propósito: son ayudantes de FORMATO (mensajes y descripciones de auditoría) que comparten los
+// casos de uso del salón (./casos-de-uso/), sin guarda propia — todo lo que exporta un archivo `"use server"` es un endpoint que se
+// puede invocar directo. `server-only` hace fallar el build si un componente de cliente lo importa. La lectura de la cuenta abierta
+// (`cuentaAbiertaDeSucursal`) vivía acá; desde el Hito 4 (bloque 4.1, paso 13), con las 10 acciones del salón migradas, está en
+// server/persistencia/pos/cargar-cuenta-abierta.ts.
 
 /** Cantidad legible («1», «0,5»), para mensajes y descripciones de auditoría. */
 export function formatearCantidad(n: number): string {
@@ -28,14 +28,4 @@ export const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", curren
 /** «"Muzzarella" en «Cocina» (tenía 0,5, se consumió 1,5, quedó en -1)»: el detalle de un insumo que quedó en negativo al cerrar una cuenta. */
 export function describirAviso(aviso: AvisoStockNegativo): string {
   return `"${aviso.nombre}" en «${aviso.seccionNombre}» (tenía ${formatearCantidad(aviso.actual)}, se consumió ${formatearCantidad(aviso.requerido)}, quedó en ${formatearCantidad(aviso.resultante)})`;
-}
-
-export type CuentaAbierta = { id: string; clienteId: string | null; descuentoPorcentaje: Prisma.Decimal | null; mesa: { id: string; numero: number } };
-
-/** La cuenta pedida, si es de una mesa de esta sucursal y sigue abierta; si no, el mensaje de error listo para devolver. */
-export async function cuentaAbiertaDeSucursal(tx: Prisma.TransactionClient, cuentaId: string, sucursalId: string): Promise<{ ok: true; cuenta: CuentaAbierta } | { ok: false; mensaje: string }> {
-  const cuenta = typeof cuentaId === "string" ? await tx.cuenta.findFirst({ where: { id: cuentaId, mesa: { sucursalId } }, include: { mesa: { select: { id: true, numero: true } } } }) : null;
-  if (!cuenta) return { ok: false, mensaje: "No se encontró esa cuenta en esta sucursal." };
-  if (cuenta.cerradaEn) return { ok: false, mensaje: `La cuenta de la mesa ${cuenta.mesa.numero} ya está cerrada.` };
-  return { ok: true, cuenta };
 }

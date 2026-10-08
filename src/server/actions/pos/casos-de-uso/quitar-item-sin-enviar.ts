@@ -5,7 +5,7 @@ import type { ComandoQuitarItemSinEnviar, ResultadoQuitarItemSinEnviar } from "@
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { borrarItemSinEnviar } from "@/server/persistencia/pos/pedido";
-import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
+import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
 
 /**
  * Caso de uso «quitar un ítem que todavía no salió a cocina» (Hito 4 de la pureza, bloque 4.1, paso 9 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que
@@ -18,7 +18,7 @@ import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
  *
  * En UNA transacción SERIALIZABLE (`conTransaccionSerializable`, con reintento ante un conflicto de escritura): 1. el ítem, de una mesa de ESTA sucursal, con el
  * nombre de su producto y el título de su promo; 2. que no sea el componente de una promo (Task #16, D4: la promo se quita entera); 3. su cuenta, abierta
- * (`cuentaAbiertaDeSucursal`, de `../cuenta-comun.ts`); 4. el borrado CONDICIONAL (`borrarItemSinEnviar`, server/persistencia/pos/pedido.ts: la condición
+ * (`cuentaAbiertaDeSucursal`, server/persistencia/pos/cargar-cuenta-abierta.ts); 4. el borrado CONDICIONAL (`borrarItemSinEnviar`, server/persistencia/pos/pedido.ts: la condición
  * `numeroEnvio: null` vive en el mismo DELETE): si no borró nada, el ítem ya había salido a cocina.
  *
  * @contract Borra un ítem suelto de una cuenta abierta de la sucursal mientras no haya salido a cocina; nunca un componente de promo ni un ítem ya enviado.

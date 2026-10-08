@@ -4,7 +4,7 @@ import type { ComandoLiberarMesa, ResultadoLiberarMesa } from "@/core/features/c
 import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { marcarCuentaCerrada } from "@/server/persistencia/pos/cerrar-cuenta";
-import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
+import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
 
 /**
  * Caso de uso «liberar una mesa sin venta» (Hito 4 de la pureza, bloque 4.1, paso 5 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que antes vivía en línea
@@ -16,7 +16,7 @@ import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (`conPermiso`) ni que el id sea un texto (el guard).
  *
  * En UNA transacción SERIALIZABLE (`conTransaccionSerializable`, con reintento ante un conflicto de escritura): 1. la cuenta, de una mesa de ESTA sucursal y
- * abierta (`cuentaAbiertaDeSucursal`, de `../cuenta-comun.ts` hasta que migren las acciones de pedido que también la usan); 2. que no tenga ninguna fila; 3. el
+ * abierta (`cuentaAbiertaDeSucursal`, server/persistencia/pos/cargar-cuenta-abierta.ts); 2. que no tenga ninguna fila; 3. el
  * cierre (`marcarCuentaCerrada`, la MISMA escritura que el cierre de `cerrarCuenta`: server/persistencia/pos/cerrar-cuenta.ts) con la hora del pedido
  * (`actor.ahora`, aprobado por el dueño en el Hito 4: antes leía el reloj).
  *

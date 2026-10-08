@@ -13,7 +13,7 @@ import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuent
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { cargarPromoCartaParaAgregar } from "@/server/lecturas/pos/promo-para-agregar";
 import { escribirItemsDeCuenta, escribirPromoDeCuenta } from "@/server/persistencia/pos/pedido";
-import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
+import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
 
 /**
  * Caso de uso «agregar ítems y promos sin enviar a una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 12a — `docs/plan-hito-4-pureza.md` §5). Es el
@@ -26,7 +26,7 @@ import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (`conPermiso`) ni el formato de las listas ni el tope (el guard).
  *
  * En UNA transacción SERIALIZABLE (`conTransaccionSerializable`, con reintento ante un conflicto de escritura):
- *  1. la cuenta, de una mesa de ESTA sucursal y abierta (`cuentaAbiertaDeSucursal`, de `../cuenta-comun.ts`);
+ *  1. la cuenta, de una mesa de ESTA sucursal y abierta (`cuentaAbiertaDeSucursal`, server/persistencia/pos/cargar-cuenta-abierta.ts);
  *  2. VALIDAR todo, sin escribir nada: cada ítem suelto (producto PV, disponible en la sucursal, cantidad con los decimales de su unidad, precio de lista
  *     resuelto y descuento de producto de la sucursal) y cada promo (definición vigente con `cargarPromoCartaParaAgregar`, cupos, prorrateo). El N+1 por ítem
  *     (cada producto se valida con sus propias lecturas) queda como estaba: decisión del dueño (D5 del plan del POS, 2026-10-08), fijado por el conteo de

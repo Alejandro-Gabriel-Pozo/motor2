@@ -5,7 +5,7 @@ import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { fijarClienteDeCuenta } from "@/server/persistencia/pos/cuenta";
-import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
+import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
 
 /**
  * Caso de uso «asignar (o quitar) el cliente con descuento de una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 7 — `docs/plan-hito-4-pureza.md` §5).
@@ -18,7 +18,7 @@ import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (`conPermiso`) ni que el id de la cuenta sea un texto (el guard).
  *
  * Orden, igual que antes, dentro de la transacción:
- *  1. la cuenta, de una mesa de ESTA sucursal y abierta (`cuentaAbiertaDeSucursal`, de `../cuenta-comun.ts`): gana sobre un cliente inexistente;
+ *  1. la cuenta, de una mesa de ESTA sucursal y abierta (`cuentaAbiertaDeSucursal`, server/persistencia/pos/cargar-cuenta-abierta.ts): gana sobre un cliente inexistente;
  *  2. el nombre del cliente que tenía (para la auditoría);
  *  3. quitar (`clienteId === null`): limpia cliente y % (`fijarClienteDeCuenta`, server/persistencia/pos/cuenta.ts) y audita;
  *  4. asignar: el cliente (un id que no es texto, o que no existe → «No se encontró ese cliente.»; desactivado → rechazo), la escritura con el % de HOY del
