@@ -96,6 +96,13 @@ const CONGELADAS: Record<string, Congelada> = {
     motivo: "Caracterización «.0» del tramo A (2.3). Regenerada en 0b08f2f4 (O.39: solo bajan los conteos).",
     regeneraciones: [],
   },
+  "test/pos/caracterizacion/huella-del-pos.golden.txt": {
+    blob: "8d2f170f6ee4f020fdd138e8388329a30ccf5687",
+    desde: "f9e5a286",
+    motivo:
+      "Huella del POS (Hito 4, paso 0.1): las 10 Server Actions del POS sin caso de uso (apertura, mesas y pedido) como admin, mozo y operador, con los rechazos de dos fallas a la vez. Red de 4.1: mudar esas acciones a casos de uso no cambia nada (salvo lo aprobado: liberarMesa con ctx.ahora no cambia el golden, que solo dice si hay fecha).",
+    regeneraciones: [],
+  },
 };
 
 /** `git hash-object` del contenido normalizado a LF (lo que `core.autocrlf=true` guarda en el blob). */
