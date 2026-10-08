@@ -41,7 +41,8 @@ import { quitarPromoSinEnviarCasoDeUso } from "./casos-de-uso/quitar-promo-sin-e
  * Desde el Hito 4 de la pureza (bloque 4.1, paso 12) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_tomar_pedido")`) → formato de las listas,
  * el tope y el `cuentaId` (`guardComandoAgregarItems`, core/features/cuentas/cuenta-pedido.guard.ts, DENTRO del envoltorio: los mismos chequeos de antes de la
  * transacción, en el mismo orden) → caso de uso (`casos-de-uso/agregar-items.ts`: transacción serializable, la cuenta abierta, la validación de cada ítem y
- * cada promo y las escrituras) → `aResultadoAccion`.
+ * cada promo y las escrituras en server/persistencia/pos/pedido.ts) → `aResultadoAccion`. Con las cuatro migradas, el archivo entero está en
+ * `ACCIONES_CON_CASO_DE_USO` (.dependency-cruiser-excepciones.cjs).
  */
 export async function agregarItems(cuentaId: string, items: ItemParaAgregar[], promos?: PromoParaAgregar[]): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {

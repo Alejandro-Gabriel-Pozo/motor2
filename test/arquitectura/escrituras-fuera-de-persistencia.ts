@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 39;
+export const TOPE_DE_ENTRADAS = 38;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -189,11 +189,6 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["seccion.create", "seccion.update", "seccion.update", "seccion.update"],
     fase: "Fase 4",
     motivo: "Tramo C (PR 4C-F2): configuración de stock y movimientos; pasa a caso de uso + persistencia.",
-  },
-  "src/server/actions/pos/casos-de-uso/agregar-items.ts": {
-    escrituras: ["cuentaItem.createMany", "promoCuenta.create"],
-    fase: "Fase 4",
-    motivo: "Hito 4, bloque 4.1 (paso 12a): el cuerpo de agregarItems ya es un caso de uso, movido tal cual con sus escrituras; en el paso 12b pasan a server/persistencia/pos/pedido.ts y la entrada se va.",
   },
   "src/server/actions/reportes/margen-objetivo.ts": {
     escrituras: ["margenObjetivo.create", "margenObjetivo.delete", "margenObjetivo.update"],

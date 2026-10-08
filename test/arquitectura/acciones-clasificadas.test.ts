@@ -14,7 +14,6 @@ const { ACCIONES_CON_CASO_DE_USO } = createRequire(__filename)("../../.dependenc
 
 const SOLO_LECTURA = "solo lecturas: no hay escritura que orquestar (transacción, I3, auditoría).";
 const SIN_CASO_DE_USO = "todavía sin caso de uso: `accion-migrada-sin-orquestacion` no le aplica. Candidata a migrar (y a sumarse a ACCIONES_CON_CASO_DE_USO) cuando gane transacción/I3/auditoría propias.";
-const PENDIENTE = "abre una transacción dentro de la acción y se protege del doble clic por el estado de la fila (no por I3): candidata prioritaria a caso de uso.";
 
 const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "auth/empresa-activa.ts": SIN_CASO_DE_USO,
@@ -44,7 +43,6 @@ const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "movimientos/motivos.ts": SIN_CASO_DE_USO,
   "movimientos/precio-local.ts": SIN_CASO_DE_USO,
   "movimientos/secciones.ts": SIN_CASO_DE_USO,
-  "pos/cuenta-pedido.ts": PENDIENTE,
   "reportes/margen-objetivo.ts": SIN_CASO_DE_USO,
   "stock/frecuencia-conteo.ts": SIN_CASO_DE_USO,
   "stock/lecturas-reclasificacion.ts": SOLO_LECTURA,

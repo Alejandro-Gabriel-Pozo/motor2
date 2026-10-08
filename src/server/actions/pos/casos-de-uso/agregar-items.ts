@@ -12,6 +12,7 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { cargarPromoCartaParaAgregar } from "@/server/lecturas/pos/promo-para-agregar";
+import { escribirItemsDeCuenta, escribirPromoDeCuenta } from "@/server/persistencia/pos/pedido";
 import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
 
 /**
@@ -30,8 +31,8 @@ import { cuentaAbiertaDeSucursal } from "../cuenta-comun";
  *     resuelto y descuento de producto de la sucursal) y cada promo (definición vigente con `cargarPromoCartaParaAgregar`, cupos, prorrateo). El N+1 por ítem
  *     (cada producto se valida con sus propias lecturas) queda como estaba: decisión del dueño (D5 del plan del POS, 2026-10-08), fijado por el conteo de
  *     consultas;
- *  3. ESCRIBIR, recién acá: una `PromoCuenta` por promo (necesita su id antes de crear los ítems que la referencian) y TODOS los `CuentaItem` (sueltos y
- *     componentes) en UN solo `createMany` al final.
+ *  3. ESCRIBIR, recién acá (paso 12b: en server/persistencia/pos/pedido.ts): una `PromoCuenta` por promo (`escribirPromoDeCuenta`, que devuelve el id que
+ *     referencian sus componentes) y TODOS los `CuentaItem` (sueltos y componentes) en UN solo `createMany` al final (`escribirItemsDeCuenta`).
  *
  * O.12 (Hito 4, documentado y fijado, NO arreglado): este caso de uso NO tiene idempotencia I3 — dos llamadas iguales DUPLICAN los ítems (lo fija
  * `test/pos/cuenta-concurrencia.test.ts`, (d)). Lo único que frena el doble clic es la pantalla, que deshabilita el botón mientras la acción está pendiente;
@@ -93,7 +94,7 @@ export async function agregarItemsCasoDeUso(
     // CuentaItem que la referencian); todos los CuentaItem (sueltos y componentes) en UN solo createMany al final.
     const filas = [...filasSueltas];
     for (const p of promosValidadas) {
-      const promoCuenta = await tx.promoCuenta.create({ data: { cuentaId: abierta.cuenta.id, promoCartaId: p.promoCartaId, precio: p.precio, titulo: p.titulo, creadoPorId: actor.usuarioId } });
+      const promoCuentaId = await escribirPromoDeCuenta(tx, { cuentaId: abierta.cuenta.id, promoCartaId: p.promoCartaId, precio: p.precio, titulo: p.titulo, creadoPorId: actor.usuarioId });
       const precioCartaDe = (productoId: string) => p.componentes.find((c) => c.productoId === productoId)?.precioCarta ?? null;
       for (const fila of p.filas) {
         filas.push({
@@ -103,13 +104,13 @@ export async function agregarItemsCasoDeUso(
           precioUnitario: fila.precioUnitario,
           numeroEnvio: null,
           creadoPorId: actor.usuarioId,
-          promoCuentaId: promoCuenta.id,
+          promoCuentaId,
           precioCartaUnitario: precioCartaDe(fila.productoId),
         });
       }
     }
 
-    await tx.cuentaItem.createMany({ data: filas });
+    await escribirItemsDeCuenta(tx, filas);
     const mensaje = `${filas.length === 1 ? "Se agregó 1 ítem" : `Se agregaron ${filas.length} ítems`} a la mesa ${abierta.cuenta.mesa.numero}.`;
     const nombresPromos = promosValidadas.map((p) => `«${p.titulo}»`);
     return exito(nombresPromos.length ? `${mensaje} Incluye ${nombresPromos.join(", ")}.` : mensaje, null);

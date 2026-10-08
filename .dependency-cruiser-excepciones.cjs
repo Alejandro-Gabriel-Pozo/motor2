@@ -165,6 +165,11 @@ const ACCIONES_CON_CASO_DE_USO = [
       "Hito 4, bloque 4.1 (pasos 5 a 8): liberarMesa → pos/casos-de-uso/liberar-mesa.ts, corregirComensales → corregir-comensales.ts, asignarClienteACuenta → asignar-cliente-a-cuenta.ts y abrirCuenta → abrir-cuenta.ts (transacción serializable, la cuenta o la mesa, la idempotencia y el límite de mesas, la persistencia en server/persistencia/pos/{cuenta,cerrar-cuenta}.ts y la auditoría del cliente viven en el caso de uso); el formato del id lo validan sus guardComando* (core/features/cuentas/cuenta-apertura.guard.ts) dentro de conPermiso. El archivo no tiene ninguna otra función.",
   },
   {
+    ruta: "src/server/actions/pos/cuenta-pedido.ts",
+    motivo:
+      "Hito 4, bloque 4.1 (pasos 9 a 12): quitarItemSinEnviar → pos/casos-de-uso/quitar-item-sin-enviar.ts, quitarPromoSinEnviar → quitar-promo-sin-enviar.ts, enviarACocina → enviar-a-cocina.ts y agregarItems → agregar-items.ts (transacción serializable, la cuenta abierta, la validación de cada ítem y promo, los hermanos de promo y las escrituras en server/persistencia/pos/pedido.ts viven en el caso de uso); el formato lo validan sus guardComando* (core/features/cuentas/cuenta-pedido.guard.ts) dentro de conPermiso. El archivo no tiene ninguna otra función.",
+  },
+  {
     ruta: "src/server/actions/pos/mesas.ts",
     motivo:
       "Hito 4, bloque 4.1 (pasos 3 y 4): crearMesa → pos/casos-de-uso/crear-mesa.ts y actualizarMaxMesasAbiertas → pos/casos-de-uso/actualizar-max-mesas-abiertas.ts (la escritura en server/persistencia/pos/mesas.ts, la traducción del número repetido y la auditoría del límite viven en el caso de uso); el formato lo validan guardComandoCrearMesa y guardComandoActualizarMaxMesasAbiertas dentro de conPermiso. El archivo no tiene ninguna otra función.",

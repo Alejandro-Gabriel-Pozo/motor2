@@ -9,6 +9,26 @@ import type { Prisma } from "@prisma/client";
  */
 
 /**
+ * Una `PromoCuenta` nueva en la cuenta, con el precio y el título CONGELADOS de la promo de la carta (ya revalidada y prorrateada por el caso de uso) y quién
+ * la cargó. Devuelve su id: los `CuentaItem` componentes la referencian, así que va ANTES que `escribirItemsDeCuenta`.
+ */
+export async function escribirPromoDeCuenta(
+  tx: Prisma.TransactionClient,
+  args: { cuentaId: string; promoCartaId: string; precio: number; titulo: string; creadoPorId: string },
+): Promise<string> {
+  const promoCuenta = await tx.promoCuenta.create({ data: { cuentaId: args.cuentaId, promoCartaId: args.promoCartaId, precio: args.precio, titulo: args.titulo, creadoPorId: args.creadoPorId } });
+  return promoCuenta.id;
+}
+
+/**
+ * Todos los `CuentaItem` SIN ENVIAR de un agregado (sueltos y componentes de promo, ya validados y con el precio congelado) en UN solo `createMany`: una sola
+ * escritura por agregado, siempre la última (lo fija `test/pos/agregar-items-consultas.test.ts`).
+ */
+export async function escribirItemsDeCuenta(tx: Prisma.TransactionClient, filas: Prisma.CuentaItemCreateManyInput[]): Promise<void> {
+  await tx.cuentaItem.createMany({ data: filas });
+}
+
+/**
  * Borra un ítem que TODAVÍA NO SALIÓ a cocina (un borrador: DELETE físico). La condición vive en el MISMO borrado (`numeroEnvio: null` y nunca una fila
  * espejo): si otro mozo lo envió un instante antes, no se borra nada. Devuelve cuántas filas borró (0 o 1): con 0 el caso de uso responde «ya salió a cocina».
  */
