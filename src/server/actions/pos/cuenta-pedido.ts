@@ -10,8 +10,11 @@ import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad"
 import { MAXIMO_ITEMS_POR_AGREGADO, validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarEleccionPromo, type ComponentePromoElegido, type EleccionDeCupo, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
 import { cargarPromoCartaParaAgregar } from "@/server/lecturas/pos/promo-para-agregar";
+import { guardComandoQuitarItemSinEnviar } from "@/core/features/cuentas/cuenta-pedido.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoEnvioACocina } from "../tipos";
+import { quitarItemSinEnviarCasoDeUso } from "./casos-de-uso/quitar-item-sin-enviar";
 import { cuentaAbiertaDeSucursal } from "./cuenta-comun";
 
 /**
@@ -149,24 +152,17 @@ export async function quitarPromoSinEnviar(promoCuentaId: string): Promise<Resul
  * Quita un ítem que TODAVÍA NO SALIÓ a cocina: es un borrador, así que se borra de verdad, sin motivo ni auditoría (plan, B3). La
  * condición vive en el mismo DELETE (`numeroEnvio: null`, y nunca una fila espejo): si otro mozo lo envió un instante antes, no se
  * borra nada. Un ítem ya enviado se anula con motivo (`anularItemEnviado`).
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.1, paso 9) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_tomar_pedido")`) → formato del
+ * `cuentaItemId` (`guardComandoQuitarItemSinEnviar`, core/features/cuentas/cuenta-pedido.guard.ts, DENTRO del envoltorio) → caso de uso
+ * (`casos-de-uso/quitar-item-sin-enviar.ts`: transacción serializable, el ítem, la cuenta abierta y el borrado condicional en server/persistencia/pos/pedido.ts)
+ * → `aResultadoAccion`.
  */
 export async function quitarItemSinEnviar(cuentaItemId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
-    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
-      const item =
-        typeof cuentaItemId === "string"
-          ? await tx.cuentaItem.findFirst({ where: { id: cuentaItemId, cuenta: { mesa: { sucursalId: ctx.sucursalId } } }, include: { producto: { select: { nombre: true } }, promoCuenta: { select: { titulo: true } } } })
-          : null;
-      if (!item) return error("No se encontró ese ítem en esta sucursal.");
-      // Task #16 (D4, "una promo se anula/quita entera"): un componente no se quita suelto — usá quitarPromoSinEnviar con la promo.
-      if (item.promoCuenta) return error(`«${item.producto.nombre}» es parte de la promo «${item.promoCuenta.titulo}»: quitá la promo entera.`);
-      const abierta = await cuentaAbiertaDeSucursal(tx, item.cuentaId, ctx.sucursalId);
-      if (!abierta.ok) return error(abierta.mensaje);
-
-      const borrados = await tx.cuentaItem.deleteMany({ where: { id: item.id, numeroEnvio: null, anulaAItemId: null } });
-      if (borrados.count === 0) return error("Ese ítem ya salió a cocina: anulalo con motivo.");
-      return ok(`Se quitó «${item.producto.nombre}» de la mesa ${abierta.cuenta.mesa.numero}.`);
-    });
+    const comando = guardComandoQuitarItemSinEnviar({ cuentaItemId });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await quitarItemSinEnviarCasoDeUso(ctx, comando.valor));
   });
 }
 
