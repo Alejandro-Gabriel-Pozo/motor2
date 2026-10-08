@@ -28,6 +28,7 @@ import {
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
 import { IconoDeAccion } from "@/components/iconos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
@@ -139,8 +140,10 @@ export default async function RecetaEditorPage({
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_volver_central", ctx.db),
   ]);
 
+  // Todos los formularios del editor (central y receta propia) en UN grupo (O.2): mientras uno guarda, los demás esperan en vez de salir con la versión que
+  // la pantalla mostraba antes de ese cambio; al terminar, la respuesta de la acción trae la pantalla refrescada y el cambio siguiente sale con la nueva.
   return (
-    <div className="flex max-w-2xl flex-col gap-8">
+    <GrupoDeFormularios className="flex max-w-2xl flex-col gap-8">
       <div>
         <Link href="/catalogo/recetas" className="text-sm underline">
           ← Volver a Recetas
@@ -689,6 +692,6 @@ export default async function RecetaEditorPage({
         ingredienteEnEdicion={editarPropia ?? null}
         volver={volver}
       />
-    </div>
+    </GrupoDeFormularios>
   );
 }
