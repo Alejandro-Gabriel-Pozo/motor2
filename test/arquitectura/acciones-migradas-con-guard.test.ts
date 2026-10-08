@@ -80,6 +80,14 @@ const SIN_GUARD: Record<string, string> = {
     "Activar o desactivar un insumo (Hito 4, H4C-9): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/catalogo/insumos.ts#actualizarGrupoDeInsumo":
     "Cambiar el grupo de un insumo (Hito 4, H4C-9): solo recibe dos ids (el grupo puede ser null), que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/catalogo/productos.ts#asignarInsumoAProducto":
+    "Asignar el insumo a una MP (Hito 4, H4C-11): solo recibe dos ids, que nunca se validaron en la acción (los resuelve el caso de uso: «No se encontró el producto.», que sea MP y el choque de unidades); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/catalogo/productos.ts#agregarPresentacionAlternativa":
+    "Presentación de compra alternativa (Hito 4, H4C-11): la acción leía el producto ANTES de validar el factor (sus decimales son los de la unidad de STOCK del producto, y un producto inexistente gana sobre un factor inválido), así que la validación vive en el caso de uso, en el mismo orden.",
+  "src/server/actions/catalogo/productos.ts#actualizarActivaPresentacion":
+    "Activar o desactivar una presentación (Hito 4, H4C-11): solo recibe un id y un booleano, que nunca se validaron en la acción (un id roto hace lanzar a Prisma: hallazgo conocido, migrado tal cual); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
+  "src/server/actions/catalogo/productos.ts#actualizarDisponibilidadProducto":
+    "Disponibilidad en la sucursal (Hito 4, H4C-11): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró el producto.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/catalogo/insumos.ts#actualizarActivoGrupo":
     "Activar o desactivar un grupo de insumos (Hito 4, H4C-9): solo recibe un id y un booleano, que nunca se validaron en la acción (un id que no existe hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
 };

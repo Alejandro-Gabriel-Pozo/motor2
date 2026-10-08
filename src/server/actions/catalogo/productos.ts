@@ -9,19 +9,23 @@ import { validarImporte } from "@/core/datos/importe";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
-import { disponibilidadDeProductos, productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
+import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { whereDisponibleEn, whereDisponibleEnAlguna } from "@/core/catalogo/public";
 import { validarUnidadInsumo } from "@/server/lecturas/catalogo/unidad-de-insumo";
-import { dependenciasParaDesactivar } from "@/server/lecturas/catalogo/dependencias-para-desactivar";
 import { validarPasoVenta, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { registrarCambioAuditado } from "@/core/permisos/auditoria";
 import { ofrecerSincronizarPrecio } from "@/core/carta/public";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { revalidarCartasPublicas } from "../carta/revalidar";
 import { error, ok, okConId, type ResultadoAccion, type ResultadoConId, type ResultadoConSincronizable } from "../tipos";
 import { requerirVer, requerirVerAlguna, requerirVerDeEmpresa } from "../con-sesion";
+import { actualizarActivaPresentacionCasoDeUso } from "./casos-de-uso/actualizar-activa-presentacion";
+import { actualizarDisponibilidadProductoCasoDeUso } from "./casos-de-uso/actualizar-disponibilidad-producto";
+import { agregarPresentacionAlternativaCasoDeUso } from "./casos-de-uso/agregar-presentacion-alternativa";
+import { asignarInsumoAProductoCasoDeUso } from "./casos-de-uso/asignar-insumo-a-producto";
 
 export interface ProductoOpcion {
   id: string;
@@ -140,16 +144,9 @@ export async function obtenerInsumoDeProducto(productoId: string): Promise<Insum
  * activo del mismo Insumo con otra unidad de stock.
  */
 export async function asignarInsumoAProducto(productoId: string, insumoId: string): Promise<ResultadoAccion> {
+  // Desde el Hito 4 (H4C-11): permiso → caso de uso (`casos-de-uso/asignar-insumo-a-producto.ts`) → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
   return conPermisoDeEmpresa("producto_asignar_insumo", async (ctx) => {
-    const producto = await ctx.db.producto.findUnique({ where: { id: productoId } });
-    if (!producto) return error("No se encontró el producto.");
-    if (producto.tipo !== "MP") return error("Solo una materia prima (MP) puede tener Insumo asignado.");
-
-    const invalido = await validarUnidadInsumo(insumoId, producto.unidadStockId, productoId, ctx.db);
-    if (invalido) return error(invalido);
-
-    await ctx.db.producto.update({ where: { id: productoId }, data: { insumoId } });
-    return ok("Insumo asignado.");
+    return aResultadoAccion(await asignarInsumoAProductoCasoDeUso(ctx, { productoId, insumoId }));
   });
 }
 
@@ -500,14 +497,6 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
   });
 }
 
-/** «A, B y C» / «A, B y 2 más»: para que un mensaje de error no crezca sin límite con un catálogo grande. */
-function enumerar(items: string[], tope = 4): string {
-  const vistos = items.slice(0, tope);
-  const resto = items.length - vistos.length;
-  const cola = resto > 0 ? ` y ${resto} más` : "";
-  return vistos.length > 1 && resto === 0 ? `${vistos.slice(0, -1).join(", ")} y ${vistos[vistos.length - 1]}` : `${vistos.join(", ")}${cola}`;
-}
-
 /**
  * Disponibilidad de un producto EN LA SUCURSAL ACTIVA (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §6.1) — reemplaza el
  * `actualizarActivoProducto` global de antes. Desactivarlo acá lo saca de los selectores de movimiento, de Stock consolidado y
@@ -515,37 +504,16 @@ function enumerar(items: string[], tope = 4): string {
  * venderse acá. Por eso al DESACTIVAR se BLOQUEA mientras algo dependa de él EN ESTA SUCURSAL (recetas vigentes de platos
  * disponibles acá, saldo en alguna sección de esta sucursal) y el mensaje dice qué es. Reactivar nunca se bloquea. Ver
  * `dependenciasParaDesactivar`.
+ *
+ * Desde el Hito 4 (H4C-11): permiso (`conPermiso("producto_disponibilidad")`) → caso de uso (`casos-de-uso/actualizar-disponibilidad-producto.ts`: las
+ * dependencias, el valor anterior, la escritura y su auditoría, todo con la base del contexto y SIN transacción, como antes — hallazgo conocido, migrado tal cual)
+ * → revalidar la carta pública si salió bien → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
  */
 export async function actualizarDisponibilidadProducto(productoId: string, disponible: boolean): Promise<ResultadoAccion> {
   return conPermiso("producto_disponibilidad", async (ctx) => {
-    const existente = await ctx.db.producto.findUnique({ where: { id: productoId } });
-    if (!existente) return error("No se encontró el producto.");
-    if (!disponible) {
-      const { recetasVigentes, saldos } = await dependenciasParaDesactivar(productoId, ctx.sucursalId, ctx.db);
-      const motivos: string[] = [];
-      if (recetasVigentes.length) motivos.push(`está en la receta vigente de ${enumerar(recetasVigentes.map((r) => r.nombre))}: sacalo de esas recetas`);
-      if (saldos.length) {
-        const donde = enumerar(saldos.map((s) => `${s.sucursalNombre} / ${s.seccionNombre} (${s.saldo})`));
-        motivos.push(`tiene saldo en ${donde}: dejalo en cero con un ajuste`);
-      }
-      if (motivos.length) return error(`No se puede desactivar "${existente.nombre}" en "${ctx.sucursalNombre}": ${motivos.join("; y ")} antes de desactivarlo.`);
-    }
-    // El valor anterior se lee ANTES del upsert — registrarCambioAuditado necesita comparar contra el estado previo real, no
-    // contra el que se está por escribir (si no, "repetir el mismo estado no deja registro" dejaría de cumplirse).
-    const anterior = await productoDisponibleEn(ctx.sucursalId, productoId, ctx.db);
-    await ctx.db.disponibilidadProducto.upsert({
-      where: { sucursalId_productoId: { sucursalId: ctx.sucursalId, productoId } },
-      update: { disponible },
-      create: { sucursalId: ctx.sucursalId, productoId, disponible },
-    });
-    // Auditoría administrativa, como el cambio de activo de un rol. No-op si el valor no cambió (registrarCambioAuditado).
-    await registrarCambioAuditado(ctx.db, {
-      entidad: "DisponibilidadProducto", entidadId: `${ctx.sucursalId}:${productoId}`, campo: "disponible",
-      descripcion: `Producto "${existente.nombre}" en "${ctx.sucursalNombre}": disponible`,
-      valorAnterior: anterior, valorNuevo: disponible, actorId: ctx.usuarioId,
-    });
-    revalidarCartasPublicas();
-    return ok(`Producto "${existente.nombre}" ${disponible ? "activado" : "desactivado"} en "${ctx.sucursalNombre}".`);
+    const resultado = await actualizarDisponibilidadProductoCasoDeUso(ctx, { productoId, disponible });
+    if (resultado.ok) revalidarCartasPublicas();
+    return aResultadoAccion(resultado);
   });
 }
 
@@ -585,45 +553,19 @@ export async function agregarPresentacionAlternativa(
   unidadCompraId: string,
   factorConversion: number
 ): Promise<ResultadoAccion> {
+  // Desde el Hito 4 (H4C-11): permiso → caso de uso (`casos-de-uso/agregar-presentacion-alternativa.ts`: el producto, el factor con los decimales de su unidad de
+  // stock, y la presentación con su auditoría en UNA transacción) → `aResultadoAccion`. Sin guard (`SIN_GUARD`: el factor se valida después de leer el producto).
   return conPermisoDeEmpresa("producto_presentaciones", async (ctx) => {
-    const producto = await ctx.db.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
-    if (!producto) return error("No se encontró el producto.");
-    if (producto.unidadCompraId === unidadCompraId) {
-      return error("Esa ya es la unidad de compra por defecto de este producto.");
-    }
-    // Mismo criterio que `factorConversion` de Producto (validarComun): "unidades de stock por 1 unidad de compra" — sus
-    // decimales son los de la unidad de STOCK de este producto, no los de la unidad de compra alternativa.
-    const factor = validarCantidad(factorConversion, producto.unidadStock, { etiqueta: "El factor de conversión", obligatorio: true });
-    if (!factor.ok) return error(factor.mensaje);
-
-    const clave = { productoId_unidadCompraId: { productoId, unidadCompraId } };
-    const anterior = await ctx.db.presentacion.findUnique({ where: clave, select: { factorConversion: true } });
-    // La presentación y su rastro van en UNA transacción (Pureza 0.7): el factor de conversión mueve el costo por unidad de todo lo que se compre con ella.
-    await ctx.transaccion(async (tx) => {
-      const fila = await tx.presentacion.upsert({
-        where: clave,
-        update: { factorConversion: factor.valor!, activa: true },
-        create: { productoId, unidadCompraId, factorConversion: factor.valor! },
-      });
-      if (!anterior || Number(anterior.factorConversion) !== factor.valor!) {
-        await registrarCambioAuditado(tx, {
-          entidad: "Presentacion",
-          entidadId: fila.id,
-          campo: "factorConversion",
-          descripcion: `Producto "${producto.nombre}": factor de conversión de una presentación de compra`,
-          valorAnterior: anterior ? Number(anterior.factorConversion) : null,
-          valorNuevo: factor.valor!,
-          actorId: ctx.usuarioId,
-        });
-      }
-    });
-    return ok("Presentación agregada.");
+    return aResultadoAccion(await agregarPresentacionAlternativaCasoDeUso(ctx, { productoId, unidadCompraId, factorConversion }));
   });
 }
 
+/**
+ * Desde el Hito 4 (H4C-11): permiso → caso de uso (`casos-de-uso/actualizar-activa-presentacion.ts`) → `aResultadoAccion`. Sin guard (`SIN_GUARD`). NO chequea que
+ * la presentación exista: un id roto da un 500 de Prisma (hallazgo conocido, migrado tal cual).
+ */
 export async function actualizarActivaPresentacion(presentacionId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("producto_presentaciones", async (ctx) => {
-    await ctx.db.presentacion.update({ where: { id: presentacionId }, data: { activa } });
-    return ok(`Presentación ${activa ? "activada" : "desactivada"}.`);
+    return aResultadoAccion(await actualizarActivaPresentacionCasoDeUso(ctx, { presentacionId, activa }));
   });
 }

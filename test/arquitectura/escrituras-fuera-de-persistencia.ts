@@ -126,7 +126,8 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     motivo: "Configuración de la carta: se migra a caso de uso + persistencia después de los tramos A, B y C (ver el plan de la Fase 4).",
   },
   "src/server/actions/catalogo/productos.ts": {
-    escrituras: ["disponibilidadProducto.createMany", "disponibilidadProducto.createMany", "disponibilidadProducto.upsert", "presentacion.update", "presentacion.upsert", "producto.create", "producto.create", "producto.update", "producto.update", "producto.update"],
+    // Hito 4, H4C-11: salen las escrituras de asignarInsumoAProducto, de las dos de presentaciones y de actualizarDisponibilidadProducto (a server/persistencia/catalogo/productos.ts).
+    escrituras: ["disponibilidadProducto.createMany", "disponibilidadProducto.createMany", "producto.create", "producto.create", "producto.update", "producto.update"],
     fase: "Fase 4",
     motivo: "Tramo C (PR 4C-F): configuración de catálogo, clientes o margen; pasa a caso de uso + persistencia.",
   },
