@@ -333,6 +333,11 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "Hito 5, bloque D (D7): guardarPortalEmpresa (con guardComandoGuardarPortalEmpresa) → carta/casos-de-uso/guardar-portal-empresa.ts; el upsert por empresa vive en server/persistencia/carta/portal-empresa.ts, con la base del contexto y sin transacción ni auditoría (la apariencia no es plata), como antes. El formato lo valida core/features/carta/portal-empresa.guard.ts dentro de conPermisoDeEmpresa. NO revalida la carta pública, a propósito: el portal lee la fila en cada pedido, sin caché. El archivo no tiene ninguna otra mutación.",
   },
+  {
+    ruta: "src/server/actions/carta/tema.ts",
+    motivo:
+      "Hito 5, bloque D (D8): guardarTemaCarta (con guardComandoGuardarTemaCarta) y cambiarAplicacionTema (con guardComandoCambiarAplicacionTema) → carta/casos-de-uso/{guardar-tema-carta,cambiar-aplicacion-tema}.ts; escrituras en server/persistencia/carta/tema.ts (el upsert por sucursal y el cambio de aplicarEnCarta), con la base del contexto y sin transacción ni auditoría (el tema visual no es plata), como antes. Los guards reciben la sucursal activa del contexto y la comparan ANTES de leer (otra sucursal responde «No se encontró la sucursal.»), dentro de conPermiso; la acción revalida la carta pública solo si salió bien (también en los avisos «sin efecto»). El archivo no tiene ninguna otra mutación.",
+  },
 ];
 
 module.exports = {
