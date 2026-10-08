@@ -4,6 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
 import { activarTodosLosModulos } from "../setup/modulos";
+import { crearMembresia } from "../setup/membresia";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { dbDeEmpresa } from "../../src/core/auth/base";
 import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-carta";
@@ -149,6 +150,12 @@ describe("carta propia por sucursal — acciones", () => {
   });
 
   describe("copiar de otra sucursal", () => {
+    // S-07 (O.56): copiar exige poder VER el origen (membresía y `carta_ver` allá). El administrador de B (la activa, su membresía más antigua) también es administrador de A.
+    beforeEach(async () => {
+      const base = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
+      await crearMembresia({ usuarioId: adminBId, sucursalId: sucursalA, rolId: base.id });
+    });
+
     it("sobre una carta vacía copia contenido, géneros, ítems agrupados con sus opciones y el orden; el origen y las promos quedan igual", async () => {
       const { generoId, itemId } = await armarCartaDeA();
       const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: sucursalA } }, seccionCartaId: seccionId, titulo: "Promo A", precio: 1000 } });
@@ -246,6 +253,7 @@ describe("carta propia por sucursal — acciones", () => {
     it("dos copias a la vez desde distintos orígenes: una sola entra, la carta no se mezcla", async () => {
       await armarCartaDeA();
       const sucursalC = (await prisma.sucursal.create({ data: { nombre: "Sucursal C" } })).id;
+      await crearMembresia({ usuarioId: adminBId, sucursalId: sucursalC, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id });
       await prisma.contenidoCartaProducto.create({ data: { sucursalId: sucursalC, productoId: ids.pizza, visibleEnCarta: true, seccionCartaId: seccionId } });
 
       await como(adminBId, "admin-b@test.com");

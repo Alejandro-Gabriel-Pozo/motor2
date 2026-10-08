@@ -269,6 +269,8 @@ describe("receta propia por sucursal: acciones", () => {
       expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, "no-existe", true, await versionPropia(pv.id), await habilitadaPropia(pv.id))).mensaje).toContain("No se encontró");
 
       const sur = await prisma.sucursal.create({ data: { nombre: "Sur" } });
+      // S-07 (O.56): para llegar a «no tiene receta propia» el administrador tiene que poder VER Sur (membresía allá); sin ella la respuesta es «No tenés acceso…».
+      await crearMembresia({ usuarioId: adminId, sucursalId: sur.id, rolId: rolAdminId });
       expect((await copiarRecetaPropiaDeOtraSucursal(pv.id, sur.id, true, await versionPropia(pv.id), await habilitadaPropia(pv.id))).mensaje).toContain("no tiene receta propia");
 
       await prisma.recetaSucursal.update({ where: { sucursalId_productoId: { sucursalId: norteId, productoId: pv.id } }, data: { habilitada: false } });
@@ -277,10 +279,10 @@ describe("receta propia por sucursal: acciones", () => {
     });
 
     it("lista, para copiar, solo las OTRAS sucursales con receta propia habilitada", async () => {
-      expect((await listarSucursalesConRecetaPropia(pv.id, centralId, prisma)).map((s) => s.nombre)).toEqual(["Norte"]);
-      expect(await listarSucursalesConRecetaPropia(pv.id, norteId, prisma)).toEqual([]);
+      expect((await listarSucursalesConRecetaPropia(pv.id, centralId, adminId, prisma)).map((s) => s.nombre)).toEqual(["Norte"]);
+      expect(await listarSucursalesConRecetaPropia(pv.id, norteId, adminId, prisma)).toEqual([]);
       await prisma.recetaSucursal.update({ where: { sucursalId_productoId: { sucursalId: norteId, productoId: pv.id } }, data: { habilitada: false } });
-      expect(await listarSucursalesConRecetaPropia(pv.id, centralId, prisma)).toEqual([]);
+      expect(await listarSucursalesConRecetaPropia(pv.id, centralId, adminId, prisma)).toEqual([]);
     });
   });
 

@@ -6,6 +6,8 @@ import { esClavePortal, esClaveTema, precioDeCarta, precioDePromo, seleccionDeSu
 import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCartaConDiagnostico } from "@/server/lecturas/carta/menu";
 import type { Db } from "@/lib/db-tipos";
+import type { PrismaClient } from "@prisma/client";
+import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
 
 /** Las secciones de carta (orden, nombre) con cuántos ítems ya tiene cada una (`cantidadItems`, DA6). */
 async function seccionesConCantidad(sucursalId: string, db: Db): Promise<SeccionCartaAdmin[]> {
@@ -56,6 +58,16 @@ async function estadoCartaPropia(sucursalId: string, db: Db): Promise<{ cartaVac
     cartaVacia: propia ? !tiene(propia) : true,
     sucursalesConCarta: sucursales.filter((s) => s.id !== sucursalId && tiene(s)).map((s) => ({ id: s.id, nombre: s.nombre, cantidadProductos: s._count.contenidosCarta })),
   };
+}
+
+/**
+ * De las sucursales con carta propia que `cargarAdminCarta` junta (todas las de la empresa), las que se OFRECEN como origen de la copia: solo donde `usuarioId` tiene membresía
+ * vigente y el «Ver» de la carta (`carta_ver`), la misma condición con la que `copiarCartaDeSucursal` acepta el origen (S-07, O.56). La pantalla pasa por acá antes de mostrar
+ * nombres o cantidades de otra sucursal. `cargarAdminCarta` no filtra a propósito: su resultado es la caracterización congelada de las lecturas del tramo A.
+ */
+export async function origenesDeCopiaVisibles(usuarioId: string, origenes: readonly SucursalConCartaPropia[], db: PrismaClient): Promise<SucursalConCartaPropia[]> {
+  const visibles = await sucursalesDondeElUsuarioPuedeVer(usuarioId, origenes.map((o) => o.id), "carta_ver", db);
+  return origenes.filter((o) => visibles.has(o.id));
 }
 
 /** La pantalla de administración de la carta. `ahora` obligatorio (O.22-c): lo fija la página; solo llega al `generadoEn` del menú armado, que acá se descarta. */

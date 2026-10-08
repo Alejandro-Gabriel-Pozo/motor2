@@ -8,7 +8,8 @@ import { describe, expect, it } from "vitest";
  * Lo que NO pueden importar lo fija la regla `acceso-capa` de dependency-cruiser; que la cáscara no compare ningún rol ni nivel lo fija `acceso-solo-por-el-guard.test.ts`.
  */
 const CARPETA = join(__dirname, "../../src/server/acceso");
-const PERMITIDOS = ["capacidades-sucursal.ts", "gate.ts", "menu.ts", "modulos-de-empresa.ts", "politica-de-empresa.ts"];
+// `origen-de-copia.ts` (S-07, O.56 del endurecimiento de seguridad): DECIDE acceso (la membresía y el «Ver» del usuario en la sucursal ORIGEN de una copia entre sucursales), apoyado en el gate; no lee cookies ni la sesión.
+const PERMITIDOS = ["capacidades-sucursal.ts", "gate.ts", "menu.ts", "modulos-de-empresa.ts", "origen-de-copia.ts", "politica-de-empresa.ts"];
 
 /**
  * Los archivos de `server/acceso/` que NO llevan `import "server-only"` y por qué (Hito 5, pieza 5.2, bloque 2): el valor es el punto de entrada que los alcanza y donde `server-only` revienta (el paquete tira

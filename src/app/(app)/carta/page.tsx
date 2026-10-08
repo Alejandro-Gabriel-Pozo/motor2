@@ -3,7 +3,7 @@ import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import type { ProductoCartaAdmin } from "@/core/carta/public";
-import { cargarAdminCarta } from "@/server/consultas/carta/admin";
+import { cargarAdminCarta, origenesDeCopiaVisibles } from "@/server/consultas/carta/admin";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "@/server/actions/carta/generos";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
@@ -81,6 +81,8 @@ export default async function CartaPage() {
 
   // La hora se fija acá, en el borde (O.22-c).
   const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db, new Date());
+  // S-07 (O.56): solo se ofrecen de origen las sucursales donde el usuario tiene membresía y el «Ver» de la carta (las demás ni se nombran).
+  const origenesDeCopia = datos.cartaVacia && puedeCopiarCarta ? await origenesDeCopiaVisibles(ctx.usuarioId, datos.sucursalesConCarta, ctx.db) : [];
   const seccionesActivas = datos.secciones.filter((s) => s.activa);
   const ubicacion: UbicacionEnCarta = {
     secciones: datos.secciones.map((s) => ({ id: s.id, nombre: s.nombre, activa: s.activa })),
@@ -114,7 +116,7 @@ export default async function CartaPage() {
               Armar carta
             </a>
           )}
-          {puedeCopiarCarta && <CopiarCartaDeSucursal origenes={datos.sucursalesConCarta} />}
+          {puedeCopiarCarta && <CopiarCartaDeSucursal origenes={origenesDeCopia} />}
         </section>
       )}
 

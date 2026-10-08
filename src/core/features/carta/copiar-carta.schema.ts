@@ -20,9 +20,10 @@ export interface DatosCartaCopiada {
 
 /**
  * Solo lo que produce el caso de uso (la confirmación y «no se puede copiar de la misma» los rechaza antes el guard):
- *  - `ORIGEN_NO_ENCONTRADO`: la sucursal de origen no existe (se lee FUERA de la transacción);
+ *  - `ORIGEN_NO_ENCONTRADO`: la sucursal de origen no existe o está desactivada (se lee FUERA de la transacción);
+ *  - `ORIGEN_SIN_ACCESO`: existe, pero quien copia no tiene membresía vigente ni el «Ver» de la carta (`carta_ver`) en ESA sucursal (S-07, O.56);
  *  - `CARTA_PROPIA_EXISTENTE`: el destino ya tiene un contenido, un género o un ítem agrupado propios (solo se copia sobre una carta VACÍA); gana sobre `ORIGEN_SIN_CARTA`;
  *  - `ORIGEN_SIN_CARTA`: el origen no tiene nada que copiar;
  *  - `CARTA_CAMBIO`: el conflicto de escritura agotó los reintentos (otra copia o edición a la vez).
  */
-export type ResultadoCopiarCartaDeSucursal = ResultadoCaso<DatosCartaCopiada, "ORIGEN_NO_ENCONTRADO" | "CARTA_PROPIA_EXISTENTE" | "ORIGEN_SIN_CARTA" | "CARTA_CAMBIO">;
+export type ResultadoCopiarCartaDeSucursal = ResultadoCaso<DatosCartaCopiada, "ORIGEN_NO_ENCONTRADO" | "ORIGEN_SIN_ACCESO" |"CARTA_PROPIA_EXISTENTE" | "ORIGEN_SIN_CARTA" | "CARTA_CAMBIO">;

@@ -5,6 +5,7 @@ import type { ComandoCopiarCartaDeSucursal, ResultadoCopiarCartaDeSucursal } fro
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { leerOrigenDeCopia } from "@/server/acceso/origen-de-copia";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { copiarContenidosDeCarta, copiarGeneroDeCarta, copiarItemAgrupadoDeCarta, copiarOpcionesDeItemAgrupado } from "@/server/persistencia/carta/copiar-carta";
 
@@ -23,7 +24,10 @@ import { copiarContenidosDeCarta, copiarGeneroDeCarta, copiarItemAgrupadoDeCarta
  * si el destino tiene aunque sea un contenido, un género o un ítem propios, rechaza. La comprobación y la copia van en la MISMA transacción SERIALIZABLE, así dos copias a la vez
  * no duplican ni se mezclan; agotados los reintentos de un conflicto de escritura, responde que la carta cambió.
  *
- * Orden, igual que antes: 1. el origen existe (`No se encontró esa sucursal.`, leído FUERA de la transacción con `actor.db`); 2. DENTRO de la transacción: que el destino no tenga carta
+ * S-07 (O.56 de `docs/pureza-integracion.md`, nota de ADR-009): el origen exige estar activo y que quien copia tenga membresía vigente y el «Ver» de la carta (`carta_ver`) en ESA sucursal
+ * (`leerOrigenDeCopia`); antes se buscaba solo por id bajo la RLS de empresa, que separa empresas y no sucursales. Sin ese acceso: `ORIGEN_SIN_ACCESO`, sin leer nada del origen.
+ *
+ * Orden: 1. el origen existe, está activo y se puede ver (`No se encontró esa sucursal.` o `No tenés acceso a esa sucursal.`, leído FUERA de la transacción con `actor.db`); 2. DENTRO de la transacción: que el destino no tenga carta
  * propia (`Esta sucursal ya tiene carta propia…`); 3. que el origen tenga algo (`«<origen>» no tiene carta propia: no hay nada que copiar.`); 4. se copian los géneros (uno por uno),
  * los ítems agrupados con sus opciones (uno por uno, con el género reapuntado) y los contenidos (de una vez, con el género reapuntado); 5. se audita, con el `tx` del callback.
  *
@@ -38,8 +42,10 @@ export async function copiarCartaDeSucursalCasoDeUso(
   comando: ComandoCopiarCartaDeSucursal,
 ): Promise<ResultadoCopiarCartaDeSucursal> {
   const { sucursalOrigenId } = comando;
-  const origen = await actor.db.sucursal.findUnique({ where: { id: sucursalOrigenId }, select: { nombre: true } });
-  if (!origen) return fracaso("ORIGEN_NO_ENCONTRADO", "No se encontró esa sucursal.");
+  // S-07 (O.56): el origen se lee SOLO con membresía y «Ver» de la carta (`carta_ver`) en esa sucursal, y estando activa; la RLS separa empresas, no sucursales.
+  const lectura = await leerOrigenDeCopia(actor, sucursalOrigenId, "carta_ver");
+  if (!lectura.ok) return fracaso(lectura.codigo === "SIN_ACCESO" ? "ORIGEN_SIN_ACCESO" : "ORIGEN_NO_ENCONTRADO", lectura.mensaje);
+  const origen = { nombre: lectura.nombre };
 
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCopiarCartaDeSucursal> => {
     const [contenidosPropios, generosPropios, itemsPropios] = await Promise.all([

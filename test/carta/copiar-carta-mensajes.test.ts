@@ -4,6 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 vi.mock("../../src/server/actions/carta/revalidar", () => ({ revalidarCartasPublicas: vi.fn() }));
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
+import { crearMembresia } from "../setup/membresia";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { revalidarCartasPublicas } from "../../src/server/actions/carta/revalidar";
 import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-carta";
@@ -39,6 +40,8 @@ describe("copiar la carta de otra sucursal: mensajes, orden de los chequeos, aud
     destinoId = (await prisma.sucursal.create({ data: { nombre: "Sucursal B" } })).id;
     const admin = await crearUsuarioConMembresia({ email: "admin-b@test.com", sucursalId: destinoId, rolId: base.admin.id });
     adminId = admin.id;
+    // S-07 (O.56): quien copia tiene que poder VER el origen (membresía y `carta_ver` en Central); la activa sigue siendo la destino (la más antigua).
+    await crearMembresia({ usuarioId: admin.id, sucursalId: centralId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
     const unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;
     seccionId = (await prisma.seccionCarta.create({ data: { nombre: "Platos", orden: 1 } })).id;

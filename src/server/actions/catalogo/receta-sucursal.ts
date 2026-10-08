@@ -9,6 +9,7 @@ import { guardComandoGuardarVersionDeReceta } from "@/core/features/catalogo/rec
 import { guardComandoVolverALaRecetaCentral } from "@/core/features/catalogo/receta-sucursal.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import type { ContextoUsuario } from "@/core/auth/contexto";
+import { leerOrigenDeCopia } from "@/server/acceso/origen-de-copia";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { conPermiso } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
@@ -142,6 +143,9 @@ export async function quitarIngredienteDeRecetaPropia(productoId: string, insumo
  * Copia la receta propia de OTRA sucursal a la de la activa (que queda habilitada con esa copia como versión nueva). Solo se copia de la receta
  * propia habilitada de otra sucursal — nunca de la central, que ya es la base de la propia — y pisa la propia que hubiera: por eso exige la
  * confirmación explícita. Conserva la versión central en la que se basaba el original, así el aviso «la central cambió» sigue siendo cierto.
+ *
+ * S-07 (O.56 de `docs/pureza-integracion.md`, nota de ADR-009): el origen exige membresía vigente y el «Ver» de `receta_sucursal_copiar` en ESA sucursal
+ * (`leerOrigenDeCopia`), además de que esté activa. Antes se buscaba solo por id bajo la RLS de empresa y se copiaba desde una sucursal sin membresía.
  */
 export async function copiarRecetaPropiaDeOtraSucursal(
   productoId: string,
@@ -156,11 +160,11 @@ export async function copiarRecetaPropiaDeOtraSucursal(
     // Después de las dos comprobaciones que no leen nada (su orden de mensajes no cambia) y antes de la primera lectura.
     const vista = versionVistaExigida(productoId, versionVista);
     if (!vista.ok) return error(vista.mensaje);
-    const origen = await ctx.db.sucursal.findUnique({ where: { id: sucursalOrigenId }, select: { nombre: true } });
-    if (!origen) return error("No se encontró esa sucursal.");
+    // S-07 (O.56): el origen se lee SOLO con membresía y «Ver» de la copia allá, antes de mirar qué receta tiene (la RLS separa empresas, no sucursales).
+    const origen = await leerOrigenDeCopia(ctx, sucursalOrigenId, "receta_sucursal_copiar");
+    if (!origen.ok) return error(origen.mensaje);
     const estadoOrigen = await obtenerEstadoDeRecetaPropia(productoId, sucursalOrigenId, ctx.db);
-    if (!estadoOrigen.habilitada || !estadoOrigen.propia) return error(`«${origen.nombre}» no tiene receta propia para este producto: no hay nada que copiar.`);
-    return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(estadoOrigen.propia), estadoOrigen.propia, versionVista, habilitadaVista, {
+    if (!estadoOrigen.habilitada || !estadoOrigen.propia) return error(`«${origen.nombre}» no tiene receta propia para este producto: no hay nada que copiar.`);    return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(estadoOrigen.propia), estadoOrigen.propia, versionVista, habilitadaVista, {
       basadaEnVersionId: estadoOrigen.propia.basadaEnVersionId,
       copiadaDeSucursal: origen.nombre,
     });

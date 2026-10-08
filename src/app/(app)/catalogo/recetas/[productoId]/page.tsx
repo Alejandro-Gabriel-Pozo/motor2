@@ -134,7 +134,7 @@ export default async function RecetaEditorPage({
   // Receta propia de la sucursal activa (ADR-009, R3/R4): estado + qué acciones le tocan a este usuario (una clave por acción).
   const [estadoPropia, otrasConRecetaPropia, nivelEditar, nivelCopiar, nivelVolver] = await Promise.all([
     obtenerEstadoDeRecetaPropia(producto.id, ctx.sucursalId, ctx.db),
-    listarSucursalesConRecetaPropia(producto.id, ctx.sucursalId, ctx.db),
+    listarSucursalesConRecetaPropia(producto.id, ctx.sucursalId, ctx.usuarioId, ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_editar", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_copiar", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_volver_central", ctx.db),
