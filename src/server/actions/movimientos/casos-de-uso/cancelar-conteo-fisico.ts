@@ -3,6 +3,8 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ResultadoCancelarConteo } from "@/core/features/movimientos/cancelar-conteo.schema";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
+import { sumaAplicadaPorConteo } from "@/server/lecturas/movimientos/aplicado-por-conteo";
 import { cargarConteoFisico } from "@/server/persistencia/movimientos/cargar-conteo-fisico";
 import { actualizarEstadoDeConteo } from "@/server/persistencia/movimientos/escribir-conteo-fisico";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
@@ -17,22 +19,29 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * `import "server-only"` y SIN `"use server"`, mismo criterio que `resolver-conteo-pendiente.ts`: no chequea permisos (ya lo hizo
  * `conPermiso("cancelar_conteo")` en el adaptador) ni ningún formato de entrada (sin `.guard.ts` propio, ver `cancelar-conteo.schema.ts`).
  *
- * Orden, igual que antes:
+ * REVIERTE LO QUE EL CONTEO APLICÓ, no lo que registró (S-04 del plan de endurecimiento de seguridad, tanda T5, K2 del informe B). `conteo.diferencia` es contado menos el saldo del
+ * sistema EL DÍA DEL CONTEO; lo que se aplicó al stock es otra cosa: un conteo pendiente cerrado como «resuelto» no aplicó nada (la diferencia se cubrió con un movimiento real), y uno
+ * cerrado con «ajustar» aplicó la diferencia contra el saldo de HOY, que `diferencia` no recuerda. Cancelar a partir de `diferencia` escribía un ajuste que nunca se había aplicado
+ * (stock fantasma) o uno de otro tamaño. Ahora la fuente es el Kardex: `sumaAplicadaPorConteo` (la suma con signo de las líneas con `conteoFisicoId` = este conteo, leída dentro de la
+ * transacción) y se escribe su opuesto. Si el conteo no aplicó nada se cancela igual (sirve para sacarlo de los reportes) pero NO se toca el stock. La cancelación se AUDITA
+ * (`ConteoFisico`, `estado`: RESUELTO → CANCELADO, con lo revertido en la descripción): antes no dejaba ninguna fila.
+ *
+ * Orden:
  *  1. `cargarConteoFisico` (M13e2) — si no existe o es de otra sucursal, ni sigue;
  *  2. no puede estar ya CANCELADO, y tiene que estar RESUELTO (si está PENDIENTE/DESCARTADO nunca ajustó nada, no hay nada que
  *     cancelar);
- *  3. si `diferenciaOriginal !== 0`, escribe la reversión vía `escribirOperacionDeStock`/`escribirLineasDeMovimientoStock` (M13b, un
+ *  3. lee lo aplicado (`sumaAplicadaPorConteo`) y, si no es 0, escribe la reversión vía `escribirOperacionDeStock`/`escribirLineasDeMovimientoStock` (M13b, un
  *     array de una sola fila) con `conteoFisicoId: conteo.id`;
- *  4. cierra el conteo como CANCELADO (`actualizarEstadoDeConteo`, M13e2).
+ *  4. cierra el conteo como CANCELADO (`actualizarEstadoDeConteo`, M13e2) y deja la fila de auditoría.
  *
- * @contract Revierte un conteo YA RESUELTO con una fila de Kardex de reversión y lo marca CANCELADO — nunca edita/borra la fila original.
+ * @contract Revierte un conteo YA RESUELTO con una fila de Kardex que anula exactamente lo que ese conteo aplicó (cero si no aplicó nada) y lo marca CANCELADO — nunca edita/borra la fila original.
  * @idempotency Por estado — un conteo ya CANCELADO se rechaza explícitamente; sin claveIdempotencia/I3.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
- * @sideEffects Ninguno además de la reversión de Kardex (fila conteoFisicoId) y el cambio de estado del ConteoFisico.
- * @ficha permiso=cancelar_conteo transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
+ * @sideEffects Ninguno además de la reversión de Kardex (fila conteoFisicoId), el cambio de estado del ConteoFisico y su fila de auditoría.
+ * @ficha permiso=cancelar_conteo transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function cancelarConteoFisicoCasoDeUso(
-  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion" | "ahora">,
   conteoId: string
 ): Promise<ResultadoCancelarConteo> {
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCancelarConteo> => {
@@ -46,8 +55,8 @@ export async function cancelarConteoFisicoCasoDeUso(
       );
     }
 
-    const diferenciaOriginal = Number(conteo.diferencia);
-    if (diferenciaOriginal !== 0) {
+    const ajusteAplicado = await sumaAplicadaPorConteo(tx, conteo.id);
+    if (ajusteAplicado !== 0) {
       const operacion = await escribirOperacionDeStock(tx, {
         sucursalId: actor.sucursalId,
         proceso: "CONTROL",
@@ -68,9 +77,9 @@ export async function cancelarConteoFisicoCasoDeUso(
           productoId: conteo.productoId,
           seccionId: conteo.seccionId,
           proceso: "CONTROL",
-          cantidad: -diferenciaOriginal,
+          cantidad: -ajusteAplicado,
           loteVencimiento: conteo.loteVencimiento,
-          detalle: `Conteo físico cancelado: se revierte el ajuste de ${diferenciaOriginal > 0 ? "+" : ""}${diferenciaOriginal}.`,
+          detalle: `Conteo físico cancelado: se revierte el ajuste de ${conSigno(ajusteAplicado)}.`,
           precioTotal: 0,
           precioPorUnidadStock: 0,
           conteoFisicoId: conteo.id,
@@ -78,11 +87,31 @@ export async function cancelarConteoFisicoCasoDeUso(
       ]);
     }
 
+    const queSePaso = ajusteAplicado !== 0 ? `se revirtió el ajuste de ${conSigno(ajusteAplicado)}` : "no había aplicado ningún ajuste, no se tocó el stock";
     await actualizarEstadoDeConteo(tx, conteoId, {
       estado: "CANCELADO",
-      detalle: `${conteo.detalle ?? ""} — cancelado, se revirtió el ajuste de ${diferenciaOriginal > 0 ? "+" : ""}${diferenciaOriginal}`.trim(),
+      detalle: `${conteo.detalle ?? ""} — cancelado, ${queSePaso}`.trim(),
     });
 
-    return exito(`Conteo cancelado. Se revirtió el ajuste de ${diferenciaOriginal > 0 ? "+" : ""}${diferenciaOriginal}.`, { diferenciaOriginal });
+    // Auditoría (S-04): quién canceló qué conteo y cuánto se revirtió. Siempre cambia el estado (RESUELTO → CANCELADO), así que la fila se escribe aunque no se haya tocado el stock.
+    await registrarCambioAuditado(tx, {
+      entidad: "ConteoFisico",
+      entidadId: conteo.id,
+      campo: "estado",
+      descripcion: `Conteo físico de "${conteo.productoNombre}" en "${actor.sucursalNombre}" cancelado: ${queSePaso}`,
+      valorAnterior: conteo.estado,
+      valorNuevo: "CANCELADO",
+      actorId: actor.usuarioId,
+      sucursalId: actor.sucursalId,
+    });
+
+    return exito(
+      ajusteAplicado !== 0 ? `Conteo cancelado. Se revirtió el ajuste de ${conSigno(ajusteAplicado)}.` : "Conteo cancelado. No había aplicado ningún ajuste al stock: no se tocó el stock.",
+      { ajusteRevertido: ajusteAplicado }
+    );
   });
+}
+
+function conSigno(n: number): string {
+  return `${n > 0 ? "+" : ""}${n}`;
 }
