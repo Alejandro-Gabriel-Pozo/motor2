@@ -17,7 +17,8 @@ function Mensaje({ mensaje, ok }: { mensaje: string | null; ok: boolean }) {
   return <p className={`text-xs ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>;
 }
 
-export function AccionesConteoPendiente({ conteoId }: { conteoId: string }) {
+/** `puedeAjustar`: cortesía, no barrera (S-09, D3): «Ajustar ahora» mueve el stock y la acción exige `proceso_ajuste`; sin él solo se ofrece «Ya se cargó». */
+export function AccionesConteoPendiente({ conteoId, puedeAjustar }: { conteoId: string; puedeAjustar: boolean }) {
   const router = useRouter();
   const [confirmandoAjuste, setConfirmandoAjuste] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -66,9 +67,11 @@ export function AccionesConteoPendiente({ conteoId }: { conteoId: string }) {
         <button type="button" disabled={pending} onClick={marcarResuelto} className="text-sm underline">
           Ya se cargó
         </button>
-        <button type="button" disabled={pending} onClick={() => setConfirmandoAjuste(true)} className="text-sm underline">
-          Ajustar ahora
-        </button>
+        {puedeAjustar && (
+          <button type="button" disabled={pending} onClick={() => setConfirmandoAjuste(true)} className="text-sm underline">
+            Ajustar ahora
+          </button>
+        )}
       </div>
       <Mensaje mensaje={mensaje} ok={ok} />
     </div>

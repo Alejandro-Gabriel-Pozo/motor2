@@ -5,6 +5,7 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoPorLote, calcularSaldoTotal } from "@/server/lecturas/movimientos/saldos";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComoResolverConteo, ResultadoResolverConteo } from "@/core/features/movimientos/resolver-conteo.schema";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { cargarConteoFisico } from "@/server/persistencia/movimientos/cargar-conteo-fisico";
 import { cargarProductoConUnidadDeStock } from "@/server/persistencia/movimientos/cargar-producto-con-unidad-de-stock";
 import { actualizarEstadoDeConteo } from "@/server/persistencia/movimientos/escribir-conteo-fisico";
@@ -17,7 +18,7 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * ajusta contra el saldo de HOY (no el del día del conteo, porque entre medio pudo haber más movimientos).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint, mismo criterio que `registrar-conteo-fisico.ts` (M13e1). No chequea
- * permisos (eso ya lo hizo `conPermiso("conteo_resolver_pendiente")` en el adaptador) ni el formato de la entrada (`guardComandoResolverConteo`, en el adaptador).
+ * permisos (eso ya lo hizo `conPermiso("conteo_resolver_pendiente")` en el adaptador, más `proceso_ajuste` si la rama es «ajustar»: S-09) ni el formato de la entrada (`guardComandoResolverConteo`, en el adaptador).
  *
  * Orden, igual que antes:
  *  1. `cargarConteoFisico` (M13e2) — si no existe o es de otra sucursal, ni sigue;
@@ -31,11 +32,11 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * @contract Cierra un conteo PENDIENTE, ajustando el Kardex contra el saldo de HOY si la rama elegida es "ajustar".
  * @idempotency Por estado — exige estado PENDIENTE; un reintento sobre un conteo ya RESUELTO se rechaza con CONTEO_NO_PENDIENTE, no I3.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
- * @sideEffects Escritura del Kardex SOLO si la diferencia contra el saldo de hoy es != 0 y la rama es "ajustar"; sin auditoría de permisos propia.
- * @ficha permiso=conteo_resolver_pendiente transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
+ * @sideEffects Escritura del Kardex SOLO si la diferencia contra el saldo de hoy es != 0 y la rama es "ajustar"; en ese caso (S-09) deja además una fila de auditoría con el saldo de hoy y lo contado.
+ * @ficha permiso=conteo_resolver_pendiente transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function resolverConteoPendienteCasoDeUso(
-  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion" | "ahora">,
   conteoId: string,
   comoResolver: ComoResolverConteo
 ): Promise<ResultadoResolverConteo> {
@@ -99,6 +100,19 @@ export async function resolverConteoPendienteCasoDeUso(
     await actualizarEstadoDeConteo(tx, conteoId, {
       estado: "RESUELTO",
       detalle: `${conteo.detalle ?? ""} — cerrado con ajuste de ${diferencia > 0 ? "+" : ""}${diferencia}`.trim(),
+    });
+
+    // Auditoría (S-09): resolver «ajustar» mueve el stock contra el saldo de HOY, que no es el que registró el conteo: la fila deja el saldo de hoy (antes) y lo contado (después). El alta
+    // del conteo ya dejó la suya (saldo de ese día → contado); cada una dice a qué momento corresponde.
+    await registrarCambioAuditado(tx, {
+      entidad: "ConteoFisico",
+      entidadId: conteo.id,
+      campo: "conteoReal",
+      descripcion: `Conteo pendiente de "${conteo.productoNombre}" en "${actor.sucursalNombre}" resuelto con ajuste de ${diferencia > 0 ? "+" : ""}${diferencia} contra el saldo de hoy`,
+      valorAnterior: saldoHoy,
+      valorNuevo: conteo.conteoReal,
+      actorId: actor.usuarioId,
+      sucursalId: actor.sucursalId,
     });
 
     return exito(`Conteo cerrado. Se ajustó ${diferencia > 0 ? "+" : ""}${diferencia}.`, { ajustado: true });
