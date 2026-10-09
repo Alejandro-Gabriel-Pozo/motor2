@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { moduloDeAccion, type AccionClave } from "../../src/core/permisos/acciones";
 import { envoltoriosDe, exportadasSinEnvoltorio, problemasSinEnvoltorio, type Envoltorio } from "./guardas/envoltorio-y-clave";
 
 /**
@@ -60,6 +61,22 @@ describe("POS: cada Server Action entra por su envoltorio y su clave", () => {
   it.each(Object.keys(DECLARADAS))("%s: ninguna función exportada queda sin envoltorio de mutación", (archivo) => {
     const problemas = problemasSinEnvoltorio(exportadasSinEnvoltorio(readFileSync(join(RAIZ, archivo), "utf8")), {});
     expect(problemas, `pos/${archivo}:\n${problemas.join("\n")}`).toEqual([]);
+  });
+
+  // GT-12 / M-26 de la auditoría intermedia: `test/pos/modulos-apagados-en-el-pos.test.ts` fija «Salón apagado ⇒ ninguna puerta del POS responde» con una lista de 17 llamadas escrita A MANO; una
+  // acción nueva del POS no ponía nada en rojo. Estas dos comprobaciones atan esa lista a la lista cerrada de acá (sin base).
+  it("toda clave con que entra una acción del POS es del módulo Salón (con Salón apagado el gate la rechaza)", () => {
+    const claves = Object.values(DECLARADAS).flatMap((fs) => Object.values(fs).map((d) => d.clave));
+    expect(claves.length).toBe(14);
+    for (const clave of claves) expect(moduloDeAccion(clave as AccionClave), clave).toBe("salon");
+  });
+
+  it("el test de «Salón apagado» llama a CADA mutación del POS (una acción nueva del POS tiene que sumarse a sus 17 puertas)", () => {
+    const fuente = readFileSync(join(__dirname, "../pos/modulos-apagados-en-el-pos.test.ts"), "utf8");
+    const sinLlamar = Object.values(DECLARADAS)
+      .flatMap((fs) => Object.keys(fs))
+      .filter((funcion) => !new RegExp(`\\b${funcion}\\(`).test(fuente));
+    expect(sinLlamar, "una mutación del POS que el test de «Salón apagado» no llama queda sin su caso").toEqual([]);
   });
 
   it("son las 14 mutaciones del POS", () => {
