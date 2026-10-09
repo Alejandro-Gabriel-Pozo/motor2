@@ -60,44 +60,45 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     motivo:
       "S-10/D1 (O.59): definir una promo es de la empresa (`carta_promo_definir`), pero el alta crea la fila `PromoCartaSucursal` de la sucursal ACTIVA: nace prendida solo si quien la crea tiene `carta_promo_activar` ALLÍ (si no, apagada)",
   },
-  // El portal de sucursales (D1: `carta_portal` es de la empresa entera y NO cambia de contexto). El registro público (`SucursalPublica`) tiene una fila por sucursal y estas cuatro acciones la administran
+  // El portal de sucursales (`carta_portal`, tratada como de la empresa entera). OJO: D1 (opción A, contestada por el dueño) dice lo CONTRARIO para las claves de carta que escriben en una sucursal
+  // (se declara la sucursal en cada acción que escribe en una); estas cuatro quedaron con el defecto permisivo y NO están decididas: decisión 36, A CONFIRMAR POR EL DUEÑO. El registro público (`SucursalPublica`) tiene una fila por sucursal y estas cuatro acciones la administran
   // para TODAS desde una sola pantalla (el mapa del portal es entre sucursales; las cuatro reciben el id de la sucursal y no dependen de la activa). Pendiente de confirmar con el dueño si prefiere atar cada
   // fila a la membresía de esa sucursal (quien publica la sucursal B debería tener algo en B): hoy un administrador con `carta_portal` en cualquiera de sus sucursales puede publicar o quitar a otra.
   "carta/casos-de-uso/agregar-sucursal-al-portal.ts": {
     ata: "EMPRESA_ENTERA",
     puertas: ["carta/registro-publico.ts|agregarSucursalAlPortal"],
-    motivo: "el portal es de la empresa entera (`carta_portal`, D1: clave de empresa que no cambia de contexto): el registro público de TODAS las sucursales se administra desde una sola pantalla, sin depender de la activa",
+    motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): el registro público de TODAS las sucursales se administra desde una sola pantalla, sin depender de la activa; el defecto vigente es permisivo (quien tiene la clave en cualquiera de sus sucursales publica o quita a las otras)",
   },
   "carta/casos-de-uso/guardar-sucursal-publica.ts": {
     ata: "EMPRESA_ENTERA",
     puertas: ["carta/registro-publico.ts|guardarSucursalPublica"],
-    motivo: "el portal es de la empresa entera (`carta_portal`, D1: clave de empresa que no cambia de contexto): el registro público de TODAS las sucursales se administra desde una sola pantalla, sin depender de la activa",
+    motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): el registro público de TODAS las sucursales se administra desde una sola pantalla, sin depender de la activa; el defecto vigente es permisivo (quien tiene la clave en cualquiera de sus sucursales edita la ficha pública de las otras)",
   },
   "carta/casos-de-uso/mover-sucursal-en-mapa.ts": {
     ata: "EMPRESA_ENTERA",
     puertas: ["carta/registro-publico.ts|moverSucursalEnMapa"],
-    motivo: "el portal es de la empresa entera (`carta_portal`, D1: clave de empresa que no cambia de contexto): la posición de cada tarjeta se arrastra sobre el mapa de todas las sucursales",
+    motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): la posición de cada tarjeta se arrastra sobre el mapa de todas las sucursales; el defecto vigente es permisivo (la clave en cualquier membresía mueve la tarjeta de cualquier sucursal)",
   },
   "carta/casos-de-uso/quitar-sucursal-del-portal.ts": {
     ata: "EMPRESA_ENTERA",
     puertas: ["carta/registro-publico.ts|quitarSucursalDelPortal"],
-    motivo: "el portal es de la empresa entera (`carta_portal`, D1: clave de empresa que no cambia de contexto): sacar una sucursal del registro público es la vuelta atrás de agregarla",
+    motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): sacar una sucursal del registro público es la vuelta atrás de agregarla; el defecto vigente es permisivo (la clave en cualquier membresía saca a cualquier sucursal)",
   },
   // ── Gobierno de las sucursales (claves `administrador_sistema` de empresa) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
   "auth/casos-de-uso/actualizar-activo-sucursal.ts": {
     ata: "EMPRESA_ENTERA",
     puertas: ["auth/sucursales.ts|actualizarActivoSucursal"],
-    motivo: "`activar_sucursal` es gobierno de la empresa (piso administrador de sistema, inmutable): alta y baja de sucursales; el caso de uso mide el id contra las sucursales de la empresa",
+    motivo: "`activar_sucursal` es gobierno de la empresa (piso administrador de sistema, inmutable): alta y baja de sucursales; el caso de uso mide el id contra las sucursales de la empresa. A CONFIRMAR POR EL DUEÑO: se puede activar o apagar una sucursal desde otra sucursal (el gobierno es de la empresa, no de la sucursal activa)",
   },
   "auth/casos-de-uso/crear-sucursal-con-admin.ts": {
     ata: "EMPRESA_ENTERA",
     puertas: ["auth/sucursales.ts|crearSucursalConAdmin"],
-    motivo: "`alta_sucursal` es gobierno de la empresa: crea una sucursal NUEVA (todavía sin carta ni membresías) y le siembra la disponibilidad de los productos y la membresía de quien la crea",
+    motivo: "`alta_sucursal` es gobierno de la empresa: crea una sucursal NUEVA (todavía sin carta ni membresías) y le siembra la disponibilidad de los productos y la membresía de quien la crea. A CONFIRMAR POR EL DUEÑO: se puede dar de alta una sucursal desde cualquier otra",
   },
   "auth/casos-de-uso/renombrar-sucursal.ts": {
     ata: "EMPRESA_ENTERA",
     puertas: ["auth/sucursales.ts|renombrarSucursal"],
-    motivo: "`renombrar_sucursal` es gobierno de la empresa (piso administrador de sistema, inmutable): el nombre de una sucursal lo cambia quien gobierna la empresa; el id solo alcanza sucursales de la empresa",
+    motivo: "`renombrar_sucursal` es gobierno de la empresa (piso administrador de sistema, inmutable): el nombre de una sucursal lo cambia quien gobierna la empresa; el id solo alcanza sucursales de la empresa. A CONFIRMAR POR EL DUEÑO: se puede renombrar una sucursal desde otra sucursal",
   },
   "permisos/casos-de-uso/actualizar-capacidad.ts": {
     ata: "EMPRESA_ENTERA",

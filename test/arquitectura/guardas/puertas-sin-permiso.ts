@@ -86,8 +86,9 @@ export const PUERTAS_SIN_PERMISO: Readonly<Record<string, PuertaSinPermiso>> = {
   "ruta|(carta-publica)/carta-publica/[empresa]/page.tsx": {
     anonimo: "PERMITIDO",
     sinEmpresa: "PERMITIDO",
-    motivo: "carta pública de una empresa: lectura aislada de lo que la empresa publica a propósito (lista cerrada de campos), sin sesión",
-    limitador: "caché ISR de la carta (revalidate) más el firewall de Vercel (E.6); la lista cerrada de publicación es el guard GT-13 (tanda T9)",
+    motivo: "portal de cartas de una empresa: lectura aislada de lo que la empresa publica a propósito (lista cerrada de campos), sin sesión",
+    limitador:
+      "NINGUNO en el código: la página es `force-dynamic` (cada pedido consulta la base; no es ISR ni tiene caché, a propósito: ADR-006) y no lleva limitador propio; el cierre real es el firewall de Vercel sobre `/carta-publica/*` (E.6, acción externa pendiente, residuo M-7); la lista cerrada de publicación es el guard GT-13 (tanda T9)",
   },
   "ruta|(carta-publica)/carta-publica/[empresa]/[sucursal]/page.tsx": {
     anonimo: "PERMITIDO",
@@ -111,13 +112,15 @@ export const PUERTAS_SIN_PERMISO: Readonly<Record<string, PuertaSinPermiso>> = {
     anonimo: "PERMITIDO",
     sinEmpresa: "PERMITIDO",
     motivo: "previa a la sesión: verifica el código del mail, que solo sirve en el navegador que lo pidió (cookie `__Host-`, S-08); hace las mismas consultas haya o no administrador",
-    limitador: "5 intentos por código y cupo por administrador (S-08)",
+    limitador:
+      "5 intentos por código y bloqueo por administrador, contados en la base (S-08); SIN cupo por origen en el código: un anónimo con una cookie inventada consulta la base en bucle sin que nada lo frene (residuo M-8); el cierre real es el firewall de Vercel sobre el `/login` de la consola (E.6, pendiente)",
   },
   "consola|login/acciones.ts|enviarSegundoFactor": {
     anonimo: "PERMITIDO",
     sinEmpresa: "PERMITIDO",
     motivo: "previa a la sesión: segundo factor (TOTP) tras el código del mail; sin los dos pasos no hay sesión de administrador",
-    limitador: "intentos limitados por código y por administrador (S-08)",
+    limitador:
+      "intentos limitados por código y por administrador, contados en la base (S-08); SIN cupo por origen en el código: la puerta lee la sesión pendiente de la base en cada pedido, sin que nada frene a un anónimo que golpea en bucle (residuo M-8); el cierre real es el firewall de Vercel sobre el `/login` de la consola (E.6, pendiente)",
   },
   "consola|login/acciones.ts|salir": {
     anonimo: "PERMITIDO",
