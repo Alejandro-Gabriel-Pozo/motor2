@@ -261,7 +261,16 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   await db.cuentaItem.create({ data: { id: id("item-promo"), empresaId, cuentaId: cuenta.id, productoId: k.productoPvId, cantidad: 1, precioUnitario: 0, promoCuentaId: promoCuenta.id, creadoPorId: miembro.id } });
   const mesa2 = await db.mesa.create({ data: { id: id("mesa-b"), empresaId, sucursalId, numero: 2 } });
   const cuentaCerrada = await db.cuenta.create({ data: { id: id("cuenta-cerrada"), empresaId, mesaId: mesa2.id, abiertaPorId: miembro.id, cerradaEn: enElPasado(HORA_MS), cerradaPorId: miembro.id } });
-  await db.ejemplarTicket.create({ data: { id: id("ticket"), empresaId, sucursalId, cuentaId: cuentaCerrada.id, numero: 1, ejemplar: 1, emitidoPorId: miembro.id } });
+  await db.ejemplarTicket.create({ data: { id: id("ticket"), empresaId, sucursalId, cuentaId: cuentaCerrada.id, numero: 1, ejemplar: 1, emitidoEn: enElPasado(HORA_MS), emitidoPorId: miembro.id } });
+  // El estado que necesita el control positivo de `emitirTicketCorregido` (hallazgo O.177): dos líneas vendidas (una Operacion VENTA por línea, enlazada a su ítem) y UNA de ellas anulada DESPUÉS de emitido el
+  // ticket (`Operacion.anuladaEn` posterior al ejemplar): el ticket queda «desactualizada» y queda otra línea vigente (si se anularan todas sería «la venta se anuló entera»). Sin movimientos de stock a
+  // propósito: es solo el rastro de la venta de la cuenta, y la venta propia del mundo (`venta`, abajo) sigue siendo la única que el Kardex ve.
+  const ventaDelTicket = await db.operacion.create({ data: { id: id("venta-ticket"), empresaId, sucursalId, proceso: "VENTA", fecha: enElPasado(HORA_MS), usuarioId: miembro.id, detalleLibre: `Venta del ticket ${marca}` } });
+  const ventaDelTicketAnulada = await db.operacion.create({
+    data: { id: id("venta-ticket-anulada"), empresaId, sucursalId, proceso: "VENTA", fecha: enElPasado(HORA_MS), anuladaEn: enElPasado(HORA_MS / 2), usuarioId: miembro.id, detalleLibre: `Venta anulada del ticket ${marca}` },
+  });
+  await db.cuentaItem.create({ data: { id: id("item-cerrada"), empresaId, cuentaId: cuentaCerrada.id, productoId: k.productoPvId, cantidad: 1, precioUnitario: 1000, numeroEnvio: 1, operacionId: ventaDelTicket.id, creadoPorId: miembro.id } });
+  await db.cuentaItem.create({ data: { id: id("item-cerrada-anulado"), empresaId, cuentaId: cuentaCerrada.id, productoId: k.productoPv2Id, cantidad: 1, precioUnitario: 1234, numeroEnvio: 1, operacionId: ventaDelTicketAnulada.id, creadoPorId: miembro.id } });
   // Una cuenta abierta SIN ítems (se puede liberar la mesa) y otra con todo ENVIADO a cocina, ítems y promo (se puede cerrar y se puede anular lo enviado): los controles positivos del POS necesitan estos estados.
   const mesa3 = await db.mesa.create({ data: { id: id("mesa-c"), empresaId, sucursalId, numero: 3 } });
   const cuentaVacia = await db.cuenta.create({ data: { id: id("cuenta-vacia"), empresaId, mesaId: mesa3.id, abiertaPorId: miembro.id, comensales: 1 } });
@@ -285,6 +294,15 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   await db.movimientoStock.create({
     data: { id: id("mov-compra-anulable"), empresaId, operacionId: compraAnulable.id, productoId: k.productoMp3Id, seccionId: seccion2.id, proceso: "COMPRA", cantidad: 4, detalle: `Compra anulable ${marca}`, precioTotal: 400, precioPorUnidadStock: 100 },
   });
+  // Los dos conteos de la sección (uno pendiente y uno ya resuelto) se escriben ANTES de la venta: desde I-1 (D7 / S-03) una venta no se anula si hubo un conteo físico del mismo producto y sección
+  // escrito DESDE ella (`creadoEn` del conteo >= `creadoEn` de la venta; `gte`, no `gt`), y el control positivo de `anularVenta` necesita que la venta del mundo se pueda anular. Con el reloj congelado de
+  // la matriz (`vi.setSystemTime`) dos filas sembradas una tras otra llevan el MISMO `creadoEn`, y `gte` las ve como simultáneas: por eso el `creadoEn` de los conteos se fija explícito, dos días atrás.
+  const conteo = await db.conteoFisico.create({
+    data: { id: id("conteo"), empresaId, sucursalId, fecha: enElPasado(HORA_MS), creadoEn: enElPasado(2 * DIA_MS), productoId: k.productoId, seccionId: seccion.id, saldoSistema: 9, conteoReal: 8, diferencia: -1, accion: "FALTA_MOVIMIENTO", estado: "PENDIENTE", detalle: `Conteo ${marca}`, usuarioId: miembro.id },
+  });
+  const conteoResuelto = await db.conteoFisico.create({
+    data: { id: id("conteo-resuelto"), empresaId, sucursalId, fecha: enElPasado(HORA_MS), creadoEn: enElPasado(2 * DIA_MS), productoId: k.productoId, seccionId: seccion.id, saldoSistema: 9, conteoReal: 9, diferencia: 0, accion: "FALTA_MOVIMIENTO", estado: "RESUELTO", detalle: `Conteo resuelto ${marca}`, usuarioId: miembro.id },
+  });
   const venta = await db.operacion.create({ data: { id: id("venta"), empresaId, sucursalId, proceso: "VENTA", fecha: enElPasado(DIA_MS), usuarioId: miembro.id, clienteId: k.clienteId, detalleLibre: `Venta ${marca}` } });
   await db.movimientoStock.create({
     data: { id: id("mov-venta"), empresaId, operacionId: venta.id, productoId: k.productoId, seccionId: seccion.id, proceso: "VENTA", cantidad: -1, detalle: `Venta ${marca}`, precioTotal: 800, precioPorUnidadStock: 100, costoUnitarioVenta: 100, precioListaUnitario: 1000 },
@@ -303,13 +321,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   if (huella > 0) await movimientoSuelto("ajuste-huella", "AJUSTE", huella, {});
   // Un saldo disponible POSITIVO de otra materia prima en la sección (las mutaciones de stock —reclasificar— necesitan saldo para moverlo): +5 sin lote de `mp2`.
   await movimientoSuelto("ajuste-mp2", "AJUSTE", 5, {}, k.productoMp2Id);
-  const conteo = await db.conteoFisico.create({
-    data: { id: id("conteo"), empresaId, sucursalId, fecha: enElPasado(HORA_MS), productoId: k.productoId, seccionId: seccion.id, saldoSistema: 9, conteoReal: 8, diferencia: -1, accion: "FALTA_MOVIMIENTO", estado: "PENDIENTE", detalle: `Conteo ${marca}`, usuarioId: miembro.id },
-  });
-  const conteoResuelto = await db.conteoFisico.create({
-    data: { id: id("conteo-resuelto"), empresaId, sucursalId, fecha: enElPasado(HORA_MS), productoId: k.productoId, seccionId: seccion.id, saldoSistema: 9, conteoReal: 9, diferencia: 0, accion: "FALTA_MOVIMIENTO", estado: "RESUELTO", detalle: `Conteo resuelto ${marca}`, usuarioId: miembro.id },
-  });
-  const traspaso = await db.traspasoSucursal.create({
+  const traspaso =await db.traspasoSucursal.create({
     data: { id: id("traspaso"), empresaId, origenSucursalId: sucursalId, destinoSucursalId: vecinaId, productoId: k.productoId, cantidad: 1, iniciadoPor: "ORIGEN", estado: "SOLICITADA", creadoPorId: miembro.id, detalle: `Traspaso ${marca}` },
   });
   const traspasoEnviado = await db.traspasoSucursal.create({

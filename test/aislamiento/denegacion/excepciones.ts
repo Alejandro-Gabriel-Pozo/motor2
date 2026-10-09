@@ -106,8 +106,7 @@ export const OPCIONALES_SIN_MAPEAR: Readonly<Record<string, string>> = {
  * `<puerta>` → por qué.
  */
 export const SIN_CONTROL_POSITIVO: Readonly<Record<string, string>> = {
-  "accion|actions/pos/cuenta-cierre.ts|emitirTicketCorregido":
-    "solo emite el ejemplar corregido de una cuenta cerrada cuya VENTA se anuló parcialmente DESPUÉS de emitir el ticket (`Operacion.anuladaEn` posterior al ejemplar, con ítems vinculados a la operación); el mundo siembra una cuenta cerrada con su ticket vigente y la acción rechaza con «ya refleja las anulaciones». Armar el estado exige sembrar un cierre de cuenta con la venta anulada después del ticket",
+  // Vacía desde que el mundo siembra la cuenta cerrada con una de sus dos ventas anulada DESPUÉS de emitido el ticket (control positivo de `emitirTicketCorregido`, hallazgo O.177 cerrado).
 };
 
 /** Un rechazo admitido: el mensaje exacto (patrón) y por qué, aun sin decir «no se encontró», es el chequeo de pertenencia. */
