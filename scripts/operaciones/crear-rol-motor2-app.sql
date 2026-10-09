@@ -26,7 +26,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO motor2_ap
   BEGIN
     IF has_table_privilege('motor2_app', 'public."Empresa"', 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
        OR has_any_column_privilege('motor2_app', 'public."Empresa"', 'INSERT, UPDATE, REFERENCES') THEN
-      RAISE EXCEPTION 'M.1 - motor2_app sigue pudiendo escribir "Empresa" despues del REVOKE ALL: lo hereda de PUBLIC, de un rol del que es miembro o de un privilegio por columna.';
+      RAISE EXCEPTION 'M.1 - motor2_app sigue pudiendo escribir "Empresa" despues del REVOKE ALL: lo hereda de PUBLIC, de un rol del que es miembro o de un privilegio por columna. Revisalo con scripts/operaciones/verificar-grants-m1.sql.';
     END IF;
   END
   $$;
@@ -46,7 +46,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO motor2_ap
   BEGIN
     IF has_table_privilege('motor2_app', 'public."Empresa"', 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
        OR has_any_column_privilege('motor2_app', 'public."Empresa"', 'INSERT, UPDATE, REFERENCES') THEN
-      RAISE EXCEPTION 'M.1 - motor2_app sigue pudiendo escribir "Empresa" despues del REVOKE ALL: lo hereda de PUBLIC, de un rol del que es miembro o de un privilegio por columna.';
+      RAISE EXCEPTION 'M.1 - motor2_app sigue pudiendo escribir "Empresa" despues del REVOKE ALL: lo hereda de PUBLIC, de un rol del que es miembro o de un privilegio por columna. Revisalo con scripts/operaciones/verificar-grants-m1.sql.';
     END IF;
   END
   $$;

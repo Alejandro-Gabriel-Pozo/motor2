@@ -333,3 +333,55 @@ describe("M.1-C3: reversa granular (ida y vuelta, en una base real temporal)", (
     expect(await huella(), "volver a recortar no da la misma huella").toEqual(huellaRecortada);
   });
 });
+
+describe("M.1-C4: verificar-grants-m1.sql es de solo lectura y mide lo que dice", () => {
+  type Fila = Record<string, unknown>;
+  /** Corre el verificador DENTRO de una transacción READ ONLY (si escribiera algo, Postgres lo rechaza) y devuelve las filas de cada consulta. */
+  async function verificar(): Promise<Fila[][]> {
+    const consultas: Fila[][] = [];
+    await base.cliente.query("BEGIN READ ONLY");
+    try {
+      await ejecutarScript(script("verificar-grants-m1.sql"), base.cliente, {}, escapar(base.cliente), (_sentencia, resultado) => consultas.push(resultado.rows as Fila[]));
+    } finally {
+      await base.cliente.query("ROLLBACK");
+    }
+    return consultas;
+  }
+  const consultaCon = (consultas: Fila[][], columna: string) => consultas.find((filas) => filas.length > 0 && columna in filas[0]!) ?? [];
+
+  it("corre completo dentro de BEGIN READ ONLY sin fallar, también sin los roles en el cluster", async () => {
+    const consultas = await verificar();
+    expect(consultas.length, "no devolvió las 11 consultas").toBe(11);
+    expect(consultaCon(consultas, "relacl_de_empresa"), "falta la ACL exacta de Empresa").toHaveLength(1);
+    expect(consultaCon(consultas, "huella_de_la_matriz")[0]!.huella_de_la_matriz).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it("la ACL de Empresa, la matriz y la huella reflejan el recorte y la reversa (la huella cambia al recortar y vuelve al devolver la escritura)", async (ctx) => {
+    if (!hayRoles) ctx.skip();
+    await correr("crear-rol-motor2-plataforma.sql"); // el estado de antes del recorte
+    const antes = await verificar();
+    const huellaAntes = consultaCon(antes, "huella_de_la_matriz")[0]!.huella_de_la_matriz;
+    expect(consultaCon(antes, "relacl_de_empresa")[0]!.relacl_de_empresa).toContain("motor2_app=arwd/");
+    expect(consultaCon(antes, "puede_select").length, "la matriz tiene una fila por rol y tabla").toBeGreaterThan(70);
+
+    await correr("crear-rol-motor2-plataforma.sql", { restringir: "1" });
+    const recortada = await verificar();
+    expect(consultaCon(recortada, "huella_de_la_matriz")[0]!.huella_de_la_matriz, "la huella no cambió con el recorte").not.toBe(huellaAntes);
+    expect(consultaCon(recortada, "relacl_de_empresa")[0]!.relacl_de_empresa).toContain("motor2_app=r/");
+    const filaDeEmpresa = consultaCon(recortada, "puede_select").find((f) => f.rol === "motor2_app" && f.tabla === "Empresa");
+    expect(filaDeEmpresa).toMatchObject({ puede_select: true, puede_insert: false, puede_update: false, puede_delete: false, puede_truncate: false, puede_references: false, puede_trigger: false });
+    expect(consultaCon(recortada, "privilegios_sobre_empresa").find((f) => f.quien === "motor2_app")?.privilegios_sobre_empresa).toBe("SELECT");
+
+    await correr("devolver-escritura-de-empresa-a-motor2-app.sql");
+    const devuelta = await verificar();
+    expect(consultaCon(devuelta, "huella_de_la_matriz")[0]!.huella_de_la_matriz, "la huella no volvió a la de antes").toBe(huellaAntes);
+  });
+
+  it("ve un privilegio por columna y uno de PUBLIC que un REVOKE de rol no quita", async () => {
+    await base.cliente.query(`GRANT UPDATE ON "Empresa" TO PUBLIC`);
+    await base.cliente.query(`GRANT SELECT ("nombre") ON "Sucursal" TO PUBLIC`);
+    const consultas = await verificar();
+    expect(consultaCon(consultas, "privilegios_sobre_empresa").find((f) => f.quien === "PUBLIC")?.privilegios_sobre_empresa).toBe("UPDATE");
+    expect(consultaCon(consultas, "attacl").some((f) => f.tabla === "Sucursal" && f.columna === "nombre")).toBe(true);
+  });
+});

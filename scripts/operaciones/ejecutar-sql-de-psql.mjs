@@ -32,6 +32,7 @@ export function interpolar(texto, vars, escapar) {
 /**
  * Corre el script contra `cliente` (`query(texto)` y, para interpolar, `escapar`). `alResultado(texto, resultado)` recibe cada sentencia ejecutada y su resultado.
  * Devuelve la cantidad de sentencias ejecutadas.
+ * @param {(sentencia: string, resultado: { rows?: unknown[] }) => void} [alResultado]
  */
 export async function ejecutarScript(texto, cliente, vars, escapar, alResultado = () => {}) {
   const pila = []; // un true por cada \if en curso: la rama activa

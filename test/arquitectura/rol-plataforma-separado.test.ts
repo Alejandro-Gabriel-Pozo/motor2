@@ -164,6 +164,61 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
     expect(fuente).toMatch(/PLATAFORMA_DATABASE_URL" \]\]; then\s+\[\[ -z "\$valor" \]\] \|\| fallar/);
   });
 
+  describe("M.1-C4: verificar-grants-m1.sql es de SOLO LECTURA (guarda con SQL real y sintético)", () => {
+    const VERIFICADOR = "scripts/operaciones/verificar-grants-m1.sql";
+
+    /**
+     * Qué tiene de no-lectura un SQL: sin comentarios y con los literales vaciados (en `has_table_privilege(…, 'UPDATE')` la palabra UPDATE es un TEXTO, no una sentencia), todas las sentencias
+     * tienen que empezar con SELECT o SET, no puede haber comandos de psql (`\`) ni ninguna palabra de escritura, DDL o copia, y ni siquiera SELECT … INTO ni funciones con efectos.
+     */
+    function problemasDeSoloLectura(sql: string): string[] {
+      const limpio = sql
+        .replace(/\r\n/g, "\n")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/--[^\n]*/g, "")
+        .replace(/'(?:[^']|'')*'/g, "''");
+      const problemas: string[] = [];
+      if (/^\s*\\/m.test(limpio)) problemas.push("comando de psql");
+      const sentencias = limpio.split(";").map((s) => s.trim()).filter(Boolean);
+      if (sentencias.length === 0) problemas.push("no hay ninguna sentencia");
+      for (const s of sentencias) {
+        if (!/^(SELECT|SET)\b/i.test(s)) problemas.push(`no empieza con SELECT ni SET: ${s.slice(0, 50).replace(/\s+/g, " ")}`);
+        const palabra = /\b(INSERT|UPDATE|DELETE|TRUNCATE|GRANT|REVOKE|ALTER|CREATE|DROP|DO|COPY|INTO|VACUUM|ANALYZE|REINDEX|LOCK|COMMENT|NOTIFY|LISTEN|CALL|EXECUTE|PREPARE)\b/i.exec(s);
+        if (palabra) problemas.push(`palabra de escritura «${palabra[1]}»: ${s.slice(0, 50).replace(/\s+/g, " ")}`);
+        const funcion = /\b(nextval|setval|set_config|pg_terminate_backend|pg_cancel_backend|pg_reload_conf|pg_advisory_lock|pg_advisory_xact_lock|lo_import|lo_export|pg_read_file|pg_ls_dir|dblink\w*)\s*\(/i.exec(s);
+        if (funcion) problemas.push(`función con efectos «${funcion[1]}»`);
+        if (/^SET\s+(SESSION\s+AUTHORIZATION|ROLE|LOCAL\s+ROLE|SESSION\s+ROLE)\b/i.test(s)) problemas.push(`cambia de rol: ${s}`);
+      }
+      return problemas;
+    }
+
+    it("el verificador real: solo SELECT y SET, sin comentarios ni literales que cuenten (y lo mismo con saltos de línea CRLF)", () => {
+      const sql = leer(VERIFICADOR);
+      expect(problemasDeSoloLectura(sql)).toEqual([]);
+      expect(problemasDeSoloLectura(sql.replace(/\r?\n/g, "\r\n")), "con CRLF da otro resultado").toEqual([]);
+      // sanidad: no pasa en vacío; mira las consultas que se portaron del diagnóstico M-33 y las de M.1
+      for (const parte of ["has_table_privilege", "relacl", "attacl", "pg_default_acl", "pg_auth_members", "md5("]) expect(sql, `falta ${parte}`).toContain(parte);
+      expect(sql.split(";").length, "pocas consultas").toBeGreaterThan(10);
+    });
+
+    it("el detector marca lo que no es lectura y deja pasar lo que lo parece pero no lo es (SQL sintético)", () => {
+      expect(problemasDeSoloLectura("SELECT has_table_privilege('x', 'public.\"Empresa\"', 'UPDATE, DELETE'); -- GRANT ALL\nSET TRANSACTION READ ONLY;")).toEqual([]);
+      for (const malo of [
+        'GRANT SELECT ON "Empresa" TO motor2_app;',
+        "SELECT 1; INSERT INTO t VALUES (1);",
+        "SELECT 1; DO $$ BEGIN END $$;",
+        "SELECT * INTO nueva FROM t;",
+        "SELECT nextval('s');",
+        "SELECT 1; SET ROLE motor2;",
+        "SELECT 1; REVOKE ALL ON t FROM r;",
+        "SELECT 1; \\copy t to x",
+        "WITH x AS (SELECT 1) SELECT * FROM x;",
+      ]) {
+        expect(problemasDeSoloLectura(malo), malo).not.toEqual([]);
+      }
+    });
+  });
+
   describe("el detector (con SQL sintético)", () => {
     it("marca un GRANT de escritura sobre Empresa, nombrado o masivo, a motor2_app", () => {
       const sql = ['GRANT SELECT, INSERT, UPDATE, DELETE ON "Empresa", "UsuarioEmpresa" TO motor2_app;', "GRANT ALL ON ALL TABLES IN SCHEMA public TO motor2_app;"].join("\n");
