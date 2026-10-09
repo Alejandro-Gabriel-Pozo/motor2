@@ -1,4 +1,5 @@
 import { crearLimitadorDeTasa } from "@/core/permisos/limitador-tasa";
+import { ORIGEN_DESCONOCIDO, origenDeLasCabeceras } from "@/core/seguridad/origen-del-pedido";
 
 /**
  * Cupo por ORIGEN de las puertas que un ANÓNIMO puede golpear (S-27, T11 del endurecimiento; guard GT-8): hoy `abrirInvitacion`, que con un token de forma válida
@@ -48,14 +49,13 @@ export function consultaDeCuitSinCupo(clave: string, ahora: number): boolean {
 
 /**
  * La IP de quien pide: el primer valor de `x-forwarded-for` (Vercel lo fija con la IP del cliente y descarta lo que el cliente haya mandado; fuera de Vercel el primer valor
- * se puede falsear, y por eso esto no es una defensa de verdad). Sin la cabecera (desarrollo local, E2E) no hay origen que contar: `null`.
+ * se puede falsear, y por eso esto no es una defensa de verdad). Sin la cabecera el pedido NO queda sin cupo (M-18): cuenta en el balde común `ORIGEN_DESCONOCIDO` (ver `core/seguridad/origen-del-pedido.ts`).
  */
-export function origenDelPedido(cabeceras: Pick<Headers, "get">): string | null {
-  const primero = cabeceras.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return primero ? primero : null;
+export function origenDelPedido(cabeceras: Pick<Headers, "get">): string {
+  return origenDeLasCabeceras(cabeceras);
 }
 
-/** ¿Este origen ya gastó su cupo de aperturas de invitación? Cuenta el pedido que se está atendiendo. Sin origen conocido, nunca. `ahora` en milisegundos: el limitador no lee el reloj. */
+/** ¿Este origen ya gastó su cupo de aperturas de invitación? Cuenta el pedido que se está atendiendo. Un origen ausente (`null`) cuenta en el balde común de los desconocidos, nunca sin cupo (M-18). `ahora` en milisegundos: el limitador no lee el reloj. */
 export function origenSinCupoParaAbrirInvitacion(origen: string | null, ahora: number): boolean {
-  return origen !== null && limitadorDeAperturas.excedeLimite(origen, ahora);
+  return limitadorDeAperturas.excedeLimite(origen ?? ORIGEN_DESCONOCIDO, ahora);
 }
