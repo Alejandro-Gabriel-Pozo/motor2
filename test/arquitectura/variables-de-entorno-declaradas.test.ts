@@ -52,6 +52,17 @@ function variablesLeidas(codigo: string): string[] {
       }
     } else if (ts.isElementAccessExpression(nodo) && esProcessEnv(nodo.expression) && ts.isStringLiteralLike(nodo.argumentExpression)) {
       nombres.add(nodo.argumentExpression.text);
+    } else if (
+      // M-34 (auditoría intermedia): la DESESTRUCTURACIÓN `const { A, B: otra } = process.env` (o `= env`/`= source`) también lee variables y antes no se veía.
+      ts.isVariableDeclaration(nodo) &&
+      ts.isObjectBindingPattern(nodo.name) &&
+      nodo.initializer &&
+      (esProcessEnv(nodo.initializer) || (ts.isIdentifier(nodo.initializer) && NOMBRES_DE_ENTORNO_COMO_PARAMETRO.has(nodo.initializer.text)))
+    ) {
+      for (const e of nodo.name.elements) {
+        const nombre = (e.propertyName ?? e.name).getText(fuente);
+        if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(nombre) && !e.dotDotDotToken && (esProcessEnv(nodo.initializer) || /^[A-Z][A-Z0-9_]+$/.test(nombre))) nombres.add(nombre);
+      }
     }
     ts.forEachChild(nodo, visitar);
   };
@@ -60,7 +71,8 @@ function variablesLeidas(codigo: string): string[] {
 }
 
 function leidasPorArchivo(): Map<string, string[]> {
-  const archivos = [...archivosDeCodigo(join(RAIZ, "src")), join(RAIZ, "next.config.ts"), join(RAIZ, "prisma.config.ts")];
+  // M-34: también `prisma/seed.ts` (el seed base de la app, que lee AUTH_URL y el entorno de los envíos) y, abajo, `plataforma/next.config.ts`.
+  const archivos = [...archivosDeCodigo(join(RAIZ, "src")), join(RAIZ, "next.config.ts"), join(RAIZ, "prisma.config.ts"), join(RAIZ, "prisma/seed.ts")];
   const porArchivo = new Map<string, string[]>();
   for (const a of archivos) {
     const variables = variablesLeidas(readFileSync(a, "utf8"));
@@ -79,6 +91,9 @@ describe("variables de entorno: lo que el código lee está declarado en el sche
       expect(todas.has(esperada), esperada).toBe(true);
     }
     expect(variablesLeidas(`const a = process.env["ALGO_NUEVO"]; const b = process.env.OTRA; sirve(env.MAS_UNA); const c = otro.NO_ES;`).sort()).toEqual(["ALGO_NUEVO", "MAS_UNA", "OTRA"]);
+    // la desestructuración (M-34): de `process.env` entra cualquier nombre; de `env`/`source` (parámetros) solo los que parecen una variable (MAYÚSCULAS), y un `...resto` no es una variable
+    expect(variablesLeidas(`const { DESESTRUCTURADA, OTRA_MAS: renombrada, ...resto } = process.env;`).sort()).toEqual(["DESESTRUCTURADA", "OTRA_MAS"]);
+    expect(variablesLeidas(`const { PARAMETRO_A } = env; const { minuscula } = source; const { X } = otroObjeto;`)).toEqual(["PARAMETRO_A"]);
   });
 
   it("toda variable que el código lee está en el schema de src/env.ts o en FUERA_DEL_SCHEMA", () => {
@@ -150,6 +165,9 @@ function leidasEn(carpetas: string[]): Map<string, string[]> {
 
 describe("variables de entorno (S-34): la consola, los scripts y las públicas también están declaradas", () => {
   const consola = leidasEn(["plataforma/src"]);
+  // M-34: la configuración de Next de la consola (fuera de `plataforma/src`) también lee el entorno.
+  const variablesDeLaConfigDeLaConsola = variablesLeidas(readFileSync(join(RAIZ, "plataforma/next.config.ts"), "utf8"));
+  if (variablesDeLaConfigDeLaConsola.length > 0) consola.set("plataforma/next.config.ts", variablesDeLaConfigDeLaConsola);
   const scripts = leidasEn(["scripts"]);
   const esquemaDeLaConsola = new Set([...CLAVES_DE_ENTORNO_DE_PLATAFORMA, ...CLAVES_OPCIONALES_DE_ENTORNO_DE_PLATAFORMA]);
 
@@ -185,6 +203,45 @@ describe("variables de entorno (S-34): la consola, los scripts y las públicas t
       expect(esquemaDeLaConsola.has(variable), `"${variable}" ya está en el esquema de la consola: sacala`).toBe(false);
       expect(motivo.trim().length, `"${variable}" sin motivo`).toBeGreaterThan(10);
     }
+  });
+
+  /**
+   * M-34: el `env: { … }` de `next.config.ts` se INCRUSTA en el JavaScript del navegador, sea cual sea el nombre de la variable (no hace falta que empiece con `NEXT_PUBLIC_`). Lista cerrada de
+   * lo que se incrusta hoy, con su motivo: agregar una clave es publicarla.
+   */
+  const ENV_INCRUSTADAS_EN_EL_NAVEGADOR: Record<string, Record<string, string>> = {
+    "next.config.ts": {
+      CARTA_DOMINIO_BASE_COMPILADO: "el dominio base público de las cartas (ya es público: es la dirección que ve cualquiera); la compara el arranque",
+      CARTA_EMPRESA_UNICA_COMPILADO: "el slug de la empresa única del add-on (también público en la dirección de su carta)",
+    },
+    "plataforma/next.config.ts": {},
+  };
+
+  function clavesDelEnvIncrustado(ruta: string): string[] {
+    return clavesDeEnvEnTexto(readFileSync(join(RAIZ, ruta), "utf8"));
+  }
+
+  function clavesDeEnvEnTexto(codigo: string): string[] {
+    const sf = ts.createSourceFile("next.config.ts", codigo, ts.ScriptTarget.Latest, true);
+    const claves: string[] = [];
+    const visitar = (n: ts.Node): void => {
+      if (ts.isPropertyAssignment(n) && ts.isIdentifier(n.name) && n.name.text === "env" && ts.isObjectLiteralExpression(n.initializer)) {
+        for (const p of n.initializer.properties) claves.push(p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) ? p.name.text : "(no literal)");
+      }
+      ts.forEachChild(n, visitar);
+    };
+    visitar(sf);
+    return claves.sort();
+  }
+
+  it("lo que `env:` incrusta en el navegador desde los next.config.ts es una lista cerrada, con motivo", () => {
+    for (const [ruta, declaradas] of Object.entries(ENV_INCRUSTADAS_EN_EL_NAVEGADOR)) {
+      expect(clavesDelEnvIncrustado(ruta), `${ruta}: una clave nueva en \`env:\` se publica a cualquiera que abra la app: agregarla acá es una decisión`).toEqual(Object.keys(declaradas).sort());
+      for (const [clave, motivo] of Object.entries(declaradas)) expect(motivo.length, clave).toBeGreaterThan(30);
+    }
+    // el detector ve una clave incrustada nueva (sintético)
+    expect(clavesDeEnvEnTexto('export default { env: { OTRA: process.env.SECRETA ?? "", "B": 2, [dinamica]: 3 } };')).toEqual(["(no literal)", "B", "OTRA"]);
+    expect(clavesDeEnvEnTexto("export default { reactStrictMode: true };")).toEqual([]);
   });
 
   it("las únicas NEXT_PUBLIC_* que existen son las de la lista cerrada (en src, plataforma/src, scripts y next.config.ts), y están declaradas en el schema", () => {
