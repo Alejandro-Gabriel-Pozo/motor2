@@ -71,6 +71,12 @@ export interface FilaStockParaConteo {
   unidadStockNombre: string;
   loteVencimiento: Date | null;
   saldoSistema: number;
+  /**
+   * La fila «sin lote» de un producto que TAMBIÉN tiene lotes con fecha: contar sin lote significa contar el TOTAL de todos los lotes (`registrarConteoFisico` compara contra `calcularSaldoTotal`),
+   * así que esa fila lleva el saldo TOTAL del producto y la grilla la rotula «Todos los lotes». Falso en las filas por lote y en el «sin lote» de un producto que no tiene lotes (ahí el grupo
+   * sin lote ya es el total).
+   */
+  esTotalDeLotes: boolean;
 }
 
 /** Lo que la grilla de conteo necesita saber de un producto. */
@@ -106,7 +112,18 @@ export function armarFilasStockParaConteo(
       unidadStockNombre: p.unidadStock.nombre,
       loteVencimiento: g.loteVencimiento,
       saldoSistema: redondearACantidadDeUnidad(g.saldo, p.unidadStock.decimales),
+      esTotalDeLotes: false,
     });
+  }
+
+  // Un producto con lotes con fecha Y un grupo «sin lote»: esa fila «—» se cuenta contra el TOTAL (ver `esTotalDeLotes`), no contra el grupo sin lote: lo que se muestra es lo que se compara.
+  const tieneLotes = new Set(filas.filter((f) => f.loteVencimiento).map((f) => f.productoId));
+  const totalDelProducto = new Map<string, number>();
+  for (const f of filas) totalDelProducto.set(f.productoId, (totalDelProducto.get(f.productoId) ?? 0) + f.saldoSistema);
+  for (const f of filas) {
+    if (f.loteVencimiento || !tieneLotes.has(f.productoId)) continue;
+    f.esTotalDeLotes = true;
+    f.saldoSistema = redondearACantidadDeUnidad(totalDelProducto.get(f.productoId) ?? 0, productoPorId.get(f.productoId)!.unidadStock.decimales);
   }
 
   filas.sort(

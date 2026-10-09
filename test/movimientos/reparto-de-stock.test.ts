@@ -122,11 +122,12 @@ describe("armarFilasStockParaConteo", () => {
       mapa(producto("z", "Zanahoria"), producto("a", "Ají"), producto("e", "Écuador")),
       todoDisponible("z", "a", "e")
     );
-    expect(filas.map((f) => [f.productoNombre, f.loteVencimiento?.toISOString().slice(0, 10) ?? null, f.saldoSistema])).toEqual([
-      ["Ají", null, 3],
-      ["Ají", "2026-03-15", 2],
-      ["Écuador", null, 0.5],
-      ["Zanahoria", "2026-05-15", 1.23],
+    // «Ají» tiene un lote con fecha (2) Y un grupo sin lote (3): la fila «sin lote» lleva el TOTAL (5) y se rotula «Todos los lotes»; «Écuador» solo tiene sin lote: ahí el grupo ya es el total.
+    expect(filas.map((f) => [f.productoNombre, f.loteVencimiento?.toISOString().slice(0, 10) ?? null, f.saldoSistema, f.esTotalDeLotes])).toEqual([
+      ["Ají", null, 5, true],
+      ["Ají", "2026-03-15", 2, false],
+      ["Écuador", null, 0.5, false],
+      ["Zanahoria", "2026-05-15", 1.23, false],
     ]);
     expect(filas[0]).toMatchObject({ productoId: "a", productoCodigo: "C_a", unidadStockNombre: "kg" });
   });

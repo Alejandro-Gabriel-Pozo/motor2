@@ -51,6 +51,7 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
         unidadStockNombre: f.unidadStockNombre,
         loteVencimiento: f.loteVencimiento ? f.loteVencimiento.toISOString().slice(0, 10) : null,
         saldoSistema: f.saldoSistema,
+        esTotalDeLotes: f.esTotalDeLotes,
       }))
     : [];
 

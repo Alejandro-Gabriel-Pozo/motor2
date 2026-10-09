@@ -29,6 +29,8 @@ export interface FilaBaseConteo {
   /** ISO yyyy-mm-dd, o null si el saldo es "sin lote puntual". */
   loteVencimiento: string | null;
   saldoSistema: number;
+  /** La fila «sin lote» de un producto con lotes: su saldo es el TOTAL de todos los lotes y contarla es contar el total. */
+  esTotalDeLotes: boolean;
 }
 
 interface FilaManual {
@@ -106,13 +108,14 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
     });
   }
 
-  const filas: { key: string; productoId: string; etiqueta: string; loteVencimiento: string | null; saldoSistema: number }[] = [
+  const filas: { key: string; productoId: string; etiqueta: string; loteVencimiento: string | null; saldoSistema: number; esTotalDeLotes: boolean }[] = [
     ...filasBase.map((f) => ({
       key: claveBase(f),
       productoId: f.productoId,
       etiqueta: `${f.productoCodigo} — ${f.productoNombre}`,
       loteVencimiento: f.loteVencimiento,
       saldoSistema: f.saldoSistema,
+      esTotalDeLotes: f.esTotalDeLotes,
     })),
     ...filasManuales.map((f) => ({
       key: f.key,
@@ -120,6 +123,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
       etiqueta: f.productoEtiqueta,
       loteVencimiento: f.loteVencimiento || null,
       saldoSistema: 0,
+      esTotalDeLotes: false,
     })),
   ];
 
@@ -245,7 +249,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
                       className="rounded border px-2 py-1 text-sm"
                     />
                   ) : (
-                    (f.loteVencimiento ?? "—")
+                    (f.loteVencimiento ?? (f.esTotalDeLotes ? "Todos los lotes (total)" : "—"))
                   )}
                 </td>
                 <td className="px-2 text-right">{f.saldoSistema}</td>

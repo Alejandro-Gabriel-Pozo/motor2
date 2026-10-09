@@ -9,14 +9,17 @@ import { registrarConteoFisico } from "../../src/server/actions/movimientos/cont
 import { listarStockParaConteo } from "../../src/server/consultas/movimientos/stock-para-conteo";
 
 /**
- * La grilla del conteo físico ofrece UNA fila por (producto, lote), y la fila «sin lote» (la «—») muestra el saldo del grupo sin lote. Guardar esa fila tiene que comparar contra
- * ESE mismo saldo, no contra el total de todos los lotes del producto: lo que el operario ve es lo que se compara. Caso mixto: 10 kg con lote y 4 kg sin lote en la misma sección.
+ * La grilla del conteo físico ofrece una fila por (producto, lote) y, si el producto TAMBIÉN tiene stock sin lote, una fila «Todos los lotes» con el saldo TOTAL: contar sin lote es contar el
+ * total (`registrarConteoFisico` compara contra `calcularSaldoTotal`), y lo que la grilla muestra tiene que ser lo que se compara (decisión del dueño, opción 2). Antes esa fila mostraba el saldo
+ * del grupo sin lote (4) pero se comparaba contra el total (14): contarla con 4 ajustaba −10 y el sistema quedaba con 4 teniendo 14 físicos. Caso mixto: 10 con lote y 4 sin lote.
  */
-describe("conteo: la fila «sin lote» se compara contra el saldo sin lote que la grilla mostró", () => {
+describe("conteo: la fila «sin lote» de un producto con lotes es el total y se compara contra el total", () => {
   let sucursalId: string;
   let seccionId: string;
   let mpId: string;
   const lote = new Date(Date.now() + 30 * 24 * 3_600_000);
+
+  const filasDelProducto = async () => (await listarStockParaConteo(seccionId, sucursalId, prisma)).filter((f) => f.productoId === mpId);
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -31,26 +34,39 @@ describe("conteo: la fila «sin lote» se compara contra el saldo sin lote que l
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 4 }] });
   });
 
-  it("la grilla ofrece dos filas del producto: el lote con 10 y «sin lote» con 4", async () => {
-    const filas = (await listarStockParaConteo(seccionId, sucursalId, prisma)).filter((f) => f.productoId === mpId);
-    expect(filas.map((f) => [f.loteVencimiento ? "con lote" : "sin lote", f.saldoSistema]).sort()).toEqual([
-      ["con lote", 10],
-      ["sin lote", 4],
+  it("la grilla ofrece el lote con 10 y una fila «Todos los lotes» con el total (14)", async () => {
+    const filas = await filasDelProducto();
+    expect(filas.map((f) => [f.loteVencimiento ? "con lote" : "todos los lotes", f.saldoSistema, f.esTotalDeLotes]).sort()).toEqual([
+      ["con lote", 10, false],
+      ["todos los lotes", 14, true],
     ]);
   });
 
-  // DEFECTO ABIERTO (hallado al verificar la regla de cancelar por lote; a decidir por el dueño, ver «Pendientes con destino»): `registrarConteoFisico` compara un conteo SIN lote contra el TOTAL de
-  // todos los lotes (`calcularSaldoTotal`), pero la grilla ofrece esa fila con el saldo del grupo sin lote. Con 10 con lote + 4 sin lote, contar la fila «—» con 4 compara contra 14 y ajusta −10 en el
-  // grupo sin lote (queda −6; el total del sistema pasa de 14 a 4 con 14 físicos). `it.fails` deja el gate verde y se pone ROJO cuando se corrija: ahí se cambia a `it`.
-  it.fails("contar la fila «sin lote» con los 4 que mostraba: el stock ya coincide (diferencia 0) y no se escribe ningún ajuste", async () => {
+  it("EL DEFECTO: contar la fila «Todos los lotes» con los 14 que mostraba ya coincide (diferencia 0) y no escribe ningún ajuste (antes comparaba 4 de la fila contra 14 del total)", async () => {
+    const fila = (await filasDelProducto()).find((f) => f.esTotalDeLotes)!;
     const movimientosAntes = await prisma.movimientoStock.count();
 
-    const r = await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 4, fechaConteo: new Date(), accion: "AJUSTAR" });
+    const r = await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: fila.saldoSistema, fechaConteo: new Date(), accion: "AJUSTAR" });
 
     expect(r.ok, r.mensaje).toBe(true);
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
-    expect(Number(conteo.saldoSistema), "se comparó contra el saldo sin lote de la fila (4), no contra el total de los lotes (14)").toBe(4);
+    expect(Number(conteo.saldoSistema)).toBe(fila.saldoSistema);
     expect(Number(conteo.diferencia)).toBe(0);
     expect(await prisma.movimientoStock.count()).toBe(movimientosAntes);
+  });
+
+  it("contar la fila del lote sigue comparando contra ese lote (10), sin mirar lo sin lote", async () => {
+    const r = await registrarConteoFisico({ productoId: mpId, seccionId, loteVencimiento: lote, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" });
+    expect(r.ok, r.mensaje).toBe(true);
+    const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
+    expect(Number(conteo.saldoSistema)).toBe(10);
+    expect(Number(conteo.diferencia)).toBe(0);
+  });
+
+  it("un producto SIN lotes con fecha conserva su fila «sin lote» con su saldo y sin rótulo de total", async () => {
+    await prisma.movimientoStock.deleteMany({ where: { productoId: mpId, loteVencimiento: { not: null } } });
+    const filas = await filasDelProducto();
+    expect(filas).toHaveLength(1);
+    expect(filas[0]).toMatchObject({ loteVencimiento: null, esTotalDeLotes: false });
   });
 });
