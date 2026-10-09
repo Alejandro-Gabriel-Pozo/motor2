@@ -45,6 +45,9 @@ import { agregarItems } from "../../src/server/actions/pos/cuenta-pedido";
  * escrituras sean las últimas y en este orden: un `promoCuenta.create` por promo y UN `cuentaItem.createMany`; un rechazo no escribe nada. El N+1 por ítem
  * (cada producto se valida con sus propias lecturas: producto, disponibilidad, precio, descuento) queda DOCUMENTADO acá, NO arreglado (decisión del dueño,
  * 2026-10-08: D5 no se toca).
+ *
+ * Única edición posterior, a propósito (S-22 / D2, tanda T10 del endurecimiento de seguridad): los dos escenarios que traen una promo suman UNA lectura del
+ * registro de módulos (`moduloEmpresa.findMany`), porque sin el módulo Promociones el pedido se rechaza. Los pedidos de puros sueltos no la hacen.
  */
 const ESCRITURAS = new Set(["promoCuenta.create", "cuentaItem.createMany"]);
 
@@ -148,6 +151,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "descuentoProductoSucursal.findMany×2",
       "generoCarta.findMany×1",
       "itemAgrupadoCarta.findMany×2",
+      "moduloEmpresa.findMany×1", // S-22 / D2: el pedido trae una promo, así que se lee UNA vez el registro de módulos (Promociones prendido) y se comparte con la lectura de la promo.
       "precioLocalProducto.findMany×2",
       "producto.findMany×2",
       "promoCarta.findFirst×1",
@@ -171,6 +175,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "disponibilidadProducto.findUnique×1",
       "generoCarta.findMany×1",
       "itemAgrupadoCarta.findMany×2",
+      "moduloEmpresa.findMany×1", // S-22 / D2: ídem (solo cuando el pedido trae promos).
       "precioLocalProducto.findMany×3",
       "producto.findMany×2",
       "producto.findUnique×1",

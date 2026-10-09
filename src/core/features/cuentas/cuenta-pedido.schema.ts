@@ -38,11 +38,12 @@ export interface ComandoAgregarItems {
 /**
  * Solo lo que produce el caso de uso (las listas vacías, el tope y un `cuentaId` que no es texto los rechaza antes el guard), en el orden en que se chequean:
  *  - `CUENTA_NO_ABIERTA`: no es una cuenta de una mesa de esta sucursal, o ya está cerrada (`cuentaAbiertaDeSucursal`);
+ *  - `PROMO_NO_DISPONIBLE` (S-22 / D2): el pedido trae promos y la empresa no tiene el módulo Promociones. Se mira antes que cada ítem: sin el módulo no hay promo que validar;
  *  - `PRODUCTO_INVALIDO`: un ítem suelto no existe, no es PV, no está disponible en la sucursal o su cantidad no pasa `validarCantidadPedido`;
  *  - `PROMO_INVALIDA`: una promo no existe o no está disponible, su elección no cumple los cupos, o no se puede prorratear.
  * Todo se valida ANTES de la primera escritura: un rechazo no deja nada escrito.
  */
-export type ResultadoAgregarItems = ResultadoCaso<null, "CUENTA_NO_ABIERTA" | "PRODUCTO_INVALIDO" | "PROMO_INVALIDA">;
+export type ResultadoAgregarItems = ResultadoCaso<null, "CUENTA_NO_ABIERTA" | "PROMO_NO_DISPONIBLE" | "PRODUCTO_INVALIDO" | "PROMO_INVALIDA">;
 
 /** Comando «quitar un ítem que todavía no salió a cocina»: lo que recibe `quitarItemSinEnviarCasoDeUso`. */
 export interface ComandoQuitarItemSinEnviar {

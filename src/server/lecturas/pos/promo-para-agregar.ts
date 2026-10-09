@@ -2,6 +2,7 @@ import "server-only";
 import { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
 import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
 import { pediblesDeEntrada, type CupoPromoDefinicion } from "@/core/pos/public";
+import { modulosDelPosDeSucursal, type ModulosDelPos } from "@/server/lecturas/pos/modulos-del-pos";
 import { cargarSelectorCartaPos } from "@/server/lecturas/pos/selector-carta";
 import type { Db } from "@/lib/db-tipos";
 
@@ -29,7 +30,17 @@ export interface PromoCartaParaAgregar {
  * `ahora` (O.22-c de docs/pureza-integracion.md) es obligatorio: el caso de uso de agregar ítems pasa `actor.ahora`; solo llega al `generadoEn` de la carta
  * del selector, que acá no se usa.
  */
-export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCartaId: string, db: Db, ahora: Date): Promise<PromoCartaParaAgregar | null> {
+export async function cargarPromoCartaParaAgregar(
+  sucursalId: string,
+  promoCartaId: string,
+  db: Db,
+  ahora: Date,
+  /** Los módulos de la empresa ya leídos por quien llama (`agregarItems`); ausentes, se leen acá. */
+  modulosCargados?: ModulosDelPos
+): Promise<PromoCartaParaAgregar | null> {
+  // S-22 / D2: sin Promociones (o sin la Carta que ella requiere) no hay promo que agregar, exista o no la fila: lo contratado manda sobre lo que quedó cargado.
+  const modulos = modulosCargados ?? (await modulosDelPosDeSucursal(sucursalId, db));
+  if (!modulos.promociones) return null;
   const promo =
     typeof promoCartaId === "string"
       ? await db.promoCarta.findFirst({
@@ -41,7 +52,7 @@ export async function cargarPromoCartaParaAgregar(sucursalId: string, promoCarta
 
   // La capacidad `precio_local` se lee una vez y la comparten el selector y el precio de la promo (O.39: antes 7 lecturas por carga).
   const precioLocalActivoLeido = precioLocalActivoEn(sucursalId, db);
-  const [selector, precioLocalActivo] = await Promise.all([cargarSelectorCartaPos(sucursalId, db, ahora, precioLocalActivoLeido), precioLocalActivoLeido]);
+  const [selector, precioLocalActivo] = await Promise.all([cargarSelectorCartaPos(sucursalId, db, ahora, precioLocalActivoLeido, modulos), precioLocalActivoLeido]);
   const pediblesPorSeccion = new Map(selector.seccionesCarta.map((s) => [s.seccionCartaId, s.entradas.flatMap(pediblesDeEntrada)]));
 
   const precioCartaPorProducto = new Map<string, number>();

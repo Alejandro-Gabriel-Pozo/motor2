@@ -4,6 +4,7 @@ import { whereDisponibleEn } from "@/core/catalogo/public";
 import { aplicarDescuentoDeProducto, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal } from "@/core/carta/public";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCarta } from "@/server/lecturas/carta/menu";
+import { modulosDelPosDeSucursal, type ModulosDelPos } from "@/server/lecturas/pos/modulos-del-pos";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { armarSelectorCartaPos, type GenerosSelectorCartaPos, type ProductoPedible, type PromoSelectorCartaPos, type SelectorCartaPos } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
@@ -28,6 +29,8 @@ import type { Db } from "@/lib/db-tipos";
  *    sus cupos tal cual (`PromoCartaCupo`); `armarSelectorCartaPos` resuelve los elegibles de cada cupo con los MISMOS
  *    pedibles que ya ubicó en la sección de ese cupo (D5) — esta consulta no busca elegibles por su cuenta.
  *
+ *  - LO CONTRATADO (S-22 / D2, `modulos-del-pos.ts`): sin el módulo Promociones no se lee ninguna promo, ni el POS las ofrece ni las acepta.
+ *
  * La pantalla de la mesa la llama DESPUÉS de su guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`): no hace falta
  * ninguna Server Action nueva.
  */
@@ -37,8 +40,15 @@ export async function cargarSelectorCartaPos(
   /** La hora de la carta (O.22-c): obligatoria, la fija quien llama; solo alimenta el `generadoEn` de la carta, que el selector descarta. */
   ahora: Date,
   /** La capacidad `precio_local` de ESTA sucursal ya leída (o la promesa de esa lectura): `cargarPromoCartaParaAgregar` la comparte con el selector (O.39). */
-  precioLocalActivoCargado?: boolean | Promise<boolean>
+  precioLocalActivoCargado?: boolean | Promise<boolean>,
+  /**
+   * Los módulos de carta y promociones de la empresa ya leídos (S-22 / D2): quien ya los tiene (`agregarItems`, que además rechaza la promo con su propio mensaje) los
+   * comparte para no leer el registro dos veces. Ausentes, SE LEEN acá: el selector nunca ofrece lo que la empresa no contrató, aunque quien lo llame no lo haya
+   * preguntado (denegar por defecto).
+   */
+  modulosCargados?: ModulosDelPos
 ): Promise<SelectorCartaPos> {
+  const modulos = modulosCargados ?? (await modulosDelPosDeSucursal(sucursalId, db));
   // La capacidad `precio_local` se lee UNA vez (o se toma la de quien llama) y la usan todos: la carta, los precios locales, los descuentos y el precio de
   // las promos. Antes cada uno la leía por su cuenta: 6 lecturas de `capacidadSucursal` por carga del selector (O.39 de docs/pureza-integracion.md).
   // Se pasa la PROMESA, no el valor, para que todo siga saliendo en paralelo como antes.
@@ -55,20 +65,23 @@ export async function cargarSelectorCartaPos(
     db.generoCarta.findMany({ where: { activo: true, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, nombre: true, orden: true } }),
     db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true } }),
     db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, generoCartaId: true } }),
-    db.promoCarta.findMany({
-      where: { ...wherePromoOfrecidaEn(sucursalId), cupos: { some: {} } },
-      select: {
-        id: true,
-        seccionCartaId: true,
-        titulo: true,
-        precio: true,
-        sucursales: seleccionDeSucursalDePromo(sucursalId),
-        cupos: {
-          orderBy: { orden: "asc" },
-          select: { seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, seccionCarta: { select: { nombre: true } } },
-        },
-      },
-    }),
+    // S-22 / D2: sin el módulo Promociones no se lee ninguna promo (ni se ofrece ni se acepta); la lista vacía deja el selector como el de una empresa sin promos.
+    modulos.promociones
+      ? db.promoCarta.findMany({
+          where: { ...wherePromoOfrecidaEn(sucursalId), cupos: { some: {} } },
+          select: {
+            id: true,
+            seccionCartaId: true,
+            titulo: true,
+            precio: true,
+            sucursales: seleccionDeSucursalDePromo(sucursalId),
+            cupos: {
+              orderBy: { orden: "asc" },
+              select: { seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, seccionCarta: { select: { nombre: true } } },
+            },
+          },
+        })
+      : Promise.resolve([]),
   ]);
   const localPorProducto = preciosLocales;
   const pedibles: ProductoPedible[] = productos.map((p) => {
