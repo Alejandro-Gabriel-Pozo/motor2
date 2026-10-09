@@ -94,7 +94,11 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
     expect(conGrant).toEqual(["crear-rol-motor2-app.sql", "quitar-rol-motor2-plataforma.sql"]);
 
     const crear = leer("scripts/operaciones/crear-rol-motor2-plataforma.sql");
-    expect(crear).toMatch(/REVOKE INSERT, UPDATE, DELETE ON "Empresa" FROM motor2_app/);
+    // M.1-C2: el recorte DENIEGA POR DEFECTO (REVOKE ALL + GRANT SELECT + aserción), no enumera lo que quita: un privilegio nuevo o heredado no se cuela.
+    expect(crear).toMatch(/REVOKE ALL ON "Empresa" FROM motor2_app/);
+    expect(crear).toMatch(/GRANT SELECT ON "Empresa" TO motor2_app/);
+    expect(crear).toMatch(/has_table_privilege\('motor2_app',\s*'public\."Empresa"',\s*'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'\)/);
+    expect(crear).not.toMatch(/REVOKE INSERT, UPDATE, DELETE ON "Empresa"/);
     expect(crear).toMatch(/CREATE ROLE motor2_plataforma LOGIN NOSUPERUSER NOBYPASSRLS/);
   });
 
@@ -103,9 +107,16 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
     expect(secciones.length, "una sección por base (motor2_dev y motor2_e2e)").toBeGreaterThanOrEqual(2);
     for (const [i, seccion] of secciones.entries()) {
       const grant = seccion.search(/GRANT[^;]*\bON\s+ALL\s+TABLES\b[^;]*\bTO\s+motor2_app\b/i);
-      const revoke = seccion.search(/REVOKE\s+INSERT,\s*UPDATE,\s*DELETE\s+ON\s+"Empresa"\s+FROM\s+motor2_app\s*;/i);
+      const revoke = seccion.search(/REVOKE\s+ALL\s+ON\s+"Empresa"\s+FROM\s+motor2_app\s*;/i);
       expect(grant, `sección ${i + 1}: falta el GRANT masivo`).toBeGreaterThanOrEqual(0);
-      expect(revoke, `sección ${i + 1}: falta el REVOKE de la escritura de Empresa`).toBeGreaterThan(grant);
+      expect(revoke, `sección ${i + 1}: falta el REVOKE ALL de Empresa (M.1-C2: deniega por defecto)`).toBeGreaterThan(grant);
+      // M.1-C2: después del REVOKE ALL, SOLO lectura, y la aserción de que no quedó escritura (por PUBLIC, por membresía ni por columna)
+      const cola = seccion.slice(revoke);
+      const lectura = cola.search(/GRANT\s+SELECT\s+ON\s+"Empresa"\s+TO\s+motor2_app\s*;/i);
+      const asercion = cola.search(/has_table_privilege\('motor2_app',\s*'public\."Empresa"',\s*'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'\)/);
+      expect(lectura, `sección ${i + 1}: falta el GRANT SELECT sobre Empresa después del REVOKE ALL`).toBeGreaterThan(0);
+      expect(asercion, `sección ${i + 1}: falta la aserción has_table_privilege después del GRANT SELECT`).toBeGreaterThan(lectura);
+      expect(cola.slice(asercion), `sección ${i + 1}: la aserción también mira los privilegios por columna`).toMatch(/has_any_column_privilege\('motor2_app',\s*'public\."Empresa"',\s*'INSERT, UPDATE, REFERENCES'\)/);
       // y solo con restringir=1: sin el interruptor, las bases locales de prueba siguen dejando que los tests escriban `Empresa` como motor2_app
       const antes = seccion.slice(0, revoke).split("\n").filter((l) => /^\s*\\(if|endif)\b/.test(l)).pop() ?? "";
       expect(antes.trim(), `sección ${i + 1}: el REVOKE va dentro de \\if :{?restringir}`).toBe("\\if :{?restringir}");

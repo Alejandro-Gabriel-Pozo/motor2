@@ -18,9 +18,18 @@ GRANT CONNECT ON DATABASE motor2_dev TO motor2_app;
 GRANT USAGE ON SCHEMA public TO motor2_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO motor2_app;
 -- S-35 (B-C20): este GRANT masivo le da a la app escritura sobre "Empresa"; sin esto, volver a correr el script desarmaba la separación con motor2_plataforma. Con `-v restringir=1`
--- (el mismo interruptor que crear-rol-motor2-plataforma.sql) se la quita a continuación. Sin el interruptor, las bases locales de prueba la conservan: los tests escriben "Empresa" como motor2_app.
+-- (el mismo interruptor que crear-rol-motor2-plataforma.sql) se la quita a continuación: REVOKE ALL + GRANT SELECT + una aserción que falla si algo (PUBLIC, un rol del que es miembro, una columna) le sigue dando escritura (M.1-C2). Sin el interruptor, las bases locales de prueba la conservan: los tests escriben "Empresa" como motor2_app.
 \if :{?restringir}
-  REVOKE INSERT, UPDATE, DELETE ON "Empresa" FROM motor2_app;
+  REVOKE ALL ON "Empresa" FROM motor2_app;
+  GRANT SELECT ON "Empresa" TO motor2_app;
+  DO $$
+  BEGIN
+    IF has_table_privilege('motor2_app', 'public."Empresa"', 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+       OR has_any_column_privilege('motor2_app', 'public."Empresa"', 'INSERT, UPDATE, REFERENCES') THEN
+      RAISE EXCEPTION 'M.1 - motor2_app sigue pudiendo escribir "Empresa" despues del REVOKE ALL: lo hereda de PUBLIC, de un rol del que es miembro o de un privilegio por columna.';
+    END IF;
+  END
+  $$;
 \endif
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO motor2_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE motor2 IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO motor2_app;
@@ -31,7 +40,16 @@ GRANT CONNECT ON DATABASE motor2_e2e TO motor2_app;
 GRANT USAGE ON SCHEMA public TO motor2_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO motor2_app;
 \if :{?restringir}
-  REVOKE INSERT, UPDATE, DELETE ON "Empresa" FROM motor2_app;
+  REVOKE ALL ON "Empresa" FROM motor2_app;
+  GRANT SELECT ON "Empresa" TO motor2_app;
+  DO $$
+  BEGIN
+    IF has_table_privilege('motor2_app', 'public."Empresa"', 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+       OR has_any_column_privilege('motor2_app', 'public."Empresa"', 'INSERT, UPDATE, REFERENCES') THEN
+      RAISE EXCEPTION 'M.1 - motor2_app sigue pudiendo escribir "Empresa" despues del REVOKE ALL: lo hereda de PUBLIC, de un rol del que es miembro o de un privilegio por columna.';
+    END IF;
+  END
+  $$;
 \endif
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO motor2_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE motor2 IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO motor2_app;

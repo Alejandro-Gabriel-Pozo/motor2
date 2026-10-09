@@ -100,14 +100,24 @@ describe("el script real de creación del rol de plataforma", () => {
     expect(todo).not.toMatch(/GRANT[^;]*"UsuarioSucursal"[^;]*TO motor2_plataforma/);
     expect(todo).not.toMatch(/GRANT[^;]*(INSERT|UPDATE)[^;]*"User"[^;]*TO motor2_plataforma/);
     expect(todo).toContain("GRANT SELECT ON public._prisma_migrations TO motor2_plataforma");
-    expect(todo).not.toMatch(/REVOKE INSERT, UPDATE, DELETE ON "Empresa" FROM motor2_app/);
+    expect(todo).not.toMatch(/ON "Empresa" (FROM|TO) motor2_app/);
     expect(todo).not.toMatch(/DELETE ON/);
   });
 
-  it("con `restringir` además le quita la escritura de Empresa a motor2_app", async () => {
+  it("M.1-C2: con `restringir` DENIEGA POR DEFECTO sobre Empresa a motor2_app: REVOKE ALL, GRANT SELECT y la aserción de que no quedó nada de escritura, en ese orden", async () => {
     const c = clienteFalso({ crear: true });
     await ejecutarScript(SCRIPT, c, { clave: "clave", restringir: "1" }, escapar);
-    expect(c.sentencias.join("\n")).toMatch(/REVOKE INSERT, UPDATE, DELETE ON "Empresa" FROM motor2_app/);
+    const s = c.sentencias;
+    const revoke = s.findIndex((x) => /^\s*REVOKE ALL ON "Empresa" FROM motor2_app;?\s*$/.test(x));
+    const grant = s.findIndex((x) => /^\s*GRANT SELECT ON "Empresa" TO motor2_app;?\s*$/.test(x));
+    const asercion = s.findIndex((x) => /^\s*DO\b/.test(x) && /has_table_privilege\('motor2_app'/.test(x) && /has_any_column_privilege\('motor2_app'/.test(x) && /RAISE EXCEPTION/.test(x));
+    expect(revoke, "falta REVOKE ALL ON \"Empresa\" FROM motor2_app").toBeGreaterThanOrEqual(0);
+    expect(grant, "falta GRANT SELECT ON \"Empresa\" TO motor2_app").toBeGreaterThan(revoke);
+    expect(asercion, "falta la aserción DO con has_table_privilege / has_any_column_privilege").toBeGreaterThan(grant);
+    // la aserción cubre TODO lo que no sea leer: tabla (incluidos TRUNCATE, REFERENCES y TRIGGER) y columnas
+    expect(s[asercion]).toMatch(/has_table_privilege\('motor2_app',\s*'public\."Empresa"',\s*'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'\)/);
+    expect(s[asercion]).toMatch(/has_any_column_privilege\('motor2_app',\s*'public\."Empresa"',\s*'INSERT, UPDATE, REFERENCES'\)/);
+    expect(s.join("\n")).not.toMatch(/REVOKE INSERT, UPDATE, DELETE ON "Empresa"/);
   });
 
   it("los bloques DO $$ … $$ con varios ';' adentro se mandan enteros (una sola sentencia)", async () => {

@@ -70,6 +70,34 @@ async function hashDeLaClave(): Promise<string | null> {
   }
 }
 
+/** Una conexión a la base temporal con las credenciales de un rol del .env (la contraseña viene de la URL; nunca se imprime). */
+function clienteComo(urlConCredenciales: string | undefined, usuarioEsperado: string): Client | null {
+  if (!urlConCredenciales) return null;
+  const credenciales = new URL(urlConCredenciales);
+  if (decodeURIComponent(credenciales.username) !== usuarioEsperado) return null;
+  const destino = new URL(base.url);
+  return new Client({
+    host: destino.hostname,
+    port: destino.port ? Number(destino.port) : 5432,
+    user: usuarioEsperado,
+    password: decodeURIComponent(credenciales.password),
+    database: decodeURIComponent(destino.pathname.replace(/^\//, "")),
+  });
+}
+
+/** Los privilegios EXACTOS de "Empresa" (tabla y columnas), ordenados: la ACL tal como queda guardada, sin depender del orden en que se fueron otorgando. */
+async function aclDeEmpresa(): Promise<string[]> {
+  const r = await base.cliente.query<{ x: string }>(
+    `SELECT 'tabla ' || a::text AS x FROM pg_class c, unnest(c.relacl) a WHERE c.oid = 'public."Empresa"'::regclass
+     UNION ALL
+     SELECT 'columna ' || t.attname || ' ' || a::text FROM pg_attribute t, unnest(t.attacl) a WHERE t.attrelid = 'public."Empresa"'::regclass AND t.attacl IS NOT NULL
+     ORDER BY 1`,
+  );
+  return r.rows.map((f) => f.x);
+}
+
+const ESCRITURA_Y_MAS = ["INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"];
+
 beforeEach(async () => {
   base = await crearBaseTemporalMigrada();
   await base.aplicarRestantes();
@@ -123,5 +151,93 @@ describe("M.1-C1: `clave` es opcional si el rol de plataforma YA existe", () => 
       }
     }
     expect((await base.cliente.query("SELECT 1 FROM pg_roles WHERE rolname = $1", [rol])).rowCount, "el rol descartable quedó en el cluster").toBe(0);
+  });
+});
+
+describe("M.1-C2: `restringir` deniega por defecto sobre Empresa (no enumera lo que quita)", () => {
+  it("quita también TRUNCATE, TRIGGER y REFERENCES y los privilegios por columna que motor2_app tuviera; la deja solo con SELECT", async (ctx) => {
+    if (!hayRoles) ctx.skip();
+    await base.cliente.query(`GRANT TRUNCATE, TRIGGER, REFERENCES ON "Empresa" TO motor2_app`);
+    await base.cliente.query(`GRANT UPDATE ("nombre"), INSERT ("slug"), REFERENCES ("cuit") ON "Empresa" TO motor2_app`);
+    for (const p of ["TRUNCATE", "TRIGGER", "REFERENCES"]) expect(await tiene("motor2_app", "Empresa", p), `premisa: ${p} otorgado`).toBe(true);
+
+    await correr("crear-rol-motor2-plataforma.sql", { restringir: "1" });
+
+    for (const p of ESCRITURA_Y_MAS) expect(await tiene("motor2_app", "Empresa", p), `motor2_app conserva ${p} sobre Empresa`).toBe(false);
+    const columnas = await base.cliente.query<{ v: boolean }>(`SELECT has_any_column_privilege('motor2_app', 'public."Empresa"', 'INSERT, UPDATE, REFERENCES') AS v`);
+    expect(columnas.rows[0]!.v, "motor2_app conserva privilegios por columna sobre Empresa").toBe(false);
+    expect((await aclDeEmpresa()).filter((x) => x.includes("motor2_app="))).toEqual(["tabla motor2_app=r/motor2"]);
+  });
+
+  it("con UPDATE sobre Empresa otorgado a PUBLIC el script FALLA con el mensaje de M.1 y no cambia NADA (la ACL queda idéntica)", async (ctx) => {
+    if (!hayRoles) ctx.skip();
+    await base.cliente.query(`GRANT UPDATE ON "Empresa" TO PUBLIC`);
+    const antes = await aclDeEmpresa();
+    expect(antes.some((x) => x.startsWith("tabla =w/")), "premisa: PUBLIC tiene UPDATE").toBe(true);
+
+    await expect(correr("crear-rol-motor2-plataforma.sql", { restringir: "1" })).rejects.toThrow(/M\.1/);
+
+    expect(await aclDeEmpresa(), "el script falló a medias y dejó la ACL cambiada").toEqual(antes);
+    expect(await tiene("motor2_app", "Empresa", "INSERT"), "el REVOKE quedó aplicado aunque el script falló").toBe(true);
+  });
+
+  it("con la escritura heredada por MEMBRESÍA de otro rol el script también falla (rol descartable; la transacción se deshace entera)", async (ctx) => {
+    if (!hayRoles) ctx.skip();
+    const intermedio = `m1_heredado_${process.pid}`;
+    await base.cliente.query("BEGIN");
+    try {
+      await base.cliente.query(`CREATE ROLE ${intermedio} NOLOGIN`);
+      await base.cliente.query(`GRANT UPDATE ON "Empresa" TO ${intermedio}`);
+      await base.cliente.query(`GRANT ${intermedio} TO motor2_app`);
+      expect(await tiene("motor2_app", "Empresa", "UPDATE"), "premisa: motor2_app hereda UPDATE").toBe(true);
+      await expect(ejecutarScript(script("crear-rol-motor2-plataforma.sql"), base.cliente, { restringir: "1" }, escapar(base.cliente))).rejects.toThrow(/M\.1/);
+    } finally {
+      await base.cliente.query("ROLLBACK");
+    }
+    expect((await base.cliente.query("SELECT 1 FROM pg_roles WHERE rolname = $1", [intermedio])).rowCount, "el rol descartable quedó en el cluster").toBe(0);
+  });
+
+  it("los dos bloques `\\if :{?restringir}` de crear-rol-motor2-app.sql hacen lo mismo (se corren SOLOS: el script entero cambia el rol de todo el cluster y no se prueba contra Postgres real)", async (ctx) => {
+    if (!hayRoles) ctx.skip();
+    const bloques = [...script("crear-rol-motor2-app.sql").matchAll(/^\\if :\{\?restringir\}\r?\n[\s\S]*?^\\endif/gm)].map((m) => m[0]);
+    expect(bloques, "uno por base: motor2_dev y motor2_e2e").toHaveLength(2);
+    for (const bloque of bloques) {
+      await base.cliente.query(`GRANT TRUNCATE, TRIGGER, REFERENCES ON "Empresa" TO motor2_app`);
+      await base.cliente.query("BEGIN");
+      try {
+        await ejecutarScript(bloque, base.cliente, { restringir: "1" }, escapar(base.cliente));
+        await base.cliente.query("COMMIT");
+      } catch (e) {
+        await base.cliente.query("ROLLBACK").catch(() => undefined);
+        throw e;
+      }
+      for (const p of ESCRITURA_Y_MAS) expect(await tiene("motor2_app", "Empresa", p), `el bloque deja ${p}`).toBe(false);
+      expect(await tiene("motor2_app", "Empresa", "SELECT")).toBe(true);
+
+      // con PUBLIC escribiendo, el bloque aborta
+      await base.cliente.query(`GRANT UPDATE ON "Empresa" TO PUBLIC`);
+      await base.cliente.query("BEGIN");
+      await expect(ejecutarScript(bloque, base.cliente, { restringir: "1" }, escapar(base.cliente))).rejects.toThrow(/M\.1/);
+      await base.cliente.query("ROLLBACK");
+      await base.cliente.query(`REVOKE UPDATE ON "Empresa" FROM PUBLIC`);
+    }
+  });
+
+  it("motor2_app sigue pudiendo LEER Empresa (la app la necesita) y ya no puede escribirla: lo prueba entrando de verdad con su credencial", async (ctx) => {
+    if (!hayRoles) ctx.skip();
+    const comoApp = clienteComo(process.env.DATABASE_URL, "motor2_app");
+    if (!comoApp) ctx.skip();
+    await correr("crear-rol-motor2-plataforma.sql", { restringir: "1" });
+    expect(await tiene("motor2_app", "Empresa", "SELECT")).toBe(true);
+    const app = comoApp as Client;
+    await app.connect();
+    try {
+      await expect(app.query(`SELECT count(*) FROM "Empresa"`)).resolves.toBeDefined();
+      for (const sentencia of [`UPDATE "Empresa" SET "nombre" = "nombre"`, `DELETE FROM "Empresa"`, `TRUNCATE "Empresa"`]) {
+        await expect(app.query(sentencia), sentencia).rejects.toMatchObject({ code: "42501" });
+      }
+    } finally {
+      await app.end();
+    }
   });
 });
