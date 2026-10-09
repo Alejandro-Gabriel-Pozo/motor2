@@ -65,8 +65,9 @@ Orden por base (el dueño; el asistente de desarrollo no ve credenciales ni corr
 
 1. Snapshot de la rama de Neon destino y ensayo de las dos migraciones en una rama descartable.
 2. Crear el rol `motor2_plataforma` en ESA rama, **con psql como dueño** (`neondb_owner`), nunca desde la consola de Neon (nacería con `BYPASSRLS`):
-   `psql <conexión del dueño> -v clave="<clave>" -f scripts/operaciones/crear-rol-motor2-plataforma.sql`. Los roles son por rama: la rama de producción de
-   cada despliegue necesita el suyo. Es idempotente.
+   `psql <conexión del dueño> -1 -v clave="<clave>" -f scripts/operaciones/crear-rol-motor2-plataforma.sql` (`-1` o el ejecutor `scripts/operaciones/ejecutar-sql-de-psql.mjs`: una sola
+   transacción). La `clave` solo hace falta si el rol NO existe (lo crea) o si querés CAMBIARLE la contraseña a propósito: con el rol ya creado, correrlo SIN `-v clave` no toca el rol
+   (solo verifica que siga siendo el de la consola) y reaplica los grants. Los roles son por rama: la rama de producción de cada despliegue necesita el suyo. Es idempotente.
 3. `... migrate status` y `npm run migrar:aprobar` (ver «Flujo aprobado» arriba). Si el rol ya existía, las migraciones le dan el permiso al crear las tablas.
 4. Archivo local **fuera del repositorio** (`.env.plataforma.<despliegue>`, gitignored) con `PLATAFORMA_DATABASE_URL` (usuario `motor2_plataforma`),
    `PLATAFORMA_SECRETO_CODIGOS` (`openssl rand -base64 48`) y `PLATAFORMA_CLAVE_TOTP` (`openssl rand -base64 32`). Los mismos tres valores van en el proyecto de
@@ -93,7 +94,7 @@ Orden por base (el dueño; primero zuluhub, después stockhneuquen):
 2. Verificar en la rama: `SELECT policyname FROM pg_policies WHERE tablename = 'Invitacion'` (tres políticas: `aislamiento_empresa`, `escritura_plataforma`, `lectura_por_token`),
    `has_table_privilege` de `motor2_app` (SELECT sí; INSERT y DELETE no) y de `motor2_plataforma` (SELECT, INSERT, UPDATE; DELETE no), y que existan los dos triggers `Invitacion_proteger_*`.
 3. Aplicar en la base real: `node scripts/operaciones/con-env.mjs .env.vercel.<despliegue> -- npm run migrar:aprobar`.
-4. **Volver a correr** `scripts/operaciones/crear-rol-motor2-plataforma.sql` con psql como dueño (idempotente): ahora también le da a `motor2_plataforma` permiso sobre `Invitacion`.
+4. **Volver a correr** `scripts/operaciones/crear-rol-motor2-plataforma.sql` con psql como dueño, con `-1` y **sin `-v clave`** (idempotente; con clave le cambiaría la contraseña a la consola): ahora también le da a `motor2_plataforma` permiso sobre `Invitacion`.
 5. Borrar la rama de ensayo.
 6. Deploy de la aplicación. Después, en el proyecto de Vercel de la consola: la variable nueva `PLATAFORMA_URL_APP` (la dirección pública de la app de empresas de ESA
    instalación, `https://…` sin ruta) y el canal `avisos` de mails con el dominio verificado; deploy de la consola.
