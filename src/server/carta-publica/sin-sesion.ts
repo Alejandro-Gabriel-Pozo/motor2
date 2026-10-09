@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { dbDeEmpresa, verificarRolDeEjecucionDelProceso } from "@/core/auth/base";
-import { resolverEstiloPortal } from "@/core/carta/public";
+import { proyectarCartaPublica, resolverEstiloPortal, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
 import { modulosEfectivosDeEmpresa } from "@/server/acceso/modulos-de-empresa";
 import type { Db } from "@/lib/db-tipos";
 import { resolverEmpresaCarta, type EmpresaCarta } from "@/server/lecturas/carta/empresa";
@@ -34,6 +34,12 @@ async function modulosQueLaCartaPublica(empresa: EmpresaCarta, db: Db): Promise<
   return { carta: efectivos.has("carta"), promociones: efectivos.has("promociones") };
 }
 
+/** Lo que la carta de una sucursal entrega al anónimo: la carta SIN ids internos y su estilo. */
+interface CartaPublicaEntregada {
+  carta: CartaPublicaV1;
+  estilo: EstiloCarta;
+}
+
 /** `Empresa` no tiene RLS: se puede leer antes de saber a qué empresa pertenece el pedido. */
 export const empresaCartaPublica = (slug: string) => conRolVerificado(() => resolverEmpresaCarta(slug, prisma));
 /** Con empresa conocida (páginas `(carta-publica)`), bajo el contexto de ESA empresa: RLS sostiene el aislamiento aunque un filtro falle. Sin el módulo Carta, vacío. */
@@ -55,9 +61,11 @@ export const configPortalPublica = (empresa: EmpresaCarta) =>
  * Sin el módulo Carta es `null` (404, igual que una sucursal que no existe); sin Promociones, la carta sale sin promos.
  */
 export const cartaPublica = (empresa: EmpresaCarta, slug: string, ahora: Date) =>
-  conRolVerificado(async () => {
+  conRolVerificado(async (): Promise<CartaPublicaEntregada | null> => {
     const db = dbDeEmpresa(empresa.id);
     const modulos = await modulosQueLaCartaPublica(empresa, db);
     if (!modulos.carta) return null;
-    return resolverCartaPublica(empresa, slug, db, ahora, modulos.promociones);
+    const resuelta = await resolverCartaPublica(empresa, slug, db, ahora, modulos.promociones);
+    // S-25: la carta armada lleva los ids internos que usan el POS y el admin; al anónimo sale la proyección sin ellos (campo por campo, `core/carta/carta-publica.ts`).
+    return resuelta ? { carta: proyectarCartaPublica(resuelta.carta), estilo: resuelta.estilo } : null;
   });

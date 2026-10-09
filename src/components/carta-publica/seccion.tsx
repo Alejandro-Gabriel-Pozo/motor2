@@ -1,4 +1,4 @@
-import type { EstiloCarta, ItemCartaV1, PromoCartaV1, SeccionCartaV1 } from "@/core/carta/public";
+import type { EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
 import { formatearPrecioCarta } from "@/core/carta/public";
 import { TagIcon } from "./iconos";
 
@@ -9,7 +9,7 @@ import { TagIcon } from "./iconos";
  * responsive. La imagen de sección es siempre el fondo de la banda: un `<img>` de fondo con `object-fit`, sin la lógica de
  * posicionamiento fino del original (nivel (a) del diagnóstico: correcto y accesible, no pixel-a-pixel idéntico).
  */
-export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCartaV1; indice: number; total: number; estilo: EstiloCarta }) {
+export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCartaPublica; indice: number; total: number; estilo: EstiloCarta }) {
   const img = estilo.imagenSeccion;
   const c = estilo.colores;
   return (
@@ -44,18 +44,19 @@ export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCa
       </div>
 
       <ul data-carta-scroll className="min-h-0 flex-1 divide-y overflow-y-auto px-6 sm:px-10" style={{ borderColor: "var(--carta-border)" }}>
-        {seccion.items.map((item) => (
-          <ItemFila key={item.productoId} item={item} estilo={estilo} />
+        {/* S-25: las `key` son la posición, no el id de la fila: React serializa la `key` de cada elemento en el payload RSC que baja al navegador. */}
+        {seccion.items.map((item, i) => (
+          <ItemFila key={`item-${i}`} item={item} estilo={estilo} />
         ))}
-        {seccion.promos.map((promo) => (
-          <PromoFila key={promo.id} promo={promo} estilo={estilo} />
+        {seccion.promos.map((promo, i) => (
+          <PromoFila key={`promo-${i}`} promo={promo} estilo={estilo} />
         ))}
       </ul>
     </div>
   );
 }
 
-function ItemFila({ item, estilo }: { item: ItemCartaV1; estilo: EstiloCarta }) {
+function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCarta }) {
   const v = estilo.valores;
   const esp = item.especial;
   const colorNombre = esp ? (v.color_especial_item_nombre || "var(--carta-primary)") : v.color_item_nombre || undefined;
@@ -113,7 +114,7 @@ function ItemFila({ item, estilo }: { item: ItemCartaV1; estilo: EstiloCarta }) 
   );
 }
 
-function PromoFila({ promo, estilo }: { promo: PromoCartaV1; estilo: EstiloCarta }) {
+function PromoFila({ promo, estilo }: { promo: PromoCartaPublica; estilo: EstiloCarta }) {
   const v = estilo.valores;
   return (
     <li className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
