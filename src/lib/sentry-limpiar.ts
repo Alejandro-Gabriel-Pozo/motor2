@@ -84,8 +84,17 @@ export function limpiarEventoSentry<E extends Event>(evento: E): E {
   delete evento.extra;
   for (const miga of evento.breadcrumbs ?? []) limpiarMigaSentry(miga);
 
-  const traza = evento.contexts?.trace;
-  if (traza?.data) traza.data = limpiarDatos(traza.data);
+  // TODOS los contextos pasan por la limpieza (M-1 de la auditoría final): `onRequestError = Sentry.captureRequestError` hace `setContext("nextjs", { request_path, router_path, … })` con
+  // la ruta pedida Y su query. De la traza solo se limpia `data` (sus `trace_id`/`span_id` son tokens largos que la limpieza de textos taparía y rompería la correlación).
+  for (const [nombre, contexto] of Object.entries(evento.contexts ?? {})) {
+    if (!contexto || typeof contexto !== "object") continue;
+    if (nombre === "trace") {
+      const traza = contexto as { data?: Record<string, unknown> };
+      if (traza.data) traza.data = limpiarDatos(traza.data);
+    } else {
+      evento.contexts![nombre] = limpiarDatos(contexto);
+    }
+  }
   for (const span of evento.spans ?? []) {
     if (span.description) span.description = limpiarTexto(DESCRIPCION_DE_URL.test(span.description) ? sinQueryNiFragmento(span.description) : span.description);
     if (span.data) span.data = limpiarDatos(span.data);

@@ -93,6 +93,21 @@ describe("GT-17: Sentry sale por lista blanca", () => {
     expect([...CABECERAS_PERMITIDAS].sort()).toEqual(["content-type", "user-agent"]);
   });
 
+  it("M-1: el contexto `nextjs` que arma `onRequestError` (Sentry.captureRequestError) pierde la query de la ruta pedida; la traza conserva sus ids", () => {
+    const TOKEN = "t0k3nSecretoDeUnaInvitacionQueNoDebeSalir0123456789";
+    const e = limpiarEventoSentry({
+      contexts: {
+        nextjs: { request_path: `/invitacion?t=${TOKEN}`, router_path: `/invitacion/[id]?x=1#t=${TOKEN}`, router_kind: "App Router", request_type: "route" },
+        otro: { url: `https://app.test/x?token=${TOKEN}`, mail: "ana@x.com" },
+        trace: { trace_id: "0123456789abcdef0123456789abcdef", span_id: "0123456789abcdef", data: { "url.full": `https://app.test/i?t=${TOKEN}` } },
+      },
+    } as never) as unknown as { contexts: Record<string, Record<string, unknown>> };
+    expect(e.contexts.nextjs).toEqual({ request_path: "/invitacion", router_path: "/invitacion/[id]", router_kind: "App Router", request_type: "route" });
+    expect(e.contexts.otro).toEqual({ url: "https://app.test/x", mail: "[email]" });
+    expect(e.contexts.trace).toEqual({ trace_id: "0123456789abcdef0123456789abcdef", span_id: "0123456789abcdef", data: { "url.full": "https://app.test/i" } });
+    expect(JSON.stringify(e)).not.toContain(TOKEN);
+  });
+
   it("la URL del pedido pierde la query Y el fragmento (el token de la invitación viaja en `#t=`)", () => {
     const solo = limpiarEventoSentry({ request: { url: "https://app.test/invitacion#t=SECRETO" } } as never) as { request: { url: string } };
     const ambos = limpiarEventoSentry({ request: { url: "https://app.test/invitacion?a=1#t=SECRETO" } } as never) as { request: { url: string } };
