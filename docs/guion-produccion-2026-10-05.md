@@ -33,7 +33,7 @@ psql $u -v clave="LA-CLAVE-NUEVA-DE-ZULUHUB" -f scripts/operaciones/crear-rol-mo
 $u = ((Get-Content .env.vercel.empresa | Where-Object { $_ -like 'DIRECT_URL=*' }) -replace '^DIRECT_URL=','').Trim()
 psql $u -v clave="LA-CLAVE-NUEVA-DE-STOCKHNEUQUEN" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
 ```
-**No** usar `-v restringir=1` todavía. PEGAR si hay algún error (si termina sin error, avisar «ok»). El script es idempotente: si ya lo corriste antes de que agregara el `GRANT SELECT` sobre `_prisma_migrations` (ADR-025, aviso de
+**No** usar `-v restringir=1` en ESTE primer paso (el de 2026-10-05: primero se crea el rol y se prueban los scripts de la consola con `PLATAFORMA_DATABASE_URL`). **Después sí, y es una condición de PRODUCCIÓN pendiente (M.1 de `docs/pureza-integracion.md`, auditoría final 2026-10-09):** con los scripts probados hay que volver a correr `crear-rol-motor2-plataforma.sql` con `-v restringir=1` en cada base, y a partir de ahí `crear-rol-motor2-app.sql` también con `-v restringir=1`; sin eso `motor2_app` conserva la escritura sobre `Empresa` (residuo M-10). El SQL está escrito y NO aplicado. PEGAR si hay algún error (si termina sin error, avisar «ok»). El script es idempotente: si ya lo corriste antes de que agregara el `GRANT SELECT` sobre `_prisma_migrations` (ADR-025, aviso de
 «instalación atrasada en migraciones»), volver a correrlo en cada base agrega solo ese permiso nuevo, sin tocar el resto.
 
 ## 3. Las variables de la consola (un solo proyecto para las dos instalaciones)
