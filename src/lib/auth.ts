@@ -36,7 +36,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, profile, account }) {
       if (!user.email || !profile?.email) return false;
       const cookieStore = await cookies();
-      const tokenAbierto = tokenDeSesionAbierta((n) => cookieStore.get(n)?.value);
+      const tokenAbierto = tokenDeSesionAbierta((n) => cookieStore.get(n)?.value, process.env);
       const tokenDeInvitacion = cookieStore.get(nombreCookieInvitacion(process.env))?.value;
       // E8 (ADR-024): además del gate, decide si el usuario existente puede vincular su cuenta de Google (con una invitación) o si la cuenta es otra.
       return decidirInicioDeSesion({
