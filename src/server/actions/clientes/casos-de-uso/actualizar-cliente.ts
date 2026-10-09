@@ -1,8 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { validarPorcentajeDescuento } from "@/core/datos/porcentaje-descuento";
 import { cambioDeCliente } from "@/core/features/clientes/auditoria-de-cliente";
-import { nombreDeCliente } from "@/core/features/clientes/clientes.guard";
 import type { ComandoActualizarCliente, ResultadoActualizarCliente } from "@/core/features/clientes/clientes.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -11,13 +9,13 @@ import { guardarDatosDeCliente } from "@/server/persistencia/clientes/clientes";
 /**
  * Caso de uso «corregir nombre y % de un cliente ya creado» (Hito 4 de la pureza, bloque C de la pieza carta/catálogo/stock, paso H4C-15 —
  * `docs/plan-hito-4-pureza.md` §3). Es el cuerpo que antes vivía en línea en la Server Action `actualizarCliente` (`src/server/actions/clientes/cliente.ts`),
- * movido TAL CUAL y en el MISMO orden: lee el cliente con la base del contexto (un id inexistente gana sobre un dato inválido), valida el nombre
- * (`nombreDeCliente`) y el % (`validarPorcentajeDescuento`), rechaza un nombre que ya tiene OTRO cliente y, en UNA transacción, reescribe los dos datos y deja
+ * movido en el MISMO orden: lee el cliente con la base del contexto (un id inexistente gana sobre un dato inválido), aplica el rechazo del guard
+ * (`guardComandoActualizarCliente`: el nombre y el %, que la acción calculó con lo que mandó el cliente), rechaza un nombre que ya tiene OTRO cliente y, en UNA transacción, reescribe los dos datos y deja
  * DOS filas de auditoría en este orden: «nombre» (anterior → nuevo) y «descuentoPorcentaje» (el % de antes, como número → el nuevo); `registrarCambioAuditado` no
  * escribe la que no cambió. El % nuevo NO reescribe ninguna `Cuenta` ya asignada (D7: el % queda congelado en la cuenta). La Server Action quedó como adaptador
  * (`conPermisoDeEmpresa("clientes")` → este caso de uso → `aResultadoAccion`).
  *
- * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos. Sin guard: la validación va después de leer el cliente.
+ * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos. Nunca recibe datos sin validar: el comando trae el resultado del guard, que se aplica después de leer el cliente.
  *
  * @contract Reescribe nombre y % del cliente y deja lo que cambió en la auditoría, salvo que no exista, un dato sea inválido o el nombre sea de otro.
  * @idempotency No aplica — repetir el pedido vuelve a escribir los mismos datos (sin filas de auditoría nuevas: nada cambió).
@@ -33,12 +31,10 @@ export async function actualizarClienteCasoDeUso(
   const cliente = await actor.db.cliente.findUnique({ where: { id: clienteId } });
   if (!cliente) return fracaso("NO_ENCONTRADO", "No se encontró ese cliente.");
 
-  const nombre = nombreDeCliente(comando.nombre);
-  if (!nombre.ok) return fracaso("DATO_INVALIDO", nombre.mensaje);
-  const n = nombre.valor;
-
-  const pct = validarPorcentajeDescuento(comando.descuentoPorcentaje);
-  if (!pct.ok) return fracaso("DATO_INVALIDO", pct.mensaje);
+  // El rechazo del guard (nombre y después %, calculado por la acción con `guardComandoActualizarCliente`) se aplica ACÁ, después de leer el cliente: un id inexistente gana sobre un dato inválido.
+  if (!comando.datos.ok) return fracaso("DATO_INVALIDO", comando.datos.mensaje);
+  const n = comando.datos.valor.nombre;
+  const pct = { valor: comando.datos.valor.descuentoPorcentaje };
 
   const dup = await actor.db.cliente.findFirst({ where: { id: { not: clienteId }, nombre: { equals: n, mode: "insensitive" } } });
   if (dup) return fracaso("NOMBRE_REPETIDO", `Ya existe un cliente llamado "${dup.nombre}".`);

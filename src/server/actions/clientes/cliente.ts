@@ -1,6 +1,6 @@
 "use server";
 
-import { guardComandoAltaCliente } from "@/core/features/clientes/clientes.guard";
+import { guardComandoActualizarCliente, guardComandoAltaCliente } from "@/core/features/clientes/clientes.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
@@ -58,12 +58,14 @@ export async function altaCliente(nombre: string, descuentoPorcentaje: unknown):
  * Corrige nombre y/o % de un cliente ya creado. El % nuevo NO reescribe ninguna `Cuenta` ya asignada (D7 — el % queda congelado en
  * `Cuenta.descuentoPorcentaje` al asignar el cliente): solo aplica a asignaciones futuras.
  *
- * Desde el Hito 4 (H4C-15): permiso → caso de uso (`casos-de-uso/actualizar-cliente.ts`: leer el cliente, validar, nombre libre, escribir y auditar) →
- * `aResultadoAccion`. Sin guard (`SIN_GUARD`: la acción leía el cliente ANTES de validar).
+ * Desde el Hito 4 (H4C-15): permiso → formato (`guardComandoActualizarCliente`, el nombre y el %: finito, 0 ≤ % < 100, 2 decimales) → caso de uso
+ * (`casos-de-uso/actualizar-cliente.ts`: leer el cliente, aplicar el rechazo del guard, nombre libre, escribir y auditar) → `aResultadoAccion`. El guard se CALCULA acá pero su
+ * rechazo NO se devuelve acá: lo aplica el caso de uso después de leer el cliente, porque un cliente inexistente gana sobre un dato inválido (test/clientes/cliente-mensajes.test.ts).
  */
 export async function actualizarCliente(clienteId: string, nombre: string, descuentoPorcentaje: unknown): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("clientes", async (ctx) => {
-    return aResultadoAccion(await actualizarClienteCasoDeUso(ctx, { clienteId, nombre, descuentoPorcentaje }));
+    const datos = guardComandoActualizarCliente({ nombre, descuentoPorcentaje });
+    return aResultadoAccion(await actualizarClienteCasoDeUso(ctx, { clienteId, datos }));
   });
 }
 

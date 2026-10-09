@@ -1,3 +1,4 @@
+import type { ResultadoDato } from "@/core/datos/resultado";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -25,14 +26,20 @@ export interface DatosClienteCreado {
 /** `NOMBRE_REPETIDO`: ya hay un cliente con ese nombre (sin distinguir mayúsculas). */
 export type ResultadoAltaCliente = ResultadoCaso<DatosClienteCreado, "NOMBRE_REPETIDO">;
 
+/** Los datos de «corregir nombre y % de un cliente» YA validados por `guardComandoActualizarCliente`: el nombre recortado y el % (`number | null`, como lo devuelve `validarPorcentajeDescuento`). */
+export interface DatosActualizarCliente {
+  nombre: string;
+  descuentoPorcentaje: number | null;
+}
+
 /**
- * Comando «corregir nombre y % de un cliente»: el id y los datos SIN validar (sin guard: la acción leía el cliente ANTES de validar, así que un cliente inexistente
- * gana sobre un dato inválido).
+ * Comando «corregir nombre y % de un cliente»: el id y el RESULTADO del guard (`guardComandoActualizarCliente`, que la acción llama con lo que mandó el cliente). El caso de uso no
+ * recibe nunca datos sin validar —ni un `unknown`—, pero aplica el rechazo del guard DESPUÉS de leer el cliente: un cliente inexistente gana sobre un dato inválido (fijado por
+ * test/clientes/cliente-mensajes.test.ts), y el nombre inválido gana sobre el %.
  */
 export interface ComandoActualizarCliente {
   clienteId: string;
-  nombre: unknown;
-  descuentoPorcentaje: unknown;
+  datos: ResultadoDato<DatosActualizarCliente>;
 }
 
 /**

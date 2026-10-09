@@ -31,8 +31,6 @@ const SIN_GUARD_DE_COMANDO: Readonly<Record<string, string>> = {
   "carta/items-agrupados.ts|agregarOpcionItemAgrupadoCarta": PENDIENTE("El orden de una opción de un ítem agrupado: lo valida `agregar-opcion-item-agrupado-carta.ts`."),
   "carta/promos.ts|guardarPrecioLocalPromoCarta": PENDIENTE("El precio de una promo en la sucursal: la acción lee la promo ANTES de validar el precio (una promo inexistente gana sobre un precio inválido: ver SIN_GUARD de `acciones-migradas-con-guard`)."),
   "carta/promos.ts|guardarCuposPromoCarta": PENDIENTE("Los cupos de una promo (mínimo y máximo por sección): los valida `guardar-cupos-promo-carta.ts` dentro de la transacción (S-06)."),
-  "auth/empresa-activa.ts|cambiarEmpresaActiva": PENDIENTE("El segundo argumento (`volver`, `unknown` porque con un `<form action>` llega el FormData) solo se usa si es un texto y como ruta interna segura (`rutaInternaSegura`): no es un número ni un arreglo; lo detecta el inventario por ser `unknown`."),
-  "clientes/cliente.ts|actualizarCliente": PENDIENTE("El % de descuento (`unknown`): la acción lee el cliente ANTES de validar (un cliente inexistente gana sobre un dato inválido, fijado por test/clientes/cliente-mensajes.test.ts), así que `validarPorcentajeDescuento` (0 ≤ % < 100, finito, 2 decimales) vive en el caso de uso; el ataque (NaN, Infinity, negativo, 100, 1e999) lo cubre test/clientes/cliente.test.ts."),
   "catalogo/productos.ts|darDeAltaProducto": PENDIENTE("Precio, factor, paso y consignación de un producto nuevo: `validarDatosDeProducto` (server/lecturas) los valida dentro de la transacción."),
   "catalogo/productos.ts|actualizarProducto": PENDIENTE("Precio, factor, paso y consignación de un producto: `validarDatosDeProducto` los valida dentro de la transacción (S-05)."),
   "catalogo/productos.ts|agregarPresentacionAlternativa": PENDIENTE("El factor de una presentación alternativa: lo valida `agregar-presentacion-alternativa.ts`."),
@@ -142,8 +140,32 @@ describe("GT-11 — números y arreglos del cliente: un guard de comando con ran
     for (const [k, motivo] of Object.entries(SIN_GUARD_DE_COMANDO)) expect(motivo.length, k).toBeGreaterThan(60);
   });
 
-  it("la lista de pendientes solo se achica (23 hoy: las 21 de S-52 más las dos de entrada `unknown` que el inventario no veía)", () => {
-    expect(Object.keys(SIN_GUARD_DE_COMANDO).length).toBeLessThanOrEqual(23);
+  it("la lista de pendientes solo se achica (21 hoy: las de S-52; las dos entradas `unknown` que el inventario sumó se cerraron: `actualizarCliente` tiene su guard y `cambiarEmpresaActiva` usa `volver` solo como texto)", () => {
+    expect(Object.keys(SIN_GUARD_DE_COMANDO).length).toBeLessThanOrEqual(21);
+  });
+
+  it("`unknown`/`any` estrechado a texto no cuenta (cambiarEmpresaActiva); `unknown` usado como número, pasado entero o estrechado a otra cosa SÍ (fixtures en memoria)", () => {
+    const indice = indiceDeMiembros([]);
+    const opacos = (cuerpo: string, firma = "id: string, x?: unknown") => entradasDeLasAcciones("x.ts", `"use server";\nexport async function a(${firma}) { ${cuerpo} }`, indice).flatMap((e) => e.opacos);
+    // no aplica: el cuerpo solo mira el tipo o usa el valor dentro de `typeof x === "string"`
+    expect(opacos('redirect((typeof x === "string" ? rutaSegura(x) : null) ?? "/");')).toEqual([]);
+    expect(opacos('if (typeof x === "string") { usar(x); }')).toEqual([]);
+    expect(opacos('const ok = typeof x === "string" && x.length > 0; return ok;')).toEqual([]);
+    expect(opacos('return typeof x;')).toEqual([]);
+    expect(opacos('return typeof x === "string" ? x : null;', "id: string, x: any")).toEqual([]);
+    // ataque: `unknown` usado como número sin ningún estrechamiento a texto → sigue siendo una entrada opaca
+    expect(opacos("return Number(x) * 2;")).toEqual(["x"]);
+    expect(opacos("return x;")).toEqual(["x"]);
+    expect(opacos("return guardar(id, x);")).toEqual(["x"]);
+    expect(opacos("return x.valor;")).toEqual(["x"]);
+    // ataque: estrechado a OTRA cosa (un número), o usado también fuera de la rama de texto, o con la condición negada
+    expect(opacos('return typeof x === "number" ? x * 2 : 0;')).toEqual(["x"]);
+    expect(opacos('const t = typeof x === "string" ? x : ""; return guardar(x, t);')).toEqual(["x"]);
+    expect(opacos('if (typeof x !== "string") return; usar(x);')).toEqual(["x"]);
+    // una propiedad que se llama igual no es el parámetro
+    expect(opacos('return typeof x === "string" ? obj.x : null;')).toEqual([]);
+    // el `unknown` anidado en un tipo (no declarado directo en el parámetro) no se perdona
+    expect(entradasDeLasAcciones("x.ts", '"use server";\nexport async function a(d: { v: unknown }) { return typeof d.v === "string" ? d.v : null; }', indice).flatMap((e) => e.opacos)).toEqual(["d.v"]);
   });
 
   it("I-2: el inventario ve las entradas `unknown`/`any`, las acciones exportadas como constante con envoltorio y el prólogo con comentario antes", () => {

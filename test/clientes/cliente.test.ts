@@ -85,7 +85,7 @@ describe("Cliente (CRUD)", () => {
       expect((await actualizarCliente(uno.id, "Uno", 10)).ok).toBe(true); // su propio nombre sí vale
     });
 
-    it("GT-11 (S-52): el rango del % lo hace cumplir el caso de uso aunque la acción no tenga guard de comando: NaN, Infinity, negativo, 100 o más, o muchos decimales no cambian nada", async () => {
+    it("GT-11 (S-52): el rango del % lo hace cumplir el guard de comando (guardComandoActualizarCliente): NaN, ±Infinity, negativo, 100 o más, 1e308, «1e999» o muchos decimales no cambian nada", async () => {
       const creado = await altaCliente("Fulano", 10);
       if (!creado.ok) throw new Error("esperaba ok");
 

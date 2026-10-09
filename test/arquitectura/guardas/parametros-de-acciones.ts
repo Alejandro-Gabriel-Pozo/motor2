@@ -83,6 +83,53 @@ function recorrer(tipo: ts.TypeNode | undefined, ruta: string, indice: IndiceDeM
   }
 }
 
+/** `typeof <nombre> === "string"` (o `==`), solo o como una de las partes de un `&&`, entre paréntesis o no. */
+function esCondicionDeTexto(cond: ts.Expression, nombre: string): boolean {
+  if (ts.isParenthesizedExpression(cond)) return esCondicionDeTexto(cond.expression, nombre);
+  if (!ts.isBinaryExpression(cond)) return false;
+  const operador = cond.operatorToken.kind;
+  if (operador === ts.SyntaxKind.AmpersandAmpersandToken) return esCondicionDeTexto(cond.left, nombre) || esCondicionDeTexto(cond.right, nombre);
+  if (operador !== ts.SyntaxKind.EqualsEqualsEqualsToken && operador !== ts.SyntaxKind.EqualsEqualsToken) return false;
+  const esTypeofDelParametro = (x: ts.Expression) => ts.isTypeOfExpression(x) && ts.isIdentifier(x.expression) && x.expression.text === nombre;
+  const esLaPalabraString = (x: ts.Expression) => ts.isStringLiteral(x) && x.text === "string";
+  return (esTypeofDelParametro(cond.left) && esLaPalabraString(cond.right)) || (esTypeofDelParametro(cond.right) && esLaPalabraString(cond.left));
+}
+
+/** ¿Esta referencia al parámetro es solo mirar su tipo (`typeof x`) o está donde ya se sabe que es un TEXTO (la rama verdadera de `typeof x === "string"`, o lo que sigue en el `&&`)? */
+function esReferenciaDeTexto(referencia: ts.Identifier, nombre: string): boolean {
+  let hijo: ts.Node = referencia;
+  for (let padre: ts.Node | undefined = referencia.parent; padre; hijo = padre, padre = padre.parent) {
+    if (ts.isTypeOfExpression(padre)) return true;
+    if (ts.isConditionalExpression(padre) && padre.whenTrue === hijo && esCondicionDeTexto(padre.condition, nombre)) return true;
+    if (ts.isIfStatement(padre) && padre.thenStatement === hijo && esCondicionDeTexto(padre.expression, nombre)) return true;
+    if (ts.isBinaryExpression(padre) && padre.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken && padre.right === hijo && esCondicionDeTexto(padre.left, nombre)) return true;
+  }
+  return false;
+}
+
+/**
+ * Falso positivo de `unknown` (I-2 ampliada a `unknown`/`any`): un parámetro opaco que el cuerpo SOLO usa como texto —cada referencia es `typeof x` o está en la rama de `typeof x === "string"`— no es un
+ * número ni un arreglo que el cliente pueda colar: o es un texto o se ignora (`cambiarEmpresaActiva(empresaId, volver?: unknown)`: con un `<form action>` el último argumento es el `FormData`). Conservador: `typeof x ===
+ * "number"`, pasarlo entero a otra función, usarlo fuera de la rama o negar la condición lo dejan opaco.
+ */
+function soloSeUsaComoTexto(cuerpo: ts.Node, nombre: string): boolean {
+  let referencias = 0;
+  let todasDeTexto = true;
+  const visitar = (n: ts.Node): void => {
+    if (ts.isIdentifier(n) && n.text === nombre) {
+      const p = n.parent;
+      const esNombreDePropiedad = (ts.isPropertyAccessExpression(p) && p.name === n) || (ts.isPropertyAssignment(p) && p.name === n);
+      if (!esNombreDePropiedad) {
+        referencias++;
+        if (!esReferenciaDeTexto(n, nombre)) todasDeTexto = false;
+      }
+    }
+    ts.forEachChild(n, visitar);
+  };
+  visitar(cuerpo);
+  return referencias > 0 && todasDeTexto;
+}
+
 /** Las Server Actions exportadas de un archivo `"use server"`, con los números y arreglos que reciben. */
 export function entradasDeLasAcciones(rutaRelativa: string, codigo: string, indice: IndiceDeMiembros): EntradaDeUnaAccion[] {
   const sf = ts.createSourceFile("x.ts", codigo, ts.ScriptTarget.Latest, true);
@@ -92,7 +139,11 @@ export function entradasDeLasAcciones(rutaRelativa: string, codigo: string, indi
     const e = { numericos: [] as string[], arreglos: [] as string[], opacos: [] as string[] };
     for (const p of parametros) {
       const nombreDelParametro = ts.isIdentifier(p.name) ? p.name.text : "";
+      const opacosAntes = e.opacos.length;
       recorrer(p.type, nombreDelParametro, indice, [], e);
+      // Un parámetro `unknown`/`any` (declarado así, no anidado) que el cuerpo solo usa como texto no es una entrada numérica ni de arreglo: no se inventaría (ver `soloSeUsaComoTexto`).
+      const esOpacoDirecto = p.type?.kind === ts.SyntaxKind.UnknownKeyword || p.type?.kind === ts.SyntaxKind.AnyKeyword;
+      if (esOpacoDirecto && cuerpo && e.opacos.length > opacosAntes && soloSeUsaComoTexto(cuerpo, nombreDelParametro)) e.opacos.length = opacosAntes;
     }
     const llamadas = new Set<string>();
     const visitar = (n: ts.Node): void => {
