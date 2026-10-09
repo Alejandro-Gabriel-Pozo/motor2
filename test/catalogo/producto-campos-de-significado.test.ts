@@ -183,6 +183,8 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
           await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: quesoId, cantidad: 1, precioUnitario: 100 } });
         },
       ],
+      // M-4 (auditoría intermedia): un mínimo cargado cambia de significado con la unidad (5 kg pasarían a ser 5 g), aunque el producto no tenga ningún movimiento.
+      ["un stock mínimo cargado", async () => void (await prisma.stockMinimoProducto.create({ data: { sucursalId, productoId: quesoId, minimo: 5 } }))],
     ];
 
     it.each(FUENTES)("con %s, cambiar la unidad de stock se rechaza (UNIDAD_CON_HISTORIA) y no escribe nada", async (_nombre, sembrar) => {
