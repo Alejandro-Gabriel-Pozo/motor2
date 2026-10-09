@@ -11,3 +11,13 @@ import type { Db } from "@/lib/db-tipos";
 export async function anotarInvitacionEnviada(db: Db, entrada: { invitacionId: string; ahora: Date }): Promise<void> {
   await db.invitacion.updateMany({ where: { id: entrada.invitacionId, estado: "PENDIENTE" }, data: { enviadaEn: entrada.ahora } });
 }
+
+/**
+ * Deshace la marca de `anotarInvitacionEnviada` cuando el mail NO salió (S-21): la marca se escribe ANTES del envío, en la transacción que reserva el mail (así el freno de un minuto
+ * y el cupo ven el pedido en curso), y una invitación con la marca puesta figura «enviada». Solo la saca si sigue siendo la de ESTE pedido (`enviadaEn = ahora`): si entre el envío
+ * fallido y acá otro reenvío ya la pisó con su hora, no se toca. Vuelve a nulo —«sin enviar»— y no a la hora anterior: el reenvío ya rotó el token, así que el enlace del mail
+ * anterior no sirve más y la invitación, de hecho, no tiene un mail vigente.
+ */
+export async function quitarMarcaDeEnvio(db: Db, entrada: { invitacionId: string; ahora: Date }): Promise<void> {
+  await db.invitacion.updateMany({ where: { id: entrada.invitacionId, estado: "PENDIENTE", enviadaEn: entrada.ahora }, data: { enviadaEn: null } });
+}

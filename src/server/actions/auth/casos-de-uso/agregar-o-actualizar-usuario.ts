@@ -1,6 +1,6 @@
 import "server-only";
 import type { ComandoAgregarOActualizarUsuario } from "@/core/features/permisos/usuario.guard";
-import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion } from "./invitaciones-de-usuario-en-tx";
+import { asegurarInvitacionDeUsuario, asegurarInvitacionDeVinculacion, conCupoDeCorreo, reservarMailDeInvitacion } from "./invitaciones-de-usuario-en-tx";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { mensajeSiNoPuedeDarRolA, mensajeSiReactivaAdminSinSerGerente } from "@/core/permisos/gestion-de-usuarios";
 import { actorDesdeLaBase, objetivoEnSucursal, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";
@@ -14,7 +14,14 @@ import type { InvitacionPorEnviar } from "./enviar-invitacion-y-anotar";
 
 type ResultadoAgregarOActualizarUsuario = ResultadoCaso<
   { porEnviar: InvitacionPorEnviar | null },
-  "ROL_INVALIDO" | "SUCURSAL_INVALIDA" | "CUENTA_DESACTIVADA_EN_PLATAFORMA" | "TECHO_DE_PRIVILEGIO" | "INVITACION_RECHAZADA" | "REACTIVA_ADMIN_SIN_SER_GERENTE" | "INVARIANTE_DE_GOBIERNO"
+  | "ROL_INVALIDO"
+  | "SUCURSAL_INVALIDA"
+  | "CUENTA_DESACTIVADA_EN_PLATAFORMA"
+  | "TECHO_DE_PRIVILEGIO"
+  | "INVITACION_RECHAZADA"
+  | "CUPO_DE_CORREO_AGOTADO"
+  | "REACTIVA_ADMIN_SIN_SER_GERENTE"
+  | "INVARIANTE_DE_GOBIERNO"
 >;
 
 /**
@@ -47,7 +54,7 @@ type ResultadoAgregarOActualizarUsuario = ResultadoCaso<
  * @contract Deja a la persona con acceso pendiente (invitación) o efectivo (membresía con ese rol, cuenta de empresa activa) en la sucursal pedida, con su auditoría, si quien actúa puede darle ese rol y gestionarla; devuelve la invitación cuyo mail hay que mandar.
  * @idempotency Por estado — una invitación pendiente vigente absorbe el reintento (se le suma la sucursal y no hay mail nuevo); la membresía es un upsert (repetir no deja auditoría nueva: los valores no cambian).
  * @transaction conGobierno (conTransaccionSerializable con reintento) + conInvariantesDeGobierno alrededor de las escrituras del miembro; una invariante violada vuelve como fracaso INVARIANTE_DE_GOBIERNO.
- * @sideEffects registrarCambioAuditado (UsuarioEmpresa.activo; UsuarioSucursal.rol y .activo; las invitaciones auditan en su helper). El mail lo manda la Server Action después del commit.
+ * @sideEffects registrarCambioAuditado (UsuarioEmpresa.activo; UsuarioSucursal.rol y .activo; las invitaciones auditan en su helper, y el mail reservado deja UsuarioEmpresa.mailDeInvitacion); anota la marca de envío. El mail lo manda la Server Action después del commit.
  * @ficha permiso=gestion_usuarios transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function agregarOActualizarUsuarioCasoDeUso(
@@ -55,9 +62,23 @@ export async function agregarOActualizarUsuarioCasoDeUso(
   comando: ComandoAgregarOActualizarUsuario,
   azar: FuenteDeAzar,
 ): Promise<ResultadoAgregarOActualizarUsuario> {
-  const { email } = comando;
   // La hora del pedido la fija `conPermiso` una vez (Pureza 1.2; D.3): vencimiento de la invitación y marca de envío salen de ella, no del reloj.
   const ahora = actor.ahora;
+  // S-21: un mail de invitación que no entra en el cupo del día lanza dentro de la transacción (se deshace entera) y `conCupoDeCorreo` lo vuelve `CUPO_DE_CORREO_AGOTADO`.
+  return conCupoDeCorreo(
+    () => agregarOActualizarEnLaTransaccion(actor, comando, azar, ahora),
+    (mensaje) => fracaso("CUPO_DE_CORREO_AGOTADO", mensaje),
+  );
+}
+
+/** El cuerpo de `agregarOActualizarUsuarioCasoDeUso`: la transacción de gobierno entera (ver esa función). */
+async function agregarOActualizarEnLaTransaccion(
+  actor: Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "transaccion" | "ahora">,
+  comando: ComandoAgregarOActualizarUsuario,
+  azar: FuenteDeAzar,
+  ahora: Date,
+): Promise<ResultadoAgregarOActualizarUsuario> {
+  const { email } = comando;
   return conGobierno(
     actor,
     async (tx): Promise<ResultadoAgregarOActualizarUsuario> => {
@@ -88,6 +109,8 @@ export async function agregarOActualizarUsuarioCasoDeUso(
         });
         if (!invitada.ok) return fracaso("INVITACION_RECHAZADA", invitada.mensaje);
         if (invitada.token) {
+          // S-21: el mail se reserva en ESTA transacción (cupo del día por empresa y por destinatario, y la marca de envío); sin cupo se deshace todo (nada queda creado ni rotado).
+          await reservarMailDeInvitacion(tx, { empresaId: actor.empresaId, invitacionId: invitada.invitacionId, email, tipo: "usuario", actorId: actor.usuarioId, ahora });
           return exito(
             `Invitación enviada a "${email}": cuando la acepte con su cuenta de Google tendrá acceso a "${sucursal.nombre}". Mientras tanto figura en «Invitaciones pendientes».`,
             { porEnviar: { invitacionId: invitada.invitacionId, token: invitada.token, tipo: "usuario" } },
@@ -130,6 +153,8 @@ export async function agregarOActualizarUsuarioCasoDeUso(
         if (usuarioPrevio.accounts.length === 0) {
           const vinculacion = await asegurarInvitacionDeVinculacion(tx, { empresaId: actor.empresaId, email, invitadoPorId: actor.usuarioId, ahora, azar });
           if (vinculacion.ok && vinculacion.token) {
+            // S-21: lo mismo para la invitación de vinculación; si no hay cupo, tampoco queda guardada la membresía (todo o nada).
+            await reservarMailDeInvitacion(tx, { empresaId: actor.empresaId, invitacionId: vinculacion.invitacionId, email, tipo: "vinculacion", actorId: actor.usuarioId, ahora });
             return exito(`Usuario "${email}" guardado en la sucursal. Todavía no entró con Google: le mandamos una invitación para que vincule su cuenta.`, {
               porEnviar: { invitacionId: vinculacion.invitacionId, token: vinculacion.token, tipo: "vinculacion" },
             });
