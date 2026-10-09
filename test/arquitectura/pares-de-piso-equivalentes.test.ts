@@ -114,6 +114,20 @@ describe("el detector de puertas ve las llamadas reales (un comentario no cuenta
   });
 });
 
+/**
+ * Pares cuyo camino hermano YA es de un piso al menos igual (sin puertas que vigilar): lo que se fija es que el piso del hermano no baje (M-28 de la auditoría intermedia: `cancelar_conteo`
+ * revierte stock, igual que un Ajuste, y no figuraba como par). Bajar `cancelar_conteo` a operario le daría a quien cuenta una forma de sacar o meter stock sin la clave de Ajuste.
+ */
+const PARES_DE_PISO_IGUAL: readonly { hermana: AccionClave; ajuste: AccionClave; motivo: string }[] = [
+  { hermana: "cancelar_conteo", ajuste: "proceso_ajuste", motivo: "Cancelar un conteo revierte en el Kardex lo que el conteo aplicó (S-04): es un Ajuste con otro nombre." },
+];
+
+describe("pares de piso igual (GT-2, M-28): el camino hermano no baja del piso del Ajuste", () => {
+  it.each(PARES_DE_PISO_IGUAL)("$hermana es al menos de piso $ajuste", ({ hermana, ajuste, motivo }) => {
+    expect(nivelAlcanzaElPiso(nivelMinimoDeAccion(hermana), nivelMinimoDeAccion(ajuste)), `${hermana} (piso ${nivelMinimoDeAccion(hermana)}) no puede ser menos que ${ajuste} (piso ${nivelMinimoDeAccion(ajuste)}): ${motivo}`).toBe(true);
+  });
+});
+
 describe("pares de acción equivalente (GT-2): el camino hermano no baja el piso", () => {
   const clavesDelCatalogo = new Set<string>(ACCIONES.map((a) => a.clave));
 

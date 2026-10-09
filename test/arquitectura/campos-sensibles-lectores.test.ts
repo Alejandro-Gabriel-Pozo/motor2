@@ -1,19 +1,11 @@
 import { readFileSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ACCIONES, nivelMinimoDeAccion, type AccionClave, type NivelDeAccion } from "../../src/core/permisos/acciones";
 import { nivelAlcanzaElPiso } from "../../src/core/permisos/jerarquia";
+import { CAMPOS, hallarLectores } from "./guardas/campos-sensibles";
 import { inventariarFuente } from "./guardas/inventario";
-import {
-  archivosTs,
-  esPagina,
-  exportadasQueAlcanzan,
-  grafoDeImports,
-  importadoresDe,
-  lectoresEnFuente,
-  modelosDelSchema,
-  paginasQueAlcanzan,
-} from "./guardas/lectores-de-campos";
+import { esPagina, exportadasQueAlcanzan, lectoresEnFuente, paginasQueAlcanzan } from "./guardas/lectores-de-campos";
 
 /**
  * GT-1 COMPLETO (tanda T14 del plan de endurecimiento de seguridad; fila O.85b de `docs/pureza-integracion.md`): CAMPOS SENSIBLES CON PISO MÍNIMO, recorriendo cada lectura hasta
@@ -38,43 +30,6 @@ import {
  * clave de `reportes/compras` por una de piso operario; una excepción de más; `hashToken` en una lectura de la capa de pantallas.
  */
 const RAIZ = join(__dirname, "../..");
-
-type Piso = NivelDeAccion | "NUNCA";
-interface CampoSensible {
-  piso: Piso;
-  dato: string;
-}
-
-const CAMPOS: Readonly<Record<string, CampoSensible>> = {
-  "Producto.precioConsignacion": { piso: "administrador", dato: "el costo de consignación (S-12, D8: `pagar_consignante`)" },
-  "Producto.proveedorConsignacionId": { piso: "administrador", dato: "el consignante del producto (S-12, D8)" },
-  "MovimientoStock.precioTotal": { piso: "administrador", dato: "el importe de una línea del Kardex" },
-  "MovimientoStock.precioPorUnidadStock": { piso: "administrador", dato: "el costo por unidad de una línea del Kardex" },
-  "MovimientoStock.costoUnitarioVenta": { piso: "administrador", dato: "el costo congelado de lo vendido" },
-  "MovimientoStock.precioListaUnitario": { piso: "administrador", dato: "el precio de lista congelado de lo vendido" },
-  "Operacion.nroFactura": { piso: "administrador", dato: "el N.º de factura de una compra (`reporte_historial_importes`, S-14)" },
-  "Operacion.proveedorId": { piso: "administrador", dato: "el proveedor de una operación (`reporte_historial_importes`, S-14)" },
-  "Operacion.proveedor": { piso: "administrador", dato: "el proveedor de una operación, como relación (el nombre; `reporte_historial_importes`, S-14)" },
-  "Producto.proveedorConsignacion": { piso: "administrador", dato: "el consignante del producto, como relación (S-12, D8)" },
-  "PagoConsignante.importe": { piso: "administrador", dato: "lo pagado a un consignante" },
-  "Proveedor.cuit": { piso: "administrador", dato: "el CUIT de un proveedor" },
-  "Proveedor.email": { piso: "administrador", dato: "el correo de un proveedor" },
-  "Proveedor.telefono": { piso: "administrador", dato: "el teléfono de un proveedor" },
-  "Proveedor.contacto": { piso: "administrador", dato: "la persona de contacto de un proveedor" },
-  "Proveedor.condicionesPago": { piso: "administrador", dato: "las condiciones de pago de un proveedor" },
-  "Proveedor.notas": { piso: "administrador", dato: "las notas internas sobre un proveedor" },
-  "User.email": { piso: "administrador_sistema", dato: "el correo de una cuenta" },
-  "Invitacion.hashToken": { piso: "NUNCA", dato: "el hash del token de una invitación" },
-  "Account.refresh_token": { piso: "NUNCA", dato: "el token de actualización de Google" },
-  "Account.access_token": { piso: "NUNCA", dato: "el token de acceso de Google" },
-  "Account.id_token": { piso: "NUNCA", dato: "el id_token de Google" },
-  "Session.sessionToken": { piso: "NUNCA", dato: "el token de una sesión de la app" },
-  "VerificationToken.token": { piso: "NUNCA", dato: "el token de verificación de Auth.js" },
-  "AdminPlataforma.secretoTotp": { piso: "NUNCA", dato: "el secreto TOTP cifrado de un administrador de la consola" },
-  "CodigoDeIngresoPlataforma.hashCodigo": { piso: "NUNCA", dato: "el HMAC del código de ingreso de la consola" },
-  "CodigoDeRecuperacionPlataforma.hashCodigo": { piso: "NUNCA", dato: "el HMAC de un código de recuperación de la consola" },
-  "SesionPlataforma.hashToken": { piso: "NUNCA", dato: "el hash del token de sesión de la consola" },
-};
 
 /** Columnas del schema que se parecen a un secreto (por el nombre) y no lo son. */
 const NO_SON_SECRETOS: Readonly<Record<string, string>> = {
@@ -170,42 +125,7 @@ const EXCEPCIONES_DE_PAGINA: Readonly<Record<string, string>> = {
   "src/app/(pos)/mesas/page.tsx|User.email": S_44("El mapa de mesas"),
 };
 
-const rel = (f: string) => relative(RAIZ, f).split(sep).join("/");
-const modelos = modelosDelSchema(readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8"));
-const sensibles = new Map<string, Set<string>>();
-for (const clave of Object.keys(CAMPOS)) {
-  const [modelo, campo] = clave.split(".") as [string, string];
-  sensibles.set(modelo, new Set([...(sensibles.get(modelo) ?? []), campo]));
-}
-
-const CARPETAS = ["src", "plataforma/src", "scripts"];
-const fuentes = CARPETAS.flatMap((d) => archivosTs(join(RAIZ, d))).map((f) => ({ ruta: rel(f), codigo: readFileSync(f, "utf8") }));
-const grafo = grafoDeImports(RAIZ);
-const importadores = importadoresDe(grafo);
-
-interface Hallado {
-  ruta: string;
-  campos: string[];
-  paginas: string[];
-  esAccionUseServer: boolean;
-}
-
-function hallar(): Hallado[] {
-  const salida: Hallado[] = [];
-  for (const { ruta, codigo } of fuentes) {
-    const hits = lectoresEnFuente(codigo, ruta, modelos, sensibles);
-    if (!hits.length) continue;
-    const funciones = [...new Set(hits.map((h) => h.funcion))];
-    salida.push({
-      ruta,
-      campos: [...new Set(hits.map((h) => h.campo))].sort(),
-      paginas: paginasQueAlcanzan(ruta, importadores, exportadasQueAlcanzan(codigo, funciones, ruta)),
-      esAccionUseServer: /^\s*["']use server["']/.test(codigo) && ruta.startsWith("src/server/actions/"),
-    });
-  }
-  return salida;
-}
-const hallados = hallar();
+const { modelos, hallados } = hallarLectores(RAIZ);
 
 const clavesDe = (ruta: string): { claves: Set<string>; dinamicas: number } => {
   const inv = inventariarFuente(ruta, readFileSync(join(RAIZ, ruta), "utf8"));
