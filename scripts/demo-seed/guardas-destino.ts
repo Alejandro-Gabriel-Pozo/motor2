@@ -146,14 +146,18 @@ export function resolverDestinoDelSeedBase(env: Entorno, opciones: { permitirRem
 }
 
 /**
- * La confirmación interactiva para una base REMOTA: muestra el host y el nombre de la base (sin credenciales) y exige escribir el nombre de la base. En una terminal que no es
- * interactiva (CI, una redirección) no hay nadie que confirme: se rechaza. Una base local no pide nada. `preguntar` se inyecta (en el seed, `readline`) para poder probarla.
+ * La confirmación interactiva para una base REMOTA: muestra el host y el nombre de la base (sin credenciales) y exige escribir el HOST COMPLETO y, después, el nombre de la base (M-30 de
+ * la auditoría intermedia: en Neon casi todas las bases se llaman `neondb`, así que escribir solo el nombre no distingue producción de una rama; lo que las distingue es el host del
+ * endpoint). Las dos tienen que coincidir (el host sin mirar mayúsculas, como un nombre de DNS). En una terminal que no es interactiva (CI, una redirección) no hay nadie que confirme:
+ * se rechaza. Una base local no pide nada. `preguntar` se inyecta (en el seed, `readline`) para poder probarla.
  */
 export async function confirmarDestinoRemoto(destino: DestinoDelSeedBase, preguntar: (texto: string) => Promise<string>, esInteractivo: boolean): Promise<void> {
   if (!destino.remoto) return;
   if (!esInteractivo) {
-    throw new Error("Sembrar una base remota pide una confirmación interactiva (escribir el nombre de la base) y esta terminal no es interactiva (CI o una redirección): corré el comando a mano en una terminal.");
+    throw new Error("Sembrar una base remota pide una confirmación interactiva (escribir el host y el nombre de la base) y esta terminal no es interactiva (CI o una redirección): corré el comando a mano en una terminal.");
   }
-  const respuesta = await preguntar(`Vas a sembrar una base REMOTA: host ${destino.host}, base "${destino.nombre}". Para confirmar, escribí el nombre de la base: `);
-  if (respuesta.trim() !== destino.nombre) throw new Error("Lo escrito no es el nombre de la base: no se sembró nada.");
+  const host = await preguntar(`Vas a sembrar una base REMOTA: host ${destino.host}, base "${destino.nombre}". Para confirmar, escribí el HOST completo: `);
+  if (host.trim().toLowerCase() !== destino.host.toLowerCase()) throw new Error("Lo escrito no es el host de la base: no se sembró nada.");
+  const nombre = await preguntar("Ahora escribí el nombre de la base: ");
+  if (nombre.trim() !== destino.nombre) throw new Error("Lo escrito no es el nombre de la base: no se sembró nada.");
 }

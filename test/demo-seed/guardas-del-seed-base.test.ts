@@ -95,18 +95,35 @@ describe("confirmarDestinoRemoto — la confirmación interactiva", () => {
     expect(preguntar).not.toHaveBeenCalled();
   });
 
-  it("muestra el host y el nombre de la base y exige escribir el nombre de la base", async () => {
-    const preguntar = vi.fn(async () => "  neondb ");
+  /** Una terminal que contesta, en orden, lo que se le da (el host y después el nombre de la base). */
+  const responde = (...respuestas: string[]) => {
+    const pendientes = [...respuestas];
+    return vi.fn(async (_texto: string) => pendientes.shift() ?? "");
+  };
+
+  it("muestra el host y el nombre de la base y exige escribir el HOST completo y el nombre de la base (M-30)", async () => {
+    const preguntar = responde(`  ${remoto.host.toUpperCase()} `, "  neondb ");
     await expect(confirmarDestinoRemoto(remoto, preguntar, true)).resolves.toBeUndefined();
-    const texto = (preguntar.mock.calls as unknown as string[][])[0][0];
+    expect(preguntar).toHaveBeenCalledTimes(2);
+    const texto = preguntar.mock.calls[0]![0];
     expect(texto).toContain(remoto.host);
     expect(texto).toContain(remoto.nombre);
     expect(texto).not.toContain(CLAVE);
   });
 
-  it.each([[""], ["si"], ["y"], ["otra_base"]])("una respuesta que no es el nombre de la base (%j) NO confirma", async (respuesta) => {
-    // Mutación: aceptar cualquier respuesta no vacía (o cualquiera) pone este test en rojo.
-    await expect(confirmarDestinoRemoto(remoto, async () => respuesta, true)).rejects.toThrow(/no es el nombre de la base/);
+  it.each([[""], ["si"], ["y"], ["otra_base"]])("una respuesta que no es el nombre de la base (%j) NO confirma, aunque el host esté bien", async (respuesta) => {
+    // Mutación: aceptar cualquier respuesta no vacía (o cualquiera) en el nombre pone este test en rojo.
+    await expect(confirmarDestinoRemoto(remoto, responde(remoto.host, respuesta), true)).rejects.toThrow(/no es el nombre de la base/);
+  });
+
+  // M-30 (T16): en Neon casi todas las bases se llaman `neondb`; escribir solo el nombre no distingue producción de una rama. Hay que escribir también el HOST completo.
+  it("EL DEFECTO (M-30): el nombre de la base correcto NO alcanza si el host está mal, es otro endpoint, parcial o falta", async () => {
+    // Mutación: sacar la comprobación del host (o aceptar el nombre de la base en su lugar) pone este test en rojo.
+    for (const host of ["", "neondb", "ep-cool-123", "ep-cool-123.us-east-2.aws.neon.tech.evil.com", "ep-otra-rama-999.us-east-2.aws.neon.tech", "neon.tech"]) {
+      const preguntar = responde(host, remoto.nombre);
+      await expect(confirmarDestinoRemoto(remoto, preguntar, true), `host escrito: ${JSON.stringify(host)}`).rejects.toThrow(/no es el host de la base/);
+      expect(preguntar, "no sigue preguntando el nombre de la base si el host ya falló").toHaveBeenCalledTimes(1);
+    }
   });
 });
 
