@@ -53,7 +53,7 @@ export async function agregarPresentacionAlternativaCasoDeUso(
     const cambiaElFactor = anterior !== null && Number(anterior.factorConversion) !== factor.valor!;
     // M-4: el factor de una presentación que ya se usó en compras NO se cambia. Un operario con `producto_presentaciones` lo pisaba con este mismo alta (un `upsert`) y la compra siguiente metía
     // más o menos stock del que había. Crear una presentación nueva, o reactivar una con el mismo factor, sigue como siempre.
-    if (cambiaElFactor && (await presentacionTieneUso(tx, { productoId, unidadCompraId }))) {
+    if (cambiaElFactor && (await presentacionTieneUso(tx, productoId, unidadCompraId))) {
       const unidad = await tx.unidad.findUnique({ where: { id: unidadCompraId }, select: { nombre: true } });
       return fracaso(
         "FACTOR_CON_USO",

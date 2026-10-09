@@ -297,8 +297,10 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   // Los dos conteos de la sección (uno pendiente y uno ya resuelto) se escriben ANTES de la venta: desde I-1 (D7 / S-03) una venta no se anula si hubo un conteo físico del mismo producto y sección
   // escrito DESDE ella (`creadoEn` del conteo >= `creadoEn` de la venta; `gte`, no `gt`), y el control positivo de `anularVenta` necesita que la venta del mundo se pueda anular. Con el reloj congelado de
   // la matriz (`vi.setSystemTime`) dos filas sembradas una tras otra llevan el MISMO `creadoEn`, y `gte` las ve como simultáneas: por eso el `creadoEn` de los conteos se fija explícito, dos días atrás.
+  // M-2 (D7): cancelar un conteo se RECHAZA si hay otro conteo no cancelado del mismo producto y sección escrito desde él, así que el pendiente va MÁS ATRÁS (tres días) que el resuelto (dos días): el
+  // control positivo de `cancelarConteoFisico` cancela el resuelto, que no tiene ningún conteo posterior.
   const conteo = await db.conteoFisico.create({
-    data: { id: id("conteo"), empresaId, sucursalId, fecha: enElPasado(HORA_MS), creadoEn: enElPasado(2 * DIA_MS), productoId: k.productoId, seccionId: seccion.id, saldoSistema: 9, conteoReal: 8, diferencia: -1, accion: "FALTA_MOVIMIENTO", estado: "PENDIENTE", detalle: `Conteo ${marca}`, usuarioId: miembro.id },
+    data: { id: id("conteo"), empresaId, sucursalId, fecha: enElPasado(HORA_MS), creadoEn: enElPasado(3 * DIA_MS), productoId: k.productoId, seccionId: seccion.id, saldoSistema: 9, conteoReal: 8, diferencia: -1, accion: "FALTA_MOVIMIENTO", estado: "PENDIENTE", detalle: `Conteo ${marca}`, usuarioId: miembro.id },
   });
   const conteoResuelto = await db.conteoFisico.create({
     data: { id: id("conteo-resuelto"), empresaId, sucursalId, fecha: enElPasado(HORA_MS), creadoEn: enElPasado(2 * DIA_MS), productoId: k.productoId, seccionId: seccion.id, saldoSistema: 9, conteoReal: 9, diferencia: 0, accion: "FALTA_MOVIMIENTO", estado: "RESUELTO", detalle: `Conteo resuelto ${marca}`, usuarioId: miembro.id },

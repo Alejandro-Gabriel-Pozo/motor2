@@ -44,8 +44,8 @@ export async function productoTieneHistoria(db: Db, productoId: string): Promise
  * unidad de compra se cargó una línea, así que el rastro que queda es el vínculo proveedor↔producto, que cada compra con proveedor escribe con la unidad de compra usada
  * (`upsertProveedorPorProducto`): si hay uno con esta unidad, la presentación se usó. Una compra SIN proveedor no deja ese rastro (cerrarlo exige una columna en el Kardex: [MIG]).
  */
-export async function presentacionTieneUso(db: Db, args: { productoId: string; unidadCompraId: string }): Promise<boolean> {
-  const fila = await db.proveedorPorProducto.findFirst({ where: { productoId: args.productoId, unidadCompraId: args.unidadCompraId }, select: { id: true } });
+export async function presentacionTieneUso(db: Db, productoId: string, unidadCompraId: string): Promise<boolean> {
+  const fila = await db.proveedorPorProducto.findFirst({ where: { productoId, unidadCompraId }, select: { id: true } });
   return fila !== null;
 }
 
