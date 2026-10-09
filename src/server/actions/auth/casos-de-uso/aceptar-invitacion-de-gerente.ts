@@ -43,13 +43,23 @@ import { MENSAJE_DEMASIADAS_CONSULTAS_DE_CUIT } from "../../limitador-anonimo";
 export async function aceptarInvitacionDeGerenteCasoDeUso(entrada: EntradaDeAceptacion): Promise<ResultadoDeAceptacion> {
   const invitacion = await invitacionConSuBase(entrada.token, entrada.ahora);
   if (!invitacion || invitacion.vista.estado !== "PENDIENTE") return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
+  // M-23: `conTransaccionSerializable` REPITE el cuerpo ante un conflicto de escritura (P2034) y cada repetición volvía a descontar una prueba del cupo de CUIT: un solo intento del invitado gastaba
+  // dos o más de las cinco. El cupo se descuenta UNA vez por intento lógico (por llamada a este caso de uso) y el reintento reusa el veredicto de la primera lectura.
+  const entradaDeEstaPrueba = { ...entrada, consultaDeCuitSinCupo: descontarUnaSolaVez(entrada.consultaDeCuitSinCupo) };
   try {
-    return await conTransaccionSerializable(invitacion.transaccion, (tx) => aceptarEnLaTransaccion(tx, entrada));
+    return await conTransaccionSerializable(invitacion.transaccion, (tx) => aceptarEnLaTransaccion(tx, entradaDeEstaPrueba));
   } catch (e) {
     if (e instanceof InvarianteViolada) return { ok: false, mensaje: e.mensaje };
     if (e instanceof ErrorDeAceptacion) return { ok: false, mensaje: e.message };
     throw e;
   }
+}
+
+/** Envuelve el descuento del cupo para que, por más veces que se repita el cuerpo de la transacción, se consulte (y descuente) una sola vez; sin descuento declarado, no hay nada que envolver. */
+function descontarUnaSolaVez(descuento: (() => boolean) | undefined): (() => boolean) | undefined {
+  if (!descuento) return undefined;
+  let veredicto: boolean | undefined;
+  return () => (veredicto ??= descuento());
 }
 
 interface EntradaDeAceptacion {
