@@ -24,8 +24,10 @@
 -- se aplica en producción, no en las bases de test.
 --
 -- Uso (como dueño; la clave por variable psql, nunca en el repo):
---   psql <conexión del dueño a la base> -v clave="<clave>" -f scripts/operaciones/crear-rol-motor2-plataforma.sql          (crea el rol y sus grants)
---   psql <conexión del dueño a la base> -v restringir=1 -f scripts/operaciones/crear-rol-motor2-plataforma.sql              (además quita la escritura de Empresa a motor2_app)
+--   psql <conexión del dueño a la base> -1 -v clave="<clave>" -f scripts/operaciones/crear-rol-motor2-plataforma.sql        (rol NUEVO: lo crea con esa clave y le da sus grants; si el rol ya existe, le CAMBIA la contraseña)
+--   psql <conexión del dueño a la base> -1 -v restringir=1 -f scripts/operaciones/crear-rol-motor2-plataforma.sql           (rol YA existente, sin clave: NO toca la contraseña; reaplica los grants y además quita la escritura de Empresa a motor2_app)
+-- `-1` (una sola transacción) o el ejecutor `scripts/operaciones/ejecutar-sql-de-psql.mjs` (también atómico, y con `--simular` primero): sin eso un fallo a mitad deja el script a medias.
+-- ATENCIÓN con `restringir`: el script solo mira si la variable ESTÁ DEFINIDA (`\if :{?restringir}`), no su valor: `-v restringir=0` TAMBIÉN restringe. Para no restringir, no pasarla.
 -- En Neon: SOLO con psql y este archivo, conectado como el dueño (`neondb_owner`); no hace falta superusuario. NUNCA crear el rol desde la consola o la API de
 -- Neon: esos roles nacen como `neon_superuser` con BYPASSRLS y se saltarían el aislamiento por empresa. Los roles son POR RAMA de Neon: hay que correrlo en
 -- cada rama (la de producción de cada despliegue; stockhneuquen y zuluhub son proyectos distintos). Idempotente. Reversa: quitar-rol-motor2-plataforma.sql
@@ -35,11 +37,28 @@
 
 \set ON_ERROR_STOP on
 
+-- M.1-C1: la `clave` solo hace falta para CREAR el rol o para CAMBIARLE la contraseña a propósito.
+--   · el rol NO existe            → CREATE ROLE … PASSWORD :'clave' (sin `-v clave` falla acá, antes de crear nada).
+--   · el rol existe y hay `clave` → ALTER ROLE … PASSWORD :'clave' (rotación deliberada).
+--   · el rol existe y NO hay clave → NO se toca el rol (su contraseña es la que ya usa la consola): solo se verifica que siga siendo el rol de la consola.
 SELECT NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'motor2_plataforma') AS crear \gset
 \if :crear
   CREATE ROLE motor2_plataforma LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD :'clave';
 \else
-  ALTER ROLE motor2_plataforma LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD :'clave';
+  \if :{?clave}
+    ALTER ROLE motor2_plataforma LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD :'clave';
+  \else
+    DO $$
+    DECLARE
+      r record;
+    BEGIN
+      SELECT rolsuper, rolbypassrls, rolcanlogin INTO r FROM pg_roles WHERE rolname = 'motor2_plataforma';
+      IF r.rolsuper OR r.rolbypassrls OR NOT r.rolcanlogin THEN
+        RAISE EXCEPTION 'M.1 - motor2_plataforma ya existe con atributos que no son los de la consola (rolsuper=%, rolbypassrls=%, rolcanlogin=%). Sin -v clave no se modifica el rol; corregilo a mano o pasá -v clave para volver a definirlo.', r.rolsuper, r.rolbypassrls, r.rolcanlogin;
+      END IF;
+    END
+    $$;
+  \endif
 \endif
 
 -- Se parte de cero: una versión anterior de este script daba DML sobre todo `public` y default privileges sobre las tablas futuras.
