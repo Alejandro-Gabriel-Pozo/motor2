@@ -81,17 +81,48 @@ function funcionQueContiene(nodo: ts.Node): string {
   return nombre;
 }
 
-/** Cada `findMany` sobre un modelo de la lista: `{ clave, conTake }`. */
+/** El mayor `take` literal que se acepta como tope (M-16 de la auditoría intermedia: `take: 1e9` acotaba en el papel y no en la base). Hoy el mayor es 50 y los demás son constantes con nombre. */
+const TAKE_LITERAL_MAXIMO = 10_000;
+
+/**
+ * ¿La propiedad `take` es un tope DE VERDAD? (M-16: antes bastaba que existiera la propiedad, y `take: undefined`, `take: null` o un número enorme la satisfacían). No lo es: `undefined`, `null`,
+ * `false`, un literal numérico fuera de 1..`TAKE_LITERAL_MAXIMO`, o la forma abreviada `{ take }` de algo que se llama `undefined`. Una constante o una expresión se aceptan (no se pueden evaluar).
+ */
+function esTopeReal(p: ts.ObjectLiteralElementLike): boolean {
+  if (ts.isShorthandPropertyAssignment(p)) return p.name.text !== "undefined";
+  if (!ts.isPropertyAssignment(p)) return false;
+  const v = p.initializer;
+  if (v.kind === ts.SyntaxKind.NullKeyword || v.kind === ts.SyntaxKind.FalseKeyword || v.kind === ts.SyntaxKind.TrueKeyword) return false;
+  if (ts.isIdentifier(v) && v.text === "undefined") return false;
+  if (ts.isNumericLiteral(v)) return Number(v.text) >= 1 && Number(v.text) <= TAKE_LITERAL_MAXIMO;
+  if (ts.isPrefixUnaryExpression(v) && v.operator === ts.SyntaxKind.MinusToken) return false;
+  return true;
+}
+
+/** Cada `findMany` sobre un modelo de la lista: `{ clave, conTake }`. También por un alias desestructurado (`const { movimientoStock } = db; movimientoStock.findMany(…)`: M-16). */
 function findManySinTope(codigo: string, ruta: string): { clave: string; conTake: boolean }[] {
   const fuente = ts.createSourceFile(ruta, codigo, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const salida: { clave: string; conTake: boolean }[] = [];
   const repetidas = new Map<string, number>();
+  // alias local → modelo (`const { movimientoStock: movs } = db` / `const { cuenta } = tx`)
+  const alias = new Map<string, string>();
+  const recolectar = (n: ts.Node): void => {
+    if (ts.isVariableDeclaration(n) && ts.isObjectBindingPattern(n.name)) {
+      for (const e of n.name.elements) {
+        const modelo = (e.propertyName ?? e.name).getText(fuente);
+        if (MODELOS.has(modelo) && ts.isIdentifier(e.name)) alias.set(e.name.text, modelo);
+      }
+    }
+    ts.forEachChild(n, recolectar);
+  };
+  recolectar(fuente);
+  const modeloDe = (e: ts.Expression): string | undefined => (ts.isPropertyAccessExpression(e) ? e.name.text : ts.isIdentifier(e) ? alias.get(e.text) : undefined);
   const visitar = (n: ts.Node): void => {
-    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "findMany" && ts.isPropertyAccessExpression(n.expression.expression)) {
-      const modelo = n.expression.expression.name.text;
+    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "findMany" && modeloDe(n.expression.expression) !== undefined) {
+      const modelo = modeloDe(n.expression.expression)!;
       if (MODELOS.has(modelo)) {
         const args = n.arguments[0];
-        const conTake = !!args && ts.isObjectLiteralExpression(args) && args.properties.some((p) => (ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) && ts.isIdentifier(p.name) && p.name.text === "take");
+        const conTake = !!args && ts.isObjectLiteralExpression(args) && args.properties.some((p) => p.name !== undefined && ts.isIdentifier(p.name) && p.name.text === "take" && esTopeReal(p));
         const base = `${ruta}|${modelo}.findMany|${funcionQueContiene(n)}`;
         const ordinal = (repetidas.get(base) ?? 0) + 1;
         repetidas.set(base, ordinal);
@@ -119,6 +150,21 @@ describe("GT-15 — todo findMany sobre las tablas que más crecen lleva take", 
     expect(findManySinTope("export const g = (db) => db.cuenta.findMany({ where: {} });", "x.ts")).toEqual([{ clave: "x.ts|cuenta.findMany|g", conTake: false }]);
     expect(findManySinTope("export function h(db) { return db.producto.findMany({}); }", "x.ts")).toEqual([]);
     expect(findManySinTope("// db.cuenta.findMany({})\nexport const s = 'db.cuenta.findMany({})';", "x.ts")).toEqual([]);
+  });
+
+  it("el detector no se deja burlar: `take: undefined`, `null`, un número enorme o negativo no acotan; un alias desestructurado sí se ve (M-16 de la auditoría intermedia)", () => {
+    const con = (take: string) => findManySinTope(`export async function f(db) { return db.cuenta.findMany({ where: {}, take: ${take} }); }`, "x.ts")[0]!.conTake;
+    expect(con("50")).toBe(true);
+    expect(con("TOPE")).toBe(true);
+    expect(con("limite ?? TOPE")).toBe(true);
+    for (const burla of ["undefined", "null", "0", "-1", "1_000_000", "1e9", "false"]) expect(con(burla), `take: ${burla}`).toBe(false);
+    expect(findManySinTope("export async function f(tx) { const { movimientoStock: movs } = tx; return movs.findMany({ where: {} }); }", "x.ts")).toEqual([{ clave: "x.ts|movimientoStock.findMany|f", conTake: false }]);
+    expect(findManySinTope("export async function f(tx) { const { cuenta } = tx; return cuenta.findMany({ where: {}, take: 10 }); }", "x.ts")).toEqual([{ clave: "x.ts|cuenta.findMany|f", conTake: true }]);
+    expect(findManySinTope("export async function f(db, opciones) { return db.cuenta.findMany(opciones); }", "x.ts")).toEqual([{ clave: "x.ts|cuenta.findMany|f", conTake: false }]);
+    // un spread de opciones no acota (no se puede saber qué trae): falla cerrado y no revienta
+    expect(findManySinTope("export async function f(db, o) { return db.cuenta.findMany({ ...o }); }", "x.ts")).toEqual([{ clave: "x.ts|cuenta.findMany|f", conTake: false }]);
+    // otro modelo con el mismo nombre de variable no cuenta
+    expect(findManySinTope("export async function f(tx) { const { producto } = tx; return producto.findMany({}); }", "x.ts")).toEqual([]);
   });
 
   it("los findMany sin take son exactamente los de SIN_TOPE", () => {
