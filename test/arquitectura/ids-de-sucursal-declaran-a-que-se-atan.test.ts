@@ -8,7 +8,11 @@ import { describe, expect, it } from "vitest";
  * declara a qué se ata ese id**. La RLS de hoy separa empresas, NO sucursales: dentro de la empresa, una sucursal que llega desde el cliente está protegida solo por lo que cada
  * acción se acuerde de hacer con ella (S-07 fue exactamente ese olvido: el origen de una copia se buscaba por id sin mirar la membresía). Una acción nueva con un parámetro
  * `sucursal…Id` que no figura acá falla: hay que decidir y escribir a qué se ata, y el guardián comprueba en el código que el atado es real. La segunda mitad (toda escritura con
- * `sucursalId` desde una acción de empresa declara la sucursal y su clave, D1) es `escrituras-en-sucursal-desde-empresa.test.ts` (tanda T6, fila O.59); el consolidado, de T14.
+ * `sucursalId` desde una acción de empresa declara la sucursal y su clave, D1) es `escrituras-en-sucursal-desde-empresa.test.ts` (tanda T6, fila O.59).
+ * CONSOLIDADO (T14, M-8 y M-9 de la auditoría intermedia): el id puede llegar también DENTRO de un objeto (`input.sucursalId`, `datos.origenSucursalId`, un objeto desestructurado; el tipo se
+ * resuelve en línea, en la misma fuente o por el índice de tipos de `src/`, con los esquemas `z.object` y `z.infer`), y la segunda mitad sigue las escrituras entre archivos de persistencia
+ * y los modelos de traspaso (`origenSucursalId`/`destinoSucursalId`) y los que cuelgan de una sucursal. Dos formas nuevas de atarlo: `GATE_EN_ESA_SUCURSAL` y `CONTRAPARTE_DE_TRASPASO`.
+ * Queda como residuo declarado: la evidencia de `SUCURSAL_ACTIVA` y `MEMBRESIA_PROPIA` sigue siendo una búsqueda de texto en la función.
  *
  * Las formas de atarlo (cada una con la evidencia que se exige en el código, leída por AST/texto de la función):
  *  - `SUCURSAL_CON_GATE`: la PRIMERA sentencia es `const ctx = await requerirVerEnSucursal(<id>, "<clave>")` (o `requerirVerAlgunaEnSucursal`): membresía y clave EN ESA sucursal, antes de leer nada.
@@ -23,13 +27,13 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "../..");
 const ACCIONES = join(RAIZ, "src/server/actions");
 
-type Ata = "SUCURSAL_CON_GATE" | "SUCURSAL_ACTIVA" | "MEMBRESIA_EN_ORIGEN" | "EMPRESA_RLS" | "MEMBRESIA_PROPIA";
+type Ata = "SUCURSAL_CON_GATE" | "SUCURSAL_ACTIVA" | "MEMBRESIA_EN_ORIGEN" | "EMPRESA_RLS" | "MEMBRESIA_PROPIA" | "GATE_EN_ESA_SUCURSAL" | "CONTRAPARTE_DE_TRASPASO";
 interface Declaracion {
   ata: Ata;
   motivo: string;
-  /** Solo `MEMBRESIA_EN_ORIGEN`: la clave literal con que se llama a `leerOrigenDeCopia`. */
+  /** `MEMBRESIA_EN_ORIGEN`: la clave literal con que se llama a `leerOrigenDeCopia`. `GATE_EN_ESA_SUCURSAL`: la clave con que se llama a `requierePermiso` sobre ESE id. */
   clave?: string;
-  /** Solo `MEMBRESIA_EN_ORIGEN` cuando el cuerpo vive en un caso de uso: el archivo (desde la raíz) donde está la llamada. */
+  /** `MEMBRESIA_EN_ORIGEN` y `CONTRAPARTE_DE_TRASPASO` cuando el cuerpo vive en un caso de uso: el archivo (desde la raíz) donde está la evidencia. */
   evidencia?: string;
 }
 
@@ -38,6 +42,28 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   "auth/sucursal-activa.ts|cambiarSucursalActiva": { ata: "MEMBRESIA_PROPIA", motivo: "elige entre las sucursales donde el usuario ya tiene membresía ACTIVA; sin ella no hace nada" },
   "auth/sucursales.ts|actualizarActivoSucursal": { ata: "EMPRESA_RLS", motivo: "`activar_sucursal` es una clave de empresa (alta y baja de sucursales); el caso de uso mide el id contra las de la empresa" },
   "auth/sucursales.ts|renombrarSucursal": { ata: "EMPRESA_RLS", motivo: "`renombrar_sucursal` es una clave de empresa; el id solo alcanza sucursales de la empresa" },
+  // M-8 de la auditoría intermedia: ids que llegan DENTRO de un objeto.
+  "auth/usuarios.ts|agregarOActualizarUsuario": {
+    ata: "GATE_EN_ESA_SUCURSAL",
+    clave: "gestion_usuarios",
+    motivo: "`input.sucursalId` es la sucursal donde se agrega al usuario: si no es la activa, la acción pide `gestion_usuarios` EN ESA sucursal (`requierePermiso`) antes del caso de uso",
+  },
+  "catalogo/rendimiento-local.ts|fijarRendimientoLocal": {
+    ata: "SUCURSAL_ACTIVA",
+    motivo: "`origen.sucursalCalculoId` es la sucursal con que se calculó la sugerencia: el guard del formato lo compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; la escritura es siempre en la activa",
+  },
+  "traspasos/traspasos.ts|crearSolicitudTransferencia": {
+    ata: "CONTRAPARTE_DE_TRASPASO",
+    clave: "traspaso_solicitar",
+    evidencia: "src/server/actions/traspasos/casos-de-uso/crear-solicitud-de-traspaso.ts",
+    motivo: "`datos.origenSucursalId` es la OTRA punta del traspaso (a quien se le pide): se escribe en la activa (la sección de destino es propia) y la fila se ve en la bandeja de la otra por diseño (plan, 6.4 punto 1); el caso de uso rechaza la misma sucursal y una inactiva",
+  },
+  "traspasos/traspasos.ts|crearEnvioDirectoTransferencia": {
+    ata: "CONTRAPARTE_DE_TRASPASO",
+    clave: "traspaso_enviar_directo",
+    evidencia: "src/server/actions/traspasos/casos-de-uso/crear-envio-directo-de-traspaso.ts",
+    motivo: "`datos.destinoSucursalId` es la OTRA punta del traspaso (a quien se le manda): se descuenta de una sección propia de la activa y la fila se ve en la bandeja de la otra por diseño (plan, 6.4 punto 1); el caso de uso rechaza la misma sucursal y una inactiva",
+  },
   "auth/usuarios.ts|listarUsuariosDeSucursal": { ata: "SUCURSAL_CON_GATE", motivo: "`gestion_usuarios` EN la sucursal pedida, antes de leer a nadie" },
   "auth/usuarios.ts|listarInvitacionesPendientes": { ata: "SUCURSAL_CON_GATE", motivo: "`gestion_usuarios` EN la sucursal pedida; S-16 (O.65) además recorta los accesos de las otras a los de las sucursales que también administra" },
   "carta/copiar-carta.ts|copiarCartaDeSucursal": {
@@ -92,15 +118,72 @@ function archivosTs(dir: string): string[] {
   });
 }
 
-/** Las funciones exportadas de un archivo `"use server"` con algún parámetro `sucursal…Id`. */
-function puertasDe(rutaRelativa: string, fuente: string): Puerta[] {
+/** Un nombre de PROPIEDAD que lleva un id de sucursal: `sucursalId`, `origenSucursalId`, `sucursalOrigenId`, `traspasoSucursalId`… (M-8 de la auditoría intermedia). */
+const PROPIEDAD_DE_SUCURSAL = /[sS]ucursal\w*Id$/;
+
+/** Índice de TIPOS del proyecto: nombre → nombres de sus propiedades (`interface`, `type X = { … }` y los esquemas `z.object({ … })`, con `z.infer<typeof X>` resuelto). */
+type IndiceDeTipos = ReadonlyMap<string, ReadonlySet<string>>;
+
+function propiedadesDeUnTipo(tipo: ts.TypeNode | undefined, indice: IndiceDeTipos): string[] {
+  if (!tipo) return [];
+  if (ts.isTypeLiteralNode(tipo)) return tipo.members.flatMap((m) => (m.name && ts.isIdentifier(m.name) ? [m.name.text] : []));
+  if (ts.isParenthesizedTypeNode(tipo)) return propiedadesDeUnTipo(tipo.type, indice);
+  if (ts.isIntersectionTypeNode(tipo) || ts.isUnionTypeNode(tipo)) return tipo.types.flatMap((t) => propiedadesDeUnTipo(t, indice));
+  if (ts.isTypeReferenceNode(tipo)) {
+    const nombre = tipo.typeName.getText();
+    if (indice.has(nombre)) return [...indice.get(nombre)!];
+    // `z.infer<typeof Esquema>` y `Readonly<X>`/`Partial<X>`: se mira el argumento
+    return (tipo.typeArguments ?? []).flatMap((a) => (ts.isTypeQueryNode(a) ? [...(indice.get(a.exprName.getText()) ?? [])] : propiedadesDeUnTipo(a, indice)));
+  }
+  return [];
+}
+
+/** Arma el índice de tipos con las fuentes dadas (`archivo → texto`). */
+function indiceDeTipos(fuentes: Iterable<string>): IndiceDeTipos {
+  const indice = new Map<string, Set<string>>();
+  const alias: { nombre: string; tipo: ts.TypeNode }[] = [];
+  for (const codigo of fuentes) {
+    if (!/ucursal\w*Id/.test(codigo)) continue;
+    const sf = ts.createSourceFile("x.ts", codigo, ts.ScriptTarget.Latest, true);
+    for (const s of sf.statements) {
+      if (ts.isInterfaceDeclaration(s)) indice.set(s.name.text, new Set(s.members.flatMap((m) => (m.name && ts.isIdentifier(m.name) ? [m.name.text] : []))));
+      if (ts.isTypeAliasDeclaration(s)) alias.push({ nombre: s.name.text, tipo: s.type });
+      if (ts.isVariableStatement(s)) {
+        for (const d of s.declarationList.declarations) {
+          // `const Esquema = z.object({ … })`
+          const init = d.initializer;
+          const llamada = init && ts.isCallExpression(init) && init.arguments[0] && ts.isObjectLiteralExpression(init.arguments[0]) ? init.arguments[0] : undefined;
+          if (ts.isIdentifier(d.name) && llamada) indice.set(d.name.text, new Set(llamada.properties.flatMap((p) => (p.name && ts.isIdentifier(p.name) ? [p.name.text] : []))));
+        }
+      }
+    }
+  }
+  for (const { nombre, tipo } of alias) indice.set(nombre, new Set(propiedadesDeUnTipo(tipo, indice)));
+  return indice;
+}
+
+/**
+ * Las funciones exportadas de un archivo `"use server"` con algún id de sucursal: un parámetro `sucursal…Id`, o (M-8 de la auditoría intermedia: los ids que llegan DENTRO de un objeto
+ * escapaban) una propiedad de sucursal en un parámetro de objeto —desestructurado, con un tipo en línea, o con un tipo nombrado que `indice` resuelve—, que se nombra `parametro.propiedad`.
+ */
+function puertasDe(rutaRelativa: string, fuente: string, indice: IndiceDeTipos = new Map()): Puerta[] {
   const sf = ts.createSourceFile("x.ts", fuente, ts.ScriptTarget.Latest, true);
   const primera = sf.statements[0];
   const esUseServer = primera && ts.isExpressionStatement(primera) && ts.isStringLiteral(primera.expression) && primera.expression.text === "use server";
   if (!esUseServer) return [];
   const resultado: Puerta[] = [];
   const agregar = (nombre: string, parametros: readonly ts.ParameterDeclaration[], cuerpo: ts.ConciseBody | undefined, nodo: ts.Node) => {
-    const delId = parametros.filter((p) => ts.isIdentifier(p.name) && PARAMETRO_DE_SUCURSAL.test(p.name.text)).map((p) => (p.name as ts.Identifier).text);
+    const delId = parametros.flatMap((p): string[] => {
+      if (ts.isIdentifier(p.name)) {
+        if (PARAMETRO_DE_SUCURSAL.test(p.name.text)) return [p.name.text];
+        return propiedadesDeUnTipo(p.type, indice).filter((prop) => PROPIEDAD_DE_SUCURSAL.test(prop)).map((prop) => `${(p.name as ts.Identifier).text}.${prop}`);
+      }
+      if (ts.isObjectBindingPattern(p.name)) {
+        const delPatron = p.name.elements.flatMap((e) => (ts.isIdentifier(e.name) && PROPIEDAD_DE_SUCURSAL.test((e.propertyName && ts.isIdentifier(e.propertyName) ? e.propertyName : e.name).getText()) ? [e.name.text] : []));
+        return delPatron.length ? delPatron : propiedadesDeUnTipo(p.type, indice).filter((prop) => PROPIEDAD_DE_SUCURSAL.test(prop));
+      }
+      return [];
+    });
     if (!delId.length) return;
     const sentencia = cuerpo && ts.isBlock(cuerpo) ? cuerpo.statements[0] : undefined;
     resultado.push({ clave: `${rutaRelativa}|${nombre}`, texto: nodo.getText(sf), parametros: delId, primera: sentencia?.getText(sf) ?? "" });
@@ -140,6 +223,31 @@ function problemasDe(puertas: readonly Puerta[], declaradas: Readonly<Record<str
       case "EMPRESA_RLS":
         if (!p.primera.startsWith("return conPermisoDeEmpresa(")) problemas.push(`${p.clave}: declara EMPRESA_RLS y su primera sentencia no es \`return conPermisoDeEmpresa(…)\``);
         break;
+      case "GATE_EN_ESA_SUCURSAL": {
+        // `requierePermiso(<usuario>, <expresión que nombra el id>, "<clave>", …)`: el permiso se pide EN la sucursal que llegó, no en la activa.
+        const propiedad = id.includes(".") ? id.split(".")[1]! : id;
+        if (!d.clave) {
+          problemas.push(`${p.clave}: GATE_EN_ESA_SUCURSAL sin la clave`);
+          break;
+        }
+        if (!p.primera.startsWith("return conPermiso(")) problemas.push(`${p.clave}: declara GATE_EN_ESA_SUCURSAL y no es \`return conPermiso(…)\``);
+        // el segundo argumento NO puede ser la sucursal activa (`ctx.sucursalId`): pedir la clave en la activa no ata el id que llegó
+        if (!new RegExp(`requierePermiso\\(\\s*[\\w.]+\\s*,\\s*(?!ctx\\.|contexto\\.)[\\w.]*${propiedad}\\s*,\\s*"${d.clave}"`).test(p.texto)) problemas.push(`${p.clave}: declara GATE_EN_ESA_SUCURSAL y no llama a \`requierePermiso(…, <el id que llegó: …${propiedad}>, "${d.clave}", …)\` (la sucursal activa, \`ctx.sucursalId\`, no es el id que llegó)`);
+        break;
+      }
+      case "CONTRAPARTE_DE_TRASPASO": {
+        if (!d.clave || !d.evidencia) {
+          problemas.push(`${p.clave}: CONTRAPARTE_DE_TRASPASO sin la clave o sin el archivo de evidencia`);
+          break;
+        }
+        if (!new RegExp(`^return conPermiso\\(\\s*"${d.clave}"`).test(p.primera)) problemas.push(`${p.clave}: declara CONTRAPARTE_DE_TRASPASO y no es \`return conPermiso("${d.clave}", …)\``);
+        const evidencia = leer(d.evidencia);
+        // el caso de uso rechaza la misma sucursal y toma la sección de la ACTIVA (`actor.sucursalId`): la escritura es del lado de quien actúa
+        if (!/SucursalId\s*===\s*actor\.sucursalId/.test(evidencia) || !/obtenerSeccionPropia\([^)]*actor\.sucursalId/.test(evidencia)) {
+          problemas.push(`${p.clave}: declara CONTRAPARTE_DE_TRASPASO y ${d.evidencia} no rechaza la misma sucursal ni toma la sección de la activa (\`actor.sucursalId\`)`);
+        }
+        break;
+      }
       case "MEMBRESIA_PROPIA":
         if (!p.texto.includes("usuarioSucursal.findUnique") || !p.texto.includes("usuarioId: ctx.usuarioId") || !p.texto.includes("membresia?.activo")) problemas.push(`${p.clave}: declara MEMBRESIA_PROPIA y no busca la membresía activa del usuario`);
         break;
@@ -161,8 +269,19 @@ function problemasDe(puertas: readonly Puerta[], declaradas: Readonly<Record<str
 
 const leerDelDisco = (ruta: string) => readFileSync(join(RAIZ, ruta), "utf8");
 
+/** Todo `src/` (los tipos de los parámetros viven en los archivos de las acciones, en `core/features/**` y donde se declaren). */
+function todasLasFuentes(dir: string): string[] {
+  return readdirSync(dir).flatMap((nombre) => {
+    const ruta = join(dir, nombre);
+    if (statSync(ruta).isDirectory()) return todasLasFuentes(ruta);
+    return /\.tsx?$/.test(nombre) ? [readFileSync(ruta, "utf8")] : [];
+  });
+}
+
+const INDICE = indiceDeTipos(todasLasFuentes(join(RAIZ, "src")));
+
 function puertasDelCodigo(): Puerta[] {
-  return archivosTs(ACCIONES).flatMap((ruta) => puertasDe(relative(ACCIONES, ruta).replace(/\\/g, "/"), readFileSync(ruta, "utf8")));
+  return archivosTs(ACCIONES).flatMap((ruta) => puertasDe(relative(ACCIONES, ruta).replace(/\\/g, "/"), readFileSync(ruta, "utf8"), INDICE));
 }
 
 describe("GT-4 (primera mitad): toda Server Action con un id de sucursal declara a qué se ata", () => {
@@ -214,6 +333,49 @@ describe("GT-4 (primera mitad): toda Server Action con un id de sucursal declara
       const d = declarar({ ata: "EMPRESA_RLS", motivo: "x" });
       expect(problemasDe(puertasDeFuente('return conPermisoDeEmpresa("a", async () => ok());'), d, () => "")).toEqual([]);
       expect(problemasDe(puertasDeFuente('return conPermiso("a", async () => ok());'), d, () => "")).toHaveLength(1);
+    });
+
+    describe("ids que llegan DENTRO de un objeto (M-8 de la auditoría intermedia)", () => {
+      const ACCION_CON = (firma: string) => `"use server";\nexport async function copiarX(${firma}) {\n  return conPermiso("a", async (ctx) => ok());\n}\n`;
+      const claves = (firma: string, indice: IndiceDeTipos = new Map()) => puertasDe("x.ts", ACCION_CON(firma), indice).map((p) => `${p.clave}:${p.parametros.join(",")}`);
+
+      it("un tipo en línea, un objeto desestructurado y un tipo nombrado de la misma fuente o de otra, todos con su id", () => {
+        expect(claves("input: { sucursalOrigenId: string; otro: string }")).toEqual(["x.ts|copiarX:input.sucursalOrigenId"]);
+        expect(claves("{ origenSucursalId, otro }: { origenSucursalId: string; otro: string }")).toEqual(["x.ts|copiarX:origenSucursalId"]);
+        const indice = indiceDeTipos([
+          "export interface DatosDeCopia { destinoSucursalId: string; productoId: string }",
+          "export const EsquemaA = z.object({ sucursalId: z.string(), nombre: z.string() });\nexport type DatosA = z.infer<typeof EsquemaA>;",
+          'export type Alias = { traspasoSucursalId: string } & { x: 1 };',
+        ]);
+        expect(claves("d: DatosDeCopia", indice)).toEqual(["x.ts|copiarX:d.destinoSucursalId"]);
+        expect(claves("d: DatosA", indice)).toEqual(["x.ts|copiarX:d.sucursalId"]);
+        expect(claves("d: Alias", indice)).toEqual(["x.ts|copiarX:d.traspasoSucursalId"]);
+      });
+
+      it("un objeto sin id de sucursal, o un tipo que no se conoce, no es una puerta (no se inventa)", () => {
+        expect(claves("d: { productoId: string; cantidad: number }")).toEqual([]);
+        expect(claves("d: TipoQueNoSeResuelve")).toEqual([]);
+      });
+
+      it("GATE_EN_ESA_SUCURSAL exige pedir la clave EN ese id; sin el gate extra (la mutación de agregarOActualizarUsuario) falla", () => {
+        const con = `"use server";\nexport async function agregar(input: { sucursalId: string }) {\n  return conPermiso("gestion_usuarios", async (ctx) => {\n    const gate = await requierePermiso(ctx.usuarioId, comando.valor.sucursalId, "gestion_usuarios", ctx.db);\n    return ok();\n  });\n}\n`;
+        const sin = con.replace(/const gate = await requierePermiso\([^;]*;/, "");
+        const d = { "x.ts|agregar": { ata: "GATE_EN_ESA_SUCURSAL", clave: "gestion_usuarios", motivo: "x" } satisfies Declaracion };
+        expect(problemasDe(puertasDe("x.ts", con, new Map()), d, () => "")).toEqual([]);
+        expect(problemasDe(puertasDe("x.ts", sin, new Map()), d, () => "")).toHaveLength(1);
+        expect(problemasDe(puertasDe("x.ts", con.replace('"gestion_usuarios", ctx.db', '"otra", ctx.db'), new Map()), d, () => "")).toHaveLength(1);
+        // pedir la clave en la sucursal ACTIVA no ata el id que llegó (la mutación real de usuarios.ts)
+        expect(problemasDe(puertasDe("x.ts", con.replace("comando.valor.sucursalId", "ctx.sucursalId"), new Map()), d, () => "")).toHaveLength(1);
+      });
+
+      it("CONTRAPARTE_DE_TRASPASO exige la clave en el conPermiso y que el caso de uso rechace la misma sucursal y tome la sección de la activa", () => {
+        const accion = `"use server";\nexport async function pedir(datos: { origenSucursalId: string }) {\n  return conPermiso("traspaso_solicitar", async (ctx) => ok());\n}\n`;
+        const d = { "x.ts|pedir": { ata: "CONTRAPARTE_DE_TRASPASO", clave: "traspaso_solicitar", evidencia: "caso.ts", motivo: "x" } satisfies Declaracion };
+        const bueno = "if (comando.origenSucursalId === actor.sucursalId) return fracaso();\nconst s = await obtenerSeccionPropia(comando.seccionId, actor.sucursalId, tx);";
+        expect(problemasDe(puertasDe("x.ts", accion, new Map()), d, () => bueno)).toEqual([]);
+        expect(problemasDe(puertasDe("x.ts", accion, new Map()), d, () => bueno.replace("=== actor.sucursalId", "=== otra"))).toHaveLength(1);
+        expect(problemasDe(puertasDe("x.ts", accion.replace("traspaso_solicitar", "otra"), new Map()), d, () => bueno)).toHaveLength(1);
+      });
     });
 
     it("un archivo sin \"use server\" no tiene puertas", () => {

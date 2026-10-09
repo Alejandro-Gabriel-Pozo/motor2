@@ -147,14 +147,24 @@ interface Modulo {
 
 const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
-/** Los delegados (`generoCarta`…) de los modelos del schema con un campo `sucursalId`. */
+/**
+ * Los delegados (`generoCarta`…) de los modelos del schema con un campo de sucursal: `sucursalId` o cualquier `<algo>SucursalId` (`origenSucursalId`/`destinoSucursalId` de un traspaso: M-9 de la
+ * auditoría intermedia, antes solo se miraba el nombre literal `sucursalId`, y `TraspasoSucursal` no entraba).
+ */
 function modelosConSucursalId(schemaPrisma: string): Set<string> {
   const modelos = new Set<string>();
-  for (const m of schemaPrisma.matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm)) {
-    if (/^\s+sucursalId\s+String/m.test(m[2])) modelos.add(lowerFirst(m[1]));
+  for (const m of schemaPrisma.replace(/\r\n/g, "\n").matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm)) {
+    if (/^\s+(?:\w*[sS])?ucursalId\s+String/m.test(m[2]!)) modelos.add(lowerFirst(m[1]!));
   }
+  for (const m of MODELOS_QUE_CUELGAN_DE_UNA_SUCURSAL) modelos.add(m);
   return modelos;
 }
+
+/**
+ * Los modelos que no llevan `sucursalId` propio pero SON de una sucursal porque cuelgan de otra tabla que sí la tiene (plan, sección 6.3 iv): una escritura sobre ellos desde una acción de empresa
+ * es una escritura en una sucursal igual (M-9 de la auditoría intermedia). `MovimientoStock` cuelga de `Seccion`; las cuentas del POS, de `Mesa`.
+ */
+const MODELOS_QUE_CUELGAN_DE_UNA_SUCURSAL = ["movimientoStock", "cuenta", "cuentaItem", "promoCuenta"];
 
 function resolver(desde: string, especificador: string, existe: (ruta: string) => boolean): string | null {
   let base: string;
@@ -250,7 +260,12 @@ function hallazgosDe(fuentes: ReadonlyMap<string, string>, modelosDeSucursal: Re
     visitadas.add(clave);
     const propias = escriturasPropias(f.cuerpo, modelosDeSucursal);
     const delMismoArchivo = [...identificadoresDe(f.cuerpo)].filter((id) => id !== nombre && modulo.funciones.has(id)).flatMap((id) => escriturasDePersistencia(archivo, id, visitadas));
-    return [...propias, ...delMismoArchivo];
+    // M-9 (auditoría intermedia): una función de persistencia que llama a otra de OTRO archivo de persistencia (`escribir-anulacion-de-compra.ts` importa a su hermana) también hereda sus escrituras.
+    const deOtroArchivoDePersistencia = [...identificadoresDe(f.cuerpo)].flatMap((id) => {
+      const importado = modulo.importados.get(id);
+      return importado?.archivo.startsWith(ZONA_DE_PERSISTENCIA) ? escriturasDePersistencia(importado.archivo, importado.nombre, visitadas) : [];
+    });
+    return [...propias, ...delMismoArchivo, ...deOtroArchivoDePersistencia];
   };
 
   const porArchivo = new Map<string, Hallazgo>();
@@ -378,6 +393,15 @@ describe("GT-4 (segunda mitad): toda acción de empresa que escribe filas de una
     expect(MODELOS.has("seccionCarta")).toBe(false);
   });
 
+  it("ve también los modelos de traspaso (`origenSucursalId`/`destinoSucursalId`) y los que cuelgan de una sucursal (M-9 de la auditoría intermedia)", () => {
+    for (const m of ["traspasoSucursal", "movimientoStock", "cuenta", "cuentaItem", "promoCuenta", "operacion", "mesa"]) expect(MODELOS.has(m), m).toBe(true);
+    // los que cuelgan existen de verdad en el schema (si se renombra uno, la lista no queda apuntando a nada)
+    const schema = readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8").replace(/\r\n/g, "\n");
+    for (const m of MODELOS_QUE_CUELGAN_DE_UNA_SUCURSAL) expect(schema, m).toMatch(new RegExp(`^model ${m.charAt(0).toUpperCase()}${m.slice(1)} \\{`, "m"));
+    // el schema normalizado a LF y a CRLF da lo mismo
+    expect([...modelosConSucursalId(schema.replace(/\n/g, "\r\n"))].sort()).toEqual([...modelosConSucursalId(schema)].sort());
+  });
+
   describe("el guardián en sí (casos sintéticos)", () => {
     const MODELOS_SINTETICOS = new Set(["generoCarta"]);
     const PERSISTENCIA = `import type { Prisma } from "@prisma/client";
@@ -450,6 +474,21 @@ export async function guardarGenero() {
         `export async function crearGenero(db: any, args: { sucursalId: string }) { return db.promoCarta.create({ data: { sucursales: { create: { sucursalId: args.sucursalId } } } }); }`,
       );
       expect(juzgar(f, {})).toHaveLength(1);
+    });
+
+    it("una escritura de OTRO archivo de persistencia que la primera llama también se sigue (M-9: `escribir-anulacion-de-compra` importa a su hermana)", () => {
+      const f = fuentesSinteticas("conPermisoDeEmpresa");
+      f.set(
+        "src/server/persistencia/carta/generos.ts",
+        `import { escribirDeVerdad } from "./escribir-de-verdad";
+export async function crearGenero(db: any, args: { sucursalId: string }) { return escribirDeVerdad(db, args.sucursalId); }`,
+      );
+      f.set("src/server/persistencia/carta/escribir-de-verdad.ts", `export async function escribirDeVerdad(db: any, sucursalId: string) { return db.generoCarta.create({ data: { sucursalId } }); }`);
+      const problemas = juzgar(f, {});
+      expect(problemas).toHaveLength(1);
+      expect(problemas[0]).toContain("generoCarta.create");
+      f.set("src/server/persistencia/carta/escribir-de-verdad.ts", `export async function escribirDeVerdad(db: any, sucursalId: string) { return db.generoCarta.findMany({ where: { sucursalId } }); }`);
+      expect(juzgar(f, {})).toEqual([]);
     });
 
     it("la helper no exportada del mismo archivo de persistencia se sigue", () => {
