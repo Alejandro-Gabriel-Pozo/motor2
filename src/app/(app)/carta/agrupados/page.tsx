@@ -1,6 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import type { ItemAgrupadoAdmin } from "@/core/carta/public";
 import { cargarAdminItemsAgrupados } from "@/server/consultas/carta/admin";
 import {
@@ -24,7 +24,7 @@ import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/dat
  * Central); lo que se ve acá de cada opción (disponible o no, y su precio) es de la sucursal ACTIVA.
  *
  * Mismo estilo que /carta: las mutaciones pasan por las Server Actions de src/server/actions/carta/items-agrupados.ts
- * (conPermisoDeEmpresa("carta_items_agrupados")) y el refresco lo piden los closures de acá. Los closures capturan solo ids (texto): lo que captura un
+ * (conPermiso("carta_items_agrupados"), de contexto sucursal desde S-10/D1) y el refresco lo piden los closures de acá. Los closures capturan solo ids (texto): lo que captura un
  * closure "use server" viaja al cliente. Si agregar una opción se rechaza por precio (D5), el error de la acción se muestra tal
  * cual en el resultado del formulario.
  *
@@ -51,9 +51,10 @@ export default async function ItemsAgrupadosPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
 
-  const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_items_agrupados", ctx.db);
+  // S-10/D1 (O.59): los ítems agrupados son de la carta PROPIA de la sucursal activa → clave de contexto SUCURSAL, evaluada en ella.
+  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_items_agrupados", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
-  const { editar: puedeEditarCarta } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_items_agrupados", ctx.db);
+  const { editar: puedeEditarCarta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_items_agrupados", ctx.db);
 
   // La hora se fija acá, en el borde (O.22-c).
   const datos = await cargarAdminItemsAgrupados(ctx.sucursalId, ctx.db, new Date());

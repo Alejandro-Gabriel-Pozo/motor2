@@ -165,7 +165,6 @@
         "catalogo|/catalogo/categorias",
         "catalogo|/catalogo/unidades",
         "catalogo|/catalogo/margen-objetivo",
-        "carta|/carta/agrupados",
         "carta|/carta/portal",
         "movimientos|/movimientos/motivos-merma",
         "movimientos|/movimientos/destinos-consumo",
@@ -176,6 +175,7 @@
         "administracion|/administracion/auditoria",
         "catalogo|/catalogo/productos",
         "carta|/carta",
+        "carta|/carta/agrupados",
         "carta|/carta/tema",
         "movimientos|/movimientos/compra",
         "movimientos|/movimientos/produccion",
@@ -517,7 +517,7 @@
     },
     {
       "clave": "carta_generos",
-      "contexto": "empresa",
+      "contexto": "sucursal",
       "nivelMinimo": "administrador",
       "rolesEditarSemilla": [
         "admin"
@@ -525,7 +525,7 @@
     },
     {
       "clave": "carta_contenido_producto",
-      "contexto": "empresa",
+      "contexto": "sucursal",
       "nivelMinimo": "administrador",
       "rolesEditarSemilla": [
         "admin"
@@ -541,7 +541,7 @@
     },
     {
       "clave": "carta_items_agrupados",
-      "contexto": "empresa",
+      "contexto": "sucursal",
       "nivelMinimo": "administrador",
       "rolesEditarSemilla": [
         "admin"

@@ -62,11 +62,14 @@ export const ACCIONES = [
   // Carta pública: una clave por bloque de administración (decisión del dueño, 2026-09-30); `carta` (una sola para todo) se retiró.
   { clave: "carta_ver", modulo: "carta", descripcion: "Entrar a la pantalla Carta y ver sus secciones, géneros, contenido y promos", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "carta_secciones", modulo: "carta", descripcion: "Administrar las secciones de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_generos", modulo: "carta", descripcion: "Administrar los géneros de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_contenido_producto", modulo: "carta", descripcion: "Editar el contenido de carta de cada producto de venta", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  // S-10 / D1 (decisión del dueño, 2026-10-08; fila O.59): `carta_generos`, `carta_contenido_producto` y `carta_items_agrupados` ESCRIBEN solo en la carta de la sucursal ACTIVA (la carta es propia
+  // de cada sucursal, ADR-009 C3), así que son de contexto SUCURSAL: se evalúan contra la membresía de la sucursal donde se escribe, no contra «alguna membresía de la empresa». Declararlas de
+  // empresa (2026-09-30) fue un error. Las que de verdad son de la empresa entera (`carta_secciones`, `carta_portal`, `carta_promo_definir`) no cambian.
+  { clave: "carta_generos", modulo: "carta", descripcion: "Administrar los géneros de la carta pública", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_contenido_producto", modulo: "carta", descripcion: "Editar el contenido de carta de cada producto de venta", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   // Producto con descuento (2026-10-01): el % es por sucursal; no es una promoción.
   { clave: "carta_producto_descuento", modulo: "carta", descripcion: "Fijar o sacar el descuento en porcentaje de un producto en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_items_agrupados", modulo: "carta", descripcion: "Administrar los ítems agrupados de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_items_agrupados", modulo: "carta", descripcion: "Administrar los ítems agrupados de la carta pública", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "carta_portal", modulo: "carta", descripcion: "Administrar el portal de sucursales de la carta pública", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   // Una promo es de la empresa (decisión del dueño, 2026-10-01): definirla es de empresa; prenderla/apagarla y ponerle precio son de la sucursal.
   { clave: "carta_promo_definir", modulo: "promociones", descripcion: "Crear y editar las promos de la carta (de la empresa): datos, cupos y apagado general", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },

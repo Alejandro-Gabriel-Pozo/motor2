@@ -73,7 +73,7 @@ import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-car
  *   - un rol propio (sin clave: nivel operario) con la fila Ver+Editar de las 52 claves (`encargado`): el piso manda sobre la fila
  *     (`decision-de-acceso.ts`), así que rechaza las de piso «administrador» (las de piso «operario» —altas rápidas, disponibilidad, frecuencia de conteo,
  *     presentaciones…— sí las tiene, y no entran en este caso);
- *   - para las 19 de contexto SUCURSAL, alguien que tiene la clave en OTRA sucursal (admin en Norte) y está parado en Central con el rol `vacio`: el permiso de
+ *   - para las de contexto SUCURSAL (19 al armarse la pieza, 31 hoy), alguien que tiene la clave en OTRA sucursal (admin en Norte) y está parado en Central con el rol `vacio`: el permiso de
  *     una sucursal no se presta a otra. Un `conPermiso` cambiado por `conPermisoDeEmpresa` lo dejaría pasar (la empresa mira todas sus membresías).
  *
  * Antes de este test, ~38 de las 52 no tenían ningún test de rechazo (entre ellas las 5 de promos y `setPrecioLocalProducto`, que son dinero).
@@ -226,25 +226,26 @@ const MUTACIONES: Mutacion[] = [
   // Hito 5, bloque D: la configuración de la carta (las 8 acciones que siguen sin caso de uso al arrancar el bloque).
   { nombre: "guardarSeccionCarta", clave: "carta_secciones", contexto: "empresa", llamar: () => guardarSeccionCarta({ nombre: "Postres" }) },
   { nombre: "actualizarActivaSeccionCarta", clave: "carta_secciones", contexto: "empresa", llamar: (e) => actualizarActivaSeccionCarta(e.seccionCartaId, false) },
-  { nombre: "guardarGeneroCarta", clave: "carta_generos", contexto: "empresa", llamar: () => guardarGeneroCarta({ nombre: "Cervezas" }) },
-  { nombre: "actualizarActivoGeneroCarta", clave: "carta_generos", contexto: "empresa", llamar: (e) => actualizarActivoGeneroCarta(e.generoId, false) },
+  // S-10/D1 (O.59): géneros, contenido y ítems agrupados son de contexto SUCURSAL (escriben en la carta de la sucursal activa): el tercer actor (admin en Norte, parado en Central) los rechaza.
+  { nombre: "guardarGeneroCarta", clave: "carta_generos", contexto: "sucursal", llamar: () => guardarGeneroCarta({ nombre: "Cervezas" }) },
+  { nombre: "actualizarActivoGeneroCarta", clave: "carta_generos", contexto: "sucursal", llamar: (e) => actualizarActivoGeneroCarta(e.generoId, false) },
   {
     nombre: "guardarContenidoCartaProducto",
     clave: "carta_contenido_producto",
-    contexto: "empresa",
+    contexto: "sucursal",
     llamar: (e) => guardarContenidoCartaProducto(e.flanId, { visibleEnCarta: true, seccionCartaId: e.seccionCartaId, descripcion: "Con dulce de leche" }),
   },
-  { nombre: "actualizarVisibleEnCarta", clave: "carta_contenido_producto", contexto: "empresa", llamar: (e) => actualizarVisibleEnCarta(e.flanId, false) },
+  { nombre: "actualizarVisibleEnCarta", clave: "carta_contenido_producto", contexto: "sucursal", llamar: (e) => actualizarVisibleEnCarta(e.flanId, false) },
   {
     nombre: "guardarItemAgrupadoCarta",
     clave: "carta_items_agrupados",
-    contexto: "empresa",
+    contexto: "sucursal",
     llamar: (e) => guardarItemAgrupadoCarta({ nombre: "Gaseosas", seccionCartaId: e.seccionCartaId }),
   },
-  { nombre: "actualizarActivoItemAgrupadoCarta", clave: "carta_items_agrupados", contexto: "empresa", llamar: (e) => actualizarActivoItemAgrupadoCarta(e.itemVacioId, false) },
-  { nombre: "agregarOpcionItemAgrupadoCarta", clave: "carta_items_agrupados", contexto: "empresa", llamar: (e) => agregarOpcionItemAgrupadoCarta(e.itemVacioId, e.flanId) },
-  { nombre: "actualizarOrdenOpcionItemAgrupadoCarta", clave: "carta_items_agrupados", contexto: "empresa", llamar: (e) => actualizarOrdenOpcionItemAgrupadoCarta(e.opcionPizzaId, 7) },
-  { nombre: "quitarOpcionItemAgrupadoCarta", clave: "carta_items_agrupados", contexto: "empresa", llamar: (e) => quitarOpcionItemAgrupadoCarta(e.opcionFainaId) },
+  { nombre: "actualizarActivoItemAgrupadoCarta", clave: "carta_items_agrupados", contexto: "sucursal", llamar: (e) => actualizarActivoItemAgrupadoCarta(e.itemVacioId, false) },
+  { nombre: "agregarOpcionItemAgrupadoCarta", clave: "carta_items_agrupados", contexto: "sucursal", llamar: (e) => agregarOpcionItemAgrupadoCarta(e.itemVacioId, e.flanId) },
+  { nombre: "actualizarOrdenOpcionItemAgrupadoCarta", clave: "carta_items_agrupados", contexto: "sucursal", llamar: (e) => actualizarOrdenOpcionItemAgrupadoCarta(e.opcionPizzaId, 7) },
+  { nombre: "quitarOpcionItemAgrupadoCarta", clave: "carta_items_agrupados", contexto: "sucursal", llamar: (e) => quitarOpcionItemAgrupadoCarta(e.opcionFainaId) },
   { nombre: "guardarPortalEmpresa", clave: "carta_portal", contexto: "empresa", llamar: () => guardarPortalEmpresa({ portal_titulo: "Nuestras sucursales" }) },
   { nombre: "agregarSucursalAlPortal", clave: "carta_portal", contexto: "empresa", llamar: (e) => agregarSucursalAlPortal(e.norteId) },
   {
@@ -465,7 +466,8 @@ describe("tramo C (carta, catálogo y stock): las 71 mutaciones rechazan sin el 
     expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(71);
     for (const m of MUTACIONES) expect(m.contexto, `${m.nombre}: el contexto declarado no es el del catálogo`).toBe(CONTEXTO.get(m.clave));
     expect(BAJO_EL_PISO.length).toBe(39 + 19);
-    expect(DE_SUCURSAL.length).toBe(19 + 3);
+    // 19 de la pieza original + 3 del bloque D (copiar la carta y el tema) + 9 que pasaron a contexto sucursal con S-10/D1 (géneros, contenido e ítems agrupados, O.59).
+    expect(DE_SUCURSAL.length).toBe(19 + 3 + 9);
   });
 
   it.each(MUTACIONES.map((m) => [m.nombre, m] as const))("un rol sin ninguna fila: %s rechaza con el texto del guard", async (_n, m) => {

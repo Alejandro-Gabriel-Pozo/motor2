@@ -61,8 +61,9 @@ export default async function CartaPage() {
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
   const [nivelSecciones, nivelGeneros, nivelContenido, nivelPromoDefinir, nivelPromoActivar, nivelPromoPrecio, nivelDescuento, nivelCopiar] = await Promise.all([
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_secciones", ctx.db),
-    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_generos", ctx.db),
-    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_contenido_producto", ctx.db),
+    // S-10/D1 (O.59): géneros y contenido son de contexto SUCURSAL (se escriben en la carta de la sucursal activa): el «Editar» que cuenta es el de esta sucursal.
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_generos", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_contenido_producto", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_promo_definir", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promo_activar", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promo_precio_local", ctx.db),

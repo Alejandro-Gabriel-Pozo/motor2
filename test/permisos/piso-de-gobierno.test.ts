@@ -12,7 +12,7 @@ import { nivelesDeLaCelda } from "../../src/core/permisos/matriz";
  *  - que el rango 2 («administrador», el futuro «encargado» de F3) NO alcanza el piso de gobierno: es la razón de ser del escalón nuevo (D16);
  *  - quién es administrador de sistema hoy: el rol de clave «admin», y nadie más (ningún rol tiene rango 2 hasta que exista `Rol.nivel`);
  *  - las etiquetas que muestran la matriz y el rechazo de `guardarPermisos`;
- *  - (3.4-4) la reclasificación: las 12 claves de gobierno, escritas a mano, son EXACTAMENTE las de piso «administrador de sistema», y las 19 acciones de
+ *  - (3.4-4) la reclasificación: las 12 claves de gobierno, escritas a mano, son EXACTAMENTE las de piso «administrador de sistema», y las 19 (16 desde S-10/D1) acciones de
  *    empresa de D15 quedan congeladas como blanco explícito de F3.
  */
 const NIVELES: readonly NivelDeAccion[] = ["operario", "administrador", "administrador_sistema", "gerente"];
@@ -76,7 +76,7 @@ const CLAVES_DE_GOBIERNO: readonly AccionClave[] = [
 ];
 
 /**
- * D15 (decisión del dueño, 2026-10-07): las 19 acciones de CONTEXTO EMPRESA que siguen en piso administrador. El rango 2 («encargado», F3) no recibe
+ * D15 (decisión del dueño, 2026-10-07): las acciones de CONTEXTO EMPRESA que siguen en piso administrador (19 entonces; 16 desde S-10/D1, que pasó tres de carta a contexto sucursal). El rango 2 («encargado», F3) no recibe
  * ninguna por defecto: la empresa se las habilita de a una con filas de la matriz (sin schema y sin subirles el piso). Congeladas acá para que F3 tenga
  * el blanco explícito: una acción de empresa nueva de piso administrador obliga a decidir, a la vista en el diff, si entra en esta lista.
  */
@@ -89,10 +89,9 @@ const ACCIONES_DE_EMPRESA_DE_D15: readonly AccionClave[] = [
   "margen_objetivo_editar",
   "motivos_merma",
   "motivos_destino_consumo",
+  // S-10/D1 (O.59): `carta_generos`, `carta_contenido_producto` y `carta_items_agrupados` salieron de esta lista (eran 19, ahora 16): escriben en la carta de UNA sucursal y pasaron a contexto
+  // sucursal. Siguen en piso administrador y con semilla solo `admin`, y el rango 2 sigue sin recibirlas por defecto.
   "carta_secciones",
-  "carta_generos",
-  "carta_contenido_producto",
-  "carta_items_agrupados",
   "carta_portal",
   "carta_promo_definir",
   "comparar_precios",
@@ -140,8 +139,8 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     expect(nivelMinimoDeAccion("ver_auditoria")).toBe("administrador_sistema");
   });
 
-  it("(vii) D15: las 19 acciones de empresa de piso administrador, congeladas (blanco de F3); el rango 2 las alcanzaría por piso, pero ninguna se le da por defecto", () => {
-    expect(ACCIONES_DE_EMPRESA_DE_D15).toHaveLength(19);
+  it("(vii) D15: las 16 acciones de empresa de piso administrador (eran 19 antes de S-10/D1), congeladas (blanco de F3); el rango 2 las alcanzaría por piso, pero ninguna se le da por defecto", () => {
+    expect(ACCIONES_DE_EMPRESA_DE_D15).toHaveLength(16);
     const deEmpresaDePisoAdministrador = ACCIONES.filter((a) => a.contexto === "empresa" && (a.nivelMinimo as NivelDeAccion) === "administrador").map((a) => a.clave);
     expect(ordenadas(deEmpresaDePisoAdministrador)).toEqual(ordenadas(ACCIONES_DE_EMPRESA_DE_D15));
     for (const clave of ACCIONES_DE_EMPRESA_DE_D15) expect(nivelAlcanzaElPiso("administrador", nivelMinimoDeAccion(clave)), clave).toBe(true);

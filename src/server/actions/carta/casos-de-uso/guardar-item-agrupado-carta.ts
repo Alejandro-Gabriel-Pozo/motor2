@@ -12,7 +12,7 @@ import { agregarOpcionItemAgrupadoCartaCasoDeUso } from "./agregar-opcion-item-a
  * Caso de uso «alta o edición de un ítem agrupado de la carta» (docs/plan-agrupacion-items-carta-2026-09-24.md, M5; Hito 5, bloque D, `docs/plan-hito-5-pureza.md`
  * §6.1). Es el cuerpo que antes vivía en línea en la Server Action `guardarItemAgrupadoCarta` (`src/server/actions/carta/items-agrupados.ts`), movido TAL CUAL: las
  * mismas lecturas con la base del contexto (sin transacción), el mismo orden de chequeos, los mismos mensajes y el mismo `catch` de la carrera del índice único. La
- * Server Action quedó como adaptador (`conPermisoDeEmpresa("carta_items_agrupados")` → `guardComandoGuardarItemAgrupadoCarta` → este caso de uso → `aResultadoAccion` y el
+ * Server Action quedó como adaptador (`conPermiso("carta_items_agrupados")` → `guardComandoGuardarItemAgrupadoCarta` → este caso de uso → `aResultadoAccion` y el
  * id y el nombre para su `ResultadoConId`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos ni el formato (el guard). Un ítem agrupado es PROPIO de cada sucursal (ADR-009, C3): se

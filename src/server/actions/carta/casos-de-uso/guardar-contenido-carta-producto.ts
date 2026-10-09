@@ -10,7 +10,7 @@ import { validarGeneroCartaOpcional } from "../generos-compartido";
  * Caso de uso «guardar el contenido de carta de un producto de venta en la sucursal activa» (docs/plan-carta-catalogo-2026-09-24.md, M9; Hito 5, bloque D,
  * `docs/plan-hito-5-pureza.md` §6.1). Es el cuerpo que antes vivía en línea en la Server Action `guardarContenidoCartaProducto`
  * (`src/server/actions/carta/contenido-producto.ts`), movido TAL CUAL: las mismas lecturas con la base del contexto (sin transacción), el mismo orden de chequeos y los
- * mismos mensajes. La Server Action quedó como adaptador (`conPermisoDeEmpresa("carta_contenido_producto")` → este caso de uso → `revalidarCartasPublicas` si salió
+ * mismos mensajes. La Server Action quedó como adaptador (`conPermiso("carta_contenido_producto")` → este caso de uso → `revalidarCartasPublicas` si salió
  * bien → `aResultadoAccion`). Sin guard de formato: el producto se lee ANTES de validar nada (un producto inexistente, o uno que no es PV, gana sobre una
  * descripción larga).
  *

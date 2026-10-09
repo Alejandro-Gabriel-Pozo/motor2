@@ -4,7 +4,7 @@ import type { ComandoGuardarGeneroCarta } from "./generos.schema";
 
 /**
  * Guard de la feature «géneros de carta» (convención «guard por feature», 2026-09-25; Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1). Formato del comando, ANTES
- * de tocar la base; lo llama la Server Action DENTRO de su `conPermisoDeEmpresa("carta_generos", …)`, así que el rechazo por permiso sigue llegando antes que el de
+ * de tocar la base; lo llama la Server Action DENTRO de su `conPermiso("carta_generos",…)`, así que el rechazo por permiso sigue llegando antes que el de
  * formato. Puro: sin Prisma ni permisos.
  *
  * Solo `guardarGeneroCarta` tiene guard: sus dos validaciones iban antes de la primera lectura. `actualizarActivoGeneroCarta` solo recibe un id y un booleano, que

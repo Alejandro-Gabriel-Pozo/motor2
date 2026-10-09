@@ -128,20 +128,21 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
     guardarSeccionCarta: EMP("carta_secciones"),
     actualizarActivaSeccionCarta: EMP("carta_secciones"),
   },
+  // S-10/D1 (O.59): géneros, contenido y ítems agrupados escriben en la carta de la sucursal ACTIVA: entran por `conPermiso` (clave de contexto sucursal), ya no por `conPermisoDeEmpresa`.
   "carta/generos.ts": {
-    guardarGeneroCarta: EMP("carta_generos"),
-    actualizarActivoGeneroCarta: EMP("carta_generos"),
+    guardarGeneroCarta: SUC("carta_generos"),
+    actualizarActivoGeneroCarta: SUC("carta_generos"),
   },
   "carta/contenido-producto.ts": {
-    guardarContenidoCartaProducto: EMP("carta_contenido_producto"),
-    actualizarVisibleEnCarta: EMP("carta_contenido_producto"),
+    guardarContenidoCartaProducto: SUC("carta_contenido_producto"),
+    actualizarVisibleEnCarta: SUC("carta_contenido_producto"),
   },
   "carta/items-agrupados.ts": {
-    guardarItemAgrupadoCarta: EMP("carta_items_agrupados"),
-    actualizarActivoItemAgrupadoCarta: EMP("carta_items_agrupados"),
-    agregarOpcionItemAgrupadoCarta: EMP("carta_items_agrupados"),
-    actualizarOrdenOpcionItemAgrupadoCarta: EMP("carta_items_agrupados"),
-    quitarOpcionItemAgrupadoCarta: EMP("carta_items_agrupados"),
+    guardarItemAgrupadoCarta: SUC("carta_items_agrupados"),
+    actualizarActivoItemAgrupadoCarta: SUC("carta_items_agrupados"),
+    agregarOpcionItemAgrupadoCarta: SUC("carta_items_agrupados"),
+    actualizarOrdenOpcionItemAgrupadoCarta: SUC("carta_items_agrupados"),
+    quitarOpcionItemAgrupadoCarta: SUC("carta_items_agrupados"),
   },
   "carta/portal-empresa.ts": {
     guardarPortalEmpresa: EMP("carta_portal"),
@@ -240,10 +241,10 @@ describe("tramo C (carta, catálogo y stock): cada Server Action entra por su en
     expect(total).toBe(51 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 19);
     expect(Object.keys(DECLARADAS).filter((a) => a !== "catalogo/recetas.ts")).toHaveLength(17 + 8);
     for (const f of RECETA_PROPIA_YA_MIGRADAS) expect(DECLARADAS["catalogo/receta-sucursal.ts"][f], f).toBeDefined();
-    // Bloque D: de las 19, 16 son de empresa y 3 de sucursal (copiar la carta y las dos del tema).
+    // Bloque D: de las 19, 7 son de empresa (secciones, portal y registro público) y 12 de sucursal: copiar la carta y las dos del tema, y desde S-10/D1 (O.59) las 9 de géneros, contenido e ítems agrupados.
     const delBloqueD = ["carta/secciones.ts", "carta/generos.ts", "carta/contenido-producto.ts", "carta/items-agrupados.ts", "carta/portal-empresa.ts", "carta/registro-publico.ts", "carta/tema.ts", "carta/copiar-carta.ts"].flatMap((a) => Object.values(DECLARADAS[a]));
     expect(delBloqueD).toHaveLength(19);
-    expect(delBloqueD.filter((d) => d.envoltorio === "conPermiso")).toHaveLength(3);
+    expect(delBloqueD.filter((d) => d.envoltorio === "conPermiso")).toHaveLength(12);
   });
 });
 

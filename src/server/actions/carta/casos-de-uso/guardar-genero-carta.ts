@@ -8,7 +8,7 @@ import { cambiarDatosDeGeneroCarta, crearGeneroDeCarta } from "@/server/persiste
 /**
  * Caso de uso «alta o edición de un género de la carta» (docs/plan-genero-carta-2026-09-26.md; Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1). Es el cuerpo que
  * antes vivía en línea en la Server Action `guardarGeneroCarta` (`src/server/actions/carta/generos.ts`), movido TAL CUAL: las mismas lecturas con la base del contexto
- * (sin transacción), el mismo orden de chequeos y los mismos mensajes. La Server Action quedó como adaptador (`conPermisoDeEmpresa("carta_generos")` →
+ * (sin transacción), el mismo orden de chequeos y los mismos mensajes. La Server Action quedó como adaptador (`conPermiso("carta_generos")` →
  * `guardComandoGuardarGeneroCarta` → este caso de uso → `revalidarCartasPublicas` si salió bien → `aResultadoAccion` y el id y el nombre para su `ResultadoConId`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos ni el formato (el guard). Los géneros son PROPIOS de cada sucursal (ADR-009, C3):
