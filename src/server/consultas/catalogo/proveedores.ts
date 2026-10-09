@@ -8,11 +8,21 @@ import { cargarOfertasDeProveedores } from "@/server/lecturas/catalogo/ofertas-d
  * llamar), último parámetro `db: Db`, y devuelve EXACTAMENTE lo que devolvía la consulta Prisma que reemplaza.
  */
 
-/** Ficha de un proveedor (`/catalogo/proveedores/[id]`): el proveedor con sus productos en consignación (sin orden explícito). `null` si no existe. */
+/**
+ * Los datos del proveedor que dibujan su ficha y su formulario de edición (`proveedores`, piso administrador): todo menos las columnas internas (`empresaId`). Sigue siendo lo que
+ * esa pantalla muestra, ni más ni menos: si hace falta un campo, se AGREGA acá (GT-3a, S-15).
+ */
+const SELECT_DATOS_DE_PROVEEDOR = { id: true, codigo: true, nombre: true, contacto: true, telefono: true, email: true, cuit: true, condicionesPago: true, notas: true, activo: true } as const;
+
+/**
+ * Ficha de un proveedor (`/catalogo/proveedores/[id]`): el proveedor con sus productos en consignación (sin orden explícito). `null` si no existe.
+ * S-15 (plan de endurecimiento, T7): los productos en consignación vienen como `{ id, nombre }` —la ficha solo dibuja el nombre y el enlace—, no como filas enteras de `Producto`
+ * (con el costo de consignación, que es de `pagar_consignante`).
+ */
 export async function obtenerFichaProveedor(id: string, db: Db) {
   return db.proveedor.findUnique({
     where: { id },
-    include: { productosConsignados: true },
+    select: { ...SELECT_DATOS_DE_PROVEEDOR, productosConsignados: { select: { id: true, nombre: true } } },
   });
 }
 
@@ -36,5 +46,5 @@ export async function listarProductosQueLeCompran(proveedorId: string, db: Db) {
 
 /** El proveedor solo, sin relaciones (formulario de edición, `/catalogo/proveedores/[id]/editar`). `null` si no existe. */
 export async function obtenerProveedorPorId(id: string, db: Db) {
-  return db.proveedor.findUnique({ where: { id } });
+  return db.proveedor.findUnique({ where: { id }, select: SELECT_DATOS_DE_PROVEEDOR });
 }

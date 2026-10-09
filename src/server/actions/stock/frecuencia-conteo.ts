@@ -24,7 +24,8 @@ export async function listarFrecuenciasConteo(sucursalId: string) {
   const ctx = await requerirVerEnSucursal(sucursalId, "conteo_frecuencia");
   return ctx.db.frecuenciaConteoProducto.findMany({
     where: { sucursalId },
-    include: { producto: true },
+    // S-15 (plan de endurecimiento, T7): solo lo que la agenda dibuja (el `Producto` entero llevaba el costo de consignación a quien invoca la acción a mano). Más campos: se AGREGAN acá (GT-3a).
+    select: { id: true, productoId: true, frecuenciaDias: true, producto: { select: { codigo: true, nombre: true } } },
     orderBy: [{ producto: { nombre: "asc" } }],
   });
 }

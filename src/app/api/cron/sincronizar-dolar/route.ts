@@ -23,6 +23,7 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json(resultado);
   } catch (e) {
     await reportarError(e, "dolar-cron");
-    return Response.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 502 });
+    // S-15: el detalle del error (hosts, cadenas de conexión) va a Sentry, no al cuerpo de la respuesta.
+    return Response.json({ error: "La sincronización del dólar falló" }, { status: 502 });
   }
 }

@@ -18,7 +18,8 @@ import { renombrarSucursalCasoDeUso } from "./casos-de-uso/renombrar-sucursal";
  */
 export async function listarSucursales() {
   const ctx = await requerirVerAlguna(["gestion_usuarios", "alta_sucursal"]);
-  return ctx.db.sucursal.findMany({ orderBy: { nombre: "asc" } });
+  // S-15 (plan de endurecimiento, T7): solo lo que las dos pantallas dibujan (GT-25: toda lectura `listar*` declara su `select`; más campos: se AGREGAN acá).
+  return ctx.db.sucursal.findMany({ select: { id: true, nombre: true, activo: true }, orderBy: { nombre: "asc" } });
 }
 
 /**

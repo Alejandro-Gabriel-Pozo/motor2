@@ -28,7 +28,12 @@ export async function obtenerPrecioLocalProducto(sucursalId: string, productoId:
 
 export async function listarPreciosLocales(sucursalId: string) {
   const ctx = await requerirVerEnSucursal(sucursalId, "precio_local");
-  return ctx.db.precioLocalProducto.findMany({ where: { sucursalId }, include: { producto: true }, orderBy: { producto: { nombre: "asc" } } });
+  // S-15 (plan de endurecimiento, T7): solo lo que el panel dibuja (el `Producto` entero llevaba el costo de consignación a quien invoca la acción a mano). Más campos: se AGREGAN acá (GT-3a).
+  return ctx.db.precioLocalProducto.findMany({
+    where: { sucursalId },
+    select: { id: true, productoId: true, precio: true, habilitado: true, producto: { select: { nombre: true, precioVenta: true } } },
+    orderBy: { producto: { nombre: "asc" } },
+  });
 }
 
 /**

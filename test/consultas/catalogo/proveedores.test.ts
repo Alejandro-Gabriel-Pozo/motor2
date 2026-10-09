@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Prisma } from "@prisma/client";
-import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarCompraDeKardex, crearUsuarioConMembresia, prisma } from "../../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarCompraDeKardex, crearUsuarioConMembresia, prisma } from "../../setup/test-db";
 import { listarProductosQueLeCompran, obtenerFichaProveedor, obtenerProveedorPorId } from "../../../src/server/consultas/catalogo/proveedores";
 
 /**
@@ -12,8 +12,8 @@ import { listarProductosQueLeCompran, obtenerFichaProveedor, obtenerProveedorPor
  * de "lo que se le compra". `productosConsignados` no lleva `orderBy` en la consulta original: se compara como conjunto.
  */
 
-const ESCALARES_PROVEEDOR = Object.keys(Prisma.ProveedorScalarFieldEnum).sort();
-const ESCALARES_PRODUCTO = Object.keys(Prisma.ProductoScalarFieldEnum).sort();
+/** Los escalares del proveedor menos la columna interna `empresaId`: lo que dibujan la ficha y el formulario de edición (S-15). */
+const DATOS_DE_PROVEEDOR = Object.keys(Prisma.ProveedorScalarFieldEnum).filter((k) => k !== "empresaId").sort();
 
 describe("server/consultas/catalogo/proveedores", () => {
   let kg: { id: string; nombre: string };
@@ -96,7 +96,7 @@ describe("server/consultas/catalogo/proveedores", () => {
       expect(p).not.toBeNull();
       if (!p) return;
 
-      expect(Object.keys(p).sort()).toEqual([...ESCALARES_PROVEEDOR, "productosConsignados"].sort());
+      expect(Object.keys(p).sort()).toEqual([...DATOS_DE_PROVEEDOR, "productosConsignados"].sort());
       expect(p).toMatchObject({
         id: molino,
         codigo: "PRV_MOL001",
@@ -112,8 +112,8 @@ describe("server/consultas/catalogo/proveedores", () => {
 
       // Sin orderBy en la consulta original: se compara como conjunto.
       expect(p.productosConsignados.map((x) => x.id).sort()).toEqual([consignadoA, consignadoB].sort());
-      // Cada consignado viene con sus escalares, sin relaciones anidadas.
-      for (const prod of p.productosConsignados) expect(Object.keys(prod).sort()).toEqual(ESCALARES_PRODUCTO);
+      // S-15: cada consignado viene como `{ id, nombre }` (lo que la ficha dibuja), no como la fila entera de `Producto` (con el costo de consignación).
+      for (const prod of p.productosConsignados) expect(Object.keys(prod).sort()).toEqual(["id", "nombre"]);
     });
 
     it("sin consignados, `productosConsignados` viene como [] (clave presente)", async () => {
@@ -121,7 +121,7 @@ describe("server/consultas/catalogo/proveedores", () => {
       expect(p).not.toBeNull();
       if (!p) return;
 
-      expect(Object.keys(p).sort()).toEqual([...ESCALARES_PROVEEDOR, "productosConsignados"].sort());
+      expect(Object.keys(p).sort()).toEqual([...DATOS_DE_PROVEEDOR, "productosConsignados"].sort());
       expect(p.productosConsignados).toEqual([]);
       expect(p.activo).toBe(false);
       expect(p.contacto).toBeNull();
@@ -175,10 +175,10 @@ describe("server/consultas/catalogo/proveedores", () => {
       expect(p).not.toBeNull();
       if (!p) return;
 
-      expect(Object.keys(p).sort()).toEqual(ESCALARES_PROVEEDOR);
+      // S-15 (T7 del endurecimiento): los datos de la ficha y del formulario; la columna interna `empresaId` no sale.
+      expect(Object.keys(p).sort()).toEqual(DATOS_DE_PROVEEDOR);
       expect(p).toEqual({
         id: molino,
-        empresaId: EMPRESA_POR_DEFECTO_ID,
         codigo: "PRV_MOL001",
         nombre: "Molino del Sur",
         contacto: "Ana",

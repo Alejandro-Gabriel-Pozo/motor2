@@ -18,11 +18,16 @@ import { altaProveedorCasoDeUso } from "./casos-de-uso/alta-proveedor";
  * guardas. La acción conserva el refresco de la vista (activar) y la fuente de azar del proceso (el código autogenerado del alta).
  */
 
-/** La ficha completa de cada proveedor (H8, D-4): solo para la pantalla de Proveedores, con su clave. Para elegir un proveedor, `listarProveedoresParaSelector`. */
+/**
+ * Las filas del listado de Proveedores (H8, D-4): solo para esa pantalla, con su clave. Para elegir un proveedor, `listarProveedoresParaSelector`.
+ * S-15 (plan de endurecimiento, T7): el listado dibuja código, nombre, contacto y estado; el CUIT, el correo, el teléfono, las condiciones de pago y las notas son de la FICHA
+ * (`obtenerFichaProveedor`), no viajan por esta Server Action (que cualquiera con `proveedores` invoca a mano y recibe entera). Si el listado necesita otra columna, se AGREGA acá (GT-3a).
+ */
 export async function listarProveedores(soloActivos = false) {
   const ctx = await requerirVerDeEmpresa("proveedores");
   return ctx.db.proveedor.findMany({
     where: soloActivos ? { activo: true } : {},
+    select: { id: true, codigo: true, nombre: true, contacto: true, activo: true },
     orderBy: { nombre: "asc" },
   });
 }

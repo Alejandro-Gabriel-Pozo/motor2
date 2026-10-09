@@ -133,7 +133,8 @@ export async function obtenerInsumoDeProducto(productoId: string): Promise<Insum
   const ctx = await requerirVerAlguna(["alta_producto", "producto_ver_catalogo"]);
   const p = await ctx.db.producto.findUnique({
     where: { id: productoId },
-    include: { insumo: true, unidadStock: true },
+    // S-15: solo lo que arma el resultado (la fila entera de `Producto` no sale de acá, pero se pide por `select` como toda lectura exportada: GT-3a).
+    select: { codigo: true, nombre: true, insumoId: true, unidadStockId: true, insumo: { select: { nombre: true } }, unidadStock: { select: { nombre: true } } },
   });
   if (!p) return null;
   return {

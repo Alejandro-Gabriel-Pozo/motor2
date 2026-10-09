@@ -20,7 +20,8 @@ export async function listarStockMinimo(sucursalId: string) {
   const ctx = await requerirVerEnSucursal(sucursalId, "stock_minimo");
   return ctx.db.stockMinimoProducto.findMany({
     where: { sucursalId },
-    include: { producto: true, seccion: true },
+    // S-15 (plan de endurecimiento, T7): solo lo que el panel dibuja (el `Producto` entero llevaba el costo de consignación a quien invoca la acción a mano). Más campos: se AGREGAN acá (GT-3a).
+    select: { id: true, productoId: true, seccionId: true, minimo: true, producto: { select: { codigo: true, nombre: true } }, seccion: { select: { nombre: true } } },
     orderBy: [{ producto: { nombre: "asc" } }],
   });
 }
