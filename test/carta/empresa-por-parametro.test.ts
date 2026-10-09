@@ -65,9 +65,15 @@ describe("punto público sin sesión", () => {
 
 describe("páginas de la carta pública", () => {
   it("el portal pasa a la consulta la empresa que resolvió del segmento de ruta", async () => {
+    portalCartaPublico.mockResolvedValueOnce([{ slug: "central", etiqueta: "Central", subtitulo: null, posicion: null }] as never);
     await PortalPage({ params: Promise.resolve({ empresa: "la-cuadra" }) });
     expect(portalCartaPublico).toHaveBeenCalledWith(EMPRESA);
     expect(configPortalPublica).toHaveBeenCalledWith(EMPRESA);
+  });
+
+  it("S-24: el portal de una empresa sin ninguna sucursal publicada da 404 y no pide ni la apariencia", async () => {
+    await expect(PortalPage({ params: Promise.resolve({ empresa: "la-cuadra" }) })).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(configPortalPublica).not.toHaveBeenCalled();
   });
 
   it("el portal no consulta nada si la empresa no resuelve", async () => {
