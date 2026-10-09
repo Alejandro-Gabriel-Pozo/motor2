@@ -57,10 +57,13 @@ export async function listarOpcionesDeSustituto(
 /**
  * Editor de receta: notas "Calibrado en N sucursal(es)" por ingrediente — UNA sola consulta por lotes (no una por
  * ingrediente) a `RendimientoLocalIngrediente`, para los ingredientes de la receta vigente que se pasen.
+ *
+ * O.176 (cerrado): devuelve SOLO lo que la pantalla usa —a qué ingrediente pertenece la calibración y el nombre de la sucursal que la hizo («Calibrado en N sucursales»)—, no la fila entera. Es el editor de
+ * la receta CENTRAL (de empresa): las calibraciones de todas las sucursales se listan por diseño, pero la cantidad y la merma de cada una no viajan al Server Component sin necesidad.
  */
 export async function listarCalibracionesDeIngredientes(recetaIngredienteIds: string[], db: Db) {
   return db.rendimientoLocalIngrediente.findMany({
     where: { recetaIngredienteId: { in: recetaIngredienteIds }, OR: [{ cantidad: { not: null } }, { mermaPorcentaje: { not: null } }] },
-    include: { sucursal: { select: { nombre: true } } },
+    select: { recetaIngredienteId: true, sucursal: { select: { nombre: true } } },
   });
 }

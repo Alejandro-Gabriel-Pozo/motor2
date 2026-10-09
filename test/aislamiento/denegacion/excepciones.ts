@@ -12,7 +12,7 @@
 export const CONTEXTO_DECLARADO: Readonly<Record<string, { contexto: "empresa" | "sucursal"; motivo: string }>> = {
   "consulta|consultas/catalogo/recetas.ts|listarCalibracionesDeIngredientes": {
     contexto: "empresa",
-    motivo: "el editor de la receta CENTRAL (de empresa) anota en qué sucursales está calibrado cada ingrediente («Calibrado en N sucursales»): la consulta devuelve las calibraciones de todas por diseño (la página solo usa el nombre de la sucursal)",
+    motivo: "el editor de la receta CENTRAL (de empresa) anota en qué sucursales está calibrado cada ingrediente («Calibrado en N sucursales»): la consulta devuelve las calibraciones de todas por diseño, y desde O.176 (cerrado) solo el ingrediente y el nombre de la sucursal (la cantidad y la merma de cada una no viajan)",
   },
 };
 

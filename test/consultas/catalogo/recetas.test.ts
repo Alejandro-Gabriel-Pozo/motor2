@@ -269,6 +269,18 @@ describe("server/consultas/catalogo/recetas", () => {
       );
     });
 
+    it("O.176: devuelve SOLO el ingrediente y el nombre de la sucursal (la cantidad y la merma de cada calibración no salen de la consulta)", async () => {
+      const pizza = await crearProducto("PV_PIZZA", "Pizza muzza", "PV", { [sucursalA]: true });
+      const version = await crearVersion(pizza, 1, [harina]);
+      const [ing] = await prisma.recetaIngrediente.findMany({ where: { recetaVersionId: version.id } });
+      await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: ing.id, sucursalId: sucursalA, cantidad: 0.2, mermaPorcentaje: 7 } });
+
+      const calibraciones = await listarCalibracionesDeIngredientes([ing.id], prisma);
+
+      expect(calibraciones).toEqual([{ recetaIngredienteId: ing.id, sucursal: { nombre: "Sucursal A" } }]);
+      expect(Object.keys(calibraciones[0]).sort()).toEqual(["recetaIngredienteId", "sucursal"]);
+    });
+
     it("con una lista de ids que no tienen ninguna calibración, devuelve []", async () => {
       const pizza = await crearProducto("PV_PIZZA", "Pizza muzza", "PV", { [sucursalA]: true });
       const version = await crearVersion(pizza, 1, [harina]);
