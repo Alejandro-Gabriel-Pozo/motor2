@@ -57,8 +57,89 @@ export function grantsDelScript(sql: string): Mapa {
 const LECTURAS = new Set(["findMany", "findFirst", "findUnique", "findFirstOrThrow", "findUniqueOrThrow", "count", "aggregate", "groupBy"]);
 const mayuscula = (s: string) => s[0].toUpperCase() + s.slice(1);
 
-/** (tabla → privilegios) que usa un fuente TypeScript: operaciones de modelo de Prisma, SQL crudo y `registrarCambioAuditado`. */
-export function usoDelCodigo(codigo: string): Mapa {
+/** modelo → relación → modelo relacionado, del `schema.prisma` (para ver lo que una operación hace en las tablas RELACIONADAS: escrituras anidadas y `include`/`select`). */
+export type Relaciones = ReadonlyMap<string, ReadonlyMap<string, string>>;
+
+export function relacionesDelSchemaPrisma(schema: string): Relaciones {
+  const cuerpos = [...schema.replace(/\r\n/g, "\n").matchAll(/^model (\w+) \{([\s\S]*?)^\}/gm)];
+  const nombres = new Set(cuerpos.map((m) => m[1]!));
+  const salida = new Map<string, Map<string, string>>();
+  for (const [, modelo, cuerpo] of cuerpos) {
+    const campos = new Map<string, string>();
+    for (const linea of cuerpo!.split("\n")) {
+      const m = /^\s+(\w+)\s+(\w+)(\[\])?\??(?:\s|$)/.exec(linea);
+      if (m && nombres.has(m[2]!) && !linea.trim().startsWith("//")) campos.set(m[1]!, m[2]!);
+    }
+    salida.set(modelo!, campos);
+  }
+  return salida;
+}
+
+const sinEnvoltorio = (e: ts.Expression): ts.Expression => (ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isParenthesizedExpression(e) ? sinEnvoltorio(e.expression) : e);
+const objetos = (e: ts.Expression): ts.ObjectLiteralExpression[] => {
+  const x = sinEnvoltorio(e);
+  return ts.isObjectLiteralExpression(x) ? [x] : ts.isArrayLiteralExpression(x) ? x.elements.flatMap((el) => objetos(el)) : [];
+};
+const nombreDe = (p: ts.ObjectLiteralElementLike) => (p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) ? p.name.text : undefined);
+
+/**
+ * M-34 (auditoría intermedia): el uso ANIDADO de una operación de Prisma, que el recorrido plano no veía.
+ *  - ESCRITURAS anidadas en `data` (y en `create`/`update` de un `upsert`): `data: { modulos: { create: [...] } }` es un INSERT en `ModuloEmpresa`; `update`/`updateMany`/`upsert`/`delete`/`deleteMany`/
+ *    `connectOrCreate`/`createMany` de una relación, igual, y se baja a los `data`/`create`/`update` de adentro. (`connect`/`disconnect`/`set` no: cambian una llave y no se cuentan acá.)
+ *  - LECTURAS anidadas en `select`/`include`: pedir una relación es un SELECT sobre su tabla.
+ */
+function usoAnidado(args: ts.Expression | undefined, modelo: string, relaciones: Relaciones, uso: Mapa): void {
+  if (!args) return;
+  const escrituras = (dato: ts.Expression, m: string, profundidad: number): void => {
+    if (profundidad > 6) return;
+    for (const obj of objetos(dato)) {
+      for (const p of obj.properties) {
+        const relacionado = relaciones.get(m)?.get(nombreDe(p) ?? "");
+        if (!relacionado || !ts.isPropertyAssignment(p)) continue;
+        for (const op of objetos(p.initializer)) {
+          for (const q of op.properties) {
+            const k = nombreDe(q);
+            if (!k || !ts.isPropertyAssignment(q)) continue;
+            if (k === "create" || k === "createMany") {
+              sumar(uso, relacionado, "INSERT");
+              escrituras(k === "createMany" ? (objetos(q.initializer)[0]?.properties.find((x) => nombreDe(x) === "data") as ts.PropertyAssignment | undefined)?.initializer ?? q.initializer : q.initializer, relacionado, profundidad + 1);
+            } else if (k === "connectOrCreate") {
+              sumar(uso, relacionado, "INSERT");
+              for (const co of objetos(q.initializer)) for (const x of co.properties) if (nombreDe(x) === "create" && ts.isPropertyAssignment(x)) escrituras(x.initializer, relacionado, profundidad + 1);
+            } else if (k === "update" || k === "updateMany" || k === "upsert") {
+              sumar(uso, relacionado, "UPDATE");
+              if (k === "upsert") sumar(uso, relacionado, "INSERT");
+              for (const u of objetos(q.initializer)) for (const x of u.properties) if (["data", "create", "update"].includes(nombreDe(x) ?? "") && ts.isPropertyAssignment(x)) escrituras(x.initializer, relacionado, profundidad + 1);
+              if (k === "update") escrituras(q.initializer, relacionado, profundidad + 1);
+            } else if (k === "delete" || k === "deleteMany") sumar(uso, relacionado, "DELETE");
+          }
+        }
+      }
+    }
+  };
+  const lecturas = (sel: ts.Expression, m: string, profundidad: number): void => {
+    if (profundidad > 6) return;
+    for (const obj of objetos(sel)) {
+      for (const p of obj.properties) {
+        const relacionado = relaciones.get(m)?.get(nombreDe(p) ?? "");
+        if (!relacionado || !ts.isPropertyAssignment(p) || p.initializer.kind === ts.SyntaxKind.FalseKeyword) continue;
+        sumar(uso, relacionado, "SELECT");
+        for (const interno of objetos(p.initializer)) for (const x of interno.properties) if (["select", "include"].includes(nombreDe(x) ?? "") && ts.isPropertyAssignment(x)) lecturas(x.initializer, relacionado, profundidad + 1);
+      }
+    }
+  };
+  for (const obj of objetos(args)) {
+    for (const p of obj.properties) {
+      const k = nombreDe(p);
+      if (!k || !ts.isPropertyAssignment(p)) continue;
+      if (k === "data" || k === "create" || k === "update") escrituras(p.initializer, modelo, 0);
+      if (k === "select" || k === "include") lecturas(p.initializer, modelo, 0);
+    }
+  }
+}
+
+/** (tabla → privilegios) que usa un fuente TypeScript: operaciones de modelo de Prisma (con sus escrituras y lecturas anidadas, si se pasan las `relaciones` del schema), SQL crudo y `registrarCambioAuditado`. */
+export function usoDelCodigo(codigo: string, relaciones: Relaciones = new Map()): Mapa {
   const uso: Mapa = new Map();
   const sf = ts.createSourceFile("x.ts", codigo, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const visitar = (n: ts.Node) => {
@@ -72,6 +153,7 @@ export function usoDelCodigo(codigo: string): Mapa {
         else if (op === "update" || op === "updateMany") sumar(uso, modelo, "UPDATE");
         else if (op === "upsert") sumar(uso, modelo, "INSERT", "UPDATE");
         else if (op === "delete" || op === "deleteMany") sumar(uso, modelo, "DELETE");
+        if (relaciones.has(modelo)) usoAnidado(n.arguments[0], modelo, relaciones, uso);
       }
       if (ts.isIdentifier(f) && f.text === "registrarCambioAuditado") sumar(uso, "RegistroAuditoria", "INSERT");
     }
@@ -98,12 +180,14 @@ function archivos(dir: string, salida: string[] = []): string[] {
   return salida;
 }
 
+const RELACIONES = relacionesDelSchemaPrisma(readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8"));
+
 function usoDePlataforma(): { uso: Mapa; porTabla: Map<string, string[]> } {
   const uso: Mapa = new Map();
   const porTabla = new Map<string, string[]>();
   for (const carpeta of CARPETAS_DE_USO) {
     for (const a of archivos(join(RAIZ, carpeta))) {
-      for (const [tabla, privilegios] of usoDelCodigo(readFileSync(a, "utf8"))) {
+      for (const [tabla, privilegios] of usoDelCodigo(readFileSync(a, "utf8"), RELACIONES)) {
         sumar(uso, tabla, ...privilegios);
         porTabla.set(tabla, [...(porTabla.get(tabla) ?? []), relative(RAIZ, a).replace(/\\/g, "/")]);
       }
@@ -137,6 +221,26 @@ describe("GT-20: el detector (SQL y código sintéticos; sanidad: no pasa en vac
         await tx.$executeRaw\`SELECT set_config('app.empresa_id', \${x}, true)\`;
       }`);
     expect(texto(uso)).toEqual(["Empresa: SELECT, UPDATE", "ModuloEmpresa: INSERT, UPDATE", "RegistroAuditoria: INSERT", "SesionPlataforma: UPDATE", "User: SELECT", "_prisma_migrations: SELECT"]);
+  });
+
+  it("lee el uso ANIDADO: escrituras dentro de `data` y lecturas dentro de `include`/`select` (M-34 de la auditoría intermedia)", () => {
+    const rel = relacionesDelSchemaPrisma(
+      "model Empresa {\n  id String @id\n  modulos ModuloEmpresa[]\n  unidades Unidad[]\n}\nmodel ModuloEmpresa {\n  id String @id\n  empresa Empresa @relation(fields: [empresaId], references: [id])\n  empresaId String\n}\nmodel Unidad {\n  id String @id\n  empresaId String\n}\n",
+    );
+    expect([...(rel.get("Empresa") ?? new Map())]).toEqual([["modulos", "ModuloEmpresa"], ["unidades", "Unidad"]]);
+    const plano = usoDelCodigo(`async function f(tx) { await tx.empresa.create({ data: { modulos: { create: [{ modulo: "a" }] } } }); }`);
+    expect(texto(plano), "sin las relaciones del schema el recorrido plano no ve el INSERT anidado (el hueco que había)").toEqual(["Empresa: INSERT"]);
+    const anidado = usoDelCodigo(
+      `async function f(tx, where) {
+         await tx.empresa.create({ data: { modulos: { create: [{ modulo: "a" }] }, unidades: { createMany: { data: [] } } } });
+         await tx.empresa.update({ where, data: { modulos: { update: { where, data: {} } }, unidades: { deleteMany: {} } } });
+         await tx.empresa.findMany({ include: { modulos: { include: { empresa: true } } } });
+       }`,
+      rel,
+    );
+    expect(texto(anidado)).toEqual(["Empresa: INSERT, SELECT, UPDATE", "ModuloEmpresa: INSERT, SELECT, UPDATE", "Unidad: DELETE, INSERT"]);
+    // un `select` con la relación apagada no la lee
+    expect(texto(usoDelCodigo("async function f(tx) { await tx.empresa.findMany({ select: { modulos: false } }); }", rel))).toEqual(["Empresa: SELECT"]);
   });
 
   it("el código real de plataforma tiene uso (no se compara contra el vacío)", () => {
