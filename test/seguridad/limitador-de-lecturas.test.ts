@@ -17,8 +17,6 @@ vi.mock("../../src/core/auth/contexto", () => ({
     return mocks.contexto;
   }),
 }));
-// M-19: `requerirSesion` mira quién es el usuario ANTES de resolver el contexto; la sesión devuelve el mismo usuario que el contexto de prueba.
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn(async () => ({ id: mocks.contexto.usuarioId, email: "u@test.com", nombre: null })) }));
 vi.mock("../../src/server/acceso/gate", () => ({
   requierePermisoVer: vi.fn(async () => {
     mocks.gate.llamadas++;
@@ -74,38 +72,6 @@ describe("requerirVer*: cupo de lecturas por usuario (S-28)", () => {
     expect(mocks.gate.llamadas).toBe(MAXIMO_DE_LECTURAS_POR_MINUTO);
     expect(primerRechazo).toBe(MAXIMO_DE_LECTURAS_POR_MINUTO);
     expect(rechazadas).toBe(1000 - MAXIMO_DE_LECTURAS_POR_MINUTO);
-  });
-
-  // M-19 (T16): pasado el cupo, el pedido igual gastaba base porque el contexto (pertenencias, sucursales, rol: varias lecturas) se resolvía ANTES de contar.
-  it("EL DEFECTO (M-19): pasado el cupo, el pedido ya no resuelve el contexto (no lee la base); el conteo sigue siendo después de resolver al usuario", async () => {
-    usuarioNuevo();
-    for (let i = 0; i < MAXIMO_DE_LECTURAS_POR_MINUTO; i++) await requerirVer("gestion_usuarios");
-    expect(mocks.resoluciones).toBe(MAXIMO_DE_LECTURAS_POR_MINUTO);
-
-    // El que pasa el tope exacto todavía resuelve el contexto (lo cuenta recién ahí y recién ahí se sabe que se pasó)…
-    await expect(requerirVer("gestion_usuarios")).rejects.toThrow(MENSAJE_DEMASIADAS_LECTURAS);
-    expect(mocks.resoluciones).toBe(MAXIMO_DE_LECTURAS_POR_MINUTO + 1);
-    // …pero desde ahí ninguno de los siguientes toca la base: ni el contexto ni el gate.
-    for (let i = 0; i < 200; i++) await expect(requerirVer("gestion_usuarios")).rejects.toThrow(MENSAJE_DEMASIADAS_LECTURAS);
-    expect(mocks.resoluciones, "pasado el cupo no se resuelve el contexto").toBe(MAXIMO_DE_LECTURAS_POR_MINUTO + 1);
-    expect(mocks.gate.llamadas).toBe(MAXIMO_DE_LECTURAS_POR_MINUTO);
-  });
-
-  it("el corte previo es por usuario y vence con la ventana: otro usuario resuelve su contexto, y pasado el minuto el abusador también", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-10-09T12:00:00Z"));
-    const abusador = usuarioNuevo();
-    for (let i = 0; i < MAXIMO_DE_LECTURAS_POR_MINUTO + 2; i++) await requerirVer("gestion_usuarios").catch(() => undefined);
-    const antes = mocks.resoluciones;
-    await expect(requerirVer("gestion_usuarios")).rejects.toThrow(MENSAJE_DEMASIADAS_LECTURAS);
-    expect(mocks.resoluciones).toBe(antes);
-
-    usuarioNuevo();
-    await expect(requerirVer("gestion_usuarios")).resolves.toBeDefined();
-
-    vi.setSystemTime(new Date("2026-10-09T12:01:01Z"));
-    mocks.contexto = { ...mocks.contexto, usuarioId: abusador };
-    await expect(requerirVer("gestion_usuarios")).resolves.toBeDefined();
   });
 
   it("el cupo cuenta TODAS las guardas de lectura juntas (por sucursal, de empresa, «alguna»): no se esquiva alternándolas", async () => {

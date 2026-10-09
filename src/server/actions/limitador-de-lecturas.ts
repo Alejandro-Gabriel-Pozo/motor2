@@ -32,14 +32,6 @@ export function lecturaSinCupo(usuarioId: string, ahora: number): boolean {
   return limitadorDeLecturas.excedeLimite(usuarioId, ahora);
 }
 
-/**
- * M-19: ¿este usuario YA está pasado del cupo? Solo mira, no cuenta. Lo usa `requerirSesion` ANTES de resolver el contexto (que lee la base: pertenencias, sucursales, rol) para que quien ya
- * se pasó no siga gastando esas lecturas en cada pedido; el pedido que sí cuenta sigue siendo el de `lecturaSinCupo`, DESPUÉS de resolver al usuario (la regla de `lecturas-con-cupo.test.ts`).
- */
-export function lecturaYaSinCupo(usuarioId: string, ahora: number): boolean {
-  return limitadorDeLecturas.yaExcedida(usuarioId, ahora);
-}
-
 /** ¿Este usuario ya gastó los pedidos del minuto de ESTE reporte pesado? Cuenta el que se está atendiendo; cada reporte lleva su cuenta. */
 export function reportePesadoSinCupo(usuarioId: string, reporte: ReportePesado, ahora: number): boolean {
   return limitadorDeReportesPesados.excedeLimite(`${reporte}:${usuarioId}`, ahora);

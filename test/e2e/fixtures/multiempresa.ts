@@ -7,6 +7,7 @@ import { prismaAdmin } from "../../setup/cliente-duenio";
 import { crearMembresia } from "../../setup/membresia";
 import { activarTodosLosModulos } from "../../setup/modulos";
 import { asegurarBaseSeed } from "./auth";
+import { conOrigenPropio } from "./origen";
 
 /**
  * Fixtures de los specs `multiempresa-*` (ADR-007, A7): una SEGUNDA empresa activa creada con el `crearEmpresa` real, mientras dura el spec.
@@ -77,6 +78,7 @@ export async function crearSesion(usuarioId: string) {
 
 export async function paginaConSesion(browser: Browser, baseURL: string | undefined, sessionToken: string): Promise<Page> {
   const context = await browser.newContext();
+  await conOrigenPropio(context);
   const host = new URL(baseURL ?? "http://localhost:3000").hostname;
   await context.addCookies([{ name: "authjs.session-token", value: sessionToken, domain: host, path: "/", httpOnly: true, sameSite: "Lax" }]);
   return context.newPage();

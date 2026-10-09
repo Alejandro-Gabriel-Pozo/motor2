@@ -50,14 +50,6 @@ export function crearLimitadorDeTasa(limite: number, ventanaMs: number, maximoDe
       ventana.conteo++;
       return ventana.conteo > limite;
     },
-    /**
-     * M-19: ¿esta clave YA se pasó del límite en su ventana vigente? Solo MIRA, no cuenta: sirve para cortar un pedido antes de gastar base cuando se sabe quién es (la lectura que cuenta,
-     * `excedeLimite`, sigue siendo la de después). Una clave sin ventana, o con la ventana vencida, no está pasada.
-     */
-    yaExcedida(clave: string, ahora: number): boolean {
-      const ventana = ventanas.get(clave);
-      return ventana !== undefined && ahora <= ventana.venceEn && ventana.conteo > limite;
-    },
     /** Cuántas claves recuerda ahora (para probar que no crece sin límite). */
     clavesRecordadas(): number {
       return ventanas.size;

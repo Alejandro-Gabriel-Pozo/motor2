@@ -53,20 +53,6 @@ describe("crearLimitadorDeTasa", () => {
     expect(limitador.excedeLimite("usuario-1", T0)).toBe(true);
   });
 
-  // M-19: `yaExcedida` solo MIRA (no cuenta): sirve para cortar antes de gastar base sin gastar el cupo dos veces.
-  it("yaExcedida: falso hasta que el conteo pasa el límite, no cuenta por sí sola y vuelve a falso con la ventana nueva", () => {
-    const limitador = crearLimitadorDeTasa(2, 60_000);
-    expect(limitador.yaExcedida("u", T0)).toBe(false); // sin ventana
-    limitador.excedeLimite("u", T0); // 1
-    limitador.excedeLimite("u", T0); // 2: en el límite, todavía no pasada
-    expect(limitador.yaExcedida("u", T0)).toBe(false);
-    expect(limitador.excedeLimite("u", T0)).toBe(true); // 3: la que se pasa
-    for (let i = 0; i < 10; i++) expect(limitador.yaExcedida("u", T0)).toBe(true); // mirar no suma: sigue igual
-    expect(limitador.yaExcedida("otro", T0)).toBe(false); // por clave
-    expect(limitador.yaExcedida("u", T0 + 60_001)).toBe(false); // ventana vencida
-    expect(limitador.excedeLimite("u", T0 + 60_001)).toBe(false); // y vuelve a contar desde 1
-  });
-
   it("se resetea sola al pasar la ventana (y no antes)", () => {
     const limitador = crearLimitadorDeTasa(1, 60_000);
     expect(limitador.excedeLimite("usuario-1", T0)).toBe(false);

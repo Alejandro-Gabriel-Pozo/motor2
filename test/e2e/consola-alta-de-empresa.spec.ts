@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { codigoTotp, pasoDeTotp } from "../../src/core/plataforma/totp";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
 import { fijarCodigoDeIngreso, leerDeLaBase, sembrarAdminDePlataforma, type AdminSembrado } from "./fixtures/consola";
+import { conOrigenPropio } from "./fixtures/origen";
 import { crearUsuarioSinEmpresa } from "./fixtures/invitacion";
 import { paginaConSesion } from "./fixtures/multiempresa";
 import { azarDelProceso } from "../../src/lib/azar";
@@ -20,6 +21,7 @@ const marca = () => `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 
 async function ingresar(page: Page): Promise<AdminSembrado> {
   const admin = await sembrarAdminDePlataforma(`admin-${marca()}@plataforma.test`);
+  await conOrigenPropio(page.context());
   await page.goto(`${CONSOLA}/login`);
   await page.locator("#email").fill(admin.email);
   await page.getByRole("button", { name: "Pedir código" }).click();

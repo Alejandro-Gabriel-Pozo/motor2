@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { codigoTotp, pasoDeTotp } from "../../src/core/plataforma/totp";
 import { fijarCodigoDeIngreso, leerDeLaBase, sembrarAdminDePlataforma, type AdminSembrado } from "./fixtures/consola";
+import { conOrigenPropio } from "./fixtures/origen";
 
 /**
  * La consola de plataforma (E4, ADR-012 §2, ADR-019) en un navegador real, contra su propio servidor (`plataforma/`, otro puerto) y con SU conexión (rol
@@ -21,6 +22,7 @@ async function sembrar(): Promise<AdminSembrado> {
 
 /** Paso 1: email → pantalla del código, con el código del mail ya reemplazado por el conocido. */
 async function pedirElCodigo(page: Page, admin: AdminSembrado) {
+  await conOrigenPropio(page.context());
   await page.goto(`${CONSOLA}/login`);
   await page.locator("#email").fill(admin.email);
   await page.getByRole("button", { name: "Pedir código" }).click();
@@ -120,6 +122,7 @@ test("un código del mail equivocado y un TOTP equivocado no entran; un código 
 });
 
 test("un email que no es de un administrador ve exactamente la misma pantalla, y no puede entrar", async ({ page }) => {
+  await conOrigenPropio(page.context());
   await page.goto(`${CONSOLA}/login`);
   await page.locator("#email").fill("nadie@plataforma.test");
   await page.getByRole("button", { name: "Pedir código" }).click();
@@ -133,6 +136,7 @@ test("un email que no es de un administrador ve exactamente la misma pantalla, y
 
 test("accesibilidad: cada paso del ingreso no tiene violaciones de axe", async ({ page }) => {
   const admin = await sembrar();
+  await conOrigenPropio(page.context());
   await page.goto(`${CONSOLA}/login`);
   expect((await new AxeBuilder({ page }).analyze()).violations, "paso del email").toEqual([]);
   await pedirElCodigo(page, admin);

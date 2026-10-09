@@ -6,6 +6,7 @@ import { COOKIE_DE_PEDIDO_HTTP, COOKIE_DE_PEDIDO_HTTPS, leerPedidoDeIngreso } fr
 import { codigoTotp, generarSecretoTotp, pasoDeTotp } from "../../../src/core/plataforma/totp";
 import { crearPrismaE2E, resolverUrlE2E, resolverUrlE2EB } from "./base-e2e";
 import { azarDelProceso } from "../../../src/lib/azar";
+import { conOrigenPropio } from "./origen";
 
 /**
  * La consola de plataforma en los E2E (E4, ADR-019): sus dos secretos son valores FIJOS y descartables (la base E2E se vacía en cada corrida), compartidos entre
@@ -83,6 +84,7 @@ const CODIGO_DE_INGRESO_CONOCIDO = "482915";
  */
 export async function ingresarALaConsola(page: Page, consola: string): Promise<AdminSembrado> {
   const admin = await sembrarAdminDePlataforma(`admin-${Date.now()}-${Math.floor(Math.random() * 1e6)}@plataforma.test`);
+  await conOrigenPropio(page.context());
   await page.goto(`${consola}/login`);
   await page.locator("#email").fill(admin.email);
   await page.getByRole("button", { name: "Pedir código" }).click();
