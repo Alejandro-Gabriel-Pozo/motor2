@@ -198,9 +198,28 @@ describe("cotizacionPlausible (informe de seguridad S-19)", () => {
   const ahora = new Date("2026-09-18T22:00:00Z");
   const ayer = { fecha: new Date("2026-09-17T00:00:00Z"), venta: 1500 };
 
-  it("sin cotización previa, o con una de hace más de una semana, acepta cualquier valor", () => {
-    expect(cotizacionPlausible(99_999, null, ahora)).toBe(true);
+  it("con una cotización previa de hace más de una semana, acepta cualquier valor (una devaluación real acumula más que eso en un hueco largo)", () => {
     expect(cotizacionPlausible(99_999, { fecha: new Date("2026-09-01T00:00:00Z"), venta: 1500 }, ahora)).toBe(true);
+  });
+
+  // M-35 (T16): SIN cotización previa (tabla vacía) ya no acepta «cualquier valor»: tiene que caer en la banda del ancla fija, que se abre con la antigüedad.
+  it("EL DEFECTO (M-35): sin cotización previa solo acepta valores de la banda realista del ancla fija (o uno que otra fuente confirme)", () => {
+    expect(cotizacionPlausible(99_999, null, ahora)).toBe(false);
+    expect(cotizacionPlausible(500_000, null, ahora)).toBe(false);
+    expect(cotizacionPlausible(5, null, ahora)).toBe(false);
+    expect(cotizacionPlausible(1535, null, ahora)).toBe(true);
+    // la banda alrededor de la referencia (1.500) con el factor de 5 del primer año: [300, 7.500]
+    expect(cotizacionPlausible(7_500, null, ahora)).toBe(true);
+    expect(cotizacionPlausible(7_501, null, ahora)).toBe(false);
+    expect(cotizacionPlausible(300, null, ahora)).toBe(true);
+    expect(cotizacionPlausible(299, null, ahora)).toBe(false);
+    // una devaluación real que otra fuente independiente confirma se acepta
+    expect(cotizacionPlausible(9_000, null, ahora, 9_100)).toBe(true);
+    expect(cotizacionPlausible(9_000, null, ahora, 1_535)).toBe(false);
+    // con la antigüedad la banda se abre (cada año suma un factor): dos años después el techo es 1.500 × 5²
+    const dentroDeDosAnios = new Date("2028-09-01T00:00:00Z");
+    expect(cotizacionPlausible(30_000, null, dentroDeDosAnios)).toBe(true);
+    expect(cotizacionPlausible(40_000, null, dentroDeDosAnios)).toBe(false);
   });
 
   it("dentro de ±20% de la última acepta; fuera, rechaza (a menos que otra fuente lo confirme al 5%)", () => {
