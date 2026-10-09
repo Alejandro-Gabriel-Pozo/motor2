@@ -9,7 +9,8 @@ import { invitacionDelToken } from "@/server/sesion/invitacion";
 import { MENSAJE_ENLACE_NO_VALIDO } from "@/core/features/empresa/aceptar-invitacion";
 import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";
 import { error, type ResultadoAccion } from "../tipos";
-import { MENSAJE_DEMASIADAS_APERTURAS_DE_INVITACION, origenDelPedido, origenSinCupoParaAbrirInvitacion } from "../limitador-anonimo";
+import { hashDeToken } from "@/core/seguridad/tokens";
+import { MENSAJE_DEMASIADAS_APERTURAS_DE_INVITACION, consultaDeCuitSinCupo, origenDelPedido, origenSinCupoParaAbrirInvitacion } from "../limitador-anonimo";
 import { aceptarInvitacionDeGerenteCasoDeUso } from "./casos-de-uso/aceptar-invitacion-de-gerente";
 import { aceptarInvitacionDeUsuarioCasoDeUso } from "./casos-de-uso/aceptar-invitacion-de-usuario";
 
@@ -49,7 +50,13 @@ export async function aceptarMiInvitacion(formData: FormData): Promise<Resultado
   const token = cookieStore.get(nombreCookieInvitacion(process.env))?.value;
   if (!token) return error(MENSAJE_ENLACE_NO_VALIDO);
   const cuit = formData.get("cuit");
-  const resultado = await aceptarInvitacionDeGerenteCasoDeUso({ token, usuario: { id: usuario.id, email: usuario.email }, cuit: typeof cuit === "string" ? cuit : "", ahora: new Date() });
+  const ahora = new Date();
+  // S-18 (GT-8, GT-16): el cupo de pruebas de CUIT es por usuario e invitación (por el hash del token, que no se guarda en claro); el caso de uso lo consulta recién cuando el CUIT va a mirar la tabla de empresas.
+  const claveDelCupo = `${usuario.id}:${hashDeToken(token)}`;
+  const resultado = await aceptarInvitacionDeGerenteCasoDeUso({
+    token, usuario: { id: usuario.id, email: usuario.email }, cuit: typeof cuit === "string" ? cuit : "", ahora,
+    consultaDeCuitSinCupo: () => consultaDeCuitSinCupo(claveDelCupo, ahora.getTime()),
+  });
   if (!resultado.ok) return error(resultado.mensaje);
   cookieStore.delete(nombreCookieInvitacion(process.env));
   redirect("/login");

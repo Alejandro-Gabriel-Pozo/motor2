@@ -11,6 +11,7 @@ import { conInvariantesDeGobierno } from "@/server/actions/con-gobierno";
 import { hashDeToken } from "@/core/seguridad/tokens";
 import { marcarInvitacionAceptada } from "@/server/persistencia/invitaciones/marcar-invitacion-aceptada";
 import { invitacionConSuBase } from "@/server/sesion/invitacion";
+import { MENSAJE_DEMASIADAS_CONSULTAS_DE_CUIT } from "../../limitador-anonimo";
 
 /**
  * Caso de uso «aceptar la invitación del PRIMER GERENTE» (E5, ADR-020; Hito 3, B3-5 de `docs/plan-hito-3-pureza.md`). Antes eran dos piezas: la orquestación
@@ -56,6 +57,11 @@ interface EntradaDeAceptacion {
   usuario: { id: string; email: string };
   cuit: unknown;
   ahora: Date;
+  /**
+   * S-18: ¿esta prueba de CUIT se pasó del cupo del usuario y la invitación? Lo pasa la Server Action (el estado del cupo vive en `server/actions/limitador-anonimo.ts`, no en un caso de uso) y se
+   * consulta recién cuando el CUIT va a mirar la tabla de empresas. Los tests del caso de uso en sí (sin cupo) no la pasan; la acción SIEMPRE (`puertas-anonimas-con-cupo.test.ts`).
+   */
+  consultaDeCuitSinCupo?: () => boolean;
 }
 
 /** El cuerpo, dentro de la transacción (antes `aceptarInvitacion` de `core/features/empresa/aceptar-invitacion.ts`). */
@@ -75,6 +81,9 @@ async function aceptarEnLaTransaccion(tx: Prisma.TransactionClient, entrada: Ent
   const cuit = validarCuit(entrada.cuit);
   if (!cuit.ok) return { ok: false, mensaje: cuit.mensaje };
   if (cuit.valor === null) return { ok: false, mensaje: "Cargá el CUIT de la empresa." };
+  // S-18: de acá en adelante el CUIT va a mirar la tabla de empresas de toda la instalación («Ya hay una empresa con ese CUIT»): una prueba que le diría a quien todavía no tiene empresa si el CUIT es
+  // de un cliente. Cuenta contra el cupo del usuario y la invitación; pasado el cupo la respuesta es la misma exista o no, sin consultar. Un CUIT mal escrito ya salió arriba y no cuenta.
+  if (entrada.consultaDeCuitSinCupo?.()) return { ok: false, mensaje: MENSAJE_DEMASIADAS_CONSULTAS_DE_CUIT };
   if (await tx.empresa.findFirst({ where: { cuit: cuit.valor }, select: { id: true } })) {
     return { ok: false, mensaje: "Ya hay una empresa con ese CUIT. Revisalo; si es correcto, avisá a la plataforma." };
   }

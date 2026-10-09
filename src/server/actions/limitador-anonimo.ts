@@ -22,6 +22,29 @@ export const MENSAJE_DEMASIADAS_APERTURAS_DE_INVITACION = "Demasiados intentos d
 const limitadorDeAperturas =crearLimitadorDeTasa(MAXIMO_DE_APERTURAS_DE_INVITACION_POR_ORIGEN, VENTANA_DE_APERTURAS_DE_INVITACION_MS);
 
 /**
+ * Cupo de PRUEBAS DE CUIT al aceptar la invitación del primer gerente (S-18, T8 del endurecimiento; guards GT-8 y GT-16). Quien acepta ya tiene sesión pero todavía no tiene empresa
+ * (la invitación es de una empresa en alta), y el caso de uso le contesta «Ya hay una empresa con ese CUIT» si el CUIT que tipeó es de otra: sin freno, probando CUITs uno por uno
+ * se averigua cuáles son clientes de la instalación (una consulta «hacia afuera» de su empresa, sobre la tabla compartida). Por eso la prueba de un CUIT que llega a mirar
+ * `Empresa` (formato y dígito verificador bien, email y empresa en alta bien) cuenta contra un cupo por USUARIO E INVITACIÓN; pasado el cupo la respuesta es la misma exista o no el
+ * CUIT, y sin consultar. Un CUIT mal escrito no cuenta (no llegó a la tabla): quien se equivoca de tecla no se queda sin intentos.
+ *
+ * BEST EFFORT y declarado, como el cupo por origen de arriba: la memoria de UNA instancia. Corta el bucle barato de un invitado; el tope de quien tiene un solo CUIT correcto es
+ * holgado (cinco pruebas por hora y por invitación). Default a confirmar por el dueño (decisión B19 del carril B), revertible cambiando estas constantes.
+ */
+export const MAXIMO_DE_CONSULTAS_DE_CUIT_POR_INVITACION = 5;
+const VENTANA_DE_CONSULTAS_DE_CUIT_MS = 60 * 60 * 1000;
+
+/** Lo que ve quien se pasó del cupo: no dice nada del CUIT (existe o no), solo que espere. */
+export const MENSAJE_DEMASIADAS_CONSULTAS_DE_CUIT = "Probaste muchos CUIT seguidos. Esperá un rato y volvé a intentar; si el CUIT es el correcto y sigue sin dejarte pasar, avisá a la plataforma.";
+
+const limitadorDeConsultasDeCuit = crearLimitadorDeTasa(MAXIMO_DE_CONSULTAS_DE_CUIT_POR_INVITACION, VENTANA_DE_CONSULTAS_DE_CUIT_MS);
+
+/** ¿Esta invitación (de este usuario) ya gastó su cupo de pruebas de CUIT? Cuenta la prueba que se está atendiendo. `clave` = usuario + invitación; `ahora` en milisegundos. */
+export function consultaDeCuitSinCupo(clave: string, ahora: number): boolean {
+  return limitadorDeConsultasDeCuit.excedeLimite(clave, ahora);
+}
+
+/**
  * La IP de quien pide: el primer valor de `x-forwarded-for` (Vercel lo fija con la IP del cliente y descarta lo que el cliente haya mandado; fuera de Vercel el primer valor
  * se puede falsear, y por eso esto no es una defensa de verdad). Sin la cabecera (desarrollo local, E2E) no hay origen que contar: `null`.
  */

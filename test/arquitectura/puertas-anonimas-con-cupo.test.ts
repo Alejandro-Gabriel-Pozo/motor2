@@ -11,7 +11,8 @@ import ts from "typescript";
  *  - las otras dos acciones del archivo (`aceptarMiInvitacion*`) NIEGAN al anónimo: lo primero que hacen es pedir la sesión. Si alguna dejara de hacerlo sería una puerta
  *    anónima más y tendría que entrar acá con su propio cupo.
  *
- * Mutaciones (cada una pone un caso en rojo): sacar el cupo; ponerlo después de `invitacionDelToken`; ponerlo antes de la forma del token; una acción de aceptar que no pide la sesión primero.
+ * Mutaciones (cada una pone un caso en rojo): sacar el cupo; ponerlo después de `invitacionDelToken`; ponerlo antes de la forma del token; una acción de aceptar que no pide la sesión primero;
+ * (S-18) no pasar el cupo de CUIT al caso de uso, o consultarlo después de la consulta por CUIT.
  */
 const RUTA = "src/server/actions/auth/invitacion.ts";
 const fuente = ts.createSourceFile(RUTA, readFileSync(join(__dirname, "../..", RUTA), "utf8"), ts.ScriptTarget.Latest, true);
@@ -59,6 +60,27 @@ describe("GT-8 — las puertas anónimas de la app llevan cupo por origen antes 
         for (const posicion of posicionesDeLlamadas(f, otra)) expect(sesion[0]!, `${nombre}: la sesión va antes que ${otra}`).toBeLessThan(posicion);
       }
     }
+  });
+
+  // S-18 (T8; GT-8 y GT-16): `aceptarMiInvitacion` le pasa al caso de uso el cupo de pruebas de CUIT (por usuario e invitación) y el caso de uso lo consulta ANTES de mirar la tabla de empresas
+  // por el CUIT. El comportamiento lo prueba `test/auth/aceptar-invitacion-cupo-de-cuit.test.ts`; acá la forma: sin el cableado, el cupo quedaría escrito y sin efecto.
+  it("aceptarMiInvitacion pasa el cupo de pruebas de CUIT al caso de uso, y este lo consulta antes de la consulta por CUIT a la tabla de empresas", () => {
+    const aceptar = funcion("aceptarMiInvitacion");
+    let pasaElCupo = false;
+    const visitar = (n: ts.Node): void => {
+      if (ts.isPropertyAssignment(n) && ts.isIdentifier(n.name) && n.name.text === "consultaDeCuitSinCupo" && n.getText(fuente).includes("consultaDeCuitSinCupo(")) pasaElCupo = true;
+      ts.forEachChild(n, visitar);
+    };
+    visitar(aceptar);
+    expect(pasaElCupo, "aceptarMiInvitacion tiene que pasar `consultaDeCuitSinCupo: () => consultaDeCuitSinCupo(clave, ahora)` al caso de uso").toBe(true);
+
+    const casoDeUso = join(__dirname, "../..", "src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts");
+    const texto = readFileSync(casoDeUso, "utf8");
+    const cupo = texto.indexOf("entrada.consultaDeCuitSinCupo?.()");
+    const consulta = texto.indexOf("tx.empresa.findFirst({ where: { cuit:");
+    expect(cupo, "el caso de uso consulta el cupo").toBeGreaterThan(-1);
+    expect(consulta, "el caso de uso consulta la tabla de empresas por CUIT (sanidad)").toBeGreaterThan(-1);
+    expect(cupo, "el cupo va ANTES de la consulta por CUIT").toBeLessThan(consulta);
   });
 
   it("el archivo no exporta más acciones que estas tres (una puerta nueva tiene que decidir su cupo acá)", () => {
