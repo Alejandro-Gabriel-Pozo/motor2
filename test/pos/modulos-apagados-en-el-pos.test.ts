@@ -2,16 +2,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { fijarModulosActivos } from "../setup/modulos";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { pediblesDeEntrada } from "../../src/core/pos/selector-carta";
 import { cargarSelectorCartaDeLaMesa } from "../../src/server/consultas/pos/selector-carta";
 import { cargarPromoCartaParaAgregar } from "../../src/server/lecturas/pos/promo-para-agregar";
-import { agregarItems, enviarACocina, quitarPromoSinEnviar } from "../../src/server/actions/pos/cuenta-pedido";
-import { anularPromoEnviada } from "../../src/server/actions/pos/cuenta-anulacion";
-import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
+import { actualizarMaxMesasAbiertas, crearMesa } from "../../src/server/actions/pos/mesas";
+import { abrirCuenta, asignarClienteACuenta, corregirComensales, liberarMesa } from "../../src/server/actions/pos/cuenta-apertura";
+import { agregarItems, enviarACocina, quitarItemSinEnviar, quitarPromoSinEnviar } from "../../src/server/actions/pos/cuenta-pedido";
+import { anularItemEnviado, anularPromoEnviada } from "../../src/server/actions/pos/cuenta-anulacion";
+import { cerrarCuenta, emitirTicketCorregido } from "../../src/server/actions/pos/cuenta-cierre";
+import { anularVenta, registrarVenta } from "../../src/server/actions/movimientos/venta";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "../../src/server/acceso/gate";
+import { ACCIONES, moduloDeAccion, type AccionClave, type AccionDeSucursal } from "../../src/core/permisos/acciones";
+import { textoDeDenegacion } from "../../src/core/permisos/motivos";
 import type { Db } from "../../src/lib/db-tipos";
 
 /**
@@ -243,5 +249,155 @@ describe("S-22 · Carta apagada: el POS vende solo con los ítems sueltos, sin c
     const selector = await cargarSelectorCartaDeLaMesa(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     expect(selector.seccionesCarta.length).toBeGreaterThan(0);
     expect(promosOfrecidas(selector).map((p) => p.promoCartaId)).toEqual([promoCartaId]);
+  });
+});
+
+/**
+ * La parte de D2 que YA se cumplía (todas las claves `pos_*` y `proceso_venta` son del módulo Salón y el guard rechaza por módulo): este bloque la FIJA, puerta por
+ * puerta, para que ningún cambio (una clave de otro módulo, un envoltorio que se cae) la rompa sin que un test lo vea. Las 17 llamadas: las 14 mutaciones del POS
+ * (`pos-rechaza-sin-permiso.test.ts`), `agregarItems` también con una promo, la venta de mostrador y su anulación; más la lectura del mapa de mesas (la pantalla del POS).
+ */
+describe("S-22 · Salón apagado: ninguna puerta del POS responde (se fija lo que ya se cumplía)", () => {
+  const SIN_SALON = ["stock", "carta", "promociones"];
+  const RECHAZO = { ok: false, mensaje: textoDeDenegacion({ motivo: "MODULO_NO_ACTIVO", modulo: "salon" }) };
+
+  interface Escenario {
+    mesaLibre: string;
+    cuentaAbierta: string;
+    cuentaVacia: string;
+    cuentaLista: string;
+    cuentaConTicket: string;
+    cuentaConVenta: string;
+    operacionDeVenta: string;
+    itemSinEnviar: string;
+    itemEnviado: string;
+    promoSinEnviar: string;
+    promoEnviada: string;
+    clienteId: string;
+  }
+  let e: Escenario;
+
+  /** Foto completa de lo que tocan las puertas del POS (salón, venta y auditoría), por id. */
+  async function foto() {
+    const porId = { orderBy: { id: "asc" as const } };
+    return {
+      sucursal: await prismaAdmin.sucursal.findMany(porId),
+      mesa: await prismaAdmin.mesa.findMany(porId),
+      cuenta: await prismaAdmin.cuenta.findMany(porId),
+      cuentaItem: await prismaAdmin.cuentaItem.findMany(porId),
+      promoCuenta: await prismaAdmin.promoCuenta.findMany(porId),
+      ejemplarTicket: await prismaAdmin.ejemplarTicket.findMany(porId),
+      operacion: await prismaAdmin.operacion.findMany(porId),
+      movimientoStock: await prismaAdmin.movimientoStock.findMany(porId),
+      registroAuditoria: await prismaAdmin.registroAuditoria.findMany(porId),
+    };
+  }
+
+  /** Las 17 llamadas. `clave`: la acción que el guard evalúa. */
+  const PUERTAS: { nombre: string; clave: AccionClave; llamar: (e: Escenario) => Promise<unknown> }[] = [
+    { nombre: "crearMesa", clave: "pos_alta_mesa", llamar: () => crearMesa(50) },
+    { nombre: "actualizarMaxMesasAbiertas", clave: "pos_limite_mesas_abiertas", llamar: () => actualizarMaxMesasAbiertas(5) },
+    { nombre: "abrirCuenta", clave: "pos_abrir_cuenta", llamar: (x) => abrirCuenta(x.mesaLibre, 2) },
+    { nombre: "corregirComensales", clave: "pos_abrir_cuenta", llamar: (x) => corregirComensales(x.cuentaAbierta, 3) },
+    { nombre: "asignarClienteACuenta", clave: "pos_asignar_cliente", llamar: (x) => asignarClienteACuenta(x.cuentaAbierta, x.clienteId) },
+    { nombre: "liberarMesa", clave: "pos_liberar_mesa", llamar: (x) => liberarMesa(x.cuentaVacia) },
+    { nombre: "agregarItems", clave: "pos_tomar_pedido", llamar: (x) => agregarItems(x.cuentaAbierta, [{ productoId: s.flan.id, cantidad: 1 }]) },
+    { nombre: "agregarItems con una promo", clave: "pos_tomar_pedido", llamar: (x) => agregarItems(x.cuentaAbierta, [], menuDelDia) },
+    { nombre: "quitarPromoSinEnviar", clave: "pos_tomar_pedido", llamar: (x) => quitarPromoSinEnviar(x.promoSinEnviar) },
+    { nombre: "quitarItemSinEnviar", clave: "pos_tomar_pedido", llamar: (x) => quitarItemSinEnviar(x.itemSinEnviar) },
+    { nombre: "enviarACocina", clave: "pos_enviar_a_cocina", llamar: (x) => enviarACocina(x.cuentaAbierta, [x.itemSinEnviar]) },
+    { nombre: "anularItemEnviado", clave: "pos_anular_item", llamar: (x) => anularItemEnviado(x.itemEnviado, 1, "Se cayó", 1) },
+    { nombre: "anularPromoEnviada", clave: "pos_anular_item", llamar: (x) => anularPromoEnviada(x.promoEnviada, "Se cayó") },
+    { nombre: "cerrarCuenta", clave: "pos_cerrar_cuenta", llamar: (x) => cerrarCuenta(x.cuentaLista) },
+    { nombre: "emitirTicketCorregido", clave: "pos_emitir_ticket_corregido", llamar: (x) => emitirTicketCorregido(x.cuentaConTicket, "Se anuló el flan") },
+    { nombre: "registrarVenta (venta de mostrador)", clave: "proceso_venta", llamar: () => registrarVenta({ fecha: AHORA_DE_LA_CORRIDA, seccionId: s.seccion.id, ventas: [{ productoId: s.flan.id, cantidadVendida: 1 }] }) },
+    { nombre: "anularVenta", clave: "anular_venta", llamar: (x) => anularVenta(x.operacionDeVenta) },
+  ];
+
+  beforeEach(async () => {
+    const sucursalId = s.sucursalId;
+    const cliente = await prisma.cliente.create({ data: { nombre: "Fulano", descuentoPorcentaje: 15 } });
+    const mesaLibre = (await prisma.mesa.create({ data: { sucursalId, numero: 7 } })).id;
+
+    // La cuenta abierta de la mesa 4 (la del escenario de arriba, vacía): una Milanesa enviada, un Flan sin enviar, una promo sin enviar y una promo ya enviada.
+    const itemEnviado = await prisma.cuentaItem.create({ data: { cuentaId, productoId: s.milanesa.id, cantidad: 1, precioUnitario: 9000, numeroEnvio: 1, creadoPorId: s.admin.id } });
+    const itemSinEnviar = await prisma.cuentaItem.create({ data: { cuentaId, productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: null, creadoPorId: s.admin.id } });
+    const promo = async (numeroEnvio: number | null) => {
+      const p = await prisma.promoCuenta.create({ data: { cuentaId, promoCartaId, precio: 10000, titulo: "Menú del día", creadoPorId: s.admin.id } });
+      await prisma.cuentaItem.create({ data: { cuentaId, productoId: s.milanesa.id, cantidad: 1, precioUnitario: 7500, numeroEnvio, promoCuentaId: p.id, creadoPorId: s.admin.id } });
+      await prisma.cuentaItem.create({ data: { cuentaId, productoId: s.flan.id, cantidad: 1, precioUnitario: 2500, numeroEnvio, promoCuentaId: p.id, creadoPorId: s.admin.id } });
+      return p.id;
+    };
+    const promoSinEnviar = await promo(null);
+    const promoEnviada = await promo(1);
+
+    const vacia = await sembrarCuenta((await prisma.mesa.create({ data: { sucursalId, numero: 6 } })).id, s.admin.id);
+    const lista = await sembrarCuenta((await prisma.mesa.create({ data: { sucursalId, numero: 8 } })).id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
+
+    // Una cuenta cerrada con su ticket 1-A y la venta del Flan anulada después: el ticket quedó desactualizado (emitir el B escribiría).
+    const conTicket = await sembrarCuenta((await prisma.mesa.create({ data: { sucursalId, numero: 9 } })).id, s.admin.id, [
+      { productoId: s.milanesa.id, cantidad: 1, precioUnitario: 9000, numeroEnvio: 1 },
+      { productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 },
+    ]);
+    const cierre = await cerrarCuenta(conTicket.id);
+    if (!cierre.ok) throw new Error(cierre.mensaje);
+    const flanVendido = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: conTicket.id, productoId: s.flan.id } });
+    const anulacion = await anularVenta(flanVendido.operacionId!);
+    if (!anulacion.ok) throw new Error(anulacion.mensaje);
+
+    // Otra cuenta cerrada, con su venta VIGENTE: es la que `anularVenta` anularía.
+    const conVenta = await sembrarCuenta((await prisma.mesa.create({ data: { sucursalId, numero: 10 } })).id, s.admin.id, [{ productoId: s.pizza.id, cantidad: 1, precioUnitario: 12000, numeroEnvio: 1 }]);
+    const cierreDos = await cerrarCuenta(conVenta.id);
+    if (!cierreDos.ok) throw new Error(cierreDos.mensaje);
+    const pizzaVendida = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: conVenta.id } });
+
+    e = {
+      mesaLibre,
+      cuentaAbierta: cuentaId,
+      cuentaVacia: vacia.id,
+      cuentaLista: lista.id,
+      cuentaConTicket: conTicket.id,
+      cuentaConVenta: conVenta.id,
+      operacionDeVenta: pizzaVendida.operacionId!,
+      itemSinEnviar: itemSinEnviar.id,
+      itemEnviado: itemEnviado.id,
+      promoSinEnviar,
+      promoEnviada,
+      clienteId: cliente.id,
+    };
+  });
+
+  it("son 17 puertas, sin repetir, y todas son del módulo Salón", () => {
+    expect(PUERTAS).toHaveLength(17);
+    expect(new Set(PUERTAS.map((p) => p.nombre)).size).toBe(17);
+    for (const p of PUERTAS) expect(moduloDeAccion(p.clave), p.nombre).toBe("salon");
+  });
+
+  it("toda clave `pos_*` del catálogo es del módulo Salón (una nueva de otro módulo dejaría una puerta del POS abierta con Salón apagado)", () => {
+    const delPos = ACCIONES.filter((a) => a.clave.startsWith("pos_"));
+    expect(delPos.length).toBeGreaterThanOrEqual(11);
+    expect(delPos.filter((a) => a.modulo !== "salon").map((a) => a.clave)).toEqual([]);
+  });
+
+  it.each(PUERTAS.map((p) => [p.nombre, p] as const))("con Salón apagado, %s responde que el módulo no está activo y no cambia ninguna tabla", async (_n, puerta) => {
+    await fijarModulosActivos(E, SIN_SALON);
+    const antes = await foto();
+    expect(await puerta.llamar(e)).toMatchObject(RECHAZO);
+    expect(await foto()).toEqual(antes);
+  });
+
+  it("la pantalla del POS (la lectura del mapa de mesas) tampoco: el guard de ver niega por módulo y no hay nivel de ver ni de editar en ninguna clave del salón", async () => {
+    await fijarModulosActivos(E, SIN_SALON);
+    expect(await requierePermisoVer(s.admin.id, s.sucursalId, "pos_mesas", prisma)).toMatchObject({ ok: false, motivo: "MODULO_NO_ACTIVO", modulo: "salon" });
+    for (const clave of new Set(PUERTAS.map((p) => p.clave))) {
+      expect(await obtenerMiNivelPermiso(s.admin.id, s.sucursalId, clave as AccionDeSucursal, prisma), clave).toEqual({ ver: false, editar: false });
+    }
+  });
+
+  it("CONTROL: con Salón prendido las mismas puertas NO responden «módulo no activo» (el rechazo de arriba es por el módulo y no por otra cosa)", async () => {
+    await fijarModulosActivos(E, ["stock", "salon"]);
+    const respuestas = [await agregarItems(e.cuentaAbierta, [{ productoId: s.flan.id, cantidad: 1 }]), await crearMesa(50), await abrirCuenta(e.mesaLibre, 2)];
+    for (const r of respuestas) expect((r as { mensaje: string }).mensaje).not.toBe(RECHAZO.mensaje);
+    expect(respuestas.every((r) => (r as { ok: boolean }).ok)).toBe(true);
   });
 });
