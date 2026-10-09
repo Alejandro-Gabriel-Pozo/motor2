@@ -141,9 +141,10 @@ describe("pedirCodigo — el cupo por origen (best effort, por instancia)", () =
     expect(despues).toHaveLength(1);
   });
 
-  it("sin cabecera de IP (desarrollo local, E2E) no hay origen que contar: nunca se limita", async () => {
+  // M-18 (T16; CAMBIA COMPORTAMIENTO donde antes no había cupo): sin cabecera de IP el pedido cuenta en el balde común de los desconocidos; antes nunca se limitaba.
+  it("EL ATAQUE (M-18): sin cabecera de IP los pedidos comparten el cupo de los desconocidos: pasado el tope, se responde igual pero no se prepara ni manda nada", async () => {
     __setHeadersDeTest({});
     for (let i = 0; i < MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN + 5; i++) await pedirCodigo(INICIAL, formulario("admin@plataforma.test"));
-    expect(despues).toHaveLength(MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN + 5);
+    expect(despues).toHaveLength(MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN);
   });
 });

@@ -126,6 +126,7 @@ export default async function RendimientoRecetasPage({
           opcion={rango.opcion}
           desdeISO={desdeStr}
           hastaISO={hastaStr}
+          recortadoDesde={rango.recortadoDesde}
           camposOcultos={sp.productoId ? { productoId: sp.productoId } : undefined}
         />
         {confianzaLimitadaPorVentana && (

@@ -24,6 +24,7 @@ import {
   origenSinCupoParaAbrirInvitacion,
 } from "../../src/server/actions/limitador-anonimo";
 import { MENSAJE_ENLACE_NO_VALIDO } from "../../src/core/features/empresa/aceptar-invitacion";
+import { ORIGEN_DESCONOCIDO } from "../../src/core/seguridad/origen-del-pedido";
 import { generarTokenOpaco } from "../../src/core/seguridad/tokens";
 import { azarDelProceso } from "../../src/lib/azar";
 
@@ -80,9 +81,18 @@ describe("abrirInvitacion: cupo por origen (S-27)", () => {
     expect(consultas.cuantas).toBe(1);
   });
 
-  it("sin cabecera (desarrollo local, E2E) no hay origen que contar: no se limita", async () => {
-    for (let i = 0; i < MAXIMO_DE_APERTURAS_DE_INVITACION_POR_ORIGEN * 2; i++) await abrirInvitacion(tokenAlAzar());
-    expect(consultas.cuantas).toBe(MAXIMO_DE_APERTURAS_DE_INVITACION_POR_ORIGEN * 2);
+  // M-18 (T16; CAMBIA COMPORTAMIENTO donde antes no había cupo): sin x-forwarded-for el pedido ya no queda sin freno, cuenta en un balde común «desconocido» con el mismo cupo.
+  it("EL ATAQUE (M-18): sin cabecera x-forwarded-for tampoco hay bucle libre: los pedidos sin origen comparten UN cupo y, pasado el tope, vuelven con el mensaje del cupo sin consultar", async () => {
+    const respuestas = [];
+    for (let i = 0; i < MAXIMO_DE_APERTURAS_DE_INVITACION_POR_ORIGEN * 2; i++) respuestas.push(await abrirInvitacion(tokenAlAzar()));
+    expect(consultas.cuantas).toBe(MAXIMO_DE_APERTURAS_DE_INVITACION_POR_ORIGEN);
+    expect(respuestas.slice(MAXIMO_DE_APERTURAS_DE_INVITACION_POR_ORIGEN).every((r) => r.mensaje === MENSAJE_DEMASIADAS_APERTURAS_DE_INVITACION)).toBe(true);
+  });
+
+  it("una cabecera vacía o con la coma suelta cuenta igual que la ausente (mismo balde)", async () => {
+    __setHeadersDeTest({ "x-forwarded-for": " , 10.0.0.1" });
+    expect(origenDelPedido(new Headers({ "x-forwarded-for": " , 10.0.0.1" }))).toBe(ORIGEN_DESCONOCIDO);
+    expect(origenSinCupoParaAbrirInvitacion(null, 5)).toBe(origenSinCupoParaAbrirInvitacion(ORIGEN_DESCONOCIDO, 5));
   });
 });
 
@@ -95,9 +105,9 @@ describe("limitador de aperturas: la ventana", () => {
     expect(origenSinCupoParaAbrirInvitacion(origen, t0 + VENTANA_DE_APERTURAS_DE_INVITACION_MS + 1)).toBe(false);
   });
 
-  it("origenDelPedido: el primer valor, recortado; sin cabecera o vacía, null", () => {
+  it("origenDelPedido: el primer valor, recortado; sin cabecera o vacía, el balde común de los desconocidos (M-18), nunca null", () => {
     expect(origenDelPedido(new Headers({ "x-forwarded-for": " 198.51.100.7 , 10.0.0.1" }))).toBe("198.51.100.7");
-    expect(origenDelPedido(new Headers())).toBeNull();
-    expect(origenDelPedido(new Headers({ "x-forwarded-for": " , 10.0.0.1" }))).toBeNull();
+    expect(origenDelPedido(new Headers())).toBe(ORIGEN_DESCONOCIDO);
+    expect(origenDelPedido(new Headers({ "x-forwarded-for": " , 10.0.0.1" }))).toBe(ORIGEN_DESCONOCIDO);
   });
 });

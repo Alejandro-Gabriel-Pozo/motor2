@@ -15,6 +15,10 @@
  *
  * `--actor` es el email de un administrador de plataforma ACTIVO (`AdminPlataforma`, S-33): se verifica contra la base de identidad de la consola (la instalación principal). NO tiene que
  * ser un usuario de la app ni se crea ninguno. El cambio queda en la auditoría de PLATAFORMA (`AuditoriaPlataforma`, con la instalación), no en el registro de auditoría de la empresa.
+ *
+ * M-32: `--actor` solo dice quién firma; además hay que PROBARLO con el código de 6 dígitos de tu app de autenticación (el mismo TOTP de la consola). Pasalo por la variable
+ * `PLATAFORMA_CODIGO_ACTOR` SOLO para ese comando (nunca como argumento ni escrito en el archivo de entorno) o escribilo cuando el script lo pida en la terminal. Hace falta
+ * también `PLATAFORMA_CLAVE_TOTP` en el archivo de entorno. Cinco códigos equivocados bloquean 15 minutos a ese administrador (también en la consola) y cada intento fallido queda auditado.
  */
 import "dotenv/config";
 import { parseArgs } from "node:util";

@@ -49,7 +49,8 @@ const PUERTAS_A_LA_BASE: Record<string, Record<string, string[]>> = {
   dbDeInvitacion: { "invitacion.ts": ["invitacionDelToken"] },
   dbDeEmpresa: { "invitacion.ts": ["invitacionConSuBase"], "acceso.ts": ["tieneSucursalActiva"] },
   transaccionDeLaEmpresa: { "invitacion.ts": ["invitacionConSuBase"] },
-  dbDeUsuario: { "acceso.ts": ["tieneSucursalActiva"] },
+  // `sesionSigueVigente` (M-20): cuenta las pertenencias PROPIAS del usuario de la sesión para no expulsar al invitado que todavía no aceptó (nunca tuvo una).
+  dbDeUsuario: { "acceso.ts": ["tieneSucursalActiva", "sesionSigueVigente"] },
   transaccionDeEmpresa: {},
   baseDeEmpresa: {},
   baseDelContexto: {},

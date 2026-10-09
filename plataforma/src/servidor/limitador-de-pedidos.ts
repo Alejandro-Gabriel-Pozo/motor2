@@ -1,5 +1,6 @@
 import { crearLimitadorDeTasa } from "@/core/permisos/limitador-tasa";
 import { MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN, VENTANA_DE_PEDIDOS_MS } from "@/core/plataforma/limites";
+import { ORIGEN_DESCONOCIDO, origenDeLasCabeceras } from "@/core/seguridad/origen-del-pedido";
 
 /**
  * Cupo por ORIGEN de los pedidos de código de ingreso (S-08, T4): complementa el tope por administrador (que se cuenta en la base, bajo el cerrojo de su fila) con
@@ -17,15 +18,14 @@ import { MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN, VENTANA_DE_PEDIDOS_MS } from "@
 const limitador = crearLimitadorDeTasa(MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN, VENTANA_DE_PEDIDOS_MS);
 
 /**
- * La IP de quien pide: el primer valor de `x-forwarded-for` (Vercel lo fija con la IP del cliente). Sin la cabecera (desarrollo local, E2E) no hay origen que
- * contar: `null`.
+ * La IP de quien pide: el primer valor de `x-forwarded-for` (Vercel lo fija con la IP del cliente). Sin la cabecera el pedido NO queda sin cupo (M-18): cuenta en el balde común
+ * `ORIGEN_DESCONOCIDO` (`core/seguridad/origen-del-pedido.ts`), con el mismo cupo que cualquier origen.
  */
-export function origenDelPedido(cabeceras: Pick<Headers, "get">): string | null {
-  const primero = cabeceras.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return primero ? primero : null;
+export function origenDelPedido(cabeceras: Pick<Headers, "get">): string {
+  return origenDeLasCabeceras(cabeceras);
 }
 
-/** ¿Este origen ya gastó su cupo de pedidos de código? Cuenta el pedido que se está atendiendo. Sin origen conocido, nunca. */
+/** ¿Este origen ya gastó su cupo de pedidos de código? Cuenta el pedido que se está atendiendo. Un origen ausente (`null`) cuenta en el balde común de los desconocidos, nunca sin cupo (M-18). */
 export function origenSinCupoDeCodigos(origen: string | null, ahora: number): boolean {
-  return origen !== null && limitador.excedeLimite(origen, ahora);
+  return limitador.excedeLimite(origen ?? ORIGEN_DESCONOCIDO, ahora);
 }

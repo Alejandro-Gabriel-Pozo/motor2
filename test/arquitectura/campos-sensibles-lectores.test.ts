@@ -91,6 +91,7 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   "src/server/sesion/acceso.ts": I("El gate de login compara el correo de la cuenta con la membresía: lo resuelve el servidor y no lo devuelve.", "User.email"),
   "plataforma/src/servidor/ciclo-de-vida.ts": I("La consola busca la cuenta del gerente de una empresa por su correo; es la consola (otra app, rol de plataforma).", "User.email"),
   "plataforma/src/servidor/ingreso.ts": S("El ingreso a la consola verifica el código del mail y el segundo factor: lee el HMAC del código y el secreto TOTP cifrado para compararlos en el servidor y no los devuelve.", "CodigoDeIngresoPlataforma.hashCodigo", "AdminPlataforma.secretoTotp"),
+  "scripts/plataforma/probar-actor-de-plataforma.ts": S("La prueba del actor de un script de plataforma (M-32) descifra el secreto TOTP del administrador para verificar su código, bajo el cerrojo de su fila, y no lo devuelve ni lo escribe.", "AdminPlataforma.secretoTotp"),
   "scripts/benchmark-reportes.ts": I("Script de medición del dueño (benchmark de reportes): no es una pantalla.", "MovimientoStock.precioPorUnidadStock"),
   "scripts/lecturas-de-auth.ts": S("Script del dueño (`detectar-cuentas-vinculadas`), solo lectura, corre con tsx: compara el id_token de Google con el correo de la cuenta; no es parte de la app web.", "User.email", "Account.id_token"),
   "scripts/verificar-demo-invariantes.ts": I("Script del dueño que verifica la base demo: no es una pantalla.", "MovimientoStock.precioTotal", "MovimientoStock.precioPorUnidadStock", "Operacion.proveedorId"),

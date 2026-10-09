@@ -102,12 +102,21 @@ describe("resolverRangoDeReporte: nunca más de 366 días (S-28)", () => {
 
   it("un rango explícito largo, con «hasta» propio, también se recorta contra el «hasta»", () => {
     const r = resolverRangoDeReporte({ desde: "2020-01-01", hasta: "2024-12-31" }, ahora);
-    expect(r).toEqual({ opcion: "personalizado", desdeISO: "2024-01-01", hastaISO: "2024-12-31" });
+    expect(r).toEqual({ opcion: "personalizado", desdeISO: "2024-01-01", hastaISO: "2024-12-31", recortadoDesde: "2020-01-01" });
   });
 
   it("el borde: exactamente 366 días pasan enteros; 367 se recortan a 366", () => {
     expect(resolverRangoDeReporte({ desde: "2025-09-22", hasta: "2026-09-22" }, ahora)).toEqual({ opcion: "personalizado", desdeISO: "2025-09-22", hastaISO: "2026-09-22" });
-    expect(resolverRangoDeReporte({ desde: "2025-09-21", hasta: "2026-09-22" }, ahora)).toEqual({ opcion: "personalizado", desdeISO: "2025-09-22", hastaISO: "2026-09-22" });
+    expect(resolverRangoDeReporte({ desde: "2025-09-21", hasta: "2026-09-22" }, ahora)).toEqual({ opcion: "personalizado", desdeISO: "2025-09-22", hastaISO: "2026-09-22", recortadoDesde: "2025-09-21" });
+  });
+
+  // M-21 (T16): el recorte no avisaba; solo cambiaba la fecha que muestra el selector. Ahora el rango dice qué «desde» se pidió (la pantalla lo muestra: `selector-rango-aviso.test.tsx`).
+  it("EL DEFECTO (M-21): cuando recorta, el rango trae el «desde» pedido; cuando entra entero, NO trae la marca", () => {
+    expect(resolverRangoDeReporte({ desde: "2000-01-01" }, ahora).recortadoDesde).toBe("2000-01-01");
+    expect(resolverRangoDeReporte({ desde: "2025-09-22", hasta: "2026-09-22" }, ahora)).not.toHaveProperty("recortadoDesde");
+    expect(resolverRangoDeReporte({ rango: "personalizado" }, ahora)).not.toHaveProperty("recortadoDesde");
+    expect(resolverRangoDeReporte({ rango: "mes" }, ahora)).not.toHaveProperty("recortadoDesde");
+    expect(resolverRangoDeReporte({ desde: "no-es-una-fecha" }, ahora)).not.toHaveProperty("recortadoDesde");
   });
 
   it("lo que no es una fecha, o un rango al revés, no se toca (el reporte se hace cargo)", () => {

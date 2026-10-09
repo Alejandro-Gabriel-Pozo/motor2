@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { dbDeEmpresa, dbDeUsuario } from "@/core/auth/base";
 import type { CuentaDeGoogle } from "@/core/auth/invitacion";
+import { crearRegistroDeRevalidacion } from "@/core/auth/revalidacion-de-sesion";
 import { invitacionHabilitaElIngreso } from "./invitacion";
 import { vincularCuentaConInvitacion } from "./vincular-cuenta";
 
@@ -90,6 +91,38 @@ async function tieneSucursalActiva(usuarioId: string): Promise<boolean> {
     pertenencias.map(async ({ empresaId }) => Boolean(await dbDeEmpresa(empresaId).usuarioSucursal.findFirst({ where: { usuarioId, activo: true }, select: { id: true } })))
   );
   return conSucursal.some(Boolean);
+}
+
+/** El registro de revalidaciones de ESTA instancia (ver `revalidacion-de-sesion.ts`: la marca vive en memoria porque `Session` no tiene dónde guardarla). */
+const registroDeRevalidaciones = crearRegistroDeRevalidacion();
+
+/**
+ * M-20 (decidido por el dueño: «5 minutos»): ¿esta sesión sigue sirviendo? Se llama desde el callback `session` de Auth.js (`src/lib/auth.ts`), que corre en CADA pedido con sesión, así que
+ * lo barato va primero: dentro de `REVALIDAR_SESION_CADA_MS` desde el último veredicto no se toca la base. Pasado el tope se relee la membresía con el MISMO criterio del gate de login
+ * (`tieneSucursalActiva`: `UsuarioEmpresa` y `UsuarioSucursal` activos). El estado de la empresa y de la sucursal en sí NO se mira, igual que en el gate: es a propósito, para que `/login` los explique
+ * en vez de expulsar y dejar entrar de nuevo en bucle.
+ *
+ * Quien NUNCA tuvo una pertenencia (el invitado que llegó por el token de una invitación y todavía no aceptó) conserva la sesión: entró por la vía 2 del gate y su sesión no alcanza datos. Quien SÍ
+ * la tuvo y la perdió cae: el callback no le pone `user.id`, o sea «sin sesión» y de vuelta a `/login` (el veredicto negativo también se recuerda 5 minutos; la fila de `Session` no se escribe desde acá:
+ * la base se escribe en persistencia y la sesión vence sola).
+ *
+ * Falla CERRADO y reintenta: si la lectura falla (base caída, tiempo agotado) devuelve `false` para ese pedido y NO anota nada, así el siguiente pedido lo vuelve a intentar. `ahora` lo
+ * fija quien está en el borde (el callback), igual que en el resto de `server/sesion`.
+ */
+export async function sesionSigueVigente(
+  entrada: { sessionToken: string; usuarioId: string; ahora: Date },
+  registro: ReturnType<typeof crearRegistroDeRevalidacion> = registroDeRevalidaciones,
+): Promise<boolean> {
+  const instante = entrada.ahora.getTime();
+  const recordado = registro.veredictoVigente(entrada.sessionToken, instante);
+  if (recordado !== undefined) return recordado;
+  try {
+    const vigente = (await tieneSucursalActiva(entrada.usuarioId)) || (await dbDeUsuario(entrada.usuarioId).usuarioEmpresa.count({ where: { usuarioId: entrada.usuarioId } })) === 0;
+    registro.anotar(entrada.sessionToken, instante, vigente);
+    return vigente;
+  } catch {
+    return false;
+  }
 }
 
 /**

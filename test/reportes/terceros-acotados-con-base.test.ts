@@ -45,6 +45,30 @@ describe("sincronizarDolar: un tercero escribe fechas futuras y saltos absurdos 
     expect(r.errores.some((e) => /cotización descartada/.test(e))).toBe(true);
   });
 
+  // M-35 (T16): con la tabla vacía el primer día del relleno no tenía con qué compararse (`previo = null`) y solo lo acotaba el tope de 1.000.000: un primer valor absurdo quedaba guardado Y como
+  // base de todas las comparaciones siguientes (los días buenos que venían después se descartaban por «saltar» contra él).
+  it("EL DEFECTO (M-35): con la tabla vacía, un primer día absurdo del historial NO se guarda ni sirve de ancla: los días normales que siguen sí se guardan", async () => {
+    simularRed({
+      "api.argentinadatos.com": [
+        { fecha: "2026-09-15", compra: 490_000, venta: 500_000 }, // el primer día, sin dato previo: dentro del tope de 1.000.000 pero absurdo
+        { fecha: "2026-09-16", compra: 1480, venta: 1530 },
+        { fecha: "2026-09-17", compra: 1482, venta: 1532 },
+      ],
+      "dolarapi.com": { compra: 1485, venta: 1535, fechaActualizacion: "2026-09-18T18:55:00.000Z" },
+    });
+    const r = await sincronizarDolar(prisma, AHORA);
+    const guardadas = await prisma.cotizacionDolar.findMany({ orderBy: { fecha: "asc" }, select: { fecha: true, venta: true } });
+    expect(guardadas.map((g) => Number(g.venta))).toEqual([1530, 1532, 1535]);
+    expect(guardadas.some((g) => g.fecha.toISOString().startsWith("2026-09-15"))).toBe(false);
+    expect(r.errores.some((e) => /cotización descartada/.test(e))).toBe(true);
+  });
+
+  it("con la tabla vacía, el dólar de HOY absurdo de una sola fuente no se guarda (la corrida falla)", async () => {
+    simularRed({ "api.argentinadatos.com": [], "dolarapi.com": { compra: 490_000, venta: 500_000, fechaActualizacion: "2026-09-18T18:55:00.000Z" }, "api.bcra.gob.ar": {} });
+    await expect(sincronizarDolar(prisma, AHORA)).rejects.toThrow(/No se pudo obtener el dólar/);
+    expect(await prisma.cotizacionDolar.count()).toBe(0);
+  });
+
   it("dolarapi con la fecha de mañana no se guarda: sin otra fuente la corrida falla y no queda ninguna fila futura", async () => {
     await prisma.cotizacionDolar.create({ data: { fecha: new Date("2026-09-17T00:00:00Z"), fuente: "BNA", compra: 1485, venta: 1535 } });
     simularRed({ "dolarapi.com": { compra: 1485, venta: 1535, fechaActualizacion: "2026-09-19T15:00:00.000Z" } });

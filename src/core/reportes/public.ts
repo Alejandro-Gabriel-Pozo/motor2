@@ -14,7 +14,7 @@
 export type { FiltroComparacionRendimiento, FilaComparacionRendimiento } from "./rendimiento-por-sucursal";
 export { FOOD_COST_OBJETIVO_PCT } from "./margen-objetivo";
 export { resolverObjetivoFoodCost } from "./margen-objetivo";
-export { resolverRangoDeReporte } from "./rango-por-defecto";
+export { MAXIMO_DE_DIAS_DE_UN_RANGO, resolverRangoDeReporte } from "./rango-por-defecto";
 export type { FilaDebidoConsignante } from "./consignacion";
 export type { FilaStockSinVenderConsignacion } from "./consignacion";
 export type { FilaResumenConsolidado } from "./resumen-consolidado";
@@ -64,7 +64,7 @@ export type { ItemOperacion } from "./trazabilidad";
 export type { FilaValuacionInventario } from "./valuacion";
 export { resolverRangoPorDefecto } from "./rango-por-defecto";
 export type { CotizacionDia, ResultadoSincronizacionDolar, UltimaCotizacion } from "./cotizacion-dolar";
-export { cotizacionPlausible, cotizacionVencida, leerBcra, leerDolarApi, leerHistorial, mensajeDeCotizacionDescartada, pesosADolares, planDeRelleno } from "./cotizacion-dolar";
+export { codigosDeErroresDeSincronizacion, cotizacionPlausible, cotizacionVencida, leerBcra, leerDolarApi, leerHistorial, mensajeDeCotizacionDescartada, pesosADolares, planDeRelleno } from "./cotizacion-dolar";
 export type { ResultadoSincronizacionIPC, SerieIPC } from "./indices-economicos";
 export {
   antiguedadSerieIPC,

@@ -3,7 +3,7 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
-import { decidirInicioDeSesion } from "@/server/sesion/acceso";
+import { decidirInicioDeSesion, sesionSigueVigente } from "@/server/sesion/acceso";
 import { ACTUALIZAR_CADA_S, DURACION_SESION_S } from "@/core/auth/duracion-sesion";
 import { nombreCookieSesion, sirvePorHttps, tokenDeSesionAbierta } from "@/core/auth/cookie-sesion";
 import { nombreCookieInvitacion } from "@/core/auth/invitacion";
@@ -55,8 +55,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // volver a loguearse. No seteamos session.user.id: getUsuarioActual
     // (única puerta de lectura de sesión del proyecto) ya trata eso como
     // "sin sesión" (`if (!session?.user?.id...) return null`).
+    //
+    // M-20 (decidido por el dueño: «5 minutos»): `activoGlobal` solo cubre la baja de la CUENTA; quien perdía la membresía (empresa o sucursal) conservaba la sesión hasta 12 horas. `sesionSigueVigente`
+    // relee la membresía a lo sumo cada `REVALIDAR_SESION_CADA_MS` por sesión (no por pedido) y, si ya no corresponde, borra la sesión y no se pone `user.id` (→ `/login`). Falla cerrado.
     async session({ session, user }) {
-      if (session.user && user.activoGlobal) {
+      // El adaptador de base de datos le pasa a este callback la fila de `Session` entera, token incluido; sin token no hay a qué sesión revalidar y se trata como sin sesión.
+      const sessionToken = (session as { sessionToken?: string }).sessionToken;
+      if (session.user && user.activoGlobal && sessionToken && (await sesionSigueVigente({ sessionToken, usuarioId: user.id, ahora: new Date() }))) {
         session.user.id = user.id;
       }
       return session;

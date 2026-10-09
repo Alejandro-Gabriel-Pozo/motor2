@@ -40,7 +40,7 @@ export default async function DescuentosClientesPage({ searchParams }: { searchP
         </p>
       </div>
 
-      <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} />
+      <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />
 
       <h2 className="text-sm font-medium">
         ${rep.totalDescontado.toLocaleString("es-AR")} descontados{rep.descuentoEfectivoPct !== null ? ` (${rep.descuentoEfectivoPct}% del precio de lista)` : ""} — $

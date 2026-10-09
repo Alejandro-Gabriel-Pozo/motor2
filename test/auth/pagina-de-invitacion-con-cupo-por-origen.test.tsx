@@ -102,9 +102,12 @@ describe("GET /invitacion: cupo por origen antes de la base (I-2)", () => {
     expect(consultas.tokens).toHaveLength(1);
   });
 
-  it("sin cabecera (desarrollo local, E2E) no hay origen que contar: no se limita", async () => {
-    for (let i = 0; i < MAXIMO_DE_APERTURAS_DE_INVITACION_POR_ORIGEN * 2; i++) await pedirPagina(tokenAlAzar());
-    expect(consultas.cuantas).toBe(MAXIMO_DE_APERTURAS_DE_INVITACION_POR_ORIGEN * 2);
+  // M-18 (T16; CAMBIA COMPORTAMIENTO donde antes no había cupo): sin cabecera el pedido cuenta en el balde común «desconocido», no queda sin freno.
+  it("EL ATAQUE (M-18): sin cabecera x-forwarded-for los pedidos comparten el cupo de los desconocidos: pasado el tope, vuelven con el mensaje del cupo sin consultar", async () => {
+    const pantallas: string[] = [];
+    for (let i = 0; i < MAXIMO_DE_APERTURAS_DE_INVITACION_POR_ORIGEN * 2; i++) pantallas.push(await pedirPagina(tokenAlAzar()));
+    expect(consultas.cuantas).toBe(MAXIMO_DE_APERTURAS_DE_INVITACION_POR_ORIGEN);
+    expect(pantallas.slice(MAXIMO_DE_APERTURAS_DE_INVITACION_POR_ORIGEN).every((p) => p.includes(MENSAJE_DEMASIADAS_APERTURAS_DE_INVITACION))).toBe(true);
   });
 
   it("sin cookie la pantalla sigue siendo la de siempre (pedir el token del fragmento), no el mensaje del cupo", async () => {
