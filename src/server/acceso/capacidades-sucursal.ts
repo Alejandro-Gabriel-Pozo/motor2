@@ -40,10 +40,15 @@ export async function sucursalTieneCapacidad(
 
   const candidatas = await db.capacidadSucursal.findMany({
     where: { accionClave, OR: [{ sucursalId }, filaPorDefectoDeLaEmpresaDe(sucursalId)] },
+    select: COLUMNAS_QUE_USA_LA_REGLA,
   });
 
   return resolverCapacidad(candidatas, sucursalId);
 }
+
+// GT-13 (tanda T9 del endurecimiento de seguridad): las dos lecturas piden SOLO lo que la regla usa (`resolverCapacidad`: la sucursal, si está habilitada y, para agrupar por acción, cuál es), no la fila entera.
+// La carta pública llega hasta acá y lee una lista cerrada de campos (`test/arquitectura/carta-publica-lista-cerrada.test.ts`); el gate y el menú comparten estas lecturas y no cambian de resultado ni de cantidad de consultas.
+const COLUMNAS_QUE_USA_LA_REGLA = { accionClave: true, sucursalId: true, habilitado: true } as const;
 
 // O.47 (reserva M3 de la auditoría del Hito 5; docs/pureza-integracion.md): la fila «por defecto» (`sucursalId: null`) es UNA POR EMPRESA (índice único parcial `(empresaId, accionClave)`). Sin este filtro la
 // rama `sucursalId: null` traía la fila por defecto de TODAS las empresas, y con un cliente que se saltea el RLS (rol dueño, solo con `MOTOR2_ROL_ESTRICTO=0` fuera de producción) la de otra empresa apagaba
@@ -64,6 +69,7 @@ export async function capacidadesDeSucursal(
 ): Promise<Set<string>> {
   const candidatas = await db.capacidadSucursal.findMany({
     where: { accionClave: { in: [...claves] }, OR: [{ sucursalId }, filaPorDefectoDeLaEmpresaDe(sucursalId)] },
+    select: COLUMNAS_QUE_USA_LA_REGLA,
   });
   const habilitadas = new Set<string>();
   for (const clave of claves) {
