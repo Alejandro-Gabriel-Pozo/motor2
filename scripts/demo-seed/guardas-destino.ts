@@ -18,6 +18,8 @@
  * legítimo (el primer gerente, las acciones nuevas), pero no por accidente.
  */
 
+import { primerHostNoLocal } from "../../src/core/auth/hosts-de-conexion";
+
 type Entorno = Record<string, string | undefined>;
 
 const HOSTS_PERMITIDOS = ["localhost", "127.0.0.1"];
@@ -46,6 +48,8 @@ function leerUrlDeConexion(url: string, variable: string): URL {
 }
 
 const esHostLocal = (host: string) => HOSTS_PERMITIDOS.includes(host);
+/** El primer host al que la URL conecta de verdad que no es local (`host=`/`hostaddr=` de la query mandan sobre el de la URL: M-29), o `null`. */
+const hostNoLocalDe = (parsed: URL): string | null => primerHostNoLocal(parsed, HOSTS_PERMITIDOS);
 const pareceProveedorGestionado = (url: string) => PROHIBIDOS.some((p) => url.includes(p));
 const nombreDeLaBase = (parsed: URL) => decodeURIComponent(parsed.pathname.replace(/^\//, ""));
 
@@ -65,6 +69,11 @@ export function resolverUrlDelSeed(env: Entorno): BaseDelSeed {
   }
   if (pareceProveedorGestionado(url)) {
     throw new Error("MOTOR2_SEED_DATABASE_URL parece apuntar a un proveedor gestionado — rechazada.");
+  }
+  // M-29: el host de la URL es local, pero `?host=`/`hostaddr=` de la query mandan sobre él (`pg` y libpq): cuenta el host al que la conexión va de verdad.
+  const noLocal = hostNoLocalDe(parsed);
+  if (noLocal !== null) {
+    throw new Error(`Host rechazado (${noLocal}): el seed de 6 meses solo corre contra un Postgres LOCAL (localhost o 127.0.0.1) — nunca contra Neon.`);
   }
   const nombre = nombreDeLaBase(parsed);
   if (!nombre || nombre.includes("/") || !nombre.endsWith(SUFIJO_OBLIGATORIO)) {
@@ -109,8 +118,9 @@ export interface DestinoDelSeedBase {
 /**
  * Valida `DATABASE_URL` (la que usa `prisma/seed.ts` vía `src/lib/db`) ANTES de conectarse a nada. Siempre rechaza producción/Vercel. Un Postgres local (`localhost`, `127.0.0.1`) se acepta;
  * cualquier otro host (Neon, un pooler, un host cualquiera) se rechaza con un mensaje claro, salvo con `permitirRemoto` (el flag `--permitir-remoto`), que lo deja pasar marcado como
- * `remoto` para que quien llama pida la confirmación interactiva. Un host local con un proveedor gestionado escondido en la URL (`?host=…`) se rechaza siempre: lo que se confirmaría no
- * sería lo que se escribe. Los mensajes nombran host y base, nunca la URL (lleva la clave).
+ * `remoto` para que quien llama pida la confirmación interactiva. Cuenta el host al que la conexión va DE VERDAD (M-29, `hostsDeUnaConexion`): el `?host=`/`hostaddr=` de la query manda sobre el
+ * de la URL, así que `localhost/x?host=<otro>` es el host `<otro>` (remoto: pide `--permitir-remoto` y la confirmación NOMBRA el host real); un host local con un proveedor gestionado
+ * escondido en el texto de la URL se rechaza siempre. Los mensajes nombran host y base, nunca la URL (lleva la clave).
  */
 export function resolverDestinoDelSeedBase(env: Entorno, opciones: { permitirRemoto: boolean }): DestinoDelSeedBase {
   const url = env.DATABASE_URL;
@@ -121,16 +131,18 @@ export function resolverDestinoDelSeedBase(env: Entorno, opciones: { permitirRem
   const nombre = nombreDeLaBase(parsed);
   if (!nombre || nombre.includes("/")) throw new Error("DATABASE_URL no trae el nombre de la base: no se siembra a ciegas.");
 
-  if (esHostLocal(host)) {
-    if (pareceProveedorGestionado(url)) throw new Error("DATABASE_URL tiene un host local pero parece apuntar a un proveedor gestionado — rechazada.");
-    return { host, nombre, remoto: false };
-  }
+  // Un host local con un proveedor gestionado nombrado en la URL se rechaza siempre (el texto de la URL no es lo que se confirmaría).
+  if (esHostLocal(host) && pareceProveedorGestionado(url)) throw new Error("DATABASE_URL tiene un host local pero parece apuntar a un proveedor gestionado — rechazada.");
+  // Local solo si TODOS los hosts a los que conecta de verdad son locales: `?host=<otro>` manda sobre el de la URL (M-29) y esa URL se trata como el host <otro>, remoto.
+  const noLocal = hostNoLocalDe(parsed);
+  if (noLocal === null) return { host, nombre, remoto: false };
   if (!opciones.permitirRemoto) {
     throw new Error(
-      `Destino rechazado (${host}, base "${nombre}"): el seed base solo corre contra un Postgres LOCAL (localhost o 127.0.0.1). Si es a propósito sembrar una base real (por ejemplo, el primer gerente), volvé a correr con --permitir-remoto: te va a pedir confirmar el host y la base.`,
+      `Destino rechazado (${noLocal}, base "${nombre}"): el seed base solo corre contra un Postgres LOCAL (localhost o 127.0.0.1). Si es a propósito sembrar una base real (por ejemplo, el primer gerente), volvé a correr con --permitir-remoto: te va a pedir confirmar el host y la base.`,
     );
   }
-  return { host, nombre, remoto: true };
+  // El host que se muestra y se confirma es el que se usa de verdad (el de `?host=` si lo hay), no el de la URL.
+  return { host: noLocal, nombre, remoto: true };
 }
 
 /**

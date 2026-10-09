@@ -25,7 +25,23 @@ export async function datosDelRolDeEjecucion(db: Db): Promise<DatosDelRol> {
 
 /** Los nombres de base que son de uso descartable (desarrollo, e2e, demo, benchmark): ninguna tiene datos reales. */
 const SUFIJOS_DE_BASE_DESCARTABLE = ["_dev", "_e2e", "_demo", "_bench"];
-const HOSTS_LOCALES = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const HOSTS_LOCALES = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+
+/**
+ * Todos los hosts a los que la URL conecta de verdad (M-29 de la auditoría intermedia): el de la URL más los de `host=` y `hostaddr=` de la query (`pg` y libpq dan prioridad a esos sobre el de
+ * la URL; admiten listas con comas). Es la MISMA lógica que `hostsDeUnaConexion` de `hosts-de-conexion.ts`, repetida acá a propósito: este archivo lo alcanza la carta pública y la frontera
+ * `ALCANCE_CARTA_PUBLICA` de `.dependency-cruiser.cjs` es una lista cerrada de archivos (un archivo nuevo en su alcance es un cambio de frontera, que no se hace por una guarda de host). El test
+ * `test/auth/hosts-de-conexion.test.ts` fija que las dos hagan lo mismo.
+ */
+function hostsDeLaConexion(u: URL): string[] {
+  const salida = [u.hostname.toLowerCase()];
+  for (const clave of ["host", "hostaddr"]) {
+    for (const valor of u.searchParams.getAll(clave)) {
+      for (const h of valor.split(",")) if (h.trim()) salida.push(h.trim().toLowerCase());
+    }
+  }
+  return salida;
+}
 
 /**
  * ¿La `DATABASE_URL` apunta a una base descartable? Sí si el host es local o el NOMBRE de la base termina en `_dev`, `_e2e`, `_demo` o `_bench`. Sin URL, con una que no se entiende o con
@@ -36,7 +52,8 @@ function esBaseDescartable(url: string | undefined): boolean {
   try {
     const u = new URL(url);
     if (u.protocol !== "postgresql:" && u.protocol !== "postgres:") return false;
-    if (HOSTS_LOCALES.has(u.hostname.toLowerCase())) return true;
+    // Local solo si TODOS los hosts a los que conecta de verdad lo son: `postgresql://u@localhost/x?host=<remoto>` conecta al remoto (M-29).
+    if (hostsDeLaConexion(u).every((h) => HOSTS_LOCALES.has(h))) return true;
     const nombre = decodeURIComponent(u.pathname.replace(/^\//, ""));
     return SUFIJOS_DE_BASE_DESCARTABLE.some((sufijo) => nombre.endsWith(sufijo));
   } catch {

@@ -49,6 +49,73 @@ describe("GT-22: ningún script de plataforma cae en DATABASE_URL", () => {
   );
 });
 
+/**
+ * GT-22 (T14, M-29 de la auditoría intermedia): toda guarda de «solo contra un Postgres LOCAL» mira el host al que la conexión va DE VERDAD, no solo `new URL(url).hostname`. El cliente `pg` y
+ * libpq dan prioridad al parámetro `host` de la query sobre el host de la URL, así que `postgresql://u:p@localhost/x_demo?host=10.0.0.5` parecía local, pasaba la guarda y conectaba a
+ * `10.0.0.5`. `hostsDeUnaConexion`/`primerHostNoLocal` (`src/core/auth/hosts-de-conexion.ts`) devuelven todos los hosts (URL, `host=`, `hostaddr=`, listas con comas).
+ *  1. Los archivos que hoy deciden «local» con una URL de base de datos usan `primerHostNoLocal` (lista cerrada).
+ *  2. Un archivo NUEVO de `scripts/`, `src/` o `test/` que lea el `hostname` de una URL de base de datos y lo compare con `localhost`/`127.0.0.1` sin usar el ayudante, falla.
+ * Mutación: volver `esBaseDescartable` a `HOSTS_LOCALES.has(u.hostname…)` pone en rojo el caso con `?host=` y esta lista.
+ */
+describe("GT-22 (M-29): las guardas de host local miran el host real de la conexión", () => {
+  const GUARDAS_DE_HOST_LOCAL = ["scripts/demo-seed/guardas-destino.ts", "scripts/benchmark-reportes.ts", "test/e2e/fixtures/base-e2e.ts", "test/setup/base-temporal-migrada.ts"];
+
+  it.each(GUARDAS_DE_HOST_LOCAL)("%s decide «local» con primerHostNoLocal (no con el hostname de la URL sola)", (ruta) => {
+    const fuente = sinComentarios(ruta);
+    expect(fuente).toContain("primerHostNoLocal(");
+    expect(fuente, "importa el ayudante").toMatch(/from "[./]+(?:src\/)?(?:core\/)?(?:auth\/)?hosts-de-conexion"/);
+  });
+
+  it("src/core/auth/rol-de-ejecucion.ts hace lo mismo con su propia copia (lo alcanza la carta pública: un archivo nuevo sería un cambio de frontera)", () => {
+    const fuente = sinComentarios("src/core/auth/rol-de-ejecucion.ts");
+    expect(fuente).toMatch(/searchParams\.getAll\(clave\)/);
+    expect(fuente).toMatch(/\["host", "hostaddr"\]/);
+    expect(fuente, "decide con TODOS los hosts de la conexión").toMatch(/hostsDeLaConexion\(u\)\.every\(/);
+  });
+
+  /** El patrón de una guarda de host local que mira SOLO el `hostname` de una URL de base de datos (sin comentarios). */
+  const miraSoloElHostname = (f: string) =>
+    /\bhostname\b/.test(f) && /["'`](?:localhost|127\.0\.0\.1)["'`]/.test(f) && /DATABASE_URL|DIRECT_URL|postgres(?:ql)?:\/\//.test(f) && !/primerHostNoLocal\(|hostsDeLaConexion\(/.test(f);
+
+  /** Archivos que miran un `hostname` contra `localhost` y tienen una URL de base de datos a la vista, pero NO son una guarda de base: con su motivo. */
+  const NO_SON_GUARDA_DE_BASE: Readonly<Record<string, string>> = {
+    "plataforma/src/entorno.ts": "Compara el hostname de la dirección pública de la APP (`PLATAFORMA_URL_APP`: https, o http solo en localhost) y normaliza el host de dos URL para saber si son la misma base (`mismaBase`); no decide si una base es local.",
+  };
+
+  /** Archivos de código (no `node_modules`) donde se mira una URL de base de datos y se la compara con un host local. */
+  function decidenHostLocalConUnaUrlDeBase(): string[] {
+    const hallados: string[] = [];
+    const visitar = (dir: string): void => {
+      for (const e of readdirSync(join(RAIZ, dir), { withFileTypes: true })) {
+        const ruta = `${dir}/${e.name}`;
+        if (e.isDirectory()) {
+          if (!["node_modules", ".next", "__golden__", "migrations"].includes(e.name)) visitar(ruta);
+        } else if (/\.(ts|mjs)$/.test(e.name) && !/\.test\.ts$/.test(e.name) && !ruta.startsWith("test/arquitectura/")) {
+          const f = sinComentarios(ruta);
+          if (miraSoloElHostname(f)) hallados.push(ruta);
+        }
+      }
+    };
+    for (const d of ["scripts", "src", "test/e2e", "test/setup", "plataforma/src"]) visitar(d);
+    return hallados.sort();
+  }
+
+  it("ningún archivo decide «local» mirando solo el hostname de una URL de base de datos (salvo los de NO_SON_GUARDA_DE_BASE, con su motivo)", () => {
+    const halladas = decidenHostLocalConUnaUrlDeBase();
+    expect(halladas.filter((r) => !(r in NO_SON_GUARDA_DE_BASE))).toEqual([]);
+    // la lista de excepciones no tiene sobrantes
+    expect(Object.keys(NO_SON_GUARDA_DE_BASE).filter((r) => !halladas.includes(r))).toEqual([]);
+    for (const [r, motivo] of Object.entries(NO_SON_GUARDA_DE_BASE)) expect(motivo.length, r).toBeGreaterThan(40);
+  });
+
+  it("sanidad: el detector reconoce la forma vieja de las guardas (antes del arreglo) y no la nueva", () => {
+    // (rol-de-ejecucion.ts usa una copia propia —ver arriba—; su forma vieja `HOSTS_LOCALES.has(u.hostname…)` la detecta el caso con `?host=` de test/auth/hosts-de-conexion.test.ts)
+    const vieja = 'const url = process.env.DATABASE_URL;\nconst host = new URL(url).hostname;\nif (host !== "localhost" && host !== "127.0.0.1") throw new Error("x");';
+    expect(miraSoloElHostname(vieja)).toBe(true);
+    expect(miraSoloElHostname('const noLocal = primerHostNoLocal(new URL(url), ["localhost", "127.0.0.1"]);')).toBe(false);
+  });
+});
+
 const sinComentarios = (ruta: string) =>
   leer(ruta)
     .replace(/\/\*[\s\S]*?\*\//g, "")

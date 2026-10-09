@@ -26,6 +26,7 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { primerHostNoLocal } from "../src/core/auth/hosts-de-conexion";
 
 const N_MP = 150;
 const N_PV = 20;
@@ -47,9 +48,10 @@ function requerirUrlDeBenchmark(): string {
     console.error("MOTOR2_BENCH_DATABASE_URL no es una URL válida.");
     process.exit(1);
   }
-  const host = parsed.hostname;
-  if (host !== "localhost" && host !== "127.0.0.1") {
-    console.error(`Host rechazado (${host}): el benchmark solo corre contra un Postgres LOCAL.`);
+  // M-29: también los hosts de `?host=`/`hostaddr=`, que mandan sobre el de la URL.
+  const noLocal = primerHostNoLocal(parsed, ["localhost", "127.0.0.1"]);
+  if (noLocal !== null) {
+    console.error(`Host rechazado (${noLocal}): el benchmark solo corre contra un Postgres LOCAL.`);
     process.exit(1);
   }
   const prohibidos = ["neon.tech", "vercel", "supabase", "amazonaws", "pooler"];
@@ -74,7 +76,7 @@ function requerirUrlDeBenchmark(): string {
       // DATABASE_URL mal formada: no es problema de este script, seguir.
     }
   }
-  console.log(`Base de benchmark: ${host}/${dbName}`);
+  console.log(`Base de benchmark: ${parsed.hostname}/${dbName}`);
   return url;
 }
 

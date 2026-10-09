@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { ROL_DE_PLATAFORMA } from "../../../plataforma/src/entorno";
+import { primerHostNoLocal } from "../../../src/core/auth/hosts-de-conexion";
 
 /**
  * Base de datos DEDICADA a los E2E de Playwright, con reset total.
@@ -138,6 +139,11 @@ function validarUrlE2E(env: Record<string, string | undefined>, variable: string
   }
   if (PROHIBIDOS.some((p) => url.includes(p))) {
     throw new Error(`${variable} parece apuntar a un proveedor gestionado — rechazada.`);
+  }
+  // M-29: cuenta también el host al que la conexión va de verdad (`?host=`/`hostaddr=` mandan sobre el de la URL), no solo el de la URL.
+  const noLocal = primerHostNoLocal(parsed, HOSTS_PERMITIDOS);
+  if (noLocal !== null) {
+    throw new Error(`Host rechazado (${noLocal}): los E2E solo corren contra un Postgres LOCAL (localhost o 127.0.0.1).`);
   }
   const nombre = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
   if (!nombre || nombre.includes("/") || !nombre.endsWith(SUFIJO_OBLIGATORIO)) {
