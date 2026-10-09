@@ -1,6 +1,7 @@
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
 import { contextoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "@/core/permisos/acciones";
 import { accionesDelMenuQueElUsuarioPuedeVer, requierePermisoVer, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "./limitador-de-lecturas";
 
 /**
  * Guardas de las LECTURAS de servidor (server actions que devuelven datos y no pasan por `conPermiso`, que es el
@@ -18,6 +19,9 @@ import { accionesDelMenuQueElUsuarioPuedeVer, requierePermisoVer, requierePermis
 async function requerirSesion(): Promise<ContextoUsuario> {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) throw new Error("No autenticado, o tu usuario no tiene ninguna sucursal asignada.");
+  // S-28: el cupo de lecturas por usuario (best effort, en memoria) va ANTES de cualquier gate: es el primer paso de TODO `requerirVer*`, así que ninguna lectura lo esquiva. Las
+  // mutaciones tienen el suyo en `conPermiso`. Este archivo es el borde de las lecturas: acá se lee el reloj, como `conPermiso` lo lee para las mutaciones.
+  if (lecturaSinCupo(ctx.usuarioId, Date.now())) throw new Error(MENSAJE_DEMASIADAS_LECTURAS);
   return ctx;
 }
 

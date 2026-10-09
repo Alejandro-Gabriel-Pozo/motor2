@@ -22,7 +22,6 @@ import {
  * cambiar su forma, las tres consultas en línea del editor de receta (`/catalogo/recetas/[productoId]`).
  */
 
-const ESCALARES_PRODUCTO = Object.keys(Prisma.ProductoScalarFieldEnum).sort();
 const ESCALARES_VERSION = Object.keys(Prisma.RecetaVersionScalarFieldEnum).sort();
 
 describe("server/consultas/catalogo/recetas", () => {
@@ -134,9 +133,9 @@ describe("server/consultas/catalogo/recetas", () => {
       });
 
       const [p] = await listarProductosConReceta(prisma);
-      expect(Object.keys(p).sort()).toEqual([...ESCALARES_PRODUCTO, "recetaVersiones"].sort());
-      expect(p).toMatchObject({ id: pizza, codigo: "PV_PIZZA", nombre: "Pizza muzza", tipo: "PV", unidadStockId: kg });
-      expect(Number(p.precioVenta)).toBe(9000);
+      // S-15 (T7 del endurecimiento): la lista dibuja nombre, tipo y versión vigente; ya no trae la fila entera de `Producto` (precio de venta, unidades, costo de consignación…).
+      expect(Object.keys(p).sort()).toEqual(["id", "nombre", "recetaVersiones", "tipo"]);
+      expect(p).toMatchObject({ id: pizza, nombre: "Pizza muzza", tipo: "PV" });
 
       expect(p.recetaVersiones).toHaveLength(1);
       const [vigente] = p.recetaVersiones;

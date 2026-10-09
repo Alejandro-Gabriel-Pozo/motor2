@@ -138,7 +138,7 @@ describe("las compras anuladas no cuentan en los reportes de dinero", () => {
 
   it("la trazabilidad informa la anulación de una compra, no solo de una venta", async () => {
     const anulada = await prisma.operacion.findFirstOrThrow({ where: { proveedorId: proveedorAnuladorId } });
-    const datos = await obtenerOperacionPorId(sucursalId, anulada.id, prisma);
+    const datos = await obtenerOperacionPorId(sucursalId, anulada.id, prisma, { conDatosComerciales: true }); // S-14: el email de quien anuló es un dato comercial
     expect(datos?.proceso).toBe("COMPRA");
     expect(datos?.anuladaEn).not.toBeNull();
     expect(datos?.anuladaPorEmail).toBe("admin@test.com");

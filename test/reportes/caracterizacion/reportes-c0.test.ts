@@ -316,7 +316,7 @@ describe("Caracterización de los reportes (C0): resultado y conteo de consultas
     await reporte("tickets-emitidos.obtenerNumeroDeMesa(Central, mesa 4)", (db) => obtenerNumeroDeMesa(S1, E.MESA_4, db));
 
     // trazabilidad.ts — los movimientos de la operación vienen de un `include` sin `orderBy`: se ordenan por proceso y producto.
-    await reporte("trazabilidad.obtenerOperacionPorId(Central, la primera compra de lácteos)", (db) => obtenerOperacionPorId(S1, E.COMPRA_LACTEOS_1, db), {
+    await reporte("trazabilidad.obtenerOperacionPorId(Central, la primera compra de lácteos)", (db) => obtenerOperacionPorId(S1, E.COMPRA_LACTEOS_1, db, { conDatosComerciales: true }), {
       normalizar: (r) => (r ? { ...r, items: ordenar(r.items, (i) => i.proceso, (i) => i.productoNombre) } : r),
     });
     await reporte("trazabilidad.buscarOperacionesPorProducto(Central, «harina»)", (db) => buscarOperacionesPorProducto(S1, "harina", db));

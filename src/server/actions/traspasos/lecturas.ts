@@ -12,14 +12,30 @@ import { requerirVerEnSucursal } from "../con-sesion";
  * propio fuera de esa lista.
  */
 
-const INCLUDE_BANDEJA = {
-  producto: { include: { unidadStock: true } },
-  origenSucursal: true,
-  destinoSucursal: true,
-  seccionOrigen: true,
-  seccionDestino: true,
-  creadoPor: true,
-} satisfies Prisma.TraspasoSucursalInclude;
+/**
+ * S-15 (plan de endurecimiento de seguridad, T7): lo que la Bandeja dibuja y nada más. Una Server Action exportada es una puerta HTTP: quien tiene `traspaso_ver_bandeja` (piso
+ * operario) la invoca a mano y recibe TODO lo que devuelve, no lo que la pantalla muestra. Antes volvían el `Producto` entero (con el costo de consignación, que es de
+ * `pagar_consignante`) y el `User` entero de quien creó el traspaso (foto, cuenta verificada, kill-switch). Las dos sucursales y las dos secciones se piden por nombre.
+ * Si la pantalla necesita un campo más, se AGREGA acá (nunca se vuelve a `include: { x: true }`: GT-3a).
+ */
+const SELECT_BANDEJA = {
+  id: true,
+  creadoEn: true,
+  origenSucursalId: true,
+  destinoSucursalId: true,
+  cantidad: true,
+  iniciadoPor: true,
+  estado: true,
+  detalle: true,
+  motivoRechazoOrigen: true,
+  motivoRechazoDestino: true,
+  producto: { select: { nombre: true, codigo: true, unidadStock: { select: { nombre: true } } } },
+  origenSucursal: { select: { nombre: true } },
+  destinoSucursal: { select: { nombre: true } },
+  seccionOrigen: { select: { nombre: true } },
+  seccionDestino: { select: { nombre: true } },
+  creadoPor: { select: { email: true } },
+} satisfies Prisma.TraspasoSucursalSelect;
 
 const TAMANO_PAGINA_HISTORIAL = 30;
 
@@ -59,14 +75,14 @@ export async function obtenerBandejaTransferencias(sucursalId: string, cursorHis
   const [enCurso, historialMasUno] = await Promise.all([
     ctx.db.traspasoSucursal.findMany({
       where: { OR: condicionesEnCurso(sucursalId) },
-      include: INCLUDE_BANDEJA,
+      select: SELECT_BANDEJA,
       orderBy: { creadoEn: "desc" },
     }),
     ctx.db.traspasoSucursal.findMany({
       where: {
         AND: [{ OR: [{ origenSucursalId: sucursalId }, { destinoSucursalId: sucursalId }] }, { NOT: { OR: condicionesEnCurso(sucursalId) } }],
       },
-      include: INCLUDE_BANDEJA,
+      select: SELECT_BANDEJA,
       orderBy: [{ creadoEn: "desc" }, { id: "desc" }],
       take: TAMANO_PAGINA_HISTORIAL + 1,
       ...(cursorHistorial ? { cursor: { id: cursorHistorial }, skip: 1 } : {}),
@@ -98,7 +114,7 @@ export async function obtenerBandejaTransferencias(sucursalId: string, cursorHis
 
 /** Otras sucursales activas (nunca la propia) — para los <select> de origen/destino. Cada pantalla pide Ver con la clave de SU acción. */
 function otrasSucursalesActivas(db: Awaited<ReturnType<typeof requerirVerEnSucursal>>["db"], sucursalId: string) {
-  return db.sucursal.findMany({ where: { activo: true, id: { not: sucursalId } }, orderBy: { nombre: "asc" } });
+  return db.sucursal.findMany({ where: { activo: true, id: { not: sucursalId } }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } });
 }
 
 /** Las sucursales a las que se les puede pedir stock (pantalla «Solicitar»). */

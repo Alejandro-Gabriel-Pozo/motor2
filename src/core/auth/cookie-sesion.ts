@@ -8,9 +8,6 @@
 
 export const COOKIE_SESION_HTTP = "authjs.session-token";
 export const COOKIE_SESION_HOST = "__Host-authjs.session-token";
-/** El nombre que Auth.js usaba antes con https: una sesión vieja con esta cookie ya no es válida (se reinicia sesión una vez). */
-const COOKIE_SESION_SECURE_ANTERIOR = "__Secure-authjs.session-token";
-
 interface EntornoCookie {
   NODE_ENV?: string;
   VERCEL?: string;
@@ -27,13 +24,13 @@ export function nombreCookieSesion(env: EntornoCookie): string {
   return sirvePorHttps(env) ? COOKIE_SESION_HOST : COOKIE_SESION_HTTP;
 }
 
-/** Todos los nombres con los que puede llegar la cookie de sesión (el proxy solo pregunta si hay alguna). */
-export const NOMBRES_COOKIE_SESION = [COOKIE_SESION_HTTP, COOKIE_SESION_SECURE_ANTERIOR, COOKIE_SESION_HOST] as const;
-
 /**
- * El token de la sesión abierta, sea cual sea el nombre con el que llegó la cookie (http, `__Secure-` anterior o `__Host-` de producción).
- * Es la ÚNICA lista de nombres: un chequeo que mire solo algunos no ve la sesión en producción (la vinculación de una cuenta de Google ajena a una sesión abierta quedaría sin freno).
+ * El token de la sesión abierta: el de la ÚNICA cookie que Auth.js lee en este entorno (`nombreCookieSesion(env)`, la misma que `lib/auth.ts` le configura), nunca «la primera que aparezca».
+ * Con https es SOLO `__Host-authjs.session-token`: una cookie sin prefijo o `__Secure-` (la de versiones anteriores) la puede plantar un subdominio hermano para el dominio padre
+ * (S-20, T8 del endurecimiento), y si esta función la tomara antes que la `__Host-` real, el chequeo de «sesión abierta de otro email» (la vinculación de una cuenta de Google ajena a
+ * una sesión abierta) miraría la sesión equivocada y quedaría sin freno. Una sesión vieja con el nombre anterior ya no es válida (se reinicia sesión una vez).
+ * Es la ÚNICA lectura del nombre: un chequeo que mire otro no ve la sesión en producción.
  */
-export function tokenDeSesionAbierta(leer: (nombre: string) => string | undefined): string | undefined {
-  return NOMBRES_COOKIE_SESION.map((n) => leer(n)).find(Boolean);
+export function tokenDeSesionAbierta(leer: (nombre: string) => string | undefined, env: EntornoCookie): string | undefined {
+  return leer(nombreCookieSesion(env)) || undefined;
 }

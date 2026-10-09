@@ -20,7 +20,6 @@ async function empresaNorteConAdmin() {
 describe("lecturas previas al contexto con dos empresas ACTIVE", () => {
   beforeEach(async () => {
     await limpiarBaseDeTest();
-    delete process.env.ALLOWED_EMAIL_DOMAINS;
     delete process.env.BOOTSTRAP_ADMIN_EMAILS;
   });
 
@@ -30,7 +29,7 @@ describe("lecturas previas al contexto con dos empresas ACTIVE", () => {
     const usuario = await prismaAdmin.user.create({ data: { email: "solo-norte@ext.com" } });
     await crearMembresia({ usuarioId: usuario.id, sucursalId: norte.sucursal.id, rolId: norte.rol.id });
 
-    expect(await emailPuedeIniciarSesion("solo-norte@ext.com", undefined)).toBe(true);
+    expect(await emailPuedeIniciarSesion("solo-norte@ext.com")).toBe(true);
   });
 
   it("no entra si su pertenencia a la empresa está inactiva, o si su membresía de sucursal lo está", async () => {
@@ -40,17 +39,17 @@ describe("lecturas previas al contexto con dos empresas ACTIVE", () => {
     await crearMembresia({ usuarioId: usuario.id, sucursalId: norte.sucursal.id, rolId: norte.rol.id });
 
     await prismaAdmin.usuarioSucursal.updateMany({ where: { usuarioId: usuario.id }, data: { activo: false } });
-    expect(await emailPuedeIniciarSesion("baja@ext.com", undefined)).toBe(false);
+    expect(await emailPuedeIniciarSesion("baja@ext.com")).toBe(false);
 
     await prismaAdmin.usuarioSucursal.updateMany({ where: { usuarioId: usuario.id }, data: { activo: true } });
     await prismaAdmin.usuarioEmpresa.updateMany({ where: { usuarioId: usuario.id }, data: { activo: false } });
-    expect(await emailPuedeIniciarSesion("baja@ext.com", undefined)).toBe(false);
+    expect(await emailPuedeIniciarSesion("baja@ext.com")).toBe(false);
   });
 
   it("un usuario sin ninguna membresía no entra por la vía manual", async () => {
     await sembrarBase();
     await empresaNorteConAdmin();
     await prismaAdmin.user.create({ data: { email: "nadie@ext.com" } });
-    expect(await emailPuedeIniciarSesion("nadie@ext.com", undefined)).toBe(false);
+    expect(await emailPuedeIniciarSesion("nadie@ext.com")).toBe(false);
   });
 });

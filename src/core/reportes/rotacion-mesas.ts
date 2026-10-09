@@ -16,6 +16,13 @@ import { horaDelDia } from "../tiempo/zona-horaria";
  * solo la franja horaria difiere.
  */
 
+/**
+ * Lo más que el reporte lee de la base: las cuentas abiertas en el rango, UNA fila por cuenta (S-28, GT-15). Con el rango acotado a 366 días (`MAXIMO_DE_DIAS_DE_UN_RANGO`) una sucursal
+ * real queda muy por debajo (250.000 cuentas son 680 por día todo el año, una sola sucursal); pasado el tope el reporte se calcula con las primeras y lo DICE (`truncado`), no entrega
+ * números parciales como si fueran los de todo el rango. Default a confirmar por el dueño (decisión B18 del carril B), revertible cambiando esta constante.
+ */
+export const MAXIMO_DE_CUENTAS_EN_ROTACION = 250_000;
+
 /** Bucket de tamaño de grupo: "1".."6" individual (mismo rango que los botones rápidos del modal de comensales) y "7+" el resto. */
 export function grupoDeTamano(comensales: number): string {
   return comensales >= 7 ? "7+" : String(comensales);
@@ -71,6 +78,8 @@ export interface ReporteRotacionMesas {
   porFranjaHoraria: FranjaHorariaRotacion[];
   /** Solo grupos con al menos una cuenta atendida CON comensales, en el orden fijo "1".."6","7+". */
   porTamanoGrupo: GrupoTamanoRotacion[];
+  /** Solo presente (y `true`) si el rango tenía más de `MAXIMO_DE_CUENTAS_EN_ROTACION` cuentas: las métricas son de las primeras y NO del rango entero. Ausente cuando el reporte es completo. */
+  truncado?: true;
 }
 
 /** Núcleo puro: de las filas ya traídas de la base, todas las métricas del reporte. Ver el docstring del archivo para las reglas. */

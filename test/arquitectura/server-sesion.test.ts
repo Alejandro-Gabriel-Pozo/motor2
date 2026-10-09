@@ -11,7 +11,7 @@ import { analizarFuente, delegadosDeModelos, type SenalesDeFuente } from "../../
  *  1. son exactamente los archivos de `PERMITIDOS`;
  *  2. todos abren con `import "server-only"`: el login nunca puede llegar al navegador;
  *  3. el reloj, el azar y el entorno que lean están DECLARADOS acá, archivo por archivo, con su motivo y en las dos direcciones (una declaración que sobra también falla). O.24: lo
- *     que queda (el `new Date()` y `ALLOWED_EMAIL_DOMAINS` del gate) se va con la Fase 6, cuando el borde de Auth.js reciba la hora y el entorno ya leídos.
+ *     que queda (el `new Date()` del gate) se va con la Fase 6, cuando el borde de Auth.js reciba la hora ya leída. El entorno (`ALLOWED_EMAIL_DOMAINS`) se fue en S-17/D5: la capa ya no lee ninguna variable.
  * Lo que la capa no puede importar lo fija la regla `sesion-capa` de `.dependency-cruiser.cjs`.
  */
 const RAIZ = join(__dirname, "../..");
@@ -21,11 +21,10 @@ const PERMITIDOS = ["acceso.ts", "invitacion.ts", "vincular-cuenta.ts"];
 type Impureza = "reloj" | "azar" | "entorno";
 const MOTIVO_FASE_6_RELOJ =
   "Fase 6: el callback `signIn` de Auth.js (lib/auth.ts) no recibe la hora; el gate la lee UNA vez (vence la sesión abierta de otra cuenta y pasa la misma hora a la invitación)";
-const MOTIVO_FASE_6_ENTORNO = "Fase 6: ALLOWED_EMAIL_DOMAINS (la vía 1 del gate, dominios de Google Workspace) se lee acá hasta que el borde de Auth.js reciba el entorno validado (src/env.ts)";
 
 /** `archivo` → la impureza que tiene declarada y por qué. Lo que no está acá, el archivo NO lo puede leer. */
 const DECLARADAS: Record<string, Partial<Record<Impureza, string>>> = {
-  "acceso.ts": { reloj: MOTIVO_FASE_6_RELOJ, entorno: MOTIVO_FASE_6_ENTORNO },
+  "acceso.ts": { reloj: MOTIVO_FASE_6_RELOJ },
   // invitacion.ts y vincular-cuenta.ts NO leen el reloj: desde B3-9 (O.24) `ahora` es obligatorio y lo pasa el borde (acceso.ts, la pantalla, la acción, el caso de uso).
 };
 

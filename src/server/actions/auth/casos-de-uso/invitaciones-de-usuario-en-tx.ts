@@ -4,6 +4,9 @@ import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-aud
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { generarTokenOpaco, hashDeToken } from "@/core/seguridad/tokens";
 import { decidirSobreLaInvitacionPendiente, vencimientoDeInvitacion, type TipoDeInvitacion } from "@/core/features/empresa/invitacion";
+import { CAMPO_DE_AUDITORIA_DEL_MAIL_DE_INVITACION, descripcionDelMailDeInvitacion, mensajeSiNoHayCupoDeCorreo } from "@/core/features/empresa/cupo-de-correo";
+import { cupoDeCorreoDeEmpresa } from "@/server/lecturas/auth/cupo-de-correo";
+import { anotarInvitacionEnviada } from "@/server/persistencia/invitaciones/anotar-invitacion-enviada";
 import {
   crearInvitacion,
   refirmarSucursalesDeInvitacion,
@@ -149,4 +152,54 @@ export async function revocarInvitacionPendiente(tx: Tx, entrada: { empresaId: s
   if (revocadas !== 1) return false;
   await auditar(tx, { invitacionId: inv.id, email: inv.email, actorId: entrada.actorId, anterior: "pendiente", nuevo: "revocada" });
   return true;
+}
+
+/** El mail de una invitación no cabe en el cupo del día (S-21): lo lanza `reservarMailDeInvitacion` para deshacer la transacción entera; `conCupoDeCorreo` lo vuelve un fracaso. */
+class CupoDeCorreoAgotado extends Error {
+  constructor(readonly mensajeParaElUsuario: string) {
+    super(mensajeParaElUsuario);
+    this.name = "CupoDeCorreoAgotado";
+  }
+}
+
+/**
+ * RESERVA el mail de una invitación (S-21), dentro de la transacción que la crea, la renueva o la rota y DESPUÉS de haberlo hecho (recién ahí se sabe que hay un mail por mandar y con
+ * qué token). Hace tres cosas, en este orden, todas en la misma transacción y bajo el cerrojo de la empresa (`cupoDeCorreoDeEmpresa`):
+ *  1. cuenta los mails de las últimas 24 horas (en la empresa y a esa dirección) y, si no entra, LANZA `CupoDeCorreoAgotado`: la transacción se deshace entera (nada se crea ni se
+ *     rota: el enlace anterior sigue sirviendo) y quien llama devuelve el mensaje;
+ *  2. deja una fila de auditoría por mail (`UsuarioEmpresa.mailDeInvitacion`): es lo que cuenta el cupo, y cuenta aunque después el proveedor falle (el pedido al proveedor ya se hizo
+ *     o se va a hacer; el cupo es contra el abuso, no una contabilidad de envíos);
+ *  3. anota la marca de envío (`enviadaEn`) ANTES de mandar: así el freno de un minuto entre reenvíos ve el pedido en curso y dos reenvíos simultáneos ya no mandan dos mails (M17: la
+ *     marca se escribía después del mail y los dos veían «hace rato»). Si el mail no sale, `enviarInvitacionYAnotar` la quita.
+ * El mail NO se manda acá (ADR-018): sale después del commit.
+ */
+export async function reservarMailDeInvitacion(
+  tx: Tx,
+  entrada: { empresaId: string; invitacionId: string; email: string; tipo: Extract<TipoDeInvitacion, "usuario" | "vinculacion">; actorId: string; ahora: Date },
+): Promise<void> {
+  const email = minuscula(entrada.email);
+  const usados = await cupoDeCorreoDeEmpresa(tx, { empresaId: entrada.empresaId, destinatario: email, ahora: entrada.ahora });
+  const rechazo = mensajeSiNoHayCupoDeCorreo(usados, email);
+  if (rechazo) throw new CupoDeCorreoAgotado(rechazo);
+  await registrarCambioAuditado(tx, {
+    entidad: "UsuarioEmpresa",
+    entidadId: entrada.invitacionId,
+    campo: CAMPO_DE_AUDITORIA_DEL_MAIL_DE_INVITACION,
+    descripcion: descripcionDelMailDeInvitacion(email),
+    valorAnterior: null,
+    valorNuevo: entrada.tipo,
+    actorId: entrada.actorId,
+    sucursalId: null,
+  });
+  await anotarInvitacionEnviada(tx, { invitacionId: entrada.invitacionId, ahora: entrada.ahora });
+}
+
+/** Corre el caso de uso y, si una reserva de mail lanzó `CupoDeCorreoAgotado` (la transacción ya se deshizo), devuelve `comoFracaso(mensaje)`; cualquier otro error sigue de largo. */
+export async function conCupoDeCorreo<T, F>(cuerpo: () => Promise<T>, comoFracaso: (mensaje: string) => F): Promise<T | F> {
+  try {
+    return await cuerpo();
+  } catch (e) {
+    if (e instanceof CupoDeCorreoAgotado) return comoFracaso(e.mensajeParaElUsuario);
+    throw e;
+  }
 }

@@ -3,7 +3,7 @@ import { enviarCorreo } from "@/lib/enviar-correo";
 import { enlaceDeInvitacion, mensajeDeInvitacionDeUsuario, mensajeDeInvitacionDeVinculacion, urlPublicaDeLaApp, type TipoDeInvitacion } from "@/core/features/empresa/invitacion";
 import type { PrismaClient } from "@prisma/client";
 import { reportarErrorUnaVez } from "@/lib/reportar-error";
-import { anotarInvitacionEnviada } from "@/server/persistencia/invitaciones/anotar-invitacion-enviada";
+import { anotarInvitacionEnviada, quitarMarcaDeEnvio } from "@/server/persistencia/invitaciones/anotar-invitacion-enviada";
 
 /**
  * Mandar el mail de una invitación de usuario o de vinculación (E8, ADR-024). El mail sale SIEMPRE después del commit de la transacción que dejó la invitación (ADR-018): la
@@ -36,17 +36,28 @@ export interface ResultadoDelEnvio {
  * @contract Manda el mail de la invitación pendiente (con el enlace de AUTH_URL y el token recibido) y, si salió, anota cuándo; si no hay AUTH_URL válida, la invitación ya no está pendiente o el proveedor falla, no anota y dice por qué.
  * @idempotency No aplica — repetirlo manda otro mail con el mismo token y vuelve a anotar la hora; quien reenvía de verdad (con token nuevo) es `reenviarInvitacionPendiente`, con su freno de un minuto.
  * @transaction Ninguna: dos lecturas y, después del mail, una escritura condicional (`estado = PENDIENTE`) con el cliente de la empresa, fuera de toda transacción (el mail no se puede deshacer).
- * @sideEffects enviarCorreo (canal «avisos»); reportarErrorUnaVez si falta AUTH_URL. La marca `enviadaEn` es el registro del envío en la propia invitación (sin fila de auditoría).
+ * @sideEffects enviarCorreo (canal «avisos»); reportarErrorUnaVez si falta AUTH_URL. La marca `enviadaEn` es el registro del envío en la propia invitación; si el mail no sale, la quita (S-21).
+ *
+ * CUPO (S-21, GT-9): este paso NO decide si el mail cabe en el cupo del día: cada caso de uso que devuelve un `porEnviar` lo reserva ANTES, dentro de su transacción
+ * (`reservarMailDeInvitacion`, en `invitaciones-de-usuario-en-tx.ts`). Lo llaman, además, el seed local (`prisma/seed.ts --gerente`: un mail al propio gerente, con guarda de destino) y
+ * nada más: `test/arquitectura/correo-con-cupo.test.ts` fija la lista de llamadores.
  * @ficha permiso=gestion_usuarios transaccion=NINGUNA idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function enviarInvitacionYAnotar(
   dbEmpresa: PrismaClient,
   entrada: { empresaId: string; emailDeQuienInvita: string; ahora: Date; autUrl?: string | undefined } & InvitacionPorEnviar,
 ): Promise<ResultadoDelEnvio> {
+  // S-21: los casos de uso que dejan un mail por mandar ya lo RESERVARON (cupo del día y marca de envío, `reservarMailDeInvitacion`). Si el mail no sale, la marca se quita para que la
+  // invitación figure «sin enviar» (el mail reservado sigue contando en el cupo). Si nadie la había puesto (el seed), no hay nada que quitar: la baja solo toca una marca de ESTE pedido.
+  const sinEnviar = async (motivo: string): Promise<ResultadoDelEnvio> => {
+    await quitarMarcaDeEnvio(dbEmpresa, { invitacionId: entrada.invitacionId, ahora: entrada.ahora });
+    return { enviado: false, motivo };
+  };
+
   const base = urlPublicaDeLaApp(entrada.autUrl ?? process.env.AUTH_URL);
   if (!base) {
     await reportarErrorUnaVez("invitacion-sin-auth-url", new Error("No se pudo armar el enlace de una invitación: AUTH_URL falta o no es una dirección pública válida."), "invitaciones");
-    return { enviado: false, motivo: "La aplicación no tiene configurada su dirección pública (AUTH_URL)." };
+    return sinEnviar("La aplicación no tiene configurada su dirección pública (AUTH_URL).");
   }
 
   const invitacion = await dbEmpresa.invitacion.findFirst({
@@ -54,7 +65,7 @@ export async function enviarInvitacionYAnotar(
     select: { email: true, venceEn: true, sucursales: { orderBy: { creadaEn: "asc" }, select: { sucursal: { select: { nombre: true } }, rol: { select: { nombre: true } } } } },
   });
   const empresa = await dbEmpresa.empresa.findUnique({ where: { id: entrada.empresaId }, select: { nombre: true, zonaHoraria: true } });
-  if (!invitacion || !empresa) return { enviado: false, motivo: "La invitación ya no está pendiente." };
+  if (!invitacion || !empresa) return sinEnviar("La invitación ya no está pendiente.");
 
   const enlace = enlaceDeInvitacion(base, entrada.token);
   const mensaje =
@@ -71,7 +82,7 @@ export async function enviarInvitacionYAnotar(
       : mensajeDeInvitacionDeVinculacion({ email: invitacion.email, nombreEmpresa: empresa.nombre, enlace, venceEn: invitacion.venceEn, zonaHoraria: empresa.zonaHoraria });
 
   const resultado = await enviarCorreo("avisos", mensaje);
-  if (!resultado.ok) return { enviado: false, motivo: "No se pudo enviar el mail." };
+  if (!resultado.ok) return sinEnviar("No se pudo enviar el mail.");
   await anotarInvitacionEnviada(dbEmpresa, { invitacionId: entrada.invitacionId, ahora: entrada.ahora });
   return { enviado: true };
 }

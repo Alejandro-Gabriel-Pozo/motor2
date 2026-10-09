@@ -9,8 +9,11 @@ import {
   MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA,
   MAXIMO_DE_FALLOS_DE_SEGUNDO_FACTOR,
   MAXIMO_DE_INTENTOS_POR_CODIGO,
+  MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN,
+  VENTANA_DE_PEDIDOS_MS,
   VIDA_DEL_CODIGO_DE_INGRESO_MS,
 } from "../../src/core/plataforma/limites";
+import { origenSinCupoDeCodigos } from "../../plataforma/src/servidor/limitador-de-pedidos";
 import { VIDA_DE_SESION_PENDIENTE_MS } from "../../src/core/plataforma/sesion";
 import { codigoTotp, generarSecretoTotp, pasoDeTotp } from "../../src/core/plataforma/totp";
 import {
@@ -214,6 +217,58 @@ describe("S-08 — un anónimo no le saca al administrador el código, los inten
     expect(resultado.ok).toBe(true);
   });
 
+  /**
+   * I-1 de la auditoría intermedia (corrección de T4): el ataque REAL es de UNA sola IP que insiste con el email del administrador MÁS veces que su cupo por origen
+   * (el test de arriba llama directo a la preparación, sin pasar por el cupo por origen, con 5 pedidos: nunca llega al borde del techo de 10). Acá corre el limitador de verdad (el de `pedirCodigo`) y la preparación de verdad
+   * contra Postgres, con el reloj del test: lo que cuenta es lo que ALCANZA a escribirse en la base, porque el techo del administrador (10 por hora) se cuenta
+   * sobre todos los códigos, vengan de quien vengan.
+   */
+  describe("una sola IP, insistiendo más que su cupo por origen (I-1)", () => {
+    let ipDelTest = 0;
+    /** Cada caso ataca desde una IP propia: el limitador vive en la memoria del proceso y no se reinicia. */
+    const ipNueva = () => `198.51.100.${++ipDelTest}`;
+    const MINUTO = 60 * 1000;
+
+    /** Un POST a `/login` de ese origen a ese instante (ms desde el inicio): pasa por el cupo por origen y, si lo deja pasar, por la preparación. */
+    async function pedirDesde(origen: string, enMs: number): Promise<boolean> {
+      reloj = new Date(INICIO.getTime() + enMs);
+      if (origenSinCupoDeCodigos(origen, reloj.getTime())) return false;
+      return (await prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL, nuevoPedido())) !== null;
+    }
+
+    /** La mayor cantidad de códigos que quedaron escritos dentro de cualquier hora móvil (la ventana con que se cuenta el techo del administrador). */
+    async function maximoEnUnaHora(): Promise<number> {
+      const filas = await prismaAdmin.codigoDeIngresoPlataforma.findMany({ where: { adminId }, select: { creadoEn: true }, orderBy: { creadoEn: "asc" } });
+      const instantes = filas.map((f) => f.creadoEn.getTime());
+      return Math.max(0, ...instantes.map((fin) => instantes.filter((t) => t > fin - VENTANA_DE_PEDIDOS_MS && t <= fin).length));
+    }
+
+    it("en la ráfaga del borde de la ventana (lo peor que admite un limitador de ventana fija) el administrador, desde otra IP, todavía obtiene su código", async () => {
+      const atacante = ipNueva();
+      const pedidosPorRafaga = MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN * 3;
+      // Ancla la ventana del atacante, deja correr casi toda la ventana y dispara una ráfaga al final; apenas empieza la ventana siguiente dispara otra.
+      await pedirDesde(atacante, 0);
+      for (let i = 0; i < pedidosPorRafaga; i++) await pedirDesde(atacante, VENTANA_DE_PEDIDOS_MS - MINUTO);
+      for (let i = 0; i < pedidosPorRafaga; i++) await pedirDesde(atacante, VENTANA_DE_PEDIDOS_MS + MINUTO);
+
+      expect(await maximoEnUnaHora(), "una sola IP no puede dejar escritos todos los códigos del techo").toBeLessThan(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA);
+      // El administrador pide desde SU IP, un minuto después de la ráfaga, y entra.
+      reloj = new Date(INICIO.getTime() + VENTANA_DE_PEDIDOS_MS + 2 * MINUTO);
+      expect(origenSinCupoDeCodigos(ipNueva(), reloj.getTime())).toBe(false);
+      const codigo = await pedirCodigo();
+      expect((await verificar(EMAIL, codigo)).ok).toBe(true);
+    });
+
+    it("a goteo constante (un pedido por minuto durante seis horas) ninguna hora móvil llega al techo, y el administrador pide su código al final", async () => {
+      const atacante = ipNueva();
+      for (let minuto = 0; minuto < 6 * 60; minuto++) await pedirDesde(atacante, minuto * MINUTO);
+      expect(await maximoEnUnaHora()).toBeLessThan(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA);
+      reloj = new Date(INICIO.getTime() + 6 * 60 * MINUTO);
+      const codigo = await pedirCodigo();
+      expect((await verificar(EMAIL, codigo)).ok).toBe(true);
+    });
+  });
+
   it("un pedido ajeno POSTERIOR no invalida el código vigente del administrador ni le gasta un solo intento", async () => {
     const codigo = await pedirCodigo();
     const delAdmin = pedido;
@@ -256,6 +311,15 @@ describe("S-08 — un anónimo no le saca al administrador el código, los inten
     const mensajes = await Promise.all(pedidos.map((p) => prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL, p)));
     expect(mensajes.filter((m) => m !== null)).toHaveLength(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA);
     expect(await prismaAdmin.codigoDeIngresoPlataforma.count({ where: { adminId } })).toBe(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA);
+  });
+
+  it("el techo es DIEZ por hora (B8, a pedido del dueño 2026-10-09): 25 pedidos en paralelo entregan exactamente 10, con el número escrito a mano", async () => {
+    // Los casos de arriba usan la constante y seguirían verdes con cualquier valor; este fija el número que el dueño pidió (duplica el margen contra el bloqueo
+    // respecto de los 5 de antes sin cuadruplicar la superficie de adivinanza de los 20 de la primera versión de S-08).
+    expect(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA).toBe(10);
+    const mensajes = await Promise.all(Array.from({ length: 25 }, nuevoPedido).map((p) => prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL, p)));
+    expect(mensajes.filter((m) => m !== null)).toHaveLength(10);
+    expect(await prismaAdmin.codigoDeIngresoPlataforma.count({ where: { adminId } })).toBe(10);
   });
 
   it("verificar hace las MISMAS consultas haya o no administrador, fila o pedido: el tiempo de respuesta no delata qué emails son de un administrador", async () => {

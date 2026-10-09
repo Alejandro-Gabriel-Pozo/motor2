@@ -22,7 +22,6 @@ const entrar = (token: string | undefined, o: { email?: string; perfil?: string;
     emailUsuario: o.email ?? EMAIL,
     emailPerfil: o.perfil ?? o.email ?? EMAIL,
     emailVerificado: o.verificado ?? true,
-    hd: undefined,
     tokenDeSesionAbierta: o.abierta,
     tokenDeInvitacion: token,
     cuenta: cuenta(o.sub),

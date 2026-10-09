@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { SIN_PROVEEDOR } from "@/core/reportes/public";
@@ -26,6 +27,8 @@ export default async function ComprasRegistradasPage({
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_compras", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

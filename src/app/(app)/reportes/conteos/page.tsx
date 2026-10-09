@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { obtenerHistorialConteosFisicos } from "@/server/actions/movimientos/lecturas-conteo-fisico";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
@@ -23,6 +24,8 @@ export default async function ConteosPage({
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_conteos", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

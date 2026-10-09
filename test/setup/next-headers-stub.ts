@@ -15,11 +15,21 @@ export function __setCookieDeTestParaSucursal(valor: string | undefined) {
   cookieSucursalActiva = valor;
 }
 
+// Cookies cualesquiera que un test quiera "tener puestas" (por ejemplo la de invitación `motor2.invitacion` que lee `aceptarMiInvitacion`): nombre → valor.
+const cookiesPuestas = new Map<string, string>();
+
+export function __setCookieDeTest(nombre: string, valor: string | undefined) {
+  if (valor === undefined) cookiesPuestas.delete(nombre);
+  else cookiesPuestas.set(nombre, valor);
+}
+
 export async function cookies() {
   return {
     get: (nombre: string) => {
       if (nombre === "sucursalActivaId" && cookieSucursalActiva !== undefined) return { name: nombre, value: cookieSucursalActiva };
       if (nombre === "empresaActivaId" && cookieEmpresaActiva !== undefined) return { name: nombre, value: cookieEmpresaActiva };
+      const puesta = cookiesPuestas.get(nombre);
+      if (puesta !== undefined) return { name: nombre, value: puesta };
       return undefined;
     },
     set: (nombre: string, valor: string, opciones?: Record<string, unknown>) => {
@@ -44,6 +54,7 @@ export function __cookiesDeTest() {
 export function __limpiarCookiesDeTest() {
   cookieSucursalActiva = undefined;
   cookieEmpresaActiva = undefined;
+  cookiesPuestas.clear();
   cookiesEscritas.clear();
   opcionesEscritas.clear();
   cookiesBorradas.length = 0;

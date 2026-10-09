@@ -93,11 +93,23 @@ describe("alta de alguien que no es parte de la empresa", () => {
     expect(correo.enviados).toHaveLength(0);
   });
 
-  it("rechaza una cuenta apagada en toda la plataforma y no deja nada", async () => {
+  // S-19 (T8 del endurecimiento; B-A16): «La cuenta de ese email está desactivada en toda la plataforma» le decía a un administrador de la empresa A algo de la tabla GLOBAL `User` que no es
+  // suyo: probando emails, distinguía una cuenta apagada por fuera de A (por la plataforma o por otra empresa) de una inexistente. La respuesta ahora es la misma exista o no; lo que frena a
+  // la cuenta apagada es el kill-switch del login (`decidirInicioDeSesion`, cubierto en `test/auth/invitacion-gate.test.ts`): la invitación no le sirve de nada.
+  it("EL ATAQUE (S-19): una cuenta apagada en toda la plataforma y una inexistente reciben EXACTAMENTE la misma respuesta (y el mismo efecto), así que no se puede sondear", async () => {
     await prismaAdmin.user.create({ data: { email: "apagada@test.com", activoGlobal: false } });
-    const r = await agregarOActualizarUsuario({ email: "apagada@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
-    expect(r.ok).toBe(false);
-    expect(await invitaciones("apagada@test.com")).toHaveLength(0);
+    const apagada = await agregarOActualizarUsuario({ email: "apagada@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    const inexistente = await agregarOActualizarUsuario({ email: "inexistente@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+
+    const sinElEmail = (r: { ok: boolean; mensaje: string }, email: string) => ({ ...r, mensaje: r.mensaje.replace(email, "EMAIL") });
+    expect(sinElEmail(apagada, "apagada@test.com")).toEqual(sinElEmail(inexistente, "inexistente@test.com"));
+    expect(apagada.ok, apagada.mensaje).toBe(true);
+    expect(apagada.mensaje).not.toMatch(/desactivada/i);
+    // El mismo efecto: una invitación pendiente y un mail, y ninguna membresía ni cuenta de empresa (no entra a la empresa hasta aceptar, y apagada no puede ni iniciar sesión).
+    expect(await invitaciones("apagada@test.com")).toHaveLength(1);
+    expect(await invitaciones("inexistente@test.com")).toHaveLength(1);
+    expect(correo.enviados.map((m) => m.para[0]).sort()).toEqual(["apagada@test.com", "inexistente@test.com"]);
+    expect(await prismaAdmin.usuarioEmpresa.count({ where: { usuario: { email: "apagada@test.com" } } })).toBe(0);
   });
 
   it("un User que existe pero no es parte de ESTA empresa también se invita (no se le crea membresía)", async () => {
@@ -215,6 +227,25 @@ describe("reenviar, revocar e invitar a vincular", () => {
     await prismaAdmin.account.create({ data: { userId: op.id, type: "oidc", provider: "google", providerAccountId: "g-op", id_token: "x" } });
     const otra = await invitarAVincular(membresia.id);
     expect(otra.ok).toBe(false);
+  });
+
+  // S-19, la hermana (`invitar-a-vincular.ts`): «La cuenta de ese usuario está desactivada en toda la plataforma» delataba el estado de una fila de la tabla GLOBAL `User` (apagada por la
+  // plataforma o desde otra empresa). Igual que con el alta: la misma respuesta y el mismo efecto, y el kill-switch del login es lo que frena a la cuenta apagada.
+  it("EL ATAQUE (S-19): invitar a vincular a un miembro cuya cuenta está apagada en toda la plataforma responde y deja EXACTAMENTE lo mismo que con uno activo", async () => {
+    const activo = await crearUsuarioConMembresia({ email: "activo@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    const apagado = await crearUsuarioConMembresia({ email: "apagado@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    await prismaAdmin.user.update({ where: { id: apagado.id }, data: { activoGlobal: false } });
+    const membresiaDe = (usuarioId: string) => prismaAdmin.usuarioSucursal.findFirstOrThrow({ where: { usuarioId } });
+
+    const rActivo = await invitarAVincular((await membresiaDe(activo.id)).id);
+    const rApagado = await invitarAVincular((await membresiaDe(apagado.id)).id);
+
+    const sinElEmail = (r: { ok: boolean; mensaje: string }, email: string) => ({ ...r, mensaje: r.mensaje.replace(email, "EMAIL") });
+    expect(sinElEmail(rApagado, "apagado@test.com")).toEqual(sinElEmail(rActivo, "activo@test.com"));
+    expect(rApagado.ok, rApagado.mensaje).toBe(true);
+    expect(rApagado.mensaje).not.toMatch(/desactivada/i);
+    expect(await invitaciones("apagado@test.com")).toHaveLength(1);
+    expect(correo.enviados.map((m) => m.para[0]).sort()).toEqual(["activo@test.com", "apagado@test.com"]);
   });
 });
 

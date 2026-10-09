@@ -2,6 +2,7 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer, obtenerMiNivelPermiso } from "@/server/acceso/gate";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo, reportePesadoSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
 import { calcularRendimientoRecetas } from "@/server/consultas/reportes/rendimiento-recetas";
@@ -51,12 +52,17 @@ export default async function RendimientoRecetasPage({
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_rendimiento_recetas", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const rango = resolverRangoDeReporte(sp, new Date());
+  const ahora = new Date();
+  // S-28: reporte pesado (compras, producción, ventas y conteos del rango): cupo por usuario antes de consultar nada (best effort, en memoria).
+  if (reportePesadoSinCupo(ctx.usuarioId, "rendimiento-recetas", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  const rango = resolverRangoDeReporte(sp, ahora);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
   const desde = new Date(desdeStr);
