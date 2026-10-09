@@ -15,8 +15,10 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
 
   // Ver la trazabilidad no autoriza a anular: el botón solo aparece con `anular_venta` (la acción lo vuelve a exigir en el servidor).
   const { editar: puedeAnularVenta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "anular_venta", ctx.db);
+  // S-14: el proveedor, el N.º de factura y el email de quien anuló son los datos comerciales de `reporte_historial_importes` (piso administrador), igual que en Historial.
+  const { ver: veDatosComerciales } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_historial_importes", ctx.db);
   const sp = unicosDeUrl(await searchParams);
-  const operacion = sp.idOperacion ? await obtenerOperacionPorId(ctx.sucursalId, sp.idOperacion, ctx.db) : null;
+  const operacion = sp.idOperacion ? await obtenerOperacionPorId(ctx.sucursalId, sp.idOperacion, ctx.db, { conDatosComerciales: veDatosComerciales }) : null;
   const encontradas = !sp.idOperacion && sp.producto ? await buscarOperacionesPorProducto(ctx.sucursalId, sp.producto, ctx.db) : [];
 
   return (
