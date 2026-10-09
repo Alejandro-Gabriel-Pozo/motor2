@@ -319,7 +319,7 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     const r = await actualizarProductoCasoDeUso(ctx, { productoId, datos, puedeGestionarConsignacion: await puedeGestionarConsignacion(ctx) });
     const base = aResultadoAccion(r);
     if (!r.ok) return base;
-    revalidarCartasPublicas();
+    revalidarCartasPublicas(ctx.empresaSlug);
 
     const { precioAnterior, precioNuevo } = r.datos;
     if (precioNuevo !== precioAnterior) {
@@ -345,7 +345,7 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
     const comando = guardComandoSincronizarPrecioGrupoCarta({ productoIds, precio });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await sincronizarPrecioGrupoCartaCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
@@ -365,7 +365,7 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
 export async function actualizarDisponibilidadProducto(productoId: string, disponible: boolean): Promise<ResultadoAccion> {
   return conPermiso("producto_disponibilidad", async (ctx) => {
     const resultado = await actualizarDisponibilidadProductoCasoDeUso(ctx, { productoId, disponible });
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }

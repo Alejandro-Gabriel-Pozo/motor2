@@ -1,7 +1,8 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { dbDeEmpresa, verificarRolDeEjecucionDelProceso } from "@/core/auth/base";
-import { proyectarCartaPublica, resolverEstiloPortal, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
+import { unstable_cache } from "next/cache";
+import { etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica, resolverEstiloPortal, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
 import { modulosEfectivosDeEmpresa } from "@/server/acceso/modulos-de-empresa";
 import type { Db } from "@/lib/db-tipos";
 import { resolverEmpresaCarta, type EmpresaCarta } from "@/server/lecturas/carta/empresa";
@@ -34,6 +35,9 @@ async function modulosQueLaCartaPublica(empresa: EmpresaCarta, db: Db): Promise<
   return { carta: efectivos.has("carta"), promociones: efectivos.has("promociones") };
 }
 
+/** Los mismos 300 s que `export const revalidate` de `app/(carta-publica)/carta-publica/[empresa]/[sucursal]/page.tsx` (Next toma el MENOR de los dos: uno más corto acortaría el ISR de la página). */
+const SEGUNDOS_DE_CACHE_DE_LA_CARTA = 300;
+
 /** Lo que la carta de una sucursal entrega al anónimo: la carta SIN ids internos y su estilo. */
 interface CartaPublicaEntregada {
   carta: CartaPublicaV1;
@@ -65,7 +69,12 @@ export const cartaPublica = (empresa: EmpresaCarta, slug: string, ahora: Date) =
     const db = dbDeEmpresa(empresa.id);
     const modulos = await modulosQueLaCartaPublica(empresa, db);
     if (!modulos.carta) return null;
-    const resuelta = await resolverCartaPublica(empresa, slug, db, ahora, modulos.promociones);
+    // S-26: la carta lleva la etiqueta de caché DE SU EMPRESA. Next engancha esa etiqueta a la página que la usó (el ISR de `[sucursal]/page.tsx`), así que
+    // `revalidarCartasPublicas(empresaSlug)` invalida las cartas de esa empresa y de ninguna otra. `revalidate` igual al de la página: no la acorta ni la alarga.
+    const resuelta = await unstable_cache(() => resolverCartaPublica(empresa, slug, db, ahora, modulos.promociones), ["carta-publica", empresa.id, slug, modulos.promociones ? "con-promos" : "sin-promos"], {
+      tags: [etiquetaDeCacheDeCartasPublicas(empresa.slug)],
+      revalidate: SEGUNDOS_DE_CACHE_DE_LA_CARTA,
+    })();
     // S-25: la carta armada lleva los ids internos que usan el POS y el admin; al anónimo sale la proyección sin ellos (campo por campo, `core/carta/carta-publica.ts`).
     return resuelta ? { carta: proyectarCartaPublica(resuelta.carta), estilo: resuelta.estilo } : null;
   });

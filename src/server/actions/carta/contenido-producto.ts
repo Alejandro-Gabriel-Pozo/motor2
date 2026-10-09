@@ -37,7 +37,7 @@ export interface DatosContenidoCarta {
 export async function guardarContenidoCartaProducto(productoId: string, datos: DatosContenidoCarta): Promise<ResultadoAccion> {
   return conPermiso("carta_contenido_producto", async (ctx) => {
     const resultado = await guardarContenidoCartaProductoCasoDeUso(ctx, { productoId, datos });
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
@@ -50,7 +50,7 @@ export async function guardarContenidoCartaProducto(productoId: string, datos: D
 export async function actualizarVisibleEnCarta(productoId: string, visibleEnCarta: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta_contenido_producto", async (ctx) => {
     const resultado = await actualizarVisibleEnCartaCasoDeUso(ctx, { productoId, visibleEnCarta });
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }

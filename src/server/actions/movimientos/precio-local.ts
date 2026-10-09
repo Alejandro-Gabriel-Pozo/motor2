@@ -48,7 +48,7 @@ export async function setPrecioLocalProducto(productoId: string, precio: number,
     const resultado = await setPrecioLocalProductoCasoDeUso(ctx, comando.valor);
     const base = aResultadoAccion(resultado);
     if (!base.ok) return base;
-    revalidarCartasPublicas();
+    revalidarCartasPublicas(ctx.empresaSlug);
 
     if (habilitado) {
       const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId, ctx.db), Number(comando.valor.precio), "enSucursal");
@@ -72,7 +72,7 @@ export async function sincronizarPrecioLocalGrupoCarta(sucursalId: string, produ
     const comando = guardComandoSincronizarPrecioLocalGrupoCarta({ sucursalId, sucursalActivaId: ctx.sucursalId, productoIds, precio, habilitado });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await sincronizarPrecioLocalGrupoCartaCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }

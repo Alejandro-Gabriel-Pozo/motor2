@@ -39,7 +39,7 @@ export async function guardarSeccionCarta(datos: DatosSeccionCarta): Promise<Res
     const comando = guardComandoGuardarSeccionCarta(datos);
     if (!comando.ok) return error(comando.mensaje);
     const r = await guardarSeccionCartaCasoDeUso(ctx, comando.valor);
-    if (r.ok) revalidarCartasPublicas();
+    if (r.ok) revalidarCartasPublicas(ctx.empresaSlug);
     const base = aResultadoAccion(r);
     return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
@@ -52,7 +52,7 @@ export async function guardarSeccionCarta(datos: DatosSeccionCarta): Promise<Res
 export async function actualizarActivaSeccionCarta(seccionCartaId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_secciones", async (ctx) => {
     const resultado = await actualizarActivaSeccionCartaCasoDeUso(ctx, { seccionCartaId, activa });
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }

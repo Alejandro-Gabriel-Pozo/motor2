@@ -17,6 +17,8 @@ vi.mock("@/lib/db", () => ({ prisma: prismaFalso }));
 vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: (empresaId: string) => ({ dbDeEmpresa: empresaId }), verificarRolDeEjecucionDelProceso: async () => undefined }));
 vi.mock("@/server/lecturas/carta/publica", () => ({ resolverPortalCarta, resolverCartaPublica, resolverConfigPortal }));
 vi.mock("@/server/lecturas/carta/empresa", () => ({ resolverEmpresaCarta }));
+// S-26: la carta pública se cachea con `unstable_cache` (necesita el caché de Next): acá corre directo; su etiqueta la prueba `cartas-publicas-cache-por-empresa.test.ts`.
+vi.mock("next/cache", () => ({ unstable_cache: (fn: () => unknown) => fn }));
 // S-23: la entrada pública pregunta los módulos contratados de la empresa (el comportamiento real, con la base, lo prueba carta-publica-con-modulo.test.ts); acá la empresa los tiene todos.
 vi.mock("@/server/acceso/modulos-de-empresa", () => ({ modulosEfectivosDeEmpresa: async () => new Set(["carta", "promociones"]) }));
 vi.mock("@/server/carta-publica/sin-sesion", async (importOriginal) => {

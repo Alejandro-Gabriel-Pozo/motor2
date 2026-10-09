@@ -40,7 +40,7 @@ export async function actualizarCapacidad(
     if (resultado.ok) {
       // Se llama desde un closure "use server" de la página, sin redirigir. Acá el botón ES el estado (✅/⛔): sin esto seguía mostrando el estado
       // viejo después de cambiarlo, hasta recargar a mano (ver refrescar.ts).
-      if (accionClave === "precio_local") revalidarCartasPublicas(); // la carta pública muestra el precio efectivo: cambia con la capacidad
+      if (accionClave === "precio_local") revalidarCartasPublicas(ctx.empresaSlug); // la carta pública muestra el precio efectivo: cambia con la capacidad
       refrescarVistaSiHaceFalta();
     }
     return aResultadoAccion(resultado);

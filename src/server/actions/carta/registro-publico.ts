@@ -39,7 +39,7 @@ export async function agregarSucursalAlPortal(sucursalId: string): Promise<Resul
     const comando = guardComandoAgregarSucursalAlPortal(sucursalId);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await agregarSucursalAlPortalCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
@@ -66,7 +66,7 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
     const comando = guardComandoGuardarSucursalPublica(sucursalId, datos);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await guardarSucursalPublicaCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
@@ -80,7 +80,7 @@ export async function quitarSucursalDelPortal(sucursalId: string): Promise<Resul
     const comando = guardComandoQuitarSucursalDelPortal(sucursalId);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await quitarSucursalDelPortalCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
@@ -97,7 +97,7 @@ export async function moverSucursalEnMapa(sucursalId: string, x: number, y: numb
     const comando = guardComandoMoverSucursalEnMapa({ sucursalId, x, y });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await moverSucursalEnMapaCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }

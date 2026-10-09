@@ -37,7 +37,7 @@ export async function guardarGeneroCarta(datos: DatosGeneroCarta): Promise<Resul
     const comando = guardComandoGuardarGeneroCarta(datos);
     if (!comando.ok) return error(comando.mensaje);
     const r = await guardarGeneroCartaCasoDeUso(ctx, comando.valor);
-    if (r.ok) revalidarCartasPublicas();
+    if (r.ok) revalidarCartasPublicas(ctx.empresaSlug);
     const base = aResultadoAccion(r);
     return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
@@ -50,7 +50,7 @@ export async function guardarGeneroCarta(datos: DatosGeneroCarta): Promise<Resul
 export async function actualizarActivoGeneroCarta(generoCartaId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta_generos", async (ctx) => {
     const resultado = await actualizarActivoGeneroCartaCasoDeUso(ctx, { generoCartaId, activo });
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }

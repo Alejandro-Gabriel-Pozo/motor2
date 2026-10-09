@@ -66,7 +66,7 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
   return conPermiso<ResultadoConId>("carta_items_agrupados", async (ctx) => {
     const comando = guardComandoGuardarItemAgrupadoCarta(datos);
     if (!comando.ok) return error(comando.mensaje);
-    const r = await guardarItemAgrupadoCartaCasoDeUso(ctx, comando.valor, { cartaCambio: revalidarCartasPublicas });
+    const r = await guardarItemAgrupadoCartaCasoDeUso(ctx, comando.valor, { cartaCambio: () => revalidarCartasPublicas(ctx.empresaSlug) });
     const base = aResultadoAccion(r);
     return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
@@ -76,7 +76,7 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
 export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta_items_agrupados", async (ctx) => {
     const resultado = await actualizarActivoItemAgrupadoCartaCasoDeUso(ctx, { itemAgrupadoCartaId, activo });
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
@@ -90,7 +90,7 @@ export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: str
 export async function agregarOpcionItemAgrupadoCarta(itemAgrupadoCartaId: string, productoId: string, orden: number | string | null = null): Promise<ResultadoAccion> {
   return conPermiso("carta_items_agrupados", async (ctx) => {
     const resultado = await agregarOpcionItemAgrupadoCartaCasoDeUso(ctx, { itemAgrupadoCartaId, productoId, orden });
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
@@ -100,7 +100,7 @@ export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, o
     const comando = guardComandoActualizarOrdenOpcionItemAgrupadoCarta({ opcionId, orden });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await actualizarOrdenOpcionItemAgrupadoCartaCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
@@ -109,7 +109,7 @@ export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, o
 export async function quitarOpcionItemAgrupadoCarta(opcionId: string): Promise<ResultadoAccion> {
   return conPermiso("carta_items_agrupados", async (ctx) => {
     const resultado = await quitarOpcionItemAgrupadoCartaCasoDeUso(ctx, { opcionId });
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }

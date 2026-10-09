@@ -33,7 +33,7 @@ export async function guardarTemaCarta(sucursalId: string, valores: Readonly<Rec
     const comando = guardComandoGuardarTemaCarta({ sucursalId, valores, sucursalActivaId: ctx.sucursalId });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await guardarTemaCartaCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
@@ -50,7 +50,7 @@ export async function cambiarAplicacionTema(sucursalId: string, aplicar: boolean
     const comando = guardComandoCambiarAplicacionTema({ sucursalId, aplicar, sucursalActivaId: ctx.sucursalId });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await cambiarAplicacionTemaCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }

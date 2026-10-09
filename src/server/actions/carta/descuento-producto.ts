@@ -24,7 +24,7 @@ export async function guardarDescuentoProducto(productoId: string, porcentaje: n
     const comando = guardComandoGuardarDescuentoProducto({ productoId, porcentaje });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await guardarDescuentoProductoCasoDeUso(ctx, comando.valor);
-    if (resultado.ok && resultado.datos.huboCambio) revalidarCartasPublicas();
+    if (resultado.ok && resultado.datos.huboCambio) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }

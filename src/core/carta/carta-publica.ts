@@ -88,6 +88,19 @@ const proyectarSeccion = (s: SeccionCartaV1): SeccionCartaPublica => ({
   promos: s.promos.map(proyectarPromo),
 });
 
+/**
+ * La etiqueta de caché de TODAS las cartas públicas de UNA empresa (S-26 del plan de endurecimiento de seguridad, tanda T9). La carta de cada sucursal se cachea 5 minutos
+ * (ISR) con esta etiqueta, y toda mutación de carta de la empresa invalida SOLO esa etiqueta (`server/actions/carta/revalidar.ts`): lo de una empresa nunca saca del caché
+ * lo de otra. Antes se invalidaba el patrón `/(carta-publica)/carta-publica/[empresa]/[sucursal]`, que es de todas las empresas a la vez.
+ *
+ * Por qué una etiqueta y no `revalidatePath` con la ruta de la empresa: Next solo engancha a cada página la etiqueta de su ruta TAL COMO ESTÁ ESCRITA en el árbol de archivos
+ * (con `[empresa]`) y la de su URL exacta; `revalidatePath("/carta-publica/<empresa>", "layout")` no alcanza a las sucursales y no falla (verificado en el artefacto de producción
+ * con `test/e2e/carta-publica-cache-por-empresa.spec.ts`: la carta de la propia empresa quedaba vieja).
+ */
+export function etiquetaDeCacheDeCartasPublicas(empresaSlug: string): string {
+  return `carta-publica:${empresaSlug}`;
+}
+
 /** La carta armada, sin los ids internos: lo que la carta pública emite hacia el navegador. */
 export function proyectarCartaPublica(carta: CartaV1): CartaPublicaV1 {
   return { version: carta.version, generadoEn: carta.generadoEn, sucursal: { nombre: carta.sucursal.nombre }, secciones: carta.secciones.map(proyectarSeccion) };

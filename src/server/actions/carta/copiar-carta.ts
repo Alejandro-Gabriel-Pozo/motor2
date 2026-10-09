@@ -30,7 +30,7 @@ export async function copiarCartaDeSucursal(sucursalOrigenId: string, confirmado
     const comando = guardComandoCopiarCartaDeSucursal({ sucursalOrigenId, confirmado, sucursalActivaId: ctx.sucursalId });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await copiarCartaDeSucursalCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }

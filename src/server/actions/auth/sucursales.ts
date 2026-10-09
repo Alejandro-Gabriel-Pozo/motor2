@@ -60,7 +60,7 @@ export async function crearSucursalConAdmin(input: {
 export async function actualizarActivoSucursal(sucursalId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("activar_sucursal", async (ctx) => {
     const resultado = await actualizarActivoSucursalCasoDeUso(ctx, { sucursalId, activo });
-    if (resultado.ok) revalidarCartasPublicas(); // la carta pública de una sucursal desactivada tiene que dejar de verse al instante, no a los 5 minutos
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug); // la carta pública de una sucursal desactivada tiene que dejar de verse al instante, no a los 5 minutos
     // A propósito SIN `refrescarVistaSiHaceFalta()`: su único llamador (`ActivarDesactivarFila`) ya hace `router.refresh()` en el cliente, y
     // otras pantallas que reusen ese componente heredan lo mismo (ver la regla en refrescar.ts).
     return aResultadoAccion(resultado);
@@ -78,7 +78,7 @@ export async function renombrarSucursal(sucursalId: string, nombreNuevo: string)
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await renombrarSucursalCasoDeUso(ctx, { sucursalId, nombre: comando.valor.nombre });
     if (resultado.ok) {
-      revalidarCartasPublicas();
+      revalidarCartasPublicas(ctx.empresaSlug);
       refrescarVistaSiHaceFalta(); // ver crearSucursalConAdmin
     }
     return aResultadoAccion(resultado);

@@ -49,7 +49,7 @@ export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<Resulta
     const comando = guardComandoGuardarPromoCarta(datos);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await guardarPromoCartaCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
@@ -61,7 +61,7 @@ export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<Resulta
 export async function actualizarActivaPromoCarta(promoCartaId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
     const resultado = await actualizarActivaPromoCartaCasoDeUso(ctx, { promoCartaId, activa });
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
@@ -73,7 +73,7 @@ export async function actualizarActivaPromoCarta(promoCartaId: string, activa: b
 export async function actualizarActivaPromoCartaEnSucursal(promoCartaId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta_promo_activar", async (ctx) => {
     const resultado = await actualizarActivaPromoCartaEnSucursalCasoDeUso(ctx, { promoCartaId, activa });
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
@@ -90,7 +90,7 @@ export async function actualizarActivaPromoCartaEnSucursal(promoCartaId: string,
 export async function guardarPrecioLocalPromoCarta(promoCartaId: string, precioLocal: number | string | null): Promise<ResultadoAccion> {
   return conPermiso("carta_promo_precio_local", async (ctx) => {
     const resultado = await guardarPrecioLocalPromoCartaCasoDeUso(ctx, { promoCartaId, precioLocal });
-    if (resultado.ok) revalidarCartasPublicas();
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
