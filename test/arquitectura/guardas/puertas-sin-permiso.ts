@@ -74,8 +74,8 @@ export const PUERTAS_SIN_PERMISO: Readonly<Record<string, PuertaSinPermiso>> = {
   "ruta|invitacion/page.tsx": {
     anonimo: "PERMITIDO",
     sinEmpresa: "PERMITIDO",
-    motivo: "pantalla de aceptación de una invitación (E5/E8): quien llega aún no tiene sesión ni empresa; el acceso lo dan el token del enlace (cookie httpOnly) y la cuenta de Google del email invitado, y el GET no gasta nada. Sus Server Actions en línea son solo `signIn(\"google\")` y `signOut` de Auth.js (lo fija el test estático)",
-    limitador: "el GET solo lee la invitación por el hash del token de la cookie; abrir un enlace nuevo pasa por `abrirInvitacion` (cupo por origen)",
+    motivo: "pantalla de aceptación de una invitación (E5/E8): quien llega aún no tiene sesión ni empresa; el acceso lo dan el token del enlace (cookie httpOnly) y la cuenta de Google del email invitado, y el GET no consume la invitación (un escáner de mails no la gasta). Sus Server Actions en línea son solo `signIn(\"google\")` y `signOut` de Auth.js (lo fija el test estático)",
+    limitador: "el GET lee la invitación por el hash del token de la cookie, que NO viene solo de `abrirInvitacion`: la manda el cliente (un `curl` con una cookie inventada llega igual), así que la página cuenta el MISMO cupo por origen que `abrirInvitacion` antes de consultar la base (I-2 de la auditoría intermedia; `puertas-anonimas-con-cupo.test.ts`)",
   },
   "ruta|api/auth/[...nextauth]/route.ts": {
     anonimo: "PERMITIDO",

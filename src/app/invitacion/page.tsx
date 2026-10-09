@@ -1,10 +1,12 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/lib/auth";
 import { getUsuarioActual } from "@/core/auth/session";
 import { claseDeInvitacion, nombreCookieInvitacion } from "@/core/auth/invitacion";
 import { accesosDeLaInvitacion, invitacionConSuBase } from "@/server/sesion/invitacion";
+import { MENSAJE_DEMASIADAS_APERTURAS_DE_INVITACION, origenDelPedido, origenSinCupoParaAbrirInvitacion } from "@/server/actions/limitador-anonimo";
 import { MENSAJE_ENLACE_NO_VALIDO } from "@/core/features/empresa/aceptar-invitacion";
+import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";
 import { AbrirInvitacion } from "./abrir-invitacion";
 import { AceptarDeUsuario } from "./aceptar-de-usuario";
 import { FormularioDeAceptacion } from "./formulario-de-aceptacion";
@@ -33,7 +35,20 @@ const BOTON = "w-full rounded-md bg-neutral-900 px-4 py-2 text-white hover:bg-ne
 export default async function InvitacionPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(nombreCookieInvitacion(process.env))?.value;
-  const invitacion = await invitacionConSuBase(token, new Date());
+  const ahora = new Date();
+  // I-2 (auditoría intermedia, S-27): la cookie la manda el cliente (`httpOnly` y `__Host-` frenan al navegador, no a un `curl`), así que este GET es una puerta ANÓNIMA igual que
+  // `abrirInvitacion`: con un token de forma válida `invitacionConSuBase` consulta la base compartida (la invitación por su hash y la empresa). Mismo cupo por origen, la MISMA
+  // instancia del limitador (lo que gasta un origen por la acción también cuenta acá), y ANTES de consultar. Sin cookie o con una de forma inválida no se consulta nada ni se cuenta.
+  const consultable = token !== undefined && esTokenConFormaValida(token);
+  if (consultable && origenSinCupoParaAbrirInvitacion(origenDelPedido(await headers()), ahora.getTime())) {
+    return (
+      <Pantalla>
+        <h1 className="text-2xl font-semibold">Invitación</h1>
+        <p className={TEXTO_SUAVE}>{MENSAJE_DEMASIADAS_APERTURAS_DE_INVITACION}</p>
+      </Pantalla>
+    );
+  }
+  const invitacion = consultable ? await invitacionConSuBase(token, ahora) : null;
 
   // Sin cookie (o con una que no corresponde a nada): el token puede estar todavía en el fragmento de la URL, que solo ve el navegador.
   if (!invitacion) {

@@ -2,13 +2,15 @@ import { crearLimitadorDeTasa } from "@/core/permisos/limitador-tasa";
 
 /**
  * Cupo por ORIGEN de las puertas que un ANÓNIMO puede golpear (S-27, T11 del endurecimiento; guard GT-8): hoy `abrirInvitacion`, que con un token de forma válida
- * consulta la base (la invitación por su hash y su empresa). El token es de 256 bits y no se adivina, pero nada impedía que un script sin cuenta mandara miles por minuto desde
+ * consulta la base (la invitación por su hash y su empresa), y `GET /invitacion` (`app/invitacion/page.tsx`), que hace la misma consulta con el token de la cookie de
+ * invitación: la cookie la manda el cliente, así que un `curl` con una cookie inventada llega a esa consulta sin pasar por la acción (I-2 de la auditoría intermedia). Las dos
+ * puertas cuentan en el MISMO limitador de abajo. El token es de 256 bits y no se adivina, pero nada impedía que un script sin cuenta mandara miles por minuto desde
  * una sola conexión y le gastara a TODAS las empresas la base que comparten (Neon). Es el mismo mecanismo que el cupo por origen de la consola
  * (`plataforma/src/servidor/limitador-de-pedidos.ts`, S-08), con su propia instancia: lo que gasta un origen acá no le descuenta nada al ingreso de la consola.
  *
  * La INSTANCIA vive acá y no en `core` (que no tiene estado de módulo: `core-sin-estado-de-modulo.test.ts`). BEST EFFORT y declarado: la memoria de UNA instancia
  * (Vercel corre varias, sin estado compartido; se pierde en un arranque en frío), así que no frena a quien rota de IP ni a quien cae en instancias distintas. El cierre real es
- * el firewall de Vercel (E.6 del plan de endurecimiento: límite por IP a los POST con `next-action` sin cookie de sesión). Lo que sí corta es el bucle barato desde un solo origen.
+ * el firewall de Vercel (E.6 del plan de endurecimiento: límite por IP a los POST con `next-action` sin cookie de sesión Y a los GET de `/invitacion` con la cookie de invitación: la regla de los POST sola no cubre el GET; sin hacer). Lo que sí corta es el bucle barato desde un solo origen.
  *
  * Los números dejan pasar lo legítimo: abrir un enlace es UN pedido (más un par de recargas), y aun si todo el personal de un local, detrás de la misma IP, abre sus
  * invitaciones a la vez, son pocas decenas. Es un default a confirmar por el dueño (decisión B15 del carril B), revertible cambiando estas constantes.
