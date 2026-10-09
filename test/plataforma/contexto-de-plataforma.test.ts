@@ -28,13 +28,18 @@ const CON_ADICIONAL = {
   PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN: url("ep-stock.c-2.us-west-2.aws.neon.tech", ROL_DE_PLATAFORMA, "clave-secreta-dos"),
 };
 
+/** En los tests con la base real del contexto, la prueba del actor (M-32) se prueba aparte, con TOTP reales, en `test/plataforma/probar-actor-de-plataforma.test.ts`. */
+const CODIGO_Y_PRUEBA_FALSOS = { leerCodigo: async () => "123456" as string | undefined, probarActor: async () => undefined };
+
 interface ClienteFalso {
   url: string;
   $disconnect: ReturnType<typeof vi.fn>;
 }
 
 /** Dependencias falsas que anotan el orden de las llamadas y a qué cliente (por la URL con la que se creó) va cada una. */
-function falsas(opciones: { rol?: (c: ClienteFalso) => Promise<void>; admin?: (c: ClienteFalso, email: string) => Promise<{ id: string; email: string }> } = {}) {
+function falsas(
+  opciones: { rol?: (c: ClienteFalso) => Promise<void>; admin?: (c: ClienteFalso, email: string) => Promise<{ id: string; email: string }>; codigo?: string | undefined; prueba?: (c: ClienteFalso) => Promise<void> } = {},
+) {
   const llamadas: string[] = [];
   const clientes: ClienteFalso[] = [];
   const dependencias: DependenciasDelContexto = {
@@ -54,6 +59,15 @@ function falsas(opciones: { rol?: (c: ClienteFalso) => Promise<void>; admin?: (c
       llamadas.push(`admin:${c.url.includes("stock") ? "stock" : "principal"}`);
       return opciones.admin ? opciones.admin(c, email) : { id: "admin-1", email: email.trim().toLowerCase() };
     },
+    leerCodigo: async () => {
+      llamadas.push("codigo");
+      return "codigo" in opciones ? opciones.codigo : "123456";
+    },
+    probarActor: async (db) => {
+      const c = db as unknown as ClienteFalso;
+      llamadas.push(`prueba:${c.url.includes("stock") ? "stock" : "principal"}`);
+      await opciones.prueba?.(c);
+    },
   };
   return { dependencias, llamadas, clientes };
 }
@@ -63,7 +77,7 @@ describe("abrirContextoDePlataforma: lo que se resuelve antes de la operación",
     const { dependencias, llamadas } = falsas();
     const contexto = await abrirContextoDePlataforma(BASE, { instalacion: undefined, actor: " Dueno@Plataforma.test " }, dependencias);
 
-    expect(llamadas).toEqual(["crear:principal", "rol:principal", "admin:principal"]);
+    expect(llamadas).toEqual(["codigo", "crear:principal", "rol:principal", "admin:principal", "prueba:principal"]);
     expect(contexto.autor).toEqual({ adminId: "admin-1", adminEmail: "dueno@plataforma.test", instalacionId: "zuluhub", instalacionNombre: "Zuluhub" });
   });
 
@@ -72,7 +86,7 @@ describe("abrirContextoDePlataforma: lo que se resuelve antes de la operación",
     const contexto = await abrirContextoDePlataforma(CON_ADICIONAL, { instalacion: "stockhneuquen", actor: "dueno@plataforma.test" }, dependencias);
 
     // Mutación: verificar al administrador con el cliente de la base que se opera (`db`) en vez del de identidad pone este test en rojo (`admin:stock`).
-    expect(llamadas).toEqual(["crear:principal", "crear:stock", "rol:principal", "rol:stock", "admin:principal"]);
+    expect(llamadas).toEqual(["codigo", "crear:principal", "crear:stock", "rol:principal", "rol:stock", "admin:principal", "prueba:principal"]);
     expect(contexto.autor).toMatchObject({ instalacionId: "stockhneuquen", instalacionNombre: "Stock Neuquén" });
     expect((contexto.db as unknown as ClienteFalso).url).toContain("stock");
   });
@@ -84,7 +98,31 @@ describe("abrirContextoDePlataforma: lo que se resuelve antes de la operación",
       },
     });
     await expect(abrirContextoDePlataforma(BASE, { instalacion: undefined, actor: "dueno@plataforma.test" }, dependencias)).rejects.toThrow(/no es del rol motor2_plataforma/);
-    expect(llamadas, "no llegó a mirar quién es el actor").toEqual(["crear:principal", "rol:principal"]);
+    expect(llamadas, "no llegó a mirar quién es el actor").toEqual(["codigo", "crear:principal", "rol:principal"]);
+    expect(clientes.every((c) => c.$disconnect.mock.calls.length === 1)).toBe(true);
+  });
+
+  // M-32: --actor atribuye pero no autentica. Sin la prueba del actor (el código TOTP) el script no abre ni una conexión.
+  it("EL ATAQUE (M-32): un actor válido SIN código no abre ninguna conexión ni llega a mirar la base (aunque la URL y el email sean correctos)", async () => {
+    const { dependencias, llamadas } = falsas({ codigo: undefined });
+    await expect(abrirContextoDePlataforma(BASE, { instalacion: undefined, actor: "dueno@plataforma.test" }, dependencias)).rejects.toThrow(/Falta el código de tu app de autenticación/);
+    expect(llamadas).toEqual(["codigo"]);
+  });
+
+  it("un código vacío o de puros espacios cuenta como sin código", async () => {
+    const { dependencias, llamadas } = falsas({ codigo: "   " });
+    await expect(abrirContextoDePlataforma(BASE, { instalacion: undefined, actor: "dueno@plataforma.test" }, dependencias)).rejects.toThrow(ActorDePlataformaError);
+    expect(llamadas).toEqual(["codigo"]);
+  });
+
+  it("si la prueba del actor falla, el contexto no se abre, se cierra lo abierto y la operación no se alcanza", async () => {
+    const { dependencias, clientes } = falsas({
+      prueba: async () => {
+        throw new ActorDePlataformaError("No se pudo comprobar que sos ese administrador");
+      },
+    });
+    await expect(abrirContextoDePlataforma(CON_ADICIONAL, { instalacion: "stockhneuquen", actor: "dueno@plataforma.test" }, dependencias)).rejects.toThrow(/No se pudo comprobar/);
+    expect(clientes).toHaveLength(2);
     expect(clientes.every((c) => c.$disconnect.mock.calls.length === 1)).toBe(true);
   });
 
@@ -138,7 +176,7 @@ describe("abrirContextoDePlataforma contra la base real", () => {
     const admin = await prismaAdmin.adminPlataforma.create({ data: { email: "dueno@plataforma.test", nombre: "Dueño", secretoTotp: "x" } });
     expect(await prismaAdmin.user.count({ where: { email: "dueno@plataforma.test" } }), "no hay un User con ese email").toBe(0);
 
-    const dependencias: DependenciasDelContexto = { crearCliente: () => duenio(), exigirRol: async () => undefined, exigirAdmin: requerirAdminDePlataforma };
+    const dependencias: DependenciasDelContexto = { crearCliente: () => duenio(), exigirRol: async () => undefined, exigirAdmin: requerirAdminDePlataforma, ...CODIGO_Y_PRUEBA_FALSOS };
     const contexto = await abrirContextoDePlataforma(BASE, { instalacion: undefined, actor: "Dueno@Plataforma.test" }, dependencias);
     await contexto.cerrar();
 
@@ -148,13 +186,13 @@ describe("abrirContextoDePlataforma contra la base real", () => {
 
   it("un User de la app que no es administrador de plataforma no sirve de actor, aunque exista", async () => {
     await prismaAdmin.user.create({ data: { email: "empleado@empresa.test" } });
-    const dependencias: DependenciasDelContexto = { crearCliente: () => duenio(), exigirRol: async () => undefined, exigirAdmin: requerirAdminDePlataforma };
+    const dependencias: DependenciasDelContexto = { crearCliente: () => duenio(), exigirRol: async () => undefined, exigirAdmin: requerirAdminDePlataforma, ...CODIGO_Y_PRUEBA_FALSOS };
     await expect(abrirContextoDePlataforma(BASE, { instalacion: undefined, actor: "empleado@empresa.test" }, dependencias)).rejects.toThrow(ActorDePlataformaError);
   });
 
   it("la comprobación de rol real rechaza una sesión del dueño (select current_user ≠ motor2_plataforma)", async () => {
     // exigirRol y exigirAdmin REALES: el cliente es el del dueño, que no es motor2_plataforma.
-    const dependencias: DependenciasDelContexto = { crearCliente: () => duenio(), exigirRol: exigirRolDePlataforma, exigirAdmin: requerirAdminDePlataforma };
+    const dependencias: DependenciasDelContexto = { crearCliente: () => duenio(), exigirRol: exigirRolDePlataforma, exigirAdmin: requerirAdminDePlataforma, ...CODIGO_Y_PRUEBA_FALSOS };
     await expect(abrirContextoDePlataforma(BASE, { instalacion: undefined, actor: "dueno@plataforma.test" }, dependencias)).rejects.toThrow(/no es del rol motor2_plataforma \(es «/);
   });
 });
