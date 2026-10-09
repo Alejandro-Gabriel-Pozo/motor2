@@ -251,7 +251,6 @@
         "producto_disponibilidad",
         "producto_editar",
         "producto_presentaciones",
-        "producto_sincronizar_precio_carta",
         "producto_ver_catalogo",
         "proveedor_alta",
         "reporte_conteos",
@@ -1379,8 +1378,7 @@
       "contexto": "empresa",
       "nivelMinimo": "operario",
       "rolesEditarSemilla": [
-        "admin",
-        "operador"
+        "admin"
       ]
     },
     {
