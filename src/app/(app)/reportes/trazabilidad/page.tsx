@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { buscarOperacionesPorProducto, obtenerOperacionPorId } from "@/server/consultas/reportes/trazabilidad";
 import { TablaOperacionesEncontradas, TablaItemsOperacion } from "./tabla-trazabilidad";
@@ -9,6 +10,8 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
 export default async function TrazabilidadPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"producto" | "idOperacion">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_trazabilidad", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
