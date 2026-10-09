@@ -52,6 +52,14 @@ export interface MailsDeInvitacionDelDia {
   delDestinatario: number;
 }
 
+/**
+ * Lo que ve quien pidió una invitación cuando la reserva del cupo se agotó por CONCURRENCIA (M-14 de la auditoría intermedia): la transacción de gobierno es SERIALIZABLE y, con muchas reservas
+ * simultáneas en la misma empresa, Postgres aborta las que chocan (P2034) y se reintentan hasta un tope; si se agota, antes el error salía crudo (un «algo salió mal» sin relación con el cupo).
+ * Ahora falla CERRADO con este texto: no se mandó ni se cambió nada (la transacción se deshizo entera) y se puede repetir enseguida.
+ */
+export const MENSAJE_DE_CUPO_DE_CORREO_POR_CONCURRENCIA =
+  "No se pudo reservar el cupo de mails de invitación: hay demasiadas invitaciones saliendo a la vez en la empresa. No se mandó ni se cambió nada; esperá unos segundos y volvé a intentar.";
+
 /** El rechazo si el mail que se quiere reservar ya no entra en el cupo (cuenta el que se quiere mandar: con `deLaEmpresa` en el tope, el siguiente no sale), o `null`. */
 export function mensajeSiNoHayCupoDeCorreo(usados: MailsDeInvitacionDelDia, email: string): string | null {
   if (usados.deLaEmpresa >= MAXIMO_DE_MAILS_DE_INVITACION_POR_EMPRESA_Y_DIA) {

@@ -4,7 +4,8 @@ import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-aud
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { generarTokenOpaco, hashDeToken } from "@/core/seguridad/tokens";
 import { decidirSobreLaInvitacionPendiente, vencimientoDeInvitacion, type TipoDeInvitacion } from "@/core/features/empresa/invitacion";
-import { CAMPO_DE_AUDITORIA_DEL_MAIL_DE_INVITACION, descripcionDelMailDeInvitacion, mensajeSiNoHayCupoDeCorreo } from "@/core/features/empresa/cupo-de-correo";
+import { CAMPO_DE_AUDITORIA_DEL_MAIL_DE_INVITACION, MENSAJE_DE_CUPO_DE_CORREO_POR_CONCURRENCIA, descripcionDelMailDeInvitacion, mensajeSiNoHayCupoDeCorreo } from "@/core/features/empresa/cupo-de-correo";
+import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { cupoDeCorreoDeEmpresa } from "@/server/lecturas/auth/cupo-de-correo";
 import { anotarInvitacionEnviada } from "@/server/persistencia/invitaciones/anotar-invitacion-enviada";
 import {
@@ -194,12 +195,17 @@ export async function reservarMailDeInvitacion(
   await anotarInvitacionEnviada(tx, { invitacionId: entrada.invitacionId, ahora: entrada.ahora });
 }
 
-/** Corre el caso de uso y, si una reserva de mail lanzó `CupoDeCorreoAgotado` (la transacción ya se deshizo), devuelve `comoFracaso(mensaje)`; cualquier otro error sigue de largo. */
+/**
+ * Corre el caso de uso y, si una reserva de mail lanzó `CupoDeCorreoAgotado` (la transacción ya se deshizo), devuelve `comoFracaso(mensaje)`; cualquier otro error sigue de largo.
+ * M-14: también un CONFLICTO DE ESCRITURA que llega hasta acá es que la transacción SERIALIZABLE ya agotó sus reintentos (`conTransaccionSerializable` reintenta los conflictos antes de
+ * dejarlos salir) peleando por el cupo de la empresa: falla CERRADO con el mensaje del cupo (`MENSAJE_DE_CUPO_DE_CORREO_POR_CONCURRENCIA`) en vez de un error genérico. No se mandó nada.
+ */
 export async function conCupoDeCorreo<T, F>(cuerpo: () => Promise<T>, comoFracaso: (mensaje: string) => F): Promise<T | F> {
   try {
     return await cuerpo();
   } catch (e) {
     if (e instanceof CupoDeCorreoAgotado) return comoFracaso(e.mensajeParaElUsuario);
+    if (esConflictoDeEscritura(e)) return comoFracaso(MENSAJE_DE_CUPO_DE_CORREO_POR_CONCURRENCIA);
     throw e;
   }
 }
