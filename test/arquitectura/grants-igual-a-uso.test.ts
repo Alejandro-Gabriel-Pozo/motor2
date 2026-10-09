@@ -150,7 +150,7 @@ export function usoDelCodigo(codigo: string, relaciones: Relaciones = new Map())
         const op = f.name.text;
         if (LECTURAS.has(op)) sumar(uso, modelo, "SELECT");
         else if (op === "create" || op === "createMany" || op === "createManyAndReturn") sumar(uso, modelo, "INSERT");
-        else if (op === "update" || op === "updateMany") sumar(uso, modelo, "UPDATE");
+        else if (op === "update" || op === "updateMany" || op === "updateManyAndReturn") sumar(uso, modelo, "UPDATE");
         else if (op === "upsert") sumar(uso, modelo, "INSERT", "UPDATE");
         else if (op === "delete" || op === "deleteMany") sumar(uso, modelo, "DELETE");
         if (relaciones.has(modelo)) usoAnidado(n.arguments[0], modelo, relaciones, uso);

@@ -4,6 +4,7 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { ACCIONES, type AccionClave } from "../../src/core/permisos/acciones";
 import { envoltoriosDe } from "./guardas/envoltorio-y-clave";
+import { funcionDeInicializador } from "./guardas/analizador";
 
 /**
  * GT-4, SEGUNDA MITAD (plan de endurecimiento de seguridad, tanda T6; fila O.59 de `docs/pureza-integracion.md`; decisión D1 del dueño): **toda Server Action de contexto EMPRESA que termina
@@ -31,7 +32,7 @@ import { envoltoriosDe } from "./guardas/envoltorio-y-clave";
  * `requierePermiso("carta_promo_activar")` del alta de la promo (la evidencia de `CLAVE_DE_SUCURSAL` desaparece) y los casos sintéticos del propio guardián (abajo).
  */
 const RAIZ = join(__dirname, "../..");
-const ESCRITURAS = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "upsert", "delete", "deleteMany"]);
+const ESCRITURAS = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "updateManyAndReturn", "upsert", "delete", "deleteMany"]);
 const ENVOLTORIOS_DE_EMPRESA = new Set(["conPermisoDeEmpresa", "conEdicionDePermisos"]);
 const ZONA_DE_ACCIONES = "src/server/actions/";
 const ZONA_DE_PERSISTENCIA = "src/server/persistencia/";
@@ -189,9 +190,9 @@ function analizarModulo(ruta: string, codigo: string, existe: (ruta: string) => 
     if (ts.isFunctionDeclaration(s) && s.name && s.body) funciones.set(s.name.text, { nombre: s.name.text, exportada: esExportada(s), cuerpo: s.body });
     if (ts.isVariableStatement(s)) {
       for (const d of s.declarationList.declarations) {
-        if (ts.isIdentifier(d.name) && d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) {
-          funciones.set(d.name.text, { nombre: d.name.text, exportada: esExportada(s), cuerpo: d.initializer.body });
-        }
+        // I-2 de la auditoría final: también la acción exportada como constante con envoltorio o `as`.
+        const funcion = ts.isIdentifier(d.name) && d.initializer ? funcionDeInicializador(d.initializer) : undefined;
+        if (funcion && ts.isIdentifier(d.name)) funciones.set(d.name.text, { nombre: d.name.text, exportada: esExportada(s), cuerpo: funcion.body });
       }
     }
   }

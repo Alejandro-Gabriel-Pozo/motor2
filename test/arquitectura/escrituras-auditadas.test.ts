@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
+import { funcionDeInicializador } from "./guardas/analizador";
 
 /**
  * Regla de arquitectura: lo que mueve plata (o cambia el SIGNIFICADO de una cantidad) y se edita a mano deja su rastro en la auditoría
@@ -29,7 +30,8 @@ const CARPETAS = ["src/server/actions", "src/core", "src/server/persistencia", "
 /** Donde buscar a quienes llaman a una escritura de la persistencia (la cadena caso de uso → persistencia). */
 const CARPETAS_DE_LLAMADORES = ["src/server", "src/core"];
 const ZONA_PERSISTENCIA = "src/server/persistencia/";
-const OPERACIONES_DE_ESCRITURA = new Set(["create", "createMany", "update", "updateMany", "upsert"]);
+// `createManyAndReturn` / `updateManyAndReturn` (Prisma 6): escriben igual que `createMany` / `updateMany` y devuelven las filas; sin ellos en la lista, una escritura de dinero hecha así no se vería.
+const OPERACIONES_DE_ESCRITURA = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "updateManyAndReturn", "upsert"]);
 
 /** Columnas que no son `Decimal` pero cambian el significado de una cantidad: modelo → columnas (`"*"` = cualquier escritura del modelo). */
 const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
@@ -216,7 +218,9 @@ function extraerUnidades(fuente: ts.SourceFile): Map<string, Unidad> {
     if (ts.isFunctionDeclaration(s) && s.name) registrar(s.name.text, s);
     if (ts.isVariableStatement(s)) {
       for (const d of s.declarationList.declarations) {
-        if (ts.isIdentifier(d.name) && d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) registrar(d.name.text, d.initializer);
+        // I-2 de la auditoría final: también la función exportada como constante con envoltorio o `as`.
+        const funcion = ts.isIdentifier(d.name) && d.initializer ? funcionDeInicializador(d.initializer) : undefined;
+        if (funcion && ts.isIdentifier(d.name)) registrar(d.name.text, funcion);
       }
     }
   }
@@ -436,6 +440,20 @@ describe("escrituras auditadas: el detector ve lo que tiene que ver (la regla no
   it("una función que escribe una columna Decimal sin auditar es una violación", () => {
     const codigo = "export async function f(ctx: any) { await ctx.db.promoCarta.update({ where: { id: 'a' }, data: { precio: 5 } }); }";
     expect(violaciones(leer(codigo))).toHaveLength(1);
+  });
+
+  it("createManyAndReturn y updateManyAndReturn (Prisma 6) también son escrituras: una de dinero sin auditar es una violación", () => {
+    for (const op of ["createManyAndReturn", "updateManyAndReturn"]) {
+      const codigo = `export async function f(ctx: any) { await ctx.db.promoCarta.${op}({ data: [{ precio: 5 }] }); }`;
+      expect(violaciones(leer(codigo)), op).toHaveLength(1);
+    }
+  });
+
+  it("I-2: una función exportada como constante con envoltorio o `as` también se atribuye por su nombre (no cae en «(módulo)»)", () => {
+    const envuelta = "export const f = conRegistro(async (ctx: any) => { await ctx.db.promoCarta.update({ data: { precio: 5 } }); });";
+    expect(violaciones(leer(envuelta))).toEqual([expect.objectContaining({ funcion: "f" })]);
+    const conAs = "export const g = (async (tx: any) => { await tx.promoCarta.update({ data: { precio: 5 } }); await registrarCambioAuditado(tx, {}); }) as Accion;";
+    expect(leer(conAs)).toEqual([expect.objectContaining({ funcion: "g", audita: true })]);
   });
 
   it("la misma función con registrarCambioAuditado, o llamando a un helper del archivo que lo llama, NO lo es", () => {

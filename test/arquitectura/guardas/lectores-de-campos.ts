@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import ts from "typescript";
+import { funcionDeInicializador } from "./analizador";
 
 /**
  * Herramientas de GT-1 (campos sensibles → piso mínimo) para ver QUIÉN LEE un campo de la base y A QUÉ PÁGINAS LLEGA (tanda T14 del plan de endurecimiento de seguridad).
@@ -62,7 +63,8 @@ function funcionQueContiene(nodo: ts.Node): string {
   let nombre = "(módulo)";
   for (let p: ts.Node | undefined = nodo.parent; p; p = p.parent) {
     if (ts.isFunctionDeclaration(p) && p.name) return p.name.text;
-    if (ts.isVariableDeclaration(p) && ts.isIdentifier(p.name) && p.initializer && (ts.isArrowFunction(p.initializer) || ts.isFunctionExpression(p.initializer))) nombre = p.name.text;
+    // I-2 de la auditoría final: también `export const x = conRegistro(async () => …)` / `(async () => …) as T`: la función con nombre es la constante, no «(módulo)».
+    if (ts.isVariableDeclaration(p) && ts.isIdentifier(p.name) && p.initializer && funcionDeInicializador(p.initializer)) nombre = p.name.text;
   }
   return nombre;
 }
@@ -191,7 +193,8 @@ export function exportadasQueAlcanzan(codigo: string, lectoras: readonly string[
     if (ts.isFunctionDeclaration(s) && s.name && s.body) cuerpos.set(s.name.text, s.body);
     if (ts.isVariableStatement(s)) {
       for (const d of s.declarationList.declarations) {
-        if (ts.isIdentifier(d.name) && d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) cuerpos.set(d.name.text, d.initializer.body);
+        const funcion = ts.isIdentifier(d.name) && d.initializer ? funcionDeInicializador(d.initializer) : undefined;
+        if (funcion && ts.isIdentifier(d.name)) cuerpos.set(d.name.text, funcion.body);
       }
     }
   }

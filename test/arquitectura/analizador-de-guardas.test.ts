@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analizarFuente } from "./guardas/analizador";
+import { analizarFuente, esArchivoUseServer, tieneUseServer } from "./guardas/analizador";
 
 /**
  * Tests del analizador mismo (no del repo real): fuentes en memoria, cada
@@ -218,5 +218,70 @@ describe("analizarFuente: qué guarda abre cada función (lista cerrada de guard
     `;
     const porNombre = Object.fromEntries(analizarFuente("f.ts", fuente).funciones.map((f) => [f.nombre, f.guarda]));
     expect(porNombre).toEqual({ aMano: "obtenerContextoUsuario", conVer: "requerirVer", delegada: "obtenerContextoUsuario", sinGuarda: undefined });
+  });
+});
+
+/**
+ * I-2 de la auditoría final: `export const x = <expresión que no es una función literal>` en un archivo "use server" se ignoraba como «constante de datos». Un envoltorio
+ * (`export const borrar = conRegistro(async (id) => …)`) o una función con `as` quedaba fuera de TODOS los inventarios de acciones: una puerta HTTP sin `conPermiso` que ningún guard
+ * veía. Ahora toda exportación que no sea CLARAMENTE una constante de datos es una acción a inventariar, o `export-no-reconocido`.
+ */
+describe("analizarFuente: exportaciones `export const` que no son una función literal (I-2)", () => {
+  const CABECERA = `"use server";\nimport { conPermiso } from "../con-permiso";\n`;
+
+  it("ataque: un ENVOLTORIO sin conPermiso (conRegistro(async …)) es una acción SIN guarda, no una constante ignorada", () => {
+    const fuente = `${CABECERA}export const borrar = conRegistro(async (id: string) => { await prisma.cosa.delete({ where: { id } }); });`;
+    expect(estadoDe(fuente, "borrar")).toBe("sin-guarda");
+  });
+
+  it("ataque: una función con `as` / paréntesis / satisfies / `!` también se inventaría (y sin guarda queda roja)", () => {
+    for (const envoltura of ["(async () => 1) as Accion", "((async () => 1))", "(async () => 1) satisfies Accion", "((async () => 1) as Accion)!"]) {
+      expect(estadoDe(`${CABECERA}export const a = ${envoltura};`, "a"), envoltura).toBe("sin-guarda");
+    }
+  });
+
+  it("ataque: una forma que no se puede resolver (alias, condicional, destructuring) es export-no-reconocido", () => {
+    expect(estadoDe(`${CABECERA}const f = async () => 1;\nexport const alias = f;`, "alias")).toBe("export-no-reconocido");
+    expect(estadoDe(`${CABECERA}export const c = hay ? async () => 1 : async () => 2;`, "c")).toBe("export-no-reconocido");
+    expect(estadoDe(`${CABECERA}export const { a, b } = acciones;`, "*")).toBe("export-no-reconocido");
+    expect(estadoDe(`${CABECERA}export const datos = { borrar: async () => 1 };`, "datos")).toBe("export-no-reconocido");
+  });
+
+  it("control: el envoltorio que ES una guarda reconocida (o la lleva adentro) queda ok, con su guarda", () => {
+    const directa = analizarFuente("f.ts", `${CABECERA}export const crear = conPermiso("alta", async () => 1);`).funciones.find((f) => f.nombre === "crear");
+    expect(directa).toMatchObject({ estado: "ok", guarda: "conPermiso" });
+    const anidada = analizarFuente("f.ts", `${CABECERA}export const crear = conRegistro(conPermiso("alta", async () => 1));`).funciones.find((f) => f.nombre === "crear");
+    expect(anidada).toMatchObject({ estado: "ok", guarda: "conPermiso" });
+    const porDentro = `${CABECERA}export const crear = conRegistro(async () => { return conPermiso("alta", async () => 1); });`;
+    expect(estadoDe(porDentro, "crear")).toBe("ok");
+  });
+
+  it("control: una constante de datos clara en un archivo 'use server' no se marca (literal, objeto, arreglo, new Set)", () => {
+    const fuente = `${CABECERA}export const A = 1;\nexport const B = "x";\nexport const C = { a: 1 };\nexport const D = [1, 2] as const;\nexport const E = new Set(["a"]);\nexport const F = -1;\nexport async function accion() { return conPermiso("k", async () => 1); }`;
+    const nombres = analizarFuente("f.ts", fuente).funciones.map((f) => f.nombre);
+    expect(nombres).toEqual(["accion"]);
+  });
+
+  it("fuera de un archivo 'use server' un `export const` que no es una función no se inventaría", () => {
+    expect(analizarFuente("f.ts", `export const alias = f;\nexport const w = conRegistro(async () => 1);`).funciones).toEqual([]);
+  });
+});
+
+describe("esArchivoUseServer / tieneUseServer: el prólogo se lee por AST, no por regex (I-2)", () => {
+  it("ataque: un comentario o un banner antes de la directiva no saca al archivo del alcance", () => {
+    expect(esArchivoUseServer(`/* nota */\n"use server";\nexport async function a() {}`)).toBe(true);
+    expect(esArchivoUseServer(`// nota\n'use server'\nexport async function a() {}`)).toBe(true);
+    expect(esArchivoUseServer(`"use strict";\n"use server";\nexport async function a() {}`)).toBe(true);
+  });
+
+  it("control: lo que NO es la directiva del archivo no cuenta", () => {
+    expect(esArchivoUseServer(`export async function a() {}`)).toBe(false);
+    expect(esArchivoUseServer(`const x = "use server";\nexport async function a() {}`)).toBe(false);
+    expect(esArchivoUseServer(`export function a() { "use server"; }`)).toBe(false);
+  });
+
+  it("tieneUseServer también ve la Server Action EN LÍNEA de una función", () => {
+    expect(tieneUseServer(`export default function P() { async function f() { "use server"; await borrar(); } return f; }`)).toBe(true);
+    expect(tieneUseServer(`export default function P() { return 1; }`)).toBe(false);
   });
 });

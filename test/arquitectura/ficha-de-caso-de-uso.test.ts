@@ -4,6 +4,7 @@ import { ACCIONES } from "../../src/core/permisos/acciones";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { descubrirCasosDeUsoReales } from "./guardas/casos-de-uso";
+import { tieneUseServer } from "./guardas/analizador";
 import { ESCRITURAS_FUERA_DE_PERSISTENCIA } from "./escrituras-fuera-de-persistencia";
 import { analizarFuente, delegadosDeModelos } from "../../scripts/arquitectura/analizar-fuente";
 
@@ -150,7 +151,7 @@ function permisosObservados(fuenteDelCaso: string, envolventes: string[]): strin
   let sinConPermiso = false;
   let conConPermisoVariable = false;
   for (const codigo of envolventes) {
-    const esEndpoint = /^\s*["']use server["']/m.test(codigo);
+    const esEndpoint = tieneUseServer(codigo, "accion.ts"); // por AST: la directiva de archivo (aunque haya un comentario antes) o la de una Server Action en línea
     const fuente = ts.createSourceFile("accion.ts", codigo, ts.ScriptTarget.Latest, true);
     const buscar = (n: ts.Node): void => {
       if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && funciones.includes(n.expression.text)) {

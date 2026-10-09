@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { moduloDeAccion, type AccionClave } from "../../src/core/permisos/acciones";
+import { esArchivoUseServer } from "./guardas/analizador";
 import { envoltoriosDe, exportadasSinEnvoltorio, problemasSinEnvoltorio, type Envoltorio } from "./guardas/envoltorio-y-clave";
 
 /**
@@ -86,7 +87,7 @@ describe("POS: cada Server Action entra por su envoltorio y su clave", () => {
   it('los archivos "use server" de src/server/actions/pos son exactamente los declarados (una acción nueva del POS no queda afuera)', () => {
     const conUseServer = readdirSync(RAIZ, { withFileTypes: true })
       .filter((e) => e.isFile() && /\.ts$/.test(e.name))
-      .filter((e) => /^\s*["']use server["']/.test(readFileSync(join(RAIZ, e.name), "utf8")))
+      .filter((e) => esArchivoUseServer(readFileSync(join(RAIZ, e.name), "utf8"), e.name))
       .map((e) => e.name)
       .sort();
     expect(conUseServer).toEqual(Object.keys(DECLARADAS).sort());

@@ -241,6 +241,15 @@ describe("GT-1 completo — los lectores de esos campos", () => {
     expect(esPagina("src/app/(app)/x/form.tsx")).toBe(false);
   });
 
+  it("I-2: una lectura dentro de una acción exportada como CONSTANTE con envoltorio o `as` se atribuye a la constante y la exportada se ve", () => {
+    const sens = new Map([["User", new Set(["email"])]]);
+    const envuelta = "export const verCorreo = conRegistro(async (db) => { return db.user.findMany({ select: { email: true } }); });";
+    expect(lectoresEnFuente(envuelta, "x.ts", modelos, sens)).toEqual([expect.objectContaining({ campo: "User.email", funcion: "verCorreo" })]);
+    expect(exportadasQueAlcanzan(envuelta, ["verCorreo"])).toEqual(["verCorreo"]);
+    const conAs = "export const verCorreo = (async (db) => db.user.findMany({ select: { email: true } })) as Accion;";
+    expect(exportadasQueAlcanzan(conAs, ["verCorreo"])).toEqual(["verCorreo"]);
+  });
+
   it("sanidad: el recorrido encuentra lectores y páginas (no pasa en vacío)", () => {
     expect(hallados.length).toBeGreaterThan(25);
     expect(hallados.some((h) => h.paginas.length > 0)).toBe(true);

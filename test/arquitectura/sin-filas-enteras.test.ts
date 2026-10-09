@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import ts from "typescript";
+import { esArchivoUseServer } from "./guardas/analizador";
 
 /**
  * GT-3a y GT-25 (tanda T7 del endurecimiento de seguridad; S-15): NADA DE FILAS ENTERAS en los modelos con un campo sensible, y `select` obligatorio en las lecturas que se exportan.
@@ -243,7 +244,7 @@ function lecturasSinSelect(codigo: string, ruta: string): string[] {
   return salida;
 }
 
-const esUseServer = (codigo: string) => /^\s*["']use server["']/.test(codigo);
+const esUseServer = (codigo: string) => esArchivoUseServer(codigo); // por AST: un comentario antes de la directiva no saca el archivo del alcance (I-2 de la auditoría final)
 const SCHEMA = readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8");
 // Siempre con LF, como lo lee el CI de Linux: el guard ve lo mismo en cualquier sistema (I-4: con la regla vieja, en Windows —CRLF— veía relaciones que en Linux —LF— no).
 const relaciones = relacionesSensibles(SCHEMA.replace(/\r\n/g, "\n"));

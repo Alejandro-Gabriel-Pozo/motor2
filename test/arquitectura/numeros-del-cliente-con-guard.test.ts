@@ -31,6 +31,8 @@ const SIN_GUARD_DE_COMANDO: Readonly<Record<string, string>> = {
   "carta/items-agrupados.ts|agregarOpcionItemAgrupadoCarta": PENDIENTE("El orden de una opción de un ítem agrupado: lo valida `agregar-opcion-item-agrupado-carta.ts`."),
   "carta/promos.ts|guardarPrecioLocalPromoCarta": PENDIENTE("El precio de una promo en la sucursal: la acción lee la promo ANTES de validar el precio (una promo inexistente gana sobre un precio inválido: ver SIN_GUARD de `acciones-migradas-con-guard`)."),
   "carta/promos.ts|guardarCuposPromoCarta": PENDIENTE("Los cupos de una promo (mínimo y máximo por sección): los valida `guardar-cupos-promo-carta.ts` dentro de la transacción (S-06)."),
+  "auth/empresa-activa.ts|cambiarEmpresaActiva": PENDIENTE("El segundo argumento (`volver`, `unknown` porque con un `<form action>` llega el FormData) solo se usa si es un texto y como ruta interna segura (`rutaInternaSegura`): no es un número ni un arreglo; lo detecta el inventario por ser `unknown`."),
+  "clientes/cliente.ts|actualizarCliente": PENDIENTE("El % de descuento (`unknown`): la acción lee el cliente ANTES de validar (un cliente inexistente gana sobre un dato inválido, fijado por test/clientes/cliente-mensajes.test.ts), así que `validarPorcentajeDescuento` (0 ≤ % < 100, finito, 2 decimales) vive en el caso de uso; el ataque (NaN, Infinity, negativo, 100, 1e999) lo cubre test/clientes/cliente.test.ts."),
   "catalogo/productos.ts|darDeAltaProducto": PENDIENTE("Precio, factor, paso y consignación de un producto nuevo: `validarDatosDeProducto` (server/lecturas) los valida dentro de la transacción."),
   "catalogo/productos.ts|actualizarProducto": PENDIENTE("Precio, factor, paso y consignación de un producto: `validarDatosDeProducto` los valida dentro de la transacción (S-05)."),
   "catalogo/productos.ts|agregarPresentacionAlternativa": PENDIENTE("El factor de una presentación alternativa: lo valida `agregar-presentacion-alternativa.ts`."),
@@ -140,8 +142,23 @@ describe("GT-11 — números y arreglos del cliente: un guard de comando con ran
     for (const [k, motivo] of Object.entries(SIN_GUARD_DE_COMANDO)) expect(motivo.length, k).toBeGreaterThan(60);
   });
 
-  it("la lista de pendientes solo se achica (21 hoy)", () => {
-    expect(Object.keys(SIN_GUARD_DE_COMANDO).length).toBeLessThanOrEqual(21);
+  it("la lista de pendientes solo se achica (23 hoy: las 21 de S-52 más las dos de entrada `unknown` que el inventario no veía)", () => {
+    expect(Object.keys(SIN_GUARD_DE_COMANDO).length).toBeLessThanOrEqual(23);
+  });
+
+  it("I-2: el inventario ve las entradas `unknown`/`any`, las acciones exportadas como constante con envoltorio y el prólogo con comentario antes", () => {
+    const indice = indiceDeMiembros(["export type Datos = { n: number; x: string }"]);
+    // ataque: un parámetro `unknown` (el % de un cliente) es una entrada sin tipo que el cliente puede llenar con cualquier cosa
+    const opaca = entradasDeLasAcciones("x.ts", '"use server";\nexport async function a(id: string, pct: unknown, otro: any) {}', indice);
+    expect(opaca).toHaveLength(1);
+    expect(opaca[0]!.opacos).toEqual(["pct", "otro"]);
+    // ataque: la acción exportada como constante con envoltorio, con `as`, y Pick/Omit sobre un tipo con números
+    for (const inicializador of ["conRegistro(async (n: number) => 1)", "(async (n: number) => 1) as Accion", "conRegistro(conPermiso(\"a\", async (n: number) => 1))"]) {
+      expect(entradasDeLasAcciones("x.ts", `"use server";\nexport const a = ${inicializador};`, indice).map((e) => e.clave), inicializador).toEqual(["x.ts|a"]);
+    }
+    expect(entradasDeLasAcciones("x.ts", '"use server";\nexport async function a(d: Pick<Datos, "n">) {}', indice)[0]?.numericos).toEqual(["d.n"]);
+    // ataque: un comentario antes de la directiva no saca el archivo del alcance
+    expect(entradasDeLasAcciones("x.ts", '/* banner */\n"use server";\nexport async function a(n: number) {}', indice)).toHaveLength(1);
   });
 
   it.each(REGLAS)("regla de rango: $nombre", ({ archivo, lineas }) => {

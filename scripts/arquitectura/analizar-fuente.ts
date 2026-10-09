@@ -52,7 +52,7 @@ const OPERACIONES_DE_LECTURA = new Set([
   "aggregate",
   "groupBy",
 ]);
-const OPERACIONES_DE_ESCRITURA = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "upsert", "delete", "deleteMany"]);
+const OPERACIONES_DE_ESCRITURA = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "updateManyAndReturn", "upsert", "delete", "deleteMany"]);
 const SQL_CRUDO_DE_LECTURA = new Set(["$queryRaw", "$queryRawUnsafe"]);
 const SQL_CRUDO_DE_ESCRITURA = new Set(["$executeRaw", "$executeRawUnsafe", "$transaction"]);
 const FUNCIONES_DE_AZAR = new Set(["randomUUID", "randomBytes", "randomInt", "getRandomValues"]);

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import type { NivelDeAccion } from "../../../src/core/permisos/acciones";
+import { esArchivoUseServer } from "./analizador";
 import { archivosTs, exportadasQueAlcanzan, grafoDeImports, importadoresDe, lectoresEnFuente, modelosDelSchema, paginasQueAlcanzan } from "./lectores-de-campos";
 
 /**
@@ -79,7 +80,7 @@ export function hallarLectores(raiz: string): { modelos: ReturnType<typeof model
         ruta,
         campos: [...new Set(hits.map((h) => h.campo))].sort(),
         paginas: paginasQueAlcanzan(ruta, importadores, exportadasQueAlcanzan(codigo, funciones, ruta)),
-        esAccionUseServer: /^\s*["']use server["']/.test(codigo) && ruta.startsWith("src/server/actions/"),
+        esAccionUseServer: esArchivoUseServer(codigo, ruta) && ruta.startsWith("src/server/actions/"),
       });
     }
   }

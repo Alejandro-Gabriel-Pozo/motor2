@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
+import { esArchivoUseServer, funcionDeInicializador } from "./guardas/analizador";
 
 /**
  * GT-4, PRIMERA MITAD (plan de endurecimiento de seguridad, tanda T3; fila O.89 de `docs/pureza-integracion.md`): **toda Server Action que recibe por parámetro un id de sucursal
@@ -168,9 +169,7 @@ function indiceDeTipos(fuentes: Iterable<string>): IndiceDeTipos {
  */
 function puertasDe(rutaRelativa: string, fuente: string, indice: IndiceDeTipos = new Map()): Puerta[] {
   const sf = ts.createSourceFile("x.ts", fuente, ts.ScriptTarget.Latest, true);
-  const primera = sf.statements[0];
-  const esUseServer = primera && ts.isExpressionStatement(primera) && ts.isStringLiteral(primera.expression) && primera.expression.text === "use server";
-  if (!esUseServer) return [];
+  if (!esArchivoUseServer(fuente)) return [];
   const resultado: Puerta[] = [];
   const agregar = (nombre: string, parametros: readonly ts.ParameterDeclaration[], cuerpo: ts.ConciseBody | undefined, nodo: ts.Node) => {
     const delId = parametros.flatMap((p): string[] => {
@@ -194,7 +193,9 @@ function puertasDe(rutaRelativa: string, fuente: string, indice: IndiceDeTipos =
     if (ts.isFunctionDeclaration(stmt) && stmt.name) agregar(stmt.name.text, stmt.parameters, stmt.body, stmt);
     if (ts.isVariableStatement(stmt)) {
       for (const d of stmt.declarationList.declarations) {
-        if (ts.isIdentifier(d.name) && d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) agregar(d.name.text, d.initializer.parameters, d.initializer.body, stmt);
+        // I-2 de la auditoría final: también la acción exportada como constante con envoltorio o `as` (`export const borrar = conRegistro(async (sucursalId) => …)`).
+        const funcion = ts.isIdentifier(d.name) && d.initializer ? funcionDeInicializador(d.initializer) : undefined;
+        if (funcion && ts.isIdentifier(d.name)) agregar(d.name.text, funcion.parameters, funcion.body, stmt);
       }
     }
   }
@@ -302,6 +303,20 @@ describe("GT-4 (primera mitad): toda Server Action con un id de sucursal declara
 
     it("una acción nueva con un id de sucursal y sin declarar falla", () => {
       expect(problemasDe(puertasDeFuente("return conPermiso(\"a\", async () => ok());"), {}, () => "")).toHaveLength(1);
+    });
+
+    it("I-2: una acción exportada como CONSTANTE con envoltorio, `as` o satisfies también es una puerta (antes quedaba fuera del inventario)", () => {
+      const fuente = (inicializador: string) => `"use server";\nexport const accion = ${inicializador};\n`;
+      for (const inicializador of [
+        "conRegistro(async (sucursalOrigenId: string) => ok())",
+        "(async (sucursalOrigenId: string) => ok()) as Accion",
+        "((async (sucursalOrigenId: string) => ok()) satisfies Accion)",
+        "conRegistro(conPermiso(\"a\", async (sucursalOrigenId: string) => ok()))",
+      ]) {
+        expect(puertasDe("x.ts", fuente(inicializador)).map((p) => p.clave), inicializador).toEqual(["x.ts|accion"]);
+      }
+      // y un comentario antes de la directiva no saca el archivo del alcance
+      expect(puertasDe("x.ts", `/* nota */\n"use server";\nexport async function accion(sucursalOrigenId: string) {}`)).toHaveLength(1);
     });
 
     it("una declaración que ya no corresponde a ninguna acción falla", () => {

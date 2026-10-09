@@ -1,4 +1,5 @@
 import ts from "typescript";
+import { esArchivoUseServer, funcionDeInicializador } from "./analizador";
 
 /**
  * Qué RECIBE cada Server Action del cliente: los números y los arreglos de sus parámetros, mirando los tipos (en línea, de la misma fuente o de cualquier archivo de `src/`). Lo usa GT-11
@@ -48,15 +49,20 @@ export interface EntradaDeUnaAccion {
   numericos: string[];
   /** Rutas de los arreglos (`ids[]`, `datos.lineas[]`). */
   arreglos: string[];
+  /** Rutas de los valores `unknown`/`any` (entradas opacas: pueden ser números o arreglos sin que el tipo lo diga). */
+  opacos: string[];
   /** Las funciones que llama el cuerpo (identificadores y propiedades), para buscar la evidencia del rango. */
   llamadas: Set<string>;
 }
 
 const PROFUNDIDAD = 6;
 
-function recorrer(tipo: ts.TypeNode | undefined, ruta: string, indice: IndiceDeMiembros, vistos: readonly string[], salida: { numericos: string[]; arreglos: string[] }): void {
+function recorrer(tipo: ts.TypeNode | undefined, ruta: string, indice: IndiceDeMiembros, vistos: readonly string[], salida: { numericos: string[]; arreglos: string[]; opacos: string[] }): void {
   if (!tipo || vistos.length > PROFUNDIDAD) return;
   if (tipo.kind === ts.SyntaxKind.NumberKeyword) salida.numericos.push(ruta);
+  // `unknown` / `any`: el cliente puede mandar CUALQUIER cosa (un número, un `NaN`, un arreglo) y el tipo no lo dice. Es una entrada «opaca» que también necesita su guard o su pendiente (I-2 de la
+  // auditoría final: `actualizarCliente(…, descuentoPorcentaje: unknown)` movía plata con el % validado solo en el caso de uso y GT-11 no lo veía).
+  else if (tipo.kind === ts.SyntaxKind.UnknownKeyword || tipo.kind === ts.SyntaxKind.AnyKeyword) salida.opacos.push(ruta);
   else if (ts.isParenthesizedTypeNode(tipo)) recorrer(tipo.type, ruta, indice, vistos, salida);
   else if (ts.isUnionTypeNode(tipo) || ts.isIntersectionTypeNode(tipo)) for (const t of tipo.types) recorrer(t, ruta, indice, vistos, salida);
   else if (ts.isArrayTypeNode(tipo)) {
@@ -70,7 +76,7 @@ function recorrer(tipo: ts.TypeNode | undefined, ruta: string, indice: IndiceDeM
     if (/^(Array|ReadonlyArray)$/.test(nombre) && tipo.typeArguments?.[0]) {
       salida.arreglos.push(`${ruta}[]`);
       recorrer(tipo.typeArguments[0], `${ruta}[]`, indice, vistos, salida);
-    } else if (/^(Partial|Required|Readonly|NonNullable|Awaited)$/.test(nombre) && tipo.typeArguments?.[0]) recorrer(tipo.typeArguments[0], ruta, indice, vistos, salida);
+    } else if (/^(Partial|Required|Readonly|NonNullable|Awaited|Pick|Omit)$/.test(nombre) && tipo.typeArguments?.[0]) recorrer(tipo.typeArguments[0], ruta, indice, vistos, salida);
     else if (indice.has(nombre) && !vistos.includes(nombre)) {
       for (const [n, t] of indice.get(nombre)!) recorrer(t, ruta === "" ? n : `${ruta}.${n}`, indice, [...vistos, nombre], salida);
     }
@@ -80,11 +86,10 @@ function recorrer(tipo: ts.TypeNode | undefined, ruta: string, indice: IndiceDeM
 /** Las Server Actions exportadas de un archivo `"use server"`, con los números y arreglos que reciben. */
 export function entradasDeLasAcciones(rutaRelativa: string, codigo: string, indice: IndiceDeMiembros): EntradaDeUnaAccion[] {
   const sf = ts.createSourceFile("x.ts", codigo, ts.ScriptTarget.Latest, true);
-  const primera = sf.statements[0];
-  if (!(primera && ts.isExpressionStatement(primera) && ts.isStringLiteral(primera.expression) && primera.expression.text === "use server")) return [];
+  if (!esArchivoUseServer(codigo)) return [];
   const salida: EntradaDeUnaAccion[] = [];
   const agregar = (nombre: string, parametros: readonly ts.ParameterDeclaration[], cuerpo: ts.ConciseBody | undefined) => {
-    const e = { numericos: [] as string[], arreglos: [] as string[] };
+    const e = { numericos: [] as string[], arreglos: [] as string[], opacos: [] as string[] };
     for (const p of parametros) {
       const nombreDelParametro = ts.isIdentifier(p.name) ? p.name.text : "";
       recorrer(p.type, nombreDelParametro, indice, [], e);
@@ -98,7 +103,7 @@ export function entradasDeLasAcciones(rutaRelativa: string, codigo: string, indi
       ts.forEachChild(n, visitar);
     };
     if (cuerpo) visitar(cuerpo);
-    if (e.numericos.length || e.arreglos.length) salida.push({ clave: `${rutaRelativa}|${nombre}`, numericos: e.numericos, arreglos: e.arreglos, llamadas });
+    if (e.numericos.length || e.arreglos.length || e.opacos.length) salida.push({ clave: `${rutaRelativa}|${nombre}`, numericos: e.numericos, arreglos: e.arreglos, opacos: e.opacos, llamadas });
   };
   for (const s of sf.statements) {
     const exportada = ts.canHaveModifiers(s) && !!ts.getModifiers(s)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
@@ -106,7 +111,9 @@ export function entradasDeLasAcciones(rutaRelativa: string, codigo: string, indi
     if (ts.isFunctionDeclaration(s) && s.name) agregar(s.name.text, s.parameters, s.body);
     if (ts.isVariableStatement(s)) {
       for (const d of s.declarationList.declarations) {
-        if (ts.isIdentifier(d.name) && d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) agregar(d.name.text, d.initializer.parameters, d.initializer.body);
+        // I-2 de la auditoría final: también la acción exportada como constante con envoltorio o `as` (`export const x = conRegistro(async (n: number) => …)`).
+        const funcion = ts.isIdentifier(d.name) && d.initializer ? funcionDeInicializador(d.initializer) : undefined;
+        if (funcion && ts.isIdentifier(d.name)) agregar(d.name.text, funcion.parameters, funcion.body);
       }
     }
   }
