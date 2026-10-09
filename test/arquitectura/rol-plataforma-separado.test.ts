@@ -8,7 +8,8 @@ import { describe, expect, it } from "vitest";
  * expresa), así que lo que este guardián cuida es que el repo no lo desarme por descuido:
  *  1. Los scripts de plataforma usan el cliente `prismaPlataforma` (el que lee PLATAFORMA_DATABASE_URL), nunca uno propio.
  *  2. Ninguna migración posterior al esquema inicial le da a `motor2_app` escritura sobre `Empresa` (ni con un GRANT ... ON ALL TABLES).
- *  3. El único script de operaciones que se la devuelve es `quitar-rol-motor2-plataforma.sql`; el de creación la quita con `restringir=1`.
+ *  3. Los únicos scripts de operaciones que se la devuelven son `quitar-rol-motor2-plataforma.sql` y, desde M.1-C3, la reversa granular `devolver-escritura-de-empresa-a-motor2-app.sql`
+ *     (y `crear-rol-motor2-app.sql`, que arma las bases locales); el de creación la quita con `restringir=1`.
  *  4. La aplicación (`src/`) no conoce el cliente ni la variable de plataforma, y el cargador de variables de Vercel no la acepta con valor.
  */
 const RAIZ = join(__dirname, "../..");
@@ -91,7 +92,8 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
     const conGrant = readdirSync(operaciones)
       .filter((n) => n.endsWith(".sql") && grantsDeEscrituraSobreEmpresa(readFileSync(join(operaciones, n), "utf8")).length > 0)
       .sort();
-    expect(conGrant).toEqual(["crear-rol-motor2-app.sql", "quitar-rol-motor2-plataforma.sql"]);
+    // M.1-C3: la reversa GRANULAR del recorte (devolver SOLO la escritura de Empresa, sin borrar el rol de plataforma) es el tercero; un cuarto script con un GRANT de escritura sobre Empresa pone esto en rojo.
+    expect(conGrant).toEqual(["crear-rol-motor2-app.sql", "devolver-escritura-de-empresa-a-motor2-app.sql", "quitar-rol-motor2-plataforma.sql"]);
 
     const crear = leer("scripts/operaciones/crear-rol-motor2-plataforma.sql");
     // M.1-C2: el recorte DENIEGA POR DEFECTO (REVOKE ALL + GRANT SELECT + aserción), no enumera lo que quita: un privilegio nuevo o heredado no se cuela.
@@ -100,6 +102,17 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
     expect(crear).toMatch(/has_table_privilege\('motor2_app',\s*'public\."Empresa"',\s*'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'\)/);
     expect(crear).not.toMatch(/REVOKE INSERT, UPDATE, DELETE ON "Empresa"/);
     expect(crear).toMatch(/CREATE ROLE motor2_plataforma LOGIN NOSUPERUSER NOBYPASSRLS/);
+  });
+
+  it("M.1-C3: devolver-escritura-de-empresa-a-motor2-app.sql es la reversa GRANULAR del recorte: ON_ERROR_STOP primero, un solo GRANT de escritura sobre Empresa y nada que toque al rol de plataforma", () => {
+    const sql = leer("scripts/operaciones/devolver-escritura-de-empresa-a-motor2-app.sql");
+    const comandos = sql.split(/\r?\n/).filter((l) => l.trim() !== "" && !l.trim().startsWith("--"));
+    expect(comandos[0]?.trim(), "ON_ERROR_STOP tiene que ser lo primero").toBe("\\set ON_ERROR_STOP on");
+    const s = sentencias(sql);
+    expect(s[0]).toBe('GRANT INSERT, UPDATE, DELETE ON "Empresa" TO motor2_app');
+    expect(s.slice(1).every((x) => /^SELECT\b/i.test(x)), "después del GRANT solo hay SELECT de verificación").toBe(true);
+    expect(s.slice(1).length, "falta el SELECT de verificación").toBeGreaterThan(0);
+    expect(s.join(";"), "la reversa granular no borra roles ni toca a motor2_plataforma").not.toMatch(/\b(DROP|REVOKE|TRUNCATE|CREATE|ALTER)\b|motor2_plataforma/i);
   });
 
   it("S-35 (B-C20): crear-rol-motor2-app.sql, después de cada GRANT masivo, quita la escritura de Empresa si se pasa restringir=1 (volver a correrlo no desarma la separación)", () => {

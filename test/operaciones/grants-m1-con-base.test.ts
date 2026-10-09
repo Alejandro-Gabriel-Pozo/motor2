@@ -96,6 +96,33 @@ async function aclDeEmpresa(): Promise<string[]> {
   return r.rows.map((f) => f.x);
 }
 
+const SIETE_PRIVILEGIOS = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"];
+
+/** La matriz de un rol: «tabla PRIVILEGIO» para cada privilegio EFECTIVO que tiene sobre las tablas de public. */
+async function matrizDe(rol: string): Promise<string[]> {
+  const r = await base.cliente.query<{ x: string }>(
+    `SELECT c.relname || ' ' || p AS x
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace, unnest($2::text[]) p
+      WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND has_table_privilege($1, c.oid, p)
+      ORDER BY 1`,
+    [rol, SIETE_PRIVILEGIOS],
+  );
+  return r.rows.map((f) => f.x);
+}
+
+/** La huella del estado de permisos de la base: la ACL de TODAS las tablas y secuencias de public (y por columna), los privilegios por defecto y los atributos (sin contraseña) de los dos roles. */
+async function huella(): Promise<Record<"tablas" | "columnas" | "porDefecto" | "roles", string[]>> {
+  const pedir = async (consulta: string) => (await base.cliente.query<{ x: string }>(consulta)).rows.map((f) => f.x);
+  return {
+    tablas: await pedir(`SELECT c.relname || ' ' || a::text AS x FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace, unnest(c.relacl) a WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'S') ORDER BY 1`),
+    columnas: await pedir(`SELECT c.relname || '.' || t.attname || ' ' || a::text AS x FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_attribute t ON t.attrelid = c.oid, unnest(t.attacl) a WHERE n.nspname = 'public' AND t.attacl IS NOT NULL ORDER BY 1`),
+    porDefecto: await pedir(`SELECT pg_get_userbyid(d.defaclrole) || ' ' || d.defaclobjtype::text || ' ' || a::text AS x FROM pg_default_acl d, unnest(d.defaclacl) a ORDER BY 1`),
+    roles: await pedir(
+      `SELECT rolname || ' super=' || rolsuper || ' bypassrls=' || rolbypassrls || ' login=' || rolcanlogin || ' createrole=' || rolcreaterole || ' createdb=' || rolcreatedb || ' inherit=' || rolinherit || ' limite=' || rolconnlimit AS x FROM pg_roles WHERE rolname IN ('motor2_app', 'motor2_plataforma') ORDER BY 1`,
+    ),
+  };
+}
+
 const ESCRITURA_Y_MAS = ["INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"];
 
 beforeEach(async () => {
@@ -239,5 +266,70 @@ describe("M.1-C2: `restringir` deniega por defecto sobre Empresa (no enumera lo 
     } finally {
       await app.end();
     }
+  });
+});
+
+describe("M.1-C3: reversa granular (ida y vuelta, en una base real temporal)", () => {
+  it("recorte → devolver-escritura-de-empresa: la ACL de Empresa y la huella entera vuelven EXACTAS a las de antes del recorte, y repetir la reversa no cambia nada", async (ctx) => {
+    if (!hayRoles) ctx.skip();
+    await correr("crear-rol-motor2-plataforma.sql"); // el estado de ANTES del recorte: rol de plataforma con sus grants, motor2_app con la escritura de Empresa
+    const aclAntes = await aclDeEmpresa();
+    const huellaAntes = await huella();
+    expect(aclAntes.filter((x) => x.includes("motor2_app=")), "premisa: antes del recorte la app escribe Empresa").toEqual(["tabla motor2_app=arwd/motor2"]);
+
+    await correr("crear-rol-motor2-plataforma.sql", { restringir: "1" });
+    expect((await aclDeEmpresa()).filter((x) => x.includes("motor2_app="))).toEqual(["tabla motor2_app=r/motor2"]);
+
+    await correr("devolver-escritura-de-empresa-a-motor2-app.sql");
+    expect(await aclDeEmpresa(), "la reversa no devolvió exactamente la ACL de Empresa").toEqual(aclAntes);
+    expect(await huella(), "la reversa cambió algo más que Empresa").toEqual(huellaAntes);
+
+    await correr("devolver-escritura-de-empresa-a-motor2-app.sql");
+    expect(await huella(), "la reversa no es idempotente").toEqual(huellaAntes);
+    // y se puede volver a recortar: ida y vuelta, otra vez
+    await correr("crear-rol-motor2-plataforma.sql", { restringir: "1" });
+    await correr("devolver-escritura-de-empresa-a-motor2-app.sql");
+    expect(await huella()).toEqual(huellaAntes);
+  });
+
+  it("la reversa no toca a motor2_plataforma ni a las demás tablas, y funciona aunque el recorte no se haya aplicado nunca", async (ctx) => {
+    if (!hayRoles) ctx.skip();
+    const sinRecorte = await huella();
+    await correr("devolver-escritura-de-empresa-a-motor2-app.sql");
+    expect(await huella(), "con la escritura ya dada, la reversa es un no-op").toEqual(sinRecorte);
+
+    await correr("crear-rol-motor2-plataforma.sql", { restringir: "1" });
+    const recortado = await matrizDe("motor2_plataforma");
+    await correr("devolver-escritura-de-empresa-a-motor2-app.sql");
+    expect(await matrizDe("motor2_plataforma"), "la reversa granular cambió los grants de motor2_plataforma").toEqual(recortado);
+    for (const p of ["INSERT", "UPDATE", "DELETE"]) expect(await tiene("motor2_app", "Empresa", p), `la reversa no devolvió ${p}`).toBe(true);
+    for (const p of ["TRUNCATE", "REFERENCES", "TRIGGER"]) expect(await tiene("motor2_app", "Empresa", p), `la reversa dio de más: ${p}`).toBe(false);
+  });
+
+  it("revertir-recorte-de-grants-motor2-plataforma.sql devuelve exactamente lo documentado a motor2_plataforma, y volver a recortar da la misma huella que el primer recorte", async (ctx) => {
+    if (!hayRoles) ctx.skip();
+    await correr("crear-rol-motor2-plataforma.sql");
+    const matrizAntesDelRecorte = await matrizDe("motor2_plataforma");
+
+    await correr("crear-rol-motor2-plataforma.sql", { restringir: "1" });
+    expect(await matrizDe("motor2_plataforma"), "restringir tocó los grants de motor2_plataforma").toEqual(matrizAntesDelRecorte);
+    const huellaRecortada = await huella();
+
+    await correr("revertir-recorte-de-grants-motor2-plataforma.sql");
+    const revertida = await matrizDe("motor2_plataforma");
+    expect(revertida.filter((x) => !matrizAntesDelRecorte.includes(x))).toEqual([
+      "RegistroAuditoria INSERT",
+      "RegistroAuditoria SELECT",
+      "User INSERT",
+      "User UPDATE",
+      "UsuarioEmpresa INSERT",
+      "UsuarioSucursal INSERT",
+      "UsuarioSucursal SELECT",
+    ]);
+    expect(matrizAntesDelRecorte.filter((x) => !revertida.includes(x)), "la reversa quitó algo").toEqual([]);
+
+    await correr("crear-rol-motor2-plataforma.sql", { restringir: "1" });
+    expect(await matrizDe("motor2_plataforma"), "volver a recortar no dejó la matriz de antes").toEqual(matrizAntesDelRecorte);
+    expect(await huella(), "volver a recortar no da la misma huella").toEqual(huellaRecortada);
   });
 });
