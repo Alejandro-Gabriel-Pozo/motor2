@@ -14,6 +14,16 @@ import type { Prisma } from "@prisma/client";
 const PREFIJO_REVERSION_VENTA = "Anulación de la venta ";
 const PREFIJO_REVERSION_COMPRA = "Anulación de la compra ";
 
+/**
+ * ¿El detalle que escribió una persona empieza como el de una reversión por anulación? Como la reversión se reconoce SOLO por ese comienzo, un ajuste manual con un detalle así se haría pasar
+ * por una (M-1 de la auditoría intermedia: no contaría como «posterior» a una venta, y la venta se podría anular a ciegas). Los comandos que reciben un detalle del cliente lo rechazan:
+ * el prefijo está reservado para las anulaciones. Compara sin mayúsculas y sin espacios al comienzo, porque el filtro de las consultas es un `startsWith` y no hay que dejar una variante.
+ */
+export function esDetalleReservadoParaReversiones(detalle: string): boolean {
+  const d = detalle.trimStart().toLocaleLowerCase("es");
+  return d.startsWith(PREFIJO_REVERSION_VENTA.toLocaleLowerCase("es")) || d.startsWith(PREFIJO_REVERSION_COMPRA.toLocaleLowerCase("es"));
+}
+
 /** `detalleLibre` de la Operación AJUSTE que revierte una venta. */
 export function detalleReversionDeVenta(idVenta: string, fechaVenta: Date): string {
   return `${PREFIJO_REVERSION_VENTA}${idVenta} (${fechaVenta.toISOString().slice(0, 10)}).`;
