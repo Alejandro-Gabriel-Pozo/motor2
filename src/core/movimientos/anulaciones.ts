@@ -113,8 +113,8 @@ export interface ReconciliacionPosterior {
 export type ResultadoCancelacionDeConteo = { ok: true } | { ok: false; motivo: "CONTEO_POSTERIOR"; mensaje: string };
 
 /**
- * D7 (M-2 de la auditoría final; misma regla que `evaluarPosterioresAAnularVenta`): un conteo físico NO se cancela si después hubo OTRO conteo (con o sin movimiento) o un ajuste del mismo producto
- * en la misma sección. La reversión devuelve el stock a como estaba antes del conteo, y el conteo posterior ya se contó sobre el stock que este dejó: cancelar este desharía a ciegas un stock que
+ * D7 (M-2 de la auditoría final; misma regla que `evaluarPosterioresAAnularVenta`, pero SOLO con conteos: un ajuste manual no cuenta, es el remedio que el mensaje indica): un conteo físico NO se
+ * cancela si después hubo OTRO conteo (con o sin movimiento) del mismo producto en la misma sección. La reversión devuelve el stock a como estaba antes del conteo, y el conteo posterior ya se contó sobre el stock que este dejó: cancelar este desharía a ciegas un stock que
  * ya se reconcilió (conteo 1 ajusta -5, conteo 2 confirma que quedan 5, se cancela el 1: el saldo vuelve a 10 contra 5 físicos). El historial no se reescribe: se corrige con un ajuste. Fallo cerrado.
  */
 export function evaluarPosterioresACancelarConteo(posteriores: readonly ReconciliacionPosterior[]): ResultadoCancelacionDeConteo {
@@ -123,7 +123,7 @@ export function evaluarPosterioresACancelarConteo(posteriores: readonly Reconcil
   return {
     ok: false,
     motivo: "CONTEO_POSTERIOR",
-    mensaje: `No se puede cancelar este conteo: después de hacerse hubo otro conteo físico o un ajuste de stock de ${donde}, y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.`,
+    mensaje: `No se puede cancelar este conteo: después de hacerse hubo otro conteo físico de ${donde}, y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.`,
   };
 }
 

@@ -49,6 +49,8 @@ export interface LineaFaltante {
   disponible: number;
   /** S-02: `true` si lo que falta es el saldo TOTAL del (producto, sección) y no el de un lote (`loteVencimiento` va en `null`). Ausente en el faltante de un bucket. */
   enTotal?: true;
+  /** M-7: el saldo (negativo) del bucket SIN lote del (producto, sección), cuando es lo que hace que el total no alcance. Solo acompaña a `enTotal`. */
+  saldoNegativoSinLote?: number;
 }
 
 export interface LineaDeReversion {
@@ -115,7 +117,25 @@ const fechaCorta = (f: Date) => f.toISOString().slice(0, 10);
 function describirFaltante(f: LineaFaltante): string {
   const lote = f.loteVencimiento ? `, lote que vence el ${fechaCorta(f.loteVencimiento)}` : "";
   const total = f.enTotal ? " en total, entre todos los lotes de la sección (parte salió sin lote, por ejemplo en un traspaso)" : "";
-  return `${f.productoNombre} (${f.seccionNombre}${lote}): se compraron ${f.comprado} y hoy quedan ${f.disponible}${total}`;
+  const base = `${f.productoNombre} (${f.seccionNombre}${lote}): se compraron ${f.comprado} y hoy quedan ${f.disponible}${total}`;
+  return f.saldoNegativoSinLote === undefined ? base : `${base}. ${guiaParaSaldoNegativoSinLote(f)}`;
+}
+
+/**
+ * M-7 (decidido por el dueño): la guía para destrabar la anulación cuando el total no alcanza porque el bucket SIN lote está en negativo (el POS vende en negativo por diseño y después entró esta
+ * compra con lote). Hay dos causas y la guía dice las dos, porque el saldo no distingue cuál fue: (a) un descuadre del registro (se vendió antes de cargar la compra): lo resuelve un AJUSTE de stock
+ * (`proceso_ajuste`, piso administrador, igual que anular la compra) que sume lo que falta, sin lote; el total pasa a cubrir lo comprado y la anulación sigue. NO un conteo físico: uno posterior a la
+ * compra la frena (M-3), y un ajuste manual no (`soloConteos`). Si no tiene el permiso de Ajuste, que se lo pida a quien lo tenga. (b) La mercadería de verdad salió (un traspaso): ajustar inventaría
+ * stock que no existe; la salida es una Devolución a proveedor.
+ */
+function guiaParaSaldoNegativoSinLote(f: LineaFaltante): string {
+  const falta = -(f.saldoNegativoSinLote ?? 0);
+  return (
+    `Hay un saldo negativo sin lote de ${f.saldoNegativoSinLote} (salió sin lote más de lo que había). ` +
+    `Si esa mercadería se vendió antes de cargar la compra, o es un descuadre del registro, llevalo a cero con un Ajuste de stock de +${falta} de ${f.productoNombre} en ${f.seccionNombre}, sin lote ` +
+    `(o pedíselo a quien pueda registrar ajustes), y volvé a anular la compra; no uses un conteo físico para esto, porque un conteo posterior a la compra impide anularla. ` +
+    `Si la mercadería de verdad salió (por ejemplo, se traspasó), la compra no se puede anular: registrá esa salida como Devolución a proveedor`
+  );
 }
 
 export function evaluarAnulacion(compra: CompraAAnular, saldos: SaldosPorLote): ResultadoAnulacion {
@@ -142,16 +162,26 @@ export function evaluarAnulacion(compra: CompraAAnular, saldos: SaldosPorLote): 
   for (const p of compradoPorPar(compra.lineas).values()) {
     if (paresConFaltante.has(p.par)) continue; // ya informado por su bucket
     const disponible = saldoTotalDelPar(saldos, p.productoId, p.seccionId);
-    if (disponible + TOLERANCIA < p.comprado) faltantes.push({ productoNombre: p.productoNombre, seccionNombre: p.seccionNombre, loteVencimiento: null, comprado: p.comprado, disponible, enTotal: true });
+    if (disponible + TOLERANCIA < p.comprado) {
+      // M-7: el POS vende en negativo por diseño. Si el bucket SIN lote del par está en negativo (se vendió más de lo que había) y DESPUÉS entró esta compra con lote, el total no alcanza aunque el lote
+      // esté entero: lo que falta es llevar ese saldo a cero, y el mensaje dice cómo.
+      const sinLote = saldos.get(p.par) ?? 0;
+      faltantes.push({
+        productoNombre: p.productoNombre, seccionNombre: p.seccionNombre, loteVencimiento: null, comprado: p.comprado, disponible, enTotal: true,
+        ...(sinLote < -TOLERANCIA ? { saldoNegativoSinLote: sinLote } : {}),
+      });
+    }
   }
 
   if (faltantes.length) {
     return {
       ok: false,
       motivo: "STOCK_CONSUMIDO",
-      mensaje:
+      mensaje: (
         `No se puede anular esta compra: parte de lo que se compró ya se consumió o se movió. ${faltantes.map(describirFaltante).join("; ")}. ` +
-        `Si le devolviste mercadería al proveedor, registrala como Devolución a proveedor en vez de anular la compra.`,
+        // La devolución al proveedor es la salida de lo que de verdad se consumió o se movió; si TODO lo que falta es un saldo negativo sin lote, la salida es el ajuste que ya dice la guía (M-7).
+        (faltantes.every((f) => f.saldoNegativoSinLote !== undefined) ? "" : `Si le devolviste mercadería al proveedor, registrala como Devolución a proveedor en vez de anular la compra.`)
+      ).trimEnd(),
       faltantes,
     };
   }
@@ -160,8 +190,9 @@ export function evaluarAnulacion(compra: CompraAAnular, saldos: SaldosPorLote): 
 }
 
 /**
- * D7 (M-3 de la auditoría final; la misma regla que anular una VENTA, `evaluarPosterioresAAnularVenta` de `core/movimientos`): una compra NO se anula si después hubo un conteo físico (con o sin
- * movimiento) o un ajuste del mismo producto en la misma sección de alguna de sus líneas. El stock ya se reconcilió contra lo contado y la reversión restaría de nuevo lo que el conteo ya absorbió:
+ * D7 (M-3 de la auditoría final; la misma regla que anular una VENTA, `evaluarPosterioresAAnularVenta` de `core/movimientos`, pero SOLO con conteos: un ajuste manual no cuenta, es el remedio que
+ * dice el mensaje y el que indica `STOCK_CONSUMIDO` para destrabar una compra, M-7): una compra NO se anula si después hubo un conteo físico (con o sin movimiento) del mismo producto en la misma
+ * sección de alguna de sus líneas. El stock ya se reconcilió contra lo contado y la reversión restaría de nuevo lo que el conteo ya absorbió:
  * el saldo queda mal aunque «alcance» para anular (`evaluarAnulacion`). El historial no se reescribe: se corrige con un ajuste. Fallo cerrado, sin pedir confirmación.
  * `posteriores` lo arma `cargarReconciliacionesPosteriores` (server/persistencia/movimientos), ya sin repetidos y con los nombres para el mensaje.
  */
@@ -171,7 +202,7 @@ export function evaluarPosterioresAAnularCompra(posteriores: readonly { producto
   return {
     ok: false,
     motivo: "CONTEO_POSTERIOR",
-    mensaje: `No se puede anular esta compra: después de hacerse hubo un conteo físico o un ajuste de stock de ${donde}, y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.`,
+    mensaje: `No se puede anular esta compra: después de hacerse hubo un conteo físico de ${donde}, y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.`,
   };
 }
 

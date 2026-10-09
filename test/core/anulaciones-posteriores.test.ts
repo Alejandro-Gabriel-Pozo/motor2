@@ -46,17 +46,17 @@ describe("evaluarPosterioresACancelarConteo y evaluarPosterioresAAnularCompra (D
       ok: false,
       motivo: "CONTEO_POSTERIOR",
       mensaje:
-        "No se puede cancelar este conteo: después de hacerse hubo otro conteo físico o un ajuste de stock de Harina (Depósito), Queso (Cocina), y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
+        "No se puede cancelar este conteo: después de hacerse hubo otro conteo físico de Harina (Depósito), Queso (Cocina), y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
     });
   });
 
-  it("anular una compra con algo posterior se rechaza con CONTEO_POSTERIOR y el mismo texto que la venta, nombrando a la compra", () => {
+  it("anular una compra con un conteo posterior se rechaza con CONTEO_POSTERIOR y la misma estructura de texto que la venta, nombrando a la compra", () => {
     const r = evaluarPosterioresAAnularCompra(donde);
     expect(r).toEqual({
       ok: false,
       motivo: "CONTEO_POSTERIOR",
       mensaje:
-        "No se puede anular esta compra: después de hacerse hubo un conteo físico o un ajuste de stock de Harina (Depósito), Queso (Cocina), y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
+        "No se puede anular esta compra: después de hacerse hubo un conteo físico de Harina (Depósito), Queso (Cocina), y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
     });
   });
 });

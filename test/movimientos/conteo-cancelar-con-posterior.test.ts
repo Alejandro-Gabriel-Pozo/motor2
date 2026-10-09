@@ -9,8 +9,8 @@ import { registrarConteoFisico, resolverConteoPendiente, cancelarConteoFisico } 
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 /**
- * M-2 / D7 (auditoría final; decisión del dueño del 2026-10-08, la misma regla que ya cumple `anularVenta`): un conteo físico NO se cancela si después hubo OTRO conteo (con o sin movimiento) o un
- * ajuste del mismo producto en la misma sección. El escenario que se cerraba: el conteo 1 ajusta -5 (10 → 5), el conteo 2 confirma que quedan 5, y se cancelaba el 1: la reversión devolvía +5 y el
+ * M-2 / D7 (auditoría final; decisión del dueño del 2026-10-08, la misma regla que ya cumple `anularVenta`, pero con conteos: un ajuste manual no cuenta): un conteo físico NO se cancela si después
+ * hubo OTRO conteo (con o sin movimiento) del mismo producto en la misma sección. El escenario que se cerraba: el conteo 1 ajusta -5 (10 → 5), el conteo 2 confirma que quedan 5, y se cancelaba el 1: la reversión devolvía +5 y el
  * saldo quedaba en 10 contra 5 físicos, aunque el conteo 2 había confirmado 5.
  */
 describe("M-2: cancelar un conteo con otro posterior se rechaza (CONTEO_POSTERIOR)", () => {
@@ -58,7 +58,7 @@ describe("M-2: cancelar un conteo con otro posterior se rechaza (CONTEO_POSTERIO
 
     expect(r.ok).toBe(false);
     expect(r.mensaje).toBe(
-      "No se puede cancelar este conteo: después de hacerse hubo otro conteo físico o un ajuste de stock de Yerba (Depósito), y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
+      "No se puede cancelar este conteo: después de hacerse hubo otro conteo físico de Yerba (Depósito), y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
     );
     expect(await saldo()).toBe(5);
     expect(await prisma.movimientoStock.count()).toBe(movimientosAntes);
@@ -93,7 +93,7 @@ describe("M-2: cancelar un conteo con otro posterior se rechaza (CONTEO_POSTERIO
     expect(r.mensaje).toContain("No se puede cancelar este conteo");
   });
 
-  it("un ajuste manual de stock posterior (proceso AJUSTE) frena la cancelación", async () => {
+  it("control: un ajuste MANUAL de stock posterior (un delta, el remedio que dice el rechazo) NO frena la cancelación", async () => {
     await contar(5);
     const [conteo] = await conteos();
     const op = await prisma.operacion.create({ data: { sucursalId, proceso: "AJUSTE", fecha: new Date(), usuarioId: adminId, detalleLibre: "Ajuste de inventario" } });
@@ -101,9 +101,8 @@ describe("M-2: cancelar un conteo con otro posterior se rechaza (CONTEO_POSTERIO
 
     const r = await cancelarConteoFisico(conteo.id);
 
-    expect(r.ok).toBe(false);
-    expect(r.mensaje).toContain("No se puede cancelar este conteo");
-    expect(await saldo()).toBe(6);
+    expect(r.ok, r.mensaje).toBe(true);
+    expect(await saldo()).toBe(11);
   });
 
   it("control: el conteo MÁS RECIENTE se cancela (y el anterior queda libre apenas el posterior se cancela)", async () => {

@@ -26,8 +26,8 @@ import { escribirAnulacionDeCompra } from "@/server/persistencia/compras/escribi
  *  2. `chequearIdempotencia`: un reenvío exacto devuelve el mensaje ORIGINAL (`repetida: true`); la misma clave con otro payload es conflicto;
  *  3. carga de la compra y de sus saldos por lote (persistencia);
  *  4. reglas puras: `evaluarAnulacion`;
- *  4b. lo POSTERIOR (M-3, D7 decidida por el dueño el 2026-10-08): se RECHAZA (`CONTEO_POSTERIOR`) si después de la compra hubo un conteo físico (con o sin movimiento) o un ajuste vigente del
- *     mismo producto en la misma sección de alguna de sus líneas (`cargarReconciliacionesPosteriores`, la misma lectura que usa anular una venta). Se corrige con un ajuste;
+ *  4b. lo POSTERIOR (M-3, D7 decidida por el dueño el 2026-10-08): se RECHAZA (`CONTEO_POSTERIOR`) si después de la compra hubo un conteo físico (con o sin movimiento) del
+ *     mismo producto en la misma sección de alguna de sus líneas (`cargarReconciliacionesPosteriores` con `soloConteos`; un ajuste manual NO cuenta). Se corrige con un ajuste;
  *  5. escritura del contra-asiento y la marca de anulada (persistencia);
  *  6. auditoría (`registrarCambioAuditado`);
  *  7. resultado para la idempotencia (`registrarResultadoIdempotente`, solo si hay clave);
@@ -57,11 +57,12 @@ export async function anularCompraCasoDeUso(
     const evaluacion = evaluarAnulacion({ proceso: compra.proceso, anuladaEn: compra.anuladaEn, lineas: compra.lineas }, compra.saldos);
     if (!evaluacion.ok) return fracaso(evaluacion.motivo, evaluacion.mensaje);
 
-    // M-3 / D7 (la misma regla que anular una venta): si después de la compra hubo un conteo físico (con o sin movimiento) o un ajuste del mismo producto en la misma sección de alguna de sus
-    // líneas, anularla desharía a ciegas un stock que ya se reconcilió. Se RECHAZA ANTES de escribir nada y se corrige con un ajuste.
+    // M-3 / D7 (la misma regla que anular una venta): si después de la compra hubo un conteo físico (con o sin movimiento) del mismo producto en la misma sección de alguna de sus
+    // líneas (un ajuste manual no cuenta: es el remedio que indica el rechazo por stock consumido), anularla desharía a ciegas un stock que ya se reconcilió. Se RECHAZA ANTES de escribir nada y se corrige con un ajuste.
     const posteriores = evaluarPosterioresAAnularCompra(
       await cargarReconciliacionesPosteriores(tx, {
         sucursalId: actor.sucursalId,
+        soloConteos: true,
         alcances: [{ creadoEn: compra.creadoEn, pares: [...new Map(compra.lineas.map((l) => [`${l.productoId}|${l.seccionId}`, { productoId: l.productoId, seccionId: l.seccionId }])).values()] }],
       }),
     );

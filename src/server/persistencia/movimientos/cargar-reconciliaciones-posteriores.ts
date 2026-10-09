@@ -25,13 +25,17 @@ export interface AlcanceDeReconciliacion {
  *  2. un CONTEO FÍSICO que NO escribió movimiento (I-1 de la auditoría final): diferencia 0 («el stock ya coincidía»), «Falta movimiento», «Descartar» o un pendiente ya cerrado. Igual reconcilió (o dejó
  *     asentado) el stock contra lo contado, y `registrarConteoFisico` no escribe `Operación` en esos casos, así que la lectura 1 no lo ve. Se mira la fila del propio conteo (`ConteoFisico`), no CANCELADO.
  *
+ * `soloConteos` (cancelar un conteo y anular una compra, M-2 y M-3): un AJUSTE MANUAL (sin conteo) no cuenta. Es el remedio que el propio rechazo indica («corregí con un ajuste de stock») y el que
+ * el mensaje de `STOCK_CONSUMIDO` (M-7) da para destrabar una compra; y un ajuste es un delta, no la lectura de lo que hay físicamente. Sí cuenta todo lo que escribió un conteo no cancelado
+ * (incluido un pendiente cerrado con «ajustar» después). La anulación de una venta no lo pone: su D7 dice CONTROL o AJUSTE.
+ *
  * `excluirConteoId`: el conteo que se está cancelando no es «posterior» a sí mismo: ni su fila, ni las líneas del Kardex que él escribió (su ajuste, `conteoFisicoId`).
  */
 export async function cargarReconciliacionesPosteriores(
   tx: Prisma.TransactionClient,
-  args: { sucursalId: string; alcances: readonly AlcanceDeReconciliacion[]; excluirConteoId?: string },
+  args: { sucursalId: string; alcances: readonly AlcanceDeReconciliacion[]; excluirConteoId?: string; soloConteos?: boolean },
 ): Promise<ReconciliacionPosterior[]> {
-  const { sucursalId, excluirConteoId } = args;
+  const { sucursalId, excluirConteoId, soloConteos = false } = args;
   const alcances = args.alcances.filter((a) => a.pares.length > 0);
   if (!alcances.length) return [];
 
@@ -39,7 +43,8 @@ export async function cargarReconciliacionesPosteriores(
     where: {
       proceso: { in: ["CONTROL", "AJUSTE"] },
       AND: [
-        { OR: [{ conteoFisicoId: null }, { conteoFisico: { estado: { not: "CANCELADO" } } }] },
+        // Venta: cualquier CONTROL/AJUSTE vigente (un conteo no cancelado o un ajuste manual). Conteo o compra (`soloConteos`): solo lo que escribió un conteo no cancelado.
+        soloConteos ? { conteoFisico: { estado: { not: "CANCELADO" } } } : { OR: [{ conteoFisicoId: null }, { conteoFisico: { estado: { not: "CANCELADO" } } }] },
         // Un `not` sobre una columna que admite NULL deja afuera los NULL: se pide explícito.
         ...(excluirConteoId ? [{ OR: [{ conteoFisicoId: null }, { conteoFisicoId: { not: excluirConteoId } }] }] : []),
         {

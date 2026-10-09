@@ -336,7 +336,7 @@ describe("anularCompraCasoDeUso", () => {
       if (r.ok) return;
       expect(r.codigo).toBe("CONTEO_POSTERIOR");
       expect(r.mensaje).toBe(
-        "No se puede anular esta compra: después de hacerse hubo un conteo físico o un ajuste de stock de Harina (Depósito), y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
+        "No se puede anular esta compra: después de hacerse hubo un conteo físico de Harina (Depósito), y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
       );
       await nadaEscrito(op.id);
     });
@@ -356,14 +356,58 @@ describe("anularCompraCasoDeUso", () => {
       await nadaEscrito(op.id);
     });
 
-    it("ataque: un ajuste manual de stock posterior a la compra la frena", async () => {
+    it("control: un ajuste MANUAL de stock posterior (un delta, el remedio que dice el rechazo) NO frena la anulación", async () => {
       const op = await compra();
-      await ajusteManual(2); // un sobrante: con un faltante el rechazo sería STOCK_CONSUMIDO
+      await ajusteManual(2);
 
       const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
 
-      expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
-      await nadaEscrito(op.id, 1);
+      expect(r.ok).toBe(true);
+    });
+
+    /**
+     * M-7 (decidido por el dueño): el POS vende en negativo por diseño. Si hay saldo negativo SIN lote y después entra una compra CON lote, la compra no se puede anular (el total no cubre lo comprado, S-02).
+     * El rechazo dice cómo resolverlo; acá se recorre la guía de punta a punta: el ajuste que lleva el sin lote a cero la destraba, un conteo no (lo frenaría M-3).
+     */
+    describe("M-7: la guía del rechazo por saldo negativo sin lote funciona", () => {
+      const LOTE = enElFuturo(120 * DIA_MS);
+
+      async function ventaEnNegativaYDespuesCompraConLote() {
+        await consumir(3); // el POS vendió 3 sin stock: sin lote en -3
+        const op = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: new Date("2026-08-10T12:00:00Z"), usuarioId: adminId, proveedorId, nroFactura: "M7-1" } });
+        await prisma.movimientoStock.create({
+          data: { operacionId: op.id, productoId: harinaId, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Compra con lote", precioTotal: 1000, precioPorUnidadStock: 100, loteVencimiento: LOTE },
+        });
+        return op;
+      }
+
+      it("el rechazo es STOCK_CONSUMIDO y trae la guía; un Ajuste de +3 sin lote (el que dice el mensaje) destraba la anulación y deja el stock en 0", async () => {
+        const op = await ventaEnNegativaYDespuesCompraConLote();
+
+        const rechazo = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+
+        expect(rechazo.ok).toBe(false);
+        if (rechazo.ok) return;
+        expect(rechazo.codigo).toBe("STOCK_CONSUMIDO");
+        expect(rechazo.mensaje).toContain("Ajuste de stock de +3 de Harina en Depósito, sin lote");
+        expect(rechazo.mensaje).toContain("no uses un conteo físico");
+
+        await ajusteManual(3); // lo que dice el mensaje
+        const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+
+        expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
+        expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(0);
+      });
+
+      it("lo que el mensaje desaconseja es cierto: un CONTEO físico posterior no destraba la anulación, la frena con CONTEO_POSTERIOR", async () => {
+        const op = await ventaEnNegativaYDespuesCompraConLote();
+        await ajusteManual(3);
+        await conteoPosterior({ estado: "RESUELTO", accion: "AJUSTAR" });
+
+        const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+
+        expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
+      });
     });
 
     it("control: un conteo ANTERIOR a la compra no la frena", async () => {

@@ -33,8 +33,8 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  *  2. no puede estar ya CANCELADO, y tiene que estar RESUELTO (si está PENDIENTE/DESCARTADO nunca ajustó nada, no hay nada que
  *     cancelar);
  *  2b. lo POSTERIOR (M-2 de la auditoría final, D7 decidida por el dueño el 2026-10-08): se RECHAZA (`CONTEO_POSTERIOR`) si después de este conteo hubo otro conteo físico —con o sin
- *     movimiento— o un ajuste vigente del mismo producto en la misma sección (`cargarReconciliacionesPosteriores`, la misma lectura que usa anular una venta, sin contar a este conteo ni
- *     sus propias líneas): cancelarlo revertiría un ajuste sobre un stock que el conteo posterior ya reconcilió. Se corrige con un ajuste;
+ *     movimiento— del mismo producto en la misma sección (`cargarReconciliacionesPosteriores` con `soloConteos`, la lectura que usa anular una venta, sin contar a este conteo ni sus propias
+ *     líneas; un ajuste manual NO cuenta): cancelarlo revertiría un ajuste sobre un stock que el conteo posterior ya reconcilió. Se corrige con un ajuste;
  *  3. lee lo aplicado (`sumaAplicadaPorConteo`) y, si no es 0, escribe la reversión vía `escribirOperacionDeStock`/`escribirLineasDeMovimientoStock` (M13b, un
  *     array de una sola fila) con `conteoFisicoId: conteo.id`;
  *  4. cierra el conteo como CANCELADO (`actualizarEstadoDeConteo`, M13e2) y deja la fila de auditoría.
@@ -60,13 +60,14 @@ export async function cancelarConteoFisicoCasoDeUso(
       );
     }
 
-    // M-2 / D7 (la misma regla que anular una venta): si después de este conteo hubo OTRO conteo (con o sin movimiento) o un ajuste del mismo producto en la misma sección, cancelarlo desharía a
+    // M-2 / D7 (la misma regla que anular una venta): si después de este conteo hubo OTRO conteo (con o sin movimiento) del mismo producto en la misma sección, cancelarlo desharía a
     // ciegas un stock que ya se reconcilió. Se RECHAZA ANTES de escribir nada y se corrige con un ajuste.
     const posteriores = evaluarPosterioresACancelarConteo(
       await cargarReconciliacionesPosteriores(tx, {
         sucursalId: actor.sucursalId,
         alcances: [{ creadoEn: conteo.creadoEn, pares: [{ productoId: conteo.productoId, seccionId: conteo.seccionId }] }],
         excluirConteoId: conteo.id,
+        soloConteos: true,
       }),
     );
     if (!posteriores.ok) return fracaso(posteriores.motivo, posteriores.mensaje);
