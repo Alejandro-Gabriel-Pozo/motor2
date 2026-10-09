@@ -17,19 +17,42 @@
  * que puede disparar decenas de `registrarConteoFisico` seguidos al
  * confirmar).
  */
-export function crearLimitadorDeTasa(limite: number, ventanaMs: number) {
+/**
+ * Tope de claves que el limitador recuerda a la vez (M-17 de la auditoría intermedia): con claves que pone un anónimo (la IP, o un IPv6 que rota) el mapa crecía sin límite dentro de la instancia
+ * porque nadie liberaba una clave vencida. Al pasar el tope se barren las ventanas vencidas y, si siguen sobrando, se olvidan las claves MÁS VIEJAS: lo peor que le pasa a una clave olvidada es
+ * que su conteo empiece de cero (best effort, como todo este limitador), nunca que se agote la memoria de la instancia.
+ */
+export const MAXIMO_DE_CLAVES_DEL_LIMITADOR = 5_000;
+
+export function crearLimitadorDeTasa(limite: number, ventanaMs: number, maximoDeClaves = MAXIMO_DE_CLAVES_DEL_LIMITADOR) {
   const ventanas = new Map<string, { conteo: number; venceEn: number }>();
+
+  /** Libera lo vencido y, si aun así hay más claves que el tope, las más viejas (el `Map` conserva el orden de inserción: la primera es la más antigua en entrar). */
+  const podar = (ahora: number): void => {
+    for (const [clave, v] of ventanas) if (ahora > v.venceEn) ventanas.delete(clave);
+    for (const clave of ventanas.keys()) {
+      if (ventanas.size <= maximoDeClaves) break;
+      ventanas.delete(clave);
+    }
+  };
 
   return {
     /** `ahora` es el instante en milisegundos (Pureza 1.3): el limitador no lee el reloj, se lo pasa quien lo usa (`conPermiso`, que fija la hora del pedido). */
     excedeLimite(clave: string, ahora: number): boolean {
       const ventana = ventanas.get(clave);
       if (!ventana || ahora > ventana.venceEn) {
+        // Una clave vencida se REEMPLAZA al final del orden de inserción (es la más nueva); y solo al crecer se paga la poda.
+        ventanas.delete(clave);
         ventanas.set(clave, { conteo: 1, venceEn: ahora + ventanaMs });
+        if (ventanas.size > maximoDeClaves) podar(ahora);
         return false;
       }
       ventana.conteo++;
       return ventana.conteo > limite;
+    },
+    /** Cuántas claves recuerda ahora (para probar que no crece sin límite). */
+    clavesRecordadas(): number {
+      return ventanas.size;
     },
   };
 }
