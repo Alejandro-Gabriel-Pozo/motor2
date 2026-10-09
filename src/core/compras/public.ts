@@ -7,7 +7,7 @@
  * Solo reexports explícitos (nunca `export *`, nunca lógica), y solo lo que hoy se usa desde afuera del dominio: la anulación y la corrección de una
  * compra, que consumen sus casos de uso (`server/actions/movimientos/casos-de-uso/`) y su persistencia (`server/persistencia/compras/`).
  */
-export { claveDeLote, descripcionAuditoriaAnulacion, evaluarAnulacion, mensajeCompraAnulada } from "./anulacion";
+export { claveDeLote, descripcionAuditoriaAnulacion, evaluarAnulacion, evaluarPosterioresAAnularCompra, mensajeCompraAnulada } from "./anulacion";
 export type { LineaComprada, LineaDeReversion, SaldosPorLote } from "./anulacion";
 export {
   cabeceraCoincide,

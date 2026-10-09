@@ -22,6 +22,8 @@ export interface CompraParaAnular {
   proceso: string;
   anuladaEn: Date | null;
   fecha: Date;
+  /** Cuándo se ESCRIBIÓ la compra (`Operacion.creadoEn`, el reloj de la base): desde cuándo un conteo o un ajuste es «posterior» a ella (M-3, D7). `fecha` la fija quien carga. */
+  creadoEn: Date;
   nroFactura: string | null;
   /** `null` si la compra no tiene proveedor. */
   proveedorNombre: string | null;
@@ -74,6 +76,7 @@ export async function cargarCompraParaAnular(
     proceso: operacion.proceso,
     anuladaEn: operacion.anuladaEn,
     fecha: operacion.fecha,
+    creadoEn: operacion.creadoEn,
     nroFactura: operacion.nroFactura,
     proveedorNombre: operacion.proveedor ? operacion.proveedor.nombre : null,
     lineas,

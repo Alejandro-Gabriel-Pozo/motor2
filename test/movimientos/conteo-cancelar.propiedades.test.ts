@@ -12,7 +12,8 @@ import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
  * «Descartar»), cierres de pendientes («resuelto» y «ajustar», este último contra el saldo de HOY) y cancelaciones,
  *  - cancelar un conteo RESUELTO deja el saldo exactamente `lo que tenía - lo que ese conteo aplicó` (un modelo independiente lleva la cuenta de lo aplicado: no mira `ConteoFisico.diferencia`);
  *  - al terminar, las líneas del Kardex de cada conteo suman lo que aplicó, y 0 si fue cancelado (el original y su reversión se anulan);
- *  - el saldo real de la base coincide con el del modelo.
+ *  - el saldo real de la base coincide con el del modelo;
+ *  - (M-2, D7) cancelar un conteo con OTRO conteo no cancelado posterior (escrito después, o con una línea de Kardex escrita después) se RECHAZA con `CONTEO_POSTERIOR` sin tocar nada.
  * Con Postgres real cada corrida escribe hasta ~10 operaciones: `NUM_RUNS` bajo (el archivo entero tarda unos segundos) para no inflar `npm test`. Si algo falla, fast-check reporta
  * `seed`/`path` para reproducirlo. Mutación: volver a revertir `conteo.diferencia` en `cancelarConteoFisicoCasoDeUso` → la propiedad cae (un pendiente cerrado como «resuelto» y después
  * cancelado escribe un ajuste que nunca se aplicó).
@@ -42,9 +43,13 @@ interface ConteoDelModelo {
   aplicado: number;
   /** Cómo llegó a RESUELTO: en el momento del conteo, o cerrando un pendiente (los dos caminos donde `diferencia` miente). */
   via: "directo" | "pendiente";
+  /** El orden en que se escribió la fila del conteo (el reloj de la base, `creadoEn`, en el modelo). */
+  creado: number;
+  /** El orden en que se escribió la línea del Kardex que aplicó (`null` si no escribió ninguna): al contar, el mismo que `creado`; al cerrar un pendiente con «ajustar», el del cierre. */
+  movimientoEn: number | null;
 }
 
-const NUM_RUNS = 100;
+const NUM_RUNS = 300;
 
 describe("propiedad (GT-6): cancelar un conteo revierte exactamente la suma de lo que ese conteo aplicó", () => {
   let sucursalId: string;
@@ -70,6 +75,7 @@ describe("propiedad (GT-6): cancelar un conteo revierte exactamente la suma de l
   it("con cualquier secuencia de movimientos, conteos, cierres de pendientes y cancelaciones", async () => {
     let cancelacionesVerificadas = 0;
     let cancelacionesDeUnPendienteCerrado = 0;
+    let cancelacionesRechazadasPorPosterior = 0;
     await fc.assert(
       fc.asyncProperty(fc.array(arbPaso, { minLength: 3, maxLength: 12 }), async (pasos) => {
         // Un producto nuevo por corrida: arranca en 0 y no hace falta limpiar la base entre corridas.
@@ -77,7 +83,13 @@ describe("propiedad (GT-6): cancelar un conteo revierte exactamente la suma de l
         const productoId = producto.id;
         const saldoReal = () => calcularSaldoTotal(productoId, seccionId, prisma);
         let saldo = 0;
+        let reloj = 0;
         const conteos: ConteoDelModelo[] = [];
+        /**
+         * M-2 / D7: un conteo no se cancela si hay otro, no cancelado, posterior —escrito después, o con una línea de Kardex escrita después (un pendiente cerrado con «ajustar» más tarde)—. El modelo lo
+         * decide sin mirar la base: cuenta lo que el MODELO sabe de los otros conteos.
+         */
+        const hayPosterior = (c: ConteoDelModelo) => conteos.some((d) => d !== c && d.estado !== "CANCELADO" && (d.creado > c.creado || (d.movimientoEn !== null && d.movimientoEn > c.creado)));
         const elegirDe = (estado: ConteoDelModelo["estado"], elegir: number) => {
           const candidatos = conteos.filter((c) => c.estado === estado);
           return candidatos.length ? candidatos[elegir % candidatos.length] : null;
@@ -103,6 +115,8 @@ describe("propiedad (GT-6): cancelar un conteo revierte exactamente la suma de l
               estado: dif === 0 ? "RESUELTO" : paso.accion === "AJUSTAR" ? "RESUELTO" : paso.accion === "FALTA_MOVIMIENTO" ? "PENDIENTE" : "DESCARTADO",
               aplicado: aplica ? dif : 0,
               via: "directo",
+              creado: ++reloj,
+              movimientoEn: aplica ? reloj : null,
             });
             if (aplica) saldo = paso.real;
           } else if (paso.t === "resolver") {
@@ -115,12 +129,21 @@ describe("propiedad (GT-6): cancelar un conteo revierte exactamente la suma de l
             if (paso.como === "ajustar") {
               c.aplicado = c.real - saldo; // contra el saldo de HOY, no el del día del conteo
               saldo = c.real;
+              if (c.aplicado !== 0) c.movimientoEn = ++reloj;
             }
           } else {
             const c = elegirDe("RESUELTO", paso.elegir);
             if (!c) continue;
             const movimientosAntes = await prisma.movimientoStock.count({ where: { productoId } });
             const r = await cancelarConteoFisicoCasoDeUso(actor(), c.id);
+            if (hayPosterior(c)) {
+              // M-2: se rechaza sin escribir nada, y el conteo sigue como estaba (se puede intentar de nuevo si el posterior se cancela).
+              expect(r, "cancelar un conteo con otro posterior se rechaza").toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
+              expect(await prisma.movimientoStock.count({ where: { productoId } })).toBe(movimientosAntes);
+              expect(await saldoReal()).toBe(saldo);
+              cancelacionesRechazadasPorPosterior++;
+              continue;
+            }
             expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
             saldo -= c.aplicado;
             c.estado = "CANCELADO";
@@ -143,5 +166,6 @@ describe("propiedad (GT-6): cancelar un conteo revierte exactamente la suma de l
     // El generador tiene que producir cancelaciones: si dejara de hacerlo, la propiedad pasaría sin probar nada.
     expect(cancelacionesVerificadas).toBeGreaterThan(30);
     expect(cancelacionesDeUnPendienteCerrado).toBeGreaterThan(5);
+    expect(cancelacionesRechazadasPorPosterior).toBeGreaterThan(5);
   }, 120_000);
 });

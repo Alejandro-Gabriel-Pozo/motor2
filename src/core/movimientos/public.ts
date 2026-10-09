@@ -32,11 +32,13 @@ export {
   esDetalleReservadoParaReversiones,
   evaluarAnulacionDeVenta,
   evaluarPosterioresAAnularVenta,
+  evaluarPosterioresACancelarConteo,
   construirReversionDeVenta,
   mensajeVentaAnulada,
   descripcionAuditoriaAnulacionDeVenta,
 } from "./anulaciones";
 export type { ResultadoAnulacionDeVenta, LineaVendida, LineaDeReversionDeVenta, PosterioresALaVenta } from "./anulaciones";
+export type { ReconciliacionPosterior } from "./anulaciones";
 export { armarFilasDeMovimiento } from "./armar-filas-de-movimiento";
 export type { ConsumoParaFilas } from "./armar-filas-de-movimiento";
 export type { AccionConteo } from "@prisma/client";

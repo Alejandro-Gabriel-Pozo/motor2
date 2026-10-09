@@ -160,6 +160,22 @@ export function evaluarAnulacion(compra: CompraAAnular, saldos: SaldosPorLote): 
 }
 
 /**
+ * D7 (M-3 de la auditoría final; la misma regla que anular una VENTA, `evaluarPosterioresAAnularVenta` de `core/movimientos`): una compra NO se anula si después hubo un conteo físico (con o sin
+ * movimiento) o un ajuste del mismo producto en la misma sección de alguna de sus líneas. El stock ya se reconcilió contra lo contado y la reversión restaría de nuevo lo que el conteo ya absorbió:
+ * el saldo queda mal aunque «alcance» para anular (`evaluarAnulacion`). El historial no se reescribe: se corrige con un ajuste. Fallo cerrado, sin pedir confirmación.
+ * `posteriores` lo arma `cargarReconciliacionesPosteriores` (server/persistencia/movimientos), ya sin repetidos y con los nombres para el mensaje.
+ */
+export function evaluarPosterioresAAnularCompra(posteriores: readonly { productoNombre: string; seccionNombre: string }[]): { ok: true } | { ok: false; motivo: "CONTEO_POSTERIOR"; mensaje: string } {
+  if (!posteriores.length) return { ok: true };
+  const donde = posteriores.map((c) => `${c.productoNombre} (${c.seccionNombre})`).join(", ");
+  return {
+    ok: false,
+    motivo: "CONTEO_POSTERIOR",
+    mensaje: `No se puede anular esta compra: después de hacerse hubo un conteo físico o un ajuste de stock de ${donde}, y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.`,
+  };
+}
+
+/**
  * Mensaje de éxito de una anulación (Task #41, Fase M): texto EXACTO que armaba en línea la Server Action `anularCompra` antes de pasar
  * a su caso de uso. Es también el que se guarda como resultado I3 y se devuelve tal cual en un reenvío.
  */

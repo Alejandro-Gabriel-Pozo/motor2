@@ -4,8 +4,10 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ResultadoCancelarConteo } from "@/core/features/movimientos/cancelar-conteo.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
+import { evaluarPosterioresACancelarConteo } from "@/core/movimientos/public";
 import { sumaAplicadaPorConteo } from "@/server/lecturas/movimientos/aplicado-por-conteo";
 import { cargarConteoFisico } from "@/server/persistencia/movimientos/cargar-conteo-fisico";
+import { cargarReconciliacionesPosteriores } from "@/server/persistencia/movimientos/cargar-reconciliaciones-posteriores";
 import { actualizarEstadoDeConteo } from "@/server/persistencia/movimientos/escribir-conteo-fisico";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 
@@ -30,6 +32,9 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  *  1. `cargarConteoFisico` (M13e2) — si no existe o es de otra sucursal, ni sigue;
  *  2. no puede estar ya CANCELADO, y tiene que estar RESUELTO (si está PENDIENTE/DESCARTADO nunca ajustó nada, no hay nada que
  *     cancelar);
+ *  2b. lo POSTERIOR (M-2 de la auditoría final, D7 decidida por el dueño el 2026-10-08): se RECHAZA (`CONTEO_POSTERIOR`) si después de este conteo hubo otro conteo físico —con o sin
+ *     movimiento— o un ajuste vigente del mismo producto en la misma sección (`cargarReconciliacionesPosteriores`, la misma lectura que usa anular una venta, sin contar a este conteo ni
+ *     sus propias líneas): cancelarlo revertiría un ajuste sobre un stock que el conteo posterior ya reconcilió. Se corrige con un ajuste;
  *  3. lee lo aplicado (`sumaAplicadaPorConteo`) y, si no es 0, escribe la reversión vía `escribirOperacionDeStock`/`escribirLineasDeMovimientoStock` (M13b, un
  *     array de una sola fila) con `conteoFisicoId: conteo.id`;
  *  4. cierra el conteo como CANCELADO (`actualizarEstadoDeConteo`, M13e2) y deja la fila de auditoría.
@@ -54,6 +59,17 @@ export async function cancelarConteoFisicoCasoDeUso(
         `Este conteo está "${conteo.estado}", no aplicó ningún ajuste al stock — no hay nada que cancelar. Si es un conteo pendiente, resolvelo en vez de cancelarlo.`
       );
     }
+
+    // M-2 / D7 (la misma regla que anular una venta): si después de este conteo hubo OTRO conteo (con o sin movimiento) o un ajuste del mismo producto en la misma sección, cancelarlo desharía a
+    // ciegas un stock que ya se reconcilió. Se RECHAZA ANTES de escribir nada y se corrige con un ajuste.
+    const posteriores = evaluarPosterioresACancelarConteo(
+      await cargarReconciliacionesPosteriores(tx, {
+        sucursalId: actor.sucursalId,
+        alcances: [{ creadoEn: conteo.creadoEn, pares: [{ productoId: conteo.productoId, seccionId: conteo.seccionId }] }],
+        excluirConteoId: conteo.id,
+      }),
+    );
+    if (!posteriores.ok) return fracaso(posteriores.motivo, posteriores.mensaje);
 
     const ajusteAplicado = await sumaAplicadaPorConteo(tx, conteo.id);
     if (ajusteAplicado !== 0) {

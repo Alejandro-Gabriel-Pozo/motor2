@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { evaluarPosterioresAAnularVenta } from "../../src/core/movimientos/anulaciones";
+import { evaluarPosterioresAAnularVenta, evaluarPosterioresACancelarConteo } from "../../src/core/movimientos/anulaciones";
+import { evaluarPosterioresAAnularCompra } from "../../src/core/compras/anulacion";
 
 /** Módulo puro: sin base de datos. S-03 (O.52), D7 decidida por el dueño el 2026-10-08: el caso con filas está en test/casos-de-uso/anular-venta.test.ts. */
 describe("evaluarPosterioresAAnularVenta (D7)", () => {
@@ -28,5 +29,34 @@ describe("evaluarPosterioresAAnularVenta (D7)", () => {
   it("con las dos cosas gana el conteo (un solo motivo por rechazo)", () => {
     const r = evaluarPosterioresAAnularVenta({ controlesOAjustes: [{ productoNombre: "Harina", seccionNombre: "Depósito" }], pagosAConsignantes: ["Bodega Don Pepe"] });
     expect(r).toMatchObject({ ok: false, motivo: "CONTEO_POSTERIOR" });
+  });
+});
+
+describe("evaluarPosterioresACancelarConteo y evaluarPosterioresAAnularCompra (D7, M-2 y M-3)", () => {
+  const donde = [{ productoNombre: "Harina", seccionNombre: "Depósito" }, { productoNombre: "Queso", seccionNombre: "Cocina" }];
+
+  it("sin nada posterior, se puede cancelar el conteo y anular la compra", () => {
+    expect(evaluarPosterioresACancelarConteo([])).toEqual({ ok: true });
+    expect(evaluarPosterioresAAnularCompra([])).toEqual({ ok: true });
+  });
+
+  it("cancelar un conteo con algo posterior se rechaza con CONTEO_POSTERIOR: nombra producto y sección y manda a corregir con un ajuste", () => {
+    const r = evaluarPosterioresACancelarConteo(donde);
+    expect(r).toEqual({
+      ok: false,
+      motivo: "CONTEO_POSTERIOR",
+      mensaje:
+        "No se puede cancelar este conteo: después de hacerse hubo otro conteo físico o un ajuste de stock de Harina (Depósito), Queso (Cocina), y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
+    });
+  });
+
+  it("anular una compra con algo posterior se rechaza con CONTEO_POSTERIOR y el mismo texto que la venta, nombrando a la compra", () => {
+    const r = evaluarPosterioresAAnularCompra(donde);
+    expect(r).toEqual({
+      ok: false,
+      motivo: "CONTEO_POSTERIOR",
+      mensaje:
+        "No se puede anular esta compra: después de hacerse hubo un conteo físico o un ajuste de stock de Harina (Depósito), Queso (Cocina), y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
+    });
   });
 });

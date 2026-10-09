@@ -12,7 +12,7 @@ export interface ComandoCancelarConteo {
   conteoId: string;
 }
 
-export type CodigoCancelarConteo = "CONTEO_NO_ENCONTRADO" | "CONTEO_YA_CANCELADO" | "CONTEO_NO_RESUELTO";
+export type CodigoCancelarConteo = "CONTEO_NO_ENCONTRADO" | "CONTEO_YA_CANCELADO" | "CONTEO_NO_RESUELTO" | "CONTEO_POSTERIOR";
 
 /** `datos` de un conteo cancelado con éxito. */
 export interface DatosCancelarConteo {

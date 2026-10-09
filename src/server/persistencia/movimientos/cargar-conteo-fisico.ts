@@ -21,6 +21,8 @@ export interface ConteoFisicoCargado {
   conteoReal: Prisma.Decimal;
   diferencia: Prisma.Decimal;
   detalle: string | null;
+  /** Cuándo se ESCRIBIÓ el conteo (el reloj de la base): desde cuándo un conteo o un ajuste es «posterior» a él (M-2, D7). */
+  creadoEn: Date;
   /** Para la descripción de la fila de auditoría (S-04/S-09: cancelar y resolver con ajuste se auditan); el nombre de la sucursal viene del actor. */
   productoNombre: string;
 }
@@ -38,6 +40,7 @@ export async function cargarConteoFisico(tx: Prisma.TransactionClient, conteoId:
       conteoReal: true,
       diferencia: true,
       detalle: true,
+      creadoEn: true,
       producto: { select: { nombre: true } },
     },
   });

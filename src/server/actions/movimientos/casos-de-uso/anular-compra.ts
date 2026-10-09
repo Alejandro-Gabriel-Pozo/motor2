@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
-import { descripcionAuditoriaAnulacion, evaluarAnulacion, mensajeCompraAnulada } from "@/core/compras/public";
+import { descripcionAuditoriaAnulacion, evaluarAnulacion, evaluarPosterioresAAnularCompra, mensajeCompraAnulada } from "@/core/compras/public";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import type { ComandoAnularCompra, ResultadoAnularCompra } from "@/core/features/compras/compra.schema";
 import { detalleReversionDeCompra } from "@/core/movimientos/public";
@@ -10,6 +10,7 @@ import { chequearIdempotencia, registrarResultadoIdempotente } from "@/server/pe
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarCompraParaAnular } from "@/server/persistencia/compras/cargar-compra-para-anular";
+import { cargarReconciliacionesPosteriores } from "@/server/persistencia/movimientos/cargar-reconciliaciones-posteriores";
 import { escribirAnulacionDeCompra } from "@/server/persistencia/compras/escribir-anulacion-de-compra";
 
 /**
@@ -25,6 +26,8 @@ import { escribirAnulacionDeCompra } from "@/server/persistencia/compras/escribi
  *  2. `chequearIdempotencia`: un reenvío exacto devuelve el mensaje ORIGINAL (`repetida: true`); la misma clave con otro payload es conflicto;
  *  3. carga de la compra y de sus saldos por lote (persistencia);
  *  4. reglas puras: `evaluarAnulacion`;
+ *  4b. lo POSTERIOR (M-3, D7 decidida por el dueño el 2026-10-08): se RECHAZA (`CONTEO_POSTERIOR`) si después de la compra hubo un conteo físico (con o sin movimiento) o un ajuste vigente del
+ *     mismo producto en la misma sección de alguna de sus líneas (`cargarReconciliacionesPosteriores`, la misma lectura que usa anular una venta). Se corrige con un ajuste;
  *  5. escritura del contra-asiento y la marca de anulada (persistencia);
  *  6. auditoría (`registrarCambioAuditado`);
  *  7. resultado para la idempotencia (`registrarResultadoIdempotente`, solo si hay clave);
@@ -53,6 +56,16 @@ export async function anularCompraCasoDeUso(
 
     const evaluacion = evaluarAnulacion({ proceso: compra.proceso, anuladaEn: compra.anuladaEn, lineas: compra.lineas }, compra.saldos);
     if (!evaluacion.ok) return fracaso(evaluacion.motivo, evaluacion.mensaje);
+
+    // M-3 / D7 (la misma regla que anular una venta): si después de la compra hubo un conteo físico (con o sin movimiento) o un ajuste del mismo producto en la misma sección de alguna de sus
+    // líneas, anularla desharía a ciegas un stock que ya se reconcilió. Se RECHAZA ANTES de escribir nada y se corrige con un ajuste.
+    const posteriores = evaluarPosterioresAAnularCompra(
+      await cargarReconciliacionesPosteriores(tx, {
+        sucursalId: actor.sucursalId,
+        alcances: [{ creadoEn: compra.creadoEn, pares: [...new Map(compra.lineas.map((l) => [`${l.productoId}|${l.seccionId}`, { productoId: l.productoId, seccionId: l.seccionId }])).values()] }],
+      }),
+    );
+    if (!posteriores.ok) return fracaso(posteriores.motivo, posteriores.mensaje);
 
     const ahora = actor.ahora;
     const escrita = await escribirAnulacionDeCompra(tx, {

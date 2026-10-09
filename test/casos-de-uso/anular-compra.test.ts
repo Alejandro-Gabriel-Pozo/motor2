@@ -297,6 +297,102 @@ describe("anularCompraCasoDeUso", () => {
     });
   });
 
+  /**
+   * M-3 / D7 (decidida por el dueño el 2026-10-08; la misma regla que ya cumple `anularVenta`, S-03 y I-1): una compra NO se anula si después hubo un conteo físico (con o sin movimiento) o un ajuste
+   * del mismo producto en la misma sección. El stock ya se reconcilió contra lo contado y la reversión restaría de nuevo lo que el conteo absorbió. Antes solo se miraba si el stock alcanzaba.
+   */
+  describe("M-3: un conteo o un ajuste POSTERIOR frena la anulación", () => {
+    async function conteoPosterior(opciones: { estado: "PENDIENTE" | "RESUELTO" | "DESCARTADO" | "CANCELADO"; accion: "AJUSTAR" | "FALTA_MOVIMIENTO" | "DESCARTAR"; productoId?: string; creadoEn?: Date; diferencia?: number }) {
+      return prisma.conteoFisico.create({
+        data: {
+          sucursalId, fecha: new Date(), productoId: opciones.productoId ?? harinaId, seccionId, saldoSistema: 10, conteoReal: 10 + (opciones.diferencia ?? 0), diferencia: opciones.diferencia ?? 0,
+          accion: opciones.accion, estado: opciones.estado, usuarioId: adminId, ...(opciones.creadoEn ? { creadoEn: opciones.creadoEn } : {}),
+        },
+      });
+    }
+
+    async function ajusteManual(cantidad: number) {
+      const op = await prisma.operacion.create({ data: { sucursalId, proceso: "AJUSTE", fecha: new Date(), usuarioId: adminId, detalleLibre: "Ajuste de inventario" } });
+      await prisma.movimientoStock.create({ data: { operacionId: op.id, productoId: harinaId, seccionId, proceso: "AJUSTE", cantidad, detalle: "Ajuste manual", precioTotal: 0, precioPorUnidadStock: 0 } });
+    }
+
+    async function nadaEscrito(operacionId: string, ajustesEsperados = 0) {
+      expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(ajustesEsperados);
+      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: operacionId } })).anuladaEn).toBeNull();
+      expect(await prisma.registroAuditoria.count({ where: { entidadId: operacionId } })).toBe(0);
+    }
+
+    it.each([
+      ["un conteo sin diferencia (el stock ya coincidía)", { estado: "RESUELTO", accion: "AJUSTAR" }],
+      ["un conteo «Falta movimiento» (queda pendiente)", { estado: "PENDIENTE", accion: "FALTA_MOVIMIENTO" }],
+      ["un conteo «Descartar»", { estado: "DESCARTADO", accion: "DESCARTAR" }],
+    ] as const)("ataque: %s, posterior a la compra, la frena con CONTEO_POSTERIOR y no escribe nada", async (_nombre, conteo) => {
+      const op = await compra();
+      await conteoPosterior(conteo);
+
+      const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.codigo).toBe("CONTEO_POSTERIOR");
+      expect(r.mensaje).toBe(
+        "No se puede anular esta compra: después de hacerse hubo un conteo físico o un ajuste de stock de Harina (Depósito), y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
+      );
+      await nadaEscrito(op.id);
+    });
+
+    it("ataque: un conteo que SÍ ajustó el stock (escribió su movimiento de CONTROL) después de la compra también la frena", async () => {
+      const op = await compra({ cantidad: 10 });
+      // Un sobrante (+3): con un faltante el stock «no alcanzaría» y el rechazo sería STOCK_CONSUMIDO (se evalúa antes).
+      const conteo = await conteoPosterior({ estado: "RESUELTO", accion: "AJUSTAR", diferencia: 3 });
+      const control = await prisma.operacion.create({ data: { sucursalId, proceso: "CONTROL", fecha: new Date(), usuarioId: adminId } });
+      await prisma.movimientoStock.create({
+        data: { operacionId: control.id, productoId: harinaId, seccionId, proceso: "CONTROL", cantidad: 3, detalle: "Ajuste de conteo", precioTotal: 0, precioPorUnidadStock: 0, conteoFisicoId: conteo.id },
+      });
+
+      const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+
+      expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
+      await nadaEscrito(op.id);
+    });
+
+    it("ataque: un ajuste manual de stock posterior a la compra la frena", async () => {
+      const op = await compra();
+      await ajusteManual(2); // un sobrante: con un faltante el rechazo sería STOCK_CONSUMIDO
+
+      const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+
+      expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
+      await nadaEscrito(op.id, 1);
+    });
+
+    it("control: un conteo ANTERIOR a la compra no la frena", async () => {
+      await conteoPosterior({ estado: "RESUELTO", accion: "AJUSTAR", creadoEn: new Date(Date.now() - 2 * DIA_MS) });
+      const op = await compra();
+      expect((await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null })).ok).toBe(true);
+    });
+
+    it("control: un conteo CANCELADO posterior no la frena (no reconcilió nada)", async () => {
+      const op = await compra();
+      await conteoPosterior({ estado: "CANCELADO", accion: "AJUSTAR" });
+      expect((await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null })).ok).toBe(true);
+    });
+
+    it("control: un conteo posterior de OTRO producto no la frena", async () => {
+      const op = await compra();
+      const otro = await prisma.producto.create({ data: { codigo: "MP_AZUCAR", nombre: "Azúcar", tipo: "MP", unidadStockId: (await prisma.unidad.findFirstOrThrow()).id } });
+      await conteoPosterior({ estado: "RESUELTO", accion: "AJUSTAR", productoId: otro.id });
+      expect((await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null })).ok).toBe(true);
+    });
+
+    it("control: la reversión de OTRA compra anulada (un AJUSTE interno) no cuenta como ajuste posterior", async () => {
+      const a = await compra({ nroFactura: "A-1" });
+      const b = await compra({ nroFactura: "B-1" });
+      expect((await anularCompraCasoDeUso(actor(), { operacionId: b.id, claveIdempotencia: null })).ok).toBe(true);
+      expect((await anularCompraCasoDeUso(actor(), { operacionId: a.id, claveIdempotencia: null })).ok).toBe(true);
+    });
+  });
+
   it("aResultadoAccion sobre el resultado del caso de uso: la pantalla recibe solo { ok, mensaje }", async () => {
     const op = await compra();
     const r = aResultadoAccion(await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null }));

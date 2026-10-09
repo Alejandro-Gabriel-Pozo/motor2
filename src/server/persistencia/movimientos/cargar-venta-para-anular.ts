@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION, type LineaVendida, type PosterioresALaVenta } from "@/core/movimientos/public";
+import type { LineaVendida, PosterioresALaVenta } from "@/core/movimientos/public";
+import { cargarReconciliacionesPosteriores } from "./cargar-reconciliaciones-posteriores";
 
 /**
  * Carga de una venta para ANULARLA (Task #41, Fase M — docs/arquitectura-casos-de-uso-2026-09-27.md; mismo contrato que
@@ -85,9 +86,8 @@ export async function cargarHermanasDePromo(
  * Lo que pasó DESPUÉS de las ventas que se van a anular (la pedida y sus hermanas de promo) y que anularlas desharía a ciegas (S-03, O.52 de
  * docs/pureza-integracion.md; D7 del plan de endurecimiento de seguridad). Dos lecturas, ambas dentro de la transacción del caso de uso:
  *
- *  1. un CONTROL o un AJUSTE vigente (un conteo físico aplicado, un ajuste manual) del mismo producto en la misma sección de alguna línea de la venta. NO cuentan: las
- *     reversiones por anulación (son AJUSTE, pero son el propio deshacer de otra venta o compra: `OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION`), ni lo que
- *     hace un conteo CANCELADO (el original y su reversión se anulan entre sí).
+ *  1. un CONTROL o un AJUSTE vigente (un conteo físico aplicado, un ajuste manual), o un conteo físico sin movimiento, del mismo producto en la misma sección de alguna línea de la venta
+ *     (`cargarReconciliacionesPosteriores`, compartida con cancelar un conteo y anular una compra: qué cuenta y qué no está documentado ahí).
  *  2. un `PagoConsignante` a un proveedor cuya mercadería en consignación consumió alguna de las ventas (líneas LIQUIDACION_CONSIGNACION), en esta sucursal.
  *
  * «Después» se mide con `creadoEn` (el reloj de la base al escribir), nunca con `fecha`: un conteo o un pago se pueden fechar para atrás, y seguirían
@@ -99,51 +99,12 @@ export async function cargarPosterioresDeVentas(
 ): Promise<PosterioresALaVenta> {
   const { ventas, sucursalId } = args;
 
-  // 1. CONTROL / AJUSTE posteriores sobre los mismos (producto, sección).
-  const alcancesPorVenta = ventas
-    .map((v) => ({ creadoEn: v.creadoEn, pares: [...new Map(v.lineas.map((l) => [`${l.productoId}|${l.seccionId}`, { productoId: l.productoId, seccionId: l.seccionId }])).values()] }))
-    .filter((a) => a.pares.length > 0);
-  const controlesOAjustes = alcancesPorVenta.length
-    ? await tx.movimientoStock.findMany({
-        where: {
-          proceso: { in: ["CONTROL", "AJUSTE"] },
-          AND: [
-            { OR: [{ conteoFisicoId: null }, { conteoFisico: { estado: { not: "CANCELADO" } } }] },
-            {
-              OR: alcancesPorVenta.map((a) => ({
-                OR: a.pares,
-                operacion: { AND: [OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION, { anuladaEn: null, creadoEn: { gte: a.creadoEn } }] },
-              })),
-            },
-          ],
-        },
-        select: { producto: { select: { nombre: true } }, seccion: { select: { nombre: true } } },
-        distinct: ["productoId", "seccionId"],
-        orderBy: [{ productoId: "asc" }, { seccionId: "asc" }],
-        take: 20,
-      })
-    : [];
-
-  // 1b. Un CONTEO FÍSICO posterior que NO escribió movimiento (I-1 de la auditoría final): diferencia 0 («el stock ya coincidía»), «Falta movimiento», «Descartar» o
-  //     un pendiente ya cerrado. Igual reconcilió (o dejó asentado) el stock contra lo contado DESPUÉS de la venta, y `registrarConteoFisico` no escribe Operación en
-  //     esos casos, así que la lectura 1 no lo ve. Se mira la fila del propio conteo (`ConteoFisico`), mismo producto y sección, no CANCELADO, escrito desde la venta.
-  const conteosSinMovimiento = alcancesPorVenta.length
-    ? await tx.conteoFisico.findMany({
-        where: {
-          sucursalId,
-          estado: { not: "CANCELADO" },
-          OR: alcancesPorVenta.map((a) => ({ OR: a.pares, creadoEn: { gte: a.creadoEn } })),
-        },
-        select: { producto: { select: { nombre: true } }, seccion: { select: { nombre: true } } },
-        distinct: ["productoId", "seccionId"],
-        orderBy: [{ productoId: "asc" }, { seccionId: "asc" }],
-        take: 20,
-      })
-    : [];
-  const hayConteoPosterior = new Map<string, { productoNombre: string; seccionNombre: string }>();
-  for (const m of [...controlesOAjustes, ...conteosSinMovimiento]) {
-    hayConteoPosterior.set(`${m.producto.nombre}|${m.seccion.nombre}`, { productoNombre: m.producto.nombre, seccionNombre: m.seccion.nombre });
-  }
+  // 1 y 1b. CONTROL / AJUSTE y conteos físicos (con o sin movimiento) posteriores sobre los mismos (producto, sección): la lectura es la misma que usan cancelar un conteo y anular una compra
+  //         (`cargarReconciliacionesPosteriores`, D7: una sola regla para las tres).
+  const hayConteoPosterior = await cargarReconciliacionesPosteriores(tx, {
+    sucursalId,
+    alcances: ventas.map((v) => ({ creadoEn: v.creadoEn, pares: [...new Map(v.lineas.map((l) => [`${l.productoId}|${l.seccionId}`, { productoId: l.productoId, seccionId: l.seccionId }])).values()] })),
+  });
 
   // 2. Pago al consignante de una mercadería que consumió la venta.
   const consumosEnConsignacion = ventas.flatMap((v) => v.lineas.filter((l) => l.proceso === "LIQUIDACION_CONSIGNACION").map((l) => ({ productoId: l.productoId, creadoEn: v.creadoEn })));
@@ -174,7 +135,7 @@ export async function cargarPosterioresDeVentas(
   }
 
   return {
-    controlesOAjustes: [...hayConteoPosterior.values()].slice(0, 20),
+    controlesOAjustes: hayConteoPosterior,
     pagosAConsignantes,
   };
 }

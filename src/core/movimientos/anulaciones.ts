@@ -104,6 +104,29 @@ export function evaluarPosterioresAAnularVenta(p: PosterioresALaVenta): Resultad
   return { ok: true };
 }
 
+/** Un (producto, sección) que se reconcilió (conteo físico o ajuste) después de la operación que se quiere deshacer. */
+export interface ReconciliacionPosterior {
+  productoNombre: string;
+  seccionNombre: string;
+}
+
+export type ResultadoCancelacionDeConteo = { ok: true } | { ok: false; motivo: "CONTEO_POSTERIOR"; mensaje: string };
+
+/**
+ * D7 (M-2 de la auditoría final; misma regla que `evaluarPosterioresAAnularVenta`): un conteo físico NO se cancela si después hubo OTRO conteo (con o sin movimiento) o un ajuste del mismo producto
+ * en la misma sección. La reversión devuelve el stock a como estaba antes del conteo, y el conteo posterior ya se contó sobre el stock que este dejó: cancelar este desharía a ciegas un stock que
+ * ya se reconcilió (conteo 1 ajusta -5, conteo 2 confirma que quedan 5, se cancela el 1: el saldo vuelve a 10 contra 5 físicos). El historial no se reescribe: se corrige con un ajuste. Fallo cerrado.
+ */
+export function evaluarPosterioresACancelarConteo(posteriores: readonly ReconciliacionPosterior[]): ResultadoCancelacionDeConteo {
+  if (!posteriores.length) return { ok: true };
+  const donde = posteriores.map((c) => `${c.productoNombre} (${c.seccionNombre})`).join(", ");
+  return {
+    ok: false,
+    motivo: "CONTEO_POSTERIOR",
+    mensaje: `No se puede cancelar este conteo: después de hacerse hubo otro conteo físico o un ajuste de stock de ${donde}, y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.`,
+  };
+}
+
 /** Una línea de Kardex de la venta, tal como se guardó (los `Decimal` ya convertidos a `number` por la persistencia). */
 export interface LineaVendida {
   productoId: string;
