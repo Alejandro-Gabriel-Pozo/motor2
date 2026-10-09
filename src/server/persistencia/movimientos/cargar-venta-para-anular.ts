@@ -124,6 +124,27 @@ export async function cargarPosterioresDeVentas(
       })
     : [];
 
+  // 1b. Un CONTEO FÍSICO posterior que NO escribió movimiento (I-1 de la auditoría final): diferencia 0 («el stock ya coincidía»), «Falta movimiento», «Descartar» o
+  //     un pendiente ya cerrado. Igual reconcilió (o dejó asentado) el stock contra lo contado DESPUÉS de la venta, y `registrarConteoFisico` no escribe Operación en
+  //     esos casos, así que la lectura 1 no lo ve. Se mira la fila del propio conteo (`ConteoFisico`), mismo producto y sección, no CANCELADO, escrito desde la venta.
+  const conteosSinMovimiento = alcancesPorVenta.length
+    ? await tx.conteoFisico.findMany({
+        where: {
+          sucursalId,
+          estado: { not: "CANCELADO" },
+          OR: alcancesPorVenta.map((a) => ({ OR: a.pares, creadoEn: { gte: a.creadoEn } })),
+        },
+        select: { producto: { select: { nombre: true } }, seccion: { select: { nombre: true } } },
+        distinct: ["productoId", "seccionId"],
+        orderBy: [{ productoId: "asc" }, { seccionId: "asc" }],
+        take: 20,
+      })
+    : [];
+  const hayConteoPosterior = new Map<string, { productoNombre: string; seccionNombre: string }>();
+  for (const m of [...controlesOAjustes, ...conteosSinMovimiento]) {
+    hayConteoPosterior.set(`${m.producto.nombre}|${m.seccion.nombre}`, { productoNombre: m.producto.nombre, seccionNombre: m.seccion.nombre });
+  }
+
   // 2. Pago al consignante de una mercadería que consumió la venta.
   const consumosEnConsignacion = ventas.flatMap((v) => v.lineas.filter((l) => l.proceso === "LIQUIDACION_CONSIGNACION").map((l) => ({ productoId: l.productoId, creadoEn: v.creadoEn })));
   let pagosAConsignantes: string[] = [];
@@ -153,7 +174,7 @@ export async function cargarPosterioresDeVentas(
   }
 
   return {
-    controlesOAjustes: controlesOAjustes.map((m) => ({ productoNombre: m.producto.nombre, seccionNombre: m.seccion.nombre })),
+    controlesOAjustes: [...hayConteoPosterior.values()].slice(0, 20),
     pagosAConsignantes,
   };
 }

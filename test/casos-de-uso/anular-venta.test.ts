@@ -286,6 +286,51 @@ describe("anularVentaCasoDeUso", () => {
       expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(1); // solo el ajuste manual
     });
 
+    // I-1 de la auditoría final: un conteo posterior que NO escribió movimiento igual reconcilió (o dejó asentado) el stock; anular la venta lo desarmaría.
+    async function conAjusteAnteriorDe(cantidad: number) {
+      const previo = await prisma.operacion.create({ data: { sucursalId, proceso: "AJUSTE", fecha: new Date(), usuarioId: adminId } });
+      await prisma.movimientoStock.create({ data: { operacionId: previo.id, productoId: harinaId, seccionId, proceso: "AJUSTE", cantidad, detalle: "Stock inicial", precioTotal: 0, precioPorUnidadStock: 0 } });
+      await pausa();
+    }
+
+    it("ataque 1d: un conteo posterior SIN diferencia («el stock ya coincidía», no escribe movimiento) también frena la anulación", async () => {
+      await conAjusteAnteriorDe(2);
+      const venta = await operacion(); // -2: el saldo queda en 0
+      await pausa();
+      const conteo = await contar(harinaId, 0);
+      expect(Number(conteo.diferencia)).toBe(0);
+      expect(await prisma.movimientoStock.count({ where: { conteoFisicoId: conteo.id } })).toBe(0);
+
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+
+      expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
+      expect(r.ok === false && r.mensaje).toContain("Harina (Depósito)");
+      expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(1); // solo el stock inicial: no se escribió ninguna reversión
+      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).anuladaEn).toBeNull();
+      expect(await prisma.registroAuditoria.count({ where: { entidadId: venta.id } })).toBe(0);
+    });
+
+    it.each(["FALTA_MOVIMIENTO", "DESCARTAR"] as const)("ataque 1e: un conteo posterior con acción %s (con diferencia, pero sin movimiento) también frena la anulación", async (accion) => {
+      const venta = await operacion();
+      await pausa();
+      const r0 = await registrarConteoFisicoCasoDeUso(comoA(), { productoId: harinaId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion });
+      expect(r0.ok, r0.ok ? "" : r0.mensaje).toBe(true);
+      expect(await prisma.movimientoStock.count({ where: { conteoFisicoId: { not: null } } })).toBe(0);
+
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+
+      expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
+      await nadaEscrito(venta.id);
+    });
+
+    it("control: un conteo sin diferencia ANTERIOR a la venta no la frena", async () => {
+      await contar(harinaId, 0);
+      await pausa();
+      const venta = await operacion();
+
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+    });
+
     it("ataque 2: venta que consumió una MP en consignación, pago al consignante posterior, y anular → PAGO_CONSIGNANTE_POSTERIOR sin escribir nada", async () => {
       const { venta, consignante } = await ventaConConsignacion();
       await pausa();
