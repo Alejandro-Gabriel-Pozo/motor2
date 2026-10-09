@@ -29,7 +29,9 @@ import type { Db } from "@/lib/db-tipos";
  *    sus cupos tal cual (`PromoCartaCupo`); `armarSelectorCartaPos` resuelve los elegibles de cada cupo con los MISMOS
  *    pedibles que ya ubicó en la sección de ese cupo (D5) — esta consulta no busca elegibles por su cuenta.
  *
- *  - LO CONTRATADO (S-22 / D2, `modulos-del-pos.ts`): sin el módulo Promociones no se lee ninguna promo, ni el POS las ofrece ni las acepta.
+ *  - LO CONTRATADO (S-22 / D2, `modulos-del-pos.ts`): sin el módulo Carta no se lee nada de la carta (ni secciones, ni géneros, ni ítems agrupados, ni promos) y el selector
+ *    es la lista plana de los PV disponibles; sin el módulo Promociones no se lee ninguna promo, ni el POS las ofrece ni las acepta. El precio y el descuento de cada
+ *    producto NO dependen del módulo: son los que `agregarItems` congela (paridad) y salen del producto, del Precio Local y del descuento de la sucursal.
  *
  * La pantalla de la mesa la llama DESPUÉS de su guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`): no hace falta
  * ninguna Server Action nueva.
@@ -53,8 +55,13 @@ export async function cargarSelectorCartaPos(
   // las promos. Antes cada uno la leía por su cuenta: 6 lecturas de `capacidadSucursal` por carga del selector (O.39 de docs/pureza-integracion.md).
   // Se pasa la PROMESA, no el valor, para que todo siga saliendo en paralelo como antes.
   const precioLocalActivoLeido = precioLocalActivoCargado ?? precioLocalActivoEn(sucursalId, db);
+  // S-22 / D2: la carta (secciones, géneros, ítems agrupados) y las promos (que viven en ella) se leen SOLO si la empresa las contrató. Sin Carta el selector es la lista
+  // plana de los PV disponibles (`armarSelectorCartaPos` con `carta: null` los deja todos en «Fuera de carta»): el POS vende con los productos sueltos, sin carta. Las
+  // listas vacías y el `null` son exactamente lo que da una empresa que nunca cargó una carta.
+  const conCarta = modulos.carta;
+  const conPromos = conCarta && modulos.promociones;
   const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
-    resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido),
+    conCarta ? resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido) : Promise.resolve(null),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },
@@ -62,11 +69,11 @@ export async function cargarSelectorCartaPos(
     preciosLocalesVigentes(sucursalId, db, undefined, precioLocalActivoLeido),
     descuentosDeProductoEnSucursal(sucursalId, db, undefined, precioLocalActivoLeido),
     precioLocalActivoLeido,
-    db.generoCarta.findMany({ where: { activo: true, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, nombre: true, orden: true } }),
-    db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true } }),
-    db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, generoCartaId: true } }),
-    // S-22 / D2: sin el módulo Promociones no se lee ninguna promo (ni se ofrece ni se acepta); la lista vacía deja el selector como el de una empresa sin promos.
-    modulos.promociones
+    conCarta ? db.generoCarta.findMany({ where: { activo: true, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, nombre: true, orden: true } }) : Promise.resolve([]),
+    conCarta ? db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true } }) : Promise.resolve([]),
+    conCarta ? db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, generoCartaId: true } }) : Promise.resolve([]),
+    // Sin el módulo Promociones no se lee ninguna promo (ni se ofrece ni se acepta).
+    conPromos
       ? db.promoCarta.findMany({
           where: { ...wherePromoOfrecidaEn(sucursalId), cupos: { some: {} } },
           select: {
