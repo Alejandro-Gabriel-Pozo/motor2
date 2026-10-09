@@ -62,7 +62,16 @@ const CONGELADAS: Record<string, Congelada> = {
     blob: "1c0366bde31dabd25a3b773386ed978f9c7046fa",
     desde: "44f1909f",
     motivo: "Huella de gobierno (B0, #82). Red de la Fase I y la Fase II: las 16 mutaciones de auth y permisos no cambian.",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "6107a22b385ccd5c2a4f9c3a6c3779cc6ecb56cd",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, «Lista de control: fila O.57 (tanda T4 del endurecimiento, S-08, carril B), con el hash de su commit».
+        // El commit que regenera es el de «S-33 (actor de plataforma)»: la fila O.82 de la lista de control, que lo cita por su hash.
+        commit: "6056f39a",
+        motivo:
+          "S-33, actor de los scripts de plataforma (CAMBIA COMPORTAMIENTO, decidido por el dueño el 2026-10-08: «el admin de plataforma no es User y no debe serlo»). Los pasos 8a-8e (`cambiarModulosDeEmpresa` y `cambiarPoliticaDeEmpresa`) ya no escriben `RegistroAuditoria` a nombre de un `User`: auditan en `AuditoriaPlataforma` (que esta huella no vuelca). Cambia SOLO: (1) desaparecen las 30 líneas `AUDITORIA actorId=operador …` de los pasos 8a-8e (módulos y perillas de política); (2) como los ids simbólicos `id#N` se numeran por orden de aparición y esas filas ya no existen, el módulo `carta` pasa de `id#20` a `id#18` (5 líneas MODULO) y las cuatro filas del paso 9 (`numero`, `booleano`, `alta`, `baja`) de `id#26…29` a `id#19…22`. Los resultados de 8a-8e, EMPRESA, INVITACION, USUARIO_* y MODULO (salvo el id simbólico de `carta`), byte a byte. Regeneración NO prevista en el plan de endurecimiento: queda declarada para la revisión del orquestador.",
+      },
+    ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
     blob: "1e34981243c2d5807b4e0492bd05e92d024f356f",

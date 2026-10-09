@@ -38,6 +38,7 @@ const AHORA = new Date();
 const TOKEN = (n: number) => `T${String(n).padStart(2, "0")}${"h".repeat(40)}`;
 
 afterAll(async () => {
+  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "AuditoriaPlataforma"'); // los pasos 8 la escriben (S-33): que no quede en la base para otros archivos
   await limpiarBaseDeTest();
   await prismaAdmin.$disconnect();
 });
@@ -139,8 +140,7 @@ describe("Huella del gobierno de empresa y usuarios", () => {
     const rolOperador = (await prismaAdmin.rol.findFirstOrThrow({ where: { empresaId: E, clave: "operador" } })).id;
     const sucursal2 = (await prismaAdmin.sucursal.create({ data: { empresaId: E, nombre: "Norte" } })).id;
     await prismaAdmin.usuarioSucursal.create({ data: { usuarioId: gerente.id, sucursalId: sucursal2, empresaId: E, rolId: rolAdmin } });
-    const operador = await prismaAdmin.user.create({ data: { email: "plataforma@operador.com" } });
-    ids = { E, F, gerente: gerente.id, sucursal1, sucursal2, rolAdmin, rolOperador, operador: operador.id };
+    ids = { E, F, gerente: gerente.id, sucursal1, sucursal2, rolAdmin, rolOperador };
     for (const [nombre, id] of Object.entries(ids)) nombres.set(id, nombre);
 
     lineas.push(...(await siembra(E, "0. Siembra de la empresa (roles, matriz de permisos, unidades, motivos, destinos, sucursal)")));
@@ -204,11 +204,14 @@ describe("Huella del gobierno de empresa y usuarios", () => {
     await paso("7c. Aceptar otra vez el mismo enlace", await aceptarInvitacionDelToken({ token: tokenGerente, usuario: { id: dueño.id, email: "dueno@gmail.com" }, cuit: "30-71234567-1" }));
 
     // 8. La plataforma cambia módulos y política (por script).
-    await paso("8a. Activar módulos", await cambiarModulosDeEmpresa(prismaAdmin, { slug: "empresa-huella", actorEmail: "plataforma@operador.com", activar: ["stock", "salon"] }));
-    await paso("8b. Desactivar un módulo y activar otro", await cambiarModulosDeEmpresa(prismaAdmin, { slug: "empresa-huella", actorEmail: "plataforma@operador.com", activar: ["carta"], desactivar: ["salon"] }));
-    await paso("8c. Repetir el mismo pedido (sin cambios)", await cambiarModulosDeEmpresa(prismaAdmin, { slug: "empresa-huella", actorEmail: "plataforma@operador.com", activar: ["carta"] }));
-    await paso("8d. Perfil lite de política", await cambiarPoliticaDeEmpresa(prismaAdmin, { slug: "empresa-huella", actorEmail: "plataforma@operador.com", perfil: "lite" }));
-    await paso("8e. Una perilla suelta que pisa el perfil", await cambiarPoliticaDeEmpresa(prismaAdmin, { slug: "empresa-huella", actorEmail: "plataforma@operador.com", dosPaneles: true }));
+    // S-33 (decisión del dueño, 2026-10-08): el actor es un administrador de plataforma, no un `User`, y el cambio se audita en `AuditoriaPlataforma` (que esta huella no vuelca): estos pasos
+    // ya no dejan filas en `RegistroAuditoria`, y por eso la huella se regeneró (ver `regeneraciones` en caracterizaciones-congeladas.test.ts).
+    const autor = { adminId: "admin-de-plataforma", adminEmail: "plataforma@operador.com", instalacionId: "principal", instalacionNombre: "principal" };
+    await paso("8a. Activar módulos", await cambiarModulosDeEmpresa(prismaAdmin, { slug: "empresa-huella", activar: ["stock", "salon"] }, autor));
+    await paso("8b. Desactivar un módulo y activar otro", await cambiarModulosDeEmpresa(prismaAdmin, { slug: "empresa-huella", activar: ["carta"], desactivar: ["salon"] }, autor));
+    await paso("8c. Repetir el mismo pedido (sin cambios)", await cambiarModulosDeEmpresa(prismaAdmin, { slug: "empresa-huella", activar: ["carta"] }, autor));
+    await paso("8d. Perfil lite de política", await cambiarPoliticaDeEmpresa(prismaAdmin, { slug: "empresa-huella", perfil: "lite" }, autor));
+    await paso("8e. Una perilla suelta que pisa el perfil", await cambiarPoliticaDeEmpresa(prismaAdmin, { slug: "empresa-huella", dosPaneles: true }, autor));
 
     // 9. Las reglas de registrarCambioAuditado: no escribe si no cambió nada, y convierte todo a texto.
     await prismaAdmin.$transaction(async (tx) => {

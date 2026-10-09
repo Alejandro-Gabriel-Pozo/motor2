@@ -40,12 +40,14 @@ function grantsDeEscrituraSobreEmpresa(sql: string): string[] {
 describe("el rol de plataforma queda separado de motor2_app", () => {
   it("los scripts de plataforma obtienen su cliente de cliente-plataforma.ts y no crean el propio (ADR-025: --instalacion)", () => {
     // Mutación: un `new PrismaClient(` en modulos-empresa.ts o politica-empresa.ts pone este test en rojo.
+    // S-33: los scripts obtienen su cliente (y el actor ya verificado) de `contexto-de-plataforma.ts`, que lo pide a cliente-plataforma.ts: ni ellos ni el contexto crean uno propio.
     for (const script of ["politica-empresa.ts", "modulos-empresa.ts"]) {
       const fuente = leer("scripts", script);
-      expect(fuente, `${script} no importa el cliente de cliente-plataforma.ts`).toMatch(/import \{\s*clienteDePlataforma\s*\} from "\.\/cliente-plataforma"/);
+      expect(fuente, `${script} no abre su conexión por contexto-de-plataforma.ts`).toMatch(/import \{[^}]*\babrirContextoDePlataforma\b[^}]*\} from "\.\/contexto-de-plataforma"/);
       expect(fuente, `${script} crea su propio PrismaClient`).not.toMatch(/new PrismaClient\(/);
       expect(fuente, `${script} lee process.env de plataforma directo en vez de pasar por el resolutor`).not.toMatch(/process\.env\.(PLATAFORMA_DATABASE_URL|DATABASE_URL)\b/);
     }
+    expect(leer("scripts", "contexto-de-plataforma.ts"), "contexto-de-plataforma.ts no importa el cliente de cliente-plataforma.ts").toMatch(/import \{\s*clienteDePlataforma\s*\} from "\.\/cliente-plataforma"/);
   });
 
   it("el único script de plataforma que crea un cliente de Prisma o un adaptador es cliente-plataforma.ts", () => {
@@ -53,6 +55,7 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
     // (Otros scripts del repo, como benchmark-reportes.ts, crean su propio cliente contra la app: no son de plataforma y quedan afuera.)
     const archivosDePlataforma = [
       join(RAIZ, "scripts/cliente-plataforma.ts"),
+      join(RAIZ, "scripts/contexto-de-plataforma.ts"),
       join(RAIZ, "scripts/modulos-empresa.ts"),
       join(RAIZ, "scripts/politica-empresa.ts"),
       ...archivos(join(RAIZ, "scripts/plataforma")),

@@ -759,8 +759,6 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
   AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Stock empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:stock id=id#18 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#19 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
 ### 8b. Desactivar un módulo y activar otro
   resultado: {"empresaId":"E","cambiados":[{"modulo":"carta","antes":null,"despues":"ACTIVO"},{"modulo":"salon","antes":"ACTIVO","despues":"INACTIVO"}],"activos":["carta","stock"],"efectivos":["administracion","carta","catalogo_basico","stock"]}
   EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
@@ -779,7 +777,7 @@
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
-  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#20 modulo=carta
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#18 modulo=carta
   MODULO actualizadoEn=<enmascarado> empresaId=E estado=INACTIVO id=id#16 modulo=salon
   MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#17 modulo=stock
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
@@ -789,10 +787,6 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
   AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Stock empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:stock id=id#18 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#19 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Carta empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:carta id=id#21 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#22 sucursalId=null valorAnterior=ACTIVO valorNuevo=INACTIVO
 ### 8c. Repetir el mismo pedido (sin cambios)
   resultado: {"empresaId":"E","cambiados":[],"activos":["carta","stock"],"efectivos":["administracion","carta","catalogo_basico","stock"]}
   EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
@@ -811,7 +805,7 @@
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
-  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#20 modulo=carta
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#18 modulo=carta
   MODULO actualizadoEn=<enmascarado> empresaId=E estado=INACTIVO id=id#16 modulo=salon
   MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#17 modulo=stock
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
@@ -821,10 +815,6 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
   AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Stock empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:stock id=id#18 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#19 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Carta empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:carta id=id#21 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#22 sucursalId=null valorAnterior=ACTIVO valorNuevo=INACTIVO
 ### 8d. Perfil lite de política
   resultado: {"empresaId":"E","politica":{"permisosEditables":false,"dosPaneles":false},"cambiadas":["permisosEditables","dosPaneles"]}
   EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
@@ -843,7 +833,7 @@
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
-  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#20 modulo=carta
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#18 modulo=carta
   MODULO actualizadoEn=<enmascarado> empresaId=E estado=INACTIVO id=id#16 modulo=salon
   MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#17 modulo=stock
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
@@ -853,12 +843,6 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
   AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Stock empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:stock id=id#18 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#19 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Carta empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:carta id=id#21 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#22 sucursalId=null valorAnterior=ACTIVO valorNuevo=INACTIVO
-  AUDITORIA actorId=operador campo=permisosEditables creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": la empresa puede editar permisos empresaId=E entidad=Empresa entidadId=E id=id#23 sucursalId=null valorAnterior=true valorNuevo=false
-  AUDITORIA actorId=operador campo=dosPaneles creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": menú en dos paneles (Empresa y Sucursal) empresaId=E entidad=Empresa entidadId=E id=id#24 sucursalId=null valorAnterior=true valorNuevo=false
 ### 8e. Una perilla suelta que pisa el perfil
   resultado: {"empresaId":"E","politica":{"permisosEditables":false,"dosPaneles":true},"cambiadas":["dosPaneles"]}
   EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
@@ -877,7 +861,7 @@
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
-  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#20 modulo=carta
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#18 modulo=carta
   MODULO actualizadoEn=<enmascarado> empresaId=E estado=INACTIVO id=id#16 modulo=salon
   MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#17 modulo=stock
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
@@ -887,13 +871,6 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
   AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Stock empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:stock id=id#18 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#19 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Carta empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:carta id=id#21 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#22 sucursalId=null valorAnterior=ACTIVO valorNuevo=INACTIVO
-  AUDITORIA actorId=operador campo=permisosEditables creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": la empresa puede editar permisos empresaId=E entidad=Empresa entidadId=E id=id#23 sucursalId=null valorAnterior=true valorNuevo=false
-  AUDITORIA actorId=operador campo=dosPaneles creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": menú en dos paneles (Empresa y Sucursal) empresaId=E entidad=Empresa entidadId=E id=id#24 sucursalId=null valorAnterior=true valorNuevo=false
-  AUDITORIA actorId=operador campo=dosPaneles creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": menú en dos paneles (Empresa y Sucursal) empresaId=E entidad=Empresa entidadId=E id=id#25 sucursalId=null valorAnterior=false valorNuevo=true
 ### 9. registrarCambioAuditado: no-op, número, booleano, alta y baja
   resultado: "ver filas AUDITORIA"
   EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires
@@ -912,7 +889,7 @@
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc3 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=gerente
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc4 notas=null rolId=rolOperador sucursalId=sucursal1 usuarioId=persona
   USUARIO_SUCURSAL activo=true creadoEn=<enmascarado> empresaId=E id=usuc5 notas=null rolId=rolAdmin sucursalId=sucursal2 usuarioId=persona
-  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#20 modulo=carta
+  MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#18 modulo=carta
   MODULO actualizadoEn=<enmascarado> empresaId=E estado=INACTIVO id=id#16 modulo=salon
   MODULO actualizadoEn=<enmascarado> empresaId=E estado=ACTIVO id=id#17 modulo=stock
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Cuenta de "nueva-persona@gmail.com" en la empresa: acepta la invitación empresaId=E entidad=UsuarioEmpresa entidadId=persona id=id#5 sucursalId=null valorAnterior=null valorNuevo=true
@@ -922,14 +899,7 @@
   AUDITORIA actorId=gerente campo=activo creadoEn=<enmascarado> descripcion=Usuario "nueva-persona@gmail.com" en la sucursal "Norte": activo empresaId=E entidad=UsuarioSucursal entidadId=usuc5 id=id#9 sucursalId=sucursal2 valorAnterior=null valorNuevo=true
   AUDITORIA actorId=dueño campo=rolEmpresa creadoEn=<enmascarado> descripcion=Cuenta de "dueno@gmail.com" en la empresa: acepta la invitación como gerente empresaId=F entidad=UsuarioEmpresa entidadId=dueño id=id#14 sucursalId=null valorAnterior=null valorNuevo=gerente
   AUDITORIA actorId=dueño campo=activo creadoEn=<enmascarado> descripcion=Usuario "dueno@gmail.com" en la sucursal "Casa central": alta por invitación empresaId=F entidad=UsuarioSucursal entidadId=usuc1 id=id#15 sucursalId=id#13 valorAnterior=null valorNuevo=true
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Stock empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:stock id=id#18 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#19 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Carta empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:carta id=id#21 sucursalId=null valorAnterior=null valorNuevo=ACTIVO
-  AUDITORIA actorId=operador campo=estado creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": módulo Salón empresaId=E entidad=ModuloEmpresa entidadId=empresa-huella:salon id=id#22 sucursalId=null valorAnterior=ACTIVO valorNuevo=INACTIVO
-  AUDITORIA actorId=operador campo=permisosEditables creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": la empresa puede editar permisos empresaId=E entidad=Empresa entidadId=E id=id#23 sucursalId=null valorAnterior=true valorNuevo=false
-  AUDITORIA actorId=operador campo=dosPaneles creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": menú en dos paneles (Empresa y Sucursal) empresaId=E entidad=Empresa entidadId=E id=id#24 sucursalId=null valorAnterior=true valorNuevo=false
-  AUDITORIA actorId=operador campo=dosPaneles creadoEn=<enmascarado> descripcion=Empresa "Empresa huella": menú en dos paneles (Empresa y Sucursal) empresaId=E entidad=Empresa entidadId=E id=id#25 sucursalId=null valorAnterior=false valorNuevo=true
-  AUDITORIA actorId=gerente campo=numero creadoEn=<enmascarado> descripcion=Prueba empresaId=E entidad=Empresa entidadId=E id=id#26 sucursalId=null valorAnterior=5 valorNuevo=7.5
-  AUDITORIA actorId=gerente campo=booleano creadoEn=<enmascarado> descripcion=Prueba empresaId=E entidad=Empresa entidadId=E id=id#27 sucursalId=null valorAnterior=true valorNuevo=false
-  AUDITORIA actorId=gerente campo=alta creadoEn=<enmascarado> descripcion=Prueba empresaId=E entidad=Empresa entidadId=E id=id#28 sucursalId=sucursal1 valorAnterior=null valorNuevo=algo
-  AUDITORIA actorId=gerente campo=baja creadoEn=<enmascarado> descripcion=Prueba empresaId=E entidad=Empresa entidadId=E id=id#29 sucursalId=null valorAnterior=algo valorNuevo=null
+  AUDITORIA actorId=gerente campo=numero creadoEn=<enmascarado> descripcion=Prueba empresaId=E entidad=Empresa entidadId=E id=id#19 sucursalId=null valorAnterior=5 valorNuevo=7.5
+  AUDITORIA actorId=gerente campo=booleano creadoEn=<enmascarado> descripcion=Prueba empresaId=E entidad=Empresa entidadId=E id=id#20 sucursalId=null valorAnterior=true valorNuevo=false
+  AUDITORIA actorId=gerente campo=alta creadoEn=<enmascarado> descripcion=Prueba empresaId=E entidad=Empresa entidadId=E id=id#21 sucursalId=sucursal1 valorAnterior=null valorNuevo=algo
+  AUDITORIA actorId=gerente campo=baja creadoEn=<enmascarado> descripcion=Prueba empresaId=E entidad=Empresa entidadId=E id=id#22 sucursalId=null valorAnterior=algo valorNuevo=null
