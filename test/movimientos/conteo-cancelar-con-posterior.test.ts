@@ -58,7 +58,7 @@ describe("M-2: cancelar un conteo con otro posterior se rechaza (CONTEO_POSTERIO
 
     expect(r.ok).toBe(false);
     expect(r.mensaje).toBe(
-      "No se puede cancelar este conteo: después de hacerse hubo otro conteo físico de Yerba (Depósito), y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
+      "No se puede cancelar este conteo: después de hacerse hubo otro conteo físico de Yerba (Depósito), y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Para corregirlo, cargá un Ajuste de stock (Movimientos → Ajuste) por la diferencia: suma si en el sistema falta mercadería y resta si sobra. Si no ves esa opción, pedile a un administrador que lo cargue.",
     );
     expect(await saldo()).toBe(5);
     expect(await prisma.movimientoStock.count()).toBe(movimientosAntes);

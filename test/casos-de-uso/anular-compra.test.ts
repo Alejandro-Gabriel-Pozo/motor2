@@ -336,7 +336,7 @@ describe("anularCompraCasoDeUso", () => {
       if (r.ok) return;
       expect(r.codigo).toBe("CONTEO_POSTERIOR");
       expect(r.mensaje).toBe(
-        "No se puede anular esta compra: después de hacerse hubo un conteo físico de Harina (Depósito), y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
+        "No se puede anular esta compra: después de hacerse hubo un conteo físico de Harina (Depósito), y anularla ahora desharía a ciegas un stock que ya se reconcilió. Para corregirlo, cargá un Ajuste de stock (Movimientos → Ajuste) por la diferencia: suma si en el sistema falta mercadería y resta si sobra. Si no ves esa opción, pedile a un administrador que lo cargue.",
       );
       await nadaEscrito(op.id);
     });

@@ -46,7 +46,7 @@ describe("evaluarPosterioresACancelarConteo y evaluarPosterioresAAnularCompra (D
       ok: false,
       motivo: "CONTEO_POSTERIOR",
       mensaje:
-        "No se puede cancelar este conteo: después de hacerse hubo otro conteo físico de Harina (Depósito), Queso (Cocina), y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
+        "No se puede cancelar este conteo: después de hacerse hubo otro conteo físico de Harina (Depósito), Queso (Cocina), y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Para corregirlo, cargá un Ajuste de stock (Movimientos → Ajuste) por la diferencia: suma si en el sistema falta mercadería y resta si sobra. Si no ves esa opción, pedile a un administrador que lo cargue.",
     });
   });
 
@@ -56,7 +56,7 @@ describe("evaluarPosterioresACancelarConteo y evaluarPosterioresAAnularCompra (D
       ok: false,
       motivo: "CONTEO_POSTERIOR",
       mensaje:
-        "No se puede anular esta compra: después de hacerse hubo un conteo físico de Harina (Depósito), Queso (Cocina), y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.",
+        "No se puede anular esta compra: después de hacerse hubo un conteo físico de Harina (Depósito), Queso (Cocina), y anularla ahora desharía a ciegas un stock que ya se reconcilió. Para corregirlo, cargá un Ajuste de stock (Movimientos → Ajuste) por la diferencia: suma si en el sistema falta mercadería y resta si sobra. Si no ves esa opción, pedile a un administrador que lo cargue.",
     });
   });
 });

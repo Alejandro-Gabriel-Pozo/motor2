@@ -17,6 +17,7 @@
  * Con stock consumido la salida es otra (una Devolución a proveedor, y más adelante una nota de crédito), no anular.
  */
 import type { MotivoAnulacionRechazada } from "@/core/features/compras/compra.schema";
+import { GUIA_PARA_CORREGIR_CON_UN_AJUSTE } from "@/core/guia-de-ajuste";
 
 export interface LineaComprada {
   productoId: string;
@@ -202,7 +203,7 @@ export function evaluarPosterioresAAnularCompra(posteriores: readonly { producto
   return {
     ok: false,
     motivo: "CONTEO_POSTERIOR",
-    mensaje: `No se puede anular esta compra: después de hacerse hubo un conteo físico de ${donde}, y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.`,
+    mensaje: `No se puede anular esta compra: después de hacerse hubo un conteo físico de ${donde}, y anularla ahora desharía a ciegas un stock que ya se reconcilió. ${GUIA_PARA_CORREGIR_CON_UN_AJUSTE}`,
   };
 }
 

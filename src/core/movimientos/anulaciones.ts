@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { GUIA_PARA_CORREGIR_CON_UN_AJUSTE } from "@/core/guia-de-ajuste";
 
 /**
  * Cómo se reconoce la Operación AJUSTE que escribe una anulación (`anularVenta`, `anularCompra`).
@@ -91,7 +92,7 @@ export function evaluarPosterioresAAnularVenta(p: PosterioresALaVenta): Resultad
     return {
       ok: false,
       motivo: "CONTEO_POSTERIOR",
-      mensaje: `No se puede anular esta venta: después de hacerse hubo un conteo físico o un ajuste de stock de ${donde}, y anularla ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.`,
+      mensaje: `No se puede anular esta venta: después de hacerse hubo un conteo físico o un ajuste de stock de ${donde}, y anularla ahora desharía a ciegas un stock que ya se reconcilió. ${GUIA_PARA_CORREGIR_CON_UN_AJUSTE}`,
     };
   }
   if (p.pagosAConsignantes.length) {
@@ -123,7 +124,7 @@ export function evaluarPosterioresACancelarConteo(posteriores: readonly Reconcil
   return {
     ok: false,
     motivo: "CONTEO_POSTERIOR",
-    mensaje: `No se puede cancelar este conteo: después de hacerse hubo otro conteo físico de ${donde}, y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. Corregí la diferencia con un ajuste de stock.`,
+    mensaje: `No se puede cancelar este conteo: después de hacerse hubo otro conteo físico de ${donde}, y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. ${GUIA_PARA_CORREGIR_CON_UN_AJUSTE}`,
   };
 }
 
