@@ -5,7 +5,14 @@ import { ALCANCE_CENTRAL } from "@/core/catalogo/public";
 import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { type IngredienteInput, type PasoInput } from "@/core/catalogo/public";
 import { obtenerEstadoDeRecetaPropia } from "@/server/lecturas/catalogo/receta-propia";
-import { guardComandoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.guard";
+import {
+  guardComandoActualizarIngredienteDeReceta,
+  guardComandoAgregarIngredienteAReceta,
+  guardComandoGuardarVersionDeReceta,
+  guardComandoQuitarIngredienteDeReceta,
+  guardComandoVersionVistaDeReceta,
+} from "@/core/features/catalogo/receta-version.guard";
+import type { RechazoDeLaPuertaDeReceta } from "@/core/features/catalogo/receta-version.schema";
 import { guardComandoVolverALaRecetaCentral } from "@/core/features/catalogo/receta-sucursal.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import type { ContextoUsuario } from "@/core/auth/contexto";
@@ -47,13 +54,11 @@ type OpcionesDeDestino = Omit<Extract<DestinoDeVersionDeReceta, { sucursalId: st
 const MENSAJE_SIN_HABILITADA_VISTA = "No se pudo saber qué receta mostraba la pantalla. Recargá la pantalla y volvé a hacer el cambio.";
 
 /**
- * O.45: la versión que mostraba la pantalla, EXIGIDA (un entero ≥ 0; `undefined`, `null`, omitida, negativa o no entera → el texto de versión inválida). Va antes de
- * cualquier lectura, así que también mira el `productoId` como el guard de siempre (uno que no es texto → «No se encontró el producto.», en lugar del error crudo de
- * Prisma que daba la primera lectura). Después `guardarEnLaPropia` recibe una versión ya validada.
+ * O.45 (S-52: ahora con el guard de la puerta de cada acción, que llama a `guardComandoVersionVistaDeReceta` o al de su ingrediente): la versión que mostraba la pantalla, EXIGIDA (un entero
+ * entre 0 y el tope; `undefined`, `null`, omitida, negativa, no entera o `1e308` → el texto de versión inválida). Va antes de cualquier lectura, así que también mira el `productoId` como el guard
+ * de siempre (uno que no es texto → «No se encontró el producto.», en lugar del error crudo de Prisma que daba la primera lectura). Después `guardarEnLaPropia` recibe una versión ya validada.
  */
-function versionVistaExigida(productoId: string, versionVista: number) {
-  return guardComandoGuardarVersionDeReceta({ productoId, versionEsperada: versionVista }, { exigirVersion: true });
-}
+type DatosDeLaPuerta = { rechazoDelRango: RechazoDeLaPuertaDeReceta | null };
 
 async function guardarEnLaPropia(
   ctx: ContextoUsuario,
@@ -62,13 +67,14 @@ async function guardarEnLaPropia(
   base: RecetaCompleta,
   versionEsperada: number,
   habilitadaEsperada: boolean,
-  opciones: OpcionesDeDestino & { pasos?: PasoInput[] } = {}
+  opciones: OpcionesDeDestino & { pasos?: PasoInput[]; puerta?: DatosDeLaPuerta } = {}
 ): Promise<ResultadoAccion> {
-  const { pasos, ...destino } = opciones;
+  const { pasos, puerta, ...destino } = opciones;
   const comando = guardComandoGuardarVersionDeReceta({ productoId, items, pasos: pasos ?? mapPasosAInput(base), cabecera: mapCabeceraAInput(base), versionEsperada });
   if (!comando.ok) return error(comando.mensaje);
   if (typeof habilitadaEsperada !== "boolean") return error(MENSAJE_SIN_HABILITADA_VISTA);
-  const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, comando.valor, { sucursalId: ctx.sucursalId, habilitadaEsperada, ...destino });
+  // S-52: el rechazo del rango del ingrediente (cantidad, merma…) viaja al caso de uso, que lo aplica después de leer el producto.
+  const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, puerta?.rechazoDelRango ? { ...comando.valor, puerta: puerta.rechazoDelRango } : comando.valor, { sucursalId: ctx.sucursalId, habilitadaEsperada, ...destino });
   if (resultado.ok) refrescarVistaSiHaceFalta();
   return aResultadoAccion(resultado);
 }
@@ -76,7 +82,7 @@ async function guardarEnLaPropia(
 /** Crea la receta propia de la sucursal partiendo de la central vigente (una copia que de acá en más se edita por su lado). */
 export async function crearRecetaPropiaDesdeLaCentral(productoId: string, versionVista: number, habilitadaVista: boolean): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
-    const vista = versionVistaExigida(productoId, versionVista);
+    const vista = guardComandoVersionVistaDeReceta({ productoId, versionVista });
     if (!vista.ok) return error(vista.mensaje);
     const estado = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
     if (estado.habilitada) return error("Esta sucursal ya tiene receta propia para este producto.");
@@ -92,14 +98,19 @@ export async function crearRecetaPropiaDesdeLaCentral(productoId: string, versio
  */
 export async function agregarIngredienteARecetaPropia(productoId: string, ingrediente: IngredienteInput, versionVista: number, habilitadaVista: boolean): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
-    const vista = versionVistaExigida(productoId, versionVista);
-    if (!vista.ok) return error(vista.mensaje);
+    // S-52: el guard de la puerta (producto y versión, forma y rango del ingrediente) se CALCULA acá; el producto y la versión se aplican de entrada (como `versionVistaExigida`, O.45), la forma antes de
+    // usar el ingrediente y el rango en el caso de uso, después de leer el producto.
+    const guard = guardComandoAgregarIngredienteAReceta({ productoId, ingrediente, versionVista });
+    if (!guard.inmediata.ok) return error(guard.inmediata.mensaje);
+    if (!guard.forma.ok) return error(guard.forma.mensaje);
     const estado = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
     if (!estado.habilitada && estado.centralVigente) return error("Primero creá la receta propia de la sucursal a partir de la central.");
     const base = estado.habilitada ? estado.propia : null;
     const existentes = mapIngredientesAInput(base);
     if (existentes.some((i) => i.insumoProductoId === ingrediente.insumoProductoId)) return error("Ese insumo ya está en la receta.");
-    return guardarEnLaPropia(ctx, productoId, [...existentes, ingrediente], base, versionVista, habilitadaVista);
+    return guardarEnLaPropia(ctx, productoId, [...existentes, ingrediente], base, versionVista, habilitadaVista, {
+      puerta: { rechazoDelRango: guard.rango.ok ? null : { codigo: "INGREDIENTES_INVALIDOS", mensaje: guard.rango.mensaje } },
+    });
   });
 }
 
@@ -112,22 +123,27 @@ export async function actualizarIngredienteDeRecetaPropia(
   habilitadaVista: boolean
 ): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
-    const vista = versionVistaExigida(productoId, versionVista);
-    if (!vista.ok) return error(vista.mensaje);
+    // S-52: el guard de la puerta (producto y versión, forma y rango de los cambios) se CALCULA acá; el producto y la versión se aplican de entrada (O.45), la forma de los cambios DESPUÉS de comprobar
+    // que el insumo está en la receta, y el rango en el caso de uso, después de leer el producto.
+    const guard = guardComandoActualizarIngredienteDeReceta({ productoId, cambios, versionVista });
+    if (!guard.inmediata.ok) return error(guard.inmediata.mensaje);
     const estado = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
     if (!estado.habilitada) return error("Esta sucursal no tiene receta propia para este producto.");
     const existentes = mapIngredientesAInput(estado.propia);
     if (!existentes.some((i) => i.insumoProductoId === insumoProductoId)) return error("Ese insumo no está en la receta propia vigente.");
+    if (!guard.forma.ok) return error(guard.forma.mensaje);
     const items = existentes.map((i) => (i.insumoProductoId === insumoProductoId ? { ...i, cantidad: cambios.cantidad, unidadId: cambios.unidadId, mermaPorcentaje: cambios.mermaPorcentaje ?? 0 } : i));
-    return guardarEnLaPropia(ctx, productoId, items, estado.propia, versionVista, habilitadaVista);
+    return guardarEnLaPropia(ctx, productoId, items, estado.propia, versionVista, habilitadaVista, {
+      puerta: { rechazoDelRango: guard.rango.ok ? null : { codigo: "INGREDIENTES_INVALIDOS", mensaje: guard.rango.mensaje } },
+    });
   });
 }
 
 /** Quita un ingrediente de la receta propia habilitada (y lo saca de los pasos que lo mencionaran, como en la central). */
 export async function quitarIngredienteDeRecetaPropia(productoId: string, insumoProductoId: string, versionVista: number, habilitadaVista: boolean): Promise<ResultadoAccion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
-    const vista = versionVistaExigida(productoId, versionVista);
-    if (!vista.ok) return error(vista.mensaje);
+    const guard = guardComandoQuitarIngredienteDeReceta({ productoId, insumoProductoId, versionVista });
+    if (!guard.inmediata.ok) return error(guard.inmediata.mensaje);
     const estado = await obtenerEstadoDeRecetaPropia(productoId, ctx.sucursalId, ctx.db);
     if (!estado.habilitada) return error("Esta sucursal no tiene receta propia para este producto.");
     const existentes = mapIngredientesAInput(estado.propia);
@@ -158,7 +174,7 @@ export async function copiarRecetaPropiaDeOtraSucursal(
     if (!confirmado) return error("Confirmá que querés reemplazar la receta de esta sucursal por la copia.");
     if (sucursalOrigenId === ctx.sucursalId) return error("Elegí otra sucursal: no se puede copiar de la misma.");
     // Después de las dos comprobaciones que no leen nada (su orden de mensajes no cambia) y antes de la primera lectura.
-    const vista = versionVistaExigida(productoId, versionVista);
+    const vista = guardComandoVersionVistaDeReceta({ productoId, versionVista });
     if (!vista.ok) return error(vista.mensaje);
     // S-07 (O.56): el origen se lee SOLO con membresía y «Ver» de la copia allá, antes de mirar qué receta tiene (la RLS separa empresas, no sucursales).
     const origen = await leerOrigenDeCopia(ctx, sucursalOrigenId, "receta_sucursal_copiar");

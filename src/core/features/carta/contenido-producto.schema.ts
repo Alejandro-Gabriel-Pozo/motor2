@@ -1,3 +1,4 @@
+import type { ResultadoDato } from "@/core/datos/resultado";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -24,14 +25,22 @@ export interface EntradaContenidoCartaProducto {
   generoCartaId?: string | null;
 }
 
+/** Lo que `guardComandoGuardarContenidoCartaProducto` valida y normaliza del contenido: la descripción (recortada, `null` si queda vacía), los tags y el orden. */
+export interface ContenidoCartaValidado {
+  descripcion: string | null;
+  tags: string[];
+  orden: number;
+}
+
 /**
- * Comando «guardar el contenido de carta de un producto»: lo que recibe `guardarContenidoCartaProductoCasoDeUso`, CRUDO. No hay guard (`SIN_GUARD` en
- * `acciones-migradas-con-guard.test.ts`): el producto se lee ANTES de validar nada (un producto inexistente gana sobre una descripción larga), así que la validación
- * vive en el caso de uso, en el mismo orden que antes.
+ * Comando «guardar el contenido de carta de un producto»: lo que recibe `guardarContenidoCartaProductoCasoDeUso`. Los `validados` son el RESULTADO de
+ * `guardComandoGuardarContenidoCartaProducto` (S-52), que la acción calcula con lo que mandó el cliente; el caso de uso aplica su rechazo DESPUÉS de leer el producto (un
+ * producto inexistente gana sobre una descripción larga: fijado por tests), nunca antes. El resto de `datos` (visible, sección, género, especial) lo resuelve el caso de uso.
  */
 export interface ComandoGuardarContenidoCartaProducto {
   productoId: string;
   datos: EntradaContenidoCartaProducto;
+  validados: ResultadoDato<ContenidoCartaValidado>;
 }
 
 /**

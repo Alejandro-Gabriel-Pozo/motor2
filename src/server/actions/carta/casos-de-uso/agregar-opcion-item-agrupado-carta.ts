@@ -2,7 +2,6 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { precioDeCarta, whereCartaDeSucursal } from "@/core/carta/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
-import { validarOrdenCarta } from "@/core/carta/validaciones";
 import type { ComandoAgregarOpcionItemAgrupadoCarta, ResultadoAgregarOpcionItemAgrupadoCarta } from "@/core/features/carta/items-agrupados.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { productoTieneDescuentoEnAlgunaSucursal } from "@/server/lecturas/carta/descuentos";
@@ -72,8 +71,10 @@ export async function agregarOpcionItemAgrupadoCartaCasoDeUso(
   const yaAgrupado = await mensajeYaAgrupado(db, sucursalId, producto.id, producto.nombre, item.id);
   if (yaAgrupado) return fracaso("YA_AGRUPADO", yaAgrupado);
 
-  const o = validarOrdenCarta(orden ?? item.opciones.length);
-  if (!o.ok) return fracaso("ORDEN_INVALIDO", o.mensaje);
+  // S-52: el orden lo decidió `guardComandoAgregarOpcionItemAgrupadoCarta` (la acción lo calculó con lo que mandó el cliente); su rechazo se aplica ACÁ, después de las lecturas anteriores.
+  // `null` = al final: la cantidad de opciones que ya tiene el ítem (siempre válida).
+  if (!orden.ok) return fracaso("ORDEN_INVALIDO", orden.mensaje);
+  const o = { valor: orden.valor.orden ?? item.opciones.length };
 
   // D5: mismo precio que las opciones ya cargadas, en la sucursal activa de quien administra (con su precio local, si lo hay).
   if (item.opciones.length > 0) {

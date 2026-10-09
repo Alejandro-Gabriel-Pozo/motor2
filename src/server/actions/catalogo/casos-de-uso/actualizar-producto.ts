@@ -1,6 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { ComandoActualizarProducto, ResultadoActualizarProducto } from "@/core/features/catalogo/productos.schema";
+import { guardComandoDatosDeProducto } from "@/core/features/catalogo/productos.guard";
 import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -74,6 +75,7 @@ async function actualizarProductoEnTransaccion(
     // S-12 (D8 del dueño): el costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante`. Sin esa clave un campo que NO viene queda como estaba
     // (la pantalla del operador no lo manda) y uno que viene DISTINTO del guardado se rechaza: nunca se confía en lo que manda el cliente.
     let datos = comando.datos;
+    let puerta = comando.puerta;
     if (!comando.puedeGestionarConsignacion) {
       const intentaCambiarlo =
         (datos.esConsignacion !== undefined && datos.esConsignacion !== existente.esConsignacion) ||
@@ -86,6 +88,8 @@ async function actualizarProductoEnTransaccion(
         );
       }
       datos = { ...datos, esConsignacion: existente.esConsignacion, proveedorConsignacionId: existente.proveedorConsignacionId, precioConsignacion: Number(existente.precioConsignacion ?? 0) };
+      // S-52: los campos de consignación ya no son los del cliente sino los guardados: la puerta se vuelve a calcular con los datos que de verdad se validan (el guard es la única definición).
+      puerta = guardComandoDatosDeProducto({ datos });
     }
     // datosParaGuardar (abajo) no incluye `tipo` a propósito — cambiar el
     // tipo de un producto con historial (recetas, ventas, stock) rompe
@@ -99,7 +103,7 @@ async function actualizarProductoEnTransaccion(
       );
     }
 
-    const validado = await validarDatosDeProducto(tx, datos, productoId);
+    const validado = await validarDatosDeProducto(tx, datos, productoId, puerta);
     if ("error" in validado) return fracaso("DATOS_INVALIDOS", validado.error);
 
     const nuevos = datosParaGuardar(datos, validado.numeros);

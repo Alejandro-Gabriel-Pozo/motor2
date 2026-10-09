@@ -89,6 +89,11 @@ export async function guardarVersionDeRecetaCasoDeUso(
     return fracaso("PRODUCTO_NO_ELEGIBLE", `"${producto.nombre}" no es elegible para tener receta — tiene que ser PV, o MP con "Se produce" activado.`);
   }
 
+  // S-52: el rango del dato del cambio (una cantidad, una merma, los minutos de un paso, un tiempo…) lo decidió el guard de la puerta de la acción puntual, que lo calculó con lo que mandó el
+  // cliente; su rechazo se aplica ACÁ, después de leer el producto y de ver que es elegible: un producto inexistente o no elegible gana sobre un dato inválido. Las acciones que guardan la receta
+  // completa (`guardarReceta`) no traen `puerta`: lo validan todo abajo, en el lugar de siempre.
+  if (comando.puerta) return fracaso(comando.puerta.codigo, comando.puerta.mensaje);
+
   // Lo del catálogo que la validación necesita, en lote (cuatro consultas); la validación en sí es pura.
   const datosDeValidacion = await cargarDatosParaValidarReceta(actor.db, items, cabecera);
   const invalidoIngredientes = validarIngredientes(items, producto, datosDeValidacion);

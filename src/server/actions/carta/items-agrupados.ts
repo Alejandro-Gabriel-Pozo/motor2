@@ -1,6 +1,6 @@
 "use server";
 
-import { guardComandoActualizarOrdenOpcionItemAgrupadoCarta, guardComandoGuardarItemAgrupadoCarta } from "@/core/features/carta/items-agrupados.guard";
+import { guardComandoActualizarOrdenOpcionItemAgrupadoCarta, guardComandoAgregarOpcionItemAgrupadoCarta, guardComandoGuardarItemAgrupadoCarta } from "@/core/features/carta/items-agrupados.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -89,7 +89,9 @@ export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: str
  */
 export async function agregarOpcionItemAgrupadoCarta(itemAgrupadoCartaId: string, productoId: string, orden: number | string | null = null): Promise<ResultadoAccion> {
   return conPermiso("carta_items_agrupados", async (ctx) => {
-    const resultado = await agregarOpcionItemAgrupadoCartaCasoDeUso(ctx, { itemAgrupadoCartaId, productoId, orden });
+    // S-52: el guard se CALCULA acá (formato y rango del orden) pero su rechazo lo aplica el caso de uso después de leer el ítem, el producto y sus conflictos.
+    const ordenValidado = guardComandoAgregarOpcionItemAgrupadoCarta({ orden });
+    const resultado = await agregarOpcionItemAgrupadoCartaCasoDeUso(ctx, { itemAgrupadoCartaId, productoId, orden: ordenValidado });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });

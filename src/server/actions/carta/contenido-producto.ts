@@ -1,5 +1,6 @@
 "use server";
 
+import { guardComandoGuardarContenidoCartaProducto } from "@/core/features/carta/contenido-producto.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import type { ResultadoAccion } from "../tipos";
@@ -36,7 +37,9 @@ export interface DatosContenidoCarta {
 /** Permiso → caso de uso (`casos-de-uso/guardar-contenido-carta-producto.ts`: el producto, la validación, la sección, el género y el `upsert`) → revalidar si salió bien → `aResultadoAccion`. */
 export async function guardarContenidoCartaProducto(productoId: string, datos: DatosContenidoCarta): Promise<ResultadoAccion> {
   return conPermiso("carta_contenido_producto", async (ctx) => {
-    const resultado = await guardarContenidoCartaProductoCasoDeUso(ctx, { productoId, datos });
+    // S-52: el guard se CALCULA acá (descripción, tags y orden) pero su rechazo lo aplica el caso de uso después de leer el producto: un producto inexistente gana sobre un dato inválido.
+    const validados = guardComandoGuardarContenidoCartaProducto({ datos });
+    const resultado = await guardarContenidoCartaProductoCasoDeUso(ctx, { productoId, datos, validados });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });

@@ -15,40 +15,20 @@ import { entradasDeLasAcciones, indiceDeMiembros, type IndiceDeMiembros } from "
  *     nueva con números que no hace ninguna de las dos falla; una declarada que ahora SÍ llama al guard sale de la lista (la lista SOLO se achica).
  *  2. **Lista inicial de reglas de rango** (`REGLAS`): cada una con el archivo que la lleva y las líneas que la sostienen. Arranca con las ELECCIONES DE LA PROMO (S-01): forma, sección que es un
  *     cupo, sección y producto repetidos, cantidad entera y positiva, producto elegible, mínimo y máximo del cupo, y el tope de ítems por agregado del guard. Quitar una → rojo.
- *  3. **Pendientes declarados (S-52)**: las acciones sin guard de comando de arriba. Son entradas numéricas y de id que hoy se validan dentro del caso de uso (o en la propia acción) y no en un guard;
- *     dentro de la empresa, el peor efecto es un 500 o un redondeo. Destino: rama «endurecimiento 2» (ver el plan, S-52 y GT-11).
+ *  3. **Pendientes declarados (S-52): ninguno.** Las 21 acciones que quedaban (carta, productos, recetas y receta propia) ya tienen su `guardComando…` con rango; cada guard se CALCULA en la acción y su
+ *     rechazo se aplica donde antes vivía el chequeo (después de leer, cuando una entidad inexistente gana sobre un dato inválido), así que no cambió ningún mensaje ni su orden. La lista queda para lo
+ *     que aparezca, con motivo.
  *
  * Mutaciones (cada una pone un caso en rojo): una acción nueva con un `number` y sin guard; sacar la llamada a `guardComandoAgregarItems` de `agregarItems`; sacar el tope de ítems del guard; sacar la
  * comprobación de la sección repetida de `validarYAplanarEleccionPromo`; una entrada de más en `SIN_GUARD_DE_COMANDO`.
  */
 const RAIZ = join(__dirname, "../..");
 
-const PENDIENTE = (que: string) => `${que} Se valida dentro del caso de uso o de la acción y no en un guard de comando con rango: pendiente S-52 (entradas numéricas y de id sin rango), rama «endurecimiento 2».`;
-
-/** `archivo desde src/server/actions|función` → por qué no pasa por un `guardComando…`. Lista cerrada: solo se achica. */
-const SIN_GUARD_DE_COMANDO: Readonly<Record<string, string>> = {
-  "carta/contenido-producto.ts|guardarContenidoCartaProducto": PENDIENTE("Orden y etiquetas del contenido de un producto de la carta: lo valida `guardar-contenido-carta-producto.ts`."),
-  "carta/items-agrupados.ts|agregarOpcionItemAgrupadoCarta": PENDIENTE("El orden de una opción de un ítem agrupado: lo valida `agregar-opcion-item-agrupado-carta.ts`."),
-  "carta/promos.ts|guardarPrecioLocalPromoCarta": PENDIENTE("El precio de una promo en la sucursal: la acción lee la promo ANTES de validar el precio (una promo inexistente gana sobre un precio inválido: ver SIN_GUARD de `acciones-migradas-con-guard`)."),
-  "carta/promos.ts|guardarCuposPromoCarta": PENDIENTE("Los cupos de una promo (mínimo y máximo por sección): los valida `guardar-cupos-promo-carta.ts` dentro de la transacción (S-06)."),
-  "catalogo/productos.ts|darDeAltaProducto": PENDIENTE("Precio, factor, paso y consignación de un producto nuevo: `validarDatosDeProducto` (server/lecturas) los valida dentro de la transacción."),
-  "catalogo/productos.ts|actualizarProducto": PENDIENTE("Precio, factor, paso y consignación de un producto: `validarDatosDeProducto` los valida dentro de la transacción (S-05)."),
-  "catalogo/productos.ts|agregarPresentacionAlternativa": PENDIENTE("El factor de una presentación alternativa: lo valida `agregar-presentacion-alternativa.ts`."),
-  "catalogo/receta-sucursal.ts|crearRecetaPropiaDesdeLaCentral": PENDIENTE("La versión que vio la pantalla (`versionVista`) de una receta propia."),
-  "catalogo/receta-sucursal.ts|agregarIngredienteARecetaPropia": PENDIENTE("Cantidad, merma y sustitutos de un ingrediente de la receta propia: `core/catalogo/receta-validacion` dentro de `guardarVersionDeReceta`."),
-  "catalogo/receta-sucursal.ts|actualizarIngredienteDeRecetaPropia": PENDIENTE("Cantidad y merma de un ingrediente de la receta propia: `core/catalogo/receta-validacion` dentro de `guardarVersionDeReceta`."),
-  "catalogo/receta-sucursal.ts|quitarIngredienteDeRecetaPropia": PENDIENTE("La versión que vio la pantalla (`versionVista`) de una receta propia."),
-  "catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": PENDIENTE("La versión que vio la pantalla (`versionVista`) de la receta de origen."),
-  "catalogo/recetas.ts|agregarIngredienteAReceta": PENDIENTE("Cantidad, merma y sustitutos de un ingrediente: `core/catalogo/receta-validacion` dentro de `guardarVersionDeReceta`."),
-  "catalogo/recetas.ts|actualizarIngredienteDeReceta": PENDIENTE("Cantidad, merma y sustitutos de un ingrediente: `core/catalogo/receta-validacion` dentro de `guardarVersionDeReceta`."),
-  "catalogo/recetas.ts|quitarIngredienteDeReceta": PENDIENTE("La versión que vio la pantalla (`versionVista`)."),
-  "catalogo/recetas.ts|agregarPasoAReceta": PENDIENTE("Orden, minutos e insumos de un paso: `core/catalogo/receta-validacion` dentro de `guardarVersionDeReceta`."),
-  "catalogo/recetas.ts|actualizarPasoDeReceta": PENDIENTE("Orden, minutos e insumos de un paso: `core/catalogo/receta-validacion` dentro de `guardarVersionDeReceta`."),
-  "catalogo/recetas.ts|quitarPasoDeReceta": PENDIENTE("El orden del paso y la versión que vio la pantalla."),
-  "catalogo/recetas.ts|reordenarPasosDeReceta": PENDIENTE("La secuencia nueva de los pasos (un arreglo de números) y la versión que vio la pantalla: la valida `guardarVersionDeReceta`."),
-  "catalogo/recetas.ts|insertarPasoEnReceta": PENDIENTE("La posición del paso nuevo y la versión que vio la pantalla."),
-  "catalogo/recetas.ts|actualizarCabeceraDeReceta": PENDIENTE("Rendimiento, raciones, tamaño y tiempos de la cabecera: `core/catalogo/receta-validacion` dentro de `guardarVersionDeReceta`."),
-};
+/**
+ * `archivo desde src/server/actions|función` → por qué no pasa por un `guardComando…`. Lista cerrada: solo se achica. **Vacía desde S-52** (las 21 que quedaban ya tienen su guard de comando con rango; el
+ * último caso fue `actualizarCliente`, O.190): una acción nueva con números que no llame a un `guardComando…` falla, y agregarla acá exige un motivo real (más de 60 caracteres) y subir el techo a propósito.
+ */
+const SIN_GUARD_DE_COMANDO: Readonly<Record<string, string>> = {};
 
 /**
  * Reglas de rango fijadas con evidencia en el código: `archivo` (desde la raíz) debe contener TODAS las `lineas` (expresiones regulares sobre el texto con saltos LF). Lista inicial: las
@@ -140,8 +120,41 @@ describe("GT-11 — números y arreglos del cliente: un guard de comando con ran
     for (const [k, motivo] of Object.entries(SIN_GUARD_DE_COMANDO)) expect(motivo.length, k).toBeGreaterThan(60);
   });
 
-  it("la lista de pendientes solo se achica (21 hoy: las de S-52; las dos entradas `unknown` que el inventario sumó se cerraron: `actualizarCliente` tiene su guard y `cambiarEmpresaActiva` usa `volver` solo como texto)", () => {
-    expect(Object.keys(SIN_GUARD_DE_COMANDO).length).toBeLessThanOrEqual(21);
+  it("la lista de pendientes está VACÍA (S-52 cerrado: de 21 a 0; antes se cerraron las dos entradas `unknown` que el inventario sumó: `actualizarCliente` tiene su guard y `cambiarEmpresaActiva` usa `volver` solo como texto)", () => {
+    expect(Object.keys(SIN_GUARD_DE_COMANDO).length).toBeLessThanOrEqual(0);
+  });
+
+  it("las 21 acciones que cerró S-52 llaman a su guard de comando (una por una: sacar la llamada de cualquiera la pone en rojo)", () => {
+    const porClave = new Map(delCodigo.map((e) => [e.clave, e]));
+    const CERRADAS = [
+      "carta/contenido-producto.ts|guardarContenidoCartaProducto",
+      "carta/items-agrupados.ts|agregarOpcionItemAgrupadoCarta",
+      "carta/promos.ts|guardarPrecioLocalPromoCarta",
+      "carta/promos.ts|guardarCuposPromoCarta",
+      "catalogo/productos.ts|darDeAltaProducto",
+      "catalogo/productos.ts|actualizarProducto",
+      "catalogo/productos.ts|agregarPresentacionAlternativa",
+      "catalogo/receta-sucursal.ts|crearRecetaPropiaDesdeLaCentral",
+      "catalogo/receta-sucursal.ts|agregarIngredienteARecetaPropia",
+      "catalogo/receta-sucursal.ts|actualizarIngredienteDeRecetaPropia",
+      "catalogo/receta-sucursal.ts|quitarIngredienteDeRecetaPropia",
+      "catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal",
+      "catalogo/recetas.ts|agregarIngredienteAReceta",
+      "catalogo/recetas.ts|actualizarIngredienteDeReceta",
+      "catalogo/recetas.ts|quitarIngredienteDeReceta",
+      "catalogo/recetas.ts|agregarPasoAReceta",
+      "catalogo/recetas.ts|actualizarPasoDeReceta",
+      "catalogo/recetas.ts|quitarPasoDeReceta",
+      "catalogo/recetas.ts|reordenarPasosDeReceta",
+      "catalogo/recetas.ts|insertarPasoEnReceta",
+      "catalogo/recetas.ts|actualizarCabeceraDeReceta",
+    ];
+    expect(CERRADAS).toHaveLength(21);
+    for (const clave of CERRADAS) {
+      const e = porClave.get(clave);
+      expect(e, `${clave}: el inventario la ve (tiene números o arreglos)`).toBeDefined();
+      expect(llamaAUnGuard(e!.llamadas), `${clave}: llama a un guardComando…`).toBe(true);
+    }
   });
 
   it("`unknown`/`any` estrechado a texto no cuenta (cambiarEmpresaActiva); `unknown` usado como número, pasado entero o estrechado a otra cosa SÍ (fixtures en memoria)", () => {

@@ -1,3 +1,4 @@
+import type { ResultadoDato } from "@/core/datos/resultado";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -53,15 +54,15 @@ export interface AvisosDeItemAgrupado {
 }
 
 /**
- * Comando «agregar un producto como opción de un ítem agrupado»: lo que recibe `agregarOpcionItemAgrupadoCartaCasoDeUso`, CRUDO. No hay guard (`SIN_GUARD` en
- * `acciones-migradas-con-guard.test.ts`): el ítem se lee ANTES de mirar el producto y el orden se valida después de varias lecturas (un ítem inexistente gana sobre
- * «elegí el producto»; un producto ya agrupado, sobre un orden roto), así que la validación vive en el caso de uso, en el mismo orden que antes.
+ * Comando «agregar un producto como opción de un ítem agrupado»: lo que recibe `agregarOpcionItemAgrupadoCartaCasoDeUso`. El `orden` es el RESULTADO de
+ * `guardComandoAgregarOpcionItemAgrupadoCarta` (S-52: el formato y el rango del orden, que la acción calcula con lo que mandó el cliente); el caso de uso aplica su rechazo
+ * DESPUÉS de varias lecturas (un ítem inexistente gana sobre «elegí el producto»; un producto ya agrupado, sobre un orden roto: fijado por tests), nunca antes.
  */
 export interface ComandoAgregarOpcionItemAgrupadoCarta {
   itemAgrupadoCartaId: string;
   productoId: string;
-  /** `null` = al final (la cantidad de opciones que ya tiene el ítem); vacío vale 0. */
-  orden: number | string | null;
+  /** `orden: null` = al final (la cantidad de opciones que ya tiene el ítem); un vacío del cliente vale 0. */
+  orden: ResultadoDato<{ orden: number | null }>;
 }
 
 /**

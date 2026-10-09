@@ -1,3 +1,4 @@
+import type { ResultadoDato } from "@/core/datos/resultado";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -31,6 +32,20 @@ export interface EntradaProducto {
   activoEnTodasLasSucursales?: boolean;
 }
 
+/**
+ * El resultado de `guardComandoDatosDeProducto` (S-52), POR ETAPA: lo que decide el formato y el rango de los datos de un producto sin mirar la base. `validarDatosDeProducto` aplica
+ * cada etapa en el lugar donde antes vivía su chequeo —`antesDeLaUnidad` antes de leer la unidad de stock; las demás después de leerla, en el orden de siempre—, así un dato inválido
+ * no cambia qué mensaje sale primero ni gana sobre «la unidad de stock es obligatoria» cuando la unidad no existe. `factor` y `pasoVenta` miden el rango con los decimales máximos de una
+ * unidad: los decimales reales (y la regla R3 del paso) son de la unidad del producto y los decide `validarDatosDeProducto`.
+ */
+export interface PuertaDeDatosDeProducto {
+  antesDeLaUnidad: ResultadoDato<null>;
+  factor: ResultadoDato<null>;
+  precioVenta: ResultadoDato<number | null>;
+  precioConsignacion: ResultadoDato<number | null>;
+  pasoVenta: ResultadoDato<null>;
+}
+
 /** Comando «alta rápida de una MP desde el wizard de compra»: el nombre YA recortado y validado y la unidad de stock presente (`guardComandoDarDeAltaProductoRapido`). */
 export interface ComandoDarDeAltaProductoRapido {
   nombre: string;
@@ -53,13 +68,15 @@ export interface DatosProductoCreado {
 export type ResultadoDarDeAltaProducto = ResultadoCaso<DatosProductoCreado, "DATOS_INVALIDOS" | "YA_EXISTE" | "CODIGO_REPETIDO" | "SIN_PERMISO_COSTO" | "REFERENCIA_NO_ENCONTRADA">;
 
 /**
- * Comando «editar un producto»: el id y los datos del formulario, SIN validar (sin guard: `validarDatosDeProducto` lee la unidad de stock a mitad de camino), y si quien lo pide
- * puede gestionar el costo de consignación (S-12, D8 del dueño: tiene `pagar_consignante` EDITAR en la sucursal activa; lo calcula la Server Action con el gate, el caso de
- * uso no chequea permisos). Sin eso, el costo de consignación (es consignación, proveedor y precio) no se cambia: un campo que no viene queda como estaba, uno distinto es `SIN_PERMISO_COSTO`.
+ * Comando «editar un producto»: el id, los datos del formulario y la `puerta` (el resultado de `guardComandoDatosDeProducto`, S-52, que `validarDatosDeProducto` aplica en el lugar de
+ * siempre: lee la unidad de stock a mitad de camino), y si quien lo pide puede gestionar el costo de consignación (S-12, D8 del dueño: tiene `pagar_consignante` EDITAR en la sucursal
+ * activa; lo calcula la Server Action con el gate, el caso de uso no chequea permisos). Sin eso, el costo de consignación (es consignación, proveedor y precio) no se cambia: un campo que
+ * no viene queda como estaba, uno distinto es `SIN_PERMISO_COSTO`.
  */
 export interface ComandoActualizarProducto {
   productoId: string;
   datos: EntradaProducto;
+  puerta: PuertaDeDatosDeProducto;
   puedeGestionarConsignacion: boolean;
 }
 
@@ -112,13 +129,15 @@ export interface ComandoAsignarInsumoAProducto {
 export type ResultadoAsignarInsumoAProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "NO_ES_MP" | "UNIDAD_MEZCLADA">;
 
 /**
- * Comando «agregar (o reactivar con otro factor) una presentación de compra alternativa»: CRUDO. Sin guard: el factor se valida DESPUÉS de leer el producto (sus
- * decimales son los de la unidad de STOCK del producto), así que la validación vive en el caso de uso, en el mismo orden.
+ * Comando «agregar (o reactivar con otro factor) una presentación de compra alternativa»: los ids, el factor y el `factor` que decidió `guardComandoAgregarPresentacionAlternativa`
+ * (S-52: el rango del factor, que la acción calcula con lo que mandó el cliente). Sus DECIMALES son los de la unidad de STOCK del producto: los valida el caso de uso, que también
+ * aplica el rechazo del `factor` DESPUÉS de leer el producto (un producto inexistente gana sobre un factor inválido), en el mismo orden de siempre.
  */
 export interface ComandoAgregarPresentacionAlternativa {
   productoId: string;
   unidadCompraId: string;
   factorConversion: number;
+  factor: ResultadoDato<null>;
 }
 
 /**

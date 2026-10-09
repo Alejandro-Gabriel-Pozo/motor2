@@ -7,6 +7,7 @@ import { crearOActualizarGrupoCasoDeUso } from "../../src/server/actions/catalog
 import { registrarVentaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta";
 import { azarDelProceso } from "../../src/lib/azar";
 import type { EntradaProducto } from "../../src/core/features/catalogo/productos.schema";
+import { guardComandoDatosDeProducto } from "../../src/core/features/catalogo/productos.guard";
 
 /**
  * Hallazgo O.175 (GT-3b, cerrado): cinco acciones rechazaban un id de OTRA empresa con una excepción CRUDA de Prisma (clave foránea compuesta por empresa, `P2003`) en lugar de `{ ok: false }`
@@ -65,7 +66,7 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
       ["insumoId", () => ({ insumoId: ajeno.insumoId }), /No se encontró el insumo elegido\./],
       ["unidadCompraId", () => ({ unidadCompraId: ajeno.unidadId }), /No se encontró la unidad de compra elegida\./],
     ] as const)("%s de otra empresa: rechazo de pertenencia, sin producto creado", async (_campo, extra, mensaje) => {
-      const r = await darDeAltaProductoCasoDeUso(actor(), datos(extra()), azarDelProceso, true);
+      const r = await darDeAltaProductoCasoDeUso(actor(), datos(extra()), azarDelProceso, true, guardComandoDatosDeProducto({ datos: datos(extra()) }));
       expect(r.ok).toBe(false);
       if (r.ok) return;
       expect(r.codigo).toBe("REFERENCIA_NO_ENCONTRADA");
@@ -74,7 +75,7 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
     });
 
     it("control: con los ids propios el alta termina bien", async () => {
-      const r = await darDeAltaProductoCasoDeUso(actor(), datos({ categoriaId, insumoId, unidadCompraId }), azarDelProceso, true);
+      const r = await darDeAltaProductoCasoDeUso(actor(), datos({ categoriaId, insumoId, unidadCompraId }), azarDelProceso, true, guardComandoDatosDeProducto({ datos: datos({ categoriaId, insumoId, unidadCompraId }) }));
       expect(r.ok).toBe(true);
       expect(await productos()).toBe(1);
     });
@@ -98,7 +99,10 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
     beforeEach(async () => {
       productoId = (await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Producto de prueba", tipo: "MP", unidadStockId: unidadId, factorConversion: 1 }, sucursalId)).id;
     });
-    const comando = (extra: Partial<EntradaProducto>) => ({ productoId, datos: datos({ esConsignacion: true, precioConsignacion: 10, ...extra }), puedeGestionarConsignacion: true });
+    const comando = (extra: Partial<EntradaProducto>) => {
+      const d = datos({ esConsignacion: true, precioConsignacion: 10, ...extra });
+      return { productoId, datos: d, puerta: guardComandoDatosDeProducto({ datos: d }), puedeGestionarConsignacion: true };
+    };
 
     it("proveedorConsignacionId de otra empresa: rechazo de pertenencia fuera de la transacción abortada, sin cambios ni auditoría", async () => {
       const auditoriasAntes = await prismaAdmin.registroAuditoria.count();

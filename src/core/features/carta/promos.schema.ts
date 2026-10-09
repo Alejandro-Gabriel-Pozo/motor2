@@ -1,3 +1,4 @@
+import type { ResultadoDato } from "@/core/datos/resultado";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -28,14 +29,14 @@ export interface ComandoGuardarPromoCarta {
 export type ResultadoGuardarPromoCarta = ResultadoCaso<null, "SECCION_NO_ENCONTRADA" | "PROMO_NO_ENCONTRADA" | "BAJO_EL_PISO">;
 
 /**
- * Comando «fijar el precio de una promo en la sucursal activa»: lo que recibe `guardarPrecioLocalPromoCartaCasoDeUso`, CRUDO. No hay guard (`SIN_GUARD` en
- * `acciones-migradas-con-guard.test.ts`): el precio se valida DESPUÉS de leer la promo (una promo inexistente gana sobre un precio inválido), así que la
- * validación vive en el caso de uso, en el mismo orden que antes.
+ * Comando «fijar el precio de una promo en la sucursal activa»: lo que recibe `guardarPrecioLocalPromoCartaCasoDeUso`. El `precio` es el RESULTADO de
+ * `guardComandoGuardarPrecioLocalPromoCarta` (S-52: el formato y el rango del precio, que la acción calcula con lo que mandó el cliente); el caso de uso aplica su rechazo
+ * DESPUÉS de leer la promo (una promo inexistente gana sobre un precio inválido: fijado por tests), nunca antes.
  */
 export interface ComandoGuardarPrecioLocalPromoCarta {
   promoCartaId: string;
-  /** `null` o vacío = vuelve al precio de la empresa. */
-  precioLocal: number | string | null;
+  /** `precioLocal: null` = vuelve al precio de la empresa (el cliente mandó `null` o vacío). */
+  precio: ResultadoDato<{ precioLocal: number | null }>;
 }
 
 /**
@@ -57,21 +58,22 @@ export interface ComandoActivarPromoCarta {
 /** `PROMO_NO_ENCONTRADA`: el id no es de una promo de la empresa. */
 export type ResultadoActivarPromoCarta = ResultadoCaso<null, "PROMO_NO_ENCONTRADA">;
 
-/** Un cupo tal como lo manda el formulario del admin (el mismo dato que `DatosCupoPromoCarta` de la Server Action), sin validar. */
-export interface EntradaCupoPromoCarta {
+/** Un cupo YA validado por `guardComandoGuardarCuposPromoCarta` (S-52): la sección elegida, el mínimo y el máximo enteros, y su posición. */
+export interface CupoValidadoPromoCarta {
   seccionCartaId: string;
-  /** Vacío/null → 0 (D1: el mínimo por defecto es 0). */
-  cantidadMinima?: number | string | null;
-  cantidadMaxima: number | string;
+  cantidadMinima: number;
+  cantidadMaxima: number;
+  orden: number;
 }
 
 /**
- * Comando «reemplazar todos los cupos de una promo» (H4C-3): lo que recibe `guardarCuposPromoCartaCasoDeUso`, CRUDO. Sin guard (`SIN_GUARD`): los cupos se
- * validan DESPUÉS de leer la promo (una promo inexistente gana sobre un cupo inválido), así que la validación vive en el caso de uso, en el mismo orden.
+ * Comando «reemplazar todos los cupos de una promo» (H4C-3): lo que recibe `guardarCuposPromoCartaCasoDeUso`. Los `cupos` son el RESULTADO de
+ * `guardComandoGuardarCuposPromoCarta` (S-52: forma, tope de la lista, sección sin repetir y cantidades en rango, que la acción calcula con lo que mandó el cliente); el caso
+ * de uso aplica su rechazo DESPUÉS de leer la promo (una promo inexistente gana sobre un cupo inválido: fijado por tests), nunca antes.
  */
 export interface ComandoGuardarCuposPromoCarta {
   promoCartaId: string;
-  cupos: readonly EntradaCupoPromoCarta[];
+  cupos: ResultadoDato<readonly CupoValidadoPromoCarta[]>;
 }
 
 /**

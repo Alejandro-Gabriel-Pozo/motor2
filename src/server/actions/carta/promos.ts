@@ -1,6 +1,6 @@
 "use server";
 
-import { guardComandoGuardarPromoCarta } from "@/core/features/carta/promos.guard";
+import { guardComandoGuardarCuposPromoCarta, guardComandoGuardarPrecioLocalPromoCarta, guardComandoGuardarPromoCarta } from "@/core/features/carta/promos.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
@@ -85,11 +85,13 @@ export async function actualizarActivaPromoCartaEnSucursal(promoCartaId: string,
  *
  * Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-2) es un adaptador fino: permiso (`conPermiso("carta_promo_precio_local")`) → caso de uso
  * (`casos-de-uso/guardar-precio-local-promo-carta.ts`: la promo, el precio y su piso, el precio anterior, la escritura en server/persistencia/carta/promos.ts y
- * su auditoría) → revalidar la carta pública si salió bien → `aResultadoAccion`. Sin guard: el precio se valida DESPUÉS de leer la promo (`SIN_GUARD`).
+ * su auditoría) → revalidar la carta pública si salió bien → `aResultadoAccion`. El guard (`guardComandoGuardarPrecioLocalPromoCarta`, S-52) se calcula acá y el caso de uso aplica su rechazo DESPUÉS de leer la promo.
  */
 export async function guardarPrecioLocalPromoCarta(promoCartaId: string, precioLocal: number | string | null): Promise<ResultadoAccion> {
   return conPermiso("carta_promo_precio_local", async (ctx) => {
-    const resultado = await guardarPrecioLocalPromoCartaCasoDeUso(ctx, { promoCartaId, precioLocal });
+    // S-52: el guard se CALCULA acá (formato y rango del precio) pero su rechazo lo aplica el caso de uso después de leer la promo: una promo inexistente gana sobre un precio inválido.
+    const precio = guardComandoGuardarPrecioLocalPromoCarta({ precioLocal });
+    const resultado = await guardarPrecioLocalPromoCartaCasoDeUso(ctx, { promoCartaId, precio });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
@@ -119,11 +121,13 @@ export interface DatosCupoPromoCarta {
  *
  * Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-3) es un adaptador fino: permiso (`conPermisoDeEmpresa("carta_promo_definir")`) → caso de uso
  * (`casos-de-uso/guardar-cupos-promo-carta.ts`: la promo, la validación de cada cupo, las secciones, el piso y el reemplazo en server/persistencia/carta/promos.ts)
- * → `aResultadoAccion`. Sin guard: los cupos se validan DESPUÉS de leer la promo (`SIN_GUARD`). NO revalida la carta pública (hallazgo informado por el plan,
+ * → `aResultadoAccion`. El guard (`guardComandoGuardarCuposPromoCarta`, S-52) se calcula acá y el caso de uso aplica su rechazo DESPUÉS de leer la promo. NO revalida la carta pública (hallazgo informado por el plan,
  * migrado tal cual).
  */
 export async function guardarCuposPromoCarta(promoCartaId: string, cupos: readonly DatosCupoPromoCarta[]): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
-    return aResultadoAccion(await guardarCuposPromoCartaCasoDeUso(ctx, { promoCartaId, cupos }));
+    // S-52: el guard se CALCULA acá (forma, tope y rango de los cupos) pero su rechazo lo aplica el caso de uso después de leer la promo: una promo inexistente gana sobre un cupo inválido.
+    const cuposValidados = guardComandoGuardarCuposPromoCarta({ cupos });
+    return aResultadoAccion(await guardarCuposPromoCartaCasoDeUso(ctx, { promoCartaId, cupos: cuposValidados }));
   });
 }

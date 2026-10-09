@@ -1,11 +1,9 @@
 import "server-only";
 import { whereDisponibleEnAlguna, validarPasoVenta } from "@/core/catalogo/public";
 import { validarCantidad } from "@/core/datos/cantidad";
-import { validarImporte } from "@/core/datos/importe";
-import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
-import type { EntradaProducto } from "@/core/features/catalogo/productos.schema";
+import type { EntradaProducto, PuertaDeDatosDeProducto } from "@/core/features/catalogo/productos.schema";
 import { tieneStockReal } from "@/core/movimientos/public";
-import { texto, validarTextoCatalogo } from "@/core/texto";
+import { texto } from "@/core/texto";
 import type { Db } from "@/lib/db-tipos";
 import { validarUnidadInsumo } from "./unidad-de-insumo";
 
@@ -25,41 +23,30 @@ interface NumerosValidados {
   pasoVenta: number | null;
 }
 
-export async function validarDatosDeProducto(db: Db, datos: EntradaProducto, productoIdExcluir?: string): Promise<{ error: string } | { numeros: NumerosValidados }> {
+export async function validarDatosDeProducto(db: Db, datos: EntradaProducto, productoIdExcluir: string | undefined, puerta: PuertaDeDatosDeProducto): Promise<{ error: string } | { numeros: NumerosValidados }> {
+  // S-52: el formato y el rango de lo que no depende de la base los decidió `guardComandoDatosDeProducto` (la acción lo calculó con lo que mandó el cliente), por etapa; cada rechazo se
+  // aplica ACÁ, en el lugar donde antes vivía su chequeo, así que el orden de los mensajes es el de siempre: el nombre, las observaciones y la unidad presente; LEER la unidad; el
+  // factor; el precio de venta; la consignación; el paso de venta; el nombre libre; el insumo.
+  if (!puerta.antesDeLaUnidad.ok) return { error: puerta.antesDeLaUnidad.mensaje };
   const nombre = texto(datos.nombre);
-  if (!nombre) return { error: "El nombre no puede estar vacío." };
-  const invalido = validarTextoCatalogo(nombre, "El nombre");
-  if (invalido) return { error: invalido };
-  const observaciones = validarTextoLibre(datos.observaciones, "Las observaciones", LARGO_MAXIMO_NOTAS);
-  if (!observaciones.ok) return { error: observaciones.mensaje };
-  if (!datos.unidadStockId) return { error: "La unidad de stock es obligatoria." };
   // Unidad de stock, una sola vez: `factorConversion` son "unidades de stock por unidad de compra" (Catalogo.js:1083/1095,
   // prisma/schema.prisma) — sus decimales son los de ESA unidad, igual que `pasoVenta` (R3, validarPasoVenta) más abajo.
   const unidadStock = await db.unidad.findUnique({ where: { id: datos.unidadStockId }, select: { nombre: true, decimales: true } });
   if (!unidadStock) return { error: "La unidad de stock es obligatoria." };
 
+  if (!puerta.factor.ok) return { error: puerta.factor.mensaje };
   const factorConversion = validarCantidad(datos.factorConversion, unidadStock, { etiqueta: "El factor de conversión", obligatorio: true });
   if (!factorConversion.ok) return { error: factorConversion.mensaje };
 
-  const precioVenta = validarImporte(datos.precioVenta, { etiqueta: "El precio de venta" });
-  if (!precioVenta.ok) return { error: precioVenta.mensaje };
+  if (!puerta.precioVenta.ok) return { error: puerta.precioVenta.mensaje };
+  const precioVenta = puerta.precioVenta;
 
-  let precioConsignacion: number | null;
-  if (datos.esConsignacion) {
-    if (!datos.proveedorConsignacionId) return { error: "Falta el proveedor de consignación." };
-    const r = validarImporte(datos.precioConsignacion, { etiqueta: "El precio de consignación", obligatorio: true, permitirCero: false });
-    if (!r.ok) return { error: r.mensaje };
-    precioConsignacion = r.valor;
-  } else {
-    // Sin consignación el precio no se usa, pero igual se guarda: tiene que ser un importe válido (antes pasaba crudo, hasta un negativo).
-    const r = validarImporte(datos.precioConsignacion, { etiqueta: "El precio de consignación" });
-    if (!r.ok) return { error: r.mensaje };
-    precioConsignacion = r.valor;
-  }
+  if (!puerta.precioConsignacion.ok) return { error: puerta.precioConsignacion.mensaje };
+  const precioConsignacion = puerta.precioConsignacion.valor;
 
+  if (!puerta.pasoVenta.ok) return { error: puerta.pasoVenta.mensaje };
   let pasoVenta: number | null = null;
   if (datos.pasoVenta !== undefined && datos.pasoVenta !== null) {
-    if (datos.tipo !== "PV") return { error: "El paso de venta solo aplica a productos de venta (PV)." };
     const r = validarPasoVenta(datos.pasoVenta, { decimalesUnidad: unidadStock.decimales, tieneStockReal: tieneStockReal("PV", datos.seProduce ?? false) });
     if (!r.ok) return { error: r.mensaje };
     pasoVenta = r.paso;

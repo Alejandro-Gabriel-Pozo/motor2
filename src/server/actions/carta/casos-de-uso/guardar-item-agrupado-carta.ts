@@ -3,6 +3,7 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { whereCartaDeSucursal } from "@/core/carta/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import type { AvisosDeItemAgrupado, ComandoGuardarItemAgrupadoCarta, ResultadoGuardarItemAgrupadoCarta } from "@/core/features/carta/items-agrupados.schema";
+import { aceptar } from "@/core/datos/resultado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cambiarDatosDeItemAgrupadoCarta, crearItemAgrupadoDeCarta } from "@/server/persistencia/carta/items-agrupados";
 import { validarGeneroCartaOpcional } from "../generos-compartido";
@@ -83,7 +84,7 @@ export async function guardarItemAgrupadoCartaCasoDeUso(
   // entraron). Un rechazo no frena a los demás ni deshace el alta: se junta todo en un solo mensaje.
   const rechazos: string[] = [];
   for (const productoId of productoIds) {
-    const r = await agregarOpcionItemAgrupadoCartaCasoDeUso(actor, { itemAgrupadoCartaId: it.id, productoId, orden: null });
+    const r = await agregarOpcionItemAgrupadoCartaCasoDeUso(actor, { itemAgrupadoCartaId: it.id, productoId, orden: aceptar({ orden: null }) });
     if (r.ok) avisos.cartaCambio();
     else rechazos.push(r.mensaje);
   }

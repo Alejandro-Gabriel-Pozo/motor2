@@ -18,6 +18,8 @@ export const MAXIMO_INGREDIENTES_RECETA = 100;
 export const MAXIMO_PASOS_RECETA = 100;
 export const MAXIMO_SUSTITUTOS_POR_INGREDIENTE = 20;
 export const MAXIMO_PRODUCTOS_POR_ITEM_AGRUPADO = 100;
+/** S-52: cupos (secciones) de una promo combo. Una promo real tiene 2 a 5; la lista que llega del cliente no puede ser un arreglo de miles. */
+export const MAXIMO_CUPOS_POR_PROMO = 50;
 export const MAXIMO_DESTINOS_RECLASIFICACION = 100;
 
 /** `Int` de Postgres es de 32 bits; este tope queda muy por debajo y basta para el uso real (minutos, días, raciones, orden). */

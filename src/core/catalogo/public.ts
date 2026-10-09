@@ -26,7 +26,17 @@ export { describirCalibracion, describirDescarteArrastre, describirVueltaAlCentr
 // Hito 4, H4C-5: el comando de la calibración (`core/features/catalogo/rendimiento-local.schema.ts`) lleva el origen ya normalizado por su guard.
 export type { OrigenNormalizado } from "./origen-cambio-receta";
 export type { OrigenCalibracionInput } from "./origen-cambio-receta";
-export { claveDeUnidadDeSustituto, validarCabecera, validarIngredientes, validarPasos } from "./receta-validacion";
+export {
+  claveDeUnidadDeSustituto,
+  validarCabecera,
+  validarDatosDeIngrediente,
+  validarEncabezadoDePaso,
+  validarEnterosDeCabecera,
+  validarIngredientes,
+  validarMinutosYMarcadosDePaso,
+  validarPasos,
+  validarTextosYTopesDeCabecera,
+} from "./receta-validacion";
 export type { CabeceraRecetaInput, DatosParaValidarReceta, IngredienteInput, PasoInput } from "./receta-validacion";
 export { resolverDisponibilidad, resolverDisponibilidadPorSucursal } from "./disponibilidad-producto";
 export { whereDisponibleEn, whereDisponibleEnAlguna } from "./disponibilidad-producto-consulta";

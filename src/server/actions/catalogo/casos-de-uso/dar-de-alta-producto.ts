@@ -2,7 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";
-import type { EntradaProducto, ResultadoDarDeAltaProducto } from "@/core/features/catalogo/productos.schema";
+import type { EntradaProducto, PuertaDeDatosDeProducto, ResultadoDarDeAltaProducto } from "@/core/features/catalogo/productos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { datosParaGuardar, validarDatosDeProducto } from "@/server/lecturas/catalogo/datos-de-producto";
@@ -44,6 +44,8 @@ export async function darDeAltaProductoCasoDeUso(
   azar: FuenteDeAzar,
   /** S-12 (D8): si quien da de alta tiene `pagar_consignante` EDITAR en la sucursal activa (lo calcula la Server Action con el gate; este caso de uso no chequea permisos). */
   puedeGestionarConsignacion: boolean,
+  /** S-52: el resultado de `guardComandoDatosDeProducto`, que la Server Action calcula con lo que mandó el cliente y que `validarDatosDeProducto` aplica en el lugar de siempre. */
+  puerta: PuertaDeDatosDeProducto,
 ): Promise<ResultadoDarDeAltaProducto> {
   // S-12 (D8 del dueño): crear un producto en consignación, con su proveedor o con un precio de consignación, es fijar su costo: solo con `pagar_consignante`. Fallo cerrado, antes de leer nada.
   if (!puedeGestionarConsignacion && (datos.esConsignacion || datos.proveedorConsignacionId || (datos.precioConsignacion !== undefined && Number(datos.precioConsignacion) !== 0))) {
@@ -52,7 +54,7 @@ export async function darDeAltaProductoCasoDeUso(
       "El costo de consignación (si el producto es de consignación, su proveedor y su precio) lo gestiona quien puede pagar a consignantes: no tenés permiso para fijarlo.",
     );
   }
-  const validado = await validarDatosDeProducto(actor.db, datos);
+  const validado = await validarDatosDeProducto(actor.db, datos, undefined, puerta);
   if ("error" in validado) return fracaso("DATOS_INVALIDOS", validado.error);
 
   try {

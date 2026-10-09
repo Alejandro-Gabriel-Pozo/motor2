@@ -62,14 +62,10 @@ const SIN_GUARD: Record<string, string> = {
     "Invitar a vincular (Hito 3, I.5i): solo recibe un id de membresía, que nunca se validó en la acción (lo resuelve el caso de uso dentro de la transacción de gobierno, «No se encontró esa membresía»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/auth/usuarios.ts#actualizarNotasMembresia":
     "Editar las notas de una membresía (Hito 3, I.5a): recibe un id y un texto libre que nunca se validó en la acción; el texto lo normaliza el caso de uso (`texto(notas) || null`) DESPUÉS de resolver la membresía y el techo, como antes. Un guard previo adelantaría esa normalización a «No se encontró esa membresía».",
-  "src/server/actions/carta/promos.ts#guardarPrecioLocalPromoCarta":
-    "Precio de una promo en la sucursal (Hito 4, H4C-2): la acción leía la promo ANTES de validar el precio (una promo inexistente gana sobre un precio inválido, y el piso depende de los cupos que se leen), así que la validación vive en el caso de uso, en el mismo orden. Un guard previo adelantaría el rechazo del precio a «No se encontró la promo».",
   "src/server/actions/carta/promos.ts#actualizarActivaPromoCarta":
     "Apagado general de una promo (Hito 4, H4C-3): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró la promo.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/carta/promos.ts#actualizarActivaPromoCartaEnSucursal":
     "Prender o apagar una promo en la sucursal (Hito 4, H4C-3): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró la promo.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
-  "src/server/actions/carta/promos.ts#guardarCuposPromoCarta":
-    "Cupos de una promo (Hito 4, H4C-3): la acción leía la promo ANTES de validar los cupos (una promo inexistente gana sobre un cupo inválido) y el piso depende de los precios que se leen, así que la validación vive en el caso de uso, en el mismo orden. Un guard previo adelantaría el rechazo de un cupo a «No se encontró la promo.».",
   "src/server/actions/catalogo/rendimiento-local.ts#volverAlRendimientoCentral":
     "Volver al valor central (Hito 4, H4C-5): solo recibe el id de la línea, que nunca se validó en la acción (lo resuelve el caso de uso dentro de la transacción serializable, «No se encontró esa línea de receta.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/catalogo/categorias-producto.ts#actualizarActivaCategoriaProducto":
@@ -82,16 +78,10 @@ const SIN_GUARD: Record<string, string> = {
     "Cambiar el grupo de un insumo (Hito 4, H4C-9): solo recibe dos ids (el grupo puede ser null), que nunca se validaron en la acción (los resuelve el caso de uso: desde O.44b, «No se encontró el insumo.» / «No se encontró el grupo.», sin escribir); un guard de formato no tiene nada que mirar.",
   "src/server/actions/catalogo/productos.ts#asignarInsumoAProducto":
     "Asignar el insumo a una MP (Hito 4, H4C-11): solo recibe dos ids, que nunca se validaron en la acción (los resuelve el caso de uso: «No se encontró el producto.», que sea MP y el choque de unidades); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
-  "src/server/actions/catalogo/productos.ts#agregarPresentacionAlternativa":
-    "Presentación de compra alternativa (Hito 4, H4C-11): la acción leía el producto ANTES de validar el factor (sus decimales son los de la unidad de STOCK del producto, y un producto inexistente gana sobre un factor inválido), así que la validación vive en el caso de uso, en el mismo orden.",
   "src/server/actions/catalogo/productos.ts#actualizarActivaPresentacion":
     "Activar o desactivar una presentación (Hito 4, H4C-11): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso: desde O.44, «No se encontró la presentación.» por el `count` del `updateMany`; antes un id roto hacía lanzar a Prisma); un guard de formato no tiene nada que mirar.",
   "src/server/actions/catalogo/productos.ts#actualizarDisponibilidadProducto":
     "Disponibilidad en la sucursal (Hito 4, H4C-11): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró el producto.»); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
-  "src/server/actions/catalogo/productos.ts#darDeAltaProducto":
-    "Alta completa de un producto (Hito 4, H4C-12): la validación de los datos (validarDatosDeProducto, server/lecturas/catalogo/datos-de-producto.ts) lee la unidad de stock a mitad de camino (sus decimales validan el factor y el paso de venta) y un nombre repetido después; un guard previo solo podría adelantar una parte y cambiaría el orden de los mensajes.",
-  "src/server/actions/catalogo/productos.ts#actualizarProducto":
-    "Edición de un producto (Hito 4, H4C-13): la acción leía el producto ANTES de validar (un producto inexistente y el tipo distinto ganan sobre un dato inválido) y la validación (validarDatosDeProducto) lee la unidad de stock a mitad de camino; un guard previo cambiaría el orden de los mensajes.",
   "src/server/actions/catalogo/insumos.ts#actualizarActivoGrupo":
     "Activar o desactivar un grupo de insumos (Hito 4, H4C-9): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso: desde O.44, «No se encontró el grupo.» por el `count` del `updateMany`); un guard de formato no tiene nada que mirar.",
   "src/server/actions/catalogo/proveedores.ts#actualizarActivaProveedor":
@@ -112,14 +102,10 @@ const SIN_GUARD: Record<string, string> = {
     "Apagar o prender una sección de la carta (Hito 5, bloque D): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró la sección de carta.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/carta/generos.ts#actualizarActivoGeneroCarta":
     "Apagar o prender un género de la carta (Hito 5, bloque D): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró el género.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
-  "src/server/actions/carta/contenido-producto.ts#guardarContenidoCartaProducto":
-    "Guardar el contenido de carta de un producto (Hito 5, bloque D): la acción LEE el producto antes de validar nada (un producto inexistente, o uno que no es PV, gana sobre una descripción larga, unos tags inválidos o un orden roto), así que la validación vive en el caso de uso, en el mismo orden; un guard previo adelantaría esos rechazos y cambiaría qué mensaje gana.",
   "src/server/actions/carta/contenido-producto.ts#actualizarVisibleEnCarta":
     "Mostrar u ocultar un producto en la carta (Hito 5, bloque D): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró el producto.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/carta/items-agrupados.ts#actualizarActivoItemAgrupadoCarta":
     "Apagar o prender un ítem agrupado (Hito 5, bloque D): solo recibe un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso, «No se encontró el ítem agrupado.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
-  "src/server/actions/carta/items-agrupados.ts#agregarOpcionItemAgrupadoCarta":
-    "Agregar un producto como opción de un ítem agrupado (Hito 5, bloque D): la acción LEE el ítem antes de mirar el producto y valida el orden después de varias lecturas (un ítem inexistente gana sobre «Elegí el producto a agregar.»; un producto ya agrupado, sobre un orden roto), así que la validación vive en el caso de uso, en el mismo orden; un guard previo adelantaría esos rechazos y cambiaría qué mensaje gana.",
   "src/server/actions/carta/items-agrupados.ts#quitarOpcionItemAgrupadoCarta":
     "Quitar una opción de un ítem agrupado (Hito 5, bloque D): solo recibe un id, que nunca se validó en la acción (lo resuelve el caso de uso, «No se encontró la opción.»; un id que no es texto hace lanzar a Prisma, como antes); un guard nuevo cambiaría el comportamiento, que esta migración no toca.",
   "src/server/actions/stock/stock-minimo.ts#eliminarStockMinimo":

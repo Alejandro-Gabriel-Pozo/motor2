@@ -2,7 +2,6 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { mensajePisoDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
 import { seleccionDeSucursalDePromo } from "@/core/carta/promo-sucursal";
-import { validarPrecioCarta } from "@/core/carta/validaciones";
 import type { ComandoGuardarPrecioLocalPromoCarta, ResultadoGuardarPrecioLocalPromoCarta } from "@/core/features/carta/promos.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -34,18 +33,18 @@ export async function guardarPrecioLocalPromoCartaCasoDeUso(
   actor: Pick<ContextoUsuario, "transaccion" | "usuarioId" | "sucursalId">,
   comando: ComandoGuardarPrecioLocalPromoCarta,
 ): Promise<ResultadoGuardarPrecioLocalPromoCarta> {
-  const { promoCartaId, precioLocal } = comando;
+  const { promoCartaId, precio } = comando;
   // M14 (S-51): la promo con sus cupos, el piso, el precio anterior, la escritura y la auditoría van en UNA transacción SERIALIZABLE (antes la promo y sus cupos se leían con `actor.db`, afuera):
   // si `guardarCuposPromoCarta` cambia los cupos a la vez, uno de los dos aborta (40001) y el reintento relee. Los rechazos devuelven ANTES de escribir.
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoGuardarPrecioLocalPromoCarta> => {
     const promo = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, include: { cupos: { select: { cantidadMaxima: true } } } });
     if (!promo) return fracaso("PROMO_NO_ENCONTRADA", "No se encontró la promo.");
 
-    let valor: number | null = null;
-    if (precioLocal !== null && String(precioLocal).trim() !== "") {
-      const precio = validarPrecioCarta(precioLocal);
-      if (!precio.ok) return fracaso("PRECIO_INVALIDO", precio.mensaje);
-      valor = precio.valor;
+    // S-52: el formato y el rango del precio los decidió `guardComandoGuardarPrecioLocalPromoCarta` (la acción lo calculó con lo que mandó el cliente); su rechazo se aplica ACÁ, después de leer
+    // la promo: una promo inexistente gana sobre un precio inválido.
+    if (!precio.ok) return fracaso("PRECIO_INVALIDO", precio.mensaje);
+    const valor = precio.valor.precioLocal;
+    if (valor !== null) {
       const piso = pisoDePrecioDePromo(promo.cupos);
       if (piso !== null && valor < piso.minimo) return fracaso("BAJO_EL_PISO", mensajePisoDePromo(promo.titulo, valor, piso));
     }

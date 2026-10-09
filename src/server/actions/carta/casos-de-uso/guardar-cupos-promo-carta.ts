@@ -1,7 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { mensajePisoDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
-import { validarCantidadCupoPromo } from "@/core/carta/validaciones";
 import type { ComandoGuardarCuposPromoCarta, ResultadoGuardarCuposPromoCarta } from "@/core/features/carta/promos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -44,22 +43,11 @@ export async function guardarCuposPromoCartaCasoDeUso(
     const promo = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, include: { sucursales: { select: { precioLocal: true } } } });
     if (!promo) return fracaso("PROMO_NO_ENCONTRADA", "No se encontró la promo.");
 
-    const seccionIds = new Set<string>();
-    const cuposValidados: { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number; orden: number }[] = [];
-    for (const [i, c] of cupos.entries()) {
-      if (!c.seccionCartaId) return fracaso("CUPO_INVALIDO", "Elegí la sección de cada cupo.");
-      if (seccionIds.has(c.seccionCartaId)) return fracaso("CUPO_INVALIDO", "No se puede repetir la misma sección de carta en dos cupos de la misma promo.");
-      seccionIds.add(c.seccionCartaId);
-
-      const minima = validarCantidadCupoPromo(c.cantidadMinima, "La cantidad mínima", 0);
-      if (!minima.ok) return fracaso("CUPO_INVALIDO", minima.mensaje);
-      const maxima = validarCantidadCupoPromo(c.cantidadMaxima, "La cantidad máxima");
-      if (!maxima.ok) return fracaso("CUPO_INVALIDO", maxima.mensaje);
-      if (maxima.valor < 1) return fracaso("CUPO_INVALIDO", "La cantidad máxima de un cupo tiene que ser al menos 1.");
-      if (minima.valor > maxima.valor) return fracaso("CUPO_INVALIDO", "En cada cupo, el mínimo no puede ser mayor que el máximo.");
-
-      cuposValidados.push({ seccionCartaId: c.seccionCartaId, cantidadMinima: minima.valor, cantidadMaxima: maxima.valor, orden: i });
-    }
+    // S-52: la forma, el tope de la lista y el rango de cada cupo los decidió `guardComandoGuardarCuposPromoCarta` (la acción lo calculó con lo que mandó el cliente); su rechazo se aplica ACÁ,
+    // después de leer la promo: una promo inexistente gana sobre un cupo inválido.
+    if (!cupos.ok) return fracaso("CUPO_INVALIDO", cupos.mensaje);
+    const cuposValidados = cupos.valor;
+    const seccionIds = new Set(cuposValidados.map((c) => c.seccionCartaId));
 
     // Los nombres de las secciones nuevas, para la descripción de la auditoría (los de las que se van salen de los cupos de antes).
     const nombresDeSecciones = new Map<string, string>();

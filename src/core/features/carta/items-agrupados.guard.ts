@@ -56,6 +56,19 @@ export function guardComandoGuardarItemAgrupadoCarta(datos: EntradaItemAgrupadoC
   });
 }
 
+/**
+ * Guard del comando «agregar un producto como opción de un ítem agrupado» (S-52): el orden, EXACTAMENTE `validarOrdenCarta` con su mismo texto (entero, |orden| ≤ 100.000: rechaza NaN,
+ * ±Infinity, 1e308, un objeto, «12,5»; vacío vale 0). `null` o ausente = al final (la cantidad de opciones del ítem, que sabe el caso de uso: `orden: null`). Lo calcula la acción; su
+ * rechazo lo aplica el caso de uso DESPUÉS de leer el ítem, el producto y sus conflictos (el ítem inexistente, «elegí el producto» y «ya está en un ítem» ganan sobre un orden roto).
+ */
+export function guardComandoAgregarOpcionItemAgrupadoCarta(entrada: { orden: unknown }): ResultadoDato<{ orden: number | null }> {
+  if (entrada.orden === null || entrada.orden === undefined) return aceptar({ orden: null });
+  // Un orden es un número o un texto con un número (o vacío): un objeto o un arreglo no lo es (`String([])` es vacío y valía 0).
+  const orden = validarOrdenCarta(typeof entrada.orden === "object" ? Number.NaN : entrada.orden);
+  if (!orden.ok) return rechazar("formato", orden.mensaje);
+  return aceptar({ orden: orden.valor });
+}
+
 /** Guard del comando «cambiar el orden de una opción»: EXACTAMENTE `validarOrdenCarta`, con su mismo texto (vacío o null valen 0). El `opcionId` pasa tal cual (lo resuelve el caso de uso). */
 export function guardComandoActualizarOrdenOpcionItemAgrupadoCarta(entrada: { opcionId: string; orden: unknown }): ResultadoDato<ComandoActualizarOrdenOpcionItemAgrupadoCarta> {
   const orden = validarOrdenCarta(entrada.orden);

@@ -6,7 +6,7 @@ import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa } from "@/server/
 import { texto } from "@/core/texto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
-import { guardComandoDarDeAltaProductoRapido, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
+import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
 import { ofrecerSincronizarPrecio } from "@/core/carta/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
@@ -294,7 +294,10 @@ export async function darDeAltaProductoRapido(nombre: string, unidadStockId: str
  */
 export async function darDeAltaProducto(datos: DatosProducto): Promise<ResultadoConId> {
   return conPermisoDeEmpresa("alta_producto", async (ctx) => {
-    const r = await darDeAltaProductoCasoDeUso(ctx, datos, azarDelProceso, await puedeGestionarConsignacion(ctx));
+    // S-52: el guard se CALCULA acá (formato y rango de los datos que no dependen de la base) pero `validarDatosDeProducto` aplica cada rechazo en el lugar de siempre, así el orden de los mensajes no cambia.
+    const puerta = guardComandoDatosDeProducto({ datos });
+    if (typeof datos !== "object" || datos === null) return error(puerta.antesDeLaUnidad.ok ? "Los datos del producto no son válidos." : puerta.antesDeLaUnidad.mensaje);
+    const r = await darDeAltaProductoCasoDeUso(ctx, datos, azarDelProceso, await puedeGestionarConsignacion(ctx), puerta);
     const base = aResultadoAccion(r);
     return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
@@ -317,7 +320,10 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
  */
 export async function actualizarProducto(productoId: string, datos: DatosProducto): Promise<ResultadoConSincronizable> {
   return conPermisoDeEmpresa<ResultadoConSincronizable>("producto_editar", async (ctx) => {
-    const r = await actualizarProductoCasoDeUso(ctx, { productoId, datos, puedeGestionarConsignacion: await puedeGestionarConsignacion(ctx) });
+    // S-52: el guard se CALCULA acá pero `validarDatosDeProducto` aplica cada rechazo en el lugar de siempre (después de leer el producto y la unidad): un producto inexistente gana sobre un dato inválido.
+    const puerta = guardComandoDatosDeProducto({ datos });
+    if (typeof datos !== "object" || datos === null) return error(puerta.antesDeLaUnidad.ok ? "Los datos del producto no son válidos." : puerta.antesDeLaUnidad.mensaje);
+    const r = await actualizarProductoCasoDeUso(ctx, { productoId, datos, puerta, puedeGestionarConsignacion: await puedeGestionarConsignacion(ctx) });
     const base = aResultadoAccion(r);
     if (!r.ok) return base;
     revalidarCartasPublicas(ctx.empresaSlug);
@@ -412,7 +418,10 @@ export async function agregarPresentacionAlternativa(
   // Desde el Hito 4 (H4C-11): permiso → caso de uso (`casos-de-uso/agregar-presentacion-alternativa.ts`: el producto, el factor con los decimales de su unidad de
   // stock, y la presentación con su auditoría en UNA transacción) → `aResultadoAccion`. Sin guard (`SIN_GUARD`: el factor se valida después de leer el producto).
   return conPermisoDeEmpresa("producto_presentaciones", async (ctx) => {
-    return aResultadoAccion(await agregarPresentacionAlternativaCasoDeUso(ctx, { productoId, unidadCompraId, factorConversion }));
+    // S-52: el guard se CALCULA acá; los ids rotos se rechazan en el acto y el rango del factor lo aplica el caso de uso después de leer el producto (un producto inexistente gana sobre un factor inválido).
+    const puerta = guardComandoAgregarPresentacionAlternativa({ productoId, unidadCompraId, factorConversion });
+    if (!puerta.ids.ok) return error(puerta.ids.mensaje);
+    return aResultadoAccion(await agregarPresentacionAlternativaCasoDeUso(ctx, { productoId, unidadCompraId, factorConversion, factor: puerta.factor }));
   });
 }
 

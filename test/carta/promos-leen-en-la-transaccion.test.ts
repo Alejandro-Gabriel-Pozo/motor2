@@ -3,6 +3,7 @@ import { baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prisma
 import { guardarPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-promo-carta";
 import { guardarPrecioLocalPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-precio-local-promo-carta";
 import { guardarCuposPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta";
+import { guardComandoGuardarCuposPromoCarta, guardComandoGuardarPrecioLocalPromoCarta } from "../../src/core/features/carta/promos.guard";
 
 /**
  * M14 (S-51 de `docs/pureza-integracion.md`; hallazgo de la auditoría de acciones) y M-5 (auditoría intermedia): el piso de precio de una promo (el precio de la empresa y el local contra los cupos) se
@@ -31,6 +32,9 @@ describe("promos: el piso se lee y se escribe dentro de la transacción (M14, M-
 
   const cupos100 = [{ seccionCartaId: "", cantidadMinima: 0, cantidadMaxima: 100 }];
   const conSeccion = () => cupos100.map((c) => ({ ...c, seccionCartaId: platosId }));
+  // S-52: los casos de uso reciben el resultado de los guards (la acción los calcula).
+  const cuposDelGuard = () => guardComandoGuardarCuposPromoCarta({ cupos: conSeccion() });
+  const precioDelGuard = (precioLocal: number) => guardComandoGuardarPrecioLocalPromoCarta({ precioLocal });
 
   it("guardarPromoCarta (edición): sin tocar `actor.db`, y el piso de los cupos vigentes sigue rigiendo", async () => {
     await prisma.promoCartaCupo.create({ data: { promoCartaId: promoId, seccionCartaId: platosId, cantidadMinima: 0, cantidadMaxima: 100, orden: 0 } });
@@ -48,13 +52,13 @@ describe("promos: el piso se lee y se escribe dentro de la transacción (M14, M-
 
   it("guardarPrecioLocalPromoCarta: sin tocar `actor.db`, y el piso de los cupos vigentes sigue rigiendo", async () => {
     await prisma.promoCartaCupo.create({ data: { promoCartaId: promoId, seccionCartaId: platosId, cantidadMinima: 0, cantidadMaxima: 100, orden: 0 } });
-    expect(await guardarPrecioLocalPromoCartaCasoDeUso(actor(), { promoCartaId: promoId, precioLocal: 0.5 })).toMatchObject({ ok: false, codigo: "BAJO_EL_PISO" });
-    const ok = await guardarPrecioLocalPromoCartaCasoDeUso(actor(), { promoCartaId: promoId, precioLocal: 1 });
+    expect(await guardarPrecioLocalPromoCartaCasoDeUso(actor(), { promoCartaId: promoId, precio: precioDelGuard(0.5) })).toMatchObject({ ok: false, codigo: "BAJO_EL_PISO" });
+    const ok = await guardarPrecioLocalPromoCartaCasoDeUso(actor(), { promoCartaId: promoId, precio: precioDelGuard(1) });
     expect(ok.ok, ok.ok ? "" : ok.mensaje).toBe(true);
   });
 
   it("guardarCuposPromoCarta: sin tocar `actor.db`", async () => {
-    const r = await guardarCuposPromoCartaCasoDeUso(actor(), { promoCartaId: promoId, cupos: conSeccion() });
+    const r = await guardarCuposPromoCartaCasoDeUso(actor(), { promoCartaId: promoId, cupos: cuposDelGuard() });
     expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
     expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: promoId } })).toBe(1);
   });
@@ -65,8 +69,8 @@ describe("promos: el piso se lee y se escribe dentro de la transacción (M14, M-
       await prisma.promoCartaSucursal.updateMany({ where: { promoCartaId: promoId }, data: { precioLocal: null } });
 
       const [cupos, precio] = await Promise.all([
-        guardarCuposPromoCartaCasoDeUso(actor(), { promoCartaId: promoId, cupos: conSeccion() }),
-        guardarPrecioLocalPromoCartaCasoDeUso(actor(), { promoCartaId: promoId, precioLocal: 0.5 }),
+        guardarCuposPromoCartaCasoDeUso(actor(), { promoCartaId: promoId, cupos: cuposDelGuard() }),
+        guardarPrecioLocalPromoCartaCasoDeUso(actor(), { promoCartaId: promoId, precio: precioDelGuard(0.5) }),
       ]);
 
       const hayCupos = (await prismaAdmin.promoCartaCupo.count({ where: { promoCartaId: promoId } })) > 0;

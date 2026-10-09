@@ -1,6 +1,5 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { LARGO_MAXIMO_DESCRIPCION_CARTA, normalizarTagsCarta, validarOrdenCarta, validarTextoLibreCarta } from "@/core/carta/validaciones";
 import { MENSAJE_FALTA_SECCION_DE_CARTA, type ComandoGuardarContenidoCartaProducto, type ResultadoGuardarContenidoCartaProducto } from "@/core/features/carta/contenido-producto.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { guardarContenidoDeProducto } from "@/server/persistencia/carta/contenido-producto";
@@ -31,17 +30,14 @@ export async function guardarContenidoCartaProductoCasoDeUso(
   actor: Pick<ContextoUsuario, "db" | "sucursalId">,
   comando: ComandoGuardarContenidoCartaProducto,
 ): Promise<ResultadoGuardarContenidoCartaProducto> {
-  const { productoId, datos } = comando;
+  const { productoId, datos, validados } = comando;
   const producto = await actor.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true } });
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
   if (producto.tipo !== "PV") return fracaso("NO_ES_PV", "Solo un producto de venta (PV) puede ir en la carta.");
 
-  const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
-  if (!descripcion.ok) return fracaso("DATO_INVALIDO", descripcion.mensaje);
-  const tags = normalizarTagsCarta(datos.tags);
-  if (!tags.ok) return fracaso("DATO_INVALIDO", tags.mensaje);
-  const orden = validarOrdenCarta(datos.orden);
-  if (!orden.ok) return fracaso("DATO_INVALIDO", orden.mensaje);
+  // S-52: la descripción, los tags y el orden (en ese orden) los decidió `guardComandoGuardarContenidoCartaProducto`; su rechazo se aplica ACÁ, después de leer el producto.
+  if (!validados.ok) return fracaso("DATO_INVALIDO", validados.mensaje);
+  const { descripcion, tags, orden } = validados.valor;
 
   const visibleEnCarta = datos.visibleEnCarta === true;
   const seccionCartaId = datos.seccionCartaId?.trim() || null;
@@ -57,10 +53,10 @@ export async function guardarContenidoCartaProductoCasoDeUso(
   const data = {
     visibleEnCarta,
     seccionCartaId,
-    descripcion: descripcion.valor,
-    tags: tags.valor,
+    descripcion,
+    tags,
     especial: datos.especial === true,
-    orden: orden.valor,
+    orden,
     generoCartaId: genero.valor,
   };
   await guardarContenidoDeProducto(actor.db, { sucursalId: actor.sucursalId, productoId, datos: data });

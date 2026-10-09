@@ -32,12 +32,14 @@ export async function agregarPresentacionAlternativaCasoDeUso(
   actor: Pick<ContextoUsuario, "db" | "transaccion" | "usuarioId">,
   comando: ComandoAgregarPresentacionAlternativa,
 ): Promise<ResultadoAgregarPresentacionAlternativa> {
-  const { productoId, unidadCompraId, factorConversion } = comando;
+  const { productoId, unidadCompraId, factorConversion, factor: rangoDelFactor } = comando;
   const producto = await actor.db.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
   if (producto.unidadCompraId === unidadCompraId) {
     return fracaso("ES_LA_UNIDAD_POR_DEFECTO", "Esa ya es la unidad de compra por defecto de este producto.");
   }
+  // S-52: el rango del factor lo decidió `guardComandoAgregarPresentacionAlternativa`; su rechazo se aplica ACÁ, después de leer el producto.
+  if (!rangoDelFactor.ok) return fracaso("FACTOR_INVALIDO", rangoDelFactor.mensaje);
   // Mismo criterio que `factorConversion` de Producto (validarComun): "unidades de stock por 1 unidad de compra" — sus
   // decimales son los de la unidad de STOCK de este producto, no los de la unidad de compra alternativa.
   const factor = validarCantidad(factorConversion, producto.unidadStock, { etiqueta: "El factor de conversión", obligatorio: true });

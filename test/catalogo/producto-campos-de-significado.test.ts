@@ -6,6 +6,7 @@ import { baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prisma
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actualizarProducto, type DatosProducto } from "../../src/server/actions/catalogo/productos";
 import { actualizarProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/actualizar-producto";
+import { guardComandoDatosDeProducto } from "../../src/core/features/catalogo/productos.guard";
 import { generarReporteConsignacion } from "../../src/server/consultas/reportes/consignacion";
 
 /**
@@ -52,7 +53,7 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
   const comoOperador = () => mockearUsuarioActual({ id: operadorId, email: "operador@test.com", nombre: null });
   // El costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante` (S-12): las pruebas que lo cambian actúan como administrador.
   const comoAdmin = () => mockearUsuarioActual({ id: adminId, email: "admin@test.com", nombre: null });
-  const comando = (datosDelFormulario: DatosProducto) => ({ productoId: quesoId, datos: datosDelFormulario, puedeGestionarConsignacion: true });
+  const comando = (datosDelFormulario: DatosProducto) => ({ productoId: quesoId, datos: datosDelFormulario, puerta: guardComandoDatosDeProducto({ datos: datosDelFormulario }), puedeGestionarConsignacion: true });
   const filas = async (campo: string) => prismaAdmin.registroAuditoria.findMany({ where: { entidad: "Producto", entidadId: quesoId, campo } });
   const unidadDelProducto = async () => (await prisma.producto.findUniqueOrThrow({ where: { id: quesoId } })).unidadStockId;
 
