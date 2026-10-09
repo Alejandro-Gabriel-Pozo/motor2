@@ -38,6 +38,9 @@ const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
   // S-06 (plan de endurecimiento de seguridad, GT-5): los cupos de una promo fijan cuántas unidades de cada sección entran por su precio (`Int`, no `Decimal`, así que la regla
   // de dinero no los veía): toda escritura de `PromoCartaCupo` tiene que tener su cadena de auditoría (`guardar-cupos-promo-carta.ts`).
   promoCartaCupo: "*",
+  // S-05 (GT-5, T14, M-3 de la auditoría intermedia): las columnas que cambian el SIGNIFICADO de las cantidades y de la deuda de un producto (el factor y las unidades con que se cuenta, si se
+  // produce, y el consignante). No son `Decimal` salvo el factor: la regla de dinero no veía las demás. Toda escritura de una de ellas tiene que tener su cadena de auditoría.
+  producto: ["factorConversion", "unidadStockId", "unidadCompraId", "esConsignacion", "proveedorConsignacionId", "seProduce"],
 };
 
 /** Modelos cuya fila ES el rastro (un documento propio o un dato de fuente externa): no hay un valor anterior que se pierda al escribirlos. */
