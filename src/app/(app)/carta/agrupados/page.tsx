@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import type { ItemAgrupadoAdmin } from "@/core/carta/public";
 import { cargarAdminItemsAgrupados } from "@/server/consultas/carta/admin";
@@ -50,6 +51,8 @@ type UbicacionEnCarta = { secciones: { id: string; nombre: string; activa: boole
 export default async function ItemsAgrupadosPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   // S-10/D1 (O.59): los ítems agrupados son de la carta PROPIA de la sucursal activa → clave de contexto SUCURSAL, evaluada en ella.
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_items_agrupados", ctx.db);

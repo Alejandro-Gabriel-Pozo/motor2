@@ -12,12 +12,13 @@ import { REPORTES_PESADOS } from "../../src/server/actions/limitador-de-lecturas
  *  - cada reporte pesado (`REPORTES_PESADOS`) lo cuenta su página con `reportePesadoSinCupo(ctx.usuarioId, "<reporte>", …)` ANTES de pedirle los datos a su consulta, y no queda
  *    ningún reporte en la lista sin página ni página sin reporte. Desde I-3 (auditoría intermedia) una consulta pesada puede tener MÁS de una página (el Resumen operativo corre la
  *    misma `obtenerReportePorPeriodo` que Período y cuenta en el cupo de "periodo"), y los archivos que llaman a una consulta pesada son EXACTAMENTE esas páginas;
- *  - (I-3) las páginas de servidor no pasaban por `requerirSesion`: toda página de `reportes/` cuenta con `lecturaSinCupo(ctx.usuarioId, …)` justo después de resolver al usuario y antes
- *    de cualquier otra llamada (el gate lee la base). Las páginas que NO son de reportes y todavía no cuentan están en una lista CERRADA, declarada y que solo se achica.
+ *  - (I-3 y B31) las páginas de servidor no pasaban por `requerirSesion`: TODA página que resuelve al usuario (`obtenerContextoUsuario`) cuenta con `lecturaSinCupo(ctx.usuarioId, …)`
+ *    justo después de resolverlo y antes de cualquier otra llamada (el gate lee la base). I-3 lo hizo con las 27 de `reportes/`; B31 (T14) con las otras 50 (administración, carta,
+ *    catálogo, movimientos, stock, traspasos, POS, inicio y la raíz). Las que no deban contar van a `SIN_CUPO_DE_LECTURAS`, con su motivo (hoy ninguna).
  *
  * Mutaciones (cada una pone un caso en rojo): sacar el conteo de `requerirSesion`; ponerlo después de devolver; sacarlo de una página; ponerlo después de la consulta; un reporte
- * pesado nuevo en la lista sin su página; sacar `lecturaSinCupo` de una página de reportes; ponerlo después del gate; sacar el cupo del Resumen operativo; una página nueva fuera de
- * reportes sin cupo y sin anotar; una página que llama a una consulta pesada y no está en la lista.
+ * pesado nuevo en la lista sin su página; sacar `lecturaSinCupo` de una página (de reportes o no); ponerlo después del gate; sacar el cupo del Resumen operativo; una página nueva
+ * sin cupo y sin anotar; una página que llama a una consulta pesada y no está en la lista.
  */
 const RAIZ = join(__dirname, "../..");
 const arbol = (ruta: string) => ts.createSourceFile(ruta, readFileSync(join(RAIZ, ruta), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -123,7 +124,7 @@ function archivosDe(dir: string): string[] {
   });
 }
 
-describe("S-28 (I-3) — las páginas de servidor cuentan su pedido en el cupo general de lecturas", () => {
+describe("S-28 (I-3, B31) — toda página de servidor cuenta su pedido en el cupo general de lecturas", () => {
   const rutaRelativa = (ruta: string) => relative(RAIZ, ruta).split(sep).join("/");
   const paginas = archivosDe(join(RAIZ, "src/app"))
     .filter((ruta) => ruta.endsWith(`${sep}page.tsx`))
@@ -132,72 +133,21 @@ describe("S-28 (I-3) — las páginas de servidor cuentan su pedido en el cupo g
   const esDeReportes = (ruta: string) => ruta.startsWith("src/app/(app)/reportes/");
 
   /**
-   * Las páginas que NO son de reportes y todavía no cuentan su pedido. DECLARADO (no escondido): la corrección de I-3 pide las páginas de reportes, que son las que recorren más
-   * historia; el resto lee listados de catálogo, configuración y stock de la sucursal activa. Extender el conteo a estas páginas es mecánico (las mismas dos líneas que las de reportes) y
-   * queda para la consolidación (T14). La lista SOLO se achica: una página nueva fuera de `reportes/` sin cupo falla hasta que cuente o se anote acá con su motivo; una entrada de una
-   * página que ya cuenta (o que ya no existe) también falla.
+   * Las páginas que resuelven al usuario y NO cuentan su pedido, cada una con su MOTIVO. B31 (T14) extendió el conteo a las 50 páginas que I-3 había dejado en una lista (administración, carta,
+   * catálogo, movimientos, stock, traspasos, POS, inicio y la raíz), con las mismas dos líneas que las de reportes y sin ninguna consulta nueva; HOY NO QUEDA NINGUNA. La lista sigue acá, vacía,
+   * para que una excepción futura sea una decisión a la vista y no un olvido: una página que no cuenta falla hasta que cuente o se anote acá con su motivo; una entrada de una página que
+   * ya cuenta (o que ya no existe) también falla. Las páginas ANÓNIMAS (login, invitación, carta pública) no resuelven al usuario: las cubre `puertas-anonimas-con-cupo`.
    */
-  const SIN_CUPO_DE_LECTURAS_TODAVIA = [
-    "src/app/(app)/administracion/auditoria/page.tsx",
-    "src/app/(app)/administracion/capacidades-sucursal/page.tsx",
-    "src/app/(app)/administracion/empresa/page.tsx",
-    "src/app/(app)/administracion/gerencia/page.tsx",
-    "src/app/(app)/administracion/permisos/page.tsx",
-    "src/app/(app)/administracion/roles/page.tsx",
-    "src/app/(app)/administracion/sucursales/page.tsx",
-    "src/app/(app)/administracion/usuarios/page.tsx",
-    "src/app/(app)/carta/agrupados/page.tsx",
-    "src/app/(app)/carta/page.tsx",
-    "src/app/(app)/carta/portal/page.tsx",
-    "src/app/(app)/carta/tema/page.tsx",
-    "src/app/(app)/catalogo/categorias/page.tsx",
-    "src/app/(app)/catalogo/clientes/page.tsx",
-    "src/app/(app)/catalogo/insumos-grupos/page.tsx",
-    "src/app/(app)/catalogo/margen-objetivo/page.tsx",
-    "src/app/(app)/catalogo/productos/[id]/editar/page.tsx",
-    "src/app/(app)/catalogo/productos/[id]/page.tsx",
-    "src/app/(app)/catalogo/productos/nuevo/page.tsx",
-    "src/app/(app)/catalogo/productos/page.tsx",
-    "src/app/(app)/catalogo/proveedores/[id]/editar/page.tsx",
-    "src/app/(app)/catalogo/proveedores/[id]/page.tsx",
-    "src/app/(app)/catalogo/proveedores/comparativa/page.tsx",
-    "src/app/(app)/catalogo/proveedores/nuevo/page.tsx",
-    "src/app/(app)/catalogo/proveedores/page.tsx",
-    "src/app/(app)/catalogo/recetas/[productoId]/historial/page.tsx",
-    "src/app/(app)/catalogo/recetas/[productoId]/page.tsx",
-    "src/app/(app)/catalogo/recetas/page.tsx",
-    "src/app/(app)/catalogo/unidades/page.tsx",
-    "src/app/(app)/inicio/page.tsx",
-    "src/app/(app)/movimientos/[proceso]/page.tsx",
-    "src/app/(app)/movimientos/conteo-fisico/page.tsx",
-    "src/app/(app)/movimientos/destinos-consumo/page.tsx",
-    "src/app/(app)/movimientos/motivos-merma/page.tsx",
-    "src/app/(app)/movimientos/precio-local/page.tsx",
-    "src/app/(app)/movimientos/secciones/page.tsx",
-    "src/app/(app)/movimientos/venta/page.tsx",
-    "src/app/(app)/stock/alertas/page.tsx",
-    "src/app/(app)/stock/consolidado/page.tsx",
-    "src/app/(app)/stock/conteo-frecuencia/page.tsx",
-    "src/app/(app)/stock/minimo/page.tsx",
-    "src/app/(app)/stock/por-familia/page.tsx",
-    "src/app/(app)/stock/reclasificar/page.tsx",
-    "src/app/(app)/stock/seccion-habitual/page.tsx",
-    "src/app/(app)/traspasos/enviar/page.tsx",
-    "src/app/(app)/traspasos/page.tsx",
-    "src/app/(app)/traspasos/solicitar/page.tsx",
-    "src/app/(pos)/mesas/[mesaId]/page.tsx",
-    "src/app/(pos)/mesas/page.tsx",
-    "src/app/page.tsx",
-  ];
+  const SIN_CUPO_DE_LECTURAS: Readonly<Record<string, string>> = {};
 
   it("sanidad: encuentra las páginas de reportes y las demás (no pasa en vacío)", () => {
     expect(paginas.filter((p) => esDeReportes(p.ruta)).length).toBeGreaterThanOrEqual(25);
     expect(paginas.filter((p) => !esDeReportes(p.ruta)).length).toBeGreaterThanOrEqual(40);
   });
 
-  it("toda página de reportes cuenta `lecturaSinCupo(ctx.usuarioId, …)` justo después de resolver al usuario y antes de cualquier otra llamada (el gate lee la base)", () => {
+  it("toda página cuenta `lecturaSinCupo(ctx.usuarioId, …)` justo después de resolver al usuario y antes de cualquier otra llamada (el gate lee la base)", () => {
     const problemas: string[] = [];
-    for (const { ruta, fuente } of paginas.filter((p) => esDeReportes(p.ruta))) {
+    for (const { ruta, fuente } of paginas.filter((p) => !(p.ruta in SIN_CUPO_DE_LECTURAS))) {
       const cupos = llamadas(fuente, fuente, "lecturaSinCupo");
       const contexto = llamadas(fuente, fuente, "obtenerContextoUsuario");
       if (cupos.length !== 1) {
@@ -207,17 +157,26 @@ describe("S-28 (I-3) — las páginas de servidor cuentan su pedido en el cupo g
       if (cupos[0]!.arguments[0]?.getText(fuente) !== "ctx.usuarioId") problemas.push(`${ruta}: lecturaSinCupo cuenta por ctx.usuarioId`);
       if (cupos[0]!.pos < contexto[0]!.pos) problemas.push(`${ruta}: el cupo va DESPUÉS de resolver al usuario`);
       // Antes de cualquier otra llamada que lea la base: los gates (`requierePermiso*`, `sucursalesVisiblesPara`, `obtenerMiNivelPermiso`) y las consultas.
-      const lecturas = ["requierePermisoVer", "requierePermisoVerDeEmpresa", "sucursalesVisiblesPara", "obtenerMiNivelPermiso"].flatMap((nombre) => llamadas(fuente, fuente, nombre));
+      const lecturas = ["requierePermisoVer", "requierePermisoVerDeEmpresa", "sucursalesVisiblesPara", "obtenerMiNivelPermiso", "obtenerMiNivelPermisoDeEmpresa", "pantallaDeInicio", "tarjetasDelUsuario"].flatMap((nombre) =>
+        llamadas(fuente, fuente, nombre),
+      );
       for (const lectura of lecturas) if (lectura.pos < cupos[0]!.pos) problemas.push(`${ruta}: el cupo va ANTES de ${lectura.expression.getText(fuente)} (que lee la base)`);
     }
     expect(problemas).toEqual([]);
   });
 
-  it("las páginas fuera de reportes sin cupo son exactamente las de la lista declarada (que solo se achica)", () => {
+  it("las páginas sin cupo son exactamente las de SIN_CUPO_DE_LECTURAS (hoy ninguna), cada una con su motivo", () => {
     const sinCupo = paginas
-      .filter((p) => !esDeReportes(p.ruta) && llamadas(p.fuente, p.fuente, "lecturaSinCupo").length === 0)
+      .filter((p) => llamadas(p.fuente, p.fuente, "lecturaSinCupo").length === 0)
       .map((p) => p.ruta)
       .sort();
-    expect(sinCupo, "una página nueva cuenta su pedido con lecturaSinCupo (como las de reportes) o se anota en la lista con su motivo; una que ya cuenta sale de la lista").toEqual([...SIN_CUPO_DE_LECTURAS_TODAVIA].sort());
+    expect(sinCupo, "una página nueva cuenta su pedido con lecturaSinCupo o se anota en la lista con su motivo; una que ya cuenta sale de la lista").toEqual(Object.keys(SIN_CUPO_DE_LECTURAS).sort());
+    for (const [ruta, motivo] of Object.entries(SIN_CUPO_DE_LECTURAS)) expect(motivo.length, ruta).toBeGreaterThan(40);
+  });
+
+  it("el cupo se cuenta en las 77 páginas (27 de reportes y 50 más), no solo en las de reportes", () => {
+    const cuentan = paginas.filter((p) => llamadas(p.fuente, p.fuente, "lecturaSinCupo").length === 1);
+    expect(cuentan.length).toBe(paginas.length);
+    expect(paginas.length).toBeGreaterThanOrEqual(77);
   });
 });
