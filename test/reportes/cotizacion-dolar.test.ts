@@ -217,7 +217,7 @@ describe("cotizacionPlausible (informe de seguridad S-19)", () => {
     expect(cotizacionPlausible(9_000, null, ahora, 9_100)).toBe(true);
     expect(cotizacionPlausible(9_000, null, ahora, 1_535)).toBe(false);
     // con la antigüedad la banda se abre (cada año suma un factor): dos años después el techo es 1.500 × 5²
-    const dentroDeDosAnios = new Date("2028-09-01T00:00:00Z");
+    const dentroDeDosAnios = new Date(ahora.getTime() + 700 * 86_400_000);
     expect(cotizacionPlausible(30_000, null, dentroDeDosAnios)).toBe(true);
     expect(cotizacionPlausible(40_000, null, dentroDeDosAnios)).toBe(false);
   });

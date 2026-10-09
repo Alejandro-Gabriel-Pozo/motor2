@@ -112,8 +112,8 @@ const TOLERANCIA_ENTRE_FUENTES = 0.05;
  * 1.485 / 1.535) que se abre con la antigüedad: `FACTOR_MAXIMO_ANUAL_SIN_ANCLA` por cada año de distancia entre la fecha de la cotización y la de la referencia (mínimo uno). 5 por año
  * deja pasar la peor devaluación anual reciente (2023: ~4,4×) y corta lo absurdo. Es un default a confirmar por el dueño, revertible cambiando estas dos constantes.
  */
-export const DOLAR_DE_REFERENCIA_SIN_ANCLA = { fecha: "2026-09-19", venta: 1500 } as const;
-export const FACTOR_MAXIMO_ANUAL_SIN_ANCLA = 5;
+const DOLAR_DE_REFERENCIA_SIN_ANCLA = { fecha: "2026-09-19", venta: 1500 } as const;
+const FACTOR_MAXIMO_ANUAL_SIN_ANCLA = 5;
 
 /** ¿El valor cae en la banda realista del ancla fija para la fecha dada? Sin previo con que comparar, esta es la única defensa contra un primer valor absurdo. */
 function dentroDeLaBandaSinAncla(nueva: number, instante: Date): boolean {
@@ -138,6 +138,30 @@ export function cotizacionPlausible(nueva: number, ultima: { fecha: Date; venta:
 /** El texto del error cuando se descarta una cotización por apartarse de la última guardada sin que otra fuente la confirme. */
 export function mensajeDeCotizacionDescartada(venta: number, previaVenta: number | undefined): string {
   return `cotización descartada: ${venta} se aparta más de ${VARIACION_MAXIMA_DOLAR * 100}% de la última guardada (${previaVenta}) y no la confirma otra fuente`;
+}
+
+/** Los códigos FIJOS con que el cron del dólar cuenta, hacia afuera, qué falló (M-27 de la auditoría intermedia). */
+export type CodigoDeErrorDeSincronizacion = "historial" | "dolarapi" | "bcra" | "cotizacion-descartada" | "otro";
+
+/**
+ * Los errores que junta `sincronizarDolar` son texto libre y varios traen el `message` de una excepción (el de Prisma al guardar un día, el de `fetch`, hosts): el cron los devolvía crudos en
+ * el cuerpo de su respuesta 200. Hacia afuera salen solo estos códigos fijos, sin repetir y en el orden en que aparecen; el detalle completo va a Sentry (`reportarError`), no a la respuesta.
+ */
+export function codigosDeErroresDeSincronizacion(errores: readonly string[]): CodigoDeErrorDeSincronizacion[] {
+  const codigos: CodigoDeErrorDeSincronizacion[] = [];
+  for (const error of errores) {
+    const codigo: CodigoDeErrorDeSincronizacion = /cotización descartada/.test(error)
+      ? "cotizacion-descartada"
+      : error.startsWith("historial")
+        ? "historial"
+        : error.startsWith("dolarapi.com")
+          ? "dolarapi"
+          : error.startsWith("BCRA")
+            ? "bcra"
+            : "otro";
+    if (!codigos.includes(codigo)) codigos.push(codigo);
+  }
+  return codigos;
 }
 
 /** Pesos → dólares, con 2 decimales, a la cotización dada (se usa la de VENTA: lo que costaría comprar esos dólares). */

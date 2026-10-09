@@ -64,7 +64,7 @@ export type { ItemOperacion } from "./trazabilidad";
 export type { FilaValuacionInventario } from "./valuacion";
 export { resolverRangoPorDefecto } from "./rango-por-defecto";
 export type { CotizacionDia, ResultadoSincronizacionDolar, UltimaCotizacion } from "./cotizacion-dolar";
-export { cotizacionPlausible, cotizacionVencida, leerBcra, leerDolarApi, leerHistorial, mensajeDeCotizacionDescartada, pesosADolares, planDeRelleno } from "./cotizacion-dolar";
+export { codigosDeErroresDeSincronizacion, cotizacionPlausible, cotizacionVencida, leerBcra, leerDolarApi, leerHistorial, mensajeDeCotizacionDescartada, pesosADolares, planDeRelleno } from "./cotizacion-dolar";
 export type { ResultadoSincronizacionIPC, SerieIPC } from "./indices-economicos";
 export {
   antiguedadSerieIPC,
