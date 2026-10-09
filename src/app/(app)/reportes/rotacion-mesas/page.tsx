@@ -32,7 +32,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Rotación de mesas</h1>
-        <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} />
+        <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />
       </div>
 
       <p data-resumen className="text-sm text-neutral-500">

@@ -1,7 +1,6 @@
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
 import { contextoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "@/core/permisos/acciones";
 import { accionesDelMenuQueElUsuarioPuedeVer, requierePermisoVer, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
-import { getUsuarioActual } from "@/core/auth/session";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo, lecturaYaSinCupo } from "./limitador-de-lecturas";
 
 /**
@@ -20,6 +19,9 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo, lecturaYaSinCupo } from ".
 async function requerirSesion(): Promise<ContextoUsuario> {
   // M-19: quien YA se pasó del cupo no vuelve a gastar la base en resolver su contexto (pertenencias, sucursales, rol): se lo corta apenas se sabe quién es (`getUsuarioActual` está cacheado por
   // pedido, así que `obtenerContextoUsuario` no lo repite). Solo MIRA; el conteo sigue siendo el de más abajo, justo después de resolver al usuario (`lecturas-con-cupo.test.ts`).
+  // Import dinámico a propósito: la sesión (Auth.js) se carga recién al atender un pedido, no al importar este archivo (lo importa casi toda acción y página de lectura, y varias pruebas de
+  // pantallas que reemplazan el contexto sin tocar la sesión).
+  const { getUsuarioActual } = await import("@/core/auth/session");
   const quien = await getUsuarioActual();
   if (quien && lecturaYaSinCupo(quien.id, Date.now())) throw new Error(MENSAJE_DEMASIADAS_LECTURAS);
   const ctx = await obtenerContextoUsuario();

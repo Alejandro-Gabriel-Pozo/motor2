@@ -32,7 +32,7 @@ export default async function VentasPorSeccionPage({ searchParams }: { searchPar
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Ventas por sección de carta</h1>
-        <SelectorRango opcion={rango.opcion} desdeISO={desdeStr} hastaISO={hastaStr} />
+        <SelectorRango opcion={rango.opcion} desdeISO={desdeStr} hastaISO={hastaStr} recortadoDesde={rango.recortadoDesde} />
         <p className="mt-2 text-sm text-neutral-500">Total facturado: ${rep.totalFacturado.toLocaleString("es-AR")}</p>
       </div>
 

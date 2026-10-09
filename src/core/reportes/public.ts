@@ -14,7 +14,7 @@
 export type { FiltroComparacionRendimiento, FilaComparacionRendimiento } from "./rendimiento-por-sucursal";
 export { FOOD_COST_OBJETIVO_PCT } from "./margen-objetivo";
 export { resolverObjetivoFoodCost } from "./margen-objetivo";
-export { resolverRangoDeReporte } from "./rango-por-defecto";
+export { MAXIMO_DE_DIAS_DE_UN_RANGO, resolverRangoDeReporte } from "./rango-por-defecto";
 export type { FilaDebidoConsignante } from "./consignacion";
 export type { FilaStockSinVenderConsignacion } from "./consignacion";
 export type { FilaResumenConsolidado } from "./resumen-consolidado";

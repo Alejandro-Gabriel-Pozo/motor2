@@ -41,7 +41,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Reporte por período</h1>
-        <SelectorRango opcion={rango.opcion} desdeISO={desdeStr} hastaISO={hastaStr} />
+        <SelectorRango opcion={rango.opcion} desdeISO={desdeStr} hastaISO={hastaStr} recortadoDesde={rango.recortadoDesde} />
       </div>
 
       <DigestAlertas alertas={rep.digest} puedeVerCostos={gateCostos.ok} />

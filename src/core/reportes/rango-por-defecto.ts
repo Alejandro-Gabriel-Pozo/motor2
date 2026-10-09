@@ -30,6 +30,11 @@ export interface RangoDeReporte {
   opcion: OpcionRango;
   desdeISO: string;
   hastaISO: string;
+  /**
+   * Solo presente si el rango pedido abarcaba más de `MAXIMO_DE_DIAS_DE_UN_RANGO` días y se RECORTÓ (M-21): el «desde» que se pidió, para que la pantalla lo DIGA (`SelectorRango`) en vez de
+   * mostrar un reporte de menos días como si fuera el pedido. Ausente cuando el rango entró entero.
+   */
+  recortadoDesde?: string;
 }
 
 function hoyUtcSinHora(ahora: Date): Date {
@@ -70,7 +75,8 @@ export function resolverRangoDeReporte(sp: { desde?: string; hasta?: string; ran
     const base = resolverRangoPorDefecto("30d", ahora);
     const desdeISO = sp.desde || base.desdeISO;
     const hastaISO = sp.hasta || base.hastaISO;
-    return { opcion: "personalizado", desdeISO: acotarElDesde(desdeISO, hastaISO), hastaISO };
+    const acotado = acotarElDesde(desdeISO, hastaISO);
+    return { opcion: "personalizado", desdeISO: acotado, hastaISO, ...(acotado !== desdeISO ? { recortadoDesde: desdeISO } : {}) };
   }
   return resolverRangoPorDefecto(sp.rango, ahora);
 }

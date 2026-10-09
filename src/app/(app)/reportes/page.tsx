@@ -39,7 +39,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
         <p className="mb-2 text-sm text-neutral-500">
           Financiero de {r.financiero.desde.toISOString().slice(0, 10)} a {r.financiero.hasta.toISOString().slice(0, 10)}.
         </p>
-        <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} />
+        <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">

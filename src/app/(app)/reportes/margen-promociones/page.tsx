@@ -40,7 +40,7 @@ export default async function MargenPromocionesPage({ searchParams }: { searchPa
         </p>
       </div>
 
-      <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} />
+      <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />
 
       <h2 className="text-sm font-medium">
         {rep.cantidadInstancias.toLocaleString("es-AR")} promos vendidas — ${rep.ingresoALista.toLocaleString("es-AR")} de carta → $
