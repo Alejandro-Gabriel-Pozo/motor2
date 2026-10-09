@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
 import { cifrarSecreto } from "../../../src/core/plataforma/cifrado";
 import { generarCodigosDeRecuperacion, hashDeCodigo, hashDeCodigoDeRecuperacion } from "../../../src/core/plataforma/codigos";
+import { COOKIE_DE_PEDIDO_HTTP, COOKIE_DE_PEDIDO_HTTPS, leerPedidoDeIngreso } from "../../../src/core/plataforma/pedido-de-ingreso";
 import { codigoTotp, generarSecretoTotp, pasoDeTotp } from "../../../src/core/plataforma/totp";
 import { crearPrismaE2E, resolverUrlE2E, resolverUrlE2EB } from "./base-e2e";
 import { azarDelProceso } from "../../../src/lib/azar";
@@ -39,17 +40,27 @@ export async function sembrarAdminDePlataforma(email: string): Promise<AdminSemb
 }
 
 /**
- * Reemplaza el código que la consola acaba de generar para ese administrador (el real solo viaja por mail) por uno que el spec conoce, firmado como lo
- * firma la consola. Devuelve cuántos códigos vigentes encontró (1 si el pedido ya se procesó).
+ * Reemplaza el código que la consola acaba de generar para el pedido de ESTE navegador (el real solo viaja por mail) por uno que el spec conoce, firmado como lo
+ * firma la consola (S-08): el código es de la cookie del pedido —`codigoId` + `nonce`, que el spec lee del contexto del navegador— y la consola lo prepara DESPUÉS de
+ * responder (`after()`), así que se espera a que aparezca (hasta 10 s). Devuelve cuántos códigos fijó (1 si el pedido ya se procesó, 0 si nunca apareció).
  */
-export async function fijarCodigoDeIngreso(adminId: string, codigo: string): Promise<number> {
+export async function fijarCodigoDeIngreso(page: Page, adminId: string, codigo: string): Promise<number> {
+  const cookies = await page.context().cookies();
+  const cookie = cookies.find((c) => c.name === COOKIE_DE_PEDIDO_HTTP || c.name === COOKIE_DE_PEDIDO_HTTPS);
+  const pedido = leerPedidoDeIngreso(cookie?.value);
+  if (!pedido) return 0;
   const prisma = crearPrismaE2E(resolverUrlE2E(process.env));
   try {
-    const vigentes = await prisma.codigoDeIngresoPlataforma.findMany({ where: { adminId, usadoEn: null, invalidadoEn: null } });
-    for (const { id } of vigentes) {
-      await prisma.codigoDeIngresoPlataforma.update({ where: { id }, data: { hashCodigo: hashDeCodigo(codigo, SECRETO_DE_CODIGOS_E2E, `ingreso:${adminId}:${id}`) } });
+    for (let intento = 0; intento < 50; intento++) {
+      const fila = await prisma.codigoDeIngresoPlataforma.findFirst({ where: { id: pedido.codigoId, adminId, usadoEn: null, invalidadoEn: null }, select: { id: true } });
+      if (fila) {
+        const hashCodigo = hashDeCodigo(codigo, SECRETO_DE_CODIGOS_E2E, `ingreso:${adminId}:${pedido.codigoId}:${pedido.nonce}`);
+        await prisma.codigoDeIngresoPlataforma.update({ where: { id: fila.id }, data: { hashCodigo } });
+        return 1;
+      }
+      await new Promise((resolver) => setTimeout(resolver, 200));
     }
-    return vigentes.length;
+    return 0;
   } finally {
     await prisma.$disconnect();
   }
@@ -76,7 +87,7 @@ export async function ingresarALaConsola(page: Page, consola: string): Promise<A
   await page.locator("#email").fill(admin.email);
   await page.getByRole("button", { name: "Pedir código" }).click();
   await expect(page.locator("#codigo")).toBeVisible();
-  expect(await fijarCodigoDeIngreso(admin.id, CODIGO_DE_INGRESO_CONOCIDO)).toBe(1);
+  expect(await fijarCodigoDeIngreso(page, admin.id, CODIGO_DE_INGRESO_CONOCIDO)).toBe(1);
   await page.locator("#codigo").fill(CODIGO_DE_INGRESO_CONOCIDO);
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.locator("#factor")).toBeVisible();

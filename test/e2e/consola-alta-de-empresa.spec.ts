@@ -24,7 +24,7 @@ async function ingresar(page: Page): Promise<AdminSembrado> {
   await page.locator("#email").fill(admin.email);
   await page.getByRole("button", { name: "Pedir código" }).click();
   await expect(page.locator("#codigo")).toBeVisible();
-  expect(await fijarCodigoDeIngreso(admin.id, CODIGO_CONOCIDO)).toBe(1);
+  expect(await fijarCodigoDeIngreso(page, admin.id, CODIGO_CONOCIDO)).toBe(1);
   await page.locator("#codigo").fill(CODIGO_CONOCIDO);
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.locator("#factor")).toBeVisible();

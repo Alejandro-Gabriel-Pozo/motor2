@@ -36,7 +36,7 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     motivo: "La consola de plataforma es otra app con su propio régimen: escribe sus tablas (y las de las empresas) desde sus propios servidores; entra a la regla en una fase propia (D-6 del plan de la Fase 4).",
   },
   "plataforma/src/servidor/ingreso.ts": {
-    escrituras: ["adminPlataforma.update", "adminPlataforma.update", "adminPlataforma.update", "codigoDeIngresoPlataforma.create", "codigoDeIngresoPlataforma.updateMany", "codigoDeIngresoPlataforma.updateMany", "codigoDeIngresoPlataforma.updateMany", "codigoDeRecuperacionPlataforma.updateMany", "sesionPlataforma.create", "sesionPlataforma.update", "sesionPlataforma.update"],
+    escrituras: ["adminPlataforma.update", "adminPlataforma.update", "adminPlataforma.update", "codigoDeIngresoPlataforma.create", "codigoDeIngresoPlataforma.updateMany", "codigoDeIngresoPlataforma.updateMany", "codigoDeRecuperacionPlataforma.updateMany", "sesionPlataforma.create", "sesionPlataforma.update", "sesionPlataforma.update"],
     fase: "Consola",
     motivo: "La consola de plataforma es otra app con su propio régimen: escribe sus tablas (y las de las empresas) desde sus propios servidores; entra a la regla en una fase propia (D-6 del plan de la Fase 4).",
   },

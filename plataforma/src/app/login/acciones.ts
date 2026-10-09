@@ -1,13 +1,28 @@
 "use server";
 
+import { headers } from "next/headers";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
+import { azarDelProceso } from "@/lib/azar";
 import { enviarCorreo } from "@/lib/enviar-correo";
+import { reportarError } from "@/lib/reportar-error";
+import { generarPedidoDeIngreso } from "@/core/plataforma/pedido-de-ingreso";
 import { dbDeIdentidad } from "../../db";
 import { entornoDePlataforma } from "../../entorno";
 import { auditarAccionDePlataforma } from "../../servidor/auditoria";
 import { prepararCodigoDeIngreso, verificarCodigoDeIngreso, verificarSegundoFactor, type DependenciasDeIngreso } from "../../servidor/ingreso";
-import { borrarCookieDeSesion, cerrarSesionDelToken, administradorEnSesion, ponerCookieDePendiente, ponerCookieDeSesion, tokenDeLaCookie } from "../../servidor/sesion";
+import { origenDelPedido, origenSinCupoDeCodigos } from "../../servidor/limitador-de-pedidos";
+import {
+  borrarCookieDePedido,
+  borrarCookieDeSesion,
+  cerrarSesionDelToken,
+  administradorEnSesion,
+  pedidoDeLaCookie,
+  ponerCookieDePedido,
+  ponerCookieDePendiente,
+  ponerCookieDeSesion,
+  tokenDeLaCookie,
+} from "../../servidor/sesion";
 
 export type EstadoDeIngreso = { paso: "email" | "codigo" | "segundo-factor"; email: string; error: string | null };
 
@@ -24,21 +39,38 @@ const texto = (formData: FormData, campo: string): string => {
 // Mismo texto para todo fallo del código del mail: no se dice si el email existe, si el código venció o si estaba mal.
 const CODIGO_INVALIDO = "El código no es válido o venció. Pedí uno nuevo.";
 
-/** Paso 1: pide el código. La respuesta es la misma exista o no el email; el mail sale después de responder. */
+/**
+ * Paso 1: pide el código. La respuesta es la misma exista o no el email, y llega al mismo tiempo: acá NO se toca la base. Se genera SIEMPRE un pedido nuevo
+ * (el código del mail queda atado a la cookie de ESTE navegador) y toda la preparación —buscar al administrador, contar el cupo, crear el código y mandar el
+ * mail— corre después de responder, en `after()` (S-08, B-C15). Si este origen ya gastó su cupo de pedidos, no se prepara nada y se responde igual.
+ */
 export async function pedirCodigo(_: EstadoDeIngreso, formData: FormData): Promise<EstadoDeIngreso> {
   const email = texto(formData, "email").trim();
   if (email === "") return { paso: "email", email, error: "Ingresá tu email." };
-  const mensaje = await prepararCodigoDeIngreso(dbDeIdentidad(), dependencias(), email);
-  if (mensaje) after(() => enviarCorreo("avisos", mensaje));
+  const deps = dependencias();
+  const pedido = generarPedidoDeIngreso(azarDelProceso);
+  await ponerCookieDePedido(pedido, deps.ahora());
+  if (!origenSinCupoDeCodigos(origenDelPedido(await headers()), deps.ahora().getTime())) {
+    after(async () => {
+      try {
+        const mensaje = await prepararCodigoDeIngreso(dbDeIdentidad(), deps, email, pedido);
+        if (mensaje) await enviarCorreo("avisos", mensaje);
+      } catch (error) {
+        // Sin el mensaje original: un error de la base puede nombrar valores (el email). Solo el tipo.
+        await reportarError(new Error(`Consola: no se pudo preparar el código de ingreso (${error instanceof Error ? error.name : "desconocido"})`), "consola-ingreso");
+      }
+    });
+  }
   return { paso: "codigo", email, error: null };
 }
 
-/** Paso 2: verifica el código del mail y abre la sesión pendiente. */
+/** Paso 2: verifica el código del mail con el pedido de la cookie de este navegador y abre la sesión pendiente. */
 export async function enviarCodigoDelMail(estado: EstadoDeIngreso, formData: FormData): Promise<EstadoDeIngreso> {
   const email = texto(formData, "email").trim();
   const deps = dependencias();
-  const resultado = await verificarCodigoDeIngreso(dbDeIdentidad(), deps, email, texto(formData, "codigo"));
+  const resultado = await verificarCodigoDeIngreso(dbDeIdentidad(), deps, email, texto(formData, "codigo"), await pedidoDeLaCookie());
   if (!resultado.ok) return { paso: "codigo", email: estado.email || email, error: CODIGO_INVALIDO };
+  await borrarCookieDePedido();
   await ponerCookieDePendiente(resultado.token, deps.ahora());
   return { paso: "segundo-factor", email, error: null };
 }
