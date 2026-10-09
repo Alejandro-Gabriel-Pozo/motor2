@@ -1,5 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { mensajeSiNoPuedeGestionar } from "@/core/permisos/gestion-de-usuarios";
 import { actorDesdeLaBase, objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";
@@ -18,12 +19,11 @@ type ResultadoActualizarNotasMembresia = ResultadoCaso<null, "MEMBRESIA_NO_ENCON
  * (`conPermiso("notas_usuario_sucursal")` → este caso de uso → `aResultadoAccion`), sin guard de formato: recibe un id y un texto libre que nunca se validó
  * (`SIN_GUARD`, con su motivo).
  *
- * Orden, igual que antes (las lecturas con `actor.db`, fuera de la transacción):
+ * Orden, igual que antes (desde M18 todo corre DENTRO de la transacción SERIALIZABLE, con el `tx`):
  *  1. «No se encontró esa membresía» si no existe o no es de la sucursal activa de quien actúa.
  *  2. El techo de gestión (`mensajeSiNoPuedeGestionar`): las notas de un admin o del gerente las toca solo quien puede tocarlos. Quien actúa se mide desde la
- *     base (`actorDesdeLaBase`, O35-B de O.35), junto a quien se toca y con el mismo cliente: no con el contexto de la sesión, que pudo quedar viejo. Este caso de
- *     uso no tiene transacción serializable (ficha SIMPLE): esa lectura queda fuera de la transacción de la escritura, como las de la membresía y de quien se toca.
- *  3. En UNA transacción: la escritura (`cambiarNotasDeMembresia`, `server/persistencia/permisos/membresias.ts`; el texto recortado, o `null` si queda vacío) y
+ *     base (`actorDesdeLaBase`, O35-B de O.35), junto a quien se toca y con el mismo cliente (el `tx`): no con el contexto de la sesión, que pudo quedar viejo.
+ *  3. En esa misma transacción: la escritura (`cambiarNotasDeMembresia`, `server/persistencia/permisos/membresias.ts`; el texto recortado, o `null` si queda vacío) y
  *     su fila de auditoría (`UsuarioSucursal.notas`, de las notas anteriores a las nuevas, con la sucursal de la membresía).
  *
  * La auditoría es nueva respecto de la acción original (decisión B4 del dueño, Hito 3: «auditar los cambios de las notas de una membresía», en un commit aparte del
@@ -33,30 +33,33 @@ type ResultadoActualizarNotasMembresia = ResultadoCaso<null, "MEMBRESIA_NO_ENCON
  *
  * @contract Deja en la membresía de la sucursal activa las notas pedidas (recortadas; vacías → sin notas) con su registro de auditoría, salvo que quien actúa no pueda gestionar a esa persona.
  * @idempotency No aplica — repetir el pedido vuelve a escribir las mismas notas (sin fila de auditoría nueva: el valor no cambió); no hay documento ni clave que arbitre el reintento.
- * @transaction `actor.transaccion` (READ COMMITTED, la del contexto): escritura y auditoría juntas. Las lecturas (membresía, quien se toca y quien actúa) quedan fuera, como antes.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento; M18 / S-51): las lecturas (membresía, quien se toca y quien actúa), la escritura y la auditoría, todo junto.
  * @sideEffects registrarCambioAuditado (UsuarioSucursal.notas, de las anteriores a las nuevas).
- * @ficha permiso=notas_usuario_sucursal transaccion=SIMPLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=notas_usuario_sucursal transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function actualizarNotasMembresiaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "sucursalId" | "sucursalNombre" | "transaccion">,
   comando: { membresiaId: string; notas: string },
 ): Promise<ResultadoActualizarNotasMembresia> {
   const { membresiaId, notas } = comando;
-  const membresia = await actor.db.usuarioSucursal.findUnique({ where: { id: membresiaId }, include: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } } });
-  if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", "No se encontró esa membresía.");
-
-  const objetivo = await objetivoEnSucursal(actor.db, actor.empresaId, membresia.usuarioId, membresia.rol);
-  const rechazo = mensajeSiNoPuedeGestionar(await actorDesdeLaBase(actor.db, actor.empresaId, actor.usuarioId, actor.sucursalId), objetivo);
-  if (rechazo) return fracaso("TECHO_DE_PRIVILEGIO", rechazo);
-
   const nuevas = texto(notas) || null;
-  await actor.transaccion(async (tx) => {
+  // M18 (S-51): la membresía, quien se toca, quien actúa (con su rol de HOY), la escritura y la auditoría van en UNA transacción SERIALIZABLE. Antes las lecturas iban con `actor.db`, afuera: si
+  // quien actúa perdía el rol o el objetivo pasaba a admin entre la lectura y la escritura, el techo se había medido contra un estado viejo. Ahora Postgres aborta a uno de los dos (40001), el
+  // reintento relee y el techo se mide con el estado nuevo. Los rechazos devuelven ANTES de escribir; el cuerpo puede reintentarse: no tiene efectos fuera de la base.
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoActualizarNotasMembresia> => {
+    const membresia = await tx.usuarioSucursal.findUnique({ where: { id: membresiaId }, include: { rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA } } });
+    if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", "No se encontró esa membresía.");
+
+    const objetivo = await objetivoEnSucursal(tx, actor.empresaId, membresia.usuarioId, membresia.rol);
+    const rechazo = mensajeSiNoPuedeGestionar(await actorDesdeLaBase(tx, actor.empresaId, actor.usuarioId, actor.sucursalId), objetivo);
+    if (rechazo) return fracaso("TECHO_DE_PRIVILEGIO", rechazo);
+
     await cambiarNotasDeMembresia(tx, { membresiaId, notas: nuevas });
     const usuario = await tx.user.findUniqueOrThrow({ where: { id: membresia.usuarioId }, select: { email: true } });
     await registrarCambioAuditado(tx, {
       entidad: "UsuarioSucursal", entidadId: membresiaId, campo: "notas", descripcion: `Usuario "${usuario.email}" en la sucursal "${actor.sucursalNombre}": notas`,
       valorAnterior: membresia.notas, valorNuevo: nuevas, actorId: actor.usuarioId, sucursalId: membresia.sucursalId,
     });
+    return exito("Notas actualizadas.", null);
   });
-  return exito("Notas actualizadas.", null);
 }

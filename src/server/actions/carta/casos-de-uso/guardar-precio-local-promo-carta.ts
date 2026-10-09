@@ -6,6 +6,7 @@ import { validarPrecioCarta } from "@/core/carta/validaciones";
 import type { ComandoGuardarPrecioLocalPromoCarta, ResultadoGuardarPrecioLocalPromoCarta } from "@/core/features/carta/promos.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { fijarPrecioLocalDePromo } from "@/server/persistencia/carta/promos";
 
 /**
@@ -24,28 +25,30 @@ import { fijarPrecioLocalDePromo } from "@/server/persistencia/carta/promos";
  *
  * @contract Deja el precio de la promo en la sucursal activa (o ninguno), con su registro de auditoría si cambió: los dos o ninguno.
  * @idempotency No aplica — repetir el pedido vuelve a escribir el mismo precio (sin fila de auditoría nueva: se compara con el anterior).
- * @transaction `actor.transaccion` (READ COMMITTED): el precio anterior, la escritura y su auditoría juntos; la promo se lee antes con `actor.db`, como antes.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento; M14 / S-51): la promo con sus cupos, el piso, el precio anterior, la escritura y su auditoría, todo junto.
  * @sideEffects registrarCambioAuditado (PromoCartaSucursal.precioLocal, del anterior al nuevo), en la misma transacción. La revalidación de la carta pública la
  *   hace la Server Action cuando sale bien.
- * @ficha permiso=carta_promo_precio_local transaccion=SIMPLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=carta_promo_precio_local transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function guardarPrecioLocalPromoCartaCasoDeUso(
-  actor: Pick<ContextoUsuario, "db" | "transaccion" | "usuarioId" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "transaccion" | "usuarioId" | "sucursalId">,
   comando: ComandoGuardarPrecioLocalPromoCarta,
 ): Promise<ResultadoGuardarPrecioLocalPromoCarta> {
   const { promoCartaId, precioLocal } = comando;
-  const promo = await actor.db.promoCarta.findUnique({ where: { id: promoCartaId }, include: { cupos: { select: { cantidadMaxima: true } } } });
-  if (!promo) return fracaso("PROMO_NO_ENCONTRADA", "No se encontró la promo.");
+  // M14 (S-51): la promo con sus cupos, el piso, el precio anterior, la escritura y la auditoría van en UNA transacción SERIALIZABLE (antes la promo y sus cupos se leían con `actor.db`, afuera):
+  // si `guardarCuposPromoCarta` cambia los cupos a la vez, uno de los dos aborta (40001) y el reintento relee. Los rechazos devuelven ANTES de escribir.
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoGuardarPrecioLocalPromoCarta> => {
+    const promo = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, include: { cupos: { select: { cantidadMaxima: true } } } });
+    if (!promo) return fracaso("PROMO_NO_ENCONTRADA", "No se encontró la promo.");
 
-  let valor: number | null = null;
-  if (precioLocal !== null && String(precioLocal).trim() !== "") {
-    const precio = validarPrecioCarta(precioLocal);
-    if (!precio.ok) return fracaso("PRECIO_INVALIDO", precio.mensaje);
-    valor = precio.valor;
-    const piso = pisoDePrecioDePromo(promo.cupos);
-    if (piso !== null && valor < piso.minimo) return fracaso("BAJO_EL_PISO", mensajePisoDePromo(promo.titulo, valor, piso));
-  }
-  await actor.transaccion(async (tx) => {
+    let valor: number | null = null;
+    if (precioLocal !== null && String(precioLocal).trim() !== "") {
+      const precio = validarPrecioCarta(precioLocal);
+      if (!precio.ok) return fracaso("PRECIO_INVALIDO", precio.mensaje);
+      valor = precio.valor;
+      const piso = pisoDePrecioDePromo(promo.cupos);
+      if (piso !== null && valor < piso.minimo) return fracaso("BAJO_EL_PISO", mensajePisoDePromo(promo.titulo, valor, piso));
+    }
     // El precio anterior se lee por la relación de la promo (el embudo `seleccionDeSucursalDePromo`, ver promo-sucursal-en-un-solo-lugar.test.ts), en la misma transacción que lo cambia.
     const previa = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, select: { sucursales: seleccionDeSucursalDePromo(actor.sucursalId) } });
     const precioAnterior = previa?.sucursales[0]?.precioLocal != null ? Number(previa.sucursales[0].precioLocal) : null;
@@ -62,6 +65,6 @@ export async function guardarPrecioLocalPromoCartaCasoDeUso(
         sucursalId: actor.sucursalId,
       });
     }
+    return exito(valor === null ? `"${promo.titulo}" vuelve al precio de la empresa en esta sucursal.` : `Precio de "${promo.titulo}" en esta sucursal: $${valor}.`, null);
   });
-  return exito(valor === null ? `"${promo.titulo}" vuelve al precio de la empresa en esta sucursal.` : `Precio de "${promo.titulo}" en esta sucursal: $${valor}.`, null);
 }

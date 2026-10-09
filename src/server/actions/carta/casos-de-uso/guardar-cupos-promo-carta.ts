@@ -4,13 +4,14 @@ import { mensajePisoDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-pr
 import { validarCantidadCupoPromo } from "@/core/carta/validaciones";
 import type { ComandoGuardarCuposPromoCarta, ResultadoGuardarCuposPromoCarta } from "@/core/features/carta/promos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { reemplazarCuposDePromo } from "@/server/persistencia/carta/promos";
 
 /**
  * Caso de uso «reemplazar TODOS los cupos de una promo» (Hito 4 de la pureza, bloque 4.2, paso H4C-3 — `docs/plan-hito-4-pureza.md` §3). Es el cuerpo que antes
- * vivía en línea en la Server Action `guardarCuposPromoCarta` (`src/server/actions/carta/promos.ts`), movido TAL CUAL: la promo (con el precio local de cada
- * sucursal) y las secciones se leen con la base del contexto FUERA de la transacción; los cupos se validan en el mismo orden y con los mismos textos, DESPUÉS de
+ * vivía en línea en la Server Action `guardarCuposPromoCarta` (`src/server/actions/carta/promos.ts`), movido con el mismo orden y los mismos textos (M-6 de la auditoría
+ * intermedia: este encabezado decía que la promo y las secciones se leían FUERA de la transacción; desde S-06 se leen DENTRO de ella, y el caso de uso ya no recibe `actor.db`): los cupos se validan, DESPUÉS de
  * leer la promo (por eso no hay guard); el piso de $0,01 por unidad del peor caso (`core/carta/piso-de-promo.ts`) se mide contra el precio de la empresa y el
  * precio local de CUALQUIER sucursal que lo tenga; y el reemplazo (borrar todos y crear los nuevos) va en UNA transacción. La Server Action quedó como adaptador
  * (`conPermisoDeEmpresa("carta_promo_definir")` → este caso de uso → `aResultadoAccion`). El criterio de negocio (la lista que llega es la lista final; vacía =
@@ -26,18 +27,20 @@ import { reemplazarCuposDePromo } from "@/server/persistencia/carta/promos";
  *
  * @contract Deja exactamente los cupos pedidos en la promo (todo o nada), si cada uno es válido y todos los precios de la promo alcanzan el piso de los cupos nuevos; y deja una fila de auditoría por cada columna de cupo que cambió.
  * @idempotency No aplica — repetir el pedido borra y vuelve a crear los mismos cupos (sin filas de auditoría nuevas: no cambió nada).
- * @transaction `actor.transaccion` (READ COMMITTED): las lecturas (promo, cupos de antes, secciones, piso), el borrado y la creación de los cupos y su auditoría, todo junto.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento): las lecturas (promo, cupos de antes, secciones, piso), el borrado y la creación de los cupos y su auditoría, todo junto.
  * @sideEffects registrarCambioAuditado (PromoCartaCupo.cantidadMinima y .cantidadMaxima por sección, del anterior al nuevo), en la misma transacción. Sin revalidación de la carta pública, como antes.
- * @ficha permiso=carta_promo_definir transaccion=SIMPLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=carta_promo_definir transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function guardarCuposPromoCartaCasoDeUso(
-  actor: Pick<ContextoUsuario, "db" | "transaccion" | "usuarioId">,
+  actor: Pick<ContextoUsuario, "transaccion" | "usuarioId">,
   comando: ComandoGuardarCuposPromoCarta,
 ): Promise<ResultadoGuardarCuposPromoCarta> {
   const { promoCartaId, cupos } = comando;
   // S-06: la promo, los cupos de antes, las secciones, el piso de precio y el reemplazo con su auditoría van en UNA transacción (antes: las lecturas con `actor.db`, afuera, y
-  // el reemplazo sin rastro). Los rechazos devuelven ANTES de escribir, así que la transacción no deja nada. `actor.transaccion` puede reintentar el cuerpo: no tiene efectos fuera de la base.
-  return actor.transaccion(async (tx): Promise<ResultadoGuardarCuposPromoCarta> => {
+  // el reemplazo sin rastro). M-5 de la auditoría intermedia: SERIALIZABLE (antes READ COMMITTED): dos reemplazos a la vez, o este contra un cambio de precio, no se pisan en silencio —uno aborta
+  // (40001), el reintento relee— y el «anterior» de la auditoría es siempre el que de verdad se reemplazó. Los rechazos devuelven ANTES de escribir, así que la transacción no deja nada;
+  // el cuerpo puede reintentarse: no tiene efectos fuera de la base.
+  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoGuardarCuposPromoCarta> => {
     const promo = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, include: { sucursales: { select: { precioLocal: true } } } });
     if (!promo) return fracaso("PROMO_NO_ENCONTRADA", "No se encontró la promo.");
 

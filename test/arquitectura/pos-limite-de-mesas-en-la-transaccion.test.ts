@@ -18,8 +18,12 @@ import { describe, expect, it } from "vitest";
 const RUTA = "src/server/actions/pos/casos-de-uso/abrir-cuenta.ts";
 const LECTURAS = new Set(["count", "findMany", "findFirst", "findFirstOrThrow", "findUnique", "findUniqueOrThrow", "aggregate", "groupBy"]);
 
+/** M1 (S-51): además de `cuenta` (el conteo del límite), `mesa` y `sucursal` —de donde sale el límite mismo (`Sucursal.maxMesasAbiertas`)— se leen sobre la transacción. */
+const MODELOS = new Set(["cuenta", "mesa", "sucursal"]);
+
 interface LecturaDeCuenta {
   cliente: string;
+  modelo: string;
   operacion: string;
 }
 
@@ -37,8 +41,8 @@ function lecturasDeCuentaEnLasTransacciones(codigo: string): { parametro: string
         const enElCuerpo = (m: ts.Node): void => {
           if (ts.isCallExpression(m) && ts.isPropertyAccessExpression(m.expression) && LECTURAS.has(m.expression.name.text)) {
             const delegado = m.expression.expression;
-            if (ts.isPropertyAccessExpression(delegado) && delegado.name.text === "cuenta") {
-              lecturas.push({ cliente: delegado.expression.getText(fuente), operacion: m.expression.name.text });
+            if (ts.isPropertyAccessExpression(delegado) && MODELOS.has(delegado.name.text)) {
+              lecturas.push({ cliente: delegado.expression.getText(fuente), modelo: delegado.name.text, operacion: m.expression.name.text });
             }
           }
           ts.forEachChild(m, enElCuerpo);
@@ -56,7 +60,7 @@ function lecturasDeCuentaEnLasTransacciones(codigo: string): { parametro: string
 /** Las lecturas sobre `cuenta` dentro de una transacción que NO usan el parámetro del callback (`actor.db.cuenta.count`, `prisma.cuenta.findMany`, …). */
 function lecturasFueraDeLaTransaccion(codigo: string): string[] {
   return lecturasDeCuentaEnLasTransacciones(codigo).flatMap(({ parametro, lecturas }) =>
-    lecturas.filter((l) => l.cliente !== parametro).map((l) => `${l.cliente}.cuenta.${l.operacion} (el callback recibe «${parametro}»)`),
+    lecturas.filter((l) => l.cliente !== parametro).map((l) => `${l.cliente}.${l.modelo}.${l.operacion} (el callback recibe «${parametro}»)`),
   );
 }
 

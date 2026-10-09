@@ -24,7 +24,7 @@ type ResultadoCrearSucursal = ResultadoCaso<
  * → este caso de uso → refresco de la vista → `aResultadoAccion`).
  *
  * Orden, igual que antes:
- *  1. «Ya existe una sucursal» si el nombre está tomado en la empresa (con `actor.db`, fuera de la transacción).
+ *  1. «Ya existe una sucursal» si el nombre está tomado en la empresa (sin distinguir mayúsculas). Desde M22 (S-51) se chequea DENTRO de la transacción de gobierno (paso 3), como primera lectura; antes iba con `actor.db`, afuera.
  *  2. La disponibilidad inicial (decisión 4 del dueño, 2026-09-23, docs/plan-disponibilidad-por-sucursal-2026-09-23.md §10): la sucursal nueva arranca SOLO con
  *     los productos que ya son «universales» — disponibles en TODAS las sucursales activas de hoy, sin excepción; nunca con los que son mayoría pero no
  *     unanimidad. Se resuelve ANTES de la transacción (lectura pura, no hace falta el aislamiento) y con `sucursalIdsActivas` vacío (la primerísima sucursal
@@ -47,9 +47,6 @@ export async function crearSucursalConAdminCasoDeUso(
   comando: ComandoCrearSucursal,
 ): Promise<ResultadoCrearSucursal> {
   const { nombre, email } = comando;
-  const existente = await actor.db.sucursal.findFirst({ where: { empresaId: actor.empresaId, nombre } });
-  if (existente) return fracaso("NOMBRE_TOMADO", `Ya existe una sucursal "${nombre}".`);
-
   const sucursalIdsActivas = (await actor.db.sucursal.findMany({ where: { empresaId: actor.empresaId, activo: true }, select: { id: true } })).map((s) => s.id);
   const filasDisponibilidad = sucursalIdsActivas.length
     ? await actor.db.disponibilidadProducto.findMany({ where: { sucursalId: { in: sucursalIdsActivas } }, select: { productoId: true, sucursalId: true, disponible: true } })
@@ -66,6 +63,11 @@ export async function crearSucursalConAdminCasoDeUso(
     actor,
     (tx) =>
       conInvariantesDeGobierno(tx, actor.empresaId, async (): Promise<ResultadoCrearSucursal> => {
+        // M22 (S-51): el nombre se chequea DENTRO de la transacción serializable que crea la sucursal (antes, con `actor.db`, afuera: dos altas a la vez con el mismo nombre pasaban las dos el chequeo y la
+        // segunda chocaba con el índice único como un 500; ahora Postgres aborta a una, el reintento relee y responde «Ya existe»). Sin distinguir mayúsculas, como al renombrar.
+        const existente = await tx.sucursal.findFirst({ where: { empresaId: actor.empresaId, nombre: { equals: nombre, mode: "insensitive" } } });
+        if (existente) return fracaso("NOMBRE_TOMADO", `Ya existe una sucursal "${existente.nombre}".`);
+
         const rolAdmin = await buscarRolAdmin(tx, actor.empresaId);
         if (!rolAdmin || !rolAdmin.activo) {
           return fracaso("SIN_ROL_ADMIN", "No se encontró el rol de administrador de la empresa (¿corriste el seed?) — no se puede asignar el primer admin.");
