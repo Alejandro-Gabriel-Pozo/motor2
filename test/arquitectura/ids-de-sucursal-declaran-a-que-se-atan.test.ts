@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
  * declara a qué se ata ese id**. La RLS de hoy separa empresas, NO sucursales: dentro de la empresa, una sucursal que llega desde el cliente está protegida solo por lo que cada
  * acción se acuerde de hacer con ella (S-07 fue exactamente ese olvido: el origen de una copia se buscaba por id sin mirar la membresía). Una acción nueva con un parámetro
  * `sucursal…Id` que no figura acá falla: hay que decidir y escribir a qué se ata, y el guardián comprueba en el código que el atado es real. La segunda mitad (toda escritura con
- * `sucursalId` desde una acción de empresa declara la sucursal y su clave, D1) es de la tanda T6; el consolidado, de T14.
+ * `sucursalId` desde una acción de empresa declara la sucursal y su clave, D1) es `escrituras-en-sucursal-desde-empresa.test.ts` (tanda T6, fila O.59); el consolidado, de T14.
  *
  * Las formas de atarlo (cada una con la evidencia que se exige en el código, leída por AST/texto de la función):
  *  - `SUCURSAL_CON_GATE`: la PRIMERA sentencia es `const ctx = await requerirVerEnSucursal(<id>, "<clave>")` (o `requerirVerAlgunaEnSucursal`): membresía y clave EN ESA sucursal, antes de leer nada.

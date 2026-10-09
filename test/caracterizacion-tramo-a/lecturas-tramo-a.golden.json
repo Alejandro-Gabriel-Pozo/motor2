@@ -331,7 +331,7 @@
     "resultado": []
   },
   "pos.cargarSelectorCartaDeLaMesa(Central)": {
-    "consultas": "15: capacidadSucursal.findMany×1, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×1",
+    "consultas": "17: capacidadSucursal.findMany×1, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, moduloEmpresa.findMany×1, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×2",
     "resultado": {
       "seccionesCarta": [
         {
@@ -506,7 +506,7 @@
     }
   },
   "pos.cargarSelectorCartaDeLaMesa(Norte)": {
-    "consultas": "15: capacidadSucursal.findMany×1, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×1",
+    "consultas": "17: capacidadSucursal.findMany×1, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, moduloEmpresa.findMany×1, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×2",
     "resultado": {
       "seccionesCarta": [
         {
@@ -562,7 +562,7 @@
     }
   },
   "pos.cargarPromoCartaParaAgregar(Central, Menú del día)": {
-    "consultas": "16: capacidadSucursal.findMany×1, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findFirst×1, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×1",
+    "consultas": "18: capacidadSucursal.findMany×1, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, moduloEmpresa.findMany×1, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findFirst×1, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×2",
     "resultado": {
       "id": "pc-menu",
       "titulo": "Menú del día",
@@ -611,11 +611,11 @@
     }
   },
   "pos.cargarPromoCartaParaAgregar(Central, informativa sin cupos: null)": {
-    "consultas": "1: promoCarta.findFirst×1",
+    "consultas": "3: moduloEmpresa.findMany×1, promoCarta.findFirst×1, sucursal.findUnique×1",
     "resultado": null
   },
   "pos.cargarPromoCartaParaAgregar(Norte, apagada ahí: null)": {
-    "consultas": "1: promoCarta.findFirst×1",
+    "consultas": "3: moduloEmpresa.findMany×1, promoCarta.findFirst×1, sucursal.findUnique×1",
     "resultado": null
   },
   "carta.cargarAdminCarta(Central)": {

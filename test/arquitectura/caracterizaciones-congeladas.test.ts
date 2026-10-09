@@ -168,7 +168,16 @@ const CONGELADAS: Record<string, Congelada> = {
     blob: "8e1e3e873cb7804aa9cc4245eb1fccd38d66fb3a",
     desde: "0b08f2f4",
     motivo: "Caracterización «.0» del tramo A (2.3). Regenerada en 0b08f2f4 (O.39: solo bajan los conteos).",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "495c93eced8170107c1e41901ae0e6a2ad160edd",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, «Lista de control: fila O.59 (tanda T6 del endurecimiento de seguridad, S-10 / D1), con el hash de cada commit».
+        // El commit que regenera es el de S-22 (promociones apagadas en el POS; fila O.71 de la lista de control, que lo cita por su hash).
+        commit: "19cd8ad2",
+        motivo:
+          "S-22/D2 (O.71; CAMBIA COMPORTAMIENTO, plan de endurecimiento de seguridad T10, decisión del dueño): el selector del POS y la lectura de cada promo para agregar leen el registro de módulos de la empresa (sin Promociones no ofrecen ni aceptan promos). Cambia SOLO la línea de conteo de 5 entradas, sin tocar ningún resultado: `pos.cargarSelectorCartaDeLaMesa(Central)` y `(Norte)` 15 → 17 consultas (`sucursal.findUnique` ×1 → ×2 y `moduloEmpresa.findMany` ×1 nueva), `pos.cargarPromoCartaParaAgregar(Central, Menú del día)` 16 → 18 (lo mismo) y sus dos casos `null` (informativa sin cupos; apagada en Norte) 1 → 3 (`moduloEmpresa.findMany` y `sucursal.findUnique`, que ahora van antes de buscar la promo). En la pantalla real la segunda lectura del registro sale de la memoria por pedido (`cache` de React: el guard ya la hizo con el mismo `db`).",
+      },
+    ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
     blob: "8d2f170f6ee4f020fdd138e8388329a30ccf5687",
