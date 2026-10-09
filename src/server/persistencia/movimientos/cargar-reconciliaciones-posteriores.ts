@@ -11,10 +11,24 @@ import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION, type ReconciliacionPosteri
  * `gte` y no `gt`: en el mismo milisegundo se rechaza (fallo cerrado).
  */
 
-/** Un (producto, sección) tocado por la operación que se quiere deshacer, y desde cuándo mirar (el `creadoEn` de esa operación). */
+/**
+ * Un (producto, sección) tocado por la operación que se quiere deshacer, y desde cuándo mirar (el `creadoEn` de esa operación).
+ *
+ * `loteVencimiento` (solo al cancelar un conteo de UN lote): lo posterior que NO frena es lo de OTRO lote con fecha. Frena lo del mismo lote y todo lo «sin lote» (un conteo «Todos los lotes»
+ * reconcilió el total, que incluye a este lote). Sin él (un conteo total, una compra, una venta) frena cualquier conteo posterior del par, como siempre.
+ */
 export interface AlcanceDeReconciliacion {
   creadoEn: Date;
-  pares: readonly { productoId: string; seccionId: string }[];
+  pares: readonly { productoId: string; seccionId: string; loteVencimiento?: Date }[];
+}
+
+/** La condición de un par sobre `MovimientoStock` o `ConteoFisico` (los dos tienen `loteVencimiento`): su producto y sección y, si el par nombra un lote, solo ese lote o el «sin lote». */
+function condicionDelPar(p: AlcanceDeReconciliacion["pares"][number]) {
+  return {
+    productoId: p.productoId,
+    seccionId: p.seccionId,
+    ...(p.loteVencimiento ? { OR: [{ loteVencimiento: null }, { loteVencimiento: p.loteVencimiento }] } : {}),
+  };
 }
 
 /**
@@ -49,7 +63,7 @@ export async function cargarReconciliacionesPosteriores(
         ...(excluirConteoId ? [{ OR: [{ conteoFisicoId: null }, { conteoFisicoId: { not: excluirConteoId } }] }] : []),
         {
           OR: alcances.map((a) => ({
-            OR: [...a.pares],
+            OR: a.pares.map(condicionDelPar),
             operacion: { AND: [OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION, { anuladaEn: null, creadoEn: { gte: a.creadoEn } }] },
           })),
         },
@@ -66,7 +80,7 @@ export async function cargarReconciliacionesPosteriores(
       sucursalId,
       estado: { not: "CANCELADO" },
       ...(excluirConteoId ? { id: { not: excluirConteoId } } : {}),
-      OR: alcances.map((a) => ({ OR: [...a.pares], creadoEn: { gte: a.creadoEn } })),
+      OR: alcances.map((a) => ({ OR: a.pares.map(condicionDelPar), creadoEn: { gte: a.creadoEn } })),
     },
     select: { producto: { select: { nombre: true } }, seccion: { select: { nombre: true } } },
     distinct: ["productoId", "seccionId"],

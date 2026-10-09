@@ -65,7 +65,8 @@ export async function cancelarConteoFisicoCasoDeUso(
     const posteriores = evaluarPosterioresACancelarConteo(
       await cargarReconciliacionesPosteriores(tx, {
         sucursalId: actor.sucursalId,
-        alcances: [{ creadoEn: conteo.creadoEn, pares: [{ productoId: conteo.productoId, seccionId: conteo.seccionId }] }],
+        // Un conteo de UN lote solo se pisa con lo posterior de ese lote o del total («sin lote»); un conteo total, con cualquier conteo posterior del par.
+        alcances: [{ creadoEn: conteo.creadoEn, pares: [{ productoId: conteo.productoId, seccionId: conteo.seccionId, ...(conteo.loteVencimiento ? { loteVencimiento: conteo.loteVencimiento } : {}) }] }],
         excluirConteoId: conteo.id,
         soloConteos: true,
       }),
