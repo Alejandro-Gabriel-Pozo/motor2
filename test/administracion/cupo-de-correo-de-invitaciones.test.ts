@@ -30,6 +30,7 @@ import {
   CAMPO_DE_AUDITORIA_DEL_MAIL_DE_INVITACION,
   MAXIMO_DE_MAILS_DE_INVITACION_POR_DESTINATARIO_Y_DIA,
   MAXIMO_DE_MAILS_DE_INVITACION_POR_EMPRESA_Y_DIA,
+  claveDeDestinatarioDelCupo,
   descripcionDelMailDeInvitacion,
 } from "../../src/core/features/empresa/cupo-de-correo";
 import { cupoDeCorreoDeEmpresa } from "../../src/server/lecturas/auth/cupo-de-correo";
@@ -165,6 +166,35 @@ describe("S-21: tope de mails a un mismo destinatario (los reenvíos también cu
     expect((await invitacionDe("victima@ejemplo.com")).hashToken).toBe(hashAntes);
     // Y otra persona de la misma empresa sigue pudiendo recibir su invitación.
     expect((await alta("otra@ejemplo.com")).ok).toBe(true);
+  });
+
+  // M-22 (T16; CAMBIA COMPORTAMIENTO: el cupo por destinatario cuenta el buzón y no la dirección escrita): `a+1@`, `a+2@`, … llegan al mismo buzón y esquivaban el tope de 3.
+  it("EL ATAQUE (M-22): alias del mismo buzón (ana+1@, ana+2@, ana+3@) agotan el cupo del destinatario → el cuarto alias, y el buzón sin alias, se rechazan", async () => {
+    const tope = MAXIMO_DE_MAILS_DE_INVITACION_POR_DESTINATARIO_Y_DIA;
+    for (let i = 1; i <= tope; i++) {
+      const r = await alta(`Ana+${i}@Ejemplo.com`);
+      expect(r.ok, `alias ${i}: ${r.mensaje}`).toBe(true);
+    }
+    expect(correo.enviados).toHaveLength(tope);
+
+    for (const otro of ["ana+4@ejemplo.com", "ana@ejemplo.com", "ANA+otro@ejemplo.com"]) {
+      const excedido = await alta(otro);
+      expect(excedido.ok, otro).toBe(false);
+      expect(excedido.mensaje).toMatch(/Cupo de invitaciones agotado por hoy para/);
+    }
+    expect(correo.enviados).toHaveLength(tope);
+    // Otro buzón (otra parte local, o el mismo nombre en otro dominio) NO comparte el cupo.
+    expect((await alta("ana2@ejemplo.com")).ok).toBe(true);
+    expect((await alta("ana+1@otro-dominio.com")).ok).toBe(true);
+  });
+
+  it("claveDeDestinatarioDelCupo: minúsculas y sin el sufijo +alias de la parte local; los puntos no se tocan y un +solo al principio se conserva", () => {
+    expect(claveDeDestinatarioDelCupo(" Ana+Ventas@Ejemplo.COM ")).toBe("ana@ejemplo.com");
+    expect(claveDeDestinatarioDelCupo("ana+a+b@ejemplo.com")).toBe("ana@ejemplo.com");
+    expect(claveDeDestinatarioDelCupo("a.na@gmail.com")).toBe("a.na@gmail.com");
+    expect(claveDeDestinatarioDelCupo("+x@ejemplo.com")).toBe("+x@ejemplo.com");
+    expect(claveDeDestinatarioDelCupo("ana@ejemplo.com+x")).toBe("ana@ejemplo.com+x");
+    expect(descripcionDelMailDeInvitacion("ana+1@ejemplo.com")).toBe(descripcionDelMailDeInvitacion("ANA+2@ejemplo.com"));
   });
 
   it("«invitar a vincular» también pasa por el cupo", async () => {

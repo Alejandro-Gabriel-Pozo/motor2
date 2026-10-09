@@ -15,9 +15,29 @@ const VENTANA_DEL_CUPO_DE_CORREO_MS = 24 * 60 * 60 * 1000;
 /** Cómo se anota cada mail reservado en la auditoría (`UsuarioEmpresa`, `entidadId` la invitación): el contador del cupo cuenta estas filas, una por mail. */
 export const CAMPO_DE_AUDITORIA_DEL_MAIL_DE_INVITACION = "mailDeInvitacion";
 
-/** La descripción de la fila de auditoría de un mail: lleva la dirección en minúsculas, y por ella se cuenta cuántos salieron a la misma. */
+/**
+ * La clave con la que el cupo por destinatario cuenta una dirección (M-22 de la auditoría intermedia): minúsculas y SIN el sufijo `+alias` de la parte local. `a+1@dominio` y `a+2@dominio`
+ * llegan al mismo buzón, y contarlos aparte dejaba esquivar el tope por destinatario con alias (el tope por empresa seguía frenando, pero a 50 en vez de 3). Solo se corta en el primer `+`
+ * de la parte local (la anterior al ÚLTIMO `@`); los puntos de gmail NO se tocan (no hay precedente en el proyecto, y en otros dominios el punto sí distingue buzones). Si cortar dejara la
+ * parte local vacía (`+x@dominio`) se conserva la dirección entera: no se inventa un buzón.
+ */
+export function claveDeDestinatarioDelCupo(email: string): string {
+  const minuscula = email.trim().toLowerCase();
+  const arroba = minuscula.lastIndexOf("@");
+  if (arroba <= 0) return minuscula;
+  const local = minuscula.slice(0, arroba);
+  const mas = local.indexOf("+");
+  if (mas <= 0) return minuscula;
+  return `${local.slice(0, mas)}${minuscula.slice(arroba)}`;
+}
+
+/**
+ * La descripción de la fila de auditoría de un mail: lleva la dirección por su CLAVE del cupo (`claveDeDestinatarioDelCupo`), y por ella se cuenta cuántos salieron al mismo buzón. La
+ * dirección completa (con su alias) sigue en la invitación y en su propia fila de auditoría; esta fila existe para contar. Las filas de ANTES de M-22 (con el alias a la vista) no se suman al
+ * buzón sin alias: salen del conteo a las 24 horas, como todas.
+ */
 export function descripcionDelMailDeInvitacion(email: string): string {
-  return `Mail de la invitación a "${email.trim().toLowerCase()}"`;
+  return `Mail de la invitación a "${claveDeDestinatarioDelCupo(email)}"`;
 }
 
 /** Desde cuándo se cuentan los mails ya reservados: las últimas 24 horas respecto de la hora del pedido. */
