@@ -3,7 +3,9 @@ import { prismaSinEmpresa } from "../../setup/test-db";
 import { __cookiesDeTest, __limpiarCookiesDeTest, __setCookieDeTestParaEmpresa, __setCookieDeTestParaSucursal } from "../../setup/next-headers-stub";
 import { baseDeEmpresa } from "../../../src/core/auth/base";
 import { derivarArgumentos, unir, type Escenario, type Generadores, type Kit, type Planteo } from "./argumentos";
-import { huellaDeLaBase, tablasCambiadas, type Mundo } from "./mundo";
+import { SUCURSALES_LISTADAS_POR_DISENO } from "./excepciones";
+import { HUELLA_DE_E2, HUELLA_DE_S2, huellaDeLaBase, NOMBRE_DE_S2, NOMBRE_DE_S3, tablasCambiadas, type Mundo } from "./mundo";
+import { categoriaDeRechazo, mensajesDeRechazo } from "./rechazos";
 import type { PuertaInventariada } from "./inventario-de-puertas";
 
 /**
@@ -12,15 +14,23 @@ import type { PuertaInventariada } from "./inventario-de-puertas";
  *
  * Qué cuenta como negar:
  *  - (a) anónimo y (b) sin empresa: la puerta LANZA (una redirección al login también) o devuelve `{ ok: false }`. Cualquier dato o `ok: true` es un problema.
- *  - (c) otra empresa y (d) otra sucursal de la misma empresa: lo que devuelva NO puede traer ni un solo marcador de lo ajeno (`ZZ-E2`, `ZZ-S2`), y una MUTACIÓN no puede terminar en `ok: true`.
+ *  - (c) otra empresa y (d) otra sucursal de la misma empresa: lo que devuelva NO puede traer ni un solo marcador de lo ajeno (`ZZ-E2`, `ZZ-S2`) ni su huella numérica (`77xx` de S2, `88xx` de E2), una MUTACIÓN no puede terminar en
+ *    `ok: true`, y el rechazo tiene que ser de PERTENENCIA (`rechazos.ts`: «no se encontró», «no existe», «no tenés acceso»…); un rechazo por forma o validación no prueba nada y es un problema (fila O.177).
  *  - propia (control positivo de las lecturas): con ids propios devuelve lo propio.
+ *  - controlMutacion (control positivo de las mutaciones): con ids propios y válidos termina en `ok: true`, sobre un mundo que se vuelve a sembrar después de cada variante; sin él, el rechazo de arriba podría ser de forma.
  *  - en todos: ninguna tabla cambia (la huella de toda la base, antes y después) y ninguna cookie se escribe.
  */
 const MODULOS_DEL_SERVIDOR = import.meta.glob("../../../src/server/{actions,consultas,lecturas}/**/*.ts");
 
-const MARCADOR_DE_CUALQUIER_COSA =/ZZ-(A1|E2|S2)/i;
-const SOLO_OTRA_EMPRESA = /ZZ-E2/i;
-const OTRA_EMPRESA_U_OTRA_SUCURSAL = /ZZ-(E2|S2)/i;
+/**
+ * Una HUELLA numérica como número suelto (no dentro de un id ni de otro número). Se reconoce la FAMILIA (`77xx` para S2, `88xx` para E2) y no solo el número sembrado: el ajuste de 7777 suma o resta lo que ya había
+ * (el saldo total de la sección da 7784, el disponible 7774, un lote vencido otro), y cualquiera de esos números delata la fila de la sucursal ajena.
+ */
+const huellaSuelta = (n: number) => `(?<![\\w.])${String(n).slice(0, 2)}\\d{2}(?:\\.\\d+)?(?![\\w])`;
+const HUELLA_S2_O_E2 = `${huellaSuelta(HUELLA_DE_S2)}|${huellaSuelta(HUELLA_DE_E2)}`;
+const MARCADOR_DE_CUALQUIER_COSA = new RegExp(`ZZ-(A1|E2|S2|S3)|${HUELLA_S2_O_E2}`, "i");
+const SOLO_OTRA_EMPRESA = new RegExp(`ZZ-E2|${huellaSuelta(HUELLA_DE_E2)}`, "i");
+const OTRA_EMPRESA_U_OTRA_SUCURSAL = new RegExp(`ZZ-(E2|S2)|${HUELLA_S2_O_E2}`, "i");
 
 /**
  * Qué marcador cuenta como «ajeno» para una puerta. Siempre el de OTRA EMPRESA (`ZZ-E2`). El de OTRA SUCURSAL de la misma empresa (`ZZ-S2`) solo para lo que es de una sucursal (una puerta de contexto sucursal
@@ -150,6 +160,8 @@ function plantear(puerta: PuertaInventariada, escenario: Escenario, mundo: Mundo
 
 export interface Resultado {
   planteo: Planteo;
+  /** El mundo con el que quedó la base: el mismo, salvo que el control positivo de una mutación lo haya vuelto a sembrar. */
+  mundo: Mundo;
   /** Qué pasó en cada llamada (una por variante). */
   salidas: Salida[];
   veredictos: Veredicto[];
@@ -165,6 +177,13 @@ export interface OpcionesDeCorrida {
   okSinEfectoPorDiseno?: boolean;
   /** La puerta necesita estar parada en la sucursal VACÍA (S4) para que la precondición de su destino no tape el chequeo del origen (las copias entre sucursales solo se hacen sobre un destino vacío). */
   enLaSucursalVacia?: boolean;
+  /** La puerta está en `RECHAZOS_DE_ESTADO_ADMITIDOS` para este escenario: el rechazo con ESE mensaje cuenta como de pertenencia. */
+  rechazoAdmitido?: RegExp;
+  /**
+   * Solo `controlMutacion`: vuelve a sembrar el mundo (lo deja como al principio, con ids nuevos donde el alta los genera al azar). La mutación con ids propios ESCRIBE de verdad; cada variante se ejerce
+   * sobre un mundo limpio (un mundo descartable), así que una variante no gasta lo que necesita la siguiente.
+   */
+  reponerMundo?: () => Promise<Mundo>;
 }
 
 /** Invoca la puerta en el escenario (una vez por variante de argumentos) y devuelve qué pasó y qué problemas tiene. Una MUTACIÓN con ids ajenos que termina en `ok: true` es un problema; una lectura solo si trae filas ajenas. */
@@ -176,10 +195,14 @@ export async function correrPuerta(puerta: PuertaInventariada, escenario: Escena
   const veredictos: Veredicto[] = [];
   const problemas: string[] = [];
   const crudos: number[] = [];
+  const esControl = escenario === "controlMutacion";
+  let mundoActual = mundo;
 
-  for (const [i, argumentos] of planteo.variantes.entries()) {
+  for (const i of planteo.variantes.keys()) {
+    // En el control positivo cada variante parte de un mundo recién sembrado: sus argumentos se derivan de nuevo con los ids de ESE mundo (el alta de la sucursal genera el suyo al azar).
+    const argumentos = esControl && i > 0 ? plantear(puerta, escenario, mundoActual, generadores).variantes[i] : planteo.variantes[i];
     const etiqueta = planteo.variantes.length > 1 ? `[llamada ${i + 1} de ${planteo.variantes.length}] ` : "";
-    await ponerSesion(escenario, mundo, opciones.enLaSucursalVacia ? mundo.s4Id : mundo.s1.sucursalId);
+    await ponerSesion(escenario, mundoActual, opciones.enLaSucursalVacia ? mundoActual.s4Id : mundoActual.s1.sucursalId);
     reloj.ahora += 61_000;
     vi.setSystemTime(reloj.ahora);
 
@@ -201,8 +224,16 @@ export async function correrPuerta(puerta: PuertaInventariada, escenario: Escena
     veredictos.push(veredicto);
 
     const reflejo = marcadoresDeEntrada(puerta, argumentos);
-    const sinReflejo = reflejo.reduce((t, m) => t.split(m).join("·"), salida.texto);
+    // Lo que se le pasó de entrada no es una fuga, y los nombres de S2 y S3 que una puerta lista por diseño (`SUCURSALES_LISTADAS_POR_DISENO`) tampoco.
+    const sinListadas = Object.hasOwn(SUCURSALES_LISTADAS_POR_DISENO, puerta.clave) ? salida.texto.split(NOMBRE_DE_S2).join("·").split(NOMBRE_DE_S3).join("·") : salida.texto;
+    const sinReflejo = reflejo.reduce((t, m) => t.split(m).join("·"), sinListadas);
     const mal = (texto: string) => problemas.push(`${etiqueta}${texto}`);
+    if (esControl) {
+      // El CONTROL POSITIVO de una mutación (hallazgo I-3): con ids propios y válidos la llamada tiene que terminar en `ok: true`. Escribe de verdad; el mundo se vuelve a sembrar para la próxima variante.
+      if (veredicto !== "OK") mal(`el control positivo (ids PROPIOS y válidos) no terminó en ok: true (veredicto ${veredicto}): ${salida.texto.slice(0, 200)}`);
+      if (tablasEscritas.length && opciones.reponerMundo) mundoActual = await opciones.reponerMundo();
+      continue;
+    }
     if (tablasEscritas.length) mal(`escribió en ${tablasEscritas.join(", ")}`);
     if (cookiesEscritas.length) mal(`dejó cookies: ${cookiesEscritas.join(", ")}`);
     if (escenario === "anonimo" || escenario === "sinEmpresa") {
@@ -223,15 +254,21 @@ export async function correrPuerta(puerta: PuertaInventariada, escenario: Escena
       if (salida.lanzo && /^PrismaClientKnownRequestError\[P2003\]/.test(salida.error)) crudos.push(i);
       // Cualquier OTRA excepción de Prisma (un privilegio que le falta al rol de la base de pruebas, un registro que no existe) no es un rechazo de pertenencia: taparía un verde que no prueba nada.
       else if (salida.lanzo && /^PrismaClient/.test(salida.error)) mal(`lanzó una excepción de Prisma que no es una clave foránea (${salida.error.slice(0, 160)}): no es un rechazo de pertenencia`);
+      // Solo cuenta como NEGAR un rechazo de PERTENENCIA («no se encontró», «no existe», «no tenés acceso»…): un rechazo por forma o por validación («la unidad de stock es obligatoria») no mira de quién es el id,
+      // y si después se le saca el chequeo de pertenencia el escenario seguiría en verde (hallazgo I-3). Las excepciones crudas de Prisma se juzgan arriba.
+      if (!(salida.lanzo && /^PrismaClient/.test(salida.error))) {
+        const ajenos = mensajesDeRechazo(salida).filter((m) => categoriaDeRechazo(m) === null && !opciones.rechazoAdmitido?.test(m));
+        if (ajenos.length) mal(`rechazó, pero NO por pertenencia (¿forma o validación? no prueba el chequeo del id ajeno): «${ajenos[0].slice(0, 200)}». Corregí los argumentos para que lleguen a la lógica, o declaralo en RECHAZOS_DE_ESTADO_ADMITIDOS`);
+      }
     }
   }
   // Un rechazo crudo de la base (clave foránea) no cruza nada, pero no es tipado: tiene que estar declarado, y la declaración tiene que seguir siendo cierta.
   if (crudos.length && !opciones.rechazoCrudoDeLaBase) problemas.push(`rechazó con una excepción cruda de Prisma (la clave foránea de la base) en lugar de ok: false: declarala en RECHAZOS_CRUDOS_DE_LA_BASE o validá el id (${crudos.length} llamada(s))`);
   if (!crudos.length && opciones.rechazoCrudoDeLaBase && (escenario === "ajenaEmpresa" || escenario === "ajenaSucursal")) problemas.push("ya no rechaza con una excepción cruda de la base: sacala de RECHAZOS_CRUDOS_DE_LA_BASE");
-  return { planteo, salidas, veredictos, problemas };
+  return { planteo, mundo: mundoActual, salidas, veredictos, problemas };
 }
 
 function hallazgos(texto: string): string {
-  const encontrados = new Set(texto.match(/[\w-]*ZZ-(?:E2|S2|A1)[\w-]*/gi) ?? []);
+  const encontrados = new Set(texto.match(new RegExp(`[\\w-]*ZZ-(?:E2|S2|S3|A1)[\\w-]*|${HUELLA_S2_O_E2}`, "gi")) ?? []);
   return [...encontrados].slice(0, 5).join(", ");
 }

@@ -15,17 +15,20 @@ const lista = (...v: Array<unknown[] | false>): unknown[][] => v.filter((x): x i
 const hoy = () => new Date();
 const ingrediente = (k: Kit, insumoProductoId: string = k.productoId) => ({ insumoProductoId, cantidad: 1, unidadId: k.unidadId });
 const conVariantes = (...v: Array<unknown[] | false>) => variantes(...lista(...v));
+/** Los datos de un producto con TODAS sus referencias propias (la base de las variantes que cambian una sola por una ajena). */
+const propios = (c: ContextoDeArgumentos) => ({ nombre: "Nombre nuevo", tipo: "MP" as const, unidadStockId: c.propio.unidadId, factorConversion: 1, categoriaId: c.propio.categoriaId, insumoId: c.propio.insumoId, unidadCompraId: c.propio.unidad2Id });
 
 const completos: Record<string, Valor> = {
   // --- gobierno ---
-  "accion|actions/auth/sucursales.ts|crearSucursalConAdmin": () => [{ nombre: "Sucursal nueva", emailPrimerAdmin: "nuevo-admin@ajeno.test" }],
+  // El primer administrador tiene que ser alguien que ya es de la empresa (u1): con un correo desconocido la acción rechaza por eso y no por quien llama.
+  "accion|actions/auth/sucursales.ts|crearSucursalConAdmin": (_k, c) => [{ nombre: "Sucursal nueva", emailPrimerAdmin: c.mundo.u1.email }],
   "accion|actions/auth/usuarios.ts|agregarOActualizarUsuario": (k, c) =>
     conVariantes(
       intento(c, ["sucursalId"], [{ email: "nuevo@ajeno.test", sucursalId: k.sucursalId, rolId: k.rolId, notas: "notas" }]),
       intento(c, ["rolId"], [{ email: "nuevo@ajeno.test", sucursalId: c.propio.sucursalId, rolId: k.rolId }]),
     ),
   "accion|actions/permisos/capacidades-sucursal.ts|actualizarCapacidad": (k) => ["carta_tema", k.sucursalId, false],
-  "accion|actions/permisos/permisos.ts|guardarPermisos": (k) => [[{ rolId: k.rolId, accionClave: "carta_tema", anterior: { puedeVer: false, puedeEditar: false }, nuevo: { puedeVer: true, puedeEditar: true } }]],
+  "accion|actions/permisos/permisos.ts|guardarPermisos": (k) => [[{ rolId: k.rolId, accionClave: "alta_producto", anterior: { puedeVer: false, puedeEditar: false }, nuevo: { puedeVer: true, puedeEditar: true } }]],
 
   // --- carta ---
   "accion|actions/carta/contenido-producto.ts|guardarContenidoCartaProducto": (k, c) =>
@@ -59,11 +62,20 @@ const completos: Record<string, Valor> = {
   "accion|actions/catalogo/productos.ts|actualizarProducto": (k, c) =>
     conVariantes(
       intento(c, ["productoId"], [k.productoId, { nombre: "Nombre nuevo", tipo: "MP", unidadStockId: c.propio.unidadId, factorConversion: 1 }]),
-      intento(c, ["categoriaId", "insumoId", "unidad2Id", "unidadId"], [c.propio.productoId, { nombre: "Nombre nuevo", tipo: "MP", unidadStockId: k.unidadId, factorConversion: 1, categoriaId: k.categoriaId, insumoId: k.insumoId, unidadCompraId: k.unidad2Id }]),
+      // Un id ajeno por variante (los demás, propios): con todos juntos la primera validación (la unidad de stock) rechazaba y las demás referencias ajenas nunca se miraban.
+      intento(c, ["unidadId"], [c.propio.productoId, { ...propios(c), unidadStockId: k.unidadId }]),
+      intento(c, ["categoriaId"], [c.propio.productoId, { ...propios(c), categoriaId: k.categoriaId }]),
+      intento(c, ["insumoId"], [c.propio.productoId, { ...propios(c), insumoId: k.insumoId }]),
+      intento(c, ["unidad2Id"], [c.propio.productoId, { ...propios(c), unidadCompraId: k.unidad2Id }]),
       intento(c, ["proveedorId"], [c.propio.productoId, { nombre: "Nombre nuevo", tipo: "MP", unidadStockId: c.propio.unidadId, factorConversion: 1, esConsignacion: true, proveedorConsignacionId: k.proveedorId, precioConsignacion: 10 }]),
     ),
   "accion|actions/catalogo/productos.ts|darDeAltaProducto": (k, c) =>
-    conVariantes(intento(c, ["unidadId", "categoriaId", "insumoId", "unidad2Id"], [{ nombre: "Producto nuevo", tipo: "MP", unidadStockId: k.unidadId, factorConversion: 1, categoriaId: k.categoriaId, insumoId: k.insumoId, unidadCompraId: k.unidad2Id }])),
+    conVariantes(
+      intento(c, ["unidadId"], [{ ...propios(c), nombre: "Producto nuevo", unidadStockId: k.unidadId }]),
+      intento(c, ["categoriaId"], [{ ...propios(c), nombre: "Producto nuevo", categoriaId: k.categoriaId }]),
+      intento(c, ["insumoId"], [{ ...propios(c), nombre: "Producto nuevo", insumoId: k.insumoId }]),
+      intento(c, ["unidad2Id"], [{ ...propios(c), nombre: "Producto nuevo", unidadCompraId: k.unidad2Id }]),
+    ),
   "accion|actions/catalogo/proveedores.ts|altaProveedor": () => [{ nombre: "Proveedor nuevo" }],
   "accion|actions/catalogo/proveedores.ts|actualizarProveedor": (k) => [k.proveedorId, { contacto: "contacto nuevo" }],
   "accion|actions/catalogo/unidades.ts|crearUnidad": () => [{ nombre: "Unidad nueva", magnitud: "PESO" }],
@@ -73,7 +85,7 @@ const completos: Record<string, Valor> = {
       intento(c, ["productoId", "unidadId"], [c.propio.productoPvId, [ingrediente(k)], [{ orden: 1, instruccion: "Mezclar" }], {}, 1]),
     ),
   "accion|actions/catalogo/recetas.ts|agregarIngredienteAReceta": (k, c) =>
-    conVariantes(intento(c, ["productoPvId"], [k.productoPvId, ingrediente(k, c.propio.productoId), 1]), intento(c, ["productoId", "unidadId"], [c.propio.productoPvId, ingrediente(k), 1])),
+    conVariantes(intento(c, ["productoPvId"], [k.productoPvId, ingrediente(k, c.propio.productoMp3Id), 1]), intento(c, ["productoMp3Id", "unidadId"], [c.propio.productoPvId, ingrediente(k, k.productoMp3Id), 1])),
   "accion|actions/catalogo/recetas.ts|actualizarIngredienteDeReceta": (k) => [k.productoPvId, k.productoId, { cantidad: 2, unidadId: k.unidadId }, 1],
   "accion|actions/catalogo/recetas.ts|agregarPasoAReceta": (k) => [k.productoPvId, { orden: 2, instruccion: "Hornear" }, 1],
   "accion|actions/catalogo/recetas.ts|actualizarPasoDeReceta": (k) => [k.productoPvId, 1, { instruccion: "Hornear" }, 1],
@@ -81,14 +93,14 @@ const completos: Record<string, Valor> = {
   "accion|actions/catalogo/recetas.ts|insertarPasoEnReceta": (k) => [k.productoPvId, 1, { instruccion: "Hornear" }, 1],
   "accion|actions/catalogo/recetas.ts|actualizarCabeceraDeReceta": (k) => [k.productoPvId, { comentarios: "nuevo" }, 1],
   "accion|actions/catalogo/receta-sucursal.ts|agregarIngredienteARecetaPropia": (k, c) =>
-    conVariantes(intento(c, ["productoPvId"], [k.productoPvId, ingrediente(k, c.propio.productoId), 1, true]), intento(c, ["productoId", "unidadId"], [c.propio.productoPvId, ingrediente(k), 1, true])),
+    conVariantes(intento(c, ["productoPvId"], [k.productoPvId, ingrediente(k, c.propio.productoMp3Id), 1, true]), intento(c, ["productoMp3Id", "unidadId"], [c.propio.productoPvId, ingrediente(k, k.productoMp3Id), 1, true])),
   "accion|actions/catalogo/receta-sucursal.ts|actualizarIngredienteDeRecetaPropia": (k) => [k.productoPvId, k.productoId, { cantidad: 2, unidadId: k.unidadId }, 1, true],
   "accion|actions/catalogo/rendimiento-local.ts|fijarRendimientoLocal": (k) => [k.recetaIngredienteId, { cantidad: 2, mermaPorcentaje: 3 }],
 
   // --- movimientos, stock, traspasos ---
   "accion|actions/movimientos/compras.ts|corregirCompra": (k, c) =>
     conVariantes(
-      intento(c, ["compraId"], [k.compraId, { proveedorId: c.propio.proveedorId, nroFactura: "F-NUEVA", detalleLibre: "texto" }, { proveedorId: null, nroFactura: null, detalleLibre: null }]),
+      intento(c, ["compraId"], [k.compraId, { proveedorId: c.propio.proveedorId, nroFactura: "F-NUEVA", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
       intento(c, ["proveedorId"], [c.propio.compraId, { proveedorId: k.proveedorId, nroFactura: "F-NUEVA", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
     ),
   "accion|actions/movimientos/conteo-fisico.ts|registrarConteoFisico": (k, c) =>
@@ -111,7 +123,7 @@ const completos: Record<string, Valor> = {
       intento(c, ["motivoId"], [{ proceso: "MERMA", fecha: hoy(), seccionId: c.propio.seccionId, motivoId: k.motivoId, items: [{ productoId: c.propio.productoId, cantidad: 1 }] }]),
       intento(c, ["destinoId"], [{ proceso: "CONSUMO", fecha: hoy(), seccionId: c.propio.seccionId, destinoId: k.destinoId, items: [{ productoId: c.propio.productoId, cantidad: 1 }] }]),
       // Transferencia hacia una sección ajena; ajuste desde una sección ajena.
-      intento(c, ["seccionId"], [{ proceso: "TRANSFERENCIA", fecha: hoy(), seccionId: c.propio.seccionId, seccionDestinoId: k.seccionId, items: [{ productoId: c.propio.productoId, cantidad: 1 }] }]),
+      intento(c, ["seccionId"], [{ proceso: "TRANSFERENCIA", fecha: hoy(), seccionId: c.propio.seccionId, seccionDestinoId: c.escenario === "controlMutacion" ? c.propio.seccion2Id : k.seccionId, items: [{ productoId: c.propio.productoId, cantidad: 1 }] }]),
       intento(c, ["seccionId"], [{ proceso: "AJUSTE", fecha: hoy(), seccionId: k.seccionId, items: [{ productoId: c.propio.productoId, cantidad: -1 }] }]),
     ),
   "accion|actions/movimientos/venta.ts|registrarVenta": (k, c) =>
@@ -122,9 +134,10 @@ const completos: Record<string, Valor> = {
     ),
   "accion|actions/stock/reclasificacion.ts|reclasificarStock": (k, c) =>
     conVariantes(
-      intento(c, ["seccionId"], [{ productoId: c.propio.productoId, seccionOrigenId: k.seccionId, destinos: [{ seccionId: c.propio.seccion2Id, cantidad: 1 }], fecha: hoy() }]),
-      intento(c, ["seccion2Id"], [{ productoId: c.propio.productoId, seccionOrigenId: c.propio.seccionId, destinos: [{ seccionId: k.seccion2Id, cantidad: 1 }], fecha: hoy() }]),
-      intento(c, ["productoId"], [{ productoId: k.productoId, seccionOrigenId: c.propio.seccionId, destinos: [{ seccionId: c.propio.seccion2Id, cantidad: 1 }], fecha: hoy() }]),
+      // La materia prima `mp2` tiene un saldo disponible POSITIVO (+5) en la sección de cada sucursal: reclasificar exige mover exactamente el saldo del origen.
+      intento(c, ["seccionId"], [{ productoId: c.propio.productoMp2Id, seccionOrigenId: k.seccionId, destinos: [{ seccionId: c.propio.seccion2Id, cantidad: 5 }], fecha: hoy() }]),
+      intento(c, ["seccion2Id"], [{ productoId: c.propio.productoMp2Id, seccionOrigenId: c.propio.seccionId, destinos: [{ seccionId: k.seccion2Id, cantidad: 5 }], fecha: hoy() }]),
+      intento(c, ["productoId"], [{ productoId: k.productoMp2Id, seccionOrigenId: c.propio.seccionId, destinos: [{ seccionId: c.propio.seccion2Id, cantidad: 5 }], fecha: hoy() }]),
     ),
   "accion|actions/traspasos/traspasos.ts|crearSolicitudTransferencia": (k, c) =>
     conVariantes(
@@ -143,7 +156,8 @@ const completos: Record<string, Valor> = {
   "accion|actions/traspasos/traspasos.ts|aprobarYEnviarTransferencia": (k, c) =>
     conVariantes(intento(c, ["traspasoId"], [k.traspasoId, c.propio.seccionId]), intento(c, ["seccionId"], [c.propio.traspasoId, k.seccionId])),
   "accion|actions/traspasos/traspasos.ts|aceptarTransferencia": (k, c) =>
-    conVariantes(intento(c, ["traspasoEnviadoId"], [k.traspasoEnviadoId, c.propio.seccionId]), intento(c, ["seccionId"], [c.propio.traspasoEnviadoId, k.seccionId])),
+    // Aceptar lo hace el DESTINO: el envío «entrante» (de la vecina hacia esta sucursal).
+    conVariantes(intento(c, ["traspasoEntranteId"], [k.traspasoEntranteId, c.propio.seccionId]), intento(c, ["seccionId"], [c.propio.traspasoEntranteId, k.seccionId])),
 
   // --- consultas de las páginas y lecturas (el contexto —sucursal activa, empresa, usuario, hora, db— es el propio; los ids del cliente, los ajenos) ---
   // Las candidatas son las sucursales con carta propia; la consulta tiene que dejar afuera las que u1 no ve (S2, S3, las de otra empresa).
@@ -160,6 +174,13 @@ const completos: Record<string, Valor> = {
   "lectura|lecturas/movimientos/receta-para-vender.ts|cargarRecetaVigenteParaVender": (k, c) => [c.db, { productoId: k.productoPvId, sucursalId: c.propio.sucursalId }],
   "lectura|lecturas/permisos/gobierno.ts|invarianteRolSinUsuariosActivos": (k, c) => [c.db, { id: k.rolId, nombre: "Rol de prueba" }],
 
+  // El ítem agrupado se resuelve desde el primer producto en la sucursal activa: el ajeno y el propio no se mezclan; la sucursal que llega tiene que ser la activa.
+  "accion|actions/movimientos/precio-local.ts|sincronizarPrecioLocalGrupoCarta": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [k.sucursalId, [c.propio.productoPvId], 1, false]),
+      intento(c, ["productoPvId"], [c.propio.sucursalId, [k.productoPvId], 1, false]),
+    ),
+
   // --- POS ---
   // Mezclar una cuenta PROPIA con ítems de OTRA sucursal: el envío tiene que acotar los ítems por la cuenta, no solo mirar que la cuenta sea de la sucursal.
   "accion|actions/pos/cuenta-pedido.ts|enviarACocina": (k, c) =>
@@ -174,6 +195,24 @@ const completos: Record<string, Valor> = {
 };
 
 const parametros: Record<string, Record<string, Valor>> = {
+  // --- Parámetros que cambian en el CONTROL POSITIVO (ids propios y válidos → `ok: true`): la sucursal a desactivar no puede ser la activa, etc. ---
+  "accion|actions/auth/sucursales.ts|actualizarActivoSucursal": { sucursalId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
+  "accion|actions/auth/usuarios.ts|transferirGerencia": { emailConfirmado: (_k, c) => (c.escenario === "controlMutacion" ? "zz-a1-miembro@e1.test" : "confirmado@ajeno.test") },
+  // Activar un producto ya activo es idempotente; desactivar `mp` se rechaza (está en la receta vigente y tiene saldo).
+  "accion|actions/catalogo/productos.ts|actualizarDisponibilidadProducto": { disponible: (_k, c) => c.escenario === "controlMutacion" },
+  // Los hermanos de UN ítem agrupado de la carta: el PV (en el mundo, la única opción del ítem).
+  "accion|actions/catalogo/productos.ts|sincronizarPrecioGrupoCarta": { productoIds: (k) => [k.productoPvId] },
+  "accion|actions/catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": { sucursalOrigenId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
+  "accion|actions/carta/registro-publico.ts|agregarSucursalAlPortal": { sucursalId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
+  "accion|actions/pos/cuenta-anulacion.ts|anularItemEnviado": { cuentaItemId: (k) => k.cuentaItemEnviadoId, restanteVisto: () => 2 },
+  "accion|actions/pos/cuenta-anulacion.ts|anularPromoEnviada": { promoCuentaId: (k) => k.promoCuentaEnviadaId },
+  "accion|actions/pos/cuenta-apertura.ts|liberarMesa": { cuentaId: (k) => k.cuentaVaciaId },
+  "accion|actions/pos/cuenta-cierre.ts|cerrarCuenta": { cuentaId: (k) => k.cuentaEnviadaId },
+  "accion|actions/pos/cuenta-cierre.ts|emitirTicketCorregido": { cuentaId: (k) => k.cuentaCerradaId },
+  "accion|actions/movimientos/conteo-fisico.ts|cancelarConteoFisico": { conteoId: (k) => k.conteoResueltoId },
+  "accion|actions/carta/items-agrupados.ts|agregarOpcionItemAgrupadoCarta": { productoId: (k) => k.productoPv2Id },
+  // `versionVista` es la versión de la receta PROPIA que vio la persona: 0 = todavía no tiene.
+  "accion|actions/catalogo/receta-sucursal.ts|crearRecetaPropiaDesdeLaCentral": { productoId: (k) => k.productoPv2Id, versionVista: () => 0, habilitadaVista: () => false },
   // `operacionId` por defecto es la compra; la venta lleva la suya.
   "accion|actions/movimientos/venta.ts|anularVenta": { operacionId: (k) => k.ventaId },
   "consulta|consultas/pos/tickets.ts|obtenerTicketsRecientes": { mesaId: (k) => k.mesaCerradaId },
@@ -182,6 +221,9 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/movimientos/lecturas-conteo-fisico.ts|obtenerHistorialConteosFisicos": { filtro: (k, c) => (conIdsAjenos(c) ? { seccionId: k.seccionId, productoId: k.productoId, cursor: k.conteoId } : {}) },
   "consulta|consultas/reportes/compras-registradas.ts|listarComprasRegistradas": { filtro: (k, c) => (conIdsAjenos(c) ? { proveedorId: k.proveedorId, cursor: k.compraId } : {}) },
   "consulta|consultas/reportes/tickets-emitidos.ts|listarTicketsEmitidos": { filtro: (k, c) => (conIdsAjenos(c) ? { mesaId: k.mesaId, cursor: k.cuentaId } : {}) },
+  "accion|actions/catalogo/productos.ts|buscarProductosSelector": { filtro: () => ({ soloDisponibles: true }) },
+  // Con la sucursal: suma lo que compró esa sucursal a cada oferta (un id de sucursal que llega del cliente).
+  "lectura|lecturas/catalogo/ofertas-de-proveedor.ts|cargarOfertasDeProveedores": { filtro: (k, c) => (conIdsAjenos(c) ? { proveedorId: k.proveedorId, precioDeLaSucursal: k.sucursalId } : {}) },
   "accion|actions/catalogo/productos.ts|listarProductosPagina": { cursor: (k, c) => (conIdsAjenos(c) ? k.productoId : undefined) },
   "accion|actions/traspasos/lecturas.ts|obtenerBandejaTransferencias": { cursorHistorial: (k, c) => (conIdsAjenos(c) ? k.traspasoId : undefined) },
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },
@@ -200,10 +242,13 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/stock/frecuencia-conteo.ts|eliminarFrecuenciaConteo": { id: (k) => k.frecuenciaId },
   "accion|actions/stock/seccion-habitual.ts|eliminarSeccionHabitual": { id: (k) => k.seccionHabitualId },
   "accion|actions/stock/stock-minimo.ts|eliminarStockMinimo": { id: (k) => k.stockMinimoId },
-  "accion|actions/traspasos/traspasos.ts|cancelarSolicitudTransferencia": { id: (k) => k.traspasoId },
+  // Cancelar la solicitud lo hace quien la pidió (el destino); rechazar un envío recibido, el destino.
+  "accion|actions/traspasos/traspasos.ts|cancelarSolicitudTransferencia": { id: (k) => k.traspasoPedidoId },
   "accion|actions/traspasos/traspasos.ts|rechazarSolicitudTransferencia": { id: (k) => k.traspasoId },
-  "accion|actions/traspasos/traspasos.ts|rechazarTransferencia": { id: (k) => k.traspasoEnviadoId },
-  "accion|actions/traspasos/traspasos.ts|confirmarReingresoTransferencia": { id: (k) => k.traspasoEnviadoId },
+  "accion|actions/traspasos/traspasos.ts|rechazarTransferencia": { id: (k) => k.traspasoEntranteId },
+  "accion|actions/traspasos/traspasos.ts|confirmarReingresoTransferencia": { id: (k) => k.traspasoRechazadoId },
+  // La compra principal ya tiene consumos posteriores (no se puede anular): se anula la que nadie tocó.
+  "accion|actions/movimientos/compras.ts|anularCompra": { operacionId: (k) => k.compraAnulableId },
 };
 
 const porArchivo: Record<string, Record<string, Valor>> = {
@@ -213,6 +258,8 @@ const porArchivo: Record<string, Record<string, Valor>> = {
   // La sección habitual, el precio local y el contenido de la carta son de un PV.
   "actions/stock/seccion-habitual.ts": { productoId: (k) => k.productoPvId },
   "actions/carta/contenido-producto.ts": { productoId: (k) => k.productoPvId },
+  // El descuento no se puede poner a una opción de un ítem agrupado: el PV que está en el ítem (`pv`) no sirve, el otro (`pv2`) sí.
+  "actions/carta/descuento-producto.ts": { productoId: (k) => k.productoPv2Id },
   "actions/movimientos/precio-local.ts": { productoId: (k) => k.productoPvId },
 };
 

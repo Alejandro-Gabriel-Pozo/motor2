@@ -231,6 +231,28 @@ function parametrosDe(funcion: FuncionDelArchivo, sf: ts.SourceFile): ParametroD
   }));
 }
 
+/**
+ * Los nombres de las funciones que el inventario ve como exportadas en un texto fuente (`export function f`, `export const f = (…) =>`), o `null` si es una acción de un archivo que no es `"use server"` (no es un endpoint). Es lo
+ * MISMO que `inventariarPuertas` lee de cada archivo; existe aparte para el CRUCE con lo que el módulo exporta de verdad en ejecución (`cruce-en-runtime.ts`) y para probarlo con un fuente en memoria.
+ */
+export function nombresInventariadosDeFuente(texto: string, esAccion: boolean): string[] | null {
+  const sf = ts.createSourceFile("fuente.ts", texto, ts.ScriptTarget.Latest, true);
+  if (esAccion && !esUseServer(sf)) return null;
+  return funcionesDe(sf).filter((f) => f.exportada).map((f) => f.nombre);
+}
+
+/** Los archivos que el inventario recorre, desde `src/server` y con `/`: los `"use server"` de `actions` y todo `consultas` y `lecturas`. Incluye los que no exportan ninguna función que el inventario vea (justo los que el cruce en ejecución tiene que mirar). */
+export function archivosDelInventario(): string[] {
+  const salida: string[] = [];
+  for (const [carpeta, esAccion] of [["actions", true], ["consultas", false], ["lecturas", false]] as const) {
+    for (const ruta of archivosFuente(join(SERVER, carpeta))) {
+      if (nombresInventariadosDeFuente(readFileSync(ruta, "utf8"), esAccion) === null) continue;
+      salida.push(ruta.slice(SERVER.length + 1).replace(/\\/g, "/"));
+    }
+  }
+  return salida.sort();
+}
+
 /** El inventario completo, ordenado por clave. Sin base de datos: solo lee `src/`. */
 export function inventariarPuertas(): PuertaInventariada[] {
   const consumidores = consumidoresDeLecturas();

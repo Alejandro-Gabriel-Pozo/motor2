@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { planteoEstatico, type Escenario } from "./denegacion/argumentos";
 import { escenariosDe, TODOS_LOS_ESCENARIOS } from "./denegacion/escenarios";
-import { CONTEXTO_DECLARADO, EN_LA_SUCURSAL_VACIA, ESCENARIOS_QUE_NO_APLICAN, OK_SIN_EFECTO_POR_DISENO, PENDIENTES_DE_SUCURSAL, RECHAZOS_CRUDOS_DE_LA_BASE, SIN_MARCA_PROPIA } from "./denegacion/excepciones";
+import {
+  CONTEXTO_DECLARADO,
+  EN_LA_SUCURSAL_VACIA,
+  ESCENARIOS_QUE_NO_APLICAN,
+  OK_SIN_EFECTO_POR_DISENO,
+  OPCIONALES_SIN_MAPEAR,
+  PENDIENTES_DE_SUCURSAL,
+  RECHAZOS_CRUDOS_DE_LA_BASE,
+  RECHAZOS_DE_ESTADO_ADMITIDOS,
+  SIN_CONTROL_POSITIVO,
+  SIN_MARCA_PROPIA,
+  SUCURSALES_LISTADAS_POR_DISENO,
+} from "./denegacion/excepciones";
 import { FAMILIAS } from "./denegacion/familias";
 import { GENERADORES, SIN_GENERADOR } from "./denegacion/generadores";
 import { inventariarPuertas } from "./denegacion/inventario-de-puertas";
@@ -26,8 +38,12 @@ const claves = new Set(puertas.map((p) => p.clave));
 const MAXIMOS = {
   SIN_GENERADOR: 17,
   ESCENARIOS_QUE_NO_APLICAN: 2,
-  PENDIENTES_DE_SUCURSAL: 0,
-  RECHAZOS_CRUDOS_DE_LA_BASE: 4,
+  PENDIENTES_DE_SUCURSAL: 4,
+  RECHAZOS_CRUDOS_DE_LA_BASE: 5,
+  OPCIONALES_SIN_MAPEAR: 25,
+  SIN_CONTROL_POSITIVO: 1,
+  RECHAZOS_DE_ESTADO_ADMITIDOS: 9,
+  SUCURSALES_LISTADAS_POR_DISENO: 5,
   CONTEXTO_DECLARADO: 1,
   SIN_MARCA_PROPIA: 27,
   OK_SIN_EFECTO_POR_DISENO: 2,
@@ -116,7 +132,37 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
       if (motivo.trim().length < 20) problemas.push(`SIN_MARCA_PROPIA: ${clave}: el motivo es demasiado corto`);
     }
     for (const [clave, { motivo }] of Object.entries(PENDIENTES_DE_SUCURSAL)) if (motivo.trim().length < 20) problemas.push(`PENDIENTES_DE_SUCURSAL: ${clave}: el motivo es demasiado corto`);
+    // Las listas de la fila O.177 (hallazgo I-3): opcionales sin mapear, mutaciones sin control positivo, rechazos admitidos y sucursales listadas por diseño.
+    for (const [clave, motivo] of Object.entries(OPCIONALES_SIN_MAPEAR)) {
+      const corte = clave.lastIndexOf("|");
+      const p = puertas.find((x) => x.clave === clave.slice(0, corte));
+      const parametro = p?.parametros.find((q) => q.nombre === clave.slice(corte + 1));
+      if (!p) problemas.push(`OPCIONALES_SIN_MAPEAR: ${clave}: la puerta ya no existe`);
+      else if (!parametro?.opcional) problemas.push(`OPCIONALES_SIN_MAPEAR: ${clave}: ya no es un parámetro opcional de la puerta`);
+      if (motivo.trim().length < 20) problemas.push(`OPCIONALES_SIN_MAPEAR: ${clave}: el motivo es demasiado corto`);
+    }
+    for (const [clave, motivo] of Object.entries(SIN_CONTROL_POSITIVO)) {
+      const p = puertas.find((x) => x.clave === clave);
+      if (!p) problemas.push(`SIN_CONTROL_POSITIVO: ${clave}: la puerta ya no existe`);
+      else if (!p.mutacion) problemas.push(`SIN_CONTROL_POSITIVO: ${clave}: no es una mutación`);
+      if (motivo.trim().length < 40) problemas.push(`SIN_CONTROL_POSITIVO: ${clave}: el motivo es demasiado corto (decí qué estado o efecto impide armar el control)`);
+    }
+    for (const [clave, { motivo }] of Object.entries(RECHAZOS_DE_ESTADO_ADMITIDOS)) {
+      const puerta = clave.slice(0, clave.lastIndexOf("|"));
+      const escenario = clave.slice(clave.lastIndexOf("|") + 1);
+      if (!claves.has(puerta)) problemas.push(`RECHAZOS_DE_ESTADO_ADMITIDOS: ${puerta} ya no existe`);
+      if (escenario !== "ajenaEmpresa" && escenario !== "ajenaSucursal") problemas.push(`RECHAZOS_DE_ESTADO_ADMITIDOS: ${clave} solo vale en un escenario con ids ajenos`);
+      if (motivo.trim().length < 40) problemas.push(`RECHAZOS_DE_ESTADO_ADMITIDOS: ${clave}: el motivo es demasiado corto`);
+    }
+    for (const [clave, motivo] of Object.entries(SUCURSALES_LISTADAS_POR_DISENO)) {
+      if (!claves.has(clave)) problemas.push(`SUCURSALES_LISTADAS_POR_DISENO: ${clave} ya no existe`);
+      if (motivo.trim().length < 20) problemas.push(`SUCURSALES_LISTADAS_POR_DISENO: ${clave}: el motivo es demasiado corto`);
+    }
     expect(problemas, problemas.join("\n")).toEqual([]);
+    expect(Object.keys(OPCIONALES_SIN_MAPEAR).length, "OPCIONALES_SIN_MAPEAR solo se achica").toBeLessThanOrEqual(MAXIMOS.OPCIONALES_SIN_MAPEAR);
+    expect(Object.keys(SIN_CONTROL_POSITIVO).length, "SIN_CONTROL_POSITIVO solo se achica").toBeLessThanOrEqual(MAXIMOS.SIN_CONTROL_POSITIVO);
+    expect(Object.keys(RECHAZOS_DE_ESTADO_ADMITIDOS).length, "RECHAZOS_DE_ESTADO_ADMITIDOS solo se achica").toBeLessThanOrEqual(MAXIMOS.RECHAZOS_DE_ESTADO_ADMITIDOS);
+    expect(Object.keys(SUCURSALES_LISTADAS_POR_DISENO).length, "SUCURSALES_LISTADAS_POR_DISENO solo se achica").toBeLessThanOrEqual(MAXIMOS.SUCURSALES_LISTADAS_POR_DISENO);
     expect(Object.keys(ESCENARIOS_QUE_NO_APLICAN).length).toBeLessThanOrEqual(MAXIMOS.ESCENARIOS_QUE_NO_APLICAN);
     expect(Object.keys(PENDIENTES_DE_SUCURSAL).length).toBeLessThanOrEqual(MAXIMOS.PENDIENTES_DE_SUCURSAL);
     expect(Object.keys(RECHAZOS_CRUDOS_DE_LA_BASE).length).toBeLessThanOrEqual(MAXIMOS.RECHAZOS_CRUDOS_DE_LA_BASE);
@@ -137,8 +183,19 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
     expect(sinC.sort(), `Mutaciones con un id del cliente que NO se prueban con ids de otra empresa:\n${sinC.join("\n")}`).toEqual([]);
   });
 
+  it("toda mutación que se ejerce tiene CONTROL POSITIVO (ids propios y válidos → ok: true), o está en SIN_CONTROL_POSITIVO con motivo", () => {
+    const sinControl: string[] = [];
+    for (const p of puertas) {
+      if (!p.mutacion || Object.hasOwn(SIN_GENERADOR, p.clave)) continue;
+      const escenarios = escenariosDe(p);
+      if (escenarios.length && !escenarios.includes("controlMutacion")) sinControl.push(p.clave);
+    }
+    expect(sinControl, `Mutaciones sin escenario de control positivo:\n${sinControl.join("\n")}`).toEqual([]);
+    for (const clave of Object.keys(SIN_CONTROL_POSITIVO)) expect(claves.has(clave), `${clave} no existe`).toBe(true);
+  });
+
   it("cobertura: cuántas puertas hay y en cuántos escenarios se ejercen (informativo, con piso)", () => {
-    const porEscenario: Record<string, number> = { anonimo: 0, sinEmpresa: 0, ajenaEmpresa: 0, ajenaSucursal: 0, propia: 0 };
+    const porEscenario: Record<string, number> = { anonimo: 0, sinEmpresa: 0, ajenaEmpresa: 0, ajenaSucursal: 0, propia: 0, controlMutacion: 0 };
     let ejercidas = 0;
     for (const p of puertas) {
       const e = escenariosDe(p);
@@ -150,5 +207,7 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
     expect(porEscenario.sinEmpresa).toBeGreaterThan(300);
     expect(porEscenario.ajenaEmpresa).toBeGreaterThan(250);
     expect(porEscenario.ajenaSucursal).toBeGreaterThan(150);
+    // Cada mutación ejercida con ids ajenos tiene su control positivo (salvo las de SIN_CONTROL_POSITIVO, que igual lo intentan y se exige que sigan fallando).
+    expect(porEscenario.controlMutacion).toBeGreaterThan(120);
   });
 });

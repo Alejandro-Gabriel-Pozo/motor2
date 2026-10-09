@@ -16,6 +16,8 @@ import { enElPasado, HORA_MS, DIA_MS } from "../../setup/tiempo";
  * Cada sucursal que se prueba (S1 como «lo propio» de control, S2 como «lo ajeno de la misma empresa», la de E2 como «lo ajeno de otra empresa») recibe el MISMO juego de filas (`sembrarContenido`): una mesa con su
  * cuenta, ítems enviados y sin enviar, una compra y una venta con sus movimientos, un conteo pendiente, un traspaso, la receta propia, la carta de la sucursal, un miembro, etc. Todas con id explícito y un
  * MARCADOR en un campo de texto (`ZZ-E2`, `ZZ-S2`, `ZZ-A1` para lo propio): si el marcador de lo ajeno aparece en lo que una puerta devuelve, esa puerta filtró una fila que no era de quien preguntó.
+ * Las sucursales S2 y S3 también llevan marcador en su nombre (`ZZ-S2`, `ZZ-S3`) y los saldos de S2 y de E2 llevan una HUELLA numérica (7777 y 8888): una lectura que devuelve solo un número (un saldo, un total)
+ * no tiene ningún texto donde buscar el marcador, y el número inconfundible sí se reconoce (hallazgo I-3 de la auditoría final, fila O.177).
  */
 
 export interface KitDeEmpresa {
@@ -26,6 +28,10 @@ export interface KitDeEmpresa {
   productoId: string;
   productoPvId: string;
   productoMp2Id: string;
+  /** Una materia prima que NO está en ninguna receta (la que se agrega en el control positivo de «agregar ingrediente»). */
+  productoMp3Id: string;
+  /** Un PV con receta central y SIN receta propia en ninguna sucursal, fuera de todo ítem agrupado de la carta (los controles positivos de crear la receta propia y de agregar una opción a un ítem). */
+  productoPv2Id: string;
   insumoId: string;
   grupoId: string;
   categoriaId: string;
@@ -54,14 +60,31 @@ export interface KitDeSucursal {
   /** La mesa de la cuenta cerrada (con su ticket emitido). */
   mesaCerradaId: string;
   cuentaId: string;
+  /** La cuenta ya cerrada (con su ticket emitido). */
+  cuentaCerradaId: string;
+  /** Una cuenta abierta sin ítems (la mesa se puede liberar). */
+  cuentaVaciaId: string;
+  /** Una cuenta abierta con todo enviado a cocina (se puede cerrar), con una promo enviada. */
+  cuentaEnviadaId: string;
+  promoCuentaEnviadaId: string;
   cuentaItemId: string;
   cuentaItemEnviadoId: string;
   promoCuentaId: string;
   compraId: string;
+  /** Una compra de una materia prima sin consumos posteriores (la única que se puede anular). */
+  compraAnulableId: string;
   ventaId: string;
   conteoId: string;
+  /** Un conteo ya RESUELTO (el único que se puede cancelar). */
+  conteoResueltoId: string;
   traspasoId: string;
   traspasoEnviadoId: string;
+  /** Un envío ENVIADO desde la vecina HACIA esta sucursal (el destino lo acepta o lo rechaza). */
+  traspasoEntranteId: string;
+  /** Un envío de esta sucursal que el destino RECHAZÓ (espera el reingreso). */
+  traspasoRechazadoId: string;
+  /** Una solicitud pedida POR esta sucursal (destino) a la vecina (la sucursal que pidió la puede cancelar). */
+  traspasoPedidoId: string;
   pagoConsignanteId: string;
   precioLocalId: string;
   frecuenciaId: string;
@@ -89,14 +112,23 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   mesaId: true,
   mesaCerradaId: true,
   cuentaId: true,
+  cuentaCerradaId: true,
+  cuentaVaciaId: true,
+  cuentaEnviadaId: true,
+  promoCuentaEnviadaId: true,
   cuentaItemId: true,
   cuentaItemEnviadoId: true,
   promoCuentaId: true,
   compraId: true,
+  compraAnulableId: true,
   ventaId: true,
   conteoId: true,
+  conteoResueltoId: true,
   traspasoId: true,
   traspasoEnviadoId: true,
+  traspasoEntranteId: true,
+  traspasoRechazadoId: true,
+  traspasoPedidoId: true,
   pagoConsignanteId: true,
   precioLocalId: true,
   frecuenciaId: true,
@@ -112,6 +144,13 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   invitacionDeSucursalId: true,
 };
 export const CAMPOS_DE_SUCURSAL: ReadonlySet<string> = new Set(Object.keys(CAMPOS_DE_SUCURSAL_REGISTRO));
+
+/** La HUELLA numérica del saldo de S2 (otra sucursal de E1) y de la sucursal de E2 (otra empresa): números que ningún dato normal del mundo produce. */
+export const HUELLA_DE_S2 = 7777;
+export const HUELLA_DE_E2 = 8888;
+/** Los nombres de las sucursales S2 y S3 de E1: llevan marcador para delatar de dónde salió una fila de `Sucursal`. */
+export const NOMBRE_DE_S2 = "Sucursal Dos ZZ-S2";
+export const NOMBRE_DE_S3 = "Sucursal Tres ZZ-S3";
 
 export interface Mundo {
   e1: KitDeEmpresa;
@@ -150,6 +189,9 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   const mp = await producto("mp", "MP", { insumoId: insumo.id, unidadCompraId: kg.id, observaciones: `observaciones ${marca}` });
   const pv = await producto("pv", "PV", { seProduce: true });
   const mp2 = await producto("mp2", "MP");
+  const mp3 = await producto("mp3", "MP");
+  // Con el mismo precio que `pv` en las sucursales (1234): un ítem agrupado solo admite opciones del mismo precio.
+  const pv2 = await producto("pv2", "PV", { seProduce: true, precioVenta: 1234 });
   const proveedor = await db.proveedor.create({ data: { id: id("proveedor"), empresaId, codigo: id("PRV"), nombre: `Proveedor ${marca}`, contacto: `contacto ${marca}`, email: `${marca.toLowerCase()}-prov@ajeno.test`, cuit: null } });
   await db.proveedorPorProducto.create({ data: { id: id("ppp"), empresaId, productoId: mp.id, proveedorId: proveedor.id, unidadCompraId: kg.id, precioUnitario: 100, precioPorUnidadStock: 100, referenciaProveedor: `ref ${marca}` } });
   const presentacion = await db.presentacion.create({ data: { id: id("presentacion"), empresaId, productoId: mp.id, unidadCompraId: g.id, factorConversion: 1000 } });
@@ -164,6 +206,10 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   await db.margenObjetivo.create({ data: { id: id("margen"), empresaId, categoriaId: categoria.id, foodCostObjetivoPct: 30 } });
   const receta = await db.recetaVersion.create({ data: { id: id("receta"), empresaId, productoId: pv.id, version: 1, sucursalId: null, comentarios: `receta ${marca}` } });
   const ingrediente = await db.recetaIngrediente.create({ data: { id: id("ingrediente"), empresaId, recetaVersionId: receta.id, insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id, observaciones: `ingrediente ${marca}` } });
+  const recetaPv2 = await db.recetaVersion.create({ data: { id: id("receta-pv2"), empresaId, productoId: pv2.id, version: 1, sucursalId: null, comentarios: `receta pv2 ${marca}` } });
+  await db.recetaIngrediente.create({ data: { id: id("ingrediente-pv2"), empresaId, recetaVersionId: recetaPv2.id, insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id, observaciones: `ingrediente pv2 ${marca}` } });
+  // Dos ingredientes: sacar uno solo se rechaza («la receta necesita al menos un ingrediente») y el control positivo de «quitar ingrediente» necesita poder sacar uno.
+  await db.recetaIngrediente.create({ data: { id: id("ingrediente-2"), empresaId, recetaVersionId: receta.id, insumoProductoId: mp2.id, cantidad: 1, unidadId: kg.id, observaciones: `ingrediente 2 ${marca}` } });
   await db.recetaPaso.create({ data: { id: id("paso"), empresaId, recetaVersionId: receta.id, orden: 1, nombre: `Paso ${marca}`, instruccion: `Mezclar ${marca}` } });
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
   return {
@@ -173,6 +219,8 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
     productoId: mp.id,
     productoPvId: pv.id,
     productoMp2Id: mp2.id,
+    productoMp3Id: mp3.id,
+    productoPv2Id: pv2.id,
     insumoId: insumo.id,
     grupoId: grupo.id,
     categoriaId: categoria.id,
@@ -192,14 +240,14 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
 }
 
 /** El contenido de UNA sucursal (`sucursalId`, de `empresaId`), con la vecina `vecinaId` como contraparte de los traspasos. `usuarioId` es quien aparece como autor de lo que se siembra. */
-async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: string, vecinaId: string, miembro: { id: string; rolId: string }): Promise<KitDeSucursal> {
+async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: string, vecinaId: string, miembro: { id: string; rolId: string }, huella = 0): Promise<KitDeSucursal> {
   const db = prismaAdmin;
   const empresaId = k.empresaId;
   const id = (n: string) => `${marca}-${n}`;
   const seccion = await db.seccion.create({ data: { id: id("seccion"), empresaId, sucursalId, nombre: `Sección ${marca}` } });
   const seccion2 = await db.seccion.create({ data: { id: id("seccion-b"), empresaId, sucursalId, nombre: `Sección B ${marca}` } });
   const seccionVecina = await db.seccion.create({ data: { id: id("seccion-vecina"), empresaId, sucursalId: vecinaId, nombre: `Sección vecina de ${marca}` } });
-  for (const productoId of [k.productoId, k.productoPvId, k.productoMp2Id]) {
+  for (const productoId of [k.productoId, k.productoPvId, k.productoMp2Id, k.productoMp3Id, k.productoPv2Id]) {
     await db.disponibilidadProducto.create({ data: { empresaId, sucursalId, productoId, disponible: true } });
   }
   const membresia = await db.usuarioSucursal.create({ data: { id: id("membresia"), empresaId, usuarioId: miembro.id, sucursalId, rolId: miembro.rolId, notas: `Notas ${marca}` } });
@@ -214,6 +262,14 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const mesa2 = await db.mesa.create({ data: { id: id("mesa-b"), empresaId, sucursalId, numero: 2 } });
   const cuentaCerrada = await db.cuenta.create({ data: { id: id("cuenta-cerrada"), empresaId, mesaId: mesa2.id, abiertaPorId: miembro.id, cerradaEn: enElPasado(HORA_MS), cerradaPorId: miembro.id } });
   await db.ejemplarTicket.create({ data: { id: id("ticket"), empresaId, sucursalId, cuentaId: cuentaCerrada.id, numero: 1, ejemplar: 1, emitidoPorId: miembro.id } });
+  // Una cuenta abierta SIN ítems (se puede liberar la mesa) y otra con todo ENVIADO a cocina, ítems y promo (se puede cerrar y se puede anular lo enviado): los controles positivos del POS necesitan estos estados.
+  const mesa3 = await db.mesa.create({ data: { id: id("mesa-c"), empresaId, sucursalId, numero: 3 } });
+  const cuentaVacia = await db.cuenta.create({ data: { id: id("cuenta-vacia"), empresaId, mesaId: mesa3.id, abiertaPorId: miembro.id, comensales: 1 } });
+  const mesa4 = await db.mesa.create({ data: { id: id("mesa-d"), empresaId, sucursalId, numero: 4 } });
+  const cuentaEnviada = await db.cuenta.create({ data: { id: id("cuenta-enviada"), empresaId, mesaId: mesa4.id, abiertaPorId: miembro.id, comensales: 1 } });
+  const promoCuentaEnviada = await db.promoCuenta.create({ data: { id: id("promocuenta-enviada"), empresaId, cuentaId: cuentaEnviada.id, promoCartaId: k.promoCartaId, precio: 5000, titulo: `Promo enviada ${marca}`, creadoPorId: miembro.id } });
+  await db.cuentaItem.create({ data: { id: id("item-de-cuenta-enviada"), empresaId, cuentaId: cuentaEnviada.id, productoId: k.productoPvId, cantidad: 1, precioUnitario: 1000, numeroEnvio: 1, creadoPorId: miembro.id } });
+  await db.cuentaItem.create({ data: { id: id("item-promo-enviada"), empresaId, cuentaId: cuentaEnviada.id, productoId: k.productoPvId, cantidad: 1, precioUnitario: 0, numeroEnvio: 1, promoCuentaId: promoCuentaEnviada.id, creadoPorId: miembro.id } });
 
   // Kardex: una compra con lote (stock +10), una venta (−1) y un conteo pendiente.
   const compra = await db.operacion.create({
@@ -222,27 +278,53 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   await db.movimientoStock.create({
     data: { id: id("mov-compra"), empresaId, operacionId: compra.id, productoId: k.productoId, seccionId: seccion.id, proceso: "COMPRA", cantidad: 10, loteVencimiento: new Date(Date.now() + 30 * DIA_MS), detalle: `Compra ${marca}`, precioTotal: 1000, precioPorUnidadStock: 100 },
   });
+  // Una compra que SÍ se puede anular: de una materia prima que no se consumió ni se movió (la compra principal ya tiene consumos posteriores y «no se puede anular»).
+  const compraAnulable = await db.operacion.create({
+    data: { id: id("compra-anulable"), empresaId, sucursalId, proceso: "COMPRA", fecha: enElPasado(DIA_MS), proveedorId: k.proveedorId, nroFactura: `F2-${marca}`, usuarioId: miembro.id, detalleLibre: `Compra anulable ${marca}` },
+  });
+  await db.movimientoStock.create({
+    data: { id: id("mov-compra-anulable"), empresaId, operacionId: compraAnulable.id, productoId: k.productoMp3Id, seccionId: seccion2.id, proceso: "COMPRA", cantidad: 4, detalle: `Compra anulable ${marca}`, precioTotal: 400, precioPorUnidadStock: 100 },
+  });
   const venta = await db.operacion.create({ data: { id: id("venta"), empresaId, sucursalId, proceso: "VENTA", fecha: enElPasado(DIA_MS), usuarioId: miembro.id, clienteId: k.clienteId, detalleLibre: `Venta ${marca}` } });
   await db.movimientoStock.create({
     data: { id: id("mov-venta"), empresaId, operacionId: venta.id, productoId: k.productoId, seccionId: seccion.id, proceso: "VENTA", cantidad: -1, detalle: `Venta ${marca}`, precioTotal: 800, precioPorUnidadStock: 100, costoUnitarioVenta: 100, precioListaUnitario: 1000 },
   });
   // Pérdidas y devoluciones: lo que leen los reportes de merma/consumo y de devoluciones (cada movimiento lleva el marcador en el detalle, el motivo, el destino, el cliente y el proveedor).
-  const movimientoSuelto = async (n: string, proceso: "MERMA" | "CONSUMO" | "DEVOLUCION_CLIENTE" | "DEVOLUCION_PROVEEDOR", cantidad: number, extra: object) => {
+  const movimientoSuelto = async (n: string, proceso: "MERMA" | "CONSUMO" | "DEVOLUCION_CLIENTE" | "DEVOLUCION_PROVEEDOR" | "AJUSTE", cantidad: number, extra: object, productoId: string = k.productoId) => {
     const op = await db.operacion.create({ data: { id: id(n), empresaId, sucursalId, proceso, fecha: enElPasado(DIA_MS), usuarioId: miembro.id, detalleLibre: `${proceso} ${marca}`, ...extra } });
-    await db.movimientoStock.create({ data: { id: id(`mov-${n}`), empresaId, operacionId: op.id, productoId: k.productoId, seccionId: seccion.id, proceso, cantidad, detalle: `${proceso} ${marca}`, precioTotal: 100, precioPorUnidadStock: 100 } });
+    await db.movimientoStock.create({ data: { id: id(`mov-${n}`), empresaId, operacionId: op.id, productoId, seccionId: seccion.id, proceso, cantidad, detalle: `${proceso} ${marca}`, precioTotal: 100, precioPorUnidadStock: 100 } });
   };
   await movimientoSuelto("merma", "MERMA", -1, { motivoId: k.motivoId });
   await movimientoSuelto("consumo", "CONSUMO", -1, { destinoId: k.destinoId });
   await movimientoSuelto("devolucion-cliente", "DEVOLUCION_CLIENTE", 1, { clienteId: k.clienteId });
   await movimientoSuelto("devolucion-proveedor", "DEVOLUCION_PROVEEDOR", -1, { proveedorId: k.proveedorId });
+  // La HUELLA numérica: un ajuste de 7777 en S2 (8888 en E2; S1 no lleva) que deja los saldos de la sección en un número inconfundible de la familia 77xx (el total da 7784, el disponible 7774). Una lectura que
+  // devuelve solo un número (un saldo, un total) no lleva ningún marcador de texto: sin esta huella, devolver el saldo de la sucursal ajena pasaba por «no filtró nada».
+  if (huella > 0) await movimientoSuelto("ajuste-huella", "AJUSTE", huella, {});
+  // Un saldo disponible POSITIVO de otra materia prima en la sección (las mutaciones de stock —reclasificar— necesitan saldo para moverlo): +5 sin lote de `mp2`.
+  await movimientoSuelto("ajuste-mp2", "AJUSTE", 5, {}, k.productoMp2Id);
   const conteo = await db.conteoFisico.create({
     data: { id: id("conteo"), empresaId, sucursalId, fecha: enElPasado(HORA_MS), productoId: k.productoId, seccionId: seccion.id, saldoSistema: 9, conteoReal: 8, diferencia: -1, accion: "FALTA_MOVIMIENTO", estado: "PENDIENTE", detalle: `Conteo ${marca}`, usuarioId: miembro.id },
+  });
+  const conteoResuelto = await db.conteoFisico.create({
+    data: { id: id("conteo-resuelto"), empresaId, sucursalId, fecha: enElPasado(HORA_MS), productoId: k.productoId, seccionId: seccion.id, saldoSistema: 9, conteoReal: 9, diferencia: 0, accion: "FALTA_MOVIMIENTO", estado: "RESUELTO", detalle: `Conteo resuelto ${marca}`, usuarioId: miembro.id },
   });
   const traspaso = await db.traspasoSucursal.create({
     data: { id: id("traspaso"), empresaId, origenSucursalId: sucursalId, destinoSucursalId: vecinaId, productoId: k.productoId, cantidad: 1, iniciadoPor: "ORIGEN", estado: "SOLICITADA", creadoPorId: miembro.id, detalle: `Traspaso ${marca}` },
   });
   const traspasoEnviado = await db.traspasoSucursal.create({
     data: { id: id("traspaso-enviado"), empresaId, origenSucursalId: sucursalId, destinoSucursalId: vecinaId, productoId: k.productoId, cantidad: 1, seccionOrigenId: seccion.id, iniciadoPor: "ORIGEN", estado: "ENVIADA", creadoPorId: miembro.id, detalle: `Traspaso enviado ${marca}` },
+  });
+  // Los dos traspasos con la vecina como contraparte donde ESTA sucursal es el DESTINO: el envío entrante (lo acepta o lo rechaza) y la solicitud que ella misma pidió (la puede cancelar).
+  const traspasoEntrante = await db.traspasoSucursal.create({
+    data: { id: id("traspaso-entrante"), empresaId, origenSucursalId: vecinaId, destinoSucursalId: sucursalId, productoId: k.productoId, cantidad: 1, seccionOrigenId: seccionVecina.id, iniciadoPor: "ORIGEN", estado: "ENVIADA", creadoPorId: miembro.id, detalle: `Traspaso entrante ${marca}` },
+  });
+  const traspasoPedido = await db.traspasoSucursal.create({
+    data: { id: id("traspaso-pedido"), empresaId, origenSucursalId: vecinaId, destinoSucursalId: sucursalId, productoId: k.productoId, cantidad: 1, iniciadoPor: "DESTINO", estado: "SOLICITADA", creadoPorId: miembro.id, detalle: `Traspaso pedido ${marca}` },
+  });
+  // Un envío que el destino RECHAZÓ y espera el reingreso del origen (esta sucursal): lo confirma `confirmarReingresoTransferencia`.
+  const traspasoRechazado = await db.traspasoSucursal.create({
+    data: { id: id("traspaso-rechazado"), empresaId, origenSucursalId: sucursalId, destinoSucursalId: vecinaId, productoId: k.productoId, cantidad: 1, seccionOrigenId: seccion.id, iniciadoPor: "ORIGEN", estado: "RECHAZADA_DESTINO", creadoPorId: miembro.id, detalle: `Traspaso rechazado ${marca}` },
   });
   const pago = await db.pagoConsignante.create({ data: { id: id("pago"), empresaId, sucursalId, proveedorId: k.proveedorId, importe: 500, fecha: enElPasado(DIA_MS), notas: `Pago ${marca}`, usuarioId: miembro.id } });
 
@@ -258,13 +340,16 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   await db.recetaSucursal.create({ data: { id: id("receta-sucursal"), empresaId, sucursalId, productoId: k.productoPvId, habilitada: true } });
   const recetaPropia = await db.recetaVersion.create({ data: { id: id("receta-propia"), empresaId, productoId: k.productoPvId, version: 1, sucursalId, comentarios: `receta propia ${marca}` } });
   const ingredientePropio = await db.recetaIngrediente.create({ data: { id: id("ingrediente-propio"), empresaId, recetaVersionId: recetaPropia.id, insumoProductoId: k.productoId, cantidad: 2, unidadId: k.unidadId, observaciones: `ingrediente propio ${marca}` } });
+  await db.recetaIngrediente.create({ data: { id: id("ingrediente-propio-2"), empresaId, recetaVersionId: recetaPropia.id, insumoProductoId: k.productoMp2Id, cantidad: 1, unidadId: k.unidadId, observaciones: `ingrediente propio 2 ${marca}` } });
   await db.rendimientoLocalIngrediente.create({ data: { id: id("rendimiento"), empresaId, recetaIngredienteId: k.recetaIngredienteId, sucursalId, cantidad: 3, mermaPorcentaje: 5 } });
   const genero = await db.generoCarta.create({ data: { id: id("genero"), empresaId, sucursalId, nombre: `Género ${marca}` } });
   const itemAgrupado = await db.itemAgrupadoCarta.create({ data: { id: id("agrupado"), empresaId, sucursalId, nombre: `Agrupado ${marca}`, seccionCartaId: k.seccionCartaId, generoCartaId: genero.id } });
   const opcion = await db.opcionItemAgrupadoCarta.create({ data: { id: id("opcion"), empresaId, sucursalId, itemAgrupadoCartaId: itemAgrupado.id, productoId: k.productoPvId } });
   await db.contenidoCartaProducto.create({ data: { id: id("contenido"), empresaId, sucursalId, productoId: k.productoMp2Id, visibleEnCarta: true, seccionCartaId: k.seccionCartaId, descripcion: `Contenido ${marca}`, generoCartaId: genero.id } });
-  await db.sucursalPublica.create({ data: { id: id("publica"), empresaId, sucursalId, slug: id("slug").toLowerCase(), etiqueta: `Etiqueta ${marca}`, publicada: true } });
-  await db.temaCartaSucursal.create({ data: { id: id("tema"), empresaId, sucursalId, valores: { marca }, aplicarEnCarta: false } });
+  // Contenido de carta del PV (oculto: el control positivo de «mostrar en la carta» lo muestra), posición en el mapa del portal y un tema con una clave válida (un tema vacío no se puede aplicar).
+  await db.contenidoCartaProducto.create({ data: { id: id("contenido-pv"), empresaId, sucursalId, productoId: k.productoPvId, visibleEnCarta: false, seccionCartaId: k.seccionCartaId, descripcion: `Contenido PV ${marca}`, generoCartaId: genero.id } });
+  await db.sucursalPublica.create({ data: { id: id("publica"), empresaId, sucursalId, slug: id("slug").toLowerCase(), etiqueta: `Etiqueta ${marca}`, publicada: true, posX: 50, posY: 50, posW: 10, posH: 5 } });
+  await db.temaCartaSucursal.create({ data: { id: id("tema"), empresaId, sucursalId, valores: { restaurante_nombre: `Restaurante ${marca}` }, aplicarEnCarta: false } });
   await db.capacidadSucursal.create({ data: { id: id("capacidad"), empresaId, accionClave: "carta_tema", sucursalId, habilitado: true } });
 
   // Una invitación con acceso a esta sucursal y un registro de auditoría de la sucursal.
@@ -284,14 +369,23 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     mesaId: mesa.id,
     mesaCerradaId: mesa2.id,
     cuentaId: cuenta.id,
+    cuentaCerradaId: cuentaCerrada.id,
+    cuentaVaciaId: cuentaVacia.id,
+    cuentaEnviadaId: cuentaEnviada.id,
+    promoCuentaEnviadaId: promoCuentaEnviada.id,
     cuentaItemId: item.id,
     cuentaItemEnviadoId: itemEnviado.id,
     promoCuentaId: promoCuenta.id,
     compraId: compra.id,
+    compraAnulableId: compraAnulable.id,
     ventaId: venta.id,
     conteoId: conteo.id,
+    conteoResueltoId: conteoResuelto.id,
     traspasoId: traspaso.id,
     traspasoEnviadoId: traspasoEnviado.id,
+    traspasoEntranteId: traspasoEntrante.id,
+    traspasoRechazadoId: traspasoRechazado.id,
+    traspasoPedidoId: traspasoPedido.id,
     pagoConsignanteId: pago.id,
     precioLocalId: precioLocal.id,
     frecuenciaId: frecuencia.id,
@@ -323,8 +417,8 @@ export async function sembrarMundo(): Promise<Mundo> {
   const s1Id = base.sucursal.id;
   await prismaAdmin.sucursal.update({ where: { id: s1Id }, data: { nombre: "Central ZZ-A1", maxMesasAbiertas: 7 } });
   await prismaAdmin.empresa.update({ where: { id: e1Id }, data: { nombre: "Empresa principal ZZ-A1" } });
-  const s2 = await prismaAdmin.sucursal.create({ data: { id: "S2-sucursal-dos", empresaId: e1Id, nombre: "Sucursal Dos" } });
-  const s3 = await prismaAdmin.sucursal.create({ data: { id: "S3-sucursal-tres", empresaId: e1Id, nombre: "Sucursal Tres" } });
+  const s2 = await prismaAdmin.sucursal.create({ data: { id: "S2-sucursal-dos", empresaId: e1Id, nombre: NOMBRE_DE_S2 } });
+  const s3 = await prismaAdmin.sucursal.create({ data: { id: "S3-sucursal-tres", empresaId: e1Id, nombre: NOMBRE_DE_S3 } });
   const u1 = await prismaAdmin.user.create({ data: { id: "u1-actor", email: "u1@e1.test", name: "Actor de E1" } });
   await crearMembresia({ usuarioId: u1.id, sucursalId: s1Id, rolId: rolAdminE1Id });
   const s4 = await prismaAdmin.sucursal.create({ data: { id: "S4-sucursal-cuatro", empresaId: e1Id, nombre: "Sucursal Cuatro" } });
@@ -332,6 +426,8 @@ export async function sembrarMundo(): Promise<Mundo> {
   await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: u1.id, empresaId: e1Id } }, data: { rolEmpresa: "gerente" } });
   const miembroS1 = await prismaAdmin.user.create({ data: { id: "ZZ-A1-miembro", email: "zz-a1-miembro@e1.test", name: "Miembro A1" } });
   await miembroDeLaEmpresa(miembroS1.id, e1Id);
+  // Para recibir la gerencia hay que ser administrador activo en alguna sucursal: el miembro de S1 (operador allá) es administrador de la sucursal vacía (el control positivo de «traspasar la gerencia»).
+  await crearMembresia({ usuarioId: miembroS1.id, sucursalId: s4.id, rolId: rolAdminE1Id });
   const miembroS2 = await prismaAdmin.user.create({ data: { id: "ZZ-S2-miembro", email: "zz-s2-miembro@e1.test", name: "Miembro S2" } });
   await miembroDeLaEmpresa(miembroS2.id, e1Id);
   const sinEmpresa = await prismaAdmin.user.create({ data: { id: "sin-empresa", email: "sin-empresa@dominio.test", name: "Sin empresa" } });
@@ -339,7 +435,11 @@ export async function sembrarMundo(): Promise<Mundo> {
   const e1 = await sembrarEmpresaDeKit("ZZ-A1", e1Id, u1.id);
   const s1 = await sembrarContenido("ZZ-A1", e1, s1Id, s3.id, { id: miembroS1.id, rolId: rolOperadorE1Id });
   // S2 comparte el catálogo de E1 (es de la empresa): su kit de empresa es el de E1, y lo propio de S2 lleva su marca.
-  const s2Kit = await sembrarContenido("ZZ-S2", e1, s2.id, s3.id, { id: miembroS2.id, rolId: rolOperadorE1Id });
+  // La sucursal vacía (S4, donde u1 es administrador) tiene UNA receta propia del PV: el origen válido del control positivo de «copiar la receta propia de otra sucursal» (u1 tiene membresía y «Ver» allá).
+  await prismaAdmin.recetaSucursal.create({ data: { id: "ZZ-S4-receta-sucursal", empresaId: e1Id, sucursalId: s4.id, productoId: e1.productoPvId, habilitada: true } });
+  const recetaS4 = await prismaAdmin.recetaVersion.create({ data: { id: "ZZ-S4-receta-propia", empresaId: e1Id, productoId: e1.productoPvId, version: 1, sucursalId: s4.id, comentarios: "receta propia de la sucursal vacía" } });
+  await prismaAdmin.recetaIngrediente.create({ data: { id: "ZZ-S4-ingrediente-propio", empresaId: e1Id, recetaVersionId: recetaS4.id, insumoProductoId: e1.productoId, cantidad: 3, unidadId: e1.unidadId, observaciones: "ingrediente de la sucursal vacía" } });
+  const s2Kit = await sembrarContenido("ZZ-S2", e1, s2.id, s3.id, { id: miembroS2.id, rolId: rolOperadorE1Id }, HUELLA_DE_S2);
 
   // E2: otra empresa, creada con el alta de pruebas (roles, unidades, motivos y su primera sucursal).
   const alta = await crearEmpresa(prismaSinEmpresa, { nombre: "ZZ-E2 Empresa", slug: "zz-e2", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", emailPrimerAdmin: "zz-e2-gerente@e2.test", nombreSucursal: "ZZ-E2 Central" }, []);
@@ -349,7 +449,15 @@ export async function sembrarMundo(): Promise<Mundo> {
   const miembroE2 = await prismaAdmin.user.create({ data: { id: "ZZ-E2-miembro", email: "zz-e2-miembro@e2.test", name: "Miembro E2" } });
   await miembroDeLaEmpresa(miembroE2.id, alta.empresaId);
   const e2 = await sembrarEmpresaDeKit("ZZ-E2", alta.empresaId, alta.usuarioId);
-  const d2 = await sembrarContenido("ZZ-E2", e2, alta.sucursalId, vecinaE2.id, { id: miembroE2.id, rolId: rolOperadorE2.id });
+  const d2 = await sembrarContenido("ZZ-E2", e2, alta.sucursalId, vecinaE2.id, { id: miembroE2.id, rolId: rolOperadorE2.id }, HUELLA_DE_E2);
+
+  // Las vecinas (la contraparte de los traspasos) tienen los productos disponibles: enviar o pedir un producto a una sucursal donde no está activo se rechaza («activalo allá antes de enviar»), y ese rechazo taparía
+  // el control positivo de los traspasos.
+  for (const [sucursalId, kit] of [[s3.id, e1], [vecinaE2.id, e2]] as const) {
+    for (const productoId of [kit.productoId, kit.productoPvId, kit.productoMp2Id, kit.productoMp3Id, kit.productoPv2Id]) {
+      await prismaAdmin.disponibilidadProducto.create({ data: { empresaId: kit.empresaId, sucursalId, productoId, disponible: true } });
+    }
+  }
 
   return { e1, e2, s1, s2: s2Kit, d2, u1: { id: u1.id, email: u1.email }, s4Id: s4.id, sinEmpresa: { id: sinEmpresa.id, email: sinEmpresa.email }, rolAdminE1Id, rolOperadorE1Id };
 }
