@@ -1,4 +1,5 @@
 import { CAMPOS_DE_SUCURSAL, type KitDeEmpresa, type KitDeSucursal, type Mundo } from "./mundo";
+import { OPCIONALES_SIN_MAPEAR } from "./excepciones";
 import type { ParametroDePuerta, PuertaInventariada } from "./inventario-de-puertas";
 
 /**
@@ -14,7 +15,7 @@ import type { ParametroDePuerta, PuertaInventariada } from "./inventario-de-puer
  * En las consultas y lecturas (que reciben el contexto ya resuelto: `db`, la sucursal activa, la empresa, el usuario), esos parámetros de CONTEXTO se llenan con lo PROPIO de u1 aunque el escenario sea
  * uno de los ajenos: lo que viene del cliente son los demás ids, y esos sí son ajenos. En las acciones —que son el endpoint—, todo parámetro es del cliente, incluida la sucursal.
  */
-export type Escenario = "anonimo" | "sinEmpresa" | "ajenaEmpresa" | "ajenaSucursal" | "propia";
+export type Escenario = "anonimo" | "sinEmpresa" | "ajenaEmpresa" | "ajenaSucursal" | "propia" | "controlMutacion";
 
 /** El kit completo: lo de empresa y lo de sucursal juntos (`marca` es el de la sucursal). */
 export type Kit = KitDeEmpresa & KitDeSucursal;
@@ -97,6 +98,7 @@ const IDS: Readonly<Record<string, (k: Kit) => unknown>> = {
   insumoDestinoId: (k) => k.insumoId,
   padreNuevoId: (k) => k.grupoId,
   productoIdExcluir: (k) => k.productoId,
+  excluirId: (k) => k.proveedorId,
 };
 
 /** Valores NO ids, por nombre de parámetro: lo que haga falta para que la forma sea válida y la llamada llegue a la lógica. */
@@ -152,6 +154,13 @@ const VALORES: Readonly<Record<string, Valor>> = {
   filtros: (k) => ({ seccionId: k.seccionId, productoId: k.productoId }),
   desdeParam: () => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
   hastaParam: () => new Date(),
+  // Opcionales que SÍ se mapean (antes quedaban en `undefined` y la puerta se ejercía sin ellos): la clave de idempotencia (un UUID), el período de un reporte, la fecha de corte, las opciones que piden MÁS datos.
+  claveIdempotencia: () => "00000000-0000-4000-8000-0000000000a1",
+  periodo: () => ({ desde: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), hasta: new Date() }),
+  rango: () => ({ desde: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), hasta: new Date() }),
+  antesDe: () => new Date(),
+  conPromos: () => true,
+  opciones: () => ({ conCostoDeConsignacion: true, conDatosComerciales: true, conImportes: true }),
   cuit: () => "20-12345678-9",
   precioGlobal: () => 1000,
   requerido: () => 1,
@@ -165,12 +174,17 @@ const VALORES: Readonly<Record<string, Valor>> = {
 };
 
 /** Un parámetro que se puede llenar sin un generador a medida. `undefined` en el retorno = no se pudo (y no es opcional). */
-function valorDe(p: ParametroDePuerta, k: Kit, c: ContextoDeArgumentos, aMedida: Readonly<Record<string, Valor>> | undefined): { ok: true; valor: unknown } | { ok: false } {
+function valorDe(p: ParametroDePuerta, k: Kit, c: ContextoDeArgumentos, aMedida: Readonly<Record<string, Valor>> | undefined): { ok: true; valor: unknown } | { ok: false; opcionalSinMapa?: true } {
   if (aMedida && Object.hasOwn(aMedida, p.nombre)) return { ok: true, valor: aMedida[p.nombre](k, c) };
   if (c.puerta.tipo !== "accion" && Object.hasOwn(CONTEXTO_DE_CONSULTA, p.nombre)) return { ok: true, valor: CONTEXTO_DE_CONSULTA[p.nombre](k, c) };
   if (Object.hasOwn(IDS, p.nombre)) return { ok: true, valor: IDS[p.nombre](k) };
   if (Object.hasOwn(VALORES, p.nombre)) return { ok: true, valor: VALORES[p.nombre](k, c) };
-  if (p.opcional) return { ok: true, valor: undefined };
+  // Un parámetro OPCIONAL que nadie mapeó ya no se deja en `undefined` en silencio: ese hueco saltea el camino que el parámetro abre (un filtro por id, un cursor, una clave de idempotencia) y la puerta parece
+  // cubierta. O se mapea (`VALORES`, `IDS`, `parametros`/`porArchivo` de `generadores.ts`) o se declara en `OPCIONALES_SIN_MAPEAR` con motivo (lista cerrada que solo se achica).
+  if (p.opcional) {
+    if (Object.hasOwn(OPCIONALES_SIN_MAPEAR, `${c.puerta.clave}|${p.nombre}`)) return { ok: true, valor: undefined };
+    return { ok: false, opcionalSinMapa: true };
+  }
   // Un mapa libre de valores (`Readonly<Record<string, unknown>>`: el tema o el portal de la carta): vacío es una forma válida y no lleva ids.
   if (/^Readonly<Record<string, unknown>>$/.test(p.tipo)) return { ok: true, valor: {} };
   return { ok: false };
@@ -214,6 +228,17 @@ export function intento(c: Pick<ContextoDeArgumentos, "escenario">, campos: read
   return !conIdsAjenos || campos.some((campo) => esAjeno(c, campo)) ? argumentos : false;
 }
 
+/** Las variantes con los mismos argumentos (con ids propios dos caminos pueden coincidir) se ejercen una sola vez. */
+function sinRepetidas(lista: unknown[][]): unknown[][] {
+  const vistas = new Set<string>();
+  return lista.filter((v) => {
+    const huella = JSON.stringify(v, (_c, x: unknown) => (typeof x === "bigint" ? x.toString() : x)) ?? "";
+    if (vistas.has(huella)) return false;
+    vistas.add(huella);
+    return true;
+  });
+}
+
 export interface Derivacion {
   /** `null` si algún parámetro obligatorio no se pudo llenar. */
   argumentos: unknown[] | null;
@@ -242,8 +267,10 @@ export function derivarArgumentos(base: Omit<ContextoDeArgumentos, "usados">, g:
   if (completo) {
     const r = completo(kit, ctx);
     let lista = r instanceof Variantes ? r.lista.map((v) => [...v]) : [r as unknown[]];
-    // Sin ids ajenos (anónimo, sin empresa, propia) todas las variantes son lo mismo: una alcanza.
-    if (base.escenario !== "ajenaEmpresa" && base.escenario !== "ajenaSucursal") lista = lista.slice(0, 1);
+    // Sin ids ajenos (anónimo, sin empresa, propia) todas las variantes son lo mismo: una alcanza. El CONTROL POSITIVO de una mutación (`controlMutacion`) las ejerce todas, con los ids propios: cada camino
+    // (editar, dar de alta con referencias, mover) tiene que poder terminar en `ok: true`, o el rechazo de su variante ajena podría ser de forma y no de pertenencia.
+    if (base.escenario === "controlMutacion") lista = sinRepetidas(lista);
+    else if (base.escenario !== "ajenaEmpresa" && base.escenario !== "ajenaSucursal") lista = lista.slice(0, 1);
     return { argumentos: lista[0] ?? null, variantes: lista, usados: [...usados], faltan: [] };
   }
   const aMedida = { ...(Object.hasOwn(g.porArchivo, base.puerta.archivo) ? g.porArchivo[base.puerta.archivo] : {}), ...(Object.hasOwn(g.parametros, base.puerta.clave) ? g.parametros[base.puerta.clave] : {}) };
@@ -253,7 +280,7 @@ export function derivarArgumentos(base: Omit<ContextoDeArgumentos, "usados">, g:
     const r = valorDe(p, kit, ctx, aMedida);
     if (r.ok) argumentos.push(r.valor);
     else {
-      faltan.push(`${p.nombre}: ${p.tipo}`);
+      faltan.push(r.opcionalSinMapa ? `${p.nombre}: ${p.tipo} (OPCIONAL sin mapear: mapealo o declaralo en OPCIONALES_SIN_MAPEAR)` : `${p.nombre}: ${p.tipo}`);
       argumentos.push(undefined);
     }
   }

@@ -42,7 +42,24 @@ export interface PendienteDeSucursal {
  * Lo que cruza de OTRA SUCURSAL de la misma empresa (escenario `ajenaSucursal`) y todavía no se defiende. La política del plan: se declara acá y NO se arregla en esta tanda (la defensa por sucursal es la
  * «RLS contenedor» [MIG] que el dueño pidió como pista aparte). La matriz EJECUTA estos casos y exige que sigan fallando: cuando la pista los cierre, el test pide sacar la entrada.
  */
-export const PENDIENTES_DE_SUCURSAL: Readonly<Record<string, PendienteDeSucursal>> = {};
+export const PENDIENTES_DE_SUCURSAL: Readonly<Record<string, PendienteDeSucursal>> = {
+  "lectura|lecturas/movimientos/saldos.ts|calcularSaldoTotal|ajenaSucursal": {
+    motivo: "ayudante interno de saldos: con el `db` de la empresa y el id de una sección de OTRA sucursal de la misma empresa devuelve su saldo (huella 77xx de S2). No valida que la sección sea de la sucursal activa: eso lo hacen las acciones que lo llaman (`obtenerSeccionPropia`, probado en la matriz de cada una); el ayudante solo no la defiende (la RLS separa empresas, no sucursales)",
+    destino: "pista de contención por sucursal (RLS contenedor), plan de endurecimiento §6 fase (a); hallazgo de la fila O.177 (huella numérica de S2)",
+  },
+  "lectura|lecturas/movimientos/saldos.ts|calcularSaldoPorLote|ajenaSucursal": {
+    motivo: "ídem `calcularSaldoTotal`: el saldo por lote de la sección que recibe (huella 77xx de S2); quien la llama valida la sección (`obtenerSeccionPropia` en `obtenerSaldoDisponibleParaReclasificar`, `reclasificarStock`, `registrarConteoFisico`)",
+    destino: "pista de contención por sucursal (RLS contenedor), plan de endurecimiento §6 fase (a); hallazgo de la fila O.177 (huella numérica de S2)",
+  },
+  "consulta|consultas/movimientos/stock-para-conteo.ts|listarStockParaConteo|ajenaSucursal": {
+    motivo: "la precarga de la grilla de conteo lista el stock de la sección que recibe, sea de la sucursal activa o no (devuelve el de S2: huella 77xx). La página que la llama (`movimientos/conteo-fisico/page.tsx`) solo le pasa una sección de `listarSeccionesActivas(ctx.sucursalId)`; la consulta sola no lo valida",
+    destino: "pista de contención por sucursal (RLS contenedor), plan de endurecimiento §6 fase (a); hallazgo de la fila O.177 (huella numérica de S2)",
+  },
+  "lectura|lecturas/movimientos/saldos.ts|validarStockSuficiente|ajenaSucursal": {
+    motivo: "ídem `calcularSaldoTotal`: compara contra el saldo de la sección que recibe, sea o no de la sucursal activa; devuelve `actual` (el saldo de S2, huella 77xx)",
+    destino: "pista de contención por sucursal (RLS contenedor), plan de endurecimiento §6 fase (a); hallazgo de la fila O.177 (huella numérica de S2)",
+  },
+};
 
 /**
  * Puertas que, con un id ajeno en un campo que no validan, dejan que la RESTRICCIÓN de la base (la clave foránea compuesta por empresa) lo rechace y lanzan una excepción de Prisma cruda en lugar de devolver `{ ok: false }`.
@@ -52,6 +69,7 @@ export const PENDIENTES_DE_SUCURSAL: Readonly<Record<string, PendienteDeSucursal
 export const RECHAZOS_CRUDOS_DE_LA_BASE: Readonly<Record<string, string>> = {
   "accion|actions/catalogo/insumos.ts|crearOActualizarGrupo|ajenaEmpresa": "`grupoPadreId` de otra empresa: la clave foránea compuesta `Grupo_empresaId_grupoPadreId_fkey` (P2003) lo rechaza al crear",
   "accion|actions/catalogo/productos.ts|actualizarProducto|ajenaEmpresa": "`proveedorConsignacionId` de otra empresa: la clave foránea compuesta de `Producto` (P2003) lo rechaza al actualizar (la categoría, el insumo y las unidades sí se validan)",
+  "accion|actions/catalogo/productos.ts|darDeAltaProducto|ajenaEmpresa": "`categoriaId`, `insumoId` o `unidadCompraId` de otra empresa (una variante por id): la clave foránea compuesta de `Producto` (P2003) los rechaza al crear (la unidad de stock sí se valida: «obligatoria»)",
   "accion|actions/catalogo/productos.ts|darDeAltaProductoRapido|ajenaEmpresa": "`unidadStockId` de otra empresa: la clave foránea compuesta de `Producto` (P2003) lo rechaza al crear (el alta completa sí valida la unidad)",
   "accion|actions/movimientos/venta.ts|registrarVenta|ajenaEmpresa": "`proveedorId` («a quién se vende») de otra empresa: la clave foránea compuesta de `Operacion` (P2003) lo rechaza dentro de la transacción",
 };
@@ -63,6 +81,120 @@ export const RECHAZOS_CRUDOS_DE_LA_BASE: Readonly<Record<string, string>> = {
 export const OK_SIN_EFECTO_POR_DISENO: Readonly<Record<string, string>> = {
   "accion|actions/pos/cuenta-pedido.ts|enviarACocina|ajenaEmpresa": "el envío acota los ítems por la cuenta de la sucursal activa (`UPDATE … WHERE cuentaId`): los ids de ítems que no son de ella se ignoran y responde «Esos ítems ya estaban enviados» (`numeroEnvio: null`), igual que con un id inexistente; no escribe nada",
   "accion|actions/pos/cuenta-pedido.ts|enviarACocina|ajenaSucursal": "ídem: los ítems de la cuenta de otra sucursal se ignoran (la respuesta es la de un id inexistente) y no se escribe nada",
+};
+
+/**
+ * Parámetros OPCIONALES que la matriz deja en `undefined` a propósito (hallazgo I-3 de la auditoría final, fila O.177): un opcional sin mapear salteaba en silencio el camino que abre (un filtro por id, un cursor).
+ * Ahora un opcional sin mapa es un error de cobertura; solo se declara acá el que de verdad no lleva nada del cliente que probar. `<puerta>|<parámetro>` → por qué. Lista cerrada: solo se achica.
+ */
+const PRECARGA =
+  "dato PRECARGADO por quien llama (una optimización: el índice de recetas, los productos o los costos que la consulta ya leyó); sin él el ayudante lo carga solo con el `db`, que es el camino que ejercen estas pruebas. No lleva ids del cliente";
+export const OPCIONALES_SIN_MAPEAR: Readonly<Record<string, string>> = {
+  "consulta|consultas/reportes/diferencias-ajustes.ts|generarReporteDiferenciasAjustes|productosCargados": PRECARGA,
+  "consulta|consultas/reportes/insumos-sin-receta.ts|generarReporteInsumosSinRecetaVinculada|productosCargados": PRECARGA,
+  "consulta|consultas/reportes/periodo.ts|cargarLineasDelPeriodo|cargado": PRECARGA,
+  "consulta|consultas/reportes/periodo.ts|cargarLineasDelPeriodoDeSucursales|cargado": PRECARGA,
+  "consulta|consultas/stock/alertas.ts|calcularAlertasStock|cargado": PRECARGA,
+  "consulta|consultas/stock/consolidado.ts|calcularStockConsolidado|seccionesCargadas": PRECARGA,
+  "lectura|lecturas/carta/descuentos.ts|descuentosDeProductoEnSucursal|precioLocalActivoCargado": PRECARGA,
+  "lectura|lecturas/carta/menu.ts|resolverMenuCarta|precioLocalActivoCargado": PRECARGA,
+  "lectura|lecturas/carta/menu.ts|resolverMenuCartaConDiagnostico|precioLocalActivoCargado": PRECARGA,
+  "lectura|lecturas/catalogo/precio-local.ts|preciosLocalesVigentes|precioLocalActivo": PRECARGA,
+  "lectura|lecturas/movimientos/saldos.ts|resolverConsumoPorFamilia|obtenerProducto": "función de búsqueda que inyecta quien llama (para no releer productos ya cargados); sin ella el ayudante lee con el `db`",
+  "lectura|lecturas/pos/promo-para-agregar.ts|cargarPromoCartaParaAgregar|modulosCargados": PRECARGA,
+  "lectura|lecturas/pos/selector-carta.ts|cargarSelectorCartaPos|precioLocalActivoCargado": PRECARGA,
+  "lectura|lecturas/pos/selector-carta.ts|cargarSelectorCartaPos|modulosCargados": PRECARGA,
+  "lectura|lecturas/reportes/comun.ts|construirMapaProductos|clasificacionCargada": PRECARGA,
+  "lectura|lecturas/reportes/comun.ts|construirMapaProductos|cargado": PRECARGA,
+  "lectura|lecturas/reportes/costos.ts|calcularCostosYMargenes|productosCargados": PRECARGA,
+  "lectura|lecturas/reportes/costos.ts|calcularCostosYMargenes|indiceRecetas": PRECARGA,
+  "lectura|lecturas/reportes/costos.ts|calcularCostosYMargenes|objetivos": PRECARGA,
+  "lectura|lecturas/reportes/costos.ts|calcularCostosYMargenes|costosCargados": PRECARGA,
+  "lectura|lecturas/reportes/costos.ts|calcularCostosYMargenesEImpactoInsumos|objetivos": PRECARGA,
+  "lectura|lecturas/reportes/costos.ts|calcularImpactoRecetasPorPeriodo|productosCargados": PRECARGA,
+  "lectura|lecturas/reportes/costos.ts|calcularImpactoRecetasPorPeriodo|indiceRecetas": PRECARGA,
+  "lectura|lecturas/reportes/costos.ts|calcularImpactoRecetasPorPeriodo|clasificacion": PRECARGA,
+  "lectura|lecturas/reportes/costos.ts|calcularImpactoRecetasPorPeriodo|costosActualesCargados": PRECARGA,
+};
+
+/**
+ * Mutaciones cuyo CONTROL POSITIVO no se puede armar: con ids PROPIOS y válidos la llamada no termina en `ok: true` (precondición de estado que el mundo no reúne, un efecto externo que no se puede repetir).
+ * Para ellas «rechazó con ids ajenos» sigue sin probar que el motivo fuera la pertenencia; el control (b) —solo cuentan los rechazos de pertenencia— sigue vigente. Lista cerrada: solo se achica.
+ * `<puerta>` → por qué.
+ */
+export const SIN_CONTROL_POSITIVO: Readonly<Record<string, string>> = {
+  "accion|actions/pos/cuenta-cierre.ts|emitirTicketCorregido":
+    "solo emite el ejemplar corregido de una cuenta cerrada cuya VENTA se anuló parcialmente DESPUÉS de emitir el ticket (`Operacion.anuladaEn` posterior al ejemplar, con ítems vinculados a la operación); el mundo siembra una cuenta cerrada con su ticket vigente y la acción rechaza con «ya refleja las anulaciones». Armar el estado exige sembrar un cierre de cuenta con la venta anulada después del ticket",
+};
+
+/** Un rechazo admitido: el mensaje exacto (patrón) y por qué, aun sin decir «no se encontró», es el chequeo de pertenencia. */
+export interface RechazoAdmitido {
+  mensaje: RegExp;
+  motivo: string;
+}
+
+/**
+ * Rechazos que NO dicen «no se encontró / no existe / no tenés acceso…» pero SON el chequeo de pertenencia de la puerta: el mismo mensaje sirve para el id vacío y para el id que la base no deja ver. Solo se admite
+ * ESE mensaje (no cualquier rechazo de la puerta), y solo porque el control positivo de la mutación (ids propios y válidos → `ok: true`) prueba que con el id propio la puerta no lo dice: un rechazo con el id
+ * ajeno es entonces de pertenencia. `<puerta>|<escenario>` → mensaje y por qué. Lista cerrada: solo se achica.
+ */
+export const RECHAZOS_DE_ESTADO_ADMITIDOS: Readonly<Record<string, RechazoAdmitido>> = {
+  "accion|actions/catalogo/productos.ts|actualizarProducto|ajenaEmpresa": {
+    mensaje: /La unidad de stock es obligatoria/,
+    motivo: "la validación lee la unidad de stock con la base de la empresa; si el id es de otra empresa no la ve y contesta con el mismo texto que para el id vacío (`validarDatosDeProducto`): es el chequeo de pertenencia de la unidad",
+  },
+  "accion|actions/catalogo/productos.ts|darDeAltaProducto|ajenaEmpresa": {
+    mensaje: /La unidad de stock es obligatoria/,
+    motivo: "ídem `actualizarProducto`: la unidad de stock de otra empresa no se ve y contesta «obligatoria»; cada id ajeno restante (categoría, insumo, unidad de compra) tiene su propia variante con su propio mensaje de «no se encontró»",
+  },
+  "accion|actions/catalogo/productos.ts|sincronizarPrecioGrupoCarta|ajenaEmpresa": {
+    mensaje: /no están todos en el mismo ítem agrupado/,
+    motivo: "el ítem agrupado se resuelve desde el primer producto con la base de la empresa (`resolverGrupoDeProducto`): un producto de otra empresa no tiene ítem y el mensaje es el de «no son del mismo ítem». El control positivo usa los productos de un ítem propio",
+  },
+  "accion|actions/catalogo/recetas.ts|actualizarCabeceraDeReceta|ajenaEmpresa": {
+    mensaje: /Todavía no hay ninguna receta/,
+    motivo: "la receta vigente se lee con la base de la empresa: el producto de otra empresa no tiene ninguna visible y la acción contesta «todavía no hay ninguna receta»; con el PV propio el control positivo termina en ok: true",
+  },
+  "accion|actions/catalogo/recetas.ts|actualizarIngredienteDeReceta|ajenaEmpresa": {
+    mensaje: /Ese insumo no está en la receta vigente/,
+    motivo: "ídem: la receta de otra empresa no se ve, así que el insumo «no está en la receta vigente»",
+  },
+  "accion|actions/catalogo/recetas.ts|actualizarPasoDeReceta|ajenaEmpresa": {
+    mensaje: /Ese paso no está en la receta vigente/,
+    motivo: "ídem: la receta de otra empresa no se ve, así que el paso «no está en la receta vigente»",
+  },
+  "accion|actions/catalogo/recetas.ts|reordenarPasosDeReceta|ajenaEmpresa": {
+    mensaje: /secuencia de pasos no es válida/,
+    motivo: "ídem: la secuencia se compara con los pasos de la receta vigente y la de otra empresa no se ve (queda vacía); la secuencia `[1]` es válida para la receta propia (el control positivo lo prueba)",
+  },
+  "accion|actions/catalogo/receta-sucursal.ts|crearRecetaPropiaDesdeLaCentral|ajenaEmpresa": {
+    mensaje: /no tiene receta central de la que partir/,
+    motivo: "la receta central del producto de otra empresa no se ve: «no tiene receta central»; con el PV propio sin receta propia el control positivo termina en ok: true",
+  },
+  "accion|actions/movimientos/precio-local.ts|sincronizarPrecioLocalGrupoCarta|ajenaEmpresa": {
+    mensaje: /no están todos en el mismo ítem agrupado/,
+    motivo: "ídem `sincronizarPrecioGrupoCarta` (ítem agrupado de la sucursal activa resuelto desde el primer producto)",
+  },
+};
+
+/**
+ * Puertas que devuelven, por diseño, los NOMBRES de las otras sucursales de la empresa (el selector de contraparte de un traspaso, el comparativo de sucursales): el nombre de S2 y de S3 lleva marcador
+ * (`ZZ-S2`, `ZZ-S3`) y no es una fuga. La matriz borra esos dos nombres exactos de lo devuelto antes de buscar marcadores, así que cualquier OTRO dato de S2 en la respuesta sí cuenta. `<puerta>` → por qué.
+ */
+export const SUCURSALES_LISTADAS_POR_DISENO: Readonly<Record<string, string>> = {
+  "accion|actions/auth/sucursales.ts|listarSucursales": "la lista de sucursales de la empresa (administración de sucursales): S2 y S3 son sucursales de E1 y sus nombres salen por diseño",
+  "consulta|consultas/carta/admin.ts|cargarAdminCarta": "la administración de la carta lista las sucursales de la empresa (con su carta o sin ella, para copiar): los nombres de S2 y S3 salen por diseño",
+  "consulta|consultas/catalogo/disponibilidad.ts|disponibilidadPorSucursalDeProducto": "la disponibilidad de un producto se muestra por CADA sucursal de la empresa (tabla de la ficha): los nombres de S2 y S3 salen por diseño",
+  "accion|actions/traspasos/lecturas.ts|listarSucursalesParaEnviar": "lista las OTRAS sucursales activas de la empresa (id y nombre) para elegir a quién enviar: S2 y S3 son sucursales de E1 y sus nombres salen por diseño",
+  "accion|actions/traspasos/lecturas.ts|listarSucursalesParaSolicitar": "lista las OTRAS sucursales activas de la empresa (id y nombre) para elegir a quién pedirle: S2 y S3 son sucursales de E1 y sus nombres salen por diseño",
+};
+
+/**
+ * Funciones que un módulo del servidor exporta por un `export { x }` de algo que YA es una puerta inventariada en su archivo de origen (un alias, no una puerta nueva): el cruce en ejecución del inventario (`cruce-en-runtime.ts`)
+ * las ve como exportaciones que el AST no reconoce. `<archivo desde src/server>|<nombre>` → la clave de la puerta inventariada de la que es alias. Lista cerrada: solo se achica.
+ */
+export const REEXPORTS_DE_PUERTAS_INVENTARIADAS: Readonly<Record<string, string>> = {
+  "consultas/catalogo/receta-propia.ts|obtenerEstadoDeRecetaPropia": "lectura|lecturas/catalogo/receta-propia.ts|obtenerEstadoDeRecetaPropia",
 };
 
 /** Lecturas que devuelven solo agregados (números, textos sin fila identificable): el control positivo no puede buscar el marcador propio. Puerta → por qué. */
