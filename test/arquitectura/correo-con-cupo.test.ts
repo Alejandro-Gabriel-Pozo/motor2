@@ -15,7 +15,7 @@ import ts from "typescript";
  */
 const RAIZ = join(__dirname, "../..");
 const CARPETAS = ["src", "plataforma/src", "scripts", "prisma"];
-const DEFINICIONES = new Set(["src/lib/enviar-correo.ts", "src/core/correo/enviar.ts"]);
+const DEFINICIONES = new Set(["src/lib/enviar-correo.ts", "src/core/correo/enviar.ts", "src/lib/correo/resend.ts"]);
 
 /** Cada archivo que llama a `enviarCorreo` (o a `enviarConEnviador`) y el cupo que lo cubre. Una entrada nueva obliga a decidir y a explicarlo; una que ya no llama, se saca. */
 const LLAMADORES_DE_ENVIAR_CORREO: Record<string, string> = {
@@ -45,18 +45,39 @@ function recorrer(nodo: ts.Node, visitar: (n: ts.Node) => void): void {
 
 const nombreDeLlamada = (c: ts.CallExpression): string => (ts.isIdentifier(c.expression) ? c.expression.text : ts.isPropertyAccessExpression(c.expression) ? c.expression.name.text : "?");
 
-/** Los archivos que llaman a `enviarCorreo`/`enviarConEnviador` (por AST: un comentario o un string no cuenta). */
+/** Lo que manda un mail (o arma quien lo manda): llamarlo, importarlo (con o sin alias) o importar el módulo que lo define. */
+const NOMBRES_QUE_ENVIAN = new Set(["enviarCorreo", "enviarConEnviador", "crearEnviadorResend", "crearEnviadorDelCanal"]);
+/** Los módulos que mandan correo (el enviador del proceso, el dominio del correo y el adaptador de Resend): importarlos, de la forma que sea, es tocar el correo. */
+const MODULOS_QUE_ENVIAN = /(^|\/)(enviar-correo|correo\/enviar|correo\/resend)$/;
+
+/**
+ * ¿El archivo toca el envío de correo? (GT-9, endurecido por la auditoría final): una llamada por su nombre, un `import { enviarCorreo as avisar }` (el alias esconde la llamada), el import
+ * del módulo entero (`* as correo`, por defecto, `export … from`, `import("…")`) o el import DIRECTO del adaptador de Resend (`lib/correo/resend`, que se salta el cupo y el reporte).
+ * Por AST: un comentario o un string no cuenta.
+ */
+function tocaElCorreo(fuente: ts.SourceFile): boolean {
+  let toca = false;
+  recorrer(fuente, (n) => {
+    if (ts.isCallExpression(n)) {
+      if (NOMBRES_QUE_ENVIAN.has(nombreDeLlamada(n))) toca = true;
+      if (n.expression.kind === ts.SyntaxKind.ImportKeyword && n.arguments[0] && ts.isStringLiteralLike(n.arguments[0]) && MODULOS_QUE_ENVIAN.test(n.arguments[0].text)) toca = true;
+    }
+    if ((ts.isImportDeclaration(n) || ts.isExportDeclaration(n)) && n.moduleSpecifier && ts.isStringLiteral(n.moduleSpecifier)) {
+      if (MODULOS_QUE_ENVIAN.test(n.moduleSpecifier.text)) toca = true;
+    }
+    if (ts.isImportSpecifier(n) && NOMBRES_QUE_ENVIAN.has((n.propertyName ?? n.name).text)) toca = true;
+  });
+  return toca;
+}
+
+/** Los archivos que mandan correo (por AST: ver `tocaElCorreo`). */
 function llamadoresDeEnviarCorreo(): string[] {
   const salida: string[] = [];
   for (const carpeta of CARPETAS) {
     for (const ruta of archivos(join(RAIZ, carpeta))) {
       const r = rel(ruta);
       if (DEFINICIONES.has(r)) continue;
-      let llama = false;
-      recorrer(arbol(r), (n) => {
-        if (ts.isCallExpression(n) && ["enviarCorreo", "enviarConEnviador"].includes(nombreDeLlamada(n))) llama = true;
-      });
-      if (llama) salida.push(r);
+      if (tocaElCorreo(arbol(r))) salida.push(r);
     }
   }
   return salida.sort();
@@ -72,6 +93,20 @@ describe("GT-9 — todo envío de correo pasa por un cupo", () => {
     const encontrados = llamadoresDeEnviarCorreo();
     expect(encontrados, "un `enviarCorreo(` nuevo tiene que entrar a la lista de arriba con el cupo que lo cubre").toEqual(Object.keys(LLAMADORES_DE_ENVIAR_CORREO).sort());
     for (const [archivo, cupo] of Object.entries(LLAMADORES_DE_ENVIAR_CORREO)) expect(cupo.length, `${archivo} necesita el motivo`).toBeGreaterThan(40);
+  });
+
+  it("el detector ve el envío escondido: un alias del import, el módulo entero, el adaptador de Resend directo y el import dinámico (y no se confunde con un comentario)", () => {
+    const toca = (codigo: string) => tocaElCorreo(ts.createSourceFile("x.ts", codigo, ts.ScriptTarget.Latest, true));
+    expect(toca('import { enviarCorreo } from "@/lib/enviar-correo"; enviarCorreo("a", m);')).toBe(true);
+    expect(toca('import { enviarCorreo as avisar } from "@/lib/enviar-correo"; avisar("a", m);')).toBe(true);
+    expect(toca('import { enviarCorreo as avisar } from "@/lib/barril"; avisar("a", m);')).toBe(true); // el alias de un re-export: ni el nombre de la llamada ni el módulo lo delatan
+    expect(toca('import * as correo from "@/lib/enviar-correo"; correo.enviarCorreo("a", m);')).toBe(true);
+    expect(toca('import { crearEnviadorResend } from "@/lib/correo/resend"; const e = crearEnviadorResend();')).toBe(true);
+    expect(toca('import crear from "../lib/correo/resend"; crear();')).toBe(true);
+    expect(toca('export { enviarCorreo } from "@/lib/enviar-correo";')).toBe(true);
+    expect(toca('const m = await import("@/lib/enviar-correo");')).toBe(true);
+    expect(toca('// enviarCorreo(x)\nconst s = "import { enviarCorreo } from lib/enviar-correo"; const f = 1;')).toBe(false);
+    expect(toca('import { otraCosa } from "@/lib/otra"; otraCosa();')).toBe(false);
   });
 
   const casosDeUso = readdirSync(join(RAIZ, "src/server/actions/auth/casos-de-uso"))
