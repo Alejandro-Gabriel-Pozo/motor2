@@ -15,7 +15,6 @@ type ResultadoInvitarAVincular = ResultadoCaso<
   { porEnviar: InvitacionPorEnviar },
   | "MEMBRESIA_NO_ENCONTRADA"
   | "YA_VINCULO_GOOGLE"
-  | "CUENTA_DESACTIVADA_EN_PLATAFORMA"
   | "TECHO_DE_PRIVILEGIO"
   | "REENVIO_MUY_PRONTO"
   | "INVITACION_RECHAZADA"
@@ -32,7 +31,7 @@ type ResultadoInvitarAVincular = ResultadoCaso<
  * Este caso de uso no manda nada: devuelve en `datos.porEnviar` la invitación y su token (los del último intento de la transacción).
  *
  * En la transacción de gobierno (`conGobierno`, serializable con reintento), igual que antes: la membresía de la sucursal activa; que no haya vinculado ya su cuenta de
- * Google; que su cuenta no esté desactivada en toda la plataforma; el techo de gestión sobre esa persona (con quien actúa RELEÍDO de la base en la sucursal
+ * Google (sin mirar si su cuenta está desactivada en toda la plataforma: S-19, no se filtra el estado de la tabla global `User`); el techo de gestión sobre esa persona (con quien actúa RELEÍDO de la base en la sucursal
  * activa, `actorDesdeLaBase`: O35-B de O.35, no con el contexto de la sesión, que pudo quedar viejo); la invitación de vinculación pendiente que ya tuviera, con el
  * freno de un minuto desde su último envío medido contra la hora del pedido (`mensajeSiSeReenviaMuyPronto`); y, si había una, rotarla
  * (`rotarInvitacionPendiente`), si no, crearla (`asegurarInvitacionDeVinculacion`), con su auditoría (el paso compartido de invitaciones); y, S-21, la reserva del mail
@@ -61,11 +60,12 @@ export async function invitarAVincularCasoDeUso(
         async (tx): Promise<ResultadoInvitarAVincular> => {
           const membresia = await tx.usuarioSucursal.findUnique({
             where: { id: membresiaId },
-            select: { sucursalId: true, usuarioId: true, rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA }, usuario: { select: { email: true, activoGlobal: true, accounts: { where: { provider: "google" }, select: { id: true }, take: 1 } } } },
+            select: { sucursalId: true, usuarioId: true, rol: { select: SELECCION_DE_ROL_PARA_JERARQUIA }, usuario: { select: { email: true, accounts: { where: { provider: "google" }, select: { id: true }, take: 1 } } } },
           });
           if (!membresia || membresia.sucursalId !== actor.sucursalId) return fracaso("MEMBRESIA_NO_ENCONTRADA", "No se encontró esa membresía.");
           if (membresia.usuario.accounts.length > 0) return fracaso("YA_VINCULO_GOOGLE", "Esa persona ya vinculó su cuenta de Google.");
-          if (!membresia.usuario.activoGlobal) return fracaso("CUENTA_DESACTIVADA_EN_PLATAFORMA", "La cuenta de ese usuario está desactivada en toda la plataforma.");
+          // S-19: NO se mira `activoGlobal` (tabla global `User`): decirlo filtraba el estado de una cuenta que se apaga por fuera de esta empresa. Igual que con una cuenta activa se deja la
+          // invitación; la cuenta apagada no puede iniciar sesión (kill-switch de `decidirInicioDeSesion`), así que no le abre nada.
           const quienActua = await actorDesdeLaBase(tx, actor.empresaId, actor.usuarioId, actor.sucursalId);
           const rechazo = mensajeSiNoPuedeGestionar(quienActua, await objetivoEnSucursal(tx, actor.empresaId, membresia.usuarioId, membresia.rol));
           if (rechazo) return fracaso("TECHO_DE_PRIVILEGIO", rechazo);

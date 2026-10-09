@@ -16,7 +16,6 @@ type ResultadoAgregarOActualizarUsuario = ResultadoCaso<
   { porEnviar: InvitacionPorEnviar | null },
   | "ROL_INVALIDO"
   | "SUCURSAL_INVALIDA"
-  | "CUENTA_DESACTIVADA_EN_PLATAFORMA"
   | "TECHO_DE_PRIVILEGIO"
   | "INVITACION_RECHAZADA"
   | "CUPO_DE_CORREO_AGOTADO"
@@ -41,7 +40,7 @@ type ResultadoAgregarOActualizarUsuario = ResultadoCaso<
  *  1. «Rol inválido o inactivo» y «Sucursal inválida» (de la empresa).
  *  2. La persona por su email y su cuenta en la empresa, y quien actúa, RELEÍDO de la base en la sucursal pedida (`actorDesdeLaBase`; O35-B de O.35: no se confía
  *     en el contexto de la sesión, que se armó al principio del pedido y pudo quedar viejo si mientras tanto le bajaron el rol o le apagaron la membresía).
- *  3. No es miembro: cuenta apagada en toda la plataforma → rechazo; techo para dar ese rol y para gestionarla; la invitación (`asegurarInvitacionDeUsuario`, con su
+ *  3. No es miembro: techo para dar ese rol y para gestionarla (SIN mirar si su cuenta está apagada en toda la plataforma: S-19, no se filtra el estado de la tabla global `User`); la invitación (`asegurarInvitacionDeUsuario`, con su
  *     auditoría) y el mensaje según haya que mandar el mail o se haya sumado la sucursal a la invitación pendiente.
  *  4. Es miembro: su membresía en esa sucursal; techo; reactivar a un admin es solo del gerente; y, midiendo las invariantes antes y después
  *     (`conInvariantesDeGobierno`), la cuenta en la empresa activa, la membresía con el rol (y las notas si vinieron), sus tres auditorías y, si no vinculó Google, la
@@ -88,7 +87,7 @@ async function agregarOActualizarEnLaTransaccion(
       const sucursal = await tx.sucursal.findFirst({ where: { id: comando.sucursalId, empresaId: actor.empresaId }, select: { id: true, nombre: true } });
       if (!sucursal) return fracaso("SUCURSAL_INVALIDA", "Sucursal inválida.");
 
-      const usuarioPrevio = await tx.user.findUnique({ where: { email }, select: { id: true, activoGlobal: true, accounts: { where: { provider: "google" }, select: { id: true } } } });
+      const usuarioPrevio = await tx.user.findUnique({ where: { email }, select: { id: true, accounts: { where: { provider: "google" }, select: { id: true } } } });
       const pertenenciaPrevia = usuarioPrevio
         ? await tx.usuarioEmpresa.findUnique({ where: { usuarioId_empresaId: { usuarioId: usuarioPrevio.id, empresaId: actor.empresaId } }, select: { activo: true } })
         : null;
@@ -97,9 +96,9 @@ async function agregarOActualizarEnLaTransaccion(
 
       // No es miembro de la empresa: INVITACIÓN. No se crea ningún User ni membresía hasta que acepte.
       if (!usuarioPrevio || !pertenenciaPrevia) {
-        if (usuarioPrevio && !usuarioPrevio.activoGlobal) {
-          return fracaso("CUENTA_DESACTIVADA_EN_PLATAFORMA", "La cuenta de ese email está desactivada en toda la plataforma. Consultalo con la plataforma.");
-        }
+        // S-19: NO se mira si la cuenta (tabla global `User`) está apagada en toda la plataforma. Decirlo le contaba a un administrador de ESTA empresa el estado de una cuenta que no es
+        // suya (sondeando emails distinguía «apagada por fuera de acá» de «inexistente»). Se responde y se obra igual exista o no; la cuenta apagada no puede iniciar sesión (kill-switch de
+        // `decidirInicioDeSesion`), así que la invitación no le abre nada.
         const objetivo = await objetivoEnSucursal(tx, actor.empresaId, usuarioPrevio?.id ?? null, null);
         const rechazo = mensajeSiNoPuedeDarRolA(quienActua, rol, objetivo);
         if (rechazo) return fracaso("TECHO_DE_PRIVILEGIO", rechazo);
