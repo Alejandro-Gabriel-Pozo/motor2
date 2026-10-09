@@ -1,6 +1,6 @@
 "use server";
 
-import { requierePermiso } from "@/server/acceso/gate";
+import { requierePermiso, sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { enviarInvitacionYAnotar, type InvitacionPorEnviar } from "./casos-de-uso/enviar-invitacion-y-anotar";
 import { error, ok, type ResultadoAccion } from "../tipos";
@@ -51,27 +51,38 @@ export async function listarUsuariosDeSucursal(sucursalId: string) {
   });
 }
 
-/** Las invitaciones de USUARIO pendientes que incluyen la sucursal activa: quién, qué sucursales y roles, quién invitó, cuándo vence y si el mail salió. */
+/**
+ * Las invitaciones de USUARIO pendientes que incluyen la sucursal activa: quién, qué sucursales y roles, quién invitó, cuándo vence y si el mail salió. Los accesos son solo los de
+ * las sucursales donde quien mira tiene `gestion_usuarios` (S-16, O.65); los de las demás vuelven como una cuenta (`enOtrasSucursales`).
+ */
 export async function listarInvitacionesPendientes(sucursalId: string) {
   const ctx = await requerirVerEnSucursal(sucursalId, "gestion_usuarios");
   const filas = await ctx.db.invitacion.findMany({
     where: { empresaId: ctx.empresaId, rolEmpresa: "usuario", estado: "PENDIENTE", sucursales: { some: { sucursalId } } },
     select: {
       id: true, email: true, venceEn: true, enviadaEn: true, invitadoPor: { select: { email: true } },
-      sucursales: { orderBy: { creadaEn: "asc" }, select: { sucursal: { select: { nombre: true } }, rol: { select: { nombre: true } } } },
+      sucursales: { orderBy: { creadaEn: "asc" }, select: { sucursalId: true, sucursal: { select: { nombre: true } }, rol: { select: { nombre: true } } } },
     },
     orderBy: { creadaEn: "asc" },
   });
+  // S-16 (O.65): una invitación puede dar acceso a varias sucursales y la RLS separa empresas, no sucursales: de cada fila se muestran SOLO los accesos de las sucursales donde quien
+  // mira puede ver `gestion_usuarios` (la activa ya pasó el gate de arriba); el resto se cuenta, sin nombre de sucursal ni de rol.
+  const visibles = await sucursalesDondeElUsuarioPuedeVer(ctx.usuarioId, [...new Set(filas.flatMap((f) => f.sucursales.map((s) => s.sucursalId)))], "gestion_usuarios", ctx.db);
   const ahora = new Date(); // lectura en el borde, como en `listarUsuariosDeSucursal`
-  return filas.map((f) => ({
-    id: f.id,
-    email: f.email,
-    invitadoPor: f.invitadoPor?.email ?? null,
-    venceEn: f.venceEn.toISOString(),
-    vencida: f.venceEn.getTime() <= ahora.getTime(),
-    enviada: f.enviadaEn !== null,
-    accesos: f.sucursales.map((s) => ({ sucursal: s.sucursal.nombre, rol: s.rol.nombre })),
-  }));
+  return filas.map((f) => {
+    const propias = f.sucursales.filter((s) => visibles.has(s.sucursalId));
+    return {
+      id: f.id,
+      email: f.email,
+      invitadoPor: f.invitadoPor?.email ?? null,
+      venceEn: f.venceEn.toISOString(),
+      vencida: f.venceEn.getTime() <= ahora.getTime(),
+      enviada: f.enviadaEn !== null,
+      accesos: propias.map((s) => ({ sucursal: s.sucursal.nombre, rol: s.rol.nombre })),
+      /** Cuántos accesos más tiene la invitación en sucursales que quien mira no administra: solo el número. */
+      enOtrasSucursales: f.sucursales.length - propias.length,
+    };
+  });
 }
 
 /**

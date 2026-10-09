@@ -37,6 +37,8 @@ interface InvitacionPendiente {
   vencida: boolean;
   enviada: boolean;
   accesos: { sucursal: string; rol: string }[];
+  /** Accesos de la invitación en sucursales que quien mira no administra (S-16): solo la cuenta, sin nombres. */
+  enOtrasSucursales: number;
 }
 
 const TEXTO_GOOGLE: Record<EstadoDeCuentaGoogle, string> = {
@@ -180,6 +182,7 @@ export function UsuariosTabla({
                           {a.sucursal} — {a.rol}
                         </li>
                       ))}
+                      {i.enOtrasSucursales > 0 && <li className="text-neutral-500">y {i.enOtrasSucursales === 1 ? "1 acceso más" : `${i.enOtrasSucursales} accesos más`} en otras sucursales</li>}
                     </ul>
                   </td>
                   <td>{i.invitadoPor ?? "—"}</td>
