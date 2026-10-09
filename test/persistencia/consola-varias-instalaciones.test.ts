@@ -53,6 +53,11 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await limpiarBaseDeTest();
+  // Sin administradores de plataforma de otros archivos de la corrida completa (el orden cambia de una corrida a otra y los tests de acá cuentan `AdminPlataforma` desde cero).
+  await prismaAdmin.$executeRawUnsafe('DELETE FROM "SesionPlataforma"');
+  await prismaAdmin.$executeRawUnsafe('DELETE FROM "CodigoDeRecuperacionPlataforma"');
+  await prismaAdmin.$executeRawUnsafe('DELETE FROM "CodigoDeIngresoPlataforma"');
+  await prismaAdmin.$executeRawUnsafe('DELETE FROM "AdminPlataforma"');
   enviados = [];
   await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "AuditoriaPlataforma"');
   await dbB.$executeRawUnsafe('TRUNCATE TABLE "AuditoriaPlataforma"');

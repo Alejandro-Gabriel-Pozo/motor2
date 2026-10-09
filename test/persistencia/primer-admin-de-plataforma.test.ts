@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { descifrarSecreto } from "../../src/core/plataforma/cifrado";
 import { generarPedidoDeIngreso } from "../../src/core/plataforma/pedido-de-ingreso";
 import { AdminDePlataformaInvalidoError } from "../../src/core/plataforma/primer-admin";
@@ -18,14 +18,19 @@ const SECRETOS = { claveTotp: randomBytes(32).toString("base64"), secretoCodigos
 const AHORA = new Date("2026-10-03T12:00:00.000Z");
 const deps: DependenciasDeIngreso = { ahora: () => AHORA, secretoDeCodigos: SECRETOS.secretoCodigos, claveTotp: SECRETOS.claveTotp };
 
-afterEach(async () => {
+// Arranca cada test sin administradores de plataforma: varios archivos de la corrida completa dejan filas (o las escriben en segundo plano), y los tests de acá cuentan `AdminPlataforma` desde cero. El orden de
+// los archivos cambia de una corrida a otra, así que depender de que nadie haya dejado nada era un test intermitente.
+beforeEach(limpiarAdministradores);
+afterEach(limpiarAdministradores);
+
+async function limpiarAdministradores() {
   await prismaAdmin.$executeRawUnsafe('DELETE FROM "SesionPlataforma"');
   await prismaAdmin.$executeRawUnsafe('DELETE FROM "CodigoDeRecuperacionPlataforma"');
   await prismaAdmin.$executeRawUnsafe('DELETE FROM "CodigoDeIngresoPlataforma"');
   await prismaAdmin.$executeRawUnsafe('DELETE FROM "AdminPlataforma"');
   // `mode: "insensitive"`: el test crea «Usuario@Empresa.test» y, sin esto, sobrevivía a la limpieza y rompía la corrida siguiente.
   await prismaAdmin.user.deleteMany({ where: { email: { equals: "usuario@empresa.test", mode: "insensitive" } } });
-});
+}
 
 afterAll(() => prismaAdmin.$disconnect());
 
