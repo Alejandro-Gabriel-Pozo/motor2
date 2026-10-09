@@ -9,7 +9,7 @@ import { PUREZA_HEREDADA_DEL_NUCLEO } from "./pureza-heredada-del-nucleo";
  *
  * Nivel de pureza de cada archivo (`scripts/arquitectura/analizar-fuente.ts`): P0 puro · P1 puro salvo tipos de Prisma · P2 valores de Prisma, reloj, azar o
  * entorno · P3 consulta o escribe la base, red, disco o importa el cliente · P4 depende del servidor o del framework. La meta del plan es que TODO
- * `src/core/` sea P0 (el dominio no conoce el ORM, el framework, el reloj, la red ni el entorno). Hoy 117 de 256 archivos no lo son: esa deuda está escrita, archivo por
+ * `src/core/` sea P0 (el dominio no conoce el ORM, el framework, el reloj, la red ni el entorno). Al empezar la Fase 0 eran 117 de 256 archivos; hoy quedan los de la lista (38 al 2026-10-07; 34 desde B3 del Hito 3, 2026-10-08; 27 al cerrar la pieza 5.2 del Hito 5, 2026-10-08): esa deuda está escrita, archivo por
  * archivo y con la fase del plan que la limpia, en `pureza-heredada-del-nucleo.ts`. Este test la vigila en las dos direcciones, sin baseline silencioso:
  *  1. Todo archivo de `src/core/` que NO figure en esa lista tiene que ser P0: lo nuevo nace puro, en carpeta nueva o vieja.
  *  2. Un archivo de la lista no puede EMPEORAR: ni pasar a un nivel peor ni sumar una señal de impureza que no tenía.

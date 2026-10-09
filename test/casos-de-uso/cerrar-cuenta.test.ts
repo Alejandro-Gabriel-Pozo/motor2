@@ -155,4 +155,16 @@ describe("cerrarCuentaCasoDeUso", () => {
     expect(await prisma.ejemplarTicket.count()).toBe(0);
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).toBeNull();
   });
+
+  it("la hora entra por actor.ahora, no por el reloj (Pureza 1.2): el cierre y el ejemplar del ticket llevan la hora de entrada", async () => {
+    const fija = new Date(Date.now() - 3 * 24 * 3_600_000);
+    const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
+    const r = await cerrarCuentaCasoDeUso({ ...actor(), ahora: fija }, { cuentaId: cuenta.id });
+    expect(r.ok).toBe(true);
+    expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn?.getTime()).toBe(fija.getTime());
+    expect((await prisma.ejemplarTicket.findFirstOrThrow({ where: { cuentaId: cuenta.id } })).emitidoEn.getTime()).toBe(fija.getTime());
+    const venta = await prisma.operacion.findMany({ where: { id: { in: r.ok ? r.datos.operacionIds : [] } } });
+    expect(venta.length).toBeGreaterThan(0);
+    expect(venta.every((v) => v.fecha.getTime() === fija.getTime())).toBe(true);
+  });
 });

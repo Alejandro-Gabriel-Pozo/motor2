@@ -9,10 +9,11 @@ import { agregarItems, enviarACocina } from "../../src/server/actions/pos/cuenta
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { guardarDescuentoProducto } from "../../src/server/actions/carta/descuento-producto";
 import { altaCliente } from "../../src/server/actions/clientes/cliente";
-import { resolverPrecioVenta } from "../../src/core/movimientos/precio-venta";
+import { resolverPrecioVenta } from "../../src/server/lecturas/movimientos/precio-venta";
 import { obtenerDetalleDeMesa } from "../../src/server/consultas/pos/detalle-de-mesa";
 import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Producto con descuento en el POS (Fase 2), contra Postgres real y con las acciones reales: al AGREGAR el ítem se congela el precio descontado (y
@@ -71,7 +72,7 @@ describe("producto con descuento en el POS", () => {
 
   it("el selector de carta del POS muestra el precio descontado y el de lista tachado", async () => {
     await guardarDescuentoProducto(s.flan.id, 15);
-    const selector = await cargarSelectorCartaPos(s.sucursalId, prisma);
+    const selector = await cargarSelectorCartaPos(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     const productos = [
       ...selector.fueraDeCarta,
       ...selector.seccionesCarta.flatMap((sec) => sec.entradas.flatMap((e) => (e.tipo === "producto" ? [e.producto] : []))),
@@ -139,13 +140,13 @@ describe("producto con descuento en el POS", () => {
     const cuenta = await abrir();
     await agregarItems(cuenta.id, [{ productoId: s.flan.id, cantidad: 2 }]);
     await enviarTodo(cuenta.id);
-    expect((await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, prisma))?.cuenta?.total).toBe(5100);
+    expect((await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, prisma, new Date()))?.cuenta?.total).toBe(5100);
 
     await asignarClienteACuenta(cuenta.id, await crearCliente("Menor", 10));
-    expect((await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, prisma))?.cuenta?.total).toBe(5100);
+    expect((await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, prisma, new Date()))?.cuenta?.total).toBe(5100);
 
     await asignarClienteACuenta(cuenta.id, await crearCliente("Mayor", 20));
-    expect((await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, prisma))?.cuenta?.total).toBe(4800);
+    expect((await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, prisma, new Date()))?.cuenta?.total).toBe(4800);
   });
 
   it("el ticket muestra el precio cobrado y el de lista tachado cuando rige el descuento del producto, con y sin cliente", async () => {
@@ -154,7 +155,7 @@ describe("producto con descuento en el POS", () => {
     await agregarItems(cuenta.id, [{ productoId: s.flan.id, cantidad: 2 }]);
     await enviarTodo(cuenta.id);
     await cerrarCuenta(cuenta.id);
-    const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma);
+    const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma, undefined, new Date());
     expect(ticket.lineas).toEqual([{ producto: "Flan", cantidad: 2, precioUnitario: 2550, precioListaUnitario: 3000, subtotal: 5100 }]);
     expect(ticket.total).toBe(5100);
   });
@@ -166,7 +167,7 @@ describe("producto con descuento en el POS", () => {
     await agregarItems(cuenta.id, [{ productoId: s.flan.id, cantidad: 1 }]);
     await enviarTodo(cuenta.id);
     await cerrarCuenta(cuenta.id);
-    const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma);
+    const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma, undefined, new Date());
     expect(ticket.lineas).toEqual([{ producto: "Flan", cantidad: 1, precioUnitario: 2400, precioListaUnitario: 3000, subtotal: 2400 }]);
     expect(ticket.total).toBe(2400);
   });

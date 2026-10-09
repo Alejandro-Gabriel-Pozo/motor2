@@ -13,7 +13,8 @@ import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-c
 import { cargarPromoCartaParaAgregar } from "../../src/server/lecturas/pos/promo-para-agregar";
 import { descuentosConfiguradosEnSucursal } from "../../src/server/lecturas/carta/descuentos";
 import { descuentosDeProductoEnSucursal } from "../../src/server/lecturas/carta/descuentos";
-import { precioLocalActivoEn } from "../../src/core/catalogo/public-servidor";
+import { precioLocalActivoEn } from "../../src/server/lecturas/catalogo/precio-local";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * R1 (decisión del dueño, 2026-10-01), contra Postgres real: apagar la capacidad `precio_local` de la sucursal hace que NO rijan ni el precio
@@ -42,19 +43,19 @@ describe("R1: apagar precio_local desactiva el precio local de la promo y el des
     expect((await guardarDescuentoProducto(s.flan.id, 15)).ok).toBe(true);
   });
 
-  const precioPromoEnCartaPublica = async () => (await resolverMenuCarta(s.sucursalId, prisma))!.secciones.flatMap((sec) => sec.promos).find((p) => p.titulo === "Combo flan")?.precio;
+  const precioPromoEnCartaPublica = async () => (await resolverMenuCarta(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA))!.secciones.flatMap((sec) => sec.promos).find((p) => p.titulo === "Combo flan")?.precio;
   const precioPromoEnSelector = async () => {
-    const selector = await cargarSelectorCartaPos(s.sucursalId, prisma);
+    const selector = await cargarSelectorCartaPos(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     const promo = selector.seccionesCarta.flatMap((sec) => sec.entradas).find((e) => e.tipo === "promo");
     return promo?.tipo === "promo" ? promo.precio : undefined;
   };
   const precioFlanEnSelector = async () => {
-    const selector = await cargarSelectorCartaPos(s.sucursalId, prisma);
+    const selector = await cargarSelectorCartaPos(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     const flan = selector.seccionesCarta.flatMap((sec) => sec.entradas.flatMap((e) => (e.tipo === "producto" ? [e.producto] : []))).find((p) => p.productoId === s.flan.id)!;
     return { precio: flan.precio, precioLista: flan.precioLista ?? null };
   };
   const precioFlanEnCartaPublica = async () => {
-    const item = (await resolverMenuCarta(s.sucursalId, prisma))!.secciones.flatMap((sec) => sec.items).find((i) => i.nombre === "Flan")!;
+    const item = (await resolverMenuCarta(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA))!.secciones.flatMap((sec) => sec.items).find((i) => i.nombre === "Flan")!;
     return { precio: item.precio, descuentoPorcentaje: item.descuentoPorcentaje ?? null };
   };
 
@@ -62,7 +63,7 @@ describe("R1: apagar precio_local desactiva el precio local de la promo y el des
     expect(await precioLocalActivoEn(s.sucursalId, prisma)).toBe(true);
     expect(await precioPromoEnCartaPublica()).toBe(22000);
     expect(await precioPromoEnSelector()).toBe(22000);
-    expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoId, prisma))?.precio).toBe(22000);
+    expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoId, prisma, AHORA_DE_LA_CORRIDA))?.precio).toBe(22000);
     expect(await precioFlanEnSelector()).toEqual({ precio: 2550, precioLista: 3000 });
     expect((await descuentosDeProductoEnSucursal(s.sucursalId, prisma)).get(s.flan.id)).toBe(15);
   });
@@ -73,7 +74,7 @@ describe("R1: apagar precio_local desactiva el precio local de la promo y el des
     expect(await precioLocalActivoEn(s.sucursalId, prisma)).toBe(false);
     expect(await precioPromoEnCartaPublica()).toBe(25000);
     expect(await precioPromoEnSelector()).toBe(25000);
-    expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoId, prisma))?.precio).toBe(25000);
+    expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoId, prisma, AHORA_DE_LA_CORRIDA))?.precio).toBe(25000);
     expect(await precioFlanEnSelector()).toEqual({ precio: 3000, precioLista: null });
     expect(await precioFlanEnCartaPublica()).toMatchObject({ precio: 3000, descuentoPorcentaje: null });
     expect((await descuentosDeProductoEnSucursal(s.sucursalId, prisma)).size).toBe(0);
@@ -91,7 +92,7 @@ describe("R1: apagar precio_local desactiva el precio local de la promo y el des
 
   it("el admin sigue viendo lo configurado (el % y el precio local) y se entera de que no rigen; el precio que rige es el de la empresa", async () => {
     await fijarCapacidad(false);
-    const admin = await cargarAdminCarta(s.sucursalId, prisma);
+    const admin = await cargarAdminCarta(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     expect(admin.precioLocalActivo).toBe(false);
     expect(admin.productos.find((p) => p.id === s.flan.id)?.descuento).toBe(15);
     const promo = admin.promos.find((p) => p.id === promoId)!;
@@ -110,7 +111,7 @@ describe("R1: apagar precio_local desactiva el precio local de la promo y el des
 
     expect(await precioPromoEnCartaPublica()).toBe(22000);
     expect(await precioFlanEnSelector()).toEqual({ precio: 2550, precioLista: 3000 });
-    expect((await cargarAdminCarta(s.sucursalId, prisma)).precioLocalActivo).toBe(true);
+    expect((await cargarAdminCarta(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA)).precioLocalActivo).toBe(true);
   });
 
   it("es por sucursal: apagarla en otra sucursal no cambia esta", async () => {

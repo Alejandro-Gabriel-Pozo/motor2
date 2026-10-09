@@ -11,3 +11,8 @@ export interface FuenteDeAzar {
   /** UUID v4. */
   uuid(): string;
 }
+
+/** Un número en [0, 1) a partir del puerto (para el jitter de la espera entre reintentos): `entero / 1.000.000`. */
+export function numeroEnUnidad(azar: FuenteDeAzar): number {
+  return azar.entero(0, 1_000_000) / 1_000_000;
+}

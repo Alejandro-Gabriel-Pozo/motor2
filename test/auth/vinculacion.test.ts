@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
-import { decidirInicioDeSesion } from "../../src/core/auth/acceso";
+import { decidirInicioDeSesion } from "../../src/server/sesion/acceso";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
 import { azarDelProceso } from "../../src/lib/azar";
 
@@ -22,7 +22,6 @@ const entrar = (token: string | undefined, o: { email?: string; perfil?: string;
     emailUsuario: o.email ?? EMAIL,
     emailPerfil: o.perfil ?? o.email ?? EMAIL,
     emailVerificado: o.verificado ?? true,
-    hd: undefined,
     tokenDeSesionAbierta: o.abierta,
     tokenDeInvitacion: token,
     cuenta: cuenta(o.sub),

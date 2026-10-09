@@ -1,17 +1,10 @@
-import { estadoEfectivoDeInvitacion, esTokenConFormaValida, type AccesoDeInvitacion, type EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitacion";
-import { aceptarInvitacionDeUsuario } from "@/core/features/empresa/aceptar-invitacion-de-usuario";
-import { aceptarInvitacion, ErrorDeAceptacion, MENSAJE_ENLACE_NO_VALIDO, type ResultadoDeAceptacion } from "@/core/features/empresa/aceptar-invitacion";
-import { conTransaccionSerializable, esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { InvarianteViolada } from "@/core/permisos/invariantes";
-import { hashDeToken } from "@/core/seguridad/tokens";
-import { dbDeEmpresa, dbDeInvitacion, transaccionDeEmpresa, verificarRolDeEjecucionDelProceso } from "./base";
+import type { EstadoEfectivoDeInvitacion } from "@/core/features/empresa/invitacion";
 import { sirvePorHttps } from "./cookie-sesion";
 
 /**
- * Invitación del primer gerente, del lado de la app de empresas (E5, ADR-020). Acá se LEE por token: el invitado todavía no tiene empresa ni sesión
- * (o tiene una de otras empresas), así que se busca por el hash con `dbDeInvitacion` (política `lectura_por_token`). Aceptar vive en
- * `core/features/empresa/aceptar-invitacion.ts`.
+ * Invitación del primer gerente, del lado de la app de empresas (E5, ADR-020), y de usuario y de vinculación (E8, ADR-024): las reglas PURAS (sin base ni reloj propio). Lo que
+ * lee la base por el token (`invitacionDelToken`), las aceptaciones y la vinculación de la cuenta de Google viven en `server/sesion/` (Hito 3, B3-3 de
+ * `docs/plan-hito-3-pureza.md`): este archivo era P3 (leía y escribía la base y el reloj) y queda P0.
  *
  * El token viaja en el fragmento del enlace; `abrirInvitacion` lo pasa a una cookie httpOnly para que sobreviva al ida y vuelta con Google. Esa
  * cookie es `SameSite=Lax` a propósito: con Strict no viajaría en el regreso desde accounts.google.com.
@@ -46,8 +39,8 @@ export function opcionesCookieInvitacion(env: EntornoCookie, venceEn: Date, ahor
 /** Lo que la pantalla y el gate necesitan saber de una invitación. Nunca incluye el hash. */
 /** El tipo de la invitación de E5 (primer gerente de una empresa en alta). Es un tipo de invitación, no una decisión de acceso. */
 const TIPO_INVITACION_GERENTE = "gerente";
-const TIPO_INVITACION_USUARIO = "usuario";
-const TIPO_INVITACION_VINCULACION = "vinculacion";
+export const TIPO_INVITACION_USUARIO = "usuario";
+export const TIPO_INVITACION_VINCULACION = "vinculacion";
 
 export interface VistaDeInvitacion {
   id: string;
@@ -61,47 +54,8 @@ export interface VistaDeInvitacion {
   venceEn: Date;
 }
 
-/**
- * Busca la invitación por el token del enlace. `null` si el token no tiene la forma esperada o no corresponde a ninguna: el que llama no distingue
- * «no existe» de «mal formado», y de afuera tampoco.
- */
-export async function invitacionDelToken(token: string | undefined, ahora: Date = new Date()): Promise<VistaDeInvitacion | null> {
-  if (!token || !esTokenConFormaValida(token)) return null;
-  await verificarRolDeEjecucionDelProceso();
-  const hash = hashDeToken(token);
-  const db = dbDeInvitacion(hash);
-  // Por hash y no solo por el RLS: sin `where`, un token bien formado pero inexistente devolvería OTRA fila visible (por ejemplo la de la única empresa activa).
-  const invitacion = await db.invitacion.findFirst({
-    where: { hashToken: hash },
-    select: { id: true, empresaId: true, email: true, rolEmpresa: true, estado: true, venceEn: true },
-  });
-  if (!invitacion) return null;
-  const empresa = await db.empresa.findUnique({ where: { id: invitacion.empresaId }, select: { nombre: true, estado: true } });
-  if (!empresa) return null;
-  return {
-    id: invitacion.id,
-    empresaId: invitacion.empresaId,
-    nombreEmpresa: empresa.nombre,
-    estadoEmpresa: empresa.estado,
-    email: invitacion.email,
-    tipo: invitacion.rolEmpresa,
-    estado: estadoEfectivoDeInvitacion(invitacion, ahora),
-    venceEn: invitacion.venceEn,
-  };
-}
-
-/**
- * ¿Esta invitación deja iniciar sesión con la cuenta de Google de `emailPerfil`? Sí cuando sigue pendiente (no aceptada, revocada ni vencida) y el email
- * es EL MISMO que se invitó. Es la cuarta vía del gate de login: no da acceso a nada más que a llegar a la pantalla de aceptación.
- */
-export async function invitacionHabilitaElIngreso(token: string | undefined, emailPerfil: string, ahora: Date = new Date()): Promise<boolean> {
-  const vista = await invitacionDelToken(token, ahora);
-  if (!vista || vista.estado !== "PENDIENTE" || !abreLaVia3(vista)) return false;
-  return vista.email === emailPerfil.trim().toLowerCase();
-}
-
 /** La vía 3 la abren la invitación de gerente (empresa en alta) y la de usuario (empresa activa). La de vinculación NO abre nada: el ingreso lo decide la vía 2. */
-function abreLaVia3(vista: Pick<VistaDeInvitacion, "tipo" | "estadoEmpresa">): boolean {
+export function abreLaVia3(vista: Pick<VistaDeInvitacion, "tipo" | "estadoEmpresa">): boolean {
   return (vista.tipo === TIPO_INVITACION_GERENTE && vista.estadoEmpresa === "PROVISIONING") || (vista.tipo === TIPO_INVITACION_USUARIO && vista.estadoEmpresa === "ACTIVE");
 }
 
@@ -117,7 +71,7 @@ export function claseDeInvitacion(vista: Pick<VistaDeInvitacion, "tipo" | "estad
 }
 
 /** Una invitación sirve para VINCULAR la cuenta de Google si es de gerente (en alta), de usuario (activa) o de vinculación (activa). */
-function sirveParaVincular(vista: Pick<VistaDeInvitacion, "tipo" | "estadoEmpresa">): boolean {
+export function sirveParaVincular(vista: Pick<VistaDeInvitacion, "tipo" | "estadoEmpresa">): boolean {
   return abreLaVia3(vista) || (vista.tipo === TIPO_INVITACION_VINCULACION && vista.estadoEmpresa === "ACTIVE");
 }
 
@@ -132,124 +86,4 @@ export interface CuentaDeGoogle {
   scope?: string | null | undefined;
   token_type?: string | null | undefined;
   session_state?: string | null | undefined;
-}
-
-/**
- * Vincula la cuenta de Google al `User` EXISTENTE, con el token de una invitación (E8, ADR-024). Auth.js no lo hace solo (el enlace automático por email está apagado):
- * el callback `signIn` corre ANTES de que Auth.js busque o cree nada, así que si acá queda creada la `Account`, Auth.js la encuentra y abre la sesión.
- *
- * Condiciones (todas): invitación pendiente y no vencida de un tipo y una empresa que sirvan; el email de la invitación es EXACTAMENTE el del usuario; el usuario no tiene
- * otra cuenta de Google (con otro identificador NO se vincula nada: lo resuelve soporte, D2). La de vinculación se consume al vincular; las de gerente y de usuario no (las
- * consume la aceptación después). Idempotente si la cuenta ya es la de ese usuario. Devuelve `false` ante cualquier condición que falle.
- */
-export async function vincularCuentaConInvitacion(entrada: { token: string | undefined; usuario: { id: string; email: string }; cuenta: CuentaDeGoogle; ahora?: Date }): Promise<boolean> {
-  const ahora = entrada.ahora ?? new Date();
-  const vista = await invitacionDelToken(entrada.token, ahora);
-  if (!vista || vista.estado !== "PENDIENTE" || !sirveParaVincular(vista)) return false;
-  if (vista.email !== entrada.usuario.email.trim().toLowerCase()) return false;
-  const { cuenta, usuario } = entrada;
-  try {
-    return await conTransaccionSerializable(
-      (fn, opciones) => transaccionDeEmpresa(vista.empresaId, fn, opciones),
-      async (tx) => {
-        const previa = await tx.account.findFirst({ where: { userId: usuario.id, provider: "google" }, select: { providerAccountId: true } });
-        if (previa) return previa.providerAccountId === cuenta.providerAccountId;
-        if (vista.tipo === TIPO_INVITACION_VINCULACION) {
-          const consumida = await tx.invitacion.updateMany({
-            where: { id: vista.id, estado: "PENDIENTE", rolEmpresa: TIPO_INVITACION_VINCULACION },
-            data: { estado: "ACEPTADA", aceptadaEn: ahora, aceptadaPorId: usuario.id },
-          });
-          if (consumida.count !== 1) return false;
-          await registrarCambioAuditado(tx, {
-            entidad: "UsuarioEmpresa", entidadId: usuario.id, campo: "cuentaGoogle", descripcion: `Cuenta de Google de "${vista.email}"`,
-            valorAnterior: null, valorNuevo: "vinculada", actorId: usuario.id, sucursalId: null,
-          });
-        }
-        await tx.account.create({
-          data: {
-            userId: usuario.id, type: cuenta.type ?? "oidc", provider: "google", providerAccountId: cuenta.providerAccountId,
-            ...(cuenta.access_token != null && { access_token: cuenta.access_token }),
-            ...(cuenta.refresh_token != null && { refresh_token: cuenta.refresh_token }),
-            ...(cuenta.id_token != null && { id_token: cuenta.id_token }),
-            ...(cuenta.expires_at != null && { expires_at: cuenta.expires_at }),
-            ...(cuenta.scope != null && { scope: cuenta.scope }),
-            ...(cuenta.token_type != null && { token_type: cuenta.token_type }),
-            ...(cuenta.session_state != null && { session_state: cuenta.session_state }),
-          },
-        });
-        return true;
-      },
-      undefined,
-      undefined,
-      true,
-    );
-  } catch (e) {
-    if (e instanceof InvarianteViolada) return false;
-    if (esChoqueDeIndiceUnico(e)) return false;
-    throw e;
-  }
-}
-
-/**
- * Acepta la invitación del token en nombre de `usuario` (ya autenticado con Google). Resuelve la empresa por el token y corre `aceptarInvitacion` en una
- * transacción serializable bajo esa empresa. Un fallo de invariantes o de datos de la empresa deshace todo y vuelve como mensaje.
- */
-export async function aceptarInvitacionDelToken(entrada: { token: string; usuario: { id: string; email: string }; cuit: unknown; ahora?: Date }): Promise<ResultadoDeAceptacion> {
-  const ahora = entrada.ahora ?? new Date();
-  const vista = await invitacionDelToken(entrada.token, ahora);
-  if (!vista || vista.estado !== "PENDIENTE") return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
-  try {
-    return await conTransaccionSerializable(
-      (fn, opciones) => transaccionDeEmpresa(vista.empresaId, fn, opciones),
-      (tx) => aceptarInvitacion(tx, { token: entrada.token, usuario: entrada.usuario, cuit: entrada.cuit, ahora }),
-    );
-  } catch (e) {
-    if (e instanceof InvarianteViolada) return { ok: false, mensaje: e.mensaje };
-    if (e instanceof ErrorDeAceptacion) return { ok: false, mensaje: e.message };
-    throw e;
-  }
-}
-
-/**
- * El guard del permiso «gestionar usuarios» (módulos, capacidades y rol de quien otorgó), tal como lo da `requierePermiso` del gate. Lo recibe quien llama (la Server
- * Action de la invitación) y no se importa acá: `core` no depende del guard, que lee la base y vive en el servidor (Pureza Fase 3). Una prueba de arquitectura exige que la
- * única llamada de producción le pase el `requierePermiso` REAL del gate (`test/arquitectura/invitacion-recibe-el-guard.test.ts`).
- */
-export type ExigirGestionDeUsuarios = (otorganteId: string, sucursalId: string, accion: "gestion_usuarios", db: ReturnType<typeof dbDeEmpresa>) => Promise<{ ok: boolean }>;
-
-/**
- * Acepta una invitación de USUARIO en nombre de `usuario` (ya autenticado con Google): crea sus membresías, revalidando por cada sucursal el permiso y el techo de quien la otorgó
- * (E8, ADR-024). Todo o nada, en una transacción serializable bajo la empresa de la invitación. El permiso `gestion_usuarios` de quien otorgó pasa por el guard (módulos y capacidades).
- */
-export async function aceptarInvitacionDeUsuarioDelToken(
-  entrada: { token: string; usuario: { id: string; email: string }; ahora?: Date },
-  requierePermiso: ExigirGestionDeUsuarios,
-): Promise<ResultadoDeAceptacion> {
-  const ahora = entrada.ahora ?? new Date();
-  const vista = await invitacionDelToken(entrada.token, ahora);
-  if (!vista || vista.estado !== "PENDIENTE" || vista.tipo !== TIPO_INVITACION_USUARIO) return { ok: false, mensaje: MENSAJE_ENLACE_NO_VALIDO };
-  const dbEmpresa = dbDeEmpresa(vista.empresaId);
-  const puedeOtorgar = async (otorganteId: string, sucursalId: string) => (await requierePermiso(otorganteId, sucursalId, "gestion_usuarios", dbEmpresa)).ok;
-  try {
-    return await conTransaccionSerializable(
-      (fn, opciones) => transaccionDeEmpresa(vista.empresaId, fn, opciones),
-      (tx) => aceptarInvitacionDeUsuario(tx, { token: entrada.token, usuario: entrada.usuario, ahora, puedeOtorgar }),
-    );
-  } catch (e) {
-    if (e instanceof InvarianteViolada) return { ok: false, mensaje: e.mensaje };
-    throw e;
-  }
-}
-
-/**
- * Las sucursales (con su rol) que da una invitación de USUARIO, para mostrárselas a quien la va a aceptar. `InvitacionSucursal` solo se lee bajo la empresa, no por el hash:
- * por eso se llama recién DESPUÉS de comprobar que la sesión es del email invitado.
- */
-export async function accesosDeLaInvitacion(vista: Pick<VistaDeInvitacion, "id" | "empresaId">): Promise<AccesoDeInvitacion[]> {
-  const filas = await dbDeEmpresa(vista.empresaId).invitacionSucursal.findMany({
-    where: { invitacionId: vista.id },
-    orderBy: { creadaEn: "asc" },
-    select: { sucursal: { select: { nombre: true } }, rol: { select: { nombre: true } } },
-  });
-  return filas.map((f) => ({ sucursal: f.sucursal.nombre, rol: f.rol.nombre }));
 }

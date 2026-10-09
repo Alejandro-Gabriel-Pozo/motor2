@@ -21,13 +21,18 @@ export async function listarProductosConReceta(db: Db) {
   return db.producto.findMany({
     where: { ...whereDisponibleEnAlguna(), ...whereConReceta(ALCANCE_CENTRAL) },
     orderBy: { nombre: "asc" },
-    include: incluirRecetaVigente(ALCANCE_CENTRAL, { _count: { select: { ingredientes: true } } }),
+    // S-15 (plan de endurecimiento, T7): lo que la lista dibuja (nombre, tipo, versión vigente e ingredientes), no la fila entera de `Producto` (costo de consignación incluido).
+    select: { id: true, nombre: true, tipo: true, ...incluirRecetaVigente(ALCANCE_CENTRAL, { _count: { select: { ingredientes: true } } }) },
   });
 }
 
-/** Editor de receta (`/catalogo/recetas/[productoId]`): las materias primas disponibles en alguna sucursal, para el selector de "Agregar ingrediente". */
+/**
+ * Editor de receta (`/catalogo/recetas/[productoId]`): las materias primas disponibles en alguna sucursal, para el selector de "Agregar ingrediente".
+ * S-15: solo `{ id, nombre }`, que es lo que el selector dibuja y lo que el editor le declara a `RecetaDeLaSucursal` (`materiasPrimas`); antes volvía la fila entera, que un cambio
+ * futuro a un componente de cliente habría llevado al navegador con el costo de consignación adentro.
+ */
 export async function listarMpDisponiblesEnAlguna(db: Db) {
-  return db.producto.findMany({ where: { tipo: "MP", ...whereDisponibleEnAlguna() }, orderBy: { nombre: "asc" } });
+  return db.producto.findMany({ where: { tipo: "MP", ...whereDisponibleEnAlguna() }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } });
 }
 
 /**
@@ -52,10 +57,13 @@ export async function listarOpcionesDeSustituto(
 /**
  * Editor de receta: notas "Calibrado en N sucursal(es)" por ingrediente — UNA sola consulta por lotes (no una por
  * ingrediente) a `RendimientoLocalIngrediente`, para los ingredientes de la receta vigente que se pasen.
+ *
+ * O.176 (cerrado): devuelve SOLO lo que la pantalla usa —a qué ingrediente pertenece la calibración y el nombre de la sucursal que la hizo («Calibrado en N sucursales»)—, no la fila entera. Es el editor de
+ * la receta CENTRAL (de empresa): las calibraciones de todas las sucursales se listan por diseño, pero la cantidad y la merma de cada una no viajan al Server Component sin necesidad.
  */
 export async function listarCalibracionesDeIngredientes(recetaIngredienteIds: string[], db: Db) {
   return db.rendimientoLocalIngrediente.findMany({
     where: { recetaIngredienteId: { in: recetaIngredienteIds }, OR: [{ cantidad: { not: null } }, { mermaPorcentaje: { not: null } }] },
-    include: { sucursal: { select: { nombre: true } } },
+    select: { recetaIngredienteId: true, sucursal: { select: { nombre: true } } },
   });
 }

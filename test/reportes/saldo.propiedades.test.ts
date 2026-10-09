@@ -6,9 +6,9 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
+import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { obtenerHistorialProducto } from "../../src/server/consultas/reportes/historial-producto";
-import { limitadorMutaciones } from "../../src/core/permisos/limitador-tasa";
+import { limitadorMutaciones } from "../../src/server/actions/limitador-de-mutaciones";
 import { prisma } from "../setup/test-db";
 
 /**

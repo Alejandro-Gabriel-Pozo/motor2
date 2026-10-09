@@ -1,12 +1,19 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { join, posix, relative, sep } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 /**
- * Regla de arquitectura (add-on de plataforma, ADR-008): toda escritura de `PermisoRol` y de `Rol` en `src/` ocurre DENTRO de un
- * `conEdicionDePermisos(...)`, el gate que además de la clave exige que la plataforma le deje a la empresa editar permisos
- * (`politicaDeEmpresa`). Una escritura nueva sin ese gate dejaría un camino para editar permisos que el interruptor no corta.
+ * Regla de arquitectura (add-on de plataforma, ADR-008; contrato C5 del RBAC desde el Hito 3, paso 0.6): toda escritura de `PermisoRol` y de `Rol` en `src/`
+ * queda detrás de un `conEdicionDePermisos(...)`, el gate que además de la clave exige que la plataforma le deje a la empresa editar permisos
+ * (`politicaDeEmpresa`). Una escritura nueva sin ese gate dejaría un camino para editar permisos que el interruptor no corta. Vale de una de dos formas:
+ *
+ *  (i)  la escritura está, en el texto, DENTRO de la llamada a `conEdicionDePermisos(...)` (las Server Actions de hoy);
+ *  (ii) la escritura está en la persistencia de permisos (`PERSISTENCIA_DE_PERMISOS`: `server/persistencia/permisos/{roles,matriz}.ts`, adonde la llevan los
+ *       casos de uso de la Fase I) y ese archivo SOLO lo importan casos de uso (`server/actions/<dominio>/casos-de-uso/*`) a los que SOLO importan Server Actions
+ *       de su dominio (`server/actions/<dominio>/*.ts`) que llaman a cada función del caso de uso ÚNICAMENTE dentro de `conEdicionDePermisos(...)`. Así el gate
+ *       sigue delante de la escritura aunque ya no la rodee en el mismo archivo: un caso de uso de roles llamado desde `conPermisoDeEmpresa` (o desde un
+ *       cron, o importado por otra capa) rompe la regla.
  *
  * Escrituras: `<algo>.permisoRol.<create|createMany|update|updateMany|upsert|delete|deleteMany>` y lo mismo sobre `<algo>.rol`.
  *
@@ -22,6 +29,8 @@ const SIEMBRA_EN_LA_CONSOLA = "servidor/sembrar-empresa.ts";
 const MODELOS = new Set(["permisoRol", "rol"]);
 const ESCRITURAS = new Set(["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"]);
 const GATE = "conEdicionDePermisos";
+/** Modo (ii): la persistencia de permisos, relativa a `src/`. Su escritura vale si el grafo de quién la llama pasa SOLO por `conEdicionDePermisos`. */
+const PERSISTENCIA_DE_PERMISOS = ["server/persistencia/permisos/roles.ts", "server/persistencia/permisos/matriz.ts"];
 
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((nombre) => {
@@ -69,6 +78,78 @@ function escribeModelos(fuente: string): boolean {
   return escribe;
 }
 
+/** Los módulos que importa un fuente (también `import type` y `export … from`), resueltos a rutas relativas a `src/` sin extensión (`@/x` y `./x`, `../x`). */
+function importados(rutaDelImportador: string, fuente: string): Set<string> {
+  const sf = ts.createSourceFile("x.ts", fuente, ts.ScriptTarget.Latest, true);
+  const resultado = new Set<string>();
+  for (const stmt of sf.statements) {
+    const spec = (ts.isImportDeclaration(stmt) || ts.isExportDeclaration(stmt)) && stmt.moduleSpecifier && ts.isStringLiteral(stmt.moduleSpecifier) ? stmt.moduleSpecifier.text : null;
+    if (!spec) continue;
+    if (spec.startsWith("@/")) resultado.add(spec.slice(2).replace(/\.tsx?$/, ""));
+    else if (spec.startsWith(".")) resultado.add(posix.normalize(posix.join(posix.dirname(rutaDelImportador), spec)).replace(/\.tsx?$/, ""));
+  }
+  return resultado;
+}
+
+const sinExtension = (ruta: string) => ruta.replace(/\.tsx?$/, "");
+
+/** Las funciones exportadas de un fuente (`export function`, `export async function`, `export const f = …`). */
+function exportadas(fuente: string): Set<string> {
+  const sf = ts.createSourceFile("x.ts", fuente, ts.ScriptTarget.Latest, true);
+  const nombres = new Set<string>();
+  for (const stmt of sf.statements) {
+    if (!ts.canHaveModifiers(stmt) || !ts.getModifiers(stmt)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
+    if (ts.isFunctionDeclaration(stmt) && stmt.name) nombres.add(stmt.name.text);
+    if (ts.isVariableStatement(stmt)) for (const d of stmt.declarationList.declarations) if (ts.isIdentifier(d.name)) nombres.add(d.name.text);
+  }
+  return nombres;
+}
+
+/** Las llamadas (`f(…)`) a alguna de `funciones` que NO están dentro de `conEdicionDePermisos(...)`, como `<f>:<línea>`. */
+function llamadasFueraDelGate(fuente: string, funciones: ReadonlySet<string>): string[] {
+  const sf = ts.createSourceFile("x.ts", fuente, ts.ScriptTarget.Latest, true);
+  const fuera: string[] = [];
+  const visitar = (nodo: ts.Node): void => {
+    if (ts.isCallExpression(nodo) && ts.isIdentifier(nodo.expression) && funciones.has(nodo.expression.text) && !estaDentroDelGate(nodo)) {
+      fuera.push(`${nodo.expression.text}:${sf.getLineAndCharacterOfPosition(nodo.getStart(sf)).line + 1}`);
+    }
+    ts.forEachChild(nodo, visitar);
+  };
+  visitar(sf);
+  return fuera;
+}
+
+/**
+ * Modo (ii) sobre un conjunto de archivos (`ruta relativa a src/` → fuente): para cada archivo de `PERSISTENCIA_DE_PERMISOS` que exista, quién lo importa tiene
+ * que ser un caso de uso; a cada caso de uso lo importan solo Server Actions de su dominio; y en ellas cada llamada a una función del caso de uso va dentro de
+ * `conEdicionDePermisos`. Devuelve los problemas (vacío = la escritura de esa persistencia está detrás del gate).
+ */
+function problemasDeLaPersistenciaDePermisos(archivosDeSrc: ReadonlyMap<string, string>, persistencias: readonly string[] = PERSISTENCIA_DE_PERMISOS): string[] {
+  const problemas: string[] = [];
+  const quienesImportan = (destino: string) => [...archivosDeSrc].filter(([ruta, fuente]) => ruta !== destino && importados(ruta, fuente).has(sinExtension(destino)));
+  for (const persistencia of persistencias) {
+    if (!archivosDeSrc.has(persistencia)) continue;
+    for (const [caso, fuenteDelCaso] of quienesImportan(persistencia)) {
+      const m = /^(server\/actions\/[^/]+)\/casos-de-uso\/[^/]+\.tsx?$/.exec(caso);
+      if (!m) {
+        problemas.push(`${persistencia}: la importa ${caso}, que no es un caso de uso (server/actions/<dominio>/casos-de-uso/*)`);
+        continue;
+      }
+      const funciones = exportadas(fuenteDelCaso);
+      for (const [accion, fuenteDeLaAccion] of quienesImportan(caso)) {
+        if (posix.dirname(accion) !== m[1]) {
+          problemas.push(`${caso} (escribe permisos/roles por ${persistencia}): lo importa ${accion}, que no es una Server Action de ${m[1]}`);
+          continue;
+        }
+        for (const llamada of llamadasFueraDelGate(fuenteDeLaAccion, funciones)) {
+          problemas.push(`${accion}: llama a ${llamada} (de ${caso}, que escribe permisos/roles) fuera de ${GATE}`);
+        }
+      }
+    }
+  }
+  return problemas;
+}
+
 describe("escrituras de permisos y roles: siempre dentro de conEdicionDePermisos", () => {
   const rutas = archivos(RAIZ);
   const nombreDe = (ruta: string) => relative(RAIZ, ruta).split(sep).join("/");
@@ -77,14 +158,20 @@ describe("escrituras de permisos y roles: siempre dentro de conEdicionDePermisos
     expect(rutas.length).toBeGreaterThan(50);
   });
 
-  it("ninguna escritura de PermisoRol/Rol queda fuera del gate (salvo las excepciones)", () => {
+  it("ninguna escritura de PermisoRol/Rol queda fuera del gate (salvo las excepciones y la persistencia de permisos, que es el modo ii)", () => {
     const problemas: string[] = [];
     for (const ruta of rutas) {
       const nombre = nombreDe(ruta);
-      if (EXCEPCIONES.includes(nombre)) continue;
+      if (EXCEPCIONES.includes(nombre) || PERSISTENCIA_DE_PERMISOS.includes(nombre)) continue;
       for (const m of escriturasSinGate(readFileSync(ruta, "utf8"))) problemas.push(`${nombre} (${m})`);
     }
     expect(problemas, `Estas escrituras de permisos/roles no pasan por conEdicionDePermisos (política de la empresa):\n${problemas.join("\n")}`).toEqual([]);
+  });
+
+  it("modo ii: la persistencia de permisos solo se alcanza desde casos de uso llamados dentro de conEdicionDePermisos", () => {
+    const archivosDeSrc = new Map(rutas.map((r) => [nombreDe(r), readFileSync(r, "utf8")]));
+    const problemas = problemasDeLaPersistenciaDePermisos(archivosDeSrc);
+    expect(problemas, `La escritura de permisos/roles de la persistencia quedó alcanzable sin la política de la empresa:\n${problemas.join("\n")}`).toEqual([]);
   });
 
   it("la consola de plataforma solo escribe PermisoRol/Rol en la siembra de una empresa nueva (no hay empresa a la que aplicarle una política)", () => {
@@ -105,9 +192,16 @@ describe("escrituras de permisos y roles: siempre dentro de conEdicionDePermisos
     }
   });
 
-  it("el gate se usa de verdad: hay escrituras dentro de conEdicionDePermisos (la regla no quedó vacía)", () => {
+  it("la regla no quedó vacía: las escrituras de PermisoRol/Rol de src/ son exactamente estas (modo i o modo ii), y a la persistencia de permisos la importan casos de uso", () => {
     const conEscritura = rutas.filter((r) => !EXCEPCIONES.includes(nombreDe(r)) && escribeModelos(readFileSync(r, "utf8")));
-    expect(conEscritura.map(nombreDe).sort()).toEqual(["server/actions/permisos/permisos.ts", "server/actions/permisos/roles.ts"]);
+    // Hito 3: la escritura de Rol (I.2) y la de PermisoRol (I.3) pasaron a la persistencia de permisos (modo ii); en src/ ya no queda ninguna en modo i.
+    expect(conEscritura.map(nombreDe).sort()).toEqual(["server/persistencia/permisos/matriz.ts", "server/persistencia/permisos/roles.ts"]);
+    // El modo ii revisa a quién importa la persistencia: si nadie la importara, pasaría en vacío.
+    const archivosDeSrc = new Map(rutas.map((r) => [nombreDe(r), readFileSync(r, "utf8")]));
+    for (const persistencia of PERSISTENCIA_DE_PERMISOS.filter((p) => archivosDeSrc.has(p))) {
+      const casos = [...archivosDeSrc].filter(([ruta, fuente]) => /^server\/actions\/[^/]+\/casos-de-uso\//.test(ruta) && importados(ruta, fuente).has(sinExtension(persistencia)));
+      expect(casos.length, `${persistencia}: ningún caso de uso la importa`).toBeGreaterThan(0);
+    }
   });
 
   describe("el detector (con fuentes sintéticas)", () => {
@@ -127,6 +221,51 @@ describe("escrituras de permisos y roles: siempre dentro de conEdicionDePermisos
     it("marca la escritura dentro de OTRO gate (conPermisoDeEmpresa no alcanza)", () => {
       const fuente = 'export const a = () => conPermisoDeEmpresa("gestion_roles", async (ctx) => { await ctx.db.rol.create({}); });';
       expect(escriturasSinGate(fuente)).toEqual(["rol.create:1"]);
+    });
+
+    describe("modo ii (persistencia de permisos detrás de casos de uso)", () => {
+      const PERSISTENCIA = "server/persistencia/permisos/roles.ts";
+      const CASO = "server/actions/permisos/casos-de-uso/crear-rol.ts";
+      const ACCION = "server/actions/permisos/roles.ts";
+      const base = (accion: string, extra: [string, string][] = []) =>
+        new Map<string, string>([
+          [PERSISTENCIA, "export async function insertarRol(tx: any, nombre: string) { return tx.rol.create({ data: { nombre } }); }"],
+          [CASO, 'import { insertarRol } from "@/server/persistencia/permisos/roles";\nexport async function crearRolCasoDeUso(tx: any, n: string) { return insertarRol(tx, n); }'],
+          [ACCION, accion],
+          ...extra,
+        ]);
+      const conGate = 'import { crearRolCasoDeUso } from "./casos-de-uso/crear-rol";\nexport async function crearRol(n: string) { return conEdicionDePermisos("gestion_roles", async (ctx) => crearRolCasoDeUso(ctx.db, n)); }';
+
+      it("vale si el único camino a la escritura pasa por conEdicionDePermisos (con imports relativos o con alias)", () => {
+        expect(problemasDeLaPersistenciaDePermisos(base(conGate))).toEqual([]);
+        const conAlias = conGate.replace("./casos-de-uso/crear-rol", "@/server/actions/permisos/casos-de-uso/crear-rol");
+        expect(problemasDeLaPersistenciaDePermisos(base(conAlias))).toEqual([]);
+      });
+
+      it("marca la Server Action que llama al caso de uso desde otro envoltorio (conPermisoDeEmpresa no alcanza)", () => {
+        const otroGate = conGate.replace("conEdicionDePermisos", "conPermisoDeEmpresa");
+        expect(problemasDeLaPersistenciaDePermisos(base(otroGate))).toEqual([`${ACCION}: llama a crearRolCasoDeUso:2 (de ${CASO}, que escribe permisos/roles) fuera de conEdicionDePermisos`]);
+      });
+
+      it("marca una segunda llamada sin gate en la misma Server Action", () => {
+        const doble = `${conGate}\nexport async function otra(db: any) { return crearRolCasoDeUso(db, "x"); }`;
+        expect(problemasDeLaPersistenciaDePermisos(base(doble))).toEqual([`${ACCION}: llama a crearRolCasoDeUso:3 (de ${CASO}, que escribe permisos/roles) fuera de conEdicionDePermisos`]);
+      });
+
+      it("marca que la persistencia la importe algo que no es un caso de uso, y que el caso de uso lo importe otra capa", () => {
+        const cron = ["server/sincronizaciones/roles.ts", 'import { insertarRol } from "../persistencia/permisos/roles";\nexport const x = insertarRol;'] as [string, string];
+        expect(problemasDeLaPersistenciaDePermisos(base(conGate, [cron]))).toEqual([
+          `${PERSISTENCIA}: la importa server/sincronizaciones/roles.ts, que no es un caso de uso (server/actions/<dominio>/casos-de-uso/*)`,
+        ]);
+        const otraCapa = ["server/actions/auth/usuarios.ts", 'import { crearRolCasoDeUso } from "../permisos/casos-de-uso/crear-rol";'] as [string, string];
+        expect(problemasDeLaPersistenciaDePermisos(base(conGate, [otraCapa]))).toEqual([
+          `${CASO} (escribe permisos/roles por ${PERSISTENCIA}): lo importa server/actions/auth/usuarios.ts, que no es una Server Action de server/actions/permisos`,
+        ]);
+      });
+
+      it("sin la persistencia de permisos en el repositorio no hay nada que revisar (hoy, antes de la Fase I)", () => {
+        expect(problemasDeLaPersistenciaDePermisos(new Map([[ACCION, conGate]]))).toEqual([]);
+      });
     });
 
     it("no marca lecturas, otros modelos ni un comentario", () => {

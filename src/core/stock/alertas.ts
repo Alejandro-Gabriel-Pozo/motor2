@@ -101,7 +101,7 @@ export function armarAlertasStock(entrada: {
     });
   }
 
-  return alertas.sort((a, b) => (a.estado === b.estado ? 0 : a.estado === "CRITICO" ? -1 : 1) || a.productoNombre.localeCompare(b.productoNombre));
+  return alertas.sort((a, b) => (a.estado === b.estado ? 0 : a.estado === "CRITICO" ? -1 : 1) || a.productoNombre.localeCompare(b.productoNombre) || a.seccionNombre.localeCompare(b.seccionNombre) || (a.seccionId < b.seccionId ? -1 : a.seccionId > b.seccionId ? 1 : 0));
 }
 
 export interface ResumenAlertasStock {

@@ -8,14 +8,15 @@ import { describe, expect, it } from "vitest";
  * cuenta puede mostrar (o cobrar) otro precio que el resto de las pantallas: la carta pública, el selector del POS, el cobro al agregar el
  * ítem y el cierre salen todos del mismo embudo, y TypeScript no detecta una lectura paralela (todas tipan igual).
  *
- * Lo que sí puede leer la tabla cruda: la acción que la edita (`server/actions/carta/descuento-producto.ts`: busca la fila para saber si
- * crea, actualiza o borra, y para auditar el valor anterior).
+ * Lo que sí puede leer la tabla cruda: el caso de uso que la edita (`server/actions/carta/casos-de-uso/guardar-descuento-producto.ts`, desde el Hito 4,
+ * H4C-1; antes la Server Action `server/actions/carta/descuento-producto.ts`): busca la fila para saber si crea, actualiza o borra, y para auditar el valor
+ * anterior.
  *
  * Cómo se controla: ningún otro archivo de `src/` puede llamar `descuentoProductoSucursal.find*` / `count` / `aggregate` / `groupBy` fuera de
  * un comentario.
  */
 const RAIZ = join(__dirname, "../../src");
-const ARCHIVOS_PERMITIDOS = ["server/lecturas/carta/descuentos.ts", "server/actions/carta/descuento-producto.ts"];
+const ARCHIVOS_PERMITIDOS = ["server/lecturas/carta/descuentos.ts", "server/actions/carta/casos-de-uso/guardar-descuento-producto.ts"];
 const LECTURA = /descuentoProductoSucursal\s*\.\s*(find|count|aggregate|groupBy)/;
 
 function archivos(dir: string): string[] {
@@ -59,7 +60,7 @@ describe("descuento de producto: un solo lugar decide el % de cada producto en l
     }
     expect(
       problemas,
-      `Estas líneas leen DescuentoProductoSucursal a mano en vez de pasar por descuentosDeProductoEnSucursal (core/carta/public-servidor):\n${problemas.join("\n")}`
+      `Estas líneas leen DescuentoProductoSucursal a mano en vez de pasar por descuentosDeProductoEnSucursal (server/lecturas/carta/descuentos):\n${problemas.join("\n")}`
     ).toEqual([]);
   });
 

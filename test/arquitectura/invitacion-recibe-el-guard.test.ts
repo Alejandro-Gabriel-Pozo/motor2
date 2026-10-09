@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
  * La aceptación de una invitación de usuario recibe el guard por parámetro y la ÚNICA llamada de producción le pasa el `requierePermiso` REAL del gate
  * (Pureza Fase 3, tramo B; ADR-024, E8).
  *
- * `aceptarInvitacionDeUsuarioDelToken` revalida, por cada sucursal, que quien otorgó la invitación TODAVÍA puede gestionar usuarios (módulos, capacidades y rol). Para que
+ * `aceptarInvitacionDeUsuarioCasoDeUso` (Hito 3, B3-7; antes `aceptarInvitacionDeUsuarioDelToken`) revalida, por cada sucursal, que quien otorgó la invitación TODAVÍA puede gestionar usuarios (módulos, capacidades y rol). Para que
  * `core` no importe el guard (que lee la base y vive en el servidor), el guard entra como parámetro. Eso abre un riesgo: que alguien le pase uno de mentira
  * (`async () => ({ ok: true })`) y la revalidación quede anulada sin que ningún test de comportamiento lo note. Este test lo cierra: en `src/` hay UNA llamada y su segundo
  * argumento es el identificador `requierePermiso` importado del gate.
@@ -40,7 +40,7 @@ function llamadasDe(codigo: string, ruta: string): Llamada[] {
   }
   const llamadas: Llamada[] = [];
   const visitar = (n: ts.Node): void => {
-    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "aceptarInvitacionDeUsuarioDelToken") {
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "aceptarInvitacionDeUsuarioCasoDeUso") {
       const segundo = n.arguments[1];
       const nombre = segundo && ts.isIdentifier(segundo) ? segundo.text : null;
       llamadas.push({
@@ -65,10 +65,10 @@ describe("la invitación de usuario recibe el guard real", () => {
   });
 
   it("el detector (con fuentes sintéticas)", () => {
-    const real = 'import { requierePermiso } from "@/server/acceso/gate";\nawait aceptarInvitacionDeUsuarioDelToken({ token }, requierePermiso);';
-    const falso = 'import { requierePermiso } from "@/server/acceso/gate";\nawait aceptarInvitacionDeUsuarioDelToken({ token }, async () => ({ ok: true }));';
-    const otro = 'import { requierePermiso } from "./mio";\nawait aceptarInvitacionDeUsuarioDelToken({ token }, requierePermiso);';
-    const nuevo = 'import { requierePermiso } from "@/server/acceso/gate";\nawait aceptarInvitacionDeUsuarioDelToken({ token }, requierePermiso);';
+    const real = 'import { requierePermiso } from "@/server/acceso/gate";\nawait aceptarInvitacionDeUsuarioCasoDeUso({ token }, requierePermiso);';
+    const falso = 'import { requierePermiso } from "@/server/acceso/gate";\nawait aceptarInvitacionDeUsuarioCasoDeUso({ token }, async () => ({ ok: true }));';
+    const otro = 'import { requierePermiso } from "./mio";\nawait aceptarInvitacionDeUsuarioCasoDeUso({ token }, requierePermiso);';
+    const nuevo = 'import { requierePermiso } from "@/server/acceso/gate";\nawait aceptarInvitacionDeUsuarioCasoDeUso({ token }, requierePermiso);';
     expect(llamadasDe(real, join(SRC, "x.ts"))[0]!.vieneDelGate).toBe(true);
     expect(llamadasDe(falso, join(SRC, "x.ts"))[0]!.vieneDelGate).toBe(false);
     expect(llamadasDe(otro, join(SRC, "x.ts"))[0]!.vieneDelGate).toBe(false);

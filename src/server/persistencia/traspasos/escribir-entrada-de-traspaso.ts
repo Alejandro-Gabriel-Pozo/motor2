@@ -1,5 +1,6 @@
 import "server-only";
 import type { EstadoTraspaso, Prisma } from "@prisma/client";
+import { escribirMovimientoDeTraspaso } from "./escribir-movimiento-de-traspaso";
 
 /**
  * Escrituras que hacen ENTRAR el stock de un traspaso a un Kardex local (Task #41, Fase M11b — docs/arquitectura-casos-de-uso-2026-09-27.md;
@@ -10,6 +11,7 @@ import type { EstadoTraspaso, Prisma } from "@prisma/client";
  *  2. su única línea de Kardex: la cantidad en POSITIVO en la sección dada, a precio 0, atada al traspaso;
  *  3. el traspaso: estado nuevo y los campos propios de cada paso.
  * El `resultadoMensaje` de la clave I3 lo escribe después el caso de uso (`registrarResultadoIdempotente`), igual que antes.
+ * Desde la pieza 5.4 (A4) los pasos 1 y 2 los hace `escribirMovimientoDeTraspaso` (`escribir-movimiento-de-traspaso.ts`), compartido con la salida.
  */
 
 export interface EntradaDeStockAEscribir {
@@ -34,30 +36,19 @@ async function escribirOperacionDeEntrada(
   proceso: "TRANSFERENCIA_ENTRADA_SUCURSAL" | "REINGRESO_TRANSFERENCIA_SUCURSAL",
   e: EntradaDeStockAEscribir
 ): Promise<string> {
-  const operacion = await tx.operacion.create({
-    data: {
-      sucursalId: e.sucursalId,
-      proceso,
-      fecha: e.ahora,
-      usuarioId: e.usuarioId,
-      claveIdempotencia: e.idempotencia?.claveIdempotencia ?? null,
-      payloadHash: e.idempotencia?.payloadHash ?? null,
-    },
+  const { operacionId } = await escribirMovimientoDeTraspaso(tx, {
+    proceso,
+    sucursalId: e.sucursalId,
+    usuarioId: e.usuarioId,
+    ahora: e.ahora,
+    idempotencia: e.idempotencia,
+    productoId: e.productoId,
+    seccionId: e.seccionId,
+    cantidadConSigno: e.cantidad,
+    detalle: e.detalle,
+    traspasoId: e.traspasoId,
   });
-  await tx.movimientoStock.create({
-    data: {
-      operacionId: operacion.id,
-      productoId: e.productoId,
-      seccionId: e.seccionId,
-      proceso,
-      cantidad: e.cantidad,
-      detalle: e.detalle,
-      precioTotal: 0,
-      precioPorUnidadStock: 0,
-      traspasoSucursalId: e.traspasoId,
-    },
-  });
-  return operacion.id;
+  return operacionId;
 }
 
 /** Destino acepta un envío: ENTRADA en la sección de destino + traspaso con sección de destino, estado nuevo (ACEPTADA) y decisión de Destino. */

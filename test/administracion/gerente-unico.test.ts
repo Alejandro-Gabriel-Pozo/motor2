@@ -5,7 +5,9 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { crearMembresia } from "../setup/membresia";
-import { listarCandidatosAGerente, obtenerGerenteDeEmpresa, transferirGerenciaDeEmpresa } from "../../src/core/permisos/gerencia";
+import { obtenerGerenteDeEmpresa } from "../../src/server/lecturas/permisos/gerencia";
+import { listarCandidatosAGerente } from "../../src/server/consultas/permisos/gerencia";
+import { transferirGerenciaDeEmpresa } from "../../src/server/actions/auth/casos-de-uso/transferir-gerencia-en-tx";
 import {
   actualizarActivoMembresia,
   actualizarActivoUsuarioEnEmpresa,
@@ -32,8 +34,11 @@ async function crearEmpresaNorte() {
 const gerentes = (empresaId = EMPRESA_POR_DEFECTO_ID) => prismaAdmin.usuarioEmpresa.findMany({ where: { empresaId, rolEmpresa: "gerente" }, select: { usuarioId: true } });
 const hacerGerente = (usuarioId: string, empresaId = EMPRESA_POR_DEFECTO_ID) =>
   prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId, empresaId } }, data: { rolEmpresa: "gerente" } });
-const traspasar = (usuarioDestinoId: string, empresaId = EMPRESA_POR_DEFECTO_ID) =>
-  prismaAdmin.$transaction((tx) => transferirGerenciaDeEmpresa(tx, { empresaId, usuarioDestinoId }));
+const traspasar = async (usuarioDestinoId: string, empresaId = EMPRESA_POR_DEFECTO_ID) => {
+  // M-10: el gerente esperado es obligatorio; acá pide el traspaso el gerente que la empresa tiene al empezar. Los rechazos por gerente se prueban en `test/permisos/gerencia-actor-releido.test.ts`.
+  const gerenteEsperadoId = (await gerentes(empresaId))[0]?.usuarioId ?? "";
+  return prismaAdmin.$transaction((tx) => transferirGerenciaDeEmpresa(tx, { empresaId, usuarioDestinoId, gerenteEsperadoId }));
+};
 
 describe("transferirGerenciaDeEmpresa", () => {
   let base: Awaited<ReturnType<typeof sembrarBase>>;
@@ -55,11 +60,11 @@ describe("transferirGerenciaDeEmpresa", () => {
     expect((await obtenerGerenteDeEmpresa(prismaAdmin, EMPRESA_POR_DEFECTO_ID))?.usuarioId).toBe(adminId);
   });
 
-  it("si la empresa no tiene gerente (dato viejo, o la plataforma lo asigna), lo nombra sin gerente anterior", async () => {
+  it("si la empresa no tiene gerente, el traspaso se rechaza («la gerencia cambió»): nombrar al primer gerente es otro camino (M-10: ya no hay un traspaso sin gerente esperado)", async () => {
     await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: gerenteId, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: null } });
     const r = await traspasar(adminId);
-    expect(r).toMatchObject({ ok: true, gerenteAnteriorId: null });
-    expect((await gerentes()).map((g) => g.usuarioId)).toEqual([adminId]);
+    expect(r).toMatchObject({ ok: false, mensaje: "La gerencia cambió mientras tanto. Recargá la pantalla y volvé a intentar." });
+    expect(await gerentes()).toEqual([]);
   });
 
   it("no se traspasa a quien ya es el gerente", async () => {
@@ -108,7 +113,7 @@ describe("transferirGerenciaDeEmpresa", () => {
 
     // El primero escribe y deja su transacción abierta; el segundo lee al MISMO gerente (el cambio no está confirmado) y queda esperando su baja.
     const primero = prismaAdmin.$transaction(async (tx) => {
-      const r = await transferirGerenciaDeEmpresa(tx, { empresaId: EMPRESA_POR_DEFECTO_ID, usuarioDestinoId: adminId });
+      const r = await transferirGerenciaDeEmpresa(tx, { empresaId: EMPRESA_POR_DEFECTO_ID, usuarioDestinoId: adminId, gerenteEsperadoId: gerenteId });
       await puerta;
       return r;
     });

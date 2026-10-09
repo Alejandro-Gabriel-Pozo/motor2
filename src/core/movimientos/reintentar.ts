@@ -1,9 +1,10 @@
 /**
  * Loop de reintento genérico, SIN dependencias (ni Prisma ni base de datos):
- * `con-reintento.ts` es el envoltorio que sabe de Prisma y de qué error cuenta
- * como conflicto de escritura; acá vive solo el ciclo. Separado a propósito:
- * `con-reintento.ts` importa `@/lib/db`, que construye el cliente al importarse,
- * y un test del ciclo no tiene por qué depender de eso.
+ * `con-reintento.ts` dice de qué error cuenta como conflicto de escritura (sus
+ * dos clasificadores, puros) y `src/lib/transaccion-serializable.ts` es el
+ * envoltorio que abre la transacción de Prisma; acá vive solo el ciclo. Separado
+ * a propósito: el ciclo no importa ni Prisma ni `@/lib/db` (que construye el
+ * cliente al importarse), y un test del ciclo no tiene por qué depender de eso.
  *
  * BACKOFF CON JITTER (entre intentos, nunca antes del primero ni después del
  * último). Causa confirmada del flake de C2 (docs/auditoria-motor2-deuda-tecnica-
@@ -23,6 +24,11 @@
 
 const ESPERA_BASE_MS = 25;
 const ESPERA_TOPE_MS = 250;
+/**
+ * Sin una fuente de azar inyectada, la espera usa la MITAD del techo (determinista). El núcleo no lee el azar por su cuenta (Pureza 1.5): en producción la fuente la pone el borde que
+ * crea la transacción (`Transaccion.aleatorio`, `core/auth/base.ts`); sin ella (un test con una transacción armada a mano, o un `conReintento` que no la pasa: `test/arquitectura/reintento-con-azar-del-borde.test.ts` lo vigila) la espera es repetible.
+ */
+const ESPERA_A_LA_MITAD = () => 0.5;
 
 export interface InfoReintento {
   /** Número de intento que acaba de terminar (0 = el primero). */
@@ -59,7 +65,7 @@ export interface ConfigReintento extends OpcionesEspera {
  */
 export function calcularEsperaBackoffMs(
   intento: number,
-  { baseMs = ESPERA_BASE_MS, topeMs = ESPERA_TOPE_MS, aleatorio = Math.random }: { baseMs?: number; topeMs?: number; aleatorio?: () => number } = {}
+  { baseMs = ESPERA_BASE_MS, topeMs = ESPERA_TOPE_MS, aleatorio = ESPERA_A_LA_MITAD }: { baseMs?: number; topeMs?: number; aleatorio?: () => number } = {}
 ): number {
   return aleatorio() * Math.min(topeMs, baseMs * 2 ** intento);
 }

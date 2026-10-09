@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { leerFiltroTickets, serializarFiltroTickets } from "@/core/reportes/public-servidor";
+import { leerFiltroTickets, serializarFiltroTickets } from "@/core/reportes/public";
 import { listarTicketsEmitidos, obtenerNumeroDeMesa } from "@/server/consultas/reportes/tickets-emitidos";
 import { formatearMonto, nombreDeMesa, formatearNumeroTicket } from "@/core/pos/public";
 import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
@@ -31,6 +32,8 @@ export default async function TicketsEmitidosPage({
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_tickets", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;

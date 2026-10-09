@@ -43,7 +43,8 @@ describe("sugerirInsumosClaseA", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: barato1.id, cantidad: 10, precioTotal: 50 }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: barato2.id, cantidad: 10, precioTotal: 50 }] });
 
-    const sugeridos = await sugerirInsumosClaseA(sucursalId, desde, hasta, prisma);
+    // S-13: el importe y el porcentaje acumulado salen solo con `conImportes: true` (la consulta los niega por defecto).
+    const sugeridos = await sugerirInsumosClaseA(sucursalId, desde, hasta, prisma, { conImportes: true });
     expect(sugeridos).toHaveLength(1);
     expect(sugeridos[0]).toMatchObject({ productoId: caro.id, nombre: "Carne", importe: 900, porcentajeAcumulado: 90 });
   });

@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { GUIA_PARA_CORREGIR_CON_UN_AJUSTE } from "@/core/guia-de-ajuste";
 
 /**
  * Cómo se reconoce la Operación AJUSTE que escribe una anulación (`anularVenta`, `anularCompra`).
@@ -13,6 +14,16 @@ import type { Prisma } from "@prisma/client";
  */
 const PREFIJO_REVERSION_VENTA = "Anulación de la venta ";
 const PREFIJO_REVERSION_COMPRA = "Anulación de la compra ";
+
+/**
+ * ¿El detalle que escribió una persona empieza como el de una reversión por anulación? Como la reversión se reconoce SOLO por ese comienzo, un ajuste manual con un detalle así se haría pasar
+ * por una (M-1 de la auditoría intermedia: no contaría como «posterior» a una venta, y la venta se podría anular a ciegas). Los comandos que reciben un detalle del cliente lo rechazan:
+ * el prefijo está reservado para las anulaciones. Compara sin mayúsculas y sin espacios al comienzo, porque el filtro de las consultas es un `startsWith` y no hay que dejar una variante.
+ */
+export function esDetalleReservadoParaReversiones(detalle: string): boolean {
+  const d = detalle.trimStart().toLocaleLowerCase("es");
+  return d.startsWith(PREFIJO_REVERSION_VENTA.toLocaleLowerCase("es")) || d.startsWith(PREFIJO_REVERSION_COMPRA.toLocaleLowerCase("es"));
+}
 
 /** `detalleLibre` de la Operación AJUSTE que revierte una venta. */
 export function detalleReversionDeVenta(idVenta: string, fechaVenta: Date): string {
@@ -45,7 +56,7 @@ export interface VentaAAnular {
   anuladaEn: Date | null;
 }
 
-export type ResultadoAnulacionDeVenta = { ok: true } | { ok: false; motivo: "NO_ES_VENTA" | "YA_ANULADA"; mensaje: string };
+export type ResultadoAnulacionDeVenta = { ok: true } | { ok: false; motivo: "NO_ES_VENTA" | "YA_ANULADA" | "CONTEO_POSTERIOR" | "PAGO_CONSIGNANTE_POSTERIOR"; mensaje: string };
 
 /**
  * Si la operación se puede anular como venta: tiene que ser una VENTA y no estar anulada (en ese orden). `operacionId` es el que se
@@ -55,6 +66,66 @@ export function evaluarAnulacionDeVenta(operacionId: string, venta: VentaAAnular
   if (venta.proceso !== "VENTA") return { ok: false, motivo: "NO_ES_VENTA", mensaje: `La operación "${operacionId}" no es una Venta — es "${venta.proceso}".` };
   if (venta.anuladaEn) return { ok: false, motivo: "YA_ANULADA", mensaje: "Esta venta ya está anulada." };
   return { ok: true };
+}
+
+/**
+ * Lo que pasó DESPUÉS de una venta (o de las ventas que se anulan juntas, si es una promo) y que anularla desharía a ciegas (S-03, O.52 de
+ * docs/pureza-integracion.md; D7 del plan de endurecimiento, decidida por el dueño el 2026-10-08). Lo arma `cargarPosterioresDeVentas`
+ * (server/persistencia/movimientos/cargar-venta-para-anular.ts), ya sin repetidos y con los nombres para el mensaje.
+ */
+export interface PosterioresALaVenta {
+  /** Los (producto, sección) de la venta que tuvieron un CONTROL o un AJUSTE vigente después de ella (un conteo físico aplicado, un ajuste manual). */
+  controlesOAjustes: readonly { productoNombre: string; seccionNombre: string }[];
+  /** Los consignantes, con mercadería consumida por la venta, a quienes se les registró un pago después de ella. */
+  pagosAConsignantes: readonly string[];
+}
+
+/**
+ * D7: una venta NO se anula si después hubo un conteo/ajuste del mismo producto en la misma sección (el stock ya se reconcilió con lo contado: deshacer la
+ * venta suma de nuevo lo que el conteo ya absorbió, y el saldo queda mal) ni si se le pagó al consignante de una mercadería que la venta consumió (anular
+ * movería la deuda que ese pago ya saldó). El historial no se reescribe: se corrige con un ajuste. Fallo cerrado, sin pedir confirmación. El conteo manda
+ * sobre el pago cuando hay los dos (un solo motivo por rechazo).
+ */
+export function evaluarPosterioresAAnularVenta(p: PosterioresALaVenta): ResultadoAnulacionDeVenta {
+  if (p.controlesOAjustes.length) {
+    const donde = p.controlesOAjustes.map((c) => `${c.productoNombre} (${c.seccionNombre})`).join(", ");
+    return {
+      ok: false,
+      motivo: "CONTEO_POSTERIOR",
+      mensaje: `No se puede anular esta venta: después de hacerse hubo un conteo físico o un ajuste de stock de ${donde}, y anularla ahora desharía a ciegas un stock que ya se reconcilió. ${GUIA_PARA_CORREGIR_CON_UN_AJUSTE}`,
+    };
+  }
+  if (p.pagosAConsignantes.length) {
+    return {
+      ok: false,
+      motivo: "PAGO_CONSIGNANTE_POSTERIOR",
+      mensaje: `No se puede anular esta venta: consumió mercadería en consignación de ${p.pagosAConsignantes.join(", ")}, a quien se le registró un pago después de la venta. Corregí la diferencia con un ajuste en lugar de anularla.`,
+    };
+  }
+  return { ok: true };
+}
+
+/** Un (producto, sección) que se reconcilió (conteo físico o ajuste) después de la operación que se quiere deshacer. */
+export interface ReconciliacionPosterior {
+  productoNombre: string;
+  seccionNombre: string;
+}
+
+export type ResultadoCancelacionDeConteo = { ok: true } | { ok: false; motivo: "CONTEO_POSTERIOR"; mensaje: string };
+
+/**
+ * D7 (M-2 de la auditoría final; misma regla que `evaluarPosterioresAAnularVenta`, pero SOLO con conteos: un ajuste manual no cuenta, es el remedio que el mensaje indica): un conteo físico NO se
+ * cancela si después hubo OTRO conteo (con o sin movimiento) del mismo producto en la misma sección. La reversión devuelve el stock a como estaba antes del conteo, y el conteo posterior ya se contó sobre el stock que este dejó: cancelar este desharía a ciegas un stock que
+ * ya se reconcilió (conteo 1 ajusta -5, conteo 2 confirma que quedan 5, se cancela el 1: el saldo vuelve a 10 contra 5 físicos). El historial no se reescribe: se corrige con un ajuste. Fallo cerrado.
+ */
+export function evaluarPosterioresACancelarConteo(posteriores: readonly ReconciliacionPosterior[]): ResultadoCancelacionDeConteo {
+  if (!posteriores.length) return { ok: true };
+  const donde = posteriores.map((c) => `${c.productoNombre} (${c.seccionNombre})`).join(", ");
+  return {
+    ok: false,
+    motivo: "CONTEO_POSTERIOR",
+    mensaje: `No se puede cancelar este conteo: después de hacerse hubo otro conteo físico de ${donde}, y cancelarlo ahora desharía a ciegas un stock que ya se reconcilió. ${GUIA_PARA_CORREGIR_CON_UN_AJUSTE}`,
+  };
 }
 
 /** Una línea de Kardex de la venta, tal como se guardó (los `Decimal` ya convertidos a `number` por la persistencia). */

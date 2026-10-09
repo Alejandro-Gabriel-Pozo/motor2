@@ -1,6 +1,7 @@
 import { sincronizarDolar } from "@/server/actions/reportes/sincronizaciones";
 import { baseDelContexto } from "@/core/auth/base";
 import { autorizacionCronValida } from "@/core/auth/secreto-cron";
+import { codigosDeErroresDeSincronizacion } from "@/core/reportes/public";
 import { reportarError, reportarErrorUnaVez } from "@/lib/reportar-error";
 
 /**
@@ -17,12 +18,14 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
-    const resultado = await sincronizarDolar(baseDelContexto().db);
+    const resultado = await sincronizarDolar(baseDelContexto().db, new Date());
     // Una fuente que falló (aunque otra haya respondido) queda registrada: hoy solo se veía en la respuesta del cron.
     if (resultado.errores.length) await reportarError(new Error(`Sincronización del dólar con errores: ${resultado.errores.join("; ")}`), "dolar-cron");
-    return Response.json(resultado);
+    // M-27: `errores` son textos libres (algunos con el `message` de una excepción: el de Prisma al guardar un día, el de `fetch`): hacia afuera salen solo códigos fijos; el detalle ya fue a Sentry.
+    return Response.json({ ...resultado, errores: codigosDeErroresDeSincronizacion(resultado.errores) });
   } catch (e) {
     await reportarError(e, "dolar-cron");
-    return Response.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 502 });
+    // S-15: el detalle del error (hosts, cadenas de conexión) va a Sentry, no al cuerpo de la respuesta.
+    return Response.json({ error: "La sincronización del dólar falló" }, { status: 502 });
   }
 }

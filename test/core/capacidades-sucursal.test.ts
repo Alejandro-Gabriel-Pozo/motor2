@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, prisma } from "../setup/test-db";
-import { sucursalTieneCapacidad } from "../../src/core/permisos/capacidades-sucursal";
+import { sucursalTieneCapacidad } from "../../src/server/acceso/capacidades-sucursal";
 
 describe("sucursalTieneCapacidad", () => {
   let sucursalId: string;

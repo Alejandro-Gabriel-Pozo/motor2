@@ -15,9 +15,10 @@
     "start:e2e": "next start",
     "start": "next start",
     "lint": "eslint",
-    "arquitectura": "depcruise src plataforma --config .dependency-cruiser.cjs",
+    "arquitectura": "depcruise src plataforma next.config.ts --config .dependency-cruiser.cjs",
     "analizar:muerto": "knip",
     "inventario:arquitectura": "tsx scripts/arquitectura/inventario.ts",
+    "reapuntar:imports": "tsx scripts/arquitectura/reapuntar-imports.ts",
     "auditar:dependencias": "tsx scripts/auditar-dependencias.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -27,7 +28,7 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "migrar:aprobar": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "tsx --conditions=react-server prisma/seed.ts",
     "db:studio": "prisma studio",
     "plataforma:crear-admin": "tsx scripts/plataforma/crear-primer-admin.ts",
     "politica-empresa": "tsx scripts/politica-empresa.ts",
@@ -39,7 +40,7 @@
     "verificar:modulos": "tsx scripts/verificar-registro-de-modulos.ts"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx --conditions=react-server prisma/seed.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

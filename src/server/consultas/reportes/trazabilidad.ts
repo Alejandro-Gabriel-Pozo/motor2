@@ -1,3 +1,4 @@
+import "server-only";
 import type { Db } from "@/lib/db-tipos";
 import type { DatosOperacion, OperacionEncontrada } from "@/core/reportes/public";
 
@@ -8,11 +9,37 @@ import type { DatosOperacion, OperacionEncontrada } from "@/core/reportes/public
  * Apps Script, donde cada hostería ya era un spreadsheet separado — acá
  * todas comparten la misma base): nunca se debe poder traer la operación
  * de otra sucursal solo adivinando/probando un ID.
+ *
+ * S-14 (plan de endurecimiento de seguridad, T7): el proveedor, el N.º de factura y el email de quien anuló son los datos comerciales que «Historial de un producto» le saca
+ * a quien no tiene `reporte_historial_importes` (piso administrador), y esta lectura la abre `reporte_trazabilidad` (piso operario). Se niega por defecto, en el último punto
+ * donde se decide: sin `conDatosComerciales: true` la consulta ni siquiera los lee (vuelven `null`). Y dejó de traer filas enteras (`Producto`, `Proveedor`, `User`): solo lo
+ * que el reporte dibuja.
  */
-export async function obtenerOperacionPorId(sucursalId: string, idOperacion: string, db: Db): Promise<DatosOperacion | null> {
+export async function obtenerOperacionPorId(sucursalId: string, idOperacion: string, db: Db, opciones: { conDatosComerciales?: boolean } = {}): Promise<DatosOperacion | null> {
+  // Los datos comerciales entran al `select` solo para quien los puede ver: lo que no se pide a la base no puede salir por un descuido de la pantalla. (Prisma los tipa siempre
+  // presentes aunque el `select` los omita; por eso abajo se leen con `?.` y `?? null`.)
+  const datosComerciales = opciones.conDatosComerciales === true ? { nroFactura: true, proveedor: { select: { nombre: true } }, anuladaPor: { select: { email: true } } } : {};
   const operacion = await db.operacion.findFirst({
     where: { id: idOperacion, sucursalId },
-    include: { proveedor: true, anuladaPor: true, movimientos: { include: { producto: true, seccion: true, sustituyeAProducto: { select: { nombre: true } } } } },
+    select: {
+      id: true,
+      fecha: true,
+      proceso: true,
+      anuladaEn: true,
+      ...datosComerciales,
+      movimientos: {
+        select: {
+          id: true,
+          detalle: true,
+          cantidad: true,
+          loteVencimiento: true,
+          proceso: true,
+          producto: { select: { nombre: true, codigo: true } },
+          seccion: { select: { nombre: true } },
+          sustituyeAProducto: { select: { nombre: true } },
+        },
+      },
+    },
   });
   if (!operacion) return null;
 
@@ -21,7 +48,7 @@ export async function obtenerOperacionPorId(sucursalId: string, idOperacion: str
     fecha: operacion.fecha,
     proceso: operacion.proceso,
     proveedorNombre: operacion.proveedor?.nombre ?? null,
-    nroFactura: operacion.nroFactura,
+    nroFactura: operacion.nroFactura ?? null,
     total: operacion.movimientos.length,
     anuladaEn: operacion.anuladaEn,
     anuladaPorEmail: operacion.anuladaPor?.email ?? null,

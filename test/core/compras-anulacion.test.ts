@@ -176,3 +176,95 @@ describe("mensajeCompraAnulada / descripcionAuditoriaAnulacion", () => {
     expect(descripcionAuditoriaAnulacion(fecha, null, null)).toBe("Compra del 2026-08-10: anulación");
   });
 });
+
+/** S-02 (O.51): además del bucket del lote, el saldo TOTAL del (producto, sección) tiene que cubrir lo comprado. */
+describe("evaluarAnulacion — el saldo total por (producto, sección) (S-02)", () => {
+  const lote = new Date("2026-12-01T00:00:00.000Z");
+  const sinLote = (l: LineaComprada, saldo: number): [LineaComprada, number] => [{ ...l, loteVencimiento: null }, saldo];
+
+  it("lote lleno pero salida SIN lote que dejó el total corto: se bloquea y dice que es el total", () => {
+    const l = linea({ loteVencimiento: lote });
+    // Bucket del lote en 10 (intacto), bucket sin lote en −10 (un traspaso se llevó 10 sin lote): total 0.
+    const r = evaluarAnulacion(compra([l]), saldos([l, 10], sinLote(l, -10)));
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.motivo).toBe("STOCK_CONSUMIDO");
+    expect(r.faltantes).toEqual([{ productoNombre: "Harina", seccionNombre: "Depósito", loteVencimiento: null, comprado: 10, disponible: 0, enTotal: true, saldoNegativoSinLote: -10 }]);
+    expect(r.mensaje).toContain("se compraron 10 y hoy quedan 0 en total");
+  });
+
+  it("con stock previo sin lote que cubre la salida (total 20 ≥ 10) se puede anular", () => {
+    const l = linea({ loteVencimiento: lote });
+    expect(evaluarAnulacion(compra([l]), saldos([l, 10], sinLote(l, 10))).ok).toBe(true);
+  });
+
+  it("el total es POR PAR: el negativo de otra sección no cuenta", () => {
+    const l = linea({ loteVencimiento: lote });
+    const otraSeccion = linea({ seccionId: "cocina", loteVencimiento: null });
+    expect(evaluarAnulacion(compra([l]), saldos([l, 10], [otraSeccion, -50])).ok).toBe(true);
+  });
+
+  it("si el bucket YA falta no se repite el faltante del total (un solo aviso por par)", () => {
+    const l = linea({ loteVencimiento: lote });
+    const r = evaluarAnulacion(compra([l]), saldos([l, 4]));
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.faltantes).toHaveLength(1);
+    expect(r.faltantes[0].enTotal).toBeUndefined();
+  });
+
+  it("dos lotes de la misma compra en el mismo par se comparan JUNTOS contra el total", () => {
+    const a = linea({ cantidad: 6, loteVencimiento: lote });
+    const b = linea({ cantidad: 6, loteVencimiento: new Date("2027-01-01T00:00:00.000Z") });
+    // Cada bucket cubre su parte (6 y 6), pero una salida sin lote de 8 deja el total en 4 < 12.
+    const r = evaluarAnulacion(compra([a, b]), saldos([a, 6], [b, 6], sinLote(a, -8)));
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.faltantes).toEqual([{ productoNombre: "Harina", seccionNombre: "Depósito", loteVencimiento: null, comprado: 12, disponible: 4, enTotal: true, saldoNegativoSinLote: -8 }]);
+  });
+});
+
+/**
+ * M-7 (auditoría intermedia, decidido por el dueño): cuando la anulación se rechaza porque el bucket SIN lote está en negativo (el POS vende en negativo por diseño y después entró la compra con
+ * lote), el mensaje le dice al administrador CÓMO resolverlo. La guía es correcta para ESE caso: un Ajuste de stock (no un conteo, que un conteo posterior a la compra frenaría con CONTEO_POSTERIOR),
+ * o la Devolución a proveedor si la mercadería de verdad salió. Cambia solo el texto del rechazo, no la regla.
+ */
+describe("evaluarAnulacion — la guía cuando el faltante es un saldo negativo sin lote (M-7)", () => {
+  const lote = new Date("2026-12-01T00:00:00.000Z");
+  const sinLote = (l: LineaComprada, saldo: number): [LineaComprada, number] => [{ ...l, loteVencimiento: null }, saldo];
+
+  it("el POS vendió 3 sin stock y después entró la compra de 10 con lote: el rechazo dice el ajuste de +3 sin lote, que no sirve un conteo y qué hacer si la mercadería salió", () => {
+    const l = linea({ loteVencimiento: lote });
+    const r = evaluarAnulacion(compra([l]), saldos([l, 10], sinLote(l, -3)));
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.motivo).toBe("STOCK_CONSUMIDO");
+    expect(r.mensaje).toBe(
+      "No se puede anular esta compra: parte de lo que se compró ya se consumió o se movió. " +
+        "Harina (Depósito): se compraron 10 y hoy quedan 7 en total, entre todos los lotes de la sección (parte salió sin lote, por ejemplo en un traspaso). " +
+        "Hay un saldo negativo sin lote de -3 (salió sin lote más de lo que había). " +
+        "Si esa mercadería se vendió antes de cargar la compra, o es un descuadre del registro, llevalo a cero con un Ajuste de stock de +3 de Harina en Depósito, sin lote " +
+        "(o pedíselo a quien pueda registrar ajustes), y volvé a anular la compra; no uses un conteo físico para esto, porque un conteo posterior a la compra impide anularla. " +
+        "Si la mercadería de verdad salió (por ejemplo, se traspasó), la compra no se puede anular: registrá esa salida como Devolución a proveedor.",
+    );
+  });
+
+  it("un faltante que NO es un saldo negativo sin lote (consumo de un lote, o de stock sin lote positivo) sigue con el texto de siempre, sin la guía del ajuste", () => {
+    const l = linea({ loteVencimiento: lote });
+    const delBucket = evaluarAnulacion(compra([l]), saldos([l, 4]));
+    expect(delBucket.ok).toBe(false);
+    if (delBucket.ok) return;
+    expect(delBucket.mensaje).not.toContain("Ajuste de stock");
+    expect(delBucket.mensaje).toContain("Si le devolviste mercadería al proveedor, registrala como Devolución a proveedor en vez de anular la compra.");
+    // El bucket sin lote en cero (nada negativo) y el lote consumido solo en parte del total: tampoco hay saldo negativo sin lote.
+    const total = evaluarAnulacion(compra([l]), saldos([l, 6], sinLote(l, 0)));
+    expect(total.ok).toBe(false);
+    if (total.ok) return;
+    expect(total.mensaje).not.toContain("Ajuste de stock");
+  });
+
+  it("el ajuste que dice el mensaje destraba la anulación: con el sin lote en cero el total cubre lo comprado y se puede anular", () => {
+    const l = linea({ loteVencimiento: lote });
+    expect(evaluarAnulacion(compra([l]), saldos([l, 10], sinLote(l, 0))).ok).toBe(true);
+  });
+});

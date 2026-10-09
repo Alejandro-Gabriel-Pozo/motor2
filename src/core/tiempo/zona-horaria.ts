@@ -88,6 +88,19 @@ function leerDia(dia: string): [number, number, number] {
   return [Number(m[1]), Number(m[2]), Number(m[3])];
 }
 
+/**
+ * ¿Es un texto «AAAA-MM-DD» que existe en el calendario («2026-02-30» no, «2026-9-1» tampoco)? Para validar una fecha que llega de afuera (una API de terceros) antes de
+ * compararla como texto o de convertirla en `Date`: `new Date("2026-02-30")` no falla en todos los motores, y una comparación de textos con una fecha mal formada da cualquier cosa.
+ */
+export function esDiaISOReal(texto: unknown): texto is string {
+  if (typeof texto !== "string") return false;
+  const m = RE_DIA.exec(texto);
+  if (!m) return false;
+  const [y, mes, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const fecha = new Date(Date.UTC(y, mes - 1, d));
+  return fecha.getUTCFullYear() === y && fecha.getUTCMonth() === mes - 1 && fecha.getUTCDate() === d;
+}
+
 /** «2026-09-28» + 2 → «2026-09-30»: aritmética de calendario sobre un día «AAAA-MM-DD» (no depende de ninguna zona). */
 export function sumarDias(dia: string, dias: number): string {
   const [y, m, d] = leerDia(dia);

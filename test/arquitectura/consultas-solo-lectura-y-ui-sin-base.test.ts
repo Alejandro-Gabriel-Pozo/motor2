@@ -17,6 +17,8 @@ import { delegadosDeModelos, llamadasALaBase } from "../../scripts/arquitectura/
  * Qué NO cubre (a propósito, son pasos siguientes del plan): que la pantalla llame a una función de `core/` que consulta por dentro (las
  * Fases 2 y 3 sacan esas lecturas del dominio) y los archivos de acciones de la consola (`acciones.ts`), que son la capa de acciones y no la UI.
  *
+ * Desde la auditoría de la Fase 0 (trabajo 1.12 de la rama `pureza-integracion`) la regla 1 también cubre `src/server/acceso/` (el guard de acceso y sus lectores: decide, no escribe).
+ *
  * Cómo se controla: AST de TypeScript (no texto plano), con el mismo detector que usa el inventario de pureza
  * (`scripts/arquitectura/analizar-fuente.ts`). Sin excepciones: hoy no hace falta ninguna, y agregar una es una decisión de arquitectura.
  */
@@ -64,7 +66,7 @@ describe("consultas solo de lectura y UI sin base: el detector ve las violacione
 });
 
 describe("consultas solo de lectura (src/server/consultas y core/**/*-consulta.ts)", () => {
-  const rutas = [...archivosDe(join(RAIZ, "src/server/consultas"), /\.tsx?$/), ...archivosDe(join(RAIZ, "src/server/lecturas"), /\.tsx?$/), ...archivosDe(join(RAIZ, "src/core"), /-consulta\.ts$/)];
+  const rutas = [...archivosDe(join(RAIZ, "src/server/consultas"), /\.tsx?$/), ...archivosDe(join(RAIZ, "src/server/lecturas"), /\.tsx?$/), ...archivosDe(join(RAIZ, "src/server/acceso"), /\.tsx?$/), ...archivosDe(join(RAIZ, "src/core"), /-consulta\.ts$/)];
 
   it("encuentra las consultas (si dejan de encontrarse, la regla quedó vacía)", () => {
     expect(rutas.length).toBeGreaterThanOrEqual(18);

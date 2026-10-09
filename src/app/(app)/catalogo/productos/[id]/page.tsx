@@ -2,11 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
-import { disponibilidadPorSucursalDeProducto } from "@/server/lecturas/catalogo/disponibilidad";
+import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
@@ -35,6 +36,8 @@ export default async function FichaProductoPage({
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_ver_catalogo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
@@ -42,10 +45,13 @@ export default async function FichaProductoPage({
   // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
   const { editar: puedeEditarProducto } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db);
   const { editar: puedeCambiarDisponibilidad } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db);
+  // S-12 (D8 del dueño): el costo de consignación (lo que se le paga al proveedor por unidad vendida, y quién es) es de quien tiene `pagar_consignante` en la sucursal activa — la
+  // pantalla donde ese precio se vuelve deuda. Acá no se esconde: la consulta ni lo devuelve sin esta bandera (deniega por defecto).
+  const { ver: puedeVerCostoDeConsignacion } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
 
   const { id } = await params;
   const { guardado } = unicosDeUrl(await searchParams);
-  const p = await obtenerFichaProducto(id, ctx.db);
+  const p = await obtenerFichaProducto(id, ctx.db, { conCostoDeConsignacion: puedeVerCostoDeConsignacion });
   if (!p) notFound();
 
   // Primitivos para el closure "use server" de abajo: lo que captura viaja al cliente y `p` lleva Decimales de Prisma (ver precio-local).

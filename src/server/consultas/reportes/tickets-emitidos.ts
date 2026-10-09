@@ -1,3 +1,4 @@
+import "server-only";
 import type { Db } from "@/lib/db-tipos";
 import { armarTicketImpresoEn, estadoDeTicket, claveDeLineaDeVenta, lineasDeVenta, nombreDelMesero, type ItemConVenta } from "@/core/pos/public";
 import { TAMANO_PAGINA_TICKETS, type FiltroTickets, type LineaTicketEmitido, type FilaTicketEmitido, type PaginaTickets } from "@/core/reportes/public";

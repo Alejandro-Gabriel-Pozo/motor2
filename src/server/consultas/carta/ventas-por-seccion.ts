@@ -2,14 +2,13 @@ import "server-only";
 import { whereCartaDeSucursal } from "@/core/carta/public";
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
-import { agruparVentasPorCategoria, pvSinCategoriaDe, type FilaCategoriaVenta } from "@/core/reportes/public-servidor";
-import { obtenerReportePorPeriodoConCatalogo, type generarReporteVentasPorCategoria } from "@/server/consultas/reportes/periodo";
-import { redondearCantidad } from "@/core/reportes/public";
+import { cargarLineasDelPeriodo, type generarReporteVentasPorCategoria } from "@/server/consultas/reportes/periodo";
+import { agruparVentasPorCategoria, calcularVentasDelPeriodo, pvSinCategoriaDe, redondearCantidad, type FilaCategoriaVenta } from "@/core/reportes/public";
 
 /**
  * Ventas por SECCIÓN DE CARTA (docs/plan-carta-catalogo-2026-09-24.md, M4; rehecho a nivel de PRODUCTO en
  * docs/plan-carta-seccion-directa-2026-09-25.md, M5). Las mismas ventas que «Ventas por categoría» (mismo
- * `obtenerReportePorPeriodoConCatalogo`, mismo criterio de ventas reales/estimadas), agrupadas por la sección de carta donde el
+ * `cargarLineasDelPeriodo` + `calcularVentasDelPeriodo`, mismo criterio de ventas reales/estimadas), agrupadas por la sección de carta donde el
  * cliente ve CADA producto EN LA CARTA PROPIA DE LA SUCURSAL (ADR-009, C3) — no por su categoría, que ya no ubica nada en la carta:
  *  - opción de un ítem agrupado → la sección del ítem agrupado (un producto agrupado sale solo ahí, D3);
  *  - si no, PV suelto con `ContenidoCartaProducto` visible y con sección → esa sección;
@@ -127,19 +126,24 @@ async function seccionesDeProductos(sucursalId: string, db: Db): Promise<Map<str
   return mapa;
 }
 
-/** Las ventas del período (el mismo reporte base que «Ventas por categoría») + UNA consulta de ubicación, agrupadas por sección de carta. */
+/**
+ * Las ventas del período (la misma base que «Ventas por categoría»: `cargarLineasDelPeriodo` + `calcularVentasDelPeriodo`) + UNA consulta de ubicación,
+ * agrupadas por sección de carta. Solo las ventas: antes armaba el reporte del período ENTERO (margen Real, IPC, impacto de recetas…, 23 consultas) para
+ * quedarse con `ventas` y el catálogo (O.39 de docs/pureza-integracion.md).
+ */
 export async function generarReporteVentasPorSeccion(sucursalId: string, desde: Date, hasta: Date, db: Db): Promise<ReporteVentasPorSeccion> {
-  const [{ reporte: rep, productos }, seccionPorProducto] = await Promise.all([
-    obtenerReportePorPeriodoConCatalogo(sucursalId, desde, hasta, { proceso: "VENTA" }, db),
+  const [{ desde: desdeRango, hasta: hastaRango, items, productos }, seccionPorProducto] = await Promise.all([
+    cargarLineasDelPeriodo(sucursalId, desde, hasta, { proceso: "VENTA" }, db),
     seccionesDeProductos(sucursalId, db),
   ]);
+  const ventas = calcularVentasDelPeriodo(items, productos);
   return reagruparPorSeccion(
     {
-      desde: rep.desde,
-      hasta: rep.hasta,
-      totalFacturado: rep.ventas.totalFacturado,
-      aviso: rep.ventas.aviso,
-      porProducto: rep.ventas.porProducto.map((v) => ({
+      desde: desdeRango,
+      hasta: hastaRango,
+      totalFacturado: ventas.totalFacturado,
+      aviso: ventas.aviso,
+      porProducto: ventas.porProducto.map((v) => ({
         productoId: v.productoId,
         producto: v.producto,
         categoria: productos.get(v.productoId)?.categoriaNombre ?? null,

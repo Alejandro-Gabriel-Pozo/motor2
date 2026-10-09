@@ -2,7 +2,7 @@ import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
 
 /**
  * Task #27 (docs/plan-redondeo-consumo-fraccionado-2026-09-26.md): arrastre de redondeo por (sucursal, producto consumido) — núcleo
- * PURO, sin Prisma (el cargador que arma la deuda inicial es `cargarDeudaDeRedondeo`, en `registrar-venta.ts`), mismo criterio que
+ * PURO, sin Prisma (el cargador que arma la deuda inicial es `cargarDeudaDeRedondeo`, en `server/lecturas/movimientos/deuda-de-redondeo.ts`), mismo criterio que
  * `origen-venta.ts`.
  *
  * EL PROBLEMA: `redondearACantidadDeUnidad` (transiciones.ts) redondea CADA parte de consumo de CADA venta por separado, sin memoria

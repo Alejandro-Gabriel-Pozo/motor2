@@ -1,8 +1,7 @@
 import "server-only";
-import { Prisma } from "@prisma/client";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { calcularPayloadHash, esChoqueDeIndiceUnico, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComandoRegistrarPagoConsignante, ResultadoRegistrarPagoConsignante } from "@/core/features/reportes/pago-consignante.schema";
 import { cargarPagoConsignantePorClave, cargarProveedorActivo, crearPagoConsignante } from "@/server/persistencia/reportes/pago-consignante";
@@ -36,7 +35,7 @@ import { cargarPagoConsignantePorClave, cargarProveedorActivo, crearPagoConsigna
  * @idempotency I3 (claveIdempotencia + payloadHash) — índice único + catch de P2002, no conTransaccionSerializable (sin invariante de agregado que proteger bajo concurrencia).
  * @transaction prisma.$transaction simple (no SERIALIZABLE — la única carrera posible es el insert duplicado, que resuelve el índice único de PagoConsignante.claveIdempotencia).
  * @sideEffects registrarCambioAuditado (campo importe).
- * @ficha permiso=pagar_consignante transaccion=SIMPLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=pagar_consignante transaccion=SIMPLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function registrarPagoConsignanteCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "db" | "transaccion">,
@@ -93,7 +92,7 @@ export async function registrarPagoConsignanteCasoDeUso(
     // `@@unique` — se relee fuera de la transacción fallida. Solo se devuelve éxito repetido si el ganador tiene el MISMO payloadHash
     // (igual que el chequeo previo): con otro hash es un CONFLICTO, no un reenvío — decirle "ya está" a quien mandó otro importe
     // sería perder su pago en silencio. Fail closed (mismo criterio que el resto de I3): si no se puede confirmar qué pasó, se relanza.
-    if (comando.claveIdempotencia && e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+    if (comando.claveIdempotencia && esChoqueDeIndiceUnico(e)) {
       const ganador = await actor.db.pagoConsignante.findUnique({
         where: { claveIdempotencia: comando.claveIdempotencia },
         select: { payloadHash: true, resultadoMensaje: true },

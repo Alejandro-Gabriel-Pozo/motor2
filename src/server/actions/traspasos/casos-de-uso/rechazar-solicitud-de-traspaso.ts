@@ -3,7 +3,7 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_TRASPASO_NO_ENCONTRADO } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import type { ComandoRechazarSolicitudTraspaso, ResultadoRechazarSolicitudTraspaso } from "@/core/features/traspasos/traspaso.schema";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarTraspaso } from "@/server/persistencia/traspasos/cargar-traspaso";
 import { escribirRechazoDeSolicitud } from "@/server/persistencia/traspasos/escribir-cierre-de-solicitud";
@@ -25,7 +25,7 @@ import { escribirRechazoDeSolicitud } from "@/server/persistencia/traspasos/escr
  * @idempotency No aplica — sin Operación donde guardarla; el aislamiento SERIALIZABLE evita la carrera de "stock perdido en tránsito" (una aprobación concurrente que pisara el rechazo).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno — solo el cambio de estado del traspaso.
- * @ficha permiso=traspaso_rechazar_solicitud transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @ficha permiso=traspaso_rechazar_solicitud transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function rechazarSolicitudDeTraspasoCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,

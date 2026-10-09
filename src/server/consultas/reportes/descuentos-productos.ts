@@ -1,3 +1,4 @@
+import "server-only";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
 import type { FilaDescuentoProducto, ReporteDescuentosProductos } from "@/core/reportes/public";

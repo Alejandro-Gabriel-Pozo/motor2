@@ -3,8 +3,8 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { MENSAJE_ITEM_NO_ENCONTRADO } from "@/core/features/cuentas/cuenta-anulacion.guard";
 import type { ComandoAnularItemEnviado, ResultadoAnularItemEnviado } from "@/core/features/cuentas/cuenta-anulacion.schema";
 import { tieneStockReal } from "@/core/movimientos/public";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { restanteDe, validarMotivoAnulacion } from "@/core/pos/cuenta";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -35,7 +35,7 @@ import { formatearCantidad } from "../cuenta-comun";
  * @idempotency No aplica (nunca la tuvo) — el doble clic lo frena la guarda optimista (restanteVisto tiene que coincidir EXACTO con lo que queda).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (campo cantidadVigente).
- * @ficha permiso=pos_anular_item transaccion=SERIALIZABLE idempotencia=OPTIMISTA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=pos_anular_item transaccion=SERIALIZABLE idempotencia=OPTIMISTA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function anularItemEnviadoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,

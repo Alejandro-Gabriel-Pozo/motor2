@@ -3,7 +3,8 @@ import type { Prisma } from "@prisma/client";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { texto } from "@/core/texto";
 import { validarCantidad } from "@/core/datos/cantidad";
-import { conTransaccionSerializable, calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoPorLote, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
@@ -47,7 +48,7 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) — el saldo disponible se lee DENTRO de la transacción.
  * @sideEffects Ninguno además de la escritura del Kardex (un origen negativo + N destinos positivos) — sin auditoría de permisos propia.
- * @ficha permiso=stock_reclasificar transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @ficha permiso=stock_reclasificar transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function reclasificarStockCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
@@ -113,7 +114,7 @@ export async function reclasificarStockCasoDeUso(
     // aborta si otra escritura concurrente lo cambia mientras tanto) —
     // mismo criterio "leer→decidir→escribir sin que se cuele otra
     // escritura" que conLock_ en Apps Script.
-    const disponible = await calcularSaldoPorLote(comando.productoId, comando.seccionOrigenId, comando.loteOrigen ?? null, tx);
+    const disponible = await calcularSaldoPorLote(comando.productoId, comando.seccionOrigenId, comando.loteOrigen ?? null, actor.sucursalId, tx);
     const diff = Math.round((totalDestinos - disponible) * 1000) / 1000;
     if (diff !== 0) {
       return fracaso(

@@ -40,6 +40,7 @@ interface Excepciones {
   "base-solo-desde-lista": ExcepcionDeArchivo[];
   "sin-ciclos": ExcepcionDeCiclo[];
   "ui-sin-internals-de-dominio": ExcepcionDeArchivo[];
+  "paginas-solo-consultas": ExcepcionDeArchivo[];
   PENDIENTES_DE_MIGRAR: ExcepcionDeArchivo[];
   ACCIONES_CON_CASO_DE_USO: ExcepcionDeArchivo[];
 }
@@ -195,6 +196,33 @@ describe("ui-sin-internals-de-dominio: las excepciones, en las dos direcciones",
   });
 });
 
+describe("sin-internals-de-otro-dominio: todos los dominios de negocio tienen su fachada y su regla (DOMINIOS_SIN_PUBLIC_TODAVIA, en las dos direcciones)", () => {
+  it("cada dominio de negocio tiene su regla `sin-internals-de-otro-dominio` y su public.ts (no hay un dominio exceptuado que ya pueda protegerse)", () => {
+    const reglas = CONFIG.forbidden.filter((r) => r.name === "sin-internals-de-otro-dominio");
+    // Una regla por dominio: si uno quedara en DOMINIOS_SIN_PUBLIC_TODAVIA, faltaría su regla.
+    expect(reglas, "falta la regla de algún dominio: ¿quedó uno en DOMINIOS_SIN_PUBLIC_TODAVIA? Si ya tiene fachada, sacalo de esa lista").toHaveLength(DOMINIOS_DE_NEGOCIO.length);
+    const sinFachada = DOMINIOS_DE_NEGOCIO.filter((d) => !existsSync(join(RAIZ, "src", "core", d, "public.ts")));
+    expect(sinFachada, `Estos dominios de negocio no tienen core/<dominio>/public.ts: ${sinFachada.join(", ")}`).toEqual([]);
+  });
+});
+
+describe("paginas-solo-consultas: las excepciones, en las dos direcciones", () => {
+  it("la regla está en la config", () => {
+    expect(CONFIG.forbidden.map((r) => r.name)).toContain("paginas-solo-consultas");
+  });
+
+  it("el conjunto de archivos de app/ y components/ que importan server/lecturas o server/persistencia es exactamente el de la lista (ni uno nuevo, ni uno ya migrado)", () => {
+    const reales = modulosCon(RE_UI, (d) => /^src\/server\/(lecturas|persistencia)\//.test(d.resolved));
+    const listadas = EXCEPCIONES["paginas-solo-consultas"].map((e) => e.ruta).sort();
+    expect(diferencia(reales, listadas), "Estas páginas importan server/lecturas o server/persistencia y no están en la lista (pedí los datos a una consulta en server/consultas):").toEqual([]);
+    expect(diferencia(listadas, reales), "Estas páginas ya no importan esas capas: sacalas de la lista (paginas-solo-consultas):").toEqual([]);
+  });
+
+  it("toda excepción lleva su motivo", () => {
+    expect(EXCEPCIONES["paginas-solo-consultas"].filter((e) => !e.motivo || e.motivo.length < 20)).toEqual([]);
+  });
+});
+
 describe("core-sin-react-next: las excepciones, en las dos direcciones", () => {
   it("el conjunto de archivos de core/ que importan react/react-dom/next es exactamente el de la lista", () => {
     const reales = modulosCon(RE_CORE, (d) => RE_REACT_NEXT.test(d.resolved));
@@ -262,6 +290,15 @@ describe("persistencia-solo-desde-casos-de-uso (Fase M): los casos de uso no son
     expect(sinServerOnly, `Estos casos de uso no abren con import "server-only":\n${sinServerOnly.join("\n")}`).toEqual([]);
   });
 
+  it("todo archivo de server/lecturas/permisos/ (las lecturas de decisión de gobierno, Hito 3 Fase II) abre con import \"server-only\"", () => {
+    // Otras lecturas compartidas no lo llevan a propósito (las importan scripts con `tsx` y Playwright, ADR-026); las de gobierno solo las usan los casos de
+    // uso y la transacción de gobierno (y el seed, que corre con `--conditions=react-server`): ninguna puede terminar en un bundle de cliente.
+    const LECTURAS_DE_GOBIERNO = archivosTs(join(RAIZ, "src/server/lecturas/permisos"));
+    expect(LECTURAS_DE_GOBIERNO.length).toBeGreaterThan(0);
+    const sinServerOnly = LECTURAS_DE_GOBIERNO.filter((r) => !abreConServerOnly(readFileSync(join(RAIZ, r), "utf8")));
+    expect(sinServerOnly, `Estas lecturas de gobierno no abren con import "server-only":\n${sinServerOnly.join("\n")}`).toEqual([]);
+  });
+
   it("el detector de import \"server-only\" (con fuentes sintéticas)", () => {
     expect(abreConServerOnly('import "server-only";\nimport { x } from "y";')).toBe(true);
     expect(abreConServerOnly('// import "server-only";\nimport { x } from "y";')).toBe(false);
@@ -296,5 +333,148 @@ describe("accion-migrada-sin-orquestacion (Fase M): ACCIONES_CON_CASO_DE_USO", (
     const enGrafo = new Set(modulos.map((m) => m.source));
     const fuera = LISTA.map((e) => e.ruta).filter((r) => !enGrafo.has(r));
     expect(fuera).toEqual([]);
+  });
+});
+
+/**
+ * `auditoria-capa` (Hito 5, pieza 5.4, B5): la capa del escritor de la auditoría (`src/server/auditoria/`) son DOS entradas de la misma regla de dependency-cruiser (como `persistencia-capa`):
+ * lo que la capa no puede importar y quién no puede importarla. dependency-cruiser falla cuando aparece una dependencia prohibida, pero NO cuando alguien borra una entrada o le saca una
+ * carpeta a la lista (la regla queda más floja y todo sigue verde): acá se exigen las dos entradas con sus listas EXACTAS. Los archivos de la carpeta, `server-only`, las impurezas y la única
+ * escritura permitida las fija `server-auditoria.test.ts`.
+ */
+describe("auditoria-capa (Hito 5, 5.4-B5): las dos entradas con sus listas exactas", () => {
+  interface ReglaConRutas {
+    name: string;
+    severity: string;
+    from: { path: string | string[] };
+    to: { path: string | string[] };
+  }
+  const entradas = CONFIG.forbidden.filter((r) => r.name === "auditoria-capa") as unknown as ReglaConRutas[];
+  const rutas = (p: string | string[]) => (Array.isArray(p) ? p : [p]);
+  const saliente = entradas.find((e) => rutas(e.from.path).join("|") === "^src/server/auditoria/");
+  const entrante = entradas.find((e) => rutas(e.to.path).join("|") === "^src/server/auditoria/");
+
+  it("la regla tiene exactamente dos entradas, las dos en error", () => {
+    expect(entradas).toHaveLength(2);
+    expect(entradas.map((e) => e.severity)).toEqual(["error", "error"]);
+  });
+
+  it("(1) desde server/auditoria no se puede ir a la UI, lib, lo demás de server, Next ni la sesión (core/auth)", () => {
+    expect(saliente, "falta la entrada que sale de ^src/server/auditoria/").toBeDefined();
+    expect(rutas(saliente!.to.path)).toEqual([
+      "^src/(app|components|lib)/",
+      "^src/server/(actions|consultas|lecturas|persistencia|acceso|sesion|carta-publica|adaptadores|operaciones-de-plataforma)/",
+      "^node_modules/next/",
+      "^src/core/auth/",
+    ]);
+  });
+
+  it("(2) a server/auditoria no llegan la UI, lib, el proxy, el entorno ni consultas, lecturas, persistencia, acceso, carta pública o adaptadores", () => {
+    expect(entrante, "falta la entrada que llega a ^src/server/auditoria/").toBeDefined();
+    expect(rutas(entrante!.from.path)).toEqual(["^src/(app|components|lib)/|^src/server/(consultas|lecturas|persistencia|acceso|carta-publica|adaptadores)/|^src/(proxy|env)\\.ts$"]);
+  });
+});
+
+/**
+ * `carta-publica-alcance` + `ALCANCE_CARTA_PUBLICA` (Hito 5, pieza 5.2, paso 0.1; frontera de seguridad autorizada por el dueño el 2026-10-07).
+ *
+ * La regla de dependency-cruiser prohíbe que la carta pública (sin sesión) ALCANCE auth, permisos o `server/` salvo una lista cerrada de archivos, pero NO dice
+ * nada de una entrada de la lista que sobra: un patrón que se ensancha (una carpeta entera en lugar de un archivo, un `gate.ts` agregado «por las dudas») deja de
+ * proteger y `npm run arquitectura` sigue verde, porque solo falla ante una dependencia prohibida, nunca ante un permiso de más. Acá se calcula, sobre el grafo REAL
+ * que dependency-cruiser arma (mismas opciones que el CLI), qué alcanza la carta dentro de la zona prohibida y se exige que sea EXACTAMENTE lo permitido:
+ *
+ *  1. Nada alcanzado dentro de la zona queda fuera de la lista (lo mismo que ya exige la regla; así también lo ve el test).
+ *  2. Nada de lo que la lista permite deja de ser alcanzado: todo archivo que existe y cumple una entrada tiene que estar en el alcance de la carta, y cada
+ *     entrada tiene que cubrir al menos un archivo alcanzado. Es la dirección que la regla no puede ver.
+ *  3. Cada entrada nombra ARCHIVOS (`\.ts$`), no carpetas: una carpeta entera permite todo lo que mañana se le agregue.
+ */
+interface ReglaDeAlcance {
+  from: { path: string };
+  to: { path: string; pathNot: string[] };
+}
+interface ModuloDelGrafo {
+  source: string;
+  dependencies: { resolved: string }[];
+}
+
+/** El alcance de `desde` (cierre transitivo por imports, reexports e imports dinámicos; los puntos de entrada incluidos) contra la lista `permitidas` de la `zona`. */
+function revisarAlcance(grafo: readonly ModuloDelGrafo[], desde: RegExp, zona: RegExp, permitidas: readonly RegExp[]) {
+  const porRuta = new Map(grafo.map((m) => [m.source, m]));
+  const vistos = new Set(grafo.filter((m) => desde.test(m.source)).map((m) => m.source));
+  const pendientes = [...vistos];
+  while (pendientes.length) {
+    for (const d of porRuta.get(pendientes.pop()!)?.dependencies ?? []) {
+      if (!vistos.has(d.resolved)) {
+        vistos.add(d.resolved);
+        pendientes.push(d.resolved);
+      }
+    }
+  }
+  const permitido = (ruta: string) => permitidas.some((p) => p.test(ruta));
+  const alcanzadosEnZona = [...vistos].filter((r) => zona.test(r)).sort();
+  return {
+    alcanzadosEnZona,
+    /** Alcanzados dentro de la zona que ninguna entrada permite. */
+    sinPermiso: alcanzadosEnZona.filter((r) => !permitido(r)),
+    /** Archivos que existen, caen en la zona y cumplen una entrada, pero la carta NO alcanza: permiso de más. */
+    sobran: grafo
+      .map((m) => m.source)
+      .filter((r) => zona.test(r) && permitido(r) && !vistos.has(r))
+      .sort(),
+    /** Entradas que no cubren ningún archivo alcanzado. */
+    entradasSinUso: permitidas.filter((p) => !alcanzadosEnZona.some((r) => p.test(r))).map((p) => p.source),
+  };
+}
+
+describe("carta-publica-alcance: ALCANCE_CARTA_PUBLICA es exactamente lo que la carta alcanza (Hito 5, 5.2 paso 0.1)", () => {
+  const regla = CONFIG.forbidden.find((r) => r.name === "carta-publica-alcance") as unknown as ReglaDeAlcance | undefined;
+
+  it("la regla existe y su lista cerrada no está vacía", () => {
+    expect(regla, "no está la regla carta-publica-alcance en la config").toBeDefined();
+    expect(regla!.to.pathNot.length).toBeGreaterThan(0);
+  });
+
+  it("cada entrada de la lista nombra un ARCHIVO (termina en `\\.ts$`), nunca una carpeta", () => {
+    const carpetas = regla!.to.pathNot.filter((e) => !e.endsWith("\\.ts$"));
+    expect(carpetas, `ALCANCE_CARTA_PUBLICA: estas entradas no terminan en \\.ts$ (¿una carpeta?):\n${carpetas.join("\n")}`).toEqual([]);
+  });
+
+  it("la carta alcanza, dentro de la zona prohibida, exactamente lo que la lista permite (ni un archivo sin permiso, ni un permiso sin uso)", () => {
+    const r = revisarAlcance(modulos, new RegExp(regla!.from.path), new RegExp(regla!.to.path), regla!.to.pathNot.map((e) => new RegExp(e)));
+    expect(r.alcanzadosEnZona.length, "el cálculo de alcance no llega a la zona prohibida: la prueba pasaría en vacío").toBeGreaterThan(5);
+    expect(r.sinPermiso, `La carta alcanza esto y ALCANCE_CARTA_PUBLICA no lo permite:\n${r.sinPermiso.join("\n")}`).toEqual([]);
+    expect(r.sobran, `ALCANCE_CARTA_PUBLICA permite estos archivos que la carta NO alcanza (sobra permiso: ¿un patrón ensanchado?):\n${r.sobran.join("\n")}`).toEqual([]);
+    expect(r.entradasSinUso, `Estas entradas de ALCANCE_CARTA_PUBLICA no cubren ningún archivo que la carta alcance:\n${r.entradasSinUso.join("\n")}`).toEqual([]);
+  });
+
+  describe("el cálculo (con un grafo sintético)", () => {
+    const modulo = (source: string, ...deps: string[]): ModuloDelGrafo => ({ source, dependencies: deps.map((resolved) => ({ resolved })) });
+    const grafo = [
+      modulo("src/app/pagina.tsx", "src/server/a.ts"),
+      modulo("src/server/a.ts", "src/lib/ayuda.ts", "src/server/b.ts"),
+      modulo("src/server/b.ts"),
+      modulo("src/server/c.ts"),
+      modulo("src/lib/ayuda.ts"),
+    ];
+    const desde = /^src\/app\//;
+    const zona = /^src\/server\//;
+
+    it("todo permitido y alcanzado: sin hallazgos", () => {
+      const r = revisarAlcance(grafo, desde, zona, [/^src\/server\/(a|b)\.ts$/]);
+      expect([r.sinPermiso, r.sobran, r.entradasSinUso]).toEqual([[], [], []]);
+    });
+
+    it("un alcanzado sin permiso se marca (y se sigue por los intermedios fuera de la zona)", () => {
+      expect(revisarAlcance(grafo, desde, zona, [/^src\/server\/a\.ts$/]).sinPermiso).toEqual(["src/server/b.ts"]);
+    });
+
+    it("una entrada ensanchada permite un archivo que nadie alcanza: sobra", () => {
+      const r = revisarAlcance(grafo, desde, zona, [/^src\/server\//]);
+      expect(r.sobran).toEqual(["src/server/c.ts"]);
+    });
+
+    it("una entrada que no cubre nada alcanzado se marca", () => {
+      expect(revisarAlcance(grafo, desde, zona, [/^src\/server\/(a|b)\.ts$/, /^src\/server\/c\.ts$/]).entradasSinUso).toEqual(["^src\\/server\\/c\\.ts$"]);
+    });
   });
 });

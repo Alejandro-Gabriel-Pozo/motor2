@@ -45,8 +45,11 @@ const RESERVADAS_SIN_USO_TODAVIA: Readonly<Record<string, string>> = {
 const GUARDAS_CON_CLAVE_DINAMICA: Readonly<Record<string, string>> = {
   "server/acceso/gate.ts|accionClave": "Implementación de `sucursalesDondeElUsuarioPuedeVer`: reenvía a `obtenerMiNivelPermiso` la clave que recibió; cada llamada a la primera se inventaría.",
   "server/acceso/gate.ts|deSucursal": "Implementación de `accionesDelMenuQueElUsuarioPuedeVer`: reenvía a `accionesQueElUsuarioPuedeVer` las claves de sucursal que recibió; cada llamada al helper se inventaría.",
+  "server/acceso/origen-de-copia.ts|clave": "Implementación de `leerOrigenDeCopia`: reenvía a `sucursalesDondeElUsuarioPuedeVer` la clave que recibió; cada llamada lleva su clave literal (`carta_ver`, `receta_sucursal_copiar`).",
   "server/actions/con-permiso.ts|accionClave": "Implementación de `conPermiso`: reenvía la clave que recibió; cada llamada a `conPermiso` se inventaría.",
   "server/actions/con-sesion.ts|accion": "Implementación de `requerirVer*`: reenvía la clave que recibió; cada llamada a `requerirVer*` se inventaría.",
+  "server/actions/con-sesion.ts|claves": "Implementación de `requerirVerAlguna*`: reenvía al cálculo del menú la lista que recibió; cada llamada a `requerirVerAlguna*` lleva su lista literal y se inventaría.",
+  "server/actions/con-sesion.ts|primera": "Implementación de `requerirVerAlguna*`: pide al gate el motivo del rechazo de la primera clave de la lista que recibió (se inventaría en cada llamada).",
   "app/(app)/movimientos/[proceso]/page.tsx|accionClave": "La acción se resuelve del proceso de la URL con `ACCION_POR_PROCESO`; sus valores se inventarían como mapa.",
   "server/actions/movimientos/movimientos.ts|accionClave": "La acción se resuelve del proceso con `ACCION_POR_PROCESO`; sus valores se inventarían como mapa.",
   "components/app-shell.tsx|accionesDeNavegacion()": "Las acciones del menú: cada ítem declara la suya y `menu-con-permiso.test.ts` comprueba que el menú use la misma clave que la página.",

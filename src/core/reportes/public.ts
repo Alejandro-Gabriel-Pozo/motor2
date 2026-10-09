@@ -1,19 +1,20 @@
 /**
  * Fachada PÚBLICA y PURA del dominio `reportes` (Task #41, Fase C3).
  *
- * Fuera de `core/reportes/` se importa esta fachada o `public-servidor.ts`, nunca un archivo interno (regla
- * `sin-internals-de-otro-dominio` de `.dependency-cruiser.cjs`). Acá van SOLO los módulos que no alcanzan `@/lib/db` ni el
- * runtime de Prisma, ni directa ni transitivamente (regla `publico-puro`). Lo que sí toca la base va en
- * `public-servidor.ts`.
+ * Fuera de `core/reportes/` se importa esta fachada, nunca un archivo interno (regla `sin-internals-de-otro-dominio` de
+ * `.dependency-cruiser.cjs`). Acá van SOLO los módulos que no alcanzan `@/lib/db` ni el runtime de Prisma, ni directa ni
+ * transitivamente (regla `publico-puro`).
  *
- * Solo TIPOS (se borran al compilar): la función `compararRendimientosPorSucursal` hace consultas y va en `public-servidor.ts` (Pureza Fase 2, paso 2.2).
+ * `core/reportes` ya no tiene fachada de servidor (Hito 5, pieza 5.4, A1): `public-servidor.ts` solo reexportaba cosas puras
+ * (el ciclo con `core/movimientos` que su cabecera citaba ya no existe) y se retiró. Las consultas de los reportes viven en
+ * `server/consultas/reportes/` (por ejemplo `compararRendimientosPorSucursal`, Pureza Fase 2, paso 2.2); no entran por acá.
  *
  * Solo reexports explícitos (nunca `export *`, nunca lógica), y solo lo que hoy se usa desde afuera del dominio.
  */
 export type { FiltroComparacionRendimiento, FilaComparacionRendimiento } from "./rendimiento-por-sucursal";
 export { FOOD_COST_OBJETIVO_PCT } from "./margen-objetivo";
 export { resolverObjetivoFoodCost } from "./margen-objetivo";
-export { resolverRangoDeReporte } from "./rango-por-defecto";
+export { MAXIMO_DE_DIAS_DE_UN_RANGO, resolverRangoDeReporte } from "./rango-por-defecto";
 export type { FilaDebidoConsignante } from "./consignacion";
 export type { FilaStockSinVenderConsignacion } from "./consignacion";
 export type { FilaResumenConsolidado } from "./resumen-consolidado";
@@ -63,7 +64,7 @@ export type { ItemOperacion } from "./trazabilidad";
 export type { FilaValuacionInventario } from "./valuacion";
 export { resolverRangoPorDefecto } from "./rango-por-defecto";
 export type { CotizacionDia, ResultadoSincronizacionDolar, UltimaCotizacion } from "./cotizacion-dolar";
-export { cotizacionPlausible, cotizacionVencida, leerBcra, leerDolarApi, leerHistorial, mensajeDeCotizacionDescartada, pesosADolares, planDeRelleno } from "./cotizacion-dolar";
+export { codigosDeErroresDeSincronizacion, cotizacionPlausible, cotizacionVencida, leerBcra, leerDolarApi, leerHistorial, mensajeDeCotizacionDescartada, pesosADolares, planDeRelleno } from "./cotizacion-dolar";
 export type { ResultadoSincronizacionIPC, SerieIPC } from "./indices-economicos";
 export {
   antiguedadSerieIPC,
@@ -110,6 +111,7 @@ export type { ReportePerdidas } from "./perdidas";
 export type { ItemPeriodo } from "./periodo-tipos";
 export type { VentasDelPeriodo } from "./periodo-ventas";
 export type { MargenDelPeriodo } from "./periodo-margen";
+export { calcularMargenNominalDelPeriodo } from "./periodo-margen";
 export type { FilaVentaProducto } from "./periodo-ventas";
 export type { RatioGastoVentas } from "./periodo-ratio";
 export { hayObjetivosCargados } from "./margen-objetivo";
@@ -120,6 +122,7 @@ export { generarDigestAlertas } from "./periodo-alertas";
 export { calcularComprasDelPeriodo } from "./periodo-compras";
 export { calcularGastoPorInsumoDelPeriodo } from "./periodo-compras";
 export { calcularVentasDelPeriodo } from "./periodo-ventas";
+export type { FilaCategoriaVenta } from "./periodo-categorias";
 export { agruparVentasPorCategoria } from "./periodo-categorias";
 export { pvSinCategoriaDe } from "./periodo-categorias";
 export { calcularCantidadTeoricaBruta } from "./rendimiento-recetas-vistas";
@@ -150,8 +153,9 @@ export type { FilaRendimientoCompartido } from "./rendimiento-recetas";
 export type { ResumenFinanciero } from "./resumen-operativo";
 export type { ResumenOperativo } from "./resumen-operativo";
 export type { ReporteRotacionMesas } from "./rotacion-mesas";
-export { calcularRotacionMesas } from "./rotacion-mesas";
+export { calcularRotacionMesas, MAXIMO_DE_CUENTAS_EN_ROTACION } from "./rotacion-mesas";
 export { TAMANO_PAGINA_TICKETS } from "./tickets-emitidos";
+export { leerFiltroTickets, serializarFiltroTickets } from "./tickets-emitidos";
 export type { FiltroTickets } from "./tickets-emitidos";
 export type { LineaTicketEmitido } from "./tickets-emitidos";
 export type { FilaTicketEmitido } from "./tickets-emitidos";

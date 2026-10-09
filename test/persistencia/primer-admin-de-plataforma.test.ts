@@ -1,7 +1,9 @@
 import { randomBytes } from "node:crypto";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { descifrarSecreto } from "../../src/core/plataforma/cifrado";
+import { generarPedidoDeIngreso } from "../../src/core/plataforma/pedido-de-ingreso";
 import { AdminDePlataformaInvalidoError } from "../../src/core/plataforma/primer-admin";
+import { azarDelProceso } from "../../src/lib/azar";
 import { crearAdminDePlataforma } from "../../plataforma/src/servidor/alta-de-admin";
 import { codigoTotp, pasoDeTotp } from "../../src/core/plataforma/totp";
 import { prepararCodigoDeIngreso, verificarCodigoDeIngreso, verificarSegundoFactor, type DependenciasDeIngreso } from "../../plataforma/src/servidor/ingreso";
@@ -16,13 +18,19 @@ const SECRETOS = { claveTotp: randomBytes(32).toString("base64"), secretoCodigos
 const AHORA = new Date("2026-10-03T12:00:00.000Z");
 const deps: DependenciasDeIngreso = { ahora: () => AHORA, secretoDeCodigos: SECRETOS.secretoCodigos, claveTotp: SECRETOS.claveTotp };
 
-afterEach(async () => {
+// Arranca cada test sin administradores de plataforma: varios archivos de la corrida completa dejan filas (o las escriben en segundo plano), y los tests de acá cuentan `AdminPlataforma` desde cero. El orden de
+// los archivos cambia de una corrida a otra, así que depender de que nadie haya dejado nada era un test intermitente.
+beforeEach(limpiarAdministradores);
+afterEach(limpiarAdministradores);
+
+async function limpiarAdministradores() {
   await prismaAdmin.$executeRawUnsafe('DELETE FROM "SesionPlataforma"');
   await prismaAdmin.$executeRawUnsafe('DELETE FROM "CodigoDeRecuperacionPlataforma"');
   await prismaAdmin.$executeRawUnsafe('DELETE FROM "CodigoDeIngresoPlataforma"');
   await prismaAdmin.$executeRawUnsafe('DELETE FROM "AdminPlataforma"');
-  await prismaAdmin.user.deleteMany({ where: { email: "usuario@empresa.test" } });
-});
+  // `mode: "insensitive"`: el test crea «Usuario@Empresa.test» y, sin esto, sobrevivía a la limpieza y rompía la corrida siguiente.
+  await prismaAdmin.user.deleteMany({ where: { email: { equals: "usuario@empresa.test", mode: "insensitive" } } });
+}
 
 afterAll(() => prismaAdmin.$disconnect());
 
@@ -63,15 +71,18 @@ describe("crearAdminDePlataforma", () => {
   it("lo que se le muestra a la persona alcanza para ingresar por la consola: código del mail + TOTP, y un código de recuperación", async () => {
     const creado = await crearAdminDePlataforma(prismaAdmin, { email: "dueno@plataforma.test", nombre: "Dueño" }, SECRETOS);
 
-    const mensaje = await prepararCodigoDeIngreso(prismaAdmin, deps, creado.email);
+    // Cada pedido de código lleva el de su navegador (la cookie del pedido): el código solo se comprueba con él.
+    const pedido = generarPedidoDeIngreso(azarDelProceso);
+    const mensaje = await prepararCodigoDeIngreso(prismaAdmin, deps, creado.email, pedido);
     const codigo = /\b(\d{6})\b/.exec(mensaje!.texto)![1];
-    const paso1 = await verificarCodigoDeIngreso(prismaAdmin, deps, creado.email, codigo);
+    const paso1 = await verificarCodigoDeIngreso(prismaAdmin, deps, creado.email, codigo, pedido);
     expect(paso1.ok).toBe(true);
     const paso2 = await verificarSegundoFactor(prismaAdmin, deps, paso1.ok ? paso1.token : "", codigoTotp(creado.secretoTotp, pasoDeTotp(AHORA.getTime())));
     expect(paso2.ok).toBe(true);
 
-    const mensaje2 = await prepararCodigoDeIngreso(prismaAdmin, deps, creado.email);
-    const paso1b = await verificarCodigoDeIngreso(prismaAdmin, deps, creado.email, /\b(\d{6})\b/.exec(mensaje2!.texto)![1]);
+    const pedido2 = generarPedidoDeIngreso(azarDelProceso);
+    const mensaje2 = await prepararCodigoDeIngreso(prismaAdmin, deps, creado.email, pedido2);
+    const paso1b = await verificarCodigoDeIngreso(prismaAdmin, deps, creado.email, /\b(\d{6})\b/.exec(mensaje2!.texto)![1], pedido2);
     const paso2b = await verificarSegundoFactor(prismaAdmin, deps, paso1b.ok ? paso1b.token : "", creado.codigosDeRecuperacion[0]);
     expect(paso2b.ok).toBe(true);
   });

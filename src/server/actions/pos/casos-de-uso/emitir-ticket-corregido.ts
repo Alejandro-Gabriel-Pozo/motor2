@@ -2,8 +2,8 @@ import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_CUENTA_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta.guard";
 import type { ComandoEmitirTicketCorregido, ResultadoEmitirTicketCorregido } from "@/core/features/cuentas/cuenta.schema";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { armarTicketVigente, estadoDeTicket } from "@/core/pos/ticket";
 import { validarMotivoAnulacion } from "@/core/pos/cuenta";
 import { formatearNumeroTicket } from "@/core/pos/numeracion-ticket";
@@ -34,7 +34,7 @@ import { escribirEjemplarCorregido } from "@/server/persistencia/pos/escribir-ej
  * @idempotency No aplica (nunca la tuvo) — una segunda emisión ve el ejemplar ya vigente y se rechaza (chequeo de estado, no I3).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (campo ejemplarTicket).
- * @ficha permiso=pos_emitir_ticket_corregido transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=pos_emitir_ticket_corregido transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function emitirTicketCorregidoCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,

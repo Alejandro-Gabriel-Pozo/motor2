@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Carta pública nueva (ADR-006, Fase 3): `/carta-publica/<empresa>/...`, sin sesión. La empresa `e2e` es la de
@@ -154,6 +155,11 @@ test.describe("carta de una sucursal", () => {
     await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: producto.id, precio: 22222, habilitado: true } });
     await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
     await prisma.capacidadSucursal.create({ data: { accionClave: "precio_local", sucursalId, habilitado: false } });
+    // O.41: cambiar una capacidad es solo del gerente. Este test es sobre la revalidación de la carta, no sobre ese punto: el usuario de las pruebas (que no es
+    // gerente por defecto) pasa a serlo mientras dura, y al terminar la empresa queda sin gerente, como la esperan los demás specs.
+    const admin = await prismaAdmin.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    await prismaAdmin.usuarioEmpresa.updateMany({ where: { empresaId: sucursal.empresaId, rolEmpresa: "gerente" }, data: { rolEmpresa: null } });
+    await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: admin.id, empresaId: sucursal.empresaId } }, data: { rolEmpresa: "gerente" } });
 
     try {
       await page.goto(`/carta-publica/${EMPRESA}/${slug}`);
@@ -177,6 +183,7 @@ test.describe("carta de una sucursal", () => {
       await expect(page.getByText("$22.222")).toBeVisible();
       await expect(page.getByText("$11.111")).toHaveCount(0);
     } finally {
+      await prismaAdmin.usuarioEmpresa.updateMany({ where: { empresaId: sucursal.empresaId, rolEmpresa: "gerente" }, data: { rolEmpresa: null } });
       await prisma.capacidadSucursal.deleteMany({ where: { accionClave: "precio_local", sucursalId } });
       await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
       await prisma.precioLocalProducto.deleteMany({ where: { productoId: producto.id } });

@@ -8,7 +8,8 @@ import { crearMembresia } from "../setup/membresia";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { agregarOActualizarUsuario, actualizarActivoMembresia, actualizarNotasMembresia } from "../../src/server/actions/auth/usuarios";
 import { conGobierno } from "../../src/server/actions/con-gobierno";
-import { conInvariantesDeGobierno, contarAdminsEfectivos } from "../../src/core/permisos/invariantes";
+import { contarAdminsEfectivos } from "../../src/server/lecturas/permisos/gobierno";
+import { conInvariantesDeGobierno } from "../../src/server/actions/con-gobierno";
 import { ok } from "../../src/server/actions/tipos";
 
 /**

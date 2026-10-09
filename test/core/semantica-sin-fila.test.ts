@@ -7,7 +7,7 @@ import { aplicarDescuentoDeProducto } from "../../src/core/carta/descuento-produ
 import { precioDePromo } from "../../src/core/carta/promo-sucursal";
 import { elegirMinimo } from "../../src/core/stock/stock-minimo";
 import { resolverProximoConteo } from "../../src/core/stock/frecuencia-conteo";
-import { sucursalTieneCapacidad } from "../../src/core/permisos/capacidades-sucursal";
+import { sucursalTieneCapacidad } from "../../src/server/acceso/capacidades-sucursal";
 
 /**
  * CARACTERIZACIÓN (ADR-009): qué significa "no hay fila" en cada resolver puro por sucursal, una familia por bloque. Si una semántica de

@@ -7,7 +7,7 @@ import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
+import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 /**
  * Secciones excluibles del respaldo automático (`Seccion.sirveDeRespaldoEnVentas`, docs/plan-seccion-habitual-stock-2026-09-25.md

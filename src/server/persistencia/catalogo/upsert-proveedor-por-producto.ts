@@ -27,6 +27,14 @@ import type { Db } from "@/lib/db-tipos";
  * proveedor» se derivan del Kardex vigente (`server/lecturas/catalogo/ofertas-de-proveedor.ts`), que sí se entera de una compra anulada o de un proveedor corregido. De esta tabla solo se lee
  * la unidad de compra y la referencia del proveedor, que el Kardex no guarda.
  */
+/** Lo que quedó del vínculo tras el upsert: el precio por unidad de stock ANTES (`null` si el par no existía) y DESPUÉS, y los nombres para describir el cambio en la auditoría. */
+export interface ResultadoDelVinculo {
+  precioAnterior: number | null;
+  precioNuevo: number;
+  productoNombre: string;
+  proveedorNombre: string;
+}
+
 export async function upsertProveedorPorProducto(db: Db, datos: {
   productoId: string;
   proveedorId: string;
@@ -36,17 +44,21 @@ export async function upsertProveedorPorProducto(db: Db, datos: {
   fechaCompra?: Date;
   /** Cómo llama el proveedor a este producto — igual criterio que el precio: un valor vacío nunca pisa uno ya cargado. */
   referenciaProveedor?: string;
-}): Promise<void> {
-  const id = crypto.randomUUID();
-  const fecha = datos.fechaCompra ?? new Date();
+}): Promise<ResultadoDelVinculo> {
+  // Ni el reloj ni el azar se leen acá (Pureza, auditoría de las Fases 0 y 1): el id lo genera la base (`gen_random_uuid()`) y, si el llamador no trae la fecha de la compra, vale la hora de la
+  // base (`now()`, el mismo default de la columna). El único llamador de producción siempre pasa `fechaCompra`.
+  const fecha = datos.fechaCompra ?? null;
+  const clave = { productoId_proveedorId_unidadCompraId: { productoId: datos.productoId, proveedorId: datos.proveedorId, unidadCompraId: datos.unidadCompraId } };
+  // El precio ANTERIOR (para la auditoría del caso de uso): se lee dentro de la misma transacción, justo antes del upsert.
+  const previa = await db.proveedorPorProducto.findUnique({ where: clave, select: { precioPorUnidadStock: true } });
   const referencia = datos.referenciaProveedor?.trim() || null;
 
   await db.$executeRaw`
     INSERT INTO "ProveedorPorProducto"
       (id, "productoId", "proveedorId", "unidadCompraId", "precioUnitario", "precioPorUnidadStock", "ultimaCompra", "referenciaProveedor")
     VALUES
-      (${id}, ${datos.productoId}, ${datos.proveedorId}, ${datos.unidadCompraId},
-       ${datos.precioUnitario}, ${datos.precioPorUnidadStock}, ${fecha}, ${referencia})
+      (gen_random_uuid()::text, ${datos.productoId}, ${datos.proveedorId}, ${datos.unidadCompraId},
+       ${datos.precioUnitario}, ${datos.precioPorUnidadStock}, COALESCE(${fecha}::timestamp, timezone('utc', now())), ${referencia})
     ON CONFLICT ("productoId", "proveedorId", "unidadCompraId")
     DO UPDATE SET
       "precioUnitario" = CASE WHEN excluded."precioUnitario" > 0 AND excluded."ultimaCompra" >= "ProveedorPorProducto"."ultimaCompra"
@@ -57,4 +69,10 @@ export async function upsertProveedorPorProducto(db: Db, datos: {
       "referenciaProveedor" = CASE WHEN excluded."referenciaProveedor" IS NOT NULL
         THEN excluded."referenciaProveedor" ELSE "ProveedorPorProducto"."referenciaProveedor" END
   `;
+
+  const actual = await db.proveedorPorProducto.findUniqueOrThrow({
+    where: clave,
+    select: { precioPorUnidadStock: true, producto: { select: { nombre: true } }, proveedor: { select: { nombre: true } } },
+  });
+  return { precioAnterior: previa ? Number(previa.precioPorUnidadStock) : null, precioNuevo: Number(actual.precioPorUnidadStock), productoNombre: actual.producto.nombre, proveedorNombre: actual.proveedor.nombre };
 }

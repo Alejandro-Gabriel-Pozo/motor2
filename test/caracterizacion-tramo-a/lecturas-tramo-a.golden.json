@@ -1,0 +1,2655 @@
+{
+  "pos.obtenerMapaDeMesas(Central)": {
+    "consultas": "1: mesa.findMany×1",
+    "resultado": {
+      "mesas": [
+        {
+          "id": "mesa-1",
+          "numero": 1,
+          "estado": "libre",
+          "productosSinEnviar": 0,
+          "total": 0,
+          "mesero": null,
+          "tiempoAbierta": null,
+          "pedidosEnviados": 0
+        },
+        {
+          "id": "mesa-2",
+          "numero": 2,
+          "estado": "en_pedido",
+          "productosSinEnviar": 1,
+          "total": 32400,
+          "mesero": "Moza",
+          "tiempoAbierta": "hace 4 h",
+          "pedidosEnviados": 2
+        },
+        {
+          "id": "mesa-3",
+          "numero": 3,
+          "estado": "en_pedido",
+          "productosSinEnviar": 0,
+          "total": 0,
+          "mesero": "cajero",
+          "tiempoAbierta": "hace 3 h 50 min",
+          "pedidosEnviados": 0
+        },
+        {
+          "id": "mesa-4",
+          "numero": 4,
+          "estado": "libre",
+          "productosSinEnviar": 0,
+          "total": 0,
+          "mesero": null,
+          "tiempoAbierta": null,
+          "pedidosEnviados": 0
+        }
+      ],
+      "metricas": {
+        "total": 4,
+        "libres": 2,
+        "enPedido": 2,
+        "ocupadas": 0
+      },
+      "siguienteNumero": 5
+    }
+  },
+  "pos.obtenerDetalleDeMesa(Central, mesa 2: cuenta abierta con espejo, borrador, cliente, descuento de producto y promo)": {
+    "consultas": "1: mesa.findFirst×1",
+    "resultado": {
+      "mesa": {
+        "id": "mesa-2",
+        "numero": 2
+      },
+      "cuenta": {
+        "id": "c-abierta",
+        "abiertaEn": "<fecha 2026-09-30T11:00:00.000Z>",
+        "mesero": "Moza",
+        "tiempoAbierta": "hace 4 h",
+        "comensales": 2,
+        "clienteId": "cli-ana",
+        "cliente": "Ana",
+        "descuentoPorcentaje": 10,
+        "total": 29400,
+        "sinEnviar": [
+          {
+            "id": "it-a-coca",
+            "productoId": "pv-coca",
+            "productoNombre": "Coca-Cola 500cc",
+            "decimales": 0,
+            "cantidad": 1,
+            "precioUnitario": 5000,
+            "precioListaUnitario": null,
+            "numeroEnvio": null,
+            "anulaAItemId": null,
+            "motivoAnulacion": null,
+            "creadoPor": "Moza",
+            "creadoEn": "<fecha 2026-09-30T11:04:00.000Z>",
+            "promoCuentaId": null,
+            "promoTitulo": null
+          }
+        ],
+        "envios": [
+          {
+            "numero": 1,
+            "items": [
+              {
+                "id": "it-a-pizza",
+                "productoId": "pv-pizza",
+                "productoNombre": "Pizza",
+                "decimales": 0,
+                "cantidad": 2,
+                "precioUnitario": 12000,
+                "precioListaUnitario": null,
+                "numeroEnvio": 1,
+                "anulaAItemId": null,
+                "motivoAnulacion": null,
+                "creadoPor": "Moza",
+                "creadoEn": "<fecha 2026-09-30T11:01:00.000Z>",
+                "promoCuentaId": null,
+                "promoTitulo": null,
+                "restante": 1,
+                "anulaciones": [
+                  {
+                    "id": "it-a-pizza-espejo",
+                    "productoId": "pv-pizza",
+                    "productoNombre": "Pizza",
+                    "decimales": 0,
+                    "cantidad": -1,
+                    "precioUnitario": 12000,
+                    "precioListaUnitario": null,
+                    "numeroEnvio": 1,
+                    "anulaAItemId": "it-a-pizza",
+                    "motivoAnulacion": "Se equivocó",
+                    "creadoPor": "cajero",
+                    "creadoEn": "<fecha 2026-09-30T11:02:00.000Z>",
+                    "promoCuentaId": null,
+                    "promoTitulo": null
+                  }
+                ]
+              },
+              {
+                "id": "it-a-flan",
+                "productoId": "pv-flan",
+                "productoNombre": "Flan",
+                "decimales": 0,
+                "cantidad": 1,
+                "precioUnitario": 2400,
+                "precioListaUnitario": 3000,
+                "numeroEnvio": 1,
+                "anulaAItemId": null,
+                "motivoAnulacion": null,
+                "creadoPor": "Moza",
+                "creadoEn": "<fecha 2026-09-30T11:03:00.000Z>",
+                "promoCuentaId": null,
+                "promoTitulo": null,
+                "restante": 1,
+                "anulaciones": []
+              }
+            ]
+          },
+          {
+            "numero": 2,
+            "items": [
+              {
+                "id": "it-a-promo-pizza",
+                "productoId": "pv-pizza",
+                "productoNombre": "Pizza",
+                "decimales": 0,
+                "cantidad": 1,
+                "precioUnitario": 10400,
+                "precioListaUnitario": null,
+                "numeroEnvio": 2,
+                "anulaAItemId": null,
+                "motivoAnulacion": null,
+                "creadoPor": "Moza",
+                "creadoEn": "<fecha 2026-09-30T11:05:00.000Z>",
+                "promoCuentaId": "prc-menu",
+                "promoTitulo": "Menú del día",
+                "restante": 1,
+                "anulaciones": []
+              },
+              {
+                "id": "it-a-promo-flan",
+                "productoId": "pv-flan",
+                "productoNombre": "Flan",
+                "decimales": 0,
+                "cantidad": 1,
+                "precioUnitario": 2600,
+                "precioListaUnitario": null,
+                "numeroEnvio": 2,
+                "anulaAItemId": null,
+                "motivoAnulacion": null,
+                "creadoPor": "Moza",
+                "creadoEn": "<fecha 2026-09-30T11:06:00.000Z>",
+                "promoCuentaId": "prc-menu",
+                "promoTitulo": "Menú del día",
+                "restante": 1,
+                "anulaciones": []
+              }
+            ]
+          }
+        ],
+        "itemsTotales": 6
+      }
+    }
+  },
+  "pos.obtenerDetalleDeMesa(Central, mesa 3: cuenta abierta sin ítems)": {
+    "consultas": "1: mesa.findFirst×1",
+    "resultado": {
+      "mesa": {
+        "id": "mesa-3",
+        "numero": 3
+      },
+      "cuenta": {
+        "id": "c-vacia",
+        "abiertaEn": "<fecha 2026-09-30T11:10:00.000Z>",
+        "mesero": "cajero",
+        "tiempoAbierta": "hace 3 h 50 min",
+        "comensales": null,
+        "clienteId": null,
+        "cliente": null,
+        "descuentoPorcentaje": null,
+        "total": 0,
+        "sinEnviar": [],
+        "envios": [],
+        "itemsTotales": 0
+      }
+    }
+  },
+  "pos.obtenerDetalleDeMesa(Central, mesa 1: libre)": {
+    "consultas": "1: mesa.findFirst×1",
+    "resultado": {
+      "mesa": {
+        "id": "mesa-1",
+        "numero": 1
+      },
+      "cuenta": null
+    }
+  },
+  "pos.obtenerDetalleDeMesa(Central, mesa 9 de Norte: null)": {
+    "consultas": "1: mesa.findFirst×1",
+    "resultado": null
+  },
+  "pos.obtenerTicketsRecientes(Central, mesa 4)": {
+    "consultas": "1: cuenta.findMany×1",
+    "resultado": [
+      {
+        "cuentaId": "c-cerrada-2",
+        "cerradaEn": "<fecha 2026-09-30T10:40:00.000Z>",
+        "mesero": "cajero",
+        "lineas": [
+          {
+            "producto": "Empanada",
+            "cantidad": 1.5,
+            "precioUnitario": 1350,
+            "precioListaUnitario": 1500,
+            "subtotal": 2025
+          }
+        ],
+        "total": 2025,
+        "ventaAnulada": true,
+        "numero": {
+          "numero": 2,
+          "ejemplar": 2
+        },
+        "corrigeA": {
+          "numero": 2,
+          "ejemplar": 1
+        },
+        "estado": "vigente",
+        "cliente": {
+          "nombre": "Ana",
+          "descuentoPorcentaje": 10
+        }
+      },
+      {
+        "cuentaId": "c-cerrada-1",
+        "cerradaEn": "<fecha 2026-09-30T10:20:00.000Z>",
+        "mesero": "Moza",
+        "lineas": [
+          {
+            "producto": "Pizza",
+            "cantidad": 1,
+            "precioUnitario": 12000,
+            "subtotal": 12000
+          },
+          {
+            "producto": "Flan",
+            "cantidad": 1,
+            "precioUnitario": 3000,
+            "subtotal": 3000
+          }
+        ],
+        "total": 15000,
+        "ventaAnulada": false,
+        "numero": {
+          "numero": 1,
+          "ejemplar": 1
+        },
+        "corrigeA": null,
+        "estado": "vigente",
+        "cliente": null
+      }
+    ]
+  },
+  "pos.obtenerTicketsRecientes(Central, mesa 4, límite 1)": {
+    "consultas": "1: cuenta.findMany×1",
+    "resultado": [
+      {
+        "cuentaId": "c-cerrada-2",
+        "cerradaEn": "<fecha 2026-09-30T10:40:00.000Z>",
+        "mesero": "cajero",
+        "lineas": [
+          {
+            "producto": "Empanada",
+            "cantidad": 1.5,
+            "precioUnitario": 1350,
+            "precioListaUnitario": 1500,
+            "subtotal": 2025
+          }
+        ],
+        "total": 2025,
+        "ventaAnulada": true,
+        "numero": {
+          "numero": 2,
+          "ejemplar": 2
+        },
+        "corrigeA": {
+          "numero": 2,
+          "ejemplar": 1
+        },
+        "estado": "vigente",
+        "cliente": {
+          "nombre": "Ana",
+          "descuentoPorcentaje": 10
+        }
+      }
+    ]
+  },
+  "pos.obtenerTicketsRecientes(Norte, mesa 4 de Central: vacío)": {
+    "consultas": "1: cuenta.findMany×1",
+    "resultado": []
+  },
+  "pos.cargarSelectorCartaDeLaMesa(Central)": {
+    "consultas": "17: capacidadSucursal.findMany×1, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, moduloEmpresa.findMany×1, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×2",
+    "resultado": {
+      "seccionesCarta": [
+        {
+          "seccionCartaId": "sc-platos",
+          "nombre": "Platos",
+          "entradas": [
+            {
+              "tipo": "promo",
+              "promoCartaId": "pc-menu",
+              "titulo": "Menú del día",
+              "precio": 13000,
+              "cupos": [
+                {
+                  "seccionCartaId": "sc-platos",
+                  "nombreSeccion": "Platos",
+                  "cantidadMinima": 1,
+                  "cantidadMaximaCupo": 1,
+                  "elegibles": [
+                    {
+                      "productoId": "pv-pizza",
+                      "codigo": "PV-PIZZA",
+                      "nombre": "Pizza",
+                      "precio": 12000,
+                      "decimales": 0,
+                      "pasoVenta": null,
+                      "tieneStockReal": false
+                    },
+                    {
+                      "productoId": "pv-empanada",
+                      "codigo": "PV-EMPANADA",
+                      "nombre": "Empanada",
+                      "precio": 1500,
+                      "decimales": 0,
+                      "pasoVenta": 0.5,
+                      "tieneStockReal": false
+                    }
+                  ]
+                },
+                {
+                  "seccionCartaId": "sc-postres",
+                  "nombreSeccion": "Postres",
+                  "cantidadMinima": 0,
+                  "cantidadMaximaCupo": 1,
+                  "elegibles": [
+                    {
+                      "productoId": "pv-flan",
+                      "codigo": "PV-FLAN",
+                      "nombre": "Flan",
+                      "precio": 2400,
+                      "precioLista": 3000,
+                      "decimales": 0,
+                      "pasoVenta": null,
+                      "tieneStockReal": false
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tipo": "carpeta",
+              "generoCartaId": "gen-veggie",
+              "nombre": "Veggie",
+              "entradas": [
+                {
+                  "tipo": "producto",
+                  "producto": {
+                    "productoId": "pv-pizza",
+                    "codigo": "PV-PIZZA",
+                    "nombre": "Pizza",
+                    "precio": 12000,
+                    "decimales": 0,
+                    "pasoVenta": null,
+                    "tieneStockReal": false
+                  }
+                }
+              ]
+            },
+            {
+              "tipo": "producto",
+              "producto": {
+                "productoId": "pv-empanada",
+                "codigo": "PV-EMPANADA",
+                "nombre": "Empanada",
+                "precio": 1500,
+                "decimales": 0,
+                "pasoVenta": 0.5,
+                "tieneStockReal": false
+              }
+            }
+          ]
+        },
+        {
+          "seccionCartaId": "sc-bebidas",
+          "nombre": "Bebidas",
+          "entradas": [
+            {
+              "tipo": "carpeta",
+              "generoCartaId": "gen-veggie",
+              "nombre": "Veggie",
+              "entradas": [
+                {
+                  "tipo": "agrupado",
+                  "itemAgrupadoCartaId": "ag-gaseosa",
+                  "nombre": "Gaseosa 500cc",
+                  "precioMinimo": 5000,
+                  "precioMaximo": 5200,
+                  "opciones": [
+                    {
+                      "productoId": "pv-coca",
+                      "codigo": "PV-COCA",
+                      "nombre": "Coca-Cola 500cc",
+                      "precio": 5000,
+                      "decimales": 0,
+                      "pasoVenta": null,
+                      "tieneStockReal": false
+                    },
+                    {
+                      "productoId": "pv-sprite",
+                      "codigo": "PV-SPRITE",
+                      "nombre": "Sprite 500cc",
+                      "precio": 5200,
+                      "decimales": 0,
+                      "pasoVenta": null,
+                      "tieneStockReal": false
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "seccionCartaId": "sc-postres",
+          "nombre": "Postres",
+          "entradas": [
+            {
+              "tipo": "producto",
+              "producto": {
+                "productoId": "pv-flan",
+                "codigo": "PV-FLAN",
+                "nombre": "Flan",
+                "precio": 2400,
+                "precioLista": 3000,
+                "decimales": 0,
+                "pasoVenta": null,
+                "tieneStockReal": false
+              }
+            }
+          ]
+        }
+      ],
+      "fueraDeCarta": [
+        {
+          "productoId": "pv-jugo",
+          "codigo": "PV-JUGO",
+          "nombre": "Jugo de naranja",
+          "precio": 4000,
+          "decimales": 0,
+          "pasoVenta": null,
+          "tieneStockReal": false
+        },
+        {
+          "productoId": "pv-torta",
+          "codigo": "PV-TORTA",
+          "nombre": "Torta",
+          "precio": 5000,
+          "decimales": 0,
+          "pasoVenta": null,
+          "tieneStockReal": true
+        }
+      ]
+    }
+  },
+  "pos.cargarSelectorCartaDeLaMesa(Norte)": {
+    "consultas": "17: capacidadSucursal.findMany×1, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, moduloEmpresa.findMany×1, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×2",
+    "resultado": {
+      "seccionesCarta": [
+        {
+          "seccionCartaId": "sc-platos",
+          "nombre": "Platos",
+          "entradas": [
+            {
+              "tipo": "carpeta",
+              "generoCartaId": "gen-norte",
+              "nombre": "Norteño",
+              "entradas": [
+                {
+                  "tipo": "producto",
+                  "producto": {
+                    "productoId": "pv-pizza",
+                    "codigo": "PV-PIZZA",
+                    "nombre": "Pizza",
+                    "precio": 13000,
+                    "decimales": 0,
+                    "pasoVenta": null,
+                    "tieneStockReal": false
+                  }
+                }
+              ]
+            },
+            {
+              "tipo": "producto",
+              "producto": {
+                "productoId": "pv-empanada",
+                "codigo": "PV-EMPANADA",
+                "nombre": "Empanada",
+                "precio": 1350,
+                "precioLista": 1500,
+                "decimales": 0,
+                "pasoVenta": 0.5,
+                "tieneStockReal": false
+              }
+            }
+          ]
+        }
+      ],
+      "fueraDeCarta": [
+        {
+          "productoId": "pv-fanta",
+          "codigo": "PV-FANTA",
+          "nombre": "Fanta 500cc",
+          "precio": 5000,
+          "decimales": 0,
+          "pasoVenta": null,
+          "tieneStockReal": false
+        }
+      ]
+    }
+  },
+  "pos.cargarPromoCartaParaAgregar(Central, Menú del día)": {
+    "consultas": "18: capacidadSucursal.findMany×1, contenidoCartaProducto.findMany×1, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, moduloEmpresa.findMany×1, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findFirst×1, promoCarta.findMany×2, seccionCarta.findMany×1, sucursal.findUnique×2",
+    "resultado": {
+      "id": "pc-menu",
+      "titulo": "Menú del día",
+      "precio": 13000,
+      "cupos": [
+        {
+          "seccionCartaId": "sc-platos",
+          "nombreSeccion": "Platos",
+          "cantidadMinima": 1,
+          "cantidadMaximaCupo": 1,
+          "elegibles": {
+            "<set>": [
+              "pv-pizza",
+              "pv-empanada"
+            ]
+          }
+        },
+        {
+          "seccionCartaId": "sc-postres",
+          "nombreSeccion": "Postres",
+          "cantidadMinima": 0,
+          "cantidadMaximaCupo": 1,
+          "elegibles": {
+            "<set>": [
+              "pv-flan"
+            ]
+          }
+        }
+      ],
+      "precioCartaPorProducto": {
+        "<map>": [
+          [
+            "pv-pizza",
+            12000
+          ],
+          [
+            "pv-empanada",
+            1500
+          ],
+          [
+            "pv-flan",
+            3000
+          ]
+        ]
+      }
+    }
+  },
+  "pos.cargarPromoCartaParaAgregar(Central, informativa sin cupos: null)": {
+    "consultas": "3: moduloEmpresa.findMany×1, promoCarta.findFirst×1, sucursal.findUnique×1",
+    "resultado": null
+  },
+  "pos.cargarPromoCartaParaAgregar(Norte, apagada ahí: null)": {
+    "consultas": "3: moduloEmpresa.findMany×1, promoCarta.findFirst×1, sucursal.findUnique×1",
+    "resultado": null
+  },
+  "carta.cargarAdminCarta(Central)": {
+    "consultas": "15: capacidadSucursal.findMany×2, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×2, sucursal.findMany×1, sucursal.findUnique×1",
+    "resultado": {
+      "cartaVacia": false,
+      "sucursalesConCarta": [
+        {
+          "id": "suc-norte",
+          "nombre": "Norte",
+          "cantidadProductos": 2
+        }
+      ],
+      "secciones": [
+        {
+          "id": "sc-barra",
+          "nombre": "Barra",
+          "titulo": null,
+          "descripcion": null,
+          "imagenUrl": null,
+          "orden": 0,
+          "activa": false,
+          "cantidadItems": 2
+        },
+        {
+          "id": "sc-platos",
+          "nombre": "Platos",
+          "titulo": "Nuestros platos",
+          "descripcion": "De la casa",
+          "imagenUrl": null,
+          "orden": 1,
+          "activa": true,
+          "cantidadItems": 2
+        },
+        {
+          "id": "sc-bebidas",
+          "nombre": "Bebidas",
+          "titulo": null,
+          "descripcion": null,
+          "imagenUrl": null,
+          "orden": 2,
+          "activa": true,
+          "cantidadItems": 2
+        },
+        {
+          "id": "sc-postres",
+          "nombre": "Postres",
+          "titulo": null,
+          "descripcion": null,
+          "imagenUrl": null,
+          "orden": 3,
+          "activa": true,
+          "cantidadItems": 1
+        }
+      ],
+      "generos": [
+        {
+          "id": "gen-veggie",
+          "nombre": "Veggie",
+          "orden": 1,
+          "activo": true
+        },
+        {
+          "id": "gen-viejo",
+          "nombre": "Viejo",
+          "orden": 0,
+          "activo": false
+        }
+      ],
+      "productos": [
+        {
+          "id": "pv-coca",
+          "nombre": "Coca-Cola 500cc",
+          "seccionCarta": null,
+          "precio": 5000,
+          "descuento": null,
+          "contenido": null,
+          "agrupadoEn": "Gaseosa 500cc",
+          "generoCarta": null
+        },
+        {
+          "id": "pv-empanada",
+          "nombre": "Empanada",
+          "seccionCarta": "Platos",
+          "precio": 1500,
+          "descuento": null,
+          "contenido": {
+            "visibleEnCarta": true,
+            "seccionCartaId": "sc-platos",
+            "descripcion": null,
+            "tags": [],
+            "especial": false,
+            "orden": 1,
+            "generoCartaId": "gen-viejo"
+          },
+          "agrupadoEn": null,
+          "generoCarta": null
+        },
+        {
+          "id": "pv-flan",
+          "nombre": "Flan",
+          "seccionCarta": "Postres",
+          "precio": 3000,
+          "descuento": 20,
+          "contenido": {
+            "visibleEnCarta": true,
+            "seccionCartaId": "sc-postres",
+            "descripcion": null,
+            "tags": [],
+            "especial": false,
+            "orden": 0,
+            "generoCartaId": null
+          },
+          "agrupadoEn": null,
+          "generoCarta": null
+        },
+        {
+          "id": "pv-jugo",
+          "nombre": "Jugo de naranja",
+          "seccionCarta": null,
+          "precio": 4000,
+          "descuento": null,
+          "contenido": {
+            "visibleEnCarta": true,
+            "seccionCartaId": "sc-barra",
+            "descripcion": null,
+            "tags": [],
+            "especial": false,
+            "orden": 0,
+            "generoCartaId": null
+          },
+          "agrupadoEn": null,
+          "generoCarta": null
+        },
+        {
+          "id": "pv-pizza",
+          "nombre": "Pizza",
+          "seccionCarta": "Platos",
+          "precio": 12000,
+          "descuento": null,
+          "contenido": {
+            "visibleEnCarta": true,
+            "seccionCartaId": "sc-platos",
+            "descripcion": "Muzza y orégano",
+            "tags": [
+              "clásica",
+              "horno"
+            ],
+            "especial": true,
+            "orden": 2,
+            "generoCartaId": "gen-veggie"
+          },
+          "agrupadoEn": null,
+          "generoCarta": "Veggie"
+        },
+        {
+          "id": "pv-sprite",
+          "nombre": "Sprite 500cc",
+          "seccionCarta": null,
+          "precio": 5000,
+          "descuento": null,
+          "contenido": null,
+          "agrupadoEn": "Gaseosa 500cc",
+          "generoCarta": null
+        },
+        {
+          "id": "pv-torta",
+          "nombre": "Torta",
+          "seccionCarta": "Postres",
+          "precio": 5000,
+          "descuento": null,
+          "contenido": {
+            "visibleEnCarta": false,
+            "seccionCartaId": "sc-postres",
+            "descripcion": null,
+            "tags": [],
+            "especial": false,
+            "orden": 0,
+            "generoCartaId": null
+          },
+          "agrupadoEn": "Tragos",
+          "generoCarta": null
+        }
+      ],
+      "sinContenido": [],
+      "visiblesSinSeccion": [
+        {
+          "productoId": "pv-jugo",
+          "nombre": "Jugo de naranja"
+        }
+      ],
+      "promos": [
+        {
+          "id": "pc-menu",
+          "seccionCartaId": "sc-platos",
+          "seccionCarta": "Platos",
+          "titulo": "Menú del día",
+          "descripcion": "Plato + postre",
+          "precio": 14000,
+          "orden": 1,
+          "activa": true,
+          "prendidaAca": true,
+          "precioLocal": 13000,
+          "precioAca": 13000,
+          "cupos": [
+            {
+              "id": "cupo-platos",
+              "seccionCartaId": "sc-platos",
+              "seccionCarta": "Platos",
+              "cantidadMinima": 1,
+              "cantidadMaxima": 1,
+              "orden": 1
+            },
+            {
+              "id": "cupo-postres",
+              "seccionCartaId": "sc-postres",
+              "seccionCarta": "Postres",
+              "cantidadMinima": 0,
+              "cantidadMaxima": 1,
+              "orden": 2
+            }
+          ]
+        },
+        {
+          "id": "pc-info",
+          "seccionCartaId": "sc-bebidas",
+          "seccionCarta": "Bebidas",
+          "titulo": "2x1 los jueves",
+          "descripcion": null,
+          "precio": 5000,
+          "orden": 2,
+          "activa": true,
+          "prendidaAca": true,
+          "precioLocal": null,
+          "precioAca": 5000,
+          "cupos": []
+        },
+        {
+          "id": "pc-apagada",
+          "seccionCartaId": "sc-postres",
+          "seccionCarta": "Postres",
+          "titulo": "Vieja",
+          "descripcion": null,
+          "precio": 1,
+          "orden": 0,
+          "activa": false,
+          "prendidaAca": true,
+          "precioLocal": null,
+          "precioAca": 1,
+          "cupos": []
+        }
+      ],
+      "precioLocalActivo": true
+    }
+  },
+  "carta.cargarAdminCarta(Norte)": {
+    "consultas": "15: capacidadSucursal.findMany×2, descuentoProductoSucursal.findMany×2, generoCarta.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×2, promoCarta.findMany×2, seccionCarta.findMany×2, sucursal.findMany×1, sucursal.findUnique×1",
+    "resultado": {
+      "cartaVacia": false,
+      "sucursalesConCarta": [
+        {
+          "id": "suc-central",
+          "nombre": "Central",
+          "cantidadProductos": 5
+        }
+      ],
+      "secciones": [
+        {
+          "id": "sc-barra",
+          "nombre": "Barra",
+          "titulo": null,
+          "descripcion": null,
+          "imagenUrl": null,
+          "orden": 0,
+          "activa": false,
+          "cantidadItems": 0
+        },
+        {
+          "id": "sc-platos",
+          "nombre": "Platos",
+          "titulo": "Nuestros platos",
+          "descripcion": "De la casa",
+          "imagenUrl": null,
+          "orden": 1,
+          "activa": true,
+          "cantidadItems": 2
+        },
+        {
+          "id": "sc-bebidas",
+          "nombre": "Bebidas",
+          "titulo": null,
+          "descripcion": null,
+          "imagenUrl": null,
+          "orden": 2,
+          "activa": true,
+          "cantidadItems": 0
+        },
+        {
+          "id": "sc-postres",
+          "nombre": "Postres",
+          "titulo": null,
+          "descripcion": null,
+          "imagenUrl": null,
+          "orden": 3,
+          "activa": true,
+          "cantidadItems": 0
+        }
+      ],
+      "generos": [
+        {
+          "id": "gen-norte",
+          "nombre": "Norteño",
+          "orden": 0,
+          "activo": true
+        }
+      ],
+      "productos": [
+        {
+          "id": "pv-empanada",
+          "nombre": "Empanada",
+          "seccionCarta": "Platos",
+          "precio": 1500,
+          "descuento": 10,
+          "contenido": {
+            "visibleEnCarta": true,
+            "seccionCartaId": "sc-platos",
+            "descripcion": null,
+            "tags": [],
+            "especial": false,
+            "orden": 0,
+            "generoCartaId": null
+          },
+          "agrupadoEn": null,
+          "generoCarta": null
+        },
+        {
+          "id": "pv-fanta",
+          "nombre": "Fanta 500cc",
+          "seccionCarta": null,
+          "precio": 5000,
+          "descuento": null,
+          "contenido": null,
+          "agrupadoEn": null,
+          "generoCarta": null
+        },
+        {
+          "id": "pv-pizza",
+          "nombre": "Pizza",
+          "seccionCarta": "Platos",
+          "precio": 12000,
+          "descuento": null,
+          "contenido": {
+            "visibleEnCarta": true,
+            "seccionCartaId": "sc-platos",
+            "descripcion": null,
+            "tags": [],
+            "especial": false,
+            "orden": 0,
+            "generoCartaId": "gen-norte"
+          },
+          "agrupadoEn": null,
+          "generoCarta": "Norteño"
+        }
+      ],
+      "sinContenido": [
+        {
+          "id": "pv-fanta",
+          "nombre": "Fanta 500cc",
+          "seccionCarta": null,
+          "precio": 5000,
+          "descuento": null,
+          "contenido": null,
+          "agrupadoEn": null,
+          "generoCarta": null
+        }
+      ],
+      "visiblesSinSeccion": [],
+      "promos": [
+        {
+          "id": "pc-menu",
+          "seccionCartaId": "sc-platos",
+          "seccionCarta": "Platos",
+          "titulo": "Menú del día",
+          "descripcion": "Plato + postre",
+          "precio": 14000,
+          "orden": 1,
+          "activa": true,
+          "prendidaAca": false,
+          "precioLocal": null,
+          "precioAca": 14000,
+          "cupos": [
+            {
+              "id": "cupo-platos",
+              "seccionCartaId": "sc-platos",
+              "seccionCarta": "Platos",
+              "cantidadMinima": 1,
+              "cantidadMaxima": 1,
+              "orden": 1
+            },
+            {
+              "id": "cupo-postres",
+              "seccionCartaId": "sc-postres",
+              "seccionCarta": "Postres",
+              "cantidadMinima": 0,
+              "cantidadMaxima": 1,
+              "orden": 2
+            }
+          ]
+        },
+        {
+          "id": "pc-info",
+          "seccionCartaId": "sc-bebidas",
+          "seccionCarta": "Bebidas",
+          "titulo": "2x1 los jueves",
+          "descripcion": null,
+          "precio": 5000,
+          "orden": 2,
+          "activa": true,
+          "prendidaAca": false,
+          "precioLocal": null,
+          "precioAca": 5000,
+          "cupos": []
+        },
+        {
+          "id": "pc-apagada",
+          "seccionCartaId": "sc-postres",
+          "seccionCarta": "Postres",
+          "titulo": "Vieja",
+          "descripcion": null,
+          "precio": 1,
+          "orden": 0,
+          "activa": false,
+          "prendidaAca": false,
+          "precioLocal": null,
+          "precioAca": 1,
+          "cupos": []
+        }
+      ],
+      "precioLocalActivo": true
+    }
+  },
+  "carta.cargarAdminItemsAgrupados(Central)": {
+    "consultas": "15: capacidadSucursal.findMany×2, descuentoProductoSucursal.findMany×1, disponibilidadProducto.findMany×1, generoCarta.findMany×1, itemAgrupadoCarta.findMany×2, precioLocalProducto.findMany×2, producto.findMany×2, promoCarta.findMany×1, seccionCarta.findMany×2, sucursal.findUnique×1",
+    "resultado": {
+      "items": [
+        {
+          "id": "ag-gaseosa",
+          "nombre": "Gaseosa 500cc",
+          "seccionCartaId": "sc-bebidas",
+          "seccionCarta": "Bebidas",
+          "descripcion": "Bien fría",
+          "tags": [],
+          "especial": false,
+          "orden": 1,
+          "activo": true,
+          "generoCartaId": "gen-veggie",
+          "generoCarta": "Veggie",
+          "opciones": [
+            {
+              "id": "op-ag-coca",
+              "productoId": "pv-coca",
+              "nombre": "Coca-Cola 500cc",
+              "orden": 1,
+              "disponibleAca": true,
+              "precioAca": 5000
+            },
+            {
+              "id": "op-ag-sprite",
+              "productoId": "pv-sprite",
+              "nombre": "Sprite 500cc",
+              "orden": 2,
+              "disponibleAca": true,
+              "precioAca": 5200
+            },
+            {
+              "id": "op-ag-fanta",
+              "productoId": "pv-fanta",
+              "nombre": "Fanta 500cc",
+              "orden": 3,
+              "disponibleAca": false,
+              "precioAca": 5000
+            }
+          ],
+          "disponiblesAca": 2,
+          "precio": {
+            "minimo": 5000,
+            "maximo": 5200
+          },
+          "avisos": {
+            "preciosDistintos": {
+              "minimo": 5000,
+              "maximo": 5200,
+              "mostrado": 5200
+            },
+            "sinOpcionesAca": false,
+            "sinSeccion": false
+          }
+        },
+        {
+          "id": "ag-vinos",
+          "nombre": "Vinos",
+          "seccionCartaId": "sc-bebidas",
+          "seccionCarta": "Bebidas",
+          "descripcion": null,
+          "tags": [],
+          "especial": false,
+          "orden": 3,
+          "activo": true,
+          "generoCartaId": null,
+          "generoCarta": null,
+          "opciones": [],
+          "disponiblesAca": 0,
+          "precio": null,
+          "avisos": {
+            "preciosDistintos": null,
+            "sinOpcionesAca": true,
+            "sinSeccion": false
+          }
+        },
+        {
+          "id": "ag-tragos",
+          "nombre": "Tragos",
+          "seccionCartaId": "sc-barra",
+          "seccionCarta": null,
+          "descripcion": null,
+          "tags": [],
+          "especial": false,
+          "orden": 4,
+          "activo": true,
+          "generoCartaId": null,
+          "generoCarta": null,
+          "opciones": [
+            {
+              "id": "op-ag-torta",
+              "productoId": "pv-torta",
+              "nombre": "Torta",
+              "orden": 1,
+              "disponibleAca": true,
+              "precioAca": 5000
+            }
+          ],
+          "disponiblesAca": 1,
+          "precio": {
+            "minimo": 5000,
+            "maximo": 5000
+          },
+          "avisos": {
+            "preciosDistintos": null,
+            "sinOpcionesAca": false,
+            "sinSeccion": true
+          }
+        },
+        {
+          "id": "ag-jugos",
+          "nombre": "Jugos",
+          "seccionCartaId": "sc-bebidas",
+          "seccionCarta": "Bebidas",
+          "descripcion": null,
+          "tags": [],
+          "especial": false,
+          "orden": 2,
+          "activo": false,
+          "generoCartaId": null,
+          "generoCarta": null,
+          "opciones": [],
+          "disponiblesAca": 0,
+          "precio": null,
+          "avisos": {
+            "preciosDistintos": null,
+            "sinOpcionesAca": true,
+            "sinSeccion": false
+          }
+        }
+      ],
+      "secciones": [
+        {
+          "id": "sc-barra",
+          "nombre": "Barra",
+          "titulo": null,
+          "descripcion": null,
+          "imagenUrl": null,
+          "orden": 0,
+          "activa": false,
+          "cantidadItems": 2
+        },
+        {
+          "id": "sc-platos",
+          "nombre": "Platos",
+          "titulo": "Nuestros platos",
+          "descripcion": "De la casa",
+          "imagenUrl": null,
+          "orden": 1,
+          "activa": true,
+          "cantidadItems": 2
+        },
+        {
+          "id": "sc-bebidas",
+          "nombre": "Bebidas",
+          "titulo": null,
+          "descripcion": null,
+          "imagenUrl": null,
+          "orden": 2,
+          "activa": true,
+          "cantidadItems": 2
+        },
+        {
+          "id": "sc-postres",
+          "nombre": "Postres",
+          "titulo": null,
+          "descripcion": null,
+          "imagenUrl": null,
+          "orden": 3,
+          "activa": true,
+          "cantidadItems": 1
+        }
+      ],
+      "generos": [
+        {
+          "id": "gen-veggie",
+          "nombre": "Veggie",
+          "orden": 1,
+          "activo": true
+        },
+        {
+          "id": "gen-viejo",
+          "nombre": "Viejo",
+          "orden": 0,
+          "activo": false
+        }
+      ],
+      "productosSinGrupo": [
+        {
+          "id": "pv-empanada",
+          "nombre": "Empanada",
+          "precioAca": 1500
+        },
+        {
+          "id": "pv-flan",
+          "nombre": "Flan",
+          "precioAca": 3000
+        },
+        {
+          "id": "pv-jugo",
+          "nombre": "Jugo de naranja",
+          "precioAca": 4000
+        },
+        {
+          "id": "pv-pizza",
+          "nombre": "Pizza",
+          "precioAca": 12000
+        }
+      ],
+      "diagnostico": {
+        "agrupadosSinSeccion": [
+          {
+            "id": "ag-tragos",
+            "nombre": "Tragos"
+          }
+        ],
+        "agrupadosSinOpciones": [
+          {
+            "id": "ag-vinos",
+            "nombre": "Vinos"
+          }
+        ],
+        "agrupadosConPreciosDistintos": [
+          {
+            "id": "ag-gaseosa",
+            "nombre": "Gaseosa 500cc",
+            "minimo": 5000,
+            "maximo": 5200
+          }
+        ]
+      }
+    }
+  },
+  "carta.resolverGrupoDeProducto(Sprite, Central)": {
+    "consultas": "3: capacidadSucursal.findMany×1, opcionItemAgrupadoCarta.findFirst×1, precioLocalProducto.findMany×1",
+    "resultado": {
+      "itemAgrupadoCartaId": "ag-gaseosa",
+      "nombreItem": "Gaseosa 500cc",
+      "hermanos": [
+        {
+          "productoId": "pv-coca",
+          "nombre": "Coca-Cola 500cc",
+          "precioVenta": 5000,
+          "precioActual": 5000
+        },
+        {
+          "productoId": "pv-fanta",
+          "nombre": "Fanta 500cc",
+          "precioVenta": 5000,
+          "precioActual": 5000
+        }
+      ]
+    }
+  },
+  "carta.resolverGrupoDeProducto(Pizza, Central: suelta, null)": {
+    "consultas": "1: opcionItemAgrupadoCarta.findFirst×1",
+    "resultado": null
+  },
+  "carta.cargarAdminPortal()": {
+    "consultas": "1: sucursal.findMany×1",
+    "resultado": [
+      {
+        "id": "suc-central",
+        "nombre": "Central",
+        "activo": true,
+        "publica": {
+          "slug": "central",
+          "etiqueta": null,
+          "subtituloPortal": "Palermo",
+          "posX": 10,
+          "posY": 20,
+          "posW": 30,
+          "posH": 40,
+          "orden": 1,
+          "publicada": true
+        },
+        "temaDesdeMotor2": true
+      },
+      {
+        "id": "suc-norte",
+        "nombre": "Norte",
+        "activo": true,
+        "publica": {
+          "slug": "norte",
+          "etiqueta": "Norte Express",
+          "subtituloPortal": null,
+          "posX": null,
+          "posY": null,
+          "posW": null,
+          "posH": null,
+          "orden": 0,
+          "publicada": true
+        },
+        "temaDesdeMotor2": false
+      },
+      {
+        "id": "suc-sur",
+        "nombre": "Sur",
+        "activo": false,
+        "publica": {
+          "slug": "sur",
+          "etiqueta": null,
+          "subtituloPortal": null,
+          "posX": null,
+          "posY": null,
+          "posW": null,
+          "posH": null,
+          "orden": 2,
+          "publicada": true
+        },
+        "temaDesdeMotor2": false
+      }
+    ]
+  },
+  "carta.cargarTemaAdmin(Central)": {
+    "consultas": "1: sucursal.findUnique×1",
+    "resultado": {
+      "sucursalId": "suc-central",
+      "nombre": "Central",
+      "tema": {
+        "valores": {
+          "restaurante_nombre": "La Central",
+          "restaurante_subtitulo": "Desde 1990"
+        },
+        "aplicarEnCarta": true,
+        "actualizadoEn": "<fecha 2026-09-30T15:00:00.000Z>"
+      },
+      "publica": {
+        "slug": "central",
+        "publicada": true
+      }
+    }
+  },
+  "carta.cargarTemaAdmin(Norte: sin tema)": {
+    "consultas": "1: sucursal.findUnique×1",
+    "resultado": {
+      "sucursalId": "suc-norte",
+      "nombre": "Norte",
+      "tema": null,
+      "publica": {
+        "slug": "norte",
+        "publicada": true
+      }
+    }
+  },
+  "carta.cargarTemaAdmin(inexistente: null)": {
+    "consultas": "1: sucursal.findUnique×1",
+    "resultado": null
+  },
+  "carta.cargarPortalEmpresaAdmin()": {
+    "consultas": "1: portalCartaEmpresa.findFirst×1",
+    "resultado": {
+      "valores": {
+        "portal_titulo": "Nuestras sucursales",
+        "portal_header_bg": "#112233"
+      },
+      "actualizadoEn": "<fecha 2026-09-30T15:00:00.000Z>"
+    }
+  },
+  "carta.generarReporteVentasPorSeccion(Central, el día)": {
+    "consultas": "7: capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×1, precioLocalProducto.findMany×1, producto.findMany×2",
+    "resultado": {
+      "desde": "<fecha 2026-09-30T00:00:00.000Z>",
+      "hasta": "<fecha 2026-09-30T23:59:59.999Z>",
+      "totalFacturado": 17025,
+      "aviso": "Importe real registrado en cada venta (no una estimación).",
+      "porSeccion": [
+        {
+          "seccion": "Platos",
+          "cantidad": 2.5,
+          "importe": 14025,
+          "categorias": [
+            {
+              "categoria": "Platos",
+              "cantidad": 2.5,
+              "importe": 14025,
+              "productos": [
+                {
+                  "producto": "Pizza",
+                  "cantidad": 1,
+                  "importe": 12000
+                },
+                {
+                  "producto": "Empanada",
+                  "cantidad": 1.5,
+                  "importe": 2025
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "seccion": "Postres",
+          "cantidad": 1,
+          "importe": 3000,
+          "categorias": [
+            {
+              "categoria": "Sin categoría",
+              "cantidad": 1,
+              "importe": 3000,
+              "productos": [
+                {
+                  "producto": "Flan",
+                  "cantidad": 1,
+                  "importe": 3000
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "pvSinCategoria": [
+        "Flan",
+        "Jugo de naranja",
+        "Torta"
+      ],
+      "productosSinSeccion": []
+    }
+  },
+  "carta.resolverMenuCartaConDiagnostico(Central)": {
+    "consultas": "8: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1",
+    "resultado": {
+      "carta": {
+        "version": 1,
+        "generadoEn": "2026-09-30T15:00:00.000Z",
+        "sucursal": {
+          "id": "suc-central",
+          "nombre": "Central"
+        },
+        "secciones": [
+          {
+            "id": "sc-platos",
+            "nombre": "Platos",
+            "titulo": "Nuestros platos",
+            "descripcion": "De la casa",
+            "imagenUrl": null,
+            "orden": 1,
+            "items": [
+              {
+                "productoId": "pv-empanada",
+                "nombre": "Empanada",
+                "categoria": "Platos",
+                "descripcion": null,
+                "precio": 1500,
+                "tags": [],
+                "especial": false,
+                "imagenUrl": null
+              },
+              {
+                "productoId": "pv-pizza",
+                "nombre": "Pizza",
+                "categoria": "Platos",
+                "descripcion": "Muzza y orégano",
+                "precio": 12000,
+                "tags": [
+                  "clásica",
+                  "horno"
+                ],
+                "especial": true,
+                "imagenUrl": null
+              }
+            ],
+            "promos": [
+              {
+                "id": "pc-menu",
+                "titulo": "Menú del día",
+                "descripcion": "Plato + postre",
+                "precio": 13000,
+                "orden": 1
+              }
+            ]
+          },
+          {
+            "id": "sc-bebidas",
+            "nombre": "Bebidas",
+            "titulo": null,
+            "descripcion": null,
+            "imagenUrl": null,
+            "orden": 2,
+            "items": [
+              {
+                "productoId": "ag-gaseosa",
+                "nombre": "Gaseosa 500cc",
+                "categoria": "Bebidas",
+                "descripcion": "Bien fría",
+                "precio": 5200,
+                "tags": [],
+                "especial": false,
+                "imagenUrl": null,
+                "opciones": [
+                  {
+                    "productoId": "pv-coca",
+                    "nombre": "Coca-Cola 500cc",
+                    "precio": 5000
+                  },
+                  {
+                    "productoId": "pv-sprite",
+                    "nombre": "Sprite 500cc",
+                    "precio": 5200
+                  }
+                ]
+              }
+            ],
+            "promos": [
+              {
+                "id": "pc-info",
+                "titulo": "2x1 los jueves",
+                "descripcion": null,
+                "precio": 5000,
+                "orden": 2
+              }
+            ]
+          },
+          {
+            "id": "sc-postres",
+            "nombre": "Postres",
+            "titulo": null,
+            "descripcion": null,
+            "imagenUrl": null,
+            "orden": 3,
+            "items": [
+              {
+                "productoId": "pv-flan",
+                "nombre": "Flan",
+                "categoria": "Postres",
+                "descripcion": null,
+                "precio": 2400,
+                "precioLista": 3000,
+                "descuentoPorcentaje": 20,
+                "tags": [],
+                "especial": false,
+                "imagenUrl": null
+              }
+            ],
+            "promos": []
+          }
+        ]
+      },
+      "diagnostico": {
+        "visiblesSinSeccion": [
+          {
+            "productoId": "pv-jugo",
+            "nombre": "Jugo de naranja"
+          }
+        ],
+        "agrupadosSinSeccion": [
+          {
+            "id": "ag-tragos",
+            "nombre": "Tragos"
+          }
+        ],
+        "agrupadosSinOpciones": [
+          {
+            "id": "ag-vinos",
+            "nombre": "Vinos"
+          }
+        ],
+        "agrupadosConPreciosDistintos": [
+          {
+            "id": "ag-gaseosa",
+            "nombre": "Gaseosa 500cc",
+            "minimo": 5000,
+            "maximo": 5200
+          }
+        ]
+      }
+    }
+  },
+  "carta.resolverMenuCartaConDiagnostico(Sur apagada: null)": {
+    "consultas": "1: sucursal.findUnique×1",
+    "resultado": null
+  },
+  "carta.resolverMenuCarta(Norte)": {
+    "consultas": "8: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1",
+    "resultado": {
+      "version": 1,
+      "generadoEn": "2026-09-30T15:00:00.000Z",
+      "sucursal": {
+        "id": "suc-norte",
+        "nombre": "Norte"
+      },
+      "secciones": [
+        {
+          "id": "sc-platos",
+          "nombre": "Platos",
+          "titulo": "Nuestros platos",
+          "descripcion": "De la casa",
+          "imagenUrl": null,
+          "orden": 1,
+          "items": [
+            {
+              "productoId": "pv-empanada",
+              "nombre": "Empanada",
+              "categoria": "Platos",
+              "descripcion": null,
+              "precio": 1350,
+              "precioLista": 1500,
+              "descuentoPorcentaje": 10,
+              "tags": [],
+              "especial": false,
+              "imagenUrl": null
+            },
+            {
+              "productoId": "pv-pizza",
+              "nombre": "Pizza",
+              "categoria": "Platos",
+              "descripcion": null,
+              "precio": 13000,
+              "tags": [],
+              "especial": false,
+              "imagenUrl": null
+            }
+          ],
+          "promos": []
+        }
+      ]
+    }
+  },
+  "carta.resolverEmpresaCarta(«principal»)": {
+    "consultas": "1: empresa.findFirst×1",
+    "resultado": {
+      "id": "empresa_principal",
+      "slug": "principal",
+      "nombre": "Empresa principal"
+    }
+  },
+  "carta.resolverEmpresaCarta(«no-existe»: null)": {
+    "consultas": "1: empresa.findFirst×1",
+    "resultado": null
+  },
+  "carta.resolverPortalCarta(empresa)": {
+    "consultas": "1: sucursalPublica.findMany×1",
+    "resultado": [
+      {
+        "slug": "norte",
+        "etiqueta": "Norte Express",
+        "subtitulo": null,
+        "posicion": null
+      },
+      {
+        "slug": "central",
+        "etiqueta": "Central",
+        "subtitulo": "Palermo",
+        "posicion": {
+          "x": 10,
+          "y": 20,
+          "w": 30,
+          "h": 40
+        }
+      }
+    ]
+  },
+  "carta.resolverConfigPortal(empresa)": {
+    "consultas": "1: portalCartaEmpresa.findFirst×1",
+    "resultado": {
+      "variablesCss": {
+        "--portal-header-bg": "#112233",
+        "--portal-card-fuente-label": "clamp(0.75rem, 2.2vw, 0.95rem)",
+        "--portal-card-fuente-notas": "clamp(0.7rem, 1.8vw, 0.75rem)",
+        "--portal-card-alto-defecto": "6"
+      },
+      "valores": {
+        "empresa_logo_url": "",
+        "portal_header_bg": "#112233",
+        "portal_header_color": "",
+        "portal_etiqueta": "",
+        "portal_etiqueta_color": "",
+        "portal_titulo": "Nuestras sucursales",
+        "portal_titulo_color": "",
+        "portal_fondo_color": "",
+        "portal_bg_image_url": "",
+        "portal_bg_proporcion": "1080/1533",
+        "portal_bg_overlay": "0",
+        "portal_card_bg": "",
+        "portal_card_border": "",
+        "portal_card_border_hover": "",
+        "portal_card_color": "",
+        "portal_card_color_hover": "",
+        "portal_card_notas_color": "",
+        "portal_card_flecha_color": "",
+        "portal_card_fuente_label": "clamp(0.75rem, 2.2vw, 0.95rem)",
+        "portal_card_fuente_notas": "clamp(0.7rem, 1.8vw, 0.75rem)",
+        "portal_card_alto_defecto": "6",
+        "footer_texto_derechos": ""
+      },
+      "imagenFondo": null,
+      "overlay": 0,
+      "proporcion": "1080/1533",
+      "altoTarjetaPct": 6
+    }
+  },
+  "carta.resolverCartaPublica(empresa, «central»)": {
+    "consultas": "9: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1, sucursalPublica.findUnique×1",
+    "resultado": {
+      "carta": {
+        "version": 1,
+        "generadoEn": "2026-09-30T15:00:00.000Z",
+        "sucursal": {
+          "id": "suc-central",
+          "nombre": "Central"
+        },
+        "secciones": [
+          {
+            "id": "sc-platos",
+            "nombre": "Platos",
+            "titulo": "Nuestros platos",
+            "descripcion": "De la casa",
+            "imagenUrl": null,
+            "orden": 1,
+            "items": [
+              {
+                "productoId": "pv-empanada",
+                "nombre": "Empanada",
+                "categoria": "Platos",
+                "descripcion": null,
+                "precio": 1500,
+                "tags": [],
+                "especial": false,
+                "imagenUrl": null
+              },
+              {
+                "productoId": "pv-pizza",
+                "nombre": "Pizza",
+                "categoria": "Platos",
+                "descripcion": "Muzza y orégano",
+                "precio": 12000,
+                "tags": [
+                  "clásica",
+                  "horno"
+                ],
+                "especial": true,
+                "imagenUrl": null
+              }
+            ],
+            "promos": [
+              {
+                "id": "pc-menu",
+                "titulo": "Menú del día",
+                "descripcion": "Plato + postre",
+                "precio": 13000,
+                "orden": 1
+              }
+            ]
+          },
+          {
+            "id": "sc-bebidas",
+            "nombre": "Bebidas",
+            "titulo": null,
+            "descripcion": null,
+            "imagenUrl": null,
+            "orden": 2,
+            "items": [
+              {
+                "productoId": "ag-gaseosa",
+                "nombre": "Gaseosa 500cc",
+                "categoria": "Bebidas",
+                "descripcion": "Bien fría",
+                "precio": 5200,
+                "tags": [],
+                "especial": false,
+                "imagenUrl": null,
+                "opciones": [
+                  {
+                    "productoId": "pv-coca",
+                    "nombre": "Coca-Cola 500cc",
+                    "precio": 5000
+                  },
+                  {
+                    "productoId": "pv-sprite",
+                    "nombre": "Sprite 500cc",
+                    "precio": 5200
+                  }
+                ]
+              }
+            ],
+            "promos": [
+              {
+                "id": "pc-info",
+                "titulo": "2x1 los jueves",
+                "descripcion": null,
+                "precio": 5000,
+                "orden": 2
+              }
+            ]
+          },
+          {
+            "id": "sc-postres",
+            "nombre": "Postres",
+            "titulo": null,
+            "descripcion": null,
+            "imagenUrl": null,
+            "orden": 3,
+            "items": [
+              {
+                "productoId": "pv-flan",
+                "nombre": "Flan",
+                "categoria": "Postres",
+                "descripcion": null,
+                "precio": 2400,
+                "precioLista": 3000,
+                "descuentoPorcentaje": 20,
+                "tags": [],
+                "especial": false,
+                "imagenUrl": null
+              }
+            ],
+            "promos": []
+          }
+        ]
+      },
+      "estilo": {
+        "variablesCss": {
+          "--carta-restaurante-nombre": "La Central",
+          "--carta-restaurante-subtitulo": "Desde 1990",
+          "--carta-restaurante-descripcion": "",
+          "--carta-hero-etiqueta-superior": "",
+          "--carta-restaurante-logo-url": "",
+          "--carta-hero-imagen-fondo-url": "",
+          "--carta-pos-bloque": "50",
+          "--carta-pos-cta": "18",
+          "--carta-color-marca": "",
+          "--carta-color-fondo-dia": "",
+          "--carta-hero-color-fondo": "",
+          "--carta-hero-ink": "",
+          "--carta-color-portada-textos": "",
+          "--carta-color-portada-cta": "",
+          "--carta-color-indice-titulo": "",
+          "--carta-color-indice-numeros": "",
+          "--carta-color-indice-titulos": "",
+          "--carta-color-banda-etiqueta": "",
+          "--carta-color-banda-titulo": "",
+          "--carta-color-banda-descripcion": "",
+          "--carta-color-item-nombre": "",
+          "--carta-color-item-precio": "",
+          "--carta-color-item-descripcion": "",
+          "--carta-color-item-tags": "",
+          "--carta-color-especial-item-nombre": "",
+          "--carta-color-especial-item-precio": "",
+          "--carta-color-especial-item-descripcion": "",
+          "--carta-color-especial-item-tags": "",
+          "--carta-color-nav-flechas": "",
+          "--carta-color-nav-iconos": "",
+          "--carta-topbar-back-label": "← Menú",
+          "--carta-topbar-back-color": "",
+          "--carta-topbar-back-size": "12px",
+          "--carta-texto-portada-separador": "",
+          "--carta-texto-portada-cta": "",
+          "--carta-texto-indice-etiqueta": "",
+          "--carta-texto-indice-titulo": "",
+          "--carta-restaurante-instagram": "",
+          "--carta-restaurante-facebook": "",
+          "--carta-restaurante-whatsapp": "",
+          "--carta-restaurante-footer-maps-url": "",
+          "--carta-fuente-familia": "var(--font-carta-serif, ui-serif, serif), serif",
+          "--carta-fuente-portada-etiqueta": "0.6875rem",
+          "--carta-fuente-portada-nombre": "clamp(1.7rem, 7vw, 2.1rem)",
+          "--carta-fuente-portada-subtitulo": "0.6875rem",
+          "--carta-fuente-portada-descripcion": "0.75rem",
+          "--carta-fuente-portada-cta": "0.6875rem",
+          "--carta-fuente-indice-etiqueta": "0.6875rem",
+          "--carta-fuente-indice-titulo": "clamp(1.2rem, 4vw, 1.75rem)",
+          "--carta-fuente-indice-numero": "0.6875rem",
+          "--carta-fuente-indice-item": "clamp(0.82rem, 2.5vw, 0.95rem)",
+          "--carta-fuente-banda-etiqueta": "0.6875rem",
+          "--carta-fuente-banda-titulo": "0.95rem",
+          "--carta-fuente-banda-descripcion": "0.6875rem",
+          "--carta-fuente-item-nombre": "0.88rem",
+          "--carta-fuente-item-precio": "0.88rem",
+          "--carta-fuente-item-descripcion": "0.6875rem",
+          "--carta-fuente-item-tags": "0.6875rem",
+          "--carta-banda-alto-mobile": "90px",
+          "--carta-banda-alto-desktop": "clamp(80px, 18vh, 140px)",
+          "--carta-imagen-pos-x": "left",
+          "--carta-imagen-pos-y": "top",
+          "--carta-imagen-overlay": "si",
+          "--carta-imagen-opacidad": "38"
+        },
+        "valores": {
+          "restaurante_nombre": "La Central",
+          "restaurante_subtitulo": "Desde 1990",
+          "restaurante_descripcion": "",
+          "hero_etiqueta_superior": "",
+          "restaurante_logo_url": "",
+          "hero_imagen_fondo_url": "",
+          "carta_pos_bloque": "50",
+          "carta_pos_cta": "18",
+          "color_marca": "",
+          "color_fondo_dia": "",
+          "hero_color_fondo": "",
+          "hero_ink": "",
+          "color_portada_textos": "",
+          "color_portada_cta": "",
+          "color_indice_titulo": "",
+          "color_indice_numeros": "",
+          "color_indice_titulos": "",
+          "color_banda_etiqueta": "",
+          "color_banda_titulo": "",
+          "color_banda_descripcion": "",
+          "color_item_nombre": "",
+          "color_item_precio": "",
+          "color_item_descripcion": "",
+          "color_item_tags": "",
+          "color_especial_item_nombre": "",
+          "color_especial_item_precio": "",
+          "color_especial_item_descripcion": "",
+          "color_especial_item_tags": "",
+          "color_nav_flechas": "",
+          "color_nav_iconos": "",
+          "topbar_back_label": "← Menú",
+          "topbar_back_color": "",
+          "topbar_back_size": "12px",
+          "carta_texto_portada_separador": "",
+          "carta_texto_portada_cta": "",
+          "carta_texto_indice_etiqueta": "",
+          "carta_texto_indice_titulo": "",
+          "restaurante_instagram": "",
+          "restaurante_facebook": "",
+          "restaurante_whatsapp": "",
+          "restaurante_footer_maps_url": "",
+          "carta_fuente_familia": "playfair",
+          "carta_fuente_portada_etiqueta": "0.6875rem",
+          "carta_fuente_portada_nombre": "clamp(1.7rem, 7vw, 2.1rem)",
+          "carta_fuente_portada_subtitulo": "0.6875rem",
+          "carta_fuente_portada_descripcion": "0.75rem",
+          "carta_fuente_portada_cta": "0.6875rem",
+          "carta_fuente_indice_etiqueta": "0.6875rem",
+          "carta_fuente_indice_titulo": "clamp(1.2rem, 4vw, 1.75rem)",
+          "carta_fuente_indice_numero": "0.6875rem",
+          "carta_fuente_indice_item": "clamp(0.82rem, 2.5vw, 0.95rem)",
+          "carta_fuente_banda_etiqueta": "0.6875rem",
+          "carta_fuente_banda_titulo": "0.95rem",
+          "carta_fuente_banda_descripcion": "0.6875rem",
+          "carta_fuente_item_nombre": "0.88rem",
+          "carta_fuente_item_precio": "0.88rem",
+          "carta_fuente_item_descripcion": "0.6875rem",
+          "carta_fuente_item_tags": "0.6875rem",
+          "carta_banda_alto_mobile": "90px",
+          "carta_banda_alto_desktop": "clamp(80px, 18vh, 140px)",
+          "carta_imagen_pos_x": "left",
+          "carta_imagen_pos_y": "top",
+          "carta_imagen_overlay": "si",
+          "carta_imagen_opacidad": "38"
+        },
+        "heroInk": null,
+        "imagenSeccion": {
+          "posicionX": "left",
+          "posicionY": "top",
+          "overlay": true,
+          "opacidadPct": 38
+        },
+        "colores": {
+          "indiceTitulo": null,
+          "indiceNumeros": null,
+          "indiceTitulos": null,
+          "bandaEtiqueta": null,
+          "bandaTitulo": null,
+          "bandaDescripcion": null,
+          "navFlechas": null,
+          "navIconos": null
+        },
+        "portada": {
+          "fondo": null,
+          "colorTexto": null,
+          "colorCta": null,
+          "posBloquePct": 50,
+          "posCtaPct": 18
+        },
+        "volver": {
+          "etiqueta": "← Menú",
+          "color": null,
+          "tamano": "12px"
+        },
+        "banda": {
+          "altoMobile": "90px",
+          "altoDesktop": "clamp(80px, 18vh, 140px)"
+        },
+        "familiaTipografica": "playfair",
+        "tintaBase": null
+      }
+    }
+  },
+  "carta.resolverCartaPublica(empresa, «norte»: sin tema)": {
+    "consultas": "9: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1, sucursalPublica.findUnique×1",
+    "resultado": {
+      "carta": {
+        "version": 1,
+        "generadoEn": "2026-09-30T15:00:00.000Z",
+        "sucursal": {
+          "id": "suc-norte",
+          "nombre": "Norte"
+        },
+        "secciones": [
+          {
+            "id": "sc-platos",
+            "nombre": "Platos",
+            "titulo": "Nuestros platos",
+            "descripcion": "De la casa",
+            "imagenUrl": null,
+            "orden": 1,
+            "items": [
+              {
+                "productoId": "pv-empanada",
+                "nombre": "Empanada",
+                "categoria": "Platos",
+                "descripcion": null,
+                "precio": 1350,
+                "precioLista": 1500,
+                "descuentoPorcentaje": 10,
+                "tags": [],
+                "especial": false,
+                "imagenUrl": null
+              },
+              {
+                "productoId": "pv-pizza",
+                "nombre": "Pizza",
+                "categoria": "Platos",
+                "descripcion": null,
+                "precio": 13000,
+                "tags": [],
+                "especial": false,
+                "imagenUrl": null
+              }
+            ],
+            "promos": []
+          }
+        ]
+      },
+      "estilo": {
+        "variablesCss": {
+          "--carta-restaurante-nombre": "",
+          "--carta-restaurante-subtitulo": "",
+          "--carta-restaurante-descripcion": "",
+          "--carta-hero-etiqueta-superior": "",
+          "--carta-restaurante-logo-url": "",
+          "--carta-hero-imagen-fondo-url": "",
+          "--carta-pos-bloque": "50",
+          "--carta-pos-cta": "18",
+          "--carta-color-marca": "",
+          "--carta-color-fondo-dia": "",
+          "--carta-hero-color-fondo": "",
+          "--carta-hero-ink": "",
+          "--carta-color-portada-textos": "",
+          "--carta-color-portada-cta": "",
+          "--carta-color-indice-titulo": "",
+          "--carta-color-indice-numeros": "",
+          "--carta-color-indice-titulos": "",
+          "--carta-color-banda-etiqueta": "",
+          "--carta-color-banda-titulo": "",
+          "--carta-color-banda-descripcion": "",
+          "--carta-color-item-nombre": "",
+          "--carta-color-item-precio": "",
+          "--carta-color-item-descripcion": "",
+          "--carta-color-item-tags": "",
+          "--carta-color-especial-item-nombre": "",
+          "--carta-color-especial-item-precio": "",
+          "--carta-color-especial-item-descripcion": "",
+          "--carta-color-especial-item-tags": "",
+          "--carta-color-nav-flechas": "",
+          "--carta-color-nav-iconos": "",
+          "--carta-topbar-back-label": "← Menú",
+          "--carta-topbar-back-color": "",
+          "--carta-topbar-back-size": "12px",
+          "--carta-texto-portada-separador": "",
+          "--carta-texto-portada-cta": "",
+          "--carta-texto-indice-etiqueta": "",
+          "--carta-texto-indice-titulo": "",
+          "--carta-restaurante-instagram": "",
+          "--carta-restaurante-facebook": "",
+          "--carta-restaurante-whatsapp": "",
+          "--carta-restaurante-footer-maps-url": "",
+          "--carta-fuente-familia": "var(--font-carta-serif, ui-serif, serif), serif",
+          "--carta-fuente-portada-etiqueta": "0.6875rem",
+          "--carta-fuente-portada-nombre": "clamp(1.7rem, 7vw, 2.1rem)",
+          "--carta-fuente-portada-subtitulo": "0.6875rem",
+          "--carta-fuente-portada-descripcion": "0.75rem",
+          "--carta-fuente-portada-cta": "0.6875rem",
+          "--carta-fuente-indice-etiqueta": "0.6875rem",
+          "--carta-fuente-indice-titulo": "clamp(1.2rem, 4vw, 1.75rem)",
+          "--carta-fuente-indice-numero": "0.6875rem",
+          "--carta-fuente-indice-item": "clamp(0.82rem, 2.5vw, 0.95rem)",
+          "--carta-fuente-banda-etiqueta": "0.6875rem",
+          "--carta-fuente-banda-titulo": "0.95rem",
+          "--carta-fuente-banda-descripcion": "0.6875rem",
+          "--carta-fuente-item-nombre": "0.88rem",
+          "--carta-fuente-item-precio": "0.88rem",
+          "--carta-fuente-item-descripcion": "0.6875rem",
+          "--carta-fuente-item-tags": "0.6875rem",
+          "--carta-banda-alto-mobile": "90px",
+          "--carta-banda-alto-desktop": "clamp(80px, 18vh, 140px)",
+          "--carta-imagen-pos-x": "left",
+          "--carta-imagen-pos-y": "top",
+          "--carta-imagen-overlay": "si",
+          "--carta-imagen-opacidad": "38"
+        },
+        "valores": {
+          "restaurante_nombre": "",
+          "restaurante_subtitulo": "",
+          "restaurante_descripcion": "",
+          "hero_etiqueta_superior": "",
+          "restaurante_logo_url": "",
+          "hero_imagen_fondo_url": "",
+          "carta_pos_bloque": "50",
+          "carta_pos_cta": "18",
+          "color_marca": "",
+          "color_fondo_dia": "",
+          "hero_color_fondo": "",
+          "hero_ink": "",
+          "color_portada_textos": "",
+          "color_portada_cta": "",
+          "color_indice_titulo": "",
+          "color_indice_numeros": "",
+          "color_indice_titulos": "",
+          "color_banda_etiqueta": "",
+          "color_banda_titulo": "",
+          "color_banda_descripcion": "",
+          "color_item_nombre": "",
+          "color_item_precio": "",
+          "color_item_descripcion": "",
+          "color_item_tags": "",
+          "color_especial_item_nombre": "",
+          "color_especial_item_precio": "",
+          "color_especial_item_descripcion": "",
+          "color_especial_item_tags": "",
+          "color_nav_flechas": "",
+          "color_nav_iconos": "",
+          "topbar_back_label": "← Menú",
+          "topbar_back_color": "",
+          "topbar_back_size": "12px",
+          "carta_texto_portada_separador": "",
+          "carta_texto_portada_cta": "",
+          "carta_texto_indice_etiqueta": "",
+          "carta_texto_indice_titulo": "",
+          "restaurante_instagram": "",
+          "restaurante_facebook": "",
+          "restaurante_whatsapp": "",
+          "restaurante_footer_maps_url": "",
+          "carta_fuente_familia": "playfair",
+          "carta_fuente_portada_etiqueta": "0.6875rem",
+          "carta_fuente_portada_nombre": "clamp(1.7rem, 7vw, 2.1rem)",
+          "carta_fuente_portada_subtitulo": "0.6875rem",
+          "carta_fuente_portada_descripcion": "0.75rem",
+          "carta_fuente_portada_cta": "0.6875rem",
+          "carta_fuente_indice_etiqueta": "0.6875rem",
+          "carta_fuente_indice_titulo": "clamp(1.2rem, 4vw, 1.75rem)",
+          "carta_fuente_indice_numero": "0.6875rem",
+          "carta_fuente_indice_item": "clamp(0.82rem, 2.5vw, 0.95rem)",
+          "carta_fuente_banda_etiqueta": "0.6875rem",
+          "carta_fuente_banda_titulo": "0.95rem",
+          "carta_fuente_banda_descripcion": "0.6875rem",
+          "carta_fuente_item_nombre": "0.88rem",
+          "carta_fuente_item_precio": "0.88rem",
+          "carta_fuente_item_descripcion": "0.6875rem",
+          "carta_fuente_item_tags": "0.6875rem",
+          "carta_banda_alto_mobile": "90px",
+          "carta_banda_alto_desktop": "clamp(80px, 18vh, 140px)",
+          "carta_imagen_pos_x": "left",
+          "carta_imagen_pos_y": "top",
+          "carta_imagen_overlay": "si",
+          "carta_imagen_opacidad": "38"
+        },
+        "heroInk": null,
+        "imagenSeccion": {
+          "posicionX": "left",
+          "posicionY": "top",
+          "overlay": true,
+          "opacidadPct": 38
+        },
+        "colores": {
+          "indiceTitulo": null,
+          "indiceNumeros": null,
+          "indiceTitulos": null,
+          "bandaEtiqueta": null,
+          "bandaTitulo": null,
+          "bandaDescripcion": null,
+          "navFlechas": null,
+          "navIconos": null
+        },
+        "portada": {
+          "fondo": null,
+          "colorTexto": null,
+          "colorCta": null,
+          "posBloquePct": 50,
+          "posCtaPct": 18
+        },
+        "volver": {
+          "etiqueta": "← Menú",
+          "color": null,
+          "tamano": "12px"
+        },
+        "banda": {
+          "altoMobile": "90px",
+          "altoDesktop": "clamp(80px, 18vh, 140px)"
+        },
+        "familiaTipografica": "playfair",
+        "tintaBase": null
+      }
+    }
+  },
+  "carta.resolverCartaPublica(empresa, «sur»: sucursal apagada, null)": {
+    "consultas": "1: sucursalPublica.findUnique×1",
+    "resultado": null
+  },
+  "carta.descuentosDeProductoEnSucursal(Central)": {
+    "consultas": "2: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1",
+    "resultado": {
+      "<map>": [
+        [
+          "pv-flan",
+          20
+        ]
+      ]
+    }
+  },
+  "carta.descuentosConfiguradosEnSucursal(Norte)": {
+    "consultas": "1: descuentoProductoSucursal.findMany×1",
+    "resultado": {
+      "<map>": [
+        [
+          "pv-empanada",
+          10
+        ]
+      ]
+    }
+  },
+  "carta.productoTieneDescuentoEnAlgunaSucursal(Empanada)": {
+    "consultas": "1: descuentoProductoSucursal.count×1",
+    "resultado": true
+  },
+  "stock.calcularStockConsolidado(Central)": {
+    "consultas": "5: conteoFisico.findMany×1, movimientoStock.findMany×1, movimientoStock.groupBy×1, producto.findMany×1, seccion.findMany×1",
+    "resultado": [
+      {
+        "productoId": "mp-muzza",
+        "productoCodigo": "MP-MUZZA",
+        "productoNombre": "Muzzarella",
+        "insumoNombre": "Queso",
+        "seccionId": "sec-deposito",
+        "seccionNombre": "Depósito",
+        "loteVencimiento": "",
+        "unidadStockNombre": "kg",
+        "teorico": 1.65,
+        "ultimoFisico": 1.9,
+        "fechaConteo": "<fecha 2026-09-30T09:10:00.000Z>",
+        "diferencia": -0.1,
+        "entradasDesdeConteo": 0,
+        "salidasDesdeConteo": 0.25,
+        "estado": "CON_DESVIO"
+      },
+      {
+        "productoId": "mp-harina",
+        "productoCodigo": "MP-HARINA",
+        "productoNombre": "Harina 000",
+        "insumoNombre": "Harina",
+        "seccionId": "sec-deposito",
+        "seccionNombre": "Depósito",
+        "loteVencimiento": "",
+        "unidadStockNombre": "kg",
+        "teorico": 0.5,
+        "ultimoFisico": null,
+        "fechaConteo": null,
+        "diferencia": null,
+        "entradasDesdeConteo": 0,
+        "salidasDesdeConteo": 0,
+        "estado": "SIN_CONTEO"
+      },
+      {
+        "productoId": "mp-muzza",
+        "productoCodigo": "MP-MUZZA",
+        "productoNombre": "Muzzarella",
+        "insumoNombre": "Queso",
+        "seccionId": "sec-salon",
+        "seccionNombre": "Salón",
+        "loteVencimiento": "2026-10-04",
+        "unidadStockNombre": "kg",
+        "teorico": 0.5,
+        "ultimoFisico": null,
+        "fechaConteo": null,
+        "diferencia": null,
+        "entradasDesdeConteo": 0,
+        "salidasDesdeConteo": 0,
+        "estado": "SIN_CONTEO"
+      },
+      {
+        "productoId": "pv-torta",
+        "productoCodigo": "PV-TORTA",
+        "productoNombre": "Torta",
+        "insumoNombre": null,
+        "seccionId": null,
+        "seccionNombre": "",
+        "loteVencimiento": "",
+        "unidadStockNombre": "unidad",
+        "teorico": 0,
+        "ultimoFisico": null,
+        "fechaConteo": null,
+        "diferencia": null,
+        "entradasDesdeConteo": 0,
+        "salidasDesdeConteo": 0,
+        "estado": "SIN_MOVIMIENTOS"
+      }
+    ]
+  },
+  "stock.calcularStockPorFamilia(Central)": {
+    "consultas": "4: grupo.findMany×1, movimientoStock.groupBy×1, producto.findMany×1, seccion.findMany×1",
+    "resultado": [
+      {
+        "insumoId": "ins-queso",
+        "insumoNombre": "Queso",
+        "grupoNombre": "Quesos",
+        "grupoCadena": "Lácteos > Quesos",
+        "seccionId": "sec-deposito",
+        "seccionNombre": "Depósito",
+        "unidadStockNombre": "kg",
+        "saldo": 1.65,
+        "productos": [
+          "Muzzarella"
+        ],
+        "unidadesMezcladas": false
+      },
+      {
+        "insumoId": "ins-queso",
+        "insumoNombre": "Queso",
+        "grupoNombre": "Quesos",
+        "grupoCadena": "Lácteos > Quesos",
+        "seccionId": "sec-salon",
+        "seccionNombre": "Salón",
+        "unidadStockNombre": "kg",
+        "saldo": 0.5,
+        "productos": [
+          "Muzzarella"
+        ],
+        "unidadesMezcladas": false
+      },
+      {
+        "insumoId": "ins-harina",
+        "insumoNombre": "Harina",
+        "grupoNombre": "Secos",
+        "grupoCadena": "Secos",
+        "seccionId": "sec-deposito",
+        "seccionNombre": "Depósito",
+        "unidadStockNombre": "kg",
+        "saldo": 0.5,
+        "productos": [
+          "Harina 000"
+        ],
+        "unidadesMezcladas": false
+      }
+    ]
+  },
+  "stock.calcularAlertasStock(Central)": {
+    "consultas": "4: movimientoStock.groupBy×1, producto.findMany×1, seccion.findMany×1, stockMinimoProducto.findMany×1",
+    "resultado": [
+      {
+        "productoId": "mp-harina",
+        "productoCodigo": "MP-HARINA",
+        "productoNombre": "Harina 000",
+        "seccionId": "sec-deposito",
+        "seccionNombre": "Depósito",
+        "saldoActual": 0.5,
+        "stockMinimo": 1,
+        "diferencia": -0.5,
+        "estado": "BAJO",
+        "ultimaFecha": "<fecha 2026-09-30T08:20:00.000Z>"
+      },
+      {
+        "productoId": "mp-muzza",
+        "productoCodigo": "MP-MUZZA",
+        "productoNombre": "Muzzarella",
+        "seccionId": "sec-deposito",
+        "seccionNombre": "Depósito",
+        "saldoActual": 1.65,
+        "stockMinimo": 3,
+        "diferencia": -1.35,
+        "estado": "BAJO",
+        "ultimaFecha": "<fecha 2026-09-30T10:20:00.000Z>"
+      },
+      {
+        "productoId": "mp-muzza",
+        "productoCodigo": "MP-MUZZA",
+        "productoNombre": "Muzzarella",
+        "seccionId": "sec-salon",
+        "seccionNombre": "Salón",
+        "saldoActual": 0.5,
+        "stockMinimo": 3,
+        "diferencia": -2.5,
+        "estado": "BAJO",
+        "ultimaFecha": "<fecha 2026-09-30T08:20:00.000Z>"
+      }
+    ]
+  },
+  "stock.obtenerResumenAlertasStock(Central)": {
+    "consultas": "4: movimientoStock.groupBy×1, producto.findMany×1, seccion.findMany×1, stockMinimoProducto.findMany×1",
+    "resultado": {
+      "total": 3,
+      "criticos": 0,
+      "bajos": 3,
+      "items": [
+        {
+          "productoId": "mp-harina",
+          "productoCodigo": "MP-HARINA",
+          "productoNombre": "Harina 000",
+          "seccionId": "sec-deposito",
+          "seccionNombre": "Depósito",
+          "saldoActual": 0.5,
+          "stockMinimo": 1,
+          "diferencia": -0.5,
+          "estado": "BAJO",
+          "ultimaFecha": "<fecha 2026-09-30T08:20:00.000Z>"
+        },
+        {
+          "productoId": "mp-muzza",
+          "productoCodigo": "MP-MUZZA",
+          "productoNombre": "Muzzarella",
+          "seccionId": "sec-deposito",
+          "seccionNombre": "Depósito",
+          "saldoActual": 1.65,
+          "stockMinimo": 3,
+          "diferencia": -1.35,
+          "estado": "BAJO",
+          "ultimaFecha": "<fecha 2026-09-30T10:20:00.000Z>"
+        },
+        {
+          "productoId": "mp-muzza",
+          "productoCodigo": "MP-MUZZA",
+          "productoNombre": "Muzzarella",
+          "seccionId": "sec-salon",
+          "seccionNombre": "Salón",
+          "saldoActual": 0.5,
+          "stockMinimo": 3,
+          "diferencia": -2.5,
+          "estado": "BAJO",
+          "ultimaFecha": "<fecha 2026-09-30T08:20:00.000Z>"
+        }
+      ]
+    }
+  },
+  "stock.resolverStockMinimo(Central, Harina, Depósito: el de la sección)": {
+    "consultas": "1: stockMinimoProducto.findUnique×1",
+    "resultado": 1
+  },
+  "stock.resolverStockMinimo(Central, Muzzarella, Salón: el global)": {
+    "consultas": "2: stockMinimoProducto.findFirst×1, stockMinimoProducto.findUnique×1",
+    "resultado": 3
+  },
+  "catalogo.cargarArbolDeGrupos()": {
+    "consultas": "1: grupo.findMany×1",
+    "resultado": {
+      "<map>": [
+        [
+          "grp-lacteos",
+          {
+            "id": "grp-lacteos",
+            "nombre": "Lácteos",
+            "grupoPadreId": null
+          }
+        ],
+        [
+          "grp-quesos",
+          {
+            "id": "grp-quesos",
+            "nombre": "Quesos",
+            "grupoPadreId": "grp-lacteos"
+          }
+        ],
+        [
+          "grp-secos",
+          {
+            "id": "grp-secos",
+            "nombre": "Secos",
+            "grupoPadreId": null
+          }
+        ]
+      ]
+    }
+  },
+  "catalogo.creariaCiclo(Lácteos bajo Quesos: sí)": {
+    "consultas": "1: grupo.findMany×1",
+    "resultado": true
+  },
+  "catalogo.obtenerEstadoDeRecetaPropia(Pizza, Central: la central cambió)": {
+    "consultas": "3: recetaSucursal.findUnique×1, recetaVersion.findFirst×1, recetaVersion.findMany×1",
+    "resultado": {
+      "habilitada": true,
+      "propia": {
+        "id": "rv-pizza-central-1",
+        "empresaId": "empresa_principal",
+        "productoId": "pv-pizza",
+        "version": 1,
+        "creadoEn": "<fecha 2026-09-30T05:00:00.000Z>",
+        "sucursalId": "suc-central",
+        "basadaEnVersionId": "rv-pizza-1",
+        "rendimientoCantidad": null,
+        "rendimientoUnidadId": null,
+        "racionesCantidad": null,
+        "racionTamano": null,
+        "racionUnidadId": null,
+        "tiempoPreparacionMinutos": null,
+        "tiempoCoccionMinutos": null,
+        "comentarios": "Más queso",
+        "presentacionEmplatado": null,
+        "notasAdicionales": null,
+        "equipamientoNecesario": null,
+        "ingredientes": [
+          {
+            "id": "ri-c1-muzza",
+            "empresaId": "empresa_principal",
+            "recetaVersionId": "rv-pizza-central-1",
+            "insumoProductoId": "mp-muzza",
+            "cantidad": "<decimal 0.3>",
+            "unidadId": "un-kg",
+            "mermaPorcentaje": "<decimal 5>",
+            "observaciones": null,
+            "insumoProducto": {
+              "id": "mp-muzza",
+              "empresaId": "empresa_principal",
+              "codigo": "MP-MUZZA",
+              "nombre": "Muzzarella",
+              "tipo": "MP",
+              "categoriaId": null,
+              "unidadCompraId": null,
+              "unidadStockId": "un-kg",
+              "factorConversion": "<decimal 1>",
+              "observaciones": null,
+              "insumoId": "ins-queso",
+              "precioVenta": "<decimal 0>",
+              "pasoVenta": null,
+              "seProduce": false,
+              "esConsignacion": false,
+              "proveedorConsignacionId": null,
+              "precioConsignacion": "<decimal 0>",
+              "creadoEn": "<fecha 2026-09-30T01:40:00.000Z>"
+            },
+            "unidad": {
+              "id": "un-kg",
+              "empresaId": "empresa_principal",
+              "nombre": "kg",
+              "magnitud": "PESO",
+              "activa": true,
+              "decimales": 2
+            },
+            "sustitutos": []
+          }
+        ],
+        "pasos": [],
+        "rendimientoUnidad": null,
+        "racionUnidad": null
+      },
+      "versionesPropias": 1,
+      "centralVigente": {
+        "id": "rv-pizza-2",
+        "version": 2
+      },
+      "centralCambio": true
+    }
+  },
+  "auth.detectarCuentasDeGoogleSospechosas()": {
+    "consultas": "1: user.findMany×1",
+    "resultado": [
+      {
+        "usuarioId": "usr-ajeno",
+        "usuarioEmail": "ajeno@test.com",
+        "cuentas": [
+          {
+            "providerAccountId": "g-ajeno",
+            "emailEnLaCuenta": "intruso@test.com"
+          }
+        ],
+        "motivos": [
+          "email-distinto"
+        ]
+      },
+      {
+        "usuarioId": "usr-cajero",
+        "usuarioEmail": "cajero@test.com",
+        "cuentas": [
+          {
+            "providerAccountId": "g-cajero-1",
+            "emailEnLaCuenta": "cajero@test.com"
+          },
+          {
+            "providerAccountId": "g-cajero-2",
+            "emailEnLaCuenta": null
+          }
+        ],
+        "motivos": [
+          "varias-cuentas"
+        ]
+      }
+    ]
+  },
+  "auth.medirPrecargadosSinGoogle()": {
+    "consultas": "1: user.findMany×1",
+    "resultado": "<resultado fijado en test/auth/precargados.test.ts>"
+  }
+}

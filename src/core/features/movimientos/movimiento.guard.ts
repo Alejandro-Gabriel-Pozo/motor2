@@ -1,4 +1,5 @@
 import { texto } from "@/core/texto";
+import { esDetalleReservadoParaReversiones } from "@/core/movimientos/public";
 import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
@@ -41,6 +42,9 @@ export function guardComandoRegistrarMovimiento(entrada: unknown, ahora: Date): 
   if (excedeLineas) return rechazar("rango", excedeLineas);
   const detalleValido = validarTextoLibre(detalleLibre, "El detalle", LARGO_MAXIMO_DETALLE);
   if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);
+  // M-1 (auditoría intermedia, S-03): «Anulación de la venta/compra …» está reservado para las reversiones por anulación, que se reconocen SOLO por el comienzo de su detalle. Un ajuste manual
+  // con ese comienzo no contaría como «posterior» a una venta y se la podría anular a ciegas.
+  if (typeof detalleLibre === "string" && esDetalleReservadoParaReversiones(detalleLibre)) return rechazar("formato", "Ese detalle está reservado para las anulaciones: escribilo de otra forma.");
   for (const item of items) {
     const referencia = validarTextoLibre((item as { referenciaProveedor?: unknown } | null)?.referenciaProveedor, "La referencia del proveedor", LARGO_MAXIMO_DETALLE);
     if (!referencia.ok) return rechazar(referencia.codigo, referencia.mensaje);

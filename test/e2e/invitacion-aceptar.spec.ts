@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { paginaConSesion } from "./fixtures/multiempresa";
+import { conOrigenPropio } from "./fixtures/origen";
 import { crearUsuarioSinEmpresa, leerInvitacion, pertenenciasDe, sembrarInvitacion } from "./fixtures/invitacion";
 
 /**
@@ -15,6 +16,7 @@ async function sinViolaciones(page: Page) {
 }
 
 test("sin sesión: el enlace pide entrar con la cuenta invitada, guarda el token en una cookie httpOnly y lo saca de la URL", async ({ page }) => {
+  await conOrigenPropio(page.context());
   const inv = await sembrarInvitacion();
   const avisosDeCsp: string[] = [];
   page.on("console", (m) => {
@@ -87,7 +89,9 @@ test("con la sesión del invitado: valida el CUIT, acepta una sola vez y la empr
   expect(await pertenenciasDe(inv.email)).toEqual([{ empresaId: inv.empresaId, rolEmpresa: "gerente" }]);
 
   // Un enlace usado ya no sirve, ni siquiera para quien lo usó sin la sesión.
-  const otraVez = await (await browser.newContext()).newPage();
+  const contextoOtraVez = await browser.newContext();
+  await conOrigenPropio(contextoOtraVez);
+  const otraVez = await contextoOtraVez.newPage();
   await otraVez.goto(`/invitacion#t=${inv.token}`);
   await expect(otraVez.getByText(MENSAJE_NO_SIRVE)).toBeVisible();
 });
@@ -96,7 +100,9 @@ test("un enlace vencido, uno inventado y uno sin token dicen lo mismo: ya no sir
   const vencida = await sembrarInvitacion({ venceEn: new Date(Date.now() - 1000) });
   const casos = [`/invitacion#t=${vencida.token}`, "/invitacion#t=" + "a".repeat(43), "/invitacion"];
   for (const ruta of casos) {
-    const page = await (await browser.newContext()).newPage();
+    const contexto = await browser.newContext();
+    await conOrigenPropio(contexto);
+    const page = await contexto.newPage();
     await page.goto(ruta);
     await expect(page.getByText(MENSAJE_NO_SIRVE), ruta).toBeVisible();
     await sinViolaciones(page);

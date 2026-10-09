@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
-import { inicioDeSesionPermitido } from "../../src/core/auth/acceso";
+import { inicioDeSesionPermitido } from "../../src/server/sesion/acceso";
 import { detectarCuentasDeGoogleSospechosas } from "../../scripts/lecturas-de-auth";
 
 /** S-01: con una sesión abierta, otra cuenta de Google no puede vincularse al usuario de esa sesión (`allowDangerousEmailAccountLinking`). */
@@ -20,42 +20,42 @@ describe("inicioDeSesionPermitido", () => {
 
   it("sin sesión abierta y con el mismo email en el perfil, entra (alta existente)", async () => {
     await dosUsuarios();
-    expect(await inicioDeSesionPermitido({ emailUsuario: "victima@gmail.com", emailPerfil: "victima@gmail.com", hd: undefined, tokenDeSesionAbierta: undefined })).toBe(true);
+    expect(await inicioDeSesionPermitido({ emailUsuario: "victima@gmail.com", emailPerfil: "victima@gmail.com", tokenDeSesionAbierta: undefined })).toBe(true);
   });
 
   it("con una sesión abierta de OTRO email, rechaza: la cuenta de Google no se vincula a quien tiene la sesión", async () => {
     const { victima } = await dosUsuarios();
     await abrirSesion(victima.id, "token-victima");
-    expect(await inicioDeSesionPermitido({ emailUsuario: "atacante@gmail.com", emailPerfil: "atacante@gmail.com", hd: undefined, tokenDeSesionAbierta: "token-victima" })).toBe(false);
+    expect(await inicioDeSesionPermitido({ emailUsuario: "atacante@gmail.com", emailPerfil: "atacante@gmail.com", tokenDeSesionAbierta: "token-victima" })).toBe(false);
   });
 
   it("con una sesión abierta del MISMO usuario (volver a iniciar), entra", async () => {
     const { victima } = await dosUsuarios();
     await abrirSesion(victima.id, "token-victima");
-    expect(await inicioDeSesionPermitido({ emailUsuario: "victima@gmail.com", emailPerfil: "victima@gmail.com", hd: undefined, tokenDeSesionAbierta: "token-victima" })).toBe(true);
+    expect(await inicioDeSesionPermitido({ emailUsuario: "victima@gmail.com", emailPerfil: "victima@gmail.com", tokenDeSesionAbierta: "token-victima" })).toBe(true);
   });
 
   it("una sesión vencida o un token desconocido no cuentan como sesión abierta", async () => {
     const { victima } = await dosUsuarios();
     await abrirSesion(victima.id, "token-vencido", new Date(Date.now() - 1000));
     for (const token of ["token-vencido", "token-que-no-existe"]) {
-      expect(await inicioDeSesionPermitido({ emailUsuario: "atacante@gmail.com", emailPerfil: "atacante@gmail.com", hd: undefined, tokenDeSesionAbierta: token })).toBe(true);
+      expect(await inicioDeSesionPermitido({ emailUsuario: "atacante@gmail.com", emailPerfil: "atacante@gmail.com", tokenDeSesionAbierta: token })).toBe(true);
     }
   });
 
   it("rechaza si el email del perfil de Google no es el del usuario al que se vincularía la cuenta", async () => {
     await dosUsuarios();
-    expect(await inicioDeSesionPermitido({ emailUsuario: "victima@gmail.com", emailPerfil: "atacante@gmail.com", hd: undefined, tokenDeSesionAbierta: undefined })).toBe(false);
+    expect(await inicioDeSesionPermitido({ emailUsuario: "victima@gmail.com", emailPerfil: "atacante@gmail.com", tokenDeSesionAbierta: undefined })).toBe(false);
   });
 
   it("compara los emails sin distinguir mayúsculas ni espacios", async () => {
     await dosUsuarios();
-    expect(await inicioDeSesionPermitido({ emailUsuario: "victima@gmail.com", emailPerfil: " Victima@Gmail.com ", hd: undefined, tokenDeSesionAbierta: undefined })).toBe(true);
+    expect(await inicioDeSesionPermitido({ emailUsuario: "victima@gmail.com", emailPerfil: " Victima@Gmail.com ", tokenDeSesionAbierta: undefined })).toBe(true);
   });
 
   it("sigue aplicando el resto del control de acceso (un email sin alta no entra)", async () => {
     await dosUsuarios();
-    expect(await inicioDeSesionPermitido({ emailUsuario: "nadie@afuera.com", emailPerfil: "nadie@afuera.com", hd: undefined, tokenDeSesionAbierta: undefined })).toBe(false);
+    expect(await inicioDeSesionPermitido({ emailUsuario: "nadie@afuera.com", emailPerfil: "nadie@afuera.com", tokenDeSesionAbierta: undefined })).toBe(false);
   });
 });
 

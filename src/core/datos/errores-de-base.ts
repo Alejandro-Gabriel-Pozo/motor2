@@ -35,6 +35,58 @@ export function causaDeErrorDeDriver(e: unknown): { kind: string; constraint?: u
 }
 
 /**
+ * Un choque de índice ÚNICO (SQLSTATE 23505): `P2002` de Prisma, o el `DriverAdapterError` crudo con `cause.kind === "UniqueConstraintViolation"` (la otra forma en que el adaptador `pg` de
+ * Prisma 7 entrega el MISMO choque). Es LA clasificación del choque de unicidad de todo el repo (O.48, Hito 5): vive acá, en la capa neutral `core/datos`, para que la usen por igual el dominio de
+ * movimientos (`esChoqueDeIndiceUnico`, reexportada por `core/movimientos/con-reintento.ts`) y el de catálogo (`esErrorDeUnicidad`, `core/catalogo/generar-codigo.ts`), que no puede importar los
+ * archivos internos de otro dominio. Dentro de una transacción SERIALIZABLE, dos pedidos que leen el mismo estado y luego insertan la misma clave única no siempre reciben el 40001: si el
+ * índice único no fue parte de lo que leyeron, el perdedor recibe directamente el 23505 (confirmado: `MovimientoStock_traspaso_paso_unico_key` en el reingreso simultáneo de un traspaso). Para ese
+ * perdedor es lo mismo que un conflicto de serialización: al repetir ve el estado que dejó el ganador y responde el resultado de negocio que corresponde. Ver el parámetro `tambienChoqueDeUnico`
+ * de `conTransaccionSerializable` (`src/lib/transaccion-serializable.ts`).
+ */
+export function esChoqueDeIndiceUnico(e: unknown): boolean {
+  if (esErrorDeBaseConCodigo(e, "P2002")) return true;
+  return causaDeErrorDeDriver(e)?.kind === "UniqueConstraintViolation";
+}
+
+/**
+ * Una violación de CLAVE FORÁNEA (SQLSTATE 23503): `P2003` de Prisma, o el `DriverAdapterError` crudo con `cause.kind === "ForeignKeyConstraintViolation"`. En este modelo toda referencia entre tablas
+ * por empresa es una clave foránea COMPUESTA con `empresaId`, así que el id de OTRA empresa (o el que no existe) que llega del cliente lo rechaza la base con esto: no cruza nada, pero sale como una
+ * excepción cruda. Los casos de uso que reciben ids sin validar lo traducen a un rechazo de pertenencia («No se encontró …») en su borde, FUERA de la transacción abortada.
+ */
+export function esViolacionDeClaveForanea(e: unknown): boolean {
+  if (esErrorDeBaseConCodigo(e, "P2003")) return true;
+  return causaDeErrorDeDriver(e)?.kind === "ForeignKeyConstraintViolation";
+}
+
+/**
+ * El nombre de la restricción de clave foránea violada (`Producto_empresaId_categoriaId_fkey`), si el error la trae; `""` si no. Con el adaptador `pg` viene en
+ * `meta.driverAdapterError.cause.constraint.index` (confirmado contra Postgres real); también se mira `meta.constraint`/`meta.field_name` y la causa de un `DriverAdapterError` crudo.
+ * Sirve para decir QUÉ referencia no se encontró; sin ella el mensaje es el genérico del caso de uso.
+ */
+export function restriccionDeClaveForanea(e: unknown): string {
+  const conocido = errorConocidoDeBase(e);
+  const delMeta = [conocido?.meta?.constraint, conocido?.meta?.field_name].find((v): v is string => typeof v === "string");
+  if (delMeta) return delMeta;
+  const delAdaptador = (conocido?.meta?.driverAdapterError as { cause?: { constraint?: unknown } } | undefined)?.cause?.constraint;
+  const delDriver = delAdaptador ?? causaDeErrorDeDriver(e)?.constraint;
+  if (typeof delDriver === "string") return delDriver;
+  if (delDriver && typeof delDriver === "object" && "index" in delDriver && typeof delDriver.index === "string") return delDriver.index;
+  return "";
+}
+
+/**
+ * El rechazo de PERTENENCIA que corresponde a una violación de clave foránea, o `null` si `e` es otra cosa. `nombres` mapea la columna (`categoriaId`) al texto que la nombra
+ * («la categoría elegida»): la restricción violada se reconoce por su nombre (`<Tabla>_empresaId_<columna>_fkey`). Si no se reconoce ninguna, `generico`. El texto siempre empieza
+ * con «No se encontró», el mismo estilo de las lecturas de pertenencia de la casa («No se encontró el producto.»).
+ */
+export function rechazoDeReferenciaNoEncontrada(e: unknown, nombres: Readonly<Record<string, string>>, generico: string): string | null {
+  if (!esViolacionDeClaveForanea(e)) return null;
+  const restriccion = restriccionDeClaveForanea(e);
+  const columna = Object.keys(nombres).find((c) => restriccion.includes(`_${c}_fkey`));
+  return columna ? `No se encontró ${nombres[columna]}.` : generico;
+}
+
+/**
  * Un fallo de SERIALIZACIÓN (SQLSTATE 40001) o un deadlock (40P01) que nace en un `$executeRaw`/`$queryRaw` dentro de una transacción SERIALIZABLE: Prisma lo entrega como
  * `P2010` («raw query failed») con el código original de Postgres en `meta.driverAdapterError.cause.originalCode`, NO como `P2034`. Es lo mismo que un conflicto de escritura (el
  * perdedor tiene que repetir la transacción), pero sin este reconocimiento se vería como un error 500. Confirmado contra Postgres real con dos compras simultáneas del mismo producto,

@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import ts from "typescript";
+import { esArchivoUseServer } from "./guardas/analizador";
 
 /**
  * Las Server Actions de la consola (E5, ADR-020) son endpoints POST públicos: cualquiera que conozca su identificador puede invocarlas. Su único control de
@@ -67,10 +68,15 @@ function accionesSinInstalacion(nombreDeArchivo: string, fuente: string): string
 
 function accionesSinSesion(nombreDeArchivo: string, fuente: string): string[] {
   const sf = ts.createSourceFile(nombreDeArchivo, fuente, ts.ScriptTarget.Latest, true);
-  const primera = sf.statements[0];
-  if (!primera || !ts.isExpressionStatement(primera) || !ts.isStringLiteral(primera.expression) || primera.expression.text !== "use server") return [];
+  if (!esArchivoUseServer(fuente, nombreDeArchivo)) return [];
   const problemas: string[] = [];
   for (const s of sf.statements) {
+    // I-2 de la auditoría final: una acción exportada como constante (`export const x = envoltorio(async …)`) no es una `function` declarada y este guard no la verifica; en
+    // la consola no se admite (cada acción abre con la sesión del administrador, y eso solo se comprueba en `export async function`).
+    if (ts.isVariableStatement(s) && (ts.getModifiers(s) ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) {
+      for (const d of s.declarationList.declarations) problemas.push(`${d.name.getText(sf)}: exportada como constante; la consola solo admite \`export async function\` (el guard no verifica una constante)`);
+      continue;
+    }
     if (!ts.isFunctionDeclaration(s) || !s.name) continue;
     const exportada = (ts.getModifiers(s) ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
     const esAyudante = ABRE_CON_SESION.has(s.name.text);
@@ -85,7 +91,7 @@ function accionesSinSesion(nombreDeArchivo: string, fuente: string): string[] {
 
 describe("consola: toda Server Action abre con la sesión del administrador", () => {
   const rutas = archivos(APP).map((r) => ({ ruta: relative(APP, r).replace(/\\/g, "/"), fuente: readFileSync(r, "utf8") }));
-  const deAcciones = rutas.filter((r) => /^\s*["']use server["']/.test(r.fuente) && !PREVIAS_A_LA_SESION.some((p) => r.ruta.startsWith(p)));
+  const deAcciones = rutas.filter((r) => esArchivoUseServer(r.fuente, r.ruta) &&!PREVIAS_A_LA_SESION.some((p) => r.ruta.startsWith(p)));
 
   it("encuentra las acciones de empresas (sanidad: no pasa en vacío)", () => {
     expect(deAcciones.map((a) => a.ruta)).toContain("instalaciones/[instalacion]/empresas/acciones.ts");
@@ -119,5 +125,12 @@ describe("consola: toda Server Action abre con la sesión del administrador", ()
     expect(accionesSinSesion("a.ts", sin)).toEqual(["hacer: no abre con administradorEnSesion()"]);
     expect(accionesSinSesion("a.ts", con)).toEqual([]);
     expect(accionesSinSesion("a.ts", "export async function libre() {}")).toEqual([]);
+  });
+
+  it("I-2: una acción exportada como constante con envoltorio, o con un comentario antes de la directiva, no escapa del guard", () => {
+    expect(accionesSinSesion("a.ts", '"use server";\nexport const borrar = conRegistro(async () => { await db(); });')).toHaveLength(1);
+    expect(accionesSinSesion("a.ts", '/* banner */\n"use server";\nexport async function hacer() { const x = await db(); return x; }')).toEqual(["hacer: no abre con administradorEnSesion()"]);
+    expect(esArchivoUseServer('/* banner */\n"use server";\nexport async function hacer() {}')).toBe(true);
+    expect(accionesSinSesion("a.ts", '"use server";\nexport const LIMITE = 5;')).toHaveLength(1); // ni siquiera una constante de datos: Next solo admite funciones async
   });
 });

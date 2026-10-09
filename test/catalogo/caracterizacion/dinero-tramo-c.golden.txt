@@ -1,0 +1,450 @@
+### estado inicial
+  DISPONIBILIDAD disponibilidad1 disponible=true empresaId=empresa productoId=empanada sucursalId=central
+  DISPONIBILIDAD disponibilidad10 disponible=true empresaId=empresa productoId=pizza sucursalId=norte
+  DISPONIBILIDAD disponibilidad2 disponible=true empresaId=empresa productoId=empanada sucursalId=norte
+  DISPONIBILIDAD disponibilidad3 disponible=true empresaId=empresa productoId=faina sucursalId=central
+  DISPONIBILIDAD disponibilidad4 disponible=true empresaId=empresa productoId=faina sucursalId=norte
+  DISPONIBILIDAD disponibilidad5 disponible=true empresaId=empresa productoId=flan sucursalId=central
+  DISPONIBILIDAD disponibilidad6 disponible=true empresaId=empresa productoId=flan sucursalId=norte
+  DISPONIBILIDAD disponibilidad7 disponible=true empresaId=empresa productoId=harina sucursalId=central
+  DISPONIBILIDAD disponibilidad8 disponible=true empresaId=empresa productoId=harina sucursalId=norte
+  DISPONIBILIDAD disponibilidad9 disponible=true empresaId=empresa productoId=pizza sucursalId=central
+  PRODUCTO empanada categoriaId=null codigo=PV_EMP creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null nombre=Empanada observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=1500 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
+  PRODUCTO faina categoriaId=null codigo=PV_FAINA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null nombre=Fainá observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=5000 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
+  PRODUCTO flan categoriaId=null codigo=PV_FLAN creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null nombre=Flan observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=3000 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
+  PRODUCTO harina categoriaId=null codigo=MP_H000 creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=insumoHarina nombre=Harina 000 observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=0 proveedorConsignacionId=null seProduce=false tipo=MP unidadCompraId=null unidadStockId=kg
+  PRODUCTO pizza categoriaId=null codigo=PV_PIZZA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null nombre=Pizza observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=12000 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
+  PROMO menu activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos titulo=Menú del día
+  PROMO_SUCURSAL promoSucursal1 activa=true empresaId=empresa precioLocal=null promoCartaId=menu sucursalId=central
+  RECETA_SUCURSAL recetaSucursal1 empresaId=empresa habilitada=true productoId=empanada sucursalId=central
+  RECETA_VERSION recetaVersion1 basadaEnVersionId=null comentarios=null creadoEn=<fecha> empresaId=empresa equipamientoNecesario=null notasAdicionales=null presentacionEmplatado=null productoId=empanada racionTamano=null racionUnidadId=null racionesCantidad=null rendimientoCantidad=null rendimientoUnidadId=null sucursalId=central tiempoCoccionMinutos=null tiempoPreparacionMinutos=null version=1
+  RECETA_VERSION recetaVersion2 basadaEnVersionId=null comentarios=null creadoEn=<fecha> empresaId=empresa equipamientoNecesario=null notasAdicionales=null presentacionEmplatado=null productoId=pizza racionTamano=null racionUnidadId=null racionesCantidad=null rendimientoCantidad=null rendimientoUnidadId=null sucursalId=null tiempoCoccionMinutos=null tiempoPreparacionMinutos=null version=1
+  UNIDAD caja activa=true decimales=0 empresaId=empresa magnitud=CANTIDAD nombre=caja
+  UNIDAD kg activa=true decimales=2 empresaId=empresa magnitud=PESO nombre=kg
+  UNIDAD unidad activa=true decimales=0 empresaId=empresa magnitud=CANTIDAD nombre=unidad
+### descuento: alta del 15 % al Flan
+  resultado: {"ok":true,"mensaje":"«Flan» con 15 % de descuento en esta sucursal."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  + DESCUENTO descuento1 empresaId=empresa porcentaje=15 productoId=flan sucursalId=central
+  AUDITORIA actorId=admin campo=porcentaje descripcion=Descuento de "Flan" empresaId=empresa entidad=DescuentoProductoSucursal entidadId=descuento1 sucursalId=central valorAnterior=null valorNuevo=15
+### descuento: cambio a «20,5»
+  resultado: {"ok":true,"mensaje":"«Flan» con 20.5 % de descuento en esta sucursal."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - DESCUENTO descuento1 empresaId=empresa porcentaje=15 productoId=flan sucursalId=central
+  + DESCUENTO descuento1 empresaId=empresa porcentaje=20.5 productoId=flan sucursalId=central
+  AUDITORIA actorId=admin campo=porcentaje descripcion=Descuento de "Flan" empresaId=empresa entidad=DescuentoProductoSucursal entidadId=descuento1 sucursalId=central valorAnterior=15 valorNuevo=20.5
+### descuento: sin cambios (20.5 otra vez)
+  resultado: {"ok":true,"mensaje":"«Flan» con 20.5 % de descuento en esta sucursal."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+### descuento: borrar (null)
+  resultado: {"ok":true,"mensaje":"«Flan» vuelve a su precio, sin descuento en esta sucursal."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - DESCUENTO descuento1 empresaId=empresa porcentaje=20.5 productoId=flan sucursalId=central
+  AUDITORIA actorId=admin campo=porcentaje descripcion=Descuento de "Flan" empresaId=empresa entidad=DescuentoProductoSucursal entidadId=descuento1 sucursalId=central valorAnterior=20.5 valorNuevo=null
+### descuento: borrar lo que no tenía (null)
+  resultado: {"ok":true,"mensaje":"«Flan» no tenía descuento en esta sucursal."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### descuento: 0 es borrar, sin fila
+  resultado: {"ok":true,"mensaje":"«Flan» no tenía descuento en esta sucursal."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### descuento: la Pizza es opción de un ítem agrupado
+  resultado: {"ok":false,"mensaje":"«Pizza» es opción del ítem agrupado «Para picar»: sacala de ahí para ponerle descuento."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### descuento: una MP no admite descuento
+  resultado: {"ok":false,"mensaje":"Solo un producto de venta (PV) puede tener descuento."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### descuento: 150 % fuera de rango
+  resultado: {"ok":false,"mensaje":"El % de descuento tiene que ser menor que 100 %."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### descuento: producto inexistente
+  resultado: {"ok":false,"mensaje":"No se encontró el producto."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### descuento: alta del 10 % al Flan en Central
+  resultado: {"ok":true,"mensaje":"«Flan» con 10 % de descuento en esta sucursal."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  + DESCUENTO descuento2 empresaId=empresa porcentaje=10 productoId=flan sucursalId=central
+  AUDITORIA actorId=admin campo=porcentaje descripcion=Descuento de "Flan" empresaId=empresa entidad=DescuentoProductoSucursal entidadId=descuento2 sucursalId=central valorAnterior=null valorNuevo=10
+### descuento: sucursal cambiada (Norte), alta del 5 %
+  resultado: {"ok":true,"mensaje":"«Flan» con 5 % de descuento en esta sucursal."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  + DESCUENTO descuento3 empresaId=empresa porcentaje=5 productoId=flan sucursalId=norte
+  AUDITORIA actorId=admin campo=porcentaje descripcion=Descuento de "Flan" empresaId=empresa entidad=DescuentoProductoSucursal entidadId=descuento3 sucursalId=norte valorAnterior=null valorNuevo=5
+### promo: alta del «Combo» a $8000
+  resultado: {"ok":true,"mensaje":"Promo \"Combo\" creada en \"Platos\" y prendida en esta sucursal."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  + PROMO promo1 activa=true creadoEn=<fecha> descripcion=Para dos empresaId=empresa orden=2 precio=8000 seccionCartaId=platos titulo=Combo
+  + PROMO_SUCURSAL promoSucursal2 activa=true empresaId=empresa precioLocal=null promoCartaId=promo1 sucursalId=central
+  AUDITORIA actorId=admin campo=precio descripcion=Promo "Combo": precio empresaId=empresa entidad=PromoCarta entidadId=promo1 sucursalId=null valorAnterior=null valorNuevo=8000
+### promo: el Combo pasa a $8500
+  resultado: {"ok":true,"mensaje":"Promo \"Combo\" guardada."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PROMO promo1 activa=true creadoEn=<fecha> descripcion=Para dos empresaId=empresa orden=2 precio=8000 seccionCartaId=platos titulo=Combo
+  + PROMO promo1 activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=8500 seccionCartaId=platos titulo=Combo
+  AUDITORIA actorId=admin campo=precio descripcion=Promo "Combo": precio empresaId=empresa entidad=PromoCarta entidadId=promo1 sucursalId=null valorAnterior=8000 valorNuevo=8500
+### promo: solo el título (precio igual, sin auditoría)
+  resultado: {"ok":true,"mensaje":"Promo \"Combo grande\" guardada."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PROMO promo1 activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=8500 seccionCartaId=platos titulo=Combo
+  + PROMO promo1 activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=8500 seccionCartaId=postres titulo=Combo grande
+### promo: id inexistente
+  resultado: {"ok":false,"mensaje":"No se encontró la promo."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: sección inexistente
+  resultado: {"ok":false,"mensaje":"No se encontró la sección de carta."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: sin título
+  resultado: {"ok":false,"mensaje":"La promo necesita un título."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: precio inválido
+  resultado: {"ok":false,"mensaje":"El precio no tiene un formato válido: usá el punto como separador decimal (por ejemplo, 12.5)."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: precio con coma (el validador de la carta no la acepta; desde O.43 el mensaje pide el punto)
+  resultado: {"ok":false,"mensaje":"El precio no tiene un formato válido: usá el punto como separador decimal (por ejemplo, 12.5)."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: apagado general del Menú
+  resultado: {"ok":true,"mensaje":"Promo \"Menú del día\" desactivada en toda la empresa."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PROMO menu activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos titulo=Menú del día
+  + PROMO menu activa=false creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos titulo=Menú del día
+### promo: prendido general del Menú
+  resultado: {"ok":true,"mensaje":"Promo \"Menú del día\" activada en toda la empresa."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PROMO menu activa=false creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos titulo=Menú del día
+  + PROMO menu activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos titulo=Menú del día
+### promo: apagado general de una inexistente
+  resultado: {"ok":false,"mensaje":"No se encontró la promo."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: el Combo apagado en Central
+  resultado: {"ok":true,"mensaje":"Promo \"Combo grande\" apagada en esta sucursal."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PROMO_SUCURSAL promoSucursal2 activa=true empresaId=empresa precioLocal=null promoCartaId=promo1 sucursalId=central
+  + PROMO_SUCURSAL promoSucursal2 activa=false empresaId=empresa precioLocal=null promoCartaId=promo1 sucursalId=central
+### promo: sucursal cambiada (Norte) prende el Combo
+  resultado: {"ok":true,"mensaje":"Promo \"Combo grande\" prendida en esta sucursal."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  + PROMO_SUCURSAL promoSucursal3 activa=true empresaId=empresa precioLocal=null promoCartaId=promo1 sucursalId=norte
+### promo: precio local del Combo en Norte (fila ya prendida)
+  resultado: {"ok":true,"mensaje":"Precio de \"Combo grande\" en esta sucursal: $7000."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PROMO_SUCURSAL promoSucursal3 activa=true empresaId=empresa precioLocal=null promoCartaId=promo1 sucursalId=norte
+  + PROMO_SUCURSAL promoSucursal3 activa=true empresaId=empresa precioLocal=7000 promoCartaId=promo1 sucursalId=norte
+  AUDITORIA actorId=admin campo=precioLocal descripcion=Promo "Combo grande": precio en esta sucursal empresaId=empresa entidad=PromoCartaSucursal entidadId=promo1:norte sucursalId=norte valorAnterior=null valorNuevo=7000
+### promo: precio local del Menú en Central
+  resultado: {"ok":true,"mensaje":"Precio de \"Menú del día\" en esta sucursal: $9000."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PROMO_SUCURSAL promoSucursal1 activa=true empresaId=empresa precioLocal=null promoCartaId=menu sucursalId=central
+  + PROMO_SUCURSAL promoSucursal1 activa=true empresaId=empresa precioLocal=9000 promoCartaId=menu sucursalId=central
+  AUDITORIA actorId=admin campo=precioLocal descripcion=Promo "Menú del día": precio en esta sucursal empresaId=empresa entidad=PromoCartaSucursal entidadId=menu:central sucursalId=central valorAnterior=null valorNuevo=9000
+### promo: el mismo precio local (sin auditoría)
+  resultado: {"ok":true,"mensaje":"Precio de \"Menú del día\" en esta sucursal: $9000."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+### promo: precio local vacío vuelve al de la empresa
+  resultado: {"ok":true,"mensaje":"\"Menú del día\" vuelve al precio de la empresa en esta sucursal."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PROMO_SUCURSAL promoSucursal1 activa=true empresaId=empresa precioLocal=9000 promoCartaId=menu sucursalId=central
+  + PROMO_SUCURSAL promoSucursal1 activa=true empresaId=empresa precioLocal=null promoCartaId=menu sucursalId=central
+  AUDITORIA actorId=admin campo=precioLocal descripcion=Promo "Menú del día": precio en esta sucursal empresaId=empresa entidad=PromoCartaSucursal entidadId=menu:central sucursalId=central valorAnterior=9000 valorNuevo=null
+### promo: precio local de una inexistente
+  resultado: {"ok":false,"mensaje":"No se encontró la promo."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: precio local inválido
+  resultado: {"ok":false,"mensaje":"El precio no puede ser negativo."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: cupos del Menú (Platos hasta 2, Postres 1 a 1)
+  resultado: {"ok":true,"mensaje":"Cupos de \"Menú del día\" guardados (2): ahora es una promo armable en el POS."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+  + PROMO_CUPO cupo1 cantidadMaxima=1 cantidadMinima=1 empresaId=empresa orden=1 promoCartaId=menu seccionCartaId=postres
+  + PROMO_CUPO cupo2 cantidadMaxima=2 cantidadMinima=0 empresaId=empresa orden=0 promoCartaId=menu seccionCartaId=platos
+  AUDITORIA actorId=admin campo=cantidadMinima descripcion=Promo "Menú del día": cupo de la sección "Platos", cantidad mínima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:platos sucursalId=null valorAnterior=null valorNuevo=0
+  AUDITORIA actorId=admin campo=cantidadMaxima descripcion=Promo "Menú del día": cupo de la sección "Platos", cantidad máxima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:platos sucursalId=null valorAnterior=null valorNuevo=2
+  AUDITORIA actorId=admin campo=cantidadMinima descripcion=Promo "Menú del día": cupo de la sección "Postres", cantidad mínima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:postres sucursalId=null valorAnterior=null valorNuevo=1
+  AUDITORIA actorId=admin campo=cantidadMaxima descripcion=Promo "Menú del día": cupo de la sección "Postres", cantidad máxima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:postres sucursalId=null valorAnterior=null valorNuevo=1
+### promo: precio local por debajo del piso (3 unidades)
+  resultado: {"ok":false,"mensaje":"El precio de \"Menú del día\" ($0.02) no alcanza el piso de $0,01 por unidad en el peor caso (3 unidades si se elige el máximo de cada cupo: hace falta al menos $0.03). Subí el precio o bajá los máximos."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: precio local justo en el piso
+  resultado: {"ok":true,"mensaje":"Precio de \"Menú del día\" en esta sucursal: $0.05."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PROMO_SUCURSAL promoSucursal1 activa=true empresaId=empresa precioLocal=null promoCartaId=menu sucursalId=central
+  + PROMO_SUCURSAL promoSucursal1 activa=true empresaId=empresa precioLocal=0.05 promoCartaId=menu sucursalId=central
+  AUDITORIA actorId=admin campo=precioLocal descripcion=Promo "Menú del día": precio en esta sucursal empresaId=empresa entidad=PromoCartaSucursal entidadId=menu:central sucursalId=central valorAnterior=null valorNuevo=0.05
+### promo: cupos que dejan el precio local bajo el piso
+  resultado: {"ok":false,"mensaje":"El precio de \"Menú del día\" ($0.05) no alcanza el piso de $0,01 por unidad en el peor caso (10 unidades si se elige el máximo de cada cupo: hace falta al menos $0.1). Subí el precio o bajá los máximos."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: precio de la empresa bajo el piso de sus cupos (desde O.42 la edición mira el piso: se rechaza)
+  resultado: {"ok":false,"mensaje":"El precio de \"Menú del día\" ($0.01) no alcanza el piso de $0,01 por unidad en el peor caso (3 unidades si se elige el máximo de cada cupo: hace falta al menos $0.03). Subí el precio o bajá los máximos."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: cupos con la sección repetida
+  resultado: {"ok":false,"mensaje":"No se puede repetir la misma sección de carta en dos cupos de la misma promo."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: cupo con mínimo mayor que el máximo
+  resultado: {"ok":false,"mensaje":"En cada cupo, el mínimo no puede ser mayor que el máximo."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: cupo de una sección inexistente
+  resultado: {"ok":false,"mensaje":"Alguna sección de carta de los cupos no existe."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: cupos de una promo inexistente
+  resultado: {"ok":false,"mensaje":"No se encontró la promo."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### promo: sin cupos vuelve a informativa
+  resultado: {"ok":true,"mensaje":"\"Menú del día\" volvió a ser informativa (sin cupos): el POS deja de ofrecerla para armar."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+  - PROMO_CUPO cupo1 cantidadMaxima=1 cantidadMinima=1 empresaId=empresa orden=1 promoCartaId=menu seccionCartaId=postres
+  - PROMO_CUPO cupo2 cantidadMaxima=2 cantidadMinima=0 empresaId=empresa orden=0 promoCartaId=menu seccionCartaId=platos
+  AUDITORIA actorId=admin campo=cantidadMinima descripcion=Promo "Menú del día": cupo de la sección "Platos", cantidad mínima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:platos sucursalId=null valorAnterior=0 valorNuevo=null
+  AUDITORIA actorId=admin campo=cantidadMaxima descripcion=Promo "Menú del día": cupo de la sección "Platos", cantidad máxima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:platos sucursalId=null valorAnterior=2 valorNuevo=null
+  AUDITORIA actorId=admin campo=cantidadMinima descripcion=Promo "Menú del día": cupo de la sección "Postres", cantidad mínima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:postres sucursalId=null valorAnterior=1 valorNuevo=null
+  AUDITORIA actorId=admin campo=cantidadMaxima descripcion=Promo "Menú del día": cupo de la sección "Postres", cantidad máxima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:postres sucursalId=null valorAnterior=1 valorNuevo=null
+### precio local: alta de la Pizza en $13000 (ofrece sincronizar)
+  resultado: {"ok":true,"mensaje":"Precio local de \"Pizza\" fijado en 13000.","sincronizable":{"itemAgrupadoCartaId":"paraPicar","nombreItem":"Para picar","precioNuevo":13000,"hermanos":[{"productoId":"faina","nombre":"Fainá","precioActual":5000}]}}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  + PRECIO_LOCAL precioLocal1 empresaId=empresa habilitado=true precio=13000 productoId=pizza sucursalId=central
+  AUDITORIA actorId=admin campo=precio descripcion=Precio local de "Pizza" empresaId=empresa entidad=PrecioLocalProducto entidadId=precioLocal1 sucursalId=central valorAnterior=null valorNuevo=13000
+  AUDITORIA actorId=admin campo=habilitado descripcion=Precio local de "Pizza": habilitado empresaId=empresa entidad=PrecioLocalProducto entidadId=precioLocal1 sucursalId=central valorAnterior=null valorNuevo=true
+### precio local: el mismo valor otra vez
+  resultado: {"ok":true,"mensaje":"Precio local de \"Pizza\" fijado en 13000.","sincronizable":{"itemAgrupadoCartaId":"paraPicar","nombreItem":"Para picar","precioNuevo":13000,"hermanos":[{"productoId":"faina","nombre":"Fainá","precioActual":5000}]}}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+### precio local: deshabilitado
+  resultado: {"ok":true,"mensaje":"Precio local de \"Pizza\" cargado (deshabilitado, se usa el precio global)."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PRECIO_LOCAL precioLocal1 empresaId=empresa habilitado=true precio=13000 productoId=pizza sucursalId=central
+  + PRECIO_LOCAL precioLocal1 empresaId=empresa habilitado=false precio=13000 productoId=pizza sucursalId=central
+  AUDITORIA actorId=admin campo=habilitado descripcion=Precio local de "Pizza": habilitado empresaId=empresa entidad=PrecioLocalProducto entidadId=precioLocal1 sucursalId=central valorAnterior=true valorNuevo=false
+### precio local: Flan (sin ítem agrupado)
+  resultado: {"ok":true,"mensaje":"Precio local de \"Flan\" fijado en 3500.5."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  + PRECIO_LOCAL precioLocal2 empresaId=empresa habilitado=true precio=3500.5 productoId=flan sucursalId=central
+  AUDITORIA actorId=admin campo=precio descripcion=Precio local de "Flan" empresaId=empresa entidad=PrecioLocalProducto entidadId=precioLocal2 sucursalId=central valorAnterior=null valorNuevo=3500.5
+  AUDITORIA actorId=admin campo=habilitado descripcion=Precio local de "Flan": habilitado empresaId=empresa entidad=PrecioLocalProducto entidadId=precioLocal2 sucursalId=central valorAnterior=null valorNuevo=true
+### precio local: negativo
+  resultado: {"ok":false,"mensaje":"El precio no puede ser negativo."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### precio local: tres decimales
+  resultado: {"ok":false,"mensaje":"El precio admite como máximo 2 decimales."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### precio local: producto inexistente
+  resultado: {"ok":false,"mensaje":"No se encontró el producto."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### sincronizar precio local: Pizza y Fainá a $13000
+  resultado: {"ok":true,"mensaje":"Precio local de \"Fainá\", \"Pizza\" fijado en 13000 en \"Central\" («Para picar»)."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PRECIO_LOCAL precioLocal1 empresaId=empresa habilitado=false precio=13000 productoId=pizza sucursalId=central
+  + PRECIO_LOCAL precioLocal1 empresaId=empresa habilitado=true precio=13000 productoId=pizza sucursalId=central
+  + PRECIO_LOCAL precioLocal3 empresaId=empresa habilitado=true precio=13000 productoId=faina sucursalId=central
+  AUDITORIA actorId=admin campo=precio descripcion=Precio local de "Fainá" empresaId=empresa entidad=PrecioLocalProducto entidadId=precioLocal3 sucursalId=central valorAnterior=null valorNuevo=13000
+  AUDITORIA actorId=admin campo=habilitado descripcion=Precio local de "Fainá": habilitado empresaId=empresa entidad=PrecioLocalProducto entidadId=precioLocal3 sucursalId=central valorAnterior=null valorNuevo=true
+  AUDITORIA actorId=admin campo=habilitado descripcion=Precio local de "Pizza": habilitado empresaId=empresa entidad=PrecioLocalProducto entidadId=precioLocal1 sucursalId=central valorAnterior=false valorNuevo=true
+### sincronizar precio local: la pantalla era de otra sucursal
+  resultado: {"ok":false,"mensaje":"La sucursal activa cambió desde que se cargó la pantalla: recargala y volvé a intentar."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### sincronizar precio local: no son del mismo ítem
+  resultado: {"ok":false,"mensaje":"Esos productos no están todos en el mismo ítem agrupado de la carta."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### sincronizar precio local: lista vacía
+  resultado: {"ok":false,"mensaje":"No hay productos para actualizar."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### sincronizar precio local: precio inválido
+  resultado: {"ok":false,"mensaje":"El precio no es un número válido."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### precio local: sucursal cambiada (Norte), Pizza en $14000 (sin ítem agrupado allá)
+  resultado: {"ok":true,"mensaje":"Precio local de \"Pizza\" fijado en 14000."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  + PRECIO_LOCAL precioLocal4 empresaId=empresa habilitado=true precio=14000 productoId=pizza sucursalId=norte
+  AUDITORIA actorId=admin campo=precio descripcion=Precio local de "Pizza" empresaId=empresa entidad=PrecioLocalProducto entidadId=precioLocal4 sucursalId=norte valorAnterior=null valorNuevo=14000
+  AUDITORIA actorId=admin campo=habilitado descripcion=Precio local de "Pizza": habilitado empresaId=empresa entidad=PrecioLocalProducto entidadId=precioLocal4 sucursalId=norte valorAnterior=null valorNuevo=true
+### rendimiento: calibra la cantidad (con origen)
+  resultado: {"ok":true,"mensaje":"Rendimiento de \"Harina 000\" en \"Pizza\" calibrado para «Central»."}
+  efectos: revalidarCartasPublicas=0 refrescar=1
+  + RENDIMIENTO_LOCAL rendimiento1 actualizadoEn=<fecha> cantidad=0.3 empresaId=empresa mermaPorcentaje=null recetaIngredienteId=lineaPizzaV1 sucursalId=central
+  AUDITORIA actorId=admin campo=cantidad descripcion=Rendimiento de "Harina 000" en "Pizza" en «Central» (central: 0.25 kg, merma 0 %): cantidad — desde sugerencia de Rendimiento real de recetas (sugerido 0.3, guardado 0.3; 4 semanas; confianza alta; comprado 30, vendido 100) empresaId=empresa entidad=RendimientoLocalIngrediente entidadId=central:pizza:harina sucursalId=central valorAnterior=null valorNuevo=0.3
+### rendimiento: suma la merma
+  resultado: {"ok":true,"mensaje":"Rendimiento de \"Harina 000\" en \"Pizza\" calibrado para «Central»."}
+  efectos: revalidarCartasPublicas=0 refrescar=1
+  - RENDIMIENTO_LOCAL rendimiento1 actualizadoEn=<fecha> cantidad=0.3 empresaId=empresa mermaPorcentaje=null recetaIngredienteId=lineaPizzaV1 sucursalId=central
+  + RENDIMIENTO_LOCAL rendimiento1 actualizadoEn=<fecha> cantidad=0.3 empresaId=empresa mermaPorcentaje=5 recetaIngredienteId=lineaPizzaV1 sucursalId=central
+  AUDITORIA actorId=admin campo=mermaPorcentaje descripcion=Rendimiento de "Harina 000" en "Pizza" en «Central» (central: 0.25 kg, merma 0 %): merma — edición manual empresaId=empresa entidad=RendimientoLocalIngrediente entidadId=central:pizza:harina sucursalId=central valorAnterior=null valorNuevo=5
+### rendimiento: cantidad inválida
+  resultado: {"ok":false,"mensaje":"La cantidad tiene que ser un número mayor a 0."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### rendimiento: sin ningún valor
+  resultado: {"ok":false,"mensaje":"Elegí al menos un valor para calibrar (cantidad o merma)."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### rendimiento: el reporte era de otra sucursal
+  resultado: {"ok":false,"mensaje":"Cambiaste de sucursal desde que abriste el reporte; recargalo."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### rendimiento: línea inexistente
+  resultado: {"ok":false,"mensaje":"No se encontró esa línea de receta."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### rendimiento: vuelve al central
+  resultado: {"ok":true,"mensaje":"\"Harina 000\" en \"Pizza\" vuelve a usar el valor central en «Central»."}
+  efectos: revalidarCartasPublicas=0 refrescar=1
+  - RENDIMIENTO_LOCAL rendimiento1 actualizadoEn=<fecha> cantidad=0.3 empresaId=empresa mermaPorcentaje=5 recetaIngredienteId=lineaPizzaV1 sucursalId=central
+  + RENDIMIENTO_LOCAL rendimiento1 actualizadoEn=<fecha> cantidad=null empresaId=empresa mermaPorcentaje=null recetaIngredienteId=lineaPizzaV1 sucursalId=central
+  AUDITORIA actorId=admin campo=cantidad descripcion=Rendimiento de "Harina 000" en "Pizza" en «Central»: vuelta al valor central. empresaId=empresa entidad=RendimientoLocalIngrediente entidadId=central:pizza:harina sucursalId=central valorAnterior=0.3 valorNuevo=null
+  AUDITORIA actorId=admin campo=mermaPorcentaje descripcion=Rendimiento de "Harina 000" en "Pizza" en «Central»: vuelta al valor central. empresaId=empresa entidad=RendimientoLocalIngrediente entidadId=central:pizza:harina sucursalId=central valorAnterior=5 valorNuevo=null
+### rendimiento: vuelve al central otra vez (no-op)
+  resultado: {"ok":true,"mensaje":"\"Harina 000\" en \"Pizza\" ya usa el valor central en «Central»."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### rendimiento: vuelve al central de una línea inexistente
+  resultado: {"ok":false,"mensaje":"No se encontró esa línea de receta."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### rendimiento: la receta cambió (v2) mientras se miraba el reporte
+  resultado: {"ok":false,"mensaje":"La receta cambió mientras mirabas el reporte; recargá."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+  + RECETA_VERSION recetaVersion3 basadaEnVersionId=null comentarios=null creadoEn=<fecha> empresaId=empresa equipamientoNecesario=null notasAdicionales=null presentacionEmplatado=null productoId=pizza racionTamano=null racionUnidadId=null racionesCantidad=null rendimientoCantidad=null rendimientoUnidadId=null sucursalId=null tiempoCoccionMinutos=null tiempoPreparacionMinutos=null version=2
+### rendimiento: volver al central con la receta cambiada
+  resultado: {"ok":false,"mensaje":"La receta cambió mientras mirabas el reporte; recargá."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### receta propia: sin confirmar
+  resultado: {"ok":false,"mensaje":"Confirmá que querés volver a la receta central."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### receta propia: vuelve a la central
+  resultado: {"ok":true,"mensaje":"«Central» vuelve a usar la receta central. La receta propia queda en el historial."}
+  efectos: revalidarCartasPublicas=0 refrescar=1
+  - RECETA_SUCURSAL recetaSucursal1 empresaId=empresa habilitada=true productoId=empanada sucursalId=central
+  + RECETA_SUCURSAL recetaSucursal1 empresaId=empresa habilitada=false productoId=empanada sucursalId=central
+  AUDITORIA actorId=admin campo=habilitada descripcion=Receta de "Empanada" en "Central": vuelve a usar la receta central. empresaId=empresa entidad=RecetaSucursal entidadId=central:empanada sucursalId=central valorAnterior=true valorNuevo=false
+### receta propia: ya no tiene propia habilitada
+  resultado: {"ok":false,"mensaje":"Esta sucursal no tiene receta propia habilitada para este producto."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### producto: alta de la Tarta (en todas las sucursales)
+  resultado: {"ok":true,"mensaje":"Producto \"Tarta\" (PV_TARTA) creado.","id":"producto1","nombre":"Tarta"}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+  + PRODUCTO producto1 categoriaId=pastas codigo=PV_TARTA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null nombre=Tarta observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=7000 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
+  + DISPONIBILIDAD disponibilidad11 disponible=true empresaId=empresa productoId=producto1 sucursalId=central
+  + DISPONIBILIDAD disponibilidad12 disponible=true empresaId=empresa productoId=producto1 sucursalId=norte
+### producto: alta de la Torta (solo en la sucursal activa)
+  resultado: {"ok":true,"mensaje":"Producto \"Torta\" (PV_TORTA) creado.","id":"producto2","nombre":"Torta"}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+  + PRODUCTO producto2 categoriaId=null codigo=PV_TORTA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null nombre=Torta observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=6500.5 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
+  + DISPONIBILIDAD disponibilidad13 disponible=true empresaId=empresa productoId=producto2 sucursalId=central
+### producto: alta con nombre repetido
+  resultado: {"ok":false,"mensaje":"Ya existe un producto disponible llamado \"tarta\"."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### producto: la Fainá pasa a $5200 (ofrece sincronizar)
+  resultado: {"ok":true,"mensaje":"Producto \"Fainá\" actualizado.","sincronizable":{"itemAgrupadoCartaId":"paraPicar","nombreItem":"Para picar","precioNuevo":5200,"hermanos":[{"productoId":"pizza","nombre":"Pizza","precioActual":12000}]}}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PRODUCTO faina categoriaId=null codigo=PV_FAINA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null nombre=Fainá observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=5000 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
+  + PRODUCTO faina categoriaId=null codigo=PV_FAINA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null nombre=Fainá observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=5200 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
+  AUDITORIA actorId=admin campo=precioVenta descripcion=Producto "Fainá": precio de venta empresaId=empresa entidad=Producto entidadId=faina sucursalId=null valorAnterior=5000 valorNuevo=5200
+### producto: la Fainá sin cambios de precio
+  resultado: {"ok":true,"mensaje":"Producto \"Fainá\" actualizado."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+### producto: cambiar el tipo
+  resultado: {"ok":false,"mensaje":"El tipo no se puede cambiar — este producto ya es \"PV\". Dado de baja y creá uno nuevo si necesitás el otro tipo."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### sincronizar precio global: Pizza y Fainá a $11000
+  resultado: {"ok":true,"mensaje":"Precio de venta de \"Fainá\", \"Pizza\" actualizado a $11.000 («Para picar»)."}
+  efectos: revalidarCartasPublicas=1 refrescar=0
+  - PRODUCTO faina categoriaId=null codigo=PV_FAINA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null nombre=Fainá observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=5200 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
+  + PRODUCTO faina categoriaId=null codigo=PV_FAINA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null nombre=Fainá observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=11000 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
+  - PRODUCTO pizza categoriaId=null codigo=PV_PIZZA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null nombre=Pizza observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=12000 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
+  + PRODUCTO pizza categoriaId=null codigo=PV_PIZZA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null nombre=Pizza observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=11000 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
+  AUDITORIA actorId=admin campo=precioVenta descripcion=Producto "Fainá": precio de venta empresaId=empresa entidad=Producto entidadId=faina sucursalId=null valorAnterior=5200 valorNuevo=11000
+  AUDITORIA actorId=admin campo=precioVenta descripcion=Producto "Pizza": precio de venta empresaId=empresa entidad=Producto entidadId=pizza sucursalId=null valorAnterior=12000 valorNuevo=11000
+### sincronizar precio global: negativo
+  resultado: {"ok":false,"mensaje":"El precio de venta no puede ser negativo."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### sincronizar precio global: no son del mismo ítem
+  resultado: {"ok":false,"mensaje":"Esos productos no están todos en el mismo ítem agrupado de la carta."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### presentación: alta de la caja de 25 kg
+  resultado: {"ok":true,"mensaje":"Presentación agregada."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+  + PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=25 productoId=harina unidadCompraId=caja
+  AUDITORIA actorId=admin campo=factorConversion descripcion=Producto "Harina 000": factor de conversión de una presentación de compra empresaId=empresa entidad=Presentacion entidadId=presentacion1 sucursalId=null valorAnterior=null valorNuevo=25
+### presentación: la misma caja otra vez
+  resultado: {"ok":true,"mensaje":"Presentación agregada."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### presentación: la caja pasa a 30 kg
+  resultado: {"ok":true,"mensaje":"Presentación agregada."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+  - PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=25 productoId=harina unidadCompraId=caja
+  + PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=30 productoId=harina unidadCompraId=caja
+  AUDITORIA actorId=admin campo=factorConversion descripcion=Producto "Harina 000": factor de conversión de una presentación de compra empresaId=empresa entidad=Presentacion entidadId=presentacion1 sucursalId=null valorAnterior=25 valorNuevo=30
+### presentación: factor inválido (tres decimales en kg)
+  resultado: {"ok":false,"mensaje":"El factor de conversión admite como máximo 2 decimales (unidad \"kg\")."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### presentación: desactivada
+  resultado: {"ok":true,"mensaje":"Presentación desactivada."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+  - PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=30 productoId=harina unidadCompraId=caja
+  + PRESENTACION presentacion1 activa=false empresaId=empresa factorConversion=30 productoId=harina unidadCompraId=caja
+### presentación: la caja reactivada al volver a agregarla
+  resultado: {"ok":true,"mensaje":"Presentación agregada."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+  - PRESENTACION presentacion1 activa=false empresaId=empresa factorConversion=30 productoId=harina unidadCompraId=caja
+  + PRESENTACION presentacion1 activa=true empresaId=empresa factorConversion=30 productoId=harina unidadCompraId=caja
+### unidad: alta del litro (decimales por defecto)
+  resultado: {"ok":true,"mensaje":"Unidad \"litro\" creada.","id":"unidad1","nombre":"litro"}
+  efectos: revalidarCartasPublicas=0 refrescar=1
+  + UNIDAD unidad1 activa=true decimales=2 empresaId=empresa magnitud=VOLUMEN nombre=litro
+### unidad: alta repetida
+  resultado: {"ok":false,"mensaje":"Ya existe una unidad llamada \"LITRO\"."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### unidad: decimales del litro a 3
+  resultado: {"ok":true,"mensaje":"Decimales actualizados."}
+  efectos: revalidarCartasPublicas=0 refrescar=1
+  - UNIDAD unidad1 activa=true decimales=2 empresaId=empresa magnitud=VOLUMEN nombre=litro
+  + UNIDAD unidad1 activa=true decimales=3 empresaId=empresa magnitud=VOLUMEN nombre=litro
+  AUDITORIA actorId=admin campo=decimales descripcion=Unidad "litro": decimales empresaId=empresa entidad=Unidad entidadId=unidad1 sucursalId=null valorAnterior=2 valorNuevo=3
+### unidad: los mismos decimales
+  resultado: {"ok":true,"mensaje":"Decimales actualizados."}
+  efectos: revalidarCartasPublicas=0 refrescar=1
+### unidad: decimales fuera de rango
+  resultado: {"ok":false,"mensaje":"Los decimales tienen que ser un entero entre 0 y 6."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### cliente: alta de Fulano con 10 %
+  resultado: {"ok":true,"mensaje":"Cliente \"Fulano\" creado, con 10% de descuento.","id":"cliente1","nombre":"Fulano"}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+  + CLIENTE cliente1 activo=true creadoEn=<fecha> descuentoPorcentaje=10 empresaId=empresa nombre=Fulano
+  AUDITORIA actorId=admin campo=nombre descripcion=Cliente "Fulano": nombre empresaId=empresa entidad=Cliente entidadId=cliente1 sucursalId=null valorAnterior=null valorNuevo=Fulano
+  AUDITORIA actorId=admin campo=descuentoPorcentaje descripcion=Cliente "Fulano": % de descuento empresaId=empresa entidad=Cliente entidadId=cliente1 sucursalId=null valorAnterior=null valorNuevo=10
+### cliente: alta repetida
+  resultado: {"ok":false,"mensaje":"Ya existe un cliente llamado \"Fulano\"."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### cliente: % inválido
+  resultado: {"ok":false,"mensaje":"El % de descuento tiene que ser menor que 100 %."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### cliente: Fulano pasa a 12,5 %
+  resultado: {"ok":true,"mensaje":"Cliente \"Fulano\" actualizado."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+  - CLIENTE cliente1 activo=true creadoEn=<fecha> descuentoPorcentaje=10 empresaId=empresa nombre=Fulano
+  + CLIENTE cliente1 activo=true creadoEn=<fecha> descuentoPorcentaje=12.5 empresaId=empresa nombre=Fulano
+  AUDITORIA actorId=admin campo=descuentoPorcentaje descripcion=Cliente "Fulano": % de descuento empresaId=empresa entidad=Cliente entidadId=cliente1 sucursalId=null valorAnterior=10 valorNuevo=12.5
+### cliente: Fulano cambia de nombre
+  resultado: {"ok":true,"mensaje":"Cliente \"Fulano Pérez\" actualizado."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+  - CLIENTE cliente1 activo=true creadoEn=<fecha> descuentoPorcentaje=12.5 empresaId=empresa nombre=Fulano
+  + CLIENTE cliente1 activo=true creadoEn=<fecha> descuentoPorcentaje=12.5 empresaId=empresa nombre=Fulano Pérez
+  AUDITORIA actorId=admin campo=nombre descripcion=Cliente "Fulano Pérez": nombre empresaId=empresa entidad=Cliente entidadId=cliente1 sucursalId=null valorAnterior=Fulano valorNuevo=Fulano Pérez
+### margen: alta del objetivo de la empresa (30 %)
+  resultado: {"ok":true,"mensaje":"Food cost objetivo de la empresa: 30 %."}
+  efectos: revalidarCartasPublicas=0 refrescar=1
+  + MARGEN_OBJETIVO margen1 categoriaId=null empresaId=empresa foodCostObjetivoPct=30
+  AUDITORIA actorId=admin campo=foodCostObjetivoPct descripcion=Food cost objetivo de la empresa empresaId=empresa entidad=MargenObjetivo entidadId=empresa sucursalId=null valorAnterior=null valorNuevo=30
+### margen: el mismo objetivo
+  resultado: {"ok":true,"mensaje":"La empresa ya tenía 30 % de food cost objetivo."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### margen: cambio a 32,5 %
+  resultado: {"ok":true,"mensaje":"Food cost objetivo de la empresa: 32.5 %."}
+  efectos: revalidarCartasPublicas=0 refrescar=1
+  - MARGEN_OBJETIVO margen1 categoriaId=null empresaId=empresa foodCostObjetivoPct=30
+  + MARGEN_OBJETIVO margen1 categoriaId=null empresaId=empresa foodCostObjetivoPct=32.5
+  AUDITORIA actorId=admin campo=foodCostObjetivoPct descripcion=Food cost objetivo de la empresa empresaId=empresa entidad=MargenObjetivo entidadId=empresa sucursalId=null valorAnterior=30 valorNuevo=32.5
+### margen: objetivo de la categoría Pastas
+  resultado: {"ok":true,"mensaje":"Food cost objetivo de la categoría «Pastas»: 25 %."}
+  efectos: revalidarCartasPublicas=0 refrescar=1
+  + MARGEN_OBJETIVO margen2 categoriaId=pastas empresaId=empresa foodCostObjetivoPct=25
+  AUDITORIA actorId=admin campo=foodCostObjetivoPct descripcion=Food cost objetivo de la categoría «Pastas» empresaId=empresa entidad=MargenObjetivo entidadId=pastas sucursalId=null valorAnterior=null valorNuevo=25
+### margen: borrar el de la empresa
+  resultado: {"ok":true,"mensaje":"La empresa vuelve al objetivo que le corresponde por defecto."}
+  efectos: revalidarCartasPublicas=0 refrescar=1
+  - MARGEN_OBJETIVO margen1 categoriaId=null empresaId=empresa foodCostObjetivoPct=32.5
+  AUDITORIA actorId=admin campo=foodCostObjetivoPct descripcion=Food cost objetivo de la empresa empresaId=empresa entidad=MargenObjetivo entidadId=empresa sucursalId=null valorAnterior=32.5 valorNuevo=null
+### margen: borrar lo que no tenía
+  resultado: {"ok":true,"mensaje":"La empresa no tenía un food cost objetivo propio."}
+  efectos: revalidarCartasPublicas=0 refrescar=0
+### margen: categoría inexistente
+  resultado: {"ok":false,"mensaje":"No se encontró la categoría."}
+  efectos: revalidarCartasPublicas=0 refrescar=0

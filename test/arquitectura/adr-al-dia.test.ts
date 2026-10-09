@@ -6,7 +6,7 @@ import { ACCIONES } from "../../src/core/permisos/acciones";
 /**
  * Los ADRs no se pueden desactualizar en silencio (Tanda 8, 2026-10-02): lo que un ADR cita con comillas invertidas tiene que existir.
  *  1. Rutas (`src/...`, `test/...`, `docs/...`, `core/...`, `*.test.ts`): el archivo existe.
- *  2. ADR-008 y ADR-009 (los de permisos): toda clave en snake_case es una acción de `ACCIONES`; toda acción de piso gerente aparece en ADR-008;
+ *  2. ADR-008, ADR-009 y ADR-027 (los de permisos): toda clave en snake_case es una acción de `ACCIONES`; toda acción de piso gerente aparece en ADR-008;
  *     todo `con...` es una guarda exportada por `server/actions/con-permiso.ts`.
  * Lo histórico se declara abajo CON motivo, y una excepción que ya no hace falta falla: la lista no puede crecer sin que nadie la mire.
  */
@@ -15,7 +15,9 @@ const DIR_ADR = join(RAIZ, "docs/adr");
 const leer = (ruta: string) => readFileSync(join(RAIZ, ruta), "utf8");
 
 const ADRS = readdirSync(DIR_ADR).filter((n) => n.endsWith(".md")).sort();
-const ADR_PERMISOS = ["ADR-008-rbac-accion-contexto.md", "ADR-009-semantica-de-ausencia-por-sucursal.md"];
+// ADR-027 (Hito 3, 3.4) entra desde que existe: cita las 12 claves de gobierno y las de D15, y una clave inexistente entre comillas invertidas (el valor
+// nuevo del piso o la futura acción de cambiar el nivel de un rol) sería una promesa falsa; por eso el ADR las nombra sin comillas invertidas.
+const ADR_PERMISOS = ["ADR-008-rbac-accion-contexto.md", "ADR-009-semantica-de-ausencia-por-sucursal.md", "ADR-027-piso-administrador-de-sistema-y-rangos.md"];
 
 /** `adr|ruta` → por qué la ruta citada ya no existe (o nunca estuvo en este repo). */
 const RUTAS_HISTORICAS: Record<string, string> = {

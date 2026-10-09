@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
 import { obtenerReporteDescuentosClientes } from "@/server/consultas/reportes/descuentos-clientes";
@@ -19,6 +20,8 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
 export default async function DescuentosClientesPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_descuentos_clientes", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
@@ -37,7 +40,7 @@ export default async function DescuentosClientesPage({ searchParams }: { searchP
         </p>
       </div>
 
-      <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} />
+      <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />
 
       <h2 className="text-sm font-medium">
         ${rep.totalDescontado.toLocaleString("es-AR")} descontados{rep.descuentoEfectivoPct !== null ? ` (${rep.descuentoEfectivoPct}% del precio de lista)` : ""} — $

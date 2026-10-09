@@ -8,7 +8,7 @@ import { anularItemEnviado } from "../../src/server/actions/pos/cuenta-anulacion
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
-import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
+import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { calcularAlertasStock, obtenerResumenAlertasStock } from "../../src/server/consultas/stock/alertas";
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
 import { obtenerMapaDeMesas } from "../../src/server/consultas/pos/mesas";
@@ -61,7 +61,7 @@ describe("cerrarCuenta (server action)", () => {
     const cerrada = await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } });
     expect(cerrada.cerradaEn).not.toBeNull();
     expect(cerrada.cerradaPorId).toBe(s.admin.id);
-    expect((await obtenerMapaDeMesas(s.sucursalId, prisma)).mesas[0]).toMatchObject({ estado: "libre", total: 0 });
+    expect((await obtenerMapaDeMesas(s.sucursalId, prisma, new Date())).mesas[0]).toMatchObject({ estado: "libre", total: 0 });
     expect(await prisma.registroAuditoria.count()).toBe(0);
   });
 
@@ -311,8 +311,8 @@ describe("cerrarCuenta (server action)", () => {
     await comprar(s.muzzarella.id, 10);
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: jamon.id, cantidad: 0.3, precioUnitario: 1234.55, numeroEnvio: 1 }]);
 
-    expect.soft((await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, prisma))?.cuenta?.total).toBe(370.37);
-    expect.soft((await obtenerMapaDeMesas(s.sucursalId, prisma)).mesas[0].total).toBe(370.37);
+    expect.soft((await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, prisma, new Date()))?.cuenta?.total).toBe(370.37);
+    expect.soft((await obtenerMapaDeMesas(s.sucursalId, prisma, new Date())).mesas[0].total).toBe(370.37);
 
     const r = await cerrarCuenta(cuenta.id);
     const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -339,7 +339,7 @@ describe("cerrarCuenta (server action)", () => {
     expect(registrado.sort((a, b) => a - b)).toEqual([370.37, 617.29]);
     const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
     expect.soft(r.mensaje).toContain(MONEDA.format(987.66));
-    const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma);
+    const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma, undefined, new Date());
     expect.soft(ticket.total).toBe(987.66);
   });
 });

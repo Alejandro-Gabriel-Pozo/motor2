@@ -1,5 +1,5 @@
 import { descuentosVigentes } from "@/core/carta/public";
-import { precioLocalActivoEn } from "@/core/catalogo/public-servidor";
+import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -19,10 +19,16 @@ export async function descuentosConfiguradosEnSucursal(sucursalId: string, db: D
 
 /**
  * El % de descuento que RIGE para cada producto en la sucursal: los configurados, solo si la sucursal tiene prendida la capacidad `precio_local`
- * (R1, ver `descuentosVigentes`). Es el que usan la carta pública, el selector del POS y el alta a la cuenta.
+ * (R1, ver `descuentosVigentes`). Es el que usan la carta pública, el selector del POS y el alta a la cuenta. `precioLocalActivoCargado`: la capacidad de
+ * ESTA sucursal ya leída (o la promesa de esa lectura), para no volver a leerla (ver `preciosLocalesVigentes`, O.39).
  */
-export async function descuentosDeProductoEnSucursal(sucursalId: string, db: Db, productoIds?: readonly string[]): Promise<Map<string, number>> {
-  const [configurados, precioLocalActivo] = await Promise.all([descuentosConfiguradosEnSucursal(sucursalId, db, productoIds), precioLocalActivoEn(sucursalId, db)]);
+export async function descuentosDeProductoEnSucursal(
+  sucursalId: string,
+  db: Db,
+  productoIds?: readonly string[],
+  precioLocalActivoCargado?: boolean | Promise<boolean>
+): Promise<Map<string, number>> {
+  const [configurados, precioLocalActivo] = await Promise.all([descuentosConfiguradosEnSucursal(sucursalId, db, productoIds), precioLocalActivoCargado ?? precioLocalActivoEn(sucursalId, db)]);
   return descuentosVigentes(configurados, precioLocalActivo);
 }
 

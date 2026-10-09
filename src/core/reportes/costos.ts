@@ -4,7 +4,7 @@ import { precioParaObjetivo, resolverObjetivoFoodCost, superaFoodCostObjetivo, t
 
 /**
  * El cálculo de COSTOS y márgenes (Pureza Fase 4, tramo A): PURO. Recibe el catálogo, el índice de recetas y los costos de compra ya leídos (`*Desde`); quien los LEE con base es
- * `server/lecturas/reportes/costos.ts` (`calcularCostosYMargenes`, `calcularImpactoInsumos`, `calcularImpactoRecetasPorPeriodo`, mismo nombre y firma que antes), que usan la venta
+ * `server/lecturas/reportes/costos.ts` (`calcularCostosYMargenes`, `calcularCostosYMargenesEImpactoInsumos`, `calcularImpactoRecetasPorPeriodo`, mismo nombre y firma que antes), que usan la venta
  * (el costo congelado, dentro de su transacción) y los reportes.
  */
 

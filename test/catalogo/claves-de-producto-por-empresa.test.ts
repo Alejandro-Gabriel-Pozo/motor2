@@ -33,7 +33,8 @@ describe("claves de producto: valen con cualquier membresía de la empresa", () 
     empresaId = base.sucursal.empresaId;
     sucursalA = base.sucursal.id;
     sucursalB = (await prismaAdmin.sucursal.create({ data: { nombre: "Segunda", empresaId } })).id;
-    rolOperadorId = base.operador.id;
+    // S-41/D4: `producto_sincronizar_precio_carta` ya no se siembra al operador (también fija el precio global): el rol que tiene las tres claves es el administrador.
+    rolOperadorId = base.admin.id;
     // Un rol personalizado sin ninguna fila de permisos: no tiene ninguna de las claves.
     rolConsultaId = (await prisma.rol.create({ data: { nombre: "consulta" } })).id;
     unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;

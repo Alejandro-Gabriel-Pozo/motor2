@@ -8,6 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
 import { generarReporteLotesProximosAVencer, generarConciliacionVencimientos } from "../../src/server/consultas/reportes/vencimientos";
 import { prisma } from "../setup/test-db";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 describe("Reporte de vencimientos", () => {
   let sucursalId: string;
@@ -41,7 +42,7 @@ describe("Reporte de vencimientos", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, loteVencimiento: enTreintaDias }] });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, loteVencimiento: ayer }] });
 
-    const filas = await generarReporteLotesProximosAVencer(sucursalId, 7, prisma);
+    const filas = await generarReporteLotesProximosAVencer(sucursalId, 7, prisma, AHORA_DE_LA_CORRIDA);
     const lotes = filas.map((f) => f.loteVencimiento.toISOString().slice(0, 10));
     expect(lotes).toContain(enTresDias.toISOString().slice(0, 10));
     expect(lotes).toContain(ayer.toISOString().slice(0, 10));

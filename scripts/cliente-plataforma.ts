@@ -5,7 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 /**
  * Cliente de los scripts de plataforma (`politica-empresa`, `modulos-empresa`, `plataforma/crear-primer-admin`): usa `PLATAFORMA_DATABASE_URL` (rol
- * `motor2_plataforma`, ver scripts/operaciones/crear-rol-motor2-plataforma.sql) y, si no está definida, `DATABASE_URL` como hasta ahora. Es el único
+ * `motor2_plataforma`, ver scripts/operaciones/crear-rol-motor2-plataforma.sql); si no está definida NO cae en la conexión de la app (S-33). Es el único
  * lugar bajo `scripts/` que crea un cliente de Prisma o un adaptador. La URL va en un archivo local (`DOTENV_CONFIG_PATH=.env.plataforma.<despliegue>`),
  * nunca en las variables de Vercel.
  */
@@ -15,4 +15,4 @@ export function clienteDePlataforma(connectionString: string): PrismaClient {
   return new PrismaClient({ adapter });
 }
 
-export const prismaPlataforma = clienteDePlataforma(process.env.PLATAFORMA_DATABASE_URL || process.env.DATABASE_URL || "");
+export const prismaPlataforma = clienteDePlataforma(process.env.PLATAFORMA_DATABASE_URL || "");

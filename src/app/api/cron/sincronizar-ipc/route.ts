@@ -20,7 +20,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
-    const resultado = await sincronizarIPC(baseDelContexto().db);
+    const resultado = await sincronizarIPC(baseDelContexto().db, new Date());
     // Un cron que responde 200 con `mesesNuevos: 0` todos los días durante meses es indistinguible de uno sano: si la serie GUARDADA quedó más
     // vieja que el máximo previsto (5c), es un incidente y se avisa (una sola vez por instancia, ver reportarErrorUnaVez). La respuesta sigue
     // siendo 200: la corrida hizo lo que pudo. La decisión de reportar vive acá y no en el core, que queda sin efectos.
@@ -35,6 +35,7 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json(resultado);
   } catch (e) {
     await reportarError(e, "ipc-cron");
-    return Response.json({ error: e instanceof Error ? e.message : "Error desconocido" }, { status: 502 });
+    // S-15: el detalle del error (hosts, cadenas de conexión) va a Sentry, no al cuerpo de la respuesta.
+    return Response.json({ error: "La sincronización del IPC falló" }, { status: 502 });
   }
 }

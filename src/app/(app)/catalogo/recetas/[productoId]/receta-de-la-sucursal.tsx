@@ -45,6 +45,7 @@ export function RecetaDeLaSucursal({
 }) {
   const { habilitada, propia, centralVigente, centralCambio, versionesPropias } = estado;
   // La versión de la receta propia que ESTA pantalla muestra (0 si nunca tuvo): cada cambio la manda de vuelta y, si otra persona guardó mientras tanto, se rechaza con un mensaje (H7).
+  // Con ella va `habilitada` (D.4): volver a la central no crea versión, y sin esto una pantalla vieja volvía a habilitar la propia.
   const versionVista = propia?.version ?? 0;
   const sinNadaQueHacer = !puede.editar && !puede.copiar && !puede.volverALaCentral;
 
@@ -101,7 +102,7 @@ export function RecetaDeLaSucursal({
                               cantidad: Number(formData.get("cantidad")),
                               unidadId: String(formData.get("unidadId") ?? ""),
                               mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
-                            }, versionVista);
+                            }, versionVista, habilitada);
                             if (resultado.ok) redirect(volver);
                             return resultado;
                           }}
@@ -141,7 +142,7 @@ export function RecetaDeLaSucursal({
                               <FormConResultado
                                 accion={async () => {
                                   "use server";
-                                  return quitarIngredienteDeRecetaPropia(producto.id, ing.insumoProductoId, versionVista);
+                                  return quitarIngredienteDeRecetaPropia(producto.id, ing.insumoProductoId, versionVista, habilitada);
                                 }}
                               >
                                 <button type="submit" className="inline-flex items-center gap-1 text-sm underline">
@@ -166,7 +167,7 @@ export function RecetaDeLaSucursal({
         <FormConResultado
           accion={async () => {
             "use server";
-            return crearRecetaPropiaDesdeLaCentral(producto.id, versionVista);
+            return crearRecetaPropiaDesdeLaCentral(producto.id, versionVista, habilitada);
           }}
           className="flex flex-col gap-2"
         >
@@ -186,7 +187,7 @@ export function RecetaDeLaSucursal({
                 cantidad: Number(formData.get("cantidad")),
                 unidadId: String(formData.get("unidadId") ?? ""),
                 mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
-              }, versionVista);
+              }, versionVista, habilitada);
             }}
             className="flex max-w-lg flex-col gap-2"
           >
@@ -222,7 +223,7 @@ export function RecetaDeLaSucursal({
         <FormConResultado
           accion={async (formData: FormData) => {
             "use server";
-            return copiarRecetaPropiaDeOtraSucursal(producto.id, String(formData.get("sucursalOrigenId") ?? ""), formData.get("confirmar") === "on", versionVista);
+            return copiarRecetaPropiaDeOtraSucursal(producto.id, String(formData.get("sucursalOrigenId") ?? ""), formData.get("confirmar") === "on", versionVista, habilitada);
           }}
           className="flex max-w-lg flex-col gap-2 border-t pt-3"
         >

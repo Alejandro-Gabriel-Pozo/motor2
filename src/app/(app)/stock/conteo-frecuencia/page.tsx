@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoVer } from "@/server/acceso/gate";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarFrecuenciasConteo } from "@/server/actions/stock/frecuencia-conteo";
 import { sugerirInsumosClaseA } from "@/server/consultas/stock/sugerencia-clase-a";
@@ -22,22 +23,27 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
 export default async function ConteoFrecuenciaPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"editar" | "sugerido" | "sugeridoNombre">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "conteo_frecuencia", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { editar, sugerido, sugeridoNombre } = unicosDeUrl(await searchParams);
+  // S-13: el gasto en compras por insumo es de `reporte_compras` (piso administrador), no de quien cuenta (`conteo_frecuencia`, piso operario). La consulta lo niega por defecto.
+  const { ver: veImportes } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_compras", ctx.db);
   const rango = resolverRangoPorDefecto(undefined, new Date());
   const [filas, sugerencias] = await Promise.all([
     listarFrecuenciasConteo(ctx.sucursalId),
-    sugerirInsumosClaseA(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db),
+    sugerirInsumosClaseA(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db, { conImportes: veImportes }),
   ]);
   const filaEnEdicion = editar ? filas.find((f) => f.id === editar) : undefined;
   const idsConAgenda = new Set(filas.filter((f) => f.frecuenciaDias > 0).map((f) => f.productoId));
   const sugerenciasSinAgenda = sugerencias.filter((s) => !idsConAgenda.has(s.productoId));
   // El link puede venir de la lista de sugerencias de acá abajo, o de "Configurar agenda" en /reportes/diferencias (S6) —
   // ese segundo caso trae el nombre por query (`sugeridoNombre`) para no tener que ir a buscarlo de nuevo a la base.
-  const sugeridoElegido = sugerido ? (sugerencias.find((s) => s.productoId === sugerido) ?? (sugeridoNombre ? { productoId: sugerido, nombre: sugeridoNombre } : undefined)) : undefined;
+  const sugeridoEnLista = sugerencias.find((s) => s.productoId === sugerido);
+  const sugeridoElegido = sugerido ? (sugeridoEnLista ? { productoId: sugeridoEnLista.productoId, nombre: sugeridoEnLista.nombre } : sugeridoNombre ? { productoId: sugerido, nombre: sugeridoNombre } : undefined) : undefined;
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
@@ -61,7 +67,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
               {sugerenciasSinAgenda.map((s) => (
                 <li key={s.productoId} className="flex items-center justify-between gap-2">
                   <span>
-                    {s.nombre} <span className="text-neutral-500">(${s.importe.toLocaleString("es-AR")})</span>
+                    {s.nombre} {s.importe !== undefined && <span className="text-neutral-500">(${s.importe.toLocaleString("es-AR")})</span>}
                   </span>
                   <Link href={`/stock/conteo-frecuencia?sugerido=${s.productoId}`} className="text-sm underline">
                     Agendar semanal

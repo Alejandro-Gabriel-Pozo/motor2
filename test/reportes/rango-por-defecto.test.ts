@@ -1,5 +1,6 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { resolverRangoPorDefecto, resolverRangoDeReporte, ETIQUETA_RANGO } from "../../src/core/reportes/rango-por-defecto";
+import { resolverRangoPorDefecto, resolverRangoDeReporte, ETIQUETA_RANGO, MAXIMO_DE_DIAS_DE_UN_RANGO } from "../../src/core/reportes/rango-por-defecto";
 
 describe("resolverRangoPorDefecto", () => {
   it("sin parámetro (o cualquier valor que no sea 'mes') da los últimos 30 días, hoy inclusive", () => {
@@ -66,8 +67,9 @@ describe("resolverRangoDeReporte", () => {
   });
 
   it("desde sin hasta usa hoy como hasta (mismo comportamiento que antes del selector)", () => {
-    const r = resolverRangoDeReporte({ desde: "2024-03-01" }, ahora);
-    expect(r).toEqual({ opcion: "personalizado", desdeISO: "2024-03-01", hastaISO: "2026-09-22" });
+    // S-28: el ejemplo era de 2024 (935 días hasta hoy) y el rango ya no pasa de 366 días; uno dentro del tope conserva el comportamiento.
+    const r = resolverRangoDeReporte({ desde: "2026-03-01" }, ahora);
+    expect(r).toEqual({ opcion: "personalizado", desdeISO: "2026-03-01", hastaISO: "2026-09-22" });
   });
 
   it("desde inválido pasa igual (sin validar) — pantalla de error del reporte se hace cargo", () => {
@@ -81,6 +83,68 @@ describe("resolverRangoDeReporte", () => {
     expect(r.opcion).toBe("personalizado");
     expect(r.desdeISO).toBe("2026-08-24");
     expect(r.hastaISO).toBe("2026-09-22");
+  });
+});
+
+/** Los días que abarca un rango, contando los dos extremos. */
+const diasDelRango = (r: { desdeISO: string; hastaISO: string }) => Math.round((Date.parse(r.hastaISO) - Date.parse(r.desdeISO)) / 86_400_000) + 1;
+
+describe("resolverRangoDeReporte: nunca más de 366 días (S-28)", () => {
+  const ahora = new Date("2026-09-22T12:00:00Z");
+
+  it("EL ATAQUE: un rango de 2000 a hoy (26 años de movimientos) se recorta a los últimos 366 días, con el mismo «hasta»", () => {
+    const r = resolverRangoDeReporte({ desde: "2000-01-01" }, ahora);
+    expect(r.opcion).toBe("personalizado");
+    expect(r.hastaISO).toBe("2026-09-22");
+    expect(r.desdeISO).toBe("2025-09-22");
+    expect(diasDelRango(r)).toBe(MAXIMO_DE_DIAS_DE_UN_RANGO);
+  });
+
+  it("un rango explícito largo, con «hasta» propio, también se recorta contra el «hasta»", () => {
+    const r = resolverRangoDeReporte({ desde: "2020-01-01", hasta: "2024-12-31" }, ahora);
+    expect(r).toEqual({ opcion: "personalizado", desdeISO: "2024-01-01", hastaISO: "2024-12-31", recortadoDesde: "2020-01-01" });
+  });
+
+  it("el borde: exactamente 366 días pasan enteros; 367 se recortan a 366", () => {
+    expect(resolverRangoDeReporte({ desde: "2025-09-22", hasta: "2026-09-22" }, ahora)).toEqual({ opcion: "personalizado", desdeISO: "2025-09-22", hastaISO: "2026-09-22" });
+    expect(resolverRangoDeReporte({ desde: "2025-09-21", hasta: "2026-09-22" }, ahora)).toEqual({ opcion: "personalizado", desdeISO: "2025-09-22", hastaISO: "2026-09-22", recortadoDesde: "2025-09-21" });
+  });
+
+  // M-21 (T16): el recorte no avisaba; solo cambiaba la fecha que muestra el selector. Ahora el rango dice qué «desde» se pidió (la pantalla lo muestra: `selector-rango-aviso.test.tsx`).
+  it("EL DEFECTO (M-21): cuando recorta, el rango trae el «desde» pedido; cuando entra entero, NO trae la marca", () => {
+    expect(resolverRangoDeReporte({ desde: "2000-01-01" }, ahora).recortadoDesde).toBe("2000-01-01");
+    expect(resolverRangoDeReporte({ desde: "2025-09-22", hasta: "2026-09-22" }, ahora)).not.toHaveProperty("recortadoDesde");
+    expect(resolverRangoDeReporte({ rango: "personalizado" }, ahora)).not.toHaveProperty("recortadoDesde");
+    expect(resolverRangoDeReporte({ rango: "mes" }, ahora)).not.toHaveProperty("recortadoDesde");
+    expect(resolverRangoDeReporte({ desde: "no-es-una-fecha" }, ahora)).not.toHaveProperty("recortadoDesde");
+  });
+
+  it("lo que no es una fecha, o un rango al revés, no se toca (el reporte se hace cargo)", () => {
+    expect(resolverRangoDeReporte({ desde: "no-es-una-fecha", hasta: "2026-09-22" }, ahora).desdeISO).toBe("no-es-una-fecha");
+    expect(resolverRangoDeReporte({ desde: "2026-09-22", hasta: "2020-01-01" }, ahora)).toEqual({ opcion: "personalizado", desdeISO: "2026-09-22", hastaISO: "2020-01-01" });
+  });
+
+  it("propiedad: con cualquier par de fechas válidas, el rango resuelto nunca abarca más de 366 días ni cambia el «hasta»", () => {
+    const fecha = fc.date({ min: new Date("1900-01-01T00:00:00Z"), max: new Date("2200-01-01T00:00:00Z"), noInvalidDate: true }).map((d) => d.toISOString().slice(0, 10));
+    fc.assert(
+      fc.property(fecha, fecha, (desde, hasta) => {
+        const r = resolverRangoDeReporte({ desde, hasta }, ahora);
+        expect(r.hastaISO).toBe(hasta);
+        if (Date.parse(desde) <= Date.parse(hasta)) expect(diasDelRango(r)).toBeLessThanOrEqual(MAXIMO_DE_DIAS_DE_UN_RANGO);
+        else expect(r.desdeISO).toBe(desde);
+      }),
+      { numRuns: 500 },
+    );
+  });
+
+  it("propiedad: solo «desde» (el «hasta» es hoy) tampoco pasa de 366 días", () => {
+    const fecha = fc.date({ min: new Date("1900-01-01T00:00:00Z"), max: new Date("2026-09-22T00:00:00Z"), noInvalidDate: true }).map((d) => d.toISOString().slice(0, 10));
+    fc.assert(fc.property(fecha, (desde) => diasDelRango(resolverRangoDeReporte({ desde }, ahora)) <= MAXIMO_DE_DIAS_DE_UN_RANGO), { numRuns: 300 });
+  });
+
+  it("los rangos por defecto («30d», «mes») y los que ya entraban en el tope no cambian", () => {
+    expect(resolverRangoDeReporte({}, ahora)).toEqual({ opcion: "30d", desdeISO: "2026-08-24", hastaISO: "2026-09-22" });
+    expect(resolverRangoDeReporte({ desde: "2026-01-01", hasta: "2026-06-30" }, ahora)).toEqual({ opcion: "personalizado", desdeISO: "2026-01-01", hastaISO: "2026-06-30" });
   });
 });
 

@@ -1,4 +1,4 @@
-import type { OpcionRango } from "@/core/reportes/public";
+import { MAXIMO_DE_DIAS_DE_UN_RANGO, type OpcionRango } from "@/core/reportes/public";
 
 /**
  * Selector de rango de fechas de los reportes — reemplaza el `<form>` con dos `<input type="date">` que había, copiado y pegado
@@ -20,12 +20,29 @@ export function SelectorRango({
   desdeISO,
   hastaISO,
   camposOcultos,
+  recortadoDesde,
 }: {
   opcion: OpcionRango;
   desdeISO: string;
   hastaISO: string;
   camposOcultos?: Record<string, string>;
+  /** `RangoDeReporte.recortadoDesde`: el «desde» pedido, si el rango abarcaba más de `MAXIMO_DE_DIAS_DE_UN_RANGO` días y se recortó (M-21). Con él se muestra el aviso. */
+  recortadoDesde?: string;
 }) {
+  return (
+    <>
+      {recortadoDesde && (
+        // Mismo estilo que el aviso de la rotación de mesas cuando trunca (`data-aviso-truncado`): el reporte NO es el pedido, y la pantalla lo dice.
+        <p data-aviso-rango-recortado role="status" className="mb-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+          Pediste desde el {recortadoDesde}, pero un reporte abarca como mucho {MAXIMO_DE_DIAS_DE_UN_RANGO} días: se muestra del {desdeISO} al {hastaISO}. Pedí el resto por tramos.
+        </p>
+      )}
+      <FormularioDeRango opcion={opcion} desdeISO={desdeISO} hastaISO={hastaISO} camposOcultos={camposOcultos} />
+    </>
+  );
+}
+
+function FormularioDeRango({ opcion, desdeISO, hastaISO, camposOcultos }: { opcion: OpcionRango; desdeISO: string; hastaISO: string; camposOcultos?: Record<string, string> }) {
   return (
     <form className="flex flex-wrap items-end gap-3 text-sm">
       {camposOcultos &&

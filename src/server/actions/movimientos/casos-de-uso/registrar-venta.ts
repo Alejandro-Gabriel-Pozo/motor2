@@ -1,9 +1,11 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { DatosVentaInput, ResultadoRegistrarVenta } from "@/core/features/ventas/venta.schema";
-import { conTransaccionSerializable, calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarVentaEnTx } from "@/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 import { chequearIdempotencia } from "@/server/persistencia/movimientos/idempotencia";
+import { rechazoDeReferenciaNoEncontrada } from "@/core/datos/errores-de-base";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
 
@@ -31,7 +33,7 @@ import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, v
  * @idempotency I3 (claveIdempotencia + payloadHash) — a diferencia de registrarMovimiento, un lote de N ventas guarda la clave/hash/resultado SOLO en la primera Operacion.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de lo que ya hace registrarVentaEnTx (Operacion + MovimientoStock por línea) — sin auditoría propia acá.
- * @ficha permiso=proceso_venta transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @ficha permiso=proceso_venta transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function registrarVentaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
@@ -41,6 +43,21 @@ export async function registrarVentaCasoDeUso(
   if (excedeLineas) return fracaso("VENTA_RECHAZADA", excedeLineas);
   const detalle = validarTextoLibre(datos.detalle, "El detalle", LARGO_MAXIMO_DETALLE);
   if (!detalle.ok) return fracaso("VENTA_RECHAZADA", detalle.mensaje);
+  try {
+    return await registrarVentaEnTransaccion(actor, datos);
+  } catch (e) {
+    // O.175: el `proveedorId` («a quién se vende») de OTRA empresa (o inexistente) lo rechaza la clave foránea compuesta `Operacion_empresaId_proveedorId_fkey` al insertar la operación, DENTRO de
+    // la transacción (que ya quedó abortada y deshecha: no se escribió nada). Se traduce AFUERA, a «No se encontró …»; cualquier otro error sigue de largo.
+    const rechazo = rechazoDeReferenciaNoEncontrada(e, { proveedorId: "el proveedor elegido" }, "No se encontró alguna de las referencias de la venta.");
+    if (rechazo) return fracaso("VENTA_RECHAZADA", rechazo);
+    throw e;
+  }
+}
+
+async function registrarVentaEnTransaccion(
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
+  datos: DatosVentaInput
+): Promise<ResultadoRegistrarVenta> {
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRegistrarVenta> => {
     const payloadHash = datos.claveIdempotencia ? calcularPayloadHash("VENTA", actor.sucursalId, { ...datos, claveIdempotencia: undefined }) : "";
     const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);

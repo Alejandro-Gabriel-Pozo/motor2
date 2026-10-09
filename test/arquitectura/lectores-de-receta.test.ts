@@ -47,9 +47,10 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
     motivo: "construirIndiceRecetas: la fuente única (R1) — efectivo cuando recibe sucursalId, central sin ella (quien solo usa la estructura).",
   },
   {
-    ruta: "server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts",
+    ruta: "server/lecturas/movimientos/receta-para-vender.ts",
     clase: "efectivo",
-    motivo: "C1: el consumo de receta al vender se resuelve con rendimientoEfectivo de la sucursal del actor.",
+    motivo:
+      "C1 (Hito 5, 5.1-2: antes en línea en armarLinea, registrar-venta-en-tx.ts): cargarRecetaVigenteParaVender trae la receta EFECTIVA de la sucursal del actor con SUS calibraciones locales (rendimientosLocales); el caso de uso resuelve rendimientoEfectivo con ellas — el consumo de receta al vender se calcula con el rendimiento de la sucursal.",
   },
   {
     ruta: "server/persistencia/movimientos/cargar-linea-de-movimiento.ts",
@@ -85,9 +86,16 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
       "cargarUltimaVersionDeReceta (Task #41, P1) / cargarIdDeVersionCentralVigente (R3): la última versión de UNA serie —la central o la propia de una sucursal— para calcular MAX(version)+1 de ESA serie, y la central vigente en la que se basa una propia; el arrastre de D3 es solo de la central — lee las series por separado, nunca resuelve ningún efectivo.",
   },
   {
-    ruta: "server/actions/catalogo/rendimiento-local.ts",
+    ruta: "server/actions/catalogo/casos-de-uso/fijar-rendimiento-local.ts",
     clase: "central",
-    motivo: "fijarRendimientoLocal/volverAlRendimientoCentral leen la línea (RecetaIngrediente) y la versión vigente para VALIDAR que la calibración apunte a la versión actual — no resuelven ningún rendimiento efectivo, escriben el override tal cual.",
+    motivo:
+      "fijarRendimientoLocal (Hito 4, H4C-5: antes en server/actions/catalogo/rendimiento-local.ts) lee la línea (RecetaIngrediente) y la versión vigente para VALIDAR que la calibración apunte a la versión actual — no resuelve ningún rendimiento efectivo, escribe el override tal cual.",
+  },
+  {
+    ruta: "server/actions/catalogo/casos-de-uso/volver-al-rendimiento-central.ts",
+    clase: "central",
+    motivo:
+      "volverAlRendimientoCentral (Hito 4, H4C-5: antes en server/actions/catalogo/rendimiento-local.ts) lee la línea y la versión vigente para VALIDAR que la calibración apunte a la versión actual — no resuelve ningún rendimiento efectivo.",
   },
   {
     ruta: "server/consultas/catalogo/recetas.ts",

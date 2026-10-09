@@ -1,7 +1,5 @@
-import { reportarErrorUnaVez } from "@/lib/reportar-error";
-import { configuracionDelCanal } from "./configuracion";
+import { configuracionDelCanal, type ConfiguracionDeCanal } from "./configuracion";
 import { esDireccionValida } from "./direcciones";
-import { crearEnviadorResend } from "./resend";
 import { crearEnviadorDeConsola, crearEnviadorEnMemoria, crearEnviadorSinConfigurar, type EnviadorEnMemoria } from "./locales";
 import type { CanalDeCorreo, EnviadorDeCorreo, MensajeDeCorreo, ResultadoDeEnvio } from "./tipos";
 
@@ -26,7 +24,7 @@ export function enviadorEnMemoriaDelCanal(canal: CanalDeCorreo): EnviadorEnMemor
  * 3. Dentro de Vercel (`VERCEL`) sin configuración: no envía y lo informa. Nunca consola: los registros de Vercel no pueden llevar códigos de ingreso.
  * 4. Local y desarrollo: consola.
  */
-export function crearEnviadorDelCanal(canal: CanalDeCorreo, source: Entorno): EnviadorDeCorreo {
+export function crearEnviadorDelCanal(canal: CanalDeCorreo, source: Entorno, crearEnviadorResend: (configuracion: ConfiguracionDeCanal) => EnviadorDeCorreo): EnviadorDeCorreo {
   if (source.NODE_ENV === "test") return enviadorEnMemoriaDelCanal(canal);
   const configuracion = configuracionDelCanal(canal, source);
   if (configuracion) return crearEnviadorResend(configuracion);
@@ -51,8 +49,8 @@ function problemaDelMensaje(m: MensajeDeCorreo): string | null {
 
 /**
  * Manda un mail por el canal CON el enviador que se le pasa (Pureza 1.4: el dominio no lee `process.env`; el enviador del proceso, armado con el entorno,
- * lo arma `src/lib/enviar-correo.ts`). NO lanza: un fallo vuelve como `{ ok: false, motivo, detalle }` y también se reporta a Sentry (una vez por
- * arranque y causa; el detalle no lleva contenido del mail ni destinatarios).
+ * lo arma `src/lib/enviar-correo.ts`). NO lanza: un fallo vuelve como `{ ok: false, motivo, detalle }`. Reportarlo a Sentry (una vez por arranque y causa; el detalle no lleva
+ * contenido del mail ni destinatarios) es cosa del adaptador `src/lib/enviar-correo.ts`, no del núcleo.
  *
  * Llamar SIEMPRE después del commit, nunca dentro de una transacción: una transacción serializable se reintenta entera y volvería a mandar el mail.
  * Canal de avisos: si falla, la acción ya quedó hecha y se reenvía a mano (sin cola). Canal operativo: quien llama decide el reintento según `motivo`.
@@ -60,6 +58,5 @@ function problemaDelMensaje(m: MensajeDeCorreo): string | null {
 export async function enviarConEnviador(canal: CanalDeCorreo, enviador: EnviadorDeCorreo, mensaje: MensajeDeCorreo): Promise<ResultadoDeEnvio> {
   const problema = problemaDelMensaje(mensaje);
   const resultado: ResultadoDeEnvio = problema ? { ok: false, motivo: "DEFINITIVO", detalle: `mensaje inválido: ${problema}` } : await enviador.enviar(mensaje);
-  if (!resultado.ok) await reportarErrorUnaVez(`correo:${canal}:${resultado.motivo}:${resultado.detalle}`, new Error(`Correo ${canal} no enviado (${resultado.motivo}): ${resultado.detalle}`), "correo");
   return resultado;
 }

@@ -1,4 +1,4 @@
-import { precioLocalActivoEn, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { whereDisponibleEn } from "@/core/catalogo/public";
 import { armarMenuCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, wherePromoOfrecidaEn, type CartaV1, type MenuArmado } from "@/core/carta/public";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
@@ -24,7 +24,19 @@ import type { Db } from "@/lib/db-tipos";
  *
  * Una sucursal inexistente o inactiva da `null` (el endpoint responde 404 igual en los dos casos, para no revelar cuál).
  */
-export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db, ahora: Date = new Date()): Promise<MenuArmado | null> {
+export async function resolverMenuCartaConDiagnostico(
+  sucursalId: string,
+  db: Db,
+  /**
+   * La hora de la carta (O.22-c de docs/pureza-integracion.md): obligatoria, sin valor por defecto, la fija el borde (la página, la carta pública sin sesión
+   * o el caso de uso con `actor.ahora`). Solo alimenta `generadoEn`; no decide qué entra en la carta.
+   */
+  ahora: Date,
+  /** La capacidad `precio_local` de ESTA sucursal ya leída (o la promesa de esa lectura), para no volver a leerla (el selector del POS la comparte, O.39). */
+  precioLocalActivoCargado?: boolean | Promise<boolean>,
+  /** `false` = no leer ni armar las promos (la carta pública de una empresa sin el módulo Promociones, S-23). Por defecto sí: el POS y el admin deciden por su cuenta. */
+  conPromos = true
+): Promise<MenuArmado | null> {
   const sucursal = await db.sucursal.findUnique({ where: { id: sucursalId }, select: { id: true, nombre: true, activo: true, empresaId: true } });
   if (!sucursal || !sucursal.activo) return null;
   // Filtro explícito por la empresa de la sucursal, además del RLS: con un rol que lo salta, secciones/promos/agrupados no se mezclan entre empresas.
@@ -52,10 +64,12 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
         orden: true,
       },
     }),
-    db.promoCarta.findMany({
-      where: { empresaId, ...wherePromoOfrecidaEn(sucursalId) },
-      select: { id: true, seccionCartaId: true, titulo: true, descripcion: true, precio: true, orden: true, sucursales: seleccionDeSucursalDePromo(sucursalId) },
-    }),
+    conPromos
+      ? db.promoCarta.findMany({
+          where: { empresaId, ...wherePromoOfrecidaEn(sucursalId) },
+          select: { id: true, seccionCartaId: true, titulo: true, descripcion: true, precio: true, orden: true, sucursales: seleccionDeSucursalDePromo(sucursalId) },
+        })
+      : Promise.resolve([]),
     db.itemAgrupadoCarta.findMany({
       where: { empresaId, activo: true, ...whereCartaDeSucursal(sucursalId) },
       select: {
@@ -75,10 +89,12 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
   ]);
 
   const idsConPrecio = [...new Set([...productos.map((p) => p.id), ...agrupados.flatMap((ag) => ag.opciones.map((o) => o.producto.id))])];
+  // La capacidad `precio_local` se lee UNA vez y la usan los tres (precios locales, descuentos y precio de las promos): antes la leía cada uno (O.39).
+  const precioLocalActivoLeido = precioLocalActivoCargado ?? precioLocalActivoEn(sucursalId, db);
   const [preciosLocales, descuentos, precioLocalActivo] = await Promise.all([
-    preciosLocalesVigentes(sucursalId, db, idsConPrecio),
-    descuentosDeProductoEnSucursal(sucursalId, db, productos.map((p) => p.id)),
-    precioLocalActivoEn(sucursalId, db),
+    preciosLocalesVigentes(sucursalId, db, idsConPrecio, precioLocalActivoLeido),
+    descuentosDeProductoEnSucursal(sucursalId, db, productos.map((p) => p.id), precioLocalActivoLeido),
+    precioLocalActivoLeido,
   ]);
 
   return armarMenuCarta({
@@ -113,8 +129,8 @@ export async function resolverMenuCartaConDiagnostico(sucursalId: string, db: Db
   });
 }
 
-/** La carta pública de una sucursal, tal como la consume la página pública (sin el diagnóstico interno). */
-export async function resolverMenuCarta(sucursalId: string, db: Db, ahora: Date = new Date()): Promise<CartaV1 | null> {
-  const armado = await resolverMenuCartaConDiagnostico(sucursalId, db, ahora);
+/** La carta pública de una sucursal, tal como la consume la página pública (sin el diagnóstico interno). `ahora` obligatorio (O.22-c): ver arriba. */
+export async function resolverMenuCarta(sucursalId: string, db: Db, ahora: Date, precioLocalActivoCargado?: boolean | Promise<boolean>, conPromos = true): Promise<CartaV1 | null> {
+  const armado = await resolverMenuCartaConDiagnostico(sucursalId, db, ahora, precioLocalActivoCargado, conPromos);
   return armado ? armado.carta : null;
 }

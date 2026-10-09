@@ -5,7 +5,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { guardarReceta, quitarPasoDeReceta, agregarPasoAReceta } from "../../src/server/actions/catalogo/recetas";
+import { quitarPasoDeReceta, agregarPasoAReceta } from "../../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 
 /**
  * Paso 2 del plan (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, D6(b)): cada versión nueva de la receta CENTRAL

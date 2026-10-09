@@ -13,6 +13,11 @@
 > ADR-011. El detalle está en su sección «Correcciones a otros ADR».
 >
 > Ampliado por ADR-016 (2026-10-03): los roles de sistema se identifican por su clave técnica, y renombrar un rol es la acción `renombrar_rol`.
+>
+> **Corregido por ADR-027** (2026-10-08, Hito 3 de `pureza-integracion`): la escalera de pisos suma un escalón, «administrador de sistema», entre
+> administrador y gerente (operario < administrador < administrador de sistema < gerente), y las 12 claves de gobierno del módulo `administracion`
+> (incluida `ver_auditoria`, D16) pasan a ese piso. Hoy lo alcanza solo el rol de clave `admin`, así que ninguna respuesta de acceso cambia. Las notas
+> «Corregido por ADR-027» de §1, §2 y Consecuencias dicen qué frase de este ADR queda superada.
 
 ## Contexto
 
@@ -40,6 +45,7 @@ Cada entrada de `ACCIONES` (`src/core/permisos/acciones.ts`) declara dos cosas a
   `conPermiso`). Una acción de empresa se evalúa en todas sus membresías activas de la empresa: vale si el rol de CUALQUIERA de ellas la
   tiene (`requierePermisoDeEmpresa`, `conPermisoDeEmpresa`), y respeta la capacidad que la Central habilitó para cada sucursal.
 - **`nivelMinimo`: `"operario" | "administrador" | "gerente"`** (el piso, ver sección 2).
+  *Corregido por ADR-027:* el piso tiene un cuarto valor, "administrador_sistema" (entre administrador y gerente), para las claves de gobierno.
 
 El tipo `AccionClave` es estrecho y se parte en `AccionDeSucursal` y `AccionDeEmpresa`: pasarle a `conPermisoDeEmpresa` una acción de
 sucursal no compila. El `contexto` vive solo en código (no hay columna): el catálogo es la fuente de verdad y la base solo guarda qué rol
@@ -51,6 +57,11 @@ sucursal, o al revés, y si una acción de empresa del catálogo no se guarda en
 ### 2. Jerarquía de niveles y piso por acción
 
 Niveles, de menor a mayor: **operario < administrador < gerente (uno por empresa) < superadmin de plataforma.**
+
+*Corregido por ADR-027 (2026-10-08):* los pisos de una acción son operario < administrador < administrador de sistema < gerente (rangos 1 a 4, en
+`RANGO_DE_PISO` de `src/core/permisos/jerarquia.ts`). El rol de clave `admin` (ADR-016; ya no se reconoce por el nombre, como dice el párrafo de abajo)
+tiene rango 3: alcanza el piso administrador y el de administrador de sistema. Cualquier otro rol tiene rango 1. Nadie tiene rango 2 hasta que exista
+`Rol.nivel` (F2/F3 de ADR-027, con migración y autorización expresa). El administrador de plataforma (ADR-012) está fuera de esta escalera.
 
 - **Piso (`nivelMinimo`).** Cada acción declara el nivel mínimo para hacerla. El rol llega al piso así: `nivelDeRol(nombre)` es
   «administrador» solo para el rol de nombre `admin`; cualquier otro (`operador` y todo rol personalizado, p. ej. «mozo») es «operario».
@@ -137,6 +148,9 @@ Es la consecuencia operativa de «una clave por acción». Se hace con **expand/
 - Agregar una acción obliga a declarar contexto y piso, y los tests de catálogo/guardas/matriz fallan si no coincide con el uso.
 - Cada permiso nuevo cuesta una migración de datos y su prueba con dos empresas; a cambio el despliegue no cambia el acceso de nadie.
 - Un rol personalizado nunca llega a una acción de administrador, aunque alguien lo intente desde la matriz o con datos viejos.
+  *Corregido por ADR-027:* sigue siendo cierto hoy (todo rol personalizado tiene rango 1), pero deja de ser una regla de diseño: con F3 una empresa podrá
+  subir un rol propio al rango 2 (D0, «encargados» como capacidad opcional), que alcanza el piso administrador y NUNCA el de administrador de sistema
+  (gobierno y auditoría, D16) ni, por defecto, las acciones de empresa (D15).
 
 ## Riesgos y pendientes abiertos
 

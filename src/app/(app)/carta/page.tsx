@@ -1,9 +1,10 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import type { ProductoCartaAdmin } from "@/core/carta/public";
-import { cargarAdminCarta } from "@/server/consultas/carta/admin";
+import { cargarAdminCarta, origenesDeCopiaVisibles } from "@/server/consultas/carta/admin";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "@/server/actions/carta/generos";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
@@ -56,13 +57,16 @@ type UbicacionEnCarta = { secciones: OpcionSeccion[]; cantidadPorSeccion: Record
 export default async function CartaPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
   const [nivelSecciones, nivelGeneros, nivelContenido, nivelPromoDefinir, nivelPromoActivar, nivelPromoPrecio, nivelDescuento, nivelCopiar] = await Promise.all([
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_secciones", ctx.db),
-    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_generos", ctx.db),
-    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_contenido_producto", ctx.db),
+    // S-10/D1 (O.59): géneros y contenido son de contexto SUCURSAL (se escriben en la carta de la sucursal activa): el «Editar» que cuenta es el de esta sucursal.
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_generos", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_contenido_producto", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_promo_definir", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promo_activar", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promo_precio_local", ctx.db),
@@ -79,7 +83,10 @@ export default async function CartaPage() {
   const puedeCopiarCarta = nivelCopiar.editar;
   const puedeEditarAlgo = puedeEditarSecciones || puedeEditarGeneros || puedeEditarContenido || puedeDefinirPromos || puedeActivarPromos || puedePrecioLocalPromos || puedeDescuento;
 
-  const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db);
+  // La hora se fija acá, en el borde (O.22-c).
+  const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db, new Date());
+  // S-07 (O.56): solo se ofrecen de origen las sucursales donde el usuario tiene membresía y el «Ver» de la carta (las demás ni se nombran).
+  const origenesDeCopia = datos.cartaVacia && puedeCopiarCarta ? await origenesDeCopiaVisibles(ctx.usuarioId, datos.sucursalesConCarta, ctx.db) : [];
   const seccionesActivas = datos.secciones.filter((s) => s.activa);
   const ubicacion: UbicacionEnCarta = {
     secciones: datos.secciones.map((s) => ({ id: s.id, nombre: s.nombre, activa: s.activa })),
@@ -113,7 +120,7 @@ export default async function CartaPage() {
               Armar carta
             </a>
           )}
-          {puedeCopiarCarta && <CopiarCartaDeSucursal origenes={datos.sucursalesConCarta} />}
+          {puedeCopiarCarta && <CopiarCartaDeSucursal origenes={origenesDeCopia} />}
         </section>
       )}
 

@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 const falla = vi.hoisted(() => ({ activa: false }));
-vi.mock("../../src/core/permisos/auditoria", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../../src/core/permisos/auditoria")>();
+vi.mock("../../src/server/auditoria/registrar-cambio-auditado", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../src/server/auditoria/registrar-cambio-auditado")>();
   return {
     ...original,
     registrarCambioAuditado: (...args: Parameters<typeof original.registrarCambioAuditado>) => {
@@ -13,7 +13,7 @@ vi.mock("../../src/core/permisos/auditoria", async (importOriginal) => {
   };
 });
 
-import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, prisma, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actualizarCapacidad } from "../../src/server/actions/permisos/capacidades-sucursal";
 
@@ -27,6 +27,8 @@ describe("actualizarCapacidad: cambio y auditoría en una sola transacción", ()
     const base = await sembrarBase();
     sucursalId = base.sucursal.id;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
+    // O.41: cambiar una capacidad es solo del gerente; este test es sobre la atomicidad del cambio y su auditoría, así que quien actúa es el gerente.
+    await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: admin.id, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: "gerente" } });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 

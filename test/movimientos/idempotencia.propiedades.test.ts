@@ -5,7 +5,7 @@ import { baseDeTest, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
 import { chequearIdempotencia } from "../../src/server/persistencia/movimientos/idempotencia";
 import { esClaveIdempotenciaValida } from "../../src/core/datos/clave-idempotencia";
-import { conTransaccionSerializable } from "../../src/core/movimientos/con-reintento";
+import { conTransaccionSerializable } from "../../src/lib/transaccion-serializable";
 
 /**
  * Task #41, Fase F3 — testing basado en propiedades (fast-check) del mecanismo I3 de idempotencia

@@ -35,7 +35,7 @@ describe("la carta pública sin sesión verifica el rol de la base", () => {
       () => publica.empresaCartaPublica("x"),
       () => publica.portalCartaPublico(EMPRESA),
       () => publica.configPortalPublica(EMPRESA),
-      () => publica.cartaPublica(EMPRESA, "central"),
+      () => publica.cartaPublica(EMPRESA, "central", new Date()),
     ];
     expect(llamadas).toHaveLength(Object.keys(publica).length);
     for (const llamar of llamadas) await expect(llamar()).rejects.toThrow(/rol privilegiado/);

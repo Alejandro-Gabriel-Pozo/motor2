@@ -38,16 +38,57 @@ export interface EleccionDeCupo {
 
 export type ResultadoValidacion = { ok: true } | { ok: false; mensaje: string };
 
+/** Lo que devuelve `validarYAplanarEleccionPromo`: si la elección es válida, los componentes YA validados (copiados campo a campo, sin nada más de lo que mandó el cliente). */
+export type ResultadoEleccionValidada = { ok: true; componentes: ProductoElegidoEnCupo[] } | { ok: false; mensaje: string };
+
 /**
  * D1: valida que la elección de una promo arme TODOS sus cupos dentro de mínimo y máximo, con unidades enteras y productos
  * que de verdad pertenecen a esa sección — la misma fuente que ofrece el selector (D5), nunca una lista propia paralela que
  * pueda desincronizarse (paso 8a: "validar la elegibilidad con una función de core/pos, con un test de paridad contra el
  * selector"). Un cupo ausente de `elecciones` cuenta como "nada elegido" (solo pasa si su mínimo es 0).
+ *
+ * S-01 (O.50 de docs/pureza-integracion.md, tanda T1 del plan de endurecimiento): la elección que llega del cliente se valida ENTERA, no solo
+ * la parte que toca un cupo. Antes se recorrían los cupos y la elección de cada uno se tomaba de un `Map` (una sección repetida pisaba a la
+ * anterior), pero quien armaba los componentes (`agregarItemsCasoDeUso`) aplanaba TODAS las elecciones recibidas: una sección que no es cupo, o la
+ * primera de una sección repetida, entraba sin validar y se prorrateaba a $0,01 la unidad con CUALQUIER producto de la empresa (una MP, uno no
+ * disponible). Ahora, ANTES de mirar los cupos, se rechaza (fallo cerrado, sin lanzar nunca):
+ *  - la forma rota: una elección que no es un objeto con `seccionCartaId` de texto y `elegidos` lista de objetos con `productoId` de texto;
+ *  - una sección que no es cupo de la promo;
+ *  - una sección repetida (una sola elección por cupo);
+ * y dentro de cada cupo, además de lo de siempre (cantidad entera y positiva, producto elegible, mínimo y máximo), un producto repetido (la
+ * cantidad va en una sola fila). Los componentes que sirven para prorratear salen de ESTA función, ya validados: ver `validarYAplanarEleccionPromo`.
  */
 export function validarEleccionPromo(cupos: readonly CupoPromoDefinicion[], elecciones: readonly EleccionDeCupo[]): ResultadoValidacion {
-  const eleccionPorSeccion = new Map(elecciones.map((e) => [e.seccionCartaId, e]));
+  const r = validarYAplanarEleccionPromo(cupos, elecciones);
+  return r.ok ? { ok: true } : r;
+}
+
+/**
+ * La misma validación que `validarEleccionPromo`, pero si la elección es válida devuelve ADEMÁS los componentes aplanados que salen de la elección ya
+ * validada (en el orden de los cupos): es lo que tiene que recibir `prorratearPrecioPromo`. Armar los componentes con `componentesDeEleccion` sobre la
+ * entrada cruda del cliente es justo el hueco que S-01 cerró (ver arriba).
+ */
+export function validarYAplanarEleccionPromo(cupos: readonly CupoPromoDefinicion[], elecciones: readonly EleccionDeCupo[]): ResultadoEleccionValidada {
+  const formaRota = { ok: false, mensaje: "La elección de la promo tiene un formato inválido." } as const;
+  if (!Array.isArray(elecciones)) return formaRota;
+  const seccionesDeCupo = new Set(cupos.map((c) => c.seccionCartaId));
+  const eleccionPorSeccion = new Map<string, EleccionDeCupo>();
+  for (const e of elecciones as readonly unknown[]) {
+    if (typeof e !== "object" || e === null) return formaRota;
+    const { seccionCartaId, elegidos } = e as Partial<EleccionDeCupo>;
+    if (typeof seccionCartaId !== "string" || !Array.isArray(elegidos)) return formaRota;
+    for (const el of elegidos as readonly unknown[]) {
+      if (typeof el !== "object" || el === null || typeof (el as Partial<ProductoElegidoEnCupo>).productoId !== "string") return formaRota;
+    }
+    if (!seccionesDeCupo.has(seccionCartaId)) return { ok: false, mensaje: "La elección incluye una sección que no es parte de esta promo." };
+    if (eleccionPorSeccion.has(seccionCartaId)) return { ok: false, mensaje: "La elección repite una sección de la promo: se elige una sola vez por cupo." };
+    eleccionPorSeccion.set(seccionCartaId, e as EleccionDeCupo);
+  }
+
+  const componentes: ProductoElegidoEnCupo[] = [];
   for (const cupo of cupos) {
     const elegidos = eleccionPorSeccion.get(cupo.seccionCartaId)?.elegidos ?? [];
+    const productosYaElegidos = new Set<string>();
     let total = 0;
     for (const el of elegidos) {
       if (!Number.isInteger(el.cantidad) || el.cantidad <= 0) {
@@ -56,7 +97,12 @@ export function validarEleccionPromo(cupos: readonly CupoPromoDefinicion[], elec
       if (!cupo.elegibles.has(el.productoId)) {
         return { ok: false, mensaje: `Ese producto no es una opción válida de "${cupo.nombreSeccion}" en esta promo.` };
       }
+      if (productosYaElegidos.has(el.productoId)) {
+        return { ok: false, mensaje: `Un producto está repetido en "${cupo.nombreSeccion}": la cantidad se elige en una sola fila.` };
+      }
+      productosYaElegidos.add(el.productoId);
       total += el.cantidad;
+      componentes.push({ productoId: el.productoId, cantidad: el.cantidad });
     }
     if (total < cupo.cantidadMinima) {
       return { ok: false, mensaje: `Elegí al menos ${cupo.cantidadMinima} opción(es) de "${cupo.nombreSeccion}".` };
@@ -65,12 +111,16 @@ export function validarEleccionPromo(cupos: readonly CupoPromoDefinicion[], elec
       return { ok: false, mensaje: `Como máximo ${cupo.cantidadMaximaCupo} opción(es) de "${cupo.nombreSeccion}".` };
     }
   }
-  return { ok: true };
+  return { ok: true, componentes };
 }
 
-/** Todo lo elegido en todos los cupos de una promo ya armada, aplanado — lo que recibe `prorratearPrecioPromo`. */
+/**
+ * Todo lo elegido en todos los cupos de una promo, aplanado, SIN validar nada: solo sirve para CONTAR líneas antes de abrir la transacción (el tope de
+ * `MAXIMO_ITEMS_POR_AGREGADO` del guard). Lo que se prorratea sale de `validarYAplanarEleccionPromo`, nunca de acá (S-01). Tolera la forma rota (una elección
+ * que no es un objeto, o sin lista `elegidos`, cuenta como vacía) para que el guard no lance: la rechaza la validación, con un mensaje, y no un 500.
+ */
 export function componentesDeEleccion(elecciones: readonly EleccionDeCupo[]): ProductoElegidoEnCupo[] {
-  return elecciones.flatMap((e) => e.elegidos);
+  return elecciones.flatMap((e) => (Array.isArray(e?.elegidos) ? e.elegidos : []));
 }
 
 /** Cuántas unidades en total arma una elección (todos los cupos, todos los productos) — lo que exige el piso de $0,01/unidad. */

@@ -29,12 +29,16 @@ export {
   OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION,
   detalleReversionDeCompra,
   detalleReversionDeVenta,
+  esDetalleReservadoParaReversiones,
   evaluarAnulacionDeVenta,
+  evaluarPosterioresAAnularVenta,
+  evaluarPosterioresACancelarConteo,
   construirReversionDeVenta,
   mensajeVentaAnulada,
   descripcionAuditoriaAnulacionDeVenta,
 } from "./anulaciones";
-export type { ResultadoAnulacionDeVenta, LineaVendida, LineaDeReversionDeVenta } from "./anulaciones";
+export type { ResultadoAnulacionDeVenta, LineaVendida, LineaDeReversionDeVenta, PosterioresALaVenta } from "./anulaciones";
+export type { ReconciliacionPosterior } from "./anulaciones";
 export { armarFilasDeMovimiento } from "./armar-filas-de-movimiento";
 export type { ConsumoParaFilas } from "./armar-filas-de-movimiento";
 export type { AccionConteo } from "@prisma/client";
@@ -43,3 +47,4 @@ export type { SeccionCandidata } from "./origen-venta";
 export type { DatosDeOrigen, OrigenPreparado, OrigenVenta } from "./origen-venta-datos";
 export { armarFilasStockParaConteo, elegirLoteMasProximoAVencer, repartirConsumoPorFamilia } from "./reparto-de-stock";
 export type { FilaStockParaConteo, ParteDeReparto } from "./reparto-de-stock";
+export type { IngredienteParaVender } from "./linea-de-venta";

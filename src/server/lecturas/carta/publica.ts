@@ -58,8 +58,18 @@ export interface CartaPublicaResuelta {
  * criterio que `docs/setup-sucursal.md` sección 3); sin eso, o sin fila de tema, el estilo es el default del catálogo.
  *
  * El slug es único POR empresa (`@@unique([empresaId, slug])`): dos empresas pueden tener una sucursal `central`.
+ *
+ * `ahora` (O.22-c de docs/pureza-integracion.md) es obligatorio: la fija la página pública y llega por `cartaPublica` (`server/carta-publica/sin-sesion.ts`);
+ * solo alimenta el `generadoEn` de la carta.
  */
-export async function resolverCartaPublica(empresa: EmpresaCarta, slug: string, db: Db, ahora: Date = new Date()): Promise<CartaPublicaResuelta | null> {
+export async function resolverCartaPublica(
+  empresa: EmpresaCarta,
+  slug: string,
+  db: Db,
+  ahora: Date,
+  /** S-23: sin el módulo Promociones la carta sale sin promos (ni se leen). Lo decide `server/carta-publica/sin-sesion.ts`, que es quien ve el registro de módulos. */
+  conPromos = true
+): Promise<CartaPublicaResuelta | null> {
   if (!esSlugPublicoValido(slug)) return null;
   const publica = await db.sucursalPublica.findUnique({
     where: { empresaId_slug: { empresaId: empresa.id, slug } },
@@ -70,7 +80,7 @@ export async function resolverCartaPublica(empresa: EmpresaCarta, slug: string, 
   });
   if (!publica || !publica.publicada || !publica.sucursal.activo) return null;
 
-  const carta = await resolverMenuCarta(publica.sucursal.id, db, ahora);
+  const carta = await resolverMenuCarta(publica.sucursal.id, db, ahora, undefined, conPromos);
   if (!carta) return null;
 
   const tema = publica.sucursal.temaCarta;

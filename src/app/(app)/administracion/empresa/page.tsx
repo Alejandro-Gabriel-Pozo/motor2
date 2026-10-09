@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { formatearCuit } from "@/core/fiscal/public";
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { obtenerPerfilDeEmpresa } from "@/server/consultas/empresa/perfil";
@@ -7,6 +8,8 @@ import { obtenerPerfilDeEmpresa } from "@/server/consultas/empresa/perfil";
 export default async function PerfilDeLaEmpresaPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   // Se abre con la clave de la gerencia (piso gerente, sin migración): es la única de contexto empresa que ya existe y que solo tiene quien es gerente. Si más adelante
   // el perfil se abre a los administradores, va con una clave propia (y la migración que eso pide).

@@ -3,7 +3,7 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
-import { decidirInicioDeSesion } from "@/core/auth/acceso";
+import { decidirInicioDeSesion, sesionSigueVigente } from "@/server/sesion/acceso";
 import { ACTUALIZAR_CADA_S, DURACION_SESION_S } from "@/core/auth/duracion-sesion";
 import { nombreCookieSesion, sirvePorHttps, tokenDeSesionAbierta } from "@/core/auth/cookie-sesion";
 import { nombreCookieInvitacion } from "@/core/auth/invitacion";
@@ -30,21 +30,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     // Gate de acceso: rechaza el login ANTES de que el adapter cree
-    // User/Account, para que una cuenta de Google fuera de la empresa (y
-    // no dada de alta a mano) ni siquiera llegue a tener sesión. Detalle
+    // User/Account, para que una cuenta de Google sin empresa (sin membresía
+    // activa ni invitación pendiente; S-17/D5, ya no hay vía por dominio) ni siquiera llegue a tener sesión. Detalle
     // de las reglas en inicioDeSesionPermitido (incluye no dejar vincular una cuenta de Google ajena a una sesión abierta).
     async signIn({ user, profile, account }) {
       if (!user.email || !profile?.email) return false;
-      const hd = typeof profile.hd === "string" ? profile.hd : undefined;
       const cookieStore = await cookies();
-      const tokenAbierto = tokenDeSesionAbierta((n) => cookieStore.get(n)?.value);
+      const tokenAbierto = tokenDeSesionAbierta((n) => cookieStore.get(n)?.value, process.env);
       const tokenDeInvitacion = cookieStore.get(nombreCookieInvitacion(process.env))?.value;
       // E8 (ADR-024): además del gate, decide si el usuario existente puede vincular su cuenta de Google (con una invitación) o si la cuenta es otra.
       return decidirInicioDeSesion({
         emailUsuario: user.email,
         emailPerfil: profile.email,
         emailVerificado: profile.email_verified === true,
-        hd,
         tokenDeSesionAbierta: tokenAbierto,
         tokenDeInvitacion,
         cuenta: account ? { ...account, providerAccountId: account.providerAccountId } : null,
@@ -57,8 +55,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // volver a loguearse. No seteamos session.user.id: getUsuarioActual
     // (única puerta de lectura de sesión del proyecto) ya trata eso como
     // "sin sesión" (`if (!session?.user?.id...) return null`).
+    //
+    // M-20 (decidido por el dueño: «5 minutos»): `activoGlobal` solo cubre la baja de la CUENTA; quien perdía la membresía (empresa o sucursal) conservaba la sesión hasta 12 horas. `sesionSigueVigente`
+    // relee la membresía a lo sumo cada `REVALIDAR_SESION_CADA_MS` por sesión (no por pedido) y, si ya no corresponde, borra la sesión y no se pone `user.id` (→ `/login`). Falla cerrado.
     async session({ session, user }) {
-      if (session.user && user.activoGlobal) {
+      // El adaptador de base de datos le pasa a este callback la fila de `Session` entera, token incluido; sin token no hay a qué sesión revalidar y se trata como sin sesión.
+      const sessionToken = (session as { sessionToken?: string }).sessionToken;
+      if (session.user && user.activoGlobal && sessionToken && (await sesionSigueVigente({ sessionToken, usuarioId: user.id, ahora: new Date() }))) {
         session.user.id = user.id;
       }
       return session;

@@ -1,17 +1,25 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
-import { redondearACantidadDeUnidad } from "@/core/movimientos/transiciones";
 import { crearArrastreDeRedondeo } from "@/core/movimientos/arrastre-redondeo";
-import { cumplePaso, mensajeCantidadNoCumplePaso, rendimientoEfectivo } from "@/core/catalogo/public";
-import { alcanceDeSucursal } from "@/core/catalogo/public";
-import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
+import {
+  leerCantidadVendida,
+  MENSAJE_PRODUCTO_NO_EXISTE,
+  mensajeMateriaPrimaNoDisponible,
+  mensajeNoDisponibleEnSucursal,
+  pedidoDeIngrediente,
+  rechazoDelProductoVendido,
+  revisarMateriaPrima,
+} from "@/core/movimientos/linea-de-venta";
+import { cargarRecetaVigenteParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
-import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { seccionesConStock } from "@/server/lecturas/movimientos/saldos";
-import { asignarConsumosDeVenta, elegirSeccionDeStockPropio, faltantesDe, type ParteAsignada, type ParteConsumo, type PedidoDeConsumo } from "@/core/movimientos/origen-venta";
+import { cargarDeudaDeRedondeo } from "@/server/lecturas/movimientos/deuda-de-redondeo";
+import { faltantesDe } from "@/core/movimientos/origen-venta";
+import { filasDeUnaVenta } from "@/core/movimientos/filas-de-venta";
+import { asignarOrigenDeLaVenta, avisoDeStockNegativo, mensajeStockInsuficiente, rechazoSinRespaldo, type LineaArmada } from "@/core/movimientos/plan-de-la-venta";
 import { cargarDatosDeOrigen, prepararOrigen } from "@/server/persistencia/movimientos/cargar-origen-de-venta";
-import { resolverPrecioVenta } from "@/core/movimientos/precio-venta";
+import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
 import { calcularCostosYMargenes } from "@/server/lecturas/reportes/costos";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
@@ -24,36 +32,6 @@ import type { ActorVenta, AvisoStockNegativo, DatosVentaEnTx, LineaVentaEnTx, Op
  * compartido, SIN `@ficha` y sin `"use server"` (igual que `armar-linea-de-movimiento.ts`): lo usan `registrarVentaCasoDeUso` (mostrador) y `cerrarCuentaCasoDeUso` (POS),
  * cada uno dentro de SU transacción SERIALIZABLE. Los tipos (`ActorVenta`, `DatosVentaEnTx`, …) y el docstring del contrato viven en `core/movimientos/registrar-venta.ts`.
  */
-
-/** Una línea validada, todavía SIN sección: lo que pide su receta (o su stock propio, si se produce) se asigna después, con el libro. */
-interface LineaArmada {
-  productoId: string;
-  nombre: string;
-  seProduce: boolean;
-  cantidadVendida: number;
-  precioVenta: number;
-  /** Precio de LISTA de esta línea, si difiere de `precioVenta` (Task #14). `null` = coinciden, no se guarda nada distinto. */
-  precioListaVenta: number | null;
-  /** Costo de receta resuelto AL MOMENTO de esta venta (docstring en schema.prisma, MovimientoStock.costoUnitarioVenta) — null si el costeo estaba incompleto ese día. */
-  costoUnitarioAlVender: number | null;
-  /** La `PromoCuenta` de la que esta línea es un componente (Task #16) — null = un suelto. */
-  promoCuentaId: string | null;
-  /** Consumo de receta por ingrediente, en el orden de los ingredientes (id ascendente: determinístico para el libro). */
-  pedidos: {
-    productoId: string;
-    cantidad: number;
-    /** Insumos sustitutos declarados en ESTA línea de receta, en orden (docs/plan-sustitucion-insumos-receta-2026-09-26.md, D1). */
-    insumoSustitutoIds: string[];
-    /** Unidad de stock de la MP principal — la familia sustituta se filtra a esta misma unidad (D8). */
-    unidadStockId: string;
-  }[];
-}
-
-interface VentaCalculada extends LineaArmada {
-  seccionId: string;
-  loteVencimiento: Date | null;
-  consumos: ParteConsumo[];
-}
 
 function fallo(mensaje: string): { ok: false; mensaje: string } {
   return { ok: false, mensaje };
@@ -75,63 +53,34 @@ async function armarLinea(
   obtenerProducto: ReturnType<typeof crearCacheProducto>,
   costoUnitarioPorProducto: Map<string, number | null>
 ): Promise<{ ok: true; linea: LineaArmada | null } | { ok: false; mensaje: string }> {
-  const cantidad: unknown = item.cantidadVendida;
-  // Una cantidad que no es un número finito y no negativo es un error, no «sin cantidad»: salteada en silencio, el resto de la venta se
-  // registraría igual. Solo el 0 (o la cantidad ausente) saltea la línea.
-  if (cantidad === undefined || cantidad === null || cantidad === 0) return { ok: true, linea: null };
-  if (typeof cantidad !== "number" || !Number.isFinite(cantidad) || cantidad < 0) return { ok: false, mensaje: "La cantidad vendida no es un número válido." };
+  // Las reglas (qué cantidad saltea la línea, cuál es un error, qué mensaje gana) son puras y viven en `core/movimientos/linea-de-venta.ts`; acá queda el ORDEN: cada una se llama
+  // en el mismo lugar donde estaba el `if`, antes o después de la lectura que le toca (los goldens registran las lecturas también en los rechazos).
+  const leida = leerCantidadVendida(item.cantidadVendida);
+  if (leida.tipo === "saltear") return { ok: true, linea: null };
+  if (leida.tipo === "invalida") return { ok: false, mensaje: leida.mensaje };
+  const cantidad = leida.cantidad;
 
   const producto = await obtenerProducto(item.productoId);
-  if (!producto) return { ok: false, mensaje: `El producto no existe.` };
+  if (!producto) return { ok: false, mensaje: MENSAJE_PRODUCTO_NO_EXISTE };
   if (!(await productoDisponibleEn(sucursalId, producto.id, tx))) {
-    return { ok: false, mensaje: `«${producto.nombre}» no está disponible en «${sucursalNombre}».` };
+    return { ok: false, mensaje: mensajeNoDisponibleEnSucursal(producto.nombre, sucursalNombre) };
   }
-  if (producto.tipo !== "PV") {
-    return { ok: false, mensaje: `"${producto.nombre}" no está habilitado para venta: solo se puede vender un PV (vinculado por receta a la materia prima que consume).` };
-  }
-  // Venta fraccionada (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): validación ADICIONAL, específica del paso — no
-  // reemplaza ninguna validación de decimales general (mostrador no tenía ninguna, y sigue sin tenerla). Comparte este núcleo con
-  // `cerrarCuenta` (POS): cada línea que llega acá ya pasó por `validarCantidadPedido` al cargarse (múltiplo exacto del paso), y la
-  // SUMA de múltiplos exactos sigue siendo un múltiplo exacto — así que esto nunca debería disparar desde el POS, solo desde la
-  // venta de mostrador directa (`registrarVenta`), que hoy no valida nada de esto.
-  if (producto.pasoVenta !== null) {
-    const paso = Number(producto.pasoVenta);
-    if (!cumplePaso(cantidad, paso)) return { ok: false, mensaje: `"${producto.nombre}": ${mensajeCantidadNoCumplePaso(paso)}` };
-  }
+  const rechazo = rechazoDelProductoVendido({ nombre: producto.nombre, tipo: producto.tipo, pasoVenta: producto.pasoVenta === null ? null : Number(producto.pasoVenta) }, cantidad);
+  if (rechazo !== null) return { ok: false, mensaje: rechazo };
 
   const pedidos: LineaArmada["pedidos"] = [];
   if (!producto.seProduce) {
     // Un PV que se produce por lote ya consumió su receta al producirse — la venta solo lo resta (ver registrarMovimiento, PRODUCCION).
-    const receta = await cargarRecetaVigente(tx, alcanceDeSucursal(sucursalId), producto.id, {
-      include: {
-        ingredientes: {
-          orderBy: { id: "asc" },
-          include: { sustitutos: { orderBy: { orden: "asc" } }, rendimientosLocales: { where: { sucursalId } } },
-        },
-      },
-    });
-    for (const ing of receta?.ingredientes ?? []) {
-      const mp = await obtenerProducto(ing.insumoProductoId);
-      if (!mp || mp.tipo !== "MP") {
-        return { ok: false, mensaje: `La materia prima de la receta de "${producto.nombre}" no está marcada como MP.` };
-      }
+    const ingredientes = await cargarRecetaVigenteParaVender(tx, { productoId: producto.id, sucursalId });
+    for (const ing of ingredientes) {
+      const revisada = revisarMateriaPrima(await obtenerProducto(ing.insumoProductoId), producto.nombre);
+      if (!revisada.ok) return { ok: false, mensaje: revisada.mensaje };
+      const mp = revisada.materiaPrima;
       if (!(await productoDisponibleEn(sucursalId, mp.id, tx))) {
-        return { ok: false, mensaje: `La receta de «${producto.nombre}» usa «${mp.nombre}», que no está disponible en «${sucursalNombre}»: activala acá o cambiá la receta.` };
+        return { ok: false, mensaje: mensajeMateriaPrimaNoDisponible(producto.nombre, mp.nombre, sucursalNombre) };
       }
-      // rendimientoEfectivo (D2, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md): la fórmula queda TEXTUALMENTE
-      // igual, solo cambia de dónde salen los dos operandos — sin ninguna calibración de ESTA sucursal, ef.* es
-      // exactamente ing.cantidad/ing.mermaPorcentaje (Object.is), así que el cálculo de siempre no se mueve un bit.
-      const ef = rendimientoEfectivo(
-        { cantidad: Number(ing.cantidad), mermaPorcentaje: Number(ing.mermaPorcentaje) },
-        ing.rendimientosLocales.map((r) => ({ sucursalId: r.sucursalId, cantidad: r.cantidad !== null ? Number(r.cantidad) : null, mermaPorcentaje: r.mermaPorcentaje !== null ? Number(r.mermaPorcentaje) : null })),
-        sucursalId
-      );
-      pedidos.push({
-        productoId: ing.insumoProductoId,
-        cantidad: cantidad * ef.cantidad * (1 + ef.mermaPorcentaje / 100),
-        insumoSustitutoIds: ing.sustitutos.map((s) => s.insumoSustitutoId),
-        unidadStockId: mp.unidadStockId,
-      });
+      // El consumo con el rendimiento efectivo de ESTA sucursal (D2) es una regla pura: `pedidoDeIngrediente`, en `core/movimientos/linea-de-venta.ts`.
+      pedidos.push(pedidoDeIngrediente(cantidad, ing, mp.unidadStockId, sucursalId));
     }
   }
 
@@ -143,26 +92,6 @@ async function armarLinea(
     ok: true,
     linea: { productoId: producto.id, nombre: producto.nombre, seProduce: producto.seProduce, cantidadVendida: cantidad, precioVenta, precioListaVenta, costoUnitarioAlVender, promoCuentaId: item.promoCuentaId ?? null, pedidos },
   };
-}
-
-/**
- * Deuda de arrastre de redondeo de cada producto, en ESTA sucursal, al momento de empezar la venta (Task #27, docs/plan-redondeo-
- * consumo-fraccionado-2026-09-26.md) — cargador con Prisma del núcleo puro `arrastre-redondeo.ts`, mismo criterio que
- * `origen-venta-datos.ts` para `origen-venta.ts`. `D = Σcantidad − ΣcantidadExacta` (ver el docstring de
- * `MovimientoStock.cantidadExacta`, schema.prisma), sumando solo las filas CONSUMO con `cantidadExacta` no nulo — las nulas aportan 0
- * por definición, ya que ahí `cantidad` YA era exacta. Filtra por `seccion.sucursalId` (una relación, no `seccionId: { in: [...] }`):
- * ya lo hacen `consignacion.ts:104` y `resumen-operativo.ts` con el mismo `groupBy`, así que el filtro por relación es un patrón
- * probado en esta versión de Prisma. SIEMPRE con `tx` (nunca `prisma` global): dos ventas concurrentes de la misma MP tienen que leer
- * esto dentro de la MISMA transacción SERIALIZABLE que arbitra el conflicto (ver el docstring del módulo, con-reintento.ts).
- */
-async function cargarDeudaDeRedondeo(tx: Prisma.TransactionClient, sucursalId: string, productoIds: readonly string[]): Promise<Map<string, number>> {
-  if (!productoIds.length) return new Map();
-  const grupos = await tx.movimientoStock.groupBy({
-    by: ["productoId"],
-    where: { productoId: { in: productoIds as string[] }, cantidadExacta: { not: null }, seccion: { sucursalId } },
-    _sum: { cantidad: true, cantidadExacta: true },
-  });
-  return new Map(grupos.map((g) => [g.productoId, Number(g._sum.cantidad ?? 0) - Number(g._sum.cantidadExacta ?? 0)]));
 }
 
 /**
@@ -206,76 +135,14 @@ export async function registrarVentaEnTx(
   const pvIds = Array.from(new Set(lineas.map((l) => l.productoId)));
   const insumoSustitutoIds = Array.from(new Set(lineas.flatMap((l) => l.pedidos.flatMap((p) => p.insumoSustitutoIds))));
   const origenDatos = await cargarDatosDeOrigen(tx, actor.sucursalId, origen, { pvIds, mpIds, pvQueSeProducenIds, insumoSustitutoIds });
-  const { libro, respaldos, seccionPorDefectoId } = origenDatos;
+  const libro = origenDatos.libro;
   // Sin ninguna sección de respaldo (todas excluidas con `sirveDeRespaldoEnVentas`), un PV sin habitual no tiene de dónde salir: se
-  // rechaza ANTES de escribir nada, con la salida concreta (distinto de «sin secciones activas»: la solución es otra).
-  if (!respaldos.length) {
-    const sinHabitual = lineas.find((l) => !origenDatos.habitualDe(l.productoId));
-    if (sinHabitual) {
-      return fallo(
-        `Ninguna sección de «${actor.sucursalNombre}» sirve de respaldo automático en ventas y «${sinHabitual.nombre}» no tiene sección habitual: ` +
-          "configurá su sección habitual (Stock → Sección habitual) o marcá una sección como respaldo (Movimientos → Secciones)."
-      );
-    }
-  }
+  // rechaza ANTES de escribir nada, con la salida concreta (la regla y el texto son puros: `rechazoSinRespaldo`, en `core/movimientos/plan-de-la-venta.ts`).
+  const sinRespaldo = rechazoSinRespaldo(lineas, origenDatos, actor.sucursalNombre);
+  if (sinRespaldo !== null) return fallo(sinRespaldo);
 
-  // PVs que se producen: stock PROPIO, sin sustitutos ni receta — se resuelven en su propio sub-paso, en el orden de las líneas
-  // (no interactúan con el consumo de receta de las demás: un PV que se produce nunca es MP de ninguna receta, así que el orden
-  // relativo entre este sub-paso y el de abajo no cambia ningún resultado).
-  const propiaPorLinea = new Map<number, ParteAsignada>();
-  lineas.forEach((linea, i) => {
-    if (!linea.seProduce) return;
-    const habitual = origenDatos.habitualDe(linea.productoId);
-    // El PV vendido también puede tener lotes propios si está marcado "Se produce" — siempre el que vence antes (FEFO), nunca a
-    // elección manual; el dato ya está en el Kardex desde que se produjo, no hace falta pedírselo a quien vende.
-    propiaPorLinea.set(
-      i,
-      elegirSeccionDeStockPropio(libro, {
-        productoId: linea.productoId,
-        cantidad: linea.cantidadVendida,
-        seccionHabitual: habitual,
-        respaldos,
-        seccionSiNingunaAlcanzaId: habitual?.id ?? origenDatos.referenciaDe(linea.productoId) ?? seccionPorDefectoId,
-      })
-    );
-  });
-
-  // Pedidos de receta de TODAS las líneas que consumen (no seProduce), en el orden de línea e ingrediente — UN solo
-  // asignarConsumosDeVenta para la venta ENTERA (D5): una sustitución nunca le saca stock a un consumo principal de OTRA línea,
-  // porque su pasada 2 corre después de que la 1 terminó para todas. Sin sustitutos, misma secuencia que antes (demostración (a),
-  // docs/plan-sustitucion-insumos-receta-2026-09-26.md §4).
-  const pedidosPlanos: PedidoDeConsumo[] = [];
-  const rangoPorLinea = new Map<number, { desde: number; hasta: number }>();
-  lineas.forEach((linea, i) => {
-    if (linea.seProduce) return;
-    const habitual = origenDatos.habitualDe(linea.productoId);
-    const desde = pedidosPlanos.length;
-    for (const p of linea.pedidos) {
-      pedidosPlanos.push({
-        productoId: p.productoId,
-        familia: origenDatos.familiaDe(p.productoId),
-        cantidad: p.cantidad,
-        seccionHabitual: habitual,
-        respaldos,
-        seccionParaFaltanteId: habitual?.id ?? origenDatos.referenciaDe(p.productoId) ?? origenDatos.referenciaDe(linea.productoId) ?? seccionPorDefectoId,
-        sustitutos: p.insumoSustitutoIds.length ? p.insumoSustitutoIds.map((insumoId) => origenDatos.familiaSustitutaDe(insumoId, p.unidadStockId)) : undefined,
-      });
-    }
-    rangoPorLinea.set(i, { desde, hasta: pedidosPlanos.length });
-  });
-  const resultadosPlanos = asignarConsumosDeVenta(libro, pedidosPlanos);
-
-  const ventas: VentaCalculada[] = lineas.map((linea, i) => {
-    if (linea.seProduce) {
-      const propia = propiaPorLinea.get(i)!;
-      return { ...linea, seccionId: propia.seccionId, loteVencimiento: propia.loteVencimiento, consumos: [] };
-    }
-    const habitual = origenDatos.habitualDe(linea.productoId);
-    const { desde, hasta } = rangoPorLinea.get(i)!;
-    const consumos = resultadosPlanos.slice(desde, hasta).flat();
-    const seccionId = habitual?.id ?? consumos[0]?.seccionId ?? origenDatos.referenciaDe(linea.productoId) ?? seccionPorDefectoId;
-    return { ...linea, seccionId, loteVencimiento: null, consumos };
-  });
+  // El reparto de la venta entera (stock propio de los PV que se producen → UN solo asignarConsumosDeVenta → cada venta con su sección) es una función pura sobre el libro ya cargado: `asignarOrigenDeLaVenta`.
+  const { ventas, pedidosPlanos } = asignarOrigenDeLaVenta(lineas, origenDatos);
 
   // Validación de stock agregada: cada consumo de receta descuenta
   // stock real — el producto vendido en sí nunca descuenta su propio
@@ -287,21 +154,12 @@ export async function registrarVentaEnTx(
   for (const faltante of faltantesDe(libro, familiasIds)) {
     const producto = await obtenerProducto(faltante.productoId);
     if (opciones.permitirStockNegativo) {
-      const decimales = producto?.unidadStock.decimales ?? 2;
-      avisosStockNegativo.push({
-        productoId: faltante.productoId,
-        nombre: producto?.nombre ?? faltante.productoId,
-        seccionId: faltante.seccionId,
-        seccionNombre: origenDatos.nombreDeSeccion(faltante.seccionId),
-        actual: faltante.actual,
-        requerido: redondearACantidadDeUnidad(faltante.requerido, decimales),
-        resultante: redondearACantidadDeUnidad(faltante.actual - faltante.requerido, decimales),
-      });
+      // El aviso y el texto del rechazo son puros (`avisoDeStockNegativo`, `mensajeStockInsuficiente`, en `core/movimientos/plan-de-la-venta.ts`); acá queda la decisión de cuál corresponde y la lectura de la pista.
+      avisosStockNegativo.push(avisoDeStockNegativo(faltante, producto, origenDatos.nombreDeSeccion(faltante.seccionId)));
       continue;
     }
     const pista = await seccionesConStock(faltante.productoId, actor.sucursalId, tx);
-    const detallePista = pista.length ? ` Tiene stock en: ${pista.join(", ")}.` : "";
-    return fallo(`Stock insuficiente para "${producto?.nombre ?? faltante.productoId}". Actual: ${faltante.actual}, requerido: ${faltante.requerido}.${detallePista}`);
+    return fallo(mensajeStockInsuficiente(faltante, producto, pista));
   }
 
   // Arrastre de redondeo (Task #27, docs/plan-redondeo-consumo-fraccionado-2026-09-26.md): UNA sola carga para la venta ENTERA (todos
@@ -311,6 +169,17 @@ export async function registrarVentaEnTx(
   // sí, no solo entre ventas distintas.
   const productosConsumidosIds = Array.from(new Set(ventas.flatMap((v) => v.consumos.map((c) => c.productoId))));
   const arrastreDeRedondeo = crearArrastreDeRedondeo(await cargarDeudaDeRedondeo(tx, actor.sucursalId, productosConsumidosIds));
+
+  // Las fichas de los productos que el bucle de abajo necesita (cada producto consumido y, si la parte salió de un sustituto, el producto al que reemplazó) se leen ACÁ, en el orden de las
+  // ventas y de sus consumos, y no adentro del bucle: así lo que arma las filas de una venta ya no lee nada. DESPUÉS de la validación de stock (un rechazo no suma lecturas) y la caché de
+  // `obtenerProducto` deduplica: el multiconjunto de lecturas de la transacción es el mismo que cuando se leía adentro del bucle.
+  const productos = new Map<string, Awaited<ReturnType<typeof obtenerProducto>>>();
+  for (const venta of ventas) {
+    for (const c of venta.consumos) {
+      productos.set(c.productoId, await obtenerProducto(c.productoId));
+      if (c.sustituyeAProductoId) productos.set(c.sustituyeAProductoId, await obtenerProducto(c.sustituyeAProductoId));
+    }
+  }
 
   const filas: Prisma.MovimientoStockCreateManyInput[] = [];
   const operacionIds: string[] = [];
@@ -330,50 +199,9 @@ export async function registrarVentaEnTx(
     });
     operacionIds.push(operacion.id);
 
-    for (const c of venta.consumos) {
-      const consumido = await obtenerProducto(c.productoId);
-      // Redondeo CON ARRASTRE (Task #27, docs/plan-redondeo-consumo-fraccionado-2026-09-26.md) — reemplaza el redondeo "a secas" de
-      // cada parte por separado (`redondearACantidadDeUnidad(c.cantidad, decimales)`, el bug: dos medias pizzas consumían 2 bollos
-      // en vez de 1). Con deuda 0 (el caso de siempre para un producto que nunca dejó resto) el resultado es IDÉNTICO al de antes;
-      // con deuda, la parte que sobró o faltó de consumos anteriores del MISMO producto en esta sucursal (`cargarDeudaDeRedondeo`,
-      // arriba) se suma antes de redondear, así que el TOTAL de la sucursal converge al consumo exacto en vez de que cada parte
-      // redondee de forma independiente. `cantidadExacta` (con el mismo signo que `cantidad`) solo se llena cuando difiere de lo
-      // escrito — alimenta la deuda de la PRÓXIMA venta (`cargarDeudaDeRedondeo`) y la reversión exacta de esta (`anularVenta`).
-      const { cantidad: cantidadRedondeada, cantidadExacta } = arrastreDeRedondeo.consumir(c.productoId, c.cantidad, consumido?.unidadStock.decimales ?? 2);
-      // D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md): solo si esta parte vino de un sustituto — un consumo de un
-      // HERMANO del mismo Insumo (el caso de siempre) deja el objeto IDÉNTICO a hoy, sin la columna ni el detalle distinto.
-      const detalle = c.sustituyeAProductoId
-        ? `Consumo por venta de "${venta.nombre}" — SUSTITUTO de "${(await obtenerProducto(c.sustituyeAProductoId))?.nombre ?? c.sustituyeAProductoId}" (no había stock).`
-        : `Consumo por venta de "${venta.nombre}".`;
-      filas.push({
-        operacionId: operacion.id, productoId: c.productoId, seccionId: c.seccionId, proceso: "CONSUMO",
-        cantidad: -cantidadRedondeada, cantidadExacta: cantidadExacta === null ? null : -cantidadExacta, loteVencimiento: c.loteVencimiento,
-        detalle, precioTotal: 0, precioPorUnidadStock: 0,
-        ...(c.sustituyeAProductoId ? { sustituyeAProductoId: c.sustituyeAProductoId } : {}),
-      });
-
-      if (consumido?.esConsignacion) {
-        filas.push({
-          operacionId: operacion.id, productoId: c.productoId, seccionId: c.seccionId, proceso: "LIQUIDACION_CONSIGNACION",
-          cantidad: 0, loteVencimiento: null,
-          detalle: `Liquidación consignación por venta de "${venta.nombre}".`,
-          precioTotal: importeDeLinea(cantidadRedondeada, Number(consumido.precioConsignacion ?? 0)),
-          precioPorUnidadStock: redondearMoneda(Number(consumido.precioConsignacion ?? 0)),
-        });
-      }
-    }
-
-    // El PV vendido en sí: signoStock -1 (Movimientos.js:190-205) — si
-    // no tiene stock real (no "Se produce"), este saldo negativo es un
-    // artefacto contable de las ventas, mismo criterio que hoy.
-    const importeVenta = importeDeLinea(venta.cantidadVendida, venta.precioVenta);
-    filas.push({
-      operacionId: operacion.id, productoId: venta.productoId, seccionId: venta.seccionId, proceso: "VENTA",
-      cantidad: -venta.cantidadVendida, loteVencimiento: venta.loteVencimiento,
-      detalle: texto(datos.detalle) || "Venta", precioTotal: importeVenta, precioPorUnidadStock: redondearMoneda(venta.precioVenta),
-      costoUnitarioVenta: venta.costoUnitarioAlVender !== null ? redondearMoneda(venta.costoUnitarioAlVender) : null,
-      precioListaUnitario: venta.precioListaVenta !== null ? redondearMoneda(venta.precioListaVenta) : null,
-    });
+    // Las filas de esta venta —CONSUMO con el redondeo CON ARRASTRE, LIQUIDACION_CONSIGNACION y VENTA, una por lote si el PV que se produce sale de más de uno— son una regla pura sobre lo ya leído:
+    // `filasDeUnaVenta`, en `core/movimientos/filas-de-venta.ts` (el docstring del arrastre y de la repartición del importe viven ahí). Acá queda el ORDEN: la `Operacion` primero, después sus filas, y UN solo `createMany` al final.
+    filas.push(...filasDeUnaVenta(venta, operacion.id, { detalle: datos.detalle, productoDe: (productoId) => productos.get(productoId), arrastre: arrastreDeRedondeo }));
   }
 
   await escribirLineasDeMovimientoStock(tx, filas);

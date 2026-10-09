@@ -1,6 +1,9 @@
 {
   "regions": ["pdx1"],
   "installCommand": "npm ci",
+  "git": {
+    "deploymentEnabled": false
+  },
   "crons": [
     { "path": "/api/cron/sincronizar-ipc", "schedule": "0 12 * * *" },
     { "path": "/api/cron/sincronizar-dolar", "schedule": "30 21 * * *" }

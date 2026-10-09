@@ -17,6 +17,10 @@ vi.mock("@/lib/db", () => ({ prisma: prismaFalso }));
 vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: (empresaId: string) => ({ dbDeEmpresa: empresaId }), verificarRolDeEjecucionDelProceso: async () => undefined }));
 vi.mock("@/server/lecturas/carta/publica", () => ({ resolverPortalCarta, resolverCartaPublica, resolverConfigPortal }));
 vi.mock("@/server/lecturas/carta/empresa", () => ({ resolverEmpresaCarta }));
+// S-26: la carta pública se cachea con `unstable_cache` (necesita el caché de Next): acá corre directo; su etiqueta la prueba `cartas-publicas-cache-por-empresa.test.ts`.
+vi.mock("next/cache", () => ({ unstable_cache: (fn: () => unknown) => fn }));
+// S-23: la entrada pública pregunta los módulos contratados de la empresa (el comportamiento real, con la base, lo prueba carta-publica-con-modulo.test.ts); acá la empresa los tiene todos.
+vi.mock("@/server/acceso/modulos-de-empresa", () => ({ modulosEfectivosDeEmpresa: async () => new Set(["carta", "promociones"]) }));
 vi.mock("@/server/carta-publica/sin-sesion", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/server/carta-publica/sin-sesion")>();
   return { ...real, portalCartaPublico, configPortalPublica, cartaPublica };
@@ -52,19 +56,26 @@ describe("punto público sin sesión", () => {
 
     await real.portalCartaPublico(EMPRESA);
     await real.configPortalPublica(EMPRESA);
-    await real.cartaPublica(EMPRESA, "central");
+    const ahora = new Date();
+    await real.cartaPublica(EMPRESA, "central", ahora);
 
     expect(resolverPortalCarta).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
     expect(resolverConfigPortal).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
-    expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", { dbDeEmpresa: EMPRESA.id });
+    expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", { dbDeEmpresa: EMPRESA.id }, ahora, true);
   });
 });
 
 describe("páginas de la carta pública", () => {
   it("el portal pasa a la consulta la empresa que resolvió del segmento de ruta", async () => {
+    portalCartaPublico.mockResolvedValueOnce([{ slug: "central", etiqueta: "Central", subtitulo: null, posicion: null }] as never);
     await PortalPage({ params: Promise.resolve({ empresa: "la-cuadra" }) });
     expect(portalCartaPublico).toHaveBeenCalledWith(EMPRESA);
     expect(configPortalPublica).toHaveBeenCalledWith(EMPRESA);
+  });
+
+  it("S-24: el portal de una empresa sin ninguna sucursal publicada da 404 y no pide ni la apariencia", async () => {
+    await expect(PortalPage({ params: Promise.resolve({ empresa: "la-cuadra" }) })).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(configPortalPublica).not.toHaveBeenCalled();
   });
 
   it("el portal no consulta nada si la empresa no resuelve", async () => {
@@ -76,7 +87,7 @@ describe("páginas de la carta pública", () => {
   it("la sucursal pasa a la consulta la empresa que resolvió del segmento de ruta", async () => {
     cartaPublica.mockResolvedValueOnce({ carta: {}, estilo: {} } as never);
     await CartaPage({ params: Promise.resolve({ empresa: "la-cuadra", sucursal: "central" }) });
-    expect(cartaPublica).toHaveBeenCalledWith(EMPRESA, "central");
+    expect(cartaPublica).toHaveBeenCalledWith(EMPRESA, "central", expect.any(Date));
   });
 
   it("la sucursal no consulta nada si la empresa no resuelve", async () => {

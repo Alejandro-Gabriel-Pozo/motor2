@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
+import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { agregarPresentacionAlternativa, actualizarActivaPresentacion, listarPresentaciones } from "../../src/server/actions/catalogo/productos";
 
 describe("Presentaciones de compra alternativas", () => {
@@ -75,6 +76,74 @@ describe("Presentaciones de compra alternativas", () => {
     const resultado = await agregarPresentacionAlternativa(productoId, unidadGId, 1e15);
     expect(resultado.ok).toBe(false);
     expect(resultado.mensaje).toMatch(/grande/);
+  });
+
+  /**
+   * M-4 (auditoría final): el operario con `producto_presentaciones` cambiaba con este mismo alta el FACTOR de una presentación ya existente (un `upsert` lo pisaba) y la compra siguiente metía más o
+   * menos stock del que había. Una presentación que ya se usó en compras (hay un vínculo proveedor↔producto con su unidad, que cada compra con proveedor escribe) no cambia de factor.
+   */
+  describe("M-4: el factor de una presentación que ya se usó no se cambia", () => {
+    let seccionId: string;
+    let proveedorId: string;
+
+    beforeEach(async () => {
+      const sucursalId = (await prisma.sucursal.findFirstOrThrow()).id;
+      seccionId = (await sembrarSeccion(sucursalId)).id;
+      proveedorId = (await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Molino SA" } })).id;
+      await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId, disponible: true } });
+      expect((await agregarPresentacionAlternativa(productoId, unidadGId, 20)).ok).toBe(true);
+    });
+
+    const comprarEnLaPresentacion = async () => {
+      const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId, items: [{ productoId, cantidad: 2, unidadCompraId: unidadGId, precioTotal: 100 }] });
+      expect(r.ok, r.mensaje).toBe(true);
+    };
+    const factorGuardado = async () => Number((await prisma.presentacion.findFirstOrThrow({ where: { productoId, unidadCompraId: unidadGId } })).factorConversion);
+    const auditoriasDelFactor = () => prisma.registroAuditoria.count({ where: { entidad: "Presentacion", campo: "factorConversion" } });
+
+    it("ataque: después de comprar con la presentación (2 × 20 = 40 kg), subirle el factor a 25 se rechaza: el factor sigue en 20 y no se audita nada nuevo", async () => {
+      await comprarEnLaPresentacion();
+      expect(await prisma.movimientoStock.count({ where: { productoId } })).toBe(1);
+      const auditoriasAntes = await auditoriasDelFactor();
+
+      const r = await agregarPresentacionAlternativa(productoId, unidadGId, 25);
+
+      expect(r.ok).toBe(false);
+      expect(r.mensaje).toContain("ya se usó en compras");
+      expect(r.mensaje).toContain("su factor de conversión no se puede cambiar");
+      expect(await factorGuardado()).toBe(20);
+      expect(await auditoriasDelFactor()).toBe(auditoriasAntes);
+    });
+
+    it("ataque: bajarlo (para que la compra siguiente meta menos) se rechaza igual", async () => {
+      await comprarEnLaPresentacion();
+      expect((await agregarPresentacionAlternativa(productoId, unidadGId, 1)).ok).toBe(false);
+      expect(await factorGuardado()).toBe(20);
+    });
+
+    it("control: reactivarla con el MISMO factor sigue permitido aunque se haya usado", async () => {
+      await comprarEnLaPresentacion();
+      const presentacion = (await listarPresentaciones(productoId))[0];
+      expect((await actualizarActivaPresentacion(presentacion.id, false)).ok).toBe(true);
+
+      const r = await agregarPresentacionAlternativa(productoId, unidadGId, 20);
+
+      expect(r.ok, r.mensaje).toBe(true);
+      expect((await listarPresentaciones(productoId))[0].activa).toBe(true);
+    });
+
+    it("control: antes de usarse, el factor se sigue corrigiendo (la presentación se cargó con un error)", async () => {
+      expect((await agregarPresentacionAlternativa(productoId, unidadGId, 25)).ok).toBe(true);
+      expect(await factorGuardado()).toBe(25);
+    });
+
+    it("control: crear una presentación NUEVA (otra unidad de compra) sigue permitido aunque el producto ya tenga compras", async () => {
+      await comprarEnLaPresentacion();
+      const unidadCaja = await prisma.unidad.create({ data: { nombre: "caja", magnitud: "CANTIDAD", decimales: 0 } });
+      const r = await agregarPresentacionAlternativa(productoId, unidadCaja.id, 12);
+      expect(r.ok, r.mensaje).toBe(true);
+      expect(await listarPresentaciones(productoId)).toHaveLength(2);
+    });
   });
 
   it("actualizarActivaPresentacion la desactiva sin borrarla — sigue listada, ya no activa", async () => {

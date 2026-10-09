@@ -32,7 +32,7 @@ export interface ComandoAnularCompra {
 }
 
 /** Por qué `evaluarAnulacion` (src/core/compras/anulacion.ts) rechaza una anulación. Se declara ACÁ y `ResultadoAnulacion` la usa: así `core/compras` depende de su contrato (`features/compras`) y no al revés, sin ciclo. */
-export type MotivoAnulacionRechazada = "NO_ES_COMPRA" | "YA_ANULADA" | "SIN_LINEAS" | "STOCK_CONSUMIDO";
+export type MotivoAnulacionRechazada = "NO_ES_COMPRA" | "YA_ANULADA" | "SIN_LINEAS" | "STOCK_CONSUMIDO" | "CONTEO_POSTERIOR";
 
 export type CodigoAnularCompra = MotivoAnulacionRechazada | "NO_ENCONTRADA" | "CONFLICTO_IDEMPOTENCIA" | "ENTRADA_INVALIDA";
 

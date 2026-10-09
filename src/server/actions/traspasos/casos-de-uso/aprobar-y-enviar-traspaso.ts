@@ -3,7 +3,7 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_SECCION_ORIGEN_NO_PROPIA, MENSAJE_TRASPASO_NO_ENCONTRADO } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import type { ComandoAprobarYEnviarTraspaso, ResultadoAprobarYEnviarTraspaso } from "@/core/features/traspasos/traspaso.schema";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarSucursalDelTraspaso, cargarTraspaso } from "@/server/persistencia/traspasos/cargar-traspaso";
@@ -35,7 +35,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @idempotency No aplica (nunca la tuvo) — el aislamiento SERIALIZABLE arbitra el doble clic, el segundo intento ve el estado ya ENVIADA.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de la escritura de la salida de Kardex y el cambio de estado del traspaso.
- * @ficha permiso=traspaso_aprobar transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @ficha permiso=traspaso_aprobar transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function aprobarYEnviarTraspasoCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion" | "ahora">,
@@ -58,7 +58,7 @@ export async function aprobarYEnviarTraspasoCasoDeUso(
     if (!resProducto.ok) return fracaso("PRODUCTO_NO_TRANSFERIBLE", resProducto.mensaje);
 
     const cantidad = traspaso.cantidad;
-    const disponible = await calcularSaldoTotal(traspaso.productoId, seccionOrigen.id, tx);
+    const disponible = await calcularSaldoTotal(traspaso.productoId, seccionOrigen.id, actor.sucursalId, tx);
     if (disponible < cantidad) {
       return fracaso(
         "STOCK_INSUFICIENTE",

@@ -4,12 +4,13 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { preciosLocalesVigentes } from "../../src/core/catalogo/public-servidor";
-import { resolverPrecioVenta } from "../../src/core/movimientos/precio-venta";
+import { preciosLocalesVigentes } from "../../src/server/lecturas/catalogo/precio-local";
+import { resolverPrecioVenta } from "../../src/server/lecturas/movimientos/precio-venta";
 import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
 import { construirMapaProductos } from "../../src/server/lecturas/reportes/comun";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Precio Local y la capacidad `precio_local` de la sucursal, contra Postgres real: "la empresa lo tiene o no lo tiene, y punto". Sin
@@ -29,7 +30,7 @@ describe("Precio Local y la capacidad precio_local", () => {
   }
 
   async function precioEnCartaPublica(): Promise<number | undefined> {
-    const carta = await resolverMenuCarta(sucursalId, prisma);
+    const carta = await resolverMenuCarta(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     return carta?.secciones.flatMap((s) => s.items).find((i) => i.nombre === "Pizza")?.precio;
   }
 
@@ -45,7 +46,7 @@ describe("Precio Local y la capacidad precio_local", () => {
   }
 
   async function precioEnSelectorPos(): Promise<number | undefined> {
-    const selector = await cargarSelectorCartaPos(sucursalId, prisma);
+    const selector = await cargarSelectorCartaPos(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     return precioDe(selector);
   }
 

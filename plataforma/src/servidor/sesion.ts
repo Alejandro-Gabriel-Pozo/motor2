@@ -2,6 +2,8 @@ import "server-only";
 import { cookies } from "next/headers";
 import { sirvePorHttps } from "@/core/auth/cookie-sesion";
 import { hashDeToken } from "@/core/seguridad/tokens";
+import { VIDA_DEL_CODIGO_DE_INGRESO_MS } from "@/core/plataforma/limites";
+import { COOKIE_DE_PEDIDO_HTTP, COOKIE_DE_PEDIDO_HTTPS, leerPedidoDeIngreso, serializarPedidoDeIngreso, type PedidoDeIngreso } from "@/core/plataforma/pedido-de-ingreso";
 import { VIDA_DE_SESION_PENDIENTE_MS, debeAnotarActividad, sesionVigente } from "@/core/plataforma/sesion";
 import { dbDeIdentidad } from "../db";
 
@@ -29,6 +31,31 @@ export async function ponerCookieDePendiente(token: string, ahora: Date): Promis
 
 export async function borrarCookieDeSesion(): Promise<void> {
   (await cookies()).delete(nombreDeCookie());
+}
+
+/**
+ * Cookie del PEDIDO de un código de ingreso (S-08): ata el código del mail al navegador que lo pidió. Mismas reglas que la de sesión (`__Host-` en https, `httpOnly`,
+ * `SameSite=Strict`, `Path=/`) y vive lo que el código (10 minutos). Se pone SIEMPRE al pedir, exista o no el email, para que la respuesta no delate nada.
+ */
+const nombreDeCookieDePedido = () => (https() ? COOKIE_DE_PEDIDO_HTTPS : COOKIE_DE_PEDIDO_HTTP);
+
+export async function ponerCookieDePedido(pedido: PedidoDeIngreso, ahora: Date): Promise<void> {
+  (await cookies()).set(nombreDeCookieDePedido(), serializarPedidoDeIngreso(pedido), {
+    httpOnly: true,
+    secure: https(),
+    sameSite: "strict",
+    path: "/",
+    expires: new Date(ahora.getTime() + VIDA_DEL_CODIGO_DE_INGRESO_MS),
+  });
+}
+
+/** El pedido de la cookie, o `null` si falta o no tiene la forma que se genera. */
+export async function pedidoDeLaCookie(): Promise<PedidoDeIngreso | null> {
+  return leerPedidoDeIngreso((await cookies()).get(nombreDeCookieDePedido())?.value);
+}
+
+export async function borrarCookieDePedido(): Promise<void> {
+  (await cookies()).delete(nombreDeCookieDePedido());
 }
 
 export async function tokenDeLaCookie(): Promise<string | null> {

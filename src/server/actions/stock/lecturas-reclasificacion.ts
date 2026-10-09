@@ -1,7 +1,7 @@
 "use server";
 
 import { calcularSaldoPorLote, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
-import { requerirSesion } from "../con-sesion";
+import { requerirVer } from "../con-sesion";
 
 /**
  * LECTURA de reclasificación: el saldo disponible en origen, para mostrarlo en el formulario ANTES de enviarlo. Vivía en
@@ -18,21 +18,20 @@ import { requerirSesion } from "../con-sesion";
  * a diferencia de su hermano Conteo Físico, que sí lo muestra de entrada).
  *
  * Fase 6 (auditoría de seguridad/contratos): sin `conPermiso` a propósito
- * (es de solo lectura, mismo criterio que el resto de las consultas de
- * este módulo), pero SÍ necesita su propio chequeo de sesión + sección
- * propia acá — a diferencia de las demás consultas "abiertas" del
- * proyecto, esta expone un saldo de stock de una sección puntual elegida
- * por el cliente, no un catálogo compartido.
+ * (es de solo lectura), pero con su propio chequeo de sección propia acá:
+ * expone un saldo de stock de una sección puntual elegida por el cliente.
+ * Desde H8 (decisión del dueño) exige además el «Ver» de
+ * `stock_reclasificar`, la clave de la única pantalla que la consume.
  */
 export async function obtenerSaldoDisponibleParaReclasificar(
   productoId: string,
   seccionId: string,
   loteVencimiento: Date | null
 ): Promise<number | null> {
-  // Sin sesión LANZA (como el resto de las lecturas, ver con-sesion.ts), en vez de devolver `null`: `null` significa «no hay saldo
-  // para mostrar» y el cliente no podía distinguir un producto sin datos de una sesión vencida.
-  const ctx = await requerirSesion();
+  const ctx = await requerirVer("stock_reclasificar");
+  // Sin sesión o sin permiso LANZA (como el resto de las lecturas, ver con-sesion.ts), en vez de devolver `null`: `null` significa «no hay
+  // saldo para mostrar» y el cliente no podía distinguir un producto sin datos de una sesión vencida.
   if (!productoId || !seccionId) return null;
   if (!(await obtenerSeccionPropia(seccionId, ctx.sucursalId, ctx.db))) return null;
-  return calcularSaldoPorLote(productoId, seccionId, loteVencimiento, ctx.db);
+  return calcularSaldoPorLote(productoId, seccionId, loteVencimiento, ctx.sucursalId, ctx.db);
 }

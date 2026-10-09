@@ -1,7 +1,8 @@
+import "server-only";
 import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import { cargarProductosConProveedor } from "@/server/lecturas/catalogo/ofertas-de-proveedor";
 import type { Db } from "@/lib/db-tipos";
-import type { FilaInsumoSinReceta } from "@/core/reportes/public";
+import type { FilaInsumoSinReceta, InfoProductoReporte } from "@/core/reportes/public";
 
 /**
  * Port de generarReporteInsumosSinRecetaVinculada_ (Reportes.js:826-842).
@@ -11,8 +12,13 @@ import type { FilaInsumoSinReceta } from "@/core/reportes/public";
  * aparece en NINGUNA receta vigente es, por definición, un insumo que se
  * compra pero nada lo consume/revende todavía acá.
  */
-export async function generarReporteInsumosSinRecetaVinculada(sucursalId: string, db: Db): Promise<FilaInsumoSinReceta[]> {
-  const productos = await construirMapaProductos(sucursalId, db);
+export async function generarReporteInsumosSinRecetaVinculada(
+  sucursalId: string,
+  db: Db,
+  /** El mapa de productos de LA MISMA sucursal ya armado, para no volver a leerlo: Salud por producto lo comparte con Diferencias de ajuste (O.39). */
+  productosCargados?: Map<string, InfoProductoReporte>
+): Promise<FilaInsumoSinReceta[]> {
+  const productos = productosCargados ?? (await construirMapaProductos(sucursalId, db));
   const { mpsEnRecetas } = await construirIndiceRecetas(db);
   const conProveedor = await cargarProductosConProveedor(db); // del Kardex vigente: una compra anulada no cuenta
 

@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prism
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { crearMembresia } from "../setup/membresia";
 import { actualizarActivoRol } from "../../src/server/actions/permisos/roles";
-import { contarAdminsEfectivos, contarUsuariosActivosDelRol } from "../../src/core/permisos/invariantes";
+import { contarAdminsEfectivos, contarUsuariosActivosDelRol } from "../../src/server/lecturas/permisos/gobierno";
 
 /**
  * Bloque G, G2: desactivar un rol. Los roles con clave técnica (admin y operador) son de sistema y no se apagan (D5); un rol sin clave no se

@@ -114,7 +114,7 @@ describe("carta: solo lectura", () => {
   it("tampoco escribe nada de lo que la carta pública ALCANZA fuera de sus carpetas (catálogo, auth, lib), salvo lo tolerado con motivo", () => {
     const alcance = alcanceDeLaCartaPublica();
     const nombres = alcance.map((r) => relative(SRC, r).split(sep).join("/"));
-    expect(nombres, "el cálculo de alcance no llega al catálogo: la prueba pasaría en vacío").toContain("core/catalogo/public-servidor.ts");
+    expect(nombres, "el cálculo de alcance no llega al catálogo: la prueba pasaría en vacío").toContain("core/permisos/capacidades-sucursal.ts");
     expect(nombres).toContain("core/auth/base.ts");
     const problemas = alcance.flatMap((ruta) => {
       const nombre = relative(SRC, ruta).split(sep).join("/");
@@ -130,7 +130,9 @@ describe("carta: solo lectura", () => {
     }
   });
 
-  it("las Server Actions de la carta (src/server/actions/carta) solo escriben en las 12 tablas de carta", () => {
+  // Hito 4, H4C-0.5: también la persistencia de la carta (`src/server/persistencia/carta/`), adonde los casos de uso de 4.2 mudan las escrituras del descuento
+  // y de las promos. Sin esto, la regla miraría solo `server/actions/carta` y quedaría ciega en cuanto la escritura salga de la acción.
+  it("las Server Actions de la carta (src/server/actions/carta) y su persistencia (src/server/persistencia/carta) solo escriben en las 12 tablas de carta", () => {
     // `sucursalPublica`: el registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M6).
     // `temaCartaSucursal`: el tema visual de la carta (docs/plan-tema-carta-2026-09-24.md, M8).
     // `itemAgrupadoCarta` y `opcionItemAgrupadoCarta`: los ítems agrupados (docs/plan-agrupacion-items-carta-2026-09-24.md, M5).
@@ -154,7 +156,7 @@ describe("carta: solo lectura", () => {
       "portalCartaEmpresa",
       "descuentoProductoSucursal",
     ]);
-    const acciones = archivos(join(SRC, "server/actions/carta"));
+    const acciones = [...archivos(join(SRC, "server/actions/carta")), ...archivos(join(SRC, "server/persistencia/carta"))];
     expect(acciones.length, "no se encontraron las acciones de la carta").toBeGreaterThan(0);
     const problemas = acciones.flatMap((ruta) =>
       readFileSync(ruta, "utf8")

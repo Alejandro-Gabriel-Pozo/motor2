@@ -44,4 +44,25 @@ describe("crearConCodigoAutogenerado", () => {
 
     expect(resultado).toBe("MP_bbb222");
   });
+
+  it("O.48: también reintenta si el choque llega con la forma cruda del adaptador (DriverAdapterError / UniqueConstraintViolation), y no reintenta otro error del driver", async () => {
+    const deDriver = (kind: string) => Object.assign(new Error("driver"), { name: "DriverAdapterError", cause: { kind } });
+    let llamadas = 0;
+    const resultado = await crearConCodigoAutogenerado("MP", undefined, async (codigo) => {
+      llamadas++;
+      if (llamadas === 1) throw deDriver("UniqueConstraintViolation");
+      return codigo;
+    }, azarDelProceso);
+    expect(llamadas).toBe(2);
+    expect(resultado).toMatch(/^MP_/);
+
+    llamadas = 0;
+    await expect(
+      crearConCodigoAutogenerado("MP", undefined, async () => {
+        llamadas++;
+        throw deDriver("ConnectionClosed");
+      }, azarDelProceso)
+    ).rejects.toThrow("driver");
+    expect(llamadas).toBe(1);
+  });
 });

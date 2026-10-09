@@ -1,5 +1,5 @@
 import { modulosEfectivos, validarCambioDeModulos } from "@/core/modulos/clausura";
-import { explicarErrorDeCambio, nombreDeModulo } from "@/core/modulos/vista-de-modulos";
+import { explicarErrorDeCambio } from "@/core/modulos/vista-de-modulos";
 
 /**
  * El cálculo PURO de «activar y desactivar módulos vendibles de una empresa» (ADR-011, ADR-014, ADR-015): validar el pedido, decidir qué filas del registro
@@ -10,8 +10,6 @@ import { explicarErrorDeCambio, nombreDeModulo } from "@/core/modulos/vista-de-m
 /** Los módulos vendibles que la plataforma quiere activar o desactivar en una empresa. Sin ninguno, no hay nada que hacer. */
 export interface CambioDeModulosPedido {
   slug: string;
-  /** Email del operador de la plataforma que hace el cambio: queda en la auditoría de la empresa. Tiene que ser un usuario existente. */
-  actorEmail: string;
   activar?: readonly string[];
   desactivar?: readonly string[];
 }
@@ -66,9 +64,4 @@ export function planDeCambioDeModulos(
   }
   const activos = [...validacion.activos].sort();
   return { cambiados, activos, efectivos: [...modulosEfectivos(activos)].sort() };
-}
-
-/** La descripción de la fila de auditoría de un cambio de módulo. */
-export function descripcionDeCambioDeModulo(empresaNombre: string, modulo: string): string {
-  return `Empresa "${empresaNombre}": módulo ${nombreDeModulo(modulo)}`;
 }

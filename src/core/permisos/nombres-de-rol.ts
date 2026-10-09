@@ -29,3 +29,11 @@ export function mensajeSiNombreDeRolNoPermitido(nombre: string, clave: string | 
   if (Object.hasOwn(NOMBRES_RESERVADOS, nombre) && NOMBRES_RESERVADOS[nombre] !== clave) return `El nombre «${nombre}» está reservado: no se puede usar en este rol.`;
   return null;
 }
+
+/**
+ * Lo mismo, para un rol que ya existe (renombrarlo): recibe el ROL y lee su clave acá. Contrato C4 del RBAC (O.35; Hito 3, Fase II, II.2): un caso de uso no lee
+ * `rol.clave` (regla 4 de `acceso-solo-por-el-guard` en `casos-de-uso/` y `server/persistencia`); le pasa el rol entero a `core/permisos`.
+ */
+export function mensajeSiNombreNoPermitidoParaElRol(nombre: string, rol: { clave: string | null }): string | null {
+  return mensajeSiNombreDeRolNoPermitido(nombre, rol.clave);
+}

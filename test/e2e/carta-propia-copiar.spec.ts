@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { crearMembresia } from "../setup/membresia";
 
 /**
  * Carta PROPIA de cada sucursal (ADR-009, C3/C4), en un navegador real: la sucursal activa sin carta propia ve «Tu sucursal no tiene carta propia
@@ -18,6 +19,11 @@ test("carta propia: el estado vacío ofrece armar o copiar, es accesible y la co
   expect(propias, "la sucursal del e2e arranca sin carta propia (cada spec limpia lo suyo)").toEqual([0, 0, 0]);
 
   const origen = await prisma.sucursal.create({ data: { nombre: `E2E Carta Origen ${marca}` } });
+  // S-07 (O.56): copiar y ofrecer un origen exigen membresía y «Ver» de la carta ALLÁ. El administrador del e2e también lo es de la sucursal de origen
+  // (la activa sigue siendo Central, su membresía más antigua).
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
+  await crearMembresia({ usuarioId: admin.id, sucursalId: origen.id, rolId: rolAdmin.id });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Copia Sección ${marca}`, orden: 60 } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E_COPIA_${marca}`, nombre: `E2E Copia Plato ${marca}`, tipo: "PV", precioVenta: 1000, unidadStockId: unidad.id } });
   await prisma.disponibilidadProducto.createMany({
@@ -65,6 +71,7 @@ test("carta propia: el estado vacío ofrece armar o copiar, es accesible y la co
     await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
+    await prisma.usuarioSucursal.deleteMany({ where: { sucursalId: origen.id } });
     await prisma.sucursal.deleteMany({ where: { id: origen.id } });
   }
 });

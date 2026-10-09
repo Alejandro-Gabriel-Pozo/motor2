@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { ROL_DE_PLATAFORMA } from "../../plataforma/src/entorno";
-import { ConexionDePlataformaError, describirConexion, resolverConexionDePlataforma } from "../../scripts/conexion-de-plataforma";
+import { ConexionDePlataformaError, describirConexion, exigirRolDePlataforma, resolverConexionDePlataforma } from "../../scripts/conexion-de-plataforma";
 
 /**
  * Qué base operan los scripts de plataforma con `--instalacion` (ADR-025): puro, sin `process.env` ni base real. Reusa el patrón de
@@ -36,12 +36,19 @@ function mensaje(entorno: Record<string, string | undefined>, instalacionPedida:
 describe("resolverConexionDePlataforma", () => {
   it("con --instalacion del id de la principal, resuelve a la principal (no abre un segundo cliente contra la misma base)", () => {
     const c = resolverConexionDePlataforma(CON_ADICIONAL, "zuluhub");
-    expect(c).toEqual({ origen: "instalacion", id: "zuluhub", nombre: "Zuluhub", databaseUrl: CON_ADICIONAL.PLATAFORMA_DATABASE_URL });
+    expect(c).toEqual({ origen: "instalacion", id: "zuluhub", nombre: "Zuluhub", databaseUrl: CON_ADICIONAL.PLATAFORMA_DATABASE_URL, identidadDatabaseUrl: CON_ADICIONAL.PLATAFORMA_DATABASE_URL });
   });
 
-  it("con --instalacion de una adicional, resuelve a SU conexión, no a la de la principal", () => {
+  it("con --instalacion de una adicional, resuelve a SU conexión, no a la de la principal; el actor se verifica en la base de identidad (la principal)", () => {
     const c = resolverConexionDePlataforma(CON_ADICIONAL, "stockhneuquen");
-    expect(c).toEqual({ origen: "instalacion", id: "stockhneuquen", nombre: "Stock Neuquén", databaseUrl: CON_ADICIONAL.PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN });
+    expect(c).toEqual({
+      origen: "instalacion",
+      id: "stockhneuquen",
+      nombre: "Stock Neuquén",
+      databaseUrl: CON_ADICIONAL.PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN,
+      // Mutación: devolver `instalacion.databaseUrl` también como identidad (verificar al administrador en la base que se opera) pone este test en rojo.
+      identidadDatabaseUrl: CON_ADICIONAL.PLATAFORMA_DATABASE_URL,
+    });
   });
 
   it("un id inexistente NO cae en la principal: falla nombrando el id pedido y los ids configurados", () => {
@@ -68,12 +75,41 @@ describe("resolverConexionDePlataforma", () => {
     expect(m).toContain("stockhneuquen");
   });
 
-  it("sin --instalacion y sin instalaciones adicionales, usa PLATAFORMA_DATABASE_URL (comportamiento de siempre)", () => {
-    expect(resolverConexionDePlataforma(BASE, undefined)).toEqual({ origen: "archivo-de-entorno", databaseUrl: BASE.PLATAFORMA_DATABASE_URL });
+  it("sin --instalacion y sin instalaciones adicionales, usa PLATAFORMA_DATABASE_URL (comportamiento de siempre) y nombra a la instalación como la consola (por defecto `principal`)", () => {
+    expect(resolverConexionDePlataforma(BASE, undefined)).toEqual({
+      origen: "archivo-de-entorno",
+      id: "principal",
+      nombre: "principal",
+      databaseUrl: BASE.PLATAFORMA_DATABASE_URL,
+      identidadDatabaseUrl: BASE.PLATAFORMA_DATABASE_URL,
+    });
+    const nombrada = resolverConexionDePlataforma({ ...BASE, PLATAFORMA_INSTALACION_ID: "zuluhub", PLATAFORMA_INSTALACION_NOMBRE: "Zuluhub" }, undefined);
+    expect([nombrada.id, nombrada.nombre]).toEqual(["zuluhub", "Zuluhub"]);
   });
 
-  it("sin --instalacion, sin PLATAFORMA_DATABASE_URL pero con DATABASE_URL, usa esa (compatibilidad explícita)", () => {
-    expect(resolverConexionDePlataforma(SOLO_DATABASE_URL, undefined)).toEqual({ origen: "archivo-de-entorno", databaseUrl: SOLO_DATABASE_URL.DATABASE_URL });
+  // S-33 (rol): `DATABASE_URL` no era el único hueco. Con `PLATAFORMA_DATABASE_URL` puesta, el camino SIN `--instalacion` la devolvía sin mirar con qué usuario de base conecta: un archivo de
+  // entorno con la URL del dueño (o de la app) hacía que el script operara con un rol que se salta los grants y el RLS por rol de `motor2_plataforma`. Ahora pasa por la misma validación que la consola.
+  it.each([["el dueño", "motor2"], ["la app", "motor2_app"]])("S-33: sin --instalacion, una PLATAFORMA_DATABASE_URL del usuario de %s se rechaza (tiene que ser motor2_plataforma) y no repite la clave", (_n, usuario) => {
+    const entorno = { ...BASE, PLATAFORMA_DATABASE_URL: url("ep-principal.c-6.us-east-2.aws.neon.tech", "neondb", usuario, "clave-del-rol-equivocado") };
+    const m = mensaje(entorno, undefined);
+    expect(m).toContain("PLATAFORMA_DATABASE_URL");
+    expect(m).toContain(ROL_DE_PLATAFORMA);
+    expect(m).not.toContain("clave-del-rol-equivocado");
+  });
+
+  // S-33: `DATABASE_URL` es la conexión de la APP (o la del dueño en un `.env` local): un script de plataforma que cae en ella opera con un rol que NO es `motor2_plataforma`, sin las
+  // garantías de la consola (grants, RLS por rol, trigger de la máquina de estados). Nunca cae ahí: sin `PLATAFORMA_DATABASE_URL` el script no se conecta a nada.
+  it("S-33: sin --instalacion y sin PLATAFORMA_DATABASE_URL, NO cae en DATABASE_URL: falla nombrando PLATAFORMA_DATABASE_URL y sin repetir la clave", () => {
+    const m = mensaje(SOLO_DATABASE_URL, undefined);
+    expect(m).toContain("PLATAFORMA_DATABASE_URL");
+    expect(m).not.toContain("clave-del-duenio");
+    expect(() => resolverConexionDePlataforma({ ...SOLO_DATABASE_URL, PLATAFORMA_DATABASE_URL: "" }, undefined)).toThrow(ConexionDePlataformaError);
+  });
+
+  it("S-33: con las dos variables, usa PLATAFORMA_DATABASE_URL y no la de la app", () => {
+    const c = resolverConexionDePlataforma({ ...BASE, ...SOLO_DATABASE_URL }, undefined);
+    expect(c.databaseUrl).toBe(BASE.PLATAFORMA_DATABASE_URL);
+    expect(c.identidadDatabaseUrl).toBe(BASE.PLATAFORMA_DATABASE_URL);
   });
 
   it("sin --instalacion y sin ninguna de las dos variables, falla nombrando las variables", () => {
@@ -110,5 +146,24 @@ describe("describirConexion", () => {
   it("sin instalación, dice que es la del archivo de entorno", () => {
     const c = resolverConexionDePlataforma(BASE, undefined);
     expect(describirConexion(c)).toContain("archivo de entorno");
+  });
+});
+
+// S-33: la URL puede decir `motor2_plataforma` y la sesión ser otra (un pooler que cambia el rol, un `SET ROLE` del servidor): se pregunta a la base con quién habla (`select current_user`).
+describe("exigirRolDePlataforma", () => {
+  const conRol = (rol: string | undefined) => ({ $queryRaw: async () => (rol === undefined ? [] : [{ rol }]) }) as unknown as Parameters<typeof exigirRolDePlataforma>[0];
+
+  it("acepta la sesión del rol motor2_plataforma", async () => {
+    await expect(exigirRolDePlataforma(conRol(ROL_DE_PLATAFORMA))).resolves.toBeUndefined();
+  });
+
+  it.each([["el dueño", "motor2"], ["la app", "motor2_app"], ["un superusuario", "postgres"]])("rechaza la sesión de %s y nombra el rol que es", async (_n, rol) => {
+    // Mutación: dejar de comparar contra ROL_DE_PLATAFORMA (aceptar cualquier rol) pone este test en rojo.
+    await expect(exigirRolDePlataforma(conRol(rol))).rejects.toThrow(ConexionDePlataformaError);
+    await expect(exigirRolDePlataforma(conRol(rol))).rejects.toThrow(new RegExp(`«${rol}»`));
+  });
+
+  it("rechaza si la base no devuelve ningún rol (falla cerrado)", async () => {
+    await expect(exigirRolDePlataforma(conRol(undefined))).rejects.toThrow(/desconocido/);
   });
 });

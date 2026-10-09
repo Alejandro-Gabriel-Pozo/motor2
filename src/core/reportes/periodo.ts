@@ -8,5 +8,3 @@ export type { FilaAlertaDigest } from "./periodo-alertas";
 export type { FilaCompraPorProveedor, FilaGastoPorGrupo, FilaGastoPorInsumo } from "./periodo-compras";
 export type { ComparativaPreciosDelPeriodo, FilaPrecioInsumo } from "./periodo-precios";
 export type { FilaMargenProducto } from "./periodo-margen";
-export type { FilaCategoriaVenta } from "./periodo-categorias";
-export { agruparVentasPorCategoria, pvSinCategoriaDe } from "./periodo-categorias";

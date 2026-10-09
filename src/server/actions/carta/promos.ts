@@ -1,18 +1,14 @@
 "use server";
 
-import { precioMinimoPromo } from "@/core/pos/public";
-import { seleccionDeSucursalDePromo } from "@/core/carta/promo-sucursal";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import {
-  validarCantidadCupoPromo,
-  validarOrdenCarta,
-  validarPrecioCarta,
-  validarTextoLibreCarta,
-  LARGO_MAXIMO_DESCRIPCION_CARTA,
-  LARGO_MAXIMO_TITULO_CARTA,
-} from "@/core/carta/validaciones";
+import { guardComandoGuardarCuposPromoCarta, guardComandoGuardarPrecioLocalPromoCarta, guardComandoGuardarPromoCarta } from "@/core/features/carta/promos.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion } from "../tipos";
+import { actualizarActivaPromoCartaCasoDeUso } from "./casos-de-uso/actualizar-activa-promo-carta";
+import { actualizarActivaPromoCartaEnSucursalCasoDeUso } from "./casos-de-uso/actualizar-activa-promo-carta-en-sucursal";
+import { guardarCuposPromoCartaCasoDeUso } from "./casos-de-uso/guardar-cupos-promo-carta";
+import { guardarPrecioLocalPromoCartaCasoDeUso } from "./casos-de-uso/guardar-precio-local-promo-carta";
+import { guardarPromoCartaCasoDeUso } from "./casos-de-uso/guardar-promo-carta";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
@@ -25,6 +21,11 @@ import { revalidarCartasPublicas } from "./revalidar";
  * SIN ningún cupo (`guardarCuposPromoCarta` nunca la tocó, o se le guardó una lista vacía): sigue siendo puramente
  * INFORMATIVA, no referencia productos ni mueve stock — el POS la ignora (`selector-carta.ts`). CON uno o más cupos
  * (Task #16, docs/plan-promo-combo-2026-09-26.md): pasa a ser ARMABLE, ver el docstring de `PromoCarta` en schema.prisma.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.2, pasos H4C-2 y H4C-3) las cinco acciones son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{guardar-promo-carta,actualizar-activa-promo-carta,actualizar-activa-promo-carta-en-sucursal,guardar-precio-local-promo-carta,
+ * guardar-cupos-promo-carta}.ts`; escrituras en server/persistencia/carta/promos.ts): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las cuatro primeras
+ * revalidan la carta pública si el caso de uso sale bien, como antes; la de los cupos no (como antes: los cupos no se muestran en la carta).
  */
 
 export interface DatosPromoCarta {
@@ -37,127 +38,63 @@ export interface DatosPromoCarta {
   orden?: number | string | null;
 }
 
+/**
+ * Alta (sin `id`) o edición (con `id`) de una promo de la empresa. Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-2) es un adaptador fino: permiso
+ * (`conPermisoDeEmpresa("carta_promo_definir")`) → formato de los datos (`guardComandoGuardarPromoCarta`, core/features/carta/promos.guard.ts, DENTRO del
+ * envoltorio) → caso de uso (`casos-de-uso/guardar-promo-carta.ts`: la sección, la promo, la escritura en server/persistencia/carta/promos.ts y la auditoría del
+ * precio en la misma transacción) → revalidar la carta pública si salió bien (las dos ramas revalidaban, los rechazos no) → `aResultadoAccion`.
+ */
 export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
-    const titulo = validarTextoLibreCarta(datos.titulo, "El título", LARGO_MAXIMO_TITULO_CARTA);
-    if (!titulo.ok) return error(titulo.mensaje);
-    if (!titulo.valor) return error("La promo necesita un título.");
-    const tituloDePromo = titulo.valor;
-    const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
-    if (!descripcion.ok) return error(descripcion.mensaje);
-    const precio = validarPrecioCarta(datos.precio);
-    if (!precio.ok) return error(precio.mensaje);
-    const orden = validarOrdenCarta(datos.orden);
-    if (!orden.ok) return error(orden.mensaje);
-
-    const seccion = await ctx.db.seccionCarta.findUnique({ where: { id: datos.seccionCartaId } });
-    if (!seccion) return error("No se encontró la sección de carta.");
-
-    const data = { seccionCartaId: seccion.id, titulo: titulo.valor, descripcion: descripcion.valor, precio: precio.valor, orden: orden.valor };
-    if (datos.id) {
-      const existente = await ctx.db.promoCarta.findUnique({ where: { id: datos.id } });
-      if (!existente) return error("No se encontró la promo.");
-      // El cambio y su rastro van en UNA transacción (Pureza 0.7): un precio de promo cambiado sin dejar quién ni cuándo no puede existir.
-      await ctx.transaccion(async (tx) => {
-        await tx.promoCarta.update({ where: { id: existente.id }, data });
-        if (Number(existente.precio) !== precio.valor) await auditarPrecioDePromo(tx, ctx.usuarioId, existente.id, tituloDePromo, Number(existente.precio), precio.valor);
-      });
-      revalidarCartasPublicas();
-      return ok(`Promo "${titulo.valor}" guardada.`);
-    }
-    // La sucursal desde la que se crea la ofrece desde el primer momento; las demás la prenden cuando quieran (opt-in, sin fila = no la ofrecen).
-    await ctx.transaccion(async (tx) => {
-      const creada = await tx.promoCarta.create({ data: { ...data, sucursales: { create: { sucursalId: ctx.sucursalId } } } });
-      await auditarPrecioDePromo(tx, ctx.usuarioId, creada.id, tituloDePromo, null, precio.valor);
-    });
-    revalidarCartasPublicas();
-    return ok(`Promo "${titulo.valor}" creada en "${seccion.nombre}" y prendida en esta sucursal.`);
+    const comando = guardComandoGuardarPromoCarta(datos);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await guardarPromoCartaCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
+    return aResultadoAccion(resultado);
   });
 }
 
-/** Apagado GENERAL de la promo (todas las sucursales): una promo apagada en la empresa no se ofrece en ninguna, tenga lo que tenga cada sucursal. */
+/**
+ * Apagado GENERAL de la promo (todas las sucursales): una promo apagada en la empresa no se ofrece en ninguna, tenga lo que tenga cada sucursal. Desde H4C-3:
+ * permiso → caso de uso (`casos-de-uso/actualizar-activa-promo-carta.ts`) → revalidar si salió bien → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
+ */
 export async function actualizarActivaPromoCarta(promoCartaId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
-    const existente = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId } });
-    if (!existente) return error("No se encontró la promo.");
-    await ctx.db.promoCarta.update({ where: { id: promoCartaId }, data: { activa } });
-    revalidarCartasPublicas();
-    return ok(`Promo "${existente.titulo}" ${activa ? "activada" : "desactivada"} en toda la empresa.`);
+    const resultado = await actualizarActivaPromoCartaCasoDeUso(ctx, { promoCartaId, activa });
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
+    return aResultadoAccion(resultado);
   });
 }
 
-/** Prende o apaga la promo EN LA SUCURSAL ACTIVA (apagada no va en la carta ni en el POS de esta sucursal; las demás no se tocan). */
+/**
+ * Prende o apaga la promo EN LA SUCURSAL ACTIVA (apagada no va en la carta ni en el POS de esta sucursal; las demás no se tocan). Desde H4C-3: permiso →
+ * caso de uso (`casos-de-uso/actualizar-activa-promo-carta-en-sucursal.ts`) → revalidar si salió bien → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
+ */
 export async function actualizarActivaPromoCartaEnSucursal(promoCartaId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta_promo_activar", async (ctx) => {
-    const existente = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId } });
-    if (!existente) return error("No se encontró la promo.");
-    await ctx.db.promoCartaSucursal.upsert({
-      where: { promoCartaId_sucursalId: { promoCartaId, sucursalId: ctx.sucursalId } },
-      create: { promoCartaId, sucursalId: ctx.sucursalId, activa },
-      update: { activa },
-    });
-    revalidarCartasPublicas();
-    return ok(`Promo "${existente.titulo}" ${activa ? "prendida" : "apagada"} en esta sucursal.`);
+    const resultado = await actualizarActivaPromoCartaEnSucursalCasoDeUso(ctx, { promoCartaId, activa });
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
+    return aResultadoAccion(resultado);
   });
 }
 
 /**
  * Precio de la promo SOLO en la sucursal activa (`null`/vacío = vuelve al precio de la empresa). Mismo piso de $0,01 por unidad en el peor
- * caso que el precio de la empresa (`precioMinimoPromo`). Si la sucursal todavía no la ofrece, la fila se crea apagada: el precio queda
+ * caso que el precio de la empresa (`core/carta/piso-de-promo.ts`). Si la sucursal todavía no la ofrece, la fila se crea apagada: el precio queda
  * guardado pero no la prende (prender es otra acción, con su propia clave).
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-2) es un adaptador fino: permiso (`conPermiso("carta_promo_precio_local")`) → caso de uso
+ * (`casos-de-uso/guardar-precio-local-promo-carta.ts`: la promo, el precio y su piso, el precio anterior, la escritura en server/persistencia/carta/promos.ts y
+ * su auditoría) → revalidar la carta pública si salió bien → `aResultadoAccion`. El guard (`guardComandoGuardarPrecioLocalPromoCarta`, S-52) se calcula acá y el caso de uso aplica su rechazo DESPUÉS de leer la promo.
  */
 export async function guardarPrecioLocalPromoCarta(promoCartaId: string, precioLocal: number | string | null): Promise<ResultadoAccion> {
   return conPermiso("carta_promo_precio_local", async (ctx) => {
-    const promo = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId }, include: { cupos: { select: { cantidadMaxima: true } } } });
-    if (!promo) return error("No se encontró la promo.");
-
-    let valor: number | null = null;
-    if (precioLocal !== null && String(precioLocal).trim() !== "") {
-      const precio = validarPrecioCarta(precioLocal);
-      if (!precio.ok) return error(precio.mensaje);
-      valor = precio.valor;
-      const piso = pisoDePrecioDePromo(promo.cupos);
-      if (piso !== null && valor < piso.minimo) return error(mensajePisoDePromo(promo.titulo, valor, piso));
-    }
-    await ctx.transaccion(async (tx) => {
-      // El precio anterior se lee por la relación de la promo (el embudo `seleccionDeSucursalDePromo`, ver promo-sucursal-en-un-solo-lugar.test.ts), en la misma transacción que lo cambia.
-      const previa = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, select: { sucursales: seleccionDeSucursalDePromo(ctx.sucursalId) } });
-      const precioAnterior = previa?.sucursales[0]?.precioLocal != null ? Number(previa.sucursales[0].precioLocal) : null;
-      await tx.promoCartaSucursal.upsert({
-        where: { promoCartaId_sucursalId: { promoCartaId, sucursalId: ctx.sucursalId } },
-        create: { promoCartaId, sucursalId: ctx.sucursalId, activa: false, precioLocal: valor },
-        update: { precioLocal: valor },
-      });
-      if (precioAnterior !== valor) {
-        await registrarCambioAuditado(tx, {
-          entidad: "PromoCartaSucursal",
-          entidadId: `${promoCartaId}:${ctx.sucursalId}`,
-          campo: "precioLocal",
-          descripcion: `Promo "${promo.titulo}": precio en esta sucursal`,
-          valorAnterior: precioAnterior,
-          valorNuevo: valor,
-          actorId: ctx.usuarioId,
-          sucursalId: ctx.sucursalId,
-        });
-      }
-    });
-    revalidarCartasPublicas();
-    return ok(valor === null ? `"${promo.titulo}" vuelve al precio de la empresa en esta sucursal.` : `Precio de "${promo.titulo}" en esta sucursal: $${valor}.`);
+    // S-52: el guard se CALCULA acá (formato y rango del precio) pero su rechazo lo aplica el caso de uso después de leer la promo: una promo inexistente gana sobre un precio inválido.
+    const precio = guardComandoGuardarPrecioLocalPromoCarta({ precioLocal });
+    const resultado = await guardarPrecioLocalPromoCartaCasoDeUso(ctx, { promoCartaId, precio });
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
+    return aResultadoAccion(resultado);
   });
-}
-
-/** El piso de precio de una promo con estos cupos (peor caso: todos en su máximo), o null si no tiene cupos (informativa: sin piso). */
-function pisoDePrecioDePromo(cupos: readonly { cantidadMaxima: number }[]): { minimo: number; unidades: number } | null {
-  if (!cupos.length) return null;
-  const unidades = cupos.reduce((suma, c) => suma + c.cantidadMaxima, 0);
-  return { minimo: precioMinimoPromo([{ cantidad: unidades }]), unidades };
-}
-
-function mensajePisoDePromo(titulo: string, precio: number, piso: { minimo: number; unidades: number }): string {
-  return (
-    `El precio de "${titulo}" ($${precio}) no alcanza el piso de $0,01 por unidad en el peor caso ` +
-    `(${piso.unidades} unidades si se elige el máximo de cada cupo: hace falta al menos $${piso.minimo}). Subí el precio o bajá los máximos.`
-  );
 }
 
 /** Un cupo tal como lo manda el formulario del admin (paso 5, docs/plan-promo-combo-2026-09-26.md). */
@@ -181,64 +118,16 @@ export interface DatosCupoPromoCarta {
  *   `precioMinimoPromo` (`src/core/pos/promo-combo.ts`, D3): sin esto, una elección real podría no tener forma de prorratear
  *   sin dejar algún componente en $0 (`prorratearPrecioPromo` vuelve a validarlo, por si la composición real de una
  *   instancia queda más chica que el peor caso, D1).
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-3) es un adaptador fino: permiso (`conPermisoDeEmpresa("carta_promo_definir")`) → caso de uso
+ * (`casos-de-uso/guardar-cupos-promo-carta.ts`: la promo, la validación de cada cupo, las secciones, el piso y el reemplazo en server/persistencia/carta/promos.ts)
+ * → `aResultadoAccion`. El guard (`guardComandoGuardarCuposPromoCarta`, S-52) se calcula acá y el caso de uso aplica su rechazo DESPUÉS de leer la promo. NO revalida la carta pública (hallazgo informado por el plan,
+ * migrado tal cual).
  */
 export async function guardarCuposPromoCarta(promoCartaId: string, cupos: readonly DatosCupoPromoCarta[]): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
-    const promo = await ctx.db.promoCarta.findUnique({ where: { id: promoCartaId }, include: { sucursales: { select: { precioLocal: true } } } });
-    if (!promo) return error("No se encontró la promo.");
-
-    const seccionIds = new Set<string>();
-    const cuposValidados: { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number; orden: number }[] = [];
-    for (const [i, c] of cupos.entries()) {
-      if (!c.seccionCartaId) return error("Elegí la sección de cada cupo.");
-      if (seccionIds.has(c.seccionCartaId)) return error("No se puede repetir la misma sección de carta en dos cupos de la misma promo.");
-      seccionIds.add(c.seccionCartaId);
-
-      const minima = validarCantidadCupoPromo(c.cantidadMinima, "La cantidad mínima", 0);
-      if (!minima.ok) return error(minima.mensaje);
-      const maxima = validarCantidadCupoPromo(c.cantidadMaxima, "La cantidad máxima");
-      if (!maxima.ok) return error(maxima.mensaje);
-      if (maxima.valor < 1) return error("La cantidad máxima de un cupo tiene que ser al menos 1.");
-      if (minima.valor > maxima.valor) return error("En cada cupo, el mínimo no puede ser mayor que el máximo.");
-
-      cuposValidados.push({ seccionCartaId: c.seccionCartaId, cantidadMinima: minima.valor, cantidadMaxima: maxima.valor, orden: i });
-    }
-
-    if (cuposValidados.length) {
-      const secciones = await ctx.db.seccionCarta.findMany({ where: { id: { in: [...seccionIds] } }, select: { id: true } });
-      if (secciones.length !== seccionIds.size) return error("Alguna sección de carta de los cupos no existe.");
-
-      // D3: peor caso = todos los cupos en su máximo — el precio tiene que alcanzar el piso de $0,01 por unidad ahí también,
-      // no solo en la elección mínima.
-      // Vale para el precio de la empresa y para el precio local de CUALQUIER sucursal que lo tenga.
-      const piso = pisoDePrecioDePromo(cuposValidados)!;
-      for (const precio of [Number(promo.precio), ...promo.sucursales.flatMap((s) => (s.precioLocal !== null ? [Number(s.precioLocal)] : []))]) {
-        if (precio < piso.minimo) return error(mensajePisoDePromo(promo.titulo, precio, piso));
-      }
-    }
-
-    await ctx.transaccion(async (tx) => {
-      await tx.promoCartaCupo.deleteMany({ where: { promoCartaId } });
-      if (cuposValidados.length) await tx.promoCartaCupo.createMany({ data: cuposValidados.map((c) => ({ promoCartaId, ...c })) });
-    });
-
-    return ok(
-      cuposValidados.length
-        ? `Cupos de "${promo.titulo}" guardados (${cuposValidados.length}): ahora es una promo armable en el POS.`
-        : `"${promo.titulo}" volvió a ser informativa (sin cupos): el POS deja de ofrecerla para armar.`
-    );
-  });
-}
-
-/** Deja en la auditoría quién cambió (o definió) el precio de una promo de la empresa y cuándo; va dentro de la transacción del cambio. */
-async function auditarPrecioDePromo(tx: Parameters<typeof registrarCambioAuditado>[0], actorId: string, promoCartaId: string, titulo: string, anterior: number | null, nuevo: number) {
-  await registrarCambioAuditado(tx, {
-    entidad: "PromoCarta",
-    entidadId: promoCartaId,
-    campo: "precio",
-    descripcion: `Promo "${titulo}": precio`,
-    valorAnterior: anterior,
-    valorNuevo: nuevo,
-    actorId,
+    // S-52: el guard se CALCULA acá (forma, tope y rango de los cupos) pero su rechazo lo aplica el caso de uso después de leer la promo: una promo inexistente gana sobre un cupo inválido.
+    const cuposValidados = guardComandoGuardarCuposPromoCarta({ cupos });
+    return aResultadoAccion(await guardarCuposPromoCartaCasoDeUso(ctx, { promoCartaId, cupos: cuposValidados }));
   });
 }

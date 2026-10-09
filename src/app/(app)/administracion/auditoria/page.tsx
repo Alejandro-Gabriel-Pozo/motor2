@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import { ENTIDADES_AUDITABLES, descripcionParaMostrar, type CambioAuditable } from "@/core/permisos/auditoria";
 import { listarRegistrosAuditoria, sucursalesVisiblesDeAuditoria } from "@/server/consultas/permisos/auditoria";
@@ -14,6 +15,8 @@ export default async function AuditoriaPage({
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_auditoria", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
@@ -47,7 +50,7 @@ export default async function AuditoriaPage({
       <div>
         <h1 className="mb-1 text-xl font-semibold">Auditoría administrativa</h1>
         <p className="text-sm text-neutral-500">
-          Cambios de precios y permisos, con quién y cuándo — catálogo/precios/permisos no pasan por el Kardex, así que este es su propio rastro (hallazgo de auditoría, Pivote 6).
+          Cambios de precios, permisos, conteos físicos y traspasos, con quién y cuándo — catálogo/precios/permisos no pasan por el Kardex, así que este es su propio rastro (hallazgo de auditoría, Pivote 6).
         </p>
       </div>
       <div className="flex flex-wrap gap-2 text-sm">

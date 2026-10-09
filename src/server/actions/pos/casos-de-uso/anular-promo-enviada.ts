@@ -2,8 +2,8 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { MENSAJE_PROMO_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta-anulacion.guard";
 import type { ComandoAnularPromoEnviada, DatosAnularPromoEnviada, ResultadoAnularPromoEnviada } from "@/core/features/cuentas/cuenta-anulacion.schema";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { restanteDe, validarMotivoAnulacion } from "@/core/pos/cuenta";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarPromoParaAnular } from "@/server/persistencia/pos/cargar-promo-para-anular";
@@ -34,7 +34,7 @@ import { formatearCantidad } from "../cuenta-comun";
  * @idempotency No aplica (nunca la tuvo) — un segundo intento ve "ya está anulada entera" (chequeo de estado, no I3).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (uno por cada componente anulado).
- * @ficha permiso=pos_anular_item transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=pos_anular_item transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function anularPromoEnviadaCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,

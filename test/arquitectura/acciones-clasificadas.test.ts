@@ -14,50 +14,14 @@ const { ACCIONES_CON_CASO_DE_USO } = createRequire(__filename)("../../.dependenc
 
 const SOLO_LECTURA = "solo lecturas: no hay escritura que orquestar (transacción, I3, auditoría).";
 const SIN_CASO_DE_USO = "todavía sin caso de uso: `accion-migrada-sin-orquestacion` no le aplica. Candidata a migrar (y a sumarse a ACCIONES_CON_CASO_DE_USO) cuando gane transacción/I3/auditoría propias.";
-const PENDIENTE = "abre una transacción dentro de la acción y se protege del doble clic por el estado de la fila (no por I3): candidata prioritaria a caso de uso.";
 
 const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "auth/empresa-activa.ts": SIN_CASO_DE_USO,
-  "auth/invitacion.ts": SIN_CASO_DE_USO,
   "auth/sucursal-activa.ts": SIN_CASO_DE_USO,
-  "auth/sucursales.ts": SIN_CASO_DE_USO,
-  "auth/usuarios.ts": SIN_CASO_DE_USO,
-  "carta/contenido-producto.ts": SIN_CASO_DE_USO,
-  "carta/copiar-carta.ts": SIN_CASO_DE_USO,
-  "carta/descuento-producto.ts": SIN_CASO_DE_USO,
-  "carta/generos.ts": SIN_CASO_DE_USO,
-  "carta/items-agrupados.ts": SIN_CASO_DE_USO,
-  "carta/portal-empresa.ts": SIN_CASO_DE_USO,
-  "carta/promos.ts": SIN_CASO_DE_USO,
-  "carta/registro-publico.ts": SIN_CASO_DE_USO,
-  "carta/secciones.ts": SIN_CASO_DE_USO,
-  "carta/tema.ts": SIN_CASO_DE_USO,
-  "catalogo/categorias-producto.ts": SIN_CASO_DE_USO,
-  "catalogo/insumos.ts": SIN_CASO_DE_USO,
-  "catalogo/productos.ts": SIN_CASO_DE_USO,
   "catalogo/proveedor-por-producto.ts": SIN_CASO_DE_USO,
-  "catalogo/proveedores.ts": SIN_CASO_DE_USO,
   "catalogo/recetas.ts": "la escritura de la receta ya vive en casos-de-uso/guardar-version-de-receta.ts (lo exige escrituras-auditadas.test.ts); el resto son lecturas.",
-  "catalogo/receta-sucursal.ts":
-    "las escrituras de la versión propia ya viven en casos-de-uso/guardar-version-de-receta.ts (lo exige escrituras-auditadas.test.ts); volverALaRecetaCentral deshabilita una fila en una transacción serializable con su auditoría — candidata a caso de uso si gana más orquestación.",
-  "catalogo/rendimiento-local.ts": SIN_CASO_DE_USO,
-  "catalogo/unidades.ts": SIN_CASO_DE_USO,
-  "clientes/cliente.ts": SIN_CASO_DE_USO,
   "movimientos/lecturas-conteo-fisico.ts": SOLO_LECTURA,
-  "movimientos/motivos.ts": SIN_CASO_DE_USO,
-  "movimientos/precio-local.ts": SIN_CASO_DE_USO,
-  "movimientos/secciones.ts": SIN_CASO_DE_USO,
-  "permisos/capacidades-sucursal.ts": SIN_CASO_DE_USO,
-  "permisos/permisos.ts": SIN_CASO_DE_USO,
-  "permisos/roles.ts": SIN_CASO_DE_USO,
-  "pos/cuenta-apertura.ts": PENDIENTE,
-  "pos/cuenta-pedido.ts": PENDIENTE,
-  "pos/mesas.ts": SIN_CASO_DE_USO,
-  "reportes/margen-objetivo.ts": SIN_CASO_DE_USO,
-  "stock/frecuencia-conteo.ts": SIN_CASO_DE_USO,
   "stock/lecturas-reclasificacion.ts": SOLO_LECTURA,
-  "stock/seccion-habitual.ts": SIN_CASO_DE_USO,
-  "stock/stock-minimo.ts": SIN_CASO_DE_USO,
   "traspasos/lecturas.ts": SOLO_LECTURA,
 };
 

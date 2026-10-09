@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto } from "../../src/server/actions/catalogo/productos";
 import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../src/server/actions/movimientos/precio-local";
 import { resolverMenuCartaConDiagnostico } from "../../src/server/lecturas/carta/menu";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Sincronizar el precio de un producto agrupado (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8): al cambiar el precio en
@@ -70,6 +71,17 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       expect(r).not.toHaveProperty("sincronizable");
     });
 
+    it("M-2 (auditoría intermedia): quien edita el producto pero NO tiene `producto_sincronizar_precio_carta` (el operador) no recibe la oferta, que de todos modos no podría aceptar", async () => {
+      const operador = await crearUsuarioConMembresia({ email: "op@test.com", sucursalId, rolId: operadorRolId });
+      await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
+      const r = await actualizarProducto(ids.fanta, datosPV("Fanta 500cc", 5500));
+      expect(r).toEqual({ ok: true, mensaje: 'Producto "Fanta 500cc" actualizado.' });
+      expect(r).not.toHaveProperty("sincronizable");
+      expect(await precioVenta(ids.fanta)).toBe(5500);
+      // Y aceptar la oferta le sigue estando negado: la oferta ya no promete lo que el rechazo niega.
+      expect((await sincronizarPrecioGrupoCarta([ids.coca, ids.sprite, ids.fanta], 5500)).ok).toBe(false);
+    });
+
     it("hermanos DISTINTOS → `sincronizable` trae el grupo, el precio nuevo y los hermanos con su precio; no sincroniza solo", async () => {
       const r = await actualizarProducto(ids.fanta, datosPV("Fanta 500cc", 5500));
       expect(r).toEqual({
@@ -88,7 +100,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       expect(await precioVenta(ids.coca)).toBe(5000);
       expect(await precioVenta(ids.sprite)).toBe(5000);
       // Sin confirmar: la red de seguridad de D5 (la carta muestra el mayor, con diagnóstico).
-      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma);
+      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
       expect(armado!.carta.secciones[0].items.find((i) => i.productoId === agId)!.precio).toBe(5500);
       expect(armado!.diagnostico.agrupadosConPreciosDistintos).toEqual([{ id: agId, nombre: "Gaseosa 500 CC", minimo: 5000, maximo: 5500 }]);
     });
@@ -112,7 +124,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       expect(await auditoriasDePrecio(ids.sprite)).toEqual([{ valorAnterior: "5000", valorNuevo: "5500" }]);
       expect(await auditoriasDePrecio(ids.coca15)).toEqual([]);
 
-      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma);
+      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
       expect(armado!.carta.secciones[0].items.find((i) => i.productoId === agId)!.precio).toBe(5500);
       expect(armado!.diagnostico.agrupadosConPreciosDistintos).toEqual([]);
     });
@@ -189,7 +201,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
         { campo: "habilitado", valorAnterior: null, valorNuevo: "true", sucursalId },
         { campo: "precio", valorAnterior: null, valorNuevo: "5500", sucursalId },
       ]);
-      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma);
+      const armado = await resolverMenuCartaConDiagnostico(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
       expect(armado!.diagnostico.agrupadosConPreciosDistintos).toEqual([]);
       expect(armado!.carta.secciones[0].items.find((i) => i.productoId === agId)!.precio).toBe(5500);
     });

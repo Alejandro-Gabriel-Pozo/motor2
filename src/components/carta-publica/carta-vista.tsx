@@ -1,4 +1,4 @@
-import type { CartaV1, EstiloCarta } from "@/core/carta/public";
+import type { CartaPublicaV1, EstiloCarta } from "@/core/carta/public";
 import { NavegacionCarta, type PaginaCarta, type RedSocial } from "./navegacion-carta";
 import { Portada } from "./portada";
 import { Seccion } from "./seccion";
@@ -8,12 +8,15 @@ import { Seccion } from "./seccion";
  * (`restaurant-menu-design/components/carta-view.tsx`). Las páginas del slider (`paginas`) se calculan acá, en el
  * servidor, a partir de `carta.secciones` — nunca descubiertas del DOM (ver `navegacion-carta.tsx`).
  */
-export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: CartaV1; estilo: EstiloCarta; hrefVolver?: string; embebida?: boolean }) {
+export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: CartaPublicaV1; estilo: EstiloCarta; hrefVolver?: string; embebida?: boolean }) {
   const restauranteNombre = estilo.valores.restaurante_nombre || carta.sucursal.nombre;
+  // S-25: el id de una página del slider es su POSICIÓN (`seccion-0`, `seccion-1`…), nunca el id de la fila: acá se arma el `data-ir-a` del HTML y las `paginas` que viajan al
+  // componente de cliente, y los dos salen al navegador. `CartaPublicaV1` ni siquiera trae el id de la sección.
+  const paginaDeSeccion = (indice: number) => `seccion-${indice}`;
   const paginas: PaginaCarta[] = [
     { id: "portada", tipo: "portada" },
     { id: "indice", tipo: "indice" },
-    ...carta.secciones.map((s) => ({ id: s.id, tipo: "seccion" as const })),
+    ...carta.secciones.map((_, i) => ({ id: paginaDeSeccion(i), tipo: "seccion" as const })),
   ];
   const redesSociales = construirRedesSociales(estilo.valores);
   // Pisa los tokens base de `.carta-shell` (src/app/globals.css) con lo cargado en el tema de ESTA sucursal — si algo
@@ -52,10 +55,10 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
         </h1>
         <ol data-carta-indice-lista data-carta-scroll className="mt-4 grid min-h-0 flex-1 grid-cols-1 content-start gap-x-12 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
           {carta.secciones.map((seccion, i) => (
-            <li key={seccion.id} className="border-b border-dotted" style={{ borderColor: "var(--carta-border)" }}>
+            <li key={paginaDeSeccion(i)} className="border-b border-dotted" style={{ borderColor: "var(--carta-border)" }}>
               <button
                 type="button"
-                data-ir-a={seccion.id}
+                data-ir-a={paginaDeSeccion(i)}
                 className="group flex w-full items-baseline gap-2.5 py-3 text-left transition-opacity hover:opacity-80"
               >
                 <span className="w-7 shrink-0 font-light tabular-nums" style={{ fontSize: estilo.valores.carta_fuente_indice_numero, color: c.indiceNumeros ?? "var(--carta-primary)" }}>
@@ -74,7 +77,7 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
       </div>
 
       {carta.secciones.map((seccion, i) => (
-        <Seccion key={seccion.id} seccion={seccion} indice={i} total={carta.secciones.length} estilo={estilo} />
+        <Seccion key={paginaDeSeccion(i)} seccion={seccion} indice={i} total={carta.secciones.length} estilo={estilo} />
       ))}
     </NavegacionCarta>
   );

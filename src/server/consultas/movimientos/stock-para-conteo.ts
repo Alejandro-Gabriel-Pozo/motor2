@@ -1,3 +1,4 @@
+import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { armarFilasStockParaConteo, type FilaStockParaConteo } from "@/core/movimientos/public";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
@@ -13,11 +14,14 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * saldo 0 — nada que verificar ahí; si hay algo real que el sistema no
  * sabe (nunca contado, sin factura), se agrega a mano en la grilla, que sí
  * admite contar sobre saldo 0.
+ *
+ * FALLA CERRADO por sucursal (hallazgo O.177): la sección tiene que ser de la `sucursalId` que recibe (la del contexto); con la de otra
+ * sucursal de la misma empresa devuelve vacío. La condición vive en el mismo `where` del agrupado (sin lectura extra).
  */
-export async function listarStockParaConteo(seccionId: string, db: Db): Promise<FilaStockParaConteo[]> {
+export async function listarStockParaConteo(seccionId: string, sucursalId: string, db: Db): Promise<FilaStockParaConteo[]> {
   const grupos = await db.movimientoStock.groupBy({
     by: ["productoId", "loteVencimiento"],
-    where: { seccionId },
+    where: { seccionId, seccion: { sucursalId } },
     _sum: { cantidad: true },
   });
   const conSaldo = grupos.filter((g) => Number(g._sum.cantidad ?? 0) !== 0);

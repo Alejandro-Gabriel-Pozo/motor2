@@ -1,36 +1,53 @@
 "use server";
 
-import { texto, validarTextoCatalogo } from "@/core/texto";
+import { guardComandoAltaProveedor } from "@/core/features/catalogo/proveedores.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { azarDelProceso } from "@/lib/azar";
-import {
-  LARGO_MAXIMO_CONTACTO,
-  LARGO_MAXIMO_DETALLE,
-  LARGO_MAXIMO_NOTAS,
-  LARGO_MAXIMO_TELEFONO,
-  validarEmailOpcional,
-  validarTextoLibre,
-} from "@/core/datos/limites";
-import type { ContextoUsuario } from "@/core/auth/contexto";
-import { validarCuit } from "@/core/fiscal/public";
-import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { conPermisoDeEmpresa } from "../con-permiso";
-import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
-import { requerirSesion } from "../con-sesion";
+import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { requerirVerAlguna, requerirVerDeEmpresa } from "../con-sesion";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
+import { actualizarActivaProveedorCasoDeUso } from "./casos-de-uso/actualizar-activa-proveedor";
+import { actualizarProveedorCasoDeUso } from "./casos-de-uso/actualizar-proveedor";
+import { altaProveedorCasoDeUso } from "./casos-de-uso/alta-proveedor";
 
-const MENSAJE_CUIT_DUPLICADO = (nombre: string) =>
-  `Ya existe un proveedor con ese CUIT («${nombre}»). Dos proveedores de una misma empresa no pueden compartir CUIT: revisá que esté bien cargado.`;
+/**
+ * Desde el Hito 4 de la pureza (bloque C de la pieza carta/catálogo/stock, paso H4C-14) las tres mutaciones son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{alta-proveedor,actualizar-activa-proveedor,actualizar-proveedor}.ts`; escrituras en server/persistencia/catalogo/proveedores.ts, la lectura del
+ * CUIT repetido en server/lecturas/catalogo/proveedor-con-cuit.ts): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las lecturas (H8) siguen acá con sus
+ * guardas. La acción conserva el refresco de la vista (activar) y la fuente de azar del proceso (el código autogenerado del alta).
+ */
 
-/** El nombre del OTRO proveedor de la empresa que ya tiene ese CUIT (el RLS acota a la empresa activa), o `null`. */
-async function proveedorConCuit(db: ContextoUsuario["db"], cuit: string | null, excluirId?: string) {
-  if (!cuit) return null;
-  return (await db.proveedor.findFirst({ where: { cuit, ...(excluirId ? { id: { not: excluirId } } : {}) }, select: { nombre: true } }))?.nombre ?? null;
-}
-
+/**
+ * Las filas del listado de Proveedores (H8, D-4): solo para esa pantalla, con su clave. Para elegir un proveedor, `listarProveedoresParaSelector`.
+ * S-15 (plan de endurecimiento, T7): el listado dibuja código, nombre, contacto y estado; el CUIT, el correo, el teléfono, las condiciones de pago y las notas son de la FICHA
+ * (`obtenerFichaProveedor`), no viajan por esta Server Action (que cualquiera con `proveedores` invoca a mano y recibe entera). Si el listado necesita otra columna, se AGREGA acá (GT-3a).
+ */
 export async function listarProveedores(soloActivos = false) {
-  const ctx = await requerirSesion();
+  const ctx = await requerirVerDeEmpresa("proveedores");
   return ctx.db.proveedor.findMany({
     where: soloActivos ? { activo: true } : {},
+    select: { id: true, codigo: true, nombre: true, contacto: true, activo: true },
+    orderBy: { nombre: "asc" },
+  });
+}
+
+/** Lo que necesita un `<select>` de proveedor: sin los datos de la ficha (contacto, teléfono, email, CUIT, condiciones de pago, notas). */
+export interface ProveedorParaSelector {
+  id: string;
+  nombre: string;
+  activo: boolean;
+}
+
+/**
+ * Proveedores para ELEGIR (H8, decisión D-4 del dueño): la compra y la devolución a proveedor, el filtro del reporte de compras y el formulario de producto
+ * (proveedor de consignación) solo necesitan el id, el nombre y si está activo. La ficha completa (`listarProveedores`) es de la pantalla de Proveedores.
+ */
+export async function listarProveedoresParaSelector(soloActivos = false): Promise<ProveedorParaSelector[]> {
+  const ctx = await requerirVerAlguna(["proceso_compra", "proceso_devolucion_proveedor", "reporte_compras", "alta_producto", "producto_ver_catalogo"]);
+  return ctx.db.proveedor.findMany({
+    where: soloActivos ? { activo: true } : {},
+    select: { id: true, nombre: true, activo: true },
     orderBy: { nombre: "asc" },
   });
 }
@@ -45,73 +62,38 @@ export interface DatosProveedor {
   notas?: string;
 }
 
-type CamposDeContacto = Omit<DatosProveedor, "nombre">;
-
-/** Largo máximo de cada texto libre y formato del email (S-22). Recortados; vacío → `null`. */
-function validarCamposDeContacto(datos: CamposDeContacto): { ok: true; valores: Record<keyof CamposDeContacto, string | null> } | { ok: false; mensaje: string } {
-  const campos = {
-    contacto: validarTextoLibre(datos.contacto, "El contacto", LARGO_MAXIMO_CONTACTO),
-    telefono: validarTextoLibre(datos.telefono, "El teléfono", LARGO_MAXIMO_TELEFONO),
-    email: validarEmailOpcional(datos.email),
-    cuit: validarCuit(datos.cuit),
-    condicionesPago: validarTextoLibre(datos.condicionesPago, "Las condiciones de pago", LARGO_MAXIMO_DETALLE),
-    notas: validarTextoLibre(datos.notas, "Las notas", LARGO_MAXIMO_NOTAS),
-  };
-  for (const r of Object.values(campos)) if (!r.ok) return { ok: false, mensaje: r.mensaje };
-  const valores = Object.fromEntries(Object.entries(campos).map(([k, r]) => [k, r.ok ? r.valor : null])) as Record<keyof CamposDeContacto, string | null>;
-  return { ok: true, valores };
-}
-
 /**
  * Equivalente de altaProveedor (Catalogo.js:3757-3775). Gatea con
  * 'alta_producto', no con un permiso propio — se preserva la decisión
  * histórica documentada: es lo que ya usaba el flujo de Compra, no
  * restringe nada nuevo.
+ *
+ * Desde el Hito 4 (H4C-14): permiso (`conPermisoDeEmpresa("proveedor_alta")`) → formato (`guardComandoAltaProveedor`, core/features/catalogo/proveedores.guard.ts,
+ * DENTRO del envoltorio: el nombre y los datos de contacto) → caso de uso (`casos-de-uso/alta-proveedor.ts`: nombre y CUIT libres, el código con reintento —SIN
+ * transacción a propósito— y la carrera del CUIT), con la fuente de azar del proceso → `aResultadoAccion`, y si salió bien el id y el nombre (`okConId`).
  */
 export async function altaProveedor(datos: DatosProveedor): Promise<ResultadoConId> {
   return conPermisoDeEmpresa<ResultadoConId>("proveedor_alta", async (ctx) => {
-    const nombre = texto(datos.nombre);
-    if (!nombre) return error("El nombre no puede estar vacío.");
-    const invalido = validarTextoCatalogo(nombre, "El nombre");
-    if (invalido) return error(invalido);
-    const campos = validarCamposDeContacto(datos);
-    if (!campos.ok) return error(campos.mensaje);
-
-    const dup = await ctx.db.proveedor.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
-    if (dup) return error(`Ya existe un proveedor llamado "${nombre}".`);
-    const conMismoCuit = await proveedorConCuit(ctx.db, campos.valores.cuit);
-    if (conMismoCuit) return error(MENSAJE_CUIT_DUPLICADO(conMismoCuit));
-
-    try {
-      const proveedor = await crearConCodigoAutogenerado("PRV", undefined, (codigo) =>
-        ctx.db.proveedor.create({
-          data: {
-            codigo,
-            nombre,
-            ...campos.valores,
-          },
-        })
-      , azarDelProceso);
-      return okConId(`Proveedor "${proveedor.nombre}" creado.`, proveedor.id, proveedor.nombre);
-    } catch (e) {
-      // Carrera: dos altas con el mismo CUIT a la vez pasan el chequeo de arriba y las frena el índice único (empresaId, cuit).
-      if (esErrorDeUnicidad(e)) {
-        const carrera = await proveedorConCuit(ctx.db, campos.valores.cuit);
-        return error(carrera ? MENSAJE_CUIT_DUPLICADO(carrera) : "Colisión generando el código del proveedor — reintentá.");
-      }
-      throw e;
-    }
+    const comando = guardComandoAltaProveedor(datos);
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await altaProveedorCasoDeUso(ctx, comando.valor, azarDelProceso);
+    const base = aResultadoAccion(r);
+    return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
 }
 
+/**
+ * Desde el Hito 4 (H4C-14): permiso → caso de uso (`casos-de-uso/actualizar-activa-proveedor.ts`) → si salió bien, refrescar la vista → `aResultadoAccion`. Sin
+ * guard (`SIN_GUARD`: solo recibe un id y un booleano). Desde O.44 un id que no existe devuelve «No se encontró ese proveedor.» (antes: 500).
+ */
 export async function actualizarActivaProveedor(proveedorId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("proveedores", async (ctx) => {
-    await ctx.db.proveedor.update({ where: { id: proveedorId }, data: { activo } });
+    const resultado = await actualizarActivaProveedorCasoDeUso(ctx, { proveedorId, activo });
     // Se llama desde la lista sin redirigir después — sin esto la columna
     // "Activo" no cambiaría en un navegador real hasta recargar a mano
     // (ver src/server/actions/refrescar.ts).
-    refrescarVistaSiHaceFalta();
-    return ok(`Proveedor ${activo ? "activado" : "desactivado"}.`);
+    if (resultado.ok) refrescarVistaSiHaceFalta();
+    return aResultadoAccion(resultado);
   });
 }
 
@@ -121,24 +103,12 @@ export async function actualizarActivaProveedor(proveedorId: string, activo: boo
  * proveedor ya creado. El nombre no se edita acá a propósito (mismo
  * criterio de identidad que Insumo/Producto): para eso está
  * renombrarOFusionarInsumo-style, fuera del alcance de este hallazgo.
+ *
+ * Desde el Hito 4 (H4C-14): permiso → caso de uso (`casos-de-uso/actualizar-proveedor.ts`: leer el proveedor, validar, CUIT libre, escribir y la carrera) →
+ * `aResultadoAccion`. Sin guard (`SIN_GUARD`: la acción leía el proveedor ANTES de validar).
  */
 export async function actualizarProveedor(proveedorId: string, datos: Omit<DatosProveedor, "nombre">): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("proveedores", async (ctx) => {
-    const proveedor = await ctx.db.proveedor.findUnique({ where: { id: proveedorId } });
-    if (!proveedor) return error("No se encontró ese proveedor.");
-    const campos = validarCamposDeContacto(datos);
-    if (!campos.ok) return error(campos.mensaje);
-
-    const conMismoCuit = await proveedorConCuit(ctx.db, campos.valores.cuit, proveedorId);
-    if (conMismoCuit) return error(MENSAJE_CUIT_DUPLICADO(conMismoCuit));
-
-    try {
-      await ctx.db.proveedor.update({ where: { id: proveedorId }, data: campos.valores });
-    } catch (e) {
-      if (!esErrorDeUnicidad(e)) throw e;
-      const carrera = await proveedorConCuit(ctx.db, campos.valores.cuit, proveedorId);
-      return error(carrera ? MENSAJE_CUIT_DUPLICADO(carrera) : "No se pudo guardar: el dato choca con otro proveedor.");
-    }
-    return ok(`Proveedor "${proveedor.nombre}" actualizado.`);
+    return aResultadoAccion(await actualizarProveedorCasoDeUso(ctx, { proveedorId, datos }));
   });
 }

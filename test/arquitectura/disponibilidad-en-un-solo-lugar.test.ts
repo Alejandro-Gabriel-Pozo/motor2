@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
  * ningún tipo lo detecte: TypeScript no distingue "el where correcto" de "uno parecido pero mal" — los dos tipan igual.
  *
  * Esto NO alcanza a `prisma.disponibilidadProducto.*` en general (findMany/upsert/groupBy/createMany siguen apareciendo, a
- * propósito, en `actualizarDisponibilidadProducto`/`sincronizarActivoGlobal` (productos.ts), `crearSucursalConAdmin`
+ * propósito, en `actualizarDisponibilidadProducto` (desde el Hito 4, H4C-11, su escritura vive en server/persistencia/catalogo/productos.ts), `crearSucursalConAdmin`
  * (sucursales.ts, P5b) y `listarProductosPagina` (P10, el conteo de la columna "Sucursales") — leer/escribir la tabla
  * directo es su trabajo real). Lo único que tiene que vivir en un solo lugar es el FILTRO "disponible acá", porque ES la
  * pieza que puede reimplementarse sutilmente mal.

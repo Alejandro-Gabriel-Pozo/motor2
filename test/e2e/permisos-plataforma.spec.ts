@@ -1,6 +1,5 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
-import { prisma } from "./fixtures/db";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { cambiarPoliticaDeEmpresa } from "../../src/server/operaciones-de-plataforma/cambiar-politica-de-empresa";
 import { MENSAJE_PERMISOS_DE_PLATAFORMA } from "../../src/core/permisos/politica-de-empresa";
@@ -11,12 +10,13 @@ import { MENSAJE_PERMISOS_DE_PLATAFORMA } from "../../src/core/permisos/politica
  * (playwright.config.ts) el cambio no pisa a otros specs, y cada test deja la empresa «completa» al terminar.
  */
 const SLUG = "e2e";
-const OPERADOR = "e2e-admin@local.test";
+/** Un administrador de plataforma de mentira: la operación audita en `AuditoriaPlataforma` (sin FK), que solo escriben el dueño y `motor2_plataforma`, y acá corre con el dueño. */
+const AUTOR = { adminId: "e2e-admin", adminEmail: "e2e-admin@local.test", instalacionId: "principal", instalacionNombre: "principal" };
 
 const selector = (page: Page) => page.getByRole("group", { name: "Panel del menú" });
 
 async function fijarPolitica(cambio: { permisosEditables?: boolean; dosPaneles?: boolean }) {
-  await cambiarPoliticaDeEmpresa(prisma, { slug: SLUG, actorEmail: OPERADOR, ...cambio });
+  await cambiarPoliticaDeEmpresa(prismaAdmin, { slug: SLUG, ...cambio }, AUTOR);
 }
 
 test.afterEach(async () => {
@@ -74,9 +74,8 @@ test("permisosEditables apagado deja el menú en dos paneles (son perillas indep
   await expect(selector(page)).toBeVisible();
 });
 
-test("el cambio de política queda en la auditoría de la empresa, a nombre del operador", async () => {
+test("el cambio de política queda en la auditoría de plataforma, a nombre del administrador y con la instalación", async () => {
   await fijarPolitica({ dosPaneles: false });
-  const operador = await prismaAdmin.user.findUniqueOrThrow({ where: { email: OPERADOR } });
-  const filas = await prismaAdmin.registroAuditoria.findMany({ where: { entidad: "Empresa", campo: "dosPaneles", actorId: operador.id } });
-  expect(filas.some((f) => f.valorAnterior === "true" && f.valorNuevo === "false")).toBe(true);
+  const filas = await prismaAdmin.auditoriaPlataforma.findMany({ where: { accion: "politica-cambiada", adminId: AUTOR.adminId } });
+  expect(filas.some((f) => JSON.stringify(f.detalle).includes('"perilla":"dosPaneles"') && JSON.stringify(f.detalle).includes('"despues":false') && f.adminEmail === AUTOR.adminEmail)).toBe(true);
 });

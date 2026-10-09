@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * Task #27 (docs/plan-redondeo-consumo-fraccionado-2026-09-26.md), Paso 5: el arrastre de redondeo (`cargarDeudaDeRedondeo` +
  * `crearArrastreDeRedondeo`) lee y escribe la deuda de un producto DENTRO de la misma transacción SERIALIZABLE que ya arbitra
- * cualquier otro conflicto de escritura de esta porción (`con-reintento.ts`, mismo criterio que `concurrencia-casos-2-3.test.ts` para
+ * cualquier otro conflicto de escritura de esta porción (`src/lib/transaccion-serializable.ts`, mismo criterio que `concurrencia-casos-2-3.test.ts` para
  * el resto de `registrarVenta`) — dos ventas de 0,5 simultáneas sobre la MISMA MP tienen que comportarse como si una ocurriera
  * después de la otra (nunca las dos leyendo D=0 a la vez y escribiendo 1+1), sin perder ninguna unidad de stock.
  */
@@ -14,7 +14,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarProductoDisponib
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
+import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 const RONDAS = 10;
 

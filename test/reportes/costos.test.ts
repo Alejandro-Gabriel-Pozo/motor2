@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { calcularCostosYMargenes, calcularImpactoInsumos, calcularImpactoRecetasPorPeriodo } from "../../src/server/lecturas/reportes/costos";
+import { calcularCostosYMargenes, calcularCostosYMargenesEImpactoInsumos, calcularImpactoRecetasPorPeriodo } from "../../src/server/lecturas/reportes/costos";
 
 describe("calcularCostosYMargenes", () => {
   let sucursalId: string;
@@ -140,7 +140,7 @@ describe("calcularCostosYMargenes", () => {
   });
 });
 
-describe("calcularImpactoInsumos", () => {
+describe("calcularCostosYMargenesEImpactoInsumos: el impacto por insumo", () => {
   it("acumula el costo por insumo a través de varios platos que lo usan", async () => {
     await limpiarBaseDeTest();
     const base = await sembrarBase();
@@ -156,7 +156,7 @@ describe("calcularImpactoInsumos", () => {
     await prisma.recetaVersion.create({ data: { productoId: pv2.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 2, unidadId: catalogo.kg.id }] } } });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccion.id, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }] }); // $10/kg
 
-    const impacto = await calcularImpactoInsumos(base.sucursal.id, prisma);
+    const { insumos: impacto } = await calcularCostosYMargenesEImpactoInsumos(base.sucursal.id, prisma);
     const fila = impacto.find((i) => i.insumoProductoId === mp.id)!;
     expect(fila.cantidadPlatos).toBe(2);
     expect(fila.costoAcumulado).toBeCloseTo(1 * 10 + 2 * 10);

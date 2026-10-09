@@ -1,9 +1,10 @@
+import "server-only";
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/public";
 import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad } from "@/core/reportes/public";
 import { resolverProximoConteo } from "@/core/stock/public";
-import type { EstadoDiferencia, RecetaQueUsaInsumo, FilaDiferenciaAjuste } from "@/core/reportes/public";
+import type { EstadoDiferencia, RecetaQueUsaInsumo, FilaDiferenciaAjuste, InfoProductoReporte } from "@/core/reportes/public";
 
 const ORDEN_ESTADO: Record<EstadoDiferencia, number> = { REVISAR: 0, ESPERADO: 1, OK: 2 };
 
@@ -19,9 +20,18 @@ const ORDEN_ESTADO: Record<EstadoDiferencia, number> = { REVISAR: 0, ESPERADO: 1
  * A diferencia de Apps Script (que sumaba AJUSTE y CONTROL juntos hasta el
  * bugfix documentado ahí), acá siempre estuvieron separados —
  * MovimientoStock.proceso distingue 'AJUSTE' de 'CONTROL' desde el día uno.
+ *
+ * `hoy` (D.3a de docs/pureza-integracion.md) es obligatorio, sin valor por defecto: el vencimiento de la agenda de conteo se mide contra la hora que fija el
+ * borde (la página, o Salud por producto que la recibe de la suya).
  */
-export async function generarReporteDiferenciasAjustes(sucursalId: string, db: Db, hoy: Date = new Date()): Promise<FilaDiferenciaAjuste[]> {
-  const productos = await construirMapaProductos(sucursalId, db);
+export async function generarReporteDiferenciasAjustes(
+  sucursalId: string,
+  db: Db,
+  hoy: Date,
+  /** El mapa de productos de LA MISMA sucursal ya armado (`construirMapaProductos(sucursalId, db)`), para no volver a leerlo: Salud por producto lo comparte (O.39). */
+  productosCargados?: Map<string, InfoProductoReporte>
+): Promise<FilaDiferenciaAjuste[]> {
+  const productos = productosCargados ?? (await construirMapaProductos(sucursalId, db));
   const { recetaPorProducto, mpsEnRecetas } = await construirIndiceRecetas(db, sucursalId);
   const frecuencias = await db.frecuenciaConteoProducto.findMany({ where: { sucursalId }, select: { productoId: true, frecuenciaDias: true } });
   const frecuenciaPorProducto = new Map(frecuencias.map((f) => [f.productoId, f.frecuenciaDias]));

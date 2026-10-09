@@ -9,6 +9,7 @@ import { claveCostoHistorico } from "../../src/core/reportes/costo-historico";
 import { reconstruirCostosDeVenta } from "../../src/server/consultas/reportes/costo-historico";
 import { listarComprasRegistradas } from "../../src/server/consultas/reportes/compras-registradas";
 import { obtenerOperacionPorId } from "../../src/server/consultas/reportes/trazabilidad";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * K1c, Fase 0: una COMPRA anulada es una factura que no ocurrió, así que ningún reporte de dinero la cuenta. Hoy la aplicación todavía no puede
@@ -76,7 +77,7 @@ describe("las compras anuladas no cuentan en los reportes de dinero", () => {
   });
 
   it("el gasto del período, el gasto por insumo y la tendencia de precios solo cuentan la compra vigente", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.compras.totalGastado).toBe(100); // solo C; sin el filtro serían 2100
     expect(rep.compras.porProveedor.map((p) => p.proveedor)).toEqual(["Molino Vigente"]);
@@ -91,7 +92,7 @@ describe("las compras anuladas no cuentan en los reportes de dinero", () => {
   });
 
   it("el precio de referencia anterior ignora la compra anulada más reciente", async () => {
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
     const precio = rep.tendenciaPrecios.find((f) => f.insumo === "Harina");
     // La última compra ANTES de agosto es B ($50/kg, anulada): tiene que valer A ($5/kg, vigente).
     expect(precio?.precioUnitarioAnterior).toBe(5);
@@ -102,7 +103,7 @@ describe("las compras anuladas no cuentan en los reportes de dinero", () => {
     const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: d("2026-07-15T12:00:00"), usuarioId: adminId } });
     await prisma.movimientoStock.create({ data: { operacionId: venta.id, productoId: platoId, seccionId, proceso: "VENTA", cantidad: -2, detalle: "Venta", precioTotal: 200, precioPorUnidadStock: 100 } });
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.ratioGastoVentas.porcentajePeriodoAnterior).toBe(12.5);
   });
 
@@ -137,7 +138,7 @@ describe("las compras anuladas no cuentan en los reportes de dinero", () => {
 
   it("la trazabilidad informa la anulación de una compra, no solo de una venta", async () => {
     const anulada = await prisma.operacion.findFirstOrThrow({ where: { proveedorId: proveedorAnuladorId } });
-    const datos = await obtenerOperacionPorId(sucursalId, anulada.id, prisma);
+    const datos = await obtenerOperacionPorId(sucursalId, anulada.id, prisma, { conDatosComerciales: true }); // S-14: el email de quien anuló es un dato comercial
     expect(datos?.proceso).toBe("COMPRA");
     expect(datos?.anuladaEn).not.toBeNull();
     expect(datos?.anuladaPorEmail).toBe("admin@test.com");

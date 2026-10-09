@@ -27,7 +27,7 @@ function simularRed(rutas: Record<string, unknown | Error>) {
       const host = new URL(url).host;
       const r = rutas[host];
       if (r === undefined || r instanceof Error) throw r ?? new Error(`sin ruta simulada para ${host}`);
-      return { ok: true, status: 200, json: async () => r };
+      return new Response(JSON.stringify(r), { status: 200 }); // una Response real: el adaptador lee su `body` de a trozos (S-30)
     })
   );
 }
@@ -46,14 +46,14 @@ describe("lectura de las respuestas", () => {
   });
 
   it("BCRA: un solo valor, que va en venta", () => {
-    expect(leerBcra(RESPUESTA_BCRA)).toEqual({ fecha: "2026-09-18", compra: null, venta: 1514.5, fuente: "BCRA" });
-    expect(leerBcra({ results: [] })).toBeNull();
+    expect(leerBcra(RESPUESTA_BCRA, new Date("2026-09-18T22:00:00Z"))).toEqual({ fecha: "2026-09-18", compra: null, venta: 1514.5, fuente: "BCRA" });
+    expect(leerBcra({ results: [] }, new Date("2026-09-18T22:00:00Z"))).toBeNull();
   });
 
   it("historial: desde una fecha, en orden, ignorando filas inválidas", () => {
-    const dias = leerHistorial([...HISTORIAL].reverse().concat([{ casa: "oficial", compra: 1, venta: NaN as unknown as number, fecha: "2026-09-19" }]), "2026-01-01");
+    const dias = leerHistorial([...HISTORIAL].reverse().concat([{ casa: "oficial", compra: 1, venta: NaN as unknown as number, fecha: "2026-09-19" }]), "2026-01-01", new Date("2026-09-18T22:00:00Z"));
     expect(dias.map((d) => d.fecha)).toEqual(["2026-09-16", "2026-09-17", "2026-09-18"]);
-    expect(leerHistorial("no es una lista", "2026-01-01")).toEqual([]);
+    expect(leerHistorial("no es una lista", "2026-01-01", new Date("2026-09-18T22:00:00Z"))).toEqual([]);
   });
 
   it("pesos a dólares con 2 decimales", () => {
@@ -198,9 +198,28 @@ describe("cotizacionPlausible (informe de seguridad S-19)", () => {
   const ahora = new Date("2026-09-18T22:00:00Z");
   const ayer = { fecha: new Date("2026-09-17T00:00:00Z"), venta: 1500 };
 
-  it("sin cotización previa, o con una de hace más de una semana, acepta cualquier valor", () => {
-    expect(cotizacionPlausible(99_999, null, ahora)).toBe(true);
+  it("con una cotización previa de hace más de una semana, acepta cualquier valor (una devaluación real acumula más que eso en un hueco largo)", () => {
     expect(cotizacionPlausible(99_999, { fecha: new Date("2026-09-01T00:00:00Z"), venta: 1500 }, ahora)).toBe(true);
+  });
+
+  // M-35 (T16): SIN cotización previa (tabla vacía) ya no acepta «cualquier valor»: tiene que caer en la banda del ancla fija, que se abre con la antigüedad.
+  it("EL DEFECTO (M-35): sin cotización previa solo acepta valores de la banda realista del ancla fija (o uno que otra fuente confirme)", () => {
+    expect(cotizacionPlausible(99_999, null, ahora)).toBe(false);
+    expect(cotizacionPlausible(500_000, null, ahora)).toBe(false);
+    expect(cotizacionPlausible(5, null, ahora)).toBe(false);
+    expect(cotizacionPlausible(1535, null, ahora)).toBe(true);
+    // la banda alrededor de la referencia (1.500) con el factor de 5 del primer año: [300, 7.500]
+    expect(cotizacionPlausible(7_500, null, ahora)).toBe(true);
+    expect(cotizacionPlausible(7_501, null, ahora)).toBe(false);
+    expect(cotizacionPlausible(300, null, ahora)).toBe(true);
+    expect(cotizacionPlausible(299, null, ahora)).toBe(false);
+    // una devaluación real que otra fuente independiente confirma se acepta
+    expect(cotizacionPlausible(9_000, null, ahora, 9_100)).toBe(true);
+    expect(cotizacionPlausible(9_000, null, ahora, 1_535)).toBe(false);
+    // con la antigüedad la banda se abre (cada año suma un factor): dos años después el techo es 1.500 × 5²
+    const dentroDeDosAnios = new Date(ahora.getTime() + 700 * 86_400_000);
+    expect(cotizacionPlausible(30_000, null, dentroDeDosAnios)).toBe(true);
+    expect(cotizacionPlausible(40_000, null, dentroDeDosAnios)).toBe(false);
   });
 
   it("dentro de ±20% de la última acepta; fuera, rechaza (a menos que otra fuente lo confirme al 5%)", () => {

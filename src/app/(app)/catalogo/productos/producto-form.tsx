@@ -36,6 +36,7 @@ export function ProductoForm({
   categoriasIniciales,
   proveedoresIniciales,
   puedeCrear,
+  puedeGestionarConsignacion,
   productoExistente,
   presentacionesIniciales,
   cantidadSucursales,
@@ -47,6 +48,12 @@ export function ProductoForm({
   proveedoresIniciales: Opcion[];
   /** Qué botones «+ Nuevo …» de alta rápida se dibujan: cada uno exige su propio permiso de Editar en el servidor. */
   puedeCrear: { categoria: boolean; insumo: boolean; proveedor: boolean };
+  /**
+   * S-12 (D8 del dueño): el costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante`. Sin la clave la página ni siquiera le manda el precio ni
+   * el consignante a este componente (los props viajan al navegador), el formulario no dibuja esos campos y NO los manda al guardar: «no viene» es «no cambia» en el servidor, que además
+   * rechaza un valor distinto del guardado. Cortesía de la pantalla; la barrera es la del servidor.
+   */
+  puedeGestionarConsignacion: boolean;
   productoExistente?: ProductoExistente;
   presentacionesIniciales?: PresentacionOpcion[];
   /** Solo para el alta (§4.1, docs/plan-disponibilidad-por-sucursal-2026-09-23.md) — sin esto el tilde no dice nada concreto. */
@@ -95,9 +102,12 @@ export function ProductoForm({
           // numeroDelCampo: vacío → undefined (sin paso, comportamiento actual), texto inválido → NaN (el servidor lo rechaza).
           pasoVenta: tipo === "PV" ? (numeroDelCampo(String(form.get("pasoVenta") ?? "")) ?? null) : null,
           seProduce: form.get("seProduce") === "on",
-          esConsignacion,
-          proveedorConsignacionId: esConsignacion ? proveedorConsignacionId || null : null,
-          precioConsignacion: numeroDelCampo(String(form.get("precioConsignacion") ?? "")) ?? 0,
+          // Sin la clave el costo de consignación NO se manda (ver `puedeGestionarConsignacion`).
+          ...(puedeGestionarConsignacion && {
+            esConsignacion,
+            proveedorConsignacionId: esConsignacion ? proveedorConsignacionId || null : null,
+            precioConsignacion: numeroDelCampo(String(form.get("precioConsignacion") ?? "")) ?? 0,
+          }),
           observaciones: texto(form.get("observaciones")) || undefined,
           activoEnTodasLasSucursales: editando ? undefined : activoEnTodas,
         };
@@ -306,17 +316,26 @@ export function ProductoForm({
         </div>
       )}
 
-      <div className="flex flex-col gap-1">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={esConsignacion} onChange={(e) => setEsConsignacion(e.target.checked)} /> Es consignación
-        </label>
-        <AyudaCampo>
-          El producto queda en tu depósito pero sigue siendo propiedad del proveedor hasta que se vende — recién ahí se liquida (se le paga por
-          lo vendido, no por lo entregado).
-        </AyudaCampo>
-      </div>
+      {puedeGestionarConsignacion ? (
+        <div className="flex flex-col gap-1">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={esConsignacion} onChange={(e) => setEsConsignacion(e.target.checked)} /> Es consignación
+          </label>
+          <AyudaCampo>
+            El producto queda en tu depósito pero sigue siendo propiedad del proveedor hasta que se vende — recién ahí se liquida (se le paga por
+            lo vendido, no por lo entregado).
+          </AyudaCampo>
+        </div>
+      ) : (
+        editando && (
+          <div className="flex flex-col gap-1">
+            <p className="text-sm">{esConsignacion ? "Es consignación" : "No es consignación"}</p>
+            <AyudaCampo>El proveedor y el precio de consignación los gestiona quien tiene permiso para pagar a consignantes.</AyudaCampo>
+          </div>
+        )
+      )}
 
-      {esConsignacion && (
+      {puedeGestionarConsignacion && esConsignacion && (
         <>
           <div className="flex items-center gap-2">
             <select

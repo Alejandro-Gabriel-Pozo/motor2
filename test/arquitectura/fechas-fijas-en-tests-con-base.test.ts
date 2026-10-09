@@ -28,6 +28,7 @@ const EXCEPCIONES: Record<string, string> = {
   "pos/cerrar-cuenta-origen.test.ts": VENCIMIENTO_DE_LOTE,
   "pos/cerrar-cuenta-respaldo.test.ts": VENCIMIENTO_DE_LOTE,
   "persistencia/compras.test.ts": VENCIMIENTO_DE_LOTE,
+  "persistencia/kardex-escritores-huella.test.ts": VENCIMIENTO_DE_LOTE,
   "stock/reclasificacion.test.ts": VENCIMIENTO_DE_LOTE,
   "auth/invitacion-gate.test.ts":
     "las fechas son argumentos de `opcionesCookieInvitacion(env, venceEn, ahora)`, una función PURA que recibe el reloj por parámetro: no se comparan con la base ni con la hora real",

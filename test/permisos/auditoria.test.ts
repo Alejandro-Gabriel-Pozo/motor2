@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, prisma, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { registrarCambioAuditado } from "../../src/core/permisos/auditoria";
+import { registrarCambioAuditado } from "../../src/server/auditoria/registrar-cambio-auditado";
 import { listarRegistrosAuditoria } from "../../src/server/consultas/permisos/auditoria";
 import { actualizarProducto } from "../../src/server/actions/catalogo/productos";
 import { setPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
@@ -105,6 +105,8 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
   });
 
   it("guardarPermisos registra el cambio de puedeEditar/puedeVer para el rol", async () => {
+    // D13/D14: la matriz del rol admin la edita solo el gerente; este test es sobre la auditoría, así que quien actúa pasa a ser el gerente.
+    await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: "gerente" } });
     // admin arranca con proceso_venta habilitado (seed): se le deja solo «Ver».
     const r = await guardarPermisos([
       { rolId: adminRolId, accionClave: "proceso_venta", anterior: { puedeVer: true, puedeEditar: true }, nuevo: { puedeVer: true, puedeEditar: false } },
@@ -118,6 +120,8 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
   });
 
   it("actualizarCapacidad registra el cambio de habilitado", async () => {
+    // O.41: cambiar una capacidad es solo del gerente; este test es sobre la auditoría, así que quien actúa pasa a ser el gerente.
+    await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: "gerente" } });
     await actualizarCapacidad("proceso_venta", null, false);
 
     const { items } = await listarRegistrosAuditoria({ entidad: "CapacidadSucursal", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);

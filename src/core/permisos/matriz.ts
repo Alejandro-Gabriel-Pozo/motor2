@@ -1,5 +1,5 @@
-import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo, nivelMinimoDeAccion, type NivelDeAccion } from "./acciones";
-import { esRolAdmin, nivelDeRolPorClave, rolAlcanzaLaAccion } from "./jerarquia";
+import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo, nivelMinimoDeAccion } from "./acciones";
+import { esRolAdmin, etiquetaDelPiso, nivelAlcanzaElPiso, nivelDe, nivelDelRolFrenteAlPiso, rolAlcanzaLaAccion, type PersonaParaJerarquia } from "./jerarquia";
 
 /** Lo único que la matriz necesita saber de un rol: su clave (el nombre es de la empresa y se puede cambiar). */
 export type RolDeMatriz = { clave: string | null };
@@ -32,9 +32,49 @@ export function esCeldaFueraDeNivel(rol: RolDeMatriz, accionClave: string): bool
   return claveEnCatalogo(accionClave) && !rolAlcanzaLaAccion(rol, accionClave);
 }
 
-/** Piso y nivel del rol, para los mensajes: «una acción de nivel administrador, y el rol es de nivel operario». */
-export function nivelesDeLaCelda(rol: RolDeMatriz, accionClave: string): { piso: NivelDeAccion; delRol: NivelDeAccion } | null {
-  return claveEnCatalogo(accionClave) ? { piso: nivelMinimoDeAccion(accionClave), delRol: nivelDeRolPorClave(rol) } : null;
+/**
+ * Piso y nivel del rol, para los mensajes: «una acción de nivel administrador de sistema, y el rol es de nivel operario». Devuelve las ETIQUETAS para mostrar
+ * (`etiquetaDelPiso`, ADR-027), no los valores: quien arma el mensaje (el caso de uso de `guardarPermisos`) no tiene que saber cómo se escribe cada piso.
+ */
+export function nivelesDeLaCelda(rol: RolDeMatriz, accionClave: string): { piso: string; delRol: string } | null {
+  return claveEnCatalogo(accionClave) ? { piso: etiquetaDelPiso(nivelMinimoDeAccion(accionClave)), delRol: etiquetaDelPiso(nivelDelRolFrenteAlPiso(rol)) } : null;
+}
+
+const MENSAJE_MATRIZ_SOLO_DEL_GERENTE = "Solo el gerente de la empresa puede editar los permisos del rol administrador. No se guardó nada.";
+
+/**
+ * D13/D14 (aprobado por el dueño el 2026-10-08; ADR-027): ¿la matriz de este rol la edita SOLO el gerente? Sí la de todo rol que, frente al piso de una acción,
+ * alcanza el nivel administrador: hoy el rol `admin` (administrador de sistema, rango 3) y, cuando exista `Rol.nivel` (F3), los de rango 2. Si no, un
+ * administrador que no es el gerente le recortaba acciones al gerente (que usa el mismo rol) o se agrandaba a sí mismo y a sus pares editando su propio rol.
+ * Los roles de nivel operario (`operador` y los personalizados de hoy) los sigue editando quien tiene `gestion_permisos`.
+ */
+export function laMatrizDelRolLaEditaSoloElGerente(rol: RolDeMatriz): boolean {
+  return nivelAlcanzaElPiso(nivelDelRolFrenteAlPiso(rol), "administrador");
+}
+
+/**
+ * D13/D14: el rechazo de `guardarPermisos` cuando quien actúa NO es el gerente de la empresa (`rolEmpresa`, medido desde la base) y el guardado cambia la matriz
+ * de un rol que solo edita el gerente. Pura: quien actúa lo mide el caso de uso; acá no se lee nada.
+ */
+export function mensajeSiNoPuedeEditarLaMatrizDelRol(actor: PersonaParaJerarquia, rol: RolDeMatriz): string | null {
+  return laMatrizDelRolLaEditaSoloElGerente(rol) && nivelDe(actor) !== "gerente" ? MENSAJE_MATRIZ_SOLO_DEL_GERENTE : null;
+}
+
+const MENSAJE_CAPACIDADES_SOLO_DEL_GERENTE = "Solo el gerente de la empresa puede cambiar las capacidades de una sucursal. No se guardó nada.";
+
+/**
+ * O.41 (decisión del dueño del 2026-10-08, «esa perilla solo del gerente»; ADR-027, «Casos que D13/D14 deja abiertos»): la otra vía, hermana de D13/D14, para
+ * recortarle acciones al gerente. Las capacidades por sucursal (`CapacidadSucursal`, la matriz acción × sucursal) se aplican también a las acciones de empresa de
+ * piso no gerente (`decision-de-acceso.ts`; `capacidades-sucursal.ts` exime solo a las de `ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE` y a `capacidades_sucursal`):
+ * un administrador que no es el gerente, con `capacidades_sucursal`, apagaba `renombrar_rol`, `alta_sucursal`, `activar_sucursal`, `renombrar_sucursal` o
+ * `ver_auditoria` en todas las sucursales y con eso se las sacaba también al gerente. Desde O.41 cambiar una capacidad (cualquiera, de una sucursal o la fila
+ * default) es SOLO del gerente de la empresa; lo que el gerente apague sigue pudiendo alcanzar al gobierno, y es decisión suya.
+ *
+ * Es el rechazo de `actualizarCapacidad` cuando quien actúa NO es el gerente (`rolEmpresa`, medido desde la base dentro de la transacción). Pura: quien actúa lo
+ * mide el caso de uso; acá no se lee nada. El permiso de la pantalla (`capacidades_sucursal`) no cambia: la matriz de acceso queda igual.
+ */
+export function mensajeSiNoPuedeCambiarCapacidades(actor: PersonaParaJerarquia): string | null {
+  return nivelDe(actor) !== "gerente" ? MENSAJE_CAPACIDADES_SOLO_DEL_GERENTE : null;
 }
 
 /** El estado que realmente se guarda: aplica «Ver ⊇ Editar» y la salvaguarda del admin. */

@@ -1,3 +1,4 @@
+import "server-only";
 import type { UltimaCotizacion } from "@/core/reportes/public";
 import type { Db } from "@/lib/db-tipos";
 import { reportarErrorUnaVez } from "@/lib/reportar-error";

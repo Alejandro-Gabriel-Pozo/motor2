@@ -5,7 +5,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { fijarRendimientoLocal, volverAlRendimientoCentral } from "../../src/server/actions/catalogo/rendimiento-local";
-import { guardarReceta } from "../../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 
 describe("fijarRendimientoLocal / volverAlRendimientoCentral (paso 6, D4/D6(a))", () => {
   let sucursalId: string;

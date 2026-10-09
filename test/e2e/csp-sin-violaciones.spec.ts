@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures/auth";
+import { prisma } from "./fixtures/db";
 
 /**
  * La CSP con nonce (informe de seguridad S-04, `core/seguridad/cabeceras.ts`) no puede romper la aplicación: ninguna pantalla pierde un
@@ -6,6 +7,15 @@ import { test, expect } from "./fixtures/auth";
  * El navegador avisa cada bloqueo con el evento `securitypolicyviolation`.
  */
 const PANTALLAS = ["/inicio", "/catalogo/proveedores", "/catalogo/proveedores/nuevo", "/reportes/costos", "/carta/portal", "/stock/alertas"];
+
+// S-24: el portal público de una empresa que no publicó ninguna sucursal da 404 (como un slug inexistente), así que el spec publica una a propósito.
+test.beforeEach(async ({ sucursalId }) => {
+  await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+  await prisma.sucursalPublica.create({ data: { sucursalId, slug: `e2e-csp-${Date.now()}`, publicada: true } });
+});
+test.afterEach(async ({ sucursalId }) => {
+  await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+});
 
 test("las pantallas de la aplicación y la carta no tienen ninguna violación de CSP, y la hidratación funciona", async ({ paginaAutenticada: page }) => {
   const violaciones: string[] = [];

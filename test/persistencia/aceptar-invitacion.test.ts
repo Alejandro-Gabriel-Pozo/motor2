@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
-import { aceptarInvitacionDelToken } from "../../src/core/auth/invitacion";
+import { aceptarInvitacionDeGerenteCasoDeUso as aceptarInvitacionDelToken } from "../../src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente";
 import { MENSAJE_ENLACE_NO_VALIDO } from "../../src/core/features/empresa/aceptar-invitacion";
 import { sembrarEmpresa } from "../../plataforma/src/servidor/sembrar-empresa";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
@@ -34,7 +34,7 @@ async function usuario(email = EMAIL) {
 
 const aceptar = async (token: string, cuit: unknown = CUIT_VALIDO, email = EMAIL) => {
   const u = await usuario(email);
-  return aceptarInvitacionDelToken({ token, usuario: { id: u.id, email }, cuit });
+  return aceptarInvitacionDelToken({ token, usuario: { id: u.id, email }, cuit, ahora: new Date() });
 };
 
 beforeEach(async () => {
@@ -137,6 +137,23 @@ describe("aceptar la invitación", () => {
     expect((await aceptar(await invitar())).ok).toBe(true);
     const pertenencias = await prismaAdmin.usuarioEmpresa.findMany({ where: { usuarioId: existente.id }, orderBy: { empresaId: "asc" } });
     expect(pertenencias.map((p) => [p.empresaId, p.rolEmpresa])).toEqual([[EMPRESA, "gerente"], ["segunda", null]]);
+  });
+
+  it("si el invitado ya tenía una cuenta APAGADA en esta empresa (y una membresía apagada de operador en la primera sucursal), aceptar la reactiva: gerente y admin activos", async () => {
+    // Hueco de cobertura informado en la Fase II (`incorporarPrimerGerente`, Hito 3): sin este caso, sacar el `activo: true` del upsert de la cuenta en la
+    // empresa (o de la membresía) no ponía ningún test en rojo. Un gerente con la cuenta apagada no entraría a la empresa que le acaban de dar.
+    const existente = await usuario();
+    await prismaAdmin.usuarioEmpresa.create({ data: { usuarioId: existente.id, empresaId: EMPRESA, rolEmpresa: null, activo: false } });
+    const central = await prismaAdmin.sucursal.findFirstOrThrow({ where: { empresaId: EMPRESA, nombre: "Central" } });
+    const operador = await prismaAdmin.rol.findFirstOrThrow({ where: { empresaId: EMPRESA, clave: "operador" } });
+    await prismaAdmin.usuarioSucursal.create({ data: { usuarioId: existente.id, sucursalId: central.id, empresaId: EMPRESA, rolId: operador.id, activo: false } });
+
+    expect((await aceptar(await invitar())).ok).toBe(true);
+
+    expect(await prismaAdmin.usuarioEmpresa.findUniqueOrThrow({ where: { usuarioId_empresaId: { usuarioId: existente.id, empresaId: EMPRESA } } })).toMatchObject({ rolEmpresa: "gerente", activo: true });
+    const membresia = await prismaAdmin.usuarioSucursal.findUniqueOrThrow({ where: { usuarioId_sucursalId: { usuarioId: existente.id, sucursalId: central.id } }, include: { rol: true } });
+    expect(membresia).toMatchObject({ activo: true });
+    expect(membresia.rol.clave).toBe("admin");
   });
 
   it("si la empresa ya tiene gerente, deshace todo y la invitación queda pendiente", async () => {

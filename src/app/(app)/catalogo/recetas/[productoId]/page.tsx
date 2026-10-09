@@ -3,6 +3,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import {
   obtenerRecetaVigente,
@@ -17,7 +18,7 @@ import {
   actualizarCabeceraDeReceta,
 } from "@/server/actions/catalogo/recetas";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
-import { disponibilidadPorSucursalDeProducto } from "@/server/lecturas/catalogo/disponibilidad";
+import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
 import { secuenciaMoviendo } from "@/core/catalogo/public";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import {
@@ -28,6 +29,7 @@ import {
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
 import { IconoDeAccion } from "@/components/iconos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
@@ -43,6 +45,8 @@ export default async function RecetaEditorPage({
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
@@ -133,14 +137,16 @@ export default async function RecetaEditorPage({
   // Receta propia de la sucursal activa (ADR-009, R3/R4): estado + qué acciones le tocan a este usuario (una clave por acción).
   const [estadoPropia, otrasConRecetaPropia, nivelEditar, nivelCopiar, nivelVolver] = await Promise.all([
     obtenerEstadoDeRecetaPropia(producto.id, ctx.sucursalId, ctx.db),
-    listarSucursalesConRecetaPropia(producto.id, ctx.sucursalId, ctx.db),
+    listarSucursalesConRecetaPropia(producto.id, ctx.sucursalId, ctx.usuarioId, ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_editar", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_copiar", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_volver_central", ctx.db),
   ]);
 
+  // Todos los formularios del editor (central y receta propia) en UN grupo (O.2): mientras uno guarda, los demás esperan en vez de salir con la versión que
+  // la pantalla mostraba antes de ese cambio; al terminar, la respuesta de la acción trae la pantalla refrescada y el cambio siguiente sale con la nueva.
   return (
-    <div className="flex max-w-2xl flex-col gap-8">
+    <GrupoDeFormularios className="flex max-w-2xl flex-col gap-8">
       <div>
         <Link href="/catalogo/recetas" className="text-sm underline">
           ← Volver a Recetas
@@ -689,6 +695,6 @@ export default async function RecetaEditorPage({
         ingredienteEnEdicion={editarPropia ?? null}
         volver={volver}
       />
-    </div>
+    </GrupoDeFormularios>
   );
 }

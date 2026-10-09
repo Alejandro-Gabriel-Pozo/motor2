@@ -52,7 +52,7 @@ const OPERACIONES_DE_LECTURA = new Set([
   "aggregate",
   "groupBy",
 ]);
-const OPERACIONES_DE_ESCRITURA = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "upsert", "delete", "deleteMany"]);
+const OPERACIONES_DE_ESCRITURA = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "updateManyAndReturn", "upsert", "delete", "deleteMany"]);
 const SQL_CRUDO_DE_LECTURA = new Set(["$queryRaw", "$queryRawUnsafe"]);
 const SQL_CRUDO_DE_ESCRITURA = new Set(["$executeRaw", "$executeRawUnsafe", "$transaction"]);
 const FUNCIONES_DE_AZAR = new Set(["randomUUID", "randomBytes", "randomInt", "getRandomValues"]);
@@ -89,6 +89,15 @@ function esNombreNoReferencia(id: ts.Identifier): boolean {
   if (ts.isBindingElement(padre) && padre.propertyName === id) return true;
   if (ts.isQualifiedName(padre) && padre.right === id) return true;
   return false;
+}
+
+/** Es el NOMBRE que se declara (parámetro, variable, función, clase, elemento de destructuración), no una referencia a un valor. */
+function esDeclaracionDeNombre(id: ts.Identifier): boolean {
+  const padre = id.parent;
+  return (
+    (ts.isParameter(padre) || ts.isVariableDeclaration(padre) || ts.isFunctionDeclaration(padre) || ts.isFunctionExpression(padre) || ts.isClassDeclaration(padre) || ts.isBindingElement(padre)) &&
+    padre.name === id
+  );
 }
 
 export interface LlamadaALaBase {
@@ -192,6 +201,20 @@ export function analizarFuente(codigo: string, ruta: string, delegados: Readonly
         if (llamada.text === "fetch") red = true;
         if (FUNCIONES_DE_AZAR.has(llamada.text)) azar = true;
       }
+    }
+    // Referencias, no solo llamadas (Pureza, auditoría de la Fase 1): `aleatorio = Math.random`, `fetchFn = fetch`, `ahora = Date.now` o `uuid: randomUUID` esconden el reloj, el azar o la red
+    // como un valor por defecto o un campo, y antes pasaban por P0. Una referencia cuenta igual que una llamada.
+    if (ts.isPropertyAccessExpression(nodo)) {
+      const dueño = nodo.expression;
+      const nombre = nodo.name.text;
+      if (ts.isIdentifier(dueño) && dueño.text === "Date" && nombre === "now") reloj = true;
+      if (ts.isIdentifier(dueño) && dueño.text === "Math" && nombre === "random") azar = true;
+      if (FUNCIONES_DE_AZAR.has(nombre)) azar = true;
+      if (ts.isIdentifier(dueño) && (dueño.text === "globalThis" || dueño.text === "window" || dueño.text === "self") && nombre === "fetch") red = true;
+    }
+    if (ts.isIdentifier(nodo) && !esNombreNoReferencia(nodo) && !esDeclaracionDeNombre(nodo) && !estaEnPosicionDeTipo(nodo)) {
+      if (nodo.text === "fetch") red = true;
+      if (FUNCIONES_DE_AZAR.has(nodo.text)) azar = true;
     }
     if (ts.isNewExpression(nodo) && ts.isIdentifier(nodo.expression) && nodo.expression.text === "Date" && (nodo.arguments?.length ?? 0) === 0) reloj = true;
     if (ts.isPropertyAccessExpression(nodo) && ts.isIdentifier(nodo.expression) && nodo.expression.text === "process" && nodo.name.text === "env") entorno = true;

@@ -25,10 +25,24 @@ eran lo único que impedía que un rol creado a mano se hiciera pasar por uno de
 
 ### 2. Decide la clave, no el nombre (G2)
 
-Solo `core/permisos` lee la clave (`jerarquia.ts`: `CLAVE_ROL_ADMIN`, `esRolAdmin`, `nivelDeRolPorClave`; `invariantes.ts`; `gestion-de-usuarios.ts`;
-`gerencia.ts`). Fuera de esa carpeta nadie compara un rol ni busca un rol de sistema por nombre: lo hace cumplir la regla 4 de
-`test/arquitectura/acceso-solo-por-el-guard.test.ts`. Las invariantes de gobierno (administrador efectivo, gerente con sucursal, rol de sistema no
-desactivable, etc.) se miden por clave y dentro de la transacción de la escritura.
+Solo `core/permisos` lee la clave (`jerarquia.ts`: `CLAVE_ROL_ADMIN`, `esRolAdmin`, `nivelDeRolPorClave`; `filtros.ts`: los filtros por la clave del
+rol administrador; `invariantes.ts`: el rol de sistema intacto; `gestion-de-usuarios.ts`; `gerencia.ts`). Fuera de esa carpeta nadie compara un rol ni
+busca un rol de sistema por nombre: lo hace cumplir la regla 4 de `test/arquitectura/acceso-solo-por-el-guard.test.ts`. Las invariantes de gobierno
+(administrador efectivo, gerente con sucursal, rol de sistema no desactivable, etc.) se miden por clave y dentro de la transacción de la escritura.
+
+> **Rutas movidas (Hito 3, Fase II de la rama `pureza-integracion`, 2026-10-08).** Las lecturas de decisión de gobierno salieron de `core/permisos` a
+> `server/lecturas/permisos` (ADR-026) con el mismo nombre y firma, y no nombran la clave: piden los filtros puros de `core/permisos/filtros.ts`
+> (contrato C1). Las de las invariantes están en `src/server/lecturas/permisos/gobierno.ts`; `conInvariantesDeGobierno` (medir, escribir, volver a
+> medir), en `src/server/actions/con-gobierno.ts`; las del techo de privilegio (quien actúa desde la base, a quien se toca, el rol admin, si se
+> reactiva a un admin), en `src/server/lecturas/permisos/gestion-de-usuarios.ts`; las de la gerencia, en `src/server/lecturas/permisos/gerencia.ts`.
+> El alta del primer gerente (`incorporarPrimerGerente`, que además escribe) pasó al paso compartido
+> `src/server/actions/auth/casos-de-uso/incorporar-primer-gerente-en-tx.ts`, con sus escrituras en `src/server/persistencia/auth/gerencia.ts`.
+> En `core/permisos` (`invariantes.ts`, `gestion-de-usuarios.ts`, `gerencia.ts`) quedan las reglas, puras. Desde el contrato C4, un caso de uso o una persistencia tampoco lee `rol.clave` ni la pide en un
+> `select`: el rol se lee con `SELECCION_DE_ROL_PARA_JERARQUIA` y se le pasa entero a `core/permisos` (regla 4 ampliada).
+>
+> **O.35 y D13/D14 (Hito 3, 2026-10-08; ADR-027 §6).** El techo de privilegio también mide por la clave a QUIEN ACTÚA desde la base, dentro de la transacción
+> (no con el contexto de la sesión), y la matriz del rol de clave `admin` la edita solo el gerente: la decisión es `laMatrizDelRolLaEditaSoloElGerente` en
+> `src/core/permisos/matriz.ts`, que tampoco compara nombres (renombrar el rol a «Jefatura» no cambia quién edita su matriz).
 
 ### 3. Renombrar un rol es una acción propia, `renombrar_rol` (G3)
 

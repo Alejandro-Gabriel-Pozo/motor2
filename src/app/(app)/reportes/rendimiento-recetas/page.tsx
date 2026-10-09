@@ -2,9 +2,10 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer, obtenerMiNivelPermiso } from "@/server/acceso/gate";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo, reportePesadoSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
-import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "@/server/consultas/reportes/rendimiento-recetas";
+import { calcularRendimientoRecetas } from "@/server/consultas/reportes/rendimiento-recetas";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { SelectorRango } from "@/components/selector-rango";
 import { FilaRendimientoSimple } from "./fila-simple";
@@ -51,20 +52,25 @@ export default async function RendimientoRecetasPage({
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_rendimiento_recetas", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const rango = resolverRangoDeReporte(sp, new Date());
+  const ahora = new Date();
+  // S-28: reporte pesado (compras, producción, ventas y conteos del rango): cupo por usuario antes de consultar nada (best effort, en memoria).
+  if (reportePesadoSinCupo(ctx.usuarioId, "rendimiento-recetas", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  const rango = resolverRangoDeReporte(sp, ahora);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
   const desde = new Date(desdeStr);
   const hasta = new Date(hastaStr);
 
-  const [todasLasSimples, todasLasCompartidas, { editar: puedeCalibrar }] = await Promise.all([
-    calcularRendimientoRecetasSimples(ctx.sucursalId, desde, hasta, ctx.db),
-    calcularRendimientoRecetasCompartidas(ctx.sucursalId, desde, hasta, ctx.db),
+  // Las dos tablas con UNA construcción de pools y UNA lectura del costo (O.30): antes se llamaba a las dos fases por separado y cada una repetía las suyas.
+  const [{ simples: todasLasSimples, compartidas: todasLasCompartidas }, { editar: puedeCalibrar }] = await Promise.all([
+    calcularRendimientoRecetas(ctx.sucursalId, desde, hasta, ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "calibrar_rendimiento_local", ctx.db),
   ]);
   const filasSimples = sp.productoId ? todasLasSimples.filter((f) => f.productoVentaId === sp.productoId) : todasLasSimples;
@@ -120,6 +126,7 @@ export default async function RendimientoRecetasPage({
           opcion={rango.opcion}
           desdeISO={desdeStr}
           hastaISO={hastaStr}
+          recortadoDesde={rango.recortadoDesde}
           camposOcultos={sp.productoId ? { productoId: sp.productoId } : undefined}
         />
         {confianzaLimitadaPorVentana && (

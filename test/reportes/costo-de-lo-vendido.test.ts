@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * 6b: «Costo de lo vendido (consumo)» junto al ratio Compras/Ventas (desembolso). El numerador es el costo congelado al vender (o reconstruido con el
@@ -23,7 +24,7 @@ describe("costo de lo vendido (consumo) del período", () => {
   let panId: string;
 
   const d = (iso: string) => new Date(`${iso}T12:00:00Z`);
-  const agosto = () => obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma);
+  const agosto = () => obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
   async function comprarHarina(fecha: string, cantidad = 10, precioTotal = 50) {
     const r = await registrarMovimiento({ proceso: "COMPRA", fecha: d(fecha), seccionId, items: [{ productoId: harinaId, cantidad, precioTotal }] });

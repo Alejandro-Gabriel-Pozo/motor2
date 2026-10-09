@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { validarDominioCartaAlArrancar, validarEmpresaUnicaAlArrancar, validarEntornoAlArrancar } from "@/env";
-import { limpiarEventoSentry } from "@/lib/sentry-limpiar";
+import { limpiarEventoSentry, limpiarMigaSentry } from "@/lib/sentry-limpiar";
 
 /**
  * Observabilidad — hallazgo de la auditoría de backend: nada capturaba ni
@@ -20,6 +20,7 @@ export async function register() {
       sendDefaultPii: false,
       beforeSend: limpiarEventoSentry,
       beforeSendTransaction: limpiarEventoSentry,
+      beforeBreadcrumb: limpiarMigaSentry,
     });
   }
 
@@ -30,6 +31,7 @@ export async function register() {
       sendDefaultPii: false,
       beforeSend: limpiarEventoSentry,
       beforeSendTransaction: limpiarEventoSentry,
+      beforeBreadcrumb: limpiarMigaSentry,
     });
   }
 }

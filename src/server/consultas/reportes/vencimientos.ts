@@ -1,3 +1,4 @@
+import "server-only";
 import { Prisma } from "@prisma/client";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad } from "@/core/reportes/public";
@@ -9,10 +10,12 @@ import type { FilaLoteProximoAVencer, FilaConciliacionVencimiento } from "@/core
  * diferencia del original (filtrar `calcularStockActual_` entero en
  * memoria), acá el WHERE `loteVencimiento IS NOT NULL` ya va en el
  * `groupBy` de Postgres.
+ *
+ * `ahora` (D.3a de docs/pureza-integracion.md) es obligatorio: «hoy» y los días para vencer salen de la hora que fija el borde (la página).
  */
-export async function generarReporteLotesProximosAVencer(sucursalId: string, dias: number, db: Db): Promise<FilaLoteProximoAVencer[]> {
+export async function generarReporteLotesProximosAVencer(sucursalId: string, dias: number, db: Db, ahora: Date): Promise<FilaLoteProximoAVencer[]> {
   const limiteDias = dias > 0 ? dias : 7;
-  const hoy = inicioDelDiaDe(new Date(), ZONA_UTC);
+  const hoy = inicioDelDiaDe(ahora, ZONA_UTC);
   const fechaLimite = new Date(hoy.getTime() + limiteDias * 86400000);
 
   const grupos = await db.movimientoStock.groupBy({
@@ -174,10 +177,10 @@ export async function generarConciliacionVencimientos(sucursalId: string, db: Db
   return resultados.sort((a, b) => (a.estado === "revisar" ? -1 : 1) - (b.estado === "revisar" ? -1 : 1));
 }
 
-/** Port de obtenerReporteVencimientosDatos (Reportes.js:683-689). */
-export async function obtenerReporteVencimientosDatos(sucursalId: string, dias: number, db: Db) {
+/** Port de obtenerReporteVencimientosDatos (Reportes.js:683-689). `ahora` obligatorio (D.3a): lo usan los lotes próximos a vencer. */
+export async function obtenerReporteVencimientosDatos(sucursalId: string, dias: number, db: Db, ahora: Date) {
   const [proximosAVencer, conciliacion] = await Promise.all([
-    generarReporteLotesProximosAVencer(sucursalId, dias || 7, db),
+    generarReporteLotesProximosAVencer(sucursalId, dias || 7, db, ahora),
     generarConciliacionVencimientos(sucursalId, db),
   ]);
   return { proximosAVencer, conciliacion, diasUsados: dias > 0 ? dias : 7 };

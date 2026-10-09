@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
-import { causaDeErrorDeDriver, errorConocidoDeBase, esErrorDeBaseConCodigo, esFalloDeSerializacionEnSqlCrudo } from "../../src/core/datos/errores-de-base";
+import { causaDeErrorDeDriver, errorConocidoDeBase, esErrorDeBaseConCodigo, esFalloDeSerializacionEnSqlCrudo, esViolacionDeClaveForanea, rechazoDeReferenciaNoEncontrada, restriccionDeClaveForanea } from "../../src/core/datos/errores-de-base";
 import { esChoqueDeIndiceUnico, esConflictoDeEscritura } from "../../src/core/movimientos/con-reintento";
 import { esChoqueDeFacturaUnica } from "../../src/core/movimientos/factura-unica";
 import { esErrorDeUnicidad } from "../../src/core/catalogo/generar-codigo";
@@ -50,12 +50,23 @@ describe("los reconocedores del dominio siguen igual (con instancias reales)", (
     expect(esConflictoDeEscritura(real("P2002"))).toBe(false);
   });
 
-  it("choque de índice único: P2002 o UniqueConstraintViolation; y esErrorDeUnicidad solo P2002", () => {
+  it("choque de índice único: P2002 o UniqueConstraintViolation; y esErrorDeUnicidad reconoce lo mismo (O.48: antes solo P2002)", () => {
     expect(esChoqueDeIndiceUnico(real("P2002"))).toBe(true);
     expect(esChoqueDeIndiceUnico(deDriver("UniqueConstraintViolation"))).toBe(true);
     expect(esChoqueDeIndiceUnico(real("P2034"))).toBe(false);
     expect(esErrorDeUnicidad(real("P2002"))).toBe(true);
+    expect(esErrorDeUnicidad(deDriver("UniqueConstraintViolation"))).toBe(true); // el DriverAdapterError crudo del adaptador `pg`
     expect(esErrorDeUnicidad(real("P2025"))).toBe(false);
+    expect(esErrorDeUnicidad(real("P2034"))).toBe(false);
+    expect(esErrorDeUnicidad(deDriver("TransactionWriteConflict"))).toBe(false); // otro kind del driver no se disfraza de unicidad
+    expect(esErrorDeUnicidad(deDriver("ConnectionClosed"))).toBe(false);
+    expect(esErrorDeUnicidad(new Error("UniqueConstraintViolation"))).toBe(false);
+    expect(esErrorDeUnicidad(null)).toBe(false);
+  });
+
+  it("esErrorDeUnicidad y esChoqueDeIndiceUnico dan siempre lo mismo (una sola clasificación)", () => {
+    const casos = [real("P2002"), real("P2025"), real("P2034"), deDriver("UniqueConstraintViolation"), deDriver("TransactionWriteConflict"), deDriver("ConnectionClosed"), new Error("x"), "P2002", null, undefined];
+    for (const e of casos) expect(esErrorDeUnicidad(e)).toBe(esChoqueDeIndiceUnico(e));
   });
 
   it("factura duplicada: SOLO el índice de factura única, por target, por el driver anidado o por el driver crudo; nunca otro índice", () => {
@@ -88,5 +99,36 @@ describe("esFalloDeSerializacionEnSqlCrudo: un 40001/40P01 de un $executeRaw lle
     expect(esFalloDeSerializacionEnSqlCrudo(real("P2002", { driverAdapterError: { cause: { originalCode: "40001" } } }))).toBe(false);
     expect(esFalloDeSerializacionEnSqlCrudo(Object.assign(new Error("x"), { code: "P2010", meta: { driverAdapterError: { cause: { originalCode: "40001" } } } }))).toBe(false);
     expect(esFalloDeSerializacionEnSqlCrudo(null)).toBe(false);
+  });
+});
+
+describe("clave foránea (O.175): esViolacionDeClaveForanea, restriccionDeClaveForanea y rechazoDeReferenciaNoEncontrada", () => {
+  // La forma REAL con el adaptador `pg` (confirmada contra Postgres): el nombre de la restricción viaja en meta.driverAdapterError.cause.constraint.index.
+  const fkReal = (restriccion: string) =>
+    real("P2003", { modelName: "Producto", driverAdapterError: { name: "DriverAdapterError", cause: { originalCode: "23503", kind: "ForeignKeyConstraintViolation", constraint: { index: restriccion } } } });
+  const nombres = { categoriaId: "la categoría elegida", unidadStockId: "la unidad de stock elegida" };
+
+  it("reconoce P2003 y el DriverAdapterError crudo con ForeignKeyConstraintViolation, y nada más", () => {
+    expect(esViolacionDeClaveForanea(real("P2003"))).toBe(true);
+    expect(esViolacionDeClaveForanea(deDriver("ForeignKeyConstraintViolation"))).toBe(true);
+    expect(esViolacionDeClaveForanea(real("P2002"))).toBe(false);
+    expect(esViolacionDeClaveForanea(deDriver("UniqueConstraintViolation"))).toBe(false);
+    expect(esViolacionDeClaveForanea(new Error("P2003"))).toBe(false);
+    expect(esViolacionDeClaveForanea(null)).toBe(false);
+  });
+
+  it("lee el nombre de la restricción violada (adaptador pg, meta.constraint, causa del driver) o devuelve vacío", () => {
+    expect(restriccionDeClaveForanea(fkReal("Producto_empresaId_categoriaId_fkey"))).toBe("Producto_empresaId_categoriaId_fkey");
+    expect(restriccionDeClaveForanea(real("P2003", { constraint: "Grupo_empresaId_grupoPadreId_fkey" }))).toBe("Grupo_empresaId_grupoPadreId_fkey");
+    expect(restriccionDeClaveForanea(deDriver("ForeignKeyConstraintViolation", { constraint: { index: "X_fkey" } }))).toBe("X_fkey");
+    expect(restriccionDeClaveForanea(real("P2003"))).toBe("");
+  });
+
+  it("traduce a «No se encontró …» con el nombre de la referencia, el genérico si no la reconoce, y null si no es una clave foránea", () => {
+    expect(rechazoDeReferenciaNoEncontrada(fkReal("Producto_empresaId_categoriaId_fkey"), nombres, "genérico")).toBe("No se encontró la categoría elegida.");
+    expect(rechazoDeReferenciaNoEncontrada(fkReal("Producto_empresaId_unidadStockId_fkey"), nombres, "genérico")).toBe("No se encontró la unidad de stock elegida.");
+    expect(rechazoDeReferenciaNoEncontrada(fkReal("Producto_empresaId_otraCosaId_fkey"), nombres, "genérico")).toBe("genérico");
+    expect(rechazoDeReferenciaNoEncontrada(real("P2002"), nombres, "genérico")).toBeNull();
+    expect(rechazoDeReferenciaNoEncontrada(new Error("boom"), nombres, "genérico")).toBeNull();
   });
 });

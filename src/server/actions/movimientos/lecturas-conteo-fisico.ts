@@ -48,7 +48,20 @@ export async function obtenerHistorialConteosFisicos(sucursalId: string, filtro:
       ...(productoId ? { productoId } : {}),
       ...(desde || hasta ? { fecha: { ...(desde ? { gte: desde } : {}), ...(hasta ? { lte: hasta } : {}) } } : {}),
     },
-    include: { producto: true, seccion: true },
+    // S-15 (plan de endurecimiento, T7): solo lo que los dos historiales dibujan. Antes `include: { producto: true, ... }` devolvía el `Producto` entero (costo de consignación incluido) y
+    // las columnas internas del conteo (clave de idempotencia, hash del comando) a quien invoca la acción a mano. Si una pantalla necesita más, se AGREGA acá (GT-3a).
+    select: {
+      id: true,
+      fecha: true,
+      productoId: true,
+      saldoSistema: true,
+      conteoReal: true,
+      diferencia: true,
+      accion: true,
+      estado: true,
+      producto: { select: { codigo: true, nombre: true } },
+      seccion: { select: { nombre: true } },
+    },
     orderBy: [{ fecha: "desc" }, { id: "desc" }],
     take: TAMANO_PAGINA_CONTEOS + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

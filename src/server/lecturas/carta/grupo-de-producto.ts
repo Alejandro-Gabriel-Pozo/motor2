@@ -1,5 +1,5 @@
 import "server-only";
-import { preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { precioDeCarta, whereCartaDeSucursal, type GrupoDeProducto } from "@/core/carta/public";
 import type { Db } from "@/lib/db-tipos";
 

@@ -1,17 +1,24 @@
 "use server";
 
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
-import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
-import { validarComensales } from "@/core/pos/cuenta";
+import {
+  guardComandoAbrirCuenta,
+  guardComandoAsignarClienteACuenta,
+  guardComandoCorregirComensales,
+  guardComandoLiberarMesa,
+} from "@/core/features/cuentas/cuenta-apertura.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
-import { cuentaAbiertaDeSucursal } from "./cuenta-comun";
+import { error, type ResultadoAccion } from "../tipos";
+import { abrirCuentaCasoDeUso } from "./casos-de-uso/abrir-cuenta";
+import { asignarClienteACuentaCasoDeUso } from "./casos-de-uso/asignar-cliente-a-cuenta";
+import { corregirComensalesCasoDeUso } from "./casos-de-uso/corregir-comensales";
+import { liberarMesaCasoDeUso } from "./casos-de-uso/liberar-mesa";
 
 /**
  * Toma de pedido en el salón — abrir la cuenta de una mesa, corregir sus comensales, asignarle un cliente y liberar la mesa sin venta.
  * Criterio común de todas las acciones de «tomar pedido» (transacción SERIALIZABLE, mesa de la sucursal activa, cuenta abierta, sin
- * refrescar la vista) y ayudantes compartidos: ./cuenta-comun.ts.
+ * refrescar la vista) y ayudantes compartidos: ./cuenta-comun.ts. Desde el Hito 4 de la pureza (bloque 4.1) cada acción es un adaptador fino de su
+ * caso de uso (./casos-de-uso/{abrir-cuenta,corregir-comensales,asignar-cliente-a-cuenta,liberar-mesa}.ts).
  */
 
 /**
@@ -28,33 +35,18 @@ import { cuentaAbiertaDeSucursal } from "./cuenta-comun";
  * `cerradaEn IS NULL` de la sucursal DENTRO de esta misma transacción SERIALIZABLE que crea la nueva — dos aperturas a mesas
  * DISTINTAS que juntas superarían el límite chocan como cualquier otra escritura en conflicto (Postgres aborta una y se reintenta,
  * `conTransaccionSerializable`), nunca las dos pasan.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.1, paso 8) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_abrir_cuenta")`) → formato del
+ * `mesaId` (`guardComandoAbrirCuenta`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/abrir-cuenta.ts`: la mesa fuera de la transacción, la transacción
+ * serializable con la idempotencia, los comensales y el límite, la escritura en server/persistencia/pos/cuenta.ts y el choque del índice único) →
+ * `aResultadoAccion`. Con `corregirComensales`, `asignarClienteACuenta` y `liberarMesa` (pasos 5 a 7) también migradas, el archivo entero está en
+ * `ACCIONES_CON_CASO_DE_USO`.
  */
 export async function abrirCuenta(mesaId: string, comensales: number): Promise<ResultadoAccion> {
   return conPermiso("pos_abrir_cuenta", async (ctx) => {
-    const mesa = typeof mesaId === "string" ? await ctx.db.mesa.findFirst({ where: { id: mesaId, sucursalId: ctx.sucursalId }, include: { sucursal: { select: { nombre: true, maxMesasAbiertas: true } } } }) : null;
-    if (!mesa) return error("No se encontró esa mesa en esta sucursal.");
-    try {
-      return await conTransaccionSerializable(ctx.transaccion, async (tx) => {
-        const yaAbierta = await tx.cuenta.findFirst({ where: { mesaId: mesa.id, cerradaEn: null }, select: { id: true } });
-        if (yaAbierta) return ok(`La mesa ${mesa.numero} ya tenía una cuenta abierta.`);
-
-        const val = validarComensales(comensales);
-        if (!val.ok) return error(val.mensaje);
-
-        if (mesa.sucursal.maxMesasAbiertas !== null) {
-          const abiertas = await tx.cuenta.count({ where: { cerradaEn: null, mesa: { sucursalId: ctx.sucursalId } } });
-          if (abiertas >= mesa.sucursal.maxMesasAbiertas) {
-            return error(`Se alcanzó el máximo de ${mesa.sucursal.maxMesasAbiertas} mesas abiertas en «${mesa.sucursal.nombre}». Cerrá o liberá una antes de abrir otra.`);
-          }
-        }
-
-        await tx.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: ctx.usuarioId, comensales: val.comensales } });
-        return ok(`Cuenta de la mesa ${mesa.numero} abierta.`);
-      });
-    } catch (e) {
-      if (esErrorDeUnicidad(e)) return ok(`La mesa ${mesa.numero} ya tenía una cuenta abierta.`);
-      throw e;
-    }
+    const comando = guardComandoAbrirCuenta({ mesaId, comensales });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await abrirCuentaCasoDeUso(ctx, comando.valor));
   });
 }
 
@@ -62,19 +54,16 @@ export async function abrirCuenta(mesaId: string, comensales: number): Promise<R
  * Corrige los comensales de una cuenta que sigue ABIERTA (docs/plan-comensales-y-limite-mesas-2026-09-26.md: llega gente después, o
  * se cargó mal al abrir). Mismo permiso que abrir la cuenta. Una cuenta ya cerrada no se toca: el dato queda congelado, igual que el
  * precio de cada ítem.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.1, paso 6) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_abrir_cuenta")`) → formato del
+ * `cuentaId` (`guardComandoCorregirComensales`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/corregir-comensales.ts`: transacción serializable, la
+ * cuenta abierta, los comensales y la escritura en server/persistencia/pos/cuenta.ts) → `aResultadoAccion`.
  */
 export async function corregirComensales(cuentaId: string, comensales: number): Promise<ResultadoAccion> {
   return conPermiso("pos_abrir_cuenta", async (ctx) => {
-    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
-      const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
-      if (!abierta.ok) return error(abierta.mensaje);
-
-      const val = validarComensales(comensales);
-      if (!val.ok) return error(val.mensaje);
-
-      await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { comensales: val.comensales } });
-      return ok(`Comensales de la mesa ${abierta.cuenta.mesa.numero} actualizados a ${val.comensales}.`);
-    });
+    const comando = guardComandoCorregirComensales({ cuentaId, comensales });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await corregirComensalesCasoDeUso(ctx, comando.valor));
   });
 }
 
@@ -90,42 +79,17 @@ export async function corregirComensales(cuentaId: string, comensales: number): 
  * `activo: false` bloquea asignar un cliente DESACTIVADO (no tiene sentido dar de alta un descuento nuevo con un cliente que ya no
  * se usa) — pero no bloquea QUITARLO de una cuenta que ya lo tenía asignado, ni cerrar una cuenta que ya lo tiene: desactivar un
  * cliente nunca revierte una cuenta en curso.
+ *
+ * Quién puso (o sacó) un cliente con descuento queda en la auditoría (dos filas: cliente y % congelado): la `Operacion` de la venta solo guarda a quien cerró
+ * la cuenta. Desde el Hito 4 de la pureza (bloque 4.1, paso 7) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_asignar_cliente")`) →
+ * formato del `cuentaId` (`guardComandoAsignarClienteACuenta`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/asignar-cliente-a-cuenta.ts`: transacción
+ * serializable, la cuenta abierta, el cliente, la escritura en server/persistencia/pos/cuenta.ts y las dos filas de auditoría) → `aResultadoAccion`.
  */
 export async function asignarClienteACuenta(cuentaId: string, clienteId: string | null): Promise<ResultadoAccion> {
   return conPermiso("pos_asignar_cliente", async (ctx) => {
-    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
-      const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
-      if (!abierta.ok) return error(abierta.mensaje);
-
-      // Quién puso (o sacó) un cliente con descuento queda en la auditoría: la `Operacion` de la venta solo guarda a quien cerró la cuenta.
-      const anterior = abierta.cuenta.clienteId ? await tx.cliente.findUnique({ where: { id: abierta.cuenta.clienteId }, select: { nombre: true } }) : null;
-      const auditar = async (nuevo: { nombre: string; porcentaje: number } | null) => {
-        const base = { entidad: "Cuenta", entidadId: abierta.cuenta.id, actorId: ctx.usuarioId, sucursalId: ctx.sucursalId } as const;
-        const mesa = abierta.cuenta.mesa.numero;
-        await registrarCambioAuditado(tx, { ...base, campo: "cliente", descripcion: `Mesa ${mesa}: cliente de la cuenta`, valorAnterior: anterior?.nombre ?? null, valorNuevo: nuevo?.nombre ?? null });
-        await registrarCambioAuditado(tx, {
-          ...base,
-          campo: "descuentoPorcentaje",
-          descripcion: `Mesa ${mesa}: % de descuento de la cuenta`,
-          valorAnterior: abierta.cuenta.descuentoPorcentaje === null ? null : Number(abierta.cuenta.descuentoPorcentaje),
-          valorNuevo: nuevo?.porcentaje ?? null,
-        });
-      };
-
-      if (clienteId === null) {
-        await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { clienteId: null, descuentoPorcentaje: null } });
-        await auditar(null);
-        return ok(`Se quitó el cliente de la mesa ${abierta.cuenta.mesa.numero}.`);
-      }
-
-      const cliente = typeof clienteId === "string" ? await tx.cliente.findUnique({ where: { id: clienteId } }) : null;
-      if (!cliente) return error("No se encontró ese cliente.");
-      if (!cliente.activo) return error(`«${cliente.nombre}» está desactivado: no se puede asignar a una cuenta.`);
-
-      await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { clienteId: cliente.id, descuentoPorcentaje: cliente.descuentoPorcentaje } });
-      await auditar({ nombre: cliente.nombre, porcentaje: Number(cliente.descuentoPorcentaje) });
-      return ok(`«${cliente.nombre}» asignado a la mesa ${abierta.cuenta.mesa.numero}, con ${cliente.descuentoPorcentaje}% de descuento.`);
-    });
+    const comando = guardComandoAsignarClienteACuenta({ cuentaId, clienteId });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await asignarClienteACuentaCasoDeUso(ctx, comando.valor));
   });
 }
 
@@ -133,17 +97,18 @@ export async function asignarClienteACuenta(cuentaId: string, clienteId: string 
  * Libera una mesa cuya cuenta se abrió pero quedó SIN NINGÚN ítem (se sentaron y se fueron, o se abrió por error): la cierra sin
  * venta. Con cualquier fila — aunque todo esté anulado — no: esa cuenta se cierra con `cerrarCuenta`, que deja la venta (o su
  * ausencia) registrada.
+ *
+ * `cerradaEn` es la hora del PEDIDO (`ctx.ahora`, la que fija `conPermiso` una vez; Pureza 1.2), igual que en `cerrarCuenta`: antes leía el reloj por su
+ * cuenta (`new Date()`). Cambio aprobado por el dueño (Hito 4, 2026-10-08); lo fija `test/pos/liberar-mesa-hora-del-pedido.test.ts`.
+ *
+ * Desde el Hito 4 de la pureza (bloque 4.1, paso 5) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_liberar_mesa")`) → formato del
+ * `cuentaId` (`guardComandoLiberarMesa`, core/features/cuentas/cuenta-apertura.guard.ts, DENTRO del envoltorio) → caso de uso (`casos-de-uso/liberar-mesa.ts`:
+ * transacción serializable, la cuenta abierta, que no tenga filas y el cierre en server/persistencia/pos/) → `aResultadoAccion`.
  */
 export async function liberarMesa(cuentaId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_liberar_mesa", async (ctx) => {
-    return conTransaccionSerializable(ctx.transaccion, async (tx) => {
-      const abierta = await cuentaAbiertaDeSucursal(tx, cuentaId, ctx.sucursalId);
-      if (!abierta.ok) return error(abierta.mensaje);
-      if ((await tx.cuentaItem.count({ where: { cuentaId: abierta.cuenta.id } })) > 0) {
-        return error(`La cuenta de la mesa ${abierta.cuenta.mesa.numero} tiene ítems cargados: cerrá la cuenta en vez de liberar la mesa.`);
-      }
-      await tx.cuenta.update({ where: { id: abierta.cuenta.id }, data: { cerradaEn: new Date(), cerradaPorId: ctx.usuarioId } });
-      return ok(`Mesa ${abierta.cuenta.mesa.numero} liberada.`);
-    });
+    const comando = guardComandoLiberarMesa({ cuentaId });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await liberarMesaCasoDeUso(ctx, comando.valor));
   });
 }

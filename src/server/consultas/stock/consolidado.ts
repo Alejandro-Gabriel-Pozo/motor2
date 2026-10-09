@@ -14,7 +14,12 @@ const CLAVES_POR_CONSULTA = 500;
  * Los movimientos posteriores al último conteo de cada clave (producto + sección + lote) se leen en LOTE: antes era una consulta por cada clave con conteo
  * (un N+1 que crecía con los conteos); ahora una consulta cada `CLAVES_POR_CONSULTA` claves.
  */
-export async function calcularStockConsolidado(sucursalId: string, db: Db): Promise<FilaStockConsolidado[]> {
+export async function calcularStockConsolidado(
+  sucursalId: string,
+  db: Db,
+  /** Las secciones de la sucursal ya leídas (`seccion.findMany({ where: { sucursalId } })`), para no volver a leerlas: Salud por producto las comparte con Alertas (O.39). */
+  seccionesCargadas?: readonly { id: string; nombre: string }[]
+): Promise<FilaStockConsolidado[]> {
   const productos = await db.producto.findMany({
     where: whereDisponibleEn(sucursalId),
     include: { unidadStock: true, insumo: true },
@@ -27,7 +32,7 @@ export async function calcularStockConsolidado(sucursalId: string, db: Db): Prom
   });
   const teorico = teoricoCrudo.map((t) => ({ productoId: t.productoId, seccionId: t.seccionId, loteVencimiento: t.loteVencimiento, saldo: Number(t._sum.cantidad ?? 0) }));
 
-  const secciones = await db.seccion.findMany({ where: { sucursalId } });
+  const secciones = seccionesCargadas ?? (await db.seccion.findMany({ where: { sucursalId } }));
 
   // Del más nuevo al más viejo: el armado se queda con el primero válido de cada clave.
   const conteosCrudos = await db.conteoFisico.findMany({

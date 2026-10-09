@@ -17,7 +17,8 @@ export function generateStaticParams() {
 const resolver = cache(async (empresa: string, sucursal: string) => {
   const empresaCarta = await empresaCartaPublica(empresa);
   if (!empresaCarta) return null;
-  return cartaPublica(empresaCarta, sucursal);
+  // La hora de la carta se fija acá, en el borde (O.22-c): solo alimenta su `generadoEn`.
+  return cartaPublica(empresaCarta, sucursal, new Date());
 });
 
 export async function generateMetadata({ params }: { params: Promise<{ empresa: string; sucursal: string }> }): Promise<Metadata> {
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<{ empresa: 
  * distingue cuál caso es (mismo criterio que hoy). Sin `headers()`/`cookies()` acá: la empresa se resuelve por el segmento
  * de ruta `[empresa]`, no por el Host (eso es Fase 6, el rewrite de `next.config.ts`).
  *
- * Caché (Fase 4): `revalidate = 300` + `revalidatePath("/(carta-publica)/carta-publica/[empresa]/[sucursal]", "page")` en cada acción de
+ * Caché (Fase 4): `revalidate = 300` + (S-26) la etiqueta de caché DE LA EMPRESA con que `cartaPublica` marca la carta (`revalidarCartasPublicas(empresaSlug)` la invalida, y solo la de esa empresa) en cada acción de
  * `src/server/actions/carta/` que cambia lo que se ve (ver `revalidar.ts`). Límite conocido: un cambio hecho fuera del módulo
  * carta que la carta muestra (precio, nombre o disponibilidad de un producto) tarda hasta 5 minutos en verse.
  */

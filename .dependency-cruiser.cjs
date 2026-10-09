@@ -20,17 +20,32 @@ const CASOS_DE_USO = "^src/server/actions/[^/]+/casos-de-uso/";
 
 /**
  * Lo único de auth/permisos/server que la carta pública (sin sesión) puede ALCANZAR, directa o transitivamente (ADR-006 + ADR-007): la
- * base por empresa y su verificación de rol (`core/auth/base.ts`, `rol-de-ejecucion.ts`) y el catálogo de claves de permiso
- * (`core/permisos/acciones.ts`, `capacidades-sucursal.ts`: solo tipos y constantes). Lista CERRADA: un archivo nuevo de `core/auth`,
- * `core/permisos` o `server` que la carta empiece a alcanzar (la sesión, el gate, una Server Action) rompe `carta-publica-alcance`.
+ * base por empresa y su verificación de rol (`core/auth/base.ts`, `rol-de-ejecucion.ts`), el catálogo de claves de permiso
+ * (`core/permisos/acciones.ts`: solo constantes) y las dos reglas PURAS de las capacidades por sucursal (`core/permisos/capacidades-sucursal.ts`: `esCapacidadSiempreHabilitada` y `resolverCapacidad`, sin base), el LECTOR de esas capacidades
+ * (`server/acceso/capacidades-sucursal.ts`: `sucursalTieneCapacidad` y `capacidadesDeSucursal`, que leen `CapacidadSucursal` con el `db` que reciben por parámetro; la carta lo alcanza en ejecución por `lecturas/carta` → `precioLocalActivoEn` → `sucursalTieneCapacidad`;
+ * salió de `core/permisos` en el bloque 2 de la pieza 5.2 del Hito 5, rama `pureza-integracion`, y es el ÚNICO archivo de `server/acceso` que la carta alcanza: no el gate, ni el menú, ni los módulos, ni la política) y el embudo del
+ * precio local (`server/lecturas/catalogo/precio-local.ts`: `precioLocalActivoEn` y `preciosLocalesVigentes`, que la carta llama para mostrar el precio que rige; desde el paso 2 de la pieza 5.2 vive acá y no en `core/catalogo`, y es un archivo de LECTURA que recibe el `db` por parámetro: no importa la sesión, el gate ni ninguna acción) y, desde S-23 (tanda T9 del endurecimiento de seguridad), el LECTOR del registro de módulos de la empresa (`server/acceso/modulos-de-empresa.ts`) con los tres archivos puros que él necesita (`core/permisos/modulo-de-la-accion.ts`, `motivos.ts` y `politica-de-empresa.ts`): la carta no se publica con el módulo apagado. Lista CERRADA: un archivo nuevo
+ * de `core/auth`, `core/permisos` o `server` que la carta empiece a alcanzar (la sesión, el gate, una Server Action) rompe `carta-publica-alcance`; que un archivo de la lista deje de alcanzarse o que una entrada nombre una carpeta lo ve `test/arquitectura/dependencias.test.ts`.
  */
 const ALCANCE_CARTA_PUBLICA = [
   "^src/core/auth/(base|rol-de-ejecucion)\\.ts$",
   "^src/core/permisos/(acciones|capacidades-sucursal)\\.ts$",
+  "^src/server/acceso/capacidades-sucursal\\.ts$",
+  "^src/server/lecturas/catalogo/precio-local\\.ts$",
   // Pureza Fase 3 (PR de la carta pública): sus lecturas y el archivo que elige el cliente SIN sesión salieron de `core/carta` a `server/`. Misma lista cerrada, solo
   // cambian las rutas: son EXACTAMENTE los cinco archivos de antes (menu-consulta, descuento-producto-consulta, empresa-carta, publica-consulta, publica-sin-sesion).
   "^src/server/lecturas/carta/(menu|descuentos|empresa|publica)\\.ts$",
   "^src/server/carta-publica/sin-sesion\\.ts$",
+  // S-23 (tanda T9 del endurecimiento de seguridad, D2 del dueño: «la carta pública no se publica con el módulo apagado»; frontera autorizada expresamente por el dueño). La carta pública
+  // pregunta, SIN sesión, qué módulos contrató la empresa (`carta`, `promociones`) al único lector del registro, y por él alcanza exactamente estos CUATRO archivos, de a uno y con motivo:
+  //  - el lector (`server/acceso/modulos-de-empresa.ts`): una lectura de `ModuloEmpresa` con el `db` que recibe (el de ESA empresa, con RLS); no importa la sesión, el gate ni ninguna acción;
+  "^src/server/acceso/modulos-de-empresa\\.ts$",
+  //  - el cálculo puro de los módulos efectivos de unas filas (`core/permisos/modulo-de-la-accion.ts`): sin base ni red; el lector lo importa y es la única fuente de «qué módulos tiene»;
+  "^src/core/permisos/modulo-de-la-accion\\.ts$",
+  //  - los motivos tipados de denegación (`core/permisos/motivos.ts`): tipos y textos, sin I/O; los importa el cálculo de arriba (un `import type`, pero el grafo lo cuenta);
+  "^src/core/permisos/motivos\\.ts$",
+  //  - la política de la empresa (`core/permisos/politica-de-empresa.ts`): tres constantes, sin imports; las importan los motivos para el texto de «la plataforma administra tus permisos».
+  "^src/core/permisos/politica-de-empresa\\.ts$",
 ];
 
 /** Ruta literal (con `/`) → expresión regular anclada que matchea ESE archivo y nada más. */
@@ -66,7 +81,10 @@ const reglasSinInternalsDeOtroDominio = DOMINIOS_DE_NEGOCIO.filter((dominio) => 
   name: "sin-internals-de-otro-dominio",
   comment: `Fuera de core/${dominio}/ solo se importa su fachada (core/${dominio}/public.ts o public-servidor.ts), nunca sus archivos internos. Las Server Actions de OTRO dominio también (las del propio dominio, server/actions/${dominio}/, sí pueden usar su core).`,
   severity: "error",
-  from: { path: `^src/(core/(?!${dominio}/)|server/actions/(?!${dominio}/)|server/(consultas|lecturas|persistencia)/)` },
+  // TODO el código fuera de su propio dominio: el núcleo de otro dominio, las acciones de otro dominio, las capas del servidor (consultas, lecturas, persistencia, acceso, adaptadores, carta pública…),
+  // `src/lib`, el `proxy`, la configuración (`env.ts`) y la consola de plataforma. La UI (`app/`, `components/`) tiene su propia regla (`ui-sin-internals-de-dominio`, con su lista de excepciones).
+  // `next.config.ts` queda afuera de esta regla a propósito: lo carga Node sin los alias de TypeScript, así que no puede importar la fachada (que usa `@/…`); importa los dos archivos hoja de carta.
+  from: { path: `^(src/(?!(core/${dominio}|server/actions/${dominio}|app|components)/)|plataforma/src/)` },
   to: { path: `^src/core/${dominio}/`, pathNot: `^src/core/${dominio}/public(-servidor)?\\.ts$` },
 }));
 
@@ -77,7 +95,17 @@ const reglaUiSinInternalsDeDominio = {
     "app/ y components/ importan de un dominio de negocio (core/<dominio>/) solo su fachada (public.ts o public-servidor.ts), nunca un archivo interno: así el dominio puede mover su código sin tocar 86 pantallas. Un componente de cliente usa public.ts; public-servidor.ts es para páginas y componentes de servidor. Excepciones (solo se achican): .dependency-cruiser-excepciones.cjs.",
   severity: "error",
   from: { path: "^src/(app|components)/", pathNot: excepcionesDe("ui-sin-internals-de-dominio") },
-  to: { path: `^src/core/(${DOMINIOS_DE_NEGOCIO.join("|")})/`, pathNot: "^src/core/[^/]+/public(-servidor)?\.ts$" },
+  to: { path: `^src/core/(${DOMINIOS_DE_NEGOCIO.join("|")})/`, pathNot: "^src/core/[^/]+/public(-servidor)?[.]ts$" },
+};
+
+/** `paginas-solo-consultas` (Pureza, trabajo 1.12): la UI (páginas, layouts y componentes de `app/` y `components/`) pide los datos a `server/consultas`, no a `server/lecturas` ni a `server/persistencia`. */
+const reglaPaginasSoloConsultas = {
+  name: "paginas-solo-consultas",
+  comment:
+    "Una página (page.tsx, layout.tsx) lee por `server/consultas`: `server/lecturas` es la capa de las lecturas COMPARTIDAS entre pantalla y escritura (las importan consultas, persistencia y acciones, ADR-026) y `server/persistencia` es de los casos de uso. Las excepciones, con motivo, en `.dependency-cruiser-excepciones.cjs`.",
+  severity: "error",
+  from: { path: "^src/(app|components)/", pathNot: excepcionesDe("paginas-solo-consultas") },
+  to: { path: "^src/server/(lecturas|persistencia)/" },
 };
 
 /**
@@ -90,6 +118,7 @@ const ARCHIVOS_EN_CICLOS_CONOCIDOS = (EXCEPCIONES["sin-ciclos"] ?? []).flatMap((
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
+    reglaPaginasSoloConsultas,
     {
       name: "core-sin-capas-superiores",
       comment: "src/core/ (dominio) no importa de app/, components/ ni server/ — ni siquiera con `import type`.",
@@ -126,7 +155,7 @@ module.exports = {
         "Solo los archivos de IMPORTADORES_DE_BASE importan core/auth/base.ts (dbDeEmpresa/dbDeUsuario/baseDeEmpresa/baseDelContexto): el resto recibe la base del contexto. Lista con motivo: .dependency-cruiser-excepciones.cjs.",
       severity: "error",
       from: { path: "^src/", pathNot: excepcionesDe("base-solo-desde-lista") },
-      to: { path: "^src/core/auth/base\.ts$" },
+      to: { path: "^src/core/auth/base[.]ts$" },
     },
     {
       name: "acciones-sin-ui",
@@ -168,6 +197,38 @@ module.exports = {
       },
     },
     {
+      name: "sesion-capa",
+      comment:
+        "server/sesion/ (el login previo al contexto de empresa: gate de signIn, invitación por token, vinculación de la cuenta de Google; Hito 3, B3) es una capa de ABAJO: la usan lib/auth.ts, las pantallas y acciones de la invitación y los casos de uso de aceptar, nunca al revés. No importa la UI, ni server/actions (las Server Actions ni los casos de uso), consultas, lecturas, persistencia ni el guard (server/acceso: el guard de quien otorgó entra por parámetro), ni Next (recibe el token ya leído de la cookie). Lista cerrada de archivos: test/arquitectura/server-sesion.test.ts.",
+      severity: "error",
+      from: { path: "^src/server/sesion/" },
+      to: { path: ["^src/(app|components)/", "^src/server/(actions|consultas|lecturas|persistencia|acceso)/", "^node_modules/next/"] },
+    },
+    // Dos entradas con el mismo nombre (como las de `persistencia-capa`): lo que la capa NO puede importar y quién NO puede importar la capa.
+    {
+      name: "auditoria-capa",
+      comment:
+        "server/auditoria/ (el escritor de la auditoría, `registrarCambioAuditado`; Hito 5, pieza 5.4, B3 y B5) es una capa de ABAJO: recibe un `db` y escribe una fila, nada más. No importa la UI, ni lib/ (ni lib/db: la base entra por parámetro), ni lo demás de server/ (acciones, consultas, lecturas, persistencia, acceso, sesión, carta pública, adaptadores, operaciones de plataforma), ni Next, ni la sesión (core/auth). Solo puede depender de core/ (la forma de un cambio y la fila). Lista cerrada de archivos: test/arquitectura/server-auditoria.test.ts.",
+      severity: "error",
+      from: { path: "^src/server/auditoria/" },
+      to: {
+        path: [
+          "^src/(app|components|lib)/",
+          "^src/server/(actions|consultas|lecturas|persistencia|acceso|sesion|carta-publica|adaptadores|operaciones-de-plataforma)/",
+          "^node_modules/next/",
+          "^src/core/auth/",
+        ],
+      },
+    },
+    {
+      name: "auditoria-capa",
+      comment:
+        "A server/auditoria/ no llegan la UI, lib/, el proxy, el entorno ni las capas de LECTURA o de acceso (consultas, lecturas, persistencia, acceso, carta pública, adaptadores): la auditoría la registra el CASO DE USO (o la operación de plataforma, o la sesión) dentro de la transacción del cambio que audita, nunca la persistencia ni una lectura. Un escritor de auditoría llamado desde la persistencia se escribiría sin que el caso de uso lo sepa y fuera del orden que fija su ficha.",
+      severity: "error",
+      from: { path: "^src/(app|components|lib)/|^src/server/(consultas|lecturas|persistencia|acceso|carta-publica|adaptadores)/|^src/(proxy|env)\\.ts$" },
+      to: { path: "^src/server/auditoria/" },
+    },
+    {
       name: "persistencia-capa",
       comment: "server/persistencia/ no importa de la UI, de server/actions/ ni de server/consultas/.",
       severity: "error",
@@ -187,7 +248,7 @@ module.exports = {
     {
       name: "accion-migrada-sin-orquestacion",
       comment:
-        "Una Server Action ya migrada a caso de uso (ACCIONES_CON_CASO_DE_USO, .dependency-cruiser-excepciones.cjs) no usa en runtime src/lib/db.ts, @prisma/client, el reintento/transacción (con-reintento, reintentar), la idempotencia I3 ni la auditoría: todo eso pasa por su caso de uso. `import type` sí se permite. Incluye la fachada core/movimientos/public-servidor.ts (C2), que reexporta reintento, transacción e idempotencia: si no, la regla se esquivaría importándolos por ahí.",
+        "Una Server Action ya migrada a caso de uso (ACCIONES_CON_CASO_DE_USO, .dependency-cruiser-excepciones.cjs) no usa en runtime src/lib/db.ts, @prisma/client, el reintento/transacción (con-reintento, reintentar, y la transacción de gobierno server/actions/con-gobierno.ts: serializable con reintento e invariantes, Hito 3 paso 0.7), la idempotencia I3 ni la auditoría (el escritor `registrarCambioAuditado`, en `src/server/auditoria/`; Hito 5, pieza 5.4: salió de `core/permisos/auditoria.ts`, que ahora es solo lo puro): todo eso pasa por su caso de uso. `import type` sí se permite. Incluye la fachada core/movimientos/public-servidor.ts (C2), que reexporta los clasificadores del reintento, el ciclo y la idempotencia, y `src/lib/transaccion-serializable.ts` (Hito 5, pieza 5.3: `conTransaccionSerializable` salió de `core/movimientos/con-reintento.ts` a `lib`): si no, la regla se esquivaría importándolos por ahí.",
       severity: "error",
       from: { path: ACCIONES_MIGRADAS },
       to: {
@@ -195,7 +256,9 @@ module.exports = {
           "^src/lib/db\\.ts$",
           "^node_modules/(@prisma/client|\\.prisma/client)/",
           "^src/core/movimientos/(con-reintento|reintentar|idempotencia|public-servidor)\\.ts$",
-          "^src/core/permisos/auditoria\\.ts$",
+          "^src/lib/transaccion-serializable\\.ts$",
+          "^src/server/auditoria/",
+          "^src/server/actions/con-gobierno\\.ts$",
         ],
         dependencyTypesNot: ["type-only"],
       },
@@ -328,7 +391,7 @@ module.exports = {
     // dependency-cruiser descartaría toda dependencia hacia un paquete y las reglas core-sin-react-next, ui-sin-prisma
     // (@prisma/client) y no-non-package-json nunca verían nada (verificado el 2026-09-27).
     // `plataforma/` (la consola, ADR-019) también se recorre: sus fronteras son las reglas `consola-*` de arriba.
-    includeOnly: ["^src/", "^plataforma/", "^node_modules/"],
+    includeOnly: ["^src/", "^plataforma/", "^next\\.config\\.ts$", "^node_modules/"],
     exclude: { path: ["^\\.next/", "^plataforma/\\.next/", "^plataforma/node_modules/"] },
     doNotFollow: { path: ["^node_modules/"] },
     reporterOptions: { text: { highlightFocused: true } },

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
-import { inicioDeSesionPermitido } from "../../src/core/auth/acceso";
-import { invitacionDelToken, nombreCookieInvitacion, opcionesCookieInvitacion } from "../../src/core/auth/invitacion";
+import { inicioDeSesionPermitido } from "../../src/server/sesion/acceso";
+import { nombreCookieInvitacion, opcionesCookieInvitacion } from "../../src/core/auth/invitacion";
+import { invitacionDelToken } from "../../src/server/sesion/invitacion";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
 import { azarDelProceso } from "../../src/lib/azar";
 
@@ -28,7 +29,7 @@ async function crearInvitacion(parcial: { email?: string; venceEn?: Date; estado
 }
 
 const entrar = (token: string | undefined, email = EMAIL) =>
-  inicioDeSesionPermitido({ emailUsuario: email, emailPerfil: email, hd: undefined, tokenDeSesionAbierta: undefined, tokenDeInvitacion: token });
+  inicioDeSesionPermitido({ emailUsuario: email, emailPerfil: email, tokenDeSesionAbierta: undefined, tokenDeInvitacion: token });
 
 beforeEach(async () => {
   await limpiarBaseDeTest();
@@ -88,20 +89,20 @@ describe("gate de login con invitación", () => {
     const token = await crearInvitacion();
     const otro = await prismaAdmin.user.create({ data: { email: "otro@gmail.com" } });
     await prismaAdmin.session.create({ data: { userId: otro.id, sessionToken: "sesion-de-otro", expires: new Date(Date.now() + 3_600_000) } });
-    expect(await inicioDeSesionPermitido({ emailUsuario: EMAIL, emailPerfil: EMAIL, hd: undefined, tokenDeSesionAbierta: "sesion-de-otro", tokenDeInvitacion: token })).toBe(false);
+    expect(await inicioDeSesionPermitido({ emailUsuario: EMAIL, emailPerfil: EMAIL, tokenDeSesionAbierta: "sesion-de-otro", tokenDeInvitacion: token })).toBe(false);
   });
 });
 
 describe("invitacionDelToken", () => {
   it("devuelve la vista sin el hash, con el estado efectivo, y null para un token desconocido o mal formado", async () => {
     const token = await crearInvitacion();
-    const vista = await invitacionDelToken(token);
+    const vista = await invitacionDelToken(token, new Date());
     expect(vista).toMatchObject({ empresaId: EMPRESA, nombreEmpresa: "Nueva en alta", estadoEmpresa: "PROVISIONING", email: EMAIL, estado: "PENDIENTE" });
     expect(JSON.stringify(vista)).not.toContain(hashDeToken(token));
     expect((await invitacionDelToken(token, new Date(Date.now() + 2 * 3_600_000)))?.estado).toBe("VENCIDA");
-    expect(await invitacionDelToken(generarTokenOpaco(azarDelProceso))).toBeNull();
-    expect(await invitacionDelToken("no-es-un-token")).toBeNull();
-    expect(await invitacionDelToken(undefined)).toBeNull();
+    expect(await invitacionDelToken(generarTokenOpaco(azarDelProceso), new Date())).toBeNull();
+    expect(await invitacionDelToken("no-es-un-token", new Date())).toBeNull();
+    expect(await invitacionDelToken(undefined, new Date())).toBeNull();
   });
 });
 
@@ -112,9 +113,9 @@ describe("invitacionDelToken busca por el hash del token, no solo por el RLS", (
     await prismaAdmin.invitacion.create({
       data: { empresaId: "empresa_principal", email: "ya-gerente@gmail.com", rolEmpresa: "gerente", hashToken: hashDeToken("T".repeat(43)), venceEn: new Date(Date.now() + 3_600_000), estado: "ACEPTADA", aceptadaEn: new Date(), aceptadaPorId: u.id },
     });
-    expect(await invitacionDelToken(generarTokenOpaco(azarDelProceso))).toBeNull();
+    expect(await invitacionDelToken(generarTokenOpaco(azarDelProceso), new Date())).toBeNull();
     const token = await crearInvitacion();
-    expect(await invitacionDelToken(token)).toMatchObject({ empresaId: EMPRESA, email: EMAIL });
+    expect(await invitacionDelToken(token, new Date())).toMatchObject({ empresaId: EMPRESA, email: EMAIL });
   });
 });
 

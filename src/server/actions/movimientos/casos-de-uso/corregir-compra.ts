@@ -3,8 +3,9 @@ import type { ContextoUsuario } from "@/core/auth/contexto";
 import { cabeceraCoincide, clavesDeFactura, descripcionAuditoriaCorreccion, diferenciasDeCabecera, mensajeCompraCorregida, normalizarCorreccion, validarCorreccion } from "@/core/compras/public";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import type { ComandoCorregirCompra, ResultadoCorregirCompra } from "@/core/features/compras/compra.schema";
-import { conTransaccionSerializable, esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/public-servidor";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarCompraParaCorregir, cargarProveedorParaCorreccion, hayOtraCompraVigenteConFactura } from "@/server/persistencia/compras/cargar-compra-para-corregir";
 import { escribirCorreccionDeCompra } from "@/server/persistencia/compras/escribir-correccion-de-compra";
@@ -24,7 +25,7 @@ import { escribirCorreccionDeCompra } from "@/server/persistencia/compras/escrib
  * @idempotency Por estado — si ya tiene exactamente lo pedido responde "nada que corregir" sin escribir (idempotencia natural, sin clave I3).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento), con `.catch(esChoqueDeFacturaUnica)` para el índice único parcial de factura.
  * @sideEffects registrarCambioAuditado (uno por cada campo que cambió).
- * @ficha permiso=corregir_compra transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=corregir_compra transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function corregirCompraCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "transaccion">,

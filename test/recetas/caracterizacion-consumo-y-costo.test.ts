@@ -11,6 +11,7 @@ import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartida
 import { generarReporteDiferenciasAjustes } from "../../src/server/consultas/reportes/diferencias-ajustes";
 import { claveCostoHistorico } from "../../src/core/reportes/costo-historico";
 import { reconstruirCostosDeVenta } from "../../src/server/consultas/reportes/costo-historico";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Test de caracterización (plan docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 1) — capturado EXACTO del
@@ -191,7 +192,7 @@ describe("Caracterización: consumo y costo ANTES del rendimiento por sucursal (
   });
 
   it("(e) generarReporteDiferenciasAjustes: SalsaBase/Tomate/Carne quedan en 'Solo receta' (grupo b), sin diferencia", async () => {
-    const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma);
+    const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     const porNombre = new Map(filas.map((f) => [f.producto, f]));
 
     expect(porNombre.get("Tomate")!.grupo).toBe("b");

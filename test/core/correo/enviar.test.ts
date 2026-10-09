@@ -9,7 +9,8 @@ vi.mock("../../../src/lib/reportar-error", () => ({
 }));
 
 import { configuracionDelCanal, problemasDeConfiguracionDeCorreo } from "../../../src/core/correo/configuracion";
-import { crearEnviadorDelCanal, enviadorEnMemoriaDelCanal } from "../../../src/core/correo/enviar";
+import { crearEnviadorDelCanal as crearEnviadorDelCanalConFabrica, enviadorEnMemoriaDelCanal } from "../../../src/core/correo/enviar";
+import { crearEnviadorResend } from "../../../src/lib/correo/resend";
 import { enviarCorreo, olvidarEnviadoresDelProceso } from "../../../src/lib/enviar-correo";
 
 /**
@@ -25,6 +26,10 @@ beforeEach(() => {
   for (const canal of ["avisos", "operativo"] as const) enviadorEnMemoriaDelCanal(canal).vaciar();
   olvidarEnviadoresDelProceso();
 });
+
+// La selección recibe la fábrica de Resend inyectada (en producción, `lib/enviar-correo.ts`).
+const crearEnviadorDelCanal = (canal: Parameters<typeof crearEnviadorDelCanalConFabrica>[0], source: Parameters<typeof crearEnviadorDelCanalConFabrica>[1]) =>
+  crearEnviadorDelCanalConFabrica(canal, source, crearEnviadorResend);
 
 describe("crearEnviadorDelCanal", () => {
   it("en tests es siempre memoria, aunque el entorno tenga claves: un test no manda mails de verdad", () => {

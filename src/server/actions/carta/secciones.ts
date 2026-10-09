@@ -1,8 +1,11 @@
 "use server";
 
-import { validarImagenUrlCarta, validarNombreSeccionCarta, validarOrdenCarta, validarTextoLibreCarta, LARGO_MAXIMO_DESCRIPCION_CARTA, LARGO_MAXIMO_TITULO_CARTA } from "@/core/carta/validaciones";
+import { guardComandoGuardarSeccionCarta } from "@/core/features/carta/secciones.guard";
+import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
-import { error, ok, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
+import { actualizarActivaSeccionCartaCasoDeUso } from "./casos-de-uso/actualizar-activa-seccion-carta";
+import { guardarSeccionCartaCasoDeUso } from "./casos-de-uso/guardar-seccion-carta";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
@@ -10,6 +13,10 @@ import { revalidarCartasPublicas } from "./revalidar";
  * sucursal, ADR-009 C3, decide qué contenido pone en cada sección, no las secciones). Solo escriben en
  * `SeccionCarta`. Cada producto suelto y cada ítem agrupado elige su sección directo (docs/plan-carta-seccion-directa-2026-09-25.md):
  * la Categoría de producto no ubica nada en la carta. Gate: `carta_secciones` (empresa; solo admin en la semilla).
+ *
+ * Desde el Hito 5 de la pureza (bloque D, `docs/plan-hito-5-pureza.md` §6.1) las dos acciones son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{guardar-seccion-carta,actualizar-activa-seccion-carta}.ts`; escrituras en server/persistencia/carta/secciones.ts; el formato en
+ * core/features/carta/secciones.guard.ts): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las dos revalidan la carta pública solo si salió bien, como antes.
  */
 
 export interface DatosSeccionCarta {
@@ -22,45 +29,30 @@ export interface DatosSeccionCarta {
   orden?: number | string | null;
 }
 
+/**
+ * Alta (sin `id`) o edición (con `id`) de una sección de carta. Permiso (`conPermisoDeEmpresa("carta_secciones")`) → formato de los datos
+ * (`guardComandoGuardarSeccionCarta`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/guardar-seccion-carta.ts`) → revalidar la carta pública si salió bien
+ * → `aResultadoAccion` y el id y el nombre para el `ResultadoConId`.
+ */
 export async function guardarSeccionCarta(datos: DatosSeccionCarta): Promise<ResultadoConId> {
   return conPermisoDeEmpresa<ResultadoConId>("carta_secciones", async (ctx) => {
-    const nombre = validarNombreSeccionCarta(datos.nombre);
-    if (!nombre.ok) return error(nombre.mensaje);
-    const titulo = validarTextoLibreCarta(datos.titulo, "El título", LARGO_MAXIMO_TITULO_CARTA);
-    if (!titulo.ok) return error(titulo.mensaje);
-    const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
-    if (!descripcion.ok) return error(descripcion.mensaje);
-    const imagenUrl = validarImagenUrlCarta(datos.imagenUrl);
-    if (!imagenUrl.ok) return error(imagenUrl.mensaje);
-    const orden = validarOrdenCarta(datos.orden);
-    if (!orden.ok) return error(orden.mensaje);
-
-    const repetida = await ctx.db.seccionCarta.findFirst({
-      where: { nombre: { equals: nombre.valor, mode: "insensitive" }, ...(datos.id ? { NOT: { id: datos.id } } : {}) },
-    });
-    if (repetida) return error(`Ya existe la sección de carta "${repetida.nombre}".`);
-
-    const data = { nombre: nombre.valor, titulo: titulo.valor, descripcion: descripcion.valor, imagenUrl: imagenUrl.valor, orden: orden.valor };
-    if (datos.id) {
-      const existente = await ctx.db.seccionCarta.findUnique({ where: { id: datos.id } });
-      if (!existente) return error("No se encontró la sección de carta.");
-      const s = await ctx.db.seccionCarta.update({ where: { id: datos.id }, data });
-      revalidarCartasPublicas();
-      return okConId(`Sección de carta "${s.nombre}" guardada.`, s.id, s.nombre);
-    }
-    const s = await ctx.db.seccionCarta.create({ data });
-    revalidarCartasPublicas();
-    return okConId(`Sección de carta "${s.nombre}" creada.`, s.id, s.nombre);
+    const comando = guardComandoGuardarSeccionCarta(datos);
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await guardarSeccionCartaCasoDeUso(ctx, comando.valor);
+    if (r.ok) revalidarCartasPublicas(ctx.empresaSlug);
+    const base = aResultadoAccion(r);
+    return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
 }
 
-/** Nunca se borra una sección de carta: se apaga (deja de salir en la carta con todo lo suyo) y se puede volver a prender. */
+/**
+ * Nunca se borra una sección de carta: se apaga (deja de salir en la carta con todo lo suyo) y se puede volver a prender. Permiso → caso de uso
+ * (`casos-de-uso/actualizar-activa-seccion-carta.ts`) → revalidar si salió bien → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
+ */
 export async function actualizarActivaSeccionCarta(seccionCartaId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_secciones", async (ctx) => {
-    const existente = await ctx.db.seccionCarta.findUnique({ where: { id: seccionCartaId } });
-    if (!existente) return error("No se encontró la sección de carta.");
-    await ctx.db.seccionCarta.update({ where: { id: seccionCartaId }, data: { activa } });
-    revalidarCartasPublicas();
-    return ok(`Sección de carta "${existente.nombre}" ${activa ? "activada" : "desactivada"}.`);
+    const resultado = await actualizarActivaSeccionCartaCasoDeUso(ctx, { seccionCartaId, activa });
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
+    return aResultadoAccion(resultado);
   });
 }

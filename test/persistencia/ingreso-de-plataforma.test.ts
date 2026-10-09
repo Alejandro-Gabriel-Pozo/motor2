@@ -2,14 +2,18 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cifrarSecreto } from "../../src/core/plataforma/cifrado";
 import { generarCodigosDeRecuperacion, hashDeCodigoDeRecuperacion } from "../../src/core/plataforma/codigos";
+import { generarPedidoDeIngreso, type PedidoDeIngreso } from "../../src/core/plataforma/pedido-de-ingreso";
 import { hashDeToken } from "../../src/core/seguridad/tokens";
 import {
   BLOQUEO_POR_FALLOS_MS,
   MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA,
   MAXIMO_DE_FALLOS_DE_SEGUNDO_FACTOR,
   MAXIMO_DE_INTENTOS_POR_CODIGO,
+  MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN,
+  VENTANA_DE_PEDIDOS_MS,
   VIDA_DEL_CODIGO_DE_INGRESO_MS,
 } from "../../src/core/plataforma/limites";
+import { origenSinCupoDeCodigos } from "../../plataforma/src/servidor/limitador-de-pedidos";
 import { VIDA_DE_SESION_PENDIENTE_MS } from "../../src/core/plataforma/sesion";
 import { codigoTotp, generarSecretoTotp, pasoDeTotp } from "../../src/core/plataforma/totp";
 import {
@@ -52,19 +56,30 @@ async function sembrarAdmin(email = EMAIL, activo = true) {
   return { id, secreto, recuperacion };
 }
 
-/** Pide el código y lo lee del mail armado (lo único que viaja en claro, y solo por el correo). */
+/**
+ * El «navegador» del administrador: el pedido (la cookie) del último código que pidió. Cada `pedirCodigo` lo renueva, como el navegador reemplaza la cookie al
+ * pedir otro código. Un atacante tiene SU propio pedido (otro navegador): nunca ve el de acá.
+ */
+let pedido: PedidoDeIngreso;
+const nuevoPedido = () => generarPedidoDeIngreso(azarDelProceso);
+
+/** Pide el código desde el navegador del administrador y lo lee del mail armado (lo único que viaja en claro, y solo por el correo). */
 async function pedirCodigo(email = EMAIL): Promise<string> {
-  const mensaje = await prepararCodigoDeIngreso(prismaAdmin, deps, email);
+  pedido = nuevoPedido();
+  const mensaje = await prepararCodigoDeIngreso(prismaAdmin, deps, email, pedido);
   expect(mensaje).not.toBeNull();
   const coincidencia = /\b(\d{6})\b/.exec(mensaje!.texto);
   expect(coincidencia).not.toBeNull();
   return coincidencia![1];
 }
 
+/** Verifica el código del mail con la cookie del navegador del administrador (a menos que se le pase otra). */
+const verificar = (email: string, codigo: string, conPedido: PedidoDeIngreso | null = pedido) => verificarCodigoDeIngreso(prismaAdmin, deps, email, codigo, conPedido);
+
 const otro = (codigo: string) => (codigo === "000000" ? "000001" : "000000");
 
 async function abrirSesionPendiente(): Promise<string> {
-  const resultado = await verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, await pedirCodigo());
+  const resultado = await verificar(EMAIL, await pedirCodigo());
   expect(resultado.ok).toBe(true);
   return resultado.ok ? resultado.token : "";
 }
@@ -93,7 +108,7 @@ afterAll(() => prismaAdmin.$disconnect());
 
 describe("paso 1 — el código del mail", () => {
   it("el mail lleva el código a la casilla del administrador; la base guarda solo un HMAC, nunca el código", async () => {
-    const mensaje = await prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL);
+    const mensaje = await prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL, nuevoPedido());
     expect(mensaje?.para).toEqual([EMAIL]);
     const codigo = /\b(\d{6})\b/.exec(mensaje!.texto)![1];
     const guardado = await prismaAdmin.codigoDeIngresoPlataforma.findFirstOrThrow({ where: { adminId } });
@@ -104,60 +119,55 @@ describe("paso 1 — el código del mail", () => {
 
   it("el email se normaliza (mayúsculas y espacios) al pedir y al verificar", async () => {
     const codigo = await pedirCodigo("  Admin@Plataforma.TEST ");
-    const resultado = await verificarCodigoDeIngreso(prismaAdmin, deps, " ADMIN@plataforma.test", codigo);
+    const resultado = await verificar(" ADMIN@plataforma.test", codigo);
     expect(resultado.ok).toBe(true);
   });
 
   it("un email que no es de un administrador activo no genera código ni mail (y no se distingue de uno que sí)", async () => {
-    expect(await prepararCodigoDeIngreso(prismaAdmin, deps, "nadie@plataforma.test")).toBeNull();
-    expect(await prepararCodigoDeIngreso(prismaAdmin, deps, "esto no es un email")).toBeNull();
+    expect(await prepararCodigoDeIngreso(prismaAdmin, deps, "nadie@plataforma.test", nuevoPedido())).toBeNull();
+    expect(await prepararCodigoDeIngreso(prismaAdmin, deps, "esto no es un email", nuevoPedido())).toBeNull();
     await sembrarAdmin("inactivo@plataforma.test", false);
-    expect(await prepararCodigoDeIngreso(prismaAdmin, deps, "inactivo@plataforma.test")).toBeNull();
+    expect(await prepararCodigoDeIngreso(prismaAdmin, deps, "inactivo@plataforma.test", nuevoPedido())).toBeNull();
     expect(await prismaAdmin.codigoDeIngresoPlataforma.count({ where: { adminId: { not: adminId } } })).toBe(0);
     // Y el que sí existe, fallando, recibe lo mismo que el que no existe: `{ ok: false }` sin motivo.
-    const existente = await verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, "123456");
-    const inexistente = await verificarCodigoDeIngreso(prismaAdmin, deps, "nadie@plataforma.test", "123456");
+    pedido = nuevoPedido();
+    const existente = await verificar(EMAIL, "123456");
+    const inexistente = await verificar("nadie@plataforma.test", "123456");
     expect(existente).toEqual(inexistente);
     expect(existente).toEqual({ ok: false });
   });
 
   it("se pueden pedir como mucho N códigos por hora; pasada la hora, se vuelve a poder", async () => {
     for (let i = 0; i < MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA; i++) await pedirCodigo();
-    expect(await prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL)).toBeNull();
+    expect(await prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL, nuevoPedido())).toBeNull();
     avanzar(61 * 60 * 1000);
-    expect(await prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL)).not.toBeNull();
-  });
-
-  it("un código nuevo invalida el anterior, aunque fuera el correcto", async () => {
-    const viejo = await pedirCodigo();
-    await pedirCodigo();
-    expect(await verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, viejo)).toEqual({ ok: false });
+    expect(await prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL, nuevoPedido())).not.toBeNull();
   });
 
   it("el código sirve una sola vez", async () => {
     const codigo = await pedirCodigo();
-    expect((await verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, codigo)).ok).toBe(true);
-    expect(await verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, codigo)).toEqual({ ok: false });
+    expect((await verificar(EMAIL, codigo)).ok).toBe(true);
+    expect(await verificar(EMAIL, codigo)).toEqual({ ok: false });
   });
 
   it("vence a los 10 minutos (el último instante todavía vale)", async () => {
     const codigo = await pedirCodigo();
     avanzar(VIDA_DEL_CODIGO_DE_INGRESO_MS);
-    expect(await verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, codigo)).toEqual({ ok: false });
+    expect(await verificar(EMAIL, codigo)).toEqual({ ok: false });
     const otroCodigo = await pedirCodigo();
     avanzar(VIDA_DEL_CODIGO_DE_INGRESO_MS - 1);
-    expect((await verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, otroCodigo)).ok).toBe(true);
+    expect((await verificar(EMAIL, otroCodigo)).ok).toBe(true);
   });
 
   it("agota los intentos: pasados N errores ni el código correcto sirve", async () => {
     const codigo = await pedirCodigo();
-    for (let i = 0; i < MAXIMO_DE_INTENTOS_POR_CODIGO; i++) expect(await verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, otro(codigo))).toEqual({ ok: false });
-    expect(await verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, codigo)).toEqual({ ok: false });
+    for (let i = 0; i < MAXIMO_DE_INTENTOS_POR_CODIGO; i++) expect(await verificar(EMAIL, otro(codigo))).toEqual({ ok: false });
+    expect(await verificar(EMAIL, codigo)).toEqual({ ok: false });
   });
 
   it("los intentos se reservan de forma atómica: en paralelo no se consigue ningún intento de más", async () => {
     const codigo = await pedirCodigo();
-    const malos = Array.from({ length: 30 }, () => verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, otro(codigo)));
+    const malos = Array.from({ length: 30 }, () => verificar(EMAIL, otro(codigo)));
     await Promise.all(malos);
     const guardado = await prismaAdmin.codigoDeIngresoPlataforma.findFirstOrThrow({ where: { adminId } });
     expect(guardado.intentosFallidos).toBe(MAXIMO_DE_INTENTOS_POR_CODIGO);
@@ -165,7 +175,7 @@ describe("paso 1 — el código del mail", () => {
 
   it("dos pedidos simultáneos con el código correcto abren UNA sola sesión", async () => {
     const codigo = await pedirCodigo();
-    const resultados = await Promise.all([verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, codigo), verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, codigo)]);
+    const resultados = await Promise.all([verificar(EMAIL, codigo), verificar(EMAIL, codigo)]);
     expect(resultados.filter((r) => r.ok)).toHaveLength(1);
     expect(await prismaAdmin.sesionPlataforma.count({ where: { adminId } })).toBe(1);
   });
@@ -180,8 +190,163 @@ describe("paso 1 — el código del mail", () => {
 
   it("un código con espacios o de formato raro no abre nada", async () => {
     const codigo = await pedirCodigo();
-    expect(await verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, "")).toEqual({ ok: false });
-    expect(await verificarCodigoDeIngreso(prismaAdmin, deps, EMAIL, `${codigo}0`)).toEqual({ ok: false });
+    expect(await verificar(EMAIL, "")).toEqual({ ok: false });
+    expect(await verificar(EMAIL, `${codigo}0`)).toEqual({ ok: false });
+  });
+});
+
+/**
+ * S-08 (T4 del endurecimiento): el cupo de códigos y los intentos de un administrador son SUYOS. Un anónimo que conoce el email de un administrador pide códigos
+ * (la consola responde igual exista o no) y, con el diseño viejo, cada pedido invalidaba el código vigente, gastaba el cupo de 5 por hora y las verificaciones falsas
+ * quemaban los 5 intentos del código de verdad: el administrador quedaba afuera. Y el tope se contaba (`count`) fuera de la transacción que creaba el código.
+ */
+describe("S-08 — un anónimo no le saca al administrador el código, los intentos ni el cupo", () => {
+  /** Lo que haría quien conoce el email del administrador: pide códigos desde SU navegador y prueba números. Los mails llegan a la casilla del administrador, no a él. */
+  async function atacar(pedidos: number) {
+    for (let i = 0; i < pedidos; i++) {
+      const suyo = nuevoPedido();
+      await prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL, suyo);
+      expect(await verificar(EMAIL, "000000", suyo)).toEqual({ ok: false });
+    }
+  }
+
+  it("cinco pedidos y cinco verificaciones falsas de un anónimo: el administrador igual pide su código y entra", async () => {
+    await atacar(5);
+    const codigo = await pedirCodigo();
+    const resultado = await verificar(EMAIL, codigo);
+    expect(resultado.ok).toBe(true);
+  });
+
+  /**
+   * I-1 de la auditoría intermedia (corrección de T4): el ataque REAL es de UNA sola IP que insiste con el email del administrador MÁS veces que su cupo por origen
+   * (el test de arriba llama directo a la preparación, sin pasar por el cupo por origen, con 5 pedidos: nunca llega al borde del techo de 10). Acá corre el limitador de verdad (el de `pedirCodigo`) y la preparación de verdad
+   * contra Postgres, con el reloj del test: lo que cuenta es lo que ALCANZA a escribirse en la base, porque el techo del administrador (10 por hora) se cuenta
+   * sobre todos los códigos, vengan de quien vengan.
+   */
+  describe("una sola IP, insistiendo más que su cupo por origen (I-1)", () => {
+    let ipDelTest = 0;
+    /** Cada caso ataca desde una IP propia: el limitador vive en la memoria del proceso y no se reinicia. */
+    const ipNueva = () => `198.51.100.${++ipDelTest}`;
+    const MINUTO = 60 * 1000;
+
+    /** Un POST a `/login` de ese origen a ese instante (ms desde el inicio): pasa por el cupo por origen y, si lo deja pasar, por la preparación. */
+    async function pedirDesde(origen: string, enMs: number): Promise<boolean> {
+      reloj = new Date(INICIO.getTime() + enMs);
+      if (origenSinCupoDeCodigos(origen, reloj.getTime())) return false;
+      return (await prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL, nuevoPedido())) !== null;
+    }
+
+    /** La mayor cantidad de códigos que quedaron escritos dentro de cualquier hora móvil (la ventana con que se cuenta el techo del administrador). */
+    async function maximoEnUnaHora(): Promise<number> {
+      const filas = await prismaAdmin.codigoDeIngresoPlataforma.findMany({ where: { adminId }, select: { creadoEn: true }, orderBy: { creadoEn: "asc" } });
+      const instantes = filas.map((f) => f.creadoEn.getTime());
+      return Math.max(0, ...instantes.map((fin) => instantes.filter((t) => t > fin - VENTANA_DE_PEDIDOS_MS && t <= fin).length));
+    }
+
+    it("en la ráfaga del borde de la ventana (lo peor que admite un limitador de ventana fija) el administrador, desde otra IP, todavía obtiene su código", async () => {
+      const atacante = ipNueva();
+      const pedidosPorRafaga = MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN * 3;
+      // Ancla la ventana del atacante, deja correr casi toda la ventana y dispara una ráfaga al final; apenas empieza la ventana siguiente dispara otra.
+      await pedirDesde(atacante, 0);
+      for (let i = 0; i < pedidosPorRafaga; i++) await pedirDesde(atacante, VENTANA_DE_PEDIDOS_MS - MINUTO);
+      for (let i = 0; i < pedidosPorRafaga; i++) await pedirDesde(atacante, VENTANA_DE_PEDIDOS_MS + MINUTO);
+
+      expect(await maximoEnUnaHora(), "una sola IP no puede dejar escritos todos los códigos del techo").toBeLessThan(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA);
+      // El administrador pide desde SU IP, un minuto después de la ráfaga, y entra.
+      reloj = new Date(INICIO.getTime() + VENTANA_DE_PEDIDOS_MS + 2 * MINUTO);
+      expect(origenSinCupoDeCodigos(ipNueva(), reloj.getTime())).toBe(false);
+      const codigo = await pedirCodigo();
+      expect((await verificar(EMAIL, codigo)).ok).toBe(true);
+    });
+
+    it("a goteo constante (un pedido por minuto durante seis horas) ninguna hora móvil llega al techo, y el administrador pide su código al final", async () => {
+      const atacante = ipNueva();
+      for (let minuto = 0; minuto < 6 * 60; minuto++) await pedirDesde(atacante, minuto * MINUTO);
+      expect(await maximoEnUnaHora()).toBeLessThan(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA);
+      reloj = new Date(INICIO.getTime() + 6 * 60 * MINUTO);
+      const codigo = await pedirCodigo();
+      expect((await verificar(EMAIL, codigo)).ok).toBe(true);
+    });
+  });
+
+  it("un pedido ajeno POSTERIOR no invalida el código vigente del administrador ni le gasta un solo intento", async () => {
+    const codigo = await pedirCodigo();
+    const delAdmin = pedido;
+    await atacar(3);
+    // Ningún pedido ajeno invalida nada (antes, cada pedido nuevo invalidaba los vigentes del administrador)...
+    expect(await prismaAdmin.codigoDeIngresoPlataforma.count({ where: { adminId, invalidadoEn: { not: null } } })).toBe(0);
+    // ...y las verificaciones falsas gastaron los intentos de los códigos del atacante, no los del administrador.
+    expect(await prismaAdmin.codigoDeIngresoPlataforma.findUniqueOrThrow({ where: { id: delAdmin.codigoId } })).toMatchObject({ invalidadoEn: null, usadoEn: null, intentosFallidos: 0 });
+    expect((await verificar(EMAIL, codigo, delAdmin)).ok).toBe(true);
+  });
+
+  it("un código solo se puede comprobar con el pedido que lo originó: el de otro navegador no sirve y no gasta intentos del código ajeno", async () => {
+    const codigo = await pedirCodigo();
+    const delAdmin = pedido;
+    const ajeno = nuevoPedido();
+    // Aun sabiendo el código (lo leyó del mail), con otro pedido, sin pedido o con uno inventado no entra.
+    expect(await verificar(EMAIL, codigo, ajeno)).toEqual({ ok: false });
+    expect(await verificar(EMAIL, codigo, null)).toEqual({ ok: false });
+    expect(await verificar(EMAIL, codigo, { codigoId: "0".repeat(32), nonce: delAdmin.nonce })).toEqual({ ok: false });
+    expect(await prismaAdmin.codigoDeIngresoPlataforma.findUniqueOrThrow({ where: { id: delAdmin.codigoId } })).toMatchObject({ intentosFallidos: 0, invalidadoEn: null });
+    // Con el id del código pero SIN el nonce (el HMAC lo lleva en el contexto) tampoco: el código no se puede comprobar fuera del navegador que lo pidió.
+    expect(await verificar(EMAIL, codigo, { codigoId: delAdmin.codigoId, nonce: ajeno.nonce })).toEqual({ ok: false });
+    // El pedido de verdad sigue sirviendo.
+    expect((await verificar(EMAIL, codigo, delAdmin)).ok).toBe(true);
+  });
+
+  it("el cupo por hora se cuenta DENTRO de la transacción, bajo el cerrojo del administrador: pedidos en paralelo nunca lo superan", async () => {
+    // Al borde: queda UN lugar y ocho pedidos llegan a la vez. Sin el cerrojo, todos cuentan «hay lugar» antes de que alguno cree (antes: `count` y después `create`).
+    await prismaAdmin.codigoDeIngresoPlataforma.createMany({
+      data: Array.from({ length: MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA - 1 }, (_, i) => ({ id: `previo-${i}`, adminId, hashCodigo: "0".repeat(64), creadoEn: reloj, venceEn: new Date(reloj.getTime() + VIDA_DEL_CODIGO_DE_INGRESO_MS) })),
+    });
+    const pedidos = Array.from({ length: 8 }, nuevoPedido);
+    const mensajes = await Promise.all(pedidos.map((p) => prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL, p)));
+    expect(mensajes.filter((m) => m !== null)).toHaveLength(1);
+    expect(await prismaAdmin.codigoDeIngresoPlataforma.count({ where: { adminId } })).toBe(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA);
+  });
+
+  it("pedidos en paralelo desde cero también respetan el cupo y entregan exactamente el cupo", async () => {
+    const pedidos = Array.from({ length: MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA + 10 }, nuevoPedido);
+    const mensajes = await Promise.all(pedidos.map((p) => prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL, p)));
+    expect(mensajes.filter((m) => m !== null)).toHaveLength(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA);
+    expect(await prismaAdmin.codigoDeIngresoPlataforma.count({ where: { adminId } })).toBe(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA);
+  });
+
+  it("el techo es DIEZ por hora (B8, a pedido del dueño 2026-10-09): 25 pedidos en paralelo entregan exactamente 10, con el número escrito a mano", async () => {
+    // Los casos de arriba usan la constante y seguirían verdes con cualquier valor; este fija el número que el dueño pidió (duplica el margen contra el bloqueo
+    // respecto de los 5 de antes sin cuadruplicar la superficie de adivinanza de los 20 de la primera versión de S-08).
+    expect(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA).toBe(10);
+    const mensajes = await Promise.all(Array.from({ length: 25 }, nuevoPedido).map((p) => prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL, p)));
+    expect(mensajes.filter((m) => m !== null)).toHaveLength(10);
+    expect(await prismaAdmin.codigoDeIngresoPlataforma.count({ where: { adminId } })).toBe(10);
+  });
+
+  it("verificar hace las MISMAS consultas haya o no administrador, fila o pedido: el tiempo de respuesta no delata qué emails son de un administrador", async () => {
+    const consultas: string[] = [];
+    const contando = prismaAdmin.$extends({
+      query: {
+        $allOperations({ model, operation, args, query }) {
+          consultas.push(`${model ?? "-"}.${operation}`);
+          return query(args);
+        },
+      },
+    }) as unknown as typeof prismaAdmin;
+    const consultasDe = async (email: string, conPedido: PedidoDeIngreso | null) => {
+      consultas.length = 0;
+      expect(await verificarCodigoDeIngreso(contando, deps, email, "123456", conPedido)).toEqual({ ok: false });
+      return [...consultas];
+    };
+
+    await pedirCodigo();
+    const conFilaPropia = await consultasDe(EMAIL, pedido);
+    const conPedidoAjeno = await consultasDe(EMAIL, nuevoPedido());
+    const sinPedido = await consultasDe(EMAIL, null);
+    const emailInexistente = await consultasDe("nadie@plataforma.test", nuevoPedido());
+    expect(conFilaPropia.length).toBeGreaterThan(0);
+    expect(conPedidoAjeno).toEqual(conFilaPropia);
+    expect(sinPedido).toEqual(conFilaPropia);
+    expect(emailInexistente).toEqual(conFilaPropia);
   });
 });
 

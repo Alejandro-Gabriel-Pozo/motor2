@@ -1,22 +1,9 @@
-import type { Prisma } from "@prisma/client";
-import { causaDeErrorDeDriver, errorConocidoDeBase, esErrorDeBaseConCodigo, esFalloDeSerializacionEnSqlCrudo } from "@/core/datos/errores-de-base";
-import type { Transaccion } from "@/lib/db-tipos";
-import { conReintento, type OpcionesEspera } from "./reintentar";
+import { causaDeErrorDeDriver, esErrorDeBaseConCodigo, esFalloDeSerializacionEnSqlCrudo } from "@/core/datos/errores-de-base";
 
-/**
- * Toda escritura de esta porción (registrarMovimiento/registrarVenta/
- * registrarConteoFisico/...) suma el Kardex para validar stock y recién
- * después escribe, DENTRO de la misma transacción — el equivalente real de
- * `conLock_`/`LockService` (Apps Script: un lock global de script que
- * serializaba TODA escritura, ver Movimientos.js). Acá no hay un lock de
- * aplicación: se usa aislamiento SERIALIZABLE (Postgres aborta la
- * transacción — código P2034 — si detecta que el resultado no sería
- * serializable frente a otra transacción concurrente) + reintento, mismo
- * criterio que ya usa este proyecto para P2002 (crearConCodigoAutogenerado,
- * porción Catálogo) y el choque de versión de receta (guardarReceta): dejar
- * que Postgres sea el árbitro final en vez de un lock de aplicación, que
- * solo protege dentro de un mismo proceso Node.
- */
+// Los dos CLASIFICADORES de errores de la transacción serializable (puros: reciben un error y dicen qué es). `conTransaccionSerializable`, que abre la transacción (`Transaccion`, un tipo de Prisma)
+// y escribe en la consola, salió a `src/lib/transaccion-serializable.ts` en el Hito 5 (pieza 5.3 de docs/plan-hito-5-pureza.md): este archivo quedó P0. Los clasificadores se quedan en `core`
+// (y no van a `server/`) porque la consola de plataforma importa `esChoqueDeIndiceUnico` por la fachada y no puede importar `src/server`.
+
 /**
  * Hallazgo de auditoría (Pivote 1, docs/auditoria-motor2-pivotes-2026-09-16.md
  * §11 Plan 2): no todos los conflictos de serialización reales de Postgres
@@ -49,74 +36,7 @@ export function esConflictoDeEscritura(e: unknown): boolean {
 }
 
 /**
- * Un choque de índice ÚNICO (SQLSTATE 23505): `P2002` de Prisma, o el `DriverAdapterError` crudo con `cause.kind === "UniqueConstraintViolation"`.
- * Dentro de una transacción SERIALIZABLE, dos pedidos que leen el mismo estado y luego insertan la misma clave única no siempre reciben el 40001: si el
- * índice único no fue parte de lo que leyeron, el perdedor recibe directamente el 23505 (confirmado: `MovimientoStock_traspaso_paso_unico_key` en el reingreso
- * simultáneo de un traspaso). Para ese perdedor es lo mismo que un conflicto de serialización: al repetir ve el estado que dejó el ganador y responde el resultado
- * de negocio que corresponde. Ver el parámetro `tambienChoqueDeUnico` de `conTransaccionSerializable`.
+ * El choque de índice ÚNICO (`P2002` o `UniqueConstraintViolation` del driver) se clasifica en `core/datos/errores-de-base.ts` (O.48, Hito 5: una sola implementación, también para
+ * `esErrorDeUnicidad` de catálogo); acá se reexporta para que sigan valiendo los imports de siempre (la fachada del dominio y los tests).
  */
-export function esChoqueDeIndiceUnico(e: unknown): boolean {
-  if (esErrorDeBaseConCodigo(e, "P2002")) return true;
-  return causaDeErrorDeDriver(e)?.kind === "UniqueConstraintViolation";
-}
-
-/**
- * Reintenta, con backoff y jitter entre intentos (ver reintentar.ts), un
- * conflicto de escritura de una transacción SERIALIZABLE. El backoff se agregó
- * el 2026-09-21: la causa del flake de C2 estaba confirmada (5 intentos sin
- * ninguna espera, docs/auditoria-motor2-deuda-tecnica-flake-eslint-2026-09-17.md).
- *
- * Los logs "[con-reintento][investigacion]" quedan como la forma de medir si
- * alcanzó: `esperaTotalMs` dice cuánto se esperó en total. El criterio de cierre
- * real NO es que la suite pase (el flake era de ~0,3 %): es que "agotó los
- * reintentos" deje de aparecer en los logs de producción. Si vuelve a aparecer,
- * recién ahí se decide subir `maxIntentos` — aparte, y con esos datos.
- */
-export async function conTransaccionSerializable<T>(
-  transaccion: Transaccion,
-  fn: (tx: Prisma.TransactionClient) => Promise<T>,
-  maxIntentos = 5,
-  /** Solo para tests: la espera entre reintentos y su aleatoriedad (ver reintentar.ts). */
-  opcionesEspera: OpcionesEspera = {},
-  /**
-   * `true` SOLO para un caso de uso del tipo «leo el estado, valido y recién después inserto una clave única» (el reingreso de un traspaso, el ticket corregido):
-   * ahí un choque de índice único es la carrera perdida y repetir da el resultado de negocio. NO se enciende donde el choque de unicidad es una regla de negocio
-   * que el caso de uso traduce a su mensaje (factura única, código duplicado): repetir solo demoraría el mismo rechazo.
-   */
-  tambienChoqueDeUnico = false
-): Promise<T> {
-  return conReintento(
-    () =>
-      transaccion(fn, {
-        isolationLevel: "Serializable",
-        // Default de Prisma (maxWait 2s / timeout 5s) es corto para el caso
-        // de latencia de red más alta de lo normal — esto da más margen sin
-        // dejar una transacción SERIALIZABLE colgada minutos si algo se
-        // cuelga de verdad (eso bloquearía filas para otros usuarios reales
-        // más de lo necesario).
-        maxWait: 5_000,
-        timeout: 15_000,
-      }),
-    {
-      ...opcionesEspera,
-      maxIntentos,
-      esReintentable: tambienChoqueDeUnico ? (e) => esConflictoDeEscritura(e) || esChoqueDeIndiceUnico(e) : esConflictoDeEscritura,
-      // console.log, no .warn: un solo reintento resuelto es el camino
-      // sano de SERIALIZABLE ante dos escrituras genuinamente
-      // simultáneas — esperable y frecuente, no un incidente. No
-      // corresponde que dispare alertas en Vercel.
-      alResolverPorReintento: ({ intento, esperaTotalMs }) =>
-        console.log("[con-reintento][investigacion] conflicto de escritura resuelto por reintento", {
-          intento,
-          maxIntentos,
-          esperaTotalMs: Math.round(esperaTotalMs),
-        }),
-      alAgotar: (e, { esperaTotalMs }) =>
-        console.error("[con-reintento][investigacion] conflicto de escritura agotó los reintentos", {
-          maxIntentos,
-          esperaTotalMs: Math.round(esperaTotalMs),
-          code: errorConocidoDeBase(e)?.code,
-        }),
-    }
-  );
-}
+export { esChoqueDeIndiceUnico } from "@/core/datos/errores-de-base";

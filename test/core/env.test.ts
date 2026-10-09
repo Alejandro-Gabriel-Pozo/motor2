@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { escapesProhibidosEnProduccion, parseEnv, validarDominioCartaAlArrancar, validarEmpresaUnicaAlArrancar, validarEntornoAlArrancar } from "../../src/env";
+import { CLAVES_DE_ENTORNO_DECLARADAS, escapesProhibidosEnProduccion, parseEnv, validarDominioCartaAlArrancar, validarEmpresaUnicaAlArrancar, validarEntornoAlArrancar } from "../../src/env";
 
 /**
  * Fase 1.2 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): confirma que el schema de
@@ -12,18 +12,27 @@ import { escapesProhibidosEnProduccion, parseEnv, validarDominioCartaAlArrancar,
  */
 const ENV_VALIDO: Record<string, string> = {
   DATABASE_URL: "postgresql://user:pass@localhost:5432/db",
-  DIRECT_URL: "postgresql://user:pass@localhost:5432/db",
   AUTH_SECRET: "secreto-de-prueba",
   AUTH_GOOGLE_ID: "id-de-prueba",
   AUTH_GOOGLE_SECRET: "secreto-de-prueba",
 };
 
 describe("parseEnv", () => {
-  it("acepta un env con las 5 requeridas completas, sin ninguna opcional", () => {
+  it("acepta un env con las 4 requeridas completas, sin ninguna opcional", () => {
     expect(() => parseEnv(ENV_VALIDO)).not.toThrow();
   });
 
-  it("rechaza si falta (o está vacía) cualquiera de las 5 requeridas, una por vez", () => {
+  // S-32: `DIRECT_URL` es la conexión del DUEÑO de las tablas (salta el RLS). La usan `prisma.config.ts` (migraciones) y los scripts, no el runtime de la app: el runtime no la exige, no la declara
+  // y por lo tanto el arranque estricto no la necesita (una app que arranca sin ella no puede, ni por error, abrir una conexión del dueño con ese valor).
+  it("S-32: DIRECT_URL no es del runtime: no se exige (el env válido no la trae) ni queda declarada en el schema", () => {
+    expect(() => parseEnv(ENV_VALIDO)).not.toThrow();
+    expect(() => parseEnv({ ...ENV_VALIDO, DIRECT_URL: "postgresql://dueño:x@localhost:5432/db" })).not.toThrow();
+    expect(CLAVES_DE_ENTORNO_DECLARADAS).not.toContain("DIRECT_URL");
+    expect(Object.keys(parseEnv({ ...ENV_VALIDO, DIRECT_URL: "postgresql://dueño:x@localhost:5432/db" }))).not.toContain("DIRECT_URL");
+    expect(() => validarEntornoAlArrancar({ ...ENV_VALIDO, AUTH_SECRET: "x".repeat(32), CRON_SECRET: "cron-secreto", VERCEL_ENV: "production" })).not.toThrow();
+  });
+
+  it("rechaza si falta (o está vacía) cualquiera de las 4 requeridas, una por vez", () => {
     for (const clave of Object.keys(ENV_VALIDO)) {
       const sinEsa = { ...ENV_VALIDO };
       delete sinEsa[clave];
@@ -36,7 +45,6 @@ describe("parseEnv", () => {
   it("acepta con TODAS las opcionales presentes, y con NINGUNA — nunca las exige", () => {
     const conOpcionales = {
       ...ENV_VALIDO,
-      ALLOWED_EMAIL_DOMAINS: "lacuadra.com",
       CRON_SECRET: "cron-secreto",
       CARTA_DOMINIO_BASE: "motor2carta.com",
       NEXT_PUBLIC_SENTRY_DSN: "https://sentry.example.com/1",
@@ -96,11 +104,37 @@ describe("validarEntornoAlArrancar (S-20)", () => {
     expect(() => validarEntornoAlArrancar({ ...produccion, MOTOR2_ROL_ESTRICTO: "1" })).not.toThrow();
   });
 
-  it("los escapes siguen valiendo fuera de Producción (herramientas de demo, local, Preview): no hay nada que prohibir ahí", () => {
+  it("los escapes siguen valiendo FUERA de Vercel (herramientas de demo, local): no hay nada que prohibir ahí", () => {
     expect(escapesProhibidosEnProduccion({ MOTOR2_ROL_ESTRICTO: "0", MOTOR2_ENTORNO_ESTRICTO: "0" })).toEqual([]);
-    expect(escapesProhibidosEnProduccion({ VERCEL_ENV: "preview", MOTOR2_ROL_ESTRICTO: "0" })).toEqual([]);
-    expect(() => validarEntornoAlArrancar({ VERCEL_ENV: "preview", MOTOR2_ROL_ESTRICTO: "0", MOTOR2_ENTORNO_ESTRICTO: "0" })).not.toThrow();
+    expect(() => validarEntornoAlArrancar({ MOTOR2_ROL_ESTRICTO: "0", MOTOR2_ENTORNO_ESTRICTO: "0" })).not.toThrow();
     expect(escapesProhibidosEnProduccion({ VERCEL_ENV: "production", MOTOR2_ROL_ESTRICTO: "0", MOTOR2_ENTORNO_ESTRICTO: "0" })).toHaveLength(2);
+  });
+
+  // S-32: un escape de desarrollo no puede tener efecto en un despliegue de Vercel que no sea Producción. El Preview de `stockhneuquen` comparte la base de producción (ADR-007): con
+  // `MOTOR2_ROL_ESTRICTO=0` operaría con un rol que salta el RLS sobre los datos reales. Antes el arranque solo miraba `VERCEL_ENV=production` y dejaba pasar el Preview.
+  it.each([
+    { VERCEL: "1", VERCEL_ENV: "preview" },
+    { VERCEL: "1", VERCEL_ENV: "development" },
+    { VERCEL: "1" },
+    { VERCEL_ENV: "preview" },
+  ])("S-32: MOTOR2_ROL_ESTRICTO=0 está prohibido en cualquier despliegue de Vercel (%j), no solo en Producción", (vercel) => {
+    const fuente = { ...vercel, MOTOR2_ROL_ESTRICTO: "0", DATABASE_URL: "postgresql://app:x@ep-ejemplo-123.us-east-2.aws.neon.tech/neondb?sslmode=require" };
+    expect(escapesProhibidosEnProduccion(fuente)).toEqual([expect.stringContaining("MOTOR2_ROL_ESTRICTO=0")]);
+    expect(() => validarEntornoAlArrancar(fuente)).toThrow(/MOTOR2_ROL_ESTRICTO=0/);
+    // la base local tampoco lo salva: en Vercel el escape no existe
+    expect(() => validarEntornoAlArrancar({ ...fuente, DATABASE_URL: "postgresql://u:x@localhost:5432/motor2_dev" })).toThrow(/MOTOR2_ROL_ESTRICTO=0/);
+  });
+
+  it("S-32: en un Preview sin el escape, el arranque sigue sin validar nada más (solo se prohíbe el escape)", () => {
+    expect(escapesProhibidosEnProduccion({ VERCEL: "1", VERCEL_ENV: "preview", MOTOR2_ROL_ESTRICTO: "1" })).toEqual([]);
+    expect(escapesProhibidosEnProduccion({ VERCEL: "1", VERCEL_ENV: "preview", MOTOR2_ENTORNO_ESTRICTO: "0" })).toEqual([]);
+    expect(() => validarEntornoAlArrancar({ VERCEL: "1", VERCEL_ENV: "preview" })).not.toThrow();
+  });
+
+  it("con el entorno estricto pedido FUERA de Vercel (MOTOR2_ENTORNO_ESTRICTO=1), el escape del rol tampoco vale y el arranque se niega (auditoría de la Fase 0, 0.4)", () => {
+    expect(escapesProhibidosEnProduccion({ MOTOR2_ENTORNO_ESTRICTO: "1", MOTOR2_ROL_ESTRICTO: "0" })).toEqual([expect.stringContaining("MOTOR2_ROL_ESTRICTO=0")]);
+    expect(escapesProhibidosEnProduccion({ MOTOR2_ENTORNO_ESTRICTO: "1" })).toEqual([]);
+    expect(() => validarEntornoAlArrancar({ ...ENV_VALIDO, MOTOR2_ENTORNO_ESTRICTO: "1", MOTOR2_ROL_ESTRICTO: "0" })).toThrow(/MOTOR2_ROL_ESTRICTO=0/);
   });
 
   it("el error de los escapes nombra las variables, nunca sus valores ni otros secretos", () => {

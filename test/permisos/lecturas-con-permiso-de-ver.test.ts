@@ -12,10 +12,15 @@ import { listarUsuariosDeSucursal } from "../../src/server/actions/auth/usuarios
 import { listarClientes } from "../../src/server/actions/clientes/cliente";
 import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
 import { listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/actions/catalogo/recetas";
+import { listarProductosPagina, obtenerPrecioVentaProducto } from "../../src/server/actions/catalogo/productos";
+import { listarGrupos, previsualizarFusionInsumo } from "../../src/server/actions/catalogo/insumos";
+import { listarUnidadesParaPanel } from "../../src/server/actions/catalogo/unidades";
+import { listarProveedores } from "../../src/server/actions/catalogo/proveedores";
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
 import { listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
-import { listarMotivosMermaParaPanel, listarDestinosConsumoParaPanel } from "../../src/server/actions/movimientos/motivos";
+import { listarMotivosMermaParaPanel, listarDestinosConsumoParaPanel, listarMotivosMermaActivos, listarDestinosConsumoActivos } from "../../src/server/actions/movimientos/motivos";
+import { obtenerSaldoDisponibleParaReclasificar } from "../../src/server/actions/stock/lecturas-reclasificacion";
 import { listarCapacidades } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { listarMatrizPermisos } from "../../src/server/actions/permisos/permisos";
 import { listarRoles } from "../../src/server/actions/permisos/roles";
@@ -29,9 +34,11 @@ import { listarSucursalesParaSolicitar, listarSucursalesParaEnviar, obtenerBande
  * lectura es un endpoint que se podía invocar directo y devolvía, por ejemplo, la matriz de permisos o los precios de los
  * proveedores a un rol que no podía abrir esas pantallas.
  *
- * Cada fila: la lectura, la clave que exige y la página (dueña de esos datos) que pide la MISMA clave. Las lecturas de catálogo
- * compartido (secciones activas, unidades, proveedores, buscador de productos…) NO están acá a propósito: son selectores que
- * usan muchas pantallas con claves distintas.
+ * Cada fila: la lectura, la clave que exige y la página (dueña de esos datos) que pide la MISMA clave. Desde H8 (trabajo D.1 de
+ * `pureza-integracion`, decisión del dueño) NINGUNA lectura queda con solo sesión: las que consume UNA sola pantalla (o varias con la
+ * misma clave) están acá; las que consumen pantallas con claves distintas (secciones activas, unidades, proveedores para elegir,
+ * buscador de productos…) exigen el «O» de esas claves (`requerirVerAlguna*`) y se prueban en `lecturas-con-alguna-pantalla.test.ts`.
+ * Qué pantalla consume cada lectura lo fija `test/arquitectura/consumidores-de-lecturas-declarados.test.ts`.
  */
 type Fila = {
   nombre: string;
@@ -39,7 +46,7 @@ type Fila = {
   pagina: string;
   archivo: string;
   /** La página no escribe la clave: la toma del proceso (ACCION_POR_PROCESO). */
-  viaProceso?: "COMPRA";
+  viaProceso?: "COMPRA" | "MERMA" | "CONSUMO";
   llamar: (sucursalId: string) => Promise<unknown> };
 
 const LECTURAS: Fila[] = [
@@ -63,6 +70,22 @@ const LECTURAS: Fila[] = [
   { nombre: "listarProductosDeProveedor", clave: "proceso_compra", pagina: "movimientos/[proceso]/page.tsx", archivo: "catalogo/proveedor-por-producto.ts", viaProceso: "COMPRA", llamar: () => listarProductosDeProveedor("x") },
   { nombre: "obtenerRecetaVigente", clave: "guardar_receta", pagina: "catalogo/recetas/[productoId]/page.tsx", archivo: "catalogo/recetas.ts", llamar: () => obtenerRecetaVigente("x") },
   { nombre: "listarVersionesDeReceta", clave: "guardar_receta", pagina: "catalogo/recetas/[productoId]/historial/page.tsx", archivo: "catalogo/recetas.ts", llamar: () => listarVersionesDeReceta("x") },
+  // H8 (D.1): lecturas que antes pedían solo sesión.
+  { nombre: "obtenerPrecioVentaProducto", clave: "precio_local", pagina: "movimientos/precio-local/page.tsx", archivo: "catalogo/productos.ts", llamar: () => obtenerPrecioVentaProducto("x") },
+  { nombre: "listarProductosPagina", clave: "producto_ver_catalogo", pagina: "catalogo/productos/page.tsx", archivo: "catalogo/productos.ts", llamar: () => listarProductosPagina() },
+  { nombre: "listarGrupos", clave: "grupos_familia", pagina: "catalogo/insumos-grupos/page.tsx", archivo: "catalogo/insumos.ts", llamar: () => listarGrupos() },
+  { nombre: "previsualizarFusionInsumo", clave: "grupos_familia", pagina: "catalogo/insumos-grupos/page.tsx", archivo: "catalogo/insumos.ts", llamar: () => previsualizarFusionInsumo("x", "y") },
+  { nombre: "listarUnidadesParaPanel", clave: "unidades", pagina: "catalogo/unidades/page.tsx", archivo: "catalogo/unidades.ts", llamar: () => listarUnidadesParaPanel() },
+  { nombre: "listarProveedores", clave: "proveedores", pagina: "catalogo/proveedores/page.tsx", archivo: "catalogo/proveedores.ts", llamar: () => listarProveedores() },
+  { nombre: "listarMotivosMermaActivos", clave: "proceso_merma", pagina: "movimientos/[proceso]/page.tsx", archivo: "movimientos/motivos.ts", viaProceso: "MERMA", llamar: () => listarMotivosMermaActivos() },
+  { nombre: "listarDestinosConsumoActivos", clave: "proceso_consumo", pagina: "movimientos/[proceso]/page.tsx", archivo: "movimientos/motivos.ts", viaProceso: "CONSUMO", llamar: () => listarDestinosConsumoActivos() },
+  {
+    nombre: "obtenerSaldoDisponibleParaReclasificar",
+    clave: "stock_reclasificar",
+    pagina: "stock/reclasificar/page.tsx",
+    archivo: "stock/lecturas-reclasificacion.ts",
+    llamar: () => obtenerSaldoDisponibleParaReclasificar("x", "y", null),
+  },
 ];
 
 describe("lecturas con permiso de Ver: un rol sin el permiso de la pantalla no las puede invocar", () => {

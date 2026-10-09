@@ -10,7 +10,8 @@
  * para dar de alta la sucursal nueva ("La Cuadra") y queda como su primer
  * admin ahí también.
  *
- * Uso: DATABASE_URL="postgresql://...(la branch de Neon que sea)..." \
+ * Uso (S-33: pasa por las guardas de destino de `scripts/demo-seed/guardas-destino.ts`; ya no siembra en la base que diga `DATABASE_URL`, y menos en una branch de Neon):
+ *        MOTOR2_SEED_DATABASE_URL="postgresql://motor2:motor2@localhost:5432/motor2_demo" MOTOR2_SEED_CONFIRMAR="si" \
  *        npx vitest run --config vitest.seed.config.ts
  *
  * No es idempotente para los movimientos (si se corre dos veces sobre la
@@ -35,7 +36,7 @@ import { crearUnidad } from "../src/server/actions/catalogo/unidades";
 import { altaProveedor, actualizarActivaProveedor } from "../src/server/actions/catalogo/proveedores";
 import { crearInsumo, crearOActualizarGrupo, actualizarGrupoDeInsumo } from "../src/server/actions/catalogo/insumos";
 import { darDeAltaProducto, actualizarDisponibilidadProducto } from "../src/server/actions/catalogo/productos";
-import { guardarReceta } from "../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas as guardarReceta } from "../src/server/actions/catalogo/receta-a-ciegas";
 import { registrarMovimiento } from "../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../src/server/actions/movimientos/venta";
 import { registrarConteoFisico } from "../src/server/actions/movimientos/conteo-fisico";

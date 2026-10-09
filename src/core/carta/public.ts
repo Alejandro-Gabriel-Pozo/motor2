@@ -5,14 +5,24 @@
  * `sin-internals-de-otro-dominio` de `.dependency-cruiser.cjs`). Acá van SOLO los módulos que no alcanzan `@/lib/db` ni el
  * runtime de Prisma, ni directa ni transitivamente (regla `publico-puro`). Lo que sí toca la base va en `public-servidor.ts`.
  *
- * Solo reexports explícitos (nunca `export *`, nunca lógica), y solo lo que hoy se usa desde afuera del dominio
- * (`core/pos/selector-carta.ts` y `selector-carta-consulta.ts`).
+ * Solo reexports explícitos (nunca `export *`, nunca lógica), y solo lo que hoy se usa desde afuera del dominio (`core/pos/selector-carta.ts`, `selector-carta-consulta.ts`, y desde la
+ * Fase 4 el `proxy` y `env.ts`, que importan lo del host y de la empresa única por esta fachada y no por los archivos internos; `next.config.ts` no puede: ver su comentario).
  */
-export type { CartaV1, ItemCartaV1, PromoCartaV1, SeccionCartaV1 } from "./armar-menu";
+export type { CartaV1 } from "./armar-menu";
+// S-25: lo único que la carta pública entrega a un anónimo (la carta armada SIN los ids internos) y la proyección que la arma; ver `carta-publica.ts`.
+export type { CartaPublicaV1, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "./carta-publica";
+export { etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica } from "./carta-publica";
 export { precioDeCarta } from "./armar-menu";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "./promo-sucursal";
 export { aplicarDescuentoDeProducto, precioCobradoConDescuentos } from "./descuento-producto";
 export type { Resultado } from "./validaciones";
+// Hito 4, H4C-2: el guard de las promos (`core/features/carta/promos.guard.ts`) valida con los mismos validadores de la carta que usaba la Server Action.
+export { LARGO_MAXIMO_DESCRIPCION_CARTA, LARGO_MAXIMO_TITULO_CARTA, validarCantidadCupoPromo, validarOrdenCarta, validarPrecioCarta, validarTextoLibreCarta } from "./validaciones";
+// Hito 5, bloque D: los guards de la configuración de la carta (`core/features/carta/{secciones,generos,…}.guard.ts`) validan con los mismos validadores que usaban las Server Actions.
+export { normalizarTagsCarta, validarImagenUrlCarta, validarNombreGeneroCarta, validarNombreItemAgrupadoCarta, validarNombreSeccionCarta } from "./validaciones";
+// Hito 5, bloque D: el guard del registro público del portal (`core/features/carta/registro-publico.guard.ts`) valida con los mismos validadores que usaba la Server Action.
+export { LARGO_MAXIMO_ETIQUETA_PORTAL, LARGO_MAXIMO_SUBTITULO_PORTAL, validarPosicionPortal, validarSlugTenant } from "./validaciones";
+export type { PosicionPortal } from "./validaciones";
 export { formatearPrecioCarta } from "./precio-carta";
 export { whereCartaDeSucursal } from "./carta-de-sucursal";
 export type { EstiloCarta } from "./estilo";
@@ -30,9 +40,15 @@ export { entradasVistaPreviaPortal } from "./admin-tipos";
 export type { EntradaVistaPreviaPortal } from "./admin-tipos";
 export { avisoImagenSinMapa } from "./portal";
 export { validarValorPortal } from "./portal";
+// Hito 5, bloque D: el guard de la apariencia del portal (`core/features/carta/portal-empresa.guard.ts`) valida con el mismo validador que usaba la Server Action.
+export { validarValoresPortal } from "./portal";
+export type { ValoresPortal } from "./portal";
 export { ZONAS_PORTAL } from "./portal";
 export type { DefinicionClavePortal } from "./portal";
 export { validarValorTema } from "./tema";
+// Hito 5, bloque D: el guard y los casos de uso del tema (`core/features/carta/tema.guard.ts`, `casos-de-uso/{guardar-tema-carta,cambiar-aplicacion-tema}.ts`) usan los mismos validadores y contadores que usaba la Server Action.
+export { contarValoresTema, validarValoresTema } from "./tema";
+export type { ValoresTema } from "./tema";
 export { ZONAS_TEMA } from "./tema";
 export type { DefinicionClaveTema } from "./tema";
 export { ordenSugeridoAlElegirSeccion } from "./orden-sugerido";
@@ -44,7 +60,8 @@ export type { GrupoDeProducto, SincronizablePrecioGrupo } from "./grupo-de-produ
 export { armarMenuCarta } from "./armar-menu";
 export type { MenuArmado } from "./armar-menu";
 export { descuentosVigentes } from "./descuento-producto";
-export { esSlugPublicoValido } from "./host";
+export { esSlugPublicoValido, esHostDeZonaCarta, esMetodoDeLecturaEnHostCarta, esPathPermitidoEnHostCarta, interpretarHostCarta } from "./host";
+export { esHostDeEmpresaUnica } from "./carta-empresa-unica";
 export { estiloCartaPorDefecto } from "./estilo";
 export { posicionCompleta } from "./portal";
 export type { EntradaPortalCarta } from "./portal";

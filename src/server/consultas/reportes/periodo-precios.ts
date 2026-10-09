@@ -1,8 +1,8 @@
 import { Prisma } from "@prisma/client";
-import { preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
-import { redondearCantidad, type InfoProductoReporte, type ItemPeriodo, type FilaVentaProducto } from "@/core/reportes/public";
+import { redondearCantidad, type InfoProductoReporte, type ItemPeriodo, type FilaVentaProducto, type SerieIPC } from "@/core/reportes/public";
 import { antiguedadSerieIPC, esMesSinPublicar, resolverVariacionPeriodoIPC, textoSerieIPCVencida } from "@/core/reportes/public";
 import { cargarSerieIPC } from "@/server/lecturas/reportes/serie-ipc";
 import type { FilaPrecioInsumo, ComparativaPreciosDelPeriodo } from "@/core/reportes/public";
@@ -135,6 +135,8 @@ export async function calcularTendenciaPreciosDelPeriodo(
  * Mide el precio que ESTA sucursal realmente cobra: un producto con Precio Local vigente (capacidad `precio_local` + fila
  * habilitada) se mide por los cambios de su precio local; los demás, por los del precio global. Una suba del global no cuenta
  * para un producto que la sucursal cobra a su precio local.
+ *
+ * `ahora` (D.3b de docs/pureza-integracion.md) es obligatorio: la antigüedad de la serie del IPC se mide contra la hora que fija el borde.
  */
 export async function calcularComparativaPreciosDelPeriodo(
   sucursalId: string,
@@ -142,7 +144,13 @@ export async function calcularComparativaPreciosDelPeriodo(
   hasta: Date,
   tendenciaPrecios: FilaPrecioInsumo[],
   ventasPorProducto: FilaVentaProducto[],
-  db: Db
+  db: Db,
+  ahora: Date,
+  /**
+   * Lo que quien llama ya leyó (O.39 de docs/pureza-integracion.md), para no volver a leerlo: los Precios Locales vigentes de ESTA sucursal
+   * (`preciosLocalesVigentes(sucursalId, db)`, sin filtro de productos) y la serie del IPC (`cargarSerieIPC`). Lo que falte se lee acá.
+   */
+  cargado: { preciosLocales?: ReadonlyMap<string, unknown>; serieIPC?: SerieIPC } = {}
 ): Promise<ComparativaPreciosDelPeriodo> {
   let sumaDeltaInsumos = 0;
   let sumaBaseInsumos = 0;
@@ -153,7 +161,7 @@ export async function calcularComparativaPreciosDelPeriodo(
   }
   const variacionInsumosPct = sumaBaseInsumos > 0 ? Math.round((sumaDeltaInsumos / sumaBaseInsumos) * 1000) / 10 : null;
 
-  const vigentes = await preciosLocalesVigentes(sucursalId, db);
+  const vigentes = cargado.preciosLocales ?? (await preciosLocalesVigentes(sucursalId, db));
   const [cambiosGlobales, cambiosLocales] = await Promise.all([
     db.registroAuditoria.findMany({
       where: { entidad: "Producto", campo: "precioVenta", creadoEn: { gte: desde, lte: hasta } },
@@ -209,9 +217,9 @@ export async function calcularComparativaPreciosDelPeriodo(
   }
   const variacionCartaPropiaPct = sumaPesoCarta > 0 ? Math.round((sumaPonderadaCarta / sumaPesoCarta) * 10) / 10 : null;
 
-  const serieIPC = await cargarSerieIPC(db);
+  const serieIPC = cargado.serieIPC ?? (await cargarSerieIPC(db));
   const variacionIPCPct = resolverVariacionPeriodoIPC(desde, hasta, serieIPC);
-  const antiguedadIPC = antiguedadSerieIPC(serieIPC, new Date());
+  const antiguedadIPC = antiguedadSerieIPC(serieIPC, ahora);
 
   return {
     variacionInsumosPct,

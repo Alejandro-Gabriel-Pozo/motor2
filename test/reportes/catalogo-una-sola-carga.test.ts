@@ -8,6 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { generarReporteVentasPorCategoria, obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 import type { Db } from "../../src/lib/db-tipos";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * El catálogo de productos se carga UNA sola vez por corrida de `obtenerReportePorPeriodo`.
@@ -83,7 +84,7 @@ describe("obtenerReportePorPeriodo — una sola carga del catálogo", () => {
       },
     }) as unknown as Db;
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-02"), d("2026-08-10"), {}, dbContado);
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-02"), d("2026-08-10"), {}, dbContado, AHORA_DE_LA_CORRIDA);
 
     // Guardianes del fixture: si alguna de las tres rutas no se ejercitara, el contador daría 1 sin probar nada.
     expect(rep.impactoRecetas.length, "no corrió el impacto de recetas").toBeGreaterThan(0);

@@ -1,10 +1,12 @@
 import "server-only";
-import { Prisma, type AccionConteo, type EstadoConteo } from "@prisma/client";
+import type { AccionConteo, EstadoConteo } from "@prisma/client";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { texto } from "@/core/texto";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/public";
-import { calcularPayloadHash, conTransaccionSerializable, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { calcularPayloadHash, esChoqueDeIndiceUnico, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoPorLote, calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -65,8 +67,8 @@ const ACCIONES_CONTEO: Record<AccionConteo, { ajusta: boolean; estado: EstadoCon
  * @contract Registra un conteo físico exactamente una vez por claveIdempotencia y, según la acción elegida, ajusta el Kardex a la diferencia contra el saldo leído dentro de la transacción.
  * @idempotency I3 (claveIdempotencia + payloadHash en ConteoFisico) — chequeo dentro de la transacción + catch de P2002 fuera de ella.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
- * @sideEffects Escritura del Kardex (Operacion + MovimientoStock) SOLO si la diferencia es != 0 y la acción ajusta; sin auditoría de permisos propia.
- * @ficha permiso=proceso_control transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @sideEffects Escritura del Kardex (Operacion + MovimientoStock) SOLO si la diferencia es != 0 y la acción ajusta; registrarCambioAuditado del alta del conteo (saldo del sistema → lo contado) si hay diferencia.
+ * @ficha permiso=proceso_control transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function registrarConteoFisicoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
@@ -115,8 +117,8 @@ export async function registrarConteoFisicoCasoDeUso(
     const conteoReal = resConteoReal.valor!;
     const loteVencimiento = comando.loteVencimiento ?? null;
     const saldoSistema = loteVencimiento
-      ? await calcularSaldoPorLote(producto.id, comando.seccionId, loteVencimiento, tx)
-      : await calcularSaldoTotal(producto.id, comando.seccionId, tx);
+      ? await calcularSaldoPorLote(producto.id, comando.seccionId, loteVencimiento, actor.sucursalId, tx)
+      : await calcularSaldoTotal(producto.id, comando.seccionId, actor.sucursalId, tx);
     const diferencia = redondearACantidadDeUnidad(conteoReal - saldoSistema, producto.unidadStock.decimales);
 
     const accionInfo = ACCIONES_CONTEO[comando.accion];
@@ -145,6 +147,20 @@ export async function registrarConteoFisicoCasoDeUso(
       payloadHash: comando.claveIdempotencia ? payloadHash : null,
       resultadoMensaje: comando.claveIdempotencia ? mensaje : null,
     });
+
+    // Auditoría (decisión del dueño, 2026-10-07): el alta de un conteo deja su fila (saldo del sistema → lo contado). Sin diferencia no cambia nada y no se escribe.
+    if (diferencia !== 0) {
+      await registrarCambioAuditado(tx, {
+      entidad: "ConteoFisico",
+      entidadId: conteo.id,
+      campo: "conteoReal",
+      descripcion: `Conteo físico de "${producto.nombre}" en "${actor.sucursalNombre}" (${comando.accion})`,
+      valorAnterior: saldoSistema,
+      valorNuevo: conteoReal,
+      actorId: actor.usuarioId,
+      sucursalId: actor.sucursalId,
+    });
+    }
 
     if (ajustado) {
       const operacion = await escribirOperacionDeStock(tx, {
@@ -183,7 +199,7 @@ export async function registrarConteoFisicoCasoDeUso(
     // transacción ya hizo rollback). Se relee al ganador FUERA de ella; si tiene el MISMO payloadHash y ya dejó su mensaje, es un
     // reenvío; con otro hash es un conflicto (no se le dice "ya está" a quien mandó otro conteo). Fail closed: si no se puede
     // confirmar qué pasó, se relanza el error.
-    if (comando.claveIdempotencia && e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+    if (comando.claveIdempotencia && esChoqueDeIndiceUnico(e)) {
       const ganador = await cargarGanadorDelConteo(actor.db, comando.claveIdempotencia);
       if (ganador && ganador.payloadHash !== payloadHash) return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
       if (ganador?.resultadoMensaje) return exito(ganador.resultadoMensaje, { repetido: true, conteoId: null, diferencia: null, ajustado: null });

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, prisma, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal } from "../../src/server/actions/carta/registro-publico";
 import { actualizarCapacidad } from "../../src/server/actions/permisos/capacidades-sucursal";
@@ -20,6 +20,10 @@ const ROTOS: [string, unknown][] = [
 describe("acciones con un identificador roto no tocan filas", () => {
   let centralId: string;
   let norteId: string;
+  let adminId: string;
+  // O.41: cambiar una capacidad es solo del gerente. Los casos de capacidades de abajo son sobre ids rotos, no sobre ese punto: en ellos quien actúa es el gerente.
+  const hacerGerenteAlAdmin = () =>
+    prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: "gerente" } });
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -27,6 +31,7 @@ describe("acciones con un identificador roto no tocan filas", () => {
     centralId = base.sucursal.id;
     norteId = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: centralId, rolId: base.admin.id });
+    adminId = admin.id;
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
     for (const id of [centralId, norteId]) {
       await agregarSucursalAlPortal(id);
@@ -49,6 +54,7 @@ describe("acciones con un identificador roto no tocan filas", () => {
     });
 
     it("capacidades: no modifica ninguna fila ni audita", async () => {
+      await hacerGerenteAlAdmin();
       await actualizarCapacidad("proceso_venta", centralId, true);
       const antes = await prisma.capacidadSucursal.findMany();
       const auditoriaAntes = await prisma.registroAuditoria.count();
@@ -60,6 +66,7 @@ describe("acciones con un identificador roto no tocan filas", () => {
   });
 
   it("capacidades: null sigue siendo la fila por defecto y una sucursal inexistente se rechaza", async () => {
+    await hacerGerenteAlAdmin();
     expect((await actualizarCapacidad("proceso_venta", null, false)).ok).toBe(true);
     expect(await prisma.capacidadSucursal.findMany({ where: { sucursalId: null } })).toHaveLength(1);
     expect(await actualizarCapacidad("proceso_venta", "no-existe", false)).toEqual({ ok: false, mensaje: "No se encontró la sucursal." });
@@ -67,12 +74,14 @@ describe("acciones con un identificador roto no tocan filas", () => {
   });
 
   it("capacidades: habilitado y acción inválidos se rechazan sin escribir", async () => {
+    await hacerGerenteAlAdmin();
     expect((await actualizarCapacidad("proceso_venta", centralId, "false" as unknown as boolean)).ok).toBe(false);
     expect((await actualizarCapacidad("no_existe" as AccionClave, centralId, false)).ok).toBe(false);
     expect(await prisma.capacidadSucursal.count()).toBe(0);
   });
 
   it("capacidades: el cambio y su auditoría quedan juntos", async () => {
+    await hacerGerenteAlAdmin();
     await actualizarCapacidad("proceso_venta", centralId, false);
     await actualizarCapacidad("proceso_venta", centralId, true);
     expect(await prisma.capacidadSucursal.count({ where: { sucursalId: centralId } })).toBe(1);

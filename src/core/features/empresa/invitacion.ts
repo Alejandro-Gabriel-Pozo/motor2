@@ -58,6 +58,46 @@ export function mensajeDeInvitacion(datos: { email: string; nombreEmpresa: strin
 /** Los tres tipos de invitación (columna `rolEmpresa`): el primer gerente (E5), sumar a alguien a una empresa y vincular la cuenta de Google de un usuario precargado. */
 export type TipoDeInvitacion = "gerente" | "usuario" | "vinculacion";
 
+/** Qué hacer con la invitación pendiente de un email al asegurar una de usuario o de vinculación. */
+export type DecisionSobreLaPendiente = { accion: "crear" } | { accion: "extender" } | { accion: "rotar" } | { accion: "rechazar"; mensaje: string };
+
+/**
+ * La decisión PURA de `asegurarInvitacionDeUsuario` / `asegurarInvitacionDeVinculacion` (Hito 3, I.5e2: antes en línea en cada una) sobre la invitación pendiente
+ * que ya tiene ese email, en ESTE orden: de otro tipo → no se puede (con el mensaje de cada tipo); vigente (vence después de `ahora`) → extender; vencida → rotar
+ * el token; ninguna → crear. `pendiente.tipo` es la columna `rolEmpresa` de la invitación (su tipo, no un rol de nadie). El email ya viene en minúsculas.
+ */
+export function decidirSobreLaInvitacionPendiente(
+  pendiente: { tipo: string; venceEn: Date } | null,
+  pedida: Extract<TipoDeInvitacion, "usuario" | "vinculacion">,
+  email: string,
+  ahora: Date,
+): DecisionSobreLaPendiente {
+  if (pendiente && pendiente.tipo !== pedida) {
+    return {
+      accion: "rechazar",
+      mensaje:
+        pedida === "usuario"
+          ? `Ya hay una invitación pendiente para ${email} que no es de usuario. Revocala o esperá a que se acepte.`
+          : `Ya hay una invitación pendiente para ${email} que no es de vinculación.`,
+    };
+  }
+  if (pendiente && pendiente.venceEn.getTime() > ahora.getTime()) return { accion: "extender" };
+  if (pendiente) return { accion: "rotar" };
+  return { accion: "crear" };
+}
+
+/** Un reenvío por minuto como máximo por invitación: acota el mail (el cupo del proveedor es compartido con los códigos de la plataforma). */
+const ESPERA_ENTRE_REENVIOS_MS = 60_000;
+
+/**
+ * El freno de un minuto entre dos envíos de la misma invitación (reenviar, invitar a vincular): el rechazo si la última salió hace menos de un minuto respecto de la hora
+ * del pedido, o `null`. Hito 3, I.5h: antes eran dos constantes y la misma comparación en línea en `usuarios.ts`; mismo texto y mismo borde (exactamente un minuto ya
+ * deja reenviar). Sin marca de envío (`null`, nunca salió) no frena.
+ */
+export function mensajeSiSeReenviaMuyPronto(enviadaEn: Date | null | undefined, ahora: Date): string | null {
+  return enviadaEn && ahora.getTime() - enviadaEn.getTime() < ESPERA_ENTRE_REENVIOS_MS ? "Esa invitación se envió hace menos de un minuto. Esperá un momento antes de reenviarla." : null;
+}
+
 /** Una sucursal con el rol que da una invitación, tal como se muestra en el mail y en la pantalla. */
 export interface AccesoDeInvitacion {
   sucursal: string;

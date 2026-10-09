@@ -22,7 +22,6 @@ import {
  * cambiar su forma, las tres consultas en línea del editor de receta (`/catalogo/recetas/[productoId]`).
  */
 
-const ESCALARES_PRODUCTO = Object.keys(Prisma.ProductoScalarFieldEnum).sort();
 const ESCALARES_VERSION = Object.keys(Prisma.RecetaVersionScalarFieldEnum).sort();
 
 describe("server/consultas/catalogo/recetas", () => {
@@ -134,9 +133,9 @@ describe("server/consultas/catalogo/recetas", () => {
       });
 
       const [p] = await listarProductosConReceta(prisma);
-      expect(Object.keys(p).sort()).toEqual([...ESCALARES_PRODUCTO, "recetaVersiones"].sort());
-      expect(p).toMatchObject({ id: pizza, codigo: "PV_PIZZA", nombre: "Pizza muzza", tipo: "PV", unidadStockId: kg });
-      expect(Number(p.precioVenta)).toBe(9000);
+      // S-15 (T7 del endurecimiento): la lista dibuja nombre, tipo y versión vigente; ya no trae la fila entera de `Producto` (precio de venta, unidades, costo de consignación…).
+      expect(Object.keys(p).sort()).toEqual(["id", "nombre", "recetaVersiones", "tipo"]);
+      expect(p).toMatchObject({ id: pizza, nombre: "Pizza muzza", tipo: "PV" });
 
       expect(p.recetaVersiones).toHaveLength(1);
       const [vigente] = p.recetaVersiones;
@@ -268,6 +267,18 @@ describe("server/consultas/catalogo/recetas", () => {
           [ingQueso.id, "Sucursal A"],
         ].sort()
       );
+    });
+
+    it("O.176: devuelve SOLO el ingrediente y el nombre de la sucursal (la cantidad y la merma de cada calibración no salen de la consulta)", async () => {
+      const pizza = await crearProducto("PV_PIZZA", "Pizza muzza", "PV", { [sucursalA]: true });
+      const version = await crearVersion(pizza, 1, [harina]);
+      const [ing] = await prisma.recetaIngrediente.findMany({ where: { recetaVersionId: version.id } });
+      await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: ing.id, sucursalId: sucursalA, cantidad: 0.2, mermaPorcentaje: 7 } });
+
+      const calibraciones = await listarCalibracionesDeIngredientes([ing.id], prisma);
+
+      expect(calibraciones).toEqual([{ recetaIngredienteId: ing.id, sucursal: { nombre: "Sucursal A" } }]);
+      expect(Object.keys(calibraciones[0]).sort()).toEqual(["recetaIngredienteId", "sucursal"]);
     });
 
     it("con una lista de ids que no tienen ninguna calibración, devuelve []", async () => {

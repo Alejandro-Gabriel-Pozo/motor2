@@ -18,11 +18,11 @@ import type { Db } from "@/lib/db-tipos";
  * @idempotency Por estado: solo inserta los meses que no están, así que repetir la corrida no duplica nada.
  * @transaction Ninguna: cada mes se inserta por separado (un fallo a la mitad deja los meses ya guardados, que son correctos).
  * @sideEffects Escribe IndicePrecio (un insert por mes nuevo); sale a internet (apis.datos.gob.ar).
- * @ficha permiso=SISTEMA transaccion=NINGUNA idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO
+ * @ficha permiso=SISTEMA transaccion=NINGUNA idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function sincronizarIPCCasoDeUso(actor: { db: Db; ahora: Date }): Promise<ResultadoSincronizacionIPC> {
   const { db, ahora } = actor;
-  const filas = leerSerieDeLaApi(await pedirSerieDelIPC());
+  const filas = leerSerieDeLaApi(await pedirSerieDelIPC(), ahora);
 
   const mesesExistentes = new Set((await cargarMesesDelIPC(db)).map(claveMes));
 

@@ -4,7 +4,7 @@ import { aprobarYEnviarTraspasoCasoDeUso } from "../../src/server/actions/traspa
 import { cancelarSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/cancelar-solicitud-de-traspaso";
 import { rechazarSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/rechazar-solicitud-de-traspaso";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
-import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
+import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 /**
  * Casos de uso de la SOLICITUD de traspaso (src/server/actions/traspasos/casos-de-uso/; Task #41, Fase M11a): aprobar y enviar,
@@ -26,6 +26,8 @@ describe("casos de uso de la solicitud de traspaso", () => {
   let insumoId: string;
 
   const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest });
+  /** La hora de entrada, tres días atrás: si el caso de uso leyera el reloj, no coincidiría con lo que queda guardado (Pureza 1.2; auditoría de la Fase 1: faltaban 10 de los 13 tests de hora fija). */
+  const fijaHaceTresDias = () => new Date(Date.now() - 3 * 24 * 3_600_000);
   const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ahora: new Date(), ...baseDeTest });
 
   beforeEach(async () => {
@@ -201,6 +203,35 @@ describe("casos de uso de la solicitud de traspaso", () => {
         codigo: "ESTADO",
         mensaje: 'Este traspaso ya está en estado "ENVIADA" — no se puede rechazar desde acá.',
       });
+    });
+  });
+
+  describe("la hora entra por actor.ahora, no por el reloj (Pureza 1.2)", () => {
+    it("aprobar y enviar: la decisión de Origen y la fecha de la SALIDA del Kardex son la hora de entrada", async () => {
+      const fija = fijaHaceTresDias();
+      const mp = await producto(10);
+      const sol = await solicitud(mp.id, 4);
+      const r = await aprobarYEnviarTraspasoCasoDeUso({ ...comoA(), ahora: fija }, { traspasoId: sol.id, seccionOrigenId: seccionAId });
+      expect(r.ok).toBe(true);
+      expect((await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } })).fechaDecisionOrigen?.getTime()).toBe(fija.getTime());
+      const salida = await prisma.operacion.findFirstOrThrow({ where: { proceso: "TRANSFERENCIA_SALIDA_SUCURSAL" } });
+      expect(salida.fecha.getTime()).toBe(fija.getTime());
+    });
+
+    it("cancelar una solicitud: el cierre es la hora de entrada", async () => {
+      const fija = fijaHaceTresDias();
+      const mp = await producto(10);
+      const sol = await solicitud(mp.id, 4);
+      expect((await cancelarSolicitudDeTraspasoCasoDeUso({ ...comoB(), ahora: fija }, { traspasoId: sol.id })).ok).toBe(true);
+      expect((await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } })).fechaCierre?.getTime()).toBe(fija.getTime());
+    });
+
+    it("rechazar una solicitud: la decisión de Origen es la hora de entrada", async () => {
+      const fija = fijaHaceTresDias();
+      const mp = await producto(10);
+      const sol = await solicitud(mp.id, 4);
+      expect((await rechazarSolicitudDeTraspasoCasoDeUso({ ...comoA(), ahora: fija }, { traspasoId: sol.id, motivo: "No hay" })).ok).toBe(true);
+      expect((await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } })).fechaDecisionOrigen?.getTime()).toBe(fija.getTime());
     });
   });
 });

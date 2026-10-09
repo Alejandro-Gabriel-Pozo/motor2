@@ -1,6 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer, sucursalesVisiblesPara } from "@/server/acceso/gate";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo, reportePesadoSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerResumenConsolidado } from "@/server/consultas/reportes/resumen-consolidado";
 import { TablaConsolidado } from "./tabla-consolidado";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -8,6 +9,8 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 export default async function ConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_consolidado", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
@@ -30,7 +33,10 @@ export default async function ConsolidadoPage() {
     );
   }
 
-  const filas = await obtenerResumenConsolidado(sucursales, ctx.db, new Date());
+  // S-28: reporte pesado (el período de TODAS las sucursales visibles): cupo por usuario antes de consultar nada (best effort, en memoria).
+  const ahora = new Date();
+  if (reportePesadoSinCupo(ctx.usuarioId, "resumen-consolidado", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  const filas = await obtenerResumenConsolidado(sucursales, ctx.db, ahora);
   const totales = filas.reduce(
     (acc, f) => ({
       ventasTotal: acc.ventasTotal + f.ventasTotal,

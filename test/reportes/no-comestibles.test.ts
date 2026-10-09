@@ -9,6 +9,7 @@ import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { clasificarGruposNoComestibles, normalizarNombreGrupo } from "../../src/core/catalogo/no-comestibles";
 import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo } from "../../src/server/lecturas/reportes/costos";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * «No comestibles» (USAR): packaging y limpieza no cuentan en el food cost ni en el ratio Compras/Ventas. Se reconocen por el árbol de
@@ -100,7 +101,7 @@ describe("No comestibles en los reportes", () => {
     await marcarCajaNoComestible();
     await comprarYVender("2026-08");
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.compras.totalGastado).toBe(150);
     expect(rep.compras.totalNoComestibles).toBe(100);
@@ -115,7 +116,7 @@ describe("No comestibles en los reportes", () => {
     await comprarYVender("2026-07");
     await comprarYVender("2026-08");
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.ratioGastoVentas.porcentaje).toBe(50);
     expect(rep.ratioGastoVentas.porcentajePeriodoAnterior).toBe(50);
@@ -125,7 +126,7 @@ describe("No comestibles en los reportes", () => {
     await prisma.grupo.delete({ where: { id: grupoNoComestiblesId } });
     await comprarYVender("2026-08");
 
-    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma);
+    const rep = await obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
     expect(rep.ratioGastoVentas.excluyeNoComestibles).toBe(false);
     expect(rep.compras.totalNoComestibles).toBe(0);

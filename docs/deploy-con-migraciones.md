@@ -10,8 +10,9 @@ Siempre corre `prisma generate` y `next build`. Entre los dos, según `modoDeMig
 | Entorno | Modo | Qué pasa |
 |---|---|---|
 | Local, gate, CI, Producción de Vercel (default) | `verificar` | `prisma migrate status`. Sin pendientes, sigue. **Con pendientes (o si no puede consultar la base) el build falla** y dice cómo aprobarlas. |
-| `MOTOR2_MIGRAR_EN_BUILD=1` (cualquier entorno) | `aplicar` | `prisma migrate deploy`. Es la aprobación explícita «solo para este deploy». |
+| `MOTOR2_MIGRAR_EN_BUILD=1` en local o en Producción de Vercel | `aplicar` | `prisma migrate deploy`. Es la aprobación explícita «solo para este deploy». |
 | `MOTOR2_MIGRAR_EN_BUILD=0`, o Vercel con `VERCEL_ENV` ≠ `production` | `omitir` | No toca la base ni la mira (el Preview de `stockhneuquen` comparte la base de producción, ADR-007). |
+| `MOTOR2_MIGRAR_EN_BUILD=1` en Vercel con `VERCEL_ENV` ≠ `production` (S-31) | `rechazar` | **El build falla** antes de tocar nada: un Preview comparte la base de producción y no puede migrarla. `VERCEL_ENV` se mira antes que la variable. Se saca la variable de ese entorno. |
 
 `npm run build:e2e` (el que usa Playwright) nunca migra ni verifica: la base E2E la migra el workflow o quien corre la suite.
 
@@ -143,7 +144,7 @@ sin contexto, que un `count` sin contexto da 0, que con `set_config('app.empresa
 borrar la rama de ensayo; `node scripts/operaciones/con-env.mjs .env.vercel.<despliegue> -- npm run migrar:aprobar`; deploy; vigilar Sentry 48 horas (errores `P2011`/`23502` sobre `empresaId` y `42501`).
 Nunca ensayar con el Preview de stockhneuquen: comparte la base de producción. Vuelta atrás: `down.sql` (una sentencia) y `prisma migrate resolve --rolled-back`.
 
-Una instalación local: `npm run db:seed -- --gerente tu@email.com` deja al primer gerente (ya no existe el bootstrap por email).
+Una instalación local: `npm run db:seed -- --gerente tu@email.com --mostrar-enlace` deja al primer gerente (ya no existe el bootstrap por email) e imprime el enlace para entrar con Google la primera vez; sin `--mostrar-enlace` el enlace (lleva un token) no se imprime y sale por el correo de avisos si está configurado (S-33). El seed solo corre contra un Postgres local; para sembrar una base real hace falta `--permitir-remoto` y confirmar a mano el nombre de la base (terminal interactiva), y nunca corre en Vercel ni con `NODE_ENV=production`.
 
 ## Invitación por usuario y sin enlace automático de cuentas (ADR-024): despliegue en tres tiempos
 
@@ -167,3 +168,40 @@ y vigilar Sentry 48 horas (errores de `signIn`, `invitacion-sin-auth-url`, corre
 
 **Soporte — cuenta de Google rehecha (`/login?aviso=cuenta-distinta`):** la persona recuperó su email con otra cuenta de Google (otro identificador). Verificar su identidad por un canal propio; como dueño, borrar su `Account` vieja
 (`DELETE FROM "Account" WHERE "userId" = '…' AND provider = 'google'`) y mandarle «Invitar a vincular» desde Administración → Usuarios.
+
+## Server Actions: clave de cifrado de los closures y versiones entre deploys
+
+> O.3 de la lista de control (`docs/pureza-integracion.md`; Hito 4, bloque D, paso G1 de `docs/plan-hito-4-pureza.md` §4). Solo documentación: no se tocó
+> ninguna variable de entorno ni configuración. Fuentes: la guía de Next empaquetada con la versión que usa el repo
+> (`node_modules/next/dist/docs/01-app/02-guides/self-hosting.md`, «Server Functions encryption key» y «Version Skew»; `data-security.md`, «Overwriting
+> encryption keys (advanced)»).
+
+**Qué es.** Una Server Action declarada EN LÍNEA (un `"use server"` dentro de una función de un componente) que usa variables del render (un closure)
+manda esas variables al navegador CIFRADAS y las recibe de vuelta al invocarse. Next genera la clave **por build**: la acción solo se puede invocar
+contra el build que la renderizó. Hoy hay **78 `"use server"` en línea en 22 archivos de `src/app`** (contados con `grep` el 2026-10-08); el editor de
+recetas (`catalogo/recetas/[productoId]/page.tsx` y `receta-de-la-sucursal.tsx`) depende de ellos, igual que las listas que activan o desactivan en el lugar.
+
+**Dónde estamos.** El proyecto despliega **solo en Vercel** (`docs/p2109.md`: no se usa Render ni otro hosting). En Vercel la clave sale del build y
+la comparten TODAS las instancias (funciones) de un mismo deployment: dentro de un deployment no hay «una instancia con otra clave», así que la sospecha
+de la revisión #93 (punto 8) no aplica tal cual. **En Vercel no se define `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`**: no hace falta, y fijarla solo
+agregaría un secreto que custodiar y rotar.
+
+**El riesgo real: la diferencia de versiones entre deployments («version skew»).** Una pestaña abierta con el deployment N que, después del deploy N+1,
+invoca una acción (un closure cifrado con la clave de N, o el id de una acción que en N+1 cambió o ya no existe) falla con **«Failed to find Server
+Action»**: el usuario ve un error y tiene que recargar. Pasa en cada deploy con pestañas abiertas; el editor de recetas es el caso típico (se deja
+abierto mucho tiempo). Lo que lo mitiga en Vercel es **Skew Protection**: mientras dura su ventana, Vercel manda los pedidos de una pestaña vieja al
+deployment que la sirvió. No es configuración del repo: se prende o se apaga en el panel de cada proyecto (configuración avanzada; si está disponible y
+cuánto dura la ventana depende del plan de la cuenta).
+
+**Si algún día hubiera varias instancias autoalojadas** (contenedores detrás de un balanceador, cada una compilada por separado), ahí sí cada build
+tendría su clave y lo cifrado por una instancia no se podría descifrar en otra. Se arregla fijando la clave **al compilar**
+(`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` en el entorno del `next build`: queda embebida en el artefacto), con un valor **base64 de 16, 24 o 32 bytes** (Next
+genera 32; por ejemplo `openssl rand -base64 32`) tratado como **secreto**. **Rotarla invalida las pestañas abiertas** (para esas acciones es lo mismo
+que un deploy nuevo). Para las versiones entre deploys, además, un `deploymentId` en `next.config` hace que Next detecte la diferencia y navegue
+completo en vez de fallar.
+
+**Acción del dueño (fuera de la rama, sin tocar variables de entorno):** verificar en el panel de Vercel de cada proyecto —`motor2-demo`,
+`stockhneuquen`, el de zuluhub y `plataforma-motor2` (la consola)— si **Skew Protection** está prendida y con qué ventana, y decidir si se prende donde
+no lo esté.
+
+- [ ] Skew Protection revisada en los 4 proyectos (anotar acá el estado de cada uno y la decisión).

@@ -4,6 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
 import { activarTodosLosModulos } from "../setup/modulos";
+import { crearMembresia } from "../setup/membresia";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { dbDeEmpresa } from "../../src/core/auth/base";
 import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-carta";
@@ -18,6 +19,7 @@ import {
 } from "../../src/server/actions/carta/items-agrupados";
 import { cargarAdminCarta } from "../../src/server/consultas/carta/admin";
 import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Carta PROPIA de cada sucursal (ADR-009, C3/C4; decisión del dueño 2026-10-02), contra Postgres real y a través de las Server Actions: escribir
@@ -142,12 +144,18 @@ describe("carta propia por sucursal — acciones", () => {
       expect((await actualizarVisibleEnCarta(ids.pizza, false)).ok).toBe(true);
       expect((await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { sucursalId: sucursalA } })).visibleEnCarta).toBe(false);
       expect((await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { sucursalId: sucursalB } })).visibleEnCarta).toBe(true);
-      const menuB = await resolverMenuCarta(sucursalB, prisma);
+      const menuB = await resolverMenuCarta(sucursalB, prisma, AHORA_DE_LA_CORRIDA);
       expect(menuB!.secciones.flatMap((s) => s.items.map((i) => i.nombre))).toEqual(["Pizza"]);
     });
   });
 
   describe("copiar de otra sucursal", () => {
+    // S-07 (O.56): copiar exige poder VER el origen (membresía y `carta_ver` allá). El administrador de B (la activa, su membresía más antigua) también es administrador de A.
+    beforeEach(async () => {
+      const base = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
+      await crearMembresia({ usuarioId: adminBId, sucursalId: sucursalA, rolId: base.id });
+    });
+
     it("sobre una carta vacía copia contenido, géneros, ítems agrupados con sus opciones y el orden; el origen y las promos quedan igual", async () => {
       const { generoId, itemId } = await armarCartaDeA();
       const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: sucursalA } }, seccionCartaId: seccionId, titulo: "Promo A", precio: 1000 } });
@@ -194,7 +202,7 @@ describe("carta propia por sucursal — acciones", () => {
       expect((await copiarCartaDeSucursal(sucursalA, true)).ok).toBe(true);
 
       expect((await actualizarVisibleEnCarta(ids.pizza, false)).ok).toBe(true);
-      const [a, b] = await Promise.all([cargarAdminCarta(sucursalA, prisma), cargarAdminCarta(sucursalB, prisma)]);
+      const [a, b] = await Promise.all([cargarAdminCarta(sucursalA, prisma, AHORA_DE_LA_CORRIDA), cargarAdminCarta(sucursalB, prisma, AHORA_DE_LA_CORRIDA)]);
       expect(a.secciones.map((s) => s.cantidadItems)).toEqual([2]);
       expect(b.secciones.map((s) => s.cantidadItems)).toEqual([1]);
     });
@@ -245,6 +253,7 @@ describe("carta propia por sucursal — acciones", () => {
     it("dos copias a la vez desde distintos orígenes: una sola entra, la carta no se mezcla", async () => {
       await armarCartaDeA();
       const sucursalC = (await prisma.sucursal.create({ data: { nombre: "Sucursal C" } })).id;
+      await crearMembresia({ usuarioId: adminBId, sucursalId: sucursalC, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id });
       await prisma.contenidoCartaProducto.create({ data: { sucursalId: sucursalC, productoId: ids.pizza, visibleEnCarta: true, seccionCartaId: seccionId } });
 
       await como(adminBId, "admin-b@test.com");
@@ -296,14 +305,14 @@ describe("carta propia por sucursal — acciones", () => {
       expect(r.mensaje).toMatch(/No se encontró esa sucursal/);
       expect(await contarCarta(sucursalB)).toEqual({ contenidos: 0, generos: 0, items: 0, opciones: 0 });
 
-      const adminDePrincipal = await cargarAdminCarta(sucursalB, dbDeEmpresa("empresa_principal"));
+      const adminDePrincipal = await cargarAdminCarta(sucursalB, dbDeEmpresa("empresa_principal"), AHORA_DE_LA_CORRIDA);
       expect(adminDePrincipal.sucursalesConCarta.map((s) => s.id)).toEqual([sucursalA]);
-      const adminDeNorte = await cargarAdminCarta(sucursalNorte.id, dbDeEmpresa("norte"));
+      const adminDeNorte = await cargarAdminCarta(sucursalNorte.id, dbDeEmpresa("norte"), AHORA_DE_LA_CORRIDA);
       expect(adminDeNorte.cartaVacia).toBe(false);
       expect(adminDeNorte.sucursalesConCarta).toEqual([]);
 
       // El contenido de Norte nunca aparece en la carta de la principal ni al revés.
-      const menuB = await resolverMenuCarta(sucursalB, dbDeEmpresa("empresa_principal"));
+      const menuB = await resolverMenuCarta(sucursalB, dbDeEmpresa("empresa_principal"), AHORA_DE_LA_CORRIDA);
       expect(menuB!.secciones).toEqual([]);
     });
   });

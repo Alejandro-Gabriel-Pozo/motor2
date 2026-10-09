@@ -22,9 +22,10 @@ export async function obtenerLimiteMesasAbiertas(sucursalId: string, db: Db) {
 
 /**
  * Todas las mesas de la sucursal, ordenadas por número, con su estado derivado — UNA sola consulta (mesas + cuenta abierta + ítems + quién la abrió). La página la
- * llama directo, después de `requierePermisoVer(…, "pos_mesas")`: no es una Server Action de lectura.
+ * llama directo, después de `requierePermisoVer(…, "pos_mesas")`: no es una Server Action de lectura. `ahora` es OBLIGATORIO (O.22-a, Hito 4): lo fija la
+ * pantalla en el borde.
  */
-export async function obtenerMapaDeMesas(sucursalId: string, db: Db, ahora: Date = new Date()): Promise<MapaDeMesas> {
+export async function obtenerMapaDeMesas(sucursalId: string, db: Db, ahora: Date): Promise<MapaDeMesas> {
   const filas = await db.mesa.findMany({
     where: { sucursalId },
     orderBy: { numero: "asc" },

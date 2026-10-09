@@ -27,7 +27,7 @@ const RAIZ = join(__dirname, "../..");
 const CARPETAS = ["src", "plataforma/src"];
 const ZONA_PERMITIDA = "src/server/persistencia/";
 const DELEGADOS = delegadosDeModelos(readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8"));
-const OPERACIONES_DE_ESCRITURA = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "upsert", "delete", "deleteMany"]);
+const OPERACIONES_DE_ESCRITURA = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "updateManyAndReturn", "upsert", "delete", "deleteMany"]);
 const FASES = new Set(["Fase 4", "Fase 6", "Consola", "Permanente"]);
 
 interface Escritura {

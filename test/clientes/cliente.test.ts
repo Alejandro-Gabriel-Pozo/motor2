@@ -85,6 +85,20 @@ describe("Cliente (CRUD)", () => {
       expect((await actualizarCliente(uno.id, "Uno", 10)).ok).toBe(true); // su propio nombre sí vale
     });
 
+    it("GT-11 (S-52): el rango del % lo hace cumplir el guard de comando (guardComandoActualizarCliente): NaN, ±Infinity, negativo, 100 o más, 1e308, «1e999» o muchos decimales no cambian nada", async () => {
+      const creado = await altaCliente("Fulano", 10);
+      if (!creado.ok) throw new Error("esperaba ok");
+
+      for (const pct of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, -1, 100, 101, 1e308, "NaN", "Infinity", "1e999", "12,345", {}, [], null]) {
+        const r = await actualizarCliente(creado.id, "Fulano Cambiado", pct);
+        expect(r.ok, `pct=${String(pct)}`).toBe(false);
+      }
+      const intacto = await prisma.cliente.findUniqueOrThrow({ where: { id: creado.id } });
+      expect(intacto.nombre).toBe("Fulano");
+      expect(Number(intacto.descuentoPorcentaje)).toBe(10);
+      expect(await prisma.registroAuditoria.count({ where: { entidad: "Cliente", campo: "descuentoPorcentaje" } })).toBe(1); // solo la del alta
+    });
+
     it("el % nuevo NO reescribe una Cuenta que ya lo tenía congelado (D7 — verificado en test/pos/cliente-descuento.test.ts)", async () => {
       // Cobertura completa del snapshot en test/pos/cliente-descuento.test.ts; acá solo se confirma que esta action en sí no
       // toca ninguna Cuenta.

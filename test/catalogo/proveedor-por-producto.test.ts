@@ -8,6 +8,7 @@ import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularCompra, corregirCompra } from "../../src/server/actions/movimientos/compras";
 import { upsertProveedorPorProducto } from "../../src/server/persistencia/catalogo/upsert-proveedor-por-producto";
+import { cargarOfertasDeProveedores } from "../../src/server/lecturas/catalogo/ofertas-de-proveedor";
 
 describe("ProveedorPorProducto (sin gate propio)", () => {
   let sucursalId: string;
@@ -156,6 +157,10 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
       expect(lista).toHaveLength(2);
       expect(lista[0].productoId).toBe(producto2.id); // más reciente primero
       expect(lista[1]).toMatchObject({ productoId, referenciaProveedor: "ACE-5L", ultimoPrecioPorUnidadStock: 100, origenDelPrecio: "SUCURSAL" });
+      // O.10: la fila del carrito no lleva la unidad de compra (la precarga usa la unidad por defecto del producto, a propósito).
+      expect(Object.keys(lista[1]).sort()).toEqual(
+        ["origenDelPrecio", "productoCodigo", "productoId", "productoNombre", "referenciaProveedor", "ultimaCompra", "ultimoPrecioPorUnidadStock", "unidadStockNombre"],
+      );
     });
 
     it("sin ninguna compra a ese proveedor, da vacío", async () => {
@@ -289,7 +294,9 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
       const lista = await listarProductosDeProveedor(proveedorAId);
       expect(lista).toHaveLength(1);
-      expect(lista[0]).toMatchObject({ unidadCompraId: bolsa.id, unidadCompraNombre: "bolsa", referenciaProveedor: "ACE-5L" });
+      expect(lista[0]).toMatchObject({ referenciaProveedor: "ACE-5L" });
+      // O.10: el carrito ya no lleva la unidad de compra; el MISMO dato se lee del lector de ofertas (lo usan la ficha y la comparativa).
+      expect((await cargarOfertasDeProveedores(prisma, { proveedorId: proveedorAId }))[0]).toMatchObject({ unidadCompraId: bolsa.id, unidadCompraNombre: "bolsa", referenciaProveedor: "ACE-5L" });
     });
 
     it("un producto SIN unidad de compra también escribe su fila (con la unidad de stock) y conserva la referencia que se tipeó", async () => {
@@ -303,18 +310,21 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
       const fila = await prisma.proveedorPorProducto.findFirstOrThrow({ where: { productoId, proveedorId: proveedorAId } });
       expect(fila).toMatchObject({ unidadCompraId, referenciaProveedor: "ACE-5L" });
-      expect((await listarProductosDeProveedor(proveedorAId))[0]).toMatchObject({ unidadCompraNombre: "kg", referenciaProveedor: "ACE-5L", ultimoPrecioPorUnidadStock: 100 });
+      expect((await listarProductosDeProveedor(proveedorAId))[0]).toMatchObject({ referenciaProveedor: "ACE-5L", ultimoPrecioPorUnidadStock: 100 });
+      expect((await cargarOfertasDeProveedores(prisma, { proveedorId: proveedorAId }))[0]).toMatchObject({ unidadCompraNombre: "kg", referenciaProveedor: "ACE-5L" }); // O.10
     });
 
     it("una oferta sin fila en la tabla usa la unidad de compra del producto (o la de stock si no tiene)", async () => {
       await compra(productoId, proveedorAId, "2026-09-10", 500);
       expect(await prisma.proveedorPorProducto.count()).toBe(0);
-      const conUnidadDeStock = await listarProductosDeProveedor(proveedorAId);
+      // O.10: la unidad se lee del lector de ofertas (el carrito ya no la lleva); mismo dato que antes.
+      const ofertasDeA = () => cargarOfertasDeProveedores(prisma, { proveedorId: proveedorAId });
+      const conUnidadDeStock = await ofertasDeA();
       expect(conUnidadDeStock[0]).toMatchObject({ unidadCompraId, unidadCompraNombre: "kg" }); // el producto no tiene unidad de compra: la de stock
 
       const bolsa = await prisma.unidad.create({ data: { nombre: "bolsa", magnitud: "CANTIDAD", decimales: 0 } });
       await prisma.producto.update({ where: { id: productoId }, data: { unidadCompraId: bolsa.id } });
-      expect((await listarProductosDeProveedor(proveedorAId))[0]).toMatchObject({ unidadCompraId: bolsa.id, unidadCompraNombre: "bolsa" });
+      expect((await ofertasDeA())[0]).toMatchObject({ unidadCompraId: bolsa.id, unidadCompraNombre: "bolsa" });
     });
   });
 });

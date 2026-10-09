@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { resolverMenuCartaConDiagnostico } from "../../src/server/lecturas/carta/menu";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 afterAll(() => prismaAdmin.$disconnect());
 
@@ -30,7 +31,7 @@ describe("resolverMenuCartaConDiagnostico — aislamiento por empresa sin RLS", 
     const sucursalAjena = await prismaAdmin.sucursal.create({ data: { empresaId: OTRA_EMPRESA_ID, nombre: "Sucursal ajena" } });
     await prismaAdmin.itemAgrupadoCarta.create({ data: { empresaId: OTRA_EMPRESA_ID, sucursalId: sucursalAjena.id, nombre: "Gaseosa ajena", seccionCartaId: ajena.id } });
 
-    const armado = await resolverMenuCartaConDiagnostico(central, prismaAdmin);
+    const armado = await resolverMenuCartaConDiagnostico(central, prismaAdmin, AHORA_DE_LA_CORRIDA);
 
     expect(armado!.diagnostico.agrupadosSinOpciones.map((a) => a.nombre)).toEqual(["Gaseosa propia"]);
   });

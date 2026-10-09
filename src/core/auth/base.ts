@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { azarDelProceso } from "@/lib/azar";
+import { numeroEnUnidad } from "@/core/seguridad/azar";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type { OpcionesTransaccion, Transaccion } from "@/lib/db-tipos";
 import { datosDelRolDeEjecucion, permitirRolPrivilegiado, verificarRolDeEjecucion, type DatosDelRol } from "./rol-de-ejecucion";
@@ -10,9 +12,17 @@ export interface BaseDelContexto {
   transaccion: Transaccion;
 }
 
+/**
+ * Le pone a una función de transacción la fuente de azar del PROCESO para el jitter del reintento (`Transaccion.aleatorio`; Pureza 1.5): el núcleo no lee el azar por su cuenta, así que
+ * toda transacción que sale de este archivo, y por eso toda `ctx.transaccion` de producción, la trae.
+ */
+function conAzarDelProceso(abrir: Transaccion): Transaccion {
+  return Object.assign(abrir, { aleatorio: () => numeroEnUnidad(azarDelProceso) });
+}
+
 /** Base SIN empresa: para lo global (crons de índices y cotización, tablas sin `empresaId`). Lo que es de una empresa va por `baseDeEmpresa`. */
 export function baseDelContexto(): BaseDelContexto {
-  return { db: prisma, transaccion: (fn, opciones) => prisma.$transaction(fn, opciones) };
+  return { db: prisma, transaccion: conAzarDelProceso((fn, opciones) => prisma.$transaction(fn, opciones)) };
 }
 
 /**
@@ -79,9 +89,14 @@ export function transaccionDeEmpresa<T>(empresaId: string, fn: (tx: Prisma.Trans
   }, opciones);
 }
 
+/** La función de transacción de una empresa (`transaccionDeEmpresa` con la fuente de azar del proceso para el reintento): la usa `baseDeEmpresa` y los flujos sin contexto de usuario (el login por invitación). */
+export function transaccionDeLaEmpresa(empresaId: string): Transaccion {
+  return conAzarDelProceso((fn, opciones) => transaccionDeEmpresa(empresaId, fn, opciones));
+}
+
 /** La base (`db` + `transaccion`) de una empresa: lo que `obtenerContextoUsuario` le da al negocio. */
 export function baseDeEmpresa(empresaId: string): BaseDelContexto {
-  return { db: dbDeEmpresa(empresaId), transaccion: (fn, opciones) => transaccionDeEmpresa(empresaId, fn, opciones) };
+  return { db: dbDeEmpresa(empresaId), transaccion: transaccionDeLaEmpresa(empresaId) };
 }
 
 let datosDelRolDelProceso: Promise<DatosDelRol> | undefined;

@@ -117,6 +117,24 @@ function validarSustitutosDeIngrediente(datos: DatosParaValidarReceta, insumoSus
   return null;
 }
 
+/**
+ * Lo que se puede decir de UN ingrediente sin mirar el catálogo (S-52): la cantidad (mayor que 0, finita, menor que el tope), la merma (no negativa, finita, hasta el tope), las observaciones
+ * y el tope de sustitutos. Es el cuerpo, EN EL MISMO ORDEN, del principio de cada vuelta de `validarIngredientes`; lo comparten ese validador y el guard de la puerta
+ * (`guardComandoIngredienteDeReceta`), así que no pueden desparejarse.
+ */
+export function validarDatosDeIngrediente(item: IngredienteInput): string | null {
+  if (!(Number(item.cantidad) > 0)) return "Cada ingrediente necesita una cantidad mayor a 0.";
+  if (!esNumeroFinito(item.cantidad)) return "Cada ingrediente necesita una cantidad válida.";
+  if (Number(item.cantidad) >= CANTIDAD_MAXIMA) return "La cantidad de un ingrediente es demasiado grande.";
+  if (Number(item.mermaPorcentaje ?? 0) < 0) return "La merma no puede ser negativa.";
+  if (!esNumeroFinito(item.mermaPorcentaje ?? 0)) return "La merma no es un número válido.";
+  const mermaAlta = validarNumeroHasta(item.mermaPorcentaje ?? 0, "La merma", MERMA_PORCENTAJE_MAXIMA);
+  if (mermaAlta) return mermaAlta;
+  const observaciones = validarTextoLibre(item.observaciones, "Las observaciones del ingrediente", LARGO_MAXIMO_NOTAS);
+  if (!observaciones.ok) return observaciones.mensaje;
+  return validarTopeDeLista(item.insumoSustitutoIds ?? [], "Los sustitutos de un ingrediente", MAXIMO_SUSTITUTOS_POR_INGREDIENTE);
+}
+
 export function validarIngredientes(items: IngredienteInput[], producto: { seProduce: boolean }, datos: DatosParaValidarReceta): string | null {
   if (!items.length) return "La receta necesita al menos un ingrediente.";
   const excedeIngredientes = validarTopeDeLista(items, "Los ingredientes", MAXIMO_INGREDIENTES_RECETA);
@@ -127,17 +145,8 @@ export function validarIngredientes(items: IngredienteInput[], producto: { sePro
     return "La sustitución automática solo aplica a platos que se descuentan al vender (no a recetas que se producen).";
   }
   for (const item of items) {
-    if (!(Number(item.cantidad) > 0)) return "Cada ingrediente necesita una cantidad mayor a 0.";
-    if (!esNumeroFinito(item.cantidad)) return "Cada ingrediente necesita una cantidad válida.";
-    if (Number(item.cantidad) >= CANTIDAD_MAXIMA) return "La cantidad de un ingrediente es demasiado grande.";
-    if (Number(item.mermaPorcentaje ?? 0) < 0) return "La merma no puede ser negativa.";
-    if (!esNumeroFinito(item.mermaPorcentaje ?? 0)) return "La merma no es un número válido.";
-    const mermaAlta = validarNumeroHasta(item.mermaPorcentaje ?? 0, "La merma", MERMA_PORCENTAJE_MAXIMA);
-    if (mermaAlta) return mermaAlta;
-    const observaciones = validarTextoLibre(item.observaciones, "Las observaciones del ingrediente", LARGO_MAXIMO_NOTAS);
-    if (!observaciones.ok) return observaciones.mensaje;
-    const excedeSustitutos = validarTopeDeLista(item.insumoSustitutoIds ?? [], "Los sustitutos de un ingrediente", MAXIMO_SUSTITUTOS_POR_INGREDIENTE);
-    if (excedeSustitutos) return excedeSustitutos;
+    const delDato = validarDatosDeIngrediente(item);
+    if (delDato) return delDato;
     const mp = datos.productos.get(item.insumoProductoId);
     if (!mp || mp.tipo !== "MP") {
       return `Cada ingrediente tiene que ser una materia prima (MP) (${mp?.nombre ?? item.insumoProductoId} no lo es).`;
@@ -156,26 +165,41 @@ export function validarIngredientes(items: IngredienteInput[], producto: { sePro
   return null;
 }
 
+/**
+ * Lo que se puede decir de UN paso sin mirar a los otros ni al catálogo (S-52), en dos tramos con el chequeo de «dos pasos con el mismo orden» entre uno y otro, como en `validarPasos`:
+ * el primero (la instrucción, el orden y los textos) y el segundo (los minutos y el tope de ingredientes marcados). Los comparten `validarPasos` y el guard de la puerta
+ * (`guardComandoPasoDeReceta`), así que no pueden desparejarse.
+ */
+export function validarEncabezadoDePaso(p: PasoInput): string | null {
+  if (!texto(p.instruccion)) return "Cada paso necesita una instrucción.";
+  if (!(Number(p.orden) > 0)) return "Cada paso necesita un orden mayor a 0.";
+  if (!Number.isInteger(Number(p.orden)) || Number(p.orden) > ENTERO_MAXIMO_RAZONABLE) return "El orden de un paso tiene que ser un número entero razonable.";
+  const instruccion = validarTextoLibre(p.instruccion, "La instrucción de un paso", LARGO_MAXIMO_TEXTO_RECETA);
+  if (!instruccion.ok) return instruccion.mensaje;
+  const nombrePaso = validarTextoLibre(p.nombre, "El nombre de un paso", LARGO_MAXIMO_NOTAS);
+  if (!nombrePaso.ok) return nombrePaso.mensaje;
+  return null;
+}
+
+export function validarMinutosYMarcadosDePaso(p: PasoInput): string | null {
+  if (p.minutos !== undefined && Number(p.minutos) < 0) return "Los minutos de un paso no pueden ser negativos.";
+  if (p.minutos !== undefined && !esNumeroFinito(p.minutos)) return "Los minutos de un paso no son un número válido.";
+  if (p.minutos !== undefined && (!Number.isInteger(Number(p.minutos)) || Number(p.minutos) > ENTERO_MAXIMO_RAZONABLE)) return "Los minutos de un paso tienen que ser un número entero razonable.";
+  return validarTopeDeLista(p.insumoProductoIds ?? [], "Los ingredientes marcados en un paso", MAXIMO_INGREDIENTES_RECETA);
+}
+
 export function validarPasos(pasos: PasoInput[], items: IngredienteInput[]): string | null {
   const insumoIdsValidos = new Set(items.map((i) => i.insumoProductoId));
   const ordenesVistos = new Set<number>();
   const excedePasos = validarTopeDeLista(pasos, "Los pasos", MAXIMO_PASOS_RECETA);
   if (excedePasos) return excedePasos;
   for (const p of pasos) {
-    if (!texto(p.instruccion)) return "Cada paso necesita una instrucción.";
-    if (!(Number(p.orden) > 0)) return "Cada paso necesita un orden mayor a 0.";
-    if (!Number.isInteger(Number(p.orden)) || Number(p.orden) > ENTERO_MAXIMO_RAZONABLE) return "El orden de un paso tiene que ser un número entero razonable.";
-    const instruccion = validarTextoLibre(p.instruccion, "La instrucción de un paso", LARGO_MAXIMO_TEXTO_RECETA);
-    if (!instruccion.ok) return instruccion.mensaje;
-    const nombrePaso = validarTextoLibre(p.nombre, "El nombre de un paso", LARGO_MAXIMO_NOTAS);
-    if (!nombrePaso.ok) return nombrePaso.mensaje;
+    const delPaso = validarEncabezadoDePaso(p);
+    if (delPaso) return delPaso;
     if (ordenesVistos.has(p.orden)) return `Hay dos pasos con el mismo orden (${p.orden}).`;
     ordenesVistos.add(p.orden);
-    if (p.minutos !== undefined && Number(p.minutos) < 0) return "Los minutos de un paso no pueden ser negativos.";
-    if (p.minutos !== undefined && !esNumeroFinito(p.minutos)) return "Los minutos de un paso no son un número válido.";
-    if (p.minutos !== undefined && (!Number.isInteger(Number(p.minutos)) || Number(p.minutos) > ENTERO_MAXIMO_RAZONABLE)) return "Los minutos de un paso tienen que ser un número entero razonable.";
-    const excedeMarcados = validarTopeDeLista(p.insumoProductoIds ?? [], "Los ingredientes marcados en un paso", MAXIMO_INGREDIENTES_RECETA);
-    if (excedeMarcados) return excedeMarcados;
+    const delResto = validarMinutosYMarcadosDePaso(p);
+    if (delResto) return delResto;
     for (const insumoProductoId of p.insumoProductoIds ?? []) {
       if (!insumoIdsValidos.has(insumoProductoId)) return "Un paso no puede marcar un ingrediente que no está en esta misma receta.";
     }
@@ -192,6 +216,27 @@ export function validarPasos(pasos: PasoInput[], items: IngredienteInput[]): str
  * más arriba para los minutos de un paso.
  */
 export function validarCabecera(cabecera: CabeceraRecetaInput, datos: DatosParaValidarReceta): string | null {
+  const delTexto = validarTextosYTopesDeCabecera(cabecera);
+  if (delTexto) return delTexto;
+  if (cabecera.rendimientoCantidad !== undefined) {
+    if (!cabecera.rendimientoUnidadId) return "Falta la unidad del rendimiento.";
+    const unidad = datos.unidades.get(cabecera.rendimientoUnidadId);
+    if (!unidad) return "No se encontró la unidad del rendimiento.";
+    const resultado = validarCantidad(cabecera.rendimientoCantidad, unidad, { etiqueta: "El rendimiento" });
+    if (!resultado.ok) return resultado.mensaje;
+  }
+  if (cabecera.racionTamano !== undefined) {
+    if (!cabecera.racionUnidadId) return "Falta la unidad del tamaño de ración.";
+    const unidad = datos.unidades.get(cabecera.racionUnidadId);
+    if (!unidad) return "No se encontró la unidad del tamaño de ración.";
+    const resultado = validarCantidad(cabecera.racionTamano, unidad, { etiqueta: "El tamaño de ración" });
+    if (!resultado.ok) return resultado.mensaje;
+  }
+  return validarEnterosDeCabecera(cabecera);
+}
+
+/** Los cuatro textos libres de la cabecera y el tope de las raciones y los dos tiempos (S-52): lo primero que mira `validarCabecera`, sin mirar el catálogo. Lo comparten ese validador y el guard de la puerta. */
+export function validarTextosYTopesDeCabecera(cabecera: CabeceraRecetaInput): string | null {
   const textos: [unknown, string][] = [
     [cabecera.comentarios, "Los comentarios"],
     [cabecera.presentacionEmplatado, "La presentación o emplatado"],
@@ -208,20 +253,11 @@ export function validarCabecera(cabecera: CabeceraRecetaInput, datos: DatosParaV
       if (alto) return alto;
     }
   }
-  if (cabecera.rendimientoCantidad !== undefined) {
-    if (!cabecera.rendimientoUnidadId) return "Falta la unidad del rendimiento.";
-    const unidad = datos.unidades.get(cabecera.rendimientoUnidadId);
-    if (!unidad) return "No se encontró la unidad del rendimiento.";
-    const resultado = validarCantidad(cabecera.rendimientoCantidad, unidad, { etiqueta: "El rendimiento" });
-    if (!resultado.ok) return resultado.mensaje;
-  }
-  if (cabecera.racionTamano !== undefined) {
-    if (!cabecera.racionUnidadId) return "Falta la unidad del tamaño de ración.";
-    const unidad = datos.unidades.get(cabecera.racionUnidadId);
-    if (!unidad) return "No se encontró la unidad del tamaño de ración.";
-    const resultado = validarCantidad(cabecera.racionTamano, unidad, { etiqueta: "El tamaño de ración" });
-    if (!resultado.ok) return resultado.mensaje;
-  }
+  return null;
+}
+
+/** Las raciones y los dos tiempos de la cabecera: enteros, finitos y no negativos (S-52): lo último que mira `validarCabecera`, sin mirar el catálogo. Lo comparten ese validador y el guard de la puerta. */
+export function validarEnterosDeCabecera(cabecera: CabeceraRecetaInput): string | null {
   if (cabecera.racionesCantidad !== undefined) {
     if (cabecera.racionesCantidad < 0) return "La cantidad de raciones no puede ser negativa.";
     if (!esNumeroFinito(cabecera.racionesCantidad)) return "La cantidad de raciones no es un número válido.";

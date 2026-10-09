@@ -21,11 +21,11 @@ import "dotenv/config";
 import { vi, describe, it, expect } from "vitest";
 
 vi.mock("../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
-// El limitador de tasa (300 mutaciones/minuto por usuario, src/core/permisos/limitador-tasa.ts) es real y correcto en
-// producción — acá se neutraliza SOLO para esta corrida (§5, docs/planes-demo-y-claridad-reportes-2026-09-21.md
-// "Riesgo real al escalar el guion a varios meses"): 6 meses de guion son casi 1000 eventos, muy por encima del límite
-// pensado para una persona operando la aplicación, no para un script que repuebla una demo entera.
-vi.mock("../src/core/permisos/limitador-tasa", () => ({ limitadorMutaciones: { excedeLimite: () => false } }));
+// El limitador de mutaciones (300 por minuto por usuario, src/server/actions/limitador-de-mutaciones.ts desde O.33/L.2; la fábrica sigue en
+// src/core/permisos/limitador-tasa.ts) es real y correcto en producción — acá se neutraliza SOLO para esta corrida (§5,
+// docs/planes-demo-y-claridad-reportes-2026-09-21.md "Riesgo real al escalar el guion a varios meses"): 6 meses de guion son casi 1000 eventos,
+// muy por encima del límite pensado para una persona operando la aplicación, no para un script que repuebla una demo entera.
+vi.mock("../src/server/actions/limitador-de-mutaciones", () => ({ limitadorMutaciones: { excedeLimite: () => false } }));
 
 import { prisma } from "./demo-seed/cliente";
 import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
@@ -37,7 +37,7 @@ import { crearUnidad } from "../src/server/actions/catalogo/unidades";
 import { altaProveedor, actualizarActivaProveedor } from "../src/server/actions/catalogo/proveedores";
 import { crearInsumo, crearOActualizarGrupo, actualizarGrupoDeInsumo } from "../src/server/actions/catalogo/insumos";
 import { darDeAltaProducto, actualizarDisponibilidadProducto } from "../src/server/actions/catalogo/productos";
-import { guardarReceta } from "../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas as guardarReceta } from "../src/server/actions/catalogo/receta-a-ciegas";
 import { registrarMovimiento } from "../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../src/server/actions/movimientos/venta";
 import { registrarConteoFisico } from "../src/server/actions/movimientos/conteo-fisico";

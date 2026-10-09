@@ -2,6 +2,7 @@ import "dotenv/config";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
+import { primerHostNoLocal } from "../../src/core/auth/hosts-de-conexion";
 
 /**
  * Base de datos TEMPORAL armada aplicando las migraciones de `prisma/migrations` una por una, en orden, como las vería una base real que se
@@ -19,8 +20,10 @@ function direccionDelDuenio(): URL {
   const direccion = process.env.DIRECT_URL;
   if (!direccion) throw new Error("base-temporal-migrada: falta DIRECT_URL (el dueño de las tablas).");
   const url = new URL(direccion);
-  if (!SERVIDORES_LOCALES.includes(url.hostname)) {
-    throw new Error(`base-temporal-migrada: me niego a crear bases en "${url.hostname}"; solo corre contra un Postgres local.`);
+  // M-29: también los hosts de `?host=`/`hostaddr=`, que mandan sobre el de la URL.
+  const noLocal = primerHostNoLocal(url, SERVIDORES_LOCALES);
+  if (noLocal !== null) {
+    throw new Error(`base-temporal-migrada: me niego a crear bases en "${noLocal}"; solo corre contra un Postgres local.`);
   }
   return url;
 }

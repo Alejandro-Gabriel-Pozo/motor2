@@ -14,6 +14,7 @@ import {
 import { cargarAdminItemsAgrupados } from "../../src/server/consultas/carta/admin";
 import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { validarNombreItemAgrupadoCarta } from "../../src/core/carta/validaciones";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * Server Actions de los ítems agrupados de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M5): exigen `carta`,
@@ -206,12 +207,12 @@ describe("Server Actions de ítems agrupados", () => {
       expect((await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).ok).toBe(true);
       expect((await agregarOpcionItemAgrupadoCarta(agId, ids.sprite)).ok).toBe(true);
 
-      const enActiva = await cargarAdminItemsAgrupados(sucursalId, prisma);
+      const enActiva = await cargarAdminItemsAgrupados(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
       expect(enActiva.diagnostico.agrupadosConPreciosDistintos).toEqual([]);
       // «Otra» tiene su carta propia (ADR-009, C3): su ítem agrupado, con las mismas opciones, es otro registro.
       const agIdOtra = (await prisma.itemAgrupadoCarta.create({ data: { sucursalId: otra, nombre: "Gaseosa 500 CC", seccionCartaId: (await prisma.itemAgrupadoCarta.findUniqueOrThrow({ where: { id: agId } })).seccionCartaId } })).id;
       await prisma.opcionItemAgrupadoCarta.createMany({ data: [ids.coca, ids.sprite].map((productoId, orden) => ({ sucursalId: otra, itemAgrupadoCartaId: agIdOtra, productoId, orden })) });
-      const enOtra = await cargarAdminItemsAgrupados(otra, prisma);
+      const enOtra = await cargarAdminItemsAgrupados(otra, prisma, AHORA_DE_LA_CORRIDA);
       expect(enOtra.diagnostico.agrupadosConPreciosDistintos).toEqual([{ id: agIdOtra, nombre: "Gaseosa 500 CC", minimo: 5000, maximo: 5500 }]);
       expect(enOtra.items[0].precio).toEqual({ minimo: 5000, maximo: 5500 });
     });
@@ -243,7 +244,7 @@ describe("Server Actions de ítems agrupados", () => {
       const agId = await crearGaseosa();
       expect((await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).ok).toBe(true);
       expect(await agregarOpcionItemAgrupadoCarta(agId, ids.agua)).toEqual({ ok: true, mensaje: "«Agua saborizada 500cc» agregado a «Gaseosa 500 CC»." });
-      const [seccion] = (await resolverMenuCarta(sucursalId, prisma))!.secciones;
+      const [seccion] = (await resolverMenuCarta(sucursalId, prisma, AHORA_DE_LA_CORRIDA))!.secciones;
       expect(seccion.nombre).toBe("Bebidas sin alcohol");
       expect(seccion.items.find((i) => i.productoId === agId)!.opciones!.map((o) => o.productoId)).toEqual([ids.coca, ids.agua]);
     });
@@ -348,7 +349,7 @@ describe("Server Actions de ítems agrupados", () => {
     const agId = await crearGaseosa();
     await agregarOpcionItemAgrupadoCarta(agId, ids.coca);
     await agregarOpcionItemAgrupadoCarta(agId, ids.sprite);
-    const items = (await resolverMenuCarta(sucursalId, prisma))!.secciones.flatMap((s) => s.items);
+    const items = (await resolverMenuCarta(sucursalId, prisma, AHORA_DE_LA_CORRIDA))!.secciones.flatMap((s) => s.items);
     expect(items).toEqual([
       {
         productoId: agId,

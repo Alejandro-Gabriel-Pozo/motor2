@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP } from "@/server/lecturas/reportes/comun";
 import { redondearCantidad, bandaDeRuidoDeLote, calcularCantidadEstimadaNeta, calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, compararPorImpacto, impactoDelDesvio, motivoSinEstimacion as calcularMotivoSinEstimacion, motivoSinEstimacionConteo as calcularMotivoSinEstimacionConteo, rotularLineaDeReceta, anclasValidasEnVentana, clavePar, consumoRealDelTramo, elegirAnclas, finDelDiaUtc, limitesDelTramo, type CostoMP, type Anclas, type CandidatoAncla, type MetodoRendimiento, type MovimientoParaConciliar } from "@/core/reportes/public";
 import { ZONA_UTC, inicioDelDiaDe, rangoDeDias } from "@/core/tiempo/zona-horaria";
@@ -8,6 +9,57 @@ import { cargarRecetasVigentes } from "@/server/lecturas/catalogo/recetas-vigent
 import { resolverMinimosCuadrados } from "@/core/estadistica/minimos-cuadrados";
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "@/core/movimientos/public";
 import type { FilaRendimientoSimple, FilaRendimientoCompartido, UsoDeInsumo, Pool, ResultadoPoolCompartido } from "@/core/reportes/public";
+
+// ── Lecturas EN BLOQUE (O.37 de docs/pureza-integracion.md) ─────────────────────────────────────────────────────────────────────────────────────────────────
+//
+// Antes cada pool hacía sus propias lecturas dentro del bucle (2 `aggregate` de apertura/cierre, las entradas, las ventas, los conteos, un `groupBy` POR
+// CADA día de ancla y, con anclas, los movimientos y las ventas de cada tramo/intervalo): ~6 consultas por pool más una por día, así que el reporte crecía
+// lineal con la carta (C0 lo midió: 42 consultas las simples, 15 las compartidas). Ahora se lee UNA vez para todos los pools (la unión de sus productos) y se
+// reparte en memoria por pool/tramo. Mismos `where` que antes —solo cambia `productoId: { in: pool }` por la unión—, así que cada pool ve exactamente las
+// mismas filas; las sumas de saldo se hacen en `Decimal` (igual de exactas que el `_sum` de la base) y las de cantidades conservan el orden en que la base
+// las entregó (`indexarPorProducto`). El cálculo (anclas, consumo del tramo, regresión) sigue en `core/reportes`, intacto.
+
+// ── Orden explícito en TODA lectura (D.3 de docs/pureza-integracion.md) ──────────────────────────────────────────────────────────────────────────────────────
+//
+// Ninguna lectura de este archivo depende del orden en que Postgres entrega las filas: cada una lleva su `orderBy` (los `groupBy` por sus claves; los
+// movimientos por la fecha de su operación y el id; los conteos por fecha e id; los productos por id), así el recorrido de las cantidades —y las sumas en
+// coma flotante que van a `redondearCantidad`— es siempre el mismo, sin importar el plan de la base. `orden-en-rendimiento-recetas.test.ts` lo vigila.
+
+/** Orden de toda lectura de movimientos: por la fecha de su operación y, empatados, por id (el mismo de `historial-producto`). */
+const ORDEN_DE_MOVIMIENTOS: Prisma.MovimientoStockOrderByWithRelationInput[] = [{ operacion: { fecha: "asc" } }, { id: "asc" }];
+
+/**
+ * Índice de filas por `productoId` que devuelve, para un conjunto de productos, sus filas EN EL ORDEN en que vinieron de la base (el `orderBy` de cada
+ * lectura, D.3). Las sumas en coma flotante van a `redondearCantidad` y las de saldo son `Decimal` exactas; se conserva el orden para recorrer las cantidades
+ * igual que la consulta propia del pool.
+ */
+function indexarPorProducto<T extends { productoId: string }>(filas: readonly T[]): (productoIds: Iterable<string>) => T[] {
+  const posiciones = new Map<string, number[]>();
+  filas.forEach((f, i) => {
+    const lista = posiciones.get(f.productoId);
+    if (lista) lista.push(i);
+    else posiciones.set(f.productoId, [i]);
+  });
+  return (productoIds) => {
+    const indices: number[] = [];
+    for (const id of new Set(productoIds)) indices.push(...(posiciones.get(id) ?? []));
+    return indices.sort((a, b) => a - b).map((i) => filas[i]);
+  };
+}
+
+/** La unión (sin repetir) de los productos de varios pools: lo que va en el `in` de las lecturas en bloque. */
+function unionDeProductos(listas: Iterable<readonly string[]>): string[] {
+  const ids = new Set<string>();
+  for (const lista of listas) for (const id of lista) ids.add(id);
+  return Array.from(ids);
+}
+
+/** Suma exacta (`Decimal`, como el `_sum` de la base) de los `_sum.cantidad` agrupados por producto de los productos del pool. */
+function sumarDelPool(sumaPorProducto: ReadonlyMap<string, Prisma.Decimal>, productoIds: readonly string[]): Prisma.Decimal {
+  let suma = new Prisma.Decimal(0);
+  for (const id of new Set(productoIds)) suma = suma.plus(sumaPorProducto.get(id) ?? 0);
+  return suma;
+}
 
 /**
  * Saldo del pool antes de `desde` y después de `hasta` — CONTEXTO, nunca
@@ -27,15 +79,26 @@ import type { FilaRendimientoSimple, FilaRendimientoCompartido, UsoDeInsumo, Poo
  * Conteo Físico (`metodo: "CONTEO"`, ver rendimiento-conciliado.ts) — con
  * dos anclas RESUELTO que cubren el pool entero, se suma el consumo real
  * DIRECTO por proceso entre ellas, en vez de inferirlo de las compras.
+ *
+ * En bloque (O.37): dos `groupBy` por producto para TODOS los pools (antes, dos `aggregate` por pool) y la suma de cada pool en `Decimal`, que da el mismo
+ * número exacto que el `aggregate` sobre los productos del pool. Sin pools no consulta.
  */
-async function calcularStockAperturaYCierre(sucursalId: string, productoIds: string[], desde: Date, hasta: Date, db: Db): Promise<{ stockApertura: number; stockCierre: number }> {
-  const [apertura, delta] = await Promise.all([
-    db.movimientoStock.aggregate({ where: { seccion: { sucursalId }, productoId: { in: productoIds }, operacion: { fecha: { lt: desde } } }, _sum: { cantidad: true } }),
-    db.movimientoStock.aggregate({ where: { seccion: { sucursalId }, productoId: { in: productoIds }, operacion: { fecha: { gte: desde, lte: hasta } } }, _sum: { cantidad: true } }),
+async function cargarStockAperturaYCierreDePools(sucursalId: string, pools: readonly Pool[], desde: Date, hasta: Date, db: Db): Promise<Map<string, { stockApertura: number; stockCierre: number }>> {
+  const resultado = new Map<string, { stockApertura: number; stockCierre: number }>();
+  const productoIds = unionDeProductos(pools.map((p) => p.productoIds));
+  if (productoIds.length === 0) return resultado;
+  const [antes, durante] = await Promise.all([
+    db.movimientoStock.groupBy({ by: ["productoId"], where: { seccion: { sucursalId }, productoId: { in: productoIds }, operacion: { fecha: { lt: desde } } }, _sum: { cantidad: true }, orderBy: { productoId: "asc" } }),
+    db.movimientoStock.groupBy({ by: ["productoId"], where: { seccion: { sucursalId }, productoId: { in: productoIds }, operacion: { fecha: { gte: desde, lte: hasta } } }, _sum: { cantidad: true }, orderBy: { productoId: "asc" } }),
   ]);
-  const stockApertura = redondearCantidad(Number(apertura._sum.cantidad ?? 0));
-  const stockCierre = redondearCantidad(stockApertura + Number(delta._sum.cantidad ?? 0));
-  return { stockApertura, stockCierre };
+  const aperturaPorProducto = new Map(antes.map((g) => [g.productoId, new Prisma.Decimal(g._sum.cantidad ?? 0)]));
+  const deltaPorProducto = new Map(durante.map((g) => [g.productoId, new Prisma.Decimal(g._sum.cantidad ?? 0)]));
+  for (const pool of pools) {
+    const stockApertura = redondearCantidad(Number(sumarDelPool(aperturaPorProducto, pool.productoIds)));
+    const stockCierre = redondearCantidad(stockApertura + Number(sumarDelPool(deltaPorProducto, pool.productoIds)));
+    resultado.set(pool.clave, { stockApertura, stockCierre });
+  }
+  return resultado;
 }
 
 /** El día calendario (UTC, D3) de `fecha` — medianoche, para agrupar Conteo Físico por día sin importar la hora exacta a la que se registró. */
@@ -44,90 +107,222 @@ function diaUtc(fecha: Date): Date {
 }
 
 /**
- * Los días candidatos a ancla del pool dentro de `[desde, hasta]` (Task
+ * Los días candidatos a ancla de CADA pool dentro de `[desde, hasta]` (Task
  * #26, Diseño B — D1/D3): busca los `ConteoFisico` `RESUELTO` de
  * cualquier producto del pool en la ventana, los agrupa por día calendario
  * y, para cada día con al menos un conteo, calcula el saldo de TODO el
  * pool (todos los productos, todas las secciones de la sucursal) al
  * cierre de ese día — el insumo que le falta a `esAnclaValida`/
  * `elegirAnclas`/`anclasValidasEnVentana` (rendimiento-conciliado.ts) para
- * decidir cuáles de estos días cubrieron al pool entero. `[]` sin ningún
- * conteo en la ventana.
+ * decidir cuáles de estos días cubrieron al pool entero. `[]` para el pool
+ * sin ningún conteo en la ventana.
+ *
+ * En bloque (O.37): antes, por pool, un `findMany` de conteos y un `groupBy` del saldo POR CADA DÍA con conteo. Ahora: los conteos de todos los pools en
+ * una consulta, y el saldo de cada (producto, sección) al cierre de cada día con DOS lecturas sea cual sea la cantidad de días — el saldo acumulado hasta el
+ * cierre del primer día (`groupBy`) y los movimientos entre ese cierre y el del último día (`findMany`), que se van sumando en orden de fecha (en `Decimal`,
+ * exacto como el `_sum`) para sacar la foto de cada día. Mismo criterio que el `groupBy` de antes: un par cuenta si su saldo al cierre del día (`fecha <=
+ * finDelDiaUtc(día)`) es ≠ 0.
  */
-async function construirCandidatosAncla(sucursalId: string, productoIds: string[], desde: Date, hasta: Date, db: Db): Promise<CandidatoAncla[]> {
+async function cargarCandidatosAnclaDePools(sucursalId: string, pools: readonly Pool[], desde: Date, hasta: Date, db: Db): Promise<Map<string, CandidatoAncla[]>> {
+  const resultado = new Map<string, CandidatoAncla[]>(pools.map((p) => [p.clave, []]));
+  const productoIds = unionDeProductos(pools.map((p) => p.productoIds));
+  if (productoIds.length === 0) return resultado;
   const conteos = await db.conteoFisico.findMany({
     where: { sucursalId, productoId: { in: productoIds }, estado: "RESUELTO", fecha: { gte: desde, lte: hasta } },
     select: { productoId: true, seccionId: true, fecha: true },
+    orderBy: [{ fecha: "asc" }, { id: "asc" }],
   });
-  if (conteos.length === 0) return [];
+  if (conteos.length === 0) return resultado;
+  const conteosDe = indexarPorProducto(conteos);
 
-  const diaPorClave = new Map<string, Date>();
-  const paresContadosPorDia = new Map<string, Set<string>>();
-  for (const c of conteos) {
-    const dia = diaUtc(c.fecha);
-    const clave = dia.toISOString();
-    diaPorClave.set(clave, dia);
-    if (!paresContadosPorDia.has(clave)) paresContadosPorDia.set(clave, new Set());
-    paresContadosPorDia.get(clave)!.add(clavePar(c.productoId, c.seccionId));
+  // Los días con conteo de cada pool (en el orden en que aparecen, como antes) y los pares contados cada día.
+  const diasDelPool = new Map<string, { diaPorClave: Map<string, Date>; paresContadosPorDia: Map<string, Set<string>> }>();
+  const todosLosDias = new Map<number, Date>();
+  const productosConConteo = new Set<string>();
+  for (const pool of pools) {
+    const propios = conteosDe(pool.productoIds);
+    if (propios.length === 0) continue;
+    const diaPorClave = new Map<string, Date>();
+    const paresContadosPorDia = new Map<string, Set<string>>();
+    for (const c of propios) {
+      const dia = diaUtc(c.fecha);
+      const clave = dia.toISOString();
+      diaPorClave.set(clave, dia);
+      if (!paresContadosPorDia.has(clave)) paresContadosPorDia.set(clave, new Set());
+      paresContadosPorDia.get(clave)!.add(clavePar(c.productoId, c.seccionId));
+      todosLosDias.set(dia.getTime(), dia);
+    }
+    diasDelPool.set(pool.clave, { diaPorClave, paresContadosPorDia });
+    for (const id of pool.productoIds) productosConConteo.add(id);
   }
 
-  return Promise.all(
-    Array.from(diaPorClave.entries()).map(async ([clave, dia]) => {
-      const saldos = await db.movimientoStock.groupBy({
-        by: ["productoId", "seccionId"],
-        where: { seccion: { sucursalId }, productoId: { in: productoIds }, operacion: { fecha: { lte: finDelDiaUtc(dia) } } },
-        _sum: { cantidad: true },
-      });
-      const paresConSaldo = new Set(saldos.filter((s) => Number(s._sum.cantidad ?? 0) !== 0).map((s) => clavePar(s.productoId, s.seccionId)));
-      return { fecha: dia, paresContados: paresContadosPorDia.get(clave)!, paresConSaldo };
-    })
-  );
+  const dias = Array.from(todosLosDias.values()).sort((a, b) => a.getTime() - b.getTime());
+  const cortes = dias.map((d) => finDelDiaUtc(d));
+  const primerCorte = cortes[0];
+  const ultimoCorte = cortes[cortes.length - 1];
+  const ids = Array.from(productosConConteo);
+  const [saldoAlPrimerCorte, movimientosPosteriores] = await Promise.all([
+    db.movimientoStock.groupBy({
+      by: ["productoId", "seccionId"],
+      where: { seccion: { sucursalId }, productoId: { in: ids }, operacion: { fecha: { lte: primerCorte } } },
+      _sum: { cantidad: true },
+      orderBy: [{ productoId: "asc" }, { seccionId: "asc" }],
+    }),
+    // Con un solo día no hay nada entre el primer corte y el último: no se consulta.
+    cortes.length > 1
+      ? db.movimientoStock.findMany({
+          where: { seccion: { sucursalId }, productoId: { in: ids }, operacion: { fecha: { gt: primerCorte, lte: ultimoCorte } } },
+          select: { productoId: true, seccionId: true, cantidad: true, operacion: { select: { fecha: true } } },
+          orderBy: ORDEN_DE_MOVIMIENTOS,
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const saldo = new Map<string, { productoId: string; par: string; suma: Prisma.Decimal }>();
+  const sumar = (productoId: string, seccionId: string, cantidad: Prisma.Decimal | number | null) => {
+    const par = clavePar(productoId, seccionId);
+    const actual = saldo.get(par);
+    if (actual) actual.suma = actual.suma.plus(cantidad ?? 0);
+    else saldo.set(par, { productoId, par, suma: new Prisma.Decimal(cantidad ?? 0) });
+  };
+  for (const g of saldoAlPrimerCorte) sumar(g.productoId, g.seccionId, g._sum.cantidad);
+  const posteriores = [...movimientosPosteriores].sort((a, b) => a.operacion.fecha.getTime() - b.operacion.fecha.getTime());
+  /** Por día (su `getTime()`): los pares con saldo ≠ 0 al cierre. */
+  const conSaldoPorDia = new Map<number, Array<{ productoId: string; par: string }>>();
+  let siguiente = 0;
+  dias.forEach((dia, k) => {
+    const corte = cortes[k].getTime();
+    while (siguiente < posteriores.length && posteriores[siguiente].operacion.fecha.getTime() <= corte) {
+      const m = posteriores[siguiente++];
+      sumar(m.productoId, m.seccionId, m.cantidad);
+    }
+    conSaldoPorDia.set(
+      dia.getTime(),
+      Array.from(saldo.values()).filter((s) => !s.suma.isZero()).map(({ productoId, par }) => ({ productoId, par }))
+    );
+  });
+
+  for (const pool of pools) {
+    const propios = diasDelPool.get(pool.clave);
+    if (!propios) continue;
+    const delPool = new Set(pool.productoIds);
+    resultado.set(
+      pool.clave,
+      Array.from(propios.diaPorClave.entries()).map(([clave, dia]) => ({
+        fecha: dia,
+        paresContados: propios.paresContadosPorDia.get(clave)!,
+        paresConSaldo: new Set(conSaldoPorDia.get(dia.getTime())!.filter((s) => delPool.has(s.productoId)).map((s) => s.par)),
+      }))
+    );
+  }
+  return resultado;
 }
 
 /**
- * Las dos anclas del pool (caso simple, Fase 1) — `null` sin dos días que
- * califiquen dentro de `[desde, hasta]`, el llamador cae al método
- * COMPRAS (D4).
+ * Las entradas (COMPRA + PRODUCCION) de la ventana de los productos pedidos, en UNA consulta para todos los pools (antes, una por pool). COMPRA +
+ * PRODUCCION: un insumo con seProduce=true (una sub-receta) entra por producción, no por compra — antes solo se miraba COMPRA, así que un insumo así
+ * siempre daba -100% (defecto 1 de §3). anuladaEn: null cubre la COMPRA que el guardián de anuladas exige.
  */
-async function elegirAnclasDelPool(sucursalId: string, productoIds: string[], desde: Date, hasta: Date, db: Db): Promise<Anclas | null> {
-  const candidatos = await construirCandidatosAncla(sucursalId, productoIds, desde, hasta, db);
-  return elegirAnclas(candidatos, desde, hasta);
+async function cargarEntradasDeLaVentana(sucursalId: string, productoIds: readonly string[], desde: Date, hasta: Date, db: Db) {
+  const filas =
+    productoIds.length === 0
+      ? []
+      : await db.movimientoStock.findMany({
+          where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: { in: ["COMPRA", "PRODUCCION"] }, productoId: { in: [...productoIds] } },
+          select: { productoId: true, cantidad: true, proceso: true, operacion: { select: { fecha: true } } },
+          orderBy: ORDEN_DE_MOVIMIENTOS,
+        });
+  return indexarPorProducto(filas);
+}
+
+/** Las ventas (VENTA, no anuladas) de la ventana de los platos pedidos, en UNA consulta (antes, una por pool o una por plato del pool). */
+async function cargarVentasDeLaVentana(sucursalId: string, platoIds: readonly string[], desde: Date, hasta: Date, db: Db) {
+  const ids = unionDeProductos([platoIds]);
+  const filas =
+    ids.length === 0
+      ? []
+      : await db.movimientoStock.findMany({
+          where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: "VENTA", productoId: { in: ids } },
+          select: { productoId: true, cantidad: true, operacion: { select: { fecha: true } } },
+          orderBy: ORDEN_DE_MOVIMIENTOS,
+        });
+  return indexarPorProducto(filas);
+}
+
+/** Lo que cada pool necesita de sus tramos entre anclas: sus productos, sus platos y los tramos (uno en el caso simple; los intervalos en el compartido). */
+interface PedidoDeTramos {
+  productoIds: readonly string[];
+  platoIds: readonly string[];
+  tramos: readonly Anclas[];
+}
+
+/** Los movimientos y las ventas de los tramos ya leídos, repartidos en memoria por tramo. */
+interface TramosCargados {
+  /**
+   * Los movimientos de un tramo (entre dos anclas) que cuentan como consumo
+   * real de la receta (D2), listos para `consumoRealDelTramo`. `anuladaEn:
+   * null` cubre la VENTA/PRODUCCION detrás de un CONSUMO que se haya anulado
+   * después — un consumo de una venta que ya no existe no puede contar como
+   * consumo real. `OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION` excluye el
+   * AJUSTE que escribe anular una COMPRA/VENTA (D2 — es el propio deshacer
+   * del sistema, no un ajuste manual), sin importar si cae dentro o fuera
+   * del tramo (escenario F del plan: una compra que se anula DESPUÉS de
+   * `hasta` ya queda afuera por fecha, pero el filtro es el mismo sin
+   * excepción).
+   */
+  movimientos(productoIds: readonly string[], anclas: Anclas): MovimientoParaConciliar[];
+  /** Vendido de un producto puntual DENTRO de un tramo (entre dos anclas) — mismo filtro de anuladas que el resto de este archivo para VENTA. */
+  vendido(productoId: string, anclas: Anclas): number;
 }
 
 /**
- * Los movimientos de un tramo (entre dos anclas) que cuentan como consumo
- * real de la receta (D2), listos para `consumoRealDelTramo`. `anuladaEn:
- * null` cubre la VENTA/PRODUCCION detrás de un CONSUMO que se haya anulado
- * después — un consumo de una venta que ya no existe no puede contar como
- * consumo real. `OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION` excluye el
- * AJUSTE que escribe anular una COMPRA/VENTA (D2 — es el propio deshacer
- * del sistema, no un ajuste manual), sin importar si cae dentro o fuera
- * del tramo (escenario F del plan: una compra que se anula DESPUÉS de
- * `hasta` ya queda afuera por fecha, pero el filtro es el mismo sin
- * excepción).
+ * Lee de una vez los movimientos de consumo real y las ventas de TODOS los tramos pedidos —dos consultas sobre `(el límite inferior más temprano, el superior
+ * más tardío]`, en vez de dos por tramo y una más por plato y tramo— y cada tramo se queda en memoria con lo suyo: mismo `(desde, hasta]` de
+ * `limitesDelTramo` (excluye el día de la ancla-desde, incluye el de la ancla-hasta) y los mismos filtros de proceso y anuladas que tenía su consulta propia.
+ * Sin tramos no consulta.
  */
-async function movimientosDelTramoParaConciliar(sucursalId: string, productoIds: string[], anclas: Anclas, db: Db): Promise<MovimientoParaConciliar[]> {
-  const { desde, hasta } = limitesDelTramo(anclas);
-  const movimientos = await db.movimientoStock.findMany({
-    where: {
-      seccion: { sucursalId },
-      productoId: { in: productoIds },
-      proceso: { in: ["CONSUMO", "CONTROL", "AJUSTE"] },
-      operacion: { anuladaEn: null, fecha: { gt: desde, lte: hasta }, ...OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION },
-    },
-    select: { cantidad: true, proceso: true, operacion: { select: { proceso: true } } },
-  });
-  return movimientos.map((m) => ({ procesoMovimiento: m.proceso, procesoOperacion: m.operacion.proceso, cantidad: Number(m.cantidad) }));
-}
-
-/** Vendido de un producto puntual DENTRO de un tramo (entre dos anclas) — mismo filtro de anuladas que el resto de este archivo para VENTA. */
-async function vendidoDelTramo(sucursalId: string, productoId: string, anclas: Anclas, db: Db): Promise<number> {
-  const { desde, hasta } = limitesDelTramo(anclas);
-  const ventas = await db.movimientoStock.findMany({
-    where: { seccion: { sucursalId }, productoId, proceso: "VENTA", operacion: { fecha: { gt: desde, lte: hasta }, anuladaEn: null } },
-    select: { cantidad: true },
-  });
-  return redondearCantidad(ventas.reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0));
+async function cargarTramos(sucursalId: string, pedidos: readonly PedidoDeTramos[], db: Db): Promise<TramosCargados> {
+  const limites = pedidos.flatMap((p) => p.tramos.map((t) => limitesDelTramo(t)));
+  if (limites.length === 0) return { movimientos: () => [], vendido: () => 0 };
+  const desde = new Date(limites.reduce((min, l) => Math.min(min, l.desde.getTime()), Infinity));
+  const hasta = new Date(limites.reduce((max, l) => Math.max(max, l.hasta.getTime()), -Infinity));
+  const productoIds = unionDeProductos(pedidos.map((p) => p.productoIds));
+  const platoIds = unionDeProductos(pedidos.map((p) => p.platoIds));
+  const [movimientos, ventas] = await Promise.all([
+    db.movimientoStock.findMany({
+      where: {
+        seccion: { sucursalId },
+        productoId: { in: productoIds },
+        proceso: { in: ["CONSUMO", "CONTROL", "AJUSTE"] },
+        operacion: { anuladaEn: null, fecha: { gt: desde, lte: hasta }, ...OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION },
+      },
+      select: { productoId: true, cantidad: true, proceso: true, operacion: { select: { proceso: true, fecha: true } } },
+      orderBy: ORDEN_DE_MOVIMIENTOS,
+    }),
+    db.movimientoStock.findMany({
+      where: { seccion: { sucursalId }, productoId: { in: platoIds }, proceso: "VENTA", operacion: { fecha: { gt: desde, lte: hasta }, anuladaEn: null } },
+      select: { productoId: true, cantidad: true, operacion: { select: { fecha: true } } },
+      orderBy: ORDEN_DE_MOVIMIENTOS,
+    }),
+  ]);
+  const movimientosDe = indexarPorProducto(movimientos);
+  const ventasDe = indexarPorProducto(ventas);
+  const dentroDelTramo = (fecha: Date, anclas: Anclas) => {
+    const l = limitesDelTramo(anclas);
+    return fecha.getTime() > l.desde.getTime() && fecha.getTime() <= l.hasta.getTime();
+  };
+  return {
+    movimientos: (ids, anclas) =>
+      movimientosDe(ids)
+        .filter((m) => dentroDelTramo(m.operacion.fecha, anclas))
+        .map((m) => ({ procesoMovimiento: m.proceso, procesoOperacion: m.operacion.proceso, cantidad: Number(m.cantidad) })),
+    vendido: (productoId, anclas) =>
+      redondearCantidad(
+        ventasDe([productoId])
+          .filter((m) => dentroDelTramo(m.operacion.fecha, anclas))
+          .reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0)
+      ),
+  };
 }
 
 /**
@@ -183,7 +378,7 @@ function calcularConfianza(semanas: number): FilaRendimientoSimple["confianza"] 
  */
 async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
   const alcance = alcanceDeSucursal(sucursalId);
-  const [productosDisponibles, clasificacion] = await Promise.all([db.producto.findMany({ where: whereDisponibleEn(sucursalId) }), cargarClasificacionNoComestibles(db)]);
+  const [productosDisponibles, clasificacion] = await Promise.all([db.producto.findMany({ where: whereDisponibleEn(sucursalId), orderBy: { id: "asc" } }), cargarClasificacionNoComestibles(db)]);
   // La receta EFECTIVA de la sucursal: la propia donde la tiene habilitada, la central (más calibraciones) en los demás platos.
   const recetaVigente = await cargarRecetasVigentes(db, alcance, {
     where: { productoId: { in: productosDisponibles.map((p) => p.id) } },
@@ -239,12 +434,12 @@ async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
 
   // Si el Insumo agrupa más de una MP, el pool de compras es TODOS los
   // hermanos activos (no solo el que quedó anclado en la receta) — mismo
-  // criterio de "familia completa" que usa el consumo real de stock.
-  for (const [clave, productoIds] of productoIdsPorClave) {
-    if (!clave.startsWith("insumo:")) continue;
-    const insumoId = clave.slice("insumo:".length);
-    const hermanos = await db.producto.findMany({ where: { insumoId, tipo: "MP", ...whereDisponibleEn(sucursalId) }, select: { id: true } });
-    for (const h of hermanos) productoIds.add(h.id);
+  // criterio de "familia completa" que usa el consumo real de stock. Los hermanos de TODOS los Insumos en una sola lectura (O.37: antes, una por pool de
+  // Insumo), repartidos por su `insumoId`; sin pools de Insumo no se consulta.
+  const insumoIds = Array.from(productoIdsPorClave.keys()).filter((clave) => clave.startsWith("insumo:")).map((clave) => clave.slice("insumo:".length));
+  if (insumoIds.length > 0) {
+    const hermanos = await db.producto.findMany({ where: { insumoId: { in: insumoIds }, tipo: "MP", ...whereDisponibleEn(sucursalId) }, select: { id: true, insumoId: true }, orderBy: { id: "asc" } });
+    for (const h of hermanos) productoIdsPorClave.get(`insumo:${h.insumoId}`)?.add(h.id);
   }
 
   return Array.from(usosPorClave.entries()).map(([clave, usos]) => ({
@@ -253,6 +448,33 @@ async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
     productoIds: Array.from(productoIdsPorClave.get(clave)!),
     usos,
   }));
+}
+
+// ── El reporte entero con UNA construcción de pools (O.30 de docs/pureza-integracion.md) ────────────────────────────────────────────────────────────────────
+//
+// La página mostraba las dos tablas llamando a `calcularRendimientoRecetasSimples` Y a `calcularRendimientoRecetasCompartidas`, y cada una corría
+// `construirPools` (5 lecturas: los productos disponibles, la clasificación de no comestibles, las recetas vigentes —2— y los hermanos de los Insumos) y
+// `obtenerCostoActualPorMP` (1): 6 lecturas repetidas por cada carga de la pantalla. `calcularRendimientoRecetas` las hace UNA vez y reparte los pools a
+// `simplesDesde` (los de un solo uso) y `compartidasDesde` (los de 2+), que son el cuerpo de siempre de cada fase, sin tocar. Las dos funciones de antes
+// quedan como envoltorios (construyen pools y costo y llaman a su mitad) con el mismo resultado y las mismas consultas: las usan la caracterización C0, los
+// tests de cada fase y el seed de la demo. `rendimiento-recetas-consultas.test.ts` fija que la combinada da lo mismo que las dos por separado y cuántas
+// consultas hace.
+
+/** Las dos tablas del reporte: los pools de un solo plato (Fase 1) y los compartidos entre varios (Fase 2). */
+interface RendimientoDeRecetas {
+  simples: FilaRendimientoSimple[];
+  compartidas: FilaRendimientoCompartido[];
+}
+
+/**
+ * El reporte de rendimiento de recetas entero (las dos fases) de UNA sucursal: construye los pools y lee el costo de reposición UNA sola vez para las dos
+ * tablas. Mismo resultado que `calcularRendimientoRecetasSimples` + `calcularRendimientoRecetasCompartidas` por separado (las mismas filas, en el mismo orden).
+ */
+export async function calcularRendimientoRecetas(sucursalId: string, desdeIn: Date, hastaIn: Date, db: Db): Promise<RendimientoDeRecetas> {
+  const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
+  const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
+  const [simples, compartidas] = await Promise.all([simplesDesde(sucursalId, pools, costos, desde, hasta, db), compartidasDesde(sucursalId, pools, costos, desde, hasta, db)]);
+  return { simples, compartidas };
 }
 
 /**
@@ -264,6 +486,8 @@ async function construirPools(sucursalId: string, db: Db): Promise<Pool[]> {
  * Corre SIEMPRE para UNA sola sucursal — nunca mezclado entre sucursales
  * (mismo motivo del diseño: mezclar promedia al cocinero que gasta poco
  * con el que gasta mucho y destruye la comparación que se busca).
+ *
+ * Envoltorio (O.30): la pantalla usa `calcularRendimientoRecetas`, que comparte los pools y el costo con la Fase 2.
  */
 export async function calcularRendimientoRecetasSimples(
   sucursalId: string,
@@ -273,26 +497,40 @@ export async function calcularRendimientoRecetasSimples(
 ): Promise<FilaRendimientoSimple[]> {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
   const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
-  const filas: FilaRendimientoSimple[] = [];
+  return simplesDesde(sucursalId, pools, costos, desde, hasta, db);
+}
 
-  for (const pool of pools) {
-    if (pool.usos.length !== 1) continue; // Fase 2 — ver calcularRendimientoRecetasCompartidas.
+/** El cuerpo de la Fase 1 con los pools y el costo ya leídos y el rango ya expandido (`rangoUtc`). */
+async function simplesDesde(sucursalId: string, pools: readonly Pool[], costos: Map<string, CostoMP>, desde: Date, hasta: Date, db: Db): Promise<FilaRendimientoSimple[]> {
+  const filas: FilaRendimientoSimple[] = [];
+  const simples = pools.filter((pool) => pool.usos.length === 1); // 2+ usos es la Fase 2 — ver calcularRendimientoRecetasCompartidas.
+
+  // Todo lo de la ventana, en bloque para todos los pools simples (O.37): saldos, entradas, ventas del plato y candidatos a ancla.
+  const [stockPorPool, entradasDe, ventasDe, candidatosPorPool] = await Promise.all([
+    cargarStockAperturaYCierreDePools(sucursalId, simples, desde, hasta, db),
+    cargarEntradasDeLaVentana(sucursalId, unionDeProductos(simples.map((p) => p.productoIds)), desde, hasta, db),
+    cargarVentasDeLaVentana(sucursalId, simples.map((p) => p.usos[0].pvProductoId), desde, hasta, db),
+    cargarCandidatosAnclaDePools(sucursalId, simples, desde, hasta, db),
+  ]);
+  // Las dos anclas de cada pool (caso simple, Fase 1) — `null` sin dos días que califiquen dentro de `[desde, hasta]`: el pool cae al método COMPRAS (D4).
+  const anclasPorPool = new Map(simples.map((pool) => [pool.clave, elegirAnclas(candidatosPorPool.get(pool.clave) ?? [], desde, hasta)]));
+  const tramos = await cargarTramos(
+    sucursalId,
+    simples.flatMap((pool) => {
+      const anclas = anclasPorPool.get(pool.clave);
+      return anclas ? [{ productoIds: pool.productoIds, platoIds: [pool.usos[0].pvProductoId], tramos: [anclas] }] : [];
+    }),
+    db
+  );
+
+  for (const pool of simples) {
     const uso = pool.usos[0];
 
     const costoUnitario = costoUnitarioDePool(pool.productoIds, costos);
-    const { stockApertura, stockCierre } = await calcularStockAperturaYCierre(sucursalId, pool.productoIds, desde, hasta, db);
+    const { stockApertura, stockCierre } = stockPorPool.get(pool.clave)!;
 
-    const [entradas, ventas] = await Promise.all([
-      // COMPRA + PRODUCCION: un insumo con seProduce=true (una sub-receta) entra por producción, no por compra — antes solo se miraba COMPRA, así que un insumo así siempre daba -100% (defecto 1 de §3). anuladaEn: null cubre la COMPRA que el guardián de anuladas exige.
-      db.movimientoStock.findMany({
-        where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: { in: ["COMPRA", "PRODUCCION"] }, productoId: { in: pool.productoIds } },
-        select: { cantidad: true, proceso: true, operacion: { select: { fecha: true } } },
-      }),
-      db.movimientoStock.findMany({
-        where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: "VENTA", productoId: uso.pvProductoId },
-        select: { cantidad: true, operacion: { select: { fecha: true } } },
-      }),
-    ]);
+    const entradas = entradasDe(pool.productoIds);
+    const ventas = ventasDe([uso.pvProductoId]);
 
     // `entradas` ya salió filtrada por anuladaEn: null arriba — separar COMPRA de PRODUCCION acá es solo para mostrarlas por separado, no vuelve a decidir nada sobre anuladas.
     const totalComprado = redondearCantidad(entradas.filter((m) => m.proceso === "COMPRA").reduce((acc, m) => acc + Number(m.cantidad), 0));
@@ -306,7 +544,7 @@ export async function calcularRendimientoRecetasSimples(
     // Task #26 (Diseño B): con dos anclas de Conteo Físico que cubren el pool entero, el consumo se MIDE directo
     // por proceso entre ellas (metodo="CONTEO") — sin ellas (D4), se cae al método de siempre (metodo="COMPRAS",
     // totalEntradas/totalVendido). Nunca se deja la fila sin ningún número.
-    const anclas = await elegirAnclasDelPool(sucursalId, pool.productoIds, desde, hasta, db);
+    const anclas = anclasPorPool.get(pool.clave) ?? null;
     let metodo: MetodoRendimiento;
     let cantidadEstimadaBruta: number | null;
     let impactoPesos: number | null;
@@ -320,10 +558,8 @@ export async function calcularRendimientoRecetasSimples(
       metodo = "CONTEO";
       anclaDesde = anclas.anclaDesde;
       anclaHasta = anclas.anclaHasta;
-      const [movimientosParaConciliar, vendidoTramo] = await Promise.all([
-        movimientosDelTramoParaConciliar(sucursalId, pool.productoIds, anclas, db),
-        vendidoDelTramo(sucursalId, uso.pvProductoId, anclas, db),
-      ]);
+      const movimientosParaConciliar = tramos.movimientos(pool.productoIds, anclas);
+      const vendidoTramo = tramos.vendido(uso.pvProductoId, anclas);
       consumoReal = consumoRealDelTramo(movimientosParaConciliar);
       cantidadEstimadaBruta = vendidoTramo > 0 ? redondearCantidad(consumoReal / vendidoTramo) : null;
       impactoPesos = impactoDelDesvio(consumoReal, cantidadTeoricaBruta, vendidoTramo, costoUnitario);
@@ -395,23 +631,23 @@ export async function calcularRendimientoRecetasSimples(
  * `[desde, hasta]` — ni siquiera llega a intentar la regresión (mismo
  * umbral que el método COMPRAS, en intervalos en vez de en semanas).
  */
-async function resolverPoolPorConteo(sucursalId: string, pool: Pool, desde: Date, hasta: Date, db: Db): Promise<ResultadoPoolCompartido | null> {
-  const candidatos = await construirCandidatosAncla(sucursalId, pool.productoIds, desde, hasta, db);
+function intervalosDelPool(pool: Pool, candidatos: readonly CandidatoAncla[], desde: Date, hasta: Date): Anclas[] | null {
   const anclas = anclasValidasEnVentana(candidatos, desde, hasta);
   if (anclas.length <= pool.usos.length) return null; // hacen falta más intervalos que platos — ni la primera y la última ancla, tomadas solas, alcanzarían (mismo motivo que la Fase 1).
 
   const intervalos: Anclas[] = [];
   for (let i = 0; i < anclas.length - 1; i++) intervalos.push({ anclaDesde: anclas[i], anclaHasta: anclas[i + 1] });
+  return intervalos;
+}
 
+/** La regresión por CONTEO sobre los intervalos del pool (`intervalosDelPool`), con los tramos ya leídos en bloque (`cargarTramos`). */
+function resolverPoolPorConteo(pool: Pool, intervalos: readonly Anclas[] | null, tramos: TramosCargados): ResultadoPoolCompartido | null {
+  if (!intervalos) return null;
   const y: number[] = [];
   const X: number[][] = [];
   for (const intervalo of intervalos) {
-    const [movimientos, ventasPorUso] = await Promise.all([
-      movimientosDelTramoParaConciliar(sucursalId, pool.productoIds, intervalo, db),
-      Promise.all(pool.usos.map((uso) => vendidoDelTramo(sucursalId, uso.pvProductoId, intervalo, db))),
-    ]);
-    y.push(consumoRealDelTramo(movimientos));
-    X.push(ventasPorUso);
+    y.push(consumoRealDelTramo(tramos.movimientos(pool.productoIds, intervalo)));
+    X.push(pool.usos.map((uso) => tramos.vendido(uso.pvProductoId, intervalo)));
   }
 
   const resultado = resolverMinimosCuadrados(X, y);
@@ -438,6 +674,8 @@ async function resolverPoolPorConteo(sucursalId: string, pool: Pool, desde: Date
  * ajuste no es confiable), NINGUNA fila del pool devuelve una
  * cantidadEstimada: se marca `resoluble: false` con el motivo, en vez de
  * inventar un número.
+ *
+ * Envoltorio (O.30): la pantalla usa `calcularRendimientoRecetas`, que comparte los pools y el costo con la Fase 1.
  */
 export async function calcularRendimientoRecetasCompartidas(
   sucursalId: string,
@@ -447,34 +685,45 @@ export async function calcularRendimientoRecetasCompartidas(
 ): Promise<FilaRendimientoCompartido[]> {
   const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
   const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
+  return compartidasDesde(sucursalId, pools, costos, desde, hasta, db);
+}
+
+/** El cuerpo de la Fase 2 con los pools y el costo ya leídos y el rango ya expandido (`rangoUtc`). */
+async function compartidasDesde(sucursalId: string, pools: readonly Pool[], costos: Map<string, CostoMP>, desde: Date, hasta: Date, db: Db): Promise<FilaRendimientoCompartido[]> {
   const filas: FilaRendimientoCompartido[] = [];
+  const compartidos = pools.filter((pool) => pool.usos.length >= 2); // un solo uso es la Fase 1 — ver calcularRendimientoRecetasSimples.
 
-  for (const pool of pools) {
-    if (pool.usos.length < 2) continue; // Fase 1 — ver calcularRendimientoRecetasSimples.
+  // Todo lo de la ventana, en bloque para todos los pools compartidos (O.37): saldos, entradas, ventas de cada plato y candidatos a ancla.
+  // Contexto SIEMPRE de la ventana elegida (desde/hasta), sin importar qué método termine resolviendo el pool —
+  // mismo criterio que Fase 1: el "Comprado"/"Vendido" que se muestra es siempre el de la ventana del reporte.
+  const [stockPorPool, entradasDe, ventasDe, candidatosPorPool] = await Promise.all([
+    cargarStockAperturaYCierreDePools(sucursalId, compartidos, desde, hasta, db),
+    cargarEntradasDeLaVentana(sucursalId, unionDeProductos(compartidos.map((p) => p.productoIds)), desde, hasta, db),
+    cargarVentasDeLaVentana(sucursalId, compartidos.flatMap((p) => p.usos.map((uso) => uso.pvProductoId)), desde, hasta, db),
+    cargarCandidatosAnclaDePools(sucursalId, compartidos, desde, hasta, db),
+  ]);
+  const intervalosPorPool = new Map(compartidos.map((pool) => [pool.clave, intervalosDelPool(pool, candidatosPorPool.get(pool.clave) ?? [], desde, hasta)]));
+  const tramos = await cargarTramos(
+    sucursalId,
+    compartidos.flatMap((pool) => {
+      const intervalos = intervalosPorPool.get(pool.clave);
+      return intervalos ? [{ productoIds: pool.productoIds, platoIds: pool.usos.map((uso) => uso.pvProductoId), tramos: intervalos }] : [];
+    }),
+    db
+  );
 
+  for (const pool of compartidos) {
     const costoUnitario = costoUnitarioDePool(pool.productoIds, costos);
-    const { stockApertura, stockCierre } = await calcularStockAperturaYCierre(sucursalId, pool.productoIds, desde, hasta, db);
+    const { stockApertura, stockCierre } = stockPorPool.get(pool.clave)!;
 
-    // Contexto SIEMPRE de la ventana elegida (desde/hasta), sin importar qué método termine resolviendo el pool —
-    // mismo criterio que Fase 1: el "Comprado"/"Vendido" que se muestra es siempre el de la ventana del reporte.
     // COMPRA + PRODUCCION: mismo motivo que Fase 1 — un insumo con seProduce=true entra por producción, no por compra. anuladaEn: null cubre la COMPRA que el guardián de anuladas exige.
-    const entradas = await db.movimientoStock.findMany({
-      where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: { in: ["COMPRA", "PRODUCCION"] }, productoId: { in: pool.productoIds } },
-      select: { cantidad: true, proceso: true, operacion: { select: { fecha: true } } },
-    });
+    const entradas = entradasDe(pool.productoIds);
     const cantidadesDeCadaCompraPool = entradas.filter((m) => m.proceso === "COMPRA").map((m) => Number(m.cantidad));
 
-    const ventasPorPlato = await Promise.all(
-      pool.usos.map((uso) =>
-        db.movimientoStock.findMany({
-          where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: "VENTA", productoId: uso.pvProductoId },
-          select: { cantidad: true, operacion: { select: { fecha: true } } },
-        })
-      )
-    );
+    const ventasPorPlato = pool.usos.map((uso) => ventasDe([uso.pvProductoId]));
     const totalEntradasPool = redondearCantidad(entradas.reduce((acc, m) => acc + Number(m.cantidad), 0));
 
-    const porConteo = await resolverPoolPorConteo(sucursalId, pool, desde, hasta, db);
+    const porConteo = resolverPoolPorConteo(pool, intervalosPorPool.get(pool.clave) ?? null, tramos);
 
     const resultadoPool: ResultadoPoolCompartido =
       porConteo ??

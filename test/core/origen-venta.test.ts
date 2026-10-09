@@ -153,29 +153,50 @@ describe("asignarConsumo", () => {
 });
 
 describe("elegirSeccionDeStockPropio (PV que se produce)", () => {
-  it("la habitual si alcanza; si no, el primer respaldo que alcanza; si ninguno, la indicada — sin repartir, al lote que vence antes", () => {
+  it("la habitual si alcanza; si no, el primer respaldo que alcanza; si ninguno, la indicada — sin repartir entre secciones, FEFO por lote", () => {
     const saldos = [saldo("TORTA", COCINA, OCT, 1), saldo("TORTA", DEPOSITO, NOV, 3), saldo("TORTA", DEPOSITO, DIC, 3)];
     let libro = crearLibroDeStock(saldos);
-    expect(resumen([elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 1, seccionHabitual: COCINA, respaldos: [DEPOSITO], seccionSiNingunaAlcanzaId: COCINA.id })])).toEqual([
+    expect(resumen(elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 1, seccionHabitual: COCINA, respaldos: [DEPOSITO], seccionSiNingunaAlcanzaId: COCINA.id }))).toEqual([
       ["TORTA", COCINA.id, "2026-10-01", 1],
     ]);
     // La habitual ya se agotó en el libro: la segunda sale del respaldo.
-    expect(resumen([elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 2, seccionHabitual: COCINA, respaldos: [DEPOSITO], seccionSiNingunaAlcanzaId: COCINA.id })])).toEqual([
+    expect(resumen(elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 2, seccionHabitual: COCINA, respaldos: [DEPOSITO], seccionSiNingunaAlcanzaId: COCINA.id }))).toEqual([
       ["TORTA", DEPOSITO.id, "2026-11-01", 2],
     ]);
     libro = crearLibroDeStock(saldos);
-    expect(resumen([elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 9, seccionHabitual: null, respaldos: [COCINA, DEPOSITO], seccionSiNingunaAlcanzaId: COCINA.id })])).toEqual([
+    expect(resumen(elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 9, seccionHabitual: null, respaldos: [COCINA, DEPOSITO], seccionSiNingunaAlcanzaId: COCINA.id }))).toEqual([
       ["TORTA", COCINA.id, "2026-10-01", 9],
     ]);
   });
 
   it("modo sección fija: siempre esa sección, sin lote si no le queda ninguno con disponible", () => {
     const libro = crearLibroDeStock([saldo("TORTA", COCINA, OCT, 2)]);
-    expect(resumen([elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 5, seccionHabitual: COCINA, respaldos: [], seccionSiNingunaAlcanzaId: COCINA.id })])).toEqual([
+    expect(resumen(elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 5, seccionHabitual: COCINA, respaldos: [], seccionSiNingunaAlcanzaId: COCINA.id }))).toEqual([
       ["TORTA", COCINA.id, "2026-10-01", 5],
     ]);
-    expect(resumen([elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 1, seccionHabitual: COCINA, respaldos: [], seccionSiNingunaAlcanzaId: COCINA.id })])).toEqual([
+    expect(resumen(elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 1, seccionHabitual: COCINA, respaldos: [], seccionSiNingunaAlcanzaId: COCINA.id }))).toEqual([
       ["TORTA", COCINA.id, null, 1],
+    ]);
+  });
+
+  it("O.40 (1): un pedido que un solo lote no cubre se reparte FEFO entre los lotes de la sección (el que vence antes primero), y ninguno queda en negativo", () => {
+    const libro = crearLibroDeStock([saldo("TORTA", COCINA, NOV, 2), saldo("TORTA", COCINA, OCT, 1), saldo("TORTA", COCINA, DIC, 5)]);
+    expect(resumen(elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 2, seccionHabitual: COCINA, respaldos: [], seccionSiNingunaAlcanzaId: COCINA.id }))).toEqual([
+      ["TORTA", COCINA.id, "2026-10-01", 1],
+      ["TORTA", COCINA.id, "2026-11-01", 1],
+    ]);
+    // El libro recuerda lo tomado: el pedido siguiente sigue por donde quedó.
+    expect(resumen(elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 2, seccionHabitual: COCINA, respaldos: [], seccionSiNingunaAlcanzaId: COCINA.id }))).toEqual([
+      ["TORTA", COCINA.id, "2026-11-01", 1],
+      ["TORTA", COCINA.id, "2026-12-01", 1],
+    ]);
+  });
+
+  it("el lote «sin lote» va al final; y lo que ningún lote cubre queda en el último lote tomado (el faltante), con la suma exacta del pedido", () => {
+    const libro = crearLibroDeStock([saldo("TORTA", COCINA, OCT, 1), saldo("TORTA", COCINA, null, 1)]);
+    expect(resumen(elegirSeccionDeStockPropio(libro, { productoId: "TORTA", cantidad: 5, seccionHabitual: COCINA, respaldos: [], seccionSiNingunaAlcanzaId: COCINA.id }))).toEqual([
+      ["TORTA", COCINA.id, "2026-10-01", 1],
+      ["TORTA", COCINA.id, null, 4],
     ]);
   });
 });

@@ -18,12 +18,13 @@ import {
   obtenerProductoOpcion,
 } from "../../src/server/actions/catalogo/productos";
 import { listarProductosDeProveedor, obtenerComparativaPreciosPorInsumo } from "../../src/server/actions/catalogo/proveedor-por-producto";
-import { listarProveedores } from "../../src/server/actions/catalogo/proveedores";
+import { listarProveedores, listarProveedoresParaSelector } from "../../src/server/actions/catalogo/proveedores";
 import { listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/actions/catalogo/recetas";
 import { listarUnidadesActivas, listarUnidadesParaPanel } from "../../src/server/actions/catalogo/unidades";
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
 import { listarSeccionesActivas, listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
+import { listarDestinosConsumoActivos, listarMotivosMermaActivos } from "../../src/server/actions/movimientos/motivos";
 import { listarCapacidades } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { listarMatrizPermisos } from "../../src/server/actions/permisos/permisos";
 import { listarRoles } from "../../src/server/actions/permisos/roles";
@@ -33,8 +34,9 @@ import { listarSucursalesParaEnviar, listarSucursalesParaSolicitar, obtenerBande
 
 /**
  * Las lecturas de servidor (server actions que devuelven datos) se pueden invocar directo, sin pasar por la página que
- * las usa: la página las protege, pero el endpoint no. Cada una abre con `requerirSesion()` o, si recibe la sucursal por
- * parámetro (que viene del cliente), con `requerirSesionEnSucursal(id)`. Ver src/server/actions/con-sesion.ts.
+ * las usa: la página las protege, pero el endpoint no. Cada una abre con una guarda de src/server/actions/con-sesion.ts que
+ * empieza por la sesión y, si recibe la sucursal por parámetro (que viene del cliente), por la membresía en ella; después
+ * pide el permiso de Ver (eso lo prueban lecturas-con-permiso-de-ver.test.ts y lecturas-con-alguna-pantalla.test.ts).
  *
  * Los argumentos son irrelevantes: la guarda corre antes que cualquier otra cosa. La regla de que ninguna función
  * exportada quede sin guarda la hace cumplir test/arquitectura/acciones-con-guarda.test.ts.
@@ -55,11 +57,14 @@ const LECTURAS: Array<[string, () => Promise<unknown>]> = [
   ["listarProductosDeProveedor", () => listarProductosDeProveedor("x")],
   ["obtenerComparativaPreciosPorInsumo", () => obtenerComparativaPreciosPorInsumo()],
   ["listarProveedores", () => listarProveedores()],
+  ["listarProveedoresParaSelector", () => listarProveedoresParaSelector()],
   ["listarVersionesDeReceta", () => listarVersionesDeReceta("x")],
   ["obtenerRecetaVigente", () => obtenerRecetaVigente("x")],
   ["listarUnidadesActivas", () => listarUnidadesActivas()],
   ["listarUnidadesParaPanel", () => listarUnidadesParaPanel()],
   ["obtenerHistorialConteosFisicos", () => obtenerHistorialConteosFisicos("x")],
+  ["listarMotivosMermaActivos", () => listarMotivosMermaActivos()],
+  ["listarDestinosConsumoActivos", () => listarDestinosConsumoActivos()],
   ["listarPreciosLocales", () => listarPreciosLocales("x")],
   ["obtenerPrecioLocalProducto", () => obtenerPrecioLocalProducto("x", "y")],
   ["listarSeccionesActivas", () => listarSeccionesActivas("x")],
@@ -123,5 +128,18 @@ describe("lecturas de servidor: exigen sesión y, si reciben la sucursal, membre
     await expect(listarSeccionesActivas(base.sucursal.id)).resolves.toEqual([]);
     await expect(listarSucursalesParaSolicitar(base.sucursal.id)).resolves.toEqual([]);
     await expect(listarSucursalesParaEnviar(base.sucursal.id)).resolves.toEqual([]);
+  });
+
+  it("listarProveedoresParaSelector entrega solo id, nombre y activo, nunca la ficha (H8, D-4)", async () => {
+    const base = await sembrarBase();
+    const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
+    await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
+    await prisma.proveedor.create({
+      data: { codigo: "PRV-1", nombre: "Distribuidora", contacto: "Ana", telefono: "123", email: "ana@prov.com", cuit: "20-12345678-6", condicionesPago: "30 días", notas: "privado" },
+    });
+
+    const filas = await listarProveedoresParaSelector();
+    expect(filas).toHaveLength(1);
+    expect(Object.keys(filas[0]).sort()).toEqual(["activo", "id", "nombre"]);
   });
 });

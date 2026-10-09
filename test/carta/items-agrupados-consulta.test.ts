@@ -78,19 +78,19 @@ describe("resolverMenuCarta — ítems agrupados", () => {
     // Un MP asignado a mano (la acción lo rechaza; la consulta igual lo filtra).
     await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId: central, itemAgrupadoCartaId: agId, productoId: ids.mpGas, orden: 9 } });
 
-    const enCentral = todos(await resolverMenuCarta(central, prisma)).find((i) => i.productoId === agId)!;
+    const enCentral = todos(await resolverMenuCarta(central, prisma, AHORA)).find((i) => i.productoId === agId)!;
     expect(enCentral.opciones!.map((o) => o.nombre)).toEqual(["Coca-Cola 500cc", "Sprite 500cc", "Fanta 500cc"]);
-    const enOtra = todos(await resolverMenuCarta(otra, prisma)).find((i) => i.productoId === agIdOtra)!;
+    const enOtra = todos(await resolverMenuCarta(otra, prisma, AHORA)).find((i) => i.productoId === agIdOtra)!;
     expect(enOtra.opciones!.map((o) => o.nombre)).toEqual(["Coca-Cola 500cc", "Sprite 500cc", "Pepsi 500cc"]);
 
     // Apagar la disponibilidad de una opción acá la saca del grupo acá.
     await prisma.disponibilidadProducto.update({ where: { sucursalId_productoId: { sucursalId: central, productoId: ids.coca } }, data: { disponible: false } });
-    expect(todos(await resolverMenuCarta(central, prisma)).find((i) => i.productoId === agId)!.opciones!.map((o) => o.nombre)).toEqual(["Sprite 500cc", "Fanta 500cc"]);
+    expect(todos(await resolverMenuCarta(central, prisma, AHORA)).find((i) => i.productoId === agId)!.opciones!.map((o) => o.nombre)).toEqual(["Sprite 500cc", "Fanta 500cc"]);
   });
 
   it("3. una opción con ContenidoCartaProducto visible sale SOLO dentro del grupo", async () => {
     const agId = await crearGaseosa([ids.coca, ids.sprite, ids.fanta]);
-    const items = todos(await resolverMenuCarta(central, prisma));
+    const items = todos(await resolverMenuCarta(central, prisma, AHORA));
     expect(items.map((i) => i.nombre)).toEqual(["Gaseosa 500 CC", "Bife de chorizo"]);
     expect(items.filter((i) => i.productoId === ids.sprite)).toEqual([]);
     expect(items.find((i) => i.productoId === agId)).toEqual({
@@ -116,7 +116,7 @@ describe("resolverMenuCarta — ítems agrupados", () => {
   it("3b. la carta con un ítem agrupado no filtra nada interno (código, observaciones, precioVenta, diagnóstico)", async () => {
     await prisma.producto.updateMany({ where: { id: { in: [ids.coca, ids.sprite, ids.fanta] } }, data: { observaciones: "nota interna" } });
     await crearGaseosa([ids.coca, ids.sprite, ids.fanta]);
-    const texto = JSON.stringify(await resolverMenuCarta(central, prisma));
+    const texto = JSON.stringify(await resolverMenuCarta(central, prisma, AHORA));
     for (const interno of ["AGR_", "codigo", "nota interna", "observaciones", "precioVenta", "diagnostico", "agrupadosConPreciosDistintos"]) {
       expect(texto, interno).not.toContain(interno);
     }
@@ -124,14 +124,14 @@ describe("resolverMenuCarta — ítems agrupados", () => {
 
   it("4. grupo apagado: no sale, y sus miembros tampoco salen sueltos", async () => {
     await crearGaseosa([ids.coca, ids.sprite, ids.fanta], { activo: false });
-    const items = todos(await resolverMenuCarta(central, prisma));
+    const items = todos(await resolverMenuCarta(central, prisma, AHORA));
     expect(items.map((i) => i.nombre)).toEqual(["Bife de chorizo"]);
   });
 
   it("5. reversibilidad: borrar la fila de opción hace que el PV vuelva a salir suelto con su contenido previo", async () => {
     await crearGaseosa([ids.coca, ids.sprite, ids.fanta]);
     await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { productoId: ids.sprite } });
-    const items = todos(await resolverMenuCarta(central, prisma));
+    const items = todos(await resolverMenuCarta(central, prisma, AHORA));
     expect(items.find((i) => i.productoId === ids.sprite)).toEqual({
       productoId: ids.sprite,
       nombre: "Sprite 500cc",
@@ -150,11 +150,11 @@ describe("resolverMenuCarta — ítems agrupados", () => {
     const agIdOtra = await crearGaseosa([ids.coca, ids.sprite, ids.fanta, ids.pepsi], {}, otra);
     await prisma.precioLocalProducto.create({ data: { sucursalId: otra, productoId: ids.coca, precio: 5500, habilitado: true } });
 
-    const enCentral = await resolverMenuCartaConDiagnostico(central, prisma);
+    const enCentral = await resolverMenuCartaConDiagnostico(central, prisma, AHORA);
     expect(todos(enCentral!.carta).find((i) => i.productoId === agId)!.precio).toBe(5000);
     expect(enCentral!.diagnostico.agrupadosConPreciosDistintos).toEqual([]);
 
-    const enOtra = await resolverMenuCartaConDiagnostico(otra, prisma);
+    const enOtra = await resolverMenuCartaConDiagnostico(otra, prisma, AHORA);
     const item = todos(enOtra!.carta).find((i) => i.productoId === agIdOtra)!;
     expect(item.precio).toBe(5500);
     expect(item.opciones!.find((o) => o.productoId === ids.coca)!.precio).toBe(5500);
@@ -176,8 +176,8 @@ describe("resolverMenuCarta — ítems agrupados", () => {
         prisma.disponibilidadProducto.count(),
       ]);
     const antes = await contar();
-    await resolverMenuCarta(central, prisma);
-    await resolverMenuCarta(otra, prisma);
+    await resolverMenuCarta(central, prisma, AHORA);
+    await resolverMenuCarta(otra, prisma, AHORA);
     expect(await contar()).toEqual(antes);
   });
 });

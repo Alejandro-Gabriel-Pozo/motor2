@@ -44,7 +44,7 @@ y, al aceptar, quién, cuándo y el CUIT declarado.
 índice único. **Un solo uso**, garantizado por un `UPDATE` condicional (`estado = PENDIENTE` y no vencida) dentro de la transacción de aceptación: dos
 aceptaciones simultáneas no pueden ganar las dos. **Reenviar rota el token**: el enlace anterior deja de servir.
 
-El token viaja en el **fragmento** del enlace (`/invitacion#t=…`): no llega a los logs del servidor, a Sentry ni al `Referer`, y abrir el enlace (un escáner de mails
+El token viaja en el **fragmento** del enlace (`/invitacion#t=…`): no llega a los logs del servidor ni al `Referer`. **A Sentry sí podía llegar** (el SDK del navegador toma la dirección entera, con fragmento, para el pedido, las migas de navegación y los spans), y desde S-29 no llega porque `src/lib/sentry-limpiar.ts` lo recorta (URL sin `?` ni `#`, migas y spans recortados, cabeceras por lista blanca; guard GT-17 `test/arquitectura/sentry-por-lista-blanca.test.ts`). Abrir el enlace (un escáner de mails
 lo hace) no gasta la invitación. Un componente del cliente lo pasa a una acción que lo guarda en una cookie `httpOnly`, `SameSite=Lax` (con `Strict` no viajaría en el
 regreso desde Google), de una hora como máximo, con prefijo `__Host-` en https.
 
@@ -110,3 +110,9 @@ Núcleo: `src/core/features/empresa/invitacion.ts`, `aceptar-invitacion.ts`, `se
 `plataforma/src/servidor/empresas.ts` y `plataforma/src/app/empresas/`. App: `src/app/invitacion/page.tsx` y `src/server/actions/auth/invitacion.ts`. Migración:
 `prisma/migrations/20261010120000_invitaciones` (con `down.sql`). Pruebas: `test/aislamiento/invitaciones-rls.test.ts`, `test/persistencia/aceptar-invitacion.test.ts`,
 `test/persistencia/alta-de-empresa.test.ts`, `test/auth/invitacion-gate.test.ts`, `test/e2e/invitacion-aceptar.spec.ts`, `test/e2e/consola-alta-de-empresa.spec.ts`.
+
+**Nota (Hito 3 de la pureza, B3, 2026-10-08): dónde vive hoy.** Sin cambio de comportamiento (lo fija `test/auth/caracterizacion/huella-de-aceptacion.test.ts`). Aceptar la invitación del
+primer gerente es un caso de uso, `src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts` (`permiso=SIN_PERMISO`: la autoridad es el token y el email de la cuenta de Google;
+lista cerrada `CASOS_SIN_PERMISO`), y su escritura de la invitación está en `src/server/persistencia/invitaciones/marcar-invitacion-aceptada.ts`. La lectura por token y la base de la
+empresa de la invitación están en `src/server/sesion/invitacion.ts` (`invitacionDelToken` e `invitacionConSuBase`, la única puerta de un token a esa base, que verifica antes el rol de
+ejecución: `test/arquitectura/invitacion-verifica-el-rol.test.ts`). En `src/core/features/empresa/aceptar-invitacion.ts` y `src/core/auth/invitacion.ts` queda solo lo puro.

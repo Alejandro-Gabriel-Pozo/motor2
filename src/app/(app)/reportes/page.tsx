@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo, reportePesadoSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
 import { obtenerUltimaCotizacionSinRomper } from "@/server/consultas/reportes/cotizacion-dolar";
@@ -14,9 +15,15 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
 export default async function ReportesResumenPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_resumen", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+
+  // S-28 (I-3): el Resumen operativo corre `obtenerReportePorPeriodo` sobre un rango del usuario de hasta 366 días, la MISMA consulta pesada que Período: cuenta en el cupo de "periodo"
+  // (uno solo para las dos pantallas: alternarlas no duplica el presupuesto), antes de consultar nada.
+  if (reportePesadoSinCupo(ctx.usuarioId, "periodo", new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp, new Date());
@@ -32,7 +39,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
         <p className="mb-2 text-sm text-neutral-500">
           Financiero de {r.financiero.desde.toISOString().slice(0, 10)} a {r.financiero.hasta.toISOString().slice(0, 10)}.
         </p>
-        <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} />
+        <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">

@@ -12,12 +12,12 @@ export interface ComandoCancelarConteo {
   conteoId: string;
 }
 
-export type CodigoCancelarConteo = "CONTEO_NO_ENCONTRADO" | "CONTEO_YA_CANCELADO" | "CONTEO_NO_RESUELTO";
+export type CodigoCancelarConteo = "CONTEO_NO_ENCONTRADO" | "CONTEO_YA_CANCELADO" | "CONTEO_NO_RESUELTO" | "CONTEO_POSTERIOR";
 
 /** `datos` de un conteo cancelado con éxito. */
 export interface DatosCancelarConteo {
-  /** El ajuste que tenía el conteo original (0 = no había nada que revertir en el Kardex). */
-  diferenciaOriginal: number;
+  /** Lo que el conteo había APLICADO al stock y la cancelación revirtió (S-04: la suma de sus líneas del Kardex, no `conteo.diferencia`); 0 = no aplicó nada y no se tocó el stock. */
+  ajusteRevertido: number;
 }
 
 export type ResultadoCancelarConteo = ResultadoCaso<DatosCancelarConteo, CodigoCancelarConteo>;

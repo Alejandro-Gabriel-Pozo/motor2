@@ -1,11 +1,13 @@
 import "server-only";
-import { precioLocalActivoEn, preciosLocalesVigentes } from "@/core/catalogo/public-servidor";
+import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { whereDisponibleEn } from "@/core/catalogo/public";
 import { esClavePortal, esClaveTema, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, type SeccionCartaAdmin, type ProductoCartaAdmin, type GeneroCartaAdmin, type SucursalConCartaPropia, type DatosAdminCarta, type OpcionItemAgrupadoAdmin, type DatosAdminItemsAgrupados, type SucursalPortalAdmin, type TemaAdmin, type PortalEmpresaAdmin } from "@/core/carta/public";
 import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCartaConDiagnostico } from "@/server/lecturas/carta/menu";
 import type { Db } from "@/lib/db-tipos";
+import type { PrismaClient } from "@prisma/client";
+import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
 
 /** Las secciones de carta (orden, nombre) con cuántos ítems ya tiene cada una (`cantidadItems`, DA6). */
 async function seccionesConCantidad(sucursalId: string, db: Db): Promise<SeccionCartaAdmin[]> {
@@ -58,7 +60,18 @@ async function estadoCartaPropia(sucursalId: string, db: Db): Promise<{ cartaVac
   };
 }
 
-export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<DatosAdminCarta> {
+/**
+ * De las sucursales con carta propia que `cargarAdminCarta` junta (todas las de la empresa), las que se OFRECEN como origen de la copia: solo donde `usuarioId` tiene membresía
+ * vigente y el «Ver» de la carta (`carta_ver`), la misma condición con la que `copiarCartaDeSucursal` acepta el origen (S-07, O.56). La pantalla pasa por acá antes de mostrar
+ * nombres o cantidades de otra sucursal. `cargarAdminCarta` no filtra a propósito: su resultado es la caracterización congelada de las lecturas del tramo A.
+ */
+export async function origenesDeCopiaVisibles(usuarioId: string, origenes: readonly SucursalConCartaPropia[], db: PrismaClient): Promise<SucursalConCartaPropia[]> {
+  const visibles = await sucursalesDondeElUsuarioPuedeVer(usuarioId, origenes.map((o) => o.id), "carta_ver", db);
+  return origenes.filter((o) => visibles.has(o.id));
+}
+
+/** La pantalla de administración de la carta. `ahora` obligatorio (O.22-c): lo fija la página; solo llega al `generadoEn` del menú armado, que acá se descarta. */
+export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date): Promise<DatosAdminCarta> {
   const [secciones, generos, productos, promos, armado, precioLocalActivo, estado] = await Promise.all([
     seccionesConCantidad(sucursalId, db),
     generosOrdenados(sucursalId, db),
@@ -95,7 +108,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
       },
       orderBy: [{ activa: "desc" }, { orden: "asc" }, { titulo: "asc" }],
     }),
-    resolverMenuCartaConDiagnostico(sucursalId, db),
+    resolverMenuCartaConDiagnostico(sucursalId, db, ahora),
     precioLocalActivoEn(sucursalId, db),
     estadoCartaPropia(sucursalId, db),
   ]);
@@ -149,8 +162,8 @@ export async function cargarAdminCarta(sucursalId: string, db: Db): Promise<Dato
   };
 }
 
-/** Todos los ítems agrupados (activos primero, orden, nombre), con lo que se ve y se avisa en la sucursal activa. */
-export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db): Promise<DatosAdminItemsAgrupados> {
+/** Todos los ítems agrupados (activos primero, orden, nombre), con lo que se ve y se avisa en la sucursal activa. `ahora` obligatorio (O.22-c), como `cargarAdminCarta`. */
+export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db, ahora: Date): Promise<DatosAdminItemsAgrupados> {
   const [items, secciones, generos, sinGrupo, armado] = await Promise.all([
     db.itemAgrupadoCarta.findMany({
       where: whereCartaDeSucursal(sucursalId),
@@ -183,7 +196,7 @@ export async function cargarAdminItemsAgrupados(sucursalId: string, db: Db): Pro
       select: { id: true, nombre: true, precioVenta: true },
       orderBy: { nombre: "asc" },
     }),
-    resolverMenuCartaConDiagnostico(sucursalId, db),
+    resolverMenuCartaConDiagnostico(sucursalId, db, ahora),
   ]);
 
   const idsOpciones = items.flatMap((it) => it.opciones.map((o) => o.producto.id));

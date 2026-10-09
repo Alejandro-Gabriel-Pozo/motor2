@@ -4,9 +4,9 @@ import { MENSAJE_CUENTA_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta.gua
 import type { ComandoCerrarCuenta, ResultadoCerrarCuenta } from "@/core/features/cuentas/cuenta.schema";
 import { precioCobradoConDescuentos } from "@/core/carta/public";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
-import { conTransaccionSerializable } from "@/core/movimientos/public-servidor";
+import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarVentaEnTx } from "@/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
-import { registrarCambioAuditado } from "@/core/permisos/auditoria";
+import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { lineasDeVenta } from "@/core/pos/cuenta";
 import { siguienteNumeroTicket } from "@/core/pos/numeracion-ticket";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -41,7 +41,7 @@ import { describirAviso, formatearCantidad, MONEDA } from "../cuenta-comun";
  * @idempotency Por estado — una cuenta ya cerrada responde YA_CERRADA sin escribir nada; sin I3 (el aislamiento SERIALIZABLE arbitra el doble clic).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (uno por cada insumo que quedó en negativo, B6bis) — best-effort, no bloquea el cierre.
- * @ficha permiso=pos_cerrar_cuenta transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO
+ * @ficha permiso=pos_cerrar_cuenta transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function cerrarCuentaCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "email" | "transaccion" | "ahora">,
@@ -75,6 +75,8 @@ export async function cerrarCuentaCasoDeUso(
     // Producto con descuento (Fase 2): si el suelto ya traía un descuento de producto, con el del cliente rige SOLO EL MAYOR (`precioCobradoConDescuentos`).
     // `precioListaUnitario` del movimiento sigue significando «descuento de CLIENTE»: solo se escribe cuando gana ese (el reporte de descuentos a
     // clientes lo lee); el descuento de producto vive en `CuentaItem.precioCartaUnitario` y tiene su propio reporte.
+    // Los componentes de una promo NO traen precio de carta (`precioCartaUnitario` null): reciben el descuento de CLIENTE sobre su precio ya prorrateado. Es lo decidido en D2 de
+    // docs/plan-promo-combo-2026-09-26.md (el descuento por cliente se suma SOBRE lo prorrateado, nunca antes) y lo fija la escena D1 de `venta-matriz-ampliada`.
     const lineasVenta = lineas.map((l) => {
       const cobro = precioCobradoConDescuentos(l.precioUnitario, l.precioCartaUnitario ?? null, descuento);
       return {

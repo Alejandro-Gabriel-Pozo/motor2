@@ -1,8 +1,9 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
-import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
+import { obtenerMiNivelPermiso, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { listarSucursales } from "@/server/actions/auth/sucursales";
+import { contarSucursales } from "@/server/consultas/catalogo/productos";
 import { ProductoForm } from "../producto-form";
 import { cargarOpcionesFormularioProducto } from "../opciones-formulario";
 
@@ -10,6 +11,8 @@ import { cargarOpcionesFormularioProducto } from "../opciones-formulario";
 export default async function NuevoProductoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
+  // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
@@ -18,7 +21,10 @@ export default async function NuevoProductoPage() {
   const gateAlta = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
   if (!gateAlta.ok) return <p className="text-red-600">{gateAlta.mensaje}</p>;
 
-  const [{ unidades, insumos, categorias, proveedores, puedeCrear }, sucursales] = await Promise.all([cargarOpcionesFormularioProducto(ctx), listarSucursales()]);
+  const [{ unidades, insumos, categorias, proveedores, puedeCrear }, cantidadSucursales] = await Promise.all([cargarOpcionesFormularioProducto(ctx), contarSucursales(ctx.db)]);
+  // S-12 (D8 del dueño): crear un producto en consignación es fijar su costo (proveedor y precio): solo con `pagar_consignante` EDITAR en la sucursal activa. Sin la clave el formulario no
+  // ofrece la consignación ni manda la lista de proveedores del selector; el servidor la rechaza igual (`darDeAltaProducto`).
+  const { editar: puedeGestionarConsignacion } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
 
   return (
     <div className="max-w-xl">
@@ -30,9 +36,10 @@ export default async function NuevoProductoPage() {
         unidades={unidades}
         insumosIniciales={insumos}
         categoriasIniciales={categorias}
-        proveedoresIniciales={proveedores}
+        proveedoresIniciales={puedeGestionarConsignacion ? proveedores : []}
         puedeCrear={puedeCrear}
-        cantidadSucursales={sucursales.length}
+        puedeGestionarConsignacion={puedeGestionarConsignacion}
+        cantidadSucursales={cantidadSucursales}
         nombreSucursalActual={ctx.sucursalNombre}
       />
     </div>

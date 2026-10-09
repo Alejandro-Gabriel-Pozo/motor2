@@ -33,3 +33,15 @@ export function clienteConEmpresaDePrueba(url: string, empresaId: string = EMPRE
   global.clientesDeEmpresaDePrueba.set(clave, cliente);
   return cliente;
 }
+
+/**
+ * Lo mismo que `clienteConEmpresaDePrueba`, pero un cliente NUEVO (sin guardar en `globalThis`: quien lo pide lo desconecta con `$disconnect()`) que además emite un evento
+ * `query` por cada consulta que manda a la base, con el SQL real y sus parámetros. Para los tests que miran el SQL que genera Prisma (por ejemplo el `EXPLAIN` de
+ * `test/persistencia/kardex-indices-de-saldo.test.ts`); el preset de empresa sigue viviendo solo en este archivo (`sin-empresa-por-defecto.test.ts`, regla c).
+ */
+export function clienteConEmpresaDePruebaConLogDeQueries(url: string, empresaId: string = EMPRESA_DE_PRUEBA_ID) {
+  return new PrismaClient({
+    adapter: new PrismaPg({ connectionString: url, options: `-c app.empresa_id=${empresaId}` }),
+    log: [{ emit: "event", level: "query" }],
+  });
+}

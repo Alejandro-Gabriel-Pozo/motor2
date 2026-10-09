@@ -13,7 +13,7 @@ import { texto } from "@/core/texto";
  *
  * Contrato: el cliente es SIEMPRE el primer parámetro, obligatorio (nunca `db = prisma` por defecto). Excepción documentada respecto del
  * resto de `server/persistencia/`: `cargarProductoParaReceta` corre FUERA de la transacción (el producto no cambia el versionado y se carga una sola vez, antes de validar). Todo lo demás
- * corre DENTRO de la SERIALIZABLE (desde H7, Pureza Fase 4): `cargarUltimaVersionDeReceta` y `cargarIdDeVersionCentralVigente` —leer la última versión fuera de ella dejaba que una
+ * corre DENTRO de la SERIALIZABLE (desde H7, Pureza Fase 4): `cargarUltimaVersionDeReceta`, `cargarHabilitadaDeRecetaPropia` (D.4) y `cargarIdDeVersionCentralVigente` —leer la última versión fuera de ella dejaba que una
  * calibración local confirmada entre la lectura y la escritura se perdiera—, las escrituras (`escribirVersionDeReceta`, `copiarCalibracionesLocales`) y `cargarNombresDeSucursales`.
  *
  * Los `Decimal` de las calibraciones locales NO se convierten a `number` en el borde (a diferencia del resto de la persistencia): se
@@ -56,6 +56,15 @@ export async function cargarUltimaVersionDeReceta(db: Prisma.TransactionClient, 
 /** El id de la versión CENTRAL vigente del producto, o `null` si no tiene receta central: lo que una receta propia declara como «basada en». */
 export async function cargarIdDeVersionCentralVigente(db: Prisma.TransactionClient, productoId: string): Promise<string | null> {
   return (await cargarRecetaVigente(db, ALCANCE_CENTRAL, productoId, { select: { id: true } }))?.id ?? null;
+}
+
+/**
+ * Si la receta propia de la sucursal está HABILITADA para el producto hoy (`false` si no hay fila: rige la central). Dentro de la transacción: el caso de uso lo
+ * compara con lo que la pantalla mostraba (D.4), porque volver a la central deshabilita la propia SIN crear una versión y el chequeo de versión no lo ve.
+ */
+export async function cargarHabilitadaDeRecetaPropia(tx: Prisma.TransactionClient, sucursalId: string, productoId: string): Promise<boolean> {
+  const fila = await tx.recetaSucursal.findUnique({ where: { sucursalId_productoId: { sucursalId, productoId } }, select: { habilitada: true } });
+  return fila?.habilitada ?? false;
 }
 
 /**

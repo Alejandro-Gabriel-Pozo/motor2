@@ -3,14 +3,15 @@ import { join, relative, sep } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { analizarFuente, delegadosDeModelos, llamadasALaBase } from "../../scripts/arquitectura/analizar-fuente";
+import { PUREZA_HEREDADA_DEL_NUCLEO } from "./pureza-heredada-del-nucleo";
 
 /**
  * `src/core/` no consulta la base (Pureza Fase 3; regla `core-sin-consultas` de la auditoría). El cálculo vive en `core`; la consulta vive en
  * `src/server/consultas/`, `src/server/lecturas/` o `src/server/persistencia/`, y le entrega al cálculo filas ya leídas.
  *
- * La regla se activa POR CARPETA (`CARPETAS_SIN_CONSULTAS`): una carpeta entra a la lista en el mismo commit que termina de sacar sus consultas, y
- * no sale nunca. Así la lista solo crece hasta cubrir todo `src/core/` (el último paso de la Fase 3 la reemplaza por «todo core»). En las carpetas
- * de la lista se prohíbe, por AST (no por texto):
+ * La regla mira TODO `src/core/` (Hito 5, pieza 5.4, B6: hasta entonces se activaba por carpeta, una lista que crecía al final de cada PR de la Fase 3 y que
+ * dejaba afuera `auth`, `permisos`, `features`, `fiscal` y los archivos sueltos de `core/`; el último paso de la Fase 3 prometía reemplazarla por «todo core»).
+ * Se prohíbe, por AST (no por texto):
  *
  *  1. Llamadas a la base: lecturas o escrituras sobre un modelo (`x.producto.findMany`), SQL crudo y `$transaction`.
  *  2. Importar el cliente (`lib/db`, `core/auth/base`).
@@ -18,34 +19,23 @@ import { analizarFuente, delegadosDeModelos, llamadasALaBase } from "../../scrip
  *     haga ninguna llamada. Esto cierra el hueco del analizador de pureza, que no ve la lectura indirecta: una función `async (db: Db)` que le
  *     pasa `db` a otra, o un alias local del tipo (`import type { Db } from "./comun"`), figura como P0 pero consulta.
  *
- * El hallazgo se informa con archivo, línea y qué se detectó. Sin excepciones: agregar una es una decisión de arquitectura.
+ * El hallazgo se informa con archivo, línea y qué se detectó. Excepciones: SOLO `ARCHIVOS_PENDIENTES` (abajo), cada uno con su motivo, verificado en las DOS direcciones:
+ * un archivo de `core` que consulta y no figura, falla; uno que figura y ya no consulta, falla pidiendo sacarlo; y cada pendiente tiene que figurar en
+ * `PUREZA_HEREDADA_DEL_NUCLEO` con un `pendiente` de la Fase 6 (así un resto de la Fase 4 no se esconde acá). Agregar uno es una decisión de arquitectura.
  */
 const RAIZ = join(__dirname, "../..");
 const DELEGADOS = delegadosDeModelos(readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8"));
 
-/** Carpetas de `src/core/` que ya no consultan. Crece al final de cada PR de la Fase 3; no se achica. */
-const CARPETAS_SIN_CONSULTAS: readonly string[] = [
-  "src/core/carta",
-  "src/core/compras",
-  "src/core/correo",
-  "src/core/datos",
-  "src/core/estadistica",
-  "src/core/modulos",
-  "src/core/navegacion",
-  "src/core/precios",
-  "src/core/plataforma",
-  "src/core/reportes",
-  "src/core/pos",
-  "src/core/seguridad",
-  "src/core/stock",
-  "src/core/tiempo",
-];
-
 /**
- * Carpetas que YA no consultan salvo ciertos archivos que se mudan en una fase posterior (cada uno con su motivo). Se verifica en las DOS direcciones: fuera de la
- * lista, ni un hallazgo; y cada archivo de la lista tiene que seguir teniéndolos (si ya no, se saca). La lista solo se achica.
+ * Los archivos de `src/core/` que todavía consultan o reciben la base: la sesión y la base por empresa (`core/auth`, infraestructura que la Fase 6 muda a `server/sesion`) y la
+ * factura autorizada (recibe `Db`; la usa la consola, que no puede importar `src/server`: queda para la Fase 6). La lista solo se achica.
  */
-const CARPETAS_CON_PENDIENTES: Record<string, Record<string, string>> = {};
+const ARCHIVOS_PENDIENTES: Record<string, string> = {
+  "src/core/auth/base.ts": "Fase 6: infraestructura de la base por empresa (importa el cliente y fija `app.empresa_id` con un set_config local a la transacción); sale UNA vez a server/sesion junto con contexto y rol-de-ejecucion, sin tocar su código.",
+  "src/core/auth/contexto.ts": "Fase 6: el resolvedor del contexto de sesión (lee la base y depende de server-only, React o Next); pasa a server/sesion.",
+  "src/core/auth/rol-de-ejecucion.ts": "Fase 6: verifica el rol de ejecución leyendo la base; lo importa solo auth/base.ts (infraestructura de sesión), así que no puede salir antes que él: se muda con server/sesion.",
+  "src/core/fiscal/factura-autorizada.ts": "Fase 6: recibe `Db` (la fuente de facturas autorizadas cuenta filas con la base que le pasan) y la usa la consola de plataforma, que no puede importar src/server; queda para la Fase 6.",
+};
 
 const TIPOS_DE_BASE = new Set(["Db", "PrismaClient", "TransactionClient", "Transaccion"]);
 
@@ -87,35 +77,77 @@ function hallazgosDeCodigo(codigo: string, ruta: string): Hallazgo[] {
   return hallazgos;
 }
 
-function hallazgosDeCarpeta(carpeta: string): Hallazgo[] {
-  return archivosDe(join(RAIZ, carpeta)).flatMap((absoluta) => hallazgosDeCodigo(readFileSync(absoluta, "utf8"), relative(RAIZ, absoluta).split(sep).join("/")));
+/** Todos los hallazgos de `src/core/` (carpetas y archivos sueltos), por archivo. */
+function hallazgosDeTodoCore(): Map<string, Hallazgo[]> {
+  const porArchivo = new Map<string, Hallazgo[]>();
+  for (const absoluta of archivosDe(join(RAIZ, "src/core"))) {
+    const ruta = relative(RAIZ, absoluta).split(sep).join("/");
+    porArchivo.set(ruta, hallazgosDeCodigo(readFileSync(absoluta, "utf8"), ruta));
+  }
+  return porArchivo;
 }
 
-describe("core-sin-consultas: las carpetas de la lista no consultan la base", () => {
-  it("la lista tiene carpetas que existen (si no, el test no mira nada)", () => {
-    expect(CARPETAS_SIN_CONSULTAS.length).toBeGreaterThan(0);
-    for (const carpeta of CARPETAS_SIN_CONSULTAS) expect(archivosDe(join(RAIZ, carpeta)).length, carpeta).toBeGreaterThan(0);
+/** Los problemas de `porArchivo` contra la lista de pendientes y el registro de heredados, en las dos direcciones. Recibe todo por parámetro para poder probarse con fixtures. */
+function juzgar(
+  porArchivo: ReadonlyMap<string, readonly Hallazgo[]>,
+  pendientes: Readonly<Record<string, string>>,
+  heredados: Readonly<Record<string, { pendiente: string }>>
+): string[] {
+  const problemas: string[] = [];
+  for (const [archivo, hallazgos] of porArchivo) {
+    if (hallazgos.length > 0 && !(archivo in pendientes)) {
+      problemas.push(...hallazgos.map((h) => `${h.archivo}:${h.linea} ${h.que} (sacá la consulta a src/server y pasale al cálculo las filas ya leídas)`));
+    }
+  }
+  for (const [archivo, motivo] of Object.entries(pendientes)) {
+    if (!porArchivo.has(archivo)) problemas.push(`${archivo}: pendiente de ARCHIVOS_PENDIENTES que no existe (¿se mudó? sacalo de la lista)`);
+    else if ((porArchivo.get(archivo) ?? []).length === 0) problemas.push(`${archivo}: ya no consulta ni recibe la base (sacalo de ARCHIVOS_PENDIENTES)`);
+    if (motivo.trim().length < 20) problemas.push(`${archivo}: pendiente sin motivo`);
+    const heredado = heredados[archivo];
+    if (!heredado) problemas.push(`${archivo}: pendiente que no figura en PUREZA_HEREDADA_DEL_NUCLEO (un resto de la Fase 4 no se esconde acá: tiene que ser deuda declarada de la Fase 6)`);
+    else if (!/^Fase 6/.test(heredado.pendiente)) problemas.push(`${archivo}: figura en PUREZA_HEREDADA_DEL_NUCLEO con «${heredado.pendiente.slice(0, 40)}…» y no con una Fase 6`);
+  }
+  return problemas;
+}
+
+describe("core-sin-consultas: TODO src/core/ no consulta la base (salvo los pendientes de la Fase 6)", () => {
+  const porArchivo = hallazgosDeTodoCore();
+
+  it("recorre todo core: las carpetas de negocio, las que faltaban (auth, permisos, features, fiscal) y los archivos sueltos", () => {
+    const rutas = [...porArchivo.keys()];
+    expect(rutas.length).toBeGreaterThan(200);
+    for (const suelto of ["excel", "moneda", "numero", "resultado-caso", "texto"]) expect(rutas, `src/core/${suelto}.ts`).toContain(`src/core/${suelto}.ts`);
+    for (const carpeta of ["auth", "permisos", "features", "fiscal", "movimientos", "catalogo", "carta", "reportes"]) {
+      expect(rutas.some((r) => r.startsWith(`src/core/${carpeta}/`)), `src/core/${carpeta}/`).toBe(true);
+    }
   });
 
-  it.each(CARPETAS_SIN_CONSULTAS)("%s: ningún archivo consulta, importa el cliente ni recibe la base", (carpeta) => {
-    const hallazgos = hallazgosDeCarpeta(carpeta).map((h) => `${h.archivo}:${h.linea} ${h.que}`);
-    expect(hallazgos, "Sacá la consulta a src/server/consultas (o server/lecturas) y pasale al cálculo las filas ya leídas:").toEqual([]);
+  it("ningún archivo consulta, importa el cliente ni recibe la base, salvo los de ARCHIVOS_PENDIENTES (y la lista no tiene entradas de más ni de otra fase)", () => {
+    const problemas = juzgar(porArchivo, ARCHIVOS_PENDIENTES, PUREZA_HEREDADA_DEL_NUCLEO);
+    expect(problemas).toEqual([]);
+  });
+
+  it("los pendientes son exactamente los cuatro esperados (la lista solo se achica)", () => {
+    expect(Object.keys(ARCHIVOS_PENDIENTES).sort()).toEqual(["src/core/auth/base.ts", "src/core/auth/contexto.ts", "src/core/auth/rol-de-ejecucion.ts", "src/core/fiscal/factura-autorizada.ts"]);
   });
 });
 
-describe("core-sin-consultas: carpetas con archivos pendientes (la lista solo se achica)", () => {
-  it("las carpetas con pendientes y las limpias no se pisan (una carpeta no está en las dos listas)", () => {
-    expect(Object.keys(CARPETAS_CON_PENDIENTES).filter((c) => CARPETAS_SIN_CONSULTAS.includes(c))).toEqual([]);
+describe("core-sin-consultas: el juicio sobre los pendientes (con fixtures)", () => {
+  const consulta: Hallazgo = { archivo: "src/core/x/a.ts", linea: 3, que: "consulta la base (producto.findMany)" };
+  const heredado = (pendiente: string) => ({ "src/core/x/a.ts": { pendiente } });
+
+  it("un archivo que consulta y no está en la lista es un problema; con la entrada de la Fase 6 y el heredado, no", () => {
+    expect(juzgar(new Map([["src/core/x/a.ts", [consulta]]]), {}, {})).toHaveLength(1);
+    expect(juzgar(new Map([["src/core/x/a.ts", [consulta]]]), { "src/core/x/a.ts": "Fase 6: se muda con la sesión de la consola" }, heredado("Fase 6: pasa a server/sesion"))).toEqual([]);
   });
 
-  it.each(Object.keys(CARPETAS_CON_PENDIENTES))("%s: solo los archivos de la lista consultan, y todos los de la lista todavía lo hacen", (carpeta) => {
-    const pendientes = CARPETAS_CON_PENDIENTES[carpeta]!;
-    const hallazgos = hallazgosDeCarpeta(carpeta);
-    const conHallazgos = new Set(hallazgos.map((h) => h.archivo));
-    const nuevos = [...conHallazgos].filter((a) => !(a in pendientes));
-    expect(nuevos, "Estos archivos consultan y no están en la lista de pendientes (sacá la consulta a src/server):").toEqual([]);
-    const yaLimpios = Object.keys(pendientes).filter((a) => !conHallazgos.has(a));
-    expect(yaLimpios, "Estos ya no consultan: sacalos de la lista de pendientes (CARPETAS_CON_PENDIENTES):").toEqual([]);
+  it("un pendiente que ya no consulta, que no existe, sin motivo, fuera de PUREZA_HEREDADA o con una fase distinta de la 6 es un problema", () => {
+    const motivo = "Fase 6: se muda con la sesión de la consola";
+    expect(juzgar(new Map([["src/core/x/a.ts", []]]), { "src/core/x/a.ts": motivo }, heredado("Fase 6: x"))).toHaveLength(1);
+    expect(juzgar(new Map(), { "src/core/x/a.ts": motivo }, heredado("Fase 6: x"))).toHaveLength(1);
+    expect(juzgar(new Map([["src/core/x/a.ts", [consulta]]]), { "src/core/x/a.ts": "corto" }, heredado("Fase 6: x"))).toHaveLength(1);
+    expect(juzgar(new Map([["src/core/x/a.ts", [consulta]]]), { "src/core/x/a.ts": motivo }, {})).toHaveLength(1);
+    expect(juzgar(new Map([["src/core/x/a.ts", [consulta]]]), { "src/core/x/a.ts": motivo }, heredado("Fase 4: la escritura sale a un caso de uso"))).toHaveLength(1);
   });
 });
 

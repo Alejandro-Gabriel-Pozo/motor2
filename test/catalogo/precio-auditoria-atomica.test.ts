@@ -9,8 +9,8 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
  */
 const interruptor = vi.hoisted(() => ({ fallarEnLlamada: null as number | null, llamadas: 0 }));
 
-vi.mock("../../src/core/permisos/auditoria", async (importOriginal) => {
-  const real = await importOriginal<typeof import("../../src/core/permisos/auditoria")>();
+vi.mock("../../src/server/auditoria/registrar-cambio-auditado", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../../src/server/auditoria/registrar-cambio-auditado")>();
   return {
     ...real,
     registrarCambioAuditado: async (...args: Parameters<typeof real.registrarCambioAuditado>) => {

@@ -22,13 +22,29 @@ const ARCHIVOS_PERMITIDOS = [
   "server/consultas/carta/admin.ts",
   "server/lecturas/carta/grupo-de-producto.ts",
   "server/lecturas/pos/selector-carta.ts",
-  "server/actions/carta/secciones.ts",
-  "server/actions/carta/generos.ts",
+  // Hito 5, bloque D: las secciones de la carta las leen sus casos de uso (antes, server/actions/carta/secciones.ts).
+  "server/actions/carta/casos-de-uso/guardar-seccion-carta.ts",
+  "server/actions/carta/casos-de-uso/actualizar-activa-seccion-carta.ts",
+  // Hito 5, bloque D: los géneros de la carta los leen sus casos de uso (antes, server/actions/carta/generos.ts).
+  "server/actions/carta/casos-de-uso/guardar-genero-carta.ts",
+  "server/actions/carta/casos-de-uso/actualizar-activo-genero-carta.ts",
   "server/actions/carta/generos-compartido.ts",
-  "server/actions/carta/contenido-producto.ts",
-  "server/actions/carta/items-agrupados.ts",
-  "server/actions/carta/promos.ts",
-  "server/actions/carta/copiar-carta.ts",
+  // Hito 5, bloque D: el contenido de carta de un producto lo leen sus casos de uso (antes, server/actions/carta/contenido-producto.ts).
+  // (`actualizar-visible-en-carta.ts` solo lee por la RELACIÓN del producto, con el filtro de sucursal: la regla de relaciones lo mira en todo src/, no necesita estar en este inventario.)
+  "server/actions/carta/casos-de-uso/guardar-contenido-carta-producto.ts",
+  // Hito 5, bloque D: los ítems agrupados y sus opciones los leen sus casos de uso (antes, server/actions/carta/items-agrupados.ts): el alta y la edición, apagar o prender,
+  // cambiar el orden de una opción y quitarla.
+  "server/actions/carta/casos-de-uso/guardar-item-agrupado-carta.ts",
+  "server/actions/carta/casos-de-uso/actualizar-activo-item-agrupado-carta.ts",
+  "server/actions/carta/casos-de-uso/actualizar-orden-opcion-item-agrupado-carta.ts",
+  // Hito 5, bloque D: agregar un producto como opción de un ítem agrupado lo lee su caso de uso (antes, la función privada `agregarOpcion` de server/actions/carta/items-agrupados.ts).
+  "server/actions/carta/casos-de-uso/agregar-opcion-item-agrupado-carta.ts",
+  "server/actions/carta/casos-de-uso/quitar-opcion-item-agrupado-carta.ts",
+  // Hito 4, H4C-2 y H4C-3: las secciones de las promos (la de la promo y las de sus cupos) las leen sus casos de uso (antes, server/actions/carta/promos.ts).
+  "server/actions/carta/casos-de-uso/guardar-promo-carta.ts",
+  "server/actions/carta/casos-de-uso/guardar-cupos-promo-carta.ts",
+  // Hito 5, bloque D: copiar la carta de otra sucursal la lee su caso de uso (antes, server/actions/carta/copiar-carta.ts).
+  "server/actions/carta/casos-de-uso/copiar-carta-de-sucursal.ts",
 ];
 const LECTURA = /\b(seccionCarta|generoCarta|itemAgrupadoCarta|contenidoCartaProducto|opcionItemAgrupadoCarta)\s*\.\s*(find|count|aggregate|groupBy)/;
 /** Los modelos PROPIOS de la sucursal: SeccionCarta queda afuera a propósito (es de la empresa). */

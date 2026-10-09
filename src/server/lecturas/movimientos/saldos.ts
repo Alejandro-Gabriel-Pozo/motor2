@@ -20,15 +20,20 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * proporcional a la historia completa — Stock.js:268-294), esto es un
  * SUM real sobre el índice `@@index([productoId, seccionId, loteVencimiento])`
  * — no hace falta una tabla aparte para que sea barato.
+ *
+ * FALLA CERRADO por sucursal (hallazgo O.175/O.177 de la tanda T15): la sección tiene que ser de la `sucursalId` que recibe (la
+ * del contexto), y la condición vive en el MISMO `where` del agregado (sin una lectura extra). Con la sección de OTRA sucursal de la
+ * misma empresa el saldo es 0, como si no hubiera movimientos: la RLS separa empresas, no sucursales, y «quien la llama ya valida»
+ * no alcanza como defensa.
  */
-export async function calcularSaldoTotal(productoId: string, seccionId: string, db: Db): Promise<number> {
-  const r = await db.movimientoStock.aggregate({ where: { productoId, seccionId }, _sum: { cantidad: true } });
+export async function calcularSaldoTotal(productoId: string, seccionId: string, sucursalId: string, db: Db): Promise<number> {
+  const r = await db.movimientoStock.aggregate({ where: { productoId, seccionId, seccion: { sucursalId } }, _sum: { cantidad: true } });
   return Number(r._sum.cantidad ?? 0);
 }
 
-/** Saldo de un producto en una sección, para UN lote puntual (o el bucket "sin lote" si loteVencimiento es null) — a diferencia de calcularSaldoTotal, no suma entre lotes. Usado por Conteo Físico cuando se cuenta un lote específico. */
-export async function calcularSaldoPorLote(productoId: string, seccionId: string, loteVencimiento: Date | null, db: Db): Promise<number> {
-  const r = await db.movimientoStock.aggregate({ where: { productoId, seccionId, loteVencimiento }, _sum: { cantidad: true } });
+/** Saldo de un producto en una sección, para UN lote puntual (o el bucket "sin lote" si loteVencimiento es null) — a diferencia de calcularSaldoTotal, no suma entre lotes. Usado por Conteo Físico cuando se cuenta un lote específico. Falla cerrado por sucursal igual que `calcularSaldoTotal`. */
+export async function calcularSaldoPorLote(productoId: string, seccionId: string, loteVencimiento: Date | null, sucursalId: string, db: Db): Promise<number> {
+  const r = await db.movimientoStock.aggregate({ where: { productoId, seccionId, loteVencimiento, seccion: { sucursalId } }, _sum: { cantidad: true } });
   return Number(r._sum.cantidad ?? 0);
 }
 
@@ -38,14 +43,15 @@ export interface ResultadoValidacionStock {
   requerido: number;
 }
 
-/** Port de validarStockSuficiente_ (Stock.js:591-598). */
+/** Port de validarStockSuficiente_ (Stock.js:591-598). Falla cerrado por sucursal: la sección de otra sucursal cuenta como saldo 0. */
 export async function validarStockSuficiente(
   productoId: string,
   seccionId: string,
   requerido: number,
+  sucursalId: string,
   db: Db
 ): Promise<ResultadoValidacionStock> {
-  const actual = await calcularSaldoTotal(productoId, seccionId, db);
+  const actual = await calcularSaldoTotal(productoId, seccionId, sucursalId, db);
   return { ok: actual >= requerido, actual, requerido };
 }
 

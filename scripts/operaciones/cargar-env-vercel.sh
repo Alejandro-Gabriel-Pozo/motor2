@@ -19,7 +19,7 @@ PROYECTOS_PERMITIDOS=" motor2-demo stockhneuquen "
 SCOPE="${VERCEL_SCOPE:-alepozod}"
 # PLATAFORMA_DATABASE_URL NO va a Vercel: la usan solo scripts locales (politica-empresa; el alta de empresas la hace la consola). Cargarla en el entorno de la app le daría
 # a la app las credenciales del rol que puede escribir `Empresa`, justo lo que la separación de roles (S-13) quiere evitar.
-SENSIBLES=" DATABASE_URL DIRECT_URL AUTH_SECRET AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET CRON_SECRET ALLOWED_EMAIL_DOMAINS CORREO_AVISOS_RESEND_API_KEY "
+SENSIBLES=" DATABASE_URL DIRECT_URL AUTH_SECRET AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET CRON_SECRET CORREO_AVISOS_RESEND_API_KEY "
 # NEXT_PUBLIC_* viaja al navegador: Vercel no admite que sea sensible.
 PUBLICAS=" AUTH_URL CONTACTO_PLATAFORMA_EMAIL CARTA_DOMINIO_BASE CARTA_EMPRESA_UNICA MOTOR2_ROL_ESTRICTO MOTOR2_MIGRAR_EN_BUILD NEXT_PUBLIC_SENTRY_DSN CORREO_AVISOS_REMITENTE "
 

@@ -6,11 +6,13 @@
 --   · `motor2_app` pierde INSERT/UPDATE/DELETE sobre `Empresa` (con `restringir=1`): un bug o una inyección en la app ya no puede cambiar la política de
 --     plataforma, el estado de una empresa ni crear/borrar empresas. La app solo lee `Empresa`.
 -- Quién puede qué (lista cerrada; un test la compara con las tablas reales de la base):
---   Empresa                                SELECT, INSERT, UPDATE   (alta, activación, política)
---   User, ModuloEmpresa                    SELECT, INSERT, UPDATE   (el primer gerente se crea con upsert; el registro de módulos se actualiza)
---   Accion, Rol, PermisoRol, Unidad, MotivoMerma, DestinoConsumo, Sucursal, UsuarioEmpresa, UsuarioSucursal
+--   Empresa, ModuloEmpresa                 SELECT, INSERT, UPDATE   (alta, activación, política; el registro de módulos se actualiza)
+--   User, UsuarioEmpresa                   SELECT                   (S-35: solo lectura —el gerente de una empresa—; el primer gerente ya no se crea desde acá: llega por la
+--                                                                     invitación y lo incorpora la app. UsuarioSucursal: ningún privilegio. S-33: el actor de un cambio ya no es un User)
+--   Accion, Rol, PermisoRol, Unidad, MotivoMerma, DestinoConsumo, Sucursal
 --                                          SELECT, INSERT           (siembra del alta)
---   RegistroAuditoria, AuditoriaPlataforma SELECT, INSERT           (append-only)
+--   AuditoriaPlataforma                    SELECT, INSERT           (append-only; S-33: aquí quedan los cambios de módulos y de política hechos por script, a nombre del administrador.
+--                                                                     RegistroAuditoria ya NO se escribe desde plataforma: sin privilegios)
 --   AdminPlataforma y sus códigos/sesión   SELECT, INSERT, UPDATE   (identidad de la consola; sin DELETE)
 --   Invitacion                             SELECT, INSERT, UPDATE   (alta, reenvío y revocación de la invitación del gerente, E5; sin DELETE)
 --   _prisma_migrations                     SELECT                   (solo lectura de metadatos —nombre y fecha de cada migración—, nunca datos de negocio:
@@ -49,8 +51,11 @@ REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM motor2_plataforma;
 
 GRANT USAGE ON SCHEMA public TO motor2_plataforma;
 
-GRANT SELECT, INSERT, UPDATE ON "Empresa", "User", "ModuloEmpresa" TO motor2_plataforma;
-GRANT SELECT, INSERT ON "Accion", "Rol", "PermisoRol", "Unidad", "MotivoMerma", "DestinoConsumo", "Sucursal", "UsuarioEmpresa", "UsuarioSucursal", "RegistroAuditoria" TO motor2_plataforma;
+-- S-35, grants = uso (test/arquitectura/grants-igual-a-uso.test.ts compara cada línea con lo que el código de plataforma hace de verdad). Reversa del recorte:
+-- scripts/operaciones/revertir-recorte-de-grants-motor2-plataforma.sql
+GRANT SELECT, INSERT, UPDATE ON "Empresa", "ModuloEmpresa" TO motor2_plataforma;
+GRANT SELECT ON "User", "UsuarioEmpresa" TO motor2_plataforma;
+GRANT SELECT, INSERT ON "Accion", "Rol", "PermisoRol", "Unidad", "MotivoMerma", "DestinoConsumo", "Sucursal" TO motor2_plataforma;
 
 -- Solo lectura de metadatos de Prisma (nombre y fecha de cada migración aplicada; CERO datos de negocio): aviso de «instalación atrasada en migraciones»
 -- (ADR-025). Siempre existe en una base con al menos una migración aplicada; si no (una base recién creada, antes de migrar), este GRANT no hace nada.
