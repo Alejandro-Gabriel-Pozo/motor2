@@ -29,7 +29,7 @@ async function crearInvitacion(parcial: { email?: string; venceEn?: Date; estado
 }
 
 const entrar = (token: string | undefined, email = EMAIL) =>
-  inicioDeSesionPermitido({ emailUsuario: email, emailPerfil: email, hd: undefined, tokenDeSesionAbierta: undefined, tokenDeInvitacion: token });
+  inicioDeSesionPermitido({ emailUsuario: email, emailPerfil: email, tokenDeSesionAbierta: undefined, tokenDeInvitacion: token });
 
 beforeEach(async () => {
   await limpiarBaseDeTest();
@@ -89,7 +89,7 @@ describe("gate de login con invitación", () => {
     const token = await crearInvitacion();
     const otro = await prismaAdmin.user.create({ data: { email: "otro@gmail.com" } });
     await prismaAdmin.session.create({ data: { userId: otro.id, sessionToken: "sesion-de-otro", expires: new Date(Date.now() + 3_600_000) } });
-    expect(await inicioDeSesionPermitido({ emailUsuario: EMAIL, emailPerfil: EMAIL, hd: undefined, tokenDeSesionAbierta: "sesion-de-otro", tokenDeInvitacion: token })).toBe(false);
+    expect(await inicioDeSesionPermitido({ emailUsuario: EMAIL, emailPerfil: EMAIL, tokenDeSesionAbierta: "sesion-de-otro", tokenDeInvitacion: token })).toBe(false);
   });
 });
 

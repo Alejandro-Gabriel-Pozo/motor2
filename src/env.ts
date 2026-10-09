@@ -22,7 +22,7 @@ import { esRemitenteValido } from "./core/correo/direcciones";
  * Residuo conocido: Vercel no permite limitar una variable al build, así que `DIRECT_URL` sigue cargada en Producción porque el build la usa para `migrate status`.
  *
  * Opcionales (el proyecto funciona sin ellas, con la feature correspondiente deshabilitada — confirmado en el código real):
- * `ALLOWED_EMAIL_DOMAINS` (`src/server/sesion/acceso.ts` — "hoy no hay dominios configurados"), `CRON_SECRET` (protege los crons de IPC/dólar),
+ * `CRON_SECRET` (protege los crons de IPC/dólar),
  * `CARTA_DOMINIO_BASE` (subdominio de la carta pública), `NEXT_PUBLIC_SENTRY_DSN` (Sentry opcional), y las cuatro del envío de mails
  * (`CORREO_AVISOS_*`, `CORREO_OPERATIVO_*`, E3/ADR-018: sin ellas el canal no envía; en local muestra el mail en la terminal).
  *
@@ -38,7 +38,8 @@ const envSchema = z.object({
   AUTH_GOOGLE_ID: z.string().min(1),
   AUTH_GOOGLE_SECRET: z.string().min(1),
 
-  ALLOWED_EMAIL_DOMAINS: z.string().min(1).optional(),
+  // `ALLOWED_EMAIL_DOMAINS` se retiró (T8 del endurecimiento, S-17/D5 del dueño): el login por dominio de Google Workspace abría sesión a quien no tenía empresa. Si una instalación todavía la
+  // tiene cargada, el schema la ignora (ya no es una clave declarada) y nada la lee; sacarla de Vercel es la acción E.2 del plan.
   CRON_SECRET: z.string().min(1).optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().min(1).optional(),
 

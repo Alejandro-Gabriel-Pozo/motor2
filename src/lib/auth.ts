@@ -30,12 +30,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     // Gate de acceso: rechaza el login ANTES de que el adapter cree
-    // User/Account, para que una cuenta de Google fuera de la empresa (y
-    // no dada de alta a mano) ni siquiera llegue a tener sesión. Detalle
+    // User/Account, para que una cuenta de Google sin empresa (sin membresía
+    // activa ni invitación pendiente; S-17/D5, ya no hay vía por dominio) ni siquiera llegue a tener sesión. Detalle
     // de las reglas en inicioDeSesionPermitido (incluye no dejar vincular una cuenta de Google ajena a una sesión abierta).
     async signIn({ user, profile, account }) {
       if (!user.email || !profile?.email) return false;
-      const hd = typeof profile.hd === "string" ? profile.hd : undefined;
       const cookieStore = await cookies();
       const tokenAbierto = tokenDeSesionAbierta((n) => cookieStore.get(n)?.value);
       const tokenDeInvitacion = cookieStore.get(nombreCookieInvitacion(process.env))?.value;
@@ -44,7 +43,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         emailUsuario: user.email,
         emailPerfil: profile.email,
         emailVerificado: profile.email_verified === true,
-        hd,
         tokenDeSesionAbierta: tokenAbierto,
         tokenDeInvitacion,
         cuenta: account ? { ...account, providerAccountId: account.providerAccountId } : null,

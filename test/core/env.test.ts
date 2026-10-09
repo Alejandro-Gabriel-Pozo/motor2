@@ -45,7 +45,6 @@ describe("parseEnv", () => {
   it("acepta con TODAS las opcionales presentes, y con NINGUNA — nunca las exige", () => {
     const conOpcionales = {
       ...ENV_VALIDO,
-      ALLOWED_EMAIL_DOMAINS: "lacuadra.com",
       CRON_SECRET: "cron-secreto",
       CARTA_DOMINIO_BASE: "motor2carta.com",
       NEXT_PUBLIC_SENTRY_DSN: "https://sentry.example.com/1",
