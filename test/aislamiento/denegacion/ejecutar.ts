@@ -14,8 +14,10 @@ import type { PuertaInventariada } from "./inventario-de-puertas";
  *
  * Qué cuenta como negar:
  *  - (a) anónimo y (b) sin empresa: la puerta LANZA (una redirección al login también) o devuelve `{ ok: false }`. Cualquier dato o `ok: true` es un problema.
- *  - (c) otra empresa y (d) otra sucursal de la misma empresa: lo que devuelva NO puede traer ni un solo marcador de lo ajeno (`ZZ-E2`, `ZZ-S2`), y una MUTACIÓN no puede terminar en `ok: true`.
+ *  - (c) otra empresa y (d) otra sucursal de la misma empresa: lo que devuelva NO puede traer ni un solo marcador de lo ajeno (`ZZ-E2`, `ZZ-S2`) ni su huella numérica (`77xx` de S2, `88xx` de E2), una MUTACIÓN no puede terminar en
+ *    `ok: true`, y el rechazo tiene que ser de PERTENENCIA (`rechazos.ts`: «no se encontró», «no existe», «no tenés acceso»…); un rechazo por forma o validación no prueba nada y es un problema (fila O.177).
  *  - propia (control positivo de las lecturas): con ids propios devuelve lo propio.
+ *  - controlMutacion (control positivo de las mutaciones): con ids propios y válidos termina en `ok: true`, sobre un mundo que se vuelve a sembrar después de cada variante; sin él, el rechazo de arriba podría ser de forma.
  *  - en todos: ninguna tabla cambia (la huella de toda la base, antes y después) y ninguna cookie se escribe.
  */
 const MODULOS_DEL_SERVIDOR = import.meta.glob("../../../src/server/{actions,consultas,lecturas}/**/*.ts");
