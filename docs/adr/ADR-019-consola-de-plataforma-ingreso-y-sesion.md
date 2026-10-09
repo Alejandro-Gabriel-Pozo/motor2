@@ -43,7 +43,9 @@ Nada de esto se escribe jamás en un registro, en una auditoría ni en un mensaj
   cookie propia (`__Host-plataforma.ingreso` en https, `httpOnly`, `SameSite=Strict`, 10 minutos); el código del mail solo se comprueba con esa cookie. Antes era
   «el último vigente del administrador»: un anónimo que conocía su email pedía códigos, cada pedido invalidaba el anterior, y las verificaciones falsas quemaban
   los 5 intentos del código de verdad. Ahora un pedido ajeno **no invalida** nada, y los intentos que gasta un atacante son los de sus propios códigos.
-- Se pueden pedir como máximo **20 códigos por hora** por administrador (era 5; el techo de correo subió porque ya no hay invalidación y un anónimo tarda más en
+- Se pueden pedir como máximo **10 códigos por hora** por administrador (era 5; la primera versión de S-08 puso 20 y el dueño preguntó «¿por qué no 10?»: 10,
+  a pedido del dueño 2026-10-09, pendiente de su confirmación explícita. Duplica el margen contra el bloqueo sin cuadruplicar la superficie de adivinanza: unos
+  50 intentos por hora sobre 10⁶ y sigue faltando el TOTP; el techo de correo sube respecto de 5 porque ya no hay invalidación y un anónimo tarda más en
   agotarlo). Se cuenta **dentro de la transacción**, bajo el cerrojo de la fila del administrador (`FOR UPDATE`): pedidos en paralelo no lo superan. Además, un
   cupo **por origen** (IP de `x-forwarded-for`, 6 pedidos cada 10 minutos, en memoria y por instancia: best effort) frena el bucle de un solo origen. **Residuo
   declarado:** quien pide desde muchas IP todavía puede agotar el techo del administrador; el cierre real es el firewall de Vercel (E.6) y el administrador

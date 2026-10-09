@@ -258,6 +258,15 @@ describe("S-08 — un anónimo no le saca al administrador el código, los inten
     expect(await prismaAdmin.codigoDeIngresoPlataforma.count({ where: { adminId } })).toBe(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA);
   });
 
+  it("el techo es DIEZ por hora (B8, a pedido del dueño 2026-10-09): 25 pedidos en paralelo entregan exactamente 10, con el número escrito a mano", async () => {
+    // Los casos de arriba usan la constante y seguirían verdes con cualquier valor; este fija el número que el dueño pidió (duplica el margen contra el bloqueo
+    // respecto de los 5 de antes sin cuadruplicar la superficie de adivinanza de los 20 de la primera versión de S-08).
+    expect(MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA).toBe(10);
+    const mensajes = await Promise.all(Array.from({ length: 25 }, nuevoPedido).map((p) => prepararCodigoDeIngreso(prismaAdmin, deps, EMAIL, p)));
+    expect(mensajes.filter((m) => m !== null)).toHaveLength(10);
+    expect(await prismaAdmin.codigoDeIngresoPlataforma.count({ where: { adminId } })).toBe(10);
+  });
+
   it("verificar hace las MISMAS consultas haya o no administrador, fila o pedido: el tiempo de respuesta no delata qué emails son de un administrador", async () => {
     const consultas: string[] = [];
     const contando = prismaAdmin.$extends({

@@ -8,10 +8,12 @@ export const BLOQUEO_POR_FALLOS_MS = 15 * 60 * 1000;
 /**
  * Pedir códigos nuevos también se limita: sin tope, alguien podría llenar el buzón de un administrador. Es un techo de CORREO, no una defensa de adivinación
  * (S-08, B8): desde que cada código es del navegador que lo pidió y un pedido nuevo no invalida los anteriores (`core/plataforma/pedido-de-ingreso.ts`), el
- * tope subió de 5 a 20 para que un anónimo que pide en bucle tarde más en agotarlo; los intentos por código siguen en 5, y las adivinanzas de un atacante
- * caen sobre códigos que son suyos, no sobre el del administrador. Se cuenta bajo el cerrojo de la fila del administrador (nunca fuera de la transacción).
+ * tope subió de 5 a 10 (la primera versión puso 20; el dueño preguntó «¿por qué no 10?», 2026-10-09, pendiente de su confirmación explícita): duplica el
+ * margen contra el bloqueo sin cuadruplicar la superficie de adivinanza (unos 50 intentos por hora sobre 10⁶, y sigue faltando el TOTP). Los intentos por
+ * código siguen en 5, y las adivinanzas de un atacante caen sobre códigos que son suyos, no sobre el del administrador. Se cuenta bajo el cerrojo de la
+ * fila del administrador (nunca fuera de la transacción).
  */
-export const MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA = 20;
+export const MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA = 10;
 /** Por ORIGEN (IP de `x-forwarded-for`), en memoria y por instancia (best effort, como el limitador de mutaciones): cuántos pedidos de código acepta la consola. */
 export const MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN = 6;
 export const VENTANA_DE_PEDIDOS_POR_ORIGEN_MS = 10 * 60 * 1000;
