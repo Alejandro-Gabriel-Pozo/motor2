@@ -112,15 +112,15 @@ function archivos(dir: string): string[] {
 
 const aRutaRelativa = (f: string) => relative(RAIZ, f).split(sep).join("/");
 
-/** Los nombres de relación (campos de otros modelos) que apuntan a un modelo sensible, leídos del schema. */
-function relacionesSensibles(): Set<string> {
-  const schema = readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8");
+/** Los nombres de relación (campos de otros modelos) que apuntan a un modelo sensible, leídos del texto de un `schema.prisma` (recibe el texto: el guard se prueba con LF y con CRLF). */
+function relacionesSensibles(schema: string): Set<string> {
   const modelos = [...schema.matchAll(/^model (\w+) \{([\s\S]*?)^\}/gm)];
   const nombres = new Set(modelos.map((m) => m[1]!));
   const salida = new Set<string>();
   for (const [, , cuerpo] of modelos) {
     for (const linea of cuerpo!.split("\n")) {
-      const m = /^\s+(\w+)\s+(\w+)(\[\])?\??\s/.exec(linea);
+      // Después del tipo puede venir un blanco (atributos, comentario), un `\r` (CRLF) o NADA (LF: una relación de lista sin atributos termina la línea en `[]`): `(?:\s|$)`.
+      const m = /^\s+(\w+)\s+(\w+)(\[\])?\??(?:\s|$)/.exec(linea);
       if (m && nombres.has(m[2]!) && SENSIBLES.includes(m[2]!)) salida.add(m[1]!);
     }
   }
@@ -217,7 +217,9 @@ function lecturasSinSelect(codigo: string, ruta: string): string[] {
 }
 
 const esUseServer = (codigo: string) => /^\s*["']use server["']/.test(codigo);
-const relaciones = relacionesSensibles();
+const SCHEMA = readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8");
+// Siempre con LF, como lo lee el CI de Linux: el guard ve lo mismo en cualquier sistema (I-4: con la regla vieja, en Windows —CRLF— veía relaciones que en Linux —LF— no).
+const relaciones = relacionesSensibles(SCHEMA.replace(/\r\n/g, "\n"));
 
 const deAcciones = archivos(join(RAIZ, "src/server/actions"))
   .map((f) => ({ ruta: aRutaRelativa(f), codigo: readFileSync(f, "utf8") }))
@@ -232,8 +234,46 @@ describe("GT-3a — nada de filas enteras de modelos con un campo sensible", () 
     expect(deAcciones.length).toBeGreaterThan(20);
     expect(deConsultasYLecturas.length).toBeGreaterThan(50);
     for (const r of ["producto", "proveedor", "proveedorConsignacion", "creadoPor", "anuladaPor", "usuario"]) expect(relaciones.has(r), r).toBe(true);
+    // Las relaciones de LISTA sin atributos (`movimientos MovimientoStock[]`) terminan la línea en `[]`: son las que la regla vieja perdía con LF (I-4 de la auditoría intermedia).
+    for (const r of ["movimientos", "productos", "operaciones", "pagosConsignante", "accounts", "sessions"]) expect(relaciones.has(r), `${r} (relación de lista al final de la línea)`).toBe(true);
     expect(relaciones.has("sucursal")).toBe(false);
     expect(relaciones.has("seccion")).toBe(false);
+  });
+
+  describe("el guard ve las MISMAS relaciones con fin de línea LF (CI de Linux) y CRLF (Windows) — I-4 de la auditoría intermedia", () => {
+    // Un schema mínimo con cada forma que importa: lista y opcional SIN atributos al final de la línea, y con atributos.
+    const LINEAS = [
+      "model Producto {",
+      "  id String @id",
+      "}",
+      "",
+      "model MovimientoStock {",
+      "  id String @id",
+      "}",
+      "",
+      "model Deposito {",
+      "  id          String          @id",
+      "  movimientos MovimientoStock[]",
+      "  productos   Producto[]      @relation(\"x\")",
+      "  principal   Producto?",
+      "  otro        Producto        @relation(fields: [otroId], references: [id])",
+      "  nombre      String",
+      "}",
+    ];
+    const ESPERADAS = ["movimientos", "otro", "principal", "productos"];
+    const conFin = (fin: string) => LINEAS.join(fin) + fin;
+
+    it("sintético: LF, CRLF y sin salto final dan las cuatro relaciones", () => {
+      expect([...relacionesSensibles(conFin("\n"))].sort()).toEqual(ESPERADAS);
+      expect([...relacionesSensibles(conFin("\r\n"))].sort()).toEqual(ESPERADAS);
+      expect([...relacionesSensibles(LINEAS.join("\n"))].sort()).toEqual(ESPERADAS);
+    });
+
+    it("el schema real: LF y CRLF dan exactamente el mismo conjunto", () => {
+      const lf = SCHEMA.replace(/\r\n/g, "\n");
+      const crlf = lf.replace(/\n/g, "\r\n");
+      expect([...relacionesSensibles(lf)].sort()).toEqual([...relacionesSensibles(crlf)].sort());
+    });
   });
 
   it("el detector (con fuentes sintéticas)", () => {
