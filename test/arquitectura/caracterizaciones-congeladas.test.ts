@@ -47,9 +47,9 @@ const CONGELADAS: Record<string, Congelada> = {
     regeneraciones: [
       {
         blob: "684138a1d1b209b5ab09755c856d6b3d96dc6a28",
-        // Un commit no puede llevar su propio hash: es el commit PADRE de este, «S-12 (D8): el costo de consignacion (precio y consignante) solo lo ve y lo edita quien tiene pagar_consignante».
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `54f1f169` («Lista de control: filas O.54, O.55, O.61 y O.90 (tanda T2…»). Corregido por la tanda T14 (la auditoría intermedia, M-37): decía `5c18eb8b` (el commit S-12 de la rama local desde la que se hizo el cherry-pick); el padre real de `aff32b92` es `54f1f169`. El campo `commit` es solo metadato: ningún test lo compara con git (solo exige la forma de un hash).
         // El commit que regenera es el de S-41 (fila O.90 de la lista de control, que lo cita por su hash).
-        commit: "5c18eb8b",
+        commit: "54f1f169",
         motivo:
           "S-41/D4 (O.90; CAMBIA COMPORTAMIENTO, plan de endurecimiento de seguridad T2): la semilla de `producto_sincronizar_precio_carta` pasa de [admin, operador] a [admin] (piso operario intacto: clase O, delegable por configuración). Cambia SOLO lo que dice esa clave para el usuario «operador» (y los roles que lo incluyen), en 18 líneas: 16 donde sale de `ok`/`ver=true editar=true`/`sucursalesDondeElUsuarioPuedeVer` y entra a los grupos de SIN_PERMISO/`ver=false editar=false`, en los 4 registros de módulos; y 2 mensajes de denegación del usuario «operador + especial», que nombran la primera clave que le falta (ahora esta, antes `insumo_renombrar_fusionar`). Ninguna respuesta de otra clave cambia (comprobado quitando la clave de ambas versiones: la única diferencia que queda son esos 2 mensajes).",
       },
@@ -83,8 +83,8 @@ const CONGELADAS: Record<string, Congelada> = {
       {
         // (carril A) Primera regeneración de esta huella: S-41/D4.
         blob: "334d34b8a738cd073d463b708ce03941949749b6",
-        // El commit PADRE de este (ver la entrada de la matriz de acceso).
-        commit: "5c18eb8b",
+        // El commit PADRE de este (`54f1f169`; ver la entrada de la matriz de acceso).
+        commit: "54f1f169",
         motivo:
           "S-41/D4 (O.90; CAMBIA COMPORTAMIENTO; REGENERACIÓN NO PREVISTA EN EL PLAN, consecuencia directa de la misma semilla, a revisar por el orquestador): la huella siembra los permisos de fábrica de las empresas que da de alta, así que el rol «operador» ya no recibe `producto_sincronizar_precio_carta`. Cambia SOLO 2 líneas, una por empresa sembrada: `PERMISO operador:producto_sincronizar_precio_carta ver=true editar=true` → `ver=false editar=false`. Ningún resultado, mensaje ni otra fila cambia.",
       },
