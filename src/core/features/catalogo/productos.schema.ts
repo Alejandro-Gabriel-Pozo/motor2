@@ -47,9 +47,10 @@ export interface DatosProductoCreado {
  *  - `DATOS_INVALIDOS`: algún dato del formulario no es válido (`validarDatosDeProducto`; solo el alta completa);
  *  - `YA_EXISTE`: ya hay un producto DISPONIBLE (en alguna sucursal) con ese nombre;
  *  - `CODIGO_REPETIDO`: el código (manual, o el autogenerado agotados los reintentos) ya es de otro producto;
- *  - `SIN_PERMISO_COSTO`: el alta trae un costo de consignación (es consignación, proveedor o precio) y quien la pide no tiene `pagar_consignante` (S-12, D8).
+ *  - `SIN_PERMISO_COSTO`: el alta trae un costo de consignación (es consignación, proveedor o precio) y quien la pide no tiene `pagar_consignante` (S-12, D8);
+ *  - `REFERENCIA_NO_ENCONTRADA`: un id del formulario (categoría, insumo, unidad de compra o de stock, proveedor de consignación) no es de esta empresa o no existe: la clave foránea compuesta de la base lo rechazó y se traduce a «No se encontró …» (O.175).
  */
-export type ResultadoDarDeAltaProducto = ResultadoCaso<DatosProductoCreado, "DATOS_INVALIDOS" | "YA_EXISTE" | "CODIGO_REPETIDO" | "SIN_PERMISO_COSTO">;
+export type ResultadoDarDeAltaProducto = ResultadoCaso<DatosProductoCreado, "DATOS_INVALIDOS" | "YA_EXISTE" | "CODIGO_REPETIDO" | "SIN_PERMISO_COSTO" | "REFERENCIA_NO_ENCONTRADA">;
 
 /**
  * Comando «editar un producto»: el id y los datos del formulario, SIN validar (sin guard: `validarDatosDeProducto` lee la unidad de stock a mitad de camino), y si quien lo pide
@@ -77,11 +78,12 @@ export interface DatosActualizarProducto {
  *  - `DATOS_INVALIDOS`: algún dato del formulario no es válido (`validarDatosDeProducto`);
  *  - `UNIDAD_CON_HISTORIA`: el formulario trae otra unidad de stock y el producto ya tiene historia (movimientos, recetas, presentaciones, proveedores…; CAT-1, S-05);
  *  - `CONSIGNANTE_CON_HISTORIA`: el formulario cambia el consignante (o el «es consignación») de un producto que ya tiene liquidaciones (S-05);
- *  - `SIN_PERMISO_COSTO`: el formulario cambia el costo de consignación (es consignación, proveedor o precio) y quien lo pide no tiene `pagar_consignante` (S-12, D8).
+ *  - `SIN_PERMISO_COSTO`: el formulario cambia el costo de consignación (es consignación, proveedor o precio) y quien lo pide no tiene `pagar_consignante` (S-12, D8);
+ *  - `REFERENCIA_NO_ENCONTRADA`: un id del formulario (categoría, insumo, unidad, proveedor de consignación) no es de esta empresa o no existe: la clave foránea compuesta de la base rechazó el `update` y se traduce a «No se encontró …» fuera de la transacción abortada (O.175).
  */
 export type ResultadoActualizarProducto = ResultadoCaso<
   DatosActualizarProducto,
-  "PRODUCTO_NO_ENCONTRADO" | "TIPO_DISTINTO" | "DATOS_INVALIDOS" | "UNIDAD_CON_HISTORIA" | "CONSIGNANTE_CON_HISTORIA" | "SIN_PERMISO_COSTO"
+  "PRODUCTO_NO_ENCONTRADO" | "TIPO_DISTINTO" | "DATOS_INVALIDOS" | "UNIDAD_CON_HISTORIA" | "CONSIGNANTE_CON_HISTORIA" | "SIN_PERMISO_COSTO" | "REFERENCIA_NO_ENCONTRADA"
 >;
 
 /**

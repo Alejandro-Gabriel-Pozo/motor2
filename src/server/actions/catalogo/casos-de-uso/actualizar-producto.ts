@@ -1,6 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { ComandoActualizarProducto, ResultadoActualizarProducto } from "@/core/features/catalogo/productos.schema";
+import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { texto } from "@/core/texto";
@@ -50,6 +51,22 @@ export async function actualizarProductoCasoDeUso(
 ): Promise<ResultadoActualizarProducto> {
   const { productoId } = comando;
   // Los rechazos devuelven ANTES de escribir, así que la transacción no deja nada. `actor.transaccion` puede reintentar el cuerpo: no tiene efectos fuera de la base.
+  // O.175: un id de OTRA empresa (o inexistente) en el proveedor de consignación, la categoría, el insumo o las unidades lo rechaza la clave foránea compuesta de la base al hacer el `update`;
+  // la transacción ya quedó abortada (y deshecha), así que el error se traduce AFUERA de ella, a «No se encontró …» (nada se escribió: ni el `update` ni las auditorías).
+  try {
+    return await actualizarProductoEnTransaccion(actor, comando, productoId);
+  } catch (e) {
+    const rechazo = rechazoDeReferenciaDeProducto(e);
+    if (rechazo) return fracaso("REFERENCIA_NO_ENCONTRADA", rechazo);
+    throw e;
+  }
+}
+
+async function actualizarProductoEnTransaccion(
+  actor: Pick<ContextoUsuario, "transaccion" | "usuarioId">,
+  comando: ComandoActualizarProducto,
+  productoId: string,
+): Promise<ResultadoActualizarProducto> {
   return actor.transaccion(async (tx): Promise<ResultadoActualizarProducto> => {
     const existente = await tx.producto.findUnique({ where: { id: productoId } });
     if (!existente) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");

@@ -2,6 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/public";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
+import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";
 import type { ComandoDarDeAltaProductoRapido, ResultadoDarDeAltaProducto } from "@/core/features/catalogo/productos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
@@ -49,6 +50,9 @@ export async function darDeAltaProductoRapidoCasoDeUso(
     return exito(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, { id: producto.id, nombre: producto.nombre });
   } catch (e) {
     if (esErrorDeUnicidad(e)) return fracaso("CODIGO_REPETIDO", "Ya existe un producto con ese código.");
+    // O.175: la unidad de stock de OTRA empresa (o inexistente) la rechaza la clave foránea compuesta de la base: se traduce a «No se encontró …» (sin transacción acá, el INSERT fallido no aborta nada).
+    const rechazo = rechazoDeReferenciaDeProducto(e);
+    if (rechazo) return fracaso("REFERENCIA_NO_ENCONTRADA", rechazo);
     throw e;
   }
 }

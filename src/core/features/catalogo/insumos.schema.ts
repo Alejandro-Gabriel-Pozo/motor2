@@ -56,8 +56,11 @@ export interface ComandoCrearOActualizarGrupo {
   grupoPadreId: string | null;
 }
 
-/** `CREARIA_CICLO`: el padre pedido desciende del grupo (o es el mismo grupo). */
-export type ResultadoCrearOActualizarGrupo = ResultadoCaso<null, "CREARIA_CICLO">;
+/**
+ * `CREARIA_CICLO`: el padre pedido desciende del grupo (o es el mismo grupo);
+ * `PADRE_NO_ENCONTRADO`: el grupo padre es de OTRA empresa o no existe: la clave foránea compuesta de la base lo rechazó y se traduce a «No se encontró el grupo padre.» (O.175).
+ */
+export type ResultadoCrearOActualizarGrupo = ResultadoCaso<null, "CREARIA_CICLO" | "PADRE_NO_ENCONTRADO">;
 
 /** Comando «activar o desactivar un grupo»: el id y el booleano, que nunca se validaron en la acción (sin guard: el id lo resuelve la base). */
 export interface ComandoActualizarActivoGrupo {

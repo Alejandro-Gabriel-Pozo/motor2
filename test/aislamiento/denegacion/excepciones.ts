@@ -53,11 +53,8 @@ export const PENDIENTES_DE_SUCURSAL: Readonly<Record<string, PendienteDeSucursal
  * `<puerta>|<escenario>` → qué id la dispara.
  */
 export const RECHAZOS_CRUDOS_DE_LA_BASE: Readonly<Record<string, string>> = {
-  "accion|actions/catalogo/insumos.ts|crearOActualizarGrupo|ajenaEmpresa": "`grupoPadreId` de otra empresa: la clave foránea compuesta `Grupo_empresaId_grupoPadreId_fkey` (P2003) lo rechaza al crear",
-  "accion|actions/catalogo/productos.ts|actualizarProducto|ajenaEmpresa": "`proveedorConsignacionId` de otra empresa: la clave foránea compuesta de `Producto` (P2003) lo rechaza al actualizar (la categoría, el insumo y las unidades sí se validan)",
-  "accion|actions/catalogo/productos.ts|darDeAltaProducto|ajenaEmpresa": "`categoriaId`, `insumoId` o `unidadCompraId` de otra empresa (una variante por id): la clave foránea compuesta de `Producto` (P2003) los rechaza al crear (la unidad de stock sí se valida: «obligatoria»)",
-  "accion|actions/catalogo/productos.ts|darDeAltaProductoRapido|ajenaEmpresa": "`unidadStockId` de otra empresa: la clave foránea compuesta de `Producto` (P2003) lo rechaza al crear (el alta completa sí valida la unidad)",
-  "accion|actions/movimientos/venta.ts|registrarVenta|ajenaEmpresa": "`proveedorId` («a quién se vende») de otra empresa: la clave foránea compuesta de `Operacion` (P2003) lo rechaza dentro de la transacción",
+  // Vacía desde que los casos de uso traducen la violación de clave foránea (`P2003`) a «No se encontró …» en su borde (hallazgo O.175 cerrado): `crearOActualizarGrupo` (`grupoPadreId`),
+  // `actualizarProducto` y `darDeAltaProducto` (categoría, insumo, unidades, proveedor de consignación), `darDeAltaProductoRapido` (`unidadStockId`) y `registrarVenta` (`proveedorId`).
 };
 
 /**

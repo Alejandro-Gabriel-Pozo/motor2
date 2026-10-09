@@ -1,6 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { ComandoCrearOActualizarGrupo, ResultadoCrearOActualizarGrupo } from "@/core/features/catalogo/insumos.schema";
+import { rechazoDeReferenciaNoEncontrada } from "@/core/datos/errores-de-base";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { creariaCiclo } from "@/server/lecturas/catalogo/grupos";
 import { crearGrupoNuevo, fijarPadreDeGrupo } from "@/server/persistencia/catalogo/grupos";
@@ -30,10 +31,28 @@ export async function crearOActualizarGrupoCasoDeUso(actor: Pick<ContextoUsuario
     if (grupoPadreId && (await creariaCiclo(existente.id, grupoPadreId, actor.db))) {
       return fracaso("CREARIA_CICLO", `Ese padre ya desciende de "${n}", o es el mismo grupo — crearía un ciclo.`);
     }
-    await fijarPadreDeGrupo(actor.db, { id: existente.id, grupoPadreId });
+    try {
+      await fijarPadreDeGrupo(actor.db, { id: existente.id, grupoPadreId });
+    } catch (e) {
+      return rechazoDePadre(e);
+    }
     return exito(`Grupo "${n}" actualizado.`, null);
   }
 
-  const creado = await crearGrupoNuevo(actor.db, { nombre: n, grupoPadreId });
-  return exito(`Grupo "${creado.nombre}" creado.`, null);
+  try {
+    const creado = await crearGrupoNuevo(actor.db, { nombre: n, grupoPadreId });
+    return exito(`Grupo "${creado.nombre}" creado.`, null);
+  } catch (e) {
+    return rechazoDePadre(e);
+  }
+}
+
+/**
+ * O.175: un `grupoPadreId` de OTRA empresa (o inexistente) lo rechaza la clave foránea compuesta `Grupo_empresaId_grupoPadreId_fkey` de la base: se traduce a «No se encontró el grupo padre.»
+ * (sin transacción acá, el INSERT/UPDATE fallido no aborta nada). Cualquier otro error sigue de largo.
+ */
+function rechazoDePadre(e: unknown) {
+  const rechazo = rechazoDeReferenciaNoEncontrada(e, { grupoPadreId: "el grupo padre" }, "No se encontró el grupo padre.");
+  if (rechazo) return fracaso("PADRE_NO_ENCONTRADO", rechazo);
+  throw e;
 }
