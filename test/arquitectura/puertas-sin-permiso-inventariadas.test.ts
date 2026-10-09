@@ -3,7 +3,7 @@ import { join, relative, sep } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { analizarFuente } from "./guardas/analizador";
-import { esDeGrupoProtegido, esPagina, esRouteHandler, listarArchivosDeApp } from "./guardas/entradas-de-app";
+import { esDeGrupoProtegido, esPagina, esRouteHandler, leerDeApp, listarArchivosDeApp } from "./guardas/entradas-de-app";
 import { PUERTAS_SIN_PERMISO } from "./guardas/puertas-sin-permiso";
 
 /**
@@ -36,6 +36,31 @@ function archivos(dir: string, salida: string[] = []): string[] {
     if (e.isDirectory()) archivos(ruta, salida);
     else if (/\.tsx?$/.test(e.name)) salida.push(ruta);
   }
+  return salida;
+}
+
+/** Las llamadas (por nombre) que hacen las Server Actions EN LÍNEA (`"use server"` como primera sentencia de una función) de un archivo de página, menos las `permitidas`: `archivo: nombre`. */
+function accionesEnLineaConOtraLlamada(archivo: string, fuente: string, permitidas: ReadonlySet<string>): string[] {
+  const sf = ts.createSourceFile(archivo, fuente, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const salida: string[] = [];
+  const llamadas = (n: ts.Node): void => {
+    if (ts.isCallExpression(n)) {
+      const nombre = ts.isIdentifier(n.expression) ? n.expression.text : ts.isPropertyAccessExpression(n.expression) ? n.expression.name.text : "(expresión)";
+      if (!permitidas.has(nombre)) salida.push(`${archivo}: ${nombre}`);
+    }
+    ts.forEachChild(n, llamadas);
+  };
+  const visitar = (n: ts.Node): void => {
+    if ((ts.isArrowFunction(n) || ts.isFunctionExpression(n) || ts.isFunctionDeclaration(n)) && n.body && ts.isBlock(n.body)) {
+      const primera = n.body.statements[0];
+      if (primera && ts.isExpressionStatement(primera) && ts.isStringLiteral(primera.expression) && primera.expression.text === "use server") {
+        n.body.statements.slice(1).forEach(llamadas);
+        return;
+      }
+    }
+    ts.forEachChild(n, visitar);
+  };
+  visitar(sf);
   return salida;
 }
 
@@ -116,6 +141,17 @@ describe("GT-10: toda puerta sin conPermiso está inventariada con su postura an
       if (d.guarda && GUARDAS_DE_SESION.has(d.guarda)) expect(fila.anonimo, `${clave} abre con ${d.guarda} (prueba una sesión): el anónimo no puede pasar`).toBe("NIEGA");
       else expect(fila.anonimo, `${clave} abre con ${d.guarda} (no es una sesión): es previa al login, tiene que declararlo`).toBe("PERMITIDO");
     }
+  });
+
+  it("las páginas públicas solo definen Server Actions en línea que son el protocolo de Auth.js (`signIn` / `signOut`): cualquier otra sería una puerta sin inventariar", () => {
+    const permitidas = new Set(["signIn", "signOut"]);
+    const otras = [...reales.keys()]
+      .filter((k) => k.startsWith("ruta|") && esPagina(k.slice(5)))
+      .flatMap((k) => accionesEnLineaConOtraLlamada(k.slice(5), leerDeApp(k.slice(5)), permitidas));
+    expect(otras, `Server Actions en línea de páginas públicas que llaman algo más que signIn/signOut (son endpoints sin envoltorio: inventariá la puerta o pasala a un archivo de acciones):\n${otras.join("\n")}`).toEqual([]);
+    // Sanidad del detector: ve las del login y rechaza una llamada ajena.
+    expect(accionesEnLineaConOtraLlamada("login/page.tsx", leerDeApp("login/page.tsx"), new Set()), "el detector no ve los closures del login").not.toEqual([]);
+    expect(accionesEnLineaConOtraLlamada("p.tsx", 'export default function P() { return <form action={async () => { "use server"; await borrarTodo(); }} />; }', permitidas)).toEqual(["p.tsx: borrarTodo"]);
   });
 
   it("el gate de signIn (D5, S-17): decide por membresía o invitación, sin leer el entorno ni el dominio del correo (la vía por `ALLOWED_EMAIL_DOMAINS`/`hd` no vuelve)", () => {

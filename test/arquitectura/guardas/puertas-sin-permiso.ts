@@ -68,13 +68,13 @@ export const PUERTAS_SIN_PERMISO: Readonly<Record<string, PuertaSinPermiso>> = {
   "ruta|login/page.tsx": {
     anonimo: "PERMITIDO",
     sinEmpresa: "PERMITIDO",
-    motivo: "el formulario de ingreso tiene que poder abrirse sin sesión; el que decide quién entra es el gate de `signIn` (fila `sesion|…`)",
+    motivo: "el formulario de ingreso tiene que poder abrirse sin sesión; el que decide quién entra es el gate de `signIn` (fila `sesion|…`). Sus Server Actions en línea son solo `signIn(\"google\")` y `signOut` de Auth.js (lo fija el test estático)",
     limitador: "es el formulario: no consulta datos de ninguna empresa",
   },
   "ruta|invitacion/page.tsx": {
     anonimo: "PERMITIDO",
     sinEmpresa: "PERMITIDO",
-    motivo: "pantalla de aceptación de una invitación (E5/E8): quien llega aún no tiene sesión ni empresa; el acceso lo dan el token del enlace (cookie httpOnly) y la cuenta de Google del email invitado, y el GET no gasta nada",
+    motivo: "pantalla de aceptación de una invitación (E5/E8): quien llega aún no tiene sesión ni empresa; el acceso lo dan el token del enlace (cookie httpOnly) y la cuenta de Google del email invitado, y el GET no gasta nada. Sus Server Actions en línea son solo `signIn(\"google\")` y `signOut` de Auth.js (lo fija el test estático)",
     limitador: "el GET solo lee la invitación por el hash del token de la cookie; abrir un enlace nuevo pasa por `abrirInvitacion` (cupo por origen)",
   },
   "ruta|api/auth/[...nextauth]/route.ts": {
