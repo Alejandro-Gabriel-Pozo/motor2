@@ -26,4 +26,4 @@ export interface DatosCartaCopiada {
  *  - `ORIGEN_SIN_CARTA`: el origen no tiene nada que copiar;
  *  - `CARTA_CAMBIO`: el conflicto de escritura agotó los reintentos (otra copia o edición a la vez).
  */
-export type ResultadoCopiarCartaDeSucursal = ResultadoCaso<DatosCartaCopiada, "ORIGEN_NO_ENCONTRADO" | "ORIGEN_SIN_ACCESO" |"CARTA_PROPIA_EXISTENTE" | "ORIGEN_SIN_CARTA" | "CARTA_CAMBIO">;
+export type ResultadoCopiarCartaDeSucursal = ResultadoCaso<DatosCartaCopiada, "ORIGEN_NO_ENCONTRADO" | "ORIGEN_SIN_ACCESO" | "CARTA_PROPIA_EXISTENTE" | "ORIGEN_SIN_CARTA" | "CARTA_CAMBIO">;

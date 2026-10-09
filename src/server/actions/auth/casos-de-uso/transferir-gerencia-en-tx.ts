@@ -19,12 +19,12 @@ const MENSAJE_GERENCIA_CAMBIO = "La gerencia cambió mientras tanto. Recargá la
  * transacción, con el cliente `tx`. NO audita: la fila de auditoría la escribe quien la invoca (ADR-012).
  *
  * Quién puede pedirlo se decide afuera: el gerente actual (`transferirGerencia`) o la plataforma. Desde S-11 (O.60) el paso lo vuelve a comprobar con `gerenteEsperadoId`
- * (obligatorio: el id del gerente que pide, o `null` si lo pide la plataforma): quien tiene la gerencia al leerla acá dentro tiene que ser ese; si no, «La gerencia cambió…» y no se toca nada. El destino tiene que ser alguien de la empresa, con cuenta y
+ * (obligatorio, M-10: el id del gerente que pide; ya no hay `null`): quien tiene la gerencia al leerla acá dentro tiene que ser ese, y con la cuenta activa; si no, «La gerencia cambió…» y no se toca nada. El destino tiene que ser alguien de la empresa, con cuenta y
  * pertenencia activas y admin activo en alguna sucursal (el gerente está por encima del admin: no se salta el escalón).
  */
 export async function transferirGerenciaDeEmpresa(
   tx: Prisma.TransactionClient,
-  input: { empresaId: string; usuarioDestinoId: string; gerenteEsperadoId: string | null },
+  input: { empresaId: string; usuarioDestinoId: string; gerenteEsperadoId: string },
 ): Promise<ResultadoGerencia> {
   const { empresaId, usuarioDestinoId, gerenteEsperadoId } = input;
 
@@ -40,9 +40,10 @@ export async function transferirGerenciaDeEmpresa(
 
   const actual = await obtenerGerenteDeEmpresa(tx, empresaId);
   // S-11 (O.60): quien pide el traspaso tiene que SEGUIR siendo el gerente, releído acá dentro. El gate de la acción (`traspasar_gerencia`) corre antes de la transacción: si en
-  // el medio la gerencia cambió de manos (o la empresa se quedó sin gerente), el pedido de quien ya no lo es no le saca la gerencia al nuevo. `null` = lo pide la plataforma,
-  // que no es el gerente de nadie y nombra al que corresponda.
-  if (gerenteEsperadoId !== null && actual?.usuarioId !== gerenteEsperadoId) return { ok: false, mensaje: MENSAJE_GERENCIA_CAMBIO };
+  // el medio la gerencia cambió de manos (o la empresa se quedó sin gerente), el pedido de quien ya no lo es no le saca la gerencia al nuevo.
+  // M-10 (auditoría intermedia): (a) el id esperado es OBLIGATORIO —antes `null` saltaba el chequeo entero, y solo lo usaban los tests (la plataforma no pasa por acá)—; un valor que no es un texto no vacío
+  // se rechaza como «la gerencia cambió», aunque un llamador armado a mano lo mande; (b) además del rol se relee `activo`: si la cuenta del gerente se apagó entre el gate y la transacción, el pedido no pasa.
+  if (typeof gerenteEsperadoId !== "string" || gerenteEsperadoId === "" || actual?.usuarioId !== gerenteEsperadoId || !actual.activo) return { ok: false, mensaje: MENSAJE_GERENCIA_CAMBIO };
   if (actual) {
     const bajas = await bajarGerenciaSiSigue(tx, { pertenenciaId: actual.id });
     if (bajas !== 1) return { ok: false, mensaje: MENSAJE_GERENCIA_CAMBIO };

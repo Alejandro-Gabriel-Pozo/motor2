@@ -47,6 +47,36 @@ describe("sucursalesDondeElUsuarioPuedeVer", () => {
     expect([...visibles]).toEqual([base.sucursal.id]);
   });
 
+  /**
+   * M-12 (auditoría intermedia): la matriz regenerada de `caracterizacion-del-acceso` elige las claves de las sondas de este helper por POSICIÓN y dejó de probar `carta_promo_activar`,
+   * `proceso_venta` y `reporte_consolidado`. Esas tres son las que hoy filtran sucursales de verdad (activar promos, vender, consolidar): acá se prueban POR NOMBRE, sin depender del orden de la lista.
+   */
+  describe.each(["carta_promo_activar", "proceso_venta", "reporte_consolidado"] as const)("%s (cobertura por nombre, M-12)", (clave) => {
+    it("el admin de las dos sucursales la ve en las dos; una capacidad apagada en una la saca; una sucursal sin membresía no aparece nunca", async () => {
+      const base = await sembrarBase();
+      const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+      const ajena = await prisma.sucursal.create({ data: { nombre: "Ajena" } });
+      const usuario = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+      await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId: norte.id, rolId: base.admin.id } });
+      const todas = [base.sucursal.id, norte.id, ajena.id];
+
+      expect([...(await sucursalesDondeElUsuarioPuedeVer(usuario.id, todas, clave, prisma))].sort()).toEqual([base.sucursal.id, norte.id].sort());
+
+      await prisma.capacidadSucursal.create({ data: { accionClave: clave, sucursalId: norte.id, habilitado: false } });
+      expect([...(await sucursalesDondeElUsuarioPuedeVer(usuario.id, todas, clave, prisma))]).toEqual([base.sucursal.id]);
+    });
+
+    it("el rol de la OTRA membresía manda: sin «Ver» allí, la sucursal no aparece", async () => {
+      const base = await sembrarBase();
+      const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+      const usuario = await crearUsuarioConMembresia({ email: "mixto@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+      const rolSinVer = await prisma.rol.create({ data: { nombre: "sin-ver" } });
+      await prisma.usuarioSucursal.create({ data: { usuarioId: usuario.id, sucursalId: norte.id, rolId: rolSinVer.id } });
+
+      expect([...(await sucursalesDondeElUsuarioPuedeVer(usuario.id, [base.sucursal.id, norte.id], clave, prisma))]).toEqual([base.sucursal.id]);
+    });
+  });
+
   it("una sucursal donde el usuario no tiene membresía no aparece nunca", async () => {
     const base = await sembrarBase();
     const ajena = await prisma.sucursal.create({ data: { nombre: "Ajena" } });

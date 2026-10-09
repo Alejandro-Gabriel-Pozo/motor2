@@ -164,7 +164,8 @@ export async function copiarRecetaPropiaDeOtraSucursal(
     const origen = await leerOrigenDeCopia(ctx, sucursalOrigenId, "receta_sucursal_copiar");
     if (!origen.ok) return error(origen.mensaje);
     const estadoOrigen = await obtenerEstadoDeRecetaPropia(productoId, sucursalOrigenId, ctx.db);
-    if (!estadoOrigen.habilitada || !estadoOrigen.propia) return error(`«${origen.nombre}» no tiene receta propia para este producto: no hay nada que copiar.`);    return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(estadoOrigen.propia), estadoOrigen.propia, versionVista, habilitadaVista, {
+    if (!estadoOrigen.habilitada || !estadoOrigen.propia) return error(`«${origen.nombre}» no tiene receta propia para este producto: no hay nada que copiar.`);
+    return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(estadoOrigen.propia), estadoOrigen.propia, versionVista, habilitadaVista, {
       basadaEnVersionId: estadoOrigen.propia.basadaEnVersionId,
       copiadaDeSucursal: origen.nombre,
     });

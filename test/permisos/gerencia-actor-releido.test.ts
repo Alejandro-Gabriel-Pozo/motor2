@@ -109,7 +109,7 @@ describe("S-11: el traspaso de la gerencia relee al gerente dentro de la transac
   });
 
   describe("el paso compartido (transferirGerenciaDeEmpresa)", () => {
-    const transferir = (gerenteEsperadoId: string | null, usuarioDestinoId: string) =>
+    const transferir = (gerenteEsperadoId: string, usuarioDestinoId: string) =>
       prismaAdmin.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT set_config('app.empresa_id', ${EMPRESA_POR_DEFECTO_ID}, true)`;
         return transferirGerenciaDeEmpresa(tx, { empresaId: EMPRESA_POR_DEFECTO_ID, usuarioDestinoId, gerenteEsperadoId });
@@ -128,11 +128,19 @@ describe("S-11: el traspaso de la gerencia relee al gerente dentro de la transac
       expect(await gerentes()).toEqual([]);
     });
 
-    it("la plataforma (gerenteEsperadoId null) sigue pudiendo nombrar gerente: con y sin gerente actual", async () => {
-      expect(await transferir(null, c.id)).toMatchObject({ ok: true, gerenteAnteriorId: a.id });
-      await darGerencia(c.id, null);
-      expect(await transferir(null, b.id)).toMatchObject({ ok: true, gerenteAnteriorId: null });
-      expect(await gerentes()).toEqual([b.id]);
+    it("M-10: el gerente esperado es obligatorio: null, undefined, vacío o un número se rechazan como «la gerencia cambió» y no tocan nada (antes null saltaba el chequeo)", async () => {
+      for (const esperado of [null, undefined, "", 7]) {
+        expect(await transferir(esperado as never, c.id), String(esperado)).toEqual({ ok: false, mensaje: MENSAJE_CAMBIO });
+      }
+      expect(await gerentes()).toEqual([a.id]);
+    });
+
+    it("M-10: si la cuenta del gerente esperado se apagó entre el gate y la transacción, el pedido no pasa (se relee `activo`, no solo el rol)", async () => {
+      await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: a.id, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { activo: false } });
+      expect(await transferir(a.id, c.id)).toEqual({ ok: false, mensaje: MENSAJE_CAMBIO });
+      expect(await gerentes()).toEqual([a.id]);
+      await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId: a.id, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { activo: true } });
+      expect(await transferir(a.id, c.id)).toMatchObject({ ok: true, gerenteAnteriorId: a.id });
     });
   });
 });

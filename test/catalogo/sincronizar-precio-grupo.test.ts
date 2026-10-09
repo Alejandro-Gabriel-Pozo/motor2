@@ -71,6 +71,17 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       expect(r).not.toHaveProperty("sincronizable");
     });
 
+    it("M-2 (auditoría intermedia): quien edita el producto pero NO tiene `producto_sincronizar_precio_carta` (el operador) no recibe la oferta, que de todos modos no podría aceptar", async () => {
+      const operador = await crearUsuarioConMembresia({ email: "op@test.com", sucursalId, rolId: operadorRolId });
+      await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
+      const r = await actualizarProducto(ids.fanta, datosPV("Fanta 500cc", 5500));
+      expect(r).toEqual({ ok: true, mensaje: 'Producto "Fanta 500cc" actualizado.' });
+      expect(r).not.toHaveProperty("sincronizable");
+      expect(await precioVenta(ids.fanta)).toBe(5500);
+      // Y aceptar la oferta le sigue estando negado: la oferta ya no promete lo que el rechazo niega.
+      expect((await sincronizarPrecioGrupoCarta([ids.coca, ids.sprite, ids.fanta], 5500)).ok).toBe(false);
+    });
+
     it("hermanos DISTINTOS → `sincronizable` trae el grupo, el precio nuevo y los hermanos con su precio; no sincroniza solo", async () => {
       const r = await actualizarProducto(ids.fanta, datosPV("Fanta 500cc", 5500));
       expect(r).toEqual({

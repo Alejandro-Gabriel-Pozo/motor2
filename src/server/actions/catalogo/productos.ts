@@ -2,7 +2,7 @@
 
 import type { PrismaClient, TipoProducto } from "@prisma/client";
 import { azarDelProceso } from "@/lib/azar";
-import { obtenerMiNivelPermiso } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
 import { texto } from "@/core/texto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
@@ -323,7 +323,9 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     revalidarCartasPublicas(ctx.empresaSlug);
 
     const { precioAnterior, precioNuevo } = r.datos;
-    if (precioNuevo !== precioAnterior) {
+    // M-2 de la auditoría intermedia: la oferta es la de `sincronizarPrecioGrupoCarta`, que exige `producto_sincronizar_precio_carta` (EDITAR). Quien edita el producto (`producto_editar`) pero no tiene
+    // esa clave veía la oferta y, al aceptarla, recibía un rechazo: la oferta se hace SOLO a quien puede aceptarla. La clave se mira solo cuando el precio cambió (la mayoría de las ediciones no).
+    if (precioNuevo !== precioAnterior && (await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_sincronizar_precio_carta", ctx.db)).editar) {
       const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId, ctx.db), precioNuevo, "global");
       if (sincronizable) return { ok: true, mensaje: base.mensaje, sincronizable };
     }
