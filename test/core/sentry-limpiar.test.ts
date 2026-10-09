@@ -146,3 +146,87 @@ describe("limpiarEventoSentry (S-29): nada de fragmentos, queries ni cabeceras f
     expect(JSON.stringify(e)).not.toContain(TOKEN);
   });
 });
+
+/**
+ * M-31 (T16): la lista blanca de cabeceras no recorría los VALORES de las que dejaba pasar, las `tags` no se limpiaban y los atributos de red de los spans (`client.address`, `http.client_ip`…)
+ * llevan la IP de quien pide. Todo con eventos SINTÉTICOS (armados con las claves que documentan el SDK de Sentry v10 y OpenTelemetry): no se capturó un evento real del SDK.
+ */
+describe("limpiarEventoSentry (M-31): valores anidados de cabeceras, etiquetas y atributos de IP de los spans", () => {
+  it("el valor de una cabecera permitida pasa por la limpieza, también anidado (arreglo u objeto) y sin dejar la IP", () => {
+    const e = limpiarEventoSentry(
+      evento({
+        request: {
+          url: "https://app.test/x",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (contacto ana@x.com)",
+            "content-type": ["text/plain", "ana@x.com", "10.1.2.3"] as never,
+            "x-forwarded-for": "1.2.3.4",
+          },
+        },
+      })
+    );
+    expect(e.request!.headers).toEqual({ "User-Agent": "Mozilla/5.0 (contacto [email])", "content-type": ["text/plain", "[email]"] });
+  });
+
+  it("las etiquetas pierden la IP, se les recortan las URL y se les tapan emails y tokens; las inocuas se conservan", () => {
+    const e = limpiarEventoSentry(
+      evento({
+        tags: { area: "dolar-cron", runtime: "node", "client.address": "198.51.100.7", visitante: "ana@x.com", pagina: `/invitacion?t=${TOKEN}#t=${TOKEN}`, origen: "2001:db8::1", intentos: 3 } as never,
+      })
+    );
+    expect(e.tags).toEqual({ area: "dolar-cron", runtime: "node", visitante: "[email]", pagina: "/invitacion", intentos: 3 });
+  });
+
+  it("EL DEFECTO: los spans sacan los atributos de IP (por su clave o porque el valor ES una IP), también anidados, y conservan el resto", () => {
+    const e = limpiarEventoSentry({
+      type: "transaction",
+      spans: [
+        {
+          span_id: "c",
+          trace_id: "a",
+          start_timestamp: 1,
+          description: "GET /api/x",
+          data: {
+            "client.address": "198.51.100.7",
+            "client.port": 51234,
+            "network.peer.address": "198.51.100.7",
+            "net.sock.peer.addr": "::ffff:198.51.100.7",
+            "http.client_ip": "198.51.100.7",
+            "http.request.header.x-forwarded-for": "198.51.100.7, 10.0.0.1",
+            "user.ip_address": "198.51.100.7",
+            ip: "198.51.100.7",
+            cualquierCosa: "2001:db8:85a3::8a2e:370:7334",
+            sinPuerto: "203.0.113.9:8080",
+            anidado: { detalle: { "remote.address": "198.51.100.7", nota: "falló ana@x.com", ok: true } },
+            lista: ["198.51.100.7", "texto", { "source.ip": "198.51.100.7", conserva: 1 }],
+            "http.method": "GET",
+            "http.response.status_code": 200,
+            "server.address": "app.test",
+            "url.full": "https://app.test/api/x",
+          },
+        },
+      ],
+    } as never) as unknown as { spans: Array<{ data: Record<string, unknown> }> };
+    expect(e.spans[0].data).toEqual({
+      "client.port": 51234,
+      anidado: { detalle: { nota: "falló [email]", ok: true } },
+      lista: ["texto", { conserva: 1 }],
+      "http.method": "GET",
+      "http.response.status_code": 200,
+      "server.address": "app.test",
+      "url.full": "https://app.test/api/x",
+    });
+    expect(JSON.stringify(e)).not.toMatch(/198\.51\.100\.7|203\.0\.113\.9|2001:db8/);
+  });
+
+  it("los contextos y las migas también pierden los atributos de IP", () => {
+    const e = limpiarEventoSentry({
+      type: "transaction",
+      contexts: { trace: { trace_id: "a", span_id: "b", data: { "client.address": "198.51.100.7", "http.method": "GET" } }, nextjs: { request_path: "/x", "client.address": "198.51.100.7" } },
+      breadcrumbs: [{ category: "fetch", data: { url: "https://app.test/api", "client.address": "198.51.100.7", status_code: 200 } }],
+    } as never) as unknown as { contexts: Record<string, unknown>; breadcrumbs: Array<{ data: unknown }> };
+    expect(JSON.stringify(e)).not.toContain("198.51.100.7");
+    expect(e.contexts.trace).toEqual({ trace_id: "a", span_id: "b", data: { "http.method": "GET" } });
+    expect(e.breadcrumbs[0].data).toEqual({ url: "https://app.test/api", status_code: 200 });
+  });
+});

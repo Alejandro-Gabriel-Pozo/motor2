@@ -98,7 +98,7 @@ describe("confirmarDestinoRemoto — la confirmación interactiva", () => {
   /** Una terminal que contesta, en orden, lo que se le da (el host y después el nombre de la base). */
   const responde = (...respuestas: string[]) => {
     const pendientes = [...respuestas];
-    return vi.fn(async (_texto: string) => pendientes.shift() ?? "");
+    return vi.fn(async (...pregunta: [string]) => (pregunta.length > 0 ? (pendientes.shift() ?? "") : ""));
   };
 
   it("muestra el host y el nombre de la base y exige escribir el HOST completo y el nombre de la base (M-30)", async () => {
