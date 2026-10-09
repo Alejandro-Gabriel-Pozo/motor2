@@ -121,6 +121,71 @@ describe("GT-9 — todo envío de correo pasa por un cupo", () => {
   });
 });
 
+/**
+ * GT-9 consolidado (T14, M-15 de la auditoría intermedia): el guard de arriba fija los llamadores de `enviarCorreo`, pero el cupo se RESERVA en el caso de uso y quien manda el mail es
+ * `enviarInvitacionYAnotar`; el comentario de ese archivo prometía una lista cerrada de sus llamadores que no existía. Ahora existe: quién llama a `enviarInvitacionYAnotar`, y que cada
+ * llamada mande SOLO lo que un caso de uso dejó por enviar (`porEnviar`, ya reservado), nunca un destinatario armado a mano.
+ *  - `LLAMADORES_DE_ENVIAR_INVITACION_Y_ANOTAR`: archivo → funciones que lo llaman, y de dónde sale lo que mandan. Una llamada nueva obliga a decidir y a explicarlo; una que ya no está, se saca.
+ *  - Los de `usuarios.ts` reciben el envío del caso de uso: `resultado.datos.porEnviar`. `enviarYResponder` (el ayudante) lo recibe por parámetro y SUS llamadores son exactamente dos, ambos con `.datos.porEnviar`.
+ * Mutaciones: una llamada nueva a `enviarInvitacionYAnotar` en otra función o archivo; un llamador de `enviarYResponder` con un envío que no sale de `porEnviar`.
+ */
+describe("GT-9 — los llamadores de `enviarInvitacionYAnotar` (el paso que manda el mail ya reservado) son una lista cerrada", () => {
+  const LLAMADORES_DE_ENVIAR_INVITACION_Y_ANOTAR: Record<string, { funciones: string[]; motivo: string }> = {
+    "src/server/actions/auth/usuarios.ts": {
+      funciones: ["agregarOActualizarUsuario", "enviarYResponder"],
+      motivo: "las dos mandan lo que un caso de uso devolvió como `porEnviar` (ya reservado en el cupo, dentro de su transacción), DESPUÉS del commit",
+    },
+    "prisma/seed.ts": { funciones: ["main"], motivo: "el seed local `--gerente`: UN mail al propio gerente, con guarda de destino (no pasa por un caso de uso ni por el cupo; no es una empresa que pueda gastarlo)" },
+  };
+
+  function llamadasA(ruta: string, nombre: string): { funcion: string; llamada: ts.CallExpression }[] {
+    const salida: { funcion: string; llamada: ts.CallExpression }[] = [];
+    recorrer(arbol(ruta), (n) => {
+      if (ts.isCallExpression(n) && nombreDeLlamada(n) === nombre) {
+        let nombreDeLaFuncion = "(módulo)";
+        // la función de primer nivel con nombre que lo contiene (la flecha anónima de un callback no cuenta)
+        for (let p: ts.Node | undefined = n.parent; p; p = p.parent) {
+          if (ts.isFunctionDeclaration(p) && p.name) {
+            nombreDeLaFuncion = p.name.text;
+            break;
+          }
+        }
+        salida.push({ funcion: nombreDeLaFuncion, llamada: n });
+      }
+    });
+    return salida;
+  }
+
+  it("los archivos y funciones que llaman a `enviarInvitacionYAnotar` son exactamente los de la lista", () => {
+    const encontrados: Record<string, string[]> = {};
+    for (const carpeta of CARPETAS) {
+      for (const ruta of archivos(join(RAIZ, carpeta)).map(rel)) {
+        if (ruta === "src/server/actions/auth/casos-de-uso/enviar-invitacion-y-anotar.ts") continue;
+        const llamadas = llamadasA(ruta, "enviarInvitacionYAnotar");
+        if (llamadas.length) encontrados[ruta] = [...new Set(llamadas.map((l) => l.funcion))].sort();
+      }
+    }
+    const declarados = Object.fromEntries(Object.entries(LLAMADORES_DE_ENVIAR_INVITACION_Y_ANOTAR).map(([r, d]) => [r, [...d.funciones].sort()]));
+    expect(encontrados, "una llamada nueva a `enviarInvitacionYAnotar` se anota acá con el cupo que la cubre").toEqual(declarados);
+    for (const [r, d] of Object.entries(LLAMADORES_DE_ENVIAR_INVITACION_Y_ANOTAR)) expect(d.motivo.length, r).toBeGreaterThan(40);
+  });
+
+  it("en `usuarios.ts` lo que se manda sale de `porEnviar` de un caso de uso (por parámetro del ayudante o directo)", () => {
+    const ruta = "src/server/actions/auth/usuarios.ts";
+    const fuente = arbol(ruta);
+    // 1) quien llama a `enviarYResponder` le pasa `resultado.datos.porEnviar`
+    const aYResponder = llamadasA(ruta, "enviarYResponder");
+    expect(aYResponder.length, "sanidad: el ayudante tiene llamadores").toBe(2);
+    for (const { llamada } of aYResponder) {
+      expect(llamada.arguments[2]?.getText(fuente), "el envío del ayudante sale de `porEnviar`").toMatch(/\.datos\.porEnviar$/);
+    }
+    // 2) `agregarOActualizarUsuario` manda `resultado.datos.porEnviar` (la variable `envio` sale de ahí)
+    const propia = llamadasA(ruta, "enviarInvitacionYAnotar").find((l) => l.funcion === "agregarOActualizarUsuario")!;
+    const cuerpo = propia.llamada.parent && funcionQueContiene(propia.llamada);
+    expect(cuerpo?.getText(fuente), "el envío sale de `resultado.datos.porEnviar`").toMatch(/const envio = resultado\.datos\.porEnviar;/);
+  });
+});
+
 describe("GT-7 — el cupo de correo se cuenta con el `tx`, después del cerrojo por empresa", () => {
   const lectura = arbol("src/server/lecturas/auth/cupo-de-correo.ts");
   const cupo = lectura.statements.find((s): s is ts.FunctionDeclaration => ts.isFunctionDeclaration(s) && s.name?.text === "cupoDeCorreoDeEmpresa");
