@@ -73,11 +73,29 @@ const CONGELADAS: Record<string, Congelada> = {
     motivo: "Huella de gobierno (B0, #82). Red de la Fase I y la Fase II: las 16 mutaciones de auth y permisos no cambian.",
     regeneraciones: [
       {
+        // (carril A) Primera regeneración de esta huella: S-41/D4.
         blob: "334d34b8a738cd073d463b708ce03941949749b6",
         // El commit PADRE de este (ver la entrada de la matriz de acceso).
         commit: "5c18eb8b",
         motivo:
           "S-41/D4 (O.90; CAMBIA COMPORTAMIENTO; REGENERACIÓN NO PREVISTA EN EL PLAN, consecuencia directa de la misma semilla, a revisar por el orquestador): la huella siembra los permisos de fábrica de las empresas que da de alta, así que el rol «operador» ya no recibe `producto_sincronizar_precio_carta`. Cambia SOLO 2 líneas, una por empresa sembrada: `PERMISO operador:producto_sincronizar_precio_carta ver=true editar=true` → `ver=false editar=false`. Ningún resultado, mensaje ni otra fila cambia.",
+      },
+      {
+        // (carril B) Segunda regeneración, partiendo de la versión del carril B (sin la semilla de S-41): S-33.
+        blob: "6107a22b385ccd5c2a4f9c3a6c3779cc6ecb56cd",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, «Lista de control: fila O.57 (tanda T4 del endurecimiento, S-08, carril B), con el hash de su commit».
+        // El commit que regenera es el de «S-33 (actor de plataforma)»: la fila O.82 de la lista de control, que lo cita por su hash.
+        commit: "6056f39a",
+        motivo:
+          "S-33, actor de los scripts de plataforma (CAMBIA COMPORTAMIENTO, decidido por el dueño el 2026-10-08: «el admin de plataforma no es User y no debe serlo»). Los pasos 8a-8e (`cambiarModulosDeEmpresa` y `cambiarPoliticaDeEmpresa`) ya no escriben `RegistroAuditoria` a nombre de un `User`: auditan en `AuditoriaPlataforma` (que esta huella no vuelca). Cambia SOLO: (1) desaparecen las 30 líneas `AUDITORIA actorId=operador …` de los pasos 8a-8e (módulos y perillas de política); (2) como los ids simbólicos `id#N` se numeran por orden de aparición y esas filas ya no existen, el módulo `carta` pasa de `id#20` a `id#18` (5 líneas MODULO) y las cuatro filas del paso 9 (`numero`, `booleano`, `alta`, `baja`) de `id#26…29` a `id#19…22`. Los resultados de 8a-8e, EMPRESA, INVITACION, USUARIO_* y MODULO (salvo el id simbólico de `carta`), byte a byte. Regeneración NO prevista en el plan de endurecimiento: queda declarada para la revisión del orquestador.",
+      },
+      {
+        // Tercera regeneración: la MEZCLA de los dos carriles. Es el resultado de combinar sin conflicto de texto la regeneración de S-41 (carril A, `334d34b8`) con la de S-33 (carril B, `6107a22b`).
+        blob: "5af19ba75557c285e1a368ae017f7484c27f55ae",
+        // El commit PADRE de la mezcla (primer padre = la rama principal, «Lista de control: filas O.56, O.60, O.65 y O.89 (tanda T3 …)»). La mezcla es el commit siguiente a este.
+        commit: "dc7289b3",
+        motivo:
+          "Mezcla del carril B en la rama principal (2026-10-09). Sin cambio de comportamiento propio: la huella resultante es exactamente la del carril B más las dos líneas de la semilla de S-41 (el operador de fábrica deja de tener `producto_sincronizar_precio_carta`, una línea por empresa sembrada). Verificado con `git diff` contra cada padre: respecto del carril A solo aporta lo de S-33 (los cambios de módulos y de política dejan de dejar rastro en `RegistroAuditoria` de la empresa y los ids enmascarados se renumeran); respecto del carril B solo aporta lo de S-41.",
       },
     ],
   },

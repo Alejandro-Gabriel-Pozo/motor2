@@ -38,6 +38,8 @@ export const ACCION_DE_AUDITORIA: Record<string, string> = {
   "aviso-de-activacion": "Aviso de activación",
   "modulo-activado": "Módulo activado",
   "modulo-desactivado": "Módulo desactivado",
+  // S-33: lo escribe `scripts/politica-empresa.ts` (no la consola); el historial lo muestra junto a lo demás.
+  "politica-cambiada": "Política de la empresa cambiada",
 };
 
 export const ETIQUETA_DE_FILTRO: Record<string, string> = {

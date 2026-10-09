@@ -9,8 +9,6 @@ import { PERFILES_DE_POLITICA, type NombreDePerfilDePolitica, type PoliticaDeEmp
 /** Una perilla (o un perfil de política, que fija las dos) que la plataforma quiere cambiar. Sin ninguna, no hay nada que hacer. */
 export interface CambioDePoliticaPedido {
   slug: string;
-  /** Email del operador de la plataforma que hace el cambio: queda en la auditoría de la empresa. Tiene que ser un usuario existente. */
-  actorEmail: string;
   perfil?: NombreDePerfilDePolitica;
   permisosEditables?: boolean;
   dosPaneles?: boolean;
@@ -30,11 +28,6 @@ export class PoliticaDeEmpresaError extends Error {
   }
 }
 
-const DESCRIPCION_DE_PERILLA: Record<keyof PoliticaDeEmpresa, string> = {
-  permisosEditables: "la empresa puede editar permisos",
-  dosPaneles: "menú en dos paneles (Empresa y Sucursal)",
-};
-
 /** Las perillas pedidas: el perfil fija las dos y las perillas sueltas se aplican después y lo pisan. Sin ninguna es un error. */
 export function perillasPedidas(pedido: Pick<CambioDePoliticaPedido, "perfil" | "permisosEditables" | "dosPaneles">): Partial<PoliticaDeEmpresa> {
   const pedidas: Partial<PoliticaDeEmpresa> = { ...(pedido.perfil ? PERFILES_DE_POLITICA[pedido.perfil] : {}) };
@@ -49,9 +42,4 @@ export function planDeCambioDePolitica(antes: PoliticaDeEmpresa, pedidas: Partia
   const despues: PoliticaDeEmpresa = { ...antes, ...pedidas };
   const cambiadas = (Object.keys(despues) as Array<keyof PoliticaDeEmpresa>).filter((perilla) => despues[perilla] !== antes[perilla]);
   return { despues, cambiadas };
-}
-
-/** La descripción de la fila de auditoría de una perilla que cambió. */
-export function descripcionDeCambioDePerilla(empresaNombre: string, perilla: keyof PoliticaDeEmpresa): string {
-  return `Empresa "${empresaNombre}": ${DESCRIPCION_DE_PERILLA[perilla]}`;
 }

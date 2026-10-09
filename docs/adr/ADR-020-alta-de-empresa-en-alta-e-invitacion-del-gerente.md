@@ -44,7 +44,7 @@ y, al aceptar, quién, cuándo y el CUIT declarado.
 índice único. **Un solo uso**, garantizado por un `UPDATE` condicional (`estado = PENDIENTE` y no vencida) dentro de la transacción de aceptación: dos
 aceptaciones simultáneas no pueden ganar las dos. **Reenviar rota el token**: el enlace anterior deja de servir.
 
-El token viaja en el **fragmento** del enlace (`/invitacion#t=…`): no llega a los logs del servidor, a Sentry ni al `Referer`, y abrir el enlace (un escáner de mails
+El token viaja en el **fragmento** del enlace (`/invitacion#t=…`): no llega a los logs del servidor ni al `Referer`. **A Sentry sí podía llegar** (el SDK del navegador toma la dirección entera, con fragmento, para el pedido, las migas de navegación y los spans), y desde S-29 no llega porque `src/lib/sentry-limpiar.ts` lo recorta (URL sin `?` ni `#`, migas y spans recortados, cabeceras por lista blanca; guard GT-17 `test/arquitectura/sentry-por-lista-blanca.test.ts`). Abrir el enlace (un escáner de mails
 lo hace) no gasta la invitación. Un componente del cliente lo pasa a una acción que lo guarda en una cookie `httpOnly`, `SameSite=Lax` (con `Strict` no viajaría en el
 regreso desde Google), de una hora como máximo, con prefijo `__Host-` en https.
 

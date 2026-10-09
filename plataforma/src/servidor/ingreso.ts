@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { azarDelProceso } from "@/lib/azar";
 import type { PrismaClient } from "@prisma/client";
 import { esDireccionValida } from "@/core/correo/direcciones";
@@ -7,6 +6,7 @@ import { generarCodigoDeIngreso, hashDeCodigo, hashDeCodigoDeRecuperacion, hashe
 import { generarTokenOpaco, hashDeToken } from "@/core/seguridad/tokens";
 import { descifrarSecreto } from "@/core/plataforma/cifrado";
 import { normalizarEmail } from "@/core/plataforma/email-reservado";
+import type { PedidoDeIngreso } from "@/core/plataforma/pedido-de-ingreso";
 import {
   MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA,
   MAXIMO_DE_INTENTOS_POR_CODIGO,
@@ -28,6 +28,9 @@ import { verificarTotp } from "@/core/plataforma/totp";
  *  - Quien falla no se entera de POR QUÉ falla: no se distingue «no existe», «está inactivo», «código vencido» ni «código equivocado».
  *  - Nada se guarda ni se devuelve en claro: los códigos se guardan como HMAC con el secreto del servidor, las sesiones como SHA-256 del token.
  *  - Los intentos se reservan de forma atómica ANTES de comparar: mil pedidos en paralelo no consiguen más intentos que los permitidos.
+ *  - El código del mail pertenece al NAVEGADOR que lo pidió (S-08): se comprueba con el `PedidoDeIngreso` de su cookie (ver `core/plataforma/pedido-de-ingreso.ts`), nunca
+ *    como «el último vigente del administrador». Un anónimo que conoce el email de un administrador no le invalida el código, no le gasta los intentos y no le quita
+ *    el cupo de pedidos que el administrador alcanza a usar (el tope se cuenta bajo el cerrojo de su fila).
  */
 export interface DependenciasDeIngreso {
   ahora: () => Date;
@@ -39,32 +42,45 @@ export interface DependenciasDeIngreso {
 
 type Db = PrismaClient;
 
-const contextoDeIngreso = (adminId: string, codigoId: string) => `ingreso:${adminId}:${codigoId}`;
+/** El contexto del HMAC: ata el hash al administrador, al código y al navegador que lo pidió (el nonce vive solo en su cookie, no en la base). */
+const contextoDeIngreso = (adminId: string, codigoId: string, nonce: string) => `ingreso:${adminId}:${codigoId}:${nonce}`;
+
+/** Para que verificar haga las mismas consultas y la misma cuenta de HMAC cuando no hay pedido o no hay administrador: no existe ningún código con este id. */
+const CODIGO_ID_INEXISTENTE = "0".repeat(32);
 
 /**
- * Paso 1a: arma el mail con el código para ese email, o `null` si no hay nada que mandar (el email no es de un administrador activo, o ya pidió
- * demasiados códigos esta hora). Quien llama responde SIEMPRE lo mismo, haya o no mensaje, y manda el mail después de responder: así la respuesta
- * no delata qué emails son de administradores.
+ * Paso 1a: arma el mail con el código para ese email y lo ata al `pedido` (la cookie del navegador que lo pide), o `null` si no hay nada que mandar (el email no
+ * es de un administrador activo, o ya se pidieron demasiados códigos esta hora). Quien llama responde SIEMPRE lo mismo, haya o no mensaje, y corre ESTA función
+ * después de responder (en `after()`): ni el contenido ni el tiempo de la respuesta delatan qué emails son de administradores (B-C15).
+ *
+ * El tope por hora se cuenta DENTRO de la transacción, bajo el cerrojo de la fila del administrador (`FOR UPDATE`): pedidos en paralelo se hacen la cola y ninguno
+ * supera el tope (antes se contaba antes de crear y los paralelos lo pasaban). Un código nuevo ya NO invalida los anteriores: cada uno es de su navegador, y un
+ * pedido de un anónimo no le toca el código vigente al administrador.
  */
-export async function prepararCodigoDeIngreso(db: Db, deps: DependenciasDeIngreso, emailCrudo: string): Promise<MensajeDeCorreo | null> {
+export async function prepararCodigoDeIngreso(db: Db, deps: DependenciasDeIngreso, emailCrudo: string, pedido: PedidoDeIngreso): Promise<MensajeDeCorreo | null> {
   const email = normalizarEmail(emailCrudo);
   if (!esDireccionValida(email)) return null;
-  const admin = await db.adminPlataforma.findUnique({ where: { email }, select: { id: true, email: true, activo: true } });
-  if (!admin || !admin.activo) return null;
 
   const ahora = deps.ahora();
-  const pedidos = await db.codigoDeIngresoPlataforma.count({ where: { adminId: admin.id, creadoEn: { gt: new Date(ahora.getTime() - VENTANA_DE_PEDIDOS_MS) } } });
-  if (pedidos >= MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA) return null;
-
   const codigo = generarCodigoDeIngreso(azarDelProceso);
-  const id = randomUUID();
-  await db.$transaction([
-    // Un código nuevo invalida los anteriores que siguieran sin usarse.
-    db.codigoDeIngresoPlataforma.updateMany({ where: { adminId: admin.id, usadoEn: null, invalidadoEn: null }, data: { invalidadoEn: ahora } }),
-    db.codigoDeIngresoPlataforma.create({
-      data: { id, adminId: admin.id, hashCodigo: hashDeCodigo(codigo, deps.secretoDeCodigos, contextoDeIngreso(admin.id, id)), creadoEn: ahora, venceEn: new Date(ahora.getTime() + VIDA_DEL_CODIGO_DE_INGRESO_MS) },
-    }),
-  ]);
+  const admin = await db.$transaction(async (tx) => {
+    const filas = await tx.$queryRaw<Array<{ id: string; email: string }>>`SELECT id, email FROM "AdminPlataforma" WHERE email = ${email} AND activo = true FOR UPDATE`;
+    const encontrado = filas[0];
+    if (!encontrado) return null;
+    const pedidos = await tx.codigoDeIngresoPlataforma.count({ where: { adminId: encontrado.id, creadoEn: { gt: new Date(ahora.getTime() - VENTANA_DE_PEDIDOS_MS) } } });
+    if (pedidos >= MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA) return null;
+    await tx.codigoDeIngresoPlataforma.create({
+      data: {
+        id: pedido.codigoId,
+        adminId: encontrado.id,
+        hashCodigo: hashDeCodigo(codigo, deps.secretoDeCodigos, contextoDeIngreso(encontrado.id, pedido.codigoId, pedido.nonce)),
+        creadoEn: ahora,
+        venceEn: new Date(ahora.getTime() + VIDA_DEL_CODIGO_DE_INGRESO_MS),
+      },
+    });
+    return encontrado;
+  });
+  if (!admin) return null;
 
   const minutos = VIDA_DEL_CODIGO_DE_INGRESO_MS / 60_000;
   return {
@@ -76,37 +92,42 @@ export async function prepararCodigoDeIngreso(db: Db, deps: DependenciasDeIngres
 
 export type ResultadoPrimerFactor = { ok: true; token: string } | { ok: false };
 
-/** Paso 1b: verifica el código del mail. Si acierta, abre una sesión PENDIENTE (todavía sin segundo factor) y devuelve su token para la cookie. */
-export async function verificarCodigoDeIngreso(db: Db, deps: DependenciasDeIngreso, emailCrudo: string, codigoCrudo: string): Promise<ResultadoPrimerFactor> {
+/**
+ * Paso 1b: verifica el código del mail contra el código de SU pedido (`pedido`, la cookie del navegador que lo pidió; `null` si no la trae). Si acierta, abre una
+ * sesión PENDIENTE (todavía sin segundo factor) y devuelve su token para la cookie.
+ *
+ * Todo fallo hace EXACTAMENTE las mismas consultas y la misma cuenta de HMAC —no hay administrador, no hay fila de ese pedido, el email es de otro, venció o está
+ * agotado, el código está mal—: cualquier camino que saliera antes dejaría a un anónimo medir el tiempo de respuesta y averiguar qué emails son de administradores.
+ * Los intentos que gasta un anónimo son los de SUS códigos (los ata a su cookie), no los del código vigente del administrador.
+ */
+export async function verificarCodigoDeIngreso(db: Db, deps: DependenciasDeIngreso, emailCrudo: string, codigoCrudo: string, pedido: PedidoDeIngreso | null): Promise<ResultadoPrimerFactor> {
   const email = normalizarEmail(emailCrudo);
   const codigo = codigoCrudo.replace(/\s/g, "");
-  const admin = await db.adminPlataforma.findUnique({ where: { email }, select: { id: true, activo: true } });
-  if (!admin || !admin.activo) return { ok: false };
-
   const ahora = deps.ahora();
-  const vigente = await db.codigoDeIngresoPlataforma.findFirst({
-    where: { adminId: admin.id, usadoEn: null, invalidadoEn: null },
-    orderBy: { creadoEn: "desc" },
-    select: { id: true, creadoEn: true, hashCodigo: true },
-  });
-  if (!vigente || codigoVencido(vigente.creadoEn, ahora)) return { ok: false };
+  const codigoId = pedido?.codigoId ?? CODIGO_ID_INEXISTENTE;
+  const delAdministrador = { email, activo: true };
 
-  // Se reserva un intento (atómico: cuenta solo si quedaba alguno) y recién después se compara.
+  const fila = await db.codigoDeIngresoPlataforma.findFirst({
+    where: { id: codigoId, usadoEn: null, invalidadoEn: null, admin: delAdministrador },
+    select: { adminId: true, creadoEn: true, hashCodigo: true },
+  });
+
+  // Se reserva un intento (atómico: cuenta solo si quedaba alguno) y recién después se compara. Sin fila no cuenta ninguno, pero la consulta se hace igual.
   const reservado = await db.codigoDeIngresoPlataforma.updateMany({
-    where: { id: vigente.id, usadoEn: null, invalidadoEn: null, intentosFallidos: { lt: MAXIMO_DE_INTENTOS_POR_CODIGO } },
+    where: { id: codigoId, usadoEn: null, invalidadoEn: null, intentosFallidos: { lt: MAXIMO_DE_INTENTOS_POR_CODIGO }, admin: delAdministrador },
     data: { intentosFallidos: { increment: 1 } },
   });
-  if (reservado.count !== 1) return { ok: false };
 
-  const esperado = hashDeCodigo(codigo, deps.secretoDeCodigos, contextoDeIngreso(admin.id, vigente.id));
-  if (!/^\d{6}$/.test(codigo) || !hashesIguales(esperado, vigente.hashCodigo)) return { ok: false };
+  const esperado = hashDeCodigo(codigo, deps.secretoDeCodigos, contextoDeIngreso(fila?.adminId ?? "", codigoId, pedido?.nonce ?? ""));
+  const acierta = fila !== null && !codigoVencido(fila.creadoEn, ahora) && reservado.count === 1 && /^\d{6}$/.test(codigo) && hashesIguales(esperado, fila.hashCodigo);
+  if (!acierta) return { ok: false };
 
   // Usarlo es atómico: dos pedidos con el código correcto no abren dos sesiones.
-  const usado = await db.codigoDeIngresoPlataforma.updateMany({ where: { id: vigente.id, usadoEn: null, invalidadoEn: null }, data: { usadoEn: ahora } });
+  const usado = await db.codigoDeIngresoPlataforma.updateMany({ where: { id: codigoId, usadoEn: null, invalidadoEn: null }, data: { usadoEn: ahora } });
   if (usado.count !== 1) return { ok: false };
 
   const token = generarTokenOpaco(azarDelProceso);
-  await db.sesionPlataforma.create({ data: { adminId: admin.id, hashToken: hashDeToken(token), creadaEn: ahora, ultimaActividad: ahora } });
+  await db.sesionPlataforma.create({ data: { adminId: fila.adminId, hashToken: hashDeToken(token), creadaEn: ahora, ultimaActividad: ahora } });
   return { ok: true, token };
 }
 

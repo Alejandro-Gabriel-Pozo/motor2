@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { mensajeDeMigracionesSinAprobar, modoDeMigracionEnBuild } from "../../scripts/construir";
+import { mensajeDeMigracionRechazadaFueraDeProduccion, mensajeDeMigracionesSinAprobar, modoDeMigracionEnBuild } from "../../scripts/construir";
 
 describe("modoDeMigracionEnBuild — el build nunca aplica migraciones sin aprobación", () => {
   it("por defecto verifica (local, gate y CI): no aplica nada, falla si hay pendientes", () => {
@@ -16,9 +16,28 @@ describe("modoDeMigracionEnBuild — el build nunca aplica migraciones sin aprob
     expect(modoDeMigracionEnBuild({ VERCEL: "1", VERCEL_ENV: entorno })).toBe("omitir");
   });
 
-  it("MOTOR2_MIGRAR_EN_BUILD=1 es la aprobación explícita: aplica, incluso en un Preview", () => {
+  it("MOTOR2_MIGRAR_EN_BUILD=1 es la aprobación explícita: aplica en local y en Producción de Vercel", () => {
     expect(modoDeMigracionEnBuild({ MOTOR2_MIGRAR_EN_BUILD: "1" })).toBe("aplicar");
-    expect(modoDeMigracionEnBuild({ VERCEL: "1", VERCEL_ENV: "preview", MOTOR2_MIGRAR_EN_BUILD: "1" })).toBe("aplicar");
+    expect(modoDeMigracionEnBuild({ VERCEL: "1", VERCEL_ENV: "production", MOTOR2_MIGRAR_EN_BUILD: "1" })).toBe("aplicar");
+  });
+
+  // S-31: el Preview de `stockhneuquen` comparte la base de PRODUCCIÓN (ADR-007). Un entorno menos confiable (Preview) nunca ejecuta con el privilegio de uno más confiable
+  // (Producción): la variable en un Preview no migra producción, hace FALLAR el build (no se la ignora en silencio: alguien la puso creyendo que servía).
+  it.each(["preview", "development", undefined, ""])("S-31: MOTOR2_MIGRAR_EN_BUILD=1 en Vercel con VERCEL_ENV=%s NO aplica: el build se rechaza", (entorno) => {
+    expect(modoDeMigracionEnBuild({ VERCEL: "1", VERCEL_ENV: entorno, MOTOR2_MIGRAR_EN_BUILD: "1" })).toBe("rechazar");
+  });
+
+  it("S-31: en Vercel fuera de Producción, 0 y los valores raros siguen omitiendo (la variable no puede ganarle a VERCEL_ENV)", () => {
+    for (const valor of ["0", "si", "true", undefined]) {
+      expect(modoDeMigracionEnBuild({ VERCEL: "1", VERCEL_ENV: "preview", MOTOR2_MIGRAR_EN_BUILD: valor }), String(valor)).toBe("omitir");
+    }
+  });
+
+  it("S-31: el mensaje del rechazo dice qué pasó, por qué y qué hacer (sacar la variable; migrar con `npm run migrar:aprobar`)", () => {
+    const mensaje = mensajeDeMigracionRechazadaFueraDeProduccion();
+    expect(mensaje).toContain("MOTOR2_MIGRAR_EN_BUILD=1");
+    expect(mensaje).toContain("Producción");
+    expect(mensaje).toContain("npm run migrar:aprobar");
   });
 
   it("MOTOR2_MIGRAR_EN_BUILD=0 no toca la base, incluso en Producción o en local", () => {
@@ -32,7 +51,7 @@ describe("modoDeMigracionEnBuild — el build nunca aplica migraciones sin aprob
   });
 
   it("ningún modo distinto de «aplicar» corre `migrate deploy`: solo la aprobación explícita lo hace", () => {
-    const entornos = [{}, { VERCEL: "1", VERCEL_ENV: "production" }, { VERCEL: "1", VERCEL_ENV: "preview" }, { MOTOR2_MIGRAR_EN_BUILD: "0" }, { MOTOR2_MIGRAR_EN_BUILD: "true" }];
+    const entornos = [{}, { VERCEL: "1", VERCEL_ENV: "production" }, { VERCEL: "1", VERCEL_ENV: "preview" }, { VERCEL: "1", VERCEL_ENV: "preview", MOTOR2_MIGRAR_EN_BUILD: "1" }, { MOTOR2_MIGRAR_EN_BUILD: "0" }, { MOTOR2_MIGRAR_EN_BUILD: "true" }];
     for (const env of entornos) expect(modoDeMigracionEnBuild(env), JSON.stringify(env)).not.toBe("aplicar");
   });
 

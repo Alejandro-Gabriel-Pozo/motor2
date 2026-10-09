@@ -29,7 +29,7 @@ aplicación de empresas. Las fronteras las cuida `npm run arquitectura`:
 
 | Dato | Cómo se guarda |
 |---|---|
-| Código de ingreso del mail (6 dígitos) | HMAC-SHA-256 con `PLATAFORMA_SECRETO_CODIGOS` y contexto `ingreso:<admin>:<código>`. Seis dígitos son pocos: sin el secreto del servidor, la base sola permitiría adivinarlos. |
+| Código de ingreso del mail (6 dígitos) | HMAC-SHA-256 con `PLATAFORMA_SECRETO_CODIGOS` y contexto `ingreso:<admin>:<código>:<nonce>` (el nonce, de 256 bits, vive solo en la cookie del navegador que pidió el código; ver §3). Seis dígitos son pocos: sin el secreto del servidor, la base sola permitiría adivinarlos. |
 | Secreto TOTP | AES-256-GCM con `PLATAFORMA_CLAVE_TOTP`, atado al id del administrador (un secreto copiado a la fila de otro no descifra). |
 | Códigos de recuperación (10, `XXXXX-XXXXX`) | Solo su HMAC, contexto `recuperacion:<admin>`, sobre la forma canónica (mayúsculas, sin guiones). Se muestran una vez. |
 | Token de sesión | 256 bits aleatorios; la base guarda solo su SHA-256. |
@@ -38,12 +38,21 @@ Nada de esto se escribe jamás en un registro, en una auditoría ni en un mensaj
 
 ### 3. Límites de ingreso
 
-- El código del mail vence a los **10 minutos**, sirve **una vez**, se invalida al pedir otro y se agota a los **5 intentos** fallidos.
-- Se pueden pedir como máximo **5 códigos por hora** por administrador.
+- El código del mail vence a los **10 minutos**, sirve **una vez** y se agota a los **5 intentos** fallidos.
+- **El código es del navegador que lo pidió (S-08, 2026-10-08).** Cada pedido genera siempre, exista o no el email, un `codigoId` y un `nonce` que viajan en una
+  cookie propia (`__Host-plataforma.ingreso` en https, `httpOnly`, `SameSite=Strict`, 10 minutos); el código del mail solo se comprueba con esa cookie. Antes era
+  «el último vigente del administrador»: un anónimo que conocía su email pedía códigos, cada pedido invalidaba el anterior, y las verificaciones falsas quemaban
+  los 5 intentos del código de verdad. Ahora un pedido ajeno **no invalida** nada, y los intentos que gasta un atacante son los de sus propios códigos.
+- Se pueden pedir como máximo **20 códigos por hora** por administrador (era 5; el techo de correo subió porque ya no hay invalidación y un anónimo tarda más en
+  agotarlo). Se cuenta **dentro de la transacción**, bajo el cerrojo de la fila del administrador (`FOR UPDATE`): pedidos en paralelo no lo superan. Además, un
+  cupo **por origen** (IP de `x-forwarded-for`, 6 pedidos cada 10 minutos, en memoria y por instancia: best effort) frena el bucle de un solo origen. **Residuo
+  declarado:** quien pide desde muchas IP todavía puede agotar el techo del administrador; el cierre real es el firewall de Vercel (E.6) y el administrador
+  conserva sus códigos de recuperación para el segundo factor.
 - **5 fallos del segundo factor** bloquean al administrador **15 minutos**.
 - El TOTP no se repite (se guarda el último paso aceptado) y acepta el paso anterior y el siguiente por desfase de reloj.
 - El email desconocido ve **exactamente** la misma pantalla que uno conocido: la consola no revela quién es administrador. No se envía ningún mail a quien
-  no lo es. (Se acepta que la diferencia de tiempo de respuesta entre ambos casos no está igualada.)
+  no lo es. **El tiempo tampoco lo delata (B-C15):** `pedirCodigo` no toca la base antes de responder (toda la preparación y el mail corren en `after()`), y
+  verificar el código hace las mismas consultas y la misma cuenta de HMAC haya o no administrador, fila o cookie.
 - Las comparaciones y los cambios de estado de los factores se hacen en transacción con el administrador bloqueado (`FOR UPDATE`): dos pedidos en paralelo
   no se reparten los intentos ni usan dos veces el mismo código.
 

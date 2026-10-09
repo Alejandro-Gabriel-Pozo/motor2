@@ -1,17 +1,43 @@
 import "dotenv/config";
 import { parseArgs } from "node:util";
+import { createInterface } from "node:readline/promises";
 import { prisma } from "../src/lib/db";
 import { dbDeEmpresa, transaccionDeEmpresa } from "../src/core/auth/base";
 import { asegurarInvitacionDeVinculacion, rotarInvitacionPendiente } from "../src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx";
+import { enviarInvitacionYAnotar } from "../src/server/actions/auth/casos-de-uso/enviar-invitacion-y-anotar";
 import { enlaceDeInvitacion, urlPublicaDeLaApp } from "../src/core/features/empresa/invitacion";
+import { configuracionDelCanal } from "../src/core/correo/configuracion";
 import { incorporarPrimerGerente } from "../src/server/actions/auth/casos-de-uso/incorporar-primer-gerente-en-tx";
 import { ACCIONES } from "../src/core/permisos/acciones";
 import { azarDelProceso } from "../src/lib/azar";
+import { confirmarDestinoRemoto, resolverDestinoDelSeedBase } from "../scripts/demo-seed/guardas-destino";
+import { decidirEntregaDelEnlace, entregarEnlaceDelSeed } from "../scripts/entrega-del-enlace-del-seed";
+
+/** Lee una línea de la terminal (la confirmación de una base remota). */
+async function preguntar(texto: string): Promise<string> {
+  const lector = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    return await lector.question(texto);
+  } finally {
+    lector.close();
+  }
+}
 
 async function main() {
   // La empresa a sembrar se indica (ADR-022: ya no existe «la única empresa activa» como respaldo): `--empresa <slug>`, o, sin argumento, la empresa por defecto que crea
   // la migración multiempresa_estructura (ADR-007, A2; id `empresa_principal`). `Empresa` no tiene RLS: se la busca con el cliente global.
-  const { values } = parseArgs({ options: { empresa: { type: "string" }, gerente: { type: "string" } }, strict: true });
+  // S-33: `--permitir-remoto` (sembrar una base que no es local, con confirmación interactiva) y `--mostrar-enlace` (imprimir el enlace con el token, que por defecto NO se imprime).
+  const { values } = parseArgs({
+    options: { empresa: { type: "string" }, gerente: { type: "string" }, "permitir-remoto": { type: "boolean" }, "mostrar-enlace": { type: "boolean" } },
+    strict: true,
+  });
+
+  // S-33: ANTES de tocar la base. Este seed escribe en la `DATABASE_URL` del `.env` (la de la app, o la que haya quedado cargada en la terminal): solo un Postgres local, nunca producción/Vercel,
+  // y una base real únicamente con `--permitir-remoto` más una confirmación interactiva que muestra el host y la base (nunca la clave).
+  const destino = resolverDestinoDelSeedBase(process.env, { permitirRemoto: values["permitir-remoto"] === true });
+  console.log(`Destino: ${destino.host}, base "${destino.nombre}"${destino.remoto ? " (REMOTA)" : ""}.`);
+  await confirmarDestinoRemoto(destino, preguntar, Boolean(process.stdin.isTTY && process.stdout.isTTY));
+
   const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: values.empresa ? { slug: values.empresa } : { id: "empresa_principal" } });
   // Todo lo que sigue es de esa empresa: cada operación corre con `app.empresa_id` fijado (el DEFAULT de `empresaId` y el RLS la ven).
   const db = dbDeEmpresa(empresaId);
@@ -81,8 +107,9 @@ async function main() {
     const r = await incorporarPrimerGerente(db, { empresaId, usuarioId: usuario.id });
     console.log(r.ok ? `Gerente: ${email} (admin de "${r.sucursalNombre}").` : `Gerente NO asignado: ${r.mensaje}`);
 
-    // E8 (ADR-024): sin el enlace automático de cuentas por email, un usuario que ya existe solo entra con Google si vincula su cuenta con una invitación. Para poder entrar en local se
-    // crea la invitación de vinculación del gerente (a su propio nombre) y se imprime el enlace. Si ya había una pendiente, se renueva (el token no se puede recuperar de la base).
+    // E8 (ADR-024): sin el enlace automático de cuentas por email, un usuario que ya existe solo entra con Google si vincula su cuenta con una invitación. Para poder entrar se crea la
+    // invitación de vinculación del gerente (a su propio nombre). Si ya había una pendiente, se renueva (el token no se puede recuperar de la base). S-33: el enlace lleva el token y NO se
+    // imprime por defecto (iría a los logs de un CI o al historial de una terminal compartida): sale por el canal de correo como lo hace la app, o se imprime con `--mostrar-enlace`.
     const conGoogle = await prisma.account.count({ where: { userId: usuario.id, provider: "google" } });
     if (r.ok && conGoogle === 0) {
       const ahora = new Date();
@@ -92,8 +119,19 @@ async function main() {
           ? rotarInvitacionPendiente(tx, { empresaId, invitacionId: previa.id, actorId: usuario.id, ahora, azar: azarDelProceso })
           : asegurarInvitacionDeVinculacion(tx, { empresaId, email, invitadoPorId: usuario.id, ahora, azar: azarDelProceso });
       });
-      const base = urlPublicaDeLaApp(process.env.AUTH_URL) ?? "http://localhost:3000";
-      console.log(invitacion.ok && invitacion.token ? `Para entrar con Google la primera vez, abrí: ${enlaceDeInvitacion(base, invitacion.token)}` : "No se pudo crear la invitación de vinculación del gerente.");
+      if (!invitacion.ok || !invitacion.token) {
+        console.log("No se pudo crear la invitación de vinculación del gerente.");
+      } else {
+        const { invitacionId, token } = invitacion;
+        const base = urlPublicaDeLaApp(process.env.AUTH_URL) ?? "http://localhost:3000";
+        await entregarEnlaceDelSeed({
+          entrega: decidirEntregaDelEnlace({ mostrarEnlace: values["mostrar-enlace"] === true, correoConfigurado: configuracionDelCanal("avisos", process.env) !== null }),
+          email,
+          enlace: enlaceDeInvitacion(base, token),
+          enviarPorCorreo: () => enviarInvitacionYAnotar(db, { empresaId, emailDeQuienInvita: email, ahora, invitacionId, token, tipo: "vinculacion" }),
+          imprimir: (linea) => console.log(linea),
+        });
+      }
     }
   }
 

@@ -67,7 +67,11 @@ describe("el script real de creación del rol de plataforma", () => {
     const todo = c.sentencias.join("\n");
     expect(todo).toContain('ALTER DEFAULT PRIVILEGES FOR ROLE "neondb_owner" IN SCHEMA public REVOKE ALL ON TABLES FROM motor2_plataforma');
     expect(todo).toContain("REVOKE ALL ON ALL TABLES IN SCHEMA public FROM motor2_plataforma");
-    expect(todo).toMatch(/GRANT SELECT, INSERT, UPDATE ON "Empresa", "User", "ModuloEmpresa" TO motor2_plataforma/);
+    // S-35: grants = uso. `User` y `UsuarioEmpresa` solo se leen; `UsuarioSucursal` no tiene ninguno.
+    expect(todo).toMatch(/GRANT SELECT, INSERT, UPDATE ON "Empresa", "ModuloEmpresa" TO motor2_plataforma/);
+    expect(todo).toMatch(/GRANT SELECT ON "User", "UsuarioEmpresa" TO motor2_plataforma/);
+    expect(todo).not.toMatch(/GRANT[^;]*"UsuarioSucursal"[^;]*TO motor2_plataforma/);
+    expect(todo).not.toMatch(/GRANT[^;]*(INSERT|UPDATE)[^;]*"User"[^;]*TO motor2_plataforma/);
     expect(todo).toContain("GRANT SELECT ON public._prisma_migrations TO motor2_plataforma");
     expect(todo).not.toMatch(/REVOKE INSERT, UPDATE, DELETE ON "Empresa" FROM motor2_app/);
     expect(todo).not.toMatch(/DELETE ON/);

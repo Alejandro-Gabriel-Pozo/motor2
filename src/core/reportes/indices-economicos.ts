@@ -17,6 +17,8 @@
  * devuelve datos reales, mes más reciente publicado con el rezago habitual
  * de ~1 mes del INDEC.
  */
+import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal } from "@/core/tiempo/zona-horaria";
+
 export interface SerieIPC {
   /** clave "YYYY-MM" -> valor del índice ese mes. */
   porMes: Map<string, number>;
@@ -149,6 +151,9 @@ export function resolverVariacionPeriodoIPC(desde: Date, hasta: Date, serie: Ser
   return Math.round((valorHasta / valorDesde - 1) * 1000) / 10;
 }
 
+/** Tope de un valor del índice aceptado de la API (S-30): base dic-2016 = 100, hoy ronda las decenas de miles; la columna es `Decimal(12,4)` (hasta 99.999.999,9999). */
+const VALOR_MAXIMO_DEL_IPC = 10_000_000;
+
 export interface ResultadoSincronizacionIPC {
   mesesNuevos: number;
   ultimoMesDisponible: string | null;
@@ -164,16 +169,18 @@ export interface ResultadoSincronizacionIPC {
  * forma rara de un tercero (fecha que no es texto o no se entiende, valor que no es un número finito y positivo) se saltea, no se guarda (informe de seguridad S-19); no hay
  * tope de variación: la inflación mensual llegó a 25,5% (dic-2023).
  */
-export function leerSerieDeLaApi(json: unknown): { mes: Date; valor: number }[] {
+export function leerSerieDeLaApi(json: unknown, ahora: Date): { mes: Date; valor: number }[] {
   const data = (json as { data?: unknown } | null)?.data;
   if (!Array.isArray(data)) throw new Error("API de series de tiempo (datos.gob.ar): respuesta sin serie");
+  const hoyISO = diaDeCalendario(ahora, ZONA_ARGENTINA);
   const filas: { mes: Date; valor: number }[] = [];
   for (const fila of data) {
     const [fechaStr, valor]: unknown[] = Array.isArray(fila) ? fila : [];
-    if (typeof fechaStr !== "string" || typeof valor !== "number" || !Number.isFinite(valor) || valor <= 0) continue;
-    const mes = new Date(fechaStr); // "YYYY-MM-01" — Date() lo interpreta como medianoche UTC, mismo criterio que el resto del proyecto.
-    if (Number.isNaN(mes.getTime())) continue;
-    filas.push({ mes, valor });
+    // S-30: la fecha es un primer-de-mes real y no es del futuro (la API publica con ~1 mes de rezago), y el valor entra en la columna `Decimal(12,4)` con margen: lo que
+    // escribe un tercero lo leen todas las empresas.
+    if (!esDiaISOReal(fechaStr) || !fechaStr.endsWith("-01") || fechaStr > hoyISO) continue;
+    if (typeof valor !== "number" || !Number.isFinite(valor) || valor <= 0 || valor > VALOR_MAXIMO_DEL_IPC) continue;
+    filas.push({ mes: new Date(fechaStr), valor }); // "YYYY-MM-01" — Date() lo interpreta como medianoche UTC, mismo criterio que el resto del proyecto.
   }
   return filas;
 }

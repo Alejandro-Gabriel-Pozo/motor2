@@ -10,8 +10,9 @@ Siempre corre `prisma generate` y `next build`. Entre los dos, según `modoDeMig
 | Entorno | Modo | Qué pasa |
 |---|---|---|
 | Local, gate, CI, Producción de Vercel (default) | `verificar` | `prisma migrate status`. Sin pendientes, sigue. **Con pendientes (o si no puede consultar la base) el build falla** y dice cómo aprobarlas. |
-| `MOTOR2_MIGRAR_EN_BUILD=1` (cualquier entorno) | `aplicar` | `prisma migrate deploy`. Es la aprobación explícita «solo para este deploy». |
+| `MOTOR2_MIGRAR_EN_BUILD=1` en local o en Producción de Vercel | `aplicar` | `prisma migrate deploy`. Es la aprobación explícita «solo para este deploy». |
 | `MOTOR2_MIGRAR_EN_BUILD=0`, o Vercel con `VERCEL_ENV` ≠ `production` | `omitir` | No toca la base ni la mira (el Preview de `stockhneuquen` comparte la base de producción, ADR-007). |
+| `MOTOR2_MIGRAR_EN_BUILD=1` en Vercel con `VERCEL_ENV` ≠ `production` (S-31) | `rechazar` | **El build falla** antes de tocar nada: un Preview comparte la base de producción y no puede migrarla. `VERCEL_ENV` se mira antes que la variable. Se saca la variable de ese entorno. |
 
 `npm run build:e2e` (el que usa Playwright) nunca migra ni verifica: la base E2E la migra el workflow o quien corre la suite.
 
@@ -143,7 +144,7 @@ sin contexto, que un `count` sin contexto da 0, que con `set_config('app.empresa
 borrar la rama de ensayo; `node scripts/operaciones/con-env.mjs .env.vercel.<despliegue> -- npm run migrar:aprobar`; deploy; vigilar Sentry 48 horas (errores `P2011`/`23502` sobre `empresaId` y `42501`).
 Nunca ensayar con el Preview de stockhneuquen: comparte la base de producción. Vuelta atrás: `down.sql` (una sentencia) y `prisma migrate resolve --rolled-back`.
 
-Una instalación local: `npm run db:seed -- --gerente tu@email.com` deja al primer gerente (ya no existe el bootstrap por email).
+Una instalación local: `npm run db:seed -- --gerente tu@email.com --mostrar-enlace` deja al primer gerente (ya no existe el bootstrap por email) e imprime el enlace para entrar con Google la primera vez; sin `--mostrar-enlace` el enlace (lleva un token) no se imprime y sale por el correo de avisos si está configurado (S-33). El seed solo corre contra un Postgres local; para sembrar una base real hace falta `--permitir-remoto` y confirmar a mano el nombre de la base (terminal interactiva), y nunca corre en Vercel ni con `NODE_ENV=production`.
 
 ## Invitación por usuario y sin enlace automático de cuentas (ADR-024): despliegue en tres tiempos
 

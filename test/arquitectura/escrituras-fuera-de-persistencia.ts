@@ -17,7 +17,7 @@ export interface EscrituraHeredada {
 }
 
 /** Cuántas entradas tiene la lista. Solo baja: agregar una exige tocar este número y se ve en la revisión. */
-export const TOPE_DE_ENTRADAS = 13;
+export const TOPE_DE_ENTRADAS = 14;
 
 export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, EscrituraHeredada>> = {
   "plataforma/src/servidor/auditoria.ts": {
@@ -36,7 +36,7 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     motivo: "La consola de plataforma es otra app con su propio régimen: escribe sus tablas (y las de las empresas) desde sus propios servidores; entra a la regla en una fase propia (D-6 del plan de la Fase 4).",
   },
   "plataforma/src/servidor/ingreso.ts": {
-    escrituras: ["adminPlataforma.update", "adminPlataforma.update", "adminPlataforma.update", "codigoDeIngresoPlataforma.create", "codigoDeIngresoPlataforma.updateMany", "codigoDeIngresoPlataforma.updateMany", "codigoDeIngresoPlataforma.updateMany", "codigoDeRecuperacionPlataforma.updateMany", "sesionPlataforma.create", "sesionPlataforma.update", "sesionPlataforma.update"],
+    escrituras: ["adminPlataforma.update", "adminPlataforma.update", "adminPlataforma.update", "codigoDeIngresoPlataforma.create", "codigoDeIngresoPlataforma.updateMany", "codigoDeIngresoPlataforma.updateMany", "codigoDeRecuperacionPlataforma.updateMany", "sesionPlataforma.create", "sesionPlataforma.update", "sesionPlataforma.update"],
     fase: "Consola",
     motivo: "La consola de plataforma es otra app con su propio régimen: escribe sus tablas (y las de las empresas) desde sus propios servidores; entra a la regla en una fase propia (D-6 del plan de la Fase 4).",
   },
@@ -69,6 +69,12 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     escrituras: ["$executeRaw", "empresa.update"],
     fase: "Permanente",
     motivo: "Operación de plataforma que corre por script (nunca desde la app): cambia las perillas de política de una empresa; escritor propio de esas columnas, con su auditoría.",
+  },
+  // S-33 (actor de los scripts de plataforma; el tope subió de 13 a 14 con esta entrada, consecuencia de la decisión del dueño del 2026-10-08 de auditar en AuditoriaPlataforma): el escritor único de la fila de un cambio por script.
+  "src/server/operaciones-de-plataforma/auditar-cambio-de-plataforma.ts": {
+    escrituras: ["auditoriaPlataforma.create"],
+    fase: "Permanente",
+    motivo: "Escritor único de la auditoría de plataforma de los cambios por script (módulos y política): el administrador no es un User, así que no puede ir en RegistroAuditoria; la fila se escribe con el cliente de la transacción del cambio (el hermano de plataforma/src/servidor/auditoria.ts, que `src/` no puede importar).",
   },
   "plataforma/src/servidor/sembrar-empresa.ts": {
     escrituras: ["accion.createMany", "destinoConsumo.createMany", "motivoMerma.createMany", "permisoRol.createMany", "rol.create", "rol.create", "sucursal.create", "unidad.createMany"],

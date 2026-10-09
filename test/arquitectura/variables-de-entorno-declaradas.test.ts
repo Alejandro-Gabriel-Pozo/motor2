@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
+import { CLAVES_DE_ENTORNO_DE_PLATAFORMA, CLAVES_OPCIONALES_DE_ENTORNO_DE_PLATAFORMA } from "../../plataforma/src/entorno";
 import { CLAVES_DE_ENTORNO_DECLARADAS } from "../../src/env";
 
 /**
@@ -22,6 +23,7 @@ const FUERA_DEL_SCHEMA: Record<string, string> = {
   VERCEL_ENV: "la fija Vercel; es la que decide si el schema se aplica al arrancar",
   CARTA_DOMINIO_BASE_COMPILADO: "la copia de CARTA_DOMINIO_BASE que next.config.ts incrusta al compilar; la compara el arranque, no la configura el operador",
   CARTA_EMPRESA_UNICA_COMPILADO: "la copia de CARTA_EMPRESA_UNICA que next.config.ts incrusta al compilar (add-on de la empresa única); la compara el arranque, no la configura el operador",
+  DIRECT_URL: "la conexión del DUEÑO de las tablas (salta el RLS): la lee `prisma.config.ts` para migrar y la usan los scripts, nunca el runtime de la app (S-32); por eso el schema de runtime no la declara ni la exige",
   MOTOR2_SIN_DOLAR_AUTOMATICO: "flag de pruebas de navegador (no salir a internet); no es configuración de la app",
 };
 
@@ -97,5 +99,101 @@ describe("variables de entorno: lo que el código lee está declarado en el sche
   it("toda variable declarada en el schema se lee en algún lado del código (no hay declaraciones muertas)", () => {
     const sinUso = [...declaradas].filter((v) => !todas.has(v) && !["AUTH_SECRET", "AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET"].includes(v));
     expect(sinUso, "declaradas en el schema que ningún archivo lee").toEqual([]);
+  });
+});
+
+/**
+ * S-34: el guardián de arriba solo miraba `src/`, `next.config.ts` y `prisma.config.ts`. La consola (`plataforma/src`) y los scripts (`scripts/`) también leen el entorno, y una variable
+ * nueva ahí (o un `NEXT_PUBLIC_*`, que se INCRUSTA en el JavaScript que baja al navegador) pasaba sin que nadie la declarara.
+ *  - `plataforma/src`: lo que lee está en el esquema de la consola (`plataforma/src/entorno.ts`) o inventariado acá con su motivo.
+ *  - `scripts/`: lo que lee está inventariado acá, con su motivo (no tienen esquema: cada script valida lo suyo).
+ *  - `NEXT_PUBLIC_*`: lista CERRADA en todo el código. Una variable pública nueva es una decisión (se publica a cualquiera que abra la app), no un descuido.
+ */
+const NEXT_PUBLIC_PERMITIDAS: Record<string, string> = {
+  NEXT_PUBLIC_SENTRY_DSN: "el DSN de Sentry viaja al navegador por diseño (no es secreto: solo permite ENVIAR eventos al proyecto)",
+};
+
+/** Variables que lee la consola de plataforma y que no son de su esquema. */
+const FUERA_DEL_ESQUEMA_DE_LA_CONSOLA: Record<string, string> = {
+  NODE_ENV: "la fija Next.js/Node; decide si la CSP deja `unsafe-eval` en desarrollo",
+};
+
+/** Variables que leen los scripts de `scripts/`, cada una con quién la usa y por qué no se valida con un esquema. */
+const VARIABLES_DE_SCRIPTS: Record<string, string> = {
+  NODE_ENV: "la fija Node; las guardas de destino de los seeds se niegan con `production`",
+  VERCEL: "la fija Vercel; `construir.ts` decide por el entorno y las guardas de los seeds se niegan en Vercel",
+  VERCEL_ENV: "la fija Vercel; `construir.ts` (S-31) y las guardas de los seeds",
+  MOTOR2_MIGRAR_EN_BUILD: "`construir.ts`: aprobación explícita de migrar en el build (S-31: solo local y Producción de Vercel)",
+  npm_execpath: "la fija npm al correr un script; `auditar-dependencias.ts` la usa para invocar el mismo npm",
+  DIRECT_URL: "conexión del DUEÑO de las tablas: `medir-cuit.ts` y `verificar-registro-de-modulos.ts` (solo lectura); fuera del schema de runtime (S-32)",
+  DATABASE_URL: "`benchmark-reportes.ts` la lee solo para comprobar que la base de benchmark NO es la principal",
+  PLATAFORMA_DATABASE_URL: "los scripts de plataforma (`cliente-plataforma.ts`, `conexion-de-plataforma.ts`): el rol `motor2_plataforma`; esquema en `plataforma/src/entorno.ts`",
+  PLATAFORMA_INSTALACIONES_ADICIONALES: "`conexion-de-plataforma.ts`: pide elegir instalación; esquema en `plataforma/src/entorno.ts`",
+  EMPRESA_ID: "los seeds y el benchmark indican la empresa en la que siembran (ADR-022); por defecto `empresa_principal`",
+  MOTOR2_BENCH_DATABASE_URL: "`benchmark-reportes.ts`: base local `_bench` dedicada",
+  MOTOR2_BENCH_DIAS_HISTORIAL: "`benchmark-reportes.ts`: cuántos días de historial sembrar",
+  MOTOR2_SEED_DATABASE_URL: "`demo-seed/guardas-destino.ts`: base local `_demo` de los seeds",
+  MOTOR2_SEED_CONFIRMAR: "`demo-seed/guardas-destino.ts`: confirmación explícita de la corrida",
+  MOTOR2_SEED_REHACER: "`demo-seed/guardas-destino.ts`: permite sembrar sobre una demo existente",
+};
+
+function leidasEn(carpetas: string[]): Map<string, string[]> {
+  const porArchivo = new Map<string, string[]>();
+  for (const carpeta of carpetas) {
+    for (const a of archivosDeCodigo(join(RAIZ, carpeta))) {
+      const variables = variablesLeidas(readFileSync(a, "utf8"));
+      if (variables.length > 0) porArchivo.set(relative(RAIZ, a).replace(/\\/g, "/"), variables);
+    }
+  }
+  return porArchivo;
+}
+
+describe("variables de entorno (S-34): la consola, los scripts y las públicas también están declaradas", () => {
+  const consola = leidasEn(["plataforma/src"]);
+  const scripts = leidasEn(["scripts"]);
+  const esquemaDeLaConsola = new Set([...CLAVES_DE_ENTORNO_DE_PLATAFORMA, ...CLAVES_OPCIONALES_DE_ENTORNO_DE_PLATAFORMA]);
+
+  it("el detector ve la consola y los scripts de verdad (sanidad: no pasa en vacío)", () => {
+    expect([...new Set([...consola.values()].flat())]).toContain("NODE_ENV");
+    const deScripts = new Set([...scripts.values()].flat());
+    for (const esperada of ["MOTOR2_MIGRAR_EN_BUILD", "PLATAFORMA_DATABASE_URL", "MOTOR2_SEED_DATABASE_URL", "DIRECT_URL"]) expect(deScripts.has(esperada), esperada).toBe(true);
+  });
+
+  it("toda variable que lee plataforma/src está en el esquema de la consola o en FUERA_DEL_ESQUEMA_DE_LA_CONSOLA", () => {
+    const sinDeclarar = [...consola.entries()]
+      .flatMap(([archivo, variables]) => variables.filter((v) => !esquemaDeLaConsola.has(v) && !(v in FUERA_DEL_ESQUEMA_DE_LA_CONSOLA)).map((v) => `${v} (en ${archivo})`))
+      .sort();
+    expect(sinDeclarar, "variables de la consola sin declarar: al esquema de plataforma/src/entorno.ts o a FUERA_DEL_ESQUEMA_DE_LA_CONSOLA con motivo").toEqual([]);
+  });
+
+  it("toda variable que leen los scripts está en VARIABLES_DE_SCRIPTS, y esa lista no tiene entradas viejas ni sin motivo", () => {
+    const leidas = new Set([...scripts.values()].flat());
+    const sinDeclarar = [...scripts.entries()]
+      .flatMap(([archivo, variables]) => variables.filter((v) => !(v in VARIABLES_DE_SCRIPTS)).map((v) => `${v} (en ${archivo})`))
+      .sort();
+    expect(sinDeclarar, "variables de scripts sin inventariar: agregarlas a VARIABLES_DE_SCRIPTS con quién la usa y por qué").toEqual([]);
+    for (const [variable, motivo] of Object.entries(VARIABLES_DE_SCRIPTS)) {
+      expect(leidas.has(variable), `"${variable}" ya no la lee ningún script: sacala de VARIABLES_DE_SCRIPTS`).toBe(true);
+      expect(motivo.trim().length, `"${variable}" sin motivo`).toBeGreaterThan(10);
+    }
+  });
+
+  it("FUERA_DEL_ESQUEMA_DE_LA_CONSOLA no tiene entradas viejas, repetidas con el esquema ni sin motivo", () => {
+    const leidas = new Set([...consola.values()].flat());
+    for (const [variable, motivo] of Object.entries(FUERA_DEL_ESQUEMA_DE_LA_CONSOLA)) {
+      expect(leidas.has(variable), `"${variable}" ya no se lee en plataforma/src: sacala`).toBe(true);
+      expect(esquemaDeLaConsola.has(variable), `"${variable}" ya está en el esquema de la consola: sacala`).toBe(false);
+      expect(motivo.trim().length, `"${variable}" sin motivo`).toBeGreaterThan(10);
+    }
+  });
+
+  it("las únicas NEXT_PUBLIC_* que existen son las de la lista cerrada (en src, plataforma/src, scripts y next.config.ts), y están declaradas en el schema", () => {
+    const todas = [...leidasPorArchivo().entries(), ...consola.entries(), ...scripts.entries()];
+    const publicasLeidas = todas.flatMap(([archivo, variables]) => variables.filter((v) => v.startsWith("NEXT_PUBLIC_")).map((v) => `${v} (en ${archivo})`));
+    const fueraDeLista = publicasLeidas.filter((p) => !(p.split(" ")[0] in NEXT_PUBLIC_PERMITIDAS));
+    expect(fueraDeLista, "una variable NEXT_PUBLIC_* se incrusta en el JavaScript del navegador: agregarla a NEXT_PUBLIC_PERMITIDAS es una decisión, con su motivo").toEqual([]);
+    const declaradasPublicas = CLAVES_DE_ENTORNO_DECLARADAS.filter((v) => v.startsWith("NEXT_PUBLIC_"));
+    expect(declaradasPublicas.sort()).toEqual(Object.keys(NEXT_PUBLIC_PERMITIDAS).sort());
+    expect(publicasLeidas.length, "el recorrido tiene que ver la variable pública que existe").toBeGreaterThan(0);
   });
 });

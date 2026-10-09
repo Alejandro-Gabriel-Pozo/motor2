@@ -18,7 +18,8 @@ const ahora = new Date();
 const mesApi = (atras: number) => new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth() - atras, 1)).toISOString().slice(0, 10);
 
 function simularApi(mesesAtras: number[]) {
-  vi.stubGlobal("fetch", async () => ({ ok: true, status: 200, json: async () => ({ data: mesesAtras.map((n, i) => [mesApi(n), 100 + i * 2]) }) }));
+  // una Response real: el adaptador lee su `body` de a trozos (S-30)
+  vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ data: mesesAtras.map((n, i) => [mesApi(n), 100 + i * 2]) }), { status: 200 }));
 }
 
 describe("sincronizarIPC — antigüedad de la serie guardada", () => {
@@ -104,26 +105,26 @@ describe("sincronizarIPC — respuestas de un tercero con forma rara (informe de
     const inits: (RequestInit | undefined)[] = [];
     vi.stubGlobal("fetch", async (...args: [string, RequestInit?]) => {
       inits.push(args[1]);
-      return { ok: true, status: 200, json: async () => ({ data: [] }) };
+      return new Response(JSON.stringify({ data: [] }), { status: 200 });
     });
     await sincronizarIPC(prisma, new Date());
     expect(inits[0]?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("una respuesta sin serie lanza (el cron responde error) y no guarda nada", async () => {
-    vi.stubGlobal("fetch", async () => ({ ok: true, status: 200, json: async () => ({ data: "x" }) }));
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ data: "x" }), { status: 200 }));
     await expect(sincronizarIPC(prisma, new Date())).rejects.toThrow(/sin serie/);
-    vi.stubGlobal("fetch", async () => ({ ok: true, status: 200, json: async () => null }));
+    vi.stubGlobal("fetch", async () => new Response("null", { status: 200 }));
     await expect(sincronizarIPC(prisma, new Date())).rejects.toThrow(/sin serie/);
     expect(await prisma.indicePrecio.count()).toBe(0);
   });
 
   it("saltea las filas con fecha inválida o valor negativo, cero, NaN o no numérico; guarda las válidas", async () => {
-    vi.stubGlobal("fetch", async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({ data: [["2026-01-01", 100], ["basura", 101], ["2026-02-01", -5], ["2026-03-01", 0], ["2026-04-01", "120"], ["2026-05-01", null], null, ["2026-06-01", 130]] }),
-    }));
+    vi.stubGlobal(
+      "fetch",
+      async () =>
+        new Response(JSON.stringify({ data: [["2026-01-01", 100], ["basura", 101], ["2026-02-01", -5], ["2026-03-01", 0], ["2026-04-01", "120"], ["2026-05-01", null], null, ["2026-06-01", 130]] }), { status: 200 })
+    );
     const r = await sincronizarIPC(prisma, new Date());
     expect(r.mesesNuevos).toBe(2);
     expect(await prisma.indicePrecio.count()).toBe(2);

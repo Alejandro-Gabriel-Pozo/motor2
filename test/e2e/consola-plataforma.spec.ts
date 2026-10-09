@@ -25,7 +25,7 @@ async function pedirElCodigo(page: Page, admin: AdminSembrado) {
   await page.locator("#email").fill(admin.email);
   await page.getByRole("button", { name: "Pedir código" }).click();
   await expect(page.locator("#codigo")).toBeVisible();
-  expect(await fijarCodigoDeIngreso(admin.id, CODIGO_CONOCIDO)).toBe(1);
+  expect(await fijarCodigoDeIngreso(page, admin.id, CODIGO_CONOCIDO)).toBe(1);
 }
 
 /** Pasos 1 y 2 hasta la pantalla del segundo factor. */

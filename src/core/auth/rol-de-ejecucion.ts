@@ -23,14 +23,40 @@ export async function datosDelRolDeEjecucion(db: Db): Promise<DatosDelRol> {
   return { usuario: fila.usuario, superusuario: fila.superusuario, bypassRls: fila.bypassrls, duenio: fila.duenio, contextoPreseteado: fila.preseteado };
 }
 
+/** Los nombres de base que son de uso descartable (desarrollo, e2e, demo, benchmark): ninguna tiene datos reales. */
+const SUFIJOS_DE_BASE_DESCARTABLE = ["_dev", "_e2e", "_demo", "_bench"];
+const HOSTS_LOCALES = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
 /**
- * ¿Se deja operar con un rol que salta el RLS? Solo con `MOTOR2_ROL_ESTRICTO=0` Y fuera de Producción de Vercel (Pureza 0.4, hallazgo H1): en Producción el escape
- * se IGNORA aunque la variable llegara a estar puesta (el arranque, además, se niega: `escapesProhibidosEnProduccion` de `src/env.ts`). Defensa en profundidad:
- * una variable mal puesta no puede apagar el aislamiento entre empresas.
+ * ¿La `DATABASE_URL` apunta a una base descartable? Sí si el host es local o el NOMBRE de la base termina en `_dev`, `_e2e`, `_demo` o `_bench`. Sin URL, con una que no se entiende o con
+ * otro protocolo: no (falla cerrado). Mira el host y el nombre, no cualquier parte del texto (`?application_name=motor2_dev` no cuenta).
+ */
+function esBaseDescartable(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "postgresql:" && u.protocol !== "postgres:") return false;
+    if (HOSTS_LOCALES.has(u.hostname.toLowerCase())) return true;
+    const nombre = decodeURIComponent(u.pathname.replace(/^\//, ""));
+    return SUFIJOS_DE_BASE_DESCARTABLE.some((sufijo) => nombre.endsWith(sufijo));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * ¿Se deja operar con un rol que salta el RLS? Solo con `MOTOR2_ROL_ESTRICTO=0`, FUERA de Vercel (en ningún entorno: ni Producción ni Preview ni Development, S-32; Pureza 0.4, hallazgo
+ * H1) y sobre una BASE DESCARTABLE (host local o nombre `_dev`/`_e2e`/`_demo`/`_bench`: `esBaseDescartable` de `DATABASE_URL`). El escape es de las herramientas de demo; un entorno
+ * menos confiable (un Preview, que comparte la base de producción, ADR-007) nunca puede ejecutar con el privilegio de uno más confiable. En Vercel el escape se IGNORA aunque la
+ * variable llegara a estar puesta (el arranque, además, se niega: `escapesProhibidosEnProduccion` de `src/env.ts`). Defensa en profundidad: una variable mal puesta no puede apagar el
+ * aislamiento entre empresas.
  */
 export function permitirRolPrivilegiado(source: Record<string, string | undefined>): boolean {
+  // Vercel fija `VERCEL=1` y `VERCEL_ENV`; basta que haya cualquiera de las dos (el mismo criterio que `escapesProhibidosEnProduccion` de `src/env.ts`: lo fija el guard `entornos-y-escapes`).
+  if (source.MOTOR2_ROL_ESTRICTO !== "0" || source.VERCEL || source.VERCEL_ENV) return false;
   // Tampoco con el entorno estricto pedido (`MOTOR2_ENTORNO_ESTRICTO=1`, un despliegue fuera de Vercel): ahí el aislamiento por empresa no se apaga (auditoría de la Fase 0, 0.4).
-  return source.MOTOR2_ROL_ESTRICTO === "0" && source.VERCEL_ENV !== "production" && source.MOTOR2_ENTORNO_ESTRICTO !== "1";
+  if (source.MOTOR2_ENTORNO_ESTRICTO === "1") return false;
+  return esBaseDescartable(source.DATABASE_URL);
 }
 
 /**
