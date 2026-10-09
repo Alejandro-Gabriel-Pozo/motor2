@@ -4,7 +4,7 @@ import { aprobarYEnviarTraspasoCasoDeUso } from "../../src/server/actions/traspa
 import { cancelarSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/cancelar-solicitud-de-traspaso";
 import { rechazarSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/rechazar-solicitud-de-traspaso";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
-import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
+import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 /**
  * Casos de uso de la SOLICITUD de traspaso (src/server/actions/traspasos/casos-de-uso/; Task #41, Fase M11a): aprobar y enviar,

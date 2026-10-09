@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico, registrarConteosFisicos, resolverConteoPendiente } from "../../src/server/actions/movimientos/conteo-fisico";
-import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
+import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 /**
  * S-09 (plan de endurecimiento de seguridad, tanda T5; D3 del dueño, SIN RESPUESTA todavía: se ejecuta con el DEFECTO, revertible y pendiente de confirmar): aplicar una

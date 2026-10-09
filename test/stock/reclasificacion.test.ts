@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { reclasificarStock } from "../../src/server/actions/stock/reclasificacion";
 import { obtenerSaldoDisponibleParaReclasificar } from "../../src/server/actions/stock/lecturas-reclasificacion";
-import { calcularSaldoPorLote, calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
+import { calcularSaldoPorLote, calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 describe("reclasificarStock", () => {
   let sucursalId: string;

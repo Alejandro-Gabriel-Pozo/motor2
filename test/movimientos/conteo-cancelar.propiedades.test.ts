@@ -4,7 +4,7 @@ import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembra
 import { registrarConteoFisicoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-conteo-fisico";
 import { resolverConteoPendienteCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/resolver-conteo-pendiente";
 import { cancelarConteoFisicoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/cancelar-conteo-fisico";
-import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
+import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 /**
  * GT-6 completo (S-04, O.53 de docs/pureza-integracion.md; plan de endurecimiento de seguridad, tanda T5): «toda reversión mira lo que de verdad se aplicó». La parte de la compra (S-02)

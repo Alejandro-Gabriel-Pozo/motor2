@@ -57,8 +57,8 @@ export async function resolverConteoPendienteCasoDeUso(
     if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "El producto ya no existe en el catálogo.");
 
     const saldoHoy = conteo.loteVencimiento
-      ? await calcularSaldoPorLote(conteo.productoId, conteo.seccionId, conteo.loteVencimiento, tx)
-      : await calcularSaldoTotal(conteo.productoId, conteo.seccionId, tx);
+      ? await calcularSaldoPorLote(conteo.productoId, conteo.seccionId, conteo.loteVencimiento, actor.sucursalId, tx)
+      : await calcularSaldoTotal(conteo.productoId, conteo.seccionId, actor.sucursalId, tx);
     const diferencia = redondearACantidadDeUnidad(Number(conteo.conteoReal) - saldoHoy, producto.unidadStock.decimales);
 
     if (diferencia === 0) {

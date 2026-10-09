@@ -67,7 +67,7 @@ export async function crearEnvioDirectoDeTraspasoCasoDeUso(
     if (!resCantidad.ok) return fracaso("CANTIDAD_INVALIDA", resCantidad.mensaje);
     const cantidad = resCantidad.valor!;
 
-    const disponible = await calcularSaldoTotal(producto.id, seccionOrigen.id, tx);
+    const disponible = await calcularSaldoTotal(producto.id, seccionOrigen.id, actor.sucursalId, tx);
     if (disponible < cantidad) {
       return fracaso(
         "STOCK_INSUFICIENTE",

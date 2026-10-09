@@ -117,8 +117,8 @@ export async function registrarConteoFisicoCasoDeUso(
     const conteoReal = resConteoReal.valor!;
     const loteVencimiento = comando.loteVencimiento ?? null;
     const saldoSistema = loteVencimiento
-      ? await calcularSaldoPorLote(producto.id, comando.seccionId, loteVencimiento, tx)
-      : await calcularSaldoTotal(producto.id, comando.seccionId, tx);
+      ? await calcularSaldoPorLote(producto.id, comando.seccionId, loteVencimiento, actor.sucursalId, tx)
+      : await calcularSaldoTotal(producto.id, comando.seccionId, actor.sucursalId, tx);
     const diferencia = redondearACantidadDeUnidad(conteoReal - saldoSistema, producto.unidadStock.decimales);
 
     const accionInfo = ACCIONES_CONTEO[comando.accion];

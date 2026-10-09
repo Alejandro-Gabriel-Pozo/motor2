@@ -8,7 +8,7 @@ import { anularItemEnviado } from "../../src/server/actions/pos/cuenta-anulacion
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
-import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
+import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { calcularAlertasStock, obtenerResumenAlertasStock } from "../../src/server/consultas/stock/alertas";
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
 import { obtenerMapaDeMesas } from "../../src/server/consultas/pos/mesas";

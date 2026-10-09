@@ -163,7 +163,7 @@ async function main() {
   console.log("--- Mediciones (8 puntos del plan) ---\n");
 
   console.log("1) Saldo por producto y sección (calcularSaldoTotal):");
-  await medir("calcularSaldoTotal (producto caliente, sección arbitraria)", () => calcularSaldoTotal(productoCaliente.productoId, secciones[0]!.id, prisma));
+  await medir("calcularSaldoTotal (producto caliente, sección arbitraria)", () => calcularSaldoTotal(productoCaliente.productoId, secciones[0]!.id, secciones[0]!.sucursalId, prisma));
 
   console.log("\n2) Stock consolidado (calcularStockConsolidado, TODA la sucursal):");
   await medir("calcularStockConsolidado", () => calcularStockConsolidado(sucursales[0]!.id, prisma));

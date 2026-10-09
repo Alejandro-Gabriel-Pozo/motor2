@@ -33,5 +33,5 @@ export async function obtenerSaldoDisponibleParaReclasificar(
   // saldo para mostrar» y el cliente no podía distinguir un producto sin datos de una sesión vencida.
   if (!productoId || !seccionId) return null;
   if (!(await obtenerSeccionPropia(seccionId, ctx.sucursalId, ctx.db))) return null;
-  return calcularSaldoPorLote(productoId, seccionId, loteVencimiento, ctx.db);
+  return calcularSaldoPorLote(productoId, seccionId, loteVencimiento, ctx.sucursalId, ctx.db);
 }

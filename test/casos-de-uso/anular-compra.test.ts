@@ -7,7 +7,7 @@ import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/c
 import { aResultadoAccion } from "../../src/core/resultado-caso";
 import { detalleReversionDeCompra } from "../../src/core/movimientos/anulaciones";
 import { crearEnvioDirectoDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/crear-envio-directo-de-traspaso";
-import { calcularSaldoTotal } from "../../src/server/lecturas/movimientos/saldos";
+import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 /** sha256 de `{ payload: { operacionId: "operacion-fija" }, procesoTag: "ANULAR_COMPRA", sucursalId: "sucursal-fija" }` (canónico, claves ordenadas). */
 const HASH_ANTERIOR_DE_PAYLOAD_FIJO = "966df3691f4ce3b6a64f54e0745bbfaf3b68a970c610c8472087752636a9fe40";

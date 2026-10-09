@@ -156,7 +156,7 @@ export async function registrarMovimientoCasoDeUso(
       }
     }
     for (const { productoId, seccionId, cantidad } of requeridoPorClave.values()) {
-      const chequeoStock = await validarStockSuficiente(productoId, seccionId, cantidad, tx);
+      const chequeoStock = await validarStockSuficiente(productoId, seccionId, cantidad, actor.sucursalId, tx);
       if (!chequeoStock.ok) {
         const producto = await obtenerProducto(productoId);
         const pista = await seccionesConStock(productoId, actor.sucursalId, tx);

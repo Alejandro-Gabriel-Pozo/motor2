@@ -114,7 +114,7 @@ export async function reclasificarStockCasoDeUso(
     // aborta si otra escritura concurrente lo cambia mientras tanto) —
     // mismo criterio "leer→decidir→escribir sin que se cuele otra
     // escritura" que conLock_ en Apps Script.
-    const disponible = await calcularSaldoPorLote(comando.productoId, comando.seccionOrigenId, comando.loteOrigen ?? null, tx);
+    const disponible = await calcularSaldoPorLote(comando.productoId, comando.seccionOrigenId, comando.loteOrigen ?? null, actor.sucursalId, tx);
     const diff = Math.round((totalDestinos - disponible) * 1000) / 1000;
     if (diff !== 0) {
       return fracaso(

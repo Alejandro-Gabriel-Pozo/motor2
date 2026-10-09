@@ -58,7 +58,7 @@ export async function aprobarYEnviarTraspasoCasoDeUso(
     if (!resProducto.ok) return fracaso("PRODUCTO_NO_TRANSFERIBLE", resProducto.mensaje);
 
     const cantidad = traspaso.cantidad;
-    const disponible = await calcularSaldoTotal(traspaso.productoId, seccionOrigen.id, tx);
+    const disponible = await calcularSaldoTotal(traspaso.productoId, seccionOrigen.id, actor.sucursalId, tx);
     if (disponible < cantidad) {
       return fracaso(
         "STOCK_INSUFICIENTE",

@@ -43,22 +43,8 @@ export interface PendienteDeSucursal {
  * «RLS contenedor» [MIG] que el dueño pidió como pista aparte). La matriz EJECUTA estos casos y exige que sigan fallando: cuando la pista los cierre, el test pide sacar la entrada.
  */
 export const PENDIENTES_DE_SUCURSAL: Readonly<Record<string, PendienteDeSucursal>> = {
-  "lectura|lecturas/movimientos/saldos.ts|calcularSaldoTotal|ajenaSucursal": {
-    motivo: "ayudante interno de saldos: con el `db` de la empresa y el id de una sección de OTRA sucursal de la misma empresa devuelve su saldo (huella 77xx de S2). No valida que la sección sea de la sucursal activa: eso lo hacen las acciones que lo llaman (`obtenerSeccionPropia`, probado en la matriz de cada una); el ayudante solo no la defiende (la RLS separa empresas, no sucursales)",
-    destino: "pista de contención por sucursal (RLS contenedor), plan de endurecimiento §6 fase (a); hallazgo de la fila O.177 (huella numérica de S2)",
-  },
-  "lectura|lecturas/movimientos/saldos.ts|calcularSaldoPorLote|ajenaSucursal": {
-    motivo: "ídem `calcularSaldoTotal`: el saldo por lote de la sección que recibe (huella 77xx de S2); quien la llama valida la sección (`obtenerSeccionPropia` en `obtenerSaldoDisponibleParaReclasificar`, `reclasificarStock`, `registrarConteoFisico`)",
-    destino: "pista de contención por sucursal (RLS contenedor), plan de endurecimiento §6 fase (a); hallazgo de la fila O.177 (huella numérica de S2)",
-  },
-  "consulta|consultas/movimientos/stock-para-conteo.ts|listarStockParaConteo|ajenaSucursal": {
-    motivo: "la precarga de la grilla de conteo lista el stock de la sección que recibe, sea de la sucursal activa o no (devuelve el de S2: huella 77xx). La página que la llama (`movimientos/conteo-fisico/page.tsx`) solo le pasa una sección de `listarSeccionesActivas(ctx.sucursalId)`; la consulta sola no lo valida",
-    destino: "pista de contención por sucursal (RLS contenedor), plan de endurecimiento §6 fase (a); hallazgo de la fila O.177 (huella numérica de S2)",
-  },
-  "lectura|lecturas/movimientos/saldos.ts|validarStockSuficiente|ajenaSucursal": {
-    motivo: "ídem `calcularSaldoTotal`: compara contra el saldo de la sección que recibe, sea o no de la sucursal activa; devuelve `actual` (el saldo de S2, huella 77xx)",
-    destino: "pista de contención por sucursal (RLS contenedor), plan de endurecimiento §6 fase (a); hallazgo de la fila O.177 (huella numérica de S2)",
-  },
+  // Vacía desde que los lectores de saldo y la precarga del conteo fallan cerrado por sucursal (hallazgo O.177 cerrado): `calcularSaldoTotal`,
+  // `calcularSaldoPorLote`, `validarStockSuficiente` y `listarStockParaConteo` reciben la `sucursalId` del contexto y exigen `seccion.sucursalId` en su `where`.
 };
 
 /**

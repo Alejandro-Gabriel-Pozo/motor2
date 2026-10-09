@@ -44,7 +44,7 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
   const seccionElegida = sp.seccionId && secciones.some((s) => s.id === sp.seccionId) ? sp.seccionId : secciones.length === 1 ? secciones[0].id : "";
 
   const filasBase: FilaBaseConteo[] = seccionElegida
-    ? (await listarStockParaConteo(seccionElegida, ctx.db)).map((f) => ({
+    ? (await listarStockParaConteo(seccionElegida, ctx.sucursalId, ctx.db)).map((f) => ({
         productoId: f.productoId,
         productoCodigo: f.productoCodigo,
         productoNombre: f.productoNombre,
