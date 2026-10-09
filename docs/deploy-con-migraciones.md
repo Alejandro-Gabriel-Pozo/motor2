@@ -144,7 +144,7 @@ sin contexto, que un `count` sin contexto da 0, que con `set_config('app.empresa
 borrar la rama de ensayo; `node scripts/operaciones/con-env.mjs .env.vercel.<despliegue> -- npm run migrar:aprobar`; deploy; vigilar Sentry 48 horas (errores `P2011`/`23502` sobre `empresaId` y `42501`).
 Nunca ensayar con el Preview de stockhneuquen: comparte la base de producción. Vuelta atrás: `down.sql` (una sentencia) y `prisma migrate resolve --rolled-back`.
 
-Una instalación local: `npm run db:seed -- --gerente tu@email.com` deja al primer gerente (ya no existe el bootstrap por email).
+Una instalación local: `npm run db:seed -- --gerente tu@email.com --mostrar-enlace` deja al primer gerente (ya no existe el bootstrap por email) e imprime el enlace para entrar con Google la primera vez; sin `--mostrar-enlace` el enlace (lleva un token) no se imprime y sale por el correo de avisos si está configurado (S-33). El seed solo corre contra un Postgres local; para sembrar una base real hace falta `--permitir-remoto` y confirmar a mano el nombre de la base (terminal interactiva), y nunca corre en Vercel ni con `NODE_ENV=production`.
 
 ## Invitación por usuario y sin enlace automático de cuentas (ADR-024): despliegue en tres tiempos
 

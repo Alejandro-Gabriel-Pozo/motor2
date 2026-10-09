@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { problemasDelSeed } from "./guardas/seed-base";
 
 /**
  * GT-22 (S-33): los scripts que escriben fuera de la app no pueden apuntar a cualquier base ni firmar con cualquier actor.
@@ -86,4 +87,37 @@ describe("GT-22: los scripts de plataforma exigen un administrador de plataforma
       expect(fuente).toContain("auditarCambioDePlataforma(tx,");
     },
   );
+});
+
+/**
+ * 3. `prisma/seed.ts` (autorizado por el dueño, 2026-10-08): pasa por la guarda de destino y por la confirmación de una base remota ANTES de tocar la base, y nunca imprime el enlace con el
+ *    token por su cuenta (solo lo entrega `entregarEnlaceDelSeed`, que lo imprime únicamente con `--mostrar-enlace`).
+ */
+describe("GT-22: prisma/seed.ts no siembra cualquier base ni imprime el token", () => {
+  it("pasa por la guarda de destino y la confirmación antes de la primera consulta, y no imprime el enlace por su cuenta", () => {
+    expect(problemasDelSeed(leer("prisma/seed.ts"))).toEqual([]);
+  });
+
+  it("el detector ve lo que tiene que ver (el seed de antes de S-33, y variantes con un solo defecto)", () => {
+    const viejo = [
+      'const { values } = parseArgs({ options: { empresa: { type: "string" }, gerente: { type: "string" } }, strict: true });',
+      'const { id: empresaId } = await prisma.empresa.findFirstOrThrow({ where: {} });',
+      'console.log(invitacion.ok && invitacion.token ? `Para entrar: ${enlaceDeInvitacion(base, invitacion.token)}` : "no");',
+    ].join("\n");
+    expect(problemasDelSeed(viejo).length).toBeGreaterThanOrEqual(4);
+
+    const bueno = [
+      'const { values } = parseArgs({ options: { "permitir-remoto": { type: "boolean" }, "mostrar-enlace": { type: "boolean" } } });',
+      "const destino = resolverDestinoDelSeedBase(process.env, { permitirRemoto: true });",
+      "await confirmarDestinoRemoto(destino, preguntar, true);",
+      "const db = dbDeEmpresa(empresaId);",
+      'await entregarEnlaceDelSeed({ entrega: decidirEntregaDelEnlace({ mostrarEnlace: values["mostrar-enlace"] === true, correoConfigurado: false }), enlace: enlaceDeInvitacion(base, token) });',
+    ].join("\n");
+    expect(problemasDelSeed(bueno)).toEqual([]);
+    expect(problemasDelSeed(bueno.replace('values["mostrar-enlace"] === true', "true")), "una entrega que no depende del flag").toHaveLength(1);
+    expect(problemasDelSeed(bueno.replace("resolverDestinoDelSeedBase(process.env,", "algo("))).toHaveLength(1);
+    expect(problemasDelSeed(bueno.replace("await confirmarDestinoRemoto(", "await otra("))).toHaveLength(1);
+    expect(problemasDelSeed(`await prisma.x.y();\n${bueno}`)).toHaveLength(2); // guarda y confirmación después de la primera consulta
+    expect(problemasDelSeed(`${bueno}\nconsole.log(\`abrí: \${enlaceDeInvitacion(base, token)}\`);`).length).toBeGreaterThanOrEqual(1);
+  });
 });
