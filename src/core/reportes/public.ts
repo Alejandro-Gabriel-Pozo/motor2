@@ -153,7 +153,7 @@ export type { FilaRendimientoCompartido } from "./rendimiento-recetas";
 export type { ResumenFinanciero } from "./resumen-operativo";
 export type { ResumenOperativo } from "./resumen-operativo";
 export type { ReporteRotacionMesas } from "./rotacion-mesas";
-export { calcularRotacionMesas } from "./rotacion-mesas";
+export { calcularRotacionMesas, MAXIMO_DE_CUENTAS_EN_ROTACION } from "./rotacion-mesas";
 export { TAMANO_PAGINA_TICKETS } from "./tickets-emitidos";
 export { leerFiltroTickets, serializarFiltroTickets } from "./tickets-emitidos";
 export type { FiltroTickets } from "./tickets-emitidos";

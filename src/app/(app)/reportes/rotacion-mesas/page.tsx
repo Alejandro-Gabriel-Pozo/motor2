@@ -1,7 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/server/acceso/gate";
-import { resolverRangoDeReporte } from "@/core/reportes/public";
+import { MAXIMO_DE_CUENTAS_EN_ROTACION, resolverRangoDeReporte } from "@/core/reportes/public";
 import { generarReporteRotacionMesas } from "@/server/consultas/reportes/rotacion-mesas";
 import { SelectorRango } from "@/components/selector-rango";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
@@ -38,6 +38,13 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
         {rep.abiertasSinCerrar > 0 && ` ${rep.abiertasSinCerrar} todavía abierta${rep.abiertasSinCerrar === 1 ? "" : "s"}.`}
         {rep.cuentasSinComensales > 0 && ` ${rep.cuentasSinComensales} sin dato de comensales (de antes de este registro).`}
       </p>
+
+      {rep.truncado && (
+        <p data-aviso-truncado role="status" className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+          El rango tiene más de {MAXIMO_DE_CUENTAS_EN_ROTACION.toLocaleString("es-AR")} cuentas: estos números son de las primeras {MAXIMO_DE_CUENTAS_EN_ROTACION.toLocaleString("es-AR")}, no de todo el rango. Elegí un rango más corto
+          para verlo completo.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="rounded border p-4">
