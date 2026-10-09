@@ -2,7 +2,7 @@ import { appendFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { correrPuerta, prepararEntorno, soltarEntorno } from "./ejecutar";
 import { escenariosDe } from "./escenarios";
-import { EN_LA_SUCURSAL_VACIA, PENDIENTES_DE_SUCURSAL, RECHAZOS_CRUDOS_DE_LA_BASE, SIN_MARCA_PROPIA } from "./excepciones";
+import { EN_LA_SUCURSAL_VACIA, OK_SIN_EFECTO_POR_DISENO, PENDIENTES_DE_SUCURSAL, RECHAZOS_CRUDOS_DE_LA_BASE, SIN_MARCA_PROPIA } from "./excepciones";
 import type { Familia } from "./familias";
 import { GENERADORES } from "./generadores";
 import { inventariarPuertas, type PuertaInventariada } from "./inventario-de-puertas";
@@ -62,7 +62,7 @@ export function definirMatriz({ nombre, filtro }: Familia): void {
           const clavePendiente = `${puerta.clave}|${escenario}`;
           const pendiente = Object.hasOwn(PENDIENTES_DE_SUCURSAL, clavePendiente);
           it(`${escenario}${pendiente ? " (PENDIENTE de la pista RLS por sucursal: se exige que siga fallando)" : ""}`, async () => {
-            const r = await correrPuerta(puerta, escenario, mundo, GENERADORES, { sinMarcaPropia: Object.hasOwn(SIN_MARCA_PROPIA, puerta.clave), rechazoCrudoDeLaBase: Object.hasOwn(RECHAZOS_CRUDOS_DE_LA_BASE, clavePendiente), enLaSucursalVacia: Object.hasOwn(EN_LA_SUCURSAL_VACIA, puerta.clave) });
+            const r = await correrPuerta(puerta, escenario, mundo, GENERADORES, { sinMarcaPropia: Object.hasOwn(SIN_MARCA_PROPIA, puerta.clave), rechazoCrudoDeLaBase: Object.hasOwn(RECHAZOS_CRUDOS_DE_LA_BASE, clavePendiente), enLaSucursalVacia: Object.hasOwn(EN_LA_SUCURSAL_VACIA, puerta.clave), okSinEfectoPorDiseno: Object.hasOwn(OK_SIN_EFECTO_POR_DISENO, clavePendiente) });
             for (const [i, s] of r.salidas.entries()) informe.push(`${puerta.clave.padEnd(90)} ${escenario.padEnd(14)} ${r.veredictos[i].padEnd(8)} ${r.problemas.length ? "PROBLEMAS " : ""}${s.texto.replace(/\s+/g, " ").slice(0, 110)}`);
             if (pendiente) {
               expect(r.problemas.length, `${clavePendiente} ya no falla: sacala de PENDIENTES_DE_SUCURSAL (la defensa por sucursal llegó)`).toBeGreaterThan(0);

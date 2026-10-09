@@ -56,6 +56,15 @@ export const RECHAZOS_CRUDOS_DE_LA_BASE: Readonly<Record<string, string>> = {
   "accion|actions/movimientos/venta.ts|registrarVenta|ajenaEmpresa": "`proveedorId` («a quién se vende») de otra empresa: la clave foránea compuesta de `Operacion` (P2003) lo rechaza dentro de la transacción",
 };
 
+/**
+ * Mutaciones que con ids ajenos responden `ok: true` POR DISEÑO sin hacer nada: ignoran los ids que no son de la cuenta/sucursal activa (idempotencia por estado) y contestan igual que ante un id inexistente (sin oráculo).
+ * La matriz las sigue exigiendo sin escritura y sin filas ajenas; solo se tolera el `ok: true`. `<puerta>|<escenario>` → por qué.
+ */
+export const OK_SIN_EFECTO_POR_DISENO: Readonly<Record<string, string>> = {
+  "accion|actions/pos/cuenta-pedido.ts|enviarACocina|ajenaEmpresa": "el envío acota los ítems por la cuenta de la sucursal activa (`UPDATE … WHERE cuentaId`): los ids de ítems que no son de ella se ignoran y responde «Esos ítems ya estaban enviados» (`numeroEnvio: null`), igual que con un id inexistente; no escribe nada",
+  "accion|actions/pos/cuenta-pedido.ts|enviarACocina|ajenaSucursal": "ídem: los ítems de la cuenta de otra sucursal se ignoran (la respuesta es la de un id inexistente) y no se escribe nada",
+};
+
 /** Lecturas que devuelven solo agregados (números, textos sin fila identificable): el control positivo no puede buscar el marcador propio. Puerta → por qué. */
 export const SIN_MARCA_PROPIA: Readonly<Record<string, string>> = {
   "accion|actions/catalogo/insumos.ts|previsualizarFusionInsumo": "devuelve `null` salvo que el nombre nuevo sea el de OTRO insumo de la empresa (la vista previa de una fusión); la matriz no siembra ese choque",

@@ -161,6 +161,8 @@ export interface OpcionesDeCorrida {
   sinMarcaPropia?: boolean;
   /** La puerta está declarada en `RECHAZOS_CRUDOS_DE_LA_BASE`: en los escenarios ajenos se espera (y se exige) una excepción cruda de la base. */
   rechazoCrudoDeLaBase?: boolean;
+  /** La puerta está en `OK_SIN_EFECTO_POR_DISENO` para este escenario: un `ok: true` sin escritura y sin filas ajenas no es un problema. */
+  okSinEfectoPorDiseno?: boolean;
   /** La puerta necesita estar parada en la sucursal VACÍA (S4) para que la precondición de su destino no tape el chequeo del origen (las copias entre sucursales solo se hacen sobre un destino vacío). */
   enLaSucursalVacia?: boolean;
 }
@@ -217,7 +219,7 @@ export async function correrPuerta(puerta: PuertaInventariada, escenario: Escena
       else if (puerta.tipo !== "lectura" && !opciones.sinMarcaPropia && !/ZZ-A1/i.test(sinReflejo)) mal(`la lectura PROPIA no devolvió nada propio (veredicto ${veredicto}): ${salida.texto.slice(0, 160)}`);
     } else {
       if (marcadorAjenoDe(puerta).test(sinReflejo)) mal(`filtró filas ajenas: ${hallazgos(sinReflejo)}`);
-      if (puerta.mutacion && veredicto === "OK") mal(`con ids ajenos terminó en ok: true (${salida.texto.slice(0, 160)})`);
+      if (puerta.mutacion && veredicto === "OK" && !opciones.okSinEfectoPorDiseno) mal(`con ids ajenos terminó en ok: true (${salida.texto.slice(0, 160)})`);
       if (salida.lanzo && /^PrismaClientKnownRequestError\[P2003\]/.test(salida.error)) crudos.push(i);
       // Cualquier OTRA excepción de Prisma (un privilegio que le falta al rol de la base de pruebas, un registro que no existe) no es un rechazo de pertenencia: taparía un verde que no prueba nada.
       else if (salida.lanzo && /^PrismaClient/.test(salida.error)) mal(`lanzó una excepción de Prisma que no es una clave foránea (${salida.error.slice(0, 160)}): no es un rechazo de pertenencia`);

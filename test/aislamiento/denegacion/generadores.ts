@@ -1,4 +1,4 @@
-import { intento, variantes, type Generadores, type Kit, type Valor } from "./argumentos";
+import { intento, variantes, type ContextoDeArgumentos, type Generadores, type Kit, type Valor } from "./argumentos";
 
 /**
  * Los GENERADORES de argumentos de la matriz de denegación por defecto (GT-3b), solo para lo que `argumentos.ts` no deriva por nombre de parámetro: puertas con un objeto de entrada
@@ -10,6 +10,7 @@ import { intento, variantes, type Generadores, type Kit, type Valor } from "./ar
  * válidos escribiría de verdad. Los ids de EMPRESA (catálogo, roles, secciones de carta) son ajenos solo en el escenario de otra empresa; los de SUCURSAL (secciones, mesas, cuentas…) en los dos.
  * `k` trae lo ajeno del escenario y `c.propio` lo propio de u1 (E1 y S1).
  */
+const conIdsAjenos = (c: Pick<ContextoDeArgumentos, "escenario">) => c.escenario === "ajenaEmpresa" || c.escenario === "ajenaSucursal";
 const lista = (...v: Array<unknown[] | false>): unknown[][] => v.filter((x): x is unknown[] => x !== false);
 const hoy = () => new Date();
 const ingrediente = (k: Kit, insumoProductoId: string = k.productoId) => ({ insumoProductoId, cantidad: 1, unidadId: k.unidadId });
@@ -160,6 +161,9 @@ const completos: Record<string, Valor> = {
   "lectura|lecturas/permisos/gobierno.ts|invarianteRolSinUsuariosActivos": (k, c) => [c.db, { id: k.rolId, nombre: "Rol de prueba" }],
 
   // --- POS ---
+  // Mezclar una cuenta PROPIA con ítems de OTRA sucursal: el envío tiene que acotar los ítems por la cuenta, no solo mirar que la cuenta sea de la sucursal.
+  "accion|actions/pos/cuenta-pedido.ts|enviarACocina": (k, c) =>
+    conVariantes(intento(c, ["cuentaId", "cuentaItemId"], [k.cuentaId, [k.cuentaItemId]]), intento(c, ["cuentaItemId"], [c.propio.cuentaId, [k.cuentaItemId, k.cuentaItemEnviadoId]])),
   "accion|actions/pos/cuenta-pedido.ts|agregarItems": (k, c) =>
     conVariantes(
       intento(c, ["cuentaId"], [k.cuentaId, [{ productoId: c.propio.productoPvId, cantidad: 1 }]]),
@@ -173,6 +177,13 @@ const parametros: Record<string, Record<string, Valor>> = {
   // `operacionId` por defecto es la compra; la venta lleva la suya.
   "accion|actions/movimientos/venta.ts|anularVenta": { operacionId: (k) => k.ventaId },
   "consulta|consultas/pos/tickets.ts|obtenerTicketsRecientes": { mesaId: (k) => k.mesaCerradaId },
+  // Filtros y cursores opcionales con ids del cliente: sin esto la derivación los deja en `undefined` y el camino del filtro (y de la paginación) no se ejercería con un id ajeno.
+  // (Solo en los escenarios con ids ajenos: con ids propios, un filtro y un cursor reales dejarían la lista vacía y el control positivo no probaría nada.)
+  "accion|actions/movimientos/lecturas-conteo-fisico.ts|obtenerHistorialConteosFisicos": { filtro: (k, c) => (conIdsAjenos(c) ? { seccionId: k.seccionId, productoId: k.productoId, cursor: k.conteoId } : {}) },
+  "consulta|consultas/reportes/compras-registradas.ts|listarComprasRegistradas": { filtro: (k, c) => (conIdsAjenos(c) ? { proveedorId: k.proveedorId, cursor: k.compraId } : {}) },
+  "consulta|consultas/reportes/tickets-emitidos.ts|listarTicketsEmitidos": { filtro: (k, c) => (conIdsAjenos(c) ? { mesaId: k.mesaId, cursor: k.cuentaId } : {}) },
+  "accion|actions/catalogo/productos.ts|listarProductosPagina": { cursor: (k, c) => (conIdsAjenos(c) ? k.productoId : undefined) },
+  "accion|actions/traspasos/lecturas.ts|obtenerBandejaTransferencias": { cursorHistorial: (k, c) => (conIdsAjenos(c) ? k.traspasoId : undefined) },
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoOpcion": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoPorId": { id: (k) => k.productoId },

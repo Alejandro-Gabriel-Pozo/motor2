@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { planteoEstatico, type Escenario } from "./denegacion/argumentos";
 import { escenariosDe, TODOS_LOS_ESCENARIOS } from "./denegacion/escenarios";
-import { CONTEXTO_DECLARADO, ESCENARIOS_QUE_NO_APLICAN, PENDIENTES_DE_SUCURSAL, RECHAZOS_CRUDOS_DE_LA_BASE, SIN_MARCA_PROPIA } from "./denegacion/excepciones";
+import { CONTEXTO_DECLARADO, EN_LA_SUCURSAL_VACIA, ESCENARIOS_QUE_NO_APLICAN, OK_SIN_EFECTO_POR_DISENO, PENDIENTES_DE_SUCURSAL, RECHAZOS_CRUDOS_DE_LA_BASE, SIN_MARCA_PROPIA } from "./denegacion/excepciones";
 import { FAMILIAS } from "./denegacion/familias";
 import { GENERADORES, SIN_GENERADOR } from "./denegacion/generadores";
 import { inventariarPuertas } from "./denegacion/inventario-de-puertas";
@@ -30,6 +30,8 @@ const MAXIMOS = {
   RECHAZOS_CRUDOS_DE_LA_BASE: 4,
   CONTEXTO_DECLARADO: 1,
   SIN_MARCA_PROPIA: 27,
+  OK_SIN_EFECTO_POR_DISENO: 2,
+  EN_LA_SUCURSAL_VACIA: 1,
 } as const;
 
 describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario", () => {
@@ -105,7 +107,8 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
     conEscenario(ESCENARIOS_QUE_NO_APLICAN, "ESCENARIOS_QUE_NO_APLICAN");
     conEscenario(PENDIENTES_DE_SUCURSAL, "PENDIENTES_DE_SUCURSAL");
     conEscenario(RECHAZOS_CRUDOS_DE_LA_BASE, "RECHAZOS_CRUDOS_DE_LA_BASE");
-    for (const clave of [...Object.keys(SIN_MARCA_PROPIA), ...Object.keys(CONTEXTO_DECLARADO)]) if (!claves.has(clave)) problemas.push(`${clave}: ya no existe`);
+    conEscenario(OK_SIN_EFECTO_POR_DISENO, "OK_SIN_EFECTO_POR_DISENO");
+    for (const clave of [...Object.keys(SIN_MARCA_PROPIA), ...Object.keys(CONTEXTO_DECLARADO), ...Object.keys(EN_LA_SUCURSAL_VACIA)]) if (!claves.has(clave)) problemas.push(`${clave}: ya no existe`);
     for (const [clave, motivo] of Object.entries(SIN_MARCA_PROPIA)) {
       const p = puertas.find((x) => x.clave === clave);
       if (p && (p.mutacion || (p.tipo === "accion" && !p.guarda.startsWith("requerirVer")))) problemas.push(`SIN_MARCA_PROPIA: ${clave} no es una lectura`);
@@ -119,6 +122,8 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
     expect(Object.keys(RECHAZOS_CRUDOS_DE_LA_BASE).length).toBeLessThanOrEqual(MAXIMOS.RECHAZOS_CRUDOS_DE_LA_BASE);
     expect(Object.keys(CONTEXTO_DECLARADO).length).toBeLessThanOrEqual(MAXIMOS.CONTEXTO_DECLARADO);
     expect(Object.keys(SIN_MARCA_PROPIA).length).toBeLessThanOrEqual(MAXIMOS.SIN_MARCA_PROPIA);
+    expect(Object.keys(OK_SIN_EFECTO_POR_DISENO).length).toBeLessThanOrEqual(MAXIMOS.OK_SIN_EFECTO_POR_DISENO);
+    expect(Object.keys(EN_LA_SUCURSAL_VACIA).length).toBeLessThanOrEqual(MAXIMOS.EN_LA_SUCURSAL_VACIA);
   });
 
   it("toda mutación con un id del cliente se ejerce con ids ajenos de OTRA EMPRESA (no queda ninguna que solo se pruebe sin sesión)", () => {

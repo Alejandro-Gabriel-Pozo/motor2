@@ -148,6 +148,8 @@ const VALORES: Readonly<Record<string, Valor>> = {
   hastaIn: () => new Date(),
   loteVencimiento: () => null,
   factorConversion: () => 2,
+  // Los reportes por período aceptan una sección y un producto para filtrar: ids del cliente.
+  filtros: (k) => ({ seccionId: k.seccionId, productoId: k.productoId }),
   desdeParam: () => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
   hastaParam: () => new Date(),
   cuit: () => "20-12345678-9",
