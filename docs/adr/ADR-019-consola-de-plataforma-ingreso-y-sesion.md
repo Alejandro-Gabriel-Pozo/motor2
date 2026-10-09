@@ -47,9 +47,16 @@ Nada de esto se escribe jamás en un registro, en una auditoría ni en un mensaj
   a pedido del dueño 2026-10-09, pendiente de su confirmación explícita. Duplica el margen contra el bloqueo sin cuadruplicar la superficie de adivinanza: unos
   50 intentos por hora sobre 10⁶ y sigue faltando el TOTP; el techo de correo sube respecto de 5 porque ya no hay invalidación y un anónimo tarda más en
   agotarlo). Se cuenta **dentro de la transacción**, bajo el cerrojo de la fila del administrador (`FOR UPDATE`): pedidos en paralelo no lo superan. Además, un
-  cupo **por origen** (IP de `x-forwarded-for`, 6 pedidos cada 10 minutos, en memoria y por instancia: best effort) frena el bucle de un solo origen. **Residuo
-  declarado:** quien pide desde muchas IP todavía puede agotar el techo del administrador; el cierre real es el firewall de Vercel (E.6) y el administrador
-  conserva sus códigos de recuperación para el segundo factor.
+  cupo **por origen** (IP de `x-forwarded-for`, en memoria y por instancia: best effort) frena el bucle de un solo origen. **Corrección (auditoría intermedia,
+  I-1, 2026-10-09):** la primera versión daba 6 pedidos cada 10 minutos (36 por hora) contra un techo de 10 por hora que se cuenta sobre TODOS los códigos, vengan
+  de quien vengan: una sola IP dejaba sin código al administrador, justo lo que S-08 quería cerrar. El cupo por origen ahora se **deriva** del techo
+  (`core/plataforma/limites.ts`): ventana de **una hora** (la que cuenta el techo) y **4 pedidos** por ventana, porque un limitador de ventana fija admite en el
+  peor caso dos ventanas dentro de una misma hora móvil (ráfaga al final de una y al principio de la siguiente) y dos ventanas tienen que sumar menos que el
+  techo. Una IP escribe a lo sumo 8 códigos por hora; al administrador le quedan al menos 2. **Residuo declarado (B10):** quien pide desde MUCHAS IP distintas
+  (o repartido entre instancias, o desde una instancia recién arrancada) todavía puede agotar el techo del administrador: **no está cerrado**. El cierre real es
+  el firewall de Vercel (E.6, límite por IP al `/login` de la consola) y contar por origen en la base (columna `origen` en `CodigoDeIngresoPlataforma`, [MIG],
+  sin autorización): ninguno está hecho. Mientras tanto el administrador conserva sus códigos de recuperación para el segundo factor, pero NO sirven en lugar
+  del código del mail.
 - **5 fallos del segundo factor** bloquean al administrador **15 minutos**.
 - El TOTP no se repite (se guarda el último paso aceptado) y acepta el paso anterior y el siguiente por desfase de reloj.
 - El email desconocido ve **exactamente** la misma pantalla que uno conocido: la consola no revela quién es administrador. No se envía ningún mail a quien

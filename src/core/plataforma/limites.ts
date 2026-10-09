@@ -14,10 +14,21 @@ export const BLOQUEO_POR_FALLOS_MS = 15 * 60 * 1000;
  * fila del administrador (nunca fuera de la transacción).
  */
 export const MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA = 10;
-/** Por ORIGEN (IP de `x-forwarded-for`), en memoria y por instancia (best effort, como el limitador de mutaciones): cuántos pedidos de código acepta la consola. */
-export const MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN = 6;
-export const VENTANA_DE_PEDIDOS_POR_ORIGEN_MS = 10 * 60 * 1000;
 export const VENTANA_DE_PEDIDOS_MS = 60 * 60 * 1000;
+/**
+ * Por ORIGEN (IP de `x-forwarded-for`), en memoria y por instancia (best effort, como el limitador de mutaciones): cuántos pedidos de código acepta la consola.
+ *
+ * El techo del administrador se cuenta sobre TODOS los códigos de la hora, vengan de quien vengan; si un solo origen pudiera llenarlo, un anónimo con una IP le
+ * dejaría sin código al administrador (I-1 de la auditoría intermedia: el cupo de antes, 6 cada 10 minutos, dejaba pasar 36 por hora contra un techo de 10). Por
+ * eso el cupo por origen se DERIVA del techo y de su ventana, y no se elige aparte:
+ *  - la ventana es la misma hora que cuenta el techo (`VENTANA_DE_PEDIDOS_MS`: el limitador por origen usa ESA constante, no una propia), y
+ *  - el limitador es de ventana FIJA: en cualquier hora móvil caben, en el peor caso, dos ventanas (una ráfaga al final de una y otra al principio de la siguiente),
+ *    así que el tope por ventana es lo que deja que DOS ventanas sumen estrictamente menos que el techo: al administrador siempre le queda al menos un lugar.
+ * Con el techo en 10 el tope es 4 (en cualquier hora, una IP escribe a lo sumo 8 códigos; en rigor 7, porque el pedido que ancla la primera ventana ya salió de
+ * la hora, pero se cuenta con las dos ventanas enteras por margen). Lo que NO cierra: con muchas IP distintas, o repartido entre
+ * instancias, el techo sigue agotable; el cierre de verdad es el firewall de Vercel (E.6) y contar por origen en la base (columna `origen`, [MIG], B10).
+ */
+export const MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN = Math.floor((MAXIMO_DE_CODIGOS_PEDIDOS_POR_HORA - 1) / 2);
 
 export function codigoVencido(creadoEn: Date, ahora: Date): boolean {
   return ahora.getTime() - creadoEn.getTime() >= VIDA_DEL_CODIGO_DE_INGRESO_MS;

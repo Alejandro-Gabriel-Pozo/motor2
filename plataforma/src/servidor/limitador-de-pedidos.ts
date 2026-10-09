@@ -1,17 +1,20 @@
 import { crearLimitadorDeTasa } from "@/core/permisos/limitador-tasa";
-import { MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN, VENTANA_DE_PEDIDOS_POR_ORIGEN_MS } from "@/core/plataforma/limites";
+import { MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN, VENTANA_DE_PEDIDOS_MS } from "@/core/plataforma/limites";
 
 /**
  * Cupo por ORIGEN de los pedidos de código de ingreso (S-08, T4): complementa el tope por administrador (que se cuenta en la base, bajo el cerrojo de su fila) con
  * uno por la IP de quien pide, para que un anónimo que insiste con el email de un administrador se quede sin pedidos antes de agotarle el cupo al administrador.
+ * El valor NO es independiente del techo: se deriva de él (`core/plataforma/limites.ts`), porque con el cupo de antes (6 cada 10 minutos contra un techo de 10 por
+ * hora) una sola IP lo agotaba (I-1 de la auditoría intermedia).
  *
  * BEST EFFORT y declarado: vive en la memoria de la instancia (Vercel corre varias, sin estado compartido; se pierde en un arranque en frío), así que no frena a
- * quien tiene muchas IP ni a quien cae en instancias distintas. El cierre de verdad es el firewall de Vercel (E.6 del plan de endurecimiento: límite por IP al
- * `/login` de la consola). Lo que sí garantiza es la parte barata: un bucle desde un solo origen no le agota al administrador su techo de correo.
+ * quien tiene muchas IP ni a quien cae en instancias distintas: con muchas IP el techo del administrador SIGUE siendo agotable. El cierre de verdad es el firewall
+ * de Vercel (E.6 del plan de endurecimiento: límite por IP al `/login` de la consola) y contar por origen en la base (columna `origen`, [MIG], B10): ninguno está
+ * hecho. Lo que sí garantiza es la parte barata: un bucle desde un solo origen no le agota al administrador su techo de correo.
  *
  * Cuando se excede, la consola responde IGUAL (misma pantalla, misma cookie): solo que no prepara ni manda nada. No se distingue de «el email no es de un administrador».
  */
-const limitador = crearLimitadorDeTasa(MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN, VENTANA_DE_PEDIDOS_POR_ORIGEN_MS);
+const limitador = crearLimitadorDeTasa(MAXIMO_DE_PEDIDOS_DE_CODIGO_POR_ORIGEN, VENTANA_DE_PEDIDOS_MS);
 
 /**
  * La IP de quien pide: el primer valor de `x-forwarded-for` (Vercel lo fija con la IP del cliente). Sin la cabecera (desarrollo local, E2E) no hay origen que

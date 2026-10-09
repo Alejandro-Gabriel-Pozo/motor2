@@ -29,8 +29,10 @@ import { verificarTotp } from "@/core/plataforma/totp";
  *  - Nada se guarda ni se devuelve en claro: los códigos se guardan como HMAC con el secreto del servidor, las sesiones como SHA-256 del token.
  *  - Los intentos se reservan de forma atómica ANTES de comparar: mil pedidos en paralelo no consiguen más intentos que los permitidos.
  *  - El código del mail pertenece al NAVEGADOR que lo pidió (S-08): se comprueba con el `PedidoDeIngreso` de su cookie (ver `core/plataforma/pedido-de-ingreso.ts`), nunca
- *    como «el último vigente del administrador». Un anónimo que conoce el email de un administrador no le invalida el código, no le gasta los intentos y no le quita
- *    el cupo de pedidos que el administrador alcanza a usar (el tope se cuenta bajo el cerrojo de su fila).
+ *    como «el último vigente del administrador». Un anónimo que conoce el email de un administrador no le invalida el código ni le gasta los intentos. El techo de
+ *    pedidos por hora (que se cuenta bajo el cerrojo de la fila del administrador) es de TODOS los pedidos, vengan de quien vengan: un anónimo con UNA sola IP no
+ *    puede agotarlo porque el cupo por origen se deriva de él (`core/plataforma/limites.ts`: dos ventanas del cupo suman menos que el techo). Con MUCHAS IP
+ *    distintas (o repartido entre instancias) sí se puede agotar: ese hueco sigue abierto (B10) hasta el firewall de Vercel (E.6) y la columna de origen ([MIG]).
  */
 export interface DependenciasDeIngreso {
   ahora: () => Date;
