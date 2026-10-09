@@ -63,7 +63,8 @@ export const GRUPOS_NAV: GrupoNav[] = [
     label: "Carta",
     items: [
       { href: "/carta", label: "Carta pública", accion: "carta_ver", panel: "sucursal" },
-      { href: "/carta/agrupados", label: "Ítems agrupados de la carta", accion: "carta_items_agrupados", panel: "empresa" },
+      // S-10/D1 (O.59): los ítems agrupados son de la carta PROPIA de la sucursal activa (clave de contexto sucursal): viven en el panel de la sucursal, junto a «Carta pública».
+      { href: "/carta/agrupados", label: "Ítems agrupados de la carta", accion: "carta_items_agrupados", panel: "sucursal" },
       { href: "/carta/portal", label: "Portal de sucursales", accion: "carta_portal", panel: "empresa" },
       { href: "/carta/tema", label: "Tema de la carta", accion: "carta_tema", panel: "sucursal" },
     ],

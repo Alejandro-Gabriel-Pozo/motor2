@@ -26,10 +26,11 @@ export async function cambiarDatosDePromo(db: Prisma.TransactionClient, args: Da
 }
 
 /**
- * Da de alta una promo de la empresa y la deja PRENDIDA en la sucursal desde la que se crea (su fila de `PromoCartaSucursal`, con los valores por defecto:
- * activa, sin precio local); las demás sucursales la prenden cuando quieran. Devuelve el id, para la auditoría.
+ * Da de alta una promo de la empresa y le crea la fila de la sucursal desde la que se crea (`PromoCartaSucursal`, sin precio local): PRENDIDA si `prendida` (quien la crea
+ * puede prender promos ALLÍ, `carta_promo_activar`) y APAGADA si no (S-10/D1, fila O.59: definir la promo es de la empresa, prenderla es de la sucursal). Las demás
+ * sucursales la prenden cuando quieran. Devuelve el id, para la auditoría.
  */
-export async function crearPromoPrendidaEnSucursal(db: Prisma.TransactionClient, args: DatosDePromo & { sucursalId: string }): Promise<{ id: string }> {
+export async function crearPromoEnSucursal(db: Prisma.TransactionClient, args: DatosDePromo & { sucursalId: string; prendida: boolean }): Promise<{ id: string }> {
   const creada = await db.promoCarta.create({
     data: {
       seccionCartaId: args.seccionCartaId,
@@ -37,7 +38,7 @@ export async function crearPromoPrendidaEnSucursal(db: Prisma.TransactionClient,
       descripcion: args.descripcion,
       precio: args.precio,
       orden: args.orden,
-      sucursales: { create: { sucursalId: args.sucursalId } },
+      sucursales: { create: { sucursalId: args.sucursalId, activa: args.prendida } },
     },
   });
   return { id: creada.id };

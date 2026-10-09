@@ -9,7 +9,7 @@ import { cambiarOrdenDeOpcionDeItemAgrupado } from "@/server/persistencia/carta/
  * Caso de uso «cambiar el orden de una opción de un ítem agrupado» (docs/plan-agrupacion-items-carta-2026-09-24.md, M5; Hito 5, bloque D, `docs/plan-hito-5-pureza.md`
  * §6.1). Es el cuerpo que antes vivía en línea en la Server Action `actualizarOrdenOpcionItemAgrupadoCarta` (`src/server/actions/carta/items-agrupados.ts`), movido TAL
  * CUAL: una lectura y una escritura con la base del contexto, sin transacción ni auditoría. La Server Action quedó como adaptador
- * (`conPermisoDeEmpresa("carta_items_agrupados")` → `guardComandoActualizarOrdenOpcionItemAgrupadoCarta` → este caso de uso → `revalidarCartasPublicas` si salió bien →
+ * (`conPermiso("carta_items_agrupados")` → `guardComandoActualizarOrdenOpcionItemAgrupadoCarta` → este caso de uso → `revalidarCartasPublicas` si salió bien →
  * `aResultadoAccion`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos ni el formato del orden (el guard, antes de leer). Las opciones son PROPIAS de

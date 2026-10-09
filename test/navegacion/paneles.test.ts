@@ -54,7 +54,8 @@ describe("panelDeRuta: el panel de la pantalla abierta", () => {
     ["/catalogo/categorias", "empresa"],
     ["/catalogo/margen-objetivo", "empresa"],
     ["/administracion/roles", "empresa"],
-    ["/carta/agrupados", "empresa"],
+    // S-10/D1 (O.59): los ítems agrupados son de la carta propia de la sucursal activa (clave de contexto sucursal): pasaron del panel de empresa al de sucursal.
+    ["/carta/agrupados", "sucursal"],
     ["/carta/tema", "sucursal"],
     ["/carta", "sucursal"],
     ["/movimientos/compra", "sucursal"],

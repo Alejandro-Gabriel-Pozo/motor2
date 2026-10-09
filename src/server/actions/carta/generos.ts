@@ -2,7 +2,7 @@
 
 import { guardComandoGuardarGeneroCarta } from "@/core/features/carta/generos.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
-import { conPermisoDeEmpresa } from "../con-permiso";
+import { conPermiso } from "../con-permiso";
 import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { actualizarActivoGeneroCartaCasoDeUso } from "./casos-de-uso/actualizar-activo-genero-carta";
 import { guardarGeneroCartaCasoDeUso } from "./casos-de-uso/guardar-genero-carta";
@@ -13,7 +13,7 @@ import { revalidarCartasPublicas } from "./revalidar";
  * carta, tanto productos sueltos como ítems agrupados que comparten género ("Cerveza"). No
  * implican precio ni sustituibilidad (eso lo sigue manejando `ItemAgrupadoCarta`); no son `Grupo` (Insumo/stock) ni
  * `CategoriaProducto` (que no ubica nada en la carta). Solo escriben en `GeneroCarta`. Son PROPIOS de cada sucursal (ADR-009, C3): se crean y
- * se editan siempre en la sucursal activa. Gate: `carta_generos`.
+ * se editan siempre en la sucursal activa. Gate: `carta_generos`, de contexto SUCURSAL desde S-10/D1 (fila O.59): se evalúa en la sucursal donde se escribe, no en «alguna membresía de la empresa».
  *
  * Desde el Hito 5 de la pureza (bloque D, `docs/plan-hito-5-pureza.md` §6.1) las dos acciones son adaptadores finos de sus casos de uso
  * (`./casos-de-uso/{guardar-genero-carta,actualizar-activo-genero-carta}.ts`; escrituras en server/persistencia/carta/generos.ts; el formato en
@@ -28,12 +28,12 @@ export interface DatosGeneroCarta {
 }
 
 /**
- * Alta (sin `id`) o edición (con `id`) de un género de la sucursal activa. Permiso (`conPermisoDeEmpresa("carta_generos")`) → formato de los datos
+ * Alta (sin `id`) o edición (con `id`) de un género de la sucursal activa. Permiso (`conPermiso("carta_generos")`) → formato de los datos
  * (`guardComandoGuardarGeneroCarta`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/guardar-genero-carta.ts`) → revalidar la carta pública si salió bien →
  * `aResultadoAccion` y el id y el nombre para el `ResultadoConId`.
  */
 export async function guardarGeneroCarta(datos: DatosGeneroCarta): Promise<ResultadoConId> {
-  return conPermisoDeEmpresa<ResultadoConId>("carta_generos", async (ctx) => {
+  return conPermiso<ResultadoConId>("carta_generos", async (ctx) => {
     const comando = guardComandoGuardarGeneroCarta(datos);
     if (!comando.ok) return error(comando.mensaje);
     const r = await guardarGeneroCartaCasoDeUso(ctx, comando.valor);
@@ -48,7 +48,7 @@ export async function guardarGeneroCarta(datos: DatosGeneroCarta): Promise<Resul
  * (`casos-de-uso/actualizar-activo-genero-carta.ts`) → revalidar si salió bien → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
  */
 export async function actualizarActivoGeneroCarta(generoCartaId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("carta_generos", async (ctx) => {
+  return conPermiso("carta_generos", async (ctx) => {
     const resultado = await actualizarActivoGeneroCartaCasoDeUso(ctx, { generoCartaId, activo });
     if (resultado.ok) revalidarCartasPublicas();
     return aResultadoAccion(resultado);

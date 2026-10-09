@@ -4,7 +4,8 @@ import { mensajePisoDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-pr
 import type { ComandoGuardarPromoCarta, ResultadoGuardarPromoCarta } from "@/core/features/carta/promos.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { cambiarDatosDePromo, crearPromoPrendidaEnSucursal } from "@/server/persistencia/carta/promos";
+import { requierePermiso } from "@/server/acceso/gate";
+import { cambiarDatosDePromo, crearPromoEnSucursal } from "@/server/persistencia/carta/promos";
 
 /**
  * Caso de uso «guardar una promo de la empresa» (alta o edición; Hito 4 de la pureza, bloque 4.2, paso H4C-2 — `docs/plan-hito-4-pureza.md` §3). Es el cuerpo que
@@ -18,14 +19,15 @@ import { cambiarDatosDePromo, crearPromoPrendidaEnSucursal } from "@/server/pers
  *
  * Orden: 1. la sección de carta («No se encontró la sección de carta.»); 2a. edición (`id`): la promo («No se encontró la promo.», leída con sus cupos), el piso
  * de sus cupos y, en UNA transacción, sus cinco datos y, SOLO si el precio cambió, la fila de auditoría del precio (del anterior al nuevo); 2b. alta: en UNA
- * transacción la promo prendida en la sucursal activa y la fila de auditoría del precio (de `null` al pedido; una promo nueva no tiene cupos: sin piso).
+ * transacción la promo, su fila de la sucursal activa (prendida si quien la crea tiene `carta_promo_activar` ALLÍ —S-10/D1, O.59—, apagada si no) y la fila de auditoría del precio
+ * (de `null` al pedido; una promo nueva no tiene cupos: sin piso).
  *
  * O.42 (Hito 4, bloque D; CAMBIA COMPORTAMIENTO, aprobado por el dueño el 2026-10-08): la edición mira el piso de $0,01 por unidad del peor caso de los cupos
  * VIGENTES de la promo (`pisoDePrecioDePromo`/`mensajePisoDePromo`, `core/carta/piso-de-promo.ts`, los mismos que usan los cupos y el precio local) y rechaza con
  * el mismo mensaje (`BAJO_EL_PISO`, con el título que se está guardando) sin escribir nada. Antes, el precio de la empresa de una promo con 3 unidades de cupo
  * podía bajar a $0,01 (hallazgo que fijaba la huella de dinero del tramo C). Sin cupos no hay piso. Red: `test/carta/promo-edicion-piso.test.ts`.
  *
- * @contract Deja la promo (nueva, prendida en la sucursal activa, o la existente con sus datos nuevos, con el precio en o sobre el piso de sus cupos) con el registro de auditoría de su precio si cambió: los dos o ninguno.
+ * @contract Deja la promo (nueva, con su fila en la sucursal activa prendida solo si quien la crea puede prenderla allí, o la existente con sus datos nuevos, con el precio en o sobre el piso de sus cupos) con el registro de auditoría de su precio si cambió: los dos o ninguno.
  * @idempotency No aplica — un alta repetida crea otra promo (no se deduplica por título, como antes); repetir una edición vuelve a escribir los mismos datos (sin fila de auditoría nueva).
  * @transaction `actor.transaccion` (READ COMMITTED): la escritura y su auditoría juntas; las lecturas previas (sección, promo) van con `actor.db`, como antes.
  * @sideEffects registrarCambioAuditado (PromoCarta.precio, del anterior —o `null` en el alta— al nuevo), en la misma transacción. La revalidación de la carta
@@ -53,12 +55,20 @@ export async function guardarPromoCartaCasoDeUso(
     });
     return exito(`Promo "${comando.titulo}" guardada.`, null);
   }
-  // La sucursal desde la que se crea la ofrece desde el primer momento; las demás la prenden cuando quieran (opt-in, sin fila = no la ofrecen).
+  // S-10/D1 (O.59): definir la promo es de la EMPRESA (`carta_promo_definir`, vale con la membresía de cualquier sucursal); PRENDERLA en una sucursal es de ESA sucursal
+  // (`carta_promo_activar`). La sucursal desde la que se crea la ofrece desde el primer momento SOLO si quien la crea puede prenderla allí; si no, la fila de esa sucursal nace
+  // APAGADA (la promo existe y la prende quien pueda). Las demás la prenden cuando quieran (opt-in, sin fila = no la ofrecen). La clave se lee con la base del contexto, fuera de la transacción.
+  const prendida = (await requierePermiso(actor.usuarioId, actor.sucursalId, "carta_promo_activar", actor.db)).ok;
   await actor.transaccion(async (tx) => {
-    const creada = await crearPromoPrendidaEnSucursal(tx, { ...datos, sucursalId: actor.sucursalId });
+    const creada = await crearPromoEnSucursal(tx, { ...datos, sucursalId: actor.sucursalId, prendida });
     await auditarPrecioDePromo(tx, actor.usuarioId, creada.id, comando.titulo, null, comando.precio);
   });
-  return exito(`Promo "${comando.titulo}" creada en "${seccion.nombre}" y prendida en esta sucursal.`, null);
+  return exito(
+    prendida
+      ? `Promo "${comando.titulo}" creada en "${seccion.nombre}" y prendida en esta sucursal.`
+      : `Promo "${comando.titulo}" creada en "${seccion.nombre}". Queda apagada en esta sucursal: la prende quien tenga el permiso de prender promos.`,
+    null,
+  );
 }
 
 /** Deja en la auditoría quién cambió (o definió) el precio de una promo de la empresa y cuándo; va dentro de la transacción del cambio. */

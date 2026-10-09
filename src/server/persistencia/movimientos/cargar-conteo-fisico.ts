@@ -21,10 +21,12 @@ export interface ConteoFisicoCargado {
   conteoReal: Prisma.Decimal;
   diferencia: Prisma.Decimal;
   detalle: string | null;
+  /** Para la descripción de la fila de auditoría (S-04/S-09: cancelar y resolver con ajuste se auditan); el nombre de la sucursal viene del actor. */
+  productoNombre: string;
 }
 
 export async function cargarConteoFisico(tx: Prisma.TransactionClient, conteoId: string): Promise<ConteoFisicoCargado | null> {
-  return tx.conteoFisico.findUnique({
+  const conteo = await tx.conteoFisico.findUnique({
     where: { id: conteoId },
     select: {
       id: true,
@@ -36,6 +38,10 @@ export async function cargarConteoFisico(tx: Prisma.TransactionClient, conteoId:
       conteoReal: true,
       diferencia: true,
       detalle: true,
+      producto: { select: { nombre: true } },
     },
   });
+  if (!conteo) return null;
+  const { producto, ...resto } = conteo;
+  return { ...resto, productoNombre: producto.nombre };
 }

@@ -9,7 +9,7 @@ import { fijarActivoDeItemAgrupadoCarta } from "@/server/persistencia/carta/item
  * Caso de uso «apagar o prender un ítem agrupado de la carta» (docs/plan-agrupacion-items-carta-2026-09-24.md, M5; Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1). Es
  * el cuerpo que antes vivía en línea en la Server Action `actualizarActivoItemAgrupadoCarta` (`src/server/actions/carta/items-agrupados.ts`), movido TAL CUAL: la lectura
  * y la escritura con la base del contexto, sin transacción ni auditoría (el estado prendido/apagado no es plata). Nunca se borra un ítem agrupado: apagado deja de salir
- * en la carta, y sus opciones tampoco salen sueltas (D3). La Server Action quedó como adaptador (`conPermisoDeEmpresa("carta_items_agrupados")` → este caso de uso →
+ * en la carta, y sus opciones tampoco salen sueltas (D3). La Server Action quedó como adaptador (`conPermiso("carta_items_agrupados")` → este caso de uso →
  * `revalidarCartasPublicas` si salió bien → `aResultadoAccion`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos. Los ítems agrupados son PROPIOS de cada sucursal (ADR-009, C3): la lectura mira

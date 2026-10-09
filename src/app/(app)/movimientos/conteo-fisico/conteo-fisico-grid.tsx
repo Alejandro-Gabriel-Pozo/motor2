@@ -55,8 +55,13 @@ function claveBase(f: { productoId: string; loteVencimiento: string | null }) {
   return `${f.productoId}|${f.loteVencimiento ?? ""}`;
 }
 
-export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; filasBase: FilaBaseConteo[] }) {
+/**
+ * `puedeAjustar`: cortesía de la interfaz, NO barrera (S-09, D3): la acción exige `proceso_ajuste` para aplicar la diferencia (AJUSTAR), así que sin él la grilla no la ofrece y
+ * arranca en «Falta movimiento» (queda pendiente y lo resuelve quien puede ajustar). El servidor rechaza igual una fila AJUSTAR de quien no tiene la clave.
+ */
+export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { seccionId: string; filasBase: FilaBaseConteo[]; puedeAjustar: boolean }) {
   const router = useRouter();
+  const accionesOfrecidas = puedeAjustar ? ACCIONES : ACCIONES.filter((a) => a.value !== "AJUSTAR");
   const [fechaConteo, setFechaConteo] = useState(hoyISO());
   const [estados, setEstados] = useState<Record<string, EstadoFila>>({});
   const [filasManuales, setFilasManuales] = useState<FilaManual[]>([]);
@@ -80,7 +85,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
   }
 
   function estadoDe(key: string): EstadoFila {
-    return estados[key] ?? { conteoReal: "", accion: "AJUSTAR", detalle: "" };
+    return estados[key] ?? { conteoReal: "", accion: puedeAjustar ? "AJUSTAR" : "FALTA_MOVIMIENTO", detalle: "" };
   }
   function actualizarEstado(key: string, cambios: Partial<EstadoFila>) {
     setEstados((prev) => ({ ...prev, [key]: { ...estadoDe(key), ...cambios } }));
@@ -215,7 +220,9 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
             <th className="px-2 text-right">Diferencia</th>
             <th className="px-2">
               Acción
-              <AyudaIcono texto="Ajustar: escribe el movimiento de corrección ahora, el stock queda en lo contado. Falta movimiento: deja el conteo pendiente SIN tocar stock — usalo si lo que falta es cargar una compra/venta real, para no contar dos veces. Descartar: no ajusta y no cuenta como conteo válido." />
+              <AyudaIcono
+                texto={`${puedeAjustar ? "Ajustar: escribe el movimiento de corrección ahora, el stock queda en lo contado. " : "Ajustar el stock exige el permiso de Ajuste: si hay diferencia, registrala como «Falta movimiento» y la resuelve un administrador. "}Falta movimiento: deja el conteo pendiente SIN tocar stock — usalo si lo que falta es cargar una compra/venta real, para no contar dos veces. Descartar: no ajusta y no cuenta como conteo válido.`}
+              />
             </th>
             <th className="px-2">Detalle</th>
             <th><span className="sr-only">Acciones</span></th>
@@ -252,7 +259,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase }: { seccionId: string; 
                     onChange={(e) => actualizarEstado(f.key, { accion: e.target.value as AccionConteo })}
                     className="rounded border px-2 py-1.5 text-sm"
                   >
-                    {ACCIONES.map((a) => (
+                    {accionesOfrecidas.map((a) => (
                       <option key={a.value} value={a.value} title={a.titulo}>
                         {a.label}
                       </option>

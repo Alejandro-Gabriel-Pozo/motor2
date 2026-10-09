@@ -2,7 +2,7 @@
 
 import { guardComandoActualizarOrdenOpcionItemAgrupadoCarta, guardComandoGuardarItemAgrupadoCarta } from "@/core/features/carta/items-agrupados.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
-import { conPermisoDeEmpresa } from "../con-permiso";
+import { conPermiso } from "../con-permiso";
 import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { actualizarActivoItemAgrupadoCartaCasoDeUso } from "./casos-de-uso/actualizar-activo-item-agrupado-carta";
 import { agregarOpcionItemAgrupadoCartaCasoDeUso } from "./casos-de-uso/agregar-opcion-item-agrupado-carta";
@@ -58,12 +58,12 @@ export interface DatosItemAgrupadoCarta {
 }
 
 /**
- * Alta (sin `id`) o edición (con `id`) de un ítem agrupado. Permiso (`conPermisoDeEmpresa("carta_items_agrupados")`) → formato de los datos
+ * Alta (sin `id`) o edición (con `id`) de un ítem agrupado. Permiso (`conPermiso("carta_items_agrupados")`: S-10/D1, fila O.59, la clave es de contexto SUCURSAL) → formato de los datos
  * (`guardComandoGuardarItemAgrupadoCarta`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/guardar-item-agrupado-carta.ts`, que revalida la carta pública por
  * `avisos.cartaCambio`) → `aResultadoAccion` y el id y el nombre para el `ResultadoConId`.
  */
 export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): Promise<ResultadoConId> {
-  return conPermisoDeEmpresa<ResultadoConId>("carta_items_agrupados", async (ctx) => {
+  return conPermiso<ResultadoConId>("carta_items_agrupados", async (ctx) => {
     const comando = guardComandoGuardarItemAgrupadoCarta(datos);
     if (!comando.ok) return error(comando.mensaje);
     const r = await guardarItemAgrupadoCartaCasoDeUso(ctx, comando.valor, { cartaCambio: revalidarCartasPublicas });
@@ -74,7 +74,7 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
 
 /** Nunca se borra un ítem agrupado: se apaga (deja de salir en la carta, y sus opciones tampoco salen sueltas, D3). */
 export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: string, activo: boolean): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
+  return conPermiso("carta_items_agrupados", async (ctx) => {
     const resultado = await actualizarActivoItemAgrupadoCartaCasoDeUso(ctx, { itemAgrupadoCartaId, activo });
     if (resultado.ok) revalidarCartasPublicas();
     return aResultadoAccion(resultado);
@@ -88,7 +88,7 @@ export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: str
  * (`casos-de-uso/agregar-opcion-item-agrupado-carta.ts`) → revalidar si salió bien → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
  */
 export async function agregarOpcionItemAgrupadoCarta(itemAgrupadoCartaId: string, productoId: string, orden: number | string | null = null): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
+  return conPermiso("carta_items_agrupados", async (ctx) => {
     const resultado = await agregarOpcionItemAgrupadoCartaCasoDeUso(ctx, { itemAgrupadoCartaId, productoId, orden });
     if (resultado.ok) revalidarCartasPublicas();
     return aResultadoAccion(resultado);
@@ -96,7 +96,7 @@ export async function agregarOpcionItemAgrupadoCarta(itemAgrupadoCartaId: string
 }
 
 export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, orden: number | string | null): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
+  return conPermiso("carta_items_agrupados", async (ctx) => {
     const comando = guardComandoActualizarOrdenOpcionItemAgrupadoCarta({ opcionId, orden });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await actualizarOrdenOpcionItemAgrupadoCartaCasoDeUso(ctx, comando.valor);
@@ -107,7 +107,7 @@ export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, o
 
 /** Saca un producto de su ítem agrupado: se borra solo la referencia. El producto y su ContenidoCartaProducto no se tocan (D3). */
 export async function quitarOpcionItemAgrupadoCarta(opcionId: string): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("carta_items_agrupados", async (ctx) => {
+  return conPermiso("carta_items_agrupados", async (ctx) => {
     const resultado = await quitarOpcionItemAgrupadoCartaCasoDeUso(ctx, { opcionId });
     if (resultado.ok) revalidarCartasPublicas();
     return aResultadoAccion(resultado);

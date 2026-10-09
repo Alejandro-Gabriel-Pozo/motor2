@@ -5,7 +5,7 @@ import type { ComandoActualizarOrdenOpcionItemAgrupadoCarta, ComandoGuardarItemA
 
 /**
  * Guard de la feature «ítems agrupados de la carta» (convención «guard por feature», 2026-09-25; Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1). Formato del
- * comando, ANTES de tocar la base; lo llama la Server Action DENTRO de su `conPermisoDeEmpresa("carta_items_agrupados", …)`, así que el rechazo por permiso sigue
+ * comando, ANTES de tocar la base; lo llama la Server Action DENTRO de su `conPermiso("carta_items_agrupados",…)`, así que el rechazo por permiso sigue
  * llegando antes que el de formato. Puro: sin Prisma ni permisos.
  *
  * Solo las acciones cuyas validaciones iban TODAS antes de la primera lectura tienen guard: `guardarItemAgrupadoCarta` (el nombre, la descripción, los tags, el orden, el

@@ -9,7 +9,7 @@ import { quitarOpcionDeItemAgrupado } from "@/server/persistencia/carta/items-ag
  * Caso de uso «sacar un producto de su ítem agrupado» (docs/plan-agrupacion-items-carta-2026-09-24.md, M5; Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1). Es el
  * cuerpo que antes vivía en línea en la Server Action `quitarOpcionItemAgrupadoCarta` (`src/server/actions/carta/items-agrupados.ts`), movido TAL CUAL: se borra solo
  * la fila de referencia (`deleteMany`, así repetir el pedido no falla); el producto y su `ContenidoCartaProducto` no se tocan (D3). La Server Action quedó como
- * adaptador (`conPermisoDeEmpresa("carta_items_agrupados")` → este caso de uso → `revalidarCartasPublicas` si salió bien → `aResultadoAccion`).
+ * adaptador (`conPermiso("carta_items_agrupados")` → este caso de uso → `revalidarCartasPublicas` si salió bien → `aResultadoAccion`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos. Las opciones son PROPIAS de cada sucursal (ADR-009, C3): la lectura mira solo
  * la sucursal activa (`whereCartaDeSucursal`). Un id que no es texto hace lanzar a Prisma en la lectura, como antes (sin guard).

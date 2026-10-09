@@ -24,7 +24,7 @@ async function mensajeYaAgrupado(db: ContextoUsuario["db"], sucursalId: string, 
  * `docs/plan-hito-5-pureza.md` §6.1). Es el cuerpo que antes vivía en la función privada `agregarOpcion` de la Server Action
  * (`src/server/actions/carta/items-agrupados.ts`), movido TAL CUAL: la usaban la acción `agregarOpcionItemAgrupadoCarta` y el alta con productos de
  * `guardarItemAgrupadoCarta` (DA7), que ahora la llama como hermano (`guardar-item-agrupado-carta.ts`). La Server Action quedó como adaptador
- * (`conPermisoDeEmpresa("carta_items_agrupados")` → este caso de uso → `revalidarCartasPublicas` si salió bien → `aResultadoAccion`).
+ * (`conPermiso("carta_items_agrupados")` → este caso de uso → `revalidarCartasPublicas` si salió bien → `aResultadoAccion`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos. Sin guard: lee el ítem antes de mirar el producto y valida el orden después de
  * varias lecturas. Los ítems agrupados y sus opciones son PROPIOS de cada sucursal (ADR-009, C3): las lecturas miran solo la sucursal activa.

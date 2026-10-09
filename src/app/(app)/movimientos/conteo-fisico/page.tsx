@@ -27,6 +27,8 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
   // Cortesía de la interfaz, no barrera: la acción exige `conteo_resolver_pendiente` (clave propia, antes compartía `proceso_control`).
   const { editar: puedeResolverPendiente } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "conteo_resolver_pendiente", ctx.db);
+  // Igual: aplicar la diferencia al stock (AJUSTAR en la grilla, «Ajustar ahora» en un pendiente) exige además `proceso_ajuste` (S-09, D3).
+  const { editar: puedeAjustar } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "proceso_ajuste", ctx.db);
 
   const sp = unicosDeUrl(await searchParams);
   const [secciones, { items: historial }] = await Promise.all([
@@ -74,7 +76,7 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
         </form>
 
         {seccionElegida ? (
-          <ConteoFisicoGrid seccionId={seccionElegida} filasBase={filasBase} />
+          <ConteoFisicoGrid seccionId={seccionElegida} filasBase={filasBase} puedeAjustar={puedeAjustar} />
         ) : (
           <p className="text-sm text-neutral-500">Elegí una sección para ver su grilla de conteo.</p>
         )}
@@ -106,7 +108,7 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
                 <td className="px-2">{Number(c.diferencia) > 0 ? "+" : ""}{Number(c.diferencia)}</td>
                 <td className={`px-2 ${ESTADO_COLOR[c.estado]}`}>{c.estado}</td>
                 <td className="px-2 py-2">
-                  {c.estado === "PENDIENTE" && puedeResolverPendiente && <AccionesConteoPendiente conteoId={c.id} />}
+                  {c.estado === "PENDIENTE" && puedeResolverPendiente && <AccionesConteoPendiente conteoId={c.id} puedeAjustar={puedeAjustar} />}
                   {c.estado === "RESUELTO" && <BotonCancelarConteo conteoId={c.id} />}
                 </td>
               </tr>

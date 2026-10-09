@@ -1,7 +1,7 @@
 "use server";
 
 import { aResultadoAccion } from "@/core/resultado-caso";
-import { conPermisoDeEmpresa } from "../con-permiso";
+import { conPermiso } from "../con-permiso";
 import type { ResultadoAccion } from "../tipos";
 import { actualizarVisibleEnCartaCasoDeUso } from "./casos-de-uso/actualizar-visible-en-carta";
 import { guardarContenidoCartaProductoCasoDeUso } from "./casos-de-uso/guardar-contenido-carta-producto";
@@ -13,7 +13,7 @@ import { revalidarCartasPublicas } from "./revalidar";
  * y no hay imagen por producto: la carta solo dibuja la de la sección (docs/plan-carta-seccion-directa-2026-09-25.md). Solo escribe
  * en `ContenidoCartaProducto`; el producto (nombre, precio, categoría, disponibilidad) se sigue editando donde siempre. Sin fila =
  * no se muestra (D3): guardar el contenido de un PV es lo que lo hace aparecer. La carta es PROPIA de cada sucursal (ADR-009, C3): escribe siempre en
- * la sucursal activa (`ctx.sucursalId`), nunca en otra. Gate: `carta_contenido_producto`.
+ * la sucursal activa (`ctx.sucursalId`), nunca en otra. Gate: `carta_contenido_producto`, de contexto SUCURSAL desde S-10/D1 (fila O.59): se evalúa en la sucursal donde se escribe.
  *
  * Desde el Hito 5 de la pureza (bloque D, `docs/plan-hito-5-pureza.md` §6.1) las dos acciones son adaptadores finos de sus casos de uso
  * (`./casos-de-uso/{guardar-contenido-carta-producto,actualizar-visible-en-carta}.ts`; escrituras en server/persistencia/carta/contenido-producto.ts): el archivo
@@ -35,7 +35,7 @@ export interface DatosContenidoCarta {
 
 /** Permiso → caso de uso (`casos-de-uso/guardar-contenido-carta-producto.ts`: el producto, la validación, la sección, el género y el `upsert`) → revalidar si salió bien → `aResultadoAccion`. */
 export async function guardarContenidoCartaProducto(productoId: string, datos: DatosContenidoCarta): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("carta_contenido_producto", async (ctx) => {
+  return conPermiso("carta_contenido_producto", async (ctx) => {
     const resultado = await guardarContenidoCartaProductoCasoDeUso(ctx, { productoId, datos });
     if (resultado.ok) revalidarCartasPublicas();
     return aResultadoAccion(resultado);
@@ -48,7 +48,7 @@ export async function guardarContenidoCartaProducto(productoId: string, datos: D
  * (`casos-de-uso/actualizar-visible-en-carta.ts`) → revalidar si salió bien → `aResultadoAccion`.
  */
 export async function actualizarVisibleEnCarta(productoId: string, visibleEnCarta: boolean): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("carta_contenido_producto", async (ctx) => {
+  return conPermiso("carta_contenido_producto", async (ctx) => {
     const resultado = await actualizarVisibleEnCartaCasoDeUso(ctx, { productoId, visibleEnCarta });
     if (resultado.ok) revalidarCartasPublicas();
     return aResultadoAccion(resultado);

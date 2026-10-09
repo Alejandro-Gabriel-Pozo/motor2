@@ -10,7 +10,7 @@ import { fijarVisibleEnCarta } from "@/server/persistencia/carta/contenido-produ
  * `docs/plan-hito-5-pureza.md` §6.1). Es el cuerpo que antes vivía en línea en la Server Action `actualizarVisibleEnCarta`
  * (`src/server/actions/carta/contenido-producto.ts`), movido TAL CUAL: crea la fila si no existía (con el resto vacío); mostrar exige que el contenido de ESTA
  * sucursal ya tenga sección de carta (DA2: la fila de otra sucursal no cuenta, `whereCartaDeSucursal`). La Server Action quedó como adaptador
- * (`conPermisoDeEmpresa("carta_contenido_producto")` → este caso de uso → `revalidarCartasPublicas` si salió bien → `aResultadoAccion`).
+ * (`conPermiso("carta_contenido_producto")` → este caso de uso → `revalidarCartasPublicas` si salió bien → `aResultadoAccion`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos. Sin guard: solo recibe un id y un booleano, que nunca se validaron.
  *
