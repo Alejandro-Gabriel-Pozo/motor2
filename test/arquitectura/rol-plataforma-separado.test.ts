@@ -164,6 +164,54 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
     expect(fuente).toMatch(/PLATAFORMA_DATABASE_URL" \]\]; then\s+\[\[ -z "\$valor" \]\] \|\| fallar/);
   });
 
+  describe("M.1-C5: crear-rol-motor2-app.sql a prueba de Neon (solo bases locales y de CI)", () => {
+    const APP = "scripts/operaciones/crear-rol-motor2-app.sql";
+    /** El script sin comentarios y con LF: lo que realmente ejecuta psql, línea por línea. */
+    const comandosDe = (sql: string) =>
+      sql
+        .replace(/\r\n/g, "\n")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l !== "" && !l.startsWith("--"));
+
+    function chequear(sql: string): string[] {
+      const problemas: string[] = [];
+      const comandos = comandosDe(sql);
+      if (comandos[0] !== "\\set ON_ERROR_STOP on") problemas.push(`el primer comando es «${comandos[0]}», no \\set ON_ERROR_STOP on`);
+      const sinComentarios = comandos.join("\n");
+      const bloque = /^DO \$\$[\s\S]*?^\$\$;/m.exec(sinComentarios); // el PRIMER DO del script tiene que ser la guarda
+      const guarda = bloque?.index ?? -1;
+      const esGuardaDeBases = bloque !== null && /pg_database/.test(bloque[0]) && /motor2_dev/.test(bloque[0]) && /motor2_e2e/.test(bloque[0]) && /RAISE EXCEPTION/.test(bloque[0]);
+      if (!esGuardaDeBases) problemas.push("falta el DO de guarda que aborta si no existen las bases motor2_dev y motor2_e2e");
+      const primerRol = sinComentarios.search(/\b(CREATE|ALTER)\s+ROLE\b/i);
+      if (primerRol < 0) problemas.push("el script ya no crea el rol (sanidad)");
+      if (guarda >= 0 && primerRol >= 0 && primerRol < guarda) problemas.push("el CREATE/ALTER ROLE va ANTES de la guarda de bases");
+      const primerConnect = sinComentarios.search(/^\\connect\b/m);
+      if (guarda >= 0 && primerConnect >= 0 && primerConnect < guarda) problemas.push("el primer \\connect va antes de la guarda");
+      return problemas;
+    }
+
+    it("el script real: ON_ERROR_STOP es el PRIMER comando y el DO de guarda va antes de la primera mención de CREATE ROLE / ALTER ROLE", () => {
+      expect(chequear(leer(APP))).toEqual([]);
+      expect(chequear(leer(APP).replace(/\r?\n/g, "\r\n")), "con CRLF da otro resultado").toEqual([]);
+    });
+
+    it("el encabezado avisa «solo bases locales y de CI; NUNCA en Neon»", () => {
+      const encabezado = leer(APP).split(/\r?\n/).filter((l) => l.trim().startsWith("--")).join("\n");
+      expect(encabezado).toMatch(/solo bases locales y de CI/i);
+      expect(encabezado).toMatch(/NUNCA en Neon/);
+    });
+
+    it("el chequeo detecta los defectos de antes (SQL sintético): ON_ERROR_STOP tarde, ALTER ROLE antes de la guarda, sin guarda", () => {
+      const guarda = "DO $$\nBEGIN\n  IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'motor2_dev') OR NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'motor2_e2e') THEN\n    RAISE EXCEPTION 'x';\n  END IF;\nEND\n$$;";
+      const bien = `\\set ON_ERROR_STOP on\n${guarda}\nCREATE ROLE motor2_app LOGIN;\n\\connect motor2_dev\n`;
+      expect(chequear(bien)).toEqual([]);
+      expect(chequear(`CREATE ROLE motor2_app LOGIN;\n\\set ON_ERROR_STOP on\n${guarda}\n`).length).toBeGreaterThan(0); // ON_ERROR_STOP tarde
+      expect(chequear(`\\set ON_ERROR_STOP on\nALTER ROLE motor2_app PASSWORD 'x';\n${guarda}\n`)).toContain("el CREATE/ALTER ROLE va ANTES de la guarda de bases");
+      expect(chequear(`\\set ON_ERROR_STOP on\nCREATE ROLE motor2_app LOGIN;\n`)).toContain("falta el DO de guarda que aborta si no existen las bases motor2_dev y motor2_e2e");
+    });
+  });
+
   describe("M.1-C4: verificar-grants-m1.sql es de SOLO LECTURA (guarda con SQL real y sintético)", () => {
     const VERIFICADOR = "scripts/operaciones/verificar-grants-m1.sql";
 

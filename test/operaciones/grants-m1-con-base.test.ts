@@ -334,6 +334,31 @@ describe("M.1-C3: reversa granular (ida y vuelta, en una base real temporal)", (
   });
 });
 
+describe("M.1-C5: la guarda de crear-rol-motor2-app.sql (SOLO el DO de guarda; el script entero cambia el rol de todo el cluster y NO se corre contra Postgres real)", () => {
+  const guarda = () => (script("crear-rol-motor2-app.sql").match(/^DO \$\$[\s\S]*?^\$\$;/m) ?? [])[0] as string;
+  const correrGuarda = (texto: string) => ejecutarScript(texto, base.cliente, {}, escapar(base.cliente));
+
+  it("aborta si falta motor2_dev o motor2_e2e, y deja pasar cuando están las dos", async () => {
+    expect(guarda(), "no hay DO de guarda").toBeTruthy();
+    for (const base_ of ["motor2_dev", "motor2_e2e"]) {
+      await expect(correrGuarda(guarda().replaceAll(`'${base_}'`, `'no_existe_${process.pid}'`)), `sin ${base_} tendría que abortar`).rejects.toThrow(/M\.1[\s\S]*NUNCA en Neon/);
+    }
+    const locales = await base.cliente.query("SELECT 1 FROM pg_database WHERE datname IN ('motor2_dev', 'motor2_e2e')");
+    if (locales.rowCount === 2) await expect(correrGuarda(guarda())).resolves.toBe(1);
+  });
+
+  it("aborta si el servidor es de Neon (existe el rol neon_superuser); roles descartables dentro de una transacción que se deshace", async () => {
+    await base.cliente.query("BEGIN");
+    try {
+      await base.cliente.query("CREATE ROLE neon_superuser NOLOGIN");
+      await expect(correrGuarda(guarda())).rejects.toThrow(/NUNCA en Neon/);
+    } finally {
+      await base.cliente.query("ROLLBACK");
+    }
+    expect((await base.cliente.query("SELECT 1 FROM pg_roles WHERE rolname = 'neon_superuser'")).rowCount).toBe(0);
+  });
+});
+
 describe("M.1-C4: verificar-grants-m1.sql es de solo lectura y mide lo que dice", () => {
   type Fila = Record<string, unknown>;
   /** Corre el verificador DENTRO de una transacción READ ONLY (si escribiera algo, Postgres lo rechaza) y devuelve las filas de cada consulta. */
