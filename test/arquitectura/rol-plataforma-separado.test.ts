@@ -23,6 +23,8 @@ function archivos(dir: string): string[] {
 function sentencias(sql: string): string[] {
   return sql
     .replace(/--[^\n]*/g, "")
+    // M.1-C6: `... \gset` TERMINA la sentencia (sin `;`): sin esto, un GRANT que viniera justo después (`\if :x` + GRANT) quedaba pegado a la consulta anterior y el detector no lo veía.
+    .replace(/\\gset\b[^\n]*/g, ";")
     .replace(/^\s*\\[^\n]*/gm, "")
     .split(";")
     .map((s) => s.trim())
@@ -271,6 +273,11 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
     it("marca un GRANT de escritura sobre Empresa, nombrado o masivo, a motor2_app", () => {
       const sql = ['GRANT SELECT, INSERT, UPDATE, DELETE ON "Empresa", "UsuarioEmpresa" TO motor2_app;', "GRANT ALL ON ALL TABLES IN SCHEMA public TO motor2_app;"].join("\n");
       expect(grantsDeEscrituraSobreEmpresa(sql)).toHaveLength(2);
+    });
+
+    it("M.1-C6: ve un GRANT que sigue a un `\\gset` (que termina la sentencia sin `;`)", () => {
+      const sql = ['SELECT EXISTS (SELECT 1) AS existe \\gset', "\\if :existe", '  GRANT INSERT, UPDATE, DELETE ON "Empresa" TO motor2_app;', "\\endif"].join("\n");
+      expect(grantsDeEscrituraSobreEmpresa(sql)).toHaveLength(1);
     });
 
     it("no marca lecturas, otras tablas, otro rol ni un comentario", () => {
