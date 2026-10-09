@@ -16,7 +16,10 @@ import ts from "typescript";
  * ellos salen del `schema.prisma` (no se mantienen a mano).
  *
  * Qué se vigila, por AST (un comentario o un string no cuenta):
- *  1. FILA ENTERA: un `findMany`/`findFirst`/`findUnique` sobre un modelo sensible sin `select`, o un `include`/`select` con `{ <relación a un modelo sensible>: true }`.
+ *  1. FILA ENTERA: un `findMany`/`findFirst`/`findUnique` sobre un modelo sensible sin `select`, o un `include`/`select` que pide una relación a un modelo sensible sin un `select` propio:
+ *     `{ rel: true }`, `{ rel: { include: … } }`, `{ rel: { where: … } }`, `{ rel: {} }` o `{ rel: <variable> }` (M-24 de la auditoría intermedia: antes solo se veía `true` y el `include`
+ *     anidado —como `insumo.findMany({ include: { productos: { include: { unidadStock: true } } } })` de `catalogo/unidades.ts`, que este mismo commit reduce con `select`— pasaba).
+ *     `_count: { select: { rel: true } }` cuenta filas y no las trae, así que no se marca.
  *     - En los archivos "use server" de `src/server/actions`: CERO excepciones (son puertas HTTP).
  *     - En `src/server/consultas` y `src/server/lecturas`: solo las de `FILAS_ENTERAS_EN_EL_SERVIDOR`, cada una con su clase y su motivo. La fila se queda en el servidor porque la función
  *       devuelve un tipo propio armado campo a campo (clase `DTO`, y el test exige que la función DECLARE su tipo de retorno), o porque es la ficha que su pantalla dibuja entera con su
@@ -49,10 +52,13 @@ const FILAS_ENTERAS_EN_EL_SERVIDOR: Record<string, { clase: Clase; motivo: strin
   },
   "src/server/consultas/movimientos/stock-para-conteo.ts|producto.findMany sin select|listarStockParaConteo": DTO("FilaStockParaConteo"),
   "src/server/consultas/reportes/compras-registradas.ts|operacion.findMany sin select|listarComprasRegistradas": DTO("PaginaCompras, para `reporte_compras`"),
+  // M-24: las dos de abajo ya estaban a la vista pero el detector solo veía `rel: true`; ahora ve `rel: { include/where }` (la fila entera ANIDADA). Misma función, mismo DTO.
+  "src/server/consultas/reportes/compras-registradas.ts|include: { movimientos: { sin select } }|listarComprasRegistradas": DTO("PaginaCompras, para `reporte_compras`: las líneas se mapean campo a campo"),
   "src/server/consultas/reportes/historial-producto.ts|producto.findMany sin select|buscarProductoParaHistorial": DTO("FilaBusquedaProducto"),
   "src/server/consultas/reportes/historial-producto.ts|producto.findUnique sin select|obtenerHistorialProducto": DTO("HistorialProducto; el dinero se saca en la página con `reporte_historial_importes`"),
   "src/server/consultas/reportes/huecos-catalogo.ts|producto.findMany sin select|obtenerProblemasUnidadMezclada": DTO("ProblemaUnidadMezclada"),
   "src/server/consultas/reportes/rendimiento-recetas.ts|producto.findMany sin select|construirPools": DTO("Pool, interno del reporte de rendimiento"),
+  "src/server/consultas/reportes/rendimiento-recetas.ts|include: { insumoProducto: { sin select } }|construirPools": DTO("Pool, interno del reporte de rendimiento: el ingrediente se reduce a lo que el pool usa"),
   "src/server/consultas/reportes/resumen-operativo.ts|producto.findMany sin select|obtenerResumenOperativo": DTO("ResumenOperativo"),
   "src/server/consultas/reportes/valuacion.ts|producto.findMany sin select|calcularValuacionInventario": DTO("ReporteValuacionInventario"),
   "src/server/consultas/reportes/vencimientos.ts|producto.findMany sin select|generarReporteLotesProximosAVencer": DTO("FilaLoteProximoAVencer"),
@@ -168,7 +174,25 @@ interface Hallazgo {
   funcionTipada: boolean;
 }
 
-/** FILA ENTERA: lecturas de un modelo sensible sin `select` y relaciones sensibles pedidas con `true`. */
+/**
+ * Cómo se pide una relación sensible dentro de un `include`/`select`, si NO es con un `select` propio (M-24 de la auditoría intermedia: antes solo se veía `rel: true`, y
+ * `rel: { include: … }`, `rel: { where: … }` o `rel: {}` traían la fila entera igual y pasaban). Devuelve `undefined` si la relación va con su `select` literal (o con `false`), y la forma
+ * hallada si no: `rel: true`, `rel: { sin select }` (un objeto sin `select`) o `rel: <no literal>` (una variable, una condicional, un spread del que no se puede decir qué trae: falla cerrado).
+ */
+function formaDeFilaEntera(p: ts.ObjectLiteralElementLike, relaciones: ReadonlySet<string>): string | undefined {
+  if (ts.isSpreadAssignment(p)) return undefined; // un spread de un `select` ajeno: lo vigila el `select` de su origen
+  if (!ts.isIdentifier(p.name) || !relaciones.has(p.name.text)) return undefined;
+  const nombre = p.name.text;
+  if (ts.isShorthandPropertyAssignment(p)) return `${nombre}: <no literal>`;
+  if (!ts.isPropertyAssignment(p)) return undefined;
+  const valor = p.initializer;
+  if (valor.kind === ts.SyntaxKind.FalseKeyword) return undefined;
+  if (valor.kind === ts.SyntaxKind.TrueKeyword) return `${nombre}: true`;
+  if (ts.isObjectLiteralExpression(valor)) return tienePropiedad(valor, "select") ? undefined : `${nombre}: { sin select }`;
+  return `${nombre}: <no literal>`;
+}
+
+/** FILA ENTERA: lecturas de un modelo sensible sin `select` y relaciones sensibles pedidas con `true`, con un objeto sin `select` o con algo que no se puede leer. */
 function filasEnteras(codigo: string, ruta: string, relaciones: ReadonlySet<string>): Hallazgo[] {
   const fuente = ts.createSourceFile(ruta, codigo, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const salida: Hallazgo[] = [];
@@ -184,11 +208,14 @@ function filasEnteras(codigo: string, ruta: string, relaciones: ReadonlySet<stri
       }
     }
     const seleccion = objetoDeSeleccion(n);
-    if (seleccion) {
+    // `_count: { select: { movimientos: true } }` cuenta filas, no las trae: no es una fila entera.
+    const esConteo = ts.isPropertyAssignment(n) && ts.isPropertyAssignment(n.parent.parent) && ts.isIdentifier(n.parent.parent.name) && n.parent.parent.name.text === "_count";
+    if (seleccion && !esConteo) {
       for (const p of seleccion.objeto.properties) {
-        if (ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && relaciones.has(p.name.text) && p.initializer.kind === ts.SyntaxKind.TrueKeyword) {
+        const forma = formaDeFilaEntera(p, relaciones);
+        if (forma) {
           const f = funcionQueContiene(n);
-          salida.push({ clave: `${ruta}|${seleccion.etiqueta}: { ${p.name.text}: true }|${f.nombre}`, funcionTipada: f.tipada });
+          salida.push({ clave: `${ruta}|${seleccion.etiqueta}: { ${forma} }|${f.nombre}`, funcionTipada: f.tipada });
         }
       }
     }
@@ -290,6 +317,24 @@ describe("GT-3a — nada de filas enteras de modelos con un campo sensible", () 
     expect(claves("export const k = (db): X => db.proveedor.findUnique({ where: { id } });")).toEqual(["x.ts|proveedor.findUnique sin select|k"]);
     expect(filasEnteras("export const k = (db): X => db.proveedor.findUnique({ where: { id } });", "x.ts", relaciones)[0]!.funcionTipada).toBe(true);
     expect(claves("// db.producto.findMany({})\nexport const s = 'db.producto.findMany({})';")).toEqual([]);
+  });
+
+  it("el detector ve la fila entera ANIDADA: `rel: { include }`, `rel: { where }`, `rel: {}` y lo que no se puede leer (M-24 de la auditoría intermedia)", () => {
+    const claves = (c: string) => filasEnteras(c, "x.ts", relaciones).map((h) => h.clave);
+    // el caso real que la forma vieja no veía: `src/server/actions/catalogo/unidades.ts` (`insumo.findMany({ include: { productos: { where, include } } })`)
+    expect(claves("export async function g(db) { return db.insumo.findMany({ include: { productos: { where: {}, include: { unidadStock: true } } } }); }")).toEqual(["x.ts|include: { productos: { sin select } }|g"]);
+    expect(claves("export async function g(db) { return db.x.findMany({ include: { producto: { where: {} } } }); }")).toEqual(["x.ts|include: { producto: { sin select } }|g"]);
+    expect(claves("export async function g(db) { return db.x.findMany({ include: { producto: {} } }); }")).toEqual(["x.ts|include: { producto: { sin select } }|g"]);
+    // una relación pedida con una variable, una condicional o abreviada: no se puede decir qué trae → falla cerrado
+    expect(claves("export async function g(db, v) { return db.x.findMany({ include: { producto: v } }); }")).toEqual(["x.ts|include: { producto: <no literal> }|g"]);
+    expect(claves("export async function g(db, v) { return db.x.findMany({ include: { producto: v ? true : false } }); }")).toEqual(["x.ts|include: { producto: <no literal> }|g"]);
+    expect(claves("export async function g(db, producto) { return db.x.findMany({ include: { producto } }); }")).toEqual(["x.ts|include: { producto: <no literal> }|g"]);
+    // lo que NO es una fila entera: con su `select`, apagada con `false`, o un conteo (`_count` cuenta filas, no las trae)
+    expect(claves("export async function g(db) { return db.x.findMany({ include: { producto: { select: { id: true } } } }); }")).toEqual([]);
+    expect(claves("export async function g(db) { return db.x.findMany({ include: { producto: false } }); }")).toEqual([]);
+    expect(claves("export async function g(db) { return db.x.findMany({ select: { _count: { select: { movimientos: true } } } }); }")).toEqual([]);
+    // anidado dentro de un `select` de otra relación que sí lleva el suyo: se mira igual
+    expect(claves("export async function g(db) { return db.x.findMany({ select: { sucursal: { select: { productos: true } } } }); }")).toEqual(["x.ts|select: { productos: true }|g"]);
   });
 
   it("las Server Actions de lectura (archivos «use server») no devuelven ninguna fila entera de un modelo sensible", () => {

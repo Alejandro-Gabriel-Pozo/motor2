@@ -103,7 +103,8 @@ export async function detectarInsumosConUnidadMezclada(): Promise<
   if (!gate.ok) return { ok: false, mensaje: gate.mensaje };
 
   const insumos = await ctx.db.insumo.findMany({
-    include: { productos: { where: whereDisponibleEnAlguna(), include: { unidadStock: true } } },
+    // `select` y no `include: { unidadStock: true }`: la acción es una puerta HTTP y los `productos` son filas de `Producto` (costo de consignación, consignante). Solo se piden el nombre de la unidad (GT-3a, M-24).
+    include: { productos: { where: whereDisponibleEnAlguna(), select: { unidadStock: { select: { nombre: true } } } } },
   });
 
   const datos = insumos
