@@ -1,6 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer, sucursalesVisiblesPara } from "@/server/acceso/gate";
+import { MENSAJE_DEMASIADAS_LECTURAS, reportePesadoSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerResumenConsolidado } from "@/server/consultas/reportes/resumen-consolidado";
 import { TablaConsolidado } from "./tabla-consolidado";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -30,7 +31,10 @@ export default async function ConsolidadoPage() {
     );
   }
 
-  const filas = await obtenerResumenConsolidado(sucursales, ctx.db, new Date());
+  // S-28: reporte pesado (el período de TODAS las sucursales visibles): cupo por usuario antes de consultar nada (best effort, en memoria).
+  const ahora = new Date();
+  if (reportePesadoSinCupo(ctx.usuarioId, "resumen-consolidado", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  const filas = await obtenerResumenConsolidado(sucursales, ctx.db, ahora);
   const totales = filas.reduce(
     (acc, f) => ({
       ventasTotal: acc.ventasTotal + f.ventasTotal,

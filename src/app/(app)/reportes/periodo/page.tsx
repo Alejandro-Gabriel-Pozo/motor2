@@ -1,6 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { requierePermisoVer } from "@/server/acceso/gate";
+import { MENSAJE_DEMASIADAS_LECTURAS, reportePesadoSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
 import { obtenerUltimaCotizacionSinRomper } from "@/server/consultas/reportes/cotizacion-dolar";
 import { obtenerReportePorPeriodo } from "@/server/consultas/reportes/periodo";
@@ -23,6 +24,8 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   const sp = unicosDeUrl(await searchParams);
   // La hora se fija acá, en el borde (D.3b): el rango por defecto y la antigüedad del IPC del reporte se miden contra la misma.
   const ahora = new Date();
+  // S-28: reporte pesado (recorre el Kardex del rango): cupo por usuario antes de consultar nada (best effort, en memoria).
+  if (reportePesadoSinCupo(ctx.usuarioId, "periodo", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
   const rango = resolverRangoDeReporte(sp, ahora);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
