@@ -100,3 +100,9 @@ de archivos y de importadores (`test/arquitectura/server-sesion.test.ts`, regla 
 rol de ejecución (`test/arquitectura/invitacion-verifica-el-rol.test.ts`). Aceptar una invitación de usuario es el caso de uso
 `src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-usuario.ts` (`permiso=SIN_PERMISO`; el guard de quien otorgó sigue entrando por parámetro: leerlo dentro de la transacción
 es el contrato C2 de O.35), con sus escrituras en `src/server/persistencia/invitaciones/marcar-invitacion-aceptada.ts` y `src/server/persistencia/permisos/membresias.ts`.
+
+**Nota (endurecimiento de seguridad, tanda T8, 2026-10-09; S-17, decisión D5 del dueño): se retira el login por dominio de Google Workspace.** El gate de `signIn` (`src/server/sesion/acceso.ts`)
+ya no lee `ALLOWED_EMAIL_DOMAINS` ni el claim `hd` (la nota de arriba, que los declaraba hasta la Fase 6, quedó vieja en eso: la capa ya no lee el entorno). En este sistema no existen usuarios
+sin empresa: sin membresía activa (cuenta de empresa y de sucursal) ni invitación pendiente del mismo email no hay sesión, y el kill-switch sigue primero. Los flujos del primer gerente (el seed local
+y la invitación de la consola) siguen entrando por esas dos vías: `test/auth/primer-gerente-sin-via-por-dominio.test.ts`. Cada puerta que no abre con un permiso declara su postura ante un anónimo y
+ante una cuenta sin empresa en `test/arquitectura/guardas/puertas-sin-permiso.ts`.
