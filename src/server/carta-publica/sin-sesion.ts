@@ -1,6 +1,9 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { dbDeEmpresa, verificarRolDeEjecucionDelProceso } from "@/core/auth/base";
+import { resolverEstiloPortal } from "@/core/carta/public";
+import { modulosEfectivosDeEmpresa } from "@/server/acceso/modulos-de-empresa";
+import type { Db } from "@/lib/db-tipos";
 import { resolverEmpresaCarta, type EmpresaCarta } from "@/server/lecturas/carta/empresa";
 import { resolverCartaPublica, resolverConfigPortal, resolverPortalCarta } from "@/server/lecturas/carta/publica";
 
@@ -17,10 +20,44 @@ async function conRolVerificado<T>(consulta: () => Promise<T>): Promise<T> {
   return consulta();
 }
 
+/**
+ * Lo CONTRATADO que la carta pública publica (S-23 / D2 del dueño, tanda T9 del endurecimiento de seguridad): «la carta pública no se publica con el módulo
+ * apagado». Esta entrada no pasa por el gate de ninguna acción (no hay sesión), así que el registro de módulos de la empresa se pregunta ACÁ, que es el último
+ * punto donde se decide, y las tres funciones de abajo lo respetan (la página, el portal y el subdominio entran todos por ellas):
+ *  - `carta`: sin ella no se publica nada —ni la carta de una sucursal, ni el portal, ni la apariencia del portal—, con el mismo `null`/vacío que una empresa sin nada publicado;
+ *  - `promociones`: sin ella la carta se sirve sin promos.
+ * La pregunta es al único lector del registro (`server/acceso/modulos-de-empresa.ts`, que el gate y el menú comparten): acá no se vuelve a calcular la clausura. Fallo
+ * cerrado: una empresa sin filas en el registro no tiene Carta.
+ */
+async function modulosQueLaCartaPublica(empresa: EmpresaCarta, db: Db): Promise<{ carta: boolean; promociones: boolean }> {
+  const efectivos = await modulosEfectivosDeEmpresa(empresa.id, db);
+  return { carta: efectivos.has("carta"), promociones: efectivos.has("promociones") };
+}
+
 /** `Empresa` no tiene RLS: se puede leer antes de saber a qué empresa pertenece el pedido. */
 export const empresaCartaPublica = (slug: string) => conRolVerificado(() => resolverEmpresaCarta(slug, prisma));
-/** Con empresa conocida (páginas `(carta-publica)`), bajo el contexto de ESA empresa: RLS sostiene el aislamiento aunque un filtro falle. */
-export const portalCartaPublico = (empresa: EmpresaCarta) => conRolVerificado(() => resolverPortalCarta(empresa, dbDeEmpresa(empresa.id)));
-export const configPortalPublica = (empresa: EmpresaCarta) => conRolVerificado(() => resolverConfigPortal(empresa, dbDeEmpresa(empresa.id)));
-/** `ahora` obligatorio (O.22-c): lo fija la página pública, en el borde; este módulo no lee el reloj (lo vigila `SIN_RELOJ_FUERA_DE_CONSULTAS`). */
-export const cartaPublica = (empresa: EmpresaCarta, slug: string, ahora: Date) => conRolVerificado(() => resolverCartaPublica(empresa, slug, dbDeEmpresa(empresa.id), ahora));
+/** Con empresa conocida (páginas `(carta-publica)`), bajo el contexto de ESA empresa: RLS sostiene el aislamiento aunque un filtro falle. Sin el módulo Carta, vacío. */
+export const portalCartaPublico = (empresa: EmpresaCarta) =>
+  conRolVerificado(async () => {
+    const db = dbDeEmpresa(empresa.id);
+    if (!(await modulosQueLaCartaPublica(empresa, db)).carta) return [];
+    return resolverPortalCarta(empresa, db);
+  });
+/** La apariencia del portal. Sin el módulo Carta, la de fábrica: lo que la empresa cargó no sale. */
+export const configPortalPublica = (empresa: EmpresaCarta) =>
+  conRolVerificado(async () => {
+    const db = dbDeEmpresa(empresa.id);
+    if (!(await modulosQueLaCartaPublica(empresa, db)).carta) return resolverEstiloPortal(undefined);
+    return resolverConfigPortal(empresa, db);
+  });
+/**
+ * `ahora` obligatorio (O.22-c): lo fija la página pública, en el borde; este módulo no lee el reloj (lo vigila `SIN_RELOJ_FUERA_DE_CONSULTAS`).
+ * Sin el módulo Carta es `null` (404, igual que una sucursal que no existe); sin Promociones, la carta sale sin promos.
+ */
+export const cartaPublica = (empresa: EmpresaCarta, slug: string, ahora: Date) =>
+  conRolVerificado(async () => {
+    const db = dbDeEmpresa(empresa.id);
+    const modulos = await modulosQueLaCartaPublica(empresa, db);
+    if (!modulos.carta) return null;
+    return resolverCartaPublica(empresa, slug, db, ahora, modulos.promociones);
+  });

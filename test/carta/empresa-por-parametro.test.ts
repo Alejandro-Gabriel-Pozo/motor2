@@ -17,6 +17,8 @@ vi.mock("@/lib/db", () => ({ prisma: prismaFalso }));
 vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: (empresaId: string) => ({ dbDeEmpresa: empresaId }), verificarRolDeEjecucionDelProceso: async () => undefined }));
 vi.mock("@/server/lecturas/carta/publica", () => ({ resolverPortalCarta, resolverCartaPublica, resolverConfigPortal }));
 vi.mock("@/server/lecturas/carta/empresa", () => ({ resolverEmpresaCarta }));
+// S-23: la entrada pública pregunta los módulos contratados de la empresa (el comportamiento real, con la base, lo prueba carta-publica-con-modulo.test.ts); acá la empresa los tiene todos.
+vi.mock("@/server/acceso/modulos-de-empresa", () => ({ modulosEfectivosDeEmpresa: async () => new Set(["carta", "promociones"]) }));
 vi.mock("@/server/carta-publica/sin-sesion", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/server/carta-publica/sin-sesion")>();
   return { ...real, portalCartaPublico, configPortalPublica, cartaPublica };
@@ -57,7 +59,7 @@ describe("punto público sin sesión", () => {
 
     expect(resolverPortalCarta).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
     expect(resolverConfigPortal).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
-    expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", { dbDeEmpresa: EMPRESA.id }, ahora);
+    expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", { dbDeEmpresa: EMPRESA.id }, ahora, true);
   });
 });
 

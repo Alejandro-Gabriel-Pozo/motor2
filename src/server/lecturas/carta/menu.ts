@@ -33,7 +33,9 @@ export async function resolverMenuCartaConDiagnostico(
    */
   ahora: Date,
   /** La capacidad `precio_local` de ESTA sucursal ya leída (o la promesa de esa lectura), para no volver a leerla (el selector del POS la comparte, O.39). */
-  precioLocalActivoCargado?: boolean | Promise<boolean>
+  precioLocalActivoCargado?: boolean | Promise<boolean>,
+  /** `false` = no leer ni armar las promos (la carta pública de una empresa sin el módulo Promociones, S-23). Por defecto sí: el POS y el admin deciden por su cuenta. */
+  conPromos = true
 ): Promise<MenuArmado | null> {
   const sucursal = await db.sucursal.findUnique({ where: { id: sucursalId }, select: { id: true, nombre: true, activo: true, empresaId: true } });
   if (!sucursal || !sucursal.activo) return null;
@@ -62,10 +64,12 @@ export async function resolverMenuCartaConDiagnostico(
         orden: true,
       },
     }),
-    db.promoCarta.findMany({
-      where: { empresaId, ...wherePromoOfrecidaEn(sucursalId) },
-      select: { id: true, seccionCartaId: true, titulo: true, descripcion: true, precio: true, orden: true, sucursales: seleccionDeSucursalDePromo(sucursalId) },
-    }),
+    conPromos
+      ? db.promoCarta.findMany({
+          where: { empresaId, ...wherePromoOfrecidaEn(sucursalId) },
+          select: { id: true, seccionCartaId: true, titulo: true, descripcion: true, precio: true, orden: true, sucursales: seleccionDeSucursalDePromo(sucursalId) },
+        })
+      : Promise.resolve([]),
     db.itemAgrupadoCarta.findMany({
       where: { empresaId, activo: true, ...whereCartaDeSucursal(sucursalId) },
       select: {
@@ -126,7 +130,7 @@ export async function resolverMenuCartaConDiagnostico(
 }
 
 /** La carta pública de una sucursal, tal como la consume la página pública (sin el diagnóstico interno). `ahora` obligatorio (O.22-c): ver arriba. */
-export async function resolverMenuCarta(sucursalId: string, db: Db, ahora: Date, precioLocalActivoCargado?: boolean | Promise<boolean>): Promise<CartaV1 | null> {
-  const armado = await resolverMenuCartaConDiagnostico(sucursalId, db, ahora, precioLocalActivoCargado);
+export async function resolverMenuCarta(sucursalId: string, db: Db, ahora: Date, precioLocalActivoCargado?: boolean | Promise<boolean>, conPromos = true): Promise<CartaV1 | null> {
+  const armado = await resolverMenuCartaConDiagnostico(sucursalId, db, ahora, precioLocalActivoCargado, conPromos);
   return armado ? armado.carta : null;
 }

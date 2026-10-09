@@ -24,7 +24,7 @@ const CASOS_DE_USO = "^src/server/actions/[^/]+/casos-de-uso/";
  * (`core/permisos/acciones.ts`: solo constantes) y las dos reglas PURAS de las capacidades por sucursal (`core/permisos/capacidades-sucursal.ts`: `esCapacidadSiempreHabilitada` y `resolverCapacidad`, sin base), el LECTOR de esas capacidades
  * (`server/acceso/capacidades-sucursal.ts`: `sucursalTieneCapacidad` y `capacidadesDeSucursal`, que leen `CapacidadSucursal` con el `db` que reciben por parámetro; la carta lo alcanza en ejecución por `lecturas/carta` → `precioLocalActivoEn` → `sucursalTieneCapacidad`;
  * salió de `core/permisos` en el bloque 2 de la pieza 5.2 del Hito 5, rama `pureza-integracion`, y es el ÚNICO archivo de `server/acceso` que la carta alcanza: no el gate, ni el menú, ni los módulos, ni la política) y el embudo del
- * precio local (`server/lecturas/catalogo/precio-local.ts`: `precioLocalActivoEn` y `preciosLocalesVigentes`, que la carta llama para mostrar el precio que rige; desde el paso 2 de la pieza 5.2 vive acá y no en `core/catalogo`, y es un archivo de LECTURA que recibe el `db` por parámetro: no importa la sesión, el gate ni ninguna acción). Lista CERRADA: un archivo nuevo
+ * precio local (`server/lecturas/catalogo/precio-local.ts`: `precioLocalActivoEn` y `preciosLocalesVigentes`, que la carta llama para mostrar el precio que rige; desde el paso 2 de la pieza 5.2 vive acá y no en `core/catalogo`, y es un archivo de LECTURA que recibe el `db` por parámetro: no importa la sesión, el gate ni ninguna acción) y, desde S-23 (tanda T9 del endurecimiento de seguridad), el LECTOR del registro de módulos de la empresa (`server/acceso/modulos-de-empresa.ts`) con los tres archivos puros que él necesita (`core/permisos/modulo-de-la-accion.ts`, `motivos.ts` y `politica-de-empresa.ts`): la carta no se publica con el módulo apagado. Lista CERRADA: un archivo nuevo
  * de `core/auth`, `core/permisos` o `server` que la carta empiece a alcanzar (la sesión, el gate, una Server Action) rompe `carta-publica-alcance`; que un archivo de la lista deje de alcanzarse o que una entrada nombre una carpeta lo ve `test/arquitectura/dependencias.test.ts`.
  */
 const ALCANCE_CARTA_PUBLICA = [
@@ -36,6 +36,16 @@ const ALCANCE_CARTA_PUBLICA = [
   // cambian las rutas: son EXACTAMENTE los cinco archivos de antes (menu-consulta, descuento-producto-consulta, empresa-carta, publica-consulta, publica-sin-sesion).
   "^src/server/lecturas/carta/(menu|descuentos|empresa|publica)\\.ts$",
   "^src/server/carta-publica/sin-sesion\\.ts$",
+  // S-23 (tanda T9 del endurecimiento de seguridad, D2 del dueño: «la carta pública no se publica con el módulo apagado»; frontera autorizada expresamente por el dueño). La carta pública
+  // pregunta, SIN sesión, qué módulos contrató la empresa (`carta`, `promociones`) al único lector del registro, y por él alcanza exactamente estos CUATRO archivos, de a uno y con motivo:
+  //  - el lector (`server/acceso/modulos-de-empresa.ts`): una lectura de `ModuloEmpresa` con el `db` que recibe (el de ESA empresa, con RLS); no importa la sesión, el gate ni ninguna acción;
+  "^src/server/acceso/modulos-de-empresa\\.ts$",
+  //  - el cálculo puro de los módulos efectivos de unas filas (`core/permisos/modulo-de-la-accion.ts`): sin base ni red; el lector lo importa y es la única fuente de «qué módulos tiene»;
+  "^src/core/permisos/modulo-de-la-accion\\.ts$",
+  //  - los motivos tipados de denegación (`core/permisos/motivos.ts`): tipos y textos, sin I/O; los importa el cálculo de arriba (un `import type`, pero el grafo lo cuenta);
+  "^src/core/permisos/motivos\\.ts$",
+  //  - la política de la empresa (`core/permisos/politica-de-empresa.ts`): tres constantes, sin imports; las importan los motivos para el texto de «la plataforma administra tus permisos».
+  "^src/core/permisos/politica-de-empresa\\.ts$",
 ];
 
 /** Ruta literal (con `/`) → expresión regular anclada que matchea ESE archivo y nada más. */
