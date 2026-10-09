@@ -35,7 +35,8 @@ const gerentes = (empresaId = EMPRESA_POR_DEFECTO_ID) => prismaAdmin.usuarioEmpr
 const hacerGerente = (usuarioId: string, empresaId = EMPRESA_POR_DEFECTO_ID) =>
   prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId, empresaId } }, data: { rolEmpresa: "gerente" } });
 const traspasar = (usuarioDestinoId: string, empresaId = EMPRESA_POR_DEFECTO_ID) =>
-  prismaAdmin.$transaction((tx) => transferirGerenciaDeEmpresa(tx, { empresaId, usuarioDestinoId }));
+  // `gerenteEsperadoId: null` = lo pide la plataforma (sin gerente esperado): lo que el paso hacía antes de S-11. El gerente esperado se prueba en `test/permisos/gerencia-actor-releido.test.ts`.
+  prismaAdmin.$transaction((tx) => transferirGerenciaDeEmpresa(tx, { empresaId, usuarioDestinoId, gerenteEsperadoId: null }));
 
 describe("transferirGerenciaDeEmpresa", () => {
   let base: Awaited<ReturnType<typeof sembrarBase>>;
@@ -110,7 +111,7 @@ describe("transferirGerenciaDeEmpresa", () => {
 
     // El primero escribe y deja su transacción abierta; el segundo lee al MISMO gerente (el cambio no está confirmado) y queda esperando su baja.
     const primero = prismaAdmin.$transaction(async (tx) => {
-      const r = await transferirGerenciaDeEmpresa(tx, { empresaId: EMPRESA_POR_DEFECTO_ID, usuarioDestinoId: adminId });
+      const r = await transferirGerenciaDeEmpresa(tx, { empresaId: EMPRESA_POR_DEFECTO_ID, usuarioDestinoId: adminId, gerenteEsperadoId: null });
       await puerta;
       return r;
     });

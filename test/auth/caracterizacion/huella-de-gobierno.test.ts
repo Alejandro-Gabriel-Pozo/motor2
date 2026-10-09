@@ -180,7 +180,7 @@ describe("Huella del gobierno de empresa y usuarios", () => {
     // 6. Traspasar la gerencia: rechazos y éxito.
     const traspaso = (usuarioDestinoId: string) => prismaAdmin.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.empresa_id', ${E}, true)`;
-      return transferirGerenciaDeEmpresa(tx, { empresaId: E, usuarioDestinoId });
+      return transferirGerenciaDeEmpresa(tx, { empresaId: E, usuarioDestinoId, gerenteEsperadoId: null }); // S-11: sin gerente esperado (como la plataforma): el comportamiento congelado
     });
     const extraño = await prismaAdmin.user.create({ data: { email: "extrano@gmail.com" } });
     nombres.set(extraño.id, "extraño");

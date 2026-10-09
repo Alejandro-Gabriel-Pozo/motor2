@@ -21,7 +21,12 @@ type ResultadoTransferirGerencia = ResultadoCaso<null, "DESTINO_NO_ES_DE_LA_EMPR
  *  2. El email confirmado tiene que coincidir con el del destino: el gerente que traspasa ya no puede deshacerlo solo.
  *  3. Midiendo las invariantes de gobierno antes y después (`conInvariantesDeGobierno`): el traspaso (`transferirGerenciaDeEmpresa`, el paso compartido
  *     `./transferir-gerencia-en-tx.ts`: destino válido, admin efectivo, baja condicional del actual y alta del nuevo) y, si salió bien, su auditoría
- *     (`UsuarioEmpresa.rolEmpresa`, del email de quien traspasa al del destino, sin sucursal: es de la empresa). Si el paso lo rechaza, vuelve su mensaje.
+ *     (`UsuarioEmpresa.rolEmpresa`, del email del gerente al del destino, sin sucursal: es de la empresa). Si el paso lo rechaza, vuelve su mensaje.
+ *
+ * S-11 (O.60 de `docs/pureza-integracion.md`, CAMBIA COMPORTAMIENTO): el gate de la acción (`traspasar_gerencia`) corre ANTES de la transacción, y el contexto de la sesión es del
+ * principio del pedido. Si en el medio la gerencia cambió de manos (o la empresa se quedó sin gerente), el paso compartido relee al gerente acá dentro (`gerenteEsperadoId` = el
+ * actor) y rechaza con «La gerencia cambió…» sin tocar nada: antes le sacaba la gerencia a quien la tuviera, aunque no fuera quien pidió el traspaso. La auditoría registra el
+ * email del gerente releído de la base (antes `actor.email`, el de la sesión, que podía no ser el del gerente real). El administrador nunca toca al gerente: solo el gerente se traspasa a sí mismo.
  *
  * Idempotencia POR_ESTADO: la baja del gerente actual es condicional («sigue siendo el gerente»), así que un segundo pedido igual o dos traspasos simultáneos no
  * se aplican dos veces (el segundo encuentra que el destino «ya es el gerente», o que la gerencia cambió mientras tanto).
@@ -35,7 +40,7 @@ type ResultadoTransferirGerencia = ResultadoCaso<null, "DESTINO_NO_ES_DE_LA_EMPR
  * @ficha permiso=traspasar_gerencia transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function transferirGerenciaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "email" | "empresaId" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "transaccion">,
   comando: { usuarioDestinoId: string; emailConfirmado: string },
 ): Promise<ResultadoTransferirGerencia> {
   const { usuarioDestinoId, emailConfirmado } = comando;
@@ -52,14 +57,17 @@ export async function transferirGerenciaCasoDeUso(
         return fracaso("EMAIL_NO_COINCIDE", "El email no coincide con el de la persona elegida: no se traspasó la gerencia.");
       }
       return conInvariantesDeGobierno(tx, actor.empresaId, async (): Promise<ResultadoTransferirGerencia> => {
-        const r = await transferirGerenciaDeEmpresa(tx, { empresaId: actor.empresaId, usuarioDestinoId });
+        // S-11 (O.60): el paso relee al gerente acá dentro y rechaza si quien lo es ahora no es el actor (el contexto de la sesión es del principio del pedido).
+        const r = await transferirGerenciaDeEmpresa(tx, { empresaId: actor.empresaId, usuarioDestinoId, gerenteEsperadoId: actor.usuarioId });
         if (!r.ok) return fracaso("TRASPASO_RECHAZADO", r.mensaje);
+        // Y la auditoría dice quién era el gerente DE VERDAD (releído de la base), no el email que la sesión trajo al armar el contexto.
+        const gerenteAnterior = r.gerenteAnteriorId ? await tx.user.findUnique({ where: { id: r.gerenteAnteriorId }, select: { email: true } }) : null;
         await registrarCambioAuditado(tx, {
           entidad: "UsuarioEmpresa",
           entidadId: usuarioDestinoId,
           descripcion: "Gerente de la empresa",
           campo: "rolEmpresa",
-          valorAnterior: actor.email,
+          valorAnterior: gerenteAnterior?.email ?? null,
           valorNuevo: destino.usuario.email,
           actorId: actor.usuarioId,
           sucursalId: null,

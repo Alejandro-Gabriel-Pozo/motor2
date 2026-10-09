@@ -5,6 +5,8 @@ import { obtenerGerenteDeEmpresa } from "@/server/lecturas/permisos/gerencia";
 import { esAdminEfectivoEnAlgunaSucursal } from "@/server/lecturas/permisos/gobierno";
 import { bajarGerenciaSiSigue, darGerencia } from "@/server/persistencia/auth/gerencia";
 
+const MENSAJE_GERENCIA_CAMBIO = "La gerencia cambió mientras tanto. Recargá la pantalla y volvé a intentar.";
+
 /**
  * PASO COMPARTIDO (sin ficha: no lo importa ninguna Server Action, lo componen los casos de uso de esta carpeta) — Hito 3, Fase I, I.5d de
  * `docs/plan-hito-3-pureza.md`. Es `transferirGerenciaDeEmpresa`, que vivía en `core/permisos/gerencia.ts`, con el MISMO nombre, la misma firma, las mismas lecturas
@@ -16,11 +18,15 @@ import { bajarGerenciaSiSigue, darGerencia } from "@/server/persistencia/auth/ge
  * con dos: la baja del actual es condicional («sigue siendo el gerente»), así que dos traspasos simultáneos no pueden aplicarse los dos. Corre DENTRO de una
  * transacción, con el cliente `tx`. NO audita: la fila de auditoría la escribe quien la invoca (ADR-012).
  *
- * Quién puede pedirlo se decide afuera: el gerente actual (`transferirGerencia`) o la plataforma. El destino tiene que ser alguien de la empresa, con cuenta y
+ * Quién puede pedirlo se decide afuera: el gerente actual (`transferirGerencia`) o la plataforma. Desde S-11 (O.60) el paso lo vuelve a comprobar con `gerenteEsperadoId`
+ * (obligatorio: el id del gerente que pide, o `null` si lo pide la plataforma): quien tiene la gerencia al leerla acá dentro tiene que ser ese; si no, «La gerencia cambió…» y no se toca nada. El destino tiene que ser alguien de la empresa, con cuenta y
  * pertenencia activas y admin activo en alguna sucursal (el gerente está por encima del admin: no se salta el escalón).
  */
-export async function transferirGerenciaDeEmpresa(tx: Prisma.TransactionClient, input: { empresaId: string; usuarioDestinoId: string }): Promise<ResultadoGerencia> {
-  const { empresaId, usuarioDestinoId } = input;
+export async function transferirGerenciaDeEmpresa(
+  tx: Prisma.TransactionClient,
+  input: { empresaId: string; usuarioDestinoId: string; gerenteEsperadoId: string | null },
+): Promise<ResultadoGerencia> {
+  const { empresaId, usuarioDestinoId, gerenteEsperadoId } = input;
 
   const destino = await tx.usuarioEmpresa.findUnique({
     where: { usuarioId_empresaId: { usuarioId: usuarioDestinoId, empresaId } },
@@ -33,9 +39,13 @@ export async function transferirGerenciaDeEmpresa(tx: Prisma.TransactionClient, 
   if (!(await esAdminEfectivoEnAlgunaSucursal(tx, empresaId, usuarioDestinoId))) return { ok: false, mensaje: "Para ser gerente primero tiene que ser admin activo en alguna sucursal." };
 
   const actual = await obtenerGerenteDeEmpresa(tx, empresaId);
+  // S-11 (O.60): quien pide el traspaso tiene que SEGUIR siendo el gerente, releído acá dentro. El gate de la acción (`traspasar_gerencia`) corre antes de la transacción: si en
+  // el medio la gerencia cambió de manos (o la empresa se quedó sin gerente), el pedido de quien ya no lo es no le saca la gerencia al nuevo. `null` = lo pide la plataforma,
+  // que no es el gerente de nadie y nombra al que corresponda.
+  if (gerenteEsperadoId !== null && actual?.usuarioId !== gerenteEsperadoId) return { ok: false, mensaje: MENSAJE_GERENCIA_CAMBIO };
   if (actual) {
     const bajas = await bajarGerenciaSiSigue(tx, { pertenenciaId: actual.id });
-    if (bajas !== 1) return { ok: false, mensaje: "La gerencia cambió mientras tanto. Recargá la pantalla y volvé a intentar." };
+    if (bajas !== 1) return { ok: false, mensaje: MENSAJE_GERENCIA_CAMBIO };
   }
   await darGerencia(tx, { pertenenciaId: destino.id });
 
