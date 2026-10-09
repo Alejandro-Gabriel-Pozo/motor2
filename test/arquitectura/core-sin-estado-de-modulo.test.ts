@@ -72,13 +72,13 @@ describe("core sin estado de módulo", () => {
     expect(encontradas, "Estado de módulo en core: llevalo a la capa del servidor que lo usa (o, si es inevitable, declaralo arriba con su motivo).").toEqual(aceptadas);
   });
 
-  it("crearLimitadorDeTasa se instancia solo fuera de core (la instancia de las mutaciones vive en server/actions)", () => {
+  it("crearLimitadorDeTasa se instancia solo fuera de core (las instancias viven en server/actions: las mutaciones y, desde S-27, las puertas anónimas)", () => {
     expect(delCore.filter((a) => instanciasDelLimitador(a.fuente) > 0).map((a) => a.ruta)).toEqual([]);
     const fuera = archivos(SRC)
       .filter((r) => !nombreDe(r).startsWith("core/"))
       .filter((r) => instanciasDelLimitador(readFileSync(r, "utf8")) > 0)
       .map(nombreDe);
-    expect(fuera).toEqual(["server/actions/limitador-de-mutaciones.ts"]);
+    expect(fuera).toEqual(["server/actions/limitador-anonimo.ts", "server/actions/limitador-de-mutaciones.ts"]);
   });
 
   it("el detector (con fuentes sintéticas)", () => {

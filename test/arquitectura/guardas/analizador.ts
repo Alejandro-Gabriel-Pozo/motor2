@@ -78,9 +78,19 @@ function tieneModificador(nodo: ts.HasModifiers, kind: ts.SyntaxKind): boolean {
   return (ts.getModifiers(nodo) ?? []).some((m) => m.kind === kind);
 }
 
+/**
+ * `await headers()` / `await cookies()` (los pedidos de metadatos de Next, sin argumentos): leer las cabeceras o las cookies del propio pedido no es una lectura de datos, y una
+ * guarda anónima con cupo por origen (S-27: `abrirInvitacion` consulta el cupo de la IP ANTES de ir a la base) las necesita antes de llegar a la guarda. Cualquier otro `await` sigue
+ * marcando la guarda como tardía.
+ */
+function esPedidoDeMetadatosDeNext(nodo: ts.AwaitExpression): boolean {
+  const interna = nodo.expression;
+  return ts.isCallExpression(interna) && interna.arguments.length === 0 && ts.isIdentifier(interna.expression) && ["headers", "cookies"].includes(interna.expression.text);
+}
+
 /** Recorre TODO el subárbol de una sentencia buscando un `await` o un acceso a `prisma.` — a cualquier profundidad. */
 function tieneAwaitOAccesoPrisma(nodo: ts.Node): boolean {
-  if (ts.isAwaitExpression(nodo)) return true;
+  if (ts.isAwaitExpression(nodo)) return !esPedidoDeMetadatosDeNext(nodo);
   if (ts.isPropertyAccessExpression(nodo) && ts.isIdentifier(nodo.expression) && nodo.expression.text === "prisma") return true;
   let encontrado = false;
   ts.forEachChild(nodo, (hijo) => {

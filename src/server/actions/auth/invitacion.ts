@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUsuarioActual } from "@/core/auth/session";
 import { requierePermiso } from "@/server/acceso/gate";
@@ -9,6 +9,7 @@ import { invitacionDelToken } from "@/server/sesion/invitacion";
 import { MENSAJE_ENLACE_NO_VALIDO } from "@/core/features/empresa/aceptar-invitacion";
 import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";
 import { error, type ResultadoAccion } from "../tipos";
+import { MENSAJE_DEMASIADAS_APERTURAS_DE_INVITACION, origenDelPedido, origenSinCupoParaAbrirInvitacion } from "../limitador-anonimo";
 import { aceptarInvitacionDeGerenteCasoDeUso } from "./casos-de-uso/aceptar-invitacion-de-gerente";
 import { aceptarInvitacionDeUsuarioCasoDeUso } from "./casos-de-uso/aceptar-invitacion-de-usuario";
 
@@ -24,6 +25,9 @@ import { aceptarInvitacionDeUsuarioCasoDeUso } from "./casos-de-uso/aceptar-invi
 export async function abrirInvitacion(token: string): Promise<ResultadoAccion> {
   if (typeof token !== "string" || !esTokenConFormaValida(token)) return error(MENSAJE_ENLACE_NO_VALIDO);
   const ahora = new Date();
+  // S-27 (GT-8): es una puerta ANÓNIMA que consulta la base compartida con cada token de forma válida. El cupo por origen (best effort, en memoria) corta el bucle de un solo
+  // origen ANTES de la consulta; un token mal formado ya volvió arriba sin gastar nada ni contar.
+  if (origenSinCupoParaAbrirInvitacion(origenDelPedido(await headers()), ahora.getTime())) return error(MENSAJE_DEMASIADAS_APERTURAS_DE_INVITACION);
   const vista = await invitacionDelToken(token, ahora);
   // Solo una invitación pendiente merece cookie: una vencida (maxAge 0) ni se guardaría, y el resto no tiene nada más que mostrar que «ya no sirve».
   if (!vista || vista.estado !== "PENDIENTE") return error(MENSAJE_ENLACE_NO_VALIDO);

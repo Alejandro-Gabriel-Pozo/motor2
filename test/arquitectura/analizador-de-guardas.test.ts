@@ -126,6 +126,23 @@ describe("analizarFuente: falsos negativos que la regex vieja tenía y el AST no
     expect(estadoDe(fuente, "listarRoles")).toBe("guarda-tardia");
   });
 
+  it("leer `await headers()` o `await cookies()` antes de la guarda NO la vuelve tardía (S-27: el cupo por origen de una puerta anónima); cualquier otro await, sí", () => {
+    const conMetadatos = `
+      "use server";
+      import { headers } from "next/headers";
+      import { invitacionDelToken } from "@/server/sesion/invitacion";
+      export async function abrir(token: string) {
+        const origen = (await headers()).get("x-forwarded-for");
+        if (origen === "x") return null;
+        const vista = await invitacionDelToken(token, new Date());
+        return vista;
+      }
+    `;
+    expect(estadoDe(conMetadatos, "abrir")).toBe("ok");
+    const conOtroAwait = conMetadatos.replace('(await headers()).get("x-forwarded-for")', '(await otraCosa()).get("x-forwarded-for")');
+    expect(estadoDe(conOtroAwait, "abrir")).toBe("guarda-tardia");
+  });
+
   it("una guarda importada con ALIAS se resuelve igual (por nombre local, no por el nombre importado)", () => {
     const fuente = `
       "use server";
