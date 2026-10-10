@@ -1,0 +1,53 @@
+# Gitleaks: busca secretos (claves de API, cadenas de conexión, tokens, claves privadas, secretos de Auth.js / Neon / Resend) en el código y en TODO el historial.
+# Configuración y falsos positivos revisados: .gitleaks.toml. Detalle y comando local: docs/seguridad-pipeline.md.
+# Se instala el binario con `go install` a una versión fija (el módulo lo verifica la base de checksums de Go) en vez de usar `gitleaks/gitleaks-action`, que pide licencia en organizaciones.
+name: Gitleaks
+
+on:
+  push:
+    branches: [main, "ci/**"]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "29 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitleaks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GITLEAKS_VERSION: v8.30.1
+
+jobs:
+  secretos:
+    name: Escanear secretos
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Historial completo: un secreto borrado en un commit posterior sigue estando en el historial y hay que rotarlo igual.
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: Instalar gitleaks ${{ env.GITLEAKS_VERSION }}
+        run: |
+          GOBIN="$RUNNER_TEMP/bin" go install "github.com/zricethezav/gitleaks/v8@${GITLEAKS_VERSION}"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      # --redact: el log del workflow nunca muestra el valor del secreto. Sale con código 1 si encuentra algo (bloquea).
+      - name: gitleaks git (todo el historial alcanzable)
+        run: gitleaks git --no-banner --redact -v --config .gitleaks.toml --report-format sarif --report-path gitleaks.sarif .
+      - name: Informe (solo si falló)
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gitleaks-informe
+          path: gitleaks.sarif
+          if-no-files-found: ignore
+          retention-days: 7

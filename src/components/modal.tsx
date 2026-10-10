@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { Dialogo } from "@/ui/componentes/superposiciones/dialogo";
 
 /**
  * Modal liviano y genérico — base del patrón "+ Nuevo X" inline (alta
@@ -33,19 +34,10 @@ export function Modal({
       >
         {triggerLabel}
       </button>
-      {abierto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-4 shadow-lg dark:bg-neutral-900">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-medium">{title}</h3>
-              <button type="button" onClick={() => setAbierto(false)} className="text-neutral-500">
-                ✕
-              </button>
-            </div>
-            {children(() => setAbierto(false))}
-          </div>
-        </div>
-      )}
+      {/* Sobre el `<dialog>` nativo (ver `ui/componentes/superposiciones/dialogo.tsx`): rol de diálogo, foco atrapado y devuelto, Escape y hoja inferior en celular. */}
+      <Dialogo abierto={abierto} titulo={title} onCerrar={() => setAbierto(false)}>
+        {children(() => setAbierto(false))}
+      </Dialogo>
     </>
   );
 }
