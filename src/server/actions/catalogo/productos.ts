@@ -3,6 +3,7 @@
 import type { PrismaClient, TipoProducto } from "@prisma/client";
 import { azarDelProceso } from "@/lib/azar";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
+import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 import { texto } from "@/core/texto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
@@ -39,15 +40,6 @@ import { sincronizarPrecioGrupoCartaCasoDeUso } from "./casos-de-uso/sincronizar
  */
 async function puedeGestionarConsignacion(ctx: { usuarioId: string; sucursalId: string; db: PrismaClient }): Promise<boolean> {
   return (await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db)).editar;
-}
-
-/**
- * M.2: ¿puede quien llama cambiar el precio de venta, el factor de conversión y las unidades de un producto? Es `producto_campos_sensibles` EDITAR (clave de empresa, piso operario, semilla solo
- * admin: se SUMA a `producto_editar`, no la reemplaza). La edición lo calcula acá, con el gate, y el caso de uso —que no chequea permisos— lo aplica contra la fila que lee dentro de su transacción.
- * No se exporta: este archivo es `"use server"` y toda función exportada es un endpoint.
- */
-async function puedeEditarCamposSensibles(ctx: { usuarioId: string; empresaId: string; db: PrismaClient }): Promise<boolean> {
-  return (await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_campos_sensibles", ctx.db)).editar;
 }
 
 export interface ProductoOpcion {
@@ -315,7 +307,7 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
     const puerta = guardComandoDatosDeProducto({ datos });
     if (typeof datos !== "object" || datos === null) return error(puerta.antesDeLaUnidad.ok ? "Los datos del producto no son válidos." : puerta.antesDeLaUnidad.mensaje);
     // M.2 (D-2): el alta con precio, factor distinto de 1 o unidad de compra exige además `producto_campos_sensibles` (fallo cerrado, en el caso de uso).
-    const r = await darDeAltaProductoCasoDeUso(ctx, datos, azarDelProceso, await puedeGestionarConsignacion(ctx), puerta, await puedeEditarCamposSensibles(ctx));
+    const r = await darDeAltaProductoCasoDeUso(ctx, datos, azarDelProceso, await puedeGestionarConsignacion(ctx), puerta, await puedeEditarCamposSensiblesDelProducto(ctx));
     const base = aResultadoAccion(r);
     return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
@@ -331,7 +323,7 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
  * precio, el resultado trae además `sincronizable` (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8): la pantalla ofrece
  * aplicar el mismo precio con un botón aparte (`sincronizarPrecioGrupoCarta`). Nunca se sincroniza solo.
  *
- * M.2: además de `producto_editar`, cambiar el precio de venta, el factor de conversión o una unidad exige `producto_campos_sensibles`: la acción calcula `puedeEditarCamposSensibles` (ayudante local) y el
+ * M.2: además de `producto_editar`, cambiar el precio de venta, el factor de conversión o una unidad exige `producto_campos_sensibles`: la acción calcula `puedeEditarCamposSensiblesDelProducto` (`src/server/acceso/campos-sensibles-de-producto.ts`, la fuente única que comparte con las pantallas) y el
  * caso de uso lo aplica dentro de su transacción (`SIN_PERMISO_CAMPOS_SENSIBLES`). Un campo sensible que no viene (`undefined`, ver `DatosProductoEdicion`) queda como estaba, tenga o no la clave (M.2-A4).
  *
  * Desde el Hito 4 (H4C-13): permiso (`conPermisoDeEmpresa("producto_editar")`) → caso de uso (`casos-de-uso/actualizar-producto.ts`: el producto, el tipo, la
@@ -344,7 +336,7 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     // S-52: el guard se CALCULA acá pero `validarDatosDeProducto` aplica cada rechazo en el lugar de siempre (después de leer el producto y la unidad): un producto inexistente gana sobre un dato inválido.
     const puerta = guardComandoDatosDeProducto({ datos });
     if (typeof datos !== "object" || datos === null) return error(puerta.antesDeLaUnidad.ok ? "Los datos del producto no son válidos." : puerta.antesDeLaUnidad.mensaje);
-    const puedeCamposSensibles = await puedeEditarCamposSensibles(ctx);
+    const puedeCamposSensibles = await puedeEditarCamposSensiblesDelProducto(ctx);
     const r = await actualizarProductoCasoDeUso(ctx, {
       productoId,
       datos,
@@ -383,7 +375,7 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
     const comando = guardComandoSincronizarPrecioGrupoCarta({ productoIds, precio });
     if (!comando.ok) return error(comando.mensaje);
     // M.2 (D-3): sincronizar es cambiar el precio de venta de varios productos: además de la clave de sincronizar pide `producto_campos_sensibles` (el caso de uso lo rechaza antes de leer nada).
-    const resultado = await sincronizarPrecioGrupoCartaCasoDeUso(ctx, { ...comando.valor, puedeEditarCamposSensibles: await puedeEditarCamposSensibles(ctx) });
+    const resultado = await sincronizarPrecioGrupoCartaCasoDeUso(ctx, { ...comando.valor, puedeEditarCamposSensibles: await puedeEditarCamposSensiblesDelProducto(ctx) });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
@@ -453,7 +445,7 @@ export async function agregarPresentacionAlternativa(
     if (!puerta.ids.ok) return error(puerta.ids.mensaje);
     // M.2: definir el factor (crear la presentación, o cambiar el de una que existe) exige además `producto_campos_sensibles`: la acción calcula el dato y el caso de uso lo aplica dentro de su transacción.
     return aResultadoAccion(
-      await agregarPresentacionAlternativaCasoDeUso(ctx, { productoId, unidadCompraId, factorConversion, factor: puerta.factor, puedeEditarCamposSensibles: await puedeEditarCamposSensibles(ctx) }),
+      await agregarPresentacionAlternativaCasoDeUso(ctx, { productoId, unidadCompraId, factorConversion, factor: puerta.factor, puedeEditarCamposSensibles: await puedeEditarCamposSensiblesDelProducto(ctx) }),
     );
   });
 }

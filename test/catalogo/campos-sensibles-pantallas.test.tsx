@@ -22,7 +22,7 @@ vi.mock("../../src/server/actions/catalogo/categorias-producto", () => ({ crearC
 vi.mock("../../src/server/actions/catalogo/proveedores", () => ({ altaProveedor: vi.fn() }));
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, EMPRESA_POR_DEFECTO_ID } from "../setup/test-db";
-import { puedeEditarCamposSensiblesDelProducto } from "../../src/app/(app)/catalogo/productos/opciones-formulario";
+import { puedeEditarCamposSensiblesDelProducto } from "../../src/server/acceso/campos-sensibles-de-producto";
 import { ProductoForm, type ProductoExistente } from "../../src/app/(app)/catalogo/productos/producto-form";
 import { GestionPresentaciones } from "../../src/components/catalogo/gestion-presentaciones";
 

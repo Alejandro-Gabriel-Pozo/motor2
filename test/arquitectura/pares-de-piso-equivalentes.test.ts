@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { ACCIONES, nivelMinimoDeAccion, type AccionClave, type NivelDeAccion } from "../../src/core/permisos/acciones";
@@ -14,8 +14,8 @@ import { nivelAlcanzaElPiso } from "../../src/core/permisos/jerarquia";
  * La acción AJUSTAR del conteo (y «ajustar» al resolver un pendiente) escribe en el Kardex la misma corrección que un Ajuste. Si solo se pidiera la clave del conteo, el piso del Ajuste se
  * saltearía por el costado: un operario con `conteo_resolver_pendiente` o `proceso_control` pondría `conteoReal: 0` sobre 60 productos y dejaría la sección en cero.
  *
- * M.2 suma el par `producto_editar` ⇒ `producto_campos_sensibles` (piso mínimo operario; la clave fina se SUMA a la de editar, no la reemplaza): `actualizarProducto` calcula el dato con su ayudante local
- * `puedeEditarCamposSensibles` (que consulta la clave con `obtenerMiNivelPermisoDeEmpresa`) y lo pasa al caso de uso; P3, P4 y P5 suman sus puertas. Este guardián exige,
+ * M.2 suma el par `producto_editar` ⇒ `producto_campos_sensibles` (piso mínimo operario; la clave fina se SUMA a la de editar, no la reemplaza): `actualizarProducto` calcula el dato con el ayudante compartido
+ * `puedeEditarCamposSensiblesDelProducto` (`src/server/acceso/campos-sensibles-de-producto.ts`, fuente única desde M.2-A4; consulta la clave con `obtenerMiNivelPermisoDeEmpresa`) y lo pasa al caso de uso; P3, P4 y P5 suman sus puertas. Este guardián exige,
  * por cada par declarado (lista cerrada: un par nuevo se declara acá, con su motivo):
  *  1. que el piso del equivalente sea al menos el declarado (`pisoMinimo`) y al menos el del principal (bajar `proceso_ajuste` a operario → rojo);
  *  2. que cada puerta declarada (una función exportada de una Server Action) llame al ayudante que consulta la clave del equivalente, y que ese ayudante consulte `requierePermiso(…, "<equivalente>", …)`
@@ -27,8 +27,10 @@ interface Puerta {
   archivo: string;
   /** Funciones exportadas que aplican el efecto y por eso tienen que pedir la clave del equivalente. */
   funciones: string[];
-  /** Función local del mismo archivo que consulta el permiso (`CONSULTAS_DE_PERMISO`) con la clave del equivalente. */
+  /** Función que consulta el permiso (`CONSULTAS_DE_PERMISO`) con la clave del equivalente: local del mismo archivo, o la que ese archivo importa de `archivoDelAyudante`. */
   ayudante: string;
+  /** Relativo a la raíz del repo: donde vive el ayudante cuando es una fuente compartida (M.2-A4: `puedeEditarCamposSensiblesDelProducto`); ausente = el mismo archivo de la puerta. */
+  archivoDelAyudante?: string;
 }
 interface ParDePiso {
   principal: AccionClave;
@@ -37,6 +39,9 @@ interface ParDePiso {
   motivo: string;
   puertas: Puerta[];
 }
+
+/** M.2-A4 (C): la consulta de `producto_campos_sensibles` vive en un solo archivo, compartido por las acciones y las pantallas. */
+const ARCHIVO_DEL_AYUDANTE_M2 = "src/server/acceso/campos-sensibles-de-producto.ts";
 
 const PARES: ParDePiso[] = [
   {
@@ -63,7 +68,8 @@ const PARES: ParDePiso[] = [
       {
         archivo: "src/server/actions/catalogo/productos.ts",
         funciones: ["actualizarProducto"],
-        ayudante: "puedeEditarCamposSensibles",
+        ayudante: "puedeEditarCamposSensiblesDelProducto",
+        archivoDelAyudante: ARCHIVO_DEL_AYUDANTE_M2,
       },
     ],
   },
@@ -77,7 +83,8 @@ const PARES: ParDePiso[] = [
       {
         archivo: "src/server/actions/catalogo/productos.ts",
         funciones: ["agregarPresentacionAlternativa"],
-        ayudante: "puedeEditarCamposSensibles",
+        ayudante: "puedeEditarCamposSensiblesDelProducto",
+        archivoDelAyudante: ARCHIVO_DEL_AYUDANTE_M2,
       },
     ],
   },
@@ -91,7 +98,8 @@ const PARES: ParDePiso[] = [
       {
         archivo: "src/server/actions/catalogo/productos.ts",
         funciones: ["darDeAltaProducto"],
-        ayudante: "puedeEditarCamposSensibles",
+        ayudante: "puedeEditarCamposSensiblesDelProducto",
+        archivoDelAyudante: ARCHIVO_DEL_AYUDANTE_M2,
       },
     ],
   },
@@ -105,7 +113,8 @@ const PARES: ParDePiso[] = [
       {
         archivo: "src/server/actions/catalogo/productos.ts",
         funciones: ["sincronizarPrecioGrupoCarta"],
-        ayudante: "puedeEditarCamposSensibles",
+        ayudante: "puedeEditarCamposSensiblesDelProducto",
+        archivoDelAyudante: ARCHIVO_DEL_AYUDANTE_M2,
       },
     ],
   },
@@ -149,10 +158,10 @@ function consultaLaClave(funcion: ts.FunctionDeclaration, clave: string): boolea
 }
 
 /** Problemas de una puerta respecto del par: vacío si todas las funciones piden el ayudante y el ayudante consulta la clave. */
-export function problemasDeLaPuerta(codigo: string, puerta: Pick<Puerta, "funciones" | "ayudante">, equivalente: string): string[] {
+export function problemasDeLaPuerta(codigo: string, puerta: Pick<Puerta, "funciones" | "ayudante">, equivalente: string, codigoDelAyudante: string = codigo): string[] {
   const sf = fuente(codigo);
   const problemas: string[] = [];
-  const ayudante = funcionNombrada(sf, puerta.ayudante);
+  const ayudante = funcionNombrada(fuente(codigoDelAyudante), puerta.ayudante);
   if (!ayudante) problemas.push(`no existe el ayudante «${puerta.ayudante}»`);
   else if (!consultaLaClave(ayudante, equivalente)) problemas.push(`«${puerta.ayudante}» no consulta el permiso (requierePermiso, obtenerMiNivelPermiso, …) con la clave "${equivalente}"`);
   for (const nombre of puerta.funciones) {
@@ -173,6 +182,16 @@ describe("el detector de puertas ve las llamadas reales (un comentario no cuenta
     expect(problemasDeLaPuerta(bueno.replace('"proceso_ajuste"', '"proceso_control"'), puerta, "proceso_ajuste")).toHaveLength(1);
     expect(problemasDeLaPuerta("export async function a() {}", puerta, "proceso_ajuste")).toHaveLength(2);
     expect(problemasDeLaPuerta(bueno, { funciones: ["b"], ayudante: "puede" }, "proceso_ajuste")).toHaveLength(1);
+  });
+
+  // M.2-A4 (C): el ayudante puede vivir en OTRO archivo (la fuente única que comparten las acciones y las pantallas): se busca ahí, y la puerta tiene que seguir llamándolo.
+  it("con el ayudante en otro archivo: ve la clave en el ayudante y la llamada en la puerta", () => {
+    const puertaBuena = `export async function a(ctx) { if (!(await puede(ctx))) return 1; return 2; }`;
+    const ayudanteAparte = `export async function puede(ctx) { return (await obtenerMiNivelPermisoDeEmpresa(ctx.u, ctx.e, "producto_campos_sensibles", ctx.db)).editar; }`;
+    expect(problemasDeLaPuerta(puertaBuena, puerta, "producto_campos_sensibles", ayudanteAparte)).toEqual([]);
+    expect(problemasDeLaPuerta(puertaBuena, puerta, "producto_campos_sensibles", ayudanteAparte.replace("producto_campos_sensibles", "producto_editar"))).toHaveLength(1);
+    expect(problemasDeLaPuerta(puertaBuena.replace("if (!(await puede(ctx))) return 1;", ""), puerta, "producto_campos_sensibles", ayudanteAparte)).toHaveLength(1);
+    expect(problemasDeLaPuerta(puertaBuena, puerta, "producto_campos_sensibles", "export const x = 1;")).toHaveLength(1);
   });
 
   // M.2: las claves de empresa se consultan con `obtenerMiNivelPermisoDeEmpresa` o `requierePermisoDeEmpresa`, y las de sucursal también con `obtenerMiNivelPermiso`: el detector tiene que verlas todas.
@@ -221,8 +240,47 @@ describe("pares de acción equivalente (GT-2): el camino hermano no baja el piso
 
       it.each(par.puertas.map((p) => [p.archivo, p] as const))("%s: cada puerta pide la clave del equivalente", (archivo, puerta) => {
         const codigo = readFileSync(join(RAIZ, archivo), "utf8");
-        expect(problemasDeLaPuerta(codigo, puerta, par.equivalente)).toEqual([]);
+        const codigoDelAyudante = puerta.archivoDelAyudante ? readFileSync(join(RAIZ, puerta.archivoDelAyudante), "utf8") : codigo;
+        expect(problemasDeLaPuerta(codigo, puerta, par.equivalente, codigoDelAyudante)).toEqual([]);
       });
     });
   }
+});
+
+/**
+ * M.2-A4 (C): la pregunta «¿puede quien mira cambiar el precio, el factor y las unidades?» tiene UNA sola fuente. La pantalla y las acciones la calculaban cada una por su lado (`opciones-formulario.ts` y un ayudante local de
+ * `productos.ts`): si una cambiaba la clave o el nivel y la otra no, la pantalla ofrecía lo que el servidor rechazaba (o al revés). Ahora la consulta vive en `src/server/acceso/campos-sensibles-de-producto.ts` y los demás la
+ * importan. Por AST: ningún otro archivo de `src/` llama a una consulta de permiso con la clave `producto_campos_sensibles` (un comentario no cuenta).
+ */
+describe("la clave producto_campos_sensibles se consulta en un solo lugar", () => {
+  const FUENTE_UNICA = "server/acceso/campos-sensibles-de-producto.ts";
+  const SRC = join(RAIZ, "src");
+  const archivos = (dir: string): string[] =>
+    readdirSync(dir).flatMap((nombre) => {
+      const ruta = join(dir, nombre);
+      return statSync(ruta).isDirectory() ? archivos(ruta) : /\.tsx?$/.test(nombre) ? [ruta] : [];
+    });
+  /** ¿Algún llamado a una consulta de permiso lleva la clave como texto? */
+  const consultaLaClaveEnAlgunLugar = (codigo: string, clave: string): boolean => {
+    let encontrado = false;
+    const visitar = (n: ts.Node) => {
+      if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && CONSULTAS_DE_PERMISO.has(n.expression.text) && n.arguments.some((a) => ts.isStringLiteralLike(a) && a.text === clave)) encontrado = true;
+      ts.forEachChild(n, visitar);
+    };
+    visitar(fuente(codigo));
+    return encontrado;
+  };
+
+  it("solo la fuente única la consulta", () => {
+    const quienes = archivos(SRC)
+      .filter((ruta) => consultaLaClaveEnAlgunLugar(readFileSync(ruta, "utf8"), "producto_campos_sensibles"))
+      .map((ruta) => relative(SRC, ruta).split(sep).join("/"));
+    expect(quienes, "La pantalla y las acciones tienen que importar `puedeEditarCamposSensiblesDelProducto` en vez de consultar la clave por su cuenta").toEqual([FUENTE_UNICA]);
+  });
+
+  it("el detector ve una consulta duplicada (fuente sintética)", () => {
+    const copia = `export async function puede(ctx) { return (await obtenerMiNivelPermisoDeEmpresa(ctx.u, ctx.e, "producto_campos_sensibles", ctx.db)).editar; }`;
+    expect(consultaLaClaveEnAlgunLugar(copia, "producto_campos_sensibles")).toBe(true);
+    expect(consultaLaClaveEnAlgunLugar(`// obtenerMiNivelPermisoDeEmpresa(u, e, "producto_campos_sensibles", db)`, "producto_campos_sensibles")).toBe(false);
+  });
 });

@@ -7,7 +7,8 @@ import { obtenerMiNivelPermiso, requierePermisoDeEmpresa, requierePermisoVerDeEm
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import { ProductoForm, type ProductoExistente } from "../../producto-form";
-import { cargarOpcionesFormularioProducto, puedeEditarCamposSensiblesDelProducto } from "../../opciones-formulario";
+import { cargarOpcionesFormularioProducto } from "../../opciones-formulario";
+import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 
 /** Edición de un producto. Al guardar, vuelve a su ficha, que muestra el aviso de que se guardó. */
 export default async function EditarProductoPage({ params }: { params: Promise<{ id: string }> }) {
