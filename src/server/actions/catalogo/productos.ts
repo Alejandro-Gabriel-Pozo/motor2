@@ -6,6 +6,7 @@ import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa } from "@/server/
 import { texto } from "@/core/texto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
+import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
 import { ofrecerSincronizarPrecio } from "@/core/carta/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
@@ -270,6 +271,13 @@ export interface DatosProducto {
 }
 
 /**
+ * Lo que recibe la EDICIÓN (M.2-A4): como `DatosProducto`, pero el precio de venta, el factor de conversión y las dos unidades son opcionales. Ausentes (`undefined`) quedan como estaban —tenga o no la clave
+ * `producto_campos_sensibles` quien edita—: el formulario abierto sin la clave no los manda, y la clave puede llegar mientras edita. `null` en la unidad de compra sigue siendo «sin unidad de compra». El alta
+ * (`darDeAltaProducto`) los sigue pidiendo.
+ */
+export type DatosProductoEdicion = Omit<DatosProducto, CampoSensibleDelProducto> & Partial<Pick<DatosProducto, CampoSensibleDelProducto>>;
+
+/**
  * Alta rápida inline de una MP nueva, sin salir del wizard de Compra por
  * proveedor (docs/plan-migracion.md §4 — refinamiento de UX, "el panel
  * genérico de Compra ya funciona, esto era lo que faltaba para no tener
@@ -324,14 +332,14 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
  * aplicar el mismo precio con un botón aparte (`sincronizarPrecioGrupoCarta`). Nunca se sincroniza solo.
  *
  * M.2: además de `producto_editar`, cambiar el precio de venta, el factor de conversión o una unidad exige `producto_campos_sensibles`: la acción calcula `puedeEditarCamposSensibles` (ayudante local) y el
- * caso de uso lo aplica dentro de su transacción (`SIN_PERMISO_CAMPOS_SENSIBLES`; un campo sensible que no viene queda como estaba).
+ * caso de uso lo aplica dentro de su transacción (`SIN_PERMISO_CAMPOS_SENSIBLES`). Un campo sensible que no viene (`undefined`, ver `DatosProductoEdicion`) queda como estaba, tenga o no la clave (M.2-A4).
  *
  * Desde el Hito 4 (H4C-13): permiso (`conPermisoDeEmpresa("producto_editar")`) → caso de uso (`casos-de-uso/actualizar-producto.ts`: el producto, el tipo, la
  * validación, y el `update` con sus tres auditorías en UNA transacción) → si salió bien, revalidar la carta pública y DESPUÉS, si el precio de venta cambió, el
  * `sincronizable` (lee el ítem agrupado con la base del contexto, como antes) → el resultado sin `datos` ni `codigo` (`aResultadoAccion`, más el `sincronizable`
  * elegido a mano). Sin guard (`SIN_GUARD`: la validación lee la unidad de stock a mitad de camino).
  */
-export async function actualizarProducto(productoId: string, datos: DatosProducto): Promise<ResultadoConSincronizable> {
+export async function actualizarProducto(productoId: string, datos: DatosProductoEdicion): Promise<ResultadoConSincronizable> {
   return conPermisoDeEmpresa<ResultadoConSincronizable>("producto_editar", async (ctx) => {
     // S-52: el guard se CALCULA acá pero `validarDatosDeProducto` aplica cada rechazo en el lugar de siempre (después de leer el producto y la unidad): un producto inexistente gana sobre un dato inválido.
     const puerta = guardComandoDatosDeProducto({ datos });

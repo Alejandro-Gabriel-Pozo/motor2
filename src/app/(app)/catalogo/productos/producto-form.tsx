@@ -10,6 +10,7 @@ import { AyudaCampo } from "@/components/ayuda-campo";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import { AvisoAltaSinPrecio, AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
+import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import { darDeAltaProducto, actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
 import { crearInsumo } from "@/server/actions/catalogo/insumos";
@@ -32,10 +33,7 @@ export interface ProductoExistente extends DatosProducto {
 }
 
 /** M.2: los cuatro datos del producto que protege `producto_campos_sensibles` (el precio de venta, el factor de conversión y las dos unidades). */
-type CampoSensible = "unidadCompraId" | "unidadStockId" | "factorConversion" | "precioVenta";
-
-/** Lo que arma el formulario: sin la clave fina, en la EDICIÓN esos cuatro campos no viajan («no viene» es «no cambia» en el servidor), por eso son opcionales acá y no en `DatosProducto`. */
-type DatosDelFormulario = Omit<DatosProducto, CampoSensible> & Partial<Pick<DatosProducto, CampoSensible>>;
+type DatosSensibles = Pick<DatosProducto, CampoSensibleDelProducto>;
 
 const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -110,24 +108,21 @@ export function ProductoForm({
         e.preventDefault();
         const form = new FormData(e.currentTarget);
         // M.2: con la clave van los cuatro campos sensibles del formulario. Sin ella, el alta manda lo único que el servidor acepta (precio 0, factor 1, sin unidad de compra; la unidad de stock es libre) y la
-        // edición no los manda: el servidor completa lo que no viene con lo guardado, así que ni siquiera una pantalla vieja puede devolver al valor viejo lo que otra persona cambió.
-        const sensibles: Partial<Pick<DatosProducto, CampoSensible>> = puedeEditarCamposSensibles
-          ? {
-              unidadCompraId: texto(form.get("unidadCompraId")) || null,
-              unidadStockId,
-              // numeroDelCampo: vacío → undefined (nunca 0 por un campo required sin tocar), texto inválido → NaN (el servidor lo rechaza).
-              factorConversion: numeroDelCampo(String(form.get("factorConversion") ?? "")) ?? Number.NaN,
-              precioVenta: numeroDelCampo(String(form.get("precioVenta") ?? "")) ?? 0,
-            }
-          : editando
-            ? {}
-            : { unidadCompraId: null, unidadStockId, factorConversion: 1, precioVenta: 0 };
-        const datos: DatosDelFormulario = {
+        // edición no los manda: el servidor completa lo que no viene con lo guardado (con o sin la clave), así que ni siquiera una pantalla vieja puede devolver al valor viejo lo que otra persona cambió.
+        const delFormulario: DatosSensibles = {
+          unidadCompraId: texto(form.get("unidadCompraId")) || null,
+          unidadStockId,
+          // numeroDelCampo: vacío → undefined (nunca 0 por un campo required sin tocar), texto inválido → NaN (el servidor lo rechaza).
+          factorConversion: numeroDelCampo(String(form.get("factorConversion") ?? "")) ?? Number.NaN,
+          precioVenta: numeroDelCampo(String(form.get("precioVenta") ?? "")) ?? 0,
+        };
+        const sensiblesDelAlta: DatosSensibles = puedeEditarCamposSensibles ? delFormulario : { unidadCompraId: null, unidadStockId, factorConversion: 1, precioVenta: 0 };
+        const sensiblesDeLaEdicion: Partial<DatosSensibles> = puedeEditarCamposSensibles ? delFormulario : {};
+        const datos: Omit<DatosProducto, CampoSensibleDelProducto> = {
           codigo: editando ? undefined : texto(form.get("codigo")) || undefined,
           nombre: texto(form.get("nombre")),
           tipo,
           categoriaId: categoriaId || null,
-          ...sensibles,
           insumoId: tipo === "MP" ? insumoId || null : null,
           // numeroDelCampo: vacío → undefined (sin paso, comportamiento actual), texto inválido → NaN (el servidor lo rechaza).
           pasoVenta: tipo === "PV" ? (numeroDelCampo(String(form.get("pasoVenta") ?? "")) ?? null) : null,
@@ -144,8 +139,8 @@ export function ProductoForm({
 
         startTransition(async () => {
           const resultado = editando
-            ? await actualizarProducto(productoExistente!.id, datos as DatosProducto)
-            : await darDeAltaProducto(datos as DatosProducto);
+            ? await actualizarProducto(productoExistente!.id, { ...datos, ...sensiblesDeLaEdicion })
+            : await darDeAltaProducto({ ...datos, ...sensiblesDelAlta });
           setMensaje(resultado.mensaje);
           setSincronizable(null);
           // Al guardar se vuelve a la ficha del producto, que muestra el aviso de que se guardó (antes se volvía a la lista y el cartel se perdía).
