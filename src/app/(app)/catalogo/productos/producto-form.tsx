@@ -9,6 +9,7 @@ import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
+import { AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
 import { darDeAltaProducto, actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
 import { crearInsumo } from "@/server/actions/catalogo/insumos";
@@ -30,6 +31,14 @@ export interface ProductoExistente extends DatosProducto {
   codigo: string;
 }
 
+/** M.2: los cuatro datos del producto que protege `producto_campos_sensibles` (el precio de venta, el factor de conversión y las dos unidades). */
+type CampoSensible = "unidadCompraId" | "unidadStockId" | "factorConversion" | "precioVenta";
+
+/** Lo que arma el formulario: sin la clave fina, en la EDICIÓN esos cuatro campos no viajan («no viene» es «no cambia» en el servidor), por eso son opcionales acá y no en `DatosProducto`. */
+type DatosDelFormulario = Omit<DatosProducto, CampoSensible> & Partial<Pick<DatosProducto, CampoSensible>>;
+
+const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
+
 export function ProductoForm({
   unidades,
   insumosIniciales,
@@ -37,6 +46,7 @@ export function ProductoForm({
   proveedoresIniciales,
   puedeCrear,
   puedeGestionarConsignacion,
+  puedeEditarCamposSensibles,
   productoExistente,
   presentacionesIniciales,
   cantidadSucursales,
@@ -54,6 +64,12 @@ export function ProductoForm({
    * rechaza un valor distinto del guardado. Cortesía de la pantalla; la barrera es la del servidor.
    */
   puedeGestionarConsignacion: boolean;
+  /**
+   * M.2 (P6): el precio de venta, el factor de conversión y las unidades son de quien tiene `producto_campos_sensibles` (la página lo calcula en el servidor, `puedeEditarCamposSensiblesDelProducto`). Sin la clave el
+   * formulario los muestra en SOLO LECTURA con el valor guardado y, en la edición, no los manda (el servidor completa lo que no viene con lo guardado y rechaza un valor distinto). En el alta se comporta como el
+   * servidor (D-2): precio 0, factor 1, sin unidad de compra; la unidad de stock del alta queda libre. Cortesía de la pantalla; la barrera es la del servidor.
+   */
+  puedeEditarCamposSensibles: boolean;
   productoExistente?: ProductoExistente;
   presentacionesIniciales?: PresentacionOpcion[];
   /** Solo para el alta (§4.1, docs/plan-disponibilidad-por-sucursal-2026-09-23.md) — sin esto el tilde no dice nada concreto. */
@@ -81,6 +97,9 @@ export function ProductoForm({
   const [sincronizable, setSincronizable] = useState<SincronizablePrecioGrupo | null>(null);
 
   const editando = Boolean(productoExistente);
+  // M.2: en el alta la unidad de stock queda libre aun sin la clave (sin ella no hay producto); en la edición es de quien tiene `producto_campos_sensibles`.
+  const unidadDeStockEditable = puedeEditarCamposSensibles || !editando;
+  const nombreDeUnidad = (id: string | null | undefined) => unidades.find((u) => u.id === id)?.nombre;
   const irALaFicha = (id: string | null) => router.push(id ? `/catalogo/productos/${id}?guardado=${editando ? "cambios" : "alta"}` : "/catalogo/productos");
 
   return (
@@ -88,17 +107,26 @@ export function ProductoForm({
       onSubmit={(e) => {
         e.preventDefault();
         const form = new FormData(e.currentTarget);
-        const datos: DatosProducto = {
+        // M.2: con la clave van los cuatro campos sensibles del formulario. Sin ella, el alta manda lo único que el servidor acepta (precio 0, factor 1, sin unidad de compra; la unidad de stock es libre) y la
+        // edición no los manda: el servidor completa lo que no viene con lo guardado, así que ni siquiera una pantalla vieja puede devolver al valor viejo lo que otra persona cambió.
+        const sensibles: Partial<Pick<DatosProducto, CampoSensible>> = puedeEditarCamposSensibles
+          ? {
+              unidadCompraId: texto(form.get("unidadCompraId")) || null,
+              unidadStockId,
+              // numeroDelCampo: vacío → undefined (nunca 0 por un campo required sin tocar), texto inválido → NaN (el servidor lo rechaza).
+              factorConversion: numeroDelCampo(String(form.get("factorConversion") ?? "")) ?? Number.NaN,
+              precioVenta: numeroDelCampo(String(form.get("precioVenta") ?? "")) ?? 0,
+            }
+          : editando
+            ? {}
+            : { unidadCompraId: null, unidadStockId, factorConversion: 1, precioVenta: 0 };
+        const datos: DatosDelFormulario = {
           codigo: editando ? undefined : texto(form.get("codigo")) || undefined,
           nombre: texto(form.get("nombre")),
           tipo,
           categoriaId: categoriaId || null,
-          unidadCompraId: texto(form.get("unidadCompraId")) || null,
-          unidadStockId,
-          // numeroDelCampo: vacío → undefined (nunca 0 por un campo required sin tocar), texto inválido → NaN (el servidor lo rechaza).
-          factorConversion: numeroDelCampo(String(form.get("factorConversion") ?? "")) ?? Number.NaN,
+          ...sensibles,
           insumoId: tipo === "MP" ? insumoId || null : null,
-          precioVenta: numeroDelCampo(String(form.get("precioVenta") ?? "")) ?? 0,
           // numeroDelCampo: vacío → undefined (sin paso, comportamiento actual), texto inválido → NaN (el servidor lo rechaza).
           pasoVenta: tipo === "PV" ? (numeroDelCampo(String(form.get("pasoVenta") ?? "")) ?? null) : null,
           seProduce: form.get("seProduce") === "on",
@@ -114,8 +142,8 @@ export function ProductoForm({
 
         startTransition(async () => {
           const resultado = editando
-            ? await actualizarProducto(productoExistente!.id, datos)
-            : await darDeAltaProducto(datos);
+            ? await actualizarProducto(productoExistente!.id, datos as DatosProducto)
+            : await darDeAltaProducto(datos as DatosProducto);
           setMensaje(resultado.mensaje);
           setSincronizable(null);
           // Al guardar se vuelve a la ficha del producto, que muestra el aviso de que se guardó (antes se volvía a la lista y el cartel se perdía).
@@ -218,24 +246,35 @@ export function ProductoForm({
 
       <div className="flex flex-col gap-1">
         <div className="flex gap-2">
-          <select aria-label="Unidad de stock" value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required className="flex-1 rounded border px-3 py-2">
-            <option value="">Unidad de stock</option>
-            {unidades.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nombre}
-              </option>
-            ))}
-          </select>
-          {tipo === "MP" && (
-            <select aria-label="Unidad de compra" name="unidadCompraId" defaultValue={productoExistente?.unidadCompraId ?? ""} className="flex-1 rounded border px-3 py-2">
-              <option value="">Unidad de compra (default)</option>
+          {unidadDeStockEditable ? (
+            <select aria-label="Unidad de stock" value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required className="flex-1 rounded border px-3 py-2">
+              <option value="">Unidad de stock</option>
               {unidades.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nombre}
                 </option>
               ))}
             </select>
+          ) : (
+            <ValorSoloLectura campo="unidadStockId" etiqueta="Unidad de stock">
+              {nombreDeUnidad(unidadStockId) ?? "—"}
+            </ValorSoloLectura>
           )}
+          {tipo === "MP" &&
+            (puedeEditarCamposSensibles ? (
+              <select aria-label="Unidad de compra" name="unidadCompraId" defaultValue={productoExistente?.unidadCompraId ?? ""} className="flex-1 rounded border px-3 py-2">
+                <option value="">Unidad de compra (default)</option>
+                {unidades.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nombre}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <ValorSoloLectura campo="unidadCompraId" etiqueta="Unidad de compra">
+                {nombreDeUnidad(productoExistente?.unidadCompraId) ?? "Sin unidad de compra"}
+              </ValorSoloLectura>
+            ))}
         </div>
         <AyudaCampo>
           {tipo === "MP"
@@ -245,32 +284,49 @@ export function ProductoForm({
       </div>
 
       <div className="flex flex-col gap-1">
-        <CampoNumero
-          name="factorConversion"
-          placeholder="Factor de conversión (unidades de stock por unidad de compra)"
-          ariaLabel="Factor de conversión (unidades de stock por unidad de compra)"
-          defaultValue={String(productoExistente?.factorConversion ?? 1)}
-          tipo="cantidad"
-          etiqueta="El factor de conversión"
-          decimales={unidades.find((u) => u.id === unidadStockId)?.decimales}
-          required
-        />
+        {puedeEditarCamposSensibles ? (
+          <CampoNumero
+            name="factorConversion"
+            placeholder="Factor de conversión (unidades de stock por unidad de compra)"
+            ariaLabel="Factor de conversión (unidades de stock por unidad de compra)"
+            defaultValue={String(productoExistente?.factorConversion ?? 1)}
+            tipo="cantidad"
+            etiqueta="El factor de conversión"
+            decimales={unidades.find((u) => u.id === unidadStockId)?.decimales}
+            required
+          />
+        ) : (
+          <ValorSoloLectura campo="factorConversion" etiqueta="Factor de conversión (unidades de stock por unidad de compra)">
+            {(productoExistente?.factorConversion ?? 1).toLocaleString("es-AR")}
+          </ValorSoloLectura>
+        )}
         <AyudaCampo>
           Cuántas unidades de stock entran en 1 unidad de compra — ej. 25 si comprás bolsas de 25kg y controlás el stock en kg. Si comprás y
           controlás en la misma unidad, dejalo en 1.
         </AyudaCampo>
       </div>
 
-      {tipo === "PV" && (
-        <CampoNumero
-          name="precioVenta"
-          prefijo="$"
-          placeholder="Precio de venta"
-          ariaLabel="Precio de venta"
-          defaultValue={String(productoExistente?.precioVenta ?? 0)}
-          tipo="importe"
-          etiqueta="El precio de venta"
-        />
+      {tipo === "PV" &&
+        (puedeEditarCamposSensibles ? (
+          <CampoNumero
+            name="precioVenta"
+            prefijo="$"
+            placeholder="Precio de venta"
+            ariaLabel="Precio de venta"
+            defaultValue={String(productoExistente?.precioVenta ?? 0)}
+            tipo="importe"
+            etiqueta="El precio de venta"
+          />
+        ) : (
+          <ValorSoloLectura campo="precioVenta" etiqueta="Precio de venta">
+            {pesos(productoExistente?.precioVenta ?? 0)}
+          </ValorSoloLectura>
+        ))}
+
+      {!puedeEditarCamposSensibles && (
+        <AvisoCamposSensibles>
+          {editando ? "Se muestran los valores guardados; el resto de los datos del producto se puede editar." : "El producto se crea con precio $0, factor 1 y sin unidad de compra; después lo completa quien tenga ese permiso."}
+        </AvisoCamposSensibles>
       )}
 
       {tipo === "PV" && (
@@ -294,6 +350,7 @@ export function ProductoForm({
           unidades={unidades}
           presentacionesIniciales={presentacionesIniciales ?? []}
           unidadStockDecimales={unidades.find((u) => u.id === unidadStockId)?.decimales}
+          puedeEditarCamposSensibles={puedeEditarCamposSensibles}
         />
       )}
 

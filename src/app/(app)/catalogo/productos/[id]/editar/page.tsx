@@ -7,7 +7,7 @@ import { obtenerMiNivelPermiso, requierePermisoDeEmpresa, requierePermisoVerDeEm
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import { ProductoForm, type ProductoExistente } from "../../producto-form";
-import { cargarOpcionesFormularioProducto } from "../../opciones-formulario";
+import { cargarOpcionesFormularioProducto, puedeEditarCamposSensiblesDelProducto } from "../../opciones-formulario";
 
 /** Edición de un producto. Al guardar, vuelve a su ficha, que muestra el aviso de que se guardó. */
 export default async function EditarProductoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,6 +27,10 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
   // `pagar_consignante` EDITAR en la sucursal activa. La consulta no lo devuelve sin la bandera, y la lista de proveedores del selector (solo se usa para elegir el consignante)
   // tampoco se manda.
   const { editar: puedeGestionarConsignacion } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
+
+  // M.2 (P6): cambiar el precio de venta, el factor de conversión y las unidades exige además `producto_campos_sensibles`. Sin la clave el formulario los muestra en solo lectura (con el valor guardado) y no
+  // manda esos campos: «no viene» es «no cambia» en el servidor, que rechaza igual un valor distinto del guardado (`actualizarProducto`).
+  const puedeEditarCamposSensibles = await puedeEditarCamposSensiblesDelProducto(ctx);
 
   const { id } = await params;
   const p = await obtenerProductoPorId(id, ctx.db, { conCostoDeConsignacion: puedeGestionarConsignacion });
@@ -68,6 +72,7 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
         proveedoresIniciales={puedeGestionarConsignacion ? proveedores : []}
         puedeCrear={puedeCrear}
         puedeGestionarConsignacion={puedeGestionarConsignacion}
+        puedeEditarCamposSensibles={puedeEditarCamposSensibles}
         productoExistente={productoExistente}
         presentacionesIniciales={presentaciones}
       />
