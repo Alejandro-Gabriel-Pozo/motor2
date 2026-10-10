@@ -25,7 +25,12 @@ interface Opcion {
 interface OpcionUnidad extends Opcion {
   /** 0-6: cuántos decimales admite — para validar `factorConversion` con el mismo criterio del servidor (validarCantidad). */
   decimales: number;
+  /** M.2-A4 (D): una unidad que el producto usa pero se desactivó (la edición la incluye para no mostrarla como «sin unidad» ni borrarla al guardar). Se ve con «(inactiva)» y no se ofrece para presentaciones nuevas. */
+  inactiva?: boolean;
 }
+
+/** El nombre de la unidad como se ve en el formulario: las inactivas llevan «(inactiva)». */
+const etiquetaDeUnidad = (u: OpcionUnidad) => (u.inactiva ? `${u.nombre} (inactiva)` : u.nombre);
 
 export interface ProductoExistente extends DatosProducto {
   id: string;
@@ -99,7 +104,10 @@ export function ProductoForm({
   const unidadDeStockEditable = puedeEditarCamposSensibles || !editando;
   // M.2-A4: un producto de venta dado de alta SIN la clave nace con precio $0 y el servidor lo deja NO disponible en ninguna sucursal (no se puede vender a $0): el tilde se ve apagado y sin poder cambiarse.
   const naceSinPoderVenderse = !editando && tipo === "PV" && !puedeEditarCamposSensibles;
-  const nombreDeUnidad = (id: string | null | undefined) => unidades.find((u) => u.id === id)?.nombre;
+  const nombreDeUnidad = (id: string | null | undefined) => {
+    const u = unidades.find((x) => x.id === id);
+    return u ? etiquetaDeUnidad(u) : undefined;
+  };
   const irALaFicha = (id: string | null) => router.push(id ? `/catalogo/productos/${id}?guardado=${editando ? "cambios" : "alta"}` : "/catalogo/productos");
 
   return (
@@ -248,7 +256,7 @@ export function ProductoForm({
               <option value="">Unidad de stock</option>
               {unidades.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.nombre}
+                  {etiquetaDeUnidad(u)}
                 </option>
               ))}
             </select>
@@ -263,7 +271,7 @@ export function ProductoForm({
                 <option value="">Unidad de compra (default)</option>
                 {unidades.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.nombre}
+                    {etiquetaDeUnidad(u)}
                   </option>
                 ))}
               </select>
@@ -344,7 +352,7 @@ export function ProductoForm({
       {editando && tipo === "MP" && (
         <GestionPresentaciones
           productoId={productoExistente!.id}
-          unidades={unidades}
+          unidades={unidades.filter((u) => !u.inactiva)}
           presentacionesIniciales={presentacionesIniciales ?? []}
           unidadStockDecimales={unidades.find((u) => u.id === unidadStockId)?.decimales}
           puedeEditarCamposSensibles={puedeEditarCamposSensibles}

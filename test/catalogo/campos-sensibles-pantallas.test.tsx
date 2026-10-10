@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import type { ReactElement, ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -17,13 +16,18 @@ vi.mock("../../src/server/actions/catalogo/productos", () => ({
   buscarProductosSelector: vi.fn(),
 }));
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
-vi.mock("../../src/server/actions/catalogo/insumos", () => ({ crearInsumo: vi.fn() }));
-vi.mock("../../src/server/actions/catalogo/categorias-producto", () => ({ crearCategoriaProducto: vi.fn() }));
-vi.mock("../../src/server/actions/catalogo/proveedores", () => ({ altaProveedor: vi.fn() }));
+// Las acciones de alta rápida que usa el formulario se reemplazan; las LECTURAS que usan las páginas (listas de insumos, categorías y proveedores) son las reales: las páginas se llaman de verdad contra la base.
+vi.mock("../../src/server/actions/catalogo/insumos", async (original) => ({ ...(await original<typeof import("../../src/server/actions/catalogo/insumos")>()), crearInsumo: vi.fn() }));
+vi.mock("../../src/server/actions/catalogo/categorias-producto", async (original) => ({ ...(await original<typeof import("../../src/server/actions/catalogo/categorias-producto")>()), crearCategoriaProducto: vi.fn() }));
+vi.mock("../../src/server/actions/catalogo/proveedores", async (original) => ({ ...(await original<typeof import("../../src/server/actions/catalogo/proveedores")>()), altaProveedor: vi.fn() }));
 
-import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, EMPRESA_POR_DEFECTO_ID } from "../setup/test-db";
+import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, EMPRESA_POR_DEFECTO_ID } from "../setup/test-db";
+import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { puedeEditarCamposSensiblesDelProducto } from "../../src/server/acceso/campos-sensibles-de-producto";
 import { ProductoForm, type ProductoExistente } from "../../src/app/(app)/catalogo/productos/producto-form";
+import NuevoProductoPage from "../../src/app/(app)/catalogo/productos/nuevo/page";
+import EditarProductoPage from "../../src/app/(app)/catalogo/productos/[id]/editar/page";
+import { conLasUnidadesDelProducto } from "../../src/app/(app)/catalogo/productos/opciones-formulario";
 import { GestionPresentaciones } from "../../src/components/catalogo/gestion-presentaciones";
 
 /**
@@ -68,12 +72,124 @@ describe("(1) el permiso lo calcula el servidor con el gate", () => {
   });
 });
 
-describe("(2) las páginas de alta y de edición se lo pasan al formulario", () => {
-  const raiz = join(__dirname, "../../src/app/(app)/catalogo/productos");
-  it.each([["nuevo/page.tsx"], ["[id]/editar/page.tsx"]])("%s calcula el permiso con el gate del servidor y no lo fija", (ruta) => {
-    const fuente = readFileSync(join(raiz, ruta), "utf8");
-    expect(fuente).toMatch(/const puedeEditarCamposSensibles = await puedeEditarCamposSensiblesDelProducto\(ctx\);/);
-    expect(fuente).toMatch(/<ProductoForm[^>]*puedeEditarCamposSensibles=\{puedeEditarCamposSensibles\}/);
+/** Los props de cada `tipo` de componente que el árbol (ya armado por la página) lleva: lo que la página le pasa al formulario, que es lo que viaja al navegador. */
+function propsDe(arbol: ReactNode, tipo: unknown): Record<string, unknown>[] {
+  const hallados: Record<string, unknown>[] = [];
+  const recorrer = (nodo: ReactNode) => {
+    if (Array.isArray(nodo)) return nodo.forEach(recorrer);
+    if (!nodo || typeof nodo !== "object" || !("props" in nodo)) return;
+    const el = nodo as ReactElement<Record<string, unknown> & { children?: ReactNode }>;
+    if (el.type === tipo) hallados.push(el.props);
+    recorrer(el.props.children);
+  };
+  recorrer(arbol);
+  return hallados;
+}
+
+/**
+ * (2) y (D): las PÁGINAS reales (alta y edición) contra la base. Antes este eslabón era una expresión regular sobre el código fuente de las páginas; ahora se las llama de verdad, con una persona real (rol y
+ * permisos en la base) y se mira lo que le pasan al formulario: el permiso que calcula el servidor y las unidades.
+ */
+describe("(2) las páginas de alta y de edición le pasan al formulario el permiso que calcula el servidor", () => {
+  let sucursalId: string;
+  let usuarios: { admin: string; operador: string; conClave: string; soloVer: string };
+  let productoId: string;
+  let kgId: string;
+  let gId: string;
+
+  const como = (id: string, email: string) => mockearUsuarioActual({ id, email, nombre: null });
+  const alta = async () => propsDe(await NuevoProductoPage(), ProductoForm)[0]!;
+  const edicion = async () => propsDe(await EditarProductoPage({ params: Promise.resolve({ id: productoId }) }), ProductoForm)[0]!;
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    const base = await sembrarBase();
+    sucursalId = base.sucursal.id;
+    const catalogo = await sembrarCatalogoBase();
+    kgId = catalogo.kg.id;
+    gId = catalogo.g.id;
+    productoId = (await sembrarProductoDisponible({ codigo: "MP_QUESO", nombre: "Queso", tipo: "MP", unidadStockId: kgId, unidadCompraId: gId, factorConversion: 25 }, sucursalId)).id;
+    const rolPropio = async (nombre: string, editar: boolean) => {
+      const rol = await prisma.rol.create({ data: { nombre } });
+      // Lo que hace falta para abrir las dos pantallas, más la clave fina en el nivel pedido (Ver solamente, o Ver y Editar).
+      for (const accionClave of ["alta_producto", "producto_editar", "producto_ver_catalogo"]) await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave, puedeVer: true, puedeEditar: true } });
+      await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "producto_campos_sensibles", puedeVer: true, puedeEditar: editar } });
+      return rol.id;
+    };
+    usuarios = {
+      admin: (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id })).id,
+      operador: (await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: base.operador.id })).id,
+      conClave: (await crearUsuarioConMembresia({ email: "precios@test.com", sucursalId, rolId: await rolPropio("Precios", true) })).id,
+      soloVer: (await crearUsuarioConMembresia({ email: "mira@test.com", sucursalId, rolId: await rolPropio("Mira", false) })).id,
+    };
+  });
+
+  it.each([
+    ["admin", "admin@test.com", true],
+    ["conClave", "precios@test.com", true],
+    ["operador", "operador@test.com", false],
+    ["soloVer", "mira@test.com", false],
+  ] as const)("%s: el formulario de ALTA recibe puedeEditarCamposSensibles=%s según lo que dice la base, no un valor fijo", async (quien, email, esperado) => {
+    await como(usuarios[quien], email);
+    expect((await alta()).puedeEditarCamposSensibles).toBe(esperado);
+  });
+
+  it.each([
+    ["admin", "admin@test.com", true],
+    ["conClave", "precios@test.com", true],
+    ["operador", "operador@test.com", false],
+    ["soloVer", "mira@test.com", false],
+  ] as const)("%s: el formulario de EDICIÓN recibe puedeEditarCamposSensibles=%s según lo que dice la base, no un valor fijo", async (quien, email, esperado) => {
+    await como(usuarios[quien], email);
+    expect((await edicion()).puedeEditarCamposSensibles).toBe(esperado);
+  });
+
+  it("cambiar la clave en la base cambia lo que recibe la pantalla en la siguiente carga (nada queda fijo en el código de la página)", async () => {
+    await como(usuarios.conClave, "precios@test.com");
+    expect((await edicion()).puedeEditarCamposSensibles).toBe(true);
+    await prisma.permisoRol.updateMany({ where: { accionClave: "producto_campos_sensibles", rol: { nombre: "Precios" } }, data: { puedeEditar: false } });
+    expect((await edicion()).puedeEditarCamposSensibles).toBe(false);
+  });
+
+  describe("(D) la unidad inactiva del producto sigue en las opciones de la edición", () => {
+    const unidadesDe = async () => (await edicion()).unidades as { id: string; nombre: string; inactiva?: boolean }[];
+
+    it("con todas las unidades activas, el formulario recibe solo las activas y ninguna marcada", async () => {
+      await como(usuarios.admin, "admin@test.com");
+      expect((await unidadesDe()).some((u) => u.inactiva)).toBe(false);
+    });
+
+    it("si la unidad de COMPRA del producto se desactivó, está igual en las opciones, marcada inactiva (antes: faltaba y se mostraba «Sin unidad de compra»)", async () => {
+      await prisma.unidad.update({ where: { id: gId }, data: { activa: false } });
+      for (const [quien, email] of [["admin", "admin@test.com"], ["operador", "operador@test.com"]] as const) {
+        await como(usuarios[quien], email);
+        const g = (await unidadesDe()).find((u) => u.id === gId);
+        expect(g, `${quien}: la unidad de compra inactiva tiene que estar en las opciones`).toBeDefined();
+        expect(g!.inactiva).toBe(true);
+      }
+    });
+
+    it("si la unidad de STOCK se desactivó, también", async () => {
+      await prisma.unidad.update({ where: { id: kgId }, data: { activa: false } });
+      await como(usuarios.admin, "admin@test.com");
+      expect((await unidadesDe()).find((u) => u.id === kgId)?.inactiva).toBe(true);
+    });
+
+    it("una unidad inactiva que el producto NO usa no aparece", async () => {
+      const ml = await prisma.unidad.create({ data: { nombre: "ml", magnitud: "VOLUMEN", decimales: 0, activa: false } });
+      await como(usuarios.admin, "admin@test.com");
+      expect((await unidadesDe()).some((u) => u.id === ml.id)).toBe(false);
+    });
+  });
+});
+
+describe("(D) conLasUnidadesDelProducto", () => {
+  const kg = { id: "u-kg", nombre: "kg" };
+  const g = { id: "u-g", nombre: "g" };
+  it("agrega las que faltan marcadas inactivas, sin duplicar las activas ni repetir, e ignora «sin unidad de compra»", () => {
+    expect(conLasUnidadesDelProducto([kg], [kg, g, g, null])).toEqual([kg, { ...g, inactiva: true }]);
+    expect(conLasUnidadesDelProducto([kg, g], [kg, null])).toEqual([kg, g]);
+    expect(conLasUnidadesDelProducto([], [null])).toEqual([]);
   });
 });
 
@@ -126,6 +242,39 @@ describe("(3) ProductoForm: edición", () => {
     expect(mp).not.toContain("data-aviso-campos-sensibles");
     const pv = dibujar(true, existente({ tipo: "PV", precioVenta: 3200 }));
     expect(pv).toContain('name="precioVenta"');
+  });
+});
+
+describe("(3) ProductoForm: edición con una unidad INACTIVA (M.2-A4, D)", () => {
+  // La edición recibe también las unidades que el producto usa aunque se hayan desactivado (`conLasUnidadesDelProducto`), marcadas `inactiva`.
+  const conInactiva = [...unidades.filter((u) => u.id !== "u-bolsa"), { id: "u-bolsa", nombre: "bolsa", decimales: 0, inactiva: true }];
+  const dibujarConInactiva = (puede: boolean) =>
+    renderToStaticMarkup(<ProductoForm {...comunes} unidades={conInactiva} puedeEditarCamposSensibles={puede} productoExistente={existente()} presentacionesIniciales={[]} />);
+
+  it("SIN la clave, la unidad de compra inactiva se ve con su nombre y «(inactiva)», no como «Sin unidad de compra» (antes: el dato falso)", () => {
+    const html = dibujarConInactiva(false);
+    expect(textoPlano(soloLectura(html, "unidadCompraId"))).toContain("bolsa (inactiva)");
+    expect(html).not.toContain("Sin unidad de compra");
+  });
+
+  it("CON la clave, el desplegable de la unidad de compra ofrece la inactiva y la deja elegida (antes: no estaba, mandaba vacío y borraba la unidad al guardar)", () => {
+    const html = dibujarConInactiva(true);
+    const desplegable = html.match(/<select[^>]*aria-label="Unidad de compra"[^>]*>[\s\S]*?<\/select>/)?.[0] ?? "";
+    expect(desplegable).toMatch(/<option value="u-bolsa"[^>]*selected[^>]*>bolsa \(inactiva\)<\/option>/);
+  });
+
+  it("la gestión de presentaciones NO ofrece la unidad inactiva para agregar una presentación nueva", () => {
+    const html = dibujarConInactiva(true);
+    const alta = html.slice(html.indexOf("Elegí una unidad"));
+    expect(alta).toContain('value="u-kg"');
+    expect(alta).not.toContain('value="u-bolsa"');
+  });
+
+  it("la unidad de STOCK inactiva también se ve con su nombre (solo lectura, sin la clave)", () => {
+    const html = renderToStaticMarkup(
+      <ProductoForm {...comunes} unidades={[{ id: "u-kg", nombre: "kg", decimales: 2, inactiva: true }, ...unidades.filter((u) => u.id !== "u-kg")]} puedeEditarCamposSensibles={false} productoExistente={existente()} presentacionesIniciales={[]} />,
+    );
+    expect(textoPlano(soloLectura(html, "unidadStockId"))).toContain("kg (inactiva)");
   });
 });
 

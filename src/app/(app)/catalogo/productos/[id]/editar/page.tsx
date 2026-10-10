@@ -5,9 +5,9 @@ import { irAlLogin } from "@/core/auth/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
-import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
+import { obtenerProductoPorId, obtenerUnidadesDelProducto } from "@/server/consultas/catalogo/productos";
 import { ProductoForm, type ProductoExistente } from "../../producto-form";
-import { cargarOpcionesFormularioProducto } from "../../opciones-formulario";
+import { cargarOpcionesFormularioProducto, conLasUnidadesDelProducto } from "../../opciones-formulario";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 
 /** Edición de un producto. Al guardar, vuelve a su ficha, que muestra el aviso de que se guardó. */
@@ -37,7 +37,9 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
   const p = await obtenerProductoPorId(id, ctx.db, { conCostoDeConsignacion: puedeGestionarConsignacion });
   if (!p) notFound();
 
-  const { unidades, insumos, categorias, proveedores, puedeCrear } = await cargarOpcionesFormularioProducto(ctx);
+  const [{ unidades: unidadesActivas, insumos, categorias, proveedores, puedeCrear }, unidadesDelProducto] = await Promise.all([cargarOpcionesFormularioProducto(ctx), obtenerUnidadesDelProducto(id, ctx.db)]);
+  // M.2-A4 (D): las unidades que el producto usa hoy van en las opciones aunque se hayan desactivado (`listarUnidadesActivas` trae solo las activas): sin esto el formulario las mostraba como «sin unidad» y, con la clave, las borraba al guardar.
+  const unidades = conLasUnidadesDelProducto(unidadesActivas, [unidadesDelProducto?.unidadStock ?? null, unidadesDelProducto?.unidadCompra ?? null]);
   const productoExistente: ProductoExistente = {
     id: p.id,
     codigo: p.codigo,

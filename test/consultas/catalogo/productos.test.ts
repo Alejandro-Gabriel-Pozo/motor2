@@ -5,6 +5,7 @@ import {
   obtenerFichaProducto,
   obtenerProductoOpcion,
   obtenerProductoPorId,
+  obtenerUnidadesDelProducto,
   obtenerSeccionHabitualEnSucursal,
   contarSucursales,
 } from "../../../src/server/consultas/catalogo/productos";
@@ -180,6 +181,24 @@ describe("server/consultas/catalogo/productos", () => {
 
       await expect(obtenerSeccionHabitualEnSucursal(sucursalA, pvSinRelaciones, prisma)).resolves.toBeNull();
       await expect(obtenerSeccionHabitualEnSucursal(sucursalA, mpCompleto, prisma)).resolves.toEqual({ seccion: { nombre: "Cocina A" } });
+    });
+  });
+
+  describe("obtenerUnidadesDelProducto (M.2-A4, D)", () => {
+    it("trae SOLO el id y el nombre del producto y id, nombre y decimales de las dos unidades, aunque estén inactivas", async () => {
+      await prisma.unidad.update({ where: { id: bolsa.id }, data: { activa: false } });
+      const u = await obtenerUnidadesDelProducto(mpCompleto, prisma);
+      expect(u).toEqual({
+        id: mpCompleto,
+        nombre: "Harina 000",
+        unidadStock: { id: kg.id, nombre: "kg", decimales: 2 },
+        unidadCompra: { id: bolsa.id, nombre: "bolsa", decimales: 0 },
+      });
+    });
+
+    it("un producto sin unidad de compra la devuelve en null, y uno que no existe devuelve null", async () => {
+      expect((await obtenerUnidadesDelProducto(pvSinRelaciones, prisma))?.unidadCompra).toBeNull();
+      await expect(obtenerUnidadesDelProducto("no-existe", prisma)).resolves.toBeNull();
     });
   });
 
