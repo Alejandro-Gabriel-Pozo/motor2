@@ -154,7 +154,11 @@ async function actualizarProductoEnTransaccion(
       );
     }
 
-    await actualizarCamposDeProducto(tx, { id: productoId, campos: nuevos });
+    // M.2 (concurrencia): la lectura de `existente` va sin candado (READ COMMITTED). Sin la clave, el precio de venta, el factor y las unidades NO se escriben: la validación ya comprobó que son los guardados, y escribirlos
+    // de nuevo pisaría, con el valor viejo del formulario y sin auditoría, lo que otra persona (con la clave) haya cambiado entre la lectura y esta escritura.
+    const { precioVenta, factorConversion, unidadStockId, unidadCompraId, ...sinCamposSensibles } = nuevos;
+    void [precioVenta, factorConversion, unidadStockId, unidadCompraId];
+    await actualizarCamposDeProducto(tx, { id: productoId, campos: comando.puedeEditarCamposSensibles ? nuevos : sinCamposSensibles });
 
     // Auditoría administrativa (A3, Pivote 6) — los precios, que son los campos de mayor impacto de negocio/control interno (ver
     // docs/auditoria-motor2-fase6-seguridad-2026-09-18.md)...

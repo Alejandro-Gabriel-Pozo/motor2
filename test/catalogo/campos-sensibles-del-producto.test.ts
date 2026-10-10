@@ -4,6 +4,7 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
+import { crearMembresia } from "../setup/membresia";
 import { actualizarProducto, type DatosProducto } from "../../src/server/actions/catalogo/productos";
 import { actualizarProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/actualizar-producto";
 import { guardComandoDatosDeProducto } from "../../src/core/features/catalogo/productos.guard";
@@ -220,6 +221,15 @@ describe("M.2: precio, factor y unidades de un producto son de quien tiene produ
       expect((await actualizarProducto(quesoId, await datos({ precioVenta: 700 }))).ok).toBe(true);
       expect((await guardado()).precioVenta).toBe(700);
       expect(await auditorias("precioVenta")).toBe(1);
+    });
+
+    it("un usuario con la clave en UNA sola de sus membresías (en la otra sucursal su rol no la tiene) la ejerce: es una clave de empresa", async () => {
+      const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+      const mixto = await crearUsuarioConMembresia({ email: "mixto@test.com", sucursalId, rolId: (await prisma.rol.findFirstOrThrow({ where: { nombre: "Editor" } })).id });
+      await crearMembresia({ usuarioId: mixto.id, sucursalId: norte.id, rolId: (await prisma.rol.findFirstOrThrow({ where: { nombre: "Precios" } })).id });
+      await como(mixto.id, "mixto@test.com");
+      expect((await actualizarProducto(quesoId, await datos({ precioVenta: 800 }))).ok).toBe(true);
+      expect((await guardado()).precioVenta).toBe(800);
     });
 
     it("la clave NO reemplaza a producto_editar: sin ella, ni siquiera quien tiene la clave fina edita", async () => {

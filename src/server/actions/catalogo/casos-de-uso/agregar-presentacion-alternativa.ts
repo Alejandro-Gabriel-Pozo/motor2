@@ -70,7 +70,8 @@ export async function agregarPresentacionAlternativaCasoDeUso(
           `Si el factor está mal, desactivala y creá otra presentación con otra unidad de compra.`,
       );
     }
-    const fila = await guardarPresentacion(tx, { productoId, unidadCompraId, factorConversion: factor.valor! });
+    // Sin la clave fina solo se llega hasta acá reactivando con el MISMO factor: no se vuelve a escribir (si otra persona lo cambió después de la lectura de arriba, no se pisa).
+    const fila = await guardarPresentacion(tx, { productoId, unidadCompraId, factorConversion: factor.valor!, reescribirElFactor: comando.puedeEditarCamposSensibles });
     if (!anterior || cambiaElFactor) {
       await registrarCambioAuditado(tx, {
         entidad: "Presentacion",
