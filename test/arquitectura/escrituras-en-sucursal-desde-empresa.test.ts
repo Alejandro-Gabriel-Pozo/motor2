@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { ACCIONES, type AccionClave } from "../../src/core/permisos/acciones";
 import { envoltoriosDe } from "./guardas/envoltorio-y-clave";
 import { funcionDeInicializador } from "./guardas/analizador";
+import { ensanchesUsados, fuentesDe, llamadasAEnsanches } from "./guardas/ensanches";
 
 /**
  * GT-4, SEGUNDA MITAD (plan de endurecimiento de seguridad, tanda T6; fila O.59 de `docs/pureza-integracion.md`; decisión D1 del dueño): **toda Server Action de contexto EMPRESA que termina
@@ -30,6 +31,11 @@ import { funcionDeInicializador } from "./guardas/analizador";
  *
  * Mutaciones (rojo → revertido editando → verde): volver `guardarGeneroCarta` a `conPermisoDeEmpresa` (su caso de uso escribe `GeneroCarta` y aparece sin declarar), sacar el
  * `requierePermiso("carta_promo_activar")` del alta de la promo (la evidencia de `CLAVE_DE_SUCURSAL` desaparece) y los casos sintéticos del propio guardián (abajo).
+ *
+ * M.3-A4/A6 (RLS por sucursal, `plan-m3-rls-por-sucursal`): con la RLS por sucursal, una escritura de EMPRESA ENTERA que cae en sucursales fuera de la activa solo funciona si el contexto lo AMPLÍA (`src/server/acceso/alcance.ts`).
+ * Cada archivo declarado dice en `ensanches` cuál usa, y el guardián lo verifica en las dos direcciones: el archivo llama a exactamente esas funciones (`ESCRITURA_EN_LA_EMPRESA` = `conEscrituraEnLaEmpresa`,
+ * `SUCURSAL_NUEVA` = `incluirSucursalCreadaEnLaTransaccion`), y ningún archivo de `src/` las llama sin estar declarado con ellas. Un `EMPRESA_ENTERA` SIN ensanche solo puede escribir tablas de GOBIERNO (la sucursal misma, sus
+ * membresías, capacidades e invitaciones y el registro público, que la RLS por sucursal no toca). Mutación: sacar el `conEscrituraEnLaEmpresa` del alta de producto, o llamarlo desde un archivo no declarado → rojo.
  */
 const RAIZ = join(__dirname, "../..");
 const ESCRITURAS = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "updateManyAndReturn", "upsert", "delete", "deleteMany"]);
@@ -38,8 +44,15 @@ const ZONA_DE_ACCIONES = "src/server/actions/";
 const ZONA_DE_PERSISTENCIA = "src/server/persistencia/";
 
 type Ata = "CLAVE_DE_SUCURSAL" | "EMPRESA_ENTERA";
+/** Los ensanches del alcance que usa una escritura de empresa entera, y la función de `alcance.ts` que cada uno llama. */
+type EnsancheDeEscritura = "ESCRITURA_EN_LA_EMPRESA" | "SUCURSAL_NUEVA";
+const FUNCION_DEL_ENSANCHE: Readonly<Record<EnsancheDeEscritura, string>> = { ESCRITURA_EN_LA_EMPRESA: "conEscrituraEnLaEmpresa", SUCURSAL_NUEVA: "incluirSucursalCreadaEnLaTransaccion" };
+/** Los modelos de GOBIERNO (la RLS por sucursal no los toca: la sucursal misma, sus membresías, capacidades e invitaciones y el registro público): una escritura de empresa entera que solo toca estos no necesita ensanche. */
+const MODELOS_DE_GOBIERNO = new Set(["sucursal", "usuarioSucursal", "capacidadSucursal", "invitacionSucursal", "sucursalPublica"]);
 interface Declaracion {
   ata: Ata;
+  /** M.3-A4: los ensanches del alcance que el archivo llama (vacío = ninguno; para `EMPRESA_ENTERA` entonces solo escribe modelos de GOBIERNO). */
+  ensanches: readonly EnsancheDeEscritura[];
   /** Las puertas de empresa (`archivo desde src/server/actions|función`) que llegan a este archivo. Lista cerrada. */
   puertas: readonly string[];
   motivo: string;
@@ -55,6 +68,7 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   // ── La carta ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   "carta/casos-de-uso/guardar-promo-carta.ts": {
     ata: "CLAVE_DE_SUCURSAL",
+    ensanches: [],
     clave: "carta_promo_activar",
     puertas: ["carta/promos.ts|guardarPromoCarta"],
     motivo:
@@ -66,58 +80,69 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   // fila a la membresía de esa sucursal (quien publica la sucursal B debería tener algo en B): hoy un administrador con `carta_portal` en cualquiera de sus sucursales puede publicar o quitar a otra.
   "carta/casos-de-uso/agregar-sucursal-al-portal.ts": {
     ata: "EMPRESA_ENTERA",
+    ensanches: [],
     puertas: ["carta/registro-publico.ts|agregarSucursalAlPortal"],
     motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): el registro público de TODAS las sucursales se administra desde una sola pantalla, sin depender de la activa; el defecto vigente es permisivo (quien tiene la clave en cualquiera de sus sucursales publica o quita a las otras)",
   },
   "carta/casos-de-uso/guardar-sucursal-publica.ts": {
     ata: "EMPRESA_ENTERA",
+    ensanches: [],
     puertas: ["carta/registro-publico.ts|guardarSucursalPublica"],
     motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): el registro público de TODAS las sucursales se administra desde una sola pantalla, sin depender de la activa; el defecto vigente es permisivo (quien tiene la clave en cualquiera de sus sucursales edita la ficha pública de las otras)",
   },
   "carta/casos-de-uso/mover-sucursal-en-mapa.ts": {
     ata: "EMPRESA_ENTERA",
+    ensanches: [],
     puertas: ["carta/registro-publico.ts|moverSucursalEnMapa"],
     motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): la posición de cada tarjeta se arrastra sobre el mapa de todas las sucursales; el defecto vigente es permisivo (la clave en cualquier membresía mueve la tarjeta de cualquier sucursal)",
   },
   "carta/casos-de-uso/quitar-sucursal-del-portal.ts": {
     ata: "EMPRESA_ENTERA",
+    ensanches: [],
     puertas: ["carta/registro-publico.ts|quitarSucursalDelPortal"],
     motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): sacar una sucursal del registro público es la vuelta atrás de agregarla; el defecto vigente es permisivo (la clave en cualquier membresía saca a cualquier sucursal)",
   },
   // ── Gobierno de las sucursales (claves `administrador_sistema` de empresa) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
   "auth/casos-de-uso/actualizar-activo-sucursal.ts": {
     ata: "EMPRESA_ENTERA",
+    ensanches: [],
     puertas: ["auth/sucursales.ts|actualizarActivoSucursal"],
     motivo: "`activar_sucursal` es gobierno de la empresa (piso administrador de sistema, inmutable): alta y baja de sucursales; el caso de uso mide el id contra las sucursales de la empresa. A CONFIRMAR POR EL DUEÑO: se puede activar o apagar una sucursal desde otra sucursal (el gobierno es de la empresa, no de la sucursal activa)",
   },
   "auth/casos-de-uso/crear-sucursal-con-admin.ts": {
     ata: "EMPRESA_ENTERA",
+    ensanches: ["ESCRITURA_EN_LA_EMPRESA", "SUCURSAL_NUEVA"],
     puertas: ["auth/sucursales.ts|crearSucursalConAdmin"],
     motivo: "`alta_sucursal` es gobierno de la empresa: crea una sucursal NUEVA (todavía sin carta ni membresías) y le siembra la disponibilidad de los productos y la membresía de quien la crea. A CONFIRMAR POR EL DUEÑO: se puede dar de alta una sucursal desde cualquier otra",
   },
   "auth/casos-de-uso/renombrar-sucursal.ts": {
     ata: "EMPRESA_ENTERA",
+    ensanches: [],
     puertas: ["auth/sucursales.ts|renombrarSucursal"],
     motivo: "`renombrar_sucursal` es gobierno de la empresa (piso administrador de sistema, inmutable): el nombre de una sucursal lo cambia quien gobierna la empresa; el id solo alcanza sucursales de la empresa. A CONFIRMAR POR EL DUEÑO: se puede renombrar una sucursal desde otra sucursal",
   },
   "permisos/casos-de-uso/actualizar-capacidad.ts": {
     ata: "EMPRESA_ENTERA",
+    ensanches: ["ESCRITURA_EN_LA_EMPRESA"],
     puertas: ["permisos/capacidades-sucursal.ts|actualizarCapacidad"],
     motivo: "`capacidades_sucursal` es gobierno de la empresa y el caso de uso la limita al gerente (O.41): prender o apagar una capacidad de UNA sucursal (o la fila por defecto, `null`) es la función de la acción",
   },
   // ── El catálogo central ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   "catalogo/casos-de-uso/dar-de-alta-producto.ts": {
     ata: "EMPRESA_ENTERA",
+    ensanches: ["ESCRITURA_EN_LA_EMPRESA"],
     puertas: ["catalogo/productos.ts|darDeAltaProducto"],
     motivo: "el producto es del catálogo central de la empresa: su alta siembra la disponibilidad (`DisponibilidadProducto`, disponible) en las sucursales activas; no elige ni cambia datos de una sucursal",
   },
   "catalogo/casos-de-uso/dar-de-alta-producto-rapido.ts": {
     ata: "EMPRESA_ENTERA",
+    ensanches: ["ESCRITURA_EN_LA_EMPRESA"],
     puertas: ["catalogo/productos.ts|darDeAltaProductoRapido"],
     motivo: "el producto es del catálogo central de la empresa: su alta siembra la disponibilidad (`DisponibilidadProducto`, disponible) en las sucursales activas; no elige ni cambia datos de una sucursal",
   },
   "catalogo/casos-de-uso/guardar-version-de-receta.ts": {
     ata: "EMPRESA_ENTERA",
+    ensanches: ["ESCRITURA_EN_LA_EMPRESA"],
     puertas: ["catalogo/receta-a-ciegas.ts|guardarRecetaACiegas", "catalogo/recetas.ts|guardarReceta"],
     motivo:
       "las dos puertas de empresa guardan la receta CENTRAL (`sucursalId` null): el caso de uso solo arrastra a la versión nueva las calibraciones locales que cada sucursal YA tenía (D3), sin elegir ni cambiar ninguna; la rama de receta PROPIA de una sucursal (`destino.sucursalId`) la alcanzan solo las puertas de sucursal (`receta_sucursal_*`)",
@@ -325,6 +350,37 @@ function leeLaClaveDeSucursal(codigo: string, clave: string): boolean {
   return encontro;
 }
 
+/**
+ * M.3-A4/A6: el archivo llama a EXACTAMENTE los ensanches que declara (ni uno de menos —la escritura quedaría fuera del alcance con la RLS por sucursal— ni uno de más), y un `EMPRESA_ENTERA` sin ensanche
+ * solo escribe modelos de GOBIERNO.
+ */
+function problemasDeEnsanches(clave: string, h: Hallazgo, d: Declaracion, codigo: string): string[] {
+  const problemas: string[] = [];
+  const llamadas = new Set(llamadasAEnsanches(codigo, Object.values(FUNCION_DEL_ENSANCHE)).map((l) => l.ensanche as string));
+  for (const e of d.ensanches) if (!llamadas.has(FUNCION_DEL_ENSANCHE[e])) problemas.push(`${clave}: declara el ensanche ${e} y el archivo no llama a \`${FUNCION_DEL_ENSANCHE[e]}\``);
+  for (const llamada of llamadas) {
+    if (!d.ensanches.some((e) => FUNCION_DEL_ENSANCHE[e] === llamada)) problemas.push(`${clave}: llama a \`${llamada}\` y no declara el ensanche en \`ensanches\``);
+  }
+  if (d.ata === "EMPRESA_ENTERA" && d.ensanches.length === 0) {
+    const ajenos = [...h.escrituras].filter((e) => !MODELOS_DE_GOBIERNO.has(e.split(".")[0]!)).sort();
+    if (ajenos.length) problemas.push(`${clave}: EMPRESA_ENTERA sin ensanche y escribe modelos que no son de GOBIERNO (${ajenos.join(", ")}): con la RLS por sucursal necesita \`conEscrituraEnLaEmpresa\` (declaralo en \`ensanches\`)`);
+  }
+  return problemas;
+}
+
+/** La otra dirección: toda llamada a `conEscrituraEnLaEmpresa`/`incluirSucursalCreadaEnLaTransaccion` de `src/` está en un archivo declarado con ese ensanche. */
+function ensanchesDeEscrituraSinDeclarar(fuentes: ReadonlyMap<string, string>, declaradas: Readonly<Record<string, Declaracion>>): string[] {
+  const problemas: string[] = [];
+  for (const [ruta, codigo] of fuentes) {
+    if (ruta === "src/server/acceso/alcance.ts") continue;
+    const declarada = ruta.startsWith(ZONA_DE_ACCIONES) ? declaradas[ruta.slice(ZONA_DE_ACCIONES.length)] : undefined;
+    for (const usado of ensanchesUsados(codigo, Object.values(FUNCION_DEL_ENSANCHE))) {
+      if (!declarada?.ensanches.some((e) => FUNCION_DEL_ENSANCHE[e] === usado)) problemas.push(`${ruta}: usa \`${usado}\` y no es un archivo de DECLARADAS con ese ensanche (solo las escrituras de empresa entera declaradas ensanchan el alcance)`);
+    }
+  }
+  return [...new Set(problemas)];
+}
+
 /** Compara los hallazgos con la lista cerrada, en las dos direcciones, y comprueba la evidencia de cada forma. Un problema por cada discrepancia. */
 function problemasDe(
   hallazgos: readonly Hallazgo[],
@@ -348,6 +404,7 @@ function problemasDe(
     if (JSON.stringify([...d.puertas].sort()) !== JSON.stringify(puertas)) {
       problemas.push(`${clave}: las puertas de empresa que llegan son [${puertas.join(", ")}] y la declaración dice [${[...d.puertas].sort().join(", ")}]`);
     }
+    problemas.push(...problemasDeEnsanches(clave, h, d, leer(h.archivo)));
     if (d.ata === "CLAVE_DE_SUCURSAL") {
       if (!d.clave) problemas.push(`${clave}: CLAVE_DE_SUCURSAL sin la clave`);
       else {
@@ -389,6 +446,10 @@ describe("GT-4 (segunda mitad): toda acción de empresa que escribe filas de una
     expect(problemas).toEqual([]);
   });
 
+  it("M.3-A4/A6: ningún archivo de src/ llama a un ensanche de escritura de empresa entera sin estar declarado con él (la otra dirección)", () => {
+    expect(ensanchesDeEscrituraSinDeclarar(fuentesDe(RAIZ, "src"), DECLARADAS)).toEqual([]);
+  });
+
   it("lee del schema los modelos con sucursal (la carta propia de cada sucursal entre ellos)", () => {
     for (const m of ["generoCarta", "contenidoCartaProducto", "itemAgrupadoCarta", "opcionItemAgrupadoCarta", "promoCartaSucursal", "sucursalPublica"]) expect(MODELOS.has(m), m).toBe(true);
     expect(MODELOS.has("promoCarta")).toBe(false);
@@ -417,8 +478,10 @@ export async function leerGenero(db: Prisma.TransactionClient, id: string) {
   return db.generoCarta.findUnique({ where: { id } });
 }`;
     const CASO_DE_USO = `import { crearGenero } from "@/server/persistencia/carta/generos";
+import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
 export async function guardarGeneroCasoDeUso(actor: { db: unknown; sucursalId: string }) {
-  return crearGenero(actor.db as never, { sucursalId: actor.sucursalId, nombre: "x" });
+  const enLaEmpresa = await conEscrituraEnLaEmpresa(actor as never);
+  return crearGenero(enLaEmpresa.db as never, { sucursalId: actor.sucursalId, nombre: "x" });
 }`;
     const ACCION = (envoltorio: string) => `"use server";
 import { ${envoltorio} } from "../con-permiso";
@@ -434,7 +497,7 @@ export async function guardarGenero() {
       ]);
     const CLAVE = "carta/casos-de-uso/guardar-genero.ts";
     const CLAVE_DECLARADA = (extra: Partial<Declaracion> = {}): Record<string, Declaracion> => ({
-      [CLAVE]: { ata: "EMPRESA_ENTERA", puertas: ["carta/generos.ts|guardarGenero"], motivo: "el género es un objeto de la empresa entera (caso sintético)", ...extra },
+      [CLAVE]: { ata: "EMPRESA_ENTERA", ensanches: ["ESCRITURA_EN_LA_EMPRESA"], puertas: ["carta/generos.ts|guardarGenero"], motivo: "el género es un objeto de la empresa entera (caso sintético)", ...extra },
     });
     const leerDe = (f: Map<string, string>) => (archivo: string) => f.get(archivo)!;
     const juzgar = (f: Map<string, string>, declaradas: Record<string, Declaracion>) => problemasDe(hallazgosDe(f, MODELOS_SINTETICOS), declaradas, leerDe(f), () => "sucursal");
@@ -514,8 +577,8 @@ export async function guardarGeneroCasoDeUso(actor: { db: unknown; sucursalId: s
   return crearGenero(actor.db as never, { sucursalId: actor.sucursalId, nombre: prendida ? "x" : "y" });
 }`,
       );
-      const d = CLAVE_DECLARADA({ ata: "CLAVE_DE_SUCURSAL", clave: "carta_promo_activar" });
-      expect(juzgar(sin, d)).toHaveLength(1);
+      const d = CLAVE_DECLARADA({ ata: "CLAVE_DE_SUCURSAL", clave: "carta_promo_activar", ensanches: [] });
+      expect(juzgar(sin, CLAVE_DECLARADA({ ata: "CLAVE_DE_SUCURSAL", clave: "carta_promo_activar" }))).toHaveLength(1);
       expect(juzgar(con, d)).toEqual([]);
     });
 
@@ -529,8 +592,43 @@ export async function guardarGeneroCasoDeUso(actor: { db: unknown; sucursalId: s
   return crearGenero(actor.db as never, { sucursalId: actor.sucursalId, nombre: "x" });
 }`,
       );
-      const problemas = problemasDe(hallazgosDe(f, MODELOS_SINTETICOS), CLAVE_DECLARADA({ ata: "CLAVE_DE_SUCURSAL", clave: "carta_portal" }), leerDe(f), () => "empresa");
+      const problemas = problemasDe(hallazgosDe(f, MODELOS_SINTETICOS), CLAVE_DECLARADA({ ata: "CLAVE_DE_SUCURSAL", clave: "carta_portal", ensanches: [] }), leerDe(f), () => "empresa");
       expect(problemas).toHaveLength(1);
+    });
+
+    describe("M.3-A4/A6: los ensanches del alcance de la escritura de empresa entera", () => {
+      const SIN_ENSANCHE = CASO_DE_USO.replace(/import \{ conEscrituraEnLaEmpresa \}[^\n]*\n/, "").replace("await conEscrituraEnLaEmpresa(actor as never)", "{ db: actor.db }");
+
+      it("EMPRESA_ENTERA que llama a conEscrituraEnLaEmpresa y lo declara, pasa; si lo declara y el archivo no lo llama (la mutación: sacarlo del alta), falla", () => {
+        expect(juzgar(fuentesSinteticas("conPermisoDeEmpresa"), CLAVE_DECLARADA())).toEqual([]);
+        const sin = fuentesSinteticas("conPermisoDeEmpresa", SIN_ENSANCHE);
+        const problemas = juzgar(sin, CLAVE_DECLARADA());
+        expect(problemas).toHaveLength(1);
+        expect(problemas[0]).toContain("no llama a `conEscrituraEnLaEmpresa`");
+      });
+
+      it("si el archivo llama a un ensanche que no declara, falla; SUCURSAL_NUEVA se ata a incluirSucursalCreadaEnLaTransaccion", () => {
+        const problemas = juzgar(fuentesSinteticas("conPermisoDeEmpresa"), CLAVE_DECLARADA({ ensanches: [] }));
+        expect(problemas.some((p) => p.includes("llama a `conEscrituraEnLaEmpresa` y no declara"))).toBe(true);
+        const nueva = CASO_DE_USO.replace("conEscrituraEnLaEmpresa", "incluirSucursalCreadaEnLaTransaccion").replace("conEscrituraEnLaEmpresa(actor as never)", "incluirSucursalCreadaEnLaTransaccion(actor as never, 'x')");
+        expect(juzgar(fuentesSinteticas("conPermisoDeEmpresa", nueva), CLAVE_DECLARADA({ ensanches: ["SUCURSAL_NUEVA"] }))).toEqual([]);
+        expect(juzgar(fuentesSinteticas("conPermisoDeEmpresa", nueva), CLAVE_DECLARADA({ ensanches: ["ESCRITURA_EN_LA_EMPRESA"] }))).not.toEqual([]);
+      });
+
+      it("un EMPRESA_ENTERA SIN ensanche solo puede escribir modelos de GOBIERNO: uno de una sucursal (generoCarta) sin ensanche falla", () => {
+        const problemas = juzgar(fuentesSinteticas("conPermisoDeEmpresa", SIN_ENSANCHE), CLAVE_DECLARADA({ ensanches: [] }));
+        expect(problemas).toHaveLength(1);
+        expect(problemas[0]).toContain("no son de GOBIERNO");
+      });
+
+      it("la otra dirección: un archivo que no está en DECLARADAS (o sin ese ensanche) y llama a un ensanche de escritura, falla", () => {
+        const fuentes = new Map([["src/server/actions/carta/casos-de-uso/guardar-genero.ts", CASO_DE_USO]]);
+        expect(ensanchesDeEscrituraSinDeclarar(fuentes, CLAVE_DECLARADA())).toEqual([]);
+        expect(ensanchesDeEscrituraSinDeclarar(fuentes, {})).toHaveLength(1);
+        expect(ensanchesDeEscrituraSinDeclarar(fuentes, CLAVE_DECLARADA({ ensanches: ["SUCURSAL_NUEVA"] }))).toHaveLength(1);
+        // desde fuera de las acciones (una consulta, una lectura) tampoco
+        expect(ensanchesDeEscrituraSinDeclarar(new Map([["src/server/consultas/x.ts", CASO_DE_USO]]), CLAVE_DECLARADA())).toHaveLength(1);
+      });
     });
   });
 });

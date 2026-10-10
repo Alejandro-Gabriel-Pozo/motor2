@@ -1,6 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { ComandoActualizarCapacidad } from "@/core/features/permisos/capacidad.guard";
+import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { mensajeSiNoPuedeCambiarCapacidades } from "@/core/permisos/matriz";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
@@ -39,7 +40,7 @@ type ResultadoActualizarCapacidad = ResultadoCaso<{ capacidadId: string }, "SUCU
  * @ficha permiso=capacidades_sucursal transaccion=SIMPLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function actualizarCapacidadCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "db" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "db" | "transaccion" | "alcance">,
   comando: ComandoActualizarCapacidad,
 ): Promise<ResultadoActualizarCapacidad> {
   const { accionClave, sucursalId, habilitado } = comando;
@@ -47,7 +48,10 @@ export async function actualizarCapacidadCasoDeUso(
     return fracaso("SUCURSAL_NO_ENCONTRADA", "No se encontró la sucursal.");
   }
 
-  return actor.transaccion(async (tx): Promise<ResultadoActualizarCapacidad> => {
+  // M.3-A6: la auditoría del cambio lleva la sucursal DE LA CAPACIDAD (`sucursalId`), que no es la activa de quien actúa: es una escritura de EMPRESA ENTERA (`EMPRESA_ENTERA` de GT-4) y la transacción corre con el
+  // alcance ensanchado a la lista cerrada de las sucursales de la empresa. La fila por defecto (`sucursalId` null) no es de ninguna sucursal: no se ensancha.
+  const base = sucursalId === null ? actor : await conEscrituraEnLaEmpresa(actor);
+  return base.transaccion(async (tx): Promise<ResultadoActualizarCapacidad> => {
     // O.41: la perilla es solo del gerente. Quien actúa se lee acá, dentro de la transacción, y el rechazo sale antes de cualquier escritura.
     const rechazo = mensajeSiNoPuedeCambiarCapacidades(await objetivoEnLaEmpresa(tx, actor.empresaId, actor.usuarioId));
     if (rechazo) return fracaso("CAPACIDADES_SOLO_DEL_GERENTE", rechazo);

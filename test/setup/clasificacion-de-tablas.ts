@@ -89,3 +89,98 @@ export function fkEntreTablasPorEmpresaDelEsquema(): { origen: string; destino: 
   }
   return fks;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// SEGUNDA DIMENSIÓN: el ALCANCE POR SUCURSAL (M.3, Fase A, paso A1; plan `_planes/plan-m3-rls-por-sucursal-2026-10-10.md` §2).
+//
+// La primera dimensión (arriba) dice de qué EMPRESA es una tabla. Esta dice de qué SUCURSAL son sus filas, y de ahí se DERIVAN las políticas de RLS por sucursal
+// (`test/setup/politicas-de-alcance-de-sucursal.ts`): es la única fuente de verdad, nadie escribe a mano una política por tabla. Es una capacidad general («alcance por sucursal»),
+// válida para cualquier rubro: no depende de qué vende ni de qué guarda cada tabla.
+// `test/arquitectura/alcance-de-sucursal.test.ts` cruza esta declaración con `prisma/schema.prisma` y con la primera dimensión, sin base de datos.
+//
+// Los alcances:
+//  - `PROPIA`: `sucursalId` NOT NULL. Una fila es de UNA sucursal y solo se ve/escribe con esa sucursal en el alcance de la transacción.
+//  - `PROPIA_O_EMPRESA`: `sucursalId` NULLABLE. NULL = la fila es de la empresa entera (receta central, auditoría de empresa) y se ve desde cualquier sucursal con alcance; con valor, es como PROPIA.
+//  - `HEREDADA`: no tiene `sucursalId`; su sucursal sale de una FK obligatoria hacia un padre que sí tiene alcance (`padre` + `columna`; el padre puede ser a su vez HEREDADA).
+//  - `ENTRE_SUCURSALES`: la fila liga dos sucursales (`columnaOrigen`, `columnaDestino`, ambas NOT NULL) y es de las dos: se ve y se escribe desde cualquiera de ellas.
+//  - `GOBIERNO`: lleva `sucursalId` o es la tabla de sucursales misma, pero se LEE para decidir el acceso (membresías, capacidades, invitaciones, slug público), o sea antes de que exista un
+//    alcance. Queda fuera de la RLS por sucursal y se protege con la RLS por empresa y con el gate. Cada una lleva su `motivo`.
+//  - `DE_EMPRESA`: tiene `empresaId` y ninguna noción de sucursal (catálogo, proveedores, roles, ...): fuera de la RLS por sucursal.
+//  - `SIN_EMPRESA`: sin `empresaId` (globales, `Empresa`, consola): fuera de la RLS por sucursal. Tiene que coincidir con las clases GLOBAL, EMPRESA y CONSOLA de la primera dimensión.
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+export type AlcanceDeSucursal = "PROPIA" | "PROPIA_O_EMPRESA" | "HEREDADA" | "ENTRE_SUCURSALES" | "GOBIERNO" | "DE_EMPRESA" | "SIN_EMPRESA";
+
+export type DeclaracionDeAlcance =
+  | { readonly alcance: "PROPIA" | "PROPIA_O_EMPRESA" | "DE_EMPRESA" | "SIN_EMPRESA" }
+  | { readonly alcance: "HEREDADA"; readonly padre: string; readonly columna: string }
+  | { readonly alcance: "ENTRE_SUCURSALES"; readonly columnaOrigen: string; readonly columnaDestino: string }
+  | { readonly alcance: "GOBIERNO"; readonly motivo: string };
+
+/** `sucursalId` NOT NULL con FK a `Sucursal`: la fila es de una sola sucursal. */
+const ALCANCE_PROPIA = [
+  "ConteoFisico", "ContenidoCartaProducto", "DescuentoProductoSucursal", "DisponibilidadProducto", "EjemplarTicket", "FrecuenciaConteoProducto", "GeneroCarta", "ItemAgrupadoCarta", "Mesa",
+  "Operacion", "OpcionItemAgrupadoCarta", "PagoConsignante", "PrecioLocalProducto", "PromoCartaSucursal", "RecetaSucursal", "RendimientoLocalIngrediente", "Seccion", "SeccionHabitualProducto",
+  "StockMinimoProducto", "TemaCartaSucursal",
+] as const;
+
+/** `sucursalId` NULLABLE: NULL = de la empresa entera. */
+const ALCANCE_PROPIA_O_EMPRESA = ["RecetaVersion", "RegistroAuditoria"] as const;
+
+/** Sin `sucursalId`: la sucursal sale de la FK obligatoria `columna` hacia `padre`. */
+const ALCANCE_HEREDADA: Readonly<Record<string, { padre: string; columna: string }>> = {
+  Cuenta: { padre: "Mesa", columna: "mesaId" },
+  CuentaItem: { padre: "Cuenta", columna: "cuentaId" },
+  MovimientoStock: { padre: "Seccion", columna: "seccionId" },
+  PromoCuenta: { padre: "Cuenta", columna: "cuentaId" },
+  RecetaIngrediente: { padre: "RecetaVersion", columna: "recetaVersionId" },
+  RecetaPaso: { padre: "RecetaVersion", columna: "recetaVersionId" },
+  RecetaPasoIngrediente: { padre: "RecetaPaso", columna: "recetaPasoId" },
+  SustitutoRecetaIngrediente: { padre: "RecetaIngrediente", columna: "recetaIngredienteId" },
+};
+
+/** Fila de dos sucursales: visible y escribible desde cualquiera de las dos puntas. */
+const ALCANCE_ENTRE_SUCURSALES: Readonly<Record<string, { columnaOrigen: string; columnaDestino: string }>> = {
+  TraspasoSucursal: { columnaOrigen: "origenSucursalId", columnaDestino: "destinoSucursalId" },
+};
+
+/** Fuera de la RLS por sucursal porque se LEEN antes de tener alcance (login, elegir empresa, aceptar invitación, carta pública, gate). Cada una con su motivo. */
+const ALCANCE_GOBIERNO: Readonly<Record<string, string>> = {
+  Sucursal: "La tabla de sucursales misma: el login, el contexto y el gate la leen para decidir en qué sucursal se está, así que no puede depender del alcance que ellos mismos calculan.",
+  UsuarioSucursal: "Las membresías DEFINEN el alcance: el login, elegir empresa y el contexto las leen (con la base de la empresa y sin alcance) para calcularlo; filtrarlas por alcance sería circular.",
+  CapacidadSucursal: "La lee el gate para decidir el permiso (fila por defecto con `sucursalId` NULL más una por sucursal) antes de que haya alcance; la autoridad fina por clave sigue en el gate.",
+  InvitacionSucursal: "La lee la aceptación de invitaciones (lectura previa al contexto, con la base de la empresa y sin alcance) y la escribe el alta de gobierno para sucursales que el actor no tiene activas.",
+  SucursalPublica: "Resuelve el slug de la carta pública a su sucursal: se lee ANTES de saber de qué sucursal es la carta (paso A7); su alcance es el slug público, no el de una sesión.",
+};
+
+const ALCANCE_DE_EMPRESA = [
+  "CategoriaProducto", "Cliente", "DestinoConsumo", "Grupo", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "PermisoRol", "PortalCartaEmpresa", "Presentacion", "Producto",
+  "PromoCarta", "PromoCartaCupo", "Proveedor", "ProveedorPorProducto", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa",
+] as const;
+
+/** Declarada a mano (no derivada de `GLOBALES`/`CONSOLA`) a propósito: el guard cruza las dos listas y se pone en rojo si no coinciden. */
+const ALCANCE_SIN_EMPRESA = [
+  "Account", "Accion", "AdminPlataforma", "AuditoriaPlataforma", "CodigoDeIngresoPlataforma", "CodigoDeRecuperacionPlataforma", "CotizacionDolar", "Empresa", "IndicePrecio", "SesionPlataforma",
+  "Session", "User", "VerificationToken",
+] as const;
+
+export const ALCANCE_DE_TABLAS: Readonly<Record<string, DeclaracionDeAlcance>> = Object.freeze({
+  ...Object.fromEntries(ALCANCE_PROPIA.map((t) => [t, { alcance: "PROPIA" } as const])),
+  ...Object.fromEntries(ALCANCE_PROPIA_O_EMPRESA.map((t) => [t, { alcance: "PROPIA_O_EMPRESA" } as const])),
+  ...Object.fromEntries(Object.entries(ALCANCE_HEREDADA).map(([t, h]) => [t, { alcance: "HEREDADA", ...h } as const])),
+  ...Object.fromEntries(Object.entries(ALCANCE_ENTRE_SUCURSALES).map(([t, e]) => [t, { alcance: "ENTRE_SUCURSALES", ...e } as const])),
+  ...Object.fromEntries(Object.entries(ALCANCE_GOBIERNO).map(([t, motivo]) => [t, { alcance: "GOBIERNO", motivo } as const])),
+  ...Object.fromEntries(ALCANCE_DE_EMPRESA.map((t) => [t, { alcance: "DE_EMPRESA" } as const])),
+  ...Object.fromEntries(ALCANCE_SIN_EMPRESA.map((t) => [t, { alcance: "SIN_EMPRESA" } as const])),
+});
+
+/** Las tablas de un alcance, ordenadas. */
+export function tablasConAlcance(alcance: AlcanceDeSucursal): string[] {
+  return Object.entries(ALCANCE_DE_TABLAS)
+    .filter(([, d]) => d.alcance === alcance)
+    .map(([t]) => t)
+    .sort();
+}
+
+/** Las tablas que llevan políticas de RLS por sucursal: PROPIA, PROPIA_O_EMPRESA, HEREDADA y ENTRE_SUCURSALES. */
+export const TABLAS_CON_POLITICA_DE_SUCURSAL: readonly string[] = (["PROPIA", "PROPIA_O_EMPRESA", "HEREDADA", "ENTRE_SUCURSALES"] as const).flatMap((a) => tablasConAlcance(a)).sort();

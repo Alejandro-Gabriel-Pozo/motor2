@@ -2,6 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/public";
 import type { ComandoCrearSucursal } from "@/core/features/sucursales/sucursal.guard";
+import { conEscrituraEnLaEmpresa, incluirSucursalCreadaEnLaTransaccion } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { mensajeSiNoPuedeDarRolSinTechoDeGestion, mensajeSiReactivaAdminSinSerGerente } from "@/core/permisos/gestion-de-usuarios";
 import { buscarRolAdmin, objetivoEnLaEmpresa, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";
@@ -43,13 +44,15 @@ type ResultadoCrearSucursal = ResultadoCaso<
  * @ficha permiso=alta_sucursal transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function crearSucursalConAdminCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "db" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "db" | "transaccion" | "alcance">,
   comando: ComandoCrearSucursal,
 ): Promise<ResultadoCrearSucursal> {
   const { nombre, email } = comando;
   const sucursalIdsActivas = (await actor.db.sucursal.findMany({ where: { empresaId: actor.empresaId, activo: true }, select: { id: true } })).map((s) => s.id);
+  // M.3-A6: «universal» se mide sobre la disponibilidad de TODAS las sucursales activas de la empresa, no solo las que el alcance del usuario ve: es una LECTURA de empresa entera (`EMPRESA_ENTERA` de GT-4),
+  // con el alcance ensanchado a la lista cerrada de las sucursales de la empresa. Sin esto, con la RLS por sucursal, quien administra una sola vería "universal" lo que solo ve en la suya.
   const filasDisponibilidad = sucursalIdsActivas.length
-    ? await actor.db.disponibilidadProducto.findMany({ where: { sucursalId: { in: sucursalIdsActivas } }, select: { productoId: true, sucursalId: true, disponible: true } })
+    ? await (await conEscrituraEnLaEmpresa(actor)).db.disponibilidadProducto.findMany({ where: { sucursalId: { in: sucursalIdsActivas } }, select: { productoId: true, sucursalId: true, disponible: true } })
     : [];
   const disponibilidadPorProducto = new Map<string, FilaDisponibilidadEnSucursal[]>();
   for (const f of filasDisponibilidad) {
@@ -102,6 +105,8 @@ export async function crearSucursalConAdminCasoDeUso(
         if (rechazoReactivar) return fracaso("REACTIVA_ADMIN_SIN_SER_GERENTE", rechazoReactivar);
 
         const sucursal = await crearSucursal(tx, { nombre, empresaId: actor.empresaId });
+        // M.3-A6: la lista del alcance se fijó al abrir la transacción y no podía conocer esta sucursal; desde acá las escrituras que la nombran (su auditoría, su disponibilidad) caen en ella y SOLO en ella.
+        await incluirSucursalCreadaEnLaTransaccion(tx, sucursal.id);
         await reactivarCuentaEnEmpresa(tx, { usuarioId: usuarioPrevio.id, empresaId: actor.empresaId });
         const membresia = await crearMembresiaEnSucursal(tx, {
           usuarioId: usuarioPrevio.id,

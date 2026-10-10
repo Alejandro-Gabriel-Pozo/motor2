@@ -6,6 +6,7 @@ import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referenc
 import type { EntradaProducto, PuertaDeDatosDeProducto, ResultadoDarDeAltaProducto } from "@/core/features/catalogo/productos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
+import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
 import { datosParaGuardar, validarDatosDeProducto } from "@/server/lecturas/catalogo/datos-de-producto";
 import { crearProductoNuevo, sembrarDisponibilidadDeProductoNuevo } from "@/server/persistencia/catalogo/productos";
 
@@ -47,7 +48,7 @@ import { crearProductoNuevo, sembrarDisponibilidadDeProductoNuevo } from "@/serv
  * @ficha permiso=alta_producto transaccion=NINGUNA idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function darDeAltaProductoCasoDeUso(
-  actor: Pick<ContextoUsuario, "db" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "db" | "transaccion" | "sucursalId" | "empresaId" | "alcance">,
   datos: EntradaProducto,
   azar: FuenteDeAzar,
   /** S-12 (D8): si quien da de alta tiene `pagar_consignante` EDITAR en la sucursal activa (lo calcula la Server Action con el gate; este caso de uso no chequea permisos). */
@@ -85,9 +86,16 @@ export async function darDeAltaProductoCasoDeUso(
       (codigo) => crearProductoNuevo(actor.db, { codigo, tipo: datos.tipo, campos: datosParaGuardar(datos, validado.numeros) }),
       azar,
     );
-    const sucursalIds =
-      datos.activoEnTodasLasSucursales !== false ? (await actor.db.sucursal.findMany({ select: { id: true } })).map((s) => s.id) : [actor.sucursalId];
-    await sembrarDisponibilidadDeProductoNuevo(actor.db, { productoId: producto.id, sucursalIds, disponible: !naceApagado });
+    // M.3-A6: «todas las sucursales» es una escritura de EMPRESA ENTERA (`EMPRESA_ENTERA` de GT-4): la siembra necesita escribir en cada una, así que se ensancha a la lista cerrada de las sucursales
+    // de la empresa (la misma que ya se leía acá). Con el tilde apagado se siembra solo la ACTIVA, que ya está en el alcance.
+    let baseDeLaSiembra = actor.db;
+    let sucursalIds = [actor.sucursalId];
+    if (datos.activoEnTodasLasSucursales !== false) {
+      const enLaEmpresa = await conEscrituraEnLaEmpresa(actor);
+      baseDeLaSiembra = enLaEmpresa.db;
+      sucursalIds = [...enLaEmpresa.sucursalIdsDeLaEmpresa];
+    }
+    await sembrarDisponibilidadDeProductoNuevo(baseDeLaSiembra, { productoId: producto.id, sucursalIds, disponible: !naceApagado });
     return exito(
       naceApagado
         ? `Producto "${producto.nombre}" (${producto.codigo}) creado con precio $0: no queda disponible para vender hasta que alguien con el permiso «campos sensibles del producto» (producto_campos_sensibles) le cargue el precio y lo active.`

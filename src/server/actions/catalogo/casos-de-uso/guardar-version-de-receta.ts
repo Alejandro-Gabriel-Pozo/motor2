@@ -8,6 +8,7 @@ import { MENSAJE_PRODUCTO_NO_ENCONTRADO } from "@/core/features/catalogo/receta-
 import type { ComandoGuardarVersionDeReceta, ResultadoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.schema";
 import { conReintento, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import {
@@ -74,7 +75,7 @@ export type DestinoDeVersionDeReceta =
   | { sucursalId: string; habilitadaEsperada: boolean; basadaEnVersionId?: string | null; copiadaDeSucursal?: string };
 
 export async function guardarVersionDeRecetaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalNombre" | "db" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalNombre" | "db" | "transaccion" | "empresaId" | "alcance">,
   comando: ComandoGuardarVersionDeReceta,
   destino: DestinoDeVersionDeReceta = { sucursalId: null }
 ): Promise<ResultadoGuardarVersionDeReceta> {
@@ -111,6 +112,10 @@ export async function guardarVersionDeRecetaCasoDeUso(
   // SERIALIZABLE (el arrastre de calibraciones locales lee/escribe `RendimientoLocalIngrediente`, que una calibración
   // concurrente también puede estar tocando): se reintenta tanto el choque de UNIQUE como un conflicto de escritura
   // (esErrorDeUnicidad(e) || esConflictoDeEscritura(e)).
+  // M.3-A6: guardar la receta CENTRAL es una escritura de EMPRESA ENTERA (`EMPRESA_ENTERA` de GT-4): el arrastre de calibraciones (D3) LEE las `RendimientoLocalIngrediente` de la versión vigente y ESCRIBE
+  // las copias y la auditoría de cada descarte en la sucursal de CADA calibración, que puede no ser la activa. La transacción corre con el alcance ensanchado a la lista cerrada de las sucursales de la
+  // empresa. La receta PROPIA de una sucursal (`destino.sucursalId`) escribe solo en esa sucursal, la activa: no se ensancha.
+  const base = destino.sucursalId === null ? await conEscrituraEnLaEmpresa(actor) : actor;
   let version = 0;
   let recetaVersionId = "";
   let descartes: string[] = [];
@@ -119,7 +124,7 @@ export async function guardarVersionDeRecetaCasoDeUso(
     async () => {
       descartes = [];
       rechazo.resultado = null;
-      await conTransaccionSerializable(actor.transaccion, async (tx) => {
+      await conTransaccionSerializable(base.transaccion, async (tx) => {
         // La versión anterior COMPLETA (con sus overrides locales) — D3: se arrastra a la versión nueva, salvo que el ingrediente haya cambiado de unidad o haya salido de la receta.
         // Se lee DENTRO de la transacción SERIALIZABLE (Pureza Fase 4, H7): si una calibración local (`fijarRendimientoLocal`) se confirmaba entre esta lectura y la escritura, la versión
         // nueva se llevaba la foto vieja y la calibración quedaba colgada de la versión anterior, sin que nadie lo notara. Leyendo acá, el motor ve el cruce (esta transacción lee
