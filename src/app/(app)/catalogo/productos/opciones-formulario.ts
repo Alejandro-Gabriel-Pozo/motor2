@@ -22,3 +22,13 @@ export async function cargarOpcionesFormularioProducto(ctx: { usuarioId: string;
   const puedeCrear = { categoria: categoria.editar, insumo: insumo.editar, proveedor: proveedor.editar };
   return { unidades, insumos, categorias, proveedores, puedeCrear };
 }
+
+/**
+ * M.2 (P6): ¿puede quien mira la pantalla cambiar el precio de venta, el factor de conversión y las unidades de un producto? Es `producto_campos_sensibles` EDITAR (clave de empresa), la misma pregunta que le
+ * hace el servidor a cada acción (`puedeEditarCamposSensibles` de `src/server/actions/catalogo/productos.ts`, que no se exporta: ese archivo es `"use server"` y toda función exportada es un endpoint).
+ * La calcula la PÁGINA, en el servidor, y baja al formulario como dato; el cliente no la decide. Es cortesía de la interfaz: sin la clave el formulario dibuja esos campos en solo lectura, pero la barrera es la
+ * del servidor (`SIN_PERMISO_CAMPOS_SENSIBLES`).
+ */
+export async function puedeEditarCamposSensiblesDelProducto(ctx: { usuarioId: string; empresaId: string; db: PrismaClient }): Promise<boolean> {
+  return (await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_campos_sensibles", ctx.db)).editar;
+}
