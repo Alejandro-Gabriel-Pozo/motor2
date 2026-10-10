@@ -1,0 +1,58 @@
+# ADR-028: Alcance por sucursal (RLS por sucursal)
+
+> Redactado el 2026-10-10. **Estado: la Fase A (código, clasificación, generador y pruebas; sin migración) está hecha; la Fase B (las migraciones con las políticas) necesita la orden expresa del dueño y NO está aplicada en ninguna base.** El orden de despliegue y de reversa está en `docs/deploy-con-migraciones.md`. Completa ADR-002 (modelo de aislamiento) y ADR-007 (instalación multiempresa): ellos separan empresas; este separa las sucursales DE UNA MISMA empresa.
+
+## Contexto
+
+Hoy la base separa empresas con RLS (`aislamiento_empresa`, que lee `app.empresa_id`). Entre las sucursales de una empresa no hay ninguna defensa en la base: la separación es de la aplicación (el gate decide en qué sucursales puede actuar la persona y cada consulta filtra por la sucursal que recibe). Un error de código —una consulta que recibe la sucursal equivocada, un `include` sin filtro— muestra o escribe filas de otra sucursal sin que nada lo frene.
+
+La matriz de denegación lo mide: con el escenario `consultaConSucursalAjena` (se le pasa a cada consulta y lectura la sucursal de contexto de OTRA sucursal) 39 de las 94 puertas ejercidas devuelven filas de la otra sucursal, y para otras 55 la matriz no puede afirmar nada. La RLS por sucursal es la segunda barrera: aunque la aplicación se equivoque, la base no entrega ni acepta filas fuera del alcance de la transacción.
+
+## Decisión
+
+**Una primitiva general, «alcance por sucursal», válida para cualquier rubro con sucursales, locales o puntos de atención.** No depende de qué vende ni de qué guarda cada tabla, y los nombres nuevos no llevan vocabulario de ningún rubro.
+
+1. **El alcance** es `AlcanceDeSucursal = { lectura: string[], escritura: string[] }` (`src/core/auth/base.ts`): en qué sucursales puede LEER y en cuáles puede ESCRIBIR lo que hace la base. Lo calcula el contexto del usuario desde sus membresías vigentes; por defecto es la sucursal activa en las dos listas. **No existe un valor «todas»**: es siempre una lista cerrada de ids (`^[A-Za-z0-9_-]+$`, sin repetidos); un id mal formado falla al armar el cliente.
+2. **Cómo se fija.** `dbDeEmpresa`, `transaccionDeEmpresa` y `baseDeEmpresa` fijan `app.empresa_id`, `app.sucursales_lectura` y `app.sucursales_escritura` con UN solo `SELECT set_config(…, true), set_config(…, true), set_config(…, true)` dentro de la transacción. El `true` las hace locales a la transacción: no queda nada en la conexión, así que es seguro con un pool o con pgbouncer en modo transacción (un `SET` de sesión se filtraría a otro pedido) y no suma un viaje a la base.
+3. **Cómo se ensancha.** Solo con las funciones de `src/server/acceso/alcance.ts`, nunca más allá de lo que el gate aprobó: la lectura a las sucursales que la persona puede ver para una clave, la escritura a una sucursal con el gate ya aprobado, la escritura en toda la empresa solo para los archivos declarados como escrituras de empresa entera, y la sucursal recién creada dentro de la transacción que la crea. Los guardianes (`test/arquitectura/ensanches-de-alcance.test.ts` y los dos de GT-4, `test/arquitectura/ids-de-sucursal-declaran-a-que-se-atan.test.ts` y `test/arquitectura/escrituras-en-sucursal-desde-empresa.test.ts`) verifican en las dos direcciones que cada forma use su ensanche y ningún otro; `test/arquitectura/alcance-de-sucursal.test.ts` verifica que toda tabla tenga su alcance declarado.
+4. **Las políticas** (Fase B) son `AS RESTRICTIVE … TO motor2_app`, una por comando: SELECT (la lectura en `USING`), INSERT (la escritura en `WITH CHECK`), UPDATE (la escritura en `USING` y en `WITH CHECK`) y DELETE (la escritura en `USING`). Son RESTRICTIVE para combinarse con AND con la política por empresa (una PERMISSIVE se SUMARÍA a ella y no acotaría nada). Las leen dos funciones `app_sucursales_lectura()` y `app_sucursales_escritura()` (`text[]`, `STABLE`); la lectura efectiva es lectura ∪ escritura (quien puede escribir en una sucursal la puede leer). Se escribe `ANY((SELECT función())::text[])`: Postgres lo evalúa una vez por consulta, y **sin el `::text[]` no funciona** (lo lee como `ANY (subconsulta)` y falla con «operator does not exist: text = text[]»).
+5. **Falla cerrado.** Sin variable (o con la lista vacía) la función devuelve NULL: no se lee ninguna fila y un INSERT da 42501. Eso incluye las filas de la empresa entera (`sucursalId` NULL): solo se ven o se escriben con un alcance fijado.
+6. **La clasificación es la única fuente.** `test/setup/clasificacion-de-tablas.ts` (`ALCANCE_DE_TABLAS`) dice de qué sucursal es cada tabla, y `test/setup/politicas-de-alcance-de-sucursal.ts` genera el SQL de las políticas desde ella: nadie escribe a mano una política por tabla. Las clases: PROPIA (`sucursalId` obligatorio), PROPIA_O_EMPRESA (NULL = de la empresa entera), HEREDADA (sin `sucursalId`: la sucursal sale de la FK obligatoria hacia un padre, a lo largo de toda la cadena, con subconsulta no correlacionada), ENTRE_SUCURSALES (la fila liga dos sucursales y se ve y se escribe desde cualquiera de las dos), GOBIERNO, DE_EMPRESA y SIN_EMPRESA (las tres últimas, fuera de esta RLS).
+
+### Decisiones del dueño (D1 a D7)
+
+- **D1.** La lectura por defecto es la sucursal activa; se ensancha por clave (la clave dice dónde puede ver la persona), nunca más allá del gate.
+- **D2.** El gerente sigue viendo solo las sucursales en las que tiene membresía: la RLS no le da más.
+- **D3.** GOBIERNO queda fuera de la RLS por sucursal: `Sucursal`, `UsuarioSucursal`, `CapacidadSucursal`, `InvitacionSucursal` y `SucursalPublica` se leen ANTES de saber en qué sucursal se está (login, elegir empresa, aceptar una invitación, el gate, resolver un slug público), así que filtrarlas por un alcance que ellas mismas definen sería circular. Las protege la RLS por empresa y el gate.
+- **D4.** Las políticas van `TO motor2_app` (no alcanzan a la consola ni a los scripts del dueño); los fixtures de prueba usan un rol aparte (`motor2_app_pruebas`) que existe solo en local y en CI; y el rol de ejecución tiene que ser `motor2_app` o miembro de él, porque con otro rol las políticas no rigen: hoy eso solo se avisa a Sentry y desde la migración B1 se vuelve **bloqueante**.
+- **D5.** No se desnormaliza `sucursalId` en las hijas: se decide con `EXPLAIN` sobre datos de volumen, no antes.
+- **D6.** `RegistroAuditoria` entra en la RLS por sucursal, en el último grupo de migraciones.
+- **D7.** La contraparte de un traspaso deja de ver la sección del otro lado: ve el traspaso (es suyo) pero no las filas de una sucursal que no tiene en su alcance. Es lo que da la RLS y se prueba.
+
+## Qué se probó en la Fase A (contra Postgres real, como `motor2_app`, en una base temporal)
+
+`test/aislamiento/rls-sucursal.test.ts` aplica el SQL del generador sobre una base migrada y recorre: lectura cruzada vacía, INSERT cruzado (42501), UPDATE y DELETE cruzados (0 filas), mover una fila a otra sucursal (42501), varias sucursales con lectura ampliada y escritura acotada, una sola membresía, sin variables, las hijas por la cadena de padres, el traspaso desde origen o destino, dos empresas, e I3. `test/aislamiento/rls-sucursal-con-el-codigo.test.ts` lo repite con el código real de `base.ts` (incluida la concurrencia de transacciones con alcances distintos en el mismo pool). `test/aislamiento/rls-sucursal-mutaciones.test.ts` corre el mismo catálogo contra la base sin políticas y contra 13 variantes rotas del SQL y exige que cada una se ponga en rojo donde corresponde. Un hallazgo del propio trabajo: Postgres también exige que la fila NUEVA de un UPDATE pase las políticas de SELECT, así que el `WITH CHECK` de escritura solo hace falta para mover una fila hacia una sucursal que se lee pero no se escribe.
+
+## Limitaciones conocidas (documentadas, no resueltas)
+
+- **La RLS de una HEREDADA mira solo la FK declarada.** `MovimientoStock` hereda de `Seccion`, pero tiene además FK a `Operacion`, `ConteoFisico` y `TraspasoSucursal` que **ninguna política valida**. Consecuencias medidas: (a) un movimiento de la sección propia con la operación de OTRA sucursal pasa la RLS al escribirse; (b) si existe, se ve, y un `include` de esa relación obligatoria hacia la fila invisible no tira un error: devuelve `null` aunque el tipo diga que nunca lo es, y el primer acceso a un campo se cae en ejecución. La defensa es de los casos de uso (que validen la sucursal de cada referencia) y de mantener los datos coherentes; antes de la Fase B hay que revisar los datos (movimientos cuya sección es de otra sucursal que su operación).
+- **I3 (idempotencia).** `Operacion.claveIdempotencia` es única GLOBAL. Una clave usada en una sucursal no se ve desde otra (`chequearIdempotencia` diría «nueva») y el INSERT choca con el índice único (P2002), que no mira la RLS. No duplica, pero el error es genérico y revela que la clave existe. No se cambió.
+- **Las FK no filtran por RLS** (así es Postgres): las hijas verifican a su padre en el `WITH CHECK` y no confían en que la FK exista; las FK compuestas `(empresaId, id)` refuerzan la empresa, no la sucursal.
+- **Sin `FORCE ROW LEVEL SECURITY`**: el dueño de las tablas salta la RLS, igual que con la política por empresa. Las políticas son `TO motor2_app`; la consola y los scripts del dueño quedan fuera a propósito.
+- **Volver atrás el código con las políticas puestas es una caída total**: el código anterior al alcance fija solo `app.empresa_id`, y sin variables de sucursal no se ve ninguna fila. Por eso en la reversa va primero el `down.sql` y después el Instant Rollback (ver `docs/deploy-con-migraciones.md`).
+- **Sin medir:** el costo de las políticas con volumen (`EXPLAIN (ANALYZE, BUFFERS)` sobre la semilla de seis meses; el riesgo está en las consultas de saldos e índices del Kardex) y el comportamiento contra el pooler de Neon en modo transacción.
+
+## Por qué no las alternativas
+
+- **Un valor «todas» en el alcance:** es el atajo que vuelve inútil la barrera (un error cualquiera lo pediría). Una lista cerrada obliga a nombrar cada ensanche.
+- **`SET` de sesión en vez de `set_config(…, true)`:** se filtra entre pedidos con un pool o con pgbouncer.
+- **Políticas PERMISSIVE:** se suman a la política por empresa en lugar de acotarla; el mutante «sin RESTRICTIVE» pone en rojo casi todo el catálogo de pruebas.
+- **Desnormalizar `sucursalId` en las hijas** (evita la subconsulta): cambia el modelo de datos y duplica un dato que hoy sale de un solo lugar; se decide solo si el `EXPLAIN` lo pide.
+- **Filtrar también las tablas de GOBIERNO:** circular (D3).
+
+## Consecuencias
+
+- La Fase B son migraciones aditivas por grupo (B1 las dos funciones; B2 a B6 las tablas por grupo; B7 el guardián final que compara las políticas de la base con la clasificación), cada una con su `down.sql`, cada aplicación con orden expresa del dueño.
+- Una tabla nueva con `sucursalId` NOT NULL debe aparecer en la clasificación (el guardián lo exige) y sale con sus cuatro políticas sin tocar el generador.
+- Un caso de uso nuevo que escriba en otra sucursal de la persona tiene que declarar su ensanche; sin eso la base lo frena con 42501.
+- La lista `PENDIENTES_DE_SUCURSAL` de la matriz de denegación (39 puertas hoy) se vacía con la Fase B: el test pide sacar cada entrada cuando deja de filtrar. Con el SQL del generador aplicado en una base de prueba, 36 de las 39 dejan de traer filas de la otra sucursal; las 3 restantes (`cargarTemaAdmin`, `resolverMenuCarta` y `resolverMenuCartaConDiagnostico`) devuelven solo el nombre y el slug público de la sucursal, que son datos de GOBIERNO (D3) y no los toca ninguna política: se declaran «por diseño» en la matriz o se cierran en el código.
