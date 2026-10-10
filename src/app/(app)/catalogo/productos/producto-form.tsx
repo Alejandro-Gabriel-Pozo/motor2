@@ -40,7 +40,8 @@ export interface ProductoExistente extends DatosProducto {
 /** M.2: los cuatro datos del producto que protege `producto_campos_sensibles` (el precio de venta, el factor de conversión y las dos unidades). */
 type DatosSensibles = Pick<DatosProducto, CampoSensibleDelProducto>;
 
-const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
+/** Plata siempre con dos decimales ($3.200,00, $1.234,50): es dinero, y «$1.234,5» se lee mal. */
+const pesos = (n: number) => `$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function ProductoForm({
   unidades,

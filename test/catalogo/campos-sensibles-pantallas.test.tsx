@@ -211,7 +211,7 @@ const existente = (extra: Partial<ProductoExistente> = {}): ProductoExistente =>
 });
 const dibujar = (puede: boolean, productoExistente?: ProductoExistente) =>
   renderToStaticMarkup(<ProductoForm {...comunes} puedeEditarCamposSensibles={puede} productoExistente={productoExistente} presentacionesIniciales={[]} cantidadSucursales={1} nombreSucursalActual="Central" />);
-const soloLectura = (html: string, campo: string) => html.match(new RegExp(`data-solo-lectura="${campo}"[^>]*>(.*?)</div>`, "s"))?.[1] ?? null;
+const soloLectura = (html: string, campo: string) => html.match(new RegExp(`data-solo-lectura="${campo}"[^>]*>([\\s\\S]*?)</dl>`))?.[1] ?? null;
 const textoPlano = (html: string | null) => (html ?? "").replace(/<[^>]*>/g, "");
 
 describe("(3) ProductoForm: edición", () => {
@@ -231,7 +231,7 @@ describe("(3) ProductoForm: edición", () => {
   it("SIN la clave, un producto de venta muestra el precio guardado como solo lectura y sin el campo de precio", () => {
     const html = dibujar(false, existente({ tipo: "PV", unidadCompraId: null, factorConversion: 1, precioVenta: 3200 }));
     expect(html).not.toContain('name="precioVenta"');
-    expect(textoPlano(soloLectura(html, "precioVenta"))).toContain("$3.200");
+    expect(textoPlano(soloLectura(html, "precioVenta"))).toContain("$3.200,00");
     expect(html).toContain('name="pasoVenta"'); // el paso de venta no es un campo sensible
   });
 
@@ -242,6 +242,23 @@ describe("(3) ProductoForm: edición", () => {
     expect(mp).not.toContain("data-aviso-campos-sensibles");
     const pv = dibujar(true, existente({ tipo: "PV", precioVenta: 3200 }));
     expect(pv).toContain('name="precioVenta"');
+  });
+});
+
+describe("(3) ProductoForm: el solo lectura (M.2-A4, E)", () => {
+  it("el precio se ve SIEMPRE con dos decimales (es plata): $3.200,00, $1.234,50 y $0,00", () => {
+    const precio = (precioVenta: number) => textoPlano(soloLectura(dibujar(false, existente({ tipo: "PV", unidadCompraId: null, factorConversion: 1, precioVenta })), "precioVenta"));
+    expect(precio(3200)).toContain("$3.200,00");
+    expect(precio(1234.5)).toContain("$1.234,50");
+    expect(precio(0)).toContain("$0,00");
+  });
+
+  it("la etiqueta y el valor van asociados (término y definición de una lista) y el valor no se dibuja como un campo editable", () => {
+    const html = dibujar(false, existente({ tipo: "PV", unidadCompraId: null, factorConversion: 1, precioVenta: 3200 }));
+    const bloque = html.match(/<dl[^>]*data-solo-lectura="precioVenta"[^>]*>[\s\S]*?<\/dl>/)?.[0] ?? "";
+    expect(bloque).toMatch(/<dt[^>]*>Precio de venta<\/dt><dd[^>]*>\$3\.200,00<\/dd>/);
+    expect(bloque).not.toMatch(/border/); // sin el recuadro (punteado) de un campo
+    expect(bloque).not.toMatch(/<input|<select|<textarea/);
   });
 });
 
