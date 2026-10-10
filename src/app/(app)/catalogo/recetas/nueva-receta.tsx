@@ -18,7 +18,7 @@ export function NuevaReceta({ triggerLabel = "+ Nueva receta" }: { triggerLabel?
     <Modal triggerLabel={triggerLabel} title="Nueva receta">
       {(cerrar) => (
         <div className="flex flex-col gap-2">
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
             Elegí el Producto de venta o la Materia prima &quot;Se produce&quot; para la que vas a armar la receta.
           </p>
           <SelectorProducto
