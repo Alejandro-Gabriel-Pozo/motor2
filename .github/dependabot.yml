@@ -15,3 +15,9 @@ updates:
         patterns: ["prisma", "@prisma/*"]
       next:
         patterns: ["next", "eslint-config-next"]
+  # Actions de los workflows (fijadas por SHA): Dependabot propone el SHA nuevo con la etiqueta en el comentario. Las ramas `dependabot/…` no despliegan (vercel.json).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

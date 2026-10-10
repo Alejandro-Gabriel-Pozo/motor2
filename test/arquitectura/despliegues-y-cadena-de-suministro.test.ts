@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * GT-21 y GT-23 (tanda T14 del plan de endurecimiento de seguridad; fila O.99b de `docs/pureza-integracion.md`), en MODO «INFORME». Son los dos guards cuya medida correcta exige tocar archivos
+ * GT-21 y GT-23 (tanda T14 del plan de endurecimiento de seguridad; fila O.99b de `docs/pureza-integracion.md`). HOY EN MODO «ESTRICTO»: E.4, E.5 y E.7 están hechas y los cinco puntos son bloqueantes (el texto de abajo describe el modo informe que se usó mientras faltaban). Son los dos guards cuya medida correcta exige tocar archivos
  * que la rama no puede tocar sin autorización expresa del dueño (`vercel.json`, `plataforma/vercel.json`, `.github/`): las acciones externas E.4, E.5 y E.7 del plan. Por eso este test LEE esos
  * archivos y REPORTA su estado, sin tocarlos ni fallar por lo que todavía no se hizo:
  *
@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
  * Qué SÍ hace en modo informe (bloqueante):
  *  1. Los evaluadores son correctos (casos sintéticos con y sin cumplimiento, con LF y con CRLF): cuando se autoricen E.4/E.5/E.7 y se hagan los cambios, medirán bien.
  *  2. El informe lista EXACTAMENTE los cinco puntos (dos de GT-21 y tres de GT-23) y cada uno dice si cumple y qué acción externa lo cierra (nada se mide en silencio).
- *  3. «No empeora»: los puntos que HOY cumplen (`YA_CUMPLEN`) siguen cumpliendo. Hoy: el freno de despliegues de la raíz y el de la consola (E.5, hecho: construye solo `main`, y un test ejecuta el comando real).
+ *  3. «No empeora»: los puntos que HOY cumplen (`YA_CUMPLEN`) siguen cumpliendo. Hoy: los cinco (raíz, consola con `ignoreCommand` que construye solo `main` y cuyo comando real se ejecuta en un test, actions por SHA, `github-actions` en Dependabot y `auditar:dependencias` en el Gate de `ci.yml`: E.7).
  *  4. Imprime la tabla del estado real (`console.info`), para que quien corre el test vea qué falta.
  *
  * Para pasar a modo estricto (los cinco puntos bloqueantes) cuando las acciones externas estén hechas: cambiar `MODO` a `"estricto"`. No hace falta tocar nada más.
@@ -26,7 +26,7 @@ import { describe, expect, it } from "vitest";
  * probar; el mismo evaluador sí se probó con esa entrada.
  */
 const RAIZ = join(__dirname, "../..");
-const MODO = "informe" as "informe" | "estricto";
+const MODO = "estricto" as "informe" | "estricto";
 
 interface Punto {
   id: string;
@@ -114,7 +114,7 @@ const leerONulo = (ruta: string): string | null => {
 };
 
 /** Los puntos (de cinco) que hoy cumplen; el resto es lo pendiente de E.4, E.5 y E.7. Solo se agrega a medida que se cierran; nunca se saca. */
-const YA_CUMPLEN = ["raiz-sin-despliegue-por-git", "consola-sin-ignoreCommand-exit-1"];
+const YA_CUMPLEN = ["raiz-sin-despliegue-por-git", "consola-sin-ignoreCommand-exit-1", "actions-por-sha", "dependabot-github-actions", "auditar-dependencias-en-el-gate"];
 
 const IDS = ["raiz-sin-despliegue-por-git", "consola-sin-ignoreCommand-exit-1", "actions-por-sha", "dependabot-github-actions", "auditar-dependencias-en-el-gate"];
 
@@ -125,7 +125,7 @@ function informeReal(): Punto[] {
   ];
 }
 
-describe("GT-21 y GT-23 — despliegues frenados y cadena de suministro (modo informe)", () => {
+describe("GT-21 y GT-23 — despliegues frenados y cadena de suministro", () => {
   it("los evaluadores miden bien (casos sintéticos, con LF y con CRLF)", () => {
     const bien = evaluarDespliegues('{ "git": { "deploymentEnabled": false } }', '{ "regions": ["pdx1"] }');
     expect(bien.map((p) => p.cumple)).toEqual([true, true]);

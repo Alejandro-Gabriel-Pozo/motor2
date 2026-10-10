@@ -1,10 +1,11 @@
-# Gate de verificación en CI: los mismos 8 comandos que AGENTS.md exige correr limpios en la misma corrida.
-#   estático    → tsc, lint, arquitectura (dependency-cruiser), código muerto (knip)
+# Gate de verificación en CI: los mismos 8 comandos que AGENTS.md exige correr limpios en la misma corrida, más la auditoría de dependencias (GT-23).
+#   estático    → tsc, lint, arquitectura (dependency-cruiser), código muerto (knip), auditar:dependencias
 #   integración → npm test (Vitest contra Postgres real) + npm run build
 #   e2e         → npm run test:e2e (Playwright, servidor de producción)
 # El job `gate` es el ÚNICO que hay que marcar como requerido en la protección de rama / Vercel Deployment Checks: falla si cualquiera
 # de los otros no terminó en verde (un job omitido o cancelado también lo hace fallar).
 # No usa secretos: las bases son un Postgres descartable del propio runner y las claves de abajo son de ese contenedor, no de ningún entorno real.
+# Las actions están fijadas por SHA de 40 caracteres (la etiqueta se anota al lado); Dependabot (`github-actions`) propone las actualizaciones.
 name: CI
 
 on:
@@ -44,8 +45,8 @@ jobs:
       MOTOR2_E2E_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
       MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -61,6 +62,9 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=4096
       - run: npm run arquitectura
       - run: npm run analizar:muerto
+      # Cadena de suministro (GT-23, E.7): falla ante un aviso alto o crítico de las dependencias de producción que no tenga una excepción vigente en
+      # `scripts/auditoria-dependencias-excepciones.ts`. Consulta el registro de npm: depende de la red y de avisos nuevos, a propósito (un aviso nuevo pone rojo el Gate).
+      - run: npm run auditar:dependencias
 
   integracion:
     name: Integración (npm test + build)
@@ -86,8 +90,8 @@ jobs:
       DIRECT_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_dev
       DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_dev
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -144,8 +148,8 @@ jobs:
       MOTOR2_E2E_B_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_b_e2e
       MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_b_e2e
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -171,7 +175,7 @@ jobs:
         run: npm run test:e2e
       - name: Trazas de los specs que fallaron
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: playwright-test-results
           path: test-results/
