@@ -44,8 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -84,8 +84,8 @@ jobs:
       DIRECT_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_dev
       DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_dev
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -133,8 +133,8 @@ jobs:
       MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
       PUERTO: "3101"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -189,7 +189,7 @@ jobs:
           if [ -f zap-informe/informe.md ]; then cat zap-informe/informe.md >> "$GITHUB_STEP_SUMMARY"; else echo "ZAP no generó informe." >> "$GITHUB_STEP_SUMMARY"; fi
       - name: Informe de ZAP
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: zap-informe
           path: |
