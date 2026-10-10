@@ -198,6 +198,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "S-22/D2 (O.71; CAMBIA COMPORTAMIENTO, plan de endurecimiento de seguridad T10, decisión del dueño): el selector del POS y la lectura de cada promo para agregar leen el registro de módulos de la empresa (sin Promociones no ofrecen ni aceptan promos). Cambia SOLO la línea de conteo de 5 entradas, sin tocar ningún resultado: `pos.cargarSelectorCartaDeLaMesa(Central)` y `(Norte)` 15 → 17 consultas (`sucursal.findUnique` ×1 → ×2 y `moduloEmpresa.findMany` ×1 nueva), `pos.cargarPromoCartaParaAgregar(Central, Menú del día)` 16 → 18 (lo mismo) y sus dos casos `null` (informativa sin cupos; apagada en Norte) 1 → 3 (`moduloEmpresa.findMany` y `sucursal.findUnique`, que ahora van antes de buscar la promo). En la pantalla real la segunda lectura del registro sale de la memoria por pedido (`cache` de React: el guard ya la hizo con el mismo `db`).",
       },
+      {
+        blob: "8de0ce3d9bc515953ee8c08d607fb2c61322e58d",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `da979dd` («M.3-A7: la carta publica resuelve el slug en SucursalPublica y lee con una base de solo lectura en esa sucursal»), que fue el que cambió el golden.
+        commit: "da979dd",
+        motivo:
+          "M.3-A7 (refactor de acceso, sin cambio de resultado): `carta.resolverCartaPublica` resuelve el slug en `SucursalPublica` con la base de la empresa y lee la carta (menú, precios locales, descuentos, promos y tema) con una base de SOLO LECTURA de esa única sucursal, lo que suma una lectura de `sucursal` (`sucursal.findUnique` ×1 → ×2: la del menú y la del tema). Cambia SOLO la línea `consultas` de 2 entradas, `resolverCartaPublica(empresa, «central»)` y `(empresa, «norte»: sin tema)`: 9 → 10 consultas; el `resultado` de ambas y todas las demás entradas, byte a byte (verificado con `git diff b55c39f HEAD` del golden: exactamente esas 2 líneas).",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {

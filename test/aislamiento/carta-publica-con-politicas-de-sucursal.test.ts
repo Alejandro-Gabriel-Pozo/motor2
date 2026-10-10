@@ -3,6 +3,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
 import { sqlDeAlcanceDeSucursal } from "../setup/politicas-de-alcance-de-sucursal";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 // La carta pública cachea con `unstable_cache` (necesita el caché de Next, que fuera de un pedido no existe): acá corre directo. La clave y la etiqueta las prueban `cartas-publicas-cache-por-empresa.test.ts` y el e2e.
 vi.mock("next/cache", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/cache")>()), unstable_cache: (fn: () => unknown) => fn }));
@@ -30,7 +31,8 @@ const EA = "empresa_a";
 const EB = "empresa_b";
 const EC = "empresa_c";
 const ZONA = { zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS" };
-const AHORA = new Date("2026-10-10T15:00:00.000Z");
+// El reloj entra por parámetro (`cartaPublica(…, ahora)` solo lo usa para `generadoEn`) y no se compara con filas creadas por `now()`: el «ahora» de la corrida alcanza.
+const AHORA = AHORA_DE_LA_CORRIDA;
 
 let base: BaseTemporalMigrada;
 let duenio: PrismaClient;
