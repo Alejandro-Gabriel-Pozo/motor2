@@ -72,6 +72,9 @@ Inventario completo en `test/arquitectura/pureza-heredada-del-nucleo.ts`:
   - Mientras GO-0 no se escriba, **este hueco no tiene dueño de ejecución ni fecha**: figura también en `docs/pureza-integracion.md` (fila GO).
 - **Las 52 preguntas** (`cruce-52-preguntas-odoo-dolibarr-motor2-2026-10-08.md`): 11 cerrables, unas 15 de negocio del dueño y 4 que cambian el modelo (3, 11, 13, 28). Prioridades propuestas: idempotencia obligatoria en el servidor (H-2, H-3, H-4), reversa del pago al consignante, borrador persistido de la factura y separar factura, recepción y pago.
 
+## 7b. Política de despliegue: liberación única al final (decisión del dueño, 2026-10-10)
+No hay uso real en ninguna instalación (`stockhneuquen`, ZuluHub y la demo). Por eso: todo se prueba **local**; las migraciones de M.2, M.3 Fase B, Fase 5 y la Etapa B **no se aplican a Neon a medida que se hacen**, sino **juntas en una liberación final después de la Etapa A/B/C**; el #96 no se fusiona a `main` antes (la consola despliega en `main`). M.1 ya está aplicado y es compatible con el código de `main`. En la liberación se mantiene un ensayo por base sobre una rama de Neon creada desde `main` (copia de los datos reales), un respaldo, el orden «código con `MOTOR2_MIGRAR_EN_BUILD=0` → migraciones por grupo → humo → borrar la variable» y un OK expreso por paso; cada migración lleva su `down.sql`. Riesgo asumido: una liberación grande junta muchas migraciones.
+
 ## 8. Lo que viene entre medio
 - **Entre el paso 0 y la Fase 5:** el respaldo de Neon y el ensayo (rama de Neon) de cada migración; revisar que ningún script de mantenimiento choque con el candado.
 - **Entre las fases y la Etapa A:** terminar M.2/M.3 (la RLS por sucursal conviene **antes** de sumar tablas de documentos por sucursal), cerrar el ADR único y la lista de las 52 preguntas, y decidir si el CI de GitHub se repara (facturación) o se usa un runner propio.
