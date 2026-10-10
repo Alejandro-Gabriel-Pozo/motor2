@@ -101,7 +101,8 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
     });
     const comando = (extra: Partial<EntradaProducto>) => {
       const d = datos({ esConsignacion: true, precioConsignacion: 10, ...extra });
-      return { productoId, datos: d, puerta: guardComandoDatosDeProducto({ datos: d }), puedeGestionarConsignacion: true };
+      // M.2: lo que se prueba acá es la pertenencia del proveedor, no el permiso: el comando se arma con las dos claves finas (consignación y campos sensibles) concedidas.
+      return { productoId, datos: d, puerta: guardComandoDatosDeProducto({ datos: d }), puedeGestionarConsignacion: true, puedeEditarCamposSensibles: true };
     };
 
     it("proveedorConsignacionId de otra empresa: rechazo de pertenencia fuera de la transacción abortada, sin cambios ni auditoría", async () => {

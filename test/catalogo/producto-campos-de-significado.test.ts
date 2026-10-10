@@ -24,6 +24,7 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
   let seccionId: string;
   let adminId: string;
   let operadorId: string;
+  let sinClaveId: string;
   let kgId: string;
   let gId: string;
   let proveedorAId: string;
@@ -53,7 +54,14 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
   const comoOperador = () => mockearUsuarioActual({ id: operadorId, email: "operador@test.com", nombre: null });
   // El costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante` (S-12): las pruebas que lo cambian actúan como administrador.
   const comoAdmin = () => mockearUsuarioActual({ id: adminId, email: "admin@test.com", nombre: null });
-  const comando = (datosDelFormulario: DatosProducto) => ({ productoId: quesoId, datos: datosDelFormulario, puerta: guardComandoDatosDeProducto({ datos: datosDelFormulario }), puedeGestionarConsignacion: true });
+  // M.2: estas pruebas son de la auditoría y de la historia, no del permiso: el comando se arma con las claves finas concedidas (consignación y campos sensibles); el permiso de campos sensibles lo prueba `campos-sensibles-del-producto.test.ts`.
+  const comando = (datosDelFormulario: DatosProducto) => ({
+    productoId: quesoId,
+    datos: datosDelFormulario,
+    puerta: guardComandoDatosDeProducto({ datos: datosDelFormulario }),
+    puedeGestionarConsignacion: true,
+    puedeEditarCamposSensibles: true,
+  });
   const filas = async (campo: string) => prismaAdmin.registroAuditoria.findMany({ where: { entidad: "Producto", entidadId: quesoId, campo } });
   const unidadDelProducto = async () => (await prisma.producto.findUniqueOrThrow({ where: { id: quesoId } })).unidadStockId;
 
@@ -83,6 +91,13 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
     seccionId = (await sembrarSeccion(sucursalId)).id;
     adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id })).id;
     operadorId = (await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: base.operador.id })).id;
+    // M.2: cambiar el factor y las unidades exige `producto_campos_sensibles` (semilla solo admin). Estas pruebas son de la AUDITORÍA y de la HISTORIA de esos cambios, así que el rol «operador» de
+    // este archivo actúa con la clave delegada por configuración (una fila de PermisoRol), como un encargado de precios. El ataque original («el operador de fábrica cambia el factor») ahora lo
+    // frena la clave y se prueba en `campos-sensibles-del-producto.test.ts`; acá, `sinClaveId` (solo producto_editar) fija que ese rechazo le gana al de la historia.
+    await prisma.permisoRol.update({ where: { rolId_accionClave: { rolId: base.operador.id, accionClave: "producto_campos_sensibles" } }, data: { puedeVer: true, puedeEditar: true } });
+    const editor = await prisma.rol.create({ data: { nombre: "Editor" } });
+    await prisma.permisoRol.create({ data: { rolId: editor.id, accionClave: "producto_editar", puedeVer: true, puedeEditar: true } });
+    sinClaveId = (await crearUsuarioConMembresia({ email: "editor@test.com", sucursalId, rolId: editor.id })).id;
     proveedorAId = (await prisma.proveedor.create({ data: { codigo: "PROV_A", nombre: "Lácteos A" } })).id;
     proveedorBId = (await prisma.proveedor.create({ data: { codigo: "PROV_B", nombre: "Lácteos B" } })).id;
     quesoId = (
@@ -200,6 +215,14 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
       // Por la acción pública, el mismo rechazo (lo que ve el operador).
       expect((await actualizarProducto(quesoId, await datos({ unidadStockId: gId }))).ok).toBe(false);
       expect(await unidadDelProducto()).toBe(kgId);
+      // M.2: quien NO tiene la clave fina recibe el rechazo de la clave y no el de la historia (la clave va antes: no se entera de si el producto tiene historia).
+      await mockearUsuarioActual({ id: sinClaveId, email: "editor@test.com", nombre: null });
+      const sinClave = await actualizarProducto(quesoId, await datos({ unidadStockId: gId }));
+      expect(sinClave.ok).toBe(false);
+      expect(sinClave.mensaje).toContain("No tenés permiso para cambiar el precio de venta");
+      expect(sinClave.mensaje).not.toContain("historia");
+      expect(await unidadDelProducto()).toBe(kgId);
+      await comoOperador();
     });
 
     it.each(FUENTES)("control: con %s, guardar con la MISMA unidad (y cambiar el factor, que se audita) sigue andando", async (_nombre, sembrar) => {

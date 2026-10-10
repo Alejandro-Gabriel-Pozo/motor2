@@ -72,7 +72,13 @@ describe("sincronizar el precio de un grupo de la carta", () => {
     });
 
     it("M-2 (auditoría intermedia): quien edita el producto pero NO tiene `producto_sincronizar_precio_carta` (el operador) no recibe la oferta, que de todos modos no podría aceptar", async () => {
-      const operador = await crearUsuarioConMembresia({ email: "op@test.com", sucursalId, rolId: operadorRolId });
+      // M.2: para cambiar el precio hace falta además `producto_campos_sensibles` (semilla solo admin): el rol de fábrica «operador» ya ni siquiera llega a cambiarlo. Lo que este caso fija es que quien
+      // SÍ puede cambiar el precio pero no sincronizarlo no recibe la oferta, así que actúa un rol propio con las dos primeras claves y sin la de sincronizar.
+      const rolDePrecios = await prisma.rol.create({ data: { nombre: "Precios sin sincronizar" } });
+      for (const accionClave of ["producto_editar", "producto_campos_sensibles"]) {
+        await prisma.permisoRol.create({ data: { rolId: rolDePrecios.id, accionClave, puedeVer: true, puedeEditar: true } });
+      }
+      const operador = await crearUsuarioConMembresia({ email: "op@test.com", sucursalId, rolId: rolDePrecios.id });
       await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
       const r = await actualizarProducto(ids.fanta, datosPV("Fanta 500cc", 5500));
       expect(r).toEqual({ ok: true, mensaje: 'Producto "Fanta 500cc" actualizado.' });

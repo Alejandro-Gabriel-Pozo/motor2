@@ -72,12 +72,16 @@ export type ResultadoDarDeAltaProducto = ResultadoCaso<DatosProductoCreado, "DAT
  * siempre: lee la unidad de stock a mitad de camino), y si quien lo pide puede gestionar el costo de consignación (S-12, D8 del dueño: tiene `pagar_consignante` EDITAR en la sucursal
  * activa; lo calcula la Server Action con el gate, el caso de uso no chequea permisos). Sin eso, el costo de consignación (es consignación, proveedor y precio) no se cambia: un campo que
  * no viene queda como estaba, uno distinto es `SIN_PERMISO_COSTO`.
+ *
+ * M.2: `puedeEditarCamposSensibles` dice si quien lo pide tiene `producto_campos_sensibles` EDITAR (la clave fina del precio de venta, el factor de conversión y las unidades; la calcula la Server
+ * Action con el gate, el caso de uso no chequea permisos). Sin ella, un campo sensible que no viene queda como estaba y uno distinto del guardado es `SIN_PERMISO_CAMPOS_SENSIBLES`.
  */
 export interface ComandoActualizarProducto {
   productoId: string;
   datos: EntradaProducto;
   puerta: PuertaDeDatosDeProducto;
   puedeGestionarConsignacion: boolean;
+  puedeEditarCamposSensibles: boolean;
 }
 
 /**
@@ -96,11 +100,12 @@ export interface DatosActualizarProducto {
  *  - `UNIDAD_CON_HISTORIA`: el formulario trae otra unidad de stock y el producto ya tiene historia (movimientos, recetas, presentaciones, proveedores…; CAT-1, S-05);
  *  - `CONSIGNANTE_CON_HISTORIA`: el formulario cambia el consignante (o el «es consignación») de un producto que ya tiene liquidaciones (S-05);
  *  - `SIN_PERMISO_COSTO`: el formulario cambia el costo de consignación (es consignación, proveedor o precio) y quien lo pide no tiene `pagar_consignante` (S-12, D8);
+ *  - `SIN_PERMISO_CAMPOS_SENSIBLES`: el formulario cambia el precio de venta, el factor de conversión o una unidad (de stock o de compra) y quien lo pide no tiene `producto_campos_sensibles` (M.2); va ANTES de `UNIDAD_CON_HISTORIA` y `CONSIGNANTE_CON_HISTORIA`;
  *  - `REFERENCIA_NO_ENCONTRADA`: un id del formulario (categoría, insumo, unidad, proveedor de consignación) no es de esta empresa o no existe: la clave foránea compuesta de la base rechazó el `update` y se traduce a «No se encontró …» fuera de la transacción abortada (O.175).
  */
 export type ResultadoActualizarProducto = ResultadoCaso<
   DatosActualizarProducto,
-  "PRODUCTO_NO_ENCONTRADO" | "TIPO_DISTINTO" | "DATOS_INVALIDOS" | "UNIDAD_CON_HISTORIA" | "CONSIGNANTE_CON_HISTORIA" | "SIN_PERMISO_COSTO" | "REFERENCIA_NO_ENCONTRADA"
+  "PRODUCTO_NO_ENCONTRADO" | "TIPO_DISTINTO" | "DATOS_INVALIDOS" | "UNIDAD_CON_HISTORIA" | "CONSIGNANTE_CON_HISTORIA" | "SIN_PERMISO_COSTO" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "REFERENCIA_NO_ENCONTRADA"
 >;
 
 /**

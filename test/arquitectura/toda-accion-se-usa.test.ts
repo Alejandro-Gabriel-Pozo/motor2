@@ -36,7 +36,6 @@ const SRC = join(__dirname, "../../src");
  */
 const RESERVADAS_SIN_USO_TODAVIA: Readonly<Record<string, string>> = {
   notificar_alertas: "Alertas de stock por mail: falta un proveedor de mail configurado (Resend/SendGrid). docs/plan-migracion.md:1099, docs/grounding-decisiones-abiertas-erpnext-dolibarr-2026-09-21.md:134.",
-  producto_campos_sensibles: "M.2 P1; la usa P2 (actualizarProducto consulta la clave en la Server Action). Sale de esta lista en P2.",
 };
 
 /**

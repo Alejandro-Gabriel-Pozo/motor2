@@ -40,6 +40,15 @@ async function puedeGestionarConsignacion(ctx: { usuarioId: string; sucursalId: 
   return (await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db)).editar;
 }
 
+/**
+ * M.2: ¿puede quien llama cambiar el precio de venta, el factor de conversión y las unidades de un producto? Es `producto_campos_sensibles` EDITAR (clave de empresa, piso operario, semilla solo
+ * admin: se SUMA a `producto_editar`, no la reemplaza). La edición lo calcula acá, con el gate, y el caso de uso —que no chequea permisos— lo aplica contra la fila que lee dentro de su transacción.
+ * No se exporta: este archivo es `"use server"` y toda función exportada es un endpoint.
+ */
+async function puedeEditarCamposSensibles(ctx: { usuarioId: string; empresaId: string; db: PrismaClient }): Promise<boolean> {
+  return (await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_campos_sensibles", ctx.db)).editar;
+}
+
 export interface ProductoOpcion {
   id: string;
   codigo: string;
@@ -313,6 +322,9 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
  * precio, el resultado trae además `sincronizable` (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8): la pantalla ofrece
  * aplicar el mismo precio con un botón aparte (`sincronizarPrecioGrupoCarta`). Nunca se sincroniza solo.
  *
+ * M.2: además de `producto_editar`, cambiar el precio de venta, el factor de conversión o una unidad exige `producto_campos_sensibles`: la acción calcula `puedeEditarCamposSensibles` (ayudante local) y el
+ * caso de uso lo aplica dentro de su transacción (`SIN_PERMISO_CAMPOS_SENSIBLES`; un campo sensible que no viene queda como estaba).
+ *
  * Desde el Hito 4 (H4C-13): permiso (`conPermisoDeEmpresa("producto_editar")`) → caso de uso (`casos-de-uso/actualizar-producto.ts`: el producto, el tipo, la
  * validación, y el `update` con sus tres auditorías en UNA transacción) → si salió bien, revalidar la carta pública y DESPUÉS, si el precio de venta cambió, el
  * `sincronizable` (lee el ítem agrupado con la base del contexto, como antes) → el resultado sin `datos` ni `codigo` (`aResultadoAccion`, más el `sincronizable`
@@ -323,7 +335,13 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     // S-52: el guard se CALCULA acá pero `validarDatosDeProducto` aplica cada rechazo en el lugar de siempre (después de leer el producto y la unidad): un producto inexistente gana sobre un dato inválido.
     const puerta = guardComandoDatosDeProducto({ datos });
     if (typeof datos !== "object" || datos === null) return error(puerta.antesDeLaUnidad.ok ? "Los datos del producto no son válidos." : puerta.antesDeLaUnidad.mensaje);
-    const r = await actualizarProductoCasoDeUso(ctx, { productoId, datos, puerta, puedeGestionarConsignacion: await puedeGestionarConsignacion(ctx) });
+    const r = await actualizarProductoCasoDeUso(ctx, {
+      productoId,
+      datos,
+      puerta,
+      puedeGestionarConsignacion: await puedeGestionarConsignacion(ctx),
+      puedeEditarCamposSensibles: await puedeEditarCamposSensibles(ctx),
+    });
     const base = aResultadoAccion(r);
     if (!r.ok) return base;
     revalidarCartasPublicas(ctx.empresaSlug);

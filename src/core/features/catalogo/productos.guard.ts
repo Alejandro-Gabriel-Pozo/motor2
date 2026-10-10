@@ -19,6 +19,13 @@ import type { ComandoDarDeAltaProductoRapido, ComandoSincronizarPrecioGrupoCarta
  * lugar de siempre, así no cambia ningún mensaje ni el orden.
  */
 
+/**
+ * M.2: el rechazo de quien cambia el precio de venta, el factor de conversión o una unidad de un producto sin tener `producto_campos_sensibles`. Un solo texto para la edición, las presentaciones y el
+ * alta (el que lo lee no tiene por qué saber cuál de los campos fue). La segunda frase cubre al que NO tocó nada de eso y recibe el rechazo porque otra persona cambió el valor mientras él editaba.
+ */
+export const MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES =
+  "No tenés permiso para cambiar el precio de venta, el factor de conversión ni las unidades del producto. Si no los tocaste, puede que otra persona los haya cambiado mientras editabas: recargá la página.";
+
 /** O.44: el «no encontrado» de activar o desactivar una presentación de compra con un id que no existe (o de otra empresa). */
 export const MENSAJE_PRESENTACION_NO_ENCONTRADA = "No se encontró la presentación.";
 
