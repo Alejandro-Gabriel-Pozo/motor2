@@ -2,6 +2,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
+import { lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import type { ProductoCartaAdmin } from "@/core/carta/public";
 import { cargarAdminCarta, origenesDeCopiaVisibles } from "@/server/consultas/carta/admin";
@@ -84,7 +85,10 @@ export default async function CartaPage() {
   const puedeEditarAlgo = puedeEditarSecciones || puedeEditarGeneros || puedeEditarContenido || puedeDefinirPromos || puedeActivarPromos || puedePrecioLocalPromos || puedeDescuento;
 
   // La hora se fija acá, en el borde (O.22-c).
-  const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db, new Date());
+  // M.3-A5: de dónde se puede copiar se lee de las OTRAS sucursales: solo quien puede copiar la carta ensancha la LECTURA a las sucursales donde el rol ve `carta_ver` (el mismo «Ver» que exige
+  // `leerOrigenDeCopia` al copiar); el resto de la pantalla es de la sucursal activa y se lee con `ctx.db`.
+  const origenes = puedeCopiarCarta ? await lecturaEnSucursalesVisibles(ctx, "carta_ver") : ctx;
+  const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db, new Date(), origenes.db);
   // S-07 (O.56): solo se ofrecen de origen las sucursales donde el usuario tiene membresía y el «Ver» de la carta (las demás ni se nombran).
   const origenesDeCopia = datos.cartaVacia && puedeCopiarCarta ? await origenesDeCopiaVisibles(ctx.usuarioId, datos.sucursalesConCarta, ctx.db) : [];
   const seccionesActivas = datos.secciones.filter((s) => s.activa);

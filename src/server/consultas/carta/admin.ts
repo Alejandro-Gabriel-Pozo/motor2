@@ -70,8 +70,12 @@ export async function origenesDeCopiaVisibles(usuarioId: string, origenes: reado
   return origenes.filter((o) => visibles.has(o.id));
 }
 
-/** La pantalla de administración de la carta. `ahora` obligatorio (O.22-c): lo fija la página; solo llega al `generadoEn` del menú armado, que acá se descarta. */
-export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date): Promise<DatosAdminCarta> {
+/**
+ * La pantalla de administración de la carta. `ahora` obligatorio (O.22-c): lo fija la página; solo llega al `generadoEn` del menú armado, que acá se descarta.
+ * M.3-A5: `dbDeOrigenes` es la base con que se lee la carta de LAS OTRAS sucursales (de dónde se puede copiar: `estadoCartaPropia`); por defecto, `db`. La página la pasa del contexto ampliado por
+ * `lecturaEnSucursalesVisibles(ctx, "carta_ver")` solo a quien puede copiar la carta (`test/arquitectura/lectores-de-varias-sucursales.test.ts`); todo lo demás se lee de `sucursalId` con `db`.
+ */
+export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date, dbDeOrigenes: Db = db): Promise<DatosAdminCarta> {
   const [secciones, generos, productos, promos, armado, precioLocalActivo, estado] = await Promise.all([
     seccionesConCantidad(sucursalId, db),
     generosOrdenados(sucursalId, db),
@@ -110,7 +114,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date):
     }),
     resolverMenuCartaConDiagnostico(sucursalId, db, ahora),
     precioLocalActivoEn(sucursalId, db),
-    estadoCartaPropia(sucursalId, db),
+    estadoCartaPropia(sucursalId, dbDeOrigenes),
   ]);
 
   const descuentos = await descuentosConfiguradosEnSucursal(sucursalId, db, productos.map((p) => p.id));

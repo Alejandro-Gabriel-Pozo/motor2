@@ -6,6 +6,11 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 // Las consultas que cruzan sucursales se reemplazan por espías que devuelven «nada»: lo que se mide es CON QUÉ BASE (y por lo tanto con qué alcance por sucursal) las llama cada pantalla.
 vi.mock("../../src/server/consultas/reportes/resumen-consolidado", () => ({ obtenerResumenConsolidado: vi.fn(async () => []) }));
 vi.mock("../../src/server/consultas/reportes/rendimiento-por-sucursal", () => ({ compararRendimientosDeSucursales: vi.fn(async () => []) }));
+// De la administración de la carta se deja la lectura REAL (con espía): lo que se mira es con qué base lee de dónde se puede copiar.
+vi.mock("../../src/server/consultas/carta/admin", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../src/server/consultas/carta/admin")>();
+  return { ...original, cargarAdminCarta: vi.fn(original.cargarAdminCarta) };
+});
 // De la auditoría solo se reemplaza la lectura del registro; `sucursalesVisiblesDeAuditoria` (el filtro por «Ver») corre de verdad.
 vi.mock("../../src/server/consultas/permisos/auditoria", async (importOriginal) => {
   const original = await importOriginal<typeof import("../../src/server/consultas/permisos/auditoria")>();
@@ -17,11 +22,13 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { crearMembresia } from "../setup/membresia";
 import { obtenerResumenConsolidado } from "../../src/server/consultas/reportes/resumen-consolidado";
+import { cargarAdminCarta } from "../../src/server/consultas/carta/admin";
 import { listarRegistrosAuditoria } from "../../src/server/consultas/permisos/auditoria";
 import { compararRendimientosDeSucursales } from "../../src/server/consultas/reportes/rendimiento-por-sucursal";
 import ConsolidadoPage from "../../src/app/(app)/reportes/consolidado/page";
 import RendimientoPorSucursalPage from "../../src/app/(app)/reportes/rendimiento-recetas/por-sucursal/page";
 import AuditoriaPage from "../../src/app/(app)/administracion/auditoria/page";
+import CartaPage from "../../src/app/(app)/carta/page";
 
 /**
  * M.3-A5, paso 3: las pantallas que miran VARIAS sucursales leen con la LECTURA ensanchada a las sucursales donde el usuario puede ver su clave (`lecturaEnSucursalesVisibles`), nunca con
@@ -173,6 +180,40 @@ describe("M.3-A5: los lectores de varias sucursales", () => {
       expect(llamada[0]).toMatchObject({ entidad: "Producto", cursor: "ajeno" });
       expect([...llamada[0].sucursalIds].sort()).toEqual([A, B].sort());
       expect((await alcanceDe(llamada[1] as never)).lectura).not.toContain(C);
+    });
+  });
+
+  describe("origen de la copia de la carta (carta_ver)", () => {
+    /** La sucursal Norte tiene carta propia (un género); Central, la activa, no: es la que puede copiar. */
+    beforeEach(async () => {
+      await prisma.generoCarta.create({ data: { sucursalId: B, nombre: "Pizzas", orden: 1 } });
+      await prisma.generoCarta.create({ data: { sucursalId: C, nombre: "Postres", orden: 1 } });
+    });
+    const ultima = () => vi.mocked(cargarAdminCarta).mock.calls.at(-1)!;
+
+    it("quien puede copiar la carta y ve `carta_ver` en B lee el origen con la base de lectura A y B (no C) y escritura solo A; lo demás se lee con la base de la activa", async () => {
+      await CartaPage();
+      const llamada = ultima();
+      expect(llamada[0]).toBe(A);
+      expect(await alcanceDe(llamada[1] as never)).toEqual({ lectura: [A], escritura: [A] });
+      expect(await alcanceDe(llamada[3] as never)).toEqual({ lectura: [A, B].sort(), escritura: [A] });
+    });
+
+    it("donde el rol no ve `carta_ver` (B como operador) o con una sola membresía, la base de origen lee solo la activa", async () => {
+      await prisma.usuarioSucursal.updateMany({ where: { usuarioId, sucursalId: B }, data: { rolId: rolOperadorId } });
+      await CartaPage();
+      expect(await alcanceDe(ultima()[3] as never)).toEqual({ lectura: [A], escritura: [A] });
+
+      const solo = await crearUsuarioConMembresia({ email: "solo@test.com", sucursalId: A, rolId: rolAdminId });
+      await como(solo.id, solo.email);
+      await CartaPage();
+      expect(await alcanceDe(ultima()[3] as never)).toEqual({ lectura: [A], escritura: [A] });
+    });
+
+    it("quien ve la carta pero NO puede copiarla (al rol se le quita `carta_copiar_de_sucursal`) no ensancha nada: la base de origen es la de la activa", async () => {
+      await prisma.permisoRol.update({ where: { rolId_accionClave: { rolId: rolAdminId, accionClave: "carta_copiar_de_sucursal" } }, data: { puedeEditar: false } });
+      await CartaPage();
+      expect(await alcanceDe(ultima()[3] as never)).toEqual({ lectura: [A], escritura: [A] });
     });
   });
 });

@@ -30,7 +30,7 @@ interface Lector {
 }
 
 /** Cuántos lectores pueden estar `PENDIENTE`. Solo baja: cada uno que se cablea, baja este número en el mismo commit. */
-const PENDIENTES_MAXIMOS = 2;
+const PENDIENTES_MAXIMOS = 1;
 
 const LECTORES: Readonly<Record<string, Lector>> = {
   "src/app/(app)/reportes/consolidado/page.tsx": {
@@ -54,7 +54,7 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   "src/app/(app)/carta/page.tsx": {
     clave: "carta_ver",
     consultas: { cargarAdminCarta: 3 },
-    estado: "PENDIENTE",
+    estado: "CABLEADO",
     motivo: "el origen de la copia de carta: cuenta la carta propia de las otras sucursales para ofrecer de dónde copiar (solo a quien puede copiar)",
   },
   "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
