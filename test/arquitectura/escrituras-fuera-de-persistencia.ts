@@ -51,7 +51,7 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     motivo: "La consola de plataforma es otra app con su propio régimen: escribe sus tablas (y las de las empresas) desde sus propios servidores; entra a la regla en una fase propia (D-6 del plan de la Fase 4).",
   },
   "src/core/auth/base.ts": {
-    escrituras: ["$executeRaw", "$executeRaw", "$executeRaw", "$executeRaw"],
+    escrituras: ["$executeRaw", "$executeRaw", "$executeRaw"],
     fase: "Fase 6",
     motivo: "No escribe datos: es el set_config local a la transacción (infraestructura de la base por empresa); sale UNA vez a server/sesion junto con contexto y rol-de-ejecucion.",
   },

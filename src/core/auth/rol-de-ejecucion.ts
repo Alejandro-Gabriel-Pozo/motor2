@@ -7,7 +7,7 @@ export interface DatosDelRol {
   bypassRls: boolean;
   /** Dueño de alguna tabla de `public`, o miembro del rol que la tiene (`pg_has_role`): con `ENABLE` sin `FORCE`, el dueño también salta el RLS. */
   duenio: boolean;
-  /** La conexión ya trae `app.empresa_id`, `app.usuario_id` o `app.invitacion_hash` fijados (por `options` del arranque o `ALTER ROLE … SET`): ver `verificarRolDeEjecucion`. */
+  /** La conexión ya trae `app.empresa_id`, `app.usuario_id`, `app.invitacion_hash`, `app.sucursales_lectura` o `app.sucursales_escritura` fijados (por `options` del arranque o `ALTER ROLE … SET`): ver `verificarRolDeEjecucion`. */
   contextoPreseteado: boolean;
 }
 
@@ -18,7 +18,9 @@ export async function datosDelRolDeEjecucion(db: Db): Promise<DatosDelRol> {
            EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND pg_has_role(current_user, tableowner, 'USAGE')) AS duenio,
            (COALESCE(current_setting('app.empresa_id', true), '') <> ''
              OR COALESCE(current_setting('app.usuario_id', true), '') <> ''
-             OR COALESCE(current_setting('app.invitacion_hash', true), '') <> '') AS preseteado
+             OR COALESCE(current_setting('app.invitacion_hash', true), '') <> ''
+             OR COALESCE(current_setting('app.sucursales_lectura', true), '') <> ''
+             OR COALESCE(current_setting('app.sucursales_escritura', true), '') <> '') AS preseteado
       FROM pg_roles r WHERE r.rolname = current_user`;
   return { usuario: fila.usuario, superusuario: fila.superusuario, bypassRls: fila.bypassrls, duenio: fila.duenio, contextoPreseteado: fila.preseteado };
 }
@@ -88,7 +90,7 @@ export function permitirRolPrivilegiado(source: Record<string, string | undefine
 export async function verificarRolDeEjecucion(db: Db, datos?: DatosDelRol, permitirPrivilegiado = false): Promise<void> {
   const rol = datos ?? (await datosDelRolDeEjecucion(db));
   if (rol.contextoPreseteado) {
-    throw new Error(`La conexión del rol "${rol.usuario}" trae app.empresa_id, app.usuario_id o app.invitacion_hash fijados antes de cualquier pedido: dejaría a todos los pedidos en una misma empresa. Quitar ese preset (options del arranque o ALTER ROLE … SET).`);
+    throw new Error(`La conexión del rol "${rol.usuario}" trae app.empresa_id, app.usuario_id, app.invitacion_hash, app.sucursales_lectura o app.sucursales_escritura fijados antes de cualquier pedido: dejaría a todos los pedidos en una misma empresa o en las mismas sucursales. Quitar ese preset (options del arranque o ALTER ROLE … SET).`);
   }
   if (!rol.superusuario && !rol.bypassRls && !rol.duenio) return;
   const motivo = rol.superusuario ? "es superusuario" : rol.bypassRls ? "tiene BYPASSRLS" : "es dueño de las tablas (o miembro del rol dueño)";
