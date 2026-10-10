@@ -29,6 +29,9 @@ env:
   CLAVE_DUENIO: ci-duenio-descartable
   CLAVE_APP: ci-app-descartable
   CLAVE_PLATAFORMA: ci-plataforma-descartable
+  # Rol de PRUEBAS (M.3-A8): con el que los fixtures de Vitest y de Playwright SIEMBRAN datos (`motor2_app_pruebas`: mismos privilegios que `motor2_app`, pero NO miembro de él, así las políticas
+  # por sucursal de la Fase B no lo alcanzan). Solo existe en las bases del runner; el código bajo prueba sigue corriendo como `motor2_app`.
+  CLAVE_PRUEBAS: ci-pruebas-descartable
   # Variables que Prisma/Auth.js exigen para arrancar; valores de relleno, nunca reales.
   AUTH_SECRET: ci-auth-secret-de-relleno-0123456789abcdef
   AUTH_GOOGLE_ID: ci-google-id
@@ -89,6 +92,8 @@ jobs:
       PGPASSWORD: ci-duenio-descartable
       DIRECT_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_dev
       DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_dev
+      # M.3-A8: con esta URL (rol de pruebas, MISMA base) siembran los fixtures de Vitest; el código bajo prueba usa DATABASE_URL (motor2_app).
+      MOTOR2_PRUEBAS_DATABASE_URL: postgresql://motor2_app_pruebas:ci-pruebas-descartable@localhost:5432/motor2_dev
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -96,16 +101,20 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      # Los roles se crean ANTES de migrar (los privilegios por defecto aplican a las tablas que cree la migración). `-v clave_pruebas` crea además el rol de pruebas (M.3-A8).
       - name: Bases y rol de ejecución
         run: |
           createdb motor2_dev
           createdb motor2_e2e
-          psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -f scripts/operaciones/crear-rol-motor2-app.sql
+          psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
       - name: Migrar (como dueño)
         run: npx prisma migrate deploy
       # Rol de plataforma (E4, ADR-012 §3): DESPUÉS de migrar, para que el script le dé permiso a las tablas de la consola. Lo usan los tests con el rol real.
       - name: Rol de plataforma
         run: psql -d motor2_dev -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
+      # M.3-A8: las migraciones recortaron privilegios SOLO de `motor2_app` (auditoría inmutable, invitaciones…). `solo_pruebas=1` no toca a `motor2_app`: copia sus privilegios al rol de pruebas (y falla si difieren).
+      - name: Rol de pruebas (privilegios al día tras migrar)
+        run: psql -d postgres -v ON_ERROR_STOP=1 -v solo_pruebas=1 -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
       # El build verifica el registro de módulos de la base: va ANTES de los tests, que la dejan con empresas y roles de prueba.
       - name: npm run build
         run: npm run build
@@ -142,6 +151,8 @@ jobs:
       DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
       MOTOR2_E2E_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
       MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
+      # M.3-A8: con esta URL (rol de pruebas, MISMA base `_e2e`) siembran los specs de Playwright; el servidor de la app sigue corriendo como `motor2_app`.
+      MOTOR2_E2E_PRUEBAS_DATABASE_URL: postgresql://motor2_app_pruebas:ci-pruebas-descartable@localhost:5432/motor2_e2e
       # La consola de plataforma (E4): su servidor y su spec solo se activan con esta variable (el rol se crea más abajo).
       MOTOR2_E2E_PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_e2e
       # ADR-025: la SEGUNDA instalación de la consola (otra base, también `_e2e`): el spec consola-instalaciones prueba que una consola opera dos bases sin mezclarlas.
@@ -159,7 +170,7 @@ jobs:
           createdb motor2_dev
           createdb motor2_e2e
           createdb motor2_b_e2e
-          psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -f scripts/operaciones/crear-rol-motor2-app.sql
+          psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
       - name: Migrar la base E2E (como dueño)
         run: npx prisma migrate deploy
       - name: Migrar la base E2E B (segunda instalación)
@@ -170,6 +181,9 @@ jobs:
       # El rol es del servidor entero (la misma clave); el script es idempotente y le da permiso sobre las tablas de ESTA base.
       - name: Rol de plataforma en la segunda base
         run: psql -d motor2_b_e2e -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
+      # M.3-A8: igual que en el job de integración. El script solo toca `motor2_dev` y `motor2_e2e` (la segunda instalación `motor2_b_e2e` es de la consola y no lleva rol de pruebas).
+      - name: Rol de pruebas (privilegios al día tras migrar)
+        run: psql -d postgres -v ON_ERROR_STOP=1 -v solo_pruebas=1 -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
       - run: npx playwright install --with-deps chromium
       - name: npm run test:e2e
         run: npm run test:e2e
