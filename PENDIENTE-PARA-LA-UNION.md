@@ -4,7 +4,7 @@ De lo general a lo específico. Este archivo es el contexto para quien audita y 
 
 ## 1. En una línea
 
-El #97 trae dos cosas separadas: (a) los **controles de seguridad del pipeline** (workflows, pruebas de SQL injection/XSS, documentación) y (b) una **primera capa `src/ui/` aditiva** (botón, campo y diálogo accesibles) con `Modal` reapuntado a ese diálogo. Todo lo demás que las auditorías recomiendan queda **escrito acá, no hecho**, para que quien une vea el panorama completo y no choque con la Fase 6 ni con las pantallas de producto en revisión.
+El #97 trae dos cosas separadas: (a) los **controles de seguridad del pipeline** (workflows, pruebas de SQL injection/XSS, documentación) y (b) una **primera capa `src/ui/` aditiva** (botón, campo, diálogo, tabla adaptable y selectores de fecha) con `Modal` reapuntado al diálogo. **Base:** esta rama ya incluye el merge del #96 hasta `846fb4e` (M.2-A4), sin conflictos; si el #96 avanza otra vez, hay que volver a mezclarlo. **Referencias** (repo privado `motor2-docs`, rama `ccr-30379a24-ebge91`, carpeta `_planes/`): `informe-de-la-tanda-2026-10-10.md` (empezar acá), `auditoria-de-abstracciones-motor2-2026-10-10.md`, `informe-ux-ui-abstraccion-motor2-2026-10-10.md`, `contraste-con-el-pdf-estructura-capas-responsive-2026-10-10.md`. Todo lo demás que las auditorías recomiendan queda **escrito acá, no hecho**, para que quien une vea el panorama completo y no choque con la Fase 6 ni con las pantallas de producto en revisión.
 
 ## 2. Qué se tocó y por qué
 
