@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import ts from "typescript";
 
@@ -96,9 +96,11 @@ export function ensancheDespuesDelGate(codigo: string, funcion: string, ensanche
 export function fuentesDe(raiz: string, dir: string): Map<string, string> {
   const salida = new Map<string, string>();
   const recorrer = (d: string): void => {
-    for (const nombre of readdirSync(d)) {
+    // `withFileTypes` da el tipo de cada entrada en la misma lectura del directorio: no se consulta la ruta aparte antes de abrirla (evita el patrón «comprobar y después usar»).
+    for (const entrada of readdirSync(d, { withFileTypes: true })) {
+      const nombre = entrada.name;
       const ruta = join(d, nombre);
-      if (statSync(ruta).isDirectory()) recorrer(ruta);
+      if (entrada.isDirectory()) recorrer(ruta);
       else if (/\.tsx?$/.test(nombre) && !nombre.endsWith(".d.ts")) salida.set(relative(raiz, ruta).replace(/\\/g, "/"), readFileSync(ruta, "utf8"));
     }
   };
