@@ -53,7 +53,7 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   },
   "src/app/(app)/carta/page.tsx": {
     clave: "carta_ver",
-    consultas: { cargarAdminCarta: 3 },
+    consultas: { cargarAdminCarta: 1 },
     estado: "CABLEADO",
     motivo: "el origen de la copia de carta: cuenta la carta propia de las otras sucursales para ofrecer de dónde copiar (solo a quien puede copiar)",
   },

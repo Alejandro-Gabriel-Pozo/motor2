@@ -198,29 +198,28 @@ describe("M.3-A5: los lectores de varias sucursales", () => {
     });
     const ultima = () => vi.mocked(cargarAdminCarta).mock.calls.at(-1)!;
 
-    it("quien puede copiar la carta y ve `carta_ver` en B lee el origen con la base de lectura A y B (no C) y escritura solo A; lo demás se lee con la base de la activa", async () => {
+    it("quien puede copiar la carta y ve `carta_ver` en B lee con la base de lectura A y B (no C) y escritura solo A, de la carta de la activa", async () => {
       await CartaPage();
       const llamada = ultima();
       expect(llamada[0]).toBe(A);
-      expect(await alcanceDe(llamada[1] as never)).toEqual({ lectura: [A], escritura: [A] });
-      expect(await alcanceDe(llamada[3] as never)).toEqual({ lectura: [A, B].sort(), escritura: [A] });
+      expect(await alcanceDe(llamada[1] as never)).toEqual({ lectura: [A, B].sort(), escritura: [A] });
     });
 
-    it("donde el rol no ve `carta_ver` (B como operador) o con una sola membresía, la base de origen lee solo la activa", async () => {
+    it("donde el rol no ve `carta_ver` (B como operador) o con una sola membresía, la base lee solo la activa", async () => {
       await prisma.usuarioSucursal.updateMany({ where: { usuarioId, sucursalId: B }, data: { rolId: rolOperadorId } });
       await CartaPage();
-      expect(await alcanceDe(ultima()[3] as never)).toEqual({ lectura: [A], escritura: [A] });
+      expect(await alcanceDe(ultima()[1] as never)).toEqual({ lectura: [A], escritura: [A] });
 
       const solo = await crearUsuarioConMembresia({ email: "solo@test.com", sucursalId: A, rolId: rolAdminId });
       await como(solo.id, solo.email);
       await CartaPage();
-      expect(await alcanceDe(ultima()[3] as never)).toEqual({ lectura: [A], escritura: [A] });
+      expect(await alcanceDe(ultima()[1] as never)).toEqual({ lectura: [A], escritura: [A] });
     });
 
-    it("quien ve la carta pero NO puede copiarla (al rol se le quita `carta_copiar_de_sucursal`) no ensancha nada: la base de origen es la de la activa", async () => {
+    it("quien ve la carta pero NO puede copiarla (al rol se le quita `carta_copiar_de_sucursal`) no ensancha nada: la base es la de la activa", async () => {
       await prisma.permisoRol.update({ where: { rolId_accionClave: { rolId: rolAdminId, accionClave: "carta_copiar_de_sucursal" } }, data: { puedeEditar: false } });
       await CartaPage();
-      expect(await alcanceDe(ultima()[3] as never)).toEqual({ lectura: [A], escritura: [A] });
+      expect(await alcanceDe(ultima()[1] as never)).toEqual({ lectura: [A], escritura: [A] });
     });
   });
 
