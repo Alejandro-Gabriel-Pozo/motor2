@@ -1,7 +1,7 @@
 import "dotenv/config";
 import type { Prisma } from "@prisma/client";
 import { prisma as prismaSinEmpresa } from "../../src/lib/db";
-import { baseDeEmpresa } from "../../src/core/auth/base";
+import { baseDeEmpresa, type AlcanceDeSucursal, type BaseDelContexto } from "../../src/core/auth/base";
 import { clienteConEmpresaDePrueba, DATOS_EMPRESA_TESTIGO, EMPRESA_DE_PRUEBA_ID, EMPRESA_TESTIGO_ID } from "./empresa-de-prueba";
 import { crearMembresia } from "./membresia";
 import { urlDeSembradoDeVitest } from "./rol-de-pruebas";
@@ -44,8 +44,18 @@ export async function analizarDespuesDeCargaMasiva() {
   await prismaAdmin.$executeRawUnsafe('ANALYZE "MovimientoStock"');
 }
 
-/** La base explícita (`db` + `transaccion`) que el contexto le da al negocio en producción — los tests la pasan igual, como argumento. */
-export const baseDeTest = baseDeEmpresa(EMPRESA_DE_PRUEBA_ID);
+/**
+ * La base explícita (`db` + `transaccion`) que el contexto le da al negocio en producción — los tests la pasan igual, como argumento. Corre SIEMPRE como `motor2_app` (el camino de la app), nunca con el
+ * rol de pruebas con el que se siembra.
+ *
+ * Es un OBJETO y además una FUNCIÓN (M.3-A8), para no tocar los ~30 archivos que ya la usan como objeto:
+ *  - `baseDeTest.db`, `baseDeTest.transaccion`, `...baseDeTest`: la base de la empresa de prueba SIN alcance por sucursal (como siempre);
+ *  - `baseDeTest(alcance?)`: una base NUEVA de la empresa de prueba con ese alcance por sucursal, igual que `baseDeEmpresa(EMPRESA_DE_PRUEBA_ID, alcance)` (M.3-A2). Sin alcance es la de siempre.
+ */
+export const baseDeTest: ((alcance?: AlcanceDeSucursal) => BaseDelContexto) & BaseDelContexto = Object.assign(
+  (alcance?: AlcanceDeSucursal) => baseDeEmpresa(EMPRESA_DE_PRUEBA_ID, alcance),
+  baseDeEmpresa(EMPRESA_DE_PRUEBA_ID),
+);
 
 /** Id de la empresa por defecto que crea la migración multiempresa_estructura (ADR-007, A2) y que `limpiarBaseDeTest` conserva. */
 export const EMPRESA_POR_DEFECTO_ID = EMPRESA_DE_PRUEBA_ID;
