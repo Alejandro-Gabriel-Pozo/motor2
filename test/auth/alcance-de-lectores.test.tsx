@@ -5,13 +5,16 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 // Las consultas que cruzan sucursales se reemplazan por espías que devuelven «nada»: lo que se mide es CON QUÉ BASE (y por lo tanto con qué alcance por sucursal) las llama cada pantalla.
 vi.mock("../../src/server/consultas/reportes/resumen-consolidado", () => ({ obtenerResumenConsolidado: vi.fn(async () => []) }));
+vi.mock("../../src/server/consultas/reportes/rendimiento-por-sucursal", () => ({ compararRendimientosDeSucursales: vi.fn(async () => []) }));
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { crearMembresia } from "../setup/membresia";
 import { obtenerResumenConsolidado } from "../../src/server/consultas/reportes/resumen-consolidado";
+import { compararRendimientosDeSucursales } from "../../src/server/consultas/reportes/rendimiento-por-sucursal";
 import ConsolidadoPage from "../../src/app/(app)/reportes/consolidado/page";
+import RendimientoPorSucursalPage from "../../src/app/(app)/reportes/rendimiento-recetas/por-sucursal/page";
 
 /**
  * M.3-A5, paso 3: las pantallas que miran VARIAS sucursales leen con la LECTURA ensanchada a las sucursales donde el usuario puede ver su clave (`lecturaEnSucursalesVisibles`), nunca con
@@ -95,6 +98,40 @@ describe("M.3-A5: los lectores de varias sucursales", () => {
       const sinC = vi.mocked(obtenerResumenConsolidado).mock.calls.at(-1)!;
       expect(sinC[0].map((s) => s.id)).not.toContain(C);
       expect((await alcanceDe(sinC[1] as never)).lectura).not.toContain(C);
+    });
+  });
+
+  describe("rendimiento de recetas por sucursal (reporte_rendimiento_sucursal)", () => {
+    const sinParametros = { searchParams: Promise.resolve({}) };
+
+    it("un gerente con membresía en A y B compara A y B (no C), lee las dos y escribe solo en la activa", async () => {
+      await RendimientoPorSucursalPage(sinParametros);
+      const llamada = vi.mocked(compararRendimientosDeSucursales).mock.calls.at(-1)!;
+      expect(llamada[0].map((s) => s.id).sort()).toEqual([A, B].sort());
+      expect(await alcanceDe(llamada[2] as never)).toEqual({ lectura: [A, B].sort(), escritura: [A] });
+    });
+
+    it("donde el rol no ve la clave (B como operador) o con una sola membresía, la comparación es solo de la activa y la base lee solo la activa", async () => {
+      await prisma.usuarioSucursal.updateMany({ where: { usuarioId, sucursalId: B }, data: { rolId: rolOperadorId } });
+      await RendimientoPorSucursalPage(sinParametros);
+      const sinB = vi.mocked(compararRendimientosDeSucursales).mock.calls.at(-1)!;
+      expect(sinB[0].map((s) => s.id)).toEqual([A]);
+      expect(await alcanceDe(sinB[2] as never)).toEqual({ lectura: [A], escritura: [A] });
+
+      const solo = await crearUsuarioConMembresia({ email: "solo@test.com", sucursalId: A, rolId: rolAdminId });
+      await como(solo.id, solo.email);
+      await RendimientoPorSucursalPage(sinParametros);
+      const unica = vi.mocked(compararRendimientosDeSucursales).mock.calls.at(-1)!;
+      expect(unica[0].map((s) => s.id)).toEqual([A]);
+      expect(await alcanceDe(unica[2] as never)).toEqual({ lectura: [A], escritura: [A] });
+    });
+
+    it("un filtro de la URL (`productoId`) llega a la consulta tal cual y no cambia el alcance; una sucursal en la URL no existe como parámetro", async () => {
+      await RendimientoPorSucursalPage({ searchParams: Promise.resolve({ productoId: "x", sucursalId: C, sucursalIds: [C] }) });
+      const llamada = vi.mocked(compararRendimientosDeSucursales).mock.calls.at(-1)!;
+      expect(llamada[1]).toEqual({ productoId: "x", todas: false });
+      expect(llamada[0].map((s) => s.id).sort()).toEqual([A, B].sort());
+      expect((await alcanceDe(llamada[2] as never)).lectura).not.toContain(C);
     });
   });
 });

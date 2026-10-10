@@ -1,6 +1,7 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
+import { lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
 import { requierePermisoVer, sucursalesVisiblesPara } from "@/server/acceso/gate";
 import { compararRendimientosDeSucursales } from "@/server/consultas/reportes/rendimiento-por-sucursal";
 import { TablaPorSucursal, type FilaComparacionPlana } from "./tabla-por-sucursal";
@@ -29,7 +30,10 @@ export default async function RendimientoPorSucursalPage({
   const sucursales = await sucursalesVisiblesPara(ctx, "reporte_rendimiento_sucursal");
   const todas = sp.todas === "1";
 
-  const filas = await compararRendimientosDeSucursales(sucursales, { productoId: sp.productoId, todas }, ctx.db);
+  // M.3-A5: esas mismas sucursales se LEEN con la lectura ensanchada (solo la lectura; esta pantalla no escribe) a las sucursales donde el rol ve `reporte_rendimiento_sucursal`.
+  // Ninguna sucursal llega por la URL: lo único que se toma de ella es el producto y «todas».
+  const lectura = await lecturaEnSucursalesVisibles(ctx, "reporte_rendimiento_sucursal");
+  const filas = await compararRendimientosDeSucursales(sucursales, { productoId: sp.productoId, todas }, lectura.db);
   const filasPlanas: FilaComparacionPlana[] = filas.map((f) => ({
     productoId: f.productoId,
     productoNombre: f.productoNombre,

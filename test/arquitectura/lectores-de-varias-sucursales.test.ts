@@ -30,7 +30,7 @@ interface Lector {
 }
 
 /** Cuántos lectores pueden estar `PENDIENTE`. Solo baja: cada uno que se cablea, baja este número en el mismo commit. */
-const PENDIENTES_MAXIMOS = 4;
+const PENDIENTES_MAXIMOS = 3;
 
 const LECTORES: Readonly<Record<string, Lector>> = {
   "src/app/(app)/reportes/consolidado/page.tsx": {
@@ -42,7 +42,7 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/page.tsx": {
     clave: "reporte_rendimiento_sucursal",
     consultas: { compararRendimientosDeSucursales: 2 },
-    estado: "PENDIENTE",
+    estado: "CABLEADO",
     motivo: "compara la calibración de cada línea de receta entre las sucursales donde el rol ve el dinero (lee `RendimientoLocalIngrediente` y las recetas propias de cada una)",
   },
   "src/app/(app)/administracion/auditoria/page.tsx": {
