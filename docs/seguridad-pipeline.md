@@ -1,0 +1,95 @@
+# Seguridad de aplicación en el pipeline (CI/CD)
+
+Fecha: 2026-10-10. Alcance: controles automáticos que detectan dependencias vulnerables, fallos en el código, secretos filtrados, problemas HTTP e inputs maliciosos.
+**No toca la lógica de negocio** ni desactiva ningún control existente (`ci.yml`, el gate de 8 comandos, `auditar:dependencias`, las cabeceras CSP).
+
+## Resumen
+
+| # | Control | Dónde corre | Cuándo | ¿Bloquea? |
+|---|---|---|---|---|
+| 1 | `npm audit` (alto y crítico) | `seguridad.yml` → `dependencias` | push a `main`/`ci/**`, PR a `main`, semanal, manual | **Sí**: un aviso ALTO/CRÍTICO sin excepción vigente deja el job en rojo |
+| 2 | CodeQL (JS/TS) | `codeql.yml` | push, PR, semanal (miércoles), manual | Los hallazgos van a *Security → Code scanning*; bloquean el PR si se configura la regla de protección de rama «Code scanning results» |
+| 3 | Gitleaks (código + historial completo) | `gitleaks.yml` | push, PR, semanal, manual | **Sí**: cualquier secreto sin excepción deja el job en rojo |
+| 4 | OWASP ZAP baseline | `seguridad.yml` → `zap` | push, PR, semanal, manual | **Sí** solo para las reglas en `FAIL` de `.zap/reglas-baseline.tsv`; el resto es advertencia |
+| 5 | Pruebas de SQL injection / XSS | Vitest en `ci.yml` (`npm test`) y en `seguridad.yml` → `pruebas-de-seguridad`; Playwright en `ci.yml` → `e2e` | cada push/PR | **Sí** (son tests del gate) |
+
+Todos usan `permissions: contents: read` (CodeQL suma `security-events: write` y `actions: read`, lo mínimo que exige). Ninguno usa secretos: las claves de los workflows son de relleno y de la base del propio runner.
+
+## Ejecutar cada control en tu máquina
+
+Requisito común: `npm ci`. Para las pruebas con base: Postgres local descartable (`docker compose up -d`) con las bases `motor2_dev` y `motor2_e2e` migradas, como dice el README.
+
+```bash
+# 1) Dependencias (el comando del proyecto: con excepciones que vencen)
+npm run auditar:dependencias
+npm audit --audit-level=high            # el comando crudo (incluye dev y excepciones aceptadas), informativo
+
+# 2) CodeQL: se corre en GitHub. Local (opcional): instalar la CLI de CodeQL y
+codeql database create /tmp/codeql-db --language=javascript-typescript --source-root=.
+codeql database analyze /tmp/codeql-db codeql/javascript-queries:codeql-suites/javascript-security-extended.qls --format=sarif-latest --output=/tmp/codeql.sarif
+
+# 3) Gitleaks (Go instalado; versión fija igual que el workflow)
+go install github.com/zricethezav/gitleaks/v8@v8.30.1
+gitleaks git --no-banner --redact -v --config .gitleaks.toml .      # todo el historial
+gitleaks git --no-banner --redact --config .gitleaks.toml --pre-commit --staged .   # solo lo que vas a commitear
+
+# 4) OWASP ZAP baseline (Docker). Siempre contra una instancia LOCAL con base descartable `_e2e`
+export MOTOR2_E2E_DATABASE_URL=postgresql://motor2:motor2@localhost:5432/motor2_e2e
+export MOTOR2_E2E_APP_DATABASE_URL=postgresql://motor2_app:<clave>@localhost:5432/motor2_e2e
+npx tsx scripts/seguridad-sembrar-para-zap.ts            # se niega si la base no es local y `_e2e`
+npm run build:e2e && PORT=3101 AUTH_TRUST_HOST=true npm run start:e2e &
+mkdir -p zap-informe && cp .zap/*.tsv zap-informe/ && chmod -R a+rwx zap-informe
+docker run --rm --network host -v "$PWD/zap-informe:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
+  zap-baseline.py -t http://localhost:3101 -c reglas-baseline.tsv -r informe.html     # informe en zap-informe/
+
+# 5) Pruebas de SQL injection y XSS
+npx vitest run test/seguridad/inyeccion-sql-y-xss.test.ts      # acciones reales contra Postgres (76 casos + brechas conocidas)
+npx playwright test test/e2e/seguridad-xss-y-sqli.spec.ts       # navegador real contra `next build` + `next start`
+```
+
+## Qué cubre cada pieza
+
+**1. npm audit.** El comando crudo (`npm audit --audit-level=high`) hoy falla *siempre* por la cadena del CLI de Prisma (`prisma → @prisma/config → deepmerge-ts`, `mysql2`), que se usa en build/migraciones y no se carga en la app, y cuyo único arreglo ofrecido es bajar Prisma a 6.x. Por eso el job bloqueante es `npm run auditar:dependencias` (ya existente, S-15): mismo umbral (alto y crítico), pero cada aviso aceptado queda en `scripts/auditoria-dependencias-excepciones.ts` con motivo y fecha de vencimiento. El comando crudo corre aparte, solo informativo, para verlo en el log.
+
+**2. CodeQL.** `javascript-typescript`, `build-mode: none`, consultas `security-extended`. Hace falta *Code scanning* habilitado: gratis en repositorios públicos; en uno privado requiere GitHub Advanced Security. Si no está disponible, el paso `analyze` falla con un mensaje claro y el resto no se ve afectado.
+
+**3. Gitleaks.** Historial completo (`fetch-depth: 0`). Reglas oficiales más las propias de `.gitleaks.toml`: cadena de conexión a Neon / a Postgres con clave real, clave de Resend (`re_…`), `AUTH_SECRET`/`AUTH_GOOGLE_SECRET` con entropía de secreto, secreto de cliente de Google (`GOCSPX-…`), token de Sentry; claves privadas y tokens genéricos vienen de las oficiales. Los valores de relleno del CI (`ci-…-descartable`, `ci-…-de-relleno`) y los marcadores `${CLAVE}` / `<CLAVE_X>` de las guías no cuentan. El log nunca muestra el valor (`--redact`).
+Verificado: corrida sobre el repositorio real (65 commits) → 22 coincidencias iniciales, **todas falsos positivos** (ver abajo) → 0 tras las excepciones; y sobre un repositorio de prueba con 5 secretos inventados sembrados (Neon, Resend, `AUTH_SECRET`, Google, clave privada) → los detectó a los 5.
+
+**4. OWASP ZAP.** Baseline = rastreo + reglas **pasivas** (no envía ataques). El objetivo está fijo en `localhost`: la app se compila y levanta dentro del runner con una base Postgres descartable (`motor2_e2e`, sembrada con una carta pública de prueba por `scripts/seguridad-sembrar-para-zap.ts`, que reutiliza las guardas de los E2E: solo base local cuyo nombre termina en `_e2e`). No hay ninguna entrada del workflow que permita apuntarlo a otra URL, y nunca se apunta a producción. Revisa cabeceras, cookies, CORS, rutas expuestas y configuraciones inseguras. El escaneo **activo** (inyección SQL, XSS reflejado, traversal…) existe pero solo a mano: *Actions → Seguridad → Run workflow → `escaneo-zap: completo`*, siempre sobre esa misma app descartable. Salida: `0` limpio, `2` solo advertencias (no bloquea), `1`/`3` bloquea. Informe HTML/JSON/MD como artefacto 14 días, y el resumen en la pantalla del workflow.
+
+**5. Pruebas de SQL injection y XSS.**
+
+- `test/seguridad/inyeccion-sql-y-xss.test.ts` (Vitest, acciones reales, sin mocks de datos): 19 payloads (`' OR '1'='1`, `'; DROP TABLE …`, `UNION SELECT`, `pg_sleep`, `<script>`, `<img onerror>`, `<svg onload>`, `javascript:`, `{{…}}`, bidi, 100 000 caracteres, saltos de línea, comodines `%`/`_`) contra: alta de proveedor, de cliente y de producto rápido; búsqueda del selector de productos, del listado de catálogo y del historial; consulta del historial con SQL crudo (`$queryRaw`); contenido de la carta pública; formas equivocadas (`null`, objeto, arreglo, número); descuentos inválidos; valores de 1 MB; y los endpoints de cron con `Authorization` de ataque. Cada caso afirma: base intacta (mismas tablas, mismos usuarios/roles/acciones/unidades), texto guardado literal o rechazado, búsquedas que no devuelven «todo», y respuestas sin detalles internos (Prisma, SQLSTATE, rutas, stacks).
+- `test/e2e/seguridad-xss-y-sqli.spec.ts` (Playwright, producción real): XSS **almacenado** sembrado directo por Prisma (saltando los validadores, el peor caso) en producto, descripción, etiquetas, sección e ítem agrupado de la carta pública y en proveedor/producto/cliente de la administración → nada se ejecuta ni se vuelve DOM; XSS **reflejado** y *open redirect* por `aviso` y `volver` de `/login`; slugs maliciosos en las rutas de la carta; filtros maliciosos en 4 reportes (incluido `pg_sleep`); cabeceras de seguridad y CSP; cron cerrado (401).
+- Defensas que ya existían y que ahora quedan fijadas: lista blanca de caracteres para nombres de catálogo (`RE_TEXTO_CATALOGO`, 80 caracteres), SQL crudo siempre con *tagged templates* parametrizados (no hay `queryRawUnsafe` en `src/`), escapado de React, CSP con nonce en la app.
+
+## Hallazgos (para decidir; no se arreglaron a propósito)
+
+Fuera de «solo controles»: tocan `src/` y conviene decidirlos con vos antes. Cada uno tiene un test que hoy pasa *como brecha conocida* y se pone **rojo cuando alguien la arregla** (`it.fails` / `test.fail()`), momento en que se quita la anotación.
+
+1. **Búsqueda con NUL (`\u0000`) o sustituto UTF-16 suelto → error 500** (`buscarProductosSelector`, `listarProductosPagina`, `buscarProductoParaHistorial`). Postgres no admite esos caracteres; el error de Prisma sube sin atrapar. Sin inyección ni fuga y exige sesión con permiso. Parche propuesto: que `texto()` (`src/core/texto.ts`) quite `\u0000` y los sustitutos sueltos, y que `historial-producto.ts:19` use `texto()` en vez de `.trim()`. Lo dejé sin tocar porque `src/core` se va a mover en la Fase 6 y habría conflicto.
+2. **`/carta-publica/<empresa>/%25` (un `%` suelto en el slug) → 500** («failed to decode param», comportamiento de Next en rutas ISR). Es pública: cualquier anónimo puede generar 500s (ruido en Sentry, no explotable). Parche propuesto: en `src/proxy.ts`, devolver 404 si el segmento contiene un `%` que no es un escape válido.
+3. **Dos avisos ALTOS de dependencias sin excepción** hoy: `sharp` (<0.35.5, vía `next`, optimización de imágenes) y `source-map-js` (<1.2.2, vía PostCSS/Tailwind, build). Arreglo sin cambio mayor: `npm audit fix`, que solo actualiza `package-lock.json`. Lo apliqué en un commit aparte y reversible (ver historial); si preferís otra vía, revertís ese commit y agregás excepciones con fecha en `scripts/auditoria-dependencias-excepciones.ts`.
+4. **Los comodines `%` y `_` funcionan como comodines de búsqueda** (Prisma no los escapa en `contains`). No es inyección ni sale del alcance autorizado (RLS por empresa sigue filtrando); es solo comportamiento de búsqueda. El test lo documenta.
+5. Los documentos `docs/guion-produccion-2026-10-05.md` muestran los *hostnames* de los endpoints de Neon de producción (sin clave). No es un secreto, pero es información de infraestructura; conviene saberlo.
+
+## Falsos positivos y excepciones
+
+- **Gitleaks** (`.gitleaks.toml`, cada excepción exige archivo **y** valor a la vez, así un secreto real en el mismo archivo igual salta): huella congelada de la alta del admin ficticio `dueno@plataforma.test` (`test/auth/caracterizacion/…golden.txt`: 18 coincidencias de secretos TOTP de prueba); token inventado de `sentry-limpiar.test.ts`; vector público de RFC 6238 en `totp.test.ts`; `Bearer dev-token` de un plan en `docs/`; `contrasenia-secreta` de `test/plataforma/entorno.test.ts`; `clave-que-no-sale` de 3 tests; `.env.example`. Valores de relleno del CI por patrón.
+- **ZAP**: la carta pública necesita `script-src 'unsafe-inline'` y `img-src https:` (decisión documentada en `cabeceras.ts`) → ZAP lo marca como advertencia (10055); «contenido almacenable en caché» (10049) es el ISR de la carta a propósito; «cookie sin Secure» (10011) aparece por correr en `http://localhost`, en producción va por https. Están en `WARN`/`IGNORE`.
+- **CodeQL**: suele marcar `dangerouslySetInnerHTML`, redirecciones con parámetros y construcción de URLs; revisar caso por caso en *Security → Code scanning* y descartar con motivo (*Dismiss → Used in tests / False positive*).
+- **npm audit**: ver punto 1; las dos excepciones de Prisma vencen el 2026-12-01.
+
+## Lo que no pude verificar acá
+
+- **ZAP no se corrió** (no hay Docker en esta sesión). Sí se verificó: que el workflow pasa `actionlint`, que la app levanta en `localhost:3101` con la base sembrada y devuelve 200 en `/login`, `/carta-publica/e2e` y `/carta-publica/e2e/zap`, y las cabeceras que ZAP evalúa (spec de Playwright). La lista de reglas en `FAIL` sale de lo que el repositorio ya cumple; **la primera corrida real puede mostrar un falso `FAIL`**: en ese caso, bajar esa regla a `WARN` en `.zap/reglas-baseline.tsv` con el motivo al lado.
+- **CodeQL** no se corrió (se ejecuta en GitHub).
+- El gate completo de 8 comandos: ver el cierre del trabajo para lo que se corrió.
+
+## Para activarlo del todo (hace falta tu mano en GitHub)
+
+1. *Settings → Code security*: habilitar **Code scanning** (CodeQL) y, si querés, **Secret scanning + push protection** (complementa a Gitleaks).
+2. *Settings → Branches → regla de `main`*: agregar como obligatorios los checks `Dependencias (npm audit)`, `Escanear secretos` y `Pruebas de seguridad`. **No marcar `OWASP ZAP` ni CodeQL como obligatorios hasta ver una primera corrida verde.**
+3. Dependabot ya propone también las actualizaciones de las acciones de GitHub (se agregó el ecosistema `github-actions`).
+4. Las acciones están fijadas por versión mayor (`@v4`, `@v5`), igual que `ci.yml`; Dependabot las mantiene.
