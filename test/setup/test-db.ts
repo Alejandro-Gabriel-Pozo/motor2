@@ -1,19 +1,22 @@
 import "dotenv/config";
 import type { Prisma } from "@prisma/client";
 import { prisma as prismaSinEmpresa } from "../../src/lib/db";
-import { baseDeEmpresa } from "../../src/core/auth/base";
+import { baseDeEmpresa, type AlcanceDeSucursal, type BaseDelContexto } from "../../src/core/auth/base";
 import { clienteConEmpresaDePrueba, DATOS_EMPRESA_TESTIGO, EMPRESA_DE_PRUEBA_ID, EMPRESA_TESTIGO_ID } from "./empresa-de-prueba";
 import { crearMembresia } from "./membresia";
+import { urlDeSembradoDeVitest } from "./rol-de-pruebas";
 import { prismaAdmin } from "./cliente-duenio";
 import { activarTodosLosModulos } from "./modulos";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../src/core/movimientos/motivos-semilla";
 
 /**
- * El cliente de las pruebas (`motor2_app`) con la empresa de prueba fijada en la conexión (ADR-022): lo que los tests escriben y leen cae en ella sin depender de
- * «la única empresa activa». Para probar lo que pasa SIN contexto de empresa (login, RLS, lecturas previas) está `prismaSinEmpresa`.
+ * El cliente de los FIXTURES con la empresa de prueba fijada en la conexión (ADR-022): lo que los tests escriben y leen cae en ella sin depender de «la única empresa activa». Siembra con el
+ * ROL DE PRUEBAS `motor2_app_pruebas` (`MOTOR2_PRUEBAS_DATABASE_URL`, M.3-A8): mismos privilegios que `motor2_app` pero fuera de sus políticas por sucursal (Fase B), así un fixture ve y escribe
+ * todas las sucursales. Sin la variable cae a `DATABASE_URL` (`motor2_app`, como antes) y avisa. El código bajo prueba NO usa este cliente: corre como `motor2_app` por `baseDeTest`/`src/lib/db`.
+ * Para probar lo que pasa SIN contexto de empresa (login, RLS, lecturas previas) está `prismaSinEmpresa`.
  */
-export const prisma = clienteConEmpresaDePrueba(process.env.DATABASE_URL ?? "");
+export const prisma = clienteConEmpresaDePrueba(urlDeSembradoDeVitest());
 
 /** El cliente del proceso, sin empresa: el que usa `src/` en producción. Solo para tests que prueban explícitamente la ausencia de contexto. */
 export { prismaSinEmpresa };
@@ -41,8 +44,18 @@ export async function analizarDespuesDeCargaMasiva() {
   await prismaAdmin.$executeRawUnsafe('ANALYZE "MovimientoStock"');
 }
 
-/** La base explícita (`db` + `transaccion`) que el contexto le da al negocio en producción — los tests la pasan igual, como argumento. */
-export const baseDeTest = baseDeEmpresa(EMPRESA_DE_PRUEBA_ID);
+/**
+ * La base explícita (`db` + `transaccion`) que el contexto le da al negocio en producción — los tests la pasan igual, como argumento. Corre SIEMPRE como `motor2_app` (el camino de la app), nunca con el
+ * rol de pruebas con el que se siembra.
+ *
+ * Es un OBJETO y además una FUNCIÓN (M.3-A8), para no tocar los ~30 archivos que ya la usan como objeto:
+ *  - `baseDeTest.db`, `baseDeTest.transaccion`, `...baseDeTest`: la base de la empresa de prueba SIN alcance por sucursal (como siempre);
+ *  - `baseDeTest(alcance?)`: una base NUEVA de la empresa de prueba con ese alcance por sucursal, igual que `baseDeEmpresa(EMPRESA_DE_PRUEBA_ID, alcance)` (M.3-A2). Sin alcance es la de siempre.
+ */
+export const baseDeTest: ((alcance?: AlcanceDeSucursal) => BaseDelContexto) & BaseDelContexto = Object.assign(
+  (alcance?: AlcanceDeSucursal) => baseDeEmpresa(EMPRESA_DE_PRUEBA_ID, alcance),
+  baseDeEmpresa(EMPRESA_DE_PRUEBA_ID),
+);
 
 /** Id de la empresa por defecto que crea la migración multiempresa_estructura (ADR-007, A2) y que `limpiarBaseDeTest` conserva. */
 export const EMPRESA_POR_DEFECTO_ID = EMPRESA_DE_PRUEBA_ID;
