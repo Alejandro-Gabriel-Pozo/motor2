@@ -30,7 +30,7 @@ interface Lector {
 }
 
 /** Cuántos lectores pueden estar `PENDIENTE`. Solo baja: cada uno que se cablea, baja este número en el mismo commit. */
-const PENDIENTES_MAXIMOS = 3;
+const PENDIENTES_MAXIMOS = 2;
 
 const LECTORES: Readonly<Record<string, Lector>> = {
   "src/app/(app)/reportes/consolidado/page.tsx": {
@@ -48,7 +48,7 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   "src/app/(app)/administracion/auditoria/page.tsx": {
     clave: "ver_auditoria",
     consultas: { listarRegistrosAuditoria: 1 },
-    estado: "PENDIENTE",
+    estado: "CABLEADO",
     motivo: "el registro de cambios de todas las sucursales donde el rol ve la auditoría, más las filas sin sucursal si tiene `ver_auditoria_empresa`",
   },
   "src/app/(app)/carta/page.tsx": {

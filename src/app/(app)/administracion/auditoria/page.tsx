@@ -2,6 +2,7 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
+import { lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import { ENTIDADES_AUDITABLES, descripcionParaMostrar, type CambioAuditable } from "@/core/permisos/auditoria";
 import { listarRegistrosAuditoria, sucursalesVisiblesDeAuditoria } from "@/server/consultas/permisos/auditoria";
@@ -28,7 +29,10 @@ export default async function AuditoriaPage({
   // Las filas sin sucursal (cambios de la empresa entera) no las cubre un permiso por sucursal: las ve solo quien tiene `ver_auditoria_empresa`
   // (acción de piso gerente: el gerente de la empresa, sin pasar por la matriz).
   const { ver: incluirFilasDeEmpresa } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "ver_auditoria_empresa", ctx.db);
-  const { items, nextCursor } = await listarRegistrosAuditoria({ entidad, cursor: sp.cursor, sucursalIds, incluirFilasDeEmpresa }, ctx.db);
+  // M.3-A5: el registro de esas sucursales se LEE con la lectura ensanchada (solo la lectura; esta pantalla no escribe) a las sucursales donde el rol ve `ver_auditoria`. Ninguna sucursal
+  // llega por la URL (solo la entidad y el cursor): el filtro `sucursalIds` sale de arriba y la base no ve más que ellas (y la activa).
+  const lectura = await lecturaEnSucursalesVisibles(ctx, "ver_auditoria");
+  const { items, nextCursor } = await listarRegistrosAuditoria({ entidad, cursor: sp.cursor, sucursalIds, incluirFilasDeEmpresa }, lectura.db);
 
   const filas: FilaAuditoria[] = items.map((r) => ({
     id: r.id,

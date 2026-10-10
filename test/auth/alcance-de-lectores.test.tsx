@@ -6,15 +6,22 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 // Las consultas que cruzan sucursales se reemplazan por espías que devuelven «nada»: lo que se mide es CON QUÉ BASE (y por lo tanto con qué alcance por sucursal) las llama cada pantalla.
 vi.mock("../../src/server/consultas/reportes/resumen-consolidado", () => ({ obtenerResumenConsolidado: vi.fn(async () => []) }));
 vi.mock("../../src/server/consultas/reportes/rendimiento-por-sucursal", () => ({ compararRendimientosDeSucursales: vi.fn(async () => []) }));
+// De la auditoría solo se reemplaza la lectura del registro; `sucursalesVisiblesDeAuditoria` (el filtro por «Ver») corre de verdad.
+vi.mock("../../src/server/consultas/permisos/auditoria", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../src/server/consultas/permisos/auditoria")>();
+  return { ...original, listarRegistrosAuditoria: vi.fn(async () => ({ items: [], nextCursor: null })) };
+});
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { crearMembresia } from "../setup/membresia";
 import { obtenerResumenConsolidado } from "../../src/server/consultas/reportes/resumen-consolidado";
+import { listarRegistrosAuditoria } from "../../src/server/consultas/permisos/auditoria";
 import { compararRendimientosDeSucursales } from "../../src/server/consultas/reportes/rendimiento-por-sucursal";
 import ConsolidadoPage from "../../src/app/(app)/reportes/consolidado/page";
 import RendimientoPorSucursalPage from "../../src/app/(app)/reportes/rendimiento-recetas/por-sucursal/page";
+import AuditoriaPage from "../../src/app/(app)/administracion/auditoria/page";
 
 /**
  * M.3-A5, paso 3: las pantallas que miran VARIAS sucursales leen con la LECTURA ensanchada a las sucursales donde el usuario puede ver su clave (`lecturaEnSucursalesVisibles`), nunca con
@@ -132,6 +139,40 @@ describe("M.3-A5: los lectores de varias sucursales", () => {
       expect(llamada[1]).toEqual({ productoId: "x", todas: false });
       expect(llamada[0].map((s) => s.id).sort()).toEqual([A, B].sort());
       expect((await alcanceDe(llamada[2] as never)).lectura).not.toContain(C);
+    });
+  });
+
+  describe("auditoría (ver_auditoria)", () => {
+    const sinParametros = { searchParams: Promise.resolve({}) };
+
+    it("un gerente con membresía en A y B ve el registro de A y B (no C), con la base que lee las dos y escribe solo en la activa", async () => {
+      await AuditoriaPage(sinParametros);
+      const llamada = vi.mocked(listarRegistrosAuditoria).mock.calls.at(-1)!;
+      expect([...llamada[0].sucursalIds].sort()).toEqual([A, B].sort());
+      expect(await alcanceDe(llamada[1] as never)).toEqual({ lectura: [A, B].sort(), escritura: [A] });
+    });
+
+    it("donde el rol no ve la auditoría (B como operador) o con una sola membresía, el filtro y la base son solo la activa", async () => {
+      await prisma.usuarioSucursal.updateMany({ where: { usuarioId, sucursalId: B }, data: { rolId: rolOperadorId } });
+      await AuditoriaPage(sinParametros);
+      const sinB = vi.mocked(listarRegistrosAuditoria).mock.calls.at(-1)!;
+      expect([...sinB[0].sucursalIds]).toEqual([A]);
+      expect(await alcanceDe(sinB[1] as never)).toEqual({ lectura: [A], escritura: [A] });
+
+      const solo = await crearUsuarioConMembresia({ email: "solo@test.com", sucursalId: A, rolId: rolAdminId });
+      await como(solo.id, solo.email);
+      await AuditoriaPage(sinParametros);
+      const unica = vi.mocked(listarRegistrosAuditoria).mock.calls.at(-1)!;
+      expect([...unica[0].sucursalIds]).toEqual([A]);
+      expect(await alcanceDe(unica[1] as never)).toEqual({ lectura: [A], escritura: [A] });
+    });
+
+    it("la entidad, el cursor y una sucursal puestos a mano en la URL no entran al alcance (el cursor y la entidad llegan tal cual a la consulta)", async () => {
+      await AuditoriaPage({ searchParams: Promise.resolve({ entidad: "Producto", cursor: "ajeno", sucursalId: C, sucursalIds: [C] }) });
+      const llamada = vi.mocked(listarRegistrosAuditoria).mock.calls.at(-1)!;
+      expect(llamada[0]).toMatchObject({ entidad: "Producto", cursor: "ajeno" });
+      expect([...llamada[0].sucursalIds].sort()).toEqual([A, B].sort());
+      expect((await alcanceDe(llamada[1] as never)).lectura).not.toContain(C);
     });
   });
 });
