@@ -64,7 +64,12 @@ Inventario completo en `test/arquitectura/pureza-heredada-del-nucleo.ts`:
 - **Etapa C:** casos de uso y pantallas tras cada migración (factura repartida, «Gastos y servicios», notas de crédito, anular unidades, unidades de negocio).
 - **Decisiones del dueño del 2026-10-08 que entran:** unidad de stock inmutable con historia (CAT-1), IVA por producto (CAT-8), conversión de unidades propia con `decimal.js`, rubros y unidades de negocio como datos de la consola (plantillas de rubro), **conteo por insumo** (`modoDeConteo`), cierre de períodos (CP0 a CP2), **bienes de uso** (Fase 7: BU0 a BU8 y CF1/CF2).
 - **Facturación fiscal** (`EmisorFiscal`): SOAP propio primero (WSAA + WSFE), AfipSDK después; elección por empresa; facturar es un proceso posterior al cierre, con la solicitud persistida antes de llamar a ARCA y la llamada fuera de toda transacción; reconciliación a cargo de motor2. Faltan el spike de homologación (certificado por adaptador) y verificar `FEParamGetTiposIva`.
-- **Grupos de opciones** (tamaño, variante, guarnición, adicional): la pieza de diseño se escribe después de M2; las respuestas del dueño y las preguntas que quedan están en `preguntas-abiertas-grupos-de-opciones-cafe-2026-10-09.md`. Por defecto un producto no admite nada (lista de permitidos).
+- **Grupos de opciones — HUECO DECLARADO (GO-0 a GO-2, 2026-10-10)** (tamaño, variante, guarnición, adicional; el café por modificadores es el caso disparador). **No está en la Fase 5** (esa es solo `SaldoStock`, índice y candado del Kardex) y hasta ahora no tenía ítem propio: estaba nombrado en una viñeta y la pieza de diseño no existe. Queda declarado así (las siglas son propuestas; el dueño las ajusta):
+  - **GO-0, Etapa A (sin migración):** escribir la pieza de diseño (grupos con mínimo y máximo, lista de permitidos por producto y por sucursal, recargo como línea aparte, IVA del recargo, efecto sobre el stock, frontera con los ítems agrupados) y su ADR. Se escribe después de M2 y **solo cuando el dueño responda las preguntas que bloquean**: 1 a 4 y las 7 de §5.4 de `preguntas-abiertas-grupos-de-opciones-cafe-2026-10-09.md` (ticket consolidado o línea aparte, stock suma/reemplaza/escala, IVA del recargo —depende de CAT-8/M0-IVA—, frontera con ítems agrupados, guarnición premium, tope del adicional, lista por sucursal).
+  - **GO-1, Etapa B (migración con autorización, sin número todavía):** tablas de grupos y opciones y la referencia opcional a la línea padre que M2 ya reserva. Va **después de M0-IVA y M2**.
+  - **GO-2, Etapa C:** casos de uso y pantallas (configurar grupos, tomar el pedido con opciones, carta pública con precios por tamaño —requiere ampliar la lista cerrada con aprobación—).
+  - Decididas: decisiones 5, 7, 8 y 9 del 2026-10-08 (modificadores sin stock quedan descartados por ahora). Por defecto un producto no admite nada. En el código no existe nada de esto.
+  - Mientras GO-0 no se escriba, **este hueco no tiene dueño de ejecución ni fecha**: figura también en `docs/pureza-integracion.md` (fila GO).
 - **Las 52 preguntas** (`cruce-52-preguntas-odoo-dolibarr-motor2-2026-10-08.md`): 11 cerrables, unas 15 de negocio del dueño y 4 que cambian el modelo (3, 11, 13, 28). Prioridades propuestas: idempotencia obligatoria en el servidor (H-2, H-3, H-4), reversa del pago al consignante, borrador persistido de la factura y separar factura, recepción y pago.
 
 ## 8. Lo que viene entre medio
@@ -73,7 +78,7 @@ Inventario completo en `test/arquitectura/pureza-heredada-del-nucleo.ts`:
 - **Deploy:** hoy la app despliega a mano; reactivar los deploys automáticos de la app es una decisión aparte (hace falta CI en verde y las variables de Preview separadas).
 
 ## 9. Lo que podría haberse olvidado (revisar con el dueño)
-1. **E.5 y E.1** siguen sin hacerse y la consola despliega con cada push.
+1. ~~**E.5 y E.1**~~ **Hechas (2026-10-10):** E.1 a E.3 en Vercel; E.5 y E.7 en código en este PR (E.5 surte efecto al fusionarlo).
 2. **Rotación de claves** y la clave de Anthropic pegada en un chat.
 3. **Idempotencia obligatoria** de consumo, merma, ajuste y compra sin N.º de factura (hallazgos H-2/H-3/H-4 del cruce): verificar si quedó cerrada con el endurecimiento.
 4. **Pago al consignante** sin reversa ni tope contra saldo (el único flujo «no cumple»).
