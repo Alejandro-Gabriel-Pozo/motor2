@@ -11,11 +11,16 @@ import type { ParametroDePuerta, PuertaInventariada } from "./inventario-de-puer
  *  - `ajenaEmpresa` (c): TODO id del kit sale de la empresa E2 (u1 no pertenece a ella).
  *  - `ajenaSucursal` (d): solo los ids de UNA sucursal (S2, o su vecina) son ajenos; el catálogo, las recetas centrales, etc. son de E1 y u1 los puede usar.
  *  - `anonimo` y `sinEmpresa` (a, b): ids PROPIOS y válidos de S1 (el mejor caso de quien se hace pasar por un usuario).
+ *  - `consultaConSucursalAjena` (M.3, paso A11): solo consultas y lecturas. Como `ajenaSucursal`, pero ADEMÁS la sucursal de CONTEXTO que la puerta recibe (`sucursalId`, la «activa») es la de S2: es lo que
+ *    pasaría si un error de código o un bypass del gate le diera a la consulta una sucursal que el usuario no tiene. El `db` sí lleva el alcance de S1 (el de u1). Hoy sin políticas la base contesta con las filas
+ *    de S2 (la defensa es solo el gate); con la RLS por sucursal (Fase B) tiene que contestar vacío.
+ *
+ * En `consultaConSucursalAjena` el cambio se hace en `propio.sucursalId` (ver `propioConSucursalAjena`): así vale también para los generadores a medida que leen `c.propio.sucursalId`.
  *
  * En las consultas y lecturas (que reciben el contexto ya resuelto: `db`, la sucursal activa, la empresa, el usuario), esos parámetros de CONTEXTO se llenan con lo PROPIO de u1 aunque el escenario sea
  * uno de los ajenos: lo que viene del cliente son los demás ids, y esos sí son ajenos. En las acciones —que son el endpoint—, todo parámetro es del cliente, incluida la sucursal.
  */
-export type Escenario = "anonimo" | "sinEmpresa" | "ajenaEmpresa" | "ajenaSucursal" | "propia" | "controlMutacion";
+export type Escenario = "anonimo" | "sinEmpresa" | "ajenaEmpresa" | "ajenaSucursal" | "consultaConSucursalAjena" | "propia" | "controlMutacion";
 
 /** El kit completo: lo de empresa y lo de sucursal juntos (`marca` es el de la sucursal). */
 export type Kit = KitDeEmpresa & KitDeSucursal;
@@ -193,7 +198,7 @@ function valorDe(p: ParametroDePuerta, k: Kit, c: ContextoDeArgumentos, aMedida:
 /** El kit con el que se llena: un `Proxy` que anota cada campo AJENO que se lee. */
 function kitObservado(c: Omit<ContextoDeArgumentos, "usados">, usados: Set<string>): Kit {
   const ajenoSiempre = c.escenario === "ajenaEmpresa";
-  const ajenoSoloSucursal = c.escenario === "ajenaSucursal";
+  const ajenoSoloSucursal = c.escenario === "ajenaSucursal" || c.escenario === "consultaConSucursalAjena";
   return new Proxy(c.ajeno, {
     get(objetivo, campo, receptor) {
       // `marca` no es un id: es el texto que se pega a los nombres para reconocer de dónde salió una fila.
@@ -216,7 +221,7 @@ export const variantes = (...lista: unknown[][]): Variantes => new Variantes(lis
 
 /** ¿El campo del kit es AJENO en este escenario? En el de otra empresa todo lo es; en el de otra sucursal solo lo que vive en una sucursal (el catálogo y la carta central son de E1 y u1 los puede usar). */
 function esAjeno(c: Pick<ContextoDeArgumentos, "escenario">, campo: string): boolean {
-  return c.escenario === "ajenaEmpresa" || (c.escenario === "ajenaSucursal" && CAMPOS_DE_SUCURSAL.has(campo));
+  return c.escenario === "ajenaEmpresa" || ((c.escenario === "ajenaSucursal" || c.escenario === "consultaConSucursalAjena") && CAMPOS_DE_SUCURSAL.has(campo));
 }
 
 /**
@@ -224,7 +229,7 @@ function esAjeno(c: Pick<ContextoDeArgumentos, "escenario">, campo: string): boo
  * (anónimo, sin empresa, propia) la variante siempre existe (y `derivarArgumentos` se queda con la primera), para que la puerta se invoque.
  */
 export function intento(c: Pick<ContextoDeArgumentos, "escenario">, campos: readonly string[], argumentos: unknown[]): unknown[] | false {
-  const conIdsAjenos = c.escenario === "ajenaEmpresa" || c.escenario === "ajenaSucursal";
+  const conIdsAjenos = c.escenario === "ajenaEmpresa" || c.escenario === "ajenaSucursal" || c.escenario === "consultaConSucursalAjena";
   return !conIdsAjenos || campos.some((campo) => esAjeno(c, campo)) ? argumentos : false;
 }
 
@@ -259,9 +264,26 @@ export interface Generadores {
   porArchivo: Readonly<Record<string, Readonly<Record<string, Valor>>>>;
 }
 
+/**
+ * El kit propio de u1 con la sucursal de CONTEXTO cambiada por la de lo ajeno (escenario `consultaConSucursalAjena`): lo único que cambia es `sucursalId`, y cada lectura de ese campo se anota en `usados`
+ * (así «la puerta recibe la sucursal de contexto» se decide por lo que la derivación realmente lee, sea por nombre de parámetro o dentro de un objeto de entrada).
+ */
+function propioConSucursalAjena(propio: Kit, ajeno: Kit, usados: Set<string>): Kit {
+  return new Proxy(propio, {
+    get(objetivo, campo, receptor) {
+      if (campo === "sucursalId") {
+        usados.add("sucursalId");
+        return ajeno.sucursalId;
+      }
+      return Reflect.get(objetivo, campo, receptor);
+    },
+  });
+}
+
 export function derivarArgumentos(base: Omit<ContextoDeArgumentos, "usados">, g: Generadores): Derivacion {
   const usados = new Set<string>();
-  const ctx: ContextoDeArgumentos = { ...base, usados };
+  const propio = base.escenario === "consultaConSucursalAjena" ? propioConSucursalAjena(base.propio, base.ajeno, usados) : base.propio;
+  const ctx: ContextoDeArgumentos = { ...base, propio, usados };
   const kit = kitObservado(base, usados);
   const completo = Object.hasOwn(g.completos, base.puerta.clave) ? g.completos[base.puerta.clave] : undefined;
   if (completo) {
@@ -270,7 +292,7 @@ export function derivarArgumentos(base: Omit<ContextoDeArgumentos, "usados">, g:
     // Sin ids ajenos (anónimo, sin empresa, propia) todas las variantes son lo mismo: una alcanza. El CONTROL POSITIVO de una mutación (`controlMutacion`) las ejerce todas, con los ids propios: cada camino
     // (editar, dar de alta con referencias, mover) tiene que poder terminar en `ok: true`, o el rechazo de su variante ajena podría ser de forma y no de pertenencia.
     if (base.escenario === "controlMutacion") lista = sinRepetidas(lista);
-    else if (base.escenario !== "ajenaEmpresa" && base.escenario !== "ajenaSucursal") lista = lista.slice(0, 1);
+    else if (base.escenario !== "ajenaEmpresa" && base.escenario !== "ajenaSucursal" && base.escenario !== "consultaConSucursalAjena") lista = lista.slice(0, 1);
     return { argumentos: lista[0] ?? null, variantes: lista, usados: [...usados], faltan: [] };
   }
   const aMedida = { ...(Object.hasOwn(g.porArchivo, base.puerta.archivo) ? g.porArchivo[base.puerta.archivo] : {}), ...(Object.hasOwn(g.parametros, base.puerta.clave) ? g.parametros[base.puerta.clave] : {}) };
@@ -317,7 +339,7 @@ export interface Planteo {
 export function planteoEstatico(puerta: PuertaInventariada, escenario: Escenario, generadores: Generadores): Planteo {
   const mundo = mundoFicticio();
   const propio = unir(mundo.e1, mundo.s1);
-  const ajeno = escenario === "ajenaEmpresa" ? unir(mundo.e2, mundo.d2) : escenario === "ajenaSucursal" ? unir(mundo.e1, mundo.s2) : propio;
+  const ajeno = escenario === "ajenaEmpresa" ? unir(mundo.e2, mundo.d2) : escenario === "ajenaSucursal" || escenario === "consultaConSucursalAjena" ? unir(mundo.e1, mundo.s2) : propio;
   const d = derivarArgumentos({ puerta, escenario, propio, ajeno, db: null, mundo }, generadores);
   return { argumentos: d.argumentos, variantes: d.variantes, usados: d.usados, faltan: d.faltan };
 }

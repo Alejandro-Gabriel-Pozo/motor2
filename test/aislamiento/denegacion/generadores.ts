@@ -10,7 +10,7 @@ import { intento, variantes, type ContextoDeArgumentos, type Generadores, type K
  * válidos escribiría de verdad. Los ids de EMPRESA (catálogo, roles, secciones de carta) son ajenos solo en el escenario de otra empresa; los de SUCURSAL (secciones, mesas, cuentas…) en los dos.
  * `k` trae lo ajeno del escenario y `c.propio` lo propio de u1 (E1 y S1).
  */
-const conIdsAjenos = (c: Pick<ContextoDeArgumentos, "escenario">) => c.escenario === "ajenaEmpresa" || c.escenario === "ajenaSucursal";
+const conIdsAjenos = (c: Pick<ContextoDeArgumentos, "escenario">) => c.escenario === "ajenaEmpresa" || c.escenario === "ajenaSucursal" || c.escenario === "consultaConSucursalAjena";
 const lista = (...v: Array<unknown[] | false>): unknown[][] => v.filter((x): x is unknown[] => x !== false);
 const hoy = () => new Date();
 const ingrediente = (k: Kit, insumoProductoId: string = k.productoId) => ({ insumoProductoId, cantidad: 1, unidadId: k.unidadId });
