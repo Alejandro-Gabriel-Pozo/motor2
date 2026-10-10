@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -15,7 +16,7 @@ import { describe, expect, it } from "vitest";
  * Qué SÍ hace en modo informe (bloqueante):
  *  1. Los evaluadores son correctos (casos sintéticos con y sin cumplimiento, con LF y con CRLF): cuando se autoricen E.4/E.5/E.7 y se hagan los cambios, medirán bien.
  *  2. El informe lista EXACTAMENTE los cinco puntos (dos de GT-21 y tres de GT-23) y cada uno dice si cumple y qué acción externa lo cierra (nada se mide en silencio).
- *  3. «No empeora»: los puntos que HOY cumplen (`YA_CUMPLEN`) siguen cumpliendo. Hoy: el freno de despliegues de la raíz.
+ *  3. «No empeora»: los puntos que HOY cumplen (`YA_CUMPLEN`) siguen cumpliendo. Hoy: el freno de despliegues de la raíz y el de la consola (E.5, hecho: construye solo `main`, y un test ejecuta el comando real).
  *  4. Imprime la tabla del estado real (`console.info`), para que quien corre el test vea qué falta.
  *
  * Para pasar a modo estricto (los cinco puntos bloqueantes) cuando las acciones externas estén hechas: cambiar `MODO` a `"estricto"`. No hace falta tocar nada más.
@@ -113,7 +114,7 @@ const leerONulo = (ruta: string): string | null => {
 };
 
 /** Los puntos (de cinco) que hoy cumplen; el resto es lo pendiente de E.4, E.5 y E.7. Solo se agrega a medida que se cierran; nunca se saca. */
-const YA_CUMPLEN = ["raiz-sin-despliegue-por-git"];
+const YA_CUMPLEN = ["raiz-sin-despliegue-por-git", "consola-sin-ignoreCommand-exit-1"];
 
 const IDS = ["raiz-sin-despliegue-por-git", "consola-sin-ignoreCommand-exit-1", "actions-por-sha", "dependabot-github-actions", "auditar-dependencias-en-el-gate"];
 
@@ -145,6 +146,24 @@ describe("GT-21 y GT-23 — despliegues frenados y cadena de suministro (modo in
     // sin ninguna action no se da por cumplido (falla cerrado), y sin el script en package.json el paso no alcanza
     expect(evaluarCadenaDeSuministro("jobs: {}\n", "", "{}").map((p) => p.cumple)).toEqual([false, false, false]);
     expect(evaluarCadenaDeSuministro(ciBien, "", "{}")[2]!.cumple).toBe(false);
+  });
+
+  it("E.5: el `ignoreCommand` REAL de la consola construye solo `main` (código 1 = construir; 0 = saltear)", () => {
+    const consola = JSON.parse(lf(leerONulo("plataforma/vercel.json") ?? "{}")) as { ignoreCommand?: unknown };
+    expect(typeof consola.ignoreCommand, "plataforma/vercel.json sin ignoreCommand").toBe("string");
+    const comando = consola.ignoreCommand as string;
+    const codigoPara = (rama: string | undefined): number | null => {
+      const env: NodeJS.ProcessEnv = { ...process.env };
+      delete env.VERCEL_GIT_COMMIT_REF;
+      if (rama !== undefined) env.VERCEL_GIT_COMMIT_REF = rama;
+      return spawnSync("sh", ["-c", comando], { env, encoding: "utf8" }).status;
+    };
+    expect(codigoPara("main"), "main tiene que construirse").toBe(1);
+    for (const rama of ["dependabot/npm_and_yarn/next-16.9.9", "ccr-a76a466b-ribsp8", "hoja-de-ruta-fases-5-6-etapa-a", "main-vieja-57-migraciones", "mainx", "feature/main"]) {
+      expect(codigoPara(rama), `${rama} no tiene que construirse`).toBe(0);
+    }
+    // sin la variable (build que no viene de Git) falla cerrado: se saltea
+    expect(codigoPara(undefined)).toBe(0);
   });
 
   it("el informe real lista exactamente los puntos, cada uno con su descripción y la acción externa que lo cierra", () => {
