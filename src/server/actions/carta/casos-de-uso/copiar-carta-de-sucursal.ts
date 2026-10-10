@@ -5,6 +5,7 @@ import type { ComandoCopiarCartaDeSucursal, ResultadoCopiarCartaDeSucursal } fro
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { conAlcanceEnSucursal } from "@/server/acceso/alcance";
 import { leerOrigenDeCopia } from "@/server/acceso/origen-de-copia";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { copiarContenidosDeCarta, copiarGeneroDeCarta, copiarItemAgrupadoDeCarta, copiarOpcionesDeItemAgrupado } from "@/server/persistencia/carta/copiar-carta";
@@ -26,6 +27,8 @@ import { copiarContenidosDeCarta, copiarGeneroDeCarta, copiarItemAgrupadoDeCarta
  *
  * S-07 (O.56 de `docs/pureza-integracion.md`, nota de ADR-009): el origen exige estar activo y que quien copia tenga membresía vigente y el «Ver» de la carta (`carta_ver`) en ESA sucursal
  * (`leerOrigenDeCopia`); antes se buscaba solo por id bajo la RLS de empresa, que separa empresas y no sucursales. Sin ese acceso: `ORIGEN_SIN_ACCESO`, sin leer nada del origen.
+ * M.3-A5 (alcance por sucursal): la transacción de la copia lee el origen con el alcance ensanchado A SU LECTURA, y solo después de ese chequeo (`conAlcanceEnSucursal` en modo `LECTURA`); la escritura sigue siendo
+ * de la sucursal activa, el origen no se puede tocar.
  *
  * Orden: 1. el origen existe, está activo y se puede ver (`No se encontró esa sucursal.` o `No tenés acceso a esa sucursal.`, leído FUERA de la transacción con `actor.db`); 2. DENTRO de la transacción: que el destino no tenga carta
  * propia (`Esta sucursal ya tiene carta propia…`); 3. que el origen tenga algo (`«<origen>» no tiene carta propia: no hay nada que copiar.`); 4. se copian los géneros (uno por uno),
@@ -38,7 +41,7 @@ import { copiarContenidosDeCarta, copiarGeneroDeCarta, copiarItemAgrupadoDeCarta
  * @ficha permiso=carta_copiar_de_sucursal transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function copiarCartaDeSucursalCasoDeUso(
-  actor: Pick<ContextoUsuario, "db" | "transaccion" | "usuarioId" | "sucursalId" | "sucursalNombre">,
+  actor: Pick<ContextoUsuario, "db" | "transaccion" | "usuarioId" | "sucursalId" | "sucursalNombre" | "empresaId" | "membresias" | "alcance">,
   comando: ComandoCopiarCartaDeSucursal,
 ): Promise<ResultadoCopiarCartaDeSucursal> {
   const { sucursalOrigenId } = comando;
@@ -46,8 +49,10 @@ export async function copiarCartaDeSucursalCasoDeUso(
   const lectura = await leerOrigenDeCopia(actor, sucursalOrigenId, "carta_ver");
   if (!lectura.ok) return fracaso(lectura.codigo === "SIN_ACCESO" ? "ORIGEN_SIN_ACCESO" : "ORIGEN_NO_ENCONTRADO", lectura.mensaje);
   const origen = { nombre: lectura.nombre };
+  // M.3-A5: recién con el origen aprobado (arriba) la transacción de la copia puede LEER esa sucursal. Solo la lectura: lo que se escribe es la carta de la sucursal activa.
+  const conOrigen = conAlcanceEnSucursal(actor, sucursalOrigenId, "LECTURA");
 
-  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCopiarCartaDeSucursal> => {
+  return conTransaccionSerializable(conOrigen.transaccion, async (tx): Promise<ResultadoCopiarCartaDeSucursal> => {
     const [contenidosPropios, generosPropios, itemsPropios] = await Promise.all([
       tx.contenidoCartaProducto.count({ where: whereCartaDeSucursal(actor.sucursalId) }),
       tx.generoCarta.count({ where: whereCartaDeSucursal(actor.sucursalId) }),
