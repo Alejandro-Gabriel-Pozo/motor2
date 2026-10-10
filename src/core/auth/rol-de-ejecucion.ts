@@ -14,7 +14,7 @@ export interface DatosDelRol {
 }
 
 /** El rol al que van dirigidas las políticas por sucursal (`scripts/operaciones/crear-rol-motor2-app.sql`). */
-export const ROL_DE_LA_APP = "motor2_app";
+const ROL_DE_LA_APP = "motor2_app";
 
 /** Cómo es el rol con el que `db` está conectado (`current_user`), y si la conexión trae un contexto preseteado. */
 export async function datosDelRolDeEjecucion(db: Db): Promise<DatosDelRol> {

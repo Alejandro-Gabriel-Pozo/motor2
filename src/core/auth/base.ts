@@ -121,6 +121,16 @@ export function dbDeEmpresa(empresaId: string, alcance?: AlcanceDeSucursal): Pri
 }
 
 /**
+ * Suma `sucursalId` a las dos listas del alcance de la transacción en curso (sin repetirlo), local a ella. Es lo que necesita el alta de una sucursal: la lista que se fijó al abrir
+ * la transacción no podía conocer la sucursal que esa misma transacción crea. Solo la llama `incluirSucursalCreadaEnLaTransaccion` (`server/acceso/alcance.ts`), que además comprueba
+ * que la sucursal exista; acá se valida la forma del id.
+ */
+export async function agregarSucursalAlContextoDeLaTransaccion(tx: Prisma.TransactionClient, sucursalId: string): Promise<void> {
+  serializarSucursalesDelAlcance([sucursalId]);
+  await tx.$executeRaw`SELECT set_config('app.sucursales_lectura', concat_ws(',', NULLIF(v.lectura, ''), CASE WHEN ${sucursalId}::text = ANY(string_to_array(v.lectura, ',')) THEN NULL ELSE ${sucursalId}::text END), true), set_config('app.sucursales_escritura', concat_ws(',', NULLIF(v.escritura, ''), CASE WHEN ${sucursalId}::text = ANY(string_to_array(v.escritura, ',')) THEN NULL ELSE ${sucursalId}::text END), true) FROM (SELECT current_setting('app.sucursales_lectura', true) AS lectura, current_setting('app.sucursales_escritura', true) AS escritura) AS v`;
+}
+
+/**
  * Cliente cuyas operaciones corren con `app.usuario_id` = `usuarioId`: lo único que habilita la política `lectura_propia_usuario` de `UsuarioEmpresa`
  * (leer las pertenencias PROPIAS en cualquier empresa). Es para las lecturas que ocurren antes de tener empresa (login, resolución del contexto); todo
  * lo demás va con `dbDeEmpresa`. Mismo mecanismo que `dbDeEmpresa`: valor local a la transacción.

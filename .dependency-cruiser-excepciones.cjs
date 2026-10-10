@@ -69,6 +69,7 @@ const IMPORTADORES_DE_DB = [
  */
 const IMPORTADORES_DE_BASE = [
   { ruta: "src/core/auth/contexto.ts", motivo: "Arma el `ContextoUsuario` de cada pedido: es quien le da `ctx.db` al resto." },
+  { ruta: "src/server/acceso/alcance.ts", motivo: "Ensanches del alcance por sucursal (M.3): rearma la base del contexto con una lista de sucursales más larga (`baseDeEmpresa`) y suma la sucursal recién creada a la transacción; solo lo llaman las puertas que ya pasaron el gate (lo verifica `ensanches-de-alcance.test.ts`)." },
   { ruta: "src/server/sesion/acceso.ts", motivo: "Resolución de acceso previa al contexto (login, jerarquía de roles): lee con la empresa/el usuario fijados." },
   { ruta: "src/server/sesion/invitacion.ts", motivo: "Lectura de la invitación por el hash de su token (`dbDeInvitacion`) y de sus sucursales bajo su empresa: ocurre antes de que el invitado tenga empresa ni sesión (Hito 3, B3-3: antes en core/auth/invitacion.ts)." },
   { ruta: "src/server/carta-publica/sin-sesion.ts", motivo: "Carta pública: sin sesión no hay contexto; fija la empresa de la URL con `dbDeEmpresa`." },
