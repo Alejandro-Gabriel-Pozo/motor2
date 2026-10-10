@@ -89,3 +89,9 @@ description = "Test del entorno de la consola: cadena de conexión con una clave
 condition = "AND"
 paths = ['''^test/plataforma/entorno\.test\.ts$''']
 regexes = ['''^contrasenia-secreta$''']
+
+[[allowlists]]
+description = "Test del ejecutor de SQL (M.1-C6): cadena de conexión INVENTADA con host reservado .example y clave «clave-ficticia», para probar que el ejecutor se niega a un host que no es el esperado"
+condition = "AND"
+paths = ['''^test/operaciones/ejecutar-sql-de-psql\.test\.ts$''']
+regexes = ['''^clave-ficticia$''']
