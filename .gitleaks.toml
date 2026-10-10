@@ -1,0 +1,91 @@
+# Configuración de Gitleaks (workflow .github/workflows/gitleaks.yml; local: ver docs/seguridad-pipeline.md).
+# Parte de las reglas oficiales (claves de nube, tokens, claves privadas, cadenas de conexión…) y suma las del stack de motor2.
+# Las excepciones son ESTRECHAS a propósito: cada una exige archivo Y texto a la vez (condition = "AND"), así un secreto real pegado en el mismo archivo igual se detecta.
+title = "motor2"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "motor2-neon-cadena-de-conexion"
+description = "Cadena de conexión de Neon con usuario y clave"
+regex = '''postgres(?:ql)?://[^:\s/@'"]+:[^@\s'"<>${}]{6,}@[a-z0-9.-]*neon\.tech[^\s'"]*'''
+keywords = ["neon.tech"]
+
+[[rules]]
+id = "motor2-postgres-cadena-de-conexion-con-clave"
+description = "Cadena de conexión a Postgres con clave que no es local ni de relleno"
+regex = '''postgres(?:ql)?://[^:\s/@'"]+:([^@\s'"<>${}]{8,})@(?:[a-z0-9-]+\.)+[a-z]{2,}(?::\d+)?/[^\s'"]*'''
+secretGroup = 1
+keywords = ["postgres://", "postgresql://"]
+
+[[rules]]
+id = "motor2-resend-api-key"
+description = "Clave de API de Resend"
+regex = '''\bre_[A-Za-z0-9]{6,}_[A-Za-z0-9]{16,}\b'''
+keywords = ["re_"]
+
+[[rules]]
+id = "motor2-authjs-secret"
+description = "AUTH_SECRET / AUTH_GOOGLE_SECRET de Auth.js con un valor que parece real"
+regex = '''(?i)\bAUTH_(?:GOOGLE_)?SECRET\b["']?\s*[=:]\s*["']?([A-Za-z0-9+/=_\-]{24,})'''
+secretGroup = 1
+entropy = 3.5
+keywords = ["auth_secret", "auth_google_secret"]
+
+[[rules]]
+id = "motor2-google-oauth-client-secret"
+description = "Secreto de cliente OAuth de Google"
+regex = '''\bGOCSPX-[A-Za-z0-9_\-]{20,}\b'''
+keywords = ["gocspx-"]
+
+[[rules]]
+id = "motor2-sentry-auth-token"
+description = "Token de autenticación de Sentry (subida de source maps)"
+regex = '''\bsntrys?_[A-Za-z0-9+/=_\-]{40,}\b'''
+keywords = ["sntry"]
+
+# --- Valores de relleno del CI y de los ejemplos: son descartables y están a la vista (no hay secretos reales en el repositorio). ---
+[[allowlists]]
+description = "Claves de relleno del CI y de los scripts locales (todas llevan «descartable» o «de-relleno»)"
+regexes = ['''(?i)ci-[a-z0-9]+(?:-[a-z0-9]+)*-(?:descartable|de-relleno)[a-z0-9-]*''']
+
+[[allowlists]]
+description = "Clave inventada de los tests que prueban que una cadena de conexión NO sale en los mensajes de error"
+regexes = ['''^clave-que-no-sale$''']
+
+[[allowlists]]
+description = "Archivo de ejemplo de variables de entorno: solo placeholders"
+paths = ['''(^|/)\.env\.example$''']
+
+# Las expresiones de abajo se comparan con el SECRETO detectado (el valor), no con la línea entera.
+# --- Falsos positivos revisados a mano (2026-10-10). Cada uno: dónde está, qué es y por qué no es un secreto. ---
+[[allowlists]]
+description = "Huella congelada (golden) de la alta de un administrador FICTICIO de plataforma (dueno@plataforma.test): secretos TOTP de prueba, generados para el test"
+condition = "AND"
+paths = ['''^test/auth/caracterizacion/huella-de-alta-de-admin\.golden\.txt$''']
+regexes = ['''^(?:[A-Z2-7]{32}|v1\.[A-Za-z0-9_.\-]+)$''']
+
+[[allowlists]]
+description = "Test de limpieza de Sentry: token inventado para comprobar que se redacta"
+condition = "AND"
+paths = ['''^test/core/sentry-limpiar\.test\.ts$''']
+regexes = ['''^k3Jf9sLw2QxVbN7mPzR4tYuHgD6aEcXo1iWqOl8S-_$''']
+
+[[allowlists]]
+description = "Vector de prueba público de RFC 6238 (Apéndice B) para el TOTP (el secreto ASCII y su base32)"
+condition = "AND"
+paths = ['''^test/core/plataforma/totp\.test\.ts$''']
+regexes = ['''^(?:12345678901234567890|GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ)=*$''']
+
+[[allowlists]]
+description = "Plan de la carta: ejemplo de curl con un token de desarrollo literal («dev-token»)"
+condition = "AND"
+paths = ['''^docs/plan-agrupacion-items-carta-2026-09-24\.md$''']
+regexes = ['''^(?:Bearer )?dev-token$''']
+
+[[allowlists]]
+description = "Test del entorno de la consola: cadena de conexión con una clave inventada («contrasenia-secreta») para probar que se enmascara"
+condition = "AND"
+paths = ['''^test/plataforma/entorno\.test\.ts$''']
+regexes = ['''^contrasenia-secreta$''']
