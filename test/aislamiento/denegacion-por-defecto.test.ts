@@ -38,7 +38,8 @@ const claves = new Set(puertas.map((p) => p.clave));
 const MAXIMOS = {
   SIN_GENERADOR: 17,
   ESCENARIOS_QUE_NO_APLICAN: 2,
-  PENDIENTES_DE_SUCURSAL: 0,
+  // 39 = las consultas y lecturas que `consultaConSucursalAjena` (M.3, A11) muestra filtrando la otra sucursal hoy, sin políticas por sucursal. La Fase B cierra 36 con las políticas y este techo baja a 3; las otras 3 solo devuelven el nombre y el slug de la otra sucursal (GOBIERNO) y se declaran por diseño (ver `excepciones.ts`).
+  PENDIENTES_DE_SUCURSAL: 39,
   RECHAZOS_CRUDOS_DE_LA_BASE: 0,
   OPCIONALES_SIN_MAPEAR: 25,
   SIN_CONTROL_POSITIVO: 0,
@@ -195,7 +196,7 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
   });
 
   it("cobertura: cuántas puertas hay y en cuántos escenarios se ejercen (informativo, con piso)", () => {
-    const porEscenario: Record<string, number> = { anonimo: 0, sinEmpresa: 0, ajenaEmpresa: 0, ajenaSucursal: 0, propia: 0, controlMutacion: 0 };
+    const porEscenario: Record<string, number> = { anonimo: 0, sinEmpresa: 0, ajenaEmpresa: 0, ajenaSucursal: 0, consultaConSucursalAjena: 0, propia: 0, controlMutacion: 0 };
     let ejercidas = 0;
     for (const p of puertas) {
       const e = escenariosDe(p);
@@ -207,6 +208,8 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
     expect(porEscenario.sinEmpresa).toBeGreaterThan(300);
     expect(porEscenario.ajenaEmpresa).toBeGreaterThan(250);
     expect(porEscenario.ajenaSucursal).toBeGreaterThan(150);
+    // Las consultas y lecturas a las que se les pasa la sucursal de contexto de OTRA sucursal (M.3, A11): 94 puertas el 2026-10-10.
+    expect(porEscenario.consultaConSucursalAjena).toBeGreaterThan(80);
     // Cada mutación ejercida con ids ajenos tiene su control positivo (salvo las de SIN_CONTROL_POSITIVO, que igual lo intentan y se exige que sigan fallando).
     expect(porEscenario.controlMutacion).toBeGreaterThan(120);
   });

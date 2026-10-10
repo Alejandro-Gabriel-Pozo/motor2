@@ -38,13 +38,67 @@ export interface PendienteDeSucursal {
   destino: string;
 }
 
+const LA_RLS_LA_CIERRA: PendienteDeSucursal = {
+  motivo: "la consulta o lectura confía en la sucursal de contexto que recibe y, con la de otra sucursal de la empresa, devuelve sus filas: hoy solo la defiende el gate (quién le pasa la sucursal)",
+  destino: "Fase B de M.3 (RLS por sucursal): la política de las tablas por sucursal que lee la acota al alcance del `db`, y esta entrada sale de la lista",
+};
+
 /**
- * Lo que cruza de OTRA SUCURSAL de la misma empresa (escenario `ajenaSucursal`) y todavía no se defiende. La política del plan: se declara acá y NO se arregla en esta tanda (la defensa por sucursal es la
+ * Lo que cruza de OTRA SUCURSAL de la misma empresa (escenarios `ajenaSucursal` y `consultaConSucursalAjena`) y todavía no se defiende. La política del plan: se declara acá y NO se arregla en esta tanda (la defensa por sucursal es la
  * «RLS contenedor» [MIG] que el dueño pidió como pista aparte). La matriz EJECUTA estos casos y exige que sigan fallando: cuando la pista los cierre, el test pide sacar la entrada.
  */
 export const PENDIENTES_DE_SUCURSAL: Readonly<Record<string, PendienteDeSucursal>> = {
-  // Vacía desde que los lectores de saldo y la precarga del conteo fallan cerrado por sucursal (hallazgo O.177 cerrado): `calcularSaldoTotal`,
+  // El escenario `ajenaSucursal` está limpio desde que los lectores de saldo y la precarga del conteo fallan cerrado por sucursal (hallazgo O.177 cerrado): `calcularSaldoTotal`,
   // `calcularSaldoPorLote`, `validarStockSuficiente` y `listarStockParaConteo` reciben la `sucursalId` del contexto y exigen `seccion.sucursalId` en su `where`.
+  //
+  // ESTADO REAL del escenario `consultaConSucursalAjena` (M.3, paso A11, medido contra una base SIN políticas por sucursal): las consultas y lecturas confían en la sucursal de contexto que reciben y,
+  // si se les pasa la de OTRA sucursal de la empresa con el `db` de u1, devuelven sus filas. Hoy la única defensa es el gate (el envoltorio decide qué sucursal le pasa a la consulta). Estas son las
+  // que lo muestran con un marcador de la otra sucursal (`ZZ-S2` o la huella 77xx) en la respuesta; las otras 55 puertas que el escenario ejerce (94 en total) devolvieron vacío o datos sin marcador reconocible (un número suelto,
+  // el catálogo central) y la matriz no puede afirmar ni negar nada sobre ellas: es el mismo límite de medición que tiene `ajenaSucursal`. El test exige que sigan fallando y pide sacar cada entrada cuando deja de hacerlo;
+  // una entrada sale cuando quedan aplicadas las migraciones de TODAS las tablas por sucursal que lee la puerta.
+  // SIMULACIÓN de la Fase B (medida, no es una migración): con el SQL del generador (A9) aplicado en una base de prueba, 36 de las 39 dejan de traer filas de la otra sucursal. Las 3 restantes —`cargarTemaAdmin`,
+  // `resolverMenuCarta` y `resolverMenuCartaConDiagnostico`— devuelven solo el NOMBRE y el slug público de la otra sucursal (`secciones: []`, `tema: null`): son datos de GOBIERNO (`Sucursal`, `SucursalPublica`; D3),
+  // fuera de esta RLS por diseño, así que las políticas no las cierran. En la Fase B esas 3 se declaran por diseño (`SUCURSALES_LISTADAS_POR_DISENO`, ampliándola al slug público) o se cierran en el código; el techo de la
+  // lista baja a 3 con las políticas y a 0 con esa decisión.
+  "consulta|consultas/carta/admin.ts|cargarAdminCarta|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/carta/admin.ts|cargarAdminItemsAgrupados|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/carta/admin.ts|cargarTemaAdmin|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/catalogo/productos.ts|obtenerSeccionHabitualEnSucursal|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/movimientos/stock-para-conteo.ts|listarStockParaConteo|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/permisos/auditoria.ts|listarRegistrosAuditoria|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/pos/detalle-de-mesa.ts|obtenerDetalleDeMesa|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/pos/mesas.ts|obtenerMapaDeMesas|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/pos/selector-carta.ts|cargarSelectorCartaDeLaMesa|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/pos/tickets.ts|obtenerTicketsRecientes|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/diferencias-ajustes.ts|generarReporteDiferenciasAjustes|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/historial-producto.ts|obtenerHistorialProducto|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/perdidas.ts|generarReportePerdidas|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/periodo.ts|cargarLineasDelPeriodo|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/periodo.ts|cargarLineasDelPeriodoDeSucursales|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/periodo.ts|obtenerReportePorPeriodo|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/periodo.ts|obtenerReportePorPeriodoConCatalogo|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/rendimiento-recetas.ts|calcularRendimientoRecetas|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/rendimiento-recetas.ts|calcularRendimientoRecetasCompartidas|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/rendimiento-recetas.ts|calcularRendimientoRecetasSimples|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/resumen-operativo.ts|obtenerResumenOperativo|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/salud-por-producto.ts|generarReporteSaludPorProducto|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/trazabilidad.ts|buscarOperacionesPorProducto|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/trazabilidad.ts|obtenerOperacionPorId|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/valuacion.ts|calcularValuacionInventario|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/vencimientos.ts|generarReporteLotesProximosAVencer|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/reportes/vencimientos.ts|obtenerReporteVencimientosDatos|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/stock/consolidado.ts|calcularStockConsolidado|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "consulta|consultas/stock/por-familia.ts|calcularStockPorFamilia|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "lectura|lecturas/carta/menu.ts|resolverMenuCarta|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "lectura|lecturas/carta/menu.ts|resolverMenuCartaConDiagnostico|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "lectura|lecturas/catalogo/dependencias-para-desactivar.ts|dependenciasParaDesactivar|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "lectura|lecturas/movimientos/saldos.ts|calcularSaldoPorLote|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "lectura|lecturas/movimientos/saldos.ts|calcularSaldoTotal|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "lectura|lecturas/movimientos/saldos.ts|obtenerSeccionPropia|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "lectura|lecturas/movimientos/saldos.ts|seccionesConStock|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "lectura|lecturas/movimientos/saldos.ts|validarStockSuficiente|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "lectura|lecturas/pos/selector-carta.ts|cargarSelectorCartaPos|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  "lectura|lecturas/reportes/comun.ts|construirIndiceRecetas|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
 };
 
 /**

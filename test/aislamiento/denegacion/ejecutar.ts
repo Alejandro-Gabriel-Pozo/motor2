@@ -16,6 +16,8 @@ import type { PuertaInventariada } from "./inventario-de-puertas";
  *  - (a) anónimo y (b) sin empresa: la puerta LANZA (una redirección al login también) o devuelve `{ ok: false }`. Cualquier dato o `ok: true` es un problema.
  *  - (c) otra empresa y (d) otra sucursal de la misma empresa: lo que devuelva NO puede traer ni un solo marcador de lo ajeno (`ZZ-E2`, `ZZ-S2`) ni su huella numérica (`77xx` de S2, `88xx` de E2), una MUTACIÓN no puede terminar en
  *    `ok: true`, y el rechazo tiene que ser de PERTENENCIA (`rechazos.ts`: «no se encontró», «no existe», «no tenés acceso»…); un rechazo por forma o validación no prueba nada y es un problema (fila O.177).
+ *  - consultaConSucursalAjena (M.3, A11; solo consultas y lecturas): se les pasa como sucursal de CONTEXTO la de S2, con el `db` que lleva el alcance de S1. La respuesta no puede traer filas de S2 (el mismo marcador que (d)); los
+ *    casos que hoy sí las traen (no hay políticas por sucursal) están en `PENDIENTES_DE_SUCURSAL` y la Fase B los vuelve estrictos. A diferencia de (d) no se exige un rechazo de pertenencia: vacío o error también niegan.
  *  - propia (control positivo de las lecturas): con ids propios devuelve lo propio.
  *  - controlMutacion (control positivo de las mutaciones): con ids propios y válidos termina en `ok: true`, sobre un mundo que se vuelve a sembrar después de cada variante; sin él, el rechazo de arriba podría ser de forma.
  *  - en todos: ninguna tabla cambia (la huella de toda la base, antes y después) y ninguna cookie se escribe.
@@ -133,13 +135,18 @@ async function ponerSesion(escenario: Escenario, mundo: Mundo, sucursalActivaId:
 function kitsDelEscenario(escenario: Escenario, mundo: Mundo): { propio: Kit; ajeno: Kit } {
   const propio = unir(mundo.e1, mundo.s1);
   if (escenario === "ajenaEmpresa") return { propio, ajeno: unir(mundo.e2, mundo.d2) };
-  if (escenario === "ajenaSucursal") return { propio, ajeno: unir(mundo.e1, mundo.s2) };
+  if (escenario === "ajenaSucursal" || escenario === "consultaConSucursalAjena") return { propio, ajeno: unir(mundo.e1, mundo.s2) };
   return { propio, ajeno: propio };
 }
 
-/** El `db` de las consultas y lecturas: sin sesión ni empresa (a, b) la base del proceso SIN `app.empresa_id`; con sesión (c, d, propia) la de la empresa E1. */
+/**
+ * El `db` de las consultas y lecturas: sin sesión ni empresa (a, b) la base del proceso SIN `app.empresa_id`; con sesión (c, d, propia, consultaConSucursalAjena) la de la empresa E1 CON el alcance de u1 —lectura y
+ * escritura en S1, su única sucursal—: es el `db` que el contexto le daría a la consulta (M.3-A3), y el que la RLS por sucursal (Fase B) acota a S1. Hoy, sin políticas, el alcance no cambia nada; con ellas, sin
+ * alcance el `db` no vería ni la sucursal propia y el control positivo (`propia`) dejaría de probar algo.
+ */
 function dbDelEscenario(escenario: Escenario, mundo: Mundo): unknown {
-  return escenario === "anonimo" || escenario === "sinEmpresa" ? prismaSinEmpresa : baseDeEmpresa(mundo.e1.empresaId).db;
+  if (escenario === "anonimo" || escenario === "sinEmpresa") return prismaSinEmpresa;
+  return baseDeEmpresa(mundo.e1.empresaId, { lectura: [mundo.s1.sucursalId], escritura: [mundo.s1.sucursalId] }).db;
 }
 
 async function funcionDe(puerta: PuertaInventariada): Promise<(...args: unknown[]) => Promise<unknown>> {
@@ -248,6 +255,10 @@ export async function correrPuerta(puerta: PuertaInventariada, escenario: Escena
       if (salida.lanzo) mal(`la lectura PROPIA lanzó: ${salida.error.slice(0, 200)}`);
       // Las lecturas de `server/lecturas` son ayudantes internos (booleanos, números, ids): se ejercen a través de las acciones y consultas que las usan, cuyo control positivo sí exige lo propio.
       else if (puerta.tipo !== "lectura" && !opciones.sinMarcaPropia && !/ZZ-A1/i.test(sinReflejo)) mal(`la lectura PROPIA no devolvió nada propio (veredicto ${veredicto}): ${salida.texto.slice(0, 160)}`);
+    } else if (escenario === "consultaConSucursalAjena") {
+      // Acá se mide una sola cosa: ¿la consulta, con la sucursal de contexto de OTRA, devuelve filas de esa otra? Que rechace, devuelva vacío o lance ya es negar (la RLS por sucursal contesta vacío o rompe la consulta):
+      // no se exige un rechazo de pertenencia como en `ajenaSucursal`, donde el rechazo viene de un chequeo del código.
+      if (marcadorAjenoDe(puerta).test(sinReflejo)) mal(`con la sucursal de contexto de OTRA devolvió filas de esa sucursal: ${hallazgos(sinReflejo)}`);
     } else {
       if (marcadorAjenoDe(puerta).test(sinReflejo)) mal(`filtró filas ajenas: ${hallazgos(sinReflejo)}`);
       if (puerta.mutacion && veredicto === "OK" && !opciones.okSinEfectoPorDiseno) mal(`con ids ajenos terminó en ok: true (${salida.texto.slice(0, 160)})`);
