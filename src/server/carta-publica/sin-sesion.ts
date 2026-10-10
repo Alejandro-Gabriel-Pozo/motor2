@@ -35,6 +35,18 @@ async function modulosQueLaCartaPublica(empresa: EmpresaCarta, db: Db): Promise<
   return { carta: efectivos.has("carta"), promociones: efectivos.has("promociones") };
 }
 
+/**
+ * La base con la que la carta pública lee las tablas de UNA sucursal (M.3-A7, RLS por sucursal): de SOLO LECTURA —`escritura: []`— y en esa única sucursal —`lectura: [sucursalId]`—. Es el alcance
+ * mínimo posible, y el único que este archivo arma: sin sesión no hay usuario ni gate de donde ensanchar nada (`server/acceso/alcance.ts` es de quien tiene sesión), y la carta no escribe jamás
+ * (`carta-solo-lectura.test.ts`). Con las políticas por sucursal de la Fase B, una lectura de otra sucursal devuelve vacío y una escritura da 42501.
+ *
+ * Solo se llama con el id que resolvió el slug en `SucursalPublica` (`resolverCartaPublica` lo pide recién después de resolverlo); nunca con un id que venga del pedido. Lo vigila
+ * `test/arquitectura/carta-publica-alcance-de-sucursal.test.ts`.
+ */
+function lecturaDeUnaSolaSucursal(empresaId: string, sucursalId: string): Db {
+  return dbDeEmpresa(empresaId, { lectura: [sucursalId], escritura: [] });
+}
+
 /** Los mismos 300 s que `export const revalidate` de `app/(carta-publica)/carta-publica/[empresa]/[sucursal]/page.tsx` (Next toma el MENOR de los dos: uno más corto acortaría el ISR de la página). */
 const SEGUNDOS_DE_CACHE_DE_LA_CARTA = 300;
 
@@ -69,9 +81,12 @@ export const cartaPublica = (empresa: EmpresaCarta, slug: string, ahora: Date) =
     const db = dbDeEmpresa(empresa.id);
     const modulos = await modulosQueLaCartaPublica(empresa, db);
     if (!modulos.carta) return null;
+    // M.3-A7: el slug se resuelve primero con la base de la empresa (sin alcance: `SucursalPublica` es de gobierno) y recién después se abre la base de solo lectura de ESA sucursal.
+    const bases = { deLaEmpresa: db, deLaSucursal: (sucursalId: string) => lecturaDeUnaSolaSucursal(empresa.id, sucursalId) };
     // S-26: la carta lleva la etiqueta de caché DE SU EMPRESA. Next engancha esa etiqueta a la página que la usó (el ISR de `[sucursal]/page.tsx`), así que
     // `revalidarCartasPublicas(empresaSlug)` invalida las cartas de esa empresa y de ninguna otra. `revalidate` igual al de la página: no la acorta ni la alarga.
-    const resuelta = await unstable_cache(() => resolverCartaPublica(empresa, slug, db, ahora, modulos.promociones), ["carta-publica", empresa.id, slug, modulos.promociones ? "con-promos" : "sin-promos"], {
+    // La clave del caché (empresa, slug, promos) es TODO lo que usa la función de adentro (la sucursal sale del slug, dentro de ella): dos sucursales —de la misma empresa o de otra— nunca comparten entrada.
+    const resuelta = await unstable_cache(() => resolverCartaPublica(empresa, slug, bases, ahora, modulos.promociones), ["carta-publica", empresa.id, slug, modulos.promociones ? "con-promos" : "sin-promos"], {
       tags: [etiquetaDeCacheDeCartasPublicas(empresa.slug)],
       revalidate: SEGUNDOS_DE_CACHE_DE_LA_CARTA,
     })();

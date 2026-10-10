@@ -72,7 +72,7 @@ const IMPORTADORES_DE_BASE = [
   { ruta: "src/server/acceso/alcance.ts", motivo: "Ensanches del alcance por sucursal (M.3): rearma la base del contexto con una lista de sucursales más larga (`baseDeEmpresa`) y suma la sucursal recién creada a la transacción; solo lo llaman las puertas que ya pasaron el gate (lo verifica `ensanches-de-alcance.test.ts`)." },
   { ruta: "src/server/sesion/acceso.ts", motivo: "Resolución de acceso previa al contexto (login, jerarquía de roles): lee con la empresa/el usuario fijados." },
   { ruta: "src/server/sesion/invitacion.ts", motivo: "Lectura de la invitación por el hash de su token (`dbDeInvitacion`) y de sus sucursales bajo su empresa: ocurre antes de que el invitado tenga empresa ni sesión (Hito 3, B3-3: antes en core/auth/invitacion.ts)." },
-  { ruta: "src/server/carta-publica/sin-sesion.ts", motivo: "Carta pública: sin sesión no hay contexto; fija la empresa de la URL con `dbDeEmpresa`." },
+  { ruta: "src/server/carta-publica/sin-sesion.ts", motivo: "Carta pública: sin sesión no hay contexto; fija la empresa de la URL con `dbDeEmpresa` y, para leer una sucursal, abre una base de SOLO LECTURA en la que resolvió el slug (M.3-A7)." },
   { ruta: "src/server/actions/auth/empresa-activa.ts", motivo: "Cambio de empresa activa: valida las pertenencias del usuario con `baseDeEmpresa` antes de escribir la cookie." },
   { ruta: "src/app/api/cron/sincronizar-dolar/route.ts", motivo: "Cron sin sesión (autorizado por CRON_SECRET): pide la base con `baseDelContexto()`." },
   { ruta: "src/app/api/cron/sincronizar-ipc/route.ts", motivo: "Cron sin sesión (autorizado por CRON_SECRET): pide la base con `baseDelContexto()`." },

@@ -444,9 +444,10 @@ describe("Caracterización del tramo A (Fase 3, paso .0): resultado completo y c
     caso("carta.resolverEmpresaCarta(«no-existe»: null)", (db) => resolverEmpresaCarta("no-existe", db));
     caso("carta.resolverPortalCarta(empresa)", (db) => resolverPortalCarta(empresa, db));
     caso("carta.resolverConfigPortal(empresa)", (db) => resolverConfigPortal(empresa, db));
-    caso("carta.resolverCartaPublica(empresa, «central»)", (db) => resolverCartaPublica(empresa, "central", db, AHORA));
-    caso("carta.resolverCartaPublica(empresa, «norte»: sin tema)", (db) => resolverCartaPublica(empresa, "norte", db, AHORA));
-    caso("carta.resolverCartaPublica(empresa, «sur»: sucursal apagada, null)", (db) => resolverCartaPublica(empresa, "sur", db, AHORA));
+    // M.3-A7: la carta por slug recibe las dos bases (la de la empresa para resolver el slug, la de la sucursal ya resuelta para leerla); acá las dos son el mismo cliente que anota las consultas.
+    caso("carta.resolverCartaPublica(empresa, «central»)", (db) => resolverCartaPublica(empresa, "central", { deLaEmpresa: db, deLaSucursal: () => db }, AHORA));
+    caso("carta.resolverCartaPublica(empresa, «norte»: sin tema)", (db) => resolverCartaPublica(empresa, "norte", { deLaEmpresa: db, deLaSucursal: () => db }, AHORA));
+    caso("carta.resolverCartaPublica(empresa, «sur»: sucursal apagada, null)", (db) => resolverCartaPublica(empresa, "sur", { deLaEmpresa: db, deLaSucursal: () => db }, AHORA));
     caso("carta.descuentosDeProductoEnSucursal(Central)", (db) => descuentosDeProductoEnSucursal(CENTRAL, db));
     caso("carta.descuentosConfiguradosEnSucursal(Norte)", (db) => descuentosConfiguradosEnSucursal(NORTE, db));
     caso("carta.productoTieneDescuentoEnAlgunaSucursal(Empanada)", (db) => productoTieneDescuentoEnAlgunaSucursal("pv-empanada", db));
