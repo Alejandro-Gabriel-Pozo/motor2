@@ -141,8 +141,22 @@ describe("(3) ProductoForm: alta", () => {
     expect(mp).toContain("data-aviso-campos-sensibles");
   });
 
+  // M.2-A4: el tilde de las sucursales y su aviso. Un PV sin la clave (tilde apagado, deshabilitado y con aviso) solo se puede dibujar tras elegir el tipo en el navegador: lo cubre el e2e
+  // (`catalogo-campos-sensibles.spec.ts`). Acá, lo que NO debe cambiar en el alta de una materia prima, que no se vende.
+  const tildeDeSucursales = (html: string) => html.match(/<input[^>]*type="checkbox"[^>]*\/>\s*Activo en todas las sucursales/)?.[0] ?? null;
+  it("SIN la clave, el alta de una MATERIA PRIMA deja el tilde de sucursales tildado y libre, y no avisa que no se podrá vender", () => {
+    const mp = dibujar(false);
+    const tilde = tildeDeSucursales(mp);
+    expect(tilde).not.toBeNull();
+    expect(tilde).toContain('checked=""');
+    expect(tilde).not.toContain("disabled");
+    expect(mp).not.toContain("data-aviso-alta-sin-precio");
+  });
+
   it("CON la clave el alta dibuja los controles de siempre", () => {
     const mp = dibujar(true);
+    expect(tildeDeSucursales(mp)).toContain('checked=""');
+    expect(mp).not.toContain("data-aviso-alta-sin-precio");
     for (const control of ['name="factorConversion"', 'name="unidadCompraId"', 'aria-label="Unidad de stock"']) expect(mp).toContain(control);
     expect(mp).not.toContain("data-aviso-campos-sensibles");
   });

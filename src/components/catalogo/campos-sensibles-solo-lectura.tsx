@@ -28,6 +28,23 @@ export function AvisoCamposSensibles({ children }: { children: React.ReactNode }
   );
 }
 
+/**
+ * M.2-A4: el aviso del ALTA de un producto de venta sin la clave. Sin `producto_campos_sensibles` el producto nace con precio $0 y el servidor lo deja NO disponible en ninguna sucursal (el POS y la carta pública
+ * solo ofrecen lo disponible): no se puede vender hasta que alguien con la clave le cargue el precio y alguien con `producto_disponibilidad` lo active. Visible (no una ayuda gris): es lo que la persona tiene que saber
+ * antes de crear.
+ */
+export function AvisoAltaSinPrecio() {
+  return (
+    <p
+      role="note"
+      data-aviso-alta-sin-precio
+      className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+    >
+      <strong>No se va a poder vender todavía.</strong> Sin el permiso {PERMISO} el producto se crea con precio $0 y queda no disponible en ninguna sucursal, hasta que alguien con ese permiso le cargue el precio y lo active.
+    </p>
+  );
+}
+
 /** Lo mismo para la gestión de presentaciones de compra, que vive dentro del formulario de edición (que ya tiene su aviso): una línea corta, sin repetir la explicación. */
 export function AvisoPresentacionesSinPermiso() {
   return (

@@ -9,7 +9,7 @@ import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
-import { AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
+import { AvisoAltaSinPrecio, AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
 import { darDeAltaProducto, actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
 import { crearInsumo } from "@/server/actions/catalogo/insumos";
@@ -99,6 +99,8 @@ export function ProductoForm({
   const editando = Boolean(productoExistente);
   // M.2: en el alta la unidad de stock queda libre aun sin la clave (sin ella no hay producto); en la edición es de quien tiene `producto_campos_sensibles`.
   const unidadDeStockEditable = puedeEditarCamposSensibles || !editando;
+  // M.2-A4: un producto de venta dado de alta SIN la clave nace con precio $0 y el servidor lo deja NO disponible en ninguna sucursal (no se puede vender a $0): el tilde se ve apagado y sin poder cambiarse.
+  const naceSinPoderVenderse = !editando && tipo === "PV" && !puedeEditarCamposSensibles;
   const nombreDeUnidad = (id: string | null | undefined) => unidades.find((u) => u.id === id)?.nombre;
   const irALaFicha = (id: string | null) => router.push(id ? `/catalogo/productos/${id}?guardado=${editando ? "cambios" : "alta"}` : "/catalogo/productos");
 
@@ -363,13 +365,17 @@ export function ProductoForm({
       {!editando && (
         <div className="flex flex-col gap-1">
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={activoEnTodas} onChange={(e) => setActivoEnTodas(e.target.checked)} /> Activo en todas las sucursales
+            <input type="checkbox" checked={activoEnTodas && !naceSinPoderVenderse} disabled={naceSinPoderVenderse} onChange={(e) => setActivoEnTodas(e.target.checked)} /> Activo en todas las sucursales
           </label>
-          <AyudaCampo>
-            {activoEnTodas
-              ? `Tildado (lo habitual, para insumos y platos compartidos como harina o sal): queda disponible en las ${cantidadSucursales ?? "?"} sucursales que existen hoy.`
-              : `Sin tildar: solo queda disponible en "${nombreSucursalActual ?? "esta sucursal"}" — en las demás no va a aparecer hasta que un admin de esa sucursal lo active ahí.`}
-          </AyudaCampo>
+          {naceSinPoderVenderse ? (
+            <AvisoAltaSinPrecio />
+          ) : (
+            <AyudaCampo>
+              {activoEnTodas
+                ? `Tildado (lo habitual, para insumos y platos compartidos como harina o sal): queda disponible en las ${cantidadSucursales ?? "?"} sucursales que existen hoy.`
+                : `Sin tildar: solo queda disponible en "${nombreSucursalActual ?? "esta sucursal"}" — en las demás no va a aparecer hasta que un admin de esa sucursal lo active ahí.`}
+            </AyudaCampo>
+          )}
         </div>
       )}
 
