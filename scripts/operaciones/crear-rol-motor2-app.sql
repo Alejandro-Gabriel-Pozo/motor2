@@ -16,6 +16,7 @@
 -- así los fixtures siembran todas las sucursales y el código bajo prueba (que corre como `motor2_app`) sí queda restringido. Existe SOLO acá: jamás en un script pensado para Neon (lo guarda
 -- `test/arquitectura/rol-de-pruebas-solo-local.test.ts`) y todo lo suyo viene DESPUÉS de la guarda de arriba. Idempotente; no cambia la clave de `motor2_app`. Si falla la verificación de membresías o de grants
 -- el script aborta (falla cerrado). Quitarlo: `DROP OWNED BY motor2_app_pruebas;` en cada base local y `DROP ROLE motor2_app_pruebas;` (a mano, como superusuario).
+-- `solo_pruebas=1` también hace falta después de `crear-rol-motor2-plataforma.sql -v restringir=1` en una base local (el recorte de "Empresa" es solo de `motor2_app`) y de cualquier otro cambio de privilegios de `motor2_app`.
 -- Los marcadores `-- [A8:…]` delimitan los bloques que prueba `test/operaciones/rol-de-pruebas-con-base.test.ts`.
 
 \set ON_ERROR_STOP on
