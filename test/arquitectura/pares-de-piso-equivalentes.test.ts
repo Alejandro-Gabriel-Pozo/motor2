@@ -81,6 +81,20 @@ const PARES: ParDePiso[] = [
       },
     ],
   },
+  {
+    principal: "alta_producto",
+    equivalente: "producto_campos_sensibles",
+    pisoMinimo: "operario",
+    motivo:
+      "Dar de alta un producto con precio de venta, factor de conversión o unidad de compra es fijar justo lo que la edición protege: sin la clave fina, quien no puede editar el precio lo fijaba creando un producto nuevo (M.2, D-2).",
+    puertas: [
+      {
+        archivo: "src/server/actions/catalogo/productos.ts",
+        funciones: ["darDeAltaProducto"],
+        ayudante: "puedeEditarCamposSensibles",
+      },
+    ],
+  },
 ];
 
 const RAIZ = join(__dirname, "../..");

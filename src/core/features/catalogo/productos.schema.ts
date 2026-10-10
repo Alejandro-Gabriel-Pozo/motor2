@@ -63,9 +63,13 @@ export interface DatosProductoCreado {
  *  - `YA_EXISTE`: ya hay un producto DISPONIBLE (en alguna sucursal) con ese nombre;
  *  - `CODIGO_REPETIDO`: el código (manual, o el autogenerado agotados los reintentos) ya es de otro producto;
  *  - `SIN_PERMISO_COSTO`: el alta trae un costo de consignación (es consignación, proveedor o precio) y quien la pide no tiene `pagar_consignante` (S-12, D8);
+ *  - `SIN_PERMISO_CAMPOS_SENSIBLES`: el alta trae un precio de venta distinto de 0, un factor de conversión distinto de 1 o una unidad de compra y quien la pide no tiene `producto_campos_sensibles` (M.2, D-2: fallo cerrado; la unidad de stock queda libre);
  *  - `REFERENCIA_NO_ENCONTRADA`: un id del formulario (categoría, insumo, unidad de compra o de stock, proveedor de consignación) no es de esta empresa o no existe: la clave foránea compuesta de la base lo rechazó y se traduce a «No se encontró …» (O.175).
  */
-export type ResultadoDarDeAltaProducto = ResultadoCaso<DatosProductoCreado, "DATOS_INVALIDOS" | "YA_EXISTE" | "CODIGO_REPETIDO" | "SIN_PERMISO_COSTO" | "REFERENCIA_NO_ENCONTRADA">;
+export type ResultadoDarDeAltaProducto = ResultadoCaso<
+  DatosProductoCreado,
+  "DATOS_INVALIDOS" | "YA_EXISTE" | "CODIGO_REPETIDO" | "SIN_PERMISO_COSTO" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "REFERENCIA_NO_ENCONTRADA"
+>;
 
 /**
  * Comando «editar un producto»: el id, los datos del formulario y la `puerta` (el resultado de `guardComandoDatosDeProducto`, S-52, que `validarDatosDeProducto` aplica en el lugar de

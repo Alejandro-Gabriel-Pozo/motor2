@@ -66,7 +66,8 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
       ["insumoId", () => ({ insumoId: ajeno.insumoId }), /No se encontró el insumo elegido\./],
       ["unidadCompraId", () => ({ unidadCompraId: ajeno.unidadId }), /No se encontró la unidad de compra elegida\./],
     ] as const)("%s de otra empresa: rechazo de pertenencia, sin producto creado", async (_campo, extra, mensaje) => {
-      const r = await darDeAltaProductoCasoDeUso(actor(), datos(extra()), azarDelProceso, true, guardComandoDatosDeProducto({ datos: datos(extra()) }));
+      // M.2: lo que se prueba es la pertenencia de la referencia, no el permiso: el alta se arma con las dos claves finas concedidas (consignación y campos sensibles; la unidad de compra es un campo sensible del alta).
+      const r = await darDeAltaProductoCasoDeUso(actor(), datos(extra()), azarDelProceso, true, guardComandoDatosDeProducto({ datos: datos(extra()) }), true);
       expect(r.ok).toBe(false);
       if (r.ok) return;
       expect(r.codigo).toBe("REFERENCIA_NO_ENCONTRADA");
@@ -75,7 +76,7 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
     });
 
     it("control: con los ids propios el alta termina bien", async () => {
-      const r = await darDeAltaProductoCasoDeUso(actor(), datos({ categoriaId, insumoId, unidadCompraId }), azarDelProceso, true, guardComandoDatosDeProducto({ datos: datos({ categoriaId, insumoId, unidadCompraId }) }));
+      const r = await darDeAltaProductoCasoDeUso(actor(), datos({ categoriaId, insumoId, unidadCompraId }), azarDelProceso, true, guardComandoDatosDeProducto({ datos: datos({ categoriaId, insumoId, unidadCompraId }) }), true);
       expect(r.ok).toBe(true);
       expect(await productos()).toBe(1);
     });
