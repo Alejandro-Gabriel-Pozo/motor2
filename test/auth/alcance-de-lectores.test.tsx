@@ -11,17 +11,23 @@ vi.mock("../../src/server/consultas/carta/admin", async (importOriginal) => {
   const original = await importOriginal<typeof import("../../src/server/consultas/carta/admin")>();
   return { ...original, cargarAdminCarta: vi.fn(original.cargarAdminCarta) };
 });
+// Del editor de recetas se deja la lectura REAL (con espía) de las sucursales con receta propia, que es la que cruza sucursales.
+vi.mock("../../src/server/consultas/catalogo/receta-propia", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../src/server/consultas/catalogo/receta-propia")>();
+  return { ...original, listarSucursalesConRecetaPropia: vi.fn(original.listarSucursalesConRecetaPropia) };
+});
 // De la auditoría solo se reemplaza la lectura del registro; `sucursalesVisiblesDeAuditoria` (el filtro por «Ver») corre de verdad.
 vi.mock("../../src/server/consultas/permisos/auditoria", async (importOriginal) => {
   const original = await importOriginal<typeof import("../../src/server/consultas/permisos/auditoria")>();
   return { ...original, listarRegistrosAuditoria: vi.fn(async () => ({ items: [], nextCursor: null })) };
 });
 
-import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase } from "../setup/test-db";
+import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { crearMembresia } from "../setup/membresia";
 import { obtenerResumenConsolidado } from "../../src/server/consultas/reportes/resumen-consolidado";
+import { listarSucursalesConRecetaPropia } from "../../src/server/consultas/catalogo/receta-propia";
 import { cargarAdminCarta } from "../../src/server/consultas/carta/admin";
 import { listarRegistrosAuditoria } from "../../src/server/consultas/permisos/auditoria";
 import { compararRendimientosDeSucursales } from "../../src/server/consultas/reportes/rendimiento-por-sucursal";
@@ -29,6 +35,7 @@ import ConsolidadoPage from "../../src/app/(app)/reportes/consolidado/page";
 import RendimientoPorSucursalPage from "../../src/app/(app)/reportes/rendimiento-recetas/por-sucursal/page";
 import AuditoriaPage from "../../src/app/(app)/administracion/auditoria/page";
 import CartaPage from "../../src/app/(app)/carta/page";
+import RecetaPage from "../../src/app/(app)/catalogo/recetas/[productoId]/page";
 
 /**
  * M.3-A5, paso 3: las pantallas que miran VARIAS sucursales leen con la LECTURA ensanchada a las sucursales donde el usuario puede ver su clave (`lecturaEnSucursalesVisibles`), nunca con
@@ -214,6 +221,43 @@ describe("M.3-A5: los lectores de varias sucursales", () => {
       await prisma.permisoRol.update({ where: { rolId_accionClave: { rolId: rolAdminId, accionClave: "carta_copiar_de_sucursal" } }, data: { puedeEditar: false } });
       await CartaPage();
       expect(await alcanceDe(ultima()[3] as never)).toEqual({ lectura: [A], escritura: [A] });
+    });
+  });
+
+  describe("origen de la copia de la receta (receta_sucursal_copiar)", () => {
+    let pvId: string;
+    beforeEach(async () => {
+      const { kg } = await sembrarCatalogoBase();
+      pvId = (await sembrarProductoDisponible({ codigo: "PV_PIZZA", nombre: "Pizza", tipo: "PV", unidadStockId: kg.id, precioVenta: 100 }, A)).id;
+    });
+    const abrir = () => RecetaPage({ params: Promise.resolve({ productoId: pvId }), searchParams: Promise.resolve({}) });
+    const ultima = () => vi.mocked(listarSucursalesConRecetaPropia).mock.calls.at(-1)!;
+
+    it("un gerente que ve `receta_sucursal_copiar` en A y B lee el origen con la base de lectura A y B (no C) y escritura solo A", async () => {
+      await abrir();
+      const llamada = ultima();
+      expect(llamada[0]).toBe(pvId);
+      expect(llamada[1]).toBe(A);
+      expect(await alcanceDe(llamada[3] as never)).toEqual({ lectura: [A, B].sort(), escritura: [A] });
+    });
+
+    it("donde el rol no ve la clave (B como operador) o con una sola membresía, la base del origen lee solo la activa", async () => {
+      await prisma.usuarioSucursal.updateMany({ where: { usuarioId, sucursalId: B }, data: { rolId: rolOperadorId } });
+      await abrir();
+      expect(await alcanceDe(ultima()[3] as never)).toEqual({ lectura: [A], escritura: [A] });
+
+      const solo = await crearUsuarioConMembresia({ email: "solo@test.com", sucursalId: A, rolId: rolAdminId });
+      await como(solo.id, solo.email);
+      await abrir();
+      expect(await alcanceDe(ultima()[3] as never)).toEqual({ lectura: [A], escritura: [A] });
+    });
+
+    it("el producto de la URL no cambia el alcance: un id manipulado (de otra empresa o inexistente) no llega a leer origen alguno", async () => {
+      vi.mocked(listarSucursalesConRecetaPropia).mockClear();
+      pvId = "no-existe";
+      const texto = textoDe(await abrir());
+      expect(texto).toContain("No se encontró ese producto");
+      expect(listarSucursalesConRecetaPropia).not.toHaveBeenCalled();
     });
   });
 });

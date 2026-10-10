@@ -30,7 +30,7 @@ interface Lector {
 }
 
 /** Cuántos lectores pueden estar `PENDIENTE`. Solo baja: cada uno que se cablea, baja este número en el mismo commit. */
-const PENDIENTES_MAXIMOS = 1;
+const PENDIENTES_MAXIMOS = 0;
 
 const LECTORES: Readonly<Record<string, Lector>> = {
   "src/app/(app)/reportes/consolidado/page.tsx": {
@@ -60,7 +60,7 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
     clave: "receta_sucursal_copiar",
     consultas: { listarSucursalesConRecetaPropia: 3 },
-    estado: "PENDIENTE",
+    estado: "CABLEADO",
     motivo: "el origen de la copia de receta: qué otras sucursales tienen receta propia habilitada de este producto",
   },
 };
