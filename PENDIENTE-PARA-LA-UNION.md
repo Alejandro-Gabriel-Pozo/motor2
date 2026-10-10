@@ -4,7 +4,7 @@ De lo general a lo específico. Este archivo es el contexto para quien audita y 
 
 ## 1. En una línea
 
-El #97 trae dos cosas separadas: (a) los **controles de seguridad del pipeline** (workflows, pruebas de SQL injection/XSS, documentación) y (b) una **primera capa `src/ui/` aditiva** (botón, campo y diálogo accesibles) con `Modal` reapuntado a ese diálogo. Todo lo demás que las auditorías recomiendan queda **escrito acá, no hecho**, para que quien une vea el panorama completo y no choque con la Fase 6 ni con las pantallas de producto en revisión.
+El #97 trae dos cosas separadas: (a) los **controles de seguridad del pipeline** (workflows, pruebas de SQL injection/XSS, documentación) y (b) una **primera capa `src/ui/` aditiva** (botón, campo, diálogo, tabla adaptable y selectores de fecha) con `Modal` reapuntado al diálogo. **Fusión: no es tarea de esta rama.** Quien trabaja el #96 es quien fusiona el #96 y el #97. **Aviso de proceso:** por error, esta rama trae un merge del #96 hasta `846fb4e` (M.2-A4), el commit `2f40b68`, hecho para comprobar que no hay conflictos (no los hubo). No hace falta para unir; si molesta al auditar, se puede descartar ese commit y quedan solo los commits propios del #97 sobre la base original. **Referencias** (repo privado `motor2-docs`, rama `ccr-30379a24-ebge91`, carpeta `_planes/`): `informe-de-la-tanda-2026-10-10.md` (empezar acá), `auditoria-de-abstracciones-motor2-2026-10-10.md`, `informe-ux-ui-abstraccion-motor2-2026-10-10.md`, `contraste-con-el-pdf-estructura-capas-responsive-2026-10-10.md`. Todo lo demás que las auditorías recomiendan queda **escrito acá, no hecho**, para que quien une vea el panorama completo y no choque con la Fase 6 ni con las pantallas de producto en revisión.
 
 ## 2. Qué se tocó y por qué
 
