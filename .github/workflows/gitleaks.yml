@@ -32,7 +32,7 @@ jobs:
         with:
           # Historial completo: un secreto borrado en un commit posterior sigue estando en el historial y hay que rotarlo igual.
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version: stable
           cache: false
