@@ -212,7 +212,8 @@ const existente = (extra: Partial<ProductoExistente> = {}): ProductoExistente =>
 const dibujar = (puede: boolean, productoExistente?: ProductoExistente) =>
   renderToStaticMarkup(<ProductoForm {...comunes} puedeEditarCamposSensibles={puede} productoExistente={productoExistente} presentacionesIniciales={[]} cantidadSucursales={1} nombreSucursalActual="Central" />);
 const soloLectura = (html: string, campo: string) => html.match(new RegExp(`data-solo-lectura="${campo}"[^>]*>([\\s\\S]*?)</dl>`))?.[1] ?? null;
-const textoPlano = (html: string | null) => (html ?? "").replace(/<[^>]*>/g, "");
+// Solo para leer el texto de un fragmento YA renderizado por React en un test (no sanea nada para mostrarlo): se parte por las etiquetas en vez de borrarlas con `replace`.
+const textoPlano = (html: string | null) => (html ?? "").split(/<[^>]*>/).join("");
 
 describe("(3) ProductoForm: edición", () => {
   it("SIN la clave, una materia prima muestra factor y unidades guardados como solo lectura, sin ningún control para cambiarlos", () => {
