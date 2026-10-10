@@ -2,6 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { validarCantidad } from "@/core/datos/cantidad";
 import type { ComandoAgregarPresentacionAlternativa, ResultadoAgregarPresentacionAlternativa } from "@/core/features/catalogo/productos.schema";
+import { MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { presentacionTieneUso } from "@/server/lecturas/catalogo/historia-de-producto";
@@ -18,11 +19,14 @@ import { guardarPresentacion } from "@/server/persistencia/catalogo/productos";
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos.
  *
- * M-4 (auditoría final, cierra la parte de código; la clave fina `producto_campos_sensibles` queda pendiente: M.2, [MIG]): si la presentación YA EXISTE, ya se usó en compras (`presentacionTieneUso`: hay un vínculo
+ * M-4 (auditoría final, cierra la parte de código; la clave fina `producto_campos_sensibles` la suma M.2, más abajo): si la presentación YA EXISTE, ya se usó en compras (`presentacionTieneUso`: hay un vínculo
  * proveedor↔producto con esa unidad de compra, que cada compra con proveedor escribe) y el factor pedido es distinto del guardado, se rechaza (`FACTOR_CON_USO`) sin escribir. Crear una presentación nueva, o
  * reactivar una con el mismo factor, sigue permitido. La presentación anterior se lee dentro de la transacción.
  *
- * @contract Deja la presentación (producto, unidad de compra) activa con el factor pedido, con su fila de auditoría si el factor cambió (o es nueva): las dos o ninguna. No cambia el factor de una presentación que ya se usó.
+ * M.2 (clave fina `producto_campos_sensibles`): definir el factor de una presentación —crearla, o cambiar el de una que existe— es de quien tiene esa clave además de `producto_presentaciones`. El caso de uso tampoco
+ * la chequea: la Server Action calcula `comando.puedeEditarCamposSensibles` con el gate y acá, sin él, crear o cambiar el factor es `SIN_PERMISO_CAMPOS_SENSIBLES` (ANTES de `presentacionTieneUso` y de escribir); reactivar con el MISMO factor sigue libre.
+ *
+ * @contract Deja la presentación (producto, unidad de compra) activa con el factor pedido, con su fila de auditoría si el factor cambió (o es nueva): las dos o ninguna. No cambia el factor de una presentación que ya se usó, ni define uno sin la clave fina.
  * @idempotency No aplica — repetir el pedido vuelve a escribir el mismo factor (sin fila de auditoría nueva: no cambió).
  * @transaction `actor.transaccion` (READ COMMITTED): la presentación anterior, la pregunta por su uso, la presentación y su auditoría juntas; el producto se lee antes con `actor.db`.
  * @sideEffects registrarCambioAuditado (Presentacion.factorConversion, del anterior —o null— al nuevo), en la misma transacción.
@@ -51,6 +55,11 @@ export async function agregarPresentacionAlternativaCasoDeUso(
   return actor.transaccion(async (tx): Promise<ResultadoAgregarPresentacionAlternativa> => {
     const anterior = await tx.presentacion.findUnique({ where: clave, select: { factorConversion: true } });
     const cambiaElFactor = anterior !== null && Number(anterior.factorConversion) !== factor.valor!;
+    // M.2: definir un factor (crear la presentación, o cambiar el de una existente) exige `producto_campos_sensibles`. Se decide con la fila leída ACÁ ADENTRO y el factor ya normalizado, ANTES de preguntar por
+    // el uso y de escribir: quien no tiene la clave no se entera de si la presentación se usó. Reactivar una presentación con el MISMO factor no define nada y sigue libre.
+    if (!comando.puedeEditarCamposSensibles && (anterior === null || cambiaElFactor)) {
+      return fracaso("SIN_PERMISO_CAMPOS_SENSIBLES", MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES);
+    }
     // M-4: el factor de una presentación que ya se usó en compras NO se cambia. Un operario con `producto_presentaciones` lo pisaba con este mismo alta (un `upsert`) y la compra siguiente metía
     // más o menos stock del que había. Crear una presentación nueva, o reactivar una con el mismo factor, sigue como siempre.
     if (cambiaElFactor && (await presentacionTieneUso(tx, productoId, unidadCompraId))) {

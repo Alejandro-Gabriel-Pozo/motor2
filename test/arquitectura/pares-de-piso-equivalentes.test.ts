@@ -67,6 +67,20 @@ const PARES: ParDePiso[] = [
       },
     ],
   },
+  {
+    principal: "producto_presentaciones",
+    equivalente: "producto_campos_sensibles",
+    pisoMinimo: "operario",
+    motivo:
+      "Definir el factor de una presentación de compra mueve el stock que entra y el costo por unidad de todo lo que se compre con ella: sin la clave fina, quien tiene la clave de presentaciones creaba una con el factor que quisiera (M.2).",
+    puertas: [
+      {
+        archivo: "src/server/actions/catalogo/productos.ts",
+        funciones: ["agregarPresentacionAlternativa"],
+        ayudante: "puedeEditarCamposSensibles",
+      },
+    ],
+  },
 ];
 
 const RAIZ = join(__dirname, "../..");

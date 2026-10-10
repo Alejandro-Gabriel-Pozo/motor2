@@ -143,15 +143,24 @@ export interface ComandoAgregarPresentacionAlternativa {
   unidadCompraId: string;
   factorConversion: number;
   factor: ResultadoDato<null>;
+  /**
+   * M.2: si quien lo pide tiene `producto_campos_sensibles` EDITAR (lo calcula la Server Action con el gate; el caso de uso no chequea permisos). Sin ella, definir un factor —crear la presentación
+   * o cambiar el de una existente— es `SIN_PERMISO_CAMPOS_SENSIBLES`; reactivar una con el MISMO factor sigue libre.
+   */
+  puedeEditarCamposSensibles: boolean;
 }
 
 /**
  *  - `PRODUCTO_NO_ENCONTRADO`: el id no es de un producto;
  *  - `ES_LA_UNIDAD_POR_DEFECTO`: la unidad pedida ya es la unidad de compra por defecto del producto;
  *  - `FACTOR_INVALIDO`: el factor no es una cantidad válida para la unidad de stock del producto;
- *  - `FACTOR_CON_USO` (M-4): la presentación ya existe, ya se usó en compras y el factor pedido es DISTINTO del guardado: no se cambia (reactivarla con el mismo factor sí).
+ *  - `FACTOR_CON_USO` (M-4): la presentación ya existe, ya se usó en compras y el factor pedido es DISTINTO del guardado: no se cambia (reactivarla con el mismo factor sí);
+ *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (M.2): la presentación no existía, o existe y el factor pedido es distinto del guardado, y quien lo pide no tiene `producto_campos_sensibles`; va ANTES de `FACTOR_CON_USO`.
  */
-export type ResultadoAgregarPresentacionAlternativa = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "ES_LA_UNIDAD_POR_DEFECTO" | "FACTOR_INVALIDO" | "FACTOR_CON_USO">;
+export type ResultadoAgregarPresentacionAlternativa = ResultadoCaso<
+  null,
+  "PRODUCTO_NO_ENCONTRADO" | "ES_LA_UNIDAD_POR_DEFECTO" | "FACTOR_INVALIDO" | "FACTOR_CON_USO" | "SIN_PERMISO_CAMPOS_SENSIBLES"
+>;
 
 /** Comando «activar o desactivar una presentación de compra»: el id y el booleano, sin validar (sin guard). */
 export interface ComandoActualizarActivaPresentacion {

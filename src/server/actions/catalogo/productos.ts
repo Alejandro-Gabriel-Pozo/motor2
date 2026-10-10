@@ -439,7 +439,10 @@ export async function agregarPresentacionAlternativa(
     // S-52: el guard se CALCULA acá; los ids rotos se rechazan en el acto y el rango del factor lo aplica el caso de uso después de leer el producto (un producto inexistente gana sobre un factor inválido).
     const puerta = guardComandoAgregarPresentacionAlternativa({ productoId, unidadCompraId, factorConversion });
     if (!puerta.ids.ok) return error(puerta.ids.mensaje);
-    return aResultadoAccion(await agregarPresentacionAlternativaCasoDeUso(ctx, { productoId, unidadCompraId, factorConversion, factor: puerta.factor }));
+    // M.2: definir el factor (crear la presentación, o cambiar el de una que existe) exige además `producto_campos_sensibles`: la acción calcula el dato y el caso de uso lo aplica dentro de su transacción.
+    return aResultadoAccion(
+      await agregarPresentacionAlternativaCasoDeUso(ctx, { productoId, unidadCompraId, factorConversion, factor: puerta.factor, puedeEditarCamposSensibles: await puedeEditarCamposSensibles(ctx) }),
+    );
   });
 }
 
