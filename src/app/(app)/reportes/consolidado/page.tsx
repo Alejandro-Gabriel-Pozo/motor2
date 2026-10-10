@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
 import { requierePermisoVer, sucursalesVisiblesPara } from "@/server/acceso/gate";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo, reportePesadoSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerResumenConsolidado } from "@/server/consultas/reportes/resumen-consolidado";
@@ -36,7 +37,9 @@ export default async function ConsolidadoPage() {
   // S-28: reporte pesado (el período de TODAS las sucursales visibles): cupo por usuario antes de consultar nada (best effort, en memoria).
   const ahora = new Date();
   if (reportePesadoSinCupo(ctx.usuarioId, "resumen-consolidado", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
-  const filas = await obtenerResumenConsolidado(sucursales, ctx.db, ahora);
+  // M.3-A5: esas mismas sucursales se LEEN con la lectura ensanchada (solo la lectura; esta pantalla no escribe) a las sucursales donde el rol ve `reporte_consolidado`.
+  const lectura = await lecturaEnSucursalesVisibles(ctx, "reporte_consolidado");
+  const filas = await obtenerResumenConsolidado(sucursales, lectura.db, ahora);
   const totales = filas.reduce(
     (acc, f) => ({
       ventasTotal: acc.ventasTotal + f.ventasTotal,
