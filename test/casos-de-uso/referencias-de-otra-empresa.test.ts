@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
 import { darDeAltaProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/dar-de-alta-producto";
 import { darDeAltaProductoRapidoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/dar-de-alta-producto-rapido";
 import { actualizarProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/actualizar-producto";
@@ -28,7 +28,7 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
   let grupoId: string;
   let ajeno: { unidadId: string; categoriaId: string; insumoId: string; proveedorId: string; grupoId: string };
 
-  const actor = () => ({ usuarioId: adminId, sucursalId, sucursalNombre, ...baseDeTest });
+  const actor = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, sucursalNombre, ...baseDeTest });
   const datos = (extra: Partial<EntradaProducto> = {}): EntradaProducto => ({ nombre: "Producto de prueba", tipo: "MP", unidadStockId: unidadId, factorConversion: 1, ...extra });
 
   beforeEach(async () => {

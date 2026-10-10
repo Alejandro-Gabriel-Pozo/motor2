@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
-import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa, sembrarBase } from "../setup/test-db";
+// Los ensanches reales, con un espía en `conEscrituraEnLaEmpresa` para ver quién lo llama (alta de producto).
+vi.mock("../../src/server/acceso/alcance", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../src/server/acceso/alcance")>();
+  return { ...original, conEscrituraEnLaEmpresa: vi.fn(original.conEscrituraEnLaEmpresa) };
+});
+
+import type { Prisma } from "@prisma/client";
+import { EMPRESA_POR_DEFECTO_ID, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa, sembrarBase, sembrarCatalogoBase } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { crearMembresia } from "../setup/membresia";
@@ -10,9 +17,14 @@ import { baseDeEmpresa, transaccionDeEmpresa } from "../../src/core/auth/base";
 import { conAlcanceEnSucursal, conEscrituraEnLaEmpresa, incluirSucursalCreadaEnLaTransaccion, lecturaEnSucursalesVisibles } from "../../src/server/acceso/alcance";
 import { requerirVerAlgunaEnSucursal, requerirVerEnSucursal } from "../../src/server/actions/con-sesion";
 import { permisoYAlcanceEnSucursal } from "../../src/server/actions/con-permiso";
+import { darDeAltaProducto, darDeAltaProductoRapido } from "../../src/server/actions/catalogo/productos";
+import { guardarReceta } from "../../src/server/actions/catalogo/recetas";
+import { guardarVersionDeRecetaCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/guardar-version-de-receta";
+import { crearSucursalConAdminCasoDeUso } from "../../src/server/actions/auth/casos-de-uso/crear-sucursal-con-admin";
+import { actualizarCapacidadCasoDeUso } from "../../src/server/actions/permisos/casos-de-uso/actualizar-capacidad";
 
 /**
- * M.3-A4: los ENSANCHES del alcance por sucursal (`src/server/acceso/alcance.ts`) y las escrituras de empresa entera que los usan. Postgres real, tres sucursales (A activa, B con membresía,
+ * M.3-A4 y A6: los ENSANCHES del alcance por sucursal (`src/server/acceso/alcance.ts`) y las escrituras de empresa entera que los usan. Postgres real, tres sucursales (A activa, B con membresía,
  * C sin membresía) y una segunda empresa con la suya. Todavía no hay políticas por sucursal (Fase B): lo que se mide es CON QUÉ ALCANCE corre cada base y que nada cambie de lo que ya hacían.
  * Mutaciones (revertidas editando): alcance con la membresía de C sin chequearla; `LECTURA` fijo por `LECTURA_Y_ESCRITURA`; `conEscrituraEnLaEmpresa` sin el filtro de empresa;
  * `incluirSucursalCreadaEnLaTransaccion` sin la comprobación de que existe; el alta de producto sin su ensanche.
@@ -24,6 +36,21 @@ const variables = async (cliente: Pick<typeof prisma, "$queryRaw">): Promise<Var
       SELECT current_setting('app.empresa_id', true) AS empresa, current_setting('app.sucursales_lectura', true) AS lectura, current_setting('app.sucursales_escritura', true) AS escritura`
   )[0]!;
 const lista = (v: string | null) => (v ? v.split(",").sort() : []);
+
+/** Las variables que dejó cada transacción interactiva que abrió el cliente del proceso, leídas ANTES de que termine (la lista que vio todo su cuerpo). */
+function capturarTransacciones() {
+  const capturas: Variables[] = [];
+  const original = prismaSinEmpresa.$transaction.bind(prismaSinEmpresa) as (...args: unknown[]) => Promise<unknown>;
+  const espia = vi.spyOn(prismaSinEmpresa, "$transaction").mockImplementation(((fn: unknown, opciones?: unknown) => {
+    if (typeof fn !== "function") return original(fn, opciones);
+    return original(async (tx: Prisma.TransactionClient) => {
+      const resultado = await (fn as (t: Prisma.TransactionClient) => Promise<unknown>)(tx);
+      capturas.push(await variables(tx));
+      return resultado;
+    }, opciones);
+  }) as never);
+  return { capturas, restaurar: () => espia.mockRestore() };
+}
 
 describe("ensanches del alcance por sucursal (M.3-A4/A6)", () => {
   let A: string;
@@ -209,5 +236,76 @@ describe("ensanches del alcance por sucursal (M.3-A4/A6)", () => {
     });
   });
 
+  describe("A6: las escrituras de empresa entera corren con el alcance ensanchado, y solo ellas", () => {
+    it("alta de producto (formulario completo y alta rápida): ensancha a toda la empresa para sembrar la disponibilidad; con el tilde apagado (solo la activa) no ensancha nada", async () => {
+      const { kg } = await sembrarCatalogoBase();
+      const espia = vi.mocked(conEscrituraEnLaEmpresa);
+      espia.mockClear();
+      expect((await darDeAltaProducto({ nombre: "Harina", tipo: "MP", unidadStockId: kg.id, factorConversion: 1 })).ok).toBe(true);
+      expect(espia).toHaveBeenCalledTimes(1);
+      const harina = await prisma.producto.findFirstOrThrow({ where: { nombre: "Harina" } });
+      expect((await prisma.disponibilidadProducto.findMany({ where: { productoId: harina.id } })).map((d) => d.sucursalId).sort()).toEqual([A, B, C].sort());
 
+      espia.mockClear();
+      expect((await darDeAltaProducto({ nombre: "Azúcar", tipo: "MP", unidadStockId: kg.id, factorConversion: 1, activoEnTodasLasSucursales: false })).ok).toBe(true);
+      expect(espia).not.toHaveBeenCalled();
+      const azucar = await prisma.producto.findFirstOrThrow({ where: { nombre: "Azúcar" } });
+      expect((await prisma.disponibilidadProducto.findMany({ where: { productoId: azucar.id } })).map((d) => d.sucursalId)).toEqual([A]);
+
+      espia.mockClear();
+      expect((await darDeAltaProductoRapido("Sal", kg.id)).ok).toBe(true);
+      expect(espia).toHaveBeenCalledTimes(1);
+      const sal = await prisma.producto.findFirstOrThrow({ where: { nombre: "Sal" } });
+      expect((await prisma.disponibilidadProducto.findMany({ where: { productoId: sal.id } })).map((d) => d.sucursalId).sort()).toEqual([A, B, C].sort());
+    });
+
+    it("receta CENTRAL: la transacción corre con las sucursales de la empresa; receta PROPIA de una sucursal: solo con la activa", async () => {
+      const { kg } = await sembrarCatalogoBase();
+      for (const nombre of ["Pizza", "Harina"]) await darDeAltaProducto({ nombre, tipo: nombre === "Pizza" ? "PV" : "MP", unidadStockId: kg.id, factorConversion: 1 });
+      const pizza = await prisma.producto.findFirstOrThrow({ where: { nombre: "Pizza" } });
+      const harina = await prisma.producto.findFirstOrThrow({ where: { nombre: "Harina" } });
+      const linea = [{ insumoProductoId: harina.id, cantidad: 0.3, unidadId: kg.id }];
+
+      const central = capturarTransacciones();
+      expect((await guardarReceta(pizza.id, linea, [], {}, 0)).ok).toBe(true);
+      central.restaurar();
+      const vistaCentral = central.capturas.at(-1)!;
+      expect(lista(vistaCentral.lectura)).toEqual([A, B, C].sort());
+      expect(lista(vistaCentral.escritura)).toEqual([A, B, C].sort());
+
+      const propia = capturarTransacciones();
+      const r = await guardarVersionDeRecetaCasoDeUso(ctx, { productoId: pizza.id, items: linea, pasos: [], cabecera: {}, versionEsperada: null }, { sucursalId: A, habilitadaEsperada: false });
+      propia.restaurar();
+      expect(r.ok).toBe(true);
+      const vistaPropia = propia.capturas.at(-1)!;
+      expect(lista(vistaPropia.lectura)).toEqual([A]);
+      expect(lista(vistaPropia.escritura)).toEqual([A]);
+    });
+
+    it("alta de sucursal: la transacción termina con la activa y la NUEVA (no con B ni C), y la lectura previa de la disponibilidad ve toda la empresa", async () => {
+      const captura = capturarTransacciones();
+      const r = await crearSucursalConAdminCasoDeUso(ctx, { nombre: "Este", email: "admin@test.com" });
+      captura.restaurar();
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      const vista = captura.capturas.at(-1)!;
+      expect(lista(vista.lectura)).toEqual([A, r.datos.sucursalId].sort());
+      expect(lista(vista.escritura)).toEqual([A, r.datos.sucursalId].sort());
+      expect(lista(vista.lectura)).not.toContain(B);
+      expect(lista(vista.lectura)).not.toContain(C);
+    });
+
+    it("cambio de capacidad de UNA sucursal (gerente): la transacción corre con toda la empresa porque audita en la sucursal de la capacidad; la fila por defecto no ensancha", async () => {
+      await prismaAdmin.usuarioEmpresa.update({ where: { usuarioId_empresaId: { usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID } }, data: { rolEmpresa: "gerente" } });
+      const gerente = (await obtenerContextoUsuario())!;
+      const conSucursal = capturarTransacciones();
+      expect((await actualizarCapacidadCasoDeUso(gerente, { accionClave: "proceso_venta", sucursalId: C, habilitado: false })).ok).toBe(true);
+      conSucursal.restaurar();
+      expect(lista(conSucursal.capturas.at(-1)!.escritura)).toEqual([A, B, C].sort());
+      const porDefecto = capturarTransacciones();
+      expect((await actualizarCapacidadCasoDeUso(gerente, { accionClave: "proceso_venta", sucursalId: null, habilitado: true })).ok).toBe(true);
+      porDefecto.restaurar();
+      expect(lista(porDefecto.capturas.at(-1)!.escritura)).toEqual([A]);
+    });
+  });
 });
