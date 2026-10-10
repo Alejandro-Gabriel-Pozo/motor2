@@ -336,12 +336,13 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     // S-52: el guard se CALCULA acá pero `validarDatosDeProducto` aplica cada rechazo en el lugar de siempre (después de leer el producto y la unidad): un producto inexistente gana sobre un dato inválido.
     const puerta = guardComandoDatosDeProducto({ datos });
     if (typeof datos !== "object" || datos === null) return error(puerta.antesDeLaUnidad.ok ? "Los datos del producto no son válidos." : puerta.antesDeLaUnidad.mensaje);
+    const puedeCamposSensibles = await puedeEditarCamposSensibles(ctx);
     const r = await actualizarProductoCasoDeUso(ctx, {
       productoId,
       datos,
       puerta,
       puedeGestionarConsignacion: await puedeGestionarConsignacion(ctx),
-      puedeEditarCamposSensibles: await puedeEditarCamposSensibles(ctx),
+      puedeEditarCamposSensibles: puedeCamposSensibles,
     });
     const base = aResultadoAccion(r);
     if (!r.ok) return base;
@@ -350,7 +351,8 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     const { precioAnterior, precioNuevo } = r.datos;
     // M-2 de la auditoría intermedia: la oferta es la de `sincronizarPrecioGrupoCarta`, que exige `producto_sincronizar_precio_carta` (EDITAR). Quien edita el producto (`producto_editar`) pero no tiene
     // esa clave veía la oferta y, al aceptarla, recibía un rechazo: la oferta se hace SOLO a quien puede aceptarla. La clave se mira solo cuando el precio cambió (la mayoría de las ediciones no).
-    if (precioNuevo !== precioAnterior && (await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_sincronizar_precio_carta", ctx.db)).editar) {
+    // M.2 (D-3): aceptarla exige además `producto_campos_sensibles`, así que la oferta pide las DOS claves (y quien cambió el precio ya la tenía: sin ella la edición se rechaza antes).
+    if (precioNuevo !== precioAnterior && puedeCamposSensibles && (await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_sincronizar_precio_carta", ctx.db)).editar) {
       const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId, ctx.db), precioNuevo, "global");
       if (sincronizable) return { ok: true, mensaje: base.mensaje, sincronizable };
     }
@@ -360,8 +362,8 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
 
 /**
  * Aplica el mismo precio de venta GLOBAL a varios productos de UN mismo ítem agrupado de la carta (el paso que ofrece
- * `actualizarProducto` con `sincronizable`; docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8). Mismo permiso y misma auditoría
- * que editar el precio de cada uno a mano. Solo toca los `productoIds` pasados, y solo si son todos del mismo ítem agrupado.
+ * `actualizarProducto` con `sincronizable`; docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8). Misma auditoría que editar el precio de cada uno a mano,
+ * y desde M.2 (D-3) los mismos permisos que cambiar un precio: `producto_sincronizar_precio_carta` más `producto_campos_sensibles`. Solo toca los `productoIds` pasados, y solo si son todos del mismo ítem agrupado.
  *
  * Desde el Hito 4 (H4C-13): permiso (`conPermisoDeEmpresa("producto_sincronizar_precio_carta")`) → formato del precio y de la lista
  * (`guardComandoSincronizarPrecioGrupoCarta`, core/features/catalogo/productos.guard.ts, DENTRO del envoltorio) → caso de uso
@@ -372,7 +374,8 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
   return conPermisoDeEmpresa("producto_sincronizar_precio_carta", async (ctx) => {
     const comando = guardComandoSincronizarPrecioGrupoCarta({ productoIds, precio });
     if (!comando.ok) return error(comando.mensaje);
-    const resultado = await sincronizarPrecioGrupoCartaCasoDeUso(ctx, comando.valor);
+    // M.2 (D-3): sincronizar es cambiar el precio de venta de varios productos: además de la clave de sincronizar pide `producto_campos_sensibles` (el caso de uso lo rechaza antes de leer nada).
+    const resultado = await sincronizarPrecioGrupoCartaCasoDeUso(ctx, { ...comando.valor, puedeEditarCamposSensibles: await puedeEditarCamposSensibles(ctx) });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });

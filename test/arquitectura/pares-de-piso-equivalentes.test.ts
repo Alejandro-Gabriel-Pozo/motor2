@@ -95,6 +95,20 @@ const PARES: ParDePiso[] = [
       },
     ],
   },
+  {
+    principal: "producto_sincronizar_precio_carta",
+    equivalente: "producto_campos_sensibles",
+    pisoMinimo: "operario",
+    motivo:
+      "Sincronizar el precio de un ítem agrupado de la carta ES cambiar el precio de venta de varios productos a la vez: sin la clave fina, quien tiene solo la de sincronizar fijaba precios que la edición le niega (M.2, D-3).",
+    puertas: [
+      {
+        archivo: "src/server/actions/catalogo/productos.ts",
+        funciones: ["sincronizarPrecioGrupoCarta"],
+        ayudante: "puedeEditarCamposSensibles",
+      },
+    ],
+  },
 ];
 
 const RAIZ = join(__dirname, "../..");

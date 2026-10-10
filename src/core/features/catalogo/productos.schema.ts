@@ -121,8 +121,19 @@ export interface ComandoSincronizarPrecioGrupoCarta {
   precio: number;
 }
 
-/** `NO_MISMO_ITEM`: los productos no son todos del mismo ítem agrupado de la carta (en la sucursal activa). */
-export type ResultadoSincronizarPrecioGrupoCarta = ResultadoCaso<null, "NO_MISMO_ITEM">;
+/**
+ * Lo que recibe el caso de uso: el comando que decidió el guard más, M.2 (D-3), si quien lo pide tiene `producto_campos_sensibles` EDITAR (lo calcula la Server Action con el gate; el caso de uso no chequea
+ * permisos). Sincronizar el precio ES cambiar el precio de venta de varios productos: además de `producto_sincronizar_precio_carta` pide la clave fina.
+ */
+export interface PedidoSincronizarPrecioGrupoCarta extends ComandoSincronizarPrecioGrupoCarta {
+  puedeEditarCamposSensibles: boolean;
+}
+
+/**
+ *  - `NO_MISMO_ITEM`: los productos no son todos del mismo ítem agrupado de la carta (en la sucursal activa);
+ *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (M.2, D-3): quien lo pide no tiene `producto_campos_sensibles`; se decide antes de leer el ítem agrupado.
+ */
+export type ResultadoSincronizarPrecioGrupoCarta = ResultadoCaso<null, "NO_MISMO_ITEM" | "SIN_PERMISO_CAMPOS_SENSIBLES">;
 
 /** Comando «asignar un insumo a una materia prima existente» (la mitad retroactiva del asistente de hermanar): los dos ids, sin validar (sin guard). */
 export interface ComandoAsignarInsumoAProducto {
