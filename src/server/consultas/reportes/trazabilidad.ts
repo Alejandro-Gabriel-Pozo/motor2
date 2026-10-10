@@ -1,5 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
+import { textoDeBusqueda } from "@/core/texto";
 import type { DatosOperacion, OperacionEncontrada } from "@/core/reportes/public";
 
 /**
@@ -68,7 +69,7 @@ export async function obtenerOperacionPorId(sucursalId: string, idOperacion: str
 
 /** Port de buscarOperacionesPorProducto (Reportes.js:1178-1197). */
 export async function buscarOperacionesPorProducto(sucursalId: string, termino: string, db: Db): Promise<OperacionEncontrada[]> {
-  const q = termino.trim();
+  const q = textoDeBusqueda(termino);
   if (!q) return [];
 
   const movimientos = await db.movimientoStock.findMany({

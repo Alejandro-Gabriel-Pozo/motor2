@@ -6,6 +6,42 @@ export function texto(v: unknown): string {
   return String(v ?? "").trim();
 }
 
+const RE_SUSTITUTOS = /[\uD800-\uDFFF]/;
+
+/**
+ * Saca del texto lo que Postgres no puede recibir: el NUL (`\u0000`, error 22021 «invalid byte sequence») y los sustitutos UTF-16 sueltos (una mitad de un emoji sin su pareja: no es
+ * texto válido y Prisma rechaza la consulta al serializarla). Los pares completos (emojis) y todo el resto del texto —acentos, ñ, saltos de línea— quedan tal cual. Sin esos
+ * caracteres la consulta no llega a fallar, así que una búsqueda con ellos devuelve «sin resultados» (o los de lo que sí era texto) en vez de un 500.
+ */
+export function quitarCaracteresInadmisibles(v: string): string {
+  if (!v.includes("\u0000") && !RE_SUSTITUTOS.test(v)) return v; // lo normal: sin copias ni recorridos
+  let salida = "";
+  for (let i = 0; i < v.length; i++) {
+    const c = v.charCodeAt(i);
+    if (c === 0) continue;
+    if (c >= 0xd800 && c <= 0xdbff) {
+      const siguiente = v.charCodeAt(i + 1);
+      if (siguiente >= 0xdc00 && siguiente <= 0xdfff) {
+        salida += v[i] + v[i + 1];
+        i++;
+      }
+      continue; // un sustituto alto sin su bajo: suelto
+    }
+    if (c >= 0xdc00 && c <= 0xdfff) continue; // un sustituto bajo sin su alto: suelto
+    salida += v[i];
+  }
+  return salida;
+}
+
+/**
+ * El texto que se le pasa a Postgres en una BÚSQUEDA (`contains`, `ILIKE`, un filtro por identificador que viene de la URL o del cliente): `texto()` más sacar lo que Postgres no recibe.
+ * Es el ÚNICO lugar donde se hace; toda lectura con un texto de búsqueda pasa por acá. Es solo para buscar: lo que se GUARDA (nombres, motivos…) sigue pasando por `texto()` y por su
+ * validador, que rechaza esos caracteres con un mensaje claro en vez de borrarlos en silencio.
+ */
+export function textoDeBusqueda(v: unknown): string {
+  return texto(quitarCaracteresInadmisibles(String(v ?? "")));
+}
+
 /**
  * Charset permitido para nombres de catálogo (producto, proveedor,
  * categoría, familia, unidad, sección, rol, sucursal) — mismo criterio que

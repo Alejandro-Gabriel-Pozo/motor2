@@ -9,6 +9,8 @@ import { altaCliente } from "../../src/server/actions/clientes/cliente";
 import { buscarProductosSelector, darDeAltaProductoRapido, listarProductosPagina } from "../../src/server/actions/catalogo/productos";
 import { guardarContenidoCartaProducto } from "../../src/server/actions/carta/contenido-producto";
 import { buscarProductoParaHistorial, obtenerHistorialProducto } from "../../src/server/consultas/reportes/historial-producto";
+import { buscarOperacionesPorProducto } from "../../src/server/consultas/reportes/trazabilidad";
+import { listarComprasRegistradas } from "../../src/server/consultas/reportes/compras-registradas";
 import { GET as cronDolar } from "../../src/app/api/cron/sincronizar-dolar/route";
 import { GET as cronIpc } from "../../src/app/api/cron/sincronizar-ipc/route";
 
@@ -53,7 +55,7 @@ const PAYLOADS_MALFORMADOS = [
   "_%_%",
 ] as const;
 
-/** Postgres no puede guardar un NUL ni un sustituto UTF-16 suelto: hoy las BÚSQUEDAS no los filtran (brecha conocida, ver el último bloque). */
+/** Postgres no puede guardar un NUL ni un sustituto UTF-16 suelto: las BÚSQUEDAS los sacan antes de consultar (ver el último bloque). */
 const NUL = "nul\u0000byte";
 const SUSTITUTO_SUELTO = "ñandú\uD83D";
 
@@ -289,23 +291,38 @@ describe("seguridad de entradas: SQL injection y XSS contra las acciones reales"
   });
 
   /**
-   * BRECHA CONOCIDA (hallazgo de este trabajo, sin arreglar a propósito: el arreglo toca `src/core/texto.ts` y `server/consultas`, ver docs/seguridad-pipeline.md §Hallazgos).
-   * Una búsqueda con un NUL (`\u0000`) o un sustituto UTF-16 suelto llega a Postgres/Prisma y revienta con un error sin atrapar (500 en vez de «sin resultados»).
-   * No hay inyección ni fuga de datos —el rol de ejecución no puede hacer nada más— y exige sesión con permiso, pero es una entrada que el servidor tiene que absorber.
-   * `it.fails` mantiene el test en verde mientras la brecha exista y se pone ROJO cuando alguien la arregla: ahí se cambia a `it` y se borra este comentario.
+   * Caracteres que Postgres no admite en un texto (NUL `\u0000`) o que no son texto válido (sustituto UTF-16 suelto): llegaban a Postgres/Prisma y reventaban con un error sin atrapar
+   * (500 en vez de «sin resultados»). Hallazgo del #97 (era una «brecha conocida» con `it.fails`); corregido sacándolos de la BÚSQUEDA en un solo lugar (`textoDeBusqueda`, `src/core/texto.ts`)
+   * y de los parámetros de la URL (`unicosDeUrl`). No hay inyección ni fuga de datos —el rol de ejecución no puede hacer nada más— y exige sesión con permiso, pero es una entrada que el servidor tiene que absorber.
+   * Lo que se GUARDA no se toca: el alta de un nombre con esos caracteres se rechaza (último caso).
    */
-  describe("brecha conocida: caracteres que Postgres no admite en una búsqueda", () => {
-    it.fails.each([["NUL", NUL], ["sustituto suelto", SUSTITUTO_SUELTO]])("selector de productos con %s", async (_n, payload) => {
+  describe("caracteres que Postgres no admite en una búsqueda: se absorben, no revientan", () => {
+    const INVALIDOS = [["NUL", NUL], ["sustituto suelto al final", SUSTITUTO_SUELTO], ["sustituto suelto en el medio", "a\uDE00b"], ["solo NUL", "\u0000"]] as const;
+
+    it.each(INVALIDOS)("selector de productos con %s", async (_n, payload) => {
       await expect(buscarProductosSelector(payload)).resolves.toEqual([]);
     });
-    it.fails.each([["NUL", NUL], ["sustituto suelto", SUSTITUTO_SUELTO]])("listado de catálogo con %s", async (_n, payload) => {
+    it.each(INVALIDOS)("listado de catálogo con %s (y como cursor)", async (_n, payload) => {
       await expect(listarProductosPagina(undefined, payload)).resolves.toMatchObject({ items: [] });
+      await expect(listarProductosPagina(payload)).resolves.toBeDefined();
     });
-    it.fails("búsqueda del historial con NUL", async () => {
-      await expect(buscarProductoParaHistorial(sucursalId, NUL, prisma)).resolves.toEqual([]);
+    it.each(INVALIDOS)("búsqueda del historial con %s", async (_n, payload) => {
+      await expect(buscarProductoParaHistorial(sucursalId, payload, prisma)).resolves.toEqual([]);
     });
-    it("búsqueda del historial con sustituto suelto: ya se maneja", async () => {
-      await expect(buscarProductoParaHistorial(sucursalId, SUSTITUTO_SUELTO, prisma)).resolves.toEqual([]);
+    it.each(INVALIDOS)("trazabilidad por producto con %s", async (_n, payload) => {
+      await expect(buscarOperacionesPorProducto(sucursalId, payload, prisma)).resolves.toEqual([]);
+    });
+    it.each(INVALIDOS)("compras registradas: filtro de factura con %s", async (_n, payload) => {
+      await expect(listarComprasRegistradas(sucursalId, { factura: payload }, prisma)).resolves.toMatchObject({ items: [] });
+    });
+    it("el texto válido no se altera: acentos, ñ y emojis con su par completo siguen encontrando", async () => {
+      await prismaAdmin.producto.create({ data: { codigo: "MP_SEC_NINIO", nombre: "Ñandú café 😀", tipo: "MP", unidadStockId: unidadId } });
+      for (const q of ["Ñandú café 😀", "ñandú", "café 😀", "😀"]) {
+        expect((await buscarProductosSelector(q)).map((p) => p.codigo), q).toEqual(["MP_SEC_NINIO"]);
+        expect((await buscarProductoParaHistorial(sucursalId, q, prisma)).map((p) => p.codigo), q).toEqual(["MP_SEC_NINIO"]);
+      }
+      // Los inválidos mezclados con texto válido buscan lo válido: «ñand\0ú» encuentra «Ñandú».
+      expect((await buscarProductosSelector("ñand\u0000ú\uD83D")).map((p) => p.codigo)).toEqual(["MP_SEC_NINIO"]);
     });
     it("el alta de un nombre con esos caracteres sí se rechaza limpio (la lista blanca de caracteres de catálogo los frena)", async () => {
       for (const payload of [NUL, SUSTITUTO_SUELTO]) {

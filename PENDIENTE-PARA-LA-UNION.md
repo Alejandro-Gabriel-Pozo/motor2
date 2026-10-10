@@ -72,10 +72,10 @@ Cada punto: **qué**, **dónde**, **por qué no se hizo acá** y **propuesta**.
 - **Por qué no:** `src/core` y `src/server` (límite: dinero y reglas).
 - **Propuesta:** leer la moneda del contexto de la empresa en un solo formateador; hace falta antes del primer rubro fuera de Argentina.
 
-### 3.9 Hallazgos de seguridad que requieren `src/core`, `src/server` o `src/proxy.ts`
-- **NUL (`\u0000`) o sustituto UTF-16 suelto en una búsqueda → 500.** Parche propuesto: que `texto()` (`src/core/texto.ts`) los quite y que `src/server/consultas/reportes/historial-producto.ts:19` use `texto()` en vez de `.trim()`.
-- **`/carta-publica/<empresa>/%25` → 500** («failed to decode param», Next en ruta ISR). Parche propuesto: en `src/proxy.ts`, 404 si el segmento tiene un `%` que no es un escape válido.
-- **Cómo se enteran:** los dos tienen un test que hoy pasa como **brecha conocida** (`it.fails` en `test/seguridad/inyeccion-sql-y-xss.test.ts`, `test.fail()` en `test/e2e/seguridad-xss-y-sqli.spec.ts`) y se pone **rojo** cuando alguien los arregla; ahí se quita la anotación.
+### 3.9 Hallazgos de seguridad que requieren `src/core`, `src/server` o `src/proxy.ts` — **RESUELTO** (rama `m3b-agente6`)
+- **RESUELTO — NUL (`\u0000`) o sustituto UTF-16 suelto en una búsqueda → 500.** `textoDeBusqueda()` (`src/core/texto.ts`) los saca y lo usan las cinco lecturas con texto de búsqueda (selector y listado de productos, historial, trazabilidad por producto, factura de compras); `unicosDeUrl()` los saca de todo parámetro de URL (ids y cursores incluidos). Lo que se guarda no se toca (las altas con esos caracteres ya se rechazaban).
+- **RESUELTO — `/carta-publica/<empresa>/%25` → 500** («failed to decode param», Next en ruta ISR). Era más amplio (`%zz`, `a%`, UTF-8 inválido, también rutas de la aplicación): `src/proxy.ts` responde 404 limpio a todo path con un segmento no decodificable (`src/core/seguridad/ruta-servible.ts`).
+- **Cómo se supo y cómo queda:** eran tests de «brecha conocida» (`it.fails` / `test.fail()`); se dieron vuelta a tests normales que afirman el comportamiento correcto. Detalle en `docs/seguridad-pipeline.md` §Hallazgos.
 
 ### 3.10 El «elemento configurable» (café) — GO-0, GO-1, GO-2
 - **No se hace ni se diseña acá.** Necesita `prisma/` y migraciones (GO-1), probablemente permisos nuevos (`acciones.ts`) y casos de uso en `src/server`.
@@ -84,7 +84,7 @@ Cada punto: **qué**, **dónde**, **por qué no se hizo acá** y **propuesta**.
 
 ### 3.11 Documentación de seguimiento
 - **Dónde:** `docs/pureza-integracion.md` (límite: no se toca).
-- **Propuesta de filas para quien la mantenga:** «UI-1: capa `src/ui/` (botón, campo, diálogo) — #97 — evidencia: `test/ui/`, `test/e2e/ui-dialogo.spec.ts`»; «UI-2: reglas de dependency-cruiser para `src/ui` — pendiente §3.1»; «SEG-1: pipeline de seguridad — #97»; «SEG-2/3: brechas NUL y `%25` — pendientes §3.9».
+- **Propuesta de filas para quien la mantenga:** «UI-1: capa `src/ui/` (botón, campo, diálogo) — #97 — evidencia: `test/ui/`, `test/e2e/ui-dialogo.spec.ts`»; «UI-2: reglas de dependency-cruiser para `src/ui` — pendiente §3.1»; «SEG-1: pipeline de seguridad — #97»; «SEG-2/3: brechas NUL y `%25` — resueltas, §3.9».
 
 ## 4. Archivos prohibidos o congelados: estado
 

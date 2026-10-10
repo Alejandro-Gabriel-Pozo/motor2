@@ -153,17 +153,32 @@ test.describe("parámetros de la URL: sin XSS reflejado, sin redirecciones abier
   });
 
   /**
-   * BRECHA CONOCIDA (hallazgo de este trabajo, sin arreglar a propósito: el arreglo va en `src/proxy.ts` o en la página, fuera del alcance de «solo controles»; ver docs/seguridad-pipeline.md §Hallazgos).
-   * Un `%` que no es un escape válido en el segmento de la sucursal (`/carta-publica/e2e/%25`, `/carta-publica/e2e/abc%25zz`) hace que Next falle al decodificar el parámetro de la ruta ISR y
-   * responda 500 en vez de 404. No filtra nada (el cuerpo es «Internal Server Error») ni toca la base, pero un anónimo puede provocar 500 a voluntad (ruido en Sentry y en las métricas).
-   * `test.fail()` mantiene el spec en verde mientras la brecha exista y lo pone ROJO cuando alguien la arregla: ahí se quita la anotación y este comentario.
+   * Un `%` que no es un escape válido en un segmento de la ruta (`/carta-publica/e2e/%25`, `/carta-publica/e2e/abc%25zz`, `%zz`, un UTF-8 inválido como `%ff`) hacía que Next fallara al
+   * decodificar el parámetro y respondiera 500 («failed to decode param») en vez de 404: un anónimo podía provocar 500 a voluntad (ruido en Sentry y en las métricas). `src/proxy.ts` lo corta
+   * antes de que llegue al enrutador (404 limpio, sin detalles). Hallazgo del #97, corregido acá; ver docs/seguridad-pipeline.md §Hallazgos.
    */
-  test("brecha conocida: un `%` suelto en el slug de la sucursal da 500 en vez de 404", async ({ request }) => {
-    test.fail();
-    for (const slug of ["%25", "abc%25zz", "%25E0%25A4%25A"]) {
-      const r = await request.get(`/carta-publica/${EMPRESA}/${slug}`, { failOnStatusCode: false });
-      expect(r.status(), `/carta-publica/${EMPRESA}/${slug}`).toBe(404);
+  test("un `%` suelto o un escape inválido en la ruta da 404 limpio, no 500", async ({ request }) => {
+    const rutas = [
+      ...["%25", "abc%25zz", "%25E0%25A4%25A", "%zz", "%E0%A4%A", "%ff", "%C0%AF", "a%", "%00"].map((slug) => `/carta-publica/${EMPRESA}/${slug}`),
+      "/carta-publica/%25/x",
+      "/carta-publica/%zz/x",
+      "/carta-publica/%zz",
+      "/catalogo/productos/%zz/editar", // una ruta de la aplicación (autenticada): el segmento roto no llega ni al login
+    ];
+    for (const ruta of rutas) {
+      const r = await request.get(ruta, { failOnStatusCode: false, maxRedirects: 0 });
+      expect(r.status(), ruta).toBe(404);
+      expect(await r.text(), `${ruta}: filtra detalles internos`).not.toMatch(FILTRACION);
     }
+  });
+
+  test("las rutas válidas no cambian: la carta de una sucursal que no existe sigue dando 404 y una ruta autenticada con un `%` bien escapado sigue yendo al login", async ({ request }) => {
+    const sinSucursal = await request.get(`/carta-publica/${EMPRESA}/no-existe`, { failOnStatusCode: false });
+    expect(sinSucursal.status()).toBe(404);
+    // `%25` bien escapado en una ruta de la aplicación no es un error de decodificación: el comportamiento (sin sesión, al login) es el de siempre.
+    const autenticada = await request.get("/catalogo/productos/%25/editar", { failOnStatusCode: false, maxRedirects: 0 });
+    expect([302, 303, 307, 308]).toContain(autenticada.status());
+    expect(autenticada.headers()["location"] ?? "").toContain("/login");
   });
 
   test("reportes con filtros maliciosos en la URL: la pantalla responde sin 500, sin filtrar y sin tocar la base", async ({ paginaAutenticada: page }) => {
@@ -186,6 +201,35 @@ test.describe("parámetros de la URL: sin XSS reflejado, sin redirecciones abier
       }
     }
     expect(await Promise.all([prisma.producto.count(), prisma.movimientoStock.count(), prisma.operacion.count()])).toEqual(antes);
+  });
+});
+
+test.describe("un NUL (`%00`) en la URL de una pantalla con búsqueda o filtros", () => {
+  /**
+   * Postgres no recibe un NUL (error 22021): una búsqueda o un identificador con `%00` llegaba a la consulta y la pantalla caía en «Algo falló al abrir esta pantalla»
+   * (el estado HTTP puede quedar en 200 porque la respuesta ya empezó a enviarse, por eso se mira el CONTENIDO, no solo el estado). `unicosDeUrl` lo saca de todo parámetro.
+   * Hallazgo del #97 (era una «brecha conocida»); ver docs/seguridad-pipeline.md §Hallazgos.
+   */
+  test("las pantallas con búsqueda, filtros, ids y cursores cargan con normalidad", async ({ paginaAutenticada: page }) => {
+    const rutas = [
+      "/catalogo/productos?q=%00",
+      "/catalogo/productos?q=hari%00na",
+      "/catalogo/productos?cursor=%00",
+      "/reportes/trazabilidad?producto=%00",
+      "/reportes/trazabilidad?idOperacion=%00",
+      "/reportes/compras?factura=%00",
+      "/reportes/compras?proveedorId=%00",
+      "/reportes/compras?cursor=%00",
+      "/reportes/historial?productoId=%00",
+      "/reportes/historial?productoId=x&seccionId=%00",
+    ];
+    for (const ruta of rutas) {
+      const r = await page.goto(ruta);
+      expect(r?.status(), ruta).toBeLessThan(500);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByText("Algo falló al abrir esta pantalla"), `${ruta}: cayó en la pantalla de error`).toHaveCount(0);
+      await expect(page.getByRole("heading", { level: 1 }).first(), `${ruta}: no se dibujó la pantalla`).toBeVisible();
+    }
   });
 });
 
