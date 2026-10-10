@@ -201,7 +201,7 @@ describe("M.3-A2: el alcance por sucursal se fija con la empresa, local a la tra
   });
 
   it("un id que no es un id de sucursal, o repetido, FALLA al armar la base (no se corrige ni se filtra): sin comas, comillas, espacios, comodines ni vacíos", () => {
-    for (const malo of ["", "A", "a,b", "a b", "a'b", "a\"b", "*", "a;b", "a\nb", "á", "a-b", "a_b"]) {
+    for (const malo of ["", "a,b", "a b", "a'b", "a\"b", "*", "%", "a;b", "a\nb", "á", "{a}", "a.b", "a|b"]) {
       expect(() => dbDeEmpresa("norte", { lectura: [malo], escritura: [] }), `lectura ${JSON.stringify(malo)}`).toThrow(/forma de un id de sucursal/);
       expect(() => baseDeEmpresa("norte", { lectura: [], escritura: [malo] }), `escritura ${JSON.stringify(malo)}`).toThrow(/forma de un id de sucursal/);
       expect(() => serializarSucursalesDelAlcance([malo])).toThrow(/forma de un id de sucursal/);
@@ -210,6 +210,8 @@ describe("M.3-A2: el alcance por sucursal se fija con la empresa, local a la tra
     expect(() => baseDeEmpresa("norte", { lectura: [], escritura: ["sucuna", "sucdos", "sucuna"] })).toThrow(/repetido/);
     expect(serializarSucursalesDelAlcance([])).toBe("");
     expect(serializarSucursalesDelAlcance(["c1x2y3", "c4z5"])).toBe("c1x2y3,c4z5");
+    // los ids con guiones de las bases de prueba son admitidos (no hay coma ni nada que parta la lista)
+    expect(serializarSucursalesDelAlcance(["S2-sucursal-dos", "suc_uno"])).toBe("S2-sucursal-dos,suc_uno");
   });
 
   it("el alcance que el contexto muestra es el que la base fija: cambiar el objeto original después no lo mueve", async () => {
@@ -224,7 +226,7 @@ describe("M.3-A2: el alcance por sucursal se fija con la empresa, local a la tra
 });
 
 describe("verificarRolDeEjecucion (ADR-022: estricto siempre, sin «una sola empresa» que lo disculpe)", () => {
-  const base = { usuario: "x", superusuario: false, bypassRls: false, duenio: false, contextoPreseteado: false };
+  const base = { usuario: "x", superusuario: false, bypassRls: false, duenio: false, contextoPreseteado: false, miembroDeApp: true };
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -269,6 +271,27 @@ describe("verificarRolDeEjecucion (ADR-022: estricto siempre, sin «una sola emp
     await expect(verificarRolDeEjecucion(prisma)).rejects.toThrow(/trae app\.empresa_id/);
     await expect(verificarRolDeEjecucion(prisma, undefined, true)).rejects.toThrow(/trae app\.empresa_id/);
     await expect(verificarRolDeEjecucion(prisma, { ...base, contextoPreseteado: true }, true)).rejects.toThrow(/preset/);
+  });
+
+  it("M.3-A3: el rol real (motor2_app) es miembro de motor2_app; un rol sin privilegios que NO lo es se avisa a Sentry (hoy) o se niega (cuando se exige), salvo el escape de demo", async () => {
+    expect((await datosDelRolDeEjecucion(prismaSinEmpresa)).miembroDeApp).toBe(true);
+    vi.mocked(reportarErrorUnaVez).mockClear();
+    await verificarRolDeEjecucion(prisma, base, false, true);
+    expect(reportarErrorUnaVez).not.toHaveBeenCalled();
+
+    const ajeno = { ...base, usuario: "otro_rol", miembroDeApp: false };
+    // Hoy (Fase A, sin políticas por sucursal): opera como siempre, pero deja un aviso.
+    await expect(verificarRolDeEjecucion(prisma, ajeno)).resolves.toBeUndefined();
+    expect(reportarErrorUnaVez).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(reportarErrorUnaVez).mock.calls[0][1]).toMatchObject({ message: expect.stringContaining("no es motor2_app ni miembro de él") });
+    // Exigido (Fase B): se niega.
+    await expect(verificarRolDeEjecucion(prisma, ajeno, false, true)).rejects.toThrow(/no es motor2_app ni miembro de él/);
+    // El escape de las herramientas de demo avisa y sigue, también exigido.
+    vi.mocked(reportarErrorUnaVez).mockClear();
+    await expect(verificarRolDeEjecucion(prisma, ajeno, true, true)).resolves.toBeUndefined();
+    expect(reportarErrorUnaVez).toHaveBeenCalledTimes(1);
+    // Un rol privilegiado se sigue negando por privilegiado (no por faltarle motor2_app) y sin escape.
+    await expect(verificarRolDeEjecucion(prisma, { ...ajeno, bypassRls: true }, false, true)).rejects.toThrow(/BYPASSRLS/);
   });
 
   it("M.3-A2: un alcance por sucursal preseteado (app.sucursales_lectura o app.sucursales_escritura) también cuenta como contexto preseteado y se niega SIN escape", async () => {

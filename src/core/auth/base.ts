@@ -9,7 +9,18 @@ import { datosDelRolDeEjecucion, permitirRolPrivilegiado, verificarRolDeEjecucio
  * El ALCANCE POR SUCURSAL de un pedido (M.3, plan `plan-m3-rls-por-sucursal`): en qué sucursales de la empresa puede LEER y en cuáles puede ESCRIBIR lo que
  * hace la base, aparte de la empresa. Es una capacidad general (vale para cualquier rubro con sucursales, locales o puntos de atención), no de un rubro: la fijan
  * `dbDeEmpresa`/`transaccionDeEmpresa`/`baseDeEmpresa` en la transacción (`app.sucursales_lectura`, `app.sucursales_escritura`) y la leen, desde la Fase B, las
- * políticas de las tablas por sucursal. NO existe un valor «todas»: una lista cerrada de ids (`^[a-z0-9]+$`, sin repetidos); ensancharla es de
+ * políticas de las tablas por sucursal. NO existe un valor «todas»: una lista cerrada de ids (`^[A-Za-z0-9_-]+import { prisma } from "@/lib/db";
+import { azarDelProceso } from "@/lib/azar";
+import { numeroEnUnidad } from "@/core/seguridad/azar";
+import type { Prisma, PrismaClient } from "@prisma/client";
+import type { Db, OpcionesTransaccion, Transaccion } from "@/lib/db-tipos";
+import { datosDelRolDeEjecucion, permitirRolPrivilegiado, verificarRolDeEjecucion, type DatosDelRol } from "./rol-de-ejecucion";
+
+/**
+ * El ALCANCE POR SUCURSAL de un pedido (M.3, plan `plan-m3-rls-por-sucursal`): en qué sucursales de la empresa puede LEER y en cuáles puede ESCRIBIR lo que
+ * hace la base, aparte de la empresa. Es una capacidad general (vale para cualquier rubro con sucursales, locales o puntos de atención), no de un rubro: la fijan
+ * `dbDeEmpresa`/`transaccionDeEmpresa`/`baseDeEmpresa` en la transacción (`app.sucursales_lectura`, `app.sucursales_escritura`) y la leen, desde la Fase B, las
+ * políticas de las tablas por sucursal. NO existe un valor «todas»: , sin repetidos); ensancharla es de
  * `src/server/acceso/alcance.ts`, y solo después de que el gate aprobó esa sucursal. Sin alcance (o con listas vacías) las tablas por sucursal no devuelven filas
  * ni aceptan escrituras: falla cerrado. La lectura en SQL es lectura ∪ escritura.
  */
@@ -27,8 +38,11 @@ export interface BaseDelContexto {
   alcance?: AlcanceDeSucursal;
 }
 
-/** La forma de un id de sucursal (`cuid`: minúsculas y dígitos). Es lo único que entra a las listas del alcance: ni comas, ni comillas, ni comodines. */
-const ID_DE_SUCURSAL_EN_EL_ALCANCE = /^[a-z0-9]+$/;
+/**
+ * La forma de un id de sucursal: letras, dígitos, guion y guion bajo (un `cuid` real es solo minúsculas y dígitos; el resto se admite porque las bases de prueba y los datos viejos pueden traer ids con
+ * guiones, y rechazarlos dejaría sin acceso a quien tiene membresía ahí). Es lo único que entra a las listas del alcance: nada que pueda partir la lista ni escaparse de ella (coma, espacio, comillas, llaves, comodines).
+ */
+const ID_DE_SUCURSAL_EN_EL_ALCANCE = /^[A-Za-z0-9_-]+$/;
 
 /**
  * La lista de ids como texto para `set_config` (separados por coma). Falla (no corrige) con un id que no tiene la forma de un id de sucursal o con un id repetido:
@@ -164,6 +178,13 @@ export function baseDeEmpresa(empresaId: string, alcance?: AlcanceDeSucursal): B
   return { db: dbDeEmpresa(empresaId, fijo), transaccion: transaccionDeLaEmpresa(empresaId, fijo), ...(fijo ? { alcance: fijo } : {}) };
 }
 
+/**
+ * ¿Se NIEGA operar con un rol que no es `motor2_app` ni miembro de él? Hoy no (M.3, Fase A): todavía no hay políticas por sucursal que dependan del rol, y negarse apagaría un
+ * despliegue que hoy funciona; solo se avisa a Sentry (una vez por arranque). La primera migración de políticas por sucursal (Fase B, B1) lo pasa a `true`: desde ahí un rol que las
+ * políticas no alcanzan dejaría la separación por sucursal sin efecto, y no se opera (salvo el escape de las herramientas de demo).
+ */
+const EXIGIR_ROL_DE_LA_APP = false;
+
 let datosDelRolDelProceso: Promise<DatosDelRol> | undefined;
 
 /** `verificarRolDeEjecucion` sobre el cliente del proceso (ADR-022: estricto siempre; `MOTOR2_ROL_ESTRICTO=0` es el escape de las herramientas de demo); lee el rol una sola vez. */
@@ -172,5 +193,5 @@ export async function verificarRolDeEjecucionDelProceso(): Promise<void> {
     datosDelRolDelProceso = undefined;
     throw error;
   });
-  await verificarRolDeEjecucion(prisma, await datosDelRolDelProceso, permitirRolPrivilegiado(process.env));
+  await verificarRolDeEjecucion(prisma, await datosDelRolDelProceso, permitirRolPrivilegiado(process.env), EXIGIR_ROL_DE_LA_APP);
 }

@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { baseDeEmpresa, dbDeEmpresa, dbDeUsuario, verificarRolDeEjecucionDelProceso, type BaseDelContexto } from "./base";
+import { baseDeEmpresa, dbDeEmpresa, dbDeUsuario, verificarRolDeEjecucionDelProceso, type AlcanceDeSucursal, type BaseDelContexto } from "./base";
 import { esRolAdmin } from "@/core/permisos/jerarquia";
 import { getUsuarioActual } from "./session";
 
@@ -69,6 +69,15 @@ export type SituacionDeAcceso =
   | { estado: "EMPRESA_SUSPENDIDA"; email: string; nombres: string[] }
   | { estado: "EMPRESA_EN_ALTA"; email: string; nombres: string[] }
   | { estado: "SIN_ACCESO"; email: string };
+
+/**
+ * El alcance por sucursal con el que arranca TODO pedido (M.3, D1 del plan): LEER y ESCRIBIR solo en la sucursal ACTIVA. Que el usuario tenga membresía en otras sucursales no le da
+ * alcance sobre ellas: se ensancha, sucursal por sucursal y después del gate, con `src/server/acceso/alcance.ts`. Sale de la membresía ya validada de la sucursal activa (nunca de
+ * una cookie ni de un parámetro del cliente).
+ */
+function alcanceInicial(sucursalActivaId: string): AlcanceDeSucursal {
+  return { lectura: [sucursalActivaId], escritura: [sucursalActivaId] };
+}
 
 /**
  * Empresa activa y sucursal activa (ADR-007, paso A4).
@@ -140,6 +149,7 @@ export const obtenerSituacionDeAcceso = cache(async (): Promise<SituacionDeAcces
   const membresias = membresiasTodas.filter((m) => m.sucursal.empresaId === empresaActiva.empresaId);
   const sucursalElegida = cookieStore.get(COOKIE_SUCURSAL_ACTIVA)?.value;
   const activa = (sucursalElegida && membresias.find((m) => m.sucursalId === sucursalElegida)) || membresias[0];
+  const alcance = alcanceInicial(activa.sucursalId);
 
   return {
     estado: "CON_EMPRESA",
@@ -157,7 +167,7 @@ export const obtenerSituacionDeAcceso = cache(async (): Promise<SituacionDeAcces
       rolNombre: activa.rol.nombre,
       esAdminEnSucursal: esRolAdmin(activa.rol),
       membresias: membresias.map((m) => ({ sucursalId: m.sucursalId, sucursalNombre: m.sucursal.nombre, rolNombre: m.rol.nombre, esAdmin: esRolAdmin(m.rol) })),
-      ...baseDeEmpresa(empresaActiva.empresaId),
+      ...baseDeEmpresa(empresaActiva.empresaId, alcance),
     },
   };
 });
