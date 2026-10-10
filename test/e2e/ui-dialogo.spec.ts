@@ -9,7 +9,7 @@ import { test, expect } from "./fixtures/auth";
  *  - el resto de la página queda inerte: con Tab y Mayús+Tab el foco nunca llega a un elemento de atrás (puede pasar a la barra del navegador, como en cualquier diálogo nativo);
  *    con Escape se cierra y el foco vuelve al botón que lo abrió;
  *  - un clic en el fondo lo cierra, y uno adentro no;
- *  - en celular (390 px) es una hoja pegada abajo, sin scroll horizontal y con el botón de cerrar de 44 px; en PC (1280 px) está centrado.
+ *  - en celular (390 px) es una hoja pegada abajo, que no agrega scroll horizontal (ni dentro ni a la página) y con el botón de cerrar de 44 px; en PC (1280 px) está centrado.
  */
 // Sin recetas la pantalla ofrece «Crear la primera →»; con recetas, «+ Nueva receta»: es el mismo `Modal`, sirve cualquiera de los dos.
 const ABRIR = /^(\+ Nueva receta|Crear la primera →)$/;
@@ -82,15 +82,26 @@ test("al cerrarse y volverse a abrir, el diálogo arranca limpio (los hijos se m
 
 test("en celular es una hoja pegada abajo, sin scroll horizontal y con el cierre de 44 px; en PC está centrado", async ({ paginaAutenticada: page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  // La PÁGINA de fondo puede tener ya su propio scroll horizontal (menú lateral fijo de 14 rem y tablas anchas de /catalogo/recetas, que aparecen cuando hay recetas cargadas por otros specs:
+  // brecha de responsive de las pantallas existentes, PENDIENTE-PARA-LA-UNION §3.5). Lo que este test afirma es que el DIÁLOGO no agrega ancho: se mide antes y después de abrirlo.
+  await page.goto("/catalogo/recetas");
+  const anchoAntes = await page.evaluate(() => document.documentElement.scrollWidth);
   const { dialogo } = await abrir(page);
   const caja = await dialogo.boundingBox();
   expect(caja).not.toBeNull();
   expect(Math.round(caja!.y + caja!.height), "la hoja termina en el borde inferior de la pantalla").toBe(844);
   expect(caja!.width, "ocupa el ancho de la pantalla (menos nada)").toBeGreaterThanOrEqual(388);
+  // Es `position: fixed`: aunque se pase del borde no agranda el scroll de la página, así que el desborde se mide en la propia caja.
+  expect(caja!.x, "la hoja no se sale por la izquierda").toBeGreaterThanOrEqual(-1);
+  expect(caja!.x + caja!.width, "la hoja no se sale por la derecha").toBeLessThanOrEqual(391);
   const cierre = await dialogo.getByRole("button", { name: "Cerrar" }).boundingBox();
   expect(cierre!.height).toBeGreaterThanOrEqual(44);
   expect(cierre!.width).toBeGreaterThanOrEqual(44);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "scroll horizontal de página").toBe(true);
+  expect(await dialogo.evaluate((el) => el.scrollWidth <= el.clientWidth), "scroll horizontal dentro del diálogo").toBe(true);
+  expect(
+    await page.evaluate((antes) => document.documentElement.scrollWidth <= Math.max(window.innerWidth, antes), anchoAntes),
+    `el diálogo agregó ancho a la página (antes: ${anchoAntes} px)`,
+  ).toBe(true);
   await page.keyboard.press("Escape");
 
   await page.setViewportSize({ width: 1280, height: 800 });
