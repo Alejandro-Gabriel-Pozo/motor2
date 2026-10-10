@@ -184,7 +184,8 @@ module.exports = {
       comment:
         "server/acceso/ (el guard de acceso y sus lectores, ADR-011; Pureza Fase 3 tramo B) lee lo que hace falta y le pasa los hechos a la decisión pura de core/permisos: no importa la UI, ni server/actions, consultas, lecturas ni persistencia, ni lib/db, ni Next, ni la sesión (core/auth: contexto, session, ir-al-login; solo tipos), ni la base por empresa (core/auth/base). El acceso recibe ids y un `db`: nunca lee cookies ni la sesión.",
       severity: "error",
-      from: { path: "^src/server/acceso/" },
+      // M.3-A4: `alcance.ts` (los ensanches del alcance por sucursal) es la ÚNICA excepción, y solo para `core/auth/base`: rearma la base del contexto con otra lista de sucursales. Tiene su regla propia, justo abajo.
+      from: { path: "^src/server/acceso/", pathNot: "^src/server/acceso/alcance\\.ts$" },
       to: {
         path: [
           "^src/(app|components)/",
@@ -192,6 +193,23 @@ module.exports = {
           "^src/lib/db\\.ts$",
           "^node_modules/next/",
           "^src/core/auth/(base|contexto|session|ir-al-login)\\.ts$",
+        ],
+        dependencyTypesNot: ["type-only"],
+      },
+    },
+    {
+      name: "acceso-alcance-capa",
+      comment:
+        "server/acceso/alcance.ts (los ensanches del alcance por sucursal, M.3-A4) cumple todo lo de acceso-capa (no importa la UI, ni server/actions, consultas, lecturas ni persistencia, ni lib/db, ni Next, ni contexto/session/ir-al-login) salvo UNA cosa: importa core/auth/base, porque agrandar el alcance es rearmar la base del contexto (baseDeEmpresa). Lo demás de server/acceso/ sigue sin poder importarla.",
+      severity: "error",
+      from: { path: "^src/server/acceso/alcance\\.ts$" },
+      to: {
+        path: [
+          "^src/(app|components)/",
+          "^src/server/(actions|consultas|lecturas|persistencia)/",
+          "^src/lib/db\\.ts$",
+          "^node_modules/next/",
+          "^src/core/auth/(contexto|session|ir-al-login)\\.ts$",
         ],
         dependencyTypesNot: ["type-only"],
       },

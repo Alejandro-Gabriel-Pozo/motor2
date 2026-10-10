@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import type { Prisma } from "@prisma/client";
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma, baseDeTest } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma, baseDeTest } from "../setup/test-db";
 import type { Transaccion } from "../../src/lib/db-tipos";
 import { guardarVersionDeRecetaCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/guardar-version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -228,7 +228,7 @@ describe("guardar la receta con versión esperada (H7)", () => {
       }
 
       const r = await guardarVersionDeRecetaCasoDeUso(
-        { usuarioId: adminId, sucursalNombre: "Central", db: prisma, transaccion },
+        { usuarioId: adminId, sucursalNombre: "Central", empresaId: EMPRESA_POR_DEFECTO_ID, db: prisma, transaccion },
         { productoId: pvId, items: [linea(mp1Id), linea(mp2Id)], pasos: [], cabecera: {}, versionEsperada: 1 },
         { sucursalId, habilitadaEsperada: true }
       );

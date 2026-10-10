@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
+import { conAlcanceEnSucursal } from "@/server/acceso/alcance";
 import { denegado, requierePermiso, requierePermisoDeEmpresa, type ResultadoGate } from "@/server/acceso/gate";
 import { limitadorMutaciones } from "@/server/actions/limitador-de-mutaciones";
 import { politicaDeEmpresa } from "@/server/acceso/politica-de-empresa";
@@ -49,6 +50,17 @@ export async function conEdicionDePermisos<T extends ResultadoAccion = Resultado
     const politica = await politicaDeEmpresa(ctx.empresaId, ctx.db);
     return politica.permisosEditables ? { ok: true } : denegado({ motivo: "SIN_PERMISO", caso: "POLITICA_DE_PLATAFORMA" });
   }, fn);
+}
+
+/**
+ * Para la acción que ya pasó `conPermiso` (el permiso en la sucursal ACTIVA) y además escribe en OTRA sucursal que le llegó por parámetro (forma `GATE_EN_ESA_SUCURSAL` de GT-4):
+ * pide `accionClave` EN esa sucursal (`requierePermiso`, que mira membresía, rol, módulo y capacidad allí) y, SOLO si lo aprueba, devuelve el contexto con la LECTURA y la ESCRITURA
+ * ensanchadas a ella (M.3-A4, `conAlcanceEnSucursal`); la acción sigue con ese contexto. Si no lo aprueba devuelve el mensaje del gate y el contexto original no se toca.
+ */
+export async function permisoYAlcanceEnSucursal<C extends ContextoUsuario>(ctx: C, sucursalId: string, accionClave: AccionDeSucursal): Promise<{ ok: true; ctx: C } | { ok: false; mensaje: string }> {
+  const gate = await requierePermiso(ctx.usuarioId, sucursalId, accionClave, ctx.db);
+  if (!gate.ok) return { ok: false, mensaje: gate.mensaje };
+  return { ok: true, ctx: conAlcanceEnSucursal(ctx, sucursalId, "LECTURA_Y_ESCRITURA") };
 }
 
 async function conGate<T extends ResultadoAccion>(
