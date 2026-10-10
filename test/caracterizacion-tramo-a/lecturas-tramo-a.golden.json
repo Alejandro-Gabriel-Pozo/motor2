@@ -1751,7 +1751,7 @@
     }
   },
   "carta.resolverCartaPublica(empresa, «central»)": {
-    "consultas": "9: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1, sucursalPublica.findUnique×1",
+    "consultas": "10: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×2, sucursalPublica.findUnique×1",
     "resultado": {
       "carta": {
         "version": 1,
@@ -2041,7 +2041,7 @@
     }
   },
   "carta.resolverCartaPublica(empresa, «norte»: sin tema)": {
-    "consultas": "9: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1, sucursalPublica.findUnique×1",
+    "consultas": "10: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×2, sucursalPublica.findUnique×1",
     "resultado": {
       "carta": {
         "version": 1,
