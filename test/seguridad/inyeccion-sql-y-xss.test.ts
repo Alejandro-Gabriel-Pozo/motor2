@@ -9,6 +9,8 @@ import { altaCliente } from "../../src/server/actions/clientes/cliente";
 import { buscarProductosSelector, darDeAltaProductoRapido, listarProductosPagina } from "../../src/server/actions/catalogo/productos";
 import { guardarContenidoCartaProducto } from "../../src/server/actions/carta/contenido-producto";
 import { buscarProductoParaHistorial, obtenerHistorialProducto } from "../../src/server/consultas/reportes/historial-producto";
+import { buscarOperacionesPorProducto } from "../../src/server/consultas/reportes/trazabilidad";
+import { listarComprasRegistradas } from "../../src/server/consultas/reportes/compras-registradas";
 import { GET as cronDolar } from "../../src/app/api/cron/sincronizar-dolar/route";
 import { GET as cronIpc } from "../../src/app/api/cron/sincronizar-ipc/route";
 
@@ -53,7 +55,7 @@ const PAYLOADS_MALFORMADOS = [
   "_%_%",
 ] as const;
 
-/** Postgres no puede guardar un NUL ni un sustituto UTF-16 suelto: hoy las BÚSQUEDAS no los filtran (brecha conocida, ver el último bloque). */
+/** Postgres no puede guardar un NUL ni un sustituto UTF-16 suelto: las BÚSQUEDAS los sacan antes de consultar (ver el último bloque). */
 const NUL = "nul\u0000byte";
 const SUSTITUTO_SUELTO = "ñandú\uD83D";
 
@@ -133,23 +135,15 @@ describe("seguridad de entradas: SQL injection y XSS contra las acciones reales"
       const filasAntes = await prismaAdmin.producto.count();
 
       // Un texto que no está en ningún nombre ni código: ninguna búsqueda puede devolver filas (salvo los blancos puros, que equivalen a «sin filtro» por diseño).
+      // Tampoco `%` ni `_` (los comodines de LIKE): se buscan como el texto que son, ver el bloque «comodines de LIKE» más abajo.
       const esSoloBlancos = payload.trim() === "";
-      const comodin = /^[%_]+$/.test(payload.trim());
       const selector = await buscarProductosSelector(payload);
       const listado = await listarProductosPagina(undefined, payload);
       const historial = await buscarProductoParaHistorial(sucursalId, payload, prisma);
-      if (!esSoloBlancos && !comodin) {
+      if (!esSoloBlancos) {
         expect(selector, "selector").toEqual([]);
         expect(listado.items, "listado de catálogo").toEqual([]);
         expect(historial, "historial").toEqual([]);
-      }
-      if (comodin) {
-        // `%` y `_` SÍ actúan como comodines LIKE en `contains` (Prisma no los escapa): no es una inyección —no sale del alcance autorizado ni toca otra cosa—,
-        // pero se documenta acá: devuelven, a lo sumo, los productos de la propia empresa.
-        const propios = new Set([harina.id, (await prismaAdmin.producto.findFirstOrThrow({ where: { codigo: "MP_SEC_AZUCAR" } })).id]);
-        for (const fila of selector) expect(propios.has(fila.id), "selector con comodín LIKE").toBe(true);
-        for (const fila of listado.items) expect(propios.has(fila.id), "listado con comodín LIKE").toBe(true);
-        for (const fila of historial) expect(propios.has(fila.productoId), "historial con comodín LIKE").toBe(true);
       }
 
       // Y como identificadores de la consulta con SQL crudo del historial (el único lugar con `$queryRaw` alimentado por la URL): se pasan parametrizados.
@@ -289,23 +283,80 @@ describe("seguridad de entradas: SQL injection y XSS contra las acciones reales"
   });
 
   /**
-   * BRECHA CONOCIDA (hallazgo de este trabajo, sin arreglar a propósito: el arreglo toca `src/core/texto.ts` y `server/consultas`, ver docs/seguridad-pipeline.md §Hallazgos).
-   * Una búsqueda con un NUL (`\u0000`) o un sustituto UTF-16 suelto llega a Postgres/Prisma y revienta con un error sin atrapar (500 en vez de «sin resultados»).
-   * No hay inyección ni fuga de datos —el rol de ejecución no puede hacer nada más— y exige sesión con permiso, pero es una entrada que el servidor tiene que absorber.
-   * `it.fails` mantiene el test en verde mientras la brecha exista y se pone ROJO cuando alguien la arregla: ahí se cambia a `it` y se borra este comentario.
+   * Caracteres que Postgres no admite en un texto (NUL `\u0000`) o que no son texto válido (sustituto UTF-16 suelto): llegaban a Postgres/Prisma y reventaban con un error sin atrapar
+   * (500 en vez de «sin resultados»). Hallazgo del #97 (era una «brecha conocida» con `it.fails`); corregido sacándolos de la BÚSQUEDA en un solo lugar (`textoDeBusqueda`, `src/core/texto.ts`)
+   * y de los parámetros de la URL (`unicosDeUrl`). No hay inyección ni fuga de datos —el rol de ejecución no puede hacer nada más— y exige sesión con permiso, pero es una entrada que el servidor tiene que absorber.
+   * Lo que se GUARDA no se toca: el alta de un nombre con esos caracteres se rechaza (último caso).
    */
-  describe("brecha conocida: caracteres que Postgres no admite en una búsqueda", () => {
-    it.fails.each([["NUL", NUL], ["sustituto suelto", SUSTITUTO_SUELTO]])("selector de productos con %s", async (_n, payload) => {
+  /**
+   * `%` y `_` son comodines de LIKE y `\` su escape: Prisma los pasa tal cual en un `contains`, así que buscar `%` devolvía todo, `pan_i` encontraba también «Pan integral»
+   * y una barra invertida al final escapaba el `%` que Prisma agrega (buscar `\` devolvía lo que contiene un `%`). No era una inyección (nunca sale del alcance de la empresa ni
+   * rompe la consulta), pero la búsqueda no hacía lo que dice. `escaparComodinesLike` (`src/core/texto.ts`) los escapa donde se arma el patrón.
+   */
+  describe("comodines de LIKE (%, _ y \\): se buscan como el texto que son", () => {
+    beforeEach(async () => {
+      for (const [codigo, nombre] of [["MP_CMD_SALSA", "Salsa 100% tomate"], ["MP_CMD_PAN", "Pan_integral"], ["MP_CMD_PANB", "Pan integral"], ["MP_CMD_BARRA", "Cinta\\doble"], ["MP_CMD_HARINA", "Harina"]] as const) {
+        await prismaAdmin.producto.create({ data: { codigo, nombre, tipo: "MP", unidadStockId: unidadId } });
+      }
+    });
+
+    const buscar = async (q: string) => ({
+      selector: (await buscarProductosSelector(q)).map((p) => p.codigo).sort(),
+      listado: (await listarProductosPagina(undefined, q)).items.map((p) => p.codigo).sort(),
+      historial: (await buscarProductoParaHistorial(sucursalId, q, prisma)).map((p) => p.codigo).sort(),
+    });
+    const todas = (codigos: string[]) => ({ selector: codigos, listado: codigos, historial: codigos });
+
+    it.each([
+      ["%", ["MP_CMD_SALSA"]], // antes: los 5
+      ["100%", ["MP_CMD_SALSA"]],
+      ["%00", []], // «%00» como texto, no como escape de URL
+      ["pan_i", ["MP_CMD_PAN"]], // antes: también «Pan integral»
+      ["_", ["MP_CMD_BARRA", "MP_CMD_HARINA", "MP_CMD_PAN", "MP_CMD_PANB", "MP_CMD_SALSA"]], // el guion bajo está en TODOS los códigos: el comodín no cambia el resultado, pero tampoco rompe
+      ["\\", ["MP_CMD_BARRA"]], // antes: lo que contiene un «%» (la barra escapaba el comodín final)
+      ["cinta\\d", ["MP_CMD_BARRA"]],
+      ["a\\", ["MP_CMD_BARRA"]], // «Cint[a\]doble»
+      ["x\\", []],
+      ["\\%", []],
+      ["\\_", []],
+    ] as Array<[string, string[]]>)("buscar %j", async (q, esperados) => {
+      expect(await buscar(q)).toEqual(todas(esperados));
+    });
+
+    it("lo normal sigue igual: sin distinguir mayúsculas ni acentos de la ñ, por nombre y por código", async () => {
+      expect(await buscar("HARINA")).toEqual(todas(["MP_CMD_HARINA"]));
+      expect(await buscar("MP_CMD_PAN")).toEqual(todas(["MP_CMD_PAN", "MP_CMD_PANB"]));
+      expect(await buscar("pan integral")).toEqual(todas(["MP_CMD_PANB"]));
+    });
+  });
+
+  describe("caracteres que Postgres no admite en una búsqueda: se absorben, no revientan", () => {
+    const INVALIDOS = [["NUL", NUL], ["sustituto suelto al final", SUSTITUTO_SUELTO], ["sustituto suelto en el medio", "a\uDE00b"], ["solo NUL", "\u0000"]] as const;
+
+    it.each(INVALIDOS)("selector de productos con %s", async (_n, payload) => {
       await expect(buscarProductosSelector(payload)).resolves.toEqual([]);
     });
-    it.fails.each([["NUL", NUL], ["sustituto suelto", SUSTITUTO_SUELTO]])("listado de catálogo con %s", async (_n, payload) => {
+    it.each(INVALIDOS)("listado de catálogo con %s (y como cursor)", async (_n, payload) => {
       await expect(listarProductosPagina(undefined, payload)).resolves.toMatchObject({ items: [] });
+      await expect(listarProductosPagina(payload)).resolves.toBeDefined();
     });
-    it.fails("búsqueda del historial con NUL", async () => {
-      await expect(buscarProductoParaHistorial(sucursalId, NUL, prisma)).resolves.toEqual([]);
+    it.each(INVALIDOS)("búsqueda del historial con %s", async (_n, payload) => {
+      await expect(buscarProductoParaHistorial(sucursalId, payload, prisma)).resolves.toEqual([]);
     });
-    it("búsqueda del historial con sustituto suelto: ya se maneja", async () => {
-      await expect(buscarProductoParaHistorial(sucursalId, SUSTITUTO_SUELTO, prisma)).resolves.toEqual([]);
+    it.each(INVALIDOS)("trazabilidad por producto con %s", async (_n, payload) => {
+      await expect(buscarOperacionesPorProducto(sucursalId, payload, prisma)).resolves.toEqual([]);
+    });
+    it.each(INVALIDOS)("compras registradas: filtro de factura con %s", async (_n, payload) => {
+      await expect(listarComprasRegistradas(sucursalId, { factura: payload }, prisma)).resolves.toMatchObject({ items: [] });
+    });
+    it("el texto válido no se altera: acentos, ñ y emojis con su par completo siguen encontrando", async () => {
+      await prismaAdmin.producto.create({ data: { codigo: "MP_SEC_NINIO", nombre: "Ñandú café 😀", tipo: "MP", unidadStockId: unidadId } });
+      for (const q of ["Ñandú café 😀", "ñandú", "café 😀", "😀"]) {
+        expect((await buscarProductosSelector(q)).map((p) => p.codigo), q).toEqual(["MP_SEC_NINIO"]);
+        expect((await buscarProductoParaHistorial(sucursalId, q, prisma)).map((p) => p.codigo), q).toEqual(["MP_SEC_NINIO"]);
+      }
+      // Los inválidos mezclados con texto válido buscan lo válido: «ñand\0ú» encuentra «Ñandú».
+      expect((await buscarProductosSelector("ñand\u0000ú\uD83D")).map((p) => p.codigo)).toEqual(["MP_SEC_NINIO"]);
     });
     it("el alta de un nombre con esos caracteres sí se rechaza limpio (la lista blanca de caracteres de catálogo los frena)", async () => {
       for (const payload of [NUL, SUSTITUTO_SUELTO]) {

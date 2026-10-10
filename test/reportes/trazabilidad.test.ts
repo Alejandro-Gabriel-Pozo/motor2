@@ -74,4 +74,18 @@ describe("Trazabilidad", () => {
     expect(porCodigo.length).toBe(1);
     expect(porCodigo[0].idOperacion).toBe(porNombre[0].idOperacion);
   });
+
+  it("buscarOperacionesPorProducto busca el texto TAL CUAL: `%` y `_` no son comodines y una barra invertida no escapa nada", async () => {
+    const salsa = await sembrarProductoDisponible({ codigo: "MP_SALSA", nombre: "Salsa 100% tomate", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const pan = await sembrarProductoDisponible({ codigo: "MP_PAN", nombre: "Pan_integral", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const panBlanco = await sembrarProductoDisponible({ codigo: "MP_PANB", nombre: "Pan integral", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    for (const p of [salsa, pan, panBlanco]) await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p.id, cantidad: 5 }] });
+    const cuantas = async (q: string) => (await buscarOperacionesPorProducto(sucursalId, q, prisma)).length;
+
+    expect(await cuantas("%")).toBe(1); // antes: las 3
+    expect(await cuantas("100%")).toBe(1);
+    expect(await cuantas("pan_i")).toBe(1); // antes: 2 (el «_» comodín también encontraba «Pan integral»)
+    expect(await cuantas("MP_PAN")).toBe(2); // el código con guion bajo sigue encontrándose (y MP_PANB, que empieza igual)
+    expect(await cuantas("\\")).toBe(0); // antes: 1 (la barra escapaba el comodín final y encontraba «Salsa 100% tomate»)
+  });
 });

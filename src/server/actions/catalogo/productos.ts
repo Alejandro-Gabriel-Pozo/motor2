@@ -4,7 +4,7 @@ import type { PrismaClient, TipoProducto } from "@prisma/client";
 import { azarDelProceso } from "@/lib/azar";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
-import { texto } from "@/core/texto";
+import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
@@ -86,7 +86,7 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
     "alta_producto",
     "producto_ver_catalogo",
   ]);
-  const t = texto(termino);
+  const t = textoDeBusqueda(termino);
   const condiciones = [
     ...(filtro?.tipo ? [{ tipo: filtro.tipo }] : []),
     ...(filtro?.soloDisponibles ? [whereDisponibleEn(ctx.sucursalId)] : []),
@@ -95,7 +95,7 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
     ...(filtro?.soloSeProduce ? [{ seProduce: true }] : []),
     ...(filtro?.elegibleParaReceta ? [{ OR: [{ tipo: "PV" as const }, { tipo: "MP" as const, seProduce: true }] }] : []),
     ...(filtro?.esConsignacion !== undefined ? [{ esConsignacion: filtro.esConsignacion }] : []),
-    ...(t ? [{ OR: [{ nombre: { contains: t, mode: "insensitive" as const } }, { codigo: { contains: t, mode: "insensitive" as const } }] }] : []),
+    ...(t ? [{ OR: [{ nombre: { contains: escaparComodinesLike(t), mode: "insensitive" as const } }, { codigo: { contains: escaparComodinesLike(t), mode: "insensitive" as const } }] }] : []),
   ];
   return ctx.db.producto.findMany({
     where: condiciones.length ? { AND: condiciones } : {},
@@ -196,13 +196,15 @@ const TAMANO_PAGINA_CATALOGO = 50;
 /** Tabla de administración de catálogo (`/catalogo/productos`) — paginado por cursor, con búsqueda opcional. Exige el «Ver» de `producto_ver_catalogo`, la clave de esa página (H8). */
 export async function listarProductosPagina(cursor?: string, termino?: string): Promise<PaginaProductos> {
   const ctx = await requerirVerDeEmpresa("producto_ver_catalogo");
-  const t = texto(termino ?? "");
+  const t = textoDeBusqueda(termino);
+  // El cursor es un identificador que puede venir del cliente: sin NUL ni sustitutos sueltos (Postgres no los recibe), y vacío = primera página.
+  const cursorLimpio = cursor ? textoDeBusqueda(cursor) : "";
   const items = await ctx.db.producto.findMany({
-    where: t ? { OR: [{ nombre: { contains: t, mode: "insensitive" } }, { codigo: { contains: t, mode: "insensitive" } }] } : {},
+    where: t ? { OR: [{ nombre: { contains: escaparComodinesLike(t), mode: "insensitive" } }, { codigo: { contains: escaparComodinesLike(t), mode: "insensitive" } }] } : {},
     select: { id: true, codigo: true, nombre: true, tipo: true },
     orderBy: [{ nombre: "asc" }, { id: "asc" }],
     take: TAMANO_PAGINA_CATALOGO + 1,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    ...(cursorLimpio ? { cursor: { id: cursorLimpio }, skip: 1 } : {}),
   });
 
   const hayMas = items.length > TAMANO_PAGINA_CATALOGO;

@@ -1,6 +1,7 @@
 import "server-only";
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
+import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { SIN_PROVEEDOR } from "@/core/reportes/public";
 import { ZONA_UTC, finDelDiaDe, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
 import { TAMANO_PAGINA_COMPRAS, type FiltroCompras, type RenglonCompra, type CompraRegistrada, type PaginaCompras } from "@/core/reportes/public";
@@ -10,7 +11,11 @@ const inicioDelDiaUtc = (fecha: Date): Date => inicioDelDiaDe(fecha, ZONA_UTC);
 const finDelDiaUtc = (fecha: Date): Date => finDelDiaDe(fecha, ZONA_UTC);
 
 export async function listarComprasRegistradas(sucursalId: string, filtro: FiltroCompras = {}, db: Db): Promise<PaginaCompras> {
-  const { desde, hasta, proveedorId, factura, cursor } = filtro;
+  const { desde, hasta } = filtro;
+  // Texto que viene de la URL o del cliente: sin los caracteres que Postgres no recibe (NUL, sustitutos sueltos), también los identificadores.
+  const facturaBuscada = textoDeBusqueda(filtro.factura);
+  const proveedorId = filtro.proveedorId ? textoDeBusqueda(filtro.proveedorId) : undefined;
+  const cursor = filtro.cursor ? textoDeBusqueda(filtro.cursor) : undefined;
 
   const operaciones = await db.operacion.findMany({
     where: {
@@ -18,7 +23,7 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
       proceso: "COMPRA",
       ...(desde || hasta ? { fecha: { ...(desde ? { gte: inicioDelDiaUtc(desde) } : {}), ...(hasta ? { lte: finDelDiaUtc(hasta) } : {}) } } : {}),
       ...(proveedorId === SIN_PROVEEDOR ? { proveedorId: null } : proveedorId ? { proveedorId } : {}),
-      ...(factura?.trim() ? { nroFactura: { contains: factura.trim(), mode: "insensitive" as const } } : {}),
+      ...(facturaBuscada ? { nroFactura: { contains: escaparComodinesLike(facturaBuscada), mode: "insensitive" as const } } : {}),
     },
     include: {
       proveedor: { select: { nombre: true } },
