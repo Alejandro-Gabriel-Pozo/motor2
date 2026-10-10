@@ -52,7 +52,7 @@ interface Declaracion {
 }
 
 /** Cuántas declaraciones pueden estar `PENDIENTE` de cablear su ensanche (A5). Solo baja: cada una que se cablea, baja este número en el mismo commit. */
-const PENDIENTES_MAXIMOS = 3;
+const PENDIENTES_MAXIMOS = 2;
 
 /** `archivo|función` (el archivo desde `src/server/actions`) → a qué se ata el id de sucursal que recibe. Lista CERRADA: una puerta nueva o una que ya no existe falla. */
 const DECLARADAS: Readonly<Record<string, Declaracion>> = {
@@ -63,8 +63,8 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   "auth/usuarios.ts|agregarOActualizarUsuario": {
     ata: "GATE_EN_ESA_SUCURSAL",
     clave: "gestion_usuarios",
-    ensanche: "PENDIENTE",
-    motivo: "`input.sucursalId` es la sucursal donde se agrega al usuario: si no es la activa, la acción pide `gestion_usuarios` EN ESA sucursal (`requierePermiso`) antes del caso de uso",
+    ensanche: "CABLEADO",
+    motivo: "`input.sucursalId` es la sucursal donde se agrega al usuario: si no es la activa, la acción pide `gestion_usuarios` EN ESA sucursal y, solo si se aprueba, ensancha lectura y escritura a ella (`permisoYAlcanceEnSucursal`) antes del caso de uso",
   },
   "catalogo/rendimiento-local.ts|fijarRendimientoLocal": {
     ata: "SUCURSAL_ACTIVA",
