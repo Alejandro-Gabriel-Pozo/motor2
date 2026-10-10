@@ -52,7 +52,7 @@ interface Declaracion {
 }
 
 /** Cuántas declaraciones pueden estar `PENDIENTE` de cablear su ensanche (A5). Solo baja: cada una que se cablea, baja este número en el mismo commit. */
-const PENDIENTES_MAXIMOS = 3;
+const PENDIENTES_MAXIMOS = 0;
 
 /** `archivo|función` (el archivo desde `src/server/actions`) → a qué se ata el id de sucursal que recibe. Lista CERRADA: una puerta nueva o una que ya no existe falla. */
 const DECLARADAS: Readonly<Record<string, Declaracion>> = {
@@ -63,8 +63,8 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   "auth/usuarios.ts|agregarOActualizarUsuario": {
     ata: "GATE_EN_ESA_SUCURSAL",
     clave: "gestion_usuarios",
-    ensanche: "PENDIENTE",
-    motivo: "`input.sucursalId` es la sucursal donde se agrega al usuario: si no es la activa, la acción pide `gestion_usuarios` EN ESA sucursal (`requierePermiso`) antes del caso de uso",
+    ensanche: "CABLEADO",
+    motivo: "`input.sucursalId` es la sucursal donde se agrega al usuario: si no es la activa, la acción pide `gestion_usuarios` EN ESA sucursal y, solo si se aprueba, ensancha lectura y escritura a ella (`permisoYAlcanceEnSucursal`) antes del caso de uso",
   },
   "catalogo/rendimiento-local.ts|fijarRendimientoLocal": {
     ata: "SUCURSAL_ACTIVA",
@@ -87,9 +87,9 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   "carta/copiar-carta.ts|copiarCartaDeSucursal": {
     ata: "MEMBRESIA_EN_ORIGEN",
     clave: "carta_ver",
-    ensanche: "PENDIENTE",
+    ensanche: "CABLEADO",
     evidencia: "src/server/actions/carta/casos-de-uso/copiar-carta-de-sucursal.ts",
-    motivo: "S-07 (O.56): el origen se lee con membresía vigente y «Ver» de la carta ALLÍ (`leerOrigenDeCopia` en el caso de uso)",
+    motivo: "S-07 (O.56): el origen se lee con membresía vigente y «Ver» de la carta ALLÍ (`leerOrigenDeCopia` en el caso de uso); recién después se ensancha la LECTURA a esa sucursal (`conAlcanceEnSucursal`, M.3-A5), nunca la escritura",
   },
   "carta/registro-publico.ts|agregarSucursalAlPortal": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa): administra el registro de todas sus sucursales" },
   "carta/registro-publico.ts|guardarSucursalPublica": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa)" },
@@ -100,8 +100,8 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   "catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": {
     ata: "MEMBRESIA_EN_ORIGEN",
     clave: "receta_sucursal_copiar",
-    ensanche: "PENDIENTE",
-    motivo: "S-07 (O.56): el origen se lee con membresía vigente y «Ver» de la copia ALLÍ (`leerOrigenDeCopia` en la propia acción)",
+    ensanche: "CABLEADO",
+    motivo: "S-07 (O.56): el origen se lee con membresía vigente y «Ver» de la copia ALLÍ (`leerOrigenDeCopia` en la propia acción); recién después se ensancha la LECTURA a esa sucursal (`conAlcanceEnSucursal`, M.3-A5), nunca la escritura",
   },
   "movimientos/lecturas-conteo-fisico.ts|obtenerHistorialConteosFisicos": { ata: "SUCURSAL_CON_GATE", motivo: "`reporte_conteos` EN la sucursal pedida" },
   "movimientos/precio-local.ts|obtenerPrecioLocalProducto": { ata: "SUCURSAL_CON_GATE", motivo: "`precio_local` EN la sucursal pedida" },

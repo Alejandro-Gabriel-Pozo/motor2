@@ -16,6 +16,7 @@ import type { RechazoDeLaPuertaDeReceta } from "@/core/features/catalogo/receta-
 import { guardComandoVolverALaRecetaCentral } from "@/core/features/catalogo/receta-sucursal.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import type { ContextoUsuario } from "@/core/auth/contexto";
+import { conAlcanceEnSucursal } from "@/server/acceso/alcance";
 import { leerOrigenDeCopia } from "@/server/acceso/origen-de-copia";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { conPermiso } from "../con-permiso";
@@ -179,7 +180,9 @@ export async function copiarRecetaPropiaDeOtraSucursal(
     // S-07 (O.56): el origen se lee SOLO con membresía y «Ver» de la copia allá, antes de mirar qué receta tiene (la RLS separa empresas, no sucursales).
     const origen = await leerOrigenDeCopia(ctx, sucursalOrigenId, "receta_sucursal_copiar");
     if (!origen.ok) return error(origen.mensaje);
-    const estadoOrigen = await obtenerEstadoDeRecetaPropia(productoId, sucursalOrigenId, ctx.db);
+    // M.3-A5: recién con el origen aprobado (arriba) se lo puede LEER, con una base de alcance ensanchado solo a su lectura; lo que se guarda (`guardarEnLaPropia`) sigue con el `ctx` de la activa.
+    const lecturaDelOrigen = conAlcanceEnSucursal(ctx, sucursalOrigenId, "LECTURA");
+    const estadoOrigen = await obtenerEstadoDeRecetaPropia(productoId, sucursalOrigenId, lecturaDelOrigen.db);
     if (!estadoOrigen.habilitada || !estadoOrigen.propia) return error(`«${origen.nombre}» no tiene receta propia para este producto: no hay nada que copiar.`);
     return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(estadoOrigen.propia), estadoOrigen.propia, versionVista, habilitadaVista, {
       basadaEnVersionId: estadoOrigen.propia.basadaEnVersionId,

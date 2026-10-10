@@ -16,6 +16,10 @@ import { sucursalesDondeElUsuarioPuedeVer } from "./gate";
  *
  * El caso de uso lo llama con el `db` del contexto (la decisión de acceso no va dentro de la transacción de la copia, como el gate de las otras sucursales de
  * `invitacionGestionable`).
+ *
+ * M.3-A5 (alcance por sucursal): esta función es el GATE del origen y no ensancha nada. Quien la llama, SOLO si devolvió `ok`, ensancha la LECTURA del contexto al origen
+ * (`conAlcanceEnSucursal(…, origen, "LECTURA")`) para leer lo que se copia; la escritura de la copia es siempre de la sucursal activa. El orden lo exige
+ * `ids-de-sucursal-declaran-a-que-se-atan.test.ts` (forma `MEMBRESIA_EN_ORIGEN`, ensanche `CABLEADO`).
  */
 
 const MENSAJE_ORIGEN_NO_ENCONTRADO = "No se encontró esa sucursal.";
