@@ -34,6 +34,15 @@ export function quitarCaracteresInadmisibles(v: string): string {
 }
 
 /**
+ * El texto listo para un `contains` (LIKE/ILIKE) que lo busque TAL CUAL: escapa la barra invertida, el `%` y el `_`, que en un patrón de LIKE son el escape y los comodines. Prisma arma
+ * el patrón como `%<texto>%` y NO los escapa, así que sin esto buscar `%` devolvía todo, `pan_i` encontraba también «Pan integral» y una barra invertida escapaba el `%` final.
+ * (La barra va primero: si no, se escaparía la que acabamos de agregar.) Es solo para buscar con `contains`; no cambia lo que se guarda.
+ */
+export function escaparComodinesLike(v: string): string {
+  return v.replace(/[\\%_]/g, "\\$&");
+}
+
+/**
  * El texto que se le pasa a Postgres en una BÚSQUEDA (`contains`, `ILIKE`, un filtro por identificador que viene de la URL o del cliente): `texto()` más sacar lo que Postgres no recibe.
  * Es el ÚNICO lugar donde se hace; toda lectura con un texto de búsqueda pasa por acá. Es solo para buscar: lo que se GUARDA (nombres, motivos…) sigue pasando por `texto()` y por su
  * validador, que rechaza esos caracteres con un mensaje claro en vez de borrarlos en silencio.

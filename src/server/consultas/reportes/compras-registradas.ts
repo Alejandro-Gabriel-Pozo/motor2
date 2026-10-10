@@ -1,7 +1,7 @@
 import "server-only";
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
-import { textoDeBusqueda } from "@/core/texto";
+import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { SIN_PROVEEDOR } from "@/core/reportes/public";
 import { ZONA_UTC, finDelDiaDe, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
 import { TAMANO_PAGINA_COMPRAS, type FiltroCompras, type RenglonCompra, type CompraRegistrada, type PaginaCompras } from "@/core/reportes/public";
@@ -23,7 +23,7 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
       proceso: "COMPRA",
       ...(desde || hasta ? { fecha: { ...(desde ? { gte: inicioDelDiaUtc(desde) } : {}), ...(hasta ? { lte: finDelDiaUtc(hasta) } : {}) } } : {}),
       ...(proveedorId === SIN_PROVEEDOR ? { proveedorId: null } : proveedorId ? { proveedorId } : {}),
-      ...(facturaBuscada ? { nroFactura: { contains: facturaBuscada, mode: "insensitive" as const } } : {}),
+      ...(facturaBuscada ? { nroFactura: { contains: escaparComodinesLike(facturaBuscada), mode: "insensitive" as const } } : {}),
     },
     include: {
       proveedor: { select: { nombre: true } },

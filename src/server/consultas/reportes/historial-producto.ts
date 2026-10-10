@@ -6,7 +6,7 @@ import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibil
 import { alcanceDeSucursal } from "@/core/catalogo/public";
 import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
 import type { Db } from "@/lib/db-tipos";
-import { textoDeBusqueda } from "@/core/texto";
+import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { redondearCantidad } from "@/core/reportes/public";
 import type { FilaBusquedaProducto, EventoHistorialProducto, FilaMovimientoHistorial, HistorialProducto, IngredienteRecetaVigente } from "@/core/reportes/public";
 
@@ -19,7 +19,7 @@ import type { FilaBusquedaProducto, EventoHistorialProducto, FilaMovimientoHisto
 export async function buscarProductoParaHistorial(sucursalId: string, termino: string, db: Db): Promise<FilaBusquedaProducto[]> {
   const q = textoDeBusqueda(termino);
   const productos = await db.producto.findMany({
-    where: q ? { OR: [{ nombre: { contains: q, mode: "insensitive" } }, { codigo: { contains: q, mode: "insensitive" } }] } : {},
+    where: q ? { OR: [{ nombre: { contains: escaparComodinesLike(q), mode: "insensitive" } }, { codigo: { contains: escaparComodinesLike(q), mode: "insensitive" } }] } : {},
     take: 20,
     orderBy: { nombre: "asc" },
   });

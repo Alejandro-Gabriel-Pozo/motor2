@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { quitarCaracteresInadmisibles, texto, textoDeBusqueda } from "../../src/core/texto";
+import { escaparComodinesLike, quitarCaracteresInadmisibles, texto, textoDeBusqueda } from "../../src/core/texto";
 import { unicosDeUrl } from "../../src/core/datos/parametros-de-url";
 
 /**
@@ -51,6 +51,20 @@ describe("textoDeBusqueda", () => {
 
   it("`texto()` (lo que se GUARDA) no cambia: conserva el NUL, para que una validación lo vea y lo rechace", () => {
     expect(texto("a\u0000b")).toBe("a\u0000b");
+  });
+});
+
+describe("escaparComodinesLike", () => {
+  it("escapa la barra invertida, el % y el _ (la barra primero, sin duplicar lo que agrega)", () => {
+    expect(escaparComodinesLike("%")).toBe("\\%");
+    expect(escaparComodinesLike("_")).toBe("\\_");
+    expect(escaparComodinesLike("\\")).toBe("\\\\");
+    expect(escaparComodinesLike("100% de a_b\\c")).toBe("100\\% de a\\_b\\\\c");
+    expect(escaparComodinesLike("\\%")).toBe("\\\\\\%");
+  });
+
+  it("no toca el resto: letras, acentos, espacios, comillas, signos", () => {
+    for (const t of ["Ñandú café", "Harina 000 (1 kg) & Cía.", "' OR '1'='1", "a-b.c,d/e", ""]) expect(escaparComodinesLike(t)).toBe(t);
   });
 });
 

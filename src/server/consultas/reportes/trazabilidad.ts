@@ -1,6 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
-import { textoDeBusqueda } from "@/core/texto";
+import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import type { DatosOperacion, OperacionEncontrada } from "@/core/reportes/public";
 
 /**
@@ -75,7 +75,7 @@ export async function buscarOperacionesPorProducto(sucursalId: string, termino: 
   const movimientos = await db.movimientoStock.findMany({
     where: {
       seccion: { sucursalId },
-      producto: { OR: [{ nombre: { contains: q, mode: "insensitive" } }, { codigo: { contains: q, mode: "insensitive" } }] },
+      producto: { OR: [{ nombre: { contains: escaparComodinesLike(q), mode: "insensitive" } }, { codigo: { contains: escaparComodinesLike(q), mode: "insensitive" } }] },
     },
     select: { operacionId: true, proceso: true, seccion: { select: { nombre: true } }, operacion: { select: { fecha: true } } },
     orderBy: { operacion: { fecha: "desc" } },

@@ -135,23 +135,15 @@ describe("seguridad de entradas: SQL injection y XSS contra las acciones reales"
       const filasAntes = await prismaAdmin.producto.count();
 
       // Un texto que no está en ningún nombre ni código: ninguna búsqueda puede devolver filas (salvo los blancos puros, que equivalen a «sin filtro» por diseño).
+      // Tampoco `%` ni `_` (los comodines de LIKE): se buscan como el texto que son, ver el bloque «comodines de LIKE» más abajo.
       const esSoloBlancos = payload.trim() === "";
-      const comodin = /^[%_]+$/.test(payload.trim());
       const selector = await buscarProductosSelector(payload);
       const listado = await listarProductosPagina(undefined, payload);
       const historial = await buscarProductoParaHistorial(sucursalId, payload, prisma);
-      if (!esSoloBlancos && !comodin) {
+      if (!esSoloBlancos) {
         expect(selector, "selector").toEqual([]);
         expect(listado.items, "listado de catálogo").toEqual([]);
         expect(historial, "historial").toEqual([]);
-      }
-      if (comodin) {
-        // `%` y `_` SÍ actúan como comodines LIKE en `contains` (Prisma no los escapa): no es una inyección —no sale del alcance autorizado ni toca otra cosa—,
-        // pero se documenta acá: devuelven, a lo sumo, los productos de la propia empresa.
-        const propios = new Set([harina.id, (await prismaAdmin.producto.findFirstOrThrow({ where: { codigo: "MP_SEC_AZUCAR" } })).id]);
-        for (const fila of selector) expect(propios.has(fila.id), "selector con comodín LIKE").toBe(true);
-        for (const fila of listado.items) expect(propios.has(fila.id), "listado con comodín LIKE").toBe(true);
-        for (const fila of historial) expect(propios.has(fila.productoId), "historial con comodín LIKE").toBe(true);
       }
 
       // Y como identificadores de la consulta con SQL crudo del historial (el único lugar con `$queryRaw` alimentado por la URL): se pasan parametrizados.
@@ -296,6 +288,48 @@ describe("seguridad de entradas: SQL injection y XSS contra las acciones reales"
    * y de los parámetros de la URL (`unicosDeUrl`). No hay inyección ni fuga de datos —el rol de ejecución no puede hacer nada más— y exige sesión con permiso, pero es una entrada que el servidor tiene que absorber.
    * Lo que se GUARDA no se toca: el alta de un nombre con esos caracteres se rechaza (último caso).
    */
+  /**
+   * `%` y `_` son comodines de LIKE y `\` su escape: Prisma los pasa tal cual en un `contains`, así que buscar `%` devolvía todo, `pan_i` encontraba también «Pan integral»
+   * y una barra invertida al final escapaba el `%` que Prisma agrega (buscar `\` devolvía lo que contiene un `%`). No era una inyección (nunca sale del alcance de la empresa ni
+   * rompe la consulta), pero la búsqueda no hacía lo que dice. `escaparComodinesLike` (`src/core/texto.ts`) los escapa donde se arma el patrón.
+   */
+  describe("comodines de LIKE (%, _ y \\): se buscan como el texto que son", () => {
+    beforeEach(async () => {
+      for (const [codigo, nombre] of [["MP_CMD_SALSA", "Salsa 100% tomate"], ["MP_CMD_PAN", "Pan_integral"], ["MP_CMD_PANB", "Pan integral"], ["MP_CMD_BARRA", "Cinta\\doble"], ["MP_CMD_HARINA", "Harina"]] as const) {
+        await prismaAdmin.producto.create({ data: { codigo, nombre, tipo: "MP", unidadStockId: unidadId } });
+      }
+    });
+
+    const buscar = async (q: string) => ({
+      selector: (await buscarProductosSelector(q)).map((p) => p.codigo).sort(),
+      listado: (await listarProductosPagina(undefined, q)).items.map((p) => p.codigo).sort(),
+      historial: (await buscarProductoParaHistorial(sucursalId, q, prisma)).map((p) => p.codigo).sort(),
+    });
+    const todas = (codigos: string[]) => ({ selector: codigos, listado: codigos, historial: codigos });
+
+    it.each([
+      ["%", ["MP_CMD_SALSA"]], // antes: los 5
+      ["100%", ["MP_CMD_SALSA"]],
+      ["%00", []], // «%00» como texto, no como escape de URL
+      ["pan_i", ["MP_CMD_PAN"]], // antes: también «Pan integral»
+      ["_", ["MP_CMD_BARRA", "MP_CMD_HARINA", "MP_CMD_PAN", "MP_CMD_PANB", "MP_CMD_SALSA"]], // el guion bajo está en TODOS los códigos: el comodín no cambia el resultado, pero tampoco rompe
+      ["\\", ["MP_CMD_BARRA"]], // antes: lo que contiene un «%» (la barra escapaba el comodín final)
+      ["cinta\\d", ["MP_CMD_BARRA"]],
+      ["a\\", ["MP_CMD_BARRA"]], // «Cint[a\]doble»
+      ["x\\", []],
+      ["\\%", []],
+      ["\\_", []],
+    ] as Array<[string, string[]]>)("buscar %j", async (q, esperados) => {
+      expect(await buscar(q)).toEqual(todas(esperados));
+    });
+
+    it("lo normal sigue igual: sin distinguir mayúsculas ni acentos de la ñ, por nombre y por código", async () => {
+      expect(await buscar("HARINA")).toEqual(todas(["MP_CMD_HARINA"]));
+      expect(await buscar("MP_CMD_PAN")).toEqual(todas(["MP_CMD_PAN", "MP_CMD_PANB"]));
+      expect(await buscar("pan integral")).toEqual(todas(["MP_CMD_PANB"]));
+    });
+  });
+
   describe("caracteres que Postgres no admite en una búsqueda: se absorben, no revientan", () => {
     const INVALIDOS = [["NUL", NUL], ["sustituto suelto al final", SUSTITUTO_SUELTO], ["sustituto suelto en el medio", "a\uDE00b"], ["solo NUL", "\u0000"]] as const;
 
