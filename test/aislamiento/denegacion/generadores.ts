@@ -229,6 +229,7 @@ const parametros: Record<string, Record<string, Valor>> = {
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoOpcion": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoPorId": { id: (k) => k.productoId },
+  "consulta|consultas/catalogo/productos.ts|obtenerUnidadesDelProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/proveedores.ts|obtenerFichaProveedor": { id: (k) => k.proveedorId },
   "consulta|consultas/catalogo/proveedores.ts|obtenerProveedorPorId": { id: (k) => k.proveedorId },
   // Estos ayudantes de gobierno reciben el usuario OBJETIVO (el que el cliente eligió), no el actor: en la matriz es el de otra empresa.

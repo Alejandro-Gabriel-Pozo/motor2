@@ -100,6 +100,11 @@ describe("GT-11 — números y arreglos del cliente: un guard de comando con ran
     // sin números ni arreglos no es una entrada; un archivo sin "use server" tampoco
     expect(entradasDeLasAcciones("x.ts", '"use server";\nexport async function a(id: string, ok: boolean) {}', indice)).toEqual([]);
     expect(entradasDeLasAcciones("x.ts", "export async function a(n: number) {}", indice)).toEqual([]);
+    // M.2-A4: un alias armado con `Omit<…> & Partial<Pick<…>>` de un tipo nombrado también aporta sus miembros (antes la edición de un producto, que recibe `DatosProductoEdicion`, dejaba de verse)
+    const conUtilitarios = indiceDeMiembros(["export interface Base { precio: number; tags: string[]; ok: boolean }", 'export type Edicion = Omit<Base, "precio"> & Partial<Pick<Base, "precio">>']);
+    const delAlias = entradasDeLasAcciones("x.ts", '"use server";\nexport async function editar(d: Edicion) {}', conUtilitarios)[0]!;
+    expect(delAlias.numericos).toEqual(["d.precio"]);
+    expect(delAlias.arreglos).toEqual(["d.tags[]"]);
     // un tipo que se llama a sí mismo no cuelga el recorrido
     const ciclo = indiceDeMiembros(["export interface Nodo { valor: number; hijos: Nodo[] }"]);
     const delCiclo = entradasDeLasAcciones("x.ts", '"use server";\nexport async function a(n: Nodo) {}', ciclo)[0]!;

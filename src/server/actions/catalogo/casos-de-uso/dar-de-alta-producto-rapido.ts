@@ -46,7 +46,8 @@ export async function darDeAltaProductoRapidoCasoDeUso(
     );
     // Sin formulario donde poner el tilde de §4.1 — sigue su mismo default: activo en todas las sucursales que existen hoy.
     const sucursalIds = (await actor.db.sucursal.findMany({ select: { id: true } })).map((s) => s.id);
-    await sembrarDisponibilidadDeProductoNuevo(actor.db, { productoId: producto.id, sucursalIds });
+    // Siempre una MP (no se vende: el POS solo pide PV), así que no hay precio que proteger y nace disponible (M.2-A4: el PV sin `producto_campos_sensibles` es el que nace apagado, en `dar-de-alta-producto.ts`).
+    await sembrarDisponibilidadDeProductoNuevo(actor.db, { productoId: producto.id, sucursalIds, disponible: true });
     return exito(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, { id: producto.id, nombre: producto.nombre });
   } catch (e) {
     if (esErrorDeUnicidad(e)) return fracaso("CODIGO_REPETIDO", "Ya existe un producto con ese código.");

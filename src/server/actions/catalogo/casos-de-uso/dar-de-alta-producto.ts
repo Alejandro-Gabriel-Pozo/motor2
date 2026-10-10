@@ -34,10 +34,14 @@ import { crearProductoNuevo, sembrarDisponibilidadDeProductoNuevo } from "@/serv
  * M.2 (D-2 del dueño): sin `producto_campos_sensibles` (`puedeEditarCamposSensibles`, que calcula la Server Action) el alta no puede traer precio de venta distinto de 0, factor de conversión distinto de 1 ni unidad de compra:
  * `SIN_PERMISO_CAMPOS_SENSIBLES`, fallo cerrado y antes de leer o escribir nada. La unidad de stock queda libre.
  *
+ * M.2-A4 (auditoría de P6, importante; SUPUESTO declarado, el dueño lo corrige si no): sin esa clave el producto de venta (PV) nace con precio 0 y NO se puede vender hasta que alguien con la clave le cargue el precio
+ * y alguien con `producto_disponibilidad` lo active: se siembra la disponibilidad APAGADA (`disponible: false`) en las sucursales que pedía el tilde, y el POS y la carta pública (que listan solo lo disponible) no lo
+ * ofrecen. Una materia prima no se vende: no cambia.
+ *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos. No lee el azar por su cuenta: lo recibe (`azar`).
  *
- * @contract Crea el producto (con un código único) y lo deja disponible donde pide el tilde, salvo que los datos no sean válidos o ya haya uno disponible con ese nombre; devuelve su id y su nombre.
- * @idempotency Por estado — repetir el pedido encuentra el producto ya disponible con ese nombre y se rechaza: no crea otro.
+ * @contract Crea el producto (con un código único) y lo deja disponible donde pide el tilde (un PV sin `producto_campos_sensibles`, en ninguna), salvo que los datos no sean válidos o ya haya uno disponible con ese nombre; devuelve su id y su nombre.
+ * @idempotency Por estado — repetir el pedido encuentra el producto ya disponible con ese nombre y se rechaza: no crea otro (y si el primero nació apagado, el índice único del nombre de la base lo rechaza igual, con el mensaje del código repetido).
  * @transaction Ninguna, a propósito: el reintento del código autogenerado necesita que el INSERT fallido no aborte nada; la disponibilidad va después, con `actor.db`.
  * @sideEffects Ninguno (el alta no se audita: excepciones `crearProductoNuevo` y `sembrarDisponibilidadDeProductoNuevo` de escrituras-auditadas; cada cambio posterior del precio lo audita la edición).
  * @ficha permiso=alta_producto transaccion=NINGUNA idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
@@ -71,6 +75,8 @@ export async function darDeAltaProductoCasoDeUso(
   }
   const validado = await validarDatosDeProducto(actor.db, datos, undefined, puerta);
   if ("error" in validado) return fracaso("DATOS_INVALIDOS", validado.error);
+  // M.2-A4: un PV sin la clave nace sin precio y apagado (ver arriba). Repetir el envío no crea otro: el índice único del nombre (sin distinguir mayúsculas) de la base lo rechaza aunque el primero no esté disponible.
+  const naceApagado = datos.tipo === "PV" && !puedeEditarCamposSensibles;
 
   try {
     const producto = await crearConCodigoAutogenerado(
@@ -81,8 +87,13 @@ export async function darDeAltaProductoCasoDeUso(
     );
     const sucursalIds =
       datos.activoEnTodasLasSucursales !== false ? (await actor.db.sucursal.findMany({ select: { id: true } })).map((s) => s.id) : [actor.sucursalId];
-    await sembrarDisponibilidadDeProductoNuevo(actor.db, { productoId: producto.id, sucursalIds });
-    return exito(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, { id: producto.id, nombre: producto.nombre });
+    await sembrarDisponibilidadDeProductoNuevo(actor.db, { productoId: producto.id, sucursalIds, disponible: !naceApagado });
+    return exito(
+      naceApagado
+        ? `Producto "${producto.nombre}" (${producto.codigo}) creado con precio $0: no queda disponible para vender hasta que alguien con el permiso «campos sensibles del producto» (producto_campos_sensibles) le cargue el precio y lo active.`
+        : `Producto "${producto.nombre}" (${producto.codigo}) creado.`,
+      { id: producto.id, nombre: producto.nombre },
+    );
   } catch (e) {
     if (esErrorDeUnicidad(e)) return fracaso("CODIGO_REPETIDO", "Ya existe un producto con ese código.");
     // O.175: un id de OTRA empresa (o inexistente) en la categoría, el insumo, las unidades o el proveedor lo rechaza la clave foránea compuesta de la base: se traduce a «No se encontró …». Sin transacción acá, el INSERT fallido no aborta nada.

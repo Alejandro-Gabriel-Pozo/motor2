@@ -241,4 +241,76 @@ describe("M.2: precio, factor y unidades de un producto son de quien tiene produ
       expect(await guardado()).toEqual(ORIGINAL());
     });
   });
+
+  /**
+   * M.2-A4 (B), el caso INVERSO: el formulario abierto SIN la clave no manda precio, factor ni unidades; si mientras edita le dan la clave, el servidor (ya con la clave) tiene que completar lo que no viene con lo
+   * guardado, igual que sin ella. Antes rechazaba «La unidad de stock es obligatoria.» y, peor, un precio ausente se escribía como 0 (`?? 0` de `validarDatosDeProducto`). «Ausente» (`undefined`) no es «presente
+   * igual» ni «presente distinto»: el rechazo de un valor que VIENE distinto, sin la clave, no cambia.
+   */
+  describe("M.2-A4 (B): un campo ausente CON la clave también queda como estaba", () => {
+    const CAMPOS = ["precioVenta", "unidadCompraId", "factorConversion", "unidadStockId"] as const;
+    const CON_CLAVE: [string, () => Promise<void>][] = [
+      ["el administrador", () => como(adminId, "admin@test.com")],
+      ["un rol propio con la clave delegada", () => como(conClaveId, "precios@test.com")],
+    ];
+
+    for (const [quien, actuar] of CON_CLAVE) {
+      it.each(CAMPOS)(`${quien}, con %s ausente: se guarda el resto y ese campo queda como estaba (sin auditoría)`, async (campo) => {
+        await actuar();
+        const r = await actualizarProducto(quesoId, await datosSin(campo));
+        expect(r.ok, r.mensaje).toBe(true);
+        expect(await guardado()).toEqual({ ...ORIGINAL(), nombre: "Queso cremoso" });
+        expect(await auditorias(campo)).toBe(0);
+      });
+    }
+
+    it("los cuatro ausentes a la vez (el formulario abierto sin la clave, guardado ya con ella): se guarda el nombre y nada más", async () => {
+      await como(adminId, "admin@test.com");
+      const r = await actualizarProducto(quesoId, await datosSin(...CAMPOS));
+      expect(r.ok, r.mensaje).toBe(true);
+      expect(await guardado()).toEqual({ ...ORIGINAL(), nombre: "Queso cremoso" });
+      expect(await auditorias()).toBe(0);
+    });
+
+    it("el precio ausente NO se escribe como 0 aunque quien edita tenga la clave (antes: precioVenta ?? 0)", async () => {
+      await como(adminId, "admin@test.com");
+      expect((await actualizarProducto(quesoId, await datosSin("precioVenta"))).ok).toBe(true);
+      expect((await guardado()).precioVenta).toBe(PRECIO);
+    });
+
+    it("lo ausente toma lo guardado AHORA, no lo que el formulario vio al abrirse: si otra persona cambió el precio, se conserva el nuevo", async () => {
+      await prismaAdmin.producto.update({ where: { id: quesoId }, data: { precioVenta: 650 } });
+      await como(adminId, "admin@test.com");
+      expect((await actualizarProducto(quesoId, await datosSin("precioVenta"))).ok).toBe(true);
+      expect((await guardado()).precioVenta).toBe(650);
+    });
+
+    it("ausente no es «presente»: `null` en la unidad de compra SIGUE siendo «sin unidad de compra» para quien tiene la clave (se borra y queda auditado)", async () => {
+      await como(adminId, "admin@test.com");
+      expect((await actualizarProducto(quesoId, await datos({ unidadCompraId: null }))).ok).toBe(true);
+      expect((await guardado()).unidadCompraId).toBeNull();
+      expect(await auditorias("unidadCompraId")).toBe(1);
+    });
+
+    it("un campo PRESENTE pero vacío sigue rechazándose como siempre: la unidad de stock en blanco no se completa", async () => {
+      await como(adminId, "admin@test.com");
+      const r = await actualizarProducto(quesoId, await datos({ unidadStockId: "" }));
+      expect(r.ok).toBe(false);
+      expect(r.mensaje).toContain("La unidad de stock es obligatoria.");
+      expect(await guardado()).toEqual(ORIGINAL());
+    });
+
+    it("sin la clave, el valor que VIENE distinto se rechaza igual que antes, aunque otros campos sensibles vengan ausentes", async () => {
+      const r = await actualizarProducto(quesoId, { ...(await datosSin("unidadCompraId", "factorConversion")), precioVenta: 1 });
+      expect(r.ok).toBe(false);
+      expect(r.mensaje).toContain(MENSAJE);
+      expect(await guardado()).toEqual(ORIGINAL());
+    });
+
+    it("la edición con la clave y los cuatro valores presentes no cambia (control)", async () => {
+      await como(adminId, "admin@test.com");
+      expect((await actualizarProducto(quesoId, await datos({ nombre: "Queso cremoso", precioVenta: 600 }))).ok).toBe(true);
+      expect(await guardado()).toEqual({ ...ORIGINAL(), nombre: "Queso cremoso", precioVenta: 600 });
+    });
+  });
 });

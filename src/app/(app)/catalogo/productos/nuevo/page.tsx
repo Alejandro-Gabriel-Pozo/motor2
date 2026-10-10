@@ -5,7 +5,8 @@ import { obtenerMiNivelPermiso, requierePermisoDeEmpresa, requierePermisoVerDeEm
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { contarSucursales } from "@/server/consultas/catalogo/productos";
 import { ProductoForm } from "../producto-form";
-import { cargarOpcionesFormularioProducto, puedeEditarCamposSensiblesDelProducto } from "../opciones-formulario";
+import { cargarOpcionesFormularioProducto } from "../opciones-formulario";
+import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 
 /** Alta de un producto nuevo. Al guardar, lleva a la ficha del producto creado. */
 export default async function NuevoProductoPage() {

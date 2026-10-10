@@ -32,6 +32,16 @@ export interface EntradaProducto {
   activoEnTodasLasSucursales?: boolean;
 }
 
+/** M.2: los cuatro datos del producto que protege `producto_campos_sensibles` (el precio de venta, el factor de conversión y las dos unidades). */
+export type CampoSensibleDelProducto = "unidadCompraId" | "unidadStockId" | "factorConversion" | "precioVenta";
+
+/**
+ * Los datos de una EDICIÓN (M.2-A4): como `EntradaProducto`, pero los cuatro campos sensibles son opcionales. «No viene» (`undefined`) es «queda como estaba»: el formulario abierto sin
+ * `producto_campos_sensibles` no los manda (un input deshabilitado no viaja), y si mientras edita le dan la clave el servidor, con la clave, los completa igual con lo guardado. Distinto de `null` en
+ * la unidad de compra, que es «sin unidad de compra» a propósito. El alta NO los acepta ausentes (`EntradaProducto`).
+ */
+export type EntradaEdicionProducto = Omit<EntradaProducto, CampoSensibleDelProducto> & Partial<Pick<EntradaProducto, CampoSensibleDelProducto>>;
+
 /**
  * El resultado de `guardComandoDatosDeProducto` (S-52), POR ETAPA: lo que decide el formato y el rango de los datos de un producto sin mirar la base. `validarDatosDeProducto` aplica
  * cada etapa en el lugar donde antes vivía su chequeo —`antesDeLaUnidad` antes de leer la unidad de stock; las demás después de leerla, en el orden de siempre—, así un dato inválido
@@ -78,11 +88,12 @@ export type ResultadoDarDeAltaProducto = ResultadoCaso<
  * no viene queda como estaba, uno distinto es `SIN_PERMISO_COSTO`.
  *
  * M.2: `puedeEditarCamposSensibles` dice si quien lo pide tiene `producto_campos_sensibles` EDITAR (la clave fina del precio de venta, el factor de conversión y las unidades; la calcula la Server
- * Action con el gate, el caso de uso no chequea permisos). Sin ella, un campo sensible que no viene queda como estaba y uno distinto del guardado es `SIN_PERMISO_CAMPOS_SENSIBLES`.
+ * Action con el gate, el caso de uso no chequea permisos). Sin ella, uno distinto del guardado es `SIN_PERMISO_CAMPOS_SENSIBLES`. Un campo sensible que no viene (`undefined`) queda como estaba, TENGA O NO la clave
+ * (M.2-A4: el formulario abierto sin la clave no los manda, y la clave puede llegar mientras edita).
  */
 export interface ComandoActualizarProducto {
   productoId: string;
-  datos: EntradaProducto;
+  datos: EntradaEdicionProducto;
   puerta: PuertaDeDatosDeProducto;
   puedeGestionarConsignacion: boolean;
   puedeEditarCamposSensibles: boolean;
