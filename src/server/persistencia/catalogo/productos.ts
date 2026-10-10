@@ -69,13 +69,17 @@ export async function fijarPrecioVentaDeProducto(db: Prisma.TransactionClient, a
 }
 
 /**
- * Siembra la disponibilidad de un producto RECIÉN creado: una fila `disponible: true` por cada sucursal pedida. Va DESPUÉS de crear el producto, fuera de una
- * transacción con él (ver `dar-de-alta-producto.ts`). NO se audita por diseño (excepción `persistencia/catalogo/productos.ts|sembrarDisponibilidadDeProductoNuevo`
+ * Siembra la disponibilidad de un producto RECIÉN creado: una fila por cada sucursal pedida, con `disponible` (M.2-A4: `false` para un producto de venta dado de alta sin
+ * `producto_campos_sensibles`, que nace sin precio y no se puede vender hasta que alguien lo active; la fila existe igual, así la ficha y el catálogo muestran «0 de N»). Va DESPUÉS
+ * de crear el producto, fuera de una transacción con él (ver `dar-de-alta-producto.ts`). NO se audita por diseño (excepción `persistencia/catalogo/productos.ts|sembrarDisponibilidadDeProductoNuevo`
  * de escrituras-auditadas): es parte del alta, no hay valor anterior; cada cambio posterior lo audita `actualizarDisponibilidadProducto`.
  */
-export async function sembrarDisponibilidadDeProductoNuevo(db: Prisma.TransactionClient, args: { productoId: string; sucursalIds: readonly string[] }): Promise<void> {
+export async function sembrarDisponibilidadDeProductoNuevo(
+  db: Prisma.TransactionClient,
+  args: { productoId: string; sucursalIds: readonly string[]; disponible: boolean },
+): Promise<void> {
   await db.disponibilidadProducto.createMany({
-    data: args.sucursalIds.map((sucursalId) => ({ sucursalId, productoId: args.productoId, disponible: true })),
+    data: args.sucursalIds.map((sucursalId) => ({ sucursalId, productoId: args.productoId, disponible: args.disponible })),
   });
 }
 

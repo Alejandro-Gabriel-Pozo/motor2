@@ -9,7 +9,8 @@ import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
-import { AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
+import { AvisoAltaSinPrecio, AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
+import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import { darDeAltaProducto, actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
 import { crearInsumo } from "@/server/actions/catalogo/insumos";
@@ -24,7 +25,12 @@ interface Opcion {
 interface OpcionUnidad extends Opcion {
   /** 0-6: cuántos decimales admite — para validar `factorConversion` con el mismo criterio del servidor (validarCantidad). */
   decimales: number;
+  /** M.2-A4 (D): una unidad que el producto usa pero se desactivó (la edición la incluye para no mostrarla como «sin unidad» ni borrarla al guardar). Se ve con «(inactiva)» y no se ofrece para presentaciones nuevas. */
+  inactiva?: boolean;
 }
+
+/** El nombre de la unidad como se ve en el formulario: las inactivas llevan «(inactiva)». */
+const etiquetaDeUnidad = (u: OpcionUnidad) => (u.inactiva ? `${u.nombre} (inactiva)` : u.nombre);
 
 export interface ProductoExistente extends DatosProducto {
   id: string;
@@ -32,12 +38,10 @@ export interface ProductoExistente extends DatosProducto {
 }
 
 /** M.2: los cuatro datos del producto que protege `producto_campos_sensibles` (el precio de venta, el factor de conversión y las dos unidades). */
-type CampoSensible = "unidadCompraId" | "unidadStockId" | "factorConversion" | "precioVenta";
+type DatosSensibles = Pick<DatosProducto, CampoSensibleDelProducto>;
 
-/** Lo que arma el formulario: sin la clave fina, en la EDICIÓN esos cuatro campos no viajan («no viene» es «no cambia» en el servidor), por eso son opcionales acá y no en `DatosProducto`. */
-type DatosDelFormulario = Omit<DatosProducto, CampoSensible> & Partial<Pick<DatosProducto, CampoSensible>>;
-
-const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
+/** Plata siempre con dos decimales ($3.200,00, $1.234,50): es dinero, y «$1.234,5» se lee mal. */
+const pesos = (n: number) => `$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function ProductoForm({
   unidades,
@@ -99,7 +103,12 @@ export function ProductoForm({
   const editando = Boolean(productoExistente);
   // M.2: en el alta la unidad de stock queda libre aun sin la clave (sin ella no hay producto); en la edición es de quien tiene `producto_campos_sensibles`.
   const unidadDeStockEditable = puedeEditarCamposSensibles || !editando;
-  const nombreDeUnidad = (id: string | null | undefined) => unidades.find((u) => u.id === id)?.nombre;
+  // M.2-A4: un producto de venta dado de alta SIN la clave nace con precio $0 y el servidor lo deja NO disponible en ninguna sucursal (no se puede vender a $0): el tilde se ve apagado y sin poder cambiarse.
+  const naceSinPoderVenderse = !editando && tipo === "PV" && !puedeEditarCamposSensibles;
+  const nombreDeUnidad = (id: string | null | undefined) => {
+    const u = unidades.find((x) => x.id === id);
+    return u ? etiquetaDeUnidad(u) : undefined;
+  };
   const irALaFicha = (id: string | null) => router.push(id ? `/catalogo/productos/${id}?guardado=${editando ? "cambios" : "alta"}` : "/catalogo/productos");
 
   return (
@@ -108,24 +117,21 @@ export function ProductoForm({
         e.preventDefault();
         const form = new FormData(e.currentTarget);
         // M.2: con la clave van los cuatro campos sensibles del formulario. Sin ella, el alta manda lo único que el servidor acepta (precio 0, factor 1, sin unidad de compra; la unidad de stock es libre) y la
-        // edición no los manda: el servidor completa lo que no viene con lo guardado, así que ni siquiera una pantalla vieja puede devolver al valor viejo lo que otra persona cambió.
-        const sensibles: Partial<Pick<DatosProducto, CampoSensible>> = puedeEditarCamposSensibles
-          ? {
-              unidadCompraId: texto(form.get("unidadCompraId")) || null,
-              unidadStockId,
-              // numeroDelCampo: vacío → undefined (nunca 0 por un campo required sin tocar), texto inválido → NaN (el servidor lo rechaza).
-              factorConversion: numeroDelCampo(String(form.get("factorConversion") ?? "")) ?? Number.NaN,
-              precioVenta: numeroDelCampo(String(form.get("precioVenta") ?? "")) ?? 0,
-            }
-          : editando
-            ? {}
-            : { unidadCompraId: null, unidadStockId, factorConversion: 1, precioVenta: 0 };
-        const datos: DatosDelFormulario = {
+        // edición no los manda: el servidor completa lo que no viene con lo guardado (con o sin la clave), así que ni siquiera una pantalla vieja puede devolver al valor viejo lo que otra persona cambió.
+        const delFormulario: DatosSensibles = {
+          unidadCompraId: texto(form.get("unidadCompraId")) || null,
+          unidadStockId,
+          // numeroDelCampo: vacío → undefined (nunca 0 por un campo required sin tocar), texto inválido → NaN (el servidor lo rechaza).
+          factorConversion: numeroDelCampo(String(form.get("factorConversion") ?? "")) ?? Number.NaN,
+          precioVenta: numeroDelCampo(String(form.get("precioVenta") ?? "")) ?? 0,
+        };
+        const sensiblesDelAlta: DatosSensibles = puedeEditarCamposSensibles ? delFormulario : { unidadCompraId: null, unidadStockId, factorConversion: 1, precioVenta: 0 };
+        const sensiblesDeLaEdicion: Partial<DatosSensibles> = puedeEditarCamposSensibles ? delFormulario : {};
+        const datos: Omit<DatosProducto, CampoSensibleDelProducto> = {
           codigo: editando ? undefined : texto(form.get("codigo")) || undefined,
           nombre: texto(form.get("nombre")),
           tipo,
           categoriaId: categoriaId || null,
-          ...sensibles,
           insumoId: tipo === "MP" ? insumoId || null : null,
           // numeroDelCampo: vacío → undefined (sin paso, comportamiento actual), texto inválido → NaN (el servidor lo rechaza).
           pasoVenta: tipo === "PV" ? (numeroDelCampo(String(form.get("pasoVenta") ?? "")) ?? null) : null,
@@ -142,8 +148,8 @@ export function ProductoForm({
 
         startTransition(async () => {
           const resultado = editando
-            ? await actualizarProducto(productoExistente!.id, datos as DatosProducto)
-            : await darDeAltaProducto(datos as DatosProducto);
+            ? await actualizarProducto(productoExistente!.id, { ...datos, ...sensiblesDeLaEdicion })
+            : await darDeAltaProducto({ ...datos, ...sensiblesDelAlta });
           setMensaje(resultado.mensaje);
           setSincronizable(null);
           // Al guardar se vuelve a la ficha del producto, que muestra el aviso de que se guardó (antes se volvía a la lista y el cartel se perdía).
@@ -251,7 +257,7 @@ export function ProductoForm({
               <option value="">Unidad de stock</option>
               {unidades.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.nombre}
+                  {etiquetaDeUnidad(u)}
                 </option>
               ))}
             </select>
@@ -266,7 +272,7 @@ export function ProductoForm({
                 <option value="">Unidad de compra (default)</option>
                 {unidades.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.nombre}
+                    {etiquetaDeUnidad(u)}
                   </option>
                 ))}
               </select>
@@ -347,7 +353,7 @@ export function ProductoForm({
       {editando && tipo === "MP" && (
         <GestionPresentaciones
           productoId={productoExistente!.id}
-          unidades={unidades}
+          unidades={unidades.filter((u) => !u.inactiva)}
           presentacionesIniciales={presentacionesIniciales ?? []}
           unidadStockDecimales={unidades.find((u) => u.id === unidadStockId)?.decimales}
           puedeEditarCamposSensibles={puedeEditarCamposSensibles}
@@ -363,13 +369,17 @@ export function ProductoForm({
       {!editando && (
         <div className="flex flex-col gap-1">
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={activoEnTodas} onChange={(e) => setActivoEnTodas(e.target.checked)} /> Activo en todas las sucursales
+            <input type="checkbox" checked={activoEnTodas && !naceSinPoderVenderse} disabled={naceSinPoderVenderse} onChange={(e) => setActivoEnTodas(e.target.checked)} /> Activo en todas las sucursales
           </label>
-          <AyudaCampo>
-            {activoEnTodas
-              ? `Tildado (lo habitual, para insumos y platos compartidos como harina o sal): queda disponible en las ${cantidadSucursales ?? "?"} sucursales que existen hoy.`
-              : `Sin tildar: solo queda disponible en "${nombreSucursalActual ?? "esta sucursal"}" — en las demás no va a aparecer hasta que un admin de esa sucursal lo active ahí.`}
-          </AyudaCampo>
+          {naceSinPoderVenderse ? (
+            <AvisoAltaSinPrecio />
+          ) : (
+            <AyudaCampo>
+              {activoEnTodas
+                ? `Tildado (lo habitual, para insumos y platos compartidos como harina o sal): queda disponible en las ${cantidadSucursales ?? "?"} sucursales que existen hoy.`
+                : `Sin tildar: solo queda disponible en "${nombreSucursalActual ?? "esta sucursal"}" — en las demás no va a aparecer hasta que un admin de esa sucursal lo active ahí.`}
+            </AyudaCampo>
+          )}
         </div>
       )}
 

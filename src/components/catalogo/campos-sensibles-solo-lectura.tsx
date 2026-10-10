@@ -9,13 +9,17 @@
 /** El nombre del permiso tal como se lo dice a la persona (la clave `producto_campos_sensibles` del catálogo de acciones; la matriz de permisos la lista con esa clave). */
 const PERMISO = "«campos sensibles del producto» (producto_campos_sensibles, en Administración → Permisos)";
 
-/** Un campo de producto que esta persona no puede cambiar: la etiqueta y el valor guardado, sin ningún control que se pueda editar. `campo` identifica el dato (para las pruebas). */
+/**
+ * Un campo de producto que esta persona no puede cambiar: la etiqueta y el valor guardado, sin ningún control. `campo` identifica el dato (para las pruebas y para el id de la etiqueta).
+ * M.2-A4 (E): es una lista de definición (`dl`: la etiqueta es el término y el valor, su definición), así el lector de pantalla las asocia; y el valor va como TEXTO, sin el recuadro punteado de antes, que
+ * parecía un campo editable más. El aviso que sigue dice por qué no se puede cambiar.
+ */
 export function ValorSoloLectura({ campo, etiqueta, children }: { campo: string; etiqueta: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-1 flex-col gap-0.5" data-solo-lectura={campo}>
-      <span className="text-xs text-neutral-500 dark:text-neutral-400">{etiqueta}</span>
-      <span className="rounded border border-dashed px-3 py-2 text-sm">{children}</span>
-    </div>
+    <dl className="m-0 flex flex-1 flex-col gap-0.5" data-solo-lectura={campo}>
+      <dt className="text-xs text-neutral-500 dark:text-neutral-400">{etiqueta}</dt>
+      <dd className="m-0 px-1 py-2 text-sm font-medium">{children}</dd>
+    </dl>
   );
 }
 
@@ -24,6 +28,23 @@ export function AvisoCamposSensibles({ children }: { children: React.ReactNode }
   return (
     <p className="text-xs text-neutral-500 dark:text-neutral-400" data-aviso-campos-sensibles>
       Solo lectura: para cambiar el precio de venta, el factor de conversión y las unidades hace falta el permiso {PERMISO}. {children}
+    </p>
+  );
+}
+
+/**
+ * M.2-A4: el aviso del ALTA de un producto de venta sin la clave. Sin `producto_campos_sensibles` el producto nace con precio $0 y el servidor lo deja NO disponible en ninguna sucursal (el POS y la carta pública
+ * solo ofrecen lo disponible): no se puede vender hasta que alguien con la clave le cargue el precio y alguien con `producto_disponibilidad` lo active. Visible (no una ayuda gris): es lo que la persona tiene que saber
+ * antes de crear.
+ */
+export function AvisoAltaSinPrecio() {
+  return (
+    <p
+      role="note"
+      data-aviso-alta-sin-precio
+      className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+    >
+      <strong>No se va a poder vender todavía.</strong> Sin el permiso {PERMISO} el producto se crea con precio $0 y queda no disponible en ninguna sucursal, hasta que alguien con ese permiso le cargue el precio y lo active.
     </p>
   );
 }

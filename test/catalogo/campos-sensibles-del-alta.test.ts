@@ -4,7 +4,9 @@ vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, sembrarCatalogoBase } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { darDeAltaProducto, darDeAltaProductoRapido, type DatosProducto } from "../../src/server/actions/catalogo/productos";
+import { actualizarDisponibilidadProducto, actualizarProducto, darDeAltaProducto, darDeAltaProductoRapido, type DatosProducto } from "../../src/server/actions/catalogo/productos";
+import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
  * M.2 (P4, D-2 del dueño) — la clave fina `producto_campos_sensibles` en el ALTA de un producto. Crear un producto con precio de venta, con un factor de conversión distinto de 1 o con
@@ -120,6 +122,126 @@ describe("M.2: el alta de un producto con precio, factor o unidad de compra es d
       await como(u.id, "soloclave@test.com");
       expect((await darDeAltaProducto(nuevo())).ok).toBe(false);
       expect(await cantidad()).toBe(0);
+    });
+  });
+});
+
+/**
+ * M.2-A4 (A, hallazgo importante de la auditoría de P6; SUPUESTO declarado, el dueño lo corrige si no): sin `producto_campos_sensibles` el alta fija el precio en 0 (D-2), pero un producto de venta
+ * nace «disponible en todas las sucursales» y el POS lista todo PV disponible: quedaba a la venta a $0. Ahora, sin la clave, un PV nace NO disponible para vender (filas de disponibilidad con
+ * `disponible: false`, sin importar el tilde) hasta que alguien con la clave le cargue el precio y alguien con `producto_disponibilidad` lo active. Una MP no se vende: su alta no cambia.
+ */
+describe("M.2-A4: un producto de venta dado de alta SIN la clave nace no disponible para vender", () => {
+  let sucursalId: string;
+  let otraSucursalId: string;
+  let adminId: string;
+  let operadorId: string;
+  let kgId: string;
+
+  const como = (id: string, email: string) => mockearUsuarioActual({ id, email, nombre: null });
+  const pv = (extra: Partial<DatosProducto> = {}): DatosProducto => ({ nombre: "Milanesa", tipo: "PV", unidadStockId: kgId, factorConversion: 1, precioVenta: 0, ...extra });
+  const idDe = async (nombre: string) => (await prisma.producto.findFirstOrThrow({ where: { nombre } })).id;
+  const filas = (productoId: string) => prisma.disponibilidadProducto.findMany({ where: { productoId }, orderBy: { sucursalId: "asc" } });
+
+  /** ¿Lo ofrece el selector del POS de la sucursal? (la lectura REAL que arma la pantalla de la mesa: recorre toda la estructura buscando el producto). */
+  async function loOfreceElPos(productoId: string, enSucursal = sucursalId): Promise<boolean> {
+    const aparece = (nodo: unknown): boolean => {
+      if (Array.isArray(nodo)) return nodo.some(aparece);
+      if (nodo instanceof Map) return [...nodo.values()].some(aparece);
+      if (nodo && typeof nodo === "object") {
+        const o = nodo as Record<string, unknown>;
+        return o.productoId === productoId || Object.values(o).some(aparece);
+      }
+      return false;
+    };
+    return aparece(await cargarSelectorCartaPos(enSucursal, prisma, AHORA_DE_LA_CORRIDA));
+  }
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    const base = await sembrarBase();
+    sucursalId = base.sucursal.id;
+    otraSucursalId = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
+    kgId = (await sembrarCatalogoBase()).kg.id;
+    adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id })).id;
+    operadorId = (await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: base.operador.id })).id;
+    await como(operadorId, "operador@test.com");
+  });
+
+  it("EL DEFECTO: el operador (sin la clave) da de alta un PV con el tilde por defecto → precio 0, NO disponible en ninguna sucursal y el POS no lo ofrece", async () => {
+    const r = await darDeAltaProducto(pv({ activoEnTodasLasSucursales: true }));
+    expect(r.ok, r.mensaje).toBe(true);
+    const id = await idDe("Milanesa");
+    expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id } })).precioVenta)).toBe(0);
+    const f = await filas(id);
+    expect(f.map((x) => x.sucursalId).sort()).toEqual([sucursalId, otraSucursalId].sort()); // las filas existen (la ficha y el catálogo muestran «0 de 2»)…
+    expect(f.every((x) => x.disponible === false)).toBe(true); // …pero apagadas
+    expect(await loOfreceElPos(id)).toBe(false);
+    expect(await loOfreceElPos(id, otraSucursalId)).toBe(false);
+  });
+
+  it("con el tilde sin marcar (solo la sucursal activa) tampoco queda disponible", async () => {
+    expect((await darDeAltaProducto(pv({ activoEnTodasLasSucursales: false }))).ok).toBe(true);
+    const id = await idDe("Milanesa");
+    expect((await filas(id)).some((x) => x.disponible)).toBe(false);
+    expect(await loOfreceElPos(id)).toBe(false);
+  });
+
+  it("el mensaje le dice a quien lo dio de alta que no se va a poder vender hasta que alguien con el permiso cargue el precio", async () => {
+    const r = await darDeAltaProducto(pv());
+    expect(r.ok).toBe(true);
+    expect(r.mensaje).toContain("no queda disponible para vender");
+    expect(r.mensaje).toContain("producto_campos_sensibles");
+  });
+
+  it("idempotencia: repetir el alta (doble envío) no crea un segundo PV a $0 aunque el primero no esté disponible (lo ataja el índice único del nombre de la base)", async () => {
+    expect((await darDeAltaProducto(pv())).ok).toBe(true);
+    const repetido = await darDeAltaProducto(pv({ nombre: "milanesa" }));
+        expect(repetido.ok).toBe(false);
+    expect(repetido.mensaje).toContain("Ya existe"); // (la base lo rechaza con su índice único del nombre; el mensaje es el del código repetido)
+    expect(await prisma.producto.count({ where: { nombre: { equals: "Milanesa", mode: "insensitive" } } })).toBe(1);
+  });
+
+  it("el ciclo completo: el administrador (con la clave) le carga el precio y recién cuando alguien lo activa el POS lo ofrece", async () => {
+    await darDeAltaProducto(pv());
+    const id = await idDe("Milanesa");
+    await como(adminId, "admin@test.com");
+    const e = await actualizarProducto(id, pv({ precioVenta: 4500 }));
+    expect(e.ok, e.mensaje).toBe(true);
+    expect(await loOfreceElPos(id), "cargar el precio NO lo activa solo: la disponibilidad es una decisión aparte").toBe(false);
+    const a = await actualizarDisponibilidadProducto(id, true);
+    expect(a.ok, a.mensaje).toBe(true);
+    expect(await loOfreceElPos(id)).toBe(true);
+  });
+
+  describe("controles: lo que no cambia", () => {
+    it("CON la clave el PV nace disponible en todas las sucursales y el POS lo ofrece", async () => {
+      await como(adminId, "admin@test.com");
+      expect((await darDeAltaProducto(pv({ precioVenta: 4500 }))).ok).toBe(true);
+      const id = await idDe("Milanesa");
+      expect((await filas(id)).map((x) => x.disponible)).toEqual([true, true]);
+      expect(await loOfreceElPos(id)).toBe(true);
+    });
+
+    it("CON la clave y el tilde sin marcar, solo la sucursal activa (el comportamiento de siempre)", async () => {
+      await como(adminId, "admin@test.com");
+      expect((await darDeAltaProducto(pv({ precioVenta: 4500, activoEnTodasLasSucursales: false }))).ok).toBe(true);
+      const f = await filas(await idDe("Milanesa"));
+      expect(f.map((x) => [x.sucursalId, x.disponible])).toEqual([[sucursalId, true]]);
+    });
+
+    it("una MATERIA PRIMA sin la clave sigue naciendo disponible en todas las sucursales (no se vende: no hay precio que proteger)", async () => {
+      expect((await darDeAltaProducto(pv({ nombre: "Harina", tipo: "MP" }))).ok).toBe(true);
+      expect((await filas(await idDe("Harina"))).map((x) => x.disponible)).toEqual([true, true]);
+    });
+
+    it("el alta rápida crea una MATERIA PRIMA (nunca un PV): el POS no puede ofrecerla y no cambia su disponibilidad", async () => {
+      const r = await darDeAltaProductoRapido("Aceite", kgId);
+      expect(r.ok, r.mensaje).toBe(true);
+      const id = await idDe("Aceite");
+      expect((await prisma.producto.findUniqueOrThrow({ where: { id } })).tipo).toBe("MP");
+      expect((await filas(id)).map((x) => x.disponible)).toEqual([true, true]);
+      expect(await loOfreceElPos(id), "el selector del POS solo lista PV").toBe(false);
     });
   });
 });
