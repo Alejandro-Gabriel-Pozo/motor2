@@ -120,4 +120,51 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
     expect(r.ok, r.mensaje).toBe(true);
     expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: productoId } })).precioVenta)).toBe(700);
   });
+
+  /**
+   * M.2-A4 (F): el escenario de arriba cambia los tres campos a la vez; acá cada campo SOLO, para que un defecto en uno (la unidad de stock, que el primero ni toca) no quede tapado por los otros. Dos formularios: el de
+   * antes de P6 (manda los cuatro valores que vio al abrirse) y el de P6 (sin la clave NO manda los cuatro: «no viene» es «queda como estaba»). En los dos, lo que el administrador confirmó entre la lectura y la
+   * escritura del operador no se pisa.
+   */
+  describe("cada campo sensible por separado: el operador sin la clave no pisa lo que el administrador cambió entre su lectura y su escritura", () => {
+    type Campo = "precioVenta" | "factorConversion" | "unidadCompraId" | "unidadStockId";
+    const CAMBIOS: { campo: Campo; cambio: () => Record<string, unknown>; esperado: () => unknown; leer: (p: { precioVenta: unknown; factorConversion: unknown; unidadCompraId: string | null; unidadStockId: string }) => unknown }[] = [
+      { campo: "precioVenta", cambio: () => ({ precioVenta: 600 }), esperado: () => 600, leer: (p) => Number(p.precioVenta) },
+      { campo: "factorConversion", cambio: () => ({ factorConversion: 20 }), esperado: () => 20, leer: (p) => Number(p.factorConversion) },
+      { campo: "unidadCompraId", cambio: () => ({ unidadCompraId: kgId }), esperado: () => kgId, leer: (p) => p.unidadCompraId },
+      { campo: "unidadStockId", cambio: () => ({ unidadStockId: gId }), esperado: () => gId, leer: (p) => p.unidadStockId },
+    ];
+    const FORMULARIOS: [string, (v: { nombre: string; tipo: "MP"; unidadStockId: string; unidadCompraId: string; factorConversion: number; precioVenta: number }, campo: Campo) => Record<string, unknown>][] = [
+      ["el formulario que manda los cuatro valores", (v) => v],
+      [
+        "el formulario de P6, que no los manda",
+        (v) => {
+          const { unidadStockId, unidadCompraId, factorConversion, precioVenta, ...sinSensibles } = v;
+          void [unidadStockId, unidadCompraId, factorConversion, precioVenta];
+          return sinSensibles;
+        },
+      ],
+    ];
+
+    for (const [formulario, armar] of FORMULARIOS) {
+      it.each(CAMBIOS)(`${formulario}, mientras el administrador cambia $campo → ese campo NO se pisa y el nombre sí se guarda`, async ({ campo, cambio, esperado, leer }) => {
+        const vistoAlAbrir = { nombre: "Queso cremoso", tipo: "MP" as const, unidadStockId: kgId, unidadCompraId: gId, factorConversion: 25, precioVenta: 500 };
+        const datos = armar(vistoAlAbrir, campo);
+        const actor = actorConBarrera("producto", async () => {
+          await prismaAdmin.producto.update({ where: { id: productoId }, data: cambio() });
+        });
+        const r = await actualizarProductoCasoDeUso(actor, {
+          productoId,
+          datos: datos as never,
+          puerta: guardComandoDatosDeProducto({ datos }),
+          puedeGestionarConsignacion: false,
+          puedeEditarCamposSensibles: false,
+        });
+        expect(r.ok, r.mensaje).toBe(true);
+        const p = await prisma.producto.findUniqueOrThrow({ where: { id: productoId } });
+        expect(p.nombre).toBe("Queso cremoso");
+        expect(leer(p), `${campo}: el valor del administrador`).toEqual(esperado());
+      });
+    }
+  });
 });
