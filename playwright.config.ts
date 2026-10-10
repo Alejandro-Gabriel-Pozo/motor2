@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { defineConfig } from "@playwright/test";
-import { resolverUrlAppE2E, resolverUrlE2E, resolverUrlPlataformaE2E, resolverUrlPlataformaE2EB } from "./test/e2e/fixtures/base-e2e";
+import { resolverUrlAppE2E, resolverUrlE2E, resolverUrlPlataformaE2E, resolverUrlPlataformaE2EB, resolverUrlPruebasE2E } from "./test/e2e/fixtures/base-e2e";
+import { avisoSinRolDePruebas, VARIABLE_DE_PRUEBAS_E2E } from "./test/setup/rol-de-pruebas";
 import { CLAVE_TOTP_E2E, SECRETO_DE_CODIGOS_E2E } from "./test/e2e/fixtures/consola";
 
 /**
@@ -44,6 +45,10 @@ const baseApp = resolverUrlAppE2E(process.env);
 // ADR-007 (A0): el runtime (servidor y specs, `src/lib/db.ts`) usa el rol sin privilegios `motor2_app`; migrar y resetear (dueño) va por DIRECT_URL.
 process.env.DATABASE_URL = baseApp.url;
 process.env.DIRECT_URL = base.url;
+// M.3-A8: los specs SIEMBRAN con el rol de pruebas `motor2_app_pruebas` (`MOTOR2_E2E_PRUEBAS_DATABASE_URL`, misma base `_e2e`; test/e2e/fixtures/db.ts la resuelve) mientras el servidor corre como `motor2_app`.
+// Sin la variable los specs siembran como `motor2_app`, como hasta ahora; se avisa una sola vez, desde el proceso principal (los workers reimportan este archivo). La guarda corre ACÁ, antes de levantar nada.
+const basePruebas = resolverUrlPruebasE2E(process.env);
+if (!basePruebas && process.env.TEST_WORKER_INDEX === undefined) console.warn(avisoSinRolDePruebas(VARIABLE_DE_PRUEBAS_E2E));
 
 // Puerto propio de ESTE worktree (feat/promo-combo, Task #16): 56471, distinto de los ya tomados por ramas
 // anteriores en este mismo sandbox compartido (48213, 45677, 47391, 53219 — ver el historial de este archivo). No

@@ -4,16 +4,19 @@ import { prisma as prismaSinEmpresa } from "../../src/lib/db";
 import { baseDeEmpresa } from "../../src/core/auth/base";
 import { clienteConEmpresaDePrueba, DATOS_EMPRESA_TESTIGO, EMPRESA_DE_PRUEBA_ID, EMPRESA_TESTIGO_ID } from "./empresa-de-prueba";
 import { crearMembresia } from "./membresia";
+import { urlDeSembradoDeVitest } from "./rol-de-pruebas";
 import { prismaAdmin } from "./cliente-duenio";
 import { activarTodosLosModulos } from "./modulos";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { MOTIVOS_MERMA_SEMILLA, DESTINOS_CONSUMO_SEMILLA } from "../../src/core/movimientos/motivos-semilla";
 
 /**
- * El cliente de las pruebas (`motor2_app`) con la empresa de prueba fijada en la conexión (ADR-022): lo que los tests escriben y leen cae en ella sin depender de
- * «la única empresa activa». Para probar lo que pasa SIN contexto de empresa (login, RLS, lecturas previas) está `prismaSinEmpresa`.
+ * El cliente de los FIXTURES con la empresa de prueba fijada en la conexión (ADR-022): lo que los tests escriben y leen cae en ella sin depender de «la única empresa activa». Siembra con el
+ * ROL DE PRUEBAS `motor2_app_pruebas` (`MOTOR2_PRUEBAS_DATABASE_URL`, M.3-A8): mismos privilegios que `motor2_app` pero fuera de sus políticas por sucursal (Fase B), así un fixture ve y escribe
+ * todas las sucursales. Sin la variable cae a `DATABASE_URL` (`motor2_app`, como antes) y avisa. El código bajo prueba NO usa este cliente: corre como `motor2_app` por `baseDeTest`/`src/lib/db`.
+ * Para probar lo que pasa SIN contexto de empresa (login, RLS, lecturas previas) está `prismaSinEmpresa`.
  */
-export const prisma = clienteConEmpresaDePrueba(process.env.DATABASE_URL ?? "");
+export const prisma = clienteConEmpresaDePrueba(urlDeSembradoDeVitest());
 
 /** El cliente del proceso, sin empresa: el que usa `src/` en producción. Solo para tests que prueban explícitamente la ausencia de contexto. */
 export { prismaSinEmpresa };
