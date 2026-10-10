@@ -40,6 +40,15 @@ async function puedeGestionarConsignacion(ctx: { usuarioId: string; sucursalId: 
   return (await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db)).editar;
 }
 
+/**
+ * M.2: ¿puede quien llama cambiar el precio de venta, el factor de conversión y las unidades de un producto? Es `producto_campos_sensibles` EDITAR (clave de empresa, piso operario, semilla solo
+ * admin: se SUMA a `producto_editar`, no la reemplaza). La edición lo calcula acá, con el gate, y el caso de uso —que no chequea permisos— lo aplica contra la fila que lee dentro de su transacción.
+ * No se exporta: este archivo es `"use server"` y toda función exportada es un endpoint.
+ */
+async function puedeEditarCamposSensibles(ctx: { usuarioId: string; empresaId: string; db: PrismaClient }): Promise<boolean> {
+  return (await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_campos_sensibles", ctx.db)).editar;
+}
+
 export interface ProductoOpcion {
   id: string;
   codigo: string;
@@ -297,7 +306,8 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
     // S-52: el guard se CALCULA acá (formato y rango de los datos que no dependen de la base) pero `validarDatosDeProducto` aplica cada rechazo en el lugar de siempre, así el orden de los mensajes no cambia.
     const puerta = guardComandoDatosDeProducto({ datos });
     if (typeof datos !== "object" || datos === null) return error(puerta.antesDeLaUnidad.ok ? "Los datos del producto no son válidos." : puerta.antesDeLaUnidad.mensaje);
-    const r = await darDeAltaProductoCasoDeUso(ctx, datos, azarDelProceso, await puedeGestionarConsignacion(ctx), puerta);
+    // M.2 (D-2): el alta con precio, factor distinto de 1 o unidad de compra exige además `producto_campos_sensibles` (fallo cerrado, en el caso de uso).
+    const r = await darDeAltaProductoCasoDeUso(ctx, datos, azarDelProceso, await puedeGestionarConsignacion(ctx), puerta, await puedeEditarCamposSensibles(ctx));
     const base = aResultadoAccion(r);
     return r.ok ? okConId(base.mensaje, r.datos.id, r.datos.nombre) : error(base.mensaje);
   });
@@ -313,6 +323,9 @@ export async function darDeAltaProducto(datos: DatosProducto): Promise<Resultado
  * precio, el resultado trae además `sincronizable` (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8): la pantalla ofrece
  * aplicar el mismo precio con un botón aparte (`sincronizarPrecioGrupoCarta`). Nunca se sincroniza solo.
  *
+ * M.2: además de `producto_editar`, cambiar el precio de venta, el factor de conversión o una unidad exige `producto_campos_sensibles`: la acción calcula `puedeEditarCamposSensibles` (ayudante local) y el
+ * caso de uso lo aplica dentro de su transacción (`SIN_PERMISO_CAMPOS_SENSIBLES`; un campo sensible que no viene queda como estaba).
+ *
  * Desde el Hito 4 (H4C-13): permiso (`conPermisoDeEmpresa("producto_editar")`) → caso de uso (`casos-de-uso/actualizar-producto.ts`: el producto, el tipo, la
  * validación, y el `update` con sus tres auditorías en UNA transacción) → si salió bien, revalidar la carta pública y DESPUÉS, si el precio de venta cambió, el
  * `sincronizable` (lee el ítem agrupado con la base del contexto, como antes) → el resultado sin `datos` ni `codigo` (`aResultadoAccion`, más el `sincronizable`
@@ -323,7 +336,14 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     // S-52: el guard se CALCULA acá pero `validarDatosDeProducto` aplica cada rechazo en el lugar de siempre (después de leer el producto y la unidad): un producto inexistente gana sobre un dato inválido.
     const puerta = guardComandoDatosDeProducto({ datos });
     if (typeof datos !== "object" || datos === null) return error(puerta.antesDeLaUnidad.ok ? "Los datos del producto no son válidos." : puerta.antesDeLaUnidad.mensaje);
-    const r = await actualizarProductoCasoDeUso(ctx, { productoId, datos, puerta, puedeGestionarConsignacion: await puedeGestionarConsignacion(ctx) });
+    const puedeCamposSensibles = await puedeEditarCamposSensibles(ctx);
+    const r = await actualizarProductoCasoDeUso(ctx, {
+      productoId,
+      datos,
+      puerta,
+      puedeGestionarConsignacion: await puedeGestionarConsignacion(ctx),
+      puedeEditarCamposSensibles: puedeCamposSensibles,
+    });
     const base = aResultadoAccion(r);
     if (!r.ok) return base;
     revalidarCartasPublicas(ctx.empresaSlug);
@@ -331,7 +351,8 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
     const { precioAnterior, precioNuevo } = r.datos;
     // M-2 de la auditoría intermedia: la oferta es la de `sincronizarPrecioGrupoCarta`, que exige `producto_sincronizar_precio_carta` (EDITAR). Quien edita el producto (`producto_editar`) pero no tiene
     // esa clave veía la oferta y, al aceptarla, recibía un rechazo: la oferta se hace SOLO a quien puede aceptarla. La clave se mira solo cuando el precio cambió (la mayoría de las ediciones no).
-    if (precioNuevo !== precioAnterior && (await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_sincronizar_precio_carta", ctx.db)).editar) {
+    // M.2 (D-3): aceptarla exige además `producto_campos_sensibles`, así que la oferta pide las DOS claves (y quien cambió el precio ya la tenía: sin ella la edición se rechaza antes).
+    if (precioNuevo !== precioAnterior && puedeCamposSensibles && (await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_sincronizar_precio_carta", ctx.db)).editar) {
       const sincronizable = ofrecerSincronizarPrecio(await resolverGrupoDeProducto(productoId, ctx.sucursalId, ctx.db), precioNuevo, "global");
       if (sincronizable) return { ok: true, mensaje: base.mensaje, sincronizable };
     }
@@ -341,8 +362,8 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
 
 /**
  * Aplica el mismo precio de venta GLOBAL a varios productos de UN mismo ítem agrupado de la carta (el paso que ofrece
- * `actualizarProducto` con `sincronizable`; docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8). Mismo permiso y misma auditoría
- * que editar el precio de cada uno a mano. Solo toca los `productoIds` pasados, y solo si son todos del mismo ítem agrupado.
+ * `actualizarProducto` con `sincronizable`; docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8). Misma auditoría que editar el precio de cada uno a mano,
+ * y desde M.2 (D-3) los mismos permisos que cambiar un precio: `producto_sincronizar_precio_carta` más `producto_campos_sensibles`. Solo toca los `productoIds` pasados, y solo si son todos del mismo ítem agrupado.
  *
  * Desde el Hito 4 (H4C-13): permiso (`conPermisoDeEmpresa("producto_sincronizar_precio_carta")`) → formato del precio y de la lista
  * (`guardComandoSincronizarPrecioGrupoCarta`, core/features/catalogo/productos.guard.ts, DENTRO del envoltorio) → caso de uso
@@ -353,7 +374,8 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
   return conPermisoDeEmpresa("producto_sincronizar_precio_carta", async (ctx) => {
     const comando = guardComandoSincronizarPrecioGrupoCarta({ productoIds, precio });
     if (!comando.ok) return error(comando.mensaje);
-    const resultado = await sincronizarPrecioGrupoCartaCasoDeUso(ctx, comando.valor);
+    // M.2 (D-3): sincronizar es cambiar el precio de venta de varios productos: además de la clave de sincronizar pide `producto_campos_sensibles` (el caso de uso lo rechaza antes de leer nada).
+    const resultado = await sincronizarPrecioGrupoCartaCasoDeUso(ctx, { ...comando.valor, puedeEditarCamposSensibles: await puedeEditarCamposSensibles(ctx) });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
@@ -421,7 +443,10 @@ export async function agregarPresentacionAlternativa(
     // S-52: el guard se CALCULA acá; los ids rotos se rechazan en el acto y el rango del factor lo aplica el caso de uso después de leer el producto (un producto inexistente gana sobre un factor inválido).
     const puerta = guardComandoAgregarPresentacionAlternativa({ productoId, unidadCompraId, factorConversion });
     if (!puerta.ids.ok) return error(puerta.ids.mensaje);
-    return aResultadoAccion(await agregarPresentacionAlternativaCasoDeUso(ctx, { productoId, unidadCompraId, factorConversion, factor: puerta.factor }));
+    // M.2: definir el factor (crear la presentación, o cambiar el de una que existe) exige además `producto_campos_sensibles`: la acción calcula el dato y el caso de uso lo aplica dentro de su transacción.
+    return aResultadoAccion(
+      await agregarPresentacionAlternativaCasoDeUso(ctx, { productoId, unidadCompraId, factorConversion, factor: puerta.factor, puedeEditarCamposSensibles: await puedeEditarCamposSensibles(ctx) }),
+    );
   });
 }
 

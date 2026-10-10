@@ -1,6 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
+import { MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
 import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";
 import type { EntradaProducto, PuertaDeDatosDeProducto, ResultadoDarDeAltaProducto } from "@/core/features/catalogo/productos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -30,6 +31,9 @@ import { crearProductoNuevo, sembrarDisponibilidadDeProductoNuevo } from "@/serv
  * S-12 (D8 del dueño): sin `pagar_consignante` (`puedeGestionarConsignacion`, que calcula la Server Action) el alta no puede traer costo de consignación (es consignación, proveedor o precio):
  * `SIN_PERMISO_COSTO`, antes de leer o escribir nada.
  *
+ * M.2 (D-2 del dueño): sin `producto_campos_sensibles` (`puedeEditarCamposSensibles`, que calcula la Server Action) el alta no puede traer precio de venta distinto de 0, factor de conversión distinto de 1 ni unidad de compra:
+ * `SIN_PERMISO_CAMPOS_SENSIBLES`, fallo cerrado y antes de leer o escribir nada. La unidad de stock queda libre.
+ *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos. No lee el azar por su cuenta: lo recibe (`azar`).
  *
  * @contract Crea el producto (con un código único) y lo deja disponible donde pide el tilde, salvo que los datos no sean válidos o ya haya uno disponible con ese nombre; devuelve su id y su nombre.
@@ -46,6 +50,8 @@ export async function darDeAltaProductoCasoDeUso(
   puedeGestionarConsignacion: boolean,
   /** S-52: el resultado de `guardComandoDatosDeProducto`, que la Server Action calcula con lo que mandó el cliente y que `validarDatosDeProducto` aplica en el lugar de siempre. */
   puerta: PuertaDeDatosDeProducto,
+  /** M.2 (D-2): si quien da de alta tiene `producto_campos_sensibles` EDITAR (lo calcula la Server Action con el gate; este caso de uso no chequea permisos). */
+  puedeEditarCamposSensibles: boolean,
 ): Promise<ResultadoDarDeAltaProducto> {
   // S-12 (D8 del dueño): crear un producto en consignación, con su proveedor o con un precio de consignación, es fijar su costo: solo con `pagar_consignante`. Fallo cerrado, antes de leer nada.
   if (!puedeGestionarConsignacion && (datos.esConsignacion || datos.proveedorConsignacionId || (datos.precioConsignacion !== undefined && Number(datos.precioConsignacion) !== 0))) {
@@ -53,6 +59,15 @@ export async function darDeAltaProductoCasoDeUso(
       "SIN_PERMISO_COSTO",
       "El costo de consignación (si el producto es de consignación, su proveedor y su precio) lo gestiona quien puede pagar a consignantes: no tenés permiso para fijarlo.",
     );
+  }
+  // M.2 (D-2 del dueño): crear un producto con precio de venta, con un factor de conversión que no sea el neutro o con unidad de compra es fijar justo lo que la edición protege con `producto_campos_sensibles`.
+  // Fallo CERRADO y antes de leer nada: sin la clave, lo único aceptado es precio 0 (o sin precio), factor 1 y sin unidad de compra; cualquier otra cosa —un texto, un NaN— cuenta como «distinto». La unidad de STOCK queda
+  // libre (sin ella no hay producto).
+  if (!puedeEditarCamposSensibles) {
+    const traePrecio = datos.precioVenta !== undefined && Number(datos.precioVenta) !== 0;
+    const traeFactor = datos.factorConversion !== undefined && Number(datos.factorConversion) !== 1;
+    const traeUnidadDeCompra = Boolean(datos.unidadCompraId);
+    if (traePrecio || traeFactor || traeUnidadDeCompra) return fracaso("SIN_PERMISO_CAMPOS_SENSIBLES", MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES);
   }
   const validado = await validarDatosDeProducto(actor.db, datos, undefined, puerta);
   if ("error" in validado) return fracaso("DATOS_INVALIDOS", validado.error);

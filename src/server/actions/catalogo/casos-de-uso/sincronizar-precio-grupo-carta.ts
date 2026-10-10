@@ -1,6 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
-import type { ComandoSincronizarPrecioGrupoCarta, ResultadoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.schema";
+import { MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
+import type { PedidoSincronizarPrecioGrupoCarta, ResultadoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
@@ -15,6 +16,9 @@ import { fijarPrecioVentaDeProducto } from "@/server/persistencia/catalogo/produ
  * precio de cada uno a mano. La Server Action quedó como adaptador (`conPermisoDeEmpresa("producto_sincronizar_precio_carta")` →
  * `guardComandoSincronizarPrecioGrupoCarta` → este caso de uso → `revalidarCartasPublicas` si salió bien → `aResultadoAccion`).
  *
+ * M.2 (D-3 del dueño): como sincronizar ES cambiar el precio de venta, pide además `producto_campos_sensibles`. El caso de uso tampoco la chequea: la Server Action calcula `comando.puedeEditarCamposSensibles` con el gate y
+ * acá, sin él, se rechaza con `SIN_PERMISO_CAMPOS_SENSIBLES` antes de leer el ítem agrupado.
+ *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos ni el formato del precio y la lista (el guard).
  *
  * @contract Deja el precio de venta pedido en cada producto de la lista (todos del mismo ítem agrupado), con una fila de auditoría por producto que cambió: todo o nada.
@@ -26,8 +30,10 @@ import { fijarPrecioVentaDeProducto } from "@/server/persistencia/catalogo/produ
  */
 export async function sincronizarPrecioGrupoCartaCasoDeUso(
   actor: Pick<ContextoUsuario, "db" | "transaccion" | "usuarioId" | "sucursalId">,
-  comando: ComandoSincronizarPrecioGrupoCarta,
+  comando: PedidoSincronizarPrecioGrupoCarta,
 ): Promise<ResultadoSincronizarPrecioGrupoCarta> {
+  // M.2 (D-3): sincronizar el precio es cambiar el precio de venta de varios productos a la vez, así que pide además la clave fina. Se decide antes de leer nada: quien no la tiene no se entera de cómo se agrupa la carta.
+  if (!comando.puedeEditarCamposSensibles) return fracaso("SIN_PERMISO_CAMPOS_SENSIBLES", MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES);
   const { productoIds: ids, precio } = comando;
   const grupo = await resolverGrupoDeProducto(ids[0], actor.sucursalId, actor.db);
   const delGrupo = new Set(grupo ? [ids[0], ...grupo.hermanos.map((h) => h.productoId)] : []);

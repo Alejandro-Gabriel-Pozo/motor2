@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/core/auth/contexto";
 import type { ComandoActualizarProducto, ResultadoActualizarProducto } from "@/core/features/catalogo/productos.schema";
-import { guardComandoDatosDeProducto } from "@/core/features/catalogo/productos.guard";
+import { guardComandoDatosDeProducto, MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
 import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -33,13 +33,17 @@ import { actualizarCamposDeProducto } from "@/server/persistencia/catalogo/produ
  * S-12 (D8 del dueño): el costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante`. El caso de uso no chequea permisos: la Server Action
  * calcula `comando.puedeGestionarConsignacion` con el gate y acá, sin él, un campo de consignación que no viene queda como estaba y uno distinto del guardado es `SIN_PERMISO_COSTO`.
  *
+ * M.2 (clave fina `producto_campos_sensibles`): cambiar el precio de venta, el factor de conversión o una unidad (de stock o de compra) es de quien tiene esa clave además de `producto_editar`. El caso de uso
+ * tampoco chequea esto: la Server Action calcula `comando.puedeEditarCamposSensibles` con el gate y acá, sin él, un campo sensible que no viene queda como estaba (se completa con lo guardado antes de
+ * validar) y uno distinto del guardado, ya normalizado y leído dentro de la transacción, es `SIN_PERMISO_CAMPOS_SENSIBLES`, ANTES de `UNIDAD_CON_HISTORIA`, de `CONSIGNANTE_CON_HISTORIA` y del `update`.
+ *
  * La Server Action quedó como adaptador (`conPermisoDeEmpresa("producto_editar")` → este caso de uso → `aResultadoAccion` → si salió bien, revalidar la carta
  * pública y DESPUÉS, si el precio de venta cambió (`datos.precioAnterior`/`precioNuevo`), ofrecer sincronizarlo con los hermanos del ítem agrupado —
  * `sincronizable`, docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8—, como antes). Sin guard: la validación lee la unidad de stock a mitad de camino.
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos.
  *
- * @contract Deja el producto con los datos pedidos (sin cambiar su tipo, ni su unidad de stock si ya tiene historia, ni su consignante si ya tiene liquidaciones, ni su costo de consignación sin el permiso) y una fila de auditoría por cada uno de sus valores de mayor impacto que cambió: todo o nada.
+ * @contract Deja el producto con los datos pedidos (sin cambiar su tipo, ni su unidad de stock si ya tiene historia, ni su consignante si ya tiene liquidaciones, ni su costo de consignación sin el permiso, ni su precio de venta, factor y unidades sin la clave fina) y una fila de auditoría por cada uno de sus valores de mayor impacto que cambió: todo o nada.
  * @idempotency No aplica — repetir el pedido vuelve a escribir los mismos datos (sin filas de auditoría nuevas: no cambió nada).
  * @transaction `actor.transaccion` (READ COMMITTED): la lectura del producto, la validación, la pregunta por su historia, el `update` y sus auditorías, todo junto.
  * @sideEffects registrarCambioAuditado (Producto.precioVenta, .precioConsignacion, .pasoVenta, .factorConversion, .unidadStockId, .unidadCompraId, .seProduce, .esConsignacion y .proveedorConsignacionId, del anterior al nuevo), en la misma transacción. La revalidación de
@@ -91,6 +95,19 @@ async function actualizarProductoEnTransaccion(
       // S-52: los campos de consignación ya no son los del cliente sino los guardados: la puerta se vuelve a calcular con los datos que de verdad se validan (el guard es la única definición).
       puerta = guardComandoDatosDeProducto({ datos });
     }
+    // M.2: sin `producto_campos_sensibles` un campo sensible AUSENTE no es «ponelo en cero» ni «borralo» sino «queda como estaba»: el formulario arma un FormData y un input deshabilitado no
+    // viaja, y `datosParaGuardar` convierte un precio ausente en 0 y una unidad de compra ausente en null. Se completan con lo guardado ANTES de validar, y la puerta se vuelve a calcular con los
+    // datos que de verdad se validan (el guard es la única definición, como en S-52 y S-12). Solo `undefined` es «ausente»: `null` o vacío en la unidad de compra es «sin unidad» a propósito.
+    if (!comando.puedeEditarCamposSensibles) {
+      datos = {
+        ...datos,
+        ...(datos.precioVenta === undefined && { precioVenta: Number(existente.precioVenta) }),
+        ...((datos.factorConversion as number | undefined) === undefined && { factorConversion: Number(existente.factorConversion) }),
+        ...((datos.unidadStockId as string | undefined) === undefined && { unidadStockId: existente.unidadStockId }),
+        ...(datos.unidadCompraId === undefined && { unidadCompraId: existente.unidadCompraId }),
+      };
+      puerta = guardComandoDatosDeProducto({ datos });
+    }
     // datosParaGuardar (abajo) no incluye `tipo` a propósito — cambiar el
     // tipo de un producto con historial (recetas, ventas, stock) rompe
     // invariantes reales, así que se rechaza explícito en vez de
@@ -109,6 +126,18 @@ async function actualizarProductoEnTransaccion(
     const nuevos = datosParaGuardar(datos, validado.numeros);
     const nombreActual = texto(datos.nombre);
 
+    // M.2: cambiar el precio de venta, el factor de conversión o una unidad exige `producto_campos_sensibles`. Se compara lo NORMALIZADO (`nuevos`: lo que se escribiría) contra la fila leída ACÁ
+    // ADENTRO, en la misma transacción que el `update`: mandar el mismo valor no es un cambio, y lo que otra persona cambió mientras este editaba se ve como cambio (el mensaje lo avisa). Va ANTES de
+    // `UNIDAD_CON_HISTORIA`, de `CONSIGNANTE_CON_HISTORIA` y del `update`: quien no tiene la clave no se entera de si el producto tiene historia.
+    if (!comando.puedeEditarCamposSensibles) {
+      const cambiaUnCampoSensible =
+        Number(nuevos.precioVenta) !== Number(existente.precioVenta) ||
+        Number(nuevos.factorConversion) !== Number(existente.factorConversion) ||
+        nuevos.unidadStockId !== existente.unidadStockId ||
+        nuevos.unidadCompraId !== existente.unidadCompraId;
+      if (cambiaUnCampoSensible) return fracaso("SIN_PERMISO_CAMPOS_SENSIBLES", MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES);
+    }
+
     // CAT-1: la unidad de stock es inmutable una vez que el producto tiene historia, igual que el tipo (reinterpretaría en silencio todas las cantidades guardadas).
     if (nuevos.unidadStockId !== existente.unidadStockId && (await productoTieneHistoria(tx, productoId))) {
       return fracaso(
@@ -125,7 +154,11 @@ async function actualizarProductoEnTransaccion(
       );
     }
 
-    await actualizarCamposDeProducto(tx, { id: productoId, campos: nuevos });
+    // M.2 (concurrencia): la lectura de `existente` va sin candado (READ COMMITTED). Sin la clave, el precio de venta, el factor y las unidades NO se escriben: la validación ya comprobó que son los guardados, y escribirlos
+    // de nuevo pisaría, con el valor viejo del formulario y sin auditoría, lo que otra persona (con la clave) haya cambiado entre la lectura y esta escritura.
+    const { precioVenta, factorConversion, unidadStockId, unidadCompraId, ...sinCamposSensibles } = nuevos;
+    void [precioVenta, factorConversion, unidadStockId, unidadCompraId];
+    await actualizarCamposDeProducto(tx, { id: productoId, campos: comando.puedeEditarCamposSensibles ? nuevos : sinCamposSensibles });
 
     // Auditoría administrativa (A3, Pivote 6) — los precios, que son los campos de mayor impacto de negocio/control interno (ver
     // docs/auditoria-motor2-fase6-seguridad-2026-09-18.md)...
