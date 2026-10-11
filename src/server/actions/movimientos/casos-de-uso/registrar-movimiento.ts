@@ -1,6 +1,9 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
+import { redondearMoneda } from "@/core/moneda";
+import { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicados } from "@/core/compras/public";
+import { ZONA_UTC, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
@@ -12,7 +15,7 @@ import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-c
 import { chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { DatosMovimientoInput, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
-import { cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
+import { cargarComprasParaAvisoDeDuplicado, cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { upsertProveedorPorProducto } from "@/server/persistencia/catalogo/upsert-proveedor-por-producto";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
@@ -167,6 +170,21 @@ export async function registrarMovimientoCasoDeUso(
       }
     }
 
+    // Aviso C25 (posible factura repetida; NO bloquea): solo en una Compra con proveedor. Se lee ANTES de escribir, con `tx`, así no se compara contra la compra que se está por guardar. El mensaje
+    // (con el aviso) se guarda para la idempotencia: un reintento con la misma clave devuelve el mismo texto. La fecha de compra es un día de calendario a medianoche UTC: se lee en UTC.
+    let avisoDuplicado = "";
+    if (datos.proceso === "COMPRA" && datos.proveedorId) {
+      const dia = diaDeCalendario(datos.fecha, ZONA_UTC);
+      const candidatas = await cargarComprasParaAvisoDeDuplicado(tx, {
+        proveedorId: datos.proveedorId,
+        desde: sumarDias(dia, -DIAS_DE_VENTANA_DE_DUPLICADO),
+        hasta: sumarDias(dia, DIAS_DE_VENTANA_DE_DUPLICADO),
+      });
+      const importe = redondearMoneda(lineas.reduce((suma, l) => suma + l.precioTotal, 0));
+      const aviso = avisoDePosibleDuplicado(posiblesDuplicados({ proveedorId: datos.proveedorId, dia, importe }, candidatas), actor.sucursalId);
+      if (aviso) avisoDuplicado = ` ${aviso}`;
+    }
+
     // 3) Escribir Operacion (encabezado) + MovimientoStock[] (líneas).
     const operacion = await escribirOperacionDeStock(tx, {
       sucursalId: actor.sucursalId,
@@ -232,7 +250,7 @@ export async function registrarMovimientoCasoDeUso(
     const avisoConversion = lineas.some((l) => l.huboConversion)
       ? " Algunas cantidades se convirtieron automáticamente de unidad de compra a unidad de stock."
       : "";
-    const mensaje = `Se guardaron ${filas.length} movimiento(s).${avisoConversion}`;
+    const mensaje = `Se guardaron ${filas.length} movimiento(s).${avisoConversion}${avisoDuplicado}`;
 
     // I3 — Opción B (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md
     // §4.5): se persiste el mensaje ya formateado, no se reconstruye.
