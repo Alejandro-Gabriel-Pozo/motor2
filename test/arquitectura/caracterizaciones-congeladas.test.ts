@@ -219,6 +219,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "P1 paso 3 (O.251; CAMBIA COMPORTAMIENTO, plan P1 «el día en hora argentina»): Período y su familia cortan cada día en la zona de la empresa (`rangoDeDias(…, zona)`) y no en UTC. Cambia SOLO 6 líneas, todas `Date(…)` de desde/hasta (+3 h, Argentina es UTC−3): las entradas 27 y 29 (periodo.obtenerReportePorPeriodo y generarReporteVentasPorCategoria: desde 02-16T00:00Z → 02-16T03:00Z, hasta 03-15T23:59:59.999Z → 03-16T02:59:59.999Z) y el financiero de la entrada 34 (resumen-operativo: desde 02-14T00:00Z → 02-14T03:00Z, hasta como arriba). Ningún número, ninguna consulta ni su conteo cambia.",
       },
+      {
+        blob: "fe2625ff868bde65dbb8cb021239d1ebb4cebece",
+        // El commit desde el que el contenido es ese blob es la fusión `f7c93bb` («Merge p1-periodo»), donde se juntan las tres regeneraciones de P1 (pasos 3, 4 y 5) en un solo golden.
+        commit: "f7c93bb",
+        motivo:
+          "P1, unión de las regeneraciones de los pasos 3 (Período y su familia), 4 (Rendimiento de recetas) y 5 (Pérdidas y Devoluciones) hechas por tres constructores en paralelo (O.251, O.252 y O.253). CAMBIA COMPORTAMIENTO a propósito (el día en hora argentina): se mueven SOLO líneas `Date(...)` de `desde`/`hasta` y de `anclaDesde`/`anclaHasta` (+3 h, T00:00:00.000Z → T03:00:00.000Z, el mismo día calendario). La fusión automática de git dio el mismo contenido que regenerar con `REGENERAR_CARACTERIZACION_DE_REPORTES=1` sobre el código fusionado (comparado archivo contra archivo). Ningún número, método ni conteo de consultas cambió.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {
