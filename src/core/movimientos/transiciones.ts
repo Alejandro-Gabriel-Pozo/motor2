@@ -1,4 +1,4 @@
-import type { Proceso } from "@prisma/client";
+import type { Proceso } from "@/core/datos/enumerados-del-esquema";
 import type { AccionDeSucursal } from "@/core/permisos/acciones";
 
 /**

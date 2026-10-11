@@ -1,4 +1,4 @@
-import type { EstadoTraspaso } from "@prisma/client";
+import type { EstadoTraspaso } from "@/core/datos/enumerados-del-esquema";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**

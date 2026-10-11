@@ -1,4 +1,4 @@
-import type { Proceso } from "@prisma/client";
+import type { Proceso } from "@/core/datos/enumerados-del-esquema";
 import { ZONA_UTC, rangoDeDias } from "@/core/tiempo/zona-horaria";
 
 export interface FiltrosPeriodo {

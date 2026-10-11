@@ -1,4 +1,4 @@
-import type { TipoProducto } from "@prisma/client";
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 
 /**
  * Filtro del combobox de producto (`<SelectorProducto>`) y de su fuente de datos, `buscarProductosSelector`

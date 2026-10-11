@@ -1,4 +1,4 @@
-import type { AccionConteo } from "@prisma/client";
+import type { AccionConteo } from "@/core/datos/enumerados-del-esquema";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**

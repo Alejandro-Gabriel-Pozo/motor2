@@ -1,4 +1,4 @@
-import type { Proceso } from "@prisma/client";
+import type { Proceso } from "@/core/datos/enumerados-del-esquema";
 import { TRANSICIONES } from "./transiciones";
 import type { AccionClave } from "@/core/permisos/acciones";
 import type { FiltroSelectorProducto } from "@/core/catalogo/public";

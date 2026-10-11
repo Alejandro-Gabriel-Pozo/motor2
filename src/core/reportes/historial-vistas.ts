@@ -1,4 +1,4 @@
-import type { Proceso } from "@prisma/client";
+import type { Proceso } from "@/core/datos/enumerados-del-esquema";
 import { redondearMoneda } from "@/core/moneda";
 import { mediana } from "@/core/estadistica/mediana";
 import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";

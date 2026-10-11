@@ -14,24 +14,12 @@ import { PUREZA_HEREDADA_DEL_NUCLEO } from "./pureza-heredada-del-nucleo";
  */
 const FASE_REGISTRADA: Record<string, 4 | 6> = {
   "src/core/carta/promo-sucursal.ts": 6,
-  "src/core/catalogo/filtro-selector-producto.ts": 6,
   "src/core/catalogo/receta-a-input.ts": 6,
   "src/core/catalogo/recetas-vigentes.ts": 6,
-  "src/core/features/movimientos/conteo-fisico.guard.ts": 6,
-  "src/core/features/movimientos/conteo-fisico.schema.ts": 6,
-  "src/core/features/movimientos/movimiento.schema.ts": 6,
-  "src/core/features/traspasos/traspaso.guard.ts": 6,
-  "src/core/features/traspasos/traspaso.schema.ts": 6,
   "src/core/fiscal/factura-autorizada.ts": 6,
   "src/core/movimientos/anulaciones.ts": 6,
   "src/core/movimientos/armar-filas-de-movimiento.ts": 6,
-  "src/core/movimientos/public.ts": 6,
-  "src/core/movimientos/transiciones.ts": 6,
-  "src/core/movimientos/ui-config.ts": 6,
   "src/core/reportes/historial-producto.ts": 6,
-  "src/core/reportes/historial-vistas.ts": 6,
-  "src/core/reportes/margen-real.ts": 6,
-  "src/core/reportes/periodo-tipos.ts": 6,
   "src/core/stock/seccion-habitual.ts": 6,
 };
 

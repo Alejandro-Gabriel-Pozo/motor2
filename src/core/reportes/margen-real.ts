@@ -1,4 +1,4 @@
-import { type Proceso } from "@prisma/client";
+import type { Proceso } from "@/core/datos/enumerados-del-esquema";
 
 /**
  * Motor de costeo "real" línea a línea — extraído de `calcularMargenDelPeriodo` (src/core/reportes/periodo.ts), donde vivía sin

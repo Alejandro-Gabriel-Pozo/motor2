@@ -3,10 +3,10 @@ import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DETALLE, validarTextoLibre } from "@/core/datos/limites";
-import type { AccionConteo } from "@prisma/client";
+import type { AccionConteo } from "@/core/datos/enumerados-del-esquema";
 import type { ComandoConteoFisico } from "./conteo-fisico.schema";
 
-/** Las acciones válidas; la clave es el enum de Prisma, así que una acción nueva obliga a tocar esta lista. */
+/** Las acciones válidas; la clave es el enum del esquema (copiado en `enumerados-del-esquema.ts`), así que una acción nueva obliga a tocar esta lista. */
 const ACCIONES_VALIDAS: Record<AccionConteo, true> = { AJUSTAR: true, FALTA_MOVIMIENTO: true, DESCARTAR: true };
 
 /**
