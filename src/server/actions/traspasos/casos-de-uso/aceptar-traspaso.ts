@@ -81,5 +81,5 @@ export async function aceptarTraspasoCasoDeUso(
     const mensaje = `Recibido de "${origen.nombre}".`;
     if (claveIdempotencia) await registrarResultadoIdempotente(tx, operacionId, mensaje);
     return exito(mensaje, { traspasoId: traspaso.id, operacionId, repetida: false });
-  });
+  }, 5, {}, true);
 }

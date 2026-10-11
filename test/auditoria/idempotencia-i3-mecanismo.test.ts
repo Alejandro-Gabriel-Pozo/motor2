@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -22,6 +23,28 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
+
+// Carrera perdida de verdad: el perdedor de dos pedidos con la MISMA clave no siempre recibe el 40001, a veces recibe directo el 23505 del índice único. `choque.pendientes`
+// hace que el PRIMER intento de la próxima transacción serializable falle así; si el caso de uso encendió `tambienChoqueDeUnico`, repite, ve al ganador y responde "repetida".
+// Si no lo encendió, el P2002 llega crudo a quien llama. Con 0 (lo normal) todo pasa derecho.
+const choque = vi.hoisted(() => ({ pendientes: 0 }));
+vi.mock("../../src/lib/transaccion-serializable", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../../src/lib/transaccion-serializable")>();
+  return {
+    ...real,
+    conTransaccionSerializable: ((transaccion: Parameters<typeof real.conTransaccionSerializable>[0], ...resto: unknown[]) =>
+      (real.conTransaccionSerializable as (...args: unknown[]) => unknown)(
+        (async (fn: unknown, opciones: unknown) => {
+          if (choque.pendientes > 0) {
+            choque.pendientes--;
+            throw new Prisma.PrismaClientKnownRequestError("Unique constraint failed", { code: "P2002", clientVersion: "7.10.0" });
+          }
+          return (transaccion as (f: unknown, o: unknown) => unknown)(fn, opciones);
+        }) as unknown,
+        ...resto
+      )) as typeof real.conTransaccionSerializable,
+  };
+});
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -364,6 +387,60 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
         const operacionesConEsaClave = await prisma.operacion.count({ where: { claveIdempotencia: clave } });
         expect(operacionesConEsaClave, `iteración ${i}: la clave de idempotencia identifica una sola Operacion`).toBe(1);
       }
+    });
+
+    it("aceptarTransferencia: el primer intento recibe 23505 → repite, termina ok y deja UNA aceptación", async () => {
+      const mp = await crearMP("HarinaT9", [sucursalId, sucursalBId]);
+      await comoA();
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });
+      expect(envio.ok, envio.mensaje).toBe(true);
+
+      await comoB();
+      choque.pendientes = 1;
+      const r = await aceptarTransferencia(idDe(envio), seccionBId, crypto.randomUUID());
+      choque.pendientes = 0;
+      expect(r.ok, r.mensaje).toBe(true);
+      expect(await prisma.movimientoStock.count({ where: { productoId: mp.id, proceso: "TRANSFERENCIA_ENTRADA_SUCURSAL" } })).toBe(1);
+    });
+  });
+
+  // El 23505 del perdedor: el caso de uso tiene que repetir (ve al ganador) y no dejar escapar el P2002 crudo. Un solo efecto, la respuesta de siempre.
+  describe("carrera perdida: el primer intento recibe 23505 y el caso de uso repite", () => {
+    beforeEach(() => {
+      choque.pendientes = 0;
+    });
+
+    it("registrarMovimiento: repite, termina ok y deja UNA Operacion", async () => {
+      const mp = await crearMP("HarinaC1");
+      choque.pendientes = 1;
+      const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+      expect(r.ok, r.mensaje).toBe(true);
+      expect(choque.pendientes, "el choque se consumió: hubo un segundo intento").toBe(0);
+      expect(await prisma.operacion.count({ where: { sucursalId, proceso: "COMPRA" } })).toBe(1);
+    });
+
+    it("registrarVenta: repite, termina ok y deja UNA Operacion de venta", async () => {
+      const mpInsumo = await crearMP("HarinaC2");
+      const pv = await prisma.producto.create({ data: { codigo: "PV_C2", nombre: "PanC2", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
+      await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: pv.id, disponible: true } });
+      await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } } });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }] });
+      choque.pendientes = 1;
+      const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }], claveIdempotencia: crypto.randomUUID() });
+      expect(r.ok, r.mensaje).toBe(true);
+      expect(choque.pendientes).toBe(0);
+      expect(await prisma.operacion.count({ where: { sucursalId, proceso: "VENTA" } })).toBe(1);
+    });
+
+    it("reclasificarStock: repite, termina ok y deja UNA reclasificación (salida + entrada)", async () => {
+      const mp = await crearMP("SalC3");
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      choque.pendientes = 1;
+      const r = await reclasificarStock({ productoId: mp.id, seccionOrigenId: seccionId, fecha: new Date(), destinos: [{ seccionId: seccionDestinoId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+      expect(r.ok, r.mensaje).toBe(true);
+      expect(choque.pendientes).toBe(0);
+      expect(await prisma.movimientoStock.count({ where: { productoId: mp.id, proceso: "RECLASIFICACION" } })).toBe(2);
     });
   });
 });

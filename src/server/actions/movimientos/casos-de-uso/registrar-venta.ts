@@ -78,5 +78,5 @@ async function registrarVentaEnTransaccion(
       datos.claveIdempotencia ? { idempotencia: { clave: datos.claveIdempotencia, payloadHash } } : {}
     );
     return venta.ok ? exito(venta.mensaje, { operacionIds: venta.operacionIds, repetida: false }) : fracaso("VENTA_RECHAZADA", venta.mensaje);
-  });
+  }, 5, {}, true);
 }
