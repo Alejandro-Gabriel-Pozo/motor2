@@ -36,6 +36,7 @@ export {
   validarMinutosYMarcadosDePaso,
   validarPasos,
   validarTextosYTopesDeCabecera,
+  validarUnidadDeIngredientes,
 } from "./receta-validacion";
 export type { CabeceraRecetaInput, DatosParaValidarReceta, IngredienteInput, PasoInput } from "./receta-validacion";
 export { resolverDisponibilidad, resolverDisponibilidadPorSucursal } from "./disponibilidad-producto";

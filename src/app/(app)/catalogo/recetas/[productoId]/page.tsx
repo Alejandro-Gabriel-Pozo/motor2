@@ -91,6 +91,9 @@ export default async function RecetaEditorPage({
     );
   }
 
+  // U7 / D3: la receta se carga SIEMPRE en la unidad de stock de la materia prima (la conversión entre unidades viene más adelante); el servidor lo exige al guardar. Acá solo se la muestra fija.
+  const nombreDeUnidad = (unidadId: string) => unidades.find((u) => u.id === unidadId)?.nombre ?? "la unidad de stock";
+  const unidadDeStockPorMp: Record<string, string> = Object.fromEntries(mpDisponibles.map((mp) => [mp.id, mp.unidadStockId]));
   const vigente = await obtenerRecetaVigente(producto.id);
   // La versión que ESTA pantalla muestra: cada cambio puntual la manda de vuelta, y si mientras tanto alguien guardó otra, el cambio se rechaza con un mensaje en vez de pisarlo (H7).
   const versionVista = vigente?.version ?? 0;
@@ -121,7 +124,7 @@ export default async function RecetaEditorPage({
         if (aceptaSustitutos) {
           const opciones = await listarOpcionesDeSustituto({
             insumoIdExcluido: ing.insumoProducto.insumoId,
-            unidadId: ing.unidadId,
+            unidadId: ing.insumoProducto.unidadStockId, // U7 / D3: los sustitutos comparten la unidad de STOCK de la MP (la receta se carga en ella), no la que haya quedado guardada.
           }, ctx.db);
           opcionesSustitutoPorIngrediente.set(ing.insumoProductoId, opciones);
         }
@@ -353,6 +356,12 @@ export default async function RecetaEditorPage({
             <tbody>
               {vigente.ingredientes.map((ing) => {
                 const enEdicion = editar === ing.insumoProductoId;
+                // U7 / D3: una receta vieja puede traer el ingrediente en otra unidad que la de stock de la MP. No se migra nada: se avisa y el servidor no deja guardar la receta hasta corregirlo.
+                const unidadDeStock = nombreDeUnidad(ing.insumoProducto.unidadStockId);
+                const avisoDeUnidad =
+                  ing.unidadId === ing.insumoProducto.unidadStockId
+                    ? null
+                    : `La unidad guardada (${ing.unidad.nombre}) no coincide con la de stock (${unidadDeStock}): hoy el consumo se calcula en ${unidadDeStock}, no en ${ing.unidad.nombre}. Corregí la cantidad en ${unidadDeStock} (Editar) y guardá; hasta entonces no se puede guardar ningún cambio de esta receta.`;
                 return (
                   <tr key={ing.id} className="border-b">
                     {enEdicion ? (
@@ -374,13 +383,17 @@ export default async function RecetaEditorPage({
                         >
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
                           <CampoNumero name="cantidad" defaultValue={String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
-                          <select name="unidadId" defaultValue={ing.unidadId} required aria-label="Unidad" className="rounded border px-2 py-1.5 text-sm">
-                            {unidades.map((u) => (
-                              <option key={u.id} value={u.id}>
-                                {u.nombre}
-                              </option>
-                            ))}
-                          </select>
+                          {avisoDeUnidad && (
+                            <p role="alert" className="w-full text-xs text-amber-700 dark:text-amber-600">
+                              {avisoDeUnidad}
+                            </p>
+                          )}
+                          {/* Unidad FIJA: la de stock de la MP (el servidor la exige y la relee al guardar). */}
+                          <input type="hidden" name="unidadId" value={ing.insumoProducto.unidadStockId} />
+                          <span title="Unidad de stock de la materia prima" className="rounded border bg-neutral-100 px-2 py-1.5 text-sm dark:bg-neutral-800">
+                            <span className="sr-only">Unidad: </span>
+                            {unidadDeStock}
+                          </span>
                           <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} placeholder="Merma %" className="w-24" />
                           {aceptaSustitutos &&
                             (() => {
@@ -423,6 +436,11 @@ export default async function RecetaEditorPage({
                       <>
                         <td className="py-2">
                           {ing.insumoProducto.nombre}
+                          {avisoDeUnidad && (
+                            <p role="alert" className="text-xs text-amber-700 dark:text-amber-600">
+                              {avisoDeUnidad}
+                            </p>
+                          )}
                           {sucursalesSinIngrediente.has(ing.insumoProductoId) && (
                             <p role="alert" className="text-xs text-amber-700 dark:text-amber-600">
                               No disponible en {sucursalesSinIngrediente.get(ing.insumoProductoId)!.join(", ")} — ahí este plato no se va a poder vender.
@@ -487,10 +505,12 @@ export default async function RecetaEditorPage({
         <FormConResultado
           accion={async (formData: FormData) => {
             "use server";
+            const insumoProductoId = String(formData.get("insumoProductoId") ?? "");
             return agregarIngredienteAReceta(producto.id, {
-              insumoProductoId: String(formData.get("insumoProductoId") ?? ""),
+              insumoProductoId,
               cantidad: Number(formData.get("cantidad")),
-              unidadId: String(formData.get("unidadId") ?? ""),
+              // U7 / D3: la unidad es la de stock de la MP elegida (el servidor la vuelve a comparar con la real al guardar).
+              unidadId: unidadDeStockPorMp[insumoProductoId] ?? "",
               mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
             }, versionVista);
           }}
@@ -501,20 +521,13 @@ export default async function RecetaEditorPage({
             <option value="">Materia prima</option>
             {mpDisponibles.map((mp) => (
               <option key={mp.id} value={mp.id}>
-                {mp.nombre}
+                {mp.nombre} ({nombreDeUnidad(mp.unidadStockId)})
               </option>
             ))}
           </select>
+          <p className="text-xs text-neutral-500">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
           <div className="flex gap-2">
             <CampoNumero name="cantidad" placeholder="Cantidad" required className="flex-1" />
-            <select name="unidadId" required className="flex-1 rounded border px-3 py-2">
-              <option value="">Unidad</option>
-              {unidades.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre}
-                </option>
-              ))}
-            </select>
             <CampoNumero name="mermaPorcentaje" placeholder="Merma %" className="w-28" />
           </div>
           <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">

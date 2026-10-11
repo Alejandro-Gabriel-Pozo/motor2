@@ -28,11 +28,11 @@ export async function listarProductosConReceta(db: Db) {
 
 /**
  * Editor de receta (`/catalogo/recetas/[productoId]`): las materias primas disponibles en alguna sucursal, para el selector de "Agregar ingrediente".
- * S-15: solo `{ id, nombre }`, que es lo que el selector dibuja y lo que el editor le declara a `RecetaDeLaSucursal` (`materiasPrimas`); antes volvía la fila entera, que un cambio
- * futuro a un componente de cliente habría llevado al navegador con el costo de consignación adentro.
+ * S-15: solo `{ id, nombre, unidadStockId }`, que es lo que el selector dibuja (U7 / D3: cada MP con la unidad de stock en la que se carga su cantidad) y lo que el editor le declara a
+ * `RecetaDeLaSucursal` (`materiasPrimas`); antes volvía la fila entera, que un cambio futuro a un componente de cliente habría llevado al navegador con el costo de consignación adentro.
  */
 export async function listarMpDisponiblesEnAlguna(db: Db) {
-  return db.producto.findMany({ where: { tipo: "MP", ...whereDisponibleEnAlguna() }, select: { id: true, nombre: true }, orderBy: { nombre: "asc" } });
+  return db.producto.findMany({ where: { tipo: "MP", ...whereDisponibleEnAlguna() }, select: { id: true, nombre: true, unidadStockId: true }, orderBy: { nombre: "asc" } });
 }
 
 /**

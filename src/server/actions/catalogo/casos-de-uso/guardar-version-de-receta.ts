@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirRecetaPropiaGuardada } from "@/core/catalogo/public";
-import { validarCabecera, validarIngredientes, validarPasos } from "@/core/catalogo/public";
+import { validarCabecera, validarIngredientes, validarPasos, validarUnidadDeIngredientes } from "@/core/catalogo/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { cargarDatosParaValidarReceta } from "@/server/persistencia/catalogo/cargar-datos-para-validar-receta";
 import { MENSAJE_PRODUCTO_NO_ENCONTRADO } from "@/core/features/catalogo/receta-version.guard";
@@ -17,6 +17,7 @@ import {
   cargarNombresDeSucursales,
   cargarProductoParaReceta,
   cargarUltimaVersionDeReceta,
+  cargarUnidadesDeStockDeIngredientes,
   copiarCalibracionesLocales,
   escribirVersionDeReceta,
   habilitarRecetaPropia,
@@ -36,6 +37,8 @@ import {
  *  2. `validarIngredientes` → `validarPasos` → `validarCabecera` (el primero que falla da el mensaje);
  *  3. reintento (`conReintento`, hasta 5 intentos, ante un choque del UNIQUE (productoId, version) o un conflicto de escritura), cada intento en UNA transacción SERIALIZABLE:
  *     a. relee la versión vigente COMPLETA (con sus calibraciones locales) DENTRO de la transacción, la compara con `versionEsperada` y calcula `version` = MAX + 1;
+ *     a'. U7 / D3 (decisión del dueño, 2026-10-11): compara la unidad de cada ingrediente con la unidad de STOCK real de su materia prima, leída acá dentro (`validarUnidadDeIngredientes`); si difiere
+ *        (g contra kg) se corta con `INGREDIENTES_INVALIDOS` y no se escribe nada. Sin conversión: la receta se carga en la unidad de stock. Una receta vieja con otra unidad no se migra, pero no se puede volver a guardar hasta corregirla;
  *     b. dentro de esa misma transacción (desde D3, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 6: el arrastre
  *        lee/escribe `RendimientoLocalIngrediente`, que una calibración concurrente también puede estar tocando):
  *        - crea la versión con ingredientes, pasos, cabecera y la tabla puente paso↔ingrediente (persistencia);
@@ -158,6 +161,15 @@ export async function guardarVersionDeRecetaCasoDeUso(
             );
             return;
           }
+        }
+        // U7 / D3: la unidad de cada ingrediente tiene que ser la de STOCK de su MP. Se compara con la unidad de stock leída ACÁ, dentro de la SERIALIZABLE (no con la que cargó la validación de
+        // arriba, fuera de la transacción): si alguien cambia la unidad de stock de una MP entre medio, esta lectura choca con su escritura (40001), el reintento relee y rechaza. Mismo nivel de
+        // aislamiento que el resto del caso de uso; no hay otra comprobación aparte.
+        const unidadesDeStock = await cargarUnidadesDeStockDeIngredientes(tx, items);
+        const invalidoUnidad = validarUnidadDeIngredientes(items, unidadesDeStock.productos, unidadesDeStock.nombresDeUnidad);
+        if (invalidoUnidad) {
+          rechazo.resultado = fracaso("INGREDIENTES_INVALIDOS", invalidoUnidad);
+          return;
         }
         version = versionActual + 1;
         const basadaEnVersionId = sucursalId === null ? null : destino.basadaEnVersionId !== undefined ? destino.basadaEnVersionId : await cargarIdDeVersionCentralVigente(tx, productoId);

@@ -149,9 +149,12 @@ describe("fijarRendimientoLocal / volverAlRendimientoCentral (paso 6, D4/D6(a))"
     });
 
     it("un cambio de unidad DESCARTA la calibración (nunca la arrastra con otra unidad) y lo audita", async () => {
+      // U7 / D3: desde ahora una receta no se guarda en otra unidad que la de stock de la MP, así que el cambio de unidad solo ocurre al CORREGIR una receta vieja: la v1 quedó en «g»
+      // (dato viejo, escrito directo) y se corrige a «kg», la unidad de stock de la MP.
+      await prisma.recetaIngrediente.update({ where: { id: recetaIngredienteId }, data: { unidadId: unidadGId } });
       await fijarRendimientoLocal(recetaIngredienteId, { cantidad: 1.8, mermaPorcentaje: 20 });
 
-      const r = await guardarReceta(pv.id, [{ insumoProductoId: mp.id, cantidad: 1000, mermaPorcentaje: 0, unidadId: unidadGId }]);
+      const r = await guardarReceta(pv.id, [{ insumoProductoId: mp.id, cantidad: 1, mermaPorcentaje: 0, unidadId: unidadKgId }]);
       expect(r.ok, r.mensaje).toBe(true);
       expect(r.mensaje).toContain("descartó");
 
@@ -160,7 +163,7 @@ describe("fijarRendimientoLocal / volverAlRendimientoCentral (paso 6, D4/D6(a))"
 
       const entidadId = `${sucursalId}:${pv.id}:${mp.id}`;
       const registro = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidad: "RendimientoLocalIngrediente", entidadId, valorNuevo: null, campo: "cantidad" } });
-      expect(registro.descripcion).toContain("cambió la unidad de kg a g");
+      expect(registro.descripcion).toContain("cambió la unidad de g a kg");
       expect(registro.descripcion).toContain("versión 2");
     });
 
