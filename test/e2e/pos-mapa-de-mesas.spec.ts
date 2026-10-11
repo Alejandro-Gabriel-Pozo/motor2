@@ -103,6 +103,26 @@ test("el mapa muestra las mesas con sus datos reales: métricas, tarjetas de los
   }
 });
 
+test("P19: el total de la tarjeta muestra los centavos como el ticket (1.234,56, no 1.235) y un monto entero no cambia", async ({ paginaAutenticada: page, sucursalId }) => {
+  const marca = Date.now();
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-CTV-${marca}`, nombre: `E2E Centavos ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 1234.56 } });
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 921 } });
+  try {
+    await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id, abiertaEn: new Date(Date.now() - 5 * 60_000), items: { create: [{ productoId: producto.id, cantidad: 1, precioUnitario: 1234.56 }] } } });
+    await page.goto("/mesas");
+    await expect(tarjeta(page, 921)).toContainText("En pedido");
+    await expect(tarjeta(page, 921)).toContainText(/\$\s?1\.234,56/);
+    await expect(tarjeta(page, 921)).not.toContainText(/1\.235/);
+  } finally {
+    await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: mesa.id } } });
+    await prisma.cuenta.deleteMany({ where: { mesaId: mesa.id } });
+    await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
+
 test("las acciones de cada tarjeta llevan a la pantalla de la mesa; «Opciones de mesa» sigue deshabilitado, y el salón no muestra el menú de administración", async ({ paginaAutenticada: page, sucursalId }) => {
   const { libre, enPedido, ocupada, limpiar } = await sembrarTresMesas(sucursalId, [911, 912, 913]);
   try {

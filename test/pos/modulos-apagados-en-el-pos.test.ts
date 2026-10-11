@@ -211,7 +211,7 @@ describe("S-22 · Carta apagada: el POS vende solo con los ítems sueltos, sin c
     expect(deCarta).toEqual([]);
   });
 
-  it("la lista plana tiene a los mismos productos, con el mismo precio, que el selector con la carta prendida (no se pierde ni se cambia nada vendible)", async () => {
+  it("la lista plana tiene a los mismos productos, con el mismo precio, que el selector con la carta prendida (no se pierde ni se cambia nada vendible; este fixture NO tiene descuentos de producto: ver el caso siguiente)", async () => {
     await fijarModulosActivos(E, ["salon", "carta"]);
     const conCarta = await cargarSelectorCartaDeLaMesa(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     const todos = [...conCarta.seccionesCarta.flatMap((x) => x.entradas.flatMap(pediblesDeEntrada)), ...conCarta.fueraDeCarta];
@@ -220,6 +220,24 @@ describe("S-22 · Carta apagada: el POS vende solo con los ítems sueltos, sin c
     const porId = (lista: typeof todos) => Object.fromEntries(lista.map((p) => [p.productoId, p]).sort(([a], [b]) => String(a).localeCompare(String(b))));
     expect(porId(plana.fueraDeCarta)).toEqual(porId(todos));
     expect(plana.fueraDeCarta.find((p) => p.nombre === "Milanesa")?.precio).toBe(9000);
+  });
+
+  it("P18 / D18: con un descuento de producto cargado, la lista plana da el precio de LISTA (sin precio tachado) y con Carta prendida el descontado; la plana no lee `descuentoProductoSucursal`", async () => {
+    await prisma.descuentoProductoSucursal.create({ data: { productoId: s.flan.id, sucursalId: s.sucursalId, porcentaje: 15 } });
+    const flanDe = (selector: Awaited<ReturnType<typeof cargarSelectorCartaDeLaMesa>>) =>
+      [...selector.seccionesCarta.flatMap((x) => x.entradas.flatMap(pediblesDeEntrada)), ...selector.fueraDeCarta].find((p) => p.nombre === "Flan")!;
+
+    await fijarModulosActivos(E, ["salon", "carta"]);
+    const conCarta = flanDe(await cargarSelectorCartaDeLaMesa(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA));
+    expect(conCarta.precio).toBe(2550);
+    expect(conCarta.precioLista).toBe(3000);
+
+    await fijarModulosActivos(E, ["salon"]);
+    const { resultado, consultas } = await conConsultas((db) => cargarSelectorCartaDeLaMesa(s.sucursalId, db, AHORA_DE_LA_CORRIDA));
+    const plana = flanDe(resultado);
+    expect(plana.precio).toBe(3000);
+    expect(plana).not.toHaveProperty("precioLista");
+    expect(consultas.filter((c) => c.startsWith("descuentoProductoSucursal."))).toEqual([]);
   });
 
   it("el POS sigue funcionando con puros ítems sueltos: se agrega, se envía a cocina y se cierra la cuenta", async () => {

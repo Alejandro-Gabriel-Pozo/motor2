@@ -20,7 +20,7 @@ import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta
 /**
  * Caso de uso «agregar ítems y promos sin enviar a una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 12a — `docs/plan-hito-4-pureza.md` §5). Es el
  * cuerpo que antes vivía en línea en la Server Action `agregarItems` (`src/server/actions/pos/cuenta-pedido.ts`), movido TAL CUAL: las mismas lecturas, en el
- * mismo orden y la misma cantidad (lo fija `test/pos/agregar-items-consultas.test.ts`, que no se edita), dentro de la misma transacción SERIALIZABLE, y los
+ * mismo orden y la misma cantidad (lo fija `test/pos/agregar-items-consultas.test.ts`, editado después solo por S-22 / D2 y P18 / D18: la lectura del registro de módulos), dentro de la misma transacción SERIALIZABLE, y los
  * mismos mensajes. La Server Action quedó como adaptador (`conPermiso("pos_tomar_pedido")` → `guardComandoAgregarItems` → este caso de uso →
  * `aResultadoAccion`). El criterio de negocio (precio congelado al agregar, promo revalidada con la misma fuente que el selector, todo o nada) está documentado
  * en la Server Action.
@@ -29,9 +29,10 @@ import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta
  *
  * En UNA transacción SERIALIZABLE (`conTransaccionSerializable`, con reintento ante un conflicto de escritura):
  *  1. la cuenta, de una mesa de ESTA sucursal y abierta (`cuentaAbiertaDeSucursal`, server/persistencia/pos/cargar-cuenta-abierta.ts);
- *  1b. (S-22 / D2) si el pedido trae promos, la empresa tiene que tener el módulo Promociones (`PROMO_NO_DISPONIBLE`); un pedido de puros sueltos no lee el registro;
+ *  1b. (S-22 / D2) se lee el registro de módulos de la empresa (siempre, una vez): si el pedido trae promos, tiene que tener el módulo Promociones (`PROMO_NO_DISPONIBLE`);
+ *      y (P18 / D18) el descuento de producto de la sucursal solo rige con el módulo Carta;
  *  2. VALIDAR todo, sin escribir nada: cada ítem suelto (producto PV, disponible en la sucursal, cantidad con los decimales de su unidad, precio de lista
- *     resuelto y descuento de producto de la sucursal) y cada promo (definición vigente con `cargarPromoCartaParaAgregar`, cupos, prorrateo). El N+1 por ítem
+ *     resuelto y descuento de producto de la sucursal, si la empresa tiene Carta) y cada promo (definición vigente con `cargarPromoCartaParaAgregar`, cupos, prorrateo). El N+1 por ítem
  *     (cada producto se valida con sus propias lecturas) queda como estaba: decisión del dueño (D5 del plan del POS, 2026-10-08), fijado por el conteo de
  *     consultas;
  *  3. ESCRIBIR, recién acá (paso 12b: en server/persistencia/pos/pedido.ts): una `PromoCuenta` por promo (`escribirPromoDeCuenta`, que devuelve el id que
@@ -58,14 +59,12 @@ export async function agregarItemsCasoDeUso(
     if (!abierta.ok) return fracaso("CUENTA_NO_ABIERTA", abierta.mensaje);
 
     // S-22 / D2 (decisión del dueño): «si Promociones está apagado, no se pueden agregar promociones para el POS». El gate de `pos_tomar_pedido` solo mira Salón; la promo es un
-    // dato de OTRO módulo y el selector no es una barrera (una Server Action se llama a mano con un `promoCartaId`). Se lee el registro solo si el pedido trae promos —los
-    // pedidos de puros ítems sueltos no pagan la lectura— y se pasa a la lectura de cada promo para que no lo vuelva a leer. Va ANTES de validar los ítems: sin el módulo no hay
-    // nada de la promo que mirar. Las promos que la cuenta YA tiene no pasan por acá (enviar, anular y cerrar no agregan nada).
-    let modulos: ModulosDelPos | null = null;
-    if (promos_.length > 0) {
-      modulos = await modulosDelPosDeEmpresa(actor.empresaId, tx);
-      if (!modulos.promociones) return fracaso("PROMO_NO_DISPONIBLE", "Las promociones no están disponibles: el módulo Promociones no está activo en tu empresa.");
-    }
+    // dato de OTRO módulo y el selector no es una barrera (una Server Action se llama a mano con un `promoCartaId`). El registro de módulos se lee SIEMPRE, UNA vez y después de
+    // la cuenta (el guard ya garantiza que el pedido trae al menos un ítem o una promo): sirve para rechazar la promo sin el módulo Promociones y para decidir si rige el descuento de
+    // producto (P18 / D18, decisión del dueño 2026-10-11: sin el módulo Carta NO se aplica, igual que las promos). Se pasa a la lectura de cada promo para que no lo vuelva a leer.
+    // Va ANTES de validar los ítems: sin el módulo no hay nada de la promo que mirar. Las promos que la cuenta YA tiene no pasan por acá (enviar, anular y cerrar no agregan nada).
+    const modulos: ModulosDelPos = await modulosDelPosDeEmpresa(actor.empresaId, tx);
+    if (promos_.length > 0 && !modulos.promociones) return fracaso("PROMO_NO_DISPONIBLE", "Las promociones no están disponibles: el módulo Promociones no está activo en tu empresa.");
 
     // Fase 1: VALIDAR todo, sin escribir nada — ni los sueltos ni las promos (mismo criterio que registrarVentaEnTx).
     const filasSueltas: Prisma.CuentaItemCreateManyInput[] = [];
@@ -78,8 +77,10 @@ export async function agregarItemsCasoDeUso(
       const cantidad = validarCantidadPedido(item.cantidad, producto.unidadStock.decimales, paso);
       if (!cantidad.ok) return fracaso("PRODUCTO_INVALIDO", `«${producto.nombre}»: ${cantidad.mensaje}`);
       const precioDeLista = redondearMoneda(await resolverPrecioVenta(actor.sucursalId, producto.id, Number(producto.precioVenta), tx));
-      // Producto con descuento (Fase 2): el descuento de ESTA sucursal se aplica acá y el precio de lista queda congelado aparte en `precioCartaUnitario`.
-      const aplicado = aplicarDescuentoDeProducto(precioDeLista, (await descuentosDeProductoEnSucursal(actor.sucursalId, tx, [producto.id])).get(producto.id) ?? null);
+      // Producto con descuento (Fase 2): el descuento de ESTA sucursal se aplica acá y el precio de lista queda congelado aparte en `precioCartaUnitario`. P18 / D18: solo con el
+      // módulo Carta (sin él, `null`: precio de lista y `precioCartaUnitario` nulo, así que el cierre aplica solo el descuento del cliente); lo mismo hace el selector (paridad).
+      const descuento = modulos.carta ? ((await descuentosDeProductoEnSucursal(actor.sucursalId, tx, [producto.id])).get(producto.id) ?? null) : null;
+      const aplicado = aplicarDescuentoDeProducto(precioDeLista, descuento);
       filasSueltas.push({
         cuentaId: abierta.cuenta.id,
         productoId: producto.id,
@@ -93,7 +94,7 @@ export async function agregarItemsCasoDeUso(
 
     const promosValidadas: { titulo: string; promoCartaId: string; precio: number; componentes: (ComponentePromoElegido & { precioCarta: number })[]; filas: FilaPromoProrrateada[] }[] = [];
     for (const p of promos_) {
-      const def = typeof p?.promoCartaId === "string" ? await cargarPromoCartaParaAgregar(actor.sucursalId, p.promoCartaId, tx, actor.ahora, modulos ?? undefined) : null;
+      const def = typeof p?.promoCartaId === "string" ? await cargarPromoCartaParaAgregar(actor.sucursalId, p.promoCartaId, tx, actor.ahora, modulos) : null;
       if (!def) return fracaso("PROMO_INVALIDA", "No se encontró esa promo, o ya no está disponible.");
       const elecciones = Array.isArray(p.elecciones) ? p.elecciones : [];
       // S-01 (O.50): los componentes salen de la elección YA VALIDADA (cupos, elegibles, sin repetidos), nunca de aplanar lo que mandó el cliente.

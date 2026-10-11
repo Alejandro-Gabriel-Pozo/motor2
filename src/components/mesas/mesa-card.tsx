@@ -5,11 +5,12 @@
 // docs/plan-mapa-de-mesas-2026-09-24.md §A.4: colores de texto con el contraste aprobado por el dueño (§A.3) y `EstadoMesa`
 // importado del núcleo. Desde «tomar pedido» (docs/plan-tomar-pedido-2026-09-25.md, paso 7) las acciones son ENLACES a la pantalla
 // de la mesa (`href*`); una acción sin `href` se sigue dibujando deshabilitada. El número llega ya formateado por quien llama («01»).
+// El total se formatea con `formatearMonto` (el mismo del ticket y de la pantalla de la mesa, centavos incluidos; P19, decisión del dueño 2026-10-11).
 
 import Link from "next/link";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import type { ReactNode } from "react";
-import type { EstadoMesa } from "@/core/pos/public";
+import { formatearMonto, type EstadoMesa } from "@/core/pos/public";
 
 export interface MesaCardProps {
   numero: number | string;
@@ -43,11 +44,6 @@ const ESTADO_CONFIG: Record<EstadoMesa, { label: string; varColor: string; varTi
   en_pedido: { label: "En pedido", varColor: "var(--mesa-draft)", varTint: "var(--mesa-draft-tint)", varTexto: "var(--mesa-draft-ink)", varTextoBoton: "var(--ink)" },
   ocupada: { label: "Ocupada", varColor: "var(--mesa-ocupada)", varTint: "var(--mesa-ocupada-tint)", varTexto: "var(--mesa-ocupada)", varTextoBoton: "#fff" },
 };
-
-function formatMonto(n?: number) {
-  if (n == null) return null;
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
-}
 
 export function MesaCard(props: MesaCardProps) {
   const { numero, estado, productosSinEnviar, total, mesero, tiempoAbierta, pedidosEnviados, hrefPedido, hrefVerPedidos, hrefFacturar } = props;
@@ -87,7 +83,7 @@ export function MesaCard(props: MesaCardProps) {
           <p className="mb-1 text-[13px] text-[var(--ink-soft)]">
             {productosSinEnviar ?? 0} producto{productosSinEnviar === 1 ? "" : "s"} sin enviar
           </p>
-          <p className="mb-4 text-[15px] font-bold tabular-nums">{formatMonto(total) ?? "—"}</p>
+          <p className="mb-4 text-[15px] font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
         </>
       )}
 
@@ -103,7 +99,7 @@ export function MesaCard(props: MesaCardProps) {
           <p className="mb-3 text-[12.5px] text-[var(--ink-soft)]">
             {pedidosEnviados ?? 0} pedido{pedidosEnviados === 1 ? "" : "s"} enviado{pedidosEnviados === 1 ? "" : "s"}
           </p>
-          <p className="mb-3 text-[15px] font-bold tabular-nums">{formatMonto(total) ?? "—"}</p>
+          <p className="mb-3 text-[15px] font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
         </>
       )}
 
