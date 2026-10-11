@@ -135,6 +135,14 @@ module.exports = {
       to: { path: "^node_modules/(@types/)?(react|react-dom|next)/" },
     },
     {
+      name: "core-sin-prisma",
+      comment:
+        "src/core/ no depende de Prisma ni de src/lib/, ni siquiera con `import type` (Fase 6, tramo 6b: todo el núcleo es P0). Cierra el hueco del analizador de pureza, que mira los imports de `@prisma/client` del archivo y no ve un tipo de Prisma que llega reexportado por otro módulo de lib (el `Db` de lib/db-tipos). Sin excepciones: los enumerados del esquema están copiados en core/datos/enumerados-del-esquema.ts y atados a Prisma por test/arquitectura/tipos-de-dominio-vs-prisma.test.ts.",
+      severity: "error",
+      from: { path: "^src/core/" },
+      to: { path: ["^src/lib/", "^node_modules/(@prisma|\\.prisma)/"] },
+    },
+    {
       name: "ui-sin-prisma",
       comment:
         "app/ y components/ no usan Prisma en runtime (ni src/lib/db.ts ni @prisma/client); `import type` sí se permite. Excepciones (PENDIENTES_DE_MIGRAR, Fase D): .dependency-cruiser-excepciones.cjs.",

@@ -226,6 +226,15 @@ describe("paginas-solo-consultas: las excepciones, en las dos direcciones", () =
   });
 });
 
+describe("core-sin-prisma (Fase 6, tramo 6b): el núcleo no depende de Prisma ni de lib, sin excepciones", () => {
+  it("la regla está en la config, como error, desde todo src/core/ y sin pathNot", () => {
+    const regla = CONFIG.forbidden.find((r) => r.name === "core-sin-prisma") as (ReglaConfig & { from: unknown; to: unknown }) | undefined;
+    expect(regla?.severity).toBe("error");
+    expect(regla?.from).toEqual({ path: "^src/core/" });
+    expect(regla?.to).toEqual({ path: ["^src/lib/", "^node_modules/(@prisma|\\.prisma)/"] });
+  });
+});
+
 describe("core-sin-react-next: las excepciones, en las dos direcciones", () => {
   it("el conjunto de archivos de core/ que importan react/react-dom/next es exactamente el de la lista", () => {
     const reales = modulosCon(RE_CORE, (d) => RE_REACT_NEXT.test(d.resolved));
