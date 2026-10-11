@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { DIA_MS } from "../setup/tiempo";
@@ -26,7 +27,15 @@ const sembrarProducto = async (sucursalId: string, prefijo: string) => {
 };
 
 for (const zona of ["America/Argentina/Buenos_Aires", "Asia/Tokyo"]) {
-  test.describe(`con el navegador en ${zona}`, () => {
+  /** ¿La hora local del navegador es la de `zona`? Se compara la hora, no el nombre: Chromium devuelve el alias canónico («America/Buenos_Aires» por «America/Argentina/Buenos_Aires»). */
+async function navegadorEstaEnLaZona(page: Page, zona: string): Promise<boolean> {
+  return page.evaluate((z) => {
+    const d = new Date("2026-06-15T12:00:00Z");
+    return new Intl.DateTimeFormat("en-US", { timeZone: z, hour: "numeric", hourCycle: "h23" }).format(d) === d.getHours().toString().padStart(2, "0");
+  }, zona);
+}
+
+test.describe(`con el navegador en ${zona}`, () => {
     test.use({ timezoneId: zona });
 
     test("Merma: el día elegido queda guardado como el mediodía argentino de ese día", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
@@ -40,7 +49,7 @@ for (const zona of ["America/Argentina/Buenos_Aires", "Asia/Tokyo"]) {
       });
 
       await page.goto("/movimientos/merma");
-      expect(await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone), "el navegador tiene que estar en la zona del caso").toBe(zona);
+      expect(await navegadorEstaEnLaZona(page, zona), "el navegador tiene que estar en la zona del caso").toBe(true);
 
       await page.getByLabel("Fecha", { exact: true }).fill(DIA);
       await page.getByRole("combobox", { name: "Sección", exact: true }).selectOption({ label: seccion.nombre });
@@ -60,7 +69,7 @@ for (const zona of ["America/Argentina/Buenos_Aires", "Asia/Tokyo"]) {
       const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
 
       await page.goto("/movimientos/compra");
-      expect(await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone), "el navegador tiene que estar en la zona del caso").toBe(zona);
+      expect(await navegadorEstaEnLaZona(page, zona), "el navegador tiene que estar en la zona del caso").toBe(true);
 
       await page.getByLabel("Fecha", { exact: true }).fill(DIA);
       await page.getByRole("combobox", { name: "Sección", exact: true }).selectOption({ label: seccion.nombre });
@@ -83,7 +92,7 @@ for (const zona of ["America/Argentina/Buenos_Aires", "Asia/Tokyo"]) {
       await prisma.pagoConsignante.create({ data: { sucursalId, proveedorId: consignante.id, importe: 1, fecha: new Date(Date.now() - 30 * DIA_MS), usuarioId: admin.id } });
 
       await page.goto("/reportes/consignacion");
-      expect(await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone), "el navegador tiene que estar en la zona del caso").toBe(zona);
+      expect(await navegadorEstaEnLaZona(page, zona), "el navegador tiene que estar en la zona del caso").toBe(true);
 
       await page.getByRole("row", { name: new RegExp(consignante.nombre) }).getByRole("button", { name: "Registrar pago", exact: true }).click();
       const dialogo = page.getByRole("dialog");
