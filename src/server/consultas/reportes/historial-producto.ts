@@ -8,7 +8,25 @@ import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes
 import type { Db } from "@/lib/db-tipos";
 import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { redondearCantidad } from "@/core/reportes/public";
-import type { FilaBusquedaProducto, EventoHistorialProducto, FilaMovimientoHistorial, HistorialProducto, IngredienteRecetaVigente } from "@/core/reportes/public";
+import type { FilaBusquedaProducto, EventoHistorialProducto, HistorialProducto, IngredienteRecetaVigente } from "@/core/reportes/public";
+
+/** La fila del `$queryRaw` de movimientos de `obtenerHistorialProducto` (Fase 6, tramo 6b: vivía en `core/reportes/historial-producto.ts` con `Prisma.Decimal`; este es su único lector). */
+interface FilaMovimientoHistorial {
+  id: string;
+  operacionId: string;
+  proceso: string;
+  cantidad: Prisma.Decimal;
+  loteVencimiento: Date | null;
+  detalle: string;
+  precioTotal: Prisma.Decimal;
+  precioPorUnidadStock: Prisma.Decimal;
+  seccionNombre: string;
+  fecha: Date;
+  nroFactura: string | null;
+  anuladaEn: Date | null;
+  proveedorNombre: string | null;
+  sustituyeANombre: string | null;
+}
 
 /**
  * Port de buscarProductoParaHistorial (Reportes.js:1217-1230) — a

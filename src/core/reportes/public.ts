@@ -97,7 +97,6 @@ export type { AccProducto } from "./devoluciones";
 export type { ReporteDevoluciones } from "./devoluciones";
 export type { EstadoDiferencia } from "./diferencias-ajustes";
 export type { RecetaQueUsaInsumo } from "./diferencias-ajustes";
-export type { FilaMovimientoHistorial } from "./historial-producto";
 export type { FilaBusquedaProducto } from "./historial-producto";
 export type { HistorialProducto } from "./historial-producto";
 export type { ProblemaUnidadMezclada } from "./huecos-catalogo";

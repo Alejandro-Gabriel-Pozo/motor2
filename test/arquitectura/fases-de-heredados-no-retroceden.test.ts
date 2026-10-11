@@ -14,7 +14,6 @@ import { PUREZA_HEREDADA_DEL_NUCLEO } from "./pureza-heredada-del-nucleo";
  */
 const FASE_REGISTRADA: Record<string, 4 | 6> = {
   "src/core/fiscal/factura-autorizada.ts": 6,
-  "src/core/reportes/historial-producto.ts": 6,
 };
 
 /** El número de la fase con la que empieza el `pendiente` de una entrada («Fase 6: …»), o `null` si no empieza así. */

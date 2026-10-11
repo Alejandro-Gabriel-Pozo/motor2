@@ -16,5 +16,4 @@ export interface EntradaDePurezaHeredada {
 
 export const PUREZA_HEREDADA_DEL_NUCLEO: Record<string, EntradaDePurezaHeredada> = {
   "src/core/fiscal/factura-autorizada.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
-  "src/core/reportes/historial-producto.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: los tipos de Prisma se reemplazan por tipos de dominio propios" },
 };

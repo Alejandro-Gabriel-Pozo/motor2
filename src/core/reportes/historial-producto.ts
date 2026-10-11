@@ -1,5 +1,3 @@
-import { Prisma } from "@prisma/client";
-
 export interface FilaBusquedaProducto {
   productoId: string;
   codigo: string;
@@ -36,23 +34,6 @@ export interface EventoHistorialProducto {
   conteoReal?: number;
   diferencia?: number;
   estado?: string;
-}
-
-export interface FilaMovimientoHistorial {
-  id: string;
-  operacionId: string;
-  proceso: string;
-  cantidad: Prisma.Decimal;
-  loteVencimiento: Date | null;
-  detalle: string;
-  precioTotal: Prisma.Decimal;
-  precioPorUnidadStock: Prisma.Decimal;
-  seccionNombre: string;
-  fecha: Date;
-  nroFactura: string | null;
-  anuladaEn: Date | null;
-  proveedorNombre: string | null;
-  sustituyeANombre: string | null;
 }
 
 export interface HistorialProducto {
