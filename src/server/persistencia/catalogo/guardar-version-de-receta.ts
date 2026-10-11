@@ -38,7 +38,7 @@ export async function cargarProductoParaReceta(db: Prisma.TransactionClient, pro
 /**
  * U7 / D3: la unidad de STOCK real de las materias primas de los ingredientes y el nombre de cada unidad en juego (la del ingrediente y la de stock), para que el caso de uso compare
  * la unidad de la receta con la de stock. Corre DENTRO de la transacción SERIALIZABLE (lee `Producto.unidadStockId`: si alguien cambia la unidad de stock de una MP mientras esto guarda,
- * una de las dos aborta con 40001 y el reintento relee). Solo lectura, sin reglas de negocio.
+ * el cambio no aborta a nadie: `actualizarProducto` es READ COMMITTED, carrera declarada en O.230). Solo lectura, sin reglas de negocio.
  */
 export async function cargarUnidadesDeStockDeIngredientes(db: Prisma.TransactionClient, items: readonly IngredienteInput[]) {
   const productoIds = [...new Set(items.map((i) => i.insumoProductoId))];

@@ -11,7 +11,7 @@ import { SelectorRango } from "@/components/selector-rango";
 import { FilaRendimientoSimple } from "./fila-simple";
 import { FilaRendimientoCompartida } from "./fila-compartida";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
-import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
+import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
 
 const AYUDA_RENDIMIENTO_REAL =
   "«Medido» (con dos Conteos Físicos que cubren el insumo, al principio y al final del tramo): el consumo real, sumado directo del Kardex entre esos dos conteos ÷ lo vendido en ese mismo tramo — una medición, no una estimación. «Estimado» (sin esos dos conteos): total comprado ÷ total vendido en el rango elegido — asume que lo que se compra en la ventana es lo que se consume en la ventana, algo que no siempre es cierto si comprás por lote (ej. caja x12). El método de esta fila se muestra debajo del número.";
@@ -21,9 +21,11 @@ const AYUDA_DELTA_STOCK =
   "Método «estimado»: cuánto cambió el stock del insumo dentro de la ventana elegida (pasá el mouse para ver el saldo antes y después) — si subió, parte de lo comprado quedó en el depósito, no se consumió; no es, por sí solo, un error de receta, y no corrige el número de arriba (restarlo sería circular). Método «medido»: esta celda muestra el tramo entre las dos anclas de Conteo Físico usadas — el dato real detrás de la fórmula.";
 const AYUDA_IMPACTO = "(consumo observado − lo que la receta hubiera consumido) × costo de reposición — lo que ORDENA la tabla, no el %. Un desvío grande en un insumo barato puede pesar menos que uno moderado en un insumo caro.";
 
-/** Mismo criterio que el "29 + hoy" de rango-por-defecto.ts (hoy = día argentino) — acá 55 + hoy = 56 días = 8 semanas exactas, inclusive los dos extremos. */
-function fechaIsoHaceNDias(n: number): string {
-  return sumarDias(diaDeCalendario(new Date(), ZONA_ARGENTINA), -n);
+/** Mismo criterio que `hoyUtcSinHora`/"29 + hoy" de rango-por-defecto.ts — acá 55 + hoy = 56 días = 8 semanas exactas, inclusive los dos extremos. */
+function fechaUtcIsoHaceNDias(n: number): string {
+  const d = inicioDelDiaDe(new Date(), ZONA_UTC);
+  d.setUTCDate(d.getUTCDate() - n);
+  return d.toISOString().slice(0, 10);
 }
 
 /**
@@ -79,7 +81,7 @@ export default async function RendimientoRecetasPage({
   // B10: "barato" en vez de extender OpcionRango (razones en el plan §B10) — solo se ofrece cuando de verdad ayudaría.
   const confianzaLimitadaPorVentana = filasSimples.some((f) => f.confianza !== "alta") || filasCompartidas.some((f) => f.semanasConDatos < 8);
   const hrefUltimas8Semanas =
-    `/reportes/rendimiento-recetas?rango=personalizado&desde=${fechaIsoHaceNDias(55)}&hasta=${fechaIsoHaceNDias(0)}` +
+    `/reportes/rendimiento-recetas?rango=personalizado&desde=${fechaUtcIsoHaceNDias(55)}&hasta=${fechaUtcIsoHaceNDias(0)}` +
     (sp.productoId ? `&productoId=${sp.productoId}` : "");
 
   const poolsCompartidos = new Map<string, typeof filasCompartidas>();

@@ -24,13 +24,13 @@ describe("resolverRangoPorDefecto", () => {
   });
 
   it("cruza de mes correctamente: 30 días atrás desde el 5 de marzo cae en enero", () => {
-    const r = resolverRangoPorDefecto("30d", new Date("2026-03-05T12:00:00Z"));
+    const r = resolverRangoPorDefecto("30d", new Date("2026-03-05T00:00:00Z"));
     expect(r.desdeISO).toBe("2026-02-04");
     expect(r.hastaISO).toBe("2026-03-05");
   });
 
   it("cruza de año: 30 días atrás desde el 10 de enero cae en diciembre del año anterior", () => {
-    const r = resolverRangoPorDefecto("30d", new Date("2026-01-10T12:00:00Z"));
+    const r = resolverRangoPorDefecto("30d", new Date("2026-01-10T00:00:00Z"));
     expect(r.desdeISO).toBe("2025-12-12");
     expect(r.hastaISO).toBe("2026-01-10");
   });
@@ -41,38 +41,9 @@ describe("resolverRangoPorDefecto", () => {
     expect(r.hastaISO).toBe("2028-02-29");
   });
 
-  it("usa el día argentino, no el UTC: una hora tardía en UTC (pero aún del mismo día en Argentina) no corre 'hoy' al día siguiente", () => {
+  it("usa el día UTC, no el local: una hora tardía en UTC no corre 'hoy' al día siguiente", () => {
     const r = resolverRangoPorDefecto("30d", new Date("2026-09-22T23:59:00Z"));
     expect(r.hastaISO).toBe("2026-09-22");
-  });
-
-  it("30/9 a las 22:00 argentinas (01:00 UTC del 1/10): 'mes' sigue siendo septiembre, no salta a octubre", () => {
-    const r = resolverRangoPorDefecto("mes", new Date("2026-09-30T22:00:00-03:00"));
-    expect(r.desdeISO).toBe("2026-09-01");
-    expect(r.hastaISO).toBe("2026-09-30");
-  });
-
-  it("30/9 a las 22:00 argentinas: '30d' termina hoy (30/9) y arranca 29 días antes", () => {
-    const r = resolverRangoPorDefecto("30d", new Date("2026-09-30T22:00:00-03:00"));
-    expect(r.hastaISO).toBe("2026-09-30");
-    expect(r.desdeISO).toBe("2026-09-01");
-  });
-
-  it("31/12 a las 23:30 argentinas: sigue siendo diciembre del año en curso", () => {
-    const r = resolverRangoPorDefecto("mes", new Date("2026-12-31T23:30:00-03:00"));
-    expect(r.desdeISO).toBe("2026-12-01");
-    expect(r.hastaISO).toBe("2026-12-31");
-  });
-
-  it("a las 00:00 argentinas del 1/10 sí empieza octubre", () => {
-    const r = resolverRangoPorDefecto("mes", new Date("2026-10-01T00:00:00-03:00"));
-    expect(r.desdeISO).toBe("2026-10-01");
-    expect(r.hastaISO).toBe("2026-10-01");
-  });
-
-  it("el rango personalizado sin 'desde' parte de la misma ventana de 30 días en hora argentina", () => {
-    const r = resolverRangoDeReporte({ rango: "personalizado" }, new Date("2026-09-30T22:00:00-03:00"));
-    expect(r.hastaISO).toBe("2026-09-30");
   });
 });
 

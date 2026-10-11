@@ -163,8 +163,8 @@ export async function guardarVersionDeRecetaCasoDeUso(
           }
         }
         // U7 / D3: la unidad de cada ingrediente tiene que ser la de STOCK de su MP. Se compara con la unidad de stock leída ACÁ, dentro de la SERIALIZABLE (no con la que cargó la validación de
-        // arriba, fuera de la transacción): si alguien cambia la unidad de stock de una MP entre medio, esta lectura choca con su escritura (40001), el reintento relee y rechaza. Mismo nivel de
-        // aislamiento que el resto del caso de uso; no hay otra comprobación aparte.
+        // arriba, fuera de la transacción), así que ve lo último confirmado al empezar. Carrera declarada (O.230): `actualizarProducto` corre en READ COMMITTED y la SERIALIZABLE no detecta
+        // conflictos con un escritor que no lo es; un cambio de unidad concurrente a este guardado puede colarse (el chequeo vuelve a correr en el próximo guardado).
         const unidadesDeStock = await cargarUnidadesDeStockDeIngredientes(tx, items);
         const invalidoUnidad = validarUnidadDeIngredientes(items, unidadesDeStock.productos, unidadesDeStock.nombresDeUnidad);
         if (invalidoUnidad) {
