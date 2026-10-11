@@ -49,13 +49,14 @@ Tres pasos, **cada uno con autorización expresa**, simulación primero, base po
 
 ## 6. Fase 6 — Sesión y tipos (sin migración; 25 entradas heredadas)
 Inventario completo en `test/arquitectura/pureza-heredada-del-nucleo.ts`:
-- (a) `core/auth/{base,contexto,ir-al-login,rol-de-ejecucion,session}` a `server/sesion`, una sola vez y sin tocar su código.
+- (a) `core/auth/{base,contexto,ir-al-login,rol-de-ejecucion,session}` a `server/sesion`, una sola vez y sin tocar su código. **Hecho en el tramo 6a** (abajo).
 - (b) Los tipos de Prisma en `core`: 19 archivos solo con tipos más `core/fiscal/factura-autorizada.ts` (que recibe `Db` y lo usa la consola, que no puede importar `src/server`): tipos de dominio propios.
 - (c) Los resabios de `server/sesion` (O.24): `new Date()` y `ALLOWED_EMAIL_DOMAINS` en `acceso.ts`, hasta que el borde de Auth.js reciba la hora y el entorno ya leídos.
-- (d) El único estado de módulo permitido en `core` (`let datosDelRolDelProceso`, `core/auth/base.ts`).
-- (e) **241 `vi.mock` de `core/auth/session`** en tests y scripts, que el codemod de imports no reescribe: cambiarlos a mano o con una herramienta nueva.
+- (d) El único estado de módulo permitido en `core` (`let datosDelRolDelProceso`, `core/auth/base.ts`). **Hecho en el tramo 6a.**
+- (e) **241 `vi.mock` de `core/auth/session`** en tests y scripts, que el codemod de imports no reescribe: cambiarlos a mano o con una herramienta nueva. **Hecho en el tramo 6a** (contados: 301 `vi.mock` de los cinco módulos).
 - (f) Las 2 lecturas de `auth/usuarios.ts` con `new Date()` (D.3). (g) Diferidos a esta rama u otra: **O.38b** (recetas vigentes y precio local por capacidad para N sucursales) y **O.14** (lecturas repetidas de la venta).
 - Meta: **todo `src/core/` en nivel P0** (hoy 286 de 311).
+- **Tramo 6a (rama `m3e-fase6a`, 2026-10-11): (a), (d) y (e) HECHOS**, sin migración ni cambio de comportamiento. (a) los cinco archivos pasaron con `git mv` a `src/server/sesion/` con 0 líneas cambiadas; (d) el `let datosDelRolDelProceso` se fue con `base.ts`: `core-sin-estado-de-modulo` quedó sin excepciones y la declaración se mudó a `server-sesion.test.ts`; (e) un codemod de una sola vez reescribió 727 referencias en 555 archivos (331 imports estáticos, 301 `vi.mock`, 11 `import()`, 84 rutas en listas, strings y comentarios) más 6 expresiones regulares y 2 comentarios a mano. Las 5 entradas salieron de `PUREZA_HEREDADA_DEL_NUCLEO` (25 → 20); medido con `npm run inventario:arquitectura`, `src/core/` pasó de 321 archivos con 296 P0 (25 no) a 316 con 296 P0 (20 no): el «286 de 311» de arriba era el conteo del 2026-10-08. Las dos excepciones de Next de `core-sin-react-next` (contexto, ir-al-login) se mudaron a `sesion-capa` con su archivo; la de `session.ts` sobró. Quedan (b), (c), (f) y (g). Evidencia: fila O.225 de `docs/pureza-integracion.md`.
 
 ## 7. Etapa A — Gastos, compras y ventas (`plan-unificado-gastos-compras-y-ventas.md`, v1.0 cerrada + v1.1)
 **Aviso de nombres:** el plan unificado llama «Fase 5/6» a otra cosa (pagos, cuenta corriente y fiscal); **no son las Fases 5 y 6 de la pureza**.
