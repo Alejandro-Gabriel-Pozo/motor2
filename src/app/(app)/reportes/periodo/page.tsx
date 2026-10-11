@@ -28,7 +28,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   const ahora = new Date();
   // S-28: reporte pesado (recorre el Kardex del rango): cupo por usuario antes de consultar nada (best effort, en memoria).
   if (reportePesadoSinCupo(ctx.usuarioId, "periodo", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
-  const rango = resolverRangoDeReporte(sp, ahora);
+  const rango = resolverRangoDeReporte(sp, ahora, ctx.empresaZonaHoraria);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
   const [rep, cotizacion, gateCostos] = await Promise.all([

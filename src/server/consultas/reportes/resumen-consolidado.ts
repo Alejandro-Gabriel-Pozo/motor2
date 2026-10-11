@@ -40,7 +40,7 @@ export async function obtenerResumenConsolidado(
 ): Promise<FilaResumenConsolidado[]> {
   if (sucursales.length === 0) return [];
   // El mismo rango que `obtenerResumenOperativo` sin rango explícito (el default del selector, ver rango-por-defecto.ts).
-  const rango = resolverRangoPorDefecto(undefined, ahora);
+  const rango = resolverRangoPorDefecto(undefined, ahora, zona);
   const desde = new Date(rango.desdeISO);
   const hasta = new Date(rango.hastaISO);
 

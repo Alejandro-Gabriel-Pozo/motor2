@@ -62,7 +62,7 @@ export default async function RendimientoRecetasPage({
   const ahora = new Date();
   // S-28: reporte pesado (compras, producción, ventas y conteos del rango): cupo por usuario antes de consultar nada (best effort, en memoria).
   if (reportePesadoSinCupo(ctx.usuarioId, "rendimiento-recetas", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
-  const rango = resolverRangoDeReporte(sp, ahora);
+  const rango = resolverRangoDeReporte(sp, ahora, ctx.empresaZonaHoraria);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
   const desde = new Date(desdeStr);

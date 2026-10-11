@@ -28,7 +28,7 @@ export default async function DescuentosClientesPage({ searchParams }: { searchP
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const rango = resolverRangoDeReporte(sp, new Date());
+  const rango = resolverRangoDeReporte(sp, new Date(), ctx.empresaZonaHoraria);
   // La consulta filtra `gte`/`lte` sobre lo que recibe: los días del rango se expanden acá, en la zona de la empresa (P1, O.251), para que el último día entre entero.
   const { desde, hasta } = rangoDeDias(new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.empresaZonaHoraria);
   const rep = await obtenerReporteDescuentosClientes(ctx.sucursalId, desde, hasta, ctx.db);

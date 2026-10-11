@@ -32,7 +32,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
   const { editar, sugerido, sugeridoNombre } = unicosDeUrl(await searchParams);
   // S-13: el gasto en compras por insumo es de `reporte_compras` (piso administrador), no de quien cuenta (`conteo_frecuencia`, piso operario). La consulta lo niega por defecto.
   const { ver: veImportes } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_compras", ctx.db);
-  const rango = resolverRangoPorDefecto(undefined, new Date());
+  const rango = resolverRangoPorDefecto(undefined, new Date(), ctx.empresaZonaHoraria);
   const [filas, sugerencias] = await Promise.all([
     listarFrecuenciasConteo(ctx.sucursalId),
     sugerirInsumosClaseA(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db, { conImportes: veImportes }),

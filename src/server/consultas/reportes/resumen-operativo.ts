@@ -57,7 +57,7 @@ async function obtenerResumenFinancieroDelRango(sucursalId: string, desde: Date,
  */
 export async function obtenerResumenOperativo(sucursalId: string, db: Db, ahora: Date, rango?: { desde: Date; hasta: Date }, zona: string = ZONA_ARGENTINA): Promise<ResumenOperativo> {
   const { desde: desdeFinanciero, hasta: hastaFinanciero } = rango ?? (() => {
-    const r = resolverRangoPorDefecto(undefined, ahora);
+    const r = resolverRangoPorDefecto(undefined, ahora, zona);
     return { desde: new Date(r.desdeISO), hasta: new Date(r.hastaISO) };
   })();
   const [saldos, movimientosPorProceso, financiero] = await Promise.all([

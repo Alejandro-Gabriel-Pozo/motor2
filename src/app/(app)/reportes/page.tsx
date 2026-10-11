@@ -27,7 +27,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
   if (reportePesadoSinCupo(ctx.usuarioId, "periodo", new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const rango = resolverRangoDeReporte(sp, new Date());
+  const rango = resolverRangoDeReporte(sp, new Date(), ctx.empresaZonaHoraria);
   const [r, cotizacion] = await Promise.all([
     obtenerResumenOperativo(ctx.sucursalId, ctx.db, new Date(), { desde: new Date(rango.desdeISO), hasta: new Date(rango.hastaISO) }, ctx.empresaZonaHoraria),
     obtenerUltimaCotizacionSinRomper(ctx.db),
