@@ -33,6 +33,7 @@ export interface ComandoConteoFisico {
 /** Por qué no se pudo registrar el conteo (la sección en blanco la rechaza antes el guard). */
 export type CodigoConteoFisico =
   | "SECCION_NO_ENCONTRADA"
+  | "SECCION_INACTIVA"
   | "PRODUCTO_NO_ENCONTRADO"
   | "PRODUCTO_NO_DISPONIBLE"
   | "SIN_STOCK_REAL"
