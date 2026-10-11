@@ -388,16 +388,17 @@ export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio:
  * `actualizarActivoProducto` global de antes. Desactivarlo acá lo saca de los selectores de movimiento, de Stock consolidado y
  * de la Valuación DE ESTA SUCURSAL; y si es una MP de la receta vigente de un plato disponible acá, ese plato deja de poder
  * venderse acá. Por eso al DESACTIVAR se BLOQUEA mientras algo dependa de él EN ESTA SUCURSAL (recetas vigentes de platos
- * disponibles acá, saldo en alguna sección de esta sucursal) y el mensaje dice qué es. Reactivar nunca se bloquea. Ver
- * `dependenciasParaDesactivar`.
+ * disponibles acá, saldo en alguna sección de esta sucursal) y el mensaje dice qué es. Reactivar no se bloquea por dependencias (ver
+ * `dependenciasParaDesactivar`), pero D4: poner a la venta un producto de venta SIN precio (en $0) exige además `producto_campos_sensibles` (`SIN_PERMISO_CAMPOS_SENSIBLES`, lo decide el caso de uso).
  *
  * Desde el Hito 4 (H4C-11): permiso (`conPermiso("producto_disponibilidad")`) → caso de uso (`casos-de-uso/actualizar-disponibilidad-producto.ts`: las
- * dependencias, el valor anterior, la escritura y su auditoría, todo con la base del contexto y SIN transacción, como antes — hallazgo conocido, migrado tal cual)
- * → revalidar la carta pública si salió bien → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
+ * dependencias, el valor anterior, la escritura y su auditoría, ahora en UNA transacción) → revalidar la carta pública si salió bien → `aResultadoAccion`. Sin guard (`SIN_GUARD`).
  */
 export async function actualizarDisponibilidadProducto(productoId: string, disponible: boolean): Promise<ResultadoAccion> {
   return conPermiso("producto_disponibilidad", async (ctx) => {
-    const resultado = await actualizarDisponibilidadProductoCasoDeUso(ctx, { productoId, disponible });
+    // D4: la clave fina se calcula solo al activar (apagar nunca la exige); el caso de uso la aplica dentro de su transacción (`SIN_PERMISO_CAMPOS_SENSIBLES`).
+    const puedeEditarCamposSensibles = disponible ? await puedeEditarCamposSensiblesDelProducto(ctx) : false;
+    const resultado = await actualizarDisponibilidadProductoCasoDeUso(ctx, { productoId, disponible, puedeEditarCamposSensibles });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
