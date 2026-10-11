@@ -49,7 +49,7 @@ export default async function PortalSucursalesPage() {
       <div>
         <h1 className="mb-1 text-xl font-semibold">Portal de sucursales</h1>
         <p className="text-sm text-neutral-500">
-          Qué sucursales muestra la carta pública en su portal y con qué dirección (/carta/&lt;slug&gt;). «Quitar del portal» la saca del portal. Solo sale en el portal si está publicada y la sucursal está
+          Qué sucursales muestra la carta pública en su portal y con qué dirección (/carta/&lt;slug&gt;). «Quitar del portal» la apaga, no la borra: la dirección queda reservada para esa sucursal. Solo sale en el portal si está publicada y la sucursal está
           activa. La carta toma los cambios en hasta 5 minutos.
         </p>
         <div className="mt-1 flex flex-wrap gap-x-4 text-sm">
@@ -206,7 +206,7 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
             }}
             className="mt-3 border-t pt-3"
           >
-            <p className="text-sm text-neutral-500">Quitarla borra estos datos: la sucursal deja de aparecer en el portal.</p>
+            <p className="text-sm text-neutral-500">Quitarla la saca del portal y de su dirección pública, pero conserva estos datos: el slug queda reservado para esta sucursal. Para volver a mostrarla, marcá «Publicada en el portal» y guardá.</p>
             <button type="submit" className="text-sm underline">
               Quitar «{s.nombre}» del portal
             </button>

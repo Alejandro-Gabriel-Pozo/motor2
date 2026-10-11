@@ -227,6 +227,23 @@ describe("la carta pública con las políticas de la RLS por sucursal puestas", 
     expect(alcancesAbiertos(), "ningún slug que no resuelve abrió una lectura por sucursal").toEqual([]);
   });
 
+  it("P16: apagar el slug «central» de A (publicada = false, la fila queda) da null sin abrir ninguna lectura por sucursal y NO toca el «central» de B; al volver a publicar, A recupera su carta", async (ctx) => {
+    if (!hayRol) return ctx.skip();
+    const a = await empresa("emp-a");
+    const b = await empresa("emp-b");
+    await duenio.sucursalPublica.update({ where: { empresaId_slug: { empresaId: EA, slug: "central" } }, data: { publicada: false } });
+    try {
+      dbDeEmpresa.mockClear();
+      expect(await sinSesion.cartaPublica(a, "central", AHORA), "apagado: mismo null que un slug inexistente").toBeNull();
+      expect(alcancesAbiertos(), "apagado: no se abrió la base de la sucursal").toEqual([]);
+      expect(resumen(await sinSesion.cartaPublica(b, "central", AHORA)), "el «central» de B sigue igual").toEqual(CARTA_B1);
+      expect((await sinSesion.portalCartaPublico(a)).map((s) => s.slug), "el portal de A ya no lo lista").toEqual(["norte"]);
+    } finally {
+      await duenio.sucursalPublica.update({ where: { empresaId_slug: { empresaId: EA, slug: "central" } }, data: { publicada: true } });
+    }
+    expect(resumen(await sinSesion.cartaPublica(a, "central", AHORA)), "publicada de nuevo: la misma dirección vuelve").toEqual(CARTA_A1);
+  });
+
   it("una empresa suspendida no resuelve (404 sin decir que existe) y el portal sigue listando solo lo publicado y activo de la empresa pedida", async (ctx) => {
     if (!hayRol) return ctx.skip();
     expect(await sinSesion.empresaCartaPublica("emp-c")).toBeNull();

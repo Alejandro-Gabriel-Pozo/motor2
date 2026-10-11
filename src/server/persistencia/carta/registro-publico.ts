@@ -3,8 +3,8 @@ import type { Prisma } from "@prisma/client";
 
 /**
  * Escrituras del REGISTRO PÚBLICO de las sucursales en el portal (`SucursalPublica`; Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1; mismo contrato que el resto de
- * `server/persistencia/`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio). Son EXACTAMENTE las cuatro escrituras que antes hacía en línea
- * `src/server/actions/carta/registro-publico.ts`; las llaman solo los casos de uso de `src/server/actions/carta/casos-de-uso/`, con la base del contexto y sin
+ * `server/persistencia/`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio). Son las cuatro escrituras que antes hacía en línea
+ * `src/server/actions/carta/registro-publico.ts` (P16, 2026-10-11: la de «quitar» dejó de borrar y apaga); las llaman solo los casos de uso de `src/server/actions/carta/casos-de-uso/`, con la base del contexto y sin
  * transacción, como antes (el registro del portal no es plata: sin auditoría). Si el slug choca con el índice único, el error de unicidad sube tal cual: lo traduce el
  * caso de uso.
  */
@@ -45,9 +45,12 @@ export async function guardarRegistroPublicoDeSucursal(db: Prisma.TransactionCli
   });
 }
 
-/** Borra la fila de una sucursal del portal (la vuelta atrás del alta: la sucursal desaparece del portal, la sucursal en sí no se toca). */
-export async function quitarRegistroPublicoDeSucursal(db: Prisma.TransactionClient, args: { id: string }): Promise<void> {
-  await db.sucursalPublica.deleteMany({ where: { id: args.id } });
+/**
+ * Apaga la fila de una sucursal en el portal (`publicada = false`) SIN borrarla (P16, decisión del dueño 2026-10-11): la sucursal desaparece del portal y de su URL pública, pero el
+ * slug queda RESERVADO por el índice único `(empresaId, slug)` y, si se vuelve a publicar, el QR ya impreso vuelve a funcionar. Repetirlo deja el mismo estado. La sucursal en sí no se toca.
+ */
+export async function apagarRegistroPublicoDeSucursal(db: Prisma.TransactionClient, args: { id: string }): Promise<void> {
+  await db.sucursalPublica.update({ where: { id: args.id }, data: { publicada: false } });
 }
 
 /** Mueve la tarjeta de una sucursal sobre el mapa: guarda SOLO `posX` y `posY` (el ancho y el alto quedan como estaban). */
