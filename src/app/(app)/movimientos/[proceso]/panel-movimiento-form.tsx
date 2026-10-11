@@ -419,7 +419,7 @@ export function PanelMovimientoForm({
             {config.esCompraLike && (
               <>
                 <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500">
-                  Precio total
+                  Precio total (con IVA incluido)
                   <CampoNumero
                     value={fila.precioTotal}
                     onChange={(v) => actualizarFila(idx, { precioTotal: v })}

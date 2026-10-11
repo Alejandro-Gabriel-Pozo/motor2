@@ -1,8 +1,9 @@
 import { cocienteRedondeadoArriba } from "@/core/moneda";
 
 /**
- * Food cost objetivo: la porción del precio de venta (neto, sin IVA por ahora) que puede irse en comida y bebida. Se mide sobre el costo SIN
- * packaging ni limpieza (grupo «No comestibles»), igual que `foodCostPct`. Es el único lugar donde vive el número: es el valor POR DEFECTO, el
+ * Food cost objetivo: la porción del precio de venta (el de la carta, con IVA incluido; el costo también es lo pagado; el cálculo sin IVA llega
+ * con el desglose, M2/M3) que puede irse en comida y bebida. Se mide sobre el costo SIN packaging ni limpieza (grupo «No comestibles»), igual que
+ * `foodCostPct`. Es el único lugar donde vive el número: es el valor POR DEFECTO, el
  * que rige mientras la empresa no cargue uno propio (ni uno para la categoría del producto): ver `resolverObjetivoFoodCost`.
  */
 export const FOOD_COST_OBJETIVO_PCT = 40;

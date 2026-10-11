@@ -20,7 +20,7 @@ const AYUDA_ESTADO =
   "Margen negativo: el costo supera el precio de venta. Food cost alto: el costo de comida y bebida (sin el packaging ni la limpieza del grupo «No comestibles») supera el food cost objetivo del producto (columna «Food cost objetivo»). Costo incompleto: algún insumo de la receta no tiene compra registrada. Sin receta / Sin precio de venta: falta ese dato para poder calcular.";
 const AYUDA_OBJETIVO = `El food cost que se quiere como máximo para este producto: el de su categoría si la categoría tiene uno; si no, el de la empresa; y si la empresa no cargó ninguno, ${FOOD_COST_OBJETIVO_PCT}%. Lo fija administración en Catálogo → Margen objetivo.`;
 const AYUDA_PRECIO_SUGERIDO =
-  "Precio de venta MÍNIMO con el que el food cost (comida y bebida, sin el packaging ni la limpieza) no pasa del objetivo del producto: costo de comida y bebida / objetivo × 100, redondeado al centavo hacia arriba. Es el precio neto (sin IVA), igual que el precio de venta de la tabla. Se muestra «—» si falta algún costo de la receta o el producto no tiene receta.";
+  "Precio de venta MÍNIMO con el que el food cost (comida y bebida, sin el packaging ni la limpieza) no pasa del objetivo del producto: costo de comida y bebida / objetivo × 100, redondeado al centavo hacia arriba. Es un precio con IVA incluido, igual que el precio de venta de la tabla. Se muestra «—» si falta algún costo de la receta o el producto no tiene receta.";
 
 const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
   {

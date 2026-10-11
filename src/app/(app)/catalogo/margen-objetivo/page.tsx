@@ -24,7 +24,7 @@ export default async function MargenObjetivoPage() {
       <div>
         <h1 className="mb-1 text-xl font-semibold">Margen objetivo (food cost)</h1>
         <p className="max-w-2xl text-sm text-neutral-500">
-          El food cost objetivo es el porcentaje del precio de venta (neto, sin IVA) que puede irse en comida y bebida, sin contar el packaging ni la limpieza.
+          El food cost objetivo es el porcentaje del precio de venta (el de la carta, con IVA incluido) que puede irse en comida y bebida, sin contar el packaging ni la limpieza.
           Con él, el reporte de Costos marca «Food cost alto» y calcula el precio mínimo de cada plato. Rige el de la categoría del producto; si la categoría no
           tiene uno, el de la empresa; y si la empresa tampoco, {FOOD_COST_OBJETIVO_PCT} %. Dejá el campo vacío para volver al objetivo que corresponde.
         </p>
