@@ -18,6 +18,7 @@
  */
 import type { MotivoAnulacionRechazada } from "@/core/features/compras/compra.schema";
 import { GUIA_PARA_CORREGIR_CON_UN_AJUSTE } from "@/core/guia-de-ajuste";
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 export interface LineaComprada {
   productoId: string;
@@ -113,10 +114,11 @@ function compradoPorPar(lineas: readonly LineaComprada[]): Map<string, { par: st
   return porPar;
 }
 
-const fechaCorta = (f: Date) => f.toISOString().slice(0, 10);
+/** El día de un VENCIMIENTO de lote: una fecha de calendario guardada a las 00:00 UTC, que se lee en UTC (no es el instante de una operación). */
+const fechaDeLote = (f: Date) => f.toISOString().slice(0, 10);
 
 function describirFaltante(f: LineaFaltante): string {
-  const lote = f.loteVencimiento ? `, lote que vence el ${fechaCorta(f.loteVencimiento)}` : "";
+  const lote = f.loteVencimiento ? `, lote que vence el ${fechaDeLote(f.loteVencimiento)}` : "";
   const total = f.enTotal ? " en total, entre todos los lotes de la sección (parte salió sin lote, por ejemplo en un traspaso)" : "";
   const base = `${f.productoNombre} (${f.seccionNombre}${lote}): se compraron ${f.comprado} y hoy quedan ${f.disponible}${total}`;
   return f.saldoNegativoSinLote === undefined ? base : `${base}. ${guiaParaSaldoNegativoSinLote(f)}`;
@@ -220,7 +222,7 @@ export function mensajeCompraAnulada(movimientosRevertidos: number, nroFactura: 
  * la compra no tiene proveedor (antes se miraba si existía la relación, no si el nombre estaba vacío: se mantiene).
  */
 export function descripcionAuditoriaAnulacion(fecha: Date, proveedorNombre: string | null, nroFactura: string | null): string {
-  return `Compra del ${fechaCorta(fecha)}${proveedorNombre !== null ? ` a ${proveedorNombre}` : ""}${nroFactura ? `, factura ${nroFactura}` : ""}: anulación`;
+  return `Compra del ${diaDeCalendario(fecha, ZONA_ARGENTINA)}${proveedorNombre !== null ? ` a ${proveedorNombre}` : ""}${nroFactura ? `, factura ${nroFactura}` : ""}: anulación`;
 }
 
 /** Una línea inversa por cada línea comprada: misma sección y lote, cantidad y precio total con el signo invertido, y el mismo precio por unidad (como `anularVenta`). */

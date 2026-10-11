@@ -1,4 +1,5 @@
 import { GUIA_PARA_CORREGIR_CON_UN_AJUSTE } from "@/core/guia-de-ajuste";
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 /**
  * Cómo se reconoce la Operación AJUSTE que escribe una anulación (`anularVenta`, `anularCompra`).
@@ -24,14 +25,17 @@ export function esDetalleReservadoParaReversiones(detalle: string): boolean {
   return d.startsWith(PREFIJO_REVERSION_VENTA.toLocaleLowerCase("es")) || d.startsWith(PREFIJO_REVERSION_COMPRA.toLocaleLowerCase("es"));
 }
 
-/** `detalleLibre` de la Operación AJUSTE que revierte una venta. */
+/**
+ * `detalleLibre` de la Operación AJUSTE que revierte una venta. El día entre paréntesis es el de la venta en hora argentina (P1: `Operacion.fecha` es un instante y el día se lee en la
+ * zona, no en UTC; este texto queda guardado). Lo mismo vale para los tres textos de abajo.
+ */
 export function detalleReversionDeVenta(idVenta: string, fechaVenta: Date): string {
-  return `${PREFIJO_REVERSION_VENTA}${idVenta} (${fechaVenta.toISOString().slice(0, 10)}).`;
+  return `${PREFIJO_REVERSION_VENTA}${idVenta} (${diaDeCalendario(fechaVenta, ZONA_ARGENTINA)}).`;
 }
 
 /** `detalleLibre` de la Operación AJUSTE que revierte una compra; con el N.º de factura, si lo tiene. */
 export function detalleReversionDeCompra(idCompra: string, fechaCompra: Date, nroFactura: string | null): string {
-  return `${PREFIJO_REVERSION_COMPRA}${idCompra} (${fechaCompra.toISOString().slice(0, 10)}${nroFactura ? `, factura ${nroFactura}` : ""}).`;
+  return `${PREFIJO_REVERSION_COMPRA}${idCompra} (${diaDeCalendario(fechaCompra, ZONA_ARGENTINA)}${nroFactura ? `, factura ${nroFactura}` : ""}).`;
 }
 
 /**
@@ -190,5 +194,5 @@ export function mensajeVentaAnulada(movimientosRevertidos: number, huboLiquidaci
 
 /** Descripción de la fila de auditoría (campo `anuladaEn`) de CADA Operación anulada, con el texto EXACTO de antes. */
 export function descripcionAuditoriaAnulacionDeVenta(fecha: Date, nroFactura: string | null, conHermanasDePromo: boolean): string {
-  return `Venta del ${fecha.toISOString().slice(0, 10)}${nroFactura ? ` (factura ${nroFactura})` : ""}: anulación${conHermanasDePromo ? " (promo, junto con sus otros componentes)" : ""}`;
+  return `Venta del ${diaDeCalendario(fecha, ZONA_ARGENTINA)}${nroFactura ? ` (factura ${nroFactura})` : ""}: anulación${conHermanasDePromo ? " (promo, junto con sus otros componentes)" : ""}`;
 }

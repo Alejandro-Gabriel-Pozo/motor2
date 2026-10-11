@@ -3,6 +3,10 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaDiferenciaAjuste } from "@/core/reportes/public";
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+
+/** El día de calendario de un instante en hora argentina (P1): `Operacion.fecha` es un instante; leerlo en UTC mostraba el día siguiente a partir de las 21:00. */
+const dia = (f: Date) => diaDeCalendario(f, ZONA_ARGENTINA);
 
 const LABEL_ESTADO: Record<string, string> = { REVISAR: "Revisar", ESPERADO: "Esperado", OK: "OK" };
 
@@ -16,11 +20,11 @@ function celdaProximoConteo(f: FilaDiferenciaAjuste) {
   if (f.conteoVencido) {
     return (
       <span className="font-medium text-red-600">
-        {f.proximaFechaConteo ? `Vencido desde ${f.proximaFechaConteo.toISOString().slice(0, 10)}` : "Nunca se contó (con agenda activa)"}
+        {f.proximaFechaConteo ? `Vencido desde ${dia(f.proximaFechaConteo)}` : "Nunca se contó (con agenda activa)"}
       </span>
     );
   }
-  if (f.proximaFechaConteo) return <span>{f.proximaFechaConteo.toISOString().slice(0, 10)}</span>;
+  if (f.proximaFechaConteo) return <span>{dia(f.proximaFechaConteo)}</span>;
   return (
     <EnlaceInterno href={`/stock/conteo-frecuencia?sugerido=${f.productoId}&sugeridoNombre=${encodeURIComponent(f.producto)}`} className="text-xs text-neutral-500 underline">
       Sin agenda — configurar
@@ -45,22 +49,22 @@ const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
     clave: "ultimoAjuste",
     etiqueta: "Último ajuste",
     tipoFecha: "dia",
-    valor: (f) => (f.ultimaFechaAjuste ? f.ultimaFechaAjuste.toISOString().slice(0, 10) : ""),
-    render: (f) => (f.ultimaFechaAjuste ? f.ultimaFechaAjuste.toISOString().slice(0, 10) : "—"),
+    valor: (f) => (f.ultimaFechaAjuste ? dia(f.ultimaFechaAjuste) : ""),
+    render: (f) => (f.ultimaFechaAjuste ? dia(f.ultimaFechaAjuste) : "—"),
   },
   { clave: "sumaConteos", etiqueta: "Suma conteos", alinear: "derecha", valor: (f) => f.sumaConteosFisicos, render: (f) => f.sumaConteosFisicos },
   {
     clave: "ultimoConteo",
     etiqueta: "Último conteo",
     tipoFecha: "dia",
-    valor: (f) => (f.ultimaFechaConteo ? f.ultimaFechaConteo.toISOString().slice(0, 10) : ""),
-    render: (f) => (f.ultimaFechaConteo ? f.ultimaFechaConteo.toISOString().slice(0, 10) : "—"),
+    valor: (f) => (f.ultimaFechaConteo ? dia(f.ultimaFechaConteo) : ""),
+    render: (f) => (f.ultimaFechaConteo ? dia(f.ultimaFechaConteo) : "—"),
   },
   {
     clave: "proximoConteo",
     etiqueta: "Próximo conteo",
     ayuda: AYUDA_PROXIMO_CONTEO,
-    valor: (f) => (f.conteoVencido ? "Vencido" : f.proximaFechaConteo ? f.proximaFechaConteo.toISOString().slice(0, 10) : ""),
+    valor: (f) => (f.conteoVencido ? "Vencido" : f.proximaFechaConteo ? dia(f.proximaFechaConteo) : ""),
     render: (f) => celdaProximoConteo(f),
   },
   {
