@@ -64,6 +64,8 @@ export const PENDIENTES_DE_SUCURSAL: Readonly<Record<string, PendienteDeSucursal
   "consulta|consultas/carta/admin.ts|cargarAdminItemsAgrupados|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
   "consulta|consultas/carta/admin.ts|cargarTemaAdmin|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
   "consulta|consultas/catalogo/productos.ts|obtenerSeccionHabitualEnSucursal|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
+  // P17 (2026-10-11): `seccionesDesactivadas` confía en la sucursal de contexto que recibe, como las demás de esta lista; la cierra la misma Fase B.
+  "consulta|consultas/movimientos/secciones-desactivadas.ts|seccionesDesactivadas|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
   "consulta|consultas/movimientos/stock-para-conteo.ts|listarStockParaConteo|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
   "consulta|consultas/permisos/auditoria.ts|listarRegistrosAuditoria|consultaConSucursalAjena": LA_RLS_LA_CIERRA,
   "consulta|consultas/pos/detalle-de-mesa.ts|obtenerDetalleDeMesa|consultaConSucursalAjena": LA_RLS_LA_CIERRA,

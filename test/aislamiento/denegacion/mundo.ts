@@ -247,6 +247,9 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const seccion = await db.seccion.create({ data: { id: id("seccion"), empresaId, sucursalId, nombre: `Sección ${marca}` } });
   const seccion2 = await db.seccion.create({ data: { id: id("seccion-b"), empresaId, sucursalId, nombre: `Sección B ${marca}` } });
   const seccionVecina = await db.seccion.create({ data: { id: id("seccion-vecina"), empresaId, sucursalId: vecinaId, nombre: `Sección vecina de ${marca}` } });
+  // Una sección dada de baja de la sucursal propia: la lectura `seccionesDesactivadas` (P17) devuelve solo estas, y la matriz de
+  // denegación exige que la lectura PROPIA devuelva algo con la marca propia.
+  await db.seccion.create({ data: { id: id("seccion-baja"), empresaId, sucursalId, nombre: `Sección dada de baja ${marca}`, activa: false } });
   for (const productoId of [k.productoId, k.productoPvId, k.productoMp2Id, k.productoMp3Id, k.productoPv2Id]) {
     await db.disponibilidadProducto.create({ data: { empresaId, sucursalId, productoId, disponible: true } });
   }

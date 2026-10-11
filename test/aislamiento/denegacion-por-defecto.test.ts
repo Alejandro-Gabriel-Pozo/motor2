@@ -38,8 +38,8 @@ const claves = new Set(puertas.map((p) => p.clave));
 const MAXIMOS = {
   SIN_GENERADOR: 17,
   ESCENARIOS_QUE_NO_APLICAN: 2,
-  // 39 = las consultas y lecturas que `consultaConSucursalAjena` (M.3, A11) muestra filtrando la otra sucursal hoy, sin políticas por sucursal. La Fase B cierra 36 con las políticas y este techo baja a 3; las otras 3 solo devuelven el nombre y el slug de la otra sucursal (GOBIERNO) y se declaran por diseño (ver `excepciones.ts`).
-  PENDIENTES_DE_SUCURSAL: 39,
+  // 40 (eran 39; +1 por `seccionesDesactivadas`, P17) = las consultas y lecturas que `consultaConSucursalAjena` (M.3, A11) muestra filtrando la otra sucursal hoy, sin políticas por sucursal. La Fase B cierra 37 con las políticas y este techo baja a 3; las otras 3 solo devuelven el nombre y el slug de la otra sucursal (GOBIERNO) y se declaran por diseño (ver `excepciones.ts`).
+  PENDIENTES_DE_SUCURSAL: 40,
   RECHAZOS_CRUDOS_DE_LA_BASE: 0,
   OPCIONALES_SIN_MAPEAR: 25,
   SIN_CONTROL_POSITIVO: 0,
