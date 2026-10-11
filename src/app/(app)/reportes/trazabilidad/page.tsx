@@ -6,6 +6,7 @@ import { buscarOperacionesPorProducto, obtenerOperacionPorId } from "@/server/co
 import { TablaOperacionesEncontradas, TablaItemsOperacion } from "./tabla-trazabilidad";
 import { BotonAnularVenta } from "./boton-anular-venta";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 export default async function TrazabilidadPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"producto" | "idOperacion">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -67,7 +68,8 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
           {/* El cartel de «Anulada» vale para cualquier proceso; el botón para anular, solo para una venta vigente. */}
           {operacion.anuladaEn ? (
             <p className="mb-2 text-xs text-red-600">
-              Anulada el {operacion.anuladaEn.toISOString().slice(0, 10)}
+              {/* `anuladaEn` es un INSTANTE (se lee en la zona de la empresa); `operacion.fecha`, en cambio, puede ser un día de calendario guardado a las 00:00 UTC, y no se convierte. */}
+              Anulada el {diaDeCalendario(operacion.anuladaEn, ctx.empresaZonaHoraria)}
               {operacion.anuladaPorEmail && ` por ${operacion.anuladaPorEmail}`}.
             </p>
           ) : (
