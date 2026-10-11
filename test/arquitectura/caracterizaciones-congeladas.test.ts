@@ -248,6 +248,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "M.3-A7 (refactor de acceso, sin cambio de resultado): `carta.resolverCartaPublica` resuelve el slug en `SucursalPublica` con la base de la empresa y lee la carta (menú, precios locales, descuentos, promos y tema) con una base de SOLO LECTURA de esa única sucursal, lo que suma una lectura de `sucursal` (`sucursal.findUnique` ×1 → ×2: la del menú y la del tema). Cambia SOLO la línea `consultas` de 2 entradas, `resolverCartaPublica(empresa, «central»)` y `(empresa, «norte»: sin tema)`: 9 → 10 consultas; el `resultado` de ambas y todas las demás entradas, byte a byte (verificado con `git diff b55c39f HEAD` del golden: exactamente esas 2 líneas).",
       },
+      {
+        blob: "b0b8c71f5fef87e7c9d0a173e4031499f3130bfb",
+        // El commit desde el que el contenido es ese blob es `c0414b00` («P1: la matriz de denegacion mapea 'zona' y el golden del tramo A mueve desde/hasta…»).
+        commit: "c0414b00",
+        motivo:
+          "P1, paso 3 (O.251; CAMBIA COMPORTAMIENTO a propósito, el día en hora argentina): Ventas por sección (Carta interna) corta el día en la zona de la empresa. Cambian SOLO 2 líneas del resultado de `generarReporteVentasPorSeccion`: `desde` pasa de 2026-09-30T00:00:00.000Z a 2026-09-30T03:00:00.000Z y `hasta` de 2026-09-30T23:59:59.999Z a 2026-10-01T02:59:59.999Z (el mismo día calendario argentino). Ningún número ni conteo de consultas cambió. Detectado por el CI de e0f5395 (parte 4 de 4), que el constructor del paso 3 no pudo correr.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
