@@ -11,7 +11,7 @@ import { SelectorRango } from "@/components/selector-rango";
 import { FilaRendimientoSimple } from "./fila-simple";
 import { FilaRendimientoCompartida } from "./fila-compartida";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
-import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
+import { diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
 
 const AYUDA_RENDIMIENTO_REAL =
   "«Medido» (con dos Conteos Físicos que cubren el insumo, al principio y al final del tramo): el consumo real, sumado directo del Kardex entre esos dos conteos ÷ lo vendido en ese mismo tramo — una medición, no una estimación. «Estimado» (sin esos dos conteos): total comprado ÷ total vendido en el rango elegido — asume que lo que se compra en la ventana es lo que se consume en la ventana, algo que no siempre es cierto si comprás por lote (ej. caja x12). El método de esta fila se muestra debajo del número.";
@@ -21,11 +21,9 @@ const AYUDA_DELTA_STOCK =
   "Método «estimado»: cuánto cambió el stock del insumo dentro de la ventana elegida (pasá el mouse para ver el saldo antes y después) — si subió, parte de lo comprado quedó en el depósito, no se consumió; no es, por sí solo, un error de receta, y no corrige el número de arriba (restarlo sería circular). Método «medido»: esta celda muestra el tramo entre las dos anclas de Conteo Físico usadas — el dato real detrás de la fórmula.";
 const AYUDA_IMPACTO = "(consumo observado − lo que la receta hubiera consumido) × costo de reposición — lo que ORDENA la tabla, no el %. Un desvío grande en un insumo barato puede pesar menos que uno moderado en un insumo caro.";
 
-/** Mismo criterio que `hoyUtcSinHora`/"29 + hoy" de rango-por-defecto.ts — acá 55 + hoy = 56 días = 8 semanas exactas, inclusive los dos extremos. */
-function fechaUtcIsoHaceNDias(n: number): string {
-  const d = inicioDelDiaDe(new Date(), ZONA_UTC);
-  d.setUTCDate(d.getUTCDate() - n);
-  return d.toISOString().slice(0, 10);
+/** El día de hace `n` días como «AAAA-MM-DD», contado en la zona de la empresa (P1): acá 55 + hoy = 56 días = 8 semanas exactas, inclusive los dos extremos. */
+function diaHaceNDias(ahora: Date, n: number, zona: string): string {
+  return sumarDias(diaDeCalendario(ahora, zona), -n);
 }
 
 /**
@@ -70,7 +68,7 @@ export default async function RendimientoRecetasPage({
 
   // Las dos tablas con UNA construcción de pools y UNA lectura del costo (O.30): antes se llamaba a las dos fases por separado y cada una repetía las suyas.
   const [{ simples: todasLasSimples, compartidas: todasLasCompartidas }, { editar: puedeCalibrar }] = await Promise.all([
-    calcularRendimientoRecetas(ctx.sucursalId, desde, hasta, ctx.db),
+    calcularRendimientoRecetas(ctx.sucursalId, desde, hasta, ctx.db, ctx.empresaZonaHoraria),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "calibrar_rendimiento_local", ctx.db),
   ]);
   const filasSimples = sp.productoId ? todasLasSimples.filter((f) => f.productoVentaId === sp.productoId) : todasLasSimples;
@@ -81,7 +79,7 @@ export default async function RendimientoRecetasPage({
   // B10: "barato" en vez de extender OpcionRango (razones en el plan §B10) — solo se ofrece cuando de verdad ayudaría.
   const confianzaLimitadaPorVentana = filasSimples.some((f) => f.confianza !== "alta") || filasCompartidas.some((f) => f.semanasConDatos < 8);
   const hrefUltimas8Semanas =
-    `/reportes/rendimiento-recetas?rango=personalizado&desde=${fechaUtcIsoHaceNDias(55)}&hasta=${fechaUtcIsoHaceNDias(0)}` +
+    `/reportes/rendimiento-recetas?rango=personalizado&desde=${diaHaceNDias(ahora, 55, ctx.empresaZonaHoraria)}&hasta=${diaHaceNDias(ahora, 0, ctx.empresaZonaHoraria)}` +
     (sp.productoId ? `&productoId=${sp.productoId}` : "");
 
   const poolsCompartidos = new Map<string, typeof filasCompartidas>();

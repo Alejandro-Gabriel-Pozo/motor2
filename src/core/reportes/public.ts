@@ -139,7 +139,6 @@ export { anclasValidasEnVentana } from "./rendimiento-conciliado";
 export { clavePar } from "./rendimiento-conciliado";
 export { consumoRealDelTramo } from "./rendimiento-conciliado";
 export { elegirAnclas } from "./rendimiento-conciliado";
-export { finDelDiaUtc } from "./rendimiento-conciliado";
 export { limitesDelTramo } from "./rendimiento-conciliado";
 export type { Anclas } from "./rendimiento-conciliado";
 export type { CandidatoAncla } from "./rendimiento-conciliado";

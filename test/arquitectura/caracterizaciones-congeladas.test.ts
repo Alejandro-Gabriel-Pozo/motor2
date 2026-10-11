@@ -183,6 +183,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "O.38b D3 (refactor, sin cambio de resultado): el Consolidado lee la disponibilidad de todas las sucursales en UNA consulta. Cambia SOLO la línea de conteo de la entrada 35: 17 → 16 consultas (8 + 4N con N = 2), `disponibilidadProducto.findMany` ×2 → ×1; el resultado y las demás entradas, byte a byte.",
       },
+      {
+        blob: "e4fa1aea100e0385f4540573020232fe6158986a",
+        // El commit PADRE de este, «P1 paso 1: mediodiaDelDia(dia, zona) en core/tiempo, con ejemplos, propiedad y mutaciones».
+        commit: "2ea2dd1",
+        motivo:
+          "P1 paso 4 (CAMBIA COMPORTAMIENTO, el día en hora argentina): Rendimiento de recetas corta los días en la zona de la empresa (no en UTC). Cambian SOLO 4 líneas, `anclaDesde`/`anclaHasta` de las dos filas de la entrada rendimiento-recetas.calcularRendimientoRecetasSimples (Central, período): el día de la ancla pasa de ser la medianoche UTC (`T00:00:00.000Z`) a ser el inicio de ese día argentino (`T03:00:00.000Z`), el mismo día calendario (2026-02-18, 2026-03-10, 2026-03-06 y 2026-03-12). Ningún número, ningún método y ningún conteo de consultas cambia.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {
