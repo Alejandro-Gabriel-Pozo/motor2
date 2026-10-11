@@ -30,7 +30,8 @@ afterAll(async () => {
 });
 
 // 4 empresas con módulos en estos tests: la por defecto (A), B, C y la testigo permanente (ADR-022): 4 × 9 = 36 filas tras el backfill.
-const VENDIBLES = MODULOS.filter((m) => m.tipo === "vendible").map((m) => m.id as string).sort();
+// El backfill del 2026-10-04 repartió los vendibles que existían entonces: los 9 DISPONIBLES de hoy (uno en desarrollo no se reparte).
+const VENDIBLES = MODULOS.filter((m) => m.tipo === "vendible" && m.estado === "disponible").map((m) => m.id as string).sort();
 
 async function filas(empresaId: string) {
   return prismaAdmin.moduloEmpresa.findMany({ where: { empresaId }, orderBy: { modulo: "asc" } });

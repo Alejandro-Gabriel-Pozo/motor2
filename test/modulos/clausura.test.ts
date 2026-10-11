@@ -5,12 +5,13 @@ import { modulosEfectivos, modulosQueIncluyen, validarCambioDeModulos } from "..
 const ordenados = (s: Iterable<string>) => [...s].sort();
 
 describe("catálogo de módulos (ADR-014 + ADR-015)", () => {
-  it("tiene 13 módulos: 1 fijo, 3 de soporte y 9 vendibles", () => {
-    expect(MODULOS).toHaveLength(13);
+  it("tiene 14 módulos: 1 fijo, 3 de soporte y 10 vendibles (9 disponibles y Gastos y servicios en desarrollo)", () => {
+    expect(MODULOS).toHaveLength(14);
     const porTipo = (tipo: string) => MODULOS.filter((m) => m.tipo === tipo).map((m) => m.id);
     expect(porTipo("fijo")).toEqual(["administracion"]);
     expect(ordenados(porTipo("soporte"))).toEqual(["catalogo_basico", "clientes_basico", "proveedores_basico"]);
-    expect(ordenados(porTipo("vendible"))).toEqual(["carta", "compras", "consignacion", "produccion", "promociones", "recetas", "salon", "stock", "traspasos"]);
+    expect(ordenados(porTipo("vendible"))).toEqual(["carta", "compras", "consignacion", "produccion", "promociones", "recetas", "salon", "servicios", "stock", "traspasos"]);
+    expect((MODULOS as readonly ModuloDef[]).filter((m) => m.estado === "en_desarrollo").map((m) => m.id)).toEqual(["servicios"]);
   });
 
   it("los ids son únicos y toda dependencia (dura o blanda) apunta a un módulo que existe", () => {
@@ -69,9 +70,11 @@ describe("modulosEfectivos (clausura por requiere)", () => {
     expect(modulosEfectivos(["carta"]).has("salon")).toBe(false);
   });
 
-  it("con los 9 vendibles activos están los 13 módulos", () => {
+  it("con todos los vendibles en el registro están los 13 módulos disponibles; el que está en desarrollo, nunca", () => {
     const vendibles = MODULOS.filter((m) => m.tipo === "vendible").map((m) => m.id);
-    expect(modulosEfectivos(vendibles).size).toBe(13);
+    const efectivos = modulosEfectivos(vendibles);
+    expect(efectivos.size).toBe(13);
+    expect(efectivos.has("servicios")).toBe(false);
   });
 
   it("los de soporte y los ids desconocidos no cuentan como filas del registro", () => {
