@@ -1,5 +1,5 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { AppShell } from "@/components/app-shell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {

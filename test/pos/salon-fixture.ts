@@ -5,7 +5,7 @@ import type { AccionClave } from "../../src/core/permisos/acciones";
 /**
  * Escenario común de los tests de «tomar pedido» (test/pos/*-action.test.ts, cuenta-concurrencia.test.ts): la base de permisos,
  * una sucursal «Central» con la sección «Salón», dos PV sin receta (Milanesa, Flan), un PV con receta (Pizza: 0,25 kg de la MP
- * Muzzarella) y la mesa 4. Cada test file declara su propio `vi.mock("../../src/core/auth/session", …)` (Vitest lo hoistea por
+ * Muzzarella) y la mesa 4. Cada test file declara su propio `vi.mock("../../src/server/sesion/session", …)` (Vitest lo hoistea por
  * archivo) antes de usar `entrarComo`.
  */
 export async function sembrarSalon() {

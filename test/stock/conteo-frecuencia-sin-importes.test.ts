@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, sembrarCatalogoBase, sembrarCompraDeKardex, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";

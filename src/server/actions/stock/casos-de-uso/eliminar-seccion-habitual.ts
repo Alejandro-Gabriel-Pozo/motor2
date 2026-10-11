@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoEliminarSeccionHabitual, ResultadoEliminarSeccionHabitual } from "@/core/features/seccion-habitual/seccion-habitual.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { borrarSeccionHabitual } from "@/server/persistencia/stock/seccion-habitual";

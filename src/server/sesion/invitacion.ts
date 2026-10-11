@@ -2,7 +2,7 @@ import "server-only";
 import type { PrismaClient } from "@prisma/client";
 import { estadoEfectivoDeInvitacion, esTokenConFormaValida, type AccesoDeInvitacion } from "@/core/features/empresa/invitacion";
 import { hashDeToken } from "@/core/seguridad/tokens";
-import { dbDeEmpresa, dbDeInvitacion, transaccionDeLaEmpresa, verificarRolDeEjecucionDelProceso } from "@/core/auth/base";
+import { dbDeEmpresa, dbDeInvitacion, transaccionDeLaEmpresa, verificarRolDeEjecucionDelProceso } from "@/server/sesion/base";
 import type { Transaccion } from "@/lib/db-tipos";
 import { abreLaVia3, type VistaDeInvitacion } from "@/core/auth/invitacion";
 

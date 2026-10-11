@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoGuardarSucursalPublica, ResultadoGuardarSucursalPublica } from "@/core/features/carta/registro-publico.schema";
 import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";

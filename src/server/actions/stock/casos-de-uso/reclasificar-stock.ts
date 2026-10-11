@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { texto } from "@/core/texto";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";

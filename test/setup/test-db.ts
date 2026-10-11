@@ -1,7 +1,7 @@
 import "dotenv/config";
 import type { Prisma } from "@prisma/client";
 import { prisma as prismaSinEmpresa } from "../../src/lib/db";
-import { baseDeEmpresa, type AlcanceDeSucursal, type BaseDelContexto } from "../../src/core/auth/base";
+import { baseDeEmpresa, type AlcanceDeSucursal, type BaseDelContexto } from "../../src/server/sesion/base";
 import { clienteConEmpresaDePrueba, DATOS_EMPRESA_TESTIGO, EMPRESA_DE_PRUEBA_ID, EMPRESA_TESTIGO_ID } from "./empresa-de-prueba";
 import { crearMembresia } from "./membresia";
 import { urlDeSembradoDeVitest } from "./rol-de-pruebas";

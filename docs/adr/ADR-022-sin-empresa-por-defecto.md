@@ -45,7 +45,7 @@ primer gerente (ADR-020). En una instalación local, `npm run db:seed -- --geren
 `app.empresa_id`, `app.usuario_id` o `app.invitacion_hash` ya fijados se niega **sin escape**: dejaría a todos los pedidos en una misma empresa.
 
 **Enmienda 2026-10-06 (Pureza 0.4, hallazgo H1 de la auditoría de pureza):** el escape `MOTOR2_ROL_ESTRICTO=0` **no existe en Producción de Vercel** (`VERCEL_ENV=production`). El arranque se niega
-si está puesto (`escapesProhibidosEnProduccion`, `src/env.ts`) y, aunque llegara a estarlo, `permitirRolPrivilegiado` (`src/core/auth/rol-de-ejecucion.ts`) lo ignora: una variable mal puesta no puede apagar
+si está puesto (`escapesProhibidosEnProduccion`, `src/env.ts`) y, aunque llegara a estarlo, `permitirRolPrivilegiado` (`src/server/sesion/rol-de-ejecucion.ts`) lo ignora: una variable mal puesta no puede apagar
 el aislamiento entre empresas. Vale solo fuera de Producción (herramientas de demo, local, Preview).
 
 ### 5. Seed y herramientas
@@ -83,5 +83,5 @@ devolver la fila de otra empresa. Ahora busca por el hash del token (con una pru
 
 ## Implementación
 
-Núcleo: `src/core/auth/rol-de-ejecucion.ts`, `src/core/auth/invitacion.ts`. Pruebas: `test/setup/empresa-de-prueba.ts`, `test/aislamiento/cliente-de-prueba.test.ts`,
+Código: `src/server/sesion/rol-de-ejecucion.ts`, `src/core/auth/invitacion.ts`. Pruebas: `test/setup/empresa-de-prueba.ts`, `test/aislamiento/cliente-de-prueba.test.ts`,
 `test/arquitectura/sin-empresa-por-defecto.test.ts`, `test/auth/db-de-empresa.test.ts`, `test/auth/invitacion-gate.test.ts`, `test/e2e/fixtures/db.ts`.

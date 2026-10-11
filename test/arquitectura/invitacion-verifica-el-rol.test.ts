@@ -19,7 +19,7 @@ const { verificar, dbDeInvitacion, dbDeEmpresa, transaccionDeLaEmpresa } = vi.ho
   dbDeEmpresa: vi.fn(() => ({})),
   transaccionDeLaEmpresa: vi.fn(() => async () => undefined),
 }));
-vi.mock("@/core/auth/base", () => ({ verificarRolDeEjecucionDelProceso: verificar, dbDeInvitacion, dbDeEmpresa, transaccionDeLaEmpresa }));
+vi.mock("@/server/sesion/base", () => ({ verificarRolDeEjecucionDelProceso: verificar, dbDeInvitacion, dbDeEmpresa, transaccionDeLaEmpresa }));
 
 import { invitacionConSuBase, invitacionDelToken, invitacionHabilitaElIngreso } from "@/server/sesion/invitacion";
 import { vincularCuentaConInvitacion } from "@/server/sesion/vincular-cuenta";

@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { DatosVentaInput, ResultadoRegistrarVenta } from "@/core/features/ventas/venta.schema";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";

@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoCrearOActualizarGrupo, ResultadoCrearOActualizarGrupo } from "@/core/features/catalogo/insumos.schema";
 import { rechazoDeReferenciaNoEncontrada } from "@/core/datos/errores-de-base";
 import { exito, fracaso } from "@/core/resultado-caso";

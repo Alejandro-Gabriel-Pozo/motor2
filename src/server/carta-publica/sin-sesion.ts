@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { dbDeEmpresa, verificarRolDeEjecucionDelProceso } from "@/core/auth/base";
+import { dbDeEmpresa, verificarRolDeEjecucionDelProceso } from "@/server/sesion/base";
 import { unstable_cache } from "next/cache";
 import { etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica, resolverEstiloPortal, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
 import { modulosEfectivosDeEmpresa } from "@/server/acceso/modulos-de-empresa";

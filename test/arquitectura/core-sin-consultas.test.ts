@@ -14,7 +14,7 @@ import { PUREZA_HEREDADA_DEL_NUCLEO } from "./pureza-heredada-del-nucleo";
  * Se prohíbe, por AST (no por texto):
  *
  *  1. Llamadas a la base: lecturas o escrituras sobre un modelo (`x.producto.findMany`), SQL crudo y `$transaction`.
- *  2. Importar el cliente (`lib/db`, `core/auth/base`).
+ *  2. Importar el cliente (`lib/db`, `server/sesion/base`).
  *  3. Recibir la base: todo parámetro, variable o campo tipado `Db`, `PrismaClient`, `TransactionClient` o `Transaccion`, AUNQUE el archivo no
  *     haga ninguna llamada. Esto cierra el hueco del analizador de pureza, que no ve la lectura indirecta: una función `async (db: Db)` que le
  *     pasa `db` a otra, o un alias local del tipo (`import type { Db } from "./comun"`), figura como P0 pero consulta.
@@ -27,13 +27,10 @@ const RAIZ = join(__dirname, "../..");
 const DELEGADOS = delegadosDeModelos(readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8"));
 
 /**
- * Los archivos de `src/core/` que todavía consultan o reciben la base: la sesión y la base por empresa (`core/auth`, infraestructura que la Fase 6 muda a `server/sesion`) y la
- * factura autorizada (recibe `Db`; la usa la consola, que no puede importar `src/server`: queda para la Fase 6). La lista solo se achica.
+ * Los archivos de `src/core/` que todavía consultan o reciben la base: la factura autorizada (recibe `Db`; la usa la consola, que no puede importar `src/server`: queda para la
+ * Fase 6). La sesión y la base por empresa (infraestructura que estaba en `core/auth`) salieron a `server/sesion` en la Fase 6, tramo 6a. La lista solo se achica.
  */
 const ARCHIVOS_PENDIENTES: Record<string, string> = {
-  "src/core/auth/base.ts": "Fase 6: infraestructura de la base por empresa (importa el cliente y fija `app.empresa_id` con un set_config local a la transacción); sale UNA vez a server/sesion junto con contexto y rol-de-ejecucion, sin tocar su código.",
-  "src/core/auth/contexto.ts": "Fase 6: el resolvedor del contexto de sesión (lee la base y depende de server-only, React o Next); pasa a server/sesion.",
-  "src/core/auth/rol-de-ejecucion.ts": "Fase 6: verifica el rol de ejecución leyendo la base; lo importa solo auth/base.ts (infraestructura de sesión), así que no puede salir antes que él: se muda con server/sesion.",
   "src/core/fiscal/factura-autorizada.ts": "Fase 6: recibe `Db` (la fuente de facturas autorizadas cuenta filas con la base que le pasan) y la usa la consola de plataforma, que no puede importar src/server; queda para la Fase 6.",
 };
 
@@ -127,8 +124,8 @@ describe("core-sin-consultas: TODO src/core/ no consulta la base (salvo los pend
     expect(problemas).toEqual([]);
   });
 
-  it("los pendientes son exactamente los cuatro esperados (la lista solo se achica)", () => {
-    expect(Object.keys(ARCHIVOS_PENDIENTES).sort()).toEqual(["src/core/auth/base.ts", "src/core/auth/contexto.ts", "src/core/auth/rol-de-ejecucion.ts", "src/core/fiscal/factura-autorizada.ts"]);
+  it("los pendientes son exactamente los esperados (la lista solo se achica; la Fase 6, tramo 6a, sacó base, contexto y rol-de-ejecucion al mudarlos a server/sesion)", () => {
+    expect(Object.keys(ARCHIVOS_PENDIENTES).sort()).toEqual(["src/core/fiscal/factura-autorizada.ts"]);
   });
 });
 

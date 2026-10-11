@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { CambioDeMatriz } from "@/core/features/permisos/matriz.guard";
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";

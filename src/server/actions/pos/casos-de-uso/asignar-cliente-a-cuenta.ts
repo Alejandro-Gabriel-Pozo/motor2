@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoAsignarClienteACuenta, ResultadoAsignarClienteACuenta } from "@/core/features/cuentas/cuenta-apertura.schema";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";

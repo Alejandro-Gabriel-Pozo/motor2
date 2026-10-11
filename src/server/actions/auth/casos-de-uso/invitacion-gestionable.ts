@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { TipoDeInvitacion } from "@/core/features/empresa/invitacion";
 import { mensajeSiNoPuedeDarRolSinTechoDeGestion, mensajeSiNoPuedeGestionar } from "@/core/permisos/gestion-de-usuarios";
 import { actorDesdeLaBase, objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";

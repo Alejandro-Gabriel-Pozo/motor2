@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
-import { dbDeEmpresa, dbDeUsuario } from "../../src/core/auth/base";
+import { dbDeEmpresa, dbDeUsuario } from "../../src/server/sesion/base";
 
 /**
  * S-13: `UsuarioEmpresa` tiene RLS. Con una empresa de contexto se ve y escribe solo esa empresa; antes de tener empresa (login) la única vía es

@@ -12,7 +12,7 @@ import { sqlDeAlcanceDeSucursal, sqlDeReversaDeAlcanceDeSucursal } from "../setu
  * afirmar que los hay (con un mutante). Todo corre como el rol REAL de la app (`motor2_app`, NOBYPASSRLS, sujeto a la RLS) en una base TEMPORAL con todas las migraciones (`crearBaseTemporalMigrada`); el SQL de las
  * políticas se aplica en ESA base y nunca llega a `prisma/migrations`.
  *
- * El alcance se fija con la misma forma que `baseDeEmpresa` (A2, `src/core/auth/base.ts`): UN solo `SELECT set_config('app.empresa_id', …, true), set_config('app.sucursales_lectura', …, true),
+ * El alcance se fija con la misma forma que `baseDeEmpresa` (A2, `src/server/sesion/base.ts`): UN solo `SELECT set_config('app.empresa_id', …, true), set_config('app.sucursales_lectura', …, true),
  * set_config('app.sucursales_escritura', …, true)` dentro de la transacción (el `true` lo hace local a ella). Una variable que NO se fija (`undefined`) es la del código anterior a A2: solo `app.empresa_id`.
  */
 

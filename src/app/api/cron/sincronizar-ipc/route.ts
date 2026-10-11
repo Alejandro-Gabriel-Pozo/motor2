@@ -1,5 +1,5 @@
 import { sincronizarIPC } from "@/server/actions/reportes/sincronizaciones";
-import { baseDelContexto } from "@/core/auth/base";
+import { baseDelContexto } from "@/server/sesion/base";
 import { autorizacionCronValida } from "@/core/auth/secreto-cron";
 import { reportarError, reportarErrorUnaVez } from "@/lib/reportar-error";
 

@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
 import { activarTodosLosModulos } from "../setup/modulos";
 import { crearMembresia } from "../setup/membresia";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { dbDeEmpresa } from "../../src/core/auth/base";
+import { dbDeEmpresa } from "../../src/server/sesion/base";
 import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-carta";
 import { actualizarVisibleEnCarta, guardarContenidoCartaProducto } from "../../src/server/actions/carta/contenido-producto";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "../../src/server/actions/carta/generos";

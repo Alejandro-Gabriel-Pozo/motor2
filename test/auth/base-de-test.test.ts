@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { baseDeTest, EMPRESA_POR_DEFECTO_ID, prismaAdmin } from "../setup/test-db"; // primero: carga el .env antes de que `src/lib/db` lea DATABASE_URL
-import { baseDeEmpresa, type BaseDelContexto } from "../../src/core/auth/base";
+import { baseDeEmpresa, type BaseDelContexto } from "../../src/server/sesion/base";
 
 /**
  * M.3-A8: `baseDeTest` es la base explícita (`db` + `transaccion`) que los tests le pasan al negocio. Sigue siendo un OBJETO (`baseDeTest.db`, `...baseDeTest`: los ~30 archivos que ya la usan no

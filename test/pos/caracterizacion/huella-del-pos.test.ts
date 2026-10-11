@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { Prisma } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../../setup/test-db";
 import { crearMozo, entrarComo, sembrarSalon } from "../salon-fixture";

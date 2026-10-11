@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { calcularPayloadHash, esChoqueDeIndiceUnico, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";

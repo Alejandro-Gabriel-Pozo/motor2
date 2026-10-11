@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest";
 import { conTransaccionSerializable } from "../../src/lib/transaccion-serializable";
 import { calcularEsperaBackoffMs, conReintento } from "../../src/core/movimientos/reintentar";
 import { numeroEnUnidad, type FuenteDeAzar } from "../../src/core/seguridad/azar";
-import { baseDeEmpresa, baseDelContexto, transaccionDeLaEmpresa } from "../../src/core/auth/base";
+import { baseDeEmpresa, baseDelContexto, transaccionDeLaEmpresa } from "../../src/server/sesion/base";
 import type { Transaccion } from "../../src/lib/db-tipos";
 
 /**
  * El jitter del reintento (la espera entre dos intentos de una transacción SERIALIZABLE) usa una fuente de azar INYECTADA, nunca `Math.random` por defecto dentro del núcleo (Pureza 1.5;
  * la auditoría de la Fase 1 encontró `aleatorio = Math.random` en `reintentar.ts` porque el analizador solo veía llamadas). En producción la fuente la trae la transacción del borde
- * que la crea (`core/auth/base.ts`, `Transaccion.aleatorio`); sin ninguna, la espera es la MITAD del techo (determinista).
+ * que la crea (`server/sesion/base.ts`, `Transaccion.aleatorio`); sin ninguna, la espera es la MITAD del techo (determinista).
  */
 const conflicto = () => new Prisma.PrismaClientKnownRequestError("write conflict", { code: "P2034", clientVersion: "7.10.0" });
 
@@ -65,7 +65,7 @@ describe("el azar del backoff entra desde afuera", () => {
     expect(numeroEnUnidad(fuente(999_999))).toBeLessThan(1);
   });
 
-  it("toda transacción que sale de core/auth/base.ts trae la fuente de azar del proceso (la de producción)", () => {
+  it("toda transacción que sale de server/sesion/base.ts trae la fuente de azar del proceso (la de producción)", () => {
     for (const transaccion of [baseDelContexto().transaccion, baseDeEmpresa("empresa-x").transaccion, transaccionDeLaEmpresa("empresa-x")]) {
       expect(typeof transaccion.aleatorio).toBe("function");
       const valor = transaccion.aleatorio!();

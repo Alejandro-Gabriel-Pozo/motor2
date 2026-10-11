@@ -15,7 +15,7 @@ vi.mock("../../src/server/actions/catalogo/productos", () => ({
   listarPresentaciones: vi.fn(),
   buscarProductosSelector: vi.fn(),
 }));
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 // Las acciones de alta rápida que usa el formulario se reemplazan; las LECTURAS que usan las páginas (listas de insumos, categorías y proveedores) son las reales: las páginas se llaman de verdad contra la base.
 vi.mock("../../src/server/actions/catalogo/insumos", async (original) => ({ ...(await original<typeof import("../../src/server/actions/catalogo/insumos")>()), crearInsumo: vi.fn() }));
 vi.mock("../../src/server/actions/catalogo/categorias-producto", async (original) => ({ ...(await original<typeof import("../../src/server/actions/catalogo/categorias-producto")>()), crearCategoriaProducto: vi.fn() }));

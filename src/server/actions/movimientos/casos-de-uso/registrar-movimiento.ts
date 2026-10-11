@@ -2,7 +2,7 @@ import "server-only";
 import { texto } from "@/core/texto";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { TRANSICIONES, armarFilasDeMovimiento, redondearACantidadDeUnidad } from "@/core/movimientos/public";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA, esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";

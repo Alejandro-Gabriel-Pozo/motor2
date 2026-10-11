@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, sembrarSeccion, sembrarCompraDeKardex, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { generarReporteInsumosSinRecetaVinculada } from "../../src/server/consultas/reportes/insumos-sin-receta";

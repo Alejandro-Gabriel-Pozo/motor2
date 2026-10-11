@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { dbDeEmpresa, dbDeUsuario } from "@/core/auth/base";
+import { dbDeEmpresa, dbDeUsuario } from "@/server/sesion/base";
 import type { CuentaDeGoogle } from "@/core/auth/invitacion";
 import { crearRegistroDeRevalidacion } from "@/core/auth/revalidacion-de-sesion";
 import { invitacionHabilitaElIngreso } from "./invitacion";

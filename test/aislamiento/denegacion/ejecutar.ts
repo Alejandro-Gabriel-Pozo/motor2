@@ -1,7 +1,7 @@
 import { vi } from "vitest";
 import { prismaSinEmpresa } from "../../setup/test-db";
 import { __cookiesDeTest, __limpiarCookiesDeTest, __setCookieDeTestParaEmpresa, __setCookieDeTestParaSucursal } from "../../setup/next-headers-stub";
-import { baseDeEmpresa } from "../../../src/core/auth/base";
+import { baseDeEmpresa } from "../../../src/server/sesion/base";
 import { derivarArgumentos, unir, type Escenario, type Generadores, type Kit, type Planteo } from "./argumentos";
 import { SUCURSALES_LISTADAS_POR_DISENO } from "./excepciones";
 import { HUELLA_DE_E2, HUELLA_DE_S2, huellaDeLaBase, NOMBRE_DE_S2, NOMBRE_DE_S3, tablasCambiadas, type Mundo } from "./mundo";
@@ -10,7 +10,7 @@ import type { PuertaInventariada } from "./inventario-de-puertas";
 
 /**
  * El EJECUTOR de la matriz de denegación por defecto (GT-3b): invoca una puerta en un escenario, mira qué pasó (qué devolvió o lanzó, si escribió algo en alguna tabla, si dejó una cookie) y devuelve los
- * PROBLEMAS (vacío = la puerta negó como debía). Cada archivo de test que lo usa declara antes `vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }))`.
+ * PROBLEMAS (vacío = la puerta negó como debía). Cada archivo de test que lo usa declara antes `vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }))`.
  *
  * Qué cuenta como negar:
  *  - (a) anónimo y (b) sin empresa: la puerta LANZA (una redirección al login también) o devuelve `{ ok: false }`. Cualquier dato o `ok: true` es un problema.
@@ -117,7 +117,7 @@ export function soltarEntorno(): void {
 }
 
 async function ponerSesion(escenario: Escenario, mundo: Mundo, sucursalActivaId: string): Promise<void> {
-  const { getUsuarioActual } = await import("../../../src/core/auth/session");
+  const { getUsuarioActual } = await import("../../../src/server/sesion/session");
   __limpiarCookiesDeTest();
   if (escenario === "anonimo") {
     vi.mocked(getUsuarioActual).mockResolvedValue(null);

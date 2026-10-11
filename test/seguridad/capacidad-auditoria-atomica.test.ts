@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 const falla = vi.hoisted(() => ({ activa: false }));
 vi.mock("../../src/server/auditoria/registrar-cambio-auditado", async (importOriginal) => {
   const original = await importOriginal<typeof import("../../src/server/auditoria/registrar-cambio-auditado")>();

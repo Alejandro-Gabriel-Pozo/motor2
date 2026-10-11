@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 // Los ensanches reales, con un espía en `conEscrituraEnLaEmpresa` para ver quién lo llama (alta de producto).
 vi.mock("../../src/server/acceso/alcance", async (importOriginal) => {
   const original = await importOriginal<typeof import("../../src/server/acceso/alcance")>();
@@ -12,8 +12,8 @@ import { EMPRESA_POR_DEFECTO_ID, crearUsuarioConMembresia, limpiarBaseDeTest, pr
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { crearMembresia } from "../setup/membresia";
-import { obtenerContextoUsuario, type ContextoUsuario } from "../../src/core/auth/contexto";
-import { baseDeEmpresa, transaccionDeEmpresa } from "../../src/core/auth/base";
+import { obtenerContextoUsuario, type ContextoUsuario } from "../../src/server/sesion/contexto";
+import { baseDeEmpresa, transaccionDeEmpresa } from "../../src/server/sesion/base";
 import { conAlcanceEnSucursal, conEscrituraEnLaEmpresa, incluirSucursalCreadaEnLaTransaccion, lecturaEnSucursalesVisibles } from "../../src/server/acceso/alcance";
 import { requerirVerAlgunaEnSucursal, requerirVerEnSucursal } from "../../src/server/actions/con-sesion";
 import { permisoYAlcanceEnSucursal } from "../../src/server/actions/con-permiso";

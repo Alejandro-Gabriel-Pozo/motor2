@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { permitirRolPrivilegiado } from "../../src/core/auth/rol-de-ejecucion";
+import { permitirRolPrivilegiado } from "../../src/server/sesion/rol-de-ejecucion";
 
 /**
  * Pureza 0.4 (hallazgo H1 de la auditoría) + S-32: el escape `MOTOR2_ROL_ESTRICTO=0` (operar con un rol que salta el RLS) vale solo para las herramientas de demo, sobre una BASE

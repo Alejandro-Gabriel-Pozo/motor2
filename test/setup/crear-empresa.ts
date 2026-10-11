@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
-import { verificarRolDeEjecucion } from "@/core/auth/rol-de-ejecucion";
+import { verificarRolDeEjecucion } from "@/server/sesion/rol-de-ejecucion";
 import { esEmailReservadoDeAdminPlataforma, MENSAJE_EMAIL_RESERVADO } from "@/core/plataforma/email-reservado";
 import { sembrarEmpresa } from "../../plataforma/src/servidor/sembrar-empresa";
 import { crearEmpresaConAdminSchema, esTransicionValida, type ComandoCrearEmpresaConAdmin } from "@/core/features/empresa/empresa.schema";

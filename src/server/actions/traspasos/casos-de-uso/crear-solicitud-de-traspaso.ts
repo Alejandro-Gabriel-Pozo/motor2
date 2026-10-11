@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { MENSAJE_SECCION_DESTINO_SOLICITUD_NO_PROPIA, MENSAJE_SUCURSAL_NO_DISPONIBLE } from "@/core/features/traspasos/traspaso-comandos.guard";
 import type { ComandoCrearSolicitudTraspaso, ResultadoCrearSolicitudTraspaso } from "@/core/features/traspasos/traspaso.schema";

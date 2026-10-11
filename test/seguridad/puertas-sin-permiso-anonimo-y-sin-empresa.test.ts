@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { __cookiesDeTest, __limpiarCookiesDeTest } from "../setup/next-headers-stub";
@@ -31,13 +31,13 @@ type Controles = { anonimo?: Control; sinEmpresa?: Control };
 let base: Awaited<ReturnType<typeof sembrarBase>>;
 
 async function comoAnonimo() {
-  const { getUsuarioActual } = await import("../../src/core/auth/session");
+  const { getUsuarioActual } = await import("../../src/server/sesion/session");
   vi.mocked(getUsuarioActual).mockResolvedValue(null);
 }
 
 /** Una cuenta con sesión que no es de ninguna empresa y no tiene invitación. */
 async function comoSinEmpresa() {
-  const { getUsuarioActual } = await import("../../src/core/auth/session");
+  const { getUsuarioActual } = await import("../../src/server/sesion/session");
   const u = await prismaAdmin.user.create({ data: { email: "sin-empresa@dominio-workspace.com" } });
   vi.mocked(getUsuarioActual).mockResolvedValue({ id: u.id, email: u.email, nombre: null });
   return u;

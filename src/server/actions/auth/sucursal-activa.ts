@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { RedirectType, redirect } from "next/navigation";
-import { COOKIE_SUCURSAL_ACTIVA, obtenerContextoUsuario, opcionesCookieActiva } from "@/core/auth/contexto";
+import { COOKIE_SUCURSAL_ACTIVA, obtenerContextoUsuario, opcionesCookieActiva } from "@/server/sesion/contexto";
 import { accionesDeNavegacion } from "@/core/navegacion/estructura";
 import { pantallaTrasCambiarSucursal } from "@/core/navegacion/pantalla-tras-cambio";
 import { accionesDelMenuQueElUsuarioPuedeVer } from "@/server/acceso/gate";

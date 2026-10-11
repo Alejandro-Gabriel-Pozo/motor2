@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoActualizarCapacidad } from "@/core/features/permisos/capacidad.guard";
 import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";

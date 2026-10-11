@@ -8,8 +8,8 @@ import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 // La carta pública cachea con `unstable_cache` (necesita el caché de Next, que fuera de un pedido no existe): acá corre directo. La clave y la etiqueta las prueban `cartas-publicas-cache-por-empresa.test.ts` y el e2e.
 vi.mock("next/cache", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/cache")>()), unstable_cache: (fn: () => unknown) => fn }));
 // La base real, con un espía en `dbDeEmpresa` para ver con qué alcance abre la carta pública cada lectura (y quedarnos con la base que abrió).
-vi.mock("@/core/auth/base", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@/core/auth/base")>();
+vi.mock("@/server/sesion/base", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/server/sesion/base")>();
   return { ...original, dbDeEmpresa: vi.fn(original.dbDeEmpresa) };
 });
 
@@ -38,7 +38,7 @@ let base: BaseTemporalMigrada;
 let duenio: PrismaClient;
 let hayRol = false;
 let sinSesion: typeof import("@/server/carta-publica/sin-sesion");
-let dbDeEmpresa: ReturnType<typeof vi.mocked<typeof import("@/core/auth/base").dbDeEmpresa>>;
+let dbDeEmpresa: ReturnType<typeof vi.mocked<typeof import("@/server/sesion/base").dbDeEmpresa>>;
 let prismaDelProceso: PrismaClient | undefined;
 const entorno = { url: process.env.DATABASE_URL, prisma: (globalThis as { prisma?: PrismaClient }).prisma };
 
@@ -79,7 +79,7 @@ beforeAll(async () => {
   delete (globalThis as { prisma?: PrismaClient }).prisma;
   vi.resetModules();
   sinSesion = await import("@/server/carta-publica/sin-sesion");
-  dbDeEmpresa = vi.mocked((await import("@/core/auth/base")).dbDeEmpresa);
+  dbDeEmpresa = vi.mocked((await import("@/server/sesion/base")).dbDeEmpresa);
   prismaDelProceso = (await import("@/lib/db")).prisma;
 });
 

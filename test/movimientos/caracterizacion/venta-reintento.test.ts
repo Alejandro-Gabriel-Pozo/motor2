@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../../setup/test-db";
 import { mockearUsuarioActual } from "../../setup/mock-sesion";

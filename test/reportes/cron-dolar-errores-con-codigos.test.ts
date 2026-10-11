@@ -4,7 +4,7 @@ const SECRETO_DE_PRISMA = "Invalid `prisma.cotizacionDolar.upsert()` invocation:
 const resultadoDelCaso = vi.hoisted(() => ({ valor: null as unknown }));
 const reportarError = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("../../src/lib/reportar-error", () => ({ reportarError, reportarErrorUnaVez: vi.fn(async () => {}) }));
-vi.mock("../../src/core/auth/base", () => ({ baseDelContexto: () => ({ db: {} }) }));
+vi.mock("../../src/server/sesion/base", () => ({ baseDelContexto: () => ({ db: {} }) }));
 vi.mock("../../src/server/actions/reportes/sincronizaciones", () => ({ sincronizarDolar: async () => resultadoDelCaso.valor }));
 
 import { GET } from "../../src/app/api/cron/sincronizar-dolar/route";

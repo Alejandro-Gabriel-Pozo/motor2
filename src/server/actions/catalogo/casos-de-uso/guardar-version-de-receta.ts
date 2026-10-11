@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirRecetaPropiaGuardada } from "@/core/catalogo/public";
 import { validarCabecera, validarIngredientes, validarPasos } from "@/core/catalogo/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";

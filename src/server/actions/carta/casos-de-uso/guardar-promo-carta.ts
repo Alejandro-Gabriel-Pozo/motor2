@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { mensajePisoDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
 import type { ComandoGuardarPromoCarta, ResultadoGuardarPromoCarta } from "@/core/features/carta/promos.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";

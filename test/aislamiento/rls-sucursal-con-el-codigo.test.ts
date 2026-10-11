@@ -2,14 +2,14 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { EMPRESA_A, EMPRESA_B, SUC, crearMundoDeSucursales, sqlBueno, type MundoDeSucursales } from "./rls-sucursal-mundo";
 
 /**
- * M.3, Fase A, paso A10, con el CÓDIGO REAL de la app: `dbDeEmpresa`, `transaccionDeEmpresa` y `baseDeEmpresa` (`src/core/auth/base.ts`, paso A2) contra la base temporal que tiene las políticas del generador (paso A9).
+ * M.3, Fase A, paso A10, con el CÓDIGO REAL de la app: `dbDeEmpresa`, `transaccionDeEmpresa` y `baseDeEmpresa` (`src/server/sesion/base.ts`, paso A2) contra la base temporal que tiene las políticas del generador (paso A9).
  * `rls-sucursal.test.ts` prueba lo que las políticas HACEN con las variables fijadas a mano; acá se prueba que lo que el código FIJA es lo que las políticas LEEN (el formato de las listas, el `true` local a la
  * transacción, el reparto del pool) y se miran las formas que llegan a Prisma: `P2025` en un UPDATE/DELETE cruzado, el rechazo de un INSERT cruzado, el `include` hacia un padre invisible y la clave de idempotencia.
  *
  * Cómo llega el código real a la base temporal: `src/lib/db.ts` toma `DATABASE_URL` al importarse, así que antes de importar `base.ts` se apunta esa variable a la base temporal (con las credenciales del rol
  * `motor2_app`) y se descarta el cliente global; al terminar se restaura todo. Este archivo no toca ninguna otra base.
  */
-type Base = typeof import("../../src/core/auth/base");
+type Base = typeof import("../../src/server/sesion/base");
 type Cliente = import("@prisma/client").PrismaClient;
 
 let mundo: MundoDeSucursales;
@@ -24,7 +24,7 @@ beforeAll(async () => {
   process.env.DATABASE_URL = mundo.urlComoApp();
   delete (globalThis as { prisma?: unknown }).prisma;
   vi.resetModules();
-  base = await import("../../src/core/auth/base");
+  base = await import("../../src/server/sesion/base");
   prisma = (await import("../../src/lib/db")).prisma;
 }, 120_000);
 

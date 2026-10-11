@@ -9,7 +9,7 @@ import type { Db } from "@/lib/db-tipos";
 import type { CostoMP, FilaResumenConsolidado, InfoProductoReporte, ItemPeriodo } from "@/core/reportes/public";
 
 /**
- * Un resumen por sucursal, lado a lado — para quien pertenece a varias (ver src/core/auth/contexto.ts, `membresias`). Muestra SOLO ventas, margen, gastado y
+ * Un resumen por sucursal, lado a lado — para quien pertenece a varias (ver src/server/sesion/contexto.ts, `membresias`). Muestra SOLO ventas, margen, gastado y
  * la cantidad de alertas de stock de cada sucursal, con los MISMOS números que el resumen operativo de cada una (`obtenerResumenOperativo` con el rango por
  * defecto): mismas líneas del período, mismo catálogo, mismas funciones de cálculo.
  *

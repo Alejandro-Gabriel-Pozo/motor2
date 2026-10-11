@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoActualizarProducto, EntradaProducto, ResultadoActualizarProducto } from "@/core/features/catalogo/productos.schema";
 import { guardComandoDatosDeProducto, MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
 import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";

@@ -72,7 +72,7 @@ const OPERACIONES_DECLARADAS: Readonly<Record<string, string>> = {
 
 /** SQL crudo de lectura que está en el alcance: archivo → por qué no es de negocio. */
 const CONSULTAS_CRUDAS_DECLARADAS: Readonly<Record<string, string>> = {
-  "src/core/auth/rol-de-ejecucion.ts": "Lee el rol de la conexión (`current_user`, `rolbypassrls`) para negarse a operar con un rol que salta el RLS: ningún dato de negocio.",
+  "src/server/sesion/rol-de-ejecucion.ts": "Lee el rol de la conexión (`current_user`, `rolbypassrls`) para negarse a operar con un rol que salta el RLS: ningún dato de negocio.",
 };
 
 function archivos(dir: string): string[] {
@@ -221,11 +221,11 @@ describe("GT-13 · todo consumidor público entra por server/carta-publica", () 
       const texto = [
         `import { a } from "@/server/lecturas/carta/menu";`,
         `import { prisma } from "@/lib/db";`,
-        `import { auth } from "@/core/auth/session";`,
+        `import { auth } from "@/server/sesion/session";`,
         `import { cartaPublica } from "@/server/carta-publica/sin-sesion";`,
         `import type { X } from "@/server/lecturas/carta/menu";`,
       ].join("\n");
-      expect(importacionesAjenas(texto, "x.ts")).toEqual(["@/server/lecturas/carta/menu", "@/lib/db", "@/core/auth/session"]);
+      expect(importacionesAjenas(texto, "x.ts")).toEqual(["@/server/lecturas/carta/menu", "@/lib/db", "@/server/sesion/session"]);
     });
   });
 });

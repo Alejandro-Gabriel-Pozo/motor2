@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { permitirRolPrivilegiado } from "../../src/core/auth/rol-de-ejecucion";
+import { permitirRolPrivilegiado } from "../../src/server/sesion/rol-de-ejecucion";
 import { escapesProhibidosEnProduccion } from "../../src/env";
 import { modoDeMigracionEnBuild } from "../../scripts/construir";
 

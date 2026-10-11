@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { MENSAJE_FALTA_SECCION_DE_CARTA, type ComandoGuardarContenidoCartaProducto, type ResultadoGuardarContenidoCartaProducto } from "@/core/features/carta/contenido-producto.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { guardarContenidoDeProducto } from "@/server/persistencia/carta/contenido-producto";

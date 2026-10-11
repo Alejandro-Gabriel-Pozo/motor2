@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest } from "../setup/test-db";
-import { getUsuarioActual } from "../../src/core/auth/session";
-import { irAlLogin } from "../../src/core/auth/ir-al-login";
+import { getUsuarioActual } from "../../src/server/sesion/session";
+import { irAlLogin } from "../../src/server/sesion/ir-al-login";
 import { ENCABEZADO_RUTA_PEDIDA } from "../../src/core/navegacion/volver";
 import { conPermiso } from "../../src/server/actions/con-permiso";
 import { ok } from "../../src/server/actions/tipos";

@@ -209,7 +209,7 @@ describe("analizarFuente: qué guarda abre cada función (lista cerrada de guard
   it("informa el nombre IMPORTADO de la guarda (aunque tenga alias), también por delegación, y nada si no quedó ok", () => {
     const fuente = `
       "use server";
-      import { obtenerContextoUsuario as contexto } from "@/core/auth/contexto";
+      import { obtenerContextoUsuario as contexto } from "@/server/sesion/contexto";
       import { requerirVer } from "../con-sesion";
       export async function aMano() { const ctx = await contexto(); return ctx; }
       export async function conVer() { const ctx = await requerirVer("precio_local"); return ctx; }

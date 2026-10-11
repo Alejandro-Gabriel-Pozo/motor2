@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { productosUniversales, type FilaDisponibilidadEnSucursal } from "@/core/catalogo/public";
 import type { ComandoCrearSucursal } from "@/core/features/sucursales/sucursal.guard";
 import { conEscrituraEnLaEmpresa, incluirSucursalCreadaEnLaTransaccion } from "@/server/acceso/alcance";

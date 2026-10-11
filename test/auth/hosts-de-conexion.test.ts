@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hostsDeUnaConexion, primerHostNoLocal } from "../../src/core/auth/hosts-de-conexion";
-import { permitirRolPrivilegiado } from "../../src/core/auth/rol-de-ejecucion";
+import { permitirRolPrivilegiado } from "../../src/server/sesion/rol-de-ejecucion";
 import { resolverDestinoDelSeedBase, resolverUrlDelSeed } from "../../scripts/demo-seed/guardas-destino";
 import { resolverUrlE2E } from "../e2e/fixtures/base-e2e";
 

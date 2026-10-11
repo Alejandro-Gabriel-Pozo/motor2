@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { MENSAJE_MESA_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta-apertura.guard";
 import type { ComandoAbrirCuenta, ResultadoAbrirCuenta } from "@/core/features/cuentas/cuenta-apertura.schema";
 import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";

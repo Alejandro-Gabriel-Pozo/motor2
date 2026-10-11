@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { ALCANCE_CENTRAL, describirCalibracion } from "@/core/catalogo/public";
 import type { ComandoFijarRendimientoLocal, ResultadoFijarRendimientoLocal } from "@/core/features/catalogo/rendimiento-local.schema";
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";

@@ -1,4 +1,4 @@
-import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
+import { obtenerContextoUsuario, type ContextoUsuario } from "@/server/sesion/contexto";
 import { contextoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "@/core/permisos/acciones";
 import { conAlcanceEnSucursal } from "@/server/acceso/alcance";
 import { accionesDelMenuQueElUsuarioPuedeVer, requierePermisoVer, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";

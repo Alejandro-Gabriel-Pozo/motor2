@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 // Ninguna de las dos refresca la vista (se cuenta `refresh` de Next para fijarlo).
 vi.mock("next/cache", () => ({ refresh: vi.fn(), revalidatePath: vi.fn() }));
 

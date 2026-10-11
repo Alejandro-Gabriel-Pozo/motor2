@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { MENSAJE_GRUPO_NO_ENCONTRADO } from "@/core/features/catalogo/insumos.guard";
 import type { ComandoActualizarActivoGrupo, ResultadoActualizarActivoGrupo } from "@/core/features/catalogo/insumos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";

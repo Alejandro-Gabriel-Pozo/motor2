@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
-import { dbDeEmpresa } from "../../src/core/auth/base";
+import { dbDeEmpresa } from "../../src/server/sesion/base";
 import { MODULOS } from "../../src/core/modulos/catalogo";
 import { MODULOS_VENDIBLES, activarTodosLosModulos } from "../setup/modulos";
 

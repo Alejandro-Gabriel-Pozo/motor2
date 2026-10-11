@@ -14,7 +14,7 @@ const { prismaFalso, resolverPortalCarta, resolverCartaPublica, resolverConfigPo
 }));
 
 vi.mock("@/lib/db", () => ({ prisma: prismaFalso }));
-vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: (empresaId: string, alcance?: unknown) => ({ dbDeEmpresa: empresaId, ...(alcance ? { alcance } : {}) }), verificarRolDeEjecucionDelProceso: async () => undefined }));
+vi.mock("@/server/sesion/base", () => ({ dbDeEmpresa: (empresaId: string, alcance?: unknown) => ({ dbDeEmpresa: empresaId, ...(alcance ? { alcance } : {}) }), verificarRolDeEjecucionDelProceso: async () => undefined }));
 vi.mock("@/server/lecturas/carta/publica", () => ({ resolverPortalCarta, resolverCartaPublica, resolverConfigPortal }));
 vi.mock("@/server/lecturas/carta/empresa", () => ({ resolverEmpresaCarta }));
 // S-26: la carta pública se cachea con `unstable_cache` (necesita el caché de Next): acá corre directo; su etiqueta la prueba `cartas-publicas-cache-por-empresa.test.ts`.

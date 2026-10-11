@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { mensajePisoDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
 import type { ComandoGuardarCuposPromoCarta, ResultadoGuardarCuposPromoCarta } from "@/core/features/carta/promos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";

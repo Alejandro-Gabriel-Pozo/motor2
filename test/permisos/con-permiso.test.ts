@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { getUsuarioActual } from "../../src/core/auth/session";
+import { getUsuarioActual } from "../../src/server/sesion/session";
 import { conEdicionDePermisos, conPermiso, conPermisoDeEmpresa } from "../../src/server/actions/con-permiso";
 import { limitadorMutaciones } from "../../src/server/actions/limitador-de-mutaciones";
 import { ok, type ContextoDeAccion } from "../../src/server/actions/tipos";

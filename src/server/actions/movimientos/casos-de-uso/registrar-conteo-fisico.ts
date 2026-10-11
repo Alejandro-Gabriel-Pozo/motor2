@@ -1,6 +1,6 @@
 import "server-only";
 import type { AccionConteo, EstadoConteo } from "@prisma/client";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { texto } from "@/core/texto";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { validarCantidad } from "@/core/datos/cantidad";

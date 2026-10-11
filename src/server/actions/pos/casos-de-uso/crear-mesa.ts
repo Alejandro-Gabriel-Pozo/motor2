@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import type { ComandoCrearMesa, ResultadoCrearMesa } from "@/core/features/mesas/mesas.schema";
 import { exito, fracaso } from "@/core/resultado-caso";

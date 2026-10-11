@@ -1,5 +1,5 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { ESTADO_STOCK_CONSOLIDADO_LABEL as ESTADO_LABEL, ESTADO_STOCK_CONSOLIDADO_COLOR as ESTADO_COLOR } from "@/core/stock/public";

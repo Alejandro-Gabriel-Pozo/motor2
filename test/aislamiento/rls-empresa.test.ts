@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
-import { dbDeEmpresa, dbDeUsuario, transaccionDeEmpresa } from "../../src/core/auth/base";
+import { dbDeEmpresa, dbDeUsuario, transaccionDeEmpresa } from "../../src/server/sesion/base";
 import { CANTIDAD_DE_POLITICAS_ESPERADAS, TABLAS_CON_EMPRESA_ID, politicasEsperadas, tablasDeClase } from "../setup/clasificacion-de-tablas";
 
 /**

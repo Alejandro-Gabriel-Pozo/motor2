@@ -1,5 +1,5 @@
-import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario, type ContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { conAlcanceEnSucursal } from "@/server/acceso/alcance";
 import { denegado, requierePermiso, requierePermisoDeEmpresa, type ResultadoGate } from "@/server/acceso/gate";
 import { limitadorMutaciones } from "@/server/actions/limitador-de-mutaciones";

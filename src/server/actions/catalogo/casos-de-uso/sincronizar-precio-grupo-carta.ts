@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
 import type { PedidoSincronizarPrecioGrupoCarta, ResultadoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";

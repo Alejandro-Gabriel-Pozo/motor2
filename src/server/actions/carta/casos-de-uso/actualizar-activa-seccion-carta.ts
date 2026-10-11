@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoActualizarActivaSeccionCarta, ResultadoActualizarActivaSeccionCarta } from "@/core/features/carta/secciones.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { fijarActivaDeSeccionCarta } from "@/server/persistencia/carta/secciones";

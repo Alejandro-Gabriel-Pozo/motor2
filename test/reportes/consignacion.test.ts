@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 // Pasa-través: solo el test de "carrera simulada" le hace devolver null UNA vez (el chequeo previo no ve al ganador).
 vi.mock("../../src/server/persistencia/reportes/pago-consignante", async (original) => {
   const real = await original<typeof import("../../src/server/persistencia/reportes/pago-consignante")>();

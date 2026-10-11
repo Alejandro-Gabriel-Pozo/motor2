@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearMembresia } from "../setup/membresia";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
-import { obtenerContextoUsuario, type ContextoUsuario } from "../../src/core/auth/contexto";
+import { obtenerContextoUsuario, type ContextoUsuario } from "../../src/server/sesion/contexto";
 import { conTransaccionSerializable } from "../../src/lib/transaccion-serializable";
 import type { PersonaParaJerarquia } from "../../src/core/permisos/jerarquia";
 import { requierePermiso, requierePermisoDeEmpresa } from "../../src/server/acceso/gate";
@@ -23,7 +23,7 @@ import { actorDesdeLaBase, objetivoEnLaEmpresa } from "../../src/server/lecturas
  * administrador, gerente, operador, rol personalizado, rol apagado, dos sucursales, membresía apagada y sucursal inactiva.
  *
  * Diferencia encontrada FUERA de las carreras (se deja fijada y dicha, NO se arregla acá): el contexto solo cuenta membresías de sucursales ACTIVAS
- * (`core/auth/contexto.ts`), y la lectura de la base (`filtroMembresiaConAutoridadDeAdmin`, C1) no mira si la sucursal está activa. Para quien tiene el rol admin
+ * (`server/sesion/contexto.ts`), y la lectura de la base (`filtroMembresiaConAutoridadDeAdmin`, C1) no mira si la sucursal está activa. Para quien tiene el rol admin
  * en una sucursal INACTIVA, el contexto dice «operario» en esa sucursal (y en la empresa, si no es admin en ninguna activa) y la base dice «administrador».
  *  - En el contexto empresa no se alcanza: las acciones de gobierno de empresa (`alta_sucursal`, `apagar_cuenta_empresa`) tienen piso administrador de sistema y
  *    el gate de empresa solo cuenta membresías de sucursales activas, así que quien llega al caso de uso ya es administrador en una activa (las dos dicen lo mismo).

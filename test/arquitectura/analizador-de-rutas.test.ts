@@ -7,7 +7,7 @@ import { analizarCron, analizarLayoutProtegido, analizarPagina } from "./guardas
  */
 
 const IMPORTS_PAGINA = `
-  import { obtenerContextoUsuario } from "@/core/auth/contexto";
+  import { obtenerContextoUsuario } from "@/server/sesion/contexto";
   import { requierePermisoVer } from "@/server/acceso/gate";
   import { leerCosas } from "@/core/cosas/leer";
 `;
@@ -66,7 +66,7 @@ describe("analizarPagina", () => {
 
   it("una guarda importada de OTRO módulo no cuenta", () => {
     const fuente = `
-      import { obtenerContextoUsuario } from "@/core/auth/contexto";
+      import { obtenerContextoUsuario } from "@/server/sesion/contexto";
       import { requierePermisoVer } from "@/otro/lugar";
       export default async function P() {
         const ctx = await obtenerContextoUsuario();
@@ -173,7 +173,7 @@ describe("analizarPagina", () => {
 
   it("acepta la guarda de empresa y los nombres de variable propios (gateEditar)", () => {
     const fuente = `
-      import { obtenerContextoUsuario } from "@/core/auth/contexto";
+      import { obtenerContextoUsuario } from "@/server/sesion/contexto";
       import { requierePermisoDeEmpresa } from "@/server/acceso/gate";
       export default async function P() {
         const ctx = await obtenerContextoUsuario();
@@ -209,7 +209,7 @@ describe("analizarPagina", () => {
 
 const IMPORTS_CRON = `
   import { autorizacionCronValida } from "@/core/auth/secreto-cron";
-  import { baseDelContexto } from "@/core/auth/base";
+  import { baseDelContexto } from "@/server/sesion/base";
   import { reportarErrorUnaVez } from "@/lib/reportar-error";
   import { sincronizar } from "@/core/algo";
 `;
@@ -314,8 +314,8 @@ describe("analizarCron", () => {
 });
 
 const IMPORTS_LAYOUT = `
-  import { obtenerContextoUsuario } from "@/core/auth/contexto";
-  import { irAlLogin } from "@/core/auth/ir-al-login";
+  import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+  import { irAlLogin } from "@/server/sesion/ir-al-login";
 `;
 
 describe("analizarLayoutProtegido", () => {

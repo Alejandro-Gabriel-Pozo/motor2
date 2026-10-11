@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { mensajeCuitDuplicado } from "@/core/features/catalogo/contacto-de-proveedor";
 import type { ComandoAltaProveedor, ResultadoAltaProveedor } from "@/core/features/catalogo/proveedores.schema";

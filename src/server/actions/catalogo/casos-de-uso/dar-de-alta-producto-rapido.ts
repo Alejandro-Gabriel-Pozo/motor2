@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/public";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";

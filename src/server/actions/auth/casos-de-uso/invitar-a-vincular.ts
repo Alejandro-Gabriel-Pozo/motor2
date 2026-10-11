@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { mensajeSiSeReenviaMuyPronto } from "@/core/features/empresa/invitacion";
 import { mensajeSiNoPuedeGestionar } from "@/core/permisos/gestion-de-usuarios";
 import { actorDesdeLaBase, objetivoEnSucursal } from "@/server/lecturas/permisos/gestion-de-usuarios";

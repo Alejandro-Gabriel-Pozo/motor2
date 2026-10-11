@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { Prisma } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 // Los efectos de Next se CUENTAN (no se ejecutan): cuántas veces cada paso revalida la carta pública y refresca la vista es parte de la huella.
 vi.mock("../../../src/server/actions/carta/revalidar", () => ({ revalidarCartasPublicas: vi.fn() }));
 vi.mock("next/cache", () => ({ refresh: vi.fn(), revalidatePath: vi.fn() }));

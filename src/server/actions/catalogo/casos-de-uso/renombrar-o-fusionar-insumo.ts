@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoRenombrarOFusionarInsumo, ResultadoRenombrarOFusionarInsumo } from "@/core/features/catalogo/insumos.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";

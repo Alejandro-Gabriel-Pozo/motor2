@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const SECRETO_EN_EL_ERROR = "connect ECONNREFUSED postgres://motor2_app:clave-que-no-sale@db.interna:5432/motor2";
 const reportarError = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("../../src/lib/reportar-error", () => ({ reportarError, reportarErrorUnaVez: vi.fn(async () => {}) }));
-vi.mock("../../src/core/auth/base", () => ({ baseDelContexto: () => ({ db: {} }) }));
+vi.mock("../../src/server/sesion/base", () => ({ baseDelContexto: () => ({ db: {} }) }));
 vi.mock("../../src/server/actions/reportes/sincronizaciones", () => ({
   sincronizarDolar: async () => {
     throw new Error(SECRETO_EN_EL_ERROR);

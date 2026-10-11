@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { describirVueltaALaRecetaCentral } from "@/core/catalogo/public";
 import type { ComandoVolverALaRecetaCentral, ResultadoVolverALaRecetaCentral } from "@/core/features/catalogo/receta-sucursal.schema";
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";

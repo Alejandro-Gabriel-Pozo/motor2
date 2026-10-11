@@ -4,7 +4,7 @@ import { cargarHistorialDeVersiones, cargarRecetasPropiasHabilitadas, cargarRece
 import { dependenciasParaDesactivar } from "../../src/server/lecturas/catalogo/dependencias-para-desactivar";
 import { compararRendimientosPorSucursal } from "../../src/server/consultas/reportes/rendimiento-por-sucursal";
 import { limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
-import { dbDeEmpresa } from "../../src/core/auth/base";
+import { dbDeEmpresa } from "../../src/server/sesion/base";
 
 /**
  * ADR-009 (familia override), R3: el embudo de recetas con ALCANCE. La receta de una sucursal es la propia si la tiene habilitada

@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { MENSAJE_ITEM_NO_ENCONTRADO } from "@/core/features/cuentas/cuenta-anulacion.guard";
 import type { ComandoQuitarItemSinEnviar, ResultadoQuitarItemSinEnviar } from "@/core/features/cuentas/cuenta-pedido.schema";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";

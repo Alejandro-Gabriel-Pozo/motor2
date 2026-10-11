@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, prisma, prismaAdmin, prismaSinEmpresa, prismaDuenioSinEmpresa } from "../setup/test-db";
-import { baseDeEmpresa, dbDeEmpresa, serializarSucursalesDelAlcance, transaccionDeEmpresa, type AlcanceDeSucursal } from "../../src/core/auth/base";
-import { verificarRolDeEjecucion, datosDelRolDeEjecucion } from "../../src/core/auth/rol-de-ejecucion";
+import { baseDeEmpresa, dbDeEmpresa, serializarSucursalesDelAlcance, transaccionDeEmpresa, type AlcanceDeSucursal } from "../../src/server/sesion/base";
+import { verificarRolDeEjecucion, datosDelRolDeEjecucion } from "../../src/server/sesion/rol-de-ejecucion";
 import { reportarErrorUnaVez } from "../../src/lib/reportar-error";
 
 /**

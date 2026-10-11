@@ -13,8 +13,8 @@ import ts from "typescript";
 const GUARDAS_DE_PAGINA = ["requierePermiso", "requierePermisoVer", "requierePermisoDeEmpresa", "requierePermisoVerDeEmpresa"];
 const MODULO_GATE = "server/acceso/gate";
 const MODULO_SECRETO_CRON = "core/auth/secreto-cron";
-const MODULO_CONTEXTO = "core/auth/contexto";
-const MODULO_IR_AL_LOGIN = "core/auth/ir-al-login";
+const MODULO_CONTEXTO = "server/sesion/contexto";
+const MODULO_IR_AL_LOGIN = "server/sesion/ir-al-login";
 const METODOS_HTTP = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 
 type EstadoPagina =
@@ -169,7 +169,7 @@ export function analizarPagina(nombreArchivo: string, fuente: string): Resultado
   if (resuelto === "no-reconocido") return { estado: "export-no-reconocido", linea: 1 };
 
   const guardas = importadosDe(sf, MODULO_GATE, GUARDAS_DE_PAGINA);
-  const contexto = new Set([...importadosDe(sf, MODULO_CONTEXTO, ["obtenerContextoUsuario"]), ...importadosDe(sf, "core/auth/session", ["getUsuarioActual"])]);
+  const contexto = new Set([...importadosDe(sf, MODULO_CONTEXTO, ["obtenerContextoUsuario"]), ...importadosDe(sf, "server/sesion/session", ["getUsuarioActual"])]);
   const stmts = resuelto.cuerpo.statements;
 
   for (let i = 0; i < stmts.length; i++) {

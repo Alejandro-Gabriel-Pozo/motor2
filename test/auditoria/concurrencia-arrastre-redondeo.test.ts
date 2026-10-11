@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * después de la otra (nunca las dos leyendo D=0 a la vez y escribiendo 1+1), sin perder ninguna unidad de stock.
  */
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";

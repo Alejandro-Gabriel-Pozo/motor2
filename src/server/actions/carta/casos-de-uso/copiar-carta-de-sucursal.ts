@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { whereCartaDeSucursal } from "@/core/carta/public";
 import type { ComandoCopiarCartaDeSucursal, ResultadoCopiarCartaDeSucursal } from "@/core/features/carta/copiar-carta.schema";
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";

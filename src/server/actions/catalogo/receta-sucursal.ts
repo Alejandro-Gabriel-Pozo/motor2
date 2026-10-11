@@ -15,7 +15,7 @@ import {
 import type { RechazoDeLaPuertaDeReceta } from "@/core/features/catalogo/receta-version.schema";
 import { guardComandoVolverALaRecetaCentral } from "@/core/features/catalogo/receta-sucursal.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { conAlcanceEnSucursal } from "@/server/acceso/alcance";
 import { leerOrigenDeCopia } from "@/server/acceso/origen-de-copia";
 import { refrescarVistaSiHaceFalta } from "../refrescar";

@@ -1,13 +1,13 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { agregarSucursalAlContextoDeLaTransaccion, baseDeEmpresa, serializarSucursalesDelAlcance, type AlcanceDeSucursal } from "@/core/auth/base";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import { agregarSucursalAlContextoDeLaTransaccion, baseDeEmpresa, serializarSucursalesDelAlcance, type AlcanceDeSucursal } from "@/server/sesion/base";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { AccionDeSucursal } from "@/core/permisos/acciones";
 import { sucursalesVisiblesPara } from "./gate";
 
 /**
  * ENSANCHES del alcance por sucursal (M.3, plan `plan-m3-rls-por-sucursal`, paso A4). El contexto del usuario arranca con `alcance = { lectura: [activa], escritura: [activa] }`
- * (`core/auth/contexto.ts`). Lo único que puede AGRANDARLO son estas cinco funciones, cada una para un caso cerrado, y ninguna da un valor «todas»: devuelven un contexto NUEVO con
+ * (`server/sesion/contexto.ts`). Lo único que puede AGRANDARLO son estas cinco funciones, cada una para un caso cerrado, y ninguna da un valor «todas»: devuelven un contexto NUEVO con
  * una lista de ids más larga (la base —`db` y `transaccion`— se rearma con ella) y dejan intacto el que recibieron. Las políticas por sucursal de la Fase B leen esas listas; sin
  * ensanche, una lectura o una escritura fuera de la sucursal activa no ve ni toca filas (falla cerrado).
  *

@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoRenombrarSeccion, ResultadoRenombrarSeccion } from "@/core/features/movimientos/secciones.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { fijarNombreDeSeccion } from "@/server/persistencia/movimientos/secciones";

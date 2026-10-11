@@ -33,11 +33,11 @@
 import "dotenv/config";
 import { vi, describe, it, expect } from "vitest";
 
-vi.mock("../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { prisma } from "./demo-seed/cliente";
 import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
-import { getUsuarioActual } from "../src/core/auth/session";
+import { getUsuarioActual } from "../src/server/sesion/session";
 import { guardarSeccionCarta } from "../src/server/actions/carta/secciones";
 import { guardarContenidoCartaProducto, type DatosContenidoCarta } from "../src/server/actions/carta/contenido-producto";
 import { guardarTemaCarta, cambiarAplicacionTema } from "../src/server/actions/carta/tema";

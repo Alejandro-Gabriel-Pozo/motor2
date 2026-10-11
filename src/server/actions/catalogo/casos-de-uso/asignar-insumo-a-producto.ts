@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoAsignarInsumoAProducto, ResultadoAsignarInsumoAProducto } from "@/core/features/catalogo/productos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { validarUnidadInsumo } from "@/server/lecturas/catalogo/unidad-de-insumo";

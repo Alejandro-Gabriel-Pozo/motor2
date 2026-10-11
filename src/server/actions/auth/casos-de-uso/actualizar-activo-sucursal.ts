@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { gerentesQueQuedaranSinSucursalActiva } from "@/server/lecturas/permisos/gerencia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";

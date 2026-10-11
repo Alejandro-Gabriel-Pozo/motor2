@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoCrearCategoriaProducto, ResultadoCrearCategoriaProducto } from "@/core/features/catalogo/categorias-producto.schema";
 import { exito } from "@/core/resultado-caso";
 import { crearCategoriaNueva } from "@/server/persistencia/catalogo/categorias-producto";

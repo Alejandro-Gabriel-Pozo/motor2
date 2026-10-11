@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { whereCartaDeSucursal } from "@/core/carta/public";
 import type { ComandoQuitarOpcionItemAgrupadoCarta, ResultadoQuitarOpcionItemAgrupadoCarta } from "@/core/features/carta/items-agrupados.schema";
 import { exito, fracaso } from "@/core/resultado-caso";

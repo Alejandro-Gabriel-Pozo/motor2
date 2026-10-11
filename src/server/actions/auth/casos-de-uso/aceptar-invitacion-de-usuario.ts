@@ -58,7 +58,7 @@ export async function aceptarInvitacionDeUsuarioCasoDeUso(
 /**
  * El guard del permiso «gestionar usuarios» (módulos, capacidades y rol de quien otorgó), tal como lo da `requierePermiso` del gate. Lo recibe quien llama (la Server Action) y no
  * se importa acá. El `db` se tipa con `PrismaClient` (lo que devuelve `dbDeEmpresa`) y no con `ReturnType<typeof dbDeEmpresa>`: así nombrar el tipo no obliga a importar
- * `core/auth/base` (`base-solo-desde-lista` cuenta también los `import type`).
+ * `server/sesion/base` (`base-solo-desde-lista` cuenta también los `import type`).
  */
 type ExigirGestionDeUsuarios = (otorganteId: string, sucursalId: string, accion: "gestion_usuarios", db: PrismaClient) => Promise<{ ok: boolean }>;
 

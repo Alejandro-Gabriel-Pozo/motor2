@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Prisma, PrismaClient } from "@prisma/client";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 /**
  * Las consultas que hace `agregarItems` (`ctx.db` y `ctx.transaccion`) se anotan en `registro.consultas`: el guard es el REAL (sus lecturas, que van por el

@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { mensajeSiNoPuedeGestionar, mensajeSiReactivaAdminSinSerGerente, mensajeSiSeApagaAlGerente } from "@/core/permisos/gestion-de-usuarios";
 import { objetivoEnLaEmpresa, reactivaAUnAdmin } from "@/server/lecturas/permisos/gestion-de-usuarios";

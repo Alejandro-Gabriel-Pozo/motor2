@@ -36,8 +36,8 @@ export interface ResultadoAnalisis {
 const GUARDAS_POR_MODULO: Record<string, string[]> = {
   "con-permiso": ["conPermiso", "conPermisoDeEmpresa", "conEdicionDePermisos"],
   "con-sesion": ["requerirVer", "requerirVerEnSucursal", "requerirVerDeEmpresa", "requerirVerAlguna", "requerirVerAlgunaEnSucursal"],
-  "core/auth/contexto": ["obtenerContextoUsuario"],
-  "core/auth/session": ["getUsuarioActual"],
+  "server/sesion/contexto": ["obtenerContextoUsuario"],
+  "server/sesion/session": ["getUsuarioActual"],
   // Acciones previas al login (E5): su control de acceso es conocer el token de la invitación, que `invitacionDelToken` valida contra la base antes de cualquier escritura.
   "server/sesion/invitacion": ["invitacionDelToken"],
   "server/acceso/gate": ["requierePermiso", "requierePermisoVer", "requierePermisoDeEmpresa", "requierePermisoVerDeEmpresa"],

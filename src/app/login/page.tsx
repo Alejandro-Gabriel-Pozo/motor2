@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/lib/auth";
-import { obtenerSituacionDeAcceso } from "@/core/auth/contexto";
+import { obtenerSituacionDeAcceso } from "@/server/sesion/contexto";
 import { textoDeAvisoDeLogin } from "@/core/auth/avisos-de-login";
 import { rutaInternaSegura } from "@/core/navegacion/volver";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 // `upsertProveedorPorProducto` es REAL salvo cuando un test le pide fallar: así se prueba que un fallo del vínculo proveedor↔producto tira abajo la compra ENTERA
 // (decisión del dueño, 2026-10-06; antes era «best-effort» fuera de la transacción) y que el reintento con la misma clave escribe las dos cosas.
 vi.mock("../../src/server/persistencia/catalogo/upsert-proveedor-por-producto", async (importOriginal) => {

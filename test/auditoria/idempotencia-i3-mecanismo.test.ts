@@ -21,7 +21,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * gradual, §9.3) — no cambia con esta implementación.
  */
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";

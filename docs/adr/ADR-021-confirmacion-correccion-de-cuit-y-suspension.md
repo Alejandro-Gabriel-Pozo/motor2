@@ -6,7 +6,7 @@
 ## Contexto
 
 Después de E5 una empresa está `PROVISIONING`, su gerente aceptó la invitación y **declaró** un CUIT (`Invitacion.cuitDeclarado`), pero la empresa no tiene CUIT confirmado ni da
-acceso (solo las `ACTIVE` lo dan, `src/core/auth/contexto.ts`). E6 le da a la plataforma tres cosas: **confirmar** el alta, **corregir** el CUIT y **suspender o reactivar**.
+acceso (solo las `ACTIVE` lo dan, `src/server/sesion/contexto.ts`). E6 le da a la plataforma tres cosas: **confirmar** el alta, **corregir** el CUIT y **suspender o reactivar**.
 
 El CUIT importa porque ARCA tiene dos ambientes, homologación y producción, y los certificados de AMBOS se emiten para el CUIT real. Con el certificado de homologación se
 verifica el CUIT y, si hace falta, se corrige; recién una factura autorizada en producción lo fija para siempre (decisión del dueño, 2026-10-04).

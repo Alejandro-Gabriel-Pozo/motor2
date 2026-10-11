@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prismaAdmin, EMPRESA_POR_DEFECTO_ID, prismaSinEmpresa } from "../setup/test-db";
 import { crearEmpresa } from "../setup/crear-empresa";
-import { dbDeEmpresa } from "../../src/core/auth/base";
+import { dbDeEmpresa } from "../../src/server/sesion/base";
 
 /**
  * ADR-007, A7: una empresa creada por `crearEmpresa` queda aislada de la que ya existía (RLS, el código corre como `motor2_app`).

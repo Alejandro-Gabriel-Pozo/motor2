@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   /** Cuántas veces se resolvió el contexto: lee la base (pertenencias, sucursales, rol). */
   resoluciones: 0,
 }));
-vi.mock("../../src/core/auth/contexto", () => ({
+vi.mock("../../src/server/sesion/contexto", () => ({
   obtenerContextoUsuario: vi.fn(async () => {
     mocks.resoluciones++;
     return mocks.contexto;

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 // Las consultas que cruzan sucursales se reemplazan por espías que devuelven «nada»: lo que se mide es CON QUÉ BASE (y por lo tanto con qué alcance por sucursal) las llama cada pantalla.
 vi.mock("../../src/server/consultas/reportes/resumen-consolidado", () => ({ obtenerResumenConsolidado: vi.fn(async () => []) }));

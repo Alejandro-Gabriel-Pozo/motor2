@@ -15,11 +15,6 @@ export interface EntradaDePurezaHeredada {
 }
 
 export const PUREZA_HEREDADA_DEL_NUCLEO: Record<string, EntradaDePurezaHeredada> = {
-  "src/core/auth/base.ts": { nivel: "P3", senales: ["prismaDeTipo", "importaCliente", "escribeEnLaBase", "entorno"], pendiente: "Fase 6: no escribe datos (el único $executeRaw es el set_config local a la transacción): es infraestructura de la base por empresa; sale UNA vez a server/sesion junto con contexto y rol-de-ejecucion, sin tocar su código (todas las listas de seguridad que la nombran cambian en el mismo commit)" },
-  "src/core/auth/contexto.ts": { nivel: "P4", senales: ["serverOnly", "reactONext", "leeLaBase", "entorno"], pendiente: "Fase 6: pasa a server/sesion (depende de server-only, React o Next)" },
-  "src/core/auth/ir-al-login.ts": { nivel: "P4", senales: ["reactONext"], pendiente: "Fase 6: pasa a server/sesion (depende de server-only, React o Next)" },
-  "src/core/auth/rol-de-ejecucion.ts": { nivel: "P3", senales: ["prismaDeTipo", "leeLaBase"], pendiente: "Fase 6: lo importa solo auth/base.ts (infraestructura de sesión): no puede salir antes que él, se muda con server/sesion" },
-  "src/core/auth/session.ts": { nivel: "P4", senales: ["serverOnly", "reactONext"], pendiente: "Fase 6: pasa a server/sesion (depende de server-only, React o Next)" },
   "src/core/carta/promo-sucursal.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/catalogo/filtro-selector-producto.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },
   "src/core/catalogo/receta-a-input.ts": { nivel: "P1", senales: ["prismaDeTipo"], pendiente: "Fase 6: tipos de dominio propios en lugar de los de Prisma" },

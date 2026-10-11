@@ -1,7 +1,7 @@
 "use server";
 
 import type { MagnitudUnidad } from "@prisma/client";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { requierePermisoDeEmpresa } from "@/server/acceso/gate";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/public";
 import { guardComandoActualizarDecimalesUnidad, guardComandoCrearUnidad } from "@/core/features/catalogo/unidades.guard";

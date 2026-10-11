@@ -20,7 +20,7 @@ const CASOS_DE_USO = "^src/server/actions/[^/]+/casos-de-uso/";
 
 /**
  * Lo único de auth/permisos/server que la carta pública (sin sesión) puede ALCANZAR, directa o transitivamente (ADR-006 + ADR-007): la
- * base por empresa y su verificación de rol (`core/auth/base.ts`, `rol-de-ejecucion.ts`; desde M.3-A7 la carta lee las tablas de UNA sucursal con `dbDeEmpresa(empresa, { lectura: [esa], escritura: [] })` —alcance de solo lectura, armado en `server/carta-publica/sin-sesion.ts` con el id que resolvió el slug—
+ * base por empresa y su verificación de rol (`server/sesion/base.ts`, `rol-de-ejecucion.ts`; desde M.3-A7 la carta lee las tablas de UNA sucursal con `dbDeEmpresa(empresa, { lectura: [esa], escritura: [] })` —alcance de solo lectura, armado en `server/carta-publica/sin-sesion.ts` con el id que resolvió el slug—
  * y NO alcanza `server/acceso/alcance.ts`: sus ensanches traen el gate y la sesión, que esta lista deja afuera), el catálogo de claves de permiso
  * (`core/permisos/acciones.ts`: solo constantes) y las dos reglas PURAS de las capacidades por sucursal (`core/permisos/capacidades-sucursal.ts`: `esCapacidadSiempreHabilitada` y `resolverCapacidad`, sin base), el LECTOR de esas capacidades
  * (`server/acceso/capacidades-sucursal.ts`: `sucursalTieneCapacidad` y `capacidadesDeSucursal`, que leen `CapacidadSucursal` con el `db` que reciben por parámetro; la carta lo alcanza en ejecución por `lecturas/carta` → `precioLocalActivoEn` → `sucursalTieneCapacidad`;
@@ -29,7 +29,7 @@ const CASOS_DE_USO = "^src/server/actions/[^/]+/casos-de-uso/";
  * de `core/auth`, `core/permisos` o `server` que la carta empiece a alcanzar (la sesión, el gate, una Server Action) rompe `carta-publica-alcance`; que un archivo de la lista deje de alcanzarse o que una entrada nombre una carpeta lo ve `test/arquitectura/dependencias.test.ts`.
  */
 const ALCANCE_CARTA_PUBLICA = [
-  "^src/core/auth/(base|rol-de-ejecucion)\\.ts$",
+  "^src/server/sesion/(base|rol-de-ejecucion)\\.ts$",
   "^src/core/permisos/(acciones|capacidades-sucursal)\\.ts$",
   "^src/server/acceso/capacidades-sucursal\\.ts$",
   "^src/server/lecturas/catalogo/precio-local\\.ts$",
@@ -153,10 +153,10 @@ module.exports = {
     {
       name: "base-solo-desde-lista",
       comment:
-        "Solo los archivos de IMPORTADORES_DE_BASE importan core/auth/base.ts (dbDeEmpresa/dbDeUsuario/baseDeEmpresa/baseDelContexto): el resto recibe la base del contexto. Lista con motivo: .dependency-cruiser-excepciones.cjs.",
+        "Solo los archivos de IMPORTADORES_DE_BASE importan server/sesion/base.ts (dbDeEmpresa/dbDeUsuario/baseDeEmpresa/baseDelContexto): el resto recibe la base del contexto. Lista con motivo: .dependency-cruiser-excepciones.cjs.",
       severity: "error",
       from: { path: "^src/", pathNot: excepcionesDe("base-solo-desde-lista") },
-      to: { path: "^src/core/auth/base[.]ts$" },
+      to: { path: "^src/server/sesion/base[.]ts$" },
     },
     {
       name: "acciones-sin-ui",
@@ -183,9 +183,9 @@ module.exports = {
     {
       name: "acceso-capa",
       comment:
-        "server/acceso/ (el guard de acceso y sus lectores, ADR-011; Pureza Fase 3 tramo B) lee lo que hace falta y le pasa los hechos a la decisión pura de core/permisos: no importa la UI, ni server/actions, consultas, lecturas ni persistencia, ni lib/db, ni Next, ni la sesión (core/auth: contexto, session, ir-al-login; solo tipos), ni la base por empresa (core/auth/base). El acceso recibe ids y un `db`: nunca lee cookies ni la sesión.",
+        "server/acceso/ (el guard de acceso y sus lectores, ADR-011; Pureza Fase 3 tramo B) lee lo que hace falta y le pasa los hechos a la decisión pura de core/permisos: no importa la UI, ni server/actions, consultas, lecturas ni persistencia, ni lib/db, ni Next, ni la sesión (server/sesion: contexto, session, ir-al-login; solo tipos), ni la base por empresa (server/sesion/base). El acceso recibe ids y un `db`: nunca lee cookies ni la sesión.",
       severity: "error",
-      // M.3-A4: `alcance.ts` (los ensanches del alcance por sucursal) es la ÚNICA excepción, y solo para `core/auth/base`: rearma la base del contexto con otra lista de sucursales. Tiene su regla propia, justo abajo.
+      // M.3-A4: `alcance.ts` (los ensanches del alcance por sucursal) es la ÚNICA excepción, y solo para `server/sesion/base`: rearma la base del contexto con otra lista de sucursales. Tiene su regla propia, justo abajo.
       from: { path: "^src/server/acceso/", pathNot: "^src/server/acceso/alcance\\.ts$" },
       to: {
         path: [
@@ -193,7 +193,7 @@ module.exports = {
           "^src/server/(actions|consultas|lecturas|persistencia)/",
           "^src/lib/db\\.ts$",
           "^node_modules/next/",
-          "^src/core/auth/(base|contexto|session|ir-al-login)\\.ts$",
+          "^src/server/sesion/(base|contexto|session|ir-al-login)\\.ts$",
         ],
         dependencyTypesNot: ["type-only"],
       },
@@ -201,7 +201,7 @@ module.exports = {
     {
       name: "acceso-alcance-capa",
       comment:
-        "server/acceso/alcance.ts (los ensanches del alcance por sucursal, M.3-A4) cumple todo lo de acceso-capa (no importa la UI, ni server/actions, consultas, lecturas ni persistencia, ni lib/db, ni Next, ni contexto/session/ir-al-login) salvo UNA cosa: importa core/auth/base, porque agrandar el alcance es rearmar la base del contexto (baseDeEmpresa). Lo demás de server/acceso/ sigue sin poder importarla.",
+        "server/acceso/alcance.ts (los ensanches del alcance por sucursal, M.3-A4) cumple todo lo de acceso-capa (no importa la UI, ni server/actions, consultas, lecturas ni persistencia, ni lib/db, ni Next, ni contexto/session/ir-al-login) salvo UNA cosa: importa server/sesion/base, porque agrandar el alcance es rearmar la base del contexto (baseDeEmpresa). Lo demás de server/acceso/ sigue sin poder importarla.",
       severity: "error",
       from: { path: "^src/server/acceso/alcance\\.ts$" },
       to: {
@@ -210,7 +210,7 @@ module.exports = {
           "^src/server/(actions|consultas|lecturas|persistencia)/",
           "^src/lib/db\\.ts$",
           "^node_modules/next/",
-          "^src/core/auth/(contexto|session|ir-al-login)\\.ts$",
+          "^src/server/sesion/(contexto|session|ir-al-login)\\.ts$",
         ],
         dependencyTypesNot: ["type-only"],
       },
@@ -218,10 +218,18 @@ module.exports = {
     {
       name: "sesion-capa",
       comment:
-        "server/sesion/ (el login previo al contexto de empresa: gate de signIn, invitación por token, vinculación de la cuenta de Google; Hito 3, B3) es una capa de ABAJO: la usan lib/auth.ts, las pantallas y acciones de la invitación y los casos de uso de aceptar, nunca al revés. No importa la UI, ni server/actions (las Server Actions ni los casos de uso), consultas, lecturas, persistencia ni el guard (server/acceso: el guard de quien otorgó entra por parámetro), ni Next (recibe el token ya leído de la cookie). Lista cerrada de archivos: test/arquitectura/server-sesion.test.ts.",
+        "server/sesion/ (el login previo al contexto de empresa: gate de signIn, invitación por token, vinculación de la cuenta de Google; Hito 3, B3) es una capa de ABAJO: la usan lib/auth.ts, las pantallas y acciones de la invitación y los casos de uso de aceptar, nunca al revés. No importa la UI, ni server/actions (las Server Actions ni los casos de uso), consultas, lecturas, persistencia ni el guard (server/acceso: el guard de quien otorgó entra por parámetro), ni Next (recibe el token ya leído de la cookie; esa prohibición va en la entrada de abajo, con su lista de excepciones). Desde la Fase 6, tramo 6a, la carpeta también aloja la sesión del pedido y la base por empresa (base, contexto, ir-al-login, rol-de-ejecucion, session), mudadas de core/auth sin tocar su código. Lista cerrada de archivos: test/arquitectura/server-sesion.test.ts.",
       severity: "error",
       from: { path: "^src/server/sesion/" },
-      to: { path: ["^src/(app|components)/", "^src/server/(actions|consultas|lecturas|persistencia|acceso)/", "^node_modules/next/"] },
+      to: { path: ["^src/(app|components)/", "^src/server/(actions|consultas|lecturas|persistencia|acceso)/"] },
+    },
+    {
+      name: "sesion-capa",
+      comment:
+        "server/sesion/ no importa Next, salvo el adaptador de sesión del pedido que llegó de core/auth en la Fase 6, tramo 6a (contexto: la cookie; ir-al-login: el encabezado y el redirect), con las MISMAS excepciones que tenía en core-sin-react-next. Lista con motivo: .dependency-cruiser-excepciones.cjs.",
+      severity: "error",
+      from: { path: "^src/server/sesion/", pathNot: excepcionesDe("sesion-capa") },
+      to: { path: "^node_modules/next/" },
     },
     // Dos entradas con el mismo nombre (como las de `persistencia-capa`): lo que la capa NO puede importar y quién NO puede importar la capa.
     {
@@ -303,7 +311,7 @@ module.exports = {
       comment:
         "Fase 0.4 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md): un caso de uso " +
         "(server/actions/<dominio>/casos-de-uso/) nunca lee cookies()/next/headers directo — solo el resolvedor de contexto " +
-        "(core/auth/contexto.ts, ya excepción documentada de core-sin-react-next) lo hace. Sin violaciones hoy: cierra la puerta " +
+        "(server/sesion/contexto.ts, excepción documentada de sesion-capa) lo hace. Sin violaciones hoy: cierra la puerta " +
         "a que un caso de uso nuevo empiece a leer sesión por su cuenta en vez de recibirla como parámetro.",
       severity: "error",
       from: { path: CASOS_DE_USO },
@@ -368,11 +376,11 @@ module.exports = {
       name: "consola-sin-lo-interno-de-la-app",
       comment:
         "ADR-012/ADR-019: la consola de plataforma solo usa del núcleo lo PURO y lo propio (core/plataforma, core/correo, core/seguridad, la cookie de https y el reporte de errores). Nunca alcanza, ni directa ni transitivamente, la base de la aplicación " +
-        "(lib/db.ts, lib/auth.ts, core/auth/{base,contexto,session}), su validación de entorno (env.ts), ni server/, app/ o components/: " +
+        "(lib/db.ts, lib/auth.ts, server/sesion/{base,contexto,session}), su validación de entorno (env.ts), ni server/, app/ o components/: " +
         "su única conexión es la del rol motor2_plataforma (plataforma/src/db.ts), y que la aplicación abra la puerta de una empresa desde la consola es justo lo que el diseño prohíbe.",
       severity: "error",
       from: { path: "^plataforma/" },
-      to: { path: ["^src/lib/(db|auth)\\.ts$", "^src/env\\.ts$", "^src/core/auth/(base|contexto|session)\\.ts$", "^src/(server|app|components)/"], reachable: true },
+      to: { path: ["^src/lib/(db|auth)\\.ts$", "^src/env\\.ts$", "^src/server/sesion/(base|contexto|session)\\.ts$", "^src/(server|app|components)/"], reachable: true },
     },
     {
       name: "core-plataforma-solo-desde-la-consola",

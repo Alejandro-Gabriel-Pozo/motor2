@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { precioDeCarta, whereCartaDeSucursal } from "@/core/carta/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import type { ComandoAgregarOpcionItemAgrupadoCarta, ResultadoAgregarOpcionItemAgrupadoCarta } from "@/core/features/carta/items-agrupados.schema";

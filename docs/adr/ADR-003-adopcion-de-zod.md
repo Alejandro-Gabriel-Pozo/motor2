@@ -45,7 +45,7 @@ Primer uso real: `contextoEmpresaSchema`
 (`src/core/auth/contexto-empresa.ts`, Fase 1.1) — solo el schema/tipo por
 ahora, sin un resolvedor real todavía (depende de `Empresa`/`UsuarioEmpresa`,
 Fase A). **Actualización:** ese archivo se eliminó en A4 (`9548e73`, ADR-007):
-`ContextoUsuario` (`src/core/auth/contexto.ts`) absorbió a `ContextoEmpresa`.
+`ContextoUsuario` (`src/server/sesion/contexto.ts`) absorbió a `ContextoEmpresa`.
 La decisión de adoptar Zod en las fronteras nuevas sigue vigente.
 
 ## Alternativas consideradas
