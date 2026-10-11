@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { prisma, prismaAdmin } from "../../setup/test-db";
 import { DATOS_EMPRESA_TESTIGO, EMPRESA_DE_PRUEBA_ID, EMPRESA_TESTIGO_ID } from "../../setup/empresa-de-prueba";
 import { obtenerPerfilDeEmpresa } from "../../../src/server/consultas/empresa/perfil";
@@ -11,6 +11,11 @@ import { obtenerPerfilDeEmpresa } from "../../../src/server/consultas/empresa/pe
 const CUIT_DE_PRUEBA = "20123456786";
 
 describe("server/consultas/empresa/perfil", () => {
+  // Ninguna migración crea la empresa testigo: la deja el `upsert` de `limpiarBaseDeTest`. Sobre una base recién migrada (este archivo primero de su parte) «cada empresa ve la suya» fallaría; se asegura acá, igual que ese `upsert`, sin borrar nada.
+  beforeAll(async () => {
+    await prismaAdmin.empresa.upsert({ where: { id: EMPRESA_TESTIGO_ID }, update: { estado: "ACTIVE", cuit: null }, create: DATOS_EMPRESA_TESTIGO });
+  });
+
   afterEach(async () => {
     await prismaAdmin.empresa.update({ where: { id: EMPRESA_DE_PRUEBA_ID }, data: { cuit: null } });
   });
