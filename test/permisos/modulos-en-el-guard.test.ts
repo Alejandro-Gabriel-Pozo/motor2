@@ -89,28 +89,28 @@ describe("el guard con el registro de módulos de la empresa", () => {
   });
 
   describe("un módulo en desarrollo (Gastos y servicios) con una fila forzada en el registro", () => {
-    const B = "empresa-b-servicios";
+    const B = "empresa-b-gastos";
 
-    it("la fila ACTIVO de `servicios` (forzada como dueño, saltando la plataforma) no cuenta: no es efectivo y no trae Proveedores básico", async () => {
+    it("la fila ACTIVO de `gastos` (forzada como dueño, saltando la plataforma) no cuenta: no es efectivo y no trae Proveedores básico", async () => {
       await montar();
-      await prismaAdmin.empresa.create({ data: { id: B, nombre: "B", slug: "empresa-b-servicios", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+      await prismaAdmin.empresa.create({ data: { id: B, nombre: "B", slug: "empresa-b-gastos", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
       await fijarModulosActivos(EMPRESA_POR_DEFECTO_ID, ["consignacion"]);
-      await fijarModulosActivos(B, ["consignacion", "servicios"]);
+      await fijarModulosActivos(B, ["consignacion", "gastos"]);
 
       // La empresa B se lee con el cliente DUEÑO: `prisma` fija app.empresa_id=empresa_principal y, sin BYPASSRLS (CI), la política de ModuloEmpresa oculta las filas de B.
       const efectivosB = await modulosEfectivosDeEmpresa(B, prismaAdmin);
-      expect(efectivosB.has("servicios")).toBe(false);
+      expect(efectivosB.has("gastos")).toBe(false);
       expect(efectivosB.has("consignacion")).toBe(true);
-      expect(denegacionDeModulo("servicios", efectivosB)).toEqual({ motivo: "MODULO_EN_DESARROLLO", modulo: "servicios" });
+      expect(denegacionDeModulo("gastos", efectivosB)).toEqual({ motivo: "MODULO_EN_DESARROLLO", modulo: "gastos" });
       // La empresa A no se entera de la fila de B.
-      expect((await modulosEfectivosDeEmpresa(EMPRESA_POR_DEFECTO_ID, prisma)).has("servicios")).toBe(false);
+      expect((await modulosEfectivosDeEmpresa(EMPRESA_POR_DEFECTO_ID, prisma)).has("gastos")).toBe(false);
     });
 
     it("con esa fila como única en la empresa B, el registro está «sin vendible activo»; la empresa A no cambia", async () => {
       await montar();
-      await prismaAdmin.empresa.create({ data: { id: B, nombre: "B", slug: "empresa-b-servicios", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+      await prismaAdmin.empresa.create({ data: { id: B, nombre: "B", slug: "empresa-b-gastos", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
       await fijarModulosActivos(EMPRESA_POR_DEFECTO_ID, ["consignacion"]);
-      await fijarModulosActivos(B, ["servicios"]);
+      await fijarModulosActivos(B, ["gastos"]);
 
       expect(await situacionDelRegistroDeModulos(B, prismaAdmin)).toBe("SIN_VENDIBLE_ACTIVO");
       expect(await situacionDelRegistroDeModulos(EMPRESA_POR_DEFECTO_ID, prisma)).toBe("CON_MODULOS");
@@ -213,7 +213,7 @@ describe("el guard con el registro de módulos de la empresa", () => {
     expect(denegacionDeModulo("stock", new Set(["administracion"]))).toEqual({ motivo: "MODULO_NO_ACTIVO", modulo: "stock" });
     expect(denegacionDeModulo("stock", new Set(["stock"]))).toBeNull();
     // Gastos y servicios está en desarrollo: nunca es efectivo, y la denegación lo dice (no «apagado»).
-    expect(denegacionDeModulo("servicios", new Set(["administracion"]))).toEqual({ motivo: "MODULO_EN_DESARROLLO", modulo: "servicios" });
+    expect(denegacionDeModulo("gastos", new Set(["administracion"]))).toEqual({ motivo: "MODULO_EN_DESARROLLO", modulo: "gastos" });
   });
 });
 

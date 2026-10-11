@@ -52,9 +52,9 @@ describe("diagnosticarRegistroDeModulos (P5)", () => {
   });
 
   it("una fila de un módulo en desarrollo (Gastos y servicios) se lista como aviso: el guard la ignora", () => {
-    const d = diagnosticarRegistroDeModulos({ empresas: [empresa("a", "ACTIVE", true)], filas: [fila("a", "stock"), fila("a", "servicios")] });
+    const d = diagnosticarRegistroDeModulos({ empresas: [empresa("a", "ACTIVE", true)], filas: [fila("a", "stock"), fila("a", "gastos")] });
     expect(d.fallas).toEqual([]);
-    expect(d.avisos).toEqual(["a: la fila del módulo «servicios» está en desarrollo; el guard la ignora."]);
+    expect(d.avisos).toEqual(["a: la fila del módulo «gastos» está en desarrollo; el guard la ignora."]);
   });
 
   it("una fila de una empresa que no está en la lista se nombra por su id", () => {

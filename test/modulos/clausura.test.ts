@@ -10,8 +10,8 @@ describe("catálogo de módulos (ADR-014 + ADR-015)", () => {
     const porTipo = (tipo: string) => MODULOS.filter((m) => m.tipo === tipo).map((m) => m.id);
     expect(porTipo("fijo")).toEqual(["administracion"]);
     expect(ordenados(porTipo("soporte"))).toEqual(["catalogo_basico", "clientes_basico", "proveedores_basico"]);
-    expect(ordenados(porTipo("vendible"))).toEqual(["carta", "compras", "consignacion", "produccion", "promociones", "recetas", "salon", "servicios", "stock", "traspasos"]);
-    expect((MODULOS as readonly ModuloDef[]).filter((m) => m.estado === "en_desarrollo").map((m) => m.id)).toEqual(["servicios"]);
+    expect(ordenados(porTipo("vendible"))).toEqual(["carta", "compras", "consignacion", "gastos", "produccion", "promociones", "recetas", "salon", "stock", "traspasos"]);
+    expect((MODULOS as readonly ModuloDef[]).filter((m) => m.estado === "en_desarrollo").map((m) => m.id)).toEqual(["gastos"]);
   });
 
   it("los ids son únicos y toda dependencia (dura o blanda) apunta a un módulo que existe", () => {
@@ -74,7 +74,7 @@ describe("modulosEfectivos (clausura por requiere)", () => {
     const vendibles = MODULOS.filter((m) => m.tipo === "vendible").map((m) => m.id);
     const efectivos = modulosEfectivos(vendibles);
     expect(efectivos.size).toBe(13);
-    expect(efectivos.has("servicios")).toBe(false);
+    expect(efectivos.has("gastos")).toBe(false);
   });
 
   it("los de soporte y los ids desconocidos no cuentan como filas del registro", () => {
@@ -92,13 +92,13 @@ describe("modulosEfectivos (clausura por requiere)", () => {
   });
 });
 
-describe("Gastos y servicios (servicios), el módulo real en desarrollo", () => {
-  it("una fila `servicios` en el registro no cuenta: no está efectivo y no trae Proveedores básico", () => {
-    expect(ordenados(modulosEfectivos(["servicios"]))).toEqual(["administracion"]);
+describe("Gastos y servicios (gastos), el módulo real en desarrollo", () => {
+  it("una fila `gastos` en el registro no cuenta: no está efectivo y no trae Proveedores básico", () => {
+    expect(ordenados(modulosEfectivos(["gastos"]))).toEqual(["administracion"]);
   });
 
   it("no se activa: el pedido se rechaza con EN_DESARROLLO", () => {
-    expect(validarCambioDeModulos([], { activar: ["servicios"] })).toEqual({ ok: false, errores: [{ motivo: "EN_DESARROLLO", modulo: "servicios" }] });
+    expect(validarCambioDeModulos([], { activar: ["gastos"] })).toEqual({ ok: false, errores: [{ motivo: "EN_DESARROLLO", modulo: "gastos" }] });
   });
 });
 

@@ -88,7 +88,7 @@ describe("cambiarModulosDeEmpresa", () => {
   });
 
   it("un módulo en desarrollo (Gastos y servicios) no se activa: el script lanza ModulosDeEmpresaError y no escribe fila ni auditoría", async () => {
-    const intento = cambiarModulosDeEmpresa(prismaAdmin, { slug: "norte", activar: ["servicios"] }, AUTOR);
+    const intento = cambiarModulosDeEmpresa(prismaAdmin, { slug: "norte", activar: ["gastos"] }, AUTOR);
     await expect(intento).rejects.toThrow(ModulosDeEmpresaError);
     await expect(intento).rejects.toThrow("Gastos y servicios está en desarrollo y todavía no se puede activar.");
     expect(await registro()).toEqual({});

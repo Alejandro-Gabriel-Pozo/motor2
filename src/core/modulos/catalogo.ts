@@ -33,7 +33,7 @@ export const MODULOS = [
   { id: "promociones", nombre: "Promociones", tipo: "vendible", estado: "disponible", requiere: ["carta"], usaSiExiste: ["salon"] },
   { id: "salon", nombre: "Salón", tipo: "vendible", estado: "disponible", requiere: ["stock", "clientes_basico"], usaSiExiste: ["carta", "promociones"] },
   // Etapa A, punto 6: nace «en desarrollo» (sin acciones ni menú): la consola lo muestra como «Próximamente» y no se puede activar ni entrar.
-  { id: "servicios", nombre: "Gastos y servicios", tipo: "vendible", estado: "en_desarrollo", requiere: ["proveedores_basico"], usaSiExiste: ["compras"] },
+  { id: "gastos", nombre: "Gastos y servicios", tipo: "vendible", estado: "en_desarrollo", requiere: ["proveedores_basico"], usaSiExiste: ["compras"] },
 ] as const satisfies readonly ModuloDef[];
 
 export type ModuloId = (typeof MODULOS)[number]["id"];
