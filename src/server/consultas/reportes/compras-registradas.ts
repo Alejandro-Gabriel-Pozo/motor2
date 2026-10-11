@@ -3,15 +3,17 @@ import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
 import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { SIN_PROVEEDOR } from "@/core/reportes/public";
-import { ZONA_UTC, finDelDiaDe, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, rangoDeDias } from "@/core/tiempo/zona-horaria";
 import { TAMANO_PAGINA_COMPRAS, type FiltroCompras, type RenglonCompra, type CompraRegistrada, type PaginaCompras } from "@/core/reportes/public";
 
-/** Rango inclusivo de días en UTC (00:00:00.000 del primer día a 23:59:59.999 del último), igual que el resto de los reportes (`rangoUtc` de periodo.ts). */
-const inicioDelDiaUtc = (fecha: Date): Date => inicioDelDiaDe(fecha, ZONA_UTC);
-const finDelDiaUtc = (fecha: Date): Date => finDelDiaDe(fecha, ZONA_UTC);
-
-export async function listarComprasRegistradas(sucursalId: string, filtro: FiltroCompras = {}, db: Db): Promise<PaginaCompras> {
+/**
+ * `desde`/`hasta` llegan como fecha "de solo día" (00:00 UTC del día elegido): el rango es de días COMPLETOS EN LA ZONA de la empresa (`zona`, la de `ctx.empresaZonaHoraria`;
+ * por defecto la argentina), el mismo corte que Tickets. Cada lado se expande por su cuenta (puede venir uno solo).
+ */
+export async function listarComprasRegistradas(sucursalId: string, filtro: FiltroCompras = {}, db: Db, zona: string = ZONA_ARGENTINA): Promise<PaginaCompras> {
   const { desde, hasta } = filtro;
+  const limiteDesde = desde ? rangoDeDias(desde, desde, zona).desde : undefined;
+  const limiteHasta = hasta ? rangoDeDias(hasta, hasta, zona).hasta : undefined;
   // Texto que viene de la URL o del cliente: sin los caracteres que Postgres no recibe (NUL, sustitutos sueltos), también los identificadores.
   const facturaBuscada = textoDeBusqueda(filtro.factura);
   const proveedorId = filtro.proveedorId ? textoDeBusqueda(filtro.proveedorId) : undefined;
@@ -21,7 +23,7 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
     where: {
       sucursalId,
       proceso: "COMPRA",
-      ...(desde || hasta ? { fecha: { ...(desde ? { gte: inicioDelDiaUtc(desde) } : {}), ...(hasta ? { lte: finDelDiaUtc(hasta) } : {}) } } : {}),
+      ...(desde || hasta ? { fecha: { ...(limiteDesde ? { gte: limiteDesde } : {}), ...(limiteHasta ? { lte: limiteHasta } : {}) } } : {}),
       ...(proveedorId === SIN_PROVEEDOR ? { proveedorId: null } : proveedorId ? { proveedorId } : {}),
       ...(facturaBuscada ? { nroFactura: { contains: escaparComodinesLike(facturaBuscada), mode: "insensitive" as const } } : {}),
     },

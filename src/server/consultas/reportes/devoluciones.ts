@@ -3,7 +3,7 @@ import { redondearMoneda } from "@/core/moneda";
 import { obtenerCostoActualPorMP } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad, resolverAccionSinCostoReposicion } from "@/core/reportes/public";
-import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, inicioDelDia, sumarDias } from "@/core/tiempo/zona-horaria";
 import type { FilaDevolucionProducto, ReporteDevoluciones, AccProducto } from "@/core/reportes/public";
 
 /**
@@ -21,11 +21,10 @@ import type { FilaDevolucionProducto, ReporteDevoluciones, AccProducto } from "@
  *
  * `ahora` (D.3a de docs/pureza-integracion.md) es obligatorio: el «hace N días» se cuenta desde la hora que fija el borde (la página).
  */
-export async function generarReporteDevoluciones(sucursalId: string, diasAtras: number, db: Db, ahora: Date): Promise<ReporteDevoluciones> {
+export async function generarReporteDevoluciones(sucursalId: string, diasAtras: number, db: Db, ahora: Date, zona: string = ZONA_ARGENTINA): Promise<ReporteDevoluciones> {
   const dias = diasAtras > 0 ? diasAtras : 30;
-  const haceNDias = new Date(ahora);
-  haceNDias.setUTCDate(haceNDias.getUTCDate() - dias);
-  const desde = inicioDelDiaDe(haceNDias, ZONA_UTC);
+  // «Hace N días» se cuenta en días de la zona de la empresa (`zona`, la de `ctx.empresaZonaHoraria`): desde las 00:00 de ese día en la zona, no desde las 00:00 UTC.
+  const desde = inicioDelDia(sumarDias(diaDeCalendario(ahora, zona), -dias), zona);
 
   const costos = await obtenerCostoActualPorMP(sucursalId, db);
   const movimientos = await db.movimientoStock.findMany({

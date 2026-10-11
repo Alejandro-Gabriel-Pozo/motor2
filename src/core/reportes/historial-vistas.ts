@@ -1,7 +1,7 @@
 import type { Proceso } from "@/core/datos/enumerados-del-esquema";
 import { redondearMoneda } from "@/core/moneda";
 import { mediana } from "@/core/estadistica/mediana";
-import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, ZONA_UTC, diaDeCalendario, inicioDelDia, sumarDias } from "@/core/tiempo/zona-horaria";
 
 // A propósito NO importa `redondearCantidad` de `./comun`: ese módulo importa
 // `@/lib/db` a nivel de archivo, así que cualquier import de VALOR (no de
@@ -212,7 +212,7 @@ export function resumirCompras(eventos: EventoParaCompras[]): ResumenCompras {
 // ---------------------------------------------------------------------------
 
 export interface FilaVentaPorDia {
-  /** `YYYY-MM-DD`, mismo criterio UTC que el resto de la pantalla (tabla-historial.tsx). */
+  /** `YYYY-MM-DD`: el día de calendario en la zona de la empresa, el mismo criterio que el resto de la pantalla (tabla-historial.tsx). */
   dia: string;
   cantidad: number;
   importe: number;
@@ -255,22 +255,22 @@ export interface RangoHistorialResuelto {
  * consulta, una sola, para que sus números siempre cierren con los de
  * arriba— dejaría de poder verse completo como hoy.
  *
- * `ahora` inyectable, mismo criterio testeable que `resolverRangoPorDefecto`.
+ * `ahora` inyectable, mismo criterio testeable que `resolverRangoPorDefecto`. «Hoy» es el día de calendario de `zona` (la de la empresa; por defecto la argentina), y el
+ * rango sale como fecha «de solo día» (00:00 UTC del día): `obtenerHistorialProducto` la expande a días completos en esa misma zona.
  */
-export function resolverRangoHistorial(sp: { desde?: string; hasta?: string; rango?: string }, ahora: Date): RangoHistorialResuelto {
+export function resolverRangoHistorial(sp: { desde?: string; hasta?: string; rango?: string }, ahora: Date, zona: string = ZONA_ARGENTINA): RangoHistorialResuelto {
   if (sp.desde || sp.hasta || sp.rango === "personalizado") {
     return { rango: "personalizado", desde: sp.desde ? new Date(sp.desde) : undefined, hasta: sp.hasta ? new Date(sp.hasta) : undefined };
   }
   if (sp.rango === "todo") return { rango: "todo", desde: undefined, hasta: undefined };
 
-  const hoy = inicioDelDiaDe(ahora, ZONA_UTC);
-  const desde = new Date(hoy);
+  const hoy = diaDeCalendario(ahora, zona);
   if (sp.rango === "90d") {
-    desde.setUTCDate(desde.getUTCDate() - 89); // 89 días atrás + hoy = 90 días, inclusive de los dos extremos.
-    return { rango: "90d", desde, hasta: undefined };
+    // 89 días atrás + hoy = 90 días, inclusive de los dos extremos.
+    return { rango: "90d", desde: inicioDelDia(sumarDias(hoy, -89), ZONA_UTC), hasta: undefined };
   }
-  desde.setUTCDate(desde.getUTCDate() - 9); // 9 días atrás + hoy = 10 días: lo que se ve por defecto; «Ver más» pasa a 90 días y después a todo.
-  return { rango: "10d", desde, hasta: undefined };
+  // 9 días atrás + hoy = 10 días: lo que se ve por defecto; «Ver más» pasa a 90 días y después a todo.
+  return { rango: "10d", desde: inicioDelDia(sumarDias(hoy, -9), ZONA_UTC), hasta: undefined };
 }
 
 /**
@@ -290,12 +290,12 @@ export function quitarDineroDeEventos<T extends { precioTotal?: number; precioPo
   });
 }
 
-/** Ventas agrupadas por día — EXCLUYE las anuladas (mismo criterio que `resumirCompras`). Orden cronológico ascendente. */
-export function agruparVentasPorDia(eventos: EventoParaVentas[]): FilaVentaPorDia[] {
+/** Ventas agrupadas por día de calendario en `zona` (la de la empresa; por defecto la argentina) — EXCLUYE las anuladas (mismo criterio que `resumirCompras`). Orden cronológico ascendente. */
+export function agruparVentasPorDia(eventos: EventoParaVentas[], zona: string = ZONA_ARGENTINA): FilaVentaPorDia[] {
   const porDia = new Map<string, { cantidad: number; importe: number }>();
   for (const ev of eventos) {
     if (ev.tipo !== "movimiento" || ev.proceso !== "VENTA" || ev.anulada) continue;
-    const dia = ev.fecha.toISOString().slice(0, 10);
+    const dia = diaDeCalendario(ev.fecha, zona);
     const acumulado = porDia.get(dia) ?? { cantidad: 0, importe: 0 };
     acumulado.cantidad += Math.abs(ev.cantidadConSigno ?? 0);
     acumulado.importe += ev.precioTotal ?? 0;

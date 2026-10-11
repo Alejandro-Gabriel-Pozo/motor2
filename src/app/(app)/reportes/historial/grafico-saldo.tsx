@@ -2,6 +2,7 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { EventoHistorialProducto } from "@/core/reportes/public";
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 interface PuntoSaldo {
   fecha: string;
@@ -9,14 +10,15 @@ interface PuntoSaldo {
 }
 
 /** Solo los eventos de movimiento tienen saldoCorriente (ver docstring en historial-producto.ts) — un conteo no mueve el saldo real. */
-function armarSerie(eventos: EventoHistorialProducto[]): PuntoSaldo[] {
+function armarSerie(eventos: EventoHistorialProducto[], zona: string): PuntoSaldo[] {
   return eventos
     .filter((ev) => ev.tipo === "movimiento" && ev.saldoCorriente != null)
-    .map((ev) => ({ fecha: ev.fecha.toISOString().slice(0, 10), saldo: ev.saldoCorriente! }));
+    .map((ev) => ({ fecha: diaDeCalendario(ev.fecha, zona), saldo: ev.saldoCorriente! }));
 }
 
-export function GraficoSaldoCorriente({ eventos, unidadStockNombre }: { eventos: EventoHistorialProducto[]; unidadStockNombre: string }) {
-  const serie = armarSerie(eventos);
+/** `zona`: la de la empresa (la página pasa `ctx.empresaZonaHoraria`), para el día de cada punto; sin ella, la argentina. */
+export function GraficoSaldoCorriente({ eventos, unidadStockNombre, zona = ZONA_ARGENTINA }: { eventos: EventoHistorialProducto[]; unidadStockNombre: string; zona?: string }) {
+  const serie = armarSerie(eventos, zona);
 
   if (serie.length < 2) {
     return <p className="text-sm text-neutral-500">Sin suficientes movimientos en el rango para graficar la evolución del saldo.</p>;

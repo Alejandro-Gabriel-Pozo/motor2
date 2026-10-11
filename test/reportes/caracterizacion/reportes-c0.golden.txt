@@ -726,7 +726,7 @@
         valor: 0
       }
     ],
-    desde: Date(2026-02-13T00:00:00.000Z),
+    desde: Date(2026-02-13T03:00:00.000Z),
     dias: 30,
     hayCostoIncompleto: true,
     proveedores: [
@@ -1587,7 +1587,7 @@
         valor: 4600
       }
     ],
-    desde: Date(2026-02-13T00:00:00.000Z),
+    desde: Date(2026-02-13T03:00:00.000Z),
     dias: 30,
     hayCostoIncompleto: true,
     mermas: [

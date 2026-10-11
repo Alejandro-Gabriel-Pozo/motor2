@@ -95,7 +95,7 @@ describe("listarComprasRegistradas", () => {
     expect(await facturas("a_0001")).toEqual(["A_0001"]); // sigue sin distinguir mayúsculas
   });
 
-  it("los límites de fecha son días completos: una compra a las 12:00 UTC entra con `hasta` = ese mismo día (que llega a las 00:00 UTC)", async () => {
+  it("los límites de fecha son días completos (en hora argentina): una compra a las 12:00Z (09:00 argentinas) entra con `hasta` = ese mismo día (que llega a las 00:00 UTC); los bordes de la noche, en `lectores-en-hora-argentina.test.ts`", async () => {
     await comprar("2026-08-09", provAId, "A-0001", [{ productoId: harinaId, cantidad: 1, precioTotal: 5 }]); // se guarda a las 12:00Z
     const facturas = async (f: Parameters<typeof listarComprasRegistradas>[1]) => (await listarComprasRegistradas(sucursalId, f, prisma)).items.map((c) => c.nroFactura);
 

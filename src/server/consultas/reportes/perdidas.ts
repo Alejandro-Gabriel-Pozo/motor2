@@ -3,7 +3,7 @@ import { redondearMoneda } from "@/core/moneda";
 import { obtenerCostoActualPorMP } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad } from "@/core/reportes/public";
-import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, inicioDelDia, sumarDias } from "@/core/tiempo/zona-horaria";
 import type { FilaPerdida, ReportePerdidas } from "@/core/reportes/public";
 
 /** Consumo generado solo (receta de Venta/Producción) — Operacion.destino queda null porque Operacion.proceso ahí es VENTA/PRODUCCION, no CONSUMO. */
@@ -36,11 +36,10 @@ const SIN_DESTINO = "(automático por receta)";
  * `ahora` (D.3a de docs/pureza-integracion.md) es obligatorio: el «hace N días» se cuenta desde la hora que fija el borde (la página), no desde un reloj
  * leído acá.
  */
-export async function generarReportePerdidas(sucursalId: string, diasAtras: number, db: Db, ahora: Date): Promise<ReportePerdidas> {
+export async function generarReportePerdidas(sucursalId: string, diasAtras: number, db: Db, ahora: Date, zona: string = ZONA_ARGENTINA): Promise<ReportePerdidas> {
   const dias = diasAtras > 0 ? diasAtras : 30;
-  const haceNDias = new Date(ahora);
-  haceNDias.setUTCDate(haceNDias.getUTCDate() - dias);
-  const desde = inicioDelDiaDe(haceNDias, ZONA_UTC);
+  // «Hace N días» se cuenta en días de la zona de la empresa (`zona`, la de `ctx.empresaZonaHoraria`): desde las 00:00 de ese día en la zona, no desde las 00:00 UTC.
+  const desde = inicioDelDia(sumarDias(diaDeCalendario(ahora, zona), -dias), zona);
 
   const costos = await obtenerCostoActualPorMP(sucursalId, db);
   const movimientos = await db.movimientoStock.findMany({

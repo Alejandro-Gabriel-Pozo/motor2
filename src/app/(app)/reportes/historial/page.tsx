@@ -50,7 +50,7 @@ export default async function HistorialProductoPage({
   const queMostrar = comoQueMostrar(sp.queMostrar);
   // Un solo rango para TODA la pantalla (decisión 10 de §4): los números de arriba y el Kardex de abajo siempre parten de
   // la MISMA consulta, así que siempre cierran entre sí. Default "10d"; «Ver más» pasa a "90d" y después a "todo".
-  const { rango, desde, hasta } = resolverRangoHistorial(sp, new Date());
+  const { rango, desde, hasta } = resolverRangoHistorial(sp, new Date(), ctx.empresaZonaHoraria);
 
   // «Ver más»: 10 días → 90 días → todo. En un rango personalizado no hay a dónde ampliar (el usuario ya eligió las fechas).
   const rangoMasAmplio = rango === "10d" ? "90d" : rango === "90d" ? "todo" : null;
@@ -60,7 +60,7 @@ export default async function HistorialProductoPage({
   if (queMostrar !== "todo") parametrosVerMas.set("queMostrar", queMostrar);
   if (rangoMasAmplio) parametrosVerMas.set("rango", rangoMasAmplio);
 
-  const historial = sp.productoId ? await obtenerHistorialProducto(ctx.sucursalId, sp.productoId, sp.seccionId || undefined, desde, hasta, ctx.db) : null;
+  const historial = sp.productoId ? await obtenerHistorialProducto(ctx.sucursalId, sp.productoId, sp.seccionId || undefined, desde, hasta, ctx.db, ctx.empresaZonaHoraria) : null;
 
   // Sin la clave de importes el dinero no sale del servidor: ocultar la columna al dibujar no alcanza, los props de un componente cliente viajan en el payload.
   const eventos = historial ? (mostrarDinero ? historial.eventos : quitarDineroDeEventos(historial.eventos)) : [];
@@ -104,13 +104,13 @@ export default async function HistorialProductoPage({
             <div className="mb-4">
               <h3 className="mb-2 text-sm font-medium">Evolución del saldo</h3>
               {/* El mismo rango elegido arriba — no "Qué mostrar" (ese filtro es solo para el Kardex de abajo, declutter, no cambia qué pasó de verdad). */}
-              <GraficoSaldoCorriente eventos={eventos} unidadStockNombre={historial.unidadStockNombre} />
+              <GraficoSaldoCorriente eventos={eventos} unidadStockNombre={historial.unidadStockNombre} zona={ctx.empresaZonaHoraria} />
             </div>
           ) : (
             <CartelSinStockPropio productoId={historial.productoId} ingredientes={ingredientes ?? []} />
           )}
-          {historial.tipo === "MP" && <ComoSeCompro resumen={resumirCompras(eventos)} unidad={historial.unidadStockNombre} mostrarDinero={mostrarDinero} />}
-          {historial.tipo === "PV" && <ComoSeVendio filas={agruparVentasPorDia(eventos)} mostrarDinero={mostrarDinero} />}
+          {historial.tipo === "MP" && <ComoSeCompro resumen={resumirCompras(eventos)} unidad={historial.unidadStockNombre} mostrarDinero={mostrarDinero} zona={ctx.empresaZonaHoraria} />}
+          {historial.tipo === "PV" && <ComoSeVendio filas={agruparVentasPorDia(eventos, ctx.empresaZonaHoraria)} mostrarDinero={mostrarDinero} />}
           <details className="mt-2">
             <summary className="cursor-pointer text-sm font-medium">Movimiento por movimiento (auditoría)</summary>
             <div className="mt-2">
@@ -118,6 +118,7 @@ export default async function HistorialProductoPage({
                 filas={filtrarEventosKardex(eventos, queMostrar)}
                 nombreExport={`historial-${historial.codigo}`}
                 mostrarSaldo={historial.tieneStockPropio}
+                zona={ctx.empresaZonaHoraria}
               />
             </div>
           </details>
