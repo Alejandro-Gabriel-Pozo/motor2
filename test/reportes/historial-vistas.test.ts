@@ -9,6 +9,7 @@ import {
   resumirCompras,
   variacionPorcentual,
 } from "../../src/core/reportes/historial-vistas";
+import { ZONA_UTC } from "../../src/core/tiempo/zona-horaria";
 
 describe("GRUPO_POR_PROCESO", () => {
   it("clasifica exhaustivamente los 16 Proceso del enum, sin ninguno afuera", () => {
@@ -200,6 +201,27 @@ describe("resolverRangoHistorial", () => {
     expect(r.desde).toEqual(new Date("2026-01-01"));
     expect(r.hasta).toEqual(new Date("2026-01-31"));
   });
+
+  // P1: «hoy» es el día de calendario en la zona. A las 22:30 argentinas el reloj UTC ya marca el día siguiente: con «hoy» en UTC, los 10 días arrancaban un día tarde.
+  const dia = (r: { desde: Date | undefined }) => r.desde?.toISOString();
+
+  it("a las 22:30 argentinas del 30/9 (01:30Z del 1/10), «hoy» es el 30/9: 10 días arrancan el 21/9 y 90 días el 3/7 (fecha de solo día)", () => {
+    const aLas2230 = new Date("2026-09-30T22:30:00-03:00");
+    expect(dia(resolverRangoHistorial({}, aLas2230))).toBe("2026-09-21T00:00:00.000Z");
+    expect(dia(resolverRangoHistorial({ rango: "90d" }, aLas2230))).toBe("2026-07-03T00:00:00.000Z");
+  });
+
+  it("cambio de año: a las 22:30 argentinas del 31/12/2025, los 10 días arrancan el 22/12", () => {
+    expect(dia(resolverRangoHistorial({}, new Date("2025-12-31T22:30:00-03:00")))).toBe("2025-12-22T00:00:00.000Z");
+  });
+
+  it("bisiesto: a las 22:30 argentinas del 29/2/2028, los 10 días arrancan el 20/2", () => {
+    expect(dia(resolverRangoHistorial({}, new Date("2028-02-29T22:30:00-03:00")))).toBe("2028-02-20T00:00:00.000Z");
+  });
+
+  it("la zona se respeta: con UTC, a las 22:30 argentinas del 30/9 «hoy» es el 1/10", () => {
+    expect(dia(resolverRangoHistorial({}, new Date("2026-09-30T22:30:00-03:00"), ZONA_UTC))).toBe("2026-09-22T00:00:00.000Z");
+  });
 });
 
 describe("agruparVentasPorDia", () => {
@@ -241,6 +263,19 @@ describe("agruparVentasPorDia", () => {
 
   it("sin ventas: lista vacía", () => {
     expect(agruparVentasPorDia([])).toEqual([]);
+  });
+
+  it("el día es el de la zona (P1): una venta de las 22:30 argentinas del 30/9 (01:30Z del 1/10) va al 30/9 y una de las 00:30 del 1/10 al 1/10", () => {
+    const eventos = [
+      { ...base, fecha: new Date("2026-10-01T00:30:00-03:00"), cantidadConSigno: -1, precioTotal: 1000 },
+      { ...base, fecha: new Date("2026-09-30T22:30:00-03:00"), cantidadConSigno: -2, precioTotal: 2000 },
+    ];
+    expect(agruparVentasPorDia(eventos).map((f) => [f.dia, f.cantidad])).toEqual([
+      ["2026-09-30", 2],
+      ["2026-10-01", 1],
+    ]);
+    // Con otra zona el mismo dato cae en otro día: el parámetro se respeta.
+    expect(agruparVentasPorDia(eventos, ZONA_UTC).map((f) => [f.dia, f.cantidad])).toEqual([["2026-10-01", 3]]);
   });
 });
 

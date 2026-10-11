@@ -6,6 +6,7 @@ import { generarReportePerdidas } from "@/server/consultas/reportes/perdidas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { TablaMermas, TablaConsumoInterno } from "./tabla-perdidas";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 export default async function PerdidasPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"dias">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -20,7 +21,7 @@ export default async function PerdidasPage({ searchParams }: { searchParams: Pro
   const dias = diasAtrasDeUrl(sp.dias, 30);
   // La hora se fija acá, en el borde (D.3a): el reporte la recibe por parámetro.
   const ahora = new Date();
-  const rep = await generarReportePerdidas(ctx.sucursalId, dias, ctx.db, ahora);
+  const rep = await generarReportePerdidas(ctx.sucursalId, dias, ctx.db, ahora, ctx.empresaZonaHoraria);
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,7 +37,7 @@ export default async function PerdidasPage({ searchParams }: { searchParams: Pro
           </button>
         </form>
         <p className="mt-2 text-sm text-neutral-500">
-          Desde {rep.desde.toISOString().slice(0, 10)} — merma total: ${rep.totalMerma.toLocaleString("es-AR")}, consumo interno total: $
+          Desde {diaDeCalendario(rep.desde, ctx.empresaZonaHoraria)} — merma total: ${rep.totalMerma.toLocaleString("es-AR")}, consumo interno total: $
           {rep.totalConsumo.toLocaleString("es-AR")}.
         </p>
         {rep.hayCostoIncompleto && <p className="text-xs text-amber-700 dark:text-amber-600">Algún producto no tiene costo de reposición conocido: no se suma al valor total.</p>}

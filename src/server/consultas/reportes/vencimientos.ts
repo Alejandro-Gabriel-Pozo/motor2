@@ -2,7 +2,7 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad } from "@/core/reportes/public";
-import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, ZONA_UTC, diaDeCalendario, inicioDelDia } from "@/core/tiempo/zona-horaria";
 import type { FilaLoteProximoAVencer, FilaConciliacionVencimiento } from "@/core/reportes/public";
 
 /**
@@ -13,9 +13,11 @@ import type { FilaLoteProximoAVencer, FilaConciliacionVencimiento } from "@/core
  *
  * `ahora` (D.3a de docs/pureza-integracion.md) es obligatorio: «hoy» y los días para vencer salen de la hora que fija el borde (la página).
  */
-export async function generarReporteLotesProximosAVencer(sucursalId: string, dias: number, db: Db, ahora: Date): Promise<FilaLoteProximoAVencer[]> {
+export async function generarReporteLotesProximosAVencer(sucursalId: string, dias: number, db: Db, ahora: Date, zona: string = ZONA_ARGENTINA): Promise<FilaLoteProximoAVencer[]> {
   const limiteDias = dias > 0 ? dias : 7;
-  const hoy = inicioDelDiaDe(ahora, ZONA_UTC);
+  // «Hoy» es el día de la zona de la empresa: a las 22:30 argentinas el reloj UTC ya marca el día siguiente, y un lote que vence mañana figuraría «vence hoy». El vencimiento del lote es una
+  // fecha de solo día (00:00 UTC), así que «hoy» se expresa igual (el día de la zona, a las 00:00 UTC): la resta da días de calendario enteros.
+  const hoy = inicioDelDia(diaDeCalendario(ahora, zona), ZONA_UTC);
   const fechaLimite = new Date(hoy.getTime() + limiteDias * 86400000);
 
   const grupos = await db.movimientoStock.groupBy({
@@ -177,10 +179,10 @@ export async function generarConciliacionVencimientos(sucursalId: string, db: Db
   return resultados.sort((a, b) => (a.estado === "revisar" ? -1 : 1) - (b.estado === "revisar" ? -1 : 1));
 }
 
-/** Port de obtenerReporteVencimientosDatos (Reportes.js:683-689). `ahora` obligatorio (D.3a): lo usan los lotes próximos a vencer. */
-export async function obtenerReporteVencimientosDatos(sucursalId: string, dias: number, db: Db, ahora: Date) {
+/** Port de obtenerReporteVencimientosDatos (Reportes.js:683-689). `ahora` obligatorio (D.3a): lo usan los lotes próximos a vencer; `zona` es la de la empresa (por defecto la argentina). */
+export async function obtenerReporteVencimientosDatos(sucursalId: string, dias: number, db: Db, ahora: Date, zona: string = ZONA_ARGENTINA) {
   const [proximosAVencer, conciliacion] = await Promise.all([
-    generarReporteLotesProximosAVencer(sucursalId, dias || 7, db, ahora),
+    generarReporteLotesProximosAVencer(sucursalId, dias || 7, db, ahora, zona),
     generarConciliacionVencimientos(sucursalId, db),
   ]);
   return { proximosAVencer, conciliacion, diasUsados: dias > 0 ? dias : 7 };

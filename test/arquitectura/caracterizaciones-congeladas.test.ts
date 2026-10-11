@@ -183,6 +183,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "O.38b D3 (refactor, sin cambio de resultado): el Consolidado lee la disponibilidad de todas las sucursales en UNA consulta. Cambia SOLO la línea de conteo de la entrada 35: 17 → 16 consultas (8 + 4N con N = 2), `disponibilidadProducto.findMany` ×2 → ×1; el resultado y las demás entradas, byte a byte.",
       },
+      {
+        blob: "50da82faa90188ee358df979bf38bbc298c5da99",
+        // El commit que regenera es el `2b11b2e` («P1 paso 5: Compras, Perdidas, Devoluciones, Historial, Rotacion y Vencimientos cortan el dia en la zona de la empresa», fila O.253 de la lista de control); la declaración va en el commit siguiente porque un commit no puede llevar su propio hash.
+        commit: "2b11b2e",
+        motivo:
+          "P1 paso 5 (O.253; CAMBIA COMPORTAMIENTO a propósito: «hace N días» de Pérdidas y Devoluciones se cuenta en días de la zona de la empresa, no en días UTC). Cambia SOLO 2 líneas (729 y 1590): la `desde` de Pérdidas y la de Devoluciones, `Date(2026-02-13T00:00:00.000Z)` → `Date(2026-02-13T03:00:00.000Z)` (+3 h: el inicio del día argentino); ningún número ni conteo de consultas se mueve.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {
