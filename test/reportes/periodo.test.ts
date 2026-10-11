@@ -31,19 +31,22 @@ describe("obtenerReportePorPeriodo", () => {
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  it("no se corre un día por timezone: un rango 1-al-5 incluye el 1 y el 5 completos", async () => {
+  it("el día se corta en hora argentina: un rango 1-al-5 incluye el 1 y el 5 completos y deja afuera los bordes de los días vecinos (P1, O.251)", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    // Fecha límite: primer día del rango, a la mañana temprano en UTC — el
-    // bug que se está evitando (Reportes.js:41-48) haría que esto caiga
-    // afuera si el límite se calculara con setHours() en vez de setUTCHours().
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-01T02:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 100 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T23:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 3, precioTotal: 60 }] });
-    // Afuera del rango: 31 de julio.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-07-31T20:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 99, precioTotal: 1 }] });
+    // Los cuatro bordes argentinos del rango 2026-08-01..2026-08-05 (Argentina es UTC−3, sin horario de verano):
+    // 00:00 del 1 (03:00Z) ENTRA; 23:59:59.999 del 5 (02:59:59.999Z del 6) ENTRA;
+    // 23:59:59.999 del 31/7 (02:59:59.999Z del 1) y 00:00 del 6 (03:00Z) quedan AFUERA.
+    // Con el corte anterior (UTC) el primero entraba corrido un día y el segundo quedaba afuera: el mismo instante caía en otro día que en Tickets.
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-01T03:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 100 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-06T02:59:59.999Z"), seccionId, items: [{ productoId: mp.id, cantidad: 3, precioTotal: 60 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-01T02:59:59.999Z"), seccionId, items: [{ productoId: mp.id, cantidad: 99, precioTotal: 1 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-06T03:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 98, precioTotal: 2 }] });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-05"), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.total).toBe(2);
     expect(rep.compras.totalGastado).toBe(160);
+    expect(rep.desde.toISOString()).toBe("2026-08-01T03:00:00.000Z");
+    expect(rep.hasta.toISOString()).toBe("2026-08-06T02:59:59.999Z");
   });
 
   it("ventas con Precio Total real se toman tal cual; sin precio se estiman al precio de venta vigente y se marcan 'estimado'", async () => {

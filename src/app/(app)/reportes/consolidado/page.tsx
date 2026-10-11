@@ -39,7 +39,7 @@ export default async function ConsolidadoPage() {
   if (reportePesadoSinCupo(ctx.usuarioId, "resumen-consolidado", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
   // M.3-A5: esas mismas sucursales se LEEN con la lectura ensanchada (solo la lectura; esta pantalla no escribe) a las sucursales donde el rol ve `reporte_consolidado`.
   const lectura = await lecturaEnSucursalesVisibles(ctx, "reporte_consolidado");
-  const filas = await obtenerResumenConsolidado(sucursales, lectura.db, ahora);
+  const filas = await obtenerResumenConsolidado(sucursales, lectura.db, ahora, ctx.empresaZonaHoraria);
   const totales = filas.reduce(
     (acc, f) => ({
       ventasTotal: acc.ventasTotal + f.ventasTotal,

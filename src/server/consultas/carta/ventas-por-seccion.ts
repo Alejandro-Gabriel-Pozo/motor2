@@ -4,6 +4,7 @@ import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
 import { cargarLineasDelPeriodo, type generarReporteVentasPorCategoria } from "@/server/consultas/reportes/periodo";
 import { agruparVentasPorCategoria, calcularVentasDelPeriodo, pvSinCategoriaDe, redondearCantidad, type FilaCategoriaVenta } from "@/core/reportes/public";
+import { ZONA_ARGENTINA } from "@/core/tiempo/zona-horaria";
 
 /**
  * Ventas por SECCIÓN DE CARTA (docs/plan-carta-catalogo-2026-09-24.md, M4; rehecho a nivel de PRODUCTO en
@@ -131,9 +132,9 @@ async function seccionesDeProductos(sucursalId: string, db: Db): Promise<Map<str
  * agrupadas por sección de carta. Solo las ventas: antes armaba el reporte del período ENTERO (margen Real, IPC, impacto de recetas…, 23 consultas) para
  * quedarse con `ventas` y el catálogo (O.39 de docs/pureza-integracion.md).
  */
-export async function generarReporteVentasPorSeccion(sucursalId: string, desde: Date, hasta: Date, db: Db): Promise<ReporteVentasPorSeccion> {
+export async function generarReporteVentasPorSeccion(sucursalId: string, desde: Date, hasta: Date, db: Db, zona: string = ZONA_ARGENTINA): Promise<ReporteVentasPorSeccion> {
   const [{ desde: desdeRango, hasta: hastaRango, items, productos }, seccionPorProducto] = await Promise.all([
-    cargarLineasDelPeriodo(sucursalId, desde, hasta, { proceso: "VENTA" }, db),
+    cargarLineasDelPeriodo(sucursalId, desde, hasta, { proceso: "VENTA" }, db, {}, zona),
     seccionesDeProductos(sucursalId, db),
   ]);
   const ventas = calcularVentasDelPeriodo(items, productos);

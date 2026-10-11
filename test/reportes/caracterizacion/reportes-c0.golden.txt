@@ -1813,7 +1813,7 @@
       totalGastado: 51380,
       totalNoComestibles: 5000
     },
-    desde: Date(2026-02-16T00:00:00.000Z),
+    desde: Date(2026-02-16T03:00:00.000Z),
     digest: [
       {severidad: "alta", texto: "\"Queso\" es lo que más te encareció las compras: +$3.405,01 (+9.2%) sobre lo que compraste este período."},
       {severidad: "alta", texto: "El plato que más se encareció por estos cambios es \"Pizza muzzarella\": costo +$392 (food cost 18.4% → 21.3%)."},
@@ -1865,7 +1865,7 @@
         }
       ]
     },
-    hasta: Date(2026-03-15T23:59:59.999Z),
+    hasta: Date(2026-03-16T02:59:59.999Z),
     impactoRecetas: [
       {
         costoActual: 2802,
@@ -3841,8 +3841,8 @@
   consultas (6): capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1
   resultado: {
     aviso: "Importe real registrado en cada venta (no una estimación).",
-    desde: Date(2026-02-16T00:00:00.000Z),
-    hasta: Date(2026-03-15T23:59:59.999Z),
+    desde: Date(2026-02-16T03:00:00.000Z),
+    hasta: Date(2026-03-16T02:59:59.999Z),
     porCategoria: [
       {
         cantidad: 16,
@@ -4210,9 +4210,9 @@
       avisoMargenReal: "Costo de la receta al día de cada venta (sin el descalce temporal de \"Margen\" arriba). RECONSTRUIDO: $21.600 de lo vendido no guardó su costo al venderse y se lo calculó con el historial de compras (el precio de la compra más reciente de cada insumo hasta ese día) y la receta de hoy: es una aproximación. No se pudo costear $109.000 (algún insumo sin compras hasta ese día, o el plato sin receta).",
       avisoVentas: "Importe real registrado en cada venta (no una estimación).",
       costoTotal: 25218,
-      desde: Date(2026-02-14T00:00:00.000Z),
+      desde: Date(2026-02-14T03:00:00.000Z),
       gastadoTotal: 51380,
-      hasta: Date(2026-03-15T23:59:59.999Z),
+      hasta: Date(2026-03-16T02:59:59.999Z),
       hayComprasSinPrecio: true,
       hayCostoIncompleto: true,
       hayEstimados: false,

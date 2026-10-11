@@ -183,6 +183,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "O.38b D3 (refactor, sin cambio de resultado): el Consolidado lee la disponibilidad de todas las sucursales en UNA consulta. Cambia SOLO la línea de conteo de la entrada 35: 17 → 16 consultas (8 + 4N con N = 2), `disponibilidadProducto.findMany` ×2 → ×1; el resultado y las demás entradas, byte a byte.",
       },
+      {
+        blob: "f6652b056d5fe76d136f98f96925e9f095a7209a",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, «P1 paso 1: mediodiaDelDia(dia, zona) en core/tiempo, con ejemplos, propiedad y mutaciones».
+        commit: "2ea2dd1",
+        motivo:
+          "P1 paso 3 (O.251; CAMBIA COMPORTAMIENTO, plan P1 «el día en hora argentina»): Período y su familia cortan cada día en la zona de la empresa (`rangoDeDias(…, zona)`) y no en UTC. Cambia SOLO 6 líneas, todas `Date(…)` de desde/hasta (+3 h, Argentina es UTC−3): las entradas 27 y 29 (periodo.obtenerReportePorPeriodo y generarReporteVentasPorCategoria: desde 02-16T00:00Z → 02-16T03:00Z, hasta 03-15T23:59:59.999Z → 03-16T02:59:59.999Z) y el financiero de la entrada 34 (resumen-operativo: desde 02-14T00:00Z → 02-14T03:00Z, hasta como arriba). Ningún número, ninguna consulta ni su conteo cambia.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {

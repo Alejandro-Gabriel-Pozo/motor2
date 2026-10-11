@@ -32,7 +32,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
   const [rep, cotizacion, gateCostos] = await Promise.all([
-    obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), undefined, ctx.db, ahora),
+    obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), undefined, ctx.db, ahora, ctx.empresaZonaHoraria),
     obtenerUltimaCotizacionSinRomper(ctx.db),
     requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_costos", ctx.db),
   ]);

@@ -3,6 +3,7 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo, reportePesadoSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
+import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { obtenerUltimaCotizacionSinRomper } from "@/server/consultas/reportes/cotizacion-dolar";
 import { obtenerResumenOperativo } from "@/server/consultas/reportes/resumen-operativo";
 import { TablaTopProductos, TablaTopProveedores, TablaStockBajo } from "./tabla-resumen";
@@ -28,7 +29,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
   const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp, new Date());
   const [r, cotizacion] = await Promise.all([
-    obtenerResumenOperativo(ctx.sucursalId, ctx.db, new Date(), { desde: new Date(rango.desdeISO), hasta: new Date(rango.hastaISO) }),
+    obtenerResumenOperativo(ctx.sucursalId, ctx.db, new Date(), { desde: new Date(rango.desdeISO), hasta: new Date(rango.hastaISO) }, ctx.empresaZonaHoraria),
     obtenerUltimaCotizacionSinRomper(ctx.db),
   ]);
 
@@ -37,7 +38,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
       <div>
         <h1 className="mb-1 text-xl font-semibold">Resumen operativo</h1>
         <p className="mb-2 text-sm text-neutral-500">
-          Financiero de {r.financiero.desde.toISOString().slice(0, 10)} a {r.financiero.hasta.toISOString().slice(0, 10)}.
+          Financiero de {diaDeCalendario(r.financiero.desde, ctx.empresaZonaHoraria)} a {diaDeCalendario(r.financiero.hasta, ctx.empresaZonaHoraria)}.
         </p>
         <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />
       </div>

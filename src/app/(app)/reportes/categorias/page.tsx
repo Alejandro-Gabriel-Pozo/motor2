@@ -21,7 +21,7 @@ export default async function CategoriasPage({ searchParams }: { searchParams: P
   const rango = resolverRangoDeReporte(sp, new Date());
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
-  const rep = await generarReporteVentasPorCategoria(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), ctx.db);
+  const rep = await generarReporteVentasPorCategoria(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), ctx.db, ctx.empresaZonaHoraria);
 
   return (
     <div className="flex flex-col gap-6">

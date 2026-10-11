@@ -115,7 +115,6 @@ export type { FilaVentaProducto } from "./periodo-ventas";
 export type { RatioGastoVentas } from "./periodo-ratio";
 export { hayObjetivosCargados } from "./margen-objetivo";
 export { resumirFueraDeObjetivo } from "./margen-objetivo";
-export { rangoUtc } from "./periodo-tipos";
 export type { FiltrosPeriodo } from "./periodo-tipos";
 export { generarDigestAlertas } from "./periodo-alertas";
 export { calcularComprasDelPeriodo } from "./periodo-compras";

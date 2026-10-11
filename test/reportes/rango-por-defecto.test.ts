@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { rangoUtc } from "../../src/core/reportes/periodo-tipos";
+import { ZONA_ARGENTINA, rangoDeDias } from "../../src/core/tiempo/zona-horaria";
 import { resolverRangoPorDefecto, resolverRangoDeReporte, ETIQUETA_RANGO, MAXIMO_DE_DIAS_DE_UN_RANGO } from "../../src/core/reportes/rango-por-defecto";
 
 describe("resolverRangoPorDefecto", () => {
@@ -148,15 +148,15 @@ describe("resolverRangoDeReporte: nunca más de 366 días (S-28)", () => {
 });
 
 /**
- * Fecha inválida en la URL (`/reportes/periodo?desde=2026-13-45`): antes el rango salía con el texto crudo, la página hacía `new Date(texto)` (Invalid Date) y `rangoUtc` lanzaba un
+ * Fecha inválida en la URL (`/reportes/periodo?desde=2026-13-45`): antes el rango salía con el texto crudo, la página hacía `new Date(texto)` (Invalid Date) y `rangoDeDias` lanzaba un
  * RangeError que tumbaba la pantalla. Reloj FIJO e inyectado (`ahora`); nunca se mezcla con el real.
  */
 describe("resolverRangoDeReporte: fecha inválida en la URL (el reporte no lanza)", () => {
   const ahora = new Date("2026-09-22T12:00:00Z");
   const POR_DEFECTO = { opcion: "30d", desdeISO: "2026-08-24", hastaISO: "2026-09-22" };
 
-  /** Lo que hace la página con el rango: `new Date(iso)` de cada extremo y `rangoUtc` (donde se lanzaba el RangeError). */
-  const comoLoConsumeElReporte = (r: { desdeISO: string; hastaISO: string }) => rangoUtc(new Date(r.desdeISO), new Date(r.hastaISO));
+  /** Lo que hace la página con el rango: `new Date(iso)` de cada extremo y `rangoDeDias` (donde se lanzaba el RangeError). */
+  const comoLoConsumeElReporte = (r: { desdeISO: string; hastaISO: string }) => rangoDeDias(new Date(r.desdeISO), new Date(r.hastaISO), ZONA_ARGENTINA);
 
   it.each([
     ["fecha inexistente (31 de febrero)", "2026-02-31"],
