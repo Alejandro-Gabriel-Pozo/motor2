@@ -4,6 +4,7 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarSucursalesParaEnviar } from "@/server/actions/traspasos/lecturas";
+import { seccionesDesactivadas } from "@/server/consultas/movimientos/secciones-desactivadas";
 import { EnviarForm } from "./enviar-form";
 
 export default async function EnviarTraspasoPage() {
@@ -15,9 +16,11 @@ export default async function EnviarTraspasoPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "traspaso_enviar_directo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const [sucursales, secciones] = await Promise.all([
+  const [sucursales, secciones, desactivadas] = await Promise.all([
     listarSucursalesParaEnviar(ctx.sucursalId),
     listarSeccionesActivas(ctx.sucursalId),
+    // P17: una sección dada de baja solo admite SACAR mercadería: enviar a otra sucursal saca, así que se ofrece como origen.
+    seccionesDesactivadas(ctx.sucursalId, ctx.db),
   ]);
 
   return (
@@ -27,7 +30,11 @@ export default async function EnviarTraspasoPage() {
         Le mandás stock a otra sucursal sin que te lo pida (PUSH) — el stock sale de tu sección YA, al enviar. Queda &quot;Enviada&quot; hasta
         que la sucursal destino la acepte o la rechace.
       </p>
-      <EnviarForm sucursales={sucursales.map((s) => ({ id: s.id, nombre: s.nombre }))} secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />
+      <EnviarForm
+        sucursales={sucursales.map((s) => ({ id: s.id, nombre: s.nombre }))}
+        secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+        seccionesDesactivadas={desactivadas}
+      />
     </div>
   );
 }

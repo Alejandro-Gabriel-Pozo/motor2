@@ -36,6 +36,7 @@ export interface ComandoReclasificarStock {
 export type CodigoReclasificarStock =
   | "CONFLICTO_IDEMPOTENCIA"
   | "SECCION_ORIGEN_NO_ENCONTRADA"
+  | "SECCION_INACTIVA"
   | "SECCION_DESTINO_NO_ENCONTRADA"
   | "DESTINO_IDENTICO_AL_ORIGEN"
   | "PRODUCTO_NO_ENCONTRADO"
