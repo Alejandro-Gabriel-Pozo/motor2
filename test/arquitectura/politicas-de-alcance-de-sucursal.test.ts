@@ -122,7 +122,7 @@ const politicas = leerPoliticas(SQL);
 
 describe("el SQL de las políticas de sucursal generado desde la clasificación tiene la forma prometida", () => {
   it("el SQL real no tiene ningún defecto", () => {
-    expect(TODAS.length, "31 tablas con política en la clasificación del plan").toBe(31);
+    expect(TODAS.length, "32 tablas con política en la clasificación (31 del plan + AgregadoDeCuenta, P3)").toBe(32);
     expect(defectosDelSql(SQL, TODAS)).toEqual([]);
   });
 
@@ -136,7 +136,7 @@ describe("el SQL de las políticas de sucursal generado desde la clasificación 
   });
 
   it("ninguna tabla GOBIERNO, DE_EMPRESA ni SIN_EMPRESA tiene política", () => {
-    expect(SIN_POLITICA.length + TODAS.length, "las 70 tablas").toBe(Object.keys(ALCANCE_DE_TABLAS).length);
+    expect(SIN_POLITICA.length + TODAS.length, "las 71 tablas").toBe(Object.keys(ALCANCE_DE_TABLAS).length);
     const conPolitica = new Set(politicas.map((p) => p.tabla));
     for (const t of SIN_POLITICA) expect(conPolitica.has(t), t).toBe(false);
   });

@@ -18,7 +18,7 @@ import { join } from "node:path";
 export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA" | "GLOBAL" | "EMPRESA" | "CONSOLA";
 
 const POR_EMPRESA = [
-  "CapacidadSucursal", "CategoriaProducto", "Cliente", "ContenidoCartaProducto", "ConteoFisico", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto",
+  "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "Cliente", "ContenidoCartaProducto", "ConteoFisico", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto",
   "EjemplarTicket", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
   "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PermisoRol", "PortalCartaEmpresa", "PrecioLocalProducto", "Presentacion", "Producto", "PromoCarta", "PromoCartaCupo",
   "PromoCartaSucursal", "PromoCuenta", "Proveedor", "ProveedorPorProducto", "RecetaIngrediente", "RecetaPaso", "RecetaPasoIngrediente", "RecetaSucursal", "RecetaVersion", "RegistroAuditoria",
@@ -129,6 +129,7 @@ const ALCANCE_PROPIA_O_EMPRESA = ["RecetaVersion", "RegistroAuditoria"] as const
 
 /** Sin `sucursalId`: la sucursal sale de la FK obligatoria `columna` hacia `padre`. */
 const ALCANCE_HEREDADA: Readonly<Record<string, { padre: string; columna: string }>> = {
+  AgregadoDeCuenta: { padre: "Cuenta", columna: "cuentaId" },
   Cuenta: { padre: "Mesa", columna: "mesaId" },
   CuentaItem: { padre: "Cuenta", columna: "cuentaId" },
   MovimientoStock: { padre: "Seccion", columna: "seccionId" },

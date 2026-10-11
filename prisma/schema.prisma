@@ -36,6 +36,7 @@ model User {
   invitacionesAceptadas      Invitacion[]         @relation("InvitacionAceptadaPor")
   invitacionesHechas         Invitacion[]         @relation("InvitacionInvitadoPor")
   invitacionesSucursalHechas InvitacionSucursal[]
+  agregadosDeCuenta          AgregadoDeCuenta[]
   traspasosCreados           TraspasoSucursal[]   @relation("TraspasoCreadoPor")
   traspasosDecididosOrigen   TraspasoSucursal[]   @relation("TraspasoDecididoOrigen")
   traspasosDecididosDestino  TraspasoSucursal[]   @relation("TraspasoDecididoDestino")
@@ -2043,20 +2044,21 @@ model Mesa {
 /// en la migración pos_mesas_cuentas: Prisma no sabe declarar un índice con WHERE). Sin vencimiento automático (§2).
 /// Se cierra con `cerrarCuenta` (registra la venta) o `liberarMesa` (cuenta sin ningún ítem, sin venta).
 model Cuenta {
-  id               String           @id @default(cuid())
-  empresaId        String           @default(dbgenerated("app_empresa_actual()"))
-  empresa          Empresa          @relation(fields: [empresaId], references: [id])
+  id               String             @id @default(cuid())
+  empresaId        String             @default(dbgenerated("app_empresa_actual()"))
+  empresa          Empresa            @relation(fields: [empresaId], references: [id])
   mesaId           String
-  mesa             Mesa             @relation(fields: [empresaId, mesaId], references: [empresaId, id])
+  mesa             Mesa               @relation(fields: [empresaId, mesaId], references: [empresaId, id])
   abiertaPorId     String
-  abiertaPor       User             @relation("CuentaAbiertaPor", fields: [abiertaPorId], references: [id])
-  abiertaEn        DateTime         @default(now())
+  abiertaPor       User               @relation("CuentaAbiertaPor", fields: [abiertaPorId], references: [id])
+  abiertaEn        DateTime           @default(now())
   cerradaEn        DateTime?
   cerradaPorId     String?
-  cerradaPor       User?            @relation("CuentaCerradaPor", fields: [cerradaPorId], references: [id])
+  cerradaPor       User?              @relation("CuentaCerradaPor", fields: [cerradaPorId], references: [id])
   items            CuentaItem[]
   ejemplaresTicket EjemplarTicket[]
   promos           PromoCuenta[]
+  agregados        AgregadoDeCuenta[]
 
   /// Cuántos comensales se sentaron (docs/plan-comensales-y-limite-mesas-2026-09-26.md). Obligatorio y SIN valor por defecto al abrir
   /// la cuenta (`abrirCuenta`) — un default sesgaría la métrica de rotación que existe para medir (Reportes › Rotación de mesas).
@@ -2271,6 +2273,7 @@ model Empresa {
   moduloEmpresaRel               ModuloEmpresa[]
   invitacionRel                  Invitacion[]
   invitacionSucursalRel          InvitacionSucursal[]
+  agregadoDeCuentas              AgregadoDeCuenta[]
 }
 
 enum EstadoModulo {
@@ -2349,6 +2352,27 @@ model InvitacionSucursal {
   creadaEn      DateTime   @default(now())
 
   @@unique([invitacionId, sucursalId])
+}
+
+/// Comprobante de UN "agregar al pedido" del salón (P3, I3): la clave de idempotencia que manda la pantalla, la huella del pedido y el mensaje que se devolvió. SOLO se agrega
+/// (la app tiene SELECT e INSERT, nunca UPDATE ni DELETE) y vive aparte de `CuentaItem`: quitar un ítem borra filas, y la clave no puede irse con ellas (un reintento volvería a
+/// agregar lo que quedó). Un reintento con la misma clave y la misma huella devuelve el mensaje guardado sin escribir nada; con otra huella, el conflicto. Por sucursal: hereda de `Cuenta`.
+model AgregadoDeCuenta {
+  id                String   @id @default(cuid())
+  empresaId         String   @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa  @relation(fields: [empresaId], references: [id])
+  cuentaId          String
+  cuenta            Cuenta   @relation(fields: [empresaId, cuentaId], references: [empresaId, id])
+  /// UUID que genera la pantalla. Único GLOBAL, igual que `Operacion`, `ConteoFisico` y `PagoConsignante` (ADR-028).
+  claveIdempotencia String   @unique
+  payloadHash       String
+  resultadoMensaje  String
+  creadoPorId       String
+  creadoPor         User     @relation(fields: [creadoPorId], references: [id], onDelete: Restrict)
+  creadoEn          DateTime @default(now())
+
+  @@unique([empresaId, id])
+  @@index([cuentaId])
 }
 
 model UsuarioEmpresa {

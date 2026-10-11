@@ -111,6 +111,8 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.promoCartaSucursal.deleteMany();
   await prismaAdmin.promoCarta.deleteMany();
   await prismaAdmin.seccionCarta.deleteMany();
+  // AgregadoDeCuenta (P3) referencia a la cuenta y al User (RESTRICT): antes que ellos.
+  await prismaAdmin.agregadoDeCuenta.deleteMany();
   await prismaAdmin.cuenta.deleteMany();
   await prismaAdmin.mesa.deleteMany();
   // DESPUÉS de operacion.deleteMany() — Operacion.motivoId/destinoId referencian estas dos con ON DELETE RESTRICT
