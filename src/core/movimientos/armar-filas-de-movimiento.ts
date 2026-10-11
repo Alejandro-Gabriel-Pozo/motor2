@@ -1,4 +1,3 @@
-import type { Prisma } from "@prisma/client";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import type { ProcesoGenerico } from "@/core/features/movimientos/movimiento.schema";
 import { redondearACantidadDeUnidad } from "./transiciones";
@@ -41,6 +40,19 @@ export interface ContextoFilasDeMovimiento {
   seccionDestinoId: string | null;
 }
 
+/** Una fila de `MovimientoStock` de un movimiento genérico, con las columnas que escribe (estructural: asignable a `Prisma.MovimientoStockCreateManyInput`). */
+export interface FilaDeMovimiento {
+  operacionId: string;
+  productoId: string;
+  seccionId: string;
+  proceso: ProcesoGenerico | "LIQUIDACION_CONSIGNACION";
+  cantidad: number;
+  loteVencimiento: Date | null;
+  detalle: string;
+  precioTotal: number;
+  precioPorUnidadStock: number;
+}
+
 /**
  * Arma las filas `MovimientoStock` de un `registrarMovimiento` YA validado — extraído de `registrarMovimientoCasoDeUso`
  * (backlog post-cierre de Task #41, 2026-09-28, docs/pendientes-sesion-2026-09-27.md §6) como una función PURA: sin I/O, sin
@@ -59,8 +71,8 @@ export interface ContextoFilasDeMovimiento {
  *  - Ninguna fila para una línea descartada: `armarLineaMovimiento` ya filtra esas antes (nunca llegan a `lineas`), esta función no
  *    vuelve a decidir si una línea participa o no.
  */
-export function armarFilasDeMovimiento(ctx: ContextoFilasDeMovimiento, lineas: LineaParaFilas[]): Prisma.MovimientoStockCreateManyInput[] {
-  const filas: Prisma.MovimientoStockCreateManyInput[] = [];
+export function armarFilasDeMovimiento(ctx: ContextoFilasDeMovimiento, lineas: LineaParaFilas[]): FilaDeMovimiento[] {
+  const filas: FilaDeMovimiento[] = [];
 
   if (ctx.proceso === "TRANSFERENCIA") {
     for (const l of lineas) {

@@ -1,4 +1,3 @@
-import type { Prisma } from "@prisma/client";
 import type { CabeceraRecetaInput, IngredienteInput, PasoInput } from "./receta-validacion";
 
 /**
@@ -15,7 +14,43 @@ export const INCLUDE_RECETA_COMPLETA = {
   racionUnidad: true,
 };
 
-export type RecetaCompleta = Prisma.RecetaVersionGetPayload<{ include: typeof INCLUDE_RECETA_COMPLETA }> | null;
+/** Un `Decimal` de la base, sin conocer Prisma (mismo tipo estructural que `precioDePromo`): se lee con `Number()`. */
+type DecimalLeido = { toString(): string } | number;
+
+/**
+ * La versión de receta que leen los `map*` de abajo: SOLO los campos que usan, como tipo estructural propio (el núcleo no conoce Prisma). La fila que trae
+ * `INCLUDE_RECETA_COMPLETA` se le asigna tal cual; la prueba de tipos `tipos-de-dominio-vs-prisma` lo exige.
+ */
+interface VersionDeRecetaCompleta {
+  ingredientes: readonly {
+    insumoProductoId: string;
+    cantidad: DecimalLeido;
+    unidadId: string;
+    mermaPorcentaje: DecimalLeido;
+    observaciones: string | null;
+    sustitutos: readonly { insumoSustitutoId: string }[];
+  }[];
+  pasos: readonly {
+    orden: number;
+    nombre: string | null;
+    instruccion: string;
+    minutos: number | null;
+    ingredientes: readonly { recetaIngrediente: { insumoProductoId: string } }[];
+  }[];
+  rendimientoCantidad: DecimalLeido | null;
+  rendimientoUnidadId: string | null;
+  racionesCantidad: number | null;
+  racionTamano: DecimalLeido | null;
+  racionUnidadId: string | null;
+  tiempoPreparacionMinutos: number | null;
+  tiempoCoccionMinutos: number | null;
+  comentarios: string | null;
+  presentacionEmplatado: string | null;
+  notasAdicionales: string | null;
+  equipamientoNecesario: string | null;
+}
+
+export type RecetaCompleta = VersionDeRecetaCompleta | null;
 
 /**
  * Round-trip de una versión de receta a los inputs de guardarReceta — usado por cada acción puntual (agregar/editar/quitar UN

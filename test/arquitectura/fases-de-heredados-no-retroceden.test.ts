@@ -13,14 +13,8 @@ import { PUREZA_HEREDADA_DEL_NUCLEO } from "./pureza-heredada-del-nucleo";
  * Para cambiar una fase a propósito, se cambia acá en el mismo commit y se explica en el mensaje.
  */
 const FASE_REGISTRADA: Record<string, 4 | 6> = {
-  "src/core/carta/promo-sucursal.ts": 6,
-  "src/core/catalogo/receta-a-input.ts": 6,
-  "src/core/catalogo/recetas-vigentes.ts": 6,
   "src/core/fiscal/factura-autorizada.ts": 6,
-  "src/core/movimientos/anulaciones.ts": 6,
-  "src/core/movimientos/armar-filas-de-movimiento.ts": 6,
   "src/core/reportes/historial-producto.ts": 6,
-  "src/core/stock/seccion-habitual.ts": 6,
 };
 
 /** El número de la fase con la que empieza el `pendiente` de una entrada («Fase 6: …»), o `null` si no empieza así. */

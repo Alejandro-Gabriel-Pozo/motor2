@@ -1,4 +1,3 @@
-import type { Prisma } from "@prisma/client";
 import { GUIA_PARA_CORREGIR_CON_UN_AJUSTE } from "@/core/guia-de-ajuste";
 
 /**
@@ -38,8 +37,10 @@ export function detalleReversionDeCompra(idCompra: string, fechaCompra: Date, nr
 /**
  * Filtro de `Operacion` que deja afuera las reversiones por anulación y conserva todo lo demás. Incluye `detalleLibre: null` a propósito: en SQL,
  * `NOT (detalleLibre LIKE ...)` es NULL cuando `detalleLibre` es NULL, y esas operaciones (la enorme mayoría) se perderían.
+ * Tipo inferido y sin `as const` (un arreglo de solo lectura no se asigna al `OR` de Prisma): la prueba de tipos `tipos-de-dominio-vs-prisma` exige que siga
+ * siendo un `OperacionWhereInput` y sin claves de más.
  */
-export const OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION: Prisma.OperacionWhereInput = {
+export const OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION = {
   OR: [
     { detalleLibre: null },
     { AND: [{ NOT: { detalleLibre: { startsWith: PREFIJO_REVERSION_VENTA } } }, { NOT: { detalleLibre: { startsWith: PREFIJO_REVERSION_COMPRA } } }] },
