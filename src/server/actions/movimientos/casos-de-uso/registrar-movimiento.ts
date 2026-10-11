@@ -6,6 +6,7 @@ import { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicad
 import { ZONA_UTC, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
+import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { TRANSICIONES, armarFilasDeMovimiento, redondearACantidadDeUnidad } from "@/core/movimientos/public";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA, esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/public-servidor";
@@ -14,11 +15,14 @@ import { obtenerSeccionPropia, seccionesConStock, validarStockSuficiente } from 
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { exito, fracaso } from "@/core/resultado-caso";
-import type { DatosMovimientoInput, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
+import type { DatosMovimientoInput, ProcesoGenerico, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
 import { cargarComprasParaAvisoDeDuplicado, cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { upsertProveedorPorProducto } from "@/server/persistencia/catalogo/upsert-proveedor-por-producto";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
+
+/** Los únicos procesos que admiten una sección dada de baja como ORIGEN (P17): los que solo sacan mercadería. Como destino (Transferencia) nunca se admite. */
+const PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA: ReadonlySet<ProcesoGenerico> = new Set<ProcesoGenerico>(["CONSUMO", "MERMA", "TRANSFERENCIA"]);
 
 /**
  * Caso de uso «registrar un movimiento» — el motor genérico de los 9 procesos que lo comparten (Compra, Producción, Consumo, Ajuste,
@@ -39,7 +43,7 @@ import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movi
  *     sale primero cuando hay más de un dato inválido a la vez);
  *  4. camino rápido de factura duplicada (`existeCompraVigenteConFactura`, cliente global) — el árbitro real es el índice único
  *     parcial, ver el catch de más abajo;
- *  5. `conTransaccionSerializable`, con `.catch(esChoqueDeFacturaUnica)` tal cual: I3, armado de cada línea
+ *  5. `conTransaccionSerializable`, con `.catch(esChoqueDeFacturaUnica)` tal cual: I3, P17 (una sección dada de baja solo admite sacar: Consumo, Merma y Transferencia como origen; como destino no; código `SECCION_INACTIVA`; DESPUÉS de I3 a propósito), armado de cada línea
  *     (`armarLineaMovimiento`), validación de stock agregada, escritura de `Operacion` + `MovimientoStock[]` y, en una Compra, un
  *     `upsertProveedorPorProducto` por línea con unidad de compra conocida — TODO dentro de la misma transacción (decisión del dueño, 2026-10-06:
  *     si falla el vínculo falla la compra entera y se reintenta con la misma clave I3, así nunca queda una compra a medias).
@@ -63,10 +67,10 @@ export async function registrarMovimientoCasoDeUso(
   // permiso en LA SUCURSAL DEL QUE LLAMA, nunca que la sección que mandó
   // el cliente sea realmente de esa sucursal — sin esto, cualquier
   // seccionId ajeno (de otra sucursal) se aceptaba igual.
-  if (!(await obtenerSeccionPropia(datos.seccionId, actor.sucursalId, actor.db))) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
-  if (datos.proceso === "TRANSFERENCIA" && !(await obtenerSeccionPropia(datos.seccionDestinoId!, actor.sucursalId, actor.db))) {
-    return fracaso("SECCION_DESTINO_NO_ENCONTRADA", "No se encontró la sección destino.");
-  }
+  const seccionOrigen = await obtenerSeccionPropia(datos.seccionId, actor.sucursalId, actor.db);
+  if (!seccionOrigen) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
+  const seccionDestino = datos.proceso === "TRANSFERENCIA" ? await obtenerSeccionPropia(datos.seccionDestinoId!, actor.sucursalId, actor.db) : null;
+  if (datos.proceso === "TRANSFERENCIA" && !seccionDestino) return fracaso("SECCION_DESTINO_NO_ENCONTRADA", "No se encontró la sección destino.");
 
   // Motivo/Destino: catálogos GLOBALES (no por sucursal, a diferencia de Sección) — solo hace falta que la fila
   // exista y siga activa (un motivo desactivado no puede ELEGIRSE de nuevo, pero las Operacion viejas que ya lo
@@ -117,6 +121,12 @@ export async function registrarMovimientoCasoDeUso(
     // U11: la lectura de antes de abrir la transacción pudo quedar vieja (un motivo, destino o proveedor desactivado en el medio): se vuelve a comprobar acá, con el estado que ve la transacción.
     const yaNoDisponible = await maestroNoDisponible(tx, motivoId, destinoId, datos.proveedorId);
     if (yaNoDisponible) return yaNoDisponible;
+
+    // P17 (decisión del dueño, 2026-10-11): una sección dada de baja solo admite SACAR mercadería (consumir, mermar o transferir) hasta vaciarla; no recibe mercadería nueva. Va DESPUÉS de I3:
+    // un reintento de algo ya escrito tiene que devolver «repetida», nunca un rechazo que invite a cargarlo de nuevo en otra sección (duplicaría el stock). La sección se leyó arriba, sin
+    // protección contra una baja en el medio: la baja no tiene precondiciones, así que cualquier intercalado equivale a «el movimiento primero y la baja después».
+    if (!seccionOrigen.activa && !PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA.has(datos.proceso)) return fracaso("SECCION_INACTIVA", mensajeSeccionDesactivada(seccionOrigen.nombre));
+    if (seccionDestino && !seccionDestino.activa) return fracaso("SECCION_INACTIVA", mensajeSeccionDesactivada(seccionDestino.nombre));
 
     const obtenerProducto = crearCacheProducto(tx);
     // 1) Armar cada línea (validación de producto/proceso, conversión, receta).
