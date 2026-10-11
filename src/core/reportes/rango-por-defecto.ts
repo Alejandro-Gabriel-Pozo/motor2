@@ -8,7 +8,7 @@
  * cualquier negocio real, los días 1 y 2 de cada mes la pantalla de entrada se ve casi vacía con "mes en curso"; con 30 días
  * siempre hay algo que mostrar.
  */
-import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
 
 /**
  * Lo más que abarca un rango de reporte, contando los dos extremos (S-28, T11 del endurecimiento): una URL con `?desde=2000-01-01` hacía que cada reporte recorriera TODA la
@@ -37,25 +37,20 @@ export interface RangoDeReporte {
   recortadoDesde?: string;
 }
 
-function hoyUtcSinHora(ahora: Date): Date {
-  return inicioDelDiaDe(ahora, ZONA_UTC);
-}
-
-/** `ahora` es inyectable para que el cálculo sea testeable sin congelar `new Date()` globalmente. */
+/**
+ * `ahora` es inyectable para que el cálculo sea testeable sin congelar `new Date()` globalmente.
+ *
+ * «Hoy» es el día de Argentina, no el de UTC: desde las 21:00 argentinas UTC ya está en el día siguiente y «mes en curso» saltaba de mes (30/9 22:00 → octubre). Estas pantallas no reciben la zona de la
+ * empresa, así que se usa la constante. Solo cambia el default que se propone: cómo se cortan los días del reporte con el `desde`/`hasta` elegido no se toca acá.
+ */
 export function resolverRangoPorDefecto(opcionParam: string | undefined, ahora: Date): RangoPorDefecto {
   const opcion: "30d" | "mes" = opcionParam === "mes" ? "mes" : "30d";
-  const hasta = hoyUtcSinHora(ahora);
-  const hastaISO = hasta.toISOString().slice(0, 10);
+  const hastaISO = diaDeCalendario(ahora, ZONA_ARGENTINA);
 
-  if (opcion === "mes") {
-    const desde = new Date(Date.UTC(hasta.getUTCFullYear(), hasta.getUTCMonth(), 1));
-    return { opcion, desdeISO: desde.toISOString().slice(0, 10), hastaISO };
-  }
+  if (opcion === "mes") return { opcion, desdeISO: `${hastaISO.slice(0, 8)}01`, hastaISO };
 
   // 29 días atrás + hoy = 30 días, inclusive de los dos extremos.
-  const desde = new Date(hasta);
-  desde.setUTCDate(desde.getUTCDate() - 29);
-  return { opcion, desdeISO: desde.toISOString().slice(0, 10), hastaISO };
+  return { opcion, desdeISO: sumarDias(hastaISO, -29), hastaISO };
 }
 
 /**
