@@ -121,10 +121,26 @@ jobs:
       # La consola de plataforma (E4) es otra app Next: su build también tiene que compilar. No toca la base.
       - name: npm run plataforma:build
         run: npm run plataforma:build
+      # Además del reporte normal, Vitest deja el resultado en un JSON: si algo falla, el paso de abajo lista los tests rojos al FINAL del log (el log de los tests es larguísimo y el ruido del contenedor de Postgres tapa el final).
       - name: npm test
-        run: npm test
+        run: npm test -- --reporter=default --reporter=json --outputFile.json=resultado-vitest.json
         env:
           PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_dev
+      - name: Tests que fallaron (resumen al final del log)
+        if: failure()
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            if (!fs.existsSync("resultado-vitest.json")) { console.log("No hay resultado-vitest.json: la corrida de Vitest no llegó a escribirlo (falló antes o se cortó)."); process.exit(0); }
+            const r = JSON.parse(fs.readFileSync("resultado-vitest.json", "utf8"));
+            const rojos = [];
+            for (const archivo of r.testResults ?? []) {
+              if (archivo.status === "failed" && !(archivo.assertionResults ?? []).some((t) => t.status === "failed")) rojos.push({ archivo: archivo.name, test: "(el archivo entero falló al cargarse)", mensaje: archivo.message });
+              for (const t of archivo.assertionResults ?? []) if (t.status === "failed") rojos.push({ archivo: archivo.name, test: t.fullName, mensaje: (t.failureMessages ?? []).join("\n") });
+            }
+            console.log("===== TESTS QUE FALLARON: " + rojos.length + " =====");
+            for (const f of rojos) console.log("\n--- " + f.archivo.replace(process.cwd() + "/", "") + "\n    " + f.test + "\n" + String(f.mensaje ?? "").split("\n").filter((l) => !l.includes("node_modules")).slice(0, 40).join("\n"));
+          '
 
   e2e:
     name: E2E (Playwright)
