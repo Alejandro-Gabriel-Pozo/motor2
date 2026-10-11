@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
@@ -131,10 +131,11 @@ interface Puerta {
 const PARAMETRO_DE_SUCURSAL = /^sucursal\w*Id$/;
 
 function archivosTs(dir: string): string[] {
-  return readdirSync(dir).flatMap((nombre) => {
-    const ruta = join(dir, nombre);
-    if (statSync(ruta).isDirectory()) return nombre === "casos-de-uso" ? [] : archivosTs(ruta);
-    return /\.tsx?$/.test(nombre) ? [ruta] : [];
+  // `withFileTypes` da el tipo de cada entrada en la misma lectura del directorio: no se consulta la ruta aparte antes de abrirla (evita el patrón «comprobar y después usar»).
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entrada) => {
+    const ruta = join(dir, entrada.name);
+    if (entrada.isDirectory()) return entrada.name === "casos-de-uso" ? [] : archivosTs(ruta);
+    return /\.tsx?$/.test(entrada.name) ? [ruta] : [];
   });
 }
 
@@ -339,10 +340,11 @@ const leerDelDisco = (ruta: string) => readFileSync(join(RAIZ, ruta), "utf8");
 
 /** Todo `src/` (los tipos de los parámetros viven en los archivos de las acciones, en `core/features/**` y donde se declaren). */
 function todasLasFuentes(dir: string): string[] {
-  return readdirSync(dir).flatMap((nombre) => {
-    const ruta = join(dir, nombre);
-    if (statSync(ruta).isDirectory()) return todasLasFuentes(ruta);
-    return /\.tsx?$/.test(nombre) ? [readFileSync(ruta, "utf8")] : [];
+  // Mismo criterio que `archivosTs`: el tipo viene en la misma lectura del directorio, sin `statSync` aparte antes de `readFileSync`.
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entrada) => {
+    const ruta = join(dir, entrada.name);
+    if (entrada.isDirectory()) return todasLasFuentes(ruta);
+    return /\.tsx?$/.test(entrada.name) ? [readFileSync(ruta, "utf8")] : [];
   });
 }
 
