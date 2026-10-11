@@ -32,6 +32,8 @@ describe("S-41: la semilla del precio global es solo del administrador (clase O)
     const rol = await prisma.rol.create({ data: { nombre: "Precios" } });
     rolPreciosId = rol.id;
     await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "producto_sincronizar_precio_carta", puedeVer: true, puedeEditar: true } });
+    // M.2 (D-3): sincronizar el precio es cambiar el precio de venta de varios productos, así que además de la clave de sincronizar pide la clave fina `producto_campos_sensibles`: el rol «Precios» recibe las dos.
+    await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "producto_campos_sensibles", puedeVer: true, puedeEditar: true } });
     const unidad = await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } });
     const categoriaId = (await prisma.categoriaProducto.create({ data: { nombre: "Gaseosa" } })).id;
     productoId = (await sembrarProductoDisponible({ codigo: "SP_1", nombre: "Coca", tipo: "PV", categoriaId, precioVenta: 1000, unidadStockId: unidad.id }, sucursalId)).id;
@@ -62,6 +64,18 @@ describe("S-41: la semilla del precio global es solo del administrador (clase O)
     await como(usuario.id, "precios@test.com");
     expect((await sincronizarPrecioGrupoCarta([productoId, hermanoId], 1300)).ok).toBe(true);
     expect(await precios()).toEqual([1300, 1300]);
+  });
+
+  it("M.2 (D-3) EL ATAQUE: un rol con SOLO la clave de sincronizar (sin producto_campos_sensibles) no fija el precio global → rechazo y los precios no cambian", async () => {
+    const rol = await prisma.rol.create({ data: { nombre: "Solo sincronizar" } });
+    await prisma.permisoRol.create({ data: { rolId: rol.id, accionClave: "producto_sincronizar_precio_carta", puedeVer: true, puedeEditar: true } });
+    const usuario = await crearUsuarioConMembresia({ email: "solo-sync@test.com", sucursalId, rolId: rol.id });
+    await como(usuario.id, "solo-sync@test.com");
+    const r = await sincronizarPrecioGrupoCarta([productoId, hermanoId], 1);
+    expect(r.ok).toBe(false);
+    expect(r.mensaje).toContain("No tenés permiso para cambiar el precio de venta");
+    expect(await precios()).toEqual([1000, 1000]);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "Producto", campo: "precioVenta" } })).toBe(0);
   });
 
   it("el catálogo la declara de clase O: piso operario y semilla solo admin", () => {

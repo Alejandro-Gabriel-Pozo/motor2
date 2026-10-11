@@ -14,7 +14,7 @@ const { prismaFalso, resolverPortalCarta, resolverCartaPublica, resolverConfigPo
 }));
 
 vi.mock("@/lib/db", () => ({ prisma: prismaFalso }));
-vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: (empresaId: string) => ({ dbDeEmpresa: empresaId }), verificarRolDeEjecucionDelProceso: async () => undefined }));
+vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: (empresaId: string, alcance?: unknown) => ({ dbDeEmpresa: empresaId, ...(alcance ? { alcance } : {}) }), verificarRolDeEjecucionDelProceso: async () => undefined }));
 vi.mock("@/server/lecturas/carta/publica", () => ({ resolverPortalCarta, resolverCartaPublica, resolverConfigPortal }));
 vi.mock("@/server/lecturas/carta/empresa", () => ({ resolverEmpresaCarta }));
 // S-26: la carta pública se cachea con `unstable_cache` (necesita el caché de Next): acá corre directo; su etiqueta la prueba `cartas-publicas-cache-por-empresa.test.ts`.
@@ -61,7 +61,10 @@ describe("punto público sin sesión", () => {
 
     expect(resolverPortalCarta).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
     expect(resolverConfigPortal).toHaveBeenCalledWith(EMPRESA, { dbDeEmpresa: EMPRESA.id });
-    expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", { dbDeEmpresa: EMPRESA.id }, ahora, true);
+    // M.3-A7: la carta por slug recibe la base de la empresa (sin alcance) para resolver el slug y una fábrica de la base de SOLO LECTURA en la sucursal que el slug resolvió.
+    expect(resolverCartaPublica).toHaveBeenCalledWith(EMPRESA, "central", { deLaEmpresa: { dbDeEmpresa: EMPRESA.id }, deLaSucursal: expect.any(Function) }, ahora, true);
+    const bases = (resolverCartaPublica.mock.calls[0] as unknown as [unknown, unknown, { deLaSucursal: (id: string) => unknown }])[2];
+    expect(bases.deLaSucursal("suc_resuelta")).toEqual({ dbDeEmpresa: EMPRESA.id, alcance: { lectura: ["suc_resuelta"], escritura: [] } });
   });
 });
 

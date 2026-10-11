@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
+import { limpiarBaseDeTest, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
 import { dbDeEmpresa } from "../../src/core/auth/base";
 import { MODULOS } from "../../src/core/modulos/catalogo";
 import { MODULOS_VENDIBLES, activarTodosLosModulos } from "../setup/modulos";
@@ -119,7 +119,7 @@ describe("registro de módulos por empresa (P4)", () => {
       await expect(db.moduloEmpresa.create({ data: { empresaId: A, modulo: "otro" } })).rejects.toThrow(/permission denied|permiso denegado/i);
       await expect(db.moduloEmpresa.updateMany({ data: { estado: "INACTIVO" } })).rejects.toThrow(/permission denied|permiso denegado/i);
       await expect(db.moduloEmpresa.deleteMany()).rejects.toThrow(/permission denied|permiso denegado/i);
-      await expect(prisma.$executeRawUnsafe('TRUNCATE TABLE "ModuloEmpresa"')).rejects.toThrow(/permission denied|permiso denegado/i);
+      await expect(prismaSinEmpresa.$executeRawUnsafe('TRUNCATE TABLE "ModuloEmpresa"')).rejects.toThrow(/permission denied|permiso denegado/i);
       expect(await prismaAdmin.moduloEmpresa.count()).toBe(36);
     });
 
@@ -132,7 +132,8 @@ describe("registro de módulos por empresa (P4)", () => {
         await expect(db.moduloEmpresa.create({ data: { empresaId: A, modulo: "otro" } })).rejects.toThrow(solo);
         await expect(db.moduloEmpresa.updateMany({ data: { estado: "INACTIVO" } })).rejects.toThrow(solo);
         await expect(db.moduloEmpresa.deleteMany()).rejects.toThrow(solo);
-        await expect(prisma.$executeRawUnsafe('TRUNCATE TABLE "ModuloEmpresa"')).rejects.toThrow(solo);
+        // M.3-A8: el TRUNCATE tiene que correr COMO motor2_app (el rol al que se le devolvieron los privilegios arriba): `prisma` siembra con el rol de pruebas.
+        await expect(prismaSinEmpresa.$executeRawUnsafe('TRUNCATE TABLE "ModuloEmpresa"')).rejects.toThrow(solo);
         expect(await prismaAdmin.moduloEmpresa.count()).toBe(36);
         expect(await prismaAdmin.moduloEmpresa.count({ where: { estado: "INACTIVO" } })).toBe(0);
       } finally {

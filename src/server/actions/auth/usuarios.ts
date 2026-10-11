@@ -1,7 +1,7 @@
 "use server";
 
-import { requierePermiso, sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
-import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
+import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
+import { conPermiso, conPermisoDeEmpresa, permisoYAlcanceEnSucursal } from "../con-permiso";
 import { enviarInvitacionYAnotar, type InvitacionPorEnviar } from "./casos-de-uso/enviar-invitacion-y-anotar";
 import { error, ok, type ResultadoAccion } from "../tipos";
 import { requerirVerEnSucursal } from "../con-sesion";
@@ -94,8 +94,8 @@ export async function listarInvitacionesPendientes(sucursalId: string) {
  * commit (ADR-018); si no sale, la invitación queda hecha y figura sin enviar.
  *
  * Desde el Hito 3 (Fase I, I.5j) es un adaptador, en el mismo orden que antes: `conPermiso("gestion_usuarios")` → formato
- * (`guardComandoAgregarOActualizarUsuario`: el email, DENTRO del envoltorio) → el permiso EXTRA sobre la sucursal pedida si no es la activa (`requierePermiso`
- * del gate, con `ctx.db`) → caso de uso (`casos-de-uso/agregar-o-actualizar-usuario.ts`: la transacción de gobierno entera) → si dejó una invitación por mandar,
+ * (`guardComandoAgregarOActualizarUsuario`: el email, DENTRO del envoltorio) → el permiso EXTRA sobre la sucursal pedida si no es la activa (`permisoYAlcanceEnSucursal`:
+ * pide `gestion_usuarios` ALLÍ y, solo si lo aprueba, ensancha el alcance a ella; M.3-A5) → caso de uso (`casos-de-uso/agregar-o-actualizar-usuario.ts`: la transacción de gobierno entera) → si dejó una invitación por mandar,
  * el mail (`enviarInvitacionYAnotar`) recién ahora, con la transacción confirmada → `aResultadoAccion` (o el aviso de que el mail no salió).
  */
 export async function agregarOActualizarUsuario(input: {
@@ -109,13 +109,16 @@ export async function agregarOActualizarUsuario(input: {
     if (!comando.ok) return error(comando.mensaje);
 
     // `conPermiso` solo validó la sucursal ACTIVA: el alta apunta a la que eligió el formulario (viene del cliente), y ahí el
-    // rol de quien la hace puede no tener `gestion_usuarios` (o no tener ni membresía).
+    // rol de quien la hace puede no tener `gestion_usuarios` (o no tener ni membresía). M.3-A5: `permisoYAlcanceEnSucursal` pide la clave EN esa sucursal y, solo si
+    // la aprueba, devuelve el contexto con la lectura y la escritura ensanchadas a ELLA (la membresía y su auditoría se escriben allí); el caso de uso corre con ese.
+    let alta = ctx;
     if (comando.valor.sucursalId !== ctx.sucursalId) {
-      const gate = await requierePermiso(ctx.usuarioId, comando.valor.sucursalId, "gestion_usuarios", ctx.db);
+      const gate = await permisoYAlcanceEnSucursal(ctx, comando.valor.sucursalId, "gestion_usuarios");
       if (!gate.ok) return error(gate.mensaje);
+      alta = gate.ctx;
     }
 
-    const resultado = await agregarOActualizarUsuarioCasoDeUso(ctx, comando.valor, azarDelProceso);
+    const resultado = await agregarOActualizarUsuarioCasoDeUso(alta, comando.valor, azarDelProceso);
     if (!resultado.ok) return aResultadoAccion(resultado);
 
     // El mail, DESPUÉS del commit (ADR-018): la transacción del caso de uso pudo reintentarse; un mail no se retira. Sale con la hora del pedido.

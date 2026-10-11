@@ -32,6 +32,12 @@ interface CamposDeProducto {
 }
 
 /**
+ * Lo que escribe la EDICIÓN: lo mismo que el alta, pero sin la unidad de stock y el factor obligatorios. M.2: quien no tiene `producto_campos_sensibles` NO escribe el precio de venta, el factor ni las unidades (el caso de uso
+ * los saca del `update`): lo que otra persona haya cambiado entre la lectura del producto y esta escritura no se pisa con el valor viejo de un formulario.
+ */
+type CamposDeEdicionDeProducto = Omit<CamposDeProducto, "unidadStockId" | "factorConversion"> & Partial<Pick<CamposDeProducto, "unidadStockId" | "factorConversion">>;
+
+/**
  * Crea el producto con ese código y ese tipo (el `intentar` de `crearConCodigoAutogenerado`: un código repetido hace lanzar el P2002 que dispara el reintento).
  * Devuelve el id, el código y el nombre guardados. NO se audita por diseño (excepción `persistencia/catalogo/productos.ts|crearProductoNuevo` de
  * escrituras-auditadas, que antes eran `darDeAltaProducto` y `darDeAltaProductoRapido` de la acción): un alta no tiene valor anterior que se pierda, y se crea SIN
@@ -50,7 +56,7 @@ export async function crearProductoNuevo(
  * La edición de un producto: le escribe los campos dados (sin `tipo` ni código: no se cambian). La llama `actualizar-producto.ts` dentro de su transacción, junto
  * con las filas de auditoría de los precios y el paso de venta (escrituras-auditadas: la cadena exige que su llamador audite).
  */
-export async function actualizarCamposDeProducto(db: Prisma.TransactionClient, args: { id: string; campos: CamposDeProducto }): Promise<void> {
+export async function actualizarCamposDeProducto(db: Prisma.TransactionClient, args: { id: string; campos: CamposDeEdicionDeProducto }): Promise<void> {
   await db.producto.update({ where: { id: args.id }, data: args.campos });
 }
 
@@ -63,13 +69,17 @@ export async function fijarPrecioVentaDeProducto(db: Prisma.TransactionClient, a
 }
 
 /**
- * Siembra la disponibilidad de un producto RECIÉN creado: una fila `disponible: true` por cada sucursal pedida. Va DESPUÉS de crear el producto, fuera de una
- * transacción con él (ver `dar-de-alta-producto.ts`). NO se audita por diseño (excepción `persistencia/catalogo/productos.ts|sembrarDisponibilidadDeProductoNuevo`
+ * Siembra la disponibilidad de un producto RECIÉN creado: una fila por cada sucursal pedida, con `disponible` (M.2-A4: `false` para un producto de venta dado de alta sin
+ * `producto_campos_sensibles`, que nace sin precio y no se puede vender hasta que alguien lo active; la fila existe igual, así la ficha y el catálogo muestran «0 de N»). Va DESPUÉS
+ * de crear el producto, fuera de una transacción con él (ver `dar-de-alta-producto.ts`). NO se audita por diseño (excepción `persistencia/catalogo/productos.ts|sembrarDisponibilidadDeProductoNuevo`
  * de escrituras-auditadas): es parte del alta, no hay valor anterior; cada cambio posterior lo audita `actualizarDisponibilidadProducto`.
  */
-export async function sembrarDisponibilidadDeProductoNuevo(db: Prisma.TransactionClient, args: { productoId: string; sucursalIds: readonly string[] }): Promise<void> {
+export async function sembrarDisponibilidadDeProductoNuevo(
+  db: Prisma.TransactionClient,
+  args: { productoId: string; sucursalIds: readonly string[]; disponible: boolean },
+): Promise<void> {
   await db.disponibilidadProducto.createMany({
-    data: args.sucursalIds.map((sucursalId) => ({ sucursalId, productoId: args.productoId, disponible: true })),
+    data: args.sucursalIds.map((sucursalId) => ({ sucursalId, productoId: args.productoId, disponible: args.disponible })),
   });
 }
 
@@ -80,15 +90,16 @@ export async function fijarInsumoDeProducto(db: Prisma.TransactionClient, args: 
 
 /**
  * Crea la presentación de compra (producto, unidad de compra) con ese factor, o si ya existía le pone el factor nuevo y la reactiva. Devuelve el id de la fila
- * (para la auditoría del factor).
+ * (para la auditoría del factor). M.2: con `reescribirElFactor: false` (quien no tiene `producto_campos_sensibles`: solo puede reactivar con el MISMO factor) una presentación que ya existía solo se reactiva, sin
+ * volver a escribir el factor: lo que otra persona haya cambiado entre la lectura y esta escritura no se pisa.
  */
 export async function guardarPresentacion(
   db: Prisma.TransactionClient,
-  args: { productoId: string; unidadCompraId: string; factorConversion: number },
+  args: { productoId: string; unidadCompraId: string; factorConversion: number; reescribirElFactor: boolean },
 ): Promise<{ id: string }> {
   const fila = await db.presentacion.upsert({
     where: { productoId_unidadCompraId: { productoId: args.productoId, unidadCompraId: args.unidadCompraId } },
-    update: { factorConversion: args.factorConversion, activa: true },
+    update: args.reescribirElFactor ? { factorConversion: args.factorConversion, activa: true } : { activa: true },
     create: { productoId: args.productoId, unidadCompraId: args.unidadCompraId, factorConversion: args.factorConversion },
   });
   return { id: fila.id };

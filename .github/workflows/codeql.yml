@@ -1,0 +1,41 @@
+# CodeQL: análisis estático de JavaScript/TypeScript (flujos de datos inseguros, XSS, SQL armado con texto, comandos del sistema, problemas de autenticación…).
+# Los resultados quedan en la pestaña Security → Code scanning de GitHub. Detalle: docs/seguridad-pipeline.md.
+# Requisito: Code scanning disponible en el repositorio (gratis si es público; en uno privado exige GitHub Advanced Security).
+name: CodeQL
+
+on:
+  push:
+    branches: [main, "ci/**"]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "41 6 * * 3"
+  workflow_dispatch:
+
+# Permisos mínimos del análisis: leer el código y los workflows, y SOLO escribir los resultados en Security.
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analizar:
+    name: Analizar (javascript-typescript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          languages: javascript-typescript
+          # TypeScript no necesita compilar para que CodeQL lo extraiga.
+          build-mode: none
+          # «security-extended» = las consultas de seguridad por defecto más las de menor precisión; no incluye las de calidad de código.
+          queries: security-extended
+      - uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          category: "/language:javascript-typescript"

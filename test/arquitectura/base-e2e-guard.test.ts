@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolverUrlAppE2E, resolverUrlE2E, resolverUrlE2EB, resolverUrlPlataformaE2E, resolverUrlPlataformaE2EB } from "../e2e/fixtures/base-e2e";
+import { resolverUrlAppE2E, resolverUrlE2E, resolverUrlE2EB, resolverUrlPlataformaE2E, resolverUrlPlataformaE2EB, resolverUrlPruebasE2E } from "../e2e/fixtures/base-e2e";
 
 /**
  * Las guardas de la base E2E (test/e2e/fixtures/base-e2e.ts) son lo único que
@@ -132,5 +132,32 @@ describe("la SEGUNDA instalación de los E2E (ADR-025)", () => {
     ["la base de la instalación A", "postgresql://motor2_plataforma:x@localhost:5432/motor2_e2e", /misma base/],
   ])("la conexión de plataforma de B rechaza %s", (_nombre, url, mensaje) => {
     expect(() => resolverUrlPlataformaE2EB(entorno(B, url))).toThrow(mensaje);
+  });
+});
+
+describe("resolverUrlPruebasE2E — el rol de pruebas que siembra los specs (M.3-A8)", () => {
+  const PRUEBAS = "postgresql://motor2_app_pruebas:x@localhost:5432/motor2_e2e";
+  const entorno = (url: string | undefined) => ({ MOTOR2_E2E_DATABASE_URL: OK, MOTOR2_E2E_PRUEBAS_DATABASE_URL: url });
+
+  it("sin la variable devuelve null: los specs siembran con el rol de la app, como antes (el aviso lo da playwright.config.ts)", () => {
+    expect(resolverUrlPruebasE2E(entorno(undefined))).toBeNull();
+    expect(resolverUrlPruebasE2E(entorno(""))).toBeNull();
+  });
+
+  it("acepta el rol motor2_app_pruebas sobre la misma base _e2e", () => {
+    expect(resolverUrlPruebasE2E(entorno(PRUEBAS))).toEqual({ url: PRUEBAS, host: "localhost", nombre: "motor2_e2e" });
+  });
+
+  it.each([
+    ["el dueño", OK, /rol motor2_app_pruebas/],
+    ["el rol de la aplicación", "postgresql://motor2_app:x@localhost:5432/motor2_e2e", /rol motor2_app_pruebas/],
+    ["el rol de plataforma", "postgresql://motor2_plataforma:x@localhost:5432/motor2_e2e", /rol motor2_app_pruebas/],
+    ["otra base", "postgresql://motor2_app_pruebas:x@localhost:5432/otra_e2e", /misma base/],
+    ["la base de desarrollo", "postgresql://motor2_app_pruebas:x@localhost:5432/motor2_dev", /terminar en "_e2e"/],
+    ["un host remoto", "postgresql://motor2_app_pruebas:x@db.ejemplo.com:5432/motor2_e2e", /Host rechazado/],
+    ["un `?host=` remoto", "postgresql://motor2_app_pruebas:x@localhost:5432/motor2_e2e?host=db.ejemplo.com", /Host rechazado/],
+  ])("rechaza %s", (_nombre, url, mensaje) => {
+    // Mutación: no exigir el usuario motor2_app_pruebas (o la misma base) pone los casos correspondientes en rojo.
+    expect(() => resolverUrlPruebasE2E(entorno(url))).toThrow(mensaje);
   });
 });

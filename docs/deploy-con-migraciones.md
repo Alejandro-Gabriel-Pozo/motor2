@@ -65,8 +65,9 @@ Orden por base (el dueño; el asistente de desarrollo no ve credenciales ni corr
 
 1. Snapshot de la rama de Neon destino y ensayo de las dos migraciones en una rama descartable.
 2. Crear el rol `motor2_plataforma` en ESA rama, **con psql como dueño** (`neondb_owner`), nunca desde la consola de Neon (nacería con `BYPASSRLS`):
-   `psql <conexión del dueño> -v clave="<clave>" -f scripts/operaciones/crear-rol-motor2-plataforma.sql`. Los roles son por rama: la rama de producción de
-   cada despliegue necesita el suyo. Es idempotente.
+   `psql <conexión del dueño> -1 -v clave="<clave>" -f scripts/operaciones/crear-rol-motor2-plataforma.sql` (`-1` o el ejecutor `scripts/operaciones/ejecutar-sql-de-psql.mjs`: una sola
+   transacción). La `clave` solo hace falta si el rol NO existe (lo crea) o si querés CAMBIARLE la contraseña a propósito: con el rol ya creado, correrlo SIN `-v clave` no toca el rol
+   (solo verifica que siga siendo el de la consola) y reaplica los grants. Los roles son por rama: la rama de producción de cada despliegue necesita el suyo. Es idempotente.
 3. `... migrate status` y `npm run migrar:aprobar` (ver «Flujo aprobado» arriba). Si el rol ya existía, las migraciones le dan el permiso al crear las tablas.
 4. Archivo local **fuera del repositorio** (`.env.plataforma.<despliegue>`, gitignored) con `PLATAFORMA_DATABASE_URL` (usuario `motor2_plataforma`),
    `PLATAFORMA_SECRETO_CODIGOS` (`openssl rand -base64 48`) y `PLATAFORMA_CLAVE_TOTP` (`openssl rand -base64 32`). Los mismos tres valores van en el proyecto de
@@ -93,7 +94,7 @@ Orden por base (el dueño; primero zuluhub, después stockhneuquen):
 2. Verificar en la rama: `SELECT policyname FROM pg_policies WHERE tablename = 'Invitacion'` (tres políticas: `aislamiento_empresa`, `escritura_plataforma`, `lectura_por_token`),
    `has_table_privilege` de `motor2_app` (SELECT sí; INSERT y DELETE no) y de `motor2_plataforma` (SELECT, INSERT, UPDATE; DELETE no), y que existan los dos triggers `Invitacion_proteger_*`.
 3. Aplicar en la base real: `node scripts/operaciones/con-env.mjs .env.vercel.<despliegue> -- npm run migrar:aprobar`.
-4. **Volver a correr** `scripts/operaciones/crear-rol-motor2-plataforma.sql` con psql como dueño (idempotente): ahora también le da a `motor2_plataforma` permiso sobre `Invitacion`.
+4. **Volver a correr** `scripts/operaciones/crear-rol-motor2-plataforma.sql` con psql como dueño, con `-1` y **sin `-v clave`** (idempotente; con clave le cambiaría la contraseña a la consola): ahora también le da a `motor2_plataforma` permiso sobre `Invitacion`.
 5. Borrar la rama de ensayo.
 6. Deploy de la aplicación. Después, en el proyecto de Vercel de la consola: la variable nueva `PLATAFORMA_URL_APP` (la dirección pública de la app de empresas de ESA
    instalación, `https://…` sin ruta) y el canal `avisos` de mails con el dominio verificado; deploy de la consola.
@@ -168,6 +169,58 @@ y vigilar Sentry 48 horas (errores de `signIn`, `invitacion-sin-auth-url`, corre
 
 **Soporte — cuenta de Google rehecha (`/login?aviso=cuenta-distinta`):** la persona recuperó su email con otra cuenta de Google (otro identificador). Verificar su identidad por un canal propio; como dueño, borrar su `Account` vieja
 (`DELETE FROM "Account" WHERE "userId" = '…' AND provider = 'google'`) y mandarle «Invitar a vincular» desde Administración → Usuarios.
+
+## RLS por sucursal (M.3, ADR-028): código primero, migraciones por grupo y reversa
+
+> Redactado el 2026-10-10. **Hoy no hay ninguna migración de esta línea en `prisma/migrations` y nada se aplicó a Neon.** La Fase A (el alcance por sucursal en el código, la clasificación, el generador del SQL y sus
+> pruebas) no necesita migración y el código la ignora contra la base actual. Lo que sigue describe cómo se despliega y se vuelve atrás la Fase B cuando el dueño ordene crear y aplicar las migraciones. **Cada aplicación
+> a una base de Neon necesita autorización expresa**, con respaldo y ensayo previos; el asistente de desarrollo no corre nada de esto contra Neon.
+
+**Qué son las migraciones (Fase B), todas aditivas y cada una con su `down.sql`:** B1 las dos funciones `app_sucursales_lectura()` y `app_sucursales_escritura()`; B2 la configuración por sucursal (8 tablas: disponibilidad, precios locales,
+descuentos, frecuencias de conteo, stock mínimo, sección habitual, rendimientos locales, recetas por sucursal); B3 la carta (6 tablas); B4 el punto de venta (`Mesa`, `Cuenta`, `CuentaItem`, `PromoCuenta`, `EjemplarTicket`); B5 stock y dinero (`Seccion`, `Operacion`,
+`MovimientoStock`, `ConteoFisico`, `PagoConsignante`, `TraspasoSucursal`); B6 las tablas con `sucursalId` nulable y la receta (`RecetaVersion`, `RegistroAuditoria` y sus hijas). B7 NO es una migración: es el guardián de pruebas que
+compara las políticas de la base con la clasificación (se amplía `rls-empresa.test.ts` y `CANTIDAD_DE_POLITICAS_ESPERADAS`) y se corre al final. El SQL sale de `test/setup/politicas-de-alcance-de-sucursal.ts`: la migración de un grupo es ese SQL acotado a sus tablas.
+
+### Orden de despliegue
+
+**Antes (solo lectura, por base):**
+1. Que `DATABASE_URL` de cada app en Vercel conecte con `motor2_app` (`scripts/operaciones/cargar-env-vercel.sh` imprime el usuario). Las políticas son `TO motor2_app`: con otro rol no rigen. **Este control pasa de AVISO a BLOQUEANTE con la migración B1**:
+   hoy `EXIGIR_ROL_DE_LA_APP` está en `false` en `src/core/auth/base.ts` y un rol que no es `motor2_app` ni miembro de él solo avisa a Sentry (una vez por arranque); B1 lo pasa a `true` y desde ahí esa app NO opera con ese rol (salvo el escape de herramientas de demo,
+   `MOTOR2_ROL_ESTRICTO=0` fuera de Vercel). Por eso se confirma el usuario ANTES de aplicar B1, no después.
+2. Coherencia de datos, como dueño y solo lectura. Las tres tienen que dar 0; si no, se corrigen los datos antes del grupo que las usa (B4 la segunda, B5 la primera, B6 la tercera), porque una fila visible con un padre invisible rompe el `include` que la lee (ADR-028, limitaciones):
+   - movimientos cuya sección es de otra sucursal que su operación:
+     `SELECT count(*) FROM "MovimientoStock" m JOIN "Seccion" s ON s."id" = m."seccionId" JOIN "Operacion" o ON o."id" = m."operacionId" WHERE s."sucursalId" <> o."sucursalId";`
+   - ejemplares de ticket de una sucursal distinta a la de la mesa de su cuenta:
+     `SELECT count(*) FROM "EjemplarTicket" e JOIN "Cuenta" c ON c."id" = e."cuentaId" JOIN "Mesa" m ON m."id" = c."mesaId" WHERE e."sucursalId" <> m."sucursalId";`
+   - rendimientos locales de una sucursal sobre el ingrediente de una receta PROPIA de otra:
+     `SELECT count(*) FROM "RendimientoLocalIngrediente" r JOIN "RecetaIngrediente" i ON i."id" = r."recetaIngredienteId" JOIN "RecetaVersion" v ON v."id" = i."recetaVersionId" WHERE v."sucursalId" IS NOT NULL AND v."sucursalId" <> r."sucursalId";`
+3. Que las migraciones anteriores estén aplicadas (`migrate status` al día) y que el Preview de `stockhneuquen` no se use para ensayar (comparte la base de producción).
+
+**Tiempos:**
+1. **Código, con `MOTOR2_MIGRAR_EN_BUILD=0` por UN solo deploy.** El código con el alcance funciona igual con la base de hoy (las variables nuevas las ignora) y con la base migrada. Con la variable en `0` el build no mira la base: las migraciones del repo todavía no están
+   aplicadas y el modo `verificar` (el de siempre) haría fallar el build por «migraciones pendientes». Se pone la variable en el proyecto de Vercel, se despliega, se hace el humo (login, elegir empresa, un recorrido del punto de venta y una escritura de stock)
+   y **todavía no se borra**.
+2. **Migraciones, por grupo y en orden B1, B2, B3, B4, B5, B6, de a UNA por vez y por base** (primero la demo `zuluhub-demo` y recién después `hoteles-del-neuquen`/`stockhneuquen`). Para cada grupo y cada base:
+   a. rama de respaldo de Neon y rama de ensayo; en la de ensayo `node scripts/operaciones/con-env.mjs <env de ensayo> -- npx prisma migrate deploy`, el escenario de `test/aislamiento/rls-sucursal.test.ts` con la migración real, y el ciclo subir / bajar (`down.sql`) / subir;
+      el ensayo también contra el host `-pooler` de Neon (modo transacción: es la medición que falta, ver abajo) y `EXPLAIN (ANALYZE, BUFFERS)` de las consultas pesadas del grupo con la semilla de seis meses (decide la desnormalización, D5);
+   b. aplicar en la base real: `node scripts/operaciones/con-env.mjs .env.vercel.<despliegue> -- npm run migrar:aprobar`;
+   c. **humo del grupo:** login, el menú y una lectura y una escritura de las tablas del grupo, con una persona de UNA sola sucursal y otra con varias;
+   d. vigilancia liviana de Sentry (errores `42501` y de `include` hacia filas que no se ven) antes de pasar al grupo siguiente.
+3. **Cierre.** Cuando no queden migraciones pendientes: el guardián B7 en verde, un humo final y **borrar `MOTOR2_MIGRAR_EN_BUILD`** del proyecto (la variable fija vuelve a migrar sola en cada build y se pierde la aprobación, ver «Flujo aprobado»).
+
+### Reversa
+
+El orden importa: **primero el `down.sql` y después el Instant Rollback.** Volver a un código anterior al alcance (anterior a M.3-A2) con las políticas puestas es una **caída total**: ese código fija solo `app.empresa_id`, y sin las variables de sucursal las
+políticas no dejan ver ninguna fila ni escribir una (falla cerrado; lo prueba el escenario «sin variables» de `rls-sucursal.test.ts`).
+
+- **Un grupo (B2 a B6):** su `down.sql` como dueño con `psql -1` (hace `DROP POLICY IF EXISTS` de las políticas de sus tablas) y después `prisma migrate resolve --rolled-back <migración>`. Los grupos se bajan en el orden inverso al que se subieron.
+- **B1 (las funciones):** va **último**: una política en uso impide borrar la función. `down.sql` con `DROP FUNCTION IF EXISTS` de las dos, y recién ahí el control del rol de ejecución vuelve a avisar (queda en `false` al revertir el commit de B1).
+- **Si hay que volver atrás el código:** primero el `down.sql` de TODOS los grupos aplicados (B6 hasta B1) y después el Instant Rollback de la app. En la ventana entre los dos sigue rigiendo la RLS por empresa: las empresas siguen aisladas entre sí; solo se pierde la barrera entre sucursales de una misma empresa.
+- **Fase A (el código sin migración):** revert del commit; no toca ninguna base.
+
+### Qué NO está medido (ADR-028)
+
+El costo de las políticas con volumen (el riesgo está en las consultas de saldos e índices del Kardex), el comportamiento contra el pooler de Neon en modo transacción, y las bases reales (nada se ensayó contra Neon). Esas tres mediciones son parte del ensayo del paso 2.a.
 
 ## Server Actions: clave de cifrado de los closures y versiones entre deploys
 

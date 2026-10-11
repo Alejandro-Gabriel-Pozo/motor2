@@ -9,7 +9,10 @@ import { describe, expect, it } from "vitest";
  */
 const CARPETA = join(__dirname, "../../src/server/acceso");
 // `origen-de-copia.ts` (S-07, O.56 del endurecimiento de seguridad): DECIDE acceso (la membresía y el «Ver» del usuario en la sucursal ORIGEN de una copia entre sucursales), apoyado en el gate; no lee cookies ni la sesión.
-const PERMITIDOS = ["capacidades-sucursal.ts", "gate.ts", "menu.ts", "modulos-de-empresa.ts", "origen-de-copia.ts", "politica-de-empresa.ts"];
+// `campos-sensibles-de-producto.ts` (M.2-A4, C): DECIDE acceso (¿puede esta persona cambiar el precio, el factor y las unidades de un producto? = `producto_campos_sensibles` EDITAR), apoyado en el gate; es la fuente ÚNICA que comparten las
+// Server Actions de producto y las páginas de alta y edición (antes cada una tenía su copia). No lee cookies ni la sesión.
+// `alcance.ts` (M.3-A4): los ENSANCHES del alcance por sucursal (lectura/escritura fuera de la sucursal activa); no decide permisos por su cuenta: cada uno se llama SOLO después de que el gate aprobó (`ensanches-de-alcance.test.ts` lo verifica); no lee cookies ni la sesión.
+const PERMITIDOS = ["alcance.ts", "campos-sensibles-de-producto.ts", "capacidades-sucursal.ts", "gate.ts", "menu.ts", "modulos-de-empresa.ts", "origen-de-copia.ts", "politica-de-empresa.ts"];
 
 /**
  * Los archivos de `server/acceso/` que NO llevan `import "server-only"` y por qué (Hito 5, pieza 5.2, bloque 2): el valor es el punto de entrada que los alcanza y donde `server-only` revienta (el paquete tira

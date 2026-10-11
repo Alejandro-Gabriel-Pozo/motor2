@@ -68,8 +68,10 @@ export async function cargarUltimoNumeroDeTicket(tx: Prisma.TransactionClient, s
 }
 
 /**
- * La Operacion de la venta que consumió ese insumo en ESA sección (la primera, por `creadoEn`): a ella se enlaza la fila de auditoría de
- * stock negativo (B6bis). `null` si no aparece — el caso de uso cae entonces a la primera Operacion de la venta, como antes.
+ * La Operacion de la venta que consumió ese insumo en ESA sección (la primera, por `creadoEn` del movimiento y, a igualdad, por su id): a ella se enlaza la fila
+ * de auditoría de stock negativo (B6bis). `null` si no aparece — el caso de uso cae entonces a la primera Operacion de la venta, como antes.
+ * El desempate por id hace falta: las Operaciones de un mismo cierre se escriben en la misma transacción y pueden compartir `creadoEn` (Prisma 7
+ * lo pone en el cliente); sin él, la base devolvía cualquiera de las empatadas según el orden físico de las filas (mismo criterio que O.40 (3)).
  */
 export async function cargarOperacionDelConsumo(
   tx: Prisma.TransactionClient,
@@ -78,7 +80,7 @@ export async function cargarOperacionDelConsumo(
   const consumo = await tx.movimientoStock.findFirst({
     where: { operacionId: { in: [...args.operacionIds] }, productoId: args.productoId, seccionId: args.seccionId, proceso: "CONSUMO" },
     select: { operacionId: true },
-    orderBy: { creadoEn: "asc" },
+    orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
   });
   return consumo?.operacionId ?? null;
 }

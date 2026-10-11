@@ -1,5 +1,6 @@
 import { obtenerContextoUsuario, type ContextoUsuario } from "@/core/auth/contexto";
 import { contextoDeAccion, type AccionClave, type AccionDeEmpresa, type AccionDeSucursal } from "@/core/permisos/acciones";
+import { conAlcanceEnSucursal } from "@/server/acceso/alcance";
 import { accionesDelMenuQueElUsuarioPuedeVer, requierePermisoVer, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "./limitador-de-lecturas";
 
@@ -57,11 +58,15 @@ export async function requerirVer(accion: AccionDeSucursal): Promise<ContextoUsu
   return ctx;
 }
 
-/** Como `requerirVer` para las lecturas que reciben la sucursal por parámetro: además exige membresía activa en ella. */
+/**
+ * Como `requerirVer` para las lecturas que reciben la sucursal por parámetro: además exige membresía activa en ella. Y SOLO después de que el gate aprobó el «Ver» EN esa sucursal
+ * (forma `SUCURSAL_CON_GATE` de GT-4), ensancha la LECTURA del contexto a ella (M.3-A4, `conAlcanceEnSucursal` en modo `LECTURA`; nunca la escritura): la base que devuelve ve esa
+ * sucursal además de la activa.
+ */
 export async function requerirVerEnSucursal(sucursalId: string, accion: AccionDeSucursal): Promise<ContextoUsuario> {
   const ctx = await requerirSesionEnSucursal(sucursalId);
   await exigirVer(ctx, sucursalId, accion);
-  return ctx;
+  return conAlcanceEnSucursal(ctx, sucursalId, "LECTURA");
 }
 
 /** Como `requerirVer` para una acción de CONTEXTO EMPRESA: alcanza con que alguna membresía del usuario en la empresa activa tenga el «Ver» (ver `requierePermisoVerDeEmpresa`). */
@@ -92,11 +97,14 @@ export async function requerirVerAlguna(claves: ClavesDeLasPantallas): Promise<C
   return ctx;
 }
 
-/** Como `requerirVerAlguna` para las lecturas que reciben la sucursal por parámetro: además exige membresía activa en ella, y las claves de sucursal se evalúan ALLÍ. */
+/**
+ * Como `requerirVerAlguna` para las lecturas que reciben la sucursal por parámetro: además exige membresía activa en ella, y las claves de sucursal se evalúan ALLÍ. Igual que
+ * `requerirVerEnSucursal`, ensancha la LECTURA a esa sucursal solo después del gate (M.3-A4).
+ */
 export async function requerirVerAlgunaEnSucursal(sucursalId: string, claves: ClavesDeLasPantallas): Promise<ContextoUsuario> {
   const ctx = await requerirSesionEnSucursal(sucursalId);
   await exigirVerAlguna(ctx, sucursalId, claves);
-  return ctx;
+  return conAlcanceEnSucursal(ctx, sucursalId, "LECTURA");
 }
 
 async function exigirVer(ctx: ContextoUsuario, sucursalId: string, accion: AccionDeSucursal): Promise<void> {

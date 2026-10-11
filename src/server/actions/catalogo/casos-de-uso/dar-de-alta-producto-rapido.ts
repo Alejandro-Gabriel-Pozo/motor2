@@ -6,6 +6,7 @@ import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referenc
 import type { ComandoDarDeAltaProductoRapido, ResultadoDarDeAltaProducto } from "@/core/features/catalogo/productos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
+import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
 import { crearProductoNuevo, sembrarDisponibilidadDeProductoNuevo } from "@/server/persistencia/catalogo/productos";
 
 /**
@@ -29,7 +30,7 @@ import { crearProductoNuevo, sembrarDisponibilidadDeProductoNuevo } from "@/serv
  * @ficha permiso=alta_producto transaccion=NINGUNA idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function darDeAltaProductoRapidoCasoDeUso(
-  actor: Pick<ContextoUsuario, "db">,
+  actor: Pick<ContextoUsuario, "db" | "transaccion" | "empresaId" | "alcance">,
   comando: ComandoDarDeAltaProductoRapido,
   azar: FuenteDeAzar,
 ): Promise<ResultadoDarDeAltaProducto> {
@@ -45,8 +46,11 @@ export async function darDeAltaProductoRapidoCasoDeUso(
       azar,
     );
     // Sin formulario donde poner el tilde de §4.1 — sigue su mismo default: activo en todas las sucursales que existen hoy.
-    const sucursalIds = (await actor.db.sucursal.findMany({ select: { id: true } })).map((s) => s.id);
-    await sembrarDisponibilidadDeProductoNuevo(actor.db, { productoId: producto.id, sucursalIds });
+    // M.3-A6: sembrar en todas es una escritura de EMPRESA ENTERA (`EMPRESA_ENTERA` de GT-4): se ensancha a la lista cerrada de las sucursales de la empresa, que es la que ya se leía acá.
+    const enLaEmpresa = await conEscrituraEnLaEmpresa(actor);
+    const sucursalIds = [...enLaEmpresa.sucursalIdsDeLaEmpresa];
+    // Siempre una MP (no se vende: el POS solo pide PV), así que no hay precio que proteger y nace disponible (M.2-A4: el PV sin `producto_campos_sensibles` es el que nace apagado, en `dar-de-alta-producto.ts`).
+    await sembrarDisponibilidadDeProductoNuevo(enLaEmpresa.db, { productoId: producto.id, sucursalIds, disponible: true });
     return exito(`Producto "${producto.nombre}" (${producto.codigo}) creado.`, { id: producto.id, nombre: producto.nombre });
   } catch (e) {
     if (esErrorDeUnicidad(e)) return fracaso("CODIGO_REPETIDO", "Ya existe un producto con ese código.");

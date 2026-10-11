@@ -2,6 +2,8 @@
 
 Documento de traspaso (2026-10-06; puesto al día el 2026-10-08, al cerrar el trabajo de la rama `pureza-integracion`). Sirve para continuar el trabajo en otra sesión, sin depender de la memoria de la anterior. De lo general a lo específico.
 
+> **Actualización 2026-10-09.** La rama `pureza-integracion` (PR #95) **se fusionó a `main`** (merge commit `057974b2`) con el endurecimiento de seguridad T1 a T16, y la app se desplegó. Quedan **desactualizadas** las partes que dicen que la Fase 4 espera fusión (secciones 3 y 4) y que «el CI de GitHub Actions funciona» (hoy no corre por la facturación de Actions). Lo que sigue y el orden propuesto están en `docs/hoja-de-ruta-despues-de-la-fusion.md`; cómo se hace cada cosa (gate, deploy, sincronización de documentos), en `procedimientos-operativos.md` del repositorio de documentación.
+
 ## 1. Qué es esto y por qué
 
 **Criterio del dueño:** pureza total del repositorio, y **antes** de construir lo nuevo (IVA, tributos, cierre de períodos, bienes de uso, emisor fiscal): ir «de a poco» deja pendientes que después hay que acomodar. La producción está viva pero sin datos; las fases completas son necesarias para lanzar.

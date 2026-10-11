@@ -62,6 +62,17 @@ export async function obtenerProductoPorId(id: string, db: Db, opciones: Opcione
 }
 
 /**
+ * Las unidades que un producto usa hoy (de stock y de compra), SOLO `{ id, nombre, decimales }` cada una (más el `id` y el `nombre` del producto), estén activas o no (M.2-A4, D): el formulario de edición las suma a sus opciones aunque se hayan desactivado
+ * (`conLasUnidadesDelProducto`), así no muestra «sin unidad de compra» ni borra la unidad al guardar. `null` si el producto no existe.
+ */
+export async function obtenerUnidadesDelProducto(id: string, db: Db) {
+  return db.producto.findUnique({
+    where: { id },
+    select: { id: true, nombre: true, unidadStock: { select: { id: true, nombre: true, decimales: true } }, unidadCompra: { select: { id: true, nombre: true, decimales: true } } },
+  });
+}
+
+/**
  * El producto como opción de un selector: SOLO `{ id, codigo, nombre }` (deep-link `/movimientos/[proceso]?productoId=` desde
  * un reporte, que llega con el producto ya cargado en la primera fila). `null` si no existe.
  */

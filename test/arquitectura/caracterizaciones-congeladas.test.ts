@@ -61,6 +61,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "S-10/D1 (O.59; CAMBIA COMPORTAMIENTO, plan de endurecimiento de seguridad T6, decisión del dueño): `carta_generos`, `carta_contenido_producto` y `carta_items_agrupados` pasan de contexto EMPRESA a contexto SUCURSAL (solo escriben en la carta de la sucursal activa). Cambia SOLO lo que dicen esas tres claves, en todas las funciones y registros: salen de los bloques `[empresa]` (requierePermisoDeEmpresa, requierePermisoVerDeEmpresa, obtenerMiNivelPermisoDeEmpresa) y entran a los de sucursal (`[S1]`/`[S2]`: requierePermiso, requierePermisoVer, obtenerMiNivelPermiso, accionesQueElUsuarioPuedeVer, accionesDelMenu), con el resultado que da el gate de ESA sucursal (por ejemplo `SIN_ACCESO_A_SUCURSAL` en S2 para quien solo tiene membresía en S1, donde antes la empresa le decía `ok`). Comprobado por TRIPLES (bloque, resultado, clave) entre la matriz vieja y la nueva: las únicas claves cuyas triples cambian son esas tres (110 quitadas y 218 agregadas por clave); cero triples de otra clave. Más un ARTEFACTO del generador (el test de caracterización no se edita): al sumarse tres claves a la lista de sucursal, las sondas de `sucursalesDondeElUsuarioPuedeVer`, que eligen su clave por posición (`DE_SUCURSAL[i]`), pasan de `carta_promo_activar`, `proceso_venta` y `reporte_consolidado` a `carta_contenido_producto`, `proceso_control` y `pagar_consignante`; las 108 sondas que siguen existiendo son idénticas. La fila «por encima del piso» del rol especial (`secciones`) y las 12 primeras de operario y 6 de empresa no se mueven (las tres claves van después de ellas en el catálogo).",
       },
+      {
+        blob: "7d3fe56f3c44dc25ab094802567575f03ac840b6",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `1df6d19` («M.1-C7: documentacion del procedimiento corregido»).
+        commit: "1df6d19",
+        motivo:
+          "M.2 P1 (clave nueva `producto_campos_sensibles`, contexto empresa, piso operario, semilla solo admin; NO cambia comportamiento todavía: ningún código la consulta hasta P2). Cambia SOLO lo que dice esa clave, en todos los registros de módulos y usuarios: 120 apariciones nuevas (tripletas registro/usuario/bloque, resultado, clave), todas de la clave nueva, en los 4 bloques de empresa (requierePermisoDeEmpresa, requierePermisoVerDeEmpresa, obtenerMiNivelPermisoDeEmpresa) y en el menú (accionesDelMenuQueElUsuarioPuedeVer, S1 y S2), y NINGUNA tripleta de otra clave quitada ni agregada (verificado comparando la versión anterior con la nueva por tripletas). Más 2 líneas de mensajes de denegación del usuario «dos sucursales» (rol «especial»): la firma de la denegación conserva el ÚLTIMO mensaje generado y la clave nueva es la última del catálogo que el operador no tiene, así que el mensaje nombra `producto_campos_sensibles` donde antes nombraba `producto_sincronizar_precio_carta` (mismo artefacto del generador que en S-41; ninguna respuesta de otra clave cambia). El generador no se edita.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -104,6 +111,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "dc7289b3",
         motivo:
           "Mezcla del carril B en la rama principal (2026-10-09). Sin cambio de comportamiento propio: la huella resultante es exactamente la del carril B más las dos líneas de la semilla de S-41 (el operador de fábrica deja de tener `producto_sincronizar_precio_carta`, una línea por empresa sembrada). Verificado con `git diff` contra cada padre: respecto del carril A solo aporta lo de S-33 (los cambios de módulos y de política dejan de dejar rastro en `RegistroAuditoria` de la empresa y los ids enmascarados se renumeran); respecto del carril B solo aporta lo de S-41.",
+      },
+      {
+        blob: "4ad12a817aba26c2964e3cac0b65828b182c9a8c",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `1df6d19` («M.1-C7: documentacion del procedimiento corregido»).
+        commit: "1df6d19",
+        motivo:
+          "M.2 P1 (clave nueva `producto_campos_sensibles`, semilla solo admin; NO cambia comportamiento todavía). La huella siembra los permisos de fábrica de las empresas que da de alta y cuenta el catálogo. Cambia SOLO 6 líneas, 3 por empresa sembrada: `PERMISO admin:producto_campos_sensibles ver=true editar=true`, `PERMISO operador:producto_campos_sensibles ver=false editar=false` y `ACCIONES 124` → `ACCIONES 125` (el tamaño del catálogo). Ningún resultado, mensaje ni otra fila cambia.",
       },
     ],
   },
@@ -183,6 +197,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "19cd8ad2",
         motivo:
           "S-22/D2 (O.71; CAMBIA COMPORTAMIENTO, plan de endurecimiento de seguridad T10, decisión del dueño): el selector del POS y la lectura de cada promo para agregar leen el registro de módulos de la empresa (sin Promociones no ofrecen ni aceptan promos). Cambia SOLO la línea de conteo de 5 entradas, sin tocar ningún resultado: `pos.cargarSelectorCartaDeLaMesa(Central)` y `(Norte)` 15 → 17 consultas (`sucursal.findUnique` ×1 → ×2 y `moduloEmpresa.findMany` ×1 nueva), `pos.cargarPromoCartaParaAgregar(Central, Menú del día)` 16 → 18 (lo mismo) y sus dos casos `null` (informativa sin cupos; apagada en Norte) 1 → 3 (`moduloEmpresa.findMany` y `sucursal.findUnique`, que ahora van antes de buscar la promo). En la pantalla real la segunda lectura del registro sale de la memoria por pedido (`cache` de React: el guard ya la hizo con el mismo `db`).",
+      },
+      {
+        blob: "8de0ce3d9bc515953ee8c08d607fb2c61322e58d",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `da979dd` («M.3-A7: la carta publica resuelve el slug en SucursalPublica y lee con una base de solo lectura en esa sucursal»), que fue el que cambió el golden.
+        commit: "da979dd",
+        motivo:
+          "M.3-A7 (refactor de acceso, sin cambio de resultado): `carta.resolverCartaPublica` resuelve el slug en `SucursalPublica` con la base de la empresa y lee la carta (menú, precios locales, descuentos, promos y tema) con una base de SOLO LECTURA de esa única sucursal, lo que suma una lectura de `sucursal` (`sucursal.findUnique` ×1 → ×2: la del menú y la del tema). Cambia SOLO la línea `consultas` de 2 entradas, `resolverCartaPublica(empresa, «central»)` y `(empresa, «norte»: sin tema)`: 9 → 10 consultas; el `resultado` de ambas y todas las demás entradas, byte a byte (verificado con `git diff b55c39f HEAD` del golden: exactamente esas 2 líneas).",
       },
     ],
   },

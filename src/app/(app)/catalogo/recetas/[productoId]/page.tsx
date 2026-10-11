@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/core/auth/contexto";
 import { irAlLogin } from "@/core/auth/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
+import { lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
 import { obtenerMiNivelPermiso, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import {
   obtenerRecetaVigente,
@@ -135,9 +136,12 @@ export default async function RecetaEditorPage({
   }
 
   // Receta propia de la sucursal activa (ADR-009, R3/R4): estado + qué acciones le tocan a este usuario (una clave por acción).
+  // M.3-A5: de dónde se puede copiar se lee de las OTRAS sucursales: la LECTURA se ensancha a las sucursales donde el rol ve `receta_sucursal_copiar` (el mismo «Ver» que exige `leerOrigenDeCopia`
+  // al copiar); la receta propia de la sucursal activa y todo lo demás de la pantalla se leen con `ctx.db`.
+  const origenes = await lecturaEnSucursalesVisibles(ctx, "receta_sucursal_copiar");
   const [estadoPropia, otrasConRecetaPropia, nivelEditar, nivelCopiar, nivelVolver] = await Promise.all([
     obtenerEstadoDeRecetaPropia(producto.id, ctx.sucursalId, ctx.db),
-    listarSucursalesConRecetaPropia(producto.id, ctx.sucursalId, ctx.usuarioId, ctx.db),
+    listarSucursalesConRecetaPropia(producto.id, ctx.sucursalId, ctx.usuarioId, origenes.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_editar", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_copiar", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_volver_central", ctx.db),

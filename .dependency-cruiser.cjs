@@ -20,7 +20,8 @@ const CASOS_DE_USO = "^src/server/actions/[^/]+/casos-de-uso/";
 
 /**
  * Lo único de auth/permisos/server que la carta pública (sin sesión) puede ALCANZAR, directa o transitivamente (ADR-006 + ADR-007): la
- * base por empresa y su verificación de rol (`core/auth/base.ts`, `rol-de-ejecucion.ts`), el catálogo de claves de permiso
+ * base por empresa y su verificación de rol (`core/auth/base.ts`, `rol-de-ejecucion.ts`; desde M.3-A7 la carta lee las tablas de UNA sucursal con `dbDeEmpresa(empresa, { lectura: [esa], escritura: [] })` —alcance de solo lectura, armado en `server/carta-publica/sin-sesion.ts` con el id que resolvió el slug—
+ * y NO alcanza `server/acceso/alcance.ts`: sus ensanches traen el gate y la sesión, que esta lista deja afuera), el catálogo de claves de permiso
  * (`core/permisos/acciones.ts`: solo constantes) y las dos reglas PURAS de las capacidades por sucursal (`core/permisos/capacidades-sucursal.ts`: `esCapacidadSiempreHabilitada` y `resolverCapacidad`, sin base), el LECTOR de esas capacidades
  * (`server/acceso/capacidades-sucursal.ts`: `sucursalTieneCapacidad` y `capacidadesDeSucursal`, que leen `CapacidadSucursal` con el `db` que reciben por parámetro; la carta lo alcanza en ejecución por `lecturas/carta` → `precioLocalActivoEn` → `sucursalTieneCapacidad`;
  * salió de `core/permisos` en el bloque 2 de la pieza 5.2 del Hito 5, rama `pureza-integracion`, y es el ÚNICO archivo de `server/acceso` que la carta alcanza: no el gate, ni el menú, ni los módulos, ni la política) y el embudo del
@@ -184,7 +185,8 @@ module.exports = {
       comment:
         "server/acceso/ (el guard de acceso y sus lectores, ADR-011; Pureza Fase 3 tramo B) lee lo que hace falta y le pasa los hechos a la decisión pura de core/permisos: no importa la UI, ni server/actions, consultas, lecturas ni persistencia, ni lib/db, ni Next, ni la sesión (core/auth: contexto, session, ir-al-login; solo tipos), ni la base por empresa (core/auth/base). El acceso recibe ids y un `db`: nunca lee cookies ni la sesión.",
       severity: "error",
-      from: { path: "^src/server/acceso/" },
+      // M.3-A4: `alcance.ts` (los ensanches del alcance por sucursal) es la ÚNICA excepción, y solo para `core/auth/base`: rearma la base del contexto con otra lista de sucursales. Tiene su regla propia, justo abajo.
+      from: { path: "^src/server/acceso/", pathNot: "^src/server/acceso/alcance\\.ts$" },
       to: {
         path: [
           "^src/(app|components)/",
@@ -192,6 +194,23 @@ module.exports = {
           "^src/lib/db\\.ts$",
           "^node_modules/next/",
           "^src/core/auth/(base|contexto|session|ir-al-login)\\.ts$",
+        ],
+        dependencyTypesNot: ["type-only"],
+      },
+    },
+    {
+      name: "acceso-alcance-capa",
+      comment:
+        "server/acceso/alcance.ts (los ensanches del alcance por sucursal, M.3-A4) cumple todo lo de acceso-capa (no importa la UI, ni server/actions, consultas, lecturas ni persistencia, ni lib/db, ni Next, ni contexto/session/ir-al-login) salvo UNA cosa: importa core/auth/base, porque agrandar el alcance es rearmar la base del contexto (baseDeEmpresa). Lo demás de server/acceso/ sigue sin poder importarla.",
+      severity: "error",
+      from: { path: "^src/server/acceso/alcance\\.ts$" },
+      to: {
+        path: [
+          "^src/(app|components)/",
+          "^src/server/(actions|consultas|lecturas|persistencia)/",
+          "^src/lib/db\\.ts$",
+          "^node_modules/next/",
+          "^src/core/auth/(contexto|session|ir-al-login)\\.ts$",
         ],
         dependencyTypesNot: ["type-only"],
       },

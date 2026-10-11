@@ -44,7 +44,6 @@ describe("S-52: los guards de la puerta de las acciones de producto y de present
       [1e308, "El factor de conversión es demasiado grande."],
       ["abc", "El factor de conversión no es un número válido."],
       [{}, "El factor de conversión no es un número válido."],
-      [undefined, "Falta el factor de conversión."],
       [1.234, "El factor de conversión admite como máximo 2 decimales (unidad \"kg\")."],
     ];
 
@@ -54,6 +53,17 @@ describe("S-52: los guards de la puerta de las acciones de producto y de present
       const id = (await sembrarProductoDisponible({ codigo: "MP_Q", nombre: "Queso", tipo: "MP", unidadStockId: kgId, factorConversion: 1 }, sucursalId)).id;
       expect(await sinTipos(actualizarProducto)(id, datos({ factorConversion }))).toEqual({ ok: false, mensaje });
       expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id } })).factorConversion)).toBe(1);
+    });
+
+    // M.2-A4 (B): en la EDICIÓN un factor ausente (`undefined`) ya no es un error: el servidor lo completa con el guardado, tenga o no la clave quien edita (el formulario abierto sin la clave no lo manda). El alta lo sigue pidiendo.
+    it("factor ausente (undefined): el ALTA lo rechaza («Falta el factor de conversión.»); la EDICIÓN lo deja como estaba", async () => {
+      expect(await sinTipos(darDeAltaProducto)(datos({ factorConversion: undefined }))).toEqual({ ok: false, mensaje: "Falta el factor de conversión." });
+      expect(await productos()).toBe(0);
+      const id = (await sembrarProductoDisponible({ codigo: "MP_Q", nombre: "Queso", tipo: "MP", unidadStockId: kgId, factorConversion: 3 }, sucursalId)).id;
+      const r = await sinTipos(actualizarProducto)(id, datos({ nombre: "Queso cremoso", factorConversion: undefined }));
+      expect(r.ok, r.mensaje).toBe(true);
+      const p = await prisma.producto.findUniqueOrThrow({ where: { id } });
+      expect([p.nombre, Number(p.factorConversion)]).toEqual(["Queso cremoso", 3]);
     });
 
     it("el precio de venta y el de consignación fuera de rango (negativo, NaN, ±Infinity, 1e308, texto, más de 2 decimales) se rechazan", async () => {
