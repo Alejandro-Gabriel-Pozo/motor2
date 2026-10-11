@@ -70,6 +70,13 @@ describe("Consignación: un pago del día D entra en el período D..D", () => {
     expect(await pagadoEn(periodoDeLaPagina(dia, dia))).toBe(3);
   });
 
+  it("lo que dejaba el formulario antes (new Date(\"AAAA-MM-DD\"), 00:00 UTC) cae en el día argentino ANTERIOR: sale en D-1..D-1 y no en D..D", async () => {
+    const antes = await registrarPagoConsignante(proveedorId, 40, new Date(dia));
+    expect(antes.ok, antes.mensaje).toBe(true);
+    expect(await pagadoEn(periodoDeLaPagina(dia, dia))).toBe(0);
+    expect(await pagadoEn(periodoDeLaPagina(sumarDias(dia, -1), sumarDias(dia, -1)))).toBe(40);
+  });
+
   it("control: el período «crudo» (00:00 UTC de D en los dos extremos, como se pasaba antes de cerrar el día) NO contiene al pago de mediodía de D", async () => {
     await registrarPagoConsignante(proveedorId, 40, mediodiaDelDia(dia, ZONA_ARGENTINA));
     expect(await pagadoEn({ desde: new Date(dia), hasta: new Date(dia) })).toBe(0);
