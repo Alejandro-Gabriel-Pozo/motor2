@@ -9,6 +9,7 @@ import { listarComprasRegistradas } from "@/server/consultas/reportes/compras-re
 import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";
 import { BotonAnularCompra } from "./boton-anular-compra";
 import { FormularioCorregirCompra } from "./formulario-corregir-compra";
+import { formatearNumeroComprobante, leerNumeroComprobante } from "@/core/datos/numero-comprobante";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 const fechaCorta = (f: Date) => f.toISOString().slice(0, 10);
@@ -126,7 +127,7 @@ export default async function ComprasRegistradasPage({
                       Sin proveedor
                     </span>
                   )}
-                  <span className="text-neutral-500">{c.nroFactura ? `Factura ${c.nroFactura}` : "sin N.º de factura"}</span>
+                  <span className="text-neutral-500">{c.nroFactura ? `Factura ${formatearNumeroComprobante(leerNumeroComprobante(c.nroFactura))}` : "sin N.º de factura"}</span>
                   <span className="text-neutral-500" title="Productos DISTINTOS de esta factura — dos renglones del mismo producto cuentan una sola vez.">
                     {c.cantidadProductos} producto(s)
                   </span>
