@@ -16,7 +16,7 @@ const EMAIL = "primer.gerente@gmail.com";
 const cuenta = { providerAccountId: "google-primer-gerente", type: "oidc", access_token: "a", id_token: "id-token-de-prueba" };
 
 const entrar = (tokenDeInvitacion: string | undefined) =>
-  decidirInicioDeSesion({ emailUsuario: EMAIL, emailPerfil: EMAIL, emailVerificado: true, tokenDeSesionAbierta: undefined, tokenDeInvitacion, cuenta });
+  decidirInicioDeSesion({ emailUsuario: EMAIL, emailPerfil: EMAIL, emailVerificado: true, tokenDeSesionAbierta: undefined, tokenDeInvitacion, cuenta, ahora: new Date() });
 
 async function empresaSembrada(id: string, estado: "ACTIVE" | "PROVISIONING") {
   await prismaAdmin.empresa.create({ data: { id, nombre: `Empresa ${id}`, slug: id, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado } });

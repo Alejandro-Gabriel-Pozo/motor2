@@ -25,6 +25,7 @@ const entrar = (token: string | undefined, o: { email?: string; perfil?: string;
     tokenDeSesionAbierta: o.abierta,
     tokenDeInvitacion: token,
     cuenta: cuenta(o.sub),
+    ahora: new Date(),
   });
 
 async function invitacion(tipo: "usuario" | "vinculacion" | "gerente", parcial: { email?: string; empresaId?: string; venceEn?: Date; estado?: "REVOCADA" } = {}) {

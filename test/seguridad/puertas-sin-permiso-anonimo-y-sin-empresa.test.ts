@@ -103,13 +103,13 @@ const CONTROLES: Record<string, Controles> = {
   "sesion|lib/auth.ts|signIn": {
     anonimo: async () => {
       // Sin cuenta de Google verificada (el perfil no la confirma, o no hay cuenta): rechazo.
-      const base0 = { emailUsuario: "nadie@dominio-workspace.com", emailPerfil: "nadie@dominio-workspace.com", tokenDeSesionAbierta: undefined, tokenDeInvitacion: undefined };
+      const base0 = { emailUsuario: "nadie@dominio-workspace.com", emailPerfil: "nadie@dominio-workspace.com", tokenDeSesionAbierta: undefined, tokenDeInvitacion: undefined, ahora: new Date() };
       expect(await decidirInicioDeSesion({ ...base0, emailVerificado: false, cuenta: unaCuentaDeGoogle })).toBe(false);
       expect(await decidirInicioDeSesion({ ...base0, emailVerificado: true, cuenta: null })).toBe(false);
     },
     sinEmpresa: async () => {
       const email = "sin-empresa@dominio-workspace.com";
-      const entrada = { emailUsuario: email, emailPerfil: email, emailVerificado: true, tokenDeSesionAbierta: undefined, tokenDeInvitacion: undefined, cuenta: unaCuentaDeGoogle };
+      const entrada = { emailUsuario: email, emailPerfil: email, emailVerificado: true, tokenDeSesionAbierta: undefined, tokenDeInvitacion: undefined, cuenta: unaCuentaDeGoogle, ahora: new Date() };
       // Una cuenta de Google verificada, del dominio Workspace de la empresa, sin membresía ni invitación: no abre sesión (D5, S-17).
       expect(await decidirInicioDeSesion(entrada)).toBe(false);
       // Ni siquiera con un token de invitación que no corresponde a nadie.
