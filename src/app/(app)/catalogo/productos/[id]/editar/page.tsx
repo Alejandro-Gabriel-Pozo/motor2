@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { obtenerMiNivelPermiso, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermisoEnAlgunaSucursal, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import { obtenerProductoPorId, obtenerUnidadesDelProducto } from "@/server/consultas/catalogo/productos";
 import { ProductoForm, type ProductoExistente } from "../../producto-form";
@@ -25,9 +25,9 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
   if (!gateEditar.ok) return <p className="text-red-600">{gateEditar.mensaje}</p>;
 
   // S-12 (D8 del dueño): el costo de consignación (precio y consignante) solo viaja al formulario —un componente de cliente: sus props van al navegador— si el usuario tiene
-  // `pagar_consignante` EDITAR en la sucursal activa. La consulta no lo devuelve sin la bandera, y la lista de proveedores del selector (solo se usa para elegir el consignante)
+  // `pagar_consignante` EDITAR en alguna de sus sucursales de la empresa (P20, D23: no importa cuál esté activa). La consulta no lo devuelve sin la bandera, y la lista de proveedores del selector (solo se usa para elegir el consignante)
   // tampoco se manda.
-  const { editar: puedeGestionarConsignacion } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
+  const { editar: puedeGestionarConsignacion } = await obtenerMiNivelPermisoEnAlgunaSucursal(ctx, "pagar_consignante");
 
   // M.2 (P6): cambiar el precio de venta, el factor de conversión y las unidades exige además `producto_campos_sensibles`. Sin la clave el formulario los muestra en solo lectura (con el valor guardado) y no
   // manda esos campos: «no viene» es «no cambia» en el servidor, que rechaza igual un valor distinto del guardado (`actualizarProducto`).

@@ -2,7 +2,7 @@
 
 import type { PrismaClient, TipoProducto } from "@prisma/client";
 import { azarDelProceso } from "@/lib/azar";
-import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal } from "@/server/acceso/gate";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
@@ -34,12 +34,12 @@ import { sincronizarPrecioGrupoCartaCasoDeUso } from "./casos-de-uso/sincronizar
  */
 
 /**
- * S-12 (D8 del dueño): ¿puede quien llama gestionar el COSTO DE CONSIGNACIÓN de un producto (si es de consignación, su proveedor y su precio)? Es `pagar_consignante` EDITAR en la
- * sucursal activa (piso administrador): la pantalla donde ese precio se vuelve deuda. La alta y la edición lo calculan acá, con el gate, y los casos de uso —que no chequean
- * permisos— lo reciben como dato. No se exporta: este archivo es `"use server"` y toda función exportada es un endpoint.
+ * S-12 (D8 del dueño) y P20 (D23): ¿puede quien llama gestionar el COSTO DE CONSIGNACIÓN de un producto (si es de consignación, su proveedor y su precio)? Es `pagar_consignante` EDITAR (piso administrador) en
+ * ALGUNA de sus sucursales de la empresa, no en la sucursal activa: el producto es de la empresa, y el resultado no cambia según dónde esté parado. La alta y la edición lo calculan acá, con el gate, y los
+ * casos de uso —que no chequean permisos— lo reciben como dato. No se exporta: este archivo es `"use server"` y toda función exportada es un endpoint.
  */
-async function puedeGestionarConsignacion(ctx: { usuarioId: string; sucursalId: string; db: PrismaClient }): Promise<boolean> {
-  return (await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db)).editar;
+async function puedeGestionarConsignacion(ctx: { usuarioId: string; membresias: readonly { sucursalId: string }[]; db: PrismaClient }): Promise<boolean> {
+  return (await obtenerMiNivelPermisoEnAlgunaSucursal(ctx, "pagar_consignante")).editar;
 }
 
 export interface ProductoOpcion {

@@ -83,8 +83,7 @@ export type ResultadoDarDeAltaProducto = ResultadoCaso<
 
 /**
  * Comando «editar un producto»: el id, los datos del formulario y la `puerta` (el resultado de `guardComandoDatosDeProducto`, S-52, que `validarDatosDeProducto` aplica en el lugar de
- * siempre: lee la unidad de stock a mitad de camino), y si quien lo pide puede gestionar el costo de consignación (S-12, D8 del dueño: tiene `pagar_consignante` EDITAR en la sucursal
- * activa; lo calcula la Server Action con el gate, el caso de uso no chequea permisos). Sin eso, el costo de consignación (es consignación, proveedor y precio) no se cambia: un campo que
+ * siempre: lee la unidad de stock a mitad de camino), y si quien lo pide puede gestionar el costo de consignación (S-12, D8 del dueño: tiene `pagar_consignante` EDITAR en alguna de sus sucursales de la empresa, P20; lo calcula la Server Action con el gate, el caso de uso no chequea permisos). Sin eso, el costo de consignación (es consignación, proveedor y precio) no se cambia: un campo que
  * no viene queda como estaba, uno distinto es `SIN_PERMISO_COSTO`.
  *
  * M.2: `puedeEditarCamposSensibles` dice si quien lo pide tiene `producto_campos_sensibles` EDITAR (la clave fina del precio de venta, el factor de conversión y las unidades; la calcula la Server

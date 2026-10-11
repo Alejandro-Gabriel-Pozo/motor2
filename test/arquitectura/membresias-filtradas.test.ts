@@ -17,7 +17,7 @@ const EXCEPCIONES: Record<string, string> = {
   "components/app-shell.tsx": "pinta el selector de sucursal: ahí van todas las del usuario, a propósito",
   "components/pos-shell.tsx": "pinta el selector de sucursal: ahí van todas las del usuario, a propósito",
   "app/(app)/administracion/auditoria/page.tsx": "filtra con `sucursalesVisiblesDeAuditoria` (server/consultas/permisos/auditoria.ts), que mira `ver_auditoria` en cada una",
-  "server/acceso/gate.ts": "DEFINE `sucursalesVisiblesPara`: es el helper que filtra `ctx.membresias` por permiso, no una pantalla que las recorra",
+  "server/acceso/gate.ts": "DEFINE `sucursalesVisiblesPara` (el helper que filtra `ctx.membresias` por permiso) y `obtenerMiNivelPermisoEnAlgunaSucursal` (P20: pregunta el gate de cada membresía vigente y decide con `some`; no arma un alcance de datos): no son pantallas que las recorran",
   "server/actions/con-sesion.ts": "`requerirSesionEnSucursal`: comprueba pertenencia a UNA sucursal, no arma un alcance de datos",
 };
 
