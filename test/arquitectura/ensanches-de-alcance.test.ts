@@ -129,3 +129,35 @@ describe("el guardián en sí (casos sintéticos)", () => {
     ]);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// B6 (paquete 1 de la RLS por sucursal): el ensanche de la TRANSACCIÓN DE UNA INVITACIÓN. Quien acepta no tiene membresías ni `ctx`, así que ninguna de las cinco funciones de arriba le sirve
+// (todas parten de un contexto de usuario); y aceptar escribe `RegistroAuditoria`, que con las políticas exige alcance de escritura. Por eso `invitacionConSuBase` abre su transacción con
+// lectura y escritura en las sucursales de LA PROPIA invitación y nada más. Es el único sitio de `src/` que le pasa un alcance a `transaccionDeLaEmpresa` fuera de `base.ts`; el comportamiento (el
+// alcance exacto, con las políticas puestas) lo prueba `test/aislamiento/invitacion-con-politicas-de-sucursal.test.ts`. Mutaciones: quitar el segundo argumento de `transaccionDeLaEmpresa`, leer
+// todas las sucursales de la empresa o sacar el chequeo del estado ⇒ rojo (acá y en ese test).
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+describe("el alcance de la transacción de una invitación sale de las sucursales de la propia invitación (B6)", () => {
+  const invitacion = leer("src/server/sesion/invitacion.ts");
+
+  it("`invitacionConSuBase` abre su transacción con el alcance de `alcanceDeLaInvitacion(db, vista)`, y es el único lugar de src/ (fuera de base.ts) que pasa un alcance a una transacción de empresa", () => {
+    const propias = llamadasAEnsanches(invitacion, ["transaccionDeLaEmpresa"]).map((l) => [l.funcion, ...l.argumentos]);
+    expect(propias).toEqual([["invitacionConSuBase", "vista.empresaId", "await alcanceDeLaInvitacion(db, vista)"]]);
+    const ajenos: string[] = [];
+    for (const [ruta, codigo] of fuentesDe(RAIZ, "src")) {
+      if (ruta === "src/server/sesion/base.ts" || ruta === "src/server/sesion/invitacion.ts") continue;
+      for (const l of llamadasAEnsanches(codigo, ["transaccionDeLaEmpresa", "transaccionDeEmpresa"])) if (l.argumentos.length > 1) ajenos.push(`${ruta}: ${l.funcion ?? "(módulo)"}(${l.argumentos.join(", ")})`);
+    }
+    expect(ajenos, "una transacción de empresa con alcance propio es un ensanche: declaralo acá").toEqual([]);
+  });
+
+  it("`alcanceDeLaInvitacion` no abre nada si la invitación no está pendiente, y lee las sucursales solo de la propia invitación (por su id) o la primera activa de SU empresa", () => {
+    const cuerpo = funcionesDelArchivo(invitacion).get("alcanceDeLaInvitacion")!.getText();
+    expect(cuerpo.indexOf('vista.estado !== "PENDIENTE"')).toBeGreaterThan(-1);
+    expect(cuerpo.indexOf('vista.estado !== "PENDIENTE"')).toBeLessThan(cuerpo.indexOf(".findMany("));
+    expect(cuerpo).toMatch(/invitacionSucursal\.findMany\(\{ where: \{ invitacionId: vista\.id, empresaId: vista\.empresaId \}/);
+    expect(cuerpo).toMatch(/sucursal\.findFirst\(\{ where: \{ empresaId: vista\.empresaId, activo: true \}/);
+    // Nada de «todas las sucursales de la empresa» ni de membresías: las únicas lecturas son esas dos.
+    expect([...cuerpo.matchAll(/\.(\w+)\.find(?:Many|First)\(/g)].map((m) => m[1]).sort()).toEqual(["invitacionSucursal", "sucursal"]);
+  });
+});

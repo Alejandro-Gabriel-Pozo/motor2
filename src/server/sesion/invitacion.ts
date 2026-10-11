@@ -2,9 +2,9 @@ import "server-only";
 import type { PrismaClient } from "@prisma/client";
 import { estadoEfectivoDeInvitacion, esTokenConFormaValida, type AccesoDeInvitacion } from "@/core/features/empresa/invitacion";
 import { hashDeToken } from "@/core/seguridad/tokens";
-import { dbDeEmpresa, dbDeInvitacion, transaccionDeLaEmpresa, verificarRolDeEjecucionDelProceso } from "@/server/sesion/base";
+import { dbDeEmpresa, dbDeInvitacion, transaccionDeLaEmpresa, verificarRolDeEjecucionDelProceso, type AlcanceDeSucursal } from "@/server/sesion/base";
 import type { Transaccion } from "@/lib/db-tipos";
-import { abreLaVia3, type VistaDeInvitacion } from "@/core/auth/invitacion";
+import { abreLaVia3, TIPO_INVITACION_USUARIO, type VistaDeInvitacion } from "@/core/auth/invitacion";
 
 /**
  * La invitación LEÍDA por su token (Hito 3, B3-3 de `docs/plan-hito-3-pureza.md`): lo que de `core/auth/invitacion.ts` tocaba la base. El invitado todavía no tiene empresa
@@ -61,7 +61,27 @@ export interface InvitacionConSuBase {
 export async function invitacionConSuBase(token: string | undefined, ahora: Date): Promise<InvitacionConSuBase | null> {
   const vista = await invitacionDelToken(token, ahora);
   if (!vista) return null;
-  return { vista, db: dbDeEmpresa(vista.empresaId), transaccion: transaccionDeLaEmpresa(vista.empresaId) };
+  const db = dbDeEmpresa(vista.empresaId);
+  return { vista, db, transaccion: transaccionDeLaEmpresa(vista.empresaId, await alcanceDeLaInvitacion(db, vista)) };
+}
+
+/**
+ * ENSANCHE del alcance por sucursal (ADR-028; lo declara `ensanches-de-alcance.test.ts`): la transacción de una invitación PENDIENTE se abre con lectura y escritura SOLO en las
+ * sucursales de la propia invitación. Quien acepta todavía no tiene membresías ni contexto de usuario (no hay `sucursalesVisiblesPara` que consultar), y las políticas por sucursal
+ * exigen alcance de escritura para dejar `RegistroAuditoria` (la de cada sucursal y también la de empresa, que sin alcance fijado no se escribe): sin esto aceptar daría 42501.
+ *  - invitación de `usuario`: las filas de `InvitacionSucursal` de ESA invitación (por su id; la clave foránea compuesta ya las ata a su empresa);
+ *  - `gerente` y `vinculacion`: no traen sucursales. El gerente queda como admin de la primera sucursal activa (el mismo criterio de `incorporarPrimerGerente`); la vinculación solo
+ *    escribe la auditoría de empresa, que pide un alcance cualquiera, y se ancla a esa misma sucursal.
+ * Una invitación que no está pendiente no abre alcance (nadie escribe con ella: falla cerrado), ni una sin sucursales. Si entre esta lectura y la transacción cambia la primera sucursal
+ * activa, la escritura da 42501 y se deshace todo: nunca escribe fuera de lo que se leyó acá.
+ */
+async function alcanceDeLaInvitacion(db: PrismaClient, vista: VistaDeInvitacion): Promise<AlcanceDeSucursal | undefined> {
+  if (vista.estado !== "PENDIENTE") return undefined;
+  const ids =
+    vista.tipo === TIPO_INVITACION_USUARIO
+      ? (await db.invitacionSucursal.findMany({ where: { invitacionId: vista.id, empresaId: vista.empresaId }, select: { sucursalId: true }, orderBy: { sucursalId: "asc" } })).map((f) => f.sucursalId)
+      : [(await db.sucursal.findFirst({ where: { empresaId: vista.empresaId, activo: true }, orderBy: { creadoEn: "asc" }, select: { id: true } }))?.id].filter((id) => id !== undefined);
+  return ids.length === 0 ? undefined : { lectura: ids, escritura: ids };
 }
 
 /**
