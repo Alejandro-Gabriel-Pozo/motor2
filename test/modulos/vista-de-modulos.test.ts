@@ -89,6 +89,7 @@ describe("textos", () => {
     expect(nombreDeModulo("no-existe")).toBe("no-existe");
     expect(explicarErrorDeCambio({ motivo: "LO_REQUIEREN_OTROS", modulo: "stock", requeridoPor: ["salon", "traspasos"] })).toBe("Stock no se puede desactivar mientras estén activos: Salón, Traspasos.");
     expect(explicarErrorDeCambio({ motivo: "EN_DESARROLLO", modulo: "salon" })).toContain("en desarrollo");
+    expect(explicarErrorDeCambio({ motivo: "EN_DESARROLLO", modulo: "servicios" })).toBe("Gastos y servicios está en desarrollo y todavía no se puede activar.");
     expect(explicarErrorDeCambio({ motivo: "DESCONOCIDO", modulo: "x" })).toContain("no existe");
     expect(explicarErrorDeCambio({ motivo: "NO_ES_VENDIBLE", modulo: "stock" })).toContain("fijo o de soporte");
   });

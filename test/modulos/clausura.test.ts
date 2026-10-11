@@ -92,6 +92,16 @@ describe("modulosEfectivos (clausura por requiere)", () => {
   });
 });
 
+describe("Gastos y servicios (servicios), el módulo real en desarrollo", () => {
+  it("una fila `servicios` en el registro no cuenta: no está efectivo y no trae Proveedores básico", () => {
+    expect(ordenados(modulosEfectivos(["servicios"]))).toEqual(["administracion"]);
+  });
+
+  it("no se activa: el pedido se rechaza con EN_DESARROLLO", () => {
+    expect(validarCambioDeModulos([], { activar: ["servicios"] })).toEqual({ ok: false, errores: [{ motivo: "EN_DESARROLLO", modulo: "servicios" }] });
+  });
+});
+
 describe("modulosQueIncluyen («incluido por X»)", () => {
   it("Stock lo traen Salón y Compras; un módulo activo se incluye a sí mismo", () => {
     expect(ordenados(modulosQueIncluyen("stock", ["salon", "compras", "carta"]))).toEqual(["compras", "salon"]);

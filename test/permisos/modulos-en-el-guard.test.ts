@@ -183,6 +183,8 @@ describe("el guard con el registro de módulos de la empresa", () => {
   it("denegacionDeModulo distingue un módulo apagado de uno en desarrollo", () => {
     expect(denegacionDeModulo("stock", new Set(["administracion"]))).toEqual({ motivo: "MODULO_NO_ACTIVO", modulo: "stock" });
     expect(denegacionDeModulo("stock", new Set(["stock"]))).toBeNull();
+    // Gastos y servicios está en desarrollo: nunca es efectivo, y la denegación lo dice (no «apagado»).
+    expect(denegacionDeModulo("servicios", new Set(["administracion"]))).toEqual({ motivo: "MODULO_EN_DESARROLLO", modulo: "servicios" });
   });
 });
 
