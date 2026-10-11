@@ -6,7 +6,7 @@ import { registrarVenta, type ItemVentaInput } from "@/server/actions/movimiento
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
-import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 
 interface FilaVenta {
   productoId: string;
@@ -63,7 +63,7 @@ export function VentaForm({ secciones }: { secciones: { id: string; nombre: stri
 
     startTransition(async () => {
       const resultado = await registrarVenta({
-        fecha: new Date(fecha),
+        fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
         seccionId,
         proveedorId,
         nroFactura: nroFactura || undefined,
