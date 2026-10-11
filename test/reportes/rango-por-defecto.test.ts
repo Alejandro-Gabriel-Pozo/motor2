@@ -1,5 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { rangoUtc } from "../../src/core/reportes/periodo-tipos";
 import { resolverRangoPorDefecto, resolverRangoDeReporte, ETIQUETA_RANGO, MAXIMO_DE_DIAS_DE_UN_RANGO } from "../../src/core/reportes/rango-por-defecto";
 
 describe("resolverRangoPorDefecto", () => {
@@ -72,10 +73,9 @@ describe("resolverRangoDeReporte", () => {
     expect(r).toEqual({ opcion: "personalizado", desdeISO: "2026-03-01", hastaISO: "2026-09-22" });
   });
 
-  it("desde inválido pasa igual (sin validar) — pantalla de error del reporte se hace cargo", () => {
+  it("desde inválido se ignora y cae al rango por defecto (antes pasaba tal cual y el reporte lanzaba un RangeError)", () => {
     const r = resolverRangoDeReporte({ desde: "no-es-una-fecha" }, ahora);
-    expect(r.opcion).toBe("personalizado");
-    expect(r.desdeISO).toBe("no-es-una-fecha");
+    expect(r).toEqual({ opcion: "30d", desdeISO: "2026-08-24", hastaISO: "2026-09-22" });
   });
 
   it("rango=personalizado sin fechas (primer submit al elegir 'Fechas personalizadas') no cae a 30d: queda 'personalizado' con los 30 días como punto de partida para editar", () => {
@@ -119,8 +119,7 @@ describe("resolverRangoDeReporte: nunca más de 366 días (S-28)", () => {
     expect(resolverRangoDeReporte({ desde: "no-es-una-fecha" }, ahora)).not.toHaveProperty("recortadoDesde");
   });
 
-  it("lo que no es una fecha, o un rango al revés, no se toca (el reporte se hace cargo)", () => {
-    expect(resolverRangoDeReporte({ desde: "no-es-una-fecha", hasta: "2026-09-22" }, ahora).desdeISO).toBe("no-es-una-fecha");
+  it("un rango al revés no se toca (el reporte sale vacío); lo que no es una fecha se ignora (ver «fecha inválida» abajo)", () => {
     expect(resolverRangoDeReporte({ desde: "2026-09-22", hasta: "2020-01-01" }, ahora)).toEqual({ opcion: "personalizado", desdeISO: "2026-09-22", hastaISO: "2020-01-01" });
   });
 
@@ -145,6 +144,67 @@ describe("resolverRangoDeReporte: nunca más de 366 días (S-28)", () => {
   it("los rangos por defecto («30d», «mes») y los que ya entraban en el tope no cambian", () => {
     expect(resolverRangoDeReporte({}, ahora)).toEqual({ opcion: "30d", desdeISO: "2026-08-24", hastaISO: "2026-09-22" });
     expect(resolverRangoDeReporte({ desde: "2026-01-01", hasta: "2026-06-30" }, ahora)).toEqual({ opcion: "personalizado", desdeISO: "2026-01-01", hastaISO: "2026-06-30" });
+  });
+});
+
+/**
+ * Fecha inválida en la URL (`/reportes/periodo?desde=2026-13-45`): antes el rango salía con el texto crudo, la página hacía `new Date(texto)` (Invalid Date) y `rangoUtc` lanzaba un
+ * RangeError que tumbaba la pantalla. Reloj FIJO e inyectado (`ahora`); nunca se mezcla con el real.
+ */
+describe("resolverRangoDeReporte: fecha inválida en la URL (el reporte no lanza)", () => {
+  const ahora = new Date("2026-09-22T12:00:00Z");
+  const POR_DEFECTO = { opcion: "30d", desdeISO: "2026-08-24", hastaISO: "2026-09-22" };
+
+  /** Lo que hace la página con el rango: `new Date(iso)` de cada extremo y `rangoUtc` (donde se lanzaba el RangeError). */
+  const comoLoConsumeElReporte = (r: { desdeISO: string; hastaISO: string }) => rangoUtc(new Date(r.desdeISO), new Date(r.hastaISO));
+
+  it.each([
+    ["fecha inexistente (31 de febrero)", "2026-02-31"],
+    ["mes 13 y día 45", "2026-13-45"],
+    ["texto", "abc"],
+    ["texto largo", "no-es-una-fecha"],
+    ["vacío", ""],
+    ["formato sin ceros", "2026-9-1"],
+  ])("«desde» inválido (%s) cae al rango por defecto y el reporte puede consumirlo", (_caso, desde) => {
+    const r = resolverRangoDeReporte({ desde }, ahora);
+    expect(r).toEqual(POR_DEFECTO);
+    expect(() => comoLoConsumeElReporte(r)).not.toThrow();
+  });
+
+  it("«desde» inválido respeta «rango=mes»: cae al mes en curso, no a 30 días", () => {
+    expect(resolverRangoDeReporte({ desde: "2026-13-45", rango: "mes" }, ahora)).toEqual({ opcion: "mes", desdeISO: "2026-09-01", hastaISO: "2026-09-22" });
+  });
+
+  it("«desde» inválido con «hasta» válido: se ignoran los dos, cae al rango por defecto", () => {
+    const r = resolverRangoDeReporte({ desde: "abc", hasta: "2026-09-10" }, ahora);
+    expect(r).toEqual(POR_DEFECTO);
+    expect(() => comoLoConsumeElReporte(r)).not.toThrow();
+  });
+
+  it.each([
+    ["fecha inexistente (31 de febrero)", "2026-02-31"],
+    ["mes 13 y día 45", "2026-13-45"],
+    ["texto", "abc"],
+    ["vacío", ""],
+  ])("solo «hasta» inválido (%s) con «desde» válido: «hasta» pasa a hoy y «desde» se respeta", (_caso, hasta) => {
+    const r = resolverRangoDeReporte({ desde: "2026-09-01", hasta }, ahora);
+    expect(r).toEqual({ opcion: "personalizado", desdeISO: "2026-09-01", hastaISO: "2026-09-22" });
+    expect(() => comoLoConsumeElReporte(r)).not.toThrow();
+  });
+
+  it("solo «hasta» inválido, sin «desde»: rango por defecto", () => {
+    const r = resolverRangoDeReporte({ hasta: "2026-02-31" }, ahora);
+    expect(r).toEqual(POR_DEFECTO);
+    expect(() => comoLoConsumeElReporte(r)).not.toThrow();
+  });
+
+  it("«rango=personalizado» con «desde» inválido sigue siendo personalizado, con los 30 días como punto de partida", () => {
+    expect(resolverRangoDeReporte({ rango: "personalizado", desde: "abc" }, ahora)).toEqual({ opcion: "personalizado", desdeISO: "2026-08-24", hastaISO: "2026-09-22" });
+  });
+
+  it("una fecha válida sigue igual (también el 29 de febrero de un año bisiesto)", () => {
+    expect(resolverRangoDeReporte({ desde: "2026-09-01", hasta: "2026-09-10" }, ahora)).toEqual({ opcion: "personalizado", desdeISO: "2026-09-01", hastaISO: "2026-09-10" });
+    expect(resolverRangoDeReporte({ desde: "2024-02-29", hasta: "2024-03-10" }, ahora)).toEqual({ opcion: "personalizado", desdeISO: "2024-02-29", hastaISO: "2024-03-10" });
   });
 });
 
