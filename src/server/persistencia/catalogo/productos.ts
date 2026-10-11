@@ -115,6 +115,14 @@ export async function fijarActivaDePresentacion(db: Prisma.TransactionClient, ar
   return count > 0;
 }
 
+/**
+ * Toma la fila del producto (`FOR UPDATE`) hasta el final de la transacción: quien la lee después ve el último estado confirmado y nadie puede cambiarle el precio entre su lectura y su escritura (D4:
+ * poner a la venta un producto decide con el precio, y un cambio de precio concurrente espera a que termine). No lee ni escribe datos.
+ */
+export async function tomarFilaDeProducto(db: Prisma.TransactionClient, productoId: string): Promise<void> {
+  await db.$queryRaw`SELECT id FROM "Producto" WHERE id = ${productoId} FOR UPDATE`;
+}
+
 /** Disponibilidad del producto en UNA sucursal (si la sucursal no tenía fila, la crea con ese estado). */
 export async function fijarDisponibilidadEnSucursal(db: Prisma.TransactionClient, args: { sucursalId: string; productoId: string; disponible: boolean }): Promise<void> {
   await db.disponibilidadProducto.upsert({

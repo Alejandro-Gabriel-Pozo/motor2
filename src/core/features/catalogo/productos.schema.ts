@@ -200,14 +200,19 @@ export interface ComandoActualizarActivaPresentacion {
  */
 export type ResultadoActualizarActivaPresentacion = ResultadoCaso<null, "PRESENTACION_NO_ENCONTRADA">;
 
-/** Comando «disponibilidad de un producto en la sucursal activa»: el id y el booleano, sin validar (sin guard). */
+/**
+ * Comando «disponibilidad de un producto en la sucursal activa»: el id y el booleano, sin validar (sin guard), y (D4) si quien lo pide tiene `producto_campos_sensibles` EDITAR (lo calcula la Server
+ * Action con el gate; el caso de uso no chequea permisos). Sin ella, poner a la venta un producto de venta sin precio es `SIN_PERMISO_CAMPOS_SENSIBLES`.
+ */
 export interface ComandoActualizarDisponibilidadProducto {
   productoId: string;
   disponible: boolean;
+  puedeEditarCamposSensibles: boolean;
 }
 
 /**
  *  - `PRODUCTO_NO_ENCONTRADO`: el id no es de un producto;
- *  - `TIENE_DEPENDENCIAS`: al desactivar, algo depende de él en esta sucursal (la receta vigente de un plato disponible acá, o saldo en una sección de acá).
+ *  - `TIENE_DEPENDENCIAS`: al desactivar, algo depende de él en esta sucursal (la receta vigente de un plato disponible acá, o saldo en una sección de acá);
+ *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (D4): al activar, es un producto de venta con precio de venta 0 («sin precio definido») y quien lo pide no tiene `producto_campos_sensibles`. Apagar nunca lo devuelve.
  */
-export type ResultadoActualizarDisponibilidadProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS">;
+export type ResultadoActualizarDisponibilidadProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS" | "SIN_PERMISO_CAMPOS_SENSIBLES">;
