@@ -33,7 +33,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
   const { editar, sugerido, sugeridoNombre } = unicosDeUrl(await searchParams);
   // S-13: el gasto en compras por insumo es de `reporte_compras` (piso administrador), no de quien cuenta (`conteo_frecuencia`, piso operario). La consulta lo niega por defecto.
   const { ver: veImportes } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_compras", ctx.db);
-  const rango = resolverRangoPorDefecto(undefined, new Date());
+  const rango = resolverRangoPorDefecto(undefined, new Date(), ctx.empresaZonaHoraria);
   const [filas, sugerencias] = await Promise.all([
     listarFrecuenciasConteo(ctx.sucursalId),
     // El último día se cierra a las 23:59:59.999 de la zona de la empresa (P1): las compras del formulario (mediodía argentino) del último día tienen que entrar.

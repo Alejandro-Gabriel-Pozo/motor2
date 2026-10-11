@@ -5,6 +5,7 @@ import { cargarCatalogoDeProductos, cargarClasificacionNoComestibles, obtenerCos
 import { calcularCostosYMargenes } from "@/server/lecturas/reportes/costos";
 import { cargarLineasDelPeriodoDeSucursales } from "@/server/consultas/reportes/periodo";
 import { disponibilidadDeProductosEnSucursales } from "@/server/lecturas/catalogo/disponibilidad";
+import { ZONA_ARGENTINA } from "@/core/tiempo/zona-horaria";
 import type { Db } from "@/lib/db-tipos";
 import type { CostoMP, FilaResumenConsolidado, InfoProductoReporte, ItemPeriodo } from "@/core/reportes/public";
 
@@ -33,11 +34,13 @@ import type { CostoMP, FilaResumenConsolidado, InfoProductoReporte, ItemPeriodo 
 export async function obtenerResumenConsolidado(
   sucursales: { id: string; nombre: string }[],
   db: Db,
-  ahora: Date
+  ahora: Date,
+  // La zona con la que se corta cada día del rango (P1, O.251): la página pasa `ctx.empresaZonaHoraria`. Opcional, con la zona argentina por defecto.
+  zona: string = ZONA_ARGENTINA
 ): Promise<FilaResumenConsolidado[]> {
   if (sucursales.length === 0) return [];
   // El mismo rango que `obtenerResumenOperativo` sin rango explícito (el default del selector, ver rango-por-defecto.ts).
-  const rango = resolverRangoPorDefecto(undefined, ahora);
+  const rango = resolverRangoPorDefecto(undefined, ahora, zona);
   const desde = new Date(rango.desdeISO);
   const hasta = new Date(rango.hastaISO);
 
@@ -51,7 +54,7 @@ export async function obtenerResumenConsolidado(
       sucursalIds,
       catalogo.map((p) => p.id),
       db
-    ).then((disponibilidad) => cargarLineasDelPeriodoDeSucursales(sucursalIds, desde, hasta, {}, db, { clasificacion, catalogo, disponibilidad })),
+    ).then((disponibilidad) => cargarLineasDelPeriodoDeSucursales(sucursalIds, desde, hasta, {}, db, { clasificacion, catalogo, disponibilidad }, zona)),
     // El costo de reposición de HOY de todas las sucursales en una lectura (O.38b, D2).
     obtenerCostoActualPorMPDeSucursales(sucursalIds, db),
   ]);

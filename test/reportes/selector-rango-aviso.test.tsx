@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { SelectorRango } from "../../src/components/selector-rango";
 import { MAXIMO_DE_DIAS_DE_UN_RANGO, resolverRangoDeReporte } from "../../src/core/reportes/public";
+import { ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
 
 /**
  * M-21 (T16): el recorte de un rango a 366 días no avisaba: solo cambiaba la fecha que muestra el selector, y el reporte parecía ser lo que se pidió. Rotación de mesas, en cambio, sí avisa
@@ -11,7 +12,7 @@ import { MAXIMO_DE_DIAS_DE_UN_RANGO, resolverRangoDeReporte } from "../../src/co
  */
 const ahora = new Date("2026-09-22T12:00:00Z");
 const dibujar = (sp: { desde?: string; hasta?: string }) => {
-  const rango = resolverRangoDeReporte(sp, ahora);
+  const rango = resolverRangoDeReporte(sp, ahora, ZONA_ARGENTINA);
   return renderToStaticMarkup(<SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />);
 };
 

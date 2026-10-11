@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { ZONA_ARGENTINA, diaDeCalendario } from "../../src/core/tiempo/zona-horaria";
 
 /**
  * Camino CONTEO (Task #26, Diseño B — docs/plan-rendimiento-recetas-2026-09-22.md, sección nueva): con dos
@@ -65,7 +66,8 @@ test("con dos anclas de Conteo Físico que cubren el insumo, la fila se mide (no
     await expect(fila).toContainText("0%"); // sin "+" — 0 no es > 0 (mismo criterio que el resto de la fila)
     // El Δ stock deja de mostrarse: en su lugar, las dos fechas ancla — con las que se midió el tramo.
     const anclaDesdeIso = anclaDesde.toISOString().slice(0, 10);
-    const anclaHastaIso = hoy.toISOString().slice(0, 10);
+    // El «hasta» del rango por defecto es el día de hoy en hora argentina (P1, O.251), no el de UTC.
+    const anclaHastaIso = diaDeCalendario(hoy, ZONA_ARGENTINA);
     await expect(fila.getByText(`contado ${anclaDesdeIso} → ${anclaHastaIso}`)).toBeVisible();
     await expect(fila.getByText(/de ruido esperable por comprar de a lotes/)).toHaveCount(0); // método CONTEO: sin banda de ruido de lote (D4)
 

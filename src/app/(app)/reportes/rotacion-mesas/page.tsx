@@ -25,7 +25,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const rango = resolverRangoDeReporte(sp, new Date());
+  const rango = resolverRangoDeReporte(sp, new Date(), ctx.empresaZonaHoraria);
   const rep = await generarReporteRotacionMesas(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.empresaZonaHoraria, ctx.db);
 
   return (

@@ -212,6 +212,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "P1 paso 4 (CAMBIA COMPORTAMIENTO, el día en hora argentina): Rendimiento de recetas corta los días en la zona de la empresa (no en UTC). Cambian SOLO 4 líneas, `anclaDesde`/`anclaHasta` de las dos filas de la entrada rendimiento-recetas.calcularRendimientoRecetasSimples (Central, período): el día de la ancla pasa de ser la medianoche UTC (`T00:00:00.000Z`) a ser el inicio de ese día argentino (`T03:00:00.000Z`), el mismo día calendario (2026-02-18, 2026-03-10, 2026-03-06 y 2026-03-12). Ningún número, ningún método y ningún conteo de consultas cambia.",
       },
+      {
+        blob: "f6652b056d5fe76d136f98f96925e9f095a7209a",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, «P1 paso 1: mediodiaDelDia(dia, zona) en core/tiempo, con ejemplos, propiedad y mutaciones».
+        commit: "2ea2dd1",
+        motivo:
+          "P1 paso 3 (O.251; CAMBIA COMPORTAMIENTO, plan P1 «el día en hora argentina»): Período y su familia cortan cada día en la zona de la empresa (`rangoDeDias(…, zona)`) y no en UTC. Cambia SOLO 6 líneas, todas `Date(…)` de desde/hasta (+3 h, Argentina es UTC−3): las entradas 27 y 29 (periodo.obtenerReportePorPeriodo y generarReporteVentasPorCategoria: desde 02-16T00:00Z → 02-16T03:00Z, hasta 03-15T23:59:59.999Z → 03-16T02:59:59.999Z) y el financiero de la entrada 34 (resumen-operativo: desde 02-14T00:00Z → 02-14T03:00Z, hasta como arriba). Ningún número, ninguna consulta ni su conteo cambia.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {

@@ -24,7 +24,7 @@ import { cargarOfertasDeProveedores } from "../src/server/lecturas/catalogo/ofer
 const NOMBRE_SUCURSAL = "La Cuadra";
 // Ventana de 6 meses — mismo criterio que fechaDe en el ejecutor: termina HOY. OJO acá: DESDE se calcula ANTES de fijarle
 // la hora a HASTA (23:59:59.999) — si se derivara de HASTA ya con esa hora, heredaría 23:59:59.999 y la consulta cruda
-// (que no pasa por rangoUtc, a diferencia de los reportes) arrancaría casi un día entero tarde.
+// (que no pasa por rangoDeDias, a diferencia de los reportes) arrancaría casi un día entero tarde.
 const HASTA = new Date();
 const DESDE = new Date(HASTA);
 DESDE.setUTCDate(DESDE.getUTCDate() - 190); // margen amplio a propósito (guion real: 182 días) — mejor de más que cortar el arranque real

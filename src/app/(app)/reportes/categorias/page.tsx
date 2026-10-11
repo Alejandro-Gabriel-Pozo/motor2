@@ -18,10 +18,10 @@ export default async function CategoriasPage({ searchParams }: { searchParams: P
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const rango = resolverRangoDeReporte(sp, new Date());
+  const rango = resolverRangoDeReporte(sp, new Date(), ctx.empresaZonaHoraria);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
-  const rep = await generarReporteVentasPorCategoria(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), ctx.db);
+  const rep = await generarReporteVentasPorCategoria(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), ctx.db, ctx.empresaZonaHoraria);
 
   return (
     <div className="flex flex-col gap-6">
