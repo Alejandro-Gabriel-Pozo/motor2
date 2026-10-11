@@ -132,6 +132,19 @@ export function finDelDiaDe(instante: Date, zona: string): Date {
 }
 
 /**
+ * Las 12:00 de ese día en la zona, como instante (P1): lo que guardan los formularios que piden «el día» de una operación (no la hora). Es un solo dato, un instante; el día de
+ * calendario sale de leerlo en la zona. El mediodía cae en el MISMO día para cualquier zona entre UTC−12 y UTC+8:59, así que cortar el día en UTC, en Argentina o en la zona de
+ * la empresa da el mismo día para lo cargado a mano. Misma doble corrección que `inicioDelDia` (el desfase puede cambiar entre la hora nominal y la real). `dia`: «AAAA-MM-DD».
+ */
+export function mediodiaDelDia(dia: string, zona: string): Date {
+  const [y, m, d] = leerDia(dia);
+  const nominal = Date.UTC(y, m - 1, d, 12);
+  const primero = nominal - desfaseDe(nominal, zona);
+  const corregido = nominal - desfaseDe(primero, zona);
+  return new Date(corregido);
+}
+
+/**
  * Rango inclusivo [inicio del día `desde`, fin del día `hasta`] en la zona. `desde`/`hasta` llegan como fecha "de solo día" (`new Date("AAAA-MM-DD")`:
  * medianoche UTC, sin importar la zona del navegador): el día que nombran se lee en UTC, y los límites se calculan en la zona pedida.
  */

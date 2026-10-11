@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validarFechaOperacion } from "../../src/core/datos/fecha-operacion";
+import { ZONA_ARGENTINA, mediodiaDelDia } from "../../src/core/tiempo/zona-horaria";
 
 // 2026-10-01 12:00 en Argentina (UTC-3) = 15:00 UTC.
 const AHORA = new Date("2026-10-01T15:00:00Z");
@@ -39,5 +40,18 @@ describe("validarFechaOperacion", () => {
     expect(validarFechaOperacion(new Date(AHORA.getTime() - 400 * DIA), AHORA).ok).toBe(true);
     expect(validarFechaOperacion(new Date(AHORA.getTime() - 400 * DIA - 1), AHORA)).toMatchObject({ ok: false, codigo: "rango" });
     expect(validarFechaOperacion(new Date("1970-01-01"), AHORA).ok).toBe(false);
+  });
+});
+
+describe("validarFechaOperacion con el mediodía argentino que guardan los formularios (P1)", () => {
+  // Los tres instantes son el 1/10 en Argentina: a las 00:00, a las 21:00 y a las 23:59.
+  it.each([
+    ["00:00 argentinas", "2026-10-01T03:00:00Z"],
+    ["21:00 argentinas", "2026-10-02T00:00:00Z"],
+    ["23:59 argentinas", "2026-10-02T02:59:00Z"],
+  ])("el mediodía de mañana (2/10) entra a las %s; el de pasado mañana (3/10) no", (_hora, ahoraIso) => {
+    const ahora = new Date(ahoraIso);
+    expect(validarFechaOperacion(mediodiaDelDia("2026-10-02", ZONA_ARGENTINA), ahora).ok).toBe(true);
+    expect(validarFechaOperacion(mediodiaDelDia("2026-10-03", ZONA_ARGENTINA), ahora).ok).toBe(false);
   });
 });

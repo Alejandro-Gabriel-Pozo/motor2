@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
   ZONA_ARGENTINA,
@@ -11,6 +12,7 @@ import {
   horaDelDia,
   inicioDelDia,
   inicioDelDiaDe,
+  mediodiaDelDia,
   rangoDeDias,
   sumarDias,
 } from "../../src/core/tiempo/zona-horaria";
@@ -146,5 +148,45 @@ describe("sumarDias y días inválidos", () => {
   it("un día que no es AAAA-MM-DD es un error, no un Invalid Date silencioso", () => {
     expect(() => inicioDelDia("26/09/2026", ZONA_ARGENTINA)).toThrow(RangeError);
     expect(() => finDelDia("2026-9-26", ZONA_ARGENTINA)).toThrow(RangeError);
+  });
+});
+
+describe("mediodiaDelDia (P1: lo que guardan los formularios que piden el día)", () => {
+  it.each([
+    ["2026-10-10", "2026-10-10T15:00:00.000Z"],
+    ["2026-12-31", "2026-12-31T15:00:00.000Z"],
+    ["2028-02-29", "2028-02-29T15:00:00.000Z"], // bisiesto
+    ["2026-02-28", "2026-02-28T15:00:00.000Z"],
+    ["2026-03-01", "2026-03-01T15:00:00.000Z"],
+  ])("en Argentina, %s → %s", (dia, esperado) => {
+    expect(iso(mediodiaDelDia(dia, ZONA_ARGENTINA))).toBe(esperado);
+  });
+
+  it("en Nueva York cae a las 12:00 locales también en los días de cambio de horario", () => {
+    for (const dia of ["2026-03-08", "2026-11-01", "2026-07-15", "2026-01-15"]) {
+      const m = mediodiaDelDia(dia, NY);
+      expect(formatearHora(m, NY), dia).toBe("12:00");
+      expect(diaDeCalendario(m, NY), dia).toBe(dia);
+    }
+  });
+
+  it("un día que no es AAAA-MM-DD es un error, no un Invalid Date silencioso", () => {
+    expect(() => mediodiaDelDia("26/09/2026", ZONA_ARGENTINA)).toThrow(RangeError);
+    expect(() => mediodiaDelDia("2026-9-26", ZONA_ARGENTINA)).toThrow(RangeError);
+  });
+
+  it("propiedad: leer el instante en la misma zona devuelve el mismo día (Argentina, UTC, Nueva York, Calcuta); en Argentina también leído en UTC", () => {
+    const dias = fc.integer({ min: 0, max: 365 * 12 }).map((n) => sumarDias("2020-01-01", n));
+    fc.assert(
+      fc.property(dias, (dia) => {
+        for (const zona of [ZONA_ARGENTINA, ZONA_UTC, NY, "Asia/Kolkata"]) expect(diaDeCalendario(mediodiaDelDia(dia, zona), zona)).toBe(dia);
+        expect(diaDeCalendario(mediodiaDelDia(dia, ZONA_ARGENTINA), ZONA_UTC)).toBe(dia);
+      })
+    );
+  });
+
+  it("queda dentro del día: después del inicio y antes del fin, en la zona", () => {
+    const m = mediodiaDelDia("2026-10-10", ZONA_ARGENTINA);
+    expect(m >= inicioDelDia("2026-10-10", ZONA_ARGENTINA) && m <= finDelDia("2026-10-10", ZONA_ARGENTINA)).toBe(true);
   });
 });
