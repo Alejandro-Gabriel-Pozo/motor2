@@ -141,6 +141,42 @@ jobs:
             console.log("===== TESTS QUE FALLARON: " + rojos.length + " =====");
             for (const f of rojos) console.log("\n--- " + f.archivo.replace(process.cwd() + "/", "") + "\n    " + f.test + "\n" + String(f.mensaje ?? "").split("\n").filter((l) => !l.includes("node_modules")).slice(0, 40).join("\n"));
           '
+      # Línea de base del reparto del CI en varios runners: cuántos archivos y tests corre Vitest hoy en UN solo runner y la huella (sha256) de la lista ordenada «ruta::nombre completo::estado».
+      # Cuando la suite se reparta en partes, el job `conteo` calcula lo mismo sobre la unión de las partes y las dos huellas tienen que coincidir.
+      - name: Conteo (línea de base)
+        if: always()
+        run: |
+          node - <<'EOF'
+          const fs = require("node:fs");
+          const crypto = require("node:crypto");
+          if (!fs.existsSync("resultado-vitest.json")) { console.log("No hay resultado-vitest.json: la corrida de Vitest no llegó a escribirlo."); process.exit(0); }
+          const r = JSON.parse(fs.readFileSync("resultado-vitest.json", "utf8"));
+          const raiz = process.cwd() + "/";
+          const lineas = [];
+          for (const archivo of r.testResults ?? []) for (const t of archivo.assertionResults ?? []) lineas.push(archivo.name.replace(raiz, "") + "::" + t.fullName + "::" + t.status);
+          lineas.sort();
+          const huella = crypto.createHash("sha256").update(lineas.join("\n")).digest("hex");
+          const texto = [
+            "## Conteo de Vitest (línea de base, un solo runner)",
+            "- archivos: " + (r.testResults ?? []).length,
+            "- numTotalTests: " + r.numTotalTests,
+            "- numPassedTests: " + r.numPassedTests,
+            "- numPendingTests: " + r.numPendingTests,
+            "- numFailedTests: " + r.numFailedTests,
+            "- numTodoTests: " + r.numTodoTests,
+            "- sha256 de la lista ordenada ruta::nombre::estado: " + huella,
+          ].join("\n");
+          console.log(texto);
+          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, texto + "\n");
+          EOF
+      - name: Resultado de Vitest (artefacto)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: resultado-vitest
+          path: resultado-vitest.json
+          if-no-files-found: ignore
+          retention-days: 7
 
   e2e:
     name: E2E (Playwright)
@@ -203,6 +239,33 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: npm run test:e2e
         run: npm run test:e2e
+      # Línea de base del reparto del CI: el JSON de Playwright (`resultado-playwright.json`, reporter agregado en playwright.config.ts) trae las cuatro cuentas en `stats`.
+      - name: Conteo (línea de base)
+        if: always()
+        run: |
+          node - <<'EOF'
+          const fs = require("node:fs");
+          if (!fs.existsSync("resultado-playwright.json")) { console.log("No hay resultado-playwright.json: la corrida de Playwright no llegó a escribirlo."); process.exit(0); }
+          const s = JSON.parse(fs.readFileSync("resultado-playwright.json", "utf8")).stats ?? {};
+          const texto = [
+            "## Conteo de Playwright (línea de base, un solo runner)",
+            "- total: " + (s.expected + s.unexpected + s.flaky + s.skipped),
+            "- pasados: " + s.expected,
+            "- salteados: " + s.skipped,
+            "- flaky (pasaron en el reintento): " + s.flaky,
+            "- fallados: " + s.unexpected,
+          ].join("\n");
+          console.log(texto);
+          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, texto + "\n");
+          EOF
+      - name: Resultado de Playwright (artefacto)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: resultado-playwright
+          path: resultado-playwright.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Trazas de los specs que fallaron
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
