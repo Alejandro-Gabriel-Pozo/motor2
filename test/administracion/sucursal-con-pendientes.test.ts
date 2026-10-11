@@ -126,15 +126,17 @@ describe("actualizarActivoSucursal: no se apaga una sucursal con traspasos en ca
 
   describe("NO bloquea", () => {
     it.each([
-      ["una SOLICITADA pendiente (no movió stock; la aprobación rechaza si el destino está apagado)", "SOLICITADA", surId, norteId],
-      ["una SOLICITADA hecha desde la sucursal", "SOLICITADA", norteId, surId],
-      ["RECHAZADA_DESTINO con la sucursal como DESTINO (el origen confirma el reingreso sin ella)", "RECHAZADA_DESTINO", surId, norteId],
-      ["un traspaso ACEPTADA", "ACEPTADA", surId, norteId],
-      ["un traspaso CERRADA", "CERRADA", norteId, surId],
-      ["un traspaso CANCELADA", "CANCELADA", surId, norteId],
-      ["un traspaso RECHAZADA_ORIGEN", "RECHAZADA_ORIGEN", norteId, surId],
+      ["una SOLICITADA pendiente (no movió stock; la aprobación rechaza si el destino está apagado)", "SOLICITADA", "sur", "norte"],
+      ["una SOLICITADA hecha desde la sucursal", "SOLICITADA", "norte", "sur"],
+      ["RECHAZADA_DESTINO con la sucursal como DESTINO (el origen confirma el reingreso sin ella)", "RECHAZADA_DESTINO", "sur", "norte"],
+      ["un traspaso ACEPTADA", "ACEPTADA", "sur", "norte"],
+      ["un traspaso CERRADA", "CERRADA", "norte", "sur"],
+      ["un traspaso CANCELADA", "CANCELADA", "sur", "norte"],
+      ["un traspaso RECHAZADA_ORIGEN", "RECHAZADA_ORIGEN", "norte", "sur"],
     ] as const)("%s", async (_nombre, estado, origen, destino) => {
-      await traspaso(estado, origen, destino);
+      // Los ids se asignan en el beforeEach: la tabla de arriba se arma al cargar el archivo, antes de que existan.
+      const ids = { sur: surId, norte: norteId };
+      await traspaso(estado, ids[origen], ids[destino]);
       const r = await actualizarActivoSucursal(norteId, false);
       expect(r.ok, r.mensaje).toBe(true);
       expect(await activo(norteId)).toBe(false);
