@@ -1,6 +1,6 @@
 # ADR-028: Alcance por sucursal (RLS por sucursal)
 
-> Redactado el 2026-10-10. **Estado: la Fase A (código, clasificación, generador y pruebas; sin migración) está hecha; la Fase B (las migraciones con las políticas) necesita la orden expresa del dueño y NO está aplicada en ninguna base.** El orden de despliegue y de reversa está en `docs/deploy-con-migraciones.md`. Completa ADR-002 (modelo de aislamiento) y ADR-007 (instalación multiempresa): ellos separan empresas; este separa las sucursales DE UNA MISMA empresa.
+> Redactado el 2026-10-10; actualizado el 2026-10-11. **Estado: la Fase A (código, clasificación, generador y pruebas; sin migración) está hecha. La Fase B está ESCRITA en el repositorio como parte del Paquete 1 (migraciones B1 a B6 con su `down.sql`, el guardián B7 y la prueba de subir/bajar/subir), pero necesita la orden expresa del dueño y NO está aplicada en ninguna base.** El orden de despliegue y de reversa está en `docs/deploy-con-migraciones.md`. Completa ADR-002 (modelo de aislamiento) y ADR-007 (instalación multiempresa): ellos separan empresas; este separa las sucursales DE UNA MISMA empresa.
 
 ## Contexto
 
