@@ -75,7 +75,6 @@ export async function cargarComprasParaAvisoDeDuplicado(
       sucursalId: true,
       sucursal: { select: { nombre: true } },
       fecha: true,
-      nroFactura: true,
       movimientos: { where: { proceso: "COMPRA" }, select: { precioTotal: true } },
     },
   });
@@ -86,7 +85,6 @@ export async function cargarComprasParaAvisoDeDuplicado(
     sucursalNombre: c.sucursal.nombre,
     dia: diaDeCalendario(c.fecha, ZONA_UTC),
     importe: redondearMoneda(c.movimientos.reduce((suma, m) => suma + Number(m.precioTotal), 0)),
-    numero: c.nroFactura,
     anulado: false,
   }));
 }

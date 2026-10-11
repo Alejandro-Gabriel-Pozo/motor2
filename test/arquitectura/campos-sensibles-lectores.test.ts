@@ -88,9 +88,8 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   "src/server/persistencia/compras/cargar-compra-para-anular.ts": I("Carga la compra que `anularCompra` revierte (el nombre del proveedor para el mensaje): la acción devuelve un ResultadoAccion.", "Operacion.proveedor"),
   "src/server/persistencia/compras/cargar-compra-para-corregir.ts": I("Carga la compra que `corregirCompra` rehace (el proveedor, para repetirlo): la acción devuelve un ResultadoAccion.", "Operacion.proveedor"),
   "src/server/persistencia/movimientos/cargar-validaciones-de-movimiento.ts": I(
-    "Carga las compras del proveedor (importe, N.º de factura y proveedor) para el aviso C25 de posible factura repetida de `registrarMovimiento`: la acción devuelve un ResultadoAccion cuyo mensaje nombra la sucursal, la fecha y el N.º de factura de la compra parecida (no su importe) a quien carga la compra; el dato no va a una pantalla de lectura.",
+    "Carga las compras del proveedor (importe y proveedor) para el aviso C25 de posible factura repetida de `registrarMovimiento`: lee el importe y el proveedor para comparar; el mensaje nombra sucursal y fecha, no el importe ni el número de factura. La acción devuelve un ResultadoAccion; el dato no va a una pantalla de lectura.",
     "MovimientoStock.precioTotal",
-    "Operacion.nroFactura",
     "Operacion.proveedorId",
   ),
   "src/server/persistencia/movimientos/cargar-venta-para-anular.ts": I("Carga lo que `anularVenta` necesita (el consignante de lo vendido, para el rechazo D7): la acción devuelve un ResultadoAccion.", "Producto.proveedorConsignacionId"),

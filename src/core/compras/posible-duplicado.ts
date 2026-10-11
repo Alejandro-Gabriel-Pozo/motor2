@@ -1,10 +1,9 @@
 /**
- * Aviso C25 «posible factura repetida» al registrar una compra: TODA la empresa, ±7 días, mismo proveedor e importe. Nombra la sucursal y NO bloquea
+ * Aviso C25 «posible factura repetida» al registrar una compra: TODA la empresa, ±7 días, mismo proveedor e importe. Nombra la sucursal y la fecha (nunca el N.º de factura ni el importe: `Operacion.nroFactura` exige piso administrador y quien carga la compra puede ser operario) y NO bloquea
  * (la factura duplicada de verdad —mismo proveedor y mismo N.º en la sucursal— la frena el índice único; esto es solo una pista para quien carga).
  * Módulo PURO (P0): sin reloj, zona horaria ni base. El DÍA de cada compra lo calcula quien lee la base («AAAA-MM-DD»; la fecha de compra es un día de calendario
  * guardado a medianoche UTC y se lee en UTC) y acá se compara como TEXTO.
  */
-import { formatearNumeroComprobante, leerNumeroComprobante } from "@/core/datos/numero-comprobante";
 import { redondearMoneda } from "@/core/moneda";
 import { sumarDias } from "@/core/tiempo/zona-horaria";
 
@@ -22,8 +21,6 @@ export interface CompraCandidata {
   /** «AAAA-MM-DD». */
   dia: string;
   importe: number;
-  /** N.º de factura tal como se guardó (texto libre) o `null` si se cargó sin número. */
-  numero: string | null;
   anulado: boolean;
 }
 
@@ -65,11 +62,10 @@ const diaLegible = (dia: string): string => dia.split("-").reverse().join("/");
 
 function describir(c: CompraCandidata, sucursalActualId: string): string {
   const donde = c.sucursalId === sucursalActualId ? "en esta sucursal" : `en la sucursal ${c.sucursalNombre}`;
-  const factura = c.numero ? `factura ${formatearNumeroComprobante(leerNumeroComprobante(c.numero))}` : "sin N.º de factura";
-  return `${donde} el ${diaLegible(c.dia)}, ${factura}`;
+  return `${donde} el ${diaLegible(c.dia)}`;
 }
 
-/** El texto del aviso para las compras que devolvió `posiblesDuplicados` (en ese orden), o «» si no hay ninguna. No repite el importe. */
+/** El texto del aviso para las compras que devolvió `posiblesDuplicados` (en ese orden), o «» si no hay ninguna. No repite el importe ni el N.º de factura. */
 export function avisoDePosibleDuplicado(encontrados: readonly CompraCandidata[], sucursalActualId: string): string {
   if (encontrados.length === 0) return "";
   const nombradas = encontrados.slice(0, MAXIMO_DE_COMPRAS_NOMBRADAS).map((c) => describir(c, sucursalActualId));

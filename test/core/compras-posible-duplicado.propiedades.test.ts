@@ -23,7 +23,7 @@ const dia = fc.integer({ min: 0, max: 3000 }).map((n) => sumarDias("2020-01-01",
 const importePositivo = fc.integer({ min: 1, max: 99_999_999_999_999 }).map((c) => c / 100); // hasta 999.999.999.999,99
 
 function candidata(parcial: Partial<CompraCandidata> = {}): CompraCandidata {
-  return { id: "c1", proveedorId: PROVEEDOR, sucursalId: "suc-2", sucursalNombre: "Centro", dia: DIA, importe: 1500, numero: "1-1234", anulado: false, ...parcial };
+  return { id: "c1", proveedorId: PROVEEDOR, sucursalId: "suc-2", sucursalNombre: "Centro", dia: DIA, importe: 1500, anulado: false, ...parcial };
 }
 const nuevo = (parcial: Partial<CompraNueva> = {}): CompraNueva => ({ proveedorId: PROVEEDOR, dia: DIA, importe: 1500, ...parcial });
 
@@ -34,7 +34,6 @@ const candidataArb = fc.record({
   sucursalNombre: fc.constantFrom("Norte", "Centro", "Sur"),
   dia: fc.integer({ min: -12, max: 12 }).map((d) => sumarDias(DIA, d)),
   importe: fc.constantFrom(1500, 1500.01, 0, 20),
-  numero: fc.constantFrom("1-1234", null, "BIEN-1"),
   anulado: fc.boolean(),
 });
 
@@ -165,11 +164,11 @@ describe("avisoDePosibleDuplicado — texto", () => {
     expect(avisoDePosibleDuplicado([], "suc-1")).toBe("");
   });
 
-  it("nombra la otra sucursal, la fecha y el número formateado, y no repite el importe", () => {
+  it("nombra la otra sucursal y la fecha, y no repite el importe", () => {
     const texto = avisoDePosibleDuplicado([candidata()], "suc-1");
     expect(texto).toContain("en la sucursal Centro");
     expect(texto).toContain("15/03/2026");
-    expect(texto).toContain("factura 00001-00001234");
+    expect(texto).toContain("en la sucursal Centro el 15/03/2026. Revisá que no la estés cargando dos veces.");
     expect(texto).not.toContain("1500");
     expect(texto).not.toContain("1.500");
   });
@@ -180,9 +179,12 @@ describe("avisoDePosibleDuplicado — texto", () => {
     expect(texto).not.toContain("Centro");
   });
 
-  it("un N.º libre sale tal cual y sin N.º lo dice", () => {
-    expect(avisoDePosibleDuplicado([candidata({ numero: "BIEN-77" })], "suc-1")).toContain("factura BIEN-77");
-    expect(avisoDePosibleDuplicado([candidata({ numero: null })], "suc-1")).toContain("sin N.º de factura");
+  it("nunca nombra el N.º de factura (dato de piso administrador): ni aunque la candidata lo traiga de más", () => {
+    const conNumero = { ...candidata(), numero: "1-1234" } as CompraCandidata;
+    const texto = avisoDePosibleDuplicado([conNumero], "suc-1");
+    expect(texto).not.toContain("1234");
+    expect(texto).not.toContain("00001-");
+    expect(texto).not.toContain("N.º");
   });
 
   it("muestra hasta 3 y después «y N más»", () => {

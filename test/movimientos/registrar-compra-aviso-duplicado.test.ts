@@ -68,7 +68,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     otroProveedorId = (await prisma.proveedor.create({ data: { codigo: "PRV_C25_OTRO", nombre: "Otro proveedor C25" } })).id;
   });
 
-  it("(1) otra sucursal de la empresa, 3 días después y mismo importe: sale bien y el mensaje nombra la primera sucursal y el número formateado", async () => {
+  it("(1) otra sucursal de la empresa, 3 días después y mismo importe: sale bien y el mensaje nombra la primera sucursal y la fecha, no el número de factura", async () => {
     const primera = await comprarEnCentral("2026-09-10", 1500, { nroFactura: "1-1234" });
     expect(primera.ok).toBe(true);
     expect(primera.mensaje).not.toContain(AVISO);
@@ -78,7 +78,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     expect(segunda.mensaje).toContain(AVISO);
     expect(segunda.mensaje).toContain("en la sucursal Central");
     expect(segunda.mensaje).toContain("10/09/2026");
-    expect(segunda.mensaje).toContain("factura 00001-00001234");
+    expect(segunda.mensaje).not.toContain("1234"); // el N.º de factura exige piso administrador: el aviso no lo filtra
     expect(segunda.mensaje).not.toContain("1500");
     expect(segunda.mensaje).toMatch(/^Se guardaron 1 movimiento\(s\)\./);
   });
@@ -137,9 +137,9 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
 
     const leidas = await cargarComprasParaAvisoDeDuplicado(baseDeTest.db, { proveedorId, desde: "2026-09-03", hasta: "2026-09-17" });
 
-    expect(leidas.map((c) => ({ dia: c.dia, importe: c.importe, sucursalNombre: c.sucursalNombre, numero: c.numero, anulado: c.anulado, proveedorId: c.proveedorId })).sort((a, b) => a.dia.localeCompare(b.dia))).toEqual([
-      { dia: "2026-09-10", importe: 1500.5, sucursalNombre: "Central", numero: "1-1234", anulado: false, proveedorId },
-      { dia: "2026-09-17", importe: 700, sucursalNombre: "Norte", numero: "A-17", anulado: false, proveedorId },
+    expect(leidas.map((c) => ({ dia: c.dia, importe: c.importe, sucursalNombre: c.sucursalNombre, anulado: c.anulado, proveedorId: c.proveedorId })).sort((a, b) => a.dia.localeCompare(b.dia))).toEqual([
+      { dia: "2026-09-10", importe: 1500.5, sucursalNombre: "Central", anulado: false, proveedorId },
+      { dia: "2026-09-17", importe: 700, sucursalNombre: "Norte", anulado: false, proveedorId },
     ]);
   });
 
