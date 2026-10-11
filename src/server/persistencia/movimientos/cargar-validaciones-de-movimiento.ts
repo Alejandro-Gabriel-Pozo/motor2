@@ -1,4 +1,7 @@
 import type { Prisma } from "@prisma/client";
+import type { CompraCandidata } from "@/core/compras/public";
+import { redondearMoneda } from "@/core/moneda";
+import { ZONA_UTC, diaDeCalendario, finDelDia, inicioDelDia } from "@/core/tiempo/zona-horaria";
 
 /**
  * Persistencia de las validaciones de `registrarMovimiento` que corren ANTES de abrir la transacción (Task #41, Fase M, M13a —
@@ -45,4 +48,45 @@ export async function existeCompraVigenteConFactura(
     where: { sucursalId: args.sucursalId, proceso: "COMPRA", proveedorId: args.proveedorId, nroFactura: args.nroFactura, anuladaEn: null },
   });
   return !!yaExiste;
+}
+
+/**
+ * Las Compras VIGENTES (no anuladas) de ese proveedor entre dos días de calendario («AAAA-MM-DD», ambos inclusive), de TODAS las sucursales que el cliente deja ver, con el
+ * nombre de la sucursal y el importe (suma de `precioTotal` de sus líneas, redondeada a centavos, como el reporte de compras registradas). Es la lectura del aviso C25 de posible
+ * factura repetida (`posiblesDuplicados`, src/core/compras/posible-duplicado.ts). A diferencia de las demás de este archivo, corre DENTRO de la transacción de `registrarMovimiento`
+ * (con `tx`): hoy ve toda la empresa; cuando rija la RLS por sucursal (Fase B) verá solo las sucursales del usuario y el aviso se achicará con ella.
+ *
+ * La fecha de una compra es un día de calendario guardado a medianoche UTC: el rango y el día de cada compra se calculan en UTC (en zona argentina la correrían un día).
+ */
+export async function cargarComprasParaAvisoDeDuplicado(
+  db: Prisma.TransactionClient,
+  args: { proveedorId: string; desde: string; hasta: string }
+): Promise<CompraCandidata[]> {
+  const compras = await db.operacion.findMany({
+    where: {
+      proceso: "COMPRA",
+      proveedorId: args.proveedorId,
+      anuladaEn: null,
+      fecha: { gte: inicioDelDia(args.desde, ZONA_UTC), lte: finDelDia(args.hasta, ZONA_UTC) },
+    },
+    select: {
+      id: true,
+      proveedorId: true,
+      sucursalId: true,
+      sucursal: { select: { nombre: true } },
+      fecha: true,
+      nroFactura: true,
+      movimientos: { where: { proceso: "COMPRA" }, select: { precioTotal: true } },
+    },
+  });
+  return compras.map((c) => ({
+    id: c.id,
+    proveedorId: c.proveedorId,
+    sucursalId: c.sucursalId,
+    sucursalNombre: c.sucursal.nombre,
+    dia: diaDeCalendario(c.fecha, ZONA_UTC),
+    importe: redondearMoneda(c.movimientos.reduce((suma, m) => suma + Number(m.precioTotal), 0)),
+    numero: c.nroFactura,
+    anulado: false,
+  }));
 }
