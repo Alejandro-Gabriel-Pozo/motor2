@@ -9,8 +9,11 @@ import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarMotivosMermaActivos, listarDestinosConsumoActivos } from "@/server/actions/movimientos/motivos";
 import { obtenerProductoOpcion } from "@/server/consultas/catalogo/productos";
+import { seccionesDesactivadas } from "@/server/consultas/movimientos/secciones-desactivadas";
 import { PanelMovimientoForm } from "./panel-movimiento-form";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+
+const PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA: ReadonlySet<string> = new Set(["CONSUMO", "MERMA", "TRANSFERENCIA"]);
 
 export default async function MovimientoPage({
   params,
@@ -36,8 +39,10 @@ export default async function MovimientoPage({
 
   const { productoId } = unicosDeUrl(await searchParams);
 
-  const [secciones, proveedores, unidades, motivos, destinos, productoInicial] = await Promise.all([
+  const [secciones, desactivadas, proveedores, unidades, motivos, destinos, productoInicial] = await Promise.all([
     listarSeccionesActivas(ctx.sucursalId),
+    // P17: una sección dada de baja solo admite SACAR mercadería: se ofrece como origen en los procesos que solo sacan (Merma, Consumo, Transferencia) y en ningún otro.
+    PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA.has(config.proceso) ? seccionesDesactivadas(ctx.sucursalId, ctx.db) : Promise.resolve([]),
     config.requiereProveedor ? listarProveedoresParaSelector(true) : Promise.resolve([]),
     // Alta rápida de producto inline (solo Compra, ver QuickCrearProducto)
     // — no Devolución a proveedor pese a ser también `esCompraLike`: no
@@ -57,6 +62,7 @@ export default async function MovimientoPage({
       <PanelMovimientoForm
         config={config}
         secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+        seccionesDesactivadas={desactivadas}
         proveedores={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
         unidades={unidades.map((u) => ({ id: u.id, nombre: u.nombre }))}
         motivos={motivos.map((m) => ({ id: m.id, nombre: m.nombre }))}

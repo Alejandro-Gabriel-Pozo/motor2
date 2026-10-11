@@ -56,6 +56,7 @@ function hoyISO() {
 export function PanelMovimientoForm({
   config,
   secciones,
+  seccionesDesactivadas = [],
   proveedores,
   unidades,
   motivos,
@@ -64,6 +65,8 @@ export function PanelMovimientoForm({
 }: {
   config: ProcesoUiConfig;
   secciones: Opcion[];
+  /** Solo se pasa en Merma, Consumo y Transferencia (P17): secciones dadas de baja, que solo admiten sacar mercadería; se ofrecen SOLO como origen, al final y con la etiqueta «(desactivada)». */
+  seccionesDesactivadas?: Opcion[];
   proveedores: Opcion[];
   /** Solo se usa (y solo se pasa desde la página) en Compra — alta rápida de producto inline, ver QuickCrearProducto. */
   unidades?: Opcion[];
@@ -299,6 +302,11 @@ export function PanelMovimientoForm({
             {secciones.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.nombre}
+              </option>
+            ))}
+            {seccionesDesactivadas.map((s) => (
+              <option key={s.id} value={s.id}>
+                {`${s.nombre} (desactivada)`}
               </option>
             ))}
           </select>
