@@ -116,4 +116,9 @@ describe("mensajeCompraCorregida / descripcionAuditoriaCorreccion", () => {
     expect(descripcionAuditoriaCorreccion(fecha, null, "nroFactura")).toBe("Compra del 2026-08-10: N.º de factura");
     expect(descripcionAuditoriaCorreccion(fecha, null, "detalleLibre")).toBe("Compra del 2026-08-10: detalle");
   });
+
+  it("P1 paso 7: el día es el argentino — una compra de las 22:30 argentinas del 10/8 (01:30Z del 11/8) es del 10/8", () => {
+    expect(descripcionAuditoriaCorreccion(new Date("2026-08-11T01:30:00Z"), "A-0001", "proveedorId")).toBe("Compra del 2026-08-10 (factura A-0001): proveedor");
+    expect(descripcionAuditoriaCorreccion(new Date("2027-01-01T02:59:59Z"), null, "nroFactura")).toBe("Compra del 2026-12-31: N.º de factura");
+  });
 });

@@ -30,10 +30,10 @@ describe("anularCompraCasoDeUso", () => {
   const actor = () => ({ usuarioId: adminId, sucursalId, ahora: new Date(), ...baseDeTest });
 
   /** Una compra con una línea de `cantidad` kg a $100/kg (el saldo del lote sale del propio Kardex). */
-  async function compra(opciones: { cantidad?: number; nroFactura?: string | null; proceso?: "COMPRA" | "MERMA"; sinLineas?: boolean } = {}) {
+  async function compra(opciones: { fecha?: Date; cantidad?: number; nroFactura?: string | null; proceso?: "COMPRA" | "MERMA"; sinLineas?: boolean } = {}) {
     const proceso = opciones.proceso ?? "COMPRA";
     const op = await prisma.operacion.create({
-      data: { sucursalId, proceso, fecha: new Date("2026-08-10T12:00:00Z"), usuarioId: adminId, proveedorId, nroFactura: opciones.nroFactura === undefined ? "A-0001" : opciones.nroFactura },
+      data: { sucursalId, proceso, fecha: opciones.fecha ?? new Date("2026-08-10T12:00:00Z"), usuarioId: adminId, proveedorId, nroFactura: opciones.nroFactura === undefined ? "A-0001" : opciones.nroFactura },
     });
     if (!opciones.sinLineas) {
       const cantidad = opciones.cantidad ?? 10;
@@ -92,6 +92,18 @@ describe("anularCompraCasoDeUso", () => {
       actorId: adminId,
       sucursalId,
     });
+  });
+
+  it("P1 paso 7: el día de los textos guardados es el argentino — una compra de las 22:30 argentinas del 10/8 (01:30Z del 11/8) es «del 2026-08-10» en el contra-asiento y en la auditoría", async () => {
+    const op = await compra({ fecha: new Date("2026-08-11T01:30:00Z") });
+
+    const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+
+    expect(r.ok).toBe(true);
+    const reversion = await prisma.operacion.findFirstOrThrow({ where: { proceso: "AJUSTE", sucursalId } });
+    expect(reversion.detalleLibre).toBe(`Anulación de la compra ${op.id} (2026-08-10, factura A-0001).`);
+    const auditoria = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidadId: op.id } });
+    expect(auditoria.descripcion).toBe("Compra del 2026-08-10 a Molino SA, factura A-0001: anulación");
   });
 
   it("la hora de la anulación es la que entra por actor.ahora, no la del reloj (Pureza 1.2)", async () => {

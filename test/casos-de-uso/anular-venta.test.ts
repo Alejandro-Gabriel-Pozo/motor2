@@ -28,10 +28,10 @@ describe("anularVentaCasoDeUso", () => {
   type Linea = { proceso?: "VENTA" | "CONSUMO" | "LIQUIDACION_CONSIGNACION"; cantidad: number; cantidadExacta?: number | null; precioTotal: number; precioPorUnidadStock: number; detalle: string };
 
   /** Una Operación con sus líneas de Kardex, armada directo por Prisma (fecha fija: 2026-08-06). */
-  async function operacion(opciones: { proceso?: "VENTA" | "MERMA"; nroFactura?: string | null; promoCuentaId?: string; lineas?: Linea[] } = {}) {
+  async function operacion(opciones: { proceso?: "VENTA" | "MERMA"; fecha?: Date; nroFactura?: string | null; promoCuentaId?: string; lineas?: Linea[] } = {}) {
     const proceso = opciones.proceso ?? "VENTA";
     const op = await prisma.operacion.create({
-      data: { sucursalId, proceso, fecha: new Date("2026-08-06T12:00:00Z"), usuarioId: adminId, nroFactura: opciones.nroFactura ?? null, ...(opciones.promoCuentaId !== undefined && { promoCuentaId: opciones.promoCuentaId }) },
+      data: { sucursalId, proceso, fecha: opciones.fecha ?? new Date("2026-08-06T12:00:00Z"), usuarioId: adminId, nroFactura: opciones.nroFactura ?? null, ...(opciones.promoCuentaId !== undefined && { promoCuentaId: opciones.promoCuentaId }) },
     });
     const lineas = opciones.lineas ?? [{ cantidad: -2, precioTotal: 200, precioPorUnidadStock: 100, detalle: "Venta de Harina" }];
     for (const l of lineas) {
@@ -124,6 +124,18 @@ describe("anularVentaCasoDeUso", () => {
 
     expect(r.ok).toBe(true);
     expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).anuladaEn).toEqual(fija);
+  });
+
+  it("P1 paso 7: el día de los textos guardados es el argentino — una venta de las 22:30 argentinas del 6/8 (01:30Z del 7/8) es «del 2026-08-06» en el contra-asiento y en la auditoría", async () => {
+    const venta = await operacion({ fecha: new Date("2026-08-07T01:30:00Z"), nroFactura: "F-100" });
+
+    const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+
+    expect(r.ok).toBe(true);
+    const reversion = await prisma.operacion.findFirstOrThrow({ where: { proceso: "AJUSTE", sucursalId } });
+    expect(reversion.detalleLibre).toBe(`Anulación de la venta ${venta.id} (2026-08-06).`);
+    const auditoria = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidadId: venta.id } });
+    expect(auditoria.descripcion).toBe("Venta del 2026-08-06 (factura F-100): anulación");
   });
 
   it("éxito con Liquidación de consignación: se revierte con su mismo Proceso y el mensaje lo dice (texto exacto de antes)", async () => {

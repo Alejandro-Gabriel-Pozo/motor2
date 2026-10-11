@@ -132,7 +132,15 @@ const CONGELADAS: Record<string, Congelada> = {
     blob: "5166de7e5b4db922c884b99e381dbfd52b3021b0",
     desde: "71050ded",
     motivo: "Matriz de la venta (7 escenarios vigentes).",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "b9ef4b4077ae2e0e4bc5d74126b71c08e12f0db9",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `2ea2dd1` («P1 paso 1: mediodiaDelDia(dia, zona) en core/tiempo…»).
+        commit: "2ea2dd1",
+        motivo:
+          "P1 paso 7 (O.254; CAMBIA el día que citan los textos guardados al anular): el día de la venta en `detalleReversionDeVenta` («Anulación de la venta … (fecha).») y en `descripcionAuditoriaAnulacionDeVenta` («Venta del …: anulación») pasa de UTC a hora argentina. Cambia SOLO la fecha dentro de esos textos, en 2 líneas (los dos AJUSTE de la anulación de la venta op11: 2026-09-27 → 2026-09-26, porque el fixture guarda el día a las 00:00Z, que en hora argentina es el día anterior a las 21:00); mismas líneas, mismo orden, ninguna consulta ni número distinto.",
+      },
+    ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
     blob: "01e01aab7058600ec0f662b1d63ff44840823e71",
@@ -154,6 +162,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "9217bea9",
         motivo:
           "I-1 de la auditoria final (CAMBIA COMPORTAMIENTO dentro de la decision D7 del dueño: anular una venta con algo posterior se RECHAZA): anularVenta mira tambien los conteos fisicos posteriores que NO escribieron movimiento (diferencia 0, «falta movimiento», «descartar»), porque solo existen en ConteoFisico. Cambia SOLO la linea `lecturas (N)` de 5 entradas (A8, C5, C6, D5 y consignacion): cada una suma `conteoFisico.findMany×1` (2→3, 2→3, 2→3, 3→4, 4→5). Ningun resultado, mensaje ni escritura cambia.",
+      },
+      {
+        blob: "60ae1571c71f8fb0d231ae8a478fbd51cf5af2b1",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `2ea2dd1` («P1 paso 1: mediodiaDelDia(dia, zona) en core/tiempo…»).
+        commit: "2ea2dd1",
+        motivo:
+          "P1 paso 7 (O.254; CAMBIA el día que citan los textos guardados al anular): el día de la venta en `detalleReversionDeVenta` («Anulación de la venta … (fecha).») y en `descripcionAuditoriaAnulacionDeVenta` («Venta del …: anulación») pasa de UTC a hora argentina. Cambia SOLO la fecha dentro de esos textos, en 8 líneas (las anulaciones de op12, op6 y op4, cada una con su AJUSTE y su auditoría: un día antes, porque los fixtures guardan el día a las 00:00Z, que en hora argentina es el día anterior a las 21:00); mismas líneas, mismo orden, ninguna consulta ni número distinto.",
       },
     ],
   },
