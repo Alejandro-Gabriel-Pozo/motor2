@@ -47,4 +47,22 @@ describe("cargarVentaParaAnular: las líneas salen en el orden en que se escribi
     expect(hermanas).toHaveLength(1);
     expect(hermanas[0]!.lineas.map((l) => l.productoId)).toEqual([s.muzzarella.id, s.milanesa.id, s.flan.id]);
   });
+
+  it("cargarHermanasDePromo: con 3 hermanas (promo de 4 componentes) salen por hora y, a igualdad, por id", async () => {
+    const cuenta = await prisma.cuenta.create({ data: { mesaId: s.mesa.id, abiertaPorId: s.admin.id } });
+    const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Menú" } });
+    const promoCarta = await prisma.promoCarta.create({ data: { seccionCartaId: seccionCarta.id, titulo: "Menú", precio: 1000, sucursales: { create: { sucursalId: s.sucursalId } } } });
+    const promo = await prisma.promoCuenta.create({ data: { cuentaId: cuenta.id, promoCartaId: promoCarta.id, precio: 1000, titulo: "Menú", creadoPorId: s.admin.id } });
+    const pedida = await prisma.operacion.create({ data: { sucursalId: s.sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId: s.admin.id, promoCuentaId: promo.id } });
+    // Las componentes de una promo se escriben en una misma transacción: comparten `creadoEn`. Insertadas con el id mayor primero (en el disco quedan al revés de su orden por id).
+    const misma = new Date("2026-03-01T12:00:00Z");
+    const sufijo = pedida.id.slice(-6);
+    const ids = [`oz${sufijo}zzzzzzzzzzzzzzzz`, `om${sufijo}mmmmmmmmmmmmmmmm`, `oa${sufijo}aaaaaaaaaaaaaaaa`];
+    for (const id of ids) {
+      await prisma.operacion.create({ data: { id, sucursalId: s.sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId: s.admin.id, promoCuentaId: promo.id, creadoEn: misma } });
+    }
+
+    const hermanas = await prisma.$transaction((tx) => cargarHermanasDePromo(tx, { promoCuentaId: promo.id, excluirOperacionId: pedida.id }));
+    expect(hermanas.map((h) => h.id)).toEqual([...ids].reverse());
+  });
 });
