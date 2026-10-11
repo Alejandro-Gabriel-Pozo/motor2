@@ -4042,8 +4042,8 @@
       unidadRecetaNombre: "kg"
     },
     {
-      anclaDesde: Date(2026-02-18T00:00:00.000Z),
-      anclaHasta: Date(2026-03-10T00:00:00.000Z),
+      anclaDesde: Date(2026-02-18T03:00:00.000Z),
+      anclaHasta: Date(2026-03-10T03:00:00.000Z),
       bandaRuidoPct: null,
       calibradoLocal: false,
       cantidadActual: 0.2,
@@ -4104,8 +4104,8 @@
       unidadRecetaNombre: "litro"
     },
     {
-      anclaDesde: Date(2026-03-06T00:00:00.000Z),
-      anclaHasta: Date(2026-03-12T00:00:00.000Z),
+      anclaDesde: Date(2026-03-06T03:00:00.000Z),
+      anclaHasta: Date(2026-03-12T03:00:00.000Z),
       bandaRuidoPct: null,
       calibradoLocal: false,
       cantidadActual: 0.05,
