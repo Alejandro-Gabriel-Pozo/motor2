@@ -78,7 +78,9 @@ export async function cargarVentaParaAnular(
 /**
  * Las hermanas de promo de una venta (Task #16, promo-combo, docs/plan-promo-combo-2026-09-26.md, D4, paso 9): las OTRAS Operaciones de
  * la misma `PromoCuenta` que siguen vigentes (`anuladaEn: null`). Mismo filtro que antes (por `promoCuentaId`, sin repetir sucursal ni
- * proceso: una `PromoCuenta` pertenece a una sola cuenta, y sus componentes se cobran juntos como VENTA) y sin orden explícito.
+ * proceso: una `PromoCuenta` pertenece a una sola cuenta, y sus componentes se cobran juntos como VENTA). Salen en el orden en que se escribieron (`creadoEn` y, a
+ * igualdad, id): de ese orden depende el de las reversiones y las filas de auditoría que escribe la anulación y el de `operacionesAnuladas` / `reversionIds` del
+ * resultado; sin `orderBy` con 2 o más hermanas (promo de 3 o más componentes) la base las entregaba en su orden físico (mismo criterio que las líneas, arriba).
  */
 export async function cargarHermanasDePromo(
   tx: Prisma.TransactionClient,
@@ -87,6 +89,7 @@ export async function cargarHermanasDePromo(
   const hermanas = await tx.operacion.findMany({
     where: { promoCuentaId: args.promoCuentaId, anuladaEn: null, id: { not: args.excluirOperacionId } },
     include: LINEAS_EN_ORDEN_DE_ESCRITURA,
+    orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
   });
   return hermanas.map(aVentaParaAnular);
 }
