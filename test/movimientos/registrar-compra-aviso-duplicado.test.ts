@@ -5,11 +5,12 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 
 import { baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarMotivosYDestinos, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
 import { registrarMovimientoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-movimiento";
+import { ZONA_ARGENTINA, mediodiaDelDia } from "../../src/core/tiempo/zona-horaria";
 import { cargarComprasParaAvisoDeDuplicado } from "../../src/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
 
 /**
  * Aviso C25 de posible factura repetida al REGISTRAR una compra: toda la empresa, ±7 días, mismo proveedor e importe; nombra la sucursal y NO bloquea. Postgres real; las compras se
- * cargan por el propio caso de uso (así el importe y el N.º salen del camino real). Las fechas son fijas y pasadas (la fecha de una compra es un día de calendario a medianoche UTC).
+ * cargan por el propio caso de uso (así el importe y el N.º salen del camino real). Las fechas son fijas y pasadas (la fecha de una compra de formulario es el mediodía argentino del día elegido: `mediodiaDelDia`, lo que manda el formulario).
  * La regla pura (ventana, importe, orden, texto) la cubre `test/core/compras-posible-duplicado.propiedades.test.ts`; acá se prueba el cableado: la lectura, el mensaje que se guarda
  * para la idempotencia y que la compra se escribe igual.
  */
@@ -31,7 +32,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
   const comprarEnCentral = (fecha: string, precioTotal: number | undefined, extra: { nroFactura?: string; proveedor?: string; claveIdempotencia?: string } = {}) =>
     registrarMovimientoCasoDeUso(actor(usuarioCentral, sucursalCentral, "Central"), {
       proceso: "COMPRA",
-      fecha: new Date(fecha),
+      fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
       seccionId: seccionCentral,
       proveedorId: extra.proveedor ?? proveedorId,
       nroFactura: extra.nroFactura,
@@ -42,7 +43,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
   const comprarEnNorte = (fecha: string, precioTotal: number | undefined, extra: { nroFactura?: string; proveedor?: string; claveIdempotencia?: string } = {}) =>
     registrarMovimientoCasoDeUso(actor(usuarioNorte, sucursalNorte, "Norte"), {
       proceso: "COMPRA",
-      fecha: new Date(fecha),
+      fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
       seccionId: seccionNorte,
       proveedorId: extra.proveedor ?? proveedorId,
       nroFactura: extra.nroFactura,
@@ -104,6 +105,23 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     expect(r.mensaje).toContain(AVISO);
   });
 
+  it("(2c) el día de la compra anterior se cuenta en hora argentina: una de las 23:30 argentinas del 10/09 (ya es 11/09 en UTC) está a 7 días justos de la del 03/09, y el mensaje dice 10/09", async () => {
+    // Instante fijo y pasado, escrito con su offset: 2026-09-10 23:30 (-03:00) = 2026-09-11T02:30Z. Entra por el caso de uso con ese instante exacto (lo que pondría una API o un script).
+    const primera = await registrarMovimientoCasoDeUso(actor(usuarioCentral, sucursalCentral, "Central"), {
+      proceso: "COMPRA",
+      fecha: new Date("2026-09-10T23:30:00-03:00"),
+      seccionId: seccionCentral,
+      proveedorId,
+      items: [{ productoId, cantidad: 10, precioTotal: 1500 }],
+    });
+    expect(primera.ok).toBe(true);
+
+    const segunda = await comprarEnNorte("2026-09-03", 1500); // 7 días antes en hora argentina; 8 si el día de la primera se leyera en UTC (11/09)
+    expect(segunda.ok).toBe(true);
+    expect(segunda.mensaje).toContain(AVISO);
+    expect(segunda.mensaje).toContain("el 10/09/2026");
+  });
+
   it("(3) con otro importe no avisa, ni por un centavo", async () => {
     await comprarEnCentral("2026-09-10", 1500);
     const r = await comprarEnNorte("2026-09-12", 1500.01);
@@ -126,7 +144,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     expect(r.mensaje).not.toContain(AVISO);
   });
 
-  it("(5b) la lectura trae solo las compras VIGENTES del proveedor pedido, dentro de los días pedidos, con su sucursal, su importe y el día en UTC", async () => {
+  it("(5b) la lectura trae solo las compras VIGENTES del proveedor pedido, dentro de los días pedidos, con su sucursal, su importe y el día en hora argentina", async () => {
     await comprarEnCentral("2026-09-10", 1500.5, { nroFactura: "1-1234" });
     await comprarEnNorte("2026-09-17", 700, { nroFactura: "A-17" });
     await comprarEnNorte("2026-09-18", 700, { nroFactura: "A-18" }); // un día después de la ventana
@@ -152,7 +170,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     const productoB = await prismaAdmin.producto.create({ data: { empresaId: e, codigo: "MP_B_C25", nombre: "Aceite B", tipo: "MP", unidadStockId: unidadB.id } });
     const proveedorB = await prismaAdmin.proveedor.create({ data: { empresaId: e, codigo: "PRV_B_C25", nombre: "Proveedor B" } });
     const operacionB = await prismaAdmin.operacion.create({
-      data: { empresaId: e, sucursalId: sucursalB.id, proceso: "COMPRA", fecha: new Date("2026-09-11"), proveedorId: proveedorB.id, nroFactura: "1-1234", usuarioId: usuarioCentral },
+      data: { empresaId: e, sucursalId: sucursalB.id, proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-11", ZONA_ARGENTINA), proveedorId: proveedorB.id, nroFactura: "1-1234", usuarioId: usuarioCentral },
     });
     await prismaAdmin.movimientoStock.create({
       data: { empresaId: e, operacionId: operacionB.id, productoId: productoB.id, seccionId: seccionB.id, proceso: "COMPRA", cantidad: 10, precioTotal: 1500, precioPorUnidadStock: 150, detalle: "" },
