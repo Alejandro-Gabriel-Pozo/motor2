@@ -11,7 +11,7 @@ import { analizarFuente, delegadosDeModelos, type SenalesDeFuente } from "../../
  *  1. son exactamente los archivos de `PERMITIDOS`;
  *  2. todos abren con `import "server-only"`: el login nunca puede llegar al navegador;
  *  3. el reloj, el azar y el entorno que lean están DECLARADOS acá, archivo por archivo, con su motivo y en las dos direcciones (una declaración que sobra también falla). O.24: lo
- *     que queda (el `new Date()` del gate) se va con la Fase 6, cuando el borde de Auth.js reciba la hora ya leída. El entorno (`ALLOWED_EMAIL_DOMAINS`) se fue en S-17/D5: la capa ya no lee ninguna variable.
+ *     que quedaba (el `new Date()` del gate) se fue en la Fase 6, tramo c (O.227): el callback `signIn` lee la hora UNA vez y se la pasa al gate, hoy sin reloj. El entorno (`ALLOWED_EMAIL_DOMAINS`) se fue en S-17/D5: la capa ya no lee ninguna variable.
  * Lo que la capa no puede importar lo fija la regla `sesion-capa` de `.dependency-cruiser.cjs`.
  * Fase 6, tramo 6a: se le suman, sin tocar su código, los cinco archivos de la sesión del pedido y la base por empresa que vivían en `core/auth/` (`MUDADOS_DE_CORE_AUTH`): llegan
  * con lo que ya declaraban en el núcleo (el entorno, el `let` de `base.ts`, la falta de `server-only` en los que alcanzan los scripts con tsx), cada cosa declarada abajo con su motivo.
@@ -37,16 +37,13 @@ const SIN_SERVER_ONLY: Record<string, string> = {
 const MODULOS_DEL_LOGIN = new Set(["acceso", "invitacion", "vincular-cuenta"]);
 
 type Impureza = "reloj" | "azar" | "entorno";
-const MOTIVO_FASE_6_RELOJ =
-  "Fase 6: el callback `signIn` de Auth.js (lib/auth.ts) no recibe la hora; el gate la lee UNA vez (vence la sesión abierta de otra cuenta y pasa la misma hora a la invitación)";
-
 /** `archivo` → la impureza que tiene declarada y por qué. Lo que no está acá, el archivo NO lo puede leer. */
 const DECLARADAS: Record<string, Partial<Record<Impureza, string>>> = {
-  "acceso.ts": { reloj: MOTIVO_FASE_6_RELOJ },
+  // Fase 6, tramo c (O.227): `acceso.ts` ya no está acá: no lee el reloj, `ahora` entra por parámetro (obligatorio) desde el callback `signIn` de `lib/auth.ts`.
   // Fase 6, tramo 6a: llegan de core/auth con lo que ya leían (estaban declarados en PUREZA_HEREDADA_DEL_NUCLEO con la señal `entorno`).
   "base.ts": { entorno: "verificarRolDeEjecucionDelProceso pasa process.env a permitirRolPrivilegiado (ADR-022: el escape explícito del rol que salta el RLS)." },
   "contexto.ts": { entorno: "opcionesCookieActiva: la cookie de la sucursal/empresa activa es `secure` solo con NODE_ENV=production." },
-  // invitacion.ts y vincular-cuenta.ts NO leen el reloj: desde B3-9 (O.24) `ahora` es obligatorio y lo pasa el borde (acceso.ts, la pantalla, la acción, el caso de uso).
+  // acceso.ts, invitacion.ts y vincular-cuenta.ts NO leen el reloj: `ahora` es obligatorio y lo pasa el borde (el callback `signIn`, la pantalla, la acción, el caso de uso); acceso.ts desde la Fase 6, tramo c, invitacion.ts y vincular-cuenta.ts desde B3-9 (O.24).
 };
 
 const IMPUREZAS: Impureza[] = ["reloj", "azar", "entorno"];

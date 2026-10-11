@@ -51,7 +51,7 @@ Tres pasos, **cada uno con autorización expresa**, simulación primero, base po
 Inventario en `test/arquitectura/pureza-heredada-del-nucleo.ts` (vacío desde el tramo 6b):
 - (a) `core/auth/{base,contexto,ir-al-login,rol-de-ejecucion,session}` a `server/sesion`, una sola vez y sin tocar su código. **Hecho en el tramo 6a** (abajo).
 - (b) Los tipos de Prisma en `core`: 19 archivos solo con tipos más `core/fiscal/factura-autorizada.ts` (que recibe `Db` y lo usa la consola, que no puede importar `src/server`): tipos de dominio propios. **Hecho en el tramo 6b** (abajo): la factura no se tipó, se mudó a la consola.
-- (c) Los resabios de `server/sesion` (O.24): `new Date()` y `ALLOWED_EMAIL_DOMAINS` en `acceso.ts`, hasta que el borde de Auth.js reciba la hora y el entorno ya leídos.
+- (c) Los resabios de `server/sesion` (O.24): `new Date()` y `ALLOWED_EMAIL_DOMAINS` en `acceso.ts`, hasta que el borde de Auth.js reciba la hora y el entorno ya leídos. **HECHO (2026-10-11, tramo c, fila O.227):** el reloj entra por parámetro (`ahora` obligatorio, fijado una sola vez por el callback `signIn` de `lib/auth.ts`); `ALLOWED_EMAIL_DOMAINS` ya se había ido en S-17.
 - (d) El único estado de módulo permitido en `core` (`let datosDelRolDelProceso`, `core/auth/base.ts`). **Hecho en el tramo 6a.**
 - (e) **241 `vi.mock` de `core/auth/session`** en tests y scripts, que el codemod de imports no reescribe: cambiarlos a mano o con una herramienta nueva. **Hecho en el tramo 6a** (contados: 301 `vi.mock` de los cinco módulos).
 - (f) Las 2 lecturas de `auth/usuarios.ts` con `new Date()` (D.3). (g) Diferidos a esta rama u otra: **O.38b** (recetas vigentes y precio local por capacidad para N sucursales) y **O.14** (lecturas repetidas de la venta).
