@@ -22,3 +22,34 @@ describe("O.43: precio de carta con coma (o sin forma de número)", () => {
     expect(validarPrecioCarta(Infinity)).toEqual({ ok: false, mensaje: "El precio no es un número válido." });
   });
 });
+
+/**
+ * U8 (auditoría de abstracciones 2026-10-11): el precio de una promo con más de 2 decimales se RECHAZA, no se redondea en silencio (la política de la entrada de
+ * importes es `validarImporte`: «Redondeo uniforme» para la entrada = rechazar). Antes 10,555 se guardaba como 10,56 sin avisar. El parseo (`Number(...)`, sin coma) no se toca.
+ */
+describe("U8: precio de carta con más de 2 decimales", () => {
+  const MENSAJE_DECIMALES = "El precio admite como máximo 2 decimales (por ejemplo, 10.55).";
+
+  it("más de 2 decimales se rechaza con un mensaje claro, en número y en texto", () => {
+    expect(validarPrecioCarta(10.555)).toEqual({ ok: false, mensaje: MENSAJE_DECIMALES });
+    expect(validarPrecioCarta("10.555")).toEqual({ ok: false, mensaje: MENSAJE_DECIMALES });
+    expect(validarPrecioCarta(10.005)).toEqual({ ok: false, mensaje: MENSAJE_DECIMALES });
+    expect(validarPrecioCarta("0.001")).toEqual({ ok: false, mensaje: MENSAJE_DECIMALES });
+  });
+
+  it("hasta 2 decimales pasa tal cual, incluido el 0 adrede", () => {
+    expect(validarPrecioCarta(10.5)).toEqual({ ok: true, valor: 10.5 });
+    expect(validarPrecioCarta("10.55")).toEqual({ ok: true, valor: 10.55 });
+    expect(validarPrecioCarta(0.07)).toEqual({ ok: true, valor: 0.07 });
+    expect(validarPrecioCarta(0)).toEqual({ ok: true, valor: 0 });
+    expect(validarPrecioCarta("25000")).toEqual({ ok: true, valor: 25000 });
+  });
+
+  it("los demás rechazos conservan su mensaje y su prioridad (negativo, tope, NaN, vacío)", () => {
+    expect(validarPrecioCarta(-10.555)).toEqual({ ok: false, mensaje: "El precio no puede ser negativo." });
+    expect(validarPrecioCarta(1e12)).toEqual({ ok: false, mensaje: "El precio no es un número válido." });
+    expect(validarPrecioCarta(Number.NaN).ok).toBe(false);
+    expect(validarPrecioCarta(null)).toEqual({ ok: false, mensaje: "Falta el precio." });
+    expect(validarPrecioCarta("")).toEqual({ ok: false, mensaje: "Falta el precio." });
+  });
+});
