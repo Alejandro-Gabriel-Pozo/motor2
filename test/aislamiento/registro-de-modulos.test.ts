@@ -31,6 +31,9 @@ afterAll(async () => {
 
 // 4 empresas con módulos en estos tests: la por defecto (A), B, C y la testigo permanente (ADR-022): 4 × 9 = 36 filas tras el backfill.
 // El backfill del 2026-10-04 repartió los vendibles que existían entonces: los 9 DISPONIBLES de hoy (uno en desarrollo no se reparte).
+// La lista LITERAL de esos 9 (la del `VALUES` de la migración): `VENDIBLES` y `MODULOS_VENDIBLES` salen del mismo filtro sobre el catálogo, así que compararlos entre sí no prueba nada;
+// la aserción contra esta lista sí: si el filtro o el catálogo cambian (p. ej. un módulo nuevo pasa a disponible), falla acá y obliga a decidir qué hace el backfill.
+const BACKFILL_2026_10_04 = ["carta", "compras", "consignacion", "produccion", "promociones", "recetas", "salon", "stock", "traspasos"];
 const VENDIBLES = MODULOS.filter((m) => m.tipo === "vendible" && m.estado === "disponible").map((m) => m.id as string).sort();
 
 async function filas(empresaId: string) {
@@ -153,7 +156,8 @@ describe("registro de módulos por empresa (P4)", () => {
 
   describe("fixtures de test (P6)", () => {
     it("activarTodosLosModulos deja exactamente los vendibles en ACTIVO: completa, reactiva y borra lo que no corresponde, y es idempotente", async () => {
-      expect([...MODULOS_VENDIBLES].sort()).toEqual(VENDIBLES);
+      expect([...MODULOS_VENDIBLES].sort()).toEqual(VENDIBLES); // ambas derivan del mismo filtro: lo que pesa es la comparación con la lista literal del backfill
+      expect(VENDIBLES).toEqual(BACKFILL_2026_10_04);
       await prismaAdmin.moduloEmpresa.createMany({
         data: [
           { empresaId: B, modulo: "stock", estado: "INACTIVO" },

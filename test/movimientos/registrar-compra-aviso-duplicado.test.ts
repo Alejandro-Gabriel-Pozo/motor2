@@ -161,6 +161,12 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     const r = await comprarEnCentral("2026-09-12", 1500);
     expect(r.ok).toBe(true);
     expect(r.mensaje).not.toContain(AVISO);
+
+    // Aislamiento real: la consulta filtra por proveedor, y el de la empresa A no es el de B, así que lo de arriba solo no lo prueba. Se pide el proveedor de B DESDE el actor de A
+    // (`baseDeTest.db`, con la RLS de la empresa A): tiene que devolver [] aunque la compra de B está en la ventana, con el mismo importe.
+    expect(await cargarComprasParaAvisoDeDuplicado(baseDeTest.db, { proveedorId: proveedorB.id, desde: "2026-09-04", hasta: "2026-09-18" })).toEqual([]);
+    // Control: el mismo pedido como dueño (salta la RLS) sí la ve; sin esto el [] de arriba podría ser una ventana mal armada.
+    expect(await cargarComprasParaAvisoDeDuplicado(prismaAdmin, { proveedorId: proveedorB.id, desde: "2026-09-04", hasta: "2026-09-18" })).toHaveLength(1);
   });
 
   it("(7) sin precio (importe 0) nunca avisa, aunque haya otra compra sin precio", async () => {

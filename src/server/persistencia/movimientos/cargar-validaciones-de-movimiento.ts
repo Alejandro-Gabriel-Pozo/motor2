@@ -4,15 +4,16 @@ import { redondearMoneda } from "@/core/moneda";
 import { ZONA_UTC, diaDeCalendario, finDelDia, inicioDelDia } from "@/core/tiempo/zona-horaria";
 
 /**
- * Persistencia de las validaciones de `registrarMovimiento` que corren ANTES de abrir la transacción (Task #41, Fase M, M13a —
- * docs/arquitectura-casos-de-uso-2026-09-27.md). Son EXACTAMENTE las lecturas de Prisma que antes hacía en línea la Server Action
- * `registrarMovimiento` (src/server/actions/movimientos/movimientos.ts), copiadas tal cual; qué hacer con lo cargado (mensajes,
+ * Persistencia de las validaciones de `registrarMovimiento` (Task #41, Fase M, M13a — docs/arquitectura-casos-de-uso-2026-09-27.md). Las de motivo, destino, proveedor
+ * y factura corren ANTES de abrir la transacción y son EXACTAMENTE las lecturas de Prisma que antes hacía en línea la Server Action
+ * `registrarMovimiento` (src/server/actions/movimientos/movimientos.ts), copiadas tal cual; la del aviso C25 (`cargarComprasParaAvisoDeDuplicado`) es posterior y corre DENTRO de la transacción. Qué hacer con lo cargado (mensajes,
  * cuándo llamarlas) lo decide el caso de uso `casos-de-uso/registrar-movimiento.ts`. Sin reglas de negocio.
  *
  * Contrato: el cliente es SIEMPRE el primer parámetro, obligatorio (nunca `db = prisma` por defecto) — salvo la excepción documentada
- * acá, calcada del docstring de `guardar-version-de-receta.ts` de P1: estas lecturas corren FUERA de la transacción, con el
- * cliente GLOBAL `prisma` (es el camino rápido previo a la SERIALIZABLE; el árbitro real es un índice único o la propia
- * transacción — nunca esta lectura sola). El caso de uso les pasa el cliente global a propósito.
+ * acá, calcada del docstring de `guardar-version-de-receta.ts` de P1: las lecturas de motivo, destino, proveedor y factura corren FUERA de la
+ * transacción, con el cliente GLOBAL `prisma` (es el camino rápido previo a la SERIALIZABLE; el árbitro real es un índice único o la propia
+ * transacción — nunca esta lectura sola). El caso de uso les pasa el cliente global a propósito. La ÚNICA que corre adentro es
+ * `cargarComprasParaAvisoDeDuplicado`: recibe el `tx` de la transacción (cada función dice dónde corre en su propio docstring).
  */
 
 /** `null` si el motivo no existe. Corre FUERA de la transacción (ver el docstring del archivo). */
