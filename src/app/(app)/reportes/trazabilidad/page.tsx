@@ -57,7 +57,7 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
       {operacion && (
         <div>
           <h2 className="mb-2 text-sm font-medium">
-            Operación {operacion.idOperacion} — {operacion.fecha.toISOString().slice(0, 10)} — {operacion.total} movimiento(s)
+            Operación {operacion.idOperacion} — {diaDeCalendario(operacion.fecha, ctx.empresaZonaHoraria)} — {operacion.total} movimiento(s)
           </h2>
           {(operacion.proveedorNombre || operacion.nroFactura) && (
             <p className="mb-2 text-xs text-neutral-500">
@@ -68,7 +68,7 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
           {/* El cartel de «Anulada» vale para cualquier proceso; el botón para anular, solo para una venta vigente. */}
           {operacion.anuladaEn ? (
             <p className="mb-2 text-xs text-red-600">
-              {/* `anuladaEn` es un INSTANTE (se lee en la zona de la empresa); `operacion.fecha`, en cambio, puede ser un día de calendario guardado a las 00:00 UTC, y no se convierte. */}
+              {/* `anuladaEn` y `operacion.fecha` son INSTANTES: el día se lee en la zona de la empresa (P1), igual que arriba. */}
               Anulada el {diaDeCalendario(operacion.anuladaEn, ctx.empresaZonaHoraria)}
               {operacion.anuladaPorEmail && ` por ${operacion.anuladaPorEmail}`}.
             </p>

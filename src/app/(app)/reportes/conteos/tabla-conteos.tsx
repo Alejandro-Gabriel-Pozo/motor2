@@ -2,6 +2,10 @@
 
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+
+/** El día de calendario de un instante en hora argentina (P1): `ConteoFisico.fecha` es un instante; leerlo en UTC mostraba el día siguiente a partir de las 21:00. */
+const dia = (f: Date) => diaDeCalendario(f, ZONA_ARGENTINA);
 
 export interface FilaConteo {
   id: string;
@@ -18,7 +22,7 @@ export interface FilaConteo {
 }
 
 const COLUMNAS: ColumnaReporte<FilaConteo>[] = [
-  { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (c) => c.fecha.toISOString().slice(0, 10), render: (c) => c.fecha.toISOString().slice(0, 10) },
+  { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (c) => dia(c.fecha), render: (c) => dia(c.fecha) },
   {
     clave: "producto",
     etiqueta: "Producto",

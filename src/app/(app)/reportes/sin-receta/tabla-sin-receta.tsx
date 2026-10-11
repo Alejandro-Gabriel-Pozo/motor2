@@ -3,6 +3,10 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaVentaSinReceta } from "@/core/reportes/public";
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+
+/** El día de calendario de un instante en hora argentina (P1): `Operacion.fecha` es un instante; leerlo en UTC mostraba el día siguiente a partir de las 21:00. */
+const dia = (f: Date) => diaDeCalendario(f, ZONA_ARGENTINA);
 
 const COLUMNAS: ColumnaReporte<FilaVentaSinReceta>[] = [
   {
@@ -16,8 +20,8 @@ const COLUMNAS: ColumnaReporte<FilaVentaSinReceta>[] = [
     ),
   },
   { clave: "cantidad", etiqueta: "Ventas sin receta", alinear: "derecha", valor: (f) => f.cantidadVentasSinReceta, render: (f) => f.cantidadVentasSinReceta },
-  { clave: "primera", etiqueta: "Primera", tipoFecha: "dia", valor: (f) => f.primeraFecha.toISOString().slice(0, 10), render: (f) => f.primeraFecha.toISOString().slice(0, 10) },
-  { clave: "ultima", etiqueta: "Última", tipoFecha: "dia", valor: (f) => f.ultimaFecha.toISOString().slice(0, 10), render: (f) => f.ultimaFecha.toISOString().slice(0, 10) },
+  { clave: "primera", etiqueta: "Primera", tipoFecha: "dia", valor: (f) => dia(f.primeraFecha), render: (f) => dia(f.primeraFecha) },
+  { clave: "ultima", etiqueta: "Última", tipoFecha: "dia", valor: (f) => dia(f.ultimaFecha), render: (f) => dia(f.ultimaFecha) },
 ];
 
 export function TablaVentasSinReceta({ filas }: { filas: FilaVentaSinReceta[] }) {
