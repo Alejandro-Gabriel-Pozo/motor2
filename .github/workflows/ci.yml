@@ -1,6 +1,7 @@
 # Gate de verificación en CI: los mismos 8 comandos que AGENTS.md exige correr limpios en la misma corrida, más la auditoría de dependencias (GT-23).
 #   estático    → tsc, lint, arquitectura (dependency-cruiser), código muerto (knip), auditar:dependencias
-#   integración → npm test (Vitest contra Postgres real) + npm run build
+#   build       → npm run build + npm run plataforma:build (con su propia base migrada)
+#   integración → npm test (Vitest contra Postgres real)
 #   e2e         → npm run test:e2e (Playwright, servidor de producción)
 # El job `gate` es el ÚNICO que hay que marcar como requerido en la protección de rama / Vercel Deployment Checks: falla si cualquiera
 # de los otros no terminó en verde (un job omitido o cancelado también lo hace fallar).
@@ -69,8 +70,63 @@ jobs:
       # `scripts/auditoria-dependencias-excepciones.ts`. Consulta el registro de npm: depende de la red y de avisos nuevos, a propósito (un aviso nuevo pone rojo el Gate).
       - run: npm run auditar:dependencias
 
+  # El build en su propio job (corre en paralelo con los tests): `scripts/construir.ts` corre `prisma migrate status` y el chequeo del registro de módulos contra la base, así que lleva
+  # su propio Postgres con los mismos pasos de preparación que `integracion`. Ya no corre antes de los tests, y no hace falta: cada job tiene su base y esta nunca recibe los datos de prueba.
+  build:
+    name: Build (npm run build + plataforma:build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: motor2
+          POSTGRES_PASSWORD: ci-duenio-descartable
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U motor2"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGUSER: motor2
+      PGPASSWORD: ci-duenio-descartable
+      DIRECT_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_dev
+      DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_dev
+      # M.3-A8: igual que en `integracion` (el guardián del rol de pruebas pide la misma forma en todo job que prepara la base); el build no siembra nada.
+      MOTOR2_PRUEBAS_DATABASE_URL: postgresql://motor2_app_pruebas:ci-pruebas-descartable@localhost:5432/motor2_dev
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # Los roles se crean ANTES de migrar (los privilegios por defecto aplican a las tablas que cree la migración). `-v clave_pruebas` crea además el rol de pruebas (M.3-A8).
+      - name: Bases y rol de ejecución
+        run: |
+          createdb motor2_dev
+          createdb motor2_e2e
+          psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
+      - name: Migrar (como dueño)
+        run: npx prisma migrate deploy
+      # Rol de plataforma (E4, ADR-012 §3): DESPUÉS de migrar, para que el script le dé permiso a las tablas de la consola.
+      - name: Rol de plataforma
+        run: psql -d motor2_dev -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
+      # M.3-A8: las migraciones recortaron privilegios SOLO de `motor2_app` (auditoría inmutable, invitaciones…). `solo_pruebas=1` no toca a `motor2_app`: copia sus privilegios al rol de pruebas (y falla si difieren).
+      - name: Rol de pruebas (privilegios al día tras migrar)
+        run: psql -d postgres -v ON_ERROR_STOP=1 -v solo_pruebas=1 -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
+      # El build verifica el registro de módulos de la base.
+      - name: npm run build
+        run: npm run build
+      # La consola de plataforma (E4) es otra app Next: su build también tiene que compilar. No toca la base.
+      - name: npm run plataforma:build
+        run: npm run plataforma:build
+
   integracion:
-    name: Integración (npm test + build)
+    name: Integración (npm test)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -115,12 +171,6 @@ jobs:
       # M.3-A8: las migraciones recortaron privilegios SOLO de `motor2_app` (auditoría inmutable, invitaciones…). `solo_pruebas=1` no toca a `motor2_app`: copia sus privilegios al rol de pruebas (y falla si difieren).
       - name: Rol de pruebas (privilegios al día tras migrar)
         run: psql -d postgres -v ON_ERROR_STOP=1 -v solo_pruebas=1 -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
-      # El build verifica el registro de módulos de la base: va ANTES de los tests, que la dejan con empresas y roles de prueba.
-      - name: npm run build
-        run: npm run build
-      # La consola de plataforma (E4) es otra app Next: su build también tiene que compilar. No toca la base.
-      - name: npm run plataforma:build
-        run: npm run plataforma:build
       # Además del reporte normal, Vitest deja el resultado en un JSON: si algo falla, el paso de abajo lista los tests rojos al FINAL del log (el log de los tests es larguísimo y el ruido del contenedor de Postgres tapa el final).
       - name: npm test
         run: npm test -- --reporter=default --reporter=json --outputFile.json=resultado-vitest.json
@@ -278,10 +328,10 @@ jobs:
   gate:
     name: Gate (requerido)
     if: always()
-    needs: [estatico, integracion, e2e]
+    needs: [estatico, build, integracion, e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Todos los jobs terminaron en verde
         run: |
-          echo "estatico=${{ needs.estatico.result }} integracion=${{ needs.integracion.result }} e2e=${{ needs.e2e.result }}"
-          test "${{ needs.estatico.result }}" = "success" -a "${{ needs.integracion.result }}" = "success" -a "${{ needs.e2e.result }}" = "success"
+          echo "estatico=${{ needs.estatico.result }} build=${{ needs.build.result }} integracion=${{ needs.integracion.result }} e2e=${{ needs.e2e.result }}"
+          test "${{ needs.estatico.result }}" = "success" -a "${{ needs.build.result }}" = "success" -a "${{ needs.integracion.result }}" = "success" -a "${{ needs.e2e.result }}" = "success"
