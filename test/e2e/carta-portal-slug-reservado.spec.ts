@@ -58,7 +58,8 @@ test("quitar apaga y reserva el slug: la dirección da 404, otra sucursal no la 
     // 5. Volver a publicar con la casilla: la MISMA dirección vuelve a funcionar (la caché se invalidó en los dos sentidos).
     await filaA.getByLabel("Publicada en el portal").check();
     await filaA.getByRole("button", { name: `Guardar «${nombreA}»` }).click();
-    await expect(filaA.getByRole("status")).toHaveText(`Portal: "${nombreA}" guardada y publicada.`);
+    // Durante el guardado conviven el mensaje viejo («quitada del portal») y «Guardando…»: se espera el texto exacto, no «el» status.
+    await expect(filaA.getByText(`Portal: "${nombreA}" guardada y publicada.`)).toBeVisible();
     const republicada = await request.get(ruta);
     expect(republicada.status()).toBe(200);
     expect(await republicada.text()).toContain(nombreA);

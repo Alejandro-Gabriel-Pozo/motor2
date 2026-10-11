@@ -232,7 +232,7 @@ testAutenticado("movimientos/merma: el selector de sección con una sección «(
   try {
     await page.goto("/movimientos/merma");
     await conTitulo(page, "Merma");
-    await expect(page.getByLabel("Sección", { exact: true }).locator("option", { hasText: `${seccion.nombre} (desactivada)` })).toHaveCount(1);
+    await expect(page.getByRole("combobox", { name: "Sección", exact: true }).locator("option", { hasText: `${seccion.nombre} (desactivada)` })).toHaveCount(1);
     expect((await new AxeBuilder({ page }).analyze()).violations, "modo claro").toEqual([]);
 
     await page.emulateMedia({ colorScheme: "dark" });

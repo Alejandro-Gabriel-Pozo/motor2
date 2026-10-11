@@ -49,7 +49,7 @@ test("merma: la sección dada de baja se ofrece como «(desactivada)» y se pued
   const s = await sembrar(sucursalId, 10);
   try {
     await page.goto("/movimientos/merma");
-    const seccion = page.getByLabel("Sección", { exact: true });
+    const seccion = page.getByRole("combobox", { name: "Sección", exact: true });
     await seccion.selectOption({ label: s.etiqueta });
     await elegirProducto(page, s.mp.nombre);
     await page.getByLabel("Cantidad").fill("10");
@@ -61,8 +61,8 @@ test("merma: la sección dada de baja se ofrece como «(desactivada)» y se pued
 
     // Donde entra mercadería no se ofrece: Compra.
     await page.goto("/movimientos/compra");
-    await expect(page.getByLabel("Sección", { exact: true })).toBeVisible();
-    await expect(page.getByLabel("Sección", { exact: true }).locator("option", { hasText: s.baja.nombre })).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Sección", exact: true })).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Sección", exact: true }).locator("option", { hasText: s.baja.nombre })).toHaveCount(0);
   } finally {
     await s.limpiar();
   }
@@ -72,7 +72,7 @@ test("consumo: la sección dada de baja se ofrece como origen con la etiqueta «
   const s = await sembrar(sucursalId, 10);
   try {
     await page.goto("/movimientos/consumo");
-    await expect(page.getByLabel("Sección", { exact: true }).locator("option", { hasText: s.etiqueta })).toHaveCount(1);
+    await expect(page.getByRole("combobox", { name: "Sección", exact: true }).locator("option", { hasText: s.etiqueta })).toHaveCount(1);
   } finally {
     await s.limpiar();
   }
@@ -82,9 +82,9 @@ test("transferencia entre secciones: la dada de baja se ofrece como ORIGEN pero 
   const s = await sembrar(sucursalId, 10);
   try {
     await page.goto("/movimientos/transferencia");
-    await expect(page.getByLabel("Sección origen", { exact: true }).locator("option", { hasText: s.etiqueta })).toHaveCount(1);
-    await expect(page.getByLabel("Sección destino", { exact: true })).toBeVisible();
-    await expect(page.getByLabel("Sección destino", { exact: true }).locator("option", { hasText: s.baja.nombre })).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Sección origen", exact: true }).locator("option", { hasText: s.etiqueta })).toHaveCount(1);
+    await expect(page.getByRole("combobox", { name: "Sección destino", exact: true })).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Sección destino", exact: true }).locator("option", { hasText: s.baja.nombre })).toHaveCount(0);
   } finally {
     await s.limpiar();
   }

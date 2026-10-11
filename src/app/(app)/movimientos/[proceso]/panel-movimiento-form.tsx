@@ -376,10 +376,10 @@ export function PanelMovimientoForm({
 
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">Productos</span>
-        {precargaPorProveedor && infoProveedor && <p className="text-xs text-neutral-500">{infoProveedor}</p>}
+        {precargaPorProveedor && infoProveedor && <p className="text-xs text-neutral-500 dark:text-neutral-400">{infoProveedor}</p>}
         {items.map((fila, idx) => (
           <div key={`${versionItems}-${idx}`} className="flex flex-wrap items-end gap-2 rounded border p-2">
-            <label className="flex flex-1 min-w-40 flex-col gap-1 text-xs text-neutral-500">
+            <label className="flex flex-1 min-w-40 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
               Producto
               <SelectorProducto
                 value={fila.productoId}
@@ -400,7 +400,7 @@ export function PanelMovimientoForm({
                 />
               )}
             </label>
-            <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500">
+            <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
               <span>
                 Cantidad
                 {config.cantidadConSigno && (
@@ -415,7 +415,7 @@ export function PanelMovimientoForm({
                 tamano="compacto"
               />
             </label>
-            <label className="flex w-36 flex-col gap-1 text-xs text-neutral-500">
+            <label className="flex w-36 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
               Lote (Fecha VTO.)
               <input
                 type="date"
@@ -426,7 +426,7 @@ export function PanelMovimientoForm({
             </label>
             {config.esCompraLike && (
               <>
-                <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500">
+                <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
                   Precio total (con IVA incluido)
                   <CampoNumero
                     value={fila.precioTotal}
@@ -437,12 +437,12 @@ export function PanelMovimientoForm({
                     etiqueta="El precio total"
                   />
                 </label>
-                <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500">
+                <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
                   Peso real
                   <CampoNumero value={fila.pesoReal} onChange={(v) => actualizarFila(idx, { pesoReal: v })} tamano="compacto" />
                 </label>
                 {(presentacionesPorFila[idx]?.length ?? 0) > 0 && (
-                  <label className="flex w-44 flex-col gap-1 text-xs text-neutral-500">
+                  <label className="flex w-44 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
                     Presentación
                     <select
                       value={fila.unidadCompraId}
@@ -461,7 +461,7 @@ export function PanelMovimientoForm({
               </>
             )}
             {precargaPorProveedor && (
-              <label className="flex w-40 flex-col gap-1 text-xs text-neutral-500">
+              <label className="flex w-40 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
                 Código/nombre del proveedor
                 <input
                   value={fila.referenciaProveedor}
@@ -475,7 +475,7 @@ export function PanelMovimientoForm({
               type="button"
               onClick={() => quitarFila(idx)}
               disabled={items.length === 1}
-              className="rounded border px-2 py-1.5 text-sm text-neutral-500 disabled:opacity-30"
+              className="rounded border px-2 py-1.5 text-sm text-neutral-500 dark:text-neutral-400 disabled:opacity-30"
             >
               Quitar
             </button>

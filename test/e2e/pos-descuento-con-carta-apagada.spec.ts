@@ -58,6 +58,9 @@ test.afterAll(async () => {
 
 test("CONTROL, con Carta prendida: el selector ofrece el precio descontado con la lista tachada y la cuenta congela el descontado", async ({ browser, baseURL }) => {
   await fijarModulosActivos(e.b.empresaId, ["salon", "carta"]);
+  // Con Carta prendida la grilla de botones solo se dibuja si la carta tiene una sección con productos (`hayCarta`): el producto va en una.
+  const seccionCarta = await prismaAdmin.seccionCarta.create({ data: { empresaId: e.b.empresaId, nombre: `E2E Postres D18 ${e.marca}`, orden: 1 } });
+  await prismaAdmin.contenidoCartaProducto.create({ data: { empresaId: e.b.empresaId, sucursalId: e.b.sucursalId, productoId: producto.id, visibleEnCarta: true, seccionCartaId: seccionCarta.id, orden: 1 } });
   const mesa = await mesaConCuenta(971);
   const page = await paginaConSesion(browser, baseURL, sesion);
   try {
@@ -76,6 +79,8 @@ test("CONTROL, con Carta prendida: el selector ofrece el precio descontado con l
     expect(Number(item.precioCartaUnitario)).toBe(3000);
   } finally {
     await page.context().close();
+    await prismaAdmin.contenidoCartaProducto.deleteMany({ where: { productoId: producto.id } });
+    await prismaAdmin.seccionCarta.deleteMany({ where: { id: seccionCarta.id } });
   }
 });
 
@@ -86,13 +91,11 @@ test("con Carta APAGADA: el selector ofrece el precio de lista sin tachado, la c
   try {
     await page.goto(`/mesas/${mesa.id}`);
     await expect(page.locator("main h1")).toHaveText("Mesa 972");
-    const boton = page.locator(`[data-producto-carta="${producto.id}"]`);
-    await expect(boton).toBeVisible();
-    await expect(boton).toContainText(/\$\s?3\.000/);
-    await expect(boton).not.toContainText(/2\.550/);
-    await expect(boton.locator("[data-precio-lista]")).toHaveCount(0);
-
-    await boton.click();
+    // Sin Carta no se lee ninguna sección: la grilla de botones no se dibuja y el producto se agrega con el buscador (el precio de la línea es el que se congela).
+    await expect(page.locator(`[data-producto-carta="${producto.id}"]`)).toHaveCount(0);
+    await page.getByRole("combobox", { name: "Producto" }).fill(producto.nombre);
+    await page.getByRole("option", { name: new RegExp(producto.nombre) }).click();
+    await expect(page.locator(`[data-linea-por-agregar="${producto.nombre}"]`)).toBeVisible();
     await page.getByRole("button", { name: "Agregar 1 al pedido", exact: true }).click();
     await expect(aviso(page)).toHaveText("Se agregó 1 ítem a la mesa 972.");
 

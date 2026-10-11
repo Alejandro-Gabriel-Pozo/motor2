@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { prismaAdmin } from "../setup/cliente-duenio";
 import { usuarioConDosSucursales } from "./fixtures/dos-sucursales";
 
 /**
@@ -68,6 +69,8 @@ test("admin en Central y operador en la segunda: parado en la segunda ve el bloq
     await expect(page.getByLabel("Precio de consignación", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Proveedor de consignación")).toBeVisible();
   } finally {
+    // La edición audita al usuario (RegistroAuditoria.actorId): sin borrar esas filas no se puede borrar al usuario del fixture.
+    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidadId: producto.id } });
     await limpiarProducto();
     await limpiar();
   }
