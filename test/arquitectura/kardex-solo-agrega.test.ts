@@ -18,10 +18,16 @@ import { describe, expect, it } from "vitest";
  *  3. Sobre `Operacion` (la cabecera de cada operación): solo los usos de la lista cerrada de abajo, cada uno con su motivo y con las
  *     columnas EXACTAS que puede tocar. Una `Operacion` nunca se borra, ni se hace `upsert`/`updateMany`, ni se actualiza fuera de la lista.
  *
+ *  4. Una escritura ANIDADA que modifica el Kardex, la auditoría o una `Operacion` desde OTRO modelo (`producto.update({ data: { movimientos: { deleteMany } } })`,
+ *     `conteoFisico.update({ data: { movimientos: { disconnect } } })`, `proveedor.update({ data: { operaciones: { updateMany } } })`): una relación hacia esas
+ *     tablas con `connect`, `connectOrCreate`, `set`, `disconnect`, `update`, `updateMany`, `upsert`, `delete` o `deleteMany`. `create`/`createMany` anidados
+ *     siguen a cargo de `ESCRITORES_DEL_KARDEX`. Las relaciones salen del schema y un test las mantiene sincronizadas con la lista.
+ *
  * Además (Hito 5, pieza 5.4, A6) los ESCRITORES del Kardex son una lista cerrada (`ESCRITORES_DEL_KARDEX`, más abajo): `movimientoStock.create*` solo aparece en las tres
  * funciones declaradas, que son las que la Fase 5 tendrá que autorizar en la base.
  *
- * Lo que NO cubre (a propósito, y por eso hay otras defensas): un acceso por un alias que no se llame como el modelo, el `scripts/` de
+ * Lo que NO cubre (a propósito, y por eso hay otras defensas): un acceso por un alias que no se llame como el modelo, una relación anidada cuyo valor no es un
+ * objeto literal (una variable o un spread: no se puede leer), las relaciones de uno solo (`operacion` en `CuentaItem`), el `scripts/` de
  * operación (los benchmarks borran filas `bench_*` de su propia base), y la base misma. El candado en la base (REVOKE + trigger) es el
  * paso de la Fase 5 del plan, con autorización expresa.
  *
@@ -246,6 +252,46 @@ function juzgarEscritoresDelKardex(encontradas: EscrituraDeKardex[], lista: Reco
   return problemas;
 }
 
+/**
+ * Las relaciones (campos `X[]` del schema) que apuntan a `MovimientoStock`, `RegistroAuditoria`, `AuditoriaPlataforma` o `Operacion` desde otro modelo: por ahí se
+ * puede modificar el Kardex o una cabecera sin nombrar el modelo (`producto.update({ data: { movimientos: { deleteMany: {} } } })`). Un test las compara con
+ * `prisma/schema.prisma`: una relación nueva obliga a declararla acá.
+ */
+const RELACIONES_HACIA_EL_HISTORIAL = [
+  "movimientos",
+  "consumosQueLoSustituyen",
+  "movimientoStockRel",
+  "registrosAuditoria",
+  "registroAuditoriaRel",
+  "operaciones",
+  "operacionesAnuladas",
+  "operacionRel",
+  "operacionesTransferenciaDestino",
+];
+/** Las claves de Prisma que, dentro de una relación, modifican o desvinculan filas (no aparecen en `where`/`include`/`select`). `create`/`createMany` no: son de `ESCRITORES_DEL_KARDEX`. */
+const CLAVES_QUE_MODIFICAN_UNA_RELACION = new Set(["connect", "connectOrCreate", "set", "disconnect", "update", "updateMany", "upsert", "delete", "deleteMany"]);
+
+/** Cada `relación: { <clave que modifica>: … }` de un archivo, por el AST (los comentarios y los textos no cuentan). */
+function escriturasAnidadasEn(codigo: string, archivo: string): Violacion[] {
+  const fuente = ts.createSourceFile(archivo, codigo, ts.ScriptTarget.Latest, true, archivo.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const violaciones: Violacion[] = [];
+  const visitar = (nodo: ts.Node): void => {
+    if (ts.isPropertyAssignment(nodo) && (ts.isIdentifier(nodo.name) || ts.isStringLiteral(nodo.name)) && RELACIONES_HACIA_EL_HISTORIAL.includes(nodo.name.text)) {
+      if (ts.isObjectLiteralExpression(nodo.initializer)) {
+        for (const p of nodo.initializer.properties) {
+          if (p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) && CLAVES_QUE_MODIFICAN_UNA_RELACION.has(p.name.text)) {
+            const linea = fuente.getLineAndCharacterOfPosition(p.getStart(fuente)).line + 1;
+            violaciones.push({ archivo, linea, detalle: `${nodo.name.text}: { ${p.name.text} }: una escritura anidada que modifica una tabla que solo agrega (una corrección es una fila nueva)` });
+          }
+        }
+      }
+    }
+    ts.forEachChild(nodo, visitar);
+  };
+  visitar(fuente);
+  return violaciones;
+}
+
 function archivosDe(dir: string): string[] {
   return readdirSync(dir).flatMap((nombre) => {
     const ruta = join(dir, nombre);
@@ -295,6 +341,36 @@ describe("el Kardex solo agrega: el analizador ve las violaciones (la regla no p
   });
 });
 
+describe("el Kardex solo agrega: las escrituras anidadas desde otro modelo", () => {
+  const ver = (codigo: string) => escriturasAnidadasEn(codigo, "x.ts");
+
+  it("marca deleteMany, disconnect, connect, updateMany y el resto de las claves que modifican, en cada relación", () => {
+    expect(ver("export const f = (tx: any) => tx.producto.update({ where: {}, data: { movimientos: { deleteMany: {} } } });")).toHaveLength(1);
+    expect(ver("export const f = (tx: any) => tx.conteoFisico.update({ where: {}, data: { movimientos: { disconnect: [{ id: 'a' }] } } });")).toHaveLength(1);
+    expect(ver("export const f = (tx: any) => tx.conteoFisico.update({ where: {}, data: { movimientos: { connect: [{ id: 'a' }] } } });")).toHaveLength(1);
+    expect(ver("export const f = (tx: any) => tx.proveedor.update({ where: {}, data: { operaciones: { updateMany: { where: {}, data: {} } } } });")).toHaveLength(1);
+    expect(ver("export const f = (tx: any) => tx.empresa.update({ where: {}, data: { 'registroAuditoriaRel': { set: [] } } });")).toHaveLength(1);
+    for (const relacion of RELACIONES_HACIA_EL_HISTORIAL) {
+      for (const clave of CLAVES_QUE_MODIFICAN_UNA_RELACION) {
+        expect(ver(`export const f = (tx: any) => tx.x.update({ data: { ${relacion}: { ${clave}: {} } } });`), `${relacion}.${clave}`).toHaveLength(1);
+      }
+    }
+  });
+
+  it("NO marca lo que lee (include, where, select) ni lo que agrega (create, createMany)", () => {
+    expect(ver("export const f = (tx: any) => tx.producto.findMany({ include: { movimientos: { where: { cantidad: 1 }, orderBy: { fecha: 'asc' } } } });")).toEqual([]);
+    expect(ver("export const f = (tx: any) => tx.producto.findMany({ where: { movimientos: { some: {} } } });")).toEqual([]);
+    expect(ver("export const f = (tx: any) => tx.producto.findMany({ select: { operaciones: { select: { id: true } } } });")).toEqual([]);
+    expect(ver("export const f = (tx: any) => tx.operacion.create({ data: { movimientos: { createMany: { data: [] } } } });")).toEqual([]);
+    expect(ver("export const f = (tx: any) => tx.operacion.create({ data: { movimientos: { create: {} } } });")).toEqual([]);
+    expect(ver("export const f = (tx: any) => tx.producto.update({ data: { nombre: 'a', activo: { set: true } } });")).toEqual([]);
+  });
+
+  it("no cuenta un comentario o un texto que menciona la escritura", () => {
+    expect(ver("// data: { movimientos: { deleteMany: {} } }\nexport const a = 'movimientos: { deleteMany: {} }';")).toEqual([]);
+  });
+});
+
 describe("el Kardex solo agrega: el código del repositorio", () => {
   const lecturas = CARPETAS.flatMap((c) => archivosDe(join(RAIZ, c))).map((absoluta) => {
     const archivo = relative(RAIZ, absoluta).split(sep).join("/");
@@ -309,6 +385,20 @@ describe("el Kardex solo agrega: el código del repositorio", () => {
   it("ningún archivo modifica ni borra el Kardex ni la auditoría (ni con SQL crudo)", () => {
     const violaciones = lecturas.flatMap((l) => l.violaciones);
     expect(violaciones, `Estas tablas solo agregan filas; una corrección es una fila nueva:\n${formato(violaciones)}`).toEqual([]);
+  });
+
+  it("ningún archivo modifica ni desvincula el Kardex, la auditoría o una Operacion por una relación anidada desde otro modelo", () => {
+    const violaciones = CARPETAS.flatMap((c) => archivosDe(join(RAIZ, c))).flatMap((absoluta) =>
+      escriturasAnidadasEn(readFileSync(absoluta, "utf8"), relative(RAIZ, absoluta).split(sep).join("/"))
+    );
+    expect(violaciones, `Estas tablas solo agregan filas; una corrección es una fila nueva:\n${formato(violaciones)}`).toEqual([]);
+  });
+
+  it("la lista de relaciones hacia el historial coincide con el schema (una relación nueva obliga a declararla)", () => {
+    const schema = readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8");
+    const delSchema = [...schema.matchAll(/^\s+(\w+)\s+(?:MovimientoStock|RegistroAuditoria|AuditoriaPlataforma|Operacion)\[\]/gm)].map((m) => m[1]);
+    expect(delSchema.length, "el schema debería tener relaciones hacia esas tablas (si no, la lectura está ciega)").toBeGreaterThan(0);
+    expect([...new Set(delSchema)].sort()).toEqual([...RELACIONES_HACIA_EL_HISTORIAL].sort());
   });
 
   it("Operacion solo se actualiza en la lista cerrada de usos, con sus columnas exactas", () => {
