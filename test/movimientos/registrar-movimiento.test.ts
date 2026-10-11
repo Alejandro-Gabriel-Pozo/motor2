@@ -117,6 +117,17 @@ describe("registrarMovimiento", () => {
     expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
   });
 
+  it("U11: Merma sin motivo se rechaza en el servidor (no solo en la pantalla) y no mueve el saldo", async () => {
+    const mp = await crearMP("Cebolla");
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+
+    const sinMotivo = await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 1 }] });
+    expect(sinMotivo.ok).toBe(false);
+    expect(sinMotivo.mensaje).toContain("La merma necesita un motivo");
+    expect(await prisma.operacion.count({ where: { proceso: "MERMA" } })).toBe(0);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
+  });
+
   it("Merma rechaza un motivoId que no existe, y uno que existe pero está desactivado — el mensaje no revienta como error 500 crudo", async () => {
     const mp = await crearMP("Zanahoria");
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });

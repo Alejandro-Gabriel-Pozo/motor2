@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
@@ -30,7 +31,7 @@ import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movi
  * Orden, igual que antes:
  *  1. sección propia (origen y, si Transferencia, destino) — Fase 6 (auditoría de seguridad/contratos): `conPermiso` ya validó el
  *     permiso en LA SUCURSAL DEL QUE LLAMA, nunca que la sección que mandó el cliente sea realmente de esa sucursal;
- *  2. motivo/destino (catálogos GLOBALES, solo activos) y proveedor (de la empresa, solo activo) — cliente global `prisma`, fuera de la transacción;
+ *  2. motivo/destino (catálogos GLOBALES, solo activos) y proveedor (de la empresa, solo activo) — cliente global `prisma`, fuera de la transacción (camino rápido; la Merma sin motivo se rechaza acá) — U11: se vuelven a comprobar DENTRO de la transacción, después de la idempotencia;
  *  3. `guardNroFacturaCompra` — DESPUÉS de sección/motivo/destino a propósito (mismo orden que antes: cambiarlo cambiaría qué mensaje
  *     sale primero cuando hay más de un dato inválido a la vez);
  *  4. camino rápido de factura duplicada (`existeCompraVigenteConFactura`, cliente global) — el árbitro real es el índice único
@@ -71,19 +72,13 @@ export async function registrarMovimientoCasoDeUso(
   // lo que corresponde, pero un pedido armado a mano que traiga el otro se ignora acá en vez de terminar en un error crudo de la base.
   const motivoId = datos.proceso === "MERMA" ? datos.motivoId : undefined;
   const destinoId = datos.proceso === "CONSUMO" ? datos.destinoId : undefined;
-  if (motivoId) {
-    const motivo = await cargarMotivoMerma(actor.db, motivoId);
-    if (!motivo?.activo) return fracaso("MOTIVO_NO_DISPONIBLE", "El motivo elegido ya no está disponible.");
+  // U11: la pantalla de Merma pide el motivo (`required`); el servidor lo exige también (una llamada directa ya no registra una merma sin motivo). Es el único dato que la pantalla
+  // exige hoy: el proveedor («Sin proveedor») y el destino («Sin destino específico») son opcionales en la UI y por eso acá también.
+  if (datos.proceso === "MERMA" && !texto(motivoId)) {
+    return fracaso("MOTIVO_NO_DISPONIBLE", "La merma necesita un motivo: elegí uno de la lista (si no está el que buscás, pedí que lo carguen en Motivos de merma).");
   }
-  if (destinoId) {
-    const destino = await cargarDestinoConsumo(actor.db, destinoId);
-    if (!destino?.activo) return fracaso("DESTINO_NO_DISPONIBLE", "El destino elegido ya no está disponible.");
-  }
-  // Mismo criterio que motivo/destino: un id que no existe, es de otra empresa o está desactivado no puede quedar guardado en la operación (antes, un id inexistente reventaba con un error de clave foránea).
-  if (datos.proveedorId) {
-    const proveedor = await cargarProveedor(actor.db, datos.proveedorId);
-    if (!proveedor?.activo) return fracaso("PROVEEDOR_NO_DISPONIBLE", "El proveedor elegido ya no está disponible.");
-  }
+  const noDisponible = await maestroNoDisponible(actor.db, motivoId, destinoId, datos.proveedorId);
+  if (noDisponible) return noDisponible;
 
   // El N.º de factura solo se carga en Compra y Devolución a proveedor (los procesos con proveedor): mismo validador que la corrección.
   const factura = guardNroFacturaCompra(datos.nroFactura);
@@ -115,6 +110,10 @@ export async function registrarMovimientoCasoDeUso(
     const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);
     if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { operacionId: null, movimientos: null, repetida: true });
     if (chequeo.estado === "conflicto") return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
+
+    // U11: la lectura de antes de abrir la transacción pudo quedar vieja (un motivo, destino o proveedor desactivado en el medio): se vuelve a comprobar acá, con el estado que ve la transacción.
+    const yaNoDisponible = await maestroNoDisponible(tx, motivoId, destinoId, datos.proveedorId);
+    if (yaNoDisponible) return yaNoDisponible;
 
     const obtenerProducto = crearCacheProducto(tx);
     // 1) Armar cada línea (validación de producto/proceso, conversión, receta).
@@ -252,4 +251,30 @@ export async function registrarMovimientoCasoDeUso(
   });
 
   return resultado;
+}
+
+/**
+ * Motivo, destino y proveedor elegidos: tienen que existir (el proveedor, además, ser de la empresa) y seguir activos; un id que no cumple no puede quedar guardado en la operación (antes, un id
+ * inexistente reventaba con un error de clave foránea). Se llama dos veces con los mismos textos: antes de abrir la transacción (camino rápido) y dentro de ella (U11, el estado que vale).
+ * `null` si todo está bien o si no se eligió ninguno.
+ */
+async function maestroNoDisponible(
+  db: Prisma.TransactionClient,
+  motivoId: string | undefined,
+  destinoId: string | undefined,
+  proveedorId: string | undefined
+): Promise<ResultadoRegistrarMovimiento | null> {
+  if (motivoId) {
+    const motivo = await cargarMotivoMerma(db, motivoId);
+    if (!motivo?.activo) return fracaso("MOTIVO_NO_DISPONIBLE", "El motivo elegido ya no está disponible.");
+  }
+  if (destinoId) {
+    const destino = await cargarDestinoConsumo(db, destinoId);
+    if (!destino?.activo) return fracaso("DESTINO_NO_DISPONIBLE", "El destino elegido ya no está disponible.");
+  }
+  if (proveedorId) {
+    const proveedor = await cargarProveedor(db, proveedorId);
+    if (!proveedor?.activo) return fracaso("PROVEEDOR_NO_DISPONIBLE", "El proveedor elegido ya no está disponible.");
+  }
+  return null;
 }

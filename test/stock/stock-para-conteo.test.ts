@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarMotivosYDestinos, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { listarStockParaConteo } from "../../src/server/consultas/movimientos/stock-para-conteo";
@@ -62,7 +62,9 @@ describe("listarStockParaConteo", () => {
 
   it("excluye combinaciones (producto, lote) en saldo 0 — nada que verificar ahí", async () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
+    // U11: la Merma exige un motivo en el servidor (antes este test la registraba sin motivo).
+    const { motivos } = await sembrarMotivosYDestinos();
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivos.get("Vencido")!, items: [{ productoId: mpId, cantidad: 10 }] });
 
     expect(await listarStockParaConteo(seccionId, sucursalId, prisma)).toEqual([]);
   });
