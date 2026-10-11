@@ -62,6 +62,16 @@ test("activar Salón trae Stock, bloquea desactivarlo y la empresa lo ve; desact
   expect(acciones.map((a) => a.accion)).toEqual(["modulo-activado", "modulo-desactivado"]);
 });
 
+test("Gastos y servicios aparece como «Próximamente» y no se puede activar", async ({ page }) => {
+  await ingresarALaConsola(page, CONSOLA!);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${e.b.empresaId}/modulos`);
+  await expect(page.getByRole("heading", { name: /^Módulos de / })).toBeVisible();
+  const fila = page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "Gastos y servicios", exact: true }) });
+  await expect(fila).toContainText("Próximamente");
+  await expect(page.getByRole("button", { name: "Activar Gastos y servicios" })).toHaveCount(0);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
 test("un código desconocido en la URL no muestra texto ajeno", async ({ page }) => {
   await ingresarALaConsola(page, CONSOLA!);
   await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${e.b.empresaId}/modulos?hecho=modulo-activado&modulo=<b>falso</b>`);

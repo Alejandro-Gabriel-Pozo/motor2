@@ -8,10 +8,11 @@ const VENDIBLES_DISPONIBLES = MODULOS.filter((m) => m.tipo === "vendible" && m.e
 const fila = (activos: string[], id: string) => vistaDeModulos(activos).find((f) => f.id === id)!;
 
 describe("vistaDeModulos: los casos de ADR-015", () => {
-  it("con el registro vacío la empresa cuenta solo con Administración y todo vendible se puede activar", () => {
+  it("con el registro vacío la empresa cuenta solo con Administración y todo vendible disponible se puede activar; el que está en desarrollo, no", () => {
     const vista = vistaDeModulos([]);
     expect(vista.filter((f) => f.efectivo).map((f) => f.id)).toEqual(["administracion"]);
-    for (const f of vista.filter((x) => x.tipo === "vendible")) expect(f, f.id).toMatchObject({ enRegistro: false, puedeActivar: true, puedeDesactivar: false });
+    for (const f of vista.filter((x) => x.tipo === "vendible" && x.estado === "disponible")) expect(f, f.id).toMatchObject({ enRegistro: false, puedeActivar: true, puedeDesactivar: false });
+    expect(fila([], "servicios")).toMatchObject({ estado: "en_desarrollo", enRegistro: false, efectivo: false, puedeActivar: false, puedeDesactivar: false, alActivarSeSuman: [] });
   });
 
   it("activar Salón no le crea fila a Stock, pero Stock queda «incluido por Salón» y NO se puede desactivar", () => {
@@ -63,6 +64,12 @@ describe("vistaDeModulos coincide con la clausura en los 512 registros posibles"
         const clave = `${f.id} con [${activos.join(",")}]`;
         expect(f.efectivo, clave).toBe(efectivos.has(f.id));
         if (f.tipo !== "vendible") continue;
+        if (f.estado === "en_desarrollo") {
+          // Un módulo en desarrollo nunca está en el registro, ni efectivo, ni se puede activar, y no suma nada.
+          expect(f, clave).toMatchObject({ enRegistro: false, efectivo: false, puedeActivar: false, puedeDesactivar: false, alActivarSeSuman: [] });
+          expect(validarCambioDeModulos(activos, { activar: [f.id] }).ok, clave).toBe(false);
+          continue;
+        }
         if (f.enRegistro) {
           expect(f.puedeDesactivar, clave).toBe(validarCambioDeModulos(activos, { desactivar: [f.id] }).ok);
           expect(f.alDesactivarSePierden.every((id) => !modulosEfectivos(activos.filter((a) => a !== f.id)).has(id)), clave).toBe(true);
@@ -82,6 +89,7 @@ describe("textos", () => {
     expect(nombreDeModulo("no-existe")).toBe("no-existe");
     expect(explicarErrorDeCambio({ motivo: "LO_REQUIEREN_OTROS", modulo: "stock", requeridoPor: ["salon", "traspasos"] })).toBe("Stock no se puede desactivar mientras estén activos: Salón, Traspasos.");
     expect(explicarErrorDeCambio({ motivo: "EN_DESARROLLO", modulo: "salon" })).toContain("en desarrollo");
+    expect(explicarErrorDeCambio({ motivo: "EN_DESARROLLO", modulo: "servicios" })).toBe("Gastos y servicios está en desarrollo y todavía no se puede activar.");
     expect(explicarErrorDeCambio({ motivo: "DESCONOCIDO", modulo: "x" })).toContain("no existe");
     expect(explicarErrorDeCambio({ motivo: "NO_ES_VENDIBLE", modulo: "stock" })).toContain("fijo o de soporte");
   });

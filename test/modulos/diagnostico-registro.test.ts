@@ -51,6 +51,12 @@ describe("diagnosticarRegistroDeModulos (P5)", () => {
     expect(d.avisos.join("\n")).toContain("«clientes_basico» es un módulo fijo o de soporte");
   });
 
+  it("una fila de un módulo en desarrollo (Gastos y servicios) se lista como aviso: el guard la ignora", () => {
+    const d = diagnosticarRegistroDeModulos({ empresas: [empresa("a", "ACTIVE", true)], filas: [fila("a", "stock"), fila("a", "servicios")] });
+    expect(d.fallas).toEqual([]);
+    expect(d.avisos).toEqual(["a: la fila del módulo «servicios» está en desarrollo; el guard la ignora."]);
+  });
+
   it("una fila de una empresa que no está en la lista se nombra por su id", () => {
     const d = diagnosticarRegistroDeModulos({ empresas: [], filas: [{ empresaId: "huerfana", modulo: "inventado" }] });
     expect(d.avisos[0]).toContain("huerfana");

@@ -1,4 +1,4 @@
-import { MODULOS, esModuloDelCatalogo } from "./catalogo";
+import { MODULOS, esModuloDelCatalogo, moduloDelCatalogo } from "./catalogo";
 
 export interface EmpresaParaDiagnostico {
   id: string;
@@ -20,12 +20,13 @@ export interface DiagnosticoDelRegistro {
   avisos: string[];
 }
 
-const VENDIBLES = new Set<string>(MODULOS.filter((m) => m.tipo === "vendible").map((m) => m.id));
+// Solo los vendibles DISPONIBLES son filas válidas: el guard ignora la de un módulo `en_desarrollo`.
+const VENDIBLES = new Set<string>(MODULOS.filter((m) => m.tipo === "vendible" && m.estado === "disponible").map((m) => m.id));
 
 /**
  * Bloque 5A, P5. Regla: solo falla una empresa ACTIVE creada antes de la migración que no tiene ninguna fila (el backfill se la tenía que dar).
  * Una empresa creada después sin filas es un estado válido (el alta no siembra el registro: la activa la plataforma) y solo avisa; una empresa que
- * no está ACTIVE sin filas también. Las filas de un módulo que no es un vendible del catálogo se listan (el guard las ignora): son un error de carga.
+ * no está ACTIVE sin filas también. Las filas de un módulo que no es un vendible disponible del catálogo se listan (el guard las ignora): son un error de carga.
  */
 export function diagnosticarRegistroDeModulos(entrada: {
   empresas: readonly EmpresaParaDiagnostico[];
@@ -49,7 +50,11 @@ export function diagnosticarRegistroDeModulos(entrada: {
   const slugPorId = new Map(empresas.map((e) => [e.id, e.slug]));
   for (const f of entrada.filas) {
     if (VENDIBLES.has(f.modulo)) continue;
-    const motivo = esModuloDelCatalogo(f.modulo) ? "es un módulo fijo o de soporte, que se calcula y no se registra" : "no existe en el catálogo";
+    const motivo = !esModuloDelCatalogo(f.modulo)
+      ? "no existe en el catálogo"
+      : moduloDelCatalogo(f.modulo).tipo === "vendible"
+        ? "está en desarrollo"
+        : "es un módulo fijo o de soporte, que se calcula y no se registra";
     avisos.push(`${slugPorId.get(f.empresaId) ?? f.empresaId}: la fila del módulo «${f.modulo}» ${motivo}; el guard la ignora.`);
   }
 
