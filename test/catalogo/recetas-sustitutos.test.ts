@@ -148,6 +148,12 @@ describe("recetas: sustitutos por línea de ingrediente", () => {
     void ojoEnGramos;
   });
 
+  it("U7 / D3: una línea con sustitutos también tiene que estar en la unidad de stock de su MP principal (los sustitutos no llevan unidad propia: comparten la de stock del principal)", async () => {
+    const r = await guardarReceta(pvId, [{ insumoProductoId: bifeId, cantidad: 200, unidadId: gId, insumoSustitutoIds: [insumoOjoId] }]);
+    expect(r).toEqual({ ok: false, mensaje: 'El ingrediente "Bife de chorizo" está cargado en g, pero su stock se descuenta en kg y la receta todavía no convierte entre unidades: cargá la cantidad en kg.' });
+    expect(await prisma.recetaVersion.count({ where: { productoId: pvId } })).toBe(0);
+  });
+
   it("mutación: sacar la copia de insumoSustitutoIds en mapIngredientesAInput hace caer la regresión de ida y vuelta", async () => {
     // Demostración documentada (no aplicada): si mapIngredientesAInput dejara de copiar insumoSustitutoIds, cualquier acción
     // puntual que relea la receta vigente (agregarPasoAReceta, actualizarCabeceraDeReceta, actualizarIngredienteDeReceta de OTRO
