@@ -54,6 +54,8 @@ const CONTEXTO_DE_CONSULTA: Readonly<Record<string, Valor>> = {
   ahora: () => new Date(),
   hoy: () => new Date(),
   zonaHoraria: () => "America/Argentina/Buenos_Aires",
+  // P1: la zona con la que una consulta corta los días; las páginas pasan `ctx.empresaZonaHoraria`, nunca algo que mande el cliente.
+  zona: () => "America/Argentina/Buenos_Aires",
 };
 
 /** Los ids que llegan del cliente, por nombre de parámetro → campo del kit. */
