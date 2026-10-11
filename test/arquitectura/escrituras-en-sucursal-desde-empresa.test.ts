@@ -100,7 +100,7 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     ata: "EMPRESA_ENTERA",
     ensanches: [],
     puertas: ["carta/registro-publico.ts|quitarSucursalDelPortal"],
-    motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): sacar una sucursal del registro público es la vuelta atrás de agregarla; el defecto vigente es permisivo (la clave en cualquier membresía saca a cualquier sucursal)",
+    motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): sacar una sucursal del portal la APAGA (`publicada = false`, P16, 2026-10-11; ya no es la vuelta atrás de agregarla porque no borra la fila y deja el slug reservado); el defecto vigente es permisivo (la clave en cualquier membresía apaga a cualquier sucursal)",
   },
   // ── Gobierno de las sucursales (claves `administrador_sistema` de empresa) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
   "auth/casos-de-uso/actualizar-activo-sucursal.ts": {
