@@ -31,6 +31,15 @@ export interface VentaParaAnular {
 
 type OperacionConLineas = Prisma.OperacionGetPayload<{ include: { movimientos: { include: { producto: true } } } }>;
 
+/**
+ * Las líneas de la venta en el orden en que se escribieron (`creadoEn` y, a igualdad, id): de ese orden depende el de las filas de reversión que escribe la
+ * anulación. Sin `orderBy` la base las entregaba en su orden físico, que cambia según dónde cayeron las filas (las de una misma `createMany` comparten
+ * `creadoEn`), y la reversión salía en otro orden de una corrida a otra (mismo criterio que O.40 (3) en `cargarCuentaParaCerrar`).
+ */
+const LINEAS_EN_ORDEN_DE_ESCRITURA = {
+  movimientos: { include: { producto: true }, orderBy: [{ creadoEn: "asc" }, { id: "asc" }] },
+} satisfies Prisma.OperacionInclude;
+
 function aVentaParaAnular(operacion: OperacionConLineas): VentaParaAnular {
   return {
     id: operacion.id,
@@ -61,7 +70,7 @@ export async function cargarVentaParaAnular(
 ): Promise<VentaParaAnular | null> {
   const operacion = await tx.operacion.findFirst({
     where: { id: args.operacionId, sucursalId: args.sucursalId },
-    include: { movimientos: { include: { producto: true } } },
+    include: LINEAS_EN_ORDEN_DE_ESCRITURA,
   });
   return operacion ? aVentaParaAnular(operacion) : null;
 }
@@ -77,7 +86,7 @@ export async function cargarHermanasDePromo(
 ): Promise<VentaParaAnular[]> {
   const hermanas = await tx.operacion.findMany({
     where: { promoCuentaId: args.promoCuentaId, anuladaEn: null, id: { not: args.excluirOperacionId } },
-    include: { movimientos: { include: { producto: true } } },
+    include: LINEAS_EN_ORDEN_DE_ESCRITURA,
   });
   return hermanas.map(aVentaParaAnular);
 }

@@ -122,6 +122,19 @@ describe("persistencia del cierre de cuenta", () => {
     expect(await buscar(s.muzzarella.id)).toBe(venta2.id);
     expect(await buscar(s.flan.id)).toBeNull();
   });
+
+  it("cargarOperacionDelConsumo: con dos consumos de la MISMA hora gana el de menor id, aunque se haya insertado después (no el orden físico)", async () => {
+    const [venta1, venta2] = await Promise.all([1, 2].map(() => prisma.operacion.create({ data: { sucursalId: s.sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId: s.admin.id } })));
+    const misma = new Date("2026-03-01T12:00:00Z");
+    const consumo = (id: string, operacionId: string) =>
+      prisma.movimientoStock.create({
+        data: { id, operacionId, productoId: s.muzzarella.id, seccionId: s.seccion.id, proceso: "CONSUMO", cantidad: -0.5, detalle: "Consumo", precioTotal: 0, precioPorUnidadStock: 0, creadoEn: misma },
+      });
+    await consumo("czzzzzzzzzzzzzzzzzzzzzzz", venta1.id); // primero en el disco, id mayor
+    await consumo("caaaaaaaaaaaaaaaaaaaaaaa", venta2.id); // después en el disco, id menor
+    const operacionId = await prisma.$transaction((tx) => cargarOperacionDelConsumo(tx, { operacionIds: [venta1.id, venta2.id], productoId: s.muzzarella.id, seccionId: s.seccion.id }));
+    expect(operacionId).toBe(venta2.id);
+  });
 });
 
 /** `src/server/persistencia/pos/` del ticket corregido (Task #41, Fase M12b), contra Postgres real y con el `tx` de un `$transaction` del test. */
