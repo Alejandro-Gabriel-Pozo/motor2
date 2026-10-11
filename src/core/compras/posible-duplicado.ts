@@ -1,8 +1,8 @@
 /**
  * Aviso C25 «posible factura repetida» al registrar una compra: TODA la empresa, ±7 días, mismo proveedor e importe. Nombra la sucursal y la fecha (nunca el N.º de factura ni el importe: `Operacion.nroFactura` exige piso administrador y quien carga la compra puede ser operario) y NO bloquea
  * (la factura duplicada de verdad —mismo proveedor y mismo N.º en la sucursal— la frena el índice único; esto es solo una pista para quien carga).
- * Módulo PURO (P0): sin reloj, zona horaria ni base. El DÍA de cada compra lo calcula quien lee la base («AAAA-MM-DD»; la fecha de compra es un día de calendario
- * guardado a medianoche UTC y se lee en UTC) y acá se compara como TEXTO.
+ * Módulo PURO (P0): sin reloj, zona horaria ni base. El DÍA de cada compra lo calcula quien lee la base («AAAA-MM-DD»; la fecha de compra es el mediodía argentino
+ * del día elegido, P1, y se lee en hora argentina) y acá se compara como TEXTO.
  */
 import { redondearMoneda } from "@/core/moneda";
 import { sumarDias } from "@/core/tiempo/zona-horaria";

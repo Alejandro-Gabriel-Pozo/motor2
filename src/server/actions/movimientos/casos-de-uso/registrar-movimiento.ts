@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { redondearMoneda } from "@/core/moneda";
 import { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicados } from "@/core/compras/public";
-import { ZONA_UTC, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
@@ -181,10 +181,10 @@ export async function registrarMovimientoCasoDeUso(
     }
 
     // Aviso C25 (posible factura repetida; NO bloquea): solo en una Compra con proveedor. Se lee ANTES de escribir, con `tx`, así no se compara contra la compra que se está por guardar. El mensaje
-    // (con el aviso) se guarda para la idempotencia: un reintento con la misma clave devuelve el mismo texto. La fecha de compra es un día de calendario a medianoche UTC: se lee en UTC.
+    // (con el aviso) se guarda para la idempotencia: un reintento con la misma clave devuelve el mismo texto. La fecha de compra es el mediodía argentino del día elegido (P1): su día se lee en hora argentina.
     let avisoDuplicado = "";
     if (datos.proceso === "COMPRA" && datos.proveedorId) {
-      const dia = diaDeCalendario(datos.fecha, ZONA_UTC);
+      const dia = diaDeCalendario(datos.fecha, ZONA_ARGENTINA);
       const candidatas = await cargarComprasParaAvisoDeDuplicado(tx, {
         proveedorId: datos.proveedorId,
         desde: sumarDias(dia, -DIAS_DE_VENTANA_DE_DUPLICADO),

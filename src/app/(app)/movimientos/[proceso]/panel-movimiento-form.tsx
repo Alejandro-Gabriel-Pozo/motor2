@@ -11,7 +11,7 @@ import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
-import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { QuickCrearProducto } from "@/components/catalogo/quick-crear-producto";
 
@@ -259,7 +259,7 @@ export function PanelMovimientoForm({
     startTransition(async () => {
       const resultado = await registrarMovimiento({
         proceso: config.proceso,
-        fecha: new Date(fecha),
+        fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
         seccionId,
         seccionDestinoId: config.proceso === "TRANSFERENCIA" ? seccionDestinoId : undefined,
         proveedorId: proveedorId || undefined,

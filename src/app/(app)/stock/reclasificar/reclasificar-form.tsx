@@ -8,7 +8,7 @@ import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
-import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 
 interface FilaDestino {
   seccionId: string;
@@ -106,7 +106,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
         seccionOrigenId,
         loteOrigen: loteOrigen ? new Date(loteOrigen) : null,
         destinos: destinosValidos,
-        fecha: new Date(fecha),
+        fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
         detalle: detalle || undefined,
         claveIdempotencia,
       });

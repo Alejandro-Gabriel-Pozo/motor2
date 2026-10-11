@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import type { CompraCandidata } from "@/core/compras/public";
 import { redondearMoneda } from "@/core/moneda";
-import { ZONA_UTC, diaDeCalendario, finDelDia, inicioDelDia } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, finDelDia, inicioDelDia } from "@/core/tiempo/zona-horaria";
 
 /**
  * Persistencia de las validaciones de `registrarMovimiento` (Task #41, Fase M, M13a — docs/arquitectura-casos-de-uso-2026-09-27.md). Las de motivo, destino, proveedor
@@ -57,7 +57,8 @@ export async function existeCompraVigenteConFactura(
  * factura repetida (`posiblesDuplicados`, src/core/compras/posible-duplicado.ts). A diferencia de las demás de este archivo, corre DENTRO de la transacción de `registrarMovimiento`
  * (con `tx`): hoy ve toda la empresa; cuando rija la RLS por sucursal (Fase B) verá solo las sucursales del usuario y el aviso se achicará con ella.
  *
- * La fecha de una compra es un día de calendario guardado a medianoche UTC: el rango y el día de cada compra se calculan en UTC (en zona argentina la correrían un día).
+ * La fecha de una compra de formulario es el mediodía argentino del día elegido (P1, `mediodiaDelDia`): el rango y el día de cada compra se calculan en hora argentina, igual que
+ * el día que arma el caso de uso para la compra nueva. (Una compra vieja guardada a medianoche UTC se lee un día antes; sin relleno, ver O.250.)
  */
 export async function cargarComprasParaAvisoDeDuplicado(
   db: Prisma.TransactionClient,
@@ -68,7 +69,7 @@ export async function cargarComprasParaAvisoDeDuplicado(
       proceso: "COMPRA",
       proveedorId: args.proveedorId,
       anuladaEn: null,
-      fecha: { gte: inicioDelDia(args.desde, ZONA_UTC), lte: finDelDia(args.hasta, ZONA_UTC) },
+      fecha: { gte: inicioDelDia(args.desde, ZONA_ARGENTINA), lte: finDelDia(args.hasta, ZONA_ARGENTINA) },
     },
     select: {
       id: true,
@@ -84,7 +85,7 @@ export async function cargarComprasParaAvisoDeDuplicado(
     proveedorId: c.proveedorId,
     sucursalId: c.sucursalId,
     sucursalNombre: c.sucursal.nombre,
-    dia: diaDeCalendario(c.fecha, ZONA_UTC),
+    dia: diaDeCalendario(c.fecha, ZONA_ARGENTINA),
     importe: redondearMoneda(c.movimientos.reduce((suma, m) => suma + Number(m.precioTotal), 0)),
     anulado: false,
   }));

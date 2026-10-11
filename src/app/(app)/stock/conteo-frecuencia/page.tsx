@@ -11,6 +11,7 @@ import { ConteoFrecuenciaForm } from "./conteo-frecuencia-form";
 import { BotonEliminarFrecuenciaConteo } from "./boton-eliminar";
 import { IconoDeAccion } from "@/components/iconos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { rangoDeDias } from "@/core/tiempo/zona-horaria";
 
 /**
  * Agenda de conteo físico periódico por sucursal × producto (decisión 2 de
@@ -35,7 +36,8 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
   const rango = resolverRangoPorDefecto(undefined, new Date());
   const [filas, sugerencias] = await Promise.all([
     listarFrecuenciasConteo(ctx.sucursalId),
-    sugerirInsumosClaseA(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db, { conImportes: veImportes }),
+    // El último día se cierra a las 23:59:59.999 de la zona de la empresa (P1): las compras del formulario (mediodía argentino) del último día tienen que entrar.
+    sugerirInsumosClaseA(ctx.sucursalId, new Date(rango.desdeISO), rangoDeDias(new Date(rango.hastaISO), new Date(rango.hastaISO), ctx.empresaZonaHoraria).hasta, ctx.db, { conImportes: veImportes }),
   ]);
   const filaEnEdicion = editar ? filas.find((f) => f.id === editar) : undefined;
   const idsConAgenda = new Set(filas.filter((f) => f.frecuenciaDias > 0).map((f) => f.productoId));

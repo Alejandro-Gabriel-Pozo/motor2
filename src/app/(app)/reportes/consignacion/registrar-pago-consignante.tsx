@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { Modal } from "@/components/modal";
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
-import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 import { registrarPagoConsignante } from "@/server/actions/reportes/consignacion";
 
 // El día de hoy en Argentina (no en UTC: desde las 21:00 locales UTC ya es mañana). Esta pantalla no recibe la zona de la empresa, así que usa la constante.
@@ -36,7 +36,7 @@ export function RegistrarPagoConsignante({ proveedorId, proveedorNombre, saldoAc
               const resultado = await registrarPagoConsignante(
                 proveedorId,
                 numeroDelCampo(importe) ?? Number.NaN,
-                new Date(fecha),
+                mediodiaDelDia(fecha, ZONA_ARGENTINA),
                 notas || undefined,
                 claveIdempotencia
               );
