@@ -6,6 +6,7 @@ import { registrarVenta, type ItemVentaInput } from "@/server/actions/movimiento
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 interface FilaVenta {
   productoId: string;
@@ -14,8 +15,9 @@ interface FilaVenta {
 
 const FILA_VACIA: FilaVenta = { productoId: "", cantidadVendida: "" };
 
+// El día de hoy en Argentina (no en UTC: desde las 21:00 locales UTC ya es mañana). Esta pantalla no recibe la zona de la empresa, así que usa la constante.
 function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
+  return diaDeCalendario(new Date(), ZONA_ARGENTINA);
 }
 
 export function VentaForm({ secciones }: { secciones: { id: string; nombre: string }[] }) {

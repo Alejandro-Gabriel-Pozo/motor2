@@ -5,10 +5,12 @@ import { useState, useTransition } from "react";
 import { Modal } from "@/components/modal";
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { registrarPagoConsignante } from "@/server/actions/reportes/consignacion";
 
+// El día de hoy en Argentina (no en UTC: desde las 21:00 locales UTC ya es mañana). Esta pantalla no recibe la zona de la empresa, así que usa la constante.
 function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
+  return diaDeCalendario(new Date(), ZONA_ARGENTINA);
 }
 
 export function RegistrarPagoConsignante({ proveedorId, proveedorNombre, saldoActual }: { proveedorId: string; proveedorNombre: string; saldoActual: number }) {
