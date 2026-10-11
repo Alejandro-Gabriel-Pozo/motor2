@@ -20,7 +20,7 @@ import { abrirCuentaDeMesa } from "@/server/persistencia/pos/cuenta";
  * Orden, igual que antes:
  *  1. en UNA transacción SERIALIZABLE (`conTransaccionSerializable`, con reintento): la mesa, de ESTA sucursal, con el nombre y el límite de su sucursal (M1: leídos acá, con `tx`);
  *  2. en esa misma transacción: si la mesa ya tiene su cuenta abierta → ok sin tocar nada (ni valida los
- *     comensales ni mira el límite: reabrir la MISMA mesa nunca falla); `validarComensales`; el límite (las cuentas abiertas de la sucursal, contadas dentro de
+ *     comensales ni mira el límite: reabrir la MISMA mesa nunca falla); la sucursal tiene que estar activa (P15: `SUCURSAL_INACTIVA`, leído con el `tx`); `validarComensales`; el límite (las cuentas abiertas de la sucursal, contadas dentro de
  *     esta misma transacción: dos aperturas a mesas distintas que juntas lo superarían chocan, nunca pasan las dos); la cuenta nueva (`abrirCuentaDeMesa`,
  *     server/persistencia/pos/cuenta.ts);
  *  3. fuera de la transacción: el choque del índice único parcial (`Cuenta_una_abierta_por_mesa_key`) es ok, «ya tenía una cuenta abierta». Medido en el
@@ -29,9 +29,9 @@ import { abrirCuentaDeMesa } from "@/server/persistencia/pos/cuenta";
  *     `UniqueConstraintViolation`, la forma en que puede llegar con el adaptador `pg`); antes era `esErrorDeUnicidad`, solo `P2002`
  *     (`test/pos/choque-de-unicidad-del-driver.test.ts`).
  *
- * @contract Deja la mesa de la sucursal con su cuenta abierta (a nombre de quien la abre y con sus comensales), salvo que se haya alcanzado el límite de mesas abiertas.
+ * @contract Deja la mesa de la sucursal con su cuenta abierta (a nombre de quien la abre y con sus comensales), salvo que la sucursal esté desactivada o se haya alcanzado el límite de mesas abiertas.
  * @idempotency Por estado — si la mesa ya tenía su cuenta abierta responde ok sin escribir (la transacción serializable y el índice único parcial arbitran la carrera).
- * @transaction conTransaccionSerializable (SERIALIZABLE + reintento): la mesa, el límite de la sucursal, las cuentas abiertas y la cuenta nueva, todo dentro (M1).
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento): la mesa, la sucursal (activa y con su límite), las cuentas abiertas y la cuenta nueva, todo dentro (M1, P15).
  * @sideEffects Ninguno (la cuenta es su propio documento). Refrescar la vista lo hace el cliente (`router.refresh()`).
  * @ficha permiso=pos_abrir_cuenta transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
@@ -44,11 +44,16 @@ export async function abrirCuentaCasoDeUso(
   let numeroDeMesa: number | null = null;
   try {
     return await conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAbrirCuenta> => {
-      const mesa = await tx.mesa.findFirst({ where: { id: comando.mesaId, sucursalId: actor.sucursalId }, include: { sucursal: { select: { nombre: true, maxMesasAbiertas: true } } } });
+      const mesa = await tx.mesa.findFirst({ where: { id: comando.mesaId, sucursalId: actor.sucursalId }, include: { sucursal: { select: { nombre: true, maxMesasAbiertas: true, activo: true } } } });
       if (!mesa) return fracaso("MESA_NO_ENCONTRADA", MENSAJE_MESA_NO_ENCONTRADA);
       numeroDeMesa = mesa.numero;
       const yaAbierta = await tx.cuenta.findFirst({ where: { mesaId: mesa.id, cerradaEn: null }, select: { id: true } });
       if (yaAbierta) return exito(`La mesa ${mesa.numero} ya tenía una cuenta abierta.`, null);
+
+      // P15: una sucursal apagada no abre mesas. `activo` se lee ACÁ, con el `tx` de esta transacción SERIALIZABLE (no con la sesión, que se resolvió antes): contra un apagado simultáneo (que lee las cuentas
+      // abiertas y escribe `Sucursal.activo`) Postgres ve el ciclo de lecturas y escrituras y aborta una de las dos; el reintento de la perdedora da el rechazo de negocio. Va DESPUÉS de «ya tenía cuenta abierta»:
+      // reabrir una mesa que ya estaba abierta sigue siendo ok.
+      if (!mesa.sucursal.activo) return fracaso("SUCURSAL_INACTIVA", `La sucursal «${mesa.sucursal.nombre}» está desactivada: no se pueden abrir mesas.`);
 
       const val = validarComensales(comando.comensales);
       if (!val.ok) return fracaso("COMENSALES_INVALIDOS", val.mensaje);
