@@ -30,7 +30,7 @@ import { actualizarCamposDeProducto } from "@/server/persistencia/catalogo/produ
  *  - `CONSIGNANTE_CON_HISTORIA`: ni el consignante ni el «es consignación» se cambian si el producto ya tiene liquidaciones (`productoTieneLiquidaciones`): el reporte
  *    de consignación atribuye cada liquidación al consignante ACTUAL del producto, así que cambiarlo pasaría la deuda ya devengada a otro proveedor.
  *
- * S-12 (D8 del dueño): el costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante`. El caso de uso no chequea permisos: la Server Action
+ * S-12 (D8 del dueño): el costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante` en alguna sucursal de la empresa (P20). El caso de uso no chequea permisos: la Server Action
  * calcula `comando.puedeGestionarConsignacion` con el gate y acá, sin él, un campo de consignación que no viene queda como estaba y uno distinto del guardado es `SIN_PERMISO_COSTO`.
  *
  * M.2 (clave fina `producto_campos_sensibles`): cambiar el precio de venta, el factor de conversión o una unidad (de stock o de compra) es de quien tiene esa clave además de `producto_editar`. El caso de uso
@@ -92,7 +92,7 @@ async function actualizarProductoEnTransaccion(
     const hayAusentes = pedidos.unidadStockId === undefined || pedidos.factorConversion === undefined || pedidos.precioVenta === undefined || pedidos.unidadCompraId === undefined;
     let puerta = hayAusentes ? guardComandoDatosDeProducto({ datos }) : comando.puerta;
 
-    // S-12 (D8 del dueño): el costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante`. Sin esa clave un campo que NO viene queda como estaba
+    // S-12 (D8 del dueño): el costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante` en alguna sucursal de la empresa (P20). Sin esa clave un campo que NO viene queda como estaba
     // (la pantalla del operador no lo manda) y uno que viene DISTINTO del guardado se rechaza: nunca se confía en lo que manda el cliente.
     if (!comando.puedeGestionarConsignacion) {
       const intentaCambiarlo =

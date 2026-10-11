@@ -18,7 +18,7 @@ import { whereSeccionHabitualVigente } from "@/core/stock/public";
 
 /**
  * S-12 (plan de endurecimiento de seguridad, T2; D8 del dueño): el COSTO DE CONSIGNACIÓN de un producto —`precioConsignacion`, `proveedorConsignacionId` y el proveedor
- * mismo— es de quien tiene `pagar_consignante` en la sucursal activa. La consulta es el último punto antes de la página: DENIEGA POR DEFECTO. Sin
+ * mismo— es de quien tiene `pagar_consignante` en alguna de sus sucursales de la empresa (P20, D23). La consulta es el último punto antes de la página: DENIEGA POR DEFECTO. Sin
  * `conCostoDeConsignacion: true` los tres vuelven en `null` (el «es consignación» sí queda: no es el costo); la página lo pasa en `true` solo cuando el gate de su
  * usuario lo dice. `esConsignacion` no se toca.
  */

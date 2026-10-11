@@ -51,7 +51,7 @@ export async function darDeAltaProductoCasoDeUso(
   actor: Pick<ContextoUsuario, "db" | "transaccion" | "sucursalId" | "empresaId" | "alcance">,
   datos: EntradaProducto,
   azar: FuenteDeAzar,
-  /** S-12 (D8): si quien da de alta tiene `pagar_consignante` EDITAR en la sucursal activa (lo calcula la Server Action con el gate; este caso de uso no chequea permisos). */
+  /** S-12 (D8): si quien da de alta tiene `pagar_consignante` EDITAR en alguna de sus sucursales de la empresa (P20, D23; lo calcula la Server Action con el gate; este caso de uso no chequea permisos). */
   puedeGestionarConsignacion: boolean,
   /** S-52: el resultado de `guardComandoDatosDeProducto`, que la Server Action calcula con lo que mandó el cliente y que `validarDatosDeProducto` aplica en el lugar de siempre. */
   puerta: PuertaDeDatosDeProducto,

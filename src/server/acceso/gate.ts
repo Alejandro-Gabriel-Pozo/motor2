@@ -110,6 +110,21 @@ export async function sucursalesVisiblesPara(
 }
 
 /**
+ * P20 (D23 del dueño): el nivel de una acción DE SUCURSAL mirado en TODA la empresa, no en la sucursal activa. Es `obtenerMiNivelPermiso` en cada membresía vigente del usuario en la empresa
+ * activa (`ctx.membresias` ya son las activas, de sucursales activas, de esa empresa); alcanza con que lo tenga en UNA (`some`), y el resultado no cambia según la sucursal activa. Cada sucursal
+ * pasa por el gate de siempre (membresía vigente, módulo de la empresa, capacidad de la sucursal y piso del rol), así que cerrar es el default: sin membresías, ni ver ni editar. NO ensancha la lectura
+ * de ninguna tabla por sucursal (las tablas que lee el gate son de gobierno); solo agranda quién decide: es la autoridad de un administrador de otra sucursal, a propósito. Hoy lo usa solo
+ * `pagar_consignante` (el costo de consignación del producto, que es de la empresa); la clave va literal en cada llamada para que los guardianes la vean.
+ */
+export async function obtenerMiNivelPermisoEnAlgunaSucursal(
+  ctx: { usuarioId: string; membresias: readonly { sucursalId: string }[]; db: PrismaClient },
+  accionClave: AccionDeSucursal,
+): Promise<{ ver: boolean; editar: boolean }> {
+  const niveles = await Promise.all(ctx.membresias.map((m) => obtenerMiNivelPermiso(ctx.usuarioId, m.sucursalId, accionClave, ctx.db)));
+  return { ver: niveles.some((n) => n.ver), editar: niveles.some((n) => n.editar) };
+}
+
+/**
  * Lee lo necesario para decidir las acciones de CONTEXTO EMPRESA del usuario (sus membresías activas en esa empresa con las filas de su matriz, las capacidades de
  * cada sucursal, el registro de módulos si hace falta y si es gerente) y delega en `nivelesEnLaEmpresa` (decisión pura).
  */

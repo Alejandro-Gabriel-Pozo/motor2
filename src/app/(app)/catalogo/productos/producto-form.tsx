@@ -63,7 +63,7 @@ export function ProductoForm({
   /** Qué botones «+ Nuevo …» de alta rápida se dibujan: cada uno exige su propio permiso de Editar en el servidor. */
   puedeCrear: { categoria: boolean; insumo: boolean; proveedor: boolean };
   /**
-   * S-12 (D8 del dueño): el costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante`. Sin la clave la página ni siquiera le manda el precio ni
+   * S-12 (D8 del dueño): el costo de consignación (es consignación, proveedor y precio) es de quien tiene `pagar_consignante` en alguna sucursal de la empresa (P20). Sin la clave la página ni siquiera le manda el precio ni
    * el consignante a este componente (los props viajan al navegador), el formulario no dibuja esos campos y NO los manda al guardar: «no viene» es «no cambia» en el servidor, que además
    * rechaza un valor distinto del guardado. Cortesía de la pantalla; la barrera es la del servidor.
    */
