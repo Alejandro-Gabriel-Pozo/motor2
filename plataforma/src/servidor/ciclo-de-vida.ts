@@ -1,13 +1,13 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { confirmarAltaSchema, corregirCuitSchema, mensajeDeEmpresaActiva, motivoSchema } from "@/core/features/empresa/ciclo-de-vida";
 import { esTransicionValida, type EstadoEmpresa } from "@/core/features/empresa/empresa.schema";
-import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "@/core/fiscal/public-servidor";
 import { formatearCuit, validarCuit } from "@/core/fiscal/public";
 import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { filtroDelGerente } from "@/core/permisos/filtros";
 import type { Db } from "@/lib/db-tipos";
 import { auditarEnTransaccion, type AutorEnInstalacion } from "./auditoria";
 import type { DependenciasDeEmpresas } from "./empresas";
+import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "./factura-autorizada";
 
 /**
  * Ciclo de vida de una empresa desde la consola (E6, ADR-021): confirmar el alta, corregir el CUIT, suspender, reactivar y reenviar el aviso de activación.
@@ -18,7 +18,7 @@ import type { DependenciasDeEmpresas } from "./empresas";
  * se mira por si hay otra empresa con ese CUIT, solo para poder decir cuál.
  */
 export interface DependenciasDeCicloDeVida extends DependenciasDeEmpresas {
-  /** Inyectable para probar la inmutabilidad del CUIT; por defecto, el predicado real (`core/fiscal/factura-autorizada`). */
+  /** Inyectable para probar la inmutabilidad del CUIT; por defecto, el predicado real (`./factura-autorizada`). */
   tieneFacturaAutorizada?: (db: Db, empresaId: string) => Promise<boolean>;
 }
 
@@ -154,7 +154,7 @@ export async function reenviarAvisoDeActivacion(db: Cliente, deps: DependenciasD
 }
 
 /**
- * Corrige (o carga, o quita) el CUIT de una empresa activa o suspendida. Mientras no haya una factura autorizada en producción (`core/fiscal/factura-autorizada`).
+ * Corrige (o carga, o quita) el CUIT de una empresa activa o suspendida. Mientras no haya una factura autorizada en producción (`./factura-autorizada`).
  * `cuit` vacío = quitarlo, y eso solo se permite en una empresa SUSPENDIDA. `Invitacion.cuitDeclarado` NO se toca: queda como lo que declaró el gerente.
  */
 export async function corregirCuitDeEmpresa(db: Cliente, deps: DependenciasDeCicloDeVida, autor: AutorEnInstalacion, empresaId: string, entrada: unknown): Promise<ResultadoDeCiclo> {

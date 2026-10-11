@@ -36,8 +36,12 @@ tienen. Pide motivo (obligatorio, solo para la auditoría), valida (E2), mira qu
 **Quitar** el CUIT solo se permite en una empresa suspendida (el caso de quien se hizo pasar por otra y fue confirmado por error).
 
 **Inmutabilidad:** se rechaza si la empresa tiene una factura autorizada por ARCA **en producción** (las de homologación no cuentan). Es un único predicado,
-`empresaTieneFacturaAutorizada` (`src/core/fiscal/factura-autorizada.ts`), que hoy da siempre falso porque el circuito fiscal no existe. `test/arquitectura/cuit-inmutable-cableado.test.ts`
+`empresaTieneFacturaAutorizada` (`plataforma/src/servidor/factura-autorizada.ts`), que hoy da siempre falso porque el circuito fiscal no existe. `test/arquitectura/cuit-inmutable-cableado.test.ts`
 falla si el schema declara comprobantes fiscales y la lista de fuentes sigue vacía: quien construya la facturación tiene que cablearlo.
+
+> **Actualización 2026-10-11 (Pureza, Fase 6, tramo 6b):** el predicado vivía en src/core/fiscal/factura-autorizada.ts y se mudó, sin cambiar una línea de su lógica, a
+> `plataforma/src/servidor/factura-autorizada.ts`: recibe la base (`Db`), cosa que el núcleo no puede hacer (`core-sin-consultas`), y su único consumidor es la consola. Es un cambio de
+> lugar, no de regla: la inmutabilidad, el predicado único y su guardián siguen como arriba.
 
 ### 3. Suspender y reactivar
 
@@ -85,6 +89,6 @@ prohíbe `window.confirm` en `plataforma/src`.
 
 ## Implementación
 
-Núcleo: `src/core/features/empresa/ciclo-de-vida.ts`, `src/core/fiscal/factura-autorizada.ts`, `src/core/auth/contacto-plataforma.ts`. Consola: `plataforma/src/servidor/ciclo-de-vida.ts`,
+Núcleo: `src/core/features/empresa/ciclo-de-vida.ts`, `src/core/auth/contacto-plataforma.ts`. Consola: `plataforma/src/servidor/ciclo-de-vida.ts`, `plataforma/src/servidor/factura-autorizada.ts` (estaba en el núcleo hasta la Fase 6, tramo 6b: ver la actualización del §2),
 `plataforma/src/servidor/empresas.ts` y `plataforma/src/app/empresas/`. Pruebas: `test/persistencia/ciclo-de-vida-de-empresa.test.ts` (con el rol real en CI), `test/core/ciclo-de-vida-de-empresa.test.ts`,
 `test/arquitectura/cuit-inmutable-cableado.test.ts`, `test/e2e/consola-ciclo-de-vida.spec.ts`.

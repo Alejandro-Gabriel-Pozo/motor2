@@ -12,9 +12,7 @@ import { PUREZA_HEREDADA_DEL_NUCLEO } from "./pureza-heredada-del-nucleo";
  * fase anterior a la registrada. Una entrada que sale de la lista (porque se la limpió) deja de importar; una entrada nueva la frena la regla «lo nuevo nace puro» y el tope de la lista.
  * Para cambiar una fase a propósito, se cambia acá en el mismo commit y se explica en el mensaje.
  */
-const FASE_REGISTRADA: Record<string, 4 | 6> = {
-  "src/core/fiscal/factura-autorizada.ts": 6,
-};
+const FASE_REGISTRADA: Record<string, 4 | 6> = {};
 
 /** El número de la fase con la que empieza el `pendiente` de una entrada («Fase 6: …»), o `null` si no empieza así. */
 export function faseDe(pendiente: string): number | null {
@@ -52,5 +50,10 @@ describe("la fase de un heredado no retrocede", () => {
   it("base.ts ya salió del núcleo, UNA vez, a server/sesion (D-4; Fase 6, tramo 6a): ninguna entrada de la lista es de la sesión", () => {
     expect(Object.keys(PUREZA_HEREDADA_DEL_NUCLEO).filter((ruta) => ruta.startsWith("src/core/auth/"))).toEqual([]);
     expect(existsSync(join(__dirname, "../../src/server/sesion/base.ts"))).toBe(true);
+  });
+
+  it("la Fase 6 terminó con los heredados del núcleo (tramo 6b): la lista y su registro quedaron vacíos y así siguen", () => {
+    expect(Object.keys(PUREZA_HEREDADA_DEL_NUCLEO)).toEqual([]);
+    expect(Object.keys(FASE_REGISTRADA)).toEqual([]);
   });
 });

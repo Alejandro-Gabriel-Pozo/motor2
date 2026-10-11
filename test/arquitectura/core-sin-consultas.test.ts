@@ -27,12 +27,11 @@ const RAIZ = join(__dirname, "../..");
 const DELEGADOS = delegadosDeModelos(readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8"));
 
 /**
- * Los archivos de `src/core/` que todavía consultan o reciben la base: la factura autorizada (recibe `Db`; la usa la consola, que no puede importar `src/server`: queda para la
- * Fase 6). La sesión y la base por empresa (infraestructura que estaba en `core/auth`) salieron a `server/sesion` en la Fase 6, tramo 6a. La lista solo se achica.
+ * Los archivos de `src/core/` que todavía consultan o reciben la base: NINGUNO desde la Fase 6. La sesión y la base por empresa (infraestructura que estaba en `core/auth`)
+ * salieron a `server/sesion` en el tramo 6a; la factura autorizada (recibe `Db` y la usa solo la consola, que no puede importar `src/server`) se mudó a
+ * `plataforma/src/servidor/factura-autorizada.ts` en el tramo 6b. La lista solo se achica: queda vacía, y un archivo nuevo que consulte falla.
  */
-const ARCHIVOS_PENDIENTES: Record<string, string> = {
-  "src/core/fiscal/factura-autorizada.ts": "Fase 6: recibe `Db` (la fuente de facturas autorizadas cuenta filas con la base que le pasan) y la usa la consola de plataforma, que no puede importar src/server; queda para la Fase 6.",
-};
+const ARCHIVOS_PENDIENTES: Record<string, string> = {};
 
 const TIPOS_DE_BASE = new Set(["Db", "PrismaClient", "TransactionClient", "Transaccion"]);
 
@@ -124,8 +123,8 @@ describe("core-sin-consultas: TODO src/core/ no consulta la base (salvo los pend
     expect(problemas).toEqual([]);
   });
 
-  it("los pendientes son exactamente los esperados (la lista solo se achica; la Fase 6, tramo 6a, sacó base, contexto y rol-de-ejecucion al mudarlos a server/sesion)", () => {
-    expect(Object.keys(ARCHIVOS_PENDIENTES).sort()).toEqual(["src/core/fiscal/factura-autorizada.ts"]);
+  it("los pendientes son exactamente los esperados: ninguno (la Fase 6 sacó base, contexto y rol-de-ejecucion a server/sesion en el tramo 6a y la factura autorizada a la consola en el 6b)", () => {
+    expect(Object.keys(ARCHIVOS_PENDIENTES).sort()).toEqual([]);
   });
 });
 

@@ -49,7 +49,7 @@ export interface AccionesDeCicloDeVida {
 }
 
 /**
- * Qué se ofrece en cada estado. `tieneFacturaAutorizada` es el predicado de `core/fiscal/factura-autorizada`: con una factura autorizada en PRODUCCIÓN el CUIT queda
+ * Qué se ofrece en cada estado. `tieneFacturaAutorizada` es el predicado de `plataforma/src/servidor/factura-autorizada.ts` (ya leído: el núcleo no consulta la base): con una factura autorizada en PRODUCCIÓN el CUIT queda
  * inmutable. Una empresa en alta no se suspende (nadie opera en ella; para frenarla se revoca la invitación o no se confirma).
  */
 export function accionesDeCicloDeVida(e: EmpresaParaElCiclo, contexto: { tieneFacturaAutorizada: boolean }): AccionesDeCicloDeVida {

@@ -9,7 +9,7 @@ import {
   tieneCuitPendiente,
   type EmpresaParaElCiclo,
 } from "../../src/core/features/empresa/ciclo-de-vida";
-import { FUENTES_DE_FACTURAS_AUTORIZADAS, empresaTieneFacturaAutorizada, hayFacturaEnAlgunaFuente } from "../../src/core/fiscal/factura-autorizada";
+import { FUENTES_DE_FACTURAS_AUTORIZADAS, empresaTieneFacturaAutorizada, hayFacturaEnAlgunaFuente } from "../../plataforma/src/servidor/factura-autorizada";
 
 const aceptada = { estado: "ACEPTADA" as const, cuitDeclarado: "30712345671" };
 const sinFactura = { tieneFacturaAutorizada: false };

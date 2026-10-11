@@ -2,12 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { accionesDeCicloDeVida } from "@/core/features/empresa/ciclo-de-vida";
 import { formatearCuit } from "@/core/fiscal/public";
-import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "@/core/fiscal/public-servidor";
 import { dbDeInstalacion } from "../../../../../db";
 import { rutaDeEmpresa, rutaDeEmpresas } from "../../../../../rutas";
 import { contextoDePagina } from "../../../../../servidor/contexto";
 import { cuitEnOtrasInstalaciones } from "../../../../../servidor/cuit-en-instalaciones";
 import { cuitEnJuego, empresasConEseCuit, historialDeEmpresa, obtenerEmpresa } from "../../../../../servidor/empresas";
+import { empresaTieneFacturaAutorizada, MENSAJE_CUIT_INMUTABLE } from "../../../../../servidor/factura-autorizada";
 import { ACCION_DE_AUDITORIA, ESTADO_DE_EMPRESA, ESTADO_DE_INVITACION, fechaCorta, textoDeLoQueAcabaDePasar, textosDeCuitEnOtrasInstalaciones } from "../textos";
 import { AccionesDeInvitacion, ConfirmarAlta, CorregirCuit, InvitarDeNuevo, Reactivar, ReenviarAviso, Suspender } from "./botones";
 

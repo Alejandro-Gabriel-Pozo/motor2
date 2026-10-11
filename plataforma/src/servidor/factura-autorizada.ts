@@ -8,6 +8,9 @@ import type { Db } from "@/lib/db-tipos";
  * Hoy NO existe el circuito fiscal (ni comprobantes ni credenciales): no hay nada que pueda estar autorizado y el predicado da siempre `false`. Cuando exista, hay que
  * sumar a `FUENTES_DE_FACTURAS_AUTORIZADAS` la consulta de «cuántos comprobantes AUTORIZADOS de PRODUCCIÓN tiene la empresa»; `test/arquitectura/cuit-inmutable-cableado.test.ts`
  * falla si aparece una tabla fiscal en el schema y la lista sigue vacía. Cada fuente devuelve la cantidad.
+ *
+ * Vive en la consola, su único consumidor (`ciclo-de-vida.ts` y la página de la empresa), desde la Fase 6, tramo 6b: estaba en `src/core/fiscal/`, donde recibir la base
+ * (`Db`) contradecía `core-sin-consultas`. Cambio de lugar, no de regla (ADR-021).
  */
 export type FuenteDeFacturasAutorizadas = (db: Db, empresaId: string) => Promise<number>;
 
