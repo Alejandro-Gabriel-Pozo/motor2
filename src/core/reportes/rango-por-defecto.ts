@@ -8,7 +8,7 @@
  * cualquier negocio real, los días 1 y 2 de cada mes la pantalla de entrada se ve casi vacía con "mes en curso"; con 30 días
  * siempre hay algo que mostrar.
  */
-import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
+import { ZONA_UTC, esDiaISOReal, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
 
 /**
  * Lo más que abarca un rango de reporte, contando los dos extremos (S-28, T11 del endurecimiento): una URL con `?desde=2000-01-01` hacía que cada reporte recorriera TODA la
@@ -61,9 +61,9 @@ export function resolverRangoPorDefecto(opcionParam: string | undefined, ahora: 
 /**
  * El rango efectivo de un reporte, a partir de sus `searchParams`. Una fecha explícita en la URL (`desde`) SIEMPRE manda — mismo
  * comportamiento que antes de que existiera este selector, para no romper enlaces ni specs existentes que pasan `desde`/`hasta`
- * sin `rango` (ej. el link de "Compras por proveedor", o `?desde=no-es-una-fecha` de la prueba de la pantalla de error) — y en
- * ese caso la opción vigente pasa a ser "personalizado", sin validar la fecha (esa validación, si la tuviera, es cosa del
- * reporte, no de este selector).
+ * sin `rango` (ej. el link de "Compras por proveedor") — y en ese caso la opción vigente pasa a ser "personalizado". Una fecha que
+ * no es un día real (`?desde=no-es-una-fecha`, `2026-13-45`, `2026-02-31`) NO cuenta como fecha explícita: se ignora y se sigue
+ * con el rango por defecto (o con `rango`), en vez de dejar que el reporte reciba un Invalid Date y lance.
  *
  * `rango=personalizado` SIN `desde` también cuenta como "personalizado" (no cae a 30d): es lo que llega el primer submit
  * después de elegir "Fechas personalizadas" en el selector, antes de que el usuario haya tocado los inputs de fecha (que recién
@@ -71,10 +71,14 @@ export function resolverRangoPorDefecto(opcionParam: string | undefined, ahora: 
  * de 30 días como punto de partida razonable para editar, no porque sea significativo.
  */
 export function resolverRangoDeReporte(sp: { desde?: string; hasta?: string; rango?: string }, ahora: Date): RangoDeReporte {
-  if (sp.desde || sp.rango === "personalizado") {
+  // Una fecha que no es un día real «AAAA-MM-DD» (texto, mes 13, 31 de febrero) se descarta como si no viniera: el «desde» cae al rango por defecto y el «hasta» a hoy. Sin esto
+  // el reporte armaba `new Date("abc")` (Invalid Date) y la consulta lanzaba un RangeError que tumbaba la pantalla. Mismo criterio que Compras y Tickets: lo inválido se ignora.
+  const desdePedido = esDiaISOReal(sp.desde) ? sp.desde : undefined;
+  const hastaPedido = esDiaISOReal(sp.hasta) ? sp.hasta : undefined;
+  if (desdePedido || sp.rango === "personalizado") {
     const base = resolverRangoPorDefecto("30d", ahora);
-    const desdeISO = sp.desde || base.desdeISO;
-    const hastaISO = sp.hasta || base.hastaISO;
+    const desdeISO = desdePedido || base.desdeISO;
+    const hastaISO = hastaPedido || base.hastaISO;
     const acotado = acotarElDesde(desdeISO, hastaISO);
     return { opcion: "personalizado", desdeISO: acotado, hastaISO, ...(acotado !== desdeISO ? { recortadoDesde: desdeISO } : {}) };
   }

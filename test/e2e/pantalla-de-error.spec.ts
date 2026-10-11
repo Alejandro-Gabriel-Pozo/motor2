@@ -2,11 +2,12 @@ import { test, expect } from "./fixtures/auth";
 
 /**
  * Un fallo al armar una pantalla muestra nuestra pantalla de error (dentro del menú, con «Reintentar» y la salida al inicio) y no
- * la página genérica de Next. El fallo es real: el reporte por período recibe la fecha desde la URL y una fecha inválida hace que la
- * consulta a la base lance. (Si algún día ese reporte valida la fecha, hay que buscar otro fallo real para esta prueba.)
+ * la página genérica de Next. El fallo es real: Consignación recibe la fecha desde la URL sin validarla y una fecha inválida hace que
+ * la consulta a la base lance. (El reporte por período era el fallo de esta prueba hasta que validó la fecha; si Consignación también
+ * la valida, hay que buscar otro fallo real para esta prueba.)
  */
 test("si falla el armado de una pantalla, se ve el error propio dentro del menú y se puede salir", async ({ paginaAutenticada: page }) => {
-  await page.goto("/reportes/periodo?desde=no-es-una-fecha");
+  await page.goto("/reportes/consignacion?desde=no-es-una-fecha");
 
   await expect(page.getByRole("heading", { name: "Algo falló al abrir esta pantalla" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Reintentar" })).toBeVisible();
