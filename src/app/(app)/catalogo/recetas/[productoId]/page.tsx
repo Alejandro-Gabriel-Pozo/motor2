@@ -19,7 +19,7 @@ import {
   actualizarCabeceraDeReceta,
 } from "@/server/actions/catalogo/recetas";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
-import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
+import { disponibilidadDeProductoEnSucursales } from "@/server/consultas/catalogo/disponibilidad";
 import { secuenciaMoviendo } from "@/core/catalogo/public";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import {
@@ -97,6 +97,12 @@ export default async function RecetaEditorPage({
   const volver = `/catalogo/recetas/${producto.id}`;
   const siguienteOrdenPaso = vigente?.pasos.length ? Math.max(...vigente.pasos.map((p) => p.orden)) + 1 : 1;
 
+  // M.3-A5: lo que esta pantalla muestra de OTRAS sucursales (de dónde copiar la receta, en cuáles falta un ingrediente, dónde está calibrado) se limita a las sucursales que el usuario puede ver: la LECTURA
+  // se ensancha a las sucursales donde el rol ve `receta_sucursal_copiar` (el mismo «Ver» que exige `leerOrigenDeCopia` al copiar), además de la activa. `sucursalesVisibles` sale de ese alcance (membresías
+  // y gate), nunca de la URL ni del cliente; las consultas reciben la base de este contexto ampliado, y todo lo demás de la pantalla se lee con `ctx.db`. Sin alcance, solo la activa (falla cerrado).
+  const origenes = await lecturaEnSucursalesVisibles(ctx, "receta_sucursal_copiar");
+  const sucursalesVisibles = origenes.alcance?.lectura ?? [ctx.sucursalId];
+
   // Aviso no bloqueante (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.6): la receta es del Catálogo Central —
   // validarIngredientes solo exige que cada MP esté disponible EN ALGUNA sucursal, nunca en todas. Acá se avisa, sin
   // impedir nada, en qué sucursales un ingrediente puntual no está disponible: ahí este plato no se va a poder vender.
@@ -108,7 +114,7 @@ export default async function RecetaEditorPage({
   if (vigente?.ingredientes.length) {
     await Promise.all(
       vigente.ingredientes.map(async (ing) => {
-        const porSucursal = await disponibilidadPorSucursalDeProducto(ing.insumoProductoId, ctx.db);
+        const porSucursal = await disponibilidadDeProductoEnSucursales(ing.insumoProductoId, ctx.usuarioId, sucursalesVisibles, origenes.db);
         const faltantes = porSucursal.filter((s) => !s.disponible).map((s) => s.sucursalNombre);
         if (faltantes.length) sucursalesSinIngrediente.set(ing.insumoProductoId, faltantes);
 
@@ -127,7 +133,7 @@ export default async function RecetaEditorPage({
   // (no una por ingrediente) a RendimientoLocalIngrediente.
   const calibracionesPorIngrediente = new Map<string, string[]>();
   if (vigente?.ingredientes.length) {
-    const calibraciones = await listarCalibracionesDeIngredientes(vigente.ingredientes.map((i) => i.id), ctx.db);
+    const calibraciones = await listarCalibracionesDeIngredientes(vigente.ingredientes.map((i) => i.id), ctx.usuarioId, sucursalesVisibles, origenes.db);
     for (const c of calibraciones) {
       const lista = calibracionesPorIngrediente.get(c.recetaIngredienteId) ?? [];
       lista.push(c.sucursal.nombre);
@@ -136,9 +142,7 @@ export default async function RecetaEditorPage({
   }
 
   // Receta propia de la sucursal activa (ADR-009, R3/R4): estado + qué acciones le tocan a este usuario (una clave por acción).
-  // M.3-A5: de dónde se puede copiar se lee de las OTRAS sucursales: la LECTURA se ensancha a las sucursales donde el rol ve `receta_sucursal_copiar` (el mismo «Ver» que exige `leerOrigenDeCopia`
-  // al copiar); la receta propia de la sucursal activa y todo lo demás de la pantalla se leen con `ctx.db`.
-  const origenes = await lecturaEnSucursalesVisibles(ctx, "receta_sucursal_copiar");
+  // El origen de la copia (`origenes`, más arriba) se lee de las OTRAS sucursales; la receta propia de la sucursal activa y todo lo demás de la pantalla se leen con `ctx.db`.
   const [estadoPropia, otrasConRecetaPropia, nivelEditar, nivelCopiar, nivelVolver] = await Promise.all([
     obtenerEstadoDeRecetaPropia(producto.id, ctx.sucursalId, ctx.db),
     listarSucursalesConRecetaPropia(producto.id, ctx.sucursalId, ctx.usuarioId, origenes.db),

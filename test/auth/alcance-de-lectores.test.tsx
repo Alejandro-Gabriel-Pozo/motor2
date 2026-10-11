@@ -259,4 +259,65 @@ describe("M.3-A5: los lectores de varias sucursales", () => {
       expect(listarSucursalesConRecetaPropia).not.toHaveBeenCalled();
     });
   });
+
+  describe("disponibilidad y calibración por sucursal del editor de recetas (receta_sucursal_copiar)", () => {
+    let pvId: string;
+    /** La harina (ingrediente) está disponible solo en A; B y C la tienen sin disponibilidad. La calibración existe en A, B y C. */
+    beforeEach(async () => {
+      const { kg } = await sembrarCatalogoBase();
+      pvId = (await sembrarProductoDisponible({ codigo: "PV_PIZZA", nombre: "Pizza", tipo: "PV", unidadStockId: kg.id, precioVenta: 100 }, A)).id;
+      const harina = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kg.id }, A);
+      const version = await prisma.recetaVersion.create({
+        data: { productoId: pvId, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 0.1, unidadId: kg.id }] } },
+        include: { ingredientes: true },
+      });
+      for (const sucursalId of [A, B, C]) {
+        await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: version.ingredientes[0]!.id, sucursalId, cantidad: 0.2 } });
+      }
+    });
+    const abrir = (searchParams: Record<string, string | string[]> = {}) => RecetaPage({ params: Promise.resolve({ productoId: pvId }), searchParams: Promise.resolve(searchParams) });
+    const normal = (n: ReactNode) => textoDe(n).replace(/\s+/g, " ");
+    /** Las sucursales que la nota «No disponible en …» del ingrediente nombra (vacío si la nota no está). */
+    const nombres = (lista: string | undefined) => (lista ?? "").split(",").map((n) => n.trim()).filter(Boolean).sort();
+    const sinIngredienteEn = (texto: string) => nombres(/No disponible en (.*?) — ahí este plato/.exec(texto)?.[1]);
+    /** Las sucursales que la nota «Calibrado en N sucursal(es) (…)» nombra, con su N (vacío si la nota no está). */
+    const calibradoEn = (texto: string) => {
+      const m = /Calibrado en (\d+) sucursal\(es\) \((.*?)\) —/.exec(texto);
+      return { cantidad: m ? Number(m[1]) : 0, nombres: nombres(m?.[2]) };
+    };
+
+    it("un gerente con membresía en A y B ve la disponibilidad y la calibración de A y B, y nada de C", async () => {
+      const texto = normal(await abrir());
+      expect(sinIngredienteEn(texto)).toEqual(["Norte"]);
+      expect(calibradoEn(texto)).toEqual({ cantidad: 2, nombres: ["Central", "Norte"] });
+      expect(texto).not.toContain("Sur");
+    });
+
+    it("quien tiene membresía solo en A no ve nada de B ni de C: ni la advertencia de disponibilidad ni la calibración ajena", async () => {
+      const solo = await crearUsuarioConMembresia({ email: "solo@test.com", sucursalId: A, rolId: rolAdminId });
+      await como(solo.id, solo.email);
+      const texto = normal(await abrir());
+      expect(sinIngredienteEn(texto)).toEqual([]);
+      expect(calibradoEn(texto)).toEqual({ cantidad: 1, nombres: ["Central"] });
+      expect(texto).not.toContain("Norte");
+      expect(texto).not.toContain("Sur");
+    });
+
+    it("donde el rol no ve la clave (B como operador) B tampoco aparece: solo A", async () => {
+      await prisma.usuarioSucursal.updateMany({ where: { usuarioId, sucursalId: B }, data: { rolId: rolOperadorId } });
+      const texto = normal(await abrir());
+      expect(sinIngredienteEn(texto)).toEqual([]);
+      expect(calibradoEn(texto)).toEqual({ cantidad: 1, nombres: ["Central"] });
+      expect(texto).not.toContain("Norte");
+    });
+
+    it("una sucursal puesta a mano en la URL, o la cookie de una sucursal sin membresía, no agranda lo que se muestra", async () => {
+      const conUrl = normal(await abrir({ sucursalId: C, sucursalIds: [C], sucursal: C }));
+      expect(sinIngredienteEn(conUrl)).toEqual(["Norte"]);
+      expect(calibradoEn(conUrl).nombres).toEqual(["Central", "Norte"]);
+      __setCookieDeTestParaSucursal(C);
+      const conCookie = normal(await abrir());
+      expect(conCookie).not.toContain("Sur");
+    });
+  });
 });

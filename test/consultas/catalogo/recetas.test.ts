@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Prisma } from "@prisma/client";
-import { limpiarBaseDeTest, prisma } from "../../setup/test-db";
+import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma } from "../../setup/test-db";
+import { crearMembresia } from "../../setup/membresia";
 import {
   listarProductosConReceta,
   listarMpDisponiblesEnAlguna,
@@ -251,6 +252,13 @@ describe("server/consultas/catalogo/recetas", () => {
   });
 
   describe("listarCalibracionesDeIngredientes", () => {
+    let gerenteId: string;
+    beforeEach(async () => {
+      const rol = await prisma.rol.create({ data: { nombre: "rol" } });
+      gerenteId = (await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: sucursalA, rolId: rol.id })).id;
+      await crearMembresia({ usuarioId: gerenteId, sucursalId: sucursalB, rolId: rol.id });
+    });
+
     it("devuelve, para los recetaIngredienteId pedidos, solo las calibraciones con cantidad o merma no nulas, con el nombre de sucursal incluido", async () => {
       const pizza = await crearProducto("PV_PIZZA", "Pizza muzza", "PV", { [sucursalA]: true });
       const version = await crearVersion(pizza, 1, [harina, queso]);
@@ -260,7 +268,7 @@ describe("server/consultas/catalogo/recetas", () => {
       await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: ingQueso.id, sucursalId: sucursalA, mermaPorcentaje: 5 } });
       // Fila "vacía" (ni cantidad ni merma): no debería poder crearse con datos reales, pero si existiera no debe volver.
 
-      const calibraciones = await listarCalibracionesDeIngredientes([ingHarina.id, ingQueso.id], prisma);
+      const calibraciones = await listarCalibracionesDeIngredientes([ingHarina.id, ingQueso.id], gerenteId, [sucursalA, sucursalB], prisma);
       expect(calibraciones.map((c) => [c.recetaIngredienteId, c.sucursal.nombre]).sort()).toEqual(
         [
           [ingHarina.id, "Sucursal A"],
@@ -275,7 +283,7 @@ describe("server/consultas/catalogo/recetas", () => {
       const [ing] = await prisma.recetaIngrediente.findMany({ where: { recetaVersionId: version.id } });
       await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: ing.id, sucursalId: sucursalA, cantidad: 0.2, mermaPorcentaje: 7 } });
 
-      const calibraciones = await listarCalibracionesDeIngredientes([ing.id], prisma);
+      const calibraciones = await listarCalibracionesDeIngredientes([ing.id], gerenteId, [sucursalA], prisma);
 
       expect(calibraciones).toEqual([{ recetaIngredienteId: ing.id, sucursal: { nombre: "Sucursal A" } }]);
       expect(Object.keys(calibraciones[0]).sort()).toEqual(["recetaIngredienteId", "sucursal"]);
@@ -286,7 +294,39 @@ describe("server/consultas/catalogo/recetas", () => {
       const version = await crearVersion(pizza, 1, [harina]);
       const [ing] = await prisma.recetaIngrediente.findMany({ where: { recetaVersionId: version.id } });
 
-      await expect(listarCalibracionesDeIngredientes([ing.id], prisma)).resolves.toEqual([]);
+      await expect(listarCalibracionesDeIngredientes([ing.id], gerenteId, [sucursalA], prisma)).resolves.toEqual([]);
+    });
+
+    it("devuelve SOLO las calibraciones de las sucursales pedidas: la de otra sucursal no sale aunque exista, un id desconocido no suma nada y una lista vacía no devuelve nada (no «todas»)", async () => {
+      const pizza = await crearProducto("PV_PIZZA", "Pizza muzza", "PV", { [sucursalA]: true });
+      const version = await crearVersion(pizza, 1, [harina]);
+      const [ing] = await prisma.recetaIngrediente.findMany({ where: { recetaVersionId: version.id } });
+      await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: ing.id, sucursalId: sucursalA, cantidad: 0.2 } });
+      await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: ing.id, sucursalId: sucursalB, mermaPorcentaje: 5 } });
+
+      const soloA = await listarCalibracionesDeIngredientes([ing.id], gerenteId, [sucursalA], prisma);
+      expect(soloA.map((c) => c.sucursal.nombre)).toEqual(["Sucursal A"]);
+      const soloB = await listarCalibracionesDeIngredientes([ing.id], gerenteId, [sucursalB, "no-existe"], prisma);
+      expect(soloB.map((c) => c.sucursal.nombre)).toEqual(["Sucursal B"]);
+      const ambas = await listarCalibracionesDeIngredientes([ing.id], gerenteId, [sucursalA, sucursalB], prisma);
+      expect(ambas.map((c) => c.sucursal.nombre).sort()).toEqual(["Sucursal A", "Sucursal B"]);
+      await expect(listarCalibracionesDeIngredientes([ing.id], gerenteId, [], prisma)).resolves.toEqual([]);
+    });
+
+    it("un id de una sucursal donde el usuario NO tiene membresía vigente no suma nada aunque se lo pasen (segunda llave)", async () => {
+      const pizza = await crearProducto("PV_PIZZA", "Pizza muzza", "PV", { [sucursalA]: true });
+      const version = await crearVersion(pizza, 1, [harina]);
+      const [ing] = await prisma.recetaIngrediente.findMany({ where: { recetaVersionId: version.id } });
+      await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: ing.id, sucursalId: sucursalA, cantidad: 0.2 } });
+      await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: ing.id, sucursalId: sucursalB, mermaPorcentaje: 5 } });
+      const rol = await prisma.rol.create({ data: { nombre: "rol-solo-a" } });
+      const soloA = (await crearUsuarioConMembresia({ email: "solo-a@test.com", sucursalId: sucursalA, rolId: rol.id })).id;
+
+      const calibraciones = await listarCalibracionesDeIngredientes([ing.id], soloA, [sucursalA, sucursalB], prisma);
+      expect(calibraciones.map((c) => c.sucursal.nombre)).toEqual(["Sucursal A"]);
+      await prisma.usuarioSucursal.updateMany({ where: { usuarioId: gerenteId, sucursalId: sucursalB }, data: { activo: false } });
+      const sinB = await listarCalibracionesDeIngredientes([ing.id], gerenteId, [sucursalA, sucursalB], prisma);
+      expect(sinB.map((c) => c.sucursal.nombre)).toEqual(["Sucursal A"]);
     });
   });
 });

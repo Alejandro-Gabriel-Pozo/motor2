@@ -163,7 +163,7 @@ const completos: Record<string, Valor> = {
   // Las candidatas son las sucursales con carta propia; la consulta tiene que dejar afuera las que u1 no ve (S2, S3, las de otra empresa).
   "consulta|consultas/carta/admin.ts|origenesDeCopiaVisibles": (k, c) => [c.mundo.u1.id, [{ id: k.sucursalId, nombre: "Sucursal candidata", cantidadProductos: 1 }, { id: k.vecinaId, nombre: "Sucursal vecina", cantidadProductos: 1 }], c.db],
   "consulta|consultas/catalogo/grupos.ts|cadenasDeGrupos": (k, c) => [[k.grupoId], c.db],
-  "consulta|consultas/catalogo/recetas.ts|listarCalibracionesDeIngredientes": (k, c) => [[k.recetaIngredienteId, k.recetaIngredientePropioId], c.db],
+  "consulta|consultas/catalogo/recetas.ts|listarCalibracionesDeIngredientes": (k, c) => [[k.recetaIngredienteId, k.recetaIngredientePropioId], c.mundo.u1.id, [c.propio.sucursalId], c.db],
   "consulta|consultas/catalogo/recetas.ts|listarOpcionesDeSustituto": (k, c) => [{ insumoIdExcluido: k.insumoId, unidadId: k.unidadId }, c.db],
   "consulta|consultas/permisos/auditoria.ts|listarRegistrosAuditoria": (_k, c) => [{ sucursalIds: [c.propio.sucursalId], incluirFilasDeEmpresa: true }, c.db],
   "consulta|consultas/reportes/costo-historico.ts|reconstruirCostosDeVenta": (k, c) => [c.propio.sucursalId, [{ productoId: k.productoId, fecha: hoy() }], c.db],

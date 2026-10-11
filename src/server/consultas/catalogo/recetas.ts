@@ -58,12 +58,20 @@ export async function listarOpcionesDeSustituto(
  * Editor de receta: notas "Calibrado en N sucursal(es)" por ingrediente — UNA sola consulta por lotes (no una por
  * ingrediente) a `RendimientoLocalIngrediente`, para los ingredientes de la receta vigente que se pasen.
  *
- * O.176 (cerrado): devuelve SOLO lo que la pantalla usa —a qué ingrediente pertenece la calibración y el nombre de la sucursal que la hizo («Calibrado en N sucursales»)—, no la fila entera. Es el editor de
- * la receta CENTRAL (de empresa): las calibraciones de todas las sucursales se listan por diseño, pero la cantidad y la merma de cada una no viajan al Server Component sin necesidad.
+ * O.176 (cerrado): devuelve SOLO lo que la pantalla usa —a qué ingrediente pertenece la calibración y el nombre de la sucursal que la hizo («Calibrado en N sucursales»)—, no la fila entera. La cantidad
+ * y la merma de cada una no viajan al Server Component sin necesidad.
+ * M.3: solo las calibraciones de las sucursales de `sucursalIds` (las que la pantalla calculó como visibles para el usuario con `lecturaEnSucursalesVisibles`; su `db` es el de ese contexto ampliado):
+ * las de otra sucursal no salen aunque existan, y una lista vacía devuelve `[]` (nunca «todas»). Como segunda llave, solo cuentan las sucursales donde `usuarioId` tiene membresía vigente: un id
+ * que se le cuele (de otra sucursal, de otra empresa o inexistente) no suma nada.
  */
-export async function listarCalibracionesDeIngredientes(recetaIngredienteIds: string[], db: Db) {
+export async function listarCalibracionesDeIngredientes(recetaIngredienteIds: string[], usuarioId: string, sucursalIds: readonly string[], db: Db) {
   return db.rendimientoLocalIngrediente.findMany({
-    where: { recetaIngredienteId: { in: recetaIngredienteIds }, OR: [{ cantidad: { not: null } }, { mermaPorcentaje: { not: null } }] },
+    where: {
+      recetaIngredienteId: { in: recetaIngredienteIds },
+      sucursalId: { in: [...sucursalIds] },
+      sucursal: { usuarios: { some: { usuarioId, activo: true } } },
+      OR: [{ cantidad: { not: null } }, { mermaPorcentaje: { not: null } }],
+    },
     select: { recetaIngredienteId: true, sucursal: { select: { nombre: true } } },
   });
 }

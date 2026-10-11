@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { crearMembresia } from "../setup/membresia";
 import { whereDisponibleEn, whereDisponibleEnAlguna } from "../../src/core/catalogo/public";
 import { productoDisponibleEn, disponibilidadDeProductos, disponibilidadDeProductosEnSucursales } from "../../src/server/lecturas/catalogo/disponibilidad";
-import { disponibilidadPorSucursalDeProducto } from "../../src/server/consultas/catalogo/disponibilidad";
+import { disponibilidadDeProductoEnSucursales, disponibilidadPorSucursalDeProducto } from "../../src/server/consultas/catalogo/disponibilidad";
 
 describe("disponibilidad-producto-consulta", () => {
   let sucursalA: string;
@@ -119,6 +120,40 @@ describe("disponibilidad-producto-consulta", () => {
       const resultado = await disponibilidadPorSucursalDeProducto(disponibleSoloEnA, prisma);
       expect(resultado.find((r) => r.sucursalId === sucursalA)?.disponible).toBe(true);
       expect(resultado.find((r) => r.sucursalId === sucursalB)?.disponible).toBe(false);
+    });
+  });
+
+  describe("disponibilidadDeProductoEnSucursales (editor de recetas: solo las sucursales que se le pasan y donde el usuario tiene membresía)", () => {
+    let gerenteId: string;
+    let soloAId: string;
+    beforeEach(async () => {
+      const rol = await prisma.rol.create({ data: { nombre: "rol" } });
+      gerenteId = (await crearUsuarioConMembresia({ email: "gerente@test.com", sucursalId: sucursalA, rolId: rol.id })).id;
+      await crearMembresia({ usuarioId: gerenteId, sucursalId: sucursalB, rolId: rol.id });
+      soloAId = (await crearUsuarioConMembresia({ email: "solo-a@test.com", sucursalId: sucursalA, rolId: rol.id })).id;
+    });
+
+    it("trae el estado SOLO de las sucursales pedidas, ordenadas por nombre; las demás no salen aunque tengan fila", async () => {
+      const soloA = await disponibilidadDeProductoEnSucursales(disponibleEnLasDos, gerenteId, [sucursalA], prisma);
+      expect(soloA).toEqual([{ sucursalId: sucursalA, sucursalNombre: "Sucursal A", disponible: true }]);
+      const ambas = await disponibilidadDeProductoEnSucursales(disponibleSoloEnA, gerenteId, [sucursalB, sucursalA], prisma);
+      expect(ambas.map((r) => [r.sucursalNombre, r.disponible])).toEqual([["Sucursal A", true], ["Sucursal B", false]]);
+    });
+
+    it("la sucursal pedida sin fila propia cuenta como no disponible, y un id que no es de una sucursal activa de la empresa no devuelve nada", async () => {
+      const inactiva = (await prisma.sucursal.create({ data: { nombre: "Cerrada", activo: false } })).id;
+      const resultado = await disponibilidadDeProductoEnSucursales(noDisponibleEnNinguna, gerenteId, [sucursalB, inactiva, "no-existe"], prisma);
+      expect(resultado).toEqual([{ sucursalId: sucursalB, sucursalNombre: "Sucursal B", disponible: false }]);
+    });
+
+    it("un id de una sucursal donde el usuario NO tiene membresía vigente no suma nada aunque se lo pasen (segunda llave)", async () => {
+      expect((await disponibilidadDeProductoEnSucursales(disponibleEnLasDos, soloAId, [sucursalA, sucursalB], prisma)).map((r) => r.sucursalId)).toEqual([sucursalA]);
+      await prisma.usuarioSucursal.updateMany({ where: { usuarioId: gerenteId, sucursalId: sucursalB }, data: { activo: false } });
+      expect((await disponibilidadDeProductoEnSucursales(disponibleEnLasDos, gerenteId, [sucursalA, sucursalB], prisma)).map((r) => r.sucursalId)).toEqual([sucursalA]);
+    });
+
+    it("sin sucursales no lee nada: devuelve [] (no «todas»)", async () => {
+      await expect(disponibilidadDeProductoEnSucursales(disponibleEnLasDos, gerenteId, [], prisma)).resolves.toEqual([]);
     });
   });
 });

@@ -59,9 +59,10 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   },
   "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
     clave: "receta_sucursal_copiar",
-    consultas: { listarSucursalesConRecetaPropia: 3 },
+    consultas: { listarSucursalesConRecetaPropia: 3, disponibilidadDeProductoEnSucursales: 3, listarCalibracionesDeIngredientes: 3 },
     estado: "CABLEADO",
-    motivo: "el origen de la copia de receta: qué otras sucursales tienen receta propia habilitada de este producto",
+    motivo:
+      "el origen de la copia de receta (qué otras sucursales tienen receta propia habilitada de este producto) y lo que el editor muestra de cada sucursal: en cuáles falta un ingrediente y dónde está calibrado, solo en las sucursales que el usuario ve",
   },
 };
 
