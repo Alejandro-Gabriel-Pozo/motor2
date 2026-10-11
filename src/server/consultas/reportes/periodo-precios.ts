@@ -5,6 +5,7 @@ import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad, type InfoProductoReporte, type ItemPeriodo, type FilaVentaProducto, type SerieIPC } from "@/core/reportes/public";
 import { antiguedadSerieIPC, esMesSinPublicar, resolverVariacionPeriodoIPC, textoSerieIPCVencida } from "@/core/reportes/public";
 import { cargarSerieIPC } from "@/server/lecturas/reportes/serie-ipc";
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import type { FilaPrecioInsumo, ComparativaPreciosDelPeriodo } from "@/core/reportes/public";
 
 const UMBRAL_VARIACION_SOSPECHOSA_PCT = 200;
@@ -150,7 +151,9 @@ export async function calcularComparativaPreciosDelPeriodo(
    * Lo que quien llama ya leyó (O.39 de docs/pureza-integracion.md), para no volver a leerlo: los Precios Locales vigentes de ESTA sucursal
    * (`preciosLocalesVigentes(sucursalId, db)`, sin filtro de productos) y la serie del IPC (`cargarSerieIPC`). Lo que falte se lee acá.
    */
-  cargado: { preciosLocales?: ReadonlyMap<string, unknown>; serieIPC?: SerieIPC } = {}
+  cargado: { preciosLocales?: ReadonlyMap<string, unknown>; serieIPC?: SerieIPC } = {},
+  /** La zona con la que se cortó el rango (P1): de ella sale el MES del IPC de `desde` y de `hasta`. */
+  zona: string = ZONA_ARGENTINA
 ): Promise<ComparativaPreciosDelPeriodo> {
   let sumaDeltaInsumos = 0;
   let sumaBaseInsumos = 0;
@@ -218,7 +221,11 @@ export async function calcularComparativaPreciosDelPeriodo(
   const variacionCartaPropiaPct = sumaPesoCarta > 0 ? Math.round((sumaPonderadaCarta / sumaPesoCarta) * 10) / 10 : null;
 
   const serieIPC = cargado.serieIPC ?? (await cargarSerieIPC(db));
-  const variacionIPCPct = resolverVariacionPeriodoIPC(desde, hasta, serieIPC);
+  // El mes del IPC se lee del DÍA de calendario de la zona (como fecha de solo día, 00:00Z): `hasta` es el fin del último día en la zona, que el último día de un mes ya cae en el mes
+  // siguiente en UTC (el 31/8 a las 23:59:59.999 argentinas son las 02:59Z del 1/9).
+  const desdeIPC = new Date(diaDeCalendario(desde, zona));
+  const hastaIPC = new Date(diaDeCalendario(hasta, zona));
+  const variacionIPCPct = resolverVariacionPeriodoIPC(desdeIPC, hastaIPC, serieIPC);
   const antiguedadIPC = antiguedadSerieIPC(serieIPC, ahora);
 
   return {
@@ -236,8 +243,8 @@ export async function calcularComparativaPreciosDelPeriodo(
           : "Todavía no hay cambios de precio de venta registrados en este período (el registro de auditoría arrancó el 2026-09-18) — este comparador mejora con el uso.",
     avisoIPC:
       variacionIPCPct !== null
-        ? `IPC GBA Nivel General (INDEC) del mismo período — contexto de inflación general, no del rubro gastronómico específico.${esMesSinPublicar(hasta, serieIPC) || esMesSinPublicar(desde, serieIPC) ? (antiguedadIPC.estado === "vencida" ? ` ${textoSerieIPCVencida(antiguedadIPC)} Se usó ${serieIPC.ultimoMes}, el último cargado.` : ` PROVISORIO: el INDEC todavía no publicó el mes del período; se usó ${serieIPC.ultimoMes}, el último disponible.`) : ""}`
-        : esMesSinPublicar(desde, serieIPC)
+        ? `IPC GBA Nivel General (INDEC) del mismo período — contexto de inflación general, no del rubro gastronómico específico.${esMesSinPublicar(hastaIPC, serieIPC) || esMesSinPublicar(desdeIPC, serieIPC) ? (antiguedadIPC.estado === "vencida" ? ` ${textoSerieIPCVencida(antiguedadIPC)} Se usó ${serieIPC.ultimoMes}, el último cargado.` : ` PROVISORIO: el INDEC todavía no publicó el mes del período; se usó ${serieIPC.ultimoMes}, el último disponible.`) : ""}`
+        : esMesSinPublicar(desdeIPC, serieIPC)
           ? antiguedadIPC.estado === "vencida"
             ? // No es el rezago del INDEC: la serie está parada. Decir "lo publica a mitad del mes siguiente" desviaría el diagnóstico.
               textoSerieIPCVencida(antiguedadIPC)

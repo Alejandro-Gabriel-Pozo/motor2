@@ -34,10 +34,11 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
   // S-13: el gasto en compras por insumo es de `reporte_compras` (piso administrador), no de quien cuenta (`conteo_frecuencia`, piso operario). La consulta lo niega por defecto.
   const { ver: veImportes } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_compras", ctx.db);
   const rango = resolverRangoPorDefecto(undefined, new Date(), ctx.empresaZonaHoraria);
+  // Los dos extremos se cortan en la zona de la empresa (P1): el primer día desde las 00:00 y el último hasta las 23:59:59.999; las compras del formulario (mediodía argentino) tienen que entrar.
+  const ventana = rangoDeDias(new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.empresaZonaHoraria);
   const [filas, sugerencias] = await Promise.all([
     listarFrecuenciasConteo(ctx.sucursalId),
-    // El último día se cierra a las 23:59:59.999 de la zona de la empresa (P1): las compras del formulario (mediodía argentino) del último día tienen que entrar.
-    sugerirInsumosClaseA(ctx.sucursalId, new Date(rango.desdeISO), rangoDeDias(new Date(rango.hastaISO), new Date(rango.hastaISO), ctx.empresaZonaHoraria).hasta, ctx.db, { conImportes: veImportes }),
+    sugerirInsumosClaseA(ctx.sucursalId, ventana.desde, ventana.hasta, ctx.db, { conImportes: veImportes }),
   ]);
   const filaEnEdicion = editar ? filas.find((f) => f.id === editar) : undefined;
   const idsConAgenda = new Set(filas.filter((f) => f.frecuenciaDias > 0).map((f) => f.productoId));

@@ -21,7 +21,7 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
  * Una cuenta cerrada ANTES de la numeración de tickets (sin ningún `EjemplarTicket`) no aparece: es de esperar, no una falla del
  * filtro — esas cuentas no tienen ejemplar que listar.
  *
- * Filtro de fecha en la zona horaria de la EMPRESA, no UTC como el resto de los reportes (el servicio de la noche cruza la medianoche UTC):
+ * Filtro de fecha en la zona horaria de la EMPRESA, la misma zona con la que cortan los demás reportes (P1) (el servicio de la noche cruza la medianoche UTC):
  * sin fechas en la URL, el default es «hoy» en esa zona; vaciar los dos campos y filtrar de nuevo saca el límite de fecha del
  * todo (el cursor de paginación lo aguanta).
  */

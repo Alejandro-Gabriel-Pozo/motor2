@@ -9,6 +9,7 @@ import { obtenerProductoOpcion } from "@/server/actions/catalogo/productos";
 import { TablaHistorialConteos, type FilaConteo } from "./tabla-conteos";
 import { FiltrosConteos } from "./filtros-conteos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { ZONA_UTC, diaDeCalendario, finDelDia, inicioDelDia } from "@/core/tiempo/zona-horaria";
 
 /** Una fecha de la URL que no se puede leer se ignora (sin filtro), no rompe la pantalla con una excepción de Prisma. */
 function fechaDeUrl(valor: string | undefined): Date | undefined {
@@ -35,11 +36,14 @@ export default async function ConteosPage({
     listarSeccionesActivas(ctx.sucursalId),
     sp.productoId ? obtenerProductoOpcion(sp.productoId) : Promise.resolve(null),
   ]);
+  const desdeDelFiltro = fechaDeUrl(sp.desde);
+  const hastaDelFiltro = fechaDeUrl(sp.hasta);
   const { items: conteos, nextCursor } = await obtenerHistorialConteosFisicos(ctx.sucursalId, {
     seccionId: sp.seccionId || undefined,
     productoId: sp.productoId || undefined,
-    desde: fechaDeUrl(sp.desde),
-    hasta: fechaDeUrl(sp.hasta),
+    // Los formularios guardan el mediodía de ese día (P1): el filtro cierra el día en la zona de la empresa, no en 00:00Z (el «hasta» crudo dejaba afuera lo cargado el último día).
+    desde: desdeDelFiltro ? inicioDelDia(diaDeCalendario(desdeDelFiltro, ZONA_UTC), ctx.empresaZonaHoraria) : undefined,
+    hasta: hastaDelFiltro ? finDelDia(diaDeCalendario(hastaDelFiltro, ZONA_UTC), ctx.empresaZonaHoraria) : undefined,
     cursor: sp.cursor,
   });
 

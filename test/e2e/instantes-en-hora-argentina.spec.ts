@@ -109,6 +109,11 @@ test("Conteos: la fecha de un conteo físico de las 22:30 argentinas es ese día
     await page.goto(`/reportes/conteos?productoId=${producto.id}`);
     await expect(page.getByRole("cell", { name: "2026-09-30", exact: true })).toBeVisible();
     await expect(page.getByText("2026-10-01")).toHaveCount(0);
+    // El filtro cierra el día en la zona de la empresa: el conteo de las 22:30 del 30/9 entra con desde=hasta=30/9 y no con el 1/10 (con el «hasta» crudo en 00:00Z no entraba).
+    await page.goto(`/reportes/conteos?productoId=${producto.id}&desde=2026-09-30&hasta=2026-09-30`);
+    await expect(page.getByRole("cell", { name: "2026-09-30", exact: true })).toBeVisible();
+    await page.goto(`/reportes/conteos?productoId=${producto.id}&desde=2026-10-01&hasta=2026-10-01`);
+    await expect(page.getByRole("cell", { name: "2026-09-30", exact: true })).toHaveCount(0);
   } finally {
     await prisma.conteoFisico.deleteMany({ where: { productoId: producto.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });

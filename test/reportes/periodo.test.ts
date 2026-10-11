@@ -400,6 +400,18 @@ describe("obtenerReportePorPeriodo", () => {
     expect(rep.comparativaPrecios.variacionIPCPct).toBe(5);
   });
 
+  it("comparativaPrecios: un rango que cierra el ÚLTIMO día de un mes usa el IPC de ESE mes (el fin del 31/8 argentino ya es septiembre en UTC)", async () => {
+    await prisma.indicePrecio.create({ data: { mes: new Date("2026-07-01"), valor: 100 } });
+    await prisma.indicePrecio.create({ data: { mes: new Date("2026-08-01"), valor: 105 } });
+    await prisma.indicePrecio.create({ data: { mes: new Date("2026-09-01"), valor: 110 } });
+
+    const soloAgosto = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
+    expect(soloAgosto.comparativaPrecios.variacionIPCPct, "agosto contra agosto: 0 %, no agosto contra septiembre").toBe(0);
+
+    const julioAgosto = await obtenerReportePorPeriodo(sucursalId, new Date("2026-07-01"), new Date("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
+    expect(julioAgosto.comparativaPrecios.variacionIPCPct, "julio contra agosto: 5 %, no 10 %").toBe(5);
+  });
+
   it("comparativaPrecios: variacionIPCPct es null si falta el IPC de algún mes del rango", async () => {
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.comparativaPrecios.variacionIPCPct).toBeNull();

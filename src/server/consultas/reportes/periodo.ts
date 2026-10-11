@@ -211,7 +211,7 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
   const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, productos, db);
   const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db, productos, indiceRecetas, clasificacionNoComestibles, costosActuales);
   const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db, productos, ahora, indiceRecetas, { serieIPC, costosActuales });
-  const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(sucursalId, desde, hasta, tendenciaPrecios, ventas.porProducto, db, ahora, { preciosLocales, serieIPC });
+  const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(sucursalId, desde, hasta, tendenciaPrecios, ventas.porProducto, db, ahora, { preciosLocales, serieIPC }, zona);
   // Alerta pasiva de margen objetivo: solo si la empresa cargó un objetivo (si no, no se calcula nada de más). Reusa el catálogo y el índice de recetas ya cargados.
   const objetivos = await cargarObjetivosDeMargen(db);
   const fueraDeObjetivo = hayObjetivosCargados(objetivos) ? resumirFueraDeObjetivo(await calcularCostosYMargenes(sucursalId, db, productos, indiceRecetas, objetivos, costosActuales)) : null;
