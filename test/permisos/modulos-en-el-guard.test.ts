@@ -97,7 +97,8 @@ describe("el guard con el registro de módulos de la empresa", () => {
       await fijarModulosActivos(EMPRESA_POR_DEFECTO_ID, ["consignacion"]);
       await fijarModulosActivos(B, ["consignacion", "servicios"]);
 
-      const efectivosB = await modulosEfectivosDeEmpresa(B, prisma);
+      // La empresa B se lee con el cliente DUEÑO: `prisma` fija app.empresa_id=empresa_principal y, sin BYPASSRLS (CI), la política de ModuloEmpresa oculta las filas de B.
+      const efectivosB = await modulosEfectivosDeEmpresa(B, prismaAdmin);
       expect(efectivosB.has("servicios")).toBe(false);
       expect(efectivosB.has("consignacion")).toBe(true);
       expect(denegacionDeModulo("servicios", efectivosB)).toEqual({ motivo: "MODULO_EN_DESARROLLO", modulo: "servicios" });
@@ -111,7 +112,7 @@ describe("el guard con el registro de módulos de la empresa", () => {
       await fijarModulosActivos(EMPRESA_POR_DEFECTO_ID, ["consignacion"]);
       await fijarModulosActivos(B, ["servicios"]);
 
-      expect(await situacionDelRegistroDeModulos(B, prisma)).toBe("SIN_VENDIBLE_ACTIVO");
+      expect(await situacionDelRegistroDeModulos(B, prismaAdmin)).toBe("SIN_VENDIBLE_ACTIVO");
       expect(await situacionDelRegistroDeModulos(EMPRESA_POR_DEFECTO_ID, prisma)).toBe("CON_MODULOS");
     });
   });
