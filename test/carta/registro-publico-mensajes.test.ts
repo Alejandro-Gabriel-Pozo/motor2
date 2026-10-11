@@ -135,16 +135,22 @@ describe("registro público del portal: mensajes, orden de los chequeos y revali
   });
 
   describe("quitar", () => {
-    it("«no está en el portal» sin revalidar; el éxito nombra la sucursal y su slug, borra solo esa fila y revalida UNA vez", async () => {
+    it("«no está en el portal» sin revalidar; el éxito nombra la sucursal y su slug RESERVADO, APAGA solo esa fila (no la borra) y revalida UNA vez", async () => {
       const norte = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
       await agregarSucursalAlPortal(centralId);
       await agregarSucursalAlPortal(norte);
+      await guardarSucursalPublica(norte, datos({ slug: "norte", publicada: true }));
+      await guardarSucursalPublica(centralId, datos({ slug: "central", publicada: true }));
       revalidaciones();
       expect(await quitarSucursalDelPortal("cnoexiste000000000000000")).toEqual({ ok: false, mensaje: "Esta sucursal no está en el portal." });
       expect(revalidaciones()).toBe(0);
-      expect(await quitarSucursalDelPortal(norte)).toEqual({ ok: true, mensaje: '"Norte" quitada del portal (slug norte).' });
+      expect(await quitarSucursalDelPortal(norte)).toEqual({ ok: true, mensaje: '"Norte" quitada del portal (slug norte reservado: vuelve a verse al publicarla).' });
       expect(revalidaciones()).toBe(1);
-      expect((await prisma.sucursalPublica.findMany({ select: { sucursalId: true } })).map((f) => f.sucursalId)).toEqual([centralId]);
+      const filas = await prisma.sucursalPublica.findMany({ select: { sucursalId: true, slug: true, publicada: true }, orderBy: { slug: "asc" } });
+      expect(filas).toEqual([
+        { sucursalId: centralId, slug: "central", publicada: true },
+        { sucursalId: norte, slug: "norte", publicada: false },
+      ]);
     });
   });
 
