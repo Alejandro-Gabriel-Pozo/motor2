@@ -231,7 +231,7 @@ describe("registrarMovimiento", () => {
     expect(resultado.ok).toBe(false);
   });
 
-  it("no exige sección para Compra (da de alta stock nuevo)", async () => {
+  it("Compra con sección: se registra (exigeSeccion=false solo deja a la pantalla preseleccionarla)", async () => {
     const mp = await crearMP("Aceite");
     const resultado = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 5 }] });
     expect(resultado.ok).toBe(true);
