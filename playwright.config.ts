@@ -103,7 +103,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: "list",
+  // En CI, además del `list`, el resultado en JSON: el job e2e cuenta de ahí (total, pasados, salteados, flaky) y lo sube como artefacto.
+  reporter: process.env.CI ? [["list"], ["json", { outputFile: "resultado-playwright.json" }]] : "list",
   globalSetup: "./test/e2e/global-setup.ts",
   globalTeardown: "./test/e2e/global-teardown.ts",
   use: {

@@ -1,6 +1,8 @@
 # Gate de verificación en CI: los mismos 8 comandos que AGENTS.md exige correr limpios en la misma corrida, más la auditoría de dependencias (GT-23).
 #   estático    → tsc, lint, arquitectura (dependency-cruiser), código muerto (knip), auditar:dependencias
-#   integración → npm test (Vitest contra Postgres real) + npm run build
+#   build       → npm run build + npm run plataforma:build (con su propia base migrada)
+#   integración → npm test (Vitest contra Postgres real), repartido en PARTES_VITEST jobs con `--shard`
+#   conteo      → comprueba que las partes juntas corrieron todos los archivos de test una sola vez y suma los conteos
 #   e2e         → npm run test:e2e (Playwright, servidor de producción)
 # El job `gate` es el ÚNICO que hay que marcar como requerido en la protección de rama / Vercel Deployment Checks: falla si cualquiera
 # de los otros no terminó en verde (un job omitido o cancelado también lo hace fallar).
@@ -36,6 +38,9 @@ env:
   AUTH_SECRET: ci-auth-secret-de-relleno-0123456789abcdef
   AUTH_GOOGLE_ID: ci-google-id
   AUTH_GOOGLE_SECRET: ci-google-secret
+  # En cuántas partes se reparte Vitest (tiene que coincidir con la lista de `matrix.parte` del job `integracion`: un paso de control lo comprueba contra `strategy.job-total`, y el job `conteo`
+  # exige exactamente esta cantidad de resultados).
+  PARTES_VITEST: "4"
 
 jobs:
   estatico:
@@ -69,10 +74,71 @@ jobs:
       # `scripts/auditoria-dependencias-excepciones.ts`. Consulta el registro de npm: depende de la red y de avisos nuevos, a propósito (un aviso nuevo pone rojo el Gate).
       - run: npm run auditar:dependencias
 
-  integracion:
-    name: Integración (npm test + build)
+  # El build en su propio job (corre en paralelo con los tests): `scripts/construir.ts` corre `prisma migrate status` y el chequeo del registro de módulos contra la base, así que lleva
+  # su propio Postgres con los mismos pasos de preparación que `integracion`. Ya no corre antes de los tests, y no hace falta: cada job tiene su base y esta nunca recibe los datos de prueba.
+  build:
+    name: Build (npm run build + plataforma:build)
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: motor2
+          POSTGRES_PASSWORD: ci-duenio-descartable
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U motor2"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGUSER: motor2
+      PGPASSWORD: ci-duenio-descartable
+      DIRECT_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_dev
+      DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_dev
+      # M.3-A8: igual que en `integracion` (el guardián del rol de pruebas pide la misma forma en todo job que prepara la base); el build no siembra nada.
+      MOTOR2_PRUEBAS_DATABASE_URL: postgresql://motor2_app_pruebas:ci-pruebas-descartable@localhost:5432/motor2_dev
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # Los roles se crean ANTES de migrar (los privilegios por defecto aplican a las tablas que cree la migración). `-v clave_pruebas` crea además el rol de pruebas (M.3-A8).
+      - name: Bases y rol de ejecución
+        run: |
+          createdb motor2_dev
+          createdb motor2_e2e
+          psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
+      - name: Migrar (como dueño)
+        run: npx prisma migrate deploy
+      # Rol de plataforma (E4, ADR-012 §3): DESPUÉS de migrar, para que el script le dé permiso a las tablas de la consola.
+      - name: Rol de plataforma
+        run: psql -d motor2_dev -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
+      # M.3-A8: las migraciones recortaron privilegios SOLO de `motor2_app` (auditoría inmutable, invitaciones…). `solo_pruebas=1` no toca a `motor2_app`: copia sus privilegios al rol de pruebas (y falla si difieren).
+      - name: Rol de pruebas (privilegios al día tras migrar)
+        run: psql -d postgres -v ON_ERROR_STOP=1 -v solo_pruebas=1 -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
+      # El build verifica el registro de módulos de la base.
+      - name: npm run build
+        run: npm run build
+      # La consola de plataforma (E4) es otra app Next: su build también tiene que compilar. No toca la base.
+      - name: npm run plataforma:build
+        run: npm run plataforma:build
+
+  # Vitest repartido en partes (`--shard=i/n`): cada parte es un job con SU Postgres y SU base (por eso no hace falta renombrar bases ni cambiar los scripts de roles). El job `conteo` comprueba después que las
+  # partes juntas corrieron todos los archivos una sola vez.
+  integracion:
+    name: Integración (npm test, parte ${{ matrix.parte }} de ${{ strategy.job-total }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        parte: [1, 2, 3, 4]
     services:
       postgres:
         image: postgres:17
@@ -115,15 +181,13 @@ jobs:
       # M.3-A8: las migraciones recortaron privilegios SOLO de `motor2_app` (auditoría inmutable, invitaciones…). `solo_pruebas=1` no toca a `motor2_app`: copia sus privilegios al rol de pruebas (y falla si difieren).
       - name: Rol de pruebas (privilegios al día tras migrar)
         run: psql -d postgres -v ON_ERROR_STOP=1 -v solo_pruebas=1 -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
-      # El build verifica el registro de módulos de la base: va ANTES de los tests, que la dejan con empresas y roles de prueba.
-      - name: npm run build
-        run: npm run build
-      # La consola de plataforma (E4) es otra app Next: su build también tiene que compilar. No toca la base.
-      - name: npm run plataforma:build
-        run: npm run plataforma:build
+      # Control: la lista de `matrix.parte` y PARTES_VITEST dicen lo mismo. Si no, `--shard=i/n` repartiría en otra cantidad de partes que las que `conteo` espera y habría archivos sin correr.
+      - name: Control de la cantidad de partes
+        run: test "${{ strategy.job-total }}" = "$PARTES_VITEST"
       # Además del reporte normal, Vitest deja el resultado en un JSON: si algo falla, el paso de abajo lista los tests rojos al FINAL del log (el log de los tests es larguísimo y el ruido del contenedor de Postgres tapa el final).
+      # `--shard=i/n` reparte los archivos de test entre las partes (Vitest los reparte por cantidad de archivos, con un hash de la ruta).
       - name: npm test
-        run: npm test -- --reporter=default --reporter=json --outputFile.json=resultado-vitest.json
+        run: npm test -- --shard=${{ matrix.parte }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile.json=resultado-vitest.json
         env:
           PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_dev
       - name: Tests que fallaron (resumen al final del log)
@@ -141,6 +205,94 @@ jobs:
             console.log("===== TESTS QUE FALLARON: " + rojos.length + " =====");
             for (const f of rojos) console.log("\n--- " + f.archivo.replace(process.cwd() + "/", "") + "\n    " + f.test + "\n" + String(f.mensaje ?? "").split("\n").filter((l) => !l.includes("node_modules")).slice(0, 40).join("\n"));
           '
+      # El resultado de ESTA parte, para que `conteo` junte las cuatro. `if-no-files-found: ignore`: si la parte no llegó a escribirlo, `conteo` falla por la cantidad de resultados (y lo dice).
+      - name: Resultado de Vitest de esta parte (artefacto)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: resultado-vitest-${{ matrix.parte }}
+          path: resultado-vitest.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Comprueba que el reparto no perdió ni duplicó nada: exactamente PARTES_VITEST resultados, ningún archivo de test en dos partes, ningún archivo de `vitest list` sin correr; suma los conteos y calcula la huella
+  # (sha256 de la lista ordenada «ruta::nombre completo::estado»), que se compara a ojo con la de la línea de base de una sola corrida.
+  conteo:
+    name: Conteo de tests (todas las partes)
+    needs: [integracion]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: resultado-vitest-*
+          path: partes
+          merge-multiple: false
+      - name: Conteo y chequeos del reparto
+        run: |
+          npx vitest list --filesOnly --json > lista-vitest.json
+          node - <<'EOF'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const crypto = require("node:crypto");
+          const raiz = process.cwd() + "/";
+          const errores = [];
+          const rel = (ruta) => (ruta.startsWith(raiz) ? ruta.slice(raiz.length) : ruta);
+          const jsons = [];
+          const recorrer = (dir) => { for (const e of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, e.name); if (e.isDirectory()) recorrer(p); else if (e.name.endsWith(".json")) jsons.push(p); } };
+          if (fs.existsSync("partes")) recorrer("partes");
+          jsons.sort();
+          const esperadas = Number(process.env.PARTES_VITEST);
+          if (jsons.length !== esperadas) errores.push("Hay " + jsons.length + " resultados de Vitest y tendría que haber exactamente " + esperadas + " (PARTES_VITEST): " + JSON.stringify(jsons));
+          const lineas = [];
+          const dueno = new Map();
+          const suma = { archivos: 0, numTotalTests: 0, numPassedTests: 0, numPendingTests: 0, numFailedTests: 0, numTodoTests: 0 };
+          const porParte = [];
+          for (const json of jsons) {
+            const r = JSON.parse(fs.readFileSync(json, "utf8"));
+            const archivos = r.testResults ?? [];
+            porParte.push("- " + json + ": " + archivos.length + " archivos, " + r.numTotalTests + " tests");
+            suma.archivos += archivos.length;
+            for (const k of ["numTotalTests", "numPassedTests", "numPendingTests", "numFailedTests", "numTodoTests"]) suma[k] += r[k] ?? 0;
+            for (const archivo of archivos) {
+              const ruta = rel(archivo.name);
+              if (dueno.has(ruta)) errores.push("El archivo " + ruta + " aparece en dos partes: " + dueno.get(ruta) + " y " + json);
+              else dueno.set(ruta, json);
+              for (const t of archivo.assertionResults ?? []) lineas.push(ruta + "::" + t.fullName + "::" + t.status);
+            }
+          }
+          const lista = JSON.parse(fs.readFileSync("lista-vitest.json", "utf8")).map((x) => rel(x.file));
+          const faltan = lista.filter((ruta) => !dueno.has(ruta));
+          if (faltan.length) errores.push("Faltan " + faltan.length + " archivos de test de `vitest list` que ninguna parte corrió: " + faltan.slice(0, 20).join(", ") + (faltan.length > 20 ? ", …" : ""));
+          const enLista = new Set(lista);
+          const sobran = [...dueno.keys()].filter((ruta) => !enLista.has(ruta));
+          lineas.sort();
+          const huella = crypto.createHash("sha256").update(lineas.join("\n")).digest("hex");
+          const texto = [
+            "## Conteo de Vitest (todas las partes)",
+            ...porParte,
+            "- archivos de `vitest list`: " + lista.length,
+            "- archivos (suma de las partes): " + suma.archivos,
+            "- numTotalTests: " + suma.numTotalTests,
+            "- numPassedTests: " + suma.numPassedTests,
+            "- numPendingTests: " + suma.numPendingTests,
+            "- numFailedTests: " + suma.numFailedTests,
+            "- numTodoTests: " + suma.numTodoTests,
+            "- sha256 de la lista ordenada ruta::nombre::estado: " + huella,
+            ...(sobran.length ? ["- aviso: " + sobran.length + " archivos corridos que `vitest list` no lista: " + sobran.slice(0, 20).join(", ")] : []),
+            ...(errores.length ? ["", "### ERRORES", ...errores.map((e) => "- " + e)] : []),
+          ].join("\n");
+          console.log(texto);
+          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, texto + "\n");
+          if (errores.length) process.exit(1);
+          EOF
 
   e2e:
     name: E2E (Playwright)
@@ -203,6 +355,33 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: npm run test:e2e
         run: npm run test:e2e
+      # Línea de base del reparto del CI: el JSON de Playwright (`resultado-playwright.json`, reporter agregado en playwright.config.ts) trae las cuatro cuentas en `stats`.
+      - name: Conteo (línea de base)
+        if: always()
+        run: |
+          node - <<'EOF'
+          const fs = require("node:fs");
+          if (!fs.existsSync("resultado-playwright.json")) { console.log("No hay resultado-playwright.json: la corrida de Playwright no llegó a escribirlo."); process.exit(0); }
+          const s = JSON.parse(fs.readFileSync("resultado-playwright.json", "utf8")).stats ?? {};
+          const texto = [
+            "## Conteo de Playwright (línea de base, un solo runner)",
+            "- total: " + (s.expected + s.unexpected + s.flaky + s.skipped),
+            "- pasados: " + s.expected,
+            "- salteados: " + s.skipped,
+            "- flaky (pasaron en el reintento): " + s.flaky,
+            "- fallados: " + s.unexpected,
+          ].join("\n");
+          console.log(texto);
+          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, texto + "\n");
+          EOF
+      - name: Resultado de Playwright (artefacto)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: resultado-playwright
+          path: resultado-playwright.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Trazas de los specs que fallaron
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -215,10 +394,10 @@ jobs:
   gate:
     name: Gate (requerido)
     if: always()
-    needs: [estatico, integracion, e2e]
+    needs: [estatico, build, integracion, conteo, e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Todos los jobs terminaron en verde
         run: |
-          echo "estatico=${{ needs.estatico.result }} integracion=${{ needs.integracion.result }} e2e=${{ needs.e2e.result }}"
-          test "${{ needs.estatico.result }}" = "success" -a "${{ needs.integracion.result }}" = "success" -a "${{ needs.e2e.result }}" = "success"
+          echo "estatico=${{ needs.estatico.result }} build=${{ needs.build.result }} integracion=${{ needs.integracion.result }} conteo=${{ needs.conteo.result }} e2e=${{ needs.e2e.result }}"
+          test "${{ needs.estatico.result }}" = "success" -a "${{ needs.build.result }}" = "success" -a "${{ needs.integracion.result }}" = "success" -a "${{ needs.conteo.result }}" = "success" -a "${{ needs.e2e.result }}" = "success"

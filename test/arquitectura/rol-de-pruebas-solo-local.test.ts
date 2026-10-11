@@ -211,9 +211,12 @@ describe("M.3-A8: crear-rol-motor2-app.sql (el único que lo crea) conserva su g
 });
 
 describe("M.3-A8: los workflows arman el rol de pruebas en el orden que funciona", () => {
+  // `despuesDelSync` de ci.yml va anclado a `run:`: el regex toma la PRIMERA coincidencia del job, y sin el ancla `npm test` / `npm run build` coincidiría antes con el `name:` del job o de un paso.
   const CASOS = [
-    { archivo: ".github/workflows/ci.yml", job: "integracion", variableDePruebas: "MOTOR2_PRUEBAS_DATABASE_URL", variableDeLaApp: "DATABASE_URL", usaRolDePlataforma: true, despuesDelSync: /npm run build\b/ },
-    { archivo: ".github/workflows/ci.yml", job: "e2e", variableDePruebas: "MOTOR2_E2E_PRUEBAS_DATABASE_URL", variableDeLaApp: "MOTOR2_E2E_APP_DATABASE_URL", usaRolDePlataforma: true, despuesDelSync: /npm run test:e2e/ },
+    // El build corre en su propio job (con su propia base migrada): arma los mismos roles y el guardián exige el mismo orden antes de `npm run build`.
+    { archivo: ".github/workflows/ci.yml", job: "build", variableDePruebas: "MOTOR2_PRUEBAS_DATABASE_URL", variableDeLaApp: "DATABASE_URL", usaRolDePlataforma: true, despuesDelSync: /run: npm run build\b/ },
+    { archivo: ".github/workflows/ci.yml", job: "integracion", variableDePruebas: "MOTOR2_PRUEBAS_DATABASE_URL", variableDeLaApp: "DATABASE_URL", usaRolDePlataforma: true, despuesDelSync: /run: npm test\b/ },
+    { archivo: ".github/workflows/ci.yml", job: "e2e", variableDePruebas: "MOTOR2_E2E_PRUEBAS_DATABASE_URL", variableDeLaApp: "MOTOR2_E2E_APP_DATABASE_URL", usaRolDePlataforma: true, despuesDelSync: /run: npm run test:e2e\b/ },
     { archivo: ".github/workflows/seguridad.yml", job: "pruebas-de-seguridad", variableDePruebas: "MOTOR2_PRUEBAS_DATABASE_URL", variableDeLaApp: "DATABASE_URL", usaRolDePlataforma: true, despuesDelSync: /npx vitest run test\/seguridad/ },
     { archivo: ".github/workflows/seguridad.yml", job: "zap", variableDePruebas: "MOTOR2_E2E_PRUEBAS_DATABASE_URL", variableDeLaApp: "MOTOR2_E2E_APP_DATABASE_URL", usaRolDePlataforma: false, despuesDelSync: /seguridad-sembrar-para-zap/ },
   ];
