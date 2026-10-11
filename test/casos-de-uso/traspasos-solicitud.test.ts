@@ -117,6 +117,27 @@ describe("casos de uso de la solicitud de traspaso", () => {
       expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
     });
 
+    it("SUCURSAL_NO_DISPONIBLE: el destino se desactivó desde la solicitud (una SOLICITADA no impide apagar) → no se aprueba ni sale stock (P15)", async () => {
+      const mp = await producto(10);
+      const sol = await solicitud(mp.id, 4);
+      await prisma.sucursal.update({ where: { id: sucursalBId }, data: { activo: false } });
+      const r = await aprobarYEnviarTraspasoCasoDeUso(comoA(), { traspasoId: sol.id, seccionOrigenId: seccionAId });
+      expect(r).toEqual({ ok: false, codigo: "SUCURSAL_NO_DISPONIBLE", mensaje: "Esa sucursal no existe o no está activa." });
+      expect((await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } })).estado).toBe("SOLICITADA");
+      expect(await prisma.operacion.count({ where: { proceso: "TRANSFERENCIA_SALIDA_SUCURSAL" } })).toBe(0);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
+    });
+
+    it("SUCURSAL_INACTIVA: la sucursal de quien aprueba está desactivada (sesión vieja) → no se aprueba ni sale stock (P15)", async () => {
+      const mp = await producto(10);
+      const sol = await solicitud(mp.id, 4);
+      await prisma.sucursal.update({ where: { id: sucursalAId }, data: { activo: false } });
+      const r = await aprobarYEnviarTraspasoCasoDeUso(comoA(), { traspasoId: sol.id, seccionOrigenId: seccionAId });
+      expect(r).toEqual({ ok: false, codigo: "SUCURSAL_INACTIVA", mensaje: 'Tu sucursal "Central" está desactivada: no se pueden enviar traspasos desde ella.' });
+      expect((await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } })).estado).toBe("SOLICITADA");
+      expect(await prisma.operacion.count({ where: { proceso: "TRANSFERENCIA_SALIDA_SUCURSAL" } })).toBe(0);
+    });
+
     it("PRODUCTO_NO_TRANSFERIBLE: dejó de estar disponible en destino desde la solicitud", async () => {
       const mp = await producto(10, [sucursalAId]);
       const sol = await solicitud(mp.id, 4);

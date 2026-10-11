@@ -50,7 +50,7 @@ export interface ComandoRechazarSolicitudTraspaso {
 /** Por qué no se pudo cambiar el estado: no existe, o el guard de transición (`LADO` / `ESTADO`, ver `ResultadoTransicionTraspaso`). */
 export type CodigoTransicionTraspaso = "NO_ENCONTRADO" | Extract<ResultadoTransicionTraspaso, { ok: false }>["motivo"];
 
-export type CodigoAprobarYEnviarTraspaso = CodigoTransicionTraspaso | "SECCION_NO_PROPIA" | "PRODUCTO_NO_TRANSFERIBLE" | "STOCK_INSUFICIENTE";
+export type CodigoAprobarYEnviarTraspaso = CodigoTransicionTraspaso | "SECCION_NO_PROPIA" | "SUCURSAL_INACTIVA" | "SUCURSAL_NO_DISPONIBLE" | "PRODUCTO_NO_TRANSFERIBLE" | "STOCK_INSUFICIENTE";
 
 /** `datos` de una aprobación: la Operación de SALIDA escrita y lo que salió de la sección de origen. */
 export interface DatosAprobarYEnviarTraspaso {
@@ -168,4 +168,4 @@ export interface DatosEnvioDirectoDeTraspaso extends DatosCreacionDeTraspaso {
   cantidad: number;
 }
 
-export type ResultadoCrearEnvioDirectoTraspaso = ResultadoCaso<DatosEnvioDirectoDeTraspaso, CodigoCrearTraspaso | "STOCK_INSUFICIENTE">;
+export type ResultadoCrearEnvioDirectoTraspaso = ResultadoCaso<DatosEnvioDirectoDeTraspaso, CodigoCrearTraspaso | "SUCURSAL_INACTIVA" | "STOCK_INSUFICIENTE">;
