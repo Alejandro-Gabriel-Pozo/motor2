@@ -1,12 +1,12 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
-import { MENSAJE_SECCION_ORIGEN_NO_PROPIA, MENSAJE_TRASPASO_NO_ENCONTRADO } from "@/core/features/traspasos/traspaso-comandos.guard";
+import { MENSAJE_SECCION_ORIGEN_NO_PROPIA, MENSAJE_SUCURSAL_NO_DISPONIBLE, MENSAJE_TRASPASO_NO_ENCONTRADO, mensajeSucursalPropiaInactivaParaEnviar } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import type { ComandoAprobarYEnviarTraspaso, ResultadoAprobarYEnviarTraspaso } from "@/core/features/traspasos/traspaso.schema";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { cargarSucursalDelTraspaso, cargarTraspaso } from "@/server/persistencia/traspasos/cargar-traspaso";
+import { cargarSucursalParaTraspaso, cargarTraspaso } from "@/server/persistencia/traspasos/cargar-traspaso";
 import { escribirAprobacionDeTraspaso } from "@/server/persistencia/traspasos/escribir-aprobacion-de-traspaso";
 import { verificarProductoTransferible } from "./producto-transferible";
 
@@ -25,13 +25,14 @@ import { verificarProductoTransferible } from "./producto-transferible";
  *  1. (fuera de la transacción, como antes) la sección de origen tiene que ser de ESTA sucursal;
  *  2. dentro de UNA transacción SERIALIZABLE (`conTransaccionSerializable`, con reintento ante un conflicto de escritura):
  *     a. carga del traspaso (persistencia) y guard de transición `aprobar` (lado Origen, desde SOLICITADA);
- *     b. la sucursal destino, y el re-chequeo de que el producto siga siendo transferible en origen Y destino (pudo cambiar desde la
- *        solicitud: el stock sale recién ahora);
+ *     b. P15: ESTA sucursal (la que envía) y la de destino siguen activas —se leen con el `tx`: pudieron apagarse desde la solicitud, y una SOLICITADA pendiente NO impide apagar una sucursal—, y el re-chequeo de que el
+ *        producto siga siendo transferible en origen Y destino (pudo cambiar desde la solicitud: el stock sale recién ahora). Las dos lecturas pegan con el apagado simultáneo (lee los traspasos ENVIADA y escribe
+ *        `Sucursal.activo`; esto lee `activo` y escribe un ENVIADA): Postgres ve el ciclo y aborta una; el reintento da el rechazo de negocio;
  *     c. el stock disponible en la sección de origen, leído DENTRO de la transacción;
  *     d. escritura de la SALIDA y del traspaso ENVIADO (persistencia);
  *     e. el mensaje de éxito.
  *
- * @contract Origen aprueba una solicitud SOLICITADA y envía, re-chequeando transferibilidad y stock disponible leído DENTRO de la transacción.
+ * @contract Origen aprueba una solicitud SOLICITADA y envía, re-chequeando que las dos sucursales sigan activas, la transferibilidad y el stock disponible leído DENTRO de la transacción.
  * @idempotency No aplica (nunca la tuvo) — el aislamiento SERIALIZABLE arbitra el doble clic, el segundo intento ve el estado ya ENVIADA.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de la escritura de la salida de Kardex y el cambio de estado del traspaso.
@@ -50,7 +51,10 @@ export async function aprobarYEnviarTraspasoCasoDeUso(
     const transicion = guardTransicionTraspaso(traspaso, "aprobar", actor.sucursalId);
     if (!transicion.ok) return fracaso(transicion.motivo, transicion.mensaje);
 
-    const destino = await cargarSucursalDelTraspaso(tx, traspaso.destinoSucursalId);
+    const propia = await cargarSucursalParaTraspaso(tx, actor.sucursalId);
+    if (!propia || !propia.activo) return fracaso("SUCURSAL_INACTIVA", mensajeSucursalPropiaInactivaParaEnviar(propia?.nombre ?? actor.sucursalNombre));
+    const destino = await cargarSucursalParaTraspaso(tx, traspaso.destinoSucursalId);
+    if (!destino || !destino.activo) return fracaso("SUCURSAL_NO_DISPONIBLE", MENSAJE_SUCURSAL_NO_DISPONIBLE);
     const resProducto = await verificarProductoTransferible(tx, traspaso.productoId, [
       { sucursalId: actor.sucursalId, sucursalNombre: actor.sucursalNombre },
       { sucursalId: destino.id, sucursalNombre: destino.nombre },

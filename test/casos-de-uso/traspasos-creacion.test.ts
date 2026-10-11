@@ -222,6 +222,24 @@ describe("casos de uso de la creación de un traspaso", () => {
       await nadaEscrito();
     });
 
+    it("SUCURSAL_NO_DISPONIBLE: el destino existe pero está desactivado → no se envía ni sale stock (P15)", async () => {
+      const mp = await producto(10);
+      await prisma.sucursal.update({ where: { id: sucursalBId }, data: { activo: false } });
+      const r = await crearEnvioDirectoDeTraspasoCasoDeUso(comoA(), comando(mp.id));
+      expect(r).toEqual({ ok: false, codigo: "SUCURSAL_NO_DISPONIBLE", mensaje: "Esa sucursal no existe o no está activa." });
+      await nadaEscrito();
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
+    });
+
+    it("SUCURSAL_INACTIVA: la sucursal de quien envía está desactivada (sesión vieja) → no se envía ni sale stock (P15)", async () => {
+      const mp = await producto(10);
+      await prisma.sucursal.update({ where: { id: sucursalAId }, data: { activo: false } });
+      const r = await crearEnvioDirectoDeTraspasoCasoDeUso(comoA(), comando(mp.id));
+      expect(r).toEqual({ ok: false, codigo: "SUCURSAL_INACTIVA", mensaje: 'Tu sucursal "Central" está desactivada: no se pueden enviar traspasos desde ella.' });
+      await nadaEscrito();
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
+    });
+
     it("dos envíos simultáneos que juntos superan el stock: la transacción serializable deja pasar uno solo", async () => {
       const mp = await producto(5);
 
