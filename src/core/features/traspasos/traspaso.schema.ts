@@ -106,7 +106,7 @@ export interface DatosEntradaDeTraspaso {
   repetida: boolean;
 }
 
-export type CodigoAceptarTraspaso = CodigoTransicionTraspaso | "SECCION_NO_PROPIA" | "PRODUCTO_NO_TRANSFERIBLE" | "CONFLICTO_IDEMPOTENCIA";
+export type CodigoAceptarTraspaso = CodigoTransicionTraspaso | "SECCION_NO_PROPIA" | "SECCION_INACTIVA" | "PRODUCTO_NO_TRANSFERIBLE" | "CONFLICTO_IDEMPOTENCIA";
 export type ResultadoAceptarTraspaso = ResultadoCaso<DatosEntradaDeTraspaso, CodigoAceptarTraspaso>;
 
 /** `datos` de un rechazo de envío: todavía no toca stock (el reingreso lo confirma Origen aparte), solo cambia el estado. */
@@ -151,7 +151,7 @@ export interface ComandoCrearEnvioDirectoTraspaso {
 }
 
 /** Por qué no se pudo crear el traspaso (común a los dos sentidos). */
-export type CodigoCrearTraspaso = "MISMA_SUCURSAL" | "SUCURSAL_NO_DISPONIBLE" | "SECCION_NO_PROPIA" | "PRODUCTO_NO_TRANSFERIBLE" | "CANTIDAD_INVALIDA";
+export type CodigoCrearTraspaso = "MISMA_SUCURSAL" | "SUCURSAL_NO_DISPONIBLE" | "SECCION_NO_PROPIA" | "SECCION_INACTIVA" | "PRODUCTO_NO_TRANSFERIBLE" | "CANTIDAD_INVALIDA";
 
 /** `datos` de una creación: el traspaso nuevo y el nombre del producto (lo que la Server Action devuelve como `id`/`nombre`). */
 export interface DatosCreacionDeTraspaso {

@@ -1,6 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { validarCantidad } from "@/core/datos/cantidad";
+import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import { MENSAJE_SECCION_DESTINO_SOLICITUD_NO_PROPIA, MENSAJE_SUCURSAL_NO_DISPONIBLE } from "@/core/features/traspasos/traspaso-comandos.guard";
 import type { ComandoCrearSolicitudTraspaso, ResultadoCrearSolicitudTraspaso } from "@/core/features/traspasos/traspaso.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
@@ -25,7 +26,7 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * más un `create` sin transacción — mismo resultado, pero las lecturas y la escritura ven la misma foto):
  *  1. (sin base) la sucursal a la que se le pide no puede ser ESTA;
  *  2. existe y está activa;
- *  3. la sección de destino es de ESTA sucursal;
+ *  3. la sección de destino es de ESTA sucursal y no está dada de baja (P17, `SECCION_INACTIVA`);
  *  4. el producto es transferible en origen Y destino (el paso compartido `producto-transferible.ts`);
  *  5. la cantidad, contra los decimales de la unidad de stock del producto: se RECHAZA el exceso, no se redondea
  *     (docs/plan-validacion-de-datos-2026-09-25.md);
@@ -49,6 +50,8 @@ export async function crearSolicitudDeTraspasoCasoDeUso(
 
     const seccionDestino = await obtenerSeccionPropia(comando.seccionDestinoId, actor.sucursalId, tx);
     if (!seccionDestino) return fracaso("SECCION_NO_PROPIA", MENSAJE_SECCION_DESTINO_SOLICITUD_NO_PROPIA);
+    // P17 (decisión del dueño, 2026-10-11): una sección dada de baja no recibe mercadería nueva, y pedir es pedir que entre. No hay idempotencia I3 acá: nada escrito que proteger.
+    if (!seccionDestino.activa) return fracaso("SECCION_INACTIVA", mensajeSeccionDesactivada(seccionDestino.nombre));
 
     const resProducto = await verificarProductoTransferible(tx, comando.productoId, [
       { sucursalId: origen.id, sucursalNombre: origen.nombre },

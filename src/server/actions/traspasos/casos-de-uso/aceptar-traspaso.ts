@@ -2,6 +2,7 @@ import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_SECCION_DESTINO_NO_PROPIA, MENSAJE_TRASPASO_NO_ENCONTRADO } from "@/core/features/traspasos/traspaso-comandos.guard";
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
+import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import type { ComandoAceptarTraspaso, ResultadoAceptarTraspaso } from "@/core/features/traspasos/traspaso.schema";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -25,7 +26,8 @@ import { verificarProductoTransferible } from "./producto-transferible";
  *  2. dentro de UNA transacción SERIALIZABLE (`conTransaccionSerializable`, con reintento ante un conflicto de escritura):
  *     a. hash I3 (tag "ACEPTAR_TRASPASO", payload `{ id, seccionDestinoId }` con la sección TAL CUAL llegó, solo si hay clave) y
  *        `chequearIdempotencia`: un reenvío exacto devuelve el mensaje ORIGINAL; la misma clave con otro payload es conflicto;
- *     b. carga del traspaso (persistencia) y guard de transición `aceptar` (lado Destino, desde ENVIADA);
+ *     b. carga del traspaso (persistencia) y guard de transición `aceptar` (lado Destino, desde ENVIADA); después, P17: la sección de destino no puede estar dada de baja
+ *        (`SECCION_INACTIVA`: no recibe mercadería nueva; el envío sigue ENVIADO y se acepta eligiendo otra);
  *     c. re-chequeo de que el producto siga siendo transferible en ESTA sucursal (el stock entra recién ahora: pudo cambiar desde el
  *        envío) — el paso compartido `producto-transferible.ts`;
  *     d. la sucursal de origen (para el detalle y el mensaje), y la escritura de la ENTRADA y del traspaso ACEPTADO (persistencia);
@@ -56,6 +58,9 @@ export async function aceptarTraspasoCasoDeUso(
     if (!traspaso) return fracaso("NO_ENCONTRADO", MENSAJE_TRASPASO_NO_ENCONTRADO);
     const transicion = guardTransicionTraspaso(traspaso, "aceptar", actor.sucursalId);
     if (!transicion.ok) return fracaso(transicion.motivo, transicion.mensaje);
+    // P17 (decisión del dueño, 2026-10-11): una sección dada de baja no recibe mercadería nueva. Va DESPUÉS de I3 y del guard de transición: un reintento de lo ya aceptado devuelve «repetida»
+    // (o «ya no está ENVIADA»), nunca un rechazo que invite a aceptarlo de nuevo en otra sección. El envío sigue ENVIADO: se acepta eligiendo otra sección.
+    if (!seccionDestino.activa) return fracaso("SECCION_INACTIVA", mensajeSeccionDesactivada(seccionDestino.nombre));
     const resProducto = await verificarProductoTransferible(tx, traspaso.productoId, [{ sucursalId: actor.sucursalId, sucursalNombre: actor.sucursalNombre }]);
     if (!resProducto.ok) return fracaso("PRODUCTO_NO_TRANSFERIBLE", resProducto.mensaje);
 
