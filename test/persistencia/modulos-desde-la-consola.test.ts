@@ -107,6 +107,20 @@ function pruebas(nombre: string, via: () => PrismaClient) {
       expect(await auditorias()).toHaveLength(1);
     });
 
+    it("Gastos y servicios está en desarrollo: activarlo se rechaza, no crea fila ni auditoría y la otra empresa queda intacta", async () => {
+      await prismaAdmin.moduloEmpresa.create({ data: { empresaId: otraId, modulo: "carta" } });
+      const r = await cambiarModulosDesdeLaConsola(via(), AUTOR, empresaId, { activar: ["servicios"] });
+      expect(r).toEqual({ ok: false, mensaje: "Gastos y servicios está en desarrollo y todavía no se puede activar." });
+      expect(await prismaAdmin.moduloEmpresa.count({ where: { empresaId } })).toBe(0);
+      expect(await auditorias()).toHaveLength(0);
+      expect(await activosDe(otraId)).toEqual(["carta"]);
+    });
+
+    it("la consola muestra Gastos y servicios como en desarrollo: sin fila y sin poder activarlo", async () => {
+      const fila = (await leerModulosDeEmpresa(via(), empresaId))!.vista.find((f) => f.id === "servicios")!;
+      expect(fila).toMatchObject({ estado: "en_desarrollo", enRegistro: false, efectivo: false, puedeActivar: false });
+    });
+
     it("no toca los módulos de otra empresa", async () => {
       await cambiarModulosDesdeLaConsola(via(), AUTOR, empresaId, { activar: ["salon"] });
       expect(await activosDe(otraId)).toEqual([]);
