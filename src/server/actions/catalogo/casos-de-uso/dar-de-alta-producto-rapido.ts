@@ -6,7 +6,7 @@ import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referenc
 import type { ComandoDarDeAltaProductoRapido, ResultadoDarDeAltaProducto } from "@/core/features/catalogo/productos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
-import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
+import { conEscrituraEnLaEmpresa, lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { crearProductoNuevo, sembrarDisponibilidadDeProductoNuevo } from "@/server/persistencia/catalogo/productos";
 
 /**
@@ -35,7 +35,9 @@ export async function darDeAltaProductoRapidoCasoDeUso(
   azar: FuenteDeAzar,
 ): Promise<ResultadoDarDeAltaProducto> {
   const { nombre: n, unidadStockId } = comando;
-  const dup = await actor.db.producto.findFirst({ where: { ...whereDisponibleEnAlguna(), nombre: { equals: n, mode: "insensitive" } } });
+  // P2 (RLS por sucursal): «un producto DISPONIBLE con ese nombre» se pregunta por alguna sucursal; con la base de VERIFICACIÓN (lectura en toda la empresa) un producto que solo está disponible en otra sucursal también cuenta. Devuelve un sí/no.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+  const dup = await verificacion.db.producto.findFirst({ where: { ...whereDisponibleEnAlguna(), nombre: { equals: n, mode: "insensitive" } }, select: { id: true } });
   if (dup) return fracaso("YA_EXISTE", `Ya existe un producto disponible llamado "${n}".`);
 
   try {

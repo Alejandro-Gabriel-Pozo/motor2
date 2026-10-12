@@ -1,8 +1,9 @@
 /**
- * Aviso C25 «posible factura repetida» al registrar una compra: TODA la empresa, ±7 días, mismo proveedor e importe. Nombra la sucursal y la fecha (nunca el N.º de factura ni el importe: `Operacion.nroFactura` exige piso administrador y quien carga la compra puede ser operario) y NO bloquea
- * (la factura duplicada de verdad —mismo proveedor y mismo N.º en la sucursal— la frena el índice único; esto es solo una pista para quien carga).
+ * Aviso C25 «posible factura repetida» al registrar una compra: TODA la empresa, ±7 días, mismo proveedor e importe. Nombra la sucursal y, SOLO para las compras de sucursales que quien carga puede ver, la fecha (nunca el N.º de factura ni el importe: `Operacion.nroFactura` exige piso
+ * administrador y quien carga la compra puede ser operario). De una compra de una sucursal que NO puede ver dice solo «en la sucursal X» (el nombre es un dato público, sin día): la verificación abarca toda la empresa pero no muestra datos de otra sucursal (P2, decisión del dueño).
+ * NO bloquea (la factura duplicada de verdad —mismo proveedor y mismo N.º en la sucursal— la frena el índice único; esto es solo una pista para quien carga).
  * Módulo PURO (P0): sin reloj, zona horaria ni base. El DÍA de cada compra lo calcula quien lee la base («AAAA-MM-DD»; la fecha de compra es el mediodía argentino
- * del día elegido, P1, y se lee en hora argentina) y acá se compara como TEXTO.
+ * del día elegido, P1, y se lee en hora argentina) y acá se compara como TEXTO. Qué sucursales puede ver quien carga también lo decide quien llama (el gate): acá llega como un conjunto de ids.
  */
 import { redondearMoneda } from "@/core/moneda";
 import { sumarDias } from "@/core/tiempo/zona-horaria";
@@ -60,15 +61,19 @@ export function posiblesDuplicados(nuevo: CompraNueva, candidatos: readonly Comp
 /** «AAAA-MM-DD» → «DD/MM/AAAA». */
 const diaLegible = (dia: string): string => dia.split("-").reverse().join("/");
 
-function describir(c: CompraCandidata, sucursalActualId: string): string {
-  const donde = c.sucursalId === sucursalActualId ? "en esta sucursal" : `en la sucursal ${c.sucursalNombre}`;
-  return `${donde} el ${diaLegible(c.dia)}`;
+function describir(c: CompraCandidata, sucursalActualId: string, sucursalesVisibles: ReadonlySet<string>): string {
+  if (c.sucursalId === sucursalActualId) return `en esta sucursal el ${diaLegible(c.dia)}`;
+  // Una sucursal que quien carga no ve: solo su nombre, sin el día (no se muestran datos de otra sucursal).
+  return sucursalesVisibles.has(c.sucursalId) ? `en la sucursal ${c.sucursalNombre} el ${diaLegible(c.dia)}` : `en la sucursal ${c.sucursalNombre}`;
 }
 
-/** El texto del aviso para las compras que devolvió `posiblesDuplicados` (en ese orden), o «» si no hay ninguna. No repite el importe ni el N.º de factura. */
-export function avisoDePosibleDuplicado(encontrados: readonly CompraCandidata[], sucursalActualId: string): string {
+/**
+ * El texto del aviso para las compras que devolvió `posiblesDuplicados` (en ese orden), o «» si no hay ninguna. No repite el importe ni el N.º de factura. `sucursalesVisibles`: los ids de las sucursales donde quien carga
+ * puede ver las compras (la activa siempre cuenta); el día solo se nombra para esas, y es OBLIGATORIO para que ninguna llamada dé el día de una sucursal ajena por omisión.
+ */
+export function avisoDePosibleDuplicado(encontrados: readonly CompraCandidata[], sucursalActualId: string, sucursalesVisibles: ReadonlySet<string>): string {
   if (encontrados.length === 0) return "";
-  const nombradas = encontrados.slice(0, MAXIMO_DE_COMPRAS_NOMBRADAS).map((c) => describir(c, sucursalActualId));
+  const nombradas = encontrados.slice(0, MAXIMO_DE_COMPRAS_NOMBRADAS).map((c) => describir(c, sucursalActualId, sucursalesVisibles));
   const resto = encontrados.length - nombradas.length;
   const cuantas = encontrados.length === 1 ? "una compra" : `${encontrados.length} compras`;
   return `Posible factura repetida: ya hay ${cuantas} de este proveedor por el mismo importe (±${DIAS_DE_VENTANA_DE_DUPLICADO} días): ${nombradas.join("; ")}${resto > 0 ? ` y ${resto} más` : ""}. Revisá que no la estés cargando dos veces.`;

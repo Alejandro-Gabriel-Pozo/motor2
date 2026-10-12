@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { baseDeTest, limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
@@ -53,7 +53,7 @@ describe("sucursal sin ventas (proceso_venta apagado)", () => {
 
   it("(ii) una compra pasa; el reporte muestra lo gastado y el ratio gasto/ventas es null (no 0)", async () => {
     await apagar("proceso_venta");
-    const actor = { usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: "Central", ...baseDeTest };
+    const actor = { usuarioId: s.admin.id, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: s.sucursalId, sucursalNombre: "Central", ...baseDeTest };
 
     // El gate de la compra no se ve afectado por apagar la venta.
     expect(await requierePermiso(s.admin.id, s.sucursalId, "proceso_compra", prisma)).toEqual({ ok: true });

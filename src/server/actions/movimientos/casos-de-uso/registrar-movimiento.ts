@@ -2,8 +2,10 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { redondearMoneda } from "@/core/moneda";
-import { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicados } from "@/core/compras/public";
+import { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicados, type CompraCandidata } from "@/core/compras/public";
 import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
+import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
@@ -60,7 +62,7 @@ const PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA: ReadonlySet<ProcesoGeneric
  * @ficha permiso=POR_PROCESO transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function registrarMovimientoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion" | "empresaId" | "alcance">,
   datos: DatosMovimientoInput
 ): Promise<ResultadoRegistrarMovimiento> {
   // Fase 6 (auditoría de seguridad/contratos): conPermiso ya validó el
@@ -107,6 +109,23 @@ export async function registrarMovimientoCasoDeUso(
   if (datos.proceso === "COMPRA" && datos.proveedorId && nroFactura) {
     const yaExiste = await existeCompraVigenteConFactura(actor.db, { sucursalId: actor.sucursalId, proveedorId: datos.proveedorId, nroFactura });
     if (yaExiste) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
+  }
+
+  // Aviso C25 (posible factura repetida; NO bloquea), parte 1: solo en una Compra con proveedor. La VERIFICACIÓN abarca toda la empresa pero el aviso no muestra datos de otra sucursal (P2, decisión del dueño): las compras candidatas
+  // se leen ACÁ, antes de abrir la transacción (la compra nueva todavía no existe, así que no se compara contra sí misma), con la base de VERIFICACIÓN (lectura en todas las sucursales de la empresa, escritura como estaba), y se mira en
+  // cuáles de las sucursales de esas compras puede ver compras quien carga (`proceso_compra`, el mismo gate de siempre): el texto da el día solo de esas.
+  let candidatasDelAviso: CompraCandidata[] = [];
+  let sucursalesQueVeQuienCarga: ReadonlySet<string> = new Set([actor.sucursalId]);
+  if (datos.proceso === "COMPRA" && datos.proveedorId) {
+    const diaDeLaCompra = diaDeCalendario(datos.fecha, ZONA_ARGENTINA);
+    const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+    candidatasDelAviso = await cargarComprasParaAvisoDeDuplicado(verificacion.db, {
+      proveedorId: datos.proveedorId,
+      desde: sumarDias(diaDeLaCompra, -DIAS_DE_VENTANA_DE_DUPLICADO),
+      hasta: sumarDias(diaDeLaCompra, DIAS_DE_VENTANA_DE_DUPLICADO),
+    });
+    const ajenas = [...new Set(candidatasDelAviso.map((c) => c.sucursalId))].filter((id) => id !== actor.sucursalId);
+    if (ajenas.length) sucursalesQueVeQuienCarga = new Set([actor.sucursalId, ...(await sucursalesDondeElUsuarioPuedeVer(actor.usuarioId, ajenas, "proceso_compra", actor.db))]);
   }
 
   const resultado = await conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRegistrarMovimiento> => {
@@ -180,18 +199,13 @@ export async function registrarMovimientoCasoDeUso(
       }
     }
 
-    // Aviso C25 (posible factura repetida; NO bloquea): solo en una Compra con proveedor. Se lee ANTES de escribir, con `tx`, así no se compara contra la compra que se está por guardar. El mensaje
-    // (con el aviso) se guarda para la idempotencia: un reintento con la misma clave devuelve el mismo texto. La fecha de compra es el mediodía argentino del día elegido (P1): su día se lee en hora argentina.
+    // Aviso C25, parte 2: el texto, con las candidatas ya leídas arriba (antes de escribir, así no se compara contra la compra que se está por guardar). El mensaje (con el aviso) se guarda para la idempotencia: un reintento con la misma
+    // clave devuelve el mismo texto. La fecha de compra es el mediodía argentino del día elegido (P1): su día se lee en hora argentina.
     let avisoDuplicado = "";
     if (datos.proceso === "COMPRA" && datos.proveedorId) {
       const dia = diaDeCalendario(datos.fecha, ZONA_ARGENTINA);
-      const candidatas = await cargarComprasParaAvisoDeDuplicado(tx, {
-        proveedorId: datos.proveedorId,
-        desde: sumarDias(dia, -DIAS_DE_VENTANA_DE_DUPLICADO),
-        hasta: sumarDias(dia, DIAS_DE_VENTANA_DE_DUPLICADO),
-      });
       const importe = redondearMoneda(lineas.reduce((suma, l) => suma + l.precioTotal, 0));
-      const aviso = avisoDePosibleDuplicado(posiblesDuplicados({ proveedorId: datos.proveedorId, dia, importe }, candidatas), actor.sucursalId);
+      const aviso = avisoDePosibleDuplicado(posiblesDuplicados({ proveedorId: datos.proveedorId, dia, importe }, candidatasDelAviso), actor.sucursalId, sucursalesQueVeQuienCarga);
       if (aviso) avisoDuplicado = ` ${aviso}`;
     }
 

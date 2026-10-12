@@ -58,7 +58,7 @@ describe("abrir una mesa contra apagar la sucursal (P15)", () => {
   }
 
   const abrir = (transaccion: Transaccion) => abrirCuentaCasoDeUso({ usuarioId, sucursalId: norteId, transaccion }, { mesaId, comensales: 2 });
-  const apagar = (transaccion: Transaccion) => actualizarActivoSucursalCasoDeUso({ usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: centralId, transaccion }, { sucursalId: norteId, activo: false });
+  const apagar = (transaccion: Transaccion) => actualizarActivoSucursalCasoDeUso({ ...baseDeTest, usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: centralId, transaccion }, { sucursalId: norteId, activo: false });
   const activo = async () => (await prismaAdmin.sucursal.findUniqueOrThrow({ where: { id: norteId } })).activo;
   const cuentasAbiertas = () => prismaAdmin.cuenta.count({ where: { cerradaEn: null, mesa: { sucursalId: norteId } } });
 

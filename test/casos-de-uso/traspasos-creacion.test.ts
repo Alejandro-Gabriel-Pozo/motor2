@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { crearSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/crear-solicitud-de-traspaso";
 import { crearEnvioDirectoDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/crear-envio-directo-de-traspaso";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
@@ -22,7 +22,7 @@ describe("casos de uso de la creación de un traspaso", () => {
   let kgId: string;
   let insumoId: string;
 
-  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest });
+  const comoA = () => ({ usuarioId: adminAId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest });
 
   /** La hora de entrada, tres días atrás: si el caso de uso leyera el reloj, no coincidiría con lo que queda guardado (Pureza 1.2; auditoría de la Fase 1: faltaban 10 de los 13 tests de hora fija). */
   const fijaHaceTresDias = () => new Date(Date.now() - 3 * 24 * 3_600_000);

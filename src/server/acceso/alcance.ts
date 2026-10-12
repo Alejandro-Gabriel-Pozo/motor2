@@ -7,7 +7,7 @@ import { sucursalesVisiblesPara } from "./gate";
 
 /**
  * ENSANCHES del alcance por sucursal (M.3, plan `plan-m3-rls-por-sucursal`, paso A4). El contexto del usuario arranca con `alcance = { lectura: [activa], escritura: [activa] }`
- * (`server/sesion/contexto.ts`). Lo único que puede AGRANDARLO son estas cinco funciones, cada una para un caso cerrado, y ninguna da un valor «todas»: devuelven un contexto NUEVO con
+ * (`server/sesion/contexto.ts`). Lo único que puede AGRANDARLO son estas funciones (cinco de este archivo, más `permisoYAlcanceEnSucursal` de `actions/con-permiso.ts`), cada una para un caso cerrado, y ninguna da un valor «todas»: devuelven un contexto NUEVO con
  * una lista de ids más larga (la base —`db` y `transaccion`— se rearma con ella) y dejan intacto el que recibieron. Las políticas por sucursal de la Fase B leen esas listas; sin
  * ensanche, una lectura o una escritura fuera de la sucursal activa no ve ni toca filas (falla cerrado).
  *
@@ -21,6 +21,9 @@ import { sucursalesVisiblesPara } from "./gate";
  *  - `conEscrituraEnLaEmpresa(ctx)`: lectura y escritura en TODAS las sucursales de la empresa, como lista de ids leída en el momento. Solo para los archivos de empresa entera declarados
  *    (`EMPRESA_ENTERA` de `escrituras-en-sucursal-desde-empresa.test.ts`): el alta de un producto, el guardado de la receta central, el alta de una sucursal.
  *  - `incluirSucursalCreadaEnLaTransaccion(tx, id)`: suma la sucursal que ESTA transacción acaba de crear a las dos listas, dentro de ella (no sobrevive a la transacción). Solo desde el alta de sucursal.
+ *  - `lecturaDeVerificacionEnLaEmpresa(ctx)`: la LECTURA a todas las sucursales de la empresa y la escritura como estaba. Es de SOLO LECTURA y su lista de usos es CERRADA: los controles que preguntan «¿hay algo en ALGUNA sucursal?»
+ *    (nombre repetido, unidad mezclada de un insumo, ingrediente disponible, historia de un producto, aviso de factura repetida…) y devuelven un sí/no, un mensaje o filas de tablas de la empresa (Producto, Insumo), nunca datos de otra
+ *    sucursal. Los archivos que la llaman y a qué lectores les pasan su base los fija `ensanches-de-alcance.test.ts` (`VERIFICACION`). No es `lecturaEnSucursalesVisibles` (esa se limita a lo que el gate deja VER y es para mostrar).
  *
  * Un contexto SIN alcance (el que se arma a mano en una prueba, `BaseDelContexto.alcance` ausente) no se ensancha: se devuelve tal cual. Nunca queda con MÁS de lo que tenía.
  */
@@ -60,6 +63,19 @@ export async function lecturaEnSucursalesVisibles<C extends ConBase & Pick<Conte
   if (!alcance) return ctx;
   const visibles = await sucursalesVisiblesPara(ctx, clave);
   const lectura = unir(alcance.lectura, visibles.map((s) => s.id));
+  return lectura.length === alcance.lectura.length ? ctx : conAlcance(ctx, { lectura, escritura: alcance.escritura });
+}
+
+/**
+ * Ensancha SOLO la lectura a TODAS las sucursales de la empresa (las ids se leen en este momento, `Sucursal` no depende del alcance) y deja la escritura como estaba: es la base de los controles de verificación (ver el encabezado). No hay
+ * valor «todas»: es la lista cerrada de ids de la empresa, como en `conEscrituraEnLaEmpresa`. Lo que se lee con esta base NO se muestra: sale un sí/no, un mensaje o filas de las tablas de la empresa. Un contexto sin alcance se
+ * devuelve tal cual (y sin leer nada); si el alcance ya lee todas, también.
+ */
+export async function lecturaDeVerificacionEnLaEmpresa<C extends ConBase>(ctx: C): Promise<C> {
+  const alcance = ctx.alcance;
+  if (!alcance) return ctx;
+  const sucursalIds = (await ctx.db.sucursal.findMany({ where: { empresaId: ctx.empresaId }, select: { id: true }, orderBy: { id: "asc" } })).map((s) => s.id);
+  const lectura = unir(alcance.lectura, sucursalIds);
   return lectura.length === alcance.lectura.length ? ctx : conAlcance(ctx, { lectura, escritura: alcance.escritura });
 }
 

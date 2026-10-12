@@ -11,13 +11,17 @@ import { ensanchesUsados, fuentesDe } from "./guardas/ensanches";
  * Reglas, verificadas por AST sobre una lista CERRADA (`LECTORES`):
  *  1. el archivo llama a `lecturaEnSucursalesVisibles(ctx, "<clave>")` con la clave declarada, y guarda el contexto ampliado en una variable;
  *  2. cada consulta que cruza sucursales recibe, como su argumento de base, `<esa variable>.db` y nunca `ctx.db` a secas (con `ctx.db` la consulta vería solo la activa);
- *  3. un lector NUNCA ensancha la escritura: el único ensanche que el archivo usa es `lecturaEnSucursalesVisibles` (ni `conAlcanceEnSucursal`, ni `permisoYAlcanceEnSucursal`, ni los de empresa entera);
+ *  3. un lector NUNCA ensancha la escritura: el único ensanche que el archivo usa es `lecturaEnSucursalesVisibles` (ni `conAlcanceEnSucursal`, ni `permisoYAlcanceEnSucursal`, ni los de empresa entera). Desde P2 puede usar además
+ *     `lecturaDeVerificacionEnLaEmpresa`, que también es de SOLO lectura (la escritura sale tal cual): sus usos los fija la lista cerrada `VERIFICACION` de `ensanches-de-alcance.test.ts`, no esta;
  *  4. en la otra dirección: ningún archivo de `src/` fuera de `acceso/alcance.ts` llama a `lecturaEnSucursalesVisibles` sin figurar acá;
  *  5. `PENDIENTE` = el archivo todavía NO la llama (el estado no puede mentir); `PENDIENTES_MAXIMOS` solo baja.
  * Mutaciones (rojo → revertido editando): `ctx.db` en lugar de `<variable>.db` en una consulta; otra clave; sacar la llamada; pedir un ensanche de escritura en el lector; agregar una llamada en un
  * archivo no declarado. Y los casos sintéticos de abajo.
  */
 const RAIZ = join(__dirname, "../..");
+
+/** Los otros ensanches de SOLO lectura que un lector puede usar (P2): el de los controles de verificación. Nunca uno que ensanche la escritura. */
+const ENSANCHES_DE_SOLO_LECTURA_DE_VERIFICACION: readonly string[] = ["lecturaDeVerificacionEnLaEmpresa"];
 
 interface Lector {
   /** La clave literal con que se llama a `lecturaEnSucursalesVisibles` (de ella sale qué sucursales se ven). */
@@ -123,7 +127,7 @@ function problemasDeUnLector(ruta: string, lector: Lector, codigo: string): stri
       if (argumentos[posicion] !== `${ampliado.variable}.db`) problemas.push(`${ruta}: ${consulta} recibe \`${argumentos[posicion] ?? "(nada)"}\` como base y tiene que recibir \`${ampliado.variable}.db\` (la del contexto ampliado): con otra base cruza sucursales sin alcance`);
     }
   }
-  const usados = ensanchesUsados(codigo).filter((e) => e !== "lecturaEnSucursalesVisibles");
+  const usados = ensanchesUsados(codigo).filter((e) => e !== "lecturaEnSucursalesVisibles" && !ENSANCHES_DE_SOLO_LECTURA_DE_VERIFICACION.includes(e));
   if (usados.length) problemas.push(`${ruta}: un lector de varias sucursales nunca ensancha la escritura y usa \`${usados.join(", ")}\``);
   return problemas;
 }
@@ -197,6 +201,13 @@ describe("el guardián en sí (casos sintéticos)", () => {
   it("el contexto ampliado también se reconoce dentro de una condición (`cond ? await … : ctx`)", () => {
     const condicional = pagina('  const origenes = puede ? await lecturaEnSucursalesVisibles(ctx, "reporte_consolidado") : ctx;\n  const filas = await obtenerResumenConsolidado(sucursales, origenes.db, ahora);');
     expect(problemasDeUnLector("p.tsx", lector, condicional)).toEqual([]);
+  });
+
+  it("P2: un lector puede usar además `lecturaDeVerificacionEnLaEmpresa` (de solo lectura), pero ningún ensanche de escritura", () => {
+    const conVerificacion = `import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";\n${BIEN.replace("  const filas", "  const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx);\n  const opciones = await listarOpciones(verificacion.db);\n  const filas")}`;
+    expect(problemasDeUnLector("p.tsx", lector, conVerificacion)).toEqual([]);
+    const conEscritura = `import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";\n${conVerificacion.replace("  const filas", "  const x = await conEscrituraEnLaEmpresa(ctx);\n  const filas")}`;
+    expect(problemasDeUnLector("p.tsx", lector, conEscritura)).toHaveLength(1);
   });
 
   it("PENDIENTE no puede tener ya la llamada (el estado no miente)", () => {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { registrarConteoFisicoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-conteo-fisico";
 import { crearSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/crear-solicitud-de-traspaso";
 import { crearEnvioDirectoDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/crear-envio-directo-de-traspaso";
@@ -18,7 +18,7 @@ describe("las altas de conteo físico y de traspaso dejan su fila de auditoría"
   let insumoId: string;
   let harinaId: string;
 
-  const comoA = () => ({ usuarioId: adminId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest });
+  const comoA = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest });
   const auditoria = (entidad: string) => prisma.registroAuditoria.findMany({ where: { entidad }, orderBy: { creadoEn: "asc" } });
 
   beforeEach(async () => {

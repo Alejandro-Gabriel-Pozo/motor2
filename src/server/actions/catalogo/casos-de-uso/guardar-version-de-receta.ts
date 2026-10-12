@@ -8,7 +8,7 @@ import { MENSAJE_PRODUCTO_NO_ENCONTRADO } from "@/core/features/catalogo/receta-
 import type { ComandoGuardarVersionDeReceta, ResultadoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.schema";
 import { conReintento, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
+import { conEscrituraEnLaEmpresa, lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import {
@@ -99,7 +99,10 @@ export async function guardarVersionDeRecetaCasoDeUso(
   if (comando.puerta) return fracaso(comando.puerta.codigo, comando.puerta.mensaje);
 
   // Lo del catálogo que la validación necesita, en lote (cuatro consultas); la validación en sí es pura.
-  const datosDeValidacion = await cargarDatosParaValidarReceta(actor.db, items, cabecera);
+  // P2 (RLS por sucursal): «el ingrediente está disponible en alguna sucursal» y la unidad mezclada de un sustituto se preguntan por toda la empresa: esta lectura corre con la base de VERIFICACIÓN (lectura en todas las sucursales, escritura
+  // como estaba) y va ANTES del ensanche de escritura de abajo. Devuelve ids, nombres y mensajes de productos e insumos de la empresa.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+  const datosDeValidacion = await cargarDatosParaValidarReceta(verificacion.db, items, cabecera);
   const invalidoIngredientes = validarIngredientes(items, producto, datosDeValidacion);
   if (invalidoIngredientes) return fracaso("INGREDIENTES_INVALIDOS", invalidoIngredientes);
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
 import { renombrarOFusionarInsumoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/renombrar-o-fusionar-insumo";
 
 /**
@@ -48,7 +48,7 @@ describe("D-9: la fusión de dos insumos de nombre idéntico deja su fila", () =
 
   it("fusiona y la fila existe, del id que desaparece al que queda, con los nombres en la descripción", async () => {
     const r = await renombrarOFusionarInsumoCasoDeUso(
-      { db: dbConNombreRepetido, transaccion: baseDeTest.transaccion, usuarioId: adminId },
+      { db: dbConNombreRepetido, transaccion: baseDeTest.transaccion, usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID },
       { insumoId: harinaId, nombre: "Harina premium", confirmarFusion: true },
     );
     expect(r).toMatchObject({ ok: true, mensaje: '"Harina" se fusionó con el insumo existente "Harina".' });

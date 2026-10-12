@@ -8,7 +8,7 @@ import ts from "typescript";
  */
 
 /** Las funciones que AGRANDAN el alcance de un contexto (las cinco de `alcance.ts` y el ayudante de `con-permiso.ts` que pide el permiso y después ensancha). */
-export const ENSANCHES_DEL_ALCANCE = ["conAlcanceEnSucursal", "lecturaEnSucursalesVisibles", "conEscrituraEnLaEmpresa", "incluirSucursalCreadaEnLaTransaccion", "permisoYAlcanceEnSucursal"] as const;
+export const ENSANCHES_DEL_ALCANCE = ["conAlcanceEnSucursal", "lecturaEnSucursalesVisibles", "conEscrituraEnLaEmpresa", "incluirSucursalCreadaEnLaTransaccion", "lecturaDeVerificacionEnLaEmpresa", "permisoYAlcanceEnSucursal"] as const;
 export type Ensanche = (typeof ENSANCHES_DEL_ALCANCE)[number];
 
 export interface LlamadaAUnEnsanche {
@@ -126,4 +126,86 @@ export function ensanchesUsados(codigo: string, nombres: readonly string[] = ENS
   };
   visitar(sf);
   return [...usados].sort();
+}
+
+/** El ensanche de SOLO LECTURA de los controles de verificación (P2): lectura en todas las sucursales de la empresa, escritura como estaba. */
+export const ENSANCHE_DE_VERIFICACION = "lecturaDeVerificacionEnLaEmpresa";
+
+export interface UsosDeLaBaseDeVerificacion {
+  /** Cuántas veces se llama al ensanche. */
+  llamadas: number;
+  /** Cuántas de esas llamadas NO se guardan en una variable (`const x = await …`, también dentro de un condicional): la base ampliada tiene que tener nombre para poder seguirla. */
+  sinVariable: number;
+  /**
+   * Cada uso de la base ampliada, como texto: `lector:<función>@<posición>` (`<x>.db` como argumento de una llamada a esa función), `directo:db.<modelo>.<operación>` (`<x>.db.<modelo>.<operación>(…)`),
+   * `transaccion` (`<x>.transaccion(…)`), `transaccion-a:<función>@<posición>` (`<x>.transaccion` como argumento de esa función: `conTransaccionSerializable(<x>.transaccion, …)`), `contexto:<función>@<posición>` (`<x>` entera como argumento de
+   * esa función: `conGobierno(<x>, …)`, que solo usa su `transaccion`) u `otro:<texto>` (cualquier otra cosa: pasar `<x>` entera, desestructurarla, guardar `<x>.db` en otra variable, leer su alcance…).
+   */
+  usos: string[];
+}
+
+/**
+ * Lo que un archivo hace con la base que devuelve `lecturaDeVerificacionEnLaEmpresa` (P2): por AST, a qué lectores se la pasa y qué consultas directas arma con ella. Sigue las variables cuyo inicializador contiene la llamada
+ * (`const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx)` o `cond ? await … : ctx`); un uso que no sea uno de los tres de arriba es `otro:` y el guardián lo rechaza. Los comentarios y las cadenas no cuentan.
+ */
+export function usosDeLaBaseDeVerificacion(codigo: string): UsosDeLaBaseDeVerificacion {
+  if (!codigo.includes(ENSANCHE_DE_VERIFICACION)) return { llamadas: 0, sinVariable: 0, usos: [] };
+  const sf = ts.createSourceFile("x.tsx", codigo, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const variables = new Set<string>();
+  let llamadas = 0;
+  let sinVariable = 0;
+  const buscarLlamadas = (n: ts.Node): void => {
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === ENSANCHE_DE_VERIFICACION) {
+      llamadas++;
+      let actual: ts.Node = n;
+      while (actual.parent && (ts.isParenthesizedExpression(actual.parent) || ts.isAwaitExpression(actual.parent) || ts.isAsExpression(actual.parent) || (ts.isConditionalExpression(actual.parent) && actual.parent.condition !== actual))) actual = actual.parent;
+      const padre = actual.parent;
+      if (padre && ts.isVariableDeclaration(padre) && ts.isIdentifier(padre.name) && padre.initializer === actual) variables.add(padre.name.text);
+      else sinVariable++;
+    }
+    ts.forEachChild(n, buscarLlamadas);
+  };
+  buscarLlamadas(sf);
+
+  const usos: string[] = [];
+  const clasificar = (id: ts.Identifier): string => {
+    const p = id.parent;
+    if (ts.isPropertyAccessExpression(p) && p.expression === id) {
+      const pp = p.parent;
+      if (p.name.text === "transaccion" && ts.isCallExpression(pp) && pp.expression === p) return "transaccion";
+      if (p.name.text === "transaccion" && ts.isCallExpression(pp) && ts.isIdentifier(pp.expression)) {
+        const posicion = pp.arguments.findIndex((a) => a === p);
+        if (posicion >= 0) return `transaccion-a:${pp.expression.text}@${posicion}`;
+      }
+      if (p.name.text === "db") {
+        // `<x>.db` como argumento de una función con nombre: un lector.
+        if (ts.isCallExpression(pp) && pp.expression !== p && ts.isIdentifier(pp.expression)) {
+          const posicion = pp.arguments.findIndex((a) => a === p);
+          if (posicion >= 0) return `lector:${pp.expression.text}@${posicion}`;
+        }
+        // `<x>.db.<modelo>.<operación>(…)`: una consulta directa.
+        if (ts.isPropertyAccessExpression(pp) && pp.expression === p) {
+          const ppp = pp.parent;
+          if (ts.isPropertyAccessExpression(ppp) && ppp.expression === pp && ts.isCallExpression(ppp.parent) && ppp.parent.expression === ppp) return `directo:db.${pp.name.text}.${ppp.name.text}`;
+        }
+      }
+    }
+    // `<x>` entera como argumento de una función con nombre.
+    if (ts.isCallExpression(p) && ts.isIdentifier(p.expression) && p.expression !== id) {
+      const posicion = p.arguments.findIndex((a) => a === id);
+      if (posicion >= 0) return `contexto:${p.expression.text}@${posicion}`;
+    }
+    return `otro:${(ts.isPropertyAccessExpression(p) ? p : id).getText(sf)}`;
+  };
+  const buscarUsos = (n: ts.Node): void => {
+    if (ts.isIdentifier(n) && variables.has(n.text)) {
+      const p = n.parent;
+      const esDeclaracion = ts.isVariableDeclaration(p) && p.name === n;
+      const esNombreDePropiedad = (ts.isPropertyAccessExpression(p) && p.name === n) || (ts.isPropertyAssignment(p) && p.name === n);
+      if (!esDeclaracion && !esNombreDePropiedad) usos.push(clasificar(n));
+    }
+    ts.forEachChild(n, buscarUsos);
+  };
+  buscarUsos(sf);
+  return { llamadas, sinVariable, usos };
 }

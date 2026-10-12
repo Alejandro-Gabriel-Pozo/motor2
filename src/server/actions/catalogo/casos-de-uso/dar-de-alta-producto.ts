@@ -6,7 +6,7 @@ import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referenc
 import type { EntradaProducto, PuertaDeDatosDeProducto, ResultadoDarDeAltaProducto } from "@/core/features/catalogo/productos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
-import { conEscrituraEnLaEmpresa } from "@/server/acceso/alcance";
+import { conEscrituraEnLaEmpresa, lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { datosParaGuardar, validarDatosDeProducto } from "@/server/lecturas/catalogo/datos-de-producto";
 import { crearProductoNuevo, sembrarDisponibilidadDeProductoNuevo } from "@/server/persistencia/catalogo/productos";
 
@@ -74,7 +74,10 @@ export async function darDeAltaProductoCasoDeUso(
     const traeUnidadDeCompra = Boolean(datos.unidadCompraId);
     if (traePrecio || traeFactor || traeUnidadDeCompra) return fracaso("SIN_PERMISO_CAMPOS_SENSIBLES", MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES);
   }
-  const validado = await validarDatosDeProducto(actor.db, datos, undefined, puerta);
+  // P2 (RLS por sucursal): el nombre repetido y la unidad mezclada del insumo se preguntan por «alguna sucursal» (`whereDisponibleEnAlguna`): esa lectura corre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como estaba)
+  // para no dar «no hay» cuando la disponibilidad que lo contradice está en otra sucursal. Solo devuelve un mensaje: no muestra nada de otra sucursal.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+  const validado = await validarDatosDeProducto(verificacion.db, datos, undefined, puerta);
   if ("error" in validado) return fracaso("DATOS_INVALIDOS", validado.error);
   // M.2-A4: un PV sin la clave nace sin precio y apagado (ver arriba). Repetir el envío no crea otro: el índice único del nombre (sin distinguir mayúsculas) de la base lo rechaza aunque el primero no esté disponible.
   const naceApagado = datos.tipo === "PV" && !puedeEditarCamposSensibles;
