@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
+import { MOTIVO_DE_LAS_RESERVADAS_EN_BASE, RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
 
 /**
  * Paridad entre el catálogo de acciones del código (`ACCIONES`) y lo que una base REAL acaba teniendo en la tabla `Accion`.
@@ -77,6 +78,11 @@ const RETIRADAS: Record<string, string> = {
   ver_reportes_catalogo: "padre de las claves reporte_*: la partición no lo borra",
 };
 
+/**
+ * Claves que una migración de datos da de alta en la base ANTES de que entren a `ACCIONES` (hoy, las siete de los gastos, Paquete 3 / M4.5: el módulo `gastos` está en desarrollo y un guardián prohíbe acciones de un módulo en desarrollo).
+ * Viven en `test/setup/claves-reservadas-en-base.ts`, con su descripción definitiva. Se revisan en las dos direcciones: tienen que estar en la base, NO en `ACCIONES` (el día que entran, salen de esa lista) y con la descripción de la lista.
+ */
+
 describe("paridad ACCIONES ↔ migraciones: una base real termina con el catálogo del código", () => {
   let base: BaseTemporalMigrada;
   let enBase: Map<string, string>;
@@ -137,8 +143,26 @@ describe("paridad ACCIONES ↔ migraciones: una base real termina con el catálo
 
   it("toda clave de la base que ya no está en ACCIONES está declarada como retirada, con motivo", () => {
     const enCodigo = new Set<string>(ACCIONES.map((a) => a.clave));
-    const sobrantes = [...enBase.keys()].filter((c) => !enCodigo.has(c) && !(c in RETIRADAS));
-    expect(sobrantes, "claves en la base que el código no conoce y nadie declaró retiradas").toEqual([]);
+    const sobrantes = [...enBase.keys()].filter((c) => !enCodigo.has(c) && !(c in RETIRADAS) && !(c in RESERVADAS_EN_BASE));
+    expect(sobrantes, "claves en la base que el código no conoce y nadie declaró retiradas ni reservadas").toEqual([]);
+  });
+
+  it("toda clave RESERVADA EN LA BASE (los gastos, M4.5) está en una base migrada, con la descripción definitiva, y todavía NO está en ACCIONES (el día que entra, sale de la lista)", () => {
+    const enCodigo = new Set<string>(ACCIONES.map((a) => a.clave));
+    expect(MOTIVO_DE_LAS_RESERVADAS_EN_BASE.trim().length).toBeGreaterThan(10);
+    expect(Object.keys(RESERVADAS_EN_BASE).sort()).toEqual(["conceptos_gasto", "gasto_anular", "gasto_ver", "gasto_registrar", "gasto_reclasificar", "gasto_repartir", "reporte_gastos_empresa"].sort());
+    for (const [clave, def] of Object.entries(RESERVADAS_EN_BASE)) {
+      expect(enBase.has(clave), `"${clave}" figura como reservada y una base migrada no la tiene: falta la migración de datos`).toBe(true);
+      expect(enBase.get(clave), `la descripción de "${clave}" en la base no es la definitiva`).toBe(def.descripcion);
+      expect(enCodigo.has(clave), `"${clave}" ya está en ACCIONES: sacala de RESERVADAS_EN_BASE (y de la lista de claves reservadas del guardián de uso si corresponde)`).toBe(false);
+      expect(clave in RETIRADAS, `"${clave}" no puede ser a la vez retirada y reservada`).toBe(false);
+    }
+  });
+
+  it("el admin edita, en una base migrada, las claves reservadas que de fábrica son suyas; la de repartir gastos (delegable) no la tiene nadie", () => {
+    for (const [clave, def] of Object.entries(RESERVADAS_EN_BASE)) {
+      expect(editaElAdmin.has(clave), clave).toBe(def.semilla.includes("admin"));
+    }
   });
 
   it("RETIRADAS no tiene entradas viejas, repetidas con ACCIONES ni sin motivo (se revisa en las dos direcciones)", () => {
