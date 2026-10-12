@@ -1327,6 +1327,14 @@ model MovimientoStock {
   sustituyeAProductoId String?
   sustituyeAProducto   Producto? @relation("MovimientoSustituyeA", fields: [empresaId, sustituyeAProductoId], references: [empresaId, id])
 
+  /// M2 (Paquete 2): en una línea DEVOLUCION_PROVEEDOR, la línea de COMPRA del Kardex que se devuelve (el origen de la devolución). `null` = una devolución sin origen
+  /// declarado (todas las anteriores a M2). NO es única: una línea de compra puede devolverse en varias partes; el tope (no devolver más de lo comprado) lo controla la aplicación.
+  /// CHECK en la base: solo en DEVOLUCION_PROVEEDOR y nunca a sí misma. Se escribe solo en el INSERT (el Kardex solo agrega). Nada de `src/` la escribe todavía (Etapa C).
+  devuelveAMovimientoId String?
+  devuelveAMovimiento   MovimientoStock?  @relation("MovimientoDevuelveA", fields: [empresaId, devuelveAMovimientoId], references: [empresaId, id], onDelete: Restrict)
+  /// Las devoluciones (parciales o totales) de esta línea de compra.
+  devoluciones          MovimientoStock[] @relation("MovimientoDevuelveA")
+
   creadoEn DateTime @default(now())
 
   @@unique([empresaId, id])
@@ -1343,6 +1351,7 @@ model MovimientoStock {
   /// una tabla que Movimientos tenga que duplicar y sincronizar él mismo.
   @@index([productoId, seccionId, loteVencimiento])
   @@index([operacionId])
+  @@index([devuelveAMovimientoId])
 }
 
 /// Reemplaza HOJA_CONTEOS_FISICOS/"ConteosFisicos" (Stock.js:1043-1141) —

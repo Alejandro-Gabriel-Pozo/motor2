@@ -150,7 +150,7 @@ describe("revierteAOperacionId: la reversión de una anulación", () => {
   });
 
   it("apuntar a una operación que no existe se rechaza (clave foránea)", async () => {
-    await expect(operacion({ proceso: "AJUSTE", revierteAOperacionId: "no-existe" })).rejects.toThrow(/foreign key|Foreign key|revierteAOperacionId/i);
+    await expect(operacion({ proceso: "AJUSTE", revierteAOperacionId: "no-existe" })).rejects.toThrow(/Operacion_empresaId_revierteAOperacionId_fkey/);
   });
 
   it("aislamiento entre empresas: una reversión de la empresa A no puede apuntar a una operación de la empresa B (la clave foránea es (empresaId, id))", async () => {
@@ -158,7 +158,7 @@ describe("revierteAOperacionId: la reversión de una anulación", () => {
     await prismaAdmin.$executeRawUnsafe(
       `INSERT INTO "Operacion" ("id","empresaId","sucursalId","proceso","fecha","usuarioId","anuladaEn") VALUES ('op_testigo','${EMPRESA_TESTIGO_ID}','suc_testigo','VENTA',now(),'${usuarioId}',now())`,
     );
-    await expect(operacion({ proceso: "AJUSTE", revierteAOperacionId: "op_testigo" })).rejects.toThrow(/foreign key|Foreign key|revierteAOperacionId/i);
+    await expect(operacion({ proceso: "AJUSTE", revierteAOperacionId: "op_testigo" })).rejects.toThrow(/Operacion_empresaId_revierteAOperacionId_fkey/);
     // La misma referencia dentro de la empresa testigo sí vale: el rechazo es por empresa, no por la operación.
     await prismaAdmin.$executeRawUnsafe(
       `INSERT INTO "Operacion" ("id","empresaId","sucursalId","proceso","fecha","usuarioId","revierteAOperacionId") VALUES ('aj_testigo','${EMPRESA_TESTIGO_ID}','suc_testigo','AJUSTE',now(),'${usuarioId}','op_testigo')`,
@@ -309,7 +309,7 @@ describe("mermaPorAnulacionDeId: la merma de una venta anulada cuyo género no s
   });
 
   it("apuntar a una operación que no existe se rechaza", async () => {
-    await expect(operacion({ proceso: "MERMA", mermaPorAnulacionDeId: "no-existe" })).rejects.toThrow(/foreign key|Foreign key|mermaPorAnulacionDeId/i);
+    await expect(operacion({ proceso: "MERMA", mermaPorAnulacionDeId: "no-existe" })).rejects.toThrow(/Operacion_empresaId_mermaPorAnulacionDeId_fkey/);
   });
 });
 

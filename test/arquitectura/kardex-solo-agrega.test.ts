@@ -259,6 +259,7 @@ function juzgarEscritoresDelKardex(encontradas: EscrituraDeKardex[], lista: Reco
  */
 const RELACIONES_HACIA_EL_HISTORIAL = [
   "movimientos",
+  "devoluciones",
   "consumosQueLoSustituyen",
   "movimientoStockRel",
   "registrosAuditoria",
