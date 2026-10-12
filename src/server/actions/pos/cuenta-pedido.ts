@@ -35,8 +35,9 @@ import { quitarPromoSinEnviarCasoDeUso } from "./casos-de-uso/quitar-promo-sin-e
  * `MAXIMO_ITEMS_POR_AGREGADO` cuenta también los componentes de cada promo (una elección con 3 productos elegidos cuenta 3),
  * no las promos en sí.
  *
- * Sin idempotencia I3 (O.12, documentado y fijado en el Hito 4): dos llamadas iguales DUPLICAN los ítems; solo la pantalla, que deshabilita el botón mientras
- * la acción está pendiente, frena el doble clic (no cubre dos pestañas ni un reintento de red). Ver el caso de uso.
+ * Idempotencia I3 OPCIONAL (P3 del Paquete 1; cierra O.12): `claveIdempotencia` (cuarto parámetro, un UUID que genera la pantalla por envío) hace que un reintento del MISMO envío (corte de red, doble
+ * clic) devuelva el mensaje original sin duplicar los ítems; con otro pedido bajo la misma clave responde el conflicto de idempotencia. NO protege dos pestañas con dos pedidos distintos (dos claves, dos
+ * intenciones), y SIN clave dos llamadas iguales siguen duplicando. Ver el caso de uso.
  *
  * Desde el Hito 4 de la pureza (bloque 4.1, paso 12) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_tomar_pedido")`) → formato de las listas,
  * el tope y el `cuentaId` (`guardComandoAgregarItems`, core/features/cuentas/cuenta-pedido.guard.ts, DENTRO del envoltorio: los mismos chequeos de antes de la
@@ -44,9 +45,9 @@ import { quitarPromoSinEnviarCasoDeUso } from "./casos-de-uso/quitar-promo-sin-e
  * cada promo y las escrituras en server/persistencia/pos/pedido.ts) → `aResultadoAccion`. Con las cuatro migradas, el archivo entero está en
  * `ACCIONES_CON_CASO_DE_USO` (.dependency-cruiser-excepciones.cjs).
  */
-export async function agregarItems(cuentaId: string, items: ItemParaAgregar[], promos?: PromoParaAgregar[]): Promise<ResultadoAccion> {
+export async function agregarItems(cuentaId: string, items: ItemParaAgregar[], promos?: PromoParaAgregar[], claveIdempotencia?: string): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
-    const comando = guardComandoAgregarItems({ cuentaId, items, promos });
+    const comando = guardComandoAgregarItems({ cuentaId, items, promos, claveIdempotencia });
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await agregarItemsCasoDeUso(ctx, comando.valor));
   });

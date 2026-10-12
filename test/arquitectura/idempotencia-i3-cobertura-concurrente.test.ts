@@ -41,7 +41,12 @@ const SIN_TEST_CONCURRENTE_TODAVIA: Record<string, string> = {};
  * usan los 8 casos de uso reales descubiertos hoy: `exito(..., { ..., repetid[oa]: true })` en algún lado Y
  * `repetid[oa]: false` en otro — confirmado en la firma real, no solo en el nombre del campo del tipo `Datos*`.
  */
-const SIN_RAMA_DE_DUPLICADO_TODAVIA: Record<string, string> = {};
+const SIN_RAMA_DE_DUPLICADO_TODAVIA: Record<string, string> = {
+  // P3 (Paquete 1): `agregarItems` devuelve el mensaje original como `exito(mensaje, null)` — el dato del resultado es `null` (contrato que fija `huella-del-pos` y que la Server Action reduce a ok/mensaje), así
+  // que no hay un campo `repetido` que mostrar y agregarlo cambiaría el tipo del resultado sin que nadie lo use. El duplicado SÍ se prueba: el reintento devuelve el mensaje original, no agrega ítems ni comprobantes y no
+  // vuelve a leer nada de la cuenta (`test/pos/agregar-items-idempotencia.test.ts`, `agregar-items-consultas.test.ts` y la carrera real de `cuenta-concurrencia.test.ts`, (e) y (f)).
+  "server/actions/pos/casos-de-uso/agregar-items.ts": "el resultado no lleva `repetido` (dato null, contrato congelado); el duplicado se prueba por mensaje, ítems y comprobantes",
+};
 
 function archivosFuente(dir: string): string[] {
   return readdirSync(dir).flatMap((nombre) => {
