@@ -2,7 +2,6 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
-import { sqlDeAlcanceDeSucursal } from "../setup/politicas-de-alcance-de-sucursal";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 // La carta pública cachea con `unstable_cache` (necesita el caché de Next, que fuera de un pedido no existe): acá corre directo. La clave y la etiqueta las prueban `cartas-publicas-cache-por-empresa.test.ts` y el e2e.
@@ -14,9 +13,8 @@ vi.mock("@/server/sesion/base", async (importOriginal) => {
 });
 
 /**
- * M.3-A7 (RLS por sucursal, Fase A): la CARTA PÚBLICA contra las políticas de la Fase B, sobre Postgres real. Se arma una base TEMPORAL con todas las migraciones (`crearBaseTemporalMigrada`:
- * solo Postgres local, jamás `motor2_dev` ni `motor2_e2e`), se le aplica el SQL de las políticas por sucursal que genera `test/setup/politicas-de-alcance-de-sucursal.ts` (el borrador de la
- * Fase B; NO es una migración) y se corre `server/carta-publica/sin-sesion.ts` —la entrada que importan las páginas— contra ella con el rol de la app (`motor2_app`, sujeto a RLS).
+ * M.3-A7 (RLS por sucursal, Fase A): la CARTA PÚBLICA contra las políticas por sucursal, sobre Postgres real. Se arma una base TEMPORAL con todas las migraciones (`crearBaseTemporalMigrada`:
+ * solo Postgres local, jamás `motor2_dev` ni `motor2_e2e`), que desde el Paquete 1 YA trae las políticas (migraciones B1 a B6; antes se les aplicaba el borrador del generador) y se corre `server/carta-publica/sin-sesion.ts` —la entrada que importan las páginas— contra ella con el rol de la app (`motor2_app`, sujeto a RLS).
  *
  * Qué prueba (con las políticas puestas, que es como va a estar la base en producción):
  *  - con el slug de una sucursal se ve la carta de ESA sucursal y de ninguna otra, aunque la base tenga las de otras sucursales de la misma empresa y las de otras empresas (incluida una que
@@ -69,8 +67,7 @@ beforeAll(async () => {
   if (!hayRol) return;
   await base.cliente.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO motor2_app`);
   duenio = new PrismaClient({ adapter: new PrismaPg({ connectionString: base.url }) });
-  await sembrar(duenio);
-  await base.cliente.query(sqlDeAlcanceDeSucursal());
+  await sembrar(duenio); // el dueño de las tablas no está sujeto a las políticas (RLS sin FORCE): siembra aunque la base ya las traiga.
 
   // El runtime de `src/` (el rol de la app, `motor2_app`) apuntando a la base temporal: `src/lib/db.ts` lee `DATABASE_URL` al importarse y se queda con un singleton en `globalThis`.
   const url = new URL(process.env.DATABASE_URL as string);

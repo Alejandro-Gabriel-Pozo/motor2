@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from "node:util";
 import { Client } from "pg";
 import { TABLAS_CON_POLITICA_DE_SUCURSAL } from "../setup/clasificacion-de-tablas";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
+import { MIGRACION_B1_FUNCIONES } from "../setup/migraciones-de-alcance-de-sucursal";
 import { sqlDeAlcanceDeSucursal, sqlDeReversaDeAlcanceDeSucursal } from "../setup/politicas-de-alcance-de-sucursal";
 
 /**
@@ -9,8 +10,8 @@ import { sqlDeAlcanceDeSucursal, sqlDeReversaDeAlcanceDeSucursal } from "../setu
  * paso A9) y `rls-sucursal-mutaciones.test.ts` (el mismo catálogo contra un SQL a propósito roto y contra la base sin políticas: tiene que ponerse en rojo donde corresponde).
  *
  * Cada escenario es una función que DEVUELVE los problemas que encuentra (lista vacía = el comportamiento esperado): así el mismo catálogo sirve para afirmar que no hay problemas (con el SQL bueno) y para
- * afirmar que los hay (con un mutante). Todo corre como el rol REAL de la app (`motor2_app`, NOBYPASSRLS, sujeto a la RLS) en una base TEMPORAL con todas las migraciones (`crearBaseTemporalMigrada`); el SQL de las
- * políticas se aplica en ESA base y nunca llega a `prisma/migrations`.
+ * afirmar que los hay (con un mutante). Todo corre como el rol REAL de la app (`motor2_app`, NOBYPASSRLS, sujeto a la RLS) en una base TEMPORAL migrada hasta antes de B1 (`crearBaseTemporalMigrada`); el SQL de las
+ * políticas se aplica en ESA base, que arranca ANTES de B1 (sin políticas de sucursal): el SQL del generador es idéntico al de las migraciones B1 a B6 (lo exige B7).
  *
  * El alcance se fija con la misma forma que `baseDeEmpresa` (A2, `src/server/sesion/base.ts`): UN solo `SELECT set_config('app.empresa_id', …, true), set_config('app.sucursales_lectura', …, true),
  * set_config('app.sucursales_escritura', …, true)` dentro de la transacción (el `true` lo hace local a ella). Una variable que NO se fija (`undefined`) es la del código anterior a A2: solo `app.empresa_id`.
@@ -152,7 +153,8 @@ export async function crearMundoDeSucursales(): Promise<MundoDeSucursales> {
     await base.eliminar();
   };
   try {
-    await base.aplicarRestantes();
+    // Desde el Paquete 1 las políticas son migraciones (B1 a B6): el mundo parte de la base SIN ellas (todo lo anterior a B1) y cada prueba aplica el SQL del generador, bueno o mutado.
+    await base.aplicarAntesDe(MIGRACION_B1_FUNCIONES);
     const hayRol = await existeElRol(base.cliente);
     if (hayRol) {
       // Los privilegios por defecto del script de roles son por base y la temporal nace sin ellos; se van con la base.

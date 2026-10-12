@@ -58,17 +58,24 @@ export function tablasDeClase(clase: ClaseDeTabla): string[] {
 /** Las tablas que llevan `empresaId`, de cualquiera de las dos clases. */
 export const TABLAS_CON_EMPRESA_ID = [...tablasDeClase("POR_EMPRESA"), ...tablasDeClase("DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA")].sort();
 
-/** Las políticas que tiene que tener cada tabla de la base según su clase (una `aislamiento_empresa` salvo las especiales; `solo_plataforma` en la consola; ninguna en las globales y en `Empresa`). */
+/**
+ * Las cuatro políticas por comando de la RLS por sucursal (Paquete 1, B2 a B6), por nombre y ordenadas. Los nombres son los de `nombreDePoliticaDeAlcance` del generador
+ * (`politicas-de-alcance-de-sucursal.ts`, que importa este archivo y por eso no se puede importar de vuelta); `test/arquitectura/migraciones-de-alcance-de-sucursal.test.ts` exige que coincidan.
+ */
+const POLITICAS_DE_ALCANCE_DE_SUCURSAL = ["alcance_sucursal_delete", "alcance_sucursal_insert", "alcance_sucursal_select", "alcance_sucursal_update"] as const;
+
+/**
+ * Las políticas que tiene que tener cada tabla de la base según su clase (una `aislamiento_empresa` salvo las especiales; `solo_plataforma` en la consola; ninguna en las globales y en `Empresa`)
+ * MÁS, desde el Paquete 1, las cuatro `alcance_sucursal_*` de las tablas con alcance de sucursal (`TABLAS_CON_POLITICA_DE_SUCURSAL`, declarada más abajo).
+ */
 export function politicasEsperadas(tabla: string): readonly string[] {
   const clase = CLASIFICACION_DE_TABLAS[tabla];
-  if (clase === "POR_EMPRESA") return ["aislamiento_empresa"];
+  const deSucursal = TABLAS_CON_POLITICA_DE_SUCURSAL.includes(tabla) ? POLITICAS_DE_ALCANCE_DE_SUCURSAL : [];
+  if (clase === "POR_EMPRESA") return ["aislamiento_empresa", ...deSucursal];
   if (clase === "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA") return POLITICAS_ESPECIALES[tabla]!;
   if (clase === "CONSOLA") return ["solo_plataforma"];
   return [];
 }
-
-/** La cantidad de políticas que tiene que haber en `public`, derivada de la declaración (no un número escrito a mano). */
-export const CANTIDAD_DE_POLITICAS_ESPERADAS = Object.keys(CLASIFICACION_DE_TABLAS).reduce((n, t) => n + politicasEsperadas(t).length, 0);
 
 /**
  * Las FK entre tablas POR EMPRESA que declara el esquema de Prisma (`@relation(fields: [...])` de un modelo por empresa hacia otro modelo por empresa): origen, destino y columnas (ordenadas). Es la
@@ -185,3 +192,6 @@ export function tablasConAlcance(alcance: AlcanceDeSucursal): string[] {
 
 /** Las tablas que llevan políticas de RLS por sucursal: PROPIA, PROPIA_O_EMPRESA, HEREDADA y ENTRE_SUCURSALES. */
 export const TABLAS_CON_POLITICA_DE_SUCURSAL: readonly string[] = (["PROPIA", "PROPIA_O_EMPRESA", "HEREDADA", "ENTRE_SUCURSALES"] as const).flatMap((a) => tablasConAlcance(a)).sort();
+
+/** La cantidad de políticas que tiene que haber en `public`, derivada de la declaración (no un número escrito a mano). Va al final: depende de las dos dimensiones de la clasificación. */
+export const CANTIDAD_DE_POLITICAS_ESPERADAS = Object.keys(CLASIFICACION_DE_TABLAS).reduce((n, t) => n + politicasEsperadas(t).length, 0);

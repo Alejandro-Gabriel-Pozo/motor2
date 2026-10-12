@@ -49,7 +49,8 @@ describe("catálogo: el RLS está en las tablas por empresa y solo en ellas", ()
       SELECT tablename::text AS tabla, policyname::text AS nombre, qual AS usando, with_check AS con_check FROM pg_policies WHERE schemaname = 'public'`;
     expect(politicas, "cantidad de políticas: la que se deriva de la clasificación declarada").toHaveLength(CANTIDAD_DE_POLITICAS_ESPERADAS);
     // ModuloEmpresa (P4): lectura por empresa (solo USING, FOR SELECT) y escritura de plataforma (por nombre de rol); ver registro-de-modulos.test.ts.
-    for (const p of politicas.filter((x) => x.nombre !== "lectura_propia_usuario" && x.tabla !== "ModuloEmpresa" && !(x.tabla === "Invitacion" && x.nombre !== "aislamiento_empresa") && !CONSOLA.includes(x.tabla))) {
+    // Las `alcance_sucursal_*` (Paquete 1, B2 a B6) filtran por sucursal, no por empresa: las prueba `paquete-1-subir-bajar-subir.test.ts`.
+    for (const p of politicas.filter((x) => x.nombre !== "lectura_propia_usuario" && !x.nombre.startsWith("alcance_sucursal_") && x.tabla !== "ModuloEmpresa" && !(x.tabla === "Invitacion" && x.nombre !== "aislamiento_empresa") && !CONSOLA.includes(x.tabla))) {
       expect(p.usando, p.tabla).toContain("app_empresa_actual()");
       expect(p.con_check, p.tabla).toContain("app_empresa_actual()");
     }

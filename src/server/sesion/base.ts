@@ -189,11 +189,12 @@ export function baseDeEmpresa(empresaId: string, alcance?: AlcanceDeSucursal): B
 }
 
 /**
- * ¿Se NIEGA operar con un rol que no es `motor2_app` ni miembro de él? Hoy no (M.3, Fase A): todavía no hay políticas por sucursal que dependan del rol, y negarse apagaría un
- * despliegue que hoy funciona; solo se avisa a Sentry (una vez por arranque). La primera migración de políticas por sucursal (Fase B, B1) lo pasa a `true`: desde ahí un rol que las
- * políticas no alcanzan dejaría la separación por sucursal sin efecto, y no se opera (salvo el escape de las herramientas de demo).
+ * ¿Se NIEGA operar con un rol que no es `motor2_app` ni miembro de él? SÍ, desde el Paquete 1 (migración B1, `20261014110000_rls_sucursal_b1_funciones`): las políticas por sucursal
+ * (B2 a B6) se escriben `TO motor2_app`, así que un rol que ellas no alcanzan dejaría la separación por sucursal sin efecto, y no se opera (salvo el escape de las herramientas de demo).
+ * Este valor va ATADO a la existencia de la migración B1 en `prisma/migrations` (`test/arquitectura/exigir-rol-de-la-app.test.ts`): con `true` y sin la migración sería un defecto.
+ * ANTES de aplicar B1 en una base real, confirmar que el usuario de su `DATABASE_URL` es `motor2_app`: con otro rol, esta app no arranca.
  */
-const EXIGIR_ROL_DE_LA_APP = false;
+const EXIGIR_ROL_DE_LA_APP = true;
 
 let datosDelRolDelProceso: Promise<DatosDelRol> | undefined;
 
