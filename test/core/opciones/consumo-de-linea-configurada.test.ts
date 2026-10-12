@@ -22,6 +22,12 @@ import { CAFE, HOTEL, SPA, SUCURSAL, paraConsumo, permitidosDe, type Escenario }
  * leche que suma), del hotel y del spa (el aceite escala; el aceite premium reemplaza), y propiedades contra un oráculo con decimal.js.
  */
 
+/**
+ * El oráculo de las cuentas con cantidades en `number` de 17 dígitos: decimal.js con 80 dígitos (la configuración global de 20 redondea el producto de tres de esos números
+ * y daría un último bit distinto; el módulo usa su propio clon de 40).
+ */
+const Dec = Decimal.clone({ precision: 80, rounding: Decimal.ROUND_HALF_UP });
+
 function ok(r: ResultadoDeConsumoConfigurado) {
   if (!r.ok) throw new Error(`se esperaba un consumo y vino ${r.codigo}: ${r.mensaje}`);
   return r;
@@ -29,6 +35,7 @@ function ok(r: ResultadoDeConsumoConfigurado) {
 
 function falla(r: ResultadoDeConsumoConfigurado) {
   if (r.ok) throw new Error("se esperaba un rechazo y se calculó un consumo");
+  expect(r.mensaje.trim().length, `el rechazo ${r.codigo} tiene que traer un mensaje para quien vende`).toBeGreaterThan(10);
   return r;
 }
 
@@ -112,6 +119,55 @@ describe("consumoDeLineaConfigurada: café", () => {
     const { opciones } = paraConsumo(CAFE, validadas.opciones);
     const entrada = (lista: OpcionConConsumo[]) => ({ cantidad: 1, sucursalId: SUCURSAL, base: CAFE.base, opciones: lista, adicionales: [] });
     expect(consumoDeLineaConfigurada(entrada([...opciones].reverse()))).toEqual(consumoDeLineaConfigurada(entrada(opciones)));
+  });
+});
+
+describe("consumoDeLineaConfigurada: orden de aplicación", () => {
+  const con = (opcionId: string, tipo: OpcionConConsumo["tipo"], ordenDeGrupo: number, ordenDeOpcion: number, insumo: string, factorEscala: number | null = null): OpcionConConsumo => ({
+    opcionId,
+    nombre: opcionId,
+    tipo,
+    ordenDeGrupo,
+    ordenDeOpcion,
+    cantidad: 1,
+    factorEscala,
+    consumos: [suma(insumo, 1)],
+  });
+  const ordenDe = (opciones: OpcionConConsumo[]) => ok(consumoDeLineaConfigurada({ cantidad: 1, sucursalId: SUCURSAL, base: [], opciones, adicionales: [] })).pedidos.map((p) => p.productoId);
+
+  it("primero la MEDIDA, aunque su grupo vaya después en la pantalla, y después el resto en el orden de los grupos", () => {
+    const variante = con("v", "VARIANTE", 0, 0, "mp-variante");
+    const incluida = con("i", "INCLUIDA", 1, 0, "mp-incluida");
+    const medida = con("m", "MEDIDA", 2, 0, "mp-medida", 1);
+    for (const entrada of [[variante, incluida, medida], [medida, incluida, variante], [incluida, medida, variante], [variante, medida, incluida]]) {
+      expect(ordenDe(entrada)).toEqual(["mp-medida", "mp-variante", "mp-incluida"]);
+    }
+  });
+
+  it("dentro de un grupo, por el orden de la opción; con todo igual, por el id de la opción (nunca por el orden en que llegaron)", () => {
+    const a = con("a", "VARIANTE", 1, 0, "mp-a");
+    const b = con("b", "VARIANTE", 1, 0, "mp-b");
+    const c = con("c", "VARIANTE", 1, 0, "mp-c");
+    const primera = con("z", "VARIANTE", 1, -1, "mp-z");
+    for (const entrada of [[a, b, c], [c, b, a], [b, c, a], [c, a, b], [a, c, b], [b, a, c]]) expect(ordenDe([...entrada, primera])).toEqual(["mp-z", "mp-a", "mp-b", "mp-c"]);
+  });
+
+  it("con muchas opciones empatadas en orden, el desempate por id las deja siempre igual (propiedad)", () => {
+    const ids = fc.uniqueArray(fc.stringMatching(/^o-[a-z0-9]{1,4}$/), { minLength: 2, maxLength: 14 });
+    fc.assert(
+      fc.property(
+        ids.chain((lista) => fc.tuple(fc.constant(lista), fc.shuffledSubarray(lista, { minLength: lista.length, maxLength: lista.length }))),
+        ([lista, barajada]) => {
+          const opciones = barajada.map((id) => con(id, "VARIANTE", 1, 0, `mp-${id}`));
+          expect(ordenDe(opciones)).toEqual([...lista].sort((a, b) => (a < b ? -1 : 1)).map((id) => `mp-${id}`));
+        }
+      ),
+      { numRuns: 300 }
+    );
+  });
+
+  it("un rechazo que no es de una opción no lleva opcionId (ni siquiera como undefined)", () => {
+    expect(Object.keys(falla(consumoDeLineaConfigurada({ cantidad: 0, sucursalId: SUCURSAL, base: [], opciones: [], adicionales: [] }))).sort()).toEqual(["codigo", "mensaje", "ok"]);
   });
 });
 
@@ -257,11 +313,19 @@ describe("consumoDeLineaConfigurada: factor de la MEDIDA y rendimiento de la suc
     };
     const { pedidos } = ok(consumoDeLineaConfigurada({ cantidad: 3, sucursalId: SUCURSAL, base: [calibrado], opciones: [medida(0.3333)], adicionales: [] }));
     // 3 × 0,3333 × 12 × 1,03 = 12,357... exacto: 12.3586... (decimal), no la deriva de multiplicar en float
-    expect(pedidos).toEqual([{ productoId: "mp-x", cantidad: new Decimal(3).times("0.3333").times(12).times("1.03").toNumber(), insumoSustitutoIds: ["mp-y"], unidadStockId: "u-g" }]);
+    expect(pedidos).toEqual([{ productoId: "mp-x", cantidad: new Dec(3).times("0.3333").times(12).times("1.03").toNumber(), insumoSustitutoIds: ["mp-y"], unidadStockId: "u-g" }]);
   });
 
   it("una receta vacía (el producto ancla de un adicional) no consume nada de la base", () => {
     expect(ok(consumoDeLineaConfigurada({ cantidad: 5, sucursalId: SUCURSAL, base: [], opciones: [], adicionales: [] })).pedidos).toEqual([]);
+  });
+});
+
+describe("consumoDeLineaConfigurada: precisión de la cuenta", () => {
+  it("el producto de tres números de 17 dígitos no pierde precisión (con 20 dígitos daría 0,12794730955360598)", () => {
+    const adicional: AdicionalConConsumo = { opcionId: "a", nombre: "A", cantidadPorUnidad: 1, consumos: [suma("mp-extra", 127.9473095536059)] };
+    const r = ok(consumoDeLineaConfigurada({ cantidad: 0.0010000000000000007, sucursalId: SUCURSAL, base: [], opciones: [], adicionales: [adicional] }));
+    expect(r.pedidosDeAdicionales[0].pedidos[0].cantidad).toBe(0.127947309553606);
   });
 });
 
@@ -374,7 +438,7 @@ describe("consumoDeLineaConfigurada (propiedades)", () => {
         expect(pedidos).toHaveLength(base.length);
         base.forEach((b, i) => {
           const ef = rendimientoEfectivo({ cantidad: b.ingrediente.cantidad, mermaPorcentaje: b.ingrediente.mermaPorcentaje }, b.ingrediente.rendimientosLocales, sucursalId);
-          const esperado = new Decimal(cantidad).times(factor).times(ef.cantidad).times(new Decimal(1).plus(new Decimal(ef.mermaPorcentaje).dividedBy(100))).toNumber();
+          const esperado = new Dec(cantidad).times(factor).times(ef.cantidad).times(new Dec(1).plus(new Dec(ef.mermaPorcentaje).dividedBy(100))).toNumber();
           expect(pedidos[i]).toEqual({ productoId: b.ingrediente.insumoProductoId, cantidad: esperado, insumoSustitutoIds: b.ingrediente.insumoSustitutoIds, unidadStockId: b.unidadStockId });
         });
       }),
@@ -401,7 +465,7 @@ describe("consumoDeLineaConfigurada (propiedades)", () => {
         };
         const res = ok(consumoDeLineaConfigurada({ cantidad: vendida, sucursalId: "suc-a", base, opciones: [variante, medida], adicionales: [] }));
         const esperado = (c: { cantidad: number; merma: number; escala: boolean }) =>
-          new Decimal(vendida).times(unidades).times(c.cantidad).times(c.escala ? factor : 1).times(new Decimal(1).plus(new Decimal(c.merma).dividedBy(100))).toNumber();
+          new Dec(vendida).times(unidades).times(c.cantidad).times(c.escala ? factor : 1).times(new Dec(1).plus(new Dec(c.merma).dividedBy(100))).toNumber();
         expect(res.pedidos.map((p) => [p.productoId, p.cantidad])).toEqual([
           ["mp-nuevo", esperado(r)],
           ["mp-extra", esperado(s)],
@@ -418,8 +482,8 @@ describe("consumoDeLineaConfigurada (propiedades)", () => {
         const medida: OpcionConConsumo = { opcionId: "m", nombre: "M", tipo: "MEDIDA", ordenDeGrupo: 0, ordenDeOpcion: 0, cantidad: 1, factorEscala: m / 10_000, consumos: [] };
         const sinMedida = ok(consumoDeLineaConfigurada({ cantidad: vendida, sucursalId: "suc-a", base: [], opciones: [], adicionales: [adicionalElegido] }));
         const conMedida = ok(consumoDeLineaConfigurada({ cantidad: vendida, sucursalId: "suc-a", base: [], opciones: [medida], adicionales: [adicionalElegido] }));
-        const lineaDelAdicional = new Decimal(vendida).times(k);
-        const esperado = lineaDelAdicional.times(cantidadConsumo).times(new Decimal(1).plus(new Decimal(merma).dividedBy(100))).toNumber();
+        const lineaDelAdicional = new Dec(vendida).times(k);
+        const esperado = lineaDelAdicional.times(cantidadConsumo).times(new Dec(1).plus(new Dec(merma).dividedBy(100))).toNumber();
         expect(sinMedida.pedidosDeAdicionales).toEqual([{ opcionId: "a", cantidad: lineaDelAdicional.toNumber(), pedidos: [{ productoId: "mp-extra", cantidad: esperado, insumoSustitutoIds: [], unidadStockId: "u-g" }] }]);
         expect(conMedida.pedidosDeAdicionales).toEqual(sinMedida.pedidosDeAdicionales);
       }),

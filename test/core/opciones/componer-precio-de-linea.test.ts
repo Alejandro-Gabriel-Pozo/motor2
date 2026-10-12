@@ -24,6 +24,7 @@ function precio(r: ResultadoDePrecio): PrecioComponido {
 
 function falla(r: ResultadoDePrecio) {
   if (r.ok) throw new Error("se esperaba un rechazo y se compuso un precio");
+  expect(r.mensaje.trim().length, `el rechazo ${r.codigo} tiene que traer un mensaje para quien vende`).toBeGreaterThan(10);
   return r;
 }
 
@@ -243,6 +244,16 @@ describe("componerPrecioDeLinea: pisos y rechazos", () => {
       expect(r.codigo, String(malo)).toBe("PRECIO_DE_OPCION_INVALIDO");
       expect(r.opcionId).toBe("m");
     }
+  });
+
+  it("una medida sin modo de precio no se cobra aunque traiga un precio absoluto y una diferencia válidos (no se adivina el modo)", () => {
+    const r = falla(componerPrecioDeLinea({ ...base, opciones: [{ ...medidaAbs(3400), modoPrecio: null, diferencia: { tipo: "MONTO", monto: 100 } }] }));
+    expect(r).toMatchObject({ codigo: "PRECIO_DE_OPCION_INVALIDO", opcionId: "m", mensaje: "«Chico» no tiene definido cómo se cobra: precio propio o diferencia." });
+  });
+
+  it("un rechazo que no es de una opción no lleva opcionId (ni siquiera como undefined)", () => {
+    expect(Object.keys(falla(componerPrecioDeLinea({ precioBase: -1, cantidad: 1, opciones: [] }))).sort()).toEqual(["codigo", "mensaje", "ok"]);
+    expect(Object.keys(falla(componerPrecioDeLinea({ ...base, opciones: [medidaAbs(null)] }))).sort()).toEqual(["codigo", "mensaje", "ok", "opcionId"]);
   });
 
   it("una medida sin modo de precio, o en DIFERENCIA sin diferencia, no se cobra", () => {

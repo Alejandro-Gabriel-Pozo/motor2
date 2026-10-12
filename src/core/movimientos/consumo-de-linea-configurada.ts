@@ -179,7 +179,7 @@ export function consumoDeLineaConfigurada(entrada: EntradaDeConsumoConfigurado):
   const reemplazos = new Map<string, { opcion: OpcionConConsumo; consumo: ConsumoDeOpcionParaVender }>();
   for (const opcion of opciones) {
     for (const consumo of opcion.consumos) {
-      if (consumo.efecto !== "REEMPLAZA" || consumo.reemplazaAProductoId === null) continue;
+      if (consumo.reemplazaAProductoId === null) continue; // una suma (ya validado: REEMPLAZA si y solo si lleva el insumo que reemplaza)
       const previo = reemplazos.get(consumo.reemplazaAProductoId);
       if (previo) {
         return falla("OPCIONES_INCOMPATIBLES", `«${previo.opcion.nombre}» y «${opcion.nombre}» no se pueden elegir juntas: las dos cambian el mismo insumo.`, opcion.opcionId);

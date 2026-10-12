@@ -157,7 +157,7 @@ function detalleBase(op: OpcionParaPrecio, importeUnitario: number, diferencia: 
     tipo: op.tipo,
     cantidad: op.cantidad,
     importeUnitario,
-    modoPrecio: op.tipo === "MEDIDA" ? op.modoPrecio : null,
+    modoPrecio: op.modoPrecio, // ya validado: solo la MEDIDA lo lleva
     tipoDeDiferencia: diferencia === null ? null : diferencia.tipo,
     porcentaje: diferencia !== null && diferencia.tipo === "PORCENTAJE" ? diferencia.porcentaje : null,
     factorEscala: op.factorEscala,
@@ -255,7 +255,7 @@ export function componerPrecioDeLinea(entrada: EntradaDePrecioDeLinea): Resultad
     });
   }
 
-  const medidaAbsoluta = dentroDelPrecio.some((d) => d.tipo === "MEDIDA" && d.modoPrecio === "ABSOLUTO");
+  const medidaAbsoluta = dentroDelPrecio.some((d) => d.modoPrecio === "ABSOLUTO"); // solo la MEDIDA lleva modo de precio
   const partes = [...(medidaAbsoluta ? [] : [{ cantidad: 1, precioUnitario: precioBase }]), ...dentroDelPrecio.map((d) => ({ cantidad: d.cantidad, precioUnitario: d.importeUnitario }))];
   const precioDeLista = totalDeLineas(partes);
   if (precioDeLista < IMPORTE_MINIMO) return falla("PRECIO_DE_LISTA_INVALIDO", "Con las opciones elegidas el precio queda en menos de 0,01: revisá las diferencias de precio.");

@@ -76,6 +76,14 @@ describe("huellaDeOpciones", () => {
     expect(() => huellaDeOpciones([mediano, { ...conLeche, importeUnitario: Number.NEGATIVE_INFINITY }])).toThrow("o-con-leche");
   });
 
+  it("dos opciones distintas con la misma versión y la misma cantidad también dan la misma huella en cualquier orden", () => {
+    const x = { ...conLeche, opcionId: "o-1", versionDeOpcionId: "v-1" };
+    const y = { ...conLeche, opcionId: "o-2", versionDeOpcionId: "v-1" };
+    const z = { ...conLeche, opcionId: "o-3", versionDeOpcionId: "v-1" };
+    const h = huellaDeOpciones([x, y, z]);
+    for (const orden of [[x, z, y], [y, x, z], [y, z, x], [z, x, y], [z, y, x]]) expect(huellaDeOpciones(orden)).toBe(h);
+  });
+
   it("dos filas de la misma opción se ordenan por versión y por cantidad: sigue sin depender del orden", () => {
     const a = { ...mediano, versionDeOpcionId: "v-1", cantidad: 2 };
     const b = { ...mediano, versionDeOpcionId: "v-1", cantidad: 1 };

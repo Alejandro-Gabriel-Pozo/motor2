@@ -13,6 +13,7 @@ const una = (opcionId: string, cantidad = 1, versionDeOpcionId?: string): Opcion
 function falla(permitidos: readonly GrupoPermitido[], elegidas: readonly OpcionElegida[] | null | undefined) {
   const r = validarOpcionesElegidas(permitidos, elegidas);
   if (r.ok) throw new Error("se esperaba un rechazo y se aceptó");
+  expect(r.mensaje.trim().length, `el rechazo ${r.codigo} tiene que traer un mensaje para quien vende`).toBeGreaterThan(10);
   return r;
 }
 
@@ -179,6 +180,15 @@ describe("validarOpcionesElegidas: cantidades, topes y repetidas (I3)", () => {
   it.each([0, -1, 1.5, 11, Number.NaN, Number.POSITIVE_INFINITY])("la cantidad %s no es válida → CANTIDAD_INVALIDA", (cantidad) => {
     const r = falla(permitidosDe(CAFE), [una("o-chico"), una("o-shot", cantidad)]);
     expect(r).toMatchObject({ codigo: "CANTIDAD_INVALIDA", opcionId: "o-shot", mensaje: "La cantidad de «Shot extra» tiene que ser un número entero entre 1 y 10." });
+  });
+
+  it("la repetida de una opción desconocida tampoco inventa su nombre", () => {
+    expect(falla(permitidosDe(CAFE), [una("o-fantasma"), una("o-fantasma")]).mensaje).toBe("Una opción está repetida: usá la cantidad en vez de cargarla dos veces.");
+  });
+
+  it("un rechazo que no es de una opción no lleva opcionId ni grupoId (ni siquiera como undefined)", () => {
+    expect(Object.keys(falla([], [una("o-chico")])).sort()).toEqual(["codigo", "mensaje", "ok"]);
+    expect(Object.keys(falla(permitidosDe(CAFE), [])).sort()).toEqual(["codigo", "grupoId", "mensaje", "ok"]);
   });
 
   it("la cantidad inválida de una opción desconocida no inventa su nombre", () => {
