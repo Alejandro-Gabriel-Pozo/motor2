@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
+import { ZONA_ARGENTINA, diaDeCalendario } from "../../src/core/tiempo/zona-horaria";
 import { limpiarBaseDeTest, prisma, sembrarSeccion } from "../setup/test-db";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
@@ -120,7 +121,8 @@ describe("cerrarCuenta: la sección habitual del PV", () => {
     await habitual(cocina.id);
     await comprar(deposito.id, 1);
     await cerrarPizzas(2);
-    const hoy = new Date();
+    // El reporte espera un DÍA (fecha de solo día) y lo corta en hora argentina: el día de «ahora» en esa zona, no el instante (entre las 21 y las 24 h argentinas el instante ya es el día UTC siguiente).
+    const hoy = new Date(diaDeCalendario(new Date(), ZONA_ARGENTINA));
     const enCocina = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: cocina.id }, prisma, AHORA_DE_LA_CORRIDA);
     expect(enCocina.items.map((i) => [i.proceso, i.productoId, i.cantidad])).toEqual([["VENTA", s.pizza.id, 2]]);
     const enDeposito = await obtenerReportePorPeriodo(s.sucursalId, hoy, hoy, { seccionId: deposito.id }, prisma, AHORA_DE_LA_CORRIDA);
