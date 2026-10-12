@@ -3,6 +3,7 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoActualizarProducto, EntradaProducto, ResultadoActualizarProducto } from "@/core/features/catalogo/productos.schema";
 import { guardComandoDatosDeProducto, MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
 import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { texto } from "@/core/texto";
@@ -52,7 +53,7 @@ import { actualizarCamposDeProducto } from "@/server/persistencia/catalogo/produ
  * @ficha permiso=producto_editar transaccion=SIMPLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function actualizarProductoCasoDeUso(
-  actor: Pick<ContextoUsuario, "transaccion" | "usuarioId">,
+  actor: Pick<ContextoUsuario, "db" | "transaccion" | "usuarioId" | "empresaId" | "alcance">,
   comando: ComandoActualizarProducto,
 ): Promise<ResultadoActualizarProducto> {
   const { productoId } = comando;
@@ -69,11 +70,15 @@ export async function actualizarProductoCasoDeUso(
 }
 
 async function actualizarProductoEnTransaccion(
-  actor: Pick<ContextoUsuario, "transaccion" | "usuarioId">,
+  actor: Pick<ContextoUsuario, "db" | "transaccion" | "usuarioId" | "empresaId" | "alcance">,
   comando: ComandoActualizarProducto,
   productoId: string,
 ): Promise<ResultadoActualizarProducto> {
-  return actor.transaccion(async (tx): Promise<ResultadoActualizarProducto> => {
+  // P2 (RLS por sucursal): esta transacción hace controles de «alguna sucursal» (nombre repetido y unidad mezclada del insumo en `validarDatosDeProducto`; historia, recetas y liquidaciones del producto en `productoTieneHistoria` /
+  // `productoTieneLiquidaciones`, CAT-1): con la RLS por sucursal verían solo la activa y darían «sin historia» si la historia está en otra. Por eso se abre con la base de VERIFICACIÓN (lectura en toda la empresa; la escritura NO se
+  // ensancha: el `update` y la auditoría siguen donde estaban). Todo lo que lee la transacción es del producto (tablas de la empresa) o un sí/no; nada de otra sucursal llega al resultado.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+  return verificacion.transaccion(async (tx): Promise<ResultadoActualizarProducto> => {
     const existente = await tx.producto.findUnique({ where: { id: productoId } });
     if (!existente) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
 

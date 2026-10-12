@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { DIA_MS, enElFuturo, enElPasado } from "../setup/tiempo";
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { anularCompraCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/anular-compra";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
@@ -29,7 +29,7 @@ describe("anularCompraCasoDeUso", () => {
 
   /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
   const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
-  const actor = () => ({ usuarioId: adminId, sucursalId, ahora: new Date(), ...baseDe(sucursalId) });
+  const actor = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, ahora: new Date(), ...baseDe(sucursalId) });
 
   /** Una compra con una línea de `cantidad` kg a $100/kg (el saldo del lote sale del propio Kardex). */
   async function compra(opciones: { fecha?: Date; cantidad?: number; nroFactura?: string | null; proceso?: "COMPRA" | "MERMA"; sinLineas?: boolean } = {}) {

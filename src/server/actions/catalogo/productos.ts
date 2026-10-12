@@ -3,6 +3,7 @@
 import type { PrismaClient, TipoProducto } from "@prisma/client";
 import { azarDelProceso } from "@/lib/azar";
 import { obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal } from "@/server/acceso/gate";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
@@ -97,7 +98,10 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
     ...(filtro?.esConsignacion !== undefined ? [{ esConsignacion: filtro.esConsignacion }] : []),
     ...(t ? [{ OR: [{ nombre: { contains: escaparComodinesLike(t), mode: "insensitive" as const } }, { codigo: { contains: escaparComodinesLike(t), mode: "insensitive" as const } }] }] : []),
   ];
-  return ctx.db.producto.findMany({
+  // P2 (RLS por sucursal): `soloDisponiblesEnAlguna` pregunta «¿está disponible en ALGUNA sucursal?» (`disponibilidades: { some }`): con ese filtro la lectura corre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como
+  // estaba); sin él, con la base de siempre. Devuelve filas de `Producto` (id, código, nombre: tabla de la empresa), nunca la disponibilidad de otra sucursal.
+  const verificacion = filtro?.soloDisponiblesEnAlguna ? await lecturaDeVerificacionEnLaEmpresa(ctx) : ctx;
+  return verificacion.db.producto.findMany({
     where: condiciones.length ? { AND: condiciones } : {},
     select: { id: true, codigo: true, nombre: true },
     orderBy: { nombre: "asc" },
@@ -213,9 +217,12 @@ export async function listarProductosPagina(cursor?: string, termino?: string): 
 
   // Batch, sin N+1 (una página entera de 50 filas): disponibilidad EN ESTA sucursal + cuántas sucursales en total la
   // tienen, para "Disponible acá" y "Sucursales" (§10/P10, ver disponibilidad-producto-consulta.ts).
+  // P2 (RLS por sucursal), E3: la N de «Sucursales N de M» cuenta las sucursales donde el producto está disponible (en toda la empresa) y la M son las de la empresa (`Sucursal`, que la RLS por sucursal no toca): el conteo corre con
+  // la base de VERIFICACIÓN (lectura en toda la empresa; es un número, la disponibilidad ya es pública por la carta). Sin eso la N se achicaría a la sucursal activa y la M no.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx);
   const [disponibleAcaPorProducto, conteos, totalSucursales] = await Promise.all([
     disponibilidadDeProductos(ctx.sucursalId, ids, ctx.db),
-    ctx.db.disponibilidadProducto.groupBy({ by: ["productoId"], where: { productoId: { in: ids }, disponible: true }, _count: { productoId: true } }),
+    verificacion.db.disponibilidadProducto.groupBy({ by: ["productoId"], where: { productoId: { in: ids }, disponible: true }, _count: { productoId: true } }),
     ctx.db.sucursal.count({ where: { activo: true } }),
   ]);
   const sucursalesDisponiblesPorProducto = new Map(conteos.map((c) => [c.productoId, c._count.productoId]));

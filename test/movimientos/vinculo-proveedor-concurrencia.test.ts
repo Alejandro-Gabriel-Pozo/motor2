@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, prisma } from "../setup/test-db";
 import { registrarMovimientoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-movimiento";
 
 /**
@@ -30,6 +30,7 @@ describe("vínculo proveedor↔producto: dos compras simultáneas de sucursales 
 
       const actor = (usuarioId: string, sucursalId: string, sucursalNombre: string) => ({
         usuarioId,
+        empresaId: EMPRESA_POR_DEFECTO_ID,
         sucursalId,
         sucursalNombre,
         db: prisma,

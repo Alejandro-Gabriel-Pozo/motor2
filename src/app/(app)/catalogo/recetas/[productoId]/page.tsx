@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
+import { lecturaDeVerificacionEnLaEmpresa, lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
 import { obtenerMiNivelPermiso, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import {
   obtenerRecetaVigente,
@@ -59,9 +59,12 @@ export default async function RecetaEditorPage({
   const { editar, editarPaso, editarFicha, editarPropia } = unicosDeUrl(await searchParams);
   const ordenEnEdicion = editarPaso ? Number(editarPaso) : null;
 
+  // P2 (RLS por sucursal): las materias primas del selector y las opciones de sustituto son «productos disponibles en ALGUNA sucursal»: se leen con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como estaba). Salen filas de
+  // `Producto` e `Insumo` (id, nombre, unidad), nunca la disponibilidad de otra sucursal. Lo que la pantalla muestra de cada sucursal (`origenes`, más abajo) sigue limitado a las que el usuario ve.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx);
   const [producto, mpDisponibles, unidades] = await Promise.all([
     obtenerProductoPorId(productoId, ctx.db),
-    listarMpDisponiblesEnAlguna(ctx.db),
+    listarMpDisponiblesEnAlguna(verificacion.db),
     listarUnidadesActivas(),
   ]);
 
@@ -125,7 +128,7 @@ export default async function RecetaEditorPage({
           const opciones = await listarOpcionesDeSustituto({
             insumoIdExcluido: ing.insumoProducto.insumoId,
             unidadId: ing.insumoProducto.unidadStockId, // U7 / D3: los sustitutos comparten la unidad de STOCK de la MP (la receta se carga en ella), no la que haya quedado guardada.
-          }, ctx.db);
+          }, verificacion.db);
           opcionesSustitutoPorIngrediente.set(ing.insumoProductoId, opciones);
         }
       })

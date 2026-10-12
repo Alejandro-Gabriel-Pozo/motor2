@@ -3,6 +3,7 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { MENSAJE_SECCION_ORIGEN_NO_PROPIA, MENSAJE_SUCURSAL_NO_DISPONIBLE, mensajeSucursalPropiaInactivaParaEnviar } from "@/core/features/traspasos/traspaso-comandos.guard";
 import type { ComandoCrearEnvioDirectoTraspaso, ResultadoCrearEnvioDirectoTraspaso } from "@/core/features/traspasos/traspaso.schema";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
@@ -47,12 +48,16 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @ficha permiso=traspaso_enviar_directo transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function crearEnvioDirectoDeTraspasoCasoDeUso(
-  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion" | "ahora">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion" | "empresaId" | "alcance" | "ahora">,
   comando: ComandoCrearEnvioDirectoTraspaso
 ): Promise<ResultadoCrearEnvioDirectoTraspaso> {
   if (comando.destinoSucursalId === actor.sucursalId) return fracaso("MISMA_SUCURSAL", "No podés mandarte una transferencia a vos mismo.");
 
-  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCrearEnvioDirectoTraspaso> => {
+  // P2 (RLS por sucursal): el paso compartido `verificarProductoTransferible` pregunta si el producto está disponible EN LA OTRA sucursal (`DisponibilidadProducto`, de sucursal): con la RLS por sucursal, la transacción con el alcance de la
+  // activa daría un falso «no está disponible en …». La transacción se abre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como estaba): la salida es un sí/no (el mensaje nombra solo la sucursal, dato público), y todo
+  // lo que se escribe sigue acotado a la sucursal activa. El orden de los pasos no cambia.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+  return conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoCrearEnvioDirectoTraspaso> => {
     const propia = await cargarSucursalParaTraspaso(tx, actor.sucursalId);
     if (!propia || !propia.activo) return fracaso("SUCURSAL_INACTIVA", mensajeSucursalPropiaInactivaParaEnviar(propia?.nombre ?? actor.sucursalNombre));
 

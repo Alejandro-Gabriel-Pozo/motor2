@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, baseDeTest, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, baseDeTest, EMPRESA_POR_DEFECTO_ID, prisma } from "../setup/test-db";
 import { productoValidoParaProceso } from "../../src/core/movimientos/transiciones";
 import { guardComandoRegistrarMovimiento } from "../../src/core/features/movimientos/movimiento.guard";
 import { registrarMovimientoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-movimiento";
@@ -81,7 +81,7 @@ describe("COMPRA rechazada por producto o sección: sin filas, y el rechazo se r
     pvConsignacionId = (await sembrarProductoDisponible({ codigo: "PV_VINO", nombre: "Vino en consignación", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 100, esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 50 }, sucursalId)).id;
   });
 
-  const actor = () => ({ usuarioId: adminId, sucursalId, sucursalNombre: "Central", ...baseDeTest });
+  const actor = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, sucursalNombre: "Central", ...baseDeTest });
   const compra = (productoId: string, seccion: string, extra: Partial<DatosMovimientoInput> = {}): DatosMovimientoInput => ({
     proceso: "COMPRA",
     fecha: FECHA,

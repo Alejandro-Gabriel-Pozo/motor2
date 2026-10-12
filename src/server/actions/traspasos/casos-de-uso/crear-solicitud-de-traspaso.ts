@@ -4,6 +4,7 @@ import { validarCantidad } from "@/core/datos/cantidad";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import { MENSAJE_SECCION_DESTINO_SOLICITUD_NO_PROPIA, MENSAJE_SUCURSAL_NO_DISPONIBLE } from "@/core/features/traspasos/traspaso-comandos.guard";
 import type { ComandoCrearSolicitudTraspaso, ResultadoCrearSolicitudTraspaso } from "@/core/features/traspasos/traspaso.schema";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
@@ -39,12 +40,16 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @ficha permiso=traspaso_solicitar transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function crearSolicitudDeTraspasoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion" | "empresaId" | "alcance">,
   comando: ComandoCrearSolicitudTraspaso
 ): Promise<ResultadoCrearSolicitudTraspaso> {
   if (comando.origenSucursalId === actor.sucursalId) return fracaso("MISMA_SUCURSAL", "No podés pedirte una transferencia a vos mismo.");
 
-  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCrearSolicitudTraspaso> => {
+  // P2 (RLS por sucursal): el paso compartido `verificarProductoTransferible` pregunta si el producto está disponible EN LA OTRA sucursal (`DisponibilidadProducto`, de sucursal): con la RLS por sucursal, la transacción con el alcance de la
+  // activa daría un falso «no está disponible en …». La transacción se abre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como estaba): la salida es un sí/no (el mensaje nombra solo la sucursal, dato público), y todo
+  // lo que se escribe sigue acotado a la sucursal activa. El orden de los pasos no cambia.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+  return conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoCrearSolicitudTraspaso> => {
     const origen = await cargarSucursalParaTraspaso(tx, comando.origenSucursalId);
     if (!origen || !origen.activo) return fracaso("SUCURSAL_NO_DISPONIBLE", MENSAJE_SUCURSAL_NO_DISPONIBLE);
 

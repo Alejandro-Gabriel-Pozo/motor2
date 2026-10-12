@@ -255,6 +255,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "P1, paso 3 (O.251; CAMBIA COMPORTAMIENTO a propósito, el día en hora argentina): Ventas por sección (Carta interna) corta el día en la zona de la empresa. Cambian SOLO 2 líneas del resultado de `generarReporteVentasPorSeccion`: `desde` pasa de 2026-09-30T00:00:00.000Z a 2026-09-30T03:00:00.000Z y `hasta` de 2026-09-30T23:59:59.999Z a 2026-10-01T02:59:59.999Z (el mismo día calendario argentino). Ningún número ni conteo de consultas cambió. Detectado por el CI de e0f5395 (parte 4 de 4), que el constructor del paso 3 no pudo correr.",
       },
+      {
+        blob: "7d3cc1c24710b57426ae233bffc8f57d1998365d",
+        // El golden es la UNION de dos cambios deliberados: el de zona de `c0414b00` (entrada anterior) y el de P2.1 de `5707566` («P2.1: el item agrupado mira solo el descuento de su sucursal…»).
+        commit: "5707566",
+        motivo:
+          "Paquete 1, P2.1 (se BORRA una función; el resto del golden no cambia): `productoTieneDescuentoEnAlgunaSucursal` ya no existe (el ítem agrupado de la carta mira solo el descuento de SU sucursal con `descuentosConfiguradosEnSucursal`, que ya tiene su caso), así que se va su caso `carta.productoTieneDescuentoEnAlgunaSucursal(Empanada)` (1 consulta, `descuentoProductoSucursal.count`, resultado `true`). Ninguna otra entrada cambia.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {

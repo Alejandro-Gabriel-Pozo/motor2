@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actualizarProducto, type DatosProducto } from "../../src/server/actions/catalogo/productos";
 import { actualizarProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/actualizar-producto";
@@ -31,7 +31,7 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
   let proveedorBId: string;
   let quesoId: string;
 
-  const actor = (usuarioId: string) => ({ usuarioId, sucursalId, ahora: new Date(), ...baseDeTest });
+  const actor = (usuarioId: string) => ({ usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, ahora: new Date(), ...baseDeTest });
 
   /** Los datos que el formulario manda para dejar el producto TAL COMO ESTÁ (un control: no cambia nada), con los cambios pedidos encima. */
   async function datos(cambios: Partial<DatosProducto> = {}): Promise<DatosProducto> {

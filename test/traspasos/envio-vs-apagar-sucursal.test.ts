@@ -65,15 +65,15 @@ describe("envío directo y aprobación contra el apagado de una sucursal (P15)",
   // Quien envía está parado en A. Quien apaga está parado en la OTRA sucursal (nadie apaga la suya), así que cada una tiene su admin.
   const enviarDesdeA = (transaccion: Transaccion) =>
     crearEnvioDirectoDeTraspasoCasoDeUso(
-      { usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: AHORA_FIJO, transaccion },
+      { ...baseDeTest, empresaId: EMPRESA_POR_DEFECTO_ID, usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: AHORA_FIJO, transaccion },
       { destinoSucursalId: sucursalBId, productoId, cantidad: 4, seccionOrigenId: seccionAId, detalle: null },
     );
   const aprobarDesdeA = (transaccion: Transaccion, traspasoId: string) =>
-    aprobarYEnviarTraspasoCasoDeUso({ ...baseDeTest, usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: AHORA_FIJO, transaccion }, { traspasoId, seccionOrigenId: seccionAId });
+    aprobarYEnviarTraspasoCasoDeUso({ ...baseDeTest, empresaId: EMPRESA_POR_DEFECTO_ID, usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: AHORA_FIJO, transaccion }, { traspasoId, seccionOrigenId: seccionAId });
   const apagarA = (transaccion: Transaccion) =>
-    actualizarActivoSucursalCasoDeUso({ usuarioId: adminBId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalBId, transaccion }, { sucursalId: sucursalAId, activo: false });
+    actualizarActivoSucursalCasoDeUso({ ...baseDeTest, usuarioId: adminBId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalBId, transaccion }, { sucursalId: sucursalAId, activo: false });
   const apagarB = (transaccion: Transaccion) =>
-    actualizarActivoSucursalCasoDeUso({ usuarioId: adminAId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalAId, transaccion }, { sucursalId: sucursalBId, activo: false });
+    actualizarActivoSucursalCasoDeUso({ ...baseDeTest, usuarioId: adminAId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalAId, transaccion }, { sucursalId: sucursalBId, activo: false });
 
   const activo = async (id: string) => (await prismaAdmin.sucursal.findUniqueOrThrow({ where: { id } })).activo;
   const traspasosEnviados = () => prismaAdmin.traspasoSucursal.count({ where: { estado: "ENVIADA" } });

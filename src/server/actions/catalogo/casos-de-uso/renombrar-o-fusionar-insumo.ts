@@ -3,6 +3,7 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoRenombrarOFusionarInsumo, ResultadoRenombrarOFusionarInsumo } from "@/core/features/catalogo/insumos.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { validarFusionInsumos } from "@/server/lecturas/catalogo/unidad-de-insumo";
 import { borrarInsumo, reapuntarSustitutosDeInsumoFusionado, reasignarProductosDeInsumo, renombrarInsumo } from "@/server/persistencia/catalogo/insumos";
 
@@ -47,7 +48,7 @@ function valoresDeLaFusion(origen: { id: string; nombre: string }, destino: { id
  * @ficha permiso=insumo_renombrar_fusionar transaccion=SIMPLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function renombrarOFusionarInsumoCasoDeUso(
-  actor: Pick<ContextoUsuario, "db" | "transaccion" | "usuarioId">,
+  actor: Pick<ContextoUsuario, "db" | "transaccion" | "usuarioId" | "empresaId" | "alcance">,
   comando: ComandoRenombrarOFusionarInsumo,
 ): Promise<ResultadoRenombrarOFusionarInsumo> {
   const { insumoId, nombre: nuevo, confirmarFusion } = comando;
@@ -59,7 +60,9 @@ export async function renombrarOFusionarInsumoCasoDeUso(
   });
 
   if (existente) {
-    const chocaUnidad = await validarFusionInsumos(insumoId, existente.id, actor.db);
+    // P2 (RLS por sucursal): las unidades de stock de los productos disponibles del insumo origen se miran en toda la empresa (base de VERIFICACIÓN); devuelve solo un mensaje.
+    const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+    const chocaUnidad = await validarFusionInsumos(insumoId, existente.id, verificacion.db);
     if (chocaUnidad) return fracaso("UNIDAD_MEZCLADA", chocaUnidad);
 
     // `=== true`, no truthy: el argumento llega del navegador, y un "false" o un 1 no es una confirmación.

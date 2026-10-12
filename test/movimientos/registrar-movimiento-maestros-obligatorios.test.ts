@@ -9,7 +9,7 @@ import type { Transaccion } from "../../src/lib/db-tipos";
  * U11 (auditoría de abstracciones 2026-10-11, N4-8): `registrarMovimientoCasoDeUso` tiene que exigir EN EL SERVIDOR lo que la pantalla exige, y comprobar que el motivo, el
  * destino y el proveedor sigan activos DENTRO de la transacción (antes solo lo hacía ANTES de abrirla: un maestro desactivado en el medio quedaba guardado igual).
  *
- * Sin base de datos: el caso de uso se llama con un cliente y una transacción falsos (solo lo que las validaciones leen). Lo que corre DESPUÉS de las validaciones (armado de
+ * Sin base de datos: el caso de uso se llama con un cliente y una transacción falsos (solo lo que las validaciones leen; desde P2, también las compras candidatas del aviso C25, que se leen antes de la transacción). Lo que corre DESPUÉS de las validaciones (armado de
  * líneas, stock, escritura) lo cubren los tests con base de `registrar-movimiento.test.ts`.
  *
  * Qué exige hoy la pantalla (`panel-movimiento-form.tsx`): SOLO el motivo de la Merma es obligatorio (`<select required>`). El proveedor de Compra/Devolución a proveedor
@@ -29,6 +29,8 @@ function dbFalso(m: Maestros): Prisma.TransactionClient {
     motivoMerma: { findUnique: fila(m.motivo) },
     destinoConsumo: { findUnique: fila(m.destino) },
     proveedor: { findUnique: fila(m.proveedor) },
+    // P2: las compras candidatas del aviso C25 se leen ANTES de abrir la transacción (con la base de verificación): el cliente falso responde que no hay ninguna.
+    operacion: { findMany: async () => [] },
   } as unknown as Prisma.TransactionClient;
 }
 

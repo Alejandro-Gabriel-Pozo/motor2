@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { aceptarTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/aceptar-traspaso";
 import { aprobarYEnviarTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/aprobar-y-enviar-traspaso";
 import { confirmarReingresoDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/confirmar-reingreso-de-traspaso";
@@ -30,8 +30,8 @@ describe("P17: traspasos y secciones dadas de baja", () => {
 
   /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
   const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
-  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDe(sucursalAId) });
-  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ahora: new Date(), ...baseDe(sucursalBId) });
+  const comoA = () => ({ usuarioId: adminAId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDe(sucursalAId) });
+  const comoB = () => ({ usuarioId: adminBId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ahora: new Date(), ...baseDe(sucursalBId) });
   const MENSAJE = (nombre: string) =>
     `La sección «${nombre}» está desactivada: solo se puede sacar mercadería de ella (transferir, mermar o consumir) hasta vaciarla. Elegí otra sección o activala.`;
   const darDeBaja = (seccionId: string) => prisma.seccion.update({ where: { id: seccionId }, data: { activa: false } });

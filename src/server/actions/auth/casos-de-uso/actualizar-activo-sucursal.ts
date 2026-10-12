@@ -1,5 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { gerentesQueQuedaranSinSucursalActiva } from "@/server/lecturas/permisos/gerencia";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
@@ -96,12 +97,16 @@ async function describirPendientesDeSucursal(tx: Db, sucursalId: string): Promis
  * @ficha permiso=activar_sucursal transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function actualizarActivoSucursalCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "sucursalId" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "empresaId" | "sucursalId" | "db" | "transaccion" | "alcance">,
   comando: { sucursalId: string; activo: boolean },
 ): Promise<ResultadoActualizarActivoSucursal> {
   const { sucursalId, activo } = comando;
+  // P2 (RLS por sucursal): el chequeo de pendientes (paso 4) lee los traspasos y las mesas/cuentas de la sucursal que se APAGA, que no es la activa de quien la apaga: con la RLS por sucursal vería solo los de la suya y dejaría apagar con
+  // mercadería en camino (falla ABIERTO). La transacción de gobierno se abre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como estaba; `Sucursal` es de gobierno y no depende del alcance): sigue siendo UNA transacción
+  // SERIALIZABLE con el mismo orden y los mismos mensajes, y el apagado y su auditoría no cambian.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
   return conGobierno(
-    actor,
+    verificacion,
     async (tx): Promise<ResultadoActualizarActivoSucursal> => {
       const sucursal = await tx.sucursal.findUnique({ where: { id: sucursalId } });
       if (!sucursal) return fracaso("SUCURSAL_NO_ENCONTRADA", "No se encontró esa sucursal.");

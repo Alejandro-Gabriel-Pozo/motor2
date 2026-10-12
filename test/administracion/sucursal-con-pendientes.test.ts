@@ -211,7 +211,7 @@ describe("actualizarActivoSucursal: no se apaga una sucursal con traspasos en ca
       { nombre: "Pizzería Oeste", slug: "oeste", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", emailPrimerAdmin: "gerente@oeste.com" },
       [],
     );
-    const actorDeLaOtra = { usuarioId: otra.usuarioId, empresaId: otra.empresaId, sucursalId: otra.sucursalId, transaccion: baseDeEmpresa(otra.empresaId).transaccion };
+    const actorDeLaOtra = { ...baseDeEmpresa(otra.empresaId), usuarioId: otra.usuarioId, empresaId: otra.empresaId, sucursalId: otra.sucursalId };
 
     const r = await actualizarActivoSucursalCasoDeUso(actorDeLaOtra, { sucursalId: norteId, activo: false });
 

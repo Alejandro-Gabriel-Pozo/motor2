@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { crearMembresia } from "../setup/membresia";
 import { actualizarProducto, type DatosProducto } from "../../src/server/actions/catalogo/productos";
@@ -60,7 +60,7 @@ describe("M.2: precio, factor y unidades de un producto son de quien tiene produ
   const ORIGINAL = () => ({ nombre: "Queso", precioVenta: PRECIO, factorConversion: 25, unidadStockId: kgId, unidadCompraId: gId });
   const auditorias = (campo?: string) => prismaAdmin.registroAuditoria.count({ where: { entidad: "Producto", entidadId: quesoId, ...(campo ? { campo } : {}) } });
 
-  const actor = (usuarioId: string) => ({ usuarioId, sucursalId, ahora: new Date(), ...baseDeTest });
+  const actor = (usuarioId: string) => ({ usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, ahora: new Date(), ...baseDeTest });
   const comando = (datosDelFormulario: DatosProducto, opciones: { sensibles: boolean; consignacion?: boolean }) => ({
     productoId: quesoId,
     datos: datosDelFormulario,

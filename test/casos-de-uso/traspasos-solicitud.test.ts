@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { aprobarYEnviarTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/aprobar-y-enviar-traspaso";
 import { cancelarSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/cancelar-solicitud-de-traspaso";
 import { rechazarSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/rechazar-solicitud-de-traspaso";
@@ -27,10 +27,10 @@ describe("casos de uso de la solicitud de traspaso", () => {
 
   /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
   const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
-  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDe(sucursalAId) });
+  const comoA = () => ({ usuarioId: adminAId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDe(sucursalAId) });
   /** La hora de entrada, tres días atrás: si el caso de uso leyera el reloj, no coincidiría con lo que queda guardado (Pureza 1.2; auditoría de la Fase 1: faltaban 10 de los 13 tests de hora fija). */
   const fijaHaceTresDias = () => new Date(Date.now() - 3 * 24 * 3_600_000);
-  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ahora: new Date(), ...baseDe(sucursalBId) });
+  const comoB = () => ({ usuarioId: adminBId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ahora: new Date(), ...baseDe(sucursalBId) });
 
   beforeEach(async () => {
     await limpiarBaseDeTest();

@@ -4,6 +4,7 @@ import { MENSAJE_SECCION_ORIGEN_NO_PROPIA, MENSAJE_SUCURSAL_NO_DISPONIBLE, MENSA
 import { guardTransicionTraspaso } from "@/core/features/traspasos/traspaso.guard";
 import type { ComandoAprobarYEnviarTraspaso, ResultadoAprobarYEnviarTraspaso } from "@/core/features/traspasos/traspaso.schema";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarSucursalParaTraspaso, cargarTraspaso } from "@/server/persistencia/traspasos/cargar-traspaso";
@@ -39,13 +40,17 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * @ficha permiso=traspaso_aprobar transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function aprobarYEnviarTraspasoCasoDeUso(
-  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion" | "ahora">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion" | "empresaId" | "alcance" | "ahora">,
   comando: ComandoAprobarYEnviarTraspaso
 ): Promise<ResultadoAprobarYEnviarTraspaso> {
   const seccionOrigen = await obtenerSeccionPropia(comando.seccionOrigenId, actor.sucursalId, actor.db);
   if (!seccionOrigen) return fracaso("SECCION_NO_PROPIA", MENSAJE_SECCION_ORIGEN_NO_PROPIA);
 
-  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAprobarYEnviarTraspaso> => {
+  // P2 (RLS por sucursal): el paso compartido `verificarProductoTransferible` pregunta si el producto está disponible EN LA OTRA sucursal (`DisponibilidadProducto`, de sucursal): con la RLS por sucursal, la transacción con el alcance de la
+  // activa daría un falso «no está disponible en …». La transacción se abre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como estaba): la salida es un sí/no (el mensaje nombra solo la sucursal, dato público), y todo
+  // lo que se escribe sigue acotado a la sucursal activa. El orden de los pasos no cambia.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+  return conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoAprobarYEnviarTraspaso> => {
     const traspaso = await cargarTraspaso(tx, comando.traspasoId);
     if (!traspaso) return fracaso("NO_ENCONTRADO", MENSAJE_TRASPASO_NO_ENCONTRADO);
     const transicion = guardTransicionTraspaso(traspaso, "aprobar", actor.sucursalId);

@@ -64,11 +64,8 @@ const ARCHIVOS_QUE_LEEN_LA_BASE: Readonly<Record<string, string>> = {
   "src/server/lecturas/catalogo/precio-local.ts": "El precio local vigente de los productos de la sucursal.",
 };
 
-/** Operaciones que no son una lectura de fila y SÍ están en el alcance: archivo|operación|modelo → por qué no es un problema. */
-const OPERACIONES_DECLARADAS: Readonly<Record<string, string>> = {
-  "src/server/lecturas/carta/descuentos.ts|count|DescuentoProductoSucursal":
-    "`productoTieneDescuentoEnAlgunaSucursal` es del admin del catálogo (no la llama la carta): cuenta filas y devuelve un booleano, ninguna fila ni campo sale.",
-};
+/** Operaciones que no son una lectura de fila y SÍ están en el alcance: archivo|operación|modelo → por qué no es un problema. Vacía desde P2.1 (se borró `productoTieneDescuentoEnAlgunaSucursal`, el único `count` que estaba acá). */
+const OPERACIONES_DECLARADAS: Readonly<Record<string, string>> = {};
 
 /** SQL crudo de lectura que está en el alcance: archivo → por qué no es de negocio. */
 const CONSULTAS_CRUDAS_DECLARADAS: Readonly<Record<string, string>> = {

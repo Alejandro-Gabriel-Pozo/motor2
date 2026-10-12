@@ -31,8 +31,3 @@ export async function descuentosDeProductoEnSucursal(
   const [configurados, precioLocalActivo] = await Promise.all([descuentosConfiguradosEnSucursal(sucursalId, db, productoIds), precioLocalActivoCargado ?? precioLocalActivoEn(sucursalId, db)]);
   return descuentosVigentes(configurados, precioLocalActivo);
 }
-
-/** ¿Tiene descuento en ALGUNA sucursal? Un producto así no puede ser opción de un ítem agrupado (el renglón agrupado muestra un solo precio). */
-export async function productoTieneDescuentoEnAlgunaSucursal(productoId: string, db: Db): Promise<boolean> {
-  return (await db.descuentoProductoSucursal.count({ where: { productoId } })) > 0;
-}

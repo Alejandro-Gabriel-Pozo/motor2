@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import type { Transaccion } from "../../src/lib/db-tipos";
-import { baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
 import { actualizarProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/actualizar-producto";
 import { agregarPresentacionAlternativaCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/agregar-presentacion-alternativa";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDatosDeProducto } from "../../src/core/features/catalogo/productos.guard";
@@ -54,7 +54,7 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
         });
         return fn(txConBarrera);
       }, opciones)) as Transaccion;
-    return { ...baseDeTest, usuarioId: operadorId, sucursalId, ahora: new Date(), transaccion };
+    return { ...baseDeTest, usuarioId: operadorId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, ahora: new Date(), transaccion };
   }
 
   beforeEach(async () => {
