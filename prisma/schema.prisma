@@ -357,6 +357,13 @@ model Producto {
   /// Con IVA incluido (D-IVA): lo que paga el cliente. El neto sin IVA se deduce con la alícuota, no se guarda.
   precioVenta Decimal @default(0) @db.Decimal(14, 2)
 
+  /// M0-IVA: alícuota de IVA con la que se VENDE este producto y la que trae la factura de proveedor cuando se COMPRA. Código semántico de lista cerrada
+  /// (`ALICUOTAS_IVA` en src/core/fiscal/iva.ts), con los CHECK "Producto_alicuotaIvaVenta_check" y "Producto_alicuotaIvaCompra_check" que agrega la
+  /// migración a mano (Prisma no declara CHECK). NULL = «sin declarar» (ninguna fila existente recibe un valor deducido). Que la de venta solo tenga
+  /// sentido en un PV y la de compra en una MP se valida en la capa de aplicación (Etapa C), no en la base.
+  alicuotaIvaVenta  String?
+  alicuotaIvaCompra String?
+
   /// Venta fraccionada (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): excepción de venta PUNTUAL de este PV — ej. 0.5
   /// para "esta pizza se vende de a 1 o de a media". null (default) = comportamiento actual, sin cambios (una unidad entera por
   /// línea). Solo tiene sentido si tipo=PV (se valida en la capa de aplicación, `validarPasoVenta`, src/core/catalogo/venta-
