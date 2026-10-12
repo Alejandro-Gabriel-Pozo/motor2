@@ -1,9 +1,8 @@
 import { isDeepStrictEqual } from "node:util";
 import { Client } from "pg";
-import { TABLAS_CON_POLITICA_DE_SUCURSAL } from "../setup/clasificacion-de-tablas";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
-import { MIGRACION_B1_FUNCIONES } from "../setup/migraciones-de-alcance-de-sucursal";
-import { sqlDeAlcanceDeSucursal, sqlDeReversaDeAlcanceDeSucursal } from "../setup/politicas-de-alcance-de-sucursal";
+import { MIGRACION_B1_FUNCIONES, TABLAS_DEL_PAQUETE_1 } from "../setup/migraciones-de-alcance-de-sucursal";
+import { sqlDeFuncionesDeAlcance, sqlDePoliticasDeAlcance, sqlDeReversaDeFuncionesDeAlcance, sqlDeReversaDePoliticasDeAlcance } from "../setup/politicas-de-alcance-de-sucursal";
 
 /**
  * M.3, Fase A, paso A10: el MUNDO y los ESCENARIOS de la prueba de la RLS por sucursal contra Postgres REAL. Lo usan `rls-sucursal.test.ts` (el comportamiento que el plan promete, con el SQL que genera el
@@ -200,7 +199,7 @@ export async function crearMundoDeSucursales(): Promise<MundoDeSucursales> {
         await base.cliente.query(sql);
       },
       async quitarPoliticas() {
-        await base.cliente.query(sqlDeReversaDeAlcanceDeSucursal());
+        await base.cliente.query(`${sqlDeReversaDePoliticasDeAlcance(TABLAS_DEL_PAQUETE_1)}\n${sqlDeReversaDeFuncionesDeAlcance()}`);
       },
       cerrar,
     };
@@ -210,8 +209,8 @@ export async function crearMundoDeSucursales(): Promise<MundoDeSucursales> {
   }
 }
 
-/** El SQL bueno del alta (funciones y políticas, las que genera el paso A9). */
-export const sqlBueno = (): string => sqlDeAlcanceDeSucursal();
+/** El SQL bueno del alta (funciones y políticas, las que genera el paso A9) de las tablas del Paquete 1: la base del mundo arranca antes de B1 y las tablas de migraciones posteriores no existen en ella. */
+export const sqlBueno = (): string => `${sqlDeFuncionesDeAlcance()}\n${sqlDePoliticasDeAlcance(TABLAS_DEL_PAQUETE_1)}`;
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // LOS ESCENARIOS
@@ -533,13 +532,13 @@ export const ESCENARIOS: readonly Escenario[] = [
     async correr(m) {
       const p: string[] = [];
       await m.sesion({ lectura: [SUC.a1], escritura: [SUC.a1] }, async (c) => {
-        for (const t of TABLAS_CON_POLITICA_DE_SUCURSAL) {
+        for (const t of TABLAS_DEL_PAQUETE_1) {
           const codigo = await falla(c, `SELECT count(*) FROM "${t}"`);
           if (codigo !== null) p.push(`${t}: la lectura con alcance falló (${codigo})`);
         }
       });
       await m.sesion({}, async (c) => {
-        for (const t of TABLAS_CON_POLITICA_DE_SUCURSAL) {
+        for (const t of TABLAS_DEL_PAQUETE_1) {
           const n = Number((await c.query(`SELECT count(*) AS n FROM "${t}"`)).rows[0].n);
           if (n !== 0) p.push(`${t}: sin alcance devolvió ${n} fila(s)`);
         }

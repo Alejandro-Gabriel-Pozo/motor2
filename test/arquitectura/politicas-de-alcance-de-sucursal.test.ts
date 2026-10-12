@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ALCANCE_DE_TABLAS, TABLAS_CON_POLITICA_DE_SUCURSAL, tablasConAlcance } from "../setup/clasificacion-de-tablas";
+import { TABLAS_DEL_PAQUETE_1 } from "../setup/migraciones-de-alcance-de-sucursal";
 import {
   COMANDOS_CON_POLITICA_DE_ALCANCE,
   ROL_DE_LA_APP,
@@ -122,7 +123,8 @@ const politicas = leerPoliticas(SQL);
 
 describe("el SQL de las políticas de sucursal generado desde la clasificación tiene la forma prometida", () => {
   it("el SQL real no tiene ningún defecto", () => {
-    expect(TODAS.length, "32 tablas con política en la clasificación (31 del plan + AgregadoDeCuenta, P3)").toBe(32);
+    expect(TABLAS_DEL_PAQUETE_1.length, "el Paquete 1 tiene 32 tablas con política (31 del plan + AgregadoDeCuenta, P3)").toBe(32);
+    for (const t of TABLAS_DEL_PAQUETE_1) expect(TODAS, `${t}: toda tabla del Paquete 1 sigue clasificada con política`).toContain(t);
     expect(defectosDelSql(SQL, TODAS)).toEqual([]);
   });
 

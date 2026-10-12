@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { TABLAS_CON_POLITICA_DE_SUCURSAL } from "../setup/clasificacion-de-tablas";
+import { TABLAS_DEL_PAQUETE_1 } from "../setup/migraciones-de-alcance-de-sucursal";
 import { sqlDeFuncionesDeAlcance, sqlDePoliticasDeAlcance } from "../setup/politicas-de-alcance-de-sucursal";
 import { ESCENARIOS, crearMundoDeSucursales, sqlBueno, type MundoDeSucursales } from "./rls-sucursal-mundo";
 
@@ -156,7 +156,7 @@ const MUTANTES: readonly Mutante[] = [
   {
     id: "M6",
     titulo: "una tabla olvidada: CuentaItem sin ninguna política",
-    sql: () => `${sqlDeFuncionesDeAlcance()}\n${sqlDePoliticasDeAlcance(TABLAS_CON_POLITICA_DE_SUCURSAL.filter((t) => t !== "CuentaItem"))}`,
+    sql: () => `${sqlDeFuncionesDeAlcance()}\n${sqlDePoliticasDeAlcance(TABLAS_DEL_PAQUETE_1.filter((t) => t !== "CuentaItem"))}`,
     rojos: ["E0", "E1", "E3", "E6", "E8"],
   },
   {

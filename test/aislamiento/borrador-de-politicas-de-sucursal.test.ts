@@ -1,9 +1,9 @@
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { CANTIDAD_DE_POLITICAS_ESPERADAS, TABLAS_CON_POLITICA_DE_SUCURSAL } from "../setup/clasificacion-de-tablas";
+import { CLASIFICACION_DE_TABLAS, politicasEsperadas } from "../setup/clasificacion-de-tablas";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
-import { MIGRACION_B1_FUNCIONES } from "../setup/migraciones-de-alcance-de-sucursal";
-import { sqlDeAlcanceDeSucursal, sqlDeReversaDeAlcanceDeSucursal } from "../setup/politicas-de-alcance-de-sucursal";
+import { MIGRACION_B1_FUNCIONES, TABLAS_DEL_PAQUETE_1 } from "../setup/migraciones-de-alcance-de-sucursal";
+import { sqlDeFuncionesDeAlcance, sqlDePoliticasDeAlcance, sqlDeReversaDeFuncionesDeAlcance, sqlDeReversaDePoliticasDeAlcance } from "../setup/politicas-de-alcance-de-sucursal";
 
 /**
  * M.3, Fase A, paso A9, contra Postgres REAL: el SQL que genera `test/setup/politicas-de-alcance-de-sucursal.ts` (borrador de la Fase B, NO es una migración) se aplica sobre una base
@@ -19,8 +19,11 @@ let hayRol = false;
 let app: Client | null = null;
 
 const E = "empresa_a";
-/** Las políticas que tiene la base ANTES de B1: las de empresa (la cantidad declarada menos las cuatro por comando de cada tabla con alcance de sucursal). */
-const POLITICAS_ANTES_DE_B1 = CANTIDAD_DE_POLITICAS_ESPERADAS - TABLAS_CON_POLITICA_DE_SUCURSAL.length * 4;
+/** El alta y la reversa del Paquete 1 (las funciones y las políticas de sus 32 tablas): la base de este archivo es la de ANTES de B1 y las tablas de migraciones posteriores no existen en ella. */
+const sqlDelAlta = () => `${sqlDeFuncionesDeAlcance()}\n${sqlDePoliticasDeAlcance(TABLAS_DEL_PAQUETE_1)}`;
+const sqlDeLaReversa = () => `${sqlDeReversaDePoliticasDeAlcance(TABLAS_DEL_PAQUETE_1)}\n${sqlDeReversaDeFuncionesDeAlcance()}`;
+/** Las políticas que tiene la base ANTES de B1: las de empresa de las tablas que YA existen en ella (lo que la clasificación declara para cada una, sin las cuatro por comando de sucursal). Se mide en `beforeAll`. */
+let politicasAntesDeB1 = 0;
 
 async function existeElRol(cliente: Client): Promise<boolean> {
   return (await cliente.query("SELECT 1 FROM pg_roles WHERE rolname = 'motor2_app'")).rowCount === 1;
@@ -29,6 +32,10 @@ async function existeElRol(cliente: Client): Promise<boolean> {
 beforeAll(async () => {
   base = await crearBaseTemporalMigrada();
   await base.aplicarAntesDe(MIGRACION_B1_FUNCIONES); // Paquete 1: las políticas ya son migraciones (B1 a B6); este archivo prueba el SQL del generador sobre la base de ANTES.
+  const existentes = new Set((await base.cliente.query<{ t: string }>(`SELECT tablename::text AS t FROM pg_tables WHERE schemaname = 'public'`)).rows.map((r) => r.t));
+  politicasAntesDeB1 = Object.keys(CLASIFICACION_DE_TABLAS)
+    .filter((t) => existentes.has(t))
+    .reduce((n, t) => n + politicasEsperadas(t).filter((p) => !p.startsWith("alcance_sucursal_")).length, 0);
   hayRol = await existeElRol(base.cliente);
   if (!hayRol) return;
   const q = (sql: string, params: unknown[] = []) => base.cliente.query(sql, params);
@@ -111,16 +118,16 @@ describe("el borrador de políticas de sucursal, sobre una base migrada de verda
   it("el SQL del alta se aplica sin error y deja las funciones y las cuatro políticas RESTRICTIVE TO motor2_app de cada tabla con alcance", async (ctx) => {
     if (!hayRol) return ctx.skip();
     const antes = await totalDePoliticas();
-    expect(antes, "las políticas por empresa de antes de B1, derivadas de la clasificación").toBe(POLITICAS_ANTES_DE_B1);
-    await base.cliente.query(sqlDeAlcanceDeSucursal());
+    expect(antes, "las políticas por empresa de antes de B1, derivadas de la clasificación").toBe(politicasAntesDeB1);
+    await base.cliente.query(sqlDelAlta());
     const politicas = await politicasDeAlcance();
-    expect(politicas).toHaveLength(TABLAS_CON_POLITICA_DE_SUCURSAL.length * 4);
-    expect([...new Set(politicas.map((p) => p.tabla))].sort()).toEqual([...TABLAS_CON_POLITICA_DE_SUCURSAL].sort());
+    expect(politicas).toHaveLength(TABLAS_DEL_PAQUETE_1.length * 4);
+    expect([...new Set(politicas.map((p) => p.tabla))].sort()).toEqual([...TABLAS_DEL_PAQUETE_1].sort());
     for (const p of politicas) {
       expect(p.tipo, `${p.tabla}/${p.nombre}`).toBe("RESTRICTIVE");
       expect(p.roles, `${p.tabla}/${p.nombre}`).toEqual(["motor2_app"]);
     }
-    for (const t of TABLAS_CON_POLITICA_DE_SUCURSAL) expect(politicas.filter((p) => p.tabla === t).map((p) => p.comando).sort(), t).toEqual(["DELETE", "INSERT", "SELECT", "UPDATE"]);
+    for (const t of TABLAS_DEL_PAQUETE_1) expect(politicas.filter((p) => p.tabla === t).map((p) => p.comando).sort(), t).toEqual(["DELETE", "INSERT", "SELECT", "UPDATE"]);
     expect(await totalDePoliticas(), "se suman a las de empresa sin tocarlas").toBe(antes + politicas.length);
     expect(await funcionesDeAlcance()).toEqual(["app_sucursales_escritura", "app_sucursales_lectura"]);
   });
@@ -185,17 +192,17 @@ describe("el borrador de políticas de sucursal, sobre una base migrada de verda
   it("la reversa borra exactamente lo que el alta creó, deja las políticas por empresa como estaban, y alta → reversa → alta funciona", async (ctx) => {
     if (!hayRol) return ctx.skip();
     const conPoliticas = await totalDePoliticas();
-    await base.cliente.query(sqlDeReversaDeAlcanceDeSucursal());
+    await base.cliente.query(sqlDeLaReversa());
     expect(await politicasDeAlcance()).toEqual([]);
     expect(await funcionesDeAlcance()).toEqual([]);
-    expect(await totalDePoliticas()).toBe(POLITICAS_ANTES_DE_B1);
-    await base.cliente.query(sqlDeReversaDeAlcanceDeSucursal()); // idempotente: IF EXISTS
+    expect(await totalDePoliticas()).toBe(politicasAntesDeB1);
+    await base.cliente.query(sqlDeLaReversa()); // idempotente: IF EXISTS
     // Sin las políticas el rol de la app vuelve a ver todo lo de su empresa (la reversa devuelve el comportamiento de antes).
     await conAlcance({}, async (c) => expect(await ids(c, "Seccion")).toEqual(["secA", "secB"]));
-    await base.cliente.query(sqlDeAlcanceDeSucursal());
+    await base.cliente.query(sqlDelAlta());
     expect(await totalDePoliticas()).toBe(conPoliticas);
     await conAlcance({ lectura: "sA" }, async (c) => expect(await ids(c, "Seccion")).toEqual(["secA"]));
-    await base.cliente.query(sqlDeReversaDeAlcanceDeSucursal());
-    expect(await totalDePoliticas()).toBe(POLITICAS_ANTES_DE_B1);
+    await base.cliente.query(sqlDeLaReversa());
+    expect(await totalDePoliticas()).toBe(politicasAntesDeB1);
   });
 });
