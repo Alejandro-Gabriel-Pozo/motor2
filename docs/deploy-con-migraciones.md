@@ -246,6 +246,26 @@ El orden importa: **primero la base y después el código.** Volver a un código
 
 El costo de las políticas con volumen (el riesgo está en las consultas de saldos e índices del Kardex; hoy hay 0 operaciones y 0 movimientos en `stockhneuquen`), el comportamiento contra el pooler de Neon en modo transacción, y las bases reales (nada se ensayó contra Neon). Las dos primeras se miden en el ensayo.
 
+## Paquete 2, M0-IVA: dos columnas de alícuota en `Producto` y la condición de la empresa frente al IVA
+
+Dos migraciones **ADITIVAS** (fase EXPANDIR), cada una con su `down.sql`, que se aplican con un solo `migrate deploy` **después de B6** (`20261014160000`). El código anterior no lee ni escribe las columnas nuevas, así que el orden con el código es el de siempre: la base primero, el código después, y ninguna de las dos rompe a la otra. **REQUIEREN AUTORIZACIÓN EXPRESA PARA APLICAR, base por base**, con ensayo en una rama de Neon y respaldo previo.
+
+| Migración | Qué agrega | Estado |
+|---|---|---|
+| `20261015100000_m0_iva_alicuotas_de_producto` | `Producto.alicuotaIvaVenta` y `Producto.alicuotaIvaCompra`, `TEXT NULL`, con un CHECK de lista cerrada cada una (`IVA_0`, `IVA_2_5`, `IVA_5`, `IVA_10_5`, `IVA_21`, `IVA_27`, `EXENTO`, `NO_GRAVADO`) | Sin decisión pendiente (CAT-8 ya está tomada) |
+| `20261015101000_m0_iva_condicion_de_la_empresa` | `Empresa.condicionIva`, `TEXT NULL`, con un CHECK de lista cerrada (`RESPONSABLE_INSCRIPTO`, `MONOTRIBUTO`, `EXENTO`) | **Escrita para la variante A de D-1** (la carga la plataforma). Aplicarla requiere que el dueño confirme D-1: el pedido original decía «plataforma» y la respuesta registrada decía «Gerente» |
+
+- **Qué NO hacen:** ninguna fila existente recibe un valor deducido (NULL = «sin declarar» / «no declarada»: sin default, sin backfill), no hay CHECK de obligatoriedad (ni `NOT VALID`: Postgres también lo evalúa al actualizar una fila vieja y rompería la edición de productos de hoy), no suman RLS ni GRANT (`Producto` y `Empresa` mantienen su clasificación), y no cambian ningún cálculo de dinero. Quien lea `Empresa.condicionIva` tiene que **fallar cerrado** con NULL, nunca suponer Responsable Inscripto.
+- **Lista cerrada en dos lugares:** `src/core/fiscal/iva.ts` (`ALICUOTAS_IVA`, `CONDICIONES_IVA`) y el CHECK de la base. Un test por migración compara las dos contra la base real; ampliar una lista es ampliar el CHECK **y** la constante.
+- **Bloqueos:** `ADD COLUMN` sin default solo toca el catálogo y validar el CHECK recorre unas decenas de filas. Aplicar sin tráfico y, como en el Paquete 1, con `lock_timeout` corto en la conexión del dueño.
+- **Ensayo:** subir, bajar y subir en una rama de Neon (`down.sql` con `psql -1 -v ON_ERROR_STOP=1`) y comparar el catálogo de columnas y restricciones de las dos tablas. Los tests lo hacen sobre una base temporal (`test/catalogo/migracion-m0-iva-alicuotas-de-producto.test.ts` y `test/persistencia/migracion-m0-iva-condicion-de-la-empresa.test.ts`).
+- **Reversa:** el `down.sql` de cada una y después `prisma migrate resolve --rolled-back <migración>`. **No es destructiva mientras nadie haya cargado valores** (en EXPANDIR nadie los escribe). **Pasa a serlo** apenas se cargue una alícuota o una condición (el paso de datos de abajo, o la ficha de producto de la Etapa C): antes de bajar, guardar `SELECT id, "alicuotaIvaVenta", "alicuotaIvaCompra" FROM "Producto" WHERE "alicuotaIvaVenta" IS NOT NULL OR "alicuotaIvaCompra" IS NOT NULL` y `SELECT id, slug, "condicionIva" FROM "Empresa" WHERE "condicionIva" IS NOT NULL`.
+- **Si una falla a mitad de `migrate deploy`:** las anteriores quedan aplicadas, la fallida se baja con su `down.sql` (seguro con los `IF EXISTS`) y se corre `migrate resolve --rolled-back`.
+
+### Paso de datos: la condición de `stockhneuquen`
+
+No es una migración y **no se corre solo**: `scripts/operaciones/m0-iva-condicion-de-la-empresa.sql`, como `motor2_plataforma`, con `psql -1`. **Simula por defecto** (muestra la empresa, su condición actual y qué cambiaría, y no escribe nada); con `-v aplicar=1` escribe, en **una sola sentencia**, el cambio y su fila de `AuditoriaPlataforma` (`accion = 'condicion-iva'`, con el antes y el después y el administrador de plataforma activo que lo hizo). Es idempotente (la segunda corrida da 0 cambios y 0 auditorías) y seguro ante dos corridas a la vez. Orden: simular, que el dueño confirme el valor (D-3: hoy se supone `RESPONSABLE_INSCRIPTO`, «las hosterías son RI», sin confirmar), recién entonces aplicar. Nada del resto de la app lee todavía la columna.
+
 ## Server Actions: clave de cifrado de los closures y versiones entre deploys
 
 > O.3 de la lista de control (`docs/pureza-integracion.md`; Hito 4, bloque D, paso G1 de `docs/plan-hito-4-pureza.md` §4). Solo documentación: no se tocó
