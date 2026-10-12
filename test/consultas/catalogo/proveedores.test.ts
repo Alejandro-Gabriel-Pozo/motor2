@@ -12,8 +12,14 @@ import { listarProductosQueLeCompran, obtenerFichaProveedor, obtenerProveedorPor
  * de "lo que se le compra". `productosConsignados` no lleva `orderBy` en la consulta original: se compara como conjunto.
  */
 
-/** Los escalares del proveedor menos la columna interna `empresaId`: lo que dibujan la ficha y el formulario de edición (S-15). */
-const DATOS_DE_PROVEEDOR = Object.keys(Prisma.ProveedorScalarFieldEnum).filter((k) => k !== "empresaId").sort();
+/**
+ * Los escalares del proveedor menos la columna interna `empresaId` y la clasificación (M1: `ofreceProductos` / `ofreceServicios`; la ficha y el formulario no la muestran hasta que
+ * una pantalla la edite, y ese día se AGREGAN al `select` y se sacan de esta lista, GT-3a): lo que dibujan la ficha y el formulario de edición (S-15).
+ */
+const CLASIFICACION_AUN_FUERA_DE_LA_FICHA = ["ofreceProductos", "ofreceServicios"];
+const DATOS_DE_PROVEEDOR = Object.keys(Prisma.ProveedorScalarFieldEnum)
+  .filter((k) => k !== "empresaId" && !CLASIFICACION_AUN_FUERA_DE_LA_FICHA.includes(k))
+  .sort();
 
 describe("server/consultas/catalogo/proveedores", () => {
   let kg: { id: string; nombre: string };

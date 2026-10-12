@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { Client } from "pg";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
@@ -15,6 +17,12 @@ import { sqlDeFuncionesDeAlcance, sqlDePoliticasDeAlcance, sqlDeReversaDeFuncion
  * El alcance se fija con la misma forma que `baseDeEmpresa` (A2, `src/server/sesion/base.ts`): UN solo `SELECT set_config('app.empresa_id', …, true), set_config('app.sucursales_lectura', …, true),
  * set_config('app.sucursales_escritura', …, true)` dentro de la transacción (el `true` lo hace local a ella). Una variable que NO se fija (`undefined`) es la del código anterior a A2: solo `app.empresa_id`.
  */
+
+/**
+ * Migraciones POSTERIORES al Paquete 1 que solo SUMAN COLUMNAS que el cliente de Prisma ya pide en sus lecturas (no crean tablas ni políticas): el mundo parte de antes de B1 y, sin ellas, un
+ * `include` de la fila entera falla con «la columna no existe». Son independientes de B1 a B6 (no usan sus funciones), así que se aplican al armar la base.
+ */
+const COLUMNAS_POSTERIORES_AL_PAQUETE_1 = ["20261015110000_proveedor_ofrece_productos_y_servicios"];
 
 export const EMPRESA_A = "empA";
 export const EMPRESA_B = "empB";
@@ -154,6 +162,7 @@ export async function crearMundoDeSucursales(): Promise<MundoDeSucursales> {
   try {
     // Desde el Paquete 1 las políticas son migraciones (B1 a B6): el mundo parte de la base SIN ellas (todo lo anterior a B1) y cada prueba aplica el SQL del generador, bueno o mutado.
     await base.aplicarAntesDe(MIGRACION_B1_FUNCIONES);
+    for (const m of COLUMNAS_POSTERIORES_AL_PAQUETE_1) await base.cliente.query(readFileSync(join(__dirname, "../../prisma/migrations", m, "migration.sql"), "utf8"));
     const hayRol = await existeElRol(base.cliente);
     if (hayRol) {
       // Los privilegios por defecto del script de roles son por base y la temporal nace sin ellos; se van con la base.
