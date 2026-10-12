@@ -13,10 +13,11 @@ import { listarProductosQueLeCompran, obtenerFichaProveedor, obtenerProveedorPor
  */
 
 /**
- * Los escalares del proveedor menos la columna interna `empresaId` y la clasificación (M1: `ofreceProductos` / `ofreceServicios`; la ficha y el formulario no la muestran hasta que
+ * Los escalares del proveedor menos la columna interna `empresaId` y la clasificación y la condición de IVA (M1: `ofreceProductos` / `ofreceServicios`; M3e: `condicionIva`; la ficha y el formulario no la muestran hasta que
  * una pantalla la edite, y ese día se AGREGAN al `select` y se sacan de esta lista, GT-3a): lo que dibujan la ficha y el formulario de edición (S-15).
  */
-const CLASIFICACION_AUN_FUERA_DE_LA_FICHA = ["ofreceProductos", "ofreceServicios"];
+// M3e (C36) suma `condicionIva` (la condición del proveedor frente al IVA) por el mismo motivo: ninguna pantalla la edita todavía (Etapa C).
+const CLASIFICACION_AUN_FUERA_DE_LA_FICHA = ["ofreceProductos", "ofreceServicios", "condicionIva"];
 const DATOS_DE_PROVEEDOR = Object.keys(Prisma.ProveedorScalarFieldEnum)
   .filter((k) => k !== "empresaId" && !CLASIFICACION_AUN_FUERA_DE_LA_FICHA.includes(k))
   .sort();

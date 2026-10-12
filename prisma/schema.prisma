@@ -609,12 +609,15 @@ model Proveedor {
   /// Los proveedores existentes nacen «productos» (decisión del dueño, 2026-10-06). Migración 20261015110000_proveedor_ofrece_productos_y_servicios.
   ofreceProductos Boolean @default(true)
   ofreceServicios Boolean @default(false)
+  /// M3e (C36): la condición del proveedor frente al IVA (`CONDICIONES_IVA` de src/core/fiscal/iva.ts, la misma lista que `Empresa.condicionIva`; CHECK "Proveedor_condicionIva_check"). NULL = «no declarada»: quien la lea falla cerrado.
+  condicionIva    String?
 
   productosConsignados Producto[]             @relation("ProveedorConsignacionDe")
   proveedorPorProducto ProveedorPorProducto[]
   operaciones          Operacion[]
   pagosConsignante     PagoConsignante[]
   facturasProveedor    FacturaProveedor[]
+  puntosDeVenta        PuntoDeVentaDeProveedor[]
 
   @@unique([empresaId, codigo])
   @@unique([empresaId, nombre])
@@ -2367,6 +2370,7 @@ model Empresa {
   facturaProveedorRenglonRel     FacturaProveedorRenglon[]
   facturaProveedorSucursalRel    FacturaProveedorSucursal[]
   facturaProveedorTributoRel     FacturaProveedorTributo[]
+  puntoDeVentaDeProveedorRel     PuntoDeVentaDeProveedor[]
 }
 
 enum EstadoModulo {
@@ -2648,6 +2652,22 @@ model FacturaProveedorTributo {
 
   @@unique([empresaId, id])
   @@index([facturaProveedorId])
+}
+
+/// Paquete 3 (M3e, C36): un punto de venta (los cinco dígitos del N.º de comprobante) con el que un proveedor factura. DE EMPRESA. `numero` de 1 a 99999 (CHECK), único por proveedor. No se borra nunca: `motor2_app` tiene SELECT, INSERT y UPDATE
+/// solo de `activo` (se apaga). Nada de `src/` lo escribe todavía (Etapa C).
+model PuntoDeVentaDeProveedor {
+  id          String    @id @default(cuid())
+  empresaId   String    @default(dbgenerated("app_empresa_actual()"))
+  empresa     Empresa   @relation(fields: [empresaId], references: [id])
+  proveedorId String
+  proveedor   Proveedor @relation(fields: [empresaId, proveedorId], references: [empresaId, id])
+  numero      Int
+  activo      Boolean   @default(true)
+  creadoEn    DateTime  @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([proveedorId, numero])
 }
 
 model UsuarioEmpresa {

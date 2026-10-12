@@ -172,6 +172,8 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.grupo.deleteMany();
   await prismaAdmin.categoriaProducto.deleteMany();
   await prismaAdmin.unidad.deleteMany();
+  // Los puntos de venta del proveedor (M3e) lo referencian (RESTRICT): antes que él.
+  await prismaAdmin.puntoDeVentaDeProveedor.deleteMany();
   await prismaAdmin.proveedor.deleteMany();
 
   // Plataforma (ADR-007, A2): `empresaId` tiene default `app_empresa_actual()` (la ÚNICA empresa ACTIVE), así que la base de test
