@@ -14,7 +14,9 @@ describe("conteo físico: la fecha de la operación de control es la hora de ent
   let adminId: string;
   let productoId: string;
 
-  const actor = (ahora = new Date()) => ({ usuarioId: adminId, sucursalId, sucursalNombre: "Central", ahora, ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const actor = (ahora = new Date()) => ({ usuarioId: adminId, sucursalId, sucursalNombre: "Central", ahora, ...baseDe(sucursalId) });
   const fijaHaceTresDias = () => new Date(Date.now() - 3 * 24 * 3_600_000);
   const controles = () => prisma.operacion.findMany({ where: { proceso: "CONTROL" }, orderBy: { creadoEn: "asc" } });
 

@@ -16,7 +16,9 @@ import { emitirTicketCorregidoCasoDeUso } from "../../src/server/actions/pos/cas
  */
 describe("emitirTicketCorregidoCasoDeUso", () => {
   let s: Awaited<ReturnType<typeof sembrarSalon>>;
-  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, ahora: new Date(), ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, ahora: new Date(), ...baseDe(s.sucursalId) });
   const haceUnaHora = () => new Date(Date.now() - 60 * 60 * 1000);
   const haceUnMinuto = () => new Date(Date.now() - 60 * 1000);
 
@@ -103,7 +105,7 @@ describe("emitirTicketCorregidoCasoDeUso", () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
 
     expect(await emitirTicketCorregidoCasoDeUso(actor(), { cuentaId: "no-existe", motivo: "x" })).toEqual({ ok: false, codigo: "NO_ENCONTRADA", mensaje: "No se encontró esa cuenta en esta sucursal." });
-    expect(await emitirTicketCorregidoCasoDeUso({ usuarioId: s.admin.id, sucursalId: norte.id, ahora: new Date(), ...baseDeTest }, { cuentaId: cuenta.id, motivo: "x" })).toEqual({
+    expect(await emitirTicketCorregidoCasoDeUso({ usuarioId: s.admin.id, sucursalId: norte.id, ahora: new Date(), ...baseDe(norte.id) }, { cuentaId: cuenta.id, motivo: "x" })).toEqual({
       ok: false,
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa cuenta en esta sucursal.",
