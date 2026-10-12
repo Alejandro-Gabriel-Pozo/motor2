@@ -23,8 +23,10 @@ const CHECKS_DE_CABECERA = [
   "FacturaProveedor_idempotencia_pareo_chk", "FacturaProveedor_anulacion_pareo_chk",
 ];
 const CHECKS_DE_RENGLON = [
-  "FacturaProveedorRenglon_orden_chk", "FacturaProveedorRenglon_naturaleza_chk", "FacturaProveedorRenglon_pareo_mercaderia_chk", "FacturaProveedorRenglon_cantidad_positiva_chk",
+  "FacturaProveedorRenglon_orden_chk", "FacturaProveedorRenglon_naturaleza_chk", "FacturaProveedorRenglon_cantidad_positiva_chk",
   "FacturaProveedorRenglon_precio_unidad_no_negativo_chk", "FacturaProveedorRenglon_precio_total_no_negativo_chk",
+  // M4.2: el pareo de las DOS naturalezas reemplaza al de M3 (`..._pareo_mercaderia_chk`) y se suma el CHECK del tipo de costo; los mide `migracion-renglon-sin-stock.test.ts`.
+  "FacturaProveedorRenglon_pareo_naturaleza_chk", "FacturaProveedorRenglon_tipo_de_costo_chk",
 ];
 const CHECKS = [...CHECKS_DE_CABECERA, ...CHECKS_DE_RENGLON, "FacturaProveedorSucursal_porcentaje_chk", "MovimientoStock_renglon_solo_compra_chk"];
 
@@ -103,7 +105,7 @@ describe("la migración deja las tres tablas, la columna del Kardex, los índice
       WHERE c.relname = ANY(${[...TABLAS]}::text[]) AND i.indisunique AND NOT i.indisprimary ORDER BY 1, 2`;
     expect(unicos.map((u) => u.nombre).sort()).toEqual([
       "FacturaProveedor_claveIdempotencia_key", "FacturaProveedor_empresaId_id_key", "FacturaProveedor_unica_vigente_key",
-      "FacturaProveedorRenglon_empresaId_id_key", "FacturaProveedorRenglon_facturaProveedorId_orden_key",
+      "FacturaProveedorRenglon_empresaId_id_key", "FacturaProveedorRenglon_empresaId_id_naturaleza_key", "FacturaProveedorRenglon_facturaProveedorId_orden_key",
       "FacturaProveedorSucursal_empresaId_id_key", "FacturaProveedorSucursal_empresaId_operacionId_key", "FacturaProveedorSucursal_facturaProveedorId_sucursalId_key",
     ].sort());
     const vigente = unicos.find((u) => u.nombre === "FacturaProveedor_unica_vigente_key")!.definicion;
@@ -117,7 +119,7 @@ describe("la migración deja las tres tablas, la columna del Kardex, los índice
       WHERE contype = 'f' AND ((SELECT relname::text FROM pg_class WHERE oid = conrelid) = ANY(${[...TABLAS]}::text[]) OR conname::text = 'MovimientoStock_empresaId_facturaProveedorRenglonId_fkey') ORDER BY 1`;
     expect(fks.map((f) => f.conname).sort()).toEqual([
       "FacturaProveedor_anuladaPorId_fkey", "FacturaProveedor_confirmadaPorId_fkey", "FacturaProveedor_creadoPorId_fkey", "FacturaProveedor_empresaId_fkey", "FacturaProveedor_empresaId_proveedorId_fkey",
-      "FacturaProveedorRenglon_empresaId_facturaProveedorId_fkey", "FacturaProveedorRenglon_empresaId_fkey", "FacturaProveedorRenglon_empresaId_productoId_fkey",
+      "FacturaProveedorRenglon_empresaId_conceptoGastoId_fkey", "FacturaProveedorRenglon_empresaId_facturaProveedorId_fkey", "FacturaProveedorRenglon_empresaId_fkey", "FacturaProveedorRenglon_empresaId_productoId_fkey",
       "FacturaProveedorSucursal_empresaId_facturaProveedorId_fkey", "FacturaProveedorSucursal_empresaId_fkey", "FacturaProveedorSucursal_empresaId_operacionId_fkey", "FacturaProveedorSucursal_empresaId_sucursalId_fkey",
       "FacturaProveedorSucursal_recibidaPorId_fkey",
       "MovimientoStock_empresaId_facturaProveedorRenglonId_fkey",
@@ -277,15 +279,15 @@ describe("FacturaProveedorRenglon: reglas del renglón", () => {
     await renglon(otra.id, { orden: 1 });
   });
 
-  it("la naturaleza es MERCADERIA por ahora (FacturaProveedorRenglon_naturaleza_chk)", async () => {
+  it("la naturaleza es MERCADERIA o SIN_STOCK (M4.2) y cualquier otra se rechaza (FacturaProveedorRenglon_naturaleza_chk)", async () => {
     const f = await cabecera();
-    await expect(renglon(f.id, { naturaleza: "SIN_STOCK" })).rejects.toThrow(/FacturaProveedorRenglon_naturaleza_chk/);
+    for (const otra of ["OTRA", "mercaderia", "SERVICIO", ""]) await expect(renglon(f.id, { naturaleza: otra }), otra).rejects.toThrow(/FacturaProveedorRenglon_naturaleza_chk/);
   });
 
-  it("los campos de mercadería van en pareo: una mercadería sin producto, cantidad, precio por unidad o texto de conversión se rechaza (FacturaProveedorRenglon_pareo_mercaderia_chk)", async () => {
+  it("los campos de mercadería van en pareo: una mercadería sin producto, cantidad, precio por unidad o texto de conversión se rechaza (FacturaProveedorRenglon_pareo_naturaleza_chk, M4.2)", async () => {
     const f = await cabecera();
     for (const roto of [{ productoId: null }, { cantidadStock: null }, { precioPorUnidadStock: null }, { detalle: null }]) {
-      await expect(renglon(f.id, roto), JSON.stringify(roto)).rejects.toThrow(/FacturaProveedorRenglon_pareo_mercaderia_chk/);
+      await expect(renglon(f.id, roto), JSON.stringify(roto)).rejects.toThrow(/FacturaProveedorRenglon_pareo_naturaleza_chk/);
     }
   });
 

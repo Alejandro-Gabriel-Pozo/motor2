@@ -2574,8 +2574,9 @@ model FacturaProveedor {
   @@index([empresaId, proveedorId, fecha])
 }
 
-/// Paquete 3 (M3b): un renglón de la factura (lo comprado). De empresa; solo se agrega. Hoy toda naturaleza es `MERCADERIA` (CHECK `FacturaProveedorRenglon_naturaleza_chk`, que M4 amplía): producto, cantidad y precio
-/// por unidad de stock en pareo (CHECK `FacturaProveedorRenglon_pareo_mercaderia_chk`). El precio por unidad se calcula UNA vez y se copia igual a cada parte. `precioTotal` es CON IVA incluido.
+/// Paquete 3 (M3b, ampliado por M4.2): un renglón de la factura (lo comprado o pagado). De empresa; solo se agrega. La naturaleza es `MERCADERIA` (producto, cantidad y precio por unidad de stock) o `SIN_STOCK` (un gasto: concepto de gasto y tipo de
+/// costo, sin producto; NUNCA genera `Operacion` ni Kardex), en pareo (CHECK `FacturaProveedorRenglon_pareo_naturaleza_chk`; la lista, en `FacturaProveedorRenglon_naturaleza_chk`). El precio por unidad se calcula UNA vez y se copia igual a cada parte.
+/// `precioTotal` es CON IVA incluido (mayor que cero en un renglón sin stock).
 model FacturaProveedorRenglon {
   id                   String           @id @default(cuid())
   empresaId            String           @default(dbgenerated("app_empresa_actual()"))
@@ -2603,12 +2604,19 @@ model FacturaProveedorRenglon {
   importeIva           Decimal?         @db.Decimal(14, 2)
   importeIvaComputable Decimal          @default(0) @db.Decimal(14, 2)
   creadoEn             DateTime         @default(now())
+  /// M4.2: solo en un renglón `SIN_STOCK` (CHECK de pareo): el concepto de gasto y la COPIA de su tipo de costo (COSTO_DE_VENTAS, GASTO_OPERATIVO, EXTRAORDINARIO, INVERSION o RESULTADO_FINANCIERO; CHECK).
+  conceptoGastoId      String?
+  conceptoGasto        ConceptoDeGasto? @relation(fields: [empresaId, conceptoGastoId], references: [empresaId, id])
+  tipoDeCosto          String?
 
   /// Las líneas del Kardex que salieron de este renglón (una por parte).
   movimientos MovimientoStock[]
 
   @@unique([empresaId, id])
   @@unique([facturaProveedorId, orden])
+  /// M4.2: el destino de la clave foránea con discriminador de la imputación (M4.3): solo un renglón `SIN_STOCK` se puede imputar.
+  @@unique([empresaId, id, naturaleza])
+  @@index([conceptoGastoId])
 }
 
 /// Paquete 3 (M3b): la parte de cada sucursal en una factura repartida (`PROPIA`: tiene `sucursalId`; las políticas de alcance las agrega M3c). Solo se agrega. `porcentajeDeclaradoBp` es la INTENCIÓN de quien cargó
@@ -2782,6 +2790,9 @@ model ConceptoDeGasto {
   tipoDeCostoPorDefecto String
   activo                Boolean  @default(true)
   creadoEn              DateTime @default(now())
+
+  /// Los renglones sin stock que usan este concepto (M4.2).
+  renglones FacturaProveedorRenglon[]
 
   @@unique([empresaId, id])
   @@unique([empresaId, codigo])

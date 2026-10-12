@@ -54,3 +54,30 @@ export async function intentar(c: Client, texto: string, params: unknown[] = [])
     return { codigo: pg.code ?? "otro", restriccion: pg.constraint ?? "" };
   }
 }
+
+/** Una conexión como el DUEÑO de las tablas (`DIRECT_URL`, sin RLS): para probar lo que ni siquiera el dueño puede violar (claves foráneas, CHECK) y para sembrar con una empresa explícita. */
+export async function conexionDelDuenio(): Promise<Client> {
+  const c = new Client({ connectionString: process.env.DIRECT_URL as string });
+  await c.connect();
+  abiertas.push(c);
+  return c;
+}
+
+/** Un concepto de gasto válido (para `prisma.conceptoDeGasto.create`). */
+export function datosDeConcepto(extra: Record<string, unknown> = {}) {
+  return { codigo: "ALQUILER", nombre: "Alquiler", tipoDeCostoPorDefecto: "GASTO_OPERATIVO", ...extra };
+}
+
+/** Un renglón SIN_STOCK válido: concepto y tipo de costo, sin ningún campo de mercadería, 100,00 con IVA incluido. */
+export function datosDeRenglonSinStock(e: { facturaProveedorId: string; conceptoGastoId: string }, extra: Record<string, unknown> = {}) {
+  return {
+    facturaProveedorId: e.facturaProveedorId,
+    orden: 1,
+    naturaleza: "SIN_STOCK",
+    conceptoGastoId: e.conceptoGastoId,
+    tipoDeCosto: "GASTO_OPERATIVO",
+    descripcion: "Alquiler de octubre",
+    precioTotal: "100.00",
+    ...extra,
+  };
+}
