@@ -102,6 +102,8 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.movimientoStock.deleteMany();
   await prismaAdmin.conteoFisico.deleteMany();
   await prismaAdmin.operacion.deleteMany();
+  // La cabecera de venta (M2) referencia a la cuenta, la sucursal y el User (RESTRICT) y la referencian las operaciones (recién borradas): DESPUÉS de operacion.deleteMany() y ANTES de la cuenta.
+  await prismaAdmin.venta.deleteMany();
   // PromoCuenta (Task #16, docs/plan-promo-combo-2026-09-26.md): DESPUÉS de CuentaItem (arriba) y Operacion (recién), que la
   // referencian con RESTRICT. A su vez PromoCarta/PromoCartaCupo (que PromoCuenta referencia RESTRICT) y SeccionCarta (que
   // PromoCarta/PromoCartaCupo referencian RESTRICT) tienen que esperar a que ESTA se vacíe — por eso viven acá y no arriba

@@ -41,10 +41,12 @@ export const TABLAS_DEL_PAQUETE_1: readonly string[] = MIGRACIONES_DE_POLITICAS_
 export const ULTIMA_MIGRACION_DEL_PAQUETE_1 = "20261014160000_rls_sucursal_b6_receta_y_auditoria";
 
 /**
- * Las migraciones POSTERIORES al Paquete 1 que crean políticas de alcance de sucursal (una tabla nueva con alcance, p. ej. `Venta`), en el mismo formato que los grupos de arriba y en orden. Vacía hoy.
+ * Las migraciones POSTERIORES al Paquete 1 que crean políticas de alcance de sucursal (una tabla nueva con alcance, p. ej. `Venta`, de M2-4), en el mismo formato que los grupos de arriba y en orden.
  * B7 las suma a las que espera: cada una es el encabezado más la salida exacta del generador para sus tablas. Todas tienen que ser posteriores a `ULTIMA_MIGRACION_DEL_PAQUETE_1`.
  */
-export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion: string; readonly tablas: readonly string[] }[] = [];
+export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion: string; readonly tablas: readonly string[] }[] = [
+  { migracion: "20261015123000_m2_rls_sucursal_venta", tablas: ["Venta"] },
+];
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */
 export const MIGRACION_P3_AGREGADO_DE_CUENTA = "20261014100000_i3_agregado_de_cuenta";

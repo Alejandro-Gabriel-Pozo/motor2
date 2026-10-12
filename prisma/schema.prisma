@@ -37,6 +37,7 @@ model User {
   invitacionesHechas         Invitacion[]         @relation("InvitacionInvitadoPor")
   invitacionesSucursalHechas InvitacionSucursal[]
   agregadosDeCuenta          AgregadoDeCuenta[]
+  ventas                     Venta[]
   traspasosCreados           TraspasoSucursal[]   @relation("TraspasoCreadoPor")
   traspasosDecididosOrigen   TraspasoSucursal[]   @relation("TraspasoDecididoOrigen")
   traspasosDecididosDestino  TraspasoSucursal[]   @relation("TraspasoDecididoDestino")
@@ -148,6 +149,7 @@ model Sucursal {
   opcionesAgrupadasCarta   OpcionItemAgrupadoCarta[]
   versionesDeRecetaPropia  RecetaVersion[]               @relation("RecetaVersionSucursal")
   ejemplaresTicket         EjemplarTicket[]
+  ventas                   Venta[]
   invitacionSucursals      InvitacionSucursal[]
 
   @@unique([empresaId, nombre])
@@ -1172,6 +1174,12 @@ model Operacion {
   /// La venta que reemplazó a ESTA (a lo sumo una).
   reemplazadaPor        Operacion? @relation("OperacionReemplazaA")
 
+  /// M2: la cabecera `Venta` a la que pertenece esta línea de venta (una `Operacion` VENTA por línea; la cabecera las agrupa). `null` = anterior a M2 o aún sin cabecera. Solo en VENTA
+  /// (CHECK en la base). FK RESTRICT: una cabecera con líneas no se borra (de hecho, `Venta` no se borra nunca). Que la sucursal de la línea y la de su cabecera coincidan NO lo
+  /// controla la base (una clave foránea entre tablas de empresa lleva exactamente (empresaId, x)): lo controla la aplicación (Etapa C). Nada de `src/` la escribe todavía.
+  ventaId String?
+  venta   Venta?  @relation(fields: [empresaId, ventaId], references: [empresaId, id], onDelete: Restrict)
+
   movimientos MovimientoStock[]
   /// POS: ítems de cuenta cuya venta es esta Operación (los enlaza `cerrarCuenta`, src/server/actions/pos/cuenta.ts).
   cuentaItems CuentaItem[]
@@ -1183,6 +1191,7 @@ model Operacion {
   @@unique([empresaId, reemplazaAOperacionId])
   @@index([sucursalId, proceso, fecha])
   @@index([promoCuentaId])
+  @@index([ventaId])
 }
 
 /// Reemplaza Kardex/"Hoja 7" (Core.js:601, CONFIG.SHEETS.HISTORIAL) — el
@@ -2112,6 +2121,8 @@ model Cuenta {
   ejemplaresTicket EjemplarTicket[]
   promos           PromoCuenta[]
   agregados        AgregadoDeCuenta[]
+  /// M2: la cabecera de venta de esta cuenta, una vez cerrada (a lo sumo una: `Venta.cuentaId` es único por empresa). `null` = abierta, o cerrada antes de M2.
+  venta            Venta?
 
   /// Cuántos comensales se sentaron (docs/plan-comensales-y-limite-mesas-2026-09-26.md). Obligatorio y SIN valor por defecto al abrir
   /// la cuenta (`abrirCuenta`) — un default sesgaría la métrica de rotación que existe para medir (Reportes › Rotación de mesas).
@@ -2331,6 +2342,7 @@ model Empresa {
   invitacionRel                  Invitacion[]
   invitacionSucursalRel          InvitacionSucursal[]
   agregadoDeCuentas              AgregadoDeCuenta[]
+  ventaRel                       Venta[]
 }
 
 enum EstadoModulo {
@@ -2430,6 +2442,44 @@ model AgregadoDeCuenta {
 
   @@unique([empresaId, id])
   @@index([cuentaId])
+}
+
+/// De dónde salió una venta: una mesa (la cuenta del salón que se cierra) o el mostrador (`registrarVenta`).
+enum CanalDeVenta {
+  MESA
+  MOSTRADOR
+}
+
+/// M2 (Paquete 2): la CABECERA de una venta. Agrupa las `Operacion` VENTA de una misma venta (hoy hay una por línea, sin nada que las una). Es una cabecera y NO la fuente de la plata:
+/// la plata de las ventas sigue saliendo del Kardex (`MovimientoStock`); `importeTotal` es una COPIA del total cobrado al confirmar, que nunca se modifica (el total vigente de una venta
+/// con unidades anuladas se calcula de sus líneas). Se llama `canal` y no `origen` porque `origen` ya es, en `registrarVentaEnTx`, la sección de la que sale el stock.
+/// SOLO se agrega (la app tiene SELECT e INSERT, nunca UPDATE ni DELETE) y no tiene `anuladaEn`: el estado de una venta se calcula de sus operaciones. Una mesa tiene a lo sumo UNA cabecera
+/// (`@@unique([empresaId, cuentaId])`: la idempotencia natural del cierre de la cuenta). NO lleva clave de idempotencia propia (la del mostrador sigue en su primera `Operacion`, en la misma
+/// transacción), ni `clienteId` (ya está en `Operacion`). Por sucursal: `PROPIA`. Nada de `src/` la escribe todavía (Etapa C).
+model Venta {
+  id           String       @id @default(cuid())
+  empresaId    String       @default(dbgenerated("app_empresa_actual()"))
+  empresa      Empresa      @relation(fields: [empresaId], references: [id])
+  sucursalId   String
+  sucursal     Sucursal     @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  canal        CanalDeVenta
+  /// La cuenta del salón que se cerró (solo MESA; CHECK: `canal = MESA` si y solo si hay cuenta).
+  cuentaId     String?
+  cuenta       Cuenta?      @relation(fields: [empresaId, cuentaId], references: [empresaId, id])
+  /// El instante de la venta (UTC; se muestra en la zona de la empresa).
+  fecha        DateTime
+  /// COPIA del total cobrado (la suma de `importeDeLinea` de sus líneas al confirmar). Nunca se modifica ni es la fuente de un reporte. No negativo (CHECK).
+  importeTotal Decimal      @db.Decimal(14, 2)
+  usuarioId    String
+  usuario      User         @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  creadoEn     DateTime     @default(now())
+
+  /// Las líneas de la venta (una `Operacion` VENTA por línea).
+  operaciones Operacion[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, cuentaId])
+  @@index([sucursalId, fecha])
 }
 
 model UsuarioEmpresa {

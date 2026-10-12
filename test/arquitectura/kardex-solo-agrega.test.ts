@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 /**
  * Regla de arquitectura (Fase 0 del plan de pureza, PR 0.2): el Kardex SOLO AGREGA.
  *
- * `MovimientoStock` (el Kardex), `RegistroAuditoria` y `AuditoriaPlataforma` son historia: una corrección es una fila nueva (una reversión,
+ * `MovimientoStock` (el Kardex), `RegistroAuditoria`, `AuditoriaPlataforma` y `Venta` (la cabecera de venta, M2) son historia: una corrección es una fila nueva (una reversión,
  * un ajuste), nunca un `update`/`delete` de una fila escrita. Hoy lo cumple todo el código (0 violaciones), pero por convención: nada lo
  * impedía, y las notas de crédito, las devoluciones y las anulaciones que vienen son justo el lugar donde alguien tendría la tentación de
  * «corregir» una línea en el lugar. Este test lo vuelve una regla que falla.
@@ -37,10 +37,10 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "../..");
 const CARPETAS = ["src", "plataforma/src"];
 
-const MODELOS_SOLO_AGREGAN = ["movimientoStock", "registroAuditoria", "auditoriaPlataforma"];
+const MODELOS_SOLO_AGREGAN = ["movimientoStock", "registroAuditoria", "auditoriaPlataforma", "venta"];
 const OPERACIONES_QUE_MODIFICAN = new Set(["update", "updateMany", "upsert", "delete", "deleteMany"]);
 const SQL_CRUDO = new Set(["$executeRaw", "$executeRawUnsafe", "$queryRaw", "$queryRawUnsafe"]);
-const TABLAS_SQL = /\b(update|delete\s+from|truncate(\s+table)?)\s+(only\s+)?(public\.)?\\?"?(MovimientoStock|RegistroAuditoria|AuditoriaPlataforma)\b/i;
+const TABLAS_SQL = /\b(update|delete\s+from|truncate(\s+table)?)\s+(only\s+)?(public\.)?\\?"?(MovimientoStock|RegistroAuditoria|AuditoriaPlataforma|Venta)\b/i;
 
 interface UsoSobreOperacion {
   /** Ruta relativa a la raíz del repo, con `/`. */
@@ -268,6 +268,8 @@ const RELACIONES_HACIA_EL_HISTORIAL = [
   "operacionesAnuladas",
   "operacionRel",
   "operacionesTransferenciaDestino",
+  "ventas",
+  "ventaRel",
 ];
 /** Las claves de Prisma que, dentro de una relación, modifican o desvinculan filas (no aparecen en `where`/`include`/`select`). `create`/`createMany` no: son de `ESCRITORES_DEL_KARDEX`. */
 const CLAVES_QUE_MODIFICAN_UNA_RELACION = new Set(["connect", "connectOrCreate", "set", "disconnect", "update", "updateMany", "upsert", "delete", "deleteMany"]);
@@ -397,7 +399,7 @@ describe("el Kardex solo agrega: el código del repositorio", () => {
 
   it("la lista de relaciones hacia el historial coincide con el schema (una relación nueva obliga a declararla)", () => {
     const schema = readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8");
-    const delSchema = [...schema.matchAll(/^\s+(\w+)\s+(?:MovimientoStock|RegistroAuditoria|AuditoriaPlataforma|Operacion)\[\]/gm)].map((m) => m[1]);
+    const delSchema = [...schema.matchAll(/^\s+(\w+)\s+(?:MovimientoStock|RegistroAuditoria|AuditoriaPlataforma|Operacion|Venta)\[\]/gm)].map((m) => m[1]);
     expect(delSchema.length, "el schema debería tener relaciones hacia esas tablas (si no, la lectura está ciega)").toBeGreaterThan(0);
     expect([...new Set(delSchema)].sort()).toEqual([...RELACIONES_HACIA_EL_HISTORIAL].sort());
   });

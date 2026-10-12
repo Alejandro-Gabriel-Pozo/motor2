@@ -23,7 +23,7 @@ const POR_EMPRESA = [
   "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PermisoRol", "PortalCartaEmpresa", "PrecioLocalProducto", "Presentacion", "Producto", "PromoCarta", "PromoCartaCupo",
   "PromoCartaSucursal", "PromoCuenta", "Proveedor", "ProveedorPorProducto", "RecetaIngrediente", "RecetaPaso", "RecetaPasoIngrediente", "RecetaSucursal", "RecetaVersion", "RegistroAuditoria",
   "RendimientoLocalIngrediente", "Rol", "Seccion", "SeccionCarta", "SeccionHabitualProducto", "StockMinimoProducto", "Sucursal", "SucursalPublica", "SustitutoRecetaIngrediente",
-  "TemaCartaSucursal", "TraspasoSucursal", "Unidad", "UsuarioSucursal",
+  "TemaCartaSucursal", "TraspasoSucursal", "Unidad", "UsuarioSucursal", "Venta",
 ] as const;
 
 /** Con `empresaId`, pero escritas por la plataforma (ModuloEmpresa, Invitacion) o con una política de lectura propia del usuario (UsuarioEmpresa): sus políticas son las de `POLITICAS_ESPECIALES`. */
@@ -128,7 +128,7 @@ export type DeclaracionDeAlcance =
 const ALCANCE_PROPIA = [
   "ConteoFisico", "ContenidoCartaProducto", "DescuentoProductoSucursal", "DisponibilidadProducto", "EjemplarTicket", "FrecuenciaConteoProducto", "GeneroCarta", "ItemAgrupadoCarta", "Mesa",
   "Operacion", "OpcionItemAgrupadoCarta", "PagoConsignante", "PrecioLocalProducto", "PromoCartaSucursal", "RecetaSucursal", "RendimientoLocalIngrediente", "Seccion", "SeccionHabitualProducto",
-  "StockMinimoProducto", "TemaCartaSucursal",
+  "StockMinimoProducto", "TemaCartaSucursal", "Venta",
 ] as const;
 
 /** `sucursalId` NULLABLE: NULL = de la empresa entera. */

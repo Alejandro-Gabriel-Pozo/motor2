@@ -28,6 +28,7 @@ export const CAMPOS: Readonly<Record<string, CampoSensible>> = {
   "Operacion.proveedor": { piso: "administrador", dato: "el proveedor de una operación, como relación (el nombre; `reporte_historial_importes`, S-14)" },
   "Producto.proveedorConsignacion": { piso: "administrador", dato: "el consignante del producto, como relación (S-12, D8)" },
   "PagoConsignante.importe": { piso: "administrador", dato: "lo pagado a un consignante" },
+  "Venta.importeTotal": { piso: "administrador", dato: "el total cobrado de una venta (copia en la cabecera; como `MovimientoStock.precioTotal`, M2, DEC-E)" },
   "Proveedor.cuit": { piso: "administrador", dato: "el CUIT de un proveedor" },
   "Proveedor.email": { piso: "administrador", dato: "el correo de un proveedor" },
   "Proveedor.telefono": { piso: "administrador", dato: "el teléfono de un proveedor" },
