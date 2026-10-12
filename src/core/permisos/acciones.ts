@@ -235,6 +235,10 @@ export const ACCIONES = [
   // `producto_editar` y `producto_presentaciones` (no las reemplaza): solo se pide cuando el cambio toca uno de esos campos. Clase O (piso operario, semilla solo admin, delegable
   // por configuración). La migración 20261013120000 se la copia a todo rol que hoy edita una de las dos claves, así que el día del deploy nadie pierde lo que ya podía hacer.
   { clave: "producto_campos_sensibles", modulo: "catalogo_basico", descripcion: "Cambiar el precio de venta, el factor de conversión y las unidades de un producto, y definir el factor de sus presentaciones de compra", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  // Paquete 3, M3a (D3 del dueño, 2026-10-12): repartir una factura de proveedor entre sucursales (FR2.2/FR2.3) y atender las facturas «pendientes de reparto» (P7=b). La factura repartida es un documento de
+  // la EMPRESA (quien paga es la empresa, ADR-029): por eso el contexto es empresa, y cada sucursal destino además exige `proceso_compra` en ella. Piso administrador y semilla solo admin (clase A, como `anular_compra`):
+  // la migración 20261016100000 se la da al rol `admin` de cada empresa. Reservada hasta la Etapa C (ningún caso de uso la pide todavía).
+  { clave: "compra_repartir", modulo: "compras", descripcion: "Repartir una factura de proveedor entre sucursales y atender las facturas pendientes de reparto", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
 ] as const satisfies readonly AccionSemilla[];
 
 export type AccionClave = (typeof ACCIONES)[number]["clave"];
