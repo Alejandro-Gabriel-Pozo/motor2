@@ -246,6 +246,24 @@ El orden importa: **primero la base y después el código.** Volver a un código
 
 El costo de las políticas con volumen (el riesgo está en las consultas de saldos e índices del Kardex; hoy hay 0 operaciones y 0 movimientos en `stockhneuquen`), el comportamiento contra el pooler de Neon en modo transacción, y las bases reales (nada se ensayó contra Neon). Las dos primeras se miden en el ensayo.
 
+## Paquete 2 completo (M0-IVA + M1 + M2): 7 migraciones, un solo OK, en este orden
+
+Siete migraciones (M0-IVA son 2, M1 es 1 y M2 son 4), todas **ADITIVAS** (fase EXPANDIR), cada una con su `down.sql`. Van **después de B6** (`20261014160000`) y se aplican con el mismo procedimiento del Paquete 1 (respaldo en una rama de Neon, ensayo con subir/bajar/subir, aplicar en una transacción con `lock_timeout` corto y desplegar el mismo día). El código anterior no lee ni escribe lo nuevo; la base va primero.
+
+| # | Migración | Qué agrega |
+|---|---|---|
+| 1 | `20261015100000_m0_iva_alicuotas_de_producto` | `Producto.alicuotaIvaVenta` / `alicuotaIvaCompra` (NULL = sin declarar) |
+| 2 | `20261015101000_m0_iva_condicion_de_la_empresa` | `Empresa.condicionIva` (NULL = no declarada) |
+| 3 | `20261015110000_proveedor_ofrece_productos_y_servicios` | `Proveedor.ofreceProductos` / `ofreceServicios` + CHECK «al menos una» (los de hoy quedan como «productos») |
+| 4 | `20261015120000_m2_operacion_reversiones_y_motivo` | Columnas de reversión, motivo de anulación y reemplazo en `Operacion`; `ConteoFisico.motivoCancelacion`; índices únicos de idempotencia |
+| 5 | `20261015121000_m2_movimiento_devuelve_a` | `MovimientoStock.devuelveAMovimientoId` |
+| 6 | `20261015122000_m2_cabecera_de_venta` | Tabla `Venta` (canal MESA/MOSTRADOR, `importeTotal`), `Operacion.ventaId`; `motor2_app` solo SELECT e INSERT |
+| 7 | `20261015123000_m2_rls_sucursal_venta` | Las 4 políticas RESTRICTIVE de alcance de sucursal sobre `Venta` |
+
+**Después de migrar:** correr el paso de datos de la condición de `stockhneuquen` (RESPONSABLE_INSCRIPTO; simula primero y recién después `-v aplicar=1`).
+**Chequeos antes:** `_prisma_migrations` con 104 vigentes y la última B6; 0 operaciones y 0 ventas en la base (si no, revisar el lock de las claves foráneas de M2).
+**Reversa:** orden inverso (7 → 1). Es destructiva solo si ya se escribieron datos nuevos (cabeceras de venta, motivos, clasificación de proveedores, alícuotas, condición). `prisma migrate resolve --rolled-back` responde «not in a failed state» sobre una migración ya aplicada: tras bajar con `down.sql`, borrar la fila de `_prisma_migrations` de esa migración.
+
 ## Paquete 2, M0-IVA: dos columnas de alícuota en `Producto` y la condición de la empresa frente al IVA
 
 Dos migraciones **ADITIVAS** (fase EXPANDIR), cada una con su `down.sql`, que se aplican con un solo `migrate deploy` **después de B6** (`20261014160000`). El código anterior no lee ni escribe las columnas nuevas, así que el orden con el código es el de siempre: la base primero, el código después, y ninguna de las dos rompe a la otra. **REQUIEREN AUTORIZACIÓN EXPRESA PARA APLICAR, base por base**, con ensayo en una rama de Neon y respaldo previo.
@@ -253,7 +271,7 @@ Dos migraciones **ADITIVAS** (fase EXPANDIR), cada una con su `down.sql`, que se
 | Migración | Qué agrega | Estado |
 |---|---|---|
 | `20261015100000_m0_iva_alicuotas_de_producto` | `Producto.alicuotaIvaVenta` y `Producto.alicuotaIvaCompra`, `TEXT NULL`, con un CHECK de lista cerrada cada una (`IVA_0`, `IVA_2_5`, `IVA_5`, `IVA_10_5`, `IVA_21`, `IVA_27`, `EXENTO`, `NO_GRAVADO`) | Sin decisión pendiente (CAT-8 ya está tomada) |
-| `20261015101000_m0_iva_condicion_de_la_empresa` | `Empresa.condicionIva`, `TEXT NULL`, con un CHECK de lista cerrada (`RESPONSABLE_INSCRIPTO`, `MONOTRIBUTO`, `EXENTO`) | **Escrita para la variante A de D-1** (la carga la plataforma). Aplicarla requiere que el dueño confirme D-1: el pedido original decía «plataforma» y la respuesta registrada decía «Gerente» |
+| `20261015101000_m0_iva_condicion_de_la_empresa` | `Empresa.condicionIva`, `TEXT NULL`, con un CHECK de lista cerrada (`RESPONSABLE_INSCRIPTO`, `MONOTRIBUTO`, `EXENTO`) | **Variante A de D-1 (la carga la plataforma ahora; la gerencia después), aceptada por el dueño el 2026-10-12.** D-3: `stockhneuquen` es RESPONSABLE_INSCRIPTO (decisión del dueño, 2026-10-12) |
 
 - **Qué NO hacen:** ninguna fila existente recibe un valor deducido (NULL = «sin declarar» / «no declarada»: sin default, sin backfill), no hay CHECK de obligatoriedad (ni `NOT VALID`: Postgres también lo evalúa al actualizar una fila vieja y rompería la edición de productos de hoy), no suman RLS ni GRANT (`Producto` y `Empresa` mantienen su clasificación), y no cambian ningún cálculo de dinero. Quien lea `Empresa.condicionIva` tiene que **fallar cerrado** con NULL, nunca suponer Responsable Inscripto.
 - **Lista cerrada en dos lugares:** `src/core/fiscal/iva.ts` (`ALICUOTAS_IVA`, `CONDICIONES_IVA`) y el CHECK de la base. Un test por migración compara las dos contra la base real; ampliar una lista es ampliar el CHECK **y** la constante.
