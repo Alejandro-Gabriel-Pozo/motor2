@@ -59,12 +59,15 @@ describe("propiedad (GT-6): cancelar un conteo revierte exactamente la suma de l
   let insumoId: string;
   let corrida = 0;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest });
+  // El actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028). La base se arma una vez: la propiedad llama a `actor()` miles de veces.
+  let baseDelActor: ReturnType<typeof baseDeTest>;
+  const actor = () => ({ usuarioId: adminId, sucursalId, sucursalNombre: "Central", ahora: new Date(), ...baseDelActor });
 
   beforeAll(async () => {
     await limpiarBaseDeTest();
     const base = await sembrarBase();
     sucursalId = base.sucursal.id;
+    baseDelActor = baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] });
     const catalogo = await sembrarCatalogoBase();
     unidadKgId = catalogo.kg.id;
     insumoId = catalogo.insumo.id;
