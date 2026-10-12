@@ -26,6 +26,8 @@ interface Lector {
   consultas: Readonly<Record<string, number>>;
   /** `CABLEADO`: el archivo ya lo hace; `PENDIENTE`: lo cablea un commit siguiente de A5 y el archivo todavía NO llama a `lecturaEnSucursalesVisibles`. */
   estado: "CABLEADO" | "PENDIENTE";
+  /** Cuántas veces llama el archivo a `lecturaEnSucursalesVisibles` (siempre con `clave`). Por defecto una; más solo cuando el archivo tiene varias lecturas que ensanchan con la misma clave. */
+  llamadas?: number;
   motivo: string;
 }
 
@@ -56,6 +58,14 @@ const LECTORES: Readonly<Record<string, Lector>> = {
     consultas: { cargarAdminCarta: 1 },
     estado: "CABLEADO",
     motivo: "el origen de la copia de carta: cuenta la carta propia de las otras sucursales para ofrecer de dónde copiar (solo a quien puede copiar)",
+  },
+  "src/server/actions/catalogo/proveedor-por-producto.ts": {
+    clave: "proceso_compra",
+    consultas: { cargarProductosDeProveedorParaElCarrito: 0, cargarComparativaDePrecios: 0 },
+    estado: "CABLEADO",
+    llamadas: 2,
+    motivo:
+      "la comparativa de precios y la precarga del carrito arman «lo que compró la empresa» con las compras (Kardex) de las sucursales donde el rol ve `proceso_compra`, además de la activa: el precio de otra sucursal que el usuario no ve no entra",
   },
   "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
     clave: "receta_sucursal_copiar",
@@ -115,7 +125,9 @@ function problemasDeUnLector(ruta: string, lector: Lector, codigo: string): stri
     problemas.push(`${ruta}: declara CABLEADO y no guarda el resultado de lecturaEnSucursalesVisibles(ctx, "${lector.clave}") en una variable`);
     return problemas;
   }
-  if (h.llamadas.length !== 1) problemas.push(`${ruta}: llama ${h.llamadas.length} veces a lecturaEnSucursalesVisibles (tiene que ser una, con la clave declarada "${lector.clave}")`);
+  const esperadas = lector.llamadas ?? 1;
+  if (h.llamadas.length !== esperadas) problemas.push(`${ruta}: llama ${h.llamadas.length} veces a lecturaEnSucursalesVisibles (tiene que ser ${esperadas === 1 ? "una" : esperadas}, con la clave declarada "${lector.clave}")`);
+  for (const argumentos of h.llamadas) if (argumentos[0] !== "ctx" || argumentos[1] !== `"${lector.clave}"`) problemas.push(`${ruta}: llama a lecturaEnSucursalesVisibles(${argumentos.join(", ")}) y todas sus llamadas tienen que ser con (ctx, "${lector.clave}")`);
   for (const [consulta, posicion] of Object.entries(lector.consultas)) {
     const llamadas = h.porNombre.get(consulta) ?? [];
     if (!llamadas.length) problemas.push(`${ruta}: ya no llama a ${consulta} (sacala de LECTORES o corregí la declaración)`);
@@ -197,6 +209,15 @@ describe("el guardián en sí (casos sintéticos)", () => {
   it("el contexto ampliado también se reconoce dentro de una condición (`cond ? await … : ctx`)", () => {
     const condicional = pagina('  const origenes = puede ? await lecturaEnSucursalesVisibles(ctx, "reporte_consolidado") : ctx;\n  const filas = await obtenerResumenConsolidado(sucursales, origenes.db, ahora);');
     expect(problemasDeUnLector("p.tsx", lector, condicional)).toEqual([]);
+  });
+
+  it("con `llamadas: 2` el archivo tiene que llamar exactamente dos veces, las dos con la clave declarada", () => {
+    const dos = `export async function a() {\n  const ctx = await requerirVer("x");\n  const lectura = await lecturaEnSucursalesVisibles(ctx, "reporte_consolidado");\n  return obtenerResumenConsolidado(sucursales, lectura.db, ahora);\n}\nexport async function b() {\n  const ctx = await requerirVer("x");\n  const lectura = await lecturaEnSucursalesVisibles(ctx, "reporte_consolidado");\n  return obtenerResumenConsolidado(sucursales, lectura.db, ahora);\n}\n`;
+    expect(problemasDeUnLector("p.ts", { ...lector, llamadas: 2 }, dos)).toEqual([]);
+    expect(problemasDeUnLector("p.ts", lector, dos)).toHaveLength(1);
+    expect(problemasDeUnLector("p.ts", { ...lector, llamadas: 3 }, dos)).toHaveLength(1);
+    expect(problemasDeUnLector("p.ts", { ...lector, llamadas: 2 }, dos.replace('(ctx, "reporte_consolidado");\n  return obtenerResumenConsolidado(sucursales, lectura.db, ahora);\n}\n', '(ctx, "reporte_ventas");\n  return obtenerResumenConsolidado(sucursales, lectura.db, ahora);\n}\n'))).not.toEqual([]);
+    expect(problemasDeUnLector("p.ts", { ...lector, llamadas: 2 }, dos.replace("lectura.db", "ctx.db"))).not.toEqual([]);
   });
 
   it("PENDIENTE no puede tener ya la llamada (el estado no miente)", () => {

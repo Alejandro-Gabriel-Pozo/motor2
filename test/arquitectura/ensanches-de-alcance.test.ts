@@ -161,3 +161,32 @@ describe("el alcance de la transacción de una invitación sale de las sucursale
     expect([...cuerpo.matchAll(/\.(\w+)\.find(?:Many|First)\(/g)].map((m) => m[1]).sort()).toEqual(["invitacionSucursal", "sucursal"]);
   });
 });
+
+describe("comparativa de precios y carrito del proveedor: la lectura se ensancha a las sucursales que el usuario ve, y solo DESPUÉS del gate", () => {
+  const acciones = leer("src/server/actions/catalogo/proveedor-por-producto.ts");
+  const GATES: Array<[string, string]> = [
+    ["listarProductosDeProveedor", "requerirVer"],
+    ["obtenerComparativaPreciosPorInsumo", "requerirVerDeEmpresa"],
+  ];
+
+  it.each(GATES)("%s llama a lecturaEnSucursalesVisibles(ctx, \"proceso_compra\") DESPUÉS de %s, y es el único ensanche del archivo", (funcion, gate) => {
+    expect(ensancheDespuesDelGate(acciones, funcion, "lecturaEnSucursalesVisibles", [gate])).toBe(true);
+    const propias = llamadasAEnsanches(acciones).filter((l) => l.funcion === funcion);
+    expect(propias.map((l) => [l.ensanche, ...l.argumentos])).toEqual([["lecturaEnSucursalesVisibles", "ctx", '"proceso_compra"']]);
+    expect(ensanchesUsados(acciones).sort()).toEqual(["lecturaEnSucursalesVisibles"]);
+  });
+
+  it("la lectura que ensancha es la que usa la consulta: pasan `lectura.db` y nunca `ctx.db`", () => {
+    expect(funcionesDelArchivo(acciones).get("listarProductosDeProveedor")!.getText()).toMatch(/cargarProductosDeProveedorParaElCarrito\(\s*lectura\.db\s*,/);
+    expect(funcionesDelArchivo(acciones).get("obtenerComparativaPreciosPorInsumo")!.getText()).toMatch(/cargarComparativaDePrecios\(\s*lectura\.db\s*\)/);
+  });
+
+  it("el detector ve la mutación: el ensanche antes del gate, o sin gate, falla", () => {
+    const bien = 'export async function f() {\n  const ctx = await requerirVer("proceso_compra");\n  const lectura = await lecturaEnSucursalesVisibles(ctx, "proceso_compra");\n  return g(lectura.db);\n}\n';
+    const antes = 'export async function f() {\n  const lectura = await lecturaEnSucursalesVisibles(ctx, "proceso_compra");\n  const ctx2 = await requerirVer("proceso_compra");\n  return g(lectura.db);\n}\n';
+    const sinGate = 'export async function f() {\n  const lectura = await lecturaEnSucursalesVisibles(ctx, "proceso_compra");\n  return g(lectura.db);\n}\n';
+    expect(ensancheDespuesDelGate(bien, "f", "lecturaEnSucursalesVisibles", ["requerirVer"])).toBe(true);
+    expect(ensancheDespuesDelGate(antes, "f", "lecturaEnSucursalesVisibles", ["requerirVer"])).toBe(false);
+    expect(ensancheDespuesDelGate(sinGate, "f", "lecturaEnSucursalesVisibles", ["requerirVer"])).toBe(false);
+  });
+});
