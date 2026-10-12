@@ -36,7 +36,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
   let otroProveedorId: string;
 
   // Cada actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028). Lo que el aviso C25 necesita leer de las OTRAS sucursales lo resuelve el código, no el actor del test.
-  const actor = (usuarioId: string, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: string, sucursalNombre: string) => ({ usuarioId, sucursalId, sucursalNombre, ...baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }) });
+  const actor = (usuarioId: string, sucursalId: string, sucursalNombre: string) => ({ usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, sucursalNombre, ...baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }) });
 
   const comprarEnCentral = (fecha: string, precioTotal: number | undefined, extra: { nroFactura?: string; proveedor?: string; claveIdempotencia?: string } = {}) =>
     registrarMovimientoCasoDeUso(actor(usuarioCentral, sucursalCentral, "Central"), {
