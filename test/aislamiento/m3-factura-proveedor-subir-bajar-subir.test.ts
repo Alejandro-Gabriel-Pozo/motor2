@@ -7,17 +7,17 @@ import { MIGRACIONES_DE_POLITICAS_DE_SUCURSAL, MIGRACIONES_DE_POLITICAS_POSTERIO
 import { COMANDOS_CON_POLITICA_DE_ALCANCE } from "../setup/politicas-de-alcance-de-sucursal";
 
 /**
- * Paquete 3, M3 (M3a a M3c): SUBIR, BAJAR y SUBIR de las migraciones reales sobre una base TEMPORAL descartable (`crearBaseTemporalMigrada`: solo Postgres local, jamás `motor2_dev`, `motor2_e2e` ni una base real), con cada
+ * Paquete 3, M3 (M3a a M3d): SUBIR, BAJAR y SUBIR de las migraciones reales sobre una base TEMPORAL descartable (`crearBaseTemporalMigrada`: solo Postgres local, jamás `motor2_dev`, `motor2_e2e` ni una base real), con cada
  * `down.sql` tal cual está en el repo. Parte de la base con el Paquete 2 ya aplicado (hasta `20261015123000_m2_rls_sucursal_venta`), que es el estado de producción antes de M3.
  *
- * ATENCIÓN: la reversa de M3b (borra las tres tablas de la factura y la columna del Kardex) y la de M3a (borra la clave de permiso y lo configurado sobre ella) son DESTRUCTIVAS si ya hay datos nuevos; la prueba las corre con datos
+ * ATENCIÓN: la reversa de M3b (borra las tres tablas de la factura y la columna del Kardex), la de M3d (borra el desglose de IVA, los tributos y la perilla) y la de M3a (borra la clave de permiso y lo configurado sobre ella) son DESTRUCTIVAS si ya hay datos nuevos; la prueba las corre con datos
  * a propósito, sobre la base temporal, que se borra al terminar.
  *
  * Qué comprueba:
- *  1. ARRIBA (M3a, M3b y M3c sobre una base con datos previos): la clave de permiso sembrada al admin, las tres tablas con sus reglas, índices (el único parcial de la unicidad del número), claves foráneas, RLS y privilegios EXACTOS
+ *  1. ARRIBA (M3a, M3b, M3c y M3d sobre una base con datos previos): la clave de permiso sembrada al admin, las tres tablas con sus reglas, índices (el único parcial de la unicidad del número), claves foráneas, RLS y privilegios EXACTOS
  *     (SELECT e INSERT; UPDATE por columna solo de la lista cerrada de la cabecera), la columna del Kardex en NULL en las filas viejas y la política de sucursal de la parte. Humo como `motor2_app`: la cabecera se ve sin alcance, la
  *     parte no; un INSERT en otra sucursal y un UPDATE del importe dan 42501.
- *  2. ABAJO (M3c, M3b, M3a, en ese orden; con datos nuevos escritos): el catálogo queda IDÉNTICO al de antes de M3 (columnas, índices, restricciones, políticas, tipos, RLS, privilegios y funciones); las filas que no se borran siguen
+ *  2. ABAJO (M3d, M3c, M3b, M3a, en ese orden; con datos nuevos escritos): el catálogo queda IDÉNTICO al de antes de M3 (columnas, índices, restricciones, políticas, tipos, RLS, privilegios y funciones); las filas que no se borran siguen
  *     (el Kardex pierde solo la referencia al renglón), y lo que se pierde es exactamente lo que dicen los down.sql.
  *  3. ARRIBA OTRA VEZ: las mismas comprobaciones, y el catálogo es idéntico al de la primera subida.
  *  4. Las reversas son idempotentes (IF EXISTS) y la reversa de M3c no toca las políticas del Paquete 1 ni las de Venta.
@@ -27,26 +27,43 @@ const ULTIMA_DEL_PAQUETE_2 = "20261015123000_m2_rls_sucursal_venta";
 const M3A = "20261016100000_permiso_compra_repartir";
 const M3B = "20261016101000_factura_proveedor";
 const M3C = "20261016102000_rls_sucursal_factura_proveedor_sucursal";
-const SUBIDA = [M3A, M3B, M3C];
-/** La reversa va en orden inverso: M3c ANTES que M3b (la tabla), y M3a al final. */
-const BAJADA = [M3C, M3B, M3A];
+const M3D = "20261016103000_factura_proveedor_iva";
+const SUBIDA = [M3A, M3B, M3C, M3D];
+/** La reversa va en orden inverso: M3d (cuelga de las tablas de M3b), M3c ANTES que M3b (la tabla), y M3a al final. */
+const BAJADA = [M3D, M3C, M3B, M3A];
 
 const CHECKS_NUEVOS = [
   "FacturaProveedor_nro_pareo_chk", "FacturaProveedor_letra_chk", "FacturaProveedor_importe_total_no_negativo_chk", "FacturaProveedor_estado_chk", "FacturaProveedor_confirmacion_coherente_chk", "FacturaProveedor_origen_chk",
   "FacturaProveedor_pendiente_solo_carga_chk", "FacturaProveedor_condicion_pago_chk", "FacturaProveedor_medio_pago_chk", "FacturaProveedor_pago_declarado_solo_contado_chk", "FacturaProveedor_idempotencia_pareo_chk",
   "FacturaProveedor_anulacion_pareo_chk", "FacturaProveedorRenglon_orden_chk", "FacturaProveedorRenglon_naturaleza_chk", "FacturaProveedorRenglon_pareo_mercaderia_chk", "FacturaProveedorRenglon_cantidad_positiva_chk",
   "FacturaProveedorRenglon_precio_unidad_no_negativo_chk", "FacturaProveedorRenglon_precio_total_no_negativo_chk", "FacturaProveedorSucursal_porcentaje_chk", "MovimientoStock_renglon_solo_compra_chk",
+  // M3d
+  "FacturaProveedor_condicion_iva_empresa_chk", "FacturaProveedor_desglose_pareo_chk", "FacturaProveedor_desglose_no_negativo_chk", "FacturaProveedor_desglose_dentro_del_total_chk",
+  "FacturaProveedorRenglon_alicuota_iva_chk", "FacturaProveedorRenglon_desglose_pareo_chk", "FacturaProveedorRenglon_desglose_no_negativo_chk", "FacturaProveedorRenglon_neto_mas_iva_chk",
+  "FacturaProveedorRenglon_alicuota_sin_iva_chk", "FacturaProveedorRenglon_iva_computable_chk", "FacturaProveedorTributo_tipo_chk", "FacturaProveedorTributo_importe_positivo_chk",
 ];
 const UNICOS_NUEVOS = [
   "FacturaProveedor_empresaId_id_key", "FacturaProveedor_claveIdempotencia_key", "FacturaProveedor_unica_vigente_key", "FacturaProveedorRenglon_empresaId_id_key", "FacturaProveedorRenglon_facturaProveedorId_orden_key",
-  "FacturaProveedorSucursal_empresaId_id_key", "FacturaProveedorSucursal_facturaProveedorId_sucursalId_key", "FacturaProveedorSucursal_empresaId_operacionId_key",
+  "FacturaProveedorSucursal_empresaId_id_key", "FacturaProveedorSucursal_facturaProveedorId_sucursalId_key", "FacturaProveedorSucursal_empresaId_operacionId_key", "FacturaProveedorTributo_empresaId_id_key",
 ];
 const CLAVES_FORANEAS_NUEVAS = [
   "FacturaProveedor_empresaId_fkey", "FacturaProveedor_empresaId_proveedorId_fkey", "FacturaProveedor_creadoPorId_fkey", "FacturaProveedor_confirmadaPorId_fkey", "FacturaProveedor_anuladaPorId_fkey",
   "FacturaProveedorRenglon_empresaId_fkey", "FacturaProveedorRenglon_empresaId_facturaProveedorId_fkey", "FacturaProveedorRenglon_empresaId_productoId_fkey", "FacturaProveedorSucursal_empresaId_fkey",
   "FacturaProveedorSucursal_empresaId_facturaProveedorId_fkey", "FacturaProveedorSucursal_empresaId_sucursalId_fkey", "FacturaProveedorSucursal_empresaId_operacionId_fkey", "MovimientoStock_empresaId_facturaProveedorRenglonId_fkey",
+  "FacturaProveedorTributo_empresaId_fkey", "FacturaProveedorTributo_empresaId_facturaProveedorId_fkey",
 ];
-const TABLAS_NUEVAS = ["FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorSucursal"];
+const TABLAS_NUEVAS = ["FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedorTributo"];
+/** M3d: las columnas nuevas (la perilla de la empresa, el desglose de IVA) y su nulabilidad. */
+const COLUMNAS_DE_IVA: ReadonlyArray<[string, string, "YES" | "NO", string | null]> = [
+  ["Empresa", "llevaIvaDeCompras", "NO", "false"],
+  ["FacturaProveedor", "condicionIvaEmpresa", "YES", null],
+  ["FacturaProveedor", "importeNeto", "YES", null],
+  ["FacturaProveedor", "importeIva", "YES", null],
+  ["FacturaProveedorRenglon", "alicuotaIva", "YES", null],
+  ["FacturaProveedorRenglon", "importeNeto", "YES", null],
+  ["FacturaProveedorRenglon", "importeIva", "YES", null],
+  ["FacturaProveedorRenglon", "importeIvaComputable", "NO", "0"],
+];
 const COLUMNAS_ACTUALIZABLES = [
   "anuladaEn", "anuladaPorId", "confirmadaEn", "confirmadaPorId", "detalleLibre", "estado", "fechaComprobante", "fechaPagoDeclarada", "letra", "medioPagoDeclarado", "nroFactura", "nroFacturaNormalizado",
   "proveedorId", "recibidaEnAdministracionEn", "resultadoMensaje",
@@ -146,6 +163,15 @@ async function comprobarArriba(etiqueta: string) {
   );
   expect(actualizables.map((c) => c.columna), `${etiqueta}: UPDATE por columna, solo la lista cerrada`).toEqual([...COLUMNAS_ACTUALIZABLES].sort());
 
+  // M3d: la perilla (apagada para toda empresa) y el desglose de IVA (nullable, salvo el computable en 0).
+  for (const [tabla, columnaNueva, nulable, porDefecto] of COLUMNAS_DE_IVA) {
+    const fila = f.columnas.find((x) => x.tabla === tabla && x.columna === columnaNueva);
+    expect(fila, `${etiqueta}: existe ${tabla}.${columnaNueva}`).toBeDefined();
+    expect([fila!.is_nullable, fila!.column_default], `${etiqueta}: ${tabla}.${columnaNueva}`).toEqual([nulable, porDefecto]);
+  }
+  expect(await q(`SELECT "llevaIvaDeCompras" FROM "Empresa" WHERE id = $1`, [E]), `${etiqueta}: la perilla nace apagada`).toEqual([{ llevaIvaDeCompras: false }]);
+  expect(f.politicas.filter((p) => p.tabla === "FacturaProveedorTributo").map((p) => p.nombre), `${etiqueta}: los tributos, solo con la política de empresa`).toEqual(["aislamiento_empresa"]);
+
   // M3c: la política de sucursal de la parte y las anteriores intactas.
   const deAlcance = f.politicas.filter((p) => String(p.nombre).startsWith("alcance_sucursal_"));
   const deLaParte = deAlcance.filter((p) => p.tabla === "FacturaProveedorSucursal");
@@ -224,8 +250,8 @@ afterAll(async () => {
   await base?.eliminar();
 });
 
-describe("M3: subir, bajar y subir (M3a a M3c) sobre una base temporal con el Paquete 2 aplicado", () => {
-  it("0. las tres migraciones existen, son posteriores al Paquete 2, van en este orden y la última está declarada como política posterior", () => {
+describe("M3: subir, bajar y subir (M3a a M3d) sobre una base temporal con el Paquete 2 aplicado", () => {
+  it("0. las cuatro migraciones existen, son posteriores al Paquete 2, van en este orden y la última está declarada como política posterior", () => {
     expect([...SUBIDA].sort()).toEqual(SUBIDA);
     for (const m of SUBIDA) {
       expect(m > ULTIMA_DEL_PAQUETE_2, `${m} es posterior al Paquete 2`).toBe(true);
@@ -236,15 +262,15 @@ describe("M3: subir, bajar y subir (M3a a M3c) sobre una base temporal con el Pa
     expect(MIGRACIONES_DE_POLITICAS_DE_SUCURSAL.map((g) => g.migracion)).not.toContain(M3C);
   });
 
-  it("1. SUBIR: M3a a M3c sobre una base con datos previos dejan todo arriba (clave sembrada, tablas, reglas, índices, privilegios exactos, política de sucursal de la parte) y andan como motor2_app", async (ctx) => {
+  it("1. SUBIR: M3a a M3d sobre una base con datos previos dejan todo arriba (clave sembrada, tablas, reglas, índices, privilegios exactos, política de sucursal de la parte, perilla y desglose de IVA) y andan como motor2_app", async (ctx) => {
     if (!hayRol) return ctx.skip();
     for (const m of SUBIDA) await correr(m, "migration.sql");
     await comprobarArriba("primera subida");
     arribaLaPrimeraVez = await foto();
-    expect(arribaLaPrimeraVez.columnas.length, "sanidad de la foto").toBeGreaterThan(antesDeM3.columnas.length + 30);
+    expect(arribaLaPrimeraVez.columnas.length, "sanidad de la foto").toBeGreaterThan(antesDeM3.columnas.length + 40);
   });
 
-  it("2. BAJAR (con datos nuevos escritos): M3c, M3b y M3a en orden inverso dejan el catálogo como estaba antes de M3; las filas previas siguen y se pierde justo lo que dicen los down.sql", async (ctx) => {
+  it("2. BAJAR (con datos nuevos escritos): M3d, M3c, M3b y M3a en orden inverso dejan el catálogo como estaba antes de M3; las filas previas siguen y se pierde justo lo que dicen los down.sql", async (ctx) => {
     if (!hayRol) return ctx.skip();
     // Datos que solo existen por M3 (escritos por el dueño): una factura repartida con un renglón, dos partes, y una línea nueva del Kardex que cuelga del renglón.
     const c = base.cliente;
@@ -260,6 +286,11 @@ describe("M3: subir, bajar y subir (M3a a M3c) sobre una base temporal con el Pa
       `INSERT INTO "MovimientoStock" ("id","empresaId","operacionId","productoId","seccionId","proceso","cantidad","detalle","precioTotal","precioPorUnidadStock","facturaProveedorRenglonId") VALUES ('mov_nuevo',$1,'op_compra_vieja','pro_m3','sec_m3','COMPRA',10,'d','100.00','10','reng_real')`,
       [E],
     );
+    // Y los de M3d: un desglose de IVA en la cabecera y el renglón, un tributo y la perilla prendida.
+    await c.query(`UPDATE "FacturaProveedor" SET "condicionIvaEmpresa" = 'RESPONSABLE_INSCRIPTO', "importeNeto" = '82.64', "importeIva" = '17.36' WHERE id = 'fact_real'`);
+    await c.query(`UPDATE "FacturaProveedorRenglon" SET "alicuotaIva" = 'IVA_21', "importeNeto" = '82.64', "importeIva" = '17.36', "importeIvaComputable" = '17.36' WHERE id = 'reng_real'`);
+    await c.query(`INSERT INTO "FacturaProveedorTributo" ("id","empresaId","facturaProveedorId","tipo","importe") VALUES ('trib_real',$1,'fact_real','PERCEPCION_IIBB','3.00')`, [E]);
+    await c.query(`UPDATE "Empresa" SET "llevaIvaDeCompras" = true WHERE id = $1`, [E]);
     expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "FacturaProveedor"`))[0]!.n), "hay facturas que la reversa va a perder").toBeGreaterThan(0);
 
     for (const m of BAJADA) await correr(m, "down.sql");
@@ -270,9 +301,10 @@ describe("M3: subir, bajar y subir (M3a a M3c) sobre una base temporal con el Pa
     expect(await q(`SELECT 1 FROM "Accion" WHERE "clave" = 'compra_repartir'`), "sin la clave").toEqual([]);
     expect(await q(`SELECT 1 FROM "PermisoRol" WHERE "accionClave" = 'compra_repartir'`), "sin lo configurado sobre la clave").toEqual([]);
     expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "Rol"`))[0]!.n), "los roles siguen").toBe(2);
+    expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "Empresa" WHERE id = $1`, [E]))[0]!.n), "la empresa sigue (la reversa borra la perilla, no la fila)").toBe(1);
   });
 
-  it("3. SUBIR OTRA VEZ: las mismas comprobaciones, el catálogo es idéntico al de la primera subida y lo que se perdió (facturas, referencia al renglón) quedó vacío", async (ctx) => {
+  it("3. SUBIR OTRA VEZ: las mismas comprobaciones, el catálogo es idéntico al de la primera subida y lo que se perdió (facturas, referencia al renglón, tributos, desglose de IVA y perilla) quedó vacío o apagado", async (ctx) => {
     if (!hayRol) return ctx.skip();
     for (const m of SUBIDA) await correr(m, "migration.sql");
     for (const t of TABLAS_NUEVAS) expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "${t}"`))[0]!.n), `${t} volvió vacía`).toBe(0);
@@ -291,8 +323,7 @@ describe("M3: subir, bajar y subir (M3a a M3c) sobre una base temporal con el Pa
     const deAlcance = await q(`SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND policyname LIKE 'alcance\\_sucursal\\_%'`);
     expect(deAlcance, "las del Paquete 1 y las de Venta siguen").toHaveLength(TABLAS_DEL_PAQUETE_1.length * COMANDOS_CON_POLITICA_DE_ALCANCE.length + 4);
     await correr(M3C, "migration.sql");
-    for (const m of [M3B, M3A]) {
-      if (m === M3B) await correr(M3C, "down.sql");
+    for (const m of BAJADA) {
       await correr(m, "down.sql");
       await correr(m, "down.sql");
     }

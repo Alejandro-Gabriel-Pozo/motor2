@@ -55,7 +55,8 @@ describe("la migración deja las tres tablas, la columna del Kardex, los índice
     const columnas = await prismaAdmin.$queryRaw<Array<{ columna: string; tipo: string; es_nulable: string; precision: number | null; escala: number | null }>>`
       SELECT column_name::text AS columna, data_type AS tipo, is_nullable AS es_nulable, numeric_precision::int AS precision, numeric_scale::int AS escala
       FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'FacturaProveedor' ORDER BY ordinal_position`;
-    expect(columnas.map((c) => `${c.columna}:${c.tipo}:${c.es_nulable}`)).toEqual([
+    // Las columnas de M3b van primero y en este orden; M3d (IVA) agrega las suyas al final y las mide `factura-proveedor-iva.test.ts`.
+    expect(columnas.map((c) => `${c.columna}:${c.tipo}:${c.es_nulable}`).slice(0, 25)).toEqual([
       "id:text:NO", "empresaId:text:NO", "proveedorId:text:NO", "nroFactura:text:YES", "nroFacturaNormalizado:text:YES", "letra:text:YES", "fecha:timestamp without time zone:NO", "fechaComprobante:date:YES",
       "importeTotal:numeric:NO", "estado:text:NO", "confirmadaEn:timestamp without time zone:YES", "confirmadaPorId:text:YES", "origen:text:NO", "condicionPago:text:NO", "recibidaEnAdministracionEn:date:YES",
       "fechaPagoDeclarada:date:YES", "medioPagoDeclarado:text:YES", "detalleLibre:text:YES", "claveIdempotencia:text:YES", "payloadHash:text:YES", "resultadoMensaje:text:YES", "creadoPorId:text:NO",
@@ -70,11 +71,11 @@ describe("la migración deja las tres tablas, la columna del Kardex, los índice
       SELECT table_name::text AS tabla, column_name::text AS columna, data_type AS tipo, is_nullable AS es_nulable, numeric_precision::int AS precision, numeric_scale::int AS escala
       FROM information_schema.columns WHERE table_schema = 'public' AND table_name IN ('FacturaProveedorRenglon', 'FacturaProveedorSucursal') ORDER BY table_name, ordinal_position`;
     const de = (tabla: string) => columnas.filter((c) => c.tabla === tabla);
-    expect(de("FacturaProveedorRenglon").map((c) => `${c.columna}:${c.tipo}:${c.es_nulable}`)).toEqual([
+    expect(de("FacturaProveedorRenglon").map((c) => `${c.columna}:${c.tipo}:${c.es_nulable}`).slice(0, 13)).toEqual([
       "id:text:NO", "empresaId:text:NO", "facturaProveedorId:text:NO", "orden:integer:NO", "naturaleza:text:NO", "descripcion:text:YES", "productoId:text:YES", "cantidadStock:numeric:YES",
       "precioPorUnidadStock:numeric:YES", "loteVencimiento:date:YES", "detalle:text:YES", "precioTotal:numeric:NO", "creadoEn:timestamp without time zone:NO",
     ]);
-    const exactitud = Object.fromEntries(de("FacturaProveedorRenglon").filter((c) => c.precision !== null).map((c) => [c.columna, [c.precision, c.escala]]));
+    const exactitud = Object.fromEntries(de("FacturaProveedorRenglon").filter((c) => c.precision !== null && ["orden", "cantidadStock", "precioPorUnidadStock", "precioTotal"].includes(c.columna)).map((c) => [c.columna, [c.precision, c.escala]]));
     expect(exactitud).toEqual({ orden: [32, 0], cantidadStock: [14, 4], precioPorUnidadStock: [14, 4], precioTotal: [14, 2] });
     expect(de("FacturaProveedorSucursal").map((c) => `${c.columna}:${c.tipo}:${c.es_nulable}`)).toEqual([
       "id:text:NO", "empresaId:text:NO", "facturaProveedorId:text:NO", "sucursalId:text:NO", "porcentajeDeclaradoBp:integer:NO", "operacionId:text:YES", "creadoEn:timestamp without time zone:NO",

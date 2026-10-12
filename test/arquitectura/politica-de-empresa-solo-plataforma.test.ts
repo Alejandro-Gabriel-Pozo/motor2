@@ -22,7 +22,8 @@ const POLITICA = "server/operaciones-de-plataforma/cambiar-politica-de-empresa.t
 const EXCEPCIONES = [POLITICA];
 const ESCRITURAS = new Set(["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"]);
 // `condicionIva` (M0-IVA) no es una perilla de política, pero se escribe igual: la carga la plataforma (paso de datos auditado), nunca la propia empresa; por eso también va acá.
-const PERILLAS = ["permisosEditables", "dosPaneles", "condicionIva"];
+// `llevaIvaDeCompras` (Paquete 3, M3d) es la perilla de IVA de las compras: tampoco la cambia la propia empresa, la carga la plataforma.
+const PERILLAS = ["permisosEditables", "dosPaneles", "condicionIva", "llevaIvaDeCompras"];
 const SQL_CRUDO = new Set(["$executeRaw", "$executeRawUnsafe", "$queryRaw", "$queryRawUnsafe"]);
 
 function archivos(dir: string): string[] {

@@ -2299,6 +2299,9 @@ model Empresa {
   /// "Empresa_condicionIva_check" que agrega la migración a mano (Prisma no declara CHECK). NULL = «no declarada»: quien la lea falla cerrado, nunca supone
   /// Responsable Inscripto. La carga la plataforma (paso de datos auditado), no la propia empresa.
   condicionIva      String?
+  /// Paquete 3 (M3d, ADR-029): la PERILLA de IVA de las compras. Apagada (el valor de toda empresa hoy): la factura de proveedor NO exige neto, IVA ni alícuota, todo se carga con IVA incluido. Prendida: se exigen
+  /// según la letra y alimentan el IVA computable (lo hace el servidor, Etapa C: la base no lee `Empresa` desde un CHECK). La carga la plataforma, nunca la propia empresa (igual que `condicionIva`). Las ventas no dependen de ella.
+  llevaIvaDeCompras Boolean       @default(false)
 
   usuarios                       UsuarioEmpresa[]
   sucursalRel                    Sucursal[]
@@ -2362,6 +2365,7 @@ model Empresa {
   facturaProveedorRel            FacturaProveedor[]
   facturaProveedorRenglonRel     FacturaProveedorRenglon[]
   facturaProveedorSucursalRel    FacturaProveedorSucursal[]
+  facturaProveedorTributoRel     FacturaProveedorTributo[]
 }
 
 enum EstadoModulo {
@@ -2515,16 +2519,22 @@ model FacturaProveedor {
 
   /// El número tal cual se tecleó, y su clave normalizada (la calcula la Etapa C): van juntos (CHECK). La unicidad vigente es `(empresaId, proveedorId, letra o '', nroFacturaNormalizado)` de las NO anuladas,
   /// con un índice único parcial que vive solo en la migración. Una pendiente de reparto también reserva su número.
-  nroFactura                 String?
-  nroFacturaNormalizado      String?
+  nroFactura            String?
+  nroFacturaNormalizado String?
   /// La letra del comprobante (A, B, C, E, M o X), cuando se conoce: entra en la clave de unicidad (D5).
-  letra                      String?
+  letra                 String?
   /// El día del stock y del costo: el mediodía argentino del día que eligió quien cargó (UTC).
-  fecha                      DateTime
+  fecha                 DateTime
   /// La fecha impresa en el comprobante (solo dato).
-  fechaComprobante           DateTime? @db.Date
+  fechaComprobante      DateTime? @db.Date
   /// El total de la factura, CON IVA incluido. No negativo (CHECK). Nunca se modifica.
-  importeTotal               Decimal   @db.Decimal(14, 2)
+  importeTotal          Decimal   @db.Decimal(14, 2)
+
+  /// M3d: la condición de la empresa frente al IVA al momento de la carga (copia de `Empresa.condicionIva`; `CONDICIONES_IVA` de src/core/fiscal/iva.ts, CHECK en la base). NULL = no se declaró.
+  condicionIvaEmpresa        String?
+  /// M3d: neto e IVA del comprobante (NULL = no se desglosó; van juntos, CHECK). El resto del total son tributos, no gravado y exento. Sin CHECK de obligatoriedad: la exigencia según la perilla y la letra es del servidor.
+  importeNeto                Decimal?  @db.Decimal(14, 2)
+  importeIva                 Decimal?  @db.Decimal(14, 2)
   /// `PENDIENTE_DE_REPARTO` (cargada, sin repartir: su mercadería todavía no entró al stock) o `CONFIRMADA`. CHECK en la base.
   estado                     String    @default("CONFIRMADA")
   confirmadaEn               DateTime?
@@ -2551,6 +2561,8 @@ model FacturaProveedor {
 
   renglones FacturaProveedorRenglon[]
   partes    FacturaProveedorSucursal[]
+  /// M3d: percepciones e impuestos que trae la factura además del IVA.
+  tributos  FacturaProveedorTributo[]
 
   @@unique([empresaId, id])
   @@index([empresaId, proveedorId, fecha])
@@ -2578,6 +2590,12 @@ model FacturaProveedorRenglon {
   detalle              String?
   /// Lo pagado por el renglón, CON IVA incluido. No negativo (CHECK).
   precioTotal          Decimal          @db.Decimal(14, 2)
+  /// M3d: la alícuota de IVA del renglón (`ALICUOTAS_IVA` de src/core/fiscal/iva.ts, CHECK en la base), el neto y el IVA (NULL = no se desglosó; van juntos y neto + IVA = `precioTotal` EXACTO, CHECK) y el IVA computable
+  /// (NOT NULL, 0 con la perilla apagada o sin IVA discriminado; entre 0 y el IVA, CHECK). Sin CHECK de obligatoriedad: la exigencia según la perilla de la empresa y la letra es del servidor (Etapa C).
+  alicuotaIva          String?
+  importeNeto          Decimal?         @db.Decimal(14, 2)
+  importeIva           Decimal?         @db.Decimal(14, 2)
+  importeIvaComputable Decimal          @default(0) @db.Decimal(14, 2)
   creadoEn             DateTime         @default(now())
 
   /// Las líneas del Kardex que salieron de este renglón (una por parte).
@@ -2606,6 +2624,23 @@ model FacturaProveedorSucursal {
   @@unique([facturaProveedorId, sucursalId])
   @@unique([empresaId, operacionId])
   @@index([sucursalId])
+}
+
+/// Paquete 3 (M3d): un tributo de la factura (percepción o impuesto que trae además del IVA). Cuelga de la cabecera, es DE EMPRESA y solo se agrega (la app tiene SELECT e INSERT). `tipo` es de lista cerrada y `importe` mayor
+/// que cero (CHECK en la base). Nada de `src/` la escribe todavía (Etapa C).
+model FacturaProveedorTributo {
+  id                 String           @id @default(cuid())
+  empresaId          String           @default(dbgenerated("app_empresa_actual()"))
+  empresa            Empresa          @relation(fields: [empresaId], references: [id])
+  facturaProveedorId String
+  facturaProveedor   FacturaProveedor @relation(fields: [empresaId, facturaProveedorId], references: [empresaId, id])
+  tipo               String
+  descripcion        String?
+  importe            Decimal          @db.Decimal(14, 2)
+  creadoEn           DateTime         @default(now())
+
+  @@unique([empresaId, id])
+  @@index([facturaProveedorId])
 }
 
 model UsuarioEmpresa {

@@ -37,12 +37,12 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "../..");
 const CARPETAS = ["src", "plataforma/src"];
 
-// Paquete 3 (M3b): el renglón y la parte de la factura de proveedor también solo se agregan (la app no tiene UPDATE ni DELETE en la base). La CABECERA (`facturaProveedor`) no entra todavía: su UPDATE es por
+// Paquete 3 (M3b): el renglón, la parte y los tributos de la factura de proveedor también solo se agregan (la app no tiene UPDATE ni DELETE en la base). La CABECERA (`facturaProveedor`) no entra todavía: su UPDATE es por
 // columna (estado, anulación y datos que identifican la factura) y la lista cerrada de sus escritores llega con el primer caso de uso que la escriba (Etapa C).
-const MODELOS_SOLO_AGREGAN = ["movimientoStock", "registroAuditoria", "auditoriaPlataforma", "venta", "facturaProveedorRenglon", "facturaProveedorSucursal"];
+const MODELOS_SOLO_AGREGAN = ["movimientoStock", "registroAuditoria", "auditoriaPlataforma", "venta", "facturaProveedorRenglon", "facturaProveedorSucursal", "facturaProveedorTributo"];
 const OPERACIONES_QUE_MODIFICAN = new Set(["update", "updateMany", "upsert", "delete", "deleteMany"]);
 const SQL_CRUDO = new Set(["$executeRaw", "$executeRawUnsafe", "$queryRaw", "$queryRawUnsafe"]);
-const TABLAS_SQL = /\b(update|delete\s+from|truncate(\s+table)?)\s+(only\s+)?(public\.)?\\?"?(MovimientoStock|RegistroAuditoria|AuditoriaPlataforma|Venta|FacturaProveedorRenglon|FacturaProveedorSucursal)\b/i;
+const TABLAS_SQL = /\b(update|delete\s+from|truncate(\s+table)?)\s+(only\s+)?(public\.)?\\?"?(MovimientoStock|RegistroAuditoria|AuditoriaPlataforma|Venta|FacturaProveedorRenglon|FacturaProveedorSucursal|FacturaProveedorTributo)\b/i;
 
 interface UsoSobreOperacion {
   /** Ruta relativa a la raíz del repo, con `/`. */
