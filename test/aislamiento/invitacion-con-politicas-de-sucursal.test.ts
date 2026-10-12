@@ -2,7 +2,6 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
-import { sqlDeAlcanceDeSucursal } from "../setup/politicas-de-alcance-de-sucursal";
 import { AHORA_DE_LA_CORRIDA, HORA_MS } from "../setup/tiempo";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
 import { azarDelProceso } from "../../src/lib/azar";
@@ -56,7 +55,7 @@ beforeAll(async () => {
   await base.cliente.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO motor2_app`);
   duenio = new PrismaClient({ adapter: new PrismaPg({ connectionString: base.url }) });
   await sembrar(duenio);
-  await base.cliente.query(sqlDeAlcanceDeSucursal());
+  // Las 128 políticas ya son migraciones (B1 a B6): `aplicarRestantes` las trae, no hace falta aplicar el SQL del generador.
 
   // El runtime de `src/` (el rol de la app, `motor2_app`) apuntando a la base temporal: `src/lib/db.ts` lee `DATABASE_URL` al importarse y se queda con un singleton en `globalThis`.
   const url = new URL(process.env.DATABASE_URL as string);

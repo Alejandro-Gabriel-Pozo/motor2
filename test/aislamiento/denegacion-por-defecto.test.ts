@@ -42,7 +42,7 @@ const MAXIMOS = {
   // (`cargarTemaAdmin`, `resolverMenuCarta`, `resolverMenuCartaConDiagnostico`) pasaron a `SUCURSALES_LISTADAS_POR_DISENO`. Era 40 (39 + `seccionesDesactivadas`, P17).
   PENDIENTES_DE_SUCURSAL: 0,
   RECHAZOS_CRUDOS_DE_LA_BASE: 0,
-  OPCIONALES_SIN_MAPEAR: 25,
+  OPCIONALES_SIN_MAPEAR: 26,
   SIN_CONTROL_POSITIVO: 0,
   RECHAZOS_DE_ESTADO_ADMITIDOS: 9,
   SUCURSALES_LISTADAS_POR_DISENO: 8,

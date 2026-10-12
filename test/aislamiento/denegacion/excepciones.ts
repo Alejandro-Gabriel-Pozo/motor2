@@ -76,6 +76,7 @@ export const OPCIONALES_SIN_MAPEAR: Readonly<Record<string, string>> = {
   "consulta|consultas/reportes/insumos-sin-receta.ts|generarReporteInsumosSinRecetaVinculada|productosCargados": PRECARGA,
   "consulta|consultas/reportes/periodo.ts|cargarLineasDelPeriodo|cargado": PRECARGA,
   "consulta|consultas/reportes/periodo.ts|cargarLineasDelPeriodoDeSucursales|cargado": PRECARGA,
+  "consulta|consultas/reportes/ventas-sin-receta.ts|generarReporteVentasSinReceta|dbDelCatalogo": "base ALTERNATIVA que inyecta quien llama para leer el catálogo con la lectura de verificación (P2, sitio #11); sin ella el reporte lee el catálogo con el mismo `db` de las ventas, que es el camino que ejercen estas pruebas. No lleva ids del cliente",
   "consulta|consultas/stock/alertas.ts|calcularAlertasStock|cargado": PRECARGA,
   "consulta|consultas/stock/consolidado.ts|calcularStockConsolidado|seccionesCargadas": PRECARGA,
   "lectura|lecturas/carta/descuentos.ts|descuentosDeProductoEnSucursal|precioLocalActivoCargado": PRECARGA,
