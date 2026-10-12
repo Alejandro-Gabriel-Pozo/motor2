@@ -1,6 +1,6 @@
 # ADR-029: La factura de proveedor es un documento de la empresa (repartida entre sucursales)
 
-> Redactado el 2026-10-12 (Paquete 3, M3). **Estado: el MODELO está escrito en el repositorio (cuatro migraciones aditivas con su `down.sql` y sus pruebas); NINGÚN caso de uso las escribe todavía (Etapa C) y ninguna está aplicada a una base real. Cada migración REQUIERE AUTORIZACIÓN EXPRESA PARA APLICAR, base por base, con respaldo y ensayo en una rama de Neon.** Decisiones del dueño D1 a D5 y la perilla de IVA: ver «Decisiones».
+> Redactado el 2026-10-12 (Paquete 3, M3). **Estado: el MODELO está escrito en el repositorio (seis migraciones aditivas con su `down.sql` y sus pruebas); NINGÚN caso de uso las escribe todavía (Etapa C) y ninguna está aplicada a una base real. Cada migración REQUIERE AUTORIZACIÓN EXPRESA PARA APLICAR, base por base, con respaldo y ensayo en una rama de Neon.** Decisiones del dueño D1 a D5, la perilla de IVA, la recepción por sucursal y los datos del proveedor (2026-10-12): ver las secciones de abajo.
 
 ## Contexto
 
@@ -43,9 +43,19 @@ La clave normalizada (qué hace igual «1-1234» y «0001-00001234») la calcula
 
 `PENDIENTE_DE_REPARTO`: cargada y con su número reservado, la ven y anulan solo quienes tienen `compra_repartir`, **su mercadería NO entra al stock hasta repartirse** (no se puede vender ni consumir antes) y la fecha del stock es la que eligió quien la cargó. `CONFIRMADA`: repartida (o cargada ya al 100 % en una sucursal). CHECK: la confirmación (cuándo y quién) existe si y solo si el estado es `CONFIRMADA`, y lo migrado (`origen = MIGRACION`) nace confirmado. **Limitación declarada:** la base no impide con un CHECK volver de `CONFIRMADA` a `PENDIENTE_DE_REPARTO` (no se usa un trigger); el caso de uso lo hace con un UPDATE condicionado al estado (`WHERE estado = 'PENDIENTE_DE_REPARTO'`), y la lista de escritores se cierra en la Etapa C.
 
-### 6. El permiso `compra_repartir` (D3)
+### 5b. La recepción de la mercadería por sucursal (cambio del dueño, 2026-10-12)
+
+**Regla de negocio:** el stock de una factura entra recién cuando la factura está REPARTIDA (cabecera `CONFIRMADA`, no `PENDIENTE_DE_REPARTO`) **y** la parte de esa sucursal está RECIBIDA. Al cargar la factura el usuario elige, para cada sucursal, «recibida» (entra al stock con la fecha de recepción elegida) o «pendiente» (se confirma después desde la bandeja «mercadería por recibir», que es de la Etapa C). Las partes sin mercadería con stock (solo gastos, M4) las crea la aplicación directamente RECIBIDA.
+
+Migración `prisma/migrations/20261016101500_factura_proveedor_recepcion/migration.sql`, sobre `FacturaProveedorSucursal`: `estadoRecepcion` (TEXT NOT NULL DEFAULT `PENDIENTE`, CHECK `PENDIENTE` o `RECIBIDA`), `recibidaEn` (TIMESTAMP(3) NULL, UTC: es la **fecha de stock** elegida) y `recibidaPorId` (FK a `User`). CHECK: `(estadoRecepcion = 'RECIBIDA') = (recibidaEn IS NOT NULL)` y la persona va junto con la fecha. UPDATE **solo por columna** sobre esas tres, y un **disparador** `BEFORE UPDATE` que permite únicamente la transición PENDIENTE a RECIBIDA (una recibida no vuelve atrás, ni cambia de fecha ni de persona: se corrige anulando); rige también para el dueño y repetir con los mismos valores es inofensivo. Es la única excepción a «sin disparadores» y la pidió el dueño; las reglas entre filas siguen sin trigger.
+
+**Concurrencia e idempotencia** (`test/persistencia/factura-proveedor-recepcion.test.ts`, transacciones reales como `motor2_app`): la guarda es `UPDATE ... WHERE "estadoRecepcion" = 'PENDIENTE'` más la unicidad de `operacionId`. Dos confirmaciones a la vez de la misma parte: la segunda espera a la primera, re-evalúa la fila al confirmar la primera y toca 0 filas; el caso de uso escribe el stock **solo si el UPDATE tocó una fila**, así que dejan UNA recepción y UNA línea de stock (probado con 2 y con 8 a la vez, y repitiendo). Lo que la base no mira —que la cabecera esté confirmada al recibir— lo valida el caso de uso.
+
+### 6. Los permisos `compra_repartir` (D3) y `compra_recibir`
 
 Migración de datos `prisma/migrations/20261016100000_permiso_compra_repartir/migration.sql` (M3a): clave de empresa, piso administrador, semilla solo `admin`; se da al rol de clave `admin` de cada empresa (con el `empresaId` de la fila del rol), con el molde de la migración M.2. Es la clave de la clase A en `test/arquitectura/clases-de-claves.test.ts` y queda reservada en `test/arquitectura/toda-accion-se-usa.test.ts` hasta que la primera guarda la use. Cada sucursal destino además exige `proceso_compra` en ella: lo valida el caso de uso.
+
+**`compra_recibir`** (misma migración): clave de **sucursal** (quien recibe es la sucursal), módulo `compras`, piso operario y semilla solo `admin` (clase O, delegable al encargado de la sucursal por configuración); se siembra igual que la anterior (al rol `admin` de cada empresa, nadie más) y también queda reservada hasta la Etapa C.
 
 ### 7. IVA, tributos y la perilla (M3d, D1)
 
@@ -55,6 +65,7 @@ Migración `prisma/migrations/20261016103000_factura_proveedor_iva/migration.sql
 - **Qué no puede hacer la base:** un CHECK no lee `Empresa`. Por eso las columnas de desglose son NULLABLES (cabecera: `condicionIvaEmpresa`, `importeNeto`, `importeIva`; renglón: `alicuotaIva`, `importeNeto`, `importeIva`) y **no hay ningún CHECK de obligatoriedad** que dependa de la perilla o de la letra. **La exigencia según la perilla y la letra la hace la Etapa C en el SERVIDOR** (que lee la empresa): con la perilla prendida pide el desglose que corresponda a la letra, y con la apagada no pide nada. Esto es responsabilidad del caso de uso; la base solo garantiza coherencia cuando hay valores.
 - **Lo que sí está en la base** (CHECK con nombre): neto + IVA = total del renglón EXACTO en centavos; neto e IVA juntos o ninguno; importes no negativos; alícuota de la lista cerrada `ALICUOTAS_IVA` (`src/core/fiscal/iva.ts`, la misma del producto; una prueba compara el CHECK con la constante); condición de IVA de `CONDICIONES_IVA`; con alícuota 0 %, exento o no gravado el IVA discriminado es cero; el IVA computable (`importeIvaComputable`, NOT NULL DEFAULT 0) va de cero al IVA del renglón; el neto + IVA de la cabecera no supera su total.
 - **Tributos** (`FacturaProveedorTributo`): percepciones e impuestos que trae la factura además del IVA; cuelgan de la cabecera, son `DE_EMPRESA`, de tipo de lista cerrada y con importe mayor que cero; solo SELECT e INSERT. **Supuesto a confirmar por el dueño:** `importeTotal` es lo que se debe pagar, es decir la suma de los renglones MÁS los tributos; la base no suma filas, lo valida el caso de uso.
+- **Datos del proveedor (M3e, C36)**, migración `prisma/migrations/20261016104000_proveedor_condicion_iva_y_puntos_de_venta/migration.sql`: `Proveedor.condicionIva` (TEXT NULL con CHECK de la misma lista cerrada que `Empresa.condicionIva`, `CONDICIONES_IVA`; NULL = no declarada, sin default ni relleno; una prueba compara la lista con la base) y la tabla `PuntoDeVentaDeProveedor` (`DE_EMPRESA`, `numero` de 1 a 99999, único por proveedor, `activo`; **nunca se borra, se apaga**: `motor2_app` tiene SELECT, INSERT y UPDATE solo de `activo`; `motor2_plataforma`, nada). **No se implementa la función que sugiere la letra de la factura (A, B o C)**: las reglas fiscales se verifican contra ARCA antes de ponerlas en código; queda anotado para la Etapa C.
 - **La letra** vive en la cabecera desde M3b (no en M3d) porque entra en el índice único (D5) y se crea una sola vez: A, B, C, E, M o X, o ninguna.
 
 ### 8. Los índices van sin `CREATE INDEX CONCURRENTLY`
@@ -76,15 +87,18 @@ M4 (conceptos de gasto, renglón sin stock, imputación por sucursal) apoya sus 
 | Pareo de mercadería | CHECK `FacturaProveedorRenglon_pareo_mercaderia_chk` sobre `productoId`, `cantidadStock`, `precioPorUnidadStock` y `detalle` (M4 lo reemplaza por el pareo de las dos naturalezas; el plan de M4 pedía este nombre) |
 | Dinero | `precioTotal` DECIMAL(14,2) NOT NULL ≥ 0, con IVA incluido; `importeIvaComputable` DECIMAL(14,2) NOT NULL DEFAULT 0 (el desglose `alicuotaIva`, `importeNeto`, `importeIva` es NULLABLE: NULL = no se desglosó, y el computable es 0) |
 | Cabecera | `FacturaProveedor` con único `FacturaProveedor_empresaId_id_key`, `fecha`, `anuladaEn`, `proveedorId`, `estado`, `origen`, `condicionPago`; alcance `DE_EMPRESA` |
-| Partes | `FacturaProveedorSucursal` (`PROPIA`), único `FacturaProveedorSucursal_facturaProveedorId_sucursalId_key`; M4 no la referencia |
+| Partes | `FacturaProveedorSucursal` (`PROPIA`), único `FacturaProveedorSucursal_facturaProveedorId_sucursalId_key`; M4 no la referencia, pero las partes de **solo gastos** las crea la aplicación directamente con `estadoRecepcion = 'RECIBIDA'` (y `recibidaEn`, `recibidaPorId`; CHECK `FacturaProveedorSucursal_recepcion_coherente_chk`) y `operacionId` NULL |
+| Recepción | `estadoRecepcion` (`PENDIENTE`/`RECIBIDA`), `recibidaEn`, `recibidaPorId`; CHECK `FacturaProveedorSucursal_estado_recepcion_chk`, `..._recepcion_coherente_chk`, `..._recibida_por_chk`; disparador `FacturaProveedorSucursal_recepcion_transicion_chk` (PENDIENTE a RECIBIDA); M4 no los toca |
+| Permisos de M3 | `compra_repartir` (empresa, clase A) y `compra_recibir` (sucursal, clase O): M4 suma los suyos aparte |
 | Permisos | solo SELECT e INSERT; los CHECK de M3b llevan nombre `<Tabla>_<regla>_chk` para que M4 los pueda borrar y volver a crear |
 
-El módulo de gastos se llama `gastos` (P8). El orden de las migraciones es M3a, M3b, M3c, M3d y recién después las de M4.
+El módulo de gastos se llama `gastos` (P8). El orden de las migraciones es M3a (`20261016100000`), M3b (`20261016101000`), la recepción (`20261016101500`), M3c (`20261016102000`), M3d (`20261016103000`), M3e (`20261016104000`) y recién después las de M4.
 
 ## Limitaciones conocidas (documentadas, no resueltas)
 
 - **Reglas entre filas sin trigger.** Que los porcentajes declarados de las partes sumen 10000, que la sucursal de la parte sea la de su `Operacion`, que la suma de los renglones (más los tributos) sea el total de la cabecera y que la suma de las líneas del Kardex de un renglón sea su `precioTotal` no se pueden expresar sin un trigger ni leyendo otras filas (la regla de la etapa es no usar triggers): las valida el caso de uso y una consulta de coherencia del chequeo posterior de `docs/deploy-con-migraciones.md`.
-- **El estado puede retroceder por SQL directo** (ver «Estados»): lo impide el caso de uso, no la base.
+- **El estado de la cabecera puede retroceder por SQL directo** (ver «Estados»): lo impide el caso de uso, no la base. La recepción de la parte, en cambio, tiene su disparador.
+- **La cabecera confirmada al recibir** no se puede exigir en la base (mira otra fila): el caso de uso la valida.
 - **La cabecera y el renglón no tienen RLS por sucursal**, a propósito (ver «Quién ve qué»).
 - **El tipo de tributo y la lista de letras son listas cerradas elegidas por el constructor** (ampliarlas es ampliar un CHECK): conviene que el dueño las confirme antes de la Etapa C.
 - **Sin medir:** el costo de las políticas de la parte con volumen real (hoy hay 0 filas).
@@ -100,6 +114,6 @@ El módulo de gastos se llama `gastos` (P8). El orden de las migraciones es M3a,
 
 ## Consecuencias
 
-- Cuatro migraciones aditivas, cada una con su `down.sql` y su prueba de subir, bajar y subir (`test/aislamiento/m3-factura-proveedor-subir-bajar-subir.test.ts`); la reversa de M3b, M3a y M3d es destructiva si ya hay datos (ver `docs/deploy-con-migraciones.md`).
+- Seis migraciones aditivas, cada una con su `down.sql` y su prueba de subir, bajar y subir (`test/aislamiento/m3-factura-proveedor-subir-bajar-subir.test.ts`); la reversa de M3b, su recepción, M3a, M3d y M3e es destructiva si ya hay datos (ver `docs/deploy-con-migraciones.md`).
 - El código desplegado hoy no lee ni escribe nada de esto: la base va primero y no rompe al código anterior.
-- Seis goldens de caracterización (la huella de gobierno, la matriz de acceso, el menú de la empresa principal, la huella del Kardex y las dos matrices de venta) cambian por la clave nueva, la perilla y las columnas nuevas en `null`/`false`: se regeneran al integrar, con `git diff --word-diff` mostrando solo lo esperado, y se declaran en `test/arquitectura/caracterizaciones-congeladas.test.ts`.
+- Los goldens de caracterización (la huella de gobierno, la matriz de acceso, el menú de la empresa principal, la huella del Kardex y las matrices de venta, más los que vuelquen filas de `Proveedor`) cambian por las claves nuevas, la perilla y las columnas nuevas en `null`/`false`: se regeneran al integrar, con `git diff --word-diff` mostrando solo lo esperado, y se declaran en `test/arquitectura/caracterizaciones-congeladas.test.ts`.
