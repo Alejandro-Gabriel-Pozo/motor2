@@ -23,7 +23,9 @@ describe("anularVentaCasoDeUso", () => {
   let adminId: string;
   let harinaId: string;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId, ahora: new Date(), ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const actor = () => ({ usuarioId: adminId, sucursalId, ahora: new Date(), ...baseDe(sucursalId) });
 
   type Linea = { proceso?: "VENTA" | "CONSUMO" | "LIQUIDACION_CONSIGNACION"; cantidad: number; cantidadExacta?: number | null; precioTotal: number; precioPorUnidadStock: number; detalle: string };
 
@@ -193,7 +195,7 @@ describe("anularVentaCasoDeUso", () => {
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa operación en esta sucursal.",
     });
-    expect(await anularVentaCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ahora: new Date(), ...baseDeTest }, { operacionId: venta.id })).toMatchObject({ ok: false, codigo: "NO_ENCONTRADA" });
+    expect(await anularVentaCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ahora: new Date(), ...baseDe(otra.id) }, { operacionId: venta.id })).toMatchObject({ ok: false, codigo: "NO_ENCONTRADA" });
     expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).anuladaEn).toBeNull();
     expect(await prisma.registroAuditoria.count()).toBe(0);
   });

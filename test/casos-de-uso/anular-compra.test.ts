@@ -27,7 +27,9 @@ describe("anularCompraCasoDeUso", () => {
   let harinaId: string;
   let proveedorId: string;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId, ahora: new Date(), ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const actor = () => ({ usuarioId: adminId, sucursalId, ahora: new Date(), ...baseDe(sucursalId) });
 
   /** Una compra con una línea de `cantidad` kg a $100/kg (el saldo del lote sale del propio Kardex). */
   async function compra(opciones: { fecha?: Date; cantidad?: number; nroFactura?: string | null; proceso?: "COMPRA" | "MERMA"; sinLineas?: boolean } = {}) {
@@ -177,7 +179,7 @@ describe("anularCompraCasoDeUso", () => {
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa operación en esta sucursal.",
     });
-    expect(await anularCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ahora: new Date(), ...baseDeTest }, { operacionId: op.id, claveIdempotencia: null })).toMatchObject({
+    expect(await anularCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ahora: new Date(), ...baseDe(otra.id) }, { operacionId: op.id, claveIdempotencia: null })).toMatchObject({
       ok: false,
       codigo: "NO_ENCONTRADA",
     });
