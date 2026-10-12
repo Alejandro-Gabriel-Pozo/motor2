@@ -31,7 +31,8 @@ describe("S-05: factor, unidad y consignante de un producto", () => {
   let proveedorBId: string;
   let quesoId: string;
 
-  const actor = (usuarioId: string) => ({ usuarioId, sucursalId, ahora: new Date(), ...baseDeTest });
+  // El actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028).
+  const actor = (usuarioId: string) => ({ usuarioId, sucursalId, ahora: new Date(), ...baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }) });
 
   /** Los datos que el formulario manda para dejar el producto TAL COMO ESTÁ (un control: no cambia nada), con los cambios pedidos encima. */
   async function datos(cambios: Partial<DatosProducto> = {}): Promise<DatosProducto> {

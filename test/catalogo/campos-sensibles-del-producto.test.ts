@@ -60,7 +60,8 @@ describe("M.2: precio, factor y unidades de un producto son de quien tiene produ
   const ORIGINAL = () => ({ nombre: "Queso", precioVenta: PRECIO, factorConversion: 25, unidadStockId: kgId, unidadCompraId: gId });
   const auditorias = (campo?: string) => prismaAdmin.registroAuditoria.count({ where: { entidad: "Producto", entidadId: quesoId, ...(campo ? { campo } : {}) } });
 
-  const actor = (usuarioId: string) => ({ usuarioId, sucursalId, ahora: new Date(), ...baseDeTest });
+  // El actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028).
+  const actor = (usuarioId: string) => ({ usuarioId, sucursalId, ahora: new Date(), ...baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }) });
   const comando = (datosDelFormulario: DatosProducto, opciones: { sensibles: boolean; consignacion?: boolean }) => ({
     productoId: quesoId,
     datos: datosDelFormulario,

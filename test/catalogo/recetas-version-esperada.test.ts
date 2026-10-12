@@ -196,11 +196,14 @@ describe("guardar la receta con versión esperada (H7)", () => {
       // y la relectura ve la propia deshabilitada.
       let intentos = 0;
       let volvio = false;
+      // El actor de B lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028).
+      const alcance = { lectura: [sucursalId], escritura: [sucursalId] };
+      const baseDeB = baseDeTest(alcance);
       const transaccion: Transaccion = Object.assign(
         <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>, opciones?: Parameters<Transaccion>[1]) => {
           intentos += 1;
           const esElPrimero = intentos === 1;
-          return baseDeTest.transaccion((tx) => fn(esElPrimero ? frenadaTrasLeerRecetaSucursal(tx) : tx), opciones);
+          return baseDeB.transaccion((tx) => fn(esElPrimero ? frenadaTrasLeerRecetaSucursal(tx) : tx), opciones);
         },
         { aleatorio: () => 0 }
       );
@@ -228,7 +231,7 @@ describe("guardar la receta con versión esperada (H7)", () => {
       }
 
       const r = await guardarVersionDeRecetaCasoDeUso(
-        { usuarioId: adminId, sucursalNombre: "Central", empresaId: EMPRESA_POR_DEFECTO_ID, db: prisma, transaccion },
+        { usuarioId: adminId, sucursalNombre: "Central", empresaId: EMPRESA_POR_DEFECTO_ID, db: baseDeB.db, transaccion, alcance },
         { productoId: pvId, items: [linea(mp1Id), linea(mp2Id)], pasos: [], cabecera: {}, versionEsperada: 1 },
         { sucursalId, habilitadaEsperada: true }
       );
