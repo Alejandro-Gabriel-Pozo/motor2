@@ -105,6 +105,8 @@ export async function limpiarBaseDeTest() {
   // La factura de proveedor (Paquete 3, M3b): las partes referencian a la cabecera, la sucursal y la `Operacion` (RESTRICT), los renglones a la cabecera y al producto, y las líneas del Kardex (ya borradas) a los
   // renglones: partes, después renglones, después cabeceras, todo ANTES de operacion.deleteMany() y de proveedor/producto/sucursal/User (más abajo).
   await prismaAdmin.facturaProveedorSucursal.deleteMany();
+  // La imputación de un gasto (M4.3) referencia al renglón sin stock y a la sucursal (RESTRICT): ANTES de los renglones.
+  await prismaAdmin.imputacionDeGasto.deleteMany();
   await prismaAdmin.facturaProveedorTributo.deleteMany();
   await prismaAdmin.facturaProveedorRenglon.deleteMany();
   // Los conceptos de gasto (M4.1) los referencian los renglones sin stock (RESTRICT): DESPUÉS de los renglones.

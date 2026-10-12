@@ -1,6 +1,7 @@
 import { Client } from "pg";
 import { EMPRESA_DE_PRUEBA_ID, opcionesDeConexionConEmpresa } from "./empresa-de-prueba";
-import { prismaAdmin } from "./test-db";
+import { datosDeFactura, datosDeRenglon, sembrarEscenarioDeFactura, type EscenarioDeFactura } from "./factura-proveedor";
+import { prisma, prismaAdmin } from "./test-db";
 
 /**
  * Ayudas de los tests de los GASTOS (Paquete 3, M4): conexiones reales `pg` como `motor2_app` (el rol de la app, sujeto a la RLS) con la empresa fijada y, si se pide, el alcance por sucursal; el chequeo de que una sesión
@@ -80,4 +81,23 @@ export function datosDeRenglonSinStock(e: { facturaProveedorId: string; concepto
     precioTotal: "100.00",
     ...extra,
   };
+}
+
+export interface EscenarioDeGasto extends EscenarioDeFactura {
+  conceptoId: string;
+  facturaId: string;
+  /** Un renglón SIN_STOCK de 200,00 (el que se imputa). */
+  renglonId: string;
+  /** Un renglón de MERCADERIA de la misma factura (el que NO se puede imputar). */
+  renglonMercaderiaId: string;
+}
+
+/** Una empresa con dos sucursales, un concepto de gasto y una factura con un renglón sin stock de 200,00 y otro de mercadería. Las imputaciones las escribe cada test. */
+export async function sembrarEscenarioDeGasto(): Promise<EscenarioDeGasto> {
+  const e = await sembrarEscenarioDeFactura();
+  const concepto = await prisma.conceptoDeGasto.create({ data: datosDeConcepto() });
+  const factura = await prisma.facturaProveedor.create({ data: datosDeFactura(e, { importeTotal: "300.00" }) as never });
+  const renglon = await prisma.facturaProveedorRenglon.create({ data: datosDeRenglonSinStock({ facturaProveedorId: factura.id, conceptoGastoId: concepto.id }, { precioTotal: "200.00" }) as never });
+  const mercaderia = await prisma.facturaProveedorRenglon.create({ data: datosDeRenglon({ facturaProveedorId: factura.id, productoId: e.productoId }, { orden: 2 }) as never });
+  return { ...e, conceptoId: concepto.id, facturaId: factura.id, renglonId: renglon.id, renglonMercaderiaId: mercaderia.id };
 }

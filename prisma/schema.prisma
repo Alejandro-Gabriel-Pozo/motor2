@@ -155,6 +155,7 @@ model Sucursal {
   ejemplaresTicket         EjemplarTicket[]
   ventas                   Venta[]
   facturaProveedorPartes   FacturaProveedorSucursal[]
+  imputacionesDeGasto      ImputacionDeGasto[]
   invitacionSucursals      InvitacionSucursal[]
 
   @@unique([empresaId, nombre])
@@ -2372,6 +2373,7 @@ model Empresa {
   facturaProveedorTributoRel     FacturaProveedorTributo[]
   puntoDeVentaDeProveedorRel     PuntoDeVentaDeProveedor[]
   conceptoDeGastoRel             ConceptoDeGasto[]
+  imputacionDeGastoRel           ImputacionDeGasto[]
 }
 
 enum EstadoModulo {
@@ -2611,6 +2613,8 @@ model FacturaProveedorRenglon {
 
   /// Las líneas del Kardex que salieron de este renglón (una por parte).
   movimientos MovimientoStock[]
+  /// M4.3: cuánto de este renglón (si es `SIN_STOCK`) le toca a cada sucursal.
+  imputaciones ImputacionDeGasto[]
 
   @@unique([empresaId, id])
   @@unique([facturaProveedorId, orden])
@@ -2797,4 +2801,29 @@ model ConceptoDeGasto {
   @@unique([empresaId, id])
   @@unique([empresaId, codigo])
   @@unique([empresaId, nombre])
+}
+
+/// Paquete 3 (M4.3): la IMPUTACIÓN por sucursal de un renglón SIN STOCK: cuánto del importe del gasto le toca a la sucursal y cuánto de eso es IVA computable (D3: se guarda, repartido en dos pasos con `repartirImporte`). `PROPIA`
+/// (`sucursalId` NOT NULL; sus políticas de alcance las agrega M4.4). SOLO se agrega: la app tiene SELECT e INSERT, nunca UPDATE ni DELETE; un error se corrige anulando la factura y cargando de nuevo. La clave foránea con DISCRIMINADOR
+/// `(empresaId, facturaProveedorRenglonId, naturalezaRenglon) → FacturaProveedorRenglon(empresaId, id, naturaleza)` y `naturalezaRenglon` fijo en `SIN_STOCK` (CHECK) impiden en la base imputar un renglón de mercadería. Una parte por
+/// (renglón, sucursal). No tiene fecha propia (el período sale de `FacturaProveedor.fecha`) ni toca `Operacion` ni el Kardex. Que Σ importes = `precioTotal` del renglón y Σ computables = su `importeIvaComputable` lo valida la Etapa C.
+model ImputacionDeGasto {
+  id                        String                  @id @default(cuid())
+  empresaId                 String                  @default(dbgenerated("app_empresa_actual()"))
+  empresa                   Empresa                 @relation(fields: [empresaId], references: [id])
+  facturaProveedorRenglonId String
+  /// Siempre `SIN_STOCK` (CHECK): es la tercera columna de la clave foránea con discriminador.
+  naturalezaRenglon         String                  @default("SIN_STOCK")
+  renglon                   FacturaProveedorRenglon @relation(fields: [empresaId, facturaProveedorRenglonId, naturalezaRenglon], references: [empresaId, id, naturaleza], onDelete: Restrict, onUpdate: Restrict)
+  sucursalId                String
+  sucursal                  Sucursal                @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  /// Lo que le toca a la sucursal, CON IVA incluido. Mayor que cero (CHECK).
+  importe                   Decimal                 @db.Decimal(14, 2)
+  /// La parte de `importe` que es IVA computable (entre 0 y `importe`, CHECK). 0 si no se desglosó IVA.
+  importeIvaComputable      Decimal                 @default(0) @db.Decimal(14, 2)
+  creadoEn                  DateTime                @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([facturaProveedorRenglonId, sucursalId])
+  @@index([sucursalId])
 }

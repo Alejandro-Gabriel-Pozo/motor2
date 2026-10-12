@@ -88,7 +88,7 @@ describe("el renglón sin stock en la base real", () => {
 
   it("el pareo de SIN_STOCK, en un sentido: sin concepto, sin tipo de costo, con producto, cantidad, precio por unidad, texto de conversión o lote se rechaza (…_pareo_naturaleza_chk)", async () => {
     const rotos: Array<Record<string, unknown>> = [
-      { conceptoGastoId: null }, { tipoDeCosto: null }, { productoId: e.productoId }, { cantidadStock: "1" }, { precioPorUnidadStock: "1" }, { detalle: "1 kg" }, { loteVencimiento: new Date("2027-01-01T00:00:00Z") },
+      { conceptoGastoId: null }, { tipoDeCosto: null }, { productoId: e.productoId }, { cantidadStock: "1" }, { precioPorUnidadStock: "1" }, { detalle: "1 kg" }, { loteVencimiento: new Date("2099-01-01T00:00:00Z") },
     ];
     for (const roto of rotos) await expect(sinStock(roto), JSON.stringify(roto)).rejects.toThrow(/FacturaProveedorRenglon_pareo_naturaleza_chk/);
   });
