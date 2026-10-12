@@ -22,11 +22,13 @@ import type { Transaccion } from "../../src/lib/db-tipos";
 describe("guardarPermisos: lee el rol y la acción dentro de la transacción (O35-C)", () => {
   let operadorRolId: string;
   let adminId: string;
+  let sucursalId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
     const base = await sembrarBase();
     operadorRolId = base.operador.id;
+    sucursalId = base.sucursal.id;
     // La auditoría necesita un actor que exista (clave foránea de `RegistroAuditoria.actorId`).
     adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).id;
   });
@@ -69,7 +71,8 @@ describe("guardarPermisos: lee el rol y la acción dentro de la transacción (O3
     const transaccion: Transaccion = Object.assign(
       <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>, opciones?: Parameters<Transaccion>[1]) => {
         registro.push("abre la transacción");
-        return baseDeTest.transaccion((tx) => fn(espiarTx(tx, registro)), opciones);
+        // Con el alcance que le da la producción a quien actúa: su sucursal activa (ADR-028). Sin él, la fila de auditoría (de la empresa, `sucursalId` NULL) no entra con las políticas por sucursal.
+        return baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }).transaccion((tx) => fn(espiarTx(tx, registro)), opciones);
       },
       { aleatorio: () => 0 },
     );

@@ -19,7 +19,9 @@ describe("actualizarNotasMembresiaCasoDeUso: todo se lee dentro de la transacci�
     const operador = await crearUsuarioConMembresia({ email: "op@test.com", sucursalId: base.sucursal.id, rolId: base.operador.id });
     membresiaId = (await prismaAdmin.usuarioSucursal.findUniqueOrThrow({ where: { usuarioId_sucursalId: { usuarioId: operador.id, sucursalId: base.sucursal.id } } })).id;
     const dbProhibida = new Proxy({}, { get: (_t, p) => { throw new Error(`lectura FUERA de la transacción: actor.db.${String(p)}`); } }) as never;
-    actor = { usuarioId: admin.id, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: base.sucursal.id, sucursalNombre: base.sucursal.nombre, transaccion: baseDeTest.transaccion, db: dbProhibida };
+    // Con el alcance que le da la producción a quien actúa: su sucursal activa (ADR-028); la auditoría de la nota es de esa sucursal y sin alcance las políticas por sucursal no la dejan entrar.
+    const { transaccion } = baseDeTest({ lectura: [base.sucursal.id], escritura: [base.sucursal.id] });
+    actor = { usuarioId: admin.id, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: base.sucursal.id, sucursalNombre: base.sucursal.nombre, transaccion, db: dbProhibida };
   });
 
   it("deja las notas (y su auditoría) sin tocar `actor.db`: antes explotaba al leer la membresía afuera", async () => {

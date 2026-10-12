@@ -11,6 +11,8 @@ import { crearSucursalConAdminCasoDeUso } from "../../src/server/actions/auth/ca
 describe("sucursales: el nombre se chequea dentro de la transacción (M22)", () => {
   let usuarioId: string;
   let email: string;
+  /** La sucursal activa de quien actúa: de ahí sale el alcance que le da la producción (ADR-028). Sin él, la fila de auditoría (de la empresa, `sucursalId` NULL) no entra con las políticas por sucursal. */
+  let baseDelActor: ReturnType<typeof baseDeTest>;
 
   const dbProhibida = new Proxy({}, { get: (_t, p) => { throw new Error(`lectura FUERA de la transacción: actor.db.${String(p)}`); } }) as never;
 
@@ -20,12 +22,13 @@ describe("sucursales: el nombre se chequea dentro de la transacción (M22)", () 
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     usuarioId = admin.id;
     email = admin.email;
+    baseDelActor = baseDeTest({ lectura: [base.sucursal.id], escritura: [base.sucursal.id] });
   });
 
   it("renombrar: sin tocar `actor.db` (todo con el tx), y un nombre ya tomado (sin distinguir mayúsculas) sigue rechazándose", async () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Sucursal Norte" } });
     const sur = await prisma.sucursal.create({ data: { nombre: "Sucursal Sur" } });
-    const actor = { usuarioId, transaccion: baseDeTest.transaccion, db: dbProhibida };
+    const actor = { usuarioId, transaccion: baseDelActor.transaccion, db: dbProhibida };
 
     expect(await renombrarSucursalCasoDeUso(actor, { sucursalId: sur.id, nombre: "sucursal norte" })).toMatchObject({ ok: false, codigo: "NOMBRE_TOMADO" });
     const ok = await renombrarSucursalCasoDeUso(actor, { sucursalId: sur.id, nombre: "Sucursal Este" });
@@ -35,7 +38,7 @@ describe("sucursales: el nombre se chequea dentro de la transacción (M22)", () 
   });
 
   it("carrera: dos renombres a la vez al MISMO nombre → uno gana, el otro responde NOMBRE_TOMADO (antes, un 500 del índice único)", async () => {
-    const actor = { usuarioId, transaccion: baseDeTest.transaccion };
+    const actor = { usuarioId, transaccion: baseDelActor.transaccion };
     for (let vuelta = 0; vuelta < 5; vuelta++) {
       const a = await prisma.sucursal.create({ data: { nombre: `A${vuelta}` } });
       const b = await prisma.sucursal.create({ data: { nombre: `B${vuelta}` } });
@@ -50,7 +53,7 @@ describe("sucursales: el nombre se chequea dentro de la transacción (M22)", () 
   });
 
   it("alta: dos altas a la vez con el MISMO nombre → una crea la sucursal, la otra responde NOMBRE_TOMADO y no queda una sucursal repetida", async () => {
-    const actor = { usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, transaccion: baseDeTest.transaccion, db: baseDeTest.db };
+    const actor = { usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, transaccion: baseDelActor.transaccion, db: baseDelActor.db };
     for (let vuelta = 0; vuelta < 4; vuelta++) {
       const nombre = `Nueva ${vuelta}`;
       const [r1, r2] = await Promise.all([crearSucursalConAdminCasoDeUso(actor, { nombre, email }), crearSucursalConAdminCasoDeUso(actor, { nombre, email })]);
@@ -62,7 +65,7 @@ describe("sucursales: el nombre se chequea dentro de la transacción (M22)", () 
 
   it("alta: un nombre que ya existe con otras mayúsculas también se rechaza (como el renombre) y dice el nombre existente", async () => {
     await prisma.sucursal.create({ data: { nombre: "Sucursal Norte" } });
-    const r = await crearSucursalConAdminCasoDeUso({ usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, transaccion: baseDeTest.transaccion, db: baseDeTest.db }, { nombre: "sucursal norte", email });
+    const r = await crearSucursalConAdminCasoDeUso({ usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, transaccion: baseDelActor.transaccion, db: baseDelActor.db }, { nombre: "sucursal norte", email });
     expect(r).toMatchObject({ ok: false, codigo: "NOMBRE_TOMADO", mensaje: 'Ya existe una sucursal "Sucursal Norte".' });
   });
 });
