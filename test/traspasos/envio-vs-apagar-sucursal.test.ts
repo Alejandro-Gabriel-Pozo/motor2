@@ -29,10 +29,10 @@ describe("envío directo y aprobación contra el apagado de una sucursal (P15)",
   let productoId: string;
 
   /** Un `Transaccion` que, tras la PRIMERA llamada a `tabla.metodo` dentro de la transacción, espera a `entre` (la barrera: la otra operación corre completa y confirma en otra conexión). */
-  function transaccionConBarrera(tabla: "sucursal" | "traspasoSucursal", metodo: "findUnique" | "findMany", entre: () => Promise<void>) {
+  function transaccionConBarrera(base: Transaccion, tabla: "sucursal" | "traspasoSucursal", metodo: "findUnique" | "findMany", entre: () => Promise<void>) {
     const estado = { disparada: false };
     const transaccion: Transaccion = (async (fn: Parameters<Transaccion>[0], opciones?: Parameters<Transaccion>[1]) =>
-      baseDeTest.transaccion(async (tx) => {
+      base(async (tx) => {
         const delegado = (tx as unknown as Record<string, Record<string, unknown>>)[tabla]!;
         const delegadoConBarrera = new Proxy(delegado, {
           get(objetivo, propiedad) {
@@ -63,17 +63,23 @@ describe("envío directo y aprobación contra el apagado de una sucursal (P15)",
   }
 
   // Quien envía está parado en A. Quien apaga está parado en la OTRA sucursal (nadie apaga la suya), así que cada una tiene su admin.
+  // Cada actor opera con el alcance que tiene en producción (ADR-028): escritura solo en SU sucursal y lectura ya ENSANCHADA a las dos (la lectura de verificación que el envío, la aprobación y el apagado abren sobre su
+  // transacción). Se le da de entrada, en el contexto Y en la transacción, porque el ensanche arma una base NUEVA cuando agranda el alcance y descartaría la transacción con barrera que inyecta este test; con el alcance
+  // ya completo devuelve el contexto tal cual. Sin la lectura de la otra punta, el envío no ve a la sucursal contraria y el apagado no ve sus traspasos (fallaría abierto).
+  const baseDeA = () => baseDeTest({ lectura: [sucursalAId, sucursalBId], escritura: [sucursalAId] });
+  const baseDeB = () => baseDeTest({ lectura: [sucursalAId, sucursalBId], escritura: [sucursalBId] });
+
   const enviarDesdeA = (transaccion: Transaccion) =>
     crearEnvioDirectoDeTraspasoCasoDeUso(
-      { ...baseDeTest, empresaId: EMPRESA_POR_DEFECTO_ID, usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: AHORA_FIJO, transaccion },
+      { ...baseDeA(), empresaId: EMPRESA_POR_DEFECTO_ID, usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: AHORA_FIJO, transaccion },
       { destinoSucursalId: sucursalBId, productoId, cantidad: 4, seccionOrigenId: seccionAId, detalle: null },
     );
   const aprobarDesdeA = (transaccion: Transaccion, traspasoId: string) =>
-    aprobarYEnviarTraspasoCasoDeUso({ ...baseDeTest, empresaId: EMPRESA_POR_DEFECTO_ID, usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: AHORA_FIJO, transaccion }, { traspasoId, seccionOrigenId: seccionAId });
+    aprobarYEnviarTraspasoCasoDeUso({ ...baseDeA(), empresaId: EMPRESA_POR_DEFECTO_ID, usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: AHORA_FIJO, transaccion }, { traspasoId, seccionOrigenId: seccionAId });
   const apagarA = (transaccion: Transaccion) =>
-    actualizarActivoSucursalCasoDeUso({ ...baseDeTest, usuarioId: adminBId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalBId, transaccion }, { sucursalId: sucursalAId, activo: false });
+    actualizarActivoSucursalCasoDeUso({ ...baseDeB(), usuarioId: adminBId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalBId, transaccion }, { sucursalId: sucursalAId, activo: false });
   const apagarB = (transaccion: Transaccion) =>
-    actualizarActivoSucursalCasoDeUso({ ...baseDeTest, usuarioId: adminAId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalAId, transaccion }, { sucursalId: sucursalBId, activo: false });
+    actualizarActivoSucursalCasoDeUso({ ...baseDeA(), usuarioId: adminAId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalAId, transaccion }, { sucursalId: sucursalBId, activo: false });
 
   const activo = async (id: string) => (await prismaAdmin.sucursal.findUniqueOrThrow({ where: { id } })).activo;
   const traspasosEnviados = () => prismaAdmin.traspasoSucursal.count({ where: { estado: "ENVIADA" } });
@@ -99,8 +105,8 @@ describe("envío directo y aprobación contra el apagado de una sucursal (P15)",
   describe("envío directo", () => {
     it("apagar el ORIGEN entre la lectura y la escritura del envío → el envío reintenta y recibe SUCURSAL_INACTIVA; A queda apagada, sin ENVIADA ni SALIDA", async () => {
       let apagado: Awaited<ReturnType<typeof apagarA>> | undefined;
-      const { transaccion, estado } = transaccionConBarrera("sucursal", "findUnique", async () => {
-        apagado = await apagarA(baseDeTest.transaccion);
+      const { transaccion, estado } = transaccionConBarrera(baseDeA().transaccion, "sucursal", "findUnique", async () => {
+        apagado = await apagarA(baseDeB().transaccion);
       });
 
       const envio = await enviarDesdeA(transaccion);
@@ -115,8 +121,8 @@ describe("envío directo y aprobación contra el apagado de una sucursal (P15)",
 
     it("el envío confirma entre la lectura y la escritura del apagado del ORIGEN → el apagado reintenta y recibe TIENE_PENDIENTES; A queda activa con su ENVIADA", async () => {
       let envio: Awaited<ReturnType<typeof enviarDesdeA>> | undefined;
-      const { transaccion, estado } = transaccionConBarrera("traspasoSucursal", "findMany", async () => {
-        envio = await enviarDesdeA(baseDeTest.transaccion);
+      const { transaccion, estado } = transaccionConBarrera(baseDeB().transaccion, "traspasoSucursal", "findMany", async () => {
+        envio = await enviarDesdeA(baseDeA().transaccion);
       });
 
       const apagado = await apagarA(transaccion);
@@ -131,8 +137,8 @@ describe("envío directo y aprobación contra el apagado de una sucursal (P15)",
 
     it("apagar el DESTINO entre la lectura y la escritura del envío → el envío reintenta y recibe SUCURSAL_NO_DISPONIBLE; B queda apagada, sin ENVIADA ni SALIDA", async () => {
       let apagado: Awaited<ReturnType<typeof apagarB>> | undefined;
-      const { transaccion, estado } = transaccionConBarrera("sucursal", "findUnique", async () => {
-        apagado = await apagarB(baseDeTest.transaccion);
+      const { transaccion, estado } = transaccionConBarrera(baseDeA().transaccion, "sucursal", "findUnique", async () => {
+        apagado = await apagarB(baseDeA().transaccion);
       });
 
       const envio = await enviarDesdeA(transaccion);
@@ -156,8 +162,8 @@ describe("envío directo y aprobación contra el apagado de una sucursal (P15)",
     it("apagar el DESTINO entre la lectura y la escritura de la aprobación → la aprobación reintenta y recibe SUCURSAL_NO_DISPONIBLE; la solicitud sigue SOLICITADA y no sale stock", async () => {
       const sol = await solicitud();
       let apagado: Awaited<ReturnType<typeof apagarB>> | undefined;
-      const { transaccion, estado } = transaccionConBarrera("sucursal", "findUnique", async () => {
-        apagado = await apagarB(baseDeTest.transaccion);
+      const { transaccion, estado } = transaccionConBarrera(baseDeA().transaccion, "sucursal", "findUnique", async () => {
+        apagado = await apagarB(baseDeA().transaccion);
       });
 
       const aprobacion = await aprobarDesdeA(transaccion, sol.id);
@@ -174,8 +180,8 @@ describe("envío directo y aprobación contra el apagado de una sucursal (P15)",
     it("apagar el ORIGEN entre la lectura y la escritura de la aprobación → la aprobación reintenta y recibe SUCURSAL_INACTIVA; la solicitud sigue SOLICITADA y no sale stock", async () => {
       const sol = await solicitud();
       let apagado: Awaited<ReturnType<typeof apagarA>> | undefined;
-      const { transaccion, estado } = transaccionConBarrera("sucursal", "findUnique", async () => {
-        apagado = await apagarA(baseDeTest.transaccion);
+      const { transaccion, estado } = transaccionConBarrera(baseDeA().transaccion, "sucursal", "findUnique", async () => {
+        apagado = await apagarA(baseDeB().transaccion);
       });
 
       const aprobacion = await aprobarDesdeA(transaccion, sol.id);
