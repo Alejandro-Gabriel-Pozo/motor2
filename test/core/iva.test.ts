@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALICUOTAS_IVA } from "../../src/core/fiscal/iva";
+import { ALICUOTAS_IVA, CONDICIONES_IVA, type AlicuotaIva, type CondicionIva } from "../../src/core/fiscal/iva";
 
 /**
  * M0-IVA: la lista de códigos de alícuota del producto. La paridad con el CHECK de la base está en `test/catalogo/migracion-m0-iva-alicuotas-de-producto.test.ts`; acá, lo que
@@ -21,5 +21,24 @@ describe("ALICUOTAS_IVA", () => {
   it("incluye las tasas generales de la Argentina y distingue 0 %, exento y no gravado", () => {
     expect(ALICUOTAS_IVA).toEqual(expect.arrayContaining(["IVA_0", "IVA_2_5", "IVA_5", "IVA_10_5", "IVA_21", "IVA_27", "EXENTO", "NO_GRAVADO"]));
     expect(ALICUOTAS_IVA).toHaveLength(8);
+  });
+});
+
+describe("tipos derivados de las listas", () => {
+  it("AlicuotaIva y CondicionIva son exactamente los elementos de sus listas (un código fuera de ellas no compila)", () => {
+    const alicuota: AlicuotaIva = "IVA_10_5";
+    const condicion: CondicionIva = "MONOTRIBUTO";
+    expect(ALICUOTAS_IVA).toContain(alicuota);
+    expect(CONDICIONES_IVA).toContain(condicion);
+    // @ts-expect-error NO_CORRESPONDE no es una alícuota del producto (es la efectiva de una venta cuando el emisor no es Responsable Inscripto)
+    const noEsDelProducto: AlicuotaIva = "NO_CORRESPONDE";
+    expect(ALICUOTAS_IVA as readonly string[]).not.toContain(noEsDelProducto);
+  });
+});
+
+describe("CONDICIONES_IVA", () => {
+  it("son las tres de una compañía en Odoo, sin repetidos y como identificadores semánticos", () => {
+    expect([...CONDICIONES_IVA]).toEqual(["RESPONSABLE_INSCRIPTO", "MONOTRIBUTO", "EXENTO"]);
+    expect(new Set(CONDICIONES_IVA).size).toBe(CONDICIONES_IVA.length);
   });
 });
