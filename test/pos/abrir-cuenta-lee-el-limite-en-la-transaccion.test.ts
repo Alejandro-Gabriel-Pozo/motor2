@@ -12,7 +12,11 @@ describe("abrirCuentaCasoDeUso: la mesa y el límite se leen dentro de la transa
   let s: Awaited<ReturnType<typeof sembrarSalon>>;
 
   const dbProhibida = new Proxy({}, { get: (_t, p) => { throw new Error(`lectura FUERA de la transacción: actor.db.${String(p)}`); } }) as never;
-  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, db: dbProhibida, transaccion: baseDeTest.transaccion });
+  // El actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028).
+  const actor = () => {
+    const { transaccion, alcance } = baseDeTest({ lectura: [s.sucursalId], escritura: [s.sucursalId] });
+    return { usuarioId: s.admin.id, sucursalId: s.sucursalId, db: dbProhibida, transaccion, alcance };
+  };
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
