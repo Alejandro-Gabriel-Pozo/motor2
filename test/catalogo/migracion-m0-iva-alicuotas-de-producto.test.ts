@@ -96,7 +96,7 @@ describe("M0-IVA: alícuotas de IVA del producto (migración 20261015100000)", (
     const despues = (await q(`SELECT * FROM "Producto" WHERE "id" = 'prod-viejo'`))[0] as Record<string, unknown>;
     expect(despues.alicuotaIvaVenta, "sin valor deducido").toBeNull();
     expect(despues.alicuotaIvaCompra, "sin valor deducido").toBeNull();
-    const { alicuotaIvaVenta: _v, alicuotaIvaCompra: _c, ...resto } = despues;
+    const resto = Object.fromEntries(Object.entries(despues).filter(([columna]) => !columna.startsWith("alicuotaIva")));
     expect(resto, "ninguna otra columna cambió").toEqual(antes);
     const columnas = await q<{ columna: string; data_type: string; is_nullable: string; column_default: string | null }>(
       `SELECT column_name::text AS columna, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Producto' AND column_name LIKE 'alicuotaIva%' ORDER BY 1`,

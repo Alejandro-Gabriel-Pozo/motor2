@@ -72,7 +72,7 @@ describe("M0-IVA: condición de la empresa frente al IVA (migración 20261015101
     await base.cliente.query(leer("migration.sql"));
     const despues = await q<Record<string, unknown>>(`SELECT * FROM "Empresa" WHERE ${PROPIAS} ORDER BY "id"`);
     expect(despues.map((f) => f.condicionIva), "sin valor deducido: «no declarada»").toEqual([null, null]);
-    expect(despues.map(({ condicionIva: _c, ...resto }) => resto), "ninguna otra columna cambió").toEqual(antes);
+    expect(despues.map((f) => Object.fromEntries(Object.entries(f).filter(([columna]) => columna !== "condicionIva"))), "ninguna otra columna cambió").toEqual(antes);
     const columnas = await q(`SELECT column_name::text AS columna, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Empresa' AND column_name = 'condicionIva'`);
     expect(columnas).toEqual([{ columna: "condicionIva", data_type: "text", is_nullable: "YES", column_default: null }]);
   });
