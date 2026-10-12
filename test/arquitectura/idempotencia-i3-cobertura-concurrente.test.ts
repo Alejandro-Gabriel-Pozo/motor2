@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -49,9 +49,9 @@ const SIN_RAMA_DE_DUPLICADO_TODAVIA: Record<string, string> = {
 };
 
 function archivosFuente(dir: string): string[] {
-  return readdirSync(dir).flatMap((nombre) => {
-    const ruta = join(dir, nombre);
-    return statSync(ruta).isDirectory() ? archivosFuente(ruta) : /\.tsx?$/.test(nombre) ? [ruta] : [];
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entrada) => {
+    const ruta = join(dir, entrada.name);
+    return entrada.isDirectory() ? archivosFuente(ruta) : /\.tsx?$/.test(entrada.name) ? [ruta] : [];
   });
 }
 
@@ -94,11 +94,11 @@ function descubrirCasosDeUsoConI3(): CasoDeUsoI3[] {
 
     // El adaptador (Server Action) vive un nivel arriba de casos-de-uso/, e importa `from "./casos-de-uso/<basename>"`.
     const carpetaAccion = dirname(dirname(archivo));
-    const archivosDeCarpeta = readdirSync(carpetaAccion).filter((n) => /\.tsx?$/.test(n));
+    // Las entradas se listan con su tipo (no se comprueba la ruta y después se lee: eso es una condición de carrera del sistema de archivos).
+    const archivosDeCarpeta = readdirSync(carpetaAccion, { withFileTypes: true }).filter((e) => e.isFile() && /\.tsx?$/.test(e.name));
     const nombresWrapper: string[] = [];
-    for (const nombreArchivo of archivosDeCarpeta) {
-      const rutaWrapper = join(carpetaAccion, nombreArchivo);
-      if (statSync(rutaWrapper).isDirectory()) continue;
+    for (const entrada of archivosDeCarpeta) {
+      const rutaWrapper = join(carpetaAccion, entrada.name);
       const fuenteWrapper = sinComentarios(readFileSync(rutaWrapper, "utf8"));
       if (new RegExp(`from\\s+["']\\./casos-de-uso/${basename}["']`).test(fuenteWrapper)) {
         nombresWrapper.push(...nombresDeFunciones(fuenteWrapper));
