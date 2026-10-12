@@ -157,8 +157,10 @@ export async function resolverConsumoPorFamilia(
   // sucursal, no solo en el catálogo central.
   const [candidatosHermanos, seccion] = await Promise.all([
     db.producto.findMany({ where: { insumoId: producto.insumoId, tipo: "MP" }, select: { id: true } }),
-    db.seccion.findUniqueOrThrow({ where: { id: seccionId }, select: { sucursalId: true } }),
+    db.seccion.findUnique({ where: { id: seccionId }, select: { sucursalId: true } }),
   ]);
+  // Con la RLS por sucursal una sección de OTRA sucursal no se ve: sin sección no hay reparto (el mismo camino que un producto sin familia), no una excepción cruda de Prisma (P2025).
+  if (!seccion) return sinReparto();
   const disponibilidad = await disponibilidadDeProductos(seccion.sucursalId, candidatosHermanos.map((h) => h.id), db);
   const hermanoIds = candidatosHermanos.filter((h) => disponibilidad.get(h.id)).map((h) => h.id);
   if (!hermanoIds.length) return sinReparto();

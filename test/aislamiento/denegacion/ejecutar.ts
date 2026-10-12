@@ -4,7 +4,7 @@ import { __cookiesDeTest, __limpiarCookiesDeTest, __setCookieDeTestParaEmpresa, 
 import { baseDeEmpresa } from "../../../src/server/sesion/base";
 import { derivarArgumentos, unir, type Escenario, type Generadores, type Kit, type Planteo } from "./argumentos";
 import { SUCURSALES_LISTADAS_POR_DISENO } from "./excepciones";
-import { HUELLA_DE_E2, HUELLA_DE_S2, huellaDeLaBase, NOMBRE_DE_S2, NOMBRE_DE_S3, tablasCambiadas, type Mundo } from "./mundo";
+import { HUELLA_DE_E2, HUELLA_DE_S2, huellaDeLaBase, NOMBRE_DE_S2, NOMBRE_DE_S3, SLUG_DE_S2, SLUG_DE_S3, tablasCambiadas, type Mundo } from "./mundo";
 import { categoriaDeRechazo, mensajesDeRechazo } from "./rechazos";
 import type { PuertaInventariada } from "./inventario-de-puertas";
 
@@ -231,8 +231,10 @@ export async function correrPuerta(puerta: PuertaInventariada, escenario: Escena
     veredictos.push(veredicto);
 
     const reflejo = marcadoresDeEntrada(puerta, argumentos);
-    // Lo que se le pasó de entrada no es una fuga, y los nombres de S2 y S3 que una puerta lista por diseño (`SUCURSALES_LISTADAS_POR_DISENO`) tampoco.
-    const sinListadas = Object.hasOwn(SUCURSALES_LISTADAS_POR_DISENO, puerta.clave) ? salida.texto.split(NOMBRE_DE_S2).join("·").split(NOMBRE_DE_S3).join("·") : salida.texto;
+    // Lo que se le pasó de entrada no es una fuga, y los nombres (y el slug público, de gobierno) de S2 y S3 que una puerta lista por diseño (`SUCURSALES_LISTADAS_POR_DISENO`) tampoco.
+    const sinListadas = Object.hasOwn(SUCURSALES_LISTADAS_POR_DISENO, puerta.clave)
+      ? [NOMBRE_DE_S2, NOMBRE_DE_S3, SLUG_DE_S2, SLUG_DE_S3].reduce((t, listado) => t.split(listado).join("·"), salida.texto)
+      : salida.texto;
     const sinReflejo = reflejo.reduce((t, m) => t.split(m).join("·"), sinListadas);
     const mal = (texto: string) => problemas.push(`${etiqueta}${texto}`);
     if (esControl) {

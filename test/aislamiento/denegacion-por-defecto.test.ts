@@ -38,13 +38,14 @@ const claves = new Set(puertas.map((p) => p.clave));
 const MAXIMOS = {
   SIN_GENERADOR: 17,
   ESCENARIOS_QUE_NO_APLICAN: 2,
-  // 40 (eran 39; +1 por `seccionesDesactivadas`, P17) = las consultas y lecturas que `consultaConSucursalAjena` (M.3, A11) muestra filtrando la otra sucursal hoy, sin políticas por sucursal. La Fase B cierra 37 con las políticas y este techo baja a 3; las otras 3 solo devuelven el nombre y el slug de la otra sucursal (GOBIERNO) y se declaran por diseño (ver `excepciones.ts`).
-  PENDIENTES_DE_SUCURSAL: 40,
+  // 0 desde el paquete 1 de la RLS por sucursal (ADR-028): con las políticas `alcance_sucursal_*` aplicadas, las 37 consultas y lecturas que cruzaban sucursales dejan de traer filas de la otra (el test pidió sacar cada entrada) y las 3 de gobierno
+  // (`cargarTemaAdmin`, `resolverMenuCarta`, `resolverMenuCartaConDiagnostico`) pasaron a `SUCURSALES_LISTADAS_POR_DISENO`. Era 40 (39 + `seccionesDesactivadas`, P17).
+  PENDIENTES_DE_SUCURSAL: 0,
   RECHAZOS_CRUDOS_DE_LA_BASE: 0,
   OPCIONALES_SIN_MAPEAR: 25,
   SIN_CONTROL_POSITIVO: 0,
   RECHAZOS_DE_ESTADO_ADMITIDOS: 9,
-  SUCURSALES_LISTADAS_POR_DISENO: 5,
+  SUCURSALES_LISTADAS_POR_DISENO: 8,
   CONTEXTO_DECLARADO: 1,
   SIN_MARCA_PROPIA: 27,
   OK_SIN_EFECTO_POR_DISENO: 2,
