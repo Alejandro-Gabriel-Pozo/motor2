@@ -588,6 +588,11 @@ model Proveedor {
   condicionesPago String?
   notas           String?
   activo          Boolean @default(true)
+  /// Clasificación del proveedor (M1, C20): qué le compramos. Tres estados válidos: productos, servicios o ambos; «ninguno» lo impide el CHECK
+  /// `Proveedor_ofrece_productos_o_servicios_chk` ("ofreceProductos" OR "ofreceServicios"), que Prisma no modela (misma convención que los CHECK de la Tanda 6).
+  /// Los proveedores existentes nacen «productos» (decisión del dueño, 2026-10-06). Migración 20261015110000_proveedor_ofrece_productos_y_servicios.
+  ofreceProductos Boolean @default(true)
+  ofreceServicios Boolean @default(false)
 
   productosConsignados Producto[]             @relation("ProveedorConsignacionDe")
   proveedorPorProducto ProveedorPorProducto[]
