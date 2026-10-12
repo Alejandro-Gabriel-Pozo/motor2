@@ -1429,6 +1429,14 @@
       "rolesEditarSemilla": [
         "admin"
       ]
+    },
+    {
+      "clave": "producto_campos_sensibles",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
     }
   ]
 }

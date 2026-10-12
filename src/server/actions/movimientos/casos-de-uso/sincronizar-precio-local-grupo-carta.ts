@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoSincronizarPrecioLocalGrupoCarta, ResultadoSincronizarPrecioLocalGrupoCarta } from "@/core/features/movimientos/precio-local.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
  * Todo `vi.mock("<ruta>")`, `vi.doMock`, `vi.importActual("<ruta>")` e `importOriginal<typeof import("<ruta>")>` apunta a un archivo que EXISTE.
  *
  * Por qué: Vitest no se queja si el módulo que se mockea no existe; simplemente el mock queda sin efecto y la prueba corre contra el código REAL. Al mover un archivo
- * (la Fase 3 sacó el guard de `core/permisos`, la Fase 6 mueve la sesión: 161 `vi.mock` de `core/auth/session`), un mock que se queda con la ruta vieja deja un test
+ * (la Fase 3 sacó el guard de `core/permisos`, la Fase 6 mueve la sesión: 161 `vi.mock` de `server/sesion/session`), un mock que se queda con la ruta vieja deja un test
  * verde que ya no prueba lo que dice. Este guardián lo convierte en rojo.
  *
  * Solo rutas del proyecto (`@/…` y relativas): los paquetes de node_modules no se miran.
@@ -82,7 +82,7 @@ describe("mocks sin huérfanos", () => {
   it("el detector (con fuentes sintéticas)", () => {
     const aqui = join(RAIZ, "test/arquitectura/ejemplo.test.ts");
     expect(huerfanosDe(aqui, 'vi.mock("@/core/permisos/gate-que-no-existe", () => ({}));')).toHaveLength(1);
-    expect(huerfanosDe(aqui, 'vi.mock("../../src/core/auth/session", () => ({}));')).toEqual([]);
+    expect(huerfanosDe(aqui, 'vi.mock("../../src/server/sesion/session", () => ({}));')).toEqual([]);
     expect(huerfanosDe(aqui, 'const real = await importOriginal<typeof import("@/core/permisos/nunca")>();')).toHaveLength(1);
     expect(huerfanosDe(aqui, 'await vi.importActual<typeof import("@/server/acceso/gate")>("@/server/acceso/gate");')).toEqual([]);
     expect(huerfanosDe(aqui, 'vi.mock("next/headers", () => ({}));')).toEqual([]); // paquete: no se mira

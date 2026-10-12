@@ -33,17 +33,20 @@ export interface ComandoAgregarItems {
   cuentaId: string;
   items: ItemParaAgregar[];
   promos: PromoParaAgregar[];
+  /** P3 (I3): el UUID que genera la pantalla por envío, ya validado por el guard. Opcional: sin él no hay comprobante y el pedido se comporta como siempre. */
+  claveIdempotencia?: string;
 }
 
 /**
- * Solo lo que produce el caso de uso (las listas vacías, el tope y un `cuentaId` que no es texto los rechaza antes el guard), en el orden en que se chequean:
+ * Solo lo que produce el caso de uso (las listas vacías, el tope, un `cuentaId` que no es texto y una clave que no es un UUID los rechaza antes el guard), en el orden en que se chequean:
+ *  - `CONFLICTO_IDEMPOTENCIA` (P3, I3): la clave ya se usó con OTRO pedido (otra huella), o el comprobante que la lleva no es visible desde esta empresa. Se chequea PRIMERO, antes de mirar la cuenta;
  *  - `CUENTA_NO_ABIERTA`: no es una cuenta de una mesa de esta sucursal, o ya está cerrada (`cuentaAbiertaDeSucursal`);
  *  - `PROMO_NO_DISPONIBLE` (S-22 / D2): el pedido trae promos y la empresa no tiene el módulo Promociones. Se mira antes que cada ítem: sin el módulo no hay promo que validar;
  *  - `PRODUCTO_INVALIDO`: un ítem suelto no existe, no es PV, no está disponible en la sucursal o su cantidad no pasa `validarCantidadPedido`;
  *  - `PROMO_INVALIDA`: una promo no existe o no está disponible, su elección no cumple los cupos, o no se puede prorratear.
  * Todo se valida ANTES de la primera escritura: un rechazo no deja nada escrito.
  */
-export type ResultadoAgregarItems = ResultadoCaso<null, "CUENTA_NO_ABIERTA" | "PROMO_NO_DISPONIBLE" | "PRODUCTO_INVALIDO" | "PROMO_INVALIDA">;
+export type ResultadoAgregarItems = ResultadoCaso<null, "CONFLICTO_IDEMPOTENCIA" | "CUENTA_NO_ABIERTA" | "PROMO_NO_DISPONIBLE" | "PRODUCTO_INVALIDO" | "PROMO_INVALIDA">;
 
 /** Comando «quitar un ítem que todavía no salió a cocina»: lo que recibe `quitarItemSinEnviarCasoDeUso`. */
 export interface ComandoQuitarItemSinEnviar {

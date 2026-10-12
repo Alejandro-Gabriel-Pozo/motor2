@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 /**
  * Qué error tira la escritura simulada (o ninguno). Con el adaptador `pg` de Prisma 7 el mismo choque de índice único puede llegar como `P2002` o como el

@@ -10,7 +10,7 @@ import { limpiarMundo, sembrarMundo, type Mundo } from "./mundo";
 
 /**
  * Registra la matriz de denegación por defecto (GT-3b) para el subconjunto de puertas que elige `filtro`. Cada archivo `denegacion-por-defecto-<familia>.test.ts` la llama con su familia y declara antes
- * `vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }))` (el `vi.mock` tiene que estar en el archivo del test).
+ * `vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }))` (el `vi.mock` tiene que estar en el archivo del test).
  *
  * Los escenarios de cada puerta salen de `escenarios.ts`. Lo que es de OTRA SUCURSAL de la misma empresa y todavía no se defiende (la pista RLS por sucursal, fase a del plan §6) está en
  * `PENDIENTES_DE_SUCURSAL`: se ejecuta y se EXIGE que siga fallando; cuando se arregla, el test pide sacarla de la lista (la lista solo se achica).

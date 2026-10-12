@@ -66,8 +66,8 @@ describe("GT-22 (M-29): las guardas de host local miran el host real de la conex
     expect(fuente, "importa el ayudante").toMatch(/from "[./]+(?:src\/)?(?:core\/)?(?:auth\/)?hosts-de-conexion"/);
   });
 
-  it("src/core/auth/rol-de-ejecucion.ts hace lo mismo con su propia copia (lo alcanza la carta pública: un archivo nuevo sería un cambio de frontera)", () => {
-    const fuente = sinComentarios("src/core/auth/rol-de-ejecucion.ts");
+  it("src/server/sesion/rol-de-ejecucion.ts hace lo mismo con su propia copia (lo alcanza la carta pública: un archivo nuevo sería un cambio de frontera)", () => {
+    const fuente = sinComentarios("src/server/sesion/rol-de-ejecucion.ts");
     expect(fuente).toMatch(/searchParams\.getAll\(clave\)/);
     expect(fuente).toMatch(/\["host", "hostaddr"\]/);
     expect(fuente, "decide con TODOS los hosts de la conexión").toMatch(/hostsDeLaConexion\(u\)\.every\(/);

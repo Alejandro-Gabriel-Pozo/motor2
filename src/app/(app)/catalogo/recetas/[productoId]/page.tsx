@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { redirect } from "next/navigation";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
+import { lecturaDeVerificacionEnLaEmpresa, lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
 import { obtenerMiNivelPermiso, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import {
   obtenerRecetaVigente,
@@ -18,7 +19,7 @@ import {
   actualizarCabeceraDeReceta,
 } from "@/server/actions/catalogo/recetas";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
-import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
+import { disponibilidadDeProductoEnSucursales } from "@/server/consultas/catalogo/disponibilidad";
 import { secuenciaMoviendo } from "@/core/catalogo/public";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import {
@@ -58,9 +59,12 @@ export default async function RecetaEditorPage({
   const { editar, editarPaso, editarFicha, editarPropia } = unicosDeUrl(await searchParams);
   const ordenEnEdicion = editarPaso ? Number(editarPaso) : null;
 
+  // P2 (RLS por sucursal): las materias primas del selector y las opciones de sustituto son «productos disponibles en ALGUNA sucursal»: se leen con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como estaba). Salen filas de
+  // `Producto` e `Insumo` (id, nombre, unidad), nunca la disponibilidad de otra sucursal. Lo que la pantalla muestra de cada sucursal (`origenes`, más abajo) sigue limitado a las que el usuario ve.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx);
   const [producto, mpDisponibles, unidades] = await Promise.all([
     obtenerProductoPorId(productoId, ctx.db),
-    listarMpDisponiblesEnAlguna(ctx.db),
+    listarMpDisponiblesEnAlguna(verificacion.db),
     listarUnidadesActivas(),
   ]);
 
@@ -90,11 +94,20 @@ export default async function RecetaEditorPage({
     );
   }
 
+  // U7 / D3: la receta se carga SIEMPRE en la unidad de stock de la materia prima (la conversión entre unidades viene más adelante); el servidor lo exige al guardar. Acá solo se la muestra fija.
+  const nombreDeUnidad = (unidadId: string) => unidades.find((u) => u.id === unidadId)?.nombre ?? "la unidad de stock";
+  const unidadDeStockPorMp: Record<string, string> = Object.fromEntries(mpDisponibles.map((mp) => [mp.id, mp.unidadStockId]));
   const vigente = await obtenerRecetaVigente(producto.id);
   // La versión que ESTA pantalla muestra: cada cambio puntual la manda de vuelta, y si mientras tanto alguien guardó otra, el cambio se rechaza con un mensaje en vez de pisarlo (H7).
   const versionVista = vigente?.version ?? 0;
   const volver = `/catalogo/recetas/${producto.id}`;
   const siguienteOrdenPaso = vigente?.pasos.length ? Math.max(...vigente.pasos.map((p) => p.orden)) + 1 : 1;
+
+  // M.3-A5: lo que esta pantalla muestra de OTRAS sucursales (de dónde copiar la receta, en cuáles falta un ingrediente, dónde está calibrado) se limita a las sucursales que el usuario puede ver: la LECTURA
+  // se ensancha a las sucursales donde el rol ve `receta_sucursal_copiar` (el mismo «Ver» que exige `leerOrigenDeCopia` al copiar), además de la activa. `sucursalesVisibles` sale de ese alcance (membresías
+  // y gate), nunca de la URL ni del cliente; las consultas reciben la base de este contexto ampliado, y todo lo demás de la pantalla se lee con `ctx.db`. Sin alcance, solo la activa (falla cerrado).
+  const origenes = await lecturaEnSucursalesVisibles(ctx, "receta_sucursal_copiar");
+  const sucursalesVisibles = origenes.alcance?.lectura ?? [ctx.sucursalId];
 
   // Aviso no bloqueante (docs/plan-disponibilidad-por-sucursal-2026-09-23.md §5.6): la receta es del Catálogo Central —
   // validarIngredientes solo exige que cada MP esté disponible EN ALGUNA sucursal, nunca en todas. Acá se avisa, sin
@@ -107,15 +120,15 @@ export default async function RecetaEditorPage({
   if (vigente?.ingredientes.length) {
     await Promise.all(
       vigente.ingredientes.map(async (ing) => {
-        const porSucursal = await disponibilidadPorSucursalDeProducto(ing.insumoProductoId, ctx.db);
+        const porSucursal = await disponibilidadDeProductoEnSucursales(ing.insumoProductoId, ctx.usuarioId, sucursalesVisibles, origenes.db);
         const faltantes = porSucursal.filter((s) => !s.disponible).map((s) => s.sucursalNombre);
         if (faltantes.length) sucursalesSinIngrediente.set(ing.insumoProductoId, faltantes);
 
         if (aceptaSustitutos) {
           const opciones = await listarOpcionesDeSustituto({
             insumoIdExcluido: ing.insumoProducto.insumoId,
-            unidadId: ing.unidadId,
-          }, ctx.db);
+            unidadId: ing.insumoProducto.unidadStockId, // U7 / D3: los sustitutos comparten la unidad de STOCK de la MP (la receta se carga en ella), no la que haya quedado guardada.
+          }, verificacion.db);
           opcionesSustitutoPorIngrediente.set(ing.insumoProductoId, opciones);
         }
       })
@@ -126,7 +139,7 @@ export default async function RecetaEditorPage({
   // (no una por ingrediente) a RendimientoLocalIngrediente.
   const calibracionesPorIngrediente = new Map<string, string[]>();
   if (vigente?.ingredientes.length) {
-    const calibraciones = await listarCalibracionesDeIngredientes(vigente.ingredientes.map((i) => i.id), ctx.db);
+    const calibraciones = await listarCalibracionesDeIngredientes(vigente.ingredientes.map((i) => i.id), ctx.usuarioId, sucursalesVisibles, origenes.db);
     for (const c of calibraciones) {
       const lista = calibracionesPorIngrediente.get(c.recetaIngredienteId) ?? [];
       lista.push(c.sucursal.nombre);
@@ -135,9 +148,10 @@ export default async function RecetaEditorPage({
   }
 
   // Receta propia de la sucursal activa (ADR-009, R3/R4): estado + qué acciones le tocan a este usuario (una clave por acción).
+  // El origen de la copia (`origenes`, más arriba) se lee de las OTRAS sucursales; la receta propia de la sucursal activa y todo lo demás de la pantalla se leen con `ctx.db`.
   const [estadoPropia, otrasConRecetaPropia, nivelEditar, nivelCopiar, nivelVolver] = await Promise.all([
     obtenerEstadoDeRecetaPropia(producto.id, ctx.sucursalId, ctx.db),
-    listarSucursalesConRecetaPropia(producto.id, ctx.sucursalId, ctx.usuarioId, ctx.db),
+    listarSucursalesConRecetaPropia(producto.id, ctx.sucursalId, ctx.usuarioId, origenes.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_editar", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_copiar", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_volver_central", ctx.db),
@@ -345,6 +359,12 @@ export default async function RecetaEditorPage({
             <tbody>
               {vigente.ingredientes.map((ing) => {
                 const enEdicion = editar === ing.insumoProductoId;
+                // U7 / D3: una receta vieja puede traer el ingrediente en otra unidad que la de stock de la MP. No se migra nada: se avisa y el servidor no deja guardar la receta hasta corregirlo.
+                const unidadDeStock = nombreDeUnidad(ing.insumoProducto.unidadStockId);
+                const avisoDeUnidad =
+                  ing.unidadId === ing.insumoProducto.unidadStockId
+                    ? null
+                    : `La unidad guardada (${ing.unidad.nombre}) no coincide con la de stock (${unidadDeStock}): hoy el consumo se calcula en ${unidadDeStock}, no en ${ing.unidad.nombre}. Corregí la cantidad en ${unidadDeStock} (Editar) y guardá; hasta entonces no se puede guardar ningún cambio de esta receta.`;
                 return (
                   <tr key={ing.id} className="border-b">
                     {enEdicion ? (
@@ -366,13 +386,17 @@ export default async function RecetaEditorPage({
                         >
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
                           <CampoNumero name="cantidad" defaultValue={String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
-                          <select name="unidadId" defaultValue={ing.unidadId} required aria-label="Unidad" className="rounded border px-2 py-1.5 text-sm">
-                            {unidades.map((u) => (
-                              <option key={u.id} value={u.id}>
-                                {u.nombre}
-                              </option>
-                            ))}
-                          </select>
+                          {avisoDeUnidad && (
+                            <p role="alert" className="w-full text-xs text-amber-700 dark:text-amber-600">
+                              {avisoDeUnidad}
+                            </p>
+                          )}
+                          {/* Unidad FIJA: la de stock de la MP (el servidor la exige y la relee al guardar). */}
+                          <input type="hidden" name="unidadId" value={ing.insumoProducto.unidadStockId} />
+                          <span title="Unidad de stock de la materia prima" className="rounded border bg-neutral-100 px-2 py-1.5 text-sm dark:bg-neutral-800">
+                            <span className="sr-only">Unidad: </span>
+                            {unidadDeStock}
+                          </span>
                           <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} placeholder="Merma %" className="w-24" />
                           {aceptaSustitutos &&
                             (() => {
@@ -415,6 +439,11 @@ export default async function RecetaEditorPage({
                       <>
                         <td className="py-2">
                           {ing.insumoProducto.nombre}
+                          {avisoDeUnidad && (
+                            <p role="alert" className="text-xs text-amber-700 dark:text-amber-600">
+                              {avisoDeUnidad}
+                            </p>
+                          )}
                           {sucursalesSinIngrediente.has(ing.insumoProductoId) && (
                             <p role="alert" className="text-xs text-amber-700 dark:text-amber-600">
                               No disponible en {sucursalesSinIngrediente.get(ing.insumoProductoId)!.join(", ")} — ahí este plato no se va a poder vender.
@@ -479,10 +508,12 @@ export default async function RecetaEditorPage({
         <FormConResultado
           accion={async (formData: FormData) => {
             "use server";
+            const insumoProductoId = String(formData.get("insumoProductoId") ?? "");
             return agregarIngredienteAReceta(producto.id, {
-              insumoProductoId: String(formData.get("insumoProductoId") ?? ""),
+              insumoProductoId,
               cantidad: Number(formData.get("cantidad")),
-              unidadId: String(formData.get("unidadId") ?? ""),
+              // U7 / D3: la unidad es la de stock de la MP elegida (el servidor la vuelve a comparar con la real al guardar).
+              unidadId: unidadDeStockPorMp[insumoProductoId] ?? "",
               mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
             }, versionVista);
           }}
@@ -493,20 +524,13 @@ export default async function RecetaEditorPage({
             <option value="">Materia prima</option>
             {mpDisponibles.map((mp) => (
               <option key={mp.id} value={mp.id}>
-                {mp.nombre}
+                {mp.nombre} ({nombreDeUnidad(mp.unidadStockId)})
               </option>
             ))}
           </select>
+          <p className="text-xs text-neutral-500">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
           <div className="flex gap-2">
             <CampoNumero name="cantidad" placeholder="Cantidad" required className="flex-1" />
-            <select name="unidadId" required className="flex-1 rounded border px-3 py-2">
-              <option value="">Unidad</option>
-              {unidades.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre}
-                </option>
-              ))}
-            </select>
             <CampoNumero name="mermaPorcentaje" placeholder="Merma %" className="w-28" />
           </div>
           <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">

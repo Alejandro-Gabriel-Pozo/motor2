@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 // `refrescarVistaSiHaceFalta` llama a `refresh` de Next: se cuenta (no se ejecuta). Cuántas veces refresca cada acción es parte de lo que se fija.
 vi.mock("next/cache", () => ({ refresh: vi.fn(), revalidatePath: vi.fn() }));
 

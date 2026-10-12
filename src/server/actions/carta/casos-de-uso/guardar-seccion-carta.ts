@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoGuardarSeccionCarta, ResultadoGuardarSeccionCarta } from "@/core/features/carta/secciones.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cambiarDatosDeSeccionCarta, crearSeccionDeCarta } from "@/server/persistencia/carta/secciones";

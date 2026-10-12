@@ -10,6 +10,7 @@ import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
+import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 
 const ACCIONES: { value: AccionConteo; label: string; titulo: string }[] = [
   { value: "AJUSTAR", label: "Ajustar", titulo: "Escribe el movimiento de corrección ahora — el stock queda en lo contado." },
@@ -49,8 +50,9 @@ interface EstadoFila {
 /** Filas por llamada al servidor. Una grilla normal cabe en una sola; la de más filas se manda en tandas (el servidor rechaza más de 60 por llamada). */
 const LOTE = 50;
 
+// El día de hoy en Argentina (no en UTC: desde las 21:00 locales UTC ya es mañana). Esta pantalla no recibe la zona de la empresa, así que usa la constante.
 function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
+  return diaDeCalendario(new Date(), ZONA_ARGENTINA);
 }
 
 function claveBase(f: { productoId: string; loteVencimiento: string | null }) {
@@ -137,6 +139,12 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
       return;
     }
 
+    // El campo de fecha no es `required`: un día borrado no se convierte (mediodiaDelDia lanzaría), se avisa igual que lo hace el servidor con una fecha inválida.
+    if (!fechaConteo) {
+      setResumen({ ok: false, texto: "La fecha no es válida.", errores: [] });
+      return;
+    }
+
     startTransition(async () => {
       // La grilla se manda al servidor en una llamada (registrarConteosFisicos): la sesión y el permiso se comprueban una vez,
       // al principio, así que no pueden vencer a mitad del recorrido (antes era una llamada por fila y las ya escritas quedaban
@@ -155,7 +163,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
               seccionId,
               loteVencimiento: f.loteVencimiento ? new Date(f.loteVencimiento) : null,
               conteoReal: numeroDelCampo(estado.conteoReal) ?? NaN,
-              fechaConteo: new Date(fechaConteo),
+              fechaConteo: mediodiaDelDia(fechaConteo, ZONA_ARGENTINA),
               accion: estado.accion,
               detalle: estado.detalle || undefined,
               claveIdempotencia: claveDeLaFila(f.key, JSON.stringify([f.productoId, f.loteVencimiento, estado.conteoReal, fechaConteo, estado.accion, estado.detalle])),

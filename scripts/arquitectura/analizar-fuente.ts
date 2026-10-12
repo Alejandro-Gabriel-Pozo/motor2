@@ -9,7 +9,7 @@
  *   P0  puro: ni valores externos al dominio, ni reloj, azar, entorno, red, disco o base.
  *   P1  puro salvo TIPOS de Prisma (`import type`), que no existen en ejecución.
  *   P2  usa valores de Prisma (p. ej. `Prisma.Decimal`), el reloj, el azar o el entorno: no hace I/O, pero no es determinista o está atado al ORM.
- *   P3  consulta o escribe la base, usa red o disco, o importa el cliente (`lib/db`, `core/auth/base`).
+ *   P3  consulta o escribe la base, usa red o disco, o importa el cliente (`lib/db`, `server/sesion/base`).
  *   P4  depende del servidor o del framework (`server-only`, `react`, `next/*`).
  *
  * Es una aproximación SINTÁCTICA (sin el verificador de tipos): un import «de valor» solo cuenta como valor si el nombre se usa fuera de
@@ -29,7 +29,7 @@ export interface SenalesDeFuente {
   prismaDeTipo: boolean;
   serverOnly: boolean;
   reactONext: boolean;
-  /** Importa el cliente de base (`lib/db`) o la fábrica de bases por empresa (`core/auth/base`) como valor. */
+  /** Importa el cliente de base (`lib/db`) o la fábrica de bases por empresa (`server/sesion/base`) como valor. */
   importaCliente: boolean;
   /** Llamadas de lectura sobre un modelo (`x.producto.findMany`) o SQL crudo de lectura. */
   leeLaBase: boolean;
@@ -68,7 +68,7 @@ export function delegadosDeModelos(schemaPrisma: string): Set<string> {
 }
 
 const esModuloPrisma = (modulo: string) => modulo.startsWith("@prisma/client") || modulo.endsWith("/lib/db-tipos");
-const esModuloDeCliente = (modulo: string) => /(^|\/)lib\/db$/.test(modulo) || /(^|\/)core\/auth\/base$/.test(modulo);
+const esModuloDeCliente = (modulo: string) => /(^|\/)lib\/db$/.test(modulo) || /(^|\/)server\/sesion\/base$/.test(modulo);
 const esModuloReactONext = (modulo: string) => /^(next|react|react-dom)(\/|$)/.test(modulo);
 const esModuloDeDisco = (modulo: string) => /^(node:)?fs(\/promises)?$/.test(modulo);
 

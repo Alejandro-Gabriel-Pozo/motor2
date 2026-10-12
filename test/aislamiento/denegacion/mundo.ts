@@ -151,6 +151,9 @@ export const HUELLA_DE_E2 = 8888;
 /** Los nombres de las sucursales S2 y S3 de E1: llevan marcador para delatar de dónde salió una fila de `Sucursal`. */
 export const NOMBRE_DE_S2 = "Sucursal Dos ZZ-S2";
 export const NOMBRE_DE_S3 = "Sucursal Tres ZZ-S3";
+/** El slug público de S2 y de S3 (`SucursalPublica`, GOBIERNO: lo siembra `id("slug")` con la marca de la sucursal, en minúscula): las lecturas de gobierno que listan la sucursal lo devuelven por diseño junto con el nombre. */
+export const SLUG_DE_S2 = "zz-s2-slug";
+export const SLUG_DE_S3 = "zz-s3-slug";
 
 export interface Mundo {
   e1: KitDeEmpresa;
@@ -247,6 +250,9 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const seccion = await db.seccion.create({ data: { id: id("seccion"), empresaId, sucursalId, nombre: `Sección ${marca}` } });
   const seccion2 = await db.seccion.create({ data: { id: id("seccion-b"), empresaId, sucursalId, nombre: `Sección B ${marca}` } });
   const seccionVecina = await db.seccion.create({ data: { id: id("seccion-vecina"), empresaId, sucursalId: vecinaId, nombre: `Sección vecina de ${marca}` } });
+  // Una sección dada de baja de la sucursal propia: la lectura `seccionesDesactivadas` (P17) devuelve solo estas, y la matriz de
+  // denegación exige que la lectura PROPIA devuelva algo con la marca propia.
+  await db.seccion.create({ data: { id: id("seccion-baja"), empresaId, sucursalId, nombre: `Sección dada de baja ${marca}`, activa: false } });
   for (const productoId of [k.productoId, k.productoPvId, k.productoMp2Id, k.productoMp3Id, k.productoPv2Id]) {
     await db.disponibilidadProducto.create({ data: { empresaId, sucursalId, productoId, disponible: true } });
   }

@@ -76,7 +76,7 @@ describe("analizador de pureza: niveles", () => {
     expect(nivel('export const a = () => fetch("https://x");')).toBe("P3");
     expect(nivel('import { readFileSync } from "node:fs";\nexport const a = () => readFileSync("x");')).toBe("P3");
     expect(nivel('import { prisma } from "@/lib/db";\nexport const a = () => prisma;')).toBe("P3");
-    expect(nivel('import { dbDeEmpresa } from "@/core/auth/base";\nexport const a = () => dbDeEmpresa;')).toBe("P3");
+    expect(nivel('import { dbDeEmpresa } from "@/server/sesion/base";\nexport const a = () => dbDeEmpresa;')).toBe("P3");
   });
 
   it("P3 gana sobre P2 y P4 gana sobre todo", () => {

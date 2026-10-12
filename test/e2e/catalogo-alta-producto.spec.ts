@@ -16,7 +16,8 @@ test("crear categoría inline no pisa el nombre ya tipeado del producto", async 
   await page.locator('input[name="nombre"]').fill(nombreProducto);
 
   await page.getByRole("button", { name: "+ Nueva categoría" }).click();
-  const modal = page.locator(".fixed.inset-0");
+  // El modal es un `<dialog>` con rol de diálogo (antes se lo buscaba por sus clases CSS, un detalle de implementación).
+  const modal = page.getByRole("dialog");
   const nombreCategoria = `E2E Categoría ${Date.now()}`;
   await modal.locator("input").first().fill(nombreCategoria);
   await modal.getByRole("button", { name: "Crear" }).click();

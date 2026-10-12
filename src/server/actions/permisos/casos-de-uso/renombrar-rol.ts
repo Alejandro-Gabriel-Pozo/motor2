@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { mensajeSiNombreNoPermitidoParaElRol, normalizarNombreDeRol } from "@/core/permisos/nombres-de-rol";

@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoGuardarPortalEmpresa, ResultadoGuardarPortalEmpresa } from "@/core/features/carta/portal-empresa.schema";
 import { exito } from "@/core/resultado-caso";
 import { guardarValoresDelPortal } from "@/server/persistencia/carta/portal-empresa";

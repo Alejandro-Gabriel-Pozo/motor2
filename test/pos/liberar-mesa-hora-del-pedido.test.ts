@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 /**
  * La hora que fija el envoltorio (`ctx.ahora`): el guard es el REAL; solo se reemplaza la hora que `conGate` le entrega a la acción, como si el pedido hubiera

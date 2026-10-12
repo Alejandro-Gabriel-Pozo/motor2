@@ -1,8 +1,9 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { validarCantidad } from "@/core/datos/cantidad";
-import { MENSAJE_SECCION_ORIGEN_NO_PROPIA, MENSAJE_SUCURSAL_NO_DISPONIBLE } from "@/core/features/traspasos/traspaso-comandos.guard";
+import { MENSAJE_SECCION_ORIGEN_NO_PROPIA, MENSAJE_SUCURSAL_NO_DISPONIBLE, mensajeSucursalPropiaInactivaParaEnviar } from "@/core/features/traspasos/traspaso-comandos.guard";
 import type { ComandoCrearEnvioDirectoTraspaso, ResultadoCrearEnvioDirectoTraspaso } from "@/core/features/traspasos/traspaso.schema";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
@@ -29,7 +30,10 @@ import { verificarProductoTransferible } from "./producto-transferible";
  * de escritura). Antes, las validaciones (y un primer chequeo de stock) corrían FUERA de la transacción y el stock se volvía a leer
  * adentro; ahora todo se lee adentro una sola vez, con el mismo texto de «Stock insuficiente».
  *  1. (sin base) la sucursal a la que se le manda no puede ser ESTA;
- *  2. existe y está activa;
+ *  2. P15: ESTA sucursal (la de quien envía) está activa —se lee acá, con el `tx`, no se confía en la sesión, que se resolvió antes— y la de destino existe y está activa. Las dos filas se LEEN a propósito: el
+ *     apagado de una sucursal (`actualizarActivoSucursalCasoDeUso`) lee los traspasos ENVIADA y escribe `Sucursal.activo`; este envío lee `activo` de las dos puntas y escribe un traspaso ENVIADA. Con las dos
+ *     lecturas Postgres ve el ciclo y aborta una de las dos (el reintento da el rechazo de negocio); sin la lectura de la propia hay una sola dependencia, no hay ciclo y «apagar y después enviar» dejaría un
+ *     ENVIADA desde una sucursal apagada, que nadie podría confirmar;
  *  3. la sección de origen es de ESTA sucursal;
  *  4. el producto es transferible en origen Y destino (el paso compartido `producto-transferible.ts`);
  *  5. la cantidad, contra los decimales de la unidad de stock, ANTES del stock (así el error nombra la cantidad tecleada, no un «stock
@@ -37,19 +41,26 @@ import { verificarProductoTransferible } from "./producto-transferible";
  *  6. el stock disponible en la sección de origen;
  *  7. escritura del traspaso ENVIADO y de su SALIDA (persistencia) y el mensaje de éxito.
  *
- * @contract Origen envía directo (PUSH) a otra sucursal, escribiendo la SALIDA y el traspaso ENVIADO juntos en un solo paso.
+ * @contract Origen envía directo (PUSH) a otra sucursal activa, desde una sucursal activa, escribiendo la SALIDA y el traspaso ENVIADO juntos en un solo paso.
  * @idempotency No aplica, decisión explícita (M11c) — fuera del alcance de I3 desde la auditoría original; un duplicado nunca deja el stock inconsistente (se deshace con el ciclo normal de rechazo+reingreso).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno además de la escritura conjunta de la salida de Kardex y la creación del traspaso.
  * @ficha permiso=traspaso_enviar_directo transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function crearEnvioDirectoDeTraspasoCasoDeUso(
-  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "transaccion" | "ahora">,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion" | "empresaId" | "alcance" | "ahora">,
   comando: ComandoCrearEnvioDirectoTraspaso
 ): Promise<ResultadoCrearEnvioDirectoTraspaso> {
   if (comando.destinoSucursalId === actor.sucursalId) return fracaso("MISMA_SUCURSAL", "No podés mandarte una transferencia a vos mismo.");
 
-  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCrearEnvioDirectoTraspaso> => {
+  // P2 (RLS por sucursal): el paso compartido `verificarProductoTransferible` pregunta si el producto está disponible EN LA OTRA sucursal (`DisponibilidadProducto`, de sucursal): con la RLS por sucursal, la transacción con el alcance de la
+  // activa daría un falso «no está disponible en …». La transacción se abre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como estaba): la salida es un sí/no (el mensaje nombra solo la sucursal, dato público), y todo
+  // lo que se escribe sigue acotado a la sucursal activa. El orden de los pasos no cambia.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+  return conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoCrearEnvioDirectoTraspaso> => {
+    const propia = await cargarSucursalParaTraspaso(tx, actor.sucursalId);
+    if (!propia || !propia.activo) return fracaso("SUCURSAL_INACTIVA", mensajeSucursalPropiaInactivaParaEnviar(propia?.nombre ?? actor.sucursalNombre));
+
     const destino = await cargarSucursalParaTraspaso(tx, comando.destinoSucursalId);
     if (!destino || !destino.activo) return fracaso("SUCURSAL_NO_DISPONIBLE", MENSAJE_SUCURSAL_NO_DISPONIBLE);
 

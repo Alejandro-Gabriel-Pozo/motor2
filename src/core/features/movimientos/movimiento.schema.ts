@@ -1,4 +1,4 @@
-import type { Proceso } from "@prisma/client";
+import type { Proceso } from "@/core/datos/enumerados-del-esquema";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -50,6 +50,7 @@ export type CodigoRegistrarMovimiento =
   | "CONFLICTO_IDEMPOTENCIA"
   | "SECCION_NO_ENCONTRADA"
   | "SECCION_DESTINO_NO_ENCONTRADA"
+  | "SECCION_INACTIVA"
   | "MOTIVO_NO_DISPONIBLE"
   | "DESTINO_NO_DISPONIBLE"
   | "PROVEEDOR_NO_DISPONIBLE"

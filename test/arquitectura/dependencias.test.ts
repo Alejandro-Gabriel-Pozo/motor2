@@ -35,6 +35,7 @@ interface ExcepcionDeCiclo {
 }
 interface Excepciones {
   "core-sin-react-next": ExcepcionDeArchivo[];
+  "sesion-capa": ExcepcionDeArchivo[];
   "ui-sin-prisma": ExcepcionDeArchivo[];
   "db-solo-desde-auth-y-carta-publica": ExcepcionDeArchivo[];
   "base-solo-desde-lista": ExcepcionDeArchivo[];
@@ -59,8 +60,10 @@ const CONFIG = requerir(join(RAIZ, ".dependency-cruiser.cjs")) as Config;
 const RE_UI = /^src\/(app|components)\//;
 const RE_CORE = /^src\/core\//;
 const RE_DB = /^src\/lib\/db\.ts$/;
-const RE_BASE = /^src\/core\/auth\/base\.ts$/;
+const RE_BASE = /^src\/server\/sesion\/base\.ts$/;
 const RE_REACT_NEXT = /^node_modules\/(@types\/)?(react|react-dom|next)\//;
+const RE_SESION = /^src\/server\/sesion\//;
+const RE_NEXT = /^node_modules\/next\//;
 const { DOMINIOS_DE_NEGOCIO } = requerir(join(RAIZ, ".dependency-cruiser-dominios.cjs")) as { DOMINIOS_DE_NEGOCIO: string[] };
 /** Un archivo de `core/<dominio de negocio>/` que NO es su fachada (`public.ts` / `public-servidor.ts`). */
 const RE_INTERNO_DE_DOMINIO = new RegExp(`^src/core/(${DOMINIOS_DE_NEGOCIO.join("|")})/(?!public(-servidor)?[.]ts$)`);
@@ -121,7 +124,7 @@ describe("dependency-cruiser: la config no se afloja por la puerta de atrás", (
 });
 
 describe(".dependency-cruiser-excepciones.cjs: toda excepción tiene motivo y apunta a algo que existe", () => {
-  const deArchivo = [...EXCEPCIONES["core-sin-react-next"], ...EXCEPCIONES["ui-sin-prisma"], ...EXCEPCIONES["db-solo-desde-auth-y-carta-publica"], ...EXCEPCIONES["base-solo-desde-lista"], ...EXCEPCIONES["ui-sin-internals-de-dominio"]];
+  const deArchivo = [...EXCEPCIONES["core-sin-react-next"], ...EXCEPCIONES["sesion-capa"], ...EXCEPCIONES["ui-sin-prisma"], ...EXCEPCIONES["db-solo-desde-auth-y-carta-publica"], ...EXCEPCIONES["base-solo-desde-lista"], ...EXCEPCIONES["ui-sin-internals-de-dominio"]];
 
   it("toda excepción lleva un motivo no vacío", () => {
     const sinMotivo = [
@@ -176,14 +179,14 @@ describe("db-solo-desde-auth-y-carta-publica: los importadores de @/lib/db, en l
   });
 });
 
-describe("base-solo-desde-lista: los importadores de core/auth/base.ts, en las dos direcciones", () => {
-  it("el conjunto de archivos de src/ que importan core/auth/base.ts es exactamente el de la lista", () => {
+describe("base-solo-desde-lista: los importadores de server/sesion/base.ts, en las dos direcciones", () => {
+  it("el conjunto de archivos de src/ que importan server/sesion/base.ts es exactamente el de la lista", () => {
     const reales = modulosCon(/^src\//, (d) => RE_BASE.test(d.resolved));
     const listados = EXCEPCIONES["base-solo-desde-lista"].map((e) => e.ruta).sort();
     const sobran = diferencia(listados, reales);
     const faltan = diferencia(reales, listados);
-    expect(sobran, `Estos ya no importan core/auth/base.ts: sacalos de base-solo-desde-lista en .dependency-cruiser-excepciones.cjs:\n${sobran.join("\n")}`).toEqual([]);
-    expect(faltan, `Estos archivos importan core/auth/base.ts sin estar en la lista (reciban la base del contexto: ctx.db / db: Db):\n${faltan.join("\n")}`).toEqual([]);
+    expect(sobran, `Estos ya no importan server/sesion/base.ts: sacalos de base-solo-desde-lista en .dependency-cruiser-excepciones.cjs:\n${sobran.join("\n")}`).toEqual([]);
+    expect(faltan, `Estos archivos importan server/sesion/base.ts sin estar en la lista (reciban la base del contexto: ctx.db / db: Db):\n${faltan.join("\n")}`).toEqual([]);
   });
 });
 
@@ -223,6 +226,15 @@ describe("paginas-solo-consultas: las excepciones, en las dos direcciones", () =
   });
 });
 
+describe("core-sin-prisma (Fase 6, tramo 6b): el núcleo no depende de Prisma ni de lib, sin excepciones", () => {
+  it("la regla está en la config, como error, desde todo src/core/ y sin pathNot", () => {
+    const regla = CONFIG.forbidden.find((r) => r.name === "core-sin-prisma") as (ReglaConfig & { from: unknown; to: unknown }) | undefined;
+    expect(regla?.severity).toBe("error");
+    expect(regla?.from).toEqual({ path: "^src/core/" });
+    expect(regla?.to).toEqual({ path: ["^src/lib/", "^node_modules/(@prisma|\\.prisma)/"] });
+  });
+});
+
 describe("core-sin-react-next: las excepciones, en las dos direcciones", () => {
   it("el conjunto de archivos de core/ que importan react/react-dom/next es exactamente el de la lista", () => {
     const reales = modulosCon(RE_CORE, (d) => RE_REACT_NEXT.test(d.resolved));
@@ -231,6 +243,17 @@ describe("core-sin-react-next: las excepciones, en las dos direcciones", () => {
     const faltan = diferencia(reales, listados);
     expect(sobran, `Estos ya no importan react/next: sacalos de core-sin-react-next en .dependency-cruiser-excepciones.cjs:\n${sobran.join("\n")}`).toEqual([]);
     expect(faltan, `Estos archivos de core/ importan react/next sin estar exceptuados:\n${faltan.join("\n")}`).toEqual([]);
+  });
+});
+
+describe("sesion-capa (Next): las excepciones, en las dos direcciones", () => {
+  it("el conjunto de archivos de server/sesion/ que importan next es exactamente el de la lista (Fase 6, tramo 6a: las mismas que tenían en core-sin-react-next)", () => {
+    const reales = modulosCon(RE_SESION, (d) => RE_NEXT.test(d.resolved));
+    const listados = EXCEPCIONES["sesion-capa"].map((e) => e.ruta).sort();
+    const sobran = diferencia(listados, reales);
+    const faltan = diferencia(reales, listados);
+    expect(sobran, `Estos ya no importan next: sacalos de sesion-capa en .dependency-cruiser-excepciones.cjs:\n${sobran.join("\n")}`).toEqual([]);
+    expect(faltan, `Estos archivos de server/sesion/ importan next sin estar exceptuados:\n${faltan.join("\n")}`).toEqual([]);
   });
 });
 

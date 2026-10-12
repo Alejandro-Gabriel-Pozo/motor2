@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Prisma, PrismaClient } from "@prisma/client";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 /**
  * Las consultas que hace `agregarItems` (`ctx.db` y `ctx.transaccion`) se anotan en `registro.consultas`: el guard es el REAL (sus lecturas, que van por el
@@ -32,7 +32,8 @@ vi.mock("../../src/server/actions/con-permiso", async (importOriginal) => {
   };
 });
 
-import { limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { fijarModulosActivos } from "../setup/modulos";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { agregarItems } from "../../src/server/actions/pos/cuenta-pedido";
 
@@ -46,10 +47,17 @@ import { agregarItems } from "../../src/server/actions/pos/cuenta-pedido";
  * (cada producto se valida con sus propias lecturas: producto, disponibilidad, precio, descuento) queda DOCUMENTADO acá, NO arreglado (decisión del dueño,
  * 2026-10-08: D5 no se toca).
  *
- * Única edición posterior, a propósito (S-22 / D2, tanda T10 del endurecimiento de seguridad): los dos escenarios que traen una promo suman UNA lectura del
- * registro de módulos (`moduloEmpresa.findMany`), porque sin el módulo Promociones el pedido se rechaza. Los pedidos de puros sueltos no la hacen.
+ * Primera edición posterior, a propósito (S-22 / D2, tanda T10 del endurecimiento de seguridad): los dos escenarios que traen una promo suman UNA lectura del
+ * registro de módulos (`moduloEmpresa.findMany`), porque sin el módulo Promociones el pedido se rechaza. Los pedidos de puros sueltos no la hacían.
+ *
+ * Segunda edición, a propósito (P18 / D18, decisión del dueño 2026-10-11: sin Carta no rige el descuento de producto): el registro de módulos se lee SIEMPRE,
+ * una vez por pedido y después de la cuenta, para decidir si rige el descuento; por eso suman esa lectura también «1 suelto», «3 sueltos» y «rechazo en el segundo
+ * ítem». «Cuenta cerrada» no cambia (devuelve antes de leerlo) y los escenarios con promo quedan iguales (ya la hacían).
+ *
+ * Tercera edición, SOLO ADITIVA (P3 del Paquete 1, idempotencia I3): ningún escenario de arriba cambia (sin clave no se lee ni se escribe nada nuevo). Se suma el bloque «con clave de idempotencia»: UNA lectura
+ * (`agregadoDeCuenta.findUnique`, la primera de todas) y UNA escritura (`agregadoDeCuenta.create`, la última, después de los ítems); y el reintento, que hace esa única lectura y no escribe nada.
  */
-const ESCRITURAS = new Set(["promoCuenta.create", "cuentaItem.createMany"]);
+const ESCRITURAS = new Set(["promoCuenta.create", "cuentaItem.createMany", "agregadoDeCuenta.create"]);
 
 function contar(consultas: readonly string[]): string[] {
   const porTipo = new Map<string, number>();
@@ -112,10 +120,25 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "cuentaItem.createMany×1",
       "descuentoProductoSucursal.findMany×1",
       "disponibilidadProducto.findUnique×1",
+      "moduloEmpresa.findMany×1", // P18 / D18: el registro de módulos se lee SIEMPRE (una vez): decide si rige el descuento de producto (solo con Carta).
       "precioLocalProducto.findMany×1",
       "producto.findUnique×1",
     ]);
     expect(escriturasAlFinal(consultas)).toEqual(["cuentaItem.createMany"]);
+  });
+
+  it("P18 / D18: con Carta apagada, 1 suelto NO lee el descuento de producto (lee el registro de módulos una vez) y congela el precio de lista", async () => {
+    await fijarModulosActivos(EMPRESA_POR_DEFECTO_ID, ["salon"]);
+    await prisma.descuentoProductoSucursal.create({ data: { productoId: s.milanesa.id, sucursalId: s.sucursalId, porcentaje: 15 } });
+    registro.consultas.length = 0;
+    const { r, consultas } = await medir(() => agregarItems(cuentaId, [{ productoId: s.milanesa.id, cantidad: 1 }]));
+    expect(r.ok, r.mensaje).toBe(true);
+    expect(consultas.filter((c) => c.startsWith("descuentoProductoSucursal."))).toEqual([]);
+    expect(consultas.filter((c) => c === "moduloEmpresa.findMany")).toHaveLength(1);
+    expect(escriturasAlFinal(consultas)).toEqual(["cuentaItem.createMany"]);
+    const [item] = await prisma.cuentaItem.findMany({ where: { cuentaId } });
+    expect(Number(item.precioUnitario)).toBe(9000);
+    expect(item.precioCartaUnitario).toBeNull();
   });
 
   it("3 sueltos (el N+1 por ítem, documentado)", async () => {
@@ -134,6 +157,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "cuentaItem.createMany×1",
       "descuentoProductoSucursal.findMany×3",
       "disponibilidadProducto.findUnique×3",
+      "moduloEmpresa.findMany×1", // P18 / D18: UNA vez por pedido, no por ítem.
       "precioLocalProducto.findMany×3",
       "producto.findUnique×3",
     ]);
@@ -151,7 +175,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "descuentoProductoSucursal.findMany×2",
       "generoCarta.findMany×1",
       "itemAgrupadoCarta.findMany×2",
-      "moduloEmpresa.findMany×1", // S-22 / D2: el pedido trae una promo, así que se lee UNA vez el registro de módulos (Promociones prendido) y se comparte con la lectura de la promo.
+      "moduloEmpresa.findMany×1", // S-22 / D2: se lee UNA vez el registro de módulos (Promociones prendido) y se comparte con la lectura de la promo.
       "precioLocalProducto.findMany×2",
       "producto.findMany×2",
       "promoCarta.findFirst×1",
@@ -175,7 +199,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "disponibilidadProducto.findUnique×1",
       "generoCarta.findMany×1",
       "itemAgrupadoCarta.findMany×2",
-      "moduloEmpresa.findMany×1", // S-22 / D2: ídem (solo cuando el pedido trae promos).
+      "moduloEmpresa.findMany×1", // S-22 / D2: ídem (una sola lectura, compartida con la promo).
       "precioLocalProducto.findMany×3",
       "producto.findMany×2",
       "producto.findUnique×1",
@@ -201,6 +225,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "cuenta.findFirst×1",
       "descuentoProductoSucursal.findMany×1",
       "disponibilidadProducto.findUnique×1",
+      "moduloEmpresa.findMany×1", // P18 / D18: se lee antes de validar el primer ítem.
       "precioLocalProducto.findMany×1",
       "producto.findUnique×2",
     ]);
@@ -212,6 +237,60 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
     const { r, consultas } = await medir(() => agregarItems(cuentaId, [{ productoId: s.milanesa.id, cantidad: 1 }]));
     expect(r).toEqual({ ok: false, mensaje: "La cuenta de la mesa 4 ya está cerrada." });
     expect(contar(consultas)).toEqual(["cuenta.findFirst×1"]);
+    expect(escriturasAlFinal(consultas)).toEqual([]);
+  });
+});
+
+describe("agregarItems CON clave de idempotencia (P3, I3): +1 lectura y +1 escritura, y el reintento solo lee", () => {
+  const CLAVE = "33333333-3333-4333-8333-333333333333";
+
+  it("1 suelto con clave: las mismas consultas de siempre + la lectura del comprobante + su escritura al final, después de los ítems", async () => {
+    const { r, consultas } = await medir(() => agregarItems(cuentaId, [{ productoId: s.milanesa.id, cantidad: 1 }], [], CLAVE));
+    expect(r.ok, r.mensaje).toBe(true);
+    expect(contar(consultas)).toEqual([
+      "agregadoDeCuenta.create×1", // +1 escritura
+      "agregadoDeCuenta.findUnique×1", // +1 lectura
+      "capacidadSucursal.findMany×2",
+      "cuenta.findFirst×1",
+      "cuentaItem.createMany×1",
+      "descuentoProductoSucursal.findMany×1",
+      "disponibilidadProducto.findUnique×1",
+      "moduloEmpresa.findMany×1",
+      "precioLocalProducto.findMany×1",
+      "producto.findUnique×1",
+    ]);
+    expect(consultas[0], "la lectura del comprobante es el PRIMER paso, antes de mirar la cuenta").toBe("agregadoDeCuenta.findUnique");
+    expect(escriturasAlFinal(consultas)).toEqual(["cuentaItem.createMany", "agregadoDeCuenta.create"]);
+  });
+
+  it("1 promo con clave: promoCuenta.create, cuentaItem.createMany y por último el comprobante", async () => {
+    const { r, consultas } = await medir(() => agregarItems(cuentaId, [], menuDelDia, CLAVE));
+    expect(r.ok, r.mensaje).toBe(true);
+    expect(consultas.filter((c) => c.startsWith("agregadoDeCuenta."))).toEqual(["agregadoDeCuenta.findUnique", "agregadoDeCuenta.create"]);
+    expect(escriturasAlFinal(consultas)).toEqual(["promoCuenta.create", "cuentaItem.createMany", "agregadoDeCuenta.create"]);
+  });
+
+  it("el reintento (misma clave, mismo pedido): UNA lectura y ninguna escritura; no vuelve a validar nada", async () => {
+    expect((await agregarItems(cuentaId, [{ productoId: s.milanesa.id, cantidad: 1 }], [], CLAVE)).ok).toBe(true);
+    const { r, consultas } = await medir(() => agregarItems(cuentaId, [{ productoId: s.milanesa.id, cantidad: 1 }], [], CLAVE));
+    expect(r).toEqual({ ok: true, mensaje: "Se agregó 1 ítem a la mesa 4." });
+    expect(contar(consultas)).toEqual(["agregadoDeCuenta.findUnique×1"]);
+    expect(escriturasAlFinal(consultas)).toEqual([]);
+  });
+
+  it("el reintento con la cuenta ya CERRADA: la misma única lectura (no mira la cuenta) y devuelve el mensaje original", async () => {
+    expect((await agregarItems(cuentaId, [{ productoId: s.milanesa.id, cantidad: 1 }], [], CLAVE)).ok).toBe(true);
+    await prisma.cuenta.update({ where: { id: cuentaId }, data: { cerradaEn: new Date(), cerradaPorId: s.admin.id } });
+    const { r, consultas } = await medir(() => agregarItems(cuentaId, [{ productoId: s.milanesa.id, cantidad: 1 }], [], CLAVE));
+    expect(r).toEqual({ ok: true, mensaje: "Se agregó 1 ítem a la mesa 4." });
+    expect(contar(consultas)).toEqual(["agregadoDeCuenta.findUnique×1"]);
+    expect(escriturasAlFinal(consultas)).toEqual([]);
+  });
+
+  it("rechazo con clave (materia prima): lee el comprobante, no escribe nada y no consume la clave", async () => {
+    const { r, consultas } = await medir(() => agregarItems(cuentaId, [{ productoId: s.muzzarella.id, cantidad: 1 }], [], CLAVE));
+    expect(r).toEqual({ ok: false, mensaje: "«Muzzarella» no se puede pedir: solo se piden productos de venta (PV)." });
+    expect(consultas.filter((c) => c.startsWith("agregadoDeCuenta."))).toEqual(["agregadoDeCuenta.findUnique"]);
     expect(escriturasAlFinal(consultas)).toEqual([]);
   });
 });

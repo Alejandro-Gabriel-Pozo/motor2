@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { dbDeEmpresa, dbDeUsuario } from "@/core/auth/base";
+import { dbDeEmpresa, dbDeUsuario } from "@/server/sesion/base";
 import type { CuentaDeGoogle } from "@/core/auth/invitacion";
 import { crearRegistroDeRevalidacion } from "@/core/auth/revalidacion-de-sesion";
 import { invitacionHabilitaElIngreso } from "./invitacion";
@@ -9,9 +9,8 @@ import { vincularCuentaConInvitacion } from "./vincular-cuenta";
 /**
  * El GATE DE LOGIN (Hito 3, B3-2 de `docs/plan-hito-3-pureza.md`; O.24): vivía en `core/auth/acceso.ts` y no era núcleo (lee la base con el `prisma` global y por empresa y el reloj).
  * Es infraestructura de sesión y lo usa solo `lib/auth.ts` (el callback `signIn` de Auth.js): nace con él `server/sesion/`, la capa del login
- * previa al contexto de empresa (ADR-024). Su reloj (`new Date()` de la sesión abierta y la hora que les pasa a la invitación y a la vinculación, que desde B3-9 la reciben
- * obligatoria: es el ÚNICO reloj de `server/sesion`) queda DECLARADO hasta la Fase 6 en `test/arquitectura/server-sesion.test.ts`; lo que la capa no puede importar lo fija la
- * regla `sesion-capa` de `.dependency-cruiser.cjs`. Ya no lee el entorno: desde S-17 (T8 del endurecimiento, D5 del dueño) no hay vía por dominio de correo.
+ * previa al contexto de empresa (ADR-024). No lee el reloj: la hora (`ahora`, obligatoria, sin valor por defecto) la fija el callback `signIn` de `lib/auth.ts` UNA vez por inicio de sesión (Fase 6, tramo c; O.227) y es la misma para la sesión
+ * abierta, la invitación y la vinculación (que desde B3-9 la reciben obligatoria). Lo que la capa no puede importar lo fija la regla `sesion-capa` de `.dependency-cruiser.cjs`. Ya no lee el entorno: desde S-17 (T8 del endurecimiento, D5 del dueño) no hay vía por dominio de correo.
  */
 
 /**
@@ -31,7 +30,7 @@ import { vincularCuentaConInvitacion } from "./vincular-cuenta";
  *  2. Invitación (E5, ADR-020): llega con el token de una invitación de gerente PENDIENTE, no vencida, de una empresa en alta, y el email de
  *     la cuenta de Google es EXACTAMENTE el invitado. Solo deja llegar a la pantalla de aceptación; el kill-switch de arriba sigue mandando.
  */
-export async function emailPuedeIniciarSesion(email: string, tokenDeInvitacion?: string): Promise<boolean> {
+export async function emailPuedeIniciarSesion(email: string, tokenDeInvitacion: string | undefined, ahora: Date): Promise<boolean> {
   const emailNorm = email.trim().toLowerCase();
   if (!emailNorm) return false;
 
@@ -45,7 +44,7 @@ export async function emailPuedeIniciarSesion(email: string, tokenDeInvitacion?:
 
   if (usuarioExistente && (await tieneSucursalActiva(usuarioExistente.id))) return true;
 
-  return invitacionHabilitaElIngreso(tokenDeInvitacion, emailNorm, new Date());
+  return invitacionHabilitaElIngreso(tokenDeInvitacion, emailNorm, ahora);
 }
 
 function normalizar(email: string): string {
@@ -65,6 +64,8 @@ export async function inicioDeSesionPermitido(entrada: {
   tokenDeSesionAbierta: string | undefined;
   /** Token de la cookie de invitación (E5), si la hay. */
   tokenDeInvitacion?: string | undefined;
+  /** La hora de ESTE inicio de sesión: la fija quien está en el borde (el callback `signIn`) y decide si vence la sesión abierta y la invitación. */
+  ahora: Date;
 }): Promise<boolean> {
   const emailUsuario = normalizar(entrada.emailUsuario);
   if (!emailUsuario || emailUsuario !== normalizar(entrada.emailPerfil)) return false;
@@ -74,10 +75,10 @@ export async function inicioDeSesionPermitido(entrada: {
       where: { sessionToken: entrada.tokenDeSesionAbierta },
       select: { expires: true, user: { select: { email: true } } },
     });
-    if (abierta && abierta.expires > new Date() && normalizar(abierta.user.email) !== emailUsuario) return false;
+    if (abierta && abierta.expires > entrada.ahora && normalizar(abierta.user.email) !== emailUsuario) return false;
   }
 
-  return emailPuedeIniciarSesion(emailUsuario, entrada.tokenDeInvitacion);
+  return emailPuedeIniciarSesion(emailUsuario, entrada.tokenDeInvitacion, entrada.ahora);
 }
 
 /**
@@ -145,13 +146,15 @@ export async function decidirInicioDeSesion(entrada: {
   tokenDeSesionAbierta: string | undefined;
   tokenDeInvitacion: string | undefined;
   cuenta: CuentaDeGoogle | null | undefined;
+  /** La hora de ESTE inicio de sesión: la fija el callback `signIn` y es la misma para el gate, la invitación y la vinculación. */
+  ahora: Date;
 }): Promise<DecisionDeInicio> {
   if (!entrada.emailVerificado || !entrada.cuenta) return false;
   // Cuenta desactivada en toda la plataforma (kill-switch): se explica en vez de mostrar el «acceso denegado» genérico. Quien llega probó que controla ese email con Google.
   const desactivada = await prisma.user.findUnique({ where: { email: normalizar(entrada.emailUsuario) }, select: { activoGlobal: true } });
   if (desactivada && !desactivada.activoGlobal) return "/login?aviso=cuenta-desactivada";
   const permitido = await inicioDeSesionPermitido({
-    emailUsuario: entrada.emailUsuario, emailPerfil: entrada.emailPerfil, tokenDeSesionAbierta: entrada.tokenDeSesionAbierta, tokenDeInvitacion: entrada.tokenDeInvitacion,
+    emailUsuario: entrada.emailUsuario, emailPerfil: entrada.emailPerfil, tokenDeSesionAbierta: entrada.tokenDeSesionAbierta, tokenDeInvitacion: entrada.tokenDeInvitacion, ahora: entrada.ahora,
   });
   if (!permitido) return false;
 
@@ -159,6 +162,6 @@ export async function decidirInicioDeSesion(entrada: {
   if (!usuario) return true;
   if (usuario.accounts.some((a) => a.providerAccountId === entrada.cuenta!.providerAccountId)) return true;
   if (usuario.accounts.length > 0) return "/login?aviso=cuenta-distinta";
-  const vinculada = await vincularCuentaConInvitacion({ token: entrada.tokenDeInvitacion, usuario: { id: usuario.id, email: usuario.email }, cuenta: entrada.cuenta, ahora: new Date() });
+  const vinculada = await vincularCuentaConInvitacion({ token: entrada.tokenDeInvitacion, usuario: { id: usuario.id, email: usuario.email }, cuenta: entrada.cuenta, ahora: entrada.ahora });
   return vinculada ? true : "/login?aviso=falta-invitacion";
 }

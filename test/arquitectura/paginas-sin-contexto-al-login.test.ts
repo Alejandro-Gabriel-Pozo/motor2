@@ -67,7 +67,7 @@ describe("páginas protegidas de (app)/(pos)", () => {
 
   it("ninguna devuelve null cuando no hay contexto (pantalla en blanco): va al login", () => {
     const violaciones = paginas.flatMap((p) => leer(leerDeApp(p), p).retornaNullSinContexto.map((linea) => `src/app/${p}:${linea}`));
-    expect(violaciones, `Sin contexto, la página va al login: usá \`if (!ctx) return irAlLogin();\` (core/auth/ir-al-login).\n${violaciones.join("\n")}`).toEqual([]);
+    expect(violaciones, `Sin contexto, la página va al login: usá \`if (!ctx) return irAlLogin();\` (server/sesion/ir-al-login).\n${violaciones.join("\n")}`).toEqual([]);
   });
 
   it("toda página que pide el contexto llama a irAlLogin() cuando no lo obtiene", () => {

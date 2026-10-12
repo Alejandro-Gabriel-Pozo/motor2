@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { prisma, prismaAdmin } from "../setup/test-db";
+import { prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
 
 /**
  * ADR-007 (A0): la app y los tests corren con un rol SIN privilegios (`motor2_app`), distinto del dueño que migra. Si el rol de
@@ -19,8 +19,9 @@ async function datosDelRol(cliente: typeof prisma) {
 }
 
 describe("rol de ejecución (DATABASE_URL)", () => {
+  // M.3-A8: `prisma` (los fixtures) siembra con el rol de pruebas si hay MOTOR2_PRUEBAS_DATABASE_URL; el rol de EJECUCIÓN de la app es el del cliente del proceso (`src/lib/db`, DATABASE_URL).
   it("no es superusuario, no tiene BYPASSRLS y no es dueño de ninguna tabla", async () => {
-    const rol = await datosDelRol(prisma);
+    const rol = await datosDelRol(prismaSinEmpresa);
     expect(rol.tablas, "la base de tests no tiene tablas (¿faltó migrate deploy?)").toBeGreaterThan(0);
     expect(rol.superusuario, `${rol.usuario} es superusuario: el RLS no lo frenaría`).toBe(false);
     expect(rol.bypassrls, `${rol.usuario} tiene BYPASSRLS: el RLS no lo frenaría`).toBe(false);
@@ -28,9 +29,16 @@ describe("rol de ejecución (DATABASE_URL)", () => {
   });
 
   it("es un rol distinto del dueño que migra (DIRECT_URL), y el dueño sí es dueño de las tablas", async () => {
-    const app = await datosDelRol(prisma);
+    const app = await datosDelRol(prismaSinEmpresa);
     const dueno = await datosDelRol(prismaAdmin);
     expect(app.usuario).not.toBe(dueno.usuario);
     expect(dueno.tablasPropias).toBe(dueno.tablas);
+  });
+
+  it("el cliente de los fixtures (`prisma`, rol de pruebas o, sin la variable, el de la app) tampoco es superusuario, ni salta el RLS, ni es dueño de tablas", async () => {
+    const rol = await datosDelRol(prisma);
+    expect(rol.superusuario, `${rol.usuario} es superusuario`).toBe(false);
+    expect(rol.bypassrls, `${rol.usuario} tiene BYPASSRLS`).toBe(false);
+    expect(rol.tablasPropias, `${rol.usuario} es dueño de ${rol.tablasPropias} tablas`).toBe(0);
   });
 });

@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { listarProductosConReceta } from "@/server/consultas/catalogo/recetas";
 import { NuevaReceta } from "./nueva-receta";
 
@@ -23,7 +24,9 @@ export default async function RecetasPage() {
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
-  const conReceta = await listarProductosConReceta(ctx.db);
+  // P2 (RLS por sucursal): la lista son los productos disponibles en ALGUNA sucursal con receta central: se lee con la base de VERIFICACIÓN (lectura en toda la empresa). Son filas de `Producto` (id, nombre, tipo, versión vigente), nada de otra sucursal.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx);
+  const conReceta = await listarProductosConReceta(verificacion.db);
 
   return (
     <div className="flex flex-col gap-4">

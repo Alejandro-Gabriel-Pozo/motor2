@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { fijarModulosActivos } from "../setup/modulos";
 import { entrarComo, sembrarSalon } from "./salon-fixture";
 import { abrirCuenta, asignarClienteACuenta } from "../../src/server/actions/pos/cuenta-apertura";
 import { agregarItems, enviarACocina } from "../../src/server/actions/pos/cuenta-pedido";
@@ -13,6 +14,7 @@ import { resolverPrecioVenta } from "../../src/server/lecturas/movimientos/preci
 import { obtenerDetalleDeMesa } from "../../src/server/consultas/pos/detalle-de-mesa";
 import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
+import { pediblesDeEntrada } from "../../src/core/pos/selector-carta";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
@@ -193,5 +195,99 @@ describe("producto con descuento en el POS", () => {
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
     const movs = await ventaDe();
     expect(movs.map((m) => Number(m.precioTotal)).sort((a, b) => a - b)).toEqual([2550, 3000]);
+  });
+
+  /**
+   * P18 / D18 (decisión del dueño, 2026-10-11): con el módulo Carta APAGADO no rige el descuento de producto en el salón, igual que las promociones. Se aplica en dos lugares
+   * (`agregarItems` y el selector) y tienen que dar el MISMO precio: el que se muestra es el que se cobra. El descuento se carga con todos los módulos (la acción
+   * `carta_producto_descuento` es de Carta) y recién después se apaga el módulo; la capacidad `precio_local` de la sucursal queda prendida (R1), así que lo único que cambia es el módulo.
+   */
+  describe("D18: Carta apagada", () => {
+    const E = EMPRESA_POR_DEFECTO_ID;
+    const CON_CARTA = ["salon", "carta"];
+    const SIN_CARTA = ["salon"];
+
+    /** Todos los pedibles que ofrece el selector (en cualquier sección y «Fuera de carta»), por producto. */
+    const pedibleDe = async (productoId: string) => {
+      const selector = await cargarSelectorCartaPos(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA);
+      return [...selector.seccionesCarta.flatMap((sec) => sec.entradas.flatMap(pediblesDeEntrada)), ...selector.fueraDeCarta].find((p) => p.productoId === productoId)!;
+    };
+
+    it("CONTROL: con Carta prendida y 15 %, se congela el precio descontado y el de lista", async () => {
+      expect((await guardarDescuentoProducto(s.flan.id, 15)).ok).toBe(true);
+      await fijarModulosActivos(E, CON_CARTA);
+      const cuenta = await abrir();
+      expect((await agregarItems(cuenta.id, [{ productoId: s.flan.id, cantidad: 1 }])).ok).toBe(true);
+      const [flan] = await itemsDe(cuenta.id);
+      expect(Number(flan.precioUnitario)).toBe(2550);
+      expect(Number(flan.precioCartaUnitario)).toBe(3000);
+    });
+
+    it("con Carta apagada se congela el precio de lista y precioCartaUnitario queda null (el descuento configurado no rige)", async () => {
+      expect((await guardarDescuentoProducto(s.flan.id, 15)).ok).toBe(true);
+      await fijarModulosActivos(E, SIN_CARTA);
+      const cuenta = await abrir();
+      expect((await agregarItems(cuenta.id, [{ productoId: s.flan.id, cantidad: 2 }, { productoId: s.milanesa.id, cantidad: 1 }])).ok).toBe(true);
+      const items = await itemsDe(cuenta.id);
+      const flan = items.find((i) => i.productoId === s.flan.id)!;
+      expect(Number(flan.precioUnitario)).toBe(3000);
+      expect(flan.precioCartaUnitario).toBeNull();
+      expect(Number(items.find((i) => i.productoId === s.milanesa.id)!.precioUnitario)).toBe(9000);
+    });
+
+    it("el selector ofrece ese mismo precio, sin precio de lista tachado: lo que se ve es lo que se cobra", async () => {
+      expect((await guardarDescuentoProducto(s.flan.id, 15)).ok).toBe(true);
+      await fijarModulosActivos(E, SIN_CARTA);
+      const flanEnSelector = await pedibleDe(s.flan.id);
+      expect(flanEnSelector.precio).toBe(3000);
+      expect(flanEnSelector).not.toHaveProperty("precioLista");
+
+      const cuenta = await abrir();
+      expect((await agregarItems(cuenta.id, [{ productoId: s.flan.id, cantidad: 1 }])).ok).toBe(true);
+      const [flan] = await itemsDe(cuenta.id);
+      expect(Number(flan.precioUnitario)).toBe(flanEnSelector.precio);
+    });
+
+    it("cerrar con un cliente al 10 % cobra la lista menos 10 % (rige solo el descuento del cliente)", async () => {
+      expect((await guardarDescuentoProducto(s.flan.id, 15)).ok).toBe(true);
+      const cuenta = await abrir();
+      await asignarClienteACuenta(cuenta.id, await crearCliente("Mengano", 10));
+      await fijarModulosActivos(E, SIN_CARTA);
+      expect((await agregarItems(cuenta.id, [{ productoId: s.flan.id, cantidad: 1 }])).ok).toBe(true);
+      await enviarTodo(cuenta.id);
+      expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
+
+      const [mov] = await ventaDe();
+      expect(Number(mov.precioTotal)).toBe(2700); // 3000 × 0,90 — NO 2550 (el 15 % del producto no rige)
+      expect(Number(mov.precioListaUnitario)).toBe(3000);
+    });
+
+    it("S2: un ítem agregado con Carta prendida conserva su descuento congelado si después se apaga el módulo", async () => {
+      expect((await guardarDescuentoProducto(s.flan.id, 15)).ok).toBe(true);
+      await fijarModulosActivos(E, CON_CARTA);
+      const cuenta = await abrir();
+      expect((await agregarItems(cuenta.id, [{ productoId: s.flan.id, cantidad: 1 }])).ok).toBe(true);
+      await fijarModulosActivos(E, SIN_CARTA);
+      await enviarTodo(cuenta.id);
+      expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
+
+      const [mov] = await ventaDe();
+      expect(Number(mov.precioTotal)).toBe(2550);
+      expect(mov.precioListaUnitario).toBeNull();
+    });
+
+    it("aislamiento: un descuento cargado en Norte no cambia el precio en Central, con Carta prendida ni apagada", async () => {
+      const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
+      await prisma.descuentoProductoSucursal.create({ data: { productoId: s.flan.id, sucursalId: norte.id, porcentaje: 50 } });
+      for (const modulos of [CON_CARTA, SIN_CARTA]) {
+        await fijarModulosActivos(E, modulos);
+        const flanEnSelector = await pedibleDe(s.flan.id);
+        expect(flanEnSelector.precio, modulos.join("+")).toBe(3000);
+        expect(flanEnSelector).not.toHaveProperty("precioLista");
+      }
+      const cuenta = await abrir();
+      expect((await agregarItems(cuenta.id, [{ productoId: s.flan.id, cantidad: 1 }])).ok).toBe(true);
+      expect(Number((await itemsDe(cuenta.id))[0].precioUnitario)).toBe(3000);
+    });
   });
 });

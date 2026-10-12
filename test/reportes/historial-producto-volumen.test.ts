@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, vaciarOperacionesPorVolumen, analizarDespuesDeCargaMasiva, prisma } from "../setup/test-db";
 import { obtenerHistorialProducto } from "../../src/server/consultas/reportes/historial-producto";
@@ -62,11 +62,12 @@ describe("obtenerHistorialProducto con decenas de miles de movimientos", () => {
     expect(ultimo).toMatchObject({ idOperacion: `h${total}`, saldoCorriente: total - 2, anulada: true, proveedorNombre: null });
     expect(historial!.eventos.filter((e) => e.anulada)).toHaveLength(1000);
 
-    // Con rango: el saldo corriente arranca del acumulado anterior a `desde`.
+    // Con rango: el saldo corriente arranca del acumulado anterior a `desde`. El día 2026-02-01 es el día ARGENTINO (03:00Z del 1/2 a 03:00Z del 2/2): los eventos se siembran en UTC, así que el
+    // primero del día es el que cae a las 03:00Z (el 44.820: 31 días y 3 horas de minutos desde el 1/1).
     const acotado = await obtenerHistorialProducto(sucursalId, harinaId, undefined, new Date("2026-02-01T00:00:00Z"), new Date("2026-02-01T00:00:00Z"), prisma);
     expect(acotado!.totalMovimientos).toBe(total);
-    expect(acotado!.eventos.length).toBe(1440); // minutos del 2026-02-01
-    expect(acotado!.eventos[0].saldoCorriente).toBe(44_638); // el evento 44.640 cae en 2026-02-01T00:00 exacto: 44.639 anteriores + él, menos el consumo de 1 kg del evento 2 (2 kg netos)
+    expect(acotado!.eventos.length).toBe(1440); // minutos del día argentino 2026-02-01
+    expect(acotado!.eventos[0].saldoCorriente).toBe(44_818); // el evento 44.820 cae en 2026-02-01T03:00Z exacto: 44.819 anteriores + él, menos el consumo de 1 kg del evento 2 (2 kg netos)
   }, 120_000);
 
   it("no mezcla los movimientos del mismo producto en otra sucursal y respeta el filtro de sección", async () => {

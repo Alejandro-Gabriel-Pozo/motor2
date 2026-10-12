@@ -2,10 +2,10 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { baseDeEmpresa } from "@/core/auth/base";
-import { getUsuarioActual } from "@/core/auth/session";
+import { baseDeEmpresa } from "@/server/sesion/base";
+import { getUsuarioActual } from "@/server/sesion/session";
 import { rutaInternaSegura } from "@/core/navegacion/volver";
-import { COOKIE_EMPRESA_ACTIVA, COOKIE_SUCURSAL_ACTIVA, opcionesCookieActiva } from "@/core/auth/contexto";
+import { COOKIE_EMPRESA_ACTIVA, COOKIE_SUCURSAL_ACTIVA, opcionesCookieActiva } from "@/server/sesion/contexto";
 
 /**
  * Cambia en qué empresa trabaja el usuario en esta sesión (ADR-007, A4) — solo entre las que YA tiene como pertenencia

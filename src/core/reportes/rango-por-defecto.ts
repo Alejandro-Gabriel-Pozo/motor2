@@ -8,7 +8,7 @@
  * cualquier negocio real, los días 1 y 2 de cada mes la pantalla de entrada se ve casi vacía con "mes en curso"; con 30 días
  * siempre hay algo que mostrar.
  */
-import { ZONA_UTC, inicioDelDiaDe } from "@/core/tiempo/zona-horaria";
+import { diaDeCalendario, esDiaISOReal, sumarDias } from "@/core/tiempo/zona-horaria";
 
 /**
  * Lo más que abarca un rango de reporte, contando los dos extremos (S-28, T11 del endurecimiento): una URL con `?desde=2000-01-01` hacía que cada reporte recorriera TODA la
@@ -37,48 +37,48 @@ export interface RangoDeReporte {
   recortadoDesde?: string;
 }
 
-function hoyUtcSinHora(ahora: Date): Date {
-  return inicioDelDiaDe(ahora, ZONA_UTC);
-}
-
-/** `ahora` es inyectable para que el cálculo sea testeable sin congelar `new Date()` globalmente. */
-export function resolverRangoPorDefecto(opcionParam: string | undefined, ahora: Date): RangoPorDefecto {
+/**
+ * `ahora` es inyectable para que el cálculo sea testeable sin congelar `new Date()` globalmente. `zona` es OBLIGATORIA (P1, O.251): «hoy» es el día de calendario de la zona de la empresa
+ * (las páginas pasan `ctx.empresaZonaHoraria`), el mismo con el que los reportes cortan cada día (`rangoDeDias`). Con «hoy» en UTC, desde las 21:00 argentinas el rango por defecto terminaba
+ * mañana y dejaba la noche de hoy afuera de un corte en hora argentina. Obligatoria a propósito: `tsc` obliga a quien llama a decidir la zona.
+ */
+export function resolverRangoPorDefecto(opcionParam: string | undefined, ahora: Date, zona: string): RangoPorDefecto {
   const opcion: "30d" | "mes" = opcionParam === "mes" ? "mes" : "30d";
-  const hasta = hoyUtcSinHora(ahora);
-  const hastaISO = hasta.toISOString().slice(0, 10);
+  const hastaISO = diaDeCalendario(ahora, zona);
 
-  if (opcion === "mes") {
-    const desde = new Date(Date.UTC(hasta.getUTCFullYear(), hasta.getUTCMonth(), 1));
-    return { opcion, desdeISO: desde.toISOString().slice(0, 10), hastaISO };
-  }
+  if (opcion === "mes") return { opcion, desdeISO: `${hastaISO.slice(0, 8)}01`, hastaISO };
 
   // 29 días atrás + hoy = 30 días, inclusive de los dos extremos.
-  const desde = new Date(hasta);
-  desde.setUTCDate(desde.getUTCDate() - 29);
-  return { opcion, desdeISO: desde.toISOString().slice(0, 10), hastaISO };
+  return { opcion, desdeISO: sumarDias(hastaISO, -29), hastaISO };
 }
 
 /**
  * El rango efectivo de un reporte, a partir de sus `searchParams`. Una fecha explícita en la URL (`desde`) SIEMPRE manda — mismo
  * comportamiento que antes de que existiera este selector, para no romper enlaces ni specs existentes que pasan `desde`/`hasta`
- * sin `rango` (ej. el link de "Compras por proveedor", o `?desde=no-es-una-fecha` de la prueba de la pantalla de error) — y en
- * ese caso la opción vigente pasa a ser "personalizado", sin validar la fecha (esa validación, si la tuviera, es cosa del
- * reporte, no de este selector).
+ * sin `rango` (ej. el link de "Compras por proveedor") — y en ese caso la opción vigente pasa a ser "personalizado". Una fecha que
+ * no es un día real (`?desde=no-es-una-fecha`, `2026-13-45`, `2026-02-31`) NO cuenta como fecha explícita: se ignora y se sigue
+ * con el rango por defecto (o con `rango`), en vez de dejar que el reporte reciba un Invalid Date y lance.
  *
  * `rango=personalizado` SIN `desde` también cuenta como "personalizado" (no cae a 30d): es lo que llega el primer submit
  * después de elegir "Fechas personalizadas" en el selector, antes de que el usuario haya tocado los inputs de fecha (que recién
  * se muestran cuando la opción vigente ya es "personalizado" — ver SelectorRango). Ese primer submit se prellena con la ventana
  * de 30 días como punto de partida razonable para editar, no porque sea significativo.
+ *
+ * `zona` (obligatoria): la zona de la empresa con la que se calcula «hoy» para el rango por defecto y para el «hasta» que falta (ver `resolverRangoPorDefecto`).
  */
-export function resolverRangoDeReporte(sp: { desde?: string; hasta?: string; rango?: string }, ahora: Date): RangoDeReporte {
-  if (sp.desde || sp.rango === "personalizado") {
-    const base = resolverRangoPorDefecto("30d", ahora);
-    const desdeISO = sp.desde || base.desdeISO;
-    const hastaISO = sp.hasta || base.hastaISO;
+export function resolverRangoDeReporte(sp: { desde?: string; hasta?: string; rango?: string }, ahora: Date, zona: string): RangoDeReporte {
+  // Una fecha que no es un día real «AAAA-MM-DD» (texto, mes 13, 31 de febrero) se descarta como si no viniera: el «desde» cae al rango por defecto y el «hasta» a hoy. Sin esto
+  // el reporte armaba `new Date("abc")` (Invalid Date) y la consulta lanzaba un RangeError que tumbaba la pantalla. Mismo criterio que Compras y Tickets: lo inválido se ignora.
+  const desdePedido = esDiaISOReal(sp.desde) ? sp.desde : undefined;
+  const hastaPedido = esDiaISOReal(sp.hasta) ? sp.hasta : undefined;
+  if (desdePedido || sp.rango === "personalizado") {
+    const base = resolverRangoPorDefecto("30d", ahora, zona);
+    const desdeISO = desdePedido || base.desdeISO;
+    const hastaISO = hastaPedido || base.hastaISO;
     const acotado = acotarElDesde(desdeISO, hastaISO);
     return { opcion: "personalizado", desdeISO: acotado, hastaISO, ...(acotado !== desdeISO ? { recortadoDesde: desdeISO } : {}) };
   }
-  return resolverRangoPorDefecto(sp.rango, ahora);
+  return resolverRangoPorDefecto(sp.rango, ahora, zona);
 }
 
 /**

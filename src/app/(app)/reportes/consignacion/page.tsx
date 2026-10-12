@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { generarReporteConsignacion } from "@/server/consultas/reportes/consignacion";
 import { TablaDebidoConsignante, TablaStockSinVenderConsignacion } from "./tabla-consignacion";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { rangoDeDias } from "@/core/tiempo/zona-horaria";
 
 export default async function ConsignacionPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -21,7 +22,14 @@ export default async function ConsignacionPage({ searchParams }: { searchParams:
   // desde siempre, no una ventana — filtrar por período acá sería mostrar
   // solo el movimiento de ese lapso, no cuánto se le debe HOY. El filtro es
   // opcional, para reconciliar un período puntual con el consignante.
-  const periodo = desde || hasta ? { desde: desde ? new Date(desde) : undefined, hasta: hasta ? new Date(hasta) : undefined } : undefined;
+  // Cada extremo es un día "de solo día" (`new Date("AAAA-MM-DD")`, 00:00 UTC): se expande al inicio / fin de ESE día en la zona de la empresa (P1), así lo cargado el último día entra.
+  const periodo =
+    desde || hasta
+      ? {
+          desde: desde ? rangoDeDias(new Date(desde), new Date(desde), ctx.empresaZonaHoraria).desde : undefined,
+          hasta: hasta ? rangoDeDias(new Date(hasta), new Date(hasta), ctx.empresaZonaHoraria).hasta : undefined,
+        }
+      : undefined;
 
   const rep = await generarReporteConsignacion(ctx.sucursalId, ctx.db, periodo);
 

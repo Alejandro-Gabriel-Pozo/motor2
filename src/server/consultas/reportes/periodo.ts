@@ -5,7 +5,8 @@ import { cargarClasificacionNoComestibles, construirIndiceRecetas, construirMapa
 import { cargarSerieIPC } from "@/server/lecturas/reportes/serie-ipc";
 import { calcularCostosYMargenes, calcularImpactoRecetasPorPeriodo } from "@/server/lecturas/reportes/costos";
 import type { Db } from "@/lib/db-tipos";
-import { hayObjetivosCargados, resumirFueraDeObjetivo, rangoUtc, generarDigestAlertas, calcularComprasDelPeriodo, calcularGastoPorInsumoDelPeriodo, calcularVentasDelPeriodo, agruparVentasPorCategoria, pvSinCategoriaDe, type FiltrosPeriodo, type ItemPeriodo } from "@/core/reportes/public";
+import { ZONA_ARGENTINA, rangoDeDias } from "@/core/tiempo/zona-horaria";
+import { hayObjetivosCargados, resumirFueraDeObjetivo, generarDigestAlertas, calcularComprasDelPeriodo, calcularGastoPorInsumoDelPeriodo, calcularVentasDelPeriodo, agruparVentasPorCategoria, pvSinCategoriaDe, type FiltrosPeriodo, type ItemPeriodo } from "@/core/reportes/public";
 import { cargarObjetivosDeMargen } from "@/server/consultas/reportes/margen-objetivo-consulta";
 import { calcularRatioGastoVentas } from "@/server/consultas/reportes/periodo-ratio";
 import { calcularComparativaPreciosDelPeriodo, calcularTendenciaPreciosDelPeriodo } from "@/server/consultas/reportes/periodo-precios";
@@ -20,9 +21,12 @@ import { calcularMargenDelPeriodo } from "@/server/consultas/reportes/periodo-ma
  * línea, no un agregado.
  *
  * `ahora` (D.3b de docs/pureza-integracion.md) es obligatorio: lo usan el margen y la comparativa de precios (la antigüedad de la serie del IPC).
+ *
+ * `zona` (P1, O.251): la zona horaria con la que se corta cada día del rango; las páginas pasan `ctx.empresaZonaHoraria` (la misma con la que corta Tickets, así
+ * Período y Tickets coinciden por construcción). Opcional, con la zona argentina por defecto, como `validarFechaOperacion`.
  */
-export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db, ahora: Date) {
-  return (await obtenerReportePorPeriodoConCatalogo(sucursalId, desdeIn, hastaIn, filtros, db, ahora)).reporte;
+export async function obtenerReportePorPeriodo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db, ahora: Date, zona: string = ZONA_ARGENTINA) {
+  return (await obtenerReportePorPeriodoConCatalogo(sucursalId, desdeIn, hastaIn, filtros, db, ahora, zona)).reporte;
 }
 
 /**
@@ -44,13 +48,22 @@ export async function cargarLineasDelPeriodo(
    * Lo que quien llama ya leyó, para no volver a leerlo: la clasificación de «No comestibles» y el catálogo crudo (los mismos para todas las sucursales) y
    * los Precios Locales vigentes de ESTA sucursal (ver `construirMapaProductos`).
    */
-  cargado: { clasificacion?: ClasificacionNoComestibles; catalogo?: CatalogoDeProductos; preciosLocales?: ReadonlyMap<string, { precio: number }> } = {}
+  cargado: { clasificacion?: ClasificacionNoComestibles; catalogo?: CatalogoDeProductos; preciosLocales?: ReadonlyMap<string, { precio: number }> } = {},
+  zona: string = ZONA_ARGENTINA
 ) {
-  const { desde, hasta, clasificacionNoComestibles, porSucursal } = await cargarLineasDelPeriodoDeSucursales([sucursalId], desdeIn, hastaIn, filtros, db, {
-    clasificacion: cargado.clasificacion,
-    catalogo: cargado.catalogo,
-    preciosLocales: cargado.preciosLocales ? new Map([[sucursalId, cargado.preciosLocales]]) : undefined,
-  });
+  const { desde, hasta, clasificacionNoComestibles, porSucursal } = await cargarLineasDelPeriodoDeSucursales(
+    [sucursalId],
+    desdeIn,
+    hastaIn,
+    filtros,
+    db,
+    {
+      clasificacion: cargado.clasificacion,
+      catalogo: cargado.catalogo,
+      preciosLocales: cargado.preciosLocales ? new Map([[sucursalId, cargado.preciosLocales]]) : undefined,
+    },
+    zona
+  );
   const { items, productos } = porSucursal.get(sucursalId)!;
   return { desde, hasta, items, productos, clasificacionNoComestibles };
 }
@@ -79,9 +92,11 @@ export async function cargarLineasDelPeriodoDeSucursales(
     catalogo?: CatalogoDeProductos;
     preciosLocales?: ReadonlyMap<string, ReadonlyMap<string, { precio: number }>>;
     disponibilidad?: ReadonlyMap<string, ReadonlyMap<string, boolean>>;
-  } = {}
+  } = {},
+  zona: string = ZONA_ARGENTINA
 ) {
-  const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
+  // Los días del rango se cortan en la zona de la empresa (P1, O.251): 00:00 del primer día a 23:59:59.999 del último, como Tickets. `desdeIn`/`hastaIn` son fechas «de solo día».
+  const { desde, hasta } = rangoDeDias(desdeIn, hastaIn, zona);
 
   // Optimización (Pivote 5, docs/auditoria-motor2-pivotes-2026-09-16.md
   // §11 Plan 3): el filtro de fecha/sección/producto/proceso YA estaba en
@@ -167,11 +182,11 @@ export async function cargarLineasDelPeriodoDeSucursales(
  * APARTE del reporte, no adentro: un `Map` dentro de un objeto de reporte se rompe (error de serialización) en cuanto alguien lo pasa
  * entero a un Client Component, y así la forma pública del reporte no cambia. `ahora` obligatorio (D.3b): ver `obtenerReportePorPeriodo`.
  */
-export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db, ahora: Date) {
+export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, desdeIn: Date, hastaIn: Date, filtros: FiltrosPeriodo = {}, db: Db, ahora: Date, zona: string = ZONA_ARGENTINA) {
   // Los Precios Locales vigentes de la sucursal, UNA vez: los usan el mapa de productos (el `precioVenta` resuelto) y la comparativa de precios
   // (qué cambio de precio cuenta), y antes cada uno los leía con su capacidad por su cuenta (O.39 de docs/pureza-integracion.md).
   const preciosLocales = await preciosLocalesVigentes(sucursalId, db);
-  const { desde, hasta, items, productos, clasificacionNoComestibles } = await cargarLineasDelPeriodo(sucursalId, desdeIn, hastaIn, filtros, db, { preciosLocales });
+  const { desde, hasta, items, productos, clasificacionNoComestibles } = await cargarLineasDelPeriodo(sucursalId, desdeIn, hastaIn, filtros, db, { preciosLocales }, zona);
 
   const resumen: Record<string, number> = {};
   for (const it of items) resumen[it.proceso] = (resumen[it.proceso] ?? 0) + 1;
@@ -196,7 +211,7 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
   const tendenciaPrecios = await calcularTendenciaPreciosDelPeriodo(sucursalId, desde, items, productos, db);
   const impactoRecetas = await calcularImpactoRecetasPorPeriodo(sucursalId, desde, db, productos, indiceRecetas, clasificacionNoComestibles, costosActuales);
   const margen = await calcularMargenDelPeriodo(sucursalId, items, ventas, db, productos, ahora, indiceRecetas, { serieIPC, costosActuales });
-  const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(sucursalId, desde, hasta, tendenciaPrecios, ventas.porProducto, db, ahora, { preciosLocales, serieIPC });
+  const comparativaPrecios = await calcularComparativaPreciosDelPeriodo(sucursalId, desde, hasta, tendenciaPrecios, ventas.porProducto, db, ahora, { preciosLocales, serieIPC }, zona);
   // Alerta pasiva de margen objetivo: solo si la empresa cargó un objetivo (si no, no se calcula nada de más). Reusa el catálogo y el índice de recetas ya cargados.
   const objetivos = await cargarObjetivosDeMargen(db);
   const fueraDeObjetivo = hayObjetivosCargados(objetivos) ? resumirFueraDeObjetivo(await calcularCostosYMargenes(sucursalId, db, productos, indiceRecetas, objetivos, costosActuales)) : null;
@@ -226,10 +241,10 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
  * calcularVentasDelPeriodo (vía cargarLineasDelPeriodo) en vez de
  * reimplementar el criterio real-vs-estimado, solo reagrupa por Categoría.
  */
-export async function generarReporteVentasPorCategoria(sucursalId: string, desde: Date, hasta: Date, db: Db) {
+export async function generarReporteVentasPorCategoria(sucursalId: string, desde: Date, hasta: Date, db: Db, zona: string = ZONA_ARGENTINA) {
   // Solo las ventas: las líneas y el catálogo (`cargarLineasDelPeriodo`) y las mismas ventas que el reporte del período (`calcularVentasDelPeriodo`, que
   // descarta las anuladas con `r.anulada`), sin armar el resto del reporte que acá no se muestra (O.39: 21 consultas antes, la mayoría para tirar).
-  const { desde: desdeRango, hasta: hastaRango, items, productos } = await cargarLineasDelPeriodo(sucursalId, desde, hasta, { proceso: "VENTA" }, db);
+  const { desde: desdeRango, hasta: hastaRango, items, productos } = await cargarLineasDelPeriodo(sucursalId, desde, hasta, { proceso: "VENTA" }, db, {}, zona);
   const ventas = calcularVentasDelPeriodo(items, productos);
 
   return {

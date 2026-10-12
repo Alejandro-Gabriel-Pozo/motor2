@@ -4,6 +4,7 @@ import { IconoDeAccion } from "@/components/iconos";
 import { useState, useTransition } from "react";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
+import { AvisoPresentacionesSinPermiso } from "@/components/catalogo/campos-sensibles-solo-lectura";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import {
@@ -31,12 +32,18 @@ export function GestionPresentaciones({
   unidades,
   presentacionesIniciales,
   unidadStockDecimales,
+  puedeEditarCamposSensibles,
 }: {
   productoId: string;
   unidades: Opcion[];
   presentacionesIniciales: PresentacionOpcion[];
   /** Decimales de la unidad de STOCK de este producto (validarCantidad, mismo criterio que el servidor: factorConversion es "unidades de stock por 1 unidad de compra"). */
   unidadStockDecimales?: number;
+  /**
+   * M.2 (P6): crear una presentación nueva (o reactivarla con otro factor) es definir un factor de conversión, y eso es de quien tiene `producto_campos_sensibles` (lo calcula la página en el servidor). Sin la clave se
+   * ve la lista con sus factores, y activar o desactivar sigue siendo de `producto_presentaciones`, pero NO el alta de una presentación nueva. Cortesía de la pantalla: la barrera es la del servidor.
+   */
+  puedeEditarCamposSensibles: boolean;
 }) {
   const [presentaciones, setPresentaciones] = useState(presentacionesIniciales);
   const [unidadCompraId, setUnidadCompraId] = useState("");
@@ -111,38 +118,42 @@ export function GestionPresentaciones({
         </table>
       )}
 
-      <div className="flex items-end gap-2">
-        <label className="flex flex-1 flex-col gap-1 text-xs text-neutral-500">
-          Unidad de compra
-          <select value={unidadCompraId} onChange={(e) => setUnidadCompraId(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
-            <option value="">Elegí una unidad</option>
-            {unidades.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex w-40 flex-col gap-1 text-xs text-neutral-500">
-          Factor de conversión
-          <CampoNumero
-            value={factorConversion}
-            onChange={setFactorConversion}
-            tamano="compacto"
-            tipo="cantidad"
-            etiqueta="El factor de conversión"
-            decimales={unidadStockDecimales}
-          />
-        </label>
-        <button
-          type="button"
-          disabled={pending || !unidadCompraId || !factorConversion}
-          className="rounded border px-3 py-1.5 text-sm disabled:opacity-50"
-          onClick={agregar}
-        >
-          Agregar
-        </button>
-      </div>
+      {puedeEditarCamposSensibles ? (
+        <div className="flex items-end gap-2">
+          <label className="flex flex-1 flex-col gap-1 text-xs text-neutral-500">
+            Unidad de compra
+            <select value={unidadCompraId} onChange={(e) => setUnidadCompraId(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
+              <option value="">Elegí una unidad</option>
+              {unidades.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex w-40 flex-col gap-1 text-xs text-neutral-500">
+            Factor de conversión
+            <CampoNumero
+              value={factorConversion}
+              onChange={setFactorConversion}
+              tamano="compacto"
+              tipo="cantidad"
+              etiqueta="El factor de conversión"
+              decimales={unidadStockDecimales}
+            />
+          </label>
+          <button
+            type="button"
+            disabled={pending || !unidadCompraId || !factorConversion}
+            className="rounded border px-3 py-1.5 text-sm disabled:opacity-50"
+            onClick={agregar}
+          >
+            Agregar
+          </button>
+        </div>
+      ) : (
+        <AvisoPresentacionesSinPermiso />
+      )}
 
       {resultado && <p className={`text-xs ${resultado.ok ? "text-green-700" : "text-red-600"}`}>{resultado.texto}</p>}
     </div>

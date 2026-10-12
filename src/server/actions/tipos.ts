@@ -1,4 +1,4 @@
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { SincronizablePrecioGrupo } from "@/core/carta/public";
 
 /**

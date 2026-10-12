@@ -1,5 +1,3 @@
-import type { Prisma } from "@prisma/client";
-
 /**
  * EL embudo de la receta VIGENTE: vigente = la de mayor `version` de la serie que corresponda, siempre derivada (nunca un campo guardado).
  * Todo lector de `RecetaVersion` que elige una versión (o el historial) pasa por acá (la lectura con base, en `server/lecturas/catalogo/recetas-vigentes.ts`; las reglas puras —el alcance, quedarse con la vigente, los filtros—, acá); `test/arquitectura/lectores-de-receta.test.ts`
@@ -56,7 +54,11 @@ export function whereConReceta(alcance: AlcanceCentral) {
   return { recetaVersiones: { some: { sucursalId: alcance.sucursalId } } } as const;
 }
 
-/** `include` de `Producto` que trae SOLO su versión central vigente (`recetaVersiones[0]`) con lo que pida `include`. */
-export function incluirRecetaVigente<const I extends Prisma.RecetaVersionInclude>(_alcance: AlcanceCentral, include: I) {
+/**
+ * `include` de `Producto` que trae SOLO su versión central vigente (`recetaVersiones[0]`) con lo que pida `include`. La restricción es estructural (el núcleo no
+ * conoce Prisma): el `include` lo valida Prisma en la consulta que lo usa, y la prueba de tipos `tipos-de-dominio-vs-prisma` exige que el resultado siga siendo un
+ * `ProductoInclude`.
+ */
+export function incluirRecetaVigente<const I extends Readonly<Record<string, unknown>>>(_alcance: AlcanceCentral, include: I) {
   return { recetaVersiones: { where: { sucursalId: null }, orderBy: { version: "desc" }, take: 1, include } } as const;
 }

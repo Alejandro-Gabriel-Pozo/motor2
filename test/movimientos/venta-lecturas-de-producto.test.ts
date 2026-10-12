@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
 import type { ActorVenta, DatosVentaEnTx, ResultadoVentaEnTx } from "../../src/core/movimientos/registrar-venta";

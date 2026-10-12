@@ -1,13 +1,14 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirRecetaPropiaGuardada } from "@/core/catalogo/public";
-import { validarCabecera, validarIngredientes, validarPasos } from "@/core/catalogo/public";
+import { validarCabecera, validarIngredientes, validarPasos, validarUnidadDeIngredientes } from "@/core/catalogo/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { cargarDatosParaValidarReceta } from "@/server/persistencia/catalogo/cargar-datos-para-validar-receta";
 import { MENSAJE_PRODUCTO_NO_ENCONTRADO } from "@/core/features/catalogo/receta-version.guard";
 import type { ComandoGuardarVersionDeReceta, ResultadoGuardarVersionDeReceta } from "@/core/features/catalogo/receta-version.schema";
 import { conReintento, esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { conEscrituraEnLaEmpresa, lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import {
@@ -16,6 +17,7 @@ import {
   cargarNombresDeSucursales,
   cargarProductoParaReceta,
   cargarUltimaVersionDeReceta,
+  cargarUnidadesDeStockDeIngredientes,
   copiarCalibracionesLocales,
   escribirVersionDeReceta,
   habilitarRecetaPropia,
@@ -35,6 +37,8 @@ import {
  *  2. `validarIngredientes` → `validarPasos` → `validarCabecera` (el primero que falla da el mensaje);
  *  3. reintento (`conReintento`, hasta 5 intentos, ante un choque del UNIQUE (productoId, version) o un conflicto de escritura), cada intento en UNA transacción SERIALIZABLE:
  *     a. relee la versión vigente COMPLETA (con sus calibraciones locales) DENTRO de la transacción, la compara con `versionEsperada` y calcula `version` = MAX + 1;
+ *     a'. U7 / D3 (decisión del dueño, 2026-10-11): compara la unidad de cada ingrediente con la unidad de STOCK real de su materia prima, leída acá dentro (`validarUnidadDeIngredientes`); si difiere
+ *        (g contra kg) se corta con `INGREDIENTES_INVALIDOS` y no se escribe nada. Sin conversión: la receta se carga en la unidad de stock. Una receta vieja con otra unidad no se migra, pero no se puede volver a guardar hasta corregirla;
  *     b. dentro de esa misma transacción (desde D3, docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 6: el arrastre
  *        lee/escribe `RendimientoLocalIngrediente`, que una calibración concurrente también puede estar tocando):
  *        - crea la versión con ingredientes, pasos, cabecera y la tabla puente paso↔ingrediente (persistencia);
@@ -74,7 +78,7 @@ export type DestinoDeVersionDeReceta =
   | { sucursalId: string; habilitadaEsperada: boolean; basadaEnVersionId?: string | null; copiadaDeSucursal?: string };
 
 export async function guardarVersionDeRecetaCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalNombre" | "db" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalNombre" | "db" | "transaccion" | "empresaId" | "alcance">,
   comando: ComandoGuardarVersionDeReceta,
   destino: DestinoDeVersionDeReceta = { sucursalId: null }
 ): Promise<ResultadoGuardarVersionDeReceta> {
@@ -95,7 +99,10 @@ export async function guardarVersionDeRecetaCasoDeUso(
   if (comando.puerta) return fracaso(comando.puerta.codigo, comando.puerta.mensaje);
 
   // Lo del catálogo que la validación necesita, en lote (cuatro consultas); la validación en sí es pura.
-  const datosDeValidacion = await cargarDatosParaValidarReceta(actor.db, items, cabecera);
+  // P2 (RLS por sucursal): «el ingrediente está disponible en alguna sucursal» y la unidad mezclada de un sustituto se preguntan por toda la empresa: esta lectura corre con la base de VERIFICACIÓN (lectura en todas las sucursales, escritura
+  // como estaba) y va ANTES del ensanche de escritura de abajo. Devuelve ids, nombres y mensajes de productos e insumos de la empresa.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+  const datosDeValidacion = await cargarDatosParaValidarReceta(verificacion.db, items, cabecera);
   const invalidoIngredientes = validarIngredientes(items, producto, datosDeValidacion);
   if (invalidoIngredientes) return fracaso("INGREDIENTES_INVALIDOS", invalidoIngredientes);
 
@@ -111,6 +118,10 @@ export async function guardarVersionDeRecetaCasoDeUso(
   // SERIALIZABLE (el arrastre de calibraciones locales lee/escribe `RendimientoLocalIngrediente`, que una calibración
   // concurrente también puede estar tocando): se reintenta tanto el choque de UNIQUE como un conflicto de escritura
   // (esErrorDeUnicidad(e) || esConflictoDeEscritura(e)).
+  // M.3-A6: guardar la receta CENTRAL es una escritura de EMPRESA ENTERA (`EMPRESA_ENTERA` de GT-4): el arrastre de calibraciones (D3) LEE las `RendimientoLocalIngrediente` de la versión vigente y ESCRIBE
+  // las copias y la auditoría de cada descarte en la sucursal de CADA calibración, que puede no ser la activa. La transacción corre con el alcance ensanchado a la lista cerrada de las sucursales de la
+  // empresa. La receta PROPIA de una sucursal (`destino.sucursalId`) escribe solo en esa sucursal, la activa: no se ensancha.
+  const base = destino.sucursalId === null ? await conEscrituraEnLaEmpresa(actor) : actor;
   let version = 0;
   let recetaVersionId = "";
   let descartes: string[] = [];
@@ -119,7 +130,7 @@ export async function guardarVersionDeRecetaCasoDeUso(
     async () => {
       descartes = [];
       rechazo.resultado = null;
-      await conTransaccionSerializable(actor.transaccion, async (tx) => {
+      await conTransaccionSerializable(base.transaccion, async (tx) => {
         // La versión anterior COMPLETA (con sus overrides locales) — D3: se arrastra a la versión nueva, salvo que el ingrediente haya cambiado de unidad o haya salido de la receta.
         // Se lee DENTRO de la transacción SERIALIZABLE (Pureza Fase 4, H7): si una calibración local (`fijarRendimientoLocal`) se confirmaba entre esta lectura y la escritura, la versión
         // nueva se llevaba la foto vieja y la calibración quedaba colgada de la versión anterior, sin que nadie lo notara. Leyendo acá, el motor ve el cruce (esta transacción lee
@@ -153,6 +164,15 @@ export async function guardarVersionDeRecetaCasoDeUso(
             );
             return;
           }
+        }
+        // U7 / D3: la unidad de cada ingrediente tiene que ser la de STOCK de su MP. Se compara con la unidad de stock leída ACÁ, dentro de la SERIALIZABLE (no con la que cargó la validación de
+        // arriba, fuera de la transacción), así que ve lo último confirmado al empezar. Carrera declarada (O.230): `actualizarProducto` corre en READ COMMITTED y la SERIALIZABLE no detecta
+        // conflictos con un escritor que no lo es; un cambio de unidad concurrente a este guardado puede colarse (el chequeo vuelve a correr en el próximo guardado).
+        const unidadesDeStock = await cargarUnidadesDeStockDeIngredientes(tx, items);
+        const invalidoUnidad = validarUnidadDeIngredientes(items, unidadesDeStock.productos, unidadesDeStock.nombresDeUnidad);
+        if (invalidoUnidad) {
+          rechazo.resultado = fracaso("INGREDIENTES_INVALIDOS", invalidoUnidad);
+          return;
         }
         version = versionActual + 1;
         const basadaEnVersionId = sucursalId === null ? null : destino.basadaEnVersionId !== undefined ? destino.basadaEnVersionId : await cargarIdDeVersionCentralVigente(tx, productoId);

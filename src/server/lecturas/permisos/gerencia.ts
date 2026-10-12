@@ -24,7 +24,7 @@ export async function tuvoRolAdminEnLaEmpresa(db: Db, empresaId: string, usuario
 }
 
 /**
- * Apagar `sucursalId` deja sin contexto (core/auth/contexto.ts, que solo cuenta membresías de sucursales activas) a un gerente que no
+ * Apagar `sucursalId` deja sin contexto (server/sesion/contexto.ts, que solo cuenta membresías de sucursales activas) a un gerente que no
  * tenga otra membresía activa en OTRA sucursal activa: la empresa quedaría sin quien la gestione. Devuelve los emails de esos gerentes.
  */
 export async function gerentesQueQuedaranSinSucursalActiva(db: Db, empresaId: string, sucursalId: string): Promise<string[]> {

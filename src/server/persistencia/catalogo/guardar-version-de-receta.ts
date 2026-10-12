@@ -35,6 +35,20 @@ export async function cargarProductoParaReceta(db: Prisma.TransactionClient, pro
   return { id: producto.id, nombre: producto.nombre, tipo: producto.tipo, seProduce: producto.seProduce };
 }
 
+/**
+ * U7 / D3: la unidad de STOCK real de las materias primas de los ingredientes y el nombre de cada unidad en juego (la del ingrediente y la de stock), para que el caso de uso compare
+ * la unidad de la receta con la de stock. Corre DENTRO de la transacción SERIALIZABLE (lee `Producto.unidadStockId`: si alguien cambia la unidad de stock de una MP mientras esto guarda,
+ * el cambio no aborta a nadie: `actualizarProducto` es READ COMMITTED, carrera declarada en O.230). Solo lectura, sin reglas de negocio.
+ */
+export async function cargarUnidadesDeStockDeIngredientes(db: Prisma.TransactionClient, items: readonly IngredienteInput[]) {
+  const productoIds = [...new Set(items.map((i) => i.insumoProductoId))];
+  const productos = await db.producto.findMany({ where: { id: { in: productoIds } }, select: { id: true, nombre: true, unidadStockId: true } });
+  // Una `unidadId` que no es texto (el cliente la manda tal cual) no se consulta: no es la de stock, así que la comparación la rechaza igual.
+  const unidadIds = [...new Set([...items.map((i) => i.unidadId).filter((u) => typeof u === "string"), ...productos.map((p) => p.unidadStockId)])];
+  const unidades = await db.unidad.findMany({ where: { id: { in: unidadIds } }, select: { id: true, nombre: true } });
+  return { productos: new Map(productos.map((p) => [p.id, p])), nombresDeUnidad: new Map(unidades.map((u) => [u.id, u.nombre])) };
+}
+
 const INCLUDE_ULTIMA_VERSION = {
   ingredientes: { include: { rendimientosLocales: true, unidad: { select: { nombre: true } }, insumoProducto: { select: { nombre: true } } } },
 } satisfies Prisma.RecetaVersionInclude;

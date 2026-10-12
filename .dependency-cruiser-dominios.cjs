@@ -12,7 +12,7 @@ const DOMINIOS_DE_NEGOCIO = ["catalogo", "movimientos", "reportes", "pos", "stoc
 
 /** Infraestructura transversal: sin "internals" que proteger. Cada una con el motivo de por qué no es un dominio de negocio. */
 const INFRA_TRANSVERSAL = {
-  auth: "base por empresa y sesión: se consume desde toda la capa de servidor; sus accesos ya los limitan reglas propias (core/auth/base.ts solo desde una lista cerrada).",
+  auth: "base por empresa y sesión: se consume desde toda la capa de servidor; sus accesos ya los limitan reglas propias (server/sesion/base.ts solo desde una lista cerrada).",
   permisos: "catálogo de acciones/capacidades y la guarda: se importa desde cualquier pantalla y acción por diseño.",
   datos: "valores y validaciones de entrada (importe, cantidad, límites): utilidades puras compartidas.",
   features: "contratos (schemas) y guards de comandos de cada feature: son la frontera de entrada de las Server Actions, no la lógica de un dominio.",

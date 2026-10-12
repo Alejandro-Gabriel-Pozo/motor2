@@ -64,7 +64,7 @@ import { generarReporteVentasSinReceta } from "../../../src/server/consultas/rep
  */
 const ARCHIVO = join(__dirname, "reportes-c0.golden.txt");
 const AHORA = new Date("2026-03-15T15:00:00.000Z");
-/** El período de los reportes que piden un rango: del 16 de febrero al 15 de marzo (los que reciben días los expanden ellos con `rangoUtc`). */
+/** El período de los reportes que piden un rango: del 16 de febrero al 15 de marzo (los que reciben días los expanden ellos con `rangoDeDias`, en la zona de la empresa). */
 const DESDE_DIA = new Date("2026-02-16T00:00:00.000Z");
 const HASTA_DIA = new Date("2026-03-15T00:00:00.000Z");
 /** El mismo período ya expandido, para los que filtran `fecha` tal cual (descuentos, promociones). */

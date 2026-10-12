@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CANTIDAD_DE_POLITICAS_ESPERADAS, CLASIFICACION_DE_TABLAS, TABLAS_CON_EMPRESA_ID, fkEntreTablasPorEmpresaDelEsquema, politicasEsperadas, tablasDeClase } from "../setup/clasificacion-de-tablas";
+import { CANTIDAD_DE_POLITICAS_ESPERADAS, CLASIFICACION_DE_TABLAS, TABLAS_CON_EMPRESA_ID, TABLAS_CON_POLITICA_DE_SUCURSAL, fkEntreTablasPorEmpresaDelEsquema, politicasEsperadas, tablasDeClase } from "../setup/clasificacion-de-tablas";
 
 /**
  * Guardián de la clasificación declarada de tablas (Pureza, Hito 2, trabajo 2.6). Sin base de datos: cruza `test/setup/clasificacion-de-tablas.ts` con los modelos de `prisma/schema.prisma`.
@@ -25,12 +25,13 @@ describe("la clasificación declarada de tablas coincide con el esquema de Prism
 
   it("las políticas esperadas se derivan de la clase: una por tabla por empresa, las especiales por nombre, `solo_plataforma` en la consola y ninguna en las globales", () => {
     expect(politicasEsperadas("Unidad")).toEqual(["aislamiento_empresa"]);
+    expect(politicasEsperadas("Mesa"), "con alcance de sucursal: la de empresa y las cuatro por comando (Paquete 1)").toEqual(["aislamiento_empresa", "alcance_sucursal_delete", "alcance_sucursal_insert", "alcance_sucursal_select", "alcance_sucursal_update"]);
     expect(politicasEsperadas("Invitacion")).toEqual(["aislamiento_empresa", "escritura_plataforma", "lectura_por_token"]);
     expect(politicasEsperadas("SesionPlataforma")).toEqual(["solo_plataforma"]);
     expect(politicasEsperadas("User")).toEqual([]);
     expect(politicasEsperadas("Empresa")).toEqual([]);
     expect(CANTIDAD_DE_POLITICAS_ESPERADAS).toBe(
-      tablasDeClase("POR_EMPRESA").length + 2 + 2 + 3 + tablasDeClase("CONSOLA").length, // por empresa + UsuarioEmpresa + ModuloEmpresa + Invitacion + consola
+      tablasDeClase("POR_EMPRESA").length + 2 + 2 + 3 + tablasDeClase("CONSOLA").length + TABLAS_CON_POLITICA_DE_SUCURSAL.length * 4, // por empresa + UsuarioEmpresa + ModuloEmpresa + Invitacion + consola + 4 por tabla de sucursal
     );
   });
 

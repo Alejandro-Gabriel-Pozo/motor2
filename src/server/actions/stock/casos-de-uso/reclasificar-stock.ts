@@ -1,7 +1,8 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { texto } from "@/core/texto";
+import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -37,7 +38,7 @@ import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/ser
  *  2. "único destino idéntico al origen" (misma sección + mismo lote): con un solo destino que no reparte nada, la reclasificación es
  *     un par de movimientos que se cancelan entre sí — no aporta nada al Kardex, solo ruido. Corre DESPUÉS de (1) a propósito, por el
  *     orden de mensajes (una sección inválida se reporta antes que este chequeo, que sí es puramente lógico);
- *  3. `conTransaccionSerializable`: I3, carga del producto (`cargarProductoConUnidadDeStock`), disponibilidad en la sucursal,
+ *  3. `conTransaccionSerializable`: I3, P17 (el origen y los destinos no pueden estar dados de baja: `SECCION_INACTIVA`), carga del producto (`cargarProductoConUnidadDeStock`), disponibilidad en la sucursal,
  *     `validarCantidad` de cada destino (se RECHAZA el exceso de decimales para la unidad de stock del producto, hallazgo del pendiente
  *     #32 — antes no había NINGÚN chequeo acá), cálculo del saldo disponible en origen (leído DENTRO de la transacción: Serializable
  *     aborta si otra escritura concurrente lo cambia mientras tanto) y de la diferencia contra la suma de destinos (tiene que ser
@@ -57,10 +58,9 @@ export async function reclasificarStockCasoDeUso(
   // Fase 6 (auditoría de seguridad/contratos): ver el mismo chequeo en
   // registrarMovimiento — conPermiso no valida que las secciones sean
   // de ESTA sucursal, solo el permiso de quien llama.
-  if (!(await obtenerSeccionPropia(comando.seccionOrigenId, actor.sucursalId, actor.db))) {
-    return fracaso("SECCION_ORIGEN_NO_ENCONTRADA", "No se encontró la sección de origen.");
-  }
-  const seccionesDestino = new Map<string, { id: string; nombre: string }>();
+  const seccionOrigen = await obtenerSeccionPropia(comando.seccionOrigenId, actor.sucursalId, actor.db);
+  if (!seccionOrigen) return fracaso("SECCION_ORIGEN_NO_ENCONTRADA", "No se encontró la sección de origen.");
+  const seccionesDestino = new Map<string, { id: string; nombre: string; activa: boolean }>();
   for (const d of comando.destinos) {
     const seccion = await obtenerSeccionPropia(d.seccionId, actor.sucursalId, actor.db);
     if (!seccion) return fracaso("SECCION_DESTINO_NO_ENCONTRADA", "No se encontró una de las secciones de destino.");
@@ -88,6 +88,14 @@ export async function reclasificarStockCasoDeUso(
       return exito(chequeo.mensaje, { operacionId: null, disponible: null, destinosCantidad: null, repetida: true });
     }
     if (chequeo.estado === "conflicto") return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
+
+    // P17 (decisión del dueño, 2026-10-11): una sección dada de baja solo admite sacar mercadería (consumir, mermar o transferir); reclasificar mueve stock entre secciones, así que se rechaza si el origen o
+    // algún destino está dado de baja. Va DESPUÉS de I3: un reintento de lo ya escrito devuelve «repetida», nunca un rechazo que invite a repartirlo de nuevo.
+    if (!seccionOrigen.activa) return fracaso("SECCION_INACTIVA", mensajeSeccionDesactivada(seccionOrigen.nombre));
+    for (const d of comando.destinos) {
+      const destino = seccionesDestino.get(d.seccionId)!;
+      if (!destino.activa) return fracaso("SECCION_INACTIVA", mensajeSeccionDesactivada(destino.nombre));
+    }
 
     const producto = await cargarProductoConUnidadDeStock(tx, comando.productoId);
     if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "El producto no existe.");
@@ -174,5 +182,5 @@ export async function reclasificarStockCasoDeUso(
     }
 
     return exito(mensaje, { operacionId: operacion.id, disponible, destinosCantidad: comando.destinos.length, repetida: false });
-  });
+  }, 5, {}, true);
 }

@@ -1,5 +1,5 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { MAXIMO_DE_CUENTAS_EN_ROTACION, resolverRangoDeReporte } from "@/core/reportes/public";
@@ -13,7 +13,7 @@ const UNO = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
 /**
  * Reporte de rotación de mesas (módulo POS, docs/plan-comensales-y-limite-mesas-2026-09-26.md): comensales/cuenta promedio,
  * duración de mesa, y rotación por franja horaria (hora LOCAL de Argentina, ver el docstring de `generarReporteRotacionMesas`) y
- * por tamaño de grupo. Su propia clave (`reporte_rotacion_mesas`) y mismo selector de rango que Período/Categorías (`SelectorRango`, rango en UTC — solo la franja horaria difiere).
+ * por tamaño de grupo. Su propia clave (`reporte_rotacion_mesas`) y mismo selector de rango que Período/Categorías (`SelectorRango`; los días se cortan en la zona de la empresa, como Período y Tickets).
  */
 export default async function RotacionMesasPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -25,7 +25,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const rango = resolverRangoDeReporte(sp, new Date());
+  const rango = resolverRangoDeReporte(sp, new Date(), ctx.empresaZonaHoraria);
   const rep = await generarReporteRotacionMesas(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.empresaZonaHoraria, ctx.db);
 
   return (

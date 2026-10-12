@@ -1,5 +1,6 @@
 import { texto, validarLargoTexto, validarTextoCatalogo } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
+import { tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
 import { urlImagenSegura } from "./armar-menu";
 
 /**
@@ -106,7 +107,9 @@ export function validarPrecioCarta(valor: unknown): Resultado<number> {
   if (Number.isNaN(n)) return { ok: false, mensaje: "El precio no tiene un formato válido: usá el punto como separador decimal (por ejemplo, 12.5)." };
   if (!(n >= 0)) return { ok: false, mensaje: "El precio no puede ser negativo." };
   if (!esNumeroFinito(n) || n >= 1e12) return { ok: false, mensaje: "El precio no es un número válido." };
-  return { ok: true, valor: Math.round(n * 100) / 100 };
+  // U8: más de 2 decimales se RECHAZA (política de la entrada de importes, `validarImporte`), no se redondea en silencio.
+  if (!tieneALoSumoDecimales(n, 2)) return { ok: false, mensaje: "El precio admite como máximo 2 decimales (por ejemplo, 10.55)." };
+  return { ok: true, valor: n };
 }
 
 /**

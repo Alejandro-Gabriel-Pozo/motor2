@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { versionVigenteDeReceta } from "../setup/version-de-receta";
@@ -146,6 +146,12 @@ describe("recetas: sustitutos por línea de ingrediente", () => {
     expect(r.ok).toBe(false);
     expect(r.ok ? "" : r.mensaje).toContain("otra unidad de stock");
     void ojoEnGramos;
+  });
+
+  it("U7 / D3: una línea con sustitutos también tiene que estar en la unidad de stock de su MP principal (los sustitutos no llevan unidad propia: comparten la de stock del principal)", async () => {
+    const r = await guardarReceta(pvId, [{ insumoProductoId: bifeId, cantidad: 200, unidadId: gId, insumoSustitutoIds: [insumoOjoId] }]);
+    expect(r).toEqual({ ok: false, mensaje: 'El ingrediente "Bife de chorizo" está cargado en g, pero su stock se descuenta en kg y la receta todavía no convierte entre unidades: cargá la cantidad en kg.' });
+    expect(await prisma.recetaVersion.count({ where: { productoId: pvId } })).toBe(0);
   });
 
   it("mutación: sacar la copia de insumoSustitutoIds en mapIngredientesAInput hace caer la regresión de ida y vuelta", async () => {

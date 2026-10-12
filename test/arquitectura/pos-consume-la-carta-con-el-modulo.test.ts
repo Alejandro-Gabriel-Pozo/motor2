@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
  * Cada uno figura en la lista cerrada `DECLARADOS`, verificada en las DOS direcciones: un archivo nuevo que consume la carta sin declararse falla, y una declaración que ya no corresponde falla.
  * Los archivos declarados «PREGUNTA» tienen que usar, en código, `modulos.<carta|promociones>` (el resultado de `ModulosDelPos`) para decidir si leen; los «EXENTO» llevan su motivo.
  *
- * Mutaciones (rojo → revertido editando → verde): importar `resolverMenuCarta` en un archivo nuevo del POS (aparece sin declarar), sacar de `promo-para-agregar.ts` la pregunta por
+ * Mutaciones (rojo → revertido editando → verde): sacar `modulos.carta` de `agregar-items.ts` (P18: deja de preguntar), importar `resolverMenuCarta` en un archivo nuevo del POS (aparece sin declarar), sacar de `promo-para-agregar.ts` la pregunta por
  * `modulos.promociones` (deja de preguntar), y los casos sintéticos de abajo.
  */
 const RAIZ = join(__dirname, "../..");
@@ -31,7 +31,7 @@ const DECLARADOS: Readonly<Record<string, Declaracion>> = {
   "src/server/lecturas/pos/selector-carta.ts": {
     tipo: "PREGUNTA",
     modulos: ["carta", "promociones"],
-    motivo: "Arma el selector del POS: sin Carta lee la lista plana de los PV (nada de secciones, géneros ni agrupados) y sin Promociones ninguna promo.",
+    motivo: "Arma el selector del POS: sin Carta lee la lista plana de los PV (nada de secciones, géneros ni agrupados, y sin descuento de producto: P18 / D18) y sin Promociones ninguna promo.",
   },
   "src/server/lecturas/pos/promo-para-agregar.ts": {
     tipo: "PREGUNTA",
@@ -39,9 +39,10 @@ const DECLARADOS: Readonly<Record<string, Declaracion>> = {
     motivo: "Es la fuente única con la que `agregarItems` valida cada promo: sin Promociones no devuelve ninguna.",
   },
   "src/server/actions/pos/casos-de-uso/agregar-items.ts": {
-    tipo: "EXENTO",
+    tipo: "PREGUNTA",
+    modulos: ["carta", "promociones"],
     motivo:
-      "Solo importa `descuentosDeProductoEnSucursal` (el descuento de PRODUCTO de la sucursal, un precio): lo congela igual que el selector (paridad fijada por test). Que ese descuento siga rigiendo con Carta apagada es A CONFIRMAR con el dueño (cambiarlo cambia precios). Las promos las pregunta por el módulo en el mismo archivo (`modulosDelPosDeEmpresa`), no por esta importación.",
+      "Importa `descuentosDeProductoEnSucursal` (el descuento de PRODUCTO de la sucursal, un precio): P18 / D18 (decisión del dueño, 2026-10-11) lo aplica solo con el módulo Carta, igual que el selector (paridad fijada por test), y rechaza la promo sin el módulo Promociones. Lee el registro una vez por pedido (`modulosDelPosDeEmpresa`) y decide con `modulos.carta` / `modulos.promociones`.",
   },
 };
 

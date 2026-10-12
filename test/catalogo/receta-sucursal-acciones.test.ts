@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { crearMembresia } from "../setup/membresia";
@@ -28,6 +28,7 @@ describe("receta propia por sucursal: acciones", () => {
   let centralId: string;
   let norteId: string;
   let kgId: string;
+  let gId: string;
   let adminId: string;
   let operadorId: string;
   let pv: { id: string; nombre: string };
@@ -61,8 +62,9 @@ describe("receta propia por sucursal: acciones", () => {
     centralId = base.sucursal.id;
     rolAdminId = base.admin.id;
     norteId = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
-    const { kg } = await sembrarCatalogoBase();
+    const { kg, g } = await sembrarCatalogoBase();
     kgId = kg.id;
+    gId = g.id;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: centralId, rolId: base.admin.id });
     await crearMembresia({ usuarioId: admin.id, sucursalId: norteId, rolId: base.admin.id });
     adminId = admin.id;
@@ -163,6 +165,29 @@ describe("receta propia por sucursal: acciones", () => {
       expect((await actualizarIngredienteDeRecetaPropia(pv.id, tomate.id, { cantidad: 1, unidadId: kgId }, await versionPropia(pv.id), await habilitadaPropia(pv.id))).ok).toBe(false);
       expect((await quitarIngredienteDeRecetaPropia(pv.id, tomate.id, await versionPropia(pv.id), await habilitadaPropia(pv.id))).ok).toBe(false);
       expect(await propias(centralId)).toHaveLength(1);
+    });
+
+    // U7 / D3: la receta propia sigue la misma regla que la central — la unidad es la de stock de la MP (g contra kg se rechaza), validada en el servidor dentro de la transacción.
+    it("rechaza g sobre una MP que se descuenta en kg, al agregar o al actualizar, y no genera versión", async () => {
+      const agregar = await agregarIngredienteARecetaPropia(pv.id, { insumoProductoId: tomate.id, cantidad: 300, unidadId: gId }, await versionPropia(pv.id), await habilitadaPropia(pv.id));
+      expect(agregar).toEqual({ ok: false, mensaje: 'El ingrediente "Tomate" está cargado en g, pero su stock se descuenta en kg y la receta todavía no convierte entre unidades: cargá la cantidad en kg.' });
+      const actualizar = await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 2000, unidadId: gId }, await versionPropia(pv.id), await habilitadaPropia(pv.id));
+      expect(actualizar).toEqual({ ok: false, mensaje: 'El ingrediente "Queso" está cargado en g, pero su stock se descuenta en kg y la receta todavía no convierte entre unidades: cargá la cantidad en kg.' });
+      expect(await propias(centralId)).toHaveLength(1);
+    });
+
+    it("una receta propia vieja con otra unidad no se migra, pero no se puede volver a guardar hasta corregirla", async () => {
+      const [propia] = await propias(centralId);
+      await prisma.recetaIngrediente.update({ where: { id: propia.ingredientes.find((i) => i.insumoProductoId === harina.id)!.id }, data: { unidadId: gId } });
+
+      const otroCambio = await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 3), await versionPropia(pv.id), await habilitadaPropia(pv.id));
+      expect(otroCambio.ok).toBe(false);
+      expect(otroCambio.mensaje).toContain('El ingrediente "Harina" está cargado en g');
+      expect(await propias(centralId)).toHaveLength(1);
+
+      const corregido = await actualizarIngredienteDeRecetaPropia(pv.id, harina.id, { cantidad: 1, unidadId: kgId }, await versionPropia(pv.id), await habilitadaPropia(pv.id));
+      expect(corregido.ok, corregido.mensaje).toBe(true);
+      expect(await propias(centralId)).toHaveLength(2);
     });
 
     it("rechaza una cantidad inválida (la validación es la misma que la de la receta central)", async () => {

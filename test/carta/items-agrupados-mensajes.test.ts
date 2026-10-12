@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 vi.mock("../../src/server/actions/carta/revalidar", () => ({ revalidarCartasPublicas: vi.fn() }));
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
@@ -148,13 +148,16 @@ describe("ítems agrupados de la carta: mensajes, orden de los chequeos, sucursa
       expect(await agregarOpcionItemAgrupadoCarta(mio, "cnoexiste000000000000000")).toEqual({ ok: false, mensaje: "No se encontró el producto." });
       expect(await agregarOpcionItemAgrupadoCarta(mio, ids.mp)).toEqual({ ok: false, mensaje: "Solo un producto de venta (PV) puede ir en la carta." });
 
-      // Un producto con descuento (en cualquier sucursal) que además ya está en otro grupo: gana el descuento.
+      // Un producto con descuento EN ESTA SUCURSAL (P2.1: antes, en cualquiera) que además ya está en otro grupo: gana el descuento.
       await opcionEn(sucursalId, otro, ids.coca);
-      await prisma.descuentoProductoSucursal.create({ data: { productoId: ids.coca, sucursalId: otraId, porcentaje: 10 } });
+      await prisma.descuentoProductoSucursal.create({ data: { productoId: ids.coca, sucursalId, porcentaje: 10 } });
       expect(await agregarOpcionItemAgrupadoCarta(mio, ids.coca, "x")).toEqual({
         ok: false,
-        mensaje: "«Coca-Cola 500cc» tiene descuento en alguna sucursal: sacale el descuento para agruparlo (el renglón agrupado muestra un solo precio).",
+        mensaje: "«Coca-Cola 500cc» tiene descuento en esta sucursal: sacale el descuento para agruparlo (el renglón agrupado muestra un solo precio).",
       });
+      // P2.1: el mismo descuento pero en OTRA sucursal ya no cuenta: gana lo que sigue («ya agrupado»).
+      await prisma.descuentoProductoSucursal.update({ where: { productoId_sucursalId: { productoId: ids.coca, sucursalId } }, data: { sucursalId: otraId } });
+      expect(await agregarOpcionItemAgrupadoCarta(mio, ids.coca, "x")).toEqual({ ok: false, mensaje: "«Coca-Cola 500cc» ya está en «Otro grupo»: quitalo de ahí primero." });
       await prisma.descuentoProductoSucursal.deleteMany({});
 
       // Sin el descuento: ya agrupado gana sobre un orden roto.

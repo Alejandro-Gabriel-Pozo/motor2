@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { __cookiesDeTest, __limpiarCookiesDeTest } from "../setup/next-headers-stub";
@@ -31,13 +31,13 @@ type Controles = { anonimo?: Control; sinEmpresa?: Control };
 let base: Awaited<ReturnType<typeof sembrarBase>>;
 
 async function comoAnonimo() {
-  const { getUsuarioActual } = await import("../../src/core/auth/session");
+  const { getUsuarioActual } = await import("../../src/server/sesion/session");
   vi.mocked(getUsuarioActual).mockResolvedValue(null);
 }
 
 /** Una cuenta con sesión que no es de ninguna empresa y no tiene invitación. */
 async function comoSinEmpresa() {
-  const { getUsuarioActual } = await import("../../src/core/auth/session");
+  const { getUsuarioActual } = await import("../../src/server/sesion/session");
   const u = await prismaAdmin.user.create({ data: { email: "sin-empresa@dominio-workspace.com" } });
   vi.mocked(getUsuarioActual).mockResolvedValue({ id: u.id, email: u.email, nombre: null });
   return u;
@@ -103,13 +103,13 @@ const CONTROLES: Record<string, Controles> = {
   "sesion|lib/auth.ts|signIn": {
     anonimo: async () => {
       // Sin cuenta de Google verificada (el perfil no la confirma, o no hay cuenta): rechazo.
-      const base0 = { emailUsuario: "nadie@dominio-workspace.com", emailPerfil: "nadie@dominio-workspace.com", tokenDeSesionAbierta: undefined, tokenDeInvitacion: undefined };
+      const base0 = { emailUsuario: "nadie@dominio-workspace.com", emailPerfil: "nadie@dominio-workspace.com", tokenDeSesionAbierta: undefined, tokenDeInvitacion: undefined, ahora: new Date() };
       expect(await decidirInicioDeSesion({ ...base0, emailVerificado: false, cuenta: unaCuentaDeGoogle })).toBe(false);
       expect(await decidirInicioDeSesion({ ...base0, emailVerificado: true, cuenta: null })).toBe(false);
     },
     sinEmpresa: async () => {
       const email = "sin-empresa@dominio-workspace.com";
-      const entrada = { emailUsuario: email, emailPerfil: email, emailVerificado: true, tokenDeSesionAbierta: undefined, tokenDeInvitacion: undefined, cuenta: unaCuentaDeGoogle };
+      const entrada = { emailUsuario: email, emailPerfil: email, emailVerificado: true, tokenDeSesionAbierta: undefined, tokenDeInvitacion: undefined, cuenta: unaCuentaDeGoogle, ahora: new Date() };
       // Una cuenta de Google verificada, del dominio Workspace de la empresa, sin membresía ni invitación: no abre sesión (D5, S-17).
       expect(await decidirInicioDeSesion(entrada)).toBe(false);
       // Ni siquiera con un token de invitación que no corresponde a nadie.

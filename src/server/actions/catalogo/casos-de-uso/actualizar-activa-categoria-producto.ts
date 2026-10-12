@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { MENSAJE_CATEGORIA_NO_ENCONTRADA } from "@/core/features/catalogo/categorias-producto.guard";
 import type { ComandoActualizarActivaCategoriaProducto, ResultadoActualizarActivaCategoriaProducto } from "@/core/features/catalogo/categorias-producto.schema";
 import { exito, fracaso } from "@/core/resultado-caso";

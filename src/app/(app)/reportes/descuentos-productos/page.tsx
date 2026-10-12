@@ -1,8 +1,9 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
+import { rangoDeDias } from "@/core/tiempo/zona-horaria";
 import { obtenerReporteDescuentosProductos } from "@/server/consultas/reportes/descuentos-productos";
 import { SelectorRango } from "@/components/selector-rango";
 import { TablaDescuentosProductos } from "./tabla-descuentos-productos";
@@ -23,8 +24,10 @@ export default async function DescuentosProductosPage({ searchParams }: { search
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
-  const rango = resolverRangoDeReporte(sp, new Date());
-  const rep = await obtenerReporteDescuentosProductos(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db);
+  const rango = resolverRangoDeReporte(sp, new Date(), ctx.empresaZonaHoraria);
+  // La consulta filtra `gte`/`lte` sobre lo que recibe: los días del rango se expanden acá, en la zona de la empresa (P1, O.251), para que el último día entre entero.
+  const { desde, hasta } = rangoDeDias(new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.empresaZonaHoraria);
+  const rep = await obtenerReporteDescuentosProductos(ctx.sucursalId, desde, hasta, ctx.db);
 
   return (
     <div className="flex flex-col gap-4">

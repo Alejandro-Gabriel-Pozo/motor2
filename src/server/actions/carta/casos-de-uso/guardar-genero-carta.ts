@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { whereCartaDeSucursal } from "@/core/carta/public";
 import type { ComandoGuardarGeneroCarta, ResultadoGuardarGeneroCarta } from "@/core/features/carta/generos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";

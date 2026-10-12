@@ -1,8 +1,15 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
+import { redondearMoneda } from "@/core/moneda";
+import { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicados, type CompraCandidata } from "@/core/compras/public";
+import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
+import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { TRANSICIONES, armarFilasDeMovimiento, redondearACantidadDeUnidad } from "@/core/movimientos/public";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA, esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -10,11 +17,14 @@ import { obtenerSeccionPropia, seccionesConStock, validarStockSuficiente } from 
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { exito, fracaso } from "@/core/resultado-caso";
-import type { DatosMovimientoInput, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
-import { cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
+import type { DatosMovimientoInput, ProcesoGenerico, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
+import { cargarComprasParaAvisoDeDuplicado, cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { upsertProveedorPorProducto } from "@/server/persistencia/catalogo/upsert-proveedor-por-producto";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
+
+/** Los únicos procesos que admiten una sección dada de baja como ORIGEN (P17): los que solo sacan mercadería. Como destino (Transferencia) nunca se admite. */
+const PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA: ReadonlySet<ProcesoGenerico> = new Set<ProcesoGenerico>(["CONSUMO", "MERMA", "TRANSFERENCIA"]);
 
 /**
  * Caso de uso «registrar un movimiento» — el motor genérico de los 9 procesos que lo comparten (Compra, Producción, Consumo, Ajuste,
@@ -30,12 +40,12 @@ import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movi
  * Orden, igual que antes:
  *  1. sección propia (origen y, si Transferencia, destino) — Fase 6 (auditoría de seguridad/contratos): `conPermiso` ya validó el
  *     permiso en LA SUCURSAL DEL QUE LLAMA, nunca que la sección que mandó el cliente sea realmente de esa sucursal;
- *  2. motivo/destino (catálogos GLOBALES, solo activos) y proveedor (de la empresa, solo activo) — cliente global `prisma`, fuera de la transacción;
+ *  2. motivo/destino (catálogos GLOBALES, solo activos) y proveedor (de la empresa, solo activo) — cliente global `prisma`, fuera de la transacción (camino rápido; la Merma sin motivo se rechaza acá) — U11: se vuelven a comprobar DENTRO de la transacción, después de la idempotencia;
  *  3. `guardNroFacturaCompra` — DESPUÉS de sección/motivo/destino a propósito (mismo orden que antes: cambiarlo cambiaría qué mensaje
  *     sale primero cuando hay más de un dato inválido a la vez);
  *  4. camino rápido de factura duplicada (`existeCompraVigenteConFactura`, cliente global) — el árbitro real es el índice único
  *     parcial, ver el catch de más abajo;
- *  5. `conTransaccionSerializable`, con `.catch(esChoqueDeFacturaUnica)` tal cual: I3, armado de cada línea
+ *  5. `conTransaccionSerializable`, con `.catch(esChoqueDeFacturaUnica)` tal cual: I3, P17 (una sección dada de baja solo admite sacar: Consumo, Merma y Transferencia como origen; como destino no; código `SECCION_INACTIVA`; DESPUÉS de I3 a propósito), armado de cada línea
  *     (`armarLineaMovimiento`), validación de stock agregada, escritura de `Operacion` + `MovimientoStock[]` y, en una Compra, un
  *     `upsertProveedorPorProducto` por línea con unidad de compra conocida — TODO dentro de la misma transacción (decisión del dueño, 2026-10-06:
  *     si falla el vínculo falla la compra entera y se reintenta con la misma clave I3, así nunca queda una compra a medias).
@@ -52,17 +62,17 @@ import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movi
  * @ficha permiso=POR_PROCESO transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function registrarMovimientoCasoDeUso(
-  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion">,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion" | "empresaId" | "alcance">,
   datos: DatosMovimientoInput
 ): Promise<ResultadoRegistrarMovimiento> {
   // Fase 6 (auditoría de seguridad/contratos): conPermiso ya validó el
   // permiso en LA SUCURSAL DEL QUE LLAMA, nunca que la sección que mandó
   // el cliente sea realmente de esa sucursal — sin esto, cualquier
   // seccionId ajeno (de otra sucursal) se aceptaba igual.
-  if (!(await obtenerSeccionPropia(datos.seccionId, actor.sucursalId, actor.db))) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
-  if (datos.proceso === "TRANSFERENCIA" && !(await obtenerSeccionPropia(datos.seccionDestinoId!, actor.sucursalId, actor.db))) {
-    return fracaso("SECCION_DESTINO_NO_ENCONTRADA", "No se encontró la sección destino.");
-  }
+  const seccionOrigen = await obtenerSeccionPropia(datos.seccionId, actor.sucursalId, actor.db);
+  if (!seccionOrigen) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
+  const seccionDestino = datos.proceso === "TRANSFERENCIA" ? await obtenerSeccionPropia(datos.seccionDestinoId!, actor.sucursalId, actor.db) : null;
+  if (datos.proceso === "TRANSFERENCIA" && !seccionDestino) return fracaso("SECCION_DESTINO_NO_ENCONTRADA", "No se encontró la sección destino.");
 
   // Motivo/Destino: catálogos GLOBALES (no por sucursal, a diferencia de Sección) — solo hace falta que la fila
   // exista y siga activa (un motivo desactivado no puede ELEGIRSE de nuevo, pero las Operacion viejas que ya lo
@@ -71,19 +81,13 @@ export async function registrarMovimientoCasoDeUso(
   // lo que corresponde, pero un pedido armado a mano que traiga el otro se ignora acá en vez de terminar en un error crudo de la base.
   const motivoId = datos.proceso === "MERMA" ? datos.motivoId : undefined;
   const destinoId = datos.proceso === "CONSUMO" ? datos.destinoId : undefined;
-  if (motivoId) {
-    const motivo = await cargarMotivoMerma(actor.db, motivoId);
-    if (!motivo?.activo) return fracaso("MOTIVO_NO_DISPONIBLE", "El motivo elegido ya no está disponible.");
+  // U11: la pantalla de Merma pide el motivo (`required`); el servidor lo exige también (una llamada directa ya no registra una merma sin motivo). Es el único dato que la pantalla
+  // exige hoy: el proveedor («Sin proveedor») y el destino («Sin destino específico») son opcionales en la UI y por eso acá también.
+  if (datos.proceso === "MERMA" && !texto(motivoId)) {
+    return fracaso("MOTIVO_NO_DISPONIBLE", "La merma necesita un motivo: elegí uno de la lista (si no está el que buscás, pedí que lo carguen en Motivos de merma).");
   }
-  if (destinoId) {
-    const destino = await cargarDestinoConsumo(actor.db, destinoId);
-    if (!destino?.activo) return fracaso("DESTINO_NO_DISPONIBLE", "El destino elegido ya no está disponible.");
-  }
-  // Mismo criterio que motivo/destino: un id que no existe, es de otra empresa o está desactivado no puede quedar guardado en la operación (antes, un id inexistente reventaba con un error de clave foránea).
-  if (datos.proveedorId) {
-    const proveedor = await cargarProveedor(actor.db, datos.proveedorId);
-    if (!proveedor?.activo) return fracaso("PROVEEDOR_NO_DISPONIBLE", "El proveedor elegido ya no está disponible.");
-  }
+  const noDisponible = await maestroNoDisponible(actor.db, motivoId, destinoId, datos.proveedorId);
+  if (noDisponible) return noDisponible;
 
   // El N.º de factura solo se carga en Compra y Devolución a proveedor (los procesos con proveedor): mismo validador que la corrección.
   const factura = guardNroFacturaCompra(datos.nroFactura);
@@ -107,6 +111,23 @@ export async function registrarMovimientoCasoDeUso(
     if (yaExiste) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
   }
 
+  // Aviso C25 (posible factura repetida; NO bloquea), parte 1: solo en una Compra con proveedor. La VERIFICACIÓN abarca toda la empresa pero el aviso no muestra datos de otra sucursal (P2, decisión del dueño): las compras candidatas
+  // se leen ACÁ, antes de abrir la transacción (la compra nueva todavía no existe, así que no se compara contra sí misma), con la base de VERIFICACIÓN (lectura en todas las sucursales de la empresa, escritura como estaba), y se mira en
+  // cuáles de las sucursales de esas compras puede ver compras quien carga (`proceso_compra`, el mismo gate de siempre): el texto da el día solo de esas.
+  let candidatasDelAviso: CompraCandidata[] = [];
+  let sucursalesQueVeQuienCarga: ReadonlySet<string> = new Set([actor.sucursalId]);
+  if (datos.proceso === "COMPRA" && datos.proveedorId) {
+    const diaDeLaCompra = diaDeCalendario(datos.fecha, ZONA_ARGENTINA);
+    const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+    candidatasDelAviso = await cargarComprasParaAvisoDeDuplicado(verificacion.db, {
+      proveedorId: datos.proveedorId,
+      desde: sumarDias(diaDeLaCompra, -DIAS_DE_VENTANA_DE_DUPLICADO),
+      hasta: sumarDias(diaDeLaCompra, DIAS_DE_VENTANA_DE_DUPLICADO),
+    });
+    const ajenas = [...new Set(candidatasDelAviso.map((c) => c.sucursalId))].filter((id) => id !== actor.sucursalId);
+    if (ajenas.length) sucursalesQueVeQuienCarga = new Set([actor.sucursalId, ...(await sucursalesDondeElUsuarioPuedeVer(actor.usuarioId, ajenas, "proceso_compra", actor.db))]);
+  }
+
   const resultado = await conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRegistrarMovimiento> => {
     // 0) I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
     const payloadHash = datos.claveIdempotencia
@@ -115,6 +136,16 @@ export async function registrarMovimientoCasoDeUso(
     const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);
     if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { operacionId: null, movimientos: null, repetida: true });
     if (chequeo.estado === "conflicto") return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
+
+    // U11: la lectura de antes de abrir la transacción pudo quedar vieja (un motivo, destino o proveedor desactivado en el medio): se vuelve a comprobar acá, con el estado que ve la transacción.
+    const yaNoDisponible = await maestroNoDisponible(tx, motivoId, destinoId, datos.proveedorId);
+    if (yaNoDisponible) return yaNoDisponible;
+
+    // P17 (decisión del dueño, 2026-10-11): una sección dada de baja solo admite SACAR mercadería (consumir, mermar o transferir) hasta vaciarla; no recibe mercadería nueva. Va DESPUÉS de I3:
+    // un reintento de algo ya escrito tiene que devolver «repetida», nunca un rechazo que invite a cargarlo de nuevo en otra sección (duplicaría el stock). La sección se leyó arriba, sin
+    // protección contra una baja en el medio: la baja no tiene precondiciones, así que cualquier intercalado equivale a «el movimiento primero y la baja después».
+    if (!seccionOrigen.activa && !PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA.has(datos.proceso)) return fracaso("SECCION_INACTIVA", mensajeSeccionDesactivada(seccionOrigen.nombre));
+    if (seccionDestino && !seccionDestino.activa) return fracaso("SECCION_INACTIVA", mensajeSeccionDesactivada(seccionDestino.nombre));
 
     const obtenerProducto = crearCacheProducto(tx);
     // 1) Armar cada línea (validación de producto/proceso, conversión, receta).
@@ -166,6 +197,16 @@ export async function registrarMovimientoCasoDeUso(
           `Stock insuficiente para "${producto?.nombre ?? productoId}". Actual: ${chequeoStock.actual}, requerido: ${chequeoStock.requerido}.${detallePista}`
         );
       }
+    }
+
+    // Aviso C25, parte 2: el texto, con las candidatas ya leídas arriba (antes de escribir, así no se compara contra la compra que se está por guardar). El mensaje (con el aviso) se guarda para la idempotencia: un reintento con la misma
+    // clave devuelve el mismo texto. La fecha de compra es el mediodía argentino del día elegido (P1): su día se lee en hora argentina.
+    let avisoDuplicado = "";
+    if (datos.proceso === "COMPRA" && datos.proveedorId) {
+      const dia = diaDeCalendario(datos.fecha, ZONA_ARGENTINA);
+      const importe = redondearMoneda(lineas.reduce((suma, l) => suma + l.precioTotal, 0));
+      const aviso = avisoDePosibleDuplicado(posiblesDuplicados({ proveedorId: datos.proveedorId, dia, importe }, candidatasDelAviso), actor.sucursalId, sucursalesQueVeQuienCarga);
+      if (aviso) avisoDuplicado = ` ${aviso}`;
     }
 
     // 3) Escribir Operacion (encabezado) + MovimientoStock[] (líneas).
@@ -233,7 +274,7 @@ export async function registrarMovimientoCasoDeUso(
     const avisoConversion = lineas.some((l) => l.huboConversion)
       ? " Algunas cantidades se convirtieron automáticamente de unidad de compra a unidad de stock."
       : "";
-    const mensaje = `Se guardaron ${filas.length} movimiento(s).${avisoConversion}`;
+    const mensaje = `Se guardaron ${filas.length} movimiento(s).${avisoConversion}${avisoDuplicado}`;
 
     // I3 — Opción B (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md
     // §4.5): se persiste el mensaje ya formateado, no se reconstruye.
@@ -242,7 +283,7 @@ export async function registrarMovimientoCasoDeUso(
     }
 
     return exito(mensaje, { operacionId: operacion.id, movimientos: filas.length, repetida: false });
-  }).catch((e) => {
+  }, 5, {}, true).catch((e) => {
     // La transacción ya hizo rollback para cuando este catch la recibe — nunca se intenta seguir operando
     // sobre ella. Choque de la carrera de factura duplicada (dos requests simultáneos, ver el comentario del
     // chequeo previo más arriba): mismo mensaje de negocio, no un error 500. Cualquier otro P2002 (ej. la
@@ -252,4 +293,30 @@ export async function registrarMovimientoCasoDeUso(
   });
 
   return resultado;
+}
+
+/**
+ * Motivo, destino y proveedor elegidos: tienen que existir (el proveedor, además, ser de la empresa) y seguir activos; un id que no cumple no puede quedar guardado en la operación (antes, un id
+ * inexistente reventaba con un error de clave foránea). Se llama dos veces con los mismos textos: antes de abrir la transacción (camino rápido) y dentro de ella (U11, el estado que vale).
+ * `null` si todo está bien o si no se eligió ninguno.
+ */
+async function maestroNoDisponible(
+  db: Prisma.TransactionClient,
+  motivoId: string | undefined,
+  destinoId: string | undefined,
+  proveedorId: string | undefined
+): Promise<ResultadoRegistrarMovimiento | null> {
+  if (motivoId) {
+    const motivo = await cargarMotivoMerma(db, motivoId);
+    if (!motivo?.activo) return fracaso("MOTIVO_NO_DISPONIBLE", "El motivo elegido ya no está disponible.");
+  }
+  if (destinoId) {
+    const destino = await cargarDestinoConsumo(db, destinoId);
+    if (!destino?.activo) return fracaso("DESTINO_NO_DISPONIBLE", "El destino elegido ya no está disponible.");
+  }
+  if (proveedorId) {
+    const proveedor = await cargarProveedor(db, proveedorId);
+    if (!proveedor?.activo) return fracaso("PROVEEDOR_NO_DISPONIBLE", "El proveedor elegido ya no está disponible.");
+  }
+  return null;
 }

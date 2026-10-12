@@ -6,10 +6,10 @@ import {
   cuentaComoConsumoDeReceta,
   elegirAnclas,
   esAnclaValida,
-  finDelDiaUtc,
   limitesDelTramo,
   type CandidatoAncla,
 } from "../../src/core/reportes/rendimiento-conciliado";
+import { ZONA_ARGENTINA, ZONA_UTC, inicioDelDia } from "../../src/core/tiempo/zona-horaria";
 
 describe("cuentaComoConsumoDeReceta (D2 — qué proceso cuenta como consumo real de la receta)", () => {
   it("CONTROL siempre cuenta — es la propia medición del Conteo Físico", () => {
@@ -176,19 +176,28 @@ describe("esAnclaValida / elegirAnclas / anclasValidasEnVentana", () => {
   });
 });
 
-describe("finDelDiaUtc / limitesDelTramo", () => {
-  it("finDelDiaUtc: el último instante del día calendario UTC", () => {
-    const f = finDelDiaUtc(new Date("2026-01-15T08:30:00Z"));
-    expect(f.toISOString()).toBe("2026-01-15T23:59:59.999Z");
+describe("limitesDelTramo (P1: los días se cortan en la zona, no en UTC)", () => {
+  // Las anclas del reporte son el inicio del día de la zona (00:00 argentinas = 03:00Z).
+  const ancla = (dia: string, zona = ZONA_ARGENTINA) => inicioDelDia(dia, zona);
+
+  it("excluye el día de la ancla-desde, incluye el día ENTERO de la ancla-hasta: los límites son el 23:59:59.999 ARGENTINO de cada día", () => {
+    const { desde, hasta } = limitesDelTramo({ anclaDesde: ancla("2026-01-02"), anclaHasta: ancla("2026-01-28") }, ZONA_ARGENTINA);
+    expect(desde.toISOString()).toBe("2026-01-03T02:59:59.999Z");
+    expect(hasta.toISOString()).toBe("2026-01-29T02:59:59.999Z");
+    // Un movimiento fechado el mismo día que anclaDesde (ej. el propio ajuste de esa ancla) queda FUERA del tramo (no es > desde)...
+    expect(new Date("2026-01-02T12:00:00Z").getTime() > desde.getTime()).toBe(false);
+    // ...incluso a las 22:30 argentinas (01:30Z del día siguiente en UTC): sigue siendo el día de la ancla.
+    expect(new Date("2026-01-03T01:30:00Z").getTime() > desde.getTime()).toBe(false);
+    // Un movimiento fechado el mismo día que anclaHasta (ej. el CONTROL del escenario B) queda DENTRO del tramo (es <= hasta), también a las 22:30 argentinas.
+    expect(new Date("2026-01-28T12:00:00Z").getTime() <= hasta.getTime()).toBe(true);
+    expect(new Date("2026-01-29T01:30:00Z").getTime() <= hasta.getTime()).toBe(true);
+    // Y lo del día siguiente (00:00 argentinas) queda afuera.
+    expect(new Date("2026-01-29T03:00:00Z").getTime() <= hasta.getTime()).toBe(false);
   });
 
-  it("limitesDelTramo: excluye el día de la ancla-desde, incluye el día ENTERO de la ancla-hasta", () => {
-    const { desde, hasta } = limitesDelTramo({ anclaDesde: new Date("2026-01-02"), anclaHasta: new Date("2026-01-28") });
+  it("con otra zona corta en esa zona (UTC da el 23:59:59.999Z de siempre)", () => {
+    const { desde, hasta } = limitesDelTramo({ anclaDesde: ancla("2026-01-02", ZONA_UTC), anclaHasta: ancla("2026-01-28", ZONA_UTC) }, ZONA_UTC);
     expect(desde.toISOString()).toBe("2026-01-02T23:59:59.999Z");
     expect(hasta.toISOString()).toBe("2026-01-28T23:59:59.999Z");
-    // Un movimiento fechado el mismo día que anclaDesde (ej. el propio ajuste de esa ancla) queda FUERA del tramo (no es > desde).
-    expect(new Date("2026-01-02T12:00:00Z").getTime() > desde.getTime()).toBe(false);
-    // Un movimiento fechado el mismo día que anclaHasta (ej. el CONTROL del escenario B) queda DENTRO del tramo (es <= hasta).
-    expect(new Date("2026-01-28T12:00:00Z").getTime() <= hasta.getTime()).toBe(true);
   });
 });

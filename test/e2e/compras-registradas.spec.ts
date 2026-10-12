@@ -37,6 +37,11 @@ test("el listado muestra la factura con sus líneas, filtra por proveedor y se l
   await expect(tarjeta).toContainText("12 kg");
   await expect(tarjeta).toContainText("e2e-admin@local.test");
 
+  // Un N.º con forma de comprobante («1-1234») se muestra normalizado («00001-00001234»); el texto guardado no cambia y el libre («E2E-F-…») se ve tal cual (arriba).
+  const normalizada = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha, proveedorId: proveedor.id, nroFactura: "1-1234", usuarioId: admin.id } });
+  await page.goto(`/reportes/compras?proveedorId=${proveedor.id}`);
+  await expect(page.locator(`[data-compra="${normalizada.id}"]`)).toContainText("Factura 00001-00001234");
+
   // «Sin proveedor» muestra la compra cargada sin proveedor, marcada como tal.
   await page.goto(`/reportes/compras?proveedorId=SIN&factura=E2E-SIN-${marca}`);
   const tarjetaSin = page.locator(`[data-compra="${sinProveedor.id}"]`);

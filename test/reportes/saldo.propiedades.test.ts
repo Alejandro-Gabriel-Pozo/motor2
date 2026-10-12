@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import fc from "fast-check";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
@@ -51,6 +51,7 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
   let seccionId: string;
   let unidadKgId: string;
   let insumoId: string;
+  let motivoId: string;
   let corrida = 0;
 
   beforeAll(async () => {
@@ -64,6 +65,7 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
     unidadKgId = catalogo.kg.id;
     insumoId = catalogo.insumo.id;
     seccionId = (await sembrarSeccion(sucursalId)).id;
+    motivoId = (await sembrarMotivosYDestinos()).motivos.get("Vencido")!;
     const admin = await crearUsuarioConMembresia({ email: "admin-prop@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
@@ -82,7 +84,8 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
     for (const [i, paso] of pasos.entries()) {
       const delta = deltaConSigno(paso);
       const debeAceptarse = delta > 0 || saldoModelo >= -delta;
-      const r = await registrarMovimiento({ proceso: paso.proceso, fecha: fechaDe(i), seccionId, items: [{ productoId, cantidad: paso.centesimas / 100 }] });
+      // U11: la Merma exige un motivo en el servidor.
+      const r = await registrarMovimiento({ proceso: paso.proceso, fecha: fechaDe(i), seccionId, ...(paso.proceso === "MERMA" && { motivoId }), items: [{ productoId, cantidad: paso.centesimas / 100 }] });
       expect(r.ok, `${paso.proceso} ${paso.centesimas / 100} con saldo ${saldoModelo / 100}: ${r.mensaje}`).toBe(debeAceptarse);
       if (r.ok) {
         saldoModelo += delta;

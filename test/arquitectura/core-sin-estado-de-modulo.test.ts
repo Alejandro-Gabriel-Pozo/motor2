@@ -19,13 +19,9 @@ const SRC = join(__dirname, "../../src");
 const CORE = join(SRC, "core");
 
 /** `ruta relativa a src/` → nombres de las variables `let`/`var` de módulo que se aceptan, y por qué. */
-const ESTADO_DE_MODULO_ACEPTADO: Record<string, { variables: string[]; motivo: string }> = {
-  "core/auth/base.ts": {
-    variables: ["datosDelRolDelProceso"],
-    motivo:
-      "Memoriza (una vez por proceso) la lectura del rol de ejecución de la base para `verificarRolDeEjecucionDelProceso` (ADR-022). `core/auth/base.ts` es un heredado que sale de `core` en la Fase 6 (sesión y base), y se lleva esta variable.",
-  },
-};
+// Vacía desde la Fase 6, tramo 6a: el único estado de módulo permitido (`let datosDelRolDelProceso` del `base.ts` que vivía en `core/auth/`) salió de core con su archivo; la excepción
+// se mudó con él a `server-sesion.test.ts` (ESTADO_DE_MODULO_ACEPTADO de `server/sesion/base.ts`). La lista solo se achica.
+const ESTADO_DE_MODULO_ACEPTADO: Record<string, { variables: string[]; motivo: string }> = {};
 
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {

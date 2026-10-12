@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 /**
  * El azar del proceso (`azarDelProceso`, el adaptador `src/lib/azar.ts`) lo toma el BORDE y lo pasa por parámetro (Pureza 1.5): la Server Action se lo da a su caso
  * de uso (`agregarOActualizarUsuarioCasoDeUso(ctx, comando, azarDelProceso)`, `darDeAltaProductoCasoDeUso(ctx, datos, azarDelProceso)`), y el núcleo lo recibe en
- * `Transaccion.aleatorio` desde `core/auth/base.ts`. Un caso de uso, la persistencia, una lectura o una consulta que lo importan por su cuenta esconden el azar: un
+ * `Transaccion.aleatorio` desde `server/sesion/base.ts`. Un caso de uso, la persistencia, una lectura o una consulta que lo importan por su cuenta esconden el azar: un
  * test ya no puede fijarlo (precedente: la huella de la alta de admin con azar fijo, 1.2).
  *
  * Nació en el Hito 4, bloque 4.3, paso H4C-12, de la mutación «el caso de uso del alta de un producto usa `azarDelProceso` en vez del que recibe», que ningún test

@@ -353,7 +353,7 @@ async function main() {
   const { medianaMs: medianaPeriodo } = await medir("obtenerReportePorPeriodo (10 días)", () => obtenerReportePorPeriodo(sucursal.id, haceDiezDias, hoy, {}, dbConContador, new Date()), 3);
   console.log(`  Tiempo mediana del reporte completo: ${medianaPeriodo.toFixed(1)}ms\n`);
 
-  // Sobrecosto del contexto de empresa (ADR-007, A5). Réplica LITERAL de `dbDeEmpresa` (src/core/auth/base.ts) sobre el cliente del
+  // Sobrecosto del contexto de empresa (ADR-007, A5). Réplica LITERAL de `dbDeEmpresa` (src/server/sesion/base.ts) sobre el cliente del
   // bench —el real usa el singleton de `src/lib/db.ts`, que apunta a DATABASE_URL—: cada operación pasa a ser una transacción
   // `[set_config('app.empresa_id', $1, true), operación]`. Mismo reporte, sin y con la extensión.
   console.log("=== Sobrecosto de dbDeEmpresa (set_config por operación, ADR-007 A5) ===\n");

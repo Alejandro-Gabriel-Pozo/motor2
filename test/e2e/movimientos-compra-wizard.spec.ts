@@ -35,7 +35,8 @@ test("crear producto inline durante una Compra no pisa el proveedor ni la fila, 
   await elegirSelectPorOpcion(page, seccion.nombre);
 
   await page.getByRole("button", { name: "+ Nuevo producto" }).click();
-  const modal = page.locator(".fixed.inset-0");
+  // El modal es un `<dialog>` con rol de diálogo (antes se lo buscaba por sus clases CSS, un detalle de implementación).
+  const modal = page.getByRole("dialog");
   const nombreProducto = `E2E Producto Compra ${Date.now()}`;
   await modal.locator("input").first().fill(nombreProducto);
   await modal.locator("select").first().selectOption({ label: "kg" });

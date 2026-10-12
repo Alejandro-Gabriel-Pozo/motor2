@@ -11,7 +11,7 @@ import { ACCIONES, type AccionClave, type NivelDeAccion } from "../../src/core/p
  *    `GOBIERNO` con el piso exacto de cada una). Semilla: solo `admin`, o ninguna las de gerente.
  *  - **O, operativas sensibles**: piso «operario» y semilla SOLO `admin`. Ningún rol de fábrica distinto del `admin` la tiene al nacer la empresa, y el gerente la delega por configuración
  *    a cualquier rol propio (un «encargado») sin tocar el piso. Hoy: los reportes de piso operario que se siembran cerrados, las 11 `pos_*`, `receta_sucursal_editar` y
- *    `producto_sincronizar_precio_carta` (S-41). La clave fina `producto_campos_sensibles` (M.2, fuera de la rama) entrará acá.
+ *    `producto_sincronizar_precio_carta` (S-41) y la clave fina `producto_campos_sensibles` (M.2: precio, factor y unidades del producto; se suma a `producto_editar`).
  *  - **L, libres**: piso «operario» y semilla `admin` y `operador`: lo operativo de todos los días.
  *  - **A, de piso administrador**: hoy solo la alcanza el rol `admin` (no existe `Rol.nivel`: todo otro rol es «operario» frente al piso) y no se puede delegar. Son las CANDIDATAS a pasar a O que el
  *    plan (1.4) deja como decisión del dueño POR FAMILIA (precio, stock, anulaciones, dinero, carta, recetas, reportes de dinero); nada de eso se ejecuta por defecto. Se declaran para que subir
@@ -80,6 +80,7 @@ const O = [
   "pos_abrir_cuenta",
   "pos_enviar_a_cocina",
   "pos_liberar_mesa",
+  "producto_campos_sensibles",
 ] as const satisfies readonly AccionClave[];
 
 const L = [
@@ -200,7 +201,7 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     const todas = [...G, ...O, ...L, ...A];
     expect(new Set(todas).size, "una clave declarada en dos clases").toBe(todas.length);
     expect(todas.length).toBe(ACCIONES.length);
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 18, 33, 59]);
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 19, 33, 59]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

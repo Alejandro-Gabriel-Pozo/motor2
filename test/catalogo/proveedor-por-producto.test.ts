@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, sembrarSeccion, sembrarCompraDeKardex, sembrarMotivosYDestinos, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
+import { crearMembresia } from "../setup/membresia";
 import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularCompra, corregirCompra } from "../../src/server/actions/movimientos/compras";
@@ -17,6 +18,7 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
   let proveedorBId: string;
   let unidadCompraId: string;
   let adminId: string;
+  let adminRolId: string;
   let seccionId: string;
 
   /** Una compra en el Kardex (escrita directo), de la sucursal de la sesión salvo que se diga otra. */
@@ -30,6 +32,7 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
     sucursalId = base.sucursal.id;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     adminId = admin.id;
+    adminRolId = base.admin.id;
     seccionId = (await sembrarSeccion(sucursalId)).id;
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
     const catalogo = await sembrarCatalogoBase();
@@ -263,6 +266,8 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
     it("la comparativa es de la EMPRESA: suma lo comprado en todas las sucursales", async () => {
       const norte = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
+      // ADR-028 (D1): «de la empresa» es «de las sucursales que ves»; el administrador de este test trabaja también en Norte (sin esa membresía la RLS por sucursal no le deja ver sus compras).
+      await crearMembresia({ usuarioId: adminId, sucursalId: norte, rolId: adminRolId });
       const seccionNorte = (await sembrarSeccion(norte, "Depósito Norte")).id;
       await compra(productoId, proveedorAId, "2026-09-10", 500);
       await compra(productoId, proveedorBId, "2026-09-12", 400, { sucursalId: norte, seccionId: seccionNorte });
@@ -273,6 +278,8 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
     it("el carrito usa el precio de ESTA sucursal; si nunca le compró ese producto al proveedor, el de la empresa y lo dice", async () => {
       const norte = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
+      // ADR-028 (D1): «de la empresa» es «de las sucursales que ves»; el administrador de este test trabaja también en Norte (sin esa membresía la RLS por sucursal no le deja ver sus compras).
+      await crearMembresia({ usuarioId: adminId, sucursalId: norte, rolId: adminRolId });
       const seccionNorte = (await sembrarSeccion(norte, "Depósito Norte")).id;
       const producto2 = await sembrarProductoDisponible({ codigo: "MP_TEST_3", nombre: "Sal", tipo: "MP", unidadStockId: unidadCompraId }, sucursalId);
       await compra(productoId, proveedorAId, "2026-09-10", 100); // esta sucursal

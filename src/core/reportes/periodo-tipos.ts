@@ -1,5 +1,4 @@
-import type { Proceso } from "@prisma/client";
-import { ZONA_UTC, rangoDeDias } from "@/core/tiempo/zona-horaria";
+import type { Proceso } from "@/core/datos/enumerados-del-esquema";
 
 export interface FiltrosPeriodo {
   proceso?: Proceso;
@@ -33,21 +32,4 @@ export interface ItemPeriodo {
    * ocurrió, y su efecto en el stock ya lo deshizo el contra-asiento. La línea sigue en `items` (para trazabilidad); lo que no debe hacer es sumar.
    */
   anulada: boolean;
-}
-
-/**
- * Rango inclusivo [desde 00:00, hasta 23:59:59.999] — en UTC, no en la hora
- * local del proceso Node. `desde`/`hasta` llegan como Date "de solo día"
- * (`new Date('yyyy-MM-dd')` del lado del cliente, mismo patrón que ya usa
- * el resto del proyecto — ver venta-form.tsx/reclasificar-form.tsx): ese
- * constructor SIEMPRE interpreta el string como medianoche UTC, sin
- * importar la zona horaria del navegador. El bug que Apps Script arrastraba
- * (Reportes.js:41-48, parsearFechaLocal_) salía de comparar esa medianoche
- * UTC contra un `setHours(0,0,0,0)` que corre en la zona LOCAL del
- * script — acá se evita de raíz usando `setUTCHours` en vez de `setHours`,
- * así el límite del rango se calcula con el mismo criterio (UTC) que ya se
- * usó para construir el valor, sin depender de en qué TZ corra el server.
- */
-export function rangoUtc(desde: Date, hasta: Date): { desde: Date; hasta: Date } {
-  return rangoDeDias(desde, hasta, ZONA_UTC);
 }

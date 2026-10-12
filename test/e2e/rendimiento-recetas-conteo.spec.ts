@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "../../src/core/tiempo/zona-horaria";
 
 /**
  * Camino CONTEO (Task #26, Diseño B — docs/plan-rendimiento-recetas-2026-09-22.md, sección nueva): con dos
@@ -28,8 +29,9 @@ test("con dos anclas de Conteo Físico que cubren el insumo, la fila se mide (no
 
   // Ancla-desde (hace 10 días): conteo en 0, antes de cualquier movimiento — coincide (diferencia 0), RESUELTO sin ajuste.
   const hoy = new Date();
-  const anclaDesde = new Date(hoy.getTime() - 10 * 86_400_000);
-  anclaDesde.setUTCHours(0, 0, 0, 0);
+  // El conteo de hace 10 días, como lo guarda hoy el formulario (el mediodía argentino de ese día): su día es el mismo en hora argentina y en UTC.
+  const anclaDesdeIso = diaDeCalendario(new Date(hoy.getTime() - 10 * 86_400_000), ZONA_ARGENTINA);
+  const anclaDesde = mediodiaDelDia(anclaDesdeIso, ZONA_ARGENTINA);
   await prisma.conteoFisico.create({
     data: { sucursalId, fecha: anclaDesde, productoId: aguaCaja.id, seccionId, saldoSistema: 0, conteoReal: 0, diferencia: 0, accion: "AJUSTAR", estado: "RESUELTO", usuarioId: admin.id },
   });
@@ -64,8 +66,8 @@ test("con dos anclas de Conteo Físico que cubren el insumo, la fila se mide (no
     await expect(fila.getByText("Medido (Conteo Físico)")).toBeVisible();
     await expect(fila).toContainText("0%"); // sin "+" — 0 no es > 0 (mismo criterio que el resto de la fila)
     // El Δ stock deja de mostrarse: en su lugar, las dos fechas ancla — con las que se midió el tramo.
-    const anclaDesdeIso = anclaDesde.toISOString().slice(0, 10);
-    const anclaHastaIso = hoy.toISOString().slice(0, 10);
+    // El «hasta» del rango por defecto es el día de hoy en hora argentina (P1, O.251), no el de UTC.
+    const anclaHastaIso = diaDeCalendario(hoy, ZONA_ARGENTINA);
     await expect(fila.getByText(`contado ${anclaDesdeIso} → ${anclaHastaIso}`)).toBeVisible();
     await expect(fila.getByText(/de ruido esperable por comprar de a lotes/)).toHaveCount(0); // método CONTEO: sin banda de ruido de lote (D4)
 

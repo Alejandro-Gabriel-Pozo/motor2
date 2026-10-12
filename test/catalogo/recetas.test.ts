@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, crearUsuarioConMembresia, prisma, prismaSinEmpresa } from "../setup/test-db";
 import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { darDeAltaProducto } from "../../src/server/actions/catalogo/productos";
@@ -102,13 +102,13 @@ describe("recetas", () => {
     expect(duplicado.ok).toBe(false);
   });
 
-  it("actualizarIngredienteDeReceta cambia cantidad/unidad de UN ingrediente sin tocar los demás, en una sola versión nueva", async () => {
+  it("actualizarIngredienteDeReceta cambia cantidad/merma de UN ingrediente sin tocar los demás, en una sola versión nueva", async () => {
     await guardarReceta(pvId, [
       { insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId },
       { insumoProductoId: mp2Id, cantidad: 0.2, unidadId: unidadKgId },
     ]);
 
-    const resultado = await actualizarIngredienteDeReceta(pvId, mp1Id, { cantidad: 0.15, unidadId: unidadGId, mermaPorcentaje: 5 }, await versionVigenteDeReceta(pvId));
+    const resultado = await actualizarIngredienteDeReceta(pvId, mp1Id, { cantidad: 0.15, unidadId: unidadKgId, mermaPorcentaje: 5 }, await versionVigenteDeReceta(pvId));
     expect(resultado.ok).toBe(true);
 
     const versiones = await prisma.recetaVersion.findMany({ where: { productoId: pvId } });
@@ -118,10 +118,93 @@ describe("recetas", () => {
     expect(vigente?.ingredientes).toHaveLength(2);
     const editado = vigente!.ingredientes.find((i) => i.insumoProductoId === mp1Id)!;
     expect(Number(editado.cantidad)).toBe(0.15);
-    expect(editado.unidadId).toBe(unidadGId);
+    expect(editado.unidadId).toBe(unidadKgId);
     expect(Number(editado.mermaPorcentaje)).toBe(5);
     const intacto = vigente!.ingredientes.find((i) => i.insumoProductoId === mp2Id)!;
     expect(Number(intacto.cantidad)).toBe(0.2);
+  });
+
+  // U7 / D3 (decisión del dueño, 2026-10-11): una receta NO puede escribirse en otra unidad que la de STOCK de la materia prima (g contra kg), por ahora. El consumo multiplica el número de la
+  // receta por el stock en su unidad de stock, sin convertir: un «g» sobre una MP en «kg» descontaría 1000 veces más stock y costo.
+  describe("la unidad del ingrediente es la de stock de la materia prima (U7 / D3)", () => {
+    const MENSAJE_G_SOBRE_KG = 'El ingrediente "Harina" está cargado en g, pero su stock se descuenta en kg y la receta todavía no convierte entre unidades: cargá la cantidad en kg.';
+
+    it("guardarReceta rechaza g sobre una MP que se descuenta en kg, con el mensaje de negocio, y no guarda ninguna versión", async () => {
+      const resultado = await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 300, unidadId: unidadGId }]);
+      expect(resultado).toEqual({ ok: false, mensaje: MENSAJE_G_SOBRE_KG });
+      expect(await prisma.recetaVersion.count({ where: { productoId: pvId } })).toBe(0);
+    });
+
+    it("rechaza si UNO solo de los ingredientes está en otra unidad, aunque los demás estén bien", async () => {
+      const resultado = await guardarReceta(pvId, [
+        { insumoProductoId: mp2Id, cantidad: 0.2, unidadId: unidadKgId },
+        { insumoProductoId: mp1Id, cantidad: 300, unidadId: unidadGId },
+      ]);
+      expect(resultado.ok).toBe(false);
+      expect(resultado.mensaje).toBe(MENSAJE_G_SOBRE_KG);
+      expect(await prisma.recetaVersion.count({ where: { productoId: pvId } })).toBe(0);
+    });
+
+    it("agregarIngredienteAReceta y actualizarIngredienteDeReceta rechazan g sobre kg y la versión vigente no cambia", async () => {
+      await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }]);
+
+      const agregar = await agregarIngredienteAReceta(pvId, { insumoProductoId: mp2Id, cantidad: 200, unidadId: unidadGId }, await versionVigenteDeReceta(pvId));
+      expect(agregar.ok).toBe(false);
+      const actualizar = await actualizarIngredienteDeReceta(pvId, mp1Id, { cantidad: 300, unidadId: unidadGId }, await versionVigenteDeReceta(pvId));
+      expect(actualizar).toEqual({ ok: false, mensaje: MENSAJE_G_SOBRE_KG });
+
+      expect((await obtenerRecetaVigente(pvId))?.version).toBe(1);
+    });
+
+    it("la unidad se compara con la de stock REAL de la MP en la transacción: si cambió entre la validación y el guardado, se rechaza", async () => {
+      // La MP todavía no tiene historia (ni receta ni movimientos), así que CAT-1 deja cambiarle la unidad de stock. La validación previa (fuera de la transacción) ve «kg»; justo antes de abrir la
+      // transacción del guardado alguien la cambia a «g» — el guardado, que llega con «kg», tiene que leerla de nuevo adentro y rechazar.
+      const original = prismaSinEmpresa.$transaction.bind(prismaSinEmpresa) as (...a: unknown[]) => Promise<unknown>;
+      let cambiada = false;
+      const espia = vi.spyOn(prismaSinEmpresa, "$transaction").mockImplementation((async (...args: unknown[]) => {
+        if (!cambiada && typeof args[0] === "function") {
+          cambiada = true;
+          await prisma.producto.update({ where: { id: mp1Id }, data: { unidadStockId: unidadGId } });
+        }
+        return original(...args);
+      }) as never);
+      try {
+        const resultado = await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }]);
+        expect(cambiada, "la prueba no llegó a cambiar la unidad entre medio").toBe(true);
+        expect(resultado).toEqual({ ok: false, mensaje: 'El ingrediente "Harina" está cargado en kg, pero su stock se descuenta en g y la receta todavía no convierte entre unidades: cargá la cantidad en g.' });
+        expect(await prisma.recetaVersion.count({ where: { productoId: pvId } })).toBe(0);
+      } finally {
+        espia.mockRestore();
+      }
+    });
+
+    it("una receta ya guardada con otra unidad (datos viejos) no se migra, pero tampoco se puede volver a guardar hasta corregirla", async () => {
+      // Datos viejos: la v1 quedó con «g» sobre una MP en «kg» (se escribe directo, como estaba antes de esta regla).
+      await prisma.recetaVersion.create({
+        data: {
+          productoId: pvId,
+          version: 1,
+          ingredientes: {
+            create: [
+              { insumoProductoId: mp1Id, cantidad: 300, unidadId: unidadGId },
+              { insumoProductoId: mp2Id, cantidad: 0.2, unidadId: unidadKgId },
+            ],
+          },
+        },
+      });
+
+      // Tocar OTRO ingrediente arrastra el viejo y se rechaza.
+      const otroCambio = await actualizarIngredienteDeReceta(pvId, mp2Id, { cantidad: 0.25, unidadId: unidadKgId }, await versionVigenteDeReceta(pvId));
+      expect(otroCambio).toEqual({ ok: false, mensaje: MENSAJE_G_SOBRE_KG });
+      expect((await obtenerRecetaVigente(pvId))?.version).toBe(1);
+
+      // Corregirlo (cantidad en kg) sí guarda.
+      const corregido = await actualizarIngredienteDeReceta(pvId, mp1Id, { cantidad: 0.3, unidadId: unidadKgId }, await versionVigenteDeReceta(pvId));
+      expect(corregido.ok).toBe(true);
+      const vigente = await obtenerRecetaVigente(pvId);
+      expect(vigente?.version).toBe(2);
+      expect(vigente?.ingredientes.every((i) => i.unidadId === unidadKgId)).toBe(true);
+    });
   });
 
   it("actualizarIngredienteDeReceta rechaza un insumo que no está en la receta vigente", async () => {

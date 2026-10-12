@@ -1,5 +1,5 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
@@ -8,6 +8,7 @@ import { listarStockParaConteo } from "@/server/consultas/movimientos/stock-para
 import { ConteoFisicoGrid, type FilaBaseConteo } from "./conteo-fisico-grid";
 import { AccionesConteoPendiente, BotonCancelarConteo } from "./acciones-historial";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 const ESTADO_COLOR: Record<string, string> = {
   RESUELTO: "text-green-700",
@@ -104,7 +105,7 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
           <tbody>
             {historial.map((c) => (
               <tr key={c.id} className="border-b">
-                <td className="py-2 pr-2">{c.fecha.toISOString().slice(0, 10)}</td>
+                <td className="py-2 pr-2">{diaDeCalendario(c.fecha, ctx.empresaZonaHoraria)}</td>
                 <td className="px-2">{c.producto.nombre}</td>
                 <td className="px-2">{c.seccion.nombre}</td>
                 <td className="px-2">{Number(c.saldoSistema)}</td>

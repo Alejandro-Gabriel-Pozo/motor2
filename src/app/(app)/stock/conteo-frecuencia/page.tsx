@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -11,6 +11,7 @@ import { ConteoFrecuenciaForm } from "./conteo-frecuencia-form";
 import { BotonEliminarFrecuenciaConteo } from "./boton-eliminar";
 import { IconoDeAccion } from "@/components/iconos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { rangoDeDias } from "@/core/tiempo/zona-horaria";
 
 /**
  * Agenda de conteo físico periódico por sucursal × producto (decisión 2 de
@@ -32,10 +33,12 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
   const { editar, sugerido, sugeridoNombre } = unicosDeUrl(await searchParams);
   // S-13: el gasto en compras por insumo es de `reporte_compras` (piso administrador), no de quien cuenta (`conteo_frecuencia`, piso operario). La consulta lo niega por defecto.
   const { ver: veImportes } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_compras", ctx.db);
-  const rango = resolverRangoPorDefecto(undefined, new Date());
+  const rango = resolverRangoPorDefecto(undefined, new Date(), ctx.empresaZonaHoraria);
+  // Los dos extremos se cortan en la zona de la empresa (P1): el primer día desde las 00:00 y el último hasta las 23:59:59.999; las compras del formulario (mediodía argentino) tienen que entrar.
+  const ventana = rangoDeDias(new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.empresaZonaHoraria);
   const [filas, sugerencias] = await Promise.all([
     listarFrecuenciasConteo(ctx.sucursalId),
-    sugerirInsumosClaseA(ctx.sucursalId, new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.db, { conImportes: veImportes }),
+    sugerirInsumosClaseA(ctx.sucursalId, ventana.desde, ventana.hasta, ctx.db, { conImportes: veImportes }),
   ]);
   const filaEnEdicion = editar ? filas.find((f) => f.id === editar) : undefined;
   const idsConAgenda = new Set(filas.filter((f) => f.frecuenciaDias > 0).map((f) => f.productoId));

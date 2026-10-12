@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
 import { activarTodosLosModulos } from "../setup/modulos";
 import { crearMembresia } from "../setup/membresia";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { dbDeEmpresa } from "../../src/core/auth/base";
+import { dbDeEmpresa } from "../../src/server/sesion/base";
 import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-carta";
 import { actualizarVisibleEnCarta, guardarContenidoCartaProducto } from "../../src/server/actions/carta/contenido-producto";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "../../src/server/actions/carta/generos";
@@ -305,14 +305,16 @@ describe("carta propia por sucursal — acciones", () => {
       expect(r.mensaje).toMatch(/No se encontró esa sucursal/);
       expect(await contarCarta(sucursalB)).toEqual({ contenidos: 0, generos: 0, items: 0, opciones: 0 });
 
-      const adminDePrincipal = await cargarAdminCarta(sucursalB, dbDeEmpresa("empresa_principal"), AHORA_DE_LA_CORRIDA);
+      // Como lo hace la página (carta/page.tsx) para quien puede copiar la carta: la base de SU sucursal con la LECTURA ampliada a las sucursales donde ve `carta_ver`
+      // (`lecturaEnSucursalesVisibles`), porque `estadoCartaPropia` cuenta la carta propia de las otras sucursales. Acá, la A (supone membresía de lectura en las dos); la escritura sigue siendo solo la B.
+      const adminDePrincipal = await cargarAdminCarta(sucursalB, dbDeEmpresa("empresa_principal", { lectura: [sucursalB, sucursalA], escritura: [sucursalB] }), AHORA_DE_LA_CORRIDA);
       expect(adminDePrincipal.sucursalesConCarta.map((s) => s.id)).toEqual([sucursalA]);
-      const adminDeNorte = await cargarAdminCarta(sucursalNorte.id, dbDeEmpresa("norte"), AHORA_DE_LA_CORRIDA);
+      const adminDeNorte = await cargarAdminCarta(sucursalNorte.id, dbDeEmpresa("norte", { lectura: [sucursalNorte.id], escritura: [sucursalNorte.id] }), AHORA_DE_LA_CORRIDA);
       expect(adminDeNorte.cartaVacia).toBe(false);
       expect(adminDeNorte.sucursalesConCarta).toEqual([]);
 
       // El contenido de Norte nunca aparece en la carta de la principal ni al revés.
-      const menuB = await resolverMenuCarta(sucursalB, dbDeEmpresa("empresa_principal"), AHORA_DE_LA_CORRIDA);
+      const menuB = await resolverMenuCarta(sucursalB, dbDeEmpresa("empresa_principal", { lectura: [sucursalB], escritura: [sucursalB] }), AHORA_DE_LA_CORRIDA);
       expect(menuB!.secciones).toEqual([]);
     });
   });

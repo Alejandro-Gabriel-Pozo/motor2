@@ -16,7 +16,9 @@ describe("corregirCompraCasoDeUso", () => {
   let molinoId: string;
   let surId: string;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId, ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const actor = () => ({ usuarioId: adminId, sucursalId, ...baseDe(sucursalId) });
   const vista = (op: { proveedorId: string | null; nroFactura: string | null; detalleLibre: string | null }) => ({
     proveedorId: op.proveedorId,
     nroFactura: op.nroFactura,
@@ -94,7 +96,7 @@ describe("corregirCompraCasoDeUso", () => {
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa operación en esta sucursal.",
     });
-    expect(await corregirCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ...baseDeTest }, { operacionId: op.id, nueva, esperado: vista(op) })).toMatchObject({
+    expect(await corregirCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ...baseDe(otra.id) }, { operacionId: op.id, nueva, esperado: vista(op) })).toMatchObject({
       ok: false,
       codigo: "NO_ENCONTRADA",
     });

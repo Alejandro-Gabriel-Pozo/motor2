@@ -12,7 +12,16 @@ interface Opcion {
   nombre: string;
 }
 
-export function EnviarForm({ sucursales, secciones }: { sucursales: Opcion[]; secciones: Opcion[] }) {
+export function EnviarForm({
+  sucursales,
+  secciones,
+  seccionesDesactivadas = [],
+}: {
+  sucursales: Opcion[];
+  secciones: Opcion[];
+  /** P17: secciones dadas de baja, que solo admiten sacar mercadería; enviar saca, así que se ofrecen como origen, al final y con la etiqueta «(desactivada)». */
+  seccionesDesactivadas?: Opcion[];
+}) {
   const router = useRouter();
   const [destinoSucursalId, setDestinoSucursalId] = useState("");
   const [productoId, setProductoId] = useState("");
@@ -77,6 +86,11 @@ export function EnviarForm({ sucursales, secciones }: { sucursales: Opcion[]; se
           {secciones.map((s) => (
             <option key={s.id} value={s.id}>
               {s.nombre}
+            </option>
+          ))}
+          {seccionesDesactivadas.map((s) => (
+            <option key={s.id} value={s.id}>
+              {`${s.nombre} (desactivada)`}
             </option>
           ))}
         </select>

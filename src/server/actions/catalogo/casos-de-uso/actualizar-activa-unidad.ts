@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { MENSAJE_UNIDAD_NO_ENCONTRADA } from "@/core/features/catalogo/unidades.guard";
 import type { ComandoActualizarActivaUnidad, ResultadoActualizarActivaUnidad } from "@/core/features/catalogo/unidades.schema";
 import { exito, fracaso } from "@/core/resultado-caso";

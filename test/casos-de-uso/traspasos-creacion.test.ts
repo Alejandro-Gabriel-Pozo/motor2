@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { crearSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/crear-solicitud-de-traspaso";
 import { crearEnvioDirectoDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/crear-envio-directo-de-traspaso";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
@@ -22,7 +22,9 @@ describe("casos de uso de la creación de un traspaso", () => {
   let kgId: string;
   let insumoId: string;
 
-  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const comoA = () => ({ usuarioId: adminAId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDe(sucursalAId) });
 
   /** La hora de entrada, tres días atrás: si el caso de uso leyera el reloj, no coincidiría con lo que queda guardado (Pureza 1.2; auditoría de la Fase 1: faltaban 10 de los 13 tests de hora fija). */
   const fijaHaceTresDias = () => new Date(Date.now() - 3 * 24 * 3_600_000);
@@ -220,6 +222,24 @@ describe("casos de uso de la creación de un traspaso", () => {
         mensaje: "«Azúcar» no está disponible en «Sucursal B»: activalo allá antes de enviar.",
       });
       await nadaEscrito();
+    });
+
+    it("SUCURSAL_NO_DISPONIBLE: el destino existe pero está desactivado → no se envía ni sale stock (P15)", async () => {
+      const mp = await producto(10);
+      await prisma.sucursal.update({ where: { id: sucursalBId }, data: { activo: false } });
+      const r = await crearEnvioDirectoDeTraspasoCasoDeUso(comoA(), comando(mp.id));
+      expect(r).toEqual({ ok: false, codigo: "SUCURSAL_NO_DISPONIBLE", mensaje: "Esa sucursal no existe o no está activa." });
+      await nadaEscrito();
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
+    });
+
+    it("SUCURSAL_INACTIVA: la sucursal de quien envía está desactivada (sesión vieja) → no se envía ni sale stock (P15)", async () => {
+      const mp = await producto(10);
+      await prisma.sucursal.update({ where: { id: sucursalAId }, data: { activo: false } });
+      const r = await crearEnvioDirectoDeTraspasoCasoDeUso(comoA(), comando(mp.id));
+      expect(r).toEqual({ ok: false, codigo: "SUCURSAL_INACTIVA", mensaje: 'Tu sucursal "Central" está desactivada: no se pueden enviar traspasos desde ella.' });
+      await nadaEscrito();
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
     });
 
     it("dos envíos simultáneos que juntos superan el stock: la transacción serializable deja pasar uno solo", async () => {

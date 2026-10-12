@@ -6,6 +6,7 @@ import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/c
 import { chequearIdempotencia } from "../../src/server/persistencia/movimientos/idempotencia";
 import { esClaveIdempotenciaValida } from "../../src/core/datos/clave-idempotencia";
 import { conTransaccionSerializable } from "../../src/lib/transaccion-serializable";
+import type { Transaccion } from "../../src/lib/db-tipos";
 
 /**
  * Task #41, Fase F3 — testing basado en propiedades (fast-check) del mecanismo I3 de idempotencia
@@ -228,10 +229,13 @@ describe("F3 — propiedades de chequearIdempotencia (Postgres real)", () => {
 
   let sucursalId: string;
   let usuarioId: string;
+  /** La transacción con el alcance que tiene en producción quien opera en `sucursalId`: SOLO su sucursal activa (ADR-028). */
+  let transaccionDeLaSucursal: Transaccion;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
     sucursalId = (await prisma.sucursal.create({ data: { nombre: "Central F3" } })).id;
+    transaccionDeLaSucursal = baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }).transaccion;
     usuarioId = (await prisma.user.create({ data: { email: "f3@test.com" } })).id;
   });
 
@@ -241,7 +245,7 @@ describe("F3 — propiedades de chequearIdempotencia (Postgres real)", () => {
    * "duplicado", devolver el mensaje persistido; si es "conflicto", no hacer nada.
    */
   async function intentar(clave: string, payloadHash: string, mensaje: string) {
-    return conTransaccionSerializable(baseDeTest.transaccion, async (tx) => {
+    return conTransaccionSerializable(transaccionDeLaSucursal, async (tx) => {
       const chequeo = await chequearIdempotencia(tx, clave, payloadHash);
       if (chequeo.estado === "nueva") {
         await tx.operacion.create({
@@ -340,7 +344,7 @@ describe("F3 — propiedades de chequearIdempotencia (Postgres real)", () => {
           data: { sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId, claveIdempotencia: clave, payloadHash: sinHash ? null : hash, resultadoMensaje: null },
         });
 
-        const r = await conTransaccionSerializable(baseDeTest.transaccion, (tx) => chequearIdempotencia(tx, clave, hash));
+        const r = await conTransaccionSerializable(transaccionDeLaSucursal, (tx) => chequearIdempotencia(tx, clave, hash));
         expect(r).toEqual({ estado: "conflicto" });
         expect(await prisma.operacion.count({ where: { claveIdempotencia: clave } })).toBe(1);
       }),

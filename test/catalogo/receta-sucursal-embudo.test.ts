@@ -4,7 +4,7 @@ import { cargarHistorialDeVersiones, cargarRecetasPropiasHabilitadas, cargarRece
 import { dependenciasParaDesactivar } from "../../src/server/lecturas/catalogo/dependencias-para-desactivar";
 import { compararRendimientosPorSucursal } from "../../src/server/consultas/reportes/rendimiento-por-sucursal";
 import { limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
-import { dbDeEmpresa } from "../../src/core/auth/base";
+import { dbDeEmpresa } from "../../src/server/sesion/base";
 
 /**
  * ADR-009 (familia override), R3: el embudo de recetas con ALCANCE. La receta de una sucursal es la propia si la tiene habilitada
@@ -194,12 +194,17 @@ describe("recetas con alcance: la receta efectiva de una sucursal (ADR-009, over
       await prismaAdmin.recetaSucursal.create({ data: { empresaId: "otra", sucursalId: sucursalOtra.id, productoId: productoOtro.id, habilitada: true } });
       await prismaAdmin.recetaSucursal.create({ data: { empresaId: "empresa_principal", sucursalId: norteId, productoId: pizza.id, habilitada: true } });
 
-      expect((await dbDeEmpresa("empresa_principal").recetaSucursal.findMany()).map((r) => r.sucursalId)).toEqual([norteId]);
-      expect((await dbDeEmpresa("otra").recetaSucursal.findMany()).map((r) => r.sucursalId)).toEqual([sucursalOtra.id]);
+      // Cada empresa lee con el alcance que tiene en producción quien opera en SU sucursal (ADR-028): solo esa.
+      const conAlcance = (sucursalId: string) => ({ lectura: [sucursalId], escritura: [sucursalId] });
+      expect((await dbDeEmpresa("empresa_principal", conAlcance(norteId)).recetaSucursal.findMany()).map((r) => r.sucursalId)).toEqual([norteId]);
+      expect((await dbDeEmpresa("otra", conAlcance(sucursalOtra.id)).recetaSucursal.findMany()).map((r) => r.sucursalId)).toEqual([sucursalOtra.id]);
+      // Lo que se prueba acá es la barrera de la EMPRESA: la principal escribe con la sucursal ajena DENTRO de su alcance (un alcance mal armado a propósito), así que lo único que la frena es el RLS por empresa.
+      const principalConLaAjenaEnElAlcance = dbDeEmpresa("empresa_principal", { lectura: [norteId, sucursalOtra.id], escritura: [norteId, sucursalOtra.id] });
       await expect(
-        dbDeEmpresa("empresa_principal").recetaSucursal.create({ data: { empresaId: "otra", sucursalId: sucursalOtra.id, productoId: productoOtro.id, habilitada: false } })
+        principalConLaAjenaEnElAlcance.recetaSucursal.create({ data: { empresaId: "otra", sucursalId: sucursalOtra.id, productoId: productoOtro.id, habilitada: false } })
       ).rejects.toThrow();
-      expect((await dbDeEmpresa("empresa_principal").recetaSucursal.updateMany({ data: { habilitada: false }, where: { sucursalId: sucursalOtra.id } })).count).toBe(0);
+      expect((await principalConLaAjenaEnElAlcance.recetaSucursal.updateMany({ data: { habilitada: false }, where: { sucursalId: sucursalOtra.id } })).count).toBe(0);
+      expect((await principalConLaAjenaEnElAlcance.recetaSucursal.findMany()).map((r) => r.sucursalId)).toEqual([norteId]);
     });
   });
 });

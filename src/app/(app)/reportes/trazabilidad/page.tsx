@@ -1,11 +1,12 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { buscarOperacionesPorProducto, obtenerOperacionPorId } from "@/server/consultas/reportes/trazabilidad";
 import { TablaOperacionesEncontradas, TablaItemsOperacion } from "./tabla-trazabilidad";
 import { BotonAnularVenta } from "./boton-anular-venta";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 export default async function TrazabilidadPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"producto" | "idOperacion">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -56,7 +57,7 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
       {operacion && (
         <div>
           <h2 className="mb-2 text-sm font-medium">
-            Operación {operacion.idOperacion} — {operacion.fecha.toISOString().slice(0, 10)} — {operacion.total} movimiento(s)
+            Operación {operacion.idOperacion} — {diaDeCalendario(operacion.fecha, ctx.empresaZonaHoraria)} — {operacion.total} movimiento(s)
           </h2>
           {(operacion.proveedorNombre || operacion.nroFactura) && (
             <p className="mb-2 text-xs text-neutral-500">
@@ -67,7 +68,8 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
           {/* El cartel de «Anulada» vale para cualquier proceso; el botón para anular, solo para una venta vigente. */}
           {operacion.anuladaEn ? (
             <p className="mb-2 text-xs text-red-600">
-              Anulada el {operacion.anuladaEn.toISOString().slice(0, 10)}
+              {/* `anuladaEn` y `operacion.fecha` son INSTANTES: el día se lee en la zona de la empresa (P1), igual que arriba. */}
+              Anulada el {diaDeCalendario(operacion.anuladaEn, ctx.empresaZonaHoraria)}
               {operacion.anuladaPorEmail && ` por ${operacion.anuladaPorEmail}`}.
             </p>
           ) : (

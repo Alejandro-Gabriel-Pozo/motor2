@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { aprobarYEnviarTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/aprobar-y-enviar-traspaso";
 import { cancelarSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/cancelar-solicitud-de-traspaso";
 import { rechazarSolicitudDeTraspasoCasoDeUso } from "../../src/server/actions/traspasos/casos-de-uso/rechazar-solicitud-de-traspaso";
@@ -25,10 +25,12 @@ describe("casos de uso de la solicitud de traspaso", () => {
   let kgId: string;
   let insumoId: string;
 
-  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const comoA = () => ({ usuarioId: adminAId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDe(sucursalAId) });
   /** La hora de entrada, tres días atrás: si el caso de uso leyera el reloj, no coincidiría con lo que queda guardado (Pureza 1.2; auditoría de la Fase 1: faltaban 10 de los 13 tests de hora fija). */
   const fijaHaceTresDias = () => new Date(Date.now() - 3 * 24 * 3_600_000);
-  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ahora: new Date(), ...baseDeTest });
+  const comoB = () => ({ usuarioId: adminBId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ahora: new Date(), ...baseDe(sucursalBId) });
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -115,6 +117,27 @@ describe("casos de uso de la solicitud de traspaso", () => {
       const r = await aprobarYEnviarTraspasoCasoDeUso(comoA(), { traspasoId: sol.id, seccionOrigenId: seccionAId });
       expect(r).toEqual({ ok: false, codigo: "ESTADO", mensaje: 'Este traspaso ya está en estado "ENVIADA" — no se puede aprobar de nuevo.' });
       expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
+    });
+
+    it("SUCURSAL_NO_DISPONIBLE: el destino se desactivó desde la solicitud (una SOLICITADA no impide apagar) → no se aprueba ni sale stock (P15)", async () => {
+      const mp = await producto(10);
+      const sol = await solicitud(mp.id, 4);
+      await prisma.sucursal.update({ where: { id: sucursalBId }, data: { activo: false } });
+      const r = await aprobarYEnviarTraspasoCasoDeUso(comoA(), { traspasoId: sol.id, seccionOrigenId: seccionAId });
+      expect(r).toEqual({ ok: false, codigo: "SUCURSAL_NO_DISPONIBLE", mensaje: "Esa sucursal no existe o no está activa." });
+      expect((await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } })).estado).toBe("SOLICITADA");
+      expect(await prisma.operacion.count({ where: { proceso: "TRANSFERENCIA_SALIDA_SUCURSAL" } })).toBe(0);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
+    });
+
+    it("SUCURSAL_INACTIVA: la sucursal de quien aprueba está desactivada (sesión vieja) → no se aprueba ni sale stock (P15)", async () => {
+      const mp = await producto(10);
+      const sol = await solicitud(mp.id, 4);
+      await prisma.sucursal.update({ where: { id: sucursalAId }, data: { activo: false } });
+      const r = await aprobarYEnviarTraspasoCasoDeUso(comoA(), { traspasoId: sol.id, seccionOrigenId: seccionAId });
+      expect(r).toEqual({ ok: false, codigo: "SUCURSAL_INACTIVA", mensaje: 'Tu sucursal "Central" está desactivada: no se pueden enviar traspasos desde ella.' });
+      expect((await prisma.traspasoSucursal.findUniqueOrThrow({ where: { id: sol.id } })).estado).toBe("SOLICITADA");
+      expect(await prisma.operacion.count({ where: { proceso: "TRANSFERENCIA_SALIDA_SUCURSAL" } })).toBe(0);
     });
 
     it("PRODUCTO_NO_TRANSFERIBLE: dejó de estar disponible en destino desde la solicitud", async () => {

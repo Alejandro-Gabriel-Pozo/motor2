@@ -1421,8 +1421,8 @@
   "carta.generarReporteVentasPorSeccion(Central, el día)": {
     "consultas": "7: capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×1, precioLocalProducto.findMany×1, producto.findMany×2",
     "resultado": {
-      "desde": "<fecha 2026-09-30T00:00:00.000Z>",
-      "hasta": "<fecha 2026-09-30T23:59:59.999Z>",
+      "desde": "<fecha 2026-09-30T03:00:00.000Z>",
+      "hasta": "<fecha 2026-10-01T02:59:59.999Z>",
       "totalFacturado": 17025,
       "aviso": "Importe real registrado en cada venta (no una estimación).",
       "porSeccion": [
@@ -1751,7 +1751,7 @@
     }
   },
   "carta.resolverCartaPublica(empresa, «central»)": {
-    "consultas": "9: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1, sucursalPublica.findUnique×1",
+    "consultas": "10: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×2, sucursalPublica.findUnique×1",
     "resultado": {
       "carta": {
         "version": 1,
@@ -2041,7 +2041,7 @@
     }
   },
   "carta.resolverCartaPublica(empresa, «norte»: sin tema)": {
-    "consultas": "9: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×1, sucursalPublica.findUnique×1",
+    "consultas": "10: capacidadSucursal.findMany×1, descuentoProductoSucursal.findMany×1, itemAgrupadoCarta.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, seccionCarta.findMany×1, sucursal.findUnique×2, sucursalPublica.findUnique×1",
     "resultado": {
       "carta": {
         "version": 1,
@@ -2282,10 +2282,6 @@
         ]
       ]
     }
-  },
-  "carta.productoTieneDescuentoEnAlgunaSucursal(Empanada)": {
-    "consultas": "1: descuentoProductoSucursal.count×1",
-    "resultado": true
   },
   "stock.calcularStockConsolidado(Central)": {
     "consultas": "5: conteoFisico.findMany×1, movimientoStock.findMany×1, movimientoStock.groupBy×1, producto.findMany×1, seccion.findMany×1",

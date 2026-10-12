@@ -32,3 +32,11 @@ export function mensajePisoDePromo(titulo: string, precio: number, piso: PisoDeP
     `(${piso.unidades} unidades si se elige el máximo de cada cupo: hace falta al menos $${piso.minimo}). Subí el precio o bajá los máximos.`
   );
 }
+
+/** El mensaje del rechazo cuando el precio LOCAL de alguna sucursal no alcanza el piso: nombra la promo, las unidades y el mínimo, pero NO el importe ni la sucursal (puede ser una que quien guarda no ve). */
+export function mensajePisoLocalDePromo(titulo: string, piso: PisoDePromo): string {
+  return (
+    `El precio local de "${titulo}" en alguna sucursal no alcanza el piso de $0,01 por unidad en el peor caso ` +
+    `(${piso.unidades} unidades si se elige el máximo de cada cupo: hace falta al menos $${piso.minimo}). Subí ese precio local o bajá los máximos.`
+  );
+}

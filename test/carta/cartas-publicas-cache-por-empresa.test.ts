@@ -7,7 +7,7 @@ const { unstableCache, revalidateTag, revalidatePath } = vi.hoisted(() => ({
 }));
 vi.mock("next/cache", () => ({ unstable_cache: unstableCache, revalidateTag, revalidatePath }));
 vi.mock("@/lib/db", () => ({ prisma: {} }));
-vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: (empresaId: string) => ({ dbDeEmpresa: empresaId }), verificarRolDeEjecucionDelProceso: async () => undefined }));
+vi.mock("@/server/sesion/base", () => ({ dbDeEmpresa: (empresaId: string) => ({ dbDeEmpresa: empresaId }), verificarRolDeEjecucionDelProceso: async () => undefined }));
 vi.mock("@/server/acceso/modulos-de-empresa", () => ({ modulosEfectivosDeEmpresa: async () => new Set(["carta", "promociones"]) }));
 vi.mock("@/server/lecturas/carta/publica", () => ({ resolverCartaPublica: vi.fn(async () => null), resolverPortalCarta: vi.fn(), resolverConfigPortal: vi.fn() }));
 vi.mock("@/server/lecturas/carta/empresa", () => ({ resolverEmpresaCarta: vi.fn() }));

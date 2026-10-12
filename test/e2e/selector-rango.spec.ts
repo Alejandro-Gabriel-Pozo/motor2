@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures/auth";
+import { ZONA_ARGENTINA, diaDeCalendario } from "../../src/core/tiempo/zona-horaria";
 
 /**
  * SelectorRango (src/components/selector-rango.tsx) — decisión del usuario, 2026-09-21 (docs/planes-demo-y-claridad-reportes-
@@ -8,7 +9,8 @@ import { test, expect } from "./fixtures/auth";
 test("cambiar la opción del selector cambia el rango efectivo (URL y rótulo), y «Fechas personalizadas» recién ahí muestra los inputs de fecha", async ({
   paginaAutenticada: page,
 }) => {
-  const hoyISO = new Date().toISOString().slice(0, 10);
+  // «Hoy» es el día de la empresa (Argentina), no el de UTC (P1, O.251): desde las 21:00 argentinas UTC ya está en el día siguiente y el rango por defecto sigue terminando hoy.
+  const hoyISO = diaDeCalendario(new Date(), ZONA_ARGENTINA);
 
   await page.goto("/reportes/periodo");
   await expect(page.getByRole("heading", { name: "Reporte por período" })).toBeVisible();

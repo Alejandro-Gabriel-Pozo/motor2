@@ -12,7 +12,12 @@ import type { FilaVentaSinReceta } from "@/core/reportes/public";
  * directo, una fila VENTA cuya Operacion no tiene ninguna fila CONSUMO
  * asociada (acá se resuelve con una FK real, no comparando IDs de texto).
  */
-export async function generarReporteVentasSinReceta(sucursalId: string, db: Db): Promise<FilaVentaSinReceta[]> {
+export async function generarReporteVentasSinReceta(
+  sucursalId: string,
+  db: Db,
+  /** P2 (RLS por sucursal): la base con la que se lee el CATÁLOGO de productos (`construirMapaProductos(undefined, …)` marca «disponible en alguna sucursal», que con la RLS por sucursal necesita la lectura de toda la empresa: `lecturaDeVerificacionEnLaEmpresa`). Las ventas se leen siempre con `db`. Por defecto, `db`. */
+  dbDelCatalogo: Db = db,
+): Promise<FilaVentaSinReceta[]> {
   // Se agrega en SQL: traer una fila por venta (y luego un `in` con todos sus `operacionId`) superaba el límite de parámetros de
   // Prisma 7 con ~60k ventas. La sucursal fija la empresa (`Seccion` y `Operacion` la comparten por FK compuesta); el aislamiento
   // entre empresas lo sigue haciendo el `db` recibido (RLS, A6).
@@ -28,7 +33,7 @@ export async function generarReporteVentasSinReceta(sucursalId: string, db: Db):
   `;
   if (!ventas.length) return [];
 
-  const productos = await construirMapaProductos(undefined, db);
+  const productos = await construirMapaProductos(undefined, dbDelCatalogo);
   const porProducto = new Map<string, { cantidadVentasSinReceta: number; primeraFecha: Date; ultimaFecha: Date }>();
 
   for (const v of ventas) {

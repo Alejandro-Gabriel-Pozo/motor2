@@ -8,7 +8,8 @@ import { describe, expect, it } from "vitest";
  * expresa), así que lo que este guardián cuida es que el repo no lo desarme por descuido:
  *  1. Los scripts de plataforma usan el cliente `prismaPlataforma` (el que lee PLATAFORMA_DATABASE_URL), nunca uno propio.
  *  2. Ninguna migración posterior al esquema inicial le da a `motor2_app` escritura sobre `Empresa` (ni con un GRANT ... ON ALL TABLES).
- *  3. El único script de operaciones que se la devuelve es `quitar-rol-motor2-plataforma.sql`; el de creación la quita con `restringir=1`.
+ *  3. Los únicos scripts de operaciones que se la devuelven son `quitar-rol-motor2-plataforma.sql` y, desde M.1-C3, la reversa granular `devolver-escritura-de-empresa-a-motor2-app.sql`
+ *     (y `crear-rol-motor2-app.sql`, que arma las bases locales); el de creación la quita con `restringir=1`.
  *  4. La aplicación (`src/`) no conoce el cliente ni la variable de plataforma, y el cargador de variables de Vercel no la acepta con valor.
  */
 const RAIZ = join(__dirname, "../..");
@@ -22,6 +23,8 @@ function archivos(dir: string): string[] {
 function sentencias(sql: string): string[] {
   return sql
     .replace(/--[^\n]*/g, "")
+    // M.1-C6: `... \gset` TERMINA la sentencia (sin `;`): sin esto, un GRANT que viniera justo después (`\if :x` + GRANT) quedaba pegado a la consulta anterior y el detector no lo veía.
+    .replace(/\\gset\b[^\n]*/g, ";")
     .replace(/^\s*\\[^\n]*/gm, "")
     .split(";")
     .map((s) => s.trim())
@@ -91,11 +94,27 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
     const conGrant = readdirSync(operaciones)
       .filter((n) => n.endsWith(".sql") && grantsDeEscrituraSobreEmpresa(readFileSync(join(operaciones, n), "utf8")).length > 0)
       .sort();
-    expect(conGrant).toEqual(["crear-rol-motor2-app.sql", "quitar-rol-motor2-plataforma.sql"]);
+    // M.1-C3: la reversa GRANULAR del recorte (devolver SOLO la escritura de Empresa, sin borrar el rol de plataforma) es el tercero; un cuarto script con un GRANT de escritura sobre Empresa pone esto en rojo.
+    expect(conGrant).toEqual(["crear-rol-motor2-app.sql", "devolver-escritura-de-empresa-a-motor2-app.sql", "quitar-rol-motor2-plataforma.sql"]);
 
     const crear = leer("scripts/operaciones/crear-rol-motor2-plataforma.sql");
-    expect(crear).toMatch(/REVOKE INSERT, UPDATE, DELETE ON "Empresa" FROM motor2_app/);
+    // M.1-C2: el recorte DENIEGA POR DEFECTO (REVOKE ALL + GRANT SELECT + aserción), no enumera lo que quita: un privilegio nuevo o heredado no se cuela.
+    expect(crear).toMatch(/REVOKE ALL ON "Empresa" FROM motor2_app/);
+    expect(crear).toMatch(/GRANT SELECT ON "Empresa" TO motor2_app/);
+    expect(crear).toMatch(/has_table_privilege\('motor2_app',\s*'public\."Empresa"',\s*'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'\)/);
+    expect(crear).not.toMatch(/REVOKE INSERT, UPDATE, DELETE ON "Empresa"/);
     expect(crear).toMatch(/CREATE ROLE motor2_plataforma LOGIN NOSUPERUSER NOBYPASSRLS/);
+  });
+
+  it("M.1-C3: devolver-escritura-de-empresa-a-motor2-app.sql es la reversa GRANULAR del recorte: ON_ERROR_STOP primero, un solo GRANT de escritura sobre Empresa y nada que toque al rol de plataforma", () => {
+    const sql = leer("scripts/operaciones/devolver-escritura-de-empresa-a-motor2-app.sql");
+    const comandos = sql.split(/\r?\n/).filter((l) => l.trim() !== "" && !l.trim().startsWith("--"));
+    expect(comandos[0]?.trim(), "ON_ERROR_STOP tiene que ser lo primero").toBe("\\set ON_ERROR_STOP on");
+    const s = sentencias(sql);
+    expect(s[0]).toBe('GRANT INSERT, UPDATE, DELETE ON "Empresa" TO motor2_app');
+    expect(s.slice(1).every((x) => /^SELECT\b/i.test(x)), "después del GRANT solo hay SELECT de verificación").toBe(true);
+    expect(s.slice(1).length, "falta el SELECT de verificación").toBeGreaterThan(0);
+    expect(s.join(";"), "la reversa granular no borra roles ni toca a motor2_plataforma").not.toMatch(/\b(DROP|REVOKE|TRUNCATE|CREATE|ALTER)\b|motor2_plataforma/i);
   });
 
   it("S-35 (B-C20): crear-rol-motor2-app.sql, después de cada GRANT masivo, quita la escritura de Empresa si se pasa restringir=1 (volver a correrlo no desarma la separación)", () => {
@@ -103,9 +122,16 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
     expect(secciones.length, "una sección por base (motor2_dev y motor2_e2e)").toBeGreaterThanOrEqual(2);
     for (const [i, seccion] of secciones.entries()) {
       const grant = seccion.search(/GRANT[^;]*\bON\s+ALL\s+TABLES\b[^;]*\bTO\s+motor2_app\b/i);
-      const revoke = seccion.search(/REVOKE\s+INSERT,\s*UPDATE,\s*DELETE\s+ON\s+"Empresa"\s+FROM\s+motor2_app\s*;/i);
+      const revoke = seccion.search(/REVOKE\s+ALL\s+ON\s+"Empresa"\s+FROM\s+motor2_app\s*;/i);
       expect(grant, `sección ${i + 1}: falta el GRANT masivo`).toBeGreaterThanOrEqual(0);
-      expect(revoke, `sección ${i + 1}: falta el REVOKE de la escritura de Empresa`).toBeGreaterThan(grant);
+      expect(revoke, `sección ${i + 1}: falta el REVOKE ALL de Empresa (M.1-C2: deniega por defecto)`).toBeGreaterThan(grant);
+      // M.1-C2: después del REVOKE ALL, SOLO lectura, y la aserción de que no quedó escritura (por PUBLIC, por membresía ni por columna)
+      const cola = seccion.slice(revoke);
+      const lectura = cola.search(/GRANT\s+SELECT\s+ON\s+"Empresa"\s+TO\s+motor2_app\s*;/i);
+      const asercion = cola.search(/has_table_privilege\('motor2_app',\s*'public\."Empresa"',\s*'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'\)/);
+      expect(lectura, `sección ${i + 1}: falta el GRANT SELECT sobre Empresa después del REVOKE ALL`).toBeGreaterThan(0);
+      expect(asercion, `sección ${i + 1}: falta la aserción has_table_privilege después del GRANT SELECT`).toBeGreaterThan(lectura);
+      expect(cola.slice(asercion), `sección ${i + 1}: la aserción también mira los privilegios por columna`).toMatch(/has_any_column_privilege\('motor2_app',\s*'public\."Empresa"',\s*'INSERT, UPDATE, REFERENCES'\)/);
       // y solo con restringir=1: sin el interruptor, las bases locales de prueba siguen dejando que los tests escriban `Empresa` como motor2_app
       const antes = seccion.slice(0, revoke).split("\n").filter((l) => /^\s*\\(if|endif)\b/.test(l)).pop() ?? "";
       expect(antes.trim(), `sección ${i + 1}: el REVOKE va dentro de \\if :{?restringir}`).toBe("\\if :{?restringir}");
@@ -140,10 +166,118 @@ describe("el rol de plataforma queda separado de motor2_app", () => {
     expect(fuente).toMatch(/PLATAFORMA_DATABASE_URL" \]\]; then\s+\[\[ -z "\$valor" \]\] \|\| fallar/);
   });
 
+  describe("M.1-C5: crear-rol-motor2-app.sql a prueba de Neon (solo bases locales y de CI)", () => {
+    const APP = "scripts/operaciones/crear-rol-motor2-app.sql";
+    /** El script sin comentarios y con LF: lo que realmente ejecuta psql, línea por línea. */
+    const comandosDe = (sql: string) =>
+      sql
+        .replace(/\r\n/g, "\n")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l !== "" && !l.startsWith("--"));
+
+    function chequear(sql: string): string[] {
+      const problemas: string[] = [];
+      const comandos = comandosDe(sql);
+      if (comandos[0] !== "\\set ON_ERROR_STOP on") problemas.push(`el primer comando es «${comandos[0]}», no \\set ON_ERROR_STOP on`);
+      const sinComentarios = comandos.join("\n");
+      const bloque = /^DO \$\$[\s\S]*?^\$\$;/m.exec(sinComentarios); // el PRIMER DO del script tiene que ser la guarda
+      const guarda = bloque?.index ?? -1;
+      const esGuardaDeBases = bloque !== null && /pg_database/.test(bloque[0]) && /motor2_dev/.test(bloque[0]) && /motor2_e2e/.test(bloque[0]) && /RAISE EXCEPTION/.test(bloque[0]);
+      if (!esGuardaDeBases) problemas.push("falta el DO de guarda que aborta si no existen las bases motor2_dev y motor2_e2e");
+      const primerRol = sinComentarios.search(/\b(CREATE|ALTER)\s+ROLE\b/i);
+      if (primerRol < 0) problemas.push("el script ya no crea el rol (sanidad)");
+      if (guarda >= 0 && primerRol >= 0 && primerRol < guarda) problemas.push("el CREATE/ALTER ROLE va ANTES de la guarda de bases");
+      const primerConnect = sinComentarios.search(/^\\connect\b/m);
+      if (guarda >= 0 && primerConnect >= 0 && primerConnect < guarda) problemas.push("el primer \\connect va antes de la guarda");
+      return problemas;
+    }
+
+    it("el script real: ON_ERROR_STOP es el PRIMER comando y el DO de guarda va antes de la primera mención de CREATE ROLE / ALTER ROLE", () => {
+      expect(chequear(leer(APP))).toEqual([]);
+      expect(chequear(leer(APP).replace(/\r?\n/g, "\r\n")), "con CRLF da otro resultado").toEqual([]);
+    });
+
+    it("el encabezado avisa «solo bases locales y de CI; NUNCA en Neon»", () => {
+      const encabezado = leer(APP).split(/\r?\n/).filter((l) => l.trim().startsWith("--")).join("\n");
+      expect(encabezado).toMatch(/solo bases locales y de CI/i);
+      expect(encabezado).toMatch(/NUNCA en Neon/);
+    });
+
+    it("el chequeo detecta los defectos de antes (SQL sintético): ON_ERROR_STOP tarde, ALTER ROLE antes de la guarda, sin guarda", () => {
+      const guarda = "DO $$\nBEGIN\n  IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'motor2_dev') OR NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'motor2_e2e') THEN\n    RAISE EXCEPTION 'x';\n  END IF;\nEND\n$$;";
+      const bien = `\\set ON_ERROR_STOP on\n${guarda}\nCREATE ROLE motor2_app LOGIN;\n\\connect motor2_dev\n`;
+      expect(chequear(bien)).toEqual([]);
+      expect(chequear(`CREATE ROLE motor2_app LOGIN;\n\\set ON_ERROR_STOP on\n${guarda}\n`).length).toBeGreaterThan(0); // ON_ERROR_STOP tarde
+      expect(chequear(`\\set ON_ERROR_STOP on\nALTER ROLE motor2_app PASSWORD 'x';\n${guarda}\n`)).toContain("el CREATE/ALTER ROLE va ANTES de la guarda de bases");
+      expect(chequear(`\\set ON_ERROR_STOP on\nCREATE ROLE motor2_app LOGIN;\n`)).toContain("falta el DO de guarda que aborta si no existen las bases motor2_dev y motor2_e2e");
+    });
+  });
+
+  describe("M.1-C4: verificar-grants-m1.sql es de SOLO LECTURA (guarda con SQL real y sintético)", () => {
+    const VERIFICADOR = "scripts/operaciones/verificar-grants-m1.sql";
+
+    /**
+     * Qué tiene de no-lectura un SQL: sin comentarios y con los literales vaciados (en `has_table_privilege(…, 'UPDATE')` la palabra UPDATE es un TEXTO, no una sentencia), todas las sentencias
+     * tienen que empezar con SELECT o SET, no puede haber comandos de psql (`\`) ni ninguna palabra de escritura, DDL o copia, y ni siquiera SELECT … INTO ni funciones con efectos.
+     */
+    function problemasDeSoloLectura(sql: string): string[] {
+      const limpio = sql
+        .replace(/\r\n/g, "\n")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/--[^\n]*/g, "")
+        .replace(/'(?:[^']|'')*'/g, "''");
+      const problemas: string[] = [];
+      if (/^\s*\\/m.test(limpio)) problemas.push("comando de psql");
+      const sentencias = limpio.split(";").map((s) => s.trim()).filter(Boolean);
+      if (sentencias.length === 0) problemas.push("no hay ninguna sentencia");
+      for (const s of sentencias) {
+        if (!/^(SELECT|SET)\b/i.test(s)) problemas.push(`no empieza con SELECT ni SET: ${s.slice(0, 50).replace(/\s+/g, " ")}`);
+        const palabra = /\b(INSERT|UPDATE|DELETE|TRUNCATE|GRANT|REVOKE|ALTER|CREATE|DROP|DO|COPY|INTO|VACUUM|ANALYZE|REINDEX|LOCK|COMMENT|NOTIFY|LISTEN|CALL|EXECUTE|PREPARE)\b/i.exec(s);
+        if (palabra) problemas.push(`palabra de escritura «${palabra[1]}»: ${s.slice(0, 50).replace(/\s+/g, " ")}`);
+        const funcion = /\b(nextval|setval|set_config|pg_terminate_backend|pg_cancel_backend|pg_reload_conf|pg_advisory_lock|pg_advisory_xact_lock|lo_import|lo_export|pg_read_file|pg_ls_dir|dblink\w*)\s*\(/i.exec(s);
+        if (funcion) problemas.push(`función con efectos «${funcion[1]}»`);
+        if (/^SET\s+(SESSION\s+AUTHORIZATION|ROLE|LOCAL\s+ROLE|SESSION\s+ROLE)\b/i.test(s)) problemas.push(`cambia de rol: ${s}`);
+      }
+      return problemas;
+    }
+
+    it("el verificador real: solo SELECT y SET, sin comentarios ni literales que cuenten (y lo mismo con saltos de línea CRLF)", () => {
+      const sql = leer(VERIFICADOR);
+      expect(problemasDeSoloLectura(sql)).toEqual([]);
+      expect(problemasDeSoloLectura(sql.replace(/\r?\n/g, "\r\n")), "con CRLF da otro resultado").toEqual([]);
+      // sanidad: no pasa en vacío; mira las consultas que se portaron del diagnóstico M-33 y las de M.1
+      for (const parte of ["has_table_privilege", "relacl", "attacl", "pg_default_acl", "pg_auth_members", "md5("]) expect(sql, `falta ${parte}`).toContain(parte);
+      expect(sql.split(";").length, "pocas consultas").toBeGreaterThan(10);
+    });
+
+    it("el detector marca lo que no es lectura y deja pasar lo que lo parece pero no lo es (SQL sintético)", () => {
+      expect(problemasDeSoloLectura("SELECT has_table_privilege('x', 'public.\"Empresa\"', 'UPDATE, DELETE'); -- GRANT ALL\nSET TRANSACTION READ ONLY;")).toEqual([]);
+      for (const malo of [
+        'GRANT SELECT ON "Empresa" TO motor2_app;',
+        "SELECT 1; INSERT INTO t VALUES (1);",
+        "SELECT 1; DO $$ BEGIN END $$;",
+        "SELECT * INTO nueva FROM t;",
+        "SELECT nextval('s');",
+        "SELECT 1; SET ROLE motor2;",
+        "SELECT 1; REVOKE ALL ON t FROM r;",
+        "SELECT 1; \\copy t to x",
+        "WITH x AS (SELECT 1) SELECT * FROM x;",
+      ]) {
+        expect(problemasDeSoloLectura(malo), malo).not.toEqual([]);
+      }
+    });
+  });
+
   describe("el detector (con SQL sintético)", () => {
     it("marca un GRANT de escritura sobre Empresa, nombrado o masivo, a motor2_app", () => {
       const sql = ['GRANT SELECT, INSERT, UPDATE, DELETE ON "Empresa", "UsuarioEmpresa" TO motor2_app;', "GRANT ALL ON ALL TABLES IN SCHEMA public TO motor2_app;"].join("\n");
       expect(grantsDeEscrituraSobreEmpresa(sql)).toHaveLength(2);
+    });
+
+    it("M.1-C6: ve un GRANT que sigue a un `\\gset` (que termina la sentencia sin `;`)", () => {
+      const sql = ['SELECT EXISTS (SELECT 1) AS existe \\gset', "\\if :existe", '  GRANT INSERT, UPDATE, DELETE ON "Empresa" TO motor2_app;', "\\endif"].join("\n");
+      expect(grantsDeEscrituraSobreEmpresa(sql)).toHaveLength(1);
     });
 
     it("no marca lecturas, otras tablas, otro rol ni un comentario", () => {

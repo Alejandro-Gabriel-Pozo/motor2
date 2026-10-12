@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { PosShell } from "@/components/pos-shell";
 
 export const metadata: Metadata = { title: "Salón · Motor2" };

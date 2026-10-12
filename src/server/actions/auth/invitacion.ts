@@ -2,7 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getUsuarioActual } from "@/core/auth/session";
+import { getUsuarioActual } from "@/server/sesion/session";
 import { requierePermiso } from "@/server/acceso/gate";
 import { nombreCookieInvitacion, opcionesCookieInvitacion } from "@/core/auth/invitacion";
 import { invitacionDelToken } from "@/server/sesion/invitacion";

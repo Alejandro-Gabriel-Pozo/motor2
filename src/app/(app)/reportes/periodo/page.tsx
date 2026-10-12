@@ -1,5 +1,5 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo, reportePesadoSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { resolverRangoDeReporte } from "@/core/reportes/public";
@@ -28,11 +28,11 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   const ahora = new Date();
   // S-28: reporte pesado (recorre el Kardex del rango): cupo por usuario antes de consultar nada (best effort, en memoria).
   if (reportePesadoSinCupo(ctx.usuarioId, "periodo", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
-  const rango = resolverRangoDeReporte(sp, ahora);
+  const rango = resolverRangoDeReporte(sp, ahora, ctx.empresaZonaHoraria);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
   const [rep, cotizacion, gateCostos] = await Promise.all([
-    obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), undefined, ctx.db, ahora),
+    obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), undefined, ctx.db, ahora, ctx.empresaZonaHoraria),
     obtenerUltimaCotizacionSinRomper(ctx.db),
     requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_costos", ctx.db),
   ]);

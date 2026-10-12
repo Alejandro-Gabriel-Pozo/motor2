@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest";
 
 /**
  * Regla de arquitectura (add-on de plataforma, ADR-008/ADR-010): la política de una empresa (`Empresa.permisosEditables`,
- * `Empresa.dosPaneles`) la cambia SOLO la plataforma, nunca la propia empresa. El rol de base `motor2_app` necesita UPDATE sobre `Empresa`
- * (el alta de una empresa y su activación lo usan), así que, mientras no se aplique la separación de roles opcional (S-13,
- * scripts/operaciones/crear-rol-motor2-plataforma.sql), la base no puede impedirlo: lo impide el código, con dos candados que se
+ * `Empresa.dosPaneles`) la cambia SOLO la plataforma, nunca la propia empresa. El rol de base `motor2_app` NO necesita escribir `Empresa`: el alta, la activación y la política los hace
+ * el rol `motor2_plataforma` (la consola y scripts/politica-empresa.ts). Pero mientras no se aplique en cada base el recorte de M.1 (scripts/operaciones/crear-rol-motor2-plataforma.sql
+ * con `restringir`; pendiente en producción), `motor2_app` conserva la escritura que le dio el GRANT masivo de la migración inicial y la base no puede impedirlo: lo impide el código, con dos candados que se
  * complementan —este guardián y la regla `operaciones-de-plataforma-solo-desde-scripts` de dependency-cruiser (`npm run arquitectura`), que además
- * prohíbe importar `server/operaciones-de-plataforma/` desde cualquier otro archivo de `src/`.
+ * prohíbe importar `server/operaciones-de-plataforma/` desde cualquier otro archivo de `src/`. Los tests y el e2e SÍ escriben `Empresa` como `motor2_app` en las bases de prueba (que no se recortan).
  *
  * En `src/`:
  *  1. Ninguna escritura (`create|createMany|update|updateMany|upsert|delete|deleteMany`) sobre `<algo>.empresa` fuera de las EXCEPCIONES.

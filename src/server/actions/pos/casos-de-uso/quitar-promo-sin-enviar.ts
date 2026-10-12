@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { MENSAJE_PROMO_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta-anulacion.guard";
 import type { ComandoQuitarPromoSinEnviar, ResultadoQuitarPromoSinEnviar } from "@/core/features/cuentas/cuenta-pedido.schema";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import type { EmpresaDelUsuario } from "@/core/auth/contexto";
+import type { EmpresaDelUsuario } from "@/server/sesion/contexto";
 import { cambiarEmpresaActiva } from "@/server/actions/auth/empresa-activa";
 
 export function SelectorEmpresa({ empresas, actual }: { empresas: EmpresaDelUsuario[]; actual: string }) {

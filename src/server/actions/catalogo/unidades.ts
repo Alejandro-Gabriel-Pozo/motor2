@@ -1,8 +1,9 @@
 "use server";
 
 import type { MagnitudUnidad } from "@prisma/client";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { requierePermisoDeEmpresa } from "@/server/acceso/gate";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { whereDisponibleEnAlguna } from "@/core/catalogo/public";
 import { guardComandoActualizarDecimalesUnidad, guardComandoCrearUnidad } from "@/core/features/catalogo/unidades.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
@@ -102,7 +103,9 @@ export async function detectarInsumosConUnidadMezclada(): Promise<
   const gate = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "insumos_mezclados", ctx.db);
   if (!gate.ok) return { ok: false, mensaje: gate.mensaje };
 
-  const insumos = await ctx.db.insumo.findMany({
+  // P2 (RLS por sucursal): «productos disponibles en ALGUNA sucursal» de cada insumo: la lectura corre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como estaba). Devuelve nombres de insumos y de unidades y una cuenta.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx);
+  const insumos = await verificacion.db.insumo.findMany({
     // `select` y no `include: { unidadStock: true }`: la acción es una puerta HTTP y los `productos` son filas de `Producto` (costo de consignación, consignante). Solo se piden el nombre de la unidad (GT-3a, M-24).
     include: { productos: { where: whereDisponibleEnAlguna(), select: { unidadStock: { select: { nombre: true } } } } },
   });

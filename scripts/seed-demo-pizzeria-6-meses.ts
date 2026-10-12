@@ -20,7 +20,7 @@
 import "dotenv/config";
 import { vi, describe, it, expect } from "vitest";
 
-vi.mock("../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 // El limitador de mutaciones (300 por minuto por usuario, src/server/actions/limitador-de-mutaciones.ts desde O.33/L.2; la fábrica sigue en
 // src/core/permisos/limitador-tasa.ts) es real y correcto en producción — acá se neutraliza SOLO para esta corrida (§5,
 // docs/planes-demo-y-claridad-reportes-2026-09-21.md "Riesgo real al escalar el guion a varios meses"): 6 meses de guion son casi 1000 eventos,
@@ -29,7 +29,7 @@ vi.mock("../src/server/actions/limitador-de-mutaciones", () => ({ limitadorMutac
 
 import { prisma } from "./demo-seed/cliente";
 import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
-import { getUsuarioActual } from "../src/core/auth/session";
+import { getUsuarioActual } from "../src/server/sesion/session";
 import { crearSucursalConAdmin } from "../src/server/actions/auth/sucursales";
 import { crearSeccion } from "../src/server/actions/movimientos/secciones";
 import { crearCategoriaProducto } from "../src/server/actions/catalogo/categorias-producto";

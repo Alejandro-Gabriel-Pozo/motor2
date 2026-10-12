@@ -1,11 +1,12 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { obtenerBandejaTransferencias } from "@/server/actions/traspasos/lecturas";
 import { Bandeja, type FilaBandeja } from "./bandeja";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 const LABEL_ESTADO: Record<string, string> = {
   SOLICITADA: "Solicitada",
@@ -47,7 +48,8 @@ export default async function TraspasosPage({ searchParams }: { searchParams: Pr
       cantidad: Number(t.cantidad),
       unidadNombre: t.producto.unidadStock.nombre,
       otraSucursalNombre: soyOrigen ? t.destinoSucursal.nombre : t.origenSucursal.nombre,
-      fecha: t.creadoEn.toISOString().slice(0, 10),
+      // `creadoEn` es un INSTANT: el día se lee en la zona de la empresa (a las 22:30 argentinas UTC ya es mañana).
+      fecha: diaDeCalendario(t.creadoEn, ctx.empresaZonaHoraria),
       detalle: t.detalle,
       estado: LABEL_ESTADO[t.estado] ?? t.estado,
       // Solo mi propia solicitud PULL (destino, SOLICITADA) se puede cancelar —

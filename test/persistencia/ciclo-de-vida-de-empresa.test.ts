@@ -71,7 +71,8 @@ async function empresaConCuitPendiente(slug: string, cuit: string = CUIT_A_CON_G
   if (!r.ok) throw new Error(r.mensaje);
   const token = /#t=(\S+)/.exec(enviados.at(-1)!.texto)![1];
   const usuario = await prismaAdmin.user.upsert({ where: { email }, update: {}, create: { email } });
-  const aceptada = await aceptarInvitacionDelToken({ token, usuario: { id: usuario.id, email }, cuit, ahora: new Date() });
+  // El MISMO reloj fijo con el que se creó la invitación (`deps().ahora`): con el reloj real, la invitación (que vence 7 días después de AHORA) pasaba a estar vencida el 2026-10-11 a las 12:00 UTC.
+  const aceptada = await aceptarInvitacionDelToken({ token, usuario: { id: usuario.id, email }, cuit, ahora: AHORA });
   if (!aceptada.ok) throw new Error(aceptada.mensaje);
   enviados = [];
   return { id: r.empresaId, email };

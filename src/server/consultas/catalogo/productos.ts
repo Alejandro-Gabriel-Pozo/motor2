@@ -18,7 +18,7 @@ import { whereSeccionHabitualVigente } from "@/core/stock/public";
 
 /**
  * S-12 (plan de endurecimiento de seguridad, T2; D8 del dueño): el COSTO DE CONSIGNACIÓN de un producto —`precioConsignacion`, `proveedorConsignacionId` y el proveedor
- * mismo— es de quien tiene `pagar_consignante` en la sucursal activa. La consulta es el último punto antes de la página: DENIEGA POR DEFECTO. Sin
+ * mismo— es de quien tiene `pagar_consignante` en alguna de sus sucursales de la empresa (P20, D23). La consulta es el último punto antes de la página: DENIEGA POR DEFECTO. Sin
  * `conCostoDeConsignacion: true` los tres vuelven en `null` (el «es consignación» sí queda: no es el costo); la página lo pasa en `true` solo cuando el gate de su
  * usuario lo dice. `esConsignacion` no se toca.
  */
@@ -59,6 +59,17 @@ export async function obtenerProductoPorId(id: string, db: Db, opciones: Opcione
   const p = await db.producto.findUnique({ where: { id } });
   if (p === null || opciones.conCostoDeConsignacion === true) return p;
   return { ...p, precioConsignacion: null, proveedorConsignacionId: null };
+}
+
+/**
+ * Las unidades que un producto usa hoy (de stock y de compra), SOLO `{ id, nombre, decimales }` cada una (más el `id` y el `nombre` del producto), estén activas o no (M.2-A4, D): el formulario de edición las suma a sus opciones aunque se hayan desactivado
+ * (`conLasUnidadesDelProducto`), así no muestra «sin unidad de compra» ni borra la unidad al guardar. `null` si el producto no existe.
+ */
+export async function obtenerUnidadesDelProducto(id: string, db: Db) {
+  return db.producto.findUnique({
+    where: { id },
+    select: { id: true, nombre: true, unidadStock: { select: { id: true, nombre: true, decimales: true } }, unidadCompra: { select: { id: true, nombre: true, decimales: true } } },
+  });
 }
 
 /**

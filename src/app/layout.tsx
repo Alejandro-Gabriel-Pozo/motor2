@@ -1,15 +1,22 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const geistSans = Geist({
+// Las fuentes salen del repo (`src/fonts/`, licencia OFL), no de fonts.googleapis.com: el build no depende de la red de Google. Son los mismos archivos
+// woff2 (variables, subconjunto latin) que bajaba el cargador de Google con `subsets: ["latin"]`.
+// OJO con los nombres: `next/font/local` toma el nombre del `font-family` del identificador de la constante, y los e2e miran el `font-family` calculado (`/Geist/`).
+const Geist = localFont({
+  src: [{ path: "../fonts/Geist-latin.woff2", weight: "100 900", style: "normal" }],
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  display: "swap",
+  adjustFontFallback: "Arial",
 });
 
-const geistMono = Geist_Mono({
+const GeistMono = localFont({
+  src: [{ path: "../fonts/GeistMono-latin.woff2", weight: "100 900", style: "normal" }],
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
+  adjustFontFallback: "Arial",
 });
 
 export const metadata: Metadata = {
@@ -21,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${Geist.variable} ${GeistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

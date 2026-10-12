@@ -3,9 +3,11 @@
 // Todo va en UNA transacción: si algo falla no queda nada a medias, y con --simular se hace ROLLBACK al final (se ve lo que pasaría sin cambiar nada).
 //
 // Uso (raíz del repo):
-//   node scripts/operaciones/ejecutar-sql-de-psql.mjs <archivo.env> <script.sql> [--simular] [--var nombre=ENV_QUE_TIENE_EL_VALOR]...
+//   node scripts/operaciones/ejecutar-sql-de-psql.mjs <archivo.env> <script.sql> [--simular] [--host-esperado <host>] [--var nombre=ENV_QUE_TIENE_EL_VALOR]...
 // El archivo .env aporta `DIRECT_URL` (el DUEÑO de la base). Los valores de las variables NUNCA se pasan por la línea de comandos: --var clave=CLAVE_PLATAFORMA lee el valor de la
 // variable de ENTORNO CLAVE_PLATAFORMA. No imprime URLs ni claves.
+// M.1-C6: `--host-esperado <host>` es OBLIGATORIO salvo con `--simular`: si el host de DIRECT_URL es otro, se niega ANTES de conectarse (la guarda contra usar el .env equivocado). Con `--simular` se
+// puede omitir (no escribe nada); si se pasa, también tiene que coincidir. Una opción desconocida es un error.
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
@@ -32,6 +34,7 @@ export function interpolar(texto, vars, escapar) {
 /**
  * Corre el script contra `cliente` (`query(texto)` y, para interpolar, `escapar`). `alResultado(texto, resultado)` recibe cada sentencia ejecutada y su resultado.
  * Devuelve la cantidad de sentencias ejecutadas.
+ * @param {(sentencia: string, resultado: { rows?: unknown[] }) => void} [alResultado]
  */
 export async function ejecutarScript(texto, cliente, vars, escapar, alResultado = () => {}) {
   const pila = []; // un true por cada \if en curso: la rama activa
@@ -90,29 +93,82 @@ export async function ejecutarScript(texto, cliente, vars, escapar, alResultado 
   return ejecutadas;
 }
 
-async function principal() {
-  const { default: pg } = await import("pg");
-  const args = process.argv.slice(2);
-  const [archivoEnv, archivoSql] = args.filter((a) => !a.startsWith("--") && !/^\w+=/.test(a));
-  const simular = args.includes("--simular");
-  const vars = {};
+/**
+ * Los argumentos de la línea de comandos. `--host-esperado <host>` (o `--host-esperado=<host>`) lleva un valor; `--var nombre=VARIABLE` también. Una opción que no existe es un error (antes se ignoraba
+ * en silencio: un `--simulr` mal escrito corría de verdad).
+ */
+export function leerArgumentos(args) {
+  const posicionales = [];
+  const vars = [];
+  let simular = false;
+  let hostEsperado;
   for (let i = 0; i < args.length; i++) {
-    if (args[i] !== "--var") continue;
-    const [nombre, deEntorno] = String(args[i + 1]).split("=");
-    const valor = process.env[deEntorno];
+    const a = args[i];
+    if (a === "--simular") simular = true;
+    else if (a === "--var") {
+      const v = args[++i];
+      if (v === undefined || !/^\w+=\w+$/.test(v)) throw new Error("--var necesita nombre=VARIABLE_DE_ENTORNO");
+      vars.push(v.split("="));
+    } else if (a === "--host-esperado" || a.startsWith("--host-esperado=")) {
+      const valor = a === "--host-esperado" ? args[++i] : a.slice("--host-esperado=".length);
+      if (valor === undefined || valor.trim() === "" || valor.startsWith("--")) throw new Error("--host-esperado necesita el host de la base (por ejemplo: --host-esperado ep-algo-123.neon.tech)");
+      hostEsperado = valor.trim();
+    } else if (a.startsWith("--")) throw new Error(`opción desconocida: ${a}`);
+    else posicionales.push(a);
+  }
+  const [archivoEnv, archivoSql] = posicionales;
+  return { archivoEnv, archivoSql, simular, hostEsperado, vars };
+}
+
+/**
+ * M.1-C6: la última barrera contra correr contra la base equivocada (un `.env` de producción en lugar de uno de ensayo). Con ejecución REAL el host esperado es OBLIGATORIO y tiene que ser el de
+ * `DIRECT_URL`; con `--simular` es opcional (no escribe nada), pero si se pasa, también tiene que coincidir. Se llama ANTES de crear el cliente: si falla no hay ninguna conexión.
+ */
+export function verificarHostDeDestino(hostDeLaUrl, hostEsperado, simular) {
+  if (hostEsperado === undefined) {
+    if (!simular) throw new Error("falta --host-esperado <host>: en la ejecución real hay que decir a qué host se espera conectar (con --simular es opcional). No se conectó a nada.");
+    return;
+  }
+  if (hostDeLaUrl.toLowerCase() !== hostEsperado.toLowerCase()) {
+    throw new Error(`el host de DIRECT_URL (${hostDeLaUrl}) no es el esperado (${hostEsperado}): no se conectó a nada.`);
+  }
+}
+
+/**
+ * Corre el ejecutor y devuelve el código de salida (0 bien, 1 si el script falló y se deshizo). Las dependencias se pueden reemplazar en los tests (cliente de base, entorno, lectura de archivos y salida)
+ * para probarlo sin conectarse a ninguna parte; los errores de uso y de destino (falta o no coincide el host) se lanzan, antes de crear el cliente.
+ */
+export async function principal(args = process.argv.slice(2), dependencias = {}) {
+  const {
+    entorno = process.env,
+    leerArchivo = (ruta) => readFileSync(ruta, "utf8"),
+    log = console.log,
+    logError = console.error,
+    tabla = console.table,
+    crearCliente = async (config) => {
+      const { default: pg } = await import("pg");
+      return new pg.Client(config);
+    },
+  } = dependencias;
+  const { archivoEnv, archivoSql, simular, hostEsperado, vars: pedidas } = leerArgumentos(args);
+  const vars = {};
+  for (const [nombre, deEntorno] of pedidas) {
+    const valor = entorno[deEntorno];
     if (valor === undefined || valor === "") throw new Error(`la variable de entorno ${deEntorno} (para :'${nombre}') está vacía`);
     vars[nombre] = valor;
   }
-  if (!archivoEnv || !archivoSql) throw new Error("uso: ejecutar-sql-de-psql.mjs <archivo.env> <script.sql> [--simular] [--var nombre=VARIABLE_DE_ENTORNO]");
+  if (!archivoEnv || !archivoSql) throw new Error("uso: ejecutar-sql-de-psql.mjs <archivo.env> <script.sql> [--simular] [--host-esperado <host>] [--var nombre=VARIABLE_DE_ENTORNO]");
 
   const kv = Object.fromEntries(
-    readFileSync(archivoEnv, "utf8").split(/\r?\n/).filter((l) => l.includes("=") && !l.startsWith("#")).map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim().replace(/^(["'])(.*)\1$/, "$2")]),
+    leerArchivo(archivoEnv).split(/\r?\n/).filter((l) => l.includes("=") && !l.startsWith("#")).map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim().replace(/^(["'])(.*)\1$/, "$2")]),
   );
   if (!kv.DIRECT_URL) throw new Error(`${archivoEnv} no tiene DIRECT_URL (la conexión del dueño)`);
   const u = new URL(kv.DIRECT_URL);
+  const host = u.hostname;
+  verificarHostDeDestino(host, hostEsperado, simular);
   const necesitaSsl = ["require", "verify-ca", "verify-full"].includes(u.searchParams.get("sslmode") ?? "");
-  const cliente = new pg.Client({
-    host: u.hostname,
+  const cliente = await crearCliente({
+    host,
     port: u.port ? Number(u.port) : 5432,
     user: decodeURIComponent(u.username),
     password: decodeURIComponent(u.password),
@@ -120,31 +176,39 @@ async function principal() {
     ssl: necesitaSsl ? { rejectUnauthorized: true } : undefined,
   });
   await cliente.connect();
-  const host = new URL(kv.DIRECT_URL).hostname;
-  console.log(`${simular ? "SIMULACIÓN (ROLLBACK al final)" : "EJECUCIÓN REAL"} en ${host} como el dueño de la base.`);
+  log(`${simular ? "SIMULACIÓN (ROLLBACK al final)" : "EJECUCIÓN REAL"} en ${host} como el dueño de la base.`);
   const escapar = { literal: (v) => cliente.escapeLiteral(v), identificador: (v) => cliente.escapeIdentifier(v) };
+  let codigo = 0;
   try {
     await cliente.query("BEGIN");
-    const n = await ejecutarScript(readFileSync(archivoSql, "utf8"), cliente, vars, escapar, (sentencia, r) => {
+    const n = await ejecutarScript(leerArchivo(archivoSql), cliente, vars, escapar, (sentencia, r) => {
       if (/^\s*SELECT\b/i.test(sentencia) && r.rows?.length) {
-        console.log(`\n${sentencia.replace(/\s+/g, " ").slice(0, 110)}…`);
-        console.table(r.rows);
+        log(`\n${sentencia.replace(/\s+/g, " ").slice(0, 110)}…`);
+        tabla(r.rows);
       }
     });
     if (simular) {
       await cliente.query("ROLLBACK");
-      console.log(`\nSimulación terminada: ${n} sentencias, TODO deshecho (ROLLBACK).`);
+      log(`\nSimulación terminada: ${n} sentencias, TODO deshecho (ROLLBACK).`);
     } else {
       await cliente.query("COMMIT");
-      console.log(`\nListo: ${n} sentencias aplicadas y confirmadas (COMMIT).`);
+      log(`\nListo: ${n} sentencias aplicadas y confirmadas (COMMIT).`);
     }
   } catch (e) {
     await cliente.query("ROLLBACK").catch(() => {});
-    console.error(`\nFALLÓ y se deshizo todo (ROLLBACK): ${e instanceof Error ? e.message.replace(/PASSWORD\s+'[^']*'/gi, "PASSWORD '***'") : e}`);
-    process.exitCode = 1;
+    logError(`\nFALLÓ y se deshizo todo (ROLLBACK): ${e instanceof Error ? e.message.replace(/PASSWORD\s+'[^']*'/gi, "PASSWORD '***'") : e}`);
+    codigo = 1;
   } finally {
     await cliente.end();
   }
+  return codigo;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) await principal();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  try {
+    process.exitCode = await principal();
+  } catch (e) {
+    console.error(`\nNO SE EJECUTÓ NADA: ${e instanceof Error ? e.message : e}`);
+    process.exitCode = 1;
+  }
+}

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -117,6 +117,17 @@ describe("registrarMovimiento", () => {
     expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
   });
 
+  it("U11: Merma sin motivo se rechaza en el servidor (no solo en la pantalla) y no mueve el saldo", async () => {
+    const mp = await crearMP("Cebolla");
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+
+    const sinMotivo = await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 1 }] });
+    expect(sinMotivo.ok).toBe(false);
+    expect(sinMotivo.mensaje).toContain("La merma necesita un motivo");
+    expect(await prisma.operacion.count({ where: { proceso: "MERMA" } })).toBe(0);
+    expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
+  });
+
   it("Merma rechaza un motivoId que no existe, y uno que existe pero está desactivado — el mensaje no revienta como error 500 crudo", async () => {
     const mp = await crearMP("Zanahoria");
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
@@ -220,7 +231,7 @@ describe("registrarMovimiento", () => {
     expect(resultado.ok).toBe(false);
   });
 
-  it("no exige sección para Compra (da de alta stock nuevo)", async () => {
+  it("Compra con sección: se registra (exigeSeccion=false solo deja a la pantalla preseleccionarla)", async () => {
     const mp = await crearMP("Aceite");
     const resultado = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 5 }] });
     expect(resultado.ok).toBe(true);

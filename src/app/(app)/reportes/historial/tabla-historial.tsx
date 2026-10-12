@@ -4,6 +4,7 @@ import { IconoDeAccion } from "@/components/iconos";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { EventoHistorialProducto } from "@/core/reportes/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 /** Mismo texto/estilo que la marca "Anulada" de /reportes/compras (page.tsx) — una compra o venta anulada no ocurrió, esto lo deja a la vista en vez de verse como un "movimiento fantasma". */
 function MarcaAnulada() {
@@ -19,9 +20,9 @@ function MarcaSustituto({ nombrePrincipal }: { nombrePrincipal: string }) {
   return <span className="ml-1 text-xs font-medium text-amber-700 dark:text-amber-600">Sustituto de «{nombrePrincipal}»</span>;
 }
 
-function columnas(mostrarSaldo: boolean): ColumnaReporte<EventoHistorialProducto>[] {
+function columnas(mostrarSaldo: boolean, zona: string): ColumnaReporte<EventoHistorialProducto>[] {
   const base: ColumnaReporte<EventoHistorialProducto>[] = [
-    { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (ev) => ev.fecha.toISOString().slice(0, 10), render: (ev) => ev.fecha.toISOString().slice(0, 10) },
+    { clave: "fecha", etiqueta: "Fecha", tipoFecha: "dia", valor: (ev) => diaDeCalendario(ev.fecha, zona), render: (ev) => diaDeCalendario(ev.fecha, zona) },
     { clave: "tipo", etiqueta: "Tipo", valor: (ev) => (ev.tipo === "movimiento" ? (ev.proceso ?? "") : "Conteo"), render: (ev) => (ev.tipo === "movimiento" ? ev.proceso : "Conteo") },
     {
       clave: "detalle",
@@ -69,10 +70,11 @@ function columnas(mostrarSaldo: boolean): ColumnaReporte<EventoHistorialProducto
   return base;
 }
 
-export function TablaHistorialEventos({ filas, nombreExport, mostrarSaldo = true }: { filas: EventoHistorialProducto[]; nombreExport: string; mostrarSaldo?: boolean }) {
+/** `zona`: la de la empresa (la página pasa `ctx.empresaZonaHoraria`), para el día de cada fila; sin ella, la argentina. */
+export function TablaHistorialEventos({ filas, nombreExport, mostrarSaldo = true, zona = ZONA_ARGENTINA }: { filas: EventoHistorialProducto[]; nombreExport: string; mostrarSaldo?: boolean; zona?: string }) {
   return (
     <TablaReporte
-      columnas={columnas(mostrarSaldo)}
+      columnas={columnas(mostrarSaldo, zona)}
       filas={filas}
       claveFila={(ev, i) => `${ev.fecha.toISOString()}-${i}`}
       sinFilasTexto="Sin eventos en el rango elegido."

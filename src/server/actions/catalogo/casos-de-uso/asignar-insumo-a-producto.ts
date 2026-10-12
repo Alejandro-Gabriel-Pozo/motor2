@@ -1,7 +1,8 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoAsignarInsumoAProducto, ResultadoAsignarInsumoAProducto } from "@/core/features/catalogo/productos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { validarUnidadInsumo } from "@/server/lecturas/catalogo/unidad-de-insumo";
 import { fijarInsumoDeProducto } from "@/server/persistencia/catalogo/productos";
 
@@ -22,13 +23,15 @@ import { fijarInsumoDeProducto } from "@/server/persistencia/catalogo/productos"
  * @sideEffects Ninguno (el insumo de un producto no es plata: sin auditoría).
  * @ficha permiso=producto_asignar_insumo transaccion=NINGUNA idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
-export async function asignarInsumoAProductoCasoDeUso(actor: Pick<ContextoUsuario, "db">, comando: ComandoAsignarInsumoAProducto): Promise<ResultadoAsignarInsumoAProducto> {
+export async function asignarInsumoAProductoCasoDeUso(actor: Pick<ContextoUsuario, "db" | "transaccion" | "empresaId" | "alcance">, comando: ComandoAsignarInsumoAProducto): Promise<ResultadoAsignarInsumoAProducto> {
   const { productoId, insumoId } = comando;
   const producto = await actor.db.producto.findUnique({ where: { id: productoId } });
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
   if (producto.tipo !== "MP") return fracaso("NO_ES_MP", "Solo una materia prima (MP) puede tener Insumo asignado.");
 
-  const invalido = await validarUnidadInsumo(insumoId, producto.unidadStockId, productoId, actor.db);
+  // P2 (RLS por sucursal): «todos los productos disponibles del insumo comparten la unidad» se mira en toda la empresa (base de VERIFICACIÓN: lectura en todas las sucursales, escritura como estaba); la escritura de abajo sigue con `actor.db`.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+  const invalido = await validarUnidadInsumo(insumoId, producto.unidadStockId, productoId, verificacion.db);
   if (invalido) return fracaso("UNIDAD_MEZCLADA", invalido);
 
   await fijarInsumoDeProducto(actor.db, { id: productoId, insumoId });

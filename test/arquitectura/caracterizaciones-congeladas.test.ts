@@ -61,6 +61,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "S-10/D1 (O.59; CAMBIA COMPORTAMIENTO, plan de endurecimiento de seguridad T6, decisión del dueño): `carta_generos`, `carta_contenido_producto` y `carta_items_agrupados` pasan de contexto EMPRESA a contexto SUCURSAL (solo escriben en la carta de la sucursal activa). Cambia SOLO lo que dicen esas tres claves, en todas las funciones y registros: salen de los bloques `[empresa]` (requierePermisoDeEmpresa, requierePermisoVerDeEmpresa, obtenerMiNivelPermisoDeEmpresa) y entran a los de sucursal (`[S1]`/`[S2]`: requierePermiso, requierePermisoVer, obtenerMiNivelPermiso, accionesQueElUsuarioPuedeVer, accionesDelMenu), con el resultado que da el gate de ESA sucursal (por ejemplo `SIN_ACCESO_A_SUCURSAL` en S2 para quien solo tiene membresía en S1, donde antes la empresa le decía `ok`). Comprobado por TRIPLES (bloque, resultado, clave) entre la matriz vieja y la nueva: las únicas claves cuyas triples cambian son esas tres (110 quitadas y 218 agregadas por clave); cero triples de otra clave. Más un ARTEFACTO del generador (el test de caracterización no se edita): al sumarse tres claves a la lista de sucursal, las sondas de `sucursalesDondeElUsuarioPuedeVer`, que eligen su clave por posición (`DE_SUCURSAL[i]`), pasan de `carta_promo_activar`, `proceso_venta` y `reporte_consolidado` a `carta_contenido_producto`, `proceso_control` y `pagar_consignante`; las 108 sondas que siguen existiendo son idénticas. La fila «por encima del piso» del rol especial (`secciones`) y las 12 primeras de operario y 6 de empresa no se mueven (las tres claves van después de ellas en el catálogo).",
       },
+      {
+        blob: "7d3fe56f3c44dc25ab094802567575f03ac840b6",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `1df6d19` («M.1-C7: documentacion del procedimiento corregido»).
+        commit: "1df6d19",
+        motivo:
+          "M.2 P1 (clave nueva `producto_campos_sensibles`, contexto empresa, piso operario, semilla solo admin; NO cambia comportamiento todavía: ningún código la consulta hasta P2). Cambia SOLO lo que dice esa clave, en todos los registros de módulos y usuarios: 120 apariciones nuevas (tripletas registro/usuario/bloque, resultado, clave), todas de la clave nueva, en los 4 bloques de empresa (requierePermisoDeEmpresa, requierePermisoVerDeEmpresa, obtenerMiNivelPermisoDeEmpresa) y en el menú (accionesDelMenuQueElUsuarioPuedeVer, S1 y S2), y NINGUNA tripleta de otra clave quitada ni agregada (verificado comparando la versión anterior con la nueva por tripletas). Más 2 líneas de mensajes de denegación del usuario «dos sucursales» (rol «especial»): la firma de la denegación conserva el ÚLTIMO mensaje generado y la clave nueva es la última del catálogo que el operador no tiene, así que el mensaje nombra `producto_campos_sensibles` donde antes nombraba `producto_sincronizar_precio_carta` (mismo artefacto del generador que en S-41; ninguna respuesta de otra clave cambia). El generador no se edita.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -105,6 +112,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Mezcla del carril B en la rama principal (2026-10-09). Sin cambio de comportamiento propio: la huella resultante es exactamente la del carril B más las dos líneas de la semilla de S-41 (el operador de fábrica deja de tener `producto_sincronizar_precio_carta`, una línea por empresa sembrada). Verificado con `git diff` contra cada padre: respecto del carril A solo aporta lo de S-33 (los cambios de módulos y de política dejan de dejar rastro en `RegistroAuditoria` de la empresa y los ids enmascarados se renumeran); respecto del carril B solo aporta lo de S-41.",
       },
+      {
+        blob: "4ad12a817aba26c2964e3cac0b65828b182c9a8c",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `1df6d19` («M.1-C7: documentacion del procedimiento corregido»).
+        commit: "1df6d19",
+        motivo:
+          "M.2 P1 (clave nueva `producto_campos_sensibles`, semilla solo admin; NO cambia comportamiento todavía). La huella siembra los permisos de fábrica de las empresas que da de alta y cuenta el catálogo. Cambia SOLO 6 líneas, 3 por empresa sembrada: `PERMISO admin:producto_campos_sensibles ver=true editar=true`, `PERMISO operador:producto_campos_sensibles ver=false editar=false` y `ACCIONES 124` → `ACCIONES 125` (el tamaño del catálogo). Ningún resultado, mensaje ni otra fila cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
@@ -118,7 +132,15 @@ const CONGELADAS: Record<string, Congelada> = {
     blob: "5166de7e5b4db922c884b99e381dbfd52b3021b0",
     desde: "71050ded",
     motivo: "Matriz de la venta (7 escenarios vigentes).",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "b9ef4b4077ae2e0e4bc5d74126b71c08e12f0db9",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `2ea2dd1` («P1 paso 1: mediodiaDelDia(dia, zona) en core/tiempo…»).
+        commit: "2ea2dd1",
+        motivo:
+          "P1 paso 7 (O.254; CAMBIA el día que citan los textos guardados al anular): el día de la venta en `detalleReversionDeVenta` («Anulación de la venta … (fecha).») y en `descripcionAuditoriaAnulacionDeVenta` («Venta del …: anulación») pasa de UTC a hora argentina. Cambia SOLO la fecha dentro de esos textos, en 2 líneas (los dos AJUSTE de la anulación de la venta op11: 2026-09-27 → 2026-09-26, porque el fixture guarda el día a las 00:00Z, que en hora argentina es el día anterior a las 21:00); mismas líneas, mismo orden, ninguna consulta ni número distinto.",
+      },
+    ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
     blob: "01e01aab7058600ec0f662b1d63ff44840823e71",
@@ -140,6 +162,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "9217bea9",
         motivo:
           "I-1 de la auditoria final (CAMBIA COMPORTAMIENTO dentro de la decision D7 del dueño: anular una venta con algo posterior se RECHAZA): anularVenta mira tambien los conteos fisicos posteriores que NO escribieron movimiento (diferencia 0, «falta movimiento», «descartar»), porque solo existen en ConteoFisico. Cambia SOLO la linea `lecturas (N)` de 5 entradas (A8, C5, C6, D5 y consignacion): cada una suma `conteoFisico.findMany×1` (2→3, 2→3, 2→3, 3→4, 4→5). Ningun resultado, mensaje ni escritura cambia.",
+      },
+      {
+        blob: "60ae1571c71f8fb0d231ae8a478fbd51cf5af2b1",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `2ea2dd1` («P1 paso 1: mediodiaDelDia(dia, zona) en core/tiempo…»).
+        commit: "2ea2dd1",
+        motivo:
+          "P1 paso 7 (O.254; CAMBIA el día que citan los textos guardados al anular): el día de la venta en `detalleReversionDeVenta` («Anulación de la venta … (fecha).») y en `descripcionAuditoriaAnulacionDeVenta` («Venta del …: anulación») pasa de UTC a hora argentina. Cambia SOLO la fecha dentro de esos textos, en 8 líneas (las anulaciones de op12, op6 y op4, cada una con su AJUSTE y su auditoría: un día antes, porque los fixtures guardan el día a las 00:00Z, que en hora argentina es el día anterior a las 21:00); mismas líneas, mismo orden, ninguna consulta ni número distinto.",
       },
     ],
   },
@@ -169,6 +198,34 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "O.38b D3 (refactor, sin cambio de resultado): el Consolidado lee la disponibilidad de todas las sucursales en UNA consulta. Cambia SOLO la línea de conteo de la entrada 35: 17 → 16 consultas (8 + 4N con N = 2), `disponibilidadProducto.findMany` ×2 → ×1; el resultado y las demás entradas, byte a byte.",
       },
+      {
+        blob: "50da82faa90188ee358df979bf38bbc298c5da99",
+        // El commit que regenera es el `2b11b2e` («P1 paso 5: Compras, Perdidas, Devoluciones, Historial, Rotacion y Vencimientos cortan el dia en la zona de la empresa», fila O.253 de la lista de control); la declaración va en el commit siguiente porque un commit no puede llevar su propio hash.
+        commit: "2b11b2e",
+        motivo:
+          "P1 paso 5 (O.253; CAMBIA COMPORTAMIENTO a propósito: «hace N días» de Pérdidas y Devoluciones se cuenta en días de la zona de la empresa, no en días UTC). Cambia SOLO 2 líneas (729 y 1590): la `desde` de Pérdidas y la de Devoluciones, `Date(2026-02-13T00:00:00.000Z)` → `Date(2026-02-13T03:00:00.000Z)` (+3 h: el inicio del día argentino); ningún número ni conteo de consultas se mueve.",
+      },
+      {
+        blob: "e4fa1aea100e0385f4540573020232fe6158986a",
+        // El commit PADRE de este, «P1 paso 1: mediodiaDelDia(dia, zona) en core/tiempo, con ejemplos, propiedad y mutaciones».
+        commit: "2ea2dd1",
+        motivo:
+          "P1 paso 4 (CAMBIA COMPORTAMIENTO, el día en hora argentina): Rendimiento de recetas corta los días en la zona de la empresa (no en UTC). Cambian SOLO 4 líneas, `anclaDesde`/`anclaHasta` de las dos filas de la entrada rendimiento-recetas.calcularRendimientoRecetasSimples (Central, período): el día de la ancla pasa de ser la medianoche UTC (`T00:00:00.000Z`) a ser el inicio de ese día argentino (`T03:00:00.000Z`), el mismo día calendario (2026-02-18, 2026-03-10, 2026-03-06 y 2026-03-12). Ningún número, ningún método y ningún conteo de consultas cambia.",
+      },
+      {
+        blob: "f6652b056d5fe76d136f98f96925e9f095a7209a",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, «P1 paso 1: mediodiaDelDia(dia, zona) en core/tiempo, con ejemplos, propiedad y mutaciones».
+        commit: "2ea2dd1",
+        motivo:
+          "P1 paso 3 (O.251; CAMBIA COMPORTAMIENTO, plan P1 «el día en hora argentina»): Período y su familia cortan cada día en la zona de la empresa (`rangoDeDias(…, zona)`) y no en UTC. Cambia SOLO 6 líneas, todas `Date(…)` de desde/hasta (+3 h, Argentina es UTC−3): las entradas 27 y 29 (periodo.obtenerReportePorPeriodo y generarReporteVentasPorCategoria: desde 02-16T00:00Z → 02-16T03:00Z, hasta 03-15T23:59:59.999Z → 03-16T02:59:59.999Z) y el financiero de la entrada 34 (resumen-operativo: desde 02-14T00:00Z → 02-14T03:00Z, hasta como arriba). Ningún número, ninguna consulta ni su conteo cambia.",
+      },
+      {
+        blob: "fe2625ff868bde65dbb8cb021239d1ebb4cebece",
+        // El commit desde el que el contenido es ese blob es la fusión `f7c93bb` («Merge p1-periodo»), donde se juntan las tres regeneraciones de P1 (pasos 3, 4 y 5) en un solo golden.
+        commit: "f7c93bb",
+        motivo:
+          "P1, unión de las regeneraciones de los pasos 3 (Período y su familia), 4 (Rendimiento de recetas) y 5 (Pérdidas y Devoluciones) hechas por tres constructores en paralelo (O.251, O.252 y O.253). CAMBIA COMPORTAMIENTO a propósito (el día en hora argentina): se mueven SOLO líneas `Date(...)` de `desde`/`hasta` y de `anclaDesde`/`anclaHasta` (+3 h, T00:00:00.000Z → T03:00:00.000Z, el mismo día calendario). La fusión automática de git dio el mismo contenido que regenerar con `REGENERAR_CARACTERIZACION_DE_REPORTES=1` sobre el código fusionado (comparado archivo contra archivo). Ningún número, método ni conteo de consultas cambió.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {
@@ -183,6 +240,27 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "19cd8ad2",
         motivo:
           "S-22/D2 (O.71; CAMBIA COMPORTAMIENTO, plan de endurecimiento de seguridad T10, decisión del dueño): el selector del POS y la lectura de cada promo para agregar leen el registro de módulos de la empresa (sin Promociones no ofrecen ni aceptan promos). Cambia SOLO la línea de conteo de 5 entradas, sin tocar ningún resultado: `pos.cargarSelectorCartaDeLaMesa(Central)` y `(Norte)` 15 → 17 consultas (`sucursal.findUnique` ×1 → ×2 y `moduloEmpresa.findMany` ×1 nueva), `pos.cargarPromoCartaParaAgregar(Central, Menú del día)` 16 → 18 (lo mismo) y sus dos casos `null` (informativa sin cupos; apagada en Norte) 1 → 3 (`moduloEmpresa.findMany` y `sucursal.findUnique`, que ahora van antes de buscar la promo). En la pantalla real la segunda lectura del registro sale de la memoria por pedido (`cache` de React: el guard ya la hizo con el mismo `db`).",
+      },
+      {
+        blob: "8de0ce3d9bc515953ee8c08d607fb2c61322e58d",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `da979dd` («M.3-A7: la carta publica resuelve el slug en SucursalPublica y lee con una base de solo lectura en esa sucursal»), que fue el que cambió el golden.
+        commit: "da979dd",
+        motivo:
+          "M.3-A7 (refactor de acceso, sin cambio de resultado): `carta.resolverCartaPublica` resuelve el slug en `SucursalPublica` con la base de la empresa y lee la carta (menú, precios locales, descuentos, promos y tema) con una base de SOLO LECTURA de esa única sucursal, lo que suma una lectura de `sucursal` (`sucursal.findUnique` ×1 → ×2: la del menú y la del tema). Cambia SOLO la línea `consultas` de 2 entradas, `resolverCartaPublica(empresa, «central»)` y `(empresa, «norte»: sin tema)`: 9 → 10 consultas; el `resultado` de ambas y todas las demás entradas, byte a byte (verificado con `git diff b55c39f HEAD` del golden: exactamente esas 2 líneas).",
+      },
+      {
+        blob: "b0b8c71f5fef87e7c9d0a173e4031499f3130bfb",
+        // El commit desde el que el contenido es ese blob es `c0414b00` («P1: la matriz de denegacion mapea 'zona' y el golden del tramo A mueve desde/hasta…»).
+        commit: "c0414b00",
+        motivo:
+          "P1, paso 3 (O.251; CAMBIA COMPORTAMIENTO a propósito, el día en hora argentina): Ventas por sección (Carta interna) corta el día en la zona de la empresa. Cambian SOLO 2 líneas del resultado de `generarReporteVentasPorSeccion`: `desde` pasa de 2026-09-30T00:00:00.000Z a 2026-09-30T03:00:00.000Z y `hasta` de 2026-09-30T23:59:59.999Z a 2026-10-01T02:59:59.999Z (el mismo día calendario argentino). Ningún número ni conteo de consultas cambió. Detectado por el CI de e0f5395 (parte 4 de 4), que el constructor del paso 3 no pudo correr.",
+      },
+      {
+        blob: "7d3cc1c24710b57426ae233bffc8f57d1998365d",
+        // El golden es la UNION de dos cambios deliberados: el de zona de `c0414b00` (entrada anterior) y el de P2.1 de `5707566` («P2.1: el item agrupado mira solo el descuento de su sucursal…»).
+        commit: "5707566",
+        motivo:
+          "Paquete 1, P2.1 (se BORRA una función; el resto del golden no cambia): `productoTieneDescuentoEnAlgunaSucursal` ya no existe (el ítem agrupado de la carta mira solo el descuento de SU sucursal con `descuentosConfiguradosEnSucursal`, que ya tiene su caso), así que se va su caso `carta.productoTieneDescuentoEnAlgunaSucursal(Empanada)` (1 consulta, `descuentoProductoSucursal.count`, resultado `true`). Ninguna otra entrada cambia.",
       },
     ],
   },
@@ -227,6 +305,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "6038560b",
         motivo:
           "S-06 (O.55; CAMBIA COMPORTAMIENTO, plan de endurecimiento de seguridad T2): guardar los cupos de una promo deja una fila de auditoría por columna (`cantidadMinima`, `cantidadMaxima`) de cada cupo que cambia, aparece o desaparece (entidad `PromoCartaCupo`, `entidadId` = `promo:seccion`). Agrega SOLO 8 líneas AUDITORIA: 4 en el paso «promo: cupos del Menú (Platos hasta 2, Postres 1 a 1)» (2 cupos nuevos × 2 columnas) y 4 en «promo: sin cupos vuelve a informativa» (los 2 cupos que se quitan × 2 columnas); ningún resultado, fila de tabla ni efecto cambia.",
+      },
+      {
+        blob: "ef85b2af2f043343cf1136a51227dd00bf1f4915",
+        // El commit PADRE de este (52d5b77, «Paquete 1: piso del precio local de promo con lectura de verificacion…») es el que cambió el código; el golden se regenera en el commit siguiente.
+        commit: "52d5b77",
+        motivo:
+          "Paquete 1, piso del precio LOCAL de una promo (CAMBIA UN TEXTO, a propósito): `guardarCuposPromoCarta` ya no nombra el importe ni la sucursal cuando el que no alcanza el piso es el precio LOCAL de alguna sucursal (puede ser una que quien guarda no ve; con las políticas de RLS por sucursal el control lee todas con la lectura de verificación). Cambia SOLO la línea `resultado` del paso «promo: cupos que dejan el precio local bajo el piso»: de «El precio de \"Menú del día\" ($0.05) no alcanza el piso…» a «El precio local de \"Menú del día\" en alguna sucursal no alcanza el piso…». El rechazo por el precio de la EMPRESA no cambia.",
       },
     ],
   },

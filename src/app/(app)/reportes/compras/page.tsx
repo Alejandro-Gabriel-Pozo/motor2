@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -9,9 +9,10 @@ import { listarComprasRegistradas } from "@/server/consultas/reportes/compras-re
 import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";
 import { BotonAnularCompra } from "./boton-anular-compra";
 import { FormularioCorregirCompra } from "./formulario-corregir-compra";
+import { formatearNumeroComprobante, leerNumeroComprobante } from "@/core/datos/numero-comprobante";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { ZONA_UTC, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
-const fechaCorta = (f: Date) => f.toISOString().slice(0, 10);
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
 /**
@@ -37,6 +38,9 @@ export default async function ComprasRegistradasPage({
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "anular_compra", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "corregir_compra", ctx.db),
   ]);
+  // El día de una compra (o de su anulación) es un instante: se lee en la zona de la empresa, el mismo corte del filtro. El vencimiento del lote es una fecha de solo día: se lee en UTC.
+  const fechaCorta = (f: Date) => diaDeCalendario(f, ctx.empresaZonaHoraria);
+  const fechaDeLote = (f: Date) => diaDeCalendario(f, ZONA_UTC);
   const sp = unicosDeUrl(await searchParams);
   const desde = sp.desde && !Number.isNaN(new Date(sp.desde).getTime()) ? sp.desde : "";
   const hasta = sp.hasta && !Number.isNaN(new Date(sp.hasta).getTime()) ? sp.hasta : "";
@@ -47,7 +51,7 @@ export default async function ComprasRegistradasPage({
       proveedorId: sp.proveedorId || undefined,
       factura: sp.factura || undefined,
       cursor: sp.cursor,
-    }, ctx.db),
+    }, ctx.db, ctx.empresaZonaHoraria),
     listarProveedoresParaSelector(),
   ]);
 
@@ -126,7 +130,7 @@ export default async function ComprasRegistradasPage({
                       Sin proveedor
                     </span>
                   )}
-                  <span className="text-neutral-500">{c.nroFactura ? `Factura ${c.nroFactura}` : "sin N.º de factura"}</span>
+                  <span className="text-neutral-500">{c.nroFactura ? `Factura ${formatearNumeroComprobante(leerNumeroComprobante(c.nroFactura))}` : "sin N.º de factura"}</span>
                   <span className="text-neutral-500" title="Productos DISTINTOS de esta factura — dos renglones del mismo producto cuentan una sola vez.">
                     {c.cantidadProductos} producto(s)
                   </span>
@@ -168,7 +172,7 @@ export default async function ComprasRegistradasPage({
                           <td className="px-2 py-1 text-right tabular-nums">
                             {l.cantidad.toLocaleString("es-AR")} {l.unidad}
                           </td>
-                          <td className="px-2 py-1">{l.loteVencimiento ? fechaCorta(l.loteVencimiento) : "—"}</td>
+                          <td className="px-2 py-1">{l.loteVencimiento ? fechaDeLote(l.loteVencimiento) : "—"}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{l.precioTotal > 0 ? plata(l.precioTotal) : <span className="text-amber-700 dark:text-amber-600">sin precio</span>}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{l.precioPorUnidadStock > 0 ? plata(l.precioPorUnidadStock) : "—"}</td>
                           <td className="px-2 py-1">{l.seccionNombre}</td>

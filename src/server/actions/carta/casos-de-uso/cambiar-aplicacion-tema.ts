@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { contarValoresTema } from "@/core/carta/public";
 import type { ComandoCambiarAplicacionTema, ResultadoCambiarAplicacionTema } from "@/core/features/carta/tema.schema";
 import { exito, fracaso } from "@/core/resultado-caso";

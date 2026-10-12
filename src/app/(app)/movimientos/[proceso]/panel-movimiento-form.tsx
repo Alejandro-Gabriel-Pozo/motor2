@@ -11,6 +11,7 @@ import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
+import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { QuickCrearProducto } from "@/components/catalogo/quick-crear-producto";
 
@@ -47,13 +48,15 @@ const FILA_VACIA: FilaItem = {
   ultimaCompraTexto: "",
 };
 
+// El día de hoy en Argentina (no en UTC: desde las 21:00 locales UTC ya es mañana). Esta pantalla no recibe la zona de la empresa, así que usa la constante.
 function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
+  return diaDeCalendario(new Date(), ZONA_ARGENTINA);
 }
 
 export function PanelMovimientoForm({
   config,
   secciones,
+  seccionesDesactivadas = [],
   proveedores,
   unidades,
   motivos,
@@ -62,6 +65,8 @@ export function PanelMovimientoForm({
 }: {
   config: ProcesoUiConfig;
   secciones: Opcion[];
+  /** Solo se pasa en Merma, Consumo y Transferencia (P17): secciones dadas de baja, que solo admiten sacar mercadería; se ofrecen SOLO como origen, al final y con la etiqueta «(desactivada)». */
+  seccionesDesactivadas?: Opcion[];
   proveedores: Opcion[];
   /** Solo se usa (y solo se pasa desde la página) en Compra — alta rápida de producto inline, ver QuickCrearProducto. */
   unidades?: Opcion[];
@@ -254,7 +259,7 @@ export function PanelMovimientoForm({
     startTransition(async () => {
       const resultado = await registrarMovimiento({
         proceso: config.proceso,
-        fecha: new Date(fecha),
+        fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
         seccionId,
         seccionDestinoId: config.proceso === "TRANSFERENCIA" ? seccionDestinoId : undefined,
         proveedorId: proveedorId || undefined,
@@ -297,6 +302,11 @@ export function PanelMovimientoForm({
             {secciones.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.nombre}
+              </option>
+            ))}
+            {seccionesDesactivadas.map((s) => (
+              <option key={s.id} value={s.id}>
+                {`${s.nombre} (desactivada)`}
               </option>
             ))}
           </select>
@@ -366,10 +376,10 @@ export function PanelMovimientoForm({
 
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">Productos</span>
-        {precargaPorProveedor && infoProveedor && <p className="text-xs text-neutral-500">{infoProveedor}</p>}
+        {precargaPorProveedor && infoProveedor && <p className="text-xs text-neutral-500 dark:text-neutral-400">{infoProveedor}</p>}
         {items.map((fila, idx) => (
           <div key={`${versionItems}-${idx}`} className="flex flex-wrap items-end gap-2 rounded border p-2">
-            <label className="flex flex-1 min-w-40 flex-col gap-1 text-xs text-neutral-500">
+            <label className="flex flex-1 min-w-40 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
               Producto
               <SelectorProducto
                 value={fila.productoId}
@@ -390,7 +400,7 @@ export function PanelMovimientoForm({
                 />
               )}
             </label>
-            <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500">
+            <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
               <span>
                 Cantidad
                 {config.cantidadConSigno && (
@@ -405,7 +415,7 @@ export function PanelMovimientoForm({
                 tamano="compacto"
               />
             </label>
-            <label className="flex w-36 flex-col gap-1 text-xs text-neutral-500">
+            <label className="flex w-36 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
               Lote (Fecha VTO.)
               <input
                 type="date"
@@ -416,8 +426,8 @@ export function PanelMovimientoForm({
             </label>
             {config.esCompraLike && (
               <>
-                <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500">
-                  Precio total
+                <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  Precio total (con IVA incluido)
                   <CampoNumero
                     value={fila.precioTotal}
                     onChange={(v) => actualizarFila(idx, { precioTotal: v })}
@@ -427,12 +437,12 @@ export function PanelMovimientoForm({
                     etiqueta="El precio total"
                   />
                 </label>
-                <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500">
+                <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
                   Peso real
                   <CampoNumero value={fila.pesoReal} onChange={(v) => actualizarFila(idx, { pesoReal: v })} tamano="compacto" />
                 </label>
                 {(presentacionesPorFila[idx]?.length ?? 0) > 0 && (
-                  <label className="flex w-44 flex-col gap-1 text-xs text-neutral-500">
+                  <label className="flex w-44 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
                     Presentación
                     <select
                       value={fila.unidadCompraId}
@@ -451,7 +461,7 @@ export function PanelMovimientoForm({
               </>
             )}
             {precargaPorProveedor && (
-              <label className="flex w-40 flex-col gap-1 text-xs text-neutral-500">
+              <label className="flex w-40 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
                 Código/nombre del proveedor
                 <input
                   value={fila.referenciaProveedor}
@@ -465,7 +475,7 @@ export function PanelMovimientoForm({
               type="button"
               onClick={() => quitarFila(idx)}
               disabled={items.length === 1}
-              className="rounded border px-2 py-1.5 text-sm text-neutral-500 disabled:opacity-30"
+              className="rounded border px-2 py-1.5 text-sm text-neutral-500 dark:text-neutral-400 disabled:opacity-30"
             >
               Quitar
             </button>

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 /**
  * Interruptor para romper la auditoría DESPUÉS de que la escritura ya pasó (mismo molde que `test/catalogo/catalogo-auditoria-atomica.test.ts`):

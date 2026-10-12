@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { getUsuarioActual } from "../../src/core/auth/session";
+import { getUsuarioActual } from "../../src/server/sesion/session";
 import { listarSucursales } from "../../src/server/actions/auth/sucursales";
 import { listarUsuariosDeSucursal } from "../../src/server/actions/auth/usuarios";
 import { listarCategoriasProducto } from "../../src/server/actions/catalogo/categorias-producto";

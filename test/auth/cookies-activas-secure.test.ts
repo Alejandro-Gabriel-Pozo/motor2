@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 vi.mock("next/navigation", () => ({
   redirect: (destino: string) => {
     throw new Error(`NEXT_REDIRECT:${destino}`);

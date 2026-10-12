@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoActualizarMaxMesasAbiertas, ResultadoActualizarMaxMesasAbiertas } from "@/core/features/mesas/mesas.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito } from "@/core/resultado-caso";

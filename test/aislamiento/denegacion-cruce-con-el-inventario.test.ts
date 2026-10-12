@@ -3,7 +3,7 @@ import { diferenciasDelCruce, exportacionesDeFuncionesEnRuntime, exportacionesIn
 import { REEXPORTS_DE_PUERTAS_INVENTARIADAS } from "./denegacion/excepciones";
 import { archivosDelInventario, inventariarPuertas, nombresInventariadosDeFuente } from "./denegacion/inventario-de-puertas";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 /**
  * GT-3b, el CRUCE EN EJECUCIÓN del inventario de puertas (hallazgo I-3 de la auditoría final, fila O.177). El inventario lee el código por AST y no ve `export const f = envolver(…)` ni `export const f = (async () => …) as T`; el cruce

@@ -1,11 +1,12 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { diasAtrasDeUrl } from "@/core/reportes/public";
 import { generarReporteDevoluciones } from "@/server/consultas/reportes/devoluciones";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { TablaDevolucionesClientes, TablaDevolucionesProveedor } from "./tabla-devoluciones";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 export default async function DevolucionesPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"dias">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -20,7 +21,7 @@ export default async function DevolucionesPage({ searchParams }: { searchParams:
   const dias = diasAtrasDeUrl(sp.dias, 30);
   // La hora se fija acá, en el borde (D.3a): el reporte la recibe por parámetro.
   const ahora = new Date();
-  const rep = await generarReporteDevoluciones(ctx.sucursalId, dias, ctx.db, ahora);
+  const rep = await generarReporteDevoluciones(ctx.sucursalId, dias, ctx.db, ahora, ctx.empresaZonaHoraria);
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,7 +37,7 @@ export default async function DevolucionesPage({ searchParams }: { searchParams:
           </button>
         </form>
         <p className="mt-2 text-sm text-neutral-500">
-          Desde {rep.desde.toISOString().slice(0, 10)} — devuelto por clientes: ${rep.totalCliente.toLocaleString("es-AR")}, a proveedores: $
+          Desde {diaDeCalendario(rep.desde, ctx.empresaZonaHoraria)} — devuelto por clientes: ${rep.totalCliente.toLocaleString("es-AR")}, a proveedores: $
           {rep.totalProveedor.toLocaleString("es-AR")}.
         </p>
       </div>

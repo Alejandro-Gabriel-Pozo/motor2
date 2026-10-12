@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { slugTenant, slugTenantUnico } from "@/core/carta/registro-tenants";
 import type { ComandoAgregarSucursalAlPortal, ResultadoAgregarSucursalAlPortal } from "@/core/features/carta/registro-publico.schema";
 import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";

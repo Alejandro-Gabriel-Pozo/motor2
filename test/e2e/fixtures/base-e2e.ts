@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { ROL_DE_PLATAFORMA } from "../../../plataforma/src/entorno";
 import { primerHostNoLocal } from "../../../src/core/auth/hosts-de-conexion";
+import { ROL_DE_PRUEBAS, VARIABLE_DE_PRUEBAS_E2E } from "../../setup/rol-de-pruebas";
 
 /**
  * Base de datos DEDICADA a los E2E de Playwright, con reset total.
@@ -67,6 +68,24 @@ export function resolverUrlAppE2E(env: Record<string, string | undefined>): Base
     throw new Error("MOTOR2_E2E_APP_DATABASE_URL es idéntica a MOTOR2_E2E_DATABASE_URL: el runtime tiene que usar el rol motor2_app, no el dueño.");
   }
   return app;
+}
+
+/**
+ * La URL del ROL DE PRUEBAS en los E2E (M.3-A8): con la que los specs SIEMBRAN datos (fixtures/db.ts) mientras el servidor sigue corriendo como `motor2_app`. Es `motor2_app_pruebas`
+ * sobre la MISMA base `_e2e` que `resolverUrlAppE2E`, o `null` si no se configuró (los specs siembran como `motor2_app`, como antes; `playwright.config.ts` avisa). Con ella, mismas guardas que el
+ * resto (host local, sufijo `_e2e`) y el usuario tiene que ser exactamente `motor2_app_pruebas`: ni el dueño (saltaría el RLS) ni `motor2_app` (sembraría sin avisar con el rol equivocado).
+ */
+export function resolverUrlPruebasE2E(env: Record<string, string | undefined>): BaseE2E | null {
+  if (!env[VARIABLE_DE_PRUEBAS_E2E]) return null;
+  const dueno = resolverUrlE2E(env);
+  const pruebas = validarUrlE2E(env, VARIABLE_DE_PRUEBAS_E2E);
+  if (pruebas.host !== dueno.host || pruebas.nombre !== dueno.nombre) {
+    throw new Error(`${VARIABLE_DE_PRUEBAS_E2E} (${pruebas.host}/${pruebas.nombre}) tiene que apuntar a la misma base que MOTOR2_E2E_DATABASE_URL (${dueno.host}/${dueno.nombre}).`);
+  }
+  if (decodeURIComponent(new URL(pruebas.url).username) !== ROL_DE_PRUEBAS) {
+    throw new Error(`${VARIABLE_DE_PRUEBAS_E2E} tiene que conectar con el rol ${ROL_DE_PRUEBAS}.`);
+  }
+  return pruebas;
 }
 
 /**

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
@@ -45,9 +45,9 @@ export default async function FichaProductoPage({
   // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
   const { editar: puedeEditarProducto } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db);
   const { editar: puedeCambiarDisponibilidad } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db);
-  // S-12 (D8 del dueño): el costo de consignación (lo que se le paga al proveedor por unidad vendida, y quién es) es de quien tiene `pagar_consignante` en la sucursal activa — la
+  // S-12 (D8 del dueño): el costo de consignación (lo que se le paga al proveedor por unidad vendida, y quién es) es de quien tiene `pagar_consignante` en alguna de sus sucursales de la empresa (P20, D23: «Ver incluye Editar», y la edición se evalúa igual) — la
   // pantalla donde ese precio se vuelve deuda. Acá no se esconde: la consulta ni lo devuelve sin esta bandera (deniega por defecto).
-  const { ver: puedeVerCostoDeConsignacion } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
+  const { ver: puedeVerCostoDeConsignacion } = await obtenerMiNivelPermisoEnAlgunaSucursal(ctx, "pagar_consignante");
 
   const { id } = await params;
   const { guardado } = unicosDeUrl(await searchParams);

@@ -26,7 +26,7 @@
  * vez de estimado. Sin las dos anclas (D4), se cae al método "COMPRAS" de
  * siempre: nunca se deja la fila sin ningún número.
  */
-import { ZONA_UTC, finDelDiaDe } from "@/core/tiempo/zona-horaria";
+import { finDelDiaDe } from "@/core/tiempo/zona-horaria";
 
 /** Redondeo a 3 decimales, para cantidades de stock — duplicado a propósito de `comun.ts`/`rendimiento-recetas-vistas.ts` (ver el docstring de arriba, el motivo es el mismo: nunca importar nada que arrastre Prisma). */
 function redondearCantidad(n: number): number {
@@ -202,11 +202,6 @@ export function anclasValidasEnVentana(candidatos: readonly CandidatoAncla[], de
 // El tramo: [fin del día de la ancla-desde, fin del día de la ancla-hasta]
 // ---------------------------------------------------------------------------
 
-/** Fin del día calendario (UTC) de `fecha` — 23:59:59.999, mismo criterio que `rangoUtc` de rendimiento-recetas.ts. */
-export function finDelDiaUtc(fecha: Date): Date {
-  return finDelDiaDe(fecha, ZONA_UTC);
-}
-
 /**
  * Los límites reales del tramo, dadas las dos anclas — EXCLUYE el día de
  * `anclaDesde` (esa ancla es el punto de partida ya reconciliado: lo que
@@ -214,7 +209,10 @@ export function finDelDiaUtc(fecha: Date): Date {
  * completo (el propio ajuste CONTROL que ese conteo pudiera escribir, si
  * hubo diferencia, pasa DENTRO del tramo — escenario B del plan: el
  * CONTROL de -9 fechado el día de la ancla-hasta cuenta).
+ *
+ * Los días se cortan en `zona` (P1: la de la empresa, la misma con que cortan Tickets y Período): una ancla es un instante dentro del día de esa zona (el
+ * reporte usa el inicio del día) y el límite es el 23:59:59.999 de ESE día en la zona.
  */
-export function limitesDelTramo({ anclaDesde, anclaHasta }: Anclas): { desde: Date; hasta: Date } {
-  return { desde: finDelDiaUtc(anclaDesde), hasta: finDelDiaUtc(anclaHasta) };
+export function limitesDelTramo({ anclaDesde, anclaHasta }: Anclas, zona: string): { desde: Date; hasta: Date } {
+  return { desde: finDelDiaDe(anclaDesde, zona), hasta: finDelDiaDe(anclaHasta, zona) };
 }

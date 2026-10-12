@@ -22,13 +22,13 @@ import "dotenv/config";
 import { vi, describe, it, expect } from "vitest";
 
 // Hoisted por Vitest — tiene que ir antes de cualquier import que toque
-// (directa o indirectamente) `@/core/auth/session`, mismo criterio que
+// (directa o indirectamente) `@/server/sesion/session`, mismo criterio que
 // cualquier test de un server action (ver test/catalogo/recetas.test.ts).
-vi.mock("../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { prisma } from "./demo-seed/cliente";
 import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
-import { getUsuarioActual } from "../src/core/auth/session";
+import { getUsuarioActual } from "../src/server/sesion/session";
 import { crearSucursalConAdmin } from "../src/server/actions/auth/sucursales";
 import { crearSeccion } from "../src/server/actions/movimientos/secciones";
 import { crearCategoriaProducto } from "../src/server/actions/catalogo/categorias-producto";

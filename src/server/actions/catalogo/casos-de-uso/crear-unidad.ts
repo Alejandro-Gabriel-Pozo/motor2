@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoCrearUnidad, ResultadoCrearUnidad } from "@/core/features/catalogo/unidades.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { crearUnidadNueva } from "@/server/persistencia/catalogo/unidades";

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 // Pasa-través: solo el test de "carrera simulada" le hace devolver null UNA vez (el chequeo previo no ve al ganador).
 vi.mock("../../src/server/persistencia/movimientos/escribir-conteo-fisico", async (original) => {
   const real = await original<typeof import("../../src/server/persistencia/movimientos/escribir-conteo-fisico")>();
@@ -12,7 +12,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarConteoFisico, registrarConteosFisicos, resolverConteoPendiente, cancelarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
-import { getUsuarioActual } from "../../src/core/auth/session";
+import { getUsuarioActual } from "../../src/server/sesion/session";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { cargarConteoFisicoPorClave } from "../../src/server/persistencia/movimientos/escribir-conteo-fisico";
 

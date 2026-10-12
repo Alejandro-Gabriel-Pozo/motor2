@@ -4,15 +4,16 @@ import type { Db } from "@/lib/db-tipos";
 import { redondearCantidad, resolverRangoPorDefecto } from "@/core/reportes/public";
 import { obtenerReportePorPeriodo } from "@/server/consultas/reportes/periodo";
 import type { ResumenFinanciero, ResumenOperativo } from "@/core/reportes/public";
+import { ZONA_ARGENTINA } from "@/core/tiempo/zona-horaria";
 
 /**
  * Port de obtenerResumenFinancieroMesActual_ (Reportes.js:1507-1528), adaptado para aceptar cualquier rango en vez de fijar
  * "mes en curso" — decisión del usuario (2026-09-21, docs/planes-demo-y-claridad-reportes-2026-09-21.md §1): el default del
  * dashboard pasa a ser "Últimos 30 días". Sin `rango`, cae al mismo default (ver rango-por-defecto.ts).
  */
-async function obtenerResumenFinancieroDelRango(sucursalId: string, desde: Date, hasta: Date, db: Db, ahora: Date): Promise<ResumenFinanciero> {
+async function obtenerResumenFinancieroDelRango(sucursalId: string, desde: Date, hasta: Date, db: Db, ahora: Date, zona: string): Promise<ResumenFinanciero> {
   // El mismo `ahora` del resumen (D.3b): antes el reporte del período leía el reloj por su cuenta para la antigüedad del IPC.
-  const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, {}, db, ahora);
+  const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, {}, db, ahora, zona);
 
   return {
     desde: rep.desde,
@@ -51,16 +52,18 @@ async function obtenerResumenFinancieroDelRango(sucursalId: string, desde: Date,
  *
  * El financiero usa el rango recibido; sin uno explícito cae al default del selector (últimos 30 días) para que `financiero`
  * nunca quede vacío por casualidad de calendario (ver rango-por-defecto.ts).
+ *
+ * `zona` (P1, O.251): la zona con la que se corta cada día del rango financiero; la página pasa `ctx.empresaZonaHoraria`. Opcional, con la zona argentina por defecto.
  */
-export async function obtenerResumenOperativo(sucursalId: string, db: Db, ahora: Date, rango?: { desde: Date; hasta: Date }): Promise<ResumenOperativo> {
+export async function obtenerResumenOperativo(sucursalId: string, db: Db, ahora: Date, rango?: { desde: Date; hasta: Date }, zona: string = ZONA_ARGENTINA): Promise<ResumenOperativo> {
   const { desde: desdeFinanciero, hasta: hastaFinanciero } = rango ?? (() => {
-    const r = resolverRangoPorDefecto(undefined, ahora);
+    const r = resolverRangoPorDefecto(undefined, ahora, zona);
     return { desde: new Date(r.desdeISO), hasta: new Date(r.hastaISO) };
   })();
   const [saldos, movimientosPorProceso, financiero] = await Promise.all([
     db.movimientoStock.groupBy({ by: ["productoId", "seccionId"], where: { seccion: { sucursalId } }, _sum: { cantidad: true }, _max: { creadoEn: true } }),
     db.movimientoStock.groupBy({ by: ["proceso"], where: { seccion: { sucursalId } }, _count: { _all: true } }),
-    obtenerResumenFinancieroDelRango(sucursalId, desdeFinanciero, hastaFinanciero, db, ahora),
+    obtenerResumenFinancieroDelRango(sucursalId, desdeFinanciero, hastaFinanciero, db, ahora, zona),
   ]);
 
   const productoIds = Array.from(new Set(saldos.map((s) => s.productoId)));

@@ -48,6 +48,10 @@ el Setup de arriba lo ofrecía como opción.
 
 `npm run auditar:dependencias` corre `npm audit --omit=dev --audit-level=high`. Hoy sale con código 1 por la cadena de la CLI de Prisma (`prisma` → `@prisma/config` → `deepmerge-ts`, y `mysql2` de `@prisma/dev`): son herramientas de build/migración que no se cargan en el runtime de la app. NO aplicar `npm audit fix --force`: «arregla» bajando `prisma` a 6.x (cambio mayor). Todo hallazgo nuevo fuera de esa cadena se corrige. Dependabot (`.github/dependabot.yml`) propone las actualizaciones semanales.
 
+## Seguridad en el pipeline
+
+Dependencias (`npm audit`), CodeQL, Gitleaks, OWASP ZAP y las pruebas de SQL injection/XSS corren en GitHub Actions (`.github/workflows/seguridad.yml`, `codeql.yml`, `gitleaks.yml`). Qué bloquea, cómo correr cada control en tu máquina y los falsos positivos revisados: `docs/seguridad-pipeline.md`.
+
 ## Tests
 
 `npm test` corre Vitest contra Postgres real (no hay mocks — mismo espíritu

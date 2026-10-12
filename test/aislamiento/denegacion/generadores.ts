@@ -10,7 +10,7 @@ import { intento, variantes, type ContextoDeArgumentos, type Generadores, type K
  * válidos escribiría de verdad. Los ids de EMPRESA (catálogo, roles, secciones de carta) son ajenos solo en el escenario de otra empresa; los de SUCURSAL (secciones, mesas, cuentas…) en los dos.
  * `k` trae lo ajeno del escenario y `c.propio` lo propio de u1 (E1 y S1).
  */
-const conIdsAjenos = (c: Pick<ContextoDeArgumentos, "escenario">) => c.escenario === "ajenaEmpresa" || c.escenario === "ajenaSucursal";
+const conIdsAjenos = (c: Pick<ContextoDeArgumentos, "escenario">) => c.escenario === "ajenaEmpresa" || c.escenario === "ajenaSucursal" || c.escenario === "consultaConSucursalAjena";
 const lista = (...v: Array<unknown[] | false>): unknown[][] => v.filter((x): x is unknown[] => x !== false);
 const hoy = () => new Date();
 const ingrediente = (k: Kit, insumoProductoId: string = k.productoId) => ({ insumoProductoId, cantidad: 1, unidadId: k.unidadId });
@@ -163,7 +163,7 @@ const completos: Record<string, Valor> = {
   // Las candidatas son las sucursales con carta propia; la consulta tiene que dejar afuera las que u1 no ve (S2, S3, las de otra empresa).
   "consulta|consultas/carta/admin.ts|origenesDeCopiaVisibles": (k, c) => [c.mundo.u1.id, [{ id: k.sucursalId, nombre: "Sucursal candidata", cantidadProductos: 1 }, { id: k.vecinaId, nombre: "Sucursal vecina", cantidadProductos: 1 }], c.db],
   "consulta|consultas/catalogo/grupos.ts|cadenasDeGrupos": (k, c) => [[k.grupoId], c.db],
-  "consulta|consultas/catalogo/recetas.ts|listarCalibracionesDeIngredientes": (k, c) => [[k.recetaIngredienteId, k.recetaIngredientePropioId], c.db],
+  "consulta|consultas/catalogo/recetas.ts|listarCalibracionesDeIngredientes": (k, c) => [[k.recetaIngredienteId, k.recetaIngredientePropioId], c.mundo.u1.id, [c.propio.sucursalId], c.db],
   "consulta|consultas/catalogo/recetas.ts|listarOpcionesDeSustituto": (k, c) => [{ insumoIdExcluido: k.insumoId, unidadId: k.unidadId }, c.db],
   "consulta|consultas/permisos/auditoria.ts|listarRegistrosAuditoria": (_k, c) => [{ sucursalIds: [c.propio.sucursalId], incluirFilasDeEmpresa: true }, c.db],
   "consulta|consultas/reportes/costo-historico.ts|reconstruirCostosDeVenta": (k, c) => [c.propio.sucursalId, [{ productoId: k.productoId, fecha: hoy() }], c.db],
@@ -229,6 +229,7 @@ const parametros: Record<string, Record<string, Valor>> = {
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoOpcion": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoPorId": { id: (k) => k.productoId },
+  "consulta|consultas/catalogo/productos.ts|obtenerUnidadesDelProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/proveedores.ts|obtenerFichaProveedor": { id: (k) => k.proveedorId },
   "consulta|consultas/catalogo/proveedores.ts|obtenerProveedorPorId": { id: (k) => k.proveedorId },
   // Estos ayudantes de gobierno reciben el usuario OBJETIVO (el que el cliente eligió), no el actor: en la matriz es el de otra empresa.

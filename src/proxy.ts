@@ -4,10 +4,12 @@ import { ENCABEZADO_RUTA_PEDIDA } from "@/core/navegacion/volver";
 import { esHostDeEmpresaUnica, esHostDeZonaCarta, esMetodoDeLecturaEnHostCarta, esPathPermitidoEnHostCarta, interpretarHostCarta } from "@/core/carta/public";
 import { sirvePorHttps } from "@/core/auth/cookie-sesion";
 import { cabecerasComunes, cspApp, generarNonce } from "@/core/seguridad/cabeceras";
+import { esPathServible } from "@/core/seguridad/ruta-servible";
 
 /**
  * Puerta de entrada de todos los pedidos que no son archivos de Next (el `matcher` excluye `_next/static`, `_next/image` y el favicon).
- * Hace tres cosas, en este orden:
+ * Antes de todo, un path que Next no sabe decodificar (un `%` suelto, un UTF-8 inválido, un NUL, un `%25` en la carta ISR) es 404 limpio
+ * (`core/seguridad/ruta-servible.ts`): sin esto Next respondía 500 «failed to decode param». Después, hace tres cosas, en este orden:
  *
  * 1. Host de la carta (`<empresa>.<CARTA_DOMINIO_BASE>`): ahí solo se sirve la carta pública (la raíz y `/<sucursal>`, solo con GET/HEAD y
  *    sin `next-action`); cualquier otro path (login, API, cron, la aplicación) es 404 sin llegar a la app. Un host de la zona de cartas que no es una carta válida
@@ -42,6 +44,9 @@ export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const dominioBaseCarta = process.env.CARTA_DOMINIO_BASE;
   const host = request.headers.get("host");
+
+  // Un path que Next no sabe decodificar (un `%` suelto, un UTF-8 inválido, un `%25` en la carta ISR) daba 500 «failed to decode param»: es un pedido que no corresponde a ninguna pantalla, 404 limpio.
+  if (!esPathServible(pathname)) return respuesta404();
 
   if (esHostDeZonaCarta(host, dominioBaseCarta)) {
     // La carta es de solo lectura: un POST (y con él una Server Action, que viaja con `next-action`) no tiene nada que hacer en este host.

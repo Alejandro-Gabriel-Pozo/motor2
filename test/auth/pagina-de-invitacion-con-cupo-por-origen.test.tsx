@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
  * el MISMO limitador que `abrirInvitacion` (una sola instancia, un solo cupo por origen) ANTES de consultar. La consulta (`invitacionConSuBase`) se reemplaza por un contador:
  * «no consulta» es exactamente «no llegó a la base». Sin base: el cupo es de memoria.
  */
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn(async () => null) }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn(async () => null) }));
 vi.mock("../../src/lib/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }));
 const consultas = vi.hoisted(() => ({ cuantas: 0, tokens: [] as Array<string | undefined> }));
 vi.mock("../../src/server/sesion/invitacion", () => ({

@@ -49,7 +49,7 @@ const CONSUMIDORES = [
   "src/app/(app)/stock/conteo-frecuencia/page.tsx|conImportes",
 ];
 
-const GATES = new Set(["obtenerMiNivelPermiso", "obtenerMiNivelPermisoDeEmpresa", "requierePermiso", "requierePermisoVer", "requierePermisoDeEmpresa", "requierePermisoVerDeEmpresa"]);
+const GATES = new Set(["obtenerMiNivelPermiso", "obtenerMiNivelPermisoDeEmpresa", "obtenerMiNivelPermisoEnAlgunaSucursal", "requierePermiso", "requierePermisoVer", "requierePermisoDeEmpresa", "requierePermisoVerDeEmpresa"]);
 
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {
@@ -162,6 +162,10 @@ describe("GT-1 (T7) — los datos sensibles de una consulta se piden con la clav
     const cadena = analizar('async function p() { const { ver } = await obtenerMiNivelPermiso(u, s, "reporte_compras", db); const v = ver && true; const { ver: o } = await obtenerMiNivelPermiso(u, s, "otra", db); return q(db, { conImportes: v }); }', "x.ts");
     expect([...(cadena.atadas.get("v") ?? [])]).toEqual(["reporte_compras"]);
     expect([...(cadena.atadas.get("o") ?? [])]).toEqual(["otra"]);
+    // P20 (D23): el gate «en alguna sucursal de la empresa» también ata el valor a su clave (la clave va literal en el segundo argumento)
+    const enAlguna = analizar('async function p() { const { editar: puede } = await obtenerMiNivelPermisoEnAlgunaSucursal(ctx, "pagar_consignante"); return q(db, { conCostoDeConsignacion: puede }); }', "x.ts");
+    expect([...enAlguna.clavesDeGate]).toEqual(["pagar_consignante"]);
+    expect([...(enAlguna.atadas.get("puede") ?? [])]).toEqual(["pagar_consignante"]);
     // un nombre heredado del prototipo no es una opción
     expect(analizar("q({ constructor: 1, toString })", "x.ts").usos).toEqual([]);
   });

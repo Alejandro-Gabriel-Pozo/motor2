@@ -38,12 +38,14 @@ const claves = new Set(puertas.map((p) => p.clave));
 const MAXIMOS = {
   SIN_GENERADOR: 17,
   ESCENARIOS_QUE_NO_APLICAN: 2,
+  // 0 desde el paquete 1 de la RLS por sucursal (ADR-028): con las políticas `alcance_sucursal_*` aplicadas, las 37 consultas y lecturas que cruzaban sucursales dejan de traer filas de la otra (el test pidió sacar cada entrada) y las 3 de gobierno
+  // (`cargarTemaAdmin`, `resolverMenuCarta`, `resolverMenuCartaConDiagnostico`) pasaron a `SUCURSALES_LISTADAS_POR_DISENO`. Era 40 (39 + `seccionesDesactivadas`, P17).
   PENDIENTES_DE_SUCURSAL: 0,
   RECHAZOS_CRUDOS_DE_LA_BASE: 0,
-  OPCIONALES_SIN_MAPEAR: 25,
+  OPCIONALES_SIN_MAPEAR: 26,
   SIN_CONTROL_POSITIVO: 0,
   RECHAZOS_DE_ESTADO_ADMITIDOS: 9,
-  SUCURSALES_LISTADAS_POR_DISENO: 5,
+  SUCURSALES_LISTADAS_POR_DISENO: 8,
   CONTEXTO_DECLARADO: 1,
   SIN_MARCA_PROPIA: 27,
   OK_SIN_EFECTO_POR_DISENO: 2,
@@ -195,7 +197,7 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
   });
 
   it("cobertura: cuántas puertas hay y en cuántos escenarios se ejercen (informativo, con piso)", () => {
-    const porEscenario: Record<string, number> = { anonimo: 0, sinEmpresa: 0, ajenaEmpresa: 0, ajenaSucursal: 0, propia: 0, controlMutacion: 0 };
+    const porEscenario: Record<string, number> = { anonimo: 0, sinEmpresa: 0, ajenaEmpresa: 0, ajenaSucursal: 0, consultaConSucursalAjena: 0, propia: 0, controlMutacion: 0 };
     let ejercidas = 0;
     for (const p of puertas) {
       const e = escenariosDe(p);
@@ -207,6 +209,8 @@ describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario",
     expect(porEscenario.sinEmpresa).toBeGreaterThan(300);
     expect(porEscenario.ajenaEmpresa).toBeGreaterThan(250);
     expect(porEscenario.ajenaSucursal).toBeGreaterThan(150);
+    // Las consultas y lecturas a las que se les pasa la sucursal de contexto de OTRA sucursal (M.3, A11): 94 puertas el 2026-10-10.
+    expect(porEscenario.consultaConSucursalAjena).toBeGreaterThan(80);
     // Cada mutación ejercida con ids ajenos tiene su control positivo (salvo las de SIN_CONTROL_POSITIVO, que igual lo intentan y se exige que sigan fallando).
     expect(porEscenario.controlMutacion).toBeGreaterThan(120);
   });

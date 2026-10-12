@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
-import type { MembresiaUsuario } from "@/core/auth/contexto";
+import type { MembresiaUsuario } from "@/server/sesion/contexto";
 import { cambiarSucursalActiva } from "@/server/actions/auth/sucursal-activa";
 
 export function SelectorSucursal({ membresias, actual }: { membresias: MembresiaUsuario[]; actual: string }) {

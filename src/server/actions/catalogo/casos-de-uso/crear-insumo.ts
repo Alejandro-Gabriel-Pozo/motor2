@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoCrearInsumo, ResultadoCrearInsumo } from "@/core/features/catalogo/insumos.schema";
 import { exito } from "@/core/resultado-caso";
 import { crearInsumoNuevo } from "@/server/persistencia/catalogo/insumos";

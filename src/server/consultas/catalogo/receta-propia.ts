@@ -15,6 +15,8 @@ export { obtenerEstadoDeRecetaPropia };
 /**
  * Las OTRAS sucursales de la empresa que tienen una receta propia habilitada para el producto Y donde `usuarioId` puede copiar de ahí: las únicas con membresía vigente
  * y «Ver» de `receta_sucursal_copiar` (S-07, O.56: la lista nunca nombra una sucursal que la copia después rechazaría; la acción lo decide de nuevo, esto es solo lo que se ofrece).
+ * M.3-A5: lee las recetas propias de OTRAS sucursales, así que el `db` que recibe es el del contexto ampliado por `lecturaEnSucursalesVisibles(ctx, "receta_sucursal_copiar")`
+ * (lo exige `test/arquitectura/lectores-de-varias-sucursales.test.ts`); el filtro por «Ver» de arriba sigue siendo el que decide qué se nombra.
  */
 export async function listarSucursalesConRecetaPropia(productoId: string, excluirSucursalId: string, usuarioId: string, db: PrismaClient) {
   const candidatas = await db.sucursal.findMany({ where: { id: { not: excluirSucursalId }, activo: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } });

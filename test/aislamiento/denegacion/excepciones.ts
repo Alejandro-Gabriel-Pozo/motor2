@@ -39,13 +39,12 @@ export interface PendienteDeSucursal {
 }
 
 /**
- * Lo que cruza de OTRA SUCURSAL de la misma empresa (escenario `ajenaSucursal`) y todavía no se defiende. La política del plan: se declara acá y NO se arregla en esta tanda (la defensa por sucursal es la
- * «RLS contenedor» [MIG] que el dueño pidió como pista aparte). La matriz EJECUTA estos casos y exige que sigan fallando: cuando la pista los cierre, el test pide sacar la entrada.
+ * Lo que cruza de OTRA SUCURSAL de la misma empresa (escenarios `ajenaSucursal` y `consultaConSucursalAjena`) y todavía no se defiende. VACÍA desde el paquete 1 de la RLS por sucursal (ADR-028): con las 128 políticas
+ * `alcance_sucursal_*` aplicadas, las 37 consultas y lecturas que confiaban en la sucursal de contexto que reciben dejan de traer filas de la otra (medido con las políticas aplicadas a una base local, entrada por entrada: el test
+ * pidió sacar cada una), y las 3 restantes —`cargarTemaAdmin`, `resolverMenuCarta` y `resolverMenuCartaConDiagnostico`— devuelven solo el NOMBRE y el slug público de la otra sucursal (`Sucursal`, `SucursalPublica`: GOBIERNO,
+ * D3, fuera de esta RLS por diseño), así que pasaron a `SUCURSALES_LISTADAS_POR_DISENO`. Una puerta nueva que cruce sucursales vuelve a entrar acá, con su motivo, y el techo (`MAXIMOS`) tiene que subir a propósito.
  */
-export const PENDIENTES_DE_SUCURSAL: Readonly<Record<string, PendienteDeSucursal>> = {
-  // Vacía desde que los lectores de saldo y la precarga del conteo fallan cerrado por sucursal (hallazgo O.177 cerrado): `calcularSaldoTotal`,
-  // `calcularSaldoPorLote`, `validarStockSuficiente` y `listarStockParaConteo` reciben la `sucursalId` del contexto y exigen `seccion.sucursalId` en su `where`.
-};
+export const PENDIENTES_DE_SUCURSAL: Readonly<Record<string, PendienteDeSucursal>> = {};
 
 /**
  * Puertas que, con un id ajeno en un campo que no validan, dejan que la RESTRICCIÓN de la base (la clave foránea compuesta por empresa) lo rechace y lanzan una excepción de Prisma cruda en lugar de devolver `{ ok: false }`.
@@ -77,6 +76,7 @@ export const OPCIONALES_SIN_MAPEAR: Readonly<Record<string, string>> = {
   "consulta|consultas/reportes/insumos-sin-receta.ts|generarReporteInsumosSinRecetaVinculada|productosCargados": PRECARGA,
   "consulta|consultas/reportes/periodo.ts|cargarLineasDelPeriodo|cargado": PRECARGA,
   "consulta|consultas/reportes/periodo.ts|cargarLineasDelPeriodoDeSucursales|cargado": PRECARGA,
+  "consulta|consultas/reportes/ventas-sin-receta.ts|generarReporteVentasSinReceta|dbDelCatalogo": "base ALTERNATIVA que inyecta quien llama para leer el catálogo con la lectura de verificación (P2, sitio #11); sin ella el reporte lee el catálogo con el mismo `db` de las ventas, que es el camino que ejercen estas pruebas. No lleva ids del cliente",
   "consulta|consultas/stock/alertas.ts|calcularAlertasStock|cargado": PRECARGA,
   "consulta|consultas/stock/consolidado.ts|calcularStockConsolidado|seccionesCargadas": PRECARGA,
   "lectura|lecturas/carta/descuentos.ts|descuentosDeProductoEnSucursal|precioLocalActivoCargado": PRECARGA,
@@ -169,6 +169,11 @@ export const SUCURSALES_LISTADAS_POR_DISENO: Readonly<Record<string, string>> = 
   "consulta|consultas/catalogo/disponibilidad.ts|disponibilidadPorSucursalDeProducto": "la disponibilidad de un producto se muestra por CADA sucursal de la empresa (tabla de la ficha): los nombres de S2 y S3 salen por diseño",
   "accion|actions/traspasos/lecturas.ts|listarSucursalesParaEnviar": "lista las OTRAS sucursales activas de la empresa (id y nombre) para elegir a quién enviar: S2 y S3 son sucursales de E1 y sus nombres salen por diseño",
   "accion|actions/traspasos/lecturas.ts|listarSucursalesParaSolicitar": "lista las OTRAS sucursales activas de la empresa (id y nombre) para elegir a quién pedirle: S2 y S3 son sucursales de E1 y sus nombres salen por diseño",
+  // Paquete 1 (P2.2, ADR-028): las tres lecturas de gobierno que, con la sucursal de contexto de OTRA, devuelven solo el nombre y el slug público de esa sucursal (`secciones: []`, `tema: null`): `Sucursal` y `SucursalPublica`
+  // son de GOBIERNO (D3), fuera de la RLS por sucursal por diseño, así que las políticas no las cierran y no son una fuga. Antes estaban en `PENDIENTES_DE_SUCURSAL`.
+  "consulta|consultas/carta/admin.ts|cargarTemaAdmin": "devuelve el nombre y el slug público de la sucursal que se le pide (`Sucursal`, `SucursalPublica`: GOBIERNO) con `tema: null` si no tiene filas visibles: con la sucursal de contexto de OTRA, el nombre de S2 sale por diseño",
+  "lectura|lecturas/carta/menu.ts|resolverMenuCarta": "devuelve el nombre y el slug público de la sucursal pedida (GOBIERNO) con `secciones: []` si la carta no es visible: con la sucursal de contexto de OTRA, el nombre de S2 sale por diseño",
+  "lectura|lecturas/carta/menu.ts|resolverMenuCartaConDiagnostico": "ídem `resolverMenuCarta`, más el diagnóstico de por qué la carta salió vacía: con la sucursal de contexto de OTRA, el nombre de S2 sale por diseño",
 };
 
 /**

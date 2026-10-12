@@ -225,6 +225,25 @@ testAutenticado("stock/seccion-habitual: la tabla con una fila, con «Quitar» a
   }
 });
 
+testAutenticado("movimientos/merma: el selector de sección con una sección «(desactivada)» ofrecida para vaciarla no tiene violaciones de axe, en modo claro y oscuro", async ({ paginaAutenticada: page, sucursalId }) => {
+  // P17 (2026-10-11): una sección dada de baja solo admite sacar mercadería; Merma la ofrece como origen con la etiqueta «(desactivada)». Se siembra una para que el selector la dibuje.
+  const marca = Date.now();
+  const seccion = await prisma.seccion.create({ data: { sucursalId, nombre: `E2E A11y Baja ${marca}`, activa: false } });
+  try {
+    await page.goto("/movimientos/merma");
+    await conTitulo(page, "Merma");
+    await expect(page.getByRole("combobox", { name: "Sección", exact: true }).locator("option", { hasText: `${seccion.nombre} (desactivada)` })).toHaveCount(1);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "modo claro").toEqual([]);
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/movimientos/merma");
+    await conTitulo(page, "Merma");
+    expect((await new AxeBuilder({ page }).include("main").analyze()).violations, "modo oscuro emulado (contenido de la pantalla)").toEqual([]);
+  } finally {
+    await prisma.seccion.deleteMany({ where: { id: seccion.id } });
+  }
+});
+
 testAutenticado("movimientos/precio-local: el selector de producto abierto (con resultados y sin resultados) no tiene violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
   const marca = Date.now();
   const nombre = `E2E A11y Selector ${marca}`;

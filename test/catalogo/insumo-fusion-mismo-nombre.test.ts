@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
+import type { PrismaClient } from "@prisma/client";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
 import { renombrarOFusionarInsumoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/renombrar-o-fusionar-insumo";
 
 /**
@@ -15,6 +16,7 @@ import { renombrarOFusionarInsumoCasoDeUso } from "../../src/server/actions/cata
  */
 describe("D-9: la fusión de dos insumos de nombre idéntico deja su fila", () => {
   let adminId: string;
+  let sucursalId: string;
   let harinaId: string;
   let premiumId: string;
 
@@ -23,13 +25,17 @@ describe("D-9: la fusión de dos insumos de nombre idéntico deja su fila", () =
     const base = await sembrarBase();
     const catalogo = await sembrarCatalogoBase();
     harinaId = catalogo.insumo.id; // «Harina»
-    adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id })).id;
+    sucursalId = base.sucursal.id;
+    adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id })).id;
     premiumId = (await prisma.insumo.create({ data: { nombre: "Harina premium" } })).id;
     await sembrarProductoDisponible({ codigo: "MP_HARINA_A", nombre: "Harina A", tipo: "MP", unidadStockId: catalogo.kg.id, insumoId: harinaId }, base.sucursal.id);
   });
 
+  /** La base del actor, con el alcance que tiene en producción (SOLO su sucursal activa, ADR-028). */
+  const baseDelActor = () => baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] });
+
   /** La base de la empresa, pero el insumo de destino que encuentra la fusión se llama igual que el de origen («Harina»). */
-  const dbConNombreRepetido = new Proxy(baseDeTest.db, {
+  const conNombreRepetido = (db: PrismaClient) => new Proxy(db, {
     get(destino, propiedad) {
       const valor = Reflect.get(destino, propiedad);
       if (propiedad !== "insumo") return valor;
@@ -47,8 +53,9 @@ describe("D-9: la fusión de dos insumos de nombre idéntico deja su fila", () =
   });
 
   it("fusiona y la fila existe, del id que desaparece al que queda, con los nombres en la descripción", async () => {
+    const base = baseDelActor();
     const r = await renombrarOFusionarInsumoCasoDeUso(
-      { db: dbConNombreRepetido, transaccion: baseDeTest.transaccion, usuarioId: adminId },
+      { ...base, db: conNombreRepetido(base.db), usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID },
       { insumoId: harinaId, nombre: "Harina premium", confirmarFusion: true },
     );
     expect(r).toMatchObject({ ok: true, mensaje: '"Harina" se fusionó con el insumo existente "Harina".' });

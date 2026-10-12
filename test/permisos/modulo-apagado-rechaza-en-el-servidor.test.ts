@@ -25,8 +25,8 @@ const editar = (usuarioId: string, sucursalId: string, clave: AccionClave) =>
 const ver = (usuarioId: string, sucursalId: string, clave: AccionClave) =>
   contextoDeAccion(clave) === "empresa" ? requierePermisoVerDeEmpresa(usuarioId, E, clave as AccionDeEmpresa, prisma) : requierePermisoVer(usuarioId, sucursalId, clave as AccionDeSucursal, prisma);
 
-/** Los módulos del catálogo que se pueden apagar (todos menos el fijo). */
-const APAGABLES = MODULOS.filter((m) => m.tipo !== "fijo").map((m) => m.id);
+/** Los módulos del catálogo que se pueden apagar: los disponibles menos el fijo (uno en desarrollo no tiene acciones ni nunca está prendido). */
+const APAGABLES = MODULOS.filter((m) => m.tipo !== "fijo" && m.estado === "disponible").map((m) => m.id);
 
 /** El registro de la empresa con todos los vendibles que NO traen `modulo`: con él, `modulo` queda fuera de los módulos efectivos. */
 function registroSin(modulo: string): string[] {

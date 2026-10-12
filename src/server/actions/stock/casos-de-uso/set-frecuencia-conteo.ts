@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoSetFrecuenciaConteo, ResultadoSetFrecuenciaConteo } from "@/core/features/stock/frecuencia-conteo.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { guardarFrecuenciaConteo } from "@/server/persistencia/stock/frecuencia-conteo";

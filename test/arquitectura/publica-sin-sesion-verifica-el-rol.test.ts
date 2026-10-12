@@ -17,7 +17,7 @@ const { verificar, resolverEmpresaCarta, resolverPortalCarta, resolverConfigPort
   resolverCartaPublica: vi.fn(async () => null),
 }));
 vi.mock("@/lib/db", () => ({ prisma: {} }));
-vi.mock("@/core/auth/base", () => ({ dbDeEmpresa: () => ({}), verificarRolDeEjecucionDelProceso: verificar }));
+vi.mock("@/server/sesion/base", () => ({ dbDeEmpresa: () => ({}), verificarRolDeEjecucionDelProceso: verificar }));
 vi.mock("@/server/lecturas/carta/empresa", () => ({ resolverEmpresaCarta }));
 vi.mock("@/server/lecturas/carta/publica", () => ({ resolverPortalCarta, resolverConfigPortal, resolverCartaPublica }));
 

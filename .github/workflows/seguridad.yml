@@ -1,0 +1,214 @@
+# Seguridad de aplicación (dependencias, pruebas de inyección/XSS y escaneo dinámico con OWASP ZAP). Detalle y comandos locales: docs/seguridad-pipeline.md.
+#   dependencias         → `npm run auditar:dependencias` (npm audit, ALTO y CRÍTICO bloquean; excepciones con motivo y fecha de vencimiento)
+#   pruebas-de-seguridad → Vitest `test/seguridad` contra un Postgres descartable (SQL injection, XSS, endpoints de cron, ids rotos…)
+#   zap                  → OWASP ZAP baseline (pasivo, no destructivo) contra la app levantada EN el runner con una base descartable. Nunca contra producción.
+# Los specs de Playwright de seguridad (`test/e2e/seguridad-xss-y-sqli.spec.ts`) corren en el job `e2e` de ci.yml, junto con el resto de los E2E.
+# No usa secretos: las claves de abajo son de relleno, de la base del propio runner.
+name: Seguridad
+
+on:
+  push:
+    branches: [main, "ci/**"]
+  pull_request:
+    branches: [main]
+  # Semanal: un aviso de seguridad nuevo en una dependencia aparece sin que cambie ningún archivo del repositorio.
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      escaneo-zap:
+        description: "Escaneo de ZAP (solo contra la app local del runner): «baseline» = pasivo; «completo» = suma el escaneo activo (ataques reales, sobre la base descartable)"
+        type: choice
+        options: [baseline, completo]
+        default: baseline
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seguridad-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+  CLAVE_DUENIO: ci-duenio-descartable
+  CLAVE_APP: ci-app-descartable
+  CLAVE_PLATAFORMA: ci-plataforma-descartable
+  # Rol de PRUEBAS (M.3-A8), igual que en ci.yml: con él siembran los fixtures de Vitest y el script de siembra de ZAP; el código bajo prueba sigue corriendo como `motor2_app`.
+  CLAVE_PRUEBAS: ci-pruebas-descartable
+  AUTH_SECRET: ci-auth-secret-de-relleno-0123456789abcdef
+  AUTH_GOOGLE_ID: ci-google-id
+  AUTH_GOOGLE_SECRET: ci-google-secret
+
+jobs:
+  dependencias:
+    name: Dependencias (npm audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # BLOQUEANTE. Equivale a `npm audit --omit=dev --audit-level=high`, pero con la lista de excepciones del repositorio (scripts/auditoria-dependencias-excepciones.ts):
+      # cada aviso aceptado lleva su motivo y una fecha límite. Un aviso ALTO o CRÍTICO sin excepción vigente deja el job en rojo. El comando crudo falla siempre por la
+      # cadena del CLI de Prisma (build/migraciones, no runtime): ver README, «Auditoría de dependencias».
+      - name: npm run auditar:dependencias (alto y crítico bloquean)
+        run: npm run auditar:dependencias
+      # INFORMATIVO: el comando crudo del pedido, con TODAS las dependencias (incluidas las de desarrollo y las excepciones aceptadas), para verlo en el log.
+      - name: npm audit --audit-level=high (informativo, todas las dependencias)
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+  pruebas-de-seguridad:
+    name: Pruebas de seguridad (SQL injection, XSS, endpoints)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: motor2
+          POSTGRES_PASSWORD: ci-duenio-descartable
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U motor2"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGUSER: motor2
+      PGPASSWORD: ci-duenio-descartable
+      DIRECT_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_dev
+      DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_dev
+      # M.3-A8: con esta URL (rol de pruebas, MISMA base) siembran los fixtures de Vitest; el código bajo prueba usa DATABASE_URL (motor2_app).
+      MOTOR2_PRUEBAS_DATABASE_URL: postgresql://motor2_app_pruebas:ci-pruebas-descartable@localhost:5432/motor2_dev
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Bases y rol de ejecución
+        run: |
+          createdb motor2_dev
+          createdb motor2_e2e
+          psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
+      - name: Migrar (como dueño)
+        run: npx prisma migrate deploy
+      - name: Rol de plataforma
+        run: psql -d motor2_dev -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
+      # M.3-A8: igual que en ci.yml: las migraciones recortaron privilegios solo de `motor2_app`; `solo_pruebas=1` no lo toca y copia sus privilegios al rol de pruebas.
+      - name: Rol de pruebas (privilegios al día tras migrar)
+        run: psql -d postgres -v ON_ERROR_STOP=1 -v solo_pruebas=1 -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
+      - name: Vitest test/seguridad
+        run: npx vitest run test/seguridad
+        env:
+          PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_dev
+
+  zap:
+    name: OWASP ZAP (app local del runner, base descartable)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Nunca contra producción ni contra un staging ajeno: el objetivo está fijo en `localhost` y no es una entrada del workflow.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: motor2
+          POSTGRES_PASSWORD: ci-duenio-descartable
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U motor2"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGUSER: motor2
+      PGPASSWORD: ci-duenio-descartable
+      # Mismas variables que Playwright: el script de siembra y el servidor solo aceptan una base LOCAL cuyo nombre termina en `_e2e`.
+      DIRECT_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
+      DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
+      MOTOR2_E2E_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
+      MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
+      # M.3-A8: con esta URL (rol de pruebas, MISMA base `_e2e`) siembra el script de siembra de ZAP (reutiliza los fixtures de los E2E); la app levantada sigue corriendo como `motor2_app`.
+      MOTOR2_E2E_PRUEBAS_DATABASE_URL: postgresql://motor2_app_pruebas:ci-pruebas-descartable@localhost:5432/motor2_e2e
+      PUERTO: "3101"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Bases y rol de ejecución
+        run: |
+          createdb motor2_dev
+          createdb motor2_e2e
+          psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
+      # El rol de pruebas se pone al día DESPUÉS de migrar y ANTES de sembrar (M.3-A8: la siembra corre con ese rol; ver ci.yml).
+      - name: Migrar, poner al día el rol de pruebas y sembrar (carta pública de prueba)
+        run: |
+          npx prisma migrate deploy
+          psql -d postgres -v ON_ERROR_STOP=1 -v solo_pruebas=1 -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
+          npx tsx scripts/seguridad-sembrar-para-zap.ts
+      - name: Compilar la app (artefacto de producción, como en el E2E)
+        run: npm run build:e2e
+      - name: Levantar la app en localhost
+        run: |
+          PORT="$PUERTO" AUTH_TRUST_HOST=true MOTOR2_SIN_DOLAR_AUTOMATICO=1 npm run start:e2e > app.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS "http://localhost:$PUERTO/login" > /dev/null; then echo "App lista"; exit 0; fi
+            sleep 2
+          done
+          echo "La app no levantó:"; cat app.log; exit 1
+      - name: Preparar el informe
+        run: |
+          mkdir -p zap-informe
+          cp .zap/reglas-baseline.tsv .zap/reglas-completo.tsv zap-informe/
+          chmod -R a+rwx zap-informe
+      # Baseline: rastreo + reglas PASIVAS (no envía ataques). Salida de ZAP: 0 limpio, 1 hay reglas en FAIL (bloquea), 2 solo advertencias (no bloquea), 3 error de ZAP (bloquea).
+      - name: ZAP baseline
+        if: ${{ github.event.inputs.escaneo-zap != 'completo' }}
+        run: |
+          set +e
+          docker run --rm --network host -v "$PWD/zap-informe:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t "http://localhost:$PUERTO" -c reglas-baseline.tsv -m 3 -T 15 -r informe.html -J informe.json -w informe.md
+          codigo=$?
+          echo "zap-baseline salió con $codigo"
+          [ "$codigo" -eq 0 ] || [ "$codigo" -eq 2 ]
+      # Completo (solo a mano): suma el escaneo ACTIVO (inyección SQL, XSS reflejado, traversal…) contra la misma app descartable.
+      - name: ZAP completo (activo)
+        if: ${{ github.event.inputs.escaneo-zap == 'completo' }}
+        run: |
+          set +e
+          docker run --rm --network host -v "$PWD/zap-informe:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
+            zap-full-scan.py -t "http://localhost:$PUERTO" -c reglas-completo.tsv -m 5 -T 30 -r informe.html -J informe.json -w informe.md
+          codigo=$?
+          echo "zap-full-scan salió con $codigo"
+          [ "$codigo" -eq 0 ] || [ "$codigo" -eq 2 ]
+      - name: Resumen en la pantalla del workflow
+        if: always()
+        run: |
+          if [ -f zap-informe/informe.md ]; then cat zap-informe/informe.md >> "$GITHUB_STEP_SUMMARY"; else echo "ZAP no generó informe." >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Informe de ZAP
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: zap-informe
+          path: |
+            zap-informe/informe.html
+            zap-informe/informe.json
+            zap-informe/informe.md
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Registro de la app (si algo falló)
+        if: failure()
+        run: tail -n 100 app.log || true

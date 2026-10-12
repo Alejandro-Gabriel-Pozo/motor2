@@ -5,7 +5,7 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma } from
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import { sesionSigueVigente } from "../../src/server/sesion/acceso";
 import { crearRegistroDeRevalidacion, MAXIMO_DE_SESIONES_REVALIDADAS, REVALIDAR_SESION_CADA_MS } from "../../src/core/auth/revalidacion-de-sesion";
-import * as base from "../../src/core/auth/base";
+import * as base from "../../src/server/sesion/base";
 
 /**
  * M-20 (decidido por el dueño: «5 minutos»): quien pierde la membresía conservaba la sesión hasta 12 horas porque el callback `session` solo miraba `User.activoGlobal`.

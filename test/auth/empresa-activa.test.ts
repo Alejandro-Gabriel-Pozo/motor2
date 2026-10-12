@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 vi.mock("next/navigation", () => ({
   redirect: (destino: string) => {
     throw new Error(`NEXT_REDIRECT:${destino}`);
@@ -11,7 +11,7 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prismaAdmin }
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __cookiesDeTest, __limpiarCookiesDeTest, __setCookieDeTestParaEmpresa, __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { crearMembresia } from "../setup/membresia";
-import { obtenerContextoUsuario, obtenerSituacionDeAcceso } from "../../src/core/auth/contexto";
+import { obtenerContextoUsuario, obtenerSituacionDeAcceso } from "../../src/server/sesion/contexto";
 import { cambiarEmpresaActiva } from "../../src/server/actions/auth/empresa-activa";
 
 /**
@@ -237,7 +237,7 @@ describe("obtenerContextoUsuario — empresa activa", () => {
     });
 
     it("sin sesión la situación es SIN_SESION", async () => {
-      const { getUsuarioActual } = await import("../../src/core/auth/session");
+      const { getUsuarioActual } = await import("../../src/server/sesion/session");
       vi.mocked(getUsuarioActual).mockResolvedValue(null);
 
       expect(await obtenerSituacionDeAcceso()).toEqual({ estado: "SIN_SESION" });
@@ -328,7 +328,7 @@ describe("cambiarEmpresaActiva", () => {
   });
 
   it("sin sesión no hace nada", async () => {
-    const { getUsuarioActual } = await import("../../src/core/auth/session");
+    const { getUsuarioActual } = await import("../../src/server/sesion/session");
     vi.mocked(getUsuarioActual).mockResolvedValue(null);
 
     await expect(cambiarEmpresaActiva("norte")).resolves.toBeUndefined();

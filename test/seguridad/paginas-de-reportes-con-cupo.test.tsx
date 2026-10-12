@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 }));
 /** La consulta cuenta que la llamaron y corta: lo que importa es si se llegó a ella, no lo que dibuja la página con los datos. */
 class LlegoALaConsulta extends Error {}
-vi.mock("../../src/core/auth/contexto", () => ({ obtenerContextoUsuario: vi.fn(async () => mocks.contexto) }));
+vi.mock("../../src/server/sesion/contexto", () => ({ obtenerContextoUsuario: vi.fn(async () => mocks.contexto) }));
 vi.mock("../../src/server/acceso/gate", () => ({
   requierePermisoVer: vi.fn(async () => {
     mocks.gate++;

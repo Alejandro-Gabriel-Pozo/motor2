@@ -1,7 +1,8 @@
 import "server-only";
 import type { AccionConteo, EstadoConteo } from "@prisma/client";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { texto } from "@/core/texto";
+import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { validarCantidad } from "@/core/datos/cantidad";
 import { redondearACantidadDeUnidad, tieneStockReal } from "@/core/movimientos/public";
@@ -77,9 +78,8 @@ export async function registrarConteoFisicoCasoDeUso(
   // Fase 6 (auditoría de seguridad/contratos): conPermiso no valida que la
   // sección sea de ESTA sucursal, solo el permiso de quien llama — ver el
   // mismo chequeo en registrarMovimientoCasoDeUso/reclasificarStockCasoDeUso.
-  if (!(await obtenerSeccionPropia(comando.seccionId, actor.sucursalId, actor.db))) {
-    return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
-  }
+  const seccion = await obtenerSeccionPropia(comando.seccionId, actor.sucursalId, actor.db);
+  if (!seccion) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
 
   const payloadHash = comando.claveIdempotencia
     ? calcularPayloadHash("CONTEO_FISICO", actor.sucursalId, { ...comando, claveIdempotencia: undefined })
@@ -95,6 +95,10 @@ export async function registrarConteoFisicoCasoDeUso(
         return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
       }
     }
+
+    // P17 (decisión del dueño, 2026-10-11): una sección dada de baja solo admite sacar mercadería (consumir, mermar o transferir), y un conteo ajusta el saldo (también hacia arriba): se rechaza. Va DESPUÉS
+    // de la clave I3: un reintento de un conteo ya escrito devuelve el mensaje original, nunca un rechazo que invite a contarlo de nuevo. Para sacar de la sección está la merma.
+    if (!seccion.activa) return fracaso("SECCION_INACTIVA", mensajeSeccionDesactivada(seccion.nombre));
 
     const producto = await cargarProductoConUnidadDeStock(tx, comando.productoId);
     if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "El producto no existe.");

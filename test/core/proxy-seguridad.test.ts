@@ -181,3 +181,55 @@ describe("proxy — host de la aplicación", () => {
     for (const path of ["/", "/login", "/api/cron/sincronizar-dolar", "/mesas/1"]) expect(re.test(path), path).toBe(true);
   });
 });
+
+describe("proxy — paths que Next no sabe decodificar (antes: 500 «failed to decode param»; ahora 404 sin llegar a la aplicación)", () => {
+  beforeEach(() => {
+    delete process.env.CARTA_DOMINIO_BASE;
+  });
+
+  const ROTOS = [
+    "/carta-publica/acme/%25", // un `%` bien escapado: la carta es ISR y Next decodifica dos veces
+    "/carta-publica/acme/abc%25zz",
+    "/carta-publica/acme/%25E0%25A4%25A",
+    "/carta-publica/%25/centro",
+    "/carta-publica/acme/%zz", // escape inválido
+    "/carta-publica/acme/a%",
+    "/carta-publica/acme/%E0%A4%A", // UTF-8 incompleto
+    "/carta-publica/acme/%ff",
+    "/carta-publica/acme/%C0%AF", // secuencia sobrelarga
+    "/carta-publica/acme/%ED%A0%80", // sustituto UTF-16 codificado en UTF-8
+    "/carta-publica/acme/%00", // NUL
+    "/catalogo/productos/%zz/editar", // y en las rutas de la aplicación
+    "/mesas/%E0%A4%A",
+    "/api/auth/%zz",
+  ];
+
+  it("responde 404 sin llegar a la aplicación (sin x-middleware-next), con las cabeceras de seguridad y sin detalles", async () => {
+    for (const path of ROTOS) {
+      const r = pedir("app.example.com", path);
+      expect(r.status, path).toBe(404);
+      expect(r.headers.get("x-middleware-next"), path).toBeNull();
+      expect(r.headers.get("x-content-type-options"), path).toBe("nosniff");
+      expect(await r.text(), path).toBe("Not Found");
+    }
+  });
+
+  it("también en el host de una carta (subdominio)", () => {
+    process.env.CARTA_DOMINIO_BASE = BASE;
+    for (const path of ["/%25", "/%zz", "/%00", "/centro/%zz"]) expect(pedir(`acme.${BASE}`, path).status, path).toBe(404);
+    delete process.env.CARTA_DOMINIO_BASE;
+  });
+
+  it("no cambia lo válido: sucursales con y sin barra final, rutas de la aplicación y un `%` bien escapado fuera de la carta pasan como antes", () => {
+    for (const path of ["/carta-publica", "/carta-publica/acme", "/carta-publica/acme/centro", "/carta-publica/acme/centro/", "/api/auth/session"]) {
+      const r = pedir("app.example.com", path);
+      expect(r.status, path).toBe(200);
+      expect(r.headers.get("x-middleware-next"), path).toBe("1");
+    }
+    for (const path of ["/", "/login", "/catalogo/productos", "/catalogo/productos/abc123/editar", "/catalogo/productos/a%20b/editar", "/catalogo/productos/%25/editar", "/mesas/1?x=%25"]) {
+      const r = pedir("app.example.com", path);
+      expect(r.status, path).toBe(200);
+      expect(r.headers.get("x-middleware-next"), path).toBe("1");
+    }
+  });
+});

@@ -1,10 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactElement, ReactNode } from "react";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
+import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
+import { crearMembresia } from "../setup/membresia";
+import { activarTodosLosModulos, fijarModulosActivos, MODULOS_VENDIBLES } from "../setup/modulos";
+import { __limpiarCookiesDeTest, __setCookieDeTestParaEmpresa, __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
+import { modulosQueIncluyen } from "../../src/core/modulos/clausura";
 import { actualizarProducto, darDeAltaProducto, type DatosProducto } from "../../src/server/actions/catalogo/productos";
 import FichaProductoPage from "../../src/app/(app)/catalogo/productos/[id]/page";
 import EditarProductoPage from "../../src/app/(app)/catalogo/productos/[id]/editar/page";
@@ -16,13 +20,18 @@ import { ProductoForm } from "../../src/app/(app)/catalogo/productos/producto-fo
  * consignación) es lo que la empresa le paga a su proveedor por cada unidad vendida: dinero de la relación con el proveedor. Lo veía y lo editaba cualquier rol con
  * `producto_ver_catalogo` o `producto_editar` (piso operario): la ficha lo imprimía ("$X por unidad vendida"), la edición lo mandaba como prop a un componente de cliente
  * (viaja en el payload de la respuesta), y `actualizarProducto` lo cambiaba. D8: ver y editar ese costo exige `pagar_consignante` (piso administrador) en la sucursal
- * activa, la pantalla donde ese precio se vuelve deuda. Se decide en el servidor: la consulta no lo devuelve, la pantalla no se lo arma al formulario, y la acción
+ * activa (desde P20, en alguna sucursal de la empresa), la pantalla donde ese precio se vuelve deuda. Se decide en el servidor: la consulta no lo devuelve, la pantalla no se lo arma al formulario, y la acción
  * trata «el campo no viene» como «no cambia» y «viene distinto» como `SIN_PERMISO_COSTO`. La misma regla en el alta (crear un producto en consignación es fijar su costo).
+ *
+ * P20 (D23 del dueño, 2026-10-11): la clave se evalúa en TODA la empresa, no en la sucursal activa (el producto es de la empresa): si el usuario tiene `pagar_consignante` en alguna de sus
+ * sucursales, puede, y el resultado no cambia según cuál esté activa. Lo prueba el `describe` «D23» del final; el nivel en sí, `test/permisos/nivel-en-alguna-sucursal.test.ts`.
  */
 describe("S-12: el costo de consignación es de quien tiene pagar_consignante", () => {
   const PRECIO = 1234.56;
   let sucursalId: string;
   let adminId: string;
+  let rolAdminId: string;
+  let rolOperadorId: string;
   let operadorId: string;
   let kgId: string;
   let proveedorAId: string;
@@ -86,6 +95,8 @@ describe("S-12: el costo de consignación es de quien tiene pagar_consignante", 
     await limpiarBaseDeTest();
     const base = await sembrarBase();
     sucursalId = base.sucursal.id;
+    rolAdminId = base.admin.id;
+    rolOperadorId = base.operador.id;
     const catalogo = await sembrarCatalogoBase();
     kgId = catalogo.kg.id;
     adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id })).id;
@@ -221,5 +232,152 @@ describe("S-12: el costo de consignación es de quien tiene pagar_consignante", 
     async function actualizarOAlta(d: DatosProducto) {
       return darDeAltaProducto(d);
     }
+  });
+  /**
+   * P20 (D23): la clave se mira en todas las sucursales del usuario en la empresa. Un administrador de Central que es operador en Norte cambia el costo estando parado en Norte (y en Central), y
+   * un operador en las dos sigue rechazado. Fallo cerrado: la membresía de admin inactiva, la sucursal de admin inactiva y el módulo Consignación apagado no cuentan. Aislamiento: ser admin en
+   * otra EMPRESA no abre nada en esta.
+   */
+  describe("D23 (P20): el costo de consignación se decide en toda la empresa, no en la sucursal activa", () => {
+    let norteId: string;
+    let n = 0;
+
+    /** Un usuario con sus membresías (la primera es la más antigua); queda como el usuario de la sesión. */
+    async function multi(membresias: { sucursalId: string; rolId: string; activo?: boolean }[]) {
+      const email = `multi${++n}@test.com`;
+      const [primera, ...resto] = membresias;
+      const u = await crearUsuarioConMembresia({ email, ...primera });
+      for (const m of resto) await crearMembresia({ usuarioId: u.id, ...m });
+      await como(u.id, email);
+      return u.id;
+    }
+    const parado = (id: string | undefined) => __setCookieDeTestParaSucursal(id);
+
+    const ficha = () => FichaProductoPage({ params: Promise.resolve({ id: quesoId }), searchParams: Promise.resolve({}) });
+    const edicion = async () => propsDe(await EditarProductoPage({ params: Promise.resolve({ id: quesoId }) }), ProductoForm)[0]!;
+
+    beforeEach(async () => {
+      __limpiarCookiesDeTest();
+      norteId = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
+    });
+    afterEach(() => __limpiarCookiesDeTest());
+
+    it.each([["Norte (donde es operador)"], ["Central (donde es admin)"]])("admin en Central y operador en Norte, parado en %s: cambia el costo y queda auditado", async (donde) => {
+      await multi([
+        { sucursalId, rolId: rolAdminId },
+        { sucursalId: norteId, rolId: rolOperadorId },
+      ]);
+      parado(donde.startsWith("Norte") ? norteId : sucursalId);
+      const r = await actualizarProducto(quesoId, await datos({ precioConsignacion: 2000, proveedorConsignacionId: proveedorBId }));
+      expect(r.ok).toBe(true);
+      expect(await costoGuardado()).toEqual({ esConsignacion: true, proveedorConsignacionId: proveedorBId, precioConsignacion: 2000 });
+      expect(await prismaAdmin.registroAuditoria.count({ where: { entidad: "Producto", entidadId: quesoId, campo: "precioConsignacion" } })).toBe(1);
+    });
+
+    it.each([["Norte (donde es operador)"], ["Central (donde es admin)"]])("admin en Central y operador en Norte, parado en %s: el alta en consignación entra", async (donde) => {
+      await multi([
+        { sucursalId, rolId: rolAdminId },
+        { sucursalId: norteId, rolId: rolOperadorId },
+      ]);
+      parado(donde.startsWith("Norte") ? norteId : sucursalId);
+      const r = await darDeAltaProducto({ nombre: "Vino", tipo: "MP", unidadStockId: kgId, factorConversion: 1, esConsignacion: true, proveedorConsignacionId: proveedorAId, precioConsignacion: 50 });
+      expect(r.ok).toBe(true);
+      expect(Number((await prisma.producto.findFirstOrThrow({ where: { nombre: "Vino" } })).precioConsignacion)).toBe(50);
+    });
+
+    it("las tres pantallas, estando parado en Norte (operador), reciben el costo y el formulario completo", async () => {
+      await multi([
+        { sucursalId, rolId: rolAdminId },
+        { sucursalId: norteId, rolId: rolOperadorId },
+      ]);
+      parado(norteId);
+      const textos = textosDe(await ficha()).join(" | ");
+      expect(textos).toContain("Lácteos Reservados SA");
+      expect(textos).toContain("por unidad vendida");
+      const props = await edicion();
+      expect(props.puedeGestionarConsignacion).toBe(true);
+      expect((props.productoExistente as DatosProducto).precioConsignacion).toBe(PRECIO);
+      expect((props.productoExistente as DatosProducto).proveedorConsignacionId).toBe(proveedorAId);
+      expect(propsDe(await NuevoProductoPage(), ProductoForm)[0]!.puedeGestionarConsignacion).toBe(true);
+    });
+
+    const altaConCosto = () => darDeAltaProducto({ nombre: "Vino", tipo: "MP", unidadStockId: kgId, factorConversion: 1, esConsignacion: true, proveedorConsignacionId: proveedorAId, precioConsignacion: 50 });
+
+    it("EL RECHAZO sigue en pie: un operador en las dos sucursales recibe SIN_PERMISO_COSTO desde las dos, no ve el costo y no cambia nada", async () => {
+      await multi([
+        { sucursalId, rolId: rolOperadorId },
+        { sucursalId: norteId, rolId: rolOperadorId },
+      ]);
+      for (const donde of [sucursalId, norteId]) {
+        parado(donde);
+        const r = await actualizarProducto(quesoId, await datos({ precioConsignacion: 1 }));
+        expect(r.ok).toBe(false);
+        expect(r.mensaje).toContain("consignación");
+        expect((await altaConCosto()).ok).toBe(false);
+        expect(await costoGuardado()).toEqual(CONSIGNACION_ORIGINAL());
+        const textos = textosDe(await ficha()).join(" | ");
+        expect(textos).not.toContain("por unidad vendida");
+        expect(textos).not.toContain("Lácteos Reservados SA");
+        expect((await edicion()).puedeGestionarConsignacion).toBe(false);
+        expect(propsDe(await NuevoProductoPage(), ProductoForm)[0]!.puedeGestionarConsignacion).toBe(false);
+      }
+      expect(await prismaAdmin.registroAuditoria.count({ where: { entidad: "Producto", entidadId: quesoId } })).toBe(0);
+      expect(await prisma.producto.count({ where: { nombre: "Vino" } })).toBe(0);
+    });
+
+    it("FALLO CERRADO: la membresía de admin INACTIVA no cuenta", async () => {
+      await multi([
+        { sucursalId, rolId: rolOperadorId },
+        { sucursalId: norteId, rolId: rolAdminId, activo: false },
+      ]);
+      parado(sucursalId);
+      expect((await actualizarProducto(quesoId, await datos({ precioConsignacion: 1 }))).ok).toBe(false);
+      expect((await edicion()).puedeGestionarConsignacion).toBe(false);
+      expect(await costoGuardado()).toEqual(CONSIGNACION_ORIGINAL());
+    });
+
+    it("FALLO CERRADO: la SUCURSAL de admin inactiva no cuenta", async () => {
+      await multi([
+        { sucursalId, rolId: rolOperadorId },
+        { sucursalId: norteId, rolId: rolAdminId },
+      ]);
+      parado(sucursalId);
+      await prismaAdmin.sucursal.update({ where: { id: norteId }, data: { activo: false } });
+      expect((await actualizarProducto(quesoId, await datos({ precioConsignacion: 1 }))).ok).toBe(false);
+      expect((await edicion()).puedeGestionarConsignacion).toBe(false);
+      expect(await costoGuardado()).toEqual(CONSIGNACION_ORIGINAL());
+    });
+
+    it("FALLO CERRADO: con el módulo Consignación apagado el costo no se cambia ni se muestra, aunque sea admin en las dos", async () => {
+      await multi([
+        { sucursalId, rolId: rolAdminId },
+        { sucursalId: norteId, rolId: rolAdminId },
+      ]);
+      parado(norteId);
+      await fijarModulosActivos(
+        EMPRESA_POR_DEFECTO_ID,
+        MODULOS_VENDIBLES.filter((v) => modulosQueIncluyen("consignacion", [v]).length === 0),
+      );
+      expect((await actualizarProducto(quesoId, await datos({ precioConsignacion: 1 }))).ok).toBe(false);
+      expect((await edicion()).puedeGestionarConsignacion).toBe(false);
+      expect(await costoGuardado()).toEqual(CONSIGNACION_ORIGINAL());
+      await activarTodosLosModulos(EMPRESA_POR_DEFECTO_ID);
+    });
+
+    it("AISLAMIENTO ENTRE EMPRESAS: admin en una sucursal de OTRA empresa y operador en esta, parado en esta: se rechaza", async () => {
+      await prismaAdmin.empresa.create({ data: { id: "norte", nombre: "Empresa norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+      await activarTodosLosModulos("norte");
+      const sucursalAjena = await prismaAdmin.sucursal.create({ data: { nombre: "Sucursal norte", empresaId: "norte" } });
+      const rolAjeno = await prismaAdmin.rol.create({ data: { nombre: "admin", clave: "admin", empresaId: "norte" } });
+      await prismaAdmin.permisoRol.create({ data: { empresaId: "norte", rolId: rolAjeno.id, accionClave: "pagar_consignante", puedeVer: true, puedeEditar: true } });
+      await multi([
+        { sucursalId, rolId: rolOperadorId },
+        { sucursalId: sucursalAjena.id, rolId: rolAjeno.id },
+      ]);
+      __setCookieDeTestParaEmpresa(EMPRESA_POR_DEFECTO_ID);
+      expect((await actualizarProducto(quesoId, await datos({ precioConsignacion: 1 }))).ok).toBe(false);
+      expect((await edicion()).puedeGestionarConsignacion).toBe(false);
+      expect(await costoGuardado()).toEqual(CONSIGNACION_ORIGINAL());
+    });
   });
 });

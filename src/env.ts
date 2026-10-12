@@ -54,7 +54,7 @@ const envSchema = z.object({
 
   // URL pública de la app para Auth.js: con https decide la cookie de sesión (`sirvePorHttps`, core/auth/cookie-sesion.ts).
   AUTH_URL: z.string().min(1).optional(),
-  // Desde ADR-022 la app SIEMPRE se niega a operar con un rol de base que salta el RLS; "0" es el escape explícito de las herramientas de demo (core/auth/rol-de-ejecucion.ts).
+  // Desde ADR-022 la app SIEMPRE se niega a operar con un rol de base que salta el RLS; "0" es el escape explícito de las herramientas de demo (server/sesion/rol-de-ejecucion.ts).
   // En Producción de Vercel el "0" está PROHIBIDO: el arranque se niega (`escapesProhibidosEnProduccion`) y, aunque llegara, `permitirRolPrivilegiado` lo ignora.
   MOTOR2_ROL_ESTRICTO: z.string().min(1).optional(),
   // "1" aplica el chequeo de producción fuera de Vercel. El "0" (que relajaba el esquema) se eliminó (Pureza 0.4): en Producción de Vercel el arranque se niega si está.
@@ -86,7 +86,7 @@ export function parseEnv(source: Record<string, string | undefined>, produccion 
   return (produccion ? schemaDeProduccion : envSchema).parse(source);
 }
 
-/** ¿Es un despliegue de Vercel (de cualquier entorno)? Vercel fija `VERCEL=1` y `VERCEL_ENV`; basta que haya cualquiera de las dos. Mismo criterio que `permitirRolPrivilegiado` (core/auth/rol-de-ejecucion.ts). */
+/** ¿Es un despliegue de Vercel (de cualquier entorno)? Vercel fija `VERCEL=1` y `VERCEL_ENV`; basta que haya cualquiera de las dos. Mismo criterio que `permitirRolPrivilegiado` (server/sesion/rol-de-ejecucion.ts). */
 const estaEnVercel = (source: Record<string, string | undefined>) => Boolean(source.VERCEL) || Boolean(source.VERCEL_ENV);
 
 const entornoEstricto = (source: Record<string, string | undefined>) => source.VERCEL_ENV === "production" || source.MOTOR2_ENTORNO_ESTRICTO === "1";

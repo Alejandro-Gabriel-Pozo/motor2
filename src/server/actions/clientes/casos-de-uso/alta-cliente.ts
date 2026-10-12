@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { cambioDeCliente } from "@/core/features/clientes/auditoria-de-cliente";
 import type { ComandoAltaCliente, ResultadoAltaCliente } from "@/core/features/clientes/clientes.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";

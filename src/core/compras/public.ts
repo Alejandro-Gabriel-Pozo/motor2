@@ -19,3 +19,5 @@ export {
   validarCorreccion,
 } from "./correccion";
 export type { CabeceraCompra } from "./correccion";
+export { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicados } from "./posible-duplicado";
+export type { CompraCandidata, CompraNueva } from "./posible-duplicado";

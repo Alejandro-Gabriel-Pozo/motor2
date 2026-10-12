@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
-import { dbDeEmpresa } from "../../src/core/auth/base";
+import { dbDeEmpresa } from "../../src/server/sesion/base";
 import { generarTokenOpaco, hashDeToken } from "../../src/core/seguridad/tokens";
 import { azarDelProceso } from "../../src/lib/azar";
 

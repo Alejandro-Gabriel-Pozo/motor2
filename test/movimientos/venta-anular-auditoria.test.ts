@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -16,8 +16,8 @@ describe("anularVenta: auditoría", () => {
   let adminId: string;
   let panId: string;
 
-  async function vender(nroFactura?: string) {
-    const r = await registrarVenta({ fecha: new Date("2026-08-06T12:00:00Z"), seccionId, nroFactura, ventas: [{ productoId: panId, cantidadVendida: 1 }] });
+  async function vender(nroFactura?: string, fecha = new Date("2026-08-06T12:00:00Z")) {
+    const r = await registrarVenta({ fecha, seccionId, nroFactura, ventas: [{ productoId: panId, cantidadVendida: 1 }] });
     expect(r.ok, r.mensaje).toBe(true);
     return prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" }, orderBy: { creadoEn: "desc" } });
   }
@@ -51,6 +51,16 @@ describe("anularVenta: auditoría", () => {
     // La fecha de la fila coincide con la marca de anulación de la propia venta.
     const anulada = await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } });
     expect(filas[0].valorNuevo).toBe(anulada.anuladaEn!.toISOString());
+  });
+
+  it("P1 paso 7: la descripción cita el día ARGENTINO de la venta — una venta de las 22:30 argentinas del 6/8 (01:30Z del 7/8) es «del 2026-08-06»", async () => {
+    const venta = await vender("F-200", new Date("2026-08-07T01:30:00Z"));
+
+    const r = await anularVenta(venta.id);
+    expect(r.ok, r.mensaje).toBe(true);
+
+    const fila = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidad: "Operacion", entidadId: venta.id } });
+    expect(fila.descripcion).toBe("Venta del 2026-08-06 (factura F-200): anulación");
   });
 
   it("aparece en el listado de la pantalla de auditoría, filtrando por la entidad Operación", async () => {

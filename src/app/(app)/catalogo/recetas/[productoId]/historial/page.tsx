@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { listarVersionesDeReceta } from "@/server/actions/catalogo/recetas";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
+import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
 
 /**
  * Historial de versiones — separado del editor, mismo criterio que
@@ -61,7 +62,7 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
                 Versión {v.version}
                 {v.version === versionVigente && <span className="ml-2 text-xs text-neutral-500">(vigente)</span>}
                 <span className="ml-2 text-xs font-normal text-neutral-500">
-                  — {v.creadoEn.toLocaleDateString("es-AR")} {v.creadoEn.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                  — {formatearFechaHora(v.creadoEn, ctx.empresaZonaHoraria)}
                 </span>
               </h2>
               {(() => {

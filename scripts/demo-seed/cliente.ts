@@ -1,4 +1,4 @@
-import { dbDeEmpresa } from "../../src/core/auth/base";
+import { dbDeEmpresa } from "../../src/server/sesion/base";
 
 /**
  * El cliente de las herramientas de demo y benchmark (ADR-022): ya no existe «la única empresa activa» como respaldo del DEFAULT de `empresaId`, así que estas herramientas

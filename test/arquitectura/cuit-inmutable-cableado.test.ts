@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { FUENTES_DE_FACTURAS_AUTORIZADAS } from "../../src/core/fiscal/factura-autorizada";
+import { FUENTES_DE_FACTURAS_AUTORIZADAS } from "../../plataforma/src/servidor/factura-autorizada";
 
 /**
  * El CUIT de una empresa es inmutable desde la primera factura autorizada en PRODUCCIÓN (ADR-021). Hoy no existe el circuito fiscal y el predicado
- * (`core/fiscal/factura-autorizada.ts`) da siempre falso. Este test impide que eso se olvide: el día que el schema declare comprobantes fiscales, la lista de fuentes
+ * (`plataforma/src/servidor/factura-autorizada.ts`) da siempre falso. Este test impide que eso se olvide: el día que el schema declare comprobantes fiscales, la lista de fuentes
  * tiene que dejar de estar vacía, o la plataforma podría corregirle el CUIT a una empresa que ya facturó.
  */
 const RAIZ = join(__dirname, "../..");

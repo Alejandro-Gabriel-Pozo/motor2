@@ -1,8 +1,9 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { obtenerComparativaPreciosPorInsumo } from "@/server/actions/catalogo/proveedor-por-producto";
+import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 export default async function ComparativaPreciosPage() {
   const ctx = await obtenerContextoUsuario();
@@ -40,7 +41,7 @@ export default async function ComparativaPreciosPage() {
                   <td>{oferta.proveedorNombre}</td>
                   <td>{oferta.precioPorUnidadStock > 0 ? oferta.precioPorUnidadStock.toFixed(2) : "sin precio"}</td>
                   <td>{oferta.unidadCompraNombre}</td>
-                  <td>{new Date(oferta.ultimaCompra).toLocaleDateString("es-AR")}</td>
+                  <td>{diaDeCalendario(new Date(oferta.ultimaCompra), ctx.empresaZonaHoraria).split("-").reverse().join("/")}</td>
                 </tr>
               ))}
             </tbody>

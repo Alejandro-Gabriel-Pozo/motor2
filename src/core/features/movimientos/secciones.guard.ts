@@ -41,3 +41,11 @@ export function guardComandoActualizarRespaldoSeccion(entrada: { seccionId: unkn
   if (typeof seccionId !== "string") return rechazar("formato", "No se encontró la sección.");
   return aceptar({ seccionId, sirveDeRespaldoEnVentas });
 }
+
+/**
+ * P17 (decisión del dueño, 2026-10-11): una sección de stock dada de baja SOLO admite sacar mercadería (transferir, mermar o consumir) hasta vaciarla; no recibe mercadería
+ * nueva ni se vende desde ella. Es el texto ÚNICO con el que todos los casos de uso rechazan una sección dada de baja (código `SECCION_INACTIVA`); cada caso decide solo SI rechaza.
+ */
+export function mensajeSeccionDesactivada(nombre: string): string {
+  return `La sección «${nombre}» está desactivada: solo se puede sacar mercadería de ella (transferir, mermar o consumir) hasta vaciarla. Elegí otra sección o activala.`;
+}

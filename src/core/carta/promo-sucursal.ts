@@ -1,13 +1,11 @@
-import type { Prisma } from "@prisma/client";
-
 /**
  * Una promo (`PromoCarta`) es de la EMPRESA y cada sucursal la prende o la apaga con su `PromoCartaSucursal` (decisión del dueño,
  * 2026-10-01). Se ofrece en una sucursal (carta pública y POS) solo si la promo está activa en la empresa Y su fila de esa
  * sucursal existe y está activa. Una sola definición del criterio, para que la carta, el selector del POS y el alta a la cuenta
  * nunca discrepen. Pura: solo arma el filtro, sin tocar la base.
  */
-export function wherePromoOfrecidaEn(sucursalId: string): Prisma.PromoCartaWhereInput {
-  return { activa: true, sucursales: { some: { sucursalId, activa: true } } };
+export function wherePromoOfrecidaEn(sucursalId: string) {
+  return { activa: true, sucursales: { some: { sucursalId, activa: true } } } as const;
 }
 
 /** El `include`/`select` de la fila de la sucursal, para leer su precio local junto con la promo. */

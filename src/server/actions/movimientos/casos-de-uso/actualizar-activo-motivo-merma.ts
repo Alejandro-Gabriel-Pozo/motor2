@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoActualizarActivoMotivo, ResultadoActualizarActivoMotivo } from "@/core/features/movimientos/motivos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { fijarActivoDeMotivoMerma } from "@/server/persistencia/movimientos/motivos";

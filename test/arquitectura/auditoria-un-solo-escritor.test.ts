@@ -183,12 +183,12 @@ describe("el analizador de la auditoría ve lo que dice ver (fuentes sintéticas
 
   it("mocks: ve TODOS los vi.mock y vi.doMock con ruta literal, con su factory, si define la función y los typeof import", () => {
     const codigo = `${BIEN}
-      vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+      vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
       vi.doMock("${NUEVA}");
       vi.mock(rutaEnVariable, () => ({}));`;
     expect(mocksDeModulos(codigo, NOMBRE)).toEqual([
       { ruta: NUEVA, tieneFactory: true, defineLaFuncion: true, tiposImportados: [NUEVA] },
-      { ruta: "../../src/core/auth/session", tieneFactory: true, defineLaFuncion: false, tiposImportados: [] },
+      { ruta: "../../src/server/sesion/session", tieneFactory: true, defineLaFuncion: false, tiposImportados: [] },
       { ruta: NUEVA, tieneFactory: false, defineLaFuncion: false, tiposImportados: [] },
     ]);
   });
@@ -209,7 +209,7 @@ describe("el analizador de la auditoría ve lo que dice ver (fuentes sintéticas
   it("juzga: el mock bien armado pasa", () => {
     expect(problemasDe(BIEN)).toEqual([]);
     expect(problemasDe(BIEN.replaceAll(NUEVA, "@/server/auditoria/registrar-cambio-auditado"))).toEqual([]); // con alias
-    expect(problemasDe('vi.mock("../../src/core/auth/session", () => ({}));')).toEqual([]); // otro módulo: no se mira
+    expect(problemasDe('vi.mock("../../src/server/sesion/session", () => ({}));')).toEqual([]); // otro módulo: no se mira
   });
 
   it("juzga: un automock sin factory sobre el escritor falla (también vi.doMock)", () => {

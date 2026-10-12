@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * válida, y no tenía freno: un script sin cuenta podía mandar miles por minuto desde una sola conexión. Ahora corta el bucle de un origen ANTES de la consulta. La consulta
  * (`invitacionDelToken`) se reemplaza por un contador: «no consulta» es exactamente «no llegó a la base». Sin base: el cupo es de memoria.
  */
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 const consultas = vi.hoisted(() => ({ cuantas: 0 }));
 vi.mock("../../src/server/sesion/invitacion", () => ({
   invitacionDelToken: vi.fn(async () => {

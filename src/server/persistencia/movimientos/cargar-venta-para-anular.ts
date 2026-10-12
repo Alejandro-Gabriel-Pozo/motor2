@@ -31,6 +31,15 @@ export interface VentaParaAnular {
 
 type OperacionConLineas = Prisma.OperacionGetPayload<{ include: { movimientos: { include: { producto: true } } } }>;
 
+/**
+ * Las líneas de la venta en el orden en que se escribieron (`creadoEn` y, a igualdad, id): de ese orden depende el de las filas de reversión que escribe la
+ * anulación. Sin `orderBy` la base las entregaba en su orden físico, que cambia según dónde cayeron las filas (las de una misma `createMany` comparten
+ * `creadoEn`), y la reversión salía en otro orden de una corrida a otra (mismo criterio que O.40 (3) en `cargarCuentaParaCerrar`).
+ */
+const LINEAS_EN_ORDEN_DE_ESCRITURA = {
+  movimientos: { include: { producto: true }, orderBy: [{ creadoEn: "asc" }, { id: "asc" }] },
+} satisfies Prisma.OperacionInclude;
+
 function aVentaParaAnular(operacion: OperacionConLineas): VentaParaAnular {
   return {
     id: operacion.id,
@@ -61,7 +70,7 @@ export async function cargarVentaParaAnular(
 ): Promise<VentaParaAnular | null> {
   const operacion = await tx.operacion.findFirst({
     where: { id: args.operacionId, sucursalId: args.sucursalId },
-    include: { movimientos: { include: { producto: true } } },
+    include: LINEAS_EN_ORDEN_DE_ESCRITURA,
   });
   return operacion ? aVentaParaAnular(operacion) : null;
 }
@@ -69,7 +78,9 @@ export async function cargarVentaParaAnular(
 /**
  * Las hermanas de promo de una venta (Task #16, promo-combo, docs/plan-promo-combo-2026-09-26.md, D4, paso 9): las OTRAS Operaciones de
  * la misma `PromoCuenta` que siguen vigentes (`anuladaEn: null`). Mismo filtro que antes (por `promoCuentaId`, sin repetir sucursal ni
- * proceso: una `PromoCuenta` pertenece a una sola cuenta, y sus componentes se cobran juntos como VENTA) y sin orden explícito.
+ * proceso: una `PromoCuenta` pertenece a una sola cuenta, y sus componentes se cobran juntos como VENTA). Salen en el orden en que se escribieron (`creadoEn` y, a
+ * igualdad, id): de ese orden depende el de las reversiones y las filas de auditoría que escribe la anulación y el de `operacionesAnuladas` / `reversionIds` del
+ * resultado; sin `orderBy` con 2 o más hermanas (promo de 3 o más componentes) la base las entregaba en su orden físico (mismo criterio que las líneas, arriba).
  */
 export async function cargarHermanasDePromo(
   tx: Prisma.TransactionClient,
@@ -77,7 +88,8 @@ export async function cargarHermanasDePromo(
 ): Promise<VentaParaAnular[]> {
   const hermanas = await tx.operacion.findMany({
     where: { promoCuentaId: args.promoCuentaId, anuladaEn: null, id: { not: args.excluirOperacionId } },
-    include: { movimientos: { include: { producto: true } } },
+    include: LINEAS_EN_ORDEN_DE_ESCRITURA,
+    orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
   });
   return hermanas.map(aVentaParaAnular);
 }

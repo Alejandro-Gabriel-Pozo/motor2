@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoGuardarTemaCarta, ResultadoGuardarTemaCarta } from "@/core/features/carta/tema.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { guardarValoresDelTema } from "@/server/persistencia/carta/tema";

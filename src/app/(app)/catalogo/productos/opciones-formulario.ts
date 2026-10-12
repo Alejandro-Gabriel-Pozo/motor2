@@ -22,3 +22,19 @@ export async function cargarOpcionesFormularioProducto(ctx: { usuarioId: string;
   const puedeCrear = { categoria: categoria.editar, insumo: insumo.editar, proveedor: proveedor.editar };
   return { unidades, insumos, categorias, proveedores, puedeCrear };
 }
+
+/**
+ * M.2-A4 (D): la lista de unidades del formulario de EDICIÓN lleva también las que el producto usa hoy aunque estén inactivas. `listarUnidadesActivas` trae solo las activas; si la unidad de stock o de compra del
+ * producto se desactivó después, el formulario no la tenía: sin la clave decía «Sin unidad de compra» (falso) y con la clave el `<select>` mandaba "" y borraba la unidad de compra en silencio al guardar. Las que se
+ * agregan van marcadas `inactiva: true` (el formulario las muestra con «(inactiva)» y no las ofrece para presentaciones nuevas). Sin duplicar las que ya están, ignora los `null` (sin unidad de compra).
+ */
+export function conLasUnidadesDelProducto<U extends { id: string }>(activas: readonly U[], delProducto: readonly (U | null)[]): (U & { inactiva?: boolean })[] {
+  const yaEstan = new Set(activas.map((u) => u.id));
+  const faltan: (U & { inactiva: true })[] = [];
+  for (const u of delProducto) {
+    if (u === null || yaEstan.has(u.id)) continue;
+    yaEstan.add(u.id);
+    faltan.push({ ...u, inactiva: true });
+  }
+  return [...activas, ...faltan];
+}

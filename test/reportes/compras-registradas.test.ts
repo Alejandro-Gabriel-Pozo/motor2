@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -80,7 +80,22 @@ describe("listarComprasRegistradas", () => {
     expect(await facturas({ proveedorId: provAId, factura: "B-" })).toEqual([]);
   });
 
-  it("los límites de fecha son días completos: una compra a las 12:00 UTC entra con `hasta` = ese mismo día (que llega a las 00:00 UTC)", async () => {
+  it("el texto de la factura se busca TAL CUAL: `%` y `_` no son comodines y una barra invertida no escapa nada", async () => {
+    await comprar("2026-08-01", provAId, "A_0001", [{ productoId: harinaId, cantidad: 1, precioTotal: 5 }]);
+    await comprar("2026-08-02", provAId, "AX0002", [{ productoId: harinaId, cantidad: 1, precioTotal: 5 }]);
+    await comprar("2026-08-03", provBId, "B-50%", [{ productoId: quesoId, cantidad: 1, precioTotal: 20 }]);
+    const facturas = async (factura: string) => (await listarComprasRegistradas(sucursalId, { factura }, prisma)).items.map((c) => c.nroFactura).sort();
+
+    expect(await facturas("A_0")).toEqual(["A_0001"]); // antes: también AX0002
+    expect(await facturas("%")).toEqual(["B-50%"]); // antes: todas
+    expect(await facturas("50%")).toEqual(["B-50%"]);
+    expect(await facturas("_")).toEqual(["A_0001"]);
+    expect(await facturas("\\")).toEqual([]); // antes: «B-50%» (la barra escapaba el comodín final)
+    expect(await facturas("A\\")).toEqual([]);
+    expect(await facturas("a_0001")).toEqual(["A_0001"]); // sigue sin distinguir mayúsculas
+  });
+
+  it("los límites de fecha son días completos (en hora argentina): una compra a las 12:00Z (09:00 argentinas) entra con `hasta` = ese mismo día (que llega a las 00:00 UTC); los bordes de la noche, en `lectores-en-hora-argentina.test.ts`", async () => {
     await comprar("2026-08-09", provAId, "A-0001", [{ productoId: harinaId, cantidad: 1, precioTotal: 5 }]); // se guarda a las 12:00Z
     const facturas = async (f: Parameters<typeof listarComprasRegistradas>[1]) => (await listarComprasRegistradas(sucursalId, f, prisma)).items.map((c) => c.nroFactura);
 

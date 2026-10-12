@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { invarianteRolDeSistemaIntacto } from "@/core/permisos/invariantes";
 import { invarianteRolSinUsuariosActivos } from "@/server/lecturas/permisos/gobierno";

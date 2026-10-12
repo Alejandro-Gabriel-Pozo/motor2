@@ -72,7 +72,7 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
 }
 
 /**
- * Saca la sucursal del registro de motor2: borra su fila. Es la vuelta atrás del alta: la sucursal desaparece del portal.
+ * Saca la sucursal del portal: la APAGA (`publicada = false`), no borra su fila (P16, 2026-10-11). El slug queda reservado y, si se vuelve a publicar, el QR ya impreso vuelve a funcionar.
  * Permiso → id (`guardComandoQuitarSucursalDelPortal`) → caso de uso (`casos-de-uso/quitar-sucursal-del-portal.ts`) → revalidar si salió bien → `aResultadoAccion`.
  */
 export async function quitarSucursalDelPortal(sucursalId: string): Promise<ResultadoAccion> {

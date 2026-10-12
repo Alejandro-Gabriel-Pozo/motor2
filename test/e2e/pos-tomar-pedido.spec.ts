@@ -51,6 +51,8 @@ async function sembrarCatalogo(sucursalId: string) {
       // Los ejemplares del ticket referencian la cuenta (RESTRICT) y las correcciones a su ejemplar A (RESTRICT): correcciones → resto → cuentas.
       await prisma.ejemplarTicket.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } }, corrigeAId: { not: null } } });
       await prisma.ejemplarTicket.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      // P3: cada «Agregar al pedido» de la pantalla deja un comprobante (`AgregadoDeCuenta`, solo se agrega: el rol de la app no lo borra) que referencia la cuenta (RESTRICT): se borra antes, como dueño.
+      await prismaAdmin.agregadoDeCuenta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.seccionHabitualProducto.deleteMany({ where: { productoId: { in: productoIds } } });

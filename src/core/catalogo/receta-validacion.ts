@@ -166,6 +166,27 @@ export function validarIngredientes(items: IngredienteInput[], producto: { sePro
 }
 
 /**
+ * U7 / D3 (decisión del dueño, 2026-10-11): la unidad de cada ingrediente tiene que ser la de STOCK de su materia prima (g contra kg), por ahora: el consumo multiplica el número de
+ * la receta por el stock en la unidad de stock, sin convertir, así que un «g» sobre una MP en «kg» descontaría 1000 veces más stock y costo. La conversión explícita viene más adelante.
+ * Los sustitutos no llevan unidad propia (son insumos que comparten la unidad de stock del principal: `validarSustitutosDeIngrediente`). Un ingrediente cuya MP no figura en `productos`
+ * lo reporta `validarIngredientes`, no esta. `productos` y `nombresDeUnidad` los lee el caso de uso DENTRO de la transacción, con la unidad de stock real.
+ */
+export function validarUnidadDeIngredientes(
+  items: readonly IngredienteInput[],
+  productos: ReadonlyMap<string, { nombre: string; unidadStockId: string }>,
+  nombresDeUnidad: ReadonlyMap<string, string>
+): string | null {
+  for (const item of items) {
+    const mp = productos.get(item.insumoProductoId);
+    if (!mp || item.unidadId === mp.unidadStockId) continue;
+    const enReceta = nombresDeUnidad.get(item.unidadId) ?? "otra unidad";
+    const enStock = nombresDeUnidad.get(mp.unidadStockId) ?? "su unidad de stock";
+    return `El ingrediente "${mp.nombre}" está cargado en ${enReceta}, pero su stock se descuenta en ${enStock} y la receta todavía no convierte entre unidades: cargá la cantidad en ${enStock}.`;
+  }
+  return null;
+}
+
+/**
  * Lo que se puede decir de UN paso sin mirar a los otros ni al catálogo (S-52), en dos tramos con el chequeo de «dos pasos con el mismo orden» entre uno y otro, como en `validarPasos`:
  * el primero (la instrucción, el orden y los textos) y el segundo (los minutos y el tope de ingredientes marcados). Los comparten `validarPasos` y el guard de la puerta
  * (`guardComandoPasoDeReceta`), así que no pueden desparejarse.

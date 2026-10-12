@@ -134,7 +134,7 @@ async function agregarOActualizarEnLaTransaccion(
       if (rechazoReactivar) return fracaso("REACTIVA_ADMIN_SIN_SER_GERENTE", rechazoReactivar);
 
       return conInvariantesDeGobierno(tx, actor.empresaId, async (): Promise<ResultadoAgregarOActualizarUsuario> => {
-        // Las dos pertenencias van juntas: sin la de empresa el usuario no tendría contexto (core/auth/contexto.ts). Con su auditoría, en la misma transacción.
+        // Las dos pertenencias van juntas: sin la de empresa el usuario no tendría contexto (server/sesion/contexto.ts). Con su auditoría, en la misma transacción.
         await activarCuentaEnEmpresa(tx, { usuarioId: usuarioPrevio.id, empresaId: actor.empresaId });
         const membresia = await guardarMembresiaDeMiembro(tx, {
           usuarioId: usuarioPrevio.id, sucursalId: comando.sucursalId, empresaId: actor.empresaId, rolId: rol.id, ...(comando.notas !== undefined && { notas: comando.notas }),

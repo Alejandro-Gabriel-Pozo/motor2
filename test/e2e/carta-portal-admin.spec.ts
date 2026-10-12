@@ -7,10 +7,10 @@ import { resolverPortalCarta } from "../../src/server/lecturas/carta/publica";
  * Portal de sucursales (/carta/portal, docs/plan-registro-tenants-2026-09-24.md, M7) de punta a punta: agregar dos
  * sucursales cuyos nombres dan el mismo slug (la segunda queda con `-2`, visible en la pantalla), el choque de slug al editar se
  * muestra con el nombre de la otra sucursal, guardar subtítulo/posición y publicar queda en la base y en el portal de la carta pública, y
- * "Quitar del portal" borra la fila.
+ * "Quitar del portal" APAGA la fila (P16: no la borra; el slug queda reservado, ver carta-portal-slug-reservado.spec.ts).
  */
 
-test("agregar, chocar slugs, guardar y quitar desde el portal de sucursales", async ({ paginaAutenticada: page }) => {
+test("agregar, chocar slugs, guardar y quitar (apagar) desde el portal de sucursales", async ({ paginaAutenticada: page }) => {
   const marca = `${Date.now()}`;
   const nombreA = `E2E Portal Villa La Angostura ${marca}`;
   const nombreB = `E2E Portal Villa la Angostura ${marca}`;
@@ -64,11 +64,12 @@ test("agregar, chocar slugs, guardar y quitar desde el portal de sucursales", as
     expect(portal.find((e) => e.slug === slug)).toEqual({ slug, etiqueta: nombreA, subtitulo: "Frente al lago", posicion: { x: 12.5, y: 40, w: 8, h: null } });
     expect(portal.find((e) => e.slug === `${slug}-2`)).toBeUndefined();
 
-    // 4. Quitar B del portal: vuelve a "no está en el portal" y la fila ya no existe.
-    await filaB.getByRole("button", { name: `Quitar «${nombreB}» del portal` }).click();
-    await expect(filaB).toContainText("no está en el portal");
-    await expect(filaB.getByRole("button", { name: `Agregar «${nombreB}» al portal` })).toBeVisible();
-    expect(await prisma.sucursalPublica.count({ where: { sucursalId: b.id } })).toBe(0);
+    // 4. Quitar A (publicada) del portal (P16): se APAGA, no se borra. La fila sigue con su slug reservado y sin publicar, no ofrece «Agregar» y el portal ya no la lista.
+    await filaA.getByRole("button", { name: `Quitar «${nombreA}» del portal` }).click();
+    await expect(filaA).toContainText(`/carta/${slug} · sin publicar`);
+    await expect(filaA.getByRole("button", { name: `Agregar «${nombreA}» al portal` })).toHaveCount(0);
+    expect(await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: a.id } })).toMatchObject({ slug, publicada: false, subtituloPortal: "Frente al lago" });
+    expect((await resolverPortalCarta(empresa, prisma)).find((e) => e.slug === slug)).toBeUndefined();
   } finally {
     await prisma.sucursalPublica.deleteMany({ where: { sucursalId: { in: [a.id, b.id] } } });
     await prisma.sucursal.deleteMany({ where: { id: { in: [a.id, b.id] } } });

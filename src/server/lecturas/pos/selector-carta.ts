@@ -30,8 +30,9 @@ import type { Db } from "@/lib/db-tipos";
  *    pedibles que ya ubicó en la sección de ese cupo (D5) — esta consulta no busca elegibles por su cuenta.
  *
  *  - LO CONTRATADO (S-22 / D2, `modulos-del-pos.ts`): sin el módulo Carta no se lee nada de la carta (ni secciones, ni géneros, ni ítems agrupados, ni promos) y el selector
- *    es la lista plana de los PV disponibles; sin el módulo Promociones no se lee ninguna promo, ni el POS las ofrece ni las acepta. El precio y el descuento de cada
- *    producto NO dependen del módulo: son los que `agregarItems` congela (paridad) y salen del producto, del Precio Local y del descuento de la sucursal.
+ *    es la lista plana de los PV disponibles; sin el módulo Promociones no se lee ninguna promo, ni el POS las ofrece ni las acepta. El precio de cada
+ *    producto NO depende del módulo (sale del producto y del Precio Local), pero el DESCUENTO de producto sí: sin Carta no rige (P18 / D18, decisión del dueño 2026-10-11),
+ *    igual que en `agregarItems`, que congela el mismo precio (paridad).
  *
  * La pantalla de la mesa la llama DESPUÉS de su guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`): no hace falta
  * ninguna Server Action nueva.
@@ -67,7 +68,8 @@ export async function cargarSelectorCartaPos(
       select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },
     }),
     preciosLocalesVigentes(sucursalId, db, undefined, precioLocalActivoLeido),
-    descuentosDeProductoEnSucursal(sucursalId, db, undefined, precioLocalActivoLeido),
+    // P18 / D18: el descuento de producto es de la Carta; sin el módulo no se lee y el precio mostrado es el de lista (el que `agregarItems` congela).
+    conCarta ? descuentosDeProductoEnSucursal(sucursalId, db, undefined, precioLocalActivoLeido) : Promise.resolve(new Map<string, number>()),
     precioLocalActivoLeido,
     conCarta ? db.generoCarta.findMany({ where: { activo: true, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, nombre: true, orden: true } }) : Promise.resolve([]),
     conCarta ? db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true } }) : Promise.resolve([]),

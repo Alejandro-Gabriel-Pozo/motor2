@@ -144,6 +144,9 @@ export const MENSAJE_SECCION_DESTINO_SOLICITUD_NO_PROPIA = "Elegí a qué secci�
 /** Mismo texto que usaban las dos creaciones cuando la sucursal de la otra punta no existe o está inactiva (lo decide el caso de uso). */
 export const MENSAJE_SUCURSAL_NO_DISPONIBLE = "Esa sucursal no existe o no está activa.";
 
+/** P15: la sucursal de QUIEN envía (envío directo o aprobación de una solicitud) está desactivada: no manda mercadería desde ahí, aunque la sesión ya estuviera resuelta. */
+export const mensajeSucursalPropiaInactivaParaEnviar = (nombre: string): string => `Tu sucursal "${nombre}" está desactivada: no se pueden enviar traspasos desde ella.`;
+
 /** Mismo texto que usaban las dos creaciones cuando el producto no existe. */
 export const MENSAJE_PRODUCTO_NO_EXISTE = "El producto no existe.";
 

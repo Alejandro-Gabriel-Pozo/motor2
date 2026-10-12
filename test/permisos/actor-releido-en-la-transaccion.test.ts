@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
-import { obtenerContextoUsuario } from "../../src/core/auth/contexto";
+import { obtenerContextoUsuario } from "../../src/server/sesion/contexto";
 import { azarDelProceso } from "../../src/lib/azar";
 import { actualizarActivoMembresiaCasoDeUso } from "../../src/server/actions/auth/casos-de-uso/actualizar-activo-membresia";
 import { actualizarActivoUsuarioEnEmpresaCasoDeUso } from "../../src/server/actions/auth/casos-de-uso/actualizar-activo-usuario-en-empresa";

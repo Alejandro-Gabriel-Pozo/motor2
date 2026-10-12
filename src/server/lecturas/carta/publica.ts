@@ -51,8 +51,23 @@ export interface CartaPublicaResuelta {
 }
 
 /**
+ * Las DOS bases con las que se arma la carta de una sucursal sin sesión (M.3-A7, RLS por sucursal): no hay usuario que traiga un alcance, así que quien llama (`server/carta-publica/sin-sesion.ts`) las da:
+ *  - `deLaEmpresa`: la base de la empresa SIN alcance por sucursal. Solo sirve para lo que no es de una sucursal: el registro público (`SucursalPublica`) y `Sucursal`, tablas de GOBIERNO que se leen
+ *    ANTES de saber a qué sucursal se refiere el slug;
+ *  - `deLaSucursal(sucursalId)`: la base de SOLO LECTURA en esa única sucursal. Se pide DESPUÉS de resolver el slug y con el id que resolvió: sin resolverlo no hay forma de leer una tabla por sucursal.
+ */
+interface BasesDeLaCartaPublica {
+  deLaEmpresa: Db;
+  deLaSucursal: (sucursalId: string) => Db;
+}
+
+/**
  * La carta de una sucursal por su slug público. `null` si no existe, no está publicada, o la sucursal está inactiva — el
  * caller (la página) responde 404 en los tres casos por igual, para no revelar cuál es (mismo criterio que hoy).
+ *
+ * Primero se resuelve el slug en `SucursalPublica` con la base de la empresa (sin alcance) y recién entonces se lee la carta de ESA sucursal —menú, precios locales, descuentos, promos y tema— con la base de
+ * solo lectura que `bases.deLaSucursal` abre para ella: las políticas por sucursal de la Fase B no dejan ver otra, aunque una consulta olvide su filtro. Un slug que no resuelve (inexistente, de otra
+ * empresa, sin publicar, de una sucursal inactiva, con caracteres que no son de un slug) devuelve `null` sin abrir esa base.
  *
  * El tema solo se usa si `aplicarEnCarta` (un borrador guardado pero no aplicado no debe verse en la carta pública, mismo
  * criterio que `docs/setup-sucursal.md` sección 3); sin eso, o sin fila de tema, el estilo es el default del catálogo.
@@ -65,25 +80,28 @@ export interface CartaPublicaResuelta {
 export async function resolverCartaPublica(
   empresa: EmpresaCarta,
   slug: string,
-  db: Db,
+  bases: BasesDeLaCartaPublica,
   ahora: Date,
   /** S-23: sin el módulo Promociones la carta sale sin promos (ni se leen). Lo decide `server/carta-publica/sin-sesion.ts`, que es quien ve el registro de módulos. */
   conPromos = true
 ): Promise<CartaPublicaResuelta | null> {
   if (!esSlugPublicoValido(slug)) return null;
-  const publica = await db.sucursalPublica.findUnique({
+  const publica = await bases.deLaEmpresa.sucursalPublica.findUnique({
     where: { empresaId_slug: { empresaId: empresa.id, slug } },
-    select: {
-      publicada: true,
-      sucursal: { select: { id: true, activo: true, temaCarta: { select: { valores: true, aplicarEnCarta: true } } } },
-    },
+    select: { publicada: true, sucursal: { select: { id: true, activo: true } } },
   });
   if (!publica || !publica.publicada || !publica.sucursal.activo) return null;
 
-  const carta = await resolverMenuCarta(publica.sucursal.id, db, ahora, undefined, conPromos);
+  // De acá en adelante, todo lo de la carta se lee con la base de ESA sucursal (y solo lectura).
+  const sucursalId = publica.sucursal.id;
+  const db = bases.deLaSucursal(sucursalId);
+  const [carta, conTema] = await Promise.all([
+    resolverMenuCarta(sucursalId, db, ahora, undefined, conPromos),
+    db.sucursal.findUnique({ where: { id: sucursalId }, select: { temaCarta: { select: { valores: true, aplicarEnCarta: true } } } }),
+  ]);
   if (!carta) return null;
 
-  const tema = publica.sucursal.temaCarta;
+  const tema = conTema?.temaCarta;
   const estilo = tema?.aplicarEnCarta ? resolverEstiloCarta(tema.valores) : estiloCartaPorDefecto();
 
   return { carta, estilo };

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, sembrarProductoDisponible, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -46,7 +46,9 @@ describe("validaciones de la carta (puras)", () => {
     expect(validarOrdenCarta("-2")).toEqual({ ok: true, valor: -2 });
     expect(validarOrdenCarta("1.5").ok).toBe(false);
     expect(validarPrecioCarta("25000")).toEqual({ ok: true, valor: 25000 });
-    expect(validarPrecioCarta(10.005)).toEqual({ ok: true, valor: 10.01 });
+    // U8: antes se esperaba el redondeo en silencio (10.005 → 10.01); ahora más de 2 decimales se rechaza (política de `validarImporte`).
+    expect(validarPrecioCarta(10.005).ok).toBe(false);
+    expect(validarPrecioCarta(10.01)).toEqual({ ok: true, valor: 10.01 });
     expect(validarPrecioCarta(-1).ok).toBe(false);
     expect(validarPrecioCarta(Infinity).ok).toBe(false);
     expect(validarPrecioCarta("").ok).toBe(false);

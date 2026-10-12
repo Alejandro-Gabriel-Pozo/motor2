@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * `src/lib/auth.ts` (Auth.js) exporta lo que abre, lee o cierra una sesión. Cada nombre solo lo puede importar un puñado de archivos, a
- * propósito: la sesión se lee en UN lugar (`core/auth/session.ts`, que además la valida contra la base y el kill-switch de cuenta) y
+ * propósito: la sesión se lee en UN lugar (`server/sesion/session.ts`, que además la valida contra la base y el kill-switch de cuenta) y
  * abrir/cerrar sesión vive en el login y en los dos shells. Un archivo nuevo que importe `auth` para «leer rápido la sesión» se saltea
  * esa validación; uno que importe un nombre que acá no figura (p. ej. `unstable_update`) también falla: la lista es cerrada.
  * Para permitir un uso nuevo hay que agregarlo acá, con su motivo, y revisarlo.
@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "../../src");
 
 const PERMITIDOS: Record<string, string[]> = {
-  auth: ["core/auth/session.ts"],
+  auth: ["server/sesion/session.ts"],
   handlers: ["app/api/auth/[...nextauth]/route.ts"],
   signIn: ["app/login/page.tsx", "app/invitacion/page.tsx"],
   signOut: ["app/login/page.tsx", "app/invitacion/page.tsx", "components/app-shell.tsx", "components/pos-shell.tsx"],
@@ -63,7 +63,7 @@ describe("lib/auth solo se importa desde sus puntos de uso", () => {
     expect(importadosDeLibAuth(`import * as a from "../../lib/auth";`, "a.ts")).toEqual(["*"]);
     expect(importadosDeLibAuth(`const m = await import("@/lib/auth");`, "a.ts")).toEqual(["*"]);
     expect(importadosDeLibAuth(`export { auth } from "@/lib/auth";`, "a.ts")).toEqual(["*"]);
-    expect(importadosDeLibAuth(`import { auth } from "@/core/auth/session";`, "a.ts")).toEqual([]);
+    expect(importadosDeLibAuth(`import { auth } from "@/server/sesion/session";`, "a.ts")).toEqual([]);
   });
 
   it("la tabla de permitidos apunta a archivos que existen y que de verdad importan ese nombre", () => {
@@ -84,6 +84,6 @@ describe("lib/auth solo se importa desde sus puntos de uso", () => {
         if (!(PERMITIDOS[nombre] ?? []).includes(rel)) sobrantes.push(`${rel} importa «${nombre}» de lib/auth`);
       }
     }
-    expect(sobrantes, "leé la sesión con getUsuarioActual (core/auth/session.ts); un uso nuevo se agrega a PERMITIDOS con su motivo").toEqual([]);
+    expect(sobrantes, "leé la sesión con getUsuarioActual (server/sesion/session.ts); un uso nuevo se agrega a PERMITIDOS con su motivo").toEqual([]);
   });
 });

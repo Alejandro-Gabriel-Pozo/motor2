@@ -1,9 +1,10 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
-import { mensajePisoDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
+import { mensajePisoDePromo, mensajePisoLocalDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
 import type { ComandoGuardarCuposPromoCarta, ResultadoGuardarCuposPromoCarta } from "@/core/features/carta/promos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { reemplazarCuposDePromo } from "@/server/persistencia/carta/promos";
 
@@ -31,7 +32,7 @@ import { reemplazarCuposDePromo } from "@/server/persistencia/carta/promos";
  * @ficha permiso=carta_promo_definir transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function guardarCuposPromoCartaCasoDeUso(
-  actor: Pick<ContextoUsuario, "transaccion" | "usuarioId">,
+  actor: Pick<ContextoUsuario, "transaccion" | "usuarioId" | "empresaId" | "db" | "alcance">,
   comando: ComandoGuardarCuposPromoCarta,
 ): Promise<ResultadoGuardarCuposPromoCarta> {
   const { promoCartaId, cupos } = comando;
@@ -39,7 +40,11 @@ export async function guardarCuposPromoCartaCasoDeUso(
   // el reemplazo sin rastro). M-5 de la auditoría intermedia: SERIALIZABLE (antes READ COMMITTED): dos reemplazos a la vez, o este contra un cambio de precio, no se pisan en silencio —uno aborta
   // (40001), el reintento relee— y el «anterior» de la auditoría es siempre el que de verdad se reemplazó. Los rechazos devuelven ANTES de escribir, así que la transacción no deja nada;
   // el cuerpo puede reintentarse: no tiene efectos fuera de la base.
-  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoGuardarCuposPromoCarta> => {
+  // Paquete 1 (RLS por sucursal): el piso se mide contra el precio local de CUALQUIER sucursal, y con las políticas una transacción con la sola sucursal activa vería únicamente SU precio local
+  // (falla ABIERTO: se guardarían cupos que dejan bajo el piso el precio de otra sucursal). La transacción se abre con la lectura de verificación (toda la empresa, SOLO lectura): la escritura
+  // (cupos y auditoría, de empresa) sigue como estaba.
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+  return conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoGuardarCuposPromoCarta> => {
     const promo = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, include: { sucursales: { select: { precioLocal: true } } } });
     if (!promo) return fracaso("PROMO_NO_ENCONTRADA", "No se encontró la promo.");
 
@@ -60,8 +65,10 @@ export async function guardarCuposPromoCartaCasoDeUso(
       // no solo en la elección mínima.
       // Vale para el precio de la empresa y para el precio local de CUALQUIER sucursal que lo tenga.
       const piso = pisoDePrecioDePromo(cuposValidados)!;
-      for (const precio of [Number(promo.precio), ...promo.sucursales.flatMap((s) => (s.precioLocal !== null ? [Number(s.precioLocal)] : []))]) {
-        if (precio < piso.minimo) return fracaso("BAJO_EL_PISO", mensajePisoDePromo(promo.titulo, precio, piso));
+      if (Number(promo.precio) < piso.minimo) return fracaso("BAJO_EL_PISO", mensajePisoDePromo(promo.titulo, Number(promo.precio), piso));
+      // El precio local de otra sucursal puede ser de una que quien guarda no ve: el rechazo no nombra ni el importe ni la sucursal.
+      if (promo.sucursales.some((s) => s.precioLocal !== null && Number(s.precioLocal) < piso.minimo)) {
+        return fracaso("BAJO_EL_PISO", mensajePisoLocalDePromo(promo.titulo, piso));
       }
     }
 

@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { DatosVentaInput, ResultadoRegistrarVenta } from "@/core/features/ventas/venta.schema";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -78,5 +78,5 @@ async function registrarVentaEnTransaccion(
       datos.claveIdempotencia ? { idempotencia: { clave: datos.claveIdempotencia, payloadHash } } : {}
     );
     return venta.ok ? exito(venta.mensaje, { operacionIds: venta.operacionIds, repetida: false }) : fracaso("VENTA_RECHAZADA", venta.mensaje);
-  });
+  }, 5, {}, true);
 }

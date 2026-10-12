@@ -1,8 +1,9 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { calcularAlertasStock } from "@/server/consultas/stock/alertas";
+import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 export default async function AlertasStockPage() {
   const ctx = await obtenerContextoUsuario();
@@ -44,7 +45,7 @@ export default async function AlertasStockPage() {
               <td>{a.stockMinimo}</td>
               <td>{a.diferencia}</td>
               <td className={a.estado === "CRITICO" ? "text-red-600 font-medium" : "text-amber-700 dark:text-amber-600"}>{a.estado}</td>
-              <td className="text-neutral-500">{a.ultimaFecha ? a.ultimaFecha.toISOString().slice(0, 10) : "—"}</td>
+              <td className="text-neutral-500">{a.ultimaFecha ? diaDeCalendario(a.ultimaFecha, ctx.empresaZonaHoraria) : "—"}</td>
             </tr>
           ))}
         </tbody>

@@ -68,6 +68,7 @@
   PERMISO admin:proceso_transferencia ver=true editar=true
   PERMISO admin:proceso_venta ver=true editar=true
   PERMISO admin:producto_asignar_insumo ver=true editar=true
+  PERMISO admin:producto_campos_sensibles ver=true editar=true
   PERMISO admin:producto_disponibilidad ver=true editar=true
   PERMISO admin:producto_editar ver=true editar=true
   PERMISO admin:producto_presentaciones ver=true editar=true
@@ -192,6 +193,7 @@
   PERMISO operador:proceso_transferencia ver=true editar=true
   PERMISO operador:proceso_venta ver=true editar=true
   PERMISO operador:producto_asignar_insumo ver=true editar=true
+  PERMISO operador:producto_campos_sensibles ver=false editar=false
   PERMISO operador:producto_disponibilidad ver=true editar=true
   PERMISO operador:producto_editar ver=true editar=true
   PERMISO operador:producto_presentaciones ver=true editar=true
@@ -253,7 +255,7 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Central/true, Norte/true
-  ACCIONES 124
+  ACCIONES 125
 ### 0b. Primer gerente incorporado
   resultado: {"ok":true,"sucursalId":"sucursal1","sucursalNombre":"Central","membresiaId":"id#1"}
   EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
@@ -475,6 +477,7 @@
   PERMISO admin:proceso_transferencia ver=true editar=true
   PERMISO admin:proceso_venta ver=true editar=true
   PERMISO admin:producto_asignar_insumo ver=true editar=true
+  PERMISO admin:producto_campos_sensibles ver=true editar=true
   PERMISO admin:producto_disponibilidad ver=true editar=true
   PERMISO admin:producto_editar ver=true editar=true
   PERMISO admin:producto_presentaciones ver=true editar=true
@@ -599,6 +602,7 @@
   PERMISO operador:proceso_transferencia ver=true editar=true
   PERMISO operador:proceso_venta ver=true editar=true
   PERMISO operador:producto_asignar_insumo ver=true editar=true
+  PERMISO operador:producto_campos_sensibles ver=false editar=false
   PERMISO operador:producto_disponibilidad ver=true editar=true
   PERMISO operador:producto_editar ver=true editar=true
   PERMISO operador:producto_presentaciones ver=true editar=true
@@ -660,7 +664,7 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Casa central/true
-  ACCIONES 124
+  ACCIONES 125
 ### 7a. Aceptar con un CUIT inválido
   resultado: {"ok":false,"mensaje":"El CUIT no tiene un formato válido: son 11 dígitos, por ejemplo 30-12345678-1."}
   EMPRESA creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires

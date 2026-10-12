@@ -17,7 +17,8 @@ export interface FiltroAuditoria {
   cursor?: string;
   /**
    * Obligatorio a propósito: las sucursales cuyas filas se pueden mostrar. Quien llama lo arma con
-   * `sucursalesVisiblesDeAuditoria`; nunca "todas por omisión".
+   * `sucursalesVisiblesDeAuditoria`; nunca "todas por omisión". M.3-A5: el `db` con que se llama a `listarRegistrosAuditoria` es el del contexto ampliado por
+   * `lecturaEnSucursalesVisibles(ctx, "ver_auditoria")` (lo exige `test/arquitectura/lectores-de-varias-sucursales.test.ts`): la base solo ve el registro de esas sucursales.
    */
   sucursalIds: readonly string[];
   /**

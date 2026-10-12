@@ -13,26 +13,27 @@
  */
 
 /**
- * `core-sin-react-next`: el adaptador de sesión del pedido. Los tres viven en `core/auth/` desde antes de esta regla y
- * moverlos queda fuera de la Fase A: `contexto.ts` y `session.ts` los referencian 88 y 123 archivos de src/ + test/
- * respectivamente (contado el 2026-09-27, incluidos los `vi.mock`), y sus rutas están fijas en `GUARDAS_POR_MODULO` del
- * analizador de guardas (`test/arquitectura/guardas/analizador.ts`).
+ * `core-sin-react-next`: vacía desde la Fase 6, tramo 6a. Sus tres excepciones (el adaptador de sesión del pedido: `contexto.ts`, `session.ts` e `ir-al-login.ts`,
+ * que vivían en `core/auth/`) salieron de core con sus archivos a `server/sesion/`. La de `session.ts` (solo `cache` de react) ya no hace falta: `sesion-capa` no
+ * prohíbe react. Las de `contexto.ts` e `ir-al-login.ts` (Next) se mudaron a `sesion-capa`, abajo, con el mismo motivo. La lista solo se achica.
  */
-const CORE_CON_REACT_NEXT = [
+const CORE_CON_REACT_NEXT = [];
+
+/**
+ * `sesion-capa` (solo la entrada de Next): los archivos de `server/sesion/` que importan Next. Son las MISMAS dos excepciones que tenían en `core-sin-react-next`
+ * mientras vivían en `core/auth/`, mudadas con sus archivos en la Fase 6, tramo 6a (sin tocar su código): el adaptador de sesión del pedido lee la cookie y el
+ * encabezado, y manda al login. El login previo al contexto (`acceso`, `invitacion`, `vincular-cuenta`) sigue sin poder importar Next. La lista solo se achica.
+ */
+const SESION_CON_NEXT = [
   {
-    ruta: "src/core/auth/contexto.ts",
+    ruta: "src/server/sesion/contexto.ts",
     motivo:
-      "Adaptador de sesión del pedido: `cache` de react (memoiza obtenerContextoUsuario por request) + `cookies` de next/headers (sucursal activa). Ruta fija en GUARDAS_POR_MODULO; 88 archivos lo referencian.",
+      "Adaptador de sesión del pedido: `cookies` de next/headers (sucursal y empresa activas). Antes era excepción de core-sin-react-next; se mudó con el archivo (Fase 6, tramo 6a).",
   },
   {
-    ruta: "src/core/auth/session.ts",
+    ruta: "src/server/sesion/ir-al-login.ts",
     motivo:
-      "Adaptador de sesión del pedido: `cache` de react (memoiza getUsuarioActual por request). Ruta fija en GUARDAS_POR_MODULO; 123 archivos lo referencian (casi todos vi.mock de test/).",
-  },
-  {
-    ruta: "src/core/auth/ir-al-login.ts",
-    motivo:
-      "Adaptador de sesión del pedido: `headers` de next/headers (ruta pedida) + `redirect` de next/navigation (manda al login recordando la pantalla). Lo usan con-permiso.ts y las páginas.",
+      "Adaptador de sesión del pedido: `headers` de next/headers (ruta pedida) + `redirect` de next/navigation (manda al login recordando la pantalla). Antes era excepción de core-sin-react-next; se mudó con el archivo (Fase 6, tramo 6a).",
   },
 ];
 
@@ -40,12 +41,12 @@ const CORE_CON_REACT_NEXT = [
  * `db-solo-desde-auth-y-carta-publica` (ADR-007, paso N2): el ÚNICO grupo de archivos de `src/` que puede importar `src/lib/db.ts`
  * (el cliente Prisma global). Todo el resto recibe la base del contexto (`ctx.db` / `ctx.transaccion` de `ContextoUsuario`, o `db: Db`
  * por parámetro), de modo que elegir la base de un pedido (hoy `prisma`; con RLS, una transacción con la empresa fijada) es un
- * único punto: `core/auth/base.ts`. Los crons (`api/cron/`) la piden con `baseDelContexto()`; los seeds, scripts y tests viven fuera
+ * único punto: `server/sesion/base.ts`. Los crons (`api/cron/`) la piden con `baseDelContexto()`; los seeds, scripts y tests viven fuera
  * de `src/` y la regla no los alcanza.
  */
 const IMPORTADORES_DE_DB = [
   {
-    ruta: "src/core/auth/base.ts",
+    ruta: "src/server/sesion/base.ts",
     motivo: "`baseDelContexto()`: el único lugar donde un pedido elige su cliente de base (hoy `prisma` + `$transaction`).",
   },
   {
@@ -63,15 +64,16 @@ const IMPORTADORES_DE_DB = [
 ];
 
 /**
- * `base-solo-desde-lista`: el ÚNICO grupo de archivos de `src/` que puede importar `src/core/auth/base.ts` (las funciones que fijan la empresa/el usuario
+ * `base-solo-desde-lista`: el ÚNICO grupo de archivos de `src/` que puede importar `src/server/sesion/base.ts` (las funciones que fijan la empresa/el usuario
  * de la base: `dbDeEmpresa`, `dbDeUsuario`, `baseDeEmpresa`, `baseDelContexto`). Es la frontera que `db-solo-desde-auth-y-carta-publica` deja abierta: sin ella,
  * cualquier archivo podría pedir una base «de otra empresa» sin pasar por el contexto del usuario. Una importación nueva obliga a decidir y a explicar por qué.
  */
 const IMPORTADORES_DE_BASE = [
-  { ruta: "src/core/auth/contexto.ts", motivo: "Arma el `ContextoUsuario` de cada pedido: es quien le da `ctx.db` al resto." },
+  { ruta: "src/server/sesion/contexto.ts", motivo: "Arma el `ContextoUsuario` de cada pedido: es quien le da `ctx.db` al resto." },
+  { ruta: "src/server/acceso/alcance.ts", motivo: "Ensanches del alcance por sucursal (M.3): rearma la base del contexto con una lista de sucursales más larga (`baseDeEmpresa`) y suma la sucursal recién creada a la transacción; solo lo llaman las puertas que ya pasaron el gate (lo verifica `ensanches-de-alcance.test.ts`)." },
   { ruta: "src/server/sesion/acceso.ts", motivo: "Resolución de acceso previa al contexto (login, jerarquía de roles): lee con la empresa/el usuario fijados." },
   { ruta: "src/server/sesion/invitacion.ts", motivo: "Lectura de la invitación por el hash de su token (`dbDeInvitacion`) y de sus sucursales bajo su empresa: ocurre antes de que el invitado tenga empresa ni sesión (Hito 3, B3-3: antes en core/auth/invitacion.ts)." },
-  { ruta: "src/server/carta-publica/sin-sesion.ts", motivo: "Carta pública: sin sesión no hay contexto; fija la empresa de la URL con `dbDeEmpresa`." },
+  { ruta: "src/server/carta-publica/sin-sesion.ts", motivo: "Carta pública: sin sesión no hay contexto; fija la empresa de la URL con `dbDeEmpresa` y, para leer una sucursal, abre una base de SOLO LECTURA en la que resolvió el slug (M.3-A7)." },
   { ruta: "src/server/actions/auth/empresa-activa.ts", motivo: "Cambio de empresa activa: valida las pertenencias del usuario con `baseDeEmpresa` antes de escribir la cookie." },
   { ruta: "src/app/api/cron/sincronizar-dolar/route.ts", motivo: "Cron sin sesión (autorizado por CRON_SECRET): pide la base con `baseDelContexto()`." },
   { ruta: "src/app/api/cron/sincronizar-ipc/route.ts", motivo: "Cron sin sesión (autorizado por CRON_SECRET): pide la base con `baseDelContexto()`." },
@@ -357,6 +359,7 @@ const ACCIONES_CON_CASO_DE_USO = [
 
 module.exports = {
   "core-sin-react-next": CORE_CON_REACT_NEXT,
+  "sesion-capa": SESION_CON_NEXT,
   "ui-sin-prisma": PENDIENTES_DE_MIGRAR,
   "db-solo-desde-auth-y-carta-publica": IMPORTADORES_DE_DB,
   "base-solo-desde-lista": IMPORTADORES_DE_BASE,

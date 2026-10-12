@@ -46,6 +46,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         tokenDeSesionAbierta: tokenAbierto,
         tokenDeInvitacion,
         cuenta: account ? { ...account, providerAccountId: account.providerAccountId } : null,
+        ahora: new Date(),
       });
     },
     // Kill-switch en vivo: con estrategia 'database', esto corre en CADA

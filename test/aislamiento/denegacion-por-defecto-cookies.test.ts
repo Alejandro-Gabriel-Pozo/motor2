@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { prismaAdmin } from "../setup/test-db";
 import { __limpiarCookiesDeTest, __setCookieDeTestParaEmpresa, __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { obtenerContextoUsuario } from "../../src/core/auth/contexto";
+import { obtenerContextoUsuario } from "../../src/server/sesion/contexto";
 import { listarProveedores } from "../../src/server/actions/catalogo/proveedores";
 import { listarSeccionesParaPanel, crearSeccion } from "../../src/server/actions/movimientos/secciones";
 import { limpiarMundo, sembrarMundo, type Mundo } from "./denegacion/mundo";

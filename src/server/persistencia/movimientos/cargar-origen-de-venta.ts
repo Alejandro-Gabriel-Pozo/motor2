@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import { obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
 import { whereSeccionHabitualVigente } from "@/core/stock/public";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
@@ -12,7 +13,7 @@ import type { DatosDeOrigen, OrigenPreparado, OrigenVenta } from "@/core/movimie
  *
  * Dos modos (`OrigenVenta`):
  * - `seccion` (venta de mostrador): la sección la elige una persona; se valida que sea de la sucursal («No se encontró la sección.»,
- *   como siempre) y es la única candidata (habitual de todo = ella, sin respaldos).
+ *   como siempre) y que no esté dada de baja (P17: no se vende desde ella; texto único `mensajeSeccionDesactivada`) y es la única candidata (habitual de todo = ella, sin respaldos).
  * - `automatico` (cierre de cuenta del POS): candidatas = las secciones activas de la sucursal; de RESPALDO, solo las marcadas
  *   `sirveDeRespaldoEnVentas` (default true: todas). Cada PV prefiere su sección HABITUAL (`SeccionHabitualProducto`), solo si apunta a
  *   una sección ACTIVA de ESTA sucursal — y se usa aunque no sirva de respaldo (la preferencia explícita manda). Si no hay ninguna activa,
@@ -28,6 +29,9 @@ export async function prepararOrigen(tx: Prisma.TransactionClient, sucursalId: s
     // Fase 6 (auditoría de seguridad/contratos): conPermiso no valida que la sección sea de ESTA sucursal, solo el permiso de quien llama.
     const seccion = await obtenerSeccionPropia(origen.seccionId, sucursalId, tx);
     if (!seccion) return { ok: false, mensaje: "No se encontró la sección." };
+    // P17 (decisión del dueño, 2026-10-11): no se vende desde una sección dada de baja (la venta de mostrador elige la sección; el cierre de cuenta del POS ya usa solo las activas). El llamador corre esto
+    // DESPUÉS de la clave I3: un reintento de una venta ya escrita devuelve el mensaje original.
+    if (!seccion.activa) return { ok: false, mensaje: mensajeSeccionDesactivada(seccion.nombre) };
     return { ok: true, tipo: "seccion", fija: { id: seccion.id, nombre: seccion.nombre } };
   }
   const activas = await tx.seccion.findMany({ where: { sucursalId, activa: true }, select: { id: true, nombre: true, sirveDeRespaldoEnVentas: true }, orderBy: { nombre: "asc" } });

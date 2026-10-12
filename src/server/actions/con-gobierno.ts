@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { InvarianteViolada, primeraInvarianteViolada } from "@/core/permisos/invariantes";
 import type { Db } from "@/lib/db-tipos";

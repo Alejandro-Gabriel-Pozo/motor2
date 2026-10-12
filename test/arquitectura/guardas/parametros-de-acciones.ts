@@ -16,7 +16,7 @@ const miembrosDe = (members: ts.NodeArray<ts.TypeElement>): Map<string, ts.TypeN
   return salida;
 };
 
-/** Índice `nombre del tipo → sus miembros` de las fuentes dadas (texto de cada archivo). Una `interface` o un `type X = { … }`; las intersecciones suman los miembros de cada parte. */
+/** Índice `nombre del tipo → sus miembros` de las fuentes dadas (texto de cada archivo). Una `interface` o un `type X = { … }`; las intersecciones suman los miembros de cada parte; `Partial`/`Omit`/`Pick` de un tipo nombrado aportan los de ese tipo. */
 export function indiceDeMiembros(fuentes: Iterable<string>): IndiceDeMiembros {
   const indice = new Map<string, Map<string, ts.TypeNode>>();
   const alias: { nombre: string; tipo: ts.TypeNode }[] = [];
@@ -33,6 +33,8 @@ export function indiceDeMiembros(fuentes: Iterable<string>): IndiceDeMiembros {
     if (ts.isParenthesizedTypeNode(tipo)) return deUnTipo(tipo.type);
     if (ts.isIntersectionTypeNode(tipo)) return new Map(tipo.types.flatMap((t) => [...deUnTipo(t)]));
     if (ts.isTypeReferenceNode(tipo) && indice.has(tipo.typeName.getText())) return new Map(indice.get(tipo.typeName.getText())!);
+    // `Partial<X>`, `Omit<X, …>`, `Pick<X, …>`…: los miembros de X (M.2-A4: `DatosProductoEdicion`). Sobre-aproxima (no quita las claves de `Omit` ni se queda solo con las de `Pick`): un guardián que ve de más no deja pasar nada.
+    if (ts.isTypeReferenceNode(tipo) && /^(Partial|Required|Readonly|Pick|Omit)$/.test(tipo.typeName.getText()) && tipo.typeArguments?.[0]) return deUnTipo(tipo.typeArguments[0]);
     return new Map();
   };
   for (const { nombre, tipo } of alias) {

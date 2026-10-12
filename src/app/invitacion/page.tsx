@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/lib/auth";
-import { getUsuarioActual } from "@/core/auth/session";
+import { getUsuarioActual } from "@/server/sesion/session";
 import { claseDeInvitacion, nombreCookieInvitacion } from "@/core/auth/invitacion";
 import { accesosDeLaInvitacion, invitacionConSuBase } from "@/server/sesion/invitacion";
 import { MENSAJE_DEMASIADAS_APERTURAS_DE_INVITACION, origenDelPedido, origenSinCupoParaAbrirInvitacion } from "@/server/actions/limitador-anonimo";

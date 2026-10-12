@@ -1,11 +1,12 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { obtenerMiNivelPermiso, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermisoEnAlgunaSucursal, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { contarSucursales } from "@/server/consultas/catalogo/productos";
 import { ProductoForm } from "../producto-form";
 import { cargarOpcionesFormularioProducto } from "../opciones-formulario";
+import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 
 /** Alta de un producto nuevo. Al guardar, lleva a la ficha del producto creado. */
 export default async function NuevoProductoPage() {
@@ -22,9 +23,12 @@ export default async function NuevoProductoPage() {
   if (!gateAlta.ok) return <p className="text-red-600">{gateAlta.mensaje}</p>;
 
   const [{ unidades, insumos, categorias, proveedores, puedeCrear }, cantidadSucursales] = await Promise.all([cargarOpcionesFormularioProducto(ctx), contarSucursales(ctx.db)]);
-  // S-12 (D8 del dueño): crear un producto en consignación es fijar su costo (proveedor y precio): solo con `pagar_consignante` EDITAR en la sucursal activa. Sin la clave el formulario no
+  // S-12 (D8 del dueño): crear un producto en consignación es fijar su costo (proveedor y precio): solo con `pagar_consignante` EDITAR en alguna de sus sucursales de la empresa (P20, D23: no importa cuál esté activa). Sin la clave el formulario no
   // ofrece la consignación ni manda la lista de proveedores del selector; el servidor la rechaza igual (`darDeAltaProducto`).
-  const { editar: puedeGestionarConsignacion } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
+  const { editar: puedeGestionarConsignacion } = await obtenerMiNivelPermisoEnAlgunaSucursal(ctx, "pagar_consignante");
+  // M.2 (P6, D-2 del dueño): sin `producto_campos_sensibles` el alta no puede traer precio, factor distinto de 1 ni unidad de compra; el formulario los muestra en solo lectura (precio 0, factor 1, sin unidad de
+  // compra) y el servidor rechaza igual cualquier otra cosa (`darDeAltaProducto`).
+  const puedeEditarCamposSensibles = await puedeEditarCamposSensiblesDelProducto(ctx);
 
   return (
     <div className="max-w-xl">
@@ -39,6 +43,7 @@ export default async function NuevoProductoPage() {
         proveedoresIniciales={puedeGestionarConsignacion ? proveedores : []}
         puedeCrear={puedeCrear}
         puedeGestionarConsignacion={puedeGestionarConsignacion}
+        puedeEditarCamposSensibles={puedeEditarCamposSensibles}
         cantidadSucursales={cantidadSucursales}
         nombreSucursalActual={ctx.sucursalNombre}
       />

@@ -175,6 +175,12 @@ describe("mensajeCompraAnulada / descripcionAuditoriaAnulacion", () => {
     expect(descripcionAuditoriaAnulacion(fecha, "Molino SA", null)).toBe("Compra del 2026-08-10 a Molino SA: anulación");
     expect(descripcionAuditoriaAnulacion(fecha, null, null)).toBe("Compra del 2026-08-10: anulación");
   });
+
+  it("P1 paso 7: el día es el argentino — una compra de las 22:30 argentinas del 10/8 (01:30Z del 11/8) es del 10/8, y la del 31/12 a las 23:59:59 también", () => {
+    expect(descripcionAuditoriaAnulacion(new Date("2026-08-11T01:30:00Z"), "Molino SA", "A-0001")).toBe("Compra del 2026-08-10 a Molino SA, factura A-0001: anulación");
+    expect(descripcionAuditoriaAnulacion(new Date("2027-01-01T02:59:59Z"), null, null)).toBe("Compra del 2026-12-31: anulación");
+    expect(descripcionAuditoriaAnulacion(new Date("2026-08-11T03:30:00Z"), null, null), "las 00:30 argentinas ya son del 11/8").toBe("Compra del 2026-08-11: anulación");
+  });
 });
 
 /** S-02 (O.51): además del bucket del lote, el saldo TOTAL del (producto, sección) tiene que cubrir lo comprado. */

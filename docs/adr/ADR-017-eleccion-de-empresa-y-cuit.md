@@ -15,7 +15,7 @@ lado: el proveedor lo guardaba como texto libre.
 
 ### 1. Situación de acceso con estados (E1)
 
-`obtenerSituacionDeAcceso()` (`core/auth/contexto.ts`, con `cache()`) devuelve un estado: `SIN_SESION`, `CON_EMPRESA` (con el contexto completo),
+`obtenerSituacionDeAcceso()` (`server/sesion/contexto.ts`, con `cache()`) devuelve un estado: `SIN_SESION`, `CON_EMPRESA` (con el contexto completo),
 `ELEGIR_EMPRESA`, `EMPRESA_SUSPENDIDA` o `SIN_ACCESO`. `obtenerContextoUsuario()` solo devuelve contexto con `CON_EMPRESA`: **falla cerrado**, ninguna
 acción ni lectura opera en una empresa «por defecto».
 

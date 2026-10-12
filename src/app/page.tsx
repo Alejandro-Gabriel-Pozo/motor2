@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { pantallaDeInicio } from "@/server/acceso/menu";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 

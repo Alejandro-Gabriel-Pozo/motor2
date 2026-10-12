@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { cargarClasificacionNoComestibles, obtenerCostoActualPorMP } from "@/server/lecturas/reportes/comun";
-import { redondearCantidad, bandaDeRuidoDeLote, calcularCantidadEstimadaNeta, calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, compararPorImpacto, impactoDelDesvio, motivoSinEstimacion as calcularMotivoSinEstimacion, motivoSinEstimacionConteo as calcularMotivoSinEstimacionConteo, rotularLineaDeReceta, anclasValidasEnVentana, clavePar, consumoRealDelTramo, elegirAnclas, finDelDiaUtc, limitesDelTramo, type CostoMP, type Anclas, type CandidatoAncla, type MetodoRendimiento, type MovimientoParaConciliar } from "@/core/reportes/public";
-import { ZONA_UTC, inicioDelDiaDe, rangoDeDias } from "@/core/tiempo/zona-horaria";
+import { redondearCantidad, bandaDeRuidoDeLote, calcularCantidadEstimadaNeta, calcularCantidadTeoricaBruta, calcularDesviacionPorcentaje, compararPorImpacto, impactoDelDesvio, motivoSinEstimacion as calcularMotivoSinEstimacion, motivoSinEstimacionConteo as calcularMotivoSinEstimacionConteo, rotularLineaDeReceta, anclasValidasEnVentana, clavePar, consumoRealDelTramo, elegirAnclas, limitesDelTramo, type CostoMP, type Anclas, type CandidatoAncla, type MetodoRendimiento, type MovimientoParaConciliar } from "@/core/reportes/public";
+import { ZONA_ARGENTINA, finDelDiaDe, inicioDelDiaDe, rangoDeDias } from "@/core/tiempo/zona-horaria";
 import type { Db } from "@/lib/db-tipos";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
 import { whereDisponibleEn, alcanceDeSucursal } from "@/core/catalogo/public";
@@ -101,9 +101,9 @@ async function cargarStockAperturaYCierreDePools(sucursalId: string, pools: read
   return resultado;
 }
 
-/** El día calendario (UTC, D3) de `fecha` — medianoche, para agrupar Conteo Físico por día sin importar la hora exacta a la que se registró. */
-function diaUtc(fecha: Date): Date {
-  return inicioDelDiaDe(fecha, ZONA_UTC);
+/** El día calendario de `fecha` en la zona de la empresa (P1; antes UTC, D3) — su inicio, para agrupar Conteo Físico por día sin importar la hora exacta a la que se registró. */
+function diaDe(fecha: Date, zona: string): Date {
+  return inicioDelDiaDe(fecha, zona);
 }
 
 /**
@@ -121,9 +121,9 @@ function diaUtc(fecha: Date): Date {
  * una consulta, y el saldo de cada (producto, sección) al cierre de cada día con DOS lecturas sea cual sea la cantidad de días — el saldo acumulado hasta el
  * cierre del primer día (`groupBy`) y los movimientos entre ese cierre y el del último día (`findMany`), que se van sumando en orden de fecha (en `Decimal`,
  * exacto como el `_sum`) para sacar la foto de cada día. Mismo criterio que el `groupBy` de antes: un par cuenta si su saldo al cierre del día (`fecha <=
- * finDelDiaUtc(día)`) es ≠ 0.
+ * finDelDiaDe(día, zona)`) es ≠ 0.
  */
-async function cargarCandidatosAnclaDePools(sucursalId: string, pools: readonly Pool[], desde: Date, hasta: Date, db: Db): Promise<Map<string, CandidatoAncla[]>> {
+async function cargarCandidatosAnclaDePools(sucursalId: string, pools: readonly Pool[], desde: Date, hasta: Date, db: Db, zona: string): Promise<Map<string, CandidatoAncla[]>> {
   const resultado = new Map<string, CandidatoAncla[]>(pools.map((p) => [p.clave, []]));
   const productoIds = unionDeProductos(pools.map((p) => p.productoIds));
   if (productoIds.length === 0) return resultado;
@@ -145,7 +145,7 @@ async function cargarCandidatosAnclaDePools(sucursalId: string, pools: readonly 
     const diaPorClave = new Map<string, Date>();
     const paresContadosPorDia = new Map<string, Set<string>>();
     for (const c of propios) {
-      const dia = diaUtc(c.fecha);
+      const dia = diaDe(c.fecha, zona);
       const clave = dia.toISOString();
       diaPorClave.set(clave, dia);
       if (!paresContadosPorDia.has(clave)) paresContadosPorDia.set(clave, new Set());
@@ -157,7 +157,7 @@ async function cargarCandidatosAnclaDePools(sucursalId: string, pools: readonly 
   }
 
   const dias = Array.from(todosLosDias.values()).sort((a, b) => a.getTime() - b.getTime());
-  const cortes = dias.map((d) => finDelDiaUtc(d));
+  const cortes = dias.map((d) => finDelDiaDe(d, zona));
   const primerCorte = cortes[0];
   const ultimoCorte = cortes[cortes.length - 1];
   const ids = Array.from(productosConConteo);
@@ -281,8 +281,8 @@ interface TramosCargados {
  * `limitesDelTramo` (excluye el día de la ancla-desde, incluye el de la ancla-hasta) y los mismos filtros de proceso y anuladas que tenía su consulta propia.
  * Sin tramos no consulta.
  */
-async function cargarTramos(sucursalId: string, pedidos: readonly PedidoDeTramos[], db: Db): Promise<TramosCargados> {
-  const limites = pedidos.flatMap((p) => p.tramos.map((t) => limitesDelTramo(t)));
+async function cargarTramos(sucursalId: string, pedidos: readonly PedidoDeTramos[], db: Db, zona: string): Promise<TramosCargados> {
+  const limites = pedidos.flatMap((p) => p.tramos.map((t) => limitesDelTramo(t, zona)));
   if (limites.length === 0) return { movimientos: () => [], vendido: () => 0 };
   const desde = new Date(limites.reduce((min, l) => Math.min(min, l.desde.getTime()), Infinity));
   const hasta = new Date(limites.reduce((max, l) => Math.max(max, l.hasta.getTime()), -Infinity));
@@ -308,7 +308,7 @@ async function cargarTramos(sucursalId: string, pedidos: readonly PedidoDeTramos
   const movimientosDe = indexarPorProducto(movimientos);
   const ventasDe = indexarPorProducto(ventas);
   const dentroDelTramo = (fecha: Date, anclas: Anclas) => {
-    const l = limitesDelTramo(anclas);
+    const l = limitesDelTramo(anclas, zona);
     return fecha.getTime() > l.desde.getTime() && fecha.getTime() <= l.hasta.getTime();
   };
   return {
@@ -347,12 +347,9 @@ function costoUnitarioDePool(productoIds: string[], costos: Map<string, CostoMP>
   return mejor?.precio ?? null;
 }
 
-function rangoUtc(desdeIn: Date, hastaIn: Date): { desde: Date; hasta: Date } {
-  return rangoDeDias(desdeIn, hastaIn, ZONA_UTC);
-}
-
 const MS_POR_SEMANA = 7 * 24 * 60 * 60 * 1000;
 
+/** Las semanas se cuentan desde el epoch en UTC (no en la zona de la empresa): pendiente documentado de P1 (O.252), no cambia ningún corte de día. */
 function claveSemana(fecha: Date): number {
   return Math.floor(fecha.getTime() / MS_POR_SEMANA);
 }
@@ -470,10 +467,10 @@ interface RendimientoDeRecetas {
  * El reporte de rendimiento de recetas entero (las dos fases) de UNA sucursal: construye los pools y lee el costo de reposición UNA sola vez para las dos
  * tablas. Mismo resultado que `calcularRendimientoRecetasSimples` + `calcularRendimientoRecetasCompartidas` por separado (las mismas filas, en el mismo orden).
  */
-export async function calcularRendimientoRecetas(sucursalId: string, desdeIn: Date, hastaIn: Date, db: Db): Promise<RendimientoDeRecetas> {
-  const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
+export async function calcularRendimientoRecetas(sucursalId: string, desdeIn: Date, hastaIn: Date, db: Db, zona: string = ZONA_ARGENTINA): Promise<RendimientoDeRecetas> {
+  const { desde, hasta } = rangoDeDias(desdeIn, hastaIn, zona);
   const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
-  const [simples, compartidas] = await Promise.all([simplesDesde(sucursalId, pools, costos, desde, hasta, db), compartidasDesde(sucursalId, pools, costos, desde, hasta, db)]);
+  const [simples, compartidas] = await Promise.all([simplesDesde(sucursalId, pools, costos, desde, hasta, db, zona), compartidasDesde(sucursalId, pools, costos, desde, hasta, db, zona)]);
   return { simples, compartidas };
 }
 
@@ -493,15 +490,16 @@ export async function calcularRendimientoRecetasSimples(
   sucursalId: string,
   desdeIn: Date,
   hastaIn: Date,
-  db: Db
+  db: Db,
+  zona: string = ZONA_ARGENTINA
 ): Promise<FilaRendimientoSimple[]> {
-  const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
+  const { desde, hasta } = rangoDeDias(desdeIn, hastaIn, zona);
   const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
-  return simplesDesde(sucursalId, pools, costos, desde, hasta, db);
+  return simplesDesde(sucursalId, pools, costos, desde, hasta, db, zona);
 }
 
-/** El cuerpo de la Fase 1 con los pools y el costo ya leídos y el rango ya expandido (`rangoUtc`). */
-async function simplesDesde(sucursalId: string, pools: readonly Pool[], costos: Map<string, CostoMP>, desde: Date, hasta: Date, db: Db): Promise<FilaRendimientoSimple[]> {
+/** El cuerpo de la Fase 1 con los pools y el costo ya leídos y el rango ya expandido (`rangoDeDias`). */
+async function simplesDesde(sucursalId: string, pools: readonly Pool[], costos: Map<string, CostoMP>, desde: Date, hasta: Date, db: Db, zona: string): Promise<FilaRendimientoSimple[]> {
   const filas: FilaRendimientoSimple[] = [];
   const simples = pools.filter((pool) => pool.usos.length === 1); // 2+ usos es la Fase 2 — ver calcularRendimientoRecetasCompartidas.
 
@@ -510,7 +508,7 @@ async function simplesDesde(sucursalId: string, pools: readonly Pool[], costos: 
     cargarStockAperturaYCierreDePools(sucursalId, simples, desde, hasta, db),
     cargarEntradasDeLaVentana(sucursalId, unionDeProductos(simples.map((p) => p.productoIds)), desde, hasta, db),
     cargarVentasDeLaVentana(sucursalId, simples.map((p) => p.usos[0].pvProductoId), desde, hasta, db),
-    cargarCandidatosAnclaDePools(sucursalId, simples, desde, hasta, db),
+    cargarCandidatosAnclaDePools(sucursalId, simples, desde, hasta, db, zona),
   ]);
   // Las dos anclas de cada pool (caso simple, Fase 1) — `null` sin dos días que califiquen dentro de `[desde, hasta]`: el pool cae al método COMPRAS (D4).
   const anclasPorPool = new Map(simples.map((pool) => [pool.clave, elegirAnclas(candidatosPorPool.get(pool.clave) ?? [], desde, hasta)]));
@@ -520,7 +518,8 @@ async function simplesDesde(sucursalId: string, pools: readonly Pool[], costos: 
       const anclas = anclasPorPool.get(pool.clave);
       return anclas ? [{ productoIds: pool.productoIds, platoIds: [pool.usos[0].pvProductoId], tramos: [anclas] }] : [];
     }),
-    db
+    db,
+    zona
   );
 
   for (const pool of simples) {
@@ -681,15 +680,16 @@ export async function calcularRendimientoRecetasCompartidas(
   sucursalId: string,
   desdeIn: Date,
   hastaIn: Date,
-  db: Db
+  db: Db,
+  zona: string = ZONA_ARGENTINA
 ): Promise<FilaRendimientoCompartido[]> {
-  const { desde, hasta } = rangoUtc(desdeIn, hastaIn);
+  const { desde, hasta } = rangoDeDias(desdeIn, hastaIn, zona);
   const [pools, costos] = await Promise.all([construirPools(sucursalId, db), obtenerCostoActualPorMP(sucursalId, db)]);
-  return compartidasDesde(sucursalId, pools, costos, desde, hasta, db);
+  return compartidasDesde(sucursalId, pools, costos, desde, hasta, db, zona);
 }
 
-/** El cuerpo de la Fase 2 con los pools y el costo ya leídos y el rango ya expandido (`rangoUtc`). */
-async function compartidasDesde(sucursalId: string, pools: readonly Pool[], costos: Map<string, CostoMP>, desde: Date, hasta: Date, db: Db): Promise<FilaRendimientoCompartido[]> {
+/** El cuerpo de la Fase 2 con los pools y el costo ya leídos y el rango ya expandido (`rangoDeDias`). */
+async function compartidasDesde(sucursalId: string, pools: readonly Pool[], costos: Map<string, CostoMP>, desde: Date, hasta: Date, db: Db, zona: string): Promise<FilaRendimientoCompartido[]> {
   const filas: FilaRendimientoCompartido[] = [];
   const compartidos = pools.filter((pool) => pool.usos.length >= 2); // un solo uso es la Fase 1 — ver calcularRendimientoRecetasSimples.
 
@@ -700,7 +700,7 @@ async function compartidasDesde(sucursalId: string, pools: readonly Pool[], cost
     cargarStockAperturaYCierreDePools(sucursalId, compartidos, desde, hasta, db),
     cargarEntradasDeLaVentana(sucursalId, unionDeProductos(compartidos.map((p) => p.productoIds)), desde, hasta, db),
     cargarVentasDeLaVentana(sucursalId, compartidos.flatMap((p) => p.usos.map((uso) => uso.pvProductoId)), desde, hasta, db),
-    cargarCandidatosAnclaDePools(sucursalId, compartidos, desde, hasta, db),
+    cargarCandidatosAnclaDePools(sucursalId, compartidos, desde, hasta, db, zona),
   ]);
   const intervalosPorPool = new Map(compartidos.map((pool) => [pool.clave, intervalosDelPool(pool, candidatosPorPool.get(pool.clave) ?? [], desde, hasta)]));
   const tramos = await cargarTramos(
@@ -709,7 +709,8 @@ async function compartidasDesde(sucursalId: string, pools: readonly Pool[], cost
       const intervalos = intervalosPorPool.get(pool.clave);
       return intervalos ? [{ productoIds: pool.productoIds, platoIds: pool.usos.map((uso) => uso.pvProductoId), tramos: intervalos }] : [];
     }),
-    db
+    db,
+    zona
   );
 
   for (const pool of compartidos) {

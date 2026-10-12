@@ -1,5 +1,5 @@
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { diasAtrasDeUrl } from "@/core/reportes/public";
 import { obtenerReporteVencimientosDatos } from "@/server/consultas/reportes/vencimientos";
@@ -20,7 +20,7 @@ export default async function VencimientosPage({ searchParams }: { searchParams:
   const dias = diasAtrasDeUrl(sp.dias, 7);
   // La hora se fija acá, en el borde (D.3a): el reporte la recibe por parámetro.
   const ahora = new Date();
-  const rep = await obtenerReporteVencimientosDatos(ctx.sucursalId, dias, ctx.db, ahora);
+  const rep = await obtenerReporteVencimientosDatos(ctx.sucursalId, dias, ctx.db, ahora, ctx.empresaZonaHoraria);
 
   return (
     <div className="flex flex-col gap-6">

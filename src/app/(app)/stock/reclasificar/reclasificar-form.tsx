@@ -8,6 +8,7 @@ import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
+import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 
 interface FilaDestino {
   seccionId: string;
@@ -17,8 +18,9 @@ interface FilaDestino {
 
 const DESTINO_VACIO: FilaDestino = { seccionId: "", loteVencimiento: "", cantidad: "" };
 
+// El día de hoy en Argentina (no en UTC: desde las 21:00 locales UTC ya es mañana). Esta pantalla no recibe la zona de la empresa, así que usa la constante.
 function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
+  return diaDeCalendario(new Date(), ZONA_ARGENTINA);
 }
 
 export function ReclasificarForm({ secciones }: { secciones: { id: string; nombre: string }[] }) {
@@ -104,7 +106,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
         seccionOrigenId,
         loteOrigen: loteOrigen ? new Date(loteOrigen) : null,
         destinos: destinosValidos,
-        fecha: new Date(fecha),
+        fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
         detalle: detalle || undefined,
         claveIdempotencia,
       });

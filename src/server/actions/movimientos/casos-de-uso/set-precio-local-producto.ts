@@ -1,5 +1,5 @@
 import "server-only";
-import type { ContextoUsuario } from "@/core/auth/contexto";
+import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoSetPrecioLocalProducto, ResultadoSetPrecioLocalProducto } from "@/core/features/movimientos/precio-local.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { guardarPrecioLocalEnTx } from "./guardar-precio-local-en-tx";

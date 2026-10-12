@@ -65,8 +65,9 @@ Orden por base (el dueño; el asistente de desarrollo no ve credenciales ni corr
 
 1. Snapshot de la rama de Neon destino y ensayo de las dos migraciones en una rama descartable.
 2. Crear el rol `motor2_plataforma` en ESA rama, **con psql como dueño** (`neondb_owner`), nunca desde la consola de Neon (nacería con `BYPASSRLS`):
-   `psql <conexión del dueño> -v clave="<clave>" -f scripts/operaciones/crear-rol-motor2-plataforma.sql`. Los roles son por rama: la rama de producción de
-   cada despliegue necesita el suyo. Es idempotente.
+   `psql <conexión del dueño> -1 -v clave="<clave>" -f scripts/operaciones/crear-rol-motor2-plataforma.sql` (`-1` o el ejecutor `scripts/operaciones/ejecutar-sql-de-psql.mjs`: una sola
+   transacción). La `clave` solo hace falta si el rol NO existe (lo crea) o si querés CAMBIARLE la contraseña a propósito: con el rol ya creado, correrlo SIN `-v clave` no toca el rol
+   (solo verifica que siga siendo el de la consola) y reaplica los grants. Los roles son por rama: la rama de producción de cada despliegue necesita el suyo. Es idempotente.
 3. `... migrate status` y `npm run migrar:aprobar` (ver «Flujo aprobado» arriba). Si el rol ya existía, las migraciones le dan el permiso al crear las tablas.
 4. Archivo local **fuera del repositorio** (`.env.plataforma.<despliegue>`, gitignored) con `PLATAFORMA_DATABASE_URL` (usuario `motor2_plataforma`),
    `PLATAFORMA_SECRETO_CODIGOS` (`openssl rand -base64 48`) y `PLATAFORMA_CLAVE_TOTP` (`openssl rand -base64 32`). Los mismos tres valores van en el proyecto de
@@ -93,7 +94,7 @@ Orden por base (el dueño; primero zuluhub, después stockhneuquen):
 2. Verificar en la rama: `SELECT policyname FROM pg_policies WHERE tablename = 'Invitacion'` (tres políticas: `aislamiento_empresa`, `escritura_plataforma`, `lectura_por_token`),
    `has_table_privilege` de `motor2_app` (SELECT sí; INSERT y DELETE no) y de `motor2_plataforma` (SELECT, INSERT, UPDATE; DELETE no), y que existan los dos triggers `Invitacion_proteger_*`.
 3. Aplicar en la base real: `node scripts/operaciones/con-env.mjs .env.vercel.<despliegue> -- npm run migrar:aprobar`.
-4. **Volver a correr** `scripts/operaciones/crear-rol-motor2-plataforma.sql` con psql como dueño (idempotente): ahora también le da a `motor2_plataforma` permiso sobre `Invitacion`.
+4. **Volver a correr** `scripts/operaciones/crear-rol-motor2-plataforma.sql` con psql como dueño, con `-1` y **sin `-v clave`** (idempotente; con clave le cambiaría la contraseña a la consola): ahora también le da a `motor2_plataforma` permiso sobre `Invitacion`.
 5. Borrar la rama de ensayo.
 6. Deploy de la aplicación. Después, en el proyecto de Vercel de la consola: la variable nueva `PLATAFORMA_URL_APP` (la dirección pública de la app de empresas de ESA
    instalación, `https://…` sin ruta) y el canal `avisos` de mails con el dominio verificado; deploy de la consola.
@@ -168,6 +169,83 @@ y vigilar Sentry 48 horas (errores de `signIn`, `invitacion-sin-auth-url`, corre
 
 **Soporte — cuenta de Google rehecha (`/login?aviso=cuenta-distinta`):** la persona recuperó su email con otra cuenta de Google (otro identificador). Verificar su identidad por un canal propio; como dueño, borrar su `Account` vieja
 (`DELETE FROM "Account" WHERE "userId" = '…' AND provider = 'google'`) y mandarle «Invitar a vincular» desde Administración → Usuarios.
+
+## Paquete 1 de migraciones: M.2 + P3 + RLS por sucursal (M.3, ADR-028), un solo despliegue en `stockhneuquen`
+
+> Redactado el 2026-10-11 (reemplaza el flujo «código primero, por grupo y en dos bases» del 2026-10-10: ya no hay ZuluHub ni usuarios, la instalación es una sola y la regla es un OK por paquete). **Mientras el dueño no dé la autorización expresa, ninguna de estas
+> migraciones se aplicó a ninguna base de Neon**; el asistente de desarrollo no corre nada de esto contra Neon sin ese OK (lecturas incluidas).
+
+> **E8 viaja con este PR (auditoría independiente del paquete, B-1).** La migración `20261012120000_invitacion_de_usuario` (E8, ADR-024) está en el repo desde antes de este paquete y, según `docs/checkpoint-2026-10-05-plataforma.md`, **no estaba aplicada en `stockhneuquen`**; el código de este PR
+> (que apaga `allowDangerousEmailAccountLinking` y usa las tablas de invitación) sale a producción con la fusión a `main`. Un solo `migrate deploy` aplica **todo lo pendiente**: por eso lo que se ensaya y se aplica es **8 migraciones del paquete + E8 = 9**, si `migrate status` confirma que E8 falta
+> (se mide en «Antes», punto 3). Si E8 ya estuviera aplicada, son 8. Los requisitos de E8 pasan a ser requisitos de este despliegue (sección «E8 dentro del paquete», más abajo).
+
+**Qué lleva el paquete (8 migraciones propias, cada una con su `down.sql`; más E8 si está pendiente):**
+1. `20261013120000_permiso_producto_campos_sensibles` (M.2): solo datos. Alta de la clave `producto_campos_sensibles` y copia de los permisos de quien hoy edita `producto_editar` o `producto_presentaciones`. **Sin ella nadie podría cambiar un precio, un factor ni una unidad con el código nuevo.**
+2. `20261014100000_i3_agregado_de_cuenta` (P3): tabla nueva `AgregadoDeCuenta` (el comprobante de idempotencia del «agregar al pedido» del salón; solo se agrega: SELECT e INSERT para `motor2_app`).
+3. `20261014110000_rls_sucursal_b1_funciones`: `app_sucursales_lectura()` y `app_sucursales_escritura()`.
+4. a 8. `..._b2_configuracion`, `..._b3_carta`, `..._b4_punto_de_venta` (incluye `AgregadoDeCuenta`), `..._b5_stock_y_dinero`, `..._b6_receta_y_auditoria`: 4 políticas RESTRICTIVE `TO motor2_app` por tabla, 32 tablas, 128 políticas. El SQL de B1 a B6 sale de `test/setup/politicas-de-alcance-de-sucursal.ts`
+   (nadie lo escribe a mano) y el guardián B7 (`test/arquitectura/migraciones-de-alcance-de-sucursal.test.ts`) exige que cada archivo sea igual a la salida del generador.
+
+**Fuera del paquete (a propósito):** el candado del Kardex y `SaldoStock` (van con M2, paquete 3), el índice de C25 y los índices del Kardex (se miden con volumen real).
+
+### Antes (solo lectura; cada lectura sobre Neon necesita el OK)
+
+1. **El usuario de `DATABASE_URL` de `stockhneuquen` (Production) es `motor2_app`.** Con la migración B1 el control del rol de ejecución (`EXIGIR_ROL_DE_LA_APP`, `src/server/sesion/base.ts`) pasa de aviso a **bloqueante**: la app no opera con otro rol. En Vercel el valor está oculto (variable sensible): se confirma
+   con `scripts/operaciones/cargar-env-vercel.sh` o contra la propia base (`SELECT usename FROM pg_stat_activity` desde una conexión viva de la app).
+2. **`MOTOR2_MIGRAR_EN_BUILD` ausente** en `stockhneuquen` y en `motor2-demo` (verificado en Vercel el 2026-10-11: no existe en ninguno). Tiene que seguir así: con `=0` el build no mira la base y se podría publicar código nuevo sobre una base sin migrar; con `=1` la migración corre dentro del build y, si el build falla después, queda el código viejo sobre la base nueva sin lugar para los post-chequeos.
+3. Estado de la base, como dueño: `_prisma_migrations` sin filas a medias, `npx prisma migrate status` (tienen que faltar **las 8 del paquete y, probablemente, E8 `20261012120000_invitacion_de_usuario`: 9 en total**; anotar la lista exacta que muestra y no seguir si falta alguna anterior que no se conoce), conteos de las tablas principales, las consultas de coherencia de datos y los chequeos del rol de abajo (todos en 0, vacíos o `false`, según se indica).
+4. Coherencia de datos: una fila visible con un padre invisible rompe el `include` que la lee (ADR-028, limitaciones).
+   - movimientos cuya sección es de otra sucursal que su operación:
+     `SELECT count(*) FROM "MovimientoStock" m JOIN "Seccion" s ON s."id" = m."seccionId" JOIN "Operacion" o ON o."id" = m."operacionId" WHERE s."sucursalId" <> o."sucursalId";`
+   - ejemplares de ticket de una sucursal distinta a la de la mesa de su cuenta:
+     `SELECT count(*) FROM "EjemplarTicket" e JOIN "Cuenta" c ON c."id" = e."cuentaId" JOIN "Mesa" m ON m."id" = c."mesaId" WHERE e."sucursalId" <> m."sucursalId";`
+   - rendimientos locales de una sucursal sobre el ingrediente de una receta PROPIA de otra:
+     `SELECT count(*) FROM "RendimientoLocalIngrediente" r JOIN "RecetaIngrediente" i ON i."id" = r."recetaIngredienteId" JOIN "RecetaVersion" v ON v."id" = i."recetaVersionId" WHERE v."sucursalId" IS NOT NULL AND v."sucursalId" <> r."sucursalId";`
+   - (auditoría, I-1) conteos físicos de una sección de otra sucursal:
+     `SELECT count(*) FROM "ConteoFisico" c JOIN "Seccion" s ON s."id" = c."seccionId" WHERE s."sucursalId" <> c."sucursalId";`
+   - secciones habituales de producto de otra sucursal:
+     `SELECT count(*) FROM "SeccionHabitualProducto" h JOIN "Seccion" s ON s."id" = h."seccionId" WHERE s."sucursalId" <> h."sucursalId";`
+   - opciones de un ítem agrupado de la carta de otra sucursal:
+     `SELECT count(*) FROM "OpcionItemAgrupadoCarta" o JOIN "ItemAgrupadoCarta" i ON i."id" = o."itemAgrupadoCartaId" WHERE i."sucursalId" <> o."sucursalId";`
+   Las seis tienen que dar 0. (Las relaciones OPCIONALES hacia otra sucursal devuelven null y es lo esperado: `StockMinimoProducto.seccion`, `Operacion.seccionDestino`, `TraspasoSucursal.seccionOrigen/Destino` (D7) y `generoCarta`.)
+5. (auditoría, I-2) El rol `motor2_app` en Neon, como dueño (el control en tiempo de ejecución no ve la membresía en `neon_superuser` ni el TRUNCATE, que salta la RLS):
+   - `SELECT r.rolname FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.roleid JOIN pg_roles u ON u.oid = m.member WHERE u.rolname = 'motor2_app';` → **sin filas**.
+   - `SELECT has_schema_privilege('motor2_app', 'public', 'CREATE');` → **false**.
+   - `SELECT count(*) FROM information_schema.role_table_grants WHERE grantee = 'motor2_app' AND privilege_type = 'TRUNCATE';` → **0**.
+   - `SELECT count(*) FROM "Sucursal" WHERE id !~ '^[A-Za-z0-9_-]+$';` → **0** (un id de sucursal con otra forma hace fallar la base de cualquiera que la tenga: falla cerrado, pero lo deja sin acceso).
+   - `motor2_app` tiene que existir antes de `migrate deploy`: si no, el `CREATE POLICY` de B2 falla a mitad.
+6. (auditoría, M-9) `CREATE POLICY` toma un bloqueo sobre cada tabla mientras corre: con una conexión colgada, `migrate deploy` espera. Aplicar sin tráfico y, si se puede, con `lock_timeout` corto en la conexión del dueño (falla en vez de esperar sin fin; las migraciones son idempotentes por sus `down.sql`/`IF EXISTS`).
+
+### E8 dentro del paquete (si `migrate status` la muestra pendiente)
+
+Requisitos propios de E8 (`ADR-024`, sección «Invitación por usuario y sin enlace automático de cuentas» de este documento), que se suman a los del paquete:
+- `AUTH_URL` y `CORREO_AVISOS_*` configuradas en `stockhneuquen` antes de fusionar (sin ellas las invitaciones quedan «sin enviar»).
+- `npm run medir-precargados` y, después del despliegue, «Invitar a vincular» al precargado que no entró nunca con Google (con el enlace automático apagado, esa persona no puede entrar sin la invitación).
+- Orden: la consola «sirve antes y después de la migración», así que **migrar primero y fusionar después** cumple el orden de E8 aunque la consola y la app salgan juntas desde `main`; se confirma en el ensayo.
+- En el ensayo: `has_table_privilege('motor2_app', '"Invitacion"', 'INSERT')` sí y `'DELETE'` no; `InvitacionSucursal` con sus 2 triggers y su política; `motor2_plataforma` sin privilegios sobre `InvitacionSucursal`.
+- Reversa de E8: su `down.sql` borra las invitaciones de usuario y de vinculación (**destructivo**; contarlas antes) y exige volver atrás el código que las usa.
+### Ensayo y aplicación (el mismo día, con un solo OK)
+
+1. **Respaldo:** rama de Neon `respaldo-pre-paquete-1-AAAAMMDD` desde la rama por defecto (el plan gratuito guarda 6 horas de historia, por eso hace falta la rama).
+2. **Ensayo completo en la rama `ensayo-paquete-1`** (desde la misma rama por defecto), con las cadenas de conexión en archivos fuera del repo y `node scripts/operaciones/con-env.mjs <archivo> -- …`: `migrate deploy` de todo lo pendiente (las 8 del paquete, más E8 si estaba pendiente: 9; medir el tiempo y contar cuántas aplicó), chequeos de solo lectura (128 políticas, las dos funciones y `has_function_privilege('motor2_app', …, 'EXECUTE')`, la tabla nueva sin UPDATE ni DELETE, la clave de M.2 con la cantidad esperada de permisos),
+   escenario como `motor2_app` por el host `-pooler` (modo transacción: sin variables ve 0 filas; con alcance, solo las de su sucursal; un INSERT en una sucursal ajena da 42501), **subir / bajar / subir** (los `down.sql` en el orden de abajo, cada uno seguido de `prisma migrate resolve --rolled-back`), un humo con dos cuentas sintéticas y la práctica de la vuelta atrás total (restaurar desde el respaldo). Al terminar se borra la rama de ensayo.
+3. **Aplicación a la rama por defecto:** `node scripts/operaciones/con-env.mjs .env.vercel.stockhneuquen -- npm run migrar:aprobar`, post-chequeos de solo lectura, **fusión del PR a `main`** (autorización aparte: la consola de plataforma despliega sola en `main`, y `motor2-demo` también; su build va a fallar en `migrate status` y conserva el deploy anterior) y `vercel deploy --prod` de `stockhneuquen` (el repo no despliega solo: `git.deploymentEnabled: false`).
+4. **Ventana conocida:** entre la migración y la publicación (los minutos de un build) sigue publicado el código anterior al alcance, que fija solo `app.empresa_id`: las 32 tablas con política no devuelven filas y los INSERT dan 42501. No se pierde ni se corrompe ningún dato; sin usuarios es aceptable. Se avisa antes.
+5. **Humo en Producción sin escribir nada:** `/login` y `/carta/<slug>` de una sucursal; logs de Vercel y Sentry por 15 a 30 minutos (errores `42501` y de `include` hacia filas que no se ven). La rama de respaldo se conserva unos 7 días.
+
+### Reversa
+
+El orden importa: **primero la base y después el código.** Volver a un código anterior al alcance con las políticas puestas es una **caída total** (falla cerrado); el código nuevo sobre la base vieja rompe M.2 y P3.
+
+- **Solo políticas (B2 a B6):** el `down.sql` de cada grupo como dueño con `psql -1 -v ON_ERROR_STOP=1`, en orden inverso (B6, B5, B4, B3, B2) y después `prisma migrate resolve --rolled-back <migración>`. Con el código nuevo publicado, la app sigue andando (la RLS por empresa no se toca).
+- **B1 (las funciones) va última** de las de alcance: una política en uso impide borrar la función. Recién ahí el control del rol de ejecución puede volver a `false` (revertir el commit de B1).
+- **P3 y M.2 son DESTRUCTIVAS:** `down.sql` de P3 borra la tabla `AgregadoDeCuenta` (contar las filas antes); el de M.2 borra la clave `producto_campos_sensibles` y todo lo configurado sobre ella (guardar antes `SELECT * FROM "PermisoRol" WHERE "accionClave" = 'producto_campos_sensibles'`). Bajarlas exige volver atrás el código antes o a la vez.
+- **Vuelta atrás total:** restaurar la rama por defecto desde `respaldo-pre-paquete-1-…`, Instant Rollback de Vercel al deploy anterior y revertir la fusión en `main`.
+- Si una migración falla a mitad de `migrate deploy`: las anteriores quedan aplicadas, la fallida queda marcada (P3009 en el próximo deploy), las siguientes no corren, y el build falla en modo `verificar` sin publicar nada. Salida: su `down.sql` (seguro aunque haya quedado a medias, por los `IF EXISTS`), `migrate resolve --rolled-back` y corregir.
+
+### Qué NO está medido (ADR-028)
+
+El costo de las políticas con volumen (el riesgo está en las consultas de saldos e índices del Kardex; hoy hay 0 operaciones y 0 movimientos en `stockhneuquen`), el comportamiento contra el pooler de Neon en modo transacción, y las bases reales (nada se ensayó contra Neon). Las dos primeras se miden en el ensayo.
 
 ## Server Actions: clave de cifrado de los closures y versiones entre deploys
 

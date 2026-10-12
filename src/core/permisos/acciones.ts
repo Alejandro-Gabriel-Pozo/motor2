@@ -231,6 +231,10 @@ export const ACCIONES = [
   { clave: "pos_abrir_cuenta", modulo: "salon", descripcion: "Abrir la cuenta de una mesa y corregir sus comensales (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "pos_enviar_a_cocina", modulo: "salon", descripcion: "Enviar a cocina los ítems de una cuenta (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "pos_liberar_mesa", modulo: "salon", descripcion: "Liberar una mesa abierta que no tuvo consumo (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  // M.2 (clave fina, 2026-10-10): cambiar el precio de venta, el factor de conversión y las unidades de un producto, y definir el factor de una presentación de compra. Se SUMA a
+  // `producto_editar` y `producto_presentaciones` (no las reemplaza): solo se pide cuando el cambio toca uno de esos campos. Clase O (piso operario, semilla solo admin, delegable
+  // por configuración). La migración 20261013120000 se la copia a todo rol que hoy edita una de las dos claves, así que el día del deploy nadie pierde lo que ya podía hacer.
+  { clave: "producto_campos_sensibles", modulo: "catalogo_basico", descripcion: "Cambiar el precio de venta, el factor de conversión y las unidades de un producto, y definir el factor de sus presentaciones de compra", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
 ] as const satisfies readonly AccionSemilla[];
 
 export type AccionClave = (typeof ACCIONES)[number]["clave"];

@@ -1,4 +1,4 @@
-import type { EstadoTraspaso } from "@prisma/client";
+import type { EstadoTraspaso } from "@/core/datos/enumerados-del-esquema";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -50,7 +50,7 @@ export interface ComandoRechazarSolicitudTraspaso {
 /** Por qué no se pudo cambiar el estado: no existe, o el guard de transición (`LADO` / `ESTADO`, ver `ResultadoTransicionTraspaso`). */
 export type CodigoTransicionTraspaso = "NO_ENCONTRADO" | Extract<ResultadoTransicionTraspaso, { ok: false }>["motivo"];
 
-export type CodigoAprobarYEnviarTraspaso = CodigoTransicionTraspaso | "SECCION_NO_PROPIA" | "PRODUCTO_NO_TRANSFERIBLE" | "STOCK_INSUFICIENTE";
+export type CodigoAprobarYEnviarTraspaso = CodigoTransicionTraspaso | "SECCION_NO_PROPIA" | "SUCURSAL_INACTIVA" | "SUCURSAL_NO_DISPONIBLE" | "PRODUCTO_NO_TRANSFERIBLE" | "STOCK_INSUFICIENTE";
 
 /** `datos` de una aprobación: la Operación de SALIDA escrita y lo que salió de la sección de origen. */
 export interface DatosAprobarYEnviarTraspaso {
@@ -106,7 +106,7 @@ export interface DatosEntradaDeTraspaso {
   repetida: boolean;
 }
 
-export type CodigoAceptarTraspaso = CodigoTransicionTraspaso | "SECCION_NO_PROPIA" | "PRODUCTO_NO_TRANSFERIBLE" | "CONFLICTO_IDEMPOTENCIA";
+export type CodigoAceptarTraspaso = CodigoTransicionTraspaso | "SECCION_NO_PROPIA" | "SECCION_INACTIVA" | "PRODUCTO_NO_TRANSFERIBLE" | "CONFLICTO_IDEMPOTENCIA";
 export type ResultadoAceptarTraspaso = ResultadoCaso<DatosEntradaDeTraspaso, CodigoAceptarTraspaso>;
 
 /** `datos` de un rechazo de envío: todavía no toca stock (el reingreso lo confirma Origen aparte), solo cambia el estado. */
@@ -151,7 +151,7 @@ export interface ComandoCrearEnvioDirectoTraspaso {
 }
 
 /** Por qué no se pudo crear el traspaso (común a los dos sentidos). */
-export type CodigoCrearTraspaso = "MISMA_SUCURSAL" | "SUCURSAL_NO_DISPONIBLE" | "SECCION_NO_PROPIA" | "PRODUCTO_NO_TRANSFERIBLE" | "CANTIDAD_INVALIDA";
+export type CodigoCrearTraspaso = "MISMA_SUCURSAL" | "SUCURSAL_NO_DISPONIBLE" | "SECCION_NO_PROPIA" | "SECCION_INACTIVA" | "PRODUCTO_NO_TRANSFERIBLE" | "CANTIDAD_INVALIDA";
 
 /** `datos` de una creación: el traspaso nuevo y el nombre del producto (lo que la Server Action devuelve como `id`/`nombre`). */
 export interface DatosCreacionDeTraspaso {
@@ -168,4 +168,4 @@ export interface DatosEnvioDirectoDeTraspaso extends DatosCreacionDeTraspaso {
   cantidad: number;
 }
 
-export type ResultadoCrearEnvioDirectoTraspaso = ResultadoCaso<DatosEnvioDirectoDeTraspaso, CodigoCrearTraspaso | "STOCK_INSUFICIENTE">;
+export type ResultadoCrearEnvioDirectoTraspaso = ResultadoCaso<DatosEnvioDirectoDeTraspaso, CodigoCrearTraspaso | "SUCURSAL_INACTIVA" | "STOCK_INSUFICIENTE">;

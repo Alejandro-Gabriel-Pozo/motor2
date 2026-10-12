@@ -1,13 +1,32 @@
 import { Prisma } from "@prisma/client";
-import { ZONA_UTC, finDelDiaDe } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, rangoDeDias } from "@/core/tiempo/zona-horaria";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { alcanceDeSucursal } from "@/core/catalogo/public";
 import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
 import type { Db } from "@/lib/db-tipos";
+import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { redondearCantidad } from "@/core/reportes/public";
-import type { FilaBusquedaProducto, EventoHistorialProducto, FilaMovimientoHistorial, HistorialProducto, IngredienteRecetaVigente } from "@/core/reportes/public";
+import type { FilaBusquedaProducto, EventoHistorialProducto, HistorialProducto, IngredienteRecetaVigente } from "@/core/reportes/public";
+
+/** La fila del `$queryRaw` de movimientos de `obtenerHistorialProducto` (Fase 6, tramo 6b: vivía en `core/reportes/historial-producto.ts` con `Prisma.Decimal`; este es su único lector). */
+interface FilaMovimientoHistorial {
+  id: string;
+  operacionId: string;
+  proceso: string;
+  cantidad: Prisma.Decimal;
+  loteVencimiento: Date | null;
+  detalle: string;
+  precioTotal: Prisma.Decimal;
+  precioPorUnidadStock: Prisma.Decimal;
+  seccionNombre: string;
+  fecha: Date;
+  nroFactura: string | null;
+  anuladaEn: Date | null;
+  proveedorNombre: string | null;
+  sustituyeANombre: string | null;
+}
 
 /**
  * Port de buscarProductoParaHistorial (Reportes.js:1217-1230) — a
@@ -16,9 +35,9 @@ import type { FilaBusquedaProducto, EventoHistorialProducto, FilaMovimientoHisto
  * historial de algo que ya se discontinuó en esta sucursal.
  */
 export async function buscarProductoParaHistorial(sucursalId: string, termino: string, db: Db): Promise<FilaBusquedaProducto[]> {
-  const q = termino.trim();
+  const q = textoDeBusqueda(termino);
   const productos = await db.producto.findMany({
-    where: q ? { OR: [{ nombre: { contains: q, mode: "insensitive" } }, { codigo: { contains: q, mode: "insensitive" } }] } : {},
+    where: q ? { OR: [{ nombre: { contains: escaparComodinesLike(q), mode: "insensitive" } }, { codigo: { contains: escaparComodinesLike(q), mode: "insensitive" } }] } : {},
     take: 20,
     orderBy: { nombre: "asc" },
   });
@@ -32,7 +51,8 @@ export async function buscarProductoParaHistorial(sucursalId: string, termino: s
  * de todas, mismo criterio que Conteo Físico: sección opcional).
  * `desde`/`hasta` son SOLO para qué se MUESTRA: el saldo corriente siempre
  * arranca del primer movimiento real del producto, nunca se "resetea" a 0
- * en la fecha de inicio del filtro.
+ * en la fecha de inicio del filtro. `desde`/`hasta` llegan como fecha "de solo día" (00:00 UTC del día elegido) y se expanden a días COMPLETOS en `zona` (la de la
+ * empresa, `ctx.empresaZonaHoraria`; por defecto la argentina): los DOS lados, y el saldo inicial usa el mismo límite que el detalle, así que los números cierran.
  *
  * A diferencia de Apps Script (que reconstruía el signo con
  * signoDeProceso_/esDeltaConSignoLibre_ al leer), acá `cantidad` ya viene
@@ -45,7 +65,8 @@ export async function obtenerHistorialProducto(
   seccionId: string | undefined,
   desde: Date | undefined,
   hasta: Date | undefined,
-  db: Db
+  db: Db,
+  zona: string = ZONA_ARGENTINA
 ): Promise<HistorialProducto | null> {
   const producto = await db.producto.findUnique({ where: { id: productoId }, include: { unidadStock: true } });
   if (!producto) return null;
@@ -53,10 +74,10 @@ export async function obtenerHistorialProducto(
   const whereMov = { productoId, seccion: { sucursalId }, ...(seccionId ? { seccionId } : {}) };
   const whereConteo = { productoId, sucursalId, ...(seccionId ? { seccionId } : {}) };
 
-  // Rango [desde 00:00, hasta 23:59:59.999] — mismo criterio UTC que
-  // reportes/periodo.ts.
-  const finDia = hasta ? finDelDiaDe(hasta, ZONA_UTC) : undefined;
-  const filtroFechaConteo = desde || finDia ? { fecha: { ...(desde ? { gte: desde } : {}), ...(finDia ? { lte: finDia } : {}) } } : {};
+  // Rango [desde 00:00, hasta 23:59:59.999] en la zona de la empresa — el mismo corte que Tickets.
+  const inicioDia = desde ? rangoDeDias(desde, desde, zona).desde : undefined;
+  const finDia = hasta ? rangoDeDias(hasta, hasta, zona).hasta : undefined;
+  const filtroFechaConteo = inicioDia || finDia ? { fecha: { ...(inicioDia ? { gte: inicioDia } : {}), ...(finDia ? { lte: finDia } : {}) } } : {};
 
   // Optimización (Pivote 5, docs/auditoria-motor2-pivotes-2026-09-16.md
   // §11 Plan 3): antes, esta función cargaba TODO el historial del
@@ -71,8 +92,8 @@ export async function obtenerHistorialProducto(
   // (reportes/historial/page.tsx: "no del rango elegido") — se calculan
   // aparte, sin filtro de fecha, nunca a partir del detalle recortado.
   const [saldoInicial, saldoActualAgg, totalMovimientos, totalConteos, movimientos, conteos] = await Promise.all([
-    desde
-      ? db.movimientoStock.aggregate({ where: { ...whereMov, operacion: { fecha: { lt: desde } } }, _sum: { cantidad: true } }).then((r) => Number(r._sum.cantidad ?? 0))
+    inicioDia
+      ? db.movimientoStock.aggregate({ where: { ...whereMov, operacion: { fecha: { lt: inicioDia } } }, _sum: { cantidad: true } }).then((r) => Number(r._sum.cantidad ?? 0))
       : Promise.resolve(0),
     db.movimientoStock.aggregate({ where: whereMov, _sum: { cantidad: true } }).then((r) => Number(r._sum.cantidad ?? 0)),
     db.movimientoStock.count({ where: whereMov }),
@@ -91,7 +112,7 @@ export async function obtenerHistorialProducto(
       LEFT JOIN "Producto" sp ON sp."id" = m."sustituyeAProductoId"
       WHERE m."productoId" = ${productoId} AND s."sucursalId" = ${sucursalId}
         ${seccionId ? Prisma.sql`AND m."seccionId" = ${seccionId}` : Prisma.empty}
-        ${desde ? Prisma.sql`AND o."fecha" >= ${desde}` : Prisma.empty}
+        ${inicioDia ? Prisma.sql`AND o."fecha" >= ${inicioDia}` : Prisma.empty}
         ${finDia ? Prisma.sql`AND o."fecha" <= ${finDia}` : Prisma.empty}
       ORDER BY o."fecha", m."id"
     `,

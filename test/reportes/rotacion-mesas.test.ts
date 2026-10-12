@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { ZONA_ARGENTINA as AR } from "../../src/core/tiempo/zona-horaria";
@@ -141,5 +141,16 @@ describe("generarReporteRotacionMesas (consulta real)", () => {
     expect(rep.liberadasSinConsumo).toBe(1);
     expect(rep.abiertasSinCerrar).toBe(1);
     expect(rep.comensalesPromedio).toBe(3);
+  });
+
+  it("el corte de días es el de la zona de la empresa (P1): una cuenta abierta a las 22:30 argentinas del 30/9 cuenta en el 30/9 y no en el 1/10", async () => {
+    const abiertaEn = new Date("2026-09-30T22:30:00-03:00"); // 01:30Z del 1/10: día 30 en Argentina, día 1 en UTC
+    const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
+    await prisma.cuenta.update({ where: { id: cuenta.id }, data: { abiertaEn, cerradaEn: new Date(abiertaEn.getTime() + 3_600_000), comensales: 2 } });
+
+    const dia30 = new Date("2026-09-30"); // como lo entregan las páginas: fecha de solo día
+    const dia1 = new Date("2026-10-01");
+    expect((await generarReporteRotacionMesas(s.sucursalId, dia30, dia30, AR, prisma)).atendidas).toBe(1);
+    expect((await generarReporteRotacionMesas(s.sucursalId, dia1, dia1, AR, prisma)).atendidas).toBe(0);
   });
 });

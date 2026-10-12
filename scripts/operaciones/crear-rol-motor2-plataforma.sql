@@ -3,8 +3,8 @@
 --     `scripts/modulos-empresa.ts`, `scripts/plataforma/crear-primer-admin.ts` y la consola de `plataforma/` (variable PLATAFORMA_DATABASE_URL).
 --     PRIVILEGIO MÍNIMO, tabla por tabla (ADR-012 §3): NO tiene DML sobre todo `public`. Escribe lo que necesita el alta y el gobierno de una empresa y las
 --     tablas de identidad de plataforma; NO lee ni escribe tablas de operación (ventas, stock, compras…); NUNCA tiene DELETE. Sigue sujeto al RLS por empresa.
---   · `motor2_app` pierde INSERT/UPDATE/DELETE sobre `Empresa` (con `restringir=1`): un bug o una inyección en la app ya no puede cambiar la política de
---     plataforma, el estado de una empresa ni crear/borrar empresas. La app solo lee `Empresa`.
+--   · `motor2_app` queda con SOLO `SELECT` sobre `Empresa` (con `restringir`; REVOKE ALL + GRANT SELECT + una aserción que falla si algo le sigue dando escritura, M.1-C2): un bug o una
+--     inyección en la app ya no puede cambiar la política de plataforma, el estado de una empresa ni crear/borrar empresas. La app solo lee `Empresa`.
 -- Quién puede qué (lista cerrada; un test la compara con las tablas reales de la base):
 --   Empresa, ModuloEmpresa                 SELECT, INSERT, UPDATE   (alta, activación, política; el registro de módulos se actualiza)
 --   User, UsuarioEmpresa                   SELECT                   (S-35: solo lectura —el gerente de una empresa—; el primer gerente ya no se crea desde acá: llega por la
@@ -24,8 +24,10 @@
 -- se aplica en producción, no en las bases de test.
 --
 -- Uso (como dueño; la clave por variable psql, nunca en el repo):
---   psql <conexión del dueño a la base> -v clave="<clave>" -f scripts/operaciones/crear-rol-motor2-plataforma.sql          (crea el rol y sus grants)
---   psql <conexión del dueño a la base> -v restringir=1 -f scripts/operaciones/crear-rol-motor2-plataforma.sql              (además quita la escritura de Empresa a motor2_app)
+--   psql <conexión del dueño a la base> -1 -v clave="<clave>" -f scripts/operaciones/crear-rol-motor2-plataforma.sql        (rol NUEVO: lo crea con esa clave y le da sus grants; si el rol ya existe, le CAMBIA la contraseña)
+--   psql <conexión del dueño a la base> -1 -v restringir=1 -f scripts/operaciones/crear-rol-motor2-plataforma.sql           (rol YA existente, sin clave: NO toca la contraseña; reaplica los grants y además quita la escritura de Empresa a motor2_app)
+-- `-1` (una sola transacción) o el ejecutor `scripts/operaciones/ejecutar-sql-de-psql.mjs` (también atómico, y con `--simular` primero): sin eso un fallo a mitad deja el script a medias.
+-- ATENCIÓN con `restringir`: el script solo mira si la variable ESTÁ DEFINIDA (`\if :{?restringir}`), no su valor: `-v restringir=0` TAMBIÉN restringe. Para no restringir, no pasarla.
 -- En Neon: SOLO con psql y este archivo, conectado como el dueño (`neondb_owner`); no hace falta superusuario. NUNCA crear el rol desde la consola o la API de
 -- Neon: esos roles nacen como `neon_superuser` con BYPASSRLS y se saltarían el aislamiento por empresa. Los roles son POR RAMA de Neon: hay que correrlo en
 -- cada rama (la de producción de cada despliegue; stockhneuquen y zuluhub son proyectos distintos). Idempotente. Reversa: quitar-rol-motor2-plataforma.sql
@@ -35,11 +37,28 @@
 
 \set ON_ERROR_STOP on
 
+-- M.1-C1: la `clave` solo hace falta para CREAR el rol o para CAMBIARLE la contraseña a propósito.
+--   · el rol NO existe            → CREATE ROLE … PASSWORD :'clave' (sin `-v clave` falla acá, antes de crear nada).
+--   · el rol existe y hay `clave` → ALTER ROLE … PASSWORD :'clave' (rotación deliberada).
+--   · el rol existe y NO hay clave → NO se toca el rol (su contraseña es la que ya usa la consola): solo se verifica que siga siendo el rol de la consola.
 SELECT NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'motor2_plataforma') AS crear \gset
 \if :crear
   CREATE ROLE motor2_plataforma LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD :'clave';
 \else
-  ALTER ROLE motor2_plataforma LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD :'clave';
+  \if :{?clave}
+    ALTER ROLE motor2_plataforma LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD :'clave';
+  \else
+    DO $$
+    DECLARE
+      r record;
+    BEGIN
+      SELECT rolsuper, rolbypassrls, rolcanlogin INTO r FROM pg_roles WHERE rolname = 'motor2_plataforma';
+      IF r.rolsuper OR r.rolbypassrls OR NOT r.rolcanlogin THEN
+        RAISE EXCEPTION 'M.1 - motor2_plataforma ya existe con atributos que no son los de la consola (rolsuper=%, rolbypassrls=%, rolcanlogin=%). Sin -v clave no se modifica el rol; corregilo a mano o pasá -v clave para volver a definirlo.', r.rolsuper, r.rolbypassrls, r.rolcanlogin;
+      END IF;
+    END
+    $$;
+  \endif
 \endif
 
 -- Se parte de cero: una versión anterior de este script daba DML sobre todo `public` y default privileges sobre las tablas futuras.
@@ -82,8 +101,20 @@ BEGIN
 END
 $$;
 
+-- M.1-C2: el recorte DENIEGA POR DEFECTO. No enumera lo que quita (REVOKE INSERT, UPDATE, DELETE dejaba TRUNCATE, REFERENCES, TRIGGER y lo que hubiera por columna): quita TODO a motor2_app
+-- sobre "Empresa" (el REVOKE de tabla también quita los privilegios por columna que ella tuviera), le da SOLO lectura y exige que no quede nada más. La aserción mira el privilegio EFECTIVO,
+-- el que sale de sumar lo dado a motor2_app, a PUBLIC y a los roles de los que es miembro: si algo de eso le sigue dando escritura, el script falla (y con `-1` o el ejecutor no queda NADA a medias).
 \if :{?restringir}
-  REVOKE INSERT, UPDATE, DELETE ON "Empresa" FROM motor2_app;
+  REVOKE ALL ON "Empresa" FROM motor2_app;
+  GRANT SELECT ON "Empresa" TO motor2_app;
+  DO $$
+  BEGIN
+    IF has_table_privilege('motor2_app', 'public."Empresa"', 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+       OR has_any_column_privilege('motor2_app', 'public."Empresa"', 'INSERT, UPDATE, REFERENCES') THEN
+      RAISE EXCEPTION 'M.1 - motor2_app sigue pudiendo escribir "Empresa" despues del REVOKE ALL: lo hereda de PUBLIC, de un rol del que es miembro o de un privilegio por columna. Revisalo con scripts/operaciones/verificar-grants-m1.sql; no se aplico nada.';
+    END IF;
+  END
+  $$;
 \endif
 
 SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname IN ('motor2_app', 'motor2_plataforma');

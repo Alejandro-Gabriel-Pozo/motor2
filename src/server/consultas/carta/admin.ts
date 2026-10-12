@@ -70,7 +70,11 @@ export async function origenesDeCopiaVisibles(usuarioId: string, origenes: reado
   return origenes.filter((o) => visibles.has(o.id));
 }
 
-/** La pantalla de administración de la carta. `ahora` obligatorio (O.22-c): lo fija la página; solo llega al `generadoEn` del menú armado, que acá se descarta. */
+/**
+ * La pantalla de administración de la carta. `ahora` obligatorio (O.22-c): lo fija la página; solo llega al `generadoEn` del menú armado, que acá se descarta.
+ * M.3-A5: lo único que lee de OTRAS sucursales es `estadoCartaPropia` (de dónde se puede copiar); todo lo demás se lee de `sucursalId`. Por eso, a quien puede copiar la carta, la página le pasa como
+ * `db` la base del contexto ampliado por `lecturaEnSucursalesVisibles(ctx, "carta_ver")` (lo exige `test/arquitectura/lectores-de-varias-sucursales.test.ts`); al resto, la de la sucursal activa.
+ */
 export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date): Promise<DatosAdminCarta> {
   const [secciones, generos, productos, promos, armado, precioLocalActivo, estado] = await Promise.all([
     seccionesConCantidad(sucursalId, db),

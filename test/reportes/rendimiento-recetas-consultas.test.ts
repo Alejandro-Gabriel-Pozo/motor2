@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../../src/core/auth/session", () => ({ getUsuarioActual: vi.fn() }));
+vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
@@ -8,6 +8,7 @@ import type { Db } from "../../src/lib/db-tipos";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { ZONA_ARGENTINA, mediodiaDelDia, sumarDias } from "../../src/core/tiempo/zona-horaria";
 import { calcularRendimientoRecetas, calcularRendimientoRecetasCompartidas, calcularRendimientoRecetasSimples } from "../../src/server/consultas/reportes/rendimiento-recetas";
 
 /**
@@ -35,7 +36,9 @@ async function contarConsultas<T>(f: (db: Db) => Promise<T>): Promise<{ resultad
 
 const desde = new Date("2026-01-01");
 const hasta = new Date("2026-03-15");
-const dia = (base: string, mas: number) => new Date(new Date(base).getTime() + mas * 24 * 60 * 60 * 1000);
+/** El mediodía argentino de `base` + `mas` días: lo que guardan los formularios (P1). */
+const mediodia = (dia: string) => mediodiaDelDia(dia, ZONA_ARGENTINA);
+const dia = (base: string, mas: number) => mediodia(sumarDias(base, mas));
 
 /**
  * `n` pools SIMPLES (Insumo con dos MP —la segunda, hermana sin movimientos— y un plato 1:1 sobre la primera, con dos conteos que la cubren en días propios
@@ -63,8 +66,8 @@ async function sembrar(n: number) {
     await prisma.recetaVersion.create({ data: { productoId: botella.id, version: 1, ingredientes: { create: [{ insumoProductoId: caja.id, cantidad: 1, unidadId: kg.id }] } } });
     await conteo(caja.id, 0, dia("2026-01-02", i));
     // Con precio (O.30): así el costo de reposición entra al resultado (`impactoPesos`, `sinCosto`) y la comparación de la combinada lo ve.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-10"), seccionId, items: [{ productoId: caja.id, cantidad: 10, precioTotal: 50 }] });
-    await registrarVenta({ fecha: new Date("2026-01-15"), seccionId, ventas: [{ productoId: botella.id, cantidadVendida: 6 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-10"), seccionId, items: [{ productoId: caja.id, cantidad: 10, precioTotal: 50 }] });
+    await registrarVenta({ fecha: mediodia("2026-01-15"), seccionId, ventas: [{ productoId: botella.id, cantidadVendida: 6 }] });
     await conteo(caja.id, 4, dia("2026-01-25", i));
   }
 
@@ -76,7 +79,7 @@ async function sembrar(n: number) {
     const bife = await producto(`PV_BIFE_${j}`, "PV");
     await prisma.recetaVersion.create({ data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: nalga.id, cantidad: 0.1, unidadId: kg.id }] } } });
     await prisma.recetaVersion.create({ data: { productoId: bife.id, version: 1, ingredientes: { create: [{ insumoProductoId: lomo.id, cantidad: 0.1, unidadId: kg.id }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2025-12-01"), seccionId, items: [{ productoId: nalga.id, cantidad: 1000, precioTotal: 5000 }, { productoId: lomo.id, cantidad: 1000, precioTotal: 8000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2025-12-01"), seccionId, items: [{ productoId: nalga.id, cantidad: 1000, precioTotal: 5000 }, { productoId: lomo.id, cantidad: 1000, precioTotal: 8000 }] });
     await conteo(nalga.id, 1000, dia("2026-01-02", j));
     await conteo(lomo.id, 1000, dia("2026-01-02", j));
     // Mismos pares (m, b) que el test de CONTEO de `rendimiento-recetas.test.ts`: la mezcla varía y la regresión resuelve.

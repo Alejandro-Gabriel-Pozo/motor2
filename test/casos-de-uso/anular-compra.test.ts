@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { DIA_MS, enElFuturo, enElPasado } from "../setup/tiempo";
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { anularCompraCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/anular-compra";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
 import { aResultadoAccion } from "../../src/core/resultado-caso";
@@ -27,13 +27,15 @@ describe("anularCompraCasoDeUso", () => {
   let harinaId: string;
   let proveedorId: string;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId, ahora: new Date(), ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const actor = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, ahora: new Date(), ...baseDe(sucursalId) });
 
   /** Una compra con una línea de `cantidad` kg a $100/kg (el saldo del lote sale del propio Kardex). */
-  async function compra(opciones: { cantidad?: number; nroFactura?: string | null; proceso?: "COMPRA" | "MERMA"; sinLineas?: boolean } = {}) {
+  async function compra(opciones: { fecha?: Date; cantidad?: number; nroFactura?: string | null; proceso?: "COMPRA" | "MERMA"; sinLineas?: boolean } = {}) {
     const proceso = opciones.proceso ?? "COMPRA";
     const op = await prisma.operacion.create({
-      data: { sucursalId, proceso, fecha: new Date("2026-08-10T12:00:00Z"), usuarioId: adminId, proveedorId, nroFactura: opciones.nroFactura === undefined ? "A-0001" : opciones.nroFactura },
+      data: { sucursalId, proceso, fecha: opciones.fecha ?? new Date("2026-08-10T12:00:00Z"), usuarioId: adminId, proveedorId, nroFactura: opciones.nroFactura === undefined ? "A-0001" : opciones.nroFactura },
     });
     if (!opciones.sinLineas) {
       const cantidad = opciones.cantidad ?? 10;
@@ -92,6 +94,18 @@ describe("anularCompraCasoDeUso", () => {
       actorId: adminId,
       sucursalId,
     });
+  });
+
+  it("P1 paso 7: el día de los textos guardados es el argentino — una compra de las 22:30 argentinas del 10/8 (01:30Z del 11/8) es «del 2026-08-10» en el contra-asiento y en la auditoría", async () => {
+    const op = await compra({ fecha: new Date("2026-08-11T01:30:00Z") });
+
+    const r = await anularCompraCasoDeUso(actor(), { operacionId: op.id, claveIdempotencia: null });
+
+    expect(r.ok).toBe(true);
+    const reversion = await prisma.operacion.findFirstOrThrow({ where: { proceso: "AJUSTE", sucursalId } });
+    expect(reversion.detalleLibre).toBe(`Anulación de la compra ${op.id} (2026-08-10, factura A-0001).`);
+    const auditoria = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidadId: op.id } });
+    expect(auditoria.descripcion).toBe("Compra del 2026-08-10 a Molino SA, factura A-0001: anulación");
   });
 
   it("la hora de la anulación es la que entra por actor.ahora, no la del reloj (Pureza 1.2)", async () => {
@@ -165,7 +179,7 @@ describe("anularCompraCasoDeUso", () => {
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa operación en esta sucursal.",
     });
-    expect(await anularCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ahora: new Date(), ...baseDeTest }, { operacionId: op.id, claveIdempotencia: null })).toMatchObject({
+    expect(await anularCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ahora: new Date(), ...baseDe(otra.id) }, { operacionId: op.id, claveIdempotencia: null })).toMatchObject({
       ok: false,
       codigo: "NO_ENCONTRADA",
     });

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { obtenerContextoUsuario } from "@/core/auth/contexto";
-import { irAlLogin } from "@/core/auth/ir-al-login";
+import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -21,7 +21,7 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
  * Una cuenta cerrada ANTES de la numeración de tickets (sin ningún `EjemplarTicket`) no aparece: es de esperar, no una falla del
  * filtro — esas cuentas no tienen ejemplar que listar.
  *
- * Filtro de fecha en la zona horaria de la EMPRESA, no UTC como el resto de los reportes (el servicio de la noche cruza la medianoche UTC):
+ * Filtro de fecha en la zona horaria de la EMPRESA, la misma zona con la que cortan los demás reportes (P1) (el servicio de la noche cruza la medianoche UTC):
  * sin fechas en la URL, el default es «hoy» en esa zona; vaciar los dos campos y filtrar de nuevo saca el límite de fecha del
  * todo (el cursor de paginación lo aguanta).
  */
