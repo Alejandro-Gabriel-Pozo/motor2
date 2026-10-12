@@ -354,6 +354,7 @@ model Producto {
   insumoId String?
   insumo   Insumo? @relation(fields: [empresaId, insumoId], references: [empresaId, id])
 
+  /// Con IVA incluido (D-IVA): lo que paga el cliente. El neto sin IVA se deduce con la alícuota, no se guarda.
   precioVenta Decimal @default(0) @db.Decimal(14, 2)
 
   /// Venta fraccionada (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): excepción de venta PUNTUAL de este PV — ej. 0.5
@@ -512,7 +513,7 @@ model CategoriaProducto {
   @@unique([empresaId, id])
 }
 
-/// Food cost objetivo (2026-10-01, decisión del dueño): el tope de la porción del precio de carta (neto) que puede irse en comida y
+/// Food cost objetivo (2026-10-01, decisión del dueño): el tope de la porción del precio de carta, con IVA incluido igual que `Producto.precioVenta`, que puede irse en comida y
 /// bebida. `categoriaId` NULL = el de TODA la empresa; con categoría, el de esa categoría (gana sobre el de la empresa). Sin ninguna
 /// fila rige la constante `FOOD_COST_OBJETIVO_PCT`. Lo edita SOLO administración (`margen_objetivo_editar`). La migración agrega a mano
 /// (Prisma no los declara): un índice único parcial para permitir UNA sola fila de empresa (`categoriaId IS NULL`) y un CHECK que fuerza
@@ -1213,8 +1214,9 @@ model MovimientoStock {
   /// Operacion.motivo/destino/detalleLibre).
   detalle String
 
-  /// Precio Total = importe real de ESTA línea (Compra: lo que dice la
-  /// factura para esa línea; Venta: cantidadVendida × precioVenta vigente
+  /// Precio Total = importe real de ESTA línea (Compra: lo pagado por esa
+  /// línea, CON IVA incluido (D-IVA; el desglose llega con la factura de
+  /// proveedor, M3); Venta: cantidadVendida × precioVenta vigente
   /// al momento — Movimientos.js:1287). 0 para líneas que no representan
   /// un hecho financiero propio (Consumo, Transferencia, Ajuste/Control).
   precioTotal          Decimal @default(0) @db.Decimal(14, 2)
