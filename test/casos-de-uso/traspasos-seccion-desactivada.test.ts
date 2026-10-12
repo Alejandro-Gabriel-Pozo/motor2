@@ -28,8 +28,10 @@ describe("P17: traspasos y secciones dadas de baja", () => {
   let kgId: string;
   let insumoId: string;
 
-  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest });
-  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ahora: new Date(), ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const comoA = () => ({ usuarioId: adminAId, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDe(sucursalAId) });
+  const comoB = () => ({ usuarioId: adminBId, sucursalId: sucursalBId, sucursalNombre: "Sucursal B", ahora: new Date(), ...baseDe(sucursalBId) });
   const MENSAJE = (nombre: string) =>
     `La sección «${nombre}» está desactivada: solo se puede sacar mercadería de ella (transferir, mermar o consumir) hasta vaciarla. Elegí otra sección o activala.`;
   const darDeBaja = (seccionId: string) => prisma.seccion.update({ where: { id: seccionId }, data: { activa: false } });

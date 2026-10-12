@@ -28,7 +28,9 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
   let grupoId: string;
   let ajeno: { unidadId: string; categoriaId: string; insumoId: string; proveedorId: string; grupoId: string };
 
-  const actor = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, sucursalNombre, ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const actor = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, sucursalNombre, ...baseDe(sucursalId) });
   const datos = (extra: Partial<EntradaProducto> = {}): EntradaProducto => ({ nombre: "Producto de prueba", tipo: "MP", unidadStockId: unidadId, factorConversion: 1, ...extra });
 
   beforeEach(async () => {

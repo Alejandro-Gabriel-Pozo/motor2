@@ -17,7 +17,9 @@ describe("anularItemEnviadoCasoDeUso", () => {
   let s: Awaited<ReturnType<typeof sembrarSalon>>;
   let cuenta: Awaited<ReturnType<typeof sembrarCuenta>>;
   let mila: (typeof cuenta.items)[number];
-  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, ...baseDe(s.sucursalId) });
   const comando = (cuentaItemId: string, cantidad: unknown, motivo: unknown, restanteVisto: unknown) => ({ cuentaItemId, cantidad, motivo, restanteVisto });
 
   beforeEach(async () => {
@@ -74,7 +76,7 @@ describe("anularItemEnviadoCasoDeUso", () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const esperado = { ok: false, codigo: "NO_ENCONTRADO", mensaje: "No se encontró ese ítem en esta sucursal." };
     expect(await anularItemEnviadoCasoDeUso(actor(), comando("no-existe", 1, "x", 3))).toEqual(esperado);
-    expect(await anularItemEnviadoCasoDeUso({ usuarioId: s.admin.id, sucursalId: norte.id, ...baseDeTest }, comando(mila.id, 1, "x", 3))).toEqual(esperado);
+    expect(await anularItemEnviadoCasoDeUso({ usuarioId: s.admin.id, sucursalId: norte.id, ...baseDe(norte.id) }, comando(mila.id, 1, "x", 3))).toEqual(esperado);
     await nadaEscrito();
   });
 

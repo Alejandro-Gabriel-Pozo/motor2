@@ -15,7 +15,9 @@ import { aResultadoAccion } from "../../src/core/resultado-caso";
  */
 describe("cerrarCuentaCasoDeUso", () => {
   let s: Awaited<ReturnType<typeof sembrarSalon>>;
-  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: s.sucursal.nombre, email: "admin@test.com", ahora: new Date(), ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: s.sucursal.nombre, email: "admin@test.com", ahora: new Date(), ...baseDe(s.sucursalId) });
 
   beforeEach(async () => {
     await limpiarBaseDeTest();

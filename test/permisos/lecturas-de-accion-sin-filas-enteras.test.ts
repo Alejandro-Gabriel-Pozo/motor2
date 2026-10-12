@@ -123,7 +123,9 @@ describe("S-15: las Server Actions de lectura devuelven solo lo que la pantalla 
         producto: { nombre: "Queso", codigo: "MP_QUESO", unidadStock: { nombre: "kg" } },
         origenSucursal: { nombre: "Sucursal B" },
         destinoSucursal: { nombre: "Central" },
-        seccionOrigen: { nombre: "Depósito B" },
+        // D7 del ADR-028: la contraparte de un traspaso lo ve (es suyo) pero no la sección del otro lado, que es de una sucursal que no tiene en su alcance. Quien pide la Bandeja es la sucursal A (destino)
+        // con el alcance de su sucursal activa: la sección de ORIGEN es de B y, con las políticas por sucursal, la lectura la devuelve `null` (la pantalla ya lo tolera). La de destino, que es suya, sí viene. Esta expectativa describe la base CON las políticas: en una base sin ellas la sección de origen sí se ve.
+        seccionOrigen: null,
         seccionDestino: { nombre: "Depósito A" },
         creadoPor: { email: "creador@test.com" },
       });

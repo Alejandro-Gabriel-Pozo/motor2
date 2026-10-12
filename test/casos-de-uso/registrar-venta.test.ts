@@ -18,7 +18,9 @@ describe("registrarVentaCasoDeUso", () => {
   let adminId: string;
   let gaseosaId: string;
 
-  const actor = () => ({ usuarioId: adminId, sucursalId, sucursalNombre, ...baseDeTest });
+  /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
+  const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
+  const actor = () => ({ usuarioId: adminId, sucursalId, sucursalNombre, ...baseDe(sucursalId) });
   const datos = (extra: Partial<DatosVentaInput> = {}): DatosVentaInput => ({
     fecha: new Date("2026-08-06T12:00:00Z"),
     seccionId,
