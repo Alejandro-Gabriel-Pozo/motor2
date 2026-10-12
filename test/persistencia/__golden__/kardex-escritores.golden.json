@@ -95,6 +95,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Transferencia a sucursal \"Destino\".",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "id": "<op#2>",
           "loteVencimiento": null,
           "operacionId": "<op#1>",
@@ -241,6 +242,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Transferencia a sucursal \"Destino\".",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "id": "<op#3>",
           "loteVencimiento": null,
           "operacionId": "<op#2>",
@@ -396,6 +398,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Transferencia desde sucursal \"Central\".",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "id": "<op#2>",
           "loteVencimiento": null,
           "operacionId": "<op#1>",
@@ -538,6 +541,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Transferencia desde sucursal \"Central\".",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "id": "<op#2>",
           "loteVencimiento": null,
           "operacionId": "<op#1>",
@@ -679,6 +683,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Reingreso por rechazo de Destino.",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "id": "<op#2>",
           "loteVencimiento": null,
           "operacionId": "<op#1>",
@@ -877,6 +882,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Anulación de compra: revierte \"Compra con lote\".",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "loteVencimiento": {
             "$fecha": "2027-01-31T00:00:00.000Z"
           },
@@ -903,6 +909,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Anulación de compra: revierte \"Compra sin lote\".",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "loteVencimiento": null,
           "operacionId": "<op#1>",
           "precioListaUnitario": null,
@@ -927,6 +934,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Compra con lote",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "loteVencimiento": {
             "$fecha": "2027-01-31T00:00:00.000Z"
           },
@@ -953,6 +961,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Compra sin lote",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "loteVencimiento": null,
           "operacionId": "compra-original",
           "precioListaUnitario": null,
@@ -1111,6 +1120,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Anulación de compra: revierte \"Compra con lote\".",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "loteVencimiento": {
             "$fecha": "2027-01-31T00:00:00.000Z"
           },
@@ -1137,6 +1147,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Anulación de compra: revierte \"Compra sin lote\".",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "loteVencimiento": null,
           "operacionId": "<op#1>",
           "precioListaUnitario": null,
@@ -1161,6 +1172,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Compra con lote",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "loteVencimiento": {
             "$fecha": "2027-01-31T00:00:00.000Z"
           },
@@ -1187,6 +1199,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Compra sin lote",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "loteVencimiento": null,
           "operacionId": "compra-original",
           "precioListaUnitario": null,
@@ -1347,6 +1360,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Consumo por venta de Pan",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "loteVencimiento": null,
           "operacionId": "venta-original",
           "precioListaUnitario": null,
@@ -1371,6 +1385,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Venta de Pan",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "loteVencimiento": {
             "$fecha": "2027-01-31T00:00:00.000Z"
           },
@@ -1399,6 +1414,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Anulación de venta: revierte \"Consumo por venta de Pan\".",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "loteVencimiento": null,
           "operacionId": "<op#1>",
           "precioListaUnitario": null,
@@ -1423,6 +1439,7 @@
           "costoUnitarioVenta": null,
           "detalle": "Anulación de venta: revierte \"Venta de Pan\".",
           "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
           "loteVencimiento": {
             "$fecha": "2027-01-31T00:00:00.000Z"
           },

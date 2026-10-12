@@ -68,6 +68,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "M.2 P1 (clave nueva `producto_campos_sensibles`, contexto empresa, piso operario, semilla solo admin; NO cambia comportamiento todavía: ningún código la consulta hasta P2). Cambia SOLO lo que dice esa clave, en todos los registros de módulos y usuarios: 120 apariciones nuevas (tripletas registro/usuario/bloque, resultado, clave), todas de la clave nueva, en los 4 bloques de empresa (requierePermisoDeEmpresa, requierePermisoVerDeEmpresa, obtenerMiNivelPermisoDeEmpresa) y en el menú (accionesDelMenuQueElUsuarioPuedeVer, S1 y S2), y NINGUNA tripleta de otra clave quitada ni agregada (verificado comparando la versión anterior con la nueva por tripletas). Más 2 líneas de mensajes de denegación del usuario «dos sucursales» (rol «especial»): la firma de la denegación conserva el ÚLTIMO mensaje generado y la clave nueva es la última del catálogo que el operador no tiene, así que el mensaje nombra `producto_campos_sensibles` donde antes nombraba `producto_sincronizar_precio_carta` (mismo artefacto del generador que en S-41; ninguna respuesta de otra clave cambia). El generador no se edita.",
       },
+      {
+        blob: "616da9f114fa236fab6c3c22818b27383e0af353",
+        // El commit PADRE de este (ceb56f07) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "ceb56f07",
+        motivo:
+          "Paquete 3, M3a (O.269; ADITIVO): las claves `compra_repartir` (empresa, piso administrador) y `compra_recibir` (sucursal, piso operario, semilla admin) aparecen en las listas de claves de los usuarios que ya alcanzaban las de su piso. Revisado con `git diff --word-diff`: solo se suman `, compra_repartir` y `, compra_recibir` a esas listas.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -126,6 +133,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "M0-IVA (O.266; ADITIVO, no cambia comportamiento): `Empresa.condicionIva` (migración 20261015101000) aparece en las 28 filas EMPRESA de la huella, en null («no declarada»). Revisado con `git diff --word-diff`: solo se suma `condicionIva=null`; ningún permiso ni rol cambia.",
       },
+      {
+        blob: "afffbcf6bb013c7d4cfa8002dc497abcc6fcc667",
+        // El commit PADRE de este (ceb56f07) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "ceb56f07",
+        motivo:
+          "Paquete 3, M3a y M3d (O.269 y O.272; ADITIVO): `ACCIONES 125 a 127` por las claves nuevas `compra_repartir` y `compra_recibir` (las recibe el rol admin de cada empresa; el operador las tiene sin Ver ni Editar) y `Empresa.llevaIvaDeCompras=false` en las 28 filas EMPRESA. Revisado con `git diff --word-diff`: solo suman esas cosas.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
@@ -153,6 +167,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "b4c7670f",
         motivo:
           "M2 (O.268; ADITIVO, no cambia comportamiento): las líneas OPERACION suman `mermaPorAnulacionDeId`, `motivoAnulacion`, `reemplazaAOperacionId`, `revierteAOperacionId` y `ventaId` en null, y las KARDEX suman `devuelveAMovimientoId` en null. Verificado: el golden nuevo, sin esas columnas en null, es idéntico al anterior.",
+      },
+      {
+        blob: "7f056b39fc146860e5a63d28bb2a056d4d0d0924",
+        // El commit PADRE de este (ceb56f07) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "ceb56f07",
+        motivo:
+          "Paquete 3, M3b (O.270; ADITIVO): las líneas KARDEX suman `facturaProveedorRenglonId=null`. Verificado: sin esa columna en null, idéntico al anterior.",
       },
     ],
   },
@@ -190,6 +211,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "b4c7670f",
         motivo:
           "M2 (O.268; ADITIVO, no cambia comportamiento): igual que la matriz de venta; solo columnas nuevas en null en las líneas OPERACION y KARDEX. Verificado: sin esas columnas, idéntico al anterior.",
+      },
+      {
+        blob: "0d7517922ecf5654e07ff6ff53ab9ee17499f51c",
+        // El commit PADRE de este (ceb56f07) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "ceb56f07",
+        motivo:
+          "Paquete 3, M3b (O.270; ADITIVO): las líneas KARDEX suman `facturaProveedorRenglonId=null`. Verificado: sin esa columna en null, idéntico al anterior.",
       },
     ],
   },
@@ -311,6 +339,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "b4c7670f",
         motivo:
           "M2 (O.268; ADITIVO, no cambia comportamiento): la huella de escritores del Kardex suma las columnas nuevas de `Operacion`, `MovimientoStock` y `ConteoFisico` (`motivoCancelacion`) en null. Verificado: sin esas claves en null, idéntico al anterior.",
+      },
+      {
+        blob: "ad8f816b2c9a25e1711a7ec0b24171427f2302c0",
+        // El commit PADRE de este (ceb56f07) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "ceb56f07",
+        motivo:
+          "Paquete 3, M3b (O.270; ADITIVO, no cambia comportamiento): cada movimiento del Kardex suma `facturaProveedorRenglonId` en null. Verificado: sin esa clave en null, idéntico al anterior.",
       },
     ],
   },
