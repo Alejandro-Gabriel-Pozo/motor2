@@ -149,6 +149,9 @@ async function sembrar(c: Client): Promise<void> {
   await insertar(c, "MovimientoStock", { id: "movCruzado", empresaId: EMPRESA_A, operacionId: "opA2", productoId: "ingA", seccionId: "secA1", proceso: "COMPRA", cantidad: 1, detalle: "cruzado" });
 }
 
+/** Las migraciones posteriores al Paquete 1 que SOLO agregan columnas (sin tablas ni políticas): el mundo las necesita para que el cliente de Prisma, que lee todas las columnas del modelo, no pida una que no existe. */
+const MIGRACIONES_SOLO_DE_COLUMNAS_POSTERIORES = ["20261015100000_m0_iva_alicuotas_de_producto"];
+
 export async function crearMundoDeSucursales(): Promise<MundoDeSucursales> {
   const base = await crearBaseTemporalMigrada();
   let app: Client | null = null;
@@ -163,6 +166,8 @@ export async function crearMundoDeSucursales(): Promise<MundoDeSucursales> {
     // Desde el Paquete 1 las políticas son migraciones (B1 a B6): el mundo parte de la base SIN ellas (todo lo anterior a B1) y cada prueba aplica el SQL del generador, bueno o mutado.
     await base.aplicarAntesDe(MIGRACION_B1_FUNCIONES);
     for (const m of COLUMNAS_POSTERIORES_AL_PAQUETE_1) await base.cliente.query(readFileSync(join(__dirname, "../../prisma/migrations", m, "migration.sql"), "utf8"));
+    // M0-IVA: el código real de la app (`findFirst`/`findUnique` de `Producto` sin `select`) lee las columnas de alícuota; esas migraciones son solo columnas y no dependen de B1 a B6, así que se aplican sueltas.
+    for (const migracion of MIGRACIONES_SOLO_DE_COLUMNAS_POSTERIORES) await base.aplicarSuelta(migracion);
     const hayRol = await existeElRol(base.cliente);
     if (hayRol) {
       // Los privilegios por defecto del script de roles son por base y la temporal nace sin ellos; se van con la base.

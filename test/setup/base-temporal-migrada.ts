@@ -54,6 +54,8 @@ export interface BaseTemporalMigrada {
   aplicarAntesDe(migracion: string): Promise<void>;
   /** Aplica, en orden, las migraciones pendientes HASTA `migracion` (ella sí; las posteriores no). */
   aplicarHasta(migracion: string): Promise<void>;
+  /** Aplica SOLO `migracion` (la saca de las pendientes) aunque queden pendientes otras anteriores: para una migración que no depende de ellas (p. ej. una columna nueva). */
+  aplicarSuelta(migracion: string): Promise<void>;
   /** Aplica todas las migraciones que falten. */
   aplicarRestantes(): Promise<void>;
   /** Cierra la conexión y borra la base. */
@@ -108,6 +110,12 @@ export async function crearBaseTemporalMigrada(): Promise<BaseTemporalMigrada> {
         aplicada = pendientes.shift() as string;
         await aplicar(aplicada);
       } while (aplicada !== migracion);
+    },
+    async aplicarSuelta(migracion) {
+      const i = pendientes.indexOf(migracion);
+      if (i < 0) throw new Error(`base-temporal-migrada: la migración "${migracion}" no existe (o ya se aplicó).`);
+      pendientes.splice(i, 1);
+      await aplicar(migracion);
     },
     async aplicarRestantes() {
       while (pendientes.length > 0) await aplicar(pendientes.shift() as string);
