@@ -8,4 +8,4 @@
  * Solo reexports explícitos (nunca `export *`, nunca lógica).
  */
 export { CANTIDAD_MAXIMA_DE_OPCION, FACTOR_DE_ESCALA_MAXIMO } from "./tipos";
-export type { EfectoDeConsumoDeOpcion, TipoDeGrupoDeOpciones } from "./tipos";
+export type { EfectoDeConsumoDeOpcion } from "./tipos";
