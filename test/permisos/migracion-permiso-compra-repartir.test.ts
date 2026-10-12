@@ -5,7 +5,7 @@ import { ACCIONES } from "../../src/core/permisos/acciones";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
 
 /**
- * Paquete 3, M3a — migración de DATOS 20261016100000_permiso_compra_repartir: alta de la clave `compra_repartir` (repartir una factura de proveedor entre sucursales y atender las
+ * Paquete 3, M3a — migración de DATOS 20261016100000_permiso_compra_repartir: alta de las claves `compra_repartir` y `compra_recibir` (esta última, de sucursal y clase O: confirmar la recepción de la mercadería de una factura en la sucursal; se siembra IGUAL) (repartir una factura de proveedor entre sucursales y atender las
  * facturas «pendientes de reparto») y su siembra: D3 del dueño = el rol de clave `admin` de cada empresa, con Ver y Editar, y NADIE más. A diferencia de M.2 NO se copia de otra
  * clave: hoy nadie reparte facturas, así que nadie pierde nada.
  *
@@ -14,20 +14,22 @@ import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/bas
  */
 const NOMBRE = "20261016100000_permiso_compra_repartir";
 const CLAVE = "compra_repartir";
+/** Las dos claves de la migración: repartir (empresa, piso administrador) y recibir la mercadería en la sucursal (sucursal, clase O). Se siembran igual: solo el admin de cada empresa. */
+const CLAVES = ["compra_repartir", "compra_recibir"] as const;
 const leer = (archivo: string) => readFileSync(join(__dirname, "../../prisma/migrations", NOMBRE, archivo), "utf8");
 
 describe("migración de datos M3a: la clave compra_repartir", () => {
   let base: BaseTemporalMigrada;
 
-  const filasDeLaClave = async () => {
+  const filasDeLaClave = async (clave: string = CLAVE) => {
     const r = await base.cliente.query<{ rol: string; empresa: string; ver: boolean; editar: boolean; deLaFila: string }>(
       `SELECT p."rolId" AS rol, p."empresaId" AS empresa, p."puedeVer" AS ver, p."puedeEditar" AS editar, r."empresaId" AS "deLaFila"
        FROM "PermisoRol" p JOIN "Rol" r ON r."id" = p."rolId" WHERE p."accionClave" = $1 ORDER BY p."rolId"`,
-      [CLAVE]
+      [clave]
     );
     return r.rows;
   };
-  const quienLaTiene = async () => (await filasDeLaClave()).map((f) => f.rol);
+  const quienLaTiene = async (clave: string = CLAVE) => (await filasDeLaClave(clave)).map((f) => f.rol);
 
   beforeAll(async () => {
     base = await crearBaseTemporalMigrada();
@@ -75,9 +77,17 @@ describe("migración de datos M3a: la clave compra_repartir", () => {
     await base?.eliminar();
   }, 60_000);
 
-  it("da de alta la clave en Accion con la descripción IDÉNTICA a la del catálogo del código", async () => {
-    const r = await base.cliente.query<{ descripcion: string }>(`SELECT "descripcion" FROM "Accion" WHERE "clave" = $1`, [CLAVE]);
-    expect(r.rows.map((f) => f.descripcion)).toEqual([ACCIONES.find((a) => a.clave === CLAVE)!.descripcion]);
+  it("da de alta las dos claves en Accion con la descripción IDÉNTICA a la del catálogo del código", async () => {
+    for (const clave of CLAVES) {
+      const r = await base.cliente.query<{ descripcion: string }>(`SELECT "descripcion" FROM "Accion" WHERE "clave" = $1`, [clave]);
+      expect(r.rows.map((f) => f.descripcion), clave).toEqual([ACCIONES.find((a) => a.clave === clave)!.descripcion]);
+    }
+  });
+
+  it("compra_recibir se siembra IGUAL que compra_repartir: el admin de cada empresa y nadie más (ni el operador, ni un rol propio con otras claves de compras)", async () => {
+    expect(await quienLaTiene("compra_recibir")).toEqual(["a-admin", "b-admin"]);
+    expect(await quienLaTiene("compra_recibir")).toEqual(await quienLaTiene("compra_repartir"));
+    expect((await filasDeLaClave("compra_recibir")).every((f) => f.ver && f.editar && f.empresa === f.deLaFila)).toBe(true);
   });
 
   it("el admin la recibe en cada empresa, haya o no tenido filas de compras (el rol se reconoce por su clave de sistema, no por el nombre)", async () => {
@@ -103,7 +113,7 @@ describe("migración de datos M3a: la clave compra_repartir", () => {
   });
 
   it("NO copia CapacidadSucursal (sin fila la capacidad está habilitada): ni apagada ni de ninguna clase", async () => {
-    const r = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "CapacidadSucursal" WHERE "accionClave" = $1`, [CLAVE]);
+    const r = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "CapacidadSucursal" WHERE "accionClave" = ANY($1)`, [[...CLAVES]]);
     expect(r.rows[0].n).toBe(0);
   });
 
@@ -120,8 +130,8 @@ describe("migración de datos M3a: la clave compra_repartir", () => {
     const despues = await filasDeLaClave();
     expect(despues).toEqual(antes);
     expect(despues.find((f) => f.rol === "b-admin")).toMatchObject({ ver: true, editar: false });
-    const acciones = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "Accion" WHERE "clave" = $1`, [CLAVE]);
-    expect(acciones.rows[0].n).toBe(1);
+    const acciones = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "Accion" WHERE "clave" = ANY($1)`, [[...CLAVES]]);
+    expect(acciones.rows[0].n).toBe(2);
   });
 
   it("una empresa que nace DESPUÉS no la recibe de esta migración (la siembra del alta sale de ACCIONES, no de la migración): el rol admin de una empresa nueva se cubre volviendo a correrla", async () => {
@@ -137,14 +147,14 @@ describe("migración de datos M3a: la clave compra_repartir", () => {
   });
 
   it("down.sql deja CERO filas de la clave (Accion, PermisoRol y CapacidadSucursal) y no toca las demás", async () => {
-    await base.cliente.query(`INSERT INTO "CapacidadSucursal" ("id", "empresaId", "accionClave", "sucursalId", "habilitado") VALUES ('cap-repartir', 'emp-a', $1, NULL, false)`, [CLAVE]);
-    const otrasAntes = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "PermisoRol" WHERE "accionClave" <> $1`, [CLAVE]);
+    await base.cliente.query(`INSERT INTO "CapacidadSucursal" ("id", "empresaId", "accionClave", "sucursalId", "habilitado") VALUES ('cap-repartir', 'emp-a', $1, NULL, false), ('cap-recibir', 'emp-a', 'compra_recibir', NULL, false)`, [CLAVE]);
+    const otrasAntes = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "PermisoRol" WHERE NOT ("accionClave" = ANY($1))`, [[...CLAVES]]);
 
     await base.cliente.query(leer("down.sql"));
 
-    const cuenta = async (tabla: string, columna: string) => (await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "${tabla}" WHERE "${columna}" = $1`, [CLAVE])).rows[0].n;
+    const cuenta = async (tabla: string, columna: string) => (await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "${tabla}" WHERE "${columna}" = ANY($1)`, [[...CLAVES]])).rows[0].n;
     expect([await cuenta("Accion", "clave"), await cuenta("PermisoRol", "accionClave"), await cuenta("CapacidadSucursal", "accionClave")]).toEqual([0, 0, 0]);
-    const otrasDespues = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "PermisoRol" WHERE "accionClave" <> $1`, [CLAVE]);
+    const otrasDespues = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "PermisoRol" WHERE NOT ("accionClave" = ANY($1))`, [[...CLAVES]]);
     expect(otrasDespues.rows[0].n).toBe(otrasAntes.rows[0].n);
     const capacidadDeOrigen = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "CapacidadSucursal" WHERE "id" = 'cap-a'`);
     expect(capacidadDeOrigen.rows[0].n).toBe(1);
@@ -153,5 +163,6 @@ describe("migración de datos M3a: la clave compra_repartir", () => {
   it("subir otra vez después de bajar deja la clave como la primera vez (sube-baja-sube)", async () => {
     await base.cliente.query(leer("migration.sql"));
     expect(await quienLaTiene()).toEqual(["a-admin", "b-admin"]);
+    expect(await quienLaTiene("compra_recibir")).toEqual(["a-admin", "b-admin"]);
   });
 });

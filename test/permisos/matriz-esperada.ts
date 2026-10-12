@@ -142,4 +142,5 @@ export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   pos_liberar_mesa: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
   producto_campos_sensibles: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin"] },
   compra_repartir: { modulo: "compras", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
+  compra_recibir: { modulo: "compras", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
 };

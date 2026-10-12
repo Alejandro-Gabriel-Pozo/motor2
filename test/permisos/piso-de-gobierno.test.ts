@@ -150,9 +150,10 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     for (const a of ACCIONES.filter((x) => (ACCIONES_DE_EMPRESA_DE_D15 as readonly string[]).includes(x.clave))) expect([...a.rolesEditarSemilla], a.clave).toEqual(["admin"]);
   });
 
-  it("el conteo del catálogo: 52 operario, 60 administrador, 12 administrador de sistema, 2 gerente", () => {
+  it("el conteo del catálogo: 53 operario, 60 administrador, 12 administrador de sistema, 2 gerente", () => {
+    // 52 → 53 operario: Paquete 3 M3a suma `compra_recibir` (clase O).
     // 59 → 60 administrador: Paquete 3 M3a suma `compra_repartir` (clase A).
     // 51 → 52: M.2 P1 suma `producto_campos_sensibles` (piso operario, clase O); los otros pisos no se mueven.
-    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([52, 60, 12, 2]);
+    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([53, 60, 12, 2]);
   });
 });

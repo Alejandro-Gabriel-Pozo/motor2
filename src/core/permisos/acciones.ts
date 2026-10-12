@@ -239,6 +239,10 @@ export const ACCIONES = [
   // la EMPRESA (quien paga es la empresa, ADR-029): por eso el contexto es empresa, y cada sucursal destino además exige `proceso_compra` en ella. Piso administrador y semilla solo admin (clase A, como `anular_compra`):
   // la migración 20261016100000 se la da al rol `admin` de cada empresa. Reservada hasta la Etapa C (ningún caso de uso la pide todavía).
   { clave: "compra_repartir", modulo: "compras", descripcion: "Repartir una factura de proveedor entre sucursales y atender las facturas pendientes de reparto", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  // Paquete 3, M3a (cambio del dueño, 2026-10-12): confirmar la RECEPCIÓN de la mercadería de la parte de UNA sucursal en una factura de proveedor ya repartida. El stock de una factura entra recién cuando la factura está
+  // REPARTIDA (cabecera CONFIRMADA) Y la parte de esa sucursal está RECIBIDA. Es de la SUCURSAL (quien recibe es la sucursal), clase O (piso operario, semilla solo admin, delegable al encargado de la sucursal por configuración).
+  // La migración 20261016100000 se la da al rol `admin` de cada empresa. Reservada hasta la Etapa C (la bandeja «mercadería por recibir» y su caso de uso).
+  { clave: "compra_recibir", modulo: "compras", descripcion: "Confirmar la recepción de la mercadería de una factura de proveedor en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
 ] as const satisfies readonly AccionSemilla[];
 
 export type AccionClave = (typeof ACCIONES)[number]["clave"];
