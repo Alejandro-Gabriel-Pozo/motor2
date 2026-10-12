@@ -57,12 +57,16 @@ describe("abrir una mesa contra apagar la sucursal (P15)", () => {
     return { transaccion, estado };
   }
 
-  // Cada actor opera con el alcance que tiene en producción: SOLO su sucursal activa (ADR-028). Abre la mesa quien está en Norte; apaga Norte quien está en la Central.
+  // Cada actor opera con el alcance que tiene en producción (ADR-028). Abre la mesa quien está en Norte (lectura y escritura solo en Norte). Apaga Norte quien está en la Central: su escritura es solo la Central, y su
+  // LECTURA ya es la de verificación (todas las sucursales de la empresa: Central y Norte), que es lo que `lecturaDeVerificacionEnLaEmpresa` le da al abrir la transacción del apagado. Se le da de entrada porque el
+  // ensanche arma una base NUEVA cuando agranda el alcance y descartaría la transacción con barrera que inyecta este test; con el alcance ya completo devuelve el contexto tal cual. Sin esa lectura el apagado no ve las
+  // cuentas de Norte y fallaría abierto (apagaría una sucursal con mesas abiertas).
   const transaccionDeNorte = () => baseDeTest({ lectura: [norteId], escritura: [norteId] }).transaccion;
-  const transaccionDeLaCentral = () => baseDeTest({ lectura: [centralId], escritura: [centralId] }).transaccion;
+  const baseDeLaCentral = () => baseDeTest({ lectura: [centralId, norteId], escritura: [centralId] });
+  const transaccionDeLaCentral = () => baseDeLaCentral().transaccion;
 
   const abrir = (transaccion: Transaccion) => abrirCuentaCasoDeUso({ usuarioId, sucursalId: norteId, transaccion }, { mesaId, comensales: 2 });
-  const apagar = (transaccion: Transaccion) => actualizarActivoSucursalCasoDeUso({ ...baseDeTest, usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: centralId, transaccion }, { sucursalId: norteId, activo: false });
+  const apagar = (transaccion: Transaccion) => actualizarActivoSucursalCasoDeUso({ ...baseDeLaCentral(), usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: centralId, transaccion }, { sucursalId: norteId, activo: false });
   const activo = async () => (await prismaAdmin.sucursal.findUniqueOrThrow({ where: { id: norteId } })).activo;
   const cuentasAbiertas = () => prismaAdmin.cuenta.count({ where: { cerradaEn: null, mesa: { sucursalId: norteId } } });
 
