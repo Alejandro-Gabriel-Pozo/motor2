@@ -180,7 +180,7 @@ y vigilar Sentry 48 horas (errores de `signIn`, `invitacion-sin-auth-url`, corre
 > Rol `motor2_app`: no es superusuario, sin `BYPASSRLS`, sin membresía en ningún rol (ni `neon_superuser`), sin `CREATE` en `public`, sin `TRUNCATE`, dueño de 0 tablas. Ids de `Sucursal` con forma rara: 0. Las 6 consultas de coherencia de datos: 0. Hoy no hay políticas ni funciones de alcance, ni `AgregadoDeCuenta`, ni la clave `producto_campos_sensibles`.
 > Volumen: 1 empresa, 6 sucursales, 3 usuarios, 0 operaciones, 0 movimientos, 0 secciones, 1 cuenta, 50 productos, 57 filas de auditoría. **Sin confirmar:** el usuario de `DATABASE_URL` (la variable es secreta en Vercel y no hay conexiones de la app abiertas en la base); no hay ningún evento `rol-de-ejecucion-privilegiado` en Sentry en 90 días, lo que indica que siempre corrió con `motor2_app`.
 
-**Qué lleva el paquete (8 migraciones propias, cada una con su `down.sql`; más E8 si está pendiente):**
+**Qué lleva el paquete (8 migraciones, cada una con su `down.sql`):**
 1. `20261013120000_permiso_producto_campos_sensibles` (M.2): solo datos. Alta de la clave `producto_campos_sensibles` y copia de los permisos de quien hoy edita `producto_editar` o `producto_presentaciones`. **Sin ella nadie podría cambiar un precio, un factor ni una unidad con el código nuevo.**
 2. `20261014100000_i3_agregado_de_cuenta` (P3): tabla nueva `AgregadoDeCuenta` (el comprobante de idempotencia del «agregar al pedido» del salón; solo se agrega: SELECT e INSERT para `motor2_app`).
 3. `20261014110000_rls_sucursal_b1_funciones`: `app_sucursales_lectura()` y `app_sucursales_escritura()`.
