@@ -2229,6 +2229,10 @@ model Empresa {
   /// Política de plataforma (ADR-008/ADR-010): solo la cambia la plataforma (scripts/politica-empresa.ts), nunca la propia empresa.
   permisosEditables Boolean       @default(true)
   dosPaneles        Boolean       @default(true)
+  /// M0-IVA: condición de la empresa frente al IVA. Código semántico de lista cerrada (`CONDICIONES_IVA` en src/core/fiscal/iva.ts), con el CHECK
+  /// "Empresa_condicionIva_check" que agrega la migración a mano (Prisma no declara CHECK). NULL = «no declarada»: quien la lea falla cerrado, nunca supone
+  /// Responsable Inscripto. La carga la plataforma (paso de datos auditado), no la propia empresa.
+  condicionIva      String?
 
   usuarios                       UsuarioEmpresa[]
   sucursalRel                    Sucursal[]
