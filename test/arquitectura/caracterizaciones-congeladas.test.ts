@@ -147,6 +147,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "P1 paso 7 (O.254; CAMBIA el día que citan los textos guardados al anular): el día de la venta en `detalleReversionDeVenta` («Anulación de la venta … (fecha).») y en `descripcionAuditoriaAnulacionDeVenta` («Venta del …: anulación») pasa de UTC a hora argentina. Cambia SOLO la fecha dentro de esos textos, en 2 líneas (los dos AJUSTE de la anulación de la venta op11: 2026-09-27 → 2026-09-26, porque el fixture guarda el día a las 00:00Z, que en hora argentina es el día anterior a las 21:00); mismas líneas, mismo orden, ninguna consulta ni número distinto.",
       },
+      {
+        blob: "9de92b42995ab38589e108dca16bcf541a0b5085",
+        // El commit PADRE de este (b4c7670f) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "b4c7670f",
+        motivo:
+          "M2 (O.268; ADITIVO, no cambia comportamiento): las líneas OPERACION suman `mermaPorAnulacionDeId`, `motivoAnulacion`, `reemplazaAOperacionId`, `revierteAOperacionId` y `ventaId` en null, y las KARDEX suman `devuelveAMovimientoId` en null. Verificado: el golden nuevo, sin esas columnas en null, es idéntico al anterior.",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -176,6 +183,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "2ea2dd1",
         motivo:
           "P1 paso 7 (O.254; CAMBIA el día que citan los textos guardados al anular): el día de la venta en `detalleReversionDeVenta` («Anulación de la venta … (fecha).») y en `descripcionAuditoriaAnulacionDeVenta` («Venta del …: anulación») pasa de UTC a hora argentina. Cambia SOLO la fecha dentro de esos textos, en 8 líneas (las anulaciones de op12, op6 y op4, cada una con su AJUSTE y su auditoría: un día antes, porque los fixtures guardan el día a las 00:00Z, que en hora argentina es el día anterior a las 21:00); mismas líneas, mismo orden, ninguna consulta ni número distinto.",
+      },
+      {
+        blob: "65dce1332dd948a8b9feb6436fadd97fbf6a35e3",
+        // El commit PADRE de este (b4c7670f) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "b4c7670f",
+        motivo:
+          "M2 (O.268; ADITIVO, no cambia comportamiento): igual que la matriz de venta; solo columnas nuevas en null en las líneas OPERACION y KARDEX. Verificado: sin esas columnas, idéntico al anterior.",
       },
     ],
   },
@@ -290,7 +304,15 @@ const CONGELADAS: Record<string, Congelada> = {
     desde: "4af23e8b",
     motivo:
       "Huella de los escritores del Kardex (Hito 5, pieza 5.4, A2; O.13): cada escritura (modelo, operación, args con la presencia o ausencia de cada clave) y el estado final de Operacion, MovimientoStock y TraspasoSucursal en ocho casos (aprobación, envío directo, aceptación con y sin clave I3, reingreso, anulación de compra con y sin clave, anulación de venta). Red de A4 y A5: reunir las dos escrituras de traspasos y las dos de anulación en una función cada una no cambia NADA de lo que llega a la base.",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "1fd953a1cd1554a3685c79e8776eee10fb0808d1",
+        // El commit PADRE de este (b4c7670f) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "b4c7670f",
+        motivo:
+          "M2 (O.268; ADITIVO, no cambia comportamiento): la huella de escritores del Kardex suma las columnas nuevas de `Operacion`, `MovimientoStock` y `ConteoFisico` (`motivoCancelacion`) en null. Verificado: sin esas claves en null, idéntico al anterior.",
+      },
+    ],
   },
   "test/catalogo/caracterizacion/dinero-tramo-c.golden.txt": {
     blob: "ae6ec3b65f5c3bf20391493b64ebae0b036f7442",
