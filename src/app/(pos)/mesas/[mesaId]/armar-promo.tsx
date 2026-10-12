@@ -10,7 +10,8 @@ import { BOTON_CHICO, BOTON_PRIMARIO, BOTON_SECUNDARIO } from "./estilos";
  * máximo — el reductor puro (`armar-promo-estado.ts`) ya impide pasar del máximo tocando +. Mismo patrón de modal que
  * `AnularItem` (backdrop, `role="dialog"`, Escape cierra). No manda nada al servidor por sí solo: al confirmar, entrega la
  * elección al padre (`AgregarItems`), que la suma a «Por agregar» junto con los sueltos — todo se manda junto recién al
- * confirmar la lista entera (`agregarItems(cuentaId, items, promos)`).
+ * confirmar la lista entera (`agregarItems(cuentaId, items, promos, claveIdempotencia)`). La clave de idempotencia (P3) la maneja el padre y cambia sola con el contenido de «Por agregar»: armar,
+ * confirmar o quitar una promo es un cambio de contenido y renueva la clave, así que acá no hay nada que hacer con ella.
  *
  * Escape cierra con un listener a nivel `window` (`useEffect`), NO `onKeyDown` sobre el div del diálogo (a diferencia de
  * `AnularItem`, que sí puede: su campo lleva `autoFocus`): acá NINGÚN control arranca enfocado, y encima cada botón "Sumar"

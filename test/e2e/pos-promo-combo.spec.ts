@@ -79,6 +79,8 @@ async function sembrarPromoCombo(sucursalId: string) {
       await prisma.promoCuenta.deleteMany({ where: { id: { in: promoCuentaIds } } });
       // Cerrar la cuenta (test D3/D4) emite un ticket: su ejemplar referencia la cuenta (RESTRICT) — se borra antes.
       await prisma.ejemplarTicket.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      // P3: cada «Agregar al pedido» de la pantalla deja un comprobante (`AgregadoDeCuenta`, solo se agrega: el rol de la app no lo borra) que referencia la cuenta (RESTRICT): se borra antes, como dueño.
+      await prismaAdmin.agregadoDeCuenta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.promoCartaCupo.deleteMany({ where: { promoCartaId: promo.id } });

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useReducer, useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
 import { agregarItems } from "@/server/actions/pos/cuenta-pedido";
@@ -49,9 +50,17 @@ interface PromoPorAgregar {
  * reductor propio — cada instancia es una línea aparte, sin acumularse, así que alcanza con un array simple). Al confirmar
  * TODO junto se manda en una sola llamada, `agregarItems(cuentaId, items, promos)` — el tercer parámetro es opcional, así
  * que sin ninguna promo armada el llamado es idéntico al de siempre.
+ *
+ * Clave de idempotencia (P3 del Paquete 1, I3): cada envío lleva un UUID (`useState(() => crypto.randomUUID())`, como el resto de los formularios) que el servidor usa para no agregar dos veces el MISMO pedido si
+ * la respuesta se pierde (corte de red) o se toca dos veces. La clave es de UN contenido: se reutiliza mientras el pedido no cambia (reintento) y se RENUEVA al tener éxito y en cuanto cambia el contenido de
+ * «Por agregar» (otro pedido, otra intención: con la misma clave el servidor respondería conflicto). Ante un error de RED no se sabe si el servidor llegó a agregarlo: se refresca la cuenta (para que «Sin enviar»
+ * muestre la verdad) y se avisa; volver a tocar «Agregar» con el mismo contenido es seguro (no duplica). No protege dos pestañas con dos pedidos distintos: son dos claves, o sea dos intenciones.
  */
 export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: string; puede: boolean; selectorCarta: SelectorCartaPos | null }) {
   const { ejecutar, pending, error } = useAccionMesa();
+  const router = useRouter();
+  // P3 (I3): la clave del envío y la firma del contenido con el que se usó por última vez (`null` = todavía no se usó).
+  const [envio, setEnvio] = useState<{ firma: string | null; clave: string }>(() => ({ firma: null, clave: crypto.randomUUID() }));
   const [estado, despachar] = useReducer(reducirSelectorCarta, selectorCarta, estadoInicialSelectorCarta);
   const [lista, despacharLista] = useReducer(reducirListaPorAgregar, estadoInicialListaPorAgregar());
   // Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 11): promos ya armadas, esperando junto con los sueltos — `promoAbierta`
@@ -88,16 +97,26 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
   };
 
   const confirmar = () => {
+    const items = itemsDeListaPorAgregar(lista);
+    const promos = promosPorAgregar.map((p) => ({ promoCartaId: p.promoCartaId, elecciones: p.elecciones }));
+    // Misma clave solo para el MISMO contenido (el reintento); si cambió algo de «Por agregar», es otro pedido y lleva clave nueva.
+    const firma = JSON.stringify([items, promos]);
+    const clave = envio.firma === null || envio.firma === firma ? envio.clave : crypto.randomUUID();
+    setEnvio({ firma, clave });
     ejecutar(
-      () =>
-        agregarItems(
-          cuentaId,
-          itemsDeListaPorAgregar(lista),
-          promosPorAgregar.map((p) => ({ promoCartaId: p.promoCartaId, elecciones: p.elecciones }))
-        ),
+      async () => {
+        try {
+          return await agregarItems(cuentaId, items, promos, clave);
+        } catch {
+          // Error de red: no se sabe si el servidor lo agregó. Se refresca la cuenta y la lista queda intacta con la misma clave: reintentar es seguro.
+          router.refresh();
+          return { ok: false as const, mensaje: "Se cortó la conexión y no sabemos si el pedido se agregó. Revisá «Sin enviar» (ya se actualizó); si falta, volvé a tocar «Agregar»: si ya estaba, no se duplica." };
+        }
+      },
       () => {
         despacharLista({ tipo: "vaciar" });
         setPromosPorAgregar([]);
+        setEnvio({ firma: null, clave: crypto.randomUUID() });
       }
     );
   };
