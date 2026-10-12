@@ -174,6 +174,10 @@ describe("M0-IVA: alícuotas de IVA del producto (migración 20261015100000)", (
     expect(despues.privilegios, "los mismos privilegios de tabla").toEqual(antes.privilegios);
     expect(despues.restricciones.length, "dos restricciones más").toBe(antes.restricciones.length + 2);
     expect(despues.columnas.length, "dos columnas más").toBe(antes.columnas.length + 2);
+    expect(await q(`SELECT attname::text AS columna, attacl::text AS acl FROM pg_attribute WHERE attrelid = '"Producto"'::regclass AND attname LIKE 'alicuotaIva%' ORDER BY 1`), "sin ACL propia en las columnas nuevas").toEqual([
+      { columna: "alicuotaIvaCompra", acl: null },
+      { columna: "alicuotaIvaVenta", acl: null },
+    ]);
     // Los privilegios de tabla cubren las columnas nuevas: motor2_app puede escribirlas por columna sin un GRANT nuevo.
     if (hayRol) {
       const porColumna = (despues.privilegiosPorColumna as { rol: string; columna: string; privilege_type: string }[]).filter((p) => p.rol === "motor2_app" && p.columna.startsWith("alicuotaIva"));
