@@ -124,7 +124,7 @@ export function sqlDeReversaDePoliticasDeAlcance(tablas: readonly string[] = TAB
 }
 
 /** Reversa de `sqlDeFuncionesDeAlcance`. Va DESPUÉS de la reversa de las políticas (una política en uso impediría borrar la función). */
-function sqlDeReversaDeFuncionesDeAlcance(): string {
+export function sqlDeReversaDeFuncionesDeAlcance(): string {
   return `-- M.3 RLS por sucursal: reversa de las funciones del alcance.\nDROP FUNCTION IF EXISTS app_sucursales_lectura();\nDROP FUNCTION IF EXISTS app_sucursales_escritura();\n`;
 }
 
