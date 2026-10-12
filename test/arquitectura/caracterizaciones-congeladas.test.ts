@@ -119,6 +119,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "M.2 P1 (clave nueva `producto_campos_sensibles`, semilla solo admin; NO cambia comportamiento todavía). La huella siembra los permisos de fábrica de las empresas que da de alta y cuenta el catálogo. Cambia SOLO 6 líneas, 3 por empresa sembrada: `PERMISO admin:producto_campos_sensibles ver=true editar=true`, `PERMISO operador:producto_campos_sensibles ver=false editar=false` y `ACCIONES 124` → `ACCIONES 125` (el tamaño del catálogo). Ningún resultado, mensaje ni otra fila cambia.",
       },
+      {
+        blob: "3125e2daf2c1813a48cff05c5f83c1baeae5e45d",
+        // El commit PADRE de este (7d4e2182) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "7d4e2182",
+        motivo:
+          "M0-IVA (O.266; ADITIVO, no cambia comportamiento): `Empresa.condicionIva` (migración 20261015101000) aparece en las 28 filas EMPRESA de la huella, en null («no declarada»). Revisado con `git diff --word-diff`: solo se suma `condicionIva=null`; ningún permiso ni rol cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
@@ -262,6 +269,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Paquete 1, P2.1 (se BORRA una función; el resto del golden no cambia): `productoTieneDescuentoEnAlgunaSucursal` ya no existe (el ítem agrupado de la carta mira solo el descuento de SU sucursal con `descuentosConfiguradosEnSucursal`, que ya tiene su caso), así que se va su caso `carta.productoTieneDescuentoEnAlgunaSucursal(Empanada)` (1 consulta, `descuentoProductoSucursal.count`, resultado `true`). Ninguna otra entrada cambia.",
       },
+      {
+        blob: "8056ac4ed8e4bb9fa312aca046c723d9920b5aff",
+        // El commit PADRE de este (7d4e2182) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "7d4e2182",
+        motivo:
+          "M0-IVA (O.266; ADITIVO, no cambia comportamiento): `Producto.alicuotaIvaVenta` y `Producto.alicuotaIvaCompra` (migración 20261015100000) aparecen en una sola entrada de la lectura, en null («sin declarar»). Revisado con `git diff --word-diff`: solo se suman esas dos claves.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -312,6 +326,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "52d5b77",
         motivo:
           "Paquete 1, piso del precio LOCAL de una promo (CAMBIA UN TEXTO, a propósito): `guardarCuposPromoCarta` ya no nombra el importe ni la sucursal cuando el que no alcanza el piso es el precio LOCAL de alguna sucursal (puede ser una que quien guarda no ve; con las políticas de RLS por sucursal el control lee todas con la lectura de verificación). Cambia SOLO la línea `resultado` del paso «promo: cupos que dejan el precio local bajo el piso»: de «El precio de \"Menú del día\" ($0.05) no alcanza el piso…» a «El precio local de \"Menú del día\" en alguna sucursal no alcanza el piso…». El rechazo por el precio de la EMPRESA no cambia.",
+      },
+      {
+        blob: "e80354ded4366966265790f447b5c465f1d02751",
+        // El commit PADRE de este (7d4e2182) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "7d4e2182",
+        motivo:
+          "M0-IVA (O.266; ADITIVO, no cambia comportamiento): las filas de producto de la huella suman `alicuotaIvaCompra=null alicuotaIvaVenta=null` (13 líneas). Revisado con `git diff --word-diff`: ningún importe ni regla de dinero cambia.",
       },
     ],
   },
