@@ -213,6 +213,14 @@ const VERIFICACION: Readonly<Record<string, UsoDeVerificacion>> = {
     devuelve: "MENSAJE",
     motivo: "P15, apagar una sucursal: los traspasos en camino y las mesas abiertas de la sucursal que se APAGA (que no es la activa de quien la apaga) se miran con toda la empresa; sigue siendo la MISMA transacción SERIALIZABLE de gobierno (`conGobierno` solo usa su `transaccion`) y la escritura de `Sucursal` es de gobierno. Sale un mensaje que nombra la sucursal y qué falta, como antes",
   },
+  // ── Carta: piso del precio local de una promo ────────────────────────────────────────────────────────────────────────────
+  "src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta.ts": {
+    lectores: {},
+    directos: [],
+    transaccionA: { conTransaccionSerializable: 0 },
+    devuelve: "MENSAJE",
+    motivo: "cupos de una promo: el piso de $0,01 por unidad se mide contra el precio local de CUALQUIER sucursal (`PromoCartaSucursal`); la transacción SERIALIZABLE lee toda la empresa y escribe solo cupos y auditoría de empresa; el rechazo no nombra importe ni sucursal",
+  },
   // ── Compras: aviso C25 de posible factura repetida ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   "src/server/actions/movimientos/casos-de-uso/registrar-movimiento.ts": {
     lectores: { cargarComprasParaAvisoDeDuplicado: 0 },

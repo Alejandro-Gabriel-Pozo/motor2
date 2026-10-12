@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
+import { baseDeTest, crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase } from "../setup/test-db";
 import { guardarPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-promo-carta";
 import { guardarPrecioLocalPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-precio-local-promo-carta";
 import { guardarCuposPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta";
@@ -18,12 +18,19 @@ describe("promos: el piso se lee y se escribe dentro de la transacción (M14, M-
   let platosId: string;
   let promoId: string;
 
-  const dbProhibida = new Proxy({}, { get: (_t, p) => { throw new Error(`lectura FUERA de la transacción: actor.db.${String(p)}`); } }) as never;
+  // Lo ÚNICO que se permite leer con `actor.db` es el listado de sucursales de la empresa: es lo que hace `lecturaDeVerificacionEnLaEmpresa` para ensanchar la lectura del piso de los cupos
+  // (`Sucursal` no tiene política por sucursal). Cualquier otra lectura de afuera de la transacción sigue explotando.
+  const dbSoloListaDeSucursales = new Proxy({}, {
+    get: (_t, p) => {
+      if (p === "sucursal") return { findMany: baseDeTest.db.sucursal.findMany.bind(baseDeTest.db.sucursal) };
+      throw new Error(`lectura FUERA de la transacción: actor.db.${String(p)}`);
+    },
+  }) as never;
   // El actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028).
   const baseDelActor = () => baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] });
   const actor = () => {
     const { transaccion, alcance } = baseDelActor();
-    return { usuarioId, sucursalId, transaccion, alcance, db: dbProhibida };
+    return { usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, transaccion, alcance, db: dbSoloListaDeSucursales };
   };
 
   beforeEach(async () => {

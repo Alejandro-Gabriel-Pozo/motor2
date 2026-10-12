@@ -213,8 +213,9 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     await comprarEnNorte("2026-09-13", 700, { nroFactura: "A-13" });
     await prisma.operacion.updateMany({ where: { proceso: "COMPRA", nroFactura: "A-13" }, data: { anuladaEn: new Date("2026-09-14T12:00:00Z"), anuladaPorId: usuarioNorte } }); // anulada
 
-    // Con el alcance de quien opera en la Central (solo su sucursal): la lectura de las compras de las OTRAS sucursales es del código del aviso C25 (pendiente), no de este actor.
-    const leidas = await cargarComprasParaAvisoDeDuplicado(baseDeTest({ lectura: [sucursalCentral], escritura: [sucursalCentral] }).db, { proveedorId, desde: "2026-09-03", hasta: "2026-09-17" });
+    // Con la base que `registrarMovimientoCasoDeUso` le pasa a esta lectura: la de VERIFICACIÓN de quien opera en la Central (lectura en todas las sucursales de la empresa, escritura solo en la Central). El texto del aviso
+    // después decide qué sucursales nombra con su día (las que quien carga ve); acá se prueba que la lectura trae las compras de toda la empresa.
+    const leidas = await cargarComprasParaAvisoDeDuplicado(baseDeTest({ lectura: [sucursalCentral, sucursalNorte], escritura: [sucursalCentral] }).db, { proveedorId, desde: "2026-09-03", hasta: "2026-09-17" });
 
     expect(leidas.map((c) => ({ dia: c.dia, importe: c.importe, sucursalNombre: c.sucursalNombre, anulado: c.anulado, proveedorId: c.proveedorId })).sort((a, b) => a.dia.localeCompare(b.dia))).toEqual([
       { dia: "2026-09-10", importe: 1500.5, sucursalNombre: "Central", anulado: false, proveedorId },

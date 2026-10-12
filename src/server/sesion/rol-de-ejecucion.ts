@@ -101,7 +101,7 @@ export function permitirRolPrivilegiado(source: Record<string, string | undefine
  * `datos` permite reusar la lectura del rol (no cambia mientras dura el proceso).
  *
  * M.3-A3: un rol sin privilegios que NO es `motor2_app` ni miembro de él tampoco queda alcanzado por las políticas por sucursal (Fase B las escribe `TO motor2_app`): el alcance por
- * sucursal no rige. Con `exigirRolDeApp` (lo pasa `verificarRolDeEjecucionDelProceso`; hoy `false`, porque todavía no hay políticas por sucursal y un rol así funciona como siempre)
+ * sucursal no rige. Con `exigirRolDeApp` (lo pasa `verificarRolDeEjecucionDelProceso`; hoy `true`, desde la migración B1 del Paquete 1: las políticas por sucursal ya existen y un rol que no las alcanza saltearía el alcance)
  * eso se NIEGA, salvo el escape de las herramientas de demo (`permitirPrivilegiado`), que avisa y sigue. Sin `exigirRolDeApp` solo se avisa a Sentry, una vez por arranque.
  */
 export async function verificarRolDeEjecucion(db: Db, datos?: DatosDelRol, permitirPrivilegiado = false, exigirRolDeApp = false): Promise<void> {
