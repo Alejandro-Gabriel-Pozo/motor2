@@ -28,9 +28,10 @@ export { prismaDuenioSinEmpresa } from "./cliente-duenio";
 /**
  * Vacía las operaciones y sus movimientos de un golpe. Los tests de volumen siembran decenas de miles de filas: borrarlas con el
  * `deleteMany` de `limpiarBaseDeTest` (con el chequeo de FK fila por fila) puede pasar los 10 s del hook y arrastra a los tests siguientes.
+ * Postgres no deja truncar `Operacion` si otra tabla la referencia, aunque esté vacía: `FacturaProveedorSucursal` (M3b) la referencia con `operacionId`, así que va en el mismo `TRUNCATE`.
  */
 export async function vaciarOperacionesPorVolumen() {
-  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "MovimientoStock", "CuentaItem", "Operacion"');
+  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "MovimientoStock", "CuentaItem", "FacturaProveedorSucursal", "Operacion"');
 }
 
 /**
@@ -101,6 +102,11 @@ export async function limpiarBaseDeTest() {
   // los tres (Operacion/ConteoFisico incluidos).
   await prismaAdmin.movimientoStock.deleteMany();
   await prismaAdmin.conteoFisico.deleteMany();
+  // La factura de proveedor (Paquete 3, M3b): las partes referencian a la cabecera, la sucursal y la `Operacion` (RESTRICT), los renglones a la cabecera y al producto, y las líneas del Kardex (ya borradas) a los
+  // renglones: partes, después renglones, después cabeceras, todo ANTES de operacion.deleteMany() y de proveedor/producto/sucursal/User (más abajo).
+  await prismaAdmin.facturaProveedorSucursal.deleteMany();
+  await prismaAdmin.facturaProveedorRenglon.deleteMany();
+  await prismaAdmin.facturaProveedor.deleteMany();
   await prismaAdmin.operacion.deleteMany();
   // La cabecera de venta (M2) referencia a la cuenta, la sucursal y el User (RESTRICT) y la referencian las operaciones (recién borradas): DESPUÉS de operacion.deleteMany() y ANTES de la cuenta.
   await prismaAdmin.venta.deleteMany();

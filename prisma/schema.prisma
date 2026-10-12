@@ -38,6 +38,9 @@ model User {
   invitacionesSucursalHechas InvitacionSucursal[]
   agregadosDeCuenta          AgregadoDeCuenta[]
   ventas                     Venta[]
+  facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
+  facturasProvConfirmadas    FacturaProveedor[]   @relation("FacturaProveedorConfirmadaPor")
+  facturasProvAnuladas       FacturaProveedor[]   @relation("FacturaProveedorAnuladaPor")
   traspasosCreados           TraspasoSucursal[]   @relation("TraspasoCreadoPor")
   traspasosDecididosOrigen   TraspasoSucursal[]   @relation("TraspasoDecididoOrigen")
   traspasosDecididosDestino  TraspasoSucursal[]   @relation("TraspasoDecididoDestino")
@@ -150,6 +153,7 @@ model Sucursal {
   versionesDeRecetaPropia  RecetaVersion[]               @relation("RecetaVersionSucursal")
   ejemplaresTicket         EjemplarTicket[]
   ventas                   Venta[]
+  facturaProveedorPartes   FacturaProveedorSucursal[]
   invitacionSucursals      InvitacionSucursal[]
 
   @@unique([empresaId, nombre])
@@ -408,6 +412,7 @@ model Producto {
   opcionesItemAgrupadoCarta OpcionItemAgrupadoCarta[]
   cuentaItems               CuentaItem[]
   consumosQueLoSustituyen   MovimientoStock[]           @relation("MovimientoSustituyeA")
+  renglonesDeFactura        FacturaProveedorRenglon[]
 
   @@unique([empresaId, codigo])
   @@unique([empresaId, id])
@@ -608,6 +613,7 @@ model Proveedor {
   proveedorPorProducto ProveedorPorProducto[]
   operaciones          Operacion[]
   pagosConsignante     PagoConsignante[]
+  facturasProveedor    FacturaProveedor[]
 
   @@unique([empresaId, codigo])
   @@unique([empresaId, nombre])
@@ -1181,6 +1187,10 @@ model Operacion {
   venta   Venta?  @relation(fields: [empresaId, ventaId], references: [empresaId, id], onDelete: Restrict)
 
   movimientos MovimientoStock[]
+
+  /// Paquete 3 (M3b): la parte de factura de proveedor de la que salió esta compra (a lo sumo una; `FacturaProveedorSucursal.operacionId` es único). `null` = una compra anterior a las facturas repartidas.
+  facturaProveedorParte FacturaProveedorSucursal?
+
   /// POS: ítems de cuenta cuya venta es esta Operación (los enlaza `cerrarCuenta`, src/server/actions/pos/cuenta.ts).
   cuentaItems CuentaItem[]
 
@@ -1344,6 +1354,11 @@ model MovimientoStock {
   /// Las devoluciones (parciales o totales) de esta línea de compra.
   devoluciones          MovimientoStock[] @relation("MovimientoDevuelveA")
 
+  /// Paquete 3 (M3b): en una línea de COMPRA, el renglón de factura de proveedor del que salió. `null` = una compra anterior a las facturas repartidas, o cualquier otro proceso (los AJUSTE de una anulación quedan sin renglón).
+  /// CHECK en la base: solo en COMPRA. Se escribe solo en el INSERT (el Kardex solo agrega). Nada de `src/` la escribe todavía (Etapa C).
+  facturaProveedorRenglonId String?
+  facturaProveedorRenglon   FacturaProveedorRenglon? @relation(fields: [empresaId, facturaProveedorRenglonId], references: [empresaId, id], onDelete: Restrict)
+
   creadoEn DateTime @default(now())
 
   @@unique([empresaId, id])
@@ -1361,6 +1376,7 @@ model MovimientoStock {
   @@index([productoId, seccionId, loteVencimiento])
   @@index([operacionId])
   @@index([devuelveAMovimientoId])
+  @@index([facturaProveedorRenglonId])
 }
 
 /// Reemplaza HOJA_CONTEOS_FISICOS/"ConteosFisicos" (Stock.js:1043-1141) —
@@ -2343,6 +2359,9 @@ model Empresa {
   invitacionSucursalRel          InvitacionSucursal[]
   agregadoDeCuentas              AgregadoDeCuenta[]
   ventaRel                       Venta[]
+  facturaProveedorRel            FacturaProveedor[]
+  facturaProveedorRenglonRel     FacturaProveedorRenglon[]
+  facturaProveedorSucursalRel    FacturaProveedorSucursal[]
 }
 
 enum EstadoModulo {
@@ -2480,6 +2499,113 @@ model Venta {
   @@unique([empresaId, id])
   @@unique([empresaId, cuentaId])
   @@index([sucursalId, fecha])
+}
+
+/// Paquete 3 (M3b, ADR-029): la FACTURA DE PROVEEDOR como documento de la EMPRESA (quien paga es la empresa). Una factura se carga entera y se reparte entre sucursales; cada parte es una `Operacion` COMPRA por línea y por
+/// sucursal (vínculo: `FacturaProveedorSucursal.operacionId`). No tiene sucursal: es `DE_EMPRESA` (RLS por empresa) para que cada sucursal vea la cabecera de su parte. SOLO se agrega: la app tiene SELECT e INSERT, nunca
+/// DELETE, y el UPDATE es POR COLUMNA (el estado, la anulación y una lista cerrada de datos que identifican la factura); el dinero (`importeTotal`, los renglones) no tiene UPDATE: un error se anula y se vuelve a cargar, o
+/// va una nota de crédito. Por eso NO lleva `@updatedAt`. Los CHECK, el índice único parcial de la unicidad del número (`FacturaProveedor_unica_vigente_key`) y los privilegios por columna los agrega la migración a mano
+/// (Prisma no los modela). Nada de `src/` la escribe todavía (Etapa C).
+model FacturaProveedor {
+  id          String    @id @default(cuid())
+  empresaId   String    @default(dbgenerated("app_empresa_actual()"))
+  empresa     Empresa   @relation(fields: [empresaId], references: [id])
+  proveedorId String
+  proveedor   Proveedor @relation(fields: [empresaId, proveedorId], references: [empresaId, id])
+
+  /// El número tal cual se tecleó, y su clave normalizada (la calcula la Etapa C): van juntos (CHECK). La unicidad vigente es `(empresaId, proveedorId, letra o '', nroFacturaNormalizado)` de las NO anuladas,
+  /// con un índice único parcial que vive solo en la migración. Una pendiente de reparto también reserva su número.
+  nroFactura                 String?
+  nroFacturaNormalizado      String?
+  /// La letra del comprobante (A, B, C, E, M o X), cuando se conoce: entra en la clave de unicidad (D5).
+  letra                      String?
+  /// El día del stock y del costo: el mediodía argentino del día que eligió quien cargó (UTC).
+  fecha                      DateTime
+  /// La fecha impresa en el comprobante (solo dato).
+  fechaComprobante           DateTime? @db.Date
+  /// El total de la factura, CON IVA incluido. No negativo (CHECK). Nunca se modifica.
+  importeTotal               Decimal   @db.Decimal(14, 2)
+  /// `PENDIENTE_DE_REPARTO` (cargada, sin repartir: su mercadería todavía no entró al stock) o `CONFIRMADA`. CHECK en la base.
+  estado                     String    @default("CONFIRMADA")
+  confirmadaEn               DateTime?
+  confirmadaPorId            String?
+  confirmadaPor              User?     @relation("FacturaProveedorConfirmadaPor", fields: [confirmadaPorId], references: [id], onDelete: Restrict)
+  /// `CARGA` (la cargó una persona) o `MIGRACION` (la creó un relleno). Solo `CARGA` puede quedar pendiente.
+  origen                     String    @default("CARGA")
+  /// Hoy solo `CONTADO_PAGADA` (CHECK).
+  condicionPago              String    @default("CONTADO_PAGADA")
+  recibidaEnAdministracionEn DateTime? @db.Date
+  fechaPagoDeclarada         DateTime? @db.Date
+  medioPagoDeclarado         String?
+  detalleLibre               String?
+  /// UUID que genera la pantalla. Único GLOBAL, igual que `Operacion`, `ConteoFisico` y `PagoConsignante` (ADR-028). Va junto con la huella (CHECK).
+  claveIdempotencia          String?   @unique
+  payloadHash                String?
+  resultadoMensaje           String?
+  creadoPorId                String
+  creadoPor                  User      @relation("FacturaProveedorCreadaPor", fields: [creadoPorId], references: [id], onDelete: Restrict)
+  creadoEn                   DateTime  @default(now())
+  anuladaEn                  DateTime?
+  anuladaPorId               String?
+  anuladaPor                 User?     @relation("FacturaProveedorAnuladaPor", fields: [anuladaPorId], references: [id], onDelete: Restrict)
+
+  renglones FacturaProveedorRenglon[]
+  partes    FacturaProveedorSucursal[]
+
+  @@unique([empresaId, id])
+  @@index([empresaId, proveedorId, fecha])
+}
+
+/// Paquete 3 (M3b): un renglón de la factura (lo comprado). De empresa; solo se agrega. Hoy toda naturaleza es `MERCADERIA` (CHECK `FacturaProveedorRenglon_naturaleza_chk`, que M4 amplía): producto, cantidad y precio
+/// por unidad de stock en pareo (CHECK `FacturaProveedorRenglon_pareo_mercaderia_chk`). El precio por unidad se calcula UNA vez y se copia igual a cada parte. `precioTotal` es CON IVA incluido.
+model FacturaProveedorRenglon {
+  id                   String           @id @default(cuid())
+  empresaId            String           @default(dbgenerated("app_empresa_actual()"))
+  empresa              Empresa          @relation(fields: [empresaId], references: [id])
+  facturaProveedorId   String
+  facturaProveedor     FacturaProveedor @relation(fields: [empresaId, facturaProveedorId], references: [empresaId, id])
+  /// La posición en la factura (desde 1; única por factura).
+  orden                Int
+  naturaleza           String           @default("MERCADERIA")
+  descripcion          String?
+  productoId           String?
+  producto             Producto?        @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  /// En unidad de STOCK del producto.
+  cantidadStock        Decimal?         @db.Decimal(14, 4)
+  precioPorUnidadStock Decimal?         @db.Decimal(14, 4)
+  loteVencimiento      DateTime?        @db.Date
+  /// El texto de conversión de unidad que se copia a cada movimiento (`MovimientoStock.detalle`).
+  detalle              String?
+  /// Lo pagado por el renglón, CON IVA incluido. No negativo (CHECK).
+  precioTotal          Decimal          @db.Decimal(14, 2)
+  creadoEn             DateTime         @default(now())
+
+  /// Las líneas del Kardex que salieron de este renglón (una por parte).
+  movimientos MovimientoStock[]
+
+  @@unique([empresaId, id])
+  @@unique([facturaProveedorId, orden])
+}
+
+/// Paquete 3 (M3b): la parte de cada sucursal en una factura repartida (`PROPIA`: tiene `sucursalId`; las políticas de alcance las agrega M3c). Solo se agrega. `porcentajeDeclaradoBp` es la INTENCIÓN de quien cargó
+/// (10000 = 100 %) y NUNCA se usa para atribuir dinero: la atribución sale del dinero de cada parte. `operacionId` es la `Operacion` COMPRA de esta parte (única; vacío en las partes que son solo gastos, M4).
+model FacturaProveedorSucursal {
+  id                    String           @id @default(cuid())
+  empresaId             String           @default(dbgenerated("app_empresa_actual()"))
+  empresa               Empresa          @relation(fields: [empresaId], references: [id])
+  facturaProveedorId    String
+  facturaProveedor      FacturaProveedor @relation(fields: [empresaId, facturaProveedorId], references: [empresaId, id])
+  sucursalId            String
+  sucursal              Sucursal         @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  porcentajeDeclaradoBp Int
+  operacionId           String?
+  operacion             Operacion?       @relation(fields: [empresaId, operacionId], references: [empresaId, id], onDelete: Restrict)
+  creadoEn              DateTime         @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([facturaProveedorId, sucursalId])
+  @@unique([empresaId, operacionId])
+  @@index([sucursalId])
 }
 
 model UsuarioEmpresa {

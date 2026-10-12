@@ -19,7 +19,7 @@ export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA
 
 const POR_EMPRESA = [
   "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "Cliente", "ContenidoCartaProducto", "ConteoFisico", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto",
-  "EjemplarTicket", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
+  "EjemplarTicket", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
   "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PermisoRol", "PortalCartaEmpresa", "PrecioLocalProducto", "Presentacion", "Producto", "PromoCarta", "PromoCartaCupo",
   "PromoCartaSucursal", "PromoCuenta", "Proveedor", "ProveedorPorProducto", "RecetaIngrediente", "RecetaPaso", "RecetaPasoIngrediente", "RecetaSucursal", "RecetaVersion", "RegistroAuditoria",
   "RendimientoLocalIngrediente", "Rol", "Seccion", "SeccionCarta", "SeccionHabitualProducto", "StockMinimoProducto", "Sucursal", "SucursalPublica", "SustitutoRecetaIngrediente",
@@ -126,7 +126,7 @@ export type DeclaracionDeAlcance =
 
 /** `sucursalId` NOT NULL con FK a `Sucursal`: la fila es de una sola sucursal. */
 const ALCANCE_PROPIA = [
-  "ConteoFisico", "ContenidoCartaProducto", "DescuentoProductoSucursal", "DisponibilidadProducto", "EjemplarTicket", "FrecuenciaConteoProducto", "GeneroCarta", "ItemAgrupadoCarta", "Mesa",
+  "ConteoFisico", "ContenidoCartaProducto", "DescuentoProductoSucursal", "DisponibilidadProducto", "EjemplarTicket", "FacturaProveedorSucursal", "FrecuenciaConteoProducto", "GeneroCarta", "ItemAgrupadoCarta", "Mesa",
   "Operacion", "OpcionItemAgrupadoCarta", "PagoConsignante", "PrecioLocalProducto", "PromoCartaSucursal", "RecetaSucursal", "RendimientoLocalIngrediente", "Seccion", "SeccionHabitualProducto",
   "StockMinimoProducto", "TemaCartaSucursal", "Venta",
 ] as const;
@@ -162,7 +162,7 @@ const ALCANCE_GOBIERNO: Readonly<Record<string, string>> = {
 };
 
 const ALCANCE_DE_EMPRESA = [
-  "CategoriaProducto", "Cliente", "DestinoConsumo", "Grupo", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "PermisoRol", "PortalCartaEmpresa", "Presentacion", "Producto",
+  "CategoriaProducto", "Cliente", "DestinoConsumo", "FacturaProveedor", "FacturaProveedorRenglon", "Grupo", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "PermisoRol", "PortalCartaEmpresa", "Presentacion", "Producto",
   "PromoCarta", "PromoCartaCupo", "Proveedor", "ProveedorPorProducto", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa",
 ] as const;
 
