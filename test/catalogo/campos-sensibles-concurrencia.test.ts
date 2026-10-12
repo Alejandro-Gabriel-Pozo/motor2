@@ -23,11 +23,14 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
   let gId: string;
   let productoId: string;
 
+  /** La base con el alcance que tiene en producción quien opera en `sucursalId`: SOLO su sucursal activa (ADR-028). */
+  const baseDeSucursal = () => baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] });
+
   /** Un contexto cuya transacción, tras la PRIMERA lectura `findUnique` de `tabla`, espera a `entreLecturaYEscritura` (la barrera: otra conexión cambia la fila y confirma). */
   function actorConBarrera(tabla: "producto" | "presentacion", entreLecturaYEscritura: () => Promise<void>) {
     let disparada = false;
     const transaccion: Transaccion = (async (fn: Parameters<Transaccion>[0], opciones?: Parameters<Transaccion>[1]) =>
-      baseDeTest.transaccion(async (tx) => {
+      baseDeSucursal().transaccion(async (tx) => {
         const delegado = (tx as unknown as Record<string, Record<string, unknown>>)[tabla]!;
         const delegadoConBarrera = new Proxy(delegado, {
           get(objetivo, propiedad) {
@@ -54,7 +57,7 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
         });
         return fn(txConBarrera);
       }, opciones)) as Transaccion;
-    return { ...baseDeTest, usuarioId: operadorId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, ahora: new Date(), transaccion };
+    return { ...baseDeSucursal(), usuarioId: operadorId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, ahora: new Date(), transaccion };
   }
 
   beforeEach(async () => {

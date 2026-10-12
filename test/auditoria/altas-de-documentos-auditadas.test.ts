@@ -18,7 +18,8 @@ describe("las altas de conteo físico y de traspaso dejan su fila de auditoría"
   let insumoId: string;
   let harinaId: string;
 
-  const comoA = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest });
+  // El actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028). Lo que el traspaso lee del lado contrario lo resuelve el código, no el actor del test.
+  const comoA = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalAId, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest({ lectura: [sucursalAId], escritura: [sucursalAId] }) });
   const auditoria = (entidad: string) => prisma.registroAuditoria.findMany({ where: { entidad }, orderBy: { creadoEn: "asc" } });
 
   beforeEach(async () => {

@@ -53,7 +53,8 @@ describe("sucursal sin ventas (proceso_venta apagado)", () => {
 
   it("(ii) una compra pasa; el reporte muestra lo gastado y el ratio gasto/ventas es null (no 0)", async () => {
     await apagar("proceso_venta");
-    const actor = { usuarioId: s.admin.id, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: s.sucursalId, sucursalNombre: "Central", ...baseDeTest };
+    // El actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028).
+    const actor = { usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: "Central", ...baseDeTest({ lectura: [s.sucursalId], escritura: [s.sucursalId] }) };
 
     // El gate de la compra no se ve afectado por apagar la venta.
     expect(await requierePermiso(s.admin.id, s.sucursalId, "proceso_compra", prisma)).toEqual({ ok: true });

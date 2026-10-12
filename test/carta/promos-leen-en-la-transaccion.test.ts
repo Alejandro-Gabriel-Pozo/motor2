@@ -19,7 +19,12 @@ describe("promos: el piso se lee y se escribe dentro de la transacción (M14, M-
   let promoId: string;
 
   const dbProhibida = new Proxy({}, { get: (_t, p) => { throw new Error(`lectura FUERA de la transacción: actor.db.${String(p)}`); } }) as never;
-  const actor = () => ({ usuarioId, sucursalId, transaccion: baseDeTest.transaccion, db: dbProhibida });
+  // El actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028).
+  const baseDelActor = () => baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] });
+  const actor = () => {
+    const { transaccion, alcance } = baseDelActor();
+    return { usuarioId, sucursalId, transaccion, alcance, db: dbProhibida };
+  };
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -45,7 +50,7 @@ describe("promos: el piso se lee y se escribe dentro de la transacción (M14, M-
   });
 
   it("guardarPromoCarta (alta): anda igual (la clave de prender es un gate y se lee con la base del contexto, M19)", async () => {
-    const r = await guardarPromoCartaCasoDeUso({ ...actor(), db: baseDeTest.db }, { seccionCartaId: platosId, titulo: "Otra", descripcion: null, precio: 5000, orden: 1 });
+    const r = await guardarPromoCartaCasoDeUso({ ...actor(), db: baseDelActor().db }, { seccionCartaId: platosId, titulo: "Otra", descripcion: null, precio: 5000, orden: 1 });
     expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
     expect(await prisma.promoCarta.count()).toBe(2);
   });

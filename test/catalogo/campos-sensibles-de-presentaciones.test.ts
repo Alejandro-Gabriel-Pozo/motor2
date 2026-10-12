@@ -35,7 +35,8 @@ describe("M.2: el factor de una presentación de compra es de quien tiene produc
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PROV_1", nombre: "Molinos SA" } });
     await prisma.proveedorPorProducto.create({ data: { productoId, proveedorId: proveedor.id, unidadCompraId: gId, precioUnitario: 1, precioPorUnidadStock: 1 } });
   };
-  const actor = (usuarioId: string) => ({ usuarioId, ...baseDeTest });
+  // El actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028).
+  const actor = (usuarioId: string) => ({ usuarioId, ...baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }) });
   const comando = (factorConversion: number, sensibles: boolean) => ({
     productoId,
     unidadCompraId: gId,

@@ -204,10 +204,13 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
 
   describe("(f) la carrera forzada con una BARRERA: dos transacciones en conexiones distintas, la de adentro corre COMPLETA y confirma entre la lectura y la escritura de la de afuera", () => {
     /** Un `Transaccion` que, tras la PRIMERA lectura del comprobante por clave dentro de la transacción, espera a `entre` (la otra operación corre entera y confirma en otra conexión). Molde: `abrir-cuenta-vs-apagar-sucursal.test.ts`. */
+    // El actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028).
+    const baseDelActor = () => baseDeTest({ lectura: [s.sucursalId], escritura: [s.sucursalId] });
+
     function transaccionConBarrera(entre: () => Promise<void>) {
       const estado = { disparada: false };
       const transaccion: Transaccion = (async (fn: Parameters<Transaccion>[0], opciones?: Parameters<Transaccion>[1]) =>
-        baseDeTest.transaccion(async (tx) => {
+        baseDelActor().transaccion(async (tx) => {
           const delegado = (tx as unknown as Record<string, Record<string, unknown>>).agregadoDeCuenta!;
           const delegadoConBarrera = new Proxy(delegado, {
             get(objetivo, propiedad) {
@@ -239,7 +242,7 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
 
     const agregar = (transaccion: Transaccion, comando: { cuentaId: string; productoId: string; claveIdempotencia: string }) =>
       agregarItemsCasoDeUso(
-        { usuarioId: s.admin.id, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: s.sucursalId, sucursalNombre: "Central", ahora: AHORA_DE_LA_CORRIDA, db: baseDeTest.db, transaccion },
+        { usuarioId: s.admin.id, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: s.sucursalId, sucursalNombre: "Central", ahora: AHORA_DE_LA_CORRIDA, db: baseDelActor().db, transaccion },
         { cuentaId: comando.cuentaId, items: [{ productoId: comando.productoId, cantidad: 1 }], promos: [], claveIdempotencia: comando.claveIdempotencia },
       );
 
@@ -248,7 +251,7 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
       const clave = crypto.randomUUID();
       let ganador: Awaited<ReturnType<typeof agregar>> | undefined;
       const { transaccion, estado } = transaccionConBarrera(async () => {
-        ganador = await agregar(baseDeTest.transaccion, { cuentaId: cuenta.id, productoId: s.milanesa.id, claveIdempotencia: clave });
+        ganador = await agregar(baseDelActor().transaccion, { cuentaId: cuenta.id, productoId: s.milanesa.id, claveIdempotencia: clave });
       });
 
       const perdedor = await agregar(transaccion, { cuentaId: cuenta.id, productoId: s.milanesa.id, claveIdempotencia: clave });
@@ -264,7 +267,7 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
       const clave = crypto.randomUUID();
       const { transaccion, estado } = transaccionConBarrera(async () => {
-        await agregar(baseDeTest.transaccion, { cuentaId: cuenta.id, productoId: s.milanesa.id, claveIdempotencia: clave });
+        await agregar(baseDelActor().transaccion, { cuentaId: cuenta.id, productoId: s.milanesa.id, claveIdempotencia: clave });
       });
 
       const perdedor = await agregar(transaccion, { cuentaId: cuenta.id, productoId: s.flan.id, claveIdempotencia: clave });

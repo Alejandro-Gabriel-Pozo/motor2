@@ -35,7 +35,8 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
   let proveedorId: string;
   let otroProveedorId: string;
 
-  const actor = (usuarioId: string, sucursalId: string, sucursalNombre: string) => ({ usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, sucursalNombre, ...baseDeTest });
+  // Cada actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028). Lo que el aviso C25 necesita leer de las OTRAS sucursales lo resuelve el código, no el actor del test.
+  const actor = (usuarioId: string, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: string, sucursalNombre: string) => ({ usuarioId, sucursalId, sucursalNombre, ...baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }) });
 
   const comprarEnCentral = (fecha: string, precioTotal: number | undefined, extra: { nroFactura?: string; proveedor?: string; claveIdempotencia?: string } = {}) =>
     registrarMovimientoCasoDeUso(actor(usuarioCentral, sucursalCentral, "Central"), {
@@ -212,7 +213,8 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     await comprarEnNorte("2026-09-13", 700, { nroFactura: "A-13" });
     await prisma.operacion.updateMany({ where: { proceso: "COMPRA", nroFactura: "A-13" }, data: { anuladaEn: new Date("2026-09-14T12:00:00Z"), anuladaPorId: usuarioNorte } }); // anulada
 
-    const leidas = await cargarComprasParaAvisoDeDuplicado(baseDeTest.db, { proveedorId, desde: "2026-09-03", hasta: "2026-09-17" });
+    // Con el alcance de quien opera en la Central (solo su sucursal): la lectura de las compras de las OTRAS sucursales es del código del aviso C25 (pendiente), no de este actor.
+    const leidas = await cargarComprasParaAvisoDeDuplicado(baseDeTest({ lectura: [sucursalCentral], escritura: [sucursalCentral] }).db, { proveedorId, desde: "2026-09-03", hasta: "2026-09-17" });
 
     expect(leidas.map((c) => ({ dia: c.dia, importe: c.importe, sucursalNombre: c.sucursalNombre, anulado: c.anulado, proveedorId: c.proveedorId })).sort((a, b) => a.dia.localeCompare(b.dia))).toEqual([
       { dia: "2026-09-10", importe: 1500.5, sucursalNombre: "Central", anulado: false, proveedorId },
@@ -240,8 +242,10 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     expect(r.mensaje).not.toContain(AVISO);
 
     // Aislamiento real: la consulta filtra por proveedor, y el de la empresa A no es el de B, así que lo de arriba solo no lo prueba. Se pide el proveedor de B DESDE el actor de A
-    // (`baseDeTest.db`, con la RLS de la empresa A): tiene que devolver [] aunque la compra de B está en la ventana, con el mismo importe.
-    expect(await cargarComprasParaAvisoDeDuplicado(baseDeTest.db, { proveedorId: proveedorB.id, desde: "2026-09-04", hasta: "2026-09-18" })).toEqual([]);
+    // (`baseDeTest.db`, con la RLS de la empresa A): tiene que devolver [] aunque la compra de B está en la ventana, con el mismo importe. Para que lo único que la frene sea la EMPRESA
+    // (y no el alcance por sucursal, que la ocultaría igual), la sucursal de B va DENTRO del alcance de A (un alcance mal armado a propósito).
+    const deAConLaSucursalDeBEnElAlcance = baseDeTest({ lectura: [sucursalCentral, sucursalB.id], escritura: [sucursalCentral] }).db;
+    expect(await cargarComprasParaAvisoDeDuplicado(deAConLaSucursalDeBEnElAlcance, { proveedorId: proveedorB.id, desde: "2026-09-04", hasta: "2026-09-18" })).toEqual([]);
     // Control: el mismo pedido como dueño (salta la RLS) sí la ve; sin esto el [] de arriba podría ser una ventana mal armada.
     expect(await cargarComprasParaAvisoDeDuplicado(prismaAdmin, { proveedorId: proveedorB.id, desde: "2026-09-04", hasta: "2026-09-18" })).toHaveLength(1);
   });

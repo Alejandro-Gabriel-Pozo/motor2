@@ -81,7 +81,8 @@ describe("COMPRA rechazada por producto o sección: sin filas, y el rechazo se r
     pvConsignacionId = (await sembrarProductoDisponible({ codigo: "PV_VINO", nombre: "Vino en consignación", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 100, esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 50 }, sucursalId)).id;
   });
 
-  const actor = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, sucursalNombre: "Central", ...baseDeTest });
+  // El actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028).
+  const actor = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, sucursalNombre: "Central", ...baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }) });
   const compra = (productoId: string, seccion: string, extra: Partial<DatosMovimientoInput> = {}): DatosMovimientoInput => ({
     proceso: "COMPRA",
     fecha: FECHA,
