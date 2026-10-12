@@ -19,7 +19,7 @@ import { resolverGrupoDeProducto } from "../../src/server/lecturas/carta/grupo-d
 import { resolverMenuCarta, resolverMenuCartaConDiagnostico } from "../../src/server/lecturas/carta/menu";
 import { resolverEmpresaCarta, type EmpresaCarta } from "../../src/server/lecturas/carta/empresa";
 import { resolverCartaPublica, resolverConfigPortal, resolverPortalCarta } from "../../src/server/lecturas/carta/publica";
-import { descuentosConfiguradosEnSucursal, descuentosDeProductoEnSucursal, productoTieneDescuentoEnAlgunaSucursal } from "../../src/server/lecturas/carta/descuentos";
+import { descuentosConfiguradosEnSucursal, descuentosDeProductoEnSucursal } from "../../src/server/lecturas/carta/descuentos";
 // Stock
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
 import { calcularStockPorFamilia } from "../../src/server/consultas/stock/por-familia";
@@ -450,7 +450,7 @@ describe("Caracterización del tramo A (Fase 3, paso .0): resultado completo y c
     caso("carta.resolverCartaPublica(empresa, «sur»: sucursal apagada, null)", (db) => resolverCartaPublica(empresa, "sur", { deLaEmpresa: db, deLaSucursal: () => db }, AHORA));
     caso("carta.descuentosDeProductoEnSucursal(Central)", (db) => descuentosDeProductoEnSucursal(CENTRAL, db));
     caso("carta.descuentosConfiguradosEnSucursal(Norte)", (db) => descuentosConfiguradosEnSucursal(NORTE, db));
-    caso("carta.productoTieneDescuentoEnAlgunaSucursal(Empanada)", (db) => productoTieneDescuentoEnAlgunaSucursal("pv-empanada", db));
+    // P2.1: `productoTieneDescuentoEnAlgunaSucursal` se borró (el ítem agrupado mira solo la sucursal de su carta con `descuentosConfiguradosEnSucursal`); su caso y su entrada del golden se fueron con él.
   });
 
   describe("Stock: consolidado, por familia, alertas y stock mínimo", () => {

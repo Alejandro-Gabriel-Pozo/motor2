@@ -69,7 +69,7 @@ export interface ComandoAgregarOpcionItemAgrupadoCarta {
  *  - `ITEM_NO_ENCONTRADO`: el ítem no existe en esta sucursal (gana sobre todo lo del producto);
  *  - `FALTA_PRODUCTO`: no se eligió producto;
  *  - `PRODUCTO_NO_ENCONTRADO` / `NO_ES_PV`: el producto no existe, o no es un producto de venta (solo un PV puede ir en la carta);
- *  - `CON_DESCUENTO`: el producto tiene descuento en ALGUNA sucursal (el renglón agrupado muestra un solo precio);
+ *  - `CON_DESCUENTO`: el producto tiene descuento en ESTA sucursal (P2.1; el renglón agrupado muestra un solo precio);
  *  - `YA_AGRUPADO`: el producto ya está en un ítem agrupado de esta sucursal, el mismo u otro (D2), también si lo ganó otro pedido a la vez (la carrera del índice único);
  *  - `ORDEN_INVALIDO`: el orden no es un entero;
  *  - `PRECIO_DISTINTO`: el precio del producto en la sucursal activa (`precioDeCarta`) no coincide con el de todas las opciones del ítem (D5).

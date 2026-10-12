@@ -184,17 +184,22 @@ describe("Server Actions de ítems agrupados", () => {
       expect((await agregarOpcionItemAgrupadoCarta(agId, ids.sprite)).ok).toBe(true);
     });
 
-    it("R3 por diseño (ADR-009): un descuento en OTRA sucursal bloquea agrupar, aunque en la activa no haya", async () => {
+    it("P2.1 (cambió a propósito; antes, R3 por diseño: «un descuento en OTRA sucursal bloquea agrupar»): solo el descuento de ESTA sucursal bloquea agrupar; el de otra no", async () => {
       const agId = await crearGaseosa();
       const otra = (await prisma.sucursal.create({ data: { nombre: "Otra" } })).id;
+      // Descuento solo en OTRA sucursal: el renglón agrupado de esta carta no lo ve, así que entra.
       await prisma.descuentoProductoSucursal.create({ data: { productoId: ids.coca, sucursalId: otra, porcentaje: 10 } });
-      expect(await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).toEqual({
-        ok: false,
-        mensaje: "«Coca-Cola 500cc» tiene descuento en alguna sucursal: sacale el descuento para agruparlo (el renglón agrupado muestra un solo precio).",
-      });
-      expect(await prisma.opcionItemAgrupadoCarta.count()).toBe(0);
-      await prisma.descuentoProductoSucursal.deleteMany({ where: { productoId: ids.coca } });
       expect((await agregarOpcionItemAgrupadoCarta(agId, ids.coca)).ok).toBe(true);
+      expect(await prisma.opcionItemAgrupadoCarta.count()).toBe(1);
+      // Descuento en ESTA sucursal: bloquea, con el mensaje que dice «esta sucursal».
+      await prisma.descuentoProductoSucursal.create({ data: { productoId: ids.sprite, sucursalId, porcentaje: 10 } });
+      expect(await agregarOpcionItemAgrupadoCarta(agId, ids.sprite)).toEqual({
+        ok: false,
+        mensaje: "«Sprite 500cc» tiene descuento en esta sucursal: sacale el descuento para agruparlo (el renglón agrupado muestra un solo precio).",
+      });
+      expect(await prisma.opcionItemAgrupadoCarta.count()).toBe(1);
+      await prisma.descuentoProductoSucursal.deleteMany({ where: { productoId: ids.sprite } });
+      expect((await agregarOpcionItemAgrupadoCarta(agId, ids.sprite)).ok).toBe(true);
     });
 
     it("R3 por diseño (ADR-009): un precio local distinto en OTRA sucursal NO bloquea; esa sucursal ve el mayor y el admin lo avisa", async () => {

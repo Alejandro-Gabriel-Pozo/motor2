@@ -4,7 +4,7 @@ import { precioDeCarta, whereCartaDeSucursal } from "@/core/carta/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import type { ComandoAgregarOpcionItemAgrupadoCarta, ResultadoAgregarOpcionItemAgrupadoCarta } from "@/core/features/carta/items-agrupados.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { productoTieneDescuentoEnAlgunaSucursal } from "@/server/lecturas/carta/descuentos";
+import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { crearOpcionDeItemAgrupado } from "@/server/persistencia/carta/items-agrupados";
 
@@ -33,7 +33,7 @@ async function mensajeYaAgrupado(db: ContextoUsuario["db"], sucursalId: string, 
  * la sección del ítem agrupado.
  *
  * Orden, igual que antes: 1. el ítem (`No se encontró el ítem agrupado.`); 2. que se haya elegido producto; 3. el producto (existe y es PV); 4. que no tenga descuento
- * en ninguna sucursal; 5. que no esté ya en un ítem (el mismo u otro); 6. el orden (`null` = la cantidad de opciones del ítem); 7. el precio contra las opciones
+ * en esta sucursal (P2.1: antes, en ninguna); 5. que no esté ya en un ítem (el mismo u otro); 6. el orden (`null` = la cantidad de opciones del ítem); 7. el precio contra las opciones
  * ya cargadas; 8. la escritura, con el `catch` de la carrera (otro pedido lo agrupó entre la verificación y el alta: `productoId` es único por sucursal).
  *
  * @contract Deja el producto como opción del ítem agrupado de la sucursal activa, en el orden pedido, si cumple todo lo anterior; nunca toca el producto ni su contenido de carta.
@@ -64,8 +64,9 @@ export async function agregarOpcionItemAgrupadoCartaCasoDeUso(
   });
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
   if (producto.tipo !== "PV") return fracaso("NO_ES_PV", "Solo un producto de venta (PV) puede ir en la carta.");
-  if (await productoTieneDescuentoEnAlgunaSucursal(producto.id, db)) {
-    return fracaso("CON_DESCUENTO", `«${producto.nombre}» tiene descuento en alguna sucursal: sacale el descuento para agruparlo (el renglón agrupado muestra un solo precio).`);
+  // P2.1: solo el descuento de ESTA sucursal (la de la carta del ítem), igual que `guardar-descuento-producto.ts`, que rechaza el descuento de una opción agrupada mirando solo esta sucursal. El descuento de otra sucursal no cambia el renglón de esta carta.
+  if ((await descuentosConfiguradosEnSucursal(sucursalId, db, [producto.id])).size > 0) {
+    return fracaso("CON_DESCUENTO", `«${producto.nombre}» tiene descuento en esta sucursal: sacale el descuento para agruparlo (el renglón agrupado muestra un solo precio).`);
   }
 
   const yaAgrupado = await mensajeYaAgrupado(db, sucursalId, producto.id, producto.nombre, item.id);

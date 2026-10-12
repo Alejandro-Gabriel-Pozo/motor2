@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, sembrarProduc
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { guardarDescuentoProducto } from "../../src/server/actions/carta/descuento-producto";
 import { agregarOpcionItemAgrupadoCarta, guardarItemAgrupadoCarta } from "../../src/server/actions/carta/items-agrupados";
-import { descuentosDeProductoEnSucursal, productoTieneDescuentoEnAlgunaSucursal } from "../../src/server/lecturas/carta/descuentos";
+import { descuentosConfiguradosEnSucursal, descuentosDeProductoEnSucursal } from "../../src/server/lecturas/carta/descuentos";
 import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
@@ -88,8 +88,10 @@ describe("guardarDescuentoProducto", () => {
     await guardarDescuentoProducto(pvId, 15);
     expect([...(await descuentosDeProductoEnSucursal(sucursalId, prisma))]).toEqual([[pvId, 15]]);
     expect((await descuentosDeProductoEnSucursal(otraSucursalId, prisma)).size).toBe(0);
-    expect(await productoTieneDescuentoEnAlgunaSucursal(pvId, prisma)).toBe(true);
-    expect(await productoTieneDescuentoEnAlgunaSucursal(pv2Id, prisma)).toBe(false);
+    // (P2.1: el lector «¿en alguna sucursal?» ya no existe; la pregunta de cada sucursal es `descuentosConfiguradosEnSucursal`.)
+    expect((await descuentosConfiguradosEnSucursal(sucursalId, prisma, [pvId])).size).toBe(1);
+    expect((await descuentosConfiguradosEnSucursal(sucursalId, prisma, [pv2Id])).size).toBe(0);
+    expect((await descuentosConfiguradosEnSucursal(otraSucursalId, prisma, [pvId])).size).toBe(0);
   });
 
   it("audita el alta, el cambio y la baja con valor anterior y nuevo", async () => {

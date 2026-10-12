@@ -2283,10 +2283,6 @@
       ]
     }
   },
-  "carta.productoTieneDescuentoEnAlgunaSucursal(Empanada)": {
-    "consultas": "1: descuentoProductoSucursal.count×1",
-    "resultado": true
-  },
   "stock.calcularStockConsolidado(Central)": {
     "consultas": "5: conteoFisico.findMany×1, movimientoStock.findMany×1, movimientoStock.groupBy×1, producto.findMany×1, seccion.findMany×1",
     "resultado": [
