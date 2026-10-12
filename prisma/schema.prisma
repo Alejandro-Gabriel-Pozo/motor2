@@ -1148,12 +1148,39 @@ model Operacion {
   /// consignación) en un segundo lugar del código.
   resultadoMensaje String?
 
+  /// M2 (Paquete 2): en una AJUSTE que es la reversión por anulación de una venta o una compra, la `Operacion` que revierte. Reemplaza al reconocimiento POR TEXTO de la
+  /// descripción (`PREFIJO_REVERSION_VENTA`/`_COMPRA`, src/core/movimientos/anulaciones.ts). `null` = no es una reversión (o es una anterior a M2: el relleno la enlaza aparte).
+  /// ÚNICA por (empresa, operación): una operación se revierte UNA sola vez, y ese índice único es el árbitro de dos anulaciones a la vez. CHECK en la base: solo en AJUSTE y
+  /// nunca a sí misma. Que sea de la misma sucursal que la revertida lo controla la aplicación. Nada de `src/` la escribe todavía (Etapa C).
+  revierteAOperacionId String?
+  revierteAOperacion   Operacion? @relation("OperacionRevierteA", fields: [empresaId, revierteAOperacionId], references: [empresaId, id], onDelete: Restrict)
+  /// La reversión de ESTA operación (a lo sumo una; ver `revierteAOperacionId`).
+  reversion            Operacion? @relation("OperacionRevierteA")
+
+  /// M2: el motivo (texto libre, no vacío, hasta 200) con que se anuló esta operación. Solo si está anulada (`anuladaEn`). `null` = sin motivo registrado (anuladas antes de M2).
+  motivoAnulacion String?
+
+  /// M2: en una MERMA, la VENTA anulada cuyo género no se recuperó (la merma sale de esa anulación). Única: una venta anulada genera a lo sumo una merma. CHECK en la base: solo en MERMA y nunca a sí misma.
+  mermaPorAnulacionDeId String?
+  mermaPorAnulacionDe   Operacion? @relation("OperacionMermaPorAnulacion", fields: [empresaId, mermaPorAnulacionDeId], references: [empresaId, id], onDelete: Restrict)
+  /// La merma que generó la anulación de ESTA venta (a lo sumo una).
+  mermaPorAnulacion     Operacion? @relation("OperacionMermaPorAnulacion")
+
+  /// M2: en una VENTA, la venta que reemplaza (anular y rehacer unidades). Única: una operación se reemplaza una sola vez.
+  reemplazaAOperacionId String?
+  reemplazaAOperacion   Operacion? @relation("OperacionReemplazaA", fields: [empresaId, reemplazaAOperacionId], references: [empresaId, id], onDelete: Restrict)
+  /// La venta que reemplazó a ESTA (a lo sumo una).
+  reemplazadaPor        Operacion? @relation("OperacionReemplazaA")
+
   movimientos MovimientoStock[]
   /// POS: ítems de cuenta cuya venta es esta Operación (los enlaza `cerrarCuenta`, src/server/actions/pos/cuenta.ts).
   cuentaItems CuentaItem[]
 
   @@unique([claveIdempotencia])
   @@unique([empresaId, id])
+  @@unique([empresaId, revierteAOperacionId])
+  @@unique([empresaId, mermaPorAnulacionDeId])
+  @@unique([empresaId, reemplazaAOperacionId])
   @@index([sucursalId, proceso, fecha])
   @@index([promoCuentaId])
 }
@@ -1369,6 +1396,9 @@ model ConteoFisico {
 
   /// I3 — mensaje de éxito ya formateado, escrito en el MISMO `create` (se conoce antes del insert).
   resultadoMensaje String?
+
+  /// M2 (D9): el motivo con que se canceló el conteo. Solo si `estado = CANCELADO` (CHECK en la base), no vacío, hasta 200. `null` = sin motivo registrado (cancelado antes de M2).
+  motivoCancelacion String?
 
   @@unique([empresaId, id])
   @@index([sucursalId, productoId, seccionId])
