@@ -46,10 +46,10 @@ export async function sembrarAjeno(usuarioId: string) {
 export function datosDeFactura(e: { usuarioId: string; proveedorId?: string }, extra: Record<string, unknown> = {}) {
   return {
     proveedorId: e.proveedorId as string,
-    fecha: new Date("2026-10-13T15:00:00.000Z"),
+    fecha: new Date("2026-09-01T15:00:00.000Z"),
     importeTotal: "100.00",
     estado: "CONFIRMADA",
-    confirmadaEn: new Date("2026-10-13T15:00:00.000Z"),
+    confirmadaEn: new Date("2026-09-01T15:00:00.000Z"),
     confirmadaPorId: e.usuarioId,
     creadoPorId: e.usuarioId,
     ...extra,

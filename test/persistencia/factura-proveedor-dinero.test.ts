@@ -65,7 +65,7 @@ async function escribirRepartida(centavos: bigint, cantidad4: bigint, pesos: num
   });
   for (let i = 0; i < bp.length; i++) {
     const sucursal = sucursales[i]!;
-    const operacion = await prisma.operacion.create({ data: { sucursalId: sucursal.id, fecha: new Date("2026-10-13T15:00:00Z"), usuarioId: e.usuarioId, proceso: "COMPRA" } });
+    const operacion = await prisma.operacion.create({ data: { sucursalId: sucursal.id, fecha: new Date("2026-09-01T15:00:00Z"), usuarioId: e.usuarioId, proceso: "COMPRA" } });
     await prisma.facturaProveedorSucursal.create({ data: { facturaProveedorId: cabecera.id, sucursalId: sucursal.id, porcentajeDeclaradoBp: bp[i]!, operacionId: operacion.id } });
     await prisma.movimientoStock.create({
       data: {

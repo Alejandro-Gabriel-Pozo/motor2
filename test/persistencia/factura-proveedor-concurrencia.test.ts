@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
-import { EMPRESA_DE_PRUEBA_ID, EMPRESA_TESTIGO_ID } from "../setup/empresa-de-prueba";
+import { EMPRESA_DE_PRUEBA_ID, EMPRESA_TESTIGO_ID, opcionesDeConexionConEmpresa } from "../setup/empresa-de-prueba";
 import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 import { sembrarAjeno, sembrarEscenarioDeFactura, type EscenarioDeFactura } from "../setup/factura-proveedor";
 
@@ -25,8 +25,8 @@ const abiertos: Client[] = [];
  * `conAlcanceEnSucursal` en cada transacción de la app: lo necesitan las partes, que son `PROPIA` desde M3c.
  */
 async function conexion(empresaId: string = EMPRESA_DE_PRUEBA_ID): Promise<Client> {
-  const alcance = empresaId === EMPRESA_DE_PRUEBA_ID ? ` -c app.sucursales_lectura=${e.sucursalA},${e.sucursalB} -c app.sucursales_escritura=${e.sucursalA},${e.sucursalB}` : "";
-  const c = new Client({ connectionString: URL_DE_LA_APP, options: `-c app.empresa_id=${empresaId}${alcance}` });
+  const sucursales = [e.sucursalA, e.sucursalB];
+  const c = new Client({ connectionString: URL_DE_LA_APP, options: opcionesDeConexionConEmpresa(empresaId, empresaId === EMPRESA_DE_PRUEBA_ID ? { lectura: sucursales, escritura: sucursales } : undefined) });
   await c.connect();
   abiertos.push(c);
   return c;
@@ -56,7 +56,7 @@ function insertar(c: Client, carga: Carga = {}) {
   const nro = carga.nro === undefined ? "0001-00000001" : carga.nro;
   return c.query<{ id: string }>(
     `INSERT INTO "FacturaProveedor" ("id","proveedorId","nroFactura","nroFacturaNormalizado","letra","fecha","importeTotal","estado","confirmadaEn","confirmadaPorId","claveIdempotencia","payloadHash","creadoPorId","anuladaEn","anuladaPorId")
-     VALUES ($1,$2,$3,$3,$4,'2026-10-13T15:00:00Z',100.00,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING "id"`,
+     VALUES ($1,$2,$3,$3,$4,'2026-09-01T15:00:00Z',100.00,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING "id"`,
     [
       randomUUID(), carga.proveedorId ?? e.proveedorId, nro, carga.letra ?? null, carga.estado ?? "CONFIRMADA", confirmada ? new Date() : null, confirmada ? e.usuarioId : null,
       carga.clave ?? null, carga.clave ? "hash" : null, e.usuarioId, carga.anulada ? new Date() : null, carga.anulada ? e.usuarioId : null,

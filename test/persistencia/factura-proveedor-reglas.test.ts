@@ -214,7 +214,7 @@ describe("FacturaProveedor: reglas de la cabecera", () => {
 
   it("la condición de pago es CONTADO_PAGADA (FacturaProveedor_condicion_pago_chk) y el medio de pago declarado, uno de la lista (FacturaProveedor_medio_pago_chk)", async () => {
     await expect(cabecera({ condicionPago: "CUENTA_CORRIENTE" })).rejects.toThrow(/FacturaProveedor_condicion_pago_chk/);
-    for (const medio of ["TRANSFERENCIA", "EFECTIVO", "CHEQUE", "TARJETA", "OTRO"]) expect((await cabecera({ medioPagoDeclarado: medio, fechaPagoDeclarada: new Date("2026-10-13") })).medioPagoDeclarado).toBe(medio);
+    for (const medio of ["TRANSFERENCIA", "EFECTIVO", "CHEQUE", "TARJETA", "OTRO"]) expect((await cabecera({ medioPagoDeclarado: medio, fechaPagoDeclarada: new Date("2026-09-03") })).medioPagoDeclarado).toBe(medio);
     await expect(cabecera({ medioPagoDeclarado: "BITCOIN" })).rejects.toThrow(/FacturaProveedor_medio_pago_chk/);
   });
 
@@ -403,9 +403,12 @@ describe("aislamiento entre empresas", () => {
 });
 
 describe("solo se agrega (la app real no puede borrar, ni modificar el dinero)", () => {
+  /** La base de la app (`motor2_app`) con el alcance de las dos sucursales: las partes son `PROPIA` desde M3c y sin alcance no se ven ni se escriben (falla cerrado). */
+  const conAlcance = () => baseDeTest({ lectura: [e.sucursalA, e.sucursalB], escritura: [e.sucursalA, e.sucursalB] }).db;
+
   it("por el rol de la app se puede INSERTAR y LEER una cabecera, un renglón y una parte, pero no DELETE (permission denied)", async (ctx) => {
     if (!(await hayRol("motor2_app"))) return ctx.skip();
-    const db = baseDeTest.db;
+    const db = conAlcance();
     const f = await db.facturaProveedor.create({ data: datosDeFactura(e, { importeTotal: "12.34" }) as never });
     const r = await db.facturaProveedorRenglon.create({ data: datosDeRenglon({ facturaProveedorId: f.id, productoId: e.productoId }) as never });
     const p = await db.facturaProveedorSucursal.create({ data: { facturaProveedorId: f.id, sucursalId: e.sucursalA, porcentajeDeclaradoBp: 10000 } });
@@ -418,7 +421,7 @@ describe("solo se agrega (la app real no puede borrar, ni modificar el dinero)",
 
   it("el dinero y la historia no se modifican: UPDATE del total, de la fecha, del origen, del renglón y de la parte da permission denied, y el valor no cambió", async (ctx) => {
     if (!(await hayRol("motor2_app"))) return ctx.skip();
-    const db = baseDeTest.db;
+    const db = conAlcance();
     const f = await db.facturaProveedor.create({ data: datosDeFactura(e, { importeTotal: "100.00" }) as never });
     const r = await db.facturaProveedorRenglon.create({ data: datosDeRenglon({ facturaProveedorId: f.id, productoId: e.productoId }) as never });
     const p = await db.facturaProveedorSucursal.create({ data: { facturaProveedorId: f.id, sucursalId: e.sucursalA, porcentajeDeclaradoBp: 10000 } });
@@ -436,13 +439,13 @@ describe("solo se agrega (la app real no puede borrar, ni modificar el dinero)",
 
   it("lo que SÍ se puede: anular, confirmar una pendiente y corregir los datos que identifican la factura (la lista cerrada de D4)", async (ctx) => {
     if (!(await hayRol("motor2_app"))) return ctx.skip();
-    const db = baseDeTest.db;
+    const db = conAlcance();
     const pend = await db.facturaProveedor.create({ data: datosDePendiente(e) as never });
     const confirmada = await db.facturaProveedor.update({ where: { id: pend.id }, data: { estado: "CONFIRMADA", confirmadaEn: new Date(), confirmadaPorId: e.usuarioId, resultadoMensaje: "Repartida" } });
     expect([confirmada.estado, confirmada.resultadoMensaje]).toEqual(["CONFIRMADA", "Repartida"]);
     const corregida = await db.facturaProveedor.update({
       where: { id: pend.id },
-      data: { nroFactura: "0002-00000010", nroFacturaNormalizado: "0002-00000010", letra: "A", detalleLibre: "corregido", fechaComprobante: new Date("2026-10-01"), recibidaEnAdministracionEn: new Date("2026-10-02"), medioPagoDeclarado: "EFECTIVO", fechaPagoDeclarada: new Date("2026-10-03") },
+      data: { nroFactura: "0002-00000010", nroFacturaNormalizado: "0002-00000010", letra: "A", detalleLibre: "corregido", fechaComprobante: new Date("2026-09-01"), recibidaEnAdministracionEn: new Date("2026-09-02"), medioPagoDeclarado: "EFECTIVO", fechaPagoDeclarada: new Date("2026-09-03") },
     });
     expect([corregida.nroFactura, corregida.letra, corregida.detalleLibre, corregida.medioPagoDeclarado]).toEqual(["0002-00000010", "A", "corregido", "EFECTIVO"]);
     const anulada = await db.facturaProveedor.update({ where: { id: pend.id }, data: { anuladaEn: new Date(), anuladaPorId: e.usuarioId } });
@@ -453,7 +456,7 @@ describe("solo se agrega (la app real no puede borrar, ni modificar el dinero)",
 
   it("las reglas siguen rigiendo en un UPDATE: confirmar sin confirmador, o anular sin quién, se rechaza", async (ctx) => {
     if (!(await hayRol("motor2_app"))) return ctx.skip();
-    const db = baseDeTest.db;
+    const db = conAlcance();
     const pend = await db.facturaProveedor.create({ data: datosDePendiente(e) as never });
     await expect(db.facturaProveedor.update({ where: { id: pend.id }, data: { estado: "CONFIRMADA" } })).rejects.toThrow(/FacturaProveedor_confirmacion_coherente_chk/);
     await expect(db.facturaProveedor.update({ where: { id: pend.id }, data: { anuladaEn: new Date() } })).rejects.toThrow(/FacturaProveedor_anulacion_pareo_chk/);

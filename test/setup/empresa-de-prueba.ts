@@ -35,6 +35,16 @@ export function clienteConEmpresaDePrueba(url: string, empresaId: string = EMPRE
 }
 
 /**
+ * Las opciones de arranque (`options` de una conexión `pg` cruda) con la empresa fijada y, si se pide, el alcance por sucursal: lo que `src/lib/db` y `conAlcanceEnSucursal` fijan para el código real. Para los tests de
+ * concurrencia que abren varias conexiones `pg` como `motor2_app` (cada una con su transacción) y no pueden pasar por Prisma. El preset de empresa vive SOLO en este archivo (`sin-empresa-por-defecto.test.ts`, regla c).
+ */
+export function opcionesDeConexionConEmpresa(empresaId: string, alcance?: { lectura: readonly string[]; escritura: readonly string[] }): string {
+  const partes = [`-c app.empresa_id=${empresaId}`];
+  if (alcance) partes.push(`-c app.sucursales_lectura=${alcance.lectura.join(",")}`, `-c app.sucursales_escritura=${alcance.escritura.join(",")}`);
+  return partes.join(" ");
+}
+
+/**
  * Lo mismo que `clienteConEmpresaDePrueba`, pero un cliente NUEVO (sin guardar en `globalThis`: quien lo pide lo desconecta con `$disconnect()`) que además emite un evento
  * `query` por cada consulta que manda a la base, con el SQL real y sus parámetros. Para los tests que miran el SQL que genera Prisma (por ejemplo el `EXPLAIN` de
  * `test/persistencia/kardex-indices-de-saldo.test.ts`); el preset de empresa sigue viviendo solo en este archivo (`sin-empresa-por-defecto.test.ts`, regla c).
