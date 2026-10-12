@@ -9,6 +9,7 @@ import { registrarConteoFisico } from "../../src/server/actions/movimientos/cont
 import { generarReporteLotesProximosAVencer, generarConciliacionVencimientos } from "../../src/server/consultas/reportes/vencimientos";
 import { prisma } from "../setup/test-db";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
+import { ZONA_ARGENTINA, diaDeCalendario } from "../../src/core/tiempo/zona-horaria";
 
 describe("Reporte de vencimientos", () => {
   let sucursalId: string;
@@ -32,8 +33,8 @@ describe("Reporte de vencimientos", () => {
 
   it("lotes próximos a vencer: filtra por días e incluye los ya vencidos", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    const hoy = new Date();
-    hoy.setUTCHours(0, 0, 0, 0);
+    // El reporte cuenta los días desde el día ARGENTINO de «ahora» (P1): el «hoy» del test sale de la misma referencia y de la misma zona, no del día UTC (entre las 21 y las 24 h argentinas son días distintos).
+    const hoy = new Date(diaDeCalendario(AHORA_DE_LA_CORRIDA, ZONA_ARGENTINA));
     const enTresDias = new Date(hoy.getTime() + 3 * 86400000);
     const enTreintaDias = new Date(hoy.getTime() + 30 * 86400000);
     const ayer = new Date(hoy.getTime() - 86400000);
