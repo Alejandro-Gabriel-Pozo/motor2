@@ -1,3 +1,4 @@
+import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { componentesDeEleccion, MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/public";
 import { MENSAJE_CUENTA_NO_ENCONTRADA } from "./cuenta.guard";
@@ -19,16 +20,20 @@ import type { ComandoAgregarItems, ComandoEnviarACocina, ComandoQuitarItemSinEnv
  * Recién DESPUÉS, que el `cuentaId` sea un texto, con el mismo «no encontrada» que respondía `cuentaAbiertaDeSucursal` adentro de la transacción (que salteaba
  * la lectura): una lista vacía sigue ganando sobre una cuenta inválida (lo fija `huella-del-pos`, «ids no texto + lista vacía»). Cada ítem y cada promo pasan
  * TAL CUAL: los valida el caso de uso, uno por uno, como antes.
+ *
+ * P3 (Paquete 1, I3): la `claveIdempotencia` es OPCIONAL (igual que compras, mermas y ventas: sin ella, el comportamiento de siempre) y, si viene, tiene que ser un UUID
+ * (`esClaveIdempotenciaValida`). Se chequea AL FINAL, después de todo lo anterior: así no cambia qué mensaje gana cuando hay dos fallas a la vez.
  */
 export function guardComandoAgregarItems(entrada: unknown): ResultadoDato<ComandoAgregarItems> {
-  const { cuentaId, items, promos } = (entrada ?? {}) as { cuentaId?: unknown; items?: unknown; promos?: unknown };
+  const { cuentaId, items, promos, claveIdempotencia } = (entrada ?? {}) as { cuentaId?: unknown; items?: unknown; promos?: unknown; claveIdempotencia?: unknown };
   const items_: ComandoAgregarItems["items"] = Array.isArray(items) ? items : [];
   const promos_: ComandoAgregarItems["promos"] = Array.isArray(promos) ? promos : [];
   if (items_.length === 0 && promos_.length === 0) return rechazar("vacio", "Elegí al menos un producto.");
   const cantidadDeLineas = items_.length + promos_.reduce((suma, p) => suma + componentesDeEleccion(Array.isArray(p?.elecciones) ? p.elecciones : []).length, 0);
   if (cantidadDeLineas > MAXIMO_ITEMS_POR_AGREGADO) return rechazar("rango", `No se pueden agregar más de ${MAXIMO_ITEMS_POR_AGREGADO} ítems de una vez.`);
   if (typeof cuentaId !== "string") return rechazar("formato", MENSAJE_CUENTA_NO_ENCONTRADA);
-  return aceptar({ cuentaId, items: items_, promos: promos_ });
+  if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", "Clave de reintento inválida.");
+  return aceptar({ cuentaId, items: items_, promos: promos_, ...(claveIdempotencia !== undefined ? { claveIdempotencia } : {}) });
 }
 
 /**

@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { prismaAdmin } from "../setup/cliente-duenio";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 
 /**
@@ -44,6 +45,8 @@ async function sembrarCatalogo(sucursalId: string) {
     bebidas,
     limpiar: async (mesaIds: string[]) => {
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      // P3: cada «Agregar al pedido» de la pantalla deja un comprobante (`AgregadoDeCuenta`, solo se agrega: el rol de la app no lo borra) que referencia la cuenta (RESTRICT): se borra antes, como dueño.
+      await prismaAdmin.agregadoDeCuenta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: productoIds } } });
@@ -153,6 +156,52 @@ test("accesibilidad: la lista «Por agregar» con un producto, y con un error de
     await campoCantidad.blur();
     await expect(page.getByRole("form", { name: "Agregar producto" }).getByRole("alert")).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations, "lista «Por agregar» con un error de cantidad").toEqual([]);
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
+test("corte de red justo después de que el servidor agregó el pedido: la cuenta se refresca y reintentar con la misma clave NO lo duplica (P3, I3)", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const { mesa, cuenta } = await mesaConCuenta(sucursalId, 995);
+  try {
+    await page.goto(`/mesas/${mesa.id}`);
+    await barra(page).getByRole("button", { name: cat.platos.nombre }).click();
+    await page.getByRole("region", { name: cat.platos.nombre }).getByRole("button", { name: cat.milanesa.nombre }).click();
+    await expect(page.locator("[data-linea-por-agregar]")).toHaveCount(1);
+
+    // La PRIMERA Server Action de la pantalla (el `agregarItems`; el resto de las llamadas de esta pantalla son GET de refresco) llega al servidor y se procesa entera, pero la respuesta
+    // se pierde: el cliente ve un error de red sin saber si se agregó.
+    let cortadas = 0;
+    await page.route(
+      (url) => url.pathname === `/mesas/${mesa.id}`,
+      async (route) => {
+        const pedido = route.request();
+        if (pedido.method() === "POST" && pedido.headers()["next-action"] && cortadas === 0) {
+          cortadas++;
+          await route.fetch();
+          await route.abort("connectionreset");
+          return;
+        }
+        await route.continue();
+      },
+    );
+
+    const formulario = page.getByRole("form", { name: "Agregar producto" });
+    await page.getByRole("button", { name: "Agregar 1 al pedido", exact: true }).click();
+    await expect(formulario.getByRole("alert")).toContainText("Se cortó la conexión");
+    expect(cortadas).toBe(1);
+    // La cuenta se refrescó: el ítem ya figura en «Sin enviar» (el servidor lo había agregado) y la lista del cliente quedó intacta.
+    await expect(page.getByRole("heading", { name: "Sin enviar · 1" })).toBeVisible();
+    await expect(lineaPorAgregar(page, cat.milanesa.nombre)).toBeVisible();
+
+    // Reintentar con el MISMO contenido manda la MISMA clave: el servidor devuelve el mensaje original y no agrega nada.
+    await page.getByRole("button", { name: "Agregar 1 al pedido", exact: true }).click();
+    await expect(aviso(page)).toHaveText("Se agregó 1 ítem a la mesa 995.");
+    await expect(page.locator("[data-linea-por-agregar]")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Sin enviar · 1" })).toBeVisible();
+    expect(await prisma.cuentaItem.count({ where: { cuentaId: cuenta.id } })).toBe(1);
+    expect(await prisma.agregadoDeCuenta.count({ where: { cuentaId: cuenta.id } })).toBe(1);
   } finally {
     await cat.limpiar([mesa.id]);
   }

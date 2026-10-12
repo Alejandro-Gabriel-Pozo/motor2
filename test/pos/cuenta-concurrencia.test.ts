@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
+import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
+import type { Transaccion } from "../../src/lib/db-tipos";
+import { agregarItemsCasoDeUso } from "../../src/server/actions/pos/casos-de-uso/agregar-items";
+import { MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/public-servidor";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { abrirCuenta } from "../../src/server/actions/pos/cuenta-apertura";
 import { crearMesa } from "../../src/server/actions/pos/mesas";
@@ -167,7 +171,8 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
     }
   });
 
-  it("(d) O.12: dos «Agregar» IGUALES a la vez DUPLICAN los ítems (agregarItems no tiene I3; se fija el comportamiento de hoy, no se arregla)", async () => {
+  // P3 (Paquete 1): O.12 se cierra con una clave de idempotencia OPCIONAL. Sin clave nada cambió: se fija que dos «Agregar» iguales siguen duplicando (no hay forma de saber que son el mismo envío).
+  it("(d) SIN clave de idempotencia (es opcional): dos «Agregar» IGUALES a la vez DUPLICAN los ítems (se fija el comportamiento sin clave, no se arregla)", async () => {
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
     const resultados = await Promise.all([agregarItems(cuenta.id, [{ productoId: s.milanesa.id, cantidad: 1 }]), agregarItems(cuenta.id, [{ productoId: s.milanesa.id, cantidad: 1 }])]);
     expect(resultados).toEqual([
@@ -179,5 +184,95 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
       [s.milanesa.id, 1, null],
       [s.milanesa.id, 1, null],
     ]);
+    expect(await prisma.agregadoDeCuenta.count()).toBe(0);
+  });
+
+  // ── P3 (Paquete 1): idempotencia I3 de agregarItems. La clave es de UN envío: dos llamadas con la MISMA clave son el reintento de ese envío, no dos pedidos. ──────────────────────
+
+  it("(e) CON la misma clave, dos «Agregar» IGUALES a la vez NO duplican: las dos responden lo mismo, queda un solo ítem y un solo comprobante", async () => {
+    for (let vuelta = 0; vuelta < 3; vuelta++) {
+      const mesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 600 + vuelta } });
+      const cuenta = await sembrarCuenta(mesa.id, s.admin.id);
+      const clave = crypto.randomUUID();
+      const mensaje = `Se agregó 1 ítem a la mesa ${600 + vuelta}.`;
+      const resultados = await Promise.all([agregarItems(cuenta.id, [{ productoId: s.milanesa.id, cantidad: 1 }], [], clave), agregarItems(cuenta.id, [{ productoId: s.milanesa.id, cantidad: 1 }], [], clave)]);
+      expect(resultados, `vuelta ${vuelta}`).toEqual([{ ok: true, mensaje }, { ok: true, mensaje }]);
+      expect(await prisma.cuentaItem.count({ where: { cuentaId: cuenta.id } }), `vuelta ${vuelta}`).toBe(1);
+      expect(await prisma.agregadoDeCuenta.count({ where: { claveIdempotencia: clave } }), `vuelta ${vuelta}`).toBe(1);
+    }
+  });
+
+  describe("(f) la carrera forzada con una BARRERA: dos transacciones en conexiones distintas, la de adentro corre COMPLETA y confirma entre la lectura y la escritura de la de afuera", () => {
+    /** Un `Transaccion` que, tras la PRIMERA lectura del comprobante por clave dentro de la transacción, espera a `entre` (la otra operación corre entera y confirma en otra conexión). Molde: `abrir-cuenta-vs-apagar-sucursal.test.ts`. */
+    function transaccionConBarrera(entre: () => Promise<void>) {
+      const estado = { disparada: false };
+      const transaccion: Transaccion = (async (fn: Parameters<Transaccion>[0], opciones?: Parameters<Transaccion>[1]) =>
+        baseDeTest.transaccion(async (tx) => {
+          const delegado = (tx as unknown as Record<string, Record<string, unknown>>).agregadoDeCuenta!;
+          const delegadoConBarrera = new Proxy(delegado, {
+            get(objetivo, propiedad) {
+              const valor = objetivo[propiedad as string];
+              if (propiedad === "findUnique" && typeof valor === "function") {
+                return async (...argumentos: unknown[]) => {
+                  const leido = await (valor as (...a: unknown[]) => Promise<unknown>).apply(objetivo, argumentos);
+                  if (!estado.disparada) {
+                    estado.disparada = true;
+                    await entre();
+                  }
+                  return leido;
+                };
+              }
+              return typeof valor === "function" ? (valor as (...a: unknown[]) => unknown).bind(objetivo) : valor;
+            },
+          });
+          const txConBarrera = new Proxy(tx, {
+            get(objetivo, propiedad) {
+              if (propiedad === "agregadoDeCuenta") return delegadoConBarrera;
+              const valor = (objetivo as unknown as Record<string | symbol, unknown>)[propiedad];
+              return typeof valor === "function" ? (valor as (...a: unknown[]) => unknown).bind(objetivo) : valor;
+            },
+          });
+          return fn(txConBarrera);
+        }, opciones)) as Transaccion;
+      return { transaccion, estado };
+    }
+
+    const agregar = (transaccion: Transaccion, comando: { cuentaId: string; productoId: string; claveIdempotencia: string }) =>
+      agregarItemsCasoDeUso(
+        { usuarioId: s.admin.id, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: s.sucursalId, sucursalNombre: "Central", ahora: AHORA_DE_LA_CORRIDA, db: baseDeTest.db, transaccion },
+        { cuentaId: comando.cuentaId, items: [{ productoId: comando.productoId, cantidad: 1 }], promos: [], claveIdempotencia: comando.claveIdempotencia },
+      );
+
+    it("el MISMO envío: el ganador confirma entre la lectura y la escritura del perdedor → el perdedor choca, repite, ve el comprobante y responde el mensaje original; un solo ítem y un solo comprobante", async () => {
+      const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
+      const clave = crypto.randomUUID();
+      let ganador: Awaited<ReturnType<typeof agregar>> | undefined;
+      const { transaccion, estado } = transaccionConBarrera(async () => {
+        ganador = await agregar(baseDeTest.transaccion, { cuentaId: cuenta.id, productoId: s.milanesa.id, claveIdempotencia: clave });
+      });
+
+      const perdedor = await agregar(transaccion, { cuentaId: cuenta.id, productoId: s.milanesa.id, claveIdempotencia: clave });
+
+      expect(estado.disparada, "la barrera se alcanzó").toBe(true);
+      expect(ganador, "el ganador corrió entero dentro de la barrera").toMatchObject({ ok: true, mensaje: "Se agregó 1 ítem a la mesa 4." });
+      expect(perdedor).toMatchObject({ ok: true, mensaje: "Se agregó 1 ítem a la mesa 4." });
+      expect(await prisma.cuentaItem.count({ where: { cuentaId: cuenta.id } })).toBe(1);
+      expect(await prisma.agregadoDeCuenta.count({ where: { claveIdempotencia: clave } })).toBe(1);
+    });
+
+    it("OTRO pedido con la misma clave: el perdedor recibe el conflicto de idempotencia y no agrega nada", async () => {
+      const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id);
+      const clave = crypto.randomUUID();
+      const { transaccion, estado } = transaccionConBarrera(async () => {
+        await agregar(baseDeTest.transaccion, { cuentaId: cuenta.id, productoId: s.milanesa.id, claveIdempotencia: clave });
+      });
+
+      const perdedor = await agregar(transaccion, { cuentaId: cuenta.id, productoId: s.flan.id, claveIdempotencia: clave });
+
+      expect(estado.disparada).toBe(true);
+      expect(perdedor).toMatchObject({ ok: false, codigo: "CONFLICTO_IDEMPOTENCIA", mensaje: MENSAJE_CONFLICTO_IDEMPOTENCIA });
+      expect((await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id } })).map((i) => i.productoId)).toEqual([s.milanesa.id]);
+      expect(await prisma.agregadoDeCuenta.count({ where: { claveIdempotencia: clave } })).toBe(1);
+    });
   });
 });

@@ -46,6 +46,8 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   try {
     await prismaAdmin.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+    // P3: el comprobante de «Agregar al pedido» referencia la cuenta (RESTRICT): se borra antes.
+    await prismaAdmin.agregadoDeCuenta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
     await prismaAdmin.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
     await prismaAdmin.mesa.deleteMany({ where: { id: { in: mesaIds } } });
     await prismaAdmin.descuentoProductoSucursal.deleteMany({ where: { productoId: producto?.id } });

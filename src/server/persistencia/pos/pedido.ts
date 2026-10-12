@@ -1,5 +1,5 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 
 /**
  * Escrituras del PEDIDO de la cuenta de una mesa (Hito 4 de la pureza, bloque 4.1 — `docs/plan-hito-4-pureza.md` §5; mismo contrato que el resto de
@@ -26,6 +26,28 @@ export async function escribirPromoDeCuenta(
  */
 export async function escribirItemsDeCuenta(tx: Prisma.TransactionClient, filas: Prisma.CuentaItemCreateManyInput[]): Promise<void> {
   await tx.cuentaItem.createMany({ data: filas });
+}
+
+/**
+ * P3 (I3): el comprobante de «agregar al pedido» que lleva esta clave, o `null` si ninguno la usó (o no se ve desde esta empresa: la política `aislamiento_empresa` oculta los ajenos
+ * aunque la unicidad de la clave sea global). Sirve a las dos lecturas del caso de uso: el chequeo de adentro de la transacción (`tx`) y la relectura del ganador de una carrera, de afuera (`db`).
+ */
+export async function cargarAgregadoDeCuentaPorClave(
+  db: Prisma.TransactionClient | PrismaClient,
+  claveIdempotencia: string,
+): Promise<{ payloadHash: string; resultadoMensaje: string } | null> {
+  return db.agregadoDeCuenta.findUnique({ where: { claveIdempotencia }, select: { payloadHash: true, resultadoMensaje: true } });
+}
+
+/**
+ * P3 (I3): el comprobante del agregado, con el mensaje YA ARMADO que se le devuelve a quien lo pidió. Va en la MISMA transacción que `escribirItemsDeCuenta` y siempre DESPUÉS: si falla
+ * (clave ya usada por otro), se deshacen también los ítems — todo o nada. Solo se agrega: la app no tiene UPDATE ni DELETE sobre esta tabla, así que sobrevive a que se quiten los ítems.
+ */
+export async function escribirAgregadoDeCuenta(
+  tx: Prisma.TransactionClient,
+  args: { cuentaId: string; claveIdempotencia: string; payloadHash: string; resultadoMensaje: string; creadoPorId: string },
+): Promise<void> {
+  await tx.agregadoDeCuenta.create({ data: { cuentaId: args.cuentaId, claveIdempotencia: args.claveIdempotencia, payloadHash: args.payloadHash, resultadoMensaje: args.resultadoMensaje, creadoPorId: args.creadoPorId } });
 }
 
 /**

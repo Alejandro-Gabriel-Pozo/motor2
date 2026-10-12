@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { prismaAdmin } from "../setup/cliente-duenio";
 
 /**
  * Venta fraccionada en el POS (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): un producto con `pasoVenta` acepta un
@@ -20,6 +21,8 @@ async function sembrarPizzaFraccionada(sucursalId: string) {
     pizza,
     limpiar: async (mesaIds: string[]) => {
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      // P3: cada «Agregar al pedido» de la pantalla deja un comprobante (`AgregadoDeCuenta`, solo se agrega: el rol de la app no lo borra) que referencia la cuenta (RESTRICT): se borra antes, como dueño.
+      await prismaAdmin.agregadoDeCuenta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: pizza.id } });

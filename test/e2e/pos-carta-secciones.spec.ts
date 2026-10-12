@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { prismaAdmin } from "../setup/cliente-duenio";
 import { abrirComoRol, PERMISOS_MOZO } from "./fixtures/rol-pos";
 
 /**
@@ -59,6 +60,8 @@ async function sembrarCarta(sucursalId: string) {
     gaseosa,
     limpiar: async (mesaIds: string[]) => {
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      // P3: cada «Agregar al pedido» de la pantalla deja un comprobante (`AgregadoDeCuenta`, solo se agrega: el rol de la app no lo borra) que referencia la cuenta (RESTRICT): se borra antes, como dueño.
+      await prismaAdmin.agregadoDeCuenta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: gaseosa.id } });
@@ -320,6 +323,8 @@ async function sembrarCartaConGenero(sucursalId: string) {
     artesanal,
     limpiar: async (mesaIds: string[]) => {
       await prisma.cuentaItem.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
+      // P3: cada «Agregar al pedido» de la pantalla deja un comprobante (`AgregadoDeCuenta`, solo se agrega: el rol de la app no lo borra) que referencia la cuenta (RESTRICT): se borra antes, como dueño.
+      await prismaAdmin.agregadoDeCuenta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.opcionItemAgrupadoCarta.deleteMany({ where: { itemAgrupadoCartaId: artesanal.id } });
