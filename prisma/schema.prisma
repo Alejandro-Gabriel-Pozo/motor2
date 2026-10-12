@@ -41,6 +41,7 @@ model User {
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
   facturasProvConfirmadas    FacturaProveedor[]   @relation("FacturaProveedorConfirmadaPor")
   facturasProvAnuladas       FacturaProveedor[]   @relation("FacturaProveedorAnuladaPor")
+  partesRecibidas FacturaProveedorSucursal[] @relation("FacturaProveedorParteRecibidaPor")
   traspasosCreados           TraspasoSucursal[]   @relation("TraspasoCreadoPor")
   traspasosDecididosOrigen   TraspasoSucursal[]   @relation("TraspasoDecididoOrigen")
   traspasosDecididosDestino  TraspasoSucursal[]   @relation("TraspasoDecididoDestino")
@@ -2618,6 +2619,12 @@ model FacturaProveedorSucursal {
   porcentajeDeclaradoBp Int
   operacionId           String?
   operacion             Operacion?       @relation(fields: [empresaId, operacionId], references: [empresaId, id], onDelete: Restrict)
+  /// Recepción de la mercadería (cambio del dueño, 2026-10-12): el stock de una factura entra recién cuando la factura está REPARTIDA y la parte de esta sucursal RECIBIDA. `PENDIENTE` o `RECIBIDA` (CHECK); `recibidaEn` es la FECHA DE STOCK
+  /// elegida (UTC) y `recibidaPorId` quién la confirmó. UPDATE solo por columna sobre estas tres y un disparador que permite únicamente PENDIENTE a RECIBIDA (migración 20261016101500). Nada de `src/` las escribe todavía (Etapa C).
+  estadoRecepcion       String           @default("PENDIENTE")
+  recibidaEn            DateTime?
+  recibidaPorId         String?
+  recibidaPor           User?            @relation("FacturaProveedorParteRecibidaPor", fields: [recibidaPorId], references: [id], onDelete: Restrict)
   creadoEn              DateTime         @default(now())
 
   @@unique([empresaId, id])

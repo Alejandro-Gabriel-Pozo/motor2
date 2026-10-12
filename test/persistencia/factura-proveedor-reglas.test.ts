@@ -77,9 +77,10 @@ describe("la migración deja las tres tablas, la columna del Kardex, los índice
     ]);
     const exactitud = Object.fromEntries(de("FacturaProveedorRenglon").filter((c) => c.precision !== null && ["orden", "cantidadStock", "precioPorUnidadStock", "precioTotal"].includes(c.columna)).map((c) => [c.columna, [c.precision, c.escala]]));
     expect(exactitud).toEqual({ orden: [32, 0], cantidadStock: [14, 4], precioPorUnidadStock: [14, 4], precioTotal: [14, 2] });
-    expect(de("FacturaProveedorSucursal").map((c) => `${c.columna}:${c.tipo}:${c.es_nulable}`)).toEqual([
+    expect(de("FacturaProveedorSucursal").map((c) => `${c.columna}:${c.tipo}:${c.es_nulable}`).slice(0, 7)).toEqual([
       "id:text:NO", "empresaId:text:NO", "facturaProveedorId:text:NO", "sucursalId:text:NO", "porcentajeDeclaradoBp:integer:NO", "operacionId:text:YES", "creadoEn:timestamp without time zone:NO",
     ]);
+    // (la recepción —estadoRecepcion, recibidaEn, recibidaPorId— se agrega al final y la mide `factura-proveedor-recepcion.test.ts`)
   });
 
   it("MovimientoStock gana facturaProveedorRenglonId (TEXT NULL, indexada) y nada más", async () => {
@@ -118,6 +119,7 @@ describe("la migración deja las tres tablas, la columna del Kardex, los índice
       "FacturaProveedor_anuladaPorId_fkey", "FacturaProveedor_confirmadaPorId_fkey", "FacturaProveedor_creadoPorId_fkey", "FacturaProveedor_empresaId_fkey", "FacturaProveedor_empresaId_proveedorId_fkey",
       "FacturaProveedorRenglon_empresaId_facturaProveedorId_fkey", "FacturaProveedorRenglon_empresaId_fkey", "FacturaProveedorRenglon_empresaId_productoId_fkey",
       "FacturaProveedorSucursal_empresaId_facturaProveedorId_fkey", "FacturaProveedorSucursal_empresaId_fkey", "FacturaProveedorSucursal_empresaId_operacionId_fkey", "FacturaProveedorSucursal_empresaId_sucursalId_fkey",
+      "FacturaProveedorSucursal_recibidaPorId_fkey",
       "MovimientoStock_empresaId_facturaProveedorRenglonId_fkey",
     ].sort());
     for (const f of fks) expect(f.definicion, f.conname).toMatch(/ON DELETE RESTRICT/);
@@ -152,10 +154,11 @@ describe("la migración deja las tres tablas, la columna del Kardex, los índice
     for (const dinero of ["importeTotal", "fecha", "origen", "condicionPago", "claveIdempotencia", "payloadHash", "empresaId", "creadoPorId", "creadoEn"]) {
       expect(columnas.find((c) => c.columna === dinero)?.puede, dinero).toBe(false);
     }
-    for (const tabla of ["FacturaProveedorRenglon", "FacturaProveedorSucursal"]) {
-      const r = await prismaAdmin.$queryRawUnsafe<Array<{ n: bigint }>>(`SELECT count(*) AS n FROM pg_attribute a WHERE a.attrelid = '"${tabla}"'::regclass AND a.attnum > 0 AND NOT a.attisdropped AND has_column_privilege('motor2_app', a.attrelid, a.attnum, 'UPDATE')`);
-      expect(Number(r[0]!.n), `${tabla}: ninguna columna con UPDATE`).toBe(0);
-    }
+    const conUpdate = async (tabla: string) =>
+      (await prismaAdmin.$queryRawUnsafe<Array<{ columna: string }>>(`SELECT a.attname::text AS columna FROM pg_attribute a WHERE a.attrelid = '"${tabla}"'::regclass AND a.attnum > 0 AND NOT a.attisdropped AND has_column_privilege('motor2_app', a.attrelid, a.attnum, 'UPDATE') ORDER BY 1`)).map((c) => c.columna);
+    expect(await conUpdate("FacturaProveedorRenglon"), "el renglón: ninguna columna con UPDATE").toEqual([]);
+    // La parte: solo la recepción (estado, fecha y persona); el porcentaje, la operación y la sucursal no se modifican.
+    expect(await conUpdate("FacturaProveedorSucursal"), "la parte: UPDATE solo de la recepción").toEqual(["estadoRecepcion", "recibidaEn", "recibidaPorId"]);
   });
 
   it("el migration.sql y el down.sql avisan que requieren autorización, que la reversa puede perder datos y en qué orden se baja", () => {

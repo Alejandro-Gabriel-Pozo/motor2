@@ -39,6 +39,8 @@ const CARPETAS = ["src", "plataforma/src"];
 
 // Paquete 3 (M3b): el renglón, la parte y los tributos de la factura de proveedor también solo se agregan (la app no tiene UPDATE ni DELETE en la base). La CABECERA (`facturaProveedor`) no entra todavía: su UPDATE es por
 // columna (estado, anulación y datos que identifican la factura) y la lista cerrada de sus escritores llega con el primer caso de uso que la escriba (Etapa C).
+// La PARTE (`facturaProveedorSucursal`) sí está acá aunque la base le deje UPDATE POR COLUMNA de la recepción (estado, fecha y persona; solo PENDIENTE a RECIBIDA, con un disparador): hoy ningún `src/` la escribe, y el caso de uso de
+// confirmar la recepción (Etapa C) tendrá que declarar ese UPDATE, con su lista cerrada de columnas, antes de entrar.
 const MODELOS_SOLO_AGREGAN = ["movimientoStock", "registroAuditoria", "auditoriaPlataforma", "venta", "facturaProveedorRenglon", "facturaProveedorSucursal", "facturaProveedorTributo"];
 const OPERACIONES_QUE_MODIFICAN = new Set(["update", "updateMany", "upsert", "delete", "deleteMany"]);
 const SQL_CRUDO = new Set(["$executeRaw", "$executeRawUnsafe", "$queryRaw", "$queryRawUnsafe"]);

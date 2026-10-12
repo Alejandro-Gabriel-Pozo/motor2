@@ -7,7 +7,7 @@ import { MIGRACIONES_DE_POLITICAS_DE_SUCURSAL, MIGRACIONES_DE_POLITICAS_POSTERIO
 import { COMANDOS_CON_POLITICA_DE_ALCANCE } from "../setup/politicas-de-alcance-de-sucursal";
 
 /**
- * Paquete 3, M3 (M3a a M3d): SUBIR, BAJAR y SUBIR de las migraciones reales sobre una base TEMPORAL descartable (`crearBaseTemporalMigrada`: solo Postgres local, jamás `motor2_dev`, `motor2_e2e` ni una base real), con cada
+ * Paquete 3, M3 (M3a, M3b y su recepción, M3c y M3d): SUBIR, BAJAR y SUBIR de las migraciones reales sobre una base TEMPORAL descartable (`crearBaseTemporalMigrada`: solo Postgres local, jamás `motor2_dev`, `motor2_e2e` ni una base real), con cada
  * `down.sql` tal cual está en el repo. Parte de la base con el Paquete 2 ya aplicado (hasta `20261015123000_m2_rls_sucursal_venta`), que es el estado de producción antes de M3.
  *
  * ATENCIÓN: la reversa de M3b (borra las tres tablas de la factura y la columna del Kardex), la de M3d (borra el desglose de IVA, los tributos y la perilla) y la de M3a (borra la clave de permiso y lo configurado sobre ella) son DESTRUCTIVAS si ya hay datos nuevos; la prueba las corre con datos
@@ -17,7 +17,7 @@ import { COMANDOS_CON_POLITICA_DE_ALCANCE } from "../setup/politicas-de-alcance-
  *  1. ARRIBA (M3a, M3b, M3c y M3d sobre una base con datos previos): la clave de permiso sembrada al admin, las tres tablas con sus reglas, índices (el único parcial de la unicidad del número), claves foráneas, RLS y privilegios EXACTOS
  *     (SELECT e INSERT; UPDATE por columna solo de la lista cerrada de la cabecera), la columna del Kardex en NULL en las filas viejas y la política de sucursal de la parte. Humo como `motor2_app`: la cabecera se ve sin alcance, la
  *     parte no; un INSERT en otra sucursal y un UPDATE del importe dan 42501.
- *  2. ABAJO (M3d, M3c, M3b, M3a, en ese orden; con datos nuevos escritos): el catálogo queda IDÉNTICO al de antes de M3 (columnas, índices, restricciones, políticas, tipos, RLS, privilegios y funciones); las filas que no se borran siguen
+ *  2. ABAJO (M3d, M3c, la recepción, M3b, M3a, en ese orden; con datos nuevos escritos): el catálogo queda IDÉNTICO al de antes de M3 (columnas, índices, restricciones, políticas, tipos, RLS, privilegios y funciones); las filas que no se borran siguen
  *     (el Kardex pierde solo la referencia al renglón), y lo que se pierde es exactamente lo que dicen los down.sql.
  *  3. ARRIBA OTRA VEZ: las mismas comprobaciones, y el catálogo es idéntico al de la primera subida.
  *  4. Las reversas son idempotentes (IF EXISTS) y la reversa de M3c no toca las políticas del Paquete 1 ni las de Venta.
@@ -26,17 +26,20 @@ const RAIZ = join(__dirname, "../../prisma/migrations");
 const ULTIMA_DEL_PAQUETE_2 = "20261015123000_m2_rls_sucursal_venta";
 const M3A = "20261016100000_permiso_compra_repartir";
 const M3B = "20261016101000_factura_proveedor";
+const M3B2 = "20261016101500_factura_proveedor_recepcion";
 const M3C = "20261016102000_rls_sucursal_factura_proveedor_sucursal";
 const M3D = "20261016103000_factura_proveedor_iva";
-const SUBIDA = [M3A, M3B, M3C, M3D];
+const SUBIDA = [M3A, M3B, M3B2, M3C, M3D];
 /** La reversa va en orden inverso: M3d (cuelga de las tablas de M3b), M3c ANTES que M3b (la tabla), y M3a al final. */
-const BAJADA = [M3D, M3C, M3B, M3A];
+const BAJADA = [M3D, M3C, M3B2, M3B, M3A];
 
 const CHECKS_NUEVOS = [
   "FacturaProveedor_nro_pareo_chk", "FacturaProveedor_letra_chk", "FacturaProveedor_importe_total_no_negativo_chk", "FacturaProveedor_estado_chk", "FacturaProveedor_confirmacion_coherente_chk", "FacturaProveedor_origen_chk",
   "FacturaProveedor_pendiente_solo_carga_chk", "FacturaProveedor_condicion_pago_chk", "FacturaProveedor_medio_pago_chk", "FacturaProveedor_pago_declarado_solo_contado_chk", "FacturaProveedor_idempotencia_pareo_chk",
   "FacturaProveedor_anulacion_pareo_chk", "FacturaProveedorRenglon_orden_chk", "FacturaProveedorRenglon_naturaleza_chk", "FacturaProveedorRenglon_pareo_mercaderia_chk", "FacturaProveedorRenglon_cantidad_positiva_chk",
   "FacturaProveedorRenglon_precio_unidad_no_negativo_chk", "FacturaProveedorRenglon_precio_total_no_negativo_chk", "FacturaProveedorSucursal_porcentaje_chk", "MovimientoStock_renglon_solo_compra_chk",
+  // M3b, segunda parte: la recepción por sucursal
+  "FacturaProveedorSucursal_estado_recepcion_chk", "FacturaProveedorSucursal_recepcion_coherente_chk", "FacturaProveedorSucursal_recibida_por_chk",
   // M3d
   "FacturaProveedor_condicion_iva_empresa_chk", "FacturaProveedor_desglose_pareo_chk", "FacturaProveedor_desglose_no_negativo_chk", "FacturaProveedor_desglose_dentro_del_total_chk",
   "FacturaProveedorRenglon_alicuota_iva_chk", "FacturaProveedorRenglon_desglose_pareo_chk", "FacturaProveedorRenglon_desglose_no_negativo_chk", "FacturaProveedorRenglon_neto_mas_iva_chk",
@@ -50,7 +53,7 @@ const CLAVES_FORANEAS_NUEVAS = [
   "FacturaProveedor_empresaId_fkey", "FacturaProveedor_empresaId_proveedorId_fkey", "FacturaProveedor_creadoPorId_fkey", "FacturaProveedor_confirmadaPorId_fkey", "FacturaProveedor_anuladaPorId_fkey",
   "FacturaProveedorRenglon_empresaId_fkey", "FacturaProveedorRenglon_empresaId_facturaProveedorId_fkey", "FacturaProveedorRenglon_empresaId_productoId_fkey", "FacturaProveedorSucursal_empresaId_fkey",
   "FacturaProveedorSucursal_empresaId_facturaProveedorId_fkey", "FacturaProveedorSucursal_empresaId_sucursalId_fkey", "FacturaProveedorSucursal_empresaId_operacionId_fkey", "MovimientoStock_empresaId_facturaProveedorRenglonId_fkey",
-  "FacturaProveedorTributo_empresaId_fkey", "FacturaProveedorTributo_empresaId_facturaProveedorId_fkey",
+  "FacturaProveedorTributo_empresaId_fkey", "FacturaProveedorTributo_empresaId_facturaProveedorId_fkey", "FacturaProveedorSucursal_recibidaPorId_fkey",
 ];
 const TABLAS_NUEVAS = ["FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedorTributo"];
 /** M3d: las columnas nuevas (la perilla de la empresa, el desglose de IVA) y su nulabilidad. */
@@ -63,6 +66,10 @@ const COLUMNAS_DE_IVA: ReadonlyArray<[string, string, "YES" | "NO", string | nul
   ["FacturaProveedorRenglon", "importeNeto", "YES", null],
   ["FacturaProveedorRenglon", "importeIva", "YES", null],
   ["FacturaProveedorRenglon", "importeIvaComputable", "NO", "0"],
+  // M3b, segunda parte: la recepción
+  ["FacturaProveedorSucursal", "estadoRecepcion", "NO", "'PENDIENTE'::text"],
+  ["FacturaProveedorSucursal", "recibidaEn", "YES", null],
+  ["FacturaProveedorSucursal", "recibidaPorId", "YES", null],
 ];
 const COLUMNAS_ACTUALIZABLES = [
   "anuladaEn", "anuladaPorId", "confirmadaEn", "confirmadaPorId", "detalleLibre", "estado", "fechaComprobante", "fechaPagoDeclarada", "letra", "medioPagoDeclarado", "nroFactura", "nroFacturaNormalizado",
@@ -89,6 +96,8 @@ async function foto() {
     rls: await q(`SELECT relname::text AS tabla, relrowsecurity AS rls, relforcerowsecurity AS forzado FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relkind = 'r' ORDER BY 1`),
     privilegios: await q(`SELECT table_name::text AS tabla, grantee::text AS rol, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'public' AND grantee IN ('motor2_app', 'motor2_plataforma') ORDER BY 1, 2, 3`),
     tipos: await q(`SELECT t.typname::text AS tipo, array_agg(e.enumlabel::text ORDER BY e.enumsortorder) AS valores FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid WHERE t.typnamespace = 'public'::regnamespace GROUP BY 1 ORDER BY 1`),
+    disparadores: await q(`SELECT tgrelid::regclass::text AS tabla, tgname::text AS nombre, tgenabled::text AS habilitado, pg_get_triggerdef(oid) AS definicion FROM pg_trigger WHERE NOT tgisinternal ORDER BY 1, 2`),
+    privilegiosDeColumna: await q(`SELECT table_name::text AS tabla, column_name::text AS columna, grantee::text AS rol, privilege_type FROM information_schema.column_privileges WHERE table_schema = 'public' AND grantee IN ('motor2_app', 'motor2_plataforma') AND table_name LIKE 'FacturaProveedor%' ORDER BY 1, 2, 3, 4`),
     funciones: await q(`SELECT p.proname::text AS nombre, pg_get_functiondef(p.oid) AS definicion FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace ORDER BY 1`),
   };
 }
@@ -135,6 +144,10 @@ async function comprobarArriba(etiqueta: string) {
   // M3a: la clave y su siembra al admin (y a nadie más).
   expect(await q(`SELECT "clave" FROM "Accion" WHERE "clave" = 'compra_repartir'`), `${etiqueta}: la clave existe`).toEqual([{ clave: "compra_repartir" }]);
   expect(await q(`SELECT "rolId" FROM "PermisoRol" WHERE "accionClave" = 'compra_repartir' ORDER BY 1`), `${etiqueta}: solo el admin la tiene`).toEqual([{ rolId: "rol_admin_m3" }]);
+  expect(await q(`SELECT "clave" FROM "Accion" WHERE "clave" = 'compra_recibir'`), `${etiqueta}: la clave de recibir existe`).toEqual([{ clave: "compra_recibir" }]);
+  expect(await q(`SELECT "rolId" FROM "PermisoRol" WHERE "accionClave" = 'compra_recibir' ORDER BY 1`), `${etiqueta}: solo el admin tiene la de recibir`).toEqual([{ rolId: "rol_admin_m3" }]);
+  expect((await q<{ nombre: string }>(`SELECT tgname::text AS nombre FROM pg_trigger WHERE tgrelid = '"FacturaProveedorSucursal"'::regclass AND NOT tgisinternal`)).map((t) => t.nombre), `${etiqueta}: el disparador de la recepción`).toEqual(["FacturaProveedorSucursal_recepcion_transicion_chk"]);
+  expect((await q<{ columna: string }>(`SELECT a.attname::text AS columna FROM pg_attribute a WHERE a.attrelid = '"FacturaProveedorSucursal"'::regclass AND a.attnum > 0 AND NOT a.attisdropped AND has_column_privilege('motor2_app', a.attrelid, a.attnum, 'UPDATE') ORDER BY 1`)).map((c) => c.columna), `${etiqueta}: UPDATE de la parte solo en la recepción`).toEqual(["estadoRecepcion", "recibidaEn", "recibidaPorId"]);
 
   // M3b: tablas, columna del Kardex, reglas, índices, claves foráneas.
   for (const t of TABLAS_NUEVAS) expect(f.rls.find((r) => r.tabla === t), `${etiqueta}: ${t} con RLS`).toEqual({ tabla: t, rls: true, forzado: false });
@@ -215,6 +228,9 @@ async function comprobarArriba(etiqueta: string) {
     expect(await falla(c, `UPDATE "FacturaProveedor" SET "anuladaEn" = now(), "anuladaPorId" = 'u_m3' WHERE id = 'fact_humo'`), `${etiqueta}: anular anda`).toBeNull();
     expect(await falla(c, `DELETE FROM "FacturaProveedor" WHERE id = 'fact_humo'`), `${etiqueta}: DELETE da 42501`).toBe("42501");
     expect(await falla(c, `DELETE FROM "FacturaProveedorSucursal" WHERE id = 'parte_a'`), `${etiqueta}: DELETE de la parte da 42501`).toBe("42501");
+    expect(await falla(c, `UPDATE "FacturaProveedorSucursal" SET "porcentajeDeclaradoBp" = 1 WHERE id = 'parte_a'`), `${etiqueta}: UPDATE del porcentaje da 42501`).toBe("42501");
+    expect(await falla(c, `UPDATE "FacturaProveedorSucursal" SET "estadoRecepcion" = 'RECIBIDA', "recibidaEn" = now(), "recibidaPorId" = 'u_m3' WHERE id = 'parte_a' AND "estadoRecepcion" = 'PENDIENTE'`), `${etiqueta}: confirmar la recepción anda`).toBeNull();
+    expect(await falla(c, `UPDATE "FacturaProveedorSucursal" SET "estadoRecepcion" = 'PENDIENTE', "recibidaEn" = NULL, "recibidaPorId" = NULL WHERE id = 'parte_a'`), `${etiqueta}: una recibida no vuelve atrás (23514, disparador)`).toBe("23514");
   });
 }
 
@@ -250,8 +266,8 @@ afterAll(async () => {
   await base?.eliminar();
 });
 
-describe("M3: subir, bajar y subir (M3a a M3d) sobre una base temporal con el Paquete 2 aplicado", () => {
-  it("0. las cuatro migraciones existen, son posteriores al Paquete 2, van en este orden y la última está declarada como política posterior", () => {
+describe("M3: subir, bajar y subir (M3a a M3d, con la recepción entre M3b y M3c) sobre una base temporal con el Paquete 2 aplicado", () => {
+  it("0. las cinco migraciones existen, son posteriores al Paquete 2, van en este orden y la última está declarada como política posterior", () => {
     expect([...SUBIDA].sort()).toEqual(SUBIDA);
     for (const m of SUBIDA) {
       expect(m > ULTIMA_DEL_PAQUETE_2, `${m} es posterior al Paquete 2`).toBe(true);
@@ -270,7 +286,7 @@ describe("M3: subir, bajar y subir (M3a a M3d) sobre una base temporal con el Pa
     expect(arribaLaPrimeraVez.columnas.length, "sanidad de la foto").toBeGreaterThan(antesDeM3.columnas.length + 40);
   });
 
-  it("2. BAJAR (con datos nuevos escritos): M3d, M3c, M3b y M3a en orden inverso dejan el catálogo como estaba antes de M3; las filas previas siguen y se pierde justo lo que dicen los down.sql", async (ctx) => {
+  it("2. BAJAR (con datos nuevos escritos): M3d, M3c, la recepción, M3b y M3a en orden inverso dejan el catálogo como estaba antes de M3; las filas previas siguen y se pierde justo lo que dicen los down.sql", async (ctx) => {
     if (!hayRol) return ctx.skip();
     // Datos que solo existen por M3 (escritos por el dueño): una factura repartida con un renglón, dos partes, y una línea nueva del Kardex que cuelga del renglón.
     const c = base.cliente;
@@ -282,6 +298,7 @@ describe("M3: subir, bajar y subir (M3a a M3d) sobre una base temporal con el Pa
       [E],
     );
     await c.query(`INSERT INTO "FacturaProveedorSucursal" ("id","empresaId","facturaProveedorId","sucursalId","porcentajeDeclaradoBp","operacionId") VALUES ('parte_real',$1,'fact_real','suc_a',10000,'op_compra_vieja')`, [E]);
+    await c.query(`UPDATE "FacturaProveedorSucursal" SET "estadoRecepcion" = 'RECIBIDA', "recibidaEn" = now(), "recibidaPorId" = 'u_m3' WHERE id = 'parte_real'`);
     await c.query(
       `INSERT INTO "MovimientoStock" ("id","empresaId","operacionId","productoId","seccionId","proceso","cantidad","detalle","precioTotal","precioPorUnidadStock","facturaProveedorRenglonId") VALUES ('mov_nuevo',$1,'op_compra_vieja','pro_m3','sec_m3','COMPRA',10,'d','100.00','10','reng_real')`,
       [E],
