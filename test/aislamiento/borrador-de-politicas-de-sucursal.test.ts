@@ -2,6 +2,7 @@ import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CANTIDAD_DE_POLITICAS_ESPERADAS, TABLAS_CON_POLITICA_DE_SUCURSAL } from "../setup/clasificacion-de-tablas";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
+import { MIGRACION_B1_FUNCIONES } from "../setup/migraciones-de-alcance-de-sucursal";
 import { sqlDeAlcanceDeSucursal, sqlDeReversaDeAlcanceDeSucursal } from "../setup/politicas-de-alcance-de-sucursal";
 
 /**
@@ -18,6 +19,8 @@ let hayRol = false;
 let app: Client | null = null;
 
 const E = "empresa_a";
+/** Las políticas que tiene la base ANTES de B1: las de empresa (la cantidad declarada menos las cuatro por comando de cada tabla con alcance de sucursal). */
+const POLITICAS_ANTES_DE_B1 = CANTIDAD_DE_POLITICAS_ESPERADAS - TABLAS_CON_POLITICA_DE_SUCURSAL.length * 4;
 
 async function existeElRol(cliente: Client): Promise<boolean> {
   return (await cliente.query("SELECT 1 FROM pg_roles WHERE rolname = 'motor2_app'")).rowCount === 1;
@@ -25,7 +28,7 @@ async function existeElRol(cliente: Client): Promise<boolean> {
 
 beforeAll(async () => {
   base = await crearBaseTemporalMigrada();
-  await base.aplicarRestantes();
+  await base.aplicarAntesDe(MIGRACION_B1_FUNCIONES); // Paquete 1: las políticas ya son migraciones (B1 a B6); este archivo prueba el SQL del generador sobre la base de ANTES.
   hayRol = await existeElRol(base.cliente);
   if (!hayRol) return;
   const q = (sql: string, params: unknown[] = []) => base.cliente.query(sql, params);
@@ -108,7 +111,7 @@ describe("el borrador de políticas de sucursal, sobre una base migrada de verda
   it("el SQL del alta se aplica sin error y deja las funciones y las cuatro políticas RESTRICTIVE TO motor2_app de cada tabla con alcance", async (ctx) => {
     if (!hayRol) return ctx.skip();
     const antes = await totalDePoliticas();
-    expect(antes, "las políticas por empresa de hoy, derivadas de la clasificación por empresa").toBe(CANTIDAD_DE_POLITICAS_ESPERADAS);
+    expect(antes, "las políticas por empresa de antes de B1, derivadas de la clasificación").toBe(POLITICAS_ANTES_DE_B1);
     await base.cliente.query(sqlDeAlcanceDeSucursal());
     const politicas = await politicasDeAlcance();
     expect(politicas).toHaveLength(TABLAS_CON_POLITICA_DE_SUCURSAL.length * 4);
@@ -185,7 +188,7 @@ describe("el borrador de políticas de sucursal, sobre una base migrada de verda
     await base.cliente.query(sqlDeReversaDeAlcanceDeSucursal());
     expect(await politicasDeAlcance()).toEqual([]);
     expect(await funcionesDeAlcance()).toEqual([]);
-    expect(await totalDePoliticas()).toBe(CANTIDAD_DE_POLITICAS_ESPERADAS);
+    expect(await totalDePoliticas()).toBe(POLITICAS_ANTES_DE_B1);
     await base.cliente.query(sqlDeReversaDeAlcanceDeSucursal()); // idempotente: IF EXISTS
     // Sin las políticas el rol de la app vuelve a ver todo lo de su empresa (la reversa devuelve el comportamiento de antes).
     await conAlcance({}, async (c) => expect(await ids(c, "Seccion")).toEqual(["secA", "secB"]));
@@ -193,6 +196,6 @@ describe("el borrador de políticas de sucursal, sobre una base migrada de verda
     expect(await totalDePoliticas()).toBe(conPoliticas);
     await conAlcance({ lectura: "sA" }, async (c) => expect(await ids(c, "Seccion")).toEqual(["secA"]));
     await base.cliente.query(sqlDeReversaDeAlcanceDeSucursal());
-    expect(await totalDePoliticas()).toBe(CANTIDAD_DE_POLITICAS_ESPERADAS);
+    expect(await totalDePoliticas()).toBe(POLITICAS_ANTES_DE_B1);
   });
 });
