@@ -306,6 +306,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "S-06 (O.55; CAMBIA COMPORTAMIENTO, plan de endurecimiento de seguridad T2): guardar los cupos de una promo deja una fila de auditoría por columna (`cantidadMinima`, `cantidadMaxima`) de cada cupo que cambia, aparece o desaparece (entidad `PromoCartaCupo`, `entidadId` = `promo:seccion`). Agrega SOLO 8 líneas AUDITORIA: 4 en el paso «promo: cupos del Menú (Platos hasta 2, Postres 1 a 1)» (2 cupos nuevos × 2 columnas) y 4 en «promo: sin cupos vuelve a informativa» (los 2 cupos que se quitan × 2 columnas); ningún resultado, fila de tabla ni efecto cambia.",
       },
+      {
+        blob: "ef85b2af2f043343cf1136a51227dd00bf1f4915",
+        // El commit PADRE de este (52d5b77, «Paquete 1: piso del precio local de promo con lectura de verificacion…») es el que cambió el código; el golden se regenera en el commit siguiente.
+        commit: "52d5b77",
+        motivo:
+          "Paquete 1, piso del precio LOCAL de una promo (CAMBIA UN TEXTO, a propósito): `guardarCuposPromoCarta` ya no nombra el importe ni la sucursal cuando el que no alcanza el piso es el precio LOCAL de alguna sucursal (puede ser una que quien guarda no ve; con las políticas de RLS por sucursal el control lee todas con la lectura de verificación). Cambia SOLO la línea `resultado` del paso «promo: cupos que dejan el precio local bajo el piso»: de «El precio de \"Menú del día\" ($0.05) no alcanza el piso…» a «El precio local de \"Menú del día\" en alguna sucursal no alcanza el piso…». El rechazo por el precio de la EMPRESA no cambia.",
+      },
     ],
   },
 };
