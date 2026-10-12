@@ -107,6 +107,8 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.facturaProveedorSucursal.deleteMany();
   await prismaAdmin.facturaProveedorTributo.deleteMany();
   await prismaAdmin.facturaProveedorRenglon.deleteMany();
+  // Los conceptos de gasto (M4.1) los referencian los renglones sin stock (RESTRICT): DESPUÉS de los renglones.
+  await prismaAdmin.conceptoDeGasto.deleteMany();
   await prismaAdmin.facturaProveedor.deleteMany();
   await prismaAdmin.operacion.deleteMany();
   // La cabecera de venta (M2) referencia a la cuenta, la sucursal y el User (RESTRICT) y la referencian las operaciones (recién borradas): DESPUÉS de operacion.deleteMany() y ANTES de la cuenta.

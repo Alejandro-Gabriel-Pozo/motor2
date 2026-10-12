@@ -2371,6 +2371,7 @@ model Empresa {
   facturaProveedorSucursalRel    FacturaProveedorSucursal[]
   facturaProveedorTributoRel     FacturaProveedorTributo[]
   puntoDeVentaDeProveedorRel     PuntoDeVentaDeProveedor[]
+  conceptoDeGastoRel             ConceptoDeGasto[]
 }
 
 enum EstadoModulo {
@@ -2765,4 +2766,24 @@ model AuditoriaPlataforma {
 
   @@index([adminId, creadoEn])
   @@index([empresaAfectadaId, creadoEn])
+}
+
+/// Paquete 3 (M4.1): un CONCEPTO DE GASTO de la empresa (alquiler, luz, honorarios, flete, descuento obtenido...): lo que se paga sin que entre mercadería al stock. Un servicio NO es un producto, es un concepto. DE EMPRESA (RLS por empresa, sin
+/// sucursal: el catálogo lo comparten todas). `codigo` es la identidad estable y NO se puede cambiar (la app no tiene UPDATE sobre esa columna); `nombre` es único por empresa sin importar mayúsculas (índice sobre `lower("nombre")` solo en la
+/// migración, como los demás catálogos). `tipoDeCostoPorDefecto` es TEXT con CHECK de cinco valores (COSTO_DE_VENTAS, GASTO_OPERATIVO, EXTRAORDINARIO, INVERSION, RESULTADO_FINANCIERO): es solo el valor por defecto de las cargas nuevas; cada renglón guarda su
+/// copia. NO se borra (la app no tiene DELETE): se desactiva con `activo`. UPDATE solo de `nombre`, `tipoDeCostoPorDefecto` y `activo`; por eso NO lleva `@updatedAt`. Nada de `src/` la escribe todavía (Etapa C).
+model ConceptoDeGasto {
+  id                    String   @id @default(cuid())
+  empresaId             String   @default(dbgenerated("app_empresa_actual()"))
+  empresa               Empresa  @relation(fields: [empresaId], references: [id])
+  /// Mayúsculas, dígitos y guion bajo, empieza con letra, hasta 40 (CHECK). Fijo.
+  codigo                String
+  nombre                String
+  tipoDeCostoPorDefecto String
+  activo                Boolean  @default(true)
+  creadoEn              DateTime @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, nombre])
 }
