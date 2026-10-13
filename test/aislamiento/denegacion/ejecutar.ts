@@ -94,6 +94,8 @@ function marcadoresDeEntrada(puerta: PuertaInventariada, argumentos: unknown[]):
     if (typeof v === "string") {
       if (MARCADOR_DE_CUALQUIER_COSA.test(v)) hallados.add(v);
     } else if (Array.isArray(v)) v.forEach((x) => visitar(x, nivel + 1));
+    // GO-2b: una entrada puede ser un `Map` (lo que ya leyó el caso de uso y la lectura completa, `completarPreciosDeSucursal`): sus claves y valores también son lo que mandó el que llama.
+    else if (v instanceof Map) [...v.entries()].forEach((x) => visitar(x, nivel + 1));
     else if (v && typeof v === "object" && Object.getPrototypeOf(v) === Object.prototype) Object.values(v).forEach((x) => visitar(x, nivel + 1));
   };
   // El `db` (un cliente de Prisma, un `Proxy` enorme) no se recorre nunca: se lo reconoce por el nombre de su parámetro.

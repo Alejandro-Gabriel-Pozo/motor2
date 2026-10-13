@@ -21,11 +21,39 @@ import { asignarOrigenDeLaVenta, avisoDeStockNegativo, mensajeStockInsuficiente,
 import { cargarDatosDeOrigen, prepararOrigen } from "@/server/persistencia/movimientos/cargar-origen-de-venta";
 import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
 import { calcularCostosYMargenes } from "@/server/lecturas/reportes/costos";
+import { construirIndiceRecetas, construirMapaProductos, obtenerCostoActualPorMP } from "@/server/lecturas/reportes/comun";
+import { costoUnitarioDeInsumoDesde } from "@/core/reportes/public";
+import { consumoDeLineaConfigurada, type ConsumoDeOpcionParaVender, type IngredienteDeBase } from "@/core/movimientos/consumo-de-linea-configurada";
+import { consolidarPedidosPorInsumo, costoUnitarioDeLineaConfigurada } from "@/core/movimientos/venta-configurada";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { escribirOperacionDeVenta } from "@/server/persistencia/movimientos/escribir-venta";
 import type { ActorVenta, AvisoStockNegativo, DatosVentaEnTx, LineaVentaEnTx, OpcionesVentaEnTx, ResultadoVentaEnTx } from "@/core/movimientos/registrar-venta";
+
+type Obtener = ReturnType<typeof crearCacheProducto>;
+
+/**
+ * GO-2b: cada insumo que una OPCIÓN consume (su versión congelada) tiene que ser una materia prima, estar disponible en la sucursal y tener la unidad de stock que
+ * declara la opción. Las mismas lecturas que la receta (la caché de productos y la disponibilidad); solo corre para una línea configurada o un adicional.
+ */
+async function revisarInsumosDeOpciones(
+  consumos: readonly ConsumoDeOpcionParaVender[],
+  nombre: string,
+  sucursalId: string,
+  sucursalNombre: string,
+  tx: Prisma.TransactionClient,
+  obtenerProducto: Obtener
+): Promise<{ ok: false; mensaje: string } | null> {
+  for (const c of consumos) {
+    const revisada = revisarMateriaPrima(await obtenerProducto(c.insumoProductoId), nombre);
+    if (!revisada.ok) return { ok: false, mensaje: revisada.mensaje };
+    const mp = revisada.materiaPrima;
+    if (!(await productoDisponibleEn(sucursalId, mp.id, tx))) return { ok: false, mensaje: mensajeMateriaPrimaNoDisponible(nombre, mp.nombre, sucursalNombre) };
+    if (mp.unidadStockId !== c.unidadStockId) return { ok: false, mensaje: `Una opción de «${nombre}» consume «${mp.nombre}» en otra unidad que la de su stock: revisá el consumo de la opción.` };
+  }
+  return null;
+}
 
 /**
  * `registrarVentaEnTx` — el núcleo de la Venta (Pureza Fase 4, tramo A: mudado TAL CUAL desde `core/movimientos/registrar-venta.ts`, mismo nombre y misma firma). Es un paso
@@ -50,8 +78,9 @@ async function armarLinea(
   sucursalId: string,
   sucursalNombre: string,
   tx: Prisma.TransactionClient,
-  obtenerProducto: ReturnType<typeof crearCacheProducto>,
-  costoUnitarioPorProducto: Map<string, number | null>
+  obtenerProducto: Obtener,
+  costoUnitarioPorProducto: Map<string, number | null>,
+  costoDeInsumo: (productoId: string) => number | null
 ): Promise<{ ok: true; linea: LineaArmada | null } | { ok: false; mensaje: string }> {
   // Las reglas (qué cantidad saltea la línea, cuál es un error, qué mensaje gana) son puras y viven en `core/movimientos/linea-de-venta.ts`; acá queda el ORDEN: cada una se llama
   // en el mismo lugar donde estaba el `if`, antes o después de la lectura que le toca (los goldens registran las lecturas también en los rechazos).
@@ -59,19 +88,29 @@ async function armarLinea(
   if (leida.tipo === "saltear") return { ok: true, linea: null };
   if (leida.tipo === "invalida") return { ok: false, mensaje: leida.mensaje };
   const cantidad = leida.cantidad;
+  const configurada = item.configurada;
 
   const producto = await obtenerProducto(item.productoId);
   if (!producto) return { ok: false, mensaje: MENSAJE_PRODUCTO_NO_EXISTE };
-  if (!(await productoDisponibleEn(sucursalId, producto.id, tx))) {
+  // GO-2b (ADR-030): el producto ANCLA de un adicional no tiene disponibilidad por sucursal (queda oculto por «sin fila = no disponible»). Saltea ese chequeo SOLO si es
+  // el producto de la opción LEÍDO DE LA BASE (`anclaVerificada`), es un PV y no se produce; cualquier otro producto sigue con la disponibilidad de siempre.
+  const esAnclaVerificada = configurada?.tipo === "ADICIONAL" && configurada.anclaVerificada === producto.id && producto.tipo === "PV" && !producto.seProduce;
+  if (!esAnclaVerificada && !(await productoDisponibleEn(sucursalId, producto.id, tx))) {
     return { ok: false, mensaje: mensajeNoDisponibleEnSucursal(producto.nombre, sucursalNombre) };
   }
   const rechazo = rechazoDelProductoVendido({ nombre: producto.nombre, tipo: producto.tipo, pasoVenta: producto.pasoVenta === null ? null : Number(producto.pasoVenta) }, cantidad);
   if (rechazo !== null) return { ok: false, mensaje: rechazo };
+  if (configurada?.tipo === "ADICIONAL" && !esAnclaVerificada) return { ok: false, mensaje: `«${producto.nombre}» no es el producto que respalda ese adicional.` };
+  if (configurada?.tipo === "PRODUCTO" && producto.seProduce) {
+    return { ok: false, mensaje: `«${producto.nombre}» se produce por lote: todavía no se puede vender con opciones.` };
+  }
 
-  const pedidos: LineaArmada["pedidos"] = [];
+  let pedidos: LineaArmada["pedidos"] = [];
   if (!producto.seProduce) {
     // Un PV que se produce por lote ya consumió su receta al producirse — la venta solo lo resta (ver registrarMovimiento, PRODUCCION).
-    const ingredientes = await cargarRecetaVigenteParaVender(tx, { productoId: producto.id, sucursalId });
+    // GO-2b: un adicional (su ancla no tiene receta) no lee la receta: su consumo es el de su opción.
+    const ingredientes = configurada?.tipo === "ADICIONAL" ? [] : await cargarRecetaVigenteParaVender(tx, { productoId: producto.id, sucursalId });
+    const base: IngredienteDeBase[] = [];
     for (const ing of ingredientes) {
       const revisada = revisarMateriaPrima(await obtenerProducto(ing.insumoProductoId), producto.nombre);
       if (!revisada.ok) return { ok: false, mensaje: revisada.mensaje };
@@ -80,13 +119,28 @@ async function armarLinea(
         return { ok: false, mensaje: mensajeMateriaPrimaNoDisponible(producto.nombre, mp.nombre, sucursalNombre) };
       }
       // El consumo con el rendimiento efectivo de ESTA sucursal (D2) es una regla pura: `pedidoDeIngrediente`, en `core/movimientos/linea-de-venta.ts`.
-      pedidos.push(pedidoDeIngrediente(cantidad, ing, mp.unidadStockId, sucursalId));
+      if (configurada) base.push({ ingrediente: ing, unidadStockId: mp.unidadStockId });
+      else pedidos.push(pedidoDeIngrediente(cantidad, ing, mp.unidadStockId, sucursalId));
+    }
+    if (configurada) {
+      // GO-2b: la receta efectiva de la base transformada por las opciones (escala, reemplaza, suma), o el consumo del adicional; una fila por insumo.
+      const consumosDeOpciones = configurada.tipo === "PRODUCTO" ? configurada.opciones.flatMap((o) => o.consumos) : configurada.consumos;
+      const insumosMal = await revisarInsumosDeOpciones(consumosDeOpciones, producto.nombre, sucursalId, sucursalNombre, tx, obtenerProducto);
+      if (insumosMal) return insumosMal;
+      const consumo = consumoDeLineaConfigurada(
+        configurada.tipo === "PRODUCTO"
+          ? { cantidad, sucursalId, base, opciones: configurada.opciones, adicionales: [] }
+          : { cantidad, sucursalId, base: [], opciones: [], adicionales: [{ opcionId: configurada.opcionId, nombre: producto.nombre, cantidadPorUnidad: 1, consumos: configurada.consumos }] }
+      );
+      if (!consumo.ok) return { ok: false, mensaje: `«${producto.nombre}»: ${consumo.mensaje}` };
+      pedidos = consolidarPedidosPorInsumo(configurada.tipo === "PRODUCTO" ? consumo.pedidos : consumo.pedidosDeAdicionales[0]!.pedidos);
     }
   }
 
   const precioVenta = item.precioUnitario ?? (await resolverPrecioVenta(sucursalId, producto.id, Number(producto.precioVenta), tx));
   const precioListaVenta = item.precioListaUnitario ?? null;
-  const costoUnitarioAlVender = costoUnitarioPorProducto.get(producto.id) ?? null;
+  // GO-2b: el costo congelado de una línea configurada (o de un adicional) sale de SUS pedidos, nunca de la receta del producto base sola.
+  const costoUnitarioAlVender = configurada ? costoUnitarioDeLineaConfigurada(pedidos, cantidad, costoDeInsumo) : (costoUnitarioPorProducto.get(producto.id) ?? null);
 
   return {
     ok: true,
@@ -119,13 +173,33 @@ export async function registrarVentaEnTx(
   // Una sola resolución de costos para todo el lote (no por línea) —
   // calcularCostosYMargenes ya recorre el catálogo entero, repetirla
   // por ítem sería trabajo redundante dentro de la misma transacción.
-  const costosDeHoy = await calcularCostosYMargenes(actor.sucursalId, tx);
+  // GO-2b: el catálogo, las recetas y los costos se cargan acá, en el MISMO orden en que los cargaba `calcularCostosYMargenes` (las mismas consultas), para
+  // resolver también el costo de cada insumo de una línea configurada con el mismo resolutor.
+  const productosDelCatalogo = await construirMapaProductos(actor.sucursalId, tx);
+  const indiceRecetas = await construirIndiceRecetas(tx, actor.sucursalId);
+  const costosDeCompra = await obtenerCostoActualPorMP(actor.sucursalId, tx);
+  const costosDeHoy = await calcularCostosYMargenes(actor.sucursalId, tx, productosDelCatalogo, indiceRecetas, undefined, costosDeCompra);
   const costoUnitarioPorProducto = new Map(costosDeHoy.map((c) => [c.productoId, c.costoIncompleto ? null : c.costo]));
+  const costoDeInsumo = costoUnitarioDeInsumoDesde(productosDelCatalogo, indiceRecetas.recetaPorProducto, costosDeCompra);
   const lineas: LineaArmada[] = [];
-  for (const item of datos.lineas) {
-    const armado = await armarLinea(item, actor.sucursalId, actor.sucursalNombre, tx, obtenerProducto, costoUnitarioPorProducto);
+  // GO-2b: por cada línea armada, el índice (en `lineas`) de la de su padre si es un adicional; `null` en todas las demás.
+  const padreDeLinea: (number | null)[] = [];
+  const indiceEnLineas = new Map<number, number>();
+  for (const [i, item] of datos.lineas.entries()) {
+    const armado = await armarLinea(item, actor.sucursalId, actor.sucursalNombre, tx, obtenerProducto, costoUnitarioPorProducto, costoDeInsumo);
     if (!armado.ok) return fallo(armado.mensaje);
-    if (armado.linea) lineas.push(armado.linea);
+    if (!armado.linea) continue;
+    let padre: number | null = null;
+    if (item.configurada?.tipo === "ADICIONAL") {
+      // El padre va ANTES, se vendió en este mismo lote y no es otro adicional; si no, el adicional no tiene a quién colgarse: se rechaza antes de escribir nada.
+      const k = item.configurada.indiceLineaPadre;
+      const enLineas = k < i ? indiceEnLineas.get(k) : undefined;
+      if (enLineas === undefined || datos.lineas[k]?.configurada?.tipo === "ADICIONAL") return fallo(`«${armado.linea.nombre}» es un adicional sin su producto en la venta.`);
+      padre = enLineas;
+    }
+    indiceEnLineas.set(i, lineas.length);
+    lineas.push(armado.linea);
+    padreDeLinea.push(padre);
   }
   if (!lineas.length) return fallo("Ninguna línea tiene una cantidad válida.");
 
@@ -183,8 +257,9 @@ export async function registrarVentaEnTx(
 
   const filas: Prisma.MovimientoStockCreateManyInput[] = [];
   const operacionIds: string[] = [];
-  for (const venta of ventas) {
+  for (const [j, venta] of ventas.entries()) {
     const esPrimera = operacionIds.length === 0;
+    const padre = padreDeLinea[j] ?? null;
     const operacion: { id: string } = await escribirOperacionDeVenta(tx, {
       sucursalId: actor.sucursalId,
       fecha: datos.fecha,
@@ -196,6 +271,8 @@ export async function registrarVentaEnTx(
       usuarioId: actor.usuarioId,
       claveIdempotencia: esPrimera && opciones.idempotencia ? opciones.idempotencia.clave : null,
       payloadHash: esPrimera && opciones.idempotencia ? opciones.idempotencia.payloadHash : null,
+      // GO-2b: solo la operación de un adicional, con la de su producto (ya escrita en este bucle: el padre va antes).
+      ...(padre !== null ? { operacionPadreId: operacionIds[padre]! } : {}),
     });
     operacionIds.push(operacion.id);
 

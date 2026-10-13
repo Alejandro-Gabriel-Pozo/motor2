@@ -235,7 +235,19 @@ async function cargarEntradasDeLaVentana(sucursalId: string, productoIds: readon
   return indexarPorProducto(filas);
 }
 
-/** Las ventas (VENTA, no anuladas) de la ventana de los platos pedidos, en UNA consulta (antes, una por pool o una por plato del pool). */
+/**
+ * GO-2b (ADR-030): cómo se reconoce, en un `select` anidado de la operación, una línea CON OPCIONES: la operación tiene ítems con huella (una línea configurada) o
+ * cuelga de otra (un adicional). Su consumo lo escribió la venta con la configuración: «cuenta como estimado» y no entra en lo que este reporte mide de la receta.
+ */
+const MARCA_DE_OPCIONES = { operacionPadreId: true, cuentaItems: { where: { huellaOpciones: { not: null } }, take: 1, select: { id: true } } } as const;
+const esLineaConOpciones = (o: { operacionPadreId: string | null; cuentaItems: readonly unknown[] }) => o.operacionPadreId !== null || o.cuentaItems.length > 0;
+
+/**
+ * Las ventas (VENTA, no anuladas) de la ventana de los platos pedidos, en UNA consulta (antes, una por pool o una por plato del pool).
+ *
+ * GO-2b: lo vendido CON OPCIONES no entra en lo vendido del plato (su consumo no es el de la receta); se devuelven aparte las operaciones con opciones (las
+ * configuradas y las hijas de cualquier venta del plato, sus adicionales) para restar lo que consumieron (`cargarConsumoConOpciones`). Sin opciones, lo de siempre.
+ */
 async function cargarVentasDeLaVentana(sucursalId: string, platoIds: readonly string[], desde: Date, hasta: Date, db: Db) {
   const ids = unionDeProductos([platoIds]);
   const filas =
@@ -243,6 +255,23 @@ async function cargarVentasDeLaVentana(sucursalId: string, platoIds: readonly st
       ? []
       : await db.movimientoStock.findMany({
           where: { seccion: { sucursalId }, operacion: { fecha: { gte: desde, lte: hasta }, anuladaEn: null }, proceso: "VENTA", productoId: { in: ids } },
+          select: { productoId: true, cantidad: true, operacionId: true, operacion: { select: { fecha: true, ...MARCA_DE_OPCIONES, operacionesHijas: { select: { id: true } } } } },
+          orderBy: ORDEN_DE_MOVIMIENTOS,
+        });
+  const operacionesConOpciones = [...new Set(filas.flatMap((f) => [...(esLineaConOpciones(f.operacion) ? [f.operacionId] : []), ...f.operacion.operacionesHijas.map((h) => h.id)]))];
+  return Object.assign(indexarPorProducto(filas.filter((f) => !esLineaConOpciones(f.operacion))), { operacionesConOpciones });
+}
+
+/**
+ * GO-2b: lo que consumieron las operaciones con opciones de la ventana (sus CONSUMO, que escribió la venta), por insumo y con su fecha, para restarlo de lo que
+ * entró: lo que queda es lo que consumió lo vendido sin opciones. Una consulta SOLO si hay alguna operación con opciones.
+ */
+async function cargarConsumoConOpciones(operacionIds: readonly string[], productoIds: readonly string[], db: Db) {
+  const filas =
+    operacionIds.length === 0 || productoIds.length === 0
+      ? []
+      : await db.movimientoStock.findMany({
+          where: { operacionId: { in: [...operacionIds] }, proceso: "CONSUMO", productoId: { in: [...productoIds] } },
           select: { productoId: true, cantidad: true, operacion: { select: { fecha: true } } },
           orderBy: ORDEN_DE_MOVIMIENTOS,
         });
@@ -296,17 +325,18 @@ async function cargarTramos(sucursalId: string, pedidos: readonly PedidoDeTramos
         proceso: { in: ["CONSUMO", "CONTROL", "AJUSTE"] },
         operacion: { anuladaEn: null, fecha: { gt: desde, lte: hasta }, ...OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION },
       },
-      select: { productoId: true, cantidad: true, proceso: true, operacion: { select: { proceso: true, fecha: true } } },
+      // GO-2b: la marca de opciones, anidada en la misma consulta (el consumo de una línea con opciones no es consumo de la receta: no cuenta).
+      select: { productoId: true, cantidad: true, proceso: true, operacion: { select: { proceso: true, fecha: true, ...MARCA_DE_OPCIONES } } },
       orderBy: ORDEN_DE_MOVIMIENTOS,
     }),
     db.movimientoStock.findMany({
       where: { seccion: { sucursalId }, productoId: { in: platoIds }, proceso: "VENTA", operacion: { fecha: { gt: desde, lte: hasta }, anuladaEn: null } },
-      select: { productoId: true, cantidad: true, operacion: { select: { fecha: true } } },
+      select: { productoId: true, cantidad: true, operacion: { select: { fecha: true, ...MARCA_DE_OPCIONES } } },
       orderBy: ORDEN_DE_MOVIMIENTOS,
     }),
   ]);
-  const movimientosDe = indexarPorProducto(movimientos);
-  const ventasDe = indexarPorProducto(ventas);
+  const movimientosDe = indexarPorProducto(movimientos.filter((m) => !(m.proceso === "CONSUMO" && esLineaConOpciones(m.operacion))));
+  const ventasDe = indexarPorProducto(ventas.filter((v) => !esLineaConOpciones(v.operacion)));
   const dentroDelTramo = (fecha: Date, anclas: Anclas) => {
     const l = limitesDelTramo(anclas, zona);
     return fecha.getTime() > l.desde.getTime() && fecha.getTime() <= l.hasta.getTime();
@@ -510,6 +540,8 @@ async function simplesDesde(sucursalId: string, pools: readonly Pool[], costos: 
     cargarVentasDeLaVentana(sucursalId, simples.map((p) => p.usos[0].pvProductoId), desde, hasta, db),
     cargarCandidatosAnclaDePools(sucursalId, simples, desde, hasta, db, zona),
   ]);
+  // GO-2b: lo que consumió lo vendido con opciones (una consulta solo si hubo alguna venta con opciones en la ventana).
+  const consumoConOpcionesDe = await cargarConsumoConOpciones(ventasDe.operacionesConOpciones, unionDeProductos(simples.map((p) => p.productoIds)), db);
   // Las dos anclas de cada pool (caso simple, Fase 1) — `null` sin dos días que califiquen dentro de `[desde, hasta]`: el pool cae al método COMPRAS (D4).
   const anclasPorPool = new Map(simples.map((pool) => [pool.clave, elegirAnclas(candidatosPorPool.get(pool.clave) ?? [], desde, hasta)]));
   const tramos = await cargarTramos(
@@ -569,9 +601,13 @@ async function simplesDesde(sucursalId: string, pools: readonly Pool[], costos: 
       motivoSinEstimacionFila = calcularMotivoSinEstimacionConteo({ vendidoDelTramo: vendidoTramo, cantidadTeoricaBruta });
     } else {
       metodo = "COMPRAS";
+      // GO-2b: lo que entró menos lo que consumieron las ventas con opciones (lo escribió la venta): lo que queda es lo que consumió lo vendido sin opciones (`totalVendido`).
+      // Sin opciones en la ventana, el consumo con opciones es 0 y la cuenta es la de siempre.
+      const consumoConOpciones = consumoConOpcionesDe(pool.productoIds).reduce((acc, m) => acc + Math.abs(Number(m.cantidad)), 0);
+      const entradasDeLoSinOpciones = consumoConOpciones > 0 ? redondearCantidad(totalEntradas - consumoConOpciones) : totalEntradas;
       // 0 entradas con ventas sí registradas daría -100% (0/vendido) — un número inventado a partir de "no entró nada", no una medición (defecto 1 de §3). Se prefiere null + el motivo explicado, igual que sin ventas.
-      cantidadEstimadaBruta = totalVendido > 0 && totalEntradas > 0 ? redondearCantidad(totalEntradas / totalVendido) : null;
-      impactoPesos = impactoDelDesvio(totalEntradas, cantidadTeoricaBruta, totalVendido, costoUnitario);
+      cantidadEstimadaBruta = totalVendido > 0 && entradasDeLoSinOpciones > 0 ? redondearCantidad(entradasDeLoSinOpciones / totalVendido) : null;
+      impactoPesos = impactoDelDesvio(entradasDeLoSinOpciones, cantidadTeoricaBruta, totalVendido, costoUnitario);
       // `entradas` ya viene filtrada por anuladaEn: null (misma consulta que totalComprado) — este filtro es solo para separar COMPRA de PRODUCCION, no vuelve a decidir nada sobre anuladas.
       const cantidadesDeCadaCompra = entradas.filter((m) => m.proceso === "COMPRA").map((m) => Number(m.cantidad));
       bandaRuidoPct = bandaDeRuidoDeLote(cantidadesDeCadaCompra, totalVendido, cantidadTeoricaBruta);
@@ -702,6 +738,8 @@ async function compartidasDesde(sucursalId: string, pools: readonly Pool[], cost
     cargarVentasDeLaVentana(sucursalId, compartidos.flatMap((p) => p.usos.map((uso) => uso.pvProductoId)), desde, hasta, db),
     cargarCandidatosAnclaDePools(sucursalId, compartidos, desde, hasta, db, zona),
   ]);
+  // GO-2b: lo que consumió lo vendido con opciones (una consulta solo si hubo alguna venta con opciones en la ventana).
+  const consumoConOpcionesDe = await cargarConsumoConOpciones(ventasDe.operacionesConOpciones, unionDeProductos(compartidos.map((p) => p.productoIds)), db);
   const intervalosPorPool = new Map(compartidos.map((pool) => [pool.clave, intervalosDelPool(pool, candidatosPorPool.get(pool.clave) ?? [], desde, hasta)]));
   const tramos = await cargarTramos(
     sucursalId,
@@ -731,6 +769,8 @@ async function compartidasDesde(sucursalId: string, pools: readonly Pool[], cost
       (() => {
         const entradasPorSemana = new Map<number, number>();
         for (const m of entradas) entradasPorSemana.set(claveSemana(m.operacion.fecha), (entradasPorSemana.get(claveSemana(m.operacion.fecha)) ?? 0) + Number(m.cantidad));
+        // GO-2b: menos lo que consumieron las ventas con opciones de esa semana (sin opciones, no resta nada).
+        for (const m of consumoConOpcionesDe(pool.productoIds)) entradasPorSemana.set(claveSemana(m.operacion.fecha), (entradasPorSemana.get(claveSemana(m.operacion.fecha)) ?? 0) - Math.abs(Number(m.cantidad)));
 
         const ventasPorSemanaPorPlato = ventasPorPlato.map((ventas) => {
           const mapa = new Map<number, number>();

@@ -35,6 +35,7 @@ vi.mock("../../src/server/actions/con-permiso", async (importOriginal) => {
 import { EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { fijarModulosActivos } from "../setup/modulos";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
+import { elegida, sembrarCafeDelSalon } from "../setup/opciones";
 import { agregarItems } from "../../src/server/actions/pos/cuenta-pedido";
 
 /**
@@ -56,6 +57,11 @@ import { agregarItems } from "../../src/server/actions/pos/cuenta-pedido";
  *
  * Tercera edición, SOLO ADITIVA (P3 del Paquete 1, idempotencia I3): ningún escenario de arriba cambia (sin clave no se lee ni se escribe nada nuevo). Se suma el bloque «con clave de idempotencia»: UNA lectura
  * (`agregadoDeCuenta.findUnique`, la primera de todas) y UNA escritura (`agregadoDeCuenta.create`, la última, después de los ítems); y el reintento, que hace esa única lectura y no escribe nada.
+ *
+ * Cuarta edición, a propósito (GO-2b, ADR-030: las opciones de venta): todo pedido que pasa la cuenta y el registro de módulos suma UNA lectura agrupada de lo que admite cada producto
+ * (`producto.findMany`, una por pedido y no por ítem: el mínimo obligatorio se exige aunque no se manden opciones, y sirve también para los componentes de las promos). «Cuenta cerrada» y el
+ * reintento no cambian (devuelven antes). Las escrituras de un pedido sin opciones no cambian. Se suma el bloque «con opciones»: la línea configurada se escribe con un `cuentaItem.create` (más uno
+ * por adicional) y un `opcionElegidaEnLinea.createMany`, sin el `createMany` de los sueltos si no hay ninguno; y una MEDIDA en ABSOLUTO suma la grilla de la sucursal (la capacidad y las filas).
  */
 const ESCRITURAS = new Set(["promoCuenta.create", "cuentaItem.createMany", "agregadoDeCuenta.create"]);
 
@@ -122,6 +128,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "disponibilidadProducto.findUnique×1",
       "moduloEmpresa.findMany×1", // P18 / D18: el registro de módulos se lee SIEMPRE (una vez): decide si rige el descuento de producto (solo con Carta).
       "precioLocalProducto.findMany×1",
+      "producto.findMany×1", // GO-2b: lo que admite cada producto del pedido, en UNA lectura.
       "producto.findUnique×1",
     ]);
     expect(escriturasAlFinal(consultas)).toEqual(["cuentaItem.createMany"]);
@@ -159,6 +166,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "disponibilidadProducto.findUnique×3",
       "moduloEmpresa.findMany×1", // P18 / D18: UNA vez por pedido, no por ítem.
       "precioLocalProducto.findMany×3",
+      "producto.findMany×1", // GO-2b: UNA vez por pedido, no por ítem.
       "producto.findUnique×3",
     ]);
     expect(escriturasAlFinal(consultas)).toEqual(["cuentaItem.createMany"]);
@@ -177,7 +185,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "itemAgrupadoCarta.findMany×2",
       "moduloEmpresa.findMany×1", // S-22 / D2: se lee UNA vez el registro de módulos (Promociones prendido) y se comparte con la lectura de la promo.
       "precioLocalProducto.findMany×2",
-      "producto.findMany×2",
+      "producto.findMany×3", // GO-2b: +1, lo que admiten los componentes de la promo (en v1 no llevan opciones: uno con un grupo obligatorio se rechaza).
       "promoCarta.findFirst×1",
       "promoCarta.findMany×2",
       "promoCuenta.create×1",
@@ -201,7 +209,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "itemAgrupadoCarta.findMany×2",
       "moduloEmpresa.findMany×1", // S-22 / D2: ídem (una sola lectura, compartida con la promo).
       "precioLocalProducto.findMany×3",
-      "producto.findMany×2",
+      "producto.findMany×3", // GO-2b: +1, una sola lectura para el suelto y los componentes.
       "producto.findUnique×1",
       "promoCarta.findFirst×1",
       "promoCarta.findMany×2",
@@ -227,6 +235,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "disponibilidadProducto.findUnique×1",
       "moduloEmpresa.findMany×1", // P18 / D18: se lee antes de validar el primer ítem.
       "precioLocalProducto.findMany×1",
+      "producto.findMany×1", // GO-2b: antes del primer ítem.
       "producto.findUnique×2",
     ]);
     expect(escriturasAlFinal(consultas)).toEqual([]);
@@ -257,6 +266,7 @@ describe("agregarItems CON clave de idempotencia (P3, I3): +1 lectura y +1 escri
       "disponibilidadProducto.findUnique×1",
       "moduloEmpresa.findMany×1",
       "precioLocalProducto.findMany×1",
+      "producto.findMany×1", // GO-2b
       "producto.findUnique×1",
     ]);
     expect(consultas[0], "la lectura del comprobante es el PRIMER paso, antes de mirar la cuenta").toBe("agregadoDeCuenta.findUnique");
@@ -294,3 +304,53 @@ describe("agregarItems CON clave de idempotencia (P3, I3): +1 lectura y +1 escri
     expect(escriturasAlFinal(consultas)).toEqual([]);
   });
 });
+
+describe("agregarItems CON opciones (GO-2b, cuarta edición): la línea configurada se escribe aparte, al final", () => {
+  it("un café grande con almendras y un shot: las lecturas de siempre + la de las opciones; escribe la línea, el adicional y las fotos (sin el createMany de los sueltos)", async () => {
+    const c = await sembrarCafeDelSalon(s);
+    const { r, consultas } = await medir(() => agregarItems(cuentaId, [{ productoId: c.cafeId, cantidad: 1, opciones: [elegida(c, c.grandeId), elegida(c, c.almendrasId), elegida(c, c.shotId)] }]));
+    expect(r).toEqual({ ok: true, mensaje: "Se agregó 1 ítem a la mesa 4." });
+    expect(contar(consultas)).toEqual([
+      "capacidadSucursal.findMany×2",
+      "cuenta.findFirst×1",
+      "cuentaItem.create×2",
+      "descuentoProductoSucursal.findMany×1",
+      "disponibilidadProducto.findUnique×1",
+      "moduloEmpresa.findMany×1",
+      "opcionElegidaEnLinea.createMany×1",
+      "precioLocalProducto.findMany×1",
+      "producto.findMany×1",
+      "producto.findUnique×1",
+    ]);
+    expect(escriturasAlFinal(consultas)).toEqual(["cuentaItem.create", "cuentaItem.create", "opcionElegidaEnLinea.createMany"]);
+  });
+
+  it("un suelto sin opciones y un café configurado: primero el createMany de los sueltos, después la línea configurada; una MEDIDA en ABSOLUTO suma la grilla (capacidad y filas)", async () => {
+    const c = await sembrarCafeDelSalon(s, { modoPrecioMedida: "ABSOLUTO", precioAbsoluto: { mediano: "1100.00" } });
+    const { r, consultas } = await medir(() => agregarItems(cuentaId, [{ productoId: s.flan.id, cantidad: 1 }, { productoId: c.cafeId, cantidad: 1, opciones: [elegida(c, c.medianoId)] }]));
+    expect(r).toEqual({ ok: true, mensaje: "Se agregaron 2 ítems a la mesa 4." });
+    expect(contar(consultas)).toEqual([
+      "capacidadSucursal.findMany×5",
+      "cuenta.findFirst×1",
+      "cuentaItem.create×1",
+      "cuentaItem.createMany×1",
+      "descuentoProductoSucursal.findMany×2",
+      "disponibilidadProducto.findUnique×2",
+      "moduloEmpresa.findMany×1",
+      "opcionElegidaEnLinea.createMany×1",
+      "precioLocalDeOpcion.findMany×1",
+      "precioLocalProducto.findMany×2",
+      "producto.findMany×1",
+      "producto.findUnique×2",
+    ]);
+    expect(escriturasAlFinal(consultas)).toEqual(["cuentaItem.createMany", "cuentaItem.create", "opcionElegidaEnLinea.createMany"]);
+  });
+
+  it("un rechazo por opciones (falta el tamaño obligatorio) lee lo mismo que el pedido y no escribe nada", async () => {
+    const c = await sembrarCafeDelSalon(s);
+    const { r, consultas } = await medir(() => agregarItems(cuentaId, [{ productoId: c.cafeId, cantidad: 1, opciones: [elegida(c, c.vacaId)] }]));
+    expect(r).toEqual({ ok: false, mensaje: "«Café»: Elegí al menos 1 opción de «Tamaño»." });
+    expect(escriturasAlFinal(consultas)).toEqual([]);
+  });
+});
+

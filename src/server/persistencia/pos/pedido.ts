@@ -28,6 +28,68 @@ export async function escribirItemsDeCuenta(tx: Prisma.TransactionClient, filas:
   await tx.cuentaItem.createMany({ data: filas });
 }
 
+/** GO-2b: la FOTO de una opción elegida (las columnas de `OpcionElegidaEnLinea`, sin la línea: la pone `escribirLineaConfigurada`). */
+export interface FotoAEscribir {
+  grupoId: string;
+  opcionId: string;
+  versionDeOpcionId: string;
+  tipoGrupo: string;
+  nombreGrupo: string;
+  nombreOpcion: string;
+  cantidad: number;
+  modoPrecio: string | null;
+  tipoDeDiferencia: string | null;
+  porcentaje: number | null;
+  importeUnitario: number;
+  precioDeSucursal: boolean;
+  factorEscala: number | null;
+  orden: number;
+}
+
+/**
+ * GO-2b (ADR-030): una LÍNEA CONFIGURADA sin enviar, ya validada y con el precio congelado por el caso de uso: un `cuentaItem.create` para la línea del producto
+ * (devuelve el id, que referencian sus adicionales y su foto), un `create` por adicional con `lineaPadreId` (el padre ya existe: lo exige el disparador
+ * `CuentaItem_opciones_chk`) y UN `opcionElegidaEnLinea.createMany` con TODAS las fotos (las del producto y la de cada adicional, en su propia línea; lo exige
+ * `OpcionElegidaEnLinea_coherente_chk`). Va en la MISMA transacción que el resto del pedido: si cualquier escritura falla (un disparador o un CHECK), se deshace todo.
+ * Sin auditoría: como `CuentaItem`, la foto es un documento del POS que solo se agrega.
+ */
+export async function escribirLineaConfigurada(
+  tx: Prisma.TransactionClient,
+  args: {
+    cuentaId: string;
+    creadoPorId: string;
+    linea: { productoId: string; cantidad: number; precioUnitario: number; precioCartaUnitario: number | null; huellaOpciones: string | null; fotos: readonly FotoAEscribir[] };
+    adicionales: readonly { productoId: string; cantidad: number; precioUnitario: number; foto: FotoAEscribir }[];
+  },
+): Promise<{ lineaId: string; adicionalIds: string[] }> {
+  const { cuentaId, creadoPorId, linea } = args;
+  const padre = await tx.cuentaItem.create({
+    data: {
+      cuentaId,
+      productoId: linea.productoId,
+      cantidad: linea.cantidad,
+      precioUnitario: linea.precioUnitario,
+      precioCartaUnitario: linea.precioCartaUnitario,
+      huellaOpciones: linea.huellaOpciones,
+      numeroEnvio: null,
+      creadoPorId,
+    },
+    select: { id: true },
+  });
+  const fotos: Prisma.OpcionElegidaEnLineaCreateManyInput[] = linea.fotos.map((f) => ({ ...f, cuentaItemId: padre.id }));
+  const adicionalIds: string[] = [];
+  for (const a of args.adicionales) {
+    const adicional = await tx.cuentaItem.create({
+      data: { cuentaId, productoId: a.productoId, cantidad: a.cantidad, precioUnitario: a.precioUnitario, lineaPadreId: padre.id, numeroEnvio: null, creadoPorId },
+      select: { id: true },
+    });
+    adicionalIds.push(adicional.id);
+    fotos.push({ ...a.foto, cuentaItemId: adicional.id });
+  }
+  if (fotos.length > 0) await tx.opcionElegidaEnLinea.createMany({ data: fotos });
+  return { lineaId: padre.id, adicionalIds };
+}
+
 /**
  * P3 (I3): el comprobante de «agregar al pedido» que lleva esta clave, o `null` si ninguno la usó (o no se ve desde esta empresa: la política `aislamiento_empresa` oculta los ajenos
  * aunque la unicidad de la clave sea global). Sirve a las dos lecturas del caso de uso: el chequeo de adentro de la transacción (`tx`) y la relectura del ganador de una carrera, de afuera (`db`).
@@ -56,6 +118,19 @@ export async function escribirAgregadoDeCuenta(
  */
 export async function borrarItemSinEnviar(tx: Prisma.TransactionClient, args: { cuentaItemId: string }): Promise<number> {
   const borrados = await tx.cuentaItem.deleteMany({ where: { id: args.cuentaItemId, numeroEnvio: null, anulaAItemId: null } });
+  return borrados.count;
+}
+
+/**
+ * GO-2b (ADR-030): borra una línea SIN ENVIAR con sus adicionales sin enviar — primero los adicionales (la FK del padre es RESTRICT) y después la línea, los dos
+ * borrados condicionales (`numeroEnvio: null`, nunca un espejo). La foto de cada una se va por cascada. Si la línea ya no se pudo borrar (otro mozo la envió un
+ * instante antes) pero algún adicional sí, es una incoherencia: se LANZA un error para deshacer la transacción entera (nunca queda una línea enviada sin su
+ * adicional). Devuelve cuántas líneas del producto borró (0 o 1).
+ */
+export async function borrarItemSinEnviarConAdicionales(tx: Prisma.TransactionClient, args: { cuentaItemId: string }): Promise<number> {
+  const adicionales = await tx.cuentaItem.deleteMany({ where: { lineaPadreId: args.cuentaItemId, numeroEnvio: null, anulaAItemId: null } });
+  const borrados = await tx.cuentaItem.deleteMany({ where: { id: args.cuentaItemId, numeroEnvio: null, anulaAItemId: null } });
+  if (borrados.count === 0 && adicionales.count > 0) throw new Error("quitarItemSinEnviar: se borraban los adicionales de una línea que ya salió a cocina.");
   return borrados.count;
 }
 

@@ -36,6 +36,15 @@ export interface ItemParaAnular {
   anulaciones: { cantidad: number }[];
   /** La promo de la cuenta de la que es componente (Task #16), `null` si es un suelto. */
   promoCuenta: { id: string; titulo: string } | null;
+  /** GO-2b, SOLO cuando hay datos (sin opciones el ítem sale idéntico al de antes): la huella de las opciones (el espejo la repite). */
+  huellaOpciones?: string;
+  /** GO-2b, SOLO cuando hay datos: el ítem es un ADICIONAL de esa línea (el espejo la repite). */
+  lineaPadreId?: string;
+  /**
+   * GO-2b: los ADICIONALES originales de esta línea (sin sus espejos), cada uno con lo que ya le anularon, su envío, su `k` (las unidades por unidad del producto,
+   * de su foto) y su nombre para la auditoría. SOLO cuando hay alguno.
+   */
+  adicionales?: { id: string; productoId: string; productoNombre: string; cantidad: number; precioUnitario: number; numeroEnvio: number | null; k: number | null; anulaciones: { cantidad: number }[] }[];
 }
 
 /** `null` si no hay ningún ítem con ese id en una mesa de esta sucursal (la sesión manda: nunca se carga el de otra sucursal). */
@@ -47,6 +56,21 @@ export async function cargarItemParaAnular(tx: Prisma.TransactionClient, args: {
       cuenta: { include: { mesa: { select: { numero: true } } } },
       anulaciones: { select: { cantidad: true } },
       promoCuenta: { select: { id: true, titulo: true } },
+      // GO-2b: los adicionales de la línea (y sus espejos, para saber cuánto les queda), con la `k` de su foto, en la MISMA consulta (sin opciones, vacío).
+      adicionales: {
+        where: { anulaAItemId: null },
+        orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          productoId: true,
+          cantidad: true,
+          precioUnitario: true,
+          numeroEnvio: true,
+          producto: { select: { nombre: true } },
+          anulaciones: { select: { cantidad: true } },
+          opcionesElegidas: { where: { tipoGrupo: "ADICIONAL" }, select: { cantidad: true } },
+        },
+      },
     },
   });
   if (!item) return null;
@@ -70,5 +94,23 @@ export async function cargarItemParaAnular(tx: Prisma.TransactionClient, args: {
     },
     anulaciones: item.anulaciones.map((a) => ({ cantidad: Number(a.cantidad) })),
     promoCuenta: item.promoCuenta,
+    ...(item.huellaOpciones !== null ? { huellaOpciones: item.huellaOpciones } : {}),
+    ...(item.lineaPadreId !== null ? { lineaPadreId: item.lineaPadreId } : {}),
+    ...(item.adicionales.length > 0 ? { adicionales: adicionalesDe(item.adicionales) } : {}),
   };
+}
+
+function adicionalesDe(
+  adicionales: readonly { id: string; productoId: string; cantidad: Prisma.Decimal; precioUnitario: Prisma.Decimal; numeroEnvio: number | null; producto: { nombre: string }; anulaciones: { cantidad: Prisma.Decimal }[]; opcionesElegidas: { cantidad: number }[] }[]
+): NonNullable<ItemParaAnular["adicionales"]> {
+  return adicionales.map((a) => ({
+      id: a.id,
+      productoId: a.productoId,
+      productoNombre: a.producto.nombre,
+      cantidad: Number(a.cantidad),
+      precioUnitario: Number(a.precioUnitario),
+      numeroEnvio: a.numeroEnvio,
+      k: a.opcionesElegidas[0]?.cantidad ?? null,
+      anulaciones: a.anulaciones.map((e) => ({ cantidad: Number(e.cantidad) })),
+    }));
 }

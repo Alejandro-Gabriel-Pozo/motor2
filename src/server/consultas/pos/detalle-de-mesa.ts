@@ -22,6 +22,8 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
               producto: { select: { nombre: true, unidadStock: { select: { decimales: true } } } },
               creadoPor: { select: { name: true, email: true } },
               promoCuenta: { select: { id: true, titulo: true } },
+              // GO-2b: los nombres de lo elegido, anidados en la misma consulta (sin opciones, vacío).
+              opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true } },
             },
           },
         },
@@ -54,6 +56,8 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
           creadoPor: i.creadoPor,
           creadoEn: i.creadoEn,
           promoCuenta: i.promoCuenta,
+          lineaPadreId: i.lineaPadreId,
+          opcionesElegidas: i.opcionesElegidas,
         })),
       })),
     },

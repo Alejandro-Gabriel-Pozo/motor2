@@ -4,7 +4,7 @@ import { MENSAJE_ITEM_NO_ENCONTRADO } from "@/core/features/cuentas/cuenta-anula
 import type { ComandoQuitarItemSinEnviar, ResultadoQuitarItemSinEnviar } from "@/core/features/cuentas/cuenta-pedido.schema";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { borrarItemSinEnviar } from "@/server/persistencia/pos/pedido";
+import { borrarItemSinEnviar, borrarItemSinEnviarConAdicionales } from "@/server/persistencia/pos/pedido";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
 
 /**
@@ -21,7 +21,7 @@ import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta
  * (`cuentaAbiertaDeSucursal`, server/persistencia/pos/cargar-cuenta-abierta.ts); 4. el borrado CONDICIONAL (`borrarItemSinEnviar`, server/persistencia/pos/pedido.ts: la condición
  * `numeroEnvio: null` vive en el mismo DELETE): si no borró nada, el ítem ya había salido a cocina.
  *
- * @contract Borra un ítem suelto de una cuenta abierta de la sucursal mientras no haya salido a cocina; nunca un componente de promo ni un ítem ya enviado.
+ * @contract Borra un ítem suelto de una cuenta abierta de la sucursal mientras no haya salido a cocina (GO-2b: con sus adicionales sin enviar y las fotos de las opciones, por cascada); nunca un componente de promo ni un ítem ya enviado.
  * @idempotency Por estado — un segundo intento ya no encuentra el ítem («No se encontró ese ítem») y no escribe; si otro mozo lo envió antes, el borrado condicional no borra nada.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno (sin auditoría: un borrador del POS, como antes). Refrescar la vista lo hace el cliente (`router.refresh()`).
@@ -34,7 +34,7 @@ export async function quitarItemSinEnviarCasoDeUso(
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoQuitarItemSinEnviar> => {
     const item = await tx.cuentaItem.findFirst({
       where: { id: comando.cuentaItemId, cuenta: { mesa: { sucursalId: actor.sucursalId } } },
-      include: { producto: { select: { nombre: true } }, promoCuenta: { select: { titulo: true } } },
+      include: { producto: { select: { nombre: true } }, promoCuenta: { select: { titulo: true } }, _count: { select: { adicionales: true } } },
     });
     if (!item) return fracaso("NO_ENCONTRADO", MENSAJE_ITEM_NO_ENCONTRADO);
     // Task #16 (D4, "una promo se anula/quita entera"): un componente no se quita suelto — usá quitarPromoSinEnviar con la promo.
@@ -42,7 +42,9 @@ export async function quitarItemSinEnviarCasoDeUso(
     const abierta = await cuentaAbiertaDeSucursal(tx, item.cuentaId, actor.sucursalId);
     if (!abierta.ok) return fracaso("CUENTA_NO_ABIERTA", abierta.mensaje);
 
-    if ((await borrarItemSinEnviar(tx, { cuentaItemId: item.id })) === 0) return fracaso("YA_ENVIADO", "Ese ítem ya salió a cocina: anulalo con motivo.");
+    // GO-2b: una línea con adicionales se quita con ellos (y con su foto, por cascada); sin adicionales, el borrado de siempre. Un adicional suelto sin enviar se quita como cualquier ítem.
+    const borrados = item._count.adicionales > 0 ? await borrarItemSinEnviarConAdicionales(tx, { cuentaItemId: item.id }) : await borrarItemSinEnviar(tx, { cuentaItemId: item.id });
+    if (borrados === 0) return fracaso("YA_ENVIADO", "Ese ítem ya salió a cocina: anulalo con motivo.");
     return exito(`Se quitó «${item.producto.nombre}» de la mesa ${abierta.cuenta.mesa.numero}.`, null);
   });
 }

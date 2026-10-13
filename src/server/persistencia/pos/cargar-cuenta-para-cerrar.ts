@@ -8,8 +8,28 @@ import type { Prisma } from "@prisma/client";
  * (src/server/actions/pos/cuenta-cierre.ts), con los mismos filtros, y el caso de uso las llama en el mismo orden.
  */
 
+/**
+ * GO-2b (ADR-030): la FOTO de una opción elegida en una línea, con lo que la venta necesita de la versión CONGELADA (la de la foto, nunca la vigente): sus consumos,
+ * si la opción es «ninguna» y el producto ANCLA que la base dice que la respalda.
+ */
+export interface FotoParaCerrar {
+  opcionId: string;
+  versionDeOpcionId: string;
+  tipoGrupo: string;
+  nombreOpcion: string;
+  cantidad: number;
+  factorEscala: number | null;
+  orden: number;
+  esNinguna: boolean;
+  /** `OpcionDeGrupo.productoId`, leído de la base: el único producto que puede respaldar este adicional. */
+  productoAnclaId: string | null;
+  consumos: { efecto: string; insumoProductoId: string; reemplazaAProductoId: string | null; cantidad: number; unidadId: string; mermaPorcentaje: number; escalaConLaMedida: boolean }[];
+}
+
 /** Un ítem de la cuenta tal como lo necesita el cierre. */
 export interface ItemParaCerrar {
+  /** GO-2b: SOLO en una cuenta que tiene alguna línea con opciones (para enlazar por id las configuradas y los adicionales). Sin opciones, el ítem de siempre. */
+  id?: string;
   productoId: string;
   cantidad: number;
   /** Precio de LISTA congelado al pedir (nunca cambia de semántica con el descuento de cliente, Task #14). */
@@ -19,6 +39,12 @@ export interface ItemParaCerrar {
   promoCuentaId: string | null;
   /** `null` = borrador sin enviar a cocina. */
   numeroEnvio: number | null;
+  /** GO-2b, SOLO cuando hay datos (sin opciones el ítem sale idéntico al de antes): el original de un espejo (en una cuenta con opciones), la huella, el padre
+   *  de un adicional (un espejo repite los de su original) y la foto de lo elegido (los espejos no tienen). */
+  anulaAItemId?: string;
+  huellaOpciones?: string;
+  lineaPadreId?: string;
+  fotos?: FotoParaCerrar[];
 }
 
 export interface CuentaParaCerrar {
@@ -36,9 +62,42 @@ export interface CuentaParaCerrar {
 export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args: { cuentaId: string; sucursalId: string }): Promise<CuentaParaCerrar | null> {
   const cuenta = await tx.cuenta.findFirst({
     where: { id: args.cuentaId, mesa: { sucursalId: args.sucursalId } },
-    include: { mesa: { select: { numero: true } }, items: { orderBy: [{ creadoEn: "asc" }, { id: "asc" }] }, cliente: { select: { nombre: true } } },
+    include: {
+      mesa: { select: { numero: true } },
+      items: {
+        orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
+        // GO-2b: la foto de cada línea con la versión CONGELADA (sus consumos) y el ancla de la opción, anidada en la MISMA consulta (sin opciones, vacía).
+        include: {
+          opcionesElegidas: {
+            orderBy: [{ orden: "asc" }, { id: "asc" }],
+            select: {
+              opcionId: true,
+              versionDeOpcionId: true,
+              tipoGrupo: true,
+              nombreOpcion: true,
+              cantidad: true,
+              factorEscala: true,
+              orden: true,
+              opcion: { select: { esNinguna: true, productoId: true } },
+              versionDeOpcion: {
+                select: {
+                  consumos: {
+                    orderBy: { orden: "asc" },
+                    select: { efecto: true, insumoProductoId: true, reemplazaAProductoId: true, cantidad: true, unidadId: true, mermaPorcentaje: true, escalaConLaMedida: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      cliente: { select: { nombre: true } },
+    },
   });
   if (!cuenta) return null;
+  // GO-2b: los campos de las opciones van SOLO cuando hay datos; el `id` (y el original de un espejo), solo si la cuenta tiene alguna línea con opciones: sin ellas,
+  // los ítems son exactamente los de antes.
+  const conOpciones = cuenta.items.some((i) => i.huellaOpciones !== null || i.lineaPadreId !== null);
   return {
     id: cuenta.id,
     mesaNumero: cuenta.mesa.numero,
@@ -53,8 +112,38 @@ export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args:
       precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       promoCuentaId: i.promoCuentaId,
       numeroEnvio: i.numeroEnvio,
+      ...(conOpciones ? { id: i.id } : {}),
+      ...(conOpciones && i.anulaAItemId !== null ? { anulaAItemId: i.anulaAItemId } : {}),
+      ...(i.huellaOpciones !== null ? { huellaOpciones: i.huellaOpciones } : {}),
+      ...(i.lineaPadreId !== null ? { lineaPadreId: i.lineaPadreId } : {}),
+      ...(i.opcionesElegidas.length > 0 ? { fotos: fotosDe(i.opcionesElegidas) } : {}),
     })),
   };
+}
+
+type FotoLeida = { opcionId: string; versionDeOpcionId: string; tipoGrupo: string; nombreOpcion: string; cantidad: number; factorEscala: Prisma.Decimal | null; orden: number; opcion: { esNinguna: boolean; productoId: string | null }; versionDeOpcion: { consumos: { efecto: string; insumoProductoId: string; reemplazaAProductoId: string | null; cantidad: Prisma.Decimal; unidadId: string; mermaPorcentaje: Prisma.Decimal; escalaConLaMedida: boolean }[] } };
+
+function fotosDe(fotos: readonly FotoLeida[]): FotoParaCerrar[] {
+  return fotos.map((f) => ({
+    opcionId: f.opcionId,
+    versionDeOpcionId: f.versionDeOpcionId,
+    tipoGrupo: f.tipoGrupo,
+    nombreOpcion: f.nombreOpcion,
+    cantidad: f.cantidad,
+    factorEscala: f.factorEscala !== null ? Number(f.factorEscala) : null,
+    orden: f.orden,
+    esNinguna: f.opcion.esNinguna,
+    productoAnclaId: f.opcion.productoId,
+    consumos: f.versionDeOpcion.consumos.map((c) => ({
+      efecto: c.efecto,
+      insumoProductoId: c.insumoProductoId,
+      reemplazaAProductoId: c.reemplazaAProductoId,
+      cantidad: Number(c.cantidad),
+      unidadId: c.unidadId,
+      mermaPorcentaje: Number(c.mermaPorcentaje),
+      escalaConLaMedida: c.escalaConLaMedida,
+    })),
+  }));
 }
 
 /**

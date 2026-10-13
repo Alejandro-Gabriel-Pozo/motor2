@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import type { ItemConVenta } from "@/core/pos/public";
+import { configuracionDeItemLeido, cuentaConOpciones, type ItemConVenta } from "@/core/pos/public";
 
 /**
  * Lectura de el TICKET CORREGIDO de una cuenta del salón (Task #41, Fase M12b — docs/arquitectura-casos-de-uso-2026-09-27.md; mismo
@@ -37,11 +37,13 @@ export async function cargarCuentaParaCorregirTicket(
     where: { id: args.cuentaId, mesa: { sucursalId: args.sucursalId } },
     include: {
       mesa: { select: { numero: true } },
-      items: { include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } } } },
+      // GO-2b: la versión del adicional (de su foto) anidada en la misma consulta, para agrupar las líneas como el cierre.
+      items: { include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } }, opcionesElegidas: { select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true } } } },
       ejemplaresTicket: { orderBy: { ejemplar: "desc" } },
     },
   });
   if (!cuenta) return null;
+  const conOpciones = cuentaConOpciones(cuenta.items);
   return {
     id: cuenta.id,
     mesaNumero: cuenta.mesa.numero,
@@ -54,6 +56,7 @@ export async function cargarCuentaParaCorregirTicket(
       precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
+      ...configuracionDeItemLeido(conOpciones, i),
     })),
     ejemplares: cuenta.ejemplaresTicket.map((e) => ({ id: e.id, sucursalId: e.sucursalId, numero: e.numero, ejemplar: e.ejemplar, emitidoEn: e.emitidoEn })),
   };

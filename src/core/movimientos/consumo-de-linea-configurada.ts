@@ -2,7 +2,6 @@ import { Decimal } from "decimal.js";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
 import { CANTIDAD_MAXIMA_DE_OPCION, FACTOR_DE_ESCALA_MAXIMO, type EfectoDeConsumoDeOpcion } from "@/core/opciones/public";
 import { pedidoDeIngrediente, type IngredienteParaVender } from "./linea-de-venta";
-import type { LineaArmada } from "./plan-de-la-venta";
 
 /**
  * El CONSUMO de una línea configurada (GO-0b; diseño §2.13 con la decisión 1 del dueño, invariantes I6 e I7): transforma la receta efectiva del producto base (más lo
@@ -27,7 +26,11 @@ import type { LineaArmada } from "./plan-de-la-venta";
  * Las líneas reemplazadas o sumadas van con `insumoSustitutoIds: []` (v1); las de la base conservan los sustitutos de su línea de receta.
  */
 
-type Pedido = LineaArmada["pedidos"][number];
+/**
+ * Un pedido de consumo: la misma forma que `LineaArmada["pedidos"][number]` (`plan-de-la-venta.ts`), escrita acá para no importar ese archivo (GO-2b: los tipos de la
+ * venta, en `registrar-venta.ts`, nombran los de este; importar el plan cerraba un ciclo de tipos).
+ */
+type Pedido = { productoId: string; cantidad: number; insumoSustitutoIds: string[]; unidadStockId: string };
 
 /** El clon propio de decimal.js, igual que `core/moneda.ts`: 40 dígitos y empates hacia arriba, sin depender de la configuración global. */
 const D = Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP });

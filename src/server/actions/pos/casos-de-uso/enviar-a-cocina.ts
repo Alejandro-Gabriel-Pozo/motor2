@@ -23,7 +23,7 @@ import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta
  *  3. el número de envío siguiente de la cuenta (`max(numeroEnvio) + 1`) y el envío CONDICIONAL (`enviarItemsACocina`, server/persistencia/pos/pedido.ts);
  *  4. si no cambió ninguna fila (doble clic, otro mozo se adelantó): no crea un envío vacío y responde el envío en el que ya habían salido, `envioNuevo: false`.
  *
- * @contract Pasa al envío siguiente de la cuenta los ítems pedidos (más los hermanos de sus promos) que sigan sin enviar; nunca crea un envío vacío.
+ * @contract Pasa al envío siguiente de la cuenta los ítems pedidos (más los hermanos de sus promos y, GO-2b, la familia de sus adicionales: el producto y sus adicionales salen juntos) que sigan sin enviar; nunca crea un envío vacío.
  * @idempotency Por estado — el `UPDATE` es condicional (`numeroEnvio: null`): un segundo intento no cambia nada y responde el envío en el que ya salieron con `envioNuevo: false`.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects Ninguno (sin auditoría: el envío queda en el propio ítem). Imprimir la comanda lo decide la pantalla con `envioNuevo`; refrescar la vista, el cliente.
@@ -41,12 +41,24 @@ export async function enviarACocinaCasoDeUso(
     // Task #16 (docs/plan-promo-combo-2026-09-26.md, D del paso 2.5, "una promo nunca sale a medias"): si algún id pedido es
     // un componente de una promo, se suman TODOS los hermanos de esa MISMA PromoCuenta que sigan sin enviar — el mozo pudo
     // no tenerlos a todos en pantalla (o no haberlos tocado), pero una promo nunca se manda parcial a cocina.
-    const pedidos = await tx.cuentaItem.findMany({ where: { id: { in: itemIds }, cuentaId: abierta.cuenta.id }, select: { promoCuentaId: true } });
+    // GO-2b (ADR-030): un producto nunca sale a cocina sin sus adicionales, ni un adicional sin su producto. La FAMILIA de cada id pedido (su padre, si es un
+    // adicional, y los adicionales sin enviar del padre) sale en el MISMO `findMany`, con un `select` anidado; sin opciones no trae nada y la lista es la de siempre.
+    const sinEnviar = { numeroEnvio: null, anulaAItemId: null };
+    const pedidos = await tx.cuentaItem.findMany({
+      where: { id: { in: itemIds }, cuentaId: abierta.cuenta.id },
+      select: {
+        promoCuentaId: true,
+        lineaPadreId: true,
+        adicionales: { where: sinEnviar, select: { id: true } },
+        lineaPadre: { select: { adicionales: { where: sinEnviar, select: { id: true } } } },
+      },
+    });
+    const familia = pedidos.flatMap((i) => [...(i.lineaPadreId ? [i.lineaPadreId] : []), ...i.adicionales.map((a) => a.id), ...(i.lineaPadre?.adicionales.map((a) => a.id) ?? [])]);
     const promoCuentaIds = [...new Set(pedidos.flatMap((i) => (i.promoCuentaId ? [i.promoCuentaId] : [])))];
     const hermanos = promoCuentaIds.length
       ? await tx.cuentaItem.findMany({ where: { promoCuentaId: { in: promoCuentaIds }, cuentaId: abierta.cuenta.id, numeroEnvio: null, anulaAItemId: null }, select: { id: true } })
       : [];
-    const idsAEnviar = [...new Set([...itemIds, ...hermanos.map((h) => h.id)])];
+    const idsAEnviar = [...new Set([...itemIds, ...hermanos.map((h) => h.id), ...familia])];
 
     const { _max } = await tx.cuentaItem.aggregate({ where: { cuentaId: abierta.cuenta.id }, _max: { numeroEnvio: true } });
     const numeroEnvio = (_max.numeroEnvio ?? 0) + 1;

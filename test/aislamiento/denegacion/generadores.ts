@@ -31,6 +31,41 @@ const admisionDe = (productoId: string, grupoId: string, opcionId: string) => ({
   activo: true,
   opciones: [{ opcionId, versionEsperada: 0, cantidadMaxima: 1, precioAbsoluto: null, diferencia: null, activo: true }],
 });
+/**
+ * GO-2b: la MEDIDA en ABSOLUTO del PV con opciones tal como la devuelve `cargarOpcionesParaVender` (la entrada de `completarPreciosDeSucursal`). Esa puerta solo mira el tipo, el modo y los ids para
+ * decidir qué grilla leer; el resto va con valores de forma (sin marcador: lo que se le pasa no cuenta como fuga, pero así tampoco tapa una).
+ */
+const medidaParaVender = (k: Kit) => ({
+  grupoId: k.grupoMedidaId,
+  nombre: "Tamaño",
+  tipo: "MEDIDA",
+  activo: true,
+  admitido: true,
+  cantidadMinima: 1,
+  cantidadMaxima: 1,
+  orden: 0,
+  modoPrecio: "ABSOLUTO",
+  opciones: [
+    {
+      opcionId: k.opcionMedidaId,
+      nombre: "Grande",
+      activa: true,
+      admitida: true,
+      apagadaEnSucursal: false,
+      cantidadMaxima: 1,
+      versionVigenteId: k.opcionMedidaId, // el kit no trae el id de la versión y esta puerta no la mira
+      esNinguna: false,
+      orden: 1,
+      productoAnclaId: null,
+      diferenciaDeLaVersion: { tipo: "MONTO", monto: 0 },
+      factorEscala: null,
+      consumos: [],
+      precioAbsoluto: 1500,
+      diferenciaDelProducto: null,
+      precioDeSucursal: null,
+    },
+  ],
+});
 const propios = (c: ContextoDeArgumentos) => ({ nombre: "Nombre nuevo", tipo: "MP" as const, unidadStockId: c.propio.unidadId, factorConversion: 1, categoriaId: c.propio.categoriaId, insumoId: c.propio.insumoId, unidadCompraId: c.propio.unidad2Id });
 
 const completos: Record<string, Valor> = {
@@ -282,6 +317,12 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/traspasos/lecturas.ts|obtenerBandejaTransferencias": { cursorHistorial: (k, c) => (conIdsAjenos(c) ? k.traspasoId : undefined) },
   // GO-2a: la grilla de opciones de un producto (el que admite la medida con precio propio), con la capacidad de precio local prendida.
   "lectura|lecturas/catalogo/precio-local-de-opciones.ts|preciosLocalesDeOpcionVigentes": { productoId: (k) => k.productoConOpcionesId, precioLocalActivo: () => true },
+  // GO-2b: lo que admite para vender el PV con opciones (la vigente, los consumos, lo apagado en la sucursal) y la grilla de la sucursal para su MEDIDA en ABSOLUTO elegida.
+  "lectura|lecturas/opciones/opciones-para-vender.ts|cargarOpcionesParaVender": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoConOpcionesId] }) },
+  "lectura|lecturas/opciones/opciones-para-vender.ts|completarPreciosDeSucursal": {
+    opciones: (k) => new Map([[k.productoConOpcionesId, { grupos: [medidaParaVender(k)], anclaDeOpcionId: null }]]),
+    elegidas: (k) => [{ productoId: k.productoConOpcionesId, opcionIds: [k.opcionMedidaId] }],
+  },
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoOpcion": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoPorId": { id: (k) => k.productoId },

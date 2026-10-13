@@ -4,7 +4,7 @@ import { resolverCostoRecetaCompleta } from "@/core/reportes/public";
 import { asegurarIndiceRecetasDeLaSucursal } from "@/core/reportes/public";
 import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
-import { diaUtc, costosDeInsumosPorDia, claveCostoHistorico } from "@/core/reportes/public";
+import { diaUtc, costosDeInsumosPorDia, claveCostoHistorico, claveCostoDeLineaConfigurada, costoDeLineaConfiguradaDesdeConsumos, costoUnitarioDeInsumoDesde } from "@/core/reportes/public";
 
 /**
  * Costo unitario reconstruido de cada (plato, día) pedido. `null` = no se pudo costear (algún insumo sin compras hasta ese día, o
@@ -12,7 +12,8 @@ import { diaUtc, costosDeInsumosPorDia, claveCostoHistorico } from "@/core/repor
  */
 export async function reconstruirCostosDeVenta(
   sucursalId: string,
-  ventas: { productoId: string; fecha: Date }[],
+  // GO-2b: `idOperacion`, `cantidad` y `lineaConfigurada` solo en una línea configurada (o un adicional): se reconstruye con SUS consumos, no con la receta.
+  ventas: { productoId: string; fecha: Date; idOperacion?: string; cantidad?: number; lineaConfigurada?: true }[],
   db: Db,
   /** El catálogo ya cargado de LA MISMA sucursal, para no volver a leerlo (ver `calcularCostosYMargenes`). */
   productosCargados?: Map<string, InfoProductoReporte>,
@@ -67,10 +68,24 @@ export async function reconstruirCostosDeVenta(
   ];
   const costosPorDia = costosDeInsumosPorDia(compras, dias);
 
+  const configuradas = ventas.filter((v) => v.lineaConfigurada && v.idOperacion !== undefined);
   for (const v of ventas) {
+    if (v.lineaConfigurada && v.idOperacion !== undefined) continue;
     const clave = claveCostoHistorico(v.productoId, diaUtc(v.fecha));
     if (resultado.has(clave)) continue;
     resultado.set(clave, resolverCostoRecetaCompleta(v.productoId, productos, recetaPorProducto, costosPorDia.get(diaUtc(v.fecha)) ?? new Map()));
+  }
+  // GO-2b: las líneas configuradas sin costo congelado, con los CONSUMO de su propia operación por el costo del día. Una consulta SOLO si hay alguna, acotada por sus ids.
+  if (configuradas.length) {
+    const consumos = await db.movimientoStock.findMany({
+      where: { operacionId: { in: [...new Set(configuradas.map((v) => v.idOperacion!))] }, proceso: "CONSUMO" },
+      select: { operacionId: true, productoId: true, cantidad: true, cantidadExacta: true },
+    });
+    for (const v of configuradas) {
+      const costoDelDia = costoUnitarioDeInsumoDesde(productos, recetaPorProducto, costosPorDia.get(diaUtc(v.fecha)) ?? new Map());
+      const propios = consumos.filter((c) => c.operacionId === v.idOperacion).map((c) => ({ productoId: c.productoId, cantidad: Number(c.cantidadExacta ?? c.cantidad) }));
+      resultado.set(claveCostoDeLineaConfigurada(v.idOperacion!), costoDeLineaConfiguradaDesdeConsumos(propios, v.cantidad ?? 0, costoDelDia));
+    }
   }
   return resultado;
 }

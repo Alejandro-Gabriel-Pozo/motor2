@@ -1,8 +1,8 @@
-import { claveDeLineaDeVenta } from "./cuenta";
+import { claveDeLineaDeVenta } from "./clave-de-linea";
 
 /**
- * La clave de agrupación de una línea de venta EXTENDIDA con opciones (GO-0b; diseño §2.11, invariante I8). Deja escrita la pieza pura que GO-2 va a usar en
- * `lineasDeVenta`, `cerrarCuenta`, el ticket y «Tickets emitidos»; hoy NADIE de producción la llama (solo los tests): `claveDeLineaDeVenta` y `lineasDeVenta` siguen igual.
+ * La clave de agrupación de una línea de venta EXTENDIDA con opciones (GO-0b; diseño §2.11, invariante I8). La usan `lineasDeVenta` (GO-2b), y con ella
+ * `cerrarCuenta`, el ticket y «Tickets emitidos». Importa `claveDeLineaDeVenta` de `clave-de-linea.ts` (no de `cuenta.ts`): así no hay ciclo.
  *
  * - Sin opciones (ni huella ni padre) la clave es EXACTAMENTE la de `claveDeLineaDeVenta`, byte a byte: lo de hoy no se mueve.
  * - Una línea configurada (con `huellaOpciones`): la clave de siempre + `|h:<huella>`. Así «café cortado» y «café con leche» al mismo precio no se juntan en UNA operación.

@@ -89,6 +89,8 @@ export type { InfoProductoReporte } from "./comun";
 export { diaUtc } from "./costo-historico";
 export { costosDeInsumosPorDia } from "./costo-historico";
 export { claveCostoHistorico } from "./costo-historico";
+// GO-2b (ADR-030): el costo reconstruido de una línea configurada, con los consumos de su propia operación.
+export { claveCostoDeLineaConfigurada, costoDeLineaConfiguradaDesdeConsumos } from "./costo-historico";
 export type { ItemParaMargenReal } from "./margen-real";
 export type { ReporteDescuentosClientes } from "./descuentos-clientes";
 export type { ReporteDescuentosProductos } from "./descuentos-productos";
@@ -162,4 +164,4 @@ export type { ReporteValuacionInventario } from "./valuacion";
 export type { FilaLoteProximoAVencer } from "./vencimientos";
 export type { FilaConciliacionVencimiento } from "./vencimientos";
 export { armarIndiceRecetas, armarMapaProductos, asegurarIndiceRecetasDeLaSucursal } from "./comun";
-export { calcularCostosYMargenesDesde, calcularImpactoInsumosDesde, calcularImpactoRecetasPorPeriodoDesde, resolverCostoRecetaCompleta } from "./costos";
+export { calcularCostosYMargenesDesde, calcularImpactoInsumosDesde, calcularImpactoRecetasPorPeriodoDesde, costoUnitarioDeInsumoDesde, resolverCostoRecetaCompleta } from "./costos";
