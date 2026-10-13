@@ -26,6 +26,8 @@ describe("reglasRewriteEmpresaUnica", () => {
     expect(reglas.map((r) => [r.source, r.destination])).toEqual([
       ["/", `/carta-publica/${SLUG}`],
       ["/:sucursal([a-z0-9][a-z0-9-]*)", `/carta-publica/${SLUG}/:sucursal`],
+      ["/robots.txt", `/carta-publica/${SLUG}/robots.txt`],
+      ["/sitemap.xml", `/carta-publica/${SLUG}/sitemap.xml`],
     ]);
     for (const r of reglas) expect(r.destination).not.toContain(":empresa");
   });

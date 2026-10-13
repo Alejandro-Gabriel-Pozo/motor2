@@ -92,12 +92,12 @@ describe("esHostDeZonaCarta", () => {
 });
 
 describe("esPathPermitidoEnHostCarta", () => {
-  it("permite la raíz y UN segmento con forma de slug", () => {
-    for (const p of ["/", "/la-cuadra", "/central/", "/a1"]) expect(esPathPermitidoEnHostCarta(p), p).toBe(true);
+  it("permite la raíz, UN segmento con forma de slug y los dos archivos del host (robots.txt, sitemap.xml)", () => {
+    for (const p of ["/", "/la-cuadra", "/central/", "/a1", "/robots.txt", "/sitemap.xml"]) expect(esPathPermitidoEnHostCarta(p), p).toBe(true);
   });
 
   it("todo lo demás es 404: la API, el cron, el login, la app y los paths de más de un segmento", () => {
-    for (const p of ["/api/auth/signin", "/api/cron/sincronizar-dolar", "/api/auth", "/login/x", "/mesas/abc", "/carta/tema", "/a/b", "//evil", "/%2e%2e/api", "/.env", "/robots.txt", "/Login", "/-x", "/a_b"]) {
+    for (const p of ["/api/auth/signin", "/api/cron/sincronizar-dolar", "/api/auth", "/login/x", "/mesas/abc", "/carta/tema", "/a/b", "//evil", "/%2e%2e/api", "/.env", "/robots.txt/x", "/sitemap.xml/", "/Robots.txt", "/sitemap.txt", "/humans.txt", "/Login", "/-x", "/a_b"]) {
       expect(esPathPermitidoEnHostCarta(p), p).toBe(false);
     }
   });
@@ -118,6 +118,15 @@ describe("reglasRewriteCarta", () => {
     expect(portal).toMatchObject({ source: "/", destination: "/carta-publica/:empresa" });
     expect(carta).toMatchObject({ source: "/:sucursal([a-z0-9][a-z0-9-]*)", destination: "/carta-publica/:empresa/:sucursal" });
     expect(portal.has).toEqual(carta.has);
+  });
+
+  it("también reescribe robots.txt y sitemap.xml a los de la empresa del host, con el mismo patrón de host", () => {
+    const reglas = reglasRewriteCarta("carta.zuluhub.com.ar");
+    expect(reglas.slice(2).map((r) => [r.source, r.destination])).toEqual([
+      ["/robots.txt", "/carta-publica/:empresa/robots.txt"],
+      ["/sitemap.xml", "/carta-publica/:empresa/sitemap.xml"],
+    ]);
+    for (const r of reglas) expect(r.has).toEqual(reglas[0].has);
   });
 
   it("el patrón del host acepta y rechaza lo mismo que interpretarHostCarta", () => {

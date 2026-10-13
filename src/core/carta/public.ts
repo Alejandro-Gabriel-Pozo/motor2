@@ -35,6 +35,7 @@ export type { SucursalPortalAdmin } from "./admin-tipos";
 export { CLAVES_PORTAL_V1 } from "./portal";
 export { origenPublicoDeCarta, urlCartaPublicaConEmpresaUnica } from "./carta-empresa-unica";
 export { MARCA_PUBLICA } from "./marca";
+export { textoRobotsDeCarta, xmlSitemapDeCarta } from "./robots-sitemap";
 export type { MetadatosPublicos } from "./metadatos";
 export { descripcionDeCartaDeSucursal, descripcionDelPortal, imagenParaCompartir, tituloDeCartaDeSucursal, tituloDelPortal } from "./metadatos";
 export type { TemaAdmin } from "./admin-tipos";

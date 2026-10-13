@@ -96,6 +96,18 @@ export const PUERTAS_SIN_PERMISO: Readonly<Record<string, PuertaSinPermiso>> = {
     motivo: "carta pública de una sucursal: lectura aislada de lo que se publica a propósito, sin sesión",
     limitador: "caché ISR de la carta (revalidate) más el firewall de Vercel (E.6); la lista cerrada de publicación es el guard GT-13 (tanda T9)",
   },
+  "ruta|(carta-publica)/carta-publica/[empresa]/robots.txt/route.ts": {
+    anonimo: "PERMITIDO",
+    sinEmpresa: "PERMITIDO",
+    motivo: "robots.txt del host público de la carta de una empresa: lo lee un buscador, sin sesión; sale del mismo lector que el portal y da el mismo 404 que él si la empresa no existe o no publicó nada (S-24)",
+    limitador: "el firewall de Vercel (E.6); no hay datos de negocio: solo la dirección pública y el sitemap",
+  },
+  "ruta|(carta-publica)/carta-publica/[empresa]/sitemap.xml/route.ts": {
+    anonimo: "PERMITIDO",
+    sinEmpresa: "PERMITIDO",
+    motivo: "sitemap.xml del host público de la carta de una empresa: lista el portal y los slugs de las sucursales públicas que ya muestra el portal (`portalCartaPublico`, sin consultas propias), sin sesión; mismo 404 que el portal si no hay nada publicado (S-24)",
+    limitador: "el firewall de Vercel (E.6); la lista cerrada de publicación es el guard GT-13 (tanda T9)",
+  },
   "ruta|api/cron/*": {
     anonimo: "NIEGA",
     sinEmpresa: "NIEGA",

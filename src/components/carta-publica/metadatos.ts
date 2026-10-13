@@ -3,14 +3,14 @@ import { origenPublicoDeCarta, type MetadatosPublicos } from "@/core/carta/publi
 
 /**
  * El borde de los metadatos de la carta pública (`core/carta/metadatos.ts` arma los textos, esto los convierte en lo que Next entiende) y de las direcciones públicas. Lo usan las páginas
- * de `(carta-publica)`.
+ * de `(carta-publica)` y las rutas de `robots.txt` y `sitemap.xml`.
  *
  * La dirección pública sale de la CONFIGURACIÓN (`CARTA_DOMINIO_BASE`, y el add-on `CARTA_EMPRESA_UNICA_COMPILADO`, la copia que quedó en el build, igual que en el proxy y en el admin) y del slug de la empresa
  * que resolvió el servidor: las páginas son ISR y no ven el `Host`, y aunque lo vieran, un valor del pedido no puede decidir cuál es "la dirección definitiva".
  */
 
 /** Origen público de la carta de una empresa (`https://<empresa>.<dominio base>`), o `null` si la instalación no tiene dominio de cartas. */
-function origenDeLaCarta(empresaSlug: string): string | null {
+export function origenDeLaCarta(empresaSlug: string): string | null {
   return origenPublicoDeCarta(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA_COMPILADO, empresaSlug);
 }
 

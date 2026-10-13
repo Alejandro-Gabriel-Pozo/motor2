@@ -1,4 +1,4 @@
-import { armarHostCarta, esSlugPublicoValido, patronHostZonaCarta, urlCartaPublica, type ReglaRedirectAppACarta, type ReglaRedirectCarta, type ReglaRewriteCarta } from "./host";
+import { ARCHIVOS_DEL_HOST_CARTA, armarHostCarta, esSlugPublicoValido, patronHostZonaCarta, urlCartaPublica, type ReglaRedirectAppACarta, type ReglaRedirectCarta, type ReglaRewriteCarta } from "./host";
 
 /**
  * ADD-ON `CARTA_EMPRESA_UNICA` (ADR-006, sección «Carta de una empresa única en el dominio base»): con la variable puesta a un slug de empresa, el dominio
@@ -46,6 +46,7 @@ export function reglasRewriteEmpresaUnica(dominioBase: string | null | undefined
   return [
     { source: "/", has, destination: `/carta-publica/${c.slug}` },
     { source: "/:sucursal([a-z0-9][a-z0-9-]*)", has, destination: `/carta-publica/${c.slug}/:sucursal` },
+    ...ARCHIVOS_DEL_HOST_CARTA.map((archivo) => ({ source: `/${archivo}`, has, destination: `/carta-publica/${c.slug}/${archivo}` })),
   ];
 }
 
