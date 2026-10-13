@@ -35,10 +35,12 @@ import { cerrarCuentaCasoDeUso } from "../../../src/server/actions/pos/casos-de-
  *
  * Jornadas: A) mostrador: precio local (vigente y con la capacidad apagada), merma y rendimiento local, FEFO por lote de una MP, receta compartida entre platos
  * con hermanos, venta fraccionada con paso, stock insuficiente con pista, anulación de la fraccionada; B) POS automático (`registrarVentaEnTx` con origen
- * automático): sin y con stock negativo permitido, insumo sustituto, consignación con sección habitual, PV sin receta, sin respaldo y sin secciones activas;
+ * automático): sin y con stock negativo permitido, insumo sustituto, consignación con sección habitual, PV de reventa sin stock de su insumo, sin respaldo y sin
+ * secciones activas;
  * C) caso de uso de mostrador con clave I3 (alta, repetición exacta, conflicto), PV que se produce con dos lotes y anulaciones; D) el cierre REAL de una cuenta
  * (`cerrarCuentaCasoDeUso`) con líneas netas, espejo de anulación, cliente con descuento, descuento de producto, promo y consignación, sus desenlaces YA_CERRADA,
- * ITEMS_SIN_ENVIAR y SIN_VENTA, y la anulación de una promo (con sus hermanas) y de una venta en consignación; R) rechazos de entrada.
+ * ITEMS_SIN_ENVIAR y SIN_VENTA, y la anulación de una promo (con sus hermanas) y de una venta en consignación; R) rechazos de entrada (desde ADR-033, también un PV
+ * sin receta: «sin receta no se vende»). El Agua y el Flan, que antes eran «PV sin receta», son de reventa (receta de 1 unidad de su MP).
  *
  * Reloj: solo `Date` congelado (los timers reales siguen andando: el pool de conexiones y los timeouts del cliente los usan) y AVANZADO un minuto antes de cada
  * acción, para que `creadoEn` (Prisma 7 lo genera en el cliente) ordene igual que en la vida real; el `ahora` de los casos de uso es ese mismo reloj.
@@ -220,6 +222,10 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
     const torta = await pv("PV_TORTA", "Torta", 5000, unidad, { seProduce: true });
     const tarta = await pv("PV_TARTA", "Tarta", 6000, unidad);
     // Licuado: PV con su fila de disponibilidad APAGADA en «Central».
+    // RECETA (ADR-033, sin receta no se vende): el Agua y el Flan son de REVENTA (1 unidad de su MP por unidad vendida); la Soda NO tiene receta: la rechaza la barrera (R7).
+    const aguaReventa = await mp("MP_AGUA_REVENTA", "Agua (reventa)", unidad);
+    const flanReventa = await mp("MP_FLAN_REVENTA", "Flan (reventa)", unidad);
+    const soda = await pv("PV_SODA", "Soda", 800, unidad);
     const licuado = (await prisma.producto.create({ data: { codigo: "PV_LICUADO", nombre: "Licuado", tipo: "PV", unidadStockId: unidad, precioVenta: 2500 } })).id;
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: licuado, disponible: false } });
 
@@ -236,8 +242,10 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
     await receta(milanesa, [ing(bife, 0.3, kg, { sustitutos: { create: [{ insumoSustitutoId: insumoOjo, orden: 1 }] } })]);
     await receta(copa, [ing(vino, 0.15, litro)]);
     await receta(tarta, [ing(queso, 0.2, kg)]);
+    await receta(agua, [ing(aguaReventa, 1, unidad)]);
+    await receta(flan, [ing(flanReventa, 1, unidad)]);
 
-    C = { deposito, barra, kg, unidad, litro, bodega, insumoHarina, insumoBife, insumoOjo, ana, harinaA, harinaB, aceite, tapa, bife, ojo, vino, queso, fugazza, focaccia, pizza, empanada, agua, flan, milanesa, copa, torta, tarta, licuado, usuario: usuarioId, sucursal: sucursalId };
+    C = { deposito, barra, kg, unidad, litro, bodega, insumoHarina, insumoBife, insumoOjo, ana, harinaA, harinaB, aceite, tapa, bife, ojo, vino, queso, fugazza, focaccia, pizza, empanada, agua, flan, milanesa, copa, torta, tarta, licuado, aguaReventa, flanReventa, soda, usuario: usuarioId, sucursal: sucursalId };
     for (const [nombre, id] of Object.entries(C)) nombres.set(id, nombre);
   }
 
@@ -310,11 +318,12 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
     await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.harinaA, cantidad: 1, precioTotal: 900, loteVencimiento: new Date("2026-10-04") }] });
     await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.harinaB, cantidad: 0.5, precioTotal: 500 }] });
     await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.aceite, cantidad: 1, precioTotal: 5000 }] });
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.tapa, cantidad: 10, precioTotal: 1000 }] });
+    // RECETA: el stock del Agua de reventa entra en la MISMA compra que las Tapas (sin una Operación más, para no correr la numeración del resto de la jornada).
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.tapa, cantidad: 10, precioTotal: 1000 }, { productoId: C.aguaReventa, cantidad: 10, precioTotal: 3000 }] });
     await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.barra, items: [{ productoId: C.bife, cantidad: 1, precioTotal: 10000 }] });
     await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: C.agua, precio: 1200 } });
 
-    await pasoEnTx("A1. Agua ×2 con Precio Local vigente (1200 en vez de 1000), PV sin receta", mostrador(C.deposito, "2026-09-25", [{ productoId: C.agua, cantidadVendida: 2 }]));
+    await pasoEnTx("A1. Agua ×2 con Precio Local vigente (1200 en vez de 1000), PV de reventa (receta de 1 unidad)", mostrador(C.deposito, "2026-09-25", [{ productoId: C.agua, cantidadVendida: 2 }]));
     await prisma.capacidadSucursal.create({ data: { accionClave: "precio_local", sucursalId, habilitado: false } });
     await pasoEnTx("A2. Agua ×1 con la capacidad precio_local APAGADA: rige el precio central", mostrador(C.deposito, "2026-09-25", [{ productoId: C.agua, cantidadVendida: 1 }]));
     await pasoEnTx("A3. Fugazza ×2: merma 10 % (0,55 kg de Harina, FEFO entre dos lotes) y Aceite con rendimiento local (0,03 L, unidad de 3 decimales)", mostrador(C.deposito, "2026-09-26", [{ productoId: C.fugazza, cantidadVendida: 2 }]));
@@ -328,7 +337,7 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
     await anular("A8. Anular la venta fraccionada (la reversión usa la cantidad exacta)", idsDe(fraccionada)[0]!);
 
     // ── B. POS automático ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-    await abrirJornada("B. POS automático (registrarVentaEnTx con origen automático): stock negativo, sustituto, consignación, sin receta, sin respaldo");
+    await abrirJornada("B. POS automático (registrarVentaEnTx con origen automático): stock negativo, sustituto, consignación, reventa sin stock, sin respaldo");
     const cocina = (await sembrarSeccion(sucursalId, "Cocina")).id;
     nombres.set(cocina, "cocina");
     await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.barra, items: [{ productoId: C.harinaA, cantidad: 0.1, precioTotal: 100 }] });
@@ -347,7 +356,7 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
       automatico("2026-09-26", [{ productoId: C.copa, cantidadVendida: 3, precioUnitario: 1800, precioListaUnitario: 2000 }], { clienteId: C.ana, detalle: "Mesa 9" }),
       { permitirStockNegativo: true }
     );
-    await pasoEnTx("B5. Flan ×1 (PV sin receta, sin habitual ni movimientos): la fila VENTA va a la primera sección de respaldo", automatico("2026-09-26", [{ productoId: C.flan, cantidadVendida: 1 }]), { permitirStockNegativo: true });
+    await pasoEnTx("B5. Flan ×1 (PV de reventa sin stock de su insumo, sin habitual ni movimientos): la fila VENTA va a la primera sección de respaldo", automatico("2026-09-26", [{ productoId: C.flan, cantidadVendida: 1 }]), { permitirStockNegativo: true });
     await prisma.seccion.updateMany({ where: { sucursalId }, data: { sirveDeRespaldoEnVentas: false } });
     await pasoEnTx("B6. Ninguna sección sirve de respaldo y el Flan no tiene habitual: rechazo", automatico("2026-09-27", [{ productoId: C.flan, cantidadVendida: 1 }]), { permitirStockNegativo: true });
     await pasoEnTx("B7. La Copa SÍ tiene habitual: sale aunque ninguna sección sea de respaldo", automatico("2026-09-27", [{ productoId: C.copa, cantidadVendida: 1 }]), { permitirStockNegativo: true });
@@ -371,7 +380,8 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
     // ── D. Cierre real de cuentas del POS ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     await abrirJornada("D. Cierre REAL de cuentas del POS (cerrarCuentaCasoDeUso) y anulación de promo y de consignación");
     await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.harinaA, cantidad: 0.3, precioTotal: 300 }] });
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.barra, items: [{ productoId: C.vino, cantidad: 1, precioTotal: 3333 }] });
+    // RECETA: el stock del Flan de reventa entra en la MISMA compra que el Vino, en «Barra», donde ya se vendía el Flan (sin una Operación más).
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.barra, items: [{ productoId: C.vino, cantidad: 1, precioTotal: 3333 }, { productoId: C.flanReventa, cantidad: 10, precioTotal: 10000 }] });
     const mesa = async (numero: number) => {
       const m = await prisma.mesa.create({ data: { sucursalId, numero } });
       nombres.set(m.id, `mesa${numero}`);
@@ -440,6 +450,8 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
     await pasoEnTx("R4. Todas las líneas con cantidad 0", mostrador(C.deposito, "2026-09-25", [{ productoId: C.empanada, cantidadVendida: 0 }, { productoId: C.agua, cantidadVendida: 0 }]));
     await pasoEnTx("R5. Una línea válida y otra con cantidad negativa: nada se escribe", mostrador(C.deposito, "2026-09-25", [{ productoId: C.empanada, cantidadVendida: 1 }, { productoId: C.agua, cantidadVendida: -1 }]));
     await pasoEnTx("R6. Una MP vendida directo (Tapa)", mostrador(C.deposito, "2026-09-25", [{ productoId: C.tapa, cantidadVendida: 1 }]));
+    // RECETA (ADR-033): la barrera final de la venta — un PV sin receta (ni stock propio) no se vende; lee la receta (vacía) y no escribe nada.
+    await pasoEnTx("R7. Soda: un PV SIN receta no se vende (PRODUCTO_SIN_RECETA)", mostrador(C.deposito, "2026-09-25", [{ productoId: C.empanada, cantidadVendida: 1 }, { productoId: C.soda, cantidadVendida: 1 }]));
 
     const actual = lineas.join("\n") + "\n";
     expect(actual.length).toBeGreaterThan(20_000); // si el escenario no armó nada, esto no está mirando nada

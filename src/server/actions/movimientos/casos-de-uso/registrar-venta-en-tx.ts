@@ -12,6 +12,7 @@ import {
   revisarMateriaPrima,
 } from "@/core/movimientos/linea-de-venta";
 import { cargarRecetaVigenteParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
+import { CODIGO_PRODUCTO_SIN_RECETA, rechazoSinOrigenDeStock } from "@/core/movimientos/origen-de-stock";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { seccionesConStock } from "@/server/lecturas/movimientos/saldos";
 import { cargarDeudaDeRedondeo } from "@/server/lecturas/movimientos/deuda-de-redondeo";
@@ -81,7 +82,7 @@ async function armarLinea(
   obtenerProducto: Obtener,
   costoUnitarioPorProducto: Map<string, number | null>,
   costoDeInsumo: (productoId: string) => number | null
-): Promise<{ ok: true; linea: LineaArmada | null } | { ok: false; mensaje: string }> {
+): Promise<{ ok: true; linea: LineaArmada | null } | { ok: false; mensaje: string; codigo?: typeof CODIGO_PRODUCTO_SIN_RECETA }> {
   // Las reglas (qué cantidad saltea la línea, cuál es un error, qué mensaje gana) son puras y viven en `core/movimientos/linea-de-venta.ts`; acá queda el ORDEN: cada una se llama
   // en el mismo lugar donde estaba el `if`, antes o después de la lectura que le toca (los goldens registran las lecturas también en los rechazos).
   const leida = leerCantidadVendida(item.cantidadVendida);
@@ -110,6 +111,10 @@ async function armarLinea(
     // Un PV que se produce por lote ya consumió su receta al producirse — la venta solo lo resta (ver registrarMovimiento, PRODUCCION).
     // GO-2b: un adicional (su ancla no tiene receta) no lee la receta: su consumo es el de su opción.
     const ingredientes = configurada?.tipo === "ADICIONAL" ? [] : await cargarRecetaVigenteParaVender(tx, { productoId: producto.id, sucursalId });
+    // RECETA (ADR-033): la BARRERA FINAL — con la MISMA receta recién leída en esta transacción (sin otra lectura) y antes de escribir nada. Sin receta vigente acá (desactivada entre
+    // el pedido y el cobro, o una venta de mostrador), no se vende; el ancla verificada de un adicional queda exceptuada (su consumo es el de su opción).
+    const sinReceta = rechazoSinOrigenDeStock({ nombre: producto.nombre, seProduce: producto.seProduce, esAnclaDeAdicional: esAnclaVerificada, ingredientesDeLaRecetaVigente: ingredientes.length });
+    if (sinReceta !== null) return { ok: false, codigo: CODIGO_PRODUCTO_SIN_RECETA, mensaje: sinReceta };
     const base: IngredienteDeBase[] = [];
     for (const ing of ingredientes) {
       const revisada = revisarMateriaPrima(await obtenerProducto(ing.insumoProductoId), producto.nombre);
@@ -187,7 +192,7 @@ export async function registrarVentaEnTx(
   const indiceEnLineas = new Map<number, number>();
   for (const [i, item] of datos.lineas.entries()) {
     const armado = await armarLinea(item, actor.sucursalId, actor.sucursalNombre, tx, obtenerProducto, costoUnitarioPorProducto, costoDeInsumo);
-    if (!armado.ok) return fallo(armado.mensaje);
+    if (!armado.ok) return armado.codigo ? { ok: false, codigo: armado.codigo, mensaje: armado.mensaje } : fallo(armado.mensaje);
     if (!armado.linea) continue;
     let padre: number | null = null;
     if (item.configurada?.tipo === "ADICIONAL") {

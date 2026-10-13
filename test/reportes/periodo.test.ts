@@ -9,6 +9,7 @@ import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { guardarMargenObjetivo } from "../../src/server/actions/reportes/margen-objetivo";
 import { obtenerReportePorPeriodo, generarReporteVentasPorCategoria } from "../../src/server/consultas/reportes/periodo";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 
 describe("obtenerReportePorPeriodo", () => {
   let sucursalId: string;
@@ -16,6 +17,12 @@ describe("obtenerReportePorPeriodo", () => {
   let unidadKgId: string;
   let insumoId: string;
   let adminId: string;
+  // RECETA (ADR-033, sin receta no se vende): un PV que solo prueba el dinero del período lleva receta de reventa, con stock comprado en el 2000 a costo 0 (fuera de todo período y sin
+  // sumar compras), para que la venta de mostrador no se rechace.
+  const conRecetaDeReventa = async <P extends { id: string; nombre: string; codigo: string; unidadStockId: string }>(pv: P) => {
+    await darRecetaDeReventa(prisma, pv, { sucursalIds: [sucursalId], stock: { cantidad: 100, seccionIds: [seccionId], usuarioId: adminId } });
+    return pv;
+  };
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -200,7 +207,7 @@ describe("obtenerReportePorPeriodo", () => {
 
   it("ratioGastoVentas compara Compras/Ventas del período contra el período inmediato anterior de igual duración", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
+    const pv = await conRecetaDeReventa(await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId));
 
     // Período anterior (9 de agosto, un día antes del rango elegido): compró 80, facturó 100 -> 80%.
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-09T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 80 }] });
@@ -300,7 +307,7 @@ describe("obtenerReportePorPeriodo", () => {
   });
 
   it("comparativaPrecios: variacionCartaPropiaPct sale de RegistroAuditoria (Producto.precioVenta), ponderado por lo facturado del período", async () => {
-    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pizza Muzzarella", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1100 }, sucursalId);
+    const pv = await conRecetaDeReventa(await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pizza Muzzarella", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1100 }, sucursalId));
     await registrarVenta({ fecha: new Date("2026-08-12T12:00:00.000Z"), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
 
     await prisma.registroAuditoria.create({
@@ -325,7 +332,7 @@ describe("obtenerReportePorPeriodo", () => {
   describe("comparativaPrecios con Precio Local: mide el precio que la sucursal realmente cobra", () => {
     // Una pizza de 1000 global, que esta sucursal cobra a 800 (precio local). En agosto el global sube a 1500 (+50%) y el local a 880 (+10%).
     async function pizzaConPrecioLocalVendida(capacidadApagada: boolean) {
-      const pv = await sembrarProductoDisponible({ codigo: "PV_LOC", nombre: "Pizza local", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1500 }, sucursalId);
+      const pv = await conRecetaDeReventa(await sembrarProductoDisponible({ codigo: "PV_LOC", nombre: "Pizza local", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1500 }, sucursalId));
       const fila = await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: pv.id, precio: 880, habilitado: true } });
       if (capacidadApagada) await prisma.capacidadSucursal.create({ data: { accionClave: "precio_local", sucursalId, habilitado: false } });
       await registrarVenta({ fecha: new Date("2026-08-12T12:00:00.000Z"), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
@@ -512,6 +519,12 @@ describe("generarReporteVentasPorCategoria", () => {
   let sucursalId: string;
   let seccionId: string;
   let unidadKgId: string;
+  let adminId: string;
+  // RECETA (ADR-033): el mismo atajo que arriba (receta de reventa con stock del 2000 a costo 0).
+  const conRecetaDeReventa = async <P extends { id: string; nombre: string; codigo: string; unidadStockId: string }>(pv: P) => {
+    await darRecetaDeReventa(prisma, pv, { sucursalIds: [sucursalId], stock: { cantidad: 100, seccionIds: [seccionId], usuarioId: adminId } });
+    return pv;
+  };
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -521,12 +534,13 @@ describe("generarReporteVentasPorCategoria", () => {
     unidadKgId = catalogo.kg.id;
     seccionId = (await sembrarSeccion(sucursalId)).id;
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
+    adminId = admin.id;
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
   it("agrupa la facturación por Categoría y detecta PV activos sin categoría asignada", async () => {
     const categoria = await prisma.categoriaProducto.create({ data: { nombre: "Panadería" } });
-    const pvConCategoria = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50, categoriaId: categoria.id }, sucursalId);
+    const pvConCategoria = await conRecetaDeReventa(await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50, categoriaId: categoria.id }, sucursalId));
     const pvSinCategoria = await sembrarProductoDisponible({ codigo: "PV_2", nombre: "Torta", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 80 }, sucursalId);
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pvConCategoria.id, cantidadVendida: 2 }] });
 

@@ -62,6 +62,11 @@ import { agregarItems } from "../../src/server/actions/pos/cuenta-pedido";
  * (`producto.findMany`, una por pedido y no por ítem: el mínimo obligatorio se exige aunque no se manden opciones, y sirve también para los componentes de las promos). «Cuenta cerrada» y el
  * reintento no cambian (devuelven antes). Las escrituras de un pedido sin opciones no cambian. Se suma el bloque «con opciones»: la línea configurada se escribe con un `cuentaItem.create` (más uno
  * por adicional) y un `opcionElegidaEnLinea.createMany`, sin el `createMany` de los sueltos si no hay ninguno; y una MEDIDA en ABSOLUTO suma la grilla de la sucursal (la capacidad y las filas).
+ *
+ * Quinta edición, a propósito (RECETA, ADR-033, decisión del dueño 2026-10-13: «sin receta no se vende»): todo pedido que pasa la cuenta y el registro de módulos suma TRES lecturas agrupadas, una vez
+ * por pedido y no por ítem (`cargarOrigenDeStockParaVender`): los productos del pedido (`producto.findMany`: nombre y si se produce), las recetas propias habilitadas de la sucursal
+ * (`recetaSucursal.findMany`) y las versiones centrales de esos productos (`recetaVersion.findMany`; con alguna propia habilitada habría una cuarta). «Cuenta cerrada» y los reintentos no cambian
+ * (devuelven antes) y las escrituras tampoco. Un pedido con un producto sin receta se rechaza (`PRODUCTO_SIN_RECETA`) sin escribir nada: `test/pos/agregar-items-sin-receta.test.ts`.
  */
 const ESCRITURAS = new Set(["promoCuenta.create", "cuentaItem.createMany", "agregadoDeCuenta.create"]);
 
@@ -128,8 +133,10 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "disponibilidadProducto.findUnique×1",
       "moduloEmpresa.findMany×1", // P18 / D18: el registro de módulos se lee SIEMPRE (una vez): decide si rige el descuento de producto (solo con Carta).
       "precioLocalProducto.findMany×1",
-      "producto.findMany×1", // GO-2b: lo que admite cada producto del pedido, en UNA lectura.
+      "producto.findMany×2", // GO-2b: lo que admite cada producto del pedido, en UNA lectura. — RECETA: +1, el nombre y si se produce cada producto del pedido.
       "producto.findUnique×1",
+      "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
+      "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
     ]);
     expect(escriturasAlFinal(consultas)).toEqual(["cuentaItem.createMany"]);
   });
@@ -166,8 +173,10 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "disponibilidadProducto.findUnique×3",
       "moduloEmpresa.findMany×1", // P18 / D18: UNA vez por pedido, no por ítem.
       "precioLocalProducto.findMany×3",
-      "producto.findMany×1", // GO-2b: UNA vez por pedido, no por ítem.
+      "producto.findMany×2", // GO-2b: UNA vez por pedido, no por ítem. — RECETA: +1, el nombre y si se produce cada producto del pedido.
       "producto.findUnique×3",
+      "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
+      "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
     ]);
     expect(escriturasAlFinal(consultas)).toEqual(["cuentaItem.createMany"]);
   });
@@ -185,10 +194,12 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "itemAgrupadoCarta.findMany×2",
       "moduloEmpresa.findMany×1", // S-22 / D2: se lee UNA vez el registro de módulos (Promociones prendido) y se comparte con la lectura de la promo.
       "precioLocalProducto.findMany×2",
-      "producto.findMany×3", // GO-2b: +1, lo que admiten los componentes de la promo (en v1 no llevan opciones: uno con un grupo obligatorio se rechaza).
+      "producto.findMany×4", // GO-2b: +1, lo que admiten los componentes de la promo (en v1 no llevan opciones: uno con un grupo obligatorio se rechaza). — RECETA: +1, el nombre y si se produce cada producto del pedido.
       "promoCarta.findFirst×1",
       "promoCarta.findMany×2",
       "promoCuenta.create×1",
+      "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
+      "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
       "seccionCarta.findMany×1",
       "sucursal.findUnique×1",
     ]);
@@ -209,11 +220,13 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "itemAgrupadoCarta.findMany×2",
       "moduloEmpresa.findMany×1", // S-22 / D2: ídem (una sola lectura, compartida con la promo).
       "precioLocalProducto.findMany×3",
-      "producto.findMany×3", // GO-2b: +1, una sola lectura para el suelto y los componentes.
+      "producto.findMany×4", // GO-2b: +1, una sola lectura para el suelto y los componentes. — RECETA: +1, el nombre y si se produce cada producto del pedido.
       "producto.findUnique×1",
       "promoCarta.findFirst×1",
       "promoCarta.findMany×2",
       "promoCuenta.create×1",
+      "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
+      "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
       "seccionCarta.findMany×1",
       "sucursal.findUnique×1",
     ]);
@@ -235,8 +248,10 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
       "disponibilidadProducto.findUnique×1",
       "moduloEmpresa.findMany×1", // P18 / D18: se lee antes de validar el primer ítem.
       "precioLocalProducto.findMany×1",
-      "producto.findMany×1", // GO-2b: antes del primer ítem.
+      "producto.findMany×2", // GO-2b: antes del primer ítem. — RECETA: +1, el nombre y si se produce cada producto del pedido.
       "producto.findUnique×2",
+      "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
+      "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
     ]);
     expect(escriturasAlFinal(consultas)).toEqual([]);
   });
@@ -266,8 +281,10 @@ describe("agregarItems CON clave de idempotencia (P3, I3): +1 lectura y +1 escri
       "disponibilidadProducto.findUnique×1",
       "moduloEmpresa.findMany×1",
       "precioLocalProducto.findMany×1",
-      "producto.findMany×1", // GO-2b
+      "producto.findMany×2", // GO-2b — RECETA: +1, el nombre y si se produce cada producto del pedido.
       "producto.findUnique×1",
+      "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
+      "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
     ]);
     expect(consultas[0], "la lectura del comprobante es el PRIMER paso, antes de mirar la cuenta").toBe("agregadoDeCuenta.findUnique");
     expect(escriturasAlFinal(consultas)).toEqual(["cuentaItem.createMany", "agregadoDeCuenta.create"]);
@@ -319,8 +336,10 @@ describe("agregarItems CON opciones (GO-2b, cuarta edición): la línea configur
       "moduloEmpresa.findMany×1",
       "opcionElegidaEnLinea.createMany×1",
       "precioLocalProducto.findMany×1",
-      "producto.findMany×1",
+      "producto.findMany×2", // RECETA: +1, el nombre y si se produce cada producto del pedido.
       "producto.findUnique×1",
+      "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
+      "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
     ]);
     expect(escriturasAlFinal(consultas)).toEqual(["cuentaItem.create", "cuentaItem.create", "opcionElegidaEnLinea.createMany"]);
   });
@@ -340,8 +359,10 @@ describe("agregarItems CON opciones (GO-2b, cuarta edición): la línea configur
       "opcionElegidaEnLinea.createMany×1",
       "precioLocalDeOpcion.findMany×1",
       "precioLocalProducto.findMany×2",
-      "producto.findMany×1",
+      "producto.findMany×2", // RECETA: +1, el nombre y si se produce cada producto del pedido.
       "producto.findUnique×2",
+      "recetaSucursal.findMany×1", // RECETA (ADR-033, quinta edición): la receta vigente de cada producto del pedido, UNA vez por pedido.
+      "recetaVersion.findMany×1", // RECETA: las versiones centrales de esos productos (sin receta propia habilitada, no hay una segunda).
     ]);
     expect(escriturasAlFinal(consultas)).toEqual(["cuentaItem.createMany", "cuentaItem.create", "opcionElegidaEnLinea.createMany"]);
   });

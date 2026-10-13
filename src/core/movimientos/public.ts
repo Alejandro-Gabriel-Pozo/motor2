@@ -52,3 +52,5 @@ export type { IngredienteParaVender } from "./linea-de-venta";
 export { consumoDeLineaConfigurada } from "./consumo-de-linea-configurada";
 export type { CodigoDeErrorDeConsumo, ConsumoDeOpcionParaVender, OpcionConConsumo } from "./consumo-de-linea-configurada";
 export type { LineaConfiguradaEnTx } from "./registrar-venta";
+// RECETA (ADR-033, sin receta no se vende): la regla del origen de stock de un PV, que usan el agregado de ítems del POS y la venta.
+export { CODIGO_PRODUCTO_SIN_RECETA, rechazoSinOrigenDeStock } from "./origen-de-stock";

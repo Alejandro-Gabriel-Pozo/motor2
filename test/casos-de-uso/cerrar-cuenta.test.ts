@@ -95,7 +95,7 @@ describe("cerrarCuentaCasoDeUso", () => {
       mensaje: "Cuenta de la mesa 4 cerrada sin venta: no quedó nada por cobrar.",
       datos: { desenlace: "SIN_VENTA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 },
     });
-    expect(await prisma.operacion.count()).toBe(0);
+    expect(await prisma.operacion.count({ where: { proceso: { not: "COMPRA" } } })).toBe(0); // RECETA: sin las COMPRA del stock de reventa del fixture
     expect(await prisma.ejemplarTicket.count()).toBe(0);
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).not.toBeNull();
   });
@@ -138,7 +138,7 @@ describe("cerrarCuentaCasoDeUso", () => {
     await prisma.cuentaItem.create({ data: { cuentaId: cuenta.id, productoId: s.milanesa.id, cantidad: 1, precioUnitario: 9000, creadoPorId: s.admin.id } });
     expect(await cerrarCuentaCasoDeUso(actor(), { cuentaId: cuenta.id })).toEqual({ ok: false, codigo: "ITEMS_SIN_ENVIAR", mensaje: "Hay 2 ítems sin enviar: envialos o quitalos." });
 
-    expect(await prisma.operacion.count()).toBe(0);
+    expect(await prisma.operacion.count({ where: { proceso: { not: "COMPRA" } } })).toBe(0); // RECETA: sin las COMPRA del stock de reventa del fixture
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).toBeNull();
   });
 
@@ -153,7 +153,7 @@ describe("cerrarCuentaCasoDeUso", () => {
       codigo: "VENTA_RECHAZADA",
       mensaje: "Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.",
     });
-    expect(await prisma.operacion.count()).toBe(0);
+    expect(await prisma.operacion.count({ where: { proceso: { not: "COMPRA" } } })).toBe(0); // RECETA: sin las COMPRA del stock de reventa del fixture
     expect(await prisma.ejemplarTicket.count()).toBe(0);
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).toBeNull();
   });

@@ -11,6 +11,7 @@ import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-c
 import { construirMapaProductos } from "../../src/server/lecturas/reportes/comun";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 
 /**
  * Precio Local y la capacidad `precio_local` de la sucursal, contra Postgres real: "la empresa lo tiene o no lo tiene, y punto". Sin
@@ -62,6 +63,8 @@ describe("Precio Local y la capacidad precio_local", () => {
 
     const pv = await sembrarProductoDisponible({ codigo: "PV_PIZZA", nombre: "Pizza", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 1000 }, sucursalId);
     productoId = pv.id;
+    // RECETA (ADR-033, sin receta no se vende): la pizza de este test es de reventa, con stock para las dos ventas de mostrador.
+    await darRecetaDeReventa(prisma, pv, { sucursalIds: [sucursalId], stock: { cantidad: 10, seccionIds: [seccionId], usuarioId: admin.id } });
     const seccionCarta = await prisma.seccionCarta.create({ data: { nombre: "Platos", orden: 1 } });
     await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId, visibleEnCarta: true, seccionCartaId: seccionCarta.id } });
     await prisma.precioLocalProducto.create({ data: { sucursalId, productoId, precio: 800, habilitado: true } });

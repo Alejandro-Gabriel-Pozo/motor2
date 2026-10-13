@@ -4,6 +4,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarCompraDeKardex, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { generarReporteHuecosCatalogo, obtenerProblemasUnidadMezclada } from "../../src/server/consultas/reportes/huecos-catalogo";
 import { requierePermisoVerDeEmpresa } from "../../src/server/acceso/gate";
@@ -43,7 +44,9 @@ describe("generarReporteHuecosCatalogo", () => {
 
   it("un PV vendido no aparece en la lista", async () => {
     const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Vendido", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
-    await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
+    // RECETA (ADR-033, sin receta no se vende): de reventa, con stock para la venta de mostrador.
+    await darRecetaDeReventa(prisma, pv, { sucursalIds: [sucursalId], stock: { cantidad: 10, seccionIds: [seccionId], usuarioId: adminId } });
+    expect((await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] })).ok).toBe(true);
     const rep = await generarReporteHuecosCatalogo(sucursalId, prisma);
     expect(rep.pvSinVentaNunca.map((p) => p.productoId)).not.toContain(pv.id);
   });

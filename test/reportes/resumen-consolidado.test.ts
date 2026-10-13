@@ -7,6 +7,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 import { obtenerResumenConsolidado } from "../../src/server/consultas/reportes/resumen-consolidado";
 import { crearMembresia } from "../setup/membresia";
 
@@ -28,6 +29,9 @@ describe("obtenerResumenConsolidado", () => {
 
     const pv1 = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan Central", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 100 }, base.sucursal.id);
     const pv2 = await sembrarProductoDisponible({ codigo: "PV_2", nombre: "Pan Norte", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 50 }, sucursal2.id);
+    // RECETA (ADR-033, sin receta no se vende): cada pan es de reventa, con stock (comprado en el 2000 a costo 0: no toca el financiero) en la sección de su sucursal.
+    await darRecetaDeReventa(prisma, pv1, { sucursalIds: [base.sucursal.id], stock: { cantidad: 10, seccionIds: [seccion1.id], usuarioId: admin.id } });
+    await darRecetaDeReventa(prisma, pv2, { sucursalIds: [sucursal2.id], stock: { cantidad: 10, seccionIds: [seccion2.id], usuarioId: admin.id } });
     // El admin tiene membresía en las dos sucursales — cada venta se
     // registra con esa sucursal como "activa" (mismo mecanismo que
     // cambiarSucursalActiva en producción real), no solo pasando el
