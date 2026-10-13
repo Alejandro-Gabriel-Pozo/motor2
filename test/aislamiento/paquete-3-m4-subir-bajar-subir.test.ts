@@ -1088,7 +1088,8 @@ const GO1_D_RLS = "20261020131000_go1d_rls_sucursal_opcion_elegida";
 const GO1 = [GO1_A, GO1_B, GO1_C, GO1_C_RLS, GO1_D, GO1_D_RLS];
 /** La reversa va en orden inverso: las políticas de la foto, la línea con opciones, las políticas por sucursal, lo de la sucursal, el catálogo y las claves. */
 const BAJADA_GO1 = [GO1_D_RLS, GO1_D, GO1_C_RLS, GO1_C, GO1_B, GO1_A];
-const CLAVES_GO1 = clavesReservadasDe(GO1_A);
+/** Las tres claves de GO-1a, FIJAS: desde GO-2a están en ACCIONES y ya no en las reservadas (sacadas de ahí, la lista quedaría vacía y estas comprobaciones pasarían sin mirar nada). */
+const CLAVES_GO1 = ["opcion_apagar_en_sucursal", "opciones_definir", "producto_opciones_admitidas"];
 const CATALOGO_GO1 = ["GrupoDeOpciones", "OpcionDeGrupo", "VersionDeOpcion", "ConsumoDeOpcion", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion"];
 const POR_SUCURSAL_GO1 = ["PrecioLocalDeOpcion", "OpcionApagadaEnSucursal", "OpcionElegidaEnLinea"];
 const TABLAS_GO1 = [...CATALOGO_GO1, ...POR_SUCURSAL_GO1];

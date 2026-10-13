@@ -1453,6 +1453,30 @@
       "rolesEditarSemilla": [
         "admin"
       ]
+    },
+    {
+      "clave": "opciones_definir",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "producto_opciones_admitidas",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "opcion_apagar_en_sucursal",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
     }
   ]
 }

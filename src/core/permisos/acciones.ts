@@ -243,6 +243,13 @@ export const ACCIONES = [
   // REPARTIDA (cabecera CONFIRMADA) Y la parte de esa sucursal está RECIBIDA. Es de la SUCURSAL (quien recibe es la sucursal), clase O (piso operario, semilla solo admin, delegable al encargado de la sucursal por configuración).
   // La migración 20261016100000 se la da al rol `admin` de cada empresa. Reservada hasta la Etapa C (la bandeja «mercadería por recibir» y su caso de uso).
   { clave: "compra_recibir", modulo: "compras", descripcion: "Confirmar la recepción de la mercadería de una factura de proveedor en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  // GO-2a (ADR-030 §10): los grupos de opciones de venta (el «elemento configurable»). La base las tiene desde la migración de datos GO-1a (20261020100000), que se las dio al rol `admin` de cada
+  // empresa; entran a ACCIONES con su guarda y su caso de uso, con la descripción IDÉNTICA a la de la base. Definir el catálogo y elegir qué admite cada producto son de la EMPRESA, piso administrador
+  // (clase A, como `categorias` o `unidades`); apagar una opción en la sucursal es de la SUCURSAL, piso operario y semilla solo admin (clase O: el gerente la delega al encargado del turno). La grilla
+  // de precios de una opción por sucursal no tiene clave propia: va con `precio_local`.
+  { clave: "opciones_definir", modulo: "catalogo_basico", descripcion: "Definir los grupos de opciones de venta y sus opciones", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "producto_opciones_admitidas", modulo: "catalogo_basico", descripcion: "Elegir qué grupos y opciones de venta admite cada producto", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "opcion_apagar_en_sucursal", modulo: "catalogo_basico", descripcion: "Apagar o prender una opción de venta en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
 ] as const satisfies readonly AccionSemilla[];
 
 export type AccionClave = (typeof ACCIONES)[number]["clave"];
