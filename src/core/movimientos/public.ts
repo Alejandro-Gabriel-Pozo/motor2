@@ -51,3 +51,4 @@ export type { IngredienteParaVender } from "./linea-de-venta";
 // GO-2b (ADR-030): el consumo de una línea configurada, que ahora usan la línea configurada del POS (`core/pos/linea-configurada.ts`) y la venta.
 export { consumoDeLineaConfigurada } from "./consumo-de-linea-configurada";
 export type { CodigoDeErrorDeConsumo, ConsumoDeOpcionParaVender, OpcionConConsumo } from "./consumo-de-linea-configurada";
+export type { LineaConfiguradaEnTx } from "./registrar-venta";
