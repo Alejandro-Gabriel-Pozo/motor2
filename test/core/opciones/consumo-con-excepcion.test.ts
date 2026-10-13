@@ -50,31 +50,59 @@ function identicos(a: unknown, b: unknown): boolean {
   return a === b;
 }
 
-describe("sin excepción, la salida es la de siempre (Object.is), contra la versión anterior copiada", () => {
-  const escenarios = [CAFE, HOTEL, SPA];
-  const casoArb = fc.constantFrom(...escenarios).chain((escenario) =>
-    fc.record({
-      escenario: fc.constant(escenario),
-      ids: fc.subarray(escenario.opciones.map((o) => o.opcionId)),
-      cantidad: fc.oneof(fc.integer({ min: 1, max: 12 }), fc.constantFrom(0.5, 1.25, 2.75, 0, -1)),
-    }),
-  );
+/**
+ * TODAS las elecciones válidas de los tres escenarios, enumeradas por construcción (cada subconjunto de sus opciones que `validarOpcionesElegidas` acepta). Es determinista: no depende
+ * del azar cuántos casos válidos se prueban (antes se filtraban subconjuntos al azar y la guarda «más de 200 válidos» fallaba a veces con 195). Hoy son 64 (café 24, hotel 16, spa 24).
+ */
+const ESCENARIOS = { CAFE, HOTEL, SPA } as const;
+const ELECCIONES_VALIDAS = Object.entries(ESCENARIOS).flatMap(([nombre, escenario]) => {
+  const ids = escenario.opciones.map((o) => o.opcionId);
+  const validas: { nombre: string; escenario: Escenario; ids: string[]; eleccion: NonNullable<ReturnType<typeof eleccionDe>> }[] = [];
+  for (let mascara = 0; mascara < 1 << ids.length; mascara++) {
+    const elegidos = ids.filter((_, i) => (mascara & (1 << i)) !== 0);
+    const eleccion = eleccionDe(escenario, elegidos);
+    if (eleccion) validas.push({ nombre, escenario, ids: elegidos, eleccion });
+  }
+  return validas;
+});
+/** Cantidades enteras, fraccionarias (venta fraccionada) e inválidas (0 y negativa: las dos versiones rechazan igual). */
+const CANTIDADES = [1, 2, 3, 7, 12, 0.5, 1.25, 2.75, 0, -1] as const;
 
-  it("para cualquier elección válida y cualquier cantidad: sin `excepcion` y con una excepción vacía da EXACTAMENTE lo mismo que antes", () => {
+function compararConLaAnterior(caso: (typeof ELECCIONES_VALIDAS)[number], cantidad: number) {
+  const entrada: EntradaDeConsumoConfigurado = { cantidad, sucursalId: caso.escenario.sucursalId, base: caso.escenario.base, ...caso.eleccion };
+  const antes = consumoAnterior(entrada);
+  expect(identicos(consumoDeLineaConfigurada(entrada), antes), `${caso.nombre} [${caso.ids.join(",")}] × ${cantidad}`).toBe(true);
+  expect(identicos(consumoDeLineaConfigurada({ ...entrada, excepcion: { ingredientes: [], opcionesDeEjes: caso.ids } }), antes), `${caso.nombre} [${caso.ids.join(",")}] × ${cantidad}: una versión vacía es «sin excepción»`).toBe(true);
+}
+
+describe("sin excepción, la salida es la de siempre (Object.is), contra la versión anterior copiada", () => {
+  it("la enumeración de elecciones válidas no está vacía ni se achicó sin aviso (64: café 24, hotel 16, spa 24)", () => {
+    expect(ELECCIONES_VALIDAS.length).toBe(64);
+    expect(Object.fromEntries(Object.keys(ESCENARIOS).map((n) => [n, ELECCIONES_VALIDAS.filter((c) => c.nombre === n).length]))).toEqual({ CAFE: 24, HOTEL: 16, SPA: 24 });
+  });
+
+  it("EXHAUSTIVO: cada elección válida × cada cantidad de la lista (640 casos): sin `excepcion` y con una excepción vacía da EXACTAMENTE lo mismo que antes", () => {
     let probadas = 0;
-    fc.assert(
-      fc.property(casoArb, ({ escenario, ids, cantidad }) => {
-        const eleccion = eleccionDe(escenario, ids);
-        if (!eleccion) return;
+    for (const caso of ELECCIONES_VALIDAS) {
+      for (const cantidad of CANTIDADES) {
+        compararConLaAnterior(caso, cantidad);
         probadas++;
-        const entrada: EntradaDeConsumoConfigurado = { cantidad, sucursalId: escenario.sucursalId, base: escenario.base, ...eleccion };
-        const antes = consumoAnterior(entrada);
-        expect(identicos(consumoDeLineaConfigurada(entrada), antes)).toBe(true);
-        expect(identicos(consumoDeLineaConfigurada({ ...entrada, excepcion: { ingredientes: [], opcionesDeEjes: ids } }), antes), "una versión vacía es «sin excepción»").toBe(true);
+      }
+    }
+    expect(probadas).toBe(ELECCIONES_VALIDAS.length * CANTIDADES.length);
+  });
+
+  it("propiedad: cualquier elección válida (por construcción, sin filtrar) y cualquier cantidad entera o de hasta 4 decimales, 1500 casos, todos probados", () => {
+    let probadas = 0;
+    const cantidadArb = fc.oneof(fc.integer({ min: 1, max: 50 }), fc.integer({ min: 1, max: 500_000 }).map((n) => n / 10_000));
+    fc.assert(
+      fc.property(fc.constantFrom(...ELECCIONES_VALIDAS), cantidadArb, (caso, cantidad) => {
+        compararConLaAnterior(caso, cantidad);
+        probadas++;
       }),
       { numRuns: 1500 },
     );
-    expect(probadas).toBeGreaterThan(200);
+    expect(probadas, "cada corrida es un caso válido: ninguno se descarta").toBe(1500);
   });
 });
 
