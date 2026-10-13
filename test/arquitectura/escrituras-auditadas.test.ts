@@ -50,6 +50,8 @@ const MODELOS_QUE_SON_SU_PROPIA_HISTORIA: Record<string, string> = {
   movimientoStock: "El Kardex: solo agrega, cada fila lleva operación, usuario y fecha (kardex-solo-agrega.test.ts).",
   cuentaItem: "Línea de la cuenta de una mesa (documento del POS): se agrega y se anula con su estado y usuario; el precio es el congelado de la carta.",
   promoCuenta: "Promo cobrada en una cuenta (documento del POS): copia el precio congelado de la carta, no es una configuración editable.",
+  opcionElegidaEnLinea:
+    "GO-2b: la FOTO de las opciones elegidas en una línea de la cuenta (documento del POS, ADR-030): solo se agrega (la app no tiene UPDATE ni DELETE; se va solo con el borrador de su línea, ON DELETE CASCADE) y congela el importe de cada opción al pedir.",
   cotizacionDolar: "Dato de una fuente externa sincronizado por un cron, una fila por día: no lo edita nadie a mano.",
   indicePrecio: "Dato de una fuente externa (IPC) sincronizado por un cron: no lo edita nadie a mano.",
 };
