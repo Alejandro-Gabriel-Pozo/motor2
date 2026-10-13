@@ -38,3 +38,4 @@ export { opcionDisponible, resumenDePrecios, vistaPreviaDeConfiguracion } from "
 export type { ResumenDePrecios } from "./precio-de-configuracion";
 export { claveDeConfiguracion, elegidasParaPedir, esDeUnaSolaEleccion, estadoInicialElegirOpciones, grupoCompleto, gruposQueFaltan, reducirElegirOpciones, resumenDeConfiguracion } from "./elegir-opciones-estado";
 export type { ConfiguracionDelSelector } from "./elegir-opciones-estado";
+export { agruparConAdicionales, elegidasDeLaLinea } from "./lineas-con-adicionales";

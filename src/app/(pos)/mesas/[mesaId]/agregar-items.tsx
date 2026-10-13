@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
 import { agregarItems } from "@/server/actions/pos/cuenta-pedido";
 import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos, estadoInicialSelectorCarta, reducirSelectorCarta, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar, type EleccionParaAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearCantidad, formatearMonto, claveDeConfiguracion, resumenDeConfiguracion, vistaPreviaDeConfiguracion, type ConfiguracionDelSelector } from "@/core/pos/public";
@@ -10,6 +10,7 @@ import { SelectorCarta } from "./selector-carta";
 import { ArmarPromo } from "./armar-promo";
 import { ElegirOpciones, type EleccionPrecargada } from "./elegir-opciones";
 import { useAccionMesa } from "./usar-accion";
+import { useRegistrarOtroIgual } from "./otro-igual";
 
 /** Una promo ya armada, esperando en «Por agregar» junto con los sueltos (Task #16) — cada instancia es una línea propia, sin
  *  acumularse (dos menús pueden llevar elecciones distintas): `id` interno del cliente, nunca viaja al servidor. */
@@ -121,6 +122,16 @@ export function AgregarItems({
     despacharLista({ tipo: "sumarConfiguracion", productoId, clave: claveDeConfiguracion(productoId, elegidas), opciones: elegidas, cantidad, tope: MAXIMO_ITEMS_POR_AGREGADO });
     setOpcionesAbiertas(null);
   };
+  // GO-2d: «Otro igual» desde una línea de la cuenta abre este mismo diálogo con esa elección (si el producto hoy se puede pedir con opciones desde el selector).
+  const registrarOtroIgual = useRegistrarOtroIgual();
+  useEffect(() => {
+    registrarOtroIgual((p) => {
+      if (!puede || !configuraciones[p.productoId]?.vendible || !pediblePorId.has(p.productoId)) return false;
+      setOpcionesAbiertas({ productoId: p.productoId, inicial: p.elegidas });
+      return true;
+    });
+    return () => registrarOtroIgual(null);
+  }, [registrarOtroIgual, puede, configuraciones, pediblePorId]);
   const productoAbierto = opcionesAbiertas ? pediblePorId.get(opcionesAbiertas.productoId) : undefined;
   const configuracionAbierta = opcionesAbiertas ? configuraciones[opcionesAbiertas.productoId] : undefined;
 
