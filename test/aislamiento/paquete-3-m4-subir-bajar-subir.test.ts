@@ -25,6 +25,10 @@ import { COMANDOS_CON_POLITICA_DE_ALCANCE } from "../setup/politicas-de-alcance-
  *  6. PAQUETE 4, M5 (`ReclasificacionRenglon`, una migración, sobre el estado que dejan los casos de M4 con todo arriba): SUBIR (tabla, claves foráneas, CHECK, una política, privilegios exactos y un humo como `motor2_app`); BAJAR CON DATOS (la reversa ABORTA
  *     mientras haya reclasificaciones; con M5 arriba las reversas de M4.2 y M4.1 FALLAN por dependencia, sin dejar nada a medias; sin filas la de M5 pasa y el catálogo queda idéntico al de antes de M5); SUBIR OTRA VEZ (catálogo idéntico al de la primera subida);
  *     el CICLO COMPLETO (M5, M4.5 a M4.1 y M3 hasta el Paquete 2, y de vuelta hasta M5 arriba); y la reversa de M5 idempotente. Los casos 0 a 5 de M4 no cambian.
+ *  7. PAQUETE 4, M6 (la NOTA DE CRÉDITO DE PROVEEDOR, cuatro migraciones M6.1 a M6.4, sobre el estado que deja M5 con todo arriba): SUBIR (las cuatro tablas, las seis claves foráneas de tres columnas, los CHECK, los índices, las políticas 1, 1, 5 y 1, los
+ *     privilegios exactos, el CHECK de `Operacion` que admite anular una devolución, las tres claves de permiso y un humo como `motor2_app`); BAJAR CON DATOS (las reversas de M6.4, M6.3 y M6.1 ABORTAN cada una por su motivo sin dejar nada a medias; con M6.1
+ *     arriba las reversas de M4.2, M4.1 y M3b FALLAN, enteras y a propósito, con 2BP01; sin filas M6.4 a M6.1 dejan el catálogo como antes de M6); SUBIR OTRA VEZ; el CICLO COMPLETO (M6, M5, M4 y M3 hasta el Paquete 2 y de vuelta hasta M6 arriba) y las
+ *     cuatro reversas idempotentes. Los casos 0 a 6.5 no cambian.
  */
 const RAIZ = join(__dirname, "../../prisma/migrations");
 const ULTIMA_DEL_PAQUETE_2 = "20261015123000_m2_rls_sucursal_venta";
@@ -77,7 +81,7 @@ async function foto() {
     privilegios: await q(`SELECT table_name::text AS tabla, grantee::text AS rol, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'public' AND grantee IN ('motor2_app', 'motor2_plataforma') ORDER BY 1, 2, 3`),
     tipos: await q(`SELECT t.typname::text AS tipo, array_agg(e.enumlabel::text ORDER BY e.enumsortorder) AS valores FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid WHERE t.typnamespace = 'public'::regnamespace GROUP BY 1 ORDER BY 1`),
     disparadores: await q(`SELECT tgrelid::regclass::text AS tabla, tgname::text AS nombre, tgenabled::text AS habilitado, pg_get_triggerdef(oid) AS definicion FROM pg_trigger WHERE NOT tgisinternal ORDER BY 1, 2`),
-    privilegiosDeColumna: await q(`SELECT table_name::text AS tabla, column_name::text AS columna, grantee::text AS rol, privilege_type FROM information_schema.column_privileges WHERE table_schema = 'public' AND grantee IN ('motor2_app', 'motor2_plataforma') AND (table_name LIKE 'FacturaProveedor%' OR table_name IN ('PuntoDeVentaDeProveedor', 'ConceptoDeGasto', 'ImputacionDeGasto', 'ReclasificacionRenglon')) ORDER BY 1, 2, 3, 4`),
+    privilegiosDeColumna: await q(`SELECT table_name::text AS tabla, column_name::text AS columna, grantee::text AS rol, privilege_type FROM information_schema.column_privileges WHERE table_schema = 'public' AND grantee IN ('motor2_app', 'motor2_plataforma') AND (table_name LIKE 'FacturaProveedor%' OR table_name LIKE 'NotaCreditoProveedor%' OR table_name IN ('PuntoDeVentaDeProveedor', 'ConceptoDeGasto', 'ImputacionDeGasto', 'ReclasificacionRenglon')) ORDER BY 1, 2, 3, 4`),
     funciones: await q(`SELECT p.proname::text AS nombre, pg_get_functiondef(p.oid) AS definicion FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace ORDER BY 1`),
   };
 }
@@ -501,5 +505,278 @@ describe("M5: subir, bajar y subir (`ReclasificacionRenglon`) sobre el estado qu
     for (const k of Object.keys(antesDeM5) as (keyof typeof antesDeM5)[]) expect(abajo[k], `catálogo «${k}» igual que antes de M5`).toEqual(antesDeM5[k]);
     await correr(M5, "migration.sql");
     await comprobarArribaM5("tercera subida de M5");
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// PAQUETE 4, M6 (la nota de crédito de proveedor, M6.1 a M6.4): sigue en el MISMO archivo para reutilizar la base temporal, la foto del catálogo y los ayudantes, y parte del estado que dejó el último caso de M5 (todo arriba, con datos de humo).
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+const M6_1 = "20261018100000_nota_credito_proveedor";
+const M6_2 = "20261018101000_rls_sucursal_nota_credito_proveedor_imputacion";
+const M6_3 = "20261018102000_anulacion_coherente_admite_devolucion";
+const M6_4 = "20261018103000_permisos_notas_de_credito";
+const SUBIDA_M6 = [M6_1, M6_2, M6_3, M6_4];
+/** La reversa va en orden inverso: las claves, el CHECK de `Operacion`, las políticas y las tablas. */
+const BAJADA_M6 = [M6_4, M6_3, M6_2, M6_1];
+const TABLAS_M6 = ["NotaCreditoProveedor", "NotaCreditoProveedorLinea", "NotaCreditoProveedorImputacion", "NotaCreditoProveedorTributo"];
+const CLAVES_M6 = clavesReservadasDe(M6_4);
+/** Las seis claves foráneas de TRES columnas de M6.1 (la nota es del proveedor de su factura; la línea, del tipo y de la factura de su nota, de un renglón de ESA factura y de su naturaleza; la imputación, de una línea que admite devolución). */
+const FK_DE_TRES_COLUMNAS_M6 = [
+  "NotaCreditoProveedor_factura_fkey", "NotaCreditoProveedorLinea_nota_tipo_fkey", "NotaCreditoProveedorLinea_nota_factura_fkey", "NotaCreditoProveedorLinea_renglon_factura_fkey", "NotaCreditoProveedorLinea_renglon_naturaleza_fkey",
+  "NotaCreditoProveedorImputacion_linea_fkey",
+];
+const CHECKS_M6: Readonly<Record<string, readonly string[]>> = {
+  NotaCreditoProveedor: ["anulacion_pareo", "condicion_iva_empresa", "desglose_dentro_del_total", "desglose_no_negativo", "desglose_pareo", "estado", "importe_total_positivo", "letra", "motivo", "motivo_anulacion", "nro", "origen", "tipo"],
+  NotaCreditoProveedorLinea: ["admite_devolucion", "alicuota_iva", "alicuota_sin_iva", "desglose_no_negativo", "desglose_pareo", "importe_positivo", "iva_computable", "naturaleza", "neto_mas_iva", "orden", "pareo_suelta", "referencia", "tipo_de_costo", "tipo_nota"],
+  NotaCreditoProveedorImputacion: ["cantidad_positiva", "devolucion", "importe_positivo", "iva_computable"],
+  NotaCreditoProveedorTributo: ["importe_positivo", "tipo"],
+};
+const UNICOS_M6 = [
+  "FacturaProveedor_empresaId_id_proveedorId_key", "FacturaProveedorRenglon_empresaId_facturaProveedorId_id_key",
+  "NotaCreditoProveedor_claveIdempotencia_key", "NotaCreditoProveedor_empresaId_id_facturaProveedorId_key", "NotaCreditoProveedor_empresaId_id_key", "NotaCreditoProveedor_empresaId_id_tipo_key", "NotaCreditoProveedor_unica_vigente_key",
+  "NotaCreditoProveedorImputacion_devolucion_key", "NotaCreditoProveedorImputacion_empresaId_id_key", "NotaCreditoProveedorImputacion_linea_sucursal_key",
+  "NotaCreditoProveedorLinea_empresaId_id_admiteDevolucion_key", "NotaCreditoProveedorLinea_empresaId_id_key", "NotaCreditoProveedorLinea_notaCreditoProveedorId_orden_key", "NotaCreditoProveedorTributo_empresaId_id_key",
+];
+const COLUMNAS_ACTUALIZABLES_DE_LA_NOTA = ["anuladaEn", "anuladaPorId", "motivoAnulacion", "recibidaEnAdministracionEn"];
+
+const insertarNotaDelHumo = (id: string, numero: string, extra: { proveedor?: string; tipo?: "SOBRE_FACTURA" | "SUELTA" } = {}) => {
+  const sobreFactura = (extra.tipo ?? "SOBRE_FACTURA") === "SOBRE_FACTURA";
+  return `INSERT INTO "NotaCreditoProveedor" ("id","proveedorId","tipo","facturaProveedorId","nroComprobante","nroComprobanteNormalizado","fecha","importeTotal","motivo","claveIdempotencia","payloadHash","resultadoMensaje","creadoPorId")
+   VALUES ('${id}','${extra.proveedor ?? "prov_m4"}','${extra.tipo ?? "SOBRE_FACTURA"}',${sobreFactura ? "'fact_humo'" : "NULL"},'${numero}','${numero}','2026-09-10T15:00:00Z',100.00,'Rotura','clave_${id}','huella','Registrada.','u_m4')`;
+};
+const insertarLineaDelHumo = (id: string, nota: string, orden: number, extra: { renglon?: string; naturaleza?: string; tipoNota?: string } = {}) =>
+  `INSERT INTO "NotaCreditoProveedorLinea" ("id","notaCreditoProveedorId","tipoNota","facturaProveedorId","orden","facturaProveedorRenglonId","naturaleza","admiteDevolucion","origenImporte","importe")
+   VALUES ('${id}','${nota}','${extra.tipoNota ?? "SOBRE_FACTURA"}','fact_humo',${orden},'${extra.renglon ?? "ren_merc"}','${extra.naturaleza ?? "MERCADERIA"}',${(extra.naturaleza ?? "MERCADERIA") === "MERCADERIA"},'RENGLON',50.00)`;
+const insertarImputacionDeLaNota = (id: string, linea: string, sucursal: string, devolucion?: string) =>
+  `INSERT INTO "NotaCreditoProveedorImputacion" ("id","notaCreditoProveedorLineaId","lineaAdmiteDevolucion","sucursalId","importe"${devolucion ? ',"cantidadStock","operacionDevolucionId"' : ""}) VALUES ('${id}','${linea}',true,'${sucursal}',50.00${devolucion ? `,2,'${devolucion}'` : ""})`;
+const insertarOperacionDelHumo = (id: string, proceso: string, extra = "", empresa?: string) =>
+  `INSERT INTO "Operacion" (${empresa ? '"empresaId",' : ""}"id","sucursalId","fecha","usuarioId","proceso") VALUES (${empresa ? `'${empresa}',` : ""}'${id}','suc_a',now(),'u_m4','${proceso}')${extra}`;
+
+/** Sacar, como dueño, todo lo que cuelga de las notas (hijas primero): sus claves foráneas son RESTRICT y frenarían el borrado de un renglón, de una factura o de una `Operacion`. */
+const vaciarLasNotas = async () => {
+  for (const tabla of ["NotaCreditoProveedorImputacion", "NotaCreditoProveedorTributo", "NotaCreditoProveedorLinea", "NotaCreditoProveedor"]) await base.cliente.query(`DELETE FROM "${tabla}"`);
+};
+
+/** Las comprobaciones de «M6 aplicada» (el humo corre en transacciones que se deshacen: no deja ninguna nota). */
+async function comprobarArribaM6(etiqueta: string) {
+  const f = await foto();
+  const conNombre = (lista: Array<Record<string, unknown>>, campo: string) => lista.map((x) => String(x[campo]));
+
+  // M6.1: las cuatro tablas con RLS sin FORCE, las columnas de dinero y las claves foráneas, los CHECK y los índices.
+  for (const t of TABLAS_M6) expect(f.rls.find((r) => r.tabla === t), `${etiqueta}: ${t} con RLS y sin FORCE`).toEqual({ tabla: t, rls: true, forzado: false });
+  expect(f.columnas.filter((c) => TABLAS_M6.includes(String(c.tabla)) && /double|real|money/.test(String(c.data_type))), `${etiqueta}: ninguna columna de punto flotante`).toEqual([]);
+  expect(f.columnas.filter((c) => c.tabla === "NotaCreditoProveedorImputacion" && c.columna === "cantidadStock").map((c) => [c.numeric_precision, c.numeric_scale]), `${etiqueta}: la cantidad es NUMERIC(14,4)`).toEqual([[14, 4]]);
+  for (const nombre of FK_DE_TRES_COLUMNAS_M6) {
+    const r = f.restricciones.find((x) => x.nombre === nombre);
+    expect(r, `${etiqueta}: existe la clave foránea ${nombre}`).toBeDefined();
+    expect(String(r!.definicion), `${etiqueta}: ${nombre} con tres columnas, ON UPDATE y ON DELETE RESTRICT`).toMatch(/^FOREIGN KEY \(("[A-Za-z]+"|[a-z]+), ("[A-Za-z]+"|[a-z]+), ("[A-Za-z]+"|[a-z]+)\) .* ON UPDATE RESTRICT ON DELETE RESTRICT$/);
+  }
+  for (const tabla of TABLAS_M6) {
+    const checks = f.restricciones.filter((r) => r.tabla === `"${tabla}"` && r.contype === "c");
+    expect(conNombre(checks, "nombre").sort(), `${etiqueta}: los CHECK de ${tabla}`).toEqual(CHECKS_M6[tabla]!.map((c) => `${tabla}_${c}_chk`).sort());
+    expect(checks.every((c) => c.convalidated), `${etiqueta}: los CHECK de ${tabla} validados`).toBe(true);
+  }
+  for (const nombre of UNICOS_M6) {
+    const i = f.indices.find((x) => x.nombre === nombre);
+    expect(i, `${etiqueta}: existe el índice único ${nombre}`).toBeDefined();
+    expect(String(i!.indexdef), `${etiqueta}: ${nombre}`).toMatch(/^CREATE UNIQUE INDEX/);
+  }
+  expect(String(f.indices.find((x) => x.nombre === "NotaCreditoProveedor_unica_vigente_key")!.indexdef), `${etiqueta}: el único del número es PARCIAL (solo las vigentes) e incluye la letra`).toMatch(/COALESCE\(letra, ''::text\), "nroComprobanteNormalizado"\) WHERE \("anuladaEn" IS NULL\)$/);
+
+  // M6.2: las cuatro políticas de sucursal de la imputación (y solo ella), las demás tablas de la nota con la política de empresa.
+  for (const t of ["NotaCreditoProveedor", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo"]) expect(f.politicas.filter((p) => p.tabla === t).map((p) => p.nombre), `${etiqueta}: ${t}, solo con la política de empresa`).toEqual(["aislamiento_empresa"]);
+  const deAlcance = f.politicas.filter((p) => String(p.nombre).startsWith("alcance_sucursal_"));
+  const deLaImputacion = deAlcance.filter((p) => p.tabla === "NotaCreditoProveedorImputacion");
+  expect(f.politicas.filter((p) => p.tabla === "NotaCreditoProveedorImputacion"), `${etiqueta}: 5 políticas en la imputación (la de empresa y las 4 de sucursal)`).toHaveLength(5);
+  expect(deLaImputacion.map((p) => p.cmd).sort(), `${etiqueta}: 4 políticas de sucursal en la imputación`).toEqual(["DELETE", "INSERT", "SELECT", "UPDATE"]);
+  for (const p of deLaImputacion) expect([p.permissive, p.roles], `${etiqueta}: ${p.nombre} RESTRICTIVE para motor2_app`).toEqual(["RESTRICTIVE", "{motor2_app}"]);
+  expect(deAlcance, `${etiqueta}: 128 del Paquete 1 + 4 de Venta + 4 de la parte + 4 de la imputación del gasto + 4 de la imputación de la nota`).toHaveLength(TABLAS_DEL_PAQUETE_1.length * COMANDOS_CON_POLITICA_DE_ALCANCE.length + 16);
+
+  // Privilegios exactos: SELECT e INSERT en las cuatro; en la cabecera, UPDATE por columna solo de la anulación y la recepción; nada para motor2_plataforma.
+  for (const t of TABLAS_M6) expect(f.privilegios.filter((p) => p.tabla === t), `${etiqueta}: ${t}: solo se agrega`).toEqual([{ tabla: t, rol: "motor2_app", privilege_type: "INSERT" }, { tabla: t, rol: "motor2_app", privilege_type: "SELECT" }]);
+  expect(f.privilegiosDeColumna.filter((p) => String(p.tabla).startsWith("NotaCreditoProveedor") && p.privilege_type === "UPDATE").map((p) => `${p.tabla}.${p.columna}`).sort(), `${etiqueta}: UPDATE por columna, solo de la anulación y la recepción en la cabecera`).toEqual(
+    COLUMNAS_ACTUALIZABLES_DE_LA_NOTA.map((c) => `NotaCreditoProveedor.${c}`).sort(),
+  );
+
+  // M6.3: el CHECK de Operacion admite anular una devolución a proveedor.
+  const anulacion = f.restricciones.find((x) => x.nombre === "Operacion_anulacion_coherente_chk")!;
+  expect([anulacion.contype, anulacion.convalidated], `${etiqueta}: la regla de anulación de Operacion, un CHECK validado`).toEqual(["c", true]);
+  expect(String(anulacion.definicion), `${etiqueta}: la anulación admite DEVOLUCION_PROVEEDOR`).toContain("DEVOLUCION_PROVEEDOR");
+
+  // M6.4: las tres claves, el admin con tres y nadie más.
+  expect((await q<{ clave: string }>(`SELECT "clave" FROM "Accion" WHERE "clave" = ANY($1) ORDER BY 1`, [CLAVES_M6])).map((a) => a.clave), `${etiqueta}: las tres claves existen`).toEqual(CLAVES_M6);
+  expect(await q(`SELECT DISTINCT "rolId" FROM "PermisoRol" WHERE "accionClave" = ANY($1) ORDER BY 1`, [CLAVES_M6]), `${etiqueta}: solo el admin tiene alguna`).toEqual([{ rolId: "rol_admin_m4" }]);
+  expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "PermisoRol" WHERE "accionClave" = ANY($1)`, [CLAVES_M6]))[0]!.n), `${etiqueta}: tres filas del admin`).toBe(3);
+
+  // Los datos del humo: se vuelven a sembrar como dueño (una reversa anterior pudo haberlos sacado), con las tablas de M6 y de M5 vacías primero (sus claves foráneas frenarían el borrado).
+  const c = base.cliente;
+  await vaciarLasNotas();
+  for (const tabla of ["ReclasificacionRenglon", "ImputacionDeGasto", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedor", "ConceptoDeGasto"]) await c.query(`DELETE FROM "${tabla}"`);
+  await c.query(`INSERT INTO "Proveedor" ("id","empresaId","codigo","nombre") VALUES ('prov_otro_m6',$1,'PRV_M6','Otro proveedor') ON CONFLICT ("id") DO NOTHING`, [E]);
+  await c.query(insertarFactura("fact_humo", E));
+  await c.query(insertarConcepto("con_humo", "ALQUILER", E));
+  await c.query(insertarRenglonSinStock("ren_humo", "fact_humo", "con_humo", 1, E));
+  await c.query(`INSERT INTO "FacturaProveedorRenglon" ("empresaId","id","facturaProveedorId","orden","naturaleza","productoId","cantidadStock","precioPorUnidadStock","detalle","precioTotal") VALUES ('${E}','ren_merc','fact_humo',2,'MERCADERIA','pro_m4',1,100,'1 kg',100.00)`);
+
+  // Humo como el rol real de la app, con alcance en la sucursal A (todo dentro de una transacción que se deshace).
+  app ??= await conectarComoApp();
+  await app.query("BEGIN");
+  try {
+    await app.query("SELECT set_config('app.empresa_id', $1, true)", [E]);
+    await app.query("SELECT set_config('app.sucursales_lectura', 'suc_a', true)");
+    await app.query("SELECT set_config('app.sucursales_escritura', 'suc_a', true)");
+    expect(await falla(app, insertarNotaDelHumo("nota_1", "0001-00000001")), `${etiqueta}: cargar una nota sobre la factura anda`).toBeNull();
+    expect(await falla(app, insertarNotaDelHumo("nota_dup", "0001-00000001")), `${etiqueta}: repetir el número vigente da 23505`).toBe("23505");
+    expect(await falla(app, insertarNotaDelHumo("nota_otro", "0001-00000002", { proveedor: "prov_otro_m6" })), `${etiqueta}: una nota de otro proveedor sobre la factura da 23503`).toBe("23503");
+    expect(await falla(app, insertarLineaDelHumo("lin_1", "nota_1", 1)), `${etiqueta}: la línea de mercadería sobre el renglón anda`).toBeNull();
+    expect(await falla(app, insertarLineaDelHumo("lin_sin_stock", "nota_1", 2, { renglon: "ren_humo" })), `${etiqueta}: mercadería sobre un renglón sin stock da 23503`).toBe("23503");
+    expect(await falla(app, insertarLineaDelHumo("lin_suelta", "nota_1", 3, { tipoNota: "SUELTA" })), `${etiqueta}: una línea suelta en una nota con factura da 23514 (el CHECK de la referencia)`).toBe("23514");
+    expect(await falla(app, insertarImputacionDeLaNota("imp_a", "lin_1", "suc_a")), `${etiqueta}: imputar en la propia sucursal anda`).toBeNull();
+    expect(await falla(app, insertarImputacionDeLaNota("imp_b", "lin_1", "suc_b")), `${etiqueta}: imputar en otra sucursal da 42501`).toBe("42501");
+    expect((await app.query(`SELECT id FROM "NotaCreditoProveedorImputacion"`)).rows, `${etiqueta}: con la sucursal A solo se ve su imputación`).toEqual([{ id: "imp_a" }]);
+    expect(await falla(app, insertarOperacionDelHumo("dev_1", "DEVOLUCION_PROVEEDOR")), `${etiqueta}: una devolución a proveedor anda`).toBeNull();
+    expect(await falla(app, `UPDATE "NotaCreditoProveedorImputacion" SET "operacionDevolucionId" = 'dev_1', "cantidadStock" = 2 WHERE id = 'imp_a'`), `${etiqueta}: la imputación no se actualiza (42501)`).toBe("42501");
+    expect(await falla(app, insertarLineaDelHumo("lin_2", "nota_1", 4)), `${etiqueta}: una segunda línea anda`).toBeNull();
+    expect(await falla(app, insertarImputacionDeLaNota("imp_dev", "lin_2", "suc_a", "dev_1")), `${etiqueta}: acreditar la devolución anda`).toBeNull();
+    expect(await falla(app, insertarLineaDelHumo("lin_3", "nota_1", 5)), `${etiqueta}: una tercera línea anda`).toBeNull();
+    expect(await falla(app, insertarImputacionDeLaNota("imp_dev2", "lin_3", "suc_a", "dev_1")), `${etiqueta}: acreditar la MISMA devolución dos veces da 23505`).toBe("23505");
+    expect(await falla(app, `UPDATE "NotaCreditoProveedor" SET "importeTotal" = 1 WHERE id = 'nota_1'`), `${etiqueta}: UPDATE del importe da 42501`).toBe("42501");
+    expect(await falla(app, `DELETE FROM "NotaCreditoProveedor" WHERE id = 'nota_1'`), `${etiqueta}: DELETE de la nota da 42501`).toBe("42501");
+    expect(await falla(app, `UPDATE "FacturaProveedor" SET "proveedorId" = 'prov_otro_m6' WHERE id = 'fact_humo'`), `${etiqueta}: corregir el proveedor de una factura con notas da 23503`).toBe("23503");
+    expect(await falla(app, `UPDATE "NotaCreditoProveedor" SET "anuladaEn" = now(), "anuladaPorId" = 'u_m4', "motivoAnulacion" = 'Cargada por error' WHERE id = 'nota_1' AND "anuladaEn" IS NULL`), `${etiqueta}: anular por columna anda`).toBeNull();
+    expect(await falla(app, `UPDATE "Operacion" SET "anuladaEn" = now(), "anuladaPorId" = 'u_m4', "motivoAnulacion" = 'Cargada por error' WHERE id = 'dev_1'`), `${etiqueta}: anular la devolución anda (M6.3)`).toBeNull();
+    expect(await falla(app, insertarOperacionDelHumo("ajuste_1", "AJUSTE", "; UPDATE \"Operacion\" SET \"anuladaEn\" = now() WHERE id = 'ajuste_1'")), `${etiqueta}: un AJUSTE sigue sin poder anularse (23514)`).toBe("23514");
+  } finally {
+    await app.query("ROLLBACK");
+  }
+  expect([Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "NotaCreditoProveedor"`))[0]!.n), Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "Operacion" WHERE id IN ('dev_1','ajuste_1')`))[0]!.n)], `${etiqueta}: el humo no dejó ninguna fila`).toEqual([0, 0]);
+}
+
+let antesDeM6: Awaited<ReturnType<typeof foto>>;
+let arribaConM6: Awaited<ReturnType<typeof foto>>;
+
+describe("M6: subir, bajar y subir (la nota de crédito de proveedor, M6.1 a M6.4) sobre el estado que deja M5 con todo arriba", () => {
+  it("7.0. las cuatro migraciones existen, son posteriores a M5 y van en orden, avisan que requieren autorización y tienen down.sql; M6.1, M6.3 y M6.4 ABORTAN al bajar; solo M6.2 es de políticas de sucursal; M6.1, M6.3 y M6.4 no nombran políticas de alcance; M6.3 no tiene bloques DO", () => {
+    expect([...SUBIDA_M6].sort()).toEqual(SUBIDA_M6);
+    for (const m of SUBIDA_M6) {
+      expect(m > M5, `${m} es posterior a M5`).toBe(true);
+      expect(sql(m, "migration.sql").split("\n")[0], `${m}: avisa que requiere autorización`).toContain("REQUIERE AUTORIZACIÓN EXPRESA");
+      expect(sql(m, "down.sql").length, `${m}: tiene down.sql`).toBeGreaterThan(0);
+    }
+    for (const m of [M6_1, M6_3, M6_4]) expect(sql(m, "down.sql"), `${m}: la reversa ABORTA con datos`).toMatch(/ABORTA/);
+    expect(MIGRACIONES_DE_POLITICAS_POSTERIORES.map((g) => g.migracion)).toContain(M6_2);
+    for (const m of [M6_1, M6_3, M6_4]) {
+      expect(MIGRACIONES_DE_POLITICAS_POSTERIORES.map((g) => g.migracion), `${m} no es de políticas`).not.toContain(m);
+      for (const archivo of ["migration.sql", "down.sql"] as const) {
+        if (!(archivo === "down.sql" && m === M6_2)) {
+          expect(sql(m, archivo), `${m}/${archivo} no nombra políticas de alcance de sucursal`).not.toContain("alcance_sucursal_");
+          expect(sql(m, archivo), `${m}/${archivo} no nombra el ayudante de alcance`).not.toContain("app_sucursales_");
+        }
+      }
+    }
+    expect(MIGRACIONES_DE_POLITICAS_DE_SUCURSAL.map((g) => g.migracion)).not.toContain(M6_2);
+    expect(TABLAS_DEL_PAQUETE_1).not.toContain("NotaCreditoProveedorImputacion");
+    expect(sql(M6_3, "migration.sql"), "reglas-operacion-movimiento parte el archivo por ';\\n': sin bloques DO").not.toMatch(/\bDO\s+\$\$/);
+  });
+
+  it("7.1. SUBIR: M6.1 a M6.4 sobre M5 con todo arriba dejan las cuatro tablas, las claves foráneas, los CHECK, los índices, las políticas (1, 1, 5 y 1; el total de alcance pasa a +16), los privilegios exactos, el CHECK de Operacion y las tres claves, y andan como motor2_app", async (ctx) => {
+    if (!hayRol) return ctx.skip();
+    antesDeM6 = await foto();
+    for (const t of TABLAS_M6) expect(antesDeM6.rls.find((r) => r.tabla === t), `antes de M6 ${t} no existe`).toBeUndefined();
+    expect(String(antesDeM6.restricciones.find((x) => x.nombre === "Operacion_anulacion_coherente_chk")!.definicion), "antes de M6 la anulación solo admite VENTA y COMPRA").not.toContain("DEVOLUCION_PROVEEDOR");
+    for (const m of SUBIDA_M6) await correr(m, "migration.sql");
+    await comprobarArribaM6("primera subida de M6");
+    arribaConM6 = await foto();
+  });
+
+  it("7.2. BAJAR CON DATOS: las reversas de M6.4, M6.3 y M6.1 ABORTAN cada una por su motivo sin dejar nada a medias; con M6.1 arriba las reversas de M4.2, M4.1 y M3b FALLAN con 2BP01 sin dejar nada a medias; sin filas M6.4 a M6.1 dejan el catálogo como antes de M6", async (ctx) => {
+    if (!hayRol) return ctx.skip();
+    const c = base.cliente;
+    // Datos que solo existen por M6 (escritos por el dueño): una nota con su línea y su imputación, una devolución ANULADA y una clave configurada a mano.
+    await c.query(insertarOperacionDelHumo("dev_m6", "DEVOLUCION_PROVEEDOR", "", E));
+    await c.query(`UPDATE "Operacion" SET "anuladaEn" = now(), "anuladaPorId" = 'u_m4' WHERE id = 'dev_m6'`);
+    await c.query(insertarNotaDelHumo("nota_m6", "0001-00000009").replace('INSERT INTO "NotaCreditoProveedor" (', `INSERT INTO "NotaCreditoProveedor" ("empresaId",`).replace("VALUES (", `VALUES ('${E}',`));
+    await c.query(insertarLineaDelHumo("lin_m6", "nota_m6", 1).replace('INSERT INTO "NotaCreditoProveedorLinea" (', `INSERT INTO "NotaCreditoProveedorLinea" ("empresaId",`).replace("VALUES (", `VALUES ('${E}',`));
+    await c.query(insertarImputacionDeLaNota("imp_m6", "lin_m6", "suc_a", "dev_m6").replace('INSERT INTO "NotaCreditoProveedorImputacion" (', `INSERT INTO "NotaCreditoProveedorImputacion" ("empresaId",`).replace("VALUES (", `VALUES ('${E}',`));
+    await c.query(`UPDATE "PermisoRol" SET "puedeEditar" = false WHERE "rolId" = 'rol_admin_m4' AND "accionClave" = 'gasto_nota_credito'`);
+
+    // 1) Cada reversa ABORTA por su motivo y no deja nada a medias.
+    await expect(correr(M6_4, "down.sql")).rejects.toThrow(/No se puede bajar M6\.4: hay 1 fila/);
+    await expect(correr(M6_3, "down.sql")).rejects.toThrow(/No se puede bajar M6\.3: hay 1 devolución/);
+    await expect(correr(M6_1, "down.sql")).rejects.toThrow(/No se puede bajar M6\.1: la tabla \S+ tiene 1 fila/);
+    const sinTocar = await foto();
+    for (const k of Object.keys(arribaConM6) as (keyof typeof arribaConM6)[]) expect(sinTocar[k], `el aborto no deja nada a medias («${k}»)`).toEqual(arribaConM6[k]);
+    expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "NotaCreditoProveedorImputacion"`))[0]!.n), "la imputación sigue").toBe(1);
+    expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "Accion" WHERE "clave" = ANY($1)`, [CLAVES_M6]))[0]!.n), "las tres claves siguen").toBe(3);
+
+    // 2) Se saca lo escrito a mano y se baja lo de antes de M6 que M6 no bloquea (M5, M4.5, M4.4 y M4.3), sin gastos cargados, para que la que frene las reversas de M4.2, M4.1 y M3b sea la dependencia de M6.1 y no una guarda de datos.
+    await c.query(`UPDATE "PermisoRol" SET "puedeEditar" = true WHERE "rolId" = 'rol_admin_m4' AND "accionClave" = 'gasto_nota_credito'`);
+    await vaciarLasNotas();
+    await c.query(`DELETE FROM "Operacion" WHERE id = 'dev_m6'`);
+    await c.query(`DELETE FROM "ImputacionDeGasto"`);
+    await c.query(`DELETE FROM "FacturaProveedorRenglon" WHERE "naturaleza" = 'SIN_STOCK'`);
+    for (const m of [M5, M4_5, M4_4, M4_3]) await correr(m, "down.sql");
+    const bloqueada = await foto();
+    const dependencia = async (m: string, dependiente: string) => {
+      const error = await correr(m, "down.sql").then(() => null, (e: unknown) => e as { code?: string; detail?: string });
+      expect(error?.code, `con M6.1 arriba la reversa de ${m} falla por dependencia`).toBe("2BP01");
+      expect(error?.detail, `${m}: el dependiente es de M6.1`).toContain(dependiente);
+    };
+    await dependencia(M4_2, "NotaCreditoProveedorLinea_renglon_naturaleza_fkey");
+    await dependencia(M4_1, "NotaCreditoProveedorLinea_empresaId_conceptoGastoId_fkey");
+    await dependencia(M3[1]!, "NotaCreditoProveedorLinea");
+    const intacta = await foto();
+    for (const k of Object.keys(bloqueada) as (keyof typeof bloqueada)[]) expect(intacta[k], `las reversas bloqueadas no dejan nada a medias («${k}»)`).toEqual(bloqueada[k]);
+    // Se vuelve a subir lo que se bajó (M4.3, M4.4, M4.5 y M5): el catálogo es otra vez el de M6 arriba.
+    for (const m of [M4_3, M4_4, M4_5, M5]) await correr(m, "migration.sql");
+    const restaurada = await foto();
+    for (const k of Object.keys(arribaConM6) as (keyof typeof arribaConM6)[]) expect(restaurada[k], `catálogo «${k}» igual que con M6 arriba`).toEqual(arribaConM6[k]);
+
+    // 3) Sin filas ni configuración a mano, M6.4 a M6.1 pasan y el catálogo queda IDÉNTICO al de antes de M6.
+    for (const m of BAJADA_M6) await correr(m, "down.sql");
+    const despues = await foto();
+    for (const k of Object.keys(antesDeM6) as (keyof typeof antesDeM6)[]) expect(despues[k], `catálogo «${k}» igual que antes de M6`).toEqual(antesDeM6[k]);
+    for (const t of TABLAS_M6) expect(await q(`SELECT 1 FROM pg_class WHERE relname = '${t}' AND relnamespace = 'public'::regnamespace`), `sin la tabla ${t}`).toEqual([]);
+    expect(await q(`SELECT 1 FROM "Accion" WHERE "clave" = ANY($1)`, [CLAVES_M6]), "sin las tres claves").toEqual([]);
+  });
+
+  it("7.3. SUBIR OTRA VEZ: las mismas comprobaciones y el catálogo es idéntico al de la primera subida", async (ctx) => {
+    if (!hayRol) return ctx.skip();
+    for (const m of SUBIDA_M6) await correr(m, "migration.sql");
+    for (const t of TABLAS_M6) expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "${t}"`))[0]!.n), `${t} volvió vacía`).toBe(0);
+    await comprobarArribaM6("segunda subida de M6");
+    const otraVez = await foto();
+    for (const k of Object.keys(arribaConM6) as (keyof typeof arribaConM6)[]) expect(otraVez[k], `catálogo «${k}» igual que la primera vez`).toEqual(arribaConM6[k]);
+  });
+
+  it("7.4. EL CICLO COMPLETO: se baja M6, M5, M4.5 a M4.1 y M3e a M3a hasta el Paquete 2 (catálogo idéntico al de entonces) y se sube todo otra vez (M3, M4, M5 y M6) hasta el mismo catálogo con M6 arriba", async (ctx) => {
+    if (!hayRol) return ctx.skip();
+    // Sin notas ni gastos cargados: la reversa de M6.1 y la de M4.2 abortan si los hay, y borrar un renglón con líneas de nota choca con RESTRICT.
+    await vaciarLasNotas();
+    for (const tabla of ["ReclasificacionRenglon", "ImputacionDeGasto"]) await base.cliente.query(`DELETE FROM "${tabla}"`);
+    await base.cliente.query(`DELETE FROM "FacturaProveedorRenglon" WHERE "naturaleza" = 'SIN_STOCK'`);
+    for (const m of [...BAJADA_M6, M5, ...BAJADA]) await correr(m, "down.sql");
+    for (const m of [...M3].reverse()) await correr(m, "down.sql");
+    const abajo = await foto();
+    for (const k of Object.keys(antesDeM3) as (keyof typeof antesDeM3)[]) expect(abajo[k], `catálogo «${k}» igual que antes de M3`).toEqual(antesDeM3[k]);
+    for (const m of [...M3, ...SUBIDA, M5]) await correr(m, "migration.sql");
+    await comprobarArribaM5("ciclo completo, M5");
+    for (const m of SUBIDA_M6) await correr(m, "migration.sql");
+    await comprobarArribaM6("ciclo completo, M6");
+    const otraVez = await foto();
+    for (const k of Object.keys(arribaConM6) as (keyof typeof arribaConM6)[]) expect(otraVez[k], `catálogo «${k}» igual que la primera vez`).toEqual(arribaConM6[k]);
+  });
+
+  it("7.5. Las cuatro reversas son idempotentes (IF EXISTS): bajar dos veces cada una no falla, deja el catálogo de antes de M6, y volver a subir deja todo arriba", async (ctx) => {
+    if (!hayRol) return ctx.skip();
+    await vaciarLasNotas();
+    for (const m of BAJADA_M6) {
+      await correr(m, "down.sql");
+      await correr(m, "down.sql");
+    }
+    const abajo = await foto();
+    for (const k of Object.keys(antesDeM6) as (keyof typeof antesDeM6)[]) expect(abajo[k], `catálogo «${k}» igual que antes de M6`).toEqual(antesDeM6[k]);
+    for (const m of SUBIDA_M6) await correr(m, "migration.sql");
+    await comprobarArribaM6("tercera subida de M6");
   });
 });
