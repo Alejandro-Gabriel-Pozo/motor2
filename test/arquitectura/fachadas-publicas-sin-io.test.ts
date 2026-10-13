@@ -59,6 +59,9 @@ function hallazgosDe(fachada: string): Hallazgo[] {
       senales.disco && "usa el disco",
       senales.serverOnly && "es solo de servidor",
       senales.reactONext && "depende de React/Next",
+      // GO-2b: `node:crypto` en el navegador es `crypto-browserify`, que al cargarse prueba `Function("…")`: la CSP sin `unsafe-eval` lo bloquea en cada pantalla
+      // (`test/e2e/csp-sin-violaciones.spec.ts`). Lo que lo usa va en `public-servidor.ts`.
+      senales.importsDeValor.some((m) => m === "node:crypto" || m === "crypto") && "usa node:crypto (en el cliente, crypto-browserify y su eval)",
     ].filter(Boolean) as string[];
     for (const motivo of motivos) hallazgos.push({ fachada: corto(fachada), archivo: corto(archivo), motivo, via: via || "(directo)" });
     for (const especificador of senales.importsDeValor) {
@@ -79,7 +82,7 @@ describe("las fachadas public.ts no hacen entrada/salida (C16)", () => {
     expect(fachadas.length).toBeGreaterThanOrEqual(8);
   });
 
-  it("ninguna alcanza Prisma, una lectura/escritura de base, red, disco, servidor o React (lo que toca la base va en public-servidor.ts)", () => {
+  it("ninguna alcanza Prisma, una lectura/escritura de base, red, disco, servidor, React o node:crypto (lo que toca la base o el hash va en public-servidor.ts)", () => {
     const hallazgos = fachadas.flatMap(hallazgosDe).map((h) => `${h.fachada}: ${h.archivo} ${h.motivo} — llega por ${h.via}`);
     expect(hallazgos).toEqual([]);
   });

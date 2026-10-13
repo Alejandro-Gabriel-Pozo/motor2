@@ -1,8 +1,8 @@
 import { aplicarDescuentoDeProducto } from "@/core/carta/public";
 import { consumoDeLineaConfigurada, type ConsumoDeOpcionParaVender, type CodigoDeErrorDeConsumo, type OpcionConConsumo } from "@/core/movimientos/public";
+import { huellaDeOpciones } from "@/core/opciones/public-servidor";
 import {
   componerPrecioDeLinea,
-  huellaDeOpciones,
   validarOpcionesElegidas,
   type CodigoDeErrorDeOpciones,
   type CodigoDeErrorDePrecio,

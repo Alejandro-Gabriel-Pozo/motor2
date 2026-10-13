@@ -23,11 +23,11 @@ export { controlarPrecioDeLista, validarAdmisionDeGrupo } from "./validar-config
 export type { AdmisionDeOpcion } from "./validar-configuracion";
 
 // GO-2b (la venta con opciones, ADR-030): las piezas puras que ahora usa la venta desde afuera de `core/opciones/` (`core/pos/linea-configurada.ts`, la lectura de
-// las opciones para vender y el cierre). Para estas ya no rige el aviso de arriba («las consumen hoy solo los tests»): tienen consumidor de producción.
+// las opciones para vender y el cierre). Para estas ya no rige el aviso de arriba («las consumen hoy solo los tests»): tienen consumidor de producción. La huella
+// (`node:crypto`) NO va acá: va en `public-servidor.ts`, porque esta fachada llega al bundle del cliente.
 export { validarOpcionesElegidas } from "./validar-opciones-elegidas";
 export type { CodigoDeErrorDeOpciones, GrupoPermitido, OpcionElegida, OpcionPermitida } from "./validar-opciones-elegidas";
 export { componerPrecioDeLinea } from "./componer-precio-de-linea";
 export type { CodigoDeErrorDePrecio, OpcionParaPrecio } from "./componer-precio-de-linea";
-export { huellaDeOpciones } from "./huella-de-opciones";
 export { versionVigente } from "./version-vigente";
 export type { TipoDeDiferencia } from "./tipos";
