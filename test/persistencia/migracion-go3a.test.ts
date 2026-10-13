@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import { ORIGENES_DE_PRECIO_DE_COMBINACION, entradaConPrecioDeCombinacion, resolverPrecioDeCombinacion } from "../../src/core/opciones/combinaciones";
+import { componerPrecioDeLinea } from "../../src/core/opciones/componer-precio-de-linea";
 import { EMPRESA_DE_PRUEBA_ID } from "../setup/empresa-de-prueba";
 import { sembrarAjeno } from "../setup/factura-proveedor";
 import { cerrarConexiones, conexionComoApp, conexionDelDuenio, intentar } from "../setup/gasto";
@@ -248,7 +250,7 @@ describe("la foto de la combinación vendida", () => {
     // Un origen fuera de la lista rompe los dos CHECK del origen; Postgres informa el primero por nombre.
     expect(await probar(app, foto({ origenPrecio: "OTRO" }))).toEqual(coherente);
     const [lista] = await prismaAdmin.$queryRaw<Array<{ d: string }>>`SELECT pg_get_constraintdef(oid) AS d FROM pg_constraint WHERE conname = 'CombinacionEnLinea_origen_precio_chk'`;
-    expect([...lista!.d.matchAll(/'([A-Z]+)'::text/g)].map((m) => m[1])).toEqual(["ADITIVO", "PROPIO", "GRUPO"]);
+    expect([...lista!.d.matchAll(/'([A-Z]+)'::text/g)].map((m) => m[1]), "paridad con el núcleo").toEqual([...ORIGENES_DE_PRECIO_DE_COMBINACION]);
     expect(await probar(app, foto({ precio: "3800.00" })), "ADITIVO con precio").toEqual(coherente);
     expect(await probar(app, foto({ precioDeSucursal: true })), "ADITIVO de la sucursal").toEqual(coherente);
     expect(await probar(app, foto({ origenPrecio: "PROPIO" })), "PROPIO sin precio").toEqual(coherente);
@@ -275,6 +277,44 @@ describe("la foto de la combinación vendida", () => {
     expect(await probar(app, comb)).toBeNull();
     expect(await probar(app, sentenciaDeCombinacionEnLinea({ cuentaItemId: linea.id, combinacionId: comb.id }, { origenPrecio: "PROPIO", precio: "4700.00" }))).toBeNull();
     expect(await cuantos("OpcionElegidaEnLinea")).toBe(2);
+  });
+
+  it("integración con el núcleo (A1): la foto que sale de `entradaConPrecioDeCombinacion` + `componerPrecioDeLinea` con la tarifa del grupo entra en la base tal cual (MEDIDA «ABSOLUTO P», VARIANTE del eje en 0) junto con su `CombinacionEnLinea`", async () => {
+    const app = await conexionComoApp(undefined, alcanceA());
+    const grupo = sentenciaDeGrupoDePrecio({ nombre: "Café grande", precio: "3800.00" });
+    const comb = combinacion({ opcionEje2Id: e.vacaId, grupoDePrecioId: grupo.id });
+    expect(await probar(app, grupo)).toBeNull();
+    expect(await probar(app, comb)).toBeNull();
+    const precio = resolverPrecioDeCombinacion({ combinacionId: comb.id, activa: true, precio: null, grupo: { grupoDePrecioId: grupo.id, nombre: "Café grande", precio: 3800, activo: true } }, { deLaCombinacion: null, delGrupo: null }, "Café");
+    const base = { versionDeOpcionId: "", cantidad: 1, factorEscala: null, modoPrecio: null, precioAbsoluto: null, diferencia: null } as const;
+    const entrada = {
+      precioBase: 1000,
+      cantidad: 1,
+      opciones: [
+        { ...base, opcionId: e.grandeId, versionDeOpcionId: e.versionDe[e.grandeId]!, nombre: "Grande", tipo: "MEDIDA" as const, modoPrecio: "DIFERENCIA" as const, factorEscala: 1.5, diferencia: { tipo: "MONTO" as const, monto: 100 } },
+        { ...base, opcionId: e.vacaId, versionDeOpcionId: e.versionDe[e.vacaId]!, nombre: "De vaca", tipo: "VARIANTE" as const },
+        { ...base, opcionId: e.azucarId, versionDeOpcionId: e.versionDe[e.azucarId]!, nombre: "Azúcar", tipo: "INCLUIDA" as const },
+      ],
+    };
+    const r = componerPrecioDeLinea(entradaConPrecioDeCombinacion(entrada, precio, [e.grandeId, e.vacaId]));
+    expect(r.ok).toBe(true);
+    if (!r.ok || !precio.ok || precio.origen !== "GRUPO") return;
+    expect(r.precio.precioDeLista).toBe(3800);
+    const linea = await sembrarLineaConOpciones(e.cuentaAId, e, { precioUnitario: r.precio.precioDeLista.toFixed(2) });
+    const nombres: Record<string, [string, string, string]> = { [e.grandeId]: [e.grupoMedidaId, "Tamaño", "Grande"], [e.vacaId]: [e.grupoVarianteId, "Leche", "De vaca"], [e.azucarId]: [e.grupoIncluidaId, "Viene con", "Azúcar"] };
+    for (const d of r.precio.dentroDelPrecio) {
+      const [grupoId, nombreGrupo, nombreOpcion] = nombres[d.opcionId]!;
+      const fila = sentenciaDeFoto(
+        { grupoVarianteId: grupoId, vacaId: d.opcionId, versionDe: e.versionDe, cuentaItemId: linea.id },
+        { tipoGrupo: d.tipo, nombreGrupo, nombreOpcion, cantidad: d.cantidad, modoPrecio: d.modoPrecio, tipoDeDiferencia: d.tipoDeDiferencia, porcentaje: d.porcentaje, importeUnitario: d.importeUnitario.toFixed(2), precioDeSucursal: d.precioDeSucursal, factorEscala: d.factorEscala === null ? null : d.factorEscala.toFixed(4) },
+      );
+      expect(await probar(app, fila), d.opcionId).toBeNull();
+    }
+    expect(
+      await probar(app, sentenciaDeCombinacionEnLinea({ cuentaItemId: linea.id, combinacionId: comb.id }, { origenPrecio: precio.origen, precio: precio.precio.toFixed(2), precioDeSucursal: precio.precioDeSucursal, grupoDePrecioId: precio.grupoDePrecioId, nombreGrupoDePrecio: precio.nombreGrupoDePrecio })),
+    ).toBeNull();
+    const medida = await prismaAdmin.opcionElegidaEnLinea.findFirstOrThrow({ where: { cuentaItemId: linea.id, tipoGrupo: "MEDIDA" } });
+    expect([medida.modoPrecio, medida.importeUnitario.toFixed(2), medida.tipoDeDiferencia]).toEqual(["ABSOLUTO", "3800.00", null]);
   });
 
   it("la cascada del borrador: como motor2_app, borrar el borrador de la línea borra su foto aunque la app no tenga DELETE sobre ella; la foto no se cambia", async () => {
