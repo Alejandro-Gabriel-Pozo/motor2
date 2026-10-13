@@ -1,7 +1,9 @@
 import "server-only";
-import type { DiferenciaDePrecio, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
-import { cargarGrupoDeOpciones, listarGruposDeOpciones } from "@/server/lecturas/catalogo/opciones-de-venta";
+import type { DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import { resumenDePrecios, type ResumenDePrecios } from "@/core/pos/public";
+import { cargarAdmisionDeProducto, cargarGrupoDeOpciones, listarGruposDeOpciones } from "@/server/lecturas/catalogo/opciones-de-venta";
 import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
+import { cargarOpcionesParaVender, completarPreciosDeSucursal } from "@/server/lecturas/opciones/opciones-para-vender";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -163,4 +165,113 @@ const SIN_NOMBRE = "alguien sin nombre cargado";
 /** La diferencia de una versión leída (MONTO o PORCENTAJE; la base guarda uno solo, el otro en NULL). */
 function diferenciaDe(v: { tipoDeDiferencia: string; diferenciaPrecio: number | null; porcentaje: number | null }): DiferenciaDePrecio {
   return v.tipoDeDiferencia === "PORCENTAJE" ? { tipo: "PORCENTAJE", porcentaje: v.porcentaje ?? 0 } : { tipo: "MONTO", monto: v.diferenciaPrecio ?? 0 };
+}
+
+// ───────────────────────────── GO-2d paso 4: lo que admite un producto ─────────────────────────────
+
+/** Una opción de un grupo vista desde un producto: su fila de admisión (o `null` si el producto todavía no la admite) y la diferencia de la opción, la que rige si el producto no pone la suya. */
+export interface OpcionAdmitidaDelPanel {
+  opcionId: string;
+  nombre: string;
+  activaEnEmpresa: boolean;
+  esNinguna: boolean;
+  /** La diferencia del cambio de precio vigente de la opción (`null` si no tiene ninguno cargado). */
+  diferenciaDeLaOpcion: DiferenciaDePrecio | null;
+  fila: { version: number; cantidadMaxima: number; precioAbsoluto: number | null; diferencia: DiferenciaDePrecio | null; activo: boolean } | null;
+}
+
+export interface GrupoAdmitidoDelPanel {
+  grupoId: string;
+  nombre: string;
+  tipo: TipoDeGrupoDeOpciones;
+  activoEnEmpresa: boolean;
+  cantidadMinimaDelGrupo: number;
+  cantidadMaximaDelGrupo: number;
+  /** La fila de `ProductoAdmiteGrupo` (con su `version`, la esperada de la próxima edición). */
+  fila: { version: number; orden: number; cantidadMinima: number | null; cantidadMaxima: number | null; modoPrecio: ModoDePrecioDeMedida | null; activo: boolean };
+  opciones: OpcionAdmitidaDelPanel[];
+}
+
+export interface OpcionesDelProductoDelPanel {
+  producto: { id: string; nombre: string; tipo: "MP" | "PV"; esAnclaDeAdicional: boolean };
+  /** Los grupos que el producto tiene asignados (activos o no en el producto), en su orden. */
+  admitidos: GrupoAdmitidoDelPanel[];
+  /** Los grupos prendidos de la empresa que el producto todavía no tiene: los que ofrece «Agregar grupo», con sus opciones prendidas y el máximo del grupo. */
+  paraAgregar: { grupoId: string; nombre: string; tipo: TipoDeGrupoDeOpciones; cantidadMaxima: number; opcionIds: string[] }[];
+  /** «Así se cobra en la sucursal»: el resumen de precios calculado por el servidor con la misma regla que la venta (precio de lista, sin descuentos). */
+  vistaPrevia: ResumenDePrecios;
+  /** El precio base del producto en la sucursal activa (precio local vigente o el de venta). */
+  precioBase: number;
+}
+
+const diferenciaDeFila = (tipo: string | null, monto: number | null, porcentaje: number | null): DiferenciaDePrecio | null =>
+  tipo === "MONTO" && monto !== null ? { tipo: "MONTO", monto } : tipo === "PORCENTAJE" && porcentaje !== null ? { tipo: "PORCENTAJE", porcentaje } : null;
+
+/**
+ * Lo que admite UN producto, para su ficha (solo leer) y para `/catalogo/productos/[id]/opciones` (editar): sus filas de admisión con su `version` (la lectura de GO-2a,
+ * `cargarAdmisionDeProducto`), el catálogo de grupos de la empresa (para ofrecer los que faltan y mostrar la diferencia de cada opción) y la VISTA PREVIA de precios en la sucursal
+ * activa, que calcula el servidor con la lectura de la venta (`cargarOpcionesParaVender` y la grilla de la sucursal) y `resumenDePrecios`. `null` si el producto no existe o es de
+ * otra empresa (la RLS no lo deja ver).
+ */
+export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucursalId: string): Promise<OpcionesDelProductoDelPanel | null> {
+  const producto = await db.producto.findFirst({ where: { id: productoId }, select: { id: true, nombre: true, tipo: true, precioVenta: true, opcionQueRespalda: { select: { id: true } } } });
+  if (!producto) return null;
+  const [filas, catalogo, paraVender, locales] = await Promise.all([
+    cargarAdmisionDeProducto(db, productoId),
+    listarGruposDeOpciones(db, { incluirInactivos: true }),
+    cargarOpcionesParaVender(db, { sucursalId, productoIds: [productoId] }),
+    preciosLocalesVigentes(sucursalId, db, [productoId]),
+  ]);
+  const precioBase = locales.get(productoId)?.precio ?? Number(producto.precioVenta);
+  // La grilla de la sucursal, para TODAS las medidas en precio propio del producto (la vista previa muestra cada tamaño).
+  const delProducto = paraVender.get(productoId);
+  const medidas = (delProducto?.grupos ?? []).filter((g) => g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO").flatMap((g) => g.opciones.map((o) => o.opcionId));
+  const conGrilla = delProducto && medidas.length ? await completarPreciosDeSucursal(db, sucursalId, paraVender, [{ productoId, opcionIds: medidas }]) : paraVender;
+  const vistaPrevia = resumenDePrecios({ grupos: conGrilla.get(productoId)?.grupos ?? [], precioBase, descuentoDeProducto: null });
+
+  const porGrupo = new Map(catalogo.map((g) => [g.id, g]));
+  const admitidos: GrupoAdmitidoDelPanel[] = filas.flatMap((f) => {
+    const g = porGrupo.get(f.grupoId);
+    if (!g) return [];
+    const filaDeOpcion = new Map(f.opciones.map((o) => [o.opcionId, o]));
+    return [
+      {
+        grupoId: g.id,
+        nombre: g.nombre,
+        tipo: g.tipo as TipoDeGrupoDeOpciones,
+        activoEnEmpresa: g.activo,
+        cantidadMinimaDelGrupo: g.cantidadMinima,
+        cantidadMaximaDelGrupo: g.cantidadMaxima,
+        fila: { version: f.version, orden: f.orden, cantidadMinima: f.cantidadMinima, cantidadMaxima: f.cantidadMaxima, modoPrecio: f.modoPrecio as ModoDePrecioDeMedida | null, activo: f.activo },
+        opciones: g.opciones.map((o) => {
+          const fo = filaDeOpcion.get(o.id);
+          return {
+            opcionId: o.id,
+            nombre: o.nombre,
+            activaEnEmpresa: o.activa,
+            esNinguna: o.esNinguna,
+            diferenciaDeLaOpcion: o.vigente ? diferenciaDeFila(o.vigente.tipoDeDiferencia, o.vigente.diferenciaPrecio, o.vigente.porcentaje) : null,
+            fila: fo ? { version: fo.version, cantidadMaxima: fo.cantidadMaxima, precioAbsoluto: fo.precioAbsoluto, diferencia: diferenciaDeFila(fo.tipoDeDiferencia, fo.diferenciaPrecio, fo.porcentaje), activo: fo.activo } : null,
+          };
+        }),
+      },
+    ];
+  });
+  const yaAsignados = new Set(filas.map((f) => f.grupoId));
+  return {
+    producto: { id: producto.id, nombre: producto.nombre, tipo: producto.tipo, esAnclaDeAdicional: producto.opcionQueRespalda !== null },
+    admitidos,
+    paraAgregar: catalogo
+      .filter((g) => g.activo && !yaAsignados.has(g.id))
+      .map((g) => ({ grupoId: g.id, nombre: g.nombre, tipo: g.tipo as TipoDeGrupoDeOpciones, cantidadMaxima: g.cantidadMaxima, opcionIds: g.opciones.filter((o) => o.activa && o.vigente).map((o) => o.id) })),
+    vistaPrevia,
+    precioBase,
+  };
+}
+
+/** Para la lista de productos: cuántos grupos de opciones tiene asignados (activos) cada producto. Un solo agregado. */
+export async function contarGruposDeOpcionesPorProducto(db: Db, productoIds: readonly string[]): Promise<Map<string, number>> {
+  if (productoIds.length === 0) return new Map();
+  const filas = await db.productoAdmiteGrupo.groupBy({ by: ["productoId"], where: { productoId: { in: [...productoIds] }, activo: true, grupo: { activo: true } }, _count: { _all: true } });
+  return new Map(filas.map((f) => [f.productoId, f._count._all]));
 }

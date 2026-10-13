@@ -214,4 +214,6 @@ export const SIN_MARCA_PROPIA: Readonly<Record<string, string>> = {
   "consulta|consultas/reportes/vencimientos.ts|generarConciliacionVencimientos": "concilia lotes vencidos o por vencer; el mundo no siembra un lote vencido, así que es vacío",
   "consulta|consultas/reportes/ventas-sin-receta.ts|generarReporteVentasSinReceta": "lista PV vendidos sin receta; el mundo vende una MP, así que es vacío",
   "consulta|consultas/stock/stock-minimo.ts|resolverStockMinimo": "devuelve solo el mínimo (un número)",
+  // GO-2d.
+  "consulta|consultas/catalogo/opciones-de-venta.ts|contarGruposDeOpcionesPorProducto": "devuelve solo cuántos grupos de opciones tiene cada producto que se le pasa (repite sus ids, que no cuentan como propios)",
 };

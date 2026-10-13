@@ -18,6 +18,8 @@ const PAGINAS_DE_EDICION = [
   { pagina: "catalogo/productos/nuevo/page.tsx", clave: "alta_producto" },
   { pagina: "catalogo/proveedores/[id]/editar/page.tsx", clave: "proveedores" },
   { pagina: "catalogo/proveedores/nuevo/page.tsx", clave: "proveedor_alta" },
+  // GO-2d: lo que admite un producto se edita en su propia página, con la clave de Editar de las opciones del producto.
+  { pagina: "catalogo/productos/[id]/opciones/page.tsx", clave: "producto_opciones_admitidas" },
 ];
 
 describe("páginas de edición: exigen el permiso de Editar en el servidor", () => {
