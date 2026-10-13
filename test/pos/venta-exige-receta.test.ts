@@ -12,6 +12,7 @@ import { agregarItemsCasoDeUso } from "../../src/server/actions/pos/casos-de-uso
 import { cerrarCuentaCasoDeUso } from "../../src/server/actions/pos/casos-de-uso/cerrar-cuenta";
 import { registrarVentaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta";
 import { volverALaRecetaCentralCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/volver-a-la-receta-central";
+import type { Transaccion } from "../../src/lib/db-tipos";
 
 /**
  * SIN RECETA NO SE VENDE (ADR-033, decisión del dueño del 2026-10-13), contra Postgres real: un PV se vende solo con receta vigente EN LA SUCURSAL (la propia si la tiene habilitada, si no
@@ -194,6 +195,55 @@ describe("cobrar: la barrera final (armarLinea, con la receta que ya lee la vent
 });
 
 describe("concurrencia: volver a la receta central MIENTRAS se cobra la cuenta", () => {
+  it("intercalado forzado: el cierre ya tomó su foto (SERIALIZABLE) cuando la sucursal vuelve a la central y confirma; el cierre sigue con la receta que leyó, o —si Postgres lo hace reintentar— rechaza: nunca vende sin consumo", async () => {
+    const { tarta, masa } = await sembrarTartaDeLaCasa(s.sucursalId);
+    const cuentaId = await cuentaEnviadaCon(tarta.id);
+    const base = baseDe(s.sucursalId);
+    let avisarFoto!: () => void;
+    const fotoTomada = new Promise<void>((r) => (avisarFoto = r));
+    let soltar!: () => void;
+    const suelto = new Promise<void>((r) => (soltar = r));
+    let intentos = 0;
+    // La primera consulta de la transacción fija su foto; en el PRIMER intento el cierre espera ahí hasta que «volver a la central» confirmó.
+    const transaccion: Transaccion = Object.assign(
+      <T,>(fn: (tx: Parameters<Parameters<Transaccion>[0]>[0]) => Promise<T>, opciones?: Parameters<Transaccion>[1]) =>
+        base.transaccion(async (tx) => {
+          intentos++;
+          await tx.recetaSucursal.findMany({ where: { productoId: tarta.id }, select: { habilitada: true } });
+          if (intentos === 1) {
+            avisarFoto();
+            await suelto;
+          }
+          return fn(tx);
+        }, opciones),
+      { aleatorio: () => 0 }
+    );
+    const cierre = cerrarCuentaCasoDeUso({ ...actor(), transaccion }, { cuentaId });
+    await fotoTomada;
+    expect((await volverALaRecetaCentralCasoDeUso(actor(), { productoId: tarta.id })).ok).toBe(true);
+    soltar();
+    const r = await cierre;
+
+    const ventas = await prisma.operacion.findMany({ where: { proceso: "VENTA" }, include: { movimientos: true } });
+    const cuenta = await prisma.cuenta.findUniqueOrThrow({ where: { id: cuentaId } });
+    if (r.ok) {
+      // La foto era la de antes de volver a la central: vende con la receta propia, CON su consumo.
+      expect(ventas).toHaveLength(1);
+      expect(ventas[0]!.movimientos.map((m) => [m.proceso, m.productoId]).sort()).toEqual([
+        ["CONSUMO", masa.id],
+        ["VENTA", tarta.id],
+      ]);
+      expect(cuenta.cerradaEn).not.toBeNull();
+    } else {
+      // Si el conflicto lo hizo reintentar, el reintento ve la receta deshabilitada y rechaza sin escribir.
+      expect(intentos).toBeGreaterThan(1);
+      expect(r).toEqual({ ok: false, codigo: "PRODUCTO_SIN_RECETA", mensaje: sinReceta("Tarta de la casa") });
+      expect(ventas).toEqual([]);
+      expect(cuenta.cerradaEn).toBeNull();
+    }
+    expect((await prisma.recetaSucursal.findFirstOrThrow({ where: { productoId: tarta.id } })).habilitada).toBe(false);
+  });
+
   it("o vende con la receta que leyó (con su CONSUMO) o rechaza sin escribir: nunca una venta sin consumo ni una cuenta cerrada sin venta (varias vueltas, Postgres real)", async () => {
     const { tarta, masa } = await sembrarTartaDeLaCasa(s.sucursalId);
     const desenlaces = new Set<string>();
