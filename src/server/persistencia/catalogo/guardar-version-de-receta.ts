@@ -26,13 +26,15 @@ export interface ProductoParaReceta {
   nombre: string;
   tipo: string;
   seProduce: boolean;
+  /** GO-2a: es el producto ANCLA de una opción adicional (`OpcionDeGrupo.productoId`): no lleva receta, su consumo es el de la opción. Inmutable (la app no tiene UPDATE del ancla). */
+  esAnclaDeAdicional: boolean;
 }
 
 /** `null` si el producto no existe. Corre FUERA de la transacción (ver el docstring del archivo). */
 export async function cargarProductoParaReceta(db: Prisma.TransactionClient, productoId: string): Promise<ProductoParaReceta | null> {
-  const producto = await db.producto.findUnique({ where: { id: productoId } });
+  const producto = await db.producto.findUnique({ where: { id: productoId }, select: { id: true, nombre: true, tipo: true, seProduce: true, opcionQueRespalda: { select: { id: true } } } });
   if (!producto) return null;
-  return { id: producto.id, nombre: producto.nombre, tipo: producto.tipo, seProduce: producto.seProduce };
+  return { id: producto.id, nombre: producto.nombre, tipo: producto.tipo, seProduce: producto.seProduce, esAnclaDeAdicional: producto.opcionQueRespalda !== null };
 }
 
 /**

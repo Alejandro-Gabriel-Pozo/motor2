@@ -47,6 +47,16 @@ export interface KitDeEmpresa {
   promoCartaId: string;
   recetaVersionId: string;
   recetaIngredienteId: string;
+  /**
+   * Opciones de venta (GO-2a, ADR-030): un PV que admite una MEDIDA con precio propio (la grilla por sucursal), un grupo VARIANTE con una opción, la MEDIDA con su opción y un
+   * ADICIONAL vacío (el alta de una opción con su producto ancla). Todo con versión 1 y con el marcador en el nombre.
+   */
+  productoConOpcionesId: string;
+  grupoDeOpcionesId: string;
+  opcionDeGrupoId: string;
+  grupoMedidaId: string;
+  opcionMedidaId: string;
+  grupoAdicionalId: string;
 }
 
 export interface KitDeSucursal {
@@ -214,6 +224,18 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   // Dos ingredientes: sacar uno solo se rechaza («la receta necesita al menos un ingrediente») y el control positivo de «quitar ingrediente» necesita poder sacar uno.
   await db.recetaIngrediente.create({ data: { id: id("ingrediente-2"), empresaId, recetaVersionId: receta.id, insumoProductoId: mp2.id, cantidad: 1, unidadId: kg.id, observaciones: `ingrediente 2 ${marca}` } });
   await db.recetaPaso.create({ data: { id: id("paso"), empresaId, recetaVersionId: receta.id, orden: 1, nombre: `Paso ${marca}`, instruccion: `Mezclar ${marca}` } });
+  // Opciones de venta (GO-2a). El PV `pv-opciones` no tiene disponibilidad en ninguna sucursal ni receta: solo sirve para lo que admite (y no cambia lo que se vende en el POS).
+  const pvOpciones = await producto("pv-opciones", "PV");
+  const grupoDeOpciones = await db.grupoDeOpciones.create({ data: { id: id("grupo-opciones"), empresaId, nombre: `Leches ${marca}`, tipo: "VARIANTE", cantidadMinima: 0, cantidadMaxima: 1 } });
+  const opcionDeGrupo = await db.opcionDeGrupo.create({ data: { id: id("opcion-de-grupo"), empresaId, grupoId: grupoDeOpciones.id, nombre: `Leche ${marca}`, orden: 1 } });
+  const grupoMedida = await db.grupoDeOpciones.create({ data: { id: id("grupo-medida"), empresaId, nombre: `Tamaño ${marca}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1 } });
+  const opcionMedida = await db.opcionDeGrupo.create({ data: { id: id("opcion-medida"), empresaId, grupoId: grupoMedida.id, nombre: `Grande ${marca}`, orden: 1 } });
+  const grupoAdicional = await db.grupoDeOpciones.create({ data: { id: id("grupo-adicional"), empresaId, nombre: `Extras ${marca}`, tipo: "ADICIONAL", cantidadMinima: 0, cantidadMaxima: 3 } });
+  for (const o of [opcionDeGrupo, opcionMedida]) {
+    await db.versionDeOpcion.create({ data: { id: `${o.id}-v1`, empresaId, opcionId: o.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: 0, creadoPorId: usuarioId } });
+  }
+  await db.productoAdmiteGrupo.create({ data: { id: id("admite-medida"), empresaId, productoId: pvOpciones.id, grupoId: grupoMedida.id, orden: 0, modoPrecio: "ABSOLUTO" } });
+  await db.productoAdmiteOpcion.create({ data: { id: id("admite-grande"), empresaId, productoId: pvOpciones.id, opcionId: opcionMedida.id, precioAbsoluto: 1500 } });
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
   return {
     marca,
@@ -239,6 +261,12 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
     promoCartaId: promo.id,
     recetaVersionId: receta.id,
     recetaIngredienteId: ingrediente.id,
+    productoConOpcionesId: pvOpciones.id,
+    grupoDeOpcionesId: grupoDeOpciones.id,
+    opcionDeGrupoId: opcionDeGrupo.id,
+    grupoMedidaId: grupoMedida.id,
+    opcionMedidaId: opcionMedida.id,
+    grupoAdicionalId: grupoAdicional.id,
   };
 }
 
@@ -371,6 +399,9 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   await db.sucursalPublica.create({ data: { id: id("publica"), empresaId, sucursalId, slug: id("slug").toLowerCase(), etiqueta: `Etiqueta ${marca}`, publicada: true, posX: 50, posY: 50, posW: 10, posH: 5 } });
   await db.temaCartaSucursal.create({ data: { id: id("tema"), empresaId, sucursalId, valores: { restaurante_nombre: `Restaurante ${marca}` }, aplicarEnCarta: false } });
   await db.capacidadSucursal.create({ data: { id: id("capacidad"), empresaId, accionClave: "carta_tema", sucursalId, habilitado: true } });
+  // Opciones de venta en la sucursal (GO-2a): la medida con precio propio en la grilla (la huella numérica en S2 y E2) y apagada (quien la apagó es el miembro: su id lleva el marcador).
+  await db.precioLocalDeOpcion.create({ data: { id: id("precio-local-opcion"), empresaId, sucursalId, productoId: k.productoConOpcionesId, opcionId: k.opcionMedidaId, precio: huella > 0 ? huella : 1600 } });
+  await db.opcionApagadaEnSucursal.create({ data: { id: id("opcion-apagada"), empresaId, sucursalId, opcionId: k.opcionMedidaId, apagada: true, actualizadoPorId: miembro.id } });
 
   // Una invitación con acceso a esta sucursal y un registro de auditoría de la sucursal.
   const invitacion = await db.invitacion.create({

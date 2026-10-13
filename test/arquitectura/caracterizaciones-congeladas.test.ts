@@ -75,6 +75,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Paquete 3, M3a (O.269; ADITIVO): las claves `compra_repartir` (empresa, piso administrador) y `compra_recibir` (sucursal, piso operario, semilla admin) aparecen en las listas de claves de los usuarios que ya alcanzaban las de su piso. Revisado con `git diff --word-diff`: solo se suman `, compra_repartir` y `, compra_recibir` a esas listas.",
       },
+      {
+        blob: "9d1f55b0166ecb20ae7df03a27eb1a02e044b2fa",
+        // El commit PADRE de este (ac290d8, GO-2a paso 2) es el último antes del cambio; la matriz se regenera en el commit siguiente (GO-2a paso 3).
+        commit: "ac290d8",
+        motivo:
+          "GO-2a paso 3 (ADITIVO; las claves ya estaban en la base desde GO-1a, ahora entran a ACCIONES): `opciones_definir` y `producto_opciones_admitidas` (empresa, piso administrador) y `opcion_apagar_en_sucursal` (sucursal, piso operario, semilla admin) aparecen en las listas de claves de cada bloque y registro. Revisado con `git diff --word-diff` y comparando sin esas tres claves: lo único que queda distinto son 4 líneas de mensajes de denegación del rol «especial» y de «operador + especial», que nombran la ÚLTIMA clave del catálogo que no tienen (`opcion_apagar_en_sucursal` donde decía `compra_recibir`, `producto_opciones_admitidas` donde decía `compra_repartir`): el mismo artefacto del generador que en M.2. Ninguna respuesta de otra clave cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -139,6 +146,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "ceb56f07",
         motivo:
           "Paquete 3, M3a y M3d (O.269 y O.272; ADITIVO): `ACCIONES 125 a 127` por las claves nuevas `compra_repartir` y `compra_recibir` (las recibe el rol admin de cada empresa; el operador las tiene sin Ver ni Editar) y `Empresa.llevaIvaDeCompras=false` en las 28 filas EMPRESA. Revisado con `git diff --word-diff`: solo suman esas cosas.",
+      },
+      {
+        blob: "36d08725faed2122076e8a14b2e5e1752aefbdb4",
+        // El commit PADRE de este (ac290d8, GO-2a paso 2) es el último antes del cambio; la huella se regenera en el commit siguiente (GO-2a paso 3).
+        commit: "ac290d8",
+        motivo:
+          "GO-2a paso 3 (ADITIVO): `ACCIONES 127 a 130` por las tres claves de los grupos de opciones de venta, que entran a ACCIONES (`opciones_definir`, `producto_opciones_admitidas` y `opcion_apagar_en_sucursal`: las recibe el rol admin de cada empresa; el operador las tiene sin Ver ni Editar). Revisado con `git diff --word-diff`: solo se suman esas filas PERMISO y el conteo.",
       },
     ],
   },

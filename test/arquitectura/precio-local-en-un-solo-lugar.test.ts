@@ -101,16 +101,18 @@ describe("precio local: un solo lugar decide cuál rige (capacidad + fila habili
     ).toEqual([]);
   });
 
-  it("ningún archivo fuera de `server/lecturas/catalogo/precio-local.ts` lee `precioLocalDeOpcion.find*` directo (la grilla local de las opciones de venta, GO-1)", () => {
+  // GO-2a: la grilla de las opciones vive en su archivo propio, al lado del de los productos y no adentro: la carta pública alcanza `precio-local.ts` y su guardián
+  // (`carta-publica-lista-cerrada.test.ts`) junta los campos de todo archivo que alcanza, así que la grilla ahí ensancharía la lista cerrada de lo público sin que la carta la use.
+  it("ningún archivo fuera de `server/lecturas/catalogo/precio-local-de-opciones.ts` lee `precioLocalDeOpcion.find*` directo (la grilla local de las opciones de venta, GO-1 y GO-2a)", () => {
     const problemas: string[] = [];
     for (const ruta of rutas) {
       const nombre = relative(RAIZ, ruta).split(sep).join("/");
-      if (nombre === "server/lecturas/catalogo/precio-local.ts") continue;
+      if (nombre === "server/lecturas/catalogo/precio-local-de-opciones.ts") continue;
       for (const linea of lineasQueLeenPrecioLocalDeOpcionDirecto(readFileSync(ruta, "utf8"))) problemas.push(`${nombre}:${linea}`);
     }
     expect(
       problemas,
-      `Estas líneas leen PrecioLocalDeOpcion a mano y se saltan el embudo del precio local (server/lecturas/catalogo/precio-local):\n${problemas.join("\n")}`
+      `Estas líneas leen PrecioLocalDeOpcion a mano y se saltan el embudo del precio local de las opciones (server/lecturas/catalogo/precio-local-de-opciones):\n${problemas.join("\n")}`
     ).toEqual([]);
   });
 

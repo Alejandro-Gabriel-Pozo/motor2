@@ -92,6 +92,12 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
       "fijarRendimientoLocal (Hito 4, H4C-5: antes en server/actions/catalogo/rendimiento-local.ts) lee la línea (RecetaIngrediente) y la versión vigente para VALIDAR que la calibración apunte a la versión actual — no resuelve ningún rendimiento efectivo, escribe el override tal cual.",
   },
   {
+    ruta: "server/actions/catalogo/casos-de-uso/fijar-admision-de-grupo-en-producto.ts",
+    clase: "central",
+    motivo:
+      "GO-2a (aviso S3): al fijar lo que admite un producto, mira si el insumo que REEMPLAZA una opción está en la receta CENTRAL vigente del producto (solo los ids de los ingredientes) para avisar que ahí no reemplaza nada — no lee cantidad ni merma ni resuelve ningún efectivo.",
+  },
+  {
     ruta: "server/actions/catalogo/casos-de-uso/volver-al-rendimiento-central.ts",
     clase: "central",
     motivo:

@@ -30,6 +30,9 @@ const MIGRADOS: { archivo: string; prohibido: Regla[] }[] = [
   { archivo: "server/actions/movimientos/casos-de-uso/guardar-precio-local-en-tx.ts", prohibido: DEL_SERVIDOR },
   { archivo: "server/persistencia/movimientos/precio-local.ts", prohibido: DEL_SERVIDOR },
   { archivo: "core/compras/correccion.ts", prohibido: DEL_SERVIDOR },
+  // GO-2a: los guards del catálogo de opciones de venta y de la sucursal nacen con `core/datos` (importe, porcentaje de diferencia, factor de escala, nombre de catálogo).
+  { archivo: "core/features/catalogo/opciones-de-venta.guard.ts", prohibido: DEL_SERVIDOR },
+  { archivo: "core/features/catalogo/opciones-por-sucursal.guard.ts", prohibido: DEL_SERVIDOR },
   { archivo: "app/(app)/movimientos/precio-local/precio-local-form.tsx", prohibido: DE_PANTALLA },
   { archivo: "app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx", prohibido: DE_PANTALLA },
 ];

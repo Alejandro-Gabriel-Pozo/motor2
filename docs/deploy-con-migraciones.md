@@ -476,6 +476,24 @@ Seis migraciones, cada una con su `down.sql`. **Todas son ADITIVAS**: nueve tabl
 - **Pruebas:** `test/permisos/migracion-permisos-opciones.test.ts` (las tres claves), `test/persistencia/migracion-grupos-de-opciones.test.ts` (estructura, paridad con `src/core/opciones`, reglas, solo agregar, aislamiento entre empresas, versión vigente), `migracion-opciones-por-sucursal.test.ts` y `migracion-linea-con-opciones.test.ts` (los tres disparadores, los CHECK de la línea y de la foto, la cascada, que lo de hoy sigue pasando igual), `test/aislamiento/opciones-rls.test.ts` (RLS entre empresas y sucursales), `test/persistencia/opciones-concurrencia.test.ts` (concurrencia, idempotencia y atomicidad con clientes `pg` reales), `test/persistencia/opciones-dinero.test.ts` (dinero exacto) y los casos 9.0 a 9.5 de `test/aislamiento/paquete-3-m4-subir-bajar-subir.test.ts` (subir, bajar con datos, subir otra vez, independencia y el ciclo completo M3 a GO-1 sobre una base temporal). En el CI los corre el job `Gate (requerido)`.
 - **Si una falla a mitad de `migrate deploy`:** las anteriores quedan aplicadas, la fallida se baja con su `down.sql` (seguro con los `IF EXISTS`) y se corre `migrate resolve --rolled-back`.
 
+## GO-2a: administración del catálogo de opciones de venta (SIN migración)
+
+> Rama `go2a-admin-opciones` (2026-10-13). Modelo y supuestos: `docs/adr/ADR-030-elemento-configurable-grupos-de-opciones.md`, sección «GO-2a».
+
+- **No tiene migración ni toca `prisma/schema.prisma`.** Usa las nueve tablas, los únicos, los CHECK, los GRANT por columna y las políticas por sucursal de GO-1 (ya aplicadas a la base desde el 2026-10-13). El deploy es solo de código.
+- **Las tres claves entran a `ACCIONES`** (`opciones_definir`, `producto_opciones_admitidas`, `opcion_apagar_en_sucursal`). Desde este deploy el ALTA de una empresa nueva se las siembra al `admin` desde `ACCIONES`, como a cualquier clave.
+- **Relleno R-1, CONDICIONAL y que REQUIERE AUTORIZACIÓN EXPRESA:** una empresa dada de alta ENTRE la aplicación de GO-1a (2026-10-13) y este deploy no recibió las tres filas de `PermisoRol` de su admin (el alta siembra desde `ACCIONES` y todavía no estaban ahí). Antes del deploy se mira, en solo lectura:
+
+  ```sql
+  SELECT r."empresaId" FROM "Rol" r WHERE r."clave" = 'admin'
+    AND NOT EXISTS (SELECT 1 FROM "PermisoRol" p WHERE p."rolId" = r."id" AND p."accionClave" = 'opciones_definir');
+  ```
+
+  Si no devuelve filas, no hay nada que hacer. Si devuelve alguna, con autorización expresa del dueño, respaldo en una rama de Neon y como dueño, se vuelve a correr SOLO el segundo `INSERT` de `prisma/migrations/20261020100000_go1a_permisos_de_opciones/migration.sql` (idempotente, `ON CONFLICT DO NOTHING`, no pisa lo que el gerente ya tocó). No es una migración: no se registra en `_prisma_migrations`.
+- **Sin pantallas todavía (GO-2b):** ninguna Server Action nueva la importa un cliente, así que Next no la publica; el deploy no cambia nada visible salvo las tres filas nuevas en la matriz de permisos (las ve quien edita permisos).
+- **Volver atrás:** Instant Rollback del deployment en Vercel (no hay nada que bajar en la base). Las filas que se hayan escrito con la versión nueva (grupos, opciones, admisiones, apagados, grilla) quedan y las sigue leyendo GO-1 sin problema; las claves en la base no se tocan.
+- **Pruebas:** `test/core/opciones/validar-configuracion.test.ts`, `test/core/features/opciones-de-venta-guard.test.ts` y `test/catalogo/opciones-*.test.ts` (grupos, versiones, adicional, admisión, sucursal, lecturas, atomicidad y sus pruebas de concurrencia contra Postgres real). En el CI los corre el job `Gate (requerido)`.
+
 ## Server Actions: clave de cifrado de los closures y versiones entre deploys
 
 > O.3 de la lista de control (`docs/pureza-integracion.md`; Hito 4, bloque D, paso G1 de `docs/plan-hito-4-pureza.md` §4). Solo documentación: no se tocó

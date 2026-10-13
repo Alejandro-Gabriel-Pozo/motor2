@@ -43,6 +43,12 @@ const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
   // S-05 (GT-5, T14, M-3 de la auditoría intermedia): las columnas que cambian el SIGNIFICADO de las cantidades y de la deuda de un producto (el factor y las unidades con que se cuenta, si se
   // produce, y el consignante). No son `Decimal` salvo el factor: la regla de dinero no veía las demás. Toda escritura de una de ellas tiene que tener su cadena de auditoría.
   producto: ["factorConversion", "unidadStockId", "unidadCompraId", "esConsignacion", "proveedorConsignacionId", "seProduce"],
+  // GO-2a (ADR-030): lo que cambia qué se puede elegir y qué se cobra en una venta con opciones sin ser un `Decimal`. Lo que admite un producto y el apagado por sucursal, en cualquier escritura; del
+  // grupo, las cantidades y si está activo; de la opción, si está activa. `versionDeOpcion` y `consumoDeOpcion` NO son «su propia historia»: tienen `Decimal` y su cadena audita (como `RecetaVersion`).
+  productoAdmiteGrupo: "*",
+  opcionApagadaEnSucursal: "*",
+  grupoDeOpciones: ["cantidadMinima", "cantidadMaxima", "activo"],
+  opcionDeGrupo: ["activa"],
 };
 
 /** Modelos cuya fila ES el rastro (un documento propio o un dato de fuente externa): no hay un valor anterior que se pierda al escribirlos. */

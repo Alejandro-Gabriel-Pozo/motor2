@@ -52,6 +52,8 @@ export interface PuertaDeReceta {
 export type CodigoGuardarVersionDeReceta =
   | "PRODUCTO_NO_ENCONTRADO"
   | "PRODUCTO_NO_ELEGIBLE"
+  // GO-2a: el producto es el ancla de un adicional (no lleva receta).
+  | "ES_ANCLA_DE_ADICIONAL"
   | "INGREDIENTES_INVALIDOS"
   | "PASOS_INVALIDOS"
   | "CABECERA_INVALIDA"

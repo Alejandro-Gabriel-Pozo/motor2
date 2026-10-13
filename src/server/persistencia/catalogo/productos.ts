@@ -131,3 +131,20 @@ export async function fijarDisponibilidadEnSucursal(db: Prisma.TransactionClient
     create: { sucursalId: args.sucursalId, productoId: args.productoId, disponible: args.disponible },
   });
 }
+
+/**
+ * GO-2a (D-1, variante A′; ADR-030 §7): el PRODUCTO ANCLA de una opción ADICIONAL, creado DENTRO de la transacción que da de alta la opción (todo o nada). Un PV sin receta, sin
+ * categoría, con factor 1 y SIN FILAS DE DISPONIBILIDAD a propósito (NO se llama a `sembrarDisponibilidadDeProductoNuevo`): queda oculto por la semántica «sin fila = no disponible»
+ * (ADR-009, familia `optin`) y solo se vende como la línea del adicional. El código lo arma el caso de uso (`PV_<6 del azar>`, como `crearConCodigoAutogenerado`); dentro de una
+ * transacción un choque del único no se puede reintentar acá (la transacción quedó abortada): lo reintenta entera `conTransaccionSerializable` con `tambienChoqueDeUnico`, con otro código.
+ * El alta se audita en el caso de uso, con el mismo `tx` (escrituras-auditadas: `unidadStockId` y `factorConversion` son columnas de significado).
+ */
+export async function crearProductoAnclaDeAdicional(
+  tx: Prisma.TransactionClient,
+  args: { codigo: string; nombre: string; unidadStockId: string; ahora: Date }
+): Promise<{ id: string; codigo: string; nombre: string }> {
+  return tx.producto.create({
+    data: { codigo: args.codigo, nombre: args.nombre, tipo: "PV", unidadStockId: args.unidadStockId, factorConversion: 1, creadoEn: args.ahora },
+    select: { id: true, codigo: true, nombre: true },
+  });
+}
