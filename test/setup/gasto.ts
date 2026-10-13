@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Client } from "pg";
 import { EMPRESA_DE_PRUEBA_ID, opcionesDeConexionConEmpresa } from "./empresa-de-prueba";
 import { datosDeFactura, datosDeRenglon, sembrarEscenarioDeFactura, type EscenarioDeFactura } from "./factura-proveedor";
@@ -6,7 +7,7 @@ import { prisma, prismaAdmin } from "./test-db";
 /**
  * Ayudas de los tests de los GASTOS (Paquete 3, M4): conexiones reales `pg` como `motor2_app` (el rol de la app, sujeto a la RLS) con la empresa fijada y, si se pide, el alcance por sucursal; el chequeo de que una sesión
  * quedó esperando un bloqueo (la prueba de que el segundo INSERT espera al primero en vez de adivinar); y el código de error de Postgres con que se rechazó una sentencia. Las usan las pruebas de concurrencia, de privilegios y de
- * aislamiento de `migracion-concepto-de-gasto`, `migracion-renglon-sin-stock`, `migracion-imputacion-de-gasto` y `imputacion-de-gasto-rls`.
+ * aislamiento de `migracion-concepto-de-gasto`, `migracion-renglon-sin-stock`, `migracion-imputacion-de-gasto`, `imputacion-de-gasto-rls`, `migracion-reclasificacion-renglon` y `reclasificacion-renglon-concurrencia`.
  */
 export const TIPOS_DE_COSTO = ["COSTO_DE_VENTAS", "GASTO_OPERATIVO", "EXTRAORDINARIO", "INVERSION", "RESULTADO_FINANCIERO"] as const;
 
@@ -100,4 +101,32 @@ export async function sembrarEscenarioDeGasto(): Promise<EscenarioDeGasto> {
   const renglon = await prisma.facturaProveedorRenglon.create({ data: datosDeRenglonSinStock({ facturaProveedorId: factura.id, conceptoGastoId: concepto.id }, { precioTotal: "200.00" }) as never });
   const mercaderia = await prisma.facturaProveedorRenglon.create({ data: datosDeRenglon({ facturaProveedorId: factura.id, productoId: e.productoId }, { orden: 2 }) as never });
   return { ...e, conceptoId: concepto.id, facturaId: factura.id, renglonId: renglon.id, renglonMercaderiaId: mercaderia.id };
+}
+
+/** Una reclasificación de renglón válida (Paquete 4, M5), versión 1, con una clave de idempotencia nueva: para `prisma.reclasificacionRenglon.create`. El escenario aporta el renglón, un concepto y el usuario que la carga. */
+export function datosDeReclasificacion(e: { renglonId: string; conceptoId: string; usuarioId: string }, extra: Record<string, unknown> = {}) {
+  return {
+    facturaProveedorRenglonId: e.renglonId,
+    numero: 1,
+    conceptoGastoId: e.conceptoId,
+    tipoDeCosto: "EXTRAORDINARIO",
+    motivo: "El concepto estaba mal elegido",
+    claveIdempotencia: randomUUID(),
+    payloadHash: "huella-de-prueba",
+    resultadoMensaje: "Renglón reclasificado.",
+    creadoPorId: e.usuarioId,
+    ...extra,
+  };
+}
+
+const COLUMNAS_DE_RECLASIFICACION = ["facturaProveedorRenglonId", "numero", "conceptoGastoId", "tipoDeCosto", "motivo", "claveIdempotencia", "payloadHash", "resultadoMensaje", "creadoPorId"];
+
+/** El INSERT de `datosDeReclasificacion` para un cliente `pg` (con `$1...`): lo que `extra` agrega fuera de las columnas habituales (por ejemplo `empresaId` o `naturalezaRenglon`) entra como columna aparte. */
+export function sentenciaDeReclasificacion(e: { renglonId: string; conceptoId: string; usuarioId: string }, extra: Record<string, unknown> = {}) {
+  const datos = datosDeReclasificacion(e, extra) as Record<string, unknown>;
+  const columnas = ["id", ...COLUMNAS_DE_RECLASIFICACION, ...Object.keys(datos).filter((c) => c !== "id" && !COLUMNAS_DE_RECLASIFICACION.includes(c))];
+  return {
+    texto: `INSERT INTO "ReclasificacionRenglon" (${columnas.map((c) => `"${c}"`).join(",")}) VALUES (${columnas.map((_, i) => `$${i + 1}`).join(",")})`,
+    params: columnas.map((c) => (c === "id" ? (datos.id ?? randomUUID()) : datos[c])),
+  };
 }
