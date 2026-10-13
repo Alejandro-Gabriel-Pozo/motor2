@@ -10,7 +10,10 @@ import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-aud
 import { lineasDeVenta } from "@/core/pos/cuenta";
 import { siguienteNumeroTicket } from "@/core/pos/numeracion-ticket";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { cargarCuentaParaCerrar, cargarOperacionDelConsumo, cargarUltimoNumeroDeTicket } from "@/server/persistencia/pos/cargar-cuenta-para-cerrar";
+import { cargarCuentaParaCerrar, cargarOperacionDelConsumo, cargarUltimoNumeroDeTicket, type FotoParaCerrar, type ItemParaCerrar } from "@/server/persistencia/pos/cargar-cuenta-para-cerrar";
+import type { LineaConfiguradaEnTx } from "@/core/movimientos/registrar-venta";
+import type { ConsumoDeOpcionParaVender, OpcionConConsumo } from "@/core/movimientos/public";
+import type { EfectoDeConsumoDeOpcion } from "@/core/opciones/public";
 import { enlazarItemsConOperaciones, escribirEjemplarOriginalDeTicket, marcarCuentaCerrada } from "@/server/persistencia/pos/cerrar-cuenta";
 import { describirAviso, formatearCantidad, MONEDA } from "../cuenta-comun";
 
@@ -36,6 +39,12 @@ import { describirAviso, formatearCantidad, MONEDA } from "../cuenta-comun";
  *  4. la venta, con el MISMO núcleo que la de mostrador (`registrarVentaEnTx`, sin tocarlo), `permitirStockNegativo`;
  *  5. número de ticket (`max + 1`, ejemplar A), enlace ítem → Operacion y cierre de la cuenta (persistencia);
  *  6. una fila de auditoría por cada insumo que quedó en negativo, y el mensaje.
+ *
+ * GO-2b (ADR-030), aditivo: las líneas netas salen de `lineasDeVenta` con la huella y el padre (dos configuraciones son dos Operaciones; la misma dos veces, una de
+ * ×2; cada adicional, justo después de su producto). Una línea configurada pasa a la venta con las opciones de SU foto (la versión congelada, nunca la vigente) y el
+ * descuento de cliente de siempre; un ADICIONAL va SIN descuento de cliente ni `precioListaUnitario`, con su ancla verificada en la base y el índice de su padre (su
+ * Operacion nace con `operacionPadreId`). El enlace de los ítems con su Operacion va por id para lo configurado y por la clave (con huella y padre en NULL) para lo demás.
+ * Sin ninguna opción en la cuenta, todo es exactamente lo de antes.
  *
  * @contract Cierra la cuenta de una mesa, registra la venta (aunque el stock quede negativo) y emite el ticket original.
  * @idempotency Por estado — una cuenta ya cerrada responde YA_CERRADA sin escribir nada; sin I3 (el aislamiento SERIALIZABLE arbitra el doble clic).
@@ -63,7 +72,8 @@ export async function cerrarCuentaCasoDeUso(
     // `lineas`: precio de LISTA (congelado al pedir), agrupado por (producto, precio, promo) — es la clave con la que se enlaza cada
     // CuentaItem más abajo (CuentaItem.precioUnitario NUNCA cambia de semántica con el descuento de cliente, Task #14). `promoCuentaId`
     // (Task #16, D4) evita mezclar un suelto con un componente del mismo producto al mismo precio en la MISMA Operacion.
-    const lineas = lineasDeVenta(cuenta.items);
+    // GO-2b: cada adicional lleva la versión de su opción (la de su foto) para no juntar dos versiones distintas en una línea.
+    const lineas = lineasDeVenta(cuenta.items.map((i) => ({ ...i, versionDeAdicional: i.fotos.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null })));
     if (!lineas.length) {
       await cerrar();
       return exito(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`, { desenlace: "SIN_VENTA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 });
@@ -77,7 +87,11 @@ export async function cerrarCuentaCasoDeUso(
     // clientes lo lee); el descuento de producto vive en `CuentaItem.precioCartaUnitario` y tiene su propio reporte.
     // Los componentes de una promo NO traen precio de carta (`precioCartaUnitario` null): reciben el descuento de CLIENTE sobre su precio ya prorrateado. Es lo decidido en D2 de
     // docs/plan-promo-combo-2026-09-26.md (el descuento por cliente se suma SOBRE lo prorrateado, nunca antes) y lo fija la escena D1 de `venta-matriz-ampliada`.
+    const itemPorId = new Map(cuenta.items.map((i) => [i.id, i]));
     const lineasVenta = lineas.map((l) => {
+      const configurada = configuracionDeLaLinea(l, itemPorId);
+      // GO-2b: el adicional no lleva descuento de cliente (ni el de producto: no tiene precio de carta) — se cobra su recargo tal cual.
+      if (configurada?.tipo === "ADICIONAL") return { productoId: l.productoId, cantidadVendida: l.cantidad, precioUnitario: l.precioUnitario, promoCuentaId: l.promoCuentaId, configurada };
       const cobro = precioCobradoConDescuentos(l.precioUnitario, l.precioCartaUnitario ?? null, descuento);
       return {
         productoId: l.productoId,
@@ -85,6 +99,7 @@ export async function cerrarCuentaCasoDeUso(
         precioUnitario: cobro.precio,
         precioListaUnitario: cobro.origen === "cliente" ? (cobro.precioLista ?? undefined) : undefined,
         promoCuentaId: l.promoCuentaId,
+        ...(configurada ? { configurada } : {}),
       };
     });
 
@@ -118,6 +133,7 @@ export async function cerrarCuentaCasoDeUso(
         precioUnitario: linea.precioUnitario,
         promoCuentaId: linea.promoCuentaId,
         precioCartaUnitario: linea.precioCartaUnitario,
+        ...(linea.itemIds ? { itemIds: linea.itemIds } : {}),
         operacionId: venta.operacionIds[i],
       }))
     );
@@ -151,4 +167,48 @@ export async function cerrarCuentaCasoDeUso(
     }
     return exito(`${mensaje} ⚠ Quedó stock negativo: ${venta.avisosStockNegativo.map(describirAviso).join(", ")}. Corregilo con un Conteo Físico o un Ajuste.`, datos);
   });
+}
+
+/** Los consumos de una foto como los pide el núcleo de la venta (la unidad de la opción es la unidad de stock que se le exige al insumo). */
+function consumosDeLaFoto(foto: FotoParaCerrar): ConsumoDeOpcionParaVender[] {
+  return foto.consumos.map((c) => ({
+    efecto: c.efecto as EfectoDeConsumoDeOpcion,
+    insumoProductoId: c.insumoProductoId,
+    reemplazaAProductoId: c.reemplazaAProductoId,
+    cantidad: c.cantidad,
+    unidadStockId: c.unidadId,
+    mermaPorcentaje: c.mermaPorcentaje,
+    escalaConLaMedida: c.escalaConLaMedida,
+  }));
+}
+
+/**
+ * GO-2b: lo que la venta necesita de una línea neta con opciones, desde la FOTO de su primer ítem original (todos los de la línea tienen la misma: la misma huella
+ * son las mismas opciones, versiones, cantidades e importes; un adicional se agrupa con la clave de su padre y, como el resto de la línea, comparte su opción). Sin
+ * huella ni padre, `null`: la línea de siempre. Una línea configurada o un adicional sin foto es una incoherencia de la base: se LANZA (deshace todo el cierre).
+ */
+function configuracionDeLaLinea(l: ReturnType<typeof lineasDeVenta>[number], itemPorId: ReadonlyMap<string, ItemParaCerrar>): LineaConfiguradaEnTx | null {
+  if (l.huellaOpciones === undefined && l.indicePadre === undefined) return null;
+  const original = (l.itemIds ?? []).map((id) => itemPorId.get(id)).find((i) => i !== undefined && i.anulaAItemId === null && i.fotos.length > 0);
+  if (!original) throw new Error("cerrarCuenta: una línea con opciones sin la foto de lo elegido.");
+  if (l.indicePadre !== undefined) {
+    const foto = original.fotos.find((f) => f.tipoGrupo === "ADICIONAL");
+    if (!foto || foto.productoAnclaId === null) throw new Error("cerrarCuenta: un adicional sin su opción ni su producto ancla.");
+    return { tipo: "ADICIONAL", opcionId: foto.opcionId, anclaVerificada: foto.productoAnclaId, consumos: consumosDeLaFoto(foto), indiceLineaPadre: l.indicePadre };
+  }
+  const opciones = original.fotos
+    .filter((f) => f.tipoGrupo !== "ADICIONAL")
+    .map(
+      (f): OpcionConConsumo => ({
+        opcionId: f.opcionId,
+        nombre: f.nombreOpcion,
+        tipo: f.tipoGrupo as OpcionConConsumo["tipo"],
+        ordenDeGrupo: f.orden,
+        ordenDeOpcion: 0,
+        cantidad: f.cantidad,
+        factorEscala: f.tipoGrupo === "MEDIDA" ? f.factorEscala : null,
+        consumos: f.esNinguna ? [] : consumosDeLaFoto(f),
+      })
+    );
+  return { tipo: "PRODUCTO", opciones };
 }

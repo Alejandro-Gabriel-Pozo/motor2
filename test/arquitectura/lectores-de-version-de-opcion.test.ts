@@ -19,7 +19,12 @@ const SRC = join(__dirname, "../../src");
 const EMBUDO = "server/lecturas/opciones/opciones-para-vender.ts";
 const EMBUDO_PURO = "core/opciones/version-vigente.ts";
 
-const LECTORES_DE_LA_VERSION_CONGELADA: readonly { ruta: string; motivo: string }[] = [];
+const LECTORES_DE_LA_VERSION_CONGELADA: readonly { ruta: string; motivo: string }[] = [
+  {
+    ruta: "server/persistencia/pos/cargar-cuenta-para-cerrar.ts",
+    motivo: "GO-2b: el cierre lee la foto de cada línea con los consumos de la versión CONGELADA (la que se vendió), anidados en la misma consulta de la cuenta: nunca la vigente.",
+  },
+];
 
 const RUTAS_CLASIFICADAS = new Set(LECTORES_DE_LA_VERSION_CONGELADA.map((a) => a.ruta));
 

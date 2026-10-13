@@ -8,8 +8,28 @@ import type { Prisma } from "@prisma/client";
  * (src/server/actions/pos/cuenta-cierre.ts), con los mismos filtros, y el caso de uso las llama en el mismo orden.
  */
 
+/**
+ * GO-2b (ADR-030): la FOTO de una opción elegida en una línea, con lo que la venta necesita de la versión CONGELADA (la de la foto, nunca la vigente): sus consumos,
+ * si la opción es «ninguna» y el producto ANCLA que la base dice que la respalda.
+ */
+export interface FotoParaCerrar {
+  opcionId: string;
+  versionDeOpcionId: string;
+  tipoGrupo: string;
+  nombreOpcion: string;
+  cantidad: number;
+  factorEscala: number | null;
+  orden: number;
+  esNinguna: boolean;
+  /** `OpcionDeGrupo.productoId`, leído de la base: el único producto que puede respaldar este adicional. */
+  productoAnclaId: string | null;
+  consumos: { efecto: string; insumoProductoId: string; reemplazaAProductoId: string | null; cantidad: number; unidadId: string; mermaPorcentaje: number; escalaConLaMedida: boolean }[];
+}
+
 /** Un ítem de la cuenta tal como lo necesita el cierre. */
 export interface ItemParaCerrar {
+  /** GO-2b: para enlazar por id las líneas configuradas y los adicionales. */
+  id: string;
   productoId: string;
   cantidad: number;
   /** Precio de LISTA congelado al pedir (nunca cambia de semántica con el descuento de cliente, Task #14). */
@@ -19,6 +39,14 @@ export interface ItemParaCerrar {
   promoCuentaId: string | null;
   /** `null` = borrador sin enviar a cocina. */
   numeroEnvio: number | null;
+  /** No nulo = fila espejo (una anulación): no lleva foto. */
+  anulaAItemId: string | null;
+  /** GO-2b: la huella de las opciones dentro del precio (un espejo repite la de su original). */
+  huellaOpciones: string | null;
+  /** GO-2b: la línea padre de un adicional (un espejo repite la de su original). */
+  lineaPadreId: string | null;
+  /** GO-2b: la foto de lo elegido (vacía sin opciones y en los espejos). */
+  fotos: FotoParaCerrar[];
 }
 
 export interface CuentaParaCerrar {
@@ -36,7 +64,37 @@ export interface CuentaParaCerrar {
 export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args: { cuentaId: string; sucursalId: string }): Promise<CuentaParaCerrar | null> {
   const cuenta = await tx.cuenta.findFirst({
     where: { id: args.cuentaId, mesa: { sucursalId: args.sucursalId } },
-    include: { mesa: { select: { numero: true } }, items: { orderBy: [{ creadoEn: "asc" }, { id: "asc" }] }, cliente: { select: { nombre: true } } },
+    include: {
+      mesa: { select: { numero: true } },
+      items: {
+        orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
+        // GO-2b: la foto de cada línea con la versión CONGELADA (sus consumos) y el ancla de la opción, anidada en la MISMA consulta (sin opciones, vacía).
+        include: {
+          opcionesElegidas: {
+            orderBy: [{ orden: "asc" }, { id: "asc" }],
+            select: {
+              opcionId: true,
+              versionDeOpcionId: true,
+              tipoGrupo: true,
+              nombreOpcion: true,
+              cantidad: true,
+              factorEscala: true,
+              orden: true,
+              opcion: { select: { esNinguna: true, productoId: true } },
+              versionDeOpcion: {
+                select: {
+                  consumos: {
+                    orderBy: { orden: "asc" },
+                    select: { efecto: true, insumoProductoId: true, reemplazaAProductoId: true, cantidad: true, unidadId: true, mermaPorcentaje: true, escalaConLaMedida: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      cliente: { select: { nombre: true } },
+    },
   });
   if (!cuenta) return null;
   return {
@@ -47,12 +105,36 @@ export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args:
     clienteNombre: cuenta.cliente?.nombre ?? null,
     descuentoPorcentaje: cuenta.descuentoPorcentaje !== null ? Number(cuenta.descuentoPorcentaje) : null,
     items: cuenta.items.map((i) => ({
+      id: i.id,
       productoId: i.productoId,
       cantidad: Number(i.cantidad),
       precioUnitario: Number(i.precioUnitario),
       precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       promoCuentaId: i.promoCuentaId,
       numeroEnvio: i.numeroEnvio,
+      anulaAItemId: i.anulaAItemId,
+      huellaOpciones: i.huellaOpciones,
+      lineaPadreId: i.lineaPadreId,
+      fotos: i.opcionesElegidas.map((f) => ({
+        opcionId: f.opcionId,
+        versionDeOpcionId: f.versionDeOpcionId,
+        tipoGrupo: f.tipoGrupo,
+        nombreOpcion: f.nombreOpcion,
+        cantidad: f.cantidad,
+        factorEscala: f.factorEscala !== null ? Number(f.factorEscala) : null,
+        orden: f.orden,
+        esNinguna: f.opcion.esNinguna,
+        productoAnclaId: f.opcion.productoId,
+        consumos: f.versionDeOpcion.consumos.map((c) => ({
+          efecto: c.efecto,
+          insumoProductoId: c.insumoProductoId,
+          reemplazaAProductoId: c.reemplazaAProductoId,
+          cantidad: Number(c.cantidad),
+          unidadId: c.unidadId,
+          mermaPorcentaje: Number(c.mermaPorcentaje),
+          escalaConLaMedida: c.escalaConLaMedida,
+        })),
+      })),
     })),
   };
 }

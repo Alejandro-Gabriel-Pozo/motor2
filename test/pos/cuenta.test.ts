@@ -175,6 +175,20 @@ describe("lineasDeVenta con opciones (GO-2b, ADR-030)", () => {
     ]);
   });
 
+  it("dos adicionales al mismo precio pero de VERSIONES distintas de su opción son dos líneas; el espejo hereda la versión de su original", () => {
+    expect(
+      lineasDeVenta([
+        { id: "p", productoId: "cafe", cantidad: 2, precioUnitario: 1100, huellaOpciones: H1 },
+        { id: "a1", productoId: "shot", cantidad: 1, precioUnitario: 200, lineaPadreId: "p", versionDeAdicional: "v1" },
+        { id: "a2", productoId: "shot", cantidad: 1, precioUnitario: 200, lineaPadreId: "p", versionDeAdicional: "v2" },
+        { id: "e2", productoId: "shot", cantidad: -1, precioUnitario: 200, lineaPadreId: "p", anulaAItemId: "a2" },
+      ])
+    ).toEqual([
+      { productoId: "cafe", precioUnitario: 1100, cantidad: 2, huellaOpciones: H1, itemIds: ["p"] },
+      { productoId: "shot", precioUnitario: 200, cantidad: 1, indicePadre: 0, itemIds: ["a1"] },
+    ]);
+  });
+
   it("el adicional HUÉRFANO (su padre no está en la cuenta) y el que queda vivo con su padre en 0 lanzan un error: no se cobran a ciegas", () => {
     expect(() => lineasDeVenta([{ id: "a", productoId: "shot", cantidad: 1, precioUnitario: 200, lineaPadreId: "no-esta" }])).toThrow(/padre no está/);
     expect(() =>

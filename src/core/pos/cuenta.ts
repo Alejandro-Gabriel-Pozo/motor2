@@ -70,6 +70,11 @@ export interface ItemParaLineaDeVenta {
   huellaOpciones?: string | null;
   /** GO-2b: la línea padre de un adicional (`CuentaItem.lineaPadreId`); un espejo repite la de su original. */
   lineaPadreId?: string | null;
+  /** GO-2b: el original de un espejo (`CuentaItem.anulaAItemId`): de él hereda la versión de su adicional. */
+  anulaAItemId?: string | null;
+  /** GO-2b: SOLO en un adicional original, la versión de su opción (la de su foto): dos adicionales al mismo precio pero de versiones distintas consumen distinto y
+   *  no se juntan en una línea. Un espejo la toma de su original. */
+  versionDeAdicional?: string | null;
 }
 
 /**
@@ -83,7 +88,8 @@ export interface ItemParaLineaDeVenta {
  *
  * GO-2b (ADR-030), también ADITIVO: la clave es la de `claveDeLineaDeVentaConOpciones`. Una línea configurada suma su huella (dos cafés con distinta
  * configuración son dos líneas; con la misma, una sola). Un ADICIONAL se agrupa por su producto ancla, su precio y la clave de la línea de su PADRE, y va justo
- * DESPUÉS de esa línea (con `indicePadre`). Un padre que solo tiene adicionales no tiene huella: se junta con los del mismo producto sin opciones (y su adicional
+ * DESPUÉS de esa línea (con `indicePadre`); si trae la versión de su opción (`versionDeAdicional`), dos versiones distintas al mismo precio son dos líneas (consumen
+ * distinto). Un padre que solo tiene adicionales no tiene huella: se junta con los del mismo producto sin opciones (y su adicional
  * cuelga de esa línea). Un adicional cuyo padre no está en la cuenta, o que todavía tiene algo para cobrar cuando su padre quedó en 0, es una incoherencia: se
  * LANZA un error (no se cobra a ciegas). Sin huella ni padre en la entrada, la salida es exactamente la de antes (lo fija una propiedad de fast-check).
  */
@@ -103,7 +109,9 @@ export function lineasDeVenta(items: readonly ItemParaLineaDeVenta[]): LineaDeVe
     if (!padre) throw new Error("lineasDeVenta: un adicional cuya línea padre no está en la cuenta.");
     if ((padre.lineaPadreId ?? null) !== null) throw new Error("lineasDeVenta: la línea padre de un adicional no puede ser otro adicional.");
     const clavePadre = claveDeLineaDeVentaConOpciones({ ...camposDeClave(padre), huellaOpciones: padre.huellaOpciones ?? null });
-    return { clave: claveDeLineaDeVentaConOpciones({ ...camposDeClave(item), clavePadre }), clavePadre };
+    const original = item.anulaAItemId ? porId.get(item.anulaAItemId) : undefined;
+    const version = item.versionDeAdicional ?? original?.versionDeAdicional ?? null;
+    return { clave: claveDeLineaDeVentaConOpciones({ ...camposDeClave(item), clavePadre: version === null ? clavePadre : `${clavePadre}|v:${version}` }), clavePadre };
   };
 
   const porClave = new Map<string, { linea: LineaDeVenta; clavePadre: string | null }>();
