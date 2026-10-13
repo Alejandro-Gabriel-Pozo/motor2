@@ -24,6 +24,7 @@ import { sembrarEscenarioDeOpciones } from "../setup/opciones";
 import { azarDelProceso } from "../../src/lib/azar";
 import { agregarVersionDeOpcionCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/agregar-version-de-opcion";
 import { crearOpcionDeGrupoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/crear-opcion-de-grupo";
+import { fijarAdmisionDeGrupoEnProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/fijar-admision-de-grupo-en-producto";
 import { crearGrupoDeOpcionesCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/crear-grupo-de-opciones";
 import { editarGrupoDeOpcionesCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones";
 
@@ -97,5 +98,20 @@ describe("catálogo de opciones: la escritura y su auditoría son atómicas (GO-
     expect(await prisma.registroAuditoria.count()).toBe(0);
   });
 
+  // paso 9
+  it("fijar lo que admite un producto: falla la auditoría de una opción → no queda la fila del grupo ni la de ninguna opción", async () => {
+    await limpiarBaseDeTest();
+    const e = await sembrarEscenarioDeOpciones();
+    const te = await prisma.producto.create({ data: { codigo: "PV_TE", nombre: "Té", tipo: "PV", unidadStockId: e.unidadId, precioVenta: "800.00" } });
+    interruptor.llamadas = 0;
+    interruptor.fallarEnLlamada = 5; // 2 de la fila del grupo + 3 de la primera opción: falla la tercera de la primera opción
+    const op = (opcionId: string) => ({ opcionId, versionEsperada: 0, cantidadMaxima: 1, precioAbsoluto: null, diferencia: null, activo: true });
+    await expect(
+      fijarAdmisionDeGrupoEnProductoCasoDeUso(actorDePrueba(e.usuarioId, e.sucursalA), { productoId: te.id, grupoId: e.grupoVarianteId, versionEsperada: 0, orden: 0, cantidadMinima: null, cantidadMaxima: null, modoPrecio: null, activo: true, opciones: [op(e.vacaId), op(e.almendrasId)] })
+    ).rejects.toThrow("auditoría caída");
+    expect(await prisma.productoAdmiteGrupo.count({ where: { productoId: te.id } })).toBe(0);
+    expect(await prisma.productoAdmiteOpcion.count({ where: { productoId: te.id } })).toBe(0);
+    expect(await prisma.registroAuditoria.count()).toBe(0);
+  });
 
 });

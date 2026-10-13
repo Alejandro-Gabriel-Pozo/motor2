@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import type { ConsumoDeConfiguracion, DiferenciaDePrecio, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import type { ConsumoDeConfiguracion, DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 
 /**
  * Escrituras del CATÁLOGO DE OPCIONES DE VENTA (GO-2a; ADR-030). Mismo contrato que el resto de `server/persistencia/`: el cliente es el PRIMER parámetro (siempre el `tx` de la
@@ -102,4 +102,52 @@ export async function agregarVersionDeOpcion(
     });
   }
   return version;
+}
+
+// ───────────────────────────── Lo que admite cada producto ─────────────────────────────
+
+interface FilaDeAdmisionDeGrupo {
+  orden: number;
+  cantidadMinima: number | null;
+  cantidadMaxima: number | null;
+  modoPrecio: ModoDePrecioDeMedida | null;
+  activo: boolean;
+}
+
+interface FilaDeAdmisionDeOpcion {
+  cantidadMaxima: number;
+  precioAbsoluto: number | null;
+  diferencia: DiferenciaDePrecio | null;
+  activo: boolean;
+}
+
+export async function crearAdmisionDeGrupo(tx: Tx, args: { productoId: string; grupoId: string; fila: FilaDeAdmisionDeGrupo; ahora: Date }): Promise<{ id: string }> {
+  return tx.productoAdmiteGrupo.create({ data: { productoId: args.productoId, grupoId: args.grupoId, ...args.fila, creadoEn: args.ahora, actualizadoEn: args.ahora }, select: { id: true } });
+}
+
+/** Devuelve cuántas filas tocó: 0 si la versión ya no es la esperada. */
+export async function actualizarAdmisionDeGrupo(tx: Tx, args: { id: string; versionEsperada: number; fila: FilaDeAdmisionDeGrupo; ahora: Date }): Promise<number> {
+  const { count } = await tx.productoAdmiteGrupo.updateMany({
+    where: { id: args.id, version: args.versionEsperada },
+    data: { ...args.fila, version: { increment: 1 }, actualizadoEn: args.ahora },
+  });
+  return count;
+}
+
+export async function crearAdmisionDeOpcion(tx: Tx, args: { productoId: string; opcionId: string; fila: FilaDeAdmisionDeOpcion; ahora: Date }): Promise<{ id: string }> {
+  const { diferencia, ...resto } = args.fila;
+  return tx.productoAdmiteOpcion.create({
+    data: { productoId: args.productoId, opcionId: args.opcionId, ...resto, ...columnasDeDiferencia(diferencia), creadoEn: args.ahora, actualizadoEn: args.ahora },
+    select: { id: true },
+  });
+}
+
+/** Devuelve cuántas filas tocó: 0 si la versión ya no es la esperada. */
+export async function actualizarAdmisionDeOpcion(tx: Tx, args: { id: string; versionEsperada: number; fila: FilaDeAdmisionDeOpcion; ahora: Date }): Promise<number> {
+  const { diferencia, ...resto } = args.fila;
+  const { count } = await tx.productoAdmiteOpcion.updateMany({
+    where: { id: args.id, version: args.versionEsperada },
+    data: { ...resto, ...columnasDeDiferencia(diferencia), version: { increment: 1 }, actualizadoEn: args.ahora },
+  });
+  return count;
 }

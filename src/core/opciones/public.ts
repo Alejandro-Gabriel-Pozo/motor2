@@ -19,3 +19,5 @@ export type { ConsumoDeConfiguracion } from "./validar-configuracion";
 export { cambiosPorColumna, cantidadesEfectivas, validarGrupo } from "./validar-configuracion";
 export { contenidoDeVersionIgual, validarConsumos, validarOpcionNueva, validarVersion } from "./validar-configuracion";
 export type { ContenidoDeVersion } from "./validar-configuracion";
+export { controlarPrecioDeLista, validarAdmisionDeGrupo } from "./validar-configuracion";
+export type { AdmisionDeOpcion } from "./validar-configuracion";

@@ -11,6 +11,7 @@ import { sembrarEscenarioDeOpciones, type EscenarioDeOpciones } from "../setup/o
 import { actorDePrueba } from "../setup/opciones-de-venta";
 import { azarDelProceso } from "../../src/lib/azar";
 import { crearOpcionDeGrupoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/crear-opcion-de-grupo";
+import { fijarAdmisionDeGrupoEnProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/fijar-admision-de-grupo-en-producto";
 import { guardarReceta } from "../../src/server/actions/catalogo/recetas";
 import { actualizarDisponibilidadProducto } from "../../src/server/actions/catalogo/productos";
 
@@ -84,7 +85,7 @@ describe("el ADICIONAL y su producto ancla (GO-2a)", () => {
   });
 
   describe("blindaje del ancla", () => {
-    it("no puede tener receta (ES_ANCLA_DE_ADICIONAL), no se pone a la venta suelta; apagarla sí se puede", async () => {
+    it("no puede tener receta (ES_ANCLA_DE_ADICIONAL), no se pone a la venta suelta, y no admite opciones; apagarla sí se puede", async () => {
       const r = await guardarReceta(e.anclaDelShotId, [{ insumoProductoId: e.lecheId, cantidad: 1, unidadId: e.unidadId }], [], {}, 0);
       expect(r.ok).toBe(false);
       expect(r.mensaje).toMatch(/producto de respaldo de un adicional: no lleva receta/);
@@ -95,6 +96,19 @@ describe("el ADICIONAL y su producto ancla (GO-2a)", () => {
       expect(prender.mensaje).toMatch(/se vende solo como adicional/);
       expect(await prisma.disponibilidadProducto.count({ where: { productoId: e.anclaDelShotId, disponible: true } })).toBe(0);
       expect(await actualizarDisponibilidadProducto(e.anclaDelShotId, false)).toMatchObject({ ok: true });
+
+      const admitir = await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), {
+        productoId: e.anclaDelShotId,
+        grupoId: e.grupoVarianteId,
+        versionEsperada: 0,
+        orden: 0,
+        cantidadMinima: null,
+        cantidadMaxima: null,
+        modoPrecio: null,
+        activo: true,
+        opciones: [],
+      });
+      expect(admitir).toMatchObject({ ok: false, codigo: "PRODUCTO_NO_ELEGIBLE" });
     });
 
     it("un producto común sigue con su receta y su disponibilidad como siempre (control)", async () => {

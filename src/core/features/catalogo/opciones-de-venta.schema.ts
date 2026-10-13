@@ -130,3 +130,8 @@ export interface ComandoFijarAdmisionDeGrupo {
   opciones: OpcionAdmitidaEnComando[];
 }
 
+/** `avisos`: lo que no bloquea pero conviene saber (un REEMPLAZA que no encuentra su insumo en la receta central, S3). */
+export type ResultadoFijarAdmisionDeGrupo = ResultadoCaso<
+  { admisionId: string; version: number; huboCambio: boolean; avisos: string[] },
+  "PRODUCTO_NO_ENCONTRADO" | "PRODUCTO_NO_ELEGIBLE" | "GRUPO_NO_ENCONTRADO" | "VERSION_DESACTUALIZADA" | "GRUPO_INACTIVO" | "OPCION_INACTIVA" | ConfiguracionInvalida
+>;

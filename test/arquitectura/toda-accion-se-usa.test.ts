@@ -37,7 +37,6 @@ const SRC = join(__dirname, "../../src");
 const RESERVADAS_SIN_USO_TODAVIA: Readonly<Record<string, string>> = {
   notificar_alertas: "Alertas de stock por mail: falta un proveedor de mail configurado (Resend/SendGrid). docs/plan-migracion.md:1099, docs/grounding-decisiones-abiertas-erpnext-dolibarr-2026-09-21.md:134.",
   compra_repartir: "Paquete 3, M3a (D3 del dueño, 2026-10-12): la clave se da de alta con la migración 20261016100000 antes que su primer consumidor. La piden `registrarFacturaRepartida` y la bandeja de facturas pendientes de reparto, que son de la Etapa C de M3 (docs/adr/ADR-029-factura-de-proveedor-documento-de-empresa.md). Sale de esta lista en cuanto una guarda la use.",
-  producto_opciones_admitidas: "GO-2a en curso (ADR-030): la clave entra a ACCIONES en el paso 3 y su guarda llega en el paso 9 (lo que admite cada producto); sale de esta lista ese día.",
   opcion_apagar_en_sucursal: "GO-2a en curso (ADR-030): la clave entra a ACCIONES en el paso 3 y su guarda llega en el paso 10 (apagar una opción en la sucursal); sale de esta lista ese día.",
   compra_recibir: "Paquete 3, M3a (cambio del dueño, 2026-10-12): igual que `compra_repartir`, se da de alta con la migración 20261016100000 antes que su primer consumidor: la bandeja «mercadería por recibir» y confirmar la recepción de la parte de una sucursal, que son de la Etapa C de M3 (docs/adr/ADR-029-factura-de-proveedor-documento-de-empresa.md). Sale de esta lista en cuanto una guarda la use.",
 };
