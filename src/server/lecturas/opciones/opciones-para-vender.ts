@@ -3,7 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { versionVigente, type DiferenciaDePrecio, type ModoDePrecioDeMedida, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import type { GrupoParaVender, OpcionParaVender } from "@/core/pos/public";
 import type { EfectoDeConsumoDeOpcion } from "@/core/opciones/public";
-import { preciosLocalesDeOpcionVigentes } from "@/server/lecturas/catalogo/precio-local-de-opcion";
+import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
+import { preciosLocalesDeOpcionVigentes } from "@/server/lecturas/catalogo/precio-local-de-opciones";
 
 /**
  * Las OPCIONES DE VENTA de los productos de un pedido, para venderlas en una sucursal (GO-2b, ADR-030). Es el EMBUDO de lectura de las versiones vigentes de las
@@ -15,7 +16,7 @@ import { preciosLocalesDeOpcionVigentes } from "@/server/lecturas/catalogo/preci
  *   fila del producto para cada opción y si el producto es el ANCLA de un adicional (un ancla que no es un PV sin producción se descarta: la opción queda sin ancla). Una opción sin versión no se puede vender: queda afuera (elegirla es «no
  *   permitida»). La RLS deja ver solo lo de la empresa de la sesión: una opción de otra empresa no aparece y responde igual que una inexistente.
  * - Lectura B (`completarPreciosDeSucursal`): la grilla de la sucursal, SOLO si se eligió una MEDIDA en ABSOLUTO (`preciosLocalesDeOpcionVigentes`, en el lugar
- *   único de la grilla de las opciones, junto al precio local).
+ *   único de la grilla de las opciones, `precio-local-de-opciones.ts` de GO-2a).
  *
  * Dinero: los `Decimal` se pasan a `number` acá (DECIMAL(14,2) y (7,4): exactos como double para los rangos de las columnas); la cuenta exacta la hace el núcleo.
  */
@@ -170,7 +171,13 @@ export async function completarPreciosDeSucursal(
     }
   }
   if (pares.length === 0) return new Map(opciones);
-  const grilla = await preciosLocalesDeOpcionVigentes(sucursalId, tx, pares);
+  // La grilla la decide el lector único de GO-2a (`precio-local-de-opciones.ts`: capacidad, fila habilitada, opción admitida y MEDIDA en ABSOLUTO), uno por producto; la
+  // capacidad `precio_local` se lee UNA vez para todo el pedido y se le pasa.
+  const capacidad = precioLocalActivoEn(sucursalId, tx);
+  const grilla = new Map<string, number>();
+  for (const productoId of [...new Set(pares.map((p) => p.productoId))]) {
+    for (const [opcionId, precio] of await preciosLocalesDeOpcionVigentes(sucursalId, tx, productoId, capacidad)) grilla.set(`${productoId}|${opcionId}`, precio);
+  }
   const salida = new Map<string, OpcionesDeProducto>();
   for (const [productoId, op] of opciones) {
     salida.set(productoId, {

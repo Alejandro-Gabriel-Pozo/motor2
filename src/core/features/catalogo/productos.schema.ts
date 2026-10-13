@@ -214,4 +214,4 @@ export interface ComandoActualizarDisponibilidadProducto {
  *  - `TIENE_DEPENDENCIAS`: al desactivar, algo depende de él en esta sucursal (la receta vigente de un plato disponible acá, o saldo en una sección de acá);
  *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (D4): al activar, es un producto de venta con precio de venta 0 («sin precio definido») y quien lo pide no tiene `producto_campos_sensibles`. Apagar nunca lo devuelve.
  */
-export type ResultadoActualizarDisponibilidadProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS" | "SIN_PERMISO_CAMPOS_SENSIBLES">;
+export type ResultadoActualizarDisponibilidadProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "ES_ANCLA_DE_ADICIONAL">;

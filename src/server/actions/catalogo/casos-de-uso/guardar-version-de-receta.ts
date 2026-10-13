@@ -88,6 +88,11 @@ export async function guardarVersionDeRecetaCasoDeUso(
   const producto = await cargarProductoParaReceta(actor.db, productoId);
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", MENSAJE_PRODUCTO_NO_ENCONTRADO);
 
+  // GO-2a (blindaje del ancla, D-1): el producto que respalda un adicional no lleva receta; lo que consume es el consumo de la opción (`ConsumoDeOpcion`).
+  if (producto.esAnclaDeAdicional) {
+    return fracaso("ES_ANCLA_DE_ADICIONAL", `"${producto.nombre}" es el producto de respaldo de un adicional: no lleva receta. Lo que consume se define en la opción, en Opciones de venta.`);
+  }
+
   const elegible = producto.tipo === "PV" || (producto.tipo === "MP" && producto.seProduce);
   if (!elegible) {
     return fracaso("PRODUCTO_NO_ELEGIBLE", `"${producto.nombre}" no es elegible para tener receta — tiene que ser PV, o MP con "Se produce" activado.`);

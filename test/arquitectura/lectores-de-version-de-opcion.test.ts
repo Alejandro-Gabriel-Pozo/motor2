@@ -28,6 +28,22 @@ const LECTORES_DE_LA_VERSION_CONGELADA: readonly { ruta: string; motivo: string 
 
 const RUTAS_CLASIFICADAS = new Set(LECTORES_DE_LA_VERSION_CONGELADA.map((a) => a.ruta));
 
+/**
+ * Los lectores de la ADMINISTRACIÓN del catálogo (GO-2a) que leen versiones por su cuenta, declarados con su motivo: no deciden qué se cobra ni qué se consume al
+ * vender (eso es del embudo de la venta), muestran el catálogo y su historial o validan una versión nueva contra la vigente. Verificado en las dos direcciones.
+ */
+const LECTORES_DE_ADMINISTRACION: readonly { ruta: string; motivo: string }[] = [
+  {
+    ruta: "server/lecturas/catalogo/opciones-de-venta.ts",
+    motivo: "GO-2a: el catálogo de opciones para administrarlo (la vigente de cada opción para mostrarla y el historial de versiones de un grupo); no decide ningún precio de venta.",
+  },
+  {
+    ruta: "server/actions/catalogo/casos-de-uso/opciones-de-venta-en-tx.ts",
+    motivo: "GO-2a: `versionVigenteEnTx`, la vigente DENTRO de la transacción del caso de uso que carga una versión nueva (para no repetir una igual y numerar la siguiente); no vende.",
+  },
+];
+const RUTAS_DE_ADMINISTRACION = new Set(LECTORES_DE_ADMINISTRACION.map((a) => a.ruta));
+
 function archivosFuente(dir: string): string[] {
   return readdirSync(dir).flatMap((nombre) => {
     const ruta = join(dir, nombre);
@@ -97,8 +113,10 @@ describe("lectores de la versión de una opción: el embudo es el único que eli
   });
 
   it("ningún archivo fuera del embudo lee o elige versiones de una opción por su cuenta", () => {
-    const sueltos = [...fuentes].filter(([nombre, fuente]) => nombre !== EMBUDO && nombre !== EMBUDO_PURO && eligeLaVersionPorSuCuenta(fuente)).map(([nombre]) => nombre);
-    expect(sueltos, `Estos archivos eligen o leen versiones de una opción sin pasar por ${EMBUDO}:\n${sueltos.join("\n")}`).toEqual([]);
+    const sueltos = [...fuentes].filter(([nombre, fuente]) => nombre !== EMBUDO && nombre !== EMBUDO_PURO && !RUTAS_DE_ADMINISTRACION.has(nombre) && eligeLaVersionPorSuCuenta(fuente)).map(([nombre]) => nombre);
+    expect(sueltos, `Estos archivos eligen o leen versiones de una opción sin pasar por ${EMBUDO} (o declararse en LECTORES_DE_ADMINISTRACION con su motivo):\n${sueltos.join("\n")}`).toEqual([]);
+    const yaNoLeen = [...RUTAS_DE_ADMINISTRACION].filter((n) => !eligeLaVersionPorSuCuenta(fuentes.get(n) ?? ""));
+    expect(yaNoLeen, `Estos lectores de administración ya no leen versiones: sacalos de LECTORES_DE_ADMINISTRACION:\n${yaNoLeen.join("\n")}`).toEqual([]);
   });
 
   it("el embudo existe, lee las versiones y elige la vigente con la regla pura", () => {

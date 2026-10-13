@@ -10,6 +10,18 @@
 export { CANTIDAD_MAXIMA_DE_OPCION, FACTOR_DE_ESCALA_MAXIMO } from "./tipos";
 export type { EfectoDeConsumoDeOpcion } from "./tipos";
 
+// GO-2a: el catálogo de opciones de venta (administración, sin pantallas). Las listas cerradas y los topes que validan los guards de `core/features/catalogo/` y las
+// reglas puras de la configuración (`validar-configuracion.ts`) que aplican los casos de uso de `server/actions/catalogo/casos-de-uso/`.
+export { EFECTOS_DE_CONSUMO_DE_OPCION, MODOS_DE_PRECIO_DE_MEDIDA, TIPOS_DE_GRUPO_DE_OPCIONES } from "./tipos";
+export type { DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } from "./tipos";
+export { MAXIMO_CONSUMOS_POR_VERSION, MERMA_MAXIMA_DE_CONSUMO } from "./validar-configuracion";
+export type { ConsumoDeConfiguracion } from "./validar-configuracion";
+export { cambiosPorColumna, cantidadesEfectivas, validarGrupo } from "./validar-configuracion";
+export { contenidoDeVersionIgual, validarConsumos, validarOpcionNueva, validarVersion } from "./validar-configuracion";
+export type { ContenidoDeVersion } from "./validar-configuracion";
+export { controlarPrecioDeLista, validarAdmisionDeGrupo } from "./validar-configuracion";
+export type { AdmisionDeOpcion } from "./validar-configuracion";
+
 // GO-2b (la venta con opciones, ADR-030): las piezas puras que ahora usa la venta desde afuera de `core/opciones/` (`core/pos/linea-configurada.ts`, la lectura de
 // las opciones para vender y el cierre). Para estas ya no rige el aviso de arriba («las consumen hoy solo los tests»): tienen consumidor de producción.
 export { validarOpcionesElegidas } from "./validar-opciones-elegidas";
@@ -18,4 +30,4 @@ export { componerPrecioDeLinea } from "./componer-precio-de-linea";
 export type { CodigoDeErrorDePrecio, OpcionParaPrecio } from "./componer-precio-de-linea";
 export { huellaDeOpciones } from "./huella-de-opciones";
 export { versionVigente } from "./version-vigente";
-export type { DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeDiferencia, TipoDeGrupoDeOpciones } from "./tipos";
+export type { TipoDeDiferencia } from "./tipos";

@@ -192,7 +192,7 @@ export function sentenciaDeFoto(e: Pick<EscenarioDeOpciones, "grupoVarianteId" |
   return { id: datos.id as string, ...sentenciaDeInsercion("OpcionElegidaEnLinea", datos) };
 }
 
-// GO-2b (la venta con opciones): el café del SALÓN, sembrado directo (todavía no existe la administración del catálogo, GO-2a) sobre el escenario de
+// GO-2b (la venta con opciones): el café del SALÓN, sembrado directo con Prisma (sin pasar por los casos de uso de administración de GO-2a, para que estos tests no dependan de ellos) sobre el escenario de
 // `test/pos/salon-fixture.ts`, para los tests de agregar ítems, enviar, cerrar, anular, el ticket y los reportes.
 
 /** Lo que `sembrarCafeDelSalon` deja sembrado. Los nombres de las opciones van con su id y su versión 1. */

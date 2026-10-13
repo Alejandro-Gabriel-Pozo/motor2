@@ -30,6 +30,15 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
     entidad: "PromoCartaCupo",
     campos: ["cantidadMinima", "cantidadMaxima"],
   },
+  // GO-2a: el catálogo de opciones de venta y lo que decide cada sucursal. Cada caso de uso audita por columna, con el antes y el después. Los que auditan DOS o más entidades (la admisión:
+  // `ProductoAdmiteGrupo` y `ProductoAdmiteOpcion`; el alta de una opción: la opción, su versión 1 y el ancla) no entran en esta lista de una entidad por archivo: su auditoría por columna la
+  // prueban `test/catalogo/opciones-admision.test.ts` y `opciones-versiones.test.ts`, y `escrituras-auditadas` exige la cadena.
+  { archivo: "src/server/actions/catalogo/casos-de-uso/crear-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "tipo", "cantidadMinima", "cantidadMaxima"] },
+  { archivo: "src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "cantidadMinima", "cantidadMaxima", "activo"] },
+  { archivo: "src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["nombre", "orden", "activa"] },
+  { archivo: "src/server/actions/catalogo/casos-de-uso/agregar-version-de-opcion.ts", entidad: "VersionDeOpcion", campos: ["numero", "tipoDeDiferencia", "diferenciaPrecio", "porcentaje", "factorEscala"] },
+  { archivo: "src/server/actions/catalogo/casos-de-uso/apagar-opcion-en-sucursal.ts", entidad: "OpcionApagadaEnSucursal", campos: ["apagada"] },
+  { archivo: "src/server/actions/catalogo/casos-de-uso/fijar-precio-local-de-opcion.ts", entidad: "PrecioLocalDeOpcion", campos: ["precio", "habilitado"] },
 ];
 
 /** Los literales de texto de `campo: "<literal>"` y de `entidad: "<literal>"` que hay en el código (propiedades de un literal de objeto). */

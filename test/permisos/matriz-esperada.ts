@@ -143,4 +143,7 @@ export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   producto_campos_sensibles: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin"] },
   compra_repartir: { modulo: "compras", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   compra_recibir: { modulo: "compras", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
+  opciones_definir: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
+  producto_opciones_admitidas: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
+  opcion_apagar_en_sucursal: { modulo: "catalogo_basico", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
 };

@@ -73,6 +73,19 @@ export const ENTIDADES_AUDITABLES = [
   // (el global de la sucursal o el de una sección) — `entidadId` es el id de la fila (al borrar, el de la fila borrada), `campo: "minimo"`, `valorAnterior: null` si la
   // fila no existía y `valorNuevo: null` si se borró, con `sucursalId`; la descripción dice si es el global o de qué sección.
   "StockMinimoProducto",
+  // GO-2a (ADR-030): el catálogo de opciones de venta y lo que decide cada sucursal. Una fila por columna que cambia, con el antes y el después. `entidadId`:
+  //  - "GrupoDeOpciones", "OpcionDeGrupo", "ProductoAdmiteGrupo" y "ProductoAdmiteOpcion": el id de la fila (catálogo de la empresa, `sucursalId` null);
+  //  - "VersionDeOpcion": el id de la versión NUEVA (`campo` `numero`, `tipoDeDiferencia`, `diferenciaPrecio`, `porcentaje` o `factorEscala`, contra la vigente anterior; `valorAnterior: null` en la
+  //    primera; el resumen de los consumos va en la descripción), `sucursalId` null;
+  //  - "PrecioLocalDeOpcion": `${sucursalId}:${productoId}:${opcionId}` (`campo` `precio` o `habilitado`), con `sucursalId`;
+  //  - "OpcionApagadaEnSucursal": `${sucursalId}:${opcionId}` (`campo: "apagada"`; sin fila = prendida, así que el primer apagado va de `false` a `true`), con `sucursalId`.
+  "GrupoDeOpciones",
+  "OpcionDeGrupo",
+  "VersionDeOpcion",
+  "ProductoAdmiteGrupo",
+  "ProductoAdmiteOpcion",
+  "PrecioLocalDeOpcion",
+  "OpcionApagadaEnSucursal",
 ] as const;
 
 /**
