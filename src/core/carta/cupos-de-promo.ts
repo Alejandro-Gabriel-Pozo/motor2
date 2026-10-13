@@ -9,6 +9,7 @@
 
 /** Los tipos de cupo: el espejo del CHECK `PromoCartaCupo_tipo_chk` (lo compara `test/persistencia/migracion-go3d.test.ts`). */
 export const TIPOS_DE_CUPO = ["SECCION", "LISTA", "DEL_DIA"] as const;
+export type TipoDeCupo = (typeof TIPOS_DE_CUPO)[number];
 
 /** El filtro de Prisma de los cupos que este despliegue sabe leer: de sección y activos. */
 export const WHERE_CUPO_DE_SECCION_ACTIVO = { tipo: "SECCION", activo: true } as const;

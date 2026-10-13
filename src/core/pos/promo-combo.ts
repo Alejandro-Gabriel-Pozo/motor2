@@ -1,5 +1,6 @@
 import { esNumeroFinito } from "@/core/numero";
 import { importeDeLinea, redondearMoneda, repartirImporte } from "@/core/moneda";
+import type { TipoDeCupo } from "@/core/carta/public";
 
 /**
  * Núcleo PURO de las promos armables ("menú fijo"/combo) del POS (Task #16, docs/plan-promo-combo-2026-09-26.md). Sin Prisma:
@@ -36,10 +37,96 @@ export interface EleccionDeCupo {
   elegidos: readonly ProductoElegidoEnCupo[];
 }
 
-export type ResultadoValidacion = { ok: true } | { ok: false; mensaje: string };
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// GO-3 (ADR-032, frente D): cupos que no son de una sección de la carta. Todo lo de abajo es ADITIVO: con cupos de sección y elecciones por sección (todo lo de hoy) el resultado de
+// `validarYAplanarEleccionPromo` y de `prorratearPrecioPromo` es IDÉNTICO al de antes (lo fija una propiedad contra un oráculo con la versión anterior copiada,
+// `test/pos/promo-combo-go3.propiedades.test.ts`), así la huella del POS no cambia.
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Una entrada que se puede elegir HOY en un cupo LISTA (una `EntradaDeCupo` activa, disponible en la sucursal, con precio de referencia y origen de stock: lo resuelve la lectura)
+ * o DEL_DIA (una `EntradaDelDiaDeCupo` activa de la fecha de hoy en la sucursal). `claveComponente` es la clave por la que el prorrateo agrupa las unidades en filas: el `productoId`
+ * cuando la entrada no tiene configuración fija; con configuración, otra distinta por configuración (`claveDeComponenteConfigurado`), así dos configuraciones del mismo producto
+ * con el mismo precio no se mezclan en una sola línea.
+ */
+export interface EntradaElegibleDeCupo {
+  entradaId: string;
+  productoId: string;
+  claveComponente: string;
+}
+
+/** Un cupo LISTA o DEL_DIA: se identifica por su id (no tiene sección) y sus elegibles son entradas. Un LISTA con UNA sola entrada y mínimo = máximo es un COMPONENTE FIJO. */
+export interface CupoDeEntradasDefinicion {
+  cupoId: string;
+  tipo: Exclude<TipoDeCupo, "SECCION">;
+  /** El nombre del lugar («Entrada», «Plato del día»), para los mensajes. */
+  nombre: string;
+  cantidadMinima: number;
+  cantidadMaximaCupo: number;
+  /** Las entradas elegibles hoy, por su id. */
+  entradas: ReadonlyMap<string, EntradaElegibleDeCupo>;
+}
+
+/** Cualquier cupo de una promo: los de sección de siempre o los de entradas de GO-3. */
+export type CupoDePromo = CupoPromoDefinicion | CupoDeEntradasDefinicion;
+
+/** Lo elegido en un cupo de entradas: la entrada (no el producto) y sus unidades. */
+export interface EleccionDeCupoPorId {
+  cupoId: string;
+  elegidos: readonly { entradaId: string; cantidad: number }[];
+}
+
+/** Cualquier elección: por sección (la de siempre, sin cambios) o por cupo (GO-3). */
+export type EleccionDePromo = EleccionDeCupo | EleccionDeCupoPorId;
+
+/** Un componente ya validado: el producto y sus unidades y, si vino de un cupo de entradas, la entrada y la clave por la que se prorratea. */
+export interface ComponenteValidado extends ProductoElegidoEnCupo {
+  entradaId?: string;
+  claveComponente?: string;
+}
+
+/** Los códigos de los rechazos de GO-3 que quien llama necesita distinguir (los de siempre no llevan código: solo el mensaje). */
+export type CodigoDeEleccionDePromo = "MENU_DEL_DIA_SIN_CARGAR" | "ENTRADA_NO_DISPONIBLE" | "COMPONENTE_FIJO";
+
+function esCupoDeEntradas(cupo: CupoDePromo): cupo is CupoDeEntradasDefinicion {
+  return "cupoId" in cupo && typeof cupo.cupoId === "string" && "entradas" in cupo;
+}
+
+/** ¿El cupo es un COMPONENTE FIJO? Un LISTA con exactamente una entrada elegible y mínimo = máximo (de 1 o más): el servidor lo completa solo y el mozo no elige nada. */
+export function esCupoFijo(cupo: CupoDePromo): cupo is CupoDeEntradasDefinicion {
+  return esCupoDeEntradas(cupo) && cupo.tipo === "LISTA" && cupo.entradas.size === 1 && cupo.cantidadMinima >= 1 && cupo.cantidadMinima === cupo.cantidadMaximaCupo;
+}
+
+/**
+ * La clave de componente de una entrada con configuración fija: `productoId` más el canónico de la configuración (`claveDeConfiguracion`). Sin configuración (canónico vacío) es el
+ * `productoId` solo, que es la clave de siempre.
+ */
+export function claveDeComponenteConfigurado(productoId: string, claveConfiguracion: string): string {
+  return claveConfiguracion === "" ? productoId : `${productoId}#${claveConfiguracion}`;
+}
+
+/**
+ * El canónico de una configuración fija (`EntradaDeCupo.claveConfiguracion`): los pares `opcionId=cantidad` ordenados por `opcionId` y separados por `;`; vacío sin opciones. Estable:
+ * no depende del orden en que se cargaron ni de la versión ni del precio de las opciones (la huella de la línea sí, por eso no sirve como identidad). Una opción repetida, sin id o con
+ * una cantidad fuera de 1 a 10 es un error de configuración: `null`.
+ */
+export function claveDeConfiguracion(opciones: readonly { opcionId: string; cantidad: number }[]): string | null {
+  const vistas = new Set<string>();
+  for (const o of opciones) {
+    if (typeof o.opcionId !== "string" || !/^[^;=\s]+$/.test(o.opcionId) || vistas.has(o.opcionId)) return null;
+    if (!Number.isInteger(o.cantidad) || o.cantidad < 1 || o.cantidad > 10) return null;
+    vistas.add(o.opcionId);
+  }
+  return [...opciones]
+    .sort((a, b) => (a.opcionId < b.opcionId ? -1 : a.opcionId > b.opcionId ? 1 : 0))
+    .map((o) => `${o.opcionId}=${o.cantidad}`)
+    .join(";");
+}
+
+export type ResultadoValidacion = { ok: true } | { ok: false; mensaje: string; codigo?: CodigoDeEleccionDePromo };
 
 /** Lo que devuelve `validarYAplanarEleccionPromo`: si la elección es válida, los componentes YA validados (copiados campo a campo, sin nada más de lo que mandó el cliente). */
-export type ResultadoEleccionValidada = { ok: true; componentes: ProductoElegidoEnCupo[] } | { ok: false; mensaje: string };
+export type ResultadoEleccionValidada = { ok: true; componentes: ComponenteValidado[] } | { ok: false; mensaje: string; codigo?: CodigoDeEleccionDePromo };
 
 /**
  * D1: valida que la elección de una promo arme TODOS sus cupos dentro de mínimo y máximo, con unidades enteras y productos
@@ -58,7 +145,7 @@ export type ResultadoEleccionValidada = { ok: true; componentes: ProductoElegido
  * y dentro de cada cupo, además de lo de siempre (cantidad entera y positiva, producto elegible, mínimo y máximo), un producto repetido (la
  * cantidad va en una sola fila). Los componentes que sirven para prorratear salen de ESTA función, ya validados: ver `validarYAplanarEleccionPromo`.
  */
-export function validarEleccionPromo(cupos: readonly CupoPromoDefinicion[], elecciones: readonly EleccionDeCupo[]): ResultadoValidacion {
+export function validarEleccionPromo(cupos: readonly CupoDePromo[], elecciones: readonly EleccionDePromo[]): ResultadoValidacion {
   const r = validarYAplanarEleccionPromo(cupos, elecciones);
   return r.ok ? { ok: true } : r;
 }
@@ -67,14 +154,36 @@ export function validarEleccionPromo(cupos: readonly CupoPromoDefinicion[], elec
  * La misma validación que `validarEleccionPromo`, pero si la elección es válida devuelve ADEMÁS los componentes aplanados que salen de la elección ya
  * validada (en el orden de los cupos): es lo que tiene que recibir `prorratearPrecioPromo`. Armar los componentes con `componentesDeEleccion` sobre la
  * entrada cruda del cliente es justo el hueco que S-01 cerró (ver arriba).
+ *
+ * GO-3: además acepta cupos de ENTRADAS (LISTA y DEL_DIA, por `cupoId`) y elecciones por cupo (`{ cupoId, elegidos: [{ entradaId, cantidad }] }`). Una elección se lee por cupo solo
+ * si NO trae `seccionCartaId` (así una elección de hoy se lee siempre como la de hoy). En un cupo de entradas:
+ *  - un COMPONENTE FIJO (`esCupoFijo`) lo completa el servidor: sin elección se agrega solo con su única entrada y su cantidad; si el cliente mandó algo distinto, se rechaza
+ *    (`COMPONENTE_FIJO`) — nunca se cobra otra cosa que lo que el dueño fijó;
+ *  - una entrada que no está entre las elegibles de hoy se rechaza (`ENTRADA_NO_DISPONIBLE`: se desactivó, se quitó del día o ya no tiene origen de stock);
+ *  - un DEL_DIA sin ninguna entrada para hoy y con mínimo mayor que 0 se rechaza (`MENU_DEL_DIA_SIN_CARGAR`): falla cerrado, nunca el plato de ayer;
+ *  - lo demás (cantidad entera y positiva, sin repetidos, mínimo y máximo) igual que en un cupo de sección.
+ * Los componentes de un cupo de entradas llevan `entradaId` y `claveComponente`; los de sección, exactamente lo de siempre.
  */
-export function validarYAplanarEleccionPromo(cupos: readonly CupoPromoDefinicion[], elecciones: readonly EleccionDeCupo[]): ResultadoEleccionValidada {
+export function validarYAplanarEleccionPromo(cupos: readonly CupoDePromo[], elecciones: readonly EleccionDePromo[]): ResultadoEleccionValidada {
   const formaRota = { ok: false, mensaje: "La elección de la promo tiene un formato inválido." } as const;
   if (!Array.isArray(elecciones)) return formaRota;
-  const seccionesDeCupo = new Set(cupos.map((c) => c.seccionCartaId));
+  const seccionesDeCupo = new Set(cupos.filter((c): c is CupoPromoDefinicion => !esCupoDeEntradas(c)).map((c) => c.seccionCartaId));
+  const cuposDeEntradas = new Map(cupos.filter(esCupoDeEntradas).map((c) => [c.cupoId, c]));
   const eleccionPorSeccion = new Map<string, EleccionDeCupo>();
+  const eleccionPorCupo = new Map<string, EleccionDeCupoPorId>();
   for (const e of elecciones as readonly unknown[]) {
     if (typeof e !== "object" || e === null) return formaRota;
+    if ((e as Partial<EleccionDeCupo>).seccionCartaId === undefined && typeof (e as Partial<EleccionDeCupoPorId>).cupoId === "string") {
+      const { cupoId, elegidos } = e as EleccionDeCupoPorId;
+      if (!Array.isArray(elegidos)) return formaRota;
+      for (const el of elegidos as readonly unknown[]) {
+        if (typeof el !== "object" || el === null || typeof (el as Partial<EleccionDeCupoPorId["elegidos"][number]>).entradaId !== "string") return formaRota;
+      }
+      if (!cuposDeEntradas.has(cupoId)) return { ok: false, mensaje: "La elección incluye un lugar que no es parte de esta promo." };
+      if (eleccionPorCupo.has(cupoId)) return { ok: false, mensaje: "La elección repite un lugar de la promo: se elige una sola vez por lugar." };
+      eleccionPorCupo.set(cupoId, e as EleccionDeCupoPorId);
+      continue;
+    }
     const { seccionCartaId, elegidos } = e as Partial<EleccionDeCupo>;
     if (typeof seccionCartaId !== "string" || !Array.isArray(elegidos)) return formaRota;
     for (const el of elegidos as readonly unknown[]) {
@@ -85,8 +194,14 @@ export function validarYAplanarEleccionPromo(cupos: readonly CupoPromoDefinicion
     eleccionPorSeccion.set(seccionCartaId, e as EleccionDeCupo);
   }
 
-  const componentes: ProductoElegidoEnCupo[] = [];
+  const componentes: ComponenteValidado[] = [];
   for (const cupo of cupos) {
+    if (esCupoDeEntradas(cupo)) {
+      const r = aplanarCupoDeEntradas(cupo, eleccionPorCupo.get(cupo.cupoId));
+      if (!r.ok) return r;
+      componentes.push(...r.componentes);
+      continue;
+    }
     const elegidos = eleccionPorSeccion.get(cupo.seccionCartaId)?.elegidos ?? [];
     const productosYaElegidos = new Set<string>();
     let total = 0;
@@ -111,6 +226,39 @@ export function validarYAplanarEleccionPromo(cupos: readonly CupoPromoDefinicion
       return { ok: false, mensaje: `Como máximo ${cupo.cantidadMaximaCupo} opción(es) de "${cupo.nombreSeccion}".` };
     }
   }
+  return { ok: true, componentes };
+}
+
+/** GO-3: valida y aplana UN cupo de entradas (ver `validarYAplanarEleccionPromo`). */
+function aplanarCupoDeEntradas(cupo: CupoDeEntradasDefinicion, eleccion: EleccionDeCupoPorId | undefined): ResultadoEleccionValidada {
+  if (cupo.tipo === "DEL_DIA" && cupo.entradas.size === 0 && cupo.cantidadMinima > 0) {
+    return { ok: false, codigo: "MENU_DEL_DIA_SIN_CARGAR", mensaje: `«${cupo.nombre}»: todavía no se cargó el plato de hoy.` };
+  }
+  let elegidos = eleccion?.elegidos ?? [];
+  if (esCupoFijo(cupo)) {
+    const [unica] = [...cupo.entradas.keys()];
+    const fijo = [{ entradaId: unica!, cantidad: cupo.cantidadMinima }];
+    if (eleccion !== undefined && !(elegidos.length === 1 && elegidos[0]!.entradaId === unica && elegidos[0]!.cantidad === cupo.cantidadMinima)) {
+      return { ok: false, codigo: "COMPONENTE_FIJO", mensaje: `«${cupo.nombre}» viene fijo en esta promo: no se elige.` };
+    }
+    elegidos = fijo;
+  }
+  const componentes: ComponenteValidado[] = [];
+  const yaElegidas = new Set<string>();
+  let total = 0;
+  for (const el of elegidos) {
+    if (!Number.isInteger(el.cantidad) || el.cantidad <= 0) {
+      return { ok: false, mensaje: `La cantidad elegida en "${cupo.nombre}" tiene que ser un número entero mayor que cero.` };
+    }
+    const entrada = cupo.entradas.get(el.entradaId);
+    if (!entrada) return { ok: false, codigo: "ENTRADA_NO_DISPONIBLE", mensaje: `Esa opción de "${cupo.nombre}" no está disponible hoy en esta promo.` };
+    if (yaElegidas.has(el.entradaId)) return { ok: false, mensaje: `Una opción está repetida en "${cupo.nombre}": la cantidad se elige en una sola fila.` };
+    yaElegidas.add(el.entradaId);
+    total += el.cantidad;
+    componentes.push({ productoId: entrada.productoId, cantidad: el.cantidad, entradaId: entrada.entradaId, claveComponente: entrada.claveComponente });
+  }
+  if (total < cupo.cantidadMinima) return { ok: false, mensaje: `Elegí al menos ${cupo.cantidadMinima} opción(es) de "${cupo.nombre}".` };
+  if (total > cupo.cantidadMaximaCupo) return { ok: false, mensaje: `Como máximo ${cupo.cantidadMaximaCupo} opción(es) de "${cupo.nombre}".` };
   return { ok: true, componentes };
 }
 
@@ -141,10 +289,14 @@ export interface ComponentePromoElegido extends ProductoElegidoEnCupo {
   /** Precio a la carta de UNA unidad de este producto, en el momento de agregar la promo (congelado como `precioCartaUnitario`
    *  en cada `CuentaItem`, paso 2.2). */
   precioCarta: number;
+  /** GO-3: la clave por la que se agrupan las unidades en filas (por defecto, el `productoId`): dos configuraciones del mismo producto con el mismo precio no se mezclan. */
+  claveComponente?: string;
 }
 
 export interface FilaPromoProrrateada {
   productoId: string;
+  /** GO-3: solo si el componente la trajo: la clave del componente de esta fila (para saber qué configuración lleva). */
+  claveComponente?: string;
   /** Unidades de esta fila — puede ser MENOS que la cantidad total elegida de ese producto si el resto de centavos separó una
    *  unidad en otra fila (D3, "separación de unidades": mismo producto, dos filas, precios distintos). */
   cantidad: number;
@@ -178,12 +330,12 @@ export function prorratearPrecioPromo(precioPromo: number, componentes: readonly
   if (!esNumeroFinito(precioPromo) || precioPromo <= 0) {
     return { ok: false, mensaje: "El precio de la promo tiene que ser mayor que cero." };
   }
-  const unidades: { productoId: string; peso: number }[] = [];
+  const unidades: { productoId: string; claveComponente: string | undefined; peso: number }[] = [];
   for (const c of componentes) {
     if (!Number.isInteger(c.cantidad) || c.cantidad <= 0) {
       return { ok: false, mensaje: `Cantidad inválida para "${c.productoId}".` };
     }
-    for (let u = 0; u < c.cantidad; u++) unidades.push({ productoId: c.productoId, peso: c.precioCarta });
+    for (let u = 0; u < c.cantidad; u++) unidades.push({ productoId: c.productoId, claveComponente: c.claveComponente, peso: c.precioCarta });
   }
   if (!unidades.length) return { ok: false, mensaje: "La promo no tiene ningún componente elegido." };
 
@@ -203,12 +355,12 @@ export function prorratearPrecioPromo(precioPromo: number, componentes: readonly
   const indicePorClave = new Map<string, number>();
   unidades.forEach((u, i) => {
     const precioUnitario = precioPorUnidad[i];
-    const clave = `${u.productoId}|${precioUnitario}`;
+    const clave = `${u.claveComponente ?? u.productoId}|${precioUnitario}`;
     const idx = indicePorClave.get(clave);
     if (idx !== undefined) filas[idx].cantidad += 1;
     else {
       indicePorClave.set(clave, filas.length);
-      filas.push({ productoId: u.productoId, cantidad: 1, precioUnitario });
+      filas.push(u.claveComponente === undefined ? { productoId: u.productoId, cantidad: 1, precioUnitario } : { productoId: u.productoId, claveComponente: u.claveComponente, cantidad: 1, precioUnitario });
     }
   });
   return { ok: true, filas };
