@@ -37,6 +37,7 @@ model User {
   invitacionesHechas         Invitacion[]         @relation("InvitacionInvitadoPor")
   invitacionesSucursalHechas InvitacionSucursal[]
   agregadosDeCuenta          AgregadoDeCuenta[]
+  reclasificacionesDeRenglon ReclasificacionRenglon[]
   ventas                     Venta[]
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
   facturasProvConfirmadas    FacturaProveedor[]   @relation("FacturaProveedorConfirmadaPor")
@@ -2374,6 +2375,7 @@ model Empresa {
   puntoDeVentaDeProveedorRel     PuntoDeVentaDeProveedor[]
   conceptoDeGastoRel             ConceptoDeGasto[]
   imputacionDeGastoRel           ImputacionDeGasto[]
+  reclasificacionRenglonRel      ReclasificacionRenglon[]
 }
 
 enum EstadoModulo {
@@ -2615,6 +2617,8 @@ model FacturaProveedorRenglon {
   movimientos MovimientoStock[]
   /// M4.3: cuánto de este renglón (si es `SIN_STOCK`) le toca a cada sucursal.
   imputaciones ImputacionDeGasto[]
+  /// M5: las reclasificaciones (versiones) del concepto y del tipo de costo de este renglón. La versión 0 es el propio renglón.
+  reclasificaciones ReclasificacionRenglon[]
 
   @@unique([empresaId, id])
   @@unique([facturaProveedorId, orden])
@@ -2797,6 +2801,8 @@ model ConceptoDeGasto {
 
   /// Los renglones sin stock que usan este concepto (M4.2).
   renglones FacturaProveedorRenglon[]
+  /// M5: las reclasificaciones de renglones que eligieron este concepto.
+  reclasificaciones ReclasificacionRenglon[]
 
   @@unique([empresaId, id])
   @@unique([empresaId, codigo])
@@ -2826,4 +2832,40 @@ model ImputacionDeGasto {
   @@unique([empresaId, id])
   @@unique([facturaProveedorRenglonId, sucursalId])
   @@index([sucursalId])
+}
+
+/// Paquete 4 (M5, C26): la RECLASIFICACIÓN versionada de un renglón SIN STOCK de la factura de proveedor: corrige el concepto de gasto y el tipo de costo (cada versión es la foto completa de los dos). DE EMPRESA (RLS por empresa, sin
+/// `sucursalId`: el renglón es uno solo para toda la empresa, y el árbitro de la concurrencia tiene que ver todas las versiones). La versión 0 es el propio renglón (no se escribe fila); cada reclasificación agrega `numero` = vigente + 1; la vigente
+/// es SIEMPRE la de `numero` mayor y, si no hay ninguna, el renglón: derivado, nunca un flag ni un UPDATE. SOLO se agrega: la app tiene SELECT e INSERT, nunca UPDATE ni DELETE. La clave foránea con DISCRIMINADOR
+/// `(empresaId, facturaProveedorRenglonId, naturalezaRenglon) → FacturaProveedorRenglon(empresaId, id, naturaleza)` y `naturalezaRenglon` fijo en `SIN_STOCK` (CHECK) impiden en la base reclasificar un renglón de mercadería. El único
+/// `(renglón, numero)` elige UNA ganadora entre reclasificaciones simultáneas; la clave de idempotencia es única global (ADR-028) y se guarda el mensaje para reproducirlo (I3). No toca importes (no tiene columnas de dinero) y no tiene `@updatedAt`.
+/// La `Proceso RECLASIFICACION` del stock es otra cosa. Nada de `src/` la escribe todavía (Etapa C).
+model ReclasificacionRenglon {
+  id                        String                  @id @default(cuid())
+  empresaId                 String                  @default(dbgenerated("app_empresa_actual()"))
+  empresa                   Empresa                 @relation(fields: [empresaId], references: [id])
+  facturaProveedorRenglonId String
+  /// Siempre `SIN_STOCK` (CHECK): es la tercera columna de la clave foránea con discriminador.
+  naturalezaRenglon         String                  @default("SIN_STOCK")
+  renglon                   FacturaProveedorRenglon @relation(fields: [empresaId, facturaProveedorRenglonId, naturalezaRenglon], references: [empresaId, id, naturaleza], onDelete: Restrict, onUpdate: Restrict)
+  /// 1, 2, 3...: único por renglón (CHECK >= 1). La vigente es la de número mayor.
+  numero                    Int
+  conceptoGastoId           String
+  conceptoGasto             ConceptoDeGasto         @relation(fields: [empresaId, conceptoGastoId], references: [empresaId, id])
+  /// COSTO_DE_VENTAS, GASTO_OPERATIVO, EXTRAORDINARIO, INVERSION o RESULTADO_FINANCIERO (CHECK).
+  tipoDeCosto               String
+  /// Obligatorio, con al menos un carácter visible y hasta 200 (CHECK).
+  motivo                    String
+  /// UUID que genera la pantalla. Único GLOBAL (ADR-028).
+  claveIdempotencia         String                  @unique
+  payloadHash               String
+  resultadoMensaje          String
+  creadoPorId               String
+  creadoPor                 User                    @relation(fields: [creadoPorId], references: [id], onDelete: Restrict)
+  /// Instante (UTC) desde el que rige la versión; vale para el período original del gasto.
+  creadoEn                  DateTime                @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([facturaProveedorRenglonId, numero])
+  @@index([conceptoGastoId])
 }

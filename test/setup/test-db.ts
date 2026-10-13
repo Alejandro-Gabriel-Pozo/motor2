@@ -107,6 +107,8 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.facturaProveedorSucursal.deleteMany();
   // La imputación de un gasto (M4.3) referencia al renglón sin stock y a la sucursal (RESTRICT): ANTES de los renglones.
   await prismaAdmin.imputacionDeGasto.deleteMany();
+  // La reclasificación de un renglón sin stock (M5) referencia al renglón, al concepto y al User (RESTRICT): ANTES de los renglones y de los conceptos.
+  await prismaAdmin.reclasificacionRenglon.deleteMany();
   await prismaAdmin.facturaProveedorTributo.deleteMany();
   await prismaAdmin.facturaProveedorRenglon.deleteMany();
   // Los conceptos de gasto (M4.1) los referencian los renglones sin stock (RESTRICT): DESPUÉS de los renglones.

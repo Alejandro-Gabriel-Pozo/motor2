@@ -22,6 +22,8 @@ const PLATAFORMA = [...tablasDeClase("EMPRESA"), ...tablasDeClase("DE_EMPRESA_ES
 const FK_CON_DISCRIMINADOR: Readonly<Record<string, string>> = {
   ImputacionDeGasto_empresaId_facturaProveedorRenglonId_natu_fkey:
     "Paquete 3, M4.3: (empresaId, renglón, naturalezaRenglon) → FacturaProveedorRenglon(empresaId, id, naturaleza): la base impide imputar un renglón de mercadería (solo SIN_STOCK) y cambiar la naturaleza de un renglón imputado.",
+  ReclasificacionRenglon_empresaId_facturaProveedorRenglonId_fkey:
+    "Paquete 4, M5: (empresaId, renglón, naturalezaRenglon) → FacturaProveedorRenglon(empresaId, id, naturaleza): la base impide reclasificar un renglón de mercadería (solo SIN_STOCK) y cambiar la naturaleza de un renglón reclasificado.",
 };
 
 function codigoDeError(e: unknown): string | undefined {

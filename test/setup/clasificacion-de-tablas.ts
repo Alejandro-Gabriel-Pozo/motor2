@@ -21,7 +21,7 @@ const POR_EMPRESA = [
   "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "Cliente", "ConceptoDeGasto", "ContenidoCartaProducto", "ConteoFisico", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto",
   "EjemplarTicket", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedorTributo", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "ImputacionDeGasto", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
   "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PermisoRol", "PortalCartaEmpresa", "PrecioLocalProducto", "Presentacion", "Producto", "PromoCarta", "PromoCartaCupo",
-  "PromoCartaSucursal", "PromoCuenta", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaIngrediente", "RecetaPaso", "RecetaPasoIngrediente", "RecetaSucursal", "RecetaVersion", "RegistroAuditoria",
+  "PromoCartaSucursal", "PromoCuenta", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaIngrediente", "RecetaPaso", "RecetaPasoIngrediente", "RecetaSucursal", "RecetaVersion", "ReclasificacionRenglon", "RegistroAuditoria",
   "RendimientoLocalIngrediente", "Rol", "Seccion", "SeccionCarta", "SeccionHabitualProducto", "StockMinimoProducto", "Sucursal", "SucursalPublica", "SustitutoRecetaIngrediente",
   "TemaCartaSucursal", "TraspasoSucursal", "Unidad", "UsuarioSucursal", "Venta",
 ] as const;
@@ -163,7 +163,7 @@ const ALCANCE_GOBIERNO: Readonly<Record<string, string>> = {
 
 const ALCANCE_DE_EMPRESA = [
   "CategoriaProducto", "Cliente", "ConceptoDeGasto", "DestinoConsumo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "PermisoRol", "PortalCartaEmpresa", "Presentacion", "Producto",
-  "PromoCarta", "PromoCartaCupo", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa",
+  "PromoCarta", "PromoCartaCupo", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "ReclasificacionRenglon", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa",
 ] as const;
 
 /** Declarada a mano (no derivada de `GLOBALES`/`CONSOLA`) a propósito: el guard cruza las dos listas y se pone en rojo si no coinciden. */
