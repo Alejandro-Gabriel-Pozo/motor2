@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ref: ["71be34a0047fcfb4f5e7b4a9025657a0dd4ef188"]
+        ref: ["c68fb8d8f6b88e89e248998bc151878f8f4a0bf6"]
         rep: [1, 2, 3, 4, 5, 6]
     services:
       postgres:
