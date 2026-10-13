@@ -48,6 +48,38 @@ export async function sembrarEscenarioDeCentros(): Promise<EscenarioDeCentros> {
   };
 }
 
+/**
+ * Escribe (como dueño, sin RLS) una distribución completa: la cabecera de la versión y sus líneas. Por defecto es la versión 1 del primer plan, con el motivo que pide la versión 2 en adelante. Devuelve el id de la versión.
+ * Las líneas llevan sus puntos básicos y sus importes ya repartidos: esta ayuda NO suma ni valida nada (igual que la base).
+ */
+export async function sembrarDistribucion(
+  e: EscenarioDeCentros,
+  imputacionId: string,
+  lineas: ReadonlyArray<{ centroId: string; porcentajeBp: number; importe: string; importeIvaComputable?: string }>,
+  opciones: { numero?: number; planId?: string } = {},
+): Promise<string> {
+  const numero = opciones.numero ?? 1;
+  const planId = opciones.planId ?? e.planId;
+  const version = await prisma.distribucionCostoVersion.create({
+    data: {
+      imputacionDeGastoId: imputacionId,
+      planDeCostosId: planId,
+      numero,
+      motivo: numero > 1 ? "Corrección de la distribución" : null,
+      claveIdempotencia: randomUUID(),
+      payloadHash: "huella-de-prueba",
+      resultadoMensaje: "Gasto distribuido.",
+      creadoPorId: e.usuarioId,
+    } as never,
+  });
+  for (const l of lineas) {
+    await prisma.distribucionCostoLinea.create({
+      data: { distribucionCostoVersionId: version.id, planDeCostosId: planId, centroDeCostosId: l.centroId, porcentajeBp: l.porcentajeBp, importe: l.importe, importeIvaComputable: l.importeIvaComputable ?? "0.00" } as never,
+    });
+  }
+  return version.id;
+}
+
 interface SentenciaPg {
   texto: string;
   params: unknown[];
