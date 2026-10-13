@@ -110,25 +110,22 @@ describe("con cupos de entradas: la suma es exacta y las configuraciones no se m
   const elegidosArb = fc.record({ chico: fc.integer({ min: 0, max: 3 }), grande: fc.integer({ min: 0, max: 3 }), agua: fc.integer({ min: 0, max: 3 }) });
   const preciosDeListaArb = fc.record({ chico: fc.integer({ min: 1, max: 900_000 }).map((c) => c / 100), mismoPrecio: fc.boolean(), grande: fc.integer({ min: 1, max: 900_000 }).map((c) => c / 100), agua: fc.integer({ min: 1, max: 900_000 }).map((c) => c / 100) });
 
-  it("para cualquier elección y precios de lista: suma exacta al centavo, piso de $0,01 y cada fila de UNA sola clave de componente", () => {
+  // Por CONSTRUCCIÓN, sin descartar nada al azar: al menos una unidad elegida (si las tres vienen en 0, va un agua) y un precio de la promo que siempre alcanza el piso de $0,01 por
+  // unidad (de 9 centavos para arriba: el máximo es 9 unidades). Así cada una de las 1000 corridas llega a las comprobaciones de la suma, y el conteo es exacto, no «más de N».
+  const elegidosValidosArb = elegidosArb.map((n) => (n.chico + n.grande + n.agua === 0 ? { ...n, agua: 1 } : n));
+  const precioPromoArb = fc.integer({ min: 9, max: 5_000_000 }).map((c) => c / 100);
+
+  it("para cualquier elección y precios de lista: suma exacta al centavo, piso de $0,01 y cada fila de UNA sola clave de componente (1000 casos, todos probados)", () => {
     let probadas = 0;
     fc.assert(
-      fc.property(elegidosArb, preciosDeListaArb, fc.integer({ min: 1, max: 5_000_000 }).map((c) => c / 100), (n, precios, precioPromo) => {
+      fc.property(elegidosValidosArb, preciosDeListaArb, precioPromoArb, (n, precios, precioPromo) => {
         const elecciones = [{ cupoId: "cupo-cafe", elegidos: Object.entries({ "e-chico": n.chico, "e-grande": n.grande, "e-agua": n.agua }).filter(([, c]) => c > 0).map(([entradaId, cantidad]) => ({ entradaId, cantidad })) }];
         const v = validarYAplanarEleccionPromo([cupoDeCafe(9)], elecciones);
+        expect(v.ok, "la elección se arma por construcción dentro del cupo").toBe(true);
         if (!v.ok) return;
         const listaDe: Record<string, number> = { "e-chico": precios.chico, "e-grande": precios.mismoPrecio ? precios.chico : precios.grande, "e-agua": precios.agua };
         const componentes = v.componentes.map((c) => ({ ...c, precioCarta: listaDe[c.entradaId!]! }));
         const r = prorratearPrecioPromo(precioPromo, componentes);
-        const unidades = componentes.reduce((s, c) => s + c.cantidad, 0);
-        if (unidades === 0) {
-          expect(r.ok).toBe(false);
-          return;
-        }
-        if (redondearMoneda(precioPromo) < redondearMoneda(0.01 * unidades)) {
-          expect(r.ok).toBe(false);
-          return;
-        }
         expect(r.ok).toBe(true);
         if (!r.ok) return;
         probadas++;
@@ -142,7 +139,19 @@ describe("con cupos de entradas: la suma es exacta y las configuraciones no se m
       }),
       { numRuns: 1000 },
     );
-    expect(probadas).toBeGreaterThan(100);
+    expect(probadas, "cada corrida es un caso válido: ninguno se descarta").toBe(1000);
+  });
+
+  it("los dos rechazos que la propiedad ya no genera, fijos: sin ninguna unidad elegida y con el precio debajo del piso de $0,01 por unidad", () => {
+    const vacio = validarYAplanarEleccionPromo([cupoDeCafe(9)], [{ cupoId: "cupo-cafe", elegidos: [] }]);
+    expect(vacio).toEqual({ ok: true, componentes: [] });
+    expect(prorratearPrecioPromo(1000, [])).toMatchObject({ ok: false });
+    const v = validarYAplanarEleccionPromo([cupoDeCafe(9)], [{ cupoId: "cupo-cafe", elegidos: [{ entradaId: "e-chico", cantidad: 3 }, { entradaId: "e-agua", cantidad: 2 }] }]);
+    expect(v.ok).toBe(true);
+    if (!v.ok) return;
+    const componentes = v.componentes.map((c) => ({ ...c, precioCarta: 1000 }));
+    expect(prorratearPrecioPromo(0.04, componentes), "5 unidades necesitan al menos $0,05").toMatchObject({ ok: false });
+    expect(prorratearPrecioPromo(0.05, componentes)).toMatchObject({ ok: true });
   });
 
   it("dos configuraciones del mismo producto con el MISMO precio quedan en dos filas, una por configuración", () => {
