@@ -125,6 +125,44 @@ export function sentenciaDeLinea(e: { versionId: string; planId: string; centroI
   });
 }
 
+interface LineaPedida {
+  centroId: string;
+  porcentajeBp: number;
+  importe: string;
+  importeIvaComputable?: string;
+}
+
+/** Las sentencias de UNA distribución completa (la cabecera y todas sus líneas), en el orden en que van dentro de la misma transacción. */
+export function sentenciasDeDistribucion(
+  e: { imputacionId: string; planId: string; usuarioId: string },
+  version: Record<string, unknown>,
+  lineas: readonly LineaPedida[],
+): SentenciaPg[] {
+  const cabecera = sentenciaDeVersion(e, version);
+  return [
+    cabecera,
+    ...lineas.map((l) =>
+      sentenciaDeLinea({ versionId: cabecera.id, planId: e.planId, centroId: l.centroId }, { porcentajeBp: l.porcentajeBp, importe: l.importe, importeIvaComputable: l.importeIvaComputable ?? "0.00" }),
+    ),
+  ];
+}
+
+/**
+ * Lo que la base NO impide (no hay disparadores) y que cada versión tiene que cumplir: el chequeo posterior al despliegue de `docs/deploy-con-migraciones.md` corre estas MISMAS consultas y todas tienen que dar CERO filas.
+ * Con el LEFT JOIN cuentan también las versiones que quedaron sin líneas.
+ */
+export const CONSULTAS_DE_COHERENCIA = {
+  /** Versiones cuyas líneas no suman 10000 puntos básicos. */
+  porcentajeNoSuma100:
+    'SELECT v."id" FROM "DistribucionCostoVersion" v LEFT JOIN "DistribucionCostoLinea" l ON l."distribucionCostoVersionId" = v."id" GROUP BY v."id" HAVING COALESCE(sum(l."porcentajeBp"), 0) <> 10000 ORDER BY v."id"',
+  /** Versiones cuyo importe o IVA computable (sumados en NUMERIC) no es el de su imputación. */
+  importesNoSumanLoDeLaImputacion:
+    'SELECT v."id" FROM "DistribucionCostoVersion" v JOIN "ImputacionDeGasto" i ON i."id" = v."imputacionDeGastoId" LEFT JOIN "DistribucionCostoLinea" l ON l."distribucionCostoVersionId" = v."id" GROUP BY v."id", i."importe", i."importeIvaComputable" HAVING COALESCE(sum(l."importe"), 0) <> i."importe" OR COALESCE(sum(l."importeIvaComputable"), 0) <> i."importeIvaComputable" ORDER BY v."id"',
+  /** Versiones de una sucursal donde el plan no aplica (sin fila de aplicabilidad o con `aplica = false`). */
+  planNoAplicaEnLaSucursal:
+    'SELECT v."id" FROM "DistribucionCostoVersion" v JOIN "ImputacionDeGasto" i ON i."id" = v."imputacionDeGastoId" LEFT JOIN "PlanDeCostosSucursal" a ON a."planDeCostosId" = v."planDeCostosId" AND a."sucursalId" = i."sucursalId" WHERE a."aplica" IS DISTINCT FROM true ORDER BY v."id"',
+} as const;
+
 export const aCentavos = (importe: number) => Math.round(importe * 100);
 
 /**
