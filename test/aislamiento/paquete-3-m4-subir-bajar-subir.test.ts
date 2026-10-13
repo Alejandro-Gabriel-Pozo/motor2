@@ -4,7 +4,7 @@ import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
 import { clavesReservadasDe } from "../setup/claves-reservadas-en-base";
-import { MIGRACIONES_DE_POLITICAS_DE_SUCURSAL, MIGRACIONES_DE_POLITICAS_POSTERIORES, TABLAS_DEL_PAQUETE_1 } from "../setup/migraciones-de-alcance-de-sucursal";
+import { MIGRACION_B1_FUNCIONES, MIGRACIONES_DE_POLITICAS_DE_SUCURSAL, MIGRACIONES_DE_POLITICAS_POSTERIORES, TABLAS_DEL_PAQUETE_1 } from "../setup/migraciones-de-alcance-de-sucursal";
 import { COMANDOS_CON_POLITICA_DE_ALCANCE } from "../setup/politicas-de-alcance-de-sucursal";
 
 /**
@@ -34,6 +34,11 @@ import { COMANDOS_CON_POLITICA_DE_ALCANCE } from "../setup/politicas-de-alcance-
  *     idéntico al de antes de M7); SUBIR OTRA VEZ; el CICLO COMPLETO (M7.4 a M7.1, M6.4 a M6.1, M5, M4.5 a M4.1 y M3 hasta el Paquete 2, y de vuelta hasta M7 arriba); y las reversas de M7 idempotentes. Los casos 0 a 7.5 no cambian.
  *     ORDEN DE EJECUCIÓN: M6 (caso 7) corre ANTES que M7 (caso 8), y cada bloque es autocontenido: el de M6 parte de M5 arriba SIN M7 (M6 y M7 son independientes entre sí; M7 se agregó sin M6) y deja M3 a M6 arriba; el de M7 parte de ahí. Con las tablas de M6 arriba, M7 tiene
  *     que vaciar las notas antes de tocar los gastos y bajar M6 antes que M5 y que M4.x cuando recorre el ciclo completo (reversa: M7, M6, M5, M4, M3).
+ *  9. GO-1 (los GRUPOS DE OPCIONES DE VENTA, el «elemento configurable»: seis migraciones GO-1a, GO-1b, GO-1c, GO-1c-rls, GO-1d y GO-1d-rls, sobre el estado que deja M7 con todo arriba): SUBIR (las nueve tablas, los CHECK, las claves foráneas, los únicos y parciales, las políticas 1 por
+ *     tabla del catálogo y 5 en las tres de sucursal —el total de alcance pasa a +12—, los tres disparadores con su definición exacta, las columnas nuevas de `CuentaItem` y `Operacion`, los privilegios exactos de tabla y por columna, las tres claves del admin y un humo como `motor2_app`);
+ *     BAJAR CON DATOS (cada reversa ABORTA por su motivo sin dejar nada a medias; con la foto y los precios arriba la de GO-1b FALLA con 2BP01 y con GO-1d-rls arriba la de B1 también; sin filas, de GO-1d-rls a GO-1a el catálogo queda idéntico al de antes de GO-1); SUBIR OTRA VEZ;
+ *     INDEPENDENCIA (con GO-1 arriba, M7, M6 y M5 bajan y suben sin tocar GO-1) y el CICLO COMPLETO (GO-1, M7, M6, M5, M4 y M3 hasta el Paquete 2 y de vuelta hasta GO-1 arriba); y las seis reversas idempotentes. Los casos 0 a 8.5 no cambian y el bloque no usa `skip`.
+ *     ORDEN DE EJECUCIÓN: GO-1 (caso 9) corre DESPUÉS de M7 y parte de lo que deja su último caso (M3 a M7 arriba). GO-1 no depende de M2 a M7 ni ellas de GO-1; solo depende de B1 (las funciones) y de B4 (Mesa, Cuenta y CuentaItem), que son del Paquete 1.
  */
 const RAIZ = join(__dirname, "../../prisma/migrations");
 const ULTIMA_DEL_PAQUETE_2 = "20261015123000_m2_rls_sucursal_venta";
@@ -86,7 +91,7 @@ async function foto() {
     privilegios: await q(`SELECT table_name::text AS tabla, grantee::text AS rol, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'public' AND grantee IN ('motor2_app', 'motor2_plataforma') ORDER BY 1, 2, 3`),
     tipos: await q(`SELECT t.typname::text AS tipo, array_agg(e.enumlabel::text ORDER BY e.enumsortorder) AS valores FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid WHERE t.typnamespace = 'public'::regnamespace GROUP BY 1 ORDER BY 1`),
     disparadores: await q(`SELECT tgrelid::regclass::text AS tabla, tgname::text AS nombre, tgenabled::text AS habilitado, pg_get_triggerdef(oid) AS definicion FROM pg_trigger WHERE NOT tgisinternal ORDER BY 1, 2`),
-    privilegiosDeColumna: await q(`SELECT table_name::text AS tabla, column_name::text AS columna, grantee::text AS rol, privilege_type FROM information_schema.column_privileges WHERE table_schema = 'public' AND grantee IN ('motor2_app', 'motor2_plataforma') AND (table_name LIKE 'FacturaProveedor%' OR table_name LIKE 'NotaCreditoProveedor%' OR table_name IN ('PuntoDeVentaDeProveedor', 'ConceptoDeGasto', 'ImputacionDeGasto', 'ReclasificacionRenglon', 'PlanDeCostos', 'CentroDeCostos', 'PlanDeCostosSucursal', 'DistribucionCostoVersion', 'DistribucionCostoLinea')) ORDER BY 1, 2, 3, 4`),
+    privilegiosDeColumna: await q(`SELECT table_name::text AS tabla, column_name::text AS columna, grantee::text AS rol, privilege_type FROM information_schema.column_privileges WHERE table_schema = 'public' AND grantee IN ('motor2_app', 'motor2_plataforma') AND (table_name LIKE 'FacturaProveedor%' OR table_name LIKE 'NotaCreditoProveedor%' OR table_name IN ('PuntoDeVentaDeProveedor', 'ConceptoDeGasto', 'ImputacionDeGasto', 'ReclasificacionRenglon', 'PlanDeCostos', 'CentroDeCostos', 'PlanDeCostosSucursal', 'DistribucionCostoVersion', 'DistribucionCostoLinea', 'GrupoDeOpciones', 'OpcionDeGrupo', 'VersionDeOpcion', 'ConsumoDeOpcion', 'ProductoAdmiteGrupo', 'ProductoAdmiteOpcion', 'PrecioLocalDeOpcion', 'OpcionApagadaEnSucursal', 'OpcionElegidaEnLinea', 'CuentaItem', 'Operacion')) ORDER BY 1, 2, 3, 4`),
     funciones: await q(`SELECT p.proname::text AS nombre, pg_get_functiondef(p.oid) AS definicion FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace ORDER BY 1`),
   };
 }
@@ -1068,5 +1073,406 @@ describe("M7: subir, bajar y subir (centros de costos: M7.1 a M7.4) sobre el est
     for (const k of Object.keys(antesDeM7) as (keyof typeof antesDeM7)[]) expect(abajo[k], `catálogo «${k}» igual que antes de M7`).toEqual(antesDeM7[k]);
     for (const m of M7) await correr(m, "migration.sql");
     await comprobarArribaM7("tercera subida de M7");
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// GO-1 (GRUPOS DE OPCIONES DE VENTA: GO-1a a GO-1d-rls): sigue en el MISMO archivo para reutilizar la base temporal, la foto del catálogo y los ayudantes, y parte del estado que dejó el último caso de M7 (M3 a M7 arriba). Es independiente de ellas.
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+const GO1_A = "20261020100000_go1a_permisos_de_opciones";
+const GO1_B = "20261020110000_go1b_grupos_y_opciones";
+const GO1_C = "20261020120000_go1c_opciones_por_sucursal";
+const GO1_C_RLS = "20261020121000_go1c_rls_sucursal_opciones_por_sucursal";
+const GO1_D = "20261020130000_go1d_linea_con_opciones";
+const GO1_D_RLS = "20261020131000_go1d_rls_sucursal_opcion_elegida";
+const GO1 = [GO1_A, GO1_B, GO1_C, GO1_C_RLS, GO1_D, GO1_D_RLS];
+/** La reversa va en orden inverso: las políticas de la foto, la línea con opciones, las políticas por sucursal, lo de la sucursal, el catálogo y las claves. */
+const BAJADA_GO1 = [GO1_D_RLS, GO1_D, GO1_C_RLS, GO1_C, GO1_B, GO1_A];
+const CLAVES_GO1 = clavesReservadasDe(GO1_A);
+const CATALOGO_GO1 = ["GrupoDeOpciones", "OpcionDeGrupo", "VersionDeOpcion", "ConsumoDeOpcion", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion"];
+const POR_SUCURSAL_GO1 = ["PrecioLocalDeOpcion", "OpcionApagadaEnSucursal", "OpcionElegidaEnLinea"];
+const TABLAS_GO1 = [...CATALOGO_GO1, ...POR_SUCURSAL_GO1];
+const CHECKS_GO1 = [
+  "ConsumoDeOpcion_cantidad_chk", "ConsumoDeOpcion_efecto_chk", "ConsumoDeOpcion_merma_chk", "ConsumoDeOpcion_orden_chk", "ConsumoDeOpcion_reemplazo_chk", "GrupoDeOpciones_cantidades_chk", "GrupoDeOpciones_incluida_chk", "GrupoDeOpciones_medida_chk",
+  "GrupoDeOpciones_nombre_chk", "GrupoDeOpciones_tipo_chk", "GrupoDeOpciones_version_chk", "OpcionDeGrupo_ninguna_sin_producto_chk", "OpcionDeGrupo_nombre_chk", "OpcionDeGrupo_orden_chk", "OpcionDeGrupo_version_chk", "OpcionElegidaEnLinea_absoluto_chk",
+  "OpcionElegidaEnLinea_adicional_chk", "OpcionElegidaEnLinea_cantidad_chk", "OpcionElegidaEnLinea_diferencia_chk", "OpcionElegidaEnLinea_diferencia_de_medida_chk", "OpcionElegidaEnLinea_factor_chk", "OpcionElegidaEnLinea_incluida_chk",
+  "OpcionElegidaEnLinea_medida_chk", "OpcionElegidaEnLinea_modo_precio_chk", "OpcionElegidaEnLinea_nombres_chk", "OpcionElegidaEnLinea_porcentaje_chk", "OpcionElegidaEnLinea_porcentaje_solo_medida_variante_chk",
+  "OpcionElegidaEnLinea_tipo_de_diferencia_chk", "OpcionElegidaEnLinea_tipo_grupo_chk", "PrecioLocalDeOpcion_precio_chk", "ProductoAdmiteGrupo_cantidades_chk", "ProductoAdmiteGrupo_modo_precio_chk", "ProductoAdmiteGrupo_orden_chk",
+  "ProductoAdmiteGrupo_version_chk", "ProductoAdmiteOpcion_absoluto_o_diferencia_chk", "ProductoAdmiteOpcion_cantidad_maxima_chk", "ProductoAdmiteOpcion_diferencia_chk", "ProductoAdmiteOpcion_porcentaje_chk",
+  "ProductoAdmiteOpcion_precio_absoluto_chk", "ProductoAdmiteOpcion_tipo_de_diferencia_chk", "ProductoAdmiteOpcion_version_chk", "VersionDeOpcion_diferencia_chk", "VersionDeOpcion_factor_chk", "VersionDeOpcion_numero_chk",
+  "VersionDeOpcion_porcentaje_chk", "VersionDeOpcion_tipo_de_diferencia_chk",
+];
+const CLAVES_FORANEAS_GO1 = [
+  "ConsumoDeOpcion_empresaId_fkey", "ConsumoDeOpcion_empresaId_insumoProductoId_fkey", "ConsumoDeOpcion_empresaId_reemplazaAProductoId_fkey", "ConsumoDeOpcion_empresaId_unidadId_fkey", "ConsumoDeOpcion_empresaId_versionDeOpcionId_fkey",
+  "GrupoDeOpciones_empresaId_fkey", "OpcionApagadaEnSucursal_actualizadoPorId_fkey", "OpcionApagadaEnSucursal_empresaId_fkey", "OpcionApagadaEnSucursal_empresaId_opcionId_fkey", "OpcionApagadaEnSucursal_empresaId_sucursalId_fkey",
+  "OpcionDeGrupo_empresaId_fkey", "OpcionDeGrupo_empresaId_grupoId_fkey", "OpcionDeGrupo_empresaId_productoId_fkey", "OpcionElegidaEnLinea_empresaId_cuentaItemId_fkey", "OpcionElegidaEnLinea_empresaId_fkey",
+  "OpcionElegidaEnLinea_empresaId_grupoId_fkey", "OpcionElegidaEnLinea_empresaId_opcionId_fkey", "OpcionElegidaEnLinea_empresaId_versionDeOpcionId_fkey", "PrecioLocalDeOpcion_empresaId_fkey", "PrecioLocalDeOpcion_empresaId_opcionId_fkey",
+  "PrecioLocalDeOpcion_empresaId_productoId_fkey", "PrecioLocalDeOpcion_empresaId_sucursalId_fkey", "ProductoAdmiteGrupo_empresaId_fkey", "ProductoAdmiteGrupo_empresaId_grupoId_fkey", "ProductoAdmiteGrupo_empresaId_productoId_fkey",
+  "ProductoAdmiteOpcion_empresaId_fkey", "ProductoAdmiteOpcion_empresaId_opcionId_fkey", "ProductoAdmiteOpcion_empresaId_productoId_fkey", "VersionDeOpcion_creadoPorId_fkey", "VersionDeOpcion_empresaId_fkey", "VersionDeOpcion_empresaId_opcionId_fkey",
+];
+const UNICOS_GO1 = [
+  "ConsumoDeOpcion_empresaId_id_key", "ConsumoDeOpcion_un_reemplazo_por_insumo_key", "ConsumoDeOpcion_versionDeOpcionId_orden_key", "GrupoDeOpciones_empresaId_id_key", "GrupoDeOpciones_empresaId_nombre_key", "GrupoDeOpciones_nombre_lower_key",
+  "OpcionApagadaEnSucursal_empresaId_id_key", "OpcionApagadaEnSucursal_sucursalId_opcionId_key", "OpcionDeGrupo_empresaId_id_key", "OpcionDeGrupo_empresaId_productoId_key", "OpcionDeGrupo_grupoId_nombre_key", "OpcionDeGrupo_nombre_lower_key",
+  "OpcionDeGrupo_una_ninguna_por_grupo_key", "OpcionElegidaEnLinea_cuentaItemId_opcionId_key", "OpcionElegidaEnLinea_empresaId_id_key", "OpcionElegidaEnLinea_un_adicional_por_linea_key", "OpcionElegidaEnLinea_una_medida_por_linea_key",
+  "PrecioLocalDeOpcion_empresaId_id_key", "PrecioLocalDeOpcion_sucursalId_productoId_opcionId_key", "ProductoAdmiteGrupo_empresaId_id_key", "ProductoAdmiteGrupo_productoId_grupoId_key", "ProductoAdmiteOpcion_empresaId_id_key",
+  "ProductoAdmiteOpcion_productoId_opcionId_key", "VersionDeOpcion_empresaId_id_key", "VersionDeOpcion_opcionId_numero_key",
+];
+/** Las columnas de UPDATE de `motor2_app` en las tablas editables de GO-1; en las otras (versiones, consumos, foto) no hay ninguna. */
+const ACTUALIZABLES_GO1: Readonly<Record<string, readonly string[]>> = {
+  GrupoDeOpciones: ["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "nombre", "version"],
+  OpcionDeGrupo: ["activa", "actualizadoEn", "nombre", "orden", "version"],
+  ProductoAdmiteGrupo: ["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "modoPrecio", "orden", "version"],
+  ProductoAdmiteOpcion: ["activo", "actualizadoEn", "cantidadMaxima", "diferenciaPrecio", "porcentaje", "precioAbsoluto", "tipoDeDiferencia", "version"],
+  PrecioLocalDeOpcion: ["actualizadoEn", "habilitado", "precio"],
+  OpcionApagadaEnSucursal: ["actualizadoEn", "actualizadoPorId", "apagada"],
+  VersionDeOpcion: [],
+  ConsumoDeOpcion: [],
+  OpcionElegidaEnLinea: [],
+};
+
+/** Vacía, como dueño y en el orden de sus claves foráneas, todo lo que GO-1 escribe (y lo que el humo sembró para él). Solo si GO-1 ya está arriba. */
+async function vaciarTablasDeGO1() {
+  const c = base.cliente;
+  // Se usa también con GO-1 a medio bajar: solo se vacía lo que existe.
+  const hayTabla = async (t: string) => (await q<{ r: string | null }>(`SELECT to_regclass('"${t}"')::text AS r`))[0]!.r !== null;
+  const hayColumna = async (t: string, columna: string) => (await q(`SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = '${t}' AND column_name = '${columna}'`)).length > 0;
+  for (const t of ["OpcionElegidaEnLinea", "PrecioLocalDeOpcion", "OpcionApagadaEnSucursal", "ConsumoDeOpcion", "VersionDeOpcion", "ProductoAdmiteOpcion", "ProductoAdmiteGrupo", "OpcionDeGrupo", "GrupoDeOpciones"]) if (await hayTabla(t)) await c.query(`DELETE FROM "${t}"`);
+  if (await hayColumna("Operacion", "operacionPadreId")) await c.query(`DELETE FROM "Operacion" WHERE "operacionPadreId" IS NOT NULL`);
+  await c.query(`DELETE FROM "CuentaItem" WHERE "anulaAItemId" IS NOT NULL`);
+  if (await hayColumna("CuentaItem", "lineaPadreId")) await c.query(`DELETE FROM "CuentaItem" WHERE "lineaPadreId" IS NOT NULL`);
+  await c.query(`DELETE FROM "CuentaItem"`);
+  await c.query(`DELETE FROM "Operacion" WHERE "id" LIKE 'op_go1%'`);
+  await c.query(`DELETE FROM "Cuenta"`);
+  await c.query(`DELETE FROM "Mesa"`);
+  await c.query(`DELETE FROM "Producto" WHERE "id" LIKE 'pro_go1%'`);
+}
+
+/** La base mínima del humo de GO-1, como dueño: dos productos de venta (el café y el ancla del shot), una mesa con su cuenta por sucursal. */
+async function sembrarBaseParaGO1() {
+  const c = base.cliente;
+  await vaciarTablasDeGO1();
+  await c.query(`INSERT INTO "Producto" ("id","empresaId","codigo","nombre","tipo","unidadStockId") VALUES ('pro_go1_cafe',$1,'PV_CAFE','Café','PV','uni_m4'), ('pro_go1_shot',$1,'PV_SHOT','Shot extra (ancla)','PV','uni_m4')`, [E]);
+  await c.query(`INSERT INTO "Mesa" ("id","empresaId","sucursalId","numero") VALUES ('mesa_a',$1,'suc_a',1), ('mesa_b',$1,'suc_b',1)`, [E]);
+  await c.query(`INSERT INTO "Cuenta" ("id","empresaId","mesaId","abiertaPorId") VALUES ('cta_a',$1,'mesa_a','u_m4'), ('cta_b',$1,'mesa_b','u_m4')`, [E]);
+}
+
+/** El catálogo mínimo de café, la grilla y el apagado de la sucursal B y una línea con su foto en la cuenta de B, sembrados como dueño: lo que el humo de la sucursal A no tiene que ver y lo que una reversa con datos tiene que respetar. */
+async function sembrarOpcionesParaGO1() {
+  const c = base.cliente;
+  await sembrarBaseParaGO1();
+  await c.query(`INSERT INTO "GrupoDeOpciones" ("empresaId","id","nombre","tipo","cantidadMinima","cantidadMaxima") VALUES ('${E}','gr_leche','Leche','VARIANTE',0,1), ('${E}','gr_extras','Extras','ADICIONAL',0,3)`);
+  await c.query(`INSERT INTO "OpcionDeGrupo" ("empresaId","id","grupoId","nombre","productoId") VALUES ('${E}','op_vaca','gr_leche','De vaca',NULL), ('${E}','op_shot','gr_extras','Shot extra','pro_go1_shot')`);
+  await c.query(`INSERT INTO "VersionDeOpcion" ("empresaId","id","opcionId","numero","tipoDeDiferencia","diferenciaPrecio","creadoPorId") VALUES ('${E}','ver_vaca','op_vaca',1,'MONTO',0,'u_m4'), ('${E}','ver_shot','op_shot',1,'MONTO',200.00,'u_m4')`);
+  await c.query(`INSERT INTO "ConsumoDeOpcion" ("empresaId","id","versionDeOpcionId","efecto","insumoProductoId","cantidad","unidadId") VALUES ('${E}','con_shot','ver_shot','SUMA','pro_m4',1,'uni_m4')`);
+  await c.query(`INSERT INTO "ProductoAdmiteGrupo" ("empresaId","id","productoId","grupoId") VALUES ('${E}','pag_1','pro_go1_cafe','gr_leche')`);
+  await c.query(`INSERT INTO "ProductoAdmiteOpcion" ("empresaId","id","productoId","opcionId") VALUES ('${E}','pao_1','pro_go1_cafe','op_vaca')`);
+  await c.query(`INSERT INTO "PrecioLocalDeOpcion" ("empresaId","id","sucursalId","productoId","opcionId","precio") VALUES ('${E}','pl_b','suc_b','pro_go1_cafe','op_vaca',250.00)`);
+  await c.query(`INSERT INTO "OpcionApagadaEnSucursal" ("empresaId","id","sucursalId","opcionId","apagada","actualizadoPorId") VALUES ('${E}','ap_b','suc_b','op_shot',true,'u_m4')`);
+  await c.query(`INSERT INTO "CuentaItem" ("empresaId","id","cuentaId","productoId","cantidad","precioUnitario","huellaOpciones") VALUES ('${E}','it_b','cta_b','pro_go1_cafe',1,1000.00,'${"ab".repeat(32)}')`);
+  await c.query(`INSERT INTO "OpcionElegidaEnLinea" ("empresaId","id","cuentaItemId","grupoId","opcionId","versionDeOpcionId","tipoGrupo","nombreGrupo","nombreOpcion","importeUnitario") VALUES ('${E}','fo_b','it_b','gr_leche','op_vaca','ver_vaca','VARIANTE','Leche','De vaca',0)`);
+}
+
+/** Las comprobaciones de «GO-1 aplicada» (el humo corre en transacciones que se deshacen: no deja ninguna fila de GO-1 salvo lo que sembró el dueño, que se borra al final). */
+async function comprobarArribaGO1(etiqueta: string) {
+  const f = await foto();
+  const deLaTabla = (t: string) => f.restricciones.filter((r) => r.tabla === `"${t}"`);
+  for (const t of TABLAS_GO1) expect(f.rls.find((r) => r.tabla === t), `${etiqueta}: ${t} con RLS y sin FORCE`).toEqual({ tabla: t, rls: true, forzado: false });
+  const checks = TABLAS_GO1.flatMap((t) => deLaTabla(t).filter((r) => r.contype === "c"));
+  expect(checks.map((r) => r.nombre).sort(), `${etiqueta}: los CHECK de las nueve tablas`).toEqual([...CHECKS_GO1].sort());
+  expect(checks.every((r) => r.convalidated), `${etiqueta}: los CHECK validados`).toBe(true);
+  expect(TABLAS_GO1.flatMap((t) => deLaTabla(t).filter((r) => r.contype === "f")).map((r) => r.nombre).sort(), `${etiqueta}: las claves foráneas (todas de una o dos columnas)`).toEqual([...CLAVES_FORANEAS_GO1].sort());
+  const def = (nombre: string) => String(f.restricciones.find((r) => r.nombre === nombre)!.definicion);
+  expect(def("OpcionElegidaEnLinea_empresaId_cuentaItemId_fkey"), `${etiqueta}: la foto se borra con su línea`).toBe('FOREIGN KEY ("empresaId", "cuentaItemId") REFERENCES "CuentaItem"("empresaId", id) ON UPDATE CASCADE ON DELETE CASCADE');
+  expect(def("CuentaItem_empresaId_lineaPadreId_fkey"), `${etiqueta}: un padre con adicionales no se borra`).toBe('FOREIGN KEY ("empresaId", "lineaPadreId") REFERENCES "CuentaItem"("empresaId", id) ON UPDATE CASCADE ON DELETE RESTRICT');
+  expect(def("Operacion_empresaId_operacionPadreId_fkey"), `${etiqueta}: la operación padre no se borra`).toBe('FOREIGN KEY ("empresaId", "operacionPadreId") REFERENCES "Operacion"("empresaId", id) ON UPDATE CASCADE ON DELETE RESTRICT');
+  for (const n of ["CuentaItem_adicional_chk", "CuentaItem_huella_opciones_chk", "Operacion_padre_solo_venta_chk"]) expect(f.restricciones.find((r) => r.nombre === n)?.convalidated, `${etiqueta}: ${n} puesto y validado`).toBe(true);
+  const unicos = f.indices.filter((i) => TABLAS_GO1.includes(String(i.tabla)) && String(i.indexdef).startsWith("CREATE UNIQUE INDEX") && !String(i.nombre).endsWith("_pkey"));
+  expect(unicos.map((i) => i.nombre).sort(), `${etiqueta}: los índices únicos y parciales`).toEqual([...UNICOS_GO1].sort());
+  expect(String(f.indices.find((i) => i.nombre === "OpcionDeGrupo_una_ninguna_por_grupo_key")!.indexdef), `${etiqueta}: una «ninguna» por grupo`).toMatch(/WHERE "esNinguna"/);
+  expect(String(f.indices.find((i) => i.nombre === "ConsumoDeOpcion_un_reemplazo_por_insumo_key")!.indexdef), `${etiqueta}: un reemplazo por insumo`).toMatch(/WHERE \("reemplazaAProductoId" IS NOT NULL\)/);
+  expect(String(f.indices.find((i) => i.nombre === "GrupoDeOpciones_nombre_lower_key")!.indexdef), `${etiqueta}: el nombre del grupo es único sin importar mayúsculas`).toMatch(/lower\(nombre\)/);
+  expect(f.indices.filter((i) => ["CuentaItem_lineaPadreId_idx", "Operacion_operacionPadreId_idx"].includes(String(i.nombre))).map((i) => i.nombre).sort(), `${etiqueta}: los índices de los padres`).toEqual(["CuentaItem_lineaPadreId_idx", "Operacion_operacionPadreId_idx"]);
+  expect(f.columnas.filter((c) => ["huellaOpciones", "lineaPadreId", "operacionPadreId"].includes(String(c.columna))).map((c) => `${c.tabla}.${c.columna}:${c.is_nullable}`).sort(), `${etiqueta}: las tres columnas nuevas, nulables`).toEqual([
+    "CuentaItem.huellaOpciones:YES", "CuentaItem.lineaPadreId:YES", "Operacion.operacionPadreId:YES",
+  ]);
+
+  // Políticas: el catálogo solo con la de empresa; las tres de sucursal con la de empresa y las cuatro de sucursal; el total de alcance pasa de 156 a 168.
+  for (const t of CATALOGO_GO1) expect(f.politicas.filter((p) => p.tabla === t).map((p) => p.nombre), `${etiqueta}: ${t} solo con la política de empresa`).toEqual(["aislamiento_empresa"]);
+  for (const t of POR_SUCURSAL_GO1) {
+    const de = f.politicas.filter((p) => p.tabla === t);
+    expect(de.map((p) => p.nombre), `${etiqueta}: ${t}`).toEqual(["alcance_sucursal_delete", "alcance_sucursal_insert", "alcance_sucursal_select", "alcance_sucursal_update", "aislamiento_empresa"].sort());
+    for (const p of de.filter((x) => String(x.nombre).startsWith("alcance_sucursal_"))) expect([p.permissive, p.roles], `${etiqueta}: ${t}.${p.nombre}`).toEqual(["RESTRICTIVE", "{motor2_app}"]);
+  }
+  expect(f.politicas.filter((p) => String(p.nombre).startsWith("alcance_sucursal_")), `${etiqueta}: 128 del Paquete 1 + 28 de Venta, la parte, la imputación, la nota (M6) y M7 + 12 de GO-1`).toHaveLength(TABLAS_DEL_PAQUETE_1.length * COMANDOS_CON_POLITICA_DE_ALCANCE.length + 40);
+
+  // Los tres disparadores, con su definición exacta, y sus funciones.
+  const disparadores = f.disparadores.filter((d) => ["CuentaItem_opciones_chk", "OpcionElegidaEnLinea_coherente_chk", "Operacion_padre_inmutable_chk"].includes(String(d.nombre)));
+  expect(disparadores.map((d) => [d.tabla, d.nombre, d.habilitado, d.definicion]), `${etiqueta}: los tres disparadores`).toEqual([
+    ['"CuentaItem"', "CuentaItem_opciones_chk", "O", 'CREATE TRIGGER "CuentaItem_opciones_chk" BEFORE INSERT OR UPDATE OF "huellaOpciones", "lineaPadreId", "cuentaId" ON public."CuentaItem" FOR EACH ROW EXECUTE FUNCTION "CuentaItem_reglas_de_opciones"()'],
+    ['"OpcionElegidaEnLinea"', "OpcionElegidaEnLinea_coherente_chk", "O", 'CREATE TRIGGER "OpcionElegidaEnLinea_coherente_chk" BEFORE INSERT ON public."OpcionElegidaEnLinea" FOR EACH ROW EXECUTE FUNCTION "OpcionElegidaEnLinea_coherente_con_su_linea"()'],
+    ['"Operacion"', "Operacion_padre_inmutable_chk", "O", 'CREATE TRIGGER "Operacion_padre_inmutable_chk" BEFORE UPDATE OF "operacionPadreId" ON public."Operacion" FOR EACH ROW EXECUTE FUNCTION "Operacion_padre_inmutable"()'],
+  ]);
+  expect(f.funciones.map((x) => x.nombre).filter((n) => ["CuentaItem_reglas_de_opciones", "OpcionElegidaEnLinea_coherente_con_su_linea", "Operacion_padre_inmutable"].includes(String(n))).sort(), `${etiqueta}: sus tres funciones`).toEqual([
+    "CuentaItem_reglas_de_opciones", "OpcionElegidaEnLinea_coherente_con_su_linea", "Operacion_padre_inmutable",
+  ]);
+
+  // Privilegios exactos: las nueve solo se agregan, salvo UPDATE por columna de las editables; nada para motor2_plataforma ni DELETE.
+  for (const t of TABLAS_GO1) expect(f.privilegios.filter((p) => p.tabla === t), `${etiqueta}: ${t}: solo se agrega`).toEqual([{ tabla: t, rol: "motor2_app", privilege_type: "INSERT" }, { tabla: t, rol: "motor2_app", privilege_type: "SELECT" }]);
+  const conUpdate = (t: string) => f.privilegiosDeColumna.filter((p) => p.tabla === t && p.privilege_type === "UPDATE" && p.rol === "motor2_app").map((p) => p.columna).sort();
+  for (const [t, columnas] of Object.entries(ACTUALIZABLES_GO1)) expect(conUpdate(t), `${etiqueta}: UPDATE de ${t}`).toEqual([...columnas]);
+
+  // GO-1a: las tres claves, solo del admin.
+  expect((await q<{ clave: string }>(`SELECT "clave" FROM "Accion" WHERE "clave" = ANY($1) ORDER BY 1`, [CLAVES_GO1])).map((a) => a.clave), `${etiqueta}: las tres claves existen`).toEqual(CLAVES_GO1);
+  expect(await q(`SELECT DISTINCT "rolId" FROM "PermisoRol" WHERE "accionClave" = ANY($1) ORDER BY 1`, [CLAVES_GO1]), `${etiqueta}: solo el admin tiene alguna`).toEqual([{ rolId: "rol_admin_m4" }]);
+  expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "PermisoRol" WHERE "accionClave" = ANY($1)`, [CLAVES_GO1]))[0]!.n), `${etiqueta}: tres filas del admin`).toBe(3);
+
+  // Humo como el rol real de la app (todo dentro de una transacción que se deshace).
+  await sembrarOpcionesParaGO1();
+  app ??= await conectarComoApp();
+  const humo = async (alcance: { lectura?: string; escritura?: string }, fn: (c: Client) => Promise<void>) => {
+    await app!.query("BEGIN");
+    try {
+      await app!.query("SELECT set_config('app.empresa_id', $1, true)", [E]);
+      if (alcance.lectura !== undefined) await app!.query("SELECT set_config('app.sucursales_lectura', $1, true)", [alcance.lectura]);
+      if (alcance.escritura !== undefined) await app!.query("SELECT set_config('app.sucursales_escritura', $1, true)", [alcance.escritura]);
+      await fn(app!);
+    } finally {
+      await app!.query("ROLLBACK");
+    }
+  };
+  const linea = (id: string, cuenta: string, producto: string, extra = "", precio = "1000.00") => `INSERT INTO "CuentaItem" ("id","cuentaId","productoId","cantidad","precioUnitario"${extra ? ',' + extra.split('=')[0] : ""}) VALUES ('${id}','${cuenta}','${producto}',1,${precio}${extra ? ',' + extra.split('=')[1] : ""})`;
+  const foto1 = (id: string, linea: string, grupo: string, opcion: string, version: string, tipo: string, extra = "") =>
+    `INSERT INTO "OpcionElegidaEnLinea" ("id","cuentaItemId","grupoId","opcionId","versionDeOpcionId","tipoGrupo","nombreGrupo","nombreOpcion","importeUnitario"${extra ? ',"tipoDeDiferencia"' : ""}) VALUES ('${id}','${linea}','${grupo}','${opcion}','${version}','${tipo}','Grupo','Opción',${tipo === "ADICIONAL" ? "200.00" : "0"}${extra ? `,'${extra}'` : ""})`;
+  await humo({}, async (c) => {
+    expect(await falla(c, `INSERT INTO "GrupoDeOpciones" ("id","nombre","tipo") VALUES ('gr_sin_alcance','Sin alcance','VARIANTE')`), `${etiqueta}: dar de alta un grupo no necesita alcance de sucursal (es de empresa)`).toBeNull();
+    expect((await c.query(`SELECT id FROM "GrupoDeOpciones" ORDER BY id`)).rows.map((r) => r.id), `${etiqueta}: los grupos se ven aun sin alcance`).toEqual(["gr_extras", "gr_leche", "gr_sin_alcance"]);
+    expect((await c.query(`SELECT id FROM "PrecioLocalDeOpcion"`)).rows, `${etiqueta}: sin alcance no se ve ningún precio local (falla cerrado)`).toEqual([]);
+    expect((await c.query(`SELECT id FROM "OpcionApagadaEnSucursal"`)).rows, `${etiqueta}: ni ningún apagado`).toEqual([]);
+    expect((await c.query(`SELECT id FROM "OpcionElegidaEnLinea"`)).rows, `${etiqueta}: ni ninguna foto`).toEqual([]);
+    expect(await falla(c, `INSERT INTO "OpcionApagadaEnSucursal" ("id","sucursalId","opcionId","apagada","actualizadoPorId") VALUES ('ap_sin','suc_a','op_vaca',true,'u_m4')`), `${etiqueta}: sin alcance de escritura apagar da 42501`).toBe("42501");
+  });
+  await humo({ lectura: "suc_a", escritura: "suc_a" }, async (c) => {
+    // El catálogo: grupo, opción, versión, consumo y lo que el producto admite.
+    expect(await falla(c, `INSERT INTO "GrupoDeOpciones" ("id","nombre","tipo","cantidadMinima","cantidadMaxima") VALUES ('gr_med','Tamaño','MEDIDA',1,1)`), `${etiqueta}: un grupo MEDIDA 1 a 1 anda`).toBeNull();
+    expect(await falla(c, `INSERT INTO "GrupoDeOpciones" ("id","nombre","tipo","cantidadMinima","cantidadMaxima") VALUES ('gr_med2','Tamaño 2','MEDIDA',0,1)`), `${etiqueta}: una MEDIDA con mínimo 0 da 23514`).toBe("23514");
+    expect(await falla(c, `INSERT INTO "GrupoDeOpciones" ("id","nombre","tipo") VALUES ('gr_may','LECHE','VARIANTE')`), `${etiqueta}: el nombre repetido con otras mayúsculas da 23505`).toBe("23505");
+    expect(await falla(c, `UPDATE "GrupoDeOpciones" SET "tipo" = 'ADICIONAL' WHERE id = 'gr_leche'`), `${etiqueta}: UPDATE del tipo da 42501`).toBe("42501");
+    expect(await falla(c, `UPDATE "GrupoDeOpciones" SET "nombre" = 'Bebida', "version" = "version" + 1, "actualizadoEn" = now() WHERE id = 'gr_leche'`), `${etiqueta}: editar el nombre anda`).toBeNull();
+    expect(await falla(c, `DELETE FROM "GrupoDeOpciones" WHERE id = 'gr_leche'`), `${etiqueta}: DELETE del grupo da 42501`).toBe("42501");
+    expect(await falla(c, `INSERT INTO "OpcionDeGrupo" ("id","grupoId","nombre") VALUES ('op_grande','gr_med','Grande')`), `${etiqueta}: una opción anda`).toBeNull();
+    expect(await falla(c, `INSERT INTO "VersionDeOpcion" ("id","opcionId","numero","tipoDeDiferencia","porcentaje","creadoPorId") VALUES ('ver_grande','op_grande',1,'PORCENTAJE',-100,'u_m4')`), `${etiqueta}: un porcentaje de -100 da 23514`).toBe("23514");
+    expect(await falla(c, `INSERT INTO "VersionDeOpcion" ("id","opcionId","numero","tipoDeDiferencia","porcentaje","factorEscala","creadoPorId") VALUES ('ver_grande','op_grande',1,'PORCENTAJE',-99.9999,1.5,'u_m4')`), `${etiqueta}: la versión 1 anda`).toBeNull();
+    expect(await falla(c, `INSERT INTO "VersionDeOpcion" ("id","opcionId","numero","tipoDeDiferencia","diferenciaPrecio","creadoPorId") VALUES ('ver_grande2','op_grande',1,'MONTO',1,'u_m4')`), `${etiqueta}: repetir (opción, número) da 23505`).toBe("23505");
+    expect(await falla(c, `UPDATE "VersionDeOpcion" SET "diferenciaPrecio" = 1 WHERE id = 'ver_vaca'`), `${etiqueta}: UPDATE de una versión da 42501`).toBe("42501");
+    expect(await falla(c, `UPDATE "ConsumoDeOpcion" SET "cantidad" = 5 WHERE id = 'con_shot'`), `${etiqueta}: UPDATE de un consumo da 42501`).toBe("42501");
+    expect(await falla(c, `INSERT INTO "ProductoAdmiteOpcion" ("id","productoId","opcionId","tipoDeDiferencia","diferenciaPrecio") VALUES ('pao_x','pro_go1_shot','op_vaca',NULL,5)`), `${etiqueta}: un monto sin tipo da 23514 (el NULL no se cuela)`).toBe("23514");
+    // Lo de la sucursal: el apagado y la grilla de A andan, los de B no; la grilla de B (sembrada) no se ve.
+    expect(await falla(c, `INSERT INTO "OpcionApagadaEnSucursal" ("id","sucursalId","opcionId","apagada","actualizadoPorId") VALUES ('ap_a','suc_a','op_shot',true,'u_m4')`), `${etiqueta}: apagar en la propia sucursal anda`).toBeNull();
+    expect(await falla(c, `INSERT INTO "OpcionApagadaEnSucursal" ("id","sucursalId","opcionId","apagada","actualizadoPorId") VALUES ('ap_otro','suc_a','op_shot',false,'u_m4') ON CONFLICT ("sucursalId","opcionId") DO UPDATE SET "apagada" = EXCLUDED."apagada"`), `${etiqueta}: prender de nuevo con ON CONFLICT DO UPDATE anda`).toBeNull();
+    expect(await falla(c, `INSERT INTO "OpcionApagadaEnSucursal" ("id","sucursalId","opcionId","apagada","actualizadoPorId") VALUES ('ap_b2','suc_b','op_vaca',true,'u_m4')`), `${etiqueta}: apagar en otra sucursal da 42501`).toBe("42501");
+    expect(await falla(c, `INSERT INTO "PrecioLocalDeOpcion" ("id","sucursalId","productoId","opcionId","precio") VALUES ('pl_a','suc_a','pro_go1_cafe','op_vaca',0)`), `${etiqueta}: un precio local de 0 da 23514`).toBe("23514");
+    expect(await falla(c, `INSERT INTO "PrecioLocalDeOpcion" ("id","sucursalId","productoId","opcionId","precio") VALUES ('pl_a','suc_a','pro_go1_cafe','op_vaca',120.50)`), `${etiqueta}: la grilla de la propia sucursal anda`).toBeNull();
+    expect((await c.query(`SELECT id FROM "PrecioLocalDeOpcion" ORDER BY id`)).rows.map((r) => r.id), `${etiqueta}: la sucursal A no ve la grilla de la B`).toEqual(["pl_a"]);
+    expect((await c.query(`SELECT id FROM "OpcionApagadaEnSucursal" ORDER BY id`)).rows.map((r) => r.id), `${etiqueta}: ni lo apagado en la B`).toEqual(["ap_a"]);
+    expect((await c.query(`SELECT id FROM "OpcionElegidaEnLinea"`)).rows, `${etiqueta}: ni la foto de la línea de la B`).toEqual([]);
+    // La línea con opciones: padre con huella, su foto, un adicional con su foto; después la cascada.
+    expect(await falla(c, linea("it_a", "cta_a", "pro_go1_cafe", `"huellaOpciones"='${"cd".repeat(32)}'`)), `${etiqueta}: la línea padre con huella anda`).toBeNull();
+    expect(await falla(c, linea("it_mal", "cta_a", "pro_go1_cafe", `"huellaOpciones"='${"CD".repeat(32)}'`)), `${etiqueta}: una huella en mayúsculas da 23514`).toBe("23514");
+    expect(await falla(c, foto1("fo_a", "it_a", "gr_leche", "op_vaca", "ver_vaca", "VARIANTE")), `${etiqueta}: la foto de la variante anda`).toBeNull();
+    expect(await falla(c, foto1("fo_x", "it_a", "gr_leche", "op_vaca", "ver_shot", "VARIANTE")), `${etiqueta}: una versión de otra opción da 23514`).toBe("23514");
+    expect(await falla(c, linea("ad_mal", "cta_a", "pro_go1_shot", `"lineaPadreId"='it_a'`, "0.00")), `${etiqueta}: un adicional en $0 da 23514`).toBe("23514");
+    expect(await falla(c, linea("ad_a", "cta_a", "pro_go1_shot", `"lineaPadreId"='it_a'`, "200.00")), `${etiqueta}: el adicional con su padre anda`).toBeNull();
+    expect(await falla(c, foto1("fo_ad", "ad_a", "gr_extras", "op_shot", "ver_shot", "ADICIONAL", "MONTO")), `${etiqueta}: la foto del adicional anda`).toBeNull();
+    expect(await falla(c, linea("ad_ad", "cta_a", "pro_go1_shot", `"lineaPadreId"='ad_a'`, "200.00")), `${etiqueta}: un adicional de un adicional da 23514`).toBe("23514");
+    expect(await falla(c, linea("ad_b", "cta_a", "pro_go1_shot", `"lineaPadreId"='it_b'`, "200.00")), `${etiqueta}: un adicional colgado de una línea de otra sucursal da 23514 (no se ve)`).toBe("23514");
+    expect(await falla(c, `UPDATE "CuentaItem" SET "huellaOpciones" = '${"ef".repeat(32)}' WHERE id = 'it_a'`), `${etiqueta}: cambiar la huella da 23514`).toBe("23514");
+    expect(await falla(c, `UPDATE "OpcionElegidaEnLinea" SET "importeUnitario" = 1 WHERE id = 'fo_a'`), `${etiqueta}: UPDATE de la foto da 42501`).toBe("42501");
+    expect(await falla(c, `DELETE FROM "OpcionElegidaEnLinea" WHERE id = 'fo_a'`), `${etiqueta}: DELETE de la foto da 42501`).toBe("42501");
+    expect(await falla(c, `DELETE FROM "CuentaItem" WHERE id = 'it_a'`), `${etiqueta}: borrar el padre con un adicional colgado da 23503`).toBe("23503");
+    expect(await falla(c, `DELETE FROM "CuentaItem" WHERE id = 'ad_a'`), `${etiqueta}: borrar el adicional anda`).toBeNull();
+    expect((await c.query(`SELECT id FROM "OpcionElegidaEnLinea" ORDER BY id`)).rows.map((r) => r.id), `${etiqueta}: la foto del adicional se borró con él (cascada)`).toEqual(["fo_a"]);
+    expect(await falla(c, `DELETE FROM "CuentaItem" WHERE id = 'it_a'`), `${etiqueta}: borrar el padre ahora anda`).toBeNull();
+    expect((await c.query(`SELECT id FROM "OpcionElegidaEnLinea"`)).rows, `${etiqueta}: y su foto se fue con él`).toEqual([]);
+  });
+  await humo({ lectura: "suc_a,suc_b", escritura: "suc_a" }, async (c) => {
+    expect(await falla(c, foto1("fo_b2", "it_b", "gr_leche", "op_vaca", "ver_vaca", "VARIANTE")), `${etiqueta}: con lectura en B y escritura solo en A, una foto en la línea de B da 42501`).toBe("42501");
+    expect((await c.query(`SELECT id FROM "OpcionElegidaEnLinea"`)).rows.map((r) => r.id), `${etiqueta}: la foto de B se ve con lectura en B`).toEqual(["fo_b"]);
+  });
+  expect(await q(`SELECT 1 FROM "OpcionApagadaEnSucursal" WHERE id NOT IN ('ap_b')`), `${etiqueta}: el humo no dejó ningún apagado`).toEqual([]);
+  expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "CuentaItem"`))[0]!.n), `${etiqueta}: el humo no dejó ninguna línea de más`).toBe(1);
+  await vaciarTablasDeGO1();
+}
+
+let antesDeGO1: Awaited<ReturnType<typeof foto>>;
+let arribaConGO1: Awaited<ReturnType<typeof foto>>;
+
+describe("GO-1: subir, bajar y subir (grupos de opciones de venta: GO-1a a GO-1d-rls) sobre el estado que deja M7 con todo arriba", () => {
+  it("9.0. las seis migraciones existen, son posteriores a M7, van en este orden, avisan que requieren autorización, tienen down.sql (el de GO-1a, GO-1b, GO-1c y GO-1d ABORTA), solo las dos de políticas son de sucursal y las otras no nombran políticas de alcance", () => {
+    expect([...GO1].sort()).toEqual(GO1);
+    for (const m of GO1) {
+      expect(m > M7_4, `${m} es posterior a M7`).toBe(true);
+      expect(sql(m, "migration.sql").split("\n")[0], `${m}: avisa que requiere autorización`).toContain("REQUIERE AUTORIZACIÓN EXPRESA");
+      expect(sql(m, "down.sql").length, `${m}: tiene down.sql`).toBeGreaterThan(0);
+    }
+    for (const m of [GO1_A, GO1_B, GO1_C, GO1_D]) {
+      expect(sql(m, "down.sql"), `${m}: la reversa ABORTA`).toMatch(/ABORTA/);
+      for (const archivo of ["migration.sql", "down.sql"] as const) {
+        expect(sql(m, archivo), `${m}/${archivo} no nombra políticas de alcance de sucursal`).not.toContain("alcance_sucursal_");
+        expect(sql(m, archivo), `${m}/${archivo} no nombra el ayudante de alcance`).not.toContain("app_sucursales_");
+      }
+    }
+    expect(sql(GO1_B, "down.sql")).toContain('DROP TABLE IF EXISTS "GrupoDeOpciones"');
+    expect(sql(GO1_C, "down.sql")).toContain('DROP TABLE IF EXISTS "PrecioLocalDeOpcion"');
+    expect(sql(GO1_D, "down.sql")).toContain('DROP TABLE IF EXISTS "OpcionElegidaEnLinea"');
+    expect(MIGRACIONES_DE_POLITICAS_POSTERIORES.find((g) => g.migracion === GO1_C_RLS)!.tablas).toEqual(["OpcionApagadaEnSucursal", "PrecioLocalDeOpcion"]);
+    expect(MIGRACIONES_DE_POLITICAS_POSTERIORES.find((g) => g.migracion === GO1_D_RLS)!.tablas).toEqual(["OpcionElegidaEnLinea"]);
+    for (const m of [GO1_A, GO1_B, GO1_C, GO1_D]) expect(MIGRACIONES_DE_POLITICAS_POSTERIORES.map((g) => g.migracion), m).not.toContain(m);
+    for (const m of GO1) expect(MIGRACIONES_DE_POLITICAS_DE_SUCURSAL.map((g) => g.migracion), m).not.toContain(m);
+    for (const t of TABLAS_GO1) expect(TABLAS_DEL_PAQUETE_1, t).not.toContain(t);
+    expect(TABLAS_DEL_PAQUETE_1).toHaveLength(32);
+  });
+
+  it("9.1. SUBIR: GO-1a a GO-1d-rls sobre M7 arriba dejan las nueve tablas, los CHECK, las claves foráneas, los únicos y parciales, las políticas (1 por tabla del catálogo y 5 en las tres de sucursal; el total de alcance pasa a +12), los tres disparadores, los privilegios exactos, las tres claves del admin y un humo como motor2_app", async () => {
+    antesDeGO1 = await foto();
+    for (const t of TABLAS_GO1) expect(antesDeGO1.rls.find((r) => r.tabla === t), `antes de GO-1 ${t} no existe`).toBeUndefined();
+    expect(antesDeGO1.columnas.filter((c) => ["huellaOpciones", "lineaPadreId", "operacionPadreId"].includes(String(c.columna))), "antes de GO-1 no existen las columnas nuevas").toEqual([]);
+    for (const m of GO1) await correr(m, "migration.sql");
+    await comprobarArribaGO1("primera subida de GO-1");
+    arribaConGO1 = await foto();
+    expect(arribaConGO1.columnas.length, "sanidad de la foto").toBeGreaterThan(antesDeGO1.columnas.length + 90);
+  });
+
+  it("9.2. BAJAR CON DATOS: cada reversa ABORTA por su motivo sin dejar nada a medias; con la foto y los precios arriba la de GO-1b FALLA con 2BP01 y con GO-1d-rls arriba la de B1 también; sin filas, de GO-1d-rls a GO-1a el catálogo queda IDÉNTICO al de antes de GO-1", async () => {
+    const c = base.cliente;
+    await sembrarOpcionesParaGO1();
+    const sinTocar = async (esperado: Awaited<ReturnType<typeof foto>>, motivo: string) => {
+      const ahora = await foto();
+      for (const k of Object.keys(esperado) as (keyof typeof esperado)[]) expect(ahora[k], `${motivo} no deja nada a medias («${k}»)`).toEqual(esperado[k]);
+    };
+
+    // 1) Con GO-1d-rls arriba la reversa de B1 (las funciones de alcance) FALLA por dependencia, entera, sin dejar nada a medias.
+    const conGO1 = await foto();
+    await expect(correr(MIGRACION_B1_FUNCIONES, "down.sql")).rejects.toMatchObject({ code: "2BP01" });
+    await sinTocar(conGO1, "el down de B1 bloqueado");
+
+    // 2) GO-1d-rls pasa (no es destructiva): la foto conserva sus datos y pierde las 4 políticas de sucursal.
+    await correr(GO1_D_RLS, "down.sql");
+    expect(await q(`SELECT 1 FROM pg_policies WHERE tablename = 'OpcionElegidaEnLinea' AND policyname LIKE 'alcance\\_sucursal\\_%'`), "sin las políticas de sucursal de la foto").toEqual([]);
+    expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "OpcionElegidaEnLinea"`))[0]!.n), "la foto sigue").toBe(1);
+
+    // 3) GO-1d ABORTA mientras haya una foto, una línea con huella o con padre, o una operación con padre; cada uno por separado y sin tocar nada.
+    const antesDelAborto = await foto();
+    await expect(correr(GO1_D, "down.sql")).rejects.toThrow(/No se puede bajar GO-1d: hay 2 línea/);
+    await sinTocar(antesDelAborto, "el down de GO-1d con una foto");
+    await c.query(`DELETE FROM "OpcionElegidaEnLinea"`);
+    await expect(correr(GO1_D, "down.sql")).rejects.toThrow(/No se puede bajar GO-1d: hay 1 línea/);
+    await c.query(`DELETE FROM "CuentaItem"`);
+    await c.query(`INSERT INTO "Operacion" ("empresaId","id","sucursalId","proceso","fecha","usuarioId") VALUES ('${E}','op_go1_padre','suc_a','VENTA',now(),'u_m4')`);
+    await c.query(`INSERT INTO "Operacion" ("empresaId","id","sucursalId","proceso","fecha","usuarioId","operacionPadreId") VALUES ('${E}','op_go1_hija','suc_a','VENTA',now(),'u_m4','op_go1_padre')`);
+    const conHija = await foto();
+    await expect(correr(GO1_D, "down.sql")).rejects.toThrow(/No se puede bajar GO-1d: hay 1 línea/);
+    await sinTocar(conHija, "el down de GO-1d con una operación hija");
+    await c.query(`DELETE FROM "Operacion" WHERE "id" LIKE 'op_go1%' AND "operacionPadreId" IS NOT NULL`);
+    await c.query(`DELETE FROM "Operacion" WHERE "id" LIKE 'op_go1%'`);
+    await correr(GO1_D, "down.sql");
+    for (const t of ["OpcionElegidaEnLinea"]) expect(await q(`SELECT 1 FROM pg_class WHERE relname = '${t}' AND relnamespace = 'public'::regnamespace`), `sin la tabla ${t}`).toEqual([]);
+    expect(await q(`SELECT 1 FROM pg_trigger WHERE tgname IN ('CuentaItem_opciones_chk', 'OpcionElegidaEnLinea_coherente_chk', 'Operacion_padre_inmutable_chk')`), "sin los tres disparadores").toEqual([]);
+    expect(await q(`SELECT column_name FROM information_schema.columns WHERE table_name IN ('CuentaItem', 'Operacion') AND column_name IN ('huellaOpciones', 'lineaPadreId', 'operacionPadreId')`), "sin las tres columnas").toEqual([]);
+
+    // 4) GO-1c-rls pasa; GO-1c ABORTA con precios o apagados cargados.
+    await correr(GO1_C_RLS, "down.sql");
+    expect(await q(`SELECT 1 FROM pg_policies WHERE tablename = ANY($1) AND policyname LIKE 'alcance\\_sucursal\\_%'`, [POR_SUCURSAL_GO1]), "sin las políticas de sucursal de GO-1").toEqual([]);
+    const conPrecios = await foto();
+    await expect(correr(GO1_C, "down.sql")).rejects.toThrow(/No se puede bajar GO-1c: hay 2 fila/);
+    await sinTocar(conPrecios, "el down de GO-1c con filas");
+    await c.query(`DELETE FROM "PrecioLocalDeOpcion"`);
+    await c.query(`DELETE FROM "OpcionApagadaEnSucursal"`);
+
+    // 5) GO-1b: con el catálogo cargado ABORTA; vaciado y con GO-1c todavía arriba FALLA con 2BP01 (las tablas de la sucursal lo referencian); bajada GO-1c, pasa.
+    const conCatalogo = await foto();
+    await expect(correr(GO1_B, "down.sql")).rejects.toThrow(/No se puede bajar GO-1b: hay \d+ fila/);
+    await sinTocar(conCatalogo, "el down de GO-1b con catálogo");
+    await correr(GO1_C, "down.sql");
+    for (const t of ["PrecioLocalDeOpcion", "OpcionApagadaEnSucursal"]) expect(await q(`SELECT 1 FROM pg_class WHERE relname = '${t}' AND relnamespace = 'public'::regnamespace`), `sin la tabla ${t}`).toEqual([]);
+
+    // 6) GO-1a ABORTA con la configuración tocada (y se restaura); con la semilla pura pasa.
+    await c.query(`UPDATE "PermisoRol" SET "puedeEditar" = false WHERE "rolId" = 'rol_admin_m4' AND "accionClave" = 'opcion_apagar_en_sucursal'`);
+    await expect(correr(GO1_A, "down.sql")).rejects.toThrow(/No se puede bajar GO-1a: hay 1 fila/);
+    expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "Accion" WHERE "clave" = ANY($1)`, [CLAVES_GO1]))[0]!.n), "el aborto no borró las claves").toBe(3);
+    await c.query(`UPDATE "PermisoRol" SET "puedeEditar" = true WHERE "rolId" = 'rol_admin_m4' AND "accionClave" = 'opcion_apagar_en_sucursal'`);
+
+    // 7) Sin filas en el catálogo: GO-1b pasa (ya no hay nada arriba que lo referencie) y después GO-1a.
+    await vaciarTablasDeGO1();
+    await correr(GO1_B, "down.sql");
+    for (const t of CATALOGO_GO1) expect(await q(`SELECT 1 FROM pg_class WHERE relname = '${t}' AND relnamespace = 'public'::regnamespace`), `sin la tabla ${t}`).toEqual([]);
+    await correr(GO1_A, "down.sql");
+    expect(await q(`SELECT 1 FROM "Accion" WHERE "clave" = ANY($1)`, [CLAVES_GO1]), "sin las tres claves").toEqual([]);
+    expect(await q(`SELECT 1 FROM "PermisoRol" WHERE "accionClave" = ANY($1)`, [CLAVES_GO1]), "sin lo configurado sobre ellas").toEqual([]);
+
+    const despues = await foto();
+    for (const k of Object.keys(antesDeGO1) as (keyof typeof antesDeGO1)[]) expect(despues[k], `catálogo «${k}» igual que antes de GO-1`).toEqual(antesDeGO1[k]);
+  });
+
+  it("9.2b. con la foto y las tablas de la sucursal arriba pero el catálogo SIN filas, la reversa de GO-1b FALLA con 2BP01 (las claves foráneas de GO-1c y GO-1d), entera y sin dejar nada a medias", async () => {
+    for (const m of GO1) await correr(m, "migration.sql");
+    const arriba = await foto();
+    for (const t of TABLAS_GO1) expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "${t}"`))[0]!.n), `${t} vacía`).toBe(0);
+    await expect(correr(GO1_B, "down.sql")).rejects.toMatchObject({ code: "2BP01" });
+    const intacta = await foto();
+    for (const k of Object.keys(arriba) as (keyof typeof arriba)[]) expect(intacta[k], `el down de GO-1b bloqueado no deja nada a medias («${k}»)`).toEqual(arriba[k]);
+    for (const m of BAJADA_GO1) await correr(m, "down.sql");
+    const despues = await foto();
+    for (const k of Object.keys(antesDeGO1) as (keyof typeof antesDeGO1)[]) expect(despues[k], `catálogo «${k}» igual que antes de GO-1`).toEqual(antesDeGO1[k]);
+  });
+
+  it("9.3. SUBIR OTRA VEZ: las mismas comprobaciones, las tablas vuelven vacías y el catálogo es idéntico al de la primera subida", async () => {
+    for (const m of GO1) await correr(m, "migration.sql");
+    for (const t of TABLAS_GO1) expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "${t}"`))[0]!.n), `${t} volvió vacía`).toBe(0);
+    await comprobarArribaGO1("segunda subida de GO-1");
+    const otraVez = await foto();
+    for (const k of Object.keys(arribaConGO1) as (keyof typeof arribaConGO1)[]) expect(otraVez[k], `catálogo «${k}» igual que la primera vez`).toEqual(arribaConGO1[k]);
+  });
+
+  it("9.4. INDEPENDENCIA Y CICLO COMPLETO: con GO-1 arriba, M7, M6 y M5 bajan y suben sin tocar GO-1 (catálogo idéntico); después se baja GO-1, M7, M6, M5, M4 y M3 hasta el Paquete 2 (catálogo idéntico al de entonces) y se sube todo otra vez hasta el mismo catálogo con GO-1 arriba", async () => {
+    // Sin datos que las reversas protegen: las tablas de M7 y las notas de M6 (sus down abortan con filas), la de M5 y los gastos (el down de M4.2 aborta si los hay).
+    await vaciarTablasDeM7();
+    await vaciarLasNotas();
+    await base.cliente.query(`DELETE FROM "ReclasificacionRenglon"`);
+    await base.cliente.query(`DELETE FROM "ImputacionDeGasto"`);
+    await base.cliente.query(`DELETE FROM "FacturaProveedorRenglon" WHERE "naturaleza" = 'SIN_STOCK'`);
+    // Independencia: GO-1 no se entera de M5 a M7.
+    for (const m of [...BAJADA_M7, ...BAJADA_M6, M5]) await correr(m, "down.sql");
+    const sinM5aM7 = await foto();
+    for (const t of TABLAS_GO1) expect(sinM5aM7.rls.find((r) => r.tabla === t), `${t} sigue arriba con M5 a M7 abajo`).toEqual({ tabla: t, rls: true, forzado: false });
+    const disparadoresDeGO1 = (f: typeof sinM5aM7) => f.disparadores.filter((d) => ["CuentaItem_opciones_chk", "OpcionElegidaEnLinea_coherente_chk", "Operacion_padre_inmutable_chk"].includes(String(d.nombre)));
+    const politicasDeGO1 = (f: typeof sinM5aM7) => f.politicas.filter((p) => TABLAS_GO1.includes(String(p.tabla)));
+    expect(disparadoresDeGO1(sinM5aM7), "los tres disparadores de GO-1 siguen").toHaveLength(3);
+    expect(politicasDeGO1(sinM5aM7), "las 21 políticas de GO-1 siguen (6 del catálogo, 15 de las tres de sucursal)").toHaveLength(21);
+    expect(disparadoresDeGO1(sinM5aM7), "los disparadores de GO-1 no cambiaron al bajar M5 a M7").toEqual(disparadoresDeGO1(arribaConGO1));
+    expect(politicasDeGO1(sinM5aM7), "las políticas de GO-1 no cambiaron al bajar M5 a M7").toEqual(politicasDeGO1(arribaConGO1));
+    for (const m of [M5, ...SUBIDA_M6, ...M7]) await correr(m, "migration.sql");
+    const otraVezM5aM7 = await foto();
+    for (const k of Object.keys(arribaConGO1) as (keyof typeof arribaConGO1)[]) expect(otraVezM5aM7[k], `catálogo «${k}» igual con GO-1 y M5 a M7 vueltos a subir`).toEqual(arribaConGO1[k]);
+
+    // El ciclo completo.
+    for (const m of [...BAJADA_GO1, ...BAJADA_M7, ...BAJADA_M6, M5, ...BAJADA]) await correr(m, "down.sql");
+    for (const m of [...M3].reverse()) await correr(m, "down.sql");
+    const abajo = await foto();
+    for (const k of Object.keys(antesDeM3) as (keyof typeof antesDeM3)[]) expect(abajo[k], `catálogo «${k}» igual que antes de M3`).toEqual(antesDeM3[k]);
+    for (const m of [...M3, ...SUBIDA, M5, ...SUBIDA_M6, ...M7, ...GO1]) await correr(m, "migration.sql");
+    await comprobarArribaGO1("ciclo completo de GO-1");
+    const otraVez = await foto();
+    for (const k of Object.keys(arribaConGO1) as (keyof typeof arribaConGO1)[]) expect(otraVez[k], `catálogo «${k}» igual que la primera vez`).toEqual(arribaConGO1[k]);
+  });
+
+  it("9.5. Las reversas de GO-1 son idempotentes (IF EXISTS): bajar cada una dos veces no falla, deja el catálogo de antes de GO-1, y volver a subir deja todo arriba", async () => {
+    for (const m of BAJADA_GO1) {
+      await correr(m, "down.sql");
+      await correr(m, "down.sql");
+    }
+    const abajo = await foto();
+    for (const k of Object.keys(antesDeGO1) as (keyof typeof antesDeGO1)[]) expect(abajo[k], `catálogo «${k}» igual que antes de GO-1`).toEqual(antesDeGO1[k]);
+    for (const m of GO1) await correr(m, "migration.sql");
+    await comprobarArribaGO1("tercera subida de GO-1");
   });
 });

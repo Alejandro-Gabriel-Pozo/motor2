@@ -39,6 +39,8 @@ model User {
   agregadosDeCuenta          AgregadoDeCuenta[]
   reclasificacionesDeRenglon ReclasificacionRenglon[]
   distribucionesDeCostoCreadas DistribucionCostoVersion[]
+  versionesDeOpcionCreadas   VersionDeOpcion[]
+  opcionesApagadasEnSucursal OpcionApagadaEnSucursal[]
   ventas                     Venta[]
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
   facturasProvConfirmadas    FacturaProveedor[]   @relation("FacturaProveedorConfirmadaPor")
@@ -162,6 +164,8 @@ model Sucursal {
   imputacionesDeGasto      ImputacionDeGasto[]
   imputacionesDeNotaCredito NotaCreditoProveedorImputacion[]
   planesDeCostos           PlanDeCostosSucursal[]
+  preciosLocalesDeOpcion   PrecioLocalDeOpcion[]
+  opcionesApagadas         OpcionApagadaEnSucursal[]
   invitacionSucursals      InvitacionSucursal[]
 
   @@unique([empresaId, nombre])
@@ -421,6 +425,13 @@ model Producto {
   cuentaItems               CuentaItem[]
   consumosQueLoSustituyen   MovimientoStock[]           @relation("MovimientoSustituyeA")
   renglonesDeFactura        FacturaProveedorRenglon[]
+  gruposAdmitidos           ProductoAdmiteGrupo[]
+  opcionesAdmitidas         ProductoAdmiteOpcion[]
+  /// GO-1: la opción de venta que este producto respalda como ANCLA de un ADICIONAL (1 a 1 por el único `(empresaId, productoId)`).
+  opcionQueRespalda         OpcionDeGrupo?
+  preciosLocalesDeOpcion    PrecioLocalDeOpcion[]
+  consumosDeOpcionComoInsumo ConsumoDeOpcion[] @relation("ConsumoDeOpcionInsumo")
+  consumosDeOpcionQueLoReemplazan ConsumoDeOpcion[] @relation("ConsumoDeOpcionReemplazo")
 
   @@unique([empresaId, codigo])
   @@unique([empresaId, id])
@@ -573,6 +584,7 @@ model Unidad {
   recetaIngredientes            RecetaIngrediente[]
   recetaVersionesPorRendimiento RecetaVersion[]        @relation("RecetaVersionRendimientoUnidad")
   recetaVersionesPorRacion      RecetaVersion[]        @relation("RecetaVersionRacionUnidad")
+  consumosDeOpcion              ConsumoDeOpcion[]
 
   @@unique([empresaId, nombre])
   @@unique([empresaId, id])
@@ -1198,6 +1210,12 @@ model Operacion {
   ventaId String?
   venta   Venta?  @relation(fields: [empresaId, ventaId], references: [empresaId, id], onDelete: Restrict)
 
+  /// GO-1: la operación de venta PADRE de la de un ADICIONAL (la del producto al que se agregó). NULL en toda operación de hoy. Solo una VENTA, que no es su propio padre ni lleva promo (CHECK `Operacion_padre_solo_venta_chk`); inmutable (disparador
+  /// `Operacion_padre_inmutable_chk`). No es única (un padre puede tener varios adicionales). Que el padre sea de la misma sucursal y de la misma venta lo controla la aplicación (GO-2), igual que en `ventaId`.
+  operacionPadreId String?
+  operacionPadre   Operacion?  @relation("OperacionPadre", fields: [empresaId, operacionPadreId], references: [empresaId, id], onDelete: Restrict)
+  operacionesHijas Operacion[] @relation("OperacionPadre")
+
   movimientos MovimientoStock[]
 
   /// Paquete 3 (M3b): la parte de factura de proveedor de la que salió esta compra (a lo sumo una; `FacturaProveedorSucursal.operacionId` es único). `null` = una compra anterior a las facturas repartidas.
@@ -1217,6 +1235,7 @@ model Operacion {
   @@index([sucursalId, proceso, fecha])
   @@index([promoCuentaId])
   @@index([ventaId])
+  @@index([operacionPadreId])
 }
 
 /// Reemplaza Kardex/"Hoja 7" (Core.js:601, CONFIG.SHEETS.HISTORIAL) — el
@@ -2253,11 +2272,23 @@ model CuentaItem {
   /// Queda congelado igual que `precioUnitario`: si el precio de carta del producto cambia después, esta fila no se entera.
   precioCartaUnitario Decimal?     @db.Decimal(14, 2)
 
+  /// GO-1 (el «elemento configurable»): la HUELLA de las opciones que van DENTRO del precio de esta línea (SHA-256 hexadecimal de 64 caracteres, CHECK; `huellaDeOpciones`, `src/core/opciones/huella-de-opciones.ts`). NULL = una línea sin opciones (todas las
+  /// de hoy) y toda línea ADICIONAL (un adicional no lleva huella). Inmutable una vez escrita (disparador `CuentaItem_opciones_chk`). Dos líneas del mismo producto con distinta huella son líneas distintas.
+  huellaOpciones      String?
+  /// GO-1: la línea PADRE de un ADICIONAL (otra línea de la MISMA cuenta, que no es adicional ni espejo: un solo nivel). NULL en toda línea que no es un adicional. RESTRICT: no se borra un padre con adicionales colgados. Inmutable (disparador). Un adicional no lleva promo,
+  /// ni precio de carta, ni huella, y su `precioUnitario` es de 0,01 o más (CHECK `CuentaItem_adicional_chk`).
+  lineaPadreId        String?
+  lineaPadre          CuentaItem?  @relation("CuentaItemLineaPadre", fields: [empresaId, lineaPadreId], references: [empresaId, id], onDelete: Restrict)
+  adicionales         CuentaItem[] @relation("CuentaItemLineaPadre")
+  /// GO-1: la foto de las opciones elegidas en esta línea (se borra con el borrador: ON DELETE CASCADE).
+  opcionesElegidas    OpcionElegidaEnLinea[]
+
   @@unique([empresaId, id])
   @@index([cuentaId])
   @@index([anulaAItemId])
   @@index([operacionId])
   @@index([promoCuentaId])
+  @@index([lineaPadreId])
 }
 
 /// Ejemplar IMPRESO del ticket de cierre (control interno de comandas / guest check control; NO comprobante fiscal).
@@ -2394,6 +2425,15 @@ model Empresa {
   planDeCostosSucursalRel        PlanDeCostosSucursal[]
   distribucionCostoVersionRel    DistribucionCostoVersion[]
   distribucionCostoLineaRel      DistribucionCostoLinea[]
+  grupoDeOpcionesRel             GrupoDeOpciones[]
+  opcionDeGrupoRel               OpcionDeGrupo[]
+  versionDeOpcionRel             VersionDeOpcion[]
+  consumoDeOpcionRel             ConsumoDeOpcion[]
+  productoAdmiteGrupoRel         ProductoAdmiteGrupo[]
+  productoAdmiteOpcionRel        ProductoAdmiteOpcion[]
+  precioLocalDeOpcionRel         PrecioLocalDeOpcion[]
+  opcionApagadaEnSucursalRel     OpcionApagadaEnSucursal[]
+  opcionElegidaEnLineaRel        OpcionElegidaEnLinea[]
 }
 
 enum EstadoModulo {
@@ -3191,4 +3231,270 @@ model DistribucionCostoLinea {
   @@unique([empresaId, id])
   @@unique([distribucionCostoVersionId, centroDeCostosId], map: "DistribucionCostoLinea_version_centro_key")
   @@index([centroDeCostosId])
+}
+
+/// GO-1 (el «elemento configurable»): un GRUPO de opciones de venta (tamaño, variante, incluida, adicional). DE EMPRESA (sin `sucursalId`, solo RLS por empresa). `tipo` es una lista cerrada guardada como TEXT con CHECK
+/// (`MEDIDA`, `VARIANTE`, `INCLUIDA`, `ADICIONAL`, el espejo de `TIPOS_DE_GRUPO_DE_OPCIONES` en `src/core/opciones/tipos.ts`; un test de paridad las compara), no como enum de Postgres: agregar un valor es cambiar un CHECK, reversible. Inmutable
+/// una vez creado (la app no tiene UPDATE de `tipo`). CHECK: cantidades `0 <= mínima <= máxima <= 10`; una MEDIDA elige exactamente una (1 y 1); una INCLUIDA exige mínimo 1. Nombre con algún carácter visible y hasta 80, único por empresa sin
+/// importar mayúsculas (índice sobre `lower("nombre")` que solo vive en la migración). `version` es el control optimista de la edición (`UPDATE ... WHERE version = esperada`): lo aplica la aplicación en GO-2, la base solo garantiza `>= 1`. Sin
+/// `@updatedAt`: rompería el privilegio por columna (la app actualiza `actualizadoEn` a mano). No se borra. Nada de `src/` la escribe todavía (GO-2).
+model GrupoDeOpciones {
+  id             String   @id @default(cuid())
+  empresaId      String   @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa  @relation(fields: [empresaId], references: [id])
+  nombre         String
+  /// MEDIDA, VARIANTE, INCLUIDA o ADICIONAL (CHECK). Inmutable.
+  tipo           String
+  cantidadMinima Int      @default(0)
+  cantidadMaxima Int      @default(1)
+  activo         Boolean  @default(true)
+  /// Control optimista (>= 1, CHECK). Lo incrementa la aplicación en cada edición.
+  version        Int      @default(1)
+  creadoEn       DateTime @default(now())
+  actualizadoEn  DateTime @default(now())
+
+  opciones          OpcionDeGrupo[]
+  productosQueLoAdmiten ProductoAdmiteGrupo[]
+  elegidasEnLinea   OpcionElegidaEnLinea[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, nombre])
+}
+
+/// GO-1: una OPCIÓN de un grupo (por ejemplo «Grande» o «Leche de almendras»). DE EMPRESA. `esNinguna` marca la opción «Ninguna»/«Sin nada» del grupo (a lo sumo una por grupo: índice parcial; no lleva producto, CHECK). `productoId` es el
+/// producto ANCLA de una opción de un grupo ADICIONAL (el producto que se vende y descuenta stock como línea hija): único por empresa, así que un producto respalda a una sola opción, y sin filas de disponibilidad queda oculto por la semántica «sin fila
+/// = no disponible» (ADR-009, optin). `grupoId`, `productoId` y `esNinguna` son inmutables (la app no tiene UPDATE). Nombre único por grupo sin importar mayúsculas. Lo que cuesta y lo que consume una opción vive en sus VERSIONES
+/// (`VersionDeOpcion`), que solo se agregan. No se borra: se desactiva.
+model OpcionDeGrupo {
+  id            String          @id @default(cuid())
+  empresaId     String          @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa         @relation(fields: [empresaId], references: [id])
+  grupoId       String
+  grupo         GrupoDeOpciones @relation(fields: [empresaId, grupoId], references: [empresaId, id])
+  nombre        String
+  orden         Int             @default(0)
+  activa        Boolean         @default(true)
+  esNinguna     Boolean         @default(false)
+  /// El producto ancla (solo en un ADICIONAL; NULL en las demás y en la «ninguna»). Único por empresa.
+  productoId    String?
+  producto      Producto?       @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  /// Control optimista (>= 1, CHECK).
+  version       Int             @default(1)
+  creadoEn      DateTime        @default(now())
+  actualizadoEn DateTime        @default(now())
+
+  versiones             VersionDeOpcion[]
+  productosQueLaAdmiten ProductoAdmiteOpcion[]
+  preciosLocales        PrecioLocalDeOpcion[]
+  apagadasEnSucursal    OpcionApagadaEnSucursal[]
+  elegidasEnLinea       OpcionElegidaEnLinea[]
+
+  @@unique([empresaId, id])
+  @@unique([grupoId, nombre])
+  @@unique([empresaId, productoId])
+}
+
+/// GO-1: una VERSIÓN de una opción: la diferencia de precio y el consumo que tiene desde su `creadoEn` (UTC; se muestra en la zona de la empresa). SOLO se agrega: la app tiene SELECT e INSERT, nunca UPDATE ni DELETE; corregir es agregar la versión
+/// siguiente. La vigente es SIEMPRE la de `numero` mayor (derivada, sin flag ni UPDATE: `DISTINCT ON ("opcionId") ... ORDER BY "opcionId", "numero" DESC`); dos versiones simultáneas con el mismo número dan 23505 y gana una. `tipoDeDiferencia` dice cuál
+/// de `diferenciaPrecio` (MONTO) o `porcentaje` (PORCENTAJE, `DECIMAL(7,4)`, mayor que -100 y hasta 999,9999) está cargada; la otra es NULL (CHECK). `factorEscala` (> 0 y hasta 10) solo lo usa una MEDIDA. Que la diferencia de una INCLUIDA sea 0, que el
+/// monto de un ADICIONAL sea >= 0,01 y que el factor solo exista en una MEDIDA lo valida la aplicación (`componerPrecioDeLinea` ya falla cerrado al vender) y la foto de la línea los repite en la base. No tiene `@updatedAt`.
+model VersionDeOpcion {
+  id               String        @id @default(cuid())
+  empresaId        String        @default(dbgenerated("app_empresa_actual()"))
+  empresa          Empresa       @relation(fields: [empresaId], references: [id])
+  opcionId         String
+  opcion           OpcionDeGrupo @relation(fields: [empresaId, opcionId], references: [empresaId, id], onDelete: Restrict)
+  /// 1, 2, 3...: único por opción (CHECK >= 1). La vigente es la de número mayor.
+  numero           Int
+  /// MONTO o PORCENTAJE (CHECK), el espejo de `TIPOS_DE_DIFERENCIA`. Sin valor por defecto.
+  tipoDeDiferencia String
+  /// Con MONTO: la diferencia (puede ser negativa o cero). NULL con PORCENTAJE.
+  diferenciaPrecio Decimal?      @db.Decimal(14, 2)
+  /// Con PORCENTAJE: la diferencia (-100 < p <= 999,9999). NULL con MONTO.
+  porcentaje       Decimal?      @db.Decimal(7, 4)
+  /// Solo una MEDIDA (> 0 y hasta 10): cuánto escala el consumo del producto.
+  factorEscala     Decimal?      @db.Decimal(8, 4)
+  creadoPorId      String
+  creadoPor        User          @relation(fields: [creadoPorId], references: [id], onDelete: Restrict)
+  creadoEn         DateTime      @default(now())
+
+  consumos        ConsumoDeOpcion[]
+  elegidasEnLinea OpcionElegidaEnLinea[]
+
+  @@unique([empresaId, id])
+  @@unique([opcionId, numero])
+  @@index([creadoPorId])
+}
+
+/// GO-1: una línea de CONSUMO de una versión de opción: qué insumo suma (`SUMA`) o qué ingrediente de la receta reemplaza (`REEMPLAZA`, con `reemplazaAProductoId`) y cuánto. SOLO se agrega. `cantidad` es `DECIMAL(14,4)` mayor que 0, en
+/// la unidad `unidadId` (la unidad de stock del insumo: lo controla la aplicación); `mermaPorcentaje` entre 0 y 100; `escalaConLaMedida` dice si el consumo se multiplica por el factor de la MEDIDA elegida (un ADICIONAL nunca escala). Un reemplazo por
+/// insumo por versión (índice parcial). `efecto` es TEXT con CHECK (`EFECTOS_DE_CONSUMO_DE_OPCION`). No tiene `@updatedAt`.
+model ConsumoDeOpcion {
+  id                   String          @id @default(cuid())
+  empresaId            String          @default(dbgenerated("app_empresa_actual()"))
+  empresa              Empresa         @relation(fields: [empresaId], references: [id])
+  versionDeOpcionId    String
+  versionDeOpcion      VersionDeOpcion @relation(fields: [empresaId, versionDeOpcionId], references: [empresaId, id], onDelete: Restrict)
+  /// SUMA o REEMPLAZA (CHECK). REEMPLAZA exige `reemplazaAProductoId`; SUMA lo prohíbe.
+  efecto               String
+  insumoProductoId     String
+  productoInsumo       Producto        @relation("ConsumoDeOpcionInsumo", fields: [empresaId, insumoProductoId], references: [empresaId, id])
+  reemplazaAProductoId String?
+  productoReemplazado  Producto?       @relation("ConsumoDeOpcionReemplazo", fields: [empresaId, reemplazaAProductoId], references: [empresaId, id])
+  cantidad             Decimal         @db.Decimal(14, 4)
+  unidadId             String
+  unidad               Unidad          @relation(fields: [empresaId, unidadId], references: [empresaId, id])
+  mermaPorcentaje      Decimal         @default(0) @db.Decimal(6, 2)
+  escalaConLaMedida    Boolean         @default(false)
+  orden                Int             @default(0)
+
+  @@unique([empresaId, id])
+  @@unique([versionDeOpcionId, orden])
+  @@index([insumoProductoId])
+}
+
+/// GO-1: qué GRUPOS de opciones admite un producto, y con qué límites propios. DE EMPRESA (qué se ofrece de cada producto es del catálogo; apagar una opción en una sucursal es `OpcionApagadaEnSucursal`). `cantidadMinima`/`cantidadMaxima` NULL
+/// = los del grupo; `modoPrecio` (ABSOLUTO o DIFERENCIA) solo lo usa una MEDIDA y NULL = el que decida la aplicación. Se edita EN EL LUGAR, con auditoría del antes y el después, y `version` es el control optimista: es configuración de lista, no lo cobrado
+/// (eso queda congelado en `OpcionElegidaEnLinea`). Una fila por (producto, grupo). No se borra: se desactiva. Nada de `src/` la escribe todavía.
+model ProductoAdmiteGrupo {
+  id             String          @id @default(cuid())
+  empresaId      String          @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa         @relation(fields: [empresaId], references: [id])
+  productoId     String
+  producto       Producto        @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  grupoId        String
+  grupo          GrupoDeOpciones @relation(fields: [empresaId, grupoId], references: [empresaId, id])
+  orden          Int             @default(0)
+  cantidadMinima Int?
+  cantidadMaxima Int?
+  /// ABSOLUTO o DIFERENCIA (CHECK), el espejo de `MODOS_DE_PRECIO_DE_MEDIDA`; NULL = sin definir.
+  modoPrecio     String?
+  activo         Boolean         @default(true)
+  /// Control optimista (>= 1, CHECK).
+  version        Int             @default(1)
+  creadoEn       DateTime        @default(now())
+  actualizadoEn  DateTime        @default(now())
+
+  @@unique([productoId, grupoId])
+  @@unique([empresaId, id])
+  @@index([grupoId])
+}
+
+/// GO-1: qué OPCIONES admite un producto y a qué precio (la grilla de lista, de la empresa). DE EMPRESA. `precioAbsoluto` (>= 0,01) o una diferencia (`tipoDeDiferencia` con `diferenciaPrecio` o `porcentaje`, la otra NULL) sobreescriben la de la versión
+/// de la opción para ESTE producto; no pueden estar las dos a la vez (CHECK); los tres NULL = rige la de la versión. Se edita EN EL LUGAR, con auditoría del antes y el después (es precio de lista, como `Producto.precioVenta`), con `version` como control
+/// optimista; lo cobrado queda congelado en `OpcionElegidaEnLinea`. Una fila por (producto, opción). No se borra: se desactiva. Nada de `src/` la escribe todavía.
+model ProductoAdmiteOpcion {
+  id               String        @id @default(cuid())
+  empresaId        String        @default(dbgenerated("app_empresa_actual()"))
+  empresa          Empresa       @relation(fields: [empresaId], references: [id])
+  productoId       String
+  producto         Producto      @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  opcionId         String
+  opcion           OpcionDeGrupo @relation(fields: [empresaId, opcionId], references: [empresaId, id])
+  /// Unidades de esta opción por unidad vendida: 1 a 10 (CHECK).
+  cantidadMaxima   Int           @default(1)
+  /// El precio de lista de la MEDIDA en este producto (>= 0,01). NULL si no es absoluto.
+  precioAbsoluto   Decimal?      @db.Decimal(14, 2)
+  /// MONTO o PORCENTAJE (CHECK), o NULL.
+  tipoDeDiferencia String?
+  diferenciaPrecio Decimal?      @db.Decimal(14, 2)
+  porcentaje       Decimal?      @db.Decimal(7, 4)
+  activo           Boolean       @default(true)
+  /// Control optimista (>= 1, CHECK).
+  version          Int           @default(1)
+  creadoEn         DateTime      @default(now())
+  actualizadoEn    DateTime      @default(now())
+
+  @@unique([productoId, opcionId])
+  @@unique([empresaId, id])
+  @@index([opcionId])
+}
+
+/// GO-1: el PRECIO de una opción de un producto EN UNA SUCURSAL (la grilla local; override liviano, como `PrecioLocalProducto`, ADR-009 familia `override`: sin fila habilitada rige el precio de la empresa, el de `ProductoAdmiteOpcion` o el de la versión). `PROPIA`
+/// (`sucursalId` NOT NULL; sus políticas de alcance las agrega GO-1c-rls). `precio` es `DECIMAL(14,2)` de 0,01 o más (CHECK). La app solo cambia `precio`, `habilitado` y `actualizadoEn` (UPDATE por columna), con auditoría del antes y el después, y no borra
+/// nada: la baja es `habilitado = false`. Una fila por (sucursal, producto, opción). Una fila de un par que el producto no admite no hace daño: la lectura exige además la admisión (`ProductoAdmiteOpcion`). Lo cobrado queda congelado en la foto de la línea
+/// (`OpcionElegidaEnLinea`). Sin `@updatedAt`: rompería el privilegio por columna. Nada de `src/` la escribe todavía (GO-2).
+model PrecioLocalDeOpcion {
+  id            String        @id @default(cuid())
+  empresaId     String        @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa       @relation(fields: [empresaId], references: [id])
+  sucursalId    String
+  sucursal      Sucursal      @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  productoId    String
+  producto      Producto      @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  opcionId      String
+  opcion        OpcionDeGrupo @relation(fields: [empresaId, opcionId], references: [empresaId, id])
+  /// El precio de la opción en esa sucursal (0,01 o más, CHECK).
+  precio        Decimal       @db.Decimal(14, 2)
+  habilitado    Boolean       @default(true)
+  actualizadoEn DateTime      @default(now())
+
+  @@unique([sucursalId, productoId, opcionId])
+  @@unique([empresaId, id])
+}
+
+/// GO-1: si una opción está APAGADA en una sucursal (se acabó el ingrediente, no se ofrece hoy). `PROPIA` (`sucursalId` NOT NULL; sus políticas de alcance las agrega GO-1c-rls). ADR-009, familia `optout`: SIN FILA = PRENDIDA (`apagada = false`); solo
+/// una fila con `apagada = true` la apaga. La app la crea y la actualiza con `ON CONFLICT DO UPDATE` de `apagada`, `actualizadoPorId` y `actualizadoEn`; no borra nada. Una fila por (sucursal, opción). Lo resuelve `validarOpcionesElegidas` al vender. No tiene
+/// `@updatedAt`. Nada de `src/` la escribe todavía (GO-2).
+model OpcionApagadaEnSucursal {
+  id              String        @id @default(cuid())
+  empresaId       String        @default(dbgenerated("app_empresa_actual()"))
+  empresa         Empresa       @relation(fields: [empresaId], references: [id])
+  sucursalId      String
+  sucursal        Sucursal      @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  opcionId        String
+  opcion          OpcionDeGrupo @relation(fields: [empresaId, opcionId], references: [empresaId, id])
+  /// Obligatorio, sin valor por defecto: la fila dice explícitamente si está apagada.
+  apagada         Boolean
+  actualizadoPorId String
+  actualizadoPor  User          @relation(fields: [actualizadoPorId], references: [id], onDelete: Restrict)
+  actualizadoEn   DateTime      @default(now())
+
+  @@unique([sucursalId, opcionId])
+  @@unique([empresaId, id])
+}
+
+/// GO-1: la FOTO de una opción elegida en una línea de la cuenta: lo que se eligió y lo que costó, CONGELADO (I9: editar después la versión, el precio de lista o el nombre del grupo no la cambia). Alcance `HEREDADO` de `CuentaItem` por `cuentaItemId` (sin
+/// `sucursalId` propio; sus políticas de sucursal las agrega GO-1d-rls). SOLO se agrega: la app tiene SELECT e INSERT, nunca UPDATE ni DELETE; al borrar el borrador de la línea la foto se borra con ella (ON DELETE CASCADE, que corre como dueño y saltea la RLS).
+/// Guarda el tipo del grupo, el nombre del grupo y de la opción, la cantidad (1 a 10; una MEDIDA siempre 1), el modo de precio (solo MEDIDA), la diferencia (`tipoDeDiferencia` con su `porcentaje` de `DECIMAL(7,4)`, NULL si no hubo), el `importeUnitario` (`DECIMAL(14,2)`,
+/// el que aportó la opción por unidad) y el factor de escala (solo MEDIDA). Las reglas que dependen del tipo —una INCLUIDA aporta 0, un ADICIONAL es monto fijo de 0,01 o más, el porcentaje solo en MEDIDA y VARIANTE— son CHECK. Que la opción sea del grupo, la versión de la
+/// opción y la línea la correcta (un ADICIONAL en una línea con padre y con el producto ancla; las demás en una línea sin padre y con huella; nunca en un espejo) lo controla el disparador `OpcionElegidaEnLinea_coherente_chk`. Una fila por (línea, opción); a lo sumo
+/// un ADICIONAL y una MEDIDA por línea (índices parciales).
+model OpcionElegidaEnLinea {
+  id                String          @id @default(cuid())
+  empresaId         String          @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa         @relation(fields: [empresaId], references: [id])
+  cuentaItemId      String
+  cuentaItem        CuentaItem      @relation(fields: [empresaId, cuentaItemId], references: [empresaId, id], onDelete: Cascade)
+  grupoId           String
+  grupo             GrupoDeOpciones @relation(fields: [empresaId, grupoId], references: [empresaId, id], onDelete: Restrict)
+  opcionId          String
+  opcion            OpcionDeGrupo   @relation(fields: [empresaId, opcionId], references: [empresaId, id], onDelete: Restrict)
+  versionDeOpcionId String
+  versionDeOpcion   VersionDeOpcion @relation(fields: [empresaId, versionDeOpcionId], references: [empresaId, id], onDelete: Restrict)
+  /// MEDIDA, VARIANTE, INCLUIDA o ADICIONAL (CHECK), el espejo de `TIPOS_DE_GRUPO_DE_OPCIONES`. Es el del grupo (lo controla el disparador).
+  tipoGrupo         String
+  nombreGrupo       String
+  nombreOpcion      String
+  /// 1 a 10 (CHECK); una MEDIDA siempre 1.
+  cantidad          Int             @default(1)
+  /// Solo MEDIDA: ABSOLUTO o DIFERENCIA (CHECK). NULL en las demás.
+  modoPrecio        String?
+  /// MONTO o PORCENTAJE (CHECK), o NULL si no hubo diferencia (precio absoluto, incluida o variante sin diferencia).
+  tipoDeDiferencia  String?
+  /// Solo con PORCENTAJE (-100 < p <= 999,9999, CHECK).
+  porcentaje        Decimal?        @db.Decimal(7, 4)
+  /// Lo que aportó la opción por unidad: el precio absoluto de la medida, la diferencia, 0 (incluida) o el recargo (adicional).
+  importeUnitario   Decimal         @db.Decimal(14, 2)
+  /// El importe salió de la grilla de la sucursal (`PrecioLocalDeOpcion`).
+  precioDeSucursal  Boolean         @default(false)
+  /// Solo MEDIDA (> 0 y hasta 10).
+  factorEscala      Decimal?        @db.Decimal(8, 4)
+  orden             Int             @default(0)
+  creadoEn          DateTime        @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([cuentaItemId, opcionId])
+  @@index([opcionId])
+  @@index([versionDeOpcionId])
 }

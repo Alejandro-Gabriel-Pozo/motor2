@@ -28,10 +28,10 @@ export { prismaDuenioSinEmpresa } from "./cliente-duenio";
 /**
  * Vacía las operaciones y sus movimientos de un golpe. Los tests de volumen siembran decenas de miles de filas: borrarlas con el
  * `deleteMany` de `limpiarBaseDeTest` (con el chequeo de FK fila por fila) puede pasar los 10 s del hook y arrastra a los tests siguientes.
- * Postgres no deja truncar `Operacion` si otra tabla la referencia, aunque esté vacía: `FacturaProveedorSucursal` (M3b) la referencia con `operacionId` y `NotaCreditoProveedorImputacion` (M6) con `operacionDevolucionId`, así que van en el mismo `TRUNCATE`.
+ * Postgres no deja truncar `Operacion` si otra tabla la referencia, aunque esté vacía: `FacturaProveedorSucursal` (M3b) la referencia con `operacionId`, `NotaCreditoProveedorImputacion` (M6) con `operacionDevolucionId` y `OpcionElegidaEnLinea` (GO-1d) referencia a `CuentaItem`, así que van en el mismo `TRUNCATE`.
  */
 export async function vaciarOperacionesPorVolumen() {
-  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "MovimientoStock", "CuentaItem", "FacturaProveedorSucursal", "NotaCreditoProveedorImputacion", "Operacion"');
+  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "OpcionElegidaEnLinea", "MovimientoStock", "CuentaItem", "FacturaProveedorSucursal", "NotaCreditoProveedorImputacion", "Operacion"');
 }
 
 /**
@@ -90,7 +90,11 @@ export async function limpiarBaseDeTest() {
   // referencian a su ejemplar A con ON DELETE RESTRICT.
   await prismaAdmin.ejemplarTicket.deleteMany({ where: { corrigeAId: { not: null } } });
   await prismaAdmin.ejemplarTicket.deleteMany();
+  // GO-1d: la foto de las opciones elegidas referencia a la línea (ON DELETE CASCADE, pero el orden explícito documenta la dependencia), al grupo, a la opción y a su versión (RESTRICT): ANTES de las líneas y del catálogo de opciones.
+  await prismaAdmin.opcionElegidaEnLinea.deleteMany();
+  // Los espejos primero (referencian a su original, RESTRICT) y después los adicionales (referencian a su línea padre, RESTRICT): ANTES de las líneas sueltas.
   await prismaAdmin.cuentaItem.deleteMany({ where: { anulaAItemId: { not: null } } });
+  await prismaAdmin.cuentaItem.deleteMany({ where: { lineaPadreId: { not: null } } });
   await prismaAdmin.cuentaItem.deleteMany();
   // Cuenta/Mesa se borran MÁS ABAJO (después de Operacion): PromoCuenta (Task #16) referencia Cuenta con RESTRICT, y tanto
   // CuentaItem (ya vacío acá) como Operacion (recién se vacía abajo) referencian PromoCuenta con RESTRICT — así que
@@ -127,6 +131,8 @@ export async function limpiarBaseDeTest() {
   // Los conceptos de gasto (M4.1) los referencian los renglones sin stock (RESTRICT): DESPUÉS de los renglones.
   await prismaAdmin.conceptoDeGasto.deleteMany();
   await prismaAdmin.facturaProveedor.deleteMany();
+  // GO-1d: las operaciones hijas (de los adicionales) referencian a su padre (RESTRICT): primero ellas.
+  await prismaAdmin.operacion.deleteMany({ where: { operacionPadreId: { not: null } } });
   await prismaAdmin.operacion.deleteMany();
   // La cabecera de venta (M2) referencia a la cuenta, la sucursal y el User (RESTRICT) y la referencian las operaciones (recién borradas): DESPUÉS de operacion.deleteMany() y ANTES de la cuenta.
   await prismaAdmin.venta.deleteMany();
@@ -153,6 +159,17 @@ export async function limpiarBaseDeTest() {
   // Antes de RecetaIngrediente (RendimientoLocalIngrediente.recetaIngredienteId es ON DELETE CASCADE, pero el
   // orden explícito documenta la dependencia igual que el resto de este bloque — sembrarBase() borra sucursal más abajo).
   await prismaAdmin.rendimientoLocalIngrediente.deleteMany();
+  // Los grupos de opciones de venta (GO-1b): los consumos referencian a su versión, al insumo y a la unidad, la versión a la opción y al User, la admisión de un producto al producto, al grupo y a la opción, y la opción al grupo y
+  // (el ancla de un adicional) al producto (todo RESTRICT): consumos, versiones, admisiones, opciones y grupos, todo ANTES de producto, unidad, User y sucursal (más abajo).
+  // Lo que decide cada sucursal (GO-1c): el precio local y lo apagado referencian a la sucursal, al producto, a la opción y al User (todo RESTRICT): ANTES del catálogo.
+  await prismaAdmin.precioLocalDeOpcion.deleteMany();
+  await prismaAdmin.opcionApagadaEnSucursal.deleteMany();
+  await prismaAdmin.consumoDeOpcion.deleteMany();
+  await prismaAdmin.versionDeOpcion.deleteMany();
+  await prismaAdmin.productoAdmiteOpcion.deleteMany();
+  await prismaAdmin.productoAdmiteGrupo.deleteMany();
+  await prismaAdmin.opcionDeGrupo.deleteMany();
+  await prismaAdmin.grupoDeOpciones.deleteMany();
   await prismaAdmin.precioLocalProducto.deleteMany();
   await prismaAdmin.stockMinimoProducto.deleteMany();
   await prismaAdmin.seccionHabitualProducto.deleteMany();

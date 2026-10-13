@@ -175,6 +175,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Paquete 3, M3b (O.270; ADITIVO): las líneas KARDEX suman `facturaProveedorRenglonId=null`. Verificado: sin esa columna en null, idéntico al anterior.",
       },
+      {
+        blob: "63a46586eabecb8ef203c930848d3432e018f056",
+        // El commit PADRE de este (c980e5fb) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "c980e5fb",
+        motivo:
+          "GO-1d (O.324; ADITIVO, no cambia comportamiento): las líneas OPERACION suman `operacionPadreId=null`. Verificado con diff: el golden nuevo, sin esa columna en null, es idéntico al anterior.",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -218,6 +225,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "ceb56f07",
         motivo:
           "Paquete 3, M3b (O.270; ADITIVO): las líneas KARDEX suman `facturaProveedorRenglonId=null`. Verificado: sin esa columna en null, idéntico al anterior.",
+      },
+      {
+        blob: "753582df08068590bb92c9b4ff8e7fd022e31c54",
+        // El commit PADRE de este (c980e5fb) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "c980e5fb",
+        motivo:
+          "GO-1d (O.324; ADITIVO, no cambia comportamiento): las líneas OPERACION suman `operacionPadreId=null` y las CUENTA_ITEM suman `huellaOpciones=null` y `lineaPadreId=null`. Verificado con diff: sin esas columnas en null, idéntico al anterior.",
       },
     ],
   },
@@ -325,7 +339,15 @@ const CONGELADAS: Record<string, Congelada> = {
     desde: "f9e5a286",
     motivo:
       "Huella del POS (Hito 4, paso 0.1): las 10 Server Actions del POS sin caso de uso (apertura, mesas y pedido) como admin, mozo y operador, con los rechazos de dos fallas a la vez. Red de 4.1: mudar esas acciones a casos de uso no cambia nada (salvo lo aprobado: liberarMesa con ctx.ahora no cambia el golden, que solo dice si hay fecha).",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "e6f590094e950773020d2b9350a6f80d170ee3d9",
+        // El commit PADRE de este (c980e5fb) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "c980e5fb",
+        motivo:
+          "GO-1d (O.324; ADITIVO, no cambia comportamiento; primera regeneración de este golden): las líneas ITEM suman `huellaOpciones=null` y `lineaPadreId=null` y las OPERACION suman `operacionPadreId=null`. Verificado con diff: sin esas columnas en null, idéntico al anterior.",
+      },
+    ],
   },
   "test/persistencia/__golden__/kardex-escritores.golden.json": {
     blob: "4ba48f056c55dbfc6c49ba4c8acac8adf67f9d1a",
@@ -346,6 +368,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "ceb56f07",
         motivo:
           "Paquete 3, M3b (O.270; ADITIVO, no cambia comportamiento): cada movimiento del Kardex suma `facturaProveedorRenglonId` en null. Verificado: sin esa clave en null, idéntico al anterior.",
+      },
+      {
+        blob: "a50058f8b5a61e31a87d252afbb31b5156939fb4",
+        // El commit PADRE de este (c980e5fb) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "c980e5fb",
+        motivo:
+          "GO-1d (O.324; ADITIVO, no cambia comportamiento): la huella de escritores del Kardex suma `operacionPadreId` en null en cada `Operacion`. Verificado con diff: sin esa clave en null, idéntico al anterior.",
       },
     ],
   },

@@ -15,8 +15,8 @@ import {
 } from "../../../src/core/opciones/tipos";
 
 /**
- * GO-0b: las listas cerradas del «elemento configurable» (espejo de lo que GO-1 va a crear en la base). La paridad con los enums y los CHECK de la base se agrega en GO-1,
- * cuando existan; acá, lo que se puede afirmar sin base: el contenido exacto, sin repetidos, en mayúsculas y sin vocabulario de un solo rubro.
+ * GO-0b: las listas cerradas del «elemento configurable» (espejo de lo que GO-1 creó en la base como TEXT con CHECK). La paridad con los CHECK de la base la mide
+ * `test/persistencia/migracion-grupos-de-opciones.test.ts`; acá, lo que se puede afirmar sin base: el contenido exacto, sin repetidos, en mayúsculas y sin vocabulario de un solo rubro.
  */
 const LISTAS = {
   TIPOS_DE_GRUPO_DE_OPCIONES,

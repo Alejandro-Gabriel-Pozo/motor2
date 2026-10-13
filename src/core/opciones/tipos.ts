@@ -1,11 +1,11 @@
 /**
  * El «elemento configurable» (GO-0b): tipos y constantes de los grupos de opciones de venta (tamaño, variante, incluida, adicional).
  *
- * Son el ESPEJO de lo que GO-1 va a crear en la base (diseño: `_planes/go-0-grupos-de-opciones-diseno-2026-10-12.md`, §2): los enums
- * `TipoDeGrupoDeOpciones`, `ModoDePrecioDeMedida` y `EfectoDeConsumoDeOpcion` de Prisma y el `tipoDeDiferencia` de `VersionDeOpcion` /
- * `ProductoAdmiteOpcion`. Hoy NO existe nada de esto en `prisma/schema.prisma`: cuando exista, un test de paridad (como el de las alícuotas de
- * IVA) tiene que comparar estas listas con la base. Los nombres son neutros (multirrubro): un tamaño es una MEDIDA tanto para un café como para
- * un masaje de 30/60/90 minutos.
+ * Son el ESPEJO de lo que GO-1 creó en la base (diseño: `_planes/go-0-grupos-de-opciones-diseno-2026-10-12.md`, §2): las listas cerradas `TipoDeGrupoDeOpciones`
+ * (`GrupoDeOpciones.tipo`), `ModoDePrecioDeMedida` (`ProductoAdmiteGrupo.modoPrecio`), `EfectoDeConsumoDeOpcion` (`ConsumoDeOpcion.efecto`) y `TipoDeDiferencia`
+ * (`VersionDeOpcion` / `ProductoAdmiteOpcion`). En la base son TEXT con CHECK, no enums de Postgres ni de Prisma (agregar un valor es cambiar un CHECK, reversible;
+ * ADR-030), y `test/persistencia/migracion-grupos-de-opciones.test.ts` compara estas listas y estos topes con los CHECK de la base. Los nombres son neutros
+ * (multirrubro): un tamaño es una MEDIDA tanto para un café como para un masaje de 30/60/90 minutos.
  *
  * Sin funciones y sin Prisma: solo constantes y tipos puros.
  */
