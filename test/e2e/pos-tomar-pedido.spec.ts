@@ -4,6 +4,7 @@ import { prisma } from "./fixtures/db";
 import { abrirComoRol, PERMISOS_MOZO } from "./fixtures/rol-pos";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 import { prismaAdmin } from "../setup/cliente-duenio";
+import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
 
 /**
  * Tomar pedido en el salón (docs/plan-tomar-pedido-2026-09-25.md): la pantalla de la mesa (/mesas/<id>) con el circuito completo —
@@ -32,6 +33,11 @@ async function sembrarCatalogo(sucursalId: string) {
   const pizza = await crear({ codigo: `E2E-TP-PIZZA-${marca}`, nombre: `E2E Pizza ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 12000 });
   await prisma.recetaVersion.create({ data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: muzzarella.id, cantidad: 0.25, unidadId: kg.id }] } } });
   const productoIds = [milanesa.id, flan.id, muzzarella.id, pizza.id];
+  // RECETA (ADR-033, sin receta no se vende): la milanesa y el flan son de reventa, con stock en la sección del fixture de sesión (el cierre no deja stock negativo).
+  const seccion = await prisma.seccion.findFirstOrThrow({ where: { sucursalId, nombre: SECCION } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const reventa = { sucursalIds: [sucursalId], stock: { cantidad: 1000, seccionIds: [seccion.id], usuarioId: admin.id } };
+  const mpIds = [(await darRecetaDeReventa(prisma, milanesa, reventa)).id, (await darRecetaDeReventa(prisma, flan, reventa)).id];
 
   return {
     milanesa,
@@ -58,6 +64,7 @@ async function sembrarCatalogo(sucursalId: string) {
       await prisma.seccionHabitualProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.recetaIngrediente.deleteMany({ where: { recetaVersion: { productoId: pizza.id } } });
       await prisma.recetaVersion.deleteMany({ where: { productoId: pizza.id } });
+      await borrarRecetasDeReventa(prisma, { pvIds: [milanesa.id, flan.id], mpIds });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
     },

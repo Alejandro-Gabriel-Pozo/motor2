@@ -4,6 +4,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { abrirComoRol, PERMISOS_MOZO } from "./fixtures/rol-pos";
+import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
 
 /**
  * «Agregar al pedido» por SECCIÓN DE CARTA en la pantalla de la mesa (docs/plan-selector-carta-pos-2026-09-25.md): la barra de
@@ -21,8 +22,11 @@ import { abrirComoRol, PERMISOS_MOZO } from "./fixtures/rol-pos";
 async function sembrarCarta(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
+  // RECETA (ADR-033, sin receta no se vende): cada PV del fixture lleva su receta de reventa (sin stock: acá solo se agrega a la cuenta).
+  const reventas: { pv: string; mp: string }[] = [];
   const crear = async (clave: string, nombre: string, precioVenta: number, disponible = true) => {
     const p = await prisma.producto.create({ data: { codigo: `E2E-CS-${clave}-${marca}`, nombre: `E2E ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta } });
+    reventas.push({ pv: p.id, mp: (await darRecetaDeReventa(prisma, p, { sucursalIds: [sucursalId] })).id });
     if (disponible) await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
     return p;
   };
@@ -68,6 +72,7 @@ async function sembrarCarta(sucursalId: string) {
       await prisma.itemAgrupadoCarta.deleteMany({ where: { id: gaseosa.id } });
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.seccionCarta.deleteMany({ where: { id: { in: [platos.id, bebidas.id] } } });
+      await borrarRecetasDeReventa(prisma, { pvIds: reventas.map((r) => r.pv), mpIds: reventas.map((r) => r.mp) });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
     },
@@ -286,8 +291,11 @@ test("a 1024px y a 390px, con un agrupado desplegado, no hay scroll horizontal",
 async function sembrarCartaConGenero(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
+  // RECETA (ADR-033, sin receta no se vende): cada PV del fixture lleva su receta de reventa (sin stock: acá solo se agrega a la cuenta).
+  const reventas: { pv: string; mp: string }[] = [];
   const crear = async (clave: string, nombre: string, precioVenta: number) => {
     const p = await prisma.producto.create({ data: { codigo: `E2E-GEN-${clave}-${marca}`, nombre: `E2E ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta } });
+    reventas.push({ pv: p.id, mp: (await darRecetaDeReventa(prisma, p, { sucursalIds: [sucursalId] })).id });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
     return p;
   };
@@ -332,6 +340,7 @@ async function sembrarCartaConGenero(sucursalId: string) {
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.seccionCarta.deleteMany({ where: { id: { in: [bebidas.id, postres.id] } } });
       await prisma.generoCarta.deleteMany({ where: { id: genero.id } });
+      await borrarRecetasDeReventa(prisma, { pvIds: reventas.map((r) => r.pv), mpIds: reventas.map((r) => r.mp) });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
     },

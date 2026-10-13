@@ -4,6 +4,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { interceptarImpresion } from "./fixtures/impresion";
 import { prismaAdmin } from "../setup/cliente-duenio";
+import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
 
 /**
  * Promos ARMABLES en la pantalla de la mesa (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 11): tocar la promo destacada
@@ -27,8 +28,13 @@ const barra = (page: Page) => page.getByRole("group", { name: "Secciones de la c
 async function sembrarPromoCombo(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
+  // RECETA (ADR-033, sin receta no se vende): cada PV del fixture lleva su receta de reventa, con stock en la sección del fixture de sesión (el cierre no deja stock negativo).
+  const seccionE2E = await prisma.seccion.findFirstOrThrow({ where: { sucursalId, nombre: "Depósito E2E" } });
+  const adminE2E = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const reventas: { pv: string; mp: string }[] = [];
   const crear = async (clave: string, nombre: string, precioVenta: number) => {
     const p = await prisma.producto.create({ data: { codigo: `E2E-PC-${clave}-${marca}`, nombre: `E2E ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta } });
+    reventas.push({ pv: p.id, mp: (await darRecetaDeReventa(prisma, p, { sucursalIds: [sucursalId], stock: { cantidad: 1000, seccionIds: [seccionE2E.id], usuarioId: adminE2E.id } })).id });
     await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
     return p;
   };
@@ -88,6 +94,7 @@ async function sembrarPromoCombo(sucursalId: string) {
       await prisma.promoCarta.deleteMany({ where: { id: promo.id } });
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.seccionCarta.deleteMany({ where: { id: { in: [entradas.id, bebidas.id] } } });
+      await borrarRecetasDeReventa(prisma, { pvIds: reventas.map((r) => r.pv), mpIds: reventas.map((r) => r.mp) });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
     },

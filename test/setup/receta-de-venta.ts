@@ -21,7 +21,7 @@ export async function darRecetaDeReventa(
   const e = opciones.empresaId ? { empresaId: opciones.empresaId } : {};
   const mp = await db.producto.create({ data: { ...e, codigo: `MP_REV_${pv.codigo}`, nombre: `${pv.nombre} (reventa)`, tipo: "MP", unidadStockId: pv.unidadStockId } });
   for (const sucursalId of opciones.sucursalIds) await db.disponibilidadProducto.create({ data: { ...e, sucursalId, productoId: mp.id, disponible: true } });
-  await db.recetaVersion.create({ data: { ...e, productoId: pv.id, version: 1, ingredientes: { create: [{ ...e, insumoProductoId: mp.id, cantidad: 1, unidadId: pv.unidadStockId, mermaPorcentaje: 0 }] } } });
+  await db.recetaVersion.create({ data: { ...e, productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: pv.unidadStockId, mermaPorcentaje: 0 }] } } });
   if (opciones.stock) {
     const { cantidad, seccionIds, usuarioId, precioPorUnidad = 0 } = opciones.stock;
     for (const seccionId of seccionIds) {

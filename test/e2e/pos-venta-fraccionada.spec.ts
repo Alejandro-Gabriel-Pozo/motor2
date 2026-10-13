@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { prismaAdmin } from "../setup/cliente-duenio";
+import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
 
 /**
  * Venta fraccionada en el POS (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): un producto con `pasoVenta` acepta un
@@ -17,6 +18,8 @@ async function sembrarPizzaFraccionada(sucursalId: string) {
     data: { codigo: `E2E-VF-${marca}`, nombre: `E2E Pizza fraccionada ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 12000, pasoVenta: 0.5 },
   });
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: pizza.id, disponible: true } });
+  // RECETA (ADR-033, sin receta no se vende): la pizza fraccionada lleva su receta de reventa (sin stock: acá solo se agrega a la cuenta).
+  const reventa = await darRecetaDeReventa(prisma, pizza, { sucursalIds: [sucursalId] });
   return {
     pizza,
     limpiar: async (mesaIds: string[]) => {
@@ -25,6 +28,7 @@ async function sembrarPizzaFraccionada(sucursalId: string) {
       await prismaAdmin.agregadoDeCuenta.deleteMany({ where: { cuenta: { mesaId: { in: mesaIds } } } });
       await prisma.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
+      await borrarRecetasDeReventa(prisma, { pvIds: [pizza.id], mpIds: [reventa.id] });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: pizza.id } });
       await prisma.producto.deleteMany({ where: { id: pizza.id } });
     },
