@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { repartirImporte } from "../../src/core/moneda";
+import { aCentavos, repartirEnDosPasos } from "../setup/centros-de-costos";
 import { datosDeRenglonSinStock, sembrarEscenarioDeGasto, type EscenarioDeGasto } from "../setup/gasto";
 import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 
@@ -13,7 +14,7 @@ import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
  * se hayan armado las partes, con tal de ordenarlas por id; (4) con una sola sucursal el reparto es la identidad; (5) cuando el reparto deja una parte en cero centavos la BASE la rechaza (importe > 0) y no queda ninguna fila: la Etapa C lo
  * rechaza antes con un mensaje explícito.
  *
- * El reparto en dos pasos vive acá, en el test: lo usará el caso de uso de la Etapa C (que lo extraerá a `src/core/` cuando exista quien lo llame).
+ * El reparto en dos pasos (`repartirEnDosPasos`) vive en `test/setup/centros-de-costos.ts`, compartido con la distribución entre centros de costos (M7): lo usará el caso de uso de la Etapa C (que lo extraerá a `src/core/` cuando exista quien lo llame).
  */
 afterAll(() => prismaAdmin.$disconnect());
 
@@ -32,16 +33,6 @@ const aDecimal = (centavos: bigint): string => {
   const t = centavos.toString().padStart(3, "0");
   return `${t.slice(0, t.length - 2)}.${t.slice(t.length - 2)}`;
 };
-const aCentavos = (importe: number) => Math.round(importe * 100);
-
-/** El reparto en dos pasos de D3. `pesos[i]` es el peso de `ids[i]`; las partes se ordenan por id ANTES de repartir (los empates de mayor residuo se resuelven por índice). */
-function repartirEnDosPasos(importe: number, computable: number, partes: ReadonlyArray<{ id: string; peso: number }>) {
-  const ordenadas = [...partes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  const importes = repartirImporte(importe, ordenadas.map((p) => p.peso));
-  const computables = repartirImporte(computable, importes.map(aCentavos));
-  return ordenadas.map((p, i) => ({ id: p.id, importe: importes[i]!, computable: computables[i]! }));
-}
-
 /** Un renglón sin stock de `total` (con su desglose de IVA para que el computable sea válido en el renglón) y devuelve su id. */
 async function renglon(totalCentavos: bigint, computableCentavos: bigint) {
   contador += 1;

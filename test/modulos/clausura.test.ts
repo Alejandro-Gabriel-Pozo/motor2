@@ -5,13 +5,13 @@ import { modulosEfectivos, modulosQueIncluyen, validarCambioDeModulos } from "..
 const ordenados = (s: Iterable<string>) => [...s].sort();
 
 describe("catálogo de módulos (ADR-014 + ADR-015)", () => {
-  it("tiene 14 módulos: 1 fijo, 3 de soporte y 10 vendibles (9 disponibles y Gastos y servicios en desarrollo)", () => {
-    expect(MODULOS).toHaveLength(14);
+  it("tiene 15 módulos: 1 fijo, 3 de soporte y 11 vendibles (9 disponibles; Gastos y servicios y Centros de costos en desarrollo)", () => {
+    expect(MODULOS).toHaveLength(15);
     const porTipo = (tipo: string) => MODULOS.filter((m) => m.tipo === tipo).map((m) => m.id);
     expect(porTipo("fijo")).toEqual(["administracion"]);
     expect(ordenados(porTipo("soporte"))).toEqual(["catalogo_basico", "clientes_basico", "proveedores_basico"]);
-    expect(ordenados(porTipo("vendible"))).toEqual(["carta", "compras", "consignacion", "gastos", "produccion", "promociones", "recetas", "salon", "stock", "traspasos"]);
-    expect((MODULOS as readonly ModuloDef[]).filter((m) => m.estado === "en_desarrollo").map((m) => m.id)).toEqual(["gastos"]);
+    expect(ordenados(porTipo("vendible"))).toEqual(["carta", "centros_de_costos", "compras", "consignacion", "gastos", "produccion", "promociones", "recetas", "salon", "stock", "traspasos"]);
+    expect((MODULOS as readonly ModuloDef[]).filter((m) => m.estado === "en_desarrollo").map((m) => m.id)).toEqual(["gastos", "centros_de_costos"]);
   });
 
   it("los ids son únicos y toda dependencia (dura o blanda) apunta a un módulo que existe", () => {
@@ -75,6 +75,7 @@ describe("modulosEfectivos (clausura por requiere)", () => {
     const efectivos = modulosEfectivos(vendibles);
     expect(efectivos.size).toBe(13);
     expect(efectivos.has("gastos")).toBe(false);
+    expect(efectivos.has("centros_de_costos")).toBe(false);
   });
 
   it("los de soporte y los ids desconocidos no cuentan como filas del registro", () => {
@@ -99,6 +100,25 @@ describe("Gastos y servicios (gastos), el módulo real en desarrollo", () => {
 
   it("no se activa: el pedido se rechaza con EN_DESARROLLO", () => {
     expect(validarCambioDeModulos([], { activar: ["gastos"] })).toEqual({ ok: false, errores: [{ motivo: "EN_DESARROLLO", modulo: "gastos" }] });
+  });
+});
+
+describe("Centros de costos (centros_de_costos), M7: el segundo módulo en desarrollo", () => {
+  it("requiere Gastos y servicios, y una fila suya en el registro no cuenta: no está efectivo y no trae nada", () => {
+    expect(moduloDelCatalogo("centros_de_costos").requiere).toEqual(["gastos"]);
+    expect(ordenados(modulosEfectivos(["centros_de_costos"]))).toEqual(["administracion"]);
+    expect(ordenados(modulosEfectivos(["centros_de_costos", "gastos"]))).toEqual(["administracion"]);
+  });
+
+  it("no se activa: el pedido se rechaza con EN_DESARROLLO", () => {
+    expect(validarCambioDeModulos([], { activar: ["centros_de_costos"] })).toEqual({ ok: false, errores: [{ motivo: "EN_DESARROLLO", modulo: "centros_de_costos" }] });
+  });
+
+  it("ningún módulo disponible requiere uno en desarrollo (si no, la clausura lo volvería efectivo)", () => {
+    const enDesarrollo = new Set((MODULOS as readonly ModuloDef[]).filter((m) => m.estado === "en_desarrollo").map((m) => m.id));
+    for (const m of (MODULOS as readonly ModuloDef[]).filter((x) => x.estado === "disponible")) {
+      for (const d of m.requiere) expect(enDesarrollo.has(d), `${m.id} requiere ${d}, que está en desarrollo`).toBe(false);
+    }
   });
 });
 

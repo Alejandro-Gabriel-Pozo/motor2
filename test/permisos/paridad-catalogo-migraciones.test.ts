@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
@@ -147,13 +149,14 @@ describe("paridad ACCIONES ↔ migraciones: una base real termina con el catálo
     expect(sobrantes, "claves en la base que el código no conoce y nadie declaró retiradas ni reservadas").toEqual([]);
   });
 
-  it("toda clave RESERVADA EN LA BASE (los gastos, M4.5, y la nota de crédito de proveedor, M6.4) está en una base migrada, con la descripción definitiva, y todavía NO está en ACCIONES (el día que entra, sale de la lista)", () => {
+  it("toda clave RESERVADA EN LA BASE (los gastos, M4.5, y la nota de crédito de proveedor, M6.4, y los centros de costos, M7.4) está en una base migrada, con la descripción definitiva, y todavía NO está en ACCIONES (el día que entra, sale de la lista)", () => {
     const enCodigo = new Set<string>(ACCIONES.map((a) => a.clave));
     expect(MOTIVO_DE_LAS_RESERVADAS_EN_BASE.trim().length).toBeGreaterThan(10);
     expect(Object.keys(RESERVADAS_EN_BASE).sort()).toEqual(
       [
         "conceptos_gasto", "gasto_anular", "gasto_ver", "gasto_registrar", "gasto_reclasificar", "gasto_repartir", "reporte_gastos_empresa",
         "nota_credito_proveedor", "gasto_nota_credito", "anular_nota_credito_proveedor",
+        "centros_costos", "distribucion_costos", "reporte_gastos_por_unidad",
       ].sort()
     );
     for (const [clave, def] of Object.entries(RESERVADAS_EN_BASE)) {
@@ -161,10 +164,12 @@ describe("paridad ACCIONES ↔ migraciones: una base real termina con el catálo
       expect(enBase.get(clave), `la descripción de "${clave}" en la base no es la definitiva`).toBe(def.descripcion);
       expect(enCodigo.has(clave), `"${clave}" ya está en ACCIONES: sacala de RESERVADAS_EN_BASE (y de la lista de claves reservadas del guardián de uso si corresponde)`).toBe(false);
       expect(clave in RETIRADAS, `"${clave}" no puede ser a la vez retirada y reservada`).toBe(false);
+      const sql = readFileSync(join(__dirname, "../../prisma/migrations", def.migracion, "migration.sql"), "utf8");
+      expect(sql, `la migración ${def.migracion} que declara "${clave}" no la da de alta`).toContain(`'${clave}'`);
     }
   });
 
-  it("el admin edita, en una base migrada, las claves reservadas que de fábrica son suyas (las tres de la nota de crédito, sí); la de repartir gastos (delegable) no la tiene nadie", () => {
+  it("el admin edita, en una base migrada, las claves reservadas que de fábrica son suyas (las de la nota de crédito y las de los centros de costos, sí); la de repartir gastos (delegable) no la tiene nadie", () => {
     for (const [clave, def] of Object.entries(RESERVADAS_EN_BASE)) {
       expect(editaElAdmin.has(clave), clave).toBe(def.semilla.includes("admin"));
     }

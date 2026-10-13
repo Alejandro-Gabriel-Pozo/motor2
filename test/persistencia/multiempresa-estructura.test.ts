@@ -36,6 +36,12 @@ const FK_CON_DISCRIMINADOR: Readonly<Record<string, string>> = {
     "Paquete 4, M6.1: (empresaId, renglón, naturaleza) → FacturaProveedorRenglon(empresaId, id, naturaleza): la naturaleza de la línea es la del renglón que acredita (una línea de mercadería no acredita un renglón sin stock).",
   NotaCreditoProveedorImputacion_linea_fkey:
     "Paquete 4, M6.1: (empresaId, línea, lineaAdmiteDevolucion) → NotaCreditoProveedorLinea(empresaId, id, admiteDevolucion): solo una línea de mercadería sobre factura admite una devolución (más el CHECK de la devolución).",
+  CentroDeCostos_empresaId_planDeCostosId_centroPadreId_fkey:
+    "Paquete 5, M7.1: (empresaId, planDeCostosId, centroPadreId) → CentroDeCostos(empresaId, planDeCostosId, id): el padre de un centro es del MISMO plan (en la v1 `centroPadreId` es siempre NULL por CHECK; la clave queda lista para los sub-centros).",
+  DistribucionCostoLinea_empresaId_distribucionCostoVersionI_fkey:
+    "Paquete 5, M7.2: (empresaId, versión, planDeCostosId) → DistribucionCostoVersion(empresaId, id, planDeCostosId): la línea es del plan de su versión (el discriminador es el plan).",
+  DistribucionCostoLinea_empresaId_planDeCostosId_centroDeCo_fkey:
+    "Paquete 5, M7.2: (empresaId, planDeCostosId, centro) → CentroDeCostos(empresaId, planDeCostosId, id): el centro de una línea es del plan de la versión (no se puede repartir a un centro de otro plan).",
 };
 
 function codigoDeError(e: unknown): string | undefined {

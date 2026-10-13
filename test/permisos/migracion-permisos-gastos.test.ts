@@ -16,7 +16,7 @@ import { clavesReservadasDe, RESERVADAS_EN_BASE } from "../setup/claves-reservad
  */
 const NOMBRE = "20261016114000_permisos_gastos";
 const leer = (archivo: string) => readFileSync(join(__dirname, "../../prisma/migrations", NOMBRE, archivo), "utf8");
-/** Solo las siete de ESTA migración (M4.5): las de M6.4 y las que se sumen después las lista `RESERVADAS_EN_BASE` pero las da de alta otra. */
+/** Solo las siete de ESTA migración (M4.5): las de M6.4, las de M7.4 y las que se sumen después las lista `RESERVADAS_EN_BASE` pero las da de alta otra. */
 const CLAVES = clavesReservadasDe(NOMBRE);
 const CON_SEMILLA = CLAVES.filter((c) => RESERVADAS_EN_BASE[c]!.semilla.includes("admin"));
 

@@ -38,6 +38,7 @@ model User {
   invitacionesSucursalHechas InvitacionSucursal[]
   agregadosDeCuenta          AgregadoDeCuenta[]
   reclasificacionesDeRenglon ReclasificacionRenglon[]
+  distribucionesDeCostoCreadas DistribucionCostoVersion[]
   ventas                     Venta[]
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
   facturasProvConfirmadas    FacturaProveedor[]   @relation("FacturaProveedorConfirmadaPor")
@@ -160,6 +161,7 @@ model Sucursal {
   facturaProveedorPartes   FacturaProveedorSucursal[]
   imputacionesDeGasto      ImputacionDeGasto[]
   imputacionesDeNotaCredito NotaCreditoProveedorImputacion[]
+  planesDeCostos           PlanDeCostosSucursal[]
   invitacionSucursals      InvitacionSucursal[]
 
   @@unique([empresaId, nombre])
@@ -2387,6 +2389,11 @@ model Empresa {
   notaCreditoProveedorLineaRel   NotaCreditoProveedorLinea[]
   notaCreditoProveedorImputacionRel NotaCreditoProveedorImputacion[]
   notaCreditoProveedorTributoRel NotaCreditoProveedorTributo[]
+  planDeCostosRel                PlanDeCostos[]
+  centroDeCostosRel              CentroDeCostos[]
+  planDeCostosSucursalRel        PlanDeCostosSucursal[]
+  distribucionCostoVersionRel    DistribucionCostoVersion[]
+  distribucionCostoLineaRel      DistribucionCostoLinea[]
 }
 
 enum EstadoModulo {
@@ -2851,6 +2858,9 @@ model ImputacionDeGasto {
   importeIvaComputable      Decimal                 @default(0) @db.Decimal(14, 2)
   creadoEn                  DateTime                @default(now())
 
+  /// M7: las versiones de distribución de esta imputación entre los centros de costos de un plan.
+  distribuciones DistribucionCostoVersion[]
+
   @@unique([empresaId, id])
   @@unique([facturaProveedorRenglonId, sucursalId])
   @@index([sucursalId])
@@ -3051,4 +3061,134 @@ model NotaCreditoProveedorTributo {
 
   @@unique([empresaId, id])
   @@index([notaCreditoProveedorId])
+}
+
+/// Paquete 5 (M7): el PLAN de costos de la empresa (una dimensión analítica: por ejemplo «unidades de negocio»). DE EMPRESA (catálogo de la empresa, sin `sucursalId`; en qué sucursales aplica lo dice `PlanDeCostosSucursal`). El código
+/// (mayúsculas, dígitos y guion bajo, empieza con letra, hasta 40; CHECK) es único por empresa y queda fijo: la app solo cambia `nombre` y `activo`. El nombre es único por empresa sin importar mayúsculas (índice sobre `lower`). No se borra:
+/// la baja es desactivar. Nada de `src/` lo escribe todavía (Etapa C). No toca dinero.
+model PlanDeCostos {
+  id        String   @id @default(cuid())
+  empresaId String   @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa  @relation(fields: [empresaId], references: [id])
+  /// Mayúsculas, dígitos y guion bajo, empieza con letra, hasta 40 (CHECK). Fijo.
+  codigo    String
+  nombre    String
+  activo    Boolean  @default(true)
+  creadoEn  DateTime @default(now())
+
+  /// Los centros de este plan.
+  centros        CentroDeCostos[]
+  /// En qué sucursales aplica el plan (ADR-009, familia `optin`).
+  sucursales     PlanDeCostosSucursal[]
+  /// Las versiones de distribución que eligieron este plan.
+  distribuciones DistribucionCostoVersion[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, nombre])
+}
+
+/// Paquete 5 (M7): un CENTRO de costos (unidad de negocio) de un plan. DE EMPRESA (el mismo código vale en todas las sucursales). Código fijo y único por empresa; nombre único por plan sin importar mayúsculas. `centroPadreId` queda SIEMPRE NULL en la
+/// versión 1 (CHECK): la clave foránea con DISCRIMINADOR `(empresaId, planDeCostosId, centroPadreId) → CentroDeCostos(empresaId, planDeCostosId, id)` ya obliga a que el padre sea del mismo plan para cuando se habiliten los sub-centros (ADR-031).
+/// Se agrega y se renombra o desactiva; no se borra. Nada de `src/` lo escribe todavía (Etapa C).
+model CentroDeCostos {
+  id             String          @id @default(cuid())
+  empresaId      String          @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa         @relation(fields: [empresaId], references: [id])
+  planDeCostosId String
+  plan           PlanDeCostos    @relation(fields: [empresaId, planDeCostosId], references: [empresaId, id])
+  /// Mayúsculas, dígitos y guion bajo, empieza con letra, hasta 40 (CHECK). Fijo.
+  codigo         String
+  nombre         String
+  /// Siempre NULL en la v1 (CHECK). Con la jerarquía, el padre es del mismo plan (clave foránea de tres columnas).
+  centroPadreId  String?
+  centroPadre    CentroDeCostos? @relation("JerarquiaDeCentros", fields: [empresaId, planDeCostosId, centroPadreId], references: [empresaId, planDeCostosId, id], onDelete: Restrict, onUpdate: Restrict)
+  activo         Boolean         @default(true)
+  creadoEn       DateTime        @default(now())
+
+  hijos                CentroDeCostos[]         @relation("JerarquiaDeCentros")
+  /// Las líneas de distribución que reparten a este centro.
+  lineasDeDistribucion DistribucionCostoLinea[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, planDeCostosId, id])
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, planDeCostosId, nombre])
+}
+
+/// Paquete 5 (M7): EN QUÉ SUCURSALES aplica un plan de costos (ADR-009, familia `optin`: sin fila, o con `aplica = false`, el plan NO aplica en la sucursal y sus gastos quedan «no aplica», no «sin asignar»). `PROPIA` (`sucursalId` NOT NULL; sus
+/// políticas de alcance las agrega M7.3). Una fila por (plan, sucursal); es un interruptor: la app solo cambia `aplica` (UPDATE por columna). Que no se cambie si la sucursal ya tiene gastos con ese plan lo valida la Etapa C. Nada de `src/` la escribe todavía.
+model PlanDeCostosSucursal {
+  id             String       @id @default(cuid())
+  empresaId      String       @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa      @relation(fields: [empresaId], references: [id])
+  planDeCostosId String
+  plan           PlanDeCostos @relation(fields: [empresaId, planDeCostosId], references: [empresaId, id])
+  sucursalId     String
+  sucursal       Sucursal     @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  /// `false` es lo mismo que no tener fila (lo resuelve el embudo `planDeCostosAplica`).
+  aplica         Boolean
+  creadoEn       DateTime     @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([planDeCostosId, sucursalId])
+  @@index([sucursalId])
+}
+
+/// Paquete 5 (M7): una VERSIÓN de la distribución de la imputación de un gasto entre los centros de UN plan. Alcance `HEREDADO` de `ImputacionDeGasto` por `imputacionDeGastoId` (sin `sucursalId` propio; sus políticas de sucursal las agrega M7.3).
+/// La mercadería no se distribuye (solo existen imputaciones de renglones `SIN_STOCK`). Cada (imputación, plan) tiene versiones 1, 2, 3...; la vigente es SIEMPRE la de `numero` mayor (derivada, nunca un flag ni un UPDATE); sin ninguna fila el estado es
+/// «sin asignar». Corregir es agregar una versión nueva con `motivo` (obligatorio desde la 2). SOLO se agrega: la app tiene SELECT e INSERT, nunca UPDATE ni DELETE. El único `(imputación, plan, numero)` elige UNA ganadora entre versiones
+/// simultáneas; la clave de idempotencia es única global (ADR-028) y se guarda el mensaje para reproducirlo (I3). Cabecera y líneas van en la MISMA transacción. Que Σ `porcentajeBp` = 10000 y que Σ importes e IVA computable sean los de la imputación
+/// lo valida la Etapa C (la base no suma filas; no hay disparadores). La versión rige desde `creadoEn` (UTC) y vale para el período del gasto. No tiene `@updatedAt`. Nada de `src/` la escribe todavía.
+model DistribucionCostoVersion {
+  id                  String            @id @default(cuid())
+  empresaId           String            @default(dbgenerated("app_empresa_actual()"))
+  empresa             Empresa           @relation(fields: [empresaId], references: [id])
+  imputacionDeGastoId String
+  imputacion          ImputacionDeGasto @relation(fields: [empresaId, imputacionDeGastoId], references: [empresaId, id], onDelete: Restrict)
+  planDeCostosId      String
+  plan                PlanDeCostos      @relation(fields: [empresaId, planDeCostosId], references: [empresaId, id])
+  /// 1, 2, 3...: único por (imputación, plan) (CHECK >= 1). La vigente es la de número mayor.
+  numero              Int
+  /// NULL o con al menos un carácter visible y hasta 200 (CHECK). Obligatorio desde la versión 2 (CHECK).
+  motivo              String?
+  /// UUID que genera la pantalla. Único GLOBAL (ADR-028).
+  claveIdempotencia   String            @unique
+  payloadHash         String
+  resultadoMensaje    String
+  creadoPorId         String
+  creadoPor           User              @relation(fields: [creadoPorId], references: [id], onDelete: Restrict)
+  /// Instante (UTC) desde el que rige la versión; vale para el período original del gasto.
+  creadoEn            DateTime          @default(now())
+
+  lineas DistribucionCostoLinea[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, id, planDeCostosId])
+  @@unique([imputacionDeGastoId, planDeCostosId, numero], map: "DistribucionCostoVersion_imputacion_plan_numero_key")
+  @@index([planDeCostosId])
+}
+
+/// Paquete 5 (M7): una LÍNEA de una versión de distribución: lo que le toca a un centro (porcentaje en puntos básicos enteros, 1 a 10000, más `importe` e `importeIvaComputable` repartidos en dos pasos con `repartirImporte`). Alcance `HEREDADO` de
+/// `DistribucionCostoVersion` por `distribucionCostoVersionId`. `planDeCostosId` es el discriminador copiado: las claves foráneas `(empresaId, versión, planDeCostosId)` y `(empresaId, planDeCostosId, centro)` obligan a que el centro sea del plan
+/// de la versión. SOLO se agrega. Una línea por (versión, centro). `importe` puede quedar en 0,00 por el redondeo. La suma de las líneas la valida la Etapa C. Nada de `src/` la escribe todavía.
+model DistribucionCostoLinea {
+  id                         String                   @id @default(cuid())
+  empresaId                  String                   @default(dbgenerated("app_empresa_actual()"))
+  empresa                    Empresa                  @relation(fields: [empresaId], references: [id])
+  distribucionCostoVersionId String
+  planDeCostosId             String
+  version                    DistribucionCostoVersion @relation(fields: [empresaId, distribucionCostoVersionId, planDeCostosId], references: [empresaId, id, planDeCostosId], onDelete: Restrict, onUpdate: Restrict)
+  centroDeCostosId           String
+  centro                     CentroDeCostos           @relation(fields: [empresaId, planDeCostosId, centroDeCostosId], references: [empresaId, planDeCostosId, id], onDelete: Restrict, onUpdate: Restrict)
+  /// Puntos básicos enteros: 1 a 10000 (CHECK).
+  porcentajeBp               Int
+  /// Lo que le toca al centro, CON IVA incluido. Cero o más (CHECK).
+  importe                    Decimal                  @db.Decimal(14, 2)
+  /// La parte de `importe` que es IVA computable (entre 0 y `importe`, CHECK).
+  importeIvaComputable       Decimal                  @default(0) @db.Decimal(14, 2)
+
+  @@unique([empresaId, id])
+  @@unique([distribucionCostoVersionId, centroDeCostosId], map: "DistribucionCostoLinea_version_centro_key")
+  @@index([centroDeCostosId])
 }

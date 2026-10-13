@@ -56,6 +56,7 @@ const REGISTRO: Record<string, Entrada> = {
   FacturaProveedorSucursal: { familia: "propio", embudo: null, motivo: "cada fila es la parte de una sucursal en una factura de proveedor repartida (historia, Paquete 3 / M3b): sin fila la sucursal no tiene parte en esa factura, no hay valor de empresa que la ausencia reemplace." },
   ImputacionDeGasto: { familia: "propio", embudo: null, motivo: "cada fila es lo que le toca a una sucursal del importe de un gasto cargado en una factura de proveedor (historia, Paquete 3 / M4.3): sin fila la sucursal no soportó nada de ese gasto, no hay valor de empresa que la ausencia reemplace." },
   NotaCreditoProveedorImputacion: { familia: "propio", embudo: null, motivo: "cada fila es lo que le toca a una sucursal del importe de una línea de nota de crédito de proveedor (historia, Paquete 4 / M6): sin fila la sucursal no recibió nada de ese crédito, no hay valor de empresa que la ausencia reemplace." },
+  PlanDeCostosSucursal: { familia: "optin", embudo: "src/core/compras/aplicabilidad-de-plan-de-costos.ts", motivo: "un plan sin fila en la sucursal (o con aplica=false) NO aplica ahí: sus gastos quedan «no aplica», no «sin asignar» (planDeCostosAplica)." },
 };
 
 /** Los modelos de un schema Prisma que tienen una columna `sucursalId`. */
