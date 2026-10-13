@@ -283,3 +283,12 @@ export async function sembrarCafeDelSalon(
 export function elegida(c: Pick<CafeDelSalon, "versionDe">, opcionId: string, cantidad = 1, versionDeOpcionId?: string) {
   return { opcionId, cantidad, versionDeOpcionId: versionDeOpcionId ?? c.versionDe[opcionId]! };
 }
+
+/** GO-2b: un SEGUNDO adicional («Crema», +150,00, con su propio producto ancla y sin consumo) en el grupo «Extras» del café de `sembrarCafeDelSalon`. */
+export async function sembrarCremaDelCafe(s: { unidad: { id: string }; admin: { id: string } }, c: Pick<CafeDelSalon, "cafeId" | "grupoExtrasId">) {
+  const anclaId = (await prisma.producto.create({ data: { codigo: "PV_CREMA", nombre: "Crema", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: "0.00" } })).id;
+  const cremaId = (await prisma.opcionDeGrupo.create({ data: { grupoId: c.grupoExtrasId, nombre: "Crema", orden: 2, productoId: anclaId } })).id;
+  const versionId = (await prisma.versionDeOpcion.create({ data: { opcionId: cremaId, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "150.00", creadoPorId: s.admin.id } })).id;
+  await prisma.productoAdmiteOpcion.create({ data: { productoId: c.cafeId, opcionId: cremaId, cantidadMaxima: 2 } });
+  return { anclaId, cremaId, versionId };
+}

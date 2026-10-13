@@ -22,7 +22,17 @@ import type { Prisma } from "@prisma/client";
 export async function escribirEspejoDeItem(
   tx: Prisma.TransactionClient,
   args: {
-    original: { id: string; cuentaId: string; productoId: string; precioUnitario: number; precioCartaUnitario: number | null; numeroEnvio: number };
+    original: {
+      id: string;
+      cuentaId: string;
+      productoId: string;
+      precioUnitario: number;
+      precioCartaUnitario: number | null;
+      numeroEnvio: number;
+      /** GO-2b: el espejo REPITE la huella y el padre del original (lo exige `CuentaItem_opciones_chk`); se copian solo si no son NULL. */
+      huellaOpciones?: string | null;
+      lineaPadreId?: string | null;
+    };
     cantidadAnulada: number;
     motivo: string;
     creadoPorId: string;
@@ -41,6 +51,8 @@ export async function escribirEspejoDeItem(
       motivoAnulacion: args.motivo,
       creadoPorId: args.creadoPorId,
       ...(args.promo ? { promoCuentaId: args.promo.promoCuentaId } : {}),
+      ...(args.original.huellaOpciones ? { huellaOpciones: args.original.huellaOpciones } : {}),
+      ...(args.original.lineaPadreId ? { lineaPadreId: args.original.lineaPadreId } : {}),
     },
     select: { id: true },
   });
