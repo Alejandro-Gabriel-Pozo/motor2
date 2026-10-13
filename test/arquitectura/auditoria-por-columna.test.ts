@@ -37,6 +37,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   { archivo: "src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "cantidadMinima", "cantidadMaxima", "activo"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["nombre", "orden", "activa"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/agregar-version-de-opcion.ts", entidad: "VersionDeOpcion", campos: ["numero", "tipoDeDiferencia", "diferenciaPrecio", "porcentaje", "factorEscala"] },
+  { archivo: "src/server/actions/catalogo/casos-de-uso/apagar-opcion-en-sucursal.ts", entidad: "OpcionApagadaEnSucursal", campos: ["apagada"] },
+  { archivo: "src/server/actions/catalogo/casos-de-uso/fijar-precio-local-de-opcion.ts", entidad: "PrecioLocalDeOpcion", campos: ["precio", "habilitado"] },
 ];
 
 /** Los literales de texto de `campo: "<literal>"` y de `entidad: "<literal>"` que hay en el código (propiedades de un literal de objeto). */

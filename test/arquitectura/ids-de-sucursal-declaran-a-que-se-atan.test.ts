@@ -95,6 +95,15 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   "carta/registro-publico.ts|guardarSucursalPublica": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa)" },
   "carta/registro-publico.ts|quitarSucursalDelPortal": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa)" },
   "carta/registro-publico.ts|moverSucursalEnMapa": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa)" },
+  // GO-2a: lo que decide cada sucursal sobre las opciones de venta. El id llega dentro de `entrada` (el eco de la pantalla) y el guard lo compara con la activa ANTES de leer nada.
+  "catalogo/opciones-por-sucursal.ts|apagarOpcionEnSucursal": {
+    ata: "SUCURSAL_ACTIVA",
+    motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; el caso de uso escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
+  },
+  "catalogo/opciones-por-sucursal.ts|fijarPrecioLocalDeOpcion": {
+    ata: "SUCURSAL_ACTIVA",
+    motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; la grilla se escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
+  },
   "carta/tema.ts|guardarTemaCarta": { ata: "SUCURSAL_ACTIVA", motivo: "`carta_tema` en la sucursal activa; el guard rechaza un id distinto de `ctx.sucursalId`" },
   "carta/tema.ts|cambiarAplicacionTema": { ata: "SUCURSAL_ACTIVA", motivo: "`carta_tema` en la sucursal activa; el guard rechaza un id distinto de `ctx.sucursalId`" },
   "catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": {

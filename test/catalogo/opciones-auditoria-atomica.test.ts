@@ -25,6 +25,8 @@ import { azarDelProceso } from "../../src/lib/azar";
 import { agregarVersionDeOpcionCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/agregar-version-de-opcion";
 import { crearOpcionDeGrupoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/crear-opcion-de-grupo";
 import { fijarAdmisionDeGrupoEnProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/fijar-admision-de-grupo-en-producto";
+import { apagarOpcionEnSucursalCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/apagar-opcion-en-sucursal";
+import { fijarPrecioLocalDeOpcionCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/fijar-precio-local-de-opcion";
 import { crearGrupoDeOpcionesCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/crear-grupo-de-opciones";
 import { editarGrupoDeOpcionesCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones";
 
@@ -114,4 +116,21 @@ describe("catálogo de opciones: la escritura y su auditoría son atómicas (GO-
     expect(await prisma.registroAuditoria.count()).toBe(0);
   });
 
+  // paso 10
+  it("apagar en la sucursal y fijar la grilla: falla la auditoría → la opción sigue prendida y la grilla sin fila", async () => {
+    await limpiarBaseDeTest();
+    const e = await sembrarEscenarioDeOpciones();
+    await prisma.productoAdmiteGrupo.updateMany({ where: { productoId: e.cafeId, grupoId: e.grupoMedidaId }, data: { modoPrecio: "ABSOLUTO" } });
+    await prisma.productoAdmiteOpcion.updateMany({ where: { productoId: e.cafeId, opcionId: { in: [e.chicoId, e.medianoId, e.grandeId] } }, data: { precioAbsoluto: "1500.00" } });
+    const actorA = { ...actorDePrueba(e.usuarioId, e.sucursalA), sucursalNombre: "Central" };
+    interruptor.llamadas = 0;
+    interruptor.fallarEnLlamada = 1;
+    await expect(apagarOpcionEnSucursalCasoDeUso(actorA, { opcionId: e.almendrasId, apagada: true })).rejects.toThrow("auditoría caída");
+    expect(await prisma.opcionApagadaEnSucursal.count()).toBe(0);
+    interruptor.llamadas = 0;
+    interruptor.fallarEnLlamada = 2;
+    await expect(fijarPrecioLocalDeOpcionCasoDeUso(actorA, { productoId: e.cafeId, opcionId: e.grandeId, esperado: null, precio: 1800 })).rejects.toThrow("auditoría caída");
+    expect(await prisma.precioLocalDeOpcion.count()).toBe(0);
+    expect(await prisma.registroAuditoria.count()).toBe(0);
+  });
 });
