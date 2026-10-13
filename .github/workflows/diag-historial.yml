@@ -61,10 +61,10 @@ jobs:
         run: |
           psql -d postgres -v ON_ERROR_STOP=1 <<'SQL'
           ALTER DATABASE motor2_dev SET session_preload_libraries = 'auto_explain';
-          ALTER DATABASE motor2_dev SET auto_explain.log_min_duration = '2ms';
+          ALTER DATABASE motor2_dev SET auto_explain.log_min_duration = '1ms';
           ALTER DATABASE motor2_dev SET auto_explain.log_nested_statements = on;
-          ALTER DATABASE motor2_dev SET auto_explain.sample_rate = 0.002;
-          ALTER DATABASE motor2_dev SET auto_explain.log_analyze = on;
+          ALTER DATABASE motor2_dev SET auto_explain.sample_rate = 1;
+          ALTER DATABASE motor2_dev SET auto_explain.log_analyze = off;
           SQL
       - name: Muestreo de consultas lentas o bloqueadas (segundo plano)
         run: |
