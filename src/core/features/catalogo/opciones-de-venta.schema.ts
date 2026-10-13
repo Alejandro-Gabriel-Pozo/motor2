@@ -68,6 +68,15 @@ export interface ComandoCrearOpcionDeGrupo {
   ancla: AnclaNueva | null;
 }
 
+/**
+ * `yaExistia`: el grupo ya tenía una opción con ese nombre (sin distinguir mayúsculas), la misma «ninguna» y una versión 1 con el mismo contenido — repetir el alta devuelve la existente.
+ * `NOMBRE_DE_ANCLA_REPETIDO`: ya hay un producto con el nombre del ancla. `REFERENCIA_NO_ENCONTRADA`: un insumo, un reemplazado o la unidad no son de la empresa. `MODULO_RECETAS_INACTIVO`
+ * (D-3): los consumos exigen el módulo Recetas.
+ */
+export type ResultadoCrearOpcionDeGrupo = ResultadoCaso<
+  { opcionId: string; versionDeOpcionId: string; productoAnclaId: string | null; yaExistia: boolean },
+  "GRUPO_NO_ENCONTRADO" | "NOMBRE_REPETIDO" | "NOMBRE_DE_ANCLA_REPETIDO" | "REFERENCIA_NO_ENCONTRADA" | "MODULO_RECETAS_INACTIVO" | ConfiguracionInvalida
+>;
 
 export interface ComandoEditarOpcionDeGrupo {
   opcionId: string;
@@ -77,6 +86,10 @@ export interface ComandoEditarOpcionDeGrupo {
   activa: boolean;
 }
 
+export type ResultadoEditarOpcionDeGrupo = ResultadoCaso<
+  { version: number; huboCambio: boolean; productosAfectados: number },
+  "OPCION_NO_ENCONTRADA" | "VERSION_DESACTUALIZADA" | "NOMBRE_REPETIDO"
+>;
 
 export interface ComandoAgregarVersionDeOpcion {
   opcionId: string;
@@ -85,6 +98,11 @@ export interface ComandoAgregarVersionDeOpcion {
   version: DatosDeVersionDeOpcion;
 }
 
+/** `yaExistia`: la vigente ya es la siguiente a la esperada, la cargó la misma persona y tiene el mismo contenido (el mismo pedido repetido): no se agrega otra. */
+export type ResultadoAgregarVersionDeOpcion = ResultadoCaso<
+  { versionDeOpcionId: string; numero: number; yaExistia: boolean },
+  "OPCION_NO_ENCONTRADA" | "VERSION_DESACTUALIZADA" | "REFERENCIA_NO_ENCONTRADA" | "MODULO_RECETAS_INACTIVO" | ConfiguracionInvalida
+>;
 
 // ───────────────────────────── Lo que admite cada producto ─────────────────────────────
 

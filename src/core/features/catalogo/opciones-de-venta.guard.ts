@@ -47,7 +47,7 @@ const LARGO_MAXIMO_DE_ID = 64;
 const CANTIDAD_DE_CONSUMO_MAXIMA = 1e10;
 
 export const MENSAJE_GRUPO_NO_ENCONTRADO = "No se encontró el grupo de opciones.";
-const MENSAJE_OPCION_NO_ENCONTRADA = "No se encontró la opción.";
+export const MENSAJE_OPCION_NO_ENCONTRADA = "No se encontró la opción.";
 
 function id(valor: unknown, mensaje: string): ResultadoDato<string> {
   return esIdentificador(valor) && valor.length <= LARGO_MAXIMO_DE_ID ? aceptar(valor) : rechazar("formato", mensaje);

@@ -20,6 +20,10 @@ vi.mock("../../src/server/auditoria/registrar-cambio-auditado", async (importOri
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase } from "../setup/test-db";
 import { actorDePrueba } from "../setup/opciones-de-venta";
+import { sembrarEscenarioDeOpciones } from "../setup/opciones";
+import { azarDelProceso } from "../../src/lib/azar";
+import { agregarVersionDeOpcionCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/agregar-version-de-opcion";
+import { crearOpcionDeGrupoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/crear-opcion-de-grupo";
 import { crearGrupoDeOpcionesCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/crear-grupo-de-opciones";
 import { editarGrupoDeOpcionesCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones";
 
@@ -63,7 +67,35 @@ describe("catálogo de opciones: la escritura y su auditoría son atómicas (GO-
     expect(await prisma.registroAuditoria.count()).toBe(auditoriaDelAlta);
   });
 
+  // paso 7
+  it("crear un ADICIONAL con su ancla: falla la ÚLTIMA fila de auditoría → no queda ni la opción, ni su versión, ni el producto ancla, ni ninguna auditoría", async () => {
+    await limpiarBaseDeTest();
+    const e = await sembrarEscenarioDeOpciones();
+    const productos = await prisma.producto.count();
+    interruptor.llamadas = 0;
+    interruptor.fallarEnLlamada = 12; // 3 del ancla + 4 de la opción + 5 de la versión: la última
+    await expect(
+      crearOpcionDeGrupoCasoDeUso(actorDePrueba(e.usuarioId, e.sucursalA), { grupoId: e.grupoAdicionalId, nombre: "Crema", orden: 2, esNinguna: false, ancla: { unidadStockId: e.unidadId }, version: { diferencia: { tipo: "MONTO", monto: 250 }, factorEscala: null, consumos: [] } }, azarDelProceso)
+    ).rejects.toThrow("auditoría caída");
+    expect(await prisma.producto.count()).toBe(productos);
+    expect(await prisma.opcionDeGrupo.count({ where: { nombre: "Crema" } })).toBe(0);
+    expect(await prisma.versionDeOpcion.count({ where: { opcion: { nombre: "Crema" } } })).toBe(0);
+    expect(await prisma.registroAuditoria.count()).toBe(0);
+  });
 
+  // paso 7
+  it("agregar una versión: falla la auditoría → no queda la versión ni sus consumos", async () => {
+    await limpiarBaseDeTest();
+    const e = await sembrarEscenarioDeOpciones();
+    interruptor.llamadas = 0;
+    interruptor.fallarEnLlamada = 3;
+    await expect(
+      agregarVersionDeOpcionCasoDeUso(actorDePrueba(e.usuarioId, e.sucursalA), { opcionId: e.almendrasId, numeroEsperado: 1, version: { diferencia: { tipo: "MONTO", monto: 175 }, factorEscala: null, consumos: [{ efecto: "REEMPLAZA", insumoProductoId: e.almendrasInsumoId, reemplazaAProductoId: e.lecheId, cantidad: 0.25, mermaPorcentaje: 0, escalaConLaMedida: false }] } })
+    ).rejects.toThrow("auditoría caída");
+    expect(await prisma.versionDeOpcion.count({ where: { opcionId: e.almendrasId } })).toBe(1);
+    expect(await prisma.consumoDeOpcion.count()).toBe(1);
+    expect(await prisma.registroAuditoria.count()).toBe(0);
+  });
 
 
 });

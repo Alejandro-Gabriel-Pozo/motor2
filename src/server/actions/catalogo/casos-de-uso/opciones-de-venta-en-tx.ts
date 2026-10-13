@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { cantidadesEfectivas, validarGrupo, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import { cantidadesEfectivas, validarGrupo, type ConsumoDeConfiguracion, type ContenidoDeVersion, type DiferenciaDePrecio, type EfectoDeConsumoDeOpcion, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 
 /**
  * Las lecturas que los casos de uso del catálogo de opciones de venta (GO-2a) hacen DENTRO de su transacción SERIALIZABLE, compartidas (no es un caso de uso: ninguna Server
@@ -109,4 +109,113 @@ export function avisoDeProductosAfectados(n: number): string {
   return n === 1
     ? " Atención: 1 producto que lo admite queda sin poder venderse hasta que elijas otra opción o cambies su configuración."
     : ` Atención: ${n} productos que lo admiten quedan sin poder venderse hasta que elijas otra opción o cambies su configuración.`;
+}
+
+// ───────────────────────────── Opciones y versiones ─────────────────────────────
+
+export interface OpcionEnTx {
+  id: string;
+  grupoId: string;
+  nombre: string;
+  orden: number;
+  activa: boolean;
+  esNinguna: boolean;
+  productoId: string | null;
+  version: number;
+  grupo: { nombre: string; tipo: TipoDeGrupoDeOpciones };
+}
+
+export async function cargarOpcionEnTx(tx: Tx, opcionId: string): Promise<OpcionEnTx | null> {
+  const o = await tx.opcionDeGrupo.findFirst({
+    where: { id: opcionId },
+    select: { id: true, grupoId: true, nombre: true, orden: true, activa: true, esNinguna: true, productoId: true, version: true, grupo: { select: { nombre: true, tipo: true } } },
+  });
+  return o ? { ...o, grupo: { nombre: o.grupo.nombre, tipo: o.grupo.tipo as TipoDeGrupoDeOpciones } } : null;
+}
+
+export interface VersionVigenteEnTx extends ContenidoDeVersion {
+  id: string;
+  numero: number;
+  creadoPorId: string;
+}
+
+/** La versión VIGENTE de una opción (la de número mayor, derivada), con sus consumos en orden, en números planos; `null` si todavía no tiene. */
+export async function versionVigenteEnTx(tx: Tx, opcionId: string): Promise<VersionVigenteEnTx | null> {
+  const v = await tx.versionDeOpcion.findFirst({
+    where: { opcionId },
+    orderBy: { numero: "desc" },
+    select: {
+      id: true,
+      numero: true,
+      tipoDeDiferencia: true,
+      diferenciaPrecio: true,
+      porcentaje: true,
+      factorEscala: true,
+      creadoPorId: true,
+      consumos: {
+        orderBy: { orden: "asc" },
+        select: { efecto: true, insumoProductoId: true, reemplazaAProductoId: true, cantidad: true, mermaPorcentaje: true, escalaConLaMedida: true },
+      },
+    },
+  });
+  if (!v) return null;
+  const diferencia: DiferenciaDePrecio = v.tipoDeDiferencia === "PORCENTAJE" ? { tipo: "PORCENTAJE", porcentaje: Number(v.porcentaje) } : { tipo: "MONTO", monto: Number(v.diferenciaPrecio) };
+  return {
+    id: v.id,
+    numero: v.numero,
+    creadoPorId: v.creadoPorId,
+    diferencia,
+    factorEscala: v.factorEscala === null ? null : Number(v.factorEscala),
+    consumos: v.consumos.map((c) => ({ ...c, efecto: c.efecto as EfectoDeConsumoDeOpcion, cantidad: Number(c.cantidad), mermaPorcentaje: Number(c.mermaPorcentaje) })),
+  };
+}
+
+/**
+ * Los insumos que nombran los consumos (el que se suma o reemplaza y el reemplazado de la base), leídos DENTRO de la transacción: cada uno tiene que ser una MATERIA PRIMA de la
+ * empresa (un id de otra empresa no se ve: RLS). Cada consumo se guarda en la UNIDAD DE STOCK de su insumo (U7, como la receta: sin conversión), así que la unidad sale de acá y no
+ * del cliente. Devuelve los consumos con su `unidadId` y los nombres para la auditoría, o el primer problema.
+ */
+export async function insumosDeLosConsumos(
+  tx: Tx,
+  consumos: readonly ConsumoDeConfiguracion[]
+): Promise<{ ok: true; consumos: (ConsumoDeConfiguracion & { unidadId: string })[]; nombres: Map<string, string> } | { ok: false; mensaje: string }> {
+  const ids = [...new Set(consumos.flatMap((c) => [c.insumoProductoId, ...(c.reemplazaAProductoId ? [c.reemplazaAProductoId] : [])]))];
+  const productos = ids.length === 0 ? [] : await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, tipo: true, unidadStockId: true } });
+  const porId = new Map(productos.map((p) => [p.id, p]));
+  for (const [i, c] of consumos.entries()) {
+    for (const id of [c.insumoProductoId, c.reemplazaAProductoId]) {
+      if (id === null) continue;
+      const p = porId.get(id);
+      if (!p) return { ok: false, mensaje: `La línea ${i + 1} del consumo nombra un insumo que no se encontró.` };
+      if (p.tipo !== "MP") return { ok: false, mensaje: `La línea ${i + 1} del consumo nombra «${p.nombre}», que no es una materia prima.` };
+    }
+  }
+  return {
+    ok: true,
+    consumos: consumos.map((c) => ({ ...c, unidadId: porId.get(c.insumoProductoId)!.unidadStockId })),
+    nombres: new Map(productos.map((p) => [p.id, p.nombre])),
+  };
+}
+
+/** El resumen legible de los consumos de una versión, para la descripción de su auditoría («suma 0,2 de Leche; reemplaza Leche por Bebida de almendras (0,2)»). */
+export function describirConsumos(consumos: readonly ConsumoDeConfiguracion[], nombres: ReadonlyMap<string, string>): string {
+  if (consumos.length === 0) return "sin consumos";
+  const nombre = (id: string) => `«${nombres.get(id) ?? id}»`;
+  return consumos
+    .map((c) => {
+      const extra = `${c.mermaPorcentaje ? `, merma ${c.mermaPorcentaje} %` : ""}${c.escalaConLaMedida ? ", escala con el tamaño" : ""}`;
+      return c.efecto === "SUMA" ? `suma ${c.cantidad} de ${nombre(c.insumoProductoId)}${extra}` : `reemplaza ${nombre(c.reemplazaAProductoId!)} por ${c.cantidad} de ${nombre(c.insumoProductoId)}${extra}`;
+    })
+    .join("; ");
+}
+
+/** Las columnas de la diferencia de una versión, como las guarda la base (para el antes y el después de la auditoría). */
+export function columnasDeVersion(v: { diferencia: DiferenciaDePrecio; factorEscala: number | null } | null) {
+  if (v === null) return { tipoDeDiferencia: null, diferenciaPrecio: null, porcentaje: null, factorEscala: null };
+  return {
+    tipoDeDiferencia: v.diferencia.tipo,
+    diferenciaPrecio: v.diferencia.tipo === "MONTO" ? v.diferencia.monto : null,
+    porcentaje: v.diferencia.tipo === "PORCENTAJE" ? v.diferencia.porcentaje : null,
+    factorEscala: v.factorEscala,
+  };
 }

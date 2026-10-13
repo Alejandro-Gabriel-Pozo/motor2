@@ -1,15 +1,22 @@
 "use server";
 
 import {
+  guardComandoAgregarVersionDeOpcion,
   guardComandoCrearGrupoDeOpciones,
+  guardComandoCrearOpcionDeGrupo,
   guardComandoEditarGrupoDeOpciones,
+  guardComandoEditarOpcionDeGrupo,
 } from "@/core/features/catalogo/opciones-de-venta.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
+import { azarDelProceso } from "@/lib/azar";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, type ResultadoAccion } from "../tipos";
+import { agregarVersionDeOpcionCasoDeUso } from "./casos-de-uso/agregar-version-de-opcion";
 import { crearGrupoDeOpcionesCasoDeUso } from "./casos-de-uso/crear-grupo-de-opciones";
+import { crearOpcionDeGrupoCasoDeUso } from "./casos-de-uso/crear-opcion-de-grupo";
 import { editarGrupoDeOpcionesCasoDeUso } from "./casos-de-uso/editar-grupo-de-opciones";
+import { editarOpcionDeGrupoCasoDeUso } from "./casos-de-uso/editar-opcion-de-grupo";
 
 /**
  * Server Actions del CATÁLOGO DE OPCIONES DE VENTA (GO-2a; ADR-030). Cada una es un adaptador fino: permiso (la PRIMERA línea: `conPermisoDeEmpresa` con su clave) → formato y rango
@@ -49,6 +56,33 @@ export async function editarGrupoDeOpciones(entrada: {
   });
 }
 
+export async function crearOpcionDeGrupo(entrada: { grupoId: unknown; nombre: unknown; orden: unknown; esNinguna: unknown; version: unknown; ancla: unknown }): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("opciones_definir", async (ctx) => {
+    const comando = guardComandoCrearOpcionDeGrupo(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await crearOpcionDeGrupoCasoDeUso(ctx, comando.valor, azarDelProceso);
+    if (resultado.ok) refrescarVistaSiHaceFalta();
+    return aResultadoAccion(resultado);
+  });
+}
 
+export async function editarOpcionDeGrupo(entrada: { opcionId: unknown; versionEsperada: unknown; nombre: unknown; orden: unknown; activa: unknown }): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("opciones_definir", async (ctx) => {
+    const comando = guardComandoEditarOpcionDeGrupo(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await editarOpcionDeGrupoCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) refrescarVistaSiHaceFalta();
+    return aResultadoAccion(resultado);
+  });
+}
 
+export async function agregarVersionDeOpcion(entrada: { opcionId: unknown; numeroEsperado: unknown; version: unknown }): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("opciones_definir", async (ctx) => {
+    const comando = guardComandoAgregarVersionDeOpcion(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await agregarVersionDeOpcionCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) refrescarVistaSiHaceFalta();
+    return aResultadoAccion(resultado);
+  });
+}
 

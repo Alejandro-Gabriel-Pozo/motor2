@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import type { TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import type { ConsumoDeConfiguracion, DiferenciaDePrecio, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 
 /**
  * Escrituras del CATÁLOGO DE OPCIONES DE VENTA (GO-2a; ADR-030). Mismo contrato que el resto de `server/persistencia/`: el cliente es el PRIMER parámetro (siempre el `tx` de la
@@ -13,6 +13,11 @@ import type { TipoDeGrupoDeOpciones } from "@/core/opciones/public";
  */
 
 type Tx = Prisma.TransactionClient;
+
+function columnasDeDiferencia(d: DiferenciaDePrecio | null) {
+  if (d === null) return { tipoDeDiferencia: null, diferenciaPrecio: null, porcentaje: null };
+  return d.tipo === "MONTO" ? { tipoDeDiferencia: "MONTO", diferenciaPrecio: d.monto, porcentaje: null } : { tipoDeDiferencia: "PORCENTAJE", diferenciaPrecio: null, porcentaje: d.porcentaje };
+}
 
 // ───────────────────────────── Grupos ─────────────────────────────
 
@@ -36,4 +41,65 @@ export async function actualizarGrupoDeOpciones(
     data: { nombre: args.nombre, cantidadMinima: args.cantidadMinima, cantidadMaxima: args.cantidadMaxima, activo: args.activo, version: { increment: 1 }, actualizadoEn: args.ahora },
   });
   return count;
+}
+
+// ───────────────────────────── Opciones y versiones ─────────────────────────────
+
+export async function crearOpcionDeGrupo(
+  tx: Tx,
+  args: { grupoId: string; nombre: string; orden: number; esNinguna: boolean; productoAnclaId: string | null; ahora: Date }
+): Promise<{ id: string }> {
+  return tx.opcionDeGrupo.create({
+    data: { grupoId: args.grupoId, nombre: args.nombre, orden: args.orden, esNinguna: args.esNinguna, productoId: args.productoAnclaId, creadoEn: args.ahora, actualizadoEn: args.ahora },
+    select: { id: true },
+  });
+}
+
+/** Devuelve cuántas filas tocó: 0 si la versión ya no es la esperada. */
+export async function actualizarOpcionDeGrupo(tx: Tx, args: { id: string; versionEsperada: number; nombre: string; orden: number; activa: boolean; ahora: Date }): Promise<number> {
+  const { count } = await tx.opcionDeGrupo.updateMany({
+    where: { id: args.id, version: args.versionEsperada },
+    data: { nombre: args.nombre, orden: args.orden, activa: args.activa, version: { increment: 1 }, actualizadoEn: args.ahora },
+  });
+  return count;
+}
+
+/**
+ * Agrega la versión `numero` de una opción con sus consumos (el `orden` de cada consumo es su posición en la lista). Dos versiones con el mismo número a la vez chocan con el
+ * único `(opcionId, numero)`: gana una y la otra recibe 23505 (el caso de uso reintenta y su relectura la rechaza).
+ */
+export async function agregarVersionDeOpcion(
+  tx: Tx,
+  args: { opcionId: string; numero: number; diferencia: DiferenciaDePrecio; factorEscala: number | null; consumos: readonly (ConsumoDeConfiguracion & { unidadId: string })[]; creadoPorId: string; ahora: Date }
+): Promise<{ id: string }> {
+  const d = columnasDeDiferencia(args.diferencia);
+  const version = await tx.versionDeOpcion.create({
+    data: {
+      opcionId: args.opcionId,
+      numero: args.numero,
+      tipoDeDiferencia: d.tipoDeDiferencia!,
+      diferenciaPrecio: d.diferenciaPrecio,
+      porcentaje: d.porcentaje,
+      factorEscala: args.factorEscala,
+      creadoPorId: args.creadoPorId,
+      creadoEn: args.ahora,
+    },
+    select: { id: true },
+  });
+  if (args.consumos.length > 0) {
+    await tx.consumoDeOpcion.createMany({
+      data: args.consumos.map((c, orden) => ({
+        versionDeOpcionId: version.id,
+        efecto: c.efecto,
+        insumoProductoId: c.insumoProductoId,
+        reemplazaAProductoId: c.reemplazaAProductoId,
+        cantidad: c.cantidad,
+        unidadId: c.unidadId,
+        mermaPorcentaje: c.mermaPorcentaje,
+        escalaConLaMedida: c.escalaConLaMedida,
+        orden,
+      })),
+    });
+  }
+  return version;
 }

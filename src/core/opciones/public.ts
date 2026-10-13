@@ -17,3 +17,5 @@ export type { DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } 
 export { MAXIMO_CONSUMOS_POR_VERSION, MERMA_MAXIMA_DE_CONSUMO } from "./validar-configuracion";
 export type { ConsumoDeConfiguracion } from "./validar-configuracion";
 export { cambiosPorColumna, cantidadesEfectivas, validarGrupo } from "./validar-configuracion";
+export { contenidoDeVersionIgual, validarConsumos, validarOpcionNueva, validarVersion } from "./validar-configuracion";
+export type { ContenidoDeVersion } from "./validar-configuracion";
