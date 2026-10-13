@@ -47,6 +47,7 @@ jobs:
       - name: Bases, roles y migraciones
         run: |
           createdb motor2_dev
+          createdb motor2_e2e
           psql -d postgres -v ON_ERROR_STOP=1 -v clave="$CLAVE_APP" -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
           npx prisma migrate deploy
           psql -d motor2_dev -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
