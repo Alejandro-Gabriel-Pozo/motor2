@@ -28,8 +28,8 @@ export interface FotoParaCerrar {
 
 /** Un ítem de la cuenta tal como lo necesita el cierre. */
 export interface ItemParaCerrar {
-  /** GO-2b: para enlazar por id las líneas configuradas y los adicionales. */
-  id: string;
+  /** GO-2b: SOLO en una cuenta que tiene alguna línea con opciones (para enlazar por id las configuradas y los adicionales). Sin opciones, el ítem de siempre. */
+  id?: string;
   productoId: string;
   cantidad: number;
   /** Precio de LISTA congelado al pedir (nunca cambia de semántica con el descuento de cliente, Task #14). */
@@ -39,14 +39,12 @@ export interface ItemParaCerrar {
   promoCuentaId: string | null;
   /** `null` = borrador sin enviar a cocina. */
   numeroEnvio: number | null;
-  /** No nulo = fila espejo (una anulación): no lleva foto. */
-  anulaAItemId: string | null;
-  /** GO-2b: la huella de las opciones dentro del precio (un espejo repite la de su original). */
-  huellaOpciones: string | null;
-  /** GO-2b: la línea padre de un adicional (un espejo repite la de su original). */
-  lineaPadreId: string | null;
-  /** GO-2b: la foto de lo elegido (vacía sin opciones y en los espejos). */
-  fotos: FotoParaCerrar[];
+  /** GO-2b, SOLO cuando hay datos (sin opciones el ítem sale idéntico al de antes): el original de un espejo (en una cuenta con opciones), la huella, el padre
+   *  de un adicional (un espejo repite los de su original) y la foto de lo elegido (los espejos no tienen). */
+  anulaAItemId?: string;
+  huellaOpciones?: string;
+  lineaPadreId?: string;
+  fotos?: FotoParaCerrar[];
 }
 
 export interface CuentaParaCerrar {
@@ -97,6 +95,9 @@ export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args:
     },
   });
   if (!cuenta) return null;
+  // GO-2b: los campos de las opciones van SOLO cuando hay datos; el `id` (y el original de un espejo), solo si la cuenta tiene alguna línea con opciones: sin ellas,
+  // los ítems son exactamente los de antes.
+  const conOpciones = cuenta.items.some((i) => i.huellaOpciones !== null || i.lineaPadreId !== null);
   return {
     id: cuenta.id,
     mesaNumero: cuenta.mesa.numero,
@@ -105,38 +106,44 @@ export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args:
     clienteNombre: cuenta.cliente?.nombre ?? null,
     descuentoPorcentaje: cuenta.descuentoPorcentaje !== null ? Number(cuenta.descuentoPorcentaje) : null,
     items: cuenta.items.map((i) => ({
-      id: i.id,
       productoId: i.productoId,
       cantidad: Number(i.cantidad),
       precioUnitario: Number(i.precioUnitario),
       precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       promoCuentaId: i.promoCuentaId,
       numeroEnvio: i.numeroEnvio,
-      anulaAItemId: i.anulaAItemId,
-      huellaOpciones: i.huellaOpciones,
-      lineaPadreId: i.lineaPadreId,
-      fotos: i.opcionesElegidas.map((f) => ({
-        opcionId: f.opcionId,
-        versionDeOpcionId: f.versionDeOpcionId,
-        tipoGrupo: f.tipoGrupo,
-        nombreOpcion: f.nombreOpcion,
-        cantidad: f.cantidad,
-        factorEscala: f.factorEscala !== null ? Number(f.factorEscala) : null,
-        orden: f.orden,
-        esNinguna: f.opcion.esNinguna,
-        productoAnclaId: f.opcion.productoId,
-        consumos: f.versionDeOpcion.consumos.map((c) => ({
-          efecto: c.efecto,
-          insumoProductoId: c.insumoProductoId,
-          reemplazaAProductoId: c.reemplazaAProductoId,
-          cantidad: Number(c.cantidad),
-          unidadId: c.unidadId,
-          mermaPorcentaje: Number(c.mermaPorcentaje),
-          escalaConLaMedida: c.escalaConLaMedida,
-        })),
-      })),
+      ...(conOpciones ? { id: i.id } : {}),
+      ...(conOpciones && i.anulaAItemId !== null ? { anulaAItemId: i.anulaAItemId } : {}),
+      ...(i.huellaOpciones !== null ? { huellaOpciones: i.huellaOpciones } : {}),
+      ...(i.lineaPadreId !== null ? { lineaPadreId: i.lineaPadreId } : {}),
+      ...(i.opcionesElegidas.length > 0 ? { fotos: fotosDe(i.opcionesElegidas) } : {}),
     })),
   };
+}
+
+type FotoLeida = { opcionId: string; versionDeOpcionId: string; tipoGrupo: string; nombreOpcion: string; cantidad: number; factorEscala: Prisma.Decimal | null; orden: number; opcion: { esNinguna: boolean; productoId: string | null }; versionDeOpcion: { consumos: { efecto: string; insumoProductoId: string; reemplazaAProductoId: string | null; cantidad: Prisma.Decimal; unidadId: string; mermaPorcentaje: Prisma.Decimal; escalaConLaMedida: boolean }[] } };
+
+function fotosDe(fotos: readonly FotoLeida[]): FotoParaCerrar[] {
+  return fotos.map((f) => ({
+    opcionId: f.opcionId,
+    versionDeOpcionId: f.versionDeOpcionId,
+    tipoGrupo: f.tipoGrupo,
+    nombreOpcion: f.nombreOpcion,
+    cantidad: f.cantidad,
+    factorEscala: f.factorEscala !== null ? Number(f.factorEscala) : null,
+    orden: f.orden,
+    esNinguna: f.opcion.esNinguna,
+    productoAnclaId: f.opcion.productoId,
+    consumos: f.versionDeOpcion.consumos.map((c) => ({
+      efecto: c.efecto,
+      insumoProductoId: c.insumoProductoId,
+      reemplazaAProductoId: c.reemplazaAProductoId,
+      cantidad: Number(c.cantidad),
+      unidadId: c.unidadId,
+      mermaPorcentaje: Number(c.mermaPorcentaje),
+      escalaConLaMedida: c.escalaConLaMedida,
+    })),
+  }));
 }
 
 /**

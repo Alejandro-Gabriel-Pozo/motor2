@@ -152,17 +152,23 @@ export function itemParaLineaDeVenta(i: { productoId: string; cantidad: number; 
   };
 }
 
+/** GO-2b: si alguna línea de la cuenta tiene opciones (huella o padre). Sin ninguna, los ítems se arman exactamente como antes (sin `id` ni nada de las opciones). */
+export function cuentaConOpciones(items: readonly { huellaOpciones?: string | null; lineaPadreId?: string | null }[]): boolean {
+  return items.some((i) => (i.huellaOpciones ?? null) !== null || (i.lineaPadreId ?? null) !== null);
+}
+
 /**
  * GO-2b: la configuración de un ítem desde lo que leyó la consulta (`opcionesElegidas`, la foto): los nombres de lo que va dentro del precio y la versión de la
- * opción de un adicional. Sin foto ni huella ni padre devuelve `{}`: el ítem de siempre.
+ * opción de un adicional. En una cuenta SIN opciones (`conOpciones` en false, ver `cuentaConOpciones`) devuelve `{}`: el ítem de siempre, bit a bit.
  */
-export function configuracionDeItemLeido(i: {
+export function configuracionDeItemLeido(conOpciones: boolean, i: {
   id?: string;
   huellaOpciones?: string | null;
   lineaPadreId?: string | null;
   anulaAItemId?: string | null;
   opcionesElegidas?: readonly { nombreOpcion: string; tipoGrupo: string; versionDeOpcionId: string }[];
 }): ConfiguracionDeItemTicket {
+  if (!conOpciones) return {};
   const fotos = i.opcionesElegidas ?? [];
   const opciones = fotos.filter((f) => f.tipoGrupo !== "ADICIONAL").map((f) => f.nombreOpcion);
   const versionDeAdicional = fotos.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null;
@@ -289,6 +295,7 @@ export interface CuentaCerradaLeida {
 export function armarTicketsDeCuentas(cuentas: readonly CuentaCerradaLeida[], ahora: Date): TicketDeCuenta[] {
   return cuentas.map((cuenta) => {
     const cerradaEn = cuenta.cerradaEn ?? new Date(0); // la consulta ya exige cerradaEn no nulo
+    const conOpciones = cuentaConOpciones(cuenta.items);
     const items: ItemConVenta[] = cuenta.items.map((i) => ({
       productoId: i.productoId,
       productoNombre: i.producto.nombre,
@@ -298,7 +305,7 @@ export function armarTicketsDeCuentas(cuentas: readonly CuentaCerradaLeida[], ah
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
       promo: i.promoCuenta ? { promoCuentaId: i.promoCuenta.id, titulo: i.promoCuenta.titulo } : undefined,
-      ...configuracionDeItemLeido(i),
+      ...configuracionDeItemLeido(conOpciones, i),
     }));
     // Cliente con descuento (Task #14): `descuentoPorcentaje` es el SNAPSHOT congelado de la cuenta, no el % actual de `Cliente`.
     const descuentoPorcentaje = cuenta.descuentoPorcentaje;

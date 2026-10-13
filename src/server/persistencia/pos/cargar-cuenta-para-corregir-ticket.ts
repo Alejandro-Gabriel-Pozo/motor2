@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { configuracionDeItemLeido, type ItemConVenta } from "@/core/pos/public";
+import { configuracionDeItemLeido, cuentaConOpciones, type ItemConVenta } from "@/core/pos/public";
 
 /**
  * Lectura de el TICKET CORREGIDO de una cuenta del salón (Task #41, Fase M12b — docs/arquitectura-casos-de-uso-2026-09-27.md; mismo
@@ -43,6 +43,7 @@ export async function cargarCuentaParaCorregirTicket(
     },
   });
   if (!cuenta) return null;
+  const conOpciones = cuentaConOpciones(cuenta.items);
   return {
     id: cuenta.id,
     mesaNumero: cuenta.mesa.numero,
@@ -55,7 +56,7 @@ export async function cargarCuentaParaCorregirTicket(
       precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
-      ...configuracionDeItemLeido(i),
+      ...configuracionDeItemLeido(conOpciones, i),
     })),
     ejemplares: cuenta.ejemplaresTicket.map((e) => ({ id: e.id, sucursalId: e.sucursalId, numero: e.numero, ejemplar: e.ejemplar, emitidoEn: e.emitidoEn })),
   };

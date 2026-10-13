@@ -55,7 +55,7 @@ export async function anularItemEnviadoCasoDeUso(
     // Task #16 (D4, "una promo se anula entera"): un componente no se anula suelto — usá anularPromoEnviada con la promo.
     if (item.promoCuenta) return fracaso("COMPONENTE_DE_PROMO", `«${item.producto.nombre}» es parte de la promo «${item.promoCuenta.titulo}»: anulá la promo entera.`);
     // GO-2b (ADR-030, v1): un adicional ya enviado no se anula solo — se anula su producto, que se lo lleva. Así lo que queda del adicional es siempre k × lo que queda del producto.
-    if (item.lineaPadreId !== null) return fracaso("ES_ADICIONAL", `«${item.producto.nombre}» es un adicional de otro producto: anulá ese producto y se anula con sus adicionales.`);
+    if (item.lineaPadreId) return fracaso("ES_ADICIONAL", `«${item.producto.nombre}» es un adicional de otro producto: anulá ese producto y se anula con sus adicionales.`);
 
     const motivoValidado = validarMotivoAnulacion(comando.motivo);
     if (!motivoValidado.ok) return fracaso("MOTIVO_INVALIDO", motivoValidado.mensaje);
@@ -72,8 +72,8 @@ export async function anularItemEnviadoCasoDeUso(
 
     // GO-2b: la CASCADA a los adicionales, calculada y validada ENTERA antes de escribir: cada uno anula k × lo que se anula del producto (k de su foto). Si lo que
     // le queda no alcanza (no debería pasar: un adicional no se anula solo), se rechaza sin escribir nada, nunca a medias.
-    const cascada: { adicional: (typeof item.adicionales)[number]; cantidad: number; restante: number }[] = [];
-    for (const adicional of item.adicionales) {
+    const cascada: { adicional: NonNullable<typeof item.adicionales>[number]; cantidad: number; restante: number }[] = [];
+    for (const adicional of item.adicionales ?? []) {
       const restanteDelAdicional = restanteDe({ cantidad: adicional.cantidad }, adicional.anulaciones);
       if (restanteDelAdicional <= 0) continue;
       const cantidadDelAdicional = restanteDe({ cantidad: aAnular.cantidad * (adicional.k ?? 0) }, []);

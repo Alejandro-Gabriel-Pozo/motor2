@@ -1,6 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
-import { armarTicketImpresoEn, estadoDeTicket, claveDeLineaDeVenta, configuracionDeItemLeido, itemParaLineaDeVenta, lineasDeVenta, nombreDelMesero, type ItemConVenta } from "@/core/pos/public";
+import { armarTicketImpresoEn, estadoDeTicket, claveDeLineaDeVenta, configuracionDeItemLeido, cuentaConOpciones, itemParaLineaDeVenta, lineasDeVenta, nombreDelMesero, type ItemConVenta } from "@/core/pos/public";
 import { TAMANO_PAGINA_TICKETS, type FiltroTickets, type LineaTicketEmitido, type FilaTicketEmitido, type PaginaTickets } from "@/core/reportes/public";
 
 /** Las líneas NETAS del ticket «como se imprimió» en `impresaEn`, con el `operacionId` de cada una (misma agrupación que
@@ -92,6 +92,7 @@ export async function listarTicketsEmitidos(sucursalId: string, filtro: FiltroTi
   const pagina = hayMas ? ejemplares.slice(0, TAMANO_PAGINA_TICKETS) : ejemplares;
 
   const items: FilaTicketEmitido[] = pagina.map((e) => {
+    const conOpciones = cuentaConOpciones(e.cuenta.items);
     const items: ItemConVenta[] = e.cuenta.items.map((i) => ({
       productoId: i.productoId,
       productoNombre: i.producto.nombre,
@@ -101,7 +102,7 @@ export async function listarTicketsEmitidos(sucursalId: string, filtro: FiltroTi
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
       promo: i.promoCuenta ? { promoCuentaId: i.promoCuenta.id, titulo: i.promoCuenta.titulo } : undefined,
-      ...configuracionDeItemLeido(i),
+      ...configuracionDeItemLeido(conOpciones, i),
     }));
     // Cliente con descuento (Task #14): `descuentoPorcentaje` es el SNAPSHOT congelado de la cuenta, no el % actual de `Cliente`.
     const descuentoPorcentaje = e.cuenta.descuentoPorcentaje !== null ? Number(e.cuenta.descuentoPorcentaje) : null;

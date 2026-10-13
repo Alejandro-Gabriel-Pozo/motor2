@@ -72,7 +72,7 @@ export async function cerrarCuentaCasoDeUso(
     // CuentaItem más abajo (CuentaItem.precioUnitario NUNCA cambia de semántica con el descuento de cliente, Task #14). `promoCuentaId`
     // (Task #16, D4) evita mezclar un suelto con un componente del mismo producto al mismo precio en la MISMA Operacion.
     // GO-2b: cada adicional lleva la versión de su opción (la de su foto) para no juntar dos versiones distintas en una línea.
-    const lineas = lineasDeVenta(cuenta.items.map((i) => ({ ...i, versionDeAdicional: i.fotos.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null })));
+    const lineas = lineasDeVenta(cuenta.items.map((i) => ({ ...i, versionDeAdicional: i.fotos?.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null })));
     if (!lineas.length) {
       await cerrar();
       return exito(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`, { desenlace: "SIN_VENTA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 });
@@ -86,7 +86,7 @@ export async function cerrarCuentaCasoDeUso(
     // clientes lo lee); el descuento de producto vive en `CuentaItem.precioCartaUnitario` y tiene su propio reporte.
     // Los componentes de una promo NO traen precio de carta (`precioCartaUnitario` null): reciben el descuento de CLIENTE sobre su precio ya prorrateado. Es lo decidido en D2 de
     // docs/plan-promo-combo-2026-09-26.md (el descuento por cliente se suma SOBRE lo prorrateado, nunca antes) y lo fija la escena D1 de `venta-matriz-ampliada`.
-    const itemPorId = new Map(cuenta.items.map((i) => [i.id, i]));
+    const itemPorId = new Map(cuenta.items.flatMap((i) => (i.id !== undefined ? [[i.id, i] as const] : [])));
     const lineasVenta = lineas.map((l) => {
       const configurada = configuracionDeLaLinea(l, itemPorId);
       // GO-2b: el adicional no lleva descuento de cliente (ni el de producto: no tiene precio de carta) — se cobra su recargo tal cual.
@@ -188,14 +188,14 @@ function consumosDeLaFoto(foto: FotoParaCerrar): ConsumoDeOpcionParaVender[] {
  */
 function configuracionDeLaLinea(l: ReturnType<typeof lineasDeVenta>[number], itemPorId: ReadonlyMap<string, ItemParaCerrar>): LineaConfiguradaEnTx | null {
   if (l.huellaOpciones === undefined && l.indicePadre === undefined) return null;
-  const original = (l.itemIds ?? []).map((id) => itemPorId.get(id)).find((i) => i !== undefined && i.anulaAItemId === null && i.fotos.length > 0);
+  const original = (l.itemIds ?? []).map((id) => itemPorId.get(id)).find((i) => i !== undefined && i.anulaAItemId === undefined && (i.fotos?.length ?? 0) > 0);
   if (!original) throw new Error("cerrarCuenta: una línea con opciones sin la foto de lo elegido.");
   if (l.indicePadre !== undefined) {
-    const foto = original.fotos.find((f) => f.tipoGrupo === "ADICIONAL");
+    const foto = original.fotos?.find((f) => f.tipoGrupo === "ADICIONAL");
     if (!foto || foto.productoAnclaId === null) throw new Error("cerrarCuenta: un adicional sin su opción ni su producto ancla.");
     return { tipo: "ADICIONAL", opcionId: foto.opcionId, anclaVerificada: foto.productoAnclaId, consumos: consumosDeLaFoto(foto), indiceLineaPadre: l.indicePadre };
   }
-  const opciones = original.fotos
+  const opciones = (original.fotos ?? [])
     .filter((f) => f.tipoGrupo !== "ADICIONAL")
     .map(
       (f): OpcionConConsumo => ({
