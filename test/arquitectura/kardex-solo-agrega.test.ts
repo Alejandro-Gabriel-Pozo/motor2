@@ -39,7 +39,7 @@ const CARPETAS = ["src", "plataforma/src"];
 
 // Paquete 4 (M6): las líneas, las imputaciones y los tributos de la nota de crédito de proveedor (`notaCreditoProveedorLinea`, `notaCreditoProveedorImputacion` y `notaCreditoProveedorTributo`) también solo se agregan (la app tiene SELECT e INSERT, nunca UPDATE ni DELETE).
 // La CABECERA (`notaCreditoProveedor`) no entra, igual que `facturaProveedor`: su UPDATE es por columna (la anulación y la recepción en administración) y la lista cerrada de sus escritores llega con el caso de uso que la anule (Etapa C).
-// GO-1 (el elemento configurable): las versiones de una opción de venta (`versionDeOpcion`) y sus consumos (`consumoDeOpcion`) también solo se agregan (la app tiene SELECT e INSERT, nunca UPDATE ni DELETE; la vigente es la versión de número mayor, derivada).
+// GO-1 (el elemento configurable): las versiones de una opción de venta (`versionDeOpcion`), sus consumos (`consumoDeOpcion`) y la foto de las opciones elegidas en una línea (`opcionElegidaEnLinea`) también solo se agregan (la app tiene SELECT e INSERT, nunca UPDATE ni DELETE; la vigente es la versión de número mayor, derivada).
 // Paquete 5 (M7): las versiones de la distribución de un gasto entre centros de costos (`distribucionCostoVersion`) y sus líneas (`distribucionCostoLinea`) también solo se agregan (la app tiene SELECT e INSERT, nunca UPDATE ni DELETE; corregir es agregar una versión nueva).
 // Paquete 4 (M5): la reclasificación de un renglón sin stock (`reclasificacionRenglon`) también solo se agrega (la app tiene SELECT e INSERT, nunca UPDATE ni DELETE; la vigente es la versión de número mayor, derivada).
 // Paquete 3 (M4.3): la imputación de un gasto a cada sucursal (`imputacionDeGasto`) también solo se agrega (la app tiene SELECT e INSERT, nunca UPDATE ni DELETE; un error se corrige anulando la factura y cargando de nuevo).
@@ -47,10 +47,10 @@ const CARPETAS = ["src", "plataforma/src"];
 // columna (estado, anulación y datos que identifican la factura) y la lista cerrada de sus escritores llega con el primer caso de uso que la escriba (Etapa C).
 // La PARTE (`facturaProveedorSucursal`) sí está acá aunque la base le deje UPDATE POR COLUMNA de la recepción (estado, fecha y persona; solo PENDIENTE a RECIBIDA, con un disparador): hoy ningún `src/` la escribe, y el caso de uso de
 // confirmar la recepción (Etapa C) tendrá que declarar ese UPDATE, con su lista cerrada de columnas, antes de entrar.
-const MODELOS_SOLO_AGREGAN = ["movimientoStock", "registroAuditoria", "auditoriaPlataforma", "venta", "facturaProveedorRenglon", "facturaProveedorSucursal", "facturaProveedorTributo", "imputacionDeGasto", "reclasificacionRenglon", "notaCreditoProveedorLinea", "notaCreditoProveedorImputacion", "notaCreditoProveedorTributo", "distribucionCostoVersion", "distribucionCostoLinea", "versionDeOpcion", "consumoDeOpcion"];
+const MODELOS_SOLO_AGREGAN = ["movimientoStock", "registroAuditoria", "auditoriaPlataforma", "venta", "facturaProveedorRenglon", "facturaProveedorSucursal", "facturaProveedorTributo", "imputacionDeGasto", "reclasificacionRenglon", "notaCreditoProveedorLinea", "notaCreditoProveedorImputacion", "notaCreditoProveedorTributo", "distribucionCostoVersion", "distribucionCostoLinea", "versionDeOpcion", "consumoDeOpcion", "opcionElegidaEnLinea"];
 const OPERACIONES_QUE_MODIFICAN = new Set(["update", "updateMany", "upsert", "delete", "deleteMany"]);
 const SQL_CRUDO = new Set(["$executeRaw", "$executeRawUnsafe", "$queryRaw", "$queryRawUnsafe"]);
-const TABLAS_SQL = /\b(update|delete\s+from|truncate(\s+table)?)\s+(only\s+)?(public\.)?\\?"?(MovimientoStock|RegistroAuditoria|AuditoriaPlataforma|Venta|FacturaProveedorRenglon|FacturaProveedorSucursal|FacturaProveedorTributo|ImputacionDeGasto|ReclasificacionRenglon|NotaCreditoProveedorLinea|NotaCreditoProveedorImputacion|NotaCreditoProveedorTributo|DistribucionCostoVersion|DistribucionCostoLinea|VersionDeOpcion|ConsumoDeOpcion)\b/i;
+const TABLAS_SQL = /\b(update|delete\s+from|truncate(\s+table)?)\s+(only\s+)?(public\.)?\\?"?(MovimientoStock|RegistroAuditoria|AuditoriaPlataforma|Venta|FacturaProveedorRenglon|FacturaProveedorSucursal|FacturaProveedorTributo|ImputacionDeGasto|ReclasificacionRenglon|NotaCreditoProveedorLinea|NotaCreditoProveedorImputacion|NotaCreditoProveedorTributo|DistribucionCostoVersion|DistribucionCostoLinea|VersionDeOpcion|ConsumoDeOpcion|OpcionElegidaEnLinea)\b/i;
 
 interface UsoSobreOperacion {
   /** Ruta relativa a la raíz del repo, con `/`. */
@@ -280,6 +280,7 @@ const RELACIONES_HACIA_EL_HISTORIAL = [
   "operacionesTransferenciaDestino",
   "ventas",
   "ventaRel",
+  "operacionesHijas",
 ];
 /** Las claves de Prisma que, dentro de una relación, modifican o desvinculan filas (no aparecen en `where`/`include`/`select`). `create`/`createMany` no: son de `ESCRITORES_DEL_KARDEX`. */
 const CLAVES_QUE_MODIFICAN_UNA_RELACION = new Set(["connect", "connectOrCreate", "set", "disconnect", "update", "updateMany", "upsert", "delete", "deleteMany"]);

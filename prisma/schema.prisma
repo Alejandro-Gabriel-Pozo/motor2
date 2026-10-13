@@ -1210,6 +1210,12 @@ model Operacion {
   ventaId String?
   venta   Venta?  @relation(fields: [empresaId, ventaId], references: [empresaId, id], onDelete: Restrict)
 
+  /// GO-1: la operación de venta PADRE de la de un ADICIONAL (la del producto al que se agregó). NULL en toda operación de hoy. Solo una VENTA, que no es su propio padre ni lleva promo (CHECK `Operacion_padre_solo_venta_chk`); inmutable (disparador
+  /// `Operacion_padre_inmutable_chk`). No es única (un padre puede tener varios adicionales). Que el padre sea de la misma sucursal y de la misma venta lo controla la aplicación (GO-2), igual que en `ventaId`.
+  operacionPadreId String?
+  operacionPadre   Operacion?  @relation("OperacionPadre", fields: [empresaId, operacionPadreId], references: [empresaId, id], onDelete: Restrict)
+  operacionesHijas Operacion[] @relation("OperacionPadre")
+
   movimientos MovimientoStock[]
 
   /// Paquete 3 (M3b): la parte de factura de proveedor de la que salió esta compra (a lo sumo una; `FacturaProveedorSucursal.operacionId` es único). `null` = una compra anterior a las facturas repartidas.
@@ -1229,6 +1235,7 @@ model Operacion {
   @@index([sucursalId, proceso, fecha])
   @@index([promoCuentaId])
   @@index([ventaId])
+  @@index([operacionPadreId])
 }
 
 /// Reemplaza Kardex/"Hoja 7" (Core.js:601, CONFIG.SHEETS.HISTORIAL) — el
@@ -2265,11 +2272,23 @@ model CuentaItem {
   /// Queda congelado igual que `precioUnitario`: si el precio de carta del producto cambia después, esta fila no se entera.
   precioCartaUnitario Decimal?     @db.Decimal(14, 2)
 
+  /// GO-1 (el «elemento configurable»): la HUELLA de las opciones que van DENTRO del precio de esta línea (SHA-256 hexadecimal de 64 caracteres, CHECK; `huellaDeOpciones`, `src/core/opciones/huella-de-opciones.ts`). NULL = una línea sin opciones (todas las
+  /// de hoy) y toda línea ADICIONAL (un adicional no lleva huella). Inmutable una vez escrita (disparador `CuentaItem_opciones_chk`). Dos líneas del mismo producto con distinta huella son líneas distintas.
+  huellaOpciones      String?
+  /// GO-1: la línea PADRE de un ADICIONAL (otra línea de la MISMA cuenta, que no es adicional ni espejo: un solo nivel). NULL en toda línea que no es un adicional. RESTRICT: no se borra un padre con adicionales colgados. Inmutable (disparador). Un adicional no lleva promo,
+  /// ni precio de carta, ni huella, y su `precioUnitario` es de 0,01 o más (CHECK `CuentaItem_adicional_chk`).
+  lineaPadreId        String?
+  lineaPadre          CuentaItem?  @relation("CuentaItemLineaPadre", fields: [empresaId, lineaPadreId], references: [empresaId, id], onDelete: Restrict)
+  adicionales         CuentaItem[] @relation("CuentaItemLineaPadre")
+  /// GO-1: la foto de las opciones elegidas en esta línea (se borra con el borrador: ON DELETE CASCADE).
+  opcionesElegidas    OpcionElegidaEnLinea[]
+
   @@unique([empresaId, id])
   @@index([cuentaId])
   @@index([anulaAItemId])
   @@index([operacionId])
   @@index([promoCuentaId])
+  @@index([lineaPadreId])
 }
 
 /// Ejemplar IMPRESO del ticket de cierre (control interno de comandas / guest check control; NO comprobante fiscal).
@@ -2414,6 +2433,7 @@ model Empresa {
   productoAdmiteOpcionRel        ProductoAdmiteOpcion[]
   precioLocalDeOpcionRel         PrecioLocalDeOpcion[]
   opcionApagadaEnSucursalRel     OpcionApagadaEnSucursal[]
+  opcionElegidaEnLineaRel        OpcionElegidaEnLinea[]
 }
 
 enum EstadoModulo {
@@ -3235,6 +3255,7 @@ model GrupoDeOpciones {
 
   opciones          OpcionDeGrupo[]
   productosQueLoAdmiten ProductoAdmiteGrupo[]
+  elegidasEnLinea   OpcionElegidaEnLinea[]
 
   @@unique([empresaId, id])
   @@unique([empresaId, nombre])
@@ -3266,6 +3287,7 @@ model OpcionDeGrupo {
   productosQueLaAdmiten ProductoAdmiteOpcion[]
   preciosLocales        PrecioLocalDeOpcion[]
   apagadasEnSucursal    OpcionApagadaEnSucursal[]
+  elegidasEnLinea       OpcionElegidaEnLinea[]
 
   @@unique([empresaId, id])
   @@unique([grupoId, nombre])
@@ -3296,7 +3318,8 @@ model VersionDeOpcion {
   creadoPor        User          @relation(fields: [creadoPorId], references: [id], onDelete: Restrict)
   creadoEn         DateTime      @default(now())
 
-  consumos ConsumoDeOpcion[]
+  consumos        ConsumoDeOpcion[]
+  elegidasEnLinea OpcionElegidaEnLinea[]
 
   @@unique([empresaId, id])
   @@unique([opcionId, numero])
@@ -3429,4 +3452,49 @@ model OpcionApagadaEnSucursal {
 
   @@unique([sucursalId, opcionId])
   @@unique([empresaId, id])
+}
+
+/// GO-1: la FOTO de una opción elegida en una línea de la cuenta: lo que se eligió y lo que costó, CONGELADO (I9: editar después la versión, el precio de lista o el nombre del grupo no la cambia). Alcance `HEREDADO` de `CuentaItem` por `cuentaItemId` (sin
+/// `sucursalId` propio; sus políticas de sucursal las agrega GO-1d-rls). SOLO se agrega: la app tiene SELECT e INSERT, nunca UPDATE ni DELETE; al borrar el borrador de la línea la foto se borra con ella (ON DELETE CASCADE, que corre como dueño y saltea la RLS).
+/// Guarda el tipo del grupo, el nombre del grupo y de la opción, la cantidad (1 a 10; una MEDIDA siempre 1), el modo de precio (solo MEDIDA), la diferencia (`tipoDeDiferencia` con su `porcentaje` de `DECIMAL(7,4)`, NULL si no hubo), el `importeUnitario` (`DECIMAL(14,2)`,
+/// el que aportó la opción por unidad) y el factor de escala (solo MEDIDA). Las reglas que dependen del tipo —una INCLUIDA aporta 0, un ADICIONAL es monto fijo de 0,01 o más, el porcentaje solo en MEDIDA y VARIANTE— son CHECK. Que la opción sea del grupo, la versión de la
+/// opción y la línea la correcta (un ADICIONAL en una línea con padre y con el producto ancla; las demás en una línea sin padre y con huella; nunca en un espejo) lo controla el disparador `OpcionElegidaEnLinea_coherente_chk`. Una fila por (línea, opción); a lo sumo
+/// un ADICIONAL y una MEDIDA por línea (índices parciales).
+model OpcionElegidaEnLinea {
+  id                String          @id @default(cuid())
+  empresaId         String          @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa         @relation(fields: [empresaId], references: [id])
+  cuentaItemId      String
+  cuentaItem        CuentaItem      @relation(fields: [empresaId, cuentaItemId], references: [empresaId, id], onDelete: Cascade)
+  grupoId           String
+  grupo             GrupoDeOpciones @relation(fields: [empresaId, grupoId], references: [empresaId, id], onDelete: Restrict)
+  opcionId          String
+  opcion            OpcionDeGrupo   @relation(fields: [empresaId, opcionId], references: [empresaId, id], onDelete: Restrict)
+  versionDeOpcionId String
+  versionDeOpcion   VersionDeOpcion @relation(fields: [empresaId, versionDeOpcionId], references: [empresaId, id], onDelete: Restrict)
+  /// MEDIDA, VARIANTE, INCLUIDA o ADICIONAL (CHECK), el espejo de `TIPOS_DE_GRUPO_DE_OPCIONES`. Es el del grupo (lo controla el disparador).
+  tipoGrupo         String
+  nombreGrupo       String
+  nombreOpcion      String
+  /// 1 a 10 (CHECK); una MEDIDA siempre 1.
+  cantidad          Int             @default(1)
+  /// Solo MEDIDA: ABSOLUTO o DIFERENCIA (CHECK). NULL en las demás.
+  modoPrecio        String?
+  /// MONTO o PORCENTAJE (CHECK), o NULL si no hubo diferencia (precio absoluto, incluida o variante sin diferencia).
+  tipoDeDiferencia  String?
+  /// Solo con PORCENTAJE (-100 < p <= 999,9999, CHECK).
+  porcentaje        Decimal?        @db.Decimal(7, 4)
+  /// Lo que aportó la opción por unidad: el precio absoluto de la medida, la diferencia, 0 (incluida) o el recargo (adicional).
+  importeUnitario   Decimal         @db.Decimal(14, 2)
+  /// El importe salió de la grilla de la sucursal (`PrecioLocalDeOpcion`).
+  precioDeSucursal  Boolean         @default(false)
+  /// Solo MEDIDA (> 0 y hasta 10).
+  factorEscala      Decimal?        @db.Decimal(8, 4)
+  orden             Int             @default(0)
+  creadoEn          DateTime        @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([cuentaItemId, opcionId])
+  @@index([opcionId])
+  @@index([versionDeOpcionId])
 }

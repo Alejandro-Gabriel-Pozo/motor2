@@ -41,7 +41,7 @@ export const TABLAS_DEL_PAQUETE_1: readonly string[] = MIGRACIONES_DE_POLITICAS_
 export const ULTIMA_MIGRACION_DEL_PAQUETE_1 = "20261014160000_rls_sucursal_b6_receta_y_auditoria";
 
 /**
- * Las migraciones POSTERIORES al Paquete 1 que crean políticas de alcance de sucursal (una tabla nueva con alcance: `Venta`, de M2-4, `FacturaProveedorSucursal`, de M3c, `ImputacionDeGasto`, de M4.4, `NotaCreditoProveedorImputacion`, de M6.2, `PlanDeCostosSucursal`, `DistribucionCostoVersion` y `DistribucionCostoLinea`, de M7.3, y `OpcionApagadaEnSucursal` y `PrecioLocalDeOpcion`, de GO-1c), en el mismo formato que los grupos de arriba y en orden ascendente por nombre de migración.
+ * Las migraciones POSTERIORES al Paquete 1 que crean políticas de alcance de sucursal (una tabla nueva con alcance: `Venta`, de M2-4, `FacturaProveedorSucursal`, de M3c, `ImputacionDeGasto`, de M4.4, `NotaCreditoProveedorImputacion`, de M6.2, `PlanDeCostosSucursal`, `DistribucionCostoVersion` y `DistribucionCostoLinea`, de M7.3, `OpcionApagadaEnSucursal` y `PrecioLocalDeOpcion`, de GO-1c, y `OpcionElegidaEnLinea`, de GO-1d), en el mismo formato que los grupos de arriba y en orden ascendente por nombre de migración.
  * B7 las suma a las que espera: cada una es el encabezado más la salida exacta del generador para sus tablas. Todas tienen que ser posteriores a `ULTIMA_MIGRACION_DEL_PAQUETE_1`.
  */
 export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion: string; readonly tablas: readonly string[] }[] = [
@@ -51,6 +51,7 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   { migracion: "20261018101000_rls_sucursal_nota_credito_proveedor_imputacion", tablas: ["NotaCreditoProveedorImputacion"] },
   { migracion: "20261019102000_rls_sucursal_centros_de_costos", tablas: ["DistribucionCostoLinea", "DistribucionCostoVersion", "PlanDeCostosSucursal"] },
   { migracion: "20261020121000_go1c_rls_sucursal_opciones_por_sucursal", tablas: ["OpcionApagadaEnSucursal", "PrecioLocalDeOpcion"] },
+  { migracion: "20261020131000_go1d_rls_sucursal_opcion_elegida", tablas: ["OpcionElegidaEnLinea"] },
 ];
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */

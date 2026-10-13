@@ -6,7 +6,7 @@ import { prisma } from "./test-db";
 /**
  * Ayudas de los tests de los GRUPOS DE OPCIONES DE VENTA (GO-1, el «elemento configurable»): el escenario de siempre (empresa con dos sucursales, un usuario y un producto) más un catálogo de CAFÉ
  * (una MEDIDA con tres tamaños, una VARIANTE, una INCLUIDA y un ADICIONAL con su producto ancla) con la versión 1 de cada opción, y las sentencias `pg` de cada tabla del catálogo (para escribir como `motor2_app`,
- * sujeto a la RLS, o como dueño). Las usan `migracion-grupos-de-opciones`, `migracion-opciones-por-sucursal`, `migracion-linea-con-opciones`, `opciones-rls`, `opciones-concurrencia` y `opciones-dinero`.
+ * sujeto a la RLS, o como dueño). Las usan `migracion-grupos-de-opciones`, `migracion-opciones-por-sucursal`, `migracion-linea-con-opciones`, `opciones-rls`, `opciones-concurrencia` y `opciones-dinero`. Más una mesa con su cuenta por sucursal y las ayudas de la línea con opciones (el padre con su huella, el adicional que cuelga de él y la foto de lo elegido).
  */
 
 export interface EscenarioDeOpciones extends EscenarioDeFactura {
@@ -33,6 +33,12 @@ export interface EscenarioDeOpciones extends EscenarioDeFactura {
   shotId: string;
   /** Las versiones 1 de cada opción, por opción. */
   versionDe: Readonly<Record<string, string>>;
+  /** Una mesa por sucursal, con su cuenta abierta. La sucursal A tiene además una segunda mesa con su cuenta (`cuentaAOtraId`): una mesa admite una sola cuenta abierta. */
+  mesaAId: string;
+  mesaBId: string;
+  cuentaAId: string;
+  cuentaAOtraId: string;
+  cuentaBId: string;
 }
 
 /**
@@ -87,7 +93,15 @@ export async function sembrarEscenarioDeOpciones(): Promise<EscenarioDeOpciones>
     await prisma.productoAdmiteOpcion.create({ data: { productoId: cafeId, opcionId } });
   }
 
-  return { ...e, unidadId, cafeId, lecheId, almendrasInsumoId, anclaDelShotId, grupoMedidaId, chicoId, medianoId, grandeId, grupoVarianteId, vacaId, almendrasId, grupoIncluidaId, azucarId, grupoAdicionalId, shotId, versionDe };
+  const mesaAId = (await prisma.mesa.create({ data: { sucursalId: e.sucursalA, numero: 1 } })).id;
+  const mesaBId = (await prisma.mesa.create({ data: { sucursalId: e.sucursalB, numero: 1 } })).id;
+  const cuenta = async (mesaId: string) => (await prisma.cuenta.create({ data: { mesaId, abiertaPorId: e.usuarioId } })).id;
+  const cuentaAId = await cuenta(mesaAId);
+  const mesaAOtraId = (await prisma.mesa.create({ data: { sucursalId: e.sucursalA, numero: 2 } })).id;
+  const cuentaAOtraId = await cuenta(mesaAOtraId);
+  const cuentaBId = await cuenta(mesaBId);
+
+  return { ...e, mesaAId, mesaBId, cuentaAId, cuentaAOtraId, cuentaBId, unidadId, cafeId, lecheId, almendrasInsumoId, anclaDelShotId, grupoMedidaId, chicoId, medianoId, grandeId, grupoVarianteId, vacaId, almendrasId, grupoIncluidaId, azucarId, grupoAdicionalId, shotId, versionDe };
 }
 
 interface SentenciaPg {
@@ -136,4 +150,44 @@ export function sentenciaDePrecioLocal(e: { sucursalId: string; productoId: stri
 /** Una opción apagada en una sucursal para un cliente `pg`. */
 export function sentenciaDeApagado(e: { sucursalId: string; opcionId: string; usuarioId: string }, extra: Record<string, unknown> = {}): SentenciaPg {
   return sentenciaDeInsercion("OpcionApagadaEnSucursal", { id: randomUUID(), sucursalId: e.sucursalId, opcionId: e.opcionId, apagada: true, actualizadoPorId: e.usuarioId, ...extra });
+}
+
+/** Una huella válida (64 caracteres hexadecimales en minúscula) para sembrar una línea con opciones. */
+export const HUELLA_DE_PRUEBA = "0123456789abcdef".repeat(4);
+
+/** Una línea del café con opciones (la padre): con huella, 1 unidad a 1000,00. Se siembra como dueño de pruebas (sin RLS). */
+export async function sembrarLineaConOpciones(cuentaId: string, e: Pick<EscenarioDeOpciones, "cafeId" | "usuarioId">, extra: Record<string, unknown> = {}) {
+  return prisma.cuentaItem.create({
+    data: { cuentaId, productoId: e.cafeId, cantidad: 1, precioUnitario: "1000.00", creadoPorId: e.usuarioId, huellaOpciones: HUELLA_DE_PRUEBA, ...extra } as never,
+  });
+}
+
+/** El adicional «Shot extra» colgado de una línea padre: su producto es el ancla de la opción, 1 unidad a 200,00, sin huella. */
+export async function sembrarAdicional(cuentaId: string, lineaPadreId: string, e: Pick<EscenarioDeOpciones, "anclaDelShotId" | "usuarioId">, extra: Record<string, unknown> = {}) {
+  return prisma.cuentaItem.create({
+    data: { cuentaId, productoId: e.anclaDelShotId, cantidad: 1, precioUnitario: "200.00", creadoPorId: e.usuarioId, lineaPadreId, ...extra } as never,
+  });
+}
+
+/** Un INSERT de una línea para un cliente `pg` (1 unidad a 1000,00 del café por defecto). `extra` pisa o agrega columnas (por ejemplo `empresaId`, `huellaOpciones`, `lineaPadreId`). */
+export function sentenciaDeLinea(e: { cuentaId: string; productoId: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), cuentaId: e.cuentaId, productoId: e.productoId, cantidad: 1, precioUnitario: "1000.00", ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("CuentaItem", datos) };
+}
+
+/** Un INSERT de la foto de una opción elegida para un cliente `pg`: por defecto la VARIANTE «De vaca» sin diferencia (importe 0,00). `extra` pisa o agrega columnas. */
+export function sentenciaDeFoto(e: Pick<EscenarioDeOpciones, "grupoVarianteId" | "vacaId" | "versionDe"> & { cuentaItemId: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = {
+    id: randomUUID(),
+    cuentaItemId: e.cuentaItemId,
+    grupoId: e.grupoVarianteId,
+    opcionId: e.vacaId,
+    versionDeOpcionId: e.versionDe[e.vacaId]!,
+    tipoGrupo: "VARIANTE",
+    nombreGrupo: "Leche",
+    nombreOpcion: "De vaca",
+    importeUnitario: "0.00",
+    ...extra,
+  };
+  return { id: datos.id as string, ...sentenciaDeInsercion("OpcionElegidaEnLinea", datos) };
 }
