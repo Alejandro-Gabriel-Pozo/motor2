@@ -18,12 +18,12 @@ import { join } from "node:path";
 export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA" | "GLOBAL" | "EMPRESA" | "CONSOLA";
 
 const POR_EMPRESA = [
-  "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "CentroDeCostos", "Cliente", "ConceptoDeGasto", "ContenidoCartaProducto", "ConteoFisico", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto", "DistribucionCostoLinea", "DistribucionCostoVersion",
-  "EjemplarTicket", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedorTributo", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "ImputacionDeGasto", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
-  "NotaCreditoProveedor", "NotaCreditoProveedorImputacion", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PermisoRol", "PlanDeCostos", "PlanDeCostosSucursal", "PortalCartaEmpresa", "PrecioLocalProducto", "Presentacion", "Producto", "PromoCarta", "PromoCartaCupo",
+  "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "CentroDeCostos", "Cliente", "ConceptoDeGasto", "ConsumoDeOpcion", "ContenidoCartaProducto", "ConteoFisico", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto", "DistribucionCostoLinea", "DistribucionCostoVersion",
+  "EjemplarTicket", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedorTributo", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "GrupoDeOpciones", "ImputacionDeGasto", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
+  "NotaCreditoProveedor", "NotaCreditoProveedorImputacion", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OpcionDeGrupo", "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PermisoRol", "PlanDeCostos", "PlanDeCostosSucursal", "PortalCartaEmpresa", "PrecioLocalProducto", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion", "PromoCarta", "PromoCartaCupo",
   "PromoCartaSucursal", "PromoCuenta", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaIngrediente", "RecetaPaso", "RecetaPasoIngrediente", "RecetaSucursal", "RecetaVersion", "ReclasificacionRenglon", "RegistroAuditoria",
   "RendimientoLocalIngrediente", "Rol", "Seccion", "SeccionCarta", "SeccionHabitualProducto", "StockMinimoProducto", "Sucursal", "SucursalPublica", "SustitutoRecetaIngrediente",
-  "TemaCartaSucursal", "TraspasoSucursal", "Unidad", "UsuarioSucursal", "Venta",
+  "TemaCartaSucursal", "TraspasoSucursal", "Unidad", "UsuarioSucursal", "Venta", "VersionDeOpcion",
 ] as const;
 
 /** Con `empresaId`, pero escritas por la plataforma (ModuloEmpresa, Invitacion) o con una política de lectura propia del usuario (UsuarioEmpresa): sus políticas son las de `POLITICAS_ESPECIALES`. */
@@ -164,8 +164,8 @@ const ALCANCE_GOBIERNO: Readonly<Record<string, string>> = {
 };
 
 const ALCANCE_DE_EMPRESA = [
-  "CategoriaProducto", "CentroDeCostos", "Cliente", "ConceptoDeGasto", "DestinoConsumo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "NotaCreditoProveedor", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "PermisoRol", "PlanDeCostos", "PortalCartaEmpresa", "Presentacion", "Producto",
-  "PromoCarta", "PromoCartaCupo", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "ReclasificacionRenglon", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa",
+  "CategoriaProducto", "CentroDeCostos", "Cliente", "ConceptoDeGasto", "ConsumoDeOpcion", "DestinoConsumo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "GrupoDeOpciones", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "NotaCreditoProveedor", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OpcionDeGrupo", "PermisoRol", "PlanDeCostos", "PortalCartaEmpresa", "Presentacion", "Producto", "ProductoAdmiteGrupo", "ProductoAdmiteOpcion",
+  "PromoCarta", "PromoCartaCupo", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "ReclasificacionRenglon", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa", "VersionDeOpcion",
 ] as const;
 
 /** Declarada a mano (no derivada de `GLOBALES`/`CONSOLA`) a propósito: el guard cruza las dos listas y se pone en rojo si no coinciden. */

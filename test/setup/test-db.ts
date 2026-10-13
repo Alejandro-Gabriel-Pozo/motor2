@@ -153,6 +153,14 @@ export async function limpiarBaseDeTest() {
   // Antes de RecetaIngrediente (RendimientoLocalIngrediente.recetaIngredienteId es ON DELETE CASCADE, pero el
   // orden explícito documenta la dependencia igual que el resto de este bloque — sembrarBase() borra sucursal más abajo).
   await prismaAdmin.rendimientoLocalIngrediente.deleteMany();
+  // Los grupos de opciones de venta (GO-1b): los consumos referencian a su versión, al insumo y a la unidad, la versión a la opción y al User, la admisión de un producto al producto, al grupo y a la opción, y la opción al grupo y
+  // (el ancla de un adicional) al producto (todo RESTRICT): consumos, versiones, admisiones, opciones y grupos, todo ANTES de producto, unidad, User y sucursal (más abajo).
+  await prismaAdmin.consumoDeOpcion.deleteMany();
+  await prismaAdmin.versionDeOpcion.deleteMany();
+  await prismaAdmin.productoAdmiteOpcion.deleteMany();
+  await prismaAdmin.productoAdmiteGrupo.deleteMany();
+  await prismaAdmin.opcionDeGrupo.deleteMany();
+  await prismaAdmin.grupoDeOpciones.deleteMany();
   await prismaAdmin.precioLocalProducto.deleteMany();
   await prismaAdmin.stockMinimoProducto.deleteMany();
   await prismaAdmin.seccionHabitualProducto.deleteMany();
