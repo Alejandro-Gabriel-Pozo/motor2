@@ -407,22 +407,28 @@ describe("controlarPrecioDeLista: cada opción sola sobre el precio de venta", (
 });
 
 describe("cambiosPorColumna (el antes y el después)", () => {
-  it("solo lo que cambió; null y undefined son «sin valor»", () => {
-    expect(cambiosPorColumna({ nombre: "A", activo: true, min: 0 }, { nombre: "A", activo: false, min: 1 }, ["nombre", "activo", "min"])).toEqual([
+  it("solo lo que cambió, en el orden de la tabla; null y undefined son «sin valor»", () => {
+    expect(
+      cambiosPorColumna([
+        { campo: "nombre", antes: "A", despues: "A" },
+        { campo: "activo", antes: true, despues: false },
+        { campo: "min", antes: 0, despues: 1 },
+      ])
+    ).toEqual([
       { campo: "activo", antes: true, despues: false },
       { campo: "min", antes: 0, despues: 1 },
     ]);
-    expect(cambiosPorColumna({ a: null }, { a: undefined as unknown as null }, ["a"])).toEqual([]);
-    expect(cambiosPorColumna({ a: 0 }, { a: null }, ["a"])).toEqual([{ campo: "a", antes: 0, despues: null }]);
+    expect(cambiosPorColumna([{ campo: "a", antes: null, despues: undefined as unknown as null }])).toEqual([]);
+    expect(cambiosPorColumna([{ campo: "a", antes: 0, despues: null }])).toEqual([{ campo: "a", antes: 0, despues: null }]);
+    expect(cambiosPorColumna([{ campo: "a", antes: undefined as unknown as null, despues: 5 }])).toStrictEqual([{ campo: "a", antes: null, despues: 5 }]);
   });
 
-  it("propiedad: vacío si y solo si los dos registros son iguales en las columnas pedidas", () => {
+  it("propiedad: vacío si y solo si cada par es igual", () => {
     const valor = fc.oneof(fc.constant(null), fc.boolean(), fc.integer({ min: -3, max: 3 }), fc.constantFrom("a", "b"));
     fc.assert(
-      fc.property(fc.tuple(valor, valor, valor), fc.tuple(valor, valor, valor), ([a1, a2, a3], [b1, b2, b3]) => {
-        const cambios = cambiosPorColumna({ x: a1, y: a2, z: a3 }, { x: b1, y: b2, z: b3 }, ["x", "y", "z"]);
-        expect(cambios.length === 0).toBe(a1 === b1 && a2 === b2 && a3 === b3);
-        expect(cambios.map((c) => c.campo)).toEqual((["x", "y", "z"] as const).filter((_, i) => [a1, a2, a3][i] !== [b1, b2, b3][i]));
+      fc.property(fc.array(fc.tuple(valor, valor), { maxLength: 4 }), (pares) => {
+        const cambios = cambiosPorColumna(pares.map(([antes, despues], i) => ({ campo: `c${i}`, antes, despues })));
+        expect(cambios.map((c) => c.campo)).toEqual(pares.flatMap(([a, d], i) => (a === d ? [] : [`c${i}`])));
       })
     );
   });

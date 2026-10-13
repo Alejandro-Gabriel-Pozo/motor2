@@ -16,3 +16,4 @@ export { EFECTOS_DE_CONSUMO_DE_OPCION, MODOS_DE_PRECIO_DE_MEDIDA, TIPOS_DE_GRUPO
 export type { DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } from "./tipos";
 export { MAXIMO_CONSUMOS_POR_VERSION, MERMA_MAXIMA_DE_CONSUMO } from "./validar-configuracion";
 export type { ConsumoDeConfiguracion } from "./validar-configuracion";
+export { cambiosPorColumna, cantidadesEfectivas, validarGrupo } from "./validar-configuracion";

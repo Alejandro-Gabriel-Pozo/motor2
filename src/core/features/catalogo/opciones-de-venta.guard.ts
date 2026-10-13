@@ -46,7 +46,7 @@ const LARGO_MAXIMO_DE_ID = 64;
 /** Tope de una cantidad de consumo (`DECIMAL(14,4)`). */
 const CANTIDAD_DE_CONSUMO_MAXIMA = 1e10;
 
-const MENSAJE_GRUPO_NO_ENCONTRADO = "No se encontró el grupo de opciones.";
+export const MENSAJE_GRUPO_NO_ENCONTRADO = "No se encontró el grupo de opciones.";
 const MENSAJE_OPCION_NO_ENCONTRADA = "No se encontró la opción.";
 
 function id(valor: unknown, mensaje: string): ResultadoDato<string> {

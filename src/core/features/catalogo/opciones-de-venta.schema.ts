@@ -1,4 +1,5 @@
 import type { ConsumoDeConfiguracion, DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
  * Tipos de la feature «catálogo de opciones de venta» (GO-2a; ADR-030): los comandos y resultados de los casos de uso de `src/server/actions/catalogo/casos-de-uso/` que vienen
@@ -17,6 +18,9 @@ export interface DatosDeVersionDeOpcion {
   consumos: ConsumoDeConfiguracion[];
 }
 
+/** El motivo, cerrado, por el que una configuración no se puede guardar (el detalle va en el mensaje). */
+type ConfiguracionInvalida = "CONFIGURACION_INVALIDA";
+
 // ───────────────────────────── Grupos ─────────────────────────────
 
 export interface ComandoCrearGrupoDeOpciones {
@@ -26,6 +30,11 @@ export interface ComandoCrearGrupoDeOpciones {
   cantidadMaxima: number;
 }
 
+/**
+ * `yaExistia`: había un grupo con ese nombre (sin distinguir mayúsculas), el mismo tipo y las mismas cantidades — repetir el alta (un doble clic, un reintento) devuelve el existente
+ * en vez de crear otro. Con el nombre de otro grupo distinto, `NOMBRE_REPETIDO`.
+ */
+export type ResultadoCrearGrupoDeOpciones = ResultadoCaso<{ grupoId: string; yaExistia: boolean }, "NOMBRE_REPETIDO" | ConfiguracionInvalida>;
 
 export interface ComandoEditarGrupoDeOpciones {
   grupoId: string;
@@ -36,6 +45,11 @@ export interface ComandoEditarGrupoDeOpciones {
   activo: boolean;
 }
 
+/** `productosAfectados` (D-4): cuántos productos que admiten el grupo quedan sin poder venderse con este cambio (un grupo obligatorio apagado). Se avisa, no se bloquea. */
+export type ResultadoEditarGrupoDeOpciones = ResultadoCaso<
+  { version: number; huboCambio: boolean; productosAfectados: number },
+  "GRUPO_NO_ENCONTRADO" | "VERSION_DESACTUALIZADA" | "NOMBRE_REPETIDO" | ConfiguracionInvalida
+>;
 
 // ───────────────────────────── Opciones y versiones ─────────────────────────────
 

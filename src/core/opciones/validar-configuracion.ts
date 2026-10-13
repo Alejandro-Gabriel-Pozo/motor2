@@ -419,19 +419,10 @@ export interface CambioDeColumna<K extends string> {
 }
 
 /**
- * Las columnas que cambian entre `antes` y `despues` (el antes y el después de la auditoría por columna). `null` y `undefined` son «sin valor»; un número se compara exacto (los
- * decimales de la base ya vienen convertidos a `number` en el borde). Lista vacía = no cambió nada: no se escribe, no se sube la versión y no queda fila de auditoría.
+ * De la tabla de columnas de una edición (`[{ campo: "nombre", antes, despues }, …]`, escrita como literal en el caso de uso para que el guardián `auditoria-por-columna` vea cada
+ * columna), las que CAMBIAN: el antes y el después de la auditoría por columna. `null` y `undefined` son «sin valor»; un número se compara exacto (los decimales de la base ya vienen
+ * convertidos a `number` en el borde). Lista vacía = no cambió nada: no se escribe, no se sube la versión y no queda fila de auditoría.
  */
-export function cambiosPorColumna<K extends string>(
-  antes: Readonly<Record<K, string | number | boolean | null>>,
-  despues: Readonly<Record<K, string | number | boolean | null>>,
-  columnas: readonly K[]
-): CambioDeColumna<K>[] {
-  const cambios: CambioDeColumna<K>[] = [];
-  for (const campo of columnas) {
-    const a = antes[campo] ?? null;
-    const d = despues[campo] ?? null;
-    if (a !== d) cambios.push({ campo, antes: a, despues: d });
-  }
-  return cambios;
+export function cambiosPorColumna<K extends string>(tabla: readonly CambioDeColumna<K>[]): CambioDeColumna<K>[] {
+  return tabla.map((c) => ({ campo: c.campo, antes: c.antes ?? null, despues: c.despues ?? null })).filter((c) => c.antes !== c.despues);
 }
