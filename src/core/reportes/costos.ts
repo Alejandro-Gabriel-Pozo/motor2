@@ -266,6 +266,20 @@ export function calcularImpactoInsumosDesde(filas: readonly FilaCostoProducto[])
 }
 
 
+/**
+ * GO-2b (ADR-030): el costo unitario de reposición de UN insumo (por unidad de stock), con el MISMO resolutor que `calcularCostosYMargenesDesde` (la compra más
+ * reciente si se compra; si se produce, su receta explotada). Devuelve una función con un cache propio para la venta entera: la usa el costo congelado de una línea
+ * configurada (`costoUnitarioDeLineaConfigurada`), que se arma con sus pedidos y no con la receta del producto base. `null` = sin costo conocido.
+ */
+export function costoUnitarioDeInsumoDesde(
+  productos: Map<string, InfoProductoReporte>,
+  recetaPorProducto: Map<string, IngredienteRecetaReporte[]>,
+  costosCompra: Map<string, CostoMP>
+): (productoId: string) => number | null {
+  const cache = new Map<string, CostoResuelto | null>();
+  return (productoId) => resolverCostoUnitario(productoId, productos, recetaPorProducto, costosCompra, cache, new Set())?.costoUnitario ?? null;
+}
+
 /** Costo completo de la receta de UN plato — misma recursión que `calcularCostosYMargenes`, pero solo el total (sin armar `componentes`) y con un cache propio por llamada: `costosCompra` cambia entre "antes" y "ahora", así que el cache de una corrida no puede reusarse en la otra. */
 export function resolverCostoRecetaCompleta(
   productoId: string,

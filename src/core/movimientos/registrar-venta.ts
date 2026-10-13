@@ -1,4 +1,5 @@
 import type { OrigenVenta } from "@/core/movimientos/origen-venta-datos";
+import type { ConsumoDeOpcionParaVender, OpcionConConsumo } from "./consumo-de-linea-configurada";
 
 /**
  * TIPOS del núcleo de la Venta (Pureza Fase 4: la función `registrarVentaEnTx` vive ahora en `server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts`). Núcleo de la Venta, SIN permisos ni transacción propia (no es una Server Action: sin "use server"). Extraído tal cual de
@@ -51,7 +52,22 @@ export interface LineaVentaEnTx {
   precioListaUnitario?: number;
   /** La `PromoCuenta` de la que este componente forma parte (Task #16 — ver el docstring del módulo). Ausente/null = un suelto. */
   promoCuentaId?: string | null;
+  /** GO-2b (ADR-030): solo en una línea CONFIGURADA o un ADICIONAL (ver `LineaConfiguradaEnTx`). Ausente = la línea de siempre, sin ningún cambio. */
+  configurada?: LineaConfiguradaEnTx;
 }
+
+/**
+ * GO-2b (ADR-030): lo que la venta necesita de una línea con opciones, ya CONGELADO en la foto de la cuenta (lo arma el cierre del POS; la venta de mostrador nunca
+ * lo pasa):
+ * - `PRODUCTO`: las opciones dentro del precio con el consumo de SU versión (la de la foto). El consumo sale de la receta efectiva de la base transformada por
+ *   ellas (`consumoDeLineaConfigurada`); el costo congelado, de esos pedidos.
+ * - `ADICIONAL`: su producto ancla (`anclaVerificada`: el `OpcionDeGrupo.productoId` LEÍDO DE LA BASE, el único que saltea la disponibilidad de la sucursal, y solo si
+ *   es un PV que no se produce), el consumo de la versión de la foto (solo SUMA) y el índice, en `lineas`, de la línea de su PADRE (que va antes y no es un adicional):
+ *   su Operacion nace con `operacionPadreId`.
+ */
+export type LineaConfiguradaEnTx =
+  | { tipo: "PRODUCTO"; opciones: OpcionConConsumo[] }
+  | { tipo: "ADICIONAL"; opcionId: string; anclaVerificada: string; consumos: ConsumoDeOpcionParaVender[]; indiceLineaPadre: number };
 
 export interface DatosVentaEnTx {
   fecha: Date;
