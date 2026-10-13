@@ -13,7 +13,7 @@ import {
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { cargarHermanasDePromo, cargarPosterioresDeVentas, cargarVentaParaAnular } from "@/server/persistencia/movimientos/cargar-venta-para-anular";
+import { cargarHermanasDePromo, cargarHijasDeVenta, cargarPosterioresDeVentas, cargarVentaParaAnular } from "@/server/persistencia/movimientos/cargar-venta-para-anular";
 import { escribirAnulacionDeVenta } from "@/server/persistencia/movimientos/escribir-anulacion-de-venta";
 
 /**
@@ -36,7 +36,10 @@ import { escribirAnulacionDeVenta } from "@/server/persistencia/movimientos/escr
  *  4. por cada Operación a anular (la pedida primero): contra-asiento AJUSTE + marca de anulada (persistencia), y su fila de auditoría;
  *  5. el mensaje de éxito.
  *
- * @contract Anula una venta y, si es parte de una promo, TODAS sus hermanas juntas — nunca un componente suelto.
+ * GO-2b (ADR-030): la venta de un ADICIONAL (con `operacionPadreId`) no se anula sola (`ES_ADICIONAL`); la de su producto arrastra a sus hijas vigentes (los ids
+ * vienen anidados en la misma consulta; completas, solo si hay), que entran también en el control de lo posterior y dejan su reversión y su auditoría.
+ *
+ * @contract Anula una venta y, si es parte de una promo, TODAS sus hermanas juntas — nunca un componente suelto (GO-2b: ni un adicional sin su producto).
  * @idempotency No aplica (nunca la tuvo) — el aislamiento SERIALIZABLE arbitra el doble clic; el segundo intento ve "ya anulada" (chequeo de estado, no I3).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
  * @sideEffects registrarCambioAuditado (uno por cada Operación anulada, incluidas las hermanas de promo).
@@ -55,8 +58,13 @@ export async function anularVentaCasoDeUso(
     const evaluacion = evaluarAnulacionDeVenta(operacionId, venta);
     if (!evaluacion.ok) return fracaso(evaluacion.motivo, evaluacion.mensaje);
 
+    // GO-2b (ADR-030, v1): la venta de un adicional no se anula sola — se anula la de su producto, que se la lleva.
+    if (venta.operacionPadreId !== null) return fracaso("ES_ADICIONAL", "Esta venta es un adicional de otro producto: anulá la venta de ese producto y se anula con sus adicionales.");
+
     const hermanas = venta.promoCuentaId ? await cargarHermanasDePromo(tx, { promoCuentaId: venta.promoCuentaId, excluirOperacionId: venta.id }) : [];
-    const aAnular = [venta, ...hermanas];
+    // GO-2b: las hijas vigentes (los adicionales) se anulan con su producto, en esta misma transacción; se cargan completas solo si hay alguna.
+    const hijas = venta.hijasVigentes.length ? await cargarHijasDeVenta(tx, { ids: venta.hijasVigentes, sucursalId: actor.sucursalId }) : [];
+    const aAnular = [venta, ...hermanas, ...hijas];
 
     // S-03 / D7: si después de la venta (o de cualquiera de sus hermanas) hubo un conteo/ajuste del mismo producto y sección, o un pago al consignante de lo que
     // consumió, anular la desharía a ciegas: se rechaza ANTES de escribir nada y se corrige con un ajuste.
@@ -94,7 +102,7 @@ export async function anularVentaCasoDeUso(
       });
     }
 
-    return exito(mensajeVentaAnulada(movimientosRevertidos, huboLiquidacionConsignacion, hermanas.length ? aAnular.length : null), {
+    return exito(mensajeVentaAnulada(movimientosRevertidos, huboLiquidacionConsignacion, hermanas.length ? 1 + hermanas.length : null, hijas.length), {
       ventaId: venta.id,
       operacionesAnuladas: aAnular.map((op) => op.id),
       reversionIds,
