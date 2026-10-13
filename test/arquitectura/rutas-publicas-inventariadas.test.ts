@@ -21,10 +21,12 @@ const RUTAS_PUBLICAS: Record<string, string> = {
   "api/auth/[...nextauth]/route.ts": "Auth.js (login, callback, logout, sesión): su propio protocolo decide qué responde a cada pedido",
   "(carta-publica)/carta-publica/[empresa]/page.tsx": "carta pública de una empresa: lectura aislada, sin sesión (guardas propias en carta-solo-lectura/sin-boundary-http-carta)",
   "(carta-publica)/carta-publica/[empresa]/[sucursal]/page.tsx": "carta pública de una sucursal: lectura aislada, sin sesión (ídem)",
+  "(carta-publica)/carta-publica/[empresa]/robots.txt/route.ts": "robots.txt del host público de la carta de una empresa: lo lee un buscador; sale del mismo lector que el portal, sin sesión (ídem)",
+  "(carta-publica)/carta-publica/[empresa]/sitemap.xml/route.ts": "sitemap.xml del host público de la carta de una empresa: lista el portal y las sucursales públicas, del mismo lector que el portal, sin sesión (ídem)",
 };
 
 /** Archivos reservados de Next que ya tienen política acá: cualquier otro (default, template, sitemap, robots, middleware…) obliga a decidirla. */
-const RESERVADOS_CON_POLITICA = ["page", "route", "layout", "loading", "error", "not-found", "global-error"];
+const RESERVADOS_CON_POLITICA = ["page", "route", "layout", "loading", "error", "not-found", "global-error", "robots"];
 
 const archivos = listarArchivosDeApp();
 const paginas = archivos.filter(esPagina);
@@ -38,6 +40,14 @@ describe("entradas HTTP de src/app: ninguna nace pública sin que esté inventar
       return n !== undefined && !RESERVADOS_CON_POLITICA.includes(n);
     });
     expect(sinPolitica, "archivo reservado sin política: decidir si es público (agregarlo a RUTAS_PUBLICAS) o protegerlo").toEqual([]);
+  });
+
+  it("el único robots de Next es el de la raíz (la aplicación) y prohíbe rastrear todo; el de la carta es un route handler inventariado", () => {
+    expect(archivos.filter((a) => nombreReservadoDe(a) === "robots")).toEqual(["robots.ts"]);
+    const texto = leerDeApp("robots.ts");
+    expect(texto).toMatch(/userAgent:\s*"\*"/);
+    expect(texto).toMatch(/disallow:\s*"\/"/);
+    expect(texto).not.toMatch(/\ballow:/);
   });
 
   it("toda página es de (app)/(pos) o está en RUTAS_PUBLICAS", () => {

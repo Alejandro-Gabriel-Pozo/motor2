@@ -39,9 +39,9 @@ describe("la carta de cada empresa lleva la etiqueta de su empresa", () => {
     expect(llamadaA[1]).not.toEqual(llamadaB[1]);
   });
 
-  it("el caché de la carta dura lo mismo que el ISR de la página (300 s): Next toma el menor de los dos, uno más corto acortaría la página", async () => {
+  it("el caché de la carta dura lo mismo que el ISR de la página (60 s): Next toma el menor de los dos, uno más corto acortaría la página", async () => {
     await cartaPublica(A, "central", new Date());
-    expect(unstableCache.mock.calls[0][2].revalidate).toBe(300);
+    expect(unstableCache.mock.calls[0][2].revalidate).toBe(60);
   });
 });
 

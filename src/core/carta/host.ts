@@ -39,6 +39,9 @@ export function esSlugPublicoValido(valor: unknown): valor is string {
   return typeof valor === "string" && valor.length <= LARGO_MAXIMO_SLUG_PUBLICO && RE_SLUG_PUBLICO.test(valor);
 }
 
+/** Los únicos archivos (con punto) que el host de una carta sirve además de la raíz y `/<sucursal>`. */
+export const ARCHIVOS_DEL_HOST_CARTA = ["robots.txt", "sitemap.xml"] as const;
+
 export interface ReglaRewriteCarta {
   source: string;
   has: { type: "host"; value: string }[];
@@ -107,6 +110,8 @@ export function reglasRewriteCarta(dominioBase: string | null | undefined): Regl
   return [
     { source: "/", has, destination: "/carta-publica/:empresa" },
     { source: "/:sucursal([a-z0-9][a-z0-9-]*)", has, destination: "/carta-publica/:empresa/:sucursal" },
+    // `robots.txt` y `sitemap.xml` del host de la carta: los de ESA empresa (la aplicación tiene el suyo, que prohíbe todo). No chocan con la regla de la sucursal: esa no acepta puntos.
+    ...ARCHIVOS_DEL_HOST_CARTA.map((archivo) => ({ source: `/${archivo}`, has, destination: `/carta-publica/:empresa/${archivo}` })),
   ];
 }
 
@@ -146,7 +151,7 @@ export function patronHostZonaCarta(dominioBase: string): string {
 }
 
 /**
- * En el host de una carta SOLO se sirven la raíz (portal de la empresa) y `/<sucursal>`; cualquier otro path (`/login`, `/api/…`,
+ * En el host de una carta SOLO se sirven la raíz (portal de la empresa), `/<sucursal>`, `/robots.txt` y `/sitemap.xml`; cualquier otro path (`/login`, `/api/…`,
  * `/mesas/…`, una carpeta de la app) es 404 sin llegar a la aplicación. Es la misma forma que reescribe `reglasRewriteCarta`.
  */
 export function esMetodoDeLecturaEnHostCarta(metodo: string): boolean {
@@ -154,7 +159,7 @@ export function esMetodoDeLecturaEnHostCarta(metodo: string): boolean {
 }
 
 export function esPathPermitidoEnHostCarta(pathname: string): boolean {
-  return pathname === "/" || /^\/[a-z0-9][a-z0-9-]*\/?$/.test(pathname);
+  return pathname === "/" || /^\/[a-z0-9][a-z0-9-]*\/?$/.test(pathname) || (ARCHIVOS_DEL_HOST_CARTA as readonly string[]).some((archivo) => pathname === `/${archivo}`);
 }
 
 /**

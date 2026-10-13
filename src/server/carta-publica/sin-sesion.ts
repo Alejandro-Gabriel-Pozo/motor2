@@ -47,8 +47,11 @@ function lecturaDeUnaSolaSucursal(empresaId: string, sucursalId: string): Db {
   return dbDeEmpresa(empresaId, { lectura: [sucursalId], escritura: [] });
 }
 
-/** Los mismos 300 s que `export const revalidate` de `app/(carta-publica)/carta-publica/[empresa]/[sucursal]/page.tsx` (Next toma el MENOR de los dos: uno más corto acortaría el ISR de la página). */
-const SEGUNDOS_DE_CACHE_DE_LA_CARTA = 300;
+/**
+ * Los mismos 60 s que `export const revalidate` de `app/(carta-publica)/carta-publica/[empresa]/[sucursal]/page.tsx` (Next toma el MENOR de los dos: uno más corto acortaría el ISR de la página). Es lo máximo que tarda
+ * en verse en la carta pública un cambio que NO pasó por una acción que invalida la etiqueta de la empresa (`revalidarCartasPublicas`).
+ */
+const SEGUNDOS_DE_CACHE_DE_LA_CARTA = 60;
 
 /** Lo que la carta de una sucursal entrega al anónimo: la carta SIN ids internos y su estilo. */
 interface CartaPublicaEntregada {

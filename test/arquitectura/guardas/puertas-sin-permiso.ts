@@ -88,13 +88,25 @@ export const PUERTAS_SIN_PERMISO: Readonly<Record<string, PuertaSinPermiso>> = {
     sinEmpresa: "PERMITIDO",
     motivo: "portal de cartas de una empresa: lectura aislada de lo que la empresa publica a propósito (lista cerrada de campos), sin sesión",
     limitador:
-      "NINGUNO en el código: la página es `force-dynamic` (cada pedido consulta la base; no es ISR ni tiene caché, a propósito: ADR-006) y no lleva limitador propio; el cierre real es el firewall de Vercel sobre `/carta-publica/*` (E.6, acción externa pendiente, residuo M-7); la lista cerrada de publicación es el guard GT-13 (tanda T9)",
+      "la CDN guarda el portal 60 s (`Cache-Control: public, s-maxage=60, stale-while-revalidate=300`, `next.config.ts`); en el código la página es dinámica y no lleva limitador propio; más el firewall de Vercel sobre `/carta-publica/*` (E.6, acción externa pendiente, residuo M-7); la lista cerrada de publicación es el guard GT-13 (tanda T9)",
   },
   "ruta|(carta-publica)/carta-publica/[empresa]/[sucursal]/page.tsx": {
     anonimo: "PERMITIDO",
     sinEmpresa: "PERMITIDO",
     motivo: "carta pública de una sucursal: lectura aislada de lo que se publica a propósito, sin sesión",
     limitador: "caché ISR de la carta (revalidate) más el firewall de Vercel (E.6); la lista cerrada de publicación es el guard GT-13 (tanda T9)",
+  },
+  "ruta|(carta-publica)/carta-publica/[empresa]/robots.txt/route.ts": {
+    anonimo: "PERMITIDO",
+    sinEmpresa: "PERMITIDO",
+    motivo: "robots.txt del host público de la carta de una empresa: lo lee un buscador, sin sesión; sale del mismo lector que el portal y da el mismo 404 que él si la empresa no existe o no publicó nada (S-24)",
+    limitador: "la CDN lo guarda 60 s (`Cache-Control` público de la respuesta 200) más el firewall de Vercel (E.6); no hay datos de negocio: solo la dirección pública y el sitemap",
+  },
+  "ruta|(carta-publica)/carta-publica/[empresa]/sitemap.xml/route.ts": {
+    anonimo: "PERMITIDO",
+    sinEmpresa: "PERMITIDO",
+    motivo: "sitemap.xml del host público de la carta de una empresa: lista el portal y los slugs de las sucursales públicas que ya muestra el portal (`portalCartaPublico`, sin consultas propias), sin sesión; mismo 404 que el portal si no hay nada publicado (S-24)",
+    limitador: "la CDN lo guarda 60 s (`Cache-Control` público de la respuesta 200) más el firewall de Vercel (E.6); la lista cerrada de publicación es el guard GT-13 (tanda T9)",
   },
   "ruta|api/cron/*": {
     anonimo: "NIEGA",
