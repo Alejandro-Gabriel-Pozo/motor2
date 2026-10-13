@@ -3,12 +3,13 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
-import { clavesReservadasDe, RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
+import { RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
 
 /**
  * GO-1a — migración de DATOS 20261020100000_go1a_permisos_de_opciones: alta de las TRES claves de los grupos de opciones de venta (`opciones_definir` y `producto_opciones_admitidas`, de empresa y piso administrador; `opcion_apagar_en_sucursal`, de sucursal y piso
- * operario; las tres con semilla `admin`, sin copiar de ninguna otra clave, en la base desde GO-1 y en `ACCIONES` recién desde GO-2) y su siembra: el rol de clave `admin` de cada empresa recibe las TRES (con Ver y Editar) y ningún otro rol recibe nada. NO están en
- * `ACCIONES` hasta GO-2 (el caso de uso).
+ * operario; las tres con semilla `admin`, sin copiar de ninguna otra clave, en la base desde GO-1 y en `ACCIONES` desde GO-2a) y su siembra: el rol de clave `admin` de cada empresa recibe las TRES (con Ver y Editar) y ningún otro rol recibe nada. Desde GO-2a
+ * están en `ACCIONES` (con su guarda y su caso de uso), con la MISMA descripción, contexto, piso y semilla que da de alta la migración: `CLAVES` es una lista FIJA (no sale de las reservadas, que ya no las tienen; si saliera de ahí quedaría vacía y estas pruebas
+ * pasarían sin probar nada).
  *
  * La migración corre como DUEÑO (sin RLS) y `app_empresa_actual()` devuelve NULL sin contexto: el `empresaId` de cada fila nueva sale de la fila del rol. Por eso acá hay DOS empresas. Se corre sobre una base temporal armada migración por migración
  * (la anterior a la nuestra aplicada, la nuestra a mano).
@@ -19,7 +20,8 @@ import { clavesReservadasDe, RESERVADAS_EN_BASE } from "../setup/claves-reservad
  */
 const NOMBRE = "20261020100000_go1a_permisos_de_opciones";
 const leer = (archivo: string) => readFileSync(join(__dirname, "../../prisma/migrations", NOMBRE, archivo), "utf8");
-const CLAVES = clavesReservadasDe(NOMBRE);
+const CLAVES = ["opcion_apagar_en_sucursal", "opciones_definir", "producto_opciones_admitidas"] as const;
+const enAcciones = (clave: string) => ACCIONES.find((a) => a.clave === clave);
 
 describe("migración de datos GO-1a: las tres claves de los grupos de opciones de venta", () => {
   let base: BaseTemporalMigrada;
@@ -38,7 +40,7 @@ describe("migración de datos GO-1a: las tres claves de los grupos de opciones d
       `SELECT (SELECT count(*)::int FROM "Accion" WHERE "clave" = ANY($1)) AS acciones,
               (SELECT count(*)::int FROM "PermisoRol" WHERE "accionClave" = ANY($1)) AS permisos,
               (SELECT count(*)::int FROM "PermisoRol" WHERE NOT ("accionClave" = ANY($1))) AS otras`,
-      [CLAVES],
+      [[...CLAVES]],
     );
     return r.rows[0]!;
   };
@@ -89,21 +91,24 @@ describe("migración de datos GO-1a: las tres claves de los grupos de opciones d
     await base?.eliminar();
   }, 60_000);
 
-  it("las tres claves de la lista de reservadas son exactamente las que da de alta, con su migración declarada, y NINGUNA está en ACCIONES todavía (hasta GO-2)", async () => {
-    expect(CLAVES).toEqual(["opcion_apagar_en_sucursal", "opciones_definir", "producto_opciones_admitidas"]);
+  it("las tres claves que da de alta están en ACCIONES desde GO-2a, con el contexto, el piso y la semilla de la migración, y ya no figuran como reservadas en la base", async () => {
     const enBase = await base.cliente.query<{ clave: string }>(`SELECT "clave" FROM "Accion" WHERE "clave" IN ('opciones_definir', 'producto_opciones_admitidas', 'opcion_apagar_en_sucursal') ORDER BY 1`);
-    expect(enBase.rows.map((f) => f.clave)).toEqual(CLAVES);
-    expect(ACCIONES.map((a) => a.clave).filter((c) => (CLAVES as string[]).includes(c))).toEqual([]);
-    for (const clave of CLAVES) expect(RESERVADAS_EN_BASE[clave]).toMatchObject({ migracion: NOMBRE, semilla: ["admin"] });
-    expect([RESERVADAS_EN_BASE.opciones_definir!.contexto, RESERVADAS_EN_BASE.producto_opciones_admitidas!.contexto]).toEqual(["empresa", "empresa"]);
-    expect([RESERVADAS_EN_BASE.opciones_definir!.nivelMinimo, RESERVADAS_EN_BASE.producto_opciones_admitidas!.nivelMinimo]).toEqual(["administrador", "administrador"]);
-    expect({ contexto: RESERVADAS_EN_BASE.opcion_apagar_en_sucursal!.contexto, nivelMinimo: RESERVADAS_EN_BASE.opcion_apagar_en_sucursal!.nivelMinimo }).toEqual({ contexto: "sucursal", nivelMinimo: "operario" });
+    expect(enBase.rows.map((f) => f.clave)).toEqual([...CLAVES]);
+    for (const clave of CLAVES) {
+      expect(enAcciones(clave), clave).toBeDefined();
+      expect(enAcciones(clave)!.rolesEditarSemilla, clave).toEqual(["admin"]);
+      expect(enAcciones(clave)!.modulo, clave).toBe("catalogo_basico");
+      expect(clave in RESERVADAS_EN_BASE, `${clave} ya está en ACCIONES: no puede seguir reservada`).toBe(false);
+    }
+    expect([enAcciones("opciones_definir")!.contexto, enAcciones("producto_opciones_admitidas")!.contexto]).toEqual(["empresa", "empresa"]);
+    expect([enAcciones("opciones_definir")!.nivelMinimo, enAcciones("producto_opciones_admitidas")!.nivelMinimo]).toEqual(["administrador", "administrador"]);
+    expect({ contexto: enAcciones("opcion_apagar_en_sucursal")!.contexto, nivelMinimo: enAcciones("opcion_apagar_en_sucursal")!.nivelMinimo }).toEqual({ contexto: "sucursal", nivelMinimo: "operario" });
   });
 
-  it("da de alta las tres en Accion con la descripción DEFINITIVA de la lista de reservadas (la que compara la paridad)", async () => {
+  it("da de alta las tres en Accion con la descripción IDÉNTICA a la de ACCIONES (la que compara la paridad)", async () => {
     for (const clave of CLAVES) {
       const r = await base.cliente.query<{ descripcion: string }>(`SELECT "descripcion" FROM "Accion" WHERE "clave" = $1`, [clave]);
-      expect(r.rows.map((f) => f.descripcion), clave).toEqual([RESERVADAS_EN_BASE[clave]!.descripcion]);
+      expect(r.rows.map((f) => f.descripcion), clave).toEqual([enAcciones(clave)!.descripcion]);
     }
   });
 
@@ -112,22 +117,22 @@ describe("migración de datos GO-1a: las tres claves de los grupos de opciones d
       expect(await quienLaTiene(clave), clave).toEqual(["a-admin", "b-admin"]);
       expect((await filas(clave)).every((f) => f.ver && f.editar && f.empresa === f.deLaFila), clave).toBe(true);
     }
-    const admins = await base.cliente.query<{ empresa: string; n: number }>(`SELECT "empresaId" AS empresa, count(*)::int AS n FROM "PermisoRol" WHERE "rolId" IN ('a-admin', 'b-admin') AND "accionClave" = ANY($1) GROUP BY 1 ORDER BY 1`, [CLAVES]);
+    const admins = await base.cliente.query<{ empresa: string; n: number }>(`SELECT "empresaId" AS empresa, count(*)::int AS n FROM "PermisoRol" WHERE "rolId" IN ('a-admin', 'b-admin') AND "accionClave" = ANY($1) GROUP BY 1 ORDER BY 1`, [[...CLAVES]]);
     expect(admins.rows).toEqual([{ empresa: "emp-a", n: 3 }, { empresa: "emp-b", n: 3 }]);
   });
 
   it("NINGÚN otro rol recibe ninguna: ni el operador que carga compras, ni un rol propio con permisos de gastos, ni uno vacío (sin copia desde otras claves)", async () => {
-    const r = await base.cliente.query<{ rol: string }>(`SELECT DISTINCT "rolId" AS rol FROM "PermisoRol" WHERE "accionClave" = ANY($1) ORDER BY 1`, [CLAVES]);
+    const r = await base.cliente.query<{ rol: string }>(`SELECT DISTINCT "rolId" AS rol FROM "PermisoRol" WHERE "accionClave" = ANY($1) ORDER BY 1`, [[...CLAVES]]);
     expect(r.rows.map((f) => f.rol)).toEqual(["a-admin", "b-admin"]);
   });
 
   it("NO cruza empresas: cada fila nueva tiene el empresaId de su rol", async () => {
-    const r = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "PermisoRol" p JOIN "Rol" r ON r."id" = p."rolId" WHERE p."accionClave" = ANY($1) AND p."empresaId" <> r."empresaId"`, [CLAVES]);
+    const r = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "PermisoRol" p JOIN "Rol" r ON r."id" = p."rolId" WHERE p."accionClave" = ANY($1) AND p."empresaId" <> r."empresaId"`, [[...CLAVES]]);
     expect(r.rows[0]!.n).toBe(0);
   });
 
   it("NO copia CapacidadSucursal (sin fila la capacidad está habilitada) y no toca las filas de origen", async () => {
-    const cap = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "CapacidadSucursal" WHERE "accionClave" = ANY($1)`, [CLAVES]);
+    const cap = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "CapacidadSucursal" WHERE "accionClave" = ANY($1)`, [[...CLAVES]]);
     expect(cap.rows[0]!.n).toBe(0);
     const origen = await base.cliente.query<{ total: number; editan: number }>(`SELECT count(*)::int AS total, count(*) FILTER (WHERE "puedeEditar")::int AS editan FROM "PermisoRol" WHERE "id" LIKE '%|%'`);
     expect(origen.rows[0]).toEqual({ total: 5, editan: 5 });
@@ -145,7 +150,7 @@ describe("migración de datos GO-1a: las tres claves de los grupos de opciones d
     await base.cliente.query(`UPDATE "PermisoRol" SET "puedeEditar" = true WHERE "rolId" = 'b-admin' AND "accionClave" = 'opcion_apagar_en_sucursal'`);
   });
 
-  it("una empresa que nace DESPUÉS no las recibe de esta migración (el alta siembra desde ACCIONES, y todavía no están ahí): volver a correrla cubre su admin", async () => {
+  it("una empresa que nace DESPUÉS no las recibe de esta migración (desde GO-2a el alta las siembra desde ACCIONES; la que nació entre GO-1 y GO-2a se cubre volviendo a correrla, R-1)", async () => {
     await base.cliente.query(`INSERT INTO "Empresa" ("id", "nombre", "slug", "zonaHoraria", "moneda") VALUES ('emp-c', 'emp-c', 'emp-c', 'America/Argentina/Buenos_Aires', 'ARS')`);
     await base.cliente.query(`INSERT INTO "Rol" ("id", "empresaId", "nombre", "clave") VALUES ('c-admin', 'emp-c', 'admin', 'admin')`);
     expect(await quienLaTiene("opciones_definir")).not.toContain("c-admin");
@@ -197,7 +202,7 @@ describe("migración de datos GO-1a: las tres claves de los grupos de opciones d
       expect(await conteos(), `${cual}: restaurado`).toEqual(antes);
     }
     // Con la semilla pura pasa y deja CERO filas de las tres, sin tocar las demás.
-    const cap = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "CapacidadSucursal" WHERE "accionClave" = ANY($1)`, [CLAVES]);
+    const cap = await base.cliente.query<{ n: number }>(`SELECT count(*)::int AS n FROM "CapacidadSucursal" WHERE "accionClave" = ANY($1)`, [[...CLAVES]]);
     expect(cap.rows[0]!.n).toBe(0);
     const otrasAntes = antes.otras;
     expect(await intentarBajar()).toBe("bajó");

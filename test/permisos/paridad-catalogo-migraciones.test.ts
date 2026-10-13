@@ -149,10 +149,9 @@ describe("paridad ACCIONES ↔ migraciones: una base real termina con el catálo
     expect(sobrantes, "claves en la base que el código no conoce y nadie declaró retiradas ni reservadas").toEqual([]);
   });
 
-  it("toda clave RESERVADA EN LA BASE (los gastos, M4.5, y la nota de crédito de proveedor, M6.4, los centros de costos, M7.4, y los grupos de opciones de venta, GO-1a) está en una base migrada, con la descripción definitiva, y todavía NO está en ACCIONES (el día que entra, sale de la lista)", () => {
+  it("toda clave RESERVADA EN LA BASE (los gastos, M4.5, la nota de crédito de proveedor, M6.4, los centros de costos, M7.4, y las de GO-3) está en una base migrada, con la descripción definitiva, y todavía NO está en ACCIONES (el día que entra, sale de la lista)", () => {
     const enCodigo = new Set<string>(ACCIONES.map((a) => a.clave));
     expect(MOTIVO_DE_LAS_RESERVADAS_EN_BASE.trim().length).toBeGreaterThan(10);
-    expect(MOTIVO_DE_LAS_RESERVADAS_EN_BASE, "el motivo tiene que explicar también las claves de los grupos de opciones de venta (GO-1a)").toContain("GO-1a");
     expect(MOTIVO_DE_LAS_RESERVADAS_DE_GO3, "el motivo tiene que explicar también las claves de GO-3").toContain("GO-3");
     expect(Object.keys(RESERVADAS_EN_BASE).sort()).toEqual(
       [
@@ -160,7 +159,6 @@ describe("paridad ACCIONES ↔ migraciones: una base real termina con el catálo
         "conceptos_gasto", "gasto_anular", "gasto_ver", "gasto_registrar", "gasto_reclasificar", "gasto_repartir", "reporte_gastos_empresa",
         "nota_credito_proveedor", "gasto_nota_credito", "anular_nota_credito_proveedor",
         "centros_costos", "distribucion_costos", "reporte_gastos_por_unidad",
-        "opciones_definir", "producto_opciones_admitidas", "opcion_apagar_en_sucursal",
       ].sort()
     );
     for (const [clave, def] of Object.entries(RESERVADAS_EN_BASE)) {

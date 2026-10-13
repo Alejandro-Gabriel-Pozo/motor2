@@ -46,8 +46,13 @@ export async function actualizarDisponibilidadProductoCasoDeUso(
   return actor.transaccion(async (tx): Promise<ResultadoActualizarDisponibilidadProducto> => {
     // D4: la fila se toma ANTES de leer el precio (ver arriba). Una id inexistente no toma nada y cae en el «no se encontró» de abajo.
     await tomarFilaDeProducto(tx, productoId);
-    const existente = await tx.producto.findUnique({ where: { id: productoId } });
+    const existente = await tx.producto.findUnique({ where: { id: productoId }, include: { opcionQueRespalda: { select: { id: true } } } });
     if (!existente) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
+    // GO-2a (blindaje del ancla, D-1): el producto que respalda un adicional NO tiene disponibilidad a propósito (queda oculto por «sin fila = no disponible», ADR-009 `optin`) y se
+    // vende solo como la línea del adicional; ponerlo a la venta lo haría aparecer como un producto suelto. Apagarlo no hace falta ni molesta.
+    if (disponible && existente.opcionQueRespalda) {
+      return fracaso("ES_ANCLA_DE_ADICIONAL", `"${existente.nombre}" es el producto de respaldo de un adicional: se vende solo como adicional, no se pone a la venta suelto.`);
+    }
     if (disponible && existente.tipo === "PV" && Number(existente.precioVenta) === 0 && !comando.puedeEditarCamposSensibles) {
       return fracaso(
         "SIN_PERMISO_CAMPOS_SENSIBLES",

@@ -16,6 +16,21 @@ const hoy = () => new Date();
 const ingrediente = (k: Kit, insumoProductoId: string = k.productoId) => ({ insumoProductoId, cantidad: 1, unidadId: k.unidadId });
 const conVariantes = (...v: Array<unknown[] | false>) => variantes(...lista(...v));
 /** Los datos de un producto con TODAS sus referencias propias (la base de las variantes que cambian una sola por una ajena). */
+/** Los datos de una versión de opción de venta (GO-2a): un monto fijo, sin factor, con los consumos que se pidan. */
+const versionDeOpcion = (consumos: unknown[] = [], monto = 0) => ({ diferencia: { tipo: "MONTO", monto }, factorEscala: null, consumos });
+const sumaDe = (insumoProductoId: string) => ({ efecto: "SUMA", insumoProductoId, reemplazaAProductoId: null, cantidad: 0.1, mermaPorcentaje: 0, escalaConLaMedida: false });
+/** Lo que admite un producto de un grupo VARIANTE, con una opción (primera vez: versión esperada 0). */
+const admisionDe = (productoId: string, grupoId: string, opcionId: string) => ({
+  productoId,
+  grupoId,
+  versionEsperada: 0,
+  orden: 1,
+  cantidadMinima: null,
+  cantidadMaxima: null,
+  modoPrecio: null,
+  activo: true,
+  opciones: [{ opcionId, versionEsperada: 0, cantidadMaxima: 1, precioAbsoluto: null, diferencia: null, activo: true }],
+});
 const propios = (c: ContextoDeArgumentos) => ({ nombre: "Nombre nuevo", tipo: "MP" as const, unidadStockId: c.propio.unidadId, factorConversion: 1, categoriaId: c.propio.categoriaId, insumoId: c.propio.insumoId, unidadCompraId: c.propio.unidad2Id });
 
 const completos: Record<string, Valor> = {
@@ -96,6 +111,45 @@ const completos: Record<string, Valor> = {
     conVariantes(intento(c, ["productoPvId"], [k.productoPvId, ingrediente(k, c.propio.productoMp3Id), 1, true]), intento(c, ["productoMp3Id", "unidadId"], [c.propio.productoPvId, ingrediente(k, k.productoMp3Id), 1, true])),
   "accion|actions/catalogo/receta-sucursal.ts|actualizarIngredienteDeRecetaPropia": (k) => [k.productoPvId, k.productoId, { cantidad: 2, unidadId: k.unidadId }, 1, true],
   "accion|actions/catalogo/rendimiento-local.ts|fijarRendimientoLocal": (k) => [k.recetaIngredienteId, { cantidad: 2, mermaPorcentaje: 3 }],
+
+  // --- catálogo de opciones de venta (GO-2a, ADR-030): el catálogo es de la EMPRESA (ajeno solo en el escenario de otra empresa); lo de la sucursal (apagar, la grilla) lleva la sucursal ---
+  "accion|actions/catalogo/opciones-de-venta.ts|crearGrupoDeOpciones": () => [{ nombre: "Grupo nuevo", tipo: "VARIANTE", cantidadMinima: 0, cantidadMaxima: 1 }],
+  "accion|actions/catalogo/opciones-de-venta.ts|editarGrupoDeOpciones": (k) => [{ grupoId: k.grupoDeOpcionesId, versionEsperada: 1, nombre: "Nombre nuevo", cantidadMinima: 0, cantidadMaxima: 2, activo: true }],
+  "accion|actions/catalogo/opciones-de-venta.ts|crearOpcionDeGrupo": (k, c) =>
+    conVariantes(
+      intento(c, ["grupoDeOpcionesId"], [{ grupoId: k.grupoDeOpcionesId, nombre: "Opción nueva", orden: 5, esNinguna: false, ancla: null, version: versionDeOpcion() }]),
+      // Un consumo con un insumo ajeno; el producto ancla de un ADICIONAL con una unidad ajena.
+      intento(c, ["productoId"], [{ grupoId: c.propio.grupoDeOpcionesId, nombre: "Opción nueva", orden: 5, esNinguna: false, ancla: null, version: versionDeOpcion([sumaDe(k.productoId)]) }]),
+      intento(c, ["unidadId"], [{ grupoId: c.propio.grupoAdicionalId, nombre: "Adicional nuevo", orden: 5, esNinguna: false, ancla: { unidadStockId: k.unidadId }, version: versionDeOpcion([], 100) }]),
+    ),
+  "accion|actions/catalogo/opciones-de-venta.ts|editarOpcionDeGrupo": (k) => [{ opcionId: k.opcionDeGrupoId, versionEsperada: 1, nombre: "Nombre nuevo", orden: 3, activa: true }],
+  "accion|actions/catalogo/opciones-de-venta.ts|agregarVersionDeOpcion": (k, c) =>
+    conVariantes(
+      intento(c, ["opcionDeGrupoId"], [{ opcionId: k.opcionDeGrupoId, numeroEsperado: 1, version: versionDeOpcion([], 150) }]),
+      intento(c, ["productoId"], [{ opcionId: c.propio.opcionDeGrupoId, numeroEsperado: 1, version: versionDeOpcion([sumaDe(k.productoId)], 150) }]),
+    ),
+  // Un id ajeno por variante: el producto base, el grupo, una opción que no es del grupo propio.
+  "accion|actions/catalogo/opciones-de-venta.ts|fijarAdmisionDeGrupoEnProducto": (k, c) =>
+    conVariantes(
+      intento(c, ["productoConOpcionesId"], [admisionDe(k.productoConOpcionesId, c.propio.grupoDeOpcionesId, c.propio.opcionDeGrupoId)]),
+      intento(c, ["grupoDeOpcionesId"], [admisionDe(c.propio.productoConOpcionesId, k.grupoDeOpcionesId, k.opcionDeGrupoId)]),
+      intento(c, ["opcionDeGrupoId"], [admisionDe(c.propio.productoConOpcionesId, c.propio.grupoDeOpcionesId, k.opcionDeGrupoId)]),
+    ),
+  // La sucursal que vio la pantalla (tiene que ser la activa: el eco) y, desde la propia, una opción o un producto ajenos.
+  "accion|actions/catalogo/opciones-por-sucursal.ts|apagarOpcionEnSucursal": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, opcionId: c.propio.opcionDeGrupoId, apagada: true }]),
+      intento(c, ["opcionDeGrupoId"], [{ sucursalId: c.propio.sucursalId, opcionId: k.opcionDeGrupoId, apagada: true }]),
+    ),
+  // La grilla propia de S1 tiene la medida en 1600 (el precio esperado que «vio» la pantalla).
+  "accion|actions/catalogo/opciones-por-sucursal.ts|fijarPrecioLocalDeOpcion": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, productoId: c.propio.productoConOpcionesId, opcionId: c.propio.opcionMedidaId, esperado: { precio: 1600, habilitado: true }, precio: 1700 }]),
+      intento(c, ["opcionMedidaId"], [{ sucursalId: c.propio.sucursalId, productoId: c.propio.productoConOpcionesId, opcionId: k.opcionMedidaId, esperado: { precio: 1600, habilitado: true }, precio: 1700 }]),
+      intento(c, ["productoConOpcionesId"], [{ sucursalId: c.propio.sucursalId, productoId: k.productoConOpcionesId, opcionId: c.propio.opcionMedidaId, esperado: { precio: 1600, habilitado: true }, precio: 1700 }]),
+    ),
+  // La celda de la grilla: la sucursal es la de CONTEXTO (la activa); el producto y la opción, los del cliente.
+  "lectura|lecturas/catalogo/precio-local-de-opciones.ts|filaDePrecioLocalDeOpcion": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, productoId: k.productoConOpcionesId, opcionId: k.opcionMedidaId }],
 
   // --- movimientos, stock, traspasos ---
   "accion|actions/movimientos/compras.ts|corregirCompra": (k, c) =>
@@ -226,6 +280,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   "lectura|lecturas/catalogo/ofertas-de-proveedor.ts|cargarOfertasDeProveedores": { filtro: (k, c) => (conIdsAjenos(c) ? { proveedorId: k.proveedorId, precioDeLaSucursal: k.sucursalId } : {}) },
   "accion|actions/catalogo/productos.ts|listarProductosPagina": { cursor: (k, c) => (conIdsAjenos(c) ? k.productoId : undefined) },
   "accion|actions/traspasos/lecturas.ts|obtenerBandejaTransferencias": { cursorHistorial: (k, c) => (conIdsAjenos(c) ? k.traspasoId : undefined) },
+  // GO-2a: la grilla de opciones de un producto (el que admite la medida con precio propio), con la capacidad de precio local prendida.
+  "lectura|lecturas/catalogo/precio-local-de-opciones.ts|preciosLocalesDeOpcionVigentes": { productoId: (k) => k.productoConOpcionesId, precioLocalActivo: () => true },
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoOpcion": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoPorId": { id: (k) => k.productoId },
@@ -262,6 +318,8 @@ const porArchivo: Record<string, Record<string, Valor>> = {
   // El descuento no se puede poner a una opción de un ítem agrupado: el PV que está en el ítem (`pv`) no sirve, el otro (`pv2`) sí.
   "actions/carta/descuento-producto.ts": { productoId: (k) => k.productoPv2Id },
   "actions/movimientos/precio-local.ts": { productoId: (k) => k.productoPvId },
+  // GO-2a: en las lecturas del catálogo de opciones, `grupoId` es un grupo de OPCIONES (no el de insumos) y `productoId` el PV que las admite.
+  "lecturas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId },
 };
 
 export const GENERADORES: Generadores = { completos, parametros, porArchivo };
