@@ -25,6 +25,18 @@ import type { LineaArmada } from "./plan-de-la-venta";
  *    del adicional (k × la cantidad vendida del padre); no lo escala la medida. Se devuelve aparte, un juego de `pedidos` por adicional.
  *
  * Las líneas reemplazadas o sumadas van con `insumoSustitutoIds: []` (v1); las de la base conservan los sustitutos de su línea de receta.
+ *
+ * GO-3 (ADR-032, frente B), rama ADITIVA `excepcion`: la RECETA PROPIA de la combinación vendida (la versión congelada al agregar el ítem, `CombinacionEnLinea.recetaDeCombinacionVersionId`).
+ * Sin `excepcion` (o con una excepción SIN ingredientes, que significa «vuelve a la regla general») el resultado es exactamente el de arriba: mismas operaciones, mismos números (`Object.is`).
+ * Con una excepción no vacía:
+ * a. la BASE es la excepción y no la receta del producto. Si la MEDIDA elegida es uno de los ejes de la combinación, la base NO se escala (f = 1 sobre la base: ya es la receta de ese
+ *    tamaño); si la MEDIDA no es eje (los ejes son dos variantes), la excepción se escala por la medida como cualquier base. La cuenta de la excepción es siempre en decimal exacto;
+ * b. se saltean los consumos de las VARIANTE que son eje y los de la MEDIDA eje que ESCALAN (`escalaConLaMedida`): la excepción ya los cubre;
+ * c. se mantienen los de la MEDIDA eje que NO escalan (el envase: el vaso de 400 ml), enteros, SUMA o REEMPLAZA, aplicados sobre la excepción;
+ * d. las opciones que NO son eje (otra VARIANTE, una INCLUIDA) se aplican como siempre sobre la excepción: su REEMPLAZA usa la cantidad absoluta de la opción × el factor de la medida
+ *    si escala, igual que sin excepción; un REEMPLAZA cuyo insumo no está en la excepción queda en `reemplazosSinEfecto`;
+ * e. los ADICIONALES no cambian.
+ * Supuestos de v1: la excepción es de la empresa (sin calibración de rendimiento por sucursal) y sin sustitutos: por eso sus ingredientes no traen ni una cosa ni la otra.
  */
 
 type Pedido = LineaArmada["pedidos"][number];
@@ -73,6 +85,22 @@ export interface AdicionalConConsumo {
   consumos: readonly ConsumoDeOpcionParaVender[];
 }
 
+/** GO-3: un ingrediente de la receta propia de una combinación (`RecetaDeCombinacionIngrediente`), ya en números planos. Sin calibración local ni sustitutos (v1). */
+export interface IngredienteDeExcepcion {
+  insumoProductoId: string;
+  /** Por unidad vendida, en la unidad de stock del insumo. */
+  cantidad: number;
+  mermaPorcentaje: number;
+  unidadStockId: string;
+}
+
+/** GO-3: la receta propia de la combinación vendida y qué opciones elegidas son los ejes de esa combinación. */
+export interface ExcepcionDeCombinacion {
+  ingredientes: readonly IngredienteDeExcepcion[];
+  /** Los `opcionId` de las opciones elegidas que son eje (1 o 2): tienen que estar entre `opciones` y ser MEDIDA o VARIANTE. */
+  opcionesDeEjes: readonly string[];
+}
+
 export interface EntradaDeConsumoConfigurado {
   /** Cantidad vendida del producto base (mayor que 0). */
   cantidad: number;
@@ -81,6 +109,8 @@ export interface EntradaDeConsumoConfigurado {
   base: readonly IngredienteDeBase[];
   opciones: readonly OpcionConConsumo[];
   adicionales: readonly AdicionalConConsumo[];
+  /** GO-3: la receta propia de la combinación vendida, si la tiene (ausente = la regla general, como siempre). */
+  excepcion?: ExcepcionDeCombinacion;
 }
 
 export interface ReemplazoSinEfecto {
@@ -139,12 +169,49 @@ function pedidoDeBaseEscalado(cantidad: number, factor: number, base: Ingredient
   return { productoId: ing.insumoProductoId, cantidad: consumo.toNumber(), insumoSustitutoIds: ing.insumoSustitutoIds, unidadStockId: base.unidadStockId };
 }
 
+/**
+ * GO-3: la base y las opciones con la excepción aplicada (reglas a, b y c), o `null` si no hay excepción (o está vacía): en ese caso quien llama sigue con la entrada tal cual.
+ * Valida la excepción (cantidades y mermas, y que los ejes sean opciones elegidas de tipo MEDIDA o VARIANTE).
+ */
+function aplicarExcepcion(entrada: EntradaDeConsumoConfigurado): { base: IngredienteDeBase[]; opciones: OpcionConConsumo[]; medidaEsEje: boolean } | Falla | null {
+  const excepcion = entrada.excepcion;
+  if (excepcion === undefined || excepcion.ingredientes.length === 0) return null;
+  for (const i of excepcion.ingredientes) {
+    if (!Number.isFinite(i.cantidad) || i.cantidad <= 0 || !Number.isFinite(i.mermaPorcentaje) || i.mermaPorcentaje < 0 || i.mermaPorcentaje > 100) {
+      return falla("CONSUMO_INVALIDO", "La receta propia de la combinación tiene un ingrediente con una cantidad o una merma inválida.");
+    }
+  }
+  const ejes = new Set(excepcion.opcionesDeEjes);
+  for (const id of ejes) {
+    const opcion = entrada.opciones.find((o) => o.opcionId === id);
+    if (!opcion || opcion.tipo === "INCLUIDA") return falla("CONSUMO_INVALIDO", "La receta propia de la combinación no corresponde a las opciones elegidas.", id);
+  }
+  const base = excepcion.ingredientes.map(
+    (i): IngredienteDeBase => ({
+      ingrediente: { insumoProductoId: i.insumoProductoId, cantidad: i.cantidad, mermaPorcentaje: i.mermaPorcentaje, rendimientosLocales: [], insumoSustitutoIds: [] },
+      unidadStockId: i.unidadStockId,
+    }),
+  );
+  const opciones = entrada.opciones.map((o): OpcionConConsumo => {
+    if (!ejes.has(o.opcionId)) return o;
+    if (o.tipo === "VARIANTE") return { ...o, consumos: [] };
+    return { ...o, consumos: o.consumos.filter((c) => !c.escalaConLaMedida) };
+  });
+  const medidaEsEje = entrada.opciones.some((o) => o.tipo === "MEDIDA" && ejes.has(o.opcionId));
+  return { base, opciones, medidaEsEje };
+}
+
 export function consumoDeLineaConfigurada(entrada: EntradaDeConsumoConfigurado): ResultadoDeConsumoConfigurado {
-  const { cantidad, sucursalId, base, adicionales } = entrada;
+  const { cantidad, sucursalId, adicionales } = entrada;
   if (!Number.isFinite(cantidad) || cantidad <= 0) return falla("CANTIDAD_INVALIDA", "La cantidad vendida tiene que ser un número mayor que 0.");
 
+  // GO-3: con una receta propia de la combinación, la base y los consumos de los ejes cambian (`aplicarExcepcion`); sin ella, todo sigue exactamente igual.
+  const conExcepcion = aplicarExcepcion(entrada);
+  if (conExcepcion !== null && "ok" in conExcepcion) return conExcepcion;
+  const base = conExcepcion === null ? entrada.base : conExcepcion.base;
+
   // Primero la MEDIDA y después el resto, cada uno en el orden de los grupos: el resultado no depende del orden en que llegaron.
-  const opciones = [...entrada.opciones].sort(
+  const opciones = [...(conExcepcion === null ? entrada.opciones : conExcepcion.opciones)].sort(
     (a, b) =>
       Number(b.tipo === "MEDIDA") - Number(a.tipo === "MEDIDA") ||
       a.ordenDeGrupo - b.ordenDeGrupo ||
@@ -174,6 +241,8 @@ export function consumoDeLineaConfigurada(entrada: EntradaDeConsumoConfigurado):
   }
 
   const factor = medidas.length === 1 && medidas[0].factorEscala !== null ? medidas[0].factorEscala : 1;
+  // GO-3 (regla a): la excepción de una combinación cuyo eje es la MEDIDA ya es la receta de ese tamaño: no se escala. Sin excepción, es el factor de siempre.
+  const factorDeLaBase = conExcepcion !== null && conExcepcion.medidaEsEje ? 1 : factor;
 
   // Un solo reemplazo por insumo de la base, en el orden en que se aplican.
   const reemplazos = new Map<string, { opcion: OpcionConConsumo; consumo: ConsumoDeOpcionParaVender }>();
@@ -193,7 +262,8 @@ export function consumoDeLineaConfigurada(entrada: EntradaDeConsumoConfigurado):
   for (const b of base) {
     const reemplazo = reemplazos.get(b.ingrediente.insumoProductoId);
     if (!reemplazo) {
-      pedidos.push(factor === 1 ? pedidoDeIngrediente(cantidad, b.ingrediente, b.unidadStockId, sucursalId) : pedidoDeBaseEscalado(cantidad, factor, b, sucursalId));
+      // Sin excepción: la fórmula de siempre con f = 1 (idéntica bit a bit) o la escalada. Con excepción (código nuevo), siempre en decimal exacto.
+      pedidos.push(conExcepcion === null && factorDeLaBase === 1 ? pedidoDeIngrediente(cantidad, b.ingrediente, b.unidadStockId, sucursalId) : pedidoDeBaseEscalado(cantidad, factorDeLaBase, b, sucursalId));
       continue;
     }
     if (aplicados.has(b.ingrediente.insumoProductoId)) continue;
