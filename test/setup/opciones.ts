@@ -127,3 +127,13 @@ export function sentenciaDeAdmiteGrupo(e: { productoId: string; grupoId: string 
 export function sentenciaDeAdmiteOpcion(e: { productoId: string; opcionId: string }, extra: Record<string, unknown> = {}): SentenciaPg {
   return sentenciaDeInsercion("ProductoAdmiteOpcion", { id: randomUUID(), productoId: e.productoId, opcionId: e.opcionId, ...extra });
 }
+
+/** El precio de una opción de un producto en una sucursal (120,00 por defecto) para un cliente `pg`. */
+export function sentenciaDePrecioLocal(e: { sucursalId: string; productoId: string; opcionId: string }, extra: Record<string, unknown> = {}): SentenciaPg {
+  return sentenciaDeInsercion("PrecioLocalDeOpcion", { id: randomUUID(), sucursalId: e.sucursalId, productoId: e.productoId, opcionId: e.opcionId, precio: "120.00", ...extra });
+}
+
+/** Una opción apagada en una sucursal para un cliente `pg`. */
+export function sentenciaDeApagado(e: { sucursalId: string; opcionId: string; usuarioId: string }, extra: Record<string, unknown> = {}): SentenciaPg {
+  return sentenciaDeInsercion("OpcionApagadaEnSucursal", { id: randomUUID(), sucursalId: e.sucursalId, opcionId: e.opcionId, apagada: true, actualizadoPorId: e.usuarioId, ...extra });
+}

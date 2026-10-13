@@ -57,6 +57,8 @@ const REGISTRO: Record<string, Entrada> = {
   ImputacionDeGasto: { familia: "propio", embudo: null, motivo: "cada fila es lo que le toca a una sucursal del importe de un gasto cargado en una factura de proveedor (historia, Paquete 3 / M4.3): sin fila la sucursal no soportó nada de ese gasto, no hay valor de empresa que la ausencia reemplace." },
   NotaCreditoProveedorImputacion: { familia: "propio", embudo: null, motivo: "cada fila es lo que le toca a una sucursal del importe de una línea de nota de crédito de proveedor (historia, Paquete 4 / M6): sin fila la sucursal no recibió nada de ese crédito, no hay valor de empresa que la ausencia reemplace." },
   PlanDeCostosSucursal: { familia: "optin", embudo: "src/core/compras/aplicabilidad-de-plan-de-costos.ts", motivo: "un plan sin fila en la sucursal (o con aplica=false) NO aplica ahí: sus gastos quedan «no aplica», no «sin asignar» (planDeCostosAplica)." },
+  PrecioLocalDeOpcion: { familia: "override", embudo: "src/server/lecturas/catalogo/precio-local.ts", motivo: "sin fila habilitada rige el precio de la empresa para esa opción (el de ProductoAdmiteOpcion o el de su versión vigente); la lectura exige además que el producto admita la opción (GO-1)." },
+  OpcionApagadaEnSucursal: { familia: "optout", embudo: "src/core/opciones/validar-opciones-elegidas.ts", motivo: "sin fila la opción está PRENDIDA en la sucursal; solo una fila con apagada=true la apaga (validarOpcionesElegidas: fila ausente = prendida = false, GO-1)." },
 };
 
 /** Los modelos de un schema Prisma que tienen una columna `sucursalId`. */

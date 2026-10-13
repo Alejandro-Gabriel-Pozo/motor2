@@ -40,6 +40,7 @@ model User {
   reclasificacionesDeRenglon ReclasificacionRenglon[]
   distribucionesDeCostoCreadas DistribucionCostoVersion[]
   versionesDeOpcionCreadas   VersionDeOpcion[]
+  opcionesApagadasEnSucursal OpcionApagadaEnSucursal[]
   ventas                     Venta[]
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
   facturasProvConfirmadas    FacturaProveedor[]   @relation("FacturaProveedorConfirmadaPor")
@@ -163,6 +164,8 @@ model Sucursal {
   imputacionesDeGasto      ImputacionDeGasto[]
   imputacionesDeNotaCredito NotaCreditoProveedorImputacion[]
   planesDeCostos           PlanDeCostosSucursal[]
+  preciosLocalesDeOpcion   PrecioLocalDeOpcion[]
+  opcionesApagadas         OpcionApagadaEnSucursal[]
   invitacionSucursals      InvitacionSucursal[]
 
   @@unique([empresaId, nombre])
@@ -426,6 +429,7 @@ model Producto {
   opcionesAdmitidas         ProductoAdmiteOpcion[]
   /// GO-1: la opción de venta que este producto respalda como ANCLA de un ADICIONAL (1 a 1 por el único `(empresaId, productoId)`).
   opcionQueRespalda         OpcionDeGrupo?
+  preciosLocalesDeOpcion    PrecioLocalDeOpcion[]
   consumosDeOpcionComoInsumo ConsumoDeOpcion[] @relation("ConsumoDeOpcionInsumo")
   consumosDeOpcionQueLoReemplazan ConsumoDeOpcion[] @relation("ConsumoDeOpcionReemplazo")
 
@@ -2408,6 +2412,8 @@ model Empresa {
   consumoDeOpcionRel             ConsumoDeOpcion[]
   productoAdmiteGrupoRel         ProductoAdmiteGrupo[]
   productoAdmiteOpcionRel        ProductoAdmiteOpcion[]
+  precioLocalDeOpcionRel         PrecioLocalDeOpcion[]
+  opcionApagadaEnSucursalRel     OpcionApagadaEnSucursal[]
 }
 
 enum EstadoModulo {
@@ -3258,6 +3264,8 @@ model OpcionDeGrupo {
 
   versiones             VersionDeOpcion[]
   productosQueLaAdmiten ProductoAdmiteOpcion[]
+  preciosLocales        PrecioLocalDeOpcion[]
+  apagadasEnSucursal    OpcionApagadaEnSucursal[]
 
   @@unique([empresaId, id])
   @@unique([grupoId, nombre])
@@ -3377,4 +3385,48 @@ model ProductoAdmiteOpcion {
   @@unique([productoId, opcionId])
   @@unique([empresaId, id])
   @@index([opcionId])
+}
+
+/// GO-1: el PRECIO de una opción de un producto EN UNA SUCURSAL (la grilla local; override liviano, como `PrecioLocalProducto`, ADR-009 familia `override`: sin fila habilitada rige el precio de la empresa, el de `ProductoAdmiteOpcion` o el de la versión). `PROPIA`
+/// (`sucursalId` NOT NULL; sus políticas de alcance las agrega GO-1c-rls). `precio` es `DECIMAL(14,2)` de 0,01 o más (CHECK). La app solo cambia `precio`, `habilitado` y `actualizadoEn` (UPDATE por columna), con auditoría del antes y el después, y no borra
+/// nada: la baja es `habilitado = false`. Una fila por (sucursal, producto, opción). Una fila de un par que el producto no admite no hace daño: la lectura exige además la admisión (`ProductoAdmiteOpcion`). Lo cobrado queda congelado en la foto de la línea
+/// (`OpcionElegidaEnLinea`). Sin `@updatedAt`: rompería el privilegio por columna. Nada de `src/` la escribe todavía (GO-2).
+model PrecioLocalDeOpcion {
+  id            String        @id @default(cuid())
+  empresaId     String        @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa       @relation(fields: [empresaId], references: [id])
+  sucursalId    String
+  sucursal      Sucursal      @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  productoId    String
+  producto      Producto      @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  opcionId      String
+  opcion        OpcionDeGrupo @relation(fields: [empresaId, opcionId], references: [empresaId, id])
+  /// El precio de la opción en esa sucursal (0,01 o más, CHECK).
+  precio        Decimal       @db.Decimal(14, 2)
+  habilitado    Boolean       @default(true)
+  actualizadoEn DateTime      @default(now())
+
+  @@unique([sucursalId, productoId, opcionId])
+  @@unique([empresaId, id])
+}
+
+/// GO-1: si una opción está APAGADA en una sucursal (se acabó el ingrediente, no se ofrece hoy). `PROPIA` (`sucursalId` NOT NULL; sus políticas de alcance las agrega GO-1c-rls). ADR-009, familia `optout`: SIN FILA = PRENDIDA (`apagada = false`); solo
+/// una fila con `apagada = true` la apaga. La app la crea y la actualiza con `ON CONFLICT DO UPDATE` de `apagada`, `actualizadoPorId` y `actualizadoEn`; no borra nada. Una fila por (sucursal, opción). Lo resuelve `validarOpcionesElegidas` al vender. No tiene
+/// `@updatedAt`. Nada de `src/` la escribe todavía (GO-2).
+model OpcionApagadaEnSucursal {
+  id              String        @id @default(cuid())
+  empresaId       String        @default(dbgenerated("app_empresa_actual()"))
+  empresa         Empresa       @relation(fields: [empresaId], references: [id])
+  sucursalId      String
+  sucursal        Sucursal      @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  opcionId        String
+  opcion          OpcionDeGrupo @relation(fields: [empresaId, opcionId], references: [empresaId, id])
+  /// Obligatorio, sin valor por defecto: la fila dice explícitamente si está apagada.
+  apagada         Boolean
+  actualizadoPorId String
+  actualizadoPor  User          @relation(fields: [actualizadoPorId], references: [id], onDelete: Restrict)
+  actualizadoEn   DateTime      @default(now())
+
+  @@unique([sucursalId, opcionId])
+  @@unique([empresaId, id])
 }

@@ -52,6 +52,19 @@ function lineasQueLeenPrecioLocalDirecto(fuente: string): number[] {
   return malas;
 }
 
+/** Las líneas (1-based) que leen `precioLocalDeOpcion` (find*) fuera de un comentario (GO-1: la grilla local de las opciones de venta). */
+function lineasQueLeenPrecioLocalDeOpcionDirecto(fuente: string): number[] {
+  const malas: number[] = [];
+  fuente
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .forEach((linea, i) => {
+      if (esComentario(linea)) return;
+      if (/precioLocalDeOpcion\s*\.\s*find/.test(linea)) malas.push(i + 1);
+    });
+  return malas;
+}
+
 const LECTURA_DE_CAPACIDAD = /sucursalTieneCapacidad\s*\([^)]*["']precio_local["']/;
 
 /** Las líneas (1-based) que consultan la capacidad `precio_local` con `sucursalTieneCapacidad` fuera de un comentario. */
@@ -85,6 +98,19 @@ describe("precio local: un solo lugar decide cuál rige (capacidad + fila habili
       problemas,
       `Estas líneas leen PrecioLocalProducto a mano y se saltan la capacidad \`precio_local\` de la sucursal ` +
         `(usá preciosLocalesVigentes de server/lecturas/catalogo/precio-local):\n${problemas.join("\n")}`
+    ).toEqual([]);
+  });
+
+  it("ningún archivo fuera de `server/lecturas/catalogo/precio-local.ts` lee `precioLocalDeOpcion.find*` directo (la grilla local de las opciones de venta, GO-1)", () => {
+    const problemas: string[] = [];
+    for (const ruta of rutas) {
+      const nombre = relative(RAIZ, ruta).split(sep).join("/");
+      if (nombre === "server/lecturas/catalogo/precio-local.ts") continue;
+      for (const linea of lineasQueLeenPrecioLocalDeOpcionDirecto(readFileSync(ruta, "utf8"))) problemas.push(`${nombre}:${linea}`);
+    }
+    expect(
+      problemas,
+      `Estas líneas leen PrecioLocalDeOpcion a mano y se saltan el embudo del precio local (server/lecturas/catalogo/precio-local):\n${problemas.join("\n")}`
     ).toEqual([]);
   });
 
@@ -122,6 +148,17 @@ describe("precio local: un solo lugar decide cuál rige (capacidad + fila habili
     it("no marca un comentario que menciona la lectura", () => {
       const fuente = "// antes: db.precioLocalProducto.findMany — ahora pasa por preciosLocalesVigentes.";
       expect(lineasQueLeenPrecioLocalDirecto(fuente)).toEqual([]);
+    });
+
+    it("marca la lectura directa de la grilla local de las opciones (find*, también sobre una transacción) y no una escritura ni un comentario", () => {
+      const fuente = [
+        "const filas = await db.precioLocalDeOpcion.findMany({ where: { sucursalId } });",
+        "await tx.precioLocalDeOpcion . findFirst({});",
+        "await tx.precioLocalDeOpcion.upsert({});",
+        "// antes: db.precioLocalDeOpcion.findMany — ahora pasa por el embudo.",
+        "await db.precioLocalProducto.findMany({});",
+      ].join("\n");
+      expect(lineasQueLeenPrecioLocalDeOpcionDirecto(fuente)).toEqual([1, 2]);
     });
 
     it("marca la consulta directa de la capacidad precio_local (comillas dobles o simples) y no la de otra capacidad ni un comentario", () => {

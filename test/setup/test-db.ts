@@ -155,6 +155,9 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.rendimientoLocalIngrediente.deleteMany();
   // Los grupos de opciones de venta (GO-1b): los consumos referencian a su versión, al insumo y a la unidad, la versión a la opción y al User, la admisión de un producto al producto, al grupo y a la opción, y la opción al grupo y
   // (el ancla de un adicional) al producto (todo RESTRICT): consumos, versiones, admisiones, opciones y grupos, todo ANTES de producto, unidad, User y sucursal (más abajo).
+  // Lo que decide cada sucursal (GO-1c): el precio local y lo apagado referencian a la sucursal, al producto, a la opción y al User (todo RESTRICT): ANTES del catálogo.
+  await prismaAdmin.precioLocalDeOpcion.deleteMany();
+  await prismaAdmin.opcionApagadaEnSucursal.deleteMany();
   await prismaAdmin.consumoDeOpcion.deleteMany();
   await prismaAdmin.versionDeOpcion.deleteMany();
   await prismaAdmin.productoAdmiteOpcion.deleteMany();
