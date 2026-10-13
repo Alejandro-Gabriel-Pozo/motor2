@@ -1,5 +1,6 @@
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import { CANTIDAD_MAXIMA_DE_OPCION } from "@/core/opciones/public";
 import { componentesDeEleccion, MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/public";
 import { MENSAJE_CUENTA_NO_ENCONTRADA } from "./cuenta.guard";
 import { MENSAJE_ITEM_NO_ENCONTRADO, MENSAJE_PROMO_NO_ENCONTRADA } from "./cuenta-anulacion.guard";
@@ -23,6 +24,12 @@ import type { ComandoAgregarItems, ComandoEnviarACocina, ComandoQuitarItemSinEnv
  *
  * P3 (Paquete 1, I3): la `claveIdempotencia` es OPCIONAL (igual que compras, mermas y ventas: sin ella, el comportamiento de siempre) y, si viene, tiene que ser un UUID
  * (`esClaveIdempotenciaValida`). Se chequea AL FINAL, después de todo lo anterior: así no cambia qué mensaje gana cuando hay dos fallas a la vez.
+ *
+ * GO-2b (ADR-030): la FORMA de las `opciones` de cada ítem, también AL FINAL (después de la clave): una lista de `{ opcionId, cantidad, versionDeOpcionId }` con
+ * textos no vacíos, la cantidad entera de 1 a 10 y la versión OBLIGATORIA (la que vio el mozo), a lo sumo `MAXIMO_OPCIONES_POR_ITEM` por ítem. Una lista vacía se
+ * OMITE (el ítem pasa sin la clave `opciones`): así la huella de un pedido sin opciones es la de siempre. Un ítem sin `opciones` pasa TAL CUAL (el mismo objeto).
+ * Lo demás de las opciones (que el producto las admita, los topes, los mínimos) lo decide el caso de uso con la base. El tope de líneas contando los adicionales
+ * también: recién ahí se sabe cuáles son adicionales.
  */
 export function guardComandoAgregarItems(entrada: unknown): ResultadoDato<ComandoAgregarItems> {
   const { cuentaId, items, promos, claveIdempotencia } = (entrada ?? {}) as { cuentaId?: unknown; items?: unknown; promos?: unknown; claveIdempotencia?: unknown };
@@ -33,7 +40,45 @@ export function guardComandoAgregarItems(entrada: unknown): ResultadoDato<Comand
   if (cantidadDeLineas > MAXIMO_ITEMS_POR_AGREGADO) return rechazar("rango", `No se pueden agregar más de ${MAXIMO_ITEMS_POR_AGREGADO} ítems de una vez.`);
   if (typeof cuentaId !== "string") return rechazar("formato", MENSAJE_CUENTA_NO_ENCONTRADA);
   if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", "Clave de reintento inválida.");
-  return aceptar({ cuentaId, items: items_, promos: promos_, ...(claveIdempotencia !== undefined ? { claveIdempotencia } : {}) });
+  const conOpciones = itemsConOpcionesValidadas(items_);
+  if (!conOpciones.ok) return conOpciones;
+  return aceptar({ cuentaId, items: conOpciones.valor, promos: promos_, ...(claveIdempotencia !== undefined ? { claveIdempotencia } : {}) });
+}
+
+/** Tope de opciones elegidas en UN ítem (GO-2b): alcanza de sobra para un producto con varios grupos y corta una lista desmesurada antes de abrir la transacción. */
+export const MAXIMO_OPCIONES_POR_ITEM = 20;
+
+const MENSAJE_OPCIONES_INVALIDAS = "Las opciones elegidas no son válidas: volvé a elegirlas.";
+
+function esTextoNoVacio(v: unknown): v is string {
+  return typeof v === "string" && v.length > 0;
+}
+
+/** La forma de las `opciones` de cada ítem (ver el docstring de `guardComandoAgregarItems`). */
+function itemsConOpcionesValidadas(items: ComandoAgregarItems["items"]): ResultadoDato<ComandoAgregarItems["items"]> {
+  const salida: ComandoAgregarItems["items"] = [];
+  for (const item of items) {
+    const opciones: unknown = item !== null && typeof item === "object" && "opciones" in item ? (item as { opciones?: unknown }).opciones : undefined;
+    if (opciones === undefined) {
+      salida.push(item);
+      continue;
+    }
+    if (!Array.isArray(opciones)) return rechazar("formato", MENSAJE_OPCIONES_INVALIDAS);
+    if (opciones.length > MAXIMO_OPCIONES_POR_ITEM) return rechazar("rango", `Un ítem admite como máximo ${MAXIMO_OPCIONES_POR_ITEM} opciones.`);
+    for (const o of opciones as unknown[]) {
+      const { opcionId, cantidad, versionDeOpcionId } = (o ?? {}) as { opcionId?: unknown; cantidad?: unknown; versionDeOpcionId?: unknown };
+      if (!esTextoNoVacio(opcionId) || !esTextoNoVacio(versionDeOpcionId)) return rechazar("formato", MENSAJE_OPCIONES_INVALIDAS);
+      if (typeof cantidad !== "number" || !Number.isInteger(cantidad) || cantidad < 1 || cantidad > CANTIDAD_MAXIMA_DE_OPCION) {
+        return rechazar("rango", `La cantidad de una opción tiene que ser un número entero entre 1 y ${CANTIDAD_MAXIMA_DE_OPCION}.`);
+      }
+    }
+    if (opciones.length === 0) {
+      salida.push(Object.fromEntries(Object.entries(item).filter(([clave]) => clave !== "opciones")) as (typeof items)[number]);
+      continue;
+    }
+    salida.push({ ...item, opciones: (opciones as { opcionId: string; cantidad: number; versionDeOpcionId: string }[]).map((o) => ({ opcionId: o.opcionId, cantidad: o.cantidad, versionDeOpcionId: o.versionDeOpcionId })) });
+  }
+  return aceptar(salida);
 }
 
 /**
