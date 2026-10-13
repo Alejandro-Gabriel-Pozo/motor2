@@ -168,11 +168,12 @@ describe("escrituras de permisos y roles: siempre dentro de conEdicionDePermisos
     expect(problemas, `Estas escrituras de permisos/roles no pasan por conEdicionDePermisos (política de la empresa):\n${problemas.join("\n")}`).toEqual([]);
   });
 
+  // Análisis estático de TODO `src` (lee y recorre cada archivo): con el timeout de 5 s por defecto se agotaba en una máquina cargada. Es tiempo, no una aserción.
   it("modo ii: la persistencia de permisos solo se alcanza desde casos de uso llamados dentro de conEdicionDePermisos", () => {
     const archivosDeSrc = new Map(rutas.map((r) => [nombreDe(r), readFileSync(r, "utf8")]));
     const problemas = problemasDeLaPersistenciaDePermisos(archivosDeSrc);
     expect(problemas, `La escritura de permisos/roles de la persistencia quedó alcanzable sin la política de la empresa:\n${problemas.join("\n")}`).toEqual([]);
-  });
+  }, 30_000);
 
   it("la consola de plataforma solo escribe PermisoRol/Rol en la siembra de una empresa nueva (no hay empresa a la que aplicarle una política)", () => {
     const consola = archivos(CONSOLA).map((r) => ({ nombre: relative(CONSOLA, r).split(sep).join("/"), fuente: readFileSync(r, "utf8") }));
