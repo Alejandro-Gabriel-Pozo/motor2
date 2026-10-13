@@ -22,6 +22,9 @@ import { COMANDOS_CON_POLITICA_DE_ALCANCE } from "../setup/politicas-de-alcance-
  *  3. ARRIBA OTRA VEZ: las mismas comprobaciones, y el catálogo es idéntico al de la primera subida.
  *  4. EL CICLO COMPLETO DE M3 MÁS M4: se baja todo (M4.5 a M4.1 y después M3e a M3a) hasta el estado del Paquete 2, el catálogo es idéntico al de entonces, y se sube todo otra vez (M3 y M4) hasta el mismo catálogo de antes.
  *  5. Las reversas son idempotentes (IF EXISTS) y la de M4.4 no toca las políticas del Paquete 1, ni las de Venta ni las de la parte de la factura.
+ *  6. PAQUETE 4, M5 (`ReclasificacionRenglon`, una migración, sobre el estado que dejan los casos de M4 con todo arriba): SUBIR (tabla, claves foráneas, CHECK, una política, privilegios exactos y un humo como `motor2_app`); BAJAR CON DATOS (la reversa ABORTA
+ *     mientras haya reclasificaciones; con M5 arriba las reversas de M4.2 y M4.1 FALLAN por dependencia, sin dejar nada a medias; sin filas la de M5 pasa y el catálogo queda idéntico al de antes de M5); SUBIR OTRA VEZ (catálogo idéntico al de la primera subida);
+ *     el CICLO COMPLETO (M5, M4.5 a M4.1 y M3 hasta el Paquete 2, y de vuelta hasta M5 arriba); y la reversa de M5 idempotente. Los casos 0 a 5 de M4 no cambian.
  */
 const RAIZ = join(__dirname, "../../prisma/migrations");
 const ULTIMA_DEL_PAQUETE_2 = "20261015123000_m2_rls_sucursal_venta";
@@ -73,7 +76,7 @@ async function foto() {
     privilegios: await q(`SELECT table_name::text AS tabla, grantee::text AS rol, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'public' AND grantee IN ('motor2_app', 'motor2_plataforma') ORDER BY 1, 2, 3`),
     tipos: await q(`SELECT t.typname::text AS tipo, array_agg(e.enumlabel::text ORDER BY e.enumsortorder) AS valores FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid WHERE t.typnamespace = 'public'::regnamespace GROUP BY 1 ORDER BY 1`),
     disparadores: await q(`SELECT tgrelid::regclass::text AS tabla, tgname::text AS nombre, tgenabled::text AS habilitado, pg_get_triggerdef(oid) AS definicion FROM pg_trigger WHERE NOT tgisinternal ORDER BY 1, 2`),
-    privilegiosDeColumna: await q(`SELECT table_name::text AS tabla, column_name::text AS columna, grantee::text AS rol, privilege_type FROM information_schema.column_privileges WHERE table_schema = 'public' AND grantee IN ('motor2_app', 'motor2_plataforma') AND (table_name LIKE 'FacturaProveedor%' OR table_name IN ('PuntoDeVentaDeProveedor', 'ConceptoDeGasto', 'ImputacionDeGasto')) ORDER BY 1, 2, 3, 4`),
+    privilegiosDeColumna: await q(`SELECT table_name::text AS tabla, column_name::text AS columna, grantee::text AS rol, privilege_type FROM information_schema.column_privileges WHERE table_schema = 'public' AND grantee IN ('motor2_app', 'motor2_plataforma') AND (table_name LIKE 'FacturaProveedor%' OR table_name IN ('PuntoDeVentaDeProveedor', 'ConceptoDeGasto', 'ImputacionDeGasto', 'ReclasificacionRenglon')) ORDER BY 1, 2, 3, 4`),
     funciones: await q(`SELECT p.proname::text AS nombre, pg_get_functiondef(p.oid) AS definicion FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace ORDER BY 1`),
   };
 }
@@ -337,5 +340,165 @@ describe("M4: subir, bajar y subir (M4.1 a M4.5) sobre una base temporal con el 
     for (const k of Object.keys(antesDeM4) as (keyof typeof antesDeM4)[]) expect(despues[k], `catálogo «${k}» igual que antes de M4`).toEqual(antesDeM4[k]);
     for (const m of SUBIDA) await correr(m, "migration.sql");
     await comprobarArriba("tercera subida");
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// PAQUETE 4, M5 (`ReclasificacionRenglon`): sigue en el MISMO archivo para reutilizar la base temporal, la foto del catálogo y los ayudantes, y parte del estado que dejó el último caso de M4 (todo arriba, con datos de humo).
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+const M5 = "20261017100000_reclasificacion_renglon";
+const FK_M5_DISCRIMINADOR = "ReclasificacionRenglon_empresaId_facturaProveedorRenglonId_fkey";
+const CHECKS_M5 = ["ReclasificacionRenglon_motivo_chk", "ReclasificacionRenglon_naturaleza_chk", "ReclasificacionRenglon_numero_chk", "ReclasificacionRenglon_tipo_de_costo_chk"];
+const CLAVES_FORANEAS_M5 = [FK_M5_DISCRIMINADOR, "ReclasificacionRenglon_creadoPorId_fkey", "ReclasificacionRenglon_empresaId_conceptoGastoId_fkey", "ReclasificacionRenglon_empresaId_fkey"];
+
+const insertarReclasificacion = (id: string, renglon: string, numero: number, extra: { empresa?: string; concepto?: string } = {}) =>
+  `INSERT INTO "ReclasificacionRenglon" (${extra.empresa ? '"empresaId",' : ""}"id","facturaProveedorRenglonId","numero","conceptoGastoId","tipoDeCosto","motivo","claveIdempotencia","payloadHash","resultadoMensaje","creadoPorId")
+   VALUES (${extra.empresa ? `'${extra.empresa}',` : ""}'${id}','${renglon}',${numero},'${extra.concepto ?? "con_humo"}','INVERSION','Era una obra','clave_${id}','huella','Reclasificado.','u_m4')`;
+
+/** Las comprobaciones de «M5 aplicada» (el humo corre en transacciones que se deshacen: no deja ninguna reclasificación). */
+async function comprobarArribaM5(etiqueta: string) {
+  const f = await foto();
+  expect(f.rls.find((r) => r.tabla === "ReclasificacionRenglon"), `${etiqueta}: la tabla con RLS y sin FORCE`).toEqual({ tabla: "ReclasificacionRenglon", rls: true, forzado: false });
+  expect(f.columnas.filter((c) => c.tabla === "ReclasificacionRenglon").map((c) => `${c.columna}:${c.is_nullable}`), `${etiqueta}: las columnas, todas NOT NULL`).toEqual([
+    "id:NO", "empresaId:NO", "facturaProveedorRenglonId:NO", "naturalezaRenglon:NO", "numero:NO", "conceptoGastoId:NO", "tipoDeCosto:NO", "motivo:NO", "claveIdempotencia:NO", "payloadHash:NO", "resultadoMensaje:NO", "creadoPorId:NO", "creadoEn:NO",
+  ]);
+  expect(f.columnas.filter((c) => c.tabla === "ReclasificacionRenglon" && /numeric|double|real/.test(String(c.data_type))), `${etiqueta}: ninguna columna de dinero`).toEqual([]);
+  const delaTabla = f.restricciones.filter((r) => r.tabla === '"ReclasificacionRenglon"');
+  expect(delaTabla.filter((r) => r.contype === "c").map((r) => r.nombre), `${etiqueta}: los cuatro CHECK`).toEqual(CHECKS_M5);
+  expect(delaTabla.filter((r) => r.contype === "c").every((r) => r.convalidated), `${etiqueta}: los CHECK validados`).toBe(true);
+  expect(delaTabla.filter((r) => r.contype === "f").map((r) => r.nombre), `${etiqueta}: las cuatro claves foráneas`).toEqual([...CLAVES_FORANEAS_M5].sort());
+  expect(String(delaTabla.find((r) => r.nombre === FK_M5_DISCRIMINADOR)!.definicion), `${etiqueta}: la clave foránea lleva el discriminador y ON UPDATE RESTRICT`).toBe(
+    'FOREIGN KEY ("empresaId", "facturaProveedorRenglonId", "naturalezaRenglon") REFERENCES "FacturaProveedorRenglon"("empresaId", id, naturaleza) ON UPDATE RESTRICT ON DELETE RESTRICT',
+  );
+  expect(f.indices.filter((i) => i.tabla === "ReclasificacionRenglon").map((i) => i.nombre), `${etiqueta}: los índices`).toEqual([
+    "ReclasificacionRenglon_claveIdempotencia_key", "ReclasificacionRenglon_conceptoGastoId_idx", "ReclasificacionRenglon_empresaId_id_key", "ReclasificacionRenglon_facturaProveedorRenglonId_numero_key", "ReclasificacionRenglon_pkey",
+  ]);
+  expect(f.politicas.filter((p) => p.tabla === "ReclasificacionRenglon").map((p) => p.nombre), `${etiqueta}: UNA sola política (DE EMPRESA: sin políticas de sucursal)`).toEqual(["aislamiento_empresa"]);
+  expect(f.privilegios.filter((p) => p.tabla === "ReclasificacionRenglon"), `${etiqueta}: solo se agrega; motor2_plataforma, nada`).toEqual([
+    { tabla: "ReclasificacionRenglon", rol: "motor2_app", privilege_type: "INSERT" }, { tabla: "ReclasificacionRenglon", rol: "motor2_app", privilege_type: "SELECT" },
+  ]);
+  expect(f.privilegiosDeColumna.filter((p) => p.tabla === "ReclasificacionRenglon" && p.privilege_type === "UPDATE"), `${etiqueta}: ninguna columna con UPDATE`).toEqual([]);
+  expect(f.politicas.filter((p) => String(p.nombre).startsWith("alcance_sucursal_")), `${etiqueta}: M5 no suma políticas de sucursal`).toHaveLength(TABLAS_DEL_PAQUETE_1.length * COMANDOS_CON_POLITICA_DE_ALCANCE.length + 12);
+
+  // Los gastos del humo: se vuelven a sembrar como dueño (una reversa anterior pudo haberlos sacado), con la tabla de M5 vacía primero (sus claves foráneas frenarían el borrado del renglón).
+  const c = base.cliente;
+  for (const tabla of ["ReclasificacionRenglon", "ImputacionDeGasto", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedor", "ConceptoDeGasto"]) await c.query(`DELETE FROM "${tabla}"`);
+  await c.query(insertarFactura("fact_humo", E));
+  await c.query(insertarConcepto("con_humo", "ALQUILER", E));
+  await c.query(insertarRenglonSinStock("ren_humo", "fact_humo", "con_humo", 1, E));
+  await c.query(`INSERT INTO "FacturaProveedorRenglon" ("empresaId","id","facturaProveedorId","orden","naturaleza","productoId","cantidadStock","precioPorUnidadStock","detalle","precioTotal") VALUES ('${E}','ren_merc','fact_humo',2,'MERCADERIA','pro_m4',1,100,'1 kg',100.00)`);
+
+  // Humo como el rol real de la app (todo dentro de una transacción que se deshace).
+  app ??= await conectarComoApp();
+  await app.query("BEGIN");
+  try {
+    await app.query("SELECT set_config('app.empresa_id', $1, true)", [E]);
+    expect(await falla(app, insertarReclasificacion("rec_humo", "ren_humo", 1)), `${etiqueta}: reclasificar un renglón sin stock anda, sin alcance de sucursal`).toBeNull();
+    expect((await app.query(`SELECT id FROM "ReclasificacionRenglon"`)).rows, `${etiqueta}: se ve la propia`).toEqual([{ id: "rec_humo" }]);
+    expect(await falla(app, insertarReclasificacion("rec_dup", "ren_humo", 1)), `${etiqueta}: repetir (renglón, número) da 23505`).toBe("23505");
+    expect(await falla(app, insertarReclasificacion("rec_merc", "ren_merc", 1)), `${etiqueta}: reclasificar mercadería da 23503`).toBe("23503");
+    expect(await falla(app, `UPDATE "ReclasificacionRenglon" SET "tipoDeCosto" = 'EXTRAORDINARIO' WHERE id = 'rec_humo'`), `${etiqueta}: UPDATE da 42501`).toBe("42501");
+    expect(await falla(app, `DELETE FROM "ReclasificacionRenglon" WHERE id = 'rec_humo'`), `${etiqueta}: DELETE da 42501`).toBe("42501");
+    expect(await falla(app, `UPDATE "FacturaProveedorRenglon" SET "tipoDeCosto" = 'EXTRAORDINARIO' WHERE id = 'ren_humo'`), `${etiqueta}: el renglón sigue sin UPDATE (la versión 0 es inmutable)`).toBe("42501");
+  } finally {
+    await app.query("ROLLBACK");
+  }
+  expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "ReclasificacionRenglon"`))[0]!.n), `${etiqueta}: el humo no dejó ninguna fila`).toBe(0);
+}
+
+let antesDeM5: Awaited<ReturnType<typeof foto>>;
+let arribaConM5: Awaited<ReturnType<typeof foto>>;
+
+describe("M5: subir, bajar y subir (`ReclasificacionRenglon`) sobre el estado que deja M4 con todo arriba", () => {
+  it("6.0. la migración existe, es posterior a M4.5, avisa que requiere autorización, tiene down.sql que ABORTA, no es una migración de políticas de sucursal y su SQL no nombra políticas de alcance", () => {
+    expect(M5 > M4_5, "M5 es posterior a M4.5").toBe(true);
+    expect(sql(M5, "migration.sql").split("\n")[0]).toContain("REQUIERE AUTORIZACIÓN EXPRESA");
+    expect(sql(M5, "down.sql")).toMatch(/ABORTA/);
+    expect(sql(M5, "down.sql")).toContain('DROP TABLE IF EXISTS "ReclasificacionRenglon"');
+    for (const archivo of ["migration.sql", "down.sql"] as const) {
+      expect(sql(M5, archivo), `${archivo} no nombra políticas de alcance de sucursal`).not.toContain("alcance_sucursal_");
+      expect(sql(M5, archivo), `${archivo} no nombra el ayudante de alcance`).not.toContain("app_sucursales_");
+    }
+    expect(MIGRACIONES_DE_POLITICAS_POSTERIORES.map((g) => g.migracion)).not.toContain(M5);
+    expect(MIGRACIONES_DE_POLITICAS_DE_SUCURSAL.map((g) => g.migracion)).not.toContain(M5);
+    expect(TABLAS_DEL_PAQUETE_1).not.toContain("ReclasificacionRenglon");
+  });
+
+  it("6.1. SUBIR: M5 sobre M4 con todo arriba deja la tabla, las claves foráneas, los CHECK, la política, los privilegios exactos y un humo como motor2_app", async (ctx) => {
+    if (!hayRol) return ctx.skip();
+    antesDeM5 = await foto();
+    expect(antesDeM5.rls.find((r) => r.tabla === "ReclasificacionRenglon"), "antes de M5 la tabla no existe").toBeUndefined();
+    await correr(M5, "migration.sql");
+    await comprobarArribaM5("primera subida de M5");
+    arribaConM5 = await foto();
+  });
+
+  it("6.2. BAJAR CON DATOS: la reversa ABORTA mientras haya reclasificaciones; con M5 arriba las reversas de M4.2 y M4.1 FALLAN sin dejar nada a medias; sin filas la de M5 pasa y el catálogo queda como antes de M5", async (ctx) => {
+    if (!hayRol) return ctx.skip();
+    const c = base.cliente;
+    await c.query(insertarReclasificacion("rec_1", "ren_humo", 1, { empresa: E }));
+    await c.query(insertarReclasificacion("rec_2", "ren_humo", 2, { empresa: E }));
+    // 1) ABORTA con filas, sin tocar nada.
+    await expect(correr(M5, "down.sql")).rejects.toThrow(/No se puede bajar M5: hay 2 reclasificación/);
+    const sinTocar = await foto();
+    for (const k of Object.keys(arribaConM5) as (keyof typeof arribaConM5)[]) expect(sinTocar[k], `el aborto no deja nada a medias («${k}»)`).toEqual(arribaConM5[k]);
+    expect(Number((await q<{ n: string }>(`SELECT count(*) AS n FROM "ReclasificacionRenglon"`))[0]!.n), "las dos reclasificaciones siguen").toBe(2);
+
+    // 2) Con M5 arriba (aun vacía), el down de M4.2 y el de M4.1 FALLAN por dependencia: la clave foránea de M5 depende del índice del discriminador y del catálogo. Se bajan antes M4.5, M4.4 y M4.3 y se sacan los gastos, para que
+    //    la que frene NO sea la guarda de datos de M4.2 sino la dependencia.
+    await c.query(`DELETE FROM "ReclasificacionRenglon"`);
+    await correr(M4_5, "down.sql");
+    await correr(M4_4, "down.sql");
+    await correr(M4_3, "down.sql");
+    await c.query(`DELETE FROM "FacturaProveedorRenglon" WHERE "naturaleza" = 'SIN_STOCK'`);
+    const bloqueada = await foto();
+    await expect(correr(M4_2, "down.sql")).rejects.toMatchObject({ code: "2BP01" });
+    await expect(correr(M4_1, "down.sql")).rejects.toMatchObject({ code: "2BP01" });
+    const intacta = await foto();
+    for (const k of Object.keys(bloqueada) as (keyof typeof bloqueada)[]) expect(intacta[k], `las reversas bloqueadas no dejan nada a medias («${k}»)`).toEqual(bloqueada[k]);
+    // Se vuelve a subir lo que se bajó para probar la reversa de M5 en el estado de antes.
+    for (const m of [M4_3, M4_4, M4_5]) await correr(m, "migration.sql");
+    const restaurada = await foto();
+    for (const k of Object.keys(arribaConM5) as (keyof typeof arribaConM5)[]) expect(restaurada[k], `catálogo «${k}» igual que con M5 arriba`).toEqual(arribaConM5[k]);
+
+    // 3) Sin filas, la reversa de M5 pasa y el catálogo queda IDÉNTICO al de antes de M5.
+    await correr(M5, "down.sql");
+    const despues = await foto();
+    for (const k of Object.keys(antesDeM5) as (keyof typeof antesDeM5)[]) expect(despues[k], `catálogo «${k}» igual que antes de M5`).toEqual(antesDeM5[k]);
+    expect(await q(`SELECT 1 FROM pg_class WHERE relname = 'ReclasificacionRenglon' AND relnamespace = 'public'::regnamespace`), "sin la tabla").toEqual([]);
+  });
+
+  it("6.3. SUBIR OTRA VEZ: las mismas comprobaciones y el catálogo es idéntico al de la primera subida", async (ctx) => {
+    if (!hayRol) return ctx.skip();
+    await correr(M5, "migration.sql");
+    await comprobarArribaM5("segunda subida de M5");
+    const otraVez = await foto();
+    for (const k of Object.keys(arribaConM5) as (keyof typeof arribaConM5)[]) expect(otraVez[k], `catálogo «${k}» igual que la primera vez`).toEqual(arribaConM5[k]);
+  });
+
+  it("6.4. EL CICLO COMPLETO: se baja M5, M4.5 a M4.1 y M3e a M3a hasta el Paquete 2 (catálogo idéntico al de entonces) y se sube todo otra vez hasta el mismo catálogo con M5 arriba", async (ctx) => {
+    if (!hayRol) return ctx.skip();
+    // Sin gastos cargados (la reversa de M4.2 aborta si los hay), como en el ciclo de M4. Con reclasificaciones cargadas tampoco se podría borrar un renglón (RESTRICT): la tabla de M5 se vacía antes.
+    await base.cliente.query(`DELETE FROM "ReclasificacionRenglon"`);
+    await base.cliente.query(`DELETE FROM "ImputacionDeGasto"`);
+    await base.cliente.query(`DELETE FROM "FacturaProveedorRenglon" WHERE "naturaleza" = 'SIN_STOCK'`);
+    for (const m of [M5, ...BAJADA]) await correr(m, "down.sql");
+    for (const m of [...M3].reverse()) await correr(m, "down.sql");
+    const abajo = await foto();
+    for (const k of Object.keys(antesDeM3) as (keyof typeof antesDeM3)[]) expect(abajo[k], `catálogo «${k}» igual que antes de M3`).toEqual(antesDeM3[k]);
+    for (const m of [...M3, ...SUBIDA, M5]) await correr(m, "migration.sql");
+    await comprobarArribaM5("ciclo completo");
+    const otraVez = await foto();
+    for (const k of Object.keys(arribaConM5) as (keyof typeof arribaConM5)[]) expect(otraVez[k], `catálogo «${k}» igual que la primera vez`).toEqual(arribaConM5[k]);
+  });
+
+  it("6.5. La reversa de M5 es idempotente (IF EXISTS): bajar dos veces no falla, deja el catálogo de antes de M5, y volver a subir deja todo arriba", async (ctx) => {
+    if (!hayRol) return ctx.skip();
+    await correr(M5, "down.sql");
+    await correr(M5, "down.sql");
+    const abajo = await foto();
+    for (const k of Object.keys(antesDeM5) as (keyof typeof antesDeM5)[]) expect(abajo[k], `catálogo «${k}» igual que antes de M5`).toEqual(antesDeM5[k]);
+    await correr(M5, "migration.sql");
+    await comprobarArribaM5("tercera subida de M5");
   });
 });
