@@ -10,7 +10,7 @@ import { CACHE_PUBLICO_DE_LA_CARTA } from "@/core/seguridad/cabeceras";
  * si una página pública leyera las cookies o los encabezados del pedido, la CDN le serviría a un visitante lo que se armó para otro. Este guardián fija, por AST y sin base, tres cosas sobre TODO el código alcanzable
  * desde las páginas y rutas de `(carta-publica)` (sus componentes y `server/carta-publica/sin-sesion.ts`):
  *  1. ninguno importa `next/headers` ni llama a `cookies()`, `headers()`, `draftMode()`, `connection()` ni `unstable_noStore()` (lo que vuelve dinámica a una página o la hace variar por pedido);
- *  2. la carta de una sucursal es ISR de 60 s (`revalidate = 60` + `generateStaticParams`, sin `dynamic`), y de las páginas públicas solo el portal es `force-dynamic` (a propósito, ver su nota);
+ *  2. la carta de una sucursal es ISR de 60 s (`revalidate = 60` + `generateStaticParams`, sin `dynamic`), y de las páginas públicas solo el portal y el `sitemap.xml` son `force-dynamic` (a propósito, ver su nota);
  *  3. la cabecera pública de 60 s está puesta para el portal en `next.config.ts` (la ruta técnica y el host de la carta) y `expireTime` acota el `stale-while-revalidate` de las páginas ISR.
  * Que Next de verdad emita esos encabezados y que el panel NO los lleve lo prueba `test/e2e/carta-publica-cache.spec.ts`.
  *
@@ -76,9 +76,12 @@ describe("la parte pública de la carta es cacheable: no depende de quién la pi
 
   it("el portal es dinámico para Next (a propósito) y ninguna otra página pública fuerza lo dinámico ni fija otro caché", () => {
     expect(configDeCache(leer("src/app/(carta-publica)/carta-publica/[empresa]/page.tsx"))).toEqual({ dynamic: "force-dynamic", generateStaticParams: false });
-    for (const rel of ["src/app/(carta-publica)/carta-publica/[empresa]/robots.txt/route.ts", "src/app/(carta-publica)/carta-publica/[empresa]/sitemap.xml/route.ts"]) {
-      expect(configDeCache(leer(rel)), rel).toEqual({ generateStaticParams: false });
-    }
+    expect(configDeCache(leer("src/app/(carta-publica)/carta-publica/[empresa]/robots.txt/route.ts"))).toEqual({ generateStaticParams: false });
+  });
+
+  it("el sitemap.xml es dinámico a propósito: sin `force-dynamic` Next lo prerenderiza en el build con un relleno en lugar de la empresa y en Vercel el pedido real da 404", () => {
+    // Medido en producción (2026-10-13): `/carta-publica/-/sitemap.xml` aparecía en el prerender-manifest y `carta.<dominio>/sitemap.xml` daba 404 de HTML (caía en `[sucursal]`), aunque el e2e con `next start` daba 200.
+    expect(configDeCache(leer("src/app/(carta-publica)/carta-publica/[empresa]/sitemap.xml/route.ts"))).toEqual({ dynamic: "force-dynamic", generateStaticParams: false });
   });
 
   it("next.config.ts pone el caché público de 60 s al portal (ruta técnica y host de la carta) y acota el stale-while-revalidate de las páginas ISR", () => {
