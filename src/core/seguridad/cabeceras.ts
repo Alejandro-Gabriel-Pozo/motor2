@@ -98,6 +98,13 @@ export function cabecerasCarta({ https, indexable }: { https: boolean; indexable
   ];
 }
 
+/**
+ * `Cache-Control` de lo público de la carta que Next sirve dinámico (el portal, `robots.txt` y `sitemap.xml`): la CDN lo guarda 60 s y, vencido, sirve la copia mientras pide una nueva (hasta 300 s más). La carta de
+ * una sucursal NO lleva esta cabecera puesta a mano: es ISR y Next arma la suya (`revalidate = 60` y `expireTime` de `next.config.ts` dan el mismo `s-maxage=60, stale-while-revalidate=300`). Es una respuesta
+ * pública, igual para todos: ninguna de estas páginas lee la sesión ni las cookies.
+ */
+export const CACHE_PUBLICO_DE_LA_CARTA: Cabecera = { key: "Cache-Control", value: "public, s-maxage=60, stale-while-revalidate=300" };
+
 /** Nonce criptográficamente aleatorio y distinto en cada pedido (base64 de 16 bytes). */
 export function generarNonce(azar: FuenteDeAzar): string {
   return btoa(String.fromCharCode(...azar.bytes(16)));

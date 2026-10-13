@@ -5,13 +5,16 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 import { patronHostZonaCarta, reglasRedirectAppACarta, reglasRedirectCarta, reglasRewriteCarta } from "./src/core/carta/host";
 import { reglasRedirectEmpresaUnica, reglasRewriteEmpresaUnica } from "./src/core/carta/carta-empresa-unica";
 import { sirvePorHttps } from "./src/core/auth/cookie-sesion";
-import { cabecerasCarta, cabecerasComunes, NO_INDEXAR } from "./src/core/seguridad/cabeceras";
+import { CACHE_PUBLICO_DE_LA_CARTA, cabecerasCarta, cabecerasComunes, NO_INDEXAR } from "./src/core/seguridad/cabeceras";
 
 const dominioBaseCarta = process.env.CARTA_DOMINIO_BASE?.trim().toLowerCase();
 
 const nextConfig: NextConfig = {
   // S-32: sin `X-Powered-By: Next.js` (no anunciar el framework ni su versión a quien escanea).
   poweredByHeader: false,
+  // ISR de la carta de una sucursal (`revalidate = 60`): `Cache-Control: s-maxage=60, stale-while-revalidate=300`. Sin esto el `stale-while-revalidate` es de un año y un CDN podría servir
+  // una carta de hace meses mientras regenera. La aplicación (login, panel, POS) es dinámica y no usa ISR: este valor no la toca.
+  expireTime: 360,
   // Copia de CARTA_DOMINIO_BASE tal como la vio el build (se incrusta en el bundle): `instrumentation.ts` la compara con la del arranque.
   env: { CARTA_DOMINIO_BASE_COMPILADO: dominioBaseCarta ?? "", CARTA_EMPRESA_UNICA_COMPILADO: process.env.CARTA_EMPRESA_UNICA ?? "" },
   // Silencia el warning de Turbopack: hay otro package-lock.json en la raíz
@@ -30,7 +33,14 @@ const nextConfig: NextConfig = {
       { source: "/:path*", headers: cabecerasComunes() },
       { source: "/:path*", headers: [NO_INDEXAR] },
       { source: "/carta-publica/:path*", headers: cabecerasCarta({ https, indexable: false }) },
-      ...(dominioBaseCarta ? [{ source: "/:path*", has: [{ type: "host" as const, value: patronHostZonaCarta(dominioBaseCarta) }], headers: cabecerasCarta({ https, indexable: true }) }] : []),
+      // El portal es dinámico (siempre al día en Next) pero público: lo guarda la CDN 60 s. Solo el portal; la carta de una sucursal es ISR y Next arma su `Cache-Control`.
+      { source: "/carta-publica/:empresa", headers: [CACHE_PUBLICO_DE_LA_CARTA] },
+      ...(dominioBaseCarta
+        ? [
+            { source: "/:path*", has: [{ type: "host" as const, value: patronHostZonaCarta(dominioBaseCarta) }], headers: cabecerasCarta({ https, indexable: true }) },
+            { source: "/", has: [{ type: "host" as const, value: patronHostZonaCarta(dominioBaseCarta) }], headers: [CACHE_PUBLICO_DE_LA_CARTA] },
+          ]
+        : []),
     ];
   },
   // ADR-006: /catalogo/carta pasó a /carta (carta como módulo propio, ya

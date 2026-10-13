@@ -89,7 +89,7 @@ const proyectarSeccion = (s: SeccionCartaV1): SeccionCartaPublica => ({
 });
 
 /**
- * La etiqueta de caché de TODAS las cartas públicas de UNA empresa (S-26 del plan de endurecimiento de seguridad, tanda T9). La carta de cada sucursal se cachea 5 minutos
+ * La etiqueta de caché de TODAS las cartas públicas de UNA empresa (S-26 del plan de endurecimiento de seguridad, tanda T9). La carta de cada sucursal se cachea 60 segundos
  * (ISR) con esta etiqueta, y toda mutación de carta de la empresa invalida SOLO esa etiqueta (`server/actions/carta/revalidar.ts`): lo de una empresa nunca saca del caché
  * lo de otra. Antes se invalidaba el patrón `/(carta-publica)/carta-publica/[empresa]/[sucursal]`, que es de todas las empresas a la vez.
  *

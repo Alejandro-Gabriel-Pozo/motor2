@@ -6,7 +6,7 @@ import { configPortalPublica, empresaCartaPublica, portalCartaPublico } from "@/
 import { PortalVista } from "@/components/carta-publica/portal-vista";
 import { direccionPublicaDeCarta, hrefDeCartaPublica, metadataDeCartaPublica } from "@/components/carta-publica/metadatos";
 
-// Dinámico a propósito (sin caché): ver la nota de abajo.
+// Dinámico a propósito (sin caché de Next): ver la nota de abajo.
 export const dynamic = "force-dynamic";
 
 // `cache` de React: `generateMetadata` y la página resuelven lo mismo en el mismo pedido; se consulta la base una sola vez.
@@ -39,9 +39,14 @@ export async function generateMetadata({ params }: { params: Promise<{ empresa: 
  * si el slug no corresponde a una `Empresa` ACTIVE (ADR-007, A3: la empresa sale de la base, no de una variable de entorno) y, desde
  * S-24, también si la empresa no tiene ninguna sucursal publicada y activa: el mismo 404, para que la página no delate qué empresas son clientes.
  *
- * SIN `revalidate`/ISR a propósito (ADR-006, Fase 4): es una lista chica (una consulta) y tiene que estar siempre al día —
+ * SIN `revalidate`/ISR a propósito (ADR-006, Fase 4): es una lista chica (unas pocas consultas) y para Next tiene que estar siempre al día —
  * el registro de sucursales cambia desde el admin y el propio portal `/carta-publica/e2e` es compartido por varios e2e. La
  * página de cada sucursal sí se cachea (con invalidación desde las acciones de carta): `[sucursal]/page.tsx`.
+ *
+ * Lo que sí hace es salir con `Cache-Control: public, s-maxage=60, stale-while-revalidate=300` (`next.config.ts`, `CACHE_PUBLICO_DE_LA_CARTA`): la CDN guarda la respuesta 60 s y la base deja de recibir una visita
+ * por cada persona que abre el portal (desde Argentina a Portland tardaba entre 0,7 y 2,9 s). Es seguro porque la respuesta es pública y la misma para todos: la empresa sale del segmento de ruta (que el rewrite del
+ * host de la carta completa con la empresa del host) y esta página no lee `headers()` ni `cookies()` (lo fija `test/arquitectura/carta-publica-cacheable.test.ts`). Un cambio del registro de sucursales se ve
+ * en el portal a los 60 s como mucho.
  */
 export default async function PortalPage({ params }: { params: Promise<{ empresa: string }> }) {
   const { empresa } = await params;

@@ -6,10 +6,10 @@ import { cartaPublica, empresaCartaPublica } from "@/server/carta-publica/sin-se
 import { CartaVista } from "@/components/carta-publica/carta-vista";
 import { direccionPublicaDeCarta, hrefDeCartaPublica, metadataDeCartaPublica } from "@/components/carta-publica/metadatos";
 
-// ISR: se cachea 5 minutos, y las acciones del módulo carta la invalidan al instante (`revalidarCartasPublicas`). Sin
+// ISR: se cachea 60 segundos, y las acciones del módulo carta (y las del catálogo que cambian lo que la carta muestra) la invalidan al instante (`revalidarCartasPublicas`). Sin
 // `generateStaticParams` una ruta con segmentos dinámicos NO entra en ISR (el build la marca ƒ y `revalidate` no hace nada):
 // devolver [] la habilita sin prerenderizar ninguna sucursal — cada una se genera en su primera visita.
-export const revalidate = 300;
+export const revalidate = 60;
 
 export function generateStaticParams() {
   return [];
@@ -53,9 +53,8 @@ export async function generateMetadata({ params }: { params: Promise<{ empresa: 
  * distingue cuál caso es (mismo criterio que hoy). Sin `headers()`/`cookies()` acá: la empresa se resuelve por el segmento
  * de ruta `[empresa]`, no por el Host (eso es Fase 6, el rewrite de `next.config.ts`).
  *
- * Caché (Fase 4): `revalidate = 300` + (S-26) la etiqueta de caché DE LA EMPRESA con que `cartaPublica` marca la carta (`revalidarCartasPublicas(empresaSlug)` la invalida, y solo la de esa empresa) en cada acción de
- * `src/server/actions/carta/` que cambia lo que se ve (ver `revalidar.ts`). Límite conocido: un cambio hecho fuera del módulo
- * carta que la carta muestra (precio, nombre o disponibilidad de un producto) tarda hasta 5 minutos en verse.
+ * Caché (Fase 4): `revalidate = 60` + (S-26) la etiqueta de caché DE LA EMPRESA con que `cartaPublica` marca la carta (`revalidarCartasPublicas(empresaSlug)` la invalida, y solo la de esa empresa) en cada acción de
+ * `src/server/actions/carta/` y del catálogo que cambia lo que se ve (ver `revalidar.ts`). Un cambio por una vía que no la llame (precio, nombre o disponibilidad de un producto) se ve a los 60 segundos como mucho.
  */
 export default async function CartaPage({ params }: { params: Promise<{ empresa: string; sucursal: string }> }) {
   const { empresa, sucursal } = await params;
