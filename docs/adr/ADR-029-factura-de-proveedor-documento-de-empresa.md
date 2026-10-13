@@ -1,6 +1,6 @@
 # ADR-029: La factura de proveedor es un documento de la empresa (repartida entre sucursales)
 
-> Redactado el 2026-10-12 (Paquete 3, M3). **Estado: el MODELO está escrito en el repositorio (seis migraciones aditivas con su `down.sql` y sus pruebas, más las cinco de los gastos, M4, ver §10); NINGÚN caso de uso las escribe todavía (Etapa C) y ninguna está aplicada a una base real. Cada migración REQUIERE AUTORIZACIÓN EXPRESA PARA APLICAR, base por base, con respaldo y ensayo en una rama de Neon.** Decisiones del dueño D1 a D5, la perilla de IVA, la recepción por sucursal y los datos del proveedor (2026-10-12): ver las secciones de abajo.
+> Redactado el 2026-10-12 (Paquete 3, M3). **Estado: el MODELO está escrito en el repositorio (seis migraciones aditivas con su `down.sql` y sus pruebas, más las cinco de los gastos, M4, ver §10, y la de la reclasificación de un gasto, M5, ver §11); NINGÚN caso de uso las escribe todavía (Etapa C). M3 y M4 están aplicadas a la base de stockhneuquen desde el 2026-10-13 (`docs/deploy-con-migraciones.md`); M5 está escrita y NO está aplicada a ninguna base real. Cada migración REQUIERE AUTORIZACIÓN EXPRESA PARA APLICAR, base por base, con respaldo y ensayo en una rama de Neon.** Decisiones del dueño D1 a D5, la perilla de IVA, la recepción por sucursal y los datos del proveedor (2026-10-12): ver las secciones de abajo.
 
 ## Contexto
 
@@ -98,6 +98,34 @@ Cinco migraciones más, **después de las de M3** (`20261016110000` a `202610161
 
 **Pruebas:** `test/persistencia/migracion-concepto-de-gasto.test.ts`, `migracion-renglon-sin-stock.test.ts`, `migracion-imputacion-de-gasto.test.ts` e `imputacion-de-gasto-dinero.test.ts` (reglas, concurrencia real con clientes `pg` como `motor2_app`, aislamiento y privilegios), `test/aislamiento/imputacion-de-gasto-rls.test.ts`, `test/permisos/migracion-permisos-gastos.test.ts` y `test/aislamiento/paquete-3-m4-subir-bajar-subir.test.ts` (subir, bajar con datos nuevos y volver a subir; incluye el ciclo completo de M3 más M4).
 
+### 11. La reclasificación de un gasto (M5, C26, 2026-10-13): `ReclasificacionRenglon`
+
+Una migración más, **después de las de M4** (`20261017100000_reclasificacion_renglon`), con `down.sql`, **REQUIERE AUTORIZACIÓN EXPRESA PARA APLICAR** y NO está aplicada a ninguna base real. Resuelve cómo se corrige un gasto ya cargado sin anular la factura y volver a cargarla: el renglón es inmutable (la app no tiene UPDATE sobre él) y la corrección es una **versión nueva** que se agrega aparte. Decisiones del dueño: D1 (la reclasificación corrige el **concepto de gasto y el tipo de costo**; cada versión es la foto completa de los dos, ambos NOT NULL) y D2 (**no hay fecha de vigencia**: la versión rige desde `creadoEn`, en UTC, y vale para el período original del gasto, que sigue saliendo de `FacturaProveedor.fecha`).
+
+| Columna | Tipo y regla |
+|---|---|
+| `id`, `empresaId` | TEXT PK; `empresaId` NOT NULL con default `app_empresa_actual()` |
+| `facturaProveedorRenglonId`, `naturalezaRenglon` | El renglón y su discriminador: `naturalezaRenglon` NOT NULL, default y CHECK `SIN_STOCK` |
+| `numero` | INTEGER NOT NULL, CHECK `>= 1`; único por renglón |
+| `conceptoGastoId`, `tipoDeCosto` | NOT NULL; el concepto con clave foránea compuesta `(empresaId, conceptoGastoId)`; el tipo con CHECK de los cinco valores (los mismos que el concepto y el renglón) |
+| `motivo` | NOT NULL, CHECK de al menos un carácter visible y hasta 200 (el largo del motivo de anulación) |
+| `claveIdempotencia`, `payloadHash`, `resultadoMensaje` | Clave única GLOBAL (ADR-028); huella y mensaje devuelto, para reproducirlo en un reintento (I3) |
+| `creadoPorId`, `creadoEn` | Clave foránea a `User`; instante UTC, default `CURRENT_TIMESTAMP` |
+
+**Es de la empresa, no de la sucursal.** La tabla es `DE_EMPRESA` (RLS por empresa, una sola política `aislamiento_empresa`, sin `sucursalId`). (1) Lo que se reclasifica es el renglón y el tipo de costo es una sola copia por renglón: una tabla por sucursal permitiría dos clasificaciones del mismo renglón. (2) **El árbitro de la concurrencia tiene que ver todas las versiones**: el caso de uso calcula `numero` = vigente + 1; con una política por sucursal, quien ve solo la sucursal A no vería las versiones hechas desde B y elegiría un número viejo, mientras que siendo de empresa todos ven lo mismo y el único `(renglón, numero)` elige una sola ganadora. (3) Las reglas del guardián de alcance lo exigen: una clave foránea a `Sucursal` la obligaría a ser `PROPIA`, y una tabla de empresa no puede apuntar a una con alcance de sucursal (por eso no referencia `ImputacionDeGasto`). (4) No filtra nada nuevo: el renglón, con su `precioTotal`, ya se ve desde cualquier sucursal (§10, «Quién ve qué»). La autorización por sucursal la valida el servidor en la Etapa C: hace falta `gasto_reclasificar` en **cada** sucursal que tenga una imputación del renglón, y esas imputaciones se leen con `lecturaDeVerificacionEnLaEmpresa`; leerlas con el alcance de una sola sucursal haría que la regla falle abierta (quien ve solo A no ve las imputaciones de B y la dejaría pasar).
+
+**La versión vigente, sin ningún UPDATE.** La versión 0 es el propio renglón (no se escribe fila al cargar). Cada reclasificación agrega `numero` = vigente + 1 con el concepto y el tipo de costo completos. **La vigente es la fila de `numero` mayor; si no hay ninguna, es el renglón**: derivado, nunca un flag (el molde es `RecetaVersion`). Pueden quedar huecos de `numero` solo si el dueño escribe por SQL; la regla del máximo los tolera. Un lector que lea `FacturaProveedorRenglon.tipoDeCosto` directamente ignora las reclasificaciones: el que lea el tipo de costo de un gasto tiene que pasar por la función de la clasificación vigente que trae la Etapa C, con su guardián.
+
+**Qué decide la base y qué el caso de uso.** La base decide: que solo se pueda reclasificar un renglón `SIN_STOCK` (clave foránea de tres columnas `(empresaId, renglón, naturalezaRenglon)` → `FacturaProveedorRenglon(empresaId, id, naturaleza)`, que **reutiliza el índice único de M4.2**; Prisma 7.10 acepta claves foráneas compuestas con una columna constante, como M4.3 ya lo demostró en producción, así que no hace falta el CHECK en el caso de uso que se había previsto), que la naturaleza de un renglón reclasificado no se pueda cambiar ni el renglón borrarse (RESTRICT, ni siquiera para el dueño), los cinco tipos de costo, el motivo, `numero` ≥ 1, **una sola ganadora entre reclasificaciones simultáneas del mismo renglón** (23505 para las demás) y la unicidad global de la clave de idempotencia. La Etapa C decide: que la reclasificación no repita la clasificación vigente, que la factura no esté anulada ni pendiente de reparto, que el concepto esté activo, el permiso por sucursal, la auditoría y el cierre de períodos. **No toca importes**: no tiene columnas de dinero (una prueba lo confirma) y no cambia `precioTotal`, `importeIvaComputable` ni las imputaciones; solo cambia en qué tipo de costo cae el importe al leer. «Por bloque» son N filas en una sola transacción, cada una con su clave, sin una tabla de lote.
+
+**Solo se agrega y sin disparador.** `motor2_app` tiene SELECT e INSERT, nunca UPDATE ni DELETE; `motor2_plataforma` no toca nada. La regla de la etapa es no usar disparadores (igual que `ImputacionDeGasto`), así que el dueño, como dueño de la base, sí podría hacer UPDATE: es una limitación declarada.
+
+**Choque de nombre.** «Reclasificación» también es el proceso `RECLASIFICACION` del stock (ver `src/server/actions/stock/casos-de-uso/reclasificar-stock.ts`), que mueve cantidades entre productos y nada tiene que ver con esta tabla. Se mantiene el nombre de C26 (`ReclasificacionRenglon`) y se aclara acá.
+
+**Las reversas de M4 quedan bloqueadas con M5 arriba, a propósito.** La clave foránea de M5 depende del índice `(empresaId, id, naturaleza)` de M4.2 y de `ConceptoDeGasto`, así que el `down.sql` de M4.2 falla en el `DROP INDEX` y el de M4.1 en el `DROP TABLE` (todo en una transacción: no queda nada a medias). El orden de la reversa pasa a ser **M5, M4.5, M4.4, M4.3, M4.2 y M4.1**; no se editó ningún archivo de M4. La reversa de M5 **aborta** si ya hay reclasificaciones.
+
+**Pruebas:** `test/persistencia/migracion-reclasificacion-renglon.test.ts` (estructura exacta, reglas, discriminador, aislamiento, solo agregar, dinero intacto y vigente), `test/persistencia/reclasificacion-renglon-concurrencia.test.ts` (varios clientes `pg` a la vez como `motor2_app`: una ganadora, idempotencia y atomicidad por bloque) y los casos 6.0 a 6.5 de `test/aislamiento/paquete-3-m4-subir-bajar-subir.test.ts` (subir, bajar con datos, subir otra vez y el ciclo completo de M3, M4 y M5).
+
 ## Lo que M4 necesita de M3 (contrato)
 
 M4 (conceptos de gasto, renglón sin stock, imputación por sucursal; ya escrito, ver §10) apoya sus tablas en estas, con estos nombres exactos:
@@ -124,6 +152,7 @@ El módulo de gastos se llama `gastos` (P8). El orden de las migraciones es M3a 
 - **La cabecera y el renglón no tienen RLS por sucursal**, a propósito (ver «Quién ve qué»).
 - **El tipo de tributo y la lista de letras son listas cerradas elegidas por el constructor** (ampliarlas es ampliar un CHECK): conviene que el dueño las confirme antes de la Etapa C.
 - **Sin medir:** el costo de las políticas de la parte con volumen real (hoy hay 0 filas).
+- **La reclasificación (M5) no tiene disparador:** la base impide que la app modifique o borre una versión, pero el dueño de la base podría hacerlo por SQL (ver §11). Que la versión vigente sea la de `numero` mayor y que cada reclasificación use `numero` = vigente + 1 lo cumple el caso de uso de la Etapa C; la base solo garantiza que no haya dos con el mismo número.
 
 ## Por qué no las alternativas
 
@@ -138,5 +167,6 @@ El módulo de gastos se llama `gastos` (P8). El orden de las migraciones es M3a 
 
 - Seis migraciones aditivas, cada una con su `down.sql` y su prueba de subir, bajar y subir (`test/aislamiento/m3-factura-proveedor-subir-bajar-subir.test.ts`); la reversa de M3b, su recepción, M3a, M3d y M3e es destructiva si ya hay datos (ver `docs/deploy-con-migraciones.md`).
 - M4 suma cinco migraciones más (ver §10), con la excepción declarada de que M4.2 reemplaza dos CHECK de M3; la reversa de M4.1, M4.3 y M4.5 es destructiva si ya hay datos y la de M4.2 aborta si hay renglones sin stock.
+- M5 suma una migración más (ver §11), aditiva, con su `down.sql` que aborta si hay filas; con M5 arriba los `down.sql` de M4.2 y M4.1 fallan por dependencia, a propósito (la reversa va primero M5).
 - El código desplegado hoy no lee ni escribe nada de esto: la base va primero y no rompe al código anterior.
 - Los goldens de caracterización (la huella de gobierno, la matriz de acceso, el menú de la empresa principal, la huella del Kardex y las matrices de venta, más los que vuelquen filas de `Proveedor`) cambian por las claves nuevas, la perilla y las columnas nuevas en `null`/`false`: se regeneran al integrar, con `git diff --word-diff` mostrando solo lo esperado, y se declaran en `test/arquitectura/caracterizaciones-congeladas.test.ts`.
