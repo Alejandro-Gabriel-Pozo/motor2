@@ -9,13 +9,17 @@ import { calcularPayloadHash, decidirIdempotencia, esChoqueDeIndiceUnico, MENSAJ
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
 import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
-import { prorratearPrecioPromo, validarYAplanarEleccionPromo, type ComponentePromoElegido, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
+import { componentesDeEleccion, prorratearPrecioPromo, validarYAplanarEleccionPromo, type ComponentePromoElegido, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
+import { MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/cantidad-pedido";
+import { armarLineaConfigurada, type LineaConfigurada } from "@/core/pos/linea-configurada";
+import { validarOpcionesElegidas } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { modulosDelPosDeEmpresa, type ModulosDelPos } from "@/server/lecturas/pos/modulos-del-pos";
 import { cargarPromoCartaParaAgregar } from "@/server/lecturas/pos/promo-para-agregar";
-import { cargarAgregadoDeCuentaPorClave, escribirAgregadoDeCuenta, escribirItemsDeCuenta, escribirPromoDeCuenta } from "@/server/persistencia/pos/pedido";
+import { cargarOpcionesParaVender, completarPreciosDeSucursal } from "@/server/lecturas/opciones/opciones-para-vender";
+import { cargarAgregadoDeCuentaPorClave, escribirAgregadoDeCuenta, escribirItemsDeCuenta, escribirLineaConfigurada, escribirPromoDeCuenta } from "@/server/persistencia/pos/pedido";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
 
 /**
@@ -47,13 +51,25 @@ import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta
  * 23505 del índice único; este se atrapa afuera y se relee al ganador (misma huella: su mensaje; otra, o no visible desde esta empresa: el conflicto, nunca un error genérico ni el contenido ajeno). No se enciende
  * `tambienChoqueDeUnico`: el único índice único que este caso de uso puede chocar es el de la clave, y si el ganador es de otra empresa repetir no lo hace visible (gastaría los 5 intentos con espera antes del mismo conflicto).
  *
+ * GO-2b (ADR-030), las OPCIONES DE VENTA, aditivo: un producto sin grupos admitidos y sin opciones pedidas se valida, se escribe y se cuenta EXACTAMENTE como antes.
+ *  - Después de la cuenta y del registro de módulos, y antes de validar cada ítem: UNA lectura agrupada (`cargarOpcionesParaVender`) con lo que admite cada producto
+ *    del pedido (sueltos y componentes de las promos), siempre (el mínimo obligatorio se exige aunque el cliente no mande opciones); y la grilla de la sucursal solo
+ *    si se eligió una MEDIDA en ABSOLUTO (`completarPreciosDeSucursal`).
+ *  - En cada ítem, los chequeos de producto de siempre van PRIMERO (existe, PV, disponible, cantidad, precio y descuento) y los de opciones DESPUÉS: un producto ancla
+ *    pedido suelto es `PRODUCTO_INVALIDO` («se vende solo como adicional»); lo elegido pasa por `armarLineaConfigurada` (`OPCION_CAMBIO` si cambió la versión que vio
+ *    el mozo; `OPCIONES_INVALIDAS` cualquier otro problema). El precio nunca viene del cliente.
+ *  - En las promos (v1), un componente cuyo producto tiene un grupo obligatorio es `PROMO_CON_OPCIONES`; con grupos opcionales entra sin opciones.
+ *  - El tope de líneas (`MAXIMO_ITEMS_POR_AGREGADO`) cuenta también los adicionales (`OPCIONES_INVALIDAS`): recién acá se sabe cuáles son.
+ *  - Escrituras, todas al final y en este orden: las `PromoCuenta`, el `createMany` de las líneas sin opciones (si hay alguna, o si no hay configuradas: la forma de
+ *    siempre), cada línea configurada (`escribirLineaConfigurada`: la línea, sus adicionales y las fotos) y el comprobante. El mensaje cuenta los ítems pedidos, sin los adicionales.
+ *
  * Qué protege: el reintento del MISMO envío (corte de red, doble envío, doble clic). Qué NO protege: dos pestañas (o dos mozos) con dos pedidos distintos — son dos claves, o sea dos intenciones, y se agregan las dos.
  * Sin clave (llamada a mano, cliente viejo) dos llamadas iguales siguen duplicando los ítems, como antes (lo fija `test/pos/cuenta-concurrencia.test.ts`, (d)).
  *
  * @contract Agrega a una cuenta abierta de la sucursal los ítems sueltos y las promos pedidos, con el precio congelado, todo o nada; con `claveIdempotencia`, exactamente una vez por clave.
  * @idempotency I3 opcional, a mano como `registrarConteoFisico` y `registrarPagoConsignante` (por eso la ficha dice NO_APLICA: `ficha-de-caso-de-uso.test.ts` ata `idempotencia=I3` a llamar a `chequearIdempotencia`, que lee `Operacion`) (claveIdempotencia + payloadHash en AgregadoDeCuenta, sin la clave no hay comprobante) — chequeo dentro de la transacción + catch del choque de unicidad fuera de ella. No cubre dos pedidos distintos con dos claves.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
- * @sideEffects Con clave, un `AgregadoDeCuenta` (comprobante, solo se agrega). Sin auditoría: `CuentaItem` y `PromoCuenta` son documentos del POS con su usuario. Refrescar la vista lo hace el cliente (`router.refresh()`).
+ * @sideEffects Con clave, un `AgregadoDeCuenta` (comprobante, solo se agrega). Sin auditoría: `CuentaItem`, `PromoCuenta` y la foto de las opciones (`OpcionElegidaEnLinea`) son documentos del POS con su usuario. Refrescar la vista lo hace el cliente (`router.refresh()`).
  * @ficha permiso=pos_tomar_pedido transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function agregarItemsCasoDeUso(
@@ -84,8 +100,22 @@ export async function agregarItemsCasoDeUso(
     const modulos: ModulosDelPos = await modulosDelPosDeEmpresa(actor.empresaId, tx);
     if (promos_.length > 0 && !modulos.promociones) return fracaso("PROMO_NO_DISPONIBLE", "Las promociones no están disponibles: el módulo Promociones no está activo en tu empresa.");
 
+    // GO-2b: lo que admite cada producto del pedido (sueltos y componentes de las promos, tal como llegaron), en UNA lectura; y la grilla de la sucursal solo para las
+    // MEDIDAS en ABSOLUTO elegidas. Antes de validar los ítems: la validación de cada uno la usa después de sus chequeos de siempre.
+    const productoIdsDelPedido = [
+      ...items_.map((i) => i?.productoId),
+      ...promos_.flatMap((p) => componentesDeEleccion(Array.isArray(p?.elecciones) ? p.elecciones : []).map((c) => c?.productoId)),
+    ].filter((id): id is string => typeof id === "string");
+    const opcionesLeidas = await completarPreciosDeSucursal(
+      tx,
+      actor.sucursalId,
+      await cargarOpcionesParaVender(tx, { sucursalId: actor.sucursalId, productoIds: productoIdsDelPedido }),
+      items_.flatMap((i) => (typeof i?.productoId === "string" && Array.isArray(i.opciones) ? [{ productoId: i.productoId, opcionIds: i.opciones.map((o) => o.opcionId) }] : []))
+    );
+
     // Fase 1: VALIDAR todo, sin escribir nada — ni los sueltos ni las promos (mismo criterio que registrarVentaEnTx).
     const filasSueltas: Prisma.CuentaItemCreateManyInput[] = [];
+    const configuradas: { productoId: string; cantidad: number; linea: LineaConfigurada }[] = [];
     for (const item of items_) {
       const producto = typeof item?.productoId === "string" ? await tx.producto.findUnique({ where: { id: item.productoId }, include: { unidadStock: { select: { decimales: true } } } }) : null;
       if (!producto) return fracaso("PRODUCTO_INVALIDO", "El producto no existe.");
@@ -98,6 +128,18 @@ export async function agregarItemsCasoDeUso(
       // Producto con descuento (Fase 2): el descuento de ESTA sucursal se aplica acá y el precio de lista queda congelado aparte en `precioCartaUnitario`. P18 / D18: solo con el
       // módulo Carta (sin él, `null`: precio de lista y `precioCartaUnitario` nulo, así que el cierre aplica solo el descuento del cliente); lo mismo hace el selector (paridad).
       const descuento = modulos.carta ? ((await descuentosDeProductoEnSucursal(actor.sucursalId, tx, [producto.id])).get(producto.id) ?? null) : null;
+      // GO-2b: recién después de los chequeos de siempre, las opciones (sin grupos admitidos ni opciones pedidas, el ítem sigue igual que antes).
+      const admite = opcionesLeidas.get(producto.id) ?? { grupos: [], anclaDeOpcionId: null };
+      if (admite.anclaDeOpcionId !== null) return fracaso("PRODUCTO_INVALIDO", `«${producto.nombre}» se vende solo como adicional de otro producto.`);
+      const elegidas = item.opciones ?? [];
+      if (admite.grupos.length > 0 || elegidas.length > 0) {
+        const armada = armarLineaConfigurada({ grupos: admite.grupos, elegidas, precioBase: precioDeLista, descuentoDeProducto: descuento, cantidad: cantidad.cantidad });
+        if (!armada.ok) return fracaso(armada.codigo === "OPCION_CAMBIO" ? "OPCION_CAMBIO" : "OPCIONES_INVALIDAS", `«${producto.nombre}»: ${armada.mensaje}`);
+        if (armada.linea) {
+          configuradas.push({ productoId: producto.id, cantidad: cantidad.cantidad, linea: armada.linea });
+          continue;
+        }
+      }
       const aplicado = aplicarDescuentoDeProducto(precioDeLista, descuento);
       filasSueltas.push({
         cuentaId: abierta.cuenta.id,
@@ -121,11 +163,21 @@ export async function agregarItemsCasoDeUso(
       const componentes = validacion.componentes.map((c) => ({ ...c, precioCarta: def.precioCartaPorProducto.get(c.productoId) ?? 0 }));
       const prorrateo = prorratearPrecioPromo(def.precio, componentes);
       if (!prorrateo.ok) return fracaso("PROMO_INVALIDA", `«${def.titulo}»: ${prorrateo.mensaje}`);
+      // GO-2b (v1): un componente de una promo no lleva opciones. Si su producto tiene un grupo obligatorio, no se puede armar en la promo; con grupos opcionales entra sin opciones.
+      for (const c of componentes) {
+        const sinOpciones = validarOpcionesElegidas(opcionesLeidas.get(c.productoId)?.grupos ?? [], []);
+        if (!sinOpciones.ok) return fracaso("PROMO_CON_OPCIONES", `«${def.titulo}»: uno de sus productos necesita que elijas opciones (${sinOpciones.mensaje}) y en una promo todavía no se puede: pedilo suelto.`);
+      }
       promosValidadas.push({ titulo: def.titulo, promoCartaId: def.id, precio: def.precio, componentes, filas: prorrateo.filas });
     }
 
+    // GO-2b: el tope de líneas, contando ahora los adicionales de las líneas configuradas (el guard no podía saber cuáles son).
+    const lineasDelPedido =
+      filasSueltas.length + promosValidadas.reduce((suma, p) => suma + p.filas.length, 0) + configuradas.reduce((suma, c) => suma + 1 + c.linea.adicionales.length, 0);
+    if (lineasDelPedido > MAXIMO_ITEMS_POR_AGREGADO) return fracaso("OPCIONES_INVALIDAS", `No se pueden agregar más de ${MAXIMO_ITEMS_POR_AGREGADO} ítems de una vez (contando los adicionales).`);
+
     // Fase 2: ESCRIBIR — recién acá, con todo ya validado. Una PromoCuenta por promo (necesita su id antes de poder crear los
-    // CuentaItem que la referencian); todos los CuentaItem (sueltos y componentes) en UN solo createMany al final.
+    // CuentaItem que la referencian); todos los CuentaItem sin opciones (sueltos y componentes) en UN solo createMany; después, cada línea configurada.
     const filas = [...filasSueltas];
     for (const p of promosValidadas) {
       const promoCuentaId = await escribirPromoDeCuenta(tx, { cuentaId: abierta.cuenta.id, promoCartaId: p.promoCartaId, precio: p.precio, titulo: p.titulo, creadoPorId: actor.usuarioId });
@@ -144,8 +196,19 @@ export async function agregarItemsCasoDeUso(
       }
     }
 
-    await escribirItemsDeCuenta(tx, filas);
-    const mensaje = `${filas.length === 1 ? "Se agregó 1 ítem" : `Se agregaron ${filas.length} ítems`} a la mesa ${abierta.cuenta.mesa.numero}.`;
+    // Sin líneas configuradas, el createMany va SIEMPRE (la forma de siempre); con alguna, solo si además hay líneas sin opciones.
+    if (filas.length > 0 || configuradas.length === 0) await escribirItemsDeCuenta(tx, filas);
+    for (const c of configuradas) {
+      await escribirLineaConfigurada(tx, {
+        cuentaId: abierta.cuenta.id,
+        creadoPorId: actor.usuarioId,
+        linea: { productoId: c.productoId, cantidad: c.cantidad, precioUnitario: c.linea.precioUnitario, precioCartaUnitario: c.linea.precioCartaUnitario, huellaOpciones: c.linea.huellaOpciones, fotos: c.linea.fotos },
+        adicionales: c.linea.adicionales.map((a) => ({ productoId: a.productoId, cantidad: a.cantidad, precioUnitario: a.precioUnitario, foto: a.foto })),
+      });
+    }
+    // El mensaje cuenta los ítems PEDIDOS: los adicionales van con su producto, no suman.
+    const pedidos = filas.length + configuradas.length;
+    const mensaje = `${pedidos === 1 ? "Se agregó 1 ítem" : `Se agregaron ${pedidos} ítems`} a la mesa ${abierta.cuenta.mesa.numero}.`;
     const nombresPromos = promosValidadas.map((p) => `«${p.titulo}»`);
     const mensajeFinal = nombresPromos.length ? `${mensaje} Incluye ${nombresPromos.join(", ")}.` : mensaje;
     // P3 (I3): el comprobante, en la MISMA transacción y lo último: si la clave ya la usó otro (carrera, o una clave ajena), se deshace TODO — los ítems también.

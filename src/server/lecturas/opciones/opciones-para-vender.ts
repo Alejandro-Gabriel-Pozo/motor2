@@ -12,7 +12,7 @@ import { preciosLocalesDeOpcionVigentes } from "@/server/lecturas/catalogo/preci
  *
  * - Lectura A (`cargarOpcionesParaVender`), UNA operación para todo el pedido: por producto, los grupos que admite (con las cantidades efectivas: las del producto
  *   si las sobrescribe), sus opciones con la versión vigente y sus consumos, si la opción está apagada en ESTA sucursal (familia `optout`: sin fila, prendida), la
- *   fila del producto para cada opción y si el producto es el ANCLA de un adicional. Una opción sin versión no se puede vender: queda afuera (elegirla es «no
+ *   fila del producto para cada opción y si el producto es el ANCLA de un adicional (un ancla que no es un PV sin producción se descarta: la opción queda sin ancla). Una opción sin versión no se puede vender: queda afuera (elegirla es «no
  *   permitida»). La RLS deja ver solo lo de la empresa de la sesión: una opción de otra empresa no aparece y responde igual que una inexistente.
  * - Lectura B (`completarPreciosDeSucursal`): la grilla de la sucursal, SOLO si se eligió una MEDIDA en ABSOLUTO (`preciosLocalesDeOpcionVigentes`, en el lugar
  *   único de la grilla de las opciones, junto al precio local).
@@ -71,6 +71,7 @@ export async function cargarOpcionesParaVender(
                   activa: true,
                   esNinguna: true,
                   productoId: true,
+                  producto: { select: { tipo: true, seProduce: true } },
                   apagadasEnSucursal: { where: { sucursalId: args.sucursalId }, select: { apagada: true } },
                   versiones: {
                     orderBy: { numero: "desc" },
@@ -125,7 +126,9 @@ export async function cargarOpcionesParaVender(
             cantidadMaxima: admite?.cantidadMaxima ?? 0,
             versionVigenteId: vigente.id,
             esNinguna: o.esNinguna,
-            productoAnclaId: o.productoId,
+            // Solo un PV que no se produce puede respaldar un adicional (la venta lo resta como a cualquier PV sin stock propio): otro ancla es una configuración inválida
+            // y se trata como si no tuviera (la línea configurada lo rechaza al pedir, no al cerrar la cuenta).
+            productoAnclaId: o.producto && o.producto.tipo === "PV" && !o.producto.seProduce ? o.productoId : null,
             diferenciaDeLaVersion: diferencia(vigente.tipoDeDiferencia, vigente.diferenciaPrecio, vigente.porcentaje) ?? { tipo: "MONTO", monto: 0 },
             factorEscala: vigente.factorEscala === null ? null : Number(vigente.factorEscala),
             consumos: vigente.consumos.map((c) => ({
