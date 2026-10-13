@@ -34,6 +34,8 @@ export const MODULOS = [
   { id: "salon", nombre: "Salón", tipo: "vendible", estado: "disponible", requiere: ["stock", "clientes_basico"], usaSiExiste: ["carta", "promociones"] },
   // Etapa A, punto 6: nace «en desarrollo» (sin acciones ni menú): la consola lo muestra como «Próximamente» y no se puede activar ni entrar.
   { id: "gastos", nombre: "Gastos y servicios", tipo: "vendible", estado: "en_desarrollo", requiere: ["proveedores_basico"], usaSiExiste: ["compras"] },
+  // M7 (centros de costos): nace «en desarrollo» y requiere Gastos y servicios (los centros distribuyen gastos). Solo el modelo de datos: la consola lo muestra como «Próximamente».
+  { id: "centros_de_costos", nombre: "Centros de costos", tipo: "vendible", estado: "en_desarrollo", requiere: ["gastos"], usaSiExiste: [] },
 ] as const satisfies readonly ModuloDef[];
 
 export type ModuloId = (typeof MODULOS)[number]["id"];

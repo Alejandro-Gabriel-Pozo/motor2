@@ -104,8 +104,9 @@ describe("la migración deja las tres tablas, la columna del Kardex, los índice
       FROM pg_index i JOIN pg_class c ON c.oid = i.indrelid JOIN pg_class ic ON ic.oid = i.indexrelid
       WHERE c.relname = ANY(${[...TABLAS]}::text[]) AND i.indisunique AND NOT i.indisprimary ORDER BY 1, 2`;
     expect(unicos.map((u) => u.nombre).sort()).toEqual([
-      "FacturaProveedor_claveIdempotencia_key", "FacturaProveedor_empresaId_id_key", "FacturaProveedor_unica_vigente_key",
-      "FacturaProveedorRenglon_empresaId_id_key", "FacturaProveedorRenglon_empresaId_id_naturaleza_key", "FacturaProveedorRenglon_facturaProveedorId_orden_key",
+      // M6.1: los destinos de las claves foráneas de tres columnas de la nota de crédito (el proveedor de la factura y la pertenencia del renglón a su factura).
+      "FacturaProveedor_claveIdempotencia_key", "FacturaProveedor_empresaId_id_key", "FacturaProveedor_empresaId_id_proveedorId_key", "FacturaProveedor_unica_vigente_key",
+      "FacturaProveedorRenglon_empresaId_facturaProveedorId_id_key", "FacturaProveedorRenglon_empresaId_id_key", "FacturaProveedorRenglon_empresaId_id_naturaleza_key", "FacturaProveedorRenglon_facturaProveedorId_orden_key",
       "FacturaProveedorSucursal_empresaId_id_key", "FacturaProveedorSucursal_empresaId_operacionId_key", "FacturaProveedorSucursal_facturaProveedorId_sucursalId_key",
     ].sort());
     const vigente = unicos.find((u) => u.nombre === "FacturaProveedor_unica_vigente_key")!.definicion;

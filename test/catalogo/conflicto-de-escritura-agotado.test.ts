@@ -39,14 +39,14 @@ describe("receta por sucursal: conflicto de escritura agotado y otros errores, e
     vi.restoreAllMocks();
   });
 
-  it.each(CASOS.map((c) => [c.nombre, c] as const))("%s: un conflicto en cada intento reintenta 5 veces y vuelve como el mensaje de negocio", async (_n, c) => {
+  it.each(CASOS.map((c) => [c.nombre, c] as const))("%s: un conflicto en cada intento reintenta 8 veces y vuelve como el mensaje de negocio", async (_n, c) => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const transaccion = vi.fn(async () => {
       throw conflictoDeEscritura();
     });
     const r = await c.llamar(transaccion);
     expect(r).toEqual({ ok: false, codigo: "RECETA_CAMBIADA", mensaje: c.mensaje });
-    expect(transaccion).toHaveBeenCalledTimes(5);
+    expect(transaccion).toHaveBeenCalledTimes(8);
   });
 
   it.each(CASOS.map((c) => [c.nombre, c] as const))("%s: cualquier otro error sigue de largo, sin reintentar ni disfrazarse de conflicto", async (_n, c) => {

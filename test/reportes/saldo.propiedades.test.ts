@@ -45,6 +45,8 @@ const aCentesimas = (n: number) => Math.round(n * 100);
 // contra Postgres local) para no inflar `npm test` (presupuesto compartido de Fase F). Si algo falla, fast-check
 // reporta `seed`/`path` para reproducirlo.
 const NUM_RUNS = 20;
+// Cada ejemplo de fast-check pega a la base (hasta 12 operaciones): con el timeout de 5 s por defecto, en una máquina cargada la propiedad se agotaba por TIEMPO, no por una aserción. Margen holgado, sin tocar la propiedad.
+const MARGEN_TEST_MS = 30_000;
 
 describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
   let sucursalId: string;
@@ -114,7 +116,7 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
       }),
       { numRuns: NUM_RUNS }
     );
-  });
+  }, MARGEN_TEST_MS);
 
   it("todas las fechas iguales (orden entre empates no garantizado): el saldoCorriente FINAL igual coincide con calcularSaldoTotal", async () => {
     await fc.assert(
@@ -134,5 +136,5 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
       }),
       { numRuns: NUM_RUNS }
     );
-  });
+  }, MARGEN_TEST_MS);
 });

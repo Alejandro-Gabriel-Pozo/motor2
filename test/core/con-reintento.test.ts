@@ -96,9 +96,22 @@ describe("conReintento — backoff con jitter entre intentos", () => {
     expect(resultado).toEqual({ ok: true, valor: "ok" });
   });
 
-  it("la espera CRECE: con jitter máximo, 25, 50, 100 y 200 ms entre los 5 intentos", async () => {
+  it("la espera CRECE: con jitter máximo, 25, 50, 100 y 200 ms entre los 5 intentos pedidos", async () => {
     const { esperas } = await correr(vi.fn().mockRejectedValue(conflictoP2034()), { aleatorio: () => 1 });
     expect(esperas).toEqual([25, 50, 100, 200]);
+  });
+
+  it("con 8 intentos (el default de conTransaccionSerializable) los techos son 25, 50, 100, 200 y 250 ×3: peor caso acumulado 1125 ms", async () => {
+    const { esperas } = await correr(vi.fn().mockRejectedValue(conflictoP2034()), { aleatorio: () => 1, maxIntentos: 8 });
+    expect(esperas).toEqual([25, 50, 100, 200, 250, 250, 250]);
+    expect(esperas.reduce((suma, ms) => suma + ms, 0)).toBe(1125);
+  });
+
+  it("el jitter es COMPLETO (sin piso): con azar 0 la espera es 0 y con azar 0,5 es la mitad del techo, hasta el último intento", async () => {
+    const conCero = await correr(vi.fn().mockRejectedValue(conflictoP2034()), { aleatorio: () => 0, maxIntentos: 8 });
+    expect(conCero.esperas).toEqual([0, 0, 0, 0, 0, 0, 0]);
+    const conMitad = await correr(vi.fn().mockRejectedValue(conflictoP2034()), { aleatorio: () => 0.5, maxIntentos: 8 });
+    expect(conMitad.esperas).toEqual([12.5, 25, 50, 100, 125, 125, 125]);
   });
 
   it("el tope se respeta: con tope de 100 ms, 25, 50, 100 y 100", async () => {
