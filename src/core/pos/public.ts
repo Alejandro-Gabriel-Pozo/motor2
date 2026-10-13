@@ -34,5 +34,7 @@ export type { EstadoDeTicket, ItemConVenta, LineaDeTicket, TicketDeCuenta } from
 // GO-2b (ADR-030): la forma de lo que un producto admite para venderse, que arma la lectura de las opciones para vender (`server/lecturas/opciones/`).
 export type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
 // GO-2d (ADR-030 «Pantallas»): los precios PARA MOSTRAR de un producto con opciones (el «desde», cada tamaño, la vista previa del diálogo del POS), con la misma regla que la venta.
-export { opcionDisponible, resumenDePrecios } from "./precio-de-configuracion";
+export { opcionDisponible, resumenDePrecios, vistaPreviaDeConfiguracion } from "./precio-de-configuracion";
 export type { ResumenDePrecios } from "./precio-de-configuracion";
+export { claveDeConfiguracion, elegidasParaPedir, esDeUnaSolaEleccion, estadoInicialElegirOpciones, grupoCompleto, gruposQueFaltan, reducirElegirOpciones, resumenDeConfiguracion } from "./elegir-opciones-estado";
+export type { ConfiguracionDelSelector } from "./elegir-opciones-estado";

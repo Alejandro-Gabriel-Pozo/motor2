@@ -68,3 +68,41 @@ export async function filasDePrecioLocalDeOpcionesEnSucursal(db: Db, sucursalId:
   const filas = await db.precioLocalDeOpcion.findMany({ where: { sucursalId }, select: { productoId: true, opcionId: true, precio: true, habilitado: true } });
   return filas.map((f) => ({ productoId: f.productoId, opcionId: f.opcionId, precio: Number(f.precio), habilitado: f.habilitado }));
 }
+
+/**
+ * GO-2d: lo mismo que `preciosLocalesDeOpcionVigentes` (las MISMAS cuatro condiciones: la capacidad `precio_local`, la fila habilitada, la opción admitida por el producto y una
+ * MEDIDA que ese producto cobra en ABSOLUTO) pero para VARIOS productos a la vez, en tres consultas fijas: lo usa el selector del POS para mostrar el precio de cada tamaño de
+ * todos los productos de la carta sin una consulta por producto. El mapa va por `"<productoId>|<opcionId>"`. Lo que decide el precio al vender sigue siendo
+ * `preciosLocalesDeOpcionVigentes`, dentro de la transacción de la venta.
+ */
+export async function preciosLocalesDeOpcionVigentesEnProductos(sucursalId: string, db: Db, productoIds: readonly string[], precioLocalActivo?: boolean | Promise<boolean>): Promise<Map<string, number>> {
+  const ids = [...new Set(productoIds)];
+  if (ids.length === 0) return new Map();
+  const [capacidadActiva, filas] = await Promise.all([
+    precioLocalActivo ?? precioLocalActivoEn(sucursalId, db),
+    db.precioLocalDeOpcion.findMany({
+      where: { sucursalId, productoId: { in: ids }, habilitado: true },
+      select: {
+        productoId: true,
+        opcionId: true,
+        precio: true,
+        opcion: { select: { grupoId: true, grupo: { select: { tipo: true } }, productosQueLaAdmiten: { where: { productoId: { in: ids }, activo: true }, select: { productoId: true } } } },
+      },
+    }),
+  ]);
+  if (!capacidadActiva || filas.length === 0) return new Map();
+  const absolutos = new Set(
+    (
+      await db.productoAdmiteGrupo.findMany({
+        where: { productoId: { in: [...new Set(filas.map((f) => f.productoId))] }, grupoId: { in: [...new Set(filas.map((f) => f.opcion.grupoId))] }, activo: true, modoPrecio: "ABSOLUTO" },
+        select: { productoId: true, grupoId: true },
+      })
+    ).map((g) => `${g.productoId}|${g.grupoId}`)
+  );
+  const vigentes = new Map<string, number>();
+  for (const f of filas) {
+    if (f.opcion.grupo.tipo !== "MEDIDA" || !f.opcion.productosQueLaAdmiten.some((a) => a.productoId === f.productoId) || !absolutos.has(`${f.productoId}|${f.opcion.grupoId}`)) continue;
+    vigentes.set(`${f.productoId}|${f.opcionId}`, Number(f.precio));
+  }
+  return vigentes;
+}

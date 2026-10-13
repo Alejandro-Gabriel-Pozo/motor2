@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import { useMemo, useReducer, useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
 import { agregarItems } from "@/server/actions/pos/cuenta-pedido";
-import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos, estadoInicialSelectorCarta, reducirSelectorCarta, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar, type EleccionParaAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearCantidad, formatearMonto } from "@/core/pos/public";
+import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos, estadoInicialSelectorCarta, reducirSelectorCarta, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar, type EleccionParaAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearCantidad, formatearMonto, claveDeConfiguracion, resumenDeConfiguracion, vistaPreviaDeConfiguracion, type ConfiguracionDelSelector } from "@/core/pos/public";
 import { BOTON_CHICO, BOTON_PRIMARIO, CAMPO } from "./estilos";
 import { SelectorCarta } from "./selector-carta";
 import { ArmarPromo } from "./armar-promo";
+import { ElegirOpciones, type EleccionPrecargada } from "./elegir-opciones";
 import { useAccionMesa } from "./usar-accion";
 
 /** Una promo ya armada, esperando en «Por agregar» junto con los sueltos (Task #16) — cada instancia es una línea propia, sin
@@ -56,7 +57,24 @@ interface PromoPorAgregar {
  * «Por agregar» (otro pedido, otra intención: con la misma clave el servidor respondería conflicto). Ante un error de RED no se sabe si el servidor llegó a agregarlo: se refresca la cuenta (para que «Sin enviar»
  * muestre la verdad) y se avisa; volver a tocar «Agregar» con el mismo contenido es seguro (no duplica). No protege dos pestañas con dos pedidos distintos: son dos claves, o sea dos intenciones.
  */
-export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: string; puede: boolean; selectorCarta: SelectorCartaPos | null }) {
+export function AgregarItems({
+  cuentaId,
+  puede,
+  selectorCarta,
+  configuraciones = {},
+  puedeAgotar = false,
+  masPedidas = {},
+}: {
+  cuentaId: string;
+  puede: boolean;
+  selectorCarta: SelectorCartaPos | null;
+  /** GO-2d (opcional): los productos que admiten opciones, por id (`cargarOpcionesDelSelector`). Tocarlos abre «Elegir opciones»; sin esto, todo se suma con un toque como siempre. */
+  configuraciones?: Readonly<Record<string, ConfiguracionDelSelector>>;
+  /** GO-2d: si el rol puede marcar opciones agotadas (el diálogo muestra el enlace). */
+  puedeAgotar?: boolean;
+  /** GO-2d (modelo 3): lo más pedido de cada producto en la sucursal, para precargar el diálogo. */
+  masPedidas?: Readonly<Record<string, EleccionPrecargada[]>>;
+}) {
   const { ejecutar, pending, error } = useAccionMesa();
   const router = useRouter();
   // P3 (I3): la clave del envío y la firma del contenido con el que se usó por última vez (`null` = todavía no se usó).
@@ -67,6 +85,8 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
   // es la que está siendo armada AHORA en el diálogo (null = cerrado).
   const [promosPorAgregar, setPromosPorAgregar] = useState<PromoPorAgregar[]>([]);
   const [promoAbierta, setPromoAbierta] = useState<EntradaPromoSelectorCarta | null>(null);
+  // GO-2d: el producto con opciones que se está eligiendo AHORA en «Elegir opciones» (null = cerrado), con la elección de arranque de «Otro igual».
+  const [opcionesAbiertas, setOpcionesAbiertas] = useState<{ productoId: string; inicial?: { opcionId: string; cantidad: number }[] } | null>(null);
   const hayCarta = !!selectorCarta && selectorCarta.seccionesCarta.length > 0;
 
   // Para mostrar nombre/precio/decimales de cada línea: cualquier pedible, lo haya sumado la carta o el buscador — la carta
@@ -84,11 +104,25 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
   // "elegí al menos un producto" del servidor, que también acepta solo promos.
   const puedeConfirmar = puedeConfirmarListaPorAgregar(lista) || promosPorAgregar.length > 0;
 
-  /** Tocar un producto —desde la carta o el buscador—: lo suma a la lista y limpia el buscador / cierra el agrupado suelto (G3). */
+  /**
+   * Tocar un producto —desde la carta o el buscador—: lo suma a la lista y limpia el buscador / cierra el agrupado suelto (G3). GO-2d: un producto que admite opciones abre
+   * «Elegir opciones» en vez de sumarse directo (uno sin opciones se sigue sumando con un toque).
+   */
   const sumar = (productoId: string) => {
-    despacharLista({ tipo: "sumarProducto", productoId, tope: MAXIMO_ITEMS_POR_AGREGADO });
+    if (configuraciones[productoId]) setOpcionesAbiertas({ productoId });
+    else despacharLista({ tipo: "sumarProducto", productoId, tope: MAXIMO_ITEMS_POR_AGREGADO });
     despachar({ tipo: "productoSumado" });
   };
+
+  /** GO-2d: lo elegido en el diálogo va a «Por agregar» como su propia línea (la misma configuración se acumula). */
+  const confirmarOpciones = (elegidas: { opcionId: string; cantidad: number; versionDeOpcionId: string }[], cantidad: number) => {
+    if (!opcionesAbiertas) return;
+    const { productoId } = opcionesAbiertas;
+    despacharLista({ tipo: "sumarConfiguracion", productoId, clave: claveDeConfiguracion(productoId, elegidas), opciones: elegidas, cantidad, tope: MAXIMO_ITEMS_POR_AGREGADO });
+    setOpcionesAbiertas(null);
+  };
+  const productoAbierto = opcionesAbiertas ? pediblePorId.get(opcionesAbiertas.productoId) : undefined;
+  const configuracionAbierta = opcionesAbiertas ? configuraciones[opcionesAbiertas.productoId] : undefined;
 
   const confirmarPromo = (elecciones: EleccionParaAgregar[]) => {
     if (!promoAbierta) return;
@@ -121,6 +155,60 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
     );
   };
 
+  /**
+   * GO-2d: una línea de «Por agregar» de un producto CON opciones: «Café · Mediano · Con leche» y, debajo y con sangría, sus adicionales «+ Huevo frito ×1» (por unidad). El precio
+   * es la vista previa de la configuración (la misma regla que la venta). «Otro igual» abre el diálogo con esta elección para pedir otra parecida; el «+» suma una igual.
+   */
+  const lineaConOpciones = (clave: string, opciones: { opcionId: string; cantidad: number; versionDeOpcionId: string }[], cantidad: number, cantidadTexto: string, error: string | null, p: ProductoPedible, conf: ConfiguracionDelSelector) => {
+    const { titulo, adicionales } = resumenDeConfiguracion(p.nombre, conf.grupos, opciones);
+    const vista = vistaPreviaDeConfiguracion({ grupos: conf.grupos, elegidas: opciones, precioBase: conf.precioBase, descuentoDeProducto: conf.descuentoDeProducto, cantidad });
+    const idError = `error-linea-${clave}`;
+    return (
+      <li key={clave} data-linea-por-agregar={titulo} className="flex flex-col gap-1 bg-white py-2 first:rounded-t-lg last:rounded-b-lg">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-2">
+          <span className="min-w-0 flex-1 text-[14px] font-semibold">{titulo}</span>
+          <div className="flex items-center gap-1.5">
+            <button type="button" className={BOTON_CHICO} aria-label={`Restar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: p.productoId, clave })}>
+              −
+            </button>
+            <input
+              aria-label={`Cantidad de ${titulo}`}
+              inputMode="numeric"
+              autoComplete="off"
+              value={cantidadTexto}
+              onChange={(e) => despacharLista({ tipo: "cambiarCantidadTexto", productoId: p.productoId, clave, texto: e.target.value })}
+              onFocus={(e) => e.target.select()}
+              onBlur={() => despacharLista({ tipo: "normalizarCantidad", productoId: p.productoId, clave, decimales: 0 })}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? idError : undefined}
+              className={`${CAMPO} w-16 text-center tabular-nums`}
+            />
+            <button type="button" className={BOTON_CHICO} aria-label={`Sumar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: p.productoId, clave })}>
+              +
+            </button>
+            <span className="w-24 text-right text-[13.5px] tabular-nums">{vista.ok ? formatearMonto(vista.total) : "—"}</span>
+            <button type="button" className={BOTON_CHICO} aria-label={`Otro igual a ${titulo}, para cambiarle algo`} onClick={() => setOpcionesAbiertas({ productoId: p.productoId, inicial: opciones })}>
+              Otro igual
+            </button>
+            <button type="button" className={BOTON_CHICO} aria-label={`Quitar ${titulo} de la lista`} onClick={() => despacharLista({ tipo: "quitarLinea", productoId: p.productoId, clave })}>
+              Quitar
+            </button>
+          </div>
+        </div>
+        {adicionales.map((a) => (
+          <p key={a} className="pl-6 pr-2 text-[12.5px] text-[var(--ink-soft)]">
+            {a}
+          </p>
+        ))}
+        {(error || !vista.ok) && (
+          <p id={idError} role="alert" className="px-2 text-[12.5px] text-red-700">
+            {error ?? (vista.ok ? "" : `${vista.mensaje} Quitala y volvé a elegir.`)}
+          </p>
+        )}
+      </li>
+    );
+  };
+
   return (
     // Sin `action` ni `onSubmit` real: Enter en cualquier campo (el buscador, la cantidad de una línea) NO tiene que confirmar
     // nada (precedente: test/e2e/form-con-resultado-enter.spec.ts) — y, sin este `onSubmit` que lo frena, el navegador haría un
@@ -146,7 +234,7 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
             />
           </div>
         </div>
-        {hayCarta && <SelectorCarta selector={selectorCarta} estado={estado} lista={lista} despachar={despachar} sumar={sumar} abrirPromo={setPromoAbierta} />}
+        {hayCarta && <SelectorCarta selector={selectorCarta} estado={estado} lista={lista} despachar={despachar} sumar={sumar} abrirPromo={setPromoAbierta} configuraciones={configuraciones} />}
         {llena && <p className="text-[13px] text-[var(--ink-soft)]">Llegaste al máximo de {MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.</p>}
 
         <div className="flex flex-col gap-2 rounded-[14px] border border-[var(--border)] bg-[#F1EFEA] p-3">
@@ -176,6 +264,8 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
               {lista.lineas.flatMap((l) => {
                 const p = pediblePorId.get(l.productoId);
                 if (!p) return []; // defensivo: nunca debería faltar (todo pedible sale del mismo selector)
+                const conf = l.clave && l.opciones ? configuraciones[l.productoId] : undefined;
+                if (l.clave && l.opciones && conf) return [lineaConOpciones(l.clave, l.opciones, l.cantidad, l.cantidadTexto, l.error, p, conf)];
                 const idError = `error-linea-${l.productoId}`;
                 return [
                   <li key={l.productoId} data-linea-por-agregar={p.nombre} className="flex flex-col gap-1 bg-white py-2 first:rounded-t-lg last:rounded-b-lg">
@@ -246,6 +336,17 @@ export function AgregarItems({ cuentaId, puede, selectorCarta }: { cuentaId: str
         </p>
       )}
       {promoAbierta && <ArmarPromo entrada={promoAbierta} onCerrar={() => setPromoAbierta(null)} onConfirmar={confirmarPromo} />}
+      {opcionesAbiertas && productoAbierto && configuracionAbierta && (
+        <ElegirOpciones
+          nombre={productoAbierto.nombre}
+          configuracion={configuracionAbierta}
+          precargas={masPedidas[opcionesAbiertas.productoId] ?? []}
+          inicial={opcionesAbiertas.inicial}
+          puedeAgotar={puedeAgotar}
+          onCerrar={() => setOpcionesAbiertas(null)}
+          onConfirmar={confirmarOpciones}
+        />
+      )}
     </form>
   );
 }

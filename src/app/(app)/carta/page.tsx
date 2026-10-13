@@ -24,7 +24,7 @@ import { FormConResultado } from "@/components/form-con-resultado";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { CopiarCartaDeSucursal } from "@/components/carta/copiar-carta-de-sucursal";
-import { insumosSinStockDeLosPlatos } from "@/server/consultas/carta/avisos-de-stock";
+import { saldosDeLosIngredientesDeLosPlatos } from "@/server/consultas/carta/avisos-de-stock";
 import { formatearCantidad } from "@/core/pos/public";
 
 /**
@@ -95,11 +95,15 @@ export default async function CartaPage() {
   const origenesDeCopia = datos.cartaVacia && puedeCopiarCarta ? await origenesDeCopiaVisibles(ctx.usuarioId, datos.sucursalesConCarta, ctx.db) : [];
   const seccionesActivas = datos.secciones.filter((s) => s.activa);
   // GO-2d (el stock teórico AVISA, NUNCA BLOQUEA): de los productos que se muestran en la carta, los ingredientes que el sistema registra en 0 o menos acá. No saca nada de la carta.
-  const sinStock = await insumosSinStockDeLosPlatos(
+  const saldos = await saldosDeLosIngredientesDeLosPlatos(
     ctx.db,
     ctx.sucursalId,
     datos.productos.filter((p) => p.contenido?.visibleEnCarta).map((p) => p.id)
   );
+  const sinStock = new Map([...saldos].flatMap(([id, ingredientes]) => {
+    const enCero = ingredientes.filter((i) => i.saldo <= 0);
+    return enCero.length ? [[id, enCero] as const] : [];
+  }));
   const ubicacion: UbicacionEnCarta = {
     secciones: datos.secciones.map((s) => ({ id: s.id, nombre: s.nombre, activa: s.activa })),
     cantidadPorSeccion: Object.fromEntries(datos.secciones.map((s) => [s.id, s.cantidadItems])),

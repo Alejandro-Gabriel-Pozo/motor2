@@ -4,7 +4,7 @@ import { opcionDisponible } from "@/core/pos/public";
 import { filasDePrecioLocalDeOpcionesEnSucursal } from "@/server/lecturas/catalogo/precio-local-de-opciones";
 import { listarGruposDeOpciones, opcionesApagadasEnSucursal } from "@/server/lecturas/catalogo/opciones-de-venta";
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
-import { saldosTeoricosEnSucursal } from "@/server/consultas/stock/stock-teorico";
+import { saldosTeoricosEnSucursal } from "@/server/lecturas/movimientos/saldos";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -27,21 +27,26 @@ export interface CeldaDeGrilla {
 
 /**
  * «Precios por tamaño en esta sucursal»: los tamaños que cada producto DISPONIBLE en la sucursal cobra con precio propio (grupo MEDIDA en ABSOLUTO, admitido y prendido; opción
- * admitida y prendida), con el precio de la empresa y la fila de la grilla de la sucursal (leída por el lector único, `precio-local-de-opciones.ts`). Dos consultas.
+ * admitida y prendida), con el precio de la empresa y la fila de la grilla de la sucursal (leída por el lector único, `precio-local-de-opciones.ts`). También los de un producto que
+ * ya no está disponible acá pero tiene un precio cargado en la grilla: así se puede ver y sacar (si no, quedaría cargado sin que nadie lo vea). Dos consultas.
  */
 export async function cargarGrillaDeTamanosDeLaSucursal(db: Db, sucursalId: string): Promise<CeldaDeGrilla[]> {
-  const [admisiones, filas] = await Promise.all([
-    db.productoAdmiteGrupo.findMany({
-      where: { activo: true, modoPrecio: "ABSOLUTO", grupo: { tipo: "MEDIDA", activo: true }, producto: { tipo: "PV", ...whereDisponibleEn(sucursalId) } },
-      orderBy: [{ producto: { nombre: "asc" } }, { orden: "asc" }],
-      select: {
-        productoId: true,
-        producto: { select: { nombre: true, opcionesAdmitidas: { where: { activo: true, opcion: { activa: true } }, select: { opcionId: true, precioAbsoluto: true } } } },
-        grupo: { select: { nombre: true, opciones: { where: { activa: true }, orderBy: [{ orden: "asc" }, { nombre: "asc" }], select: { id: true, nombre: true } } } },
-      },
-    }),
-    filasDePrecioLocalDeOpcionesEnSucursal(db, sucursalId),
-  ]);
+  const filas = await filasDePrecioLocalDeOpcionesEnSucursal(db, sucursalId);
+  const conPrecioCargado = [...new Set(filas.map((f) => f.productoId))];
+  const admisiones = await db.productoAdmiteGrupo.findMany({
+    where: {
+      activo: true,
+      modoPrecio: "ABSOLUTO",
+      grupo: { tipo: "MEDIDA", activo: true },
+      producto: { tipo: "PV", OR: [whereDisponibleEn(sucursalId), { id: { in: conPrecioCargado } }] },
+    },
+    orderBy: [{ producto: { nombre: "asc" } }, { orden: "asc" }],
+    select: {
+      productoId: true,
+      producto: { select: { nombre: true, opcionesAdmitidas: { where: { activo: true, opcion: { activa: true } }, select: { opcionId: true, precioAbsoluto: true } } } },
+      grupo: { select: { nombre: true, opciones: { where: { activa: true }, orderBy: [{ orden: "asc" }, { nombre: "asc" }], select: { id: true, nombre: true } } } },
+    },
+  });
   const cargada = new Map(filas.map((f) => [`${f.productoId}|${f.opcionId}`, f]));
   return admisiones.flatMap((a) => {
     const admitidas = new Map(a.producto.opcionesAdmitidas.map((o) => [o.opcionId, o]));

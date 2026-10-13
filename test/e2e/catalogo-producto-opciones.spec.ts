@@ -55,7 +55,7 @@ test("asignar un tamaño con precio propio: la vista previa muestra los precios 
 
   // La lista de productos lo marca.
   await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
-  await expect(page.locator("tr", { hasText: producto.nombre }).locator("[data-etiqueta-opciones]")).toHaveText("1 grupo de opciones");
+  await expect(page.locator("tr", { hasText: producto.nombre }).locator("[data-etiqueta-opciones]")).toHaveText(`Opciones: E2E Tamaño ficha ${m}`);
 });
 
 test("dos pestañas sobre lo que admite el producto: la vieja se rechaza con «Recargar» y no pisa", async ({ paginaAutenticada: pestañaA, sucursalId }) => {

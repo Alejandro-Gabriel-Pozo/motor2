@@ -7,6 +7,7 @@ import { type ItemDeCuenta, type ItemEnEnvio, armarComandas, formatearCantidad, 
 import { obtenerDetalleDeMesa } from "@/server/consultas/pos/detalle-de-mesa";
 import { obtenerTicketsRecientes } from "@/server/consultas/pos/tickets";
 import { cargarSelectorCartaDeLaMesa } from "@/server/consultas/pos/selector-carta";
+import { cargarOpcionesDelSelector } from "@/server/consultas/pos/opciones-del-selector";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarClientesParaCuenta } from "@/server/actions/clientes/cliente";
 import { AvisoMesaProvider } from "./aviso-mesa";
@@ -82,6 +83,11 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   // puede tomar pedido. Se lee acá, después de la guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`), sin Server
   // Action nueva. Aparte del `Promise.all` de arriba a propósito (no confundir con `secciones`, que son las de STOCK).
   const selectorCarta = cuenta && tomarPedido.editar ? await cargarSelectorCartaDeLaMesa(ctx.sucursalId, ctx.db, ahora) : null;
+  // GO-2d (ADR-030): de los productos del selector que admiten opciones, lo que necesita «Elegir opciones» (precios para mostrar, agotadas, stock 0). Y si el rol puede marcar
+  // opciones agotadas (el diálogo ofrece el enlace). Solo con el selector a la vista.
+  const [configuraciones, agotar] = selectorCarta
+    ? await Promise.all([cargarOpcionesDelSelector(ctx.sucursalId, ctx.db, selectorCarta), obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "opcion_apagar_en_sucursal", ctx.db)])
+    : [{}, { ver: false, editar: false }];
   // Cliente con descuento (Task #14): la lista de clientes ACTIVOS solo se trae si hay algo que asignar — mismo criterio que
   // `selectorCarta`. `descuentoPorcentaje` se convierte a `number` acá (server): un `Decimal` de Prisma no se puede pasar tal cual
   // a un Client Component (`ClienteCuenta`).
@@ -140,7 +146,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                 <h2 id="agregar-titulo" className="mb-3 text-[15px] font-bold">
                   Agregar al pedido
                 </h2>
-                <AgregarItems cuentaId={cuenta.id} puede={tomarPedido.editar} selectorCarta={selectorCarta} />
+                <AgregarItems cuentaId={cuenta.id} puede={tomarPedido.editar} selectorCarta={selectorCarta} configuraciones={configuraciones} puedeAgotar={agotar.editar} />
               </section>
 
               <SinEnviar

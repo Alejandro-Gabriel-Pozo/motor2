@@ -132,7 +132,7 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
     ruta: "server/consultas/carta/avisos-de-stock.ts",
     clase: "efectivo",
     motivo:
-      "insumosSinStockDeLosPlatos: los ingredientes de la receta EFECTIVA de cada plato en la sucursal activa (alcanceDeSucursal: la propia si está habilitada, si no la central) para avisar cuáles el sistema registra en 0 — el aviso es de lo que se consume ACÁ.",
+      "saldosDeLosIngredientesDeLosPlatos: los ingredientes de la receta EFECTIVA de cada plato en la sucursal activa (alcanceDeSucursal: la propia si está habilitada, si no la central), con su saldo, para avisar cuáles el sistema registra en 0 — el aviso es de lo que se consume ACÁ.",
   },
 ] as const;
 

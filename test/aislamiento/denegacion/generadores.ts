@@ -283,6 +283,12 @@ const completos: Record<string, Valor> = {
     ),
   // GO-2d: el orden completo de las opciones de un grupo, con la opción ajena del kit.
   "accion|actions/catalogo/opciones-de-venta.ts|reordenarOpcionesDeGrupo": (k) => [{ grupoId: k.grupoDeOpcionesId, opciones: [{ opcionId: k.opcionDeGrupoId, versionEsperada: 1 }] }],
+  // GO-2d: las opciones del selector del POS reciben el selector ya armado (con el PV que admite opciones del kit como pedible).
+  "consulta|consultas/pos/opciones-del-selector.ts|cargarOpcionesDelSelector": (k, c) => [
+    k.sucursalId,
+    c.db,
+    { seccionesCarta: [], fueraDeCarta: [{ productoId: k.productoConOpcionesId, codigo: "codigo", nombre: "Pedible", precio: 1000, decimales: 0, pasoVenta: null, tieneStockReal: false }] },
+  ],
 };
 
 const parametros: Record<string, Record<string, Valor>> = {
@@ -319,6 +325,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/traspasos/lecturas.ts|obtenerBandejaTransferencias": { cursorHistorial: (k, c) => (conIdsAjenos(c) ? k.traspasoId : undefined) },
   // GO-2a: la grilla de opciones de un producto (el que admite la medida con precio propio), con la capacidad de precio local prendida.
   "lectura|lecturas/catalogo/precio-local-de-opciones.ts|preciosLocalesDeOpcionVigentes": { productoId: (k) => k.productoConOpcionesId, precioLocalActivo: () => true },
+  // GO-2d: la misma grilla, para varios productos a la vez (el selector del POS).
+  "lectura|lecturas/catalogo/precio-local-de-opciones.ts|preciosLocalesDeOpcionVigentesEnProductos": { productoIds: (k) => [k.productoConOpcionesId], precioLocalActivo: () => true },
   // GO-2b: lo que admite para vender el PV con opciones (la vigente, los consumos, lo apagado en la sucursal) y la grilla de la sucursal para su MEDIDA en ABSOLUTO elegida.
   "lectura|lecturas/opciones/opciones-para-vender.ts|cargarOpcionesParaVender": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoConOpcionesId] }) },
   "lectura|lecturas/opciones/opciones-para-vender.ts|completarPreciosDeSucursal": {

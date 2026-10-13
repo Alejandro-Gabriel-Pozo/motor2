@@ -269,9 +269,15 @@ export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucu
   };
 }
 
-/** Para la lista de productos: cuántos grupos de opciones tiene asignados (activos) cada producto. Un solo agregado. */
-export async function contarGruposDeOpcionesPorProducto(db: Db, productoIds: readonly string[]): Promise<Map<string, number>> {
+/** Para la lista de productos: los nombres de los grupos de opciones que tiene asignados (activos) cada producto, en el orden del producto. Una sola lectura para toda la página. */
+export async function gruposDeOpcionesPorProducto(db: Db, productoIds: readonly string[]): Promise<Map<string, string[]>> {
   if (productoIds.length === 0) return new Map();
-  const filas = await db.productoAdmiteGrupo.groupBy({ by: ["productoId"], where: { productoId: { in: [...productoIds] }, activo: true, grupo: { activo: true } }, _count: { _all: true } });
-  return new Map(filas.map((f) => [f.productoId, f._count._all]));
+  const filas = await db.productoAdmiteGrupo.findMany({
+    where: { productoId: { in: [...productoIds] }, activo: true, grupo: { activo: true } },
+    orderBy: [{ orden: "asc" }, { grupo: { nombre: "asc" } }],
+    select: { productoId: true, grupo: { select: { nombre: true } } },
+  });
+  const salida = new Map<string, string[]>();
+  for (const f of filas) salida.set(f.productoId, [...(salida.get(f.productoId) ?? []), f.grupo.nombre]);
+  return salida;
 }
