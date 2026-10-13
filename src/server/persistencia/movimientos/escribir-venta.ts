@@ -21,6 +21,11 @@ export interface OperacionDeVentaAEscribir {
   /** Solo la PRIMERA operación del lote lleva la clave y el hash del intento (I3). */
   claveIdempotencia: string | null;
   payloadHash: string | null;
+  /**
+   * GO-2b (ADR-030): SOLO en la operación de un ADICIONAL, la de su producto (de la misma sucursal y del mismo lote: la escribió antes este mismo bucle). Se pone al
+   * CREAR la operación: el disparador `Operacion_padre_inmutable_chk` rechaza cualquier UPDATE del padre, también de NULL a un valor. Ausente en todas las demás.
+   */
+  operacionPadreId?: string;
 }
 
 export async function escribirOperacionDeVenta(tx: Prisma.TransactionClient, datos: OperacionDeVentaAEscribir): Promise<{ id: string }> {

@@ -31,6 +31,7 @@ export interface ComandoAnularItemEnviado {
  *  - `CUENTA_CERRADA`: la cuenta ya se cerró — su venta se anula por `anularVenta`;
  *  - `SIN_ENVIAR`: todavía no salió a cocina — se quita, no se anula;
  *  - `COMPONENTE_DE_PROMO`: es parte de una promo — se anula la promo entera (Task #16, D4);
+ *  - `ES_ADICIONAL` (GO-2b, ADR-030): es un adicional de otro producto — en v1 se anula su producto, que se lo lleva (lo que queda del adicional es siempre k × lo que queda del producto);
  *  - `MOTIVO_INVALIDO`: motivo vacío o demasiado largo (`validarMotivoAnulacion`);
  *  - `RESTANTE_CAMBIO`: la guarda optimista — lo que queda ya no es lo que vio el usuario;
  *  - `CANTIDAD_INVALIDA`: la cantidad no pasa `validarCantidadPedido` (no positiva, > 999, fuera del paso de venta);
@@ -39,6 +40,7 @@ export interface ComandoAnularItemEnviado {
 export type CodigoAnularItemEnviado =
   | "NO_ENCONTRADO"
   | "ES_ANULACION"
+  | "ES_ADICIONAL"
   | "CUENTA_CERRADA"
   | "SIN_ENVIAR"
   | "COMPONENTE_DE_PROMO"

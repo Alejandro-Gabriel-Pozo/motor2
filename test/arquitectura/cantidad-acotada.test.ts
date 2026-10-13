@@ -34,6 +34,8 @@ const SIN_TOPE: Record<string, string> = {
     PENDIENTE + "El período es opcional (por defecto «desde siempre», saldo acumulado): toda LIQUIDACION_CONSIGNACION de la sucursal. Arreglo: sumar en la base (groupBy por proveedor).",
   "src/server/consultas/reportes/costo-historico.ts|movimientoStock.findMany|reconstruirCostosDeVenta":
     "Solo las compras DENTRO del rango pedido (primerDia..ultimoDia, el mismo del reporte que lo llama); lo anterior lo cubre la «semilla» DISTINCT ON de abajo. " + POR_RANGO,
+  "src/server/consultas/reportes/costo-historico.ts|movimientoStock.findMany|reconstruirCostosDeVenta#2":
+    "GO-2b: los CONSUMO de las operaciones de las líneas configuradas SIN costo congelado del reporte que lo llama (acotada por sus ids, que salen del mismo rango): " + POR_RANGO,
   "src/server/consultas/reportes/descuentos-clientes.ts|movimientoStock.findMany|obtenerReporteDescuentosClientes": "Ventas con cliente de la sucursal en [desde, hasta]: " + POR_RANGO,
   "src/server/consultas/reportes/descuentos-productos.ts|cuentaItem.findMany|obtenerReporteDescuentosProductos": "Ítems de las operaciones de la sucursal en [desde, hasta]: " + POR_RANGO,
   "src/server/consultas/reportes/descuentos-productos.ts|movimientoStock.findMany|obtenerReporteDescuentosProductos":
@@ -55,6 +57,8 @@ const SIN_TOPE: Record<string, string> = {
   "src/server/consultas/reportes/rendimiento-recetas.ts|movimientoStock.findMany|cargarTramos": "Consumos, controles y ajustes dentro de los tramos entre anclas, que están dentro del rango: " + POR_RANGO,
   "src/server/consultas/reportes/rendimiento-recetas.ts|movimientoStock.findMany|cargarTramos#2": "Ventas dentro de los tramos entre anclas, que están dentro del rango: " + POR_RANGO,
   "src/server/consultas/reportes/rendimiento-recetas.ts|movimientoStock.findMany|cargarVentasDeLaVentana": "Ventas de la ventana [desde, hasta]: " + POR_RANGO,
+  "src/server/consultas/reportes/rendimiento-recetas.ts|movimientoStock.findMany|cargarConsumoConOpciones":
+    "GO-2b: los CONSUMO de las ventas con opciones de la ventana [desde, hasta] (acotada por los ids de esas operaciones, que salen de las ventas de la ventana): " + POR_RANGO,
   "src/server/consultas/reportes/vencimientos.ts|conteoFisico.findMany|generarConciliacionVencimientos":
     PENDIENTE + "Todos los conteos por lote de la sucursal (la conciliación compara jornadas consecutivas). Arreglo: acotar a una ventana de fechas con `ahora` inyectado (hoy la función no lo recibe).",
   "src/server/consultas/reportes/vencimientos.ts|movimientoStock.findMany|sumarVentasYConsumosPorVentana":

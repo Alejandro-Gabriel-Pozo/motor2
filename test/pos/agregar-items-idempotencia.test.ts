@@ -31,6 +31,7 @@ import { agregarItems, enviarACocina, quitarItemSinEnviar } from "../../src/serv
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { guardComandoAgregarItems } from "../../src/core/features/cuentas/cuenta-pedido.guard";
 import { MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/public-servidor";
+import { elegida, sembrarCafeDelSalon } from "../setup/opciones";
 
 /**
  * P3 (Paquete 1) — idempotencia I3 de `agregarItems` (pedido del salón). La pantalla manda una clave (UUID) y el servidor guarda UN comprobante por pedido agregado
@@ -137,6 +138,33 @@ describe("agregarItems con clave de idempotencia (P3, I3)", () => {
       expect((await agregarItems(cuentaId, [{ productoId: s.milanesa.id, cantidad: 1 }], [], CLAVE)).ok).toBe(true);
       expect(await agregarItems(otraCuenta.id, [{ productoId: s.milanesa.id, cantidad: 1 }], [], CLAVE)).toEqual({ ok: false, mensaje: MENSAJE_CONFLICTO_IDEMPOTENCIA });
       expect(await prisma.cuentaItem.count({ where: { cuentaId: otraCuenta.id } })).toBe(0);
+    });
+  });
+
+  describe("GO-2b: con opciones (la huella del pedido lleva las opciones tal como llegaron)", () => {
+    it("la misma clave dos veces seguidas: un solo juego de líneas (café y shot) y de fotos, y el mensaje original", async () => {
+      const c = await sembrarCafeDelSalon(s);
+      const items = [{ productoId: c.cafeId, cantidad: 1, opciones: [elegida(c, c.grandeId), elegida(c, c.almendrasId), elegida(c, c.shotId)] }];
+      expect(await agregarItems(cuentaId, items, [], CLAVE)).toEqual({ ok: true, mensaje: MENSAJE_UN_ITEM });
+      expect(await agregarItems(cuentaId, items, [], CLAVE)).toEqual({ ok: true, mensaje: MENSAJE_UN_ITEM });
+      expect(await prisma.cuentaItem.count({ where: { cuentaId } })).toBe(2);
+      expect(await prisma.opcionElegidaEnLinea.count()).toBe(3);
+      expect(await prisma.agregadoDeCuenta.count()).toBe(1);
+    });
+
+    it("la misma clave con OTRAS opciones (u otra cantidad de una opción) es un conflicto y no agrega nada", async () => {
+      const c = await sembrarCafeDelSalon(s);
+      expect((await agregarItems(cuentaId, [{ productoId: c.cafeId, cantidad: 1, opciones: [elegida(c, c.grandeId)] }], [], CLAVE)).ok).toBe(true);
+      expect(await agregarItems(cuentaId, [{ productoId: c.cafeId, cantidad: 1, opciones: [elegida(c, c.chicoId)] }], [], CLAVE)).toEqual({ ok: false, mensaje: MENSAJE_CONFLICTO_IDEMPOTENCIA });
+      expect(await agregarItems(cuentaId, [{ productoId: c.cafeId, cantidad: 1, opciones: [elegida(c, c.grandeId), elegida(c, c.shotId, 2)] }], [], CLAVE)).toEqual({ ok: false, mensaje: MENSAJE_CONFLICTO_IDEMPOTENCIA });
+      expect(await prisma.cuentaItem.count({ where: { cuentaId } })).toBe(1);
+      expect(await prisma.opcionElegidaEnLinea.count()).toBe(1);
+    });
+
+    it("una lista de opciones VACÍA no cambia la huella de un pedido sin opciones: el reenvío con `opciones: []` es el mismo envío", async () => {
+      expect((await agregarItems(cuentaId, [{ productoId: s.milanesa.id, cantidad: 1 }], [], CLAVE)).ok).toBe(true);
+      expect(await agregarItems(cuentaId, [{ productoId: s.milanesa.id, cantidad: 1, opciones: [] }], [], CLAVE)).toEqual({ ok: true, mensaje: MENSAJE_UN_ITEM });
+      expect(await prisma.cuentaItem.count({ where: { cuentaId } })).toBe(1);
     });
   });
 

@@ -114,6 +114,7 @@ describe("precio local: un solo lugar decide cuál rige (capacidad + fila habili
       problemas,
       `Estas líneas leen PrecioLocalDeOpcion a mano y se saltan el embudo del precio local de las opciones (server/lecturas/catalogo/precio-local-de-opciones):\n${problemas.join("\n")}`
     ).toEqual([]);
+    expect(lineasQueLeenPrecioLocalDeOpcionDirecto(readFileSync(join(RAIZ, "server/lecturas/catalogo/precio-local-de-opciones.ts"), "utf8")).length, "precio-local-de-opciones.ts ya no lee la grilla: ¿se movió?").toBeGreaterThan(0);
   });
 
   it("solo `precioLocalActivoEn` (server/lecturas/catalogo/precio-local.ts) consulta la capacidad `precio_local` para decidir un precio", () => {

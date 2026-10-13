@@ -1,5 +1,5 @@
 import { redondearMoneda } from "@/core/moneda";
-import { claveCostoHistorico, diaUtc, type IndiceRecetas, type InfoProductoReporte } from "@/core/reportes/public";
+import { claveCostoDeLineaConfigurada, claveCostoHistorico, diaUtc, type IndiceRecetas, type InfoProductoReporte } from "@/core/reportes/public";
 import { reconstruirCostosDeVenta } from "@/server/consultas/reportes/costo-historico";
 import type { Db } from "@/lib/db-tipos";
 import type { ItemParaMargenReal, FilaMargenRealProducto, MargenRealDelPeriodo } from "@/core/reportes/public";
@@ -44,7 +44,9 @@ export async function calcularMargenRealDelPeriodo(
       costoPorItem[i] = costo;
       return;
     }
-    const reconstruido = costosReconstruidos.get(claveCostoHistorico(it.productoId, diaUtc(it.fecha))) ?? null;
+    // GO-2b: una línea configurada (o un adicional) se reconstruye con los consumos de SU operación, nunca con la receta del producto base.
+    const clave = it.lineaConfigurada && it.idOperacion !== undefined ? claveCostoDeLineaConfigurada(it.idOperacion) : claveCostoHistorico(it.productoId, diaUtc(it.fecha));
+    const reconstruido = costosReconstruidos.get(clave) ?? null;
     if (reconstruido !== null) {
       const costo = it.cantidad * reconstruido;
       ingresoConCostoReal += it.precioTotal;

@@ -29,6 +29,8 @@ export interface EnlaceDeLineaAOperacion {
   promoCuentaId?: string | null;
   /** Solo de un suelto con descuento de producto (parte de su clave, ver `claveDeLineaDeVenta`): el precio de lista del ítem. */
   precioCartaUnitario?: number | null;
+  /** GO-2b: SOLO en una línea configurada o un adicional: los ítems (originales y espejos) que la forman. Se enlazan por id, no por la clave. */
+  itemIds?: readonly string[];
   operacionId: string;
 }
 
@@ -39,6 +41,13 @@ export interface EnlaceDeLineaAOperacion {
  */
 export async function enlazarItemsConOperaciones(tx: Prisma.TransactionClient, cuentaId: string, enlaces: readonly EnlaceDeLineaAOperacion[]): Promise<void> {
   for (const e of enlaces) {
+    // GO-2b (ADR-030, «lo que GO-2 hereda»): una línea configurada o un adicional se enlaza por los ids de SUS ítems; una línea sin opciones, por su clave de
+    // siempre más `huellaOpciones: null, lineaPadreId: null` — sin eso, un café configurado (o un adicional) al mismo producto y precio se enlazaría a la
+    // operación del café sin opciones. Un padre que solo tiene adicionales no tiene huella: es parte de la línea sin opciones de su producto, como corresponde.
+    if (e.itemIds) {
+      await tx.cuentaItem.updateMany({ where: { cuentaId, id: { in: [...e.itemIds] } }, data: { operacionId: e.operacionId } });
+      continue;
+    }
     await tx.cuentaItem.updateMany({
       where: {
         cuentaId,
@@ -46,6 +55,8 @@ export async function enlazarItemsConOperaciones(tx: Prisma.TransactionClient, c
         precioUnitario: e.precioUnitario,
         promoCuentaId: e.promoCuentaId ?? null,
         ...(e.promoCuentaId ? {} : { precioCartaUnitario: e.precioCartaUnitario ?? null }),
+        huellaOpciones: null,
+        lineaPadreId: null,
       },
       data: { operacionId: e.operacionId },
     });

@@ -363,6 +363,14 @@ const CONGELADAS: Record<string, Congelada> = {
       },
     ],
   },
+  "test/pos/caracterizacion/venta-con-opciones.golden.txt": {
+    blob: "c1a535dd2da666e1fe3153415e310b4151f30fed",
+    // Un commit no puede llevar su propio hash: es el commit PADRE de este (GO-2b paso 8, «el nucleo de la venta con lineas configuradas y adicionales»); la caracterización nace en el siguiente.
+    desde: "ff53437",
+    motivo:
+      "GO-2b (ADR-030; NUEVA, no regenera ninguna vieja): la venta CON OPCIONES de punta a punta en el salón (agregar un café grande con almendras y dos shots, dos chicos y un flan; el mismo grande otra vez; enviar; cerrar con cliente al 10%) con todas las filas de CuentaItem, OpcionElegidaEnLinea, Operacion y MovimientoStock. Fija la huella en la clave (dos grandes iguales = una Operacion de ×2), el adicional en su línea con su padre, la Operacion hija con `operacionPadreId`, el consumo transformado por las opciones, el costo congelado de sus pedidos y que el adicional no lleva descuento de cliente.",
+    regeneraciones: [],
+  },
   "test/persistencia/__golden__/kardex-escritores.golden.json": {
     blob: "4ba48f056c55dbfc6c49ba4c8acac8adf67f9d1a",
     desde: "4af23e8b",

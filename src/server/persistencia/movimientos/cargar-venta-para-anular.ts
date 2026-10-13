@@ -26,10 +26,14 @@ export interface VentaParaAnular {
   nroFactura: string | null;
   /** La `PromoCuenta` de la que esta venta es un componente (Task #16), `null` si es una venta suelta. */
   promoCuentaId: string | null;
+  /** GO-2b (ADR-030): no nulo = la venta de un ADICIONAL (su Operacion cuelga de la del producto). */
+  operacionPadreId: string | null;
+  /** GO-2b: los ids de las operaciones HIJAS (adicionales) todavía vigentes; vacío en una venta sin adicionales. */
+  hijasVigentes: string[];
   lineas: LineaVendida[];
 }
 
-type OperacionConLineas = Prisma.OperacionGetPayload<{ include: { movimientos: { include: { producto: true } } } }>;
+type OperacionConLineas = Prisma.OperacionGetPayload<{ include: { movimientos: { include: { producto: true } } } }> & { operacionesHijas?: { id: string }[] };
 
 /**
  * Las líneas de la venta en el orden en que se escribieron (`creadoEn` y, a igualdad, id): de ese orden depende el de las filas de reversión que escribe la
@@ -49,6 +53,8 @@ function aVentaParaAnular(operacion: OperacionConLineas): VentaParaAnular {
     creadoEn: operacion.creadoEn,
     nroFactura: operacion.nroFactura,
     promoCuentaId: operacion.promoCuentaId,
+    operacionPadreId: operacion.operacionPadreId,
+    hijasVigentes: (operacion.operacionesHijas ?? []).map((h) => h.id),
     lineas: operacion.movimientos.map((m) => ({
       productoId: m.productoId,
       seccionId: m.seccionId,
@@ -70,9 +76,23 @@ export async function cargarVentaParaAnular(
 ): Promise<VentaParaAnular | null> {
   const operacion = await tx.operacion.findFirst({
     where: { id: args.operacionId, sucursalId: args.sucursalId },
-    include: LINEAS_EN_ORDEN_DE_ESCRITURA,
+    // GO-2b: los ids de las hijas vigentes (los adicionales) van anidados en la MISMA consulta; sin adicionales, una lista vacía.
+    include: { ...LINEAS_EN_ORDEN_DE_ESCRITURA, operacionesHijas: { where: { anuladaEn: null }, select: { id: true }, orderBy: [{ creadoEn: "asc" }, { id: "asc" }] } },
   });
   return operacion ? aVentaParaAnular(operacion) : null;
+}
+
+/**
+ * GO-2b (ADR-030): las operaciones HIJAS vigentes de una venta (las de sus adicionales), completas y en el orden en que se escribieron, para anularlas con ella. La
+ * llama el caso de uso SOLO si `cargarVentaParaAnular` encontró alguna: una venta sin adicionales no suma ninguna consulta.
+ */
+export async function cargarHijasDeVenta(tx: Prisma.TransactionClient, args: { ids: readonly string[]; sucursalId: string }): Promise<VentaParaAnular[]> {
+  const hijas = await tx.operacion.findMany({
+    where: { id: { in: [...args.ids] }, sucursalId: args.sucursalId, anuladaEn: null },
+    include: LINEAS_EN_ORDEN_DE_ESCRITURA,
+    orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
+  });
+  return hijas.map(aVentaParaAnular);
 }
 
 /**

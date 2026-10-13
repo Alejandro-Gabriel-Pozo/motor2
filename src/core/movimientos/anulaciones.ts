@@ -187,9 +187,11 @@ export function construirReversionDeVenta(lineas: readonly LineaVendida[]): Line
  * Mensaje de éxito de una anulación de venta, con el texto EXACTO que armaba `anularVenta`. `componentesDePromo` es la cantidad de
  * Operaciones anuladas juntas cuando la venta era parte de una promo con hermanas vigentes, `null` si fue una sola.
  */
-export function mensajeVentaAnulada(movimientosRevertidos: number, huboLiquidacionConsignacion: boolean, componentesDePromo: number | null): string {
+export function mensajeVentaAnulada(movimientosRevertidos: number, huboLiquidacionConsignacion: boolean, componentesDePromo: number | null, adicionales = 0): string {
   const mensajePromo = componentesDePromo !== null ? ` Era una promo con ${componentesDePromo} componentes: se anularon todos juntos.` : "";
-  return `Venta anulada. Se revirtieron ${movimientosRevertidos} movimiento(s) de stock${huboLiquidacionConsignacion ? " y la liquidación de consignación" : ""}.${mensajePromo}`;
+  // GO-2b (ADR-030): sin adicionales (el caso de siempre), el mismo texto de antes.
+  const mensajeAdicionales = adicionales > 0 ? ` Tenía ${adicionales === 1 ? "1 adicional" : `${adicionales} adicionales`}: se anuló con ellos.` : "";
+  return `Venta anulada. Se revirtieron ${movimientosRevertidos} movimiento(s) de stock${huboLiquidacionConsignacion ? " y la liquidación de consignación" : ""}.${mensajePromo}${mensajeAdicionales}`;
 }
 
 /** Descripción de la fila de auditoría (campo `anuladaEn`) de CADA Operación anulada, con el texto EXACTO de antes. */

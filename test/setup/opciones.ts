@@ -276,3 +276,104 @@ export function sentenciaDeCombinacionEnLinea(e: { cuentaItemId: string; combina
   const datos: Record<string, unknown> = { id: randomUUID(), cuentaItemId: e.cuentaItemId, combinacionId: e.combinacionId, origenPrecio: "ADITIVO", ...extra };
   return { id: datos.id as string, ...sentenciaDeInsercion("CombinacionEnLinea", datos) };
 }
+
+// GO-2b (la venta con opciones): el café del SALÓN, sembrado directo con Prisma (sin pasar por los casos de uso de administración de GO-2a, para que estos tests no dependan de ellos) sobre el escenario de
+// `test/pos/salon-fixture.ts`, para los tests de agregar ítems, enviar, cerrar, anular, el ticket y los reportes.
+
+/** Lo que `sembrarCafeDelSalon` deja sembrado. Los nombres de las opciones van con su id y su versión 1. */
+export interface CafeDelSalon {
+  cafeId: string;
+  lecheId: string;
+  almendrasInsumoId: string;
+  granoId: string;
+  anclaDelShotId: string;
+  grupoMedidaId: string;
+  chicoId: string;
+  medianoId: string;
+  grandeId: string;
+  grupoLecheId: string;
+  vacaId: string;
+  almendrasId: string;
+  grupoExtrasId: string;
+  shotId: string;
+  /** La versión 1 de cada opción. */
+  versionDe: Readonly<Record<string, string>>;
+}
+
+/**
+ * Un «Café» (PV, 1000,00, disponible en la sucursal, con receta: 0,2 kg de Leche) que admite: MEDIDA «Tamaño» en DIFERENCIA (Chico -50,00 factor 0,5;
+ * Mediano 0,00 factor 1; Grande +100,00 factor 1,5), VARIANTE «Leche» 0..1 (De vaca 0,00; Almendras +150,00 que REEMPLAZA la leche por 0,2 kg de bebida de
+ * almendras) y ADICIONAL «Extras» 0..3 (Shot extra +200,00, respaldado por un producto ANCLA sin disponibilidad, que SUMA 0,01 kg de café en grano; tope 3 por
+ * café). Las materias primas están disponibles en la sucursal. `extra.modoPrecioMedida` cambia el modo de la medida (por ejemplo ABSOLUTO, con
+ * `precioAbsoluto` en cada medida del producto).
+ */
+export async function sembrarCafeDelSalon(
+  s: { sucursalId: string; unidad: { id: string }; kg: { id: string }; admin: { id: string } },
+  extra: { modoPrecioMedida?: "ABSOLUTO" | "DIFERENCIA" | null; precioAbsoluto?: Partial<Record<"chico" | "mediano" | "grande", string>> } = {}
+): Promise<CafeDelSalon> {
+  const mp = async (codigo: string, nombre: string) => {
+    const insumo = await prisma.insumo.create({ data: { nombre } });
+    const producto = await prisma.producto.create({ data: { codigo, nombre, tipo: "MP", unidadStockId: s.kg.id, insumoId: insumo.id } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId: s.sucursalId, productoId: producto.id, disponible: true } });
+    return producto.id;
+  };
+  const lecheId = await mp("MP_LECHE", "Leche");
+  const almendrasInsumoId = await mp("MP_ALMENDRAS", "Bebida de almendras");
+  const granoId = await mp("MP_GRANO", "Café en grano");
+  const cafe = await prisma.producto.create({ data: { codigo: "PV_CAFE", nombre: "Café", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: "1000.00" } });
+  await prisma.disponibilidadProducto.create({ data: { sucursalId: s.sucursalId, productoId: cafe.id, disponible: true } });
+  await prisma.recetaVersion.create({ data: { productoId: cafe.id, version: 1, ingredientes: { create: [{ insumoProductoId: lecheId, cantidad: 0.2, unidadId: s.kg.id, mermaPorcentaje: 0 }] } } });
+  const anclaDelShotId = (await prisma.producto.create({ data: { codigo: "PV_SHOT", nombre: "Shot extra", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: "0.00" } })).id;
+
+  const grupo = async (nombre: string, tipo: string, cantidadMinima: number, cantidadMaxima: number) => (await prisma.grupoDeOpciones.create({ data: { nombre, tipo, cantidadMinima, cantidadMaxima } })).id;
+  const grupoMedidaId = await grupo("Tamaño", "MEDIDA", 1, 1);
+  const grupoLecheId = await grupo("Leche", "VARIANTE", 0, 1);
+  const grupoExtrasId = await grupo("Extras", "ADICIONAL", 0, 3);
+  const opcion = async (grupoId: string, nombre: string, orden: number, productoId?: string) => (await prisma.opcionDeGrupo.create({ data: { grupoId, nombre, orden, ...(productoId ? { productoId } : {}) } })).id;
+  const chicoId = await opcion(grupoMedidaId, "Chico", 1);
+  const medianoId = await opcion(grupoMedidaId, "Mediano", 2);
+  const grandeId = await opcion(grupoMedidaId, "Grande", 3);
+  const vacaId = await opcion(grupoLecheId, "De vaca", 1);
+  const almendrasId = await opcion(grupoLecheId, "Almendras", 2);
+  const shotId = await opcion(grupoExtrasId, "Shot extra", 1, anclaDelShotId);
+
+  const versionDe: Record<string, string> = {};
+  const version = async (opcionId: string, diferenciaPrecio: string, factorEscala: string | null = null) => {
+    versionDe[opcionId] = (await prisma.versionDeOpcion.create({ data: { opcionId, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio, factorEscala, creadoPorId: s.admin.id } })).id;
+  };
+  await version(chicoId, "-50.00", "0.5000");
+  await version(medianoId, "0.00", "1.0000");
+  await version(grandeId, "100.00", "1.5000");
+  await version(vacaId, "0.00");
+  await version(almendrasId, "150.00");
+  await version(shotId, "200.00");
+  await prisma.consumoDeOpcion.create({ data: { versionDeOpcionId: versionDe[almendrasId]!, efecto: "REEMPLAZA", insumoProductoId: almendrasInsumoId, reemplazaAProductoId: lecheId, cantidad: "0.2000", unidadId: s.kg.id } });
+  await prisma.consumoDeOpcion.create({ data: { versionDeOpcionId: versionDe[shotId]!, efecto: "SUMA", insumoProductoId: granoId, cantidad: "0.0100", unidadId: s.kg.id } });
+
+  const modoPrecio = extra.modoPrecioMedida === undefined ? "DIFERENCIA" : extra.modoPrecioMedida;
+  for (const [orden, grupoId] of [grupoMedidaId, grupoLecheId, grupoExtrasId].entries()) {
+    await prisma.productoAdmiteGrupo.create({ data: { productoId: cafe.id, grupoId, orden, ...(grupoId === grupoMedidaId ? { modoPrecio } : {}) } });
+  }
+  const absoluto = extra.precioAbsoluto ?? {};
+  for (const [clave, opcionId] of [["chico", chicoId], ["mediano", medianoId], ["grande", grandeId]] as const) {
+    await prisma.productoAdmiteOpcion.create({ data: { productoId: cafe.id, opcionId, ...(absoluto[clave] ? { precioAbsoluto: absoluto[clave] } : {}) } });
+  }
+  for (const opcionId of [vacaId, almendrasId]) await prisma.productoAdmiteOpcion.create({ data: { productoId: cafe.id, opcionId } });
+  await prisma.productoAdmiteOpcion.create({ data: { productoId: cafe.id, opcionId: shotId, cantidadMaxima: 3 } });
+
+  return { cafeId: cafe.id, lecheId, almendrasInsumoId, granoId, anclaDelShotId, grupoMedidaId, chicoId, medianoId, grandeId, grupoLecheId, vacaId, almendrasId, grupoExtrasId, shotId, versionDe };
+}
+
+/** Una opción elegida tal como la manda la pantalla: con la versión que vio el mozo (la 1, salvo que se pase otra). */
+export function elegida(c: Pick<CafeDelSalon, "versionDe">, opcionId: string, cantidad = 1, versionDeOpcionId?: string) {
+  return { opcionId, cantidad, versionDeOpcionId: versionDeOpcionId ?? c.versionDe[opcionId]! };
+}
+
+/** GO-2b: un SEGUNDO adicional («Crema», +150,00, con su propio producto ancla y sin consumo) en el grupo «Extras» del café de `sembrarCafeDelSalon`. */
+export async function sembrarCremaDelCafe(s: { unidad: { id: string }; admin: { id: string } }, c: Pick<CafeDelSalon, "cafeId" | "grupoExtrasId">) {
+  const anclaId = (await prisma.producto.create({ data: { codigo: "PV_CREMA", nombre: "Crema", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: "0.00" } })).id;
+  const cremaId = (await prisma.opcionDeGrupo.create({ data: { grupoId: c.grupoExtrasId, nombre: "Crema", orden: 2, productoId: anclaId } })).id;
+  const versionId = (await prisma.versionDeOpcion.create({ data: { opcionId: cremaId, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "150.00", creadoPorId: s.admin.id } })).id;
+  await prisma.productoAdmiteOpcion.create({ data: { productoId: c.cafeId, opcionId: cremaId, cantidadMaxima: 2 } });
+  return { anclaId, cremaId, versionId };
+}

@@ -56,6 +56,15 @@ const REGLAS: readonly { nombre: string; archivo: string; lineas: readonly RegEx
     lineas: [/if \(cantidadDeLineas > MAXIMO_ITEMS_POR_AGREGADO\) return rechazar\("rango"/, /componentesDeEleccion\(Array\.isArray\(p\?\.elecciones\) \? p\.elecciones : \[\]\)/],
   },
   {
+    nombre: "Opciones de cada ítem del pedido del POS (GO-2b): tope por ítem, cantidad entera de 1 a 10 y la versión obligatoria",
+    archivo: "src/core/features/cuentas/cuenta-pedido.guard.ts",
+    lineas: [
+      /if \(opciones\.length > MAXIMO_OPCIONES_POR_ITEM\) return rechazar\("rango"/,
+      /if \(!esTextoNoVacio\(opcionId\) \|\| !esTextoNoVacio\(versionDeOpcionId\)\) return rechazar\("formato"/,
+      /cantidad < 1 \|\| cantidad > CANTIDAD_MAXIMA_DE_OPCION/,
+    ],
+  },
+  {
     nombre: "Ítems por envío a cocina: tope (el arreglo `itemIds`)",
     archivo: "src/core/features/cuentas/cuenta-pedido.guard.ts",
     lineas: [/if \(itemIds\.length > MAXIMO_ITEMS_POR_ENVIO\) return rechazar\("rango"/],

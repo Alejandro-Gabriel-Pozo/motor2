@@ -26,7 +26,13 @@ export async function obtenerTicketsRecientes(
       cliente: { select: { nombre: true } },
       items: {
         orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
-        include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } }, promoCuenta: { select: { id: true, titulo: true } } },
+        include: {
+          producto: { select: { nombre: true } },
+          operacion: { select: { anuladaEn: true } },
+          promoCuenta: { select: { id: true, titulo: true } },
+          // GO-2b: la foto de lo elegido (los nombres y la versión del adicional), anidada en la misma consulta; sin opciones, vacía.
+          opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true } },
+        },
       },
       ejemplaresTicket: {
         orderBy: { ejemplar: "desc" },
@@ -52,6 +58,11 @@ export async function obtenerTicketsRecientes(
         operacionId: i.operacionId,
         operacion: i.operacion,
         promoCuenta: i.promoCuenta,
+        id: i.id,
+        huellaOpciones: i.huellaOpciones,
+        lineaPadreId: i.lineaPadreId,
+        anulaAItemId: i.anulaAItemId,
+        opcionesElegidas: i.opcionesElegidas,
       })),
       ejemplaresTicket: c.ejemplaresTicket,
     })),

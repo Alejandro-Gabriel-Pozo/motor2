@@ -11,10 +11,21 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
  * uso en el MISMO lugar que antes, así cada combinación inválida sigue respondiendo el mismo mensaje (lo fija `huella-del-pos`).
  */
 
-/** Un ítem suelto que pide el mozo, para el segundo parámetro de `agregarItems`. */
+/**
+ * Una opción elegida para un ítem (GO-2b, ADR-030): la opción, cuántas por unidad del producto y la VERSIÓN que el mozo vio al elegirla (obligatoria: si ya no
+ * es la vigente, el pedido se rechaza con `OPCION_CAMBIO` en vez de cobrar otro precio). El precio nunca viene del cliente.
+ */
+export interface OpcionParaAgregar {
+  opcionId: string;
+  cantidad: number;
+  versionDeOpcionId: string;
+}
+
+/** Un ítem suelto que pide el mozo, para el segundo parámetro de `agregarItems`. `opciones` (GO-2b) es opcional: sin ella, el pedido de siempre. */
 export interface ItemParaAgregar {
   productoId: string;
   cantidad: number;
+  opciones?: OpcionParaAgregar[];
 }
 
 /** Una promo armada por el mozo, para el tercer parámetro de `agregarItems` (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 8a). */
@@ -44,9 +55,15 @@ export interface ComandoAgregarItems {
  *  - `PROMO_NO_DISPONIBLE` (S-22 / D2): el pedido trae promos y la empresa no tiene el módulo Promociones. Se mira antes que cada ítem: sin el módulo no hay promo que validar;
  *  - `PRODUCTO_INVALIDO`: un ítem suelto no existe, no es PV, no está disponible en la sucursal o su cantidad no pasa `validarCantidadPedido`;
  *  - `PROMO_INVALIDA`: una promo no existe o no está disponible, su elección no cumple los cupos, o no se puede prorratear.
+ *  - GO-2b (ADR-030), después de los chequeos de producto de cada ítem: `OPCION_CAMBIO` (una opción cambió de versión desde que el mozo la eligió),
+ *    `OPCIONES_INVALIDAS` (lo elegido no cumple lo que el producto admite, su precio o su consumo están mal configurados, o con los adicionales se pasa el tope de
+ *    líneas) y `PROMO_CON_OPCIONES` (un componente de una promo tiene un grupo obligatorio: en v1 los componentes no llevan opciones).
  * Todo se valida ANTES de la primera escritura: un rechazo no deja nada escrito.
  */
-export type ResultadoAgregarItems = ResultadoCaso<null, "CONFLICTO_IDEMPOTENCIA" | "CUENTA_NO_ABIERTA" | "PROMO_NO_DISPONIBLE" | "PRODUCTO_INVALIDO" | "PROMO_INVALIDA">;
+export type ResultadoAgregarItems = ResultadoCaso<
+  null,
+  "CONFLICTO_IDEMPOTENCIA" | "CUENTA_NO_ABIERTA" | "PROMO_NO_DISPONIBLE" | "PRODUCTO_INVALIDO" | "PROMO_INVALIDA" | "OPCIONES_INVALIDAS" | "OPCION_CAMBIO" | "PROMO_CON_OPCIONES"
+>;
 
 /** Comando «quitar un ítem que todavía no salió a cocina»: lo que recibe `quitarItemSinEnviarCasoDeUso`. */
 export interface ComandoQuitarItemSinEnviar {
