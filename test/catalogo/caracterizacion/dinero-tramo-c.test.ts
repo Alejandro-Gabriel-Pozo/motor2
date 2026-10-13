@@ -57,6 +57,20 @@ afterAll(async () => {
 
 type Fila = Record<string, unknown> & { id: string };
 
+/**
+ * GO-3 (ADR-032): las columnas que la migración GO-3d sumó a `PromoCarta` (vigencia y control optimista) y a `PromoCartaCupo` (tipo, nombre y baja lógica) DESPUÉS de congelar este golden.
+ * Se omiten SOLO mientras tienen su valor de antes de GO-3 (el valor por defecto: nada de este tramo las escribe), así el golden congelado no se regenera; cualquier otro valor sí sale
+ * en la huella y la pone en rojo.
+ */
+const COLUMNAS_DE_GO3: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
+  PROMO: { vigenteDesde: null, vigenteHasta: null, diasDeSemana: null, version: 1 },
+  PROMO_CUPO: { tipo: "SECCION", nombre: null, activo: true },
+};
+function sinLoDeGo3(titulo: keyof typeof COLUMNAS_DE_GO3, filas: Fila[]): Fila[] {
+  const deAntes = COLUMNAS_DE_GO3[titulo]!;
+  return filas.map((f) => Object.fromEntries(Object.entries(f).filter(([c, v]) => !(c in deAntes) || v !== deAntes[c])) as Fila);
+}
+
 describe("Huella de dinero del tramo C", () => {
   const nombres = new Map<string, string>();
   const contadores = new Map<string, number>();
@@ -102,9 +116,9 @@ describe("Huella de dinero del tramo C", () => {
     { titulo: "MARGEN_OBJETIVO", prefijo: "margen", leer: () => prismaAdmin.margenObjetivo.findMany(donde) },
     { titulo: "PRECIO_LOCAL", prefijo: "precioLocal", leer: () => prismaAdmin.precioLocalProducto.findMany(donde) },
     { titulo: "DESCUENTO", prefijo: "descuento", leer: () => prismaAdmin.descuentoProductoSucursal.findMany(donde) },
-    { titulo: "PROMO", prefijo: "promo", leer: () => prismaAdmin.promoCarta.findMany(donde) },
+    { titulo: "PROMO", prefijo: "promo", leer: async () => sinLoDeGo3("PROMO", await prismaAdmin.promoCarta.findMany(donde)) },
     { titulo: "PROMO_SUCURSAL", prefijo: "promoSucursal", leer: () => prismaAdmin.promoCartaSucursal.findMany(donde) },
-    { titulo: "PROMO_CUPO", prefijo: "cupo", leer: () => prismaAdmin.promoCartaCupo.findMany(donde) },
+    { titulo: "PROMO_CUPO", prefijo: "cupo", leer: async () => sinLoDeGo3("PROMO_CUPO", await prismaAdmin.promoCartaCupo.findMany(donde)) },
     { titulo: "RENDIMIENTO_LOCAL", prefijo: "rendimiento", leer: () => prismaAdmin.rendimientoLocalIngrediente.findMany(donde) },
     { titulo: "RECETA_SUCURSAL", prefijo: "recetaSucursal", leer: () => prismaAdmin.recetaSucursal.findMany(donde) },
     { titulo: "RECETA_VERSION", prefijo: "recetaVersion", leer: () => prismaAdmin.recetaVersion.findMany(donde) },
