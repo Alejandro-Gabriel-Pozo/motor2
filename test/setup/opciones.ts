@@ -239,3 +239,40 @@ export function sentenciaDePlatoDelDia(e: { cupoId: string; sucursalId: string; 
   const datos: Record<string, unknown> = { id: randomUUID(), cupoId: e.cupoId, sucursalId: e.sucursalId, fecha: e.fecha, productoId: e.productoId, actualizadoPorId: e.usuarioId, ...extra };
   return { id: datos.id as string, ...sentenciaDeInsercion("EntradaDelDiaDeCupo", datos) };
 }
+
+// GO-3 (ADR-032): las sentencias `pg` de las combinaciones (GO-3a). Las usan `migracion-go3a` y `paquete-go3-subir-bajar-subir`.
+
+/** Un grupo de precio (la tarifa compartida, 3300,00 por defecto) para un cliente `pg`. */
+export function sentenciaDeGrupoDePrecio(extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), nombre: `Tarifa ${randomUUID().slice(0, 8)}`, precio: "3300.00", ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("GrupoDePrecio", datos) };
+}
+
+/** Una combinación de un producto (eje 1 y, si se pide, eje 2), sin precio por defecto, para un cliente `pg`. */
+export function sentenciaDeCombinacion(e: { productoId: string; opcionEje1Id: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), productoId: e.productoId, opcionEje1Id: e.opcionEje1Id, ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("CombinacionDeProducto", datos) };
+}
+
+/** El precio local de una combinación o de un grupo (4000,00 por defecto) para un cliente `pg`: `extra` lleva `combinacionId` o `grupoDePrecioId`. */
+export function sentenciaDePrecioLocalDeCombinacion(e: { sucursalId: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), sucursalId: e.sucursalId, precio: "4000.00", ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("PrecioLocalDeCombinacion", datos) };
+}
+
+/** Una versión de la receta propia de una combinación (número 1 por defecto) para un cliente `pg`. */
+export function sentenciaDeRecetaDeCombinacion(e: { combinacionId: string; usuarioId: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), combinacionId: e.combinacionId, numero: 1, creadoPorId: e.usuarioId, ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("RecetaDeCombinacionVersion", datos) };
+}
+
+/** Un ingrediente de una versión de receta de combinación (0,0360 por defecto) para un cliente `pg`. */
+export function sentenciaDeIngredienteDeCombinacion(e: { versionId: string; insumoProductoId: string; unidadId: string }, extra: Record<string, unknown> = {}): SentenciaPg {
+  return sentenciaDeInsercion("RecetaDeCombinacionIngrediente", { id: randomUUID(), versionId: e.versionId, insumoProductoId: e.insumoProductoId, cantidad: "0.0360", unidadId: e.unidadId, ...extra });
+}
+
+/** La foto de la combinación vendida en una línea (ADITIVO por defecto) para un cliente `pg`. */
+export function sentenciaDeCombinacionEnLinea(e: { cuentaItemId: string; combinacionId: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), cuentaItemId: e.cuentaItemId, combinacionId: e.combinacionId, origenPrecio: "ADITIVO", ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("CombinacionEnLinea", datos) };
+}

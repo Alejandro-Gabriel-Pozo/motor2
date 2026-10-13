@@ -390,6 +390,12 @@ export async function sembrarMotivosYDestinos() {
 // GO-3 (ADR-032): las tablas de combos y menú del día (GO-3d) y de combinaciones (GO-3a). Nadie las referencia y ellas referencian a la carta, al catálogo, a las opciones, a la sucursal,
 // al User y a `CuentaItem` (RESTRICT, salvo la foto, en CASCADE): se borran PRIMERO, hijas antes que padres. Declarada como función (se iza) para dejar el bloque al final del archivo.
 async function limpiarTablasDeGo3() {
+  await prismaAdmin.combinacionEnLinea.deleteMany();
+  await prismaAdmin.recetaDeCombinacionIngrediente.deleteMany();
+  await prismaAdmin.recetaDeCombinacionVersion.deleteMany();
+  await prismaAdmin.precioLocalDeCombinacion.deleteMany();
+  await prismaAdmin.combinacionDeProducto.deleteMany();
+  await prismaAdmin.grupoDePrecio.deleteMany();
   await prismaAdmin.entradaDelDiaDeCupo.deleteMany();
   await prismaAdmin.opcionDeEntradaDeCupo.deleteMany();
   await prismaAdmin.entradaDeCupo.deleteMany();

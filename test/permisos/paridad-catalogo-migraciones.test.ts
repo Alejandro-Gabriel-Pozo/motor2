@@ -156,7 +156,7 @@ describe("paridad ACCIONES ↔ migraciones: una base real termina con el catálo
     expect(MOTIVO_DE_LAS_RESERVADAS_DE_GO3, "el motivo tiene que explicar también las claves de GO-3").toContain("GO-3");
     expect(Object.keys(RESERVADAS_EN_BASE).sort()).toEqual(
       [
-        "promo_menu_del_dia",
+        "promo_menu_del_dia", "grupos_de_precio_definir",
         "conceptos_gasto", "gasto_anular", "gasto_ver", "gasto_registrar", "gasto_reclasificar", "gasto_repartir", "reporte_gastos_empresa",
         "nota_credito_proveedor", "gasto_nota_credito", "anular_nota_credito_proveedor",
         "centros_costos", "distribucion_costos", "reporte_gastos_por_unidad",

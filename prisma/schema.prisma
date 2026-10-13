@@ -42,6 +42,7 @@ model User {
   versionesDeOpcionCreadas   VersionDeOpcion[]
   opcionesApagadasEnSucursal OpcionApagadaEnSucursal[]
   entradasDelDiaActualizadas EntradaDelDiaDeCupo[]
+  recetasDeCombinacionCreadas RecetaDeCombinacionVersion[]
   ventas                     Venta[]
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
   facturasProvConfirmadas    FacturaProveedor[]   @relation("FacturaProveedorConfirmadaPor")
@@ -168,6 +169,7 @@ model Sucursal {
   preciosLocalesDeOpcion   PrecioLocalDeOpcion[]
   opcionesApagadas         OpcionApagadaEnSucursal[]
   entradasDelDia           EntradaDelDiaDeCupo[]
+  preciosLocalesDeCombinacion PrecioLocalDeCombinacion[]
   invitacionSucursals      InvitacionSucursal[]
 
   @@unique([empresaId, nombre])
@@ -437,6 +439,9 @@ model Producto {
   /// GO-3: las entradas de cupos de combos (LISTA) y los platos del día (DEL_DIA) en que figura este producto.
   entradasDeCupo            EntradaDeCupo[]
   entradasDelDia            EntradaDelDiaDeCupo[]
+  /// GO-3: las combinaciones de sus ejes y las recetas de combinación que lo usan como insumo.
+  combinaciones             CombinacionDeProducto[]
+  insumoEnRecetasDeCombinacion RecetaDeCombinacionIngrediente[] @relation("RecetaDeCombinacionInsumo")
 
   @@unique([empresaId, codigo])
   @@unique([empresaId, id])
@@ -590,6 +595,7 @@ model Unidad {
   recetaVersionesPorRendimiento RecetaVersion[]        @relation("RecetaVersionRendimientoUnidad")
   recetaVersionesPorRacion      RecetaVersion[]        @relation("RecetaVersionRacionUnidad")
   consumosDeOpcion              ConsumoDeOpcion[]
+  ingredientesDeRecetaDeCombinacion RecetaDeCombinacionIngrediente[]
 
   @@unique([empresaId, nombre])
   @@unique([empresaId, id])
@@ -2378,6 +2384,8 @@ model CuentaItem {
   adicionales         CuentaItem[] @relation("CuentaItemLineaPadre")
   /// GO-1: la foto de las opciones elegidas en esta línea (se borra con el borrador: ON DELETE CASCADE).
   opcionesElegidas    OpcionElegidaEnLinea[]
+  /// GO-3: la foto de la combinación vendida (a lo sumo una: único por `cuentaItemId`; se borra con el borrador).
+  combinacionEnLinea  CombinacionEnLinea[]
 
   @@unique([empresaId, id])
   @@index([cuentaId])
@@ -2533,6 +2541,12 @@ model Empresa {
   entradaDeCupoRel               EntradaDeCupo[]
   opcionDeEntradaDeCupoRel       OpcionDeEntradaDeCupo[]
   entradaDelDiaDeCupoRel         EntradaDelDiaDeCupo[]
+  grupoDePrecioRel               GrupoDePrecio[]
+  combinacionDeProductoRel       CombinacionDeProducto[]
+  precioLocalDeCombinacionRel    PrecioLocalDeCombinacion[]
+  recetaDeCombinacionVersionRel  RecetaDeCombinacionVersion[]
+  recetaDeCombinacionIngredienteRel RecetaDeCombinacionIngrediente[]
+  combinacionEnLineaRel          CombinacionEnLinea[]
 }
 
 enum EstadoModulo {
@@ -3388,6 +3402,8 @@ model OpcionDeGrupo {
   apagadasEnSucursal    OpcionApagadaEnSucursal[]
   elegidasEnLinea       OpcionElegidaEnLinea[]
   enEntradasDeCupo      OpcionDeEntradaDeCupo[]
+  combinacionesComoEje1 CombinacionDeProducto[] @relation("CombinacionEje1")
+  combinacionesComoEje2 CombinacionDeProducto[] @relation("CombinacionEje2")
 
   @@unique([empresaId, id])
   @@unique([grupoId, nombre])
@@ -3474,6 +3490,9 @@ model ProductoAdmiteGrupo {
   version        Int             @default(1)
   creadoEn       DateTime        @default(now())
   actualizadoEn  DateTime        @default(now())
+  /// GO-3 (ADR-032): 1 o 2 (CHECK) si este grupo es un EJE de las combinaciones del producto (a lo sumo uno por número: índice único parcial que solo vive en la migración); NULL = no es eje. Un eje es MEDIDA o VARIANTE con
+  /// mínimo = máximo = 1, a lo sumo una MEDIDA, y no cambia mientras exista una combinación del producto (lo controla la aplicación, `validarEjesDeCombinacion`).
+  ejeDeCombinacion Int?          @db.SmallInt
 
   @@unique([productoId, grupoId])
   @@unique([empresaId, id])
@@ -3597,4 +3616,151 @@ model OpcionElegidaEnLinea {
   @@unique([cuentaItemId, opcionId])
   @@index([opcionId])
   @@index([versionDeOpcionId])
+}
+
+/// GO-3 (ADR-032, frente A, D-4): un GRUPO DE PRECIO, la tarifa compartida entre combinaciones de uno o varios productos («Café mediano $ 3.300»). DE EMPRESA. `precio` es `DECIMAL(14,2)` de 0,01 o más (CHECK). Nombre
+/// único por empresa sin importar mayúsculas (índice sobre `lower("nombre")` que solo vive en la migración). Se edita EN EL LUGAR con auditoría por columna y `version` como control optimista (D-3; la base solo garantiza `>= 1`);
+/// lo cobrado queda congelado en la línea y en `CombinacionEnLinea`. No se borra: se desactiva (y no se desactiva con miembros: lo controla la aplicación). Su precio por sucursal es `PrecioLocalDeCombinacion`.
+model GrupoDePrecio {
+  id             String                     @id @default(cuid())
+  empresaId      String                     @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa                    @relation(fields: [empresaId], references: [id])
+  nombre         String
+  precio         Decimal                    @db.Decimal(14, 2)
+  activo         Boolean                    @default(true)
+  /// Control optimista (>= 1, CHECK).
+  version        Int                        @default(1)
+  creadoEn       DateTime                   @default(now())
+  actualizadoEn  DateTime                   @default(now())
+  combinaciones  CombinacionDeProducto[]
+  preciosLocales PrecioLocalDeCombinacion[]
+  enLineas       CombinacionEnLinea[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, nombre])
+}
+
+/// GO-3 (ADR-032, frente A): una COMBINACIÓN de las opciones de los ejes de un producto (`ProductoAdmiteGrupo.ejeDeCombinacion` 1 y 2): la opción del eje 1 y, si hay, la del eje 2. DE EMPRESA. Es una SOBRESCRITURA DISPERSA: sin
+/// fila rige el precio aditivo de GO-1; con `activa = false` esa combinación no se vende (`COMBINACION_NO_DISPONIBLE`); con `precio` (propio, >= 0,01) o `grupoDePrecioId` (uno o ninguno, CHECK) rige ese precio. Identidad
+/// (producto y opciones) INMUTABLE: la app solo cambia `activa`, `precio`, `grupoDePrecioId`, `version` y `actualizadoEn`. Única por (producto, eje 1, eje 2) con un índice por expresión que solo vive en la migración
+/// (`COALESCE` del eje 2: no depende de NULLS NOT DISTINCT). Puede existir solo para tener receta propia (`RecetaDeCombinacionVersion`). No se borra: se desactiva.
+model CombinacionDeProducto {
+  id              String                       @id @default(cuid())
+  empresaId       String                       @default(dbgenerated("app_empresa_actual()"))
+  empresa         Empresa                      @relation(fields: [empresaId], references: [id])
+  productoId      String
+  producto        Producto                     @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  opcionEje1Id    String
+  opcionEje1      OpcionDeGrupo                @relation("CombinacionEje1", fields: [empresaId, opcionEje1Id], references: [empresaId, id])
+  /// NULL si el producto tiene un solo eje.
+  opcionEje2Id    String?
+  opcionEje2      OpcionDeGrupo?               @relation("CombinacionEje2", fields: [empresaId, opcionEje2Id], references: [empresaId, id])
+  activa          Boolean                      @default(true)
+  /// El precio propio de la combinación (>= 0,01) o NULL.
+  precio          Decimal?                     @db.Decimal(14, 2)
+  grupoDePrecioId String?
+  grupoDePrecio   GrupoDePrecio?               @relation(fields: [empresaId, grupoDePrecioId], references: [empresaId, id])
+  /// Control optimista (>= 1, CHECK).
+  version         Int                          @default(1)
+  creadoEn        DateTime                     @default(now())
+  actualizadoEn   DateTime                     @default(now())
+  preciosLocales  PrecioLocalDeCombinacion[]
+  recetas         RecetaDeCombinacionVersion[]
+  enLineas        CombinacionEnLinea[]
+
+  @@unique([empresaId, id])
+  @@index([grupoDePrecioId])
+}
+
+/// GO-3 (ADR-032, D-4): el precio de una combinación O de un grupo de precio EN UNA SUCURSAL (`num_nonnulls(combinacionId, grupoDePrecioId) = 1`, CHECK). `PROPIA` (sus políticas de alcance las agrega GO-3a-rls). ADR-009, familia
+/// `override`: sin fila habilitada (o con la capacidad `precio_local` apagada) rige el precio de la empresa. Se lee SOLO en `src/server/lecturas/catalogo/precio-local.ts` (guardián `precio-local-en-un-solo-lugar`). La app solo
+/// cambia `precio`, `habilitado` y `actualizadoEn`; no borra nada. Un precio por (sucursal, combinación) y uno por (sucursal, grupo): únicos comunes (la columna que no se usa es NULL y dos NULL son distintos).
+model PrecioLocalDeCombinacion {
+  id              String                 @id @default(cuid())
+  empresaId       String                 @default(dbgenerated("app_empresa_actual()"))
+  empresa         Empresa                @relation(fields: [empresaId], references: [id])
+  sucursalId      String
+  sucursal        Sucursal               @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  combinacionId   String?
+  combinacion     CombinacionDeProducto? @relation(fields: [empresaId, combinacionId], references: [empresaId, id])
+  grupoDePrecioId String?
+  grupoDePrecio   GrupoDePrecio?         @relation(fields: [empresaId, grupoDePrecioId], references: [empresaId, id])
+  /// 0,01 o más (CHECK).
+  precio          Decimal                @db.Decimal(14, 2)
+  habilitado      Boolean                @default(true)
+  actualizadoEn   DateTime               @default(now())
+
+  @@unique([sucursalId, combinacionId])
+  @@unique([sucursalId, grupoDePrecioId])
+  @@unique([empresaId, id])
+}
+
+/// GO-3 (ADR-032, frente B): una VERSIÓN de la receta PROPIA de una combinación (el flat white grande con doble shot). DE EMPRESA (v1: sin receta por sucursal). SOLO se agrega: la vigente es la de `numero` mayor (derivada) y
+/// dos versiones con el mismo número dan 23505 (gana una). Una versión SIN ingredientes significa «sin excepción, vuelve a la regla general»: así se quita una excepción sin borrar nada. Se congela al agregar el ítem en
+/// `CombinacionEnLinea.recetaDeCombinacionVersionId`. Tablas separadas de `RecetaVersion` a propósito (no se tocan los lectores de la receta vigente).
+model RecetaDeCombinacionVersion {
+  id            String                           @id @default(cuid())
+  empresaId     String                           @default(dbgenerated("app_empresa_actual()"))
+  empresa       Empresa                          @relation(fields: [empresaId], references: [id])
+  combinacionId String
+  combinacion   CombinacionDeProducto            @relation(fields: [empresaId, combinacionId], references: [empresaId, id])
+  /// 1, 2, 3...: único por combinación (CHECK >= 1).
+  numero        Int
+  creadoPorId   String
+  creadoPor     User                             @relation(fields: [creadoPorId], references: [id], onDelete: Restrict)
+  creadoEn      DateTime                         @default(now())
+  ingredientes  RecetaDeCombinacionIngrediente[]
+  enLineas      CombinacionEnLinea[]
+
+  @@unique([empresaId, id])
+  @@unique([combinacionId, numero])
+  @@index([creadoPorId])
+}
+
+/// GO-3: un ingrediente de una versión de receta de combinación. DE EMPRESA. SOLO se agrega. `cantidad` `DECIMAL(14,4)` mayor que 0 en la unidad de stock del insumo (lo controla la aplicación); merma `DECIMAL(6,2)` de 0 a 100 (CHECK).
+model RecetaDeCombinacionIngrediente {
+  id               String                     @id @default(cuid())
+  empresaId        String                     @default(dbgenerated("app_empresa_actual()"))
+  empresa          Empresa                    @relation(fields: [empresaId], references: [id])
+  versionId        String
+  version          RecetaDeCombinacionVersion @relation(fields: [empresaId, versionId], references: [empresaId, id])
+  insumoProductoId String
+  productoInsumo   Producto                   @relation("RecetaDeCombinacionInsumo", fields: [empresaId, insumoProductoId], references: [empresaId, id])
+  cantidad         Decimal                    @db.Decimal(14, 4)
+  unidadId         String
+  unidad           Unidad                     @relation(fields: [empresaId, unidadId], references: [empresaId, id])
+  mermaPorcentaje  Decimal                    @default(0) @db.Decimal(6, 2)
+  orden            Int                        @default(0)
+
+  @@unique([empresaId, id])
+  @@unique([versionId, orden])
+  @@index([insumoProductoId])
+}
+
+/// GO-3 (ADR-032): la FOTO de la combinación vendida en una línea de la cuenta, 1 a 1 con `CuentaItem` (único por `cuentaItemId`). Alcance `HEREDADO` de `CuentaItem` (sus políticas las agrega GO-3a-rls). Guarda de dónde salió el
+/// precio (`origenPrecio`: ADITIVO, PROPIO o GRUPO, CHECK), si fue de la sucursal, el grupo con su nombre copiado, el precio usado y la versión de la receta propia congelada al agregar. Se escribe solo si la línea tiene fila de
+/// combinación. SOLO se agrega; se borra con el borrador de su línea (ON DELETE CASCADE, que corre como dueño). No agrega columnas a `CuentaItem`. Que sea del mismo producto que la línea lo controla la aplicación.
+model CombinacionEnLinea {
+  id                           String                      @id @default(cuid())
+  empresaId                    String                      @default(dbgenerated("app_empresa_actual()"))
+  empresa                      Empresa                     @relation(fields: [empresaId], references: [id])
+  cuentaItemId                 String                      @unique
+  cuentaItem                   CuentaItem                  @relation(fields: [empresaId, cuentaItemId], references: [empresaId, id], onDelete: Cascade)
+  combinacionId                String
+  combinacion                  CombinacionDeProducto       @relation(fields: [empresaId, combinacionId], references: [empresaId, id])
+  /// ADITIVO, PROPIO o GRUPO (CHECK, coherente con las columnas de abajo).
+  origenPrecio                 String
+  precioDeSucursal             Boolean                     @default(false)
+  grupoDePrecioId              String?
+  grupoDePrecio                GrupoDePrecio?              @relation(fields: [empresaId, grupoDePrecioId], references: [empresaId, id])
+  /// El nombre del grupo, copiado (la foto no cambia si el grupo se renombra).
+  nombreGrupoDePrecio          String?
+  /// El precio usado (PROPIO o GRUPO); NULL con ADITIVO (el precio quedó en la línea y en la foto de las opciones).
+  precio                       Decimal?                    @db.Decimal(14, 2)
+  recetaDeCombinacionVersionId String?
+  recetaDeCombinacionVersion   RecetaDeCombinacionVersion? @relation(fields: [empresaId, recetaDeCombinacionVersionId], references: [empresaId, id])
+  creadoEn                     DateTime                    @default(now())
+
+  @@unique([empresaId, id])
+  @@index([combinacionId])
 }

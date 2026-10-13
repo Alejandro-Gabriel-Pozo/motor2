@@ -59,6 +59,7 @@ export function clavesReservadasDe(migracion: string): string[] {
 // iza) para dejar el bloque al final del archivo. `promo_menu_del_dia` es de clase O, delegable al encargado (D-5); `grupos_de_precio_definir`, de clase A.
 function reservadasDeGo3(): Record<string, ClaveReservadaEnBase> {
   return {
+    grupos_de_precio_definir: { migracion: "20261021110000_go3a_combinaciones", descripcion: "Definir las tarifas compartidas (grupos de precio) de las combinaciones", contexto: "empresa", nivelMinimo: "administrador", semilla: ["admin"] },
     promo_menu_del_dia: { migracion: "20261021100000_go3d_combos_y_menu_del_dia", descripcion: "Cargar el plato del día de los menús en la sucursal", contexto: "sucursal", nivelMinimo: "operario", semilla: ["admin"] },
   };
 }
