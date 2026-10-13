@@ -3,6 +3,9 @@ import { empresaCartaPublica, portalCartaPublico } from "@/server/carta-publica/
 import { CACHE_PUBLICO_DE_LA_CARTA } from "@/core/seguridad/cabeceras";
 import { origenDeLaCarta } from "@/components/carta-publica/metadatos";
 
+// Dinámica a propósito: sin esto Next la PRERENDERIZA en el build con un valor de relleno en lugar de la empresa («/carta-publica/-/sitemap.xml») y en Vercel el pedido real cae en la página de la sucursal (404 de HTML). `robots.txt` no lo necesita (no se prerenderiza); el portal ya la declara igual.
+export const dynamic = "force-dynamic";
+
 /**
  * `sitemap.xml` del host público de una empresa: el portal y las sucursales PÚBLICAS, que salen del mismo lector que dibuja el portal (`portalCartaPublico`: publicadas, activas y con el
  * módulo Carta), sin ninguna consulta propia. Sale con el caché público de la CDN (`CACHE_PUBLICO_DE_LA_CARTA`) solo si es 200: el 404 va sin él. Misma regla de 404 que el portal (S-24) y que `robots.txt`; sin dominio de cartas configurado no hay dirección pública que listar y también es 404.
