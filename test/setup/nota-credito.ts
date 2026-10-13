@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Client } from "pg";
 import { EMPRESA_DE_PRUEBA_ID } from "./empresa-de-prueba";
 import { sembrarEscenarioDeGasto, type EscenarioDeGasto } from "./gasto";
 import { prisma } from "./test-db";
@@ -122,3 +123,85 @@ export function sentenciaDeInsercion(tabla: "NotaCreditoProveedor" | "NotaCredit
 
 /** `datos` con el `empresaId` de la empresa de las pruebas: lo que hace falta para escribir como DUEÑO con `sentenciaDeInsercion`. */
 export const comoDuenio = (datos: Record<string, unknown>) => ({ empresaId: EMPRESA_DE_PRUEBA_ID, ...datos });
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// EL PROTOCOLO DEL TOPE (Decisión 5 del dueño; ADR-029 §12). La base NO impide acreditar de más (sin disparadores): lo impone el caso de uso (Etapa C) con un candado sobre la fila de la factura. Los pasos, todos en la
+// MISMA transacción: (1) `SELECT … FOR UPDATE` sobre `FacturaProveedor` como PRIMERA sentencia; (2) leer lo ya acreditado por las notas VIGENTES; (3) escribir. La fila de la factura es el único punto que también serializa la anulación de la
+// factura (que se rechaza si hay notas vigentes): el renglón no se puede tomar con `FOR UPDATE` porque `motor2_app` no tiene UPDATE sobre él. Acá están los pasos sueltos (para intercalarlos a propósito) y los dos casos de uso ya armados.
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Paso 1 del protocolo: toma la fila de la factura con `FOR UPDATE` (espera si otra transacción la tiene) y devuelve su `anuladaEn`. Tiene que ser la primera sentencia de la transacción. */
+export async function bloquearFactura(c: Client, facturaId: string): Promise<Date | null> {
+  const r = await c.query<{ anuladaEn: Date | null }>(`SELECT "anuladaEn" FROM "FacturaProveedor" WHERE "id" = $1 FOR UPDATE`, [facturaId]);
+  return r.rows[0]!.anuladaEn;
+}
+
+/** Paso 2: lo ya acreditado de un renglón por las notas VIGENTES, y si acreditar `importe` más pasaría del `precioTotal` del renglón. */
+export async function acreditadoDelRenglon(c: Client, renglonId: string, importe: string): Promise<{ acreditado: string; excede: boolean }> {
+  const r = await c.query<{ acreditado: string; excede: boolean }>(
+    `SELECT COALESCE(sum(l."importe"), 0)::text AS acreditado, COALESCE(sum(l."importe"), 0) + $2::numeric > (SELECT "precioTotal" FROM "FacturaProveedorRenglon" WHERE "id" = $1) AS excede
+       FROM "NotaCreditoProveedorLinea" l JOIN "NotaCreditoProveedor" n ON n."id" = l."notaCreditoProveedorId"
+      WHERE l."facturaProveedorRenglonId" = $1 AND n."anuladaEn" IS NULL`,
+    [renglonId, importe],
+  );
+  return r.rows[0]!;
+}
+
+/** Paso 3: escribe una nota sobre la factura del escenario con UNA línea sobre `renglonId` y su imputación a la sucursal A, por `importe`. Dentro de la transacción que abrió quien llama. */
+export async function insertarNotaConUnaLinea(c: Client, e: EscenarioDeNota, p: { renglonId: string; importe: string }): Promise<{ notaId: string; lineaId: string }> {
+  const nota = sentenciaDeInsercion("NotaCreditoProveedor", datosDeNota(e, { importeTotal: p.importe }));
+  await c.query(nota.texto, nota.params);
+  const linea = sentenciaDeInsercion("NotaCreditoProveedorLinea", datosDeLinea({ facturaId: e.facturaId, renglonMercaderiaId: p.renglonId }, nota.id, { importe: p.importe }));
+  await c.query(linea.texto, linea.params);
+  const imputacion = sentenciaDeInsercion("NotaCreditoProveedorImputacion", datosDeImputacion(e, linea.id, { importe: p.importe }));
+  await c.query(imputacion.texto, imputacion.params);
+  return { notaId: nota.id, lineaId: linea.id };
+}
+
+/** El resultado de un caso de uso de los de abajo: «ok», un motivo de rechazo del protocolo, o `código|restricción` si Postgres rechazó una sentencia. */
+export type ResultadoDelProtocolo = "ok" | "excede" | "factura anulada" | "ya anulada" | "tiene notas vigentes" | string;
+
+const rechazarPorPostgres = (error: unknown) => `${(error as { code?: string }).code}|${(error as { constraint?: string }).constraint}`;
+
+/** Cargar una nota con el protocolo completo: BEGIN, candado sobre la factura, ¿está anulada?, ¿pasa del renglón?, escribir, COMMIT. Cualquier rechazo deshace la transacción entera. */
+export async function cargarNotaConTope(c: Client, e: EscenarioDeNota, p: { renglonId: string; importe: string }): Promise<ResultadoDelProtocolo> {
+  try {
+    await c.query("BEGIN");
+    if (await bloquearFactura(c, e.facturaId)) {
+      await c.query("ROLLBACK");
+      return "factura anulada";
+    }
+    if ((await acreditadoDelRenglon(c, p.renglonId, p.importe)).excede) {
+      await c.query("ROLLBACK");
+      return "excede";
+    }
+    await insertarNotaConUnaLinea(c, e, p);
+    await c.query("COMMIT");
+    return "ok";
+  } catch (error) {
+    await c.query("ROLLBACK").catch(() => undefined);
+    return rechazarPorPostgres(error);
+  }
+}
+
+/** Anular la factura (C29), dentro de la transacción que abrió quien llama: candado sobre la factura, se rechaza si ya está anulada o si tiene notas VIGENTES, y se marca la anulación. Quien llama hace COMMIT si dio «ok» y ROLLBACK si no. */
+export async function anularFacturaEnCurso(c: Client, facturaId: string, usuarioId: string): Promise<"ok" | "ya anulada" | "tiene notas vigentes"> {
+  if (await bloquearFactura(c, facturaId)) return "ya anulada";
+  const vigentes = await c.query<{ n: number }>(`SELECT count(*)::int AS n FROM "NotaCreditoProveedor" WHERE "facturaProveedorId" = $1 AND "anuladaEn" IS NULL`, [facturaId]);
+  if (vigentes.rows[0]!.n > 0) return "tiene notas vigentes";
+  await c.query(`UPDATE "FacturaProveedor" SET "anuladaEn" = now(), "anuladaPorId" = $2 WHERE "id" = $1 AND "anuladaEn" IS NULL`, [facturaId, usuarioId]);
+  return "ok";
+}
+
+/** `anularFacturaEnCurso` con su propia transacción. */
+export async function anularFacturaSinNotas(c: Client, facturaId: string, usuarioId: string): Promise<ResultadoDelProtocolo> {
+  try {
+    await c.query("BEGIN");
+    const resultado = await anularFacturaEnCurso(c, facturaId, usuarioId);
+    await c.query(resultado === "ok" ? "COMMIT" : "ROLLBACK");
+    return resultado;
+  } catch (error) {
+    await c.query("ROLLBACK").catch(() => undefined);
+    return rechazarPorPostgres(error);
+  }
+}
