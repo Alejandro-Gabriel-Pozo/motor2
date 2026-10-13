@@ -6,11 +6,11 @@ on:
 jobs:
   diag:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        ref: ["71be34a0047fcfb4f5e7b4a9025657a0dd4ef188", "183f1025c91cafa6a84ccc8fb31ca9cf9bc803cc"]
+        ref: ["71be34a0047fcfb4f5e7b4a9025657a0dd4ef188"]
     services:
       postgres:
         image: postgres:17
@@ -52,15 +52,22 @@ jobs:
           npx prisma migrate deploy
           psql -d motor2_dev -v ON_ERROR_STOP=1 -v clave="$CLAVE_PLATAFORMA" -f scripts/operaciones/crear-rol-motor2-plataforma.sql
           psql -d postgres -v ON_ERROR_STOP=1 -v solo_pruebas=1 -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
-      - name: Muestreo de actividad de Postgres (segundo plano)
+      - name: Muestreo de consultas lentas o bloqueadas (segundo plano)
         run: |
-          nohup bash -c 'while true; do date -u +%T; psql -d motor2_dev -Atc "select pid,state,wait_event_type,wait_event,now()-query_start as dur,left(query,150) from pg_stat_activity where datname='"'"'motor2_dev'"'"' and state<>'"'"'idle'"'"' and pid<>pg_backend_pid()"; sleep 10; done' > actividad.log 2>&1 &
-      - name: Test de volumen del historial (dos veces)
+          cat > muestreo.sql <<'SQL'
+          select now()::time(0) as hora, pid, state, wait_event_type||':'||coalesce(wait_event,'') as espera, pg_blocking_pids(pid) as bloqueado_por,
+                 round(extract(epoch from now()-query_start)) as seg, left(regexp_replace(query,'\s+',' ','g'),160) as consulta
+          from pg_stat_activity
+          where datname='motor2_dev' and pid<>pg_backend_pid() and state<>'idle' and now()-query_start > interval '8 seconds';
+          SQL
+          nohup bash -c 'while true; do psql -d motor2_dev -At -F " | " -f muestreo.sql; sleep 5; done' > actividad.log 2>&1 &
+      - name: Parte 2 de 4 completa
         run: |
           set +e
-          npx vitest run test/reportes/historial-producto-volumen.test.ts 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -E "✓|×|❯|FAIL|Error|Duration|Tests " | cut -c1-200
-          echo "--- segunda vuelta"
-          npx vitest run test/reportes/historial-producto-volumen.test.ts 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -E "✓|×|❯|FAIL|Error|Duration|Tests " | cut -c1-200
+          npm test -- --shard=2/4 --reporter=default 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -E "^ (✓|❯|×) test|FAIL|Test Files|Tests  |Duration" | cut -c1-200 > resultado.log
+          tail -12 resultado.log
       - name: Actividad registrada
         if: always()
-        run: tail -80 actividad.log
+        run: |
+          echo "líneas: $(wc -l < actividad.log)"; head -60 actividad.log
+          echo "--- archivos lentos"; grep -E "[0-9]{4,}ms" resultado.log | head -20
