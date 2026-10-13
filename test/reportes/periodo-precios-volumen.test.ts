@@ -33,6 +33,9 @@ describe("calcularTendenciaPreciosDelPeriodo con mucha historia de compras", () 
       SELECT ${opciones.prefijo} || g, ${sucursalId}, 'COMPRA'::"Proceso", ${opciones.desde}::timestamp + (g || ' minutes')::interval, ${adminId},
              CASE WHEN ${opciones.anuladas ?? false}::boolean THEN '2026-06-01T00:00:00'::timestamp END
       FROM generate_series(1, ${cantidad}::int) g`;
+    // Estadísticas de `Operacion` ANTES de cargar los movimientos: la clave foránea de cada movimiento se verifica con una consulta interna que Postgres planifica con las estadísticas del momento; con la tabla recién cargada y sin ANALYZE
+    // puede elegir el índice (empresaId, reemplazaAOperacionId) en vez de (empresaId, id) y recorrer toda la empresa por cada fila (60.000 filas × ~6 ms = minutos; intermitente en el CI con Postgres 17).
+    await analizarDespuesDeCargaMasiva();
     await prisma.$executeRaw`
       INSERT INTO "MovimientoStock" ("id", "operacionId", "productoId", "seccionId", "proceso", "cantidad", "detalle", "precioTotal", "precioPorUnidadStock")
       SELECT ${opciones.prefijo} || 'm' || g, ${opciones.prefijo} || g, ${productoId}, ${seccionId}, 'COMPRA'::"Proceso", ${opciones.unidades}::numeric, 'Compra',

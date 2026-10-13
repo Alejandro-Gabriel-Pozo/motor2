@@ -11,7 +11,7 @@ import { esPathServible } from "@/core/seguridad/ruta-servible";
  * Antes de todo, un path que Next no sabe decodificar (un `%` suelto, un UTF-8 inválido, un NUL, un `%25` en la carta ISR) es 404 limpio
  * (`core/seguridad/ruta-servible.ts`): sin esto Next respondía 500 «failed to decode param». Después, hace tres cosas, en este orden:
  *
- * 1. Host de la carta (`<empresa>.<CARTA_DOMINIO_BASE>`): ahí solo se sirve la carta pública (la raíz y `/<sucursal>`, solo con GET/HEAD y
+ * 1. Host de la carta (`<empresa>.<CARTA_DOMINIO_BASE>`): ahí solo se sirve la carta pública (la raíz, `/<sucursal>`, `/robots.txt` y `/sitemap.xml`, solo con GET/HEAD y
  *    sin `next-action`); cualquier otro path (login, API, cron, la aplicación) es 404 sin llegar a la app. Un host de la zona de cartas que no es una carta válida
  *    (el dominio base pelado —salvo con el add-on `CARTA_EMPRESA_UNICA`, donde es la carta de esa empresa—, un subdominio de dos niveles) también es 404. La CSP de la carta es estática (`next.config.ts`) para
  *    que la carta siga siendo ISR: acá no se le pone nonce.

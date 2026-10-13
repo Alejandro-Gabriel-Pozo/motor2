@@ -2,8 +2,8 @@ import { revalidateTag } from "next/cache";
 import { etiquetaDeCacheDeCartasPublicas } from "@/core/carta/public";
 
 /**
- * Invalida el caché (ISR, `revalidate = 300`) de las cartas públicas DE UNA EMPRESA tras una mutación del módulo carta (ADR-006, Fase 4): sin esto, un cambio hecho
- * desde el admin tardaría hasta 5 minutos en verse en `/carta-publica/<empresa>/<sucursal>`. Se invalida la página de TODAS las sucursales de ESA empresa (una mutación de
+ * Invalida el caché (ISR, `revalidate = 60`) de las cartas públicas DE UNA EMPRESA tras una mutación del módulo carta (ADR-006, Fase 4): sin esto, un cambio hecho
+ * desde el admin tardaría hasta 60 segundos en verse en `/carta-publica/<empresa>/<sucursal>`. Se invalida la página de TODAS las sucursales de ESA empresa (una mutación de
  * carta rara vez afecta a más de una, y no hace falta averiguar cuál) y de ninguna otra: S-26 del plan de endurecimiento de seguridad. La invalidación se aplica en la próxima visita.
  *
  * El parámetro es obligatorio a propósito (`ctx.empresaSlug`): una invalidación sin empresa es la global de antes, que una mutación de A le hacía pagar a las cartas de B (el
@@ -17,7 +17,7 @@ import { etiquetaDeCacheDeCartasPublicas } from "@/core/carta/public";
  *
  * Lo que la carta muestra de un producto (nombre, precio, disponibilidad) también se cambia desde el catálogo: `actualizarProducto`,
  * `sincronizarPrecioGrupoCarta`, `actualizarDisponibilidadProducto` y las de precio local también la llaman
- * (`test/carta/revalida-al-cambiar-el-catalogo.test.ts`). Un cambio por una vía que no la llame se ve dentro de los 5 minutos del `revalidate`.
+ * (`test/carta/revalida-al-cambiar-el-catalogo.test.ts`). Un cambio por una vía que no la llame se ve dentro de los 60 segundos del `revalidate`.
  */
 export function revalidarCartasPublicas(empresaSlug: string): void {
   try {

@@ -104,7 +104,7 @@ test.describe("carta por subdominio", () => {
     expect((await request.get(`${baseURL}/login`, { maxRedirects: 0 })).status()).toBe(200);
   });
 
-  test("las cartas salen con CSP estricta y noindex; la app con CSP con nonce y sin 'unsafe-inline' en scripts (S-04)", async ({ request, baseURL, sucursalId }) => {
+  test("las cartas salen con CSP estricta (indexables en su host, noindex por la ruta técnica); la app con CSP con nonce y sin 'unsafe-inline' en scripts (S-04)", async ({ request, baseURL, sucursalId }) => {
     const { port } = new URL(baseURL ?? "http://localhost");
     const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const slug = `e2e-hdr-${marca}`;
@@ -123,6 +123,7 @@ test.describe("carta por subdominio", () => {
       const cartaSub = await request.get(`${baseURL}/${slug}`, { headers: { host: `e2e.carta.localhost${port ? `:${port}` : ""}` } });
       expect(cartaSub.status()).toBe(200);
       expect(cartaSub.headers()["content-security-policy"]).toBe(cspCarta);
+      expect(cartaSub.headers()["x-robots-tag"]).toBe("index, follow");
 
       const login = await request.get(`${baseURL}/login`);
       const cspApp = login.headers()["content-security-policy"];

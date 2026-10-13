@@ -237,9 +237,9 @@ arquitectura, analizar:muerto, test, build, test:e2e) antes del commit:**
    borrado `vista-previa-tema.tsx`. `/carta/portal` suma "Ver la carta de
    motor2 →" y "Ver el portal de motor2 →" (links por path, `empresaCartaActual`;
    los links externos siguen hasta la Fase 7). Caché: la página de sucursal
-   vuelve a ISR (`revalidate = 300`) e invalida al instante desde las acciones
+   vuelve a ISR (`revalidate = 60` desde la mejora de la carta pública; antes 300) e invalida al instante desde las acciones
    de `src/server/actions/carta/` (`revalidarCartasPublicas`); el portal de la
-   empresa sigue dinámico. Dos trampas encontradas por un e2e que se vio fallar
+   empresa sigue dinámico en Next pero sale con `Cache-Control: public, s-maxage=60, stale-while-revalidate=300` para que lo guarde la CDN. Dos trampas encontradas por un e2e que se vio fallar
    (mutación → rojo → revertir → verde): (1) una ruta con segmentos dinámicos
    NO entra en ISR sin `generateStaticParams` (el build la marcaba ƒ y
    `revalidate` no hacía nada) — se devuelve `[]`; (2) `revalidatePath` con un
@@ -317,7 +317,7 @@ cada una — no reinventarlas de memoria):**
   como `/login` se reescribe a la carta y da 404 ahí). La cookie de sesión en producción
   es `__Host-authjs.session-token`, que el navegador no comparte con subdominios. La carta
   lleva CSP estática (sin nonce, para seguir siendo ISR) con `frame-ancestors 'none'` y
-  `X-Robots-Tag: noindex, nofollow`; la app, CSP con nonce por pedido (`core/seguridad/cabeceras.ts`).
+  `X-Robots-Tag: index, follow` en el host de la carta (y `noindex, nofollow` en la ruta técnica `/carta-publica/…`; la app, siempre `noindex, nofollow`); la app, CSP con nonce por pedido (`core/seguridad/cabeceras.ts`).
 - **Fase 7** [requiere autorización, operación de producción]: comparar en
   staging contra `restaurant-menu-design`, migrar los QR/links repartidos,
   retirar el deployment externo.

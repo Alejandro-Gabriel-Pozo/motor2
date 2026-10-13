@@ -81,7 +81,7 @@ test.describe("carta de la empresa única en el dominio base", () => {
     expect((await request.get(`${baseURL}/carta-publica/e2e/central`, { maxRedirects: 0 })).status()).not.toBe(307);
   });
 
-  test("la carta del dominio base sale con CSP estricta y noindex, igual que por subdominio", async ({ request, baseURL, sucursalId }) => {
+  test("la carta del dominio base sale con CSP estricta y es indexable, igual que por subdominio", async ({ request, baseURL, sucursalId }) => {
     const { port } = new URL(baseURL ?? "http://localhost");
     const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const slug = `e2e-uhdr-${marca}`;
@@ -95,7 +95,7 @@ test.describe("carta de la empresa única en el dominio base", () => {
       expect(enBase.headers()["content-security-policy"]).toBe(cspCarta);
       expect(enBase.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
       expect(enBase.headers()["content-security-policy"]).not.toContain("nonce-");
-      expect(enBase.headers()["x-robots-tag"]).toContain("noindex");
+      expect(enBase.headers()["x-robots-tag"]).toBe("index, follow");
       expect(enBase.headers()["x-frame-options"]).toBe("DENY");
     } finally {
       await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });

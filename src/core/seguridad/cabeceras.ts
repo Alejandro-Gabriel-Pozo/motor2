@@ -83,13 +83,27 @@ export function cabecerasComunes(): Cabecera[] {
   ];
 }
 
-/** Cabeceras propias de la carta pública: su CSP estática y, por defecto, que no la indexen los buscadores (decisión pendiente del dueño). */
-export function cabecerasCarta({ https }: { https: boolean }): Cabecera[] {
+/** Qué dice `X-Robots-Tag` de una respuesta que NO se tiene que indexar: la aplicación de administración (login, panel, POS) y la ruta técnica de la carta. */
+export const NO_INDEXAR: Cabecera = { key: "X-Robots-Tag", value: "noindex, nofollow" };
+
+/**
+ * Cabeceras propias de la carta pública: su CSP estática y si los buscadores la pueden indexar. En la dirección pública definitiva (el host de la carta, `indexable`) sí: es lo que el
+ * negocio quiere que se encuentre. En la ruta técnica `/carta-publica/<empresa>/…` (desarrollo, instalación sin dominio de cartas, o alguien que llegó por ahí) no: la dirección canónica de cada
+ * página apunta al host público, y esa ruta no tiene que competir con ella.
+ */
+export function cabecerasCarta({ https, indexable }: { https: boolean; indexable: boolean }): Cabecera[] {
   return [
     { key: "Content-Security-Policy", value: cspCarta({ https }) },
-    { key: "X-Robots-Tag", value: "noindex, nofollow" },
+    indexable ? { key: "X-Robots-Tag", value: "index, follow" } : NO_INDEXAR,
   ];
 }
+
+/**
+ * `Cache-Control` de lo público de la carta que Next sirve dinámico (el portal, `robots.txt` y `sitemap.xml`): la CDN lo guarda 60 s y, vencido, sirve la copia mientras pide una nueva (hasta 300 s más). La carta de
+ * una sucursal NO lleva esta cabecera puesta a mano: es ISR y Next arma la suya (`revalidate = 60` y `expireTime` de `next.config.ts` dan el mismo `s-maxage=60, stale-while-revalidate=300`). Es una respuesta
+ * pública, igual para todos: ninguna de estas páginas lee la sesión ni las cookies.
+ */
+export const CACHE_PUBLICO_DE_LA_CARTA: Cabecera = { key: "Cache-Control", value: "public, s-maxage=60, stale-while-revalidate=300" };
 
 /** Nonce criptográficamente aleatorio y distinto en cada pedido (base64 de 16 bytes). */
 export function generarNonce(azar: FuenteDeAzar): string {
