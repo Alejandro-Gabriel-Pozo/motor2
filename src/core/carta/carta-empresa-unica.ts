@@ -1,4 +1,4 @@
-import { esSlugPublicoValido, patronHostZonaCarta, urlCartaPublica, type ReglaRedirectAppACarta, type ReglaRedirectCarta, type ReglaRewriteCarta } from "./host";
+import { armarHostCarta, esSlugPublicoValido, patronHostZonaCarta, urlCartaPublica, type ReglaRedirectAppACarta, type ReglaRedirectCarta, type ReglaRewriteCarta } from "./host";
 
 /**
  * ADD-ON `CARTA_EMPRESA_UNICA` (ADR-006, sección «Carta de una empresa única en el dominio base»): con la variable puesta a un slug de empresa, el dominio
@@ -91,4 +91,18 @@ export function urlCartaPublicaConEmpresaUnica(dominioBase: string | null | unde
   const esLocal = !base || base === "localhost" || base.endsWith(".localhost");
   if (!esLocal && slugEmpresaUnica && esSlugPublicoValido(slugEmpresaUnica) && slugEmpresaUnica === empresaSlug) return `https://${base}/${sucursalSlug ?? ""}`;
   return urlCartaPublica(dominioBase, empresaSlug, sucursalSlug);
+}
+
+/**
+ * El ORIGEN (esquema + host, sin barra final) con que se ve de verdad la carta de una empresa: lo que va en la dirección canónica, en las vistas previas al compartir y en el sitemap.
+ * Con el add-on y la empresa única, el dominio base pelado; si no, `<empresa>.<dominioBase>`. `https` salvo en `localhost`/`*.localhost` (desarrollo y e2e, sin certificado). `null` sin
+ * dominio base: la instalación sirve la carta solo por el path técnico, y no hay una dirección pública definitiva que declarar. Sale SIEMPRE de la configuración y del slug que resolvió el
+ * servidor: nunca del `Host` del pedido.
+ */
+export function origenPublicoDeCarta(dominioBase: string | null | undefined, slugEmpresaUnica: string | null | undefined, empresaSlug: string): string | null {
+  const base = dominioBase?.trim().toLowerCase();
+  if (!base) return null;
+  const esLocal = base === "localhost" || base.endsWith(".localhost");
+  const host = slugEmpresaUnica && esSlugPublicoValido(slugEmpresaUnica) && slugEmpresaUnica === empresaSlug ? base : armarHostCarta(empresaSlug, base);
+  return `${esLocal ? "http" : "https"}://${host}`;
 }

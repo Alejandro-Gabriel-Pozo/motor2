@@ -317,7 +317,7 @@ cada una — no reinventarlas de memoria):**
   como `/login` se reescribe a la carta y da 404 ahí). La cookie de sesión en producción
   es `__Host-authjs.session-token`, que el navegador no comparte con subdominios. La carta
   lleva CSP estática (sin nonce, para seguir siendo ISR) con `frame-ancestors 'none'` y
-  `X-Robots-Tag: noindex, nofollow`; la app, CSP con nonce por pedido (`core/seguridad/cabeceras.ts`).
+  `X-Robots-Tag: index, follow` en el host de la carta (y `noindex, nofollow` en la ruta técnica `/carta-publica/…`; la app, siempre `noindex, nofollow`); la app, CSP con nonce por pedido (`core/seguridad/cabeceras.ts`).
 - **Fase 7** [requiere autorización, operación de producción]: comparar en
   staging contra `restaurant-menu-design`, migrar los QR/links repartidos,
   retirar el deployment externo.

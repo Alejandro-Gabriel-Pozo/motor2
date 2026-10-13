@@ -5,7 +5,7 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 import { patronHostZonaCarta, reglasRedirectAppACarta, reglasRedirectCarta, reglasRewriteCarta } from "./src/core/carta/host";
 import { reglasRedirectEmpresaUnica, reglasRewriteEmpresaUnica } from "./src/core/carta/carta-empresa-unica";
 import { sirvePorHttps } from "./src/core/auth/cookie-sesion";
-import { cabecerasCarta, cabecerasComunes } from "./src/core/seguridad/cabeceras";
+import { cabecerasCarta, cabecerasComunes, NO_INDEXAR } from "./src/core/seguridad/cabeceras";
 
 const dominioBaseCarta = process.env.CARTA_DOMINIO_BASE?.trim().toLowerCase();
 
@@ -22,14 +22,15 @@ const nextConfig: NextConfig = {
   },
   // Cabeceras de seguridad (informe 2026-10-01, S-04). La CSP de la APP lleva nonce por pedido y la pone `src/proxy.ts`; acá van las
   // comunes a todo y la CSP estática de la carta (sin nonce, para que siga siendo ISR), por path directo y por su host. Si dos reglas
-  // fijan la misma cabecera, gana la última: las de la carta van después.
+  // fijan la misma cabecera, gana la última: las de la carta van después. Lo mismo con `X-Robots-Tag`: la aplicación no se indexa jamás
+  // (regla de todos los paths), la ruta técnica de la carta tampoco, y el host público de la carta SÍ (es lo que el negocio quiere que se encuentre).
   async headers() {
     const https = sirvePorHttps(process.env);
-    const carta = cabecerasCarta({ https });
     return [
       { source: "/:path*", headers: cabecerasComunes() },
-      { source: "/carta-publica/:path*", headers: carta },
-      ...(dominioBaseCarta ? [{ source: "/:path*", has: [{ type: "host" as const, value: patronHostZonaCarta(dominioBaseCarta) }], headers: carta }] : []),
+      { source: "/:path*", headers: [NO_INDEXAR] },
+      { source: "/carta-publica/:path*", headers: cabecerasCarta({ https, indexable: false }) },
+      ...(dominioBaseCarta ? [{ source: "/:path*", has: [{ type: "host" as const, value: patronHostZonaCarta(dominioBaseCarta) }], headers: cabecerasCarta({ https, indexable: true }) }] : []),
     ];
   },
   // ADR-006: /catalogo/carta pasó a /carta (carta como módulo propio, ya

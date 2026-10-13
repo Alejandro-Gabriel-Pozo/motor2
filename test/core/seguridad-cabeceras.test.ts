@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cabecerasCarta, cabecerasComunes, cspApp, cspCarta, generarNonce } from "@/core/seguridad/cabeceras";
+import { cabecerasCarta, cabecerasComunes, cspApp, cspCarta, generarNonce, NO_INDEXAR } from "@/core/seguridad/cabeceras";
 import { azarDelProceso } from "../../src/lib/azar";
 
 const directiva = (csp: string, nombre: string) => csp.split("; ").find((d) => d.startsWith(`${nombre} `) || d === nombre);
@@ -71,10 +71,18 @@ describe("cabeceras", () => {
     expect(cabecerasComunes().find((c) => c.key === "X-Frame-Options")?.value).toBe("DENY");
   });
 
-  it("la carta lleva su CSP y, por defecto, noindex", () => {
-    const c = cabecerasCarta({ https: true });
-    expect(c.find((h) => h.key === "Content-Security-Policy")?.value).toBe(cspCarta({ https: true }));
-    expect(c.find((h) => h.key === "X-Robots-Tag")?.value).toBe("noindex, nofollow");
+  it("la carta lleva su CSP siempre; en su host público es indexable y en la ruta técnica no", () => {
+    const publica = cabecerasCarta({ https: true, indexable: true });
+    expect(publica.find((h) => h.key === "Content-Security-Policy")?.value).toBe(cspCarta({ https: true }));
+    expect(publica.find((h) => h.key === "X-Robots-Tag")?.value).toBe("index, follow");
+    const tecnica = cabecerasCarta({ https: true, indexable: false });
+    expect(tecnica.find((h) => h.key === "Content-Security-Policy")?.value).toBe(cspCarta({ https: true }));
+    expect(tecnica.find((h) => h.key === "X-Robots-Tag")).toEqual(NO_INDEXAR);
+  });
+
+  it("la aplicación de administración no se indexa: noindex, nofollow, y las comunes (que van a TODO, carta incluida) no dicen nada de indexación", () => {
+    expect(NO_INDEXAR).toEqual({ key: "X-Robots-Tag", value: "noindex, nofollow" });
+    expect(cabecerasComunes().map((c) => c.key)).not.toContain("X-Robots-Tag");
   });
 });
 
