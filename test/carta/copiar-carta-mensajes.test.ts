@@ -125,7 +125,7 @@ describe("copiar la carta de otra sucursal: mensajes, orden de los chequeos, aud
     expect(revalidaciones()).toBe(1);
   });
 
-  it("si el conflicto no cede en 5 intentos, responde «La carta cambió mientras la copiabas…» sin dejar nada escrito ni auditado ni revalidado", async () => {
+  it("si el conflicto no cede en 8 intentos (el default de conTransaccionSerializable), responde «La carta cambió mientras la copiabas…» sin dejar nada escrito ni auditado ni revalidado", async () => {
     await armarCartaDeCentral();
     await armarTrampa(99);
     const consola = vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -134,7 +134,7 @@ describe("copiar la carta de otra sucursal: mensajes, orden de los chequeos, aud
     } finally {
       consola.mockRestore();
     }
-    expect(await invocaciones()).toBe(5);
+    expect(await invocaciones()).toBe(8);
     expect(await cartaDe(destinoId)).toEqual({ generos: 0, items: 0, opciones: 0, contenidos: 0, auditoria: 0 });
     expect(revalidaciones()).toBe(0);
   });
@@ -142,8 +142,8 @@ describe("copiar la carta de otra sucursal: mensajes, orden de los chequeos, aud
   // Reserva M1(a) de la auditoría del Hito 5 (fila 5.6 de docs/pureza-integracion.md): los dos tests de arriba (fallo durante una escritura) pasaban IGUAL con el código de antes de la mudanza
   // (que invalidaba dentro del callback, antes de confirmar) y con el de ahora, porque ese fallo ocurre antes de llegar a la invalidación. Para probar CUÁNDO se invalida hace falta un
   // fallo que ocurra DESPUÉS de que el callback terminó entero: un CONSTRAINT TRIGGER «DEFERRABLE INITIALLY DEFERRED» corre recién al COMMIT, y ahí levanta el 40001. Con la invalidación
-  // dentro del callback (el código viejo) se llamaría una vez por intento (5 si no cede, 2 si cede en el segundo); con la de ahora, 0 y 1. Esos números son lo que discrimina.
-  it("conflicto AL CONFIRMAR que no cede en 5 intentos: ningún intento revalida (la invalidación va después del commit, no dentro del callback)", async () => {
+  // dentro del callback (el código viejo) se llamaría una vez por intento (8 si no cede, 2 si cede en el segundo); con la de ahora, 0 y 1. Esos números son lo que discrimina.
+  it("conflicto AL CONFIRMAR que no cede en 8 intentos: ningún intento revalida (la invalidación va después del commit, no dentro del callback)", async () => {
     await armarCartaDeCentral();
     await armarTrampa(99, "al-confirmar");
     const consola = vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -152,7 +152,7 @@ describe("copiar la carta de otra sucursal: mensajes, orden de los chequeos, aud
     } finally {
       consola.mockRestore();
     }
-    expect(await invocaciones()).toBe(5);
+    expect(await invocaciones()).toBe(8);
     expect(await cartaDe(destinoId)).toEqual({ generos: 0, items: 0, opciones: 0, contenidos: 0, auditoria: 0 });
     expect(revalidaciones()).toBe(0);
   });
