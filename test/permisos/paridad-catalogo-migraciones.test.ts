@@ -147,10 +147,15 @@ describe("paridad ACCIONES ↔ migraciones: una base real termina con el catálo
     expect(sobrantes, "claves en la base que el código no conoce y nadie declaró retiradas ni reservadas").toEqual([]);
   });
 
-  it("toda clave RESERVADA EN LA BASE (los gastos, M4.5) está en una base migrada, con la descripción definitiva, y todavía NO está en ACCIONES (el día que entra, sale de la lista)", () => {
+  it("toda clave RESERVADA EN LA BASE (los gastos, M4.5, y la nota de crédito de proveedor, M6.4) está en una base migrada, con la descripción definitiva, y todavía NO está en ACCIONES (el día que entra, sale de la lista)", () => {
     const enCodigo = new Set<string>(ACCIONES.map((a) => a.clave));
     expect(MOTIVO_DE_LAS_RESERVADAS_EN_BASE.trim().length).toBeGreaterThan(10);
-    expect(Object.keys(RESERVADAS_EN_BASE).sort()).toEqual(["conceptos_gasto", "gasto_anular", "gasto_ver", "gasto_registrar", "gasto_reclasificar", "gasto_repartir", "reporte_gastos_empresa"].sort());
+    expect(Object.keys(RESERVADAS_EN_BASE).sort()).toEqual(
+      [
+        "conceptos_gasto", "gasto_anular", "gasto_ver", "gasto_registrar", "gasto_reclasificar", "gasto_repartir", "reporte_gastos_empresa",
+        "nota_credito_proveedor", "gasto_nota_credito", "anular_nota_credito_proveedor",
+      ].sort()
+    );
     for (const [clave, def] of Object.entries(RESERVADAS_EN_BASE)) {
       expect(enBase.has(clave), `"${clave}" figura como reservada y una base migrada no la tiene: falta la migración de datos`).toBe(true);
       expect(enBase.get(clave), `la descripción de "${clave}" en la base no es la definitiva`).toBe(def.descripcion);
@@ -159,7 +164,7 @@ describe("paridad ACCIONES ↔ migraciones: una base real termina con el catálo
     }
   });
 
-  it("el admin edita, en una base migrada, las claves reservadas que de fábrica son suyas; la de repartir gastos (delegable) no la tiene nadie", () => {
+  it("el admin edita, en una base migrada, las claves reservadas que de fábrica son suyas (las tres de la nota de crédito, sí); la de repartir gastos (delegable) no la tiene nadie", () => {
     for (const [clave, def] of Object.entries(RESERVADAS_EN_BASE)) {
       expect(editaElAdmin.has(clave), clave).toBe(def.semilla.includes("admin"));
     }

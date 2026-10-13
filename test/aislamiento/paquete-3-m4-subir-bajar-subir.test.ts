@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
-import { RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
+import { clavesReservadasDe } from "../setup/claves-reservadas-en-base";
 import { MIGRACIONES_DE_POLITICAS_DE_SUCURSAL, MIGRACIONES_DE_POLITICAS_POSTERIORES, TABLAS_DEL_PAQUETE_1 } from "../setup/migraciones-de-alcance-de-sucursal";
 import { COMANDOS_CON_POLITICA_DE_ALCANCE } from "../setup/politicas-de-alcance-de-sucursal";
 
@@ -53,7 +53,8 @@ const CLAVES_FORANEAS_NUEVAS = [
   "ConceptoDeGasto_empresaId_fkey", "FacturaProveedorRenglon_empresaId_conceptoGastoId_fkey", "ImputacionDeGasto_empresaId_fkey", "ImputacionDeGasto_empresaId_facturaProveedorRenglonId_natu_fkey", "ImputacionDeGasto_empresaId_sucursalId_fkey",
 ];
 const TABLAS_NUEVAS = ["ConceptoDeGasto", "ImputacionDeGasto"];
-const CLAVES = Object.keys(RESERVADAS_EN_BASE).sort();
+/** Solo las siete de M4.5: las de M6.4 (y las que se sumen después) las da de alta otra migración. */
+const CLAVES = clavesReservadasDe(M4_5);
 
 const E = "empresa_m4";
 const sql = (migracion: string, archivo: "migration.sql" | "down.sql") => readFileSync(join(RAIZ, migracion, archivo), "utf8");
