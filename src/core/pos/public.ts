@@ -31,3 +31,5 @@ export { SECCION_FUERA_DE_CARTA, estadoInicialSelectorCarta, reducirSelectorCart
 export type { AccionSelectorCarta, EstadoSelectorCarta } from "./selector-carta-estado";
 export { TICKETS_RECIENTES_POR_MESA, armarTicketImpresoEn, armarTicketsDeCuentas, estadoDeTicket } from "./ticket";
 export type { EstadoDeTicket, ItemConVenta, LineaDeTicket, TicketDeCuenta } from "./ticket";
+// GO-2b (ADR-030): la forma de lo que un producto admite para venderse, que arma la lectura de las opciones para vender (`server/lecturas/opciones/`).
+export type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
