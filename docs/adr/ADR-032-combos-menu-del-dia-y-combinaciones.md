@@ -1,6 +1,6 @@
 # ADR-032: GO-3. Precio y receta por combinación, combos y menú del día
 
-> **Estado: BASE construida en la rama `go3-base` (esquema, núcleo puro y lectores tolerantes). Las cuatro migraciones están ESCRITAS, NO APLICADAS: cada una REQUIERE AUTORIZACIÓN EXPRESA para aplicarse a la base real (respaldo y ensayo en una rama de Neon; ver `docs/deploy-con-migraciones.md`, sección GO-3).** Los casos de uso, la administración, la venta y las pantallas (F3 a F6 del plan) vienen después de que GO-2a y GO-2b estén fusionadas. Construye sobre GO-1 (`docs/adr/ADR-030-elemento-configurable-grupos-de-opciones.md`, ya aplicado).
+> **Estado: BASE construida en la rama `go3-base` (esquema, núcleo puro y lectores tolerantes). Las cuatro migraciones están APLICADAS a la base de producción desde el 2026-10-13 (respaldo `respaldo-pre-go3-20261013`, ensayo subir/bajar/subir y verificación por huella; ver `docs/deploy-con-migraciones.md`, sección GO-3); cada base nueva REQUIERE AUTORIZACIÓN EXPRESA.** Los casos de uso, la administración, la venta y las pantallas (F3 a F6 del plan) vienen después de que GO-2a y GO-2b estén fusionadas. Construye sobre GO-1 (`docs/adr/ADR-030-elemento-configurable-grupos-de-opciones.md`, ya aplicado).
 
 ## Contexto
 
