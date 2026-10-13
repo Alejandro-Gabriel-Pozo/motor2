@@ -50,6 +50,8 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/catalogo/proveedores", label: "Proveedores", accion: "proveedores", panel: "empresa" },
       { href: "/catalogo/clientes", label: "Clientes con descuento", accion: "clientes", panel: "empresa" },
       { href: "/catalogo/recetas", label: "Recetas", accion: "guardar_receta", panel: "empresa" },
+      // GO-2d (ADR-030): los grupos de opciones de venta (tamaños, variantes, incluidas y adicionales) son del catálogo de la empresa.
+      { href: "/catalogo/opciones", label: "Opciones de venta", accion: "opciones_definir", panel: "empresa" },
       { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos", accion: "grupos_familia", panel: "empresa" },
       { href: "/catalogo/categorias", label: "Categorías", accion: "categorias", panel: "empresa" },
       { href: "/catalogo/unidades", label: "Unidades", accion: "unidades", panel: "empresa" },
