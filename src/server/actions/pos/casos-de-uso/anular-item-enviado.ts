@@ -37,7 +37,7 @@ import { formatearCantidad } from "../cuenta-comun";
  * GO-2b (ADR-030): un ADICIONAL no se anula solo (`ES_ADICIONAL`); anular su producto lo ARRASTRA: un espejo por adicional con k × lo anulado (k de su foto), validado
  * entero antes de escribir, y una fila de auditoría por espejo. El espejo repite la huella y el padre del original (lo exige la base) y nunca lleva foto.
  *
- * @sideEffects registrarCambioAuditado (campo cantidadVigente).
+ * @sideEffects registrarCambioAuditado (campo cantidadVigente), uno por espejo: el del producto y, GO-2b, uno por cada adicional que arrastra.
  * @ficha permiso=pos_anular_item transaccion=SERIALIZABLE idempotencia=OPTIMISTA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function anularItemEnviadoCasoDeUso(

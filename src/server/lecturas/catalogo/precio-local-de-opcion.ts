@@ -1,3 +1,4 @@
+import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { precioLocalActivoEn } from "./precio-local";
 

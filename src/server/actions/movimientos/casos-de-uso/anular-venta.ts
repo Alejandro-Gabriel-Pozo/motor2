@@ -42,7 +42,7 @@ import { escribirAnulacionDeVenta } from "@/server/persistencia/movimientos/escr
  * @contract Anula una venta y, si es parte de una promo, TODAS sus hermanas juntas — nunca un componente suelto (GO-2b: ni un adicional sin su producto).
  * @idempotency No aplica (nunca la tuvo) — el aislamiento SERIALIZABLE arbitra el doble clic; el segundo intento ve "ya anulada" (chequeo de estado, no I3).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento).
- * @sideEffects registrarCambioAuditado (uno por cada Operación anulada, incluidas las hermanas de promo).
+ * @sideEffects registrarCambioAuditado (uno por cada Operación anulada, incluidas las hermanas de promo y, GO-2b, las hijas de sus adicionales).
  * @ficha permiso=anular_venta transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function anularVentaCasoDeUso(
