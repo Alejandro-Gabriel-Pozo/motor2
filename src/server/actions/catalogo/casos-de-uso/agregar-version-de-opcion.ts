@@ -46,16 +46,16 @@ export async function agregarVersionDeOpcionCasoDeUso(
         const numeroVigente = vigente?.numero ?? 0;
 
         if (vigente && numeroVigente === comando.numeroEsperado + 1 && vigente.creadoPorId === actor.usuarioId && contenidoDeVersionIgual(vigente, comando.version)) {
-          return exito(`La versión ${numeroVigente} de «${opcion.nombre}» ya estaba cargada: no se agregó otra.`, { versionDeOpcionId: vigente.id, numero: numeroVigente, yaExistia: true });
+          return exito(`Ese cambio de precio de «${opcion.nombre}» ya estaba cargado: no se agregó otro.`, { versionDeOpcionId: vigente.id, numero: numeroVigente, yaExistia: true });
         }
         if (numeroVigente !== comando.numeroEsperado) {
           return fracaso(
             "VERSION_DESACTUALIZADA",
-            `«${opcion.nombre}» cambió mientras la editabas (ahora va por la versión ${numeroVigente}, y partiste de la ${comando.numeroEsperado}). Recargá la pantalla y volvé a hacer el cambio.`
+            `El precio o el consumo de «${opcion.nombre}» cambió mientras lo editabas: otra persona cargó un cambio antes. Recargá la pantalla y volvé a hacer el cambio.`
           );
         }
         if (vigente && contenidoDeVersionIgual(vigente, comando.version)) {
-          return exito(`La versión ${numeroVigente} de «${opcion.nombre}» ya tiene esos valores: no se agregó otra.`, { versionDeOpcionId: vigente.id, numero: numeroVigente, yaExistia: true });
+          return exito(`«${opcion.nombre}» ya tiene esos valores: no se agregó otro cambio de precio.`, { versionDeOpcionId: vigente.id, numero: numeroVigente, yaExistia: true });
         }
 
         for (const regla of [validarVersion(opcion.grupo.tipo, opcion.esNinguna, comando.version), validarConsumos(opcion.grupo.tipo, opcion.esNinguna, comando.version.consumos)]) {
@@ -88,7 +88,7 @@ export async function agregarVersionDeOpcionCasoDeUso(
         for (const c of cambios) {
           await registrarCambioAuditado(tx, { entidad: "VersionDeOpcion", entidadId: creada.id, campo: c.campo, descripcion, valorAnterior: c.valorAnterior, valorNuevo: c.valorNuevo, actorId: actor.usuarioId, sucursalId: null });
         }
-        return exito(`«${opcion.nombre}» quedó en la versión ${numero}: rige desde ahora.`, { versionDeOpcionId: creada.id, numero, yaExistia: false });
+        return exito(`Listo: el cambio de precio o de consumo de «${opcion.nombre}» rige desde ahora.`, { versionDeOpcionId: creada.id, numero, yaExistia: false });
       },
       undefined,
       undefined,

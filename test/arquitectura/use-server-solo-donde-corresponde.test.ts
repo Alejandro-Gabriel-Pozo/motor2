@@ -25,6 +25,8 @@ const IMPORTADOS_PUROS: Record<string, string> = {
   numeroDelCampo: "@/core/datos/numero-tecleado",
   secuenciaMoviendo: "@/core/catalogo/public",
   redirect: "next/navigation",
+  // GO-2d: arma los datos de una versión de una opción (precio, factor y consumos) desde el FormData del formulario de la pantalla del grupo; no valida ni escribe (lo hace el guard).
+  versionDelFormulario: "./version-del-formulario",
 };
 /** Abrir/cerrar sesión: solo en estos archivos (el login y los dos shells). */
 const SESION: Record<string, string[]> = {

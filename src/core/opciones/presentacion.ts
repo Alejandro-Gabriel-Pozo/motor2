@@ -84,3 +84,30 @@ export function espejoDeDiferencia(
   if (diferencia.tipo === "PORCENTAJE") return { tipo: "MONTO", monto: porcentajeDeImporte(precioDeReferencia, diferencia.porcentaje) };
   return { tipo: "PORCENTAJE", porcentaje: new Decimal(diferencia.monto).times(100).dividedBy(precioDeReferencia).toDecimalPlaces(1, Decimal.ROUND_HALF_UP).toNumber() };
 }
+
+/** Una línea de consumo con los nombres ya resueltos, para resumirla en una frase. */
+export interface ConsumoParaResumir {
+  efecto: "SUMA" | "REEMPLAZA";
+  insumoNombre: string;
+  reemplazaNombre: string | null;
+  cantidad: number;
+  unidadNombre: string;
+  mermaPorcentaje: number;
+  escalaConLaMedida: boolean;
+}
+
+/**
+ * Lo que consume una opción en una frase, con el formato de cantidad de quien muestra: «suma 0,2 l de Leche», «reemplaza Leche por 0,2 l de Bebida de almendras · merma 2 % ·
+ * escala con el tamaño». Varias líneas van separadas por «; ». Sin líneas: «sin consumo propio».
+ */
+export function resumenDeConsumos(consumos: readonly ConsumoParaResumir[], formatearCantidad: (n: number) => string): string {
+  if (consumos.length === 0) return "sin consumo propio";
+  return consumos
+    .map((c) => {
+      const cuanto = `${formatearCantidad(c.cantidad)}${c.unidadNombre ? ` ${c.unidadNombre}` : ""} de ${c.insumoNombre}`;
+      const base = c.efecto === "REEMPLAZA" ? `reemplaza ${c.reemplazaNombre ?? "un ingrediente"} por ${cuanto}` : `suma ${cuanto}`;
+      const merma = c.mermaPorcentaje > 0 ? ` · merma ${textoDePorcentaje(c.mermaPorcentaje)} %` : "";
+      return `${base}${merma}${c.escalaConLaMedida ? " · escala con el tamaño" : ""}`;
+    })
+    .join("; ");
+}

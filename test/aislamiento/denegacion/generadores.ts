@@ -281,6 +281,8 @@ const completos: Record<string, Valor> = {
       intento(c, ["promoCartaId"], [c.propio.cuentaId, [], [{ promoCartaId: k.promoCartaId, elecciones: [{ seccionCartaId: c.propio.seccionCartaId, elegidos: [{ productoId: c.propio.productoPvId, cantidad: 1 }] }] }]]),
       intento(c, ["seccionCartaId", "productoPvId"], [c.propio.cuentaId, [], [{ promoCartaId: c.propio.promoCartaId, elecciones: [{ seccionCartaId: k.seccionCartaId, elegidos: [{ productoId: k.productoPvId, cantidad: 1 }] }] }]]),
     ),
+  // GO-2d: el orden completo de las opciones de un grupo, con la opción ajena del kit.
+  "accion|actions/catalogo/opciones-de-venta.ts|reordenarOpcionesDeGrupo": (k) => [{ grupoId: k.grupoDeOpcionesId, opciones: [{ opcionId: k.opcionDeGrupoId, versionEsperada: 1 }] }],
 };
 
 const parametros: Record<string, Record<string, Valor>> = {
@@ -361,6 +363,8 @@ const porArchivo: Record<string, Record<string, Valor>> = {
   "actions/movimientos/precio-local.ts": { productoId: (k) => k.productoPvId },
   // GO-2a: en las lecturas del catálogo de opciones, `grupoId` es un grupo de OPCIONES (no el de insumos) y `productoId` el PV que las admite.
   "lecturas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId },
+  // GO-2d: lo mismo en las consultas de las pantallas de opciones de venta.
+  "consultas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId },
 };
 
 export const GENERADORES: Generadores = { completos, parametros, porArchivo };

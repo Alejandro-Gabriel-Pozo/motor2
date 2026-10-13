@@ -7,6 +7,7 @@ import {
   guardComandoEditarGrupoDeOpciones,
   guardComandoEditarOpcionDeGrupo,
   guardComandoFijarAdmisionDeGrupo,
+  guardComandoReordenarOpcionesDeGrupo,
 } from "@/core/features/catalogo/opciones-de-venta.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { azarDelProceso } from "@/lib/azar";
@@ -19,6 +20,7 @@ import { crearOpcionDeGrupoCasoDeUso } from "./casos-de-uso/crear-opcion-de-grup
 import { editarGrupoDeOpcionesCasoDeUso } from "./casos-de-uso/editar-grupo-de-opciones";
 import { editarOpcionDeGrupoCasoDeUso } from "./casos-de-uso/editar-opcion-de-grupo";
 import { fijarAdmisionDeGrupoEnProductoCasoDeUso } from "./casos-de-uso/fijar-admision-de-grupo-en-producto";
+import { reordenarOpcionesDeGrupoCasoDeUso } from "./casos-de-uso/reordenar-opciones-de-grupo";
 
 /**
  * Server Actions del CATÁLOGO DE OPCIONES DE VENTA (GO-2a; ADR-030). Cada una es un adaptador fino: permiso (la PRIMERA línea: `conPermisoDeEmpresa` con su clave) → formato y rango
@@ -103,6 +105,17 @@ export async function fijarAdmisionDeGrupoEnProducto(entrada: {
     const comando = guardComandoFijarAdmisionDeGrupo(entrada);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await fijarAdmisionDeGrupoEnProductoCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) refrescarVistaSiHaceFalta();
+    return aResultadoAccion(resultado);
+  });
+}
+
+// GO-2d: el «mover tocando» de la pantalla del grupo fija el orden de TODAS sus opciones de una sola vez (un orden nunca queda a medias).
+export async function reordenarOpcionesDeGrupo(entrada: { grupoId: unknown; opciones: unknown }): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("opciones_definir", async (ctx) => {
+    const comando = guardComandoReordenarOpcionesDeGrupo(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await reordenarOpcionesDeGrupoCasoDeUso(ctx, comando.valor);
     if (resultado.ok) refrescarVistaSiHaceFalta();
     return aResultadoAccion(resultado);
   });

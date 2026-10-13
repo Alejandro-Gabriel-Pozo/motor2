@@ -28,14 +28,24 @@ import { useGrupoDeFormularios } from "./grupo-de-formularios";
  */
 const AVISO_GRUPO_OCUPADO ="Esperá a que termine de guardarse el cambio anterior.";
 
+/**
+ * GO-2d (opcional, `ofrecerRecargar`): cuando el servidor rechaza un cambio porque otra persona guardó antes (control de versión optimista), su mensaje termina pidiendo
+ * «Recargá la pantalla…». Con esta bandera, al lado de ese mensaje aparece un botón «Recargar» que vuelve a cargar la página entera (se ve lo último; lo tipeado se pierde recién
+ * ahí, cuando la persona lo decide). Sin la bandera, nada cambia.
+ */
+const PIDE_RECARGAR = /Recargá la pantalla/;
+
 export function FormConResultado({
   accion,
   children,
   className,
+  ofrecerRecargar = false,
 }: {
   accion: (formData: FormData) => Promise<ResultadoAccion>;
   children: ReactNode;
   className?: string;
+  /** GO-2d: ofrecer «Recargar» junto a un rechazo por otra persona que guardó antes (ver `PIDE_RECARGAR`). */
+  ofrecerRecargar?: boolean;
 }) {
   const [resultado, setResultado] = useState<ResultadoAccion | null>(null);
   const [pendiente, startTransition] = useTransition();
@@ -109,8 +119,13 @@ export function FormConResultado({
         </p>
       ) : (
         resultado && (
-          <p ref={refResultado} role={resultado.ok ? "status" : "alert"} className={`text-sm ${resultado.ok ? "text-green-700" : "text-red-600"}`}>
+          <p ref={refResultado} role={resultado.ok ? "status" : "alert"} className={`text-sm ${resultado.ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
             {resultado.mensaje}
+            {ofrecerRecargar && !resultado.ok && PIDE_RECARGAR.test(resultado.mensaje) && (
+              <button type="button" onClick={() => window.location.reload()} className="ml-2 inline-flex min-h-[44px] items-center rounded border border-current px-3 py-1 font-medium">
+                Recargar
+              </button>
+            )}
           </p>
         )
       )}

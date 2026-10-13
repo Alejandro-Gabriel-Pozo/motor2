@@ -33,4 +33,4 @@ export { versionVigente } from "./version-vigente";
 export type { TipoDeDiferencia } from "./tipos";
 
 // GO-2d (las pantallas de opciones de venta, ADR-030 «Pantallas»): los textos puros que comparten la administración, el selector del POS y la carta pública.
-export { ayudaDelTipoDeGrupo, nombreDelTipoDeGrupo, textoDeLimites } from "./presentacion";
+export { ayudaDelTipoDeGrupo, espejoDeDiferencia, nombreDelTipoDeGrupo, resumenDeConsumos, textoDeDiferencia, textoDeLimites, textoDePorcentaje } from "./presentacion";

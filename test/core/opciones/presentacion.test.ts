@@ -7,6 +7,7 @@ import {
   espejoDeDiferencia,
   esGrupoObligatorio,
   nombreDelTipoDeGrupo,
+  resumenDeConsumos,
   textoDeDiferencia,
   textoDeLimites,
   textoDePorcentaje,
@@ -96,5 +97,24 @@ describe("espejoDeDiferencia (referencia, no precio cobrado)", () => {
         expect(espejoDeDiferencia({ tipo: "PORCENTAJE", porcentaje }, precio)).toEqual({ tipo: "MONTO", monto: porcentajeDeImporte(precio, porcentaje) });
       })
     );
+  });
+});
+
+describe("resumenDeConsumos", () => {
+  const formatear = (n: number) => n.toLocaleString("es-AR", { maximumFractionDigits: 4 });
+  it("suma y reemplaza, con merma y escala, en una frase por línea", () => {
+    expect(
+      resumenDeConsumos(
+        [
+          { efecto: "SUMA", insumoNombre: "Leche", reemplazaNombre: null, cantidad: 0.2, unidadNombre: "l", mermaPorcentaje: 0, escalaConLaMedida: false },
+          { efecto: "REEMPLAZA", insumoNombre: "Bebida de almendras", reemplazaNombre: "Leche", cantidad: 0.25, unidadNombre: "l", mermaPorcentaje: 2.5, escalaConLaMedida: true },
+        ],
+        formatear
+      )
+    ).toBe("suma 0,2 l de Leche; reemplaza Leche por 0,25 l de Bebida de almendras · merma 2,5 % · escala con el tamaño");
+  });
+  it("sin líneas, y sin unidad", () => {
+    expect(resumenDeConsumos([], formatear)).toBe("sin consumo propio");
+    expect(resumenDeConsumos([{ efecto: "SUMA", insumoNombre: "Huevo", reemplazaNombre: null, cantidad: 1, unidadNombre: "", mermaPorcentaje: 0, escalaConLaMedida: false }], formatear)).toBe("suma 1 de Huevo");
   });
 });
