@@ -50,9 +50,10 @@ describe("la migración deja las columnas, las tablas, los índices, las claves 
     );
     const forma = (tabla: string, nombres?: string[]) => columnas.filter((c) => c.tabla === tabla && (!nombres || nombres.includes(c.columna))).map((c) => `${c.columna}:${c.tipo}:${c.es_nulable}`);
     const T = "timestamp without time zone";
-    expect(forma("PromoCarta", ["vigenteDesde", "vigenteHasta", "diasDeSemana"])).toEqual(["vigenteDesde:date:YES", "vigenteHasta:date:YES", "diasDeSemana:smallint:YES"]);
+    expect(forma("PromoCarta", ["vigenteDesde", "vigenteHasta", "diasDeSemana", "version"])).toEqual(["vigenteDesde:date:YES", "vigenteHasta:date:YES", "diasDeSemana:smallint:YES", "version:integer:NO"]);
     expect(forma("PromoCartaCupo", ["seccionCartaId", "tipo", "nombre", "activo"])).toEqual(["seccionCartaId:text:YES", "tipo:text:NO", "nombre:text:YES", "activo:boolean:NO"]);
     const defecto = (tabla: string, columna: string) => columnas.find((c) => c.tabla === tabla && c.columna === columna)!.por_defecto;
+    expect(defecto("PromoCarta", "version"), "control optimista: toda promo de hoy queda en la versión 1").toBe("1");
     expect(defecto("PromoCartaCupo", "tipo")).toBe("'SECCION'::text");
     expect(defecto("PromoCartaCupo", "activo")).toBe("true");
     expect(forma("EntradaDeCupo")).toEqual(["id:text:NO", "empresaId:text:NO", "cupoId:text:NO", "productoId:text:NO", "claveConfiguracion:text:NO", "orden:integer:NO", "activa:boolean:NO", `creadoEn:${T}:NO`, `actualizadoEn:${T}:NO`]);
@@ -101,6 +102,7 @@ describe("la migración deja las columnas, las tablas, los índices, las claves 
       { nombre: "PromoCartaCupo_seccion_solo_en_seccion_chk", validada: true },
       { nombre: "PromoCartaCupo_tipo_chk", validada: true },
       { nombre: "PromoCarta_dias_de_semana_chk", validada: true },
+      { nombre: "PromoCarta_version_chk", validada: true },
       { nombre: "PromoCarta_vigencia_chk", validada: true },
     ]);
   });
@@ -152,6 +154,21 @@ describe("la migración deja las columnas, las tablas, los índices, las claves 
       expect(sql).not.toContain("app_sucursales_");
     }
     expect(readFileSync(join(POLITICAS, "migration.sql"), "utf8").split("\n")[0]).toContain("REQUIERE AUTORIZACIÓN EXPRESA");
+  });
+});
+
+describe("el control optimista de la promo (PromoCarta.version)", () => {
+  it("la versión es obligatoria y de 1 o más (0 y negativos dan 23514; NULL, 23502); toda promo de hoy queda en 1; la app la sube con `WHERE version = esperada` y con la versión vieja no toca nada", async () => {
+    expect((await prismaAdmin.promoCarta.findUniqueOrThrow({ where: { id: e.promoId } })).version).toBe(1);
+    const duenio = await conexionDelDuenio();
+    for (const malo of ["0", "-1"]) expect(await intentar(duenio, `UPDATE "PromoCarta" SET "version" = ${malo} WHERE "id" = $1`, [e.promoId]), malo).toEqual({ codigo: "23514", restriccion: "PromoCarta_version_chk" });
+    expect(await intentar(duenio, `UPDATE "PromoCarta" SET "version" = NULL WHERE "id" = $1`, [e.promoId])).toMatchObject({ codigo: "23502" });
+    const app = await conexionComoApp(undefined, alcanceA());
+    const editar = (esperada: number) => app.query(`UPDATE "PromoCarta" SET "precio" = 9900.00, "version" = "version" + 1 WHERE "id" = $1 AND "version" = $2`, [e.promoId, esperada]);
+    expect((await editar(1)).rowCount, "con la versión vigente, edita").toBe(1);
+    expect((await editar(1)).rowCount, "con la versión vieja (otro editor ya guardó), 0 filas: VERSION_DESACTUALIZADA").toBe(0);
+    const promo = await prismaAdmin.promoCarta.findUniqueOrThrow({ where: { id: e.promoId } });
+    expect([promo.version, promo.precio.toFixed(2)]).toEqual([2, "9900.00"]);
   });
 });
 

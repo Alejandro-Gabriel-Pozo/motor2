@@ -2,6 +2,8 @@
 -- crea tres tablas y da de alta UNA clave de permiso.
 --   PromoCarta.vigenteDesde/vigenteHasta  la vigencia opcional de la promo (DATE local de la zona de la empresa, rango inclusive; NULL = sin límite). CHECK desde <= hasta.
 --   PromoCarta.diasDeSemana               máscara de los días en que vale (bit 0 = lunes … bit 6 = domingo; 1 a 127, CHECK). NULL = todos los días (D-7).
+--   PromoCarta.version                    el control OPTIMISTA de la edición de la promo (`UPDATE … WHERE version = esperada`; 0 filas = VERSION_DESACTUALIZADA): INTEGER NOT NULL DEFAULT 1 (constante: solo metadatos en PG >= 11;
+--                                         todas las promos de hoy quedan en 1), CHECK >= 1. Lo incrementa la aplicación (GO-3 F3); la base solo garantiza el piso.
 --   PromoCartaCupo.tipo                   SECCION (todas las filas de hoy, por el DEFAULT), LISTA o DEL_DIA (CHECK). `seccionCartaId` pasa a NULABLE: obligatoria si y solo si el tipo es SECCION (CHECK).
 --   PromoCartaCupo.nombre                 el nombre del lugar fuera de SECCION (CHECK; único por promo sin importar mayúsculas: índice parcial).
 --   PromoCartaCupo.activo                 la baja lógica del cupo (DEFAULT true): desde GO-3 un cupo no se borra.
@@ -21,13 +23,16 @@
 -- Hacerlo con `SET lock_timeout = '5s'` y sin tráfico de administración de la carta. Requiere el rol motor2_app si existe (los GRANT son condicionales), GO-1b (las opciones) y la función app_empresa_actual() (default de empresaId).
 -- Las políticas de sucursal de `EntradaDelDiaDeCupo` llegan en la migración siguiente (GO-3d-rls, 20261021101000), que es la salida exacta del generador: esta migración NO las crea.
 -- Reversa: down.sql (a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1`; después `prisma migrate resolve --rolled-back`). NO destructiva: ABORTA si hay una entrada, un plato del día, un cupo de tipo nuevo, con nombre o dado de baja,
--- una promo con vigencia, o si la configuración de la clave ya no es la semilla. Se baja DESPUÉS de GO-3d-rls.
+-- una promo con vigencia o ya editada con la versión (`version` distinta de 1), o si la configuración de la clave ya no es la semilla. Se baja DESPUÉS de GO-3d-rls.
 
 ALTER TABLE "PromoCarta" ADD COLUMN IF NOT EXISTS "vigenteDesde" DATE, ADD COLUMN IF NOT EXISTS "vigenteHasta" DATE, ADD COLUMN IF NOT EXISTS "diasDeSemana" SMALLINT;
 ALTER TABLE "PromoCarta" DROP CONSTRAINT IF EXISTS "PromoCarta_dias_de_semana_chk";
 ALTER TABLE "PromoCarta" ADD CONSTRAINT "PromoCarta_dias_de_semana_chk" CHECK ("diasDeSemana" IS NULL OR "diasDeSemana" BETWEEN 1 AND 127);
 ALTER TABLE "PromoCarta" DROP CONSTRAINT IF EXISTS "PromoCarta_vigencia_chk";
 ALTER TABLE "PromoCarta" ADD CONSTRAINT "PromoCarta_vigencia_chk" CHECK ("vigenteDesde" IS NULL OR "vigenteHasta" IS NULL OR "vigenteDesde" <= "vigenteHasta");
+ALTER TABLE "PromoCarta" ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE "PromoCarta" DROP CONSTRAINT IF EXISTS "PromoCarta_version_chk";
+ALTER TABLE "PromoCarta" ADD CONSTRAINT "PromoCarta_version_chk" CHECK ("version" >= 1);
 
 ALTER TABLE "PromoCartaCupo" ADD COLUMN IF NOT EXISTS "tipo" TEXT NOT NULL DEFAULT 'SECCION', ADD COLUMN IF NOT EXISTS "nombre" TEXT, ADD COLUMN IF NOT EXISTS "activo" BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE "PromoCartaCupo" ALTER COLUMN "seccionCartaId" DROP NOT NULL;

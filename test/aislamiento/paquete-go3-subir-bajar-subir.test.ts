@@ -142,6 +142,7 @@ describe("GO-3d: subir, bajar y subir (combos y menú del día, con su migració
     expect(f.politicas.filter((p) => p.tabla === "EntradaDelDiaDeCupo").map((p) => p.nombre), `${etiqueta}: el plato del día con sus 5 políticas`).toEqual([
       "aislamiento_empresa", "alcance_sucursal_delete", "alcance_sucursal_insert", "alcance_sucursal_select", "alcance_sucursal_update",
     ]);
+    expect(await q(`SELECT "version" FROM "PromoCarta" WHERE "id" = 'promo_go3'`), `${etiqueta}: la promo de antes queda en la versión 1`).toEqual([{ version: 1 }]);
     expect(await q(`SELECT "tipo", "nombre", "activo", "seccionCartaId" FROM "PromoCartaCupo" WHERE "id" = 'cupo_sec_go3'`), `${etiqueta}: el cupo de antes quedó como estaba`).toEqual([
       { tipo: "SECCION", nombre: null, activo: true, seccionCartaId: "sec_go3" },
     ]);
@@ -196,6 +197,9 @@ describe("GO-3d: subir, bajar y subir (combos y menú del día, con su migració
     await c.query(`UPDATE "PromoCarta" SET "diasDeSemana" = 31 WHERE "id" = 'promo_go3'`);
     await abortaSinTocar(GO3_D, /No se puede bajar GO-3d: hay 1 fila/, "con una promo con días de semana");
     await c.query(`UPDATE "PromoCarta" SET "diasDeSemana" = NULL WHERE "id" = 'promo_go3'`);
+    await c.query(`UPDATE "PromoCarta" SET "version" = 2 WHERE "id" = 'promo_go3'`);
+    await abortaSinTocar(GO3_D, /No se puede bajar GO-3d: hay 1 fila/, "con una promo ya editada con el control optimista");
+    await c.query(`UPDATE "PromoCarta" SET "version" = 1 WHERE "id" = 'promo_go3'`);
     await c.query(`INSERT INTO "PermisoRol" ("id","empresaId","rolId","accionClave","puedeVer","puedeEditar") VALUES ('delegada',$1,'rol_otro_go3','promo_menu_del_dia',true,true)`, [E]);
     await abortaSinTocar(GO3_D, /configuración de la clave promo_menu_del_dia/, "con la clave delegada al encargado");
     await c.query(`DELETE FROM "PermisoRol" WHERE "id" = 'delegada'`);

@@ -1,5 +1,5 @@
 -- Reversa de 20261021100000_go3d_combos_y_menu_del_dia (GO-3d). NO destructiva: ABORTA, sin tocar nada (`RAISE EXCEPTION`), si hay algo que solo pudo escribir el código de GO-3: una entrada de cupo o una opción de entrada,
--- un plato del día, un cupo LISTA o DEL_DIA, con nombre o dado de baja, una promo con vigencia o días de semana, o si la configuración de la clave `promo_menu_del_dia` ya no es la semilla (una delegación, un cambio del admin o una
+-- un plato del día, un cupo LISTA o DEL_DIA, con nombre o dado de baja, una promo con vigencia o días de semana o ya editada con el control optimista (`version` distinta de 1), o si la configuración de la clave `promo_menu_del_dia` ya no es la semilla (una delegación, un cambio del admin o una
 -- capacidad por sucursal). Esos datos no se borran en silencio. Sin nada de eso (o si ya no existen), saca todo con IF EXISTS: las tres tablas, los CHECK, el índice parcial, las columnas nuevas y la clave; y `seccionCartaId` vuelve a NOT NULL.
 -- Bajar esta DESPUÉS de GO-3d-rls (las políticas de sucursal del plato del día dependen de la tabla). A mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1 -f down.sql` (UNA transacción: o se vuelve todo o nada), sin tráfico de la
 -- administración de la carta (`SET lock_timeout = '5s'`); después `npx prisma migrate resolve --rolled-back 20261021100000_go3d_combos_y_menu_del_dia`. Idempotente. Después de desplegar las funciones de GO-3 no se baja: se usa Instant Rollback.
@@ -24,6 +24,10 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'PromoCarta' AND column_name = 'diasDeSemana') THEN
     EXECUTE 'SELECT count(*) FROM "PromoCarta" WHERE "vigenteDesde" IS NOT NULL OR "vigenteHasta" IS NOT NULL OR "diasDeSemana" IS NOT NULL' INTO n;
+    hay := hay + n;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'PromoCarta' AND column_name = 'version') THEN
+    EXECUTE 'SELECT count(*) FROM "PromoCarta" WHERE "version" <> 1' INTO n;
     hay := hay + n;
   END IF;
   IF hay > 0 THEN
@@ -53,6 +57,8 @@ ALTER TABLE "PromoCartaCupo" DROP CONSTRAINT IF EXISTS "PromoCartaCupo_tipo_chk"
 ALTER TABLE "PromoCartaCupo" ALTER COLUMN "seccionCartaId" SET NOT NULL;
 ALTER TABLE "PromoCartaCupo" DROP COLUMN IF EXISTS "activo", DROP COLUMN IF EXISTS "nombre", DROP COLUMN IF EXISTS "tipo";
 
+ALTER TABLE "PromoCarta" DROP CONSTRAINT IF EXISTS "PromoCarta_version_chk";
+ALTER TABLE "PromoCarta" DROP COLUMN IF EXISTS "version";
 ALTER TABLE "PromoCarta" DROP CONSTRAINT IF EXISTS "PromoCarta_vigencia_chk";
 ALTER TABLE "PromoCarta" DROP CONSTRAINT IF EXISTS "PromoCarta_dias_de_semana_chk";
 ALTER TABLE "PromoCarta" DROP COLUMN IF EXISTS "diasDeSemana", DROP COLUMN IF EXISTS "vigenteHasta", DROP COLUMN IF EXISTS "vigenteDesde";

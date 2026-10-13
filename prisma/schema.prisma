@@ -1991,6 +1991,8 @@ model PromoCarta {
   vigenteHasta   DateTime?            @db.Date
   /// GO-3 (D-7): máscara de los días de la semana en que vale (bit 0 = lunes … bit 6 = domingo; 1 a 127, CHECK). NULL = todos los días.
   diasDeSemana   Int?                 @db.SmallInt
+  /// GO-3 (ADR-032): control OPTIMISTA de la edición de la promo (`UPDATE … WHERE version = esperada`; 0 filas = VERSION_DESACTUALIZADA). >= 1 (CHECK); lo incrementa la aplicación.
+  version        Int                  @default(1)
   cupos          PromoCartaCupo[]
   instancias     PromoCuenta[]
   sucursales     PromoCartaSucursal[]
