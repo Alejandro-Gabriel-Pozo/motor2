@@ -53,7 +53,8 @@ const CLAVES_FORANEAS_NUEVAS = [
   "ConceptoDeGasto_empresaId_fkey", "FacturaProveedorRenglon_empresaId_conceptoGastoId_fkey", "ImputacionDeGasto_empresaId_fkey", "ImputacionDeGasto_empresaId_facturaProveedorRenglonId_natu_fkey", "ImputacionDeGasto_empresaId_sucursalId_fkey",
 ];
 const TABLAS_NUEVAS = ["ConceptoDeGasto", "ImputacionDeGasto"];
-const CLAVES = Object.keys(RESERVADAS_EN_BASE).sort();
+// Solo las siete de M4.5: las de los centros de costos (M7.4) viven en la misma lista, con su propia migración.
+const CLAVES = Object.keys(RESERVADAS_EN_BASE).filter((c) => RESERVADAS_EN_BASE[c]!.migracion === M4_5).sort();
 
 const E = "empresa_m4";
 const sql = (migracion: string, archivo: "migration.sql" | "down.sql") => readFileSync(join(RAIZ, migracion, archivo), "utf8");

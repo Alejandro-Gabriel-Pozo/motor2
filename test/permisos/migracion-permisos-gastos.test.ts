@@ -16,7 +16,8 @@ import { RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
  */
 const NOMBRE = "20261016114000_permisos_gastos";
 const leer = (archivo: string) => readFileSync(join(__dirname, "../../prisma/migrations", NOMBRE, archivo), "utf8");
-const CLAVES = Object.keys(RESERVADAS_EN_BASE).sort();
+// Solo las siete de ESTA migración: las de los centros de costos (M7.4) viven en la misma lista, con su propia migración.
+const CLAVES = Object.keys(RESERVADAS_EN_BASE).filter((c) => RESERVADAS_EN_BASE[c]!.migracion === NOMBRE).sort();
 const CON_SEMILLA = CLAVES.filter((c) => RESERVADAS_EN_BASE[c]!.semilla.includes("admin"));
 
 describe("migración de datos M4.5: las siete claves de los gastos", () => {
