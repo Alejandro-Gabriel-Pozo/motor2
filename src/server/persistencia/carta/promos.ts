@@ -59,14 +59,16 @@ export async function fijarActivaDePromoEnSucursal(db: Prisma.TransactionClient,
 }
 
 /**
- * Reemplaza TODOS los cupos de la promo por la lista dada (todo o nada: lo llama el caso de uso dentro de su transacción). Una lista vacía deja la promo sin
- * cupos (informativa).
+ * Reemplaza TODOS los cupos de SECCIÓN de la promo por la lista dada (todo o nada: lo llama el caso de uso dentro de su transacción). Una lista vacía deja la promo sin
+ * cupos de sección (informativa, si no tiene otros).
+ * GO-3 (primer despliegue): los cupos de un tipo nuevo (LISTA, DEL_DIA) no se tocan: este reemplazo es solo de los de sección, con la semántica de siempre. Dejar de borrar
+ * (diferencia por clave natural con baja lógica) es el paso D3 de GO-3.
  */
 export async function reemplazarCuposDePromo(
   db: Prisma.TransactionClient,
   args: { promoCartaId: string; cupos: readonly { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number; orden: number }[] },
 ): Promise<void> {
-  await db.promoCartaCupo.deleteMany({ where: { promoCartaId: args.promoCartaId } });
+  await db.promoCartaCupo.deleteMany({ where: { promoCartaId: args.promoCartaId, tipo: "SECCION" } });
   if (args.cupos.length) {
     await db.promoCartaCupo.createMany({
       data: args.cupos.map((c) => ({ promoCartaId: args.promoCartaId, seccionCartaId: c.seccionCartaId, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima, orden: c.orden })),

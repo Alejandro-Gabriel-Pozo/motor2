@@ -1,6 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { mensajePisoDePromo, mensajePisoLocalDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
+import { cuposDeSeccionActivos } from "@/core/carta/public";
 import type { ComandoGuardarCuposPromoCarta, ResultadoGuardarCuposPromoCarta } from "@/core/features/carta/promos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -72,10 +73,13 @@ export async function guardarCuposPromoCartaCasoDeUso(
       }
     }
 
-    const previos = await tx.promoCartaCupo.findMany({
-      where: { promoCartaId },
-      select: { seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, seccionCarta: { select: { nombre: true } } },
-    });
+    // GO-3 (primer despliegue): este caso de uso solo administra los cupos de SECCIÓN (los de tipo nuevo no se leen ni se tocan).
+    const previos = cuposDeSeccionActivos(
+      await tx.promoCartaCupo.findMany({
+        where: { promoCartaId, tipo: "SECCION" },
+        select: { tipo: true, activo: true, seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, seccionCarta: { select: { nombre: true } } },
+      }),
+    );
     for (const p of previos) nombresDeSecciones.set(p.seccionCartaId, p.seccionCarta.nombre);
 
     await reemplazarCuposDePromo(tx, { promoCartaId, cupos: cuposValidados });
