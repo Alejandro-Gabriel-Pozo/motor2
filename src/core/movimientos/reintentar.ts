@@ -16,10 +16,21 @@
  * `aleatorio() * min(tope, base * 2^intento)` — y no un backoff puro.
  *
  * Con base 25 ms y tope 250 ms el techo de espera antes de cada reintento es
- * 25, 50, 100 y 200 ms (peor caso acumulado 375 ms; esperado ~187 ms). Es del
- * orden de lo que tarda una de estas transacciones, que es lo que hace falta
- * para decorrelar a los dos contendientes, y queda muy por debajo del
- * `timeout` de 15 s de la propia transacción.
+ * 25, 50, 100, 200 y luego 250 ms (con los 5 intentos de antes, peor caso
+ * acumulado 375 ms; con los 8 del default de `conTransaccionSerializable`,
+ * 1125 ms, esperado ~560 ms). Es del orden de lo que tarda una de estas
+ * transacciones, que es lo que hace falta para decorrelar a los contendientes,
+ * y queda muy por debajo del `timeout` de 15 s de la propia transacción.
+ *
+ * LO QUE MIDIÓ EL CI (2026-10-13) Y POR QUÉ EL JITTER SE QUEDÓ COMO ESTÁ. Dos
+ * corridas del mismo commit agotaron los 5 intentos con `esperaTotalMs` de 47 y
+ * 54 ms (P2034, «3 cierres de mesas distintas de la misma sucursal a la vez»).
+ * La corrección fue subir el default de intentos a 8 (ver
+ * `src/lib/transaccion-serializable.ts`: bajo SERIALIZABLE los contendientes se
+ * resuelven de a uno por ronda, así que los intentos que hacen falta crecen con
+ * la cantidad de cierres simultáneos), NO darle un piso a la espera: con
+ * `techo * (0,5 + 0,5 * azar)` la medición empeoró (estrecha el rango y vuelve
+ * a sincronizar a los contendientes). Por eso el jitter sigue siendo COMPLETO.
  */
 
 const ESPERA_BASE_MS = 25;
