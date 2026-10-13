@@ -24,6 +24,12 @@ const FK_CON_DISCRIMINADOR: Readonly<Record<string, string>> = {
     "Paquete 3, M4.3: (empresaId, renglón, naturalezaRenglon) → FacturaProveedorRenglon(empresaId, id, naturaleza): la base impide imputar un renglón de mercadería (solo SIN_STOCK) y cambiar la naturaleza de un renglón imputado.",
   ReclasificacionRenglon_empresaId_facturaProveedorRenglonId_fkey:
     "Paquete 4, M5: (empresaId, renglón, naturalezaRenglon) → FacturaProveedorRenglon(empresaId, id, naturaleza): la base impide reclasificar un renglón de mercadería (solo SIN_STOCK) y cambiar la naturaleza de un renglón reclasificado.",
+  CentroDeCostos_empresaId_planDeCostosId_centroPadreId_fkey:
+    "Paquete 5, M7.1: (empresaId, planDeCostosId, centroPadreId) → CentroDeCostos(empresaId, planDeCostosId, id): el padre de un centro es del MISMO plan (en la v1 `centroPadreId` es siempre NULL por CHECK; la clave queda lista para los sub-centros).",
+  DistribucionCostoLinea_empresaId_distribucionCostoVersionI_fkey:
+    "Paquete 5, M7.2: (empresaId, versión, planDeCostosId) → DistribucionCostoVersion(empresaId, id, planDeCostosId): la línea es del plan de su versión (el discriminador es el plan).",
+  DistribucionCostoLinea_empresaId_planDeCostosId_centroDeCo_fkey:
+    "Paquete 5, M7.2: (empresaId, planDeCostosId, centro) → CentroDeCostos(empresaId, planDeCostosId, id): el centro de una línea es del plan de la versión (no se puede repartir a un centro de otro plan).",
 };
 
 function codigoDeError(e: unknown): string | undefined {

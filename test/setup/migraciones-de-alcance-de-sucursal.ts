@@ -41,13 +41,14 @@ export const TABLAS_DEL_PAQUETE_1: readonly string[] = MIGRACIONES_DE_POLITICAS_
 export const ULTIMA_MIGRACION_DEL_PAQUETE_1 = "20261014160000_rls_sucursal_b6_receta_y_auditoria";
 
 /**
- * Las migraciones POSTERIORES al Paquete 1 que crean políticas de alcance de sucursal (una tabla nueva con alcance: `Venta`, de M2-4, `FacturaProveedorSucursal`, de M3c, e `ImputacionDeGasto`, de M4.4), en el mismo formato que los grupos de arriba y en orden.
+ * Las migraciones POSTERIORES al Paquete 1 que crean políticas de alcance de sucursal (una tabla nueva con alcance: `Venta`, de M2-4, `FacturaProveedorSucursal`, de M3c, `ImputacionDeGasto`, de M4.4, y `PlanDeCostosSucursal`, `DistribucionCostoVersion` y `DistribucionCostoLinea`, de M7.3), en el mismo formato que los grupos de arriba y en orden.
  * B7 las suma a las que espera: cada una es el encabezado más la salida exacta del generador para sus tablas. Todas tienen que ser posteriores a `ULTIMA_MIGRACION_DEL_PAQUETE_1`.
  */
 export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion: string; readonly tablas: readonly string[] }[] = [
   { migracion: "20261015123000_m2_rls_sucursal_venta", tablas: ["Venta"] },
   { migracion: "20261016102000_rls_sucursal_factura_proveedor_sucursal", tablas: ["FacturaProveedorSucursal"] },
   { migracion: "20261016113000_rls_sucursal_imputacion_de_gasto", tablas: ["ImputacionDeGasto"] },
+  { migracion: "20261019102000_rls_sucursal_centros_de_costos", tablas: ["DistribucionCostoLinea", "DistribucionCostoVersion", "PlanDeCostosSucursal"] },
 ];
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */

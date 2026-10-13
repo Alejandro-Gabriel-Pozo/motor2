@@ -39,6 +39,8 @@ export const CAMPOS: Readonly<Record<string, CampoSensible>> = {
   "FacturaProveedorTributo.importe": { piso: "administrador", dato: "un tributo (percepción o impuesto) de una factura de proveedor (Paquete 3, M3d)" },
   "ImputacionDeGasto.importe": { piso: "administrador", dato: "lo que le toca a una sucursal de un gasto cargado en una factura de proveedor (Paquete 3, M4.3; con IVA incluido)" },
   "ImputacionDeGasto.importeIvaComputable": { piso: "administrador", dato: "el IVA computable de lo que le toca a una sucursal de un gasto (Paquete 3, M4.3)" },
+  "DistribucionCostoLinea.importe": { piso: "administrador", dato: "lo que le toca a un centro de costos de un gasto distribuido (Paquete 5, M7; con IVA incluido)" },
+  "DistribucionCostoLinea.importeIvaComputable": { piso: "administrador", dato: "el IVA computable de lo que le toca a un centro de costos de un gasto distribuido (Paquete 5, M7)" },
   "Venta.importeTotal": { piso: "administrador", dato: "el total cobrado de una venta (copia en la cabecera; como `MovimientoStock.precioTotal`, M2, DEC-E)" },
   "Proveedor.cuit": { piso: "administrador", dato: "el CUIT de un proveedor" },
   "Proveedor.email": { piso: "administrador", dato: "el correo de un proveedor" },
