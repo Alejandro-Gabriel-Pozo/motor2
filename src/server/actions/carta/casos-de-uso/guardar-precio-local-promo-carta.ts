@@ -37,7 +37,8 @@ export async function guardarPrecioLocalPromoCartaCasoDeUso(
   // M14 (S-51): la promo con sus cupos, el piso, el precio anterior, la escritura y la auditoría van en UNA transacción SERIALIZABLE (antes la promo y sus cupos se leían con `actor.db`, afuera):
   // si `guardarCuposPromoCarta` cambia los cupos a la vez, uno de los dos aborta (40001) y el reintento relee. Los rechazos devuelven ANTES de escribir.
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoGuardarPrecioLocalPromoCarta> => {
-    const promo = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, include: { cupos: { select: { cantidadMaxima: true } } } });
+    // GO-3: el piso cuenta los cupos ACTIVOS de cualquier tipo (los dados de baja no; contar de más solo sube el piso: falla seguro).
+    const promo = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, include: { cupos: { where: { activo: true }, select: { cantidadMaxima: true } } } });
     if (!promo) return fracaso("PROMO_NO_ENCONTRADA", "No se encontró la promo.");
 
     // S-52: el formato y el rango del precio los decidió `guardComandoGuardarPrecioLocalPromoCarta` (la acción lo calculó con lo que mandó el cliente); su rechazo se aplica ACÁ, después de leer

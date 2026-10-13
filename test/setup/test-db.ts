@@ -71,6 +71,8 @@ export async function limpiarBaseDeTest() {
   // OJO: PromoCartaCupo, PromoCarta y SeccionCarta NO se borran acá (Task #16, docs/plan-promo-combo-2026-09-26.md, M2) —
   // desde que `PromoCuenta` existe, PromoCarta depende TRANSITIVAMENTE de que la cuenta del POS ya esté vacía (ver más abajo,
   // junto a `promoCuenta.deleteMany()`), así que las tres se movieron a ese bloque.
+  // GO-3: lo de combos, menú del día y combinaciones primero (nadie lo referencia; ver `limpiarTablasDeGo3`, al final del archivo).
+  await limpiarTablasDeGo3();
   await prismaAdmin.opcionItemAgrupadoCarta.deleteMany();
   await prismaAdmin.itemAgrupadoCarta.deleteMany();
   await prismaAdmin.temaCartaSucursal.deleteMany();
@@ -383,4 +385,12 @@ export async function sembrarMotivosYDestinos() {
     motivos: new Map(motivos.map((m) => [m.nombre, m.id])),
     destinos: new Map(destinos.map((d) => [d.nombre, d.id])),
   };
+}
+
+// GO-3 (ADR-032): las tablas de combos y menú del día (GO-3d) y de combinaciones (GO-3a). Nadie las referencia y ellas referencian a la carta, al catálogo, a las opciones, a la sucursal,
+// al User y a `CuentaItem` (RESTRICT, salvo la foto, en CASCADE): se borran PRIMERO, hijas antes que padres. Declarada como función (se iza) para dejar el bloque al final del archivo.
+async function limpiarTablasDeGo3() {
+  await prismaAdmin.entradaDelDiaDeCupo.deleteMany();
+  await prismaAdmin.opcionDeEntradaDeCupo.deleteMany();
+  await prismaAdmin.entradaDeCupo.deleteMany();
 }

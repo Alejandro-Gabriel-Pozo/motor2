@@ -52,6 +52,8 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   { migracion: "20261019102000_rls_sucursal_centros_de_costos", tablas: ["DistribucionCostoLinea", "DistribucionCostoVersion", "PlanDeCostosSucursal"] },
   { migracion: "20261020121000_go1c_rls_sucursal_opciones_por_sucursal", tablas: ["OpcionApagadaEnSucursal", "PrecioLocalDeOpcion"] },
   { migracion: "20261020131000_go1d_rls_sucursal_opcion_elegida", tablas: ["OpcionElegidaEnLinea"] },
+  // GO-3 (ADR-032): el plato del día por sucursal (GO-3d-rls).
+  { migracion: "20261021101000_go3d_rls_sucursal_menu_del_dia", tablas: ["EntradaDelDiaDeCupo"] },
 ];
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */

@@ -41,6 +41,7 @@ model User {
   distribucionesDeCostoCreadas DistribucionCostoVersion[]
   versionesDeOpcionCreadas   VersionDeOpcion[]
   opcionesApagadasEnSucursal OpcionApagadaEnSucursal[]
+  entradasDelDiaActualizadas EntradaDelDiaDeCupo[]
   ventas                     Venta[]
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
   facturasProvConfirmadas    FacturaProveedor[]   @relation("FacturaProveedorConfirmadaPor")
@@ -166,6 +167,7 @@ model Sucursal {
   planesDeCostos           PlanDeCostosSucursal[]
   preciosLocalesDeOpcion   PrecioLocalDeOpcion[]
   opcionesApagadas         OpcionApagadaEnSucursal[]
+  entradasDelDia           EntradaDelDiaDeCupo[]
   invitacionSucursals      InvitacionSucursal[]
 
   @@unique([empresaId, nombre])
@@ -432,6 +434,9 @@ model Producto {
   preciosLocalesDeOpcion    PrecioLocalDeOpcion[]
   consumosDeOpcionComoInsumo ConsumoDeOpcion[] @relation("ConsumoDeOpcionInsumo")
   consumosDeOpcionQueLoReemplazan ConsumoDeOpcion[] @relation("ConsumoDeOpcionReemplazo")
+  /// GO-3: las entradas de cupos de combos (LISTA) y los platos del día (DEL_DIA) en que figura este producto.
+  entradasDeCupo            EntradaDeCupo[]
+  entradasDelDia            EntradaDelDiaDeCupo[]
 
   @@unique([empresaId, codigo])
   @@unique([empresaId, id])
@@ -1974,6 +1979,12 @@ model PromoCarta {
   orden          Int                  @default(0)
   activa         Boolean              @default(true)
   creadoEn       DateTime             @default(now())
+  /// GO-3 (ADR-032, D-7): la VIGENCIA opcional de la promo, en días de calendario de la zona de la empresa (DATE local, rango inclusive). NULL = sin límite por ese lado. CHECK: desde <= hasta.
+  /// Se evalúa al AGREGAR la promo a la cuenta (`promoVigenteEl`, `src/core/carta/vigencia-de-promo.ts`); lo que ya está en la mesa no cambia.
+  vigenteDesde   DateTime?            @db.Date
+  vigenteHasta   DateTime?            @db.Date
+  /// GO-3 (D-7): máscara de los días de la semana en que vale (bit 0 = lunes … bit 6 = domingo; 1 a 127, CHECK). NULL = todos los días.
+  diasDeSemana   Int?                 @db.SmallInt
   cupos          PromoCartaCupo[]
   instancias     PromoCuenta[]
   sucursales     PromoCartaSucursal[]
@@ -2034,22 +2045,107 @@ model PromoCartaSucursal {
 ///
 /// FK RESTRICT en las dos direcciones (mismo criterio que el resto de la carta/catálogo): ni la promo ni la sección se
 /// pueden borrar mientras tengan un cupo — se apagan (`PromoCarta.activa`/`SeccionCarta.activa`), nunca se borran.
+///
+/// GO-3 (ADR-032): un cupo tiene un TIPO (`SECCION`, el de siempre; `LISTA`, una lista de productos que arma el dueño, aunque estén fuera de carta; `DEL_DIA`, el plato del día que carga la sucursal por
+/// fecha). Lista cerrada como TEXT con CHECK, espejo de `TIPOS_DE_CUPO` (`src/core/pos/promo-combo.ts`). `seccionCartaId` es obligatoria si y solo si el tipo es SECCION (CHECK); fuera de SECCION
+/// el cupo lleva `nombre` (CHECK; único por promo sin importar mayúsculas: índice parcial que solo vive en la migración). Un cupo ya no se borra: `activo = false` es la baja lógica (los
+/// lectores de hoy filtran `tipo = 'SECCION' AND activo`, primer despliegue de «expandir y contraer»). El único `(promoCartaId, seccionCartaId)` sigue valiendo para los de sección (los NULL son distintos).
 model PromoCartaCupo {
-  id             String       @id @default(cuid())
-  empresaId      String       @default(dbgenerated("app_empresa_actual()"))
-  empresa        Empresa      @relation(fields: [empresaId], references: [id])
+  id             String                @id @default(cuid())
+  empresaId      String                @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa               @relation(fields: [empresaId], references: [id])
   promoCartaId   String
-  promoCarta     PromoCarta   @relation(fields: [empresaId, promoCartaId], references: [empresaId, id])
-  seccionCartaId String
-  seccionCarta   SeccionCarta @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
+  promoCarta     PromoCarta            @relation(fields: [empresaId, promoCartaId], references: [empresaId, id])
+  /// Solo en un cupo SECCION (CHECK). NULL en LISTA y DEL_DIA.
+  seccionCartaId String?
+  seccionCarta   SeccionCarta?         @relation(fields: [empresaId, seccionCartaId], references: [empresaId, id])
   /// D1: mínimo por cupo, 0 por defecto — un cupo puede ser opcional ("elegí hasta 2 postres, o ninguno").
-  cantidadMinima Int          @default(0)
+  cantidadMinima Int                   @default(0)
   cantidadMaxima Int
   /// Orden de este cupo dentro de la promo (misma escala que `PromoCarta.orden`/`ContenidoCartaProducto.orden`).
-  orden          Int          @default(0)
+  orden          Int                   @default(0)
+  /// GO-3: SECCION (por defecto: todas las filas de antes), LISTA o DEL_DIA (CHECK).
+  tipo           String                @default("SECCION")
+  /// GO-3: el nombre del lugar («Entrada», «Plato del día»): obligatorio fuera de SECCION (CHECK), con algún carácter visible y hasta 80.
+  nombre         String?
+  /// GO-3: la baja lógica del cupo (nunca se borra).
+  activo         Boolean               @default(true)
+  entradas       EntradaDeCupo[]
+  entradasDelDia EntradaDelDiaDeCupo[]
 
   @@unique([promoCartaId, seccionCartaId])
   @@unique([empresaId, id])
+}
+
+/// GO-3 (ADR-032): una ENTRADA de un cupo LISTA: un producto de venta (aunque no esté en la carta) con una CONFIGURACIÓN FIJA opcional de opciones de venta que define el dueño («Café · Mediano ·
+/// Con leche»; D-6: el mozo no elige opciones dentro del combo). DE EMPRESA. `claveConfiguracion` es el canónico ordenado `opcionId=cantidad;…` de sus `OpcionDeEntradaDeCupo` (vacío = sin
+/// configuración; `claveDeConfiguracion`, `src/core/pos/promo-combo.ts`): estable, NO la huella de la línea (que depende de versiones e importes). Único `(cupoId, productoId, claveConfiguracion)`.
+/// La identidad (cupo, producto, configuración) es inmutable: la app solo cambia `orden`, `activa` y `actualizadoEn`. No se borra: se desactiva. Un cupo LISTA con UNA sola entrada activa y
+/// mínimo = máximo es un COMPONENTE FIJO (no hay tabla propia). Que el producto sea PV, tenga precio de referencia (D-8) y origen de stock (D-9) lo valida la aplicación al cargarla y al vender.
+model EntradaDeCupo {
+  id                 String                  @id @default(cuid())
+  empresaId          String                  @default(dbgenerated("app_empresa_actual()"))
+  empresa            Empresa                 @relation(fields: [empresaId], references: [id])
+  cupoId             String
+  cupo               PromoCartaCupo          @relation(fields: [empresaId, cupoId], references: [empresaId, id])
+  productoId         String
+  producto           Producto                @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  /// El canónico de la configuración fija (CHECK de forma); vacío = sin configuración.
+  claveConfiguracion String                  @default("")
+  orden              Int                     @default(0)
+  activa             Boolean                 @default(true)
+  creadoEn           DateTime                @default(now())
+  actualizadoEn      DateTime                @default(now())
+  opciones           OpcionDeEntradaDeCupo[]
+
+  @@unique([cupoId, productoId, claveConfiguracion])
+  @@unique([empresaId, id])
+  @@index([productoId])
+}
+
+/// GO-3: una opción de la configuración fija de una entrada (la MEDIDA «Mediano», la VARIANTE «Con leche»), con sus unidades (1 a 10, CHECK). DE EMPRESA. SOLO se agrega (la configuración es
+/// parte de la identidad de la entrada: cambiarla es otra entrada). La versión vigente de la opción, el apagado en la sucursal y la validez de la combinación se revalidan al vender.
+model OpcionDeEntradaDeCupo {
+  id        String        @id @default(cuid())
+  empresaId String        @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa       @relation(fields: [empresaId], references: [id])
+  entradaId String
+  entrada   EntradaDeCupo @relation(fields: [empresaId, entradaId], references: [empresaId, id])
+  opcionId  String
+  opcion    OpcionDeGrupo @relation(fields: [empresaId, opcionId], references: [empresaId, id])
+  cantidad  Int           @default(1)
+  creadoEn  DateTime      @default(now())
+
+  @@unique([entradaId, opcionId])
+  @@unique([empresaId, id])
+  @@index([opcionId])
+}
+
+/// GO-3 (ADR-032, D-1): el PLATO DEL DÍA de un cupo DEL_DIA en UNA sucursal y UNA fecha (DATE local de la zona de la empresa). `PROPIA` (`sucursalId` NOT NULL; sus políticas de alcance las agrega
+/// GO-3d-rls). ADR-009, familia `optin`: SIN FILA ACTIVA para la fecha de hoy = no hay plato del día y, con mínimo mayor que 0, el menú no se puede armar (falla cerrado: nunca el plato de ayer).
+/// Único `(cupoId, sucursalId, fecha, productoId)`. La app solo cambia `activa`, `actualizadoPorId` y `actualizadoEn` («llevar al estado»); no borra nada.
+model EntradaDelDiaDeCupo {
+  id               String         @id @default(cuid())
+  empresaId        String         @default(dbgenerated("app_empresa_actual()"))
+  empresa          Empresa        @relation(fields: [empresaId], references: [id])
+  cupoId           String
+  cupo             PromoCartaCupo @relation(fields: [empresaId, cupoId], references: [empresaId, id])
+  sucursalId       String
+  sucursal         Sucursal       @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  /// El día de calendario de la zona de la empresa (DATE, sin hora).
+  fecha            DateTime       @db.Date
+  productoId       String
+  producto         Producto       @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  activa           Boolean        @default(true)
+  actualizadoPorId String
+  actualizadoPor   User           @relation(fields: [actualizadoPorId], references: [id], onDelete: Restrict)
+  creadoEn         DateTime       @default(now())
+  actualizadoEn    DateTime       @default(now())
+
+  @@unique([cupoId, sucursalId, fecha, productoId])
+  @@unique([empresaId, id])
+  @@index([sucursalId, fecha])
+  @@index([productoId])
 }
 
 /// Registro público de una sucursal en el portal/carta (docs/plan-registro-tenants-2026-09-24.md, ADR-006). FILA AUSENTE = esta
@@ -2434,6 +2530,9 @@ model Empresa {
   precioLocalDeOpcionRel         PrecioLocalDeOpcion[]
   opcionApagadaEnSucursalRel     OpcionApagadaEnSucursal[]
   opcionElegidaEnLineaRel        OpcionElegidaEnLinea[]
+  entradaDeCupoRel               EntradaDeCupo[]
+  opcionDeEntradaDeCupoRel       OpcionDeEntradaDeCupo[]
+  entradaDelDiaDeCupoRel         EntradaDelDiaDeCupo[]
 }
 
 enum EstadoModulo {
@@ -3288,6 +3387,7 @@ model OpcionDeGrupo {
   preciosLocales        PrecioLocalDeOpcion[]
   apagadasEnSucursal    OpcionApagadaEnSucursal[]
   elegidasEnLinea       OpcionElegidaEnLinea[]
+  enEntradasDeCupo      OpcionDeEntradaDeCupo[]
 
   @@unique([empresaId, id])
   @@unique([grupoId, nombre])

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
-import { MOTIVO_DE_LAS_RESERVADAS_EN_BASE, RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
+import { MOTIVO_DE_LAS_RESERVADAS_DE_GO3, MOTIVO_DE_LAS_RESERVADAS_EN_BASE, RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
 
 /**
  * Paridad entre el catálogo de acciones del código (`ACCIONES`) y lo que una base REAL acaba teniendo en la tabla `Accion`.
@@ -153,8 +153,10 @@ describe("paridad ACCIONES ↔ migraciones: una base real termina con el catálo
     const enCodigo = new Set<string>(ACCIONES.map((a) => a.clave));
     expect(MOTIVO_DE_LAS_RESERVADAS_EN_BASE.trim().length).toBeGreaterThan(10);
     expect(MOTIVO_DE_LAS_RESERVADAS_EN_BASE, "el motivo tiene que explicar también las claves de los grupos de opciones de venta (GO-1a)").toContain("GO-1a");
+    expect(MOTIVO_DE_LAS_RESERVADAS_DE_GO3, "el motivo tiene que explicar también las claves de GO-3").toContain("GO-3");
     expect(Object.keys(RESERVADAS_EN_BASE).sort()).toEqual(
       [
+        "promo_menu_del_dia",
         "conceptos_gasto", "gasto_anular", "gasto_ver", "gasto_registrar", "gasto_reclasificar", "gasto_repartir", "reporte_gastos_empresa",
         "nota_credito_proveedor", "gasto_nota_credito", "anular_nota_credito_proveedor",
         "centros_costos", "distribucion_costos", "reporte_gastos_por_unidad",

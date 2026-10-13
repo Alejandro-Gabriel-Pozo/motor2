@@ -29,6 +29,7 @@ const CENTROS_DE_COSTOS = "20261019103000_permisos_centros_de_costos";
 const OPCIONES = "20261020100000_go1a_permisos_de_opciones";
 
 export const RESERVADAS_EN_BASE: Readonly<Record<string, ClaveReservadaEnBase>> = {
+  ...reservadasDeGo3(),
   gasto_ver: { migracion: GASTOS, descripcion: "Ver los gastos de la sucursal", contexto: "sucursal", nivelMinimo: "administrador", semilla: ["admin"] },
   gasto_registrar: { migracion: GASTOS, descripcion: "Registrar un gasto en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", semilla: ["admin"] },
   gasto_anular: { migracion: GASTOS, descripcion: "Anular un gasto de la sucursal", contexto: "sucursal", nivelMinimo: "administrador", semilla: ["admin"] },
@@ -53,3 +54,15 @@ export function clavesReservadasDe(migracion: string): string[] {
     .filter((c) => RESERVADAS_EN_BASE[c]!.migracion === migracion)
     .sort();
 }
+
+// GO-3 (ADR-032): las claves que dan de alta las migraciones de esquema de GO-3 (patrón GO-1a: viven en la base y entran a `ACCIONES` con su caso de uso, en GO-3 F3 y F4). Declarada como función (se
+// iza) para dejar el bloque al final del archivo. `promo_menu_del_dia` es de clase O, delegable al encargado (D-5); `grupos_de_precio_definir`, de clase A.
+function reservadasDeGo3(): Record<string, ClaveReservadaEnBase> {
+  return {
+    promo_menu_del_dia: { migracion: "20261021100000_go3d_combos_y_menu_del_dia", descripcion: "Cargar el plato del día de los menús en la sucursal", contexto: "sucursal", nivelMinimo: "operario", semilla: ["admin"] },
+  };
+}
+
+/** GO-3: el motivo de las claves reservadas de GO-3 (lo exige la paridad). */
+export const MOTIVO_DE_LAS_RESERVADAS_DE_GO3 =
+  "GO-3 (ADR-032): las claves del menú del día (GO-3d) y de los grupos de precio (GO-3a) las dan de alta las migraciones de esquema de GO-3 y entran a ACCIONES con su guarda y su caso de uso (GO-3 F3 y F4), cuando GO-2a y GO-2b ya estén fusionadas (docs/adr/ADR-032-combos-menu-del-dia-y-combinaciones.md).";
