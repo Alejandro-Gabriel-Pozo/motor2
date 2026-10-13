@@ -28,9 +28,19 @@ export async function obtenerReporteDescuentosClientes(sucursalId: string, desde
       precioTotal: true,
       precioListaUnitario: true,
       costoUnitarioVenta: true,
-      operacion: { select: { fecha: true, clienteId: true, cliente: { select: { nombre: true } } } },
+      operacion: {
+        select: {
+          fecha: true,
+          clienteId: true,
+          cliente: { select: { nombre: true } },
+          // GO-2b: si es una línea configurada o un adicional (anidado en la misma consulta).
+          operacionPadreId: true,
+          cuentaItems: { where: { huellaOpciones: { not: null } }, take: 1, select: { id: true } },
+        },
+      },
     },
   });
+  const esConfigurada = (f: (typeof filas)[number]) => f.operacion.operacionPadreId !== null || f.operacion.cuentaItems.length > 0;
   if (!filas.length) return reporteVacio(desde, hasta);
 
   // El catálogo y el índice de recetas se cargan UNA sola vez para todos los clientes (mismo criterio que
@@ -41,7 +51,9 @@ export async function obtenerReporteDescuentosClientes(sucursalId: string, desde
   // pasada). El costo de un (producto, día) no depende de qué otras ventas se reconstruyan juntas (lo fija el test «guardián de semántica» de costo-historico).
   const costosReconstruidos = await reconstruirCostosDeVenta(
     sucursalId,
-    filas.filter((f) => f.costoUnitarioVenta === null).map((f) => ({ productoId: f.productoId, fecha: f.operacion.fecha })),
+    filas
+      .filter((f) => f.costoUnitarioVenta === null)
+      .map((f) => ({ productoId: f.productoId, fecha: f.operacion.fecha, ...(esConfigurada(f) ? { idOperacion: f.operacionId, cantidad: Math.abs(Number(f.cantidad)), lineaConfigurada: true as const } : {}) })),
     db,
     productos,
     indiceRecetas,
@@ -71,7 +83,7 @@ export async function obtenerReporteDescuentosClientes(sucursalId: string, desde
       const precioCobradoTotal = Number(f.precioTotal);
       const precioAListaTotal = f.precioListaUnitario !== null ? importeDeLinea(cantidad, Number(f.precioListaUnitario)) : precioCobradoTotal;
       const costoUnitarioVenta = f.costoUnitarioVenta !== null ? Number(f.costoUnitarioVenta) : null;
-      const base = { proceso: "VENTA" as const, anulada: false, productoId: f.productoId, cantidad, costoUnitarioVenta, fecha: f.operacion.fecha };
+      const base = { proceso: "VENTA" as const, anulada: false, productoId: f.productoId, cantidad, costoUnitarioVenta, fecha: f.operacion.fecha, ...(esConfigurada(f) ? { idOperacion: f.operacionId, lineaConfigurada: true as const } : {}) };
       itemsCobrado.push({ ...base, precioTotal: precioCobradoTotal });
       itemsALista.push({ ...base, precioTotal: precioAListaTotal });
       unidadesVendidas += cantidad;

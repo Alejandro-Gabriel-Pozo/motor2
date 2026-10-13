@@ -129,7 +129,18 @@ export async function cargarLineasDelPeriodoDeSucursales(
       costoUnitarioVenta: true,
       producto: { select: { nombre: true, codigo: true } },
       seccion: { select: { nombre: true, sucursalId: true } },
-      operacion: { select: { fecha: true, nroFactura: true, proveedorId: true, anuladaEn: true, proveedor: { select: { nombre: true } } } },
+      operacion: {
+        select: {
+          fecha: true,
+          nroFactura: true,
+          proveedorId: true,
+          anuladaEn: true,
+          proveedor: { select: { nombre: true } },
+          // GO-2b: si es una línea configurada o un adicional (anidado en la misma consulta): su costo sin congelar se reconstruye con sus consumos.
+          operacionPadreId: true,
+          cuentaItems: { where: { huellaOpciones: { not: null } }, take: 1, select: { id: true } },
+        },
+      },
     },
     orderBy: { operacion: { fecha: "asc" } },
   });
@@ -162,6 +173,7 @@ export async function cargarLineasDelPeriodoDeSucursales(
       precioPorUnidadStock: Number(m.precioPorUnidadStock),
       costoUnitarioVenta: m.costoUnitarioVenta !== null ? Number(m.costoUnitarioVenta) : null,
       anulada: m.operacion.anuladaEn !== null,
+      ...(m.proceso === "VENTA" && (m.operacion.operacionPadreId !== null || m.operacion.cuentaItems.length > 0) ? { lineaConfigurada: true as const } : {}),
     });
   }
 

@@ -32,4 +32,6 @@ export interface ItemPeriodo {
    * ocurrió, y su efecto en el stock ya lo deshizo el contra-asiento. La línea sigue en `items` (para trazabilidad); lo que no debe hacer es sumar.
    */
   anulada: boolean;
+  /** GO-2b (ADR-030): SOLO en la VENTA de una línea configurada o de un adicional (ausente en las demás): su costo sale de sus propios consumos. */
+  lineaConfigurada?: true;
 }

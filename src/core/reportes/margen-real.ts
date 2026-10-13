@@ -36,6 +36,9 @@ export interface ItemParaMargenReal {
   precioTotal: number;
   costoUnitarioVenta: number | null;
   fecha: Date;
+  /** GO-2b (ADR-030): la operación de la línea y si es una línea CONFIGURADA o un adicional (solo cuando lo es): sin costo congelado se reconstruye con SUS consumos. */
+  idOperacion?: string;
+  lineaConfigurada?: true;
 }
 
 export interface FilaMargenRealProducto {
