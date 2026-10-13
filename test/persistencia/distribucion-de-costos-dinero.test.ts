@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import fc from "fast-check";
 import type { Client } from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -211,6 +213,13 @@ describe("lo que la base NO impide: entra, y la consulta de coherencia lo encuen
     expect((await coherencia()).noAplica).toEqual([{ id: versionId }]);
     await prismaAdmin.planDeCostosSucursal.deleteMany({ where: { planDeCostosId: e.planOtroId, sucursalId: e.sucursalA } });
     expect((await coherencia()).noAplica, "sin fila es lo mismo que aplica=false").toEqual([{ id: versionId }]);
+  });
+});
+
+describe("el chequeo posterior al despliegue", () => {
+  it("las tres consultas de coherencia de docs/deploy-con-migraciones.md son EXACTAMENTE las que corre esta prueba (el documento no se desvía del código)", () => {
+    const documento = readFileSync(join(__dirname, "../../docs/deploy-con-migraciones.md"), "utf8");
+    for (const [nombre, consulta] of Object.entries(CONSULTAS_DE_COHERENCIA)) expect(documento, nombre).toContain(consulta);
   });
 });
 
