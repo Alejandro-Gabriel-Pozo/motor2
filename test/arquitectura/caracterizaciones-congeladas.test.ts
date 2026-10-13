@@ -68,6 +68,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "M.2 P1 (clave nueva `producto_campos_sensibles`, contexto empresa, piso operario, semilla solo admin; NO cambia comportamiento todavía: ningún código la consulta hasta P2). Cambia SOLO lo que dice esa clave, en todos los registros de módulos y usuarios: 120 apariciones nuevas (tripletas registro/usuario/bloque, resultado, clave), todas de la clave nueva, en los 4 bloques de empresa (requierePermisoDeEmpresa, requierePermisoVerDeEmpresa, obtenerMiNivelPermisoDeEmpresa) y en el menú (accionesDelMenuQueElUsuarioPuedeVer, S1 y S2), y NINGUNA tripleta de otra clave quitada ni agregada (verificado comparando la versión anterior con la nueva por tripletas). Más 2 líneas de mensajes de denegación del usuario «dos sucursales» (rol «especial»): la firma de la denegación conserva el ÚLTIMO mensaje generado y la clave nueva es la última del catálogo que el operador no tiene, así que el mensaje nombra `producto_campos_sensibles` donde antes nombraba `producto_sincronizar_precio_carta` (mismo artefacto del generador que en S-41; ninguna respuesta de otra clave cambia). El generador no se edita.",
       },
+      {
+        blob: "616da9f114fa236fab6c3c22818b27383e0af353",
+        // El commit PADRE de este (ceb56f07) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "ceb56f07",
+        motivo:
+          "Paquete 3, M3a (O.269; ADITIVO): las claves `compra_repartir` (empresa, piso administrador) y `compra_recibir` (sucursal, piso operario, semilla admin) aparecen en las listas de claves de los usuarios que ya alcanzaban las de su piso. Revisado con `git diff --word-diff`: solo se suman `, compra_repartir` y `, compra_recibir` a esas listas.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -119,6 +126,20 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "M.2 P1 (clave nueva `producto_campos_sensibles`, semilla solo admin; NO cambia comportamiento todavía). La huella siembra los permisos de fábrica de las empresas que da de alta y cuenta el catálogo. Cambia SOLO 6 líneas, 3 por empresa sembrada: `PERMISO admin:producto_campos_sensibles ver=true editar=true`, `PERMISO operador:producto_campos_sensibles ver=false editar=false` y `ACCIONES 124` → `ACCIONES 125` (el tamaño del catálogo). Ningún resultado, mensaje ni otra fila cambia.",
       },
+      {
+        blob: "3125e2daf2c1813a48cff05c5f83c1baeae5e45d",
+        // El commit PADRE de este (7d4e2182) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "7d4e2182",
+        motivo:
+          "M0-IVA (O.266; ADITIVO, no cambia comportamiento): `Empresa.condicionIva` (migración 20261015101000) aparece en las 28 filas EMPRESA de la huella, en null («no declarada»). Revisado con `git diff --word-diff`: solo se suma `condicionIva=null`; ningún permiso ni rol cambia.",
+      },
+      {
+        blob: "afffbcf6bb013c7d4cfa8002dc497abcc6fcc667",
+        // El commit PADRE de este (ceb56f07) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "ceb56f07",
+        motivo:
+          "Paquete 3, M3a y M3d (O.269 y O.272; ADITIVO): `ACCIONES 125 a 127` por las claves nuevas `compra_repartir` y `compra_recibir` (las recibe el rol admin de cada empresa; el operador las tiene sin Ver ni Editar) y `Empresa.llevaIvaDeCompras=false` en las 28 filas EMPRESA. Revisado con `git diff --word-diff`: solo suman esas cosas.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
@@ -139,6 +160,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "2ea2dd1",
         motivo:
           "P1 paso 7 (O.254; CAMBIA el día que citan los textos guardados al anular): el día de la venta en `detalleReversionDeVenta` («Anulación de la venta … (fecha).») y en `descripcionAuditoriaAnulacionDeVenta` («Venta del …: anulación») pasa de UTC a hora argentina. Cambia SOLO la fecha dentro de esos textos, en 2 líneas (los dos AJUSTE de la anulación de la venta op11: 2026-09-27 → 2026-09-26, porque el fixture guarda el día a las 00:00Z, que en hora argentina es el día anterior a las 21:00); mismas líneas, mismo orden, ninguna consulta ni número distinto.",
+      },
+      {
+        blob: "9de92b42995ab38589e108dca16bcf541a0b5085",
+        // El commit PADRE de este (b4c7670f) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "b4c7670f",
+        motivo:
+          "M2 (O.268; ADITIVO, no cambia comportamiento): las líneas OPERACION suman `mermaPorAnulacionDeId`, `motivoAnulacion`, `reemplazaAOperacionId`, `revierteAOperacionId` y `ventaId` en null, y las KARDEX suman `devuelveAMovimientoId` en null. Verificado: el golden nuevo, sin esas columnas en null, es idéntico al anterior.",
+      },
+      {
+        blob: "7f056b39fc146860e5a63d28bb2a056d4d0d0924",
+        // El commit PADRE de este (ceb56f07) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "ceb56f07",
+        motivo:
+          "Paquete 3, M3b (O.270; ADITIVO): las líneas KARDEX suman `facturaProveedorRenglonId=null`. Verificado: sin esa columna en null, idéntico al anterior.",
       },
     ],
   },
@@ -169,6 +204,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "2ea2dd1",
         motivo:
           "P1 paso 7 (O.254; CAMBIA el día que citan los textos guardados al anular): el día de la venta en `detalleReversionDeVenta` («Anulación de la venta … (fecha).») y en `descripcionAuditoriaAnulacionDeVenta` («Venta del …: anulación») pasa de UTC a hora argentina. Cambia SOLO la fecha dentro de esos textos, en 8 líneas (las anulaciones de op12, op6 y op4, cada una con su AJUSTE y su auditoría: un día antes, porque los fixtures guardan el día a las 00:00Z, que en hora argentina es el día anterior a las 21:00); mismas líneas, mismo orden, ninguna consulta ni número distinto.",
+      },
+      {
+        blob: "65dce1332dd948a8b9feb6436fadd97fbf6a35e3",
+        // El commit PADRE de este (b4c7670f) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "b4c7670f",
+        motivo:
+          "M2 (O.268; ADITIVO, no cambia comportamiento): igual que la matriz de venta; solo columnas nuevas en null en las líneas OPERACION y KARDEX. Verificado: sin esas columnas, idéntico al anterior.",
+      },
+      {
+        blob: "0d7517922ecf5654e07ff6ff53ab9ee17499f51c",
+        // El commit PADRE de este (ceb56f07) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "ceb56f07",
+        motivo:
+          "Paquete 3, M3b (O.270; ADITIVO): las líneas KARDEX suman `facturaProveedorRenglonId=null`. Verificado: sin esa columna en null, idéntico al anterior.",
       },
     ],
   },
@@ -262,6 +311,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Paquete 1, P2.1 (se BORRA una función; el resto del golden no cambia): `productoTieneDescuentoEnAlgunaSucursal` ya no existe (el ítem agrupado de la carta mira solo el descuento de SU sucursal con `descuentosConfiguradosEnSucursal`, que ya tiene su caso), así que se va su caso `carta.productoTieneDescuentoEnAlgunaSucursal(Empanada)` (1 consulta, `descuentoProductoSucursal.count`, resultado `true`). Ninguna otra entrada cambia.",
       },
+      {
+        blob: "8056ac4ed8e4bb9fa312aca046c723d9920b5aff",
+        // El commit PADRE de este (7d4e2182) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "7d4e2182",
+        motivo:
+          "M0-IVA (O.266; ADITIVO, no cambia comportamiento): `Producto.alicuotaIvaVenta` y `Producto.alicuotaIvaCompra` (migración 20261015100000) aparecen en una sola entrada de la lectura, en null («sin declarar»). Revisado con `git diff --word-diff`: solo se suman esas dos claves.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -276,7 +332,22 @@ const CONGELADAS: Record<string, Congelada> = {
     desde: "4af23e8b",
     motivo:
       "Huella de los escritores del Kardex (Hito 5, pieza 5.4, A2; O.13): cada escritura (modelo, operación, args con la presencia o ausencia de cada clave) y el estado final de Operacion, MovimientoStock y TraspasoSucursal en ocho casos (aprobación, envío directo, aceptación con y sin clave I3, reingreso, anulación de compra con y sin clave, anulación de venta). Red de A4 y A5: reunir las dos escrituras de traspasos y las dos de anulación en una función cada una no cambia NADA de lo que llega a la base.",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "1fd953a1cd1554a3685c79e8776eee10fb0808d1",
+        // El commit PADRE de este (b4c7670f) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "b4c7670f",
+        motivo:
+          "M2 (O.268; ADITIVO, no cambia comportamiento): la huella de escritores del Kardex suma las columnas nuevas de `Operacion`, `MovimientoStock` y `ConteoFisico` (`motivoCancelacion`) en null. Verificado: sin esas claves en null, idéntico al anterior.",
+      },
+      {
+        blob: "ad8f816b2c9a25e1711a7ec0b24171427f2302c0",
+        // El commit PADRE de este (ceb56f07) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "ceb56f07",
+        motivo:
+          "Paquete 3, M3b (O.270; ADITIVO, no cambia comportamiento): cada movimiento del Kardex suma `facturaProveedorRenglonId` en null. Verificado: sin esa clave en null, idéntico al anterior.",
+      },
+    ],
   },
   "test/catalogo/caracterizacion/dinero-tramo-c.golden.txt": {
     blob: "ae6ec3b65f5c3bf20391493b64ebae0b036f7442",
@@ -312,6 +383,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "52d5b77",
         motivo:
           "Paquete 1, piso del precio LOCAL de una promo (CAMBIA UN TEXTO, a propósito): `guardarCuposPromoCarta` ya no nombra el importe ni la sucursal cuando el que no alcanza el piso es el precio LOCAL de alguna sucursal (puede ser una que quien guarda no ve; con las políticas de RLS por sucursal el control lee todas con la lectura de verificación). Cambia SOLO la línea `resultado` del paso «promo: cupos que dejan el precio local bajo el piso»: de «El precio de \"Menú del día\" ($0.05) no alcanza el piso…» a «El precio local de \"Menú del día\" en alguna sucursal no alcanza el piso…». El rechazo por el precio de la EMPRESA no cambia.",
+      },
+      {
+        blob: "e80354ded4366966265790f447b5c465f1d02751",
+        // El commit PADRE de este (7d4e2182) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "7d4e2182",
+        motivo:
+          "M0-IVA (O.266; ADITIVO, no cambia comportamiento): las filas de producto de la huella suman `alicuotaIvaCompra=null alicuotaIvaVenta=null` (13 líneas). Revisado con `git diff --word-diff`: ningún importe ni regla de dinero cambia.",
       },
     ],
   },

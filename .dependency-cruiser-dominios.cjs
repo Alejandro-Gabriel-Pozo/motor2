@@ -8,7 +8,7 @@
  */
 
 /** Dominios de NEGOCIO: carpetas con lógica/estado propio que no deberían filtrarse fuera por sus archivos internos. */
-const DOMINIOS_DE_NEGOCIO = ["catalogo", "movimientos", "reportes", "pos", "stock", "compras", "carta", "fiscal"];
+const DOMINIOS_DE_NEGOCIO = ["catalogo", "movimientos", "reportes", "pos", "stock", "compras", "carta", "fiscal", "opciones"];
 
 /** Infraestructura transversal: sin "internals" que proteger. Cada una con el motivo de por qué no es un dominio de negocio. */
 const INFRA_TRANSVERSAL = {

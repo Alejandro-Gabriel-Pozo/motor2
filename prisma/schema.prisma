@@ -37,6 +37,11 @@ model User {
   invitacionesHechas         Invitacion[]         @relation("InvitacionInvitadoPor")
   invitacionesSucursalHechas InvitacionSucursal[]
   agregadosDeCuenta          AgregadoDeCuenta[]
+  ventas                     Venta[]
+  facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
+  facturasProvConfirmadas    FacturaProveedor[]   @relation("FacturaProveedorConfirmadaPor")
+  facturasProvAnuladas       FacturaProveedor[]   @relation("FacturaProveedorAnuladaPor")
+  partesRecibidas FacturaProveedorSucursal[] @relation("FacturaProveedorParteRecibidaPor")
   traspasosCreados           TraspasoSucursal[]   @relation("TraspasoCreadoPor")
   traspasosDecididosOrigen   TraspasoSucursal[]   @relation("TraspasoDecididoOrigen")
   traspasosDecididosDestino  TraspasoSucursal[]   @relation("TraspasoDecididoDestino")
@@ -148,6 +153,9 @@ model Sucursal {
   opcionesAgrupadasCarta   OpcionItemAgrupadoCarta[]
   versionesDeRecetaPropia  RecetaVersion[]               @relation("RecetaVersionSucursal")
   ejemplaresTicket         EjemplarTicket[]
+  ventas                   Venta[]
+  facturaProveedorPartes   FacturaProveedorSucursal[]
+  imputacionesDeGasto      ImputacionDeGasto[]
   invitacionSucursals      InvitacionSucursal[]
 
   @@unique([empresaId, nombre])
@@ -354,7 +362,15 @@ model Producto {
   insumoId String?
   insumo   Insumo? @relation(fields: [empresaId, insumoId], references: [empresaId, id])
 
+  /// Con IVA incluido (D-IVA): lo que paga el cliente. El neto sin IVA se deduce con la alícuota, no se guarda.
   precioVenta Decimal @default(0) @db.Decimal(14, 2)
+
+  /// M0-IVA: alícuota de IVA con la que se VENDE este producto y la que trae la factura de proveedor cuando se COMPRA. Código semántico de lista cerrada
+  /// (`ALICUOTAS_IVA` en src/core/fiscal/iva.ts), con los CHECK "Producto_alicuotaIvaVenta_check" y "Producto_alicuotaIvaCompra_check" que agrega la
+  /// migración a mano (Prisma no declara CHECK). NULL = «sin declarar» (ninguna fila existente recibe un valor deducido). Que la de venta solo tenga
+  /// sentido en un PV y la de compra en una MP se valida en la capa de aplicación (Etapa C), no en la base.
+  alicuotaIvaVenta  String?
+  alicuotaIvaCompra String?
 
   /// Venta fraccionada (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): excepción de venta PUNTUAL de este PV — ej. 0.5
   /// para "esta pizza se vende de a 1 o de a media". null (default) = comportamiento actual, sin cambios (una unidad entera por
@@ -398,6 +414,7 @@ model Producto {
   opcionesItemAgrupadoCarta OpcionItemAgrupadoCarta[]
   cuentaItems               CuentaItem[]
   consumosQueLoSustituyen   MovimientoStock[]           @relation("MovimientoSustituyeA")
+  renglonesDeFactura        FacturaProveedorRenglon[]
 
   @@unique([empresaId, codigo])
   @@unique([empresaId, id])
@@ -512,7 +529,7 @@ model CategoriaProducto {
   @@unique([empresaId, id])
 }
 
-/// Food cost objetivo (2026-10-01, decisión del dueño): el tope de la porción del precio de carta (neto) que puede irse en comida y
+/// Food cost objetivo (2026-10-01, decisión del dueño): el tope de la porción del precio de carta, con IVA incluido igual que `Producto.precioVenta`, que puede irse en comida y
 /// bebida. `categoriaId` NULL = el de TODA la empresa; con categoría, el de esa categoría (gana sobre el de la empresa). Sin ninguna
 /// fila rige la constante `FOOD_COST_OBJETIVO_PCT`. Lo edita SOLO administración (`margen_objetivo_editar`). La migración agrega a mano
 /// (Prisma no los declara): un índice único parcial para permitir UNA sola fila de empresa (`categoriaId IS NULL`) y un CHECK que fuerza
@@ -588,11 +605,20 @@ model Proveedor {
   condicionesPago String?
   notas           String?
   activo          Boolean @default(true)
+  /// Clasificación del proveedor (M1, C20): qué le compramos. Tres estados válidos: productos, servicios o ambos; «ninguno» lo impide el CHECK
+  /// `Proveedor_ofrece_productos_o_servicios_chk` ("ofreceProductos" OR "ofreceServicios"), que Prisma no modela (misma convención que los CHECK de la Tanda 6).
+  /// Los proveedores existentes nacen «productos» (decisión del dueño, 2026-10-06). Migración 20261015110000_proveedor_ofrece_productos_y_servicios.
+  ofreceProductos Boolean @default(true)
+  ofreceServicios Boolean @default(false)
+  /// M3e (C36): la condición del proveedor frente al IVA (`CONDICIONES_IVA` de src/core/fiscal/iva.ts, la misma lista que `Empresa.condicionIva`; CHECK "Proveedor_condicionIva_check"). NULL = «no declarada»: quien la lea falla cerrado.
+  condicionIva    String?
 
   productosConsignados Producto[]             @relation("ProveedorConsignacionDe")
   proveedorPorProducto ProveedorPorProducto[]
   operaciones          Operacion[]
   pagosConsignante     PagoConsignante[]
+  facturasProveedor    FacturaProveedor[]
+  puntosDeVenta        PuntoDeVentaDeProveedor[]
 
   @@unique([empresaId, codigo])
   @@unique([empresaId, nombre])
@@ -1135,14 +1161,52 @@ model Operacion {
   /// consignación) en un segundo lugar del código.
   resultadoMensaje String?
 
+  /// M2 (Paquete 2): en una AJUSTE que es la reversión por anulación de una venta o una compra, la `Operacion` que revierte. Reemplaza al reconocimiento POR TEXTO de la
+  /// descripción (`PREFIJO_REVERSION_VENTA`/`_COMPRA`, src/core/movimientos/anulaciones.ts). `null` = no es una reversión (o es una anterior a M2: el relleno la enlaza aparte).
+  /// ÚNICA por (empresa, operación): una operación se revierte UNA sola vez, y ese índice único es el árbitro de dos anulaciones a la vez. CHECK en la base: solo en AJUSTE y
+  /// nunca a sí misma. Que sea de la misma sucursal que la revertida lo controla la aplicación. Nada de `src/` la escribe todavía (Etapa C).
+  revierteAOperacionId String?
+  revierteAOperacion   Operacion? @relation("OperacionRevierteA", fields: [empresaId, revierteAOperacionId], references: [empresaId, id], onDelete: Restrict)
+  /// La reversión de ESTA operación (a lo sumo una; ver `revierteAOperacionId`).
+  reversion            Operacion? @relation("OperacionRevierteA")
+
+  /// M2: el motivo (texto libre, no vacío, hasta 200) con que se anuló esta operación. Solo si está anulada (`anuladaEn`). `null` = sin motivo registrado (anuladas antes de M2).
+  motivoAnulacion String?
+
+  /// M2: en una MERMA, la VENTA anulada cuyo género no se recuperó (la merma sale de esa anulación). Única: una venta anulada genera a lo sumo una merma. CHECK en la base: solo en MERMA y nunca a sí misma.
+  mermaPorAnulacionDeId String?
+  mermaPorAnulacionDe   Operacion? @relation("OperacionMermaPorAnulacion", fields: [empresaId, mermaPorAnulacionDeId], references: [empresaId, id], onDelete: Restrict)
+  /// La merma que generó la anulación de ESTA venta (a lo sumo una).
+  mermaPorAnulacion     Operacion? @relation("OperacionMermaPorAnulacion")
+
+  /// M2: en una VENTA, la venta que reemplaza (anular y rehacer unidades). Única: una operación se reemplaza una sola vez.
+  reemplazaAOperacionId String?
+  reemplazaAOperacion   Operacion? @relation("OperacionReemplazaA", fields: [empresaId, reemplazaAOperacionId], references: [empresaId, id], onDelete: Restrict)
+  /// La venta que reemplazó a ESTA (a lo sumo una).
+  reemplazadaPor        Operacion? @relation("OperacionReemplazaA")
+
+  /// M2: la cabecera `Venta` a la que pertenece esta línea de venta (una `Operacion` VENTA por línea; la cabecera las agrupa). `null` = anterior a M2 o aún sin cabecera. Solo en VENTA
+  /// (CHECK en la base). FK RESTRICT: una cabecera con líneas no se borra (de hecho, `Venta` no se borra nunca). Que la sucursal de la línea y la de su cabecera coincidan NO lo
+  /// controla la base (una clave foránea entre tablas de empresa lleva exactamente (empresaId, x)): lo controla la aplicación (Etapa C). Nada de `src/` la escribe todavía.
+  ventaId String?
+  venta   Venta?  @relation(fields: [empresaId, ventaId], references: [empresaId, id], onDelete: Restrict)
+
   movimientos MovimientoStock[]
+
+  /// Paquete 3 (M3b): la parte de factura de proveedor de la que salió esta compra (a lo sumo una; `FacturaProveedorSucursal.operacionId` es único). `null` = una compra anterior a las facturas repartidas.
+  facturaProveedorParte FacturaProveedorSucursal?
+
   /// POS: ítems de cuenta cuya venta es esta Operación (los enlaza `cerrarCuenta`, src/server/actions/pos/cuenta.ts).
   cuentaItems CuentaItem[]
 
   @@unique([claveIdempotencia])
   @@unique([empresaId, id])
+  @@unique([empresaId, revierteAOperacionId])
+  @@unique([empresaId, mermaPorAnulacionDeId])
+  @@unique([empresaId, reemplazaAOperacionId])
   @@index([sucursalId, proceso, fecha])
   @@index([promoCuentaId])
+  @@index([ventaId])
 }
 
 /// Reemplaza Kardex/"Hoja 7" (Core.js:601, CONFIG.SHEETS.HISTORIAL) — el
@@ -1208,8 +1272,9 @@ model MovimientoStock {
   /// Operacion.motivo/destino/detalleLibre).
   detalle String
 
-  /// Precio Total = importe real de ESTA línea (Compra: lo que dice la
-  /// factura para esa línea; Venta: cantidadVendida × precioVenta vigente
+  /// Precio Total = importe real de ESTA línea (Compra: lo pagado por esa
+  /// línea, CON IVA incluido (D-IVA; el desglose llega con la factura de
+  /// proveedor, M3); Venta: cantidadVendida × precioVenta vigente
   /// al momento — Movimientos.js:1287). 0 para líneas que no representan
   /// un hecho financiero propio (Consumo, Transferencia, Ajuste/Control).
   precioTotal          Decimal @default(0) @db.Decimal(14, 2)
@@ -1286,6 +1351,19 @@ model MovimientoStock {
   sustituyeAProductoId String?
   sustituyeAProducto   Producto? @relation("MovimientoSustituyeA", fields: [empresaId, sustituyeAProductoId], references: [empresaId, id])
 
+  /// M2 (Paquete 2): en una línea DEVOLUCION_PROVEEDOR, la línea de COMPRA del Kardex que se devuelve (el origen de la devolución). `null` = una devolución sin origen
+  /// declarado (todas las anteriores a M2). NO es única: una línea de compra puede devolverse en varias partes; el tope (no devolver más de lo comprado) lo controla la aplicación.
+  /// CHECK en la base: solo en DEVOLUCION_PROVEEDOR y nunca a sí misma. Se escribe solo en el INSERT (el Kardex solo agrega). Nada de `src/` la escribe todavía (Etapa C).
+  devuelveAMovimientoId String?
+  devuelveAMovimiento   MovimientoStock?  @relation("MovimientoDevuelveA", fields: [empresaId, devuelveAMovimientoId], references: [empresaId, id], onDelete: Restrict)
+  /// Las devoluciones (parciales o totales) de esta línea de compra.
+  devoluciones          MovimientoStock[] @relation("MovimientoDevuelveA")
+
+  /// Paquete 3 (M3b): en una línea de COMPRA, el renglón de factura de proveedor del que salió. `null` = una compra anterior a las facturas repartidas, o cualquier otro proceso (los AJUSTE de una anulación quedan sin renglón).
+  /// CHECK en la base: solo en COMPRA. Se escribe solo en el INSERT (el Kardex solo agrega). Nada de `src/` la escribe todavía (Etapa C).
+  facturaProveedorRenglonId String?
+  facturaProveedorRenglon   FacturaProveedorRenglon? @relation(fields: [empresaId, facturaProveedorRenglonId], references: [empresaId, id], onDelete: Restrict)
+
   creadoEn DateTime @default(now())
 
   @@unique([empresaId, id])
@@ -1302,6 +1380,8 @@ model MovimientoStock {
   /// una tabla que Movimientos tenga que duplicar y sincronizar él mismo.
   @@index([productoId, seccionId, loteVencimiento])
   @@index([operacionId])
+  @@index([devuelveAMovimientoId])
+  @@index([facturaProveedorRenglonId])
 }
 
 /// Reemplaza HOJA_CONTEOS_FISICOS/"ConteosFisicos" (Stock.js:1043-1141) —
@@ -1355,6 +1435,9 @@ model ConteoFisico {
 
   /// I3 — mensaje de éxito ya formateado, escrito en el MISMO `create` (se conoce antes del insert).
   resultadoMensaje String?
+
+  /// M2 (D9): el motivo con que se canceló el conteo. Solo si `estado = CANCELADO` (CHECK en la base), no vacío, hasta 200. `null` = sin motivo registrado (cancelado antes de M2).
+  motivoCancelacion String?
 
   @@unique([empresaId, id])
   @@index([sucursalId, productoId, seccionId])
@@ -2059,6 +2142,8 @@ model Cuenta {
   ejemplaresTicket EjemplarTicket[]
   promos           PromoCuenta[]
   agregados        AgregadoDeCuenta[]
+  /// M2: la cabecera de venta de esta cuenta, una vez cerrada (a lo sumo una: `Venta.cuentaId` es único por empresa). `null` = abierta, o cerrada antes de M2.
+  venta            Venta?
 
   /// Cuántos comensales se sentaron (docs/plan-comensales-y-limite-mesas-2026-09-26.md). Obligatorio y SIN valor por defecto al abrir
   /// la cuenta (`abrirCuenta`) — un default sesgaría la métrica de rotación que existe para medir (Reportes › Rotación de mesas).
@@ -2215,6 +2300,13 @@ model Empresa {
   /// Política de plataforma (ADR-008/ADR-010): solo la cambia la plataforma (scripts/politica-empresa.ts), nunca la propia empresa.
   permisosEditables Boolean       @default(true)
   dosPaneles        Boolean       @default(true)
+  /// M0-IVA: condición de la empresa frente al IVA. Código semántico de lista cerrada (`CONDICIONES_IVA` en src/core/fiscal/iva.ts), con el CHECK
+  /// "Empresa_condicionIva_check" que agrega la migración a mano (Prisma no declara CHECK). NULL = «no declarada»: quien la lea falla cerrado, nunca supone
+  /// Responsable Inscripto. La carga la plataforma (paso de datos auditado), no la propia empresa.
+  condicionIva      String?
+  /// Paquete 3 (M3d, ADR-029): la PERILLA de IVA de las compras. Apagada (el valor de toda empresa hoy): la factura de proveedor NO exige neto, IVA ni alícuota, todo se carga con IVA incluido. Prendida: se exigen
+  /// según la letra y alimentan el IVA computable (lo hace el servidor, Etapa C: la base no lee `Empresa` desde un CHECK). La carga la plataforma, nunca la propia empresa (igual que `condicionIva`). Las ventas no dependen de ella.
+  llevaIvaDeCompras Boolean       @default(false)
 
   usuarios                       UsuarioEmpresa[]
   sucursalRel                    Sucursal[]
@@ -2274,6 +2366,14 @@ model Empresa {
   invitacionRel                  Invitacion[]
   invitacionSucursalRel          InvitacionSucursal[]
   agregadoDeCuentas              AgregadoDeCuenta[]
+  ventaRel                       Venta[]
+  facturaProveedorRel            FacturaProveedor[]
+  facturaProveedorRenglonRel     FacturaProveedorRenglon[]
+  facturaProveedorSucursalRel    FacturaProveedorSucursal[]
+  facturaProveedorTributoRel     FacturaProveedorTributo[]
+  puntoDeVentaDeProveedorRel     PuntoDeVentaDeProveedor[]
+  conceptoDeGastoRel             ConceptoDeGasto[]
+  imputacionDeGastoRel           ImputacionDeGasto[]
 }
 
 enum EstadoModulo {
@@ -2375,6 +2475,214 @@ model AgregadoDeCuenta {
   @@index([cuentaId])
 }
 
+/// De dónde salió una venta: una mesa (la cuenta del salón que se cierra) o el mostrador (`registrarVenta`).
+enum CanalDeVenta {
+  MESA
+  MOSTRADOR
+}
+
+/// M2 (Paquete 2): la CABECERA de una venta. Agrupa las `Operacion` VENTA de una misma venta (hoy hay una por línea, sin nada que las una). Es una cabecera y NO la fuente de la plata:
+/// la plata de las ventas sigue saliendo del Kardex (`MovimientoStock`); `importeTotal` es una COPIA del total cobrado al confirmar, que nunca se modifica (el total vigente de una venta
+/// con unidades anuladas se calcula de sus líneas). Se llama `canal` y no `origen` porque `origen` ya es, en `registrarVentaEnTx`, la sección de la que sale el stock.
+/// SOLO se agrega (la app tiene SELECT e INSERT, nunca UPDATE ni DELETE) y no tiene `anuladaEn`: el estado de una venta se calcula de sus operaciones. Una mesa tiene a lo sumo UNA cabecera
+/// (`@@unique([empresaId, cuentaId])`: la idempotencia natural del cierre de la cuenta). NO lleva clave de idempotencia propia (la del mostrador sigue en su primera `Operacion`, en la misma
+/// transacción), ni `clienteId` (ya está en `Operacion`). Por sucursal: `PROPIA`. Nada de `src/` la escribe todavía (Etapa C).
+model Venta {
+  id           String       @id @default(cuid())
+  empresaId    String       @default(dbgenerated("app_empresa_actual()"))
+  empresa      Empresa      @relation(fields: [empresaId], references: [id])
+  sucursalId   String
+  sucursal     Sucursal     @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  canal        CanalDeVenta
+  /// La cuenta del salón que se cerró (solo MESA; CHECK: `canal = MESA` si y solo si hay cuenta).
+  cuentaId     String?
+  cuenta       Cuenta?      @relation(fields: [empresaId, cuentaId], references: [empresaId, id])
+  /// El instante de la venta (UTC; se muestra en la zona de la empresa).
+  fecha        DateTime
+  /// COPIA del total cobrado (la suma de `importeDeLinea` de sus líneas al confirmar). Nunca se modifica ni es la fuente de un reporte. No negativo (CHECK).
+  importeTotal Decimal      @db.Decimal(14, 2)
+  usuarioId    String
+  usuario      User         @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  creadoEn     DateTime     @default(now())
+
+  /// Las líneas de la venta (una `Operacion` VENTA por línea).
+  operaciones Operacion[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, cuentaId])
+  @@index([sucursalId, fecha])
+}
+
+/// Paquete 3 (M3b, ADR-029): la FACTURA DE PROVEEDOR como documento de la EMPRESA (quien paga es la empresa). Una factura se carga entera y se reparte entre sucursales; cada parte es una `Operacion` COMPRA por línea y por
+/// sucursal (vínculo: `FacturaProveedorSucursal.operacionId`). No tiene sucursal: es `DE_EMPRESA` (RLS por empresa) para que cada sucursal vea la cabecera de su parte. SOLO se agrega: la app tiene SELECT e INSERT, nunca
+/// DELETE, y el UPDATE es POR COLUMNA (el estado, la anulación y una lista cerrada de datos que identifican la factura); el dinero (`importeTotal`, los renglones) no tiene UPDATE: un error se anula y se vuelve a cargar, o
+/// va una nota de crédito. Por eso NO lleva `@updatedAt`. Los CHECK, el índice único parcial de la unicidad del número (`FacturaProveedor_unica_vigente_key`) y los privilegios por columna los agrega la migración a mano
+/// (Prisma no los modela). Nada de `src/` la escribe todavía (Etapa C).
+model FacturaProveedor {
+  id          String    @id @default(cuid())
+  empresaId   String    @default(dbgenerated("app_empresa_actual()"))
+  empresa     Empresa   @relation(fields: [empresaId], references: [id])
+  proveedorId String
+  proveedor   Proveedor @relation(fields: [empresaId, proveedorId], references: [empresaId, id])
+
+  /// El número tal cual se tecleó, y su clave normalizada (la calcula la Etapa C): van juntos (CHECK). La unicidad vigente es `(empresaId, proveedorId, letra o '', nroFacturaNormalizado)` de las NO anuladas,
+  /// con un índice único parcial que vive solo en la migración. Una pendiente de reparto también reserva su número.
+  nroFactura            String?
+  nroFacturaNormalizado String?
+  /// La letra del comprobante (A, B, C, E, M o X), cuando se conoce: entra en la clave de unicidad (D5).
+  letra                 String?
+  /// El día del stock y del costo: el mediodía argentino del día que eligió quien cargó (UTC).
+  fecha                 DateTime
+  /// La fecha impresa en el comprobante (solo dato).
+  fechaComprobante      DateTime? @db.Date
+  /// El total de la factura, CON IVA incluido. No negativo (CHECK). Nunca se modifica.
+  importeTotal          Decimal   @db.Decimal(14, 2)
+
+  /// M3d: la condición de la empresa frente al IVA al momento de la carga (copia de `Empresa.condicionIva`; `CONDICIONES_IVA` de src/core/fiscal/iva.ts, CHECK en la base). NULL = no se declaró.
+  condicionIvaEmpresa        String?
+  /// M3d: neto e IVA del comprobante (NULL = no se desglosó; van juntos, CHECK). El resto del total son tributos, no gravado y exento. Sin CHECK de obligatoriedad: la exigencia según la perilla y la letra es del servidor.
+  importeNeto                Decimal?  @db.Decimal(14, 2)
+  importeIva                 Decimal?  @db.Decimal(14, 2)
+  /// `PENDIENTE_DE_REPARTO` (cargada, sin repartir: su mercadería todavía no entró al stock) o `CONFIRMADA`. CHECK en la base.
+  estado                     String    @default("CONFIRMADA")
+  confirmadaEn               DateTime?
+  confirmadaPorId            String?
+  confirmadaPor              User?     @relation("FacturaProveedorConfirmadaPor", fields: [confirmadaPorId], references: [id], onDelete: Restrict)
+  /// `CARGA` (la cargó una persona) o `MIGRACION` (la creó un relleno). Solo `CARGA` puede quedar pendiente.
+  origen                     String    @default("CARGA")
+  /// Hoy solo `CONTADO_PAGADA` (CHECK).
+  condicionPago              String    @default("CONTADO_PAGADA")
+  recibidaEnAdministracionEn DateTime? @db.Date
+  fechaPagoDeclarada         DateTime? @db.Date
+  medioPagoDeclarado         String?
+  detalleLibre               String?
+  /// UUID que genera la pantalla. Único GLOBAL, igual que `Operacion`, `ConteoFisico` y `PagoConsignante` (ADR-028). Va junto con la huella (CHECK).
+  claveIdempotencia          String?   @unique
+  payloadHash                String?
+  resultadoMensaje           String?
+  creadoPorId                String
+  creadoPor                  User      @relation("FacturaProveedorCreadaPor", fields: [creadoPorId], references: [id], onDelete: Restrict)
+  creadoEn                   DateTime  @default(now())
+  anuladaEn                  DateTime?
+  anuladaPorId               String?
+  anuladaPor                 User?     @relation("FacturaProveedorAnuladaPor", fields: [anuladaPorId], references: [id], onDelete: Restrict)
+
+  renglones FacturaProveedorRenglon[]
+  partes    FacturaProveedorSucursal[]
+  /// M3d: percepciones e impuestos que trae la factura además del IVA.
+  tributos  FacturaProveedorTributo[]
+
+  @@unique([empresaId, id])
+  @@index([empresaId, proveedorId, fecha])
+}
+
+/// Paquete 3 (M3b, ampliado por M4.2): un renglón de la factura (lo comprado o pagado). De empresa; solo se agrega. La naturaleza es `MERCADERIA` (producto, cantidad y precio por unidad de stock) o `SIN_STOCK` (un gasto: concepto de gasto y tipo de
+/// costo, sin producto; NUNCA genera `Operacion` ni Kardex), en pareo (CHECK `FacturaProveedorRenglon_pareo_naturaleza_chk`; la lista, en `FacturaProveedorRenglon_naturaleza_chk`). El precio por unidad se calcula UNA vez y se copia igual a cada parte.
+/// `precioTotal` es CON IVA incluido (mayor que cero en un renglón sin stock).
+model FacturaProveedorRenglon {
+  id                   String           @id @default(cuid())
+  empresaId            String           @default(dbgenerated("app_empresa_actual()"))
+  empresa              Empresa          @relation(fields: [empresaId], references: [id])
+  facturaProveedorId   String
+  facturaProveedor     FacturaProveedor @relation(fields: [empresaId, facturaProveedorId], references: [empresaId, id])
+  /// La posición en la factura (desde 1; única por factura).
+  orden                Int
+  naturaleza           String           @default("MERCADERIA")
+  descripcion          String?
+  productoId           String?
+  producto             Producto?        @relation(fields: [empresaId, productoId], references: [empresaId, id])
+  /// En unidad de STOCK del producto.
+  cantidadStock        Decimal?         @db.Decimal(14, 4)
+  precioPorUnidadStock Decimal?         @db.Decimal(14, 4)
+  loteVencimiento      DateTime?        @db.Date
+  /// El texto de conversión de unidad que se copia a cada movimiento (`MovimientoStock.detalle`).
+  detalle              String?
+  /// Lo pagado por el renglón, CON IVA incluido. No negativo (CHECK).
+  precioTotal          Decimal          @db.Decimal(14, 2)
+  /// M3d: la alícuota de IVA del renglón (`ALICUOTAS_IVA` de src/core/fiscal/iva.ts, CHECK en la base), el neto y el IVA (NULL = no se desglosó; van juntos y neto + IVA = `precioTotal` EXACTO, CHECK) y el IVA computable
+  /// (NOT NULL, 0 con la perilla apagada o sin IVA discriminado; entre 0 y el IVA, CHECK). Sin CHECK de obligatoriedad: la exigencia según la perilla de la empresa y la letra es del servidor (Etapa C).
+  alicuotaIva          String?
+  importeNeto          Decimal?         @db.Decimal(14, 2)
+  importeIva           Decimal?         @db.Decimal(14, 2)
+  importeIvaComputable Decimal          @default(0) @db.Decimal(14, 2)
+  creadoEn             DateTime         @default(now())
+  /// M4.2: solo en un renglón `SIN_STOCK` (CHECK de pareo): el concepto de gasto y la COPIA de su tipo de costo (COSTO_DE_VENTAS, GASTO_OPERATIVO, EXTRAORDINARIO, INVERSION o RESULTADO_FINANCIERO; CHECK).
+  conceptoGastoId      String?
+  conceptoGasto        ConceptoDeGasto? @relation(fields: [empresaId, conceptoGastoId], references: [empresaId, id])
+  tipoDeCosto          String?
+
+  /// Las líneas del Kardex que salieron de este renglón (una por parte).
+  movimientos MovimientoStock[]
+  /// M4.3: cuánto de este renglón (si es `SIN_STOCK`) le toca a cada sucursal.
+  imputaciones ImputacionDeGasto[]
+
+  @@unique([empresaId, id])
+  @@unique([facturaProveedorId, orden])
+  /// M4.2: el destino de la clave foránea con discriminador de la imputación (M4.3): solo un renglón `SIN_STOCK` se puede imputar.
+  @@unique([empresaId, id, naturaleza])
+  @@index([conceptoGastoId])
+}
+
+/// Paquete 3 (M3b): la parte de cada sucursal en una factura repartida (`PROPIA`: tiene `sucursalId`; las políticas de alcance las agrega M3c). Solo se agrega. `porcentajeDeclaradoBp` es la INTENCIÓN de quien cargó
+/// (10000 = 100 %) y NUNCA se usa para atribuir dinero: la atribución sale del dinero de cada parte. `operacionId` es la `Operacion` COMPRA de esta parte (única; vacío en las partes que son solo gastos, M4).
+model FacturaProveedorSucursal {
+  id                    String           @id @default(cuid())
+  empresaId             String           @default(dbgenerated("app_empresa_actual()"))
+  empresa               Empresa          @relation(fields: [empresaId], references: [id])
+  facturaProveedorId    String
+  facturaProveedor      FacturaProveedor @relation(fields: [empresaId, facturaProveedorId], references: [empresaId, id])
+  sucursalId            String
+  sucursal              Sucursal         @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  porcentajeDeclaradoBp Int
+  operacionId           String?
+  operacion             Operacion?       @relation(fields: [empresaId, operacionId], references: [empresaId, id], onDelete: Restrict)
+  /// Recepción de la mercadería (cambio del dueño, 2026-10-12): el stock de una factura entra recién cuando la factura está REPARTIDA y la parte de esta sucursal RECIBIDA. `PENDIENTE` o `RECIBIDA` (CHECK); `recibidaEn` es la FECHA DE STOCK
+  /// elegida (UTC) y `recibidaPorId` quién la confirmó. UPDATE solo por columna sobre estas tres y un disparador que permite únicamente PENDIENTE a RECIBIDA (migración 20261016101500). Nada de `src/` las escribe todavía (Etapa C).
+  estadoRecepcion       String           @default("PENDIENTE")
+  recibidaEn            DateTime?
+  recibidaPorId         String?
+  recibidaPor           User?            @relation("FacturaProveedorParteRecibidaPor", fields: [recibidaPorId], references: [id], onDelete: Restrict)
+  creadoEn              DateTime         @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([facturaProveedorId, sucursalId])
+  @@unique([empresaId, operacionId])
+  @@index([sucursalId])
+}
+
+/// Paquete 3 (M3d): un tributo de la factura (percepción o impuesto que trae además del IVA). Cuelga de la cabecera, es DE EMPRESA y solo se agrega (la app tiene SELECT e INSERT). `tipo` es de lista cerrada y `importe` mayor
+/// que cero (CHECK en la base). Nada de `src/` la escribe todavía (Etapa C).
+model FacturaProveedorTributo {
+  id                 String           @id @default(cuid())
+  empresaId          String           @default(dbgenerated("app_empresa_actual()"))
+  empresa            Empresa          @relation(fields: [empresaId], references: [id])
+  facturaProveedorId String
+  facturaProveedor   FacturaProveedor @relation(fields: [empresaId, facturaProveedorId], references: [empresaId, id])
+  tipo               String
+  descripcion        String?
+  importe            Decimal          @db.Decimal(14, 2)
+  creadoEn           DateTime         @default(now())
+
+  @@unique([empresaId, id])
+  @@index([facturaProveedorId])
+}
+
+/// Paquete 3 (M3e, C36): un punto de venta (los cinco dígitos del N.º de comprobante) con el que un proveedor factura. DE EMPRESA. `numero` de 1 a 99999 (CHECK), único por proveedor. No se borra nunca: `motor2_app` tiene SELECT, INSERT y UPDATE
+/// solo de `activo` (se apaga). Nada de `src/` lo escribe todavía (Etapa C).
+model PuntoDeVentaDeProveedor {
+  id          String    @id @default(cuid())
+  empresaId   String    @default(dbgenerated("app_empresa_actual()"))
+  empresa     Empresa   @relation(fields: [empresaId], references: [id])
+  proveedorId String
+  proveedor   Proveedor @relation(fields: [empresaId, proveedorId], references: [empresaId, id])
+  numero      Int
+  activo      Boolean   @default(true)
+  creadoEn    DateTime  @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([proveedorId, numero])
+}
+
 model UsuarioEmpresa {
   id         String   @id @default(cuid())
   usuarioId  String
@@ -2470,4 +2778,52 @@ model AuditoriaPlataforma {
 
   @@index([adminId, creadoEn])
   @@index([empresaAfectadaId, creadoEn])
+}
+
+/// Paquete 3 (M4.1): un CONCEPTO DE GASTO de la empresa (alquiler, luz, honorarios, flete, descuento obtenido...): lo que se paga sin que entre mercadería al stock. Un servicio NO es un producto, es un concepto. DE EMPRESA (RLS por empresa, sin
+/// sucursal: el catálogo lo comparten todas). `codigo` es la identidad estable y NO se puede cambiar (la app no tiene UPDATE sobre esa columna); `nombre` es único por empresa sin importar mayúsculas (índice sobre `lower("nombre")` solo en la
+/// migración, como los demás catálogos). `tipoDeCostoPorDefecto` es TEXT con CHECK de cinco valores (COSTO_DE_VENTAS, GASTO_OPERATIVO, EXTRAORDINARIO, INVERSION, RESULTADO_FINANCIERO): es solo el valor por defecto de las cargas nuevas; cada renglón guarda su
+/// copia. NO se borra (la app no tiene DELETE): se desactiva con `activo`. UPDATE solo de `nombre`, `tipoDeCostoPorDefecto` y `activo`; por eso NO lleva `@updatedAt`. Nada de `src/` la escribe todavía (Etapa C).
+model ConceptoDeGasto {
+  id                    String   @id @default(cuid())
+  empresaId             String   @default(dbgenerated("app_empresa_actual()"))
+  empresa               Empresa  @relation(fields: [empresaId], references: [id])
+  /// Mayúsculas, dígitos y guion bajo, empieza con letra, hasta 40 (CHECK). Fijo.
+  codigo                String
+  nombre                String
+  tipoDeCostoPorDefecto String
+  activo                Boolean  @default(true)
+  creadoEn              DateTime @default(now())
+
+  /// Los renglones sin stock que usan este concepto (M4.2).
+  renglones FacturaProveedorRenglon[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, nombre])
+}
+
+/// Paquete 3 (M4.3): la IMPUTACIÓN por sucursal de un renglón SIN STOCK: cuánto del importe del gasto le toca a la sucursal y cuánto de eso es IVA computable (D3: se guarda, repartido en dos pasos con `repartirImporte`). `PROPIA`
+/// (`sucursalId` NOT NULL; sus políticas de alcance las agrega M4.4). SOLO se agrega: la app tiene SELECT e INSERT, nunca UPDATE ni DELETE; un error se corrige anulando la factura y cargando de nuevo. La clave foránea con DISCRIMINADOR
+/// `(empresaId, facturaProveedorRenglonId, naturalezaRenglon) → FacturaProveedorRenglon(empresaId, id, naturaleza)` y `naturalezaRenglon` fijo en `SIN_STOCK` (CHECK) impiden en la base imputar un renglón de mercadería. Una parte por
+/// (renglón, sucursal). No tiene fecha propia (el período sale de `FacturaProveedor.fecha`) ni toca `Operacion` ni el Kardex. Que Σ importes = `precioTotal` del renglón y Σ computables = su `importeIvaComputable` lo valida la Etapa C.
+model ImputacionDeGasto {
+  id                        String                  @id @default(cuid())
+  empresaId                 String                  @default(dbgenerated("app_empresa_actual()"))
+  empresa                   Empresa                 @relation(fields: [empresaId], references: [id])
+  facturaProveedorRenglonId String
+  /// Siempre `SIN_STOCK` (CHECK): es la tercera columna de la clave foránea con discriminador.
+  naturalezaRenglon         String                  @default("SIN_STOCK")
+  renglon                   FacturaProveedorRenglon @relation(fields: [empresaId, facturaProveedorRenglonId, naturalezaRenglon], references: [empresaId, id, naturaleza], onDelete: Restrict, onUpdate: Restrict)
+  sucursalId                String
+  sucursal                  Sucursal                @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  /// Lo que le toca a la sucursal, CON IVA incluido. Mayor que cero (CHECK).
+  importe                   Decimal                 @db.Decimal(14, 2)
+  /// La parte de `importe` que es IVA computable (entre 0 y `importe`, CHECK). 0 si no se desglosó IVA.
+  importeIvaComputable      Decimal                 @default(0) @db.Decimal(14, 2)
+  creadoEn                  DateTime                @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([facturaProveedorRenglonId, sucursalId])
+  @@index([sucursalId])
 }

@@ -6,6 +6,9 @@ import {
   MIGRACION_B1_FUNCIONES,
   MIGRACION_P3_AGREGADO_DE_CUENTA,
   MIGRACIONES_DE_POLITICAS_DE_SUCURSAL,
+  MIGRACIONES_DE_POLITICAS_POSTERIORES,
+  TABLAS_DEL_PAQUETE_1,
+  ULTIMA_MIGRACION_DEL_PAQUETE_1,
 } from "../setup/migraciones-de-alcance-de-sucursal";
 import {
   COMANDOS_CON_POLITICA_DE_ALCANCE,
@@ -19,7 +22,7 @@ import {
 /**
  * B7 (Paquete 1): guardián de las migraciones de la RLS por sucursal. NADIE escribe una política a mano: el `migration.sql` y el `down.sql` de B1 a B6 son EXACTAMENTE la salida del generador
  * (`test/setup/politicas-de-alcance-de-sucursal.ts`, que sale de la clasificación) para su grupo de tablas, precedida de un encabezado de comentarios; y los cinco grupos juntos son
- * EXACTAMENTE `TABLAS_CON_POLITICA_DE_SUCURSAL`. Si la clasificación cambia (una tabla nueva con alcance de sucursal, un alcance distinto) o alguien toca una migración a mano, este test
+ * EXACTAMENTE `TABLAS_CON_POLITICA_DE_SUCURSAL` (el Paquete 1 más las migraciones POSTERIORES que declare `MIGRACIONES_DE_POLITICAS_POSTERIORES`, vacía hoy). Si la clasificación cambia (una tabla nueva con alcance de sucursal, un alcance distinto) o alguien toca una migración a mano, este test
  * se pone en rojo: la corrección es una migración NUEVA (las ya aplicadas no se editan), no retocar la salida.
  *
  * Sin base de datos. La mutación (alterar un byte de una migración) está demostrada en el último bloque con la misma función que usa el chequeo real.
@@ -35,7 +38,7 @@ interface Esperada {
 
 const ESPERADAS: readonly Esperada[] = [
   { migracion: MIGRACION_B1_FUNCIONES, tablas: null, migrationSql: sqlDeFuncionesDeAlcance(), downSql: sqlDeReversaDeFuncionesDeAlcance() },
-  ...MIGRACIONES_DE_POLITICAS_DE_SUCURSAL.map(({ migracion, tablas }) => ({
+  ...[...MIGRACIONES_DE_POLITICAS_DE_SUCURSAL, ...MIGRACIONES_DE_POLITICAS_POSTERIORES].map(({ migracion, tablas }) => ({
     migracion,
     tablas,
     migrationSql: sqlDePoliticasDeAlcance(tablas),
@@ -62,12 +65,14 @@ function defectosDelArchivo(contenido: string, generado: string): string[] {
 const leer = (migracion: string, archivo: "migration.sql" | "down.sql") => readFileSync(join(RAIZ, migracion, archivo), "utf8");
 
 describe("B7: las migraciones de la RLS por sucursal (B1 a B6) son la salida del generador", () => {
-  it("existen las seis carpetas, cada una con migration.sql y down.sql, en orden, después de la de AgregadoDeCuenta (P3)", () => {
+  it("existen las carpetas esperadas (B1 a B6 y las posteriores), cada una con migration.sql y down.sql, en orden, después de la de AgregadoDeCuenta (P3)", () => {
     const carpetas = readdirSync(RAIZ, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
     const nombres = ESPERADAS.map((e) => e.migracion);
     expect(nombres, "B1 primero, B2 a B6 en el orden de los grupos").toEqual([...nombres].sort());
     expect(nombres[0]).toBe(MIGRACION_B1_FUNCIONES);
     expect(MIGRACION_P3_AGREGADO_DE_CUENTA < MIGRACION_B1_FUNCIONES, "B4 incluye AgregadoDeCuenta: la tabla tiene que existir antes").toBe(true);
+    expect(ULTIMA_MIGRACION_DEL_PAQUETE_1, "la última del Paquete 1 es la del último grupo (B6)").toBe(MIGRACIONES_DE_POLITICAS_DE_SUCURSAL.at(-1)!.migracion);
+    for (const { migracion } of MIGRACIONES_DE_POLITICAS_POSTERIORES) expect(migracion > ULTIMA_MIGRACION_DEL_PAQUETE_1, `${migracion}: una posterior va después de B6`).toBe(true);
     for (const e of ESPERADAS) {
       expect(carpetas, e.migracion).toContain(e.migracion);
       expect(existsSync(join(RAIZ, e.migracion, "migration.sql")), `${e.migracion}/migration.sql`).toBe(true);
@@ -87,13 +92,19 @@ describe("B7: las migraciones de la RLS por sucursal (B1 a B6) son la salida del
     for (const e of ESPERADAS) expect(defectosDelArchivo(leer(e.migracion, "down.sql"), e.downSql), `${e.migracion}/down.sql`).toEqual([]);
   });
 
-  it("los cinco grupos son disjuntos y su unión es EXACTAMENTE TABLAS_CON_POLITICA_DE_SUCURSAL (32 tablas, 128 políticas)", () => {
+  it("los cinco grupos del Paquete 1 son disjuntos y son 32 tablas / 128 políticas", () => {
     const todas = MIGRACIONES_DE_POLITICAS_DE_SUCURSAL.flatMap((g) => g.tablas);
     expect(new Set(todas).size, "ninguna tabla en dos grupos").toBe(todas.length);
-    expect([...todas].sort()).toEqual([...TABLAS_CON_POLITICA_DE_SUCURSAL].sort());
+    expect([...TABLAS_DEL_PAQUETE_1]).toEqual(todas);
     expect(todas).toHaveLength(32);
     expect(todas.length * COMANDOS_CON_POLITICA_DE_ALCANCE.length).toBe(128);
     expect(MIGRACIONES_DE_POLITICAS_DE_SUCURSAL).toHaveLength(5);
+  });
+
+  it("el Paquete 1 más las migraciones posteriores son EXACTAMENTE TABLAS_CON_POLITICA_DE_SUCURSAL (sin repetir ninguna tabla)", () => {
+    const todas = [...TABLAS_DEL_PAQUETE_1, ...MIGRACIONES_DE_POLITICAS_POSTERIORES.flatMap((g) => g.tablas)];
+    expect(new Set(todas).size, "ninguna tabla en dos grupos (del Paquete 1 o posteriores)").toBe(todas.length);
+    expect([...todas].sort()).toEqual([...TABLAS_CON_POLITICA_DE_SUCURSAL].sort());
   });
 
   it("los padres de cada tabla HEREDADA van en el mismo grupo (ningún grupo depende de otro, salvo de B1 y de la tabla de P3)", () => {
@@ -115,7 +126,7 @@ describe("B7: las migraciones de la RLS por sucursal (B1 a B6) son la salida del
     }
   });
 
-  it("ninguna otra migración crea políticas de alcance de sucursal ni las funciones: solo B1 a B6", () => {
+  it("ninguna migración fuera de las esperadas (B1 a B6 y las posteriores declaradas) crea políticas de alcance de sucursal ni las funciones", () => {
     const propias = new Set(ESPERADAS.map((e) => e.migracion));
     const ajenas = readdirSync(RAIZ, { withFileTypes: true })
       .filter((e) => e.isDirectory() && !propias.has(e.name))

@@ -67,6 +67,17 @@ export function importeDeLinea(cantidad: number, precioUnitario: number): number
 }
 
 /**
+ * `importe × porcentaje ÷ 100` en decimal EXACTO y UN SOLO redondeo a centavos, alejándose del cero en los empates (mitad hacia arriba; simétrico: el
+ * resultado de `-importe` o de `-porcentaje` es el opuesto exacto). Es la cuenta del «porcentaje de diferencia» de una opción de venta (GO-0b,
+ * `core/opciones/componer-precio-de-linea.ts`): dividir por 100 antes en `number` (`7.1 / 100` = `0.07099999999999999`) o redondear dos veces rompería
+ * los empates de medio centavo. `porcentaje` puede ser negativo (una rebaja). Si algún dato no es finito, `NaN`.
+ */
+export function porcentajeDeImporte(importe: number, porcentaje: number): number {
+  if (!Number.isFinite(importe) || !Number.isFinite(porcentaje)) return Number.NaN;
+  return aCentavos(new D(importe).times(porcentaje).dividedBy(100));
+}
+
+/**
  * Precio COBRADO a un cliente con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 6): aplica `porcentaje` (0 a
  * menor que 100 — lo valida `validarPorcentajeDescuento`, src/core/datos/porcentaje-descuento.ts, no este módulo) sobre `precioLista`
  * con aritmética Decimal EXACTA (mismo `D` que el resto de este archivo) y un solo redondeo al centavo, alejándose del cero en los

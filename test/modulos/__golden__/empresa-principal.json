@@ -1437,6 +1437,22 @@
       "rolesEditarSemilla": [
         "admin"
       ]
+    },
+    {
+      "clave": "compra_repartir",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "compra_recibir",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
     }
   ]
 }

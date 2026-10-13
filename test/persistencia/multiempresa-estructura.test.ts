@@ -15,6 +15,15 @@ const GLOBALES = tablasDeClase("GLOBAL");
 // Las cinco de identidad de la consola de plataforma (E4, ADR-012/019) no tienen empresa: son de plataforma, no de ninguna empresa.
 const PLATAFORMA = [...tablasDeClase("EMPRESA"), ...tablasDeClase("DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA"), ...TABLAS_DE_CONSOLA];
 
+/**
+ * Las FK compuestas con un DISCRIMINADOR: llevan una tercera columna (la naturaleza del padre) además de `empresaId` y la del padre, para que la base impida apuntar a un padre de otra naturaleza. Cada una con su motivo; se revisa
+ * en las dos direcciones (una entrada que no existe en la base, o una FK de tres columnas sin declarar, rompen el test).
+ */
+const FK_CON_DISCRIMINADOR: Readonly<Record<string, string>> = {
+  ImputacionDeGasto_empresaId_facturaProveedorRenglonId_natu_fkey:
+    "Paquete 3, M4.3: (empresaId, renglón, naturalezaRenglon) → FacturaProveedorRenglon(empresaId, id, naturaleza): la base impide imputar un renglón de mercadería (solo SIN_STOCK) y cambiar la naturaleza de un renglón imputado.",
+};
+
 function codigoDeError(e: unknown): string | undefined {
   return e instanceof Prisma.PrismaClientKnownRequestError ? e.code : undefined;
 }
@@ -79,9 +88,10 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
       const clave = (f: { origen: string; destino: string; columnas: string[] }) => `${f.origen} -> ${f.destino} (${[...f.columnas].sort().join(", ")})`;
       expect(entreTablasPorEmpresa.map(clave).sort()).toEqual(fkEntreTablasPorEmpresaDelEsquema().map(clave).sort());
       for (const f of entreTablasPorEmpresa) {
-        expect(f.columnas, f.nombre).toHaveLength(2);
+        expect(f.columnas, f.nombre).toHaveLength(f.nombre in FK_CON_DISCRIMINADOR ? 3 : 2);
         expect(f.columnas, f.nombre).toContain("empresaId");
       }
+      expect(Object.keys(FK_CON_DISCRIMINADOR).filter((n) => !entreTablasPorEmpresa.some((f) => f.nombre === n)), "FK con discriminador declaradas que la base no tiene").toEqual([]);
 
       const haciaGlobales = fks.filter((f) => conEmpresa.has(f.origen) && GLOBALES.includes(f.destino));
       expect(haciaGlobales.length).toBeGreaterThan(0);

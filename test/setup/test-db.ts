@@ -28,9 +28,10 @@ export { prismaDuenioSinEmpresa } from "./cliente-duenio";
 /**
  * Vacía las operaciones y sus movimientos de un golpe. Los tests de volumen siembran decenas de miles de filas: borrarlas con el
  * `deleteMany` de `limpiarBaseDeTest` (con el chequeo de FK fila por fila) puede pasar los 10 s del hook y arrastra a los tests siguientes.
+ * Postgres no deja truncar `Operacion` si otra tabla la referencia, aunque esté vacía: `FacturaProveedorSucursal` (M3b) la referencia con `operacionId`, así que va en el mismo `TRUNCATE`.
  */
 export async function vaciarOperacionesPorVolumen() {
-  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "MovimientoStock", "CuentaItem", "Operacion"');
+  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "MovimientoStock", "CuentaItem", "FacturaProveedorSucursal", "Operacion"');
 }
 
 /**
@@ -101,7 +102,19 @@ export async function limpiarBaseDeTest() {
   // los tres (Operacion/ConteoFisico incluidos).
   await prismaAdmin.movimientoStock.deleteMany();
   await prismaAdmin.conteoFisico.deleteMany();
+  // La factura de proveedor (Paquete 3, M3b): las partes referencian a la cabecera, la sucursal y la `Operacion` (RESTRICT), los renglones a la cabecera y al producto, y las líneas del Kardex (ya borradas) a los
+  // renglones: partes, después renglones, después cabeceras, todo ANTES de operacion.deleteMany() y de proveedor/producto/sucursal/User (más abajo).
+  await prismaAdmin.facturaProveedorSucursal.deleteMany();
+  // La imputación de un gasto (M4.3) referencia al renglón sin stock y a la sucursal (RESTRICT): ANTES de los renglones.
+  await prismaAdmin.imputacionDeGasto.deleteMany();
+  await prismaAdmin.facturaProveedorTributo.deleteMany();
+  await prismaAdmin.facturaProveedorRenglon.deleteMany();
+  // Los conceptos de gasto (M4.1) los referencian los renglones sin stock (RESTRICT): DESPUÉS de los renglones.
+  await prismaAdmin.conceptoDeGasto.deleteMany();
+  await prismaAdmin.facturaProveedor.deleteMany();
   await prismaAdmin.operacion.deleteMany();
+  // La cabecera de venta (M2) referencia a la cuenta, la sucursal y el User (RESTRICT) y la referencian las operaciones (recién borradas): DESPUÉS de operacion.deleteMany() y ANTES de la cuenta.
+  await prismaAdmin.venta.deleteMany();
   // PromoCuenta (Task #16, docs/plan-promo-combo-2026-09-26.md): DESPUÉS de CuentaItem (arriba) y Operacion (recién), que la
   // referencian con RESTRICT. A su vez PromoCarta/PromoCartaCupo (que PromoCuenta referencia RESTRICT) y SeccionCarta (que
   // PromoCarta/PromoCartaCupo referencian RESTRICT) tienen que esperar a que ESTA se vacíe — por eso viven acá y no arriba
@@ -163,6 +176,8 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.grupo.deleteMany();
   await prismaAdmin.categoriaProducto.deleteMany();
   await prismaAdmin.unidad.deleteMany();
+  // Los puntos de venta del proveedor (M3e) lo referencian (RESTRICT): antes que él.
+  await prismaAdmin.puntoDeVentaDeProveedor.deleteMany();
   await prismaAdmin.proveedor.deleteMany();
 
   // Plataforma (ADR-007, A2): `empresaId` tiene default `app_empresa_actual()` (la ÚNICA empresa ACTIVE), así que la base de test

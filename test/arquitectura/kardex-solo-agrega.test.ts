@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 /**
  * Regla de arquitectura (Fase 0 del plan de pureza, PR 0.2): el Kardex SOLO AGREGA.
  *
- * `MovimientoStock` (el Kardex), `RegistroAuditoria` y `AuditoriaPlataforma` son historia: una corrección es una fila nueva (una reversión,
+ * `MovimientoStock` (el Kardex), `RegistroAuditoria`, `AuditoriaPlataforma` y `Venta` (la cabecera de venta, M2) son historia: una corrección es una fila nueva (una reversión,
  * un ajuste), nunca un `update`/`delete` de una fila escrita. Hoy lo cumple todo el código (0 violaciones), pero por convención: nada lo
  * impedía, y las notas de crédito, las devoluciones y las anulaciones que vienen son justo el lugar donde alguien tendría la tentación de
  * «corregir» una línea en el lugar. Este test lo vuelve una regla que falla.
@@ -37,10 +37,15 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "../..");
 const CARPETAS = ["src", "plataforma/src"];
 
-const MODELOS_SOLO_AGREGAN = ["movimientoStock", "registroAuditoria", "auditoriaPlataforma"];
+// Paquete 3 (M4.3): la imputación de un gasto a cada sucursal (`imputacionDeGasto`) también solo se agrega (la app tiene SELECT e INSERT, nunca UPDATE ni DELETE; un error se corrige anulando la factura y cargando de nuevo).
+// Paquete 3 (M3b): el renglón, la parte y los tributos de la factura de proveedor también solo se agregan (la app no tiene UPDATE ni DELETE en la base). La CABECERA (`facturaProveedor`) no entra todavía: su UPDATE es por
+// columna (estado, anulación y datos que identifican la factura) y la lista cerrada de sus escritores llega con el primer caso de uso que la escriba (Etapa C).
+// La PARTE (`facturaProveedorSucursal`) sí está acá aunque la base le deje UPDATE POR COLUMNA de la recepción (estado, fecha y persona; solo PENDIENTE a RECIBIDA, con un disparador): hoy ningún `src/` la escribe, y el caso de uso de
+// confirmar la recepción (Etapa C) tendrá que declarar ese UPDATE, con su lista cerrada de columnas, antes de entrar.
+const MODELOS_SOLO_AGREGAN = ["movimientoStock", "registroAuditoria", "auditoriaPlataforma", "venta", "facturaProveedorRenglon", "facturaProveedorSucursal", "facturaProveedorTributo", "imputacionDeGasto"];
 const OPERACIONES_QUE_MODIFICAN = new Set(["update", "updateMany", "upsert", "delete", "deleteMany"]);
 const SQL_CRUDO = new Set(["$executeRaw", "$executeRawUnsafe", "$queryRaw", "$queryRawUnsafe"]);
-const TABLAS_SQL = /\b(update|delete\s+from|truncate(\s+table)?)\s+(only\s+)?(public\.)?\\?"?(MovimientoStock|RegistroAuditoria|AuditoriaPlataforma)\b/i;
+const TABLAS_SQL = /\b(update|delete\s+from|truncate(\s+table)?)\s+(only\s+)?(public\.)?\\?"?(MovimientoStock|RegistroAuditoria|AuditoriaPlataforma|Venta|FacturaProveedorRenglon|FacturaProveedorSucursal|FacturaProveedorTributo|ImputacionDeGasto)\b/i;
 
 interface UsoSobreOperacion {
   /** Ruta relativa a la raíz del repo, con `/`. */
@@ -259,6 +264,7 @@ function juzgarEscritoresDelKardex(encontradas: EscrituraDeKardex[], lista: Reco
  */
 const RELACIONES_HACIA_EL_HISTORIAL = [
   "movimientos",
+  "devoluciones",
   "consumosQueLoSustituyen",
   "movimientoStockRel",
   "registrosAuditoria",
@@ -267,6 +273,8 @@ const RELACIONES_HACIA_EL_HISTORIAL = [
   "operacionesAnuladas",
   "operacionRel",
   "operacionesTransferenciaDestino",
+  "ventas",
+  "ventaRel",
 ];
 /** Las claves de Prisma que, dentro de una relación, modifican o desvinculan filas (no aparecen en `where`/`include`/`select`). `create`/`createMany` no: son de `ESCRITORES_DEL_KARDEX`. */
 const CLAVES_QUE_MODIFICAN_UNA_RELACION = new Set(["connect", "connectOrCreate", "set", "disconnect", "update", "updateMany", "upsert", "delete", "deleteMany"]);
@@ -396,7 +404,7 @@ describe("el Kardex solo agrega: el código del repositorio", () => {
 
   it("la lista de relaciones hacia el historial coincide con el schema (una relación nueva obliga a declararla)", () => {
     const schema = readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8");
-    const delSchema = [...schema.matchAll(/^\s+(\w+)\s+(?:MovimientoStock|RegistroAuditoria|AuditoriaPlataforma|Operacion)\[\]/gm)].map((m) => m[1]);
+    const delSchema = [...schema.matchAll(/^\s+(\w+)\s+(?:MovimientoStock|RegistroAuditoria|AuditoriaPlataforma|Operacion|Venta)\[\]/gm)].map((m) => m[1]);
     expect(delSchema.length, "el schema debería tener relaciones hacia esas tablas (si no, la lectura está ciega)").toBeGreaterThan(0);
     expect([...new Set(delSchema)].sort()).toEqual([...RELACIONES_HACIA_EL_HISTORIAL].sort());
   });

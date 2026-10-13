@@ -81,6 +81,7 @@ const O = [
   "pos_enviar_a_cocina",
   "pos_liberar_mesa",
   "producto_campos_sensibles",
+  "compra_recibir",
 ] as const satisfies readonly AccionClave[];
 
 const L = [
@@ -179,6 +180,7 @@ const A = [
   "clientes",
   "stock_seccion_habitual",
   "insumo_renombrar_fusionar",
+  "compra_repartir",
 ] as const satisfies readonly AccionClave[];
 
 const DECLARADAS: Readonly<Record<Clase, readonly string[]>> = { G, O, L, A };
@@ -201,7 +203,7 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     const todas = [...G, ...O, ...L, ...A];
     expect(new Set(todas).size, "una clave declarada en dos clases").toBe(todas.length);
     expect(todas.length).toBe(ACCIONES.length);
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 19, 33, 59]);
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 20, 33, 60]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

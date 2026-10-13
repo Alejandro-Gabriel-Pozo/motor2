@@ -52,8 +52,12 @@ export interface BaseTemporalMigrada {
   cliente: Client;
   /** Aplica, en orden, las migraciones pendientes ANTERIORES a `migracion` (ella no). */
   aplicarAntesDe(migracion: string): Promise<void>;
+  /** Aplica, en orden, las migraciones pendientes HASTA `migracion` (ella sí; las posteriores no). */
+  aplicarHasta(migracion: string): Promise<void>;
   /** Aplica todas las migraciones que falten. */
   aplicarRestantes(): Promise<void>;
+  /** Aplica todas las que falten SALVO las nombradas, que no se aplican nunca en esta base (un test que pone él mismo, con el SQL del generador, las políticas de esas migraciones). */
+  aplicarRestantesSalvo(excluidas: readonly string[]): Promise<void>;
   /** Cierra la conexión y borra la base. */
   eliminar(): Promise<void>;
 }
@@ -99,7 +103,23 @@ export async function crearBaseTemporalMigrada(): Promise<BaseTemporalMigrada> {
       if (!pendientes.includes(migracion)) throw new Error(`base-temporal-migrada: la migración "${migracion}" no existe (o ya se aplicó).`);
       while (pendientes[0] !== migracion) await aplicar(pendientes.shift() as string);
     },
+    async aplicarHasta(migracion) {
+      if (!pendientes.includes(migracion)) throw new Error(`base-temporal-migrada: la migración "${migracion}" no existe (o ya se aplicó).`);
+      let aplicada: string;
+      do {
+        aplicada = pendientes.shift() as string;
+        await aplicar(aplicada);
+      } while (aplicada !== migracion);
+    },
     async aplicarRestantes() {
+      while (pendientes.length > 0) await aplicar(pendientes.shift() as string);
+    },
+    async aplicarRestantesSalvo(excluidas) {
+      for (const migracion of excluidas) {
+        const posicion = pendientes.indexOf(migracion);
+        if (posicion < 0) throw new Error(`base-temporal-migrada: la migración "${migracion}" no existe (o ya se aplicó).`);
+        pendientes.splice(posicion, 1);
+      }
       while (pendientes.length > 0) await aplicar(pendientes.shift() as string);
     },
     async eliminar() {

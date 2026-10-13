@@ -18,12 +18,12 @@ import { join } from "node:path";
 export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA" | "GLOBAL" | "EMPRESA" | "CONSOLA";
 
 const POR_EMPRESA = [
-  "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "Cliente", "ContenidoCartaProducto", "ConteoFisico", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto",
-  "EjemplarTicket", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
+  "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "Cliente", "ConceptoDeGasto", "ContenidoCartaProducto", "ConteoFisico", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto",
+  "EjemplarTicket", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedorTributo", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "ImputacionDeGasto", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
   "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PermisoRol", "PortalCartaEmpresa", "PrecioLocalProducto", "Presentacion", "Producto", "PromoCarta", "PromoCartaCupo",
-  "PromoCartaSucursal", "PromoCuenta", "Proveedor", "ProveedorPorProducto", "RecetaIngrediente", "RecetaPaso", "RecetaPasoIngrediente", "RecetaSucursal", "RecetaVersion", "RegistroAuditoria",
+  "PromoCartaSucursal", "PromoCuenta", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaIngrediente", "RecetaPaso", "RecetaPasoIngrediente", "RecetaSucursal", "RecetaVersion", "RegistroAuditoria",
   "RendimientoLocalIngrediente", "Rol", "Seccion", "SeccionCarta", "SeccionHabitualProducto", "StockMinimoProducto", "Sucursal", "SucursalPublica", "SustitutoRecetaIngrediente",
-  "TemaCartaSucursal", "TraspasoSucursal", "Unidad", "UsuarioSucursal",
+  "TemaCartaSucursal", "TraspasoSucursal", "Unidad", "UsuarioSucursal", "Venta",
 ] as const;
 
 /** Con `empresaId`, pero escritas por la plataforma (ModuloEmpresa, Invitacion) o con una política de lectura propia del usuario (UsuarioEmpresa): sus políticas son las de `POLITICAS_ESPECIALES`. */
@@ -126,9 +126,9 @@ export type DeclaracionDeAlcance =
 
 /** `sucursalId` NOT NULL con FK a `Sucursal`: la fila es de una sola sucursal. */
 const ALCANCE_PROPIA = [
-  "ConteoFisico", "ContenidoCartaProducto", "DescuentoProductoSucursal", "DisponibilidadProducto", "EjemplarTicket", "FrecuenciaConteoProducto", "GeneroCarta", "ItemAgrupadoCarta", "Mesa",
+  "ConteoFisico", "ContenidoCartaProducto", "DescuentoProductoSucursal", "DisponibilidadProducto", "EjemplarTicket", "FacturaProveedorSucursal", "FrecuenciaConteoProducto", "GeneroCarta", "ImputacionDeGasto", "ItemAgrupadoCarta", "Mesa",
   "Operacion", "OpcionItemAgrupadoCarta", "PagoConsignante", "PrecioLocalProducto", "PromoCartaSucursal", "RecetaSucursal", "RendimientoLocalIngrediente", "Seccion", "SeccionHabitualProducto",
-  "StockMinimoProducto", "TemaCartaSucursal",
+  "StockMinimoProducto", "TemaCartaSucursal", "Venta",
 ] as const;
 
 /** `sucursalId` NULLABLE: NULL = de la empresa entera. */
@@ -162,8 +162,8 @@ const ALCANCE_GOBIERNO: Readonly<Record<string, string>> = {
 };
 
 const ALCANCE_DE_EMPRESA = [
-  "CategoriaProducto", "Cliente", "DestinoConsumo", "Grupo", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "PermisoRol", "PortalCartaEmpresa", "Presentacion", "Producto",
-  "PromoCarta", "PromoCartaCupo", "Proveedor", "ProveedorPorProducto", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa",
+  "CategoriaProducto", "Cliente", "ConceptoDeGasto", "DestinoConsumo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "PermisoRol", "PortalCartaEmpresa", "Presentacion", "Producto",
+  "PromoCarta", "PromoCartaCupo", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa",
 ] as const;
 
 /** Declarada a mano (no derivada de `GLOBALES`/`CONSOLA`) a propósito: el guard cruza las dos listas y se pone en rojo si no coinciden. */

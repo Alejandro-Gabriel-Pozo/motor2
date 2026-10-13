@@ -2,13 +2,15 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { CANTIDAD_DE_POLITICAS_ESPERADAS, TABLAS_CON_POLITICA_DE_SUCURSAL } from "../setup/clasificacion-de-tablas";
+import { CLASIFICACION_DE_TABLAS, politicasEsperadas } from "../setup/clasificacion-de-tablas";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
 import {
   MIGRACION_B1_FUNCIONES,
   MIGRACION_M2_CAMPOS_SENSIBLES,
   MIGRACION_P3_AGREGADO_DE_CUENTA,
   MIGRACIONES_DE_POLITICAS_DE_SUCURSAL,
+  TABLAS_DEL_PAQUETE_1,
+  ULTIMA_MIGRACION_DEL_PAQUETE_1,
 } from "../setup/migraciones-de-alcance-de-sucursal";
 
 /**
@@ -18,8 +20,11 @@ import {
  * ATENCIÓN: las reversas de P3 (borra la tabla `AgregadoDeCuenta`) y de M.2 (borra la clave `producto_campos_sensibles` y sus permisos) son DESTRUCTIVAS: la prueba las corre sobre la base
  * temporal, que se borra al terminar. Nunca contra una base con datos que importen.
  *
+ * Sube HASTA `ULTIMA_MIGRACION_DEL_PAQUETE_1` (B6), no hasta lo último que haya en `prisma/migrations`: lo que agreguen las migraciones posteriores al paquete (columnas, tablas, políticas) no entra en
+ * la comparación del catálogo «igual que antes de M.2», que es del Paquete 1.
+ *
  * Qué comprueba:
- *  1. ARRIBA (todo aplicado): 32 tablas × 4 = 128 políticas `alcance_sucursal_*`, todas RESTRICTIVE y `TO motor2_app`, y exactamente las de `TABLAS_CON_POLITICA_DE_SUCURSAL`; las dos funciones,
+ *  1. ARRIBA (aplicado hasta B6): 32 tablas × 4 = 128 políticas `alcance_sucursal_*`, todas RESTRICTIVE y `TO motor2_app`, y exactamente las de `TABLAS_DEL_PAQUETE_1`; las dos funciones,
  *     con EXECUTE para `motor2_app` (y andan llamadas como ese rol); la tabla de P3 con su RLS; la clave de M.2.
  *  2. ABAJO: con los `down.sql` en orden inverso (B6 … B1, después `AgregadoDeCuenta`, después M.2), el catálogo queda IDÉNTICO al que había antes de M.2 (políticas, funciones, tablas, columnas,
  *     índices, restricciones, RLS, privilegios y la clave): 0 políticas de sucursal, 0 funciones, sin la tabla, sin la clave. Las filas de las tablas que no se borran (empresa, sucursal, mesa) siguen.
@@ -33,6 +38,12 @@ const SUBIDA = [MIGRACION_M2_CAMPOS_SENSIBLES, MIGRACION_P3_AGREGADO_DE_CUENTA, 
 const BAJADA = [...GRUPOS.map((g) => g.migracion).reverse(), MIGRACION_B1_FUNCIONES, MIGRACION_P3_AGREGADO_DE_CUENTA, MIGRACION_M2_CAMPOS_SENSIBLES];
 
 const E = "empresa_1p";
+
+/** Las políticas que la clasificación declara para las tablas que EXISTEN en la base temporal (en una base hasta B6 no están las tablas de migraciones posteriores). */
+async function politicasEsperadasEnLaBase(): Promise<number> {
+  const existentes = new Set((await base.cliente.query<{ t: string }>(`SELECT tablename::text AS t FROM pg_tables WHERE schemaname = 'public'`)).rows.map((r) => r.t));
+  return Object.keys(CLASIFICACION_DE_TABLAS).filter((t) => existentes.has(t)).reduce((n, t) => n + politicasEsperadas(t).length, 0);
+}
 let base: BaseTemporalMigrada;
 let hayRol = false;
 let app: Client | null = null;
@@ -61,16 +72,16 @@ async function comprobarArriba(etiqueta: string) {
   const politicas = await q<{ tabla: string; nombre: string; tipo: string; comando: string; roles: string }>(
     `SELECT tablename::text AS tabla, policyname::text AS nombre, permissive AS tipo, cmd AS comando, roles::text AS roles FROM pg_policies WHERE schemaname = 'public' AND policyname LIKE 'alcance\\_sucursal\\_%' ORDER BY 1, 2`,
   );
-  expect(politicas, `${etiqueta}: 32 tablas × 4 comandos`).toHaveLength(TABLAS_CON_POLITICA_DE_SUCURSAL.length * 4);
+  expect(politicas, `${etiqueta}: 32 tablas × 4 comandos`).toHaveLength(TABLAS_DEL_PAQUETE_1.length * 4);
   expect(politicas).toHaveLength(128);
-  expect([...new Set(politicas.map((p) => p.tabla))].sort(), `${etiqueta}: las tablas son exactamente las de la clasificación`).toEqual([...TABLAS_CON_POLITICA_DE_SUCURSAL].sort());
+  expect([...new Set(politicas.map((p) => p.tabla))].sort(), `${etiqueta}: las tablas son exactamente las del Paquete 1`).toEqual([...TABLAS_DEL_PAQUETE_1].sort());
   for (const p of politicas) {
     expect(p.tipo, `${etiqueta}: ${p.tabla}/${p.nombre}`).toBe("RESTRICTIVE");
     expect(p.roles, `${etiqueta}: ${p.tabla}/${p.nombre}`).toBe("{motor2_app}");
   }
-  for (const t of TABLAS_CON_POLITICA_DE_SUCURSAL) expect(politicas.filter((p) => p.tabla === t).map((p) => p.comando).sort(), `${etiqueta}: ${t}`).toEqual(["DELETE", "INSERT", "SELECT", "UPDATE"]);
+  for (const t of TABLAS_DEL_PAQUETE_1) expect(politicas.filter((p) => p.tabla === t).map((p) => p.comando).sort(), `${etiqueta}: ${t}`).toEqual(["DELETE", "INSERT", "SELECT", "UPDATE"]);
   const total = (await q<{ n: string }>(`SELECT count(*) AS n FROM pg_policies WHERE schemaname = 'public'`))[0]!.n;
-  expect(Number(total), `${etiqueta}: el total de políticas es el que sale de la clasificación (empresa + sucursal)`).toBe(CANTIDAD_DE_POLITICAS_ESPERADAS);
+  expect(Number(total), `${etiqueta}: el total de políticas es el que sale de la clasificación para las tablas que existen en esta base (empresa + sucursal)`).toBe(await politicasEsperadasEnLaBase());
 
   const funciones = await q<{ nombre: string }>(`SELECT proname::text AS nombre FROM pg_proc WHERE proname LIKE 'app\\_sucursales\\_%' ORDER BY 1`);
   expect(funciones.map((f) => f.nombre), `${etiqueta}: las dos funciones`).toEqual(["app_sucursales_escritura", "app_sucursales_lectura"]);
@@ -131,9 +142,9 @@ afterAll(async () => {
 });
 
 describe("Paquete 1: subir, bajar y subir (M.2, P3 y B1 a B6) sobre una base temporal", () => {
-  it("1. SUBIR: aplica todas las migraciones y queda todo arriba (128 políticas, 2 funciones con EXECUTE para motor2_app, la tabla de P3 y la clave de M.2)", async (ctx) => {
+  it("1. SUBIR: aplica hasta B6 y queda todo arriba (128 políticas, 2 funciones con EXECUTE para motor2_app, la tabla de P3 y la clave de M.2)", async (ctx) => {
     if (!hayRol) return ctx.skip();
-    await base.aplicarRestantes();
+    await base.aplicarHasta(ULTIMA_MIGRACION_DEL_PAQUETE_1);
     // Las seis migraciones del alcance existen y estaban en la lista de pendientes: la base las aplicó por su nombre.
     for (const m of SUBIDA) expect(sql(m, "migration.sql").length, m).toBeGreaterThan(0);
     await comprobarArriba("primera subida");
