@@ -252,6 +252,10 @@ export interface ItemDeCuenta {
    *  suelto de siempre. `promoTitulo` es el snapshot congelado (`PromoCuenta.titulo`), no el título actual de `PromoCarta`. */
   promoCuentaId: string | null;
   promoTitulo: string | null;
+  /** GO-2b (ADR-030): los nombres de las opciones dentro del precio («Grande», «Almendras»). Ausente sin opciones. */
+  opciones?: string[];
+  /** GO-2b: `true` SOLO en un adicional (cuelga de la línea de su producto: no lleva descuento de cliente y no se anula solo). */
+  esAdicional?: true;
 }
 
 export interface DetalleDeCuenta {
@@ -305,6 +309,9 @@ export interface MesaConCuentaLeida {
       creadoPor: { name: string | null; email: string } | null;
       creadoEn: Date;
       promoCuenta: { id: string; titulo: string } | null;
+      /** GO-2b: el padre de un adicional y la foto de lo elegido (opcionales: sin ellos, el detalle de siempre). */
+      lineaPadreId?: string | null;
+      opcionesElegidas?: { nombreOpcion: string; tipoGrupo: string }[];
     }[];
   }[];
 }
@@ -319,7 +326,9 @@ export function armarDetalleDeMesa(mesa: MesaConCuentaLeida | null, ahora: Date)
   const fila = mesa.cuentas[0] ?? null; // el índice único parcial garantiza a lo sumo una abierta
   if (!fila) return { mesa: { id: mesa.id, numero: mesa.numero }, cuenta: null };
 
-  const items: ItemDeCuenta[] = fila.items.map((i) => ({
+  const items: ItemDeCuenta[] = fila.items.map((i) => {
+    const opciones = (i.opcionesElegidas ?? []).filter((f) => f.tipoGrupo !== "ADICIONAL").map((f) => f.nombreOpcion);
+    return {
     id: i.id,
     productoId: i.productoId,
     productoNombre: i.producto.nombre,
@@ -334,7 +343,10 @@ export function armarDetalleDeMesa(mesa: MesaConCuentaLeida | null, ahora: Date)
     creadoEn: i.creadoEn,
     promoCuentaId: i.promoCuenta?.id ?? null,
     promoTitulo: i.promoCuenta?.titulo ?? null,
-  }));
+    ...(opciones.length ? { opciones } : {}),
+    ...(i.lineaPadreId ? { esAdicional: true as const } : {}),
+    };
+  });
   const { sinEnviar, envios } = agruparPorEnvio(items);
   const descuentoPorcentaje = fila.descuentoPorcentaje;
 
@@ -352,7 +364,10 @@ export function armarDetalleDeMesa(mesa: MesaConCuentaLeida | null, ahora: Date)
       // Σ del importe COBRADO de cada línea (importeDeLinea sobre precioCobradoConDescuentos), no la suma cruda re-redondeada: así el total
       // en pantalla nunca difiere del que registraría un cierre inmediato (ticket y cerrarCuenta usan el mismo criterio; sin cliente ni
       // descuento de producto, el precio queda tal cual). Con los dos descuentos rige solo el mayor. redondearMoneda solo limpia el ruido del float.
-      total: redondearMoneda(items.reduce((suma, i) => suma + importeDeLinea(i.cantidad, precioCobradoConDescuentos(i.precioUnitario, i.precioListaUnitario, descuentoPorcentaje).precio), 0)),
+      // GO-2b: el adicional va sin descuento de cliente (igual que el cierre y el ticket).
+      total: redondearMoneda(
+        items.reduce((suma, i) => suma + importeDeLinea(i.cantidad, precioCobradoConDescuentos(i.precioUnitario, i.precioListaUnitario, i.esAdicional ? null : descuentoPorcentaje).precio), 0)
+      ),
       sinEnviar,
       envios,
       itemsTotales: items.length,

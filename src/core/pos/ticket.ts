@@ -35,6 +35,23 @@ export interface LineaDeTicket {
    *  (paso 8c), para quien necesite el número exacto (ej. el detalle de `/reportes/tickets`); la vista de cliente/cocina
    *  no lo muestra. */
   indentado?: boolean;
+  /** GO-2b (ADR-030): los nombres de las opciones dentro del precio de una línea configurada («Grande», «Almendras»). Ausente sin opciones. */
+  opciones?: string[];
+  /** GO-2b: `true` SOLO en un adicional (va justo después de la línea de su producto, sin descuento de cliente). Ausente en todas las demás. */
+  esAdicional?: true;
+}
+
+/**
+ * GO-2b (ADR-030): lo que un ítem aporta a la agrupación con opciones (todo opcional: sin ello, el ticket de siempre). `id`, la huella y el padre (los espejos los
+ * repiten), el original de un espejo, la versión de la opción de un adicional (de su foto) y los nombres de las opciones dentro del precio (de la foto).
+ */
+export interface ConfiguracionDeItemTicket {
+  id?: string;
+  huellaOpciones?: string | null;
+  lineaPadreId?: string | null;
+  anulaAItemId?: string | null;
+  versionDeAdicional?: string | null;
+  opciones?: readonly string[];
 }
 
 /**
@@ -66,7 +83,7 @@ export interface TicketDeCuenta {
 }
 
 /** Un ítem de la cuenta con la anulación de la Operacion VENTA que lo registró (null: vigente, o sin operación). */
-export interface ItemConVenta {
+export interface ItemConVenta extends ConfiguracionDeItemTicket {
   productoId: string;
   productoNombre: string;
   cantidad: number;
@@ -119,6 +136,46 @@ export interface PromoDeItemTicket {
   titulo: string;
 }
 
+/** El ítem en la forma de `lineasDeVenta`, con la configuración de GO-2b si la trae (sin ella, lo de siempre). La usan el ticket y «Tickets emitidos». */
+export function itemParaLineaDeVenta(i: { productoId: string; cantidad: number; precioUnitario: number; precioCartaUnitario?: number | null; promo?: PromoDeItemTicket } & ConfiguracionDeItemTicket) {
+  return {
+    id: i.id,
+    productoId: i.productoId,
+    cantidad: i.cantidad,
+    precioUnitario: i.precioUnitario,
+    promoCuentaId: i.promo?.promoCuentaId,
+    precioCartaUnitario: i.precioCartaUnitario,
+    huellaOpciones: i.huellaOpciones,
+    lineaPadreId: i.lineaPadreId,
+    anulaAItemId: i.anulaAItemId,
+    versionDeAdicional: i.versionDeAdicional,
+  };
+}
+
+/**
+ * GO-2b: la configuración de un ítem desde lo que leyó la consulta (`opcionesElegidas`, la foto): los nombres de lo que va dentro del precio y la versión de la
+ * opción de un adicional. Sin foto ni huella ni padre devuelve `{}`: el ítem de siempre.
+ */
+export function configuracionDeItemLeido(i: {
+  id?: string;
+  huellaOpciones?: string | null;
+  lineaPadreId?: string | null;
+  anulaAItemId?: string | null;
+  opcionesElegidas?: readonly { nombreOpcion: string; tipoGrupo: string; versionDeOpcionId: string }[];
+}): ConfiguracionDeItemTicket {
+  const fotos = i.opcionesElegidas ?? [];
+  const opciones = fotos.filter((f) => f.tipoGrupo !== "ADICIONAL").map((f) => f.nombreOpcion);
+  const versionDeAdicional = fotos.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null;
+  return {
+    ...(i.id !== undefined ? { id: i.id } : {}),
+    ...(i.huellaOpciones ? { huellaOpciones: i.huellaOpciones } : {}),
+    ...(i.lineaPadreId ? { lineaPadreId: i.lineaPadreId } : {}),
+    ...(i.anulaAItemId ? { anulaAItemId: i.anulaAItemId } : {}),
+    ...(versionDeAdicional ? { versionDeAdicional } : {}),
+    ...(opciones.length ? { opciones } : {}),
+  };
+}
+
 /**
  * Líneas netas y total del ticket, a partir de TODOS los ítems de la cuenta (originales y anulaciones), igual que `cerrarCuenta`.
  *
@@ -137,7 +194,7 @@ export interface PromoDeItemTicket {
  * agrupar nunca mueve un centavo del total.
  */
 export function armarTicket(
-  items: readonly { productoId: string; productoNombre: string; cantidad: number; precioUnitario: number; precioCartaUnitario?: number | null; promo?: PromoDeItemTicket }[],
+  items: readonly ({ productoId: string; productoNombre: string; cantidad: number; precioUnitario: number; precioCartaUnitario?: number | null; promo?: PromoDeItemTicket } & ConfiguracionDeItemTicket)[],
   descuentoPorcentaje: number | null = null
 ): { lineas: LineaDeTicket[]; total: number } {
   const claveDe = (i: { productoId: string; precioUnitario: number; precioCartaUnitario?: number | null; promo?: PromoDeItemTicket }) =>
@@ -145,20 +202,26 @@ export function armarTicket(
   const nombres = new Map(items.map((i) => [claveDe(i), i.productoNombre]));
   const tituloPorPromo = new Map(items.flatMap((i) => (i.promo ? [[i.promo.promoCuentaId, i.promo.titulo] as const] : [])));
 
-  const netas = lineasDeVenta(
-    items.map((i) => ({ productoId: i.productoId, cantidad: i.cantidad, precioUnitario: i.precioUnitario, promoCuentaId: i.promo?.promoCuentaId, precioCartaUnitario: i.precioCartaUnitario }))
-  );
+  const netas = lineasDeVenta(items.map(itemParaLineaDeVenta));
+  // GO-2b: los nombres de las opciones de una línea configurada salen de su primer ítem ORIGINAL (los espejos no tienen foto).
+  const porId = new Map(items.flatMap((i) => (i.id !== undefined ? [[i.id, i] as const] : [])));
+  const opcionesDe = (l: (typeof netas)[number]) => (l.itemIds ?? []).map((id) => porId.get(id)).find((i) => i !== undefined && !i.anulaAItemId && (i.opciones?.length ?? 0) > 0)?.opciones;
   // `promoCuentaId` de cada neta se guarda APARTE (no en `componentes`, que es exactamente `LineaDeTicket` sin promo): así, sin
   // ninguna promo, `componentes` sale IDÉNTICO al de antes de esta Task, sin ningún campo de más que limpiar.
   const promoCuentaIdDeLaNeta = netas.map((l) => l.promoCuentaId);
   const componentes: LineaDeTicket[] = netas.map((l) => {
-    const cobro = precioCobradoConDescuentos(l.precioUnitario, l.precioCartaUnitario ?? null, descuentoPorcentaje);
+    // GO-2b: el adicional se cobra sin descuento de cliente (igual que en `cerrarCuenta`), así el ticket coincide al centavo con lo registrado.
+    const esAdicional = l.indicePadre !== undefined;
+    const cobro = esAdicional ? { precio: l.precioUnitario, precioLista: null } : precioCobradoConDescuentos(l.precioUnitario, l.precioCartaUnitario ?? null, descuentoPorcentaje);
+    const opciones = opcionesDe(l);
     return {
       producto: nombres.get(claveDeLineaDeVenta(l)) ?? "",
       cantidad: l.cantidad,
       precioUnitario: cobro.precio,
       ...(cobro.precioLista !== null ? { precioListaUnitario: cobro.precioLista } : {}),
       subtotal: importeDeLinea(l.cantidad, cobro.precio),
+      ...(opciones ? { opciones: [...opciones] } : {}),
+      ...(esAdicional ? { esAdicional: true as const } : {}),
     };
   });
   // El total es la suma de los subtotales NETOS — el mismo importe por línea que `cerrarCuenta` registra en cada VENTA —, no la
@@ -207,6 +270,12 @@ export interface CuentaCerradaLeida {
     operacionId: string | null;
     operacion: { anuladaEn: Date | null } | null;
     promoCuenta: { id: string; titulo: string } | null;
+    /** GO-2b: el id, la configuración y la foto del ítem (opcionales: sin ellos, el ticket de siempre). */
+    id?: string;
+    huellaOpciones?: string | null;
+    lineaPadreId?: string | null;
+    anulaAItemId?: string | null;
+    opcionesElegidas?: { nombreOpcion: string; tipoGrupo: string; versionDeOpcionId: string }[];
   }[];
   ejemplaresTicket: {
     numero: number;
@@ -229,6 +298,7 @@ export function armarTicketsDeCuentas(cuentas: readonly CuentaCerradaLeida[], ah
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
       promo: i.promoCuenta ? { promoCuentaId: i.promoCuenta.id, titulo: i.promoCuenta.titulo } : undefined,
+      ...configuracionDeItemLeido(i),
     }));
     // Cliente con descuento (Task #14): `descuentoPorcentaje` es el SNAPSHOT congelado de la cuenta, no el % actual de `Cliente`.
     const descuentoPorcentaje = cuenta.descuentoPorcentaje;
