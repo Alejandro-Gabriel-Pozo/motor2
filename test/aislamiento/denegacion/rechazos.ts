@@ -27,6 +27,8 @@ const REGLAS: readonly Regla[] = [
   { categoria: "ajeno", patron: /\bno pertenece\b/i },
   // «La elección incluye una sección que no es parte de esta promo.»
   { categoria: "ajeno", patron: /\bno es parte de\b/i },
+  // «Una de las opciones no es de este grupo.» (GO-2a, lo que admite un producto): la opción que llegó no es de un grupo de opciones de esta empresa.
+  { categoria: "ajeno", patron: /\bno es de este grupo\b/i },
   // «Este traspaso no está dirigido a esta sucursal como origen.», «Esta solicitud no la creó esta sucursal.»
   { categoria: "ajeno", patron: /\bno est[áa] dirigido a esta sucursal\b/i },
   { categoria: "ajeno", patron: /\bno la cre[óo] esta sucursal(?![a-záéíóúñ])/i },
