@@ -7,7 +7,6 @@ import { elegida, sembrarCafeDelSalon, type CafeDelSalon } from "../setup/opcion
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { armarTicket } from "../../src/core/pos/ticket";
 import { armarComandas } from "../../src/core/pos/comanda";
-import { armarDetalleDeMesa } from "../../src/core/pos/cuenta";
 import { agregarItems, enviarACocina } from "../../src/server/actions/pos/cuenta-pedido";
 import { anularItemEnviado } from "../../src/server/actions/pos/cuenta-anulacion";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
