@@ -4,7 +4,7 @@ import { cache } from "react";
 import { descripcionDelPortal, imagenParaCompartir, MARCA_PUBLICA, tituloDelPortal } from "@/core/carta/public";
 import { configPortalPublica, empresaCartaPublica, portalCartaPublico } from "@/server/carta-publica/sin-sesion";
 import { PortalVista } from "@/components/carta-publica/portal-vista";
-import { direccionPublicaDeCarta, metadataDeCartaPublica } from "@/components/carta-publica/metadatos";
+import { direccionPublicaDeCarta, hrefDeCartaPublica, metadataDeCartaPublica } from "@/components/carta-publica/metadatos";
 
 // Dinámico a propósito (sin caché): ver la nota de abajo.
 export const dynamic = "force-dynamic";
@@ -53,7 +53,7 @@ export default async function PortalPage({ params }: { params: Promise<{ empresa
       sucursales={resuelta.sucursales}
       empresaNombre={resuelta.empresa.nombre}
       estilo={resuelta.estilo}
-      hrefDe={(slug) => `/carta-publica/${slugEmpresa}/${slug}`}
+      hrefDe={(slug) => hrefDeCartaPublica(slugEmpresa, slug)}
       modo="publico"
     />
   );

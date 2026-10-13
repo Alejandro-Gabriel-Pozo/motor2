@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { origenPublicoDeCarta, type MetadatosPublicos } from "@/core/carta/public";
+import { origenPublicoDeCarta, urlCartaPublicaConEmpresaUnica, type MetadatosPublicos } from "@/core/carta/public";
 
 /**
  * El borde de los metadatos de la carta pública (`core/carta/metadatos.ts` arma los textos, esto los convierte en lo que Next entiende) y de las direcciones públicas. Lo usan las páginas
@@ -18,6 +18,16 @@ export function origenDeLaCarta(empresaSlug: string): string | null {
 export function direccionPublicaDeCarta(empresaSlug: string, sucursalSlug?: string): { origen: string | null; url: string | null } {
   const origen = origenDeLaCarta(empresaSlug);
   return { origen, url: origen ? `${origen}/${sucursalSlug ?? ""}` : null };
+}
+
+/**
+ * A dónde apunta un enlace de una página pública a otra (portal → carta, carta → portal). Con dominio de cartas real, DIRECTO a la URL final del host de la carta
+ * (`https://<empresa>.<dominio>/<sucursal>`): el path técnico `/carta-publica/<empresa>/<sucursal>` redirige (307) ahí y costaba un salto de red en cada toque. Sin dominio, o con
+ * `localhost`/`*.localhost` (desarrollo y e2e, donde no hay un host propio al que ir y la página puede estar viéndose por cualquier host), el path técnico, que sirve la carta en el mismo host y
+ * que el redirect del host de la carta lleva a la URL limpia. Las páginas son ISR y no ven el `Host`: este es el único criterio posible, y se resuelve con la configuración.
+ */
+export function hrefDeCartaPublica(empresaSlug: string, sucursalSlug?: string): string {
+  return urlCartaPublicaConEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA_COMPILADO, empresaSlug, sucursalSlug);
 }
 
 /** `Metadata` de Next para una página pública: título, descripción, dirección canónica, indexable, y las vistas previas de Open Graph y Twitter. La imagen solo si el comercio cargó una. */

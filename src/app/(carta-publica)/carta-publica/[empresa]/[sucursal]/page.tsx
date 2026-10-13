@@ -4,7 +4,7 @@ import { cache } from "react";
 import { descripcionDeCartaDeSucursal, imagenParaCompartir, MARCA_PUBLICA, tituloDeCartaDeSucursal } from "@/core/carta/public";
 import { cartaPublica, empresaCartaPublica } from "@/server/carta-publica/sin-sesion";
 import { CartaVista } from "@/components/carta-publica/carta-vista";
-import { direccionPublicaDeCarta, metadataDeCartaPublica } from "@/components/carta-publica/metadatos";
+import { direccionPublicaDeCarta, hrefDeCartaPublica, metadataDeCartaPublica } from "@/components/carta-publica/metadatos";
 
 // ISR: se cachea 5 minutos, y las acciones del módulo carta la invalidan al instante (`revalidarCartasPublicas`). Sin
 // `generateStaticParams` una ruta con segmentos dinámicos NO entra en ISR (el build la marca ƒ y `revalidate` no hace nada):
@@ -62,5 +62,5 @@ export default async function CartaPage({ params }: { params: Promise<{ empresa:
   const resuelta = await resolver(empresa, sucursal);
   if (!resuelta) notFound();
 
-  return <CartaVista carta={resuelta.carta} estilo={resuelta.estilo} hrefVolver={`/carta-publica/${empresa}`} />;
+  return <CartaVista carta={resuelta.carta} estilo={resuelta.estilo} hrefVolver={hrefDeCartaPublica(resuelta.empresa.slug)} />;
 }
