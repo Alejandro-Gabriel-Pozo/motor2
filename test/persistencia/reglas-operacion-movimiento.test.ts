@@ -17,6 +17,11 @@ import { construirReversion } from "../../src/core/compras/anulacion";
 afterAll(() => prismaAdmin.$disconnect());
 
 const CARPETA = join(__dirname, "../../prisma/migrations/20261002160000_reglas_en_la_base_operacion_movimiento");
+/**
+ * M6.3 (Paquete 4) REEMPLAZA `Operacion_anulacion_coherente_chk` para que admita anular una DEVOLUCION_PROVEEDOR. Esta prueba vuelve a correr la migración ORIGINAL (y su reversa) sobre la base compartida, y eso vuelve a poner la definición VIEJA
+ * (solo VENTA y COMPRA): cada vez que lo hace tiene que volver a correr la de M6.3, o los archivos que corran después y anulen una devolución fallarían según el orden en que se ejecuten.
+ */
+const CARPETA_M6_3 = join(__dirname, "../../prisma/migrations/20261018102000_anulacion_coherente_admite_devolucion");
 
 const CHECKS = [
   "MovimientoStock_signo_por_proceso_chk",
@@ -34,8 +39,8 @@ const CHECKS = [
 ];
 const INDICE_PASO_UNICO = "MovimientoStock_traspaso_paso_unico_key";
 
-function sentencias(archivo: string): string[] {
-  return readFileSync(join(CARPETA, archivo), "utf8")
+function sentencias(archivo: string, carpeta: string = CARPETA): string[] {
+  return readFileSync(join(carpeta, archivo), "utf8")
     .replace(/\r\n/g, "\n")
     .split(";\n")
     .map((s) =>
@@ -48,9 +53,12 @@ function sentencias(archivo: string): string[] {
     .filter((s) => s.length > 0);
 }
 
-async function correr(archivo: string) {
-  for (const sentencia of sentencias(archivo)) await prismaAdmin.$executeRawUnsafe(sentencia);
+async function correr(archivo: string, carpeta: string = CARPETA) {
+  for (const sentencia of sentencias(archivo, carpeta)) await prismaAdmin.$executeRawUnsafe(sentencia);
 }
+
+/** Vuelve a dejar la regla de anulación como la define M6.3 (la migración original la deja con la definición vieja). */
+const restaurarAnulacionCoherente = () => correr("migration.sql", CARPETA_M6_3);
 
 let usuarioId: string;
 let otroUsuarioId: string;
@@ -146,6 +154,7 @@ describe("la migración deja las reglas puestas y validadas", () => {
     const l = await linea("COMPRA", 3);
     try {
       await correr("migration.sql");
+      await restaurarAnulacionCoherente();
       await correr("down.sql");
       const quedan = await prismaAdmin.$queryRaw<Array<{ n: bigint }>>`SELECT count(*) AS n FROM pg_constraint WHERE conname::text = ANY(${CHECKS}::text[])`;
       expect(Number(quedan[0].n)).toBe(0);
@@ -156,9 +165,13 @@ describe("la migración deja las reglas puestas y validadas", () => {
     } finally {
       await prismaAdmin.$executeRawUnsafe(`UPDATE "MovimientoStock" SET cantidad = 3 WHERE id = '${l.id}'`);
       await correr("migration.sql");
+      await restaurarAnulacionCoherente();
     }
     const vuelven = await prismaAdmin.$queryRaw<Array<{ n: bigint }>>`SELECT count(*) AS n FROM pg_constraint WHERE conname::text = ANY(${CHECKS}::text[]) AND convalidated`;
     expect(Number(vuelven[0].n)).toBe(CHECKS.length);
+    // Mutación de M6.3: sin la restauración de arriba, la migración original deja la definición VIEJA (solo VENTA y COMPRA) y esta aserción se pone en rojo.
+    const [{ definicion }] = await prismaAdmin.$queryRaw<Array<{ definicion: string }>>`SELECT pg_get_constraintdef(oid) AS definicion FROM pg_constraint WHERE conname::text = 'Operacion_anulacion_coherente_chk'`;
+    expect(definicion).toContain("DEVOLUCION_PROVEEDOR");
   });
 
   it("la verificación previa corre limpia sobre una base sin filas fuera de regla", async () => {
@@ -180,6 +193,7 @@ describe("la migración deja las reglas puestas y validadas", () => {
     } finally {
       await prismaAdmin.$executeRawUnsafe(`UPDATE "MovimientoStock" SET cantidad = 3 WHERE id = '${l.id}'`);
       await correr("migration.sql");
+      await restaurarAnulacionCoherente();
     }
   });
 });
@@ -322,13 +336,18 @@ describe("Operacion: campos que pertenecen a un solo proceso", () => {
 });
 
 describe("Operacion: anulación e idempotencia", () => {
-  it("quién anuló sin cuándo no existe, y solo la VENTA y la COMPRA se anulan", async () => {
+  it("quién anuló sin cuándo no existe, y solo la VENTA, la COMPRA y la DEVOLUCION_PROVEEDOR (M6.3) se anulan", async () => {
     const venta = await operacion({ proceso: "VENTA" });
     await exigirRechazo("Operacion", venta.id, `"anuladaPorId" = '${otroUsuarioId}'`, "Operacion_anulacion_coherente_chk");
     for (const proceso of ["AJUSTE", "MERMA", "TRANSFERENCIA_SALIDA_SUCURSAL"] as const) {
       const o = await operacion({ proceso });
       await exigirRechazo("Operacion", o.id, `"anuladaEn" = now()`, "Operacion_anulacion_coherente_chk");
     }
+    // M6.3: la devolución a un proveedor SÍ se anula (anular una nota de crédito revierte la devolución que acreditaba), pero «quién anuló» sin «cuándo» sigue sin existir.
+    const devolucion = await operacion({ proceso: "DEVOLUCION_PROVEEDOR" });
+    await exigirRechazo("Operacion", devolucion.id, `"anuladaPorId" = '${otroUsuarioId}'`, "Operacion_anulacion_coherente_chk");
+    const anulada = await operacion({ proceso: "DEVOLUCION_PROVEEDOR", anuladaEn: new Date(), anuladaPorId: otroUsuarioId });
+    expect(anulada.anuladaEn).not.toBeNull();
   });
 
   it("borrar al usuario que anuló deja la anulación en pie (anuladaPorId pasa a NULL con anuladaEn puesta)", async () => {

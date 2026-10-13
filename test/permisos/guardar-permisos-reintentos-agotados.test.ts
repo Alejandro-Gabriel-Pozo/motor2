@@ -26,7 +26,7 @@ describe("guardarPermisosCasoDeUso: reintentos agotados y otros errores", () => 
     vi.restoreAllMocks();
   });
 
-  it("un conflicto de escritura en cada intento: reintenta 5 veces y devuelve «justo ahora había otro guardado», sin guardar nada", async () => {
+  it("un conflicto de escritura en cada intento: reintenta 8 veces y devuelve «justo ahora había otro guardado», sin guardar nada", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const foto = async () => ({ matriz: await prisma.permisoRol.findMany({ orderBy: { id: "asc" } }), auditoria: await prisma.registroAuditoria.count() });
     const antes = await foto();
@@ -35,7 +35,7 @@ describe("guardarPermisosCasoDeUso: reintentos agotados y otros errores", () => 
     });
     const r = await guardarPermisosCasoDeUso({ usuarioId: "u-prueba", empresaId: EMPRESA_POR_DEFECTO_ID, transaccion }, cambio());
     expect(r).toEqual({ ok: false, codigo: "GUARDADO_EN_CONFLICTO", mensaje: MENSAJE_GUARDADO_EN_CONFLICTO });
-    expect(transaccion).toHaveBeenCalledTimes(5);
+    expect(transaccion).toHaveBeenCalledTimes(8);
     expect(await foto()).toEqual(antes);
   });
 

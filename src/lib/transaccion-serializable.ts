@@ -32,13 +32,29 @@ import type { Transaccion } from "@/lib/db-tipos";
  * Los logs "[con-reintento][investigacion]" quedan como la forma de medir si
  * alcanzó: `esperaTotalMs` dice cuánto se esperó en total. El criterio de cierre
  * real NO es que la suite pase (el flake era de ~0,3 %): es que "agotó los
- * reintentos" deje de aparecer en los logs de producción. Si vuelve a aparecer,
- * recién ahí se decide subir `maxIntentos` — aparte, y con esos datos.
+ * reintentos" deje de aparecer en los logs de producción.
+ *
+ * POR QUÉ 8 INTENTOS Y NO 5 (2026-10-13). Con 5, el CI de GitHub (job «Integración
+ * parte 2 de 4», dos corridas del mismo commit) agotó los reintentos en
+ * `test/pos/cuenta-concurrencia.test.ts` («3 cierres de mesas distintas de la misma
+ * sucursal a la vez»): P2034 con `esperaTotalMs` de solo 47 y 54 ms. Esos son los datos
+ * que este comentario pedía. Medición local (Postgres 16, 3 procesos quemando CPU, el
+ * mismo cierre de mesas con K cierres a la vez, 20-30 iteraciones por celda): bajo
+ * SERIALIZABLE los K contendientes se resuelven de a UNO por ronda (K = 3: un reintento
+ * y dos reintentos; K = 6: hasta cuatro), así que la cantidad de intentos que hace falta
+ * crece con la cantidad de cierres simultáneos y 5 no alcanza apenas son 6 o más (con 5:
+ * 18 de 30 iteraciones con K = 6 y 20 de 20 con K = 8 terminaban en error; con 8: 0 de
+ * 30 y 0 de 20, y el peor caso usó 6 intentos). El jitter, en cambio, NO conviene
+ * tocarlo: darle un piso a la espera (`techo * (0,5 + 0,5 * azar)`) empeoró la medición
+ * (24 y 29 de 30 con K = 6) porque estrecha el rango y vuelve a sincronizar a los
+ * contendientes. Peor caso acumulado de espera con 8 intentos: 25 + 50 + 100 + 200 + 3 × 250 =
+ * 1125 ms (esperado ~560 ms), muy por debajo del `timeout` de 15 s de cada transacción.
+ * El único llamador que pasa un `maxIntentos` propio (la receta, que usa `conReintento` directo) no cambia.
  */
 export async function conTransaccionSerializable<T>(
   transaccion: Transaccion,
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
-  maxIntentos = 5,
+  maxIntentos = 8,
   /** Solo para tests: la espera entre reintentos y su aleatoriedad (ver reintentar.ts). */
   opcionesEspera: OpcionesEspera = {},
   /**

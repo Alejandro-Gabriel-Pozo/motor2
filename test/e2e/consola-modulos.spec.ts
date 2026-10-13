@@ -72,6 +72,16 @@ test("Gastos y servicios aparece como «Próximamente» y no se puede activar", 
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
+test("Centros de costos aparece como «Próximamente» y no se puede activar", async ({ page }) => {
+  await ingresarALaConsola(page, CONSOLA!);
+  await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${e.b.empresaId}/modulos`);
+  await expect(page.getByRole("heading", { name: /^Módulos de / })).toBeVisible();
+  const fila = page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "Centros de costos", exact: true }) });
+  await expect(fila).toContainText("Próximamente");
+  await expect(page.getByRole("button", { name: "Activar Centros de costos" })).toHaveCount(0);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
 test("un código desconocido en la URL no muestra texto ajeno", async ({ page }) => {
   await ingresarALaConsola(page, CONSOLA!);
   await page.goto(`${CONSOLA}/instalaciones/e2ea/empresas/${e.b.empresaId}/modulos?hecho=modulo-activado&modulo=<b>falso</b>`);

@@ -37,10 +37,14 @@ model User {
   invitacionesHechas         Invitacion[]         @relation("InvitacionInvitadoPor")
   invitacionesSucursalHechas InvitacionSucursal[]
   agregadosDeCuenta          AgregadoDeCuenta[]
+  reclasificacionesDeRenglon ReclasificacionRenglon[]
+  distribucionesDeCostoCreadas DistribucionCostoVersion[]
   ventas                     Venta[]
   facturasProvCreadas        FacturaProveedor[]   @relation("FacturaProveedorCreadaPor")
   facturasProvConfirmadas    FacturaProveedor[]   @relation("FacturaProveedorConfirmadaPor")
   facturasProvAnuladas       FacturaProveedor[]   @relation("FacturaProveedorAnuladaPor")
+  notasDeCreditoCreadas      NotaCreditoProveedor[] @relation("NotaCreditoProveedorCreadaPor")
+  notasDeCreditoAnuladas     NotaCreditoProveedor[] @relation("NotaCreditoProveedorAnuladaPor")
   partesRecibidas FacturaProveedorSucursal[] @relation("FacturaProveedorParteRecibidaPor")
   traspasosCreados           TraspasoSucursal[]   @relation("TraspasoCreadoPor")
   traspasosDecididosOrigen   TraspasoSucursal[]   @relation("TraspasoDecididoOrigen")
@@ -156,6 +160,8 @@ model Sucursal {
   ventas                   Venta[]
   facturaProveedorPartes   FacturaProveedorSucursal[]
   imputacionesDeGasto      ImputacionDeGasto[]
+  imputacionesDeNotaCredito NotaCreditoProveedorImputacion[]
+  planesDeCostos           PlanDeCostosSucursal[]
   invitacionSucursals      InvitacionSucursal[]
 
   @@unique([empresaId, nombre])
@@ -618,6 +624,7 @@ model Proveedor {
   operaciones          Operacion[]
   pagosConsignante     PagoConsignante[]
   facturasProveedor    FacturaProveedor[]
+  notasDeCredito       NotaCreditoProveedor[]
   puntosDeVenta        PuntoDeVentaDeProveedor[]
 
   @@unique([empresaId, codigo])
@@ -1195,6 +1202,9 @@ model Operacion {
 
   /// Paquete 3 (M3b): la parte de factura de proveedor de la que salió esta compra (a lo sumo una; `FacturaProveedorSucursal.operacionId` es único). `null` = una compra anterior a las facturas repartidas.
   facturaProveedorParte FacturaProveedorSucursal?
+
+  /// Paquete 4 (M6): la imputación de una nota de crédito de proveedor que acredita esta devolución (`DEVOLUCION_PROVEEDOR`); a lo sumo una (`NotaCreditoProveedorImputacion.operacionDevolucionId` es único con la empresa).
+  notaCreditoImputacion NotaCreditoProveedorImputacion?
 
   /// POS: ítems de cuenta cuya venta es esta Operación (los enlaza `cerrarCuenta`, src/server/actions/pos/cuenta.ts).
   cuentaItems CuentaItem[]
@@ -2374,6 +2384,16 @@ model Empresa {
   puntoDeVentaDeProveedorRel     PuntoDeVentaDeProveedor[]
   conceptoDeGastoRel             ConceptoDeGasto[]
   imputacionDeGastoRel           ImputacionDeGasto[]
+  reclasificacionRenglonRel      ReclasificacionRenglon[]
+  notaCreditoProveedorRel        NotaCreditoProveedor[]
+  notaCreditoProveedorLineaRel   NotaCreditoProveedorLinea[]
+  notaCreditoProveedorImputacionRel NotaCreditoProveedorImputacion[]
+  notaCreditoProveedorTributoRel NotaCreditoProveedorTributo[]
+  planDeCostosRel                PlanDeCostos[]
+  centroDeCostosRel              CentroDeCostos[]
+  planDeCostosSucursalRel        PlanDeCostosSucursal[]
+  distribucionCostoVersionRel    DistribucionCostoVersion[]
+  distribucionCostoLineaRel      DistribucionCostoLinea[]
 }
 
 enum EstadoModulo {
@@ -2571,8 +2591,12 @@ model FacturaProveedor {
   partes    FacturaProveedorSucursal[]
   /// M3d: percepciones e impuestos que trae la factura además del IVA.
   tributos  FacturaProveedorTributo[]
+  /// M6: las notas de crédito del proveedor que se cargaron sobre esta factura (vigentes y anuladas).
+  notasDeCredito NotaCreditoProveedor[]
 
   @@unique([empresaId, id])
+  /// M6: el destino de la clave foránea de tres columnas de la nota de crédito: la nota es del MISMO proveedor que su factura, y corregir el proveedor de una factura con notas lo rechaza la base (23503).
+  @@unique([empresaId, id, proveedorId])
   @@index([empresaId, proveedorId, fecha])
 }
 
@@ -2615,8 +2639,15 @@ model FacturaProveedorRenglon {
   movimientos MovimientoStock[]
   /// M4.3: cuánto de este renglón (si es `SIN_STOCK`) le toca a cada sucursal.
   imputaciones ImputacionDeGasto[]
+  /// M5: las reclasificaciones (versiones) del concepto y del tipo de costo de este renglón. La versión 0 es el propio renglón.
+  reclasificaciones ReclasificacionRenglon[]
+  /// M6: las líneas de nota de crédito que acreditan este renglón (pertenencia a su factura y naturaleza).
+  lineasDeNotaCredito NotaCreditoProveedorLinea[] @relation("LineaDeNotaDelRenglon")
+  lineasDeNotaCreditoPorNaturaleza NotaCreditoProveedorLinea[] @relation("LineaDeNotaPorNaturaleza")
 
   @@unique([empresaId, id])
+  /// M6: el destino de la clave foránea de pertenencia de la línea de nota de crédito: la línea acredita un renglón de LA factura de su nota.
+  @@unique([empresaId, facturaProveedorId, id])
   @@unique([facturaProveedorId, orden])
   /// M4.2: el destino de la clave foránea con discriminador de la imputación (M4.3): solo un renglón `SIN_STOCK` se puede imputar.
   @@unique([empresaId, id, naturaleza])
@@ -2797,6 +2828,10 @@ model ConceptoDeGasto {
 
   /// Los renglones sin stock que usan este concepto (M4.2).
   renglones FacturaProveedorRenglon[]
+  /// M5: las reclasificaciones de renglones que eligieron este concepto.
+  reclasificaciones ReclasificacionRenglon[]
+  /// M6: las líneas de notas de crédito sueltas de gasto que eligieron este concepto.
+  lineasDeNotaCredito NotaCreditoProveedorLinea[]
 
   @@unique([empresaId, id])
   @@unique([empresaId, codigo])
@@ -2823,7 +2858,337 @@ model ImputacionDeGasto {
   importeIvaComputable      Decimal                 @default(0) @db.Decimal(14, 2)
   creadoEn                  DateTime                @default(now())
 
+  /// M7: las versiones de distribución de esta imputación entre los centros de costos de un plan.
+  distribuciones DistribucionCostoVersion[]
+
   @@unique([empresaId, id])
   @@unique([facturaProveedorRenglonId, sucursalId])
   @@index([sucursalId])
+}
+
+/// Paquete 4 (M5, C26): la RECLASIFICACIÓN versionada de un renglón SIN STOCK de la factura de proveedor: corrige el concepto de gasto y el tipo de costo (cada versión es la foto completa de los dos). DE EMPRESA (RLS por empresa, sin
+/// `sucursalId`: el renglón es uno solo para toda la empresa, y el árbitro de la concurrencia tiene que ver todas las versiones). La versión 0 es el propio renglón (no se escribe fila); cada reclasificación agrega `numero` = vigente + 1; la vigente
+/// es SIEMPRE la de `numero` mayor y, si no hay ninguna, el renglón: derivado, nunca un flag ni un UPDATE. SOLO se agrega: la app tiene SELECT e INSERT, nunca UPDATE ni DELETE. La clave foránea con DISCRIMINADOR
+/// `(empresaId, facturaProveedorRenglonId, naturalezaRenglon) → FacturaProveedorRenglon(empresaId, id, naturaleza)` y `naturalezaRenglon` fijo en `SIN_STOCK` (CHECK) impiden en la base reclasificar un renglón de mercadería. El único
+/// `(renglón, numero)` elige UNA ganadora entre reclasificaciones simultáneas; la clave de idempotencia es única global (ADR-028) y se guarda el mensaje para reproducirlo (I3). No toca importes (no tiene columnas de dinero) y no tiene `@updatedAt`.
+/// La `Proceso RECLASIFICACION` del stock es otra cosa. Nada de `src/` la escribe todavía (Etapa C).
+model ReclasificacionRenglon {
+  id                        String                  @id @default(cuid())
+  empresaId                 String                  @default(dbgenerated("app_empresa_actual()"))
+  empresa                   Empresa                 @relation(fields: [empresaId], references: [id])
+  facturaProveedorRenglonId String
+  /// Siempre `SIN_STOCK` (CHECK): es la tercera columna de la clave foránea con discriminador.
+  naturalezaRenglon         String                  @default("SIN_STOCK")
+  renglon                   FacturaProveedorRenglon @relation(fields: [empresaId, facturaProveedorRenglonId, naturalezaRenglon], references: [empresaId, id, naturaleza], onDelete: Restrict, onUpdate: Restrict)
+  /// 1, 2, 3...: único por renglón (CHECK >= 1). La vigente es la de número mayor.
+  numero                    Int
+  conceptoGastoId           String
+  conceptoGasto             ConceptoDeGasto         @relation(fields: [empresaId, conceptoGastoId], references: [empresaId, id])
+  /// COSTO_DE_VENTAS, GASTO_OPERATIVO, EXTRAORDINARIO, INVERSION o RESULTADO_FINANCIERO (CHECK).
+  tipoDeCosto               String
+  /// Obligatorio, con al menos un carácter visible y hasta 200 (CHECK).
+  motivo                    String
+  /// UUID que genera la pantalla. Único GLOBAL (ADR-028).
+  claveIdempotencia         String                  @unique
+  payloadHash               String
+  resultadoMensaje          String
+  creadoPorId               String
+  creadoPor                 User                    @relation(fields: [creadoPorId], references: [id], onDelete: Restrict)
+  /// Instante (UTC) desde el que rige la versión; vale para el período original del gasto.
+  creadoEn                  DateTime                @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([facturaProveedorRenglonId, numero])
+  @@index([conceptoGastoId])
+}
+
+/// Paquete 4 (M6): la NOTA DE CRÉDITO DE PROVEEDOR (cabecera). DE EMPRESA (RLS por empresa, sin `sucursalId`): quien recibe el crédito es la empresa, igual que la factura; el árbitro de la unicidad del número tiene que ver todas las notas, y la sucursal
+/// de una nota suelta la declaran sus imputaciones. `tipo` es `SOBRE_FACTURA` (con `facturaProveedorId`) o `SUELTA` (sin factura), en pareo (CHECK). La clave foránea de TRES columnas `(empresaId, facturaProveedorId, proveedorId) → FacturaProveedor` hace que la nota sea
+/// del MISMO proveedor que su factura y que corregir el proveedor de una factura con notas dé 23503. `importeTotal` es CON IVA incluido y mayor que cero. El número es único entre las notas VIGENTES (`anuladaEn IS NULL`): índice único parcial que vive solo en la
+/// migración (Prisma no modela el parcial), así una nota anulada libera su número. La clave de idempotencia es única global (ADR-028) y guarda la huella y el mensaje para reproducirlo (I3). Solo se agrega: la app tiene SELECT e INSERT y UPDATE únicamente de `anuladaEn`,
+/// `anuladaPorId`, `motivoAnulacion` (las tres juntas, CHECK) y `recibidaEnAdministracionEn`; por eso NO lleva `@updatedAt`. Que Σ líneas + Σ tributos = total y que lo acreditado de un renglón (y de la factura) no pase de lo comprado NO lo decide la base: lo hace el caso de uso
+/// con `SELECT … FOR UPDATE` sobre la fila de la factura (sin disparadores; ADR-029 §12). Nada de `src/` la escribe todavía (Etapa C).
+model NotaCreditoProveedor {
+  id                 String               @id @default(cuid())
+  empresaId          String               @default(dbgenerated("app_empresa_actual()"))
+  empresa            Empresa              @relation(fields: [empresaId], references: [id])
+  proveedorId        String
+  proveedor          Proveedor            @relation(fields: [empresaId, proveedorId], references: [empresaId, id])
+  /// `SOBRE_FACTURA` o `SUELTA` (CHECK): en pareo con `facturaProveedorId`.
+  tipo               String
+  facturaProveedorId String?
+  facturaProveedor   FacturaProveedor?    @relation(fields: [empresaId, facturaProveedorId, proveedorId], references: [empresaId, id, proveedorId], onDelete: Restrict, onUpdate: Restrict, map: "NotaCreditoProveedor_factura_fkey")
+  /// El número tal cual se tecleó y su clave normalizada (la calcula la Etapa C): no vacíos (CHECK).
+  nroComprobante            String
+  nroComprobanteNormalizado String
+  /// La letra del comprobante (A, B, C, E, M o X), cuando se conoce: entra en la clave de unicidad.
+  letra                     String?
+  /// El día del crédito: el mediodía argentino del día elegido (UTC). Manda el período.
+  fecha                     DateTime
+  /// La fecha impresa en el comprobante (solo dato).
+  fechaComprobante          DateTime?            @db.Date
+  /// El total de la nota, CON IVA incluido. Mayor que cero (CHECK).
+  importeTotal              Decimal              @db.Decimal(14, 2)
+  /// Copia de la condición de la empresa frente al IVA al momento de la carga, neto e IVA del comprobante (NULL = no se desglosó; van juntos, CHECK). Mismas reglas que la factura.
+  condicionIvaEmpresa       String?
+  importeNeto               Decimal?             @db.Decimal(14, 2)
+  importeIva                Decimal?             @db.Decimal(14, 2)
+  /// Obligatorio, con al menos un carácter visible y hasta 200 (CHECK).
+  motivo                    String
+  /// Hoy solo `CONFIRMADA` (CHECK): el camino a un flujo por pasos.
+  estado                    String               @default("CONFIRMADA")
+  /// Hoy solo `CARGA` (CHECK).
+  origen                    String               @default("CARGA")
+  recibidaEnAdministracionEn DateTime?           @db.Date
+  /// UUID que genera la pantalla. Único GLOBAL (ADR-029 y ADR-028).
+  claveIdempotencia         String               @unique
+  payloadHash               String
+  resultadoMensaje          String
+  creadoPorId               String
+  creadoPor                 User                 @relation("NotaCreditoProveedorCreadaPor", fields: [creadoPorId], references: [id], onDelete: Restrict)
+  creadoEn                  DateTime             @default(now())
+  /// Las tres juntas o ninguna (CHECK); el motivo, con al menos un carácter visible y hasta 200.
+  anuladaEn                 DateTime?
+  anuladaPorId              String?
+  anuladaPor                User?                @relation("NotaCreditoProveedorAnuladaPor", fields: [anuladaPorId], references: [id], onDelete: Restrict)
+  motivoAnulacion           String?
+
+  lineas           NotaCreditoProveedorLinea[] @relation("LineaDeLaNota")
+  lineasPorFactura NotaCreditoProveedorLinea[] @relation("LineaDeLaNotaPorFactura")
+  tributos         NotaCreditoProveedorTributo[]
+
+  @@unique([empresaId, id])
+  /// Destino de la clave foránea con discriminador de la línea: una línea suelta no puede colgar de una nota con factura, ni al revés.
+  @@unique([empresaId, id, tipo])
+  /// Destino de la clave foránea de la línea: la factura de la línea es la de su nota.
+  @@unique([empresaId, id, facturaProveedorId])
+  @@index([empresaId, proveedorId, fecha])
+  @@index([facturaProveedorId])
+}
+
+/// Paquete 4 (M6): una LÍNEA de la nota de crédito. DE EMPRESA (espejo del renglón de la factura). En una nota sobre factura, cada línea acredita exactamente UN renglón de ESA factura (claves foráneas de pertenencia y de naturaleza); en una nota suelta, ninguna línea tiene
+/// referencias y declara su naturaleza (si es un gasto, su concepto y una COPIA del tipo de costo). `admiteDevolucion` (CHECK: nota sobre factura y mercadería) es el discriminador de la imputación: solo así una imputación puede llevar una devolución. La línea sobre factura NO copia el
+/// concepto ni el tipo de costo: los lectores leen la clasificación vigente del renglón (M5). Solo se agrega. Nada de `src/` la escribe todavía (Etapa C).
+model NotaCreditoProveedorLinea {
+  id                        String                   @id @default(cuid())
+  empresaId                 String                   @default(dbgenerated("app_empresa_actual()"))
+  empresa                   Empresa                  @relation(fields: [empresaId], references: [id])
+  notaCreditoProveedorId    String
+  /// Copia del discriminador de la nota (`SOBRE_FACTURA` o `SUELTA`): tercera columna de la clave foránea hacia la nota.
+  tipoNota                  String
+  nota                      NotaCreditoProveedor     @relation("LineaDeLaNota", fields: [empresaId, notaCreditoProveedorId, tipoNota], references: [empresaId, id, tipo], onDelete: Restrict, onUpdate: Restrict, map: "NotaCreditoProveedorLinea_nota_tipo_fkey")
+  /// La factura de la línea (la de su nota): tercera columna de la clave foránea hacia la nota y primera de la de pertenencia del renglón. NULL en una nota suelta.
+  facturaProveedorId        String?
+  notaPorFactura            NotaCreditoProveedor?    @relation("LineaDeLaNotaPorFactura", fields: [empresaId, notaCreditoProveedorId, facturaProveedorId], references: [empresaId, id, facturaProveedorId], onDelete: Restrict, onUpdate: Restrict, map: "NotaCreditoProveedorLinea_nota_factura_fkey")
+  /// La posición en la nota (desde 1; única por nota).
+  orden                     Int
+  facturaProveedorRenglonId String?
+  renglon                   FacturaProveedorRenglon? @relation("LineaDeNotaDelRenglon", fields: [empresaId, facturaProveedorId, facturaProveedorRenglonId], references: [empresaId, facturaProveedorId, id], onDelete: Restrict, onUpdate: Restrict, map: "NotaCreditoProveedorLinea_renglon_factura_fkey")
+  /// `MERCADERIA` o `SIN_STOCK` (CHECK). Con renglón, es la del renglón (clave foránea de naturaleza).
+  naturaleza                String
+  renglonPorNaturaleza      FacturaProveedorRenglon? @relation("LineaDeNotaPorNaturaleza", fields: [empresaId, facturaProveedorRenglonId, naturaleza], references: [empresaId, id, naturaleza], onDelete: Restrict, onUpdate: Restrict, map: "NotaCreditoProveedorLinea_renglon_naturaleza_fkey")
+  /// `= (tipoNota = 'SOBRE_FACTURA' AND naturaleza = 'MERCADERIA')` (CHECK): es la tercera columna de la clave foránea de la imputación.
+  admiteDevolucion          Boolean
+  /// `RENGLON`, `REPARTO_DEL_TOTAL` (la bonificación global repartida) o `SIN_FACTURA` (CHECK, en pareo con el tipo de la nota).
+  origenImporte             String
+  descripcion               String?
+  /// Solo en una línea suelta `SIN_STOCK` (CHECK de pareo): el concepto de gasto y la COPIA de su tipo de costo.
+  conceptoGastoId           String?
+  conceptoGasto             ConceptoDeGasto?         @relation(fields: [empresaId, conceptoGastoId], references: [empresaId, id])
+  tipoDeCosto               String?
+  /// Lo acreditado por la línea, CON IVA incluido. Mayor que cero (CHECK).
+  importe                   Decimal                  @db.Decimal(14, 2)
+  /// Alícuota, neto e IVA de la línea (NULL = no se desglosó; neto + IVA = `importe` EXACTO, CHECK) e IVA computable (entre 0 y el IVA, CHECK). Mismas reglas que el renglón de la factura.
+  alicuotaIva               String?
+  importeNeto               Decimal?                 @db.Decimal(14, 2)
+  importeIva                Decimal?                 @db.Decimal(14, 2)
+  importeIvaComputable      Decimal                  @default(0) @db.Decimal(14, 2)
+  creadoEn                  DateTime                 @default(now())
+
+  imputaciones NotaCreditoProveedorImputacion[]
+
+  @@unique([empresaId, id])
+  /// Destino de la clave foránea con discriminador de la imputación (M6): solo una línea de mercadería sobre factura admite una devolución.
+  @@unique([empresaId, id, admiteDevolucion])
+  @@unique([notaCreditoProveedorId, orden])
+  @@index([facturaProveedorRenglonId])
+  @@index([conceptoGastoId])
+}
+
+/// Paquete 4 (M6): la IMPUTACIÓN por sucursal de una línea de la nota de crédito: cuánto del importe de la línea es de cada sucursal y cuánto de eso es IVA computable (repartido en dos pasos con `repartirImporte`, como `ImputacionDeGasto`). `PROPIA` (`sucursalId` NOT NULL; sus
+/// políticas de alcance, en la migración siguiente). Es la tabla que lleva la CANTIDAD y la DEVOLUCIÓN: puede apuntar a `Operacion` (clave foránea `(empresaId, operacionDevolucionId)`) porque la regla R8 solo restringe a las tablas DE_EMPRESA. `operacionDevolucionId` es único con la empresa:
+/// una devolución se acredita una sola vez. La clave foránea con DISCRIMINADOR `(empresaId, línea, lineaAdmiteDevolucion)` y el CHECK de la devolución impiden que una línea de gasto (o una nota suelta) lleve cantidad o devolución. Solo se agrega: la app tiene SELECT e INSERT.
+/// Que Σ imputaciones = importe de la línea y que la devolución sea de la sucursal y de la compra correctas lo valida la Etapa C. Nada de `src/` la escribe todavía.
+model NotaCreditoProveedorImputacion {
+  id                          String                    @id @default(cuid())
+  empresaId                   String                    @default(dbgenerated("app_empresa_actual()"))
+  empresa                     Empresa                   @relation(fields: [empresaId], references: [id])
+  notaCreditoProveedorLineaId String
+  /// Copia de `NotaCreditoProveedorLinea.admiteDevolucion`: tercera columna de la clave foránea hacia la línea.
+  lineaAdmiteDevolucion       Boolean
+  linea                       NotaCreditoProveedorLinea @relation(fields: [empresaId, notaCreditoProveedorLineaId, lineaAdmiteDevolucion], references: [empresaId, id, admiteDevolucion], onDelete: Restrict, onUpdate: Restrict, map: "NotaCreditoProveedorImputacion_linea_fkey")
+  sucursalId                  String
+  sucursal                    Sucursal                  @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  /// Lo que le toca a la sucursal, CON IVA incluido. Mayor que cero (CHECK).
+  importe                     Decimal                   @db.Decimal(14, 2)
+  /// La parte de `importe` que es IVA computable (entre 0 y `importe`, CHECK).
+  importeIvaComputable        Decimal                   @default(0) @db.Decimal(14, 2)
+  /// Solo con una devolución (CHECK): lo devuelto, en unidad de stock. Mayor que cero.
+  cantidadStock               Decimal?                  @db.Decimal(14, 4)
+  /// La `Operacion` `DEVOLUCION_PROVEEDOR` que esta imputación acredita. Solo en una línea que admite devolución (CHECK).
+  operacionDevolucionId       String?
+  operacionDevolucion         Operacion?                @relation(fields: [empresaId, operacionDevolucionId], references: [empresaId, id], onDelete: Restrict, onUpdate: Restrict, map: "NotaCreditoProveedorImputacion_devolucion_fkey")
+  creadoEn                    DateTime                  @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([notaCreditoProveedorLineaId, sucursalId], map: "NotaCreditoProveedorImputacion_linea_sucursal_key")
+  @@unique([empresaId, operacionDevolucionId], map: "NotaCreditoProveedorImputacion_devolucion_key")
+  @@index([sucursalId])
+}
+
+/// Paquete 4 (M6): un tributo de la nota de crédito (percepción o impuesto que acredita además del IVA). Espejo de `FacturaProveedorTributo`: cuelga de la cabecera, es DE EMPRESA y solo se agrega. `tipo` de lista cerrada e `importe` mayor que cero (CHECK).
+/// Que el total de la nota sea Σ líneas + Σ tributos lo valida la Etapa C. Nada de `src/` la escribe todavía.
+model NotaCreditoProveedorTributo {
+  id                     String               @id @default(cuid())
+  empresaId              String               @default(dbgenerated("app_empresa_actual()"))
+  empresa                Empresa              @relation(fields: [empresaId], references: [id])
+  notaCreditoProveedorId String
+  nota                   NotaCreditoProveedor @relation(fields: [empresaId, notaCreditoProveedorId], references: [empresaId, id], map: "NotaCreditoProveedorTributo_nota_fkey")
+  tipo                   String
+  descripcion            String?
+  importe                Decimal              @db.Decimal(14, 2)
+  creadoEn               DateTime             @default(now())
+
+  @@unique([empresaId, id])
+  @@index([notaCreditoProveedorId])
+}
+
+/// Paquete 5 (M7): el PLAN de costos de la empresa (una dimensión analítica: por ejemplo «unidades de negocio»). DE EMPRESA (catálogo de la empresa, sin `sucursalId`; en qué sucursales aplica lo dice `PlanDeCostosSucursal`). El código
+/// (mayúsculas, dígitos y guion bajo, empieza con letra, hasta 40; CHECK) es único por empresa y queda fijo: la app solo cambia `nombre` y `activo`. El nombre es único por empresa sin importar mayúsculas (índice sobre `lower`). No se borra:
+/// la baja es desactivar. Nada de `src/` lo escribe todavía (Etapa C). No toca dinero.
+model PlanDeCostos {
+  id        String   @id @default(cuid())
+  empresaId String   @default(dbgenerated("app_empresa_actual()"))
+  empresa   Empresa  @relation(fields: [empresaId], references: [id])
+  /// Mayúsculas, dígitos y guion bajo, empieza con letra, hasta 40 (CHECK). Fijo.
+  codigo    String
+  nombre    String
+  activo    Boolean  @default(true)
+  creadoEn  DateTime @default(now())
+
+  /// Los centros de este plan.
+  centros        CentroDeCostos[]
+  /// En qué sucursales aplica el plan (ADR-009, familia `optin`).
+  sucursales     PlanDeCostosSucursal[]
+  /// Las versiones de distribución que eligieron este plan.
+  distribuciones DistribucionCostoVersion[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, nombre])
+}
+
+/// Paquete 5 (M7): un CENTRO de costos (unidad de negocio) de un plan. DE EMPRESA (el mismo código vale en todas las sucursales). Código fijo y único por empresa; nombre único por plan sin importar mayúsculas. `centroPadreId` queda SIEMPRE NULL en la
+/// versión 1 (CHECK): la clave foránea con DISCRIMINADOR `(empresaId, planDeCostosId, centroPadreId) → CentroDeCostos(empresaId, planDeCostosId, id)` ya obliga a que el padre sea del mismo plan para cuando se habiliten los sub-centros (ADR-031).
+/// Se agrega y se renombra o desactiva; no se borra. Nada de `src/` lo escribe todavía (Etapa C).
+model CentroDeCostos {
+  id             String          @id @default(cuid())
+  empresaId      String          @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa         @relation(fields: [empresaId], references: [id])
+  planDeCostosId String
+  plan           PlanDeCostos    @relation(fields: [empresaId, planDeCostosId], references: [empresaId, id])
+  /// Mayúsculas, dígitos y guion bajo, empieza con letra, hasta 40 (CHECK). Fijo.
+  codigo         String
+  nombre         String
+  /// Siempre NULL en la v1 (CHECK). Con la jerarquía, el padre es del mismo plan (clave foránea de tres columnas).
+  centroPadreId  String?
+  centroPadre    CentroDeCostos? @relation("JerarquiaDeCentros", fields: [empresaId, planDeCostosId, centroPadreId], references: [empresaId, planDeCostosId, id], onDelete: Restrict, onUpdate: Restrict)
+  activo         Boolean         @default(true)
+  creadoEn       DateTime        @default(now())
+
+  hijos                CentroDeCostos[]         @relation("JerarquiaDeCentros")
+  /// Las líneas de distribución que reparten a este centro.
+  lineasDeDistribucion DistribucionCostoLinea[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, planDeCostosId, id])
+  @@unique([empresaId, codigo])
+  @@unique([empresaId, planDeCostosId, nombre])
+}
+
+/// Paquete 5 (M7): EN QUÉ SUCURSALES aplica un plan de costos (ADR-009, familia `optin`: sin fila, o con `aplica = false`, el plan NO aplica en la sucursal y sus gastos quedan «no aplica», no «sin asignar»). `PROPIA` (`sucursalId` NOT NULL; sus
+/// políticas de alcance las agrega M7.3). Una fila por (plan, sucursal); es un interruptor: la app solo cambia `aplica` (UPDATE por columna). Que no se cambie si la sucursal ya tiene gastos con ese plan lo valida la Etapa C. Nada de `src/` la escribe todavía.
+model PlanDeCostosSucursal {
+  id             String       @id @default(cuid())
+  empresaId      String       @default(dbgenerated("app_empresa_actual()"))
+  empresa        Empresa      @relation(fields: [empresaId], references: [id])
+  planDeCostosId String
+  plan           PlanDeCostos @relation(fields: [empresaId, planDeCostosId], references: [empresaId, id])
+  sucursalId     String
+  sucursal       Sucursal     @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
+  /// `false` es lo mismo que no tener fila (lo resuelve el embudo `planDeCostosAplica`).
+  aplica         Boolean
+  creadoEn       DateTime     @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([planDeCostosId, sucursalId])
+  @@index([sucursalId])
+}
+
+/// Paquete 5 (M7): una VERSIÓN de la distribución de la imputación de un gasto entre los centros de UN plan. Alcance `HEREDADO` de `ImputacionDeGasto` por `imputacionDeGastoId` (sin `sucursalId` propio; sus políticas de sucursal las agrega M7.3).
+/// La mercadería no se distribuye (solo existen imputaciones de renglones `SIN_STOCK`). Cada (imputación, plan) tiene versiones 1, 2, 3...; la vigente es SIEMPRE la de `numero` mayor (derivada, nunca un flag ni un UPDATE); sin ninguna fila el estado es
+/// «sin asignar». Corregir es agregar una versión nueva con `motivo` (obligatorio desde la 2). SOLO se agrega: la app tiene SELECT e INSERT, nunca UPDATE ni DELETE. El único `(imputación, plan, numero)` elige UNA ganadora entre versiones
+/// simultáneas; la clave de idempotencia es única global (ADR-028) y se guarda el mensaje para reproducirlo (I3). Cabecera y líneas van en la MISMA transacción. Que Σ `porcentajeBp` = 10000 y que Σ importes e IVA computable sean los de la imputación
+/// lo valida la Etapa C (la base no suma filas; no hay disparadores). La versión rige desde `creadoEn` (UTC) y vale para el período del gasto. No tiene `@updatedAt`. Nada de `src/` la escribe todavía.
+model DistribucionCostoVersion {
+  id                  String            @id @default(cuid())
+  empresaId           String            @default(dbgenerated("app_empresa_actual()"))
+  empresa             Empresa           @relation(fields: [empresaId], references: [id])
+  imputacionDeGastoId String
+  imputacion          ImputacionDeGasto @relation(fields: [empresaId, imputacionDeGastoId], references: [empresaId, id], onDelete: Restrict)
+  planDeCostosId      String
+  plan                PlanDeCostos      @relation(fields: [empresaId, planDeCostosId], references: [empresaId, id])
+  /// 1, 2, 3...: único por (imputación, plan) (CHECK >= 1). La vigente es la de número mayor.
+  numero              Int
+  /// NULL o con al menos un carácter visible y hasta 200 (CHECK). Obligatorio desde la versión 2 (CHECK).
+  motivo              String?
+  /// UUID que genera la pantalla. Único GLOBAL (ADR-028).
+  claveIdempotencia   String            @unique
+  payloadHash         String
+  resultadoMensaje    String
+  creadoPorId         String
+  creadoPor           User              @relation(fields: [creadoPorId], references: [id], onDelete: Restrict)
+  /// Instante (UTC) desde el que rige la versión; vale para el período original del gasto.
+  creadoEn            DateTime          @default(now())
+
+  lineas DistribucionCostoLinea[]
+
+  @@unique([empresaId, id])
+  @@unique([empresaId, id, planDeCostosId])
+  @@unique([imputacionDeGastoId, planDeCostosId, numero], map: "DistribucionCostoVersion_imputacion_plan_numero_key")
+  @@index([planDeCostosId])
+}
+
+/// Paquete 5 (M7): una LÍNEA de una versión de distribución: lo que le toca a un centro (porcentaje en puntos básicos enteros, 1 a 10000, más `importe` e `importeIvaComputable` repartidos en dos pasos con `repartirImporte`). Alcance `HEREDADO` de
+/// `DistribucionCostoVersion` por `distribucionCostoVersionId`. `planDeCostosId` es el discriminador copiado: las claves foráneas `(empresaId, versión, planDeCostosId)` y `(empresaId, planDeCostosId, centro)` obligan a que el centro sea del plan
+/// de la versión. SOLO se agrega. Una línea por (versión, centro). `importe` puede quedar en 0,00 por el redondeo. La suma de las líneas la valida la Etapa C. Nada de `src/` la escribe todavía.
+model DistribucionCostoLinea {
+  id                         String                   @id @default(cuid())
+  empresaId                  String                   @default(dbgenerated("app_empresa_actual()"))
+  empresa                    Empresa                  @relation(fields: [empresaId], references: [id])
+  distribucionCostoVersionId String
+  planDeCostosId             String
+  version                    DistribucionCostoVersion @relation(fields: [empresaId, distribucionCostoVersionId, planDeCostosId], references: [empresaId, id, planDeCostosId], onDelete: Restrict, onUpdate: Restrict)
+  centroDeCostosId           String
+  centro                     CentroDeCostos           @relation(fields: [empresaId, planDeCostosId, centroDeCostosId], references: [empresaId, planDeCostosId, id], onDelete: Restrict, onUpdate: Restrict)
+  /// Puntos básicos enteros: 1 a 10000 (CHECK).
+  porcentajeBp               Int
+  /// Lo que le toca al centro, CON IVA incluido. Cero o más (CHECK).
+  importe                    Decimal                  @db.Decimal(14, 2)
+  /// La parte de `importe` que es IVA computable (entre 0 y `importe`, CHECK).
+  importeIvaComputable       Decimal                  @default(0) @db.Decimal(14, 2)
+
+  @@unique([empresaId, id])
+  @@unique([distribucionCostoVersionId, centroDeCostosId], map: "DistribucionCostoLinea_version_centro_key")
+  @@index([centroDeCostosId])
 }

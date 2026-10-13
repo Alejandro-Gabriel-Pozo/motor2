@@ -39,6 +39,9 @@ describe("ofertas de proveedor con mucha historia", () => {
       INSERT INTO "Operacion" ("id", "sucursalId", "proceso", "fecha", "usuarioId", "proveedorId")
       SELECT 'v' || g, ${sucursalId}, 'COMPRA'::"Proceso", '2023-01-01'::timestamp + (g || ' minutes')::interval, ${adminId}, (${proveedores}::text[])[1 + (g % 2)]
       FROM generate_series(1, ${CANTIDAD}::int) g`;
+    // Estadísticas de `Operacion` ANTES de cargar los movimientos: la clave foránea de cada movimiento se verifica con una consulta interna que Postgres planifica con las estadísticas del momento; con la tabla recién cargada y sin ANALYZE
+    // puede elegir el índice (empresaId, reemplazaAOperacionId) en vez de (empresaId, id) y recorrer toda la empresa por cada fila (60.000 filas × ~6 ms = minutos; intermitente en el CI con Postgres 17).
+    await analizarDespuesDeCargaMasiva();
     await prisma.$executeRaw`
       INSERT INTO "MovimientoStock" ("id", "operacionId", "productoId", "seccionId", "proceso", "cantidad", "detalle", "precioTotal", "precioPorUnidadStock")
       SELECT 'vm' || g, 'v' || g, (${productos}::text[])[1 + (g % 3)], ${seccionId}, 'COMPRA'::"Proceso", 1, 'Compra', CASE WHEN g % 7 = 0 THEN 0 ELSE g END, CASE WHEN g % 7 = 0 THEN 0 ELSE g END

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
-import { RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
+import { clavesReservadasDe, RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
 
 /**
  * Paquete 3, M4.5 — migración de DATOS 20261016114000_permisos_gastos: alta de las SIETE claves de los gastos (D1: `gasto_*`; D4: las siete, semilla `admin` salvo `gasto_repartir`, piso administrador, sin copiar de `proceso_compra`, en la base desde M4 y en `ACCIONES`
@@ -16,7 +16,8 @@ import { RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
  */
 const NOMBRE = "20261016114000_permisos_gastos";
 const leer = (archivo: string) => readFileSync(join(__dirname, "../../prisma/migrations", NOMBRE, archivo), "utf8");
-const CLAVES = Object.keys(RESERVADAS_EN_BASE).sort();
+/** Solo las siete de ESTA migración (M4.5): las de M6.4, las de M7.4 y las que se sumen después las lista `RESERVADAS_EN_BASE` pero las da de alta otra. */
+const CLAVES = clavesReservadasDe(NOMBRE);
 const CON_SEMILLA = CLAVES.filter((c) => RESERVADAS_EN_BASE[c]!.semilla.includes("admin"));
 
 describe("migración de datos M4.5: las siete claves de los gastos", () => {

@@ -7,6 +7,11 @@ import { construirMapaProductos } from "../../src/server/lecturas/reportes/comun
 import { calcularTendenciaPreciosDelPeriodo } from "../../src/server/consultas/reportes/periodo-precios";
 import type { ItemPeriodo } from "../../src/core/reportes/periodo-tipos";
 
+// Márgenes de TIEMPO (no de lógica): el archivo siembra ~60 mil compras y en una máquina cargada (o en el CI) los hooks superaban los 10 s por defecto. Si el `afterEach` se agotaba, dejaba
+// las 60 mil filas en la base y arrastraba a los archivos siguientes (en una corrida local cayeron 20 tests de `reglas-m2-venta` en cascada). Un margen holgado no esconde ningún bug.
+const MARGEN_TEST_MS = 180_000;
+const MARGEN_HOOK_MS = 120_000;
+
 /**
  * "Precio anterior" de cada insumo = la última compra válida ANTES del período, de cualquiera de sus productos. La versión anterior leía
  * TODAS las compras previas de esos productos (`findMany` sin cota + orden por fecha) y se quedaba con la primera de cada insumo en JS: no
@@ -28,6 +33,9 @@ describe("calcularTendenciaPreciosDelPeriodo con mucha historia de compras", () 
       SELECT ${opciones.prefijo} || g, ${sucursalId}, 'COMPRA'::"Proceso", ${opciones.desde}::timestamp + (g || ' minutes')::interval, ${adminId},
              CASE WHEN ${opciones.anuladas ?? false}::boolean THEN '2026-06-01T00:00:00'::timestamp END
       FROM generate_series(1, ${cantidad}::int) g`;
+    // Estadísticas de `Operacion` ANTES de cargar los movimientos: la clave foránea de cada movimiento se verifica con una consulta interna que Postgres planifica con las estadísticas del momento; con la tabla recién cargada y sin ANALYZE
+    // puede elegir el índice (empresaId, reemplazaAOperacionId) en vez de (empresaId, id) y recorrer toda la empresa por cada fila (60.000 filas × ~6 ms = minutos; intermitente en el CI con Postgres 17).
+    await analizarDespuesDeCargaMasiva();
     await prisma.$executeRaw`
       INSERT INTO "MovimientoStock" ("id", "operacionId", "productoId", "seccionId", "proceso", "cantidad", "detalle", "precioTotal", "precioPorUnidadStock")
       SELECT ${opciones.prefijo} || 'm' || g, ${opciones.prefijo} || g, ${productoId}, ${seccionId}, 'COMPRA'::"Proceso", ${opciones.unidades}::numeric, 'Compra',
@@ -44,7 +52,7 @@ describe("calcularTendenciaPreciosDelPeriodo con mucha historia de compras", () 
     };
   }
 
-  afterEach(vaciarOperacionesPorVolumen);
+  afterEach(vaciarOperacionesPorVolumen, MARGEN_HOOK_MS);
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -59,7 +67,7 @@ describe("calcularTendenciaPreciosDelPeriodo con mucha historia de compras", () 
     harinaAId = await crear("MP_HA", "Harina 000", catalogo.insumo.id);
     harinaBId = await crear("MP_HB", "Harina 0000", catalogo.insumo.id);
     azucarId = await crear("MP_AZ", "Azúcar", azucarInsumo.id);
-  });
+  }, MARGEN_HOOK_MS);
 
   it("con ~60k compras previas devuelve la última compra válida de cada insumo (entre todos sus productos)", async () => {
     // Harina A: 60.000 compras viejas a $10/u (2023). Harina B (mismo insumo): una compra válida a $40/u el 2025-12-01, otra más nueva pero
@@ -79,7 +87,7 @@ describe("calcularTendenciaPreciosDelPeriodo con mucha historia de compras", () 
     expect(harina).toMatchObject({ precioUnitarioPromedio: 50, precioUnitarioAnterior: 40, deltaPct: 25, deltaImpacto: 10 });
     const azucar = filas.find((f) => f.insumo === "Azúcar")!;
     expect(azucar).toMatchObject({ precioUnitarioPromedio: 20, precioUnitarioAnterior: null, deltaPct: null, deltaImpacto: null });
-  }, 60_000);
+  }, MARGEN_TEST_MS);
 
   it("ante dos compras válidas con la misma fecha en el mismo insumo, gana siempre la misma (id mayor)", async () => {
     const fecha = new Date("2025-06-01T12:00:00Z");
@@ -92,7 +100,7 @@ describe("calcularTendenciaPreciosDelPeriodo con mucha historia de compras", () 
       const [fila] = await calcularTendenciaPreciosDelPeriodo(sucursalId, new Date("2026-01-01T00:00:00Z"), [compraDelPeriodo(harinaAId, 1, 50)], productos, prisma);
       expect(fila.precioUnitarioAnterior).toBe(20); // mov-op-z
     }
-  });
+  }, MARGEN_TEST_MS);
 
   it("ignora las compras previas de otra sucursal", async () => {
     const otra = await prisma.sucursal.create({ data: { nombre: "Otra" } });
@@ -102,5 +110,5 @@ describe("calcularTendenciaPreciosDelPeriodo con mucha historia de compras", () 
     const productos = await construirMapaProductos(undefined, prisma);
     const [fila] = await calcularTendenciaPreciosDelPeriodo(sucursalId, new Date("2026-01-01T00:00:00Z"), [compraDelPeriodo(harinaAId, 1, 50)], productos, prisma);
     expect(fila.precioUnitarioAnterior).toBeNull();
-  });
+  }, MARGEN_TEST_MS);
 });

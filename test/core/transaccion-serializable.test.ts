@@ -7,7 +7,7 @@ import type { Transaccion } from "../../src/lib/db-tipos";
  * El CONTRATO de `conTransaccionSerializable` (Hito 5, pieza 5.3, paso 5.3-0 de `docs/plan-hito-5-pureza.md`): la red de la mudanza que la saca de `core/movimientos/con-reintento.ts` a
  * `src/lib/transaccion-serializable.ts`. Sin base: transacciones falsas que cuentan intentos, fallan con lo que se les diga y recuerdan las opciones con que las abrieron. Fija, tal cual hoy:
  *  - las opciones de la transacción: `{ isolationLevel: "Serializable", maxWait: 5000, timeout: 15000 }`;
- *  - 5 intentos por defecto (4 conflictos se resuelven; 5 lanzan el ÚLTIMO error);
+ *  - 8 intentos por defecto (7 conflictos se resuelven; 8 lanzan el ÚLTIMO error; peor caso de espera 1125 ms);
  *  - un choque de índice único (P2002) NO se reintenta salvo `tambienChoqueDeUnico`;
  *  - un error ajeno se propaga en el acto, sin dormir;
  *  - los dos logs (`console.log` al resolver por reintento, `console.error` al agotar) con sus campos.
@@ -69,24 +69,36 @@ describe("conTransaccionSerializable: la transacción", () => {
 });
 
 describe("conTransaccionSerializable: cuántos intentos", () => {
-  it("por defecto son 5: 4 conflictos seguidos se resuelven al quinto intento", async () => {
+  it("por defecto son 8: 7 conflictos seguidos se resuelven al octavo intento", async () => {
     vi.spyOn(console, "log").mockImplementation(() => undefined);
-    const { transaccion, intentos } = transaccionFalsa([conflicto("1"), conflicto("2"), conflicto("3"), conflicto("4")]);
+    const { transaccion, intentos } = transaccionFalsa([1, 2, 3, 4, 5, 6, 7].map((n) => conflicto(String(n))));
     const e = esperaFija();
     expect(await conTransaccionSerializable(transaccion, async () => "ok", undefined, e.opciones)).toBe("ok");
-    expect(intentos()).toBe(5);
-    // Se duerme ENTRE intentos: 4 esperas, con jitter completo (0,2 × 25, 50, 100, 200).
-    expect(e.dormidas).toEqual([5, 10, 20, 40]);
+    expect(intentos()).toBe(8);
+    // Se duerme ENTRE intentos: 7 esperas, con jitter completo (0,2 × 25, 50, 100, 200 y luego el tope de 250).
+    expect(e.dormidas).toEqual([5, 10, 20, 40, 50, 50, 50]);
   });
 
-  it("por defecto, 5 conflictos agotan los intentos y se lanza el ÚLTIMO error, sin dormir después del último", async () => {
+  it("por defecto, 8 conflictos agotan los intentos y se lanza el ÚLTIMO error, sin dormir después del último", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const errores = [1, 2, 3, 4, 5].map((n) => conflicto(String(n)));
+    const errores = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => conflicto(String(n)));
     const { transaccion, intentos } = transaccionFalsa(errores);
     const e = esperaFija();
-    await expect(conTransaccionSerializable(transaccion, async () => "ok", undefined, e.opciones)).rejects.toBe(errores[4]);
-    expect(intentos()).toBe(5);
-    expect(e.dormidas).toEqual([5, 10, 20, 40]);
+    await expect(conTransaccionSerializable(transaccion, async () => "ok", undefined, e.opciones)).rejects.toBe(errores[7]);
+    expect(intentos()).toBe(8);
+    expect(e.dormidas).toEqual([5, 10, 20, 40, 50, 50, 50]);
+  });
+
+  it("el peor caso acumulado del default (azar en su máximo en cada espera) es 1125 ms: nunca pasa de ~1,5 s", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { transaccion } = transaccionFalsa(Array.from({ length: 8 }, (_, n) => conflicto(String(n))));
+    const dormidas: number[] = [];
+    await expect(conTransaccionSerializable(transaccion, async () => "ok", undefined, { aleatorio: () => 0.999999, dormir: async (ms) => void dormidas.push(ms) })).rejects.toMatchObject({ code: "P2034" });
+    const total = dormidas.reduce((suma, ms) => suma + ms, 0);
+    expect(dormidas).toHaveLength(7);
+    expect(total).toBeLessThanOrEqual(1125);
+    expect(total).toBeGreaterThan(1124);
+    expect(total).toBeLessThan(1500);
   });
 
   it("respeta un maxIntentos pedido", async () => {

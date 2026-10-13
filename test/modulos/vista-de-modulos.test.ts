@@ -13,6 +13,7 @@ describe("vistaDeModulos: los casos de ADR-015", () => {
     expect(vista.filter((f) => f.efectivo).map((f) => f.id)).toEqual(["administracion"]);
     for (const f of vista.filter((x) => x.tipo === "vendible" && x.estado === "disponible")) expect(f, f.id).toMatchObject({ enRegistro: false, puedeActivar: true, puedeDesactivar: false });
     expect(fila([], "gastos")).toMatchObject({ estado: "en_desarrollo", enRegistro: false, efectivo: false, puedeActivar: false, puedeDesactivar: false, alActivarSeSuman: [] });
+    expect(fila([], "centros_de_costos")).toMatchObject({ estado: "en_desarrollo", enRegistro: false, efectivo: false, puedeActivar: false, puedeDesactivar: false, alActivarSeSuman: [] });
   });
 
   it("activar Salón no le crea fila a Stock, pero Stock queda «incluido por Salón» y NO se puede desactivar", () => {
@@ -90,6 +91,7 @@ describe("textos", () => {
     expect(explicarErrorDeCambio({ motivo: "LO_REQUIEREN_OTROS", modulo: "stock", requeridoPor: ["salon", "traspasos"] })).toBe("Stock no se puede desactivar mientras estén activos: Salón, Traspasos.");
     expect(explicarErrorDeCambio({ motivo: "EN_DESARROLLO", modulo: "salon" })).toContain("en desarrollo");
     expect(explicarErrorDeCambio({ motivo: "EN_DESARROLLO", modulo: "gastos" })).toBe("Gastos y servicios está en desarrollo y todavía no se puede activar.");
+    expect(explicarErrorDeCambio({ motivo: "EN_DESARROLLO", modulo: "centros_de_costos" })).toBe("Centros de costos está en desarrollo y todavía no se puede activar.");
     expect(explicarErrorDeCambio({ motivo: "DESCONOCIDO", modulo: "x" })).toContain("no existe");
     expect(explicarErrorDeCambio({ motivo: "NO_ES_VENDIBLE", modulo: "stock" })).toContain("fijo o de soporte");
   });
