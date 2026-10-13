@@ -16,7 +16,7 @@ const GLOBALES = tablasDeClase("GLOBAL");
 const PLATAFORMA = [...tablasDeClase("EMPRESA"), ...tablasDeClase("DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA"), ...TABLAS_DE_CONSOLA];
 
 /**
- * Las FK compuestas con un DISCRIMINADOR: llevan una tercera columna (la naturaleza del padre) además de `empresaId` y la del padre, para que la base impida apuntar a un padre de otra naturaleza. Cada una con su motivo; se revisa
+ * Las FK compuestas con una TERCERA columna: un discriminador (la naturaleza o el tipo del padre) o una columna de pertenencia (el proveedor o la factura del padre), además de `empresaId` y la del padre, para que la base impida apuntar a un padre de otra naturaleza, de otro proveedor o de otra factura. Cada una con su motivo; se revisa
  * en las dos direcciones (una entrada que no existe en la base, o una FK de tres columnas sin declarar, rompen el test).
  */
 const FK_CON_DISCRIMINADOR: Readonly<Record<string, string>> = {
@@ -24,6 +24,18 @@ const FK_CON_DISCRIMINADOR: Readonly<Record<string, string>> = {
     "Paquete 3, M4.3: (empresaId, renglón, naturalezaRenglon) → FacturaProveedorRenglon(empresaId, id, naturaleza): la base impide imputar un renglón de mercadería (solo SIN_STOCK) y cambiar la naturaleza de un renglón imputado.",
   ReclasificacionRenglon_empresaId_facturaProveedorRenglonId_fkey:
     "Paquete 4, M5: (empresaId, renglón, naturalezaRenglon) → FacturaProveedorRenglon(empresaId, id, naturaleza): la base impide reclasificar un renglón de mercadería (solo SIN_STOCK) y cambiar la naturaleza de un renglón reclasificado.",
+  NotaCreditoProveedor_factura_fkey:
+    "Paquete 4, M6.1: (empresaId, facturaProveedorId, proveedorId) → FacturaProveedor(empresaId, id, proveedorId): la nota es del MISMO proveedor que su factura, y corregir el proveedor de una factura que tiene notas se rechaza (ON UPDATE RESTRICT).",
+  NotaCreditoProveedorLinea_nota_tipo_fkey:
+    "Paquete 4, M6.1: (empresaId, nota, tipoNota) → NotaCreditoProveedor(empresaId, id, tipo): el tipo de la línea es el de su nota (una línea suelta no cuelga de una nota con factura, ni al revés).",
+  NotaCreditoProveedorLinea_nota_factura_fkey:
+    "Paquete 4, M6.1: (empresaId, nota, facturaProveedorId) → NotaCreditoProveedor(empresaId, id, facturaProveedorId): la factura de la línea es la de su nota.",
+  NotaCreditoProveedorLinea_renglon_factura_fkey:
+    "Paquete 4, M6.1: (empresaId, facturaProveedorId, renglón) → FacturaProveedorRenglon(empresaId, facturaProveedorId, id): el renglón que acredita una línea es de LA factura de su nota (no de otra).",
+  NotaCreditoProveedorLinea_renglon_naturaleza_fkey:
+    "Paquete 4, M6.1: (empresaId, renglón, naturaleza) → FacturaProveedorRenglon(empresaId, id, naturaleza): la naturaleza de la línea es la del renglón que acredita (una línea de mercadería no acredita un renglón sin stock).",
+  NotaCreditoProveedorImputacion_linea_fkey:
+    "Paquete 4, M6.1: (empresaId, línea, lineaAdmiteDevolucion) → NotaCreditoProveedorLinea(empresaId, id, admiteDevolucion): solo una línea de mercadería sobre factura admite una devolución (más el CHECK de la devolución).",
 };
 
 function codigoDeError(e: unknown): string | undefined {

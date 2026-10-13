@@ -28,10 +28,10 @@ export { prismaDuenioSinEmpresa } from "./cliente-duenio";
 /**
  * Vacía las operaciones y sus movimientos de un golpe. Los tests de volumen siembran decenas de miles de filas: borrarlas con el
  * `deleteMany` de `limpiarBaseDeTest` (con el chequeo de FK fila por fila) puede pasar los 10 s del hook y arrastra a los tests siguientes.
- * Postgres no deja truncar `Operacion` si otra tabla la referencia, aunque esté vacía: `FacturaProveedorSucursal` (M3b) la referencia con `operacionId`, así que va en el mismo `TRUNCATE`.
+ * Postgres no deja truncar `Operacion` si otra tabla la referencia, aunque esté vacía: `FacturaProveedorSucursal` (M3b) la referencia con `operacionId` y `NotaCreditoProveedorImputacion` (M6) con `operacionDevolucionId`, así que van en el mismo `TRUNCATE`.
  */
 export async function vaciarOperacionesPorVolumen() {
-  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "MovimientoStock", "CuentaItem", "FacturaProveedorSucursal", "Operacion"');
+  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "MovimientoStock", "CuentaItem", "FacturaProveedorSucursal", "NotaCreditoProveedorImputacion", "Operacion"');
 }
 
 /**
@@ -107,6 +107,12 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.facturaProveedorSucursal.deleteMany();
   // La imputación de un gasto (M4.3) referencia al renglón sin stock y a la sucursal (RESTRICT): ANTES de los renglones.
   await prismaAdmin.imputacionDeGasto.deleteMany();
+  // La nota de crédito de proveedor (M6): la imputación referencia a la línea, la sucursal y la `Operacion` de la devolución (RESTRICT); la línea, a la nota y a los renglones; el tributo y la nota, a la factura, al proveedor y al User (RESTRICT):
+  // imputación, tributo, línea y nota, ANTES de los renglones, de las facturas, de operacion.deleteMany() y de proveedor/sucursal/User (más abajo).
+  await prismaAdmin.notaCreditoProveedorImputacion.deleteMany();
+  await prismaAdmin.notaCreditoProveedorTributo.deleteMany();
+  await prismaAdmin.notaCreditoProveedorLinea.deleteMany();
+  await prismaAdmin.notaCreditoProveedor.deleteMany();
   // La reclasificación de un renglón sin stock (M5) referencia al renglón, al concepto y al User (RESTRICT): ANTES de los renglones y de los conceptos.
   await prismaAdmin.reclasificacionRenglon.deleteMany();
   await prismaAdmin.facturaProveedorTributo.deleteMany();

@@ -20,7 +20,7 @@ export type ClaseDeTabla = "POR_EMPRESA" | "DE_EMPRESA_ESCRITA_POR_LA_PLATAFORMA
 const POR_EMPRESA = [
   "AgregadoDeCuenta", "CapacidadSucursal", "CategoriaProducto", "Cliente", "ConceptoDeGasto", "ContenidoCartaProducto", "ConteoFisico", "Cuenta", "CuentaItem", "DescuentoProductoSucursal", "DestinoConsumo", "DisponibilidadProducto",
   "EjemplarTicket", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorSucursal", "FacturaProveedorTributo", "FrecuenciaConteoProducto", "GeneroCarta", "Grupo", "ImputacionDeGasto", "Insumo", "InvitacionSucursal", "ItemAgrupadoCarta", "MargenObjetivo", "Mesa", "MotivoMerma", "MovimientoStock",
-  "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PermisoRol", "PortalCartaEmpresa", "PrecioLocalProducto", "Presentacion", "Producto", "PromoCarta", "PromoCartaCupo",
+  "NotaCreditoProveedor", "NotaCreditoProveedorImputacion", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "OpcionItemAgrupadoCarta", "Operacion", "PagoConsignante", "PermisoRol", "PortalCartaEmpresa", "PrecioLocalProducto", "Presentacion", "Producto", "PromoCarta", "PromoCartaCupo",
   "PromoCartaSucursal", "PromoCuenta", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "RecetaIngrediente", "RecetaPaso", "RecetaPasoIngrediente", "RecetaSucursal", "RecetaVersion", "ReclasificacionRenglon", "RegistroAuditoria",
   "RendimientoLocalIngrediente", "Rol", "Seccion", "SeccionCarta", "SeccionHabitualProducto", "StockMinimoProducto", "Sucursal", "SucursalPublica", "SustitutoRecetaIngrediente",
   "TemaCartaSucursal", "TraspasoSucursal", "Unidad", "UsuarioSucursal", "Venta",
@@ -127,7 +127,7 @@ export type DeclaracionDeAlcance =
 /** `sucursalId` NOT NULL con FK a `Sucursal`: la fila es de una sola sucursal. */
 const ALCANCE_PROPIA = [
   "ConteoFisico", "ContenidoCartaProducto", "DescuentoProductoSucursal", "DisponibilidadProducto", "EjemplarTicket", "FacturaProveedorSucursal", "FrecuenciaConteoProducto", "GeneroCarta", "ImputacionDeGasto", "ItemAgrupadoCarta", "Mesa",
-  "Operacion", "OpcionItemAgrupadoCarta", "PagoConsignante", "PrecioLocalProducto", "PromoCartaSucursal", "RecetaSucursal", "RendimientoLocalIngrediente", "Seccion", "SeccionHabitualProducto",
+  "NotaCreditoProveedorImputacion", "Operacion", "OpcionItemAgrupadoCarta", "PagoConsignante", "PrecioLocalProducto", "PromoCartaSucursal", "RecetaSucursal", "RendimientoLocalIngrediente", "Seccion", "SeccionHabitualProducto",
   "StockMinimoProducto", "TemaCartaSucursal", "Venta",
 ] as const;
 
@@ -162,7 +162,7 @@ const ALCANCE_GOBIERNO: Readonly<Record<string, string>> = {
 };
 
 const ALCANCE_DE_EMPRESA = [
-  "CategoriaProducto", "Cliente", "ConceptoDeGasto", "DestinoConsumo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "PermisoRol", "PortalCartaEmpresa", "Presentacion", "Producto",
+  "CategoriaProducto", "Cliente", "ConceptoDeGasto", "DestinoConsumo", "FacturaProveedor", "FacturaProveedorRenglon", "FacturaProveedorTributo", "Grupo", "Insumo", "Invitacion", "MargenObjetivo", "ModuloEmpresa", "MotivoMerma", "NotaCreditoProveedor", "NotaCreditoProveedorLinea", "NotaCreditoProveedorTributo", "PermisoRol", "PortalCartaEmpresa", "Presentacion", "Producto",
   "PromoCarta", "PromoCartaCupo", "Proveedor", "ProveedorPorProducto", "PuntoDeVentaDeProveedor", "ReclasificacionRenglon", "Rol", "SeccionCarta", "Unidad", "UsuarioEmpresa",
 ] as const;
 

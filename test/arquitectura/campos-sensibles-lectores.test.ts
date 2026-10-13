@@ -40,6 +40,7 @@ const NO_SON_SECRETOS: Readonly<Record<string, string>> = {
   "AgregadoDeCuenta.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
   "FacturaProveedor.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
   "ReclasificacionRenglon.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
+  "NotaCreditoProveedor.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
 };
 
 type Clase = "PAGINAS" | "INTERNO" | "SECRETO";
