@@ -122,6 +122,19 @@ export async function borrarItemSinEnviar(tx: Prisma.TransactionClient, args: { 
 }
 
 /**
+ * GO-2b (ADR-030): borra una línea SIN ENVIAR con sus adicionales sin enviar — primero los adicionales (la FK del padre es RESTRICT) y después la línea, los dos
+ * borrados condicionales (`numeroEnvio: null`, nunca un espejo). La foto de cada una se va por cascada. Si la línea ya no se pudo borrar (otro mozo la envió un
+ * instante antes) pero algún adicional sí, es una incoherencia: se LANZA un error para deshacer la transacción entera (nunca queda una línea enviada sin su
+ * adicional). Devuelve cuántas líneas del producto borró (0 o 1).
+ */
+export async function borrarItemSinEnviarConAdicionales(tx: Prisma.TransactionClient, args: { cuentaItemId: string }): Promise<number> {
+  const adicionales = await tx.cuentaItem.deleteMany({ where: { lineaPadreId: args.cuentaItemId, numeroEnvio: null, anulaAItemId: null } });
+  const borrados = await tx.cuentaItem.deleteMany({ where: { id: args.cuentaItemId, numeroEnvio: null, anulaAItemId: null } });
+  if (borrados.count === 0 && adicionales.count > 0) throw new Error("quitarItemSinEnviar: se borraban los adicionales de una línea que ya salió a cocina.");
+  return borrados.count;
+}
+
+/**
  * Borra una promo que TODAVÍA NO SALIÓ a cocina, entera: primero TODOS sus `CuentaItem` componentes y después la `PromoCuenta` (en ese orden: los
  * componentes la referencian y la relación no borra en cascada). Que ningún componente haya salido lo chequea antes el caso de uso, en la misma transacción.
  */
