@@ -94,6 +94,99 @@ describe("lineasDeVenta (neto por producto + precio congelado)", () => {
   });
 });
 
+describe("lineasDeVenta con opciones (GO-2b, ADR-030)", () => {
+  const H1 = "a".repeat(64);
+  const H2 = "b".repeat(64);
+
+  it("dos cafés con DISTINTA huella al mismo precio son dos líneas; con la MISMA, una sola (con los ids de sus ítems)", () => {
+    expect(
+      lineasDeVenta([
+        { id: "i1", productoId: "cafe", cantidad: 1, precioUnitario: 1100, huellaOpciones: H1 },
+        { id: "i2", productoId: "cafe", cantidad: 1, precioUnitario: 1100, huellaOpciones: H2 },
+        { id: "i3", productoId: "cafe", cantidad: 1, precioUnitario: 1100, huellaOpciones: H1 },
+      ])
+    ).toEqual([
+      { productoId: "cafe", precioUnitario: 1100, cantidad: 2, huellaOpciones: H1, itemIds: ["i1", "i3"] },
+      { productoId: "cafe", precioUnitario: 1100, cantidad: 1, huellaOpciones: H2, itemIds: ["i2"] },
+    ]);
+  });
+
+  it("un café configurado y uno sin opciones al mismo precio no se juntan; el sin opciones no lleva ids", () => {
+    expect(
+      lineasDeVenta([
+        { id: "i1", productoId: "cafe", cantidad: 1, precioUnitario: 1000 },
+        { id: "i2", productoId: "cafe", cantidad: 1, precioUnitario: 1000, huellaOpciones: H1 },
+      ])
+    ).toEqual([
+      { productoId: "cafe", precioUnitario: 1000, cantidad: 1 },
+      { productoId: "cafe", precioUnitario: 1000, cantidad: 1, huellaOpciones: H1, itemIds: ["i2"] },
+    ]);
+  });
+
+  it("cada adicional va JUSTO DESPUÉS de la línea de su padre, con su índice; dos padres iguales suman sus adicionales", () => {
+    expect(
+      lineasDeVenta([
+        { id: "p1", productoId: "cafe", cantidad: 1, precioUnitario: 1100, huellaOpciones: H1 },
+        { id: "m", productoId: "medialuna", cantidad: 2, precioUnitario: 500 },
+        { id: "a1", productoId: "shot", cantidad: 2, precioUnitario: 200, lineaPadreId: "p1" },
+        { id: "p2", productoId: "cafe", cantidad: 1, precioUnitario: 1100, huellaOpciones: H1 },
+        { id: "a2", productoId: "shot", cantidad: 2, precioUnitario: 200, lineaPadreId: "p2" },
+      ])
+    ).toEqual([
+      { productoId: "cafe", precioUnitario: 1100, cantidad: 2, huellaOpciones: H1, itemIds: ["p1", "p2"] },
+      { productoId: "shot", precioUnitario: 200, cantidad: 4, indicePadre: 0, itemIds: ["a1", "a2"] },
+      { productoId: "medialuna", precioUnitario: 500, cantidad: 2 },
+    ]);
+  });
+
+  it("los espejos (que repiten huella y padre) netean contra su original; un padre anulado entero se lleva a su adicional anulado entero", () => {
+    expect(
+      lineasDeVenta([
+        { id: "p1", productoId: "cafe", cantidad: 2, precioUnitario: 1100, huellaOpciones: H1 },
+        { id: "a1", productoId: "shot", cantidad: 2, precioUnitario: 200, lineaPadreId: "p1" },
+        { id: "e1", productoId: "cafe", cantidad: -1, precioUnitario: 1100, huellaOpciones: H1 },
+        { id: "e2", productoId: "shot", cantidad: -1, precioUnitario: 200, lineaPadreId: "p1" },
+      ])
+    ).toEqual([
+      { productoId: "cafe", precioUnitario: 1100, cantidad: 1, huellaOpciones: H1, itemIds: ["p1", "e1"] },
+      { productoId: "shot", precioUnitario: 200, cantidad: 1, indicePadre: 0, itemIds: ["a1", "e2"] },
+    ]);
+    expect(
+      lineasDeVenta([
+        { id: "p1", productoId: "cafe", cantidad: 1, precioUnitario: 1100, huellaOpciones: H1 },
+        { id: "a1", productoId: "shot", cantidad: 1, precioUnitario: 200, lineaPadreId: "p1" },
+        { id: "e1", productoId: "cafe", cantidad: -1, precioUnitario: 1100, huellaOpciones: H1 },
+        { id: "e2", productoId: "shot", cantidad: -1, precioUnitario: 200, lineaPadreId: "p1" },
+        { id: "x", productoId: "medialuna", cantidad: 1, precioUnitario: 500 },
+      ])
+    ).toEqual([{ productoId: "medialuna", precioUnitario: 500, cantidad: 1 }]);
+  });
+
+  it("un padre que solo tiene adicionales (sin huella) se junta con los del mismo producto sin opciones, y su adicional cuelga de esa línea", () => {
+    expect(
+      lineasDeVenta([
+        { id: "c", productoId: "cafe", cantidad: 1, precioUnitario: 1000 },
+        { id: "p", productoId: "cafe", cantidad: 1, precioUnitario: 1000 },
+        { id: "a", productoId: "shot", cantidad: 1, precioUnitario: 200, lineaPadreId: "p" },
+      ])
+    ).toEqual([
+      { productoId: "cafe", precioUnitario: 1000, cantidad: 2 },
+      { productoId: "shot", precioUnitario: 200, cantidad: 1, indicePadre: 0, itemIds: ["a"] },
+    ]);
+  });
+
+  it("el adicional HUÉRFANO (su padre no está en la cuenta) y el que queda vivo con su padre en 0 lanzan un error: no se cobran a ciegas", () => {
+    expect(() => lineasDeVenta([{ id: "a", productoId: "shot", cantidad: 1, precioUnitario: 200, lineaPadreId: "no-esta" }])).toThrow(/padre no está/);
+    expect(() =>
+      lineasDeVenta([
+        { id: "p", productoId: "cafe", cantidad: 1, precioUnitario: 1100, huellaOpciones: H1 },
+        { id: "e", productoId: "cafe", cantidad: -1, precioUnitario: 1100, huellaOpciones: H1 },
+        { id: "a", productoId: "shot", cantidad: 1, precioUnitario: 200, lineaPadreId: "p" },
+      ])
+    ).toThrow(/padre quedó anulada/);
+  });
+});
+
 describe("agruparPorEnvio", () => {
   const item = (id: string, cantidad: number, numeroEnvio: number | null, anulaAItemId: string | null = null) => ({ id, cantidad, numeroEnvio, anulaAItemId });
 

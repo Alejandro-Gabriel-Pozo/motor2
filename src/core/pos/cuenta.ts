@@ -4,6 +4,8 @@ import { precioCobradoConDescuentos } from "@/core/carta/public";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { nombreDelMesero, tiempoDesde } from "./mesas";
 import { validarCantidadPedido } from "./cantidad-pedido";
+import { claveDeLineaDeVenta } from "./clave-de-linea";
+import { claveDeLineaDeVentaConOpciones } from "./clave-de-linea-con-opciones";
 
 // Re-exportada: quien ya la importaba de acá (test/pos/cuenta.test.ts, esta misma Server Action) sigue andando igual. Vive en
 // `cantidad-pedido.ts` por historia: la lectura de la mesa vivía en este archivo y un cliente no podía importarlo.
@@ -43,16 +45,31 @@ export interface LineaDeVenta {
    *  (`CuentaItem.precioCartaUnitario`) — SOLO en un suelto que tuvo descuento de producto. Nunca en un componente de promo (su
    *  `precioCartaUnitario` es otra cosa: el precio de carta para repartir la promo). Ausente = igual que siempre. */
   precioCartaUnitario?: number;
+  /** GO-2b (ADR-030): la huella de las opciones que van dentro del precio — SOLO en una línea configurada. Ausente = sin opciones, como siempre. */
+  huellaOpciones?: string;
+  /** GO-2b: SOLO en un ADICIONAL: el índice, en esta misma salida, de la línea de su padre (que siempre va antes). */
+  indicePadre?: number;
+  /** GO-2b: SOLO en una línea configurada o en un adicional (y si los ítems traían `id`): los ítems (originales y espejos) que la forman, para enlazarlos
+   *  con su Operacion por id. Las demás líneas se enlazan por su clave, como siempre. */
+  itemIds?: string[];
 }
 
-/**
- * La clave con la que se agrupan y se enlazan las líneas de una cuenta (producto, precio congelado, promo y, en un suelto con descuento de
- * producto, su precio de lista): una sola definición para `lineasDeVenta`, el ticket y el reporte de tickets emitidos.
- */
-export function claveDeLineaDeVenta(l: { productoId: string; precioUnitario: number; promoCuentaId?: string | null; precioCartaUnitario?: number | null }): string {
-  const promoCuentaId = l.promoCuentaId ?? "";
-  const lista = !promoCuentaId && l.precioCartaUnitario != null ? String(l.precioCartaUnitario) : "";
-  return `${l.productoId}|${l.precioUnitario}|${promoCuentaId}${lista ? `|${lista}` : ""}`;
+// Re-exportada: vive en `clave-de-linea.ts` desde GO-2b (para que `clave-de-linea-con-opciones.ts` no importe este archivo, que la usa); quien la importaba
+// de acá sigue igual.
+export { claveDeLineaDeVenta };
+
+/** Un ítem de la cuenta para `lineasDeVenta`. `id`, `huellaOpciones` y `lineaPadreId` (GO-2b) son opcionales: sin ellos, todo como siempre. */
+export interface ItemParaLineaDeVenta {
+  id?: string;
+  productoId: string;
+  cantidad: number;
+  precioUnitario: number;
+  promoCuentaId?: string | null;
+  precioCartaUnitario?: number | null;
+  /** GO-2b: la huella de las opciones dentro del precio (`CuentaItem.huellaOpciones`); un espejo repite la de su original. */
+  huellaOpciones?: string | null;
+  /** GO-2b: la línea padre de un adicional (`CuentaItem.lineaPadreId`); un espejo repite la de su original. */
+  lineaPadreId?: string | null;
 }
 
 /**
@@ -63,28 +80,75 @@ export function claveDeLineaDeVenta(l: { productoId: string; precioUnitario: num
  * misma Operacion). Una línea neta ≤ 0 (anulada entera) se descarta: no se vende. Orden: el de la primera aparición de cada
  * línea. Sin ningún `promoCuentaId` en la entrada, la salida es EXACTAMENTE la de antes de esta Task (mismo criterio aditivo
  * que el resto del plan).
+ *
+ * GO-2b (ADR-030), también ADITIVO: la clave es la de `claveDeLineaDeVentaConOpciones`. Una línea configurada suma su huella (dos cafés con distinta
+ * configuración son dos líneas; con la misma, una sola). Un ADICIONAL se agrupa por su producto ancla, su precio y la clave de la línea de su PADRE, y va justo
+ * DESPUÉS de esa línea (con `indicePadre`). Un padre que solo tiene adicionales no tiene huella: se junta con los del mismo producto sin opciones (y su adicional
+ * cuelga de esa línea). Un adicional cuyo padre no está en la cuenta, o que todavía tiene algo para cobrar cuando su padre quedó en 0, es una incoherencia: se
+ * LANZA un error (no se cobra a ciegas). Sin huella ni padre en la entrada, la salida es exactamente la de antes (lo fija una propiedad de fast-check).
  */
-export function lineasDeVenta(
-  items: readonly { productoId: string; cantidad: number; precioUnitario: number; promoCuentaId?: string | null; precioCartaUnitario?: number | null }[]
-): LineaDeVenta[] {
-  const porClave = new Map<string, LineaDeVenta>();
-  for (const item of items) {
+export function lineasDeVenta(items: readonly ItemParaLineaDeVenta[]): LineaDeVenta[] {
+  const porId = new Map<string, ItemParaLineaDeVenta>();
+  for (const item of items) if (item.id !== undefined) porId.set(item.id, item);
+
+  const camposDeClave = (item: ItemParaLineaDeVenta) => {
     const promoCuentaId = item.promoCuentaId ?? undefined;
     const precioCartaUnitario = !promoCuentaId && item.precioCartaUnitario != null ? item.precioCartaUnitario : undefined;
-    const clave = claveDeLineaDeVenta({ productoId: item.productoId, precioUnitario: item.precioUnitario, promoCuentaId, precioCartaUnitario });
+    return { productoId: item.productoId, precioUnitario: item.precioUnitario, promoCuentaId, precioCartaUnitario };
+  };
+  const claveDe = (item: ItemParaLineaDeVenta): { clave: string; clavePadre: string | null } => {
+    const lineaPadreId = item.lineaPadreId ?? null;
+    if (lineaPadreId === null) return { clave: claveDeLineaDeVentaConOpciones({ ...camposDeClave(item), huellaOpciones: item.huellaOpciones ?? null }), clavePadre: null };
+    const padre = porId.get(lineaPadreId);
+    if (!padre) throw new Error("lineasDeVenta: un adicional cuya línea padre no está en la cuenta.");
+    if ((padre.lineaPadreId ?? null) !== null) throw new Error("lineasDeVenta: la línea padre de un adicional no puede ser otro adicional.");
+    const clavePadre = claveDeLineaDeVentaConOpciones({ ...camposDeClave(padre), huellaOpciones: padre.huellaOpciones ?? null });
+    return { clave: claveDeLineaDeVentaConOpciones({ ...camposDeClave(item), clavePadre }), clavePadre };
+  };
+
+  const porClave = new Map<string, { linea: LineaDeVenta; clavePadre: string | null }>();
+  for (const item of items) {
+    const { clave, clavePadre } = claveDe(item);
+    const conIds = (item.huellaOpciones ?? null) !== null || clavePadre !== null;
     const previa = porClave.get(clave);
-    if (previa) previa.cantidad = redondearCantidad(previa.cantidad + item.cantidad);
-    else {
-      porClave.set(clave, {
+    if (previa) {
+      previa.linea.cantidad = redondearCantidad(previa.linea.cantidad + item.cantidad);
+      if (conIds && item.id !== undefined) previa.linea.itemIds = [...(previa.linea.itemIds ?? []), item.id];
+      continue;
+    }
+    const { promoCuentaId, precioCartaUnitario } = camposDeClave(item);
+    const huellaOpciones = item.huellaOpciones ?? null;
+    porClave.set(clave, {
+      clavePadre,
+      linea: {
         productoId: item.productoId,
         precioUnitario: item.precioUnitario,
         cantidad: redondearCantidad(item.cantidad),
         ...(promoCuentaId ? { promoCuentaId } : {}),
         ...(precioCartaUnitario !== undefined ? { precioCartaUnitario } : {}),
-      });
-    }
+        ...(huellaOpciones !== null ? { huellaOpciones } : {}),
+        ...(conIds && item.id !== undefined ? { itemIds: [item.id] } : {}),
+      },
+    });
   }
-  return [...porClave.values()].filter((l) => l.cantidad > 0);
+
+  const adicionalesDe = new Map<string, LineaDeVenta[]>();
+  for (const { linea, clavePadre } of porClave.values()) {
+    if (clavePadre !== null) adicionalesDe.set(clavePadre, [...(adicionalesDe.get(clavePadre) ?? []), linea]);
+  }
+  const salida: LineaDeVenta[] = [];
+  for (const [clave, { linea, clavePadre }] of porClave) {
+    if (clavePadre !== null) continue;
+    const adicionales = adicionalesDe.get(clave) ?? [];
+    if (linea.cantidad <= 0) {
+      if (adicionales.some((a) => a.cantidad > 0)) throw new Error("lineasDeVenta: un adicional con algo para cobrar cuya línea padre quedó anulada entera.");
+      continue;
+    }
+    const indicePadre = salida.length;
+    salida.push(linea);
+    for (const adicional of adicionales) if (adicional.cantidad > 0) salida.push({ ...adicional, indicePadre });
+  }
+  return salida;
 }
 
 export interface ItemAgrupable {
