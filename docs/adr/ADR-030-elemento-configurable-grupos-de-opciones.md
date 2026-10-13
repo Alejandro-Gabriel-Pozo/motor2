@@ -1,6 +1,6 @@
 # ADR-030: Elemento configurable (grupos de opciones de venta)
 
-> Redactado el 2026-10-13 (GO-1). **Estado: propuesto; GO-1 escrito y sin aplicar.** El modelo de datos está en el repositorio (seis migraciones con su `down.sql` y sus pruebas contra Postgres real); NINGÚN caso de uso las escribe todavía (GO-2) y NO están aplicadas a ninguna base real (cada una REQUIERE AUTORIZACIÓN EXPRESA, base por base, con respaldo y ensayo en una rama de Neon). Las pantallas (GO-2) no están diseñadas. Completa ADR-009 (sobrescritura por sucursal), ADR-011/014/015 (módulos), ADR-027 (pisos) y ADR-028 (alcance por sucursal). El 031 (centros de costos) ya existe: este es el 030 que había quedado reservado.
+> Redactado el 2026-10-13 (GO-1). **Estado: propuesto; GO-1 aplicado a la base de producción el 2026-10-13.** El modelo de datos está en el repositorio (seis migraciones con su `down.sql` y sus pruebas contra Postgres real); NINGÚN caso de uso las escribe todavía (GO-2) y están aplicadas a la base de producción (Neon) desde el 2026-10-13, con respaldo y ensayo previos (ver `docs/deploy-con-migraciones.md`); cada base nueva REQUIERE AUTORIZACIÓN EXPRESA, con respaldo y ensayo en una rama de Neon. Las pantallas (GO-2) no están diseñadas. Completa ADR-009 (sobrescritura por sucursal), ADR-011/014/015 (módulos), ADR-027 (pisos) y ADR-028 (alcance por sucursal). El 031 (centros de costos) ya existe: este es el 030 que había quedado reservado.
 
 ## Contexto
 
