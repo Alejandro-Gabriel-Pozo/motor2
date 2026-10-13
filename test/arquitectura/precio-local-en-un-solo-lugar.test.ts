@@ -180,3 +180,41 @@ describe("precio local: un solo lugar decide cuál rige (capacidad + fila habili
     });
   });
 });
+
+// GO-3 (ADR-032, D-4): el precio local de las COMBINACIONES y de los GRUPOS DE PRECIO (`PrecioLocalDeCombinacion`) tiene el mismo embudo que el de las opciones: solo
+// `server/lecturas/catalogo/precio-local.ts` lo lee (con la capacidad `precio_local`). Bloque propio al final, para no pisarse con los cambios de GO-2a en este archivo.
+
+/** Las líneas (1-based) que leen `precioLocalDeCombinacion` (find*) fuera de un comentario. */
+function lineasQueLeenPrecioLocalDeCombinacionDirecto(fuente: string): number[] {
+  const malas: number[] = [];
+  fuente
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .forEach((linea, i) => {
+      if (esComentario(linea)) return;
+      if (/precioLocalDeCombinacion\s*\.\s*find/.test(linea)) malas.push(i + 1);
+    });
+  return malas;
+}
+
+describe("precio local de las combinaciones (GO-3): un solo lugar lo lee", () => {
+  it("ningún archivo fuera de `server/lecturas/catalogo/precio-local.ts` lee `precioLocalDeCombinacion.find*` directo", () => {
+    const problemas: string[] = [];
+    for (const ruta of archivos(RAIZ)) {
+      const nombre = relative(RAIZ, ruta).split(sep).join("/");
+      if (nombre === "server/lecturas/catalogo/precio-local.ts") continue;
+      for (const linea of lineasQueLeenPrecioLocalDeCombinacionDirecto(readFileSync(ruta, "utf8"))) problemas.push(`${nombre}:${linea}`);
+    }
+    expect(problemas, `Estas líneas leen PrecioLocalDeCombinacion a mano y se saltan el embudo del precio local:\n${problemas.join("\n")}`).toEqual([]);
+  });
+
+  it("el detector marca la lectura directa (también sobre una transacción) y no una escritura ni un comentario", () => {
+    const fuente = [
+      "const filas = await db.precioLocalDeCombinacion.findMany({ where: { sucursalId } });",
+      "await tx.precioLocalDeCombinacion . findFirst({});",
+      "await tx.precioLocalDeCombinacion.upsert({});",
+      "// antes: db.precioLocalDeCombinacion.findMany — ahora pasa por el embudo.",
+    ].join("\n");
+    expect(lineasQueLeenPrecioLocalDeCombinacionDirecto(fuente)).toEqual([1, 2]);
+  });
+});

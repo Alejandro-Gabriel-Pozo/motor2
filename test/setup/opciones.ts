@@ -192,6 +192,91 @@ export function sentenciaDeFoto(e: Pick<EscenarioDeOpciones, "grupoVarianteId" |
   return { id: datos.id as string, ...sentenciaDeInsercion("OpcionElegidaEnLinea", datos) };
 }
 
+// GO-3 (ADR-032): combos y menú del día. El escenario de las opciones más una sección de carta, una promo de la empresa con un cupo de SECCIÓN (el de siempre), un cupo LISTA
+// («Entrada») y un cupo DEL_DIA («Plato del día»), y un producto de venta más («Milanesa»). Lo usan `migracion-go3d` y `paquete-go3-subir-bajar-subir`.
+
+export interface EscenarioDeCombos extends EscenarioDeOpciones {
+  seccionCartaId: string;
+  promoId: string;
+  cupoSeccionId: string;
+  cupoListaId: string;
+  cupoDelDiaId: string;
+  milanesaId: string;
+}
+
+export async function sembrarEscenarioDeCombos(): Promise<EscenarioDeCombos> {
+  const e = await sembrarEscenarioDeOpciones();
+  const seccionCartaId = (await prisma.seccionCarta.create({ data: { nombre: "Menú" } })).id;
+  const promoId = (await prisma.promoCarta.create({ data: { seccionCartaId, titulo: "Menú del día", precio: "9500.00" } })).id;
+  const cupo = async (data: Record<string, unknown>) => (await prisma.promoCartaCupo.create({ data: { promoCartaId: promoId, cantidadMinima: 1, cantidadMaxima: 1, ...data } as never })).id;
+  const cupoSeccionId = await cupo({ seccionCartaId, orden: 1 });
+  const cupoListaId = await cupo({ tipo: "LISTA", nombre: "Entrada", orden: 2 });
+  const cupoDelDiaId = await cupo({ tipo: "DEL_DIA", nombre: "Plato del día", orden: 3 });
+  const milanesaId = (await prisma.producto.create({ data: { codigo: "PV_MILA", nombre: "Milanesa con puré", tipo: "PV", unidadStockId: e.unidadId, precioVenta: "8000.00" } })).id;
+  return { ...e, seccionCartaId, promoId, cupoSeccionId, cupoListaId, cupoDelDiaId, milanesaId };
+}
+
+/** Un cupo de una promo para un cliente `pg` (LISTA «Postre» por defecto). */
+export function sentenciaDeCupo(e: { promoId: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), promoCartaId: e.promoId, tipo: "LISTA", nombre: `Postre ${randomUUID().slice(0, 8)}`, cantidadMinima: 1, cantidadMaxima: 1, ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("PromoCartaCupo", datos) };
+}
+
+/** Una entrada de un cupo LISTA para un cliente `pg` (el café sin configuración por defecto). */
+export function sentenciaDeEntrada(e: { cupoId: string; productoId: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), cupoId: e.cupoId, productoId: e.productoId, ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("EntradaDeCupo", datos) };
+}
+
+/** Una opción de la configuración fija de una entrada para un cliente `pg`. */
+export function sentenciaDeOpcionDeEntrada(e: { entradaId: string; opcionId: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), entradaId: e.entradaId, opcionId: e.opcionId, ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("OpcionDeEntradaDeCupo", datos) };
+}
+
+/** Un plato del día de un cupo DEL_DIA en una sucursal y una fecha («AAAA-MM-DD») para un cliente `pg`. */
+export function sentenciaDePlatoDelDia(e: { cupoId: string; sucursalId: string; productoId: string; usuarioId: string; fecha: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), cupoId: e.cupoId, sucursalId: e.sucursalId, fecha: e.fecha, productoId: e.productoId, actualizadoPorId: e.usuarioId, ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("EntradaDelDiaDeCupo", datos) };
+}
+
+// GO-3 (ADR-032): las sentencias `pg` de las combinaciones (GO-3a). Las usan `migracion-go3a` y `paquete-go3-subir-bajar-subir`.
+
+/** Un grupo de precio (la tarifa compartida, 3300,00 por defecto) para un cliente `pg`. */
+export function sentenciaDeGrupoDePrecio(extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), nombre: `Tarifa ${randomUUID().slice(0, 8)}`, precio: "3300.00", ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("GrupoDePrecio", datos) };
+}
+
+/** Una combinación de un producto (eje 1 y, si se pide, eje 2), sin precio por defecto, para un cliente `pg`. */
+export function sentenciaDeCombinacion(e: { productoId: string; opcionEje1Id: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), productoId: e.productoId, opcionEje1Id: e.opcionEje1Id, ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("CombinacionDeProducto", datos) };
+}
+
+/** El precio local de una combinación o de un grupo (4000,00 por defecto) para un cliente `pg`: `extra` lleva `combinacionId` o `grupoDePrecioId`. */
+export function sentenciaDePrecioLocalDeCombinacion(e: { sucursalId: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), sucursalId: e.sucursalId, precio: "4000.00", ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("PrecioLocalDeCombinacion", datos) };
+}
+
+/** Una versión de la receta propia de una combinación (número 1 por defecto) para un cliente `pg`. */
+export function sentenciaDeRecetaDeCombinacion(e: { combinacionId: string; usuarioId: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), combinacionId: e.combinacionId, numero: 1, creadoPorId: e.usuarioId, ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("RecetaDeCombinacionVersion", datos) };
+}
+
+/** Un ingrediente de una versión de receta de combinación (0,0360 por defecto) para un cliente `pg`. */
+export function sentenciaDeIngredienteDeCombinacion(e: { versionId: string; insumoProductoId: string; unidadId: string }, extra: Record<string, unknown> = {}): SentenciaPg {
+  return sentenciaDeInsercion("RecetaDeCombinacionIngrediente", { id: randomUUID(), versionId: e.versionId, insumoProductoId: e.insumoProductoId, cantidad: "0.0360", unidadId: e.unidadId, ...extra });
+}
+
+/** La foto de la combinación vendida en una línea (ADITIVO por defecto) para un cliente `pg`. */
+export function sentenciaDeCombinacionEnLinea(e: { cuentaItemId: string; combinacionId: string }, extra: Record<string, unknown> = {}): SentenciaPg & { id: string } {
+  const datos: Record<string, unknown> = { id: randomUUID(), cuentaItemId: e.cuentaItemId, combinacionId: e.combinacionId, origenPrecio: "ADITIVO", ...extra };
+  return { id: datos.id as string, ...sentenciaDeInsercion("CombinacionEnLinea", datos) };
+}
+
 // GO-2b (la venta con opciones): el café del SALÓN, sembrado directo con Prisma (sin pasar por los casos de uso de administración de GO-2a, para que estos tests no dependan de ellos) sobre el escenario de
 // `test/pos/salon-fixture.ts`, para los tests de agregar ítems, enviar, cerrar, anular, el ticket y los reportes.
 

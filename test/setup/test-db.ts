@@ -28,10 +28,10 @@ export { prismaDuenioSinEmpresa } from "./cliente-duenio";
 /**
  * Vacía las operaciones y sus movimientos de un golpe. Los tests de volumen siembran decenas de miles de filas: borrarlas con el
  * `deleteMany` de `limpiarBaseDeTest` (con el chequeo de FK fila por fila) puede pasar los 10 s del hook y arrastra a los tests siguientes.
- * Postgres no deja truncar `Operacion` si otra tabla la referencia, aunque esté vacía: `FacturaProveedorSucursal` (M3b) la referencia con `operacionId`, `NotaCreditoProveedorImputacion` (M6) con `operacionDevolucionId` y `OpcionElegidaEnLinea` (GO-1d) referencia a `CuentaItem`, así que van en el mismo `TRUNCATE`.
+ * Postgres no deja truncar `Operacion` si otra tabla la referencia, aunque esté vacía: `FacturaProveedorSucursal` (M3b) la referencia con `operacionId`, `NotaCreditoProveedorImputacion` (M6) con `operacionDevolucionId` y `OpcionElegidaEnLinea` (GO-1d) y `CombinacionEnLinea` (GO-3a) referencian a `CuentaItem`, así que van en el mismo `TRUNCATE`.
  */
 export async function vaciarOperacionesPorVolumen() {
-  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "OpcionElegidaEnLinea", "MovimientoStock", "CuentaItem", "FacturaProveedorSucursal", "NotaCreditoProveedorImputacion", "Operacion"');
+  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "OpcionElegidaEnLinea", "CombinacionEnLinea", "MovimientoStock", "CuentaItem", "FacturaProveedorSucursal", "NotaCreditoProveedorImputacion", "Operacion"');
 }
 
 /**
@@ -71,6 +71,8 @@ export async function limpiarBaseDeTest() {
   // OJO: PromoCartaCupo, PromoCarta y SeccionCarta NO se borran acá (Task #16, docs/plan-promo-combo-2026-09-26.md, M2) —
   // desde que `PromoCuenta` existe, PromoCarta depende TRANSITIVAMENTE de que la cuenta del POS ya esté vacía (ver más abajo,
   // junto a `promoCuenta.deleteMany()`), así que las tres se movieron a ese bloque.
+  // GO-3: lo de combos, menú del día y combinaciones primero (nadie lo referencia; ver `limpiarTablasDeGo3`, al final del archivo).
+  await limpiarTablasDeGo3();
   await prismaAdmin.opcionItemAgrupadoCarta.deleteMany();
   await prismaAdmin.itemAgrupadoCarta.deleteMany();
   await prismaAdmin.temaCartaSucursal.deleteMany();
@@ -383,4 +385,18 @@ export async function sembrarMotivosYDestinos() {
     motivos: new Map(motivos.map((m) => [m.nombre, m.id])),
     destinos: new Map(destinos.map((d) => [d.nombre, d.id])),
   };
+}
+
+// GO-3 (ADR-032): las tablas de combos y menú del día (GO-3d) y de combinaciones (GO-3a). Nadie las referencia y ellas referencian a la carta, al catálogo, a las opciones, a la sucursal,
+// al User y a `CuentaItem` (RESTRICT, salvo la foto, en CASCADE): se borran PRIMERO, hijas antes que padres. Declarada como función (se iza) para dejar el bloque al final del archivo.
+async function limpiarTablasDeGo3() {
+  await prismaAdmin.combinacionEnLinea.deleteMany();
+  await prismaAdmin.recetaDeCombinacionIngrediente.deleteMany();
+  await prismaAdmin.recetaDeCombinacionVersion.deleteMany();
+  await prismaAdmin.precioLocalDeCombinacion.deleteMany();
+  await prismaAdmin.combinacionDeProducto.deleteMany();
+  await prismaAdmin.grupoDePrecio.deleteMany();
+  await prismaAdmin.entradaDelDiaDeCupo.deleteMany();
+  await prismaAdmin.opcionDeEntradaDeCupo.deleteMany();
+  await prismaAdmin.entradaDeCupo.deleteMany();
 }

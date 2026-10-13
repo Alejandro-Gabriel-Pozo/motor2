@@ -49,7 +49,8 @@ export async function guardarPromoCartaCasoDeUso(
 
     const datos = { seccionCartaId: seccion.id, titulo: comando.titulo, descripcion: comando.descripcion, precio: comando.precio, orden: comando.orden };
     if (comando.id) {
-      const existente = await tx.promoCarta.findUnique({ where: { id: comando.id }, include: { cupos: { select: { cantidadMaxima: true } } } });
+      // GO-3: el piso cuenta los cupos ACTIVOS de cualquier tipo (los dados de baja no; contar de más solo sube el piso: falla seguro).
+      const existente = await tx.promoCarta.findUnique({ where: { id: comando.id }, include: { cupos: { where: { activo: true }, select: { cantidadMaxima: true } } } });
       if (!existente) return fracaso("PROMO_NO_ENCONTRADA", "No se encontró la promo.");
       // O.42: el MISMO piso que rige al guardar los cupos y el precio local (peor caso: todos los cupos en su máximo), contra los cupos vigentes. Sin cupos, sin piso.
       const piso = pisoDePrecioDePromo(existente.cupos);
