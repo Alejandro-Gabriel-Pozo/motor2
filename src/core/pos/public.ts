@@ -36,6 +36,6 @@ export type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
 // GO-2d (ADR-030 «Pantallas»): los precios PARA MOSTRAR de un producto con opciones (el «desde», cada tamaño, la vista previa del diálogo del POS), con la misma regla que la venta.
 export { opcionDisponible, resumenDePrecios, vistaPreviaDeConfiguracion } from "./precio-de-configuracion";
 export type { ResumenDePrecios } from "./precio-de-configuracion";
-export { claveDeConfiguracion, elegidasParaPedir, esDeUnaSolaEleccion, estadoInicialElegirOpciones, grupoCompleto, gruposQueFaltan, reducirElegirOpciones, resumenDeConfiguracion } from "./elegir-opciones-estado";
+export { avisoEnPromo, claveDeConfiguracion, elegidasParaPedir, esDeUnaSolaEleccion, estadoInicialElegirOpciones, grupoCompleto, gruposQueFaltan, masPedidasParaElDialogo, reducirElegirOpciones, resumenDeConfiguracion } from "./elegir-opciones-estado";
 export type { ConfiguracionDelSelector } from "./elegir-opciones-estado";
 export { agruparConAdicionales, elegidasDeLaLinea } from "./lineas-con-adicionales";

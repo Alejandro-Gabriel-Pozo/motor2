@@ -87,7 +87,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   // GO-2d (ADR-030): de los productos del selector que admiten opciones, lo que necesita «Elegir opciones» (precios para mostrar, agotadas, stock 0). Y si el rol puede marcar
   // opciones agotadas (el diálogo ofrece el enlace). Solo con el selector a la vista.
   const [configuraciones, agotar] = selectorCarta
-    ? await Promise.all([cargarOpcionesDelSelector(ctx.sucursalId, ctx.db, selectorCarta), obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "opcion_apagar_en_sucursal", ctx.db)])
+    ? await Promise.all([cargarOpcionesDelSelector(ctx.sucursalId, ctx.db, selectorCarta, { ahora, zonaHoraria: ctx.empresaZonaHoraria }), obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "opcion_apagar_en_sucursal", ctx.db)])
     : [{}, { ver: false, editar: false }];
   // Cliente con descuento (Task #14): la lista de clientes ACTIVOS solo se trae si hay algo que asignar — mismo criterio que
   // `selectorCarta`. `descuentoPorcentaje` se convierte a `number` acá (server): un `Decimal` de Prisma no se puede pasar tal cual

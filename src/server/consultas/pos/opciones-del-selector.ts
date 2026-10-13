@@ -1,10 +1,12 @@
 import "server-only";
-import { pediblesDeEntrada, resumenDePrecios, type ConfiguracionDelSelector, type GrupoParaVender, type ProductoPedible, type SelectorCartaPos } from "@/core/pos/public";
+import { masPedidasParaElDialogo, pediblesDeEntrada, resumenDePrecios, type ConfiguracionDelSelector, type GrupoParaVender, type ProductoPedible, type SelectorCartaPos } from "@/core/pos/public";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import { saldosTeoricosEnSucursal } from "@/server/lecturas/movimientos/saldos";
+import { configuracionesMasPedidasEnSucursal } from "@/server/lecturas/pos/mas-pedidas";
+import { diaDeCalendario, inicioDelDia, sumarDias } from "@/core/tiempo/zona-horaria";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -17,10 +19,17 @@ import type { Db } from "@/lib/db-tipos";
  * se lee su porcentaje para componerlo sobre la lista con opciones, como hace la venta.
  *
  * Fuera del payload, a propósito: los consumos de cada opción (son de la receta, no del mozo) y las opciones de un adicional sin producto que lo respalde (no se pueden pedir). Sin
- * N+1: una lectura de opciones para todos los productos, la grilla y la capacidad, los descuentos y un agregado de stock. Sin guarda de permiso adentro: la pone
- * la página de la mesa (después de su gate de `pos_mesas`).
+ * N+1: una lectura de opciones para todos los productos, la grilla y la capacidad, los descuentos, un agregado de stock y dos de «lo más pedido». Sin guarda de permiso adentro:
+ * la pone la página de la mesa (después de su gate de `pos_mesas`).
+ *
+ * «Lo más pedido acá» (modelo 3): lo de los últimos 30 días contando hoy, con los días cortados en la zona de la empresa (`cuando`); sin `cuando`, no se lee.
  */
-export async function cargarOpcionesDelSelector(sucursalId: string, db: Db, selector: SelectorCartaPos | null): Promise<Record<string, ConfiguracionDelSelector>> {
+export async function cargarOpcionesDelSelector(
+  sucursalId: string,
+  db: Db,
+  selector: SelectorCartaPos | null,
+  cuando?: { ahora: Date; zonaHoraria: string }
+): Promise<Record<string, ConfiguracionDelSelector>> {
   if (!selector) return {};
   const pedibles = new Map<string, ProductoPedible>();
   for (const p of [...selector.seccionesCarta.flatMap((s) => s.entradas.flatMap(pediblesDeEntrada)), ...selector.fueraDeCarta]) pedibles.set(p.productoId, p);
@@ -33,11 +42,13 @@ export async function cargarOpcionesDelSelector(sucursalId: string, db: Db, sele
   const capacidad = precioLocalActivoEn(sucursalId, db);
   const conDescuento = conOpciones.filter((id) => pedibles.get(id)!.precioLista !== undefined);
   const insumoIds = conOpciones.flatMap((id) => opciones.get(id)!.grupos.flatMap((g) => g.opciones.flatMap((o) => o.consumos.map((c) => c.insumoProductoId))));
-  const [grilla, descuentos, saldos, insumos] = await Promise.all([
+  const desde = cuando ? inicioDelDia(sumarDias(diaDeCalendario(cuando.ahora, cuando.zonaHoraria), -29), cuando.zonaHoraria) : null;
+  const [grilla, descuentos, saldos, insumos, pedidas] = await Promise.all([
     preciosLocalesDeOpcionVigentesEnProductos(sucursalId, db, conOpciones, capacidad),
     conDescuento.length ? descuentosDeProductoEnSucursal(sucursalId, db, conDescuento, capacidad) : Promise.resolve(new Map<string, number>()),
     saldosTeoricosEnSucursal(sucursalId, insumoIds, db),
     insumoIds.length ? db.producto.findMany({ where: { id: { in: [...new Set(insumoIds)] } }, select: { id: true, nombre: true } }) : Promise.resolve([]),
+    desde ? configuracionesMasPedidasEnSucursal(db, sucursalId, conOpciones, desde) : Promise.resolve(new Map<string, never[]>()),
   ]);
   const nombreDeInsumo = new Map(insumos.map((i) => [i.id, i.nombre]));
 
@@ -60,7 +71,8 @@ export async function cargarOpcionesDelSelector(sucursalId: string, db: Db, sele
     const precioBase = pedible.precioLista ?? pedible.precio;
     const descuentoDeProducto = descuentos.get(productoId) ?? null;
     const resumen = resumenDePrecios({ grupos, precioBase, descuentoDeProducto });
-    salida[productoId] = { grupos, precioBase, descuentoDeProducto, desde: resumen.desde, hayVariacion: resumen.hayVariacion, vendible: resumen.vendible, sinStock };
+    const masPedidas = masPedidasParaElDialogo(grupos, pedidas.get(productoId) ?? []);
+    salida[productoId] = { grupos, precioBase, descuentoDeProducto, desde: resumen.desde, hayVariacion: resumen.hayVariacion, vendible: resumen.vendible, sinStock, masPedidas };
   }
   return salida;
 }

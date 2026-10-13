@@ -4,11 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
 import { agregarItems } from "@/server/actions/pos/cuenta-pedido";
-import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos, estadoInicialSelectorCarta, reducirSelectorCarta, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar, type EleccionParaAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearCantidad, formatearMonto, claveDeConfiguracion, resumenDeConfiguracion, vistaPreviaDeConfiguracion, type ConfiguracionDelSelector } from "@/core/pos/public";
+import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos, estadoInicialSelectorCarta, reducirSelectorCarta, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar, type EleccionParaAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearCantidad, formatearMonto, avisoEnPromo, claveDeConfiguracion, resumenDeConfiguracion, vistaPreviaDeConfiguracion, type ConfiguracionDelSelector } from "@/core/pos/public";
 import { BOTON_CHICO, BOTON_PRIMARIO, CAMPO } from "./estilos";
 import { SelectorCarta } from "./selector-carta";
 import { ArmarPromo } from "./armar-promo";
-import { ElegirOpciones, type EleccionPrecargada } from "./elegir-opciones";
+import { ElegirOpciones } from "./elegir-opciones";
 import { useAccionMesa } from "./usar-accion";
 import { useRegistrarOtroIgual } from "./otro-igual";
 
@@ -64,7 +64,6 @@ export function AgregarItems({
   selectorCarta,
   configuraciones = {},
   puedeAgotar = false,
-  masPedidas = {},
 }: {
   cuentaId: string;
   puede: boolean;
@@ -73,8 +72,6 @@ export function AgregarItems({
   configuraciones?: Readonly<Record<string, ConfiguracionDelSelector>>;
   /** GO-2d: si el rol puede marcar opciones agotadas (el diálogo muestra el enlace). */
   puedeAgotar?: boolean;
-  /** GO-2d (modelo 3): lo más pedido de cada producto en la sucursal, para precargar el diálogo. */
-  masPedidas?: Readonly<Record<string, EleccionPrecargada[]>>;
 }) {
   const { ejecutar, pending, error } = useAccionMesa();
   const router = useRouter();
@@ -132,6 +129,11 @@ export function AgregarItems({
     });
     return () => registrarOtroIgual(null);
   }, [registrarOtroIgual, puede, configuraciones, pediblePorId]);
+  // GO-2d: los productos que en una promo no se pueden armar (tienen un grupo obligatorio), con el aviso para `ArmarPromo`.
+  const noSeArmanEnPromo = useMemo(
+    () => new Map(Object.entries(configuraciones).flatMap(([id, c]) => { const aviso = avisoEnPromo(c.grupos); return aviso ? [[id, aviso] as const] : []; })),
+    [configuraciones]
+  );
   const productoAbierto = opcionesAbiertas ? pediblePorId.get(opcionesAbiertas.productoId) : undefined;
   const configuracionAbierta = opcionesAbiertas ? configuraciones[opcionesAbiertas.productoId] : undefined;
 
@@ -346,12 +348,12 @@ export function AgregarItems({
           {error}
         </p>
       )}
-      {promoAbierta && <ArmarPromo entrada={promoAbierta} onCerrar={() => setPromoAbierta(null)} onConfirmar={confirmarPromo} />}
+      {promoAbierta && <ArmarPromo entrada={promoAbierta} onCerrar={() => setPromoAbierta(null)} onConfirmar={confirmarPromo} noSeArman={noSeArmanEnPromo} />}
       {opcionesAbiertas && productoAbierto && configuracionAbierta && (
         <ElegirOpciones
           nombre={productoAbierto.nombre}
           configuracion={configuracionAbierta}
-          precargas={masPedidas[opcionesAbiertas.productoId] ?? []}
+          precargas={configuracionAbierta.masPedidas}
           inicial={opcionesAbiertas.inicial}
           puedeAgotar={puedeAgotar}
           onCerrar={() => setOpcionesAbiertas(null)}

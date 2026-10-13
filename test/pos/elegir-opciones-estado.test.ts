@@ -2,11 +2,13 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import type { GrupoParaVender, OpcionParaVender } from "../../src/core/pos/linea-configurada";
 import {
+  avisoEnPromo,
   claveDeConfiguracion,
   elegidasParaPedir,
   estadoInicialElegirOpciones,
   grupoCompleto,
   gruposQueFaltan,
+  masPedidasParaElDialogo,
   reducirElegirOpciones,
   resumenDeConfiguracion,
   type AccionElegirOpciones,
@@ -201,5 +203,38 @@ describe("«Por agregar» con configuraciones", () => {
     e = reducirListaPorAgregar(e, { ...sumarConf(["grande"]), tope: 1 });
     e = reducirListaPorAgregar(e, { ...sumarConf(["chico"]), tope: 1 });
     expect(e.lineas.map((l) => l.cantidad)).toEqual([2]);
+  });
+});
+
+describe("«Lo más pedido acá» (modelo 3) y el aviso en las promos (GO-2d paso 9)", () => {
+  it("junta la misma elección pedida con dos versiones de precio, ordena por unidades y se queda con tres", () => {
+    const pedidas = [
+      { elegidas: [{ opcionId: "grande", cantidad: 1 }], unidades: 4 },
+      { elegidas: [{ opcionId: "con-leche", cantidad: 1 }, { opcionId: "mediano", cantidad: 1 }], unidades: 3 },
+      { elegidas: [{ opcionId: "mediano", cantidad: 1 }, { opcionId: "con-leche", cantidad: 1 }], unidades: 3 }, // la misma, con otra versión de precio
+      { elegidas: [{ opcionId: "chico", cantidad: 1 }], unidades: 2 },
+      { elegidas: [{ opcionId: "chico", cantidad: 1 }, { opcionId: "solo", cantidad: 1 }], unidades: 1 },
+    ];
+    expect(masPedidasParaElDialogo([TAMANO, LECHE], pedidas)).toEqual([
+      { etiqueta: "Mediano · Con leche", elegidas: [{ opcionId: "con-leche", cantidad: 1 }, { opcionId: "mediano", cantidad: 1 }] },
+      { etiqueta: "Grande", elegidas: [{ opcionId: "grande", cantidad: 1 }] },
+      { etiqueta: "Chico", elegidas: [{ opcionId: "chico", cantidad: 1 }] },
+    ]);
+  });
+
+  it("no ofrece una configuración con algo que hoy no se puede elegir (agotada o que ya no está)", () => {
+    const pedidas = [
+      { elegidas: [{ opcionId: "papas", cantidad: 1 }], unidades: 9 },
+      { elegidas: [{ opcionId: "borrada", cantidad: 1 }], unidades: 8 },
+      { elegidas: [{ opcionId: "pure", cantidad: 1 }], unidades: 1 },
+    ];
+    expect(masPedidasParaElDialogo([GUARNICION], pedidas).map((p) => p.etiqueta)).toEqual(["Puré"]);
+  });
+
+  it("en una promo: un grupo obligatorio no se arma («Con tamaño» si es una medida); solo opcionales, entra", () => {
+    expect(avisoEnPromo([TAMANO, LECHE])).toBe("Con tamaño: pedilo suelto");
+    expect(avisoEnPromo([GUARNICION])).toBe("Lleva opciones: pedilo suelto");
+    expect(avisoEnPromo([LECHE])).toBeNull();
+    expect(avisoEnPromo([{ ...TAMANO, admitido: false }])).toBeNull();
   });
 });

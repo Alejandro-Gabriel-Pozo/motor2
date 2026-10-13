@@ -18,8 +18,22 @@ import { BOTON_CHICO, BOTON_PRIMARIO, BOTON_SECUNDARIO } from "./estilos";
  * que llega al máximo de su cupo se deshabilita A SÍ MISMO en el click que lo enfocó — el navegador le saca el foco al
  * quedar disabled (se lo lleva a `<body>`), así que un `onKeyDown` que dependa de que el foco siga DENTRO del diálogo
  * dejaría de andar justo en ese momento (hallazgo real de `test/e2e/pos-promo-combo.spec.ts`, paso 11).
+ *
+ * GO-2d (ADR-030): un producto con un grupo de opciones obligatorio se ve con su aviso («Con tamaño: pedilo suelto») y sin «+»: en una promo todavía no lleva opciones y el
+ * servidor lo rechazaría (`PROMO_CON_OPCIONES`).
  */
-export function ArmarPromo({ entrada, onCerrar, onConfirmar }: { entrada: EntradaPromoSelectorCarta; onCerrar: () => void; onConfirmar: (eleccion: EleccionParaAgregar[]) => void }) {
+export function ArmarPromo({
+  entrada,
+  onCerrar,
+  onConfirmar,
+  noSeArman,
+}: {
+  entrada: EntradaPromoSelectorCarta;
+  onCerrar: () => void;
+  onConfirmar: (eleccion: EleccionParaAgregar[]) => void;
+  /** GO-2d: productoId → por qué no se puede elegir en la promo («Con tamaño: pedilo suelto»): tiene un grupo de opciones obligatorio. Sin esto, todos se eligen como siempre. */
+  noSeArman?: ReadonlyMap<string, string>;
+}) {
   const [estado, despachar] = useReducer(reducirArmarPromo, entrada, estadoInicialArmarPromo);
   const puedeConfirmar = puedeConfirmarArmarPromo(estado);
   const base = useId();
@@ -63,9 +77,17 @@ export function ArmarPromo({ entrada, onCerrar, onConfirmar }: { entrada: Entrad
                   <ul className="flex flex-col divide-y divide-[var(--border)]">
                     {cupo.elegibles.map((p) => {
                       const cantidad = cantidadElegida(estado, cupo.seccionCartaId, p.productoId);
+                      const noSeArma = noSeArman?.get(p.productoId);
                       return (
                         <li key={p.productoId} data-producto-armar-promo={p.productoId} className="flex items-center justify-between gap-2 py-1.5">
-                          <span className="min-w-0 flex-1 text-[13.5px]">{p.nombre}</span>
+                          <span className="min-w-0 flex-1 text-[13.5px]">
+                            {p.nombre}
+                            {noSeArma && (
+                              <span data-no-se-arma className="block text-[12.5px] text-[var(--ink-soft)]">
+                                {noSeArma}
+                              </span>
+                            )}
+                          </span>
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
@@ -83,8 +105,8 @@ export function ArmarPromo({ entrada, onCerrar, onConfirmar }: { entrada: Entrad
                               type="button"
                               className={BOTON_CHICO}
                               aria-label={`Sumar ${p.nombre} a ${cupo.nombreSeccion}`}
-                              disabled={llegoAlMaximo}
-                              title={llegoAlMaximo ? `Ya elegiste el máximo de ${cupo.nombreSeccion} (${cupo.cantidadMaximaCupo}).` : undefined}
+                              disabled={llegoAlMaximo || noSeArma !== undefined}
+                              title={noSeArma ?? (llegoAlMaximo ? `Ya elegiste el máximo de ${cupo.nombreSeccion} (${cupo.cantidadMaximaCupo}).` : undefined)}
                               onClick={() => despachar({ tipo: "incrementar", seccionCartaId: cupo.seccionCartaId, productoId: p.productoId })}
                             >
                               +

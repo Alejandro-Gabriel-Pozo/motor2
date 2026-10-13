@@ -175,3 +175,41 @@ test("«Anular» un producto ya enviado avisa que arrastra sus adicionales y los
     await d.limpiar();
   }
 });
+
+test("paso 9: «Lo más pedido acá» precarga lo que más se pidió en la sucursal, y en una promo el café con tamaño se ve «pedilo suelto»", async ({ paginaAutenticada: page, sucursalId }) => {
+  const d = await sembrar(sucursalId, 7100 + Math.floor(Math.random() * 800));
+  const titulo = `E2E Promo café ${d.m}`;
+  const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: d.seccion.id, titulo, precio: 2000 } });
+  await prisma.promoCartaCupo.create({ data: { promoCartaId: promo.id, seccionCartaId: d.seccion.id, cantidadMinima: 1, cantidadMaxima: 1, orden: 0 } });
+  try {
+    await pedirCafeGrandeConMedialuna(page, d);
+    await page.reload();
+    await page.getByRole("group", { name: "Secciones de la carta" }).getByRole("button", { name: d.seccion.nombre }).click();
+    const region = page.getByRole("region", { name: d.seccion.nombre });
+
+    // Lo más pedido: el Grande que se acaba de pedir (sin el adicional: no entra en la cuenta), y el botón lo precarga.
+    await region.getByRole("button", { name: new RegExp(`^${d.nombreCafe}`) }).click();
+    const dialogo = page.getByRole("dialog", { name: d.nombreCafe });
+    const masPedido = dialogo.getByRole("group", { name: "Lo más pedido acá" });
+    await expect(masPedido.getByRole("button")).toHaveText(["Grande"]);
+    await masPedido.getByRole("button", { name: "Grande" }).click();
+    await expect(dialogo.getByRole("radio", { name: /Grande/ })).toBeChecked();
+    await expect(dialogo.getByRole("button", { name: /^Agregar/ })).toHaveText("Agregar · $ 2.800");
+    expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo con lo más pedido").toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(dialogo).toBeHidden();
+
+    // En la promo, el café (tamaño obligatorio) no se puede sumar.
+    await region.getByRole("button", { name: titulo }).click();
+    const armar = page.getByRole("dialog", { name: `Armar «${titulo}»` });
+    const fila = armar.locator(`[data-producto-armar-promo="${d.cafeId}"]`);
+    await expect(fila.locator("[data-no-se-arma]")).toHaveText("Con tamaño: pedilo suelto");
+    await expect(fila.getByRole("button", { name: `Sumar ${d.nombreCafe} a ${d.seccion.nombre}` })).toBeDisabled();
+    expect((await new AxeBuilder({ page }).include(`[data-armar-promo="${promo.id}"]`).analyze()).violations, "promo con el aviso").toEqual([]);
+  } finally {
+    await prisma.promoCartaCupo.deleteMany({ where: { promoCartaId: promo.id } });
+    await prisma.promoCartaSucursal.deleteMany({ where: { promoCartaId: promo.id } });
+    await prisma.promoCarta.deleteMany({ where: { id: promo.id } });
+    await d.limpiar();
+  }
+});

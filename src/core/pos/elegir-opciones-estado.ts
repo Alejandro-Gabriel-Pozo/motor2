@@ -135,6 +135,44 @@ export function resumenDeConfiguracion(nombreProducto: string, grupos: readonly 
 }
 
 /**
+ * «Lo más pedido acá» (modelo 3): de las configuraciones más pedidas en la sucursal (por huella, de mayor a menor), las `maximo` primeras que HOY se pueden elegir, juntando la misma
+ * elección pedida con dos versiones de precio. Cada una con su etiqueta («Mediano · Con leche»), en el orden de los grupos del producto. Una con alguna opción que ya no está
+ * (dada de baja, no admitida, agotada hoy) no se ofrece: el botón precargaría otra cosa que la que dice.
+ */
+export function masPedidasParaElDialogo(
+  grupos: readonly GrupoParaVender[],
+  pedidas: readonly { elegidas: readonly { opcionId: string; cantidad: number }[]; unidades: number }[],
+  maximo = 3
+): { etiqueta: string; elegidas: { opcionId: string; cantidad: number }[] }[] {
+  const disponibles = new Map(grupos.filter((g) => g.admitido && g.activo).flatMap((g) => g.opciones.filter(opcionDisponible).map((o) => [o.opcionId, o] as const)));
+  const juntas = new Map<string, { elegidas: { opcionId: string; cantidad: number }[]; unidades: number; orden: number }>();
+  pedidas.forEach((p, orden) => {
+    if (p.elegidas.length === 0 || !p.elegidas.every((e) => disponibles.has(e.opcionId))) return;
+    const clave = claveDeConfiguracion("", p.elegidas);
+    const antes = juntas.get(clave);
+    juntas.set(clave, { elegidas: antes?.elegidas ?? p.elegidas.map((e) => ({ opcionId: e.opcionId, cantidad: e.cantidad })), unidades: (antes?.unidades ?? 0) + p.unidades, orden: antes?.orden ?? orden });
+  });
+  return [...juntas.values()]
+    .sort((a, b) => b.unidades - a.unidades || a.orden - b.orden)
+    .slice(0, maximo)
+    .map(({ elegidas }) => {
+      const cuantas = new Map(elegidas.map((e) => [e.opcionId, e.cantidad]));
+      const partes = grupos.flatMap((g) => g.opciones.flatMap((o) => (cuantas.has(o.opcionId) ? [cuantas.get(o.opcionId)! > 1 ? `${o.nombre} ×${cuantas.get(o.opcionId)}` : o.nombre] : [])));
+      return { etiqueta: partes.join(" · "), elegidas };
+    });
+}
+
+/**
+ * En una promo (v1) un componente no lleva opciones: el servidor rechaza el que tiene un grupo obligatorio (`PROMO_CON_OPCIONES`). El aviso para `ArmarPromo`, o `null` si el
+ * producto entra en la promo (sin opciones, o solo con grupos opcionales: entra sin elegir nada).
+ */
+export function avisoEnPromo(grupos: readonly Pick<GrupoParaVender, "admitido" | "cantidadMinima" | "tipo">[]): string | null {
+  const obligatorios = grupos.filter((g) => g.admitido && g.cantidadMinima > 0);
+  if (obligatorios.length === 0) return null;
+  return obligatorios.some((g) => g.tipo === "MEDIDA") ? "Con tamaño: pedilo suelto" : "Lleva opciones: pedilo suelto";
+}
+
+/**
  * Lo que el selector del POS sabe de un producto CON opciones (lo arma el servidor, `server/consultas/pos/opciones-del-selector.ts`): sus grupos tal como los lee la venta (con el
  * precio de cada opción ya resuelto para la sucursal y SIN los consumos: el mozo no los necesita), el precio base y el descuento de producto que rigen hoy, el «desde», si se puede
  * vender y, de cada opción, los insumos que el sistema registra en 0 (el aviso discreto: vender sigue permitido).
@@ -150,4 +188,6 @@ export interface ConfiguracionDelSelector {
   vendible: boolean;
   /** opcionId → nombres de los insumos de su consumo que el sistema registra en 0 o menos en la sucursal. */
   sinStock: Readonly<Record<string, string[]>>;
+  /** «Lo más pedido acá» (hasta 3, de mayor a menor): botones que precargan esa elección; igual se confirma viendo el precio. */
+  masPedidas: { etiqueta: string; elegidas: { opcionId: string; cantidad: number }[] }[];
 }
