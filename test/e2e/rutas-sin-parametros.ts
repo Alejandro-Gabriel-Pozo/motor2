@@ -28,6 +28,7 @@ export const RUTAS_SIN_PARAMETROS = [
   "/catalogo/unidades",
   "/mesas",
   "/movimientos/conteo-fisico",
+  "/movimientos/opciones-agotadas",
   "/movimientos/precio-local",
   "/movimientos/secciones",
   "/movimientos/venta",

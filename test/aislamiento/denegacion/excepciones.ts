@@ -216,4 +216,7 @@ export const SIN_MARCA_PROPIA: Readonly<Record<string, string>> = {
   "consulta|consultas/stock/stock-minimo.ts|resolverStockMinimo": "devuelve solo el mínimo (un número)",
   // GO-2d.
   "consulta|consultas/catalogo/opciones-de-venta.ts|contarGruposDeOpcionesPorProducto": "devuelve solo cuántos grupos de opciones tiene cada producto que se le pasa (repite sus ids, que no cuentan como propios)",
+  "consulta|consultas/catalogo/opciones-por-sucursal.ts|cargarGrillaDeTamanosDeLaSucursal": "lista solo los tamaños de productos DISPONIBLES en la sucursal; el PV con opciones del mundo no tiene disponibilidad (a propósito, ver mundo.ts), así que es vacía. La fila de la grilla sembrada (con la huella) la ejerce su lector, `filasDePrecioLocalDeOpcionesEnSucursal`",
+  "consulta|consultas/stock/stock-teorico.ts|saldosTeoricosEnSucursal": "devuelve solo saldos (números) de los productos que se le pasan (repite sus ids, que no cuentan como propios)",
+  "consulta|consultas/carta/avisos-de-stock.ts|insumosSinStockDeLosPlatos": "devuelve solo los insumos en 0 o menos de los platos que se le pasan; el mundo siembra saldo positivo de sus materias primas, así que es vacío",
 };

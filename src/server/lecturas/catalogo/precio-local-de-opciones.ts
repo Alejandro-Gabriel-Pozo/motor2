@@ -59,3 +59,12 @@ export async function filaDePrecioLocalDeOpcion(db: Db, clave: { sucursalId: str
   });
   return fila ? { precio: Number(fila.precio), habilitado: fila.habilitado } : null;
 }
+
+/**
+ * GO-2d: TODAS las filas de la grilla de una sucursal (habilitadas o no), tal cual están, para la pantalla que las administra (`/movimientos/precio-local`, «Precios por tamaño en
+ * esta sucursal»). No decide qué precio rige (eso es `preciosLocalesDeOpcionVigentes`, con la capacidad y la admisión): la pantalla muestra lo cargado y su estado. Una consulta.
+ */
+export async function filasDePrecioLocalDeOpcionesEnSucursal(db: Db, sucursalId: string): Promise<{ productoId: string; opcionId: string; precio: number; habilitado: boolean }[]> {
+  const filas = await db.precioLocalDeOpcion.findMany({ where: { sucursalId }, select: { productoId: true, opcionId: true, precio: true, habilitado: true } });
+  return filas.map((f) => ({ productoId: f.productoId, opcionId: f.opcionId, precio: Number(f.precio), habilitado: f.habilitado }));
+}
