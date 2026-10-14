@@ -229,7 +229,7 @@ function ItemEnviado({ item, adicionales, puedeAnular, puedePedir }: { item: Ite
   return (
     <li data-item-enviado={item.productoNombre} className="py-2 text-[14px]">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className={anuladoEntero ? "text-[var(--ink-soft)] line-through" : undefined}>
+        <span className={`min-w-0 [overflow-wrap:anywhere]${anuladoEntero ? " text-[var(--ink-soft)] line-through" : ""}`}>
           <span className="font-semibold tabular-nums">{formatearCantidad(anuladoEntero ? item.cantidad : item.restante)} ×</span> {item.productoNombre}
           {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-[12.5px] text-[var(--ink-soft)]"> (pedido {formatearCantidad(item.cantidad)})</span>}
           {item.opciones && (
@@ -251,7 +251,7 @@ function ItemEnviado({ item, adicionales, puedeAnular, puedePedir }: { item: Ite
         <ul aria-label={`Adicionales de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[13px]">
           {adicionales.map((a) => (
             <li key={a.id} data-adicional-enviado={a.productoNombre} className={`flex items-center justify-between gap-3${a.restante <= 0 ? " text-[var(--ink-soft)] line-through" : ""}`}>
-              <span>
+              <span className="min-w-0 [overflow-wrap:anywhere]">
                 + <span className="tabular-nums">{formatearCantidad(a.restante <= 0 ? a.cantidad : a.restante)} ×</span> {a.productoNombre}
               </span>
               <span className="tabular-nums">{a.restante <= 0 ? "Anulado" : formatearMonto(a.restante * a.precioUnitario)}</span>

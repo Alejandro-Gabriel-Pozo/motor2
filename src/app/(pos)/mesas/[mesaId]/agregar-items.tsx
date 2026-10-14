@@ -197,8 +197,8 @@ export function AgregarItems({
     return (
       <li key={clave} data-linea-por-agregar={titulo} className="flex flex-col gap-1 bg-white py-2 first:rounded-t-lg last:rounded-b-lg">
         <div className="flex flex-wrap items-center justify-between gap-2 px-2">
-          <span className="min-w-0 flex-1 text-[14px] font-semibold">{titulo}</span>
-          <div className="flex items-center gap-1.5">
+          <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{titulo}</span>
+          <div className="flex flex-wrap items-center gap-1.5">
             <button type="button" className={BOTON_CHICO} aria-label={`Restar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: p.productoId, clave })}>
               −
             </button>
@@ -212,7 +212,7 @@ export function AgregarItems({
               onBlur={() => despacharLista({ tipo: "normalizarCantidad", productoId: p.productoId, clave, decimales: 0 })}
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? idError : undefined}
-              className={`${CAMPO} w-16 text-center tabular-nums`}
+              className={`${CAMPO} w-16 text-center tabular-nums max-md:min-h-11`}
             />
             <button type="button" className={BOTON_CHICO} aria-label={`Sumar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: p.productoId, clave })}>
               +
@@ -246,7 +246,8 @@ export function AgregarItems({
     // submit NATIVO (recarga de la página, GET a la URL actual) que además borraría la lista «Por agregar» del cliente. El botón
     // de confirmar es `type="button"` con su propio `onClick` (`confirmar`), nunca el submit del formulario.
     <form aria-label="Agregar producto" onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-3">
-      <fieldset disabled={!puede} title={puede ? undefined : "Tu rol puede ver la mesa pero no tomar pedidos."} className="flex flex-col gap-3">
+      {/* min-w-0: un `<fieldset>` trae `min-width: min-content` por defecto y, sin esto, la fila más ancha de «Por agregar» ensanchaba la página entera en el celular (437 px sobre 375). */}
+      <fieldset disabled={!puede} title={puede ? undefined : "Tu rol puede ver la mesa pero no tomar pedidos."} className="flex min-w-0 flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <label htmlFor="agregar-producto" className="text-[12.5px] font-semibold">
@@ -274,7 +275,7 @@ export function AgregarItems({
             <ul className="flex flex-col divide-y divide-[var(--border)]">
               {promosPorAgregar.map((p) => (
                 <li key={p.id} data-promo-por-agregar={p.titulo} className="flex items-center justify-between gap-2 bg-[#FFF7E6] px-2 py-2 first:rounded-t-lg">
-                  <span className="min-w-0 flex-1 text-[14px] font-semibold">{p.titulo}</span>
+                  <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{p.titulo}</span>
                   <span className="text-[13.5px] tabular-nums">{formatearMonto(p.precio)}</span>
                   <button
                     type="button"
@@ -301,8 +302,8 @@ export function AgregarItems({
                 return [
                   <li key={l.productoId} data-linea-por-agregar={p.nombre} className="flex flex-col gap-1 bg-white py-2 first:rounded-t-lg last:rounded-b-lg">
                     <div className="flex flex-wrap items-center justify-between gap-2 px-2">
-                      <span className="min-w-0 flex-1 text-[14px] font-semibold">{p.nombre}</span>
-                      <div className="flex items-center gap-1.5">
+                      <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{p.nombre}</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <button type="button" className={BOTON_CHICO} aria-label={`Restar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: l.productoId })}>
                           −
                         </button>
@@ -324,7 +325,7 @@ export function AgregarItems({
                           }
                           aria-invalid={l.error ? true : undefined}
                           aria-describedby={l.error ? idError : p.pasoVenta ? `${idError}-ayuda` : undefined}
-                          className={`${CAMPO} w-16 text-center tabular-nums`}
+                          className={`${CAMPO} w-16 text-center tabular-nums max-md:min-h-11`}
                         />
                         <button type="button" className={BOTON_CHICO} aria-label={`Sumar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: l.productoId })}>
                           +

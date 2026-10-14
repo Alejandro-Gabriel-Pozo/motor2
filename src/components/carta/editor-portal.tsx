@@ -38,7 +38,7 @@ export function EditorPortal({ valoresIniciales, version, accion, empresaNombre,
     <FormConResultado accion={accion} className="flex flex-col gap-4">
       <CuerpoEditor key={version} valoresIniciales={valoresIniciales} empresaNombre={empresaNombre} sucursales={sucursales} urlsPorSlug={urlsPorSlug} mover={mover} />
       <div>
-        <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+        <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11">
           Guardar apariencia
         </button>
       </div>
@@ -46,7 +46,7 @@ export function EditorPortal({ valoresIniciales, version, accion, empresaNombre,
   );
 }
 
-const CLASE_INPUT = "rounded border px-2 py-1";
+const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
 
 function leerValores(form: HTMLFormElement): Record<string, string> {
   const fd = new FormData(form);

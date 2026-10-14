@@ -73,16 +73,6 @@ export function OpcionesAgotadas({
         </label>
         <input id="buscar-opcion" type="search" value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Ej.: papas" className="max-w-sm rounded border px-3 py-2" />
       </div>
-      {ultimo && (
-        <div role={ultimo.resultado.ok ? "status" : "alert"} className={`flex flex-wrap items-center gap-3 text-sm ${ultimo.resultado.ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-          <span>{ultimo.resultado.mensaje}</span>
-          {ultimo.deshacible && (
-            <button type="button" disabled={pendiente} onClick={() => cambiar(ultimo.opcionId, ultimo.nombre, !ultimo.apagada, false)} className="min-h-[44px] rounded border border-current px-3 py-1 font-medium">
-              Deshacer
-            </button>
-          )}
-        </div>
-      )}
       {visibles.length === 0 && <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">No hay opciones que coincidan.</p>}
       {visibles.map((g) => (
         <section key={g.grupoId} aria-labelledby={`grupo-${g.grupoId}`} className="flex flex-col gap-2 rounded border p-3">
@@ -123,6 +113,22 @@ export function OpcionesAgotadas({
           </ul>
         </section>
       ))}
+      {/* MOVIL (O.462): el resultado y «Deshacer» van PEGADOS AL BORDE DE ABAJO de la pantalla (`sticky bottom-3`), no arriba de la lista: quien toca una opción lejos, en una lista larga en el
+          celular, los tenía fuera de la vista y no se enteraba de que se agotó ni podía deshacer. Sigue siendo `status` (o `alert` si falló), con el mismo texto. */}
+      {ultimo && (
+        <div
+          role={ultimo.resultado.ok ? "status" : "alert"}
+          data-resultado-pegado
+          className={`sticky bottom-3 z-10 flex flex-wrap items-center gap-3 rounded border bg-white p-3 text-sm shadow-lg dark:bg-neutral-900 ${ultimo.resultado.ok ? "border-green-700 text-green-700 dark:border-green-500 dark:text-green-400" : "border-red-600 text-red-600 dark:border-red-400 dark:text-red-400"}`}
+        >
+          <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{ultimo.resultado.mensaje}</span>
+          {ultimo.deshacible && (
+            <button type="button" disabled={pendiente} onClick={() => cambiar(ultimo.opcionId, ultimo.nombre, !ultimo.apagada, false)} className="min-h-[44px] min-w-[44px] rounded border border-current px-3 py-1 font-medium">
+              Deshacer
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
