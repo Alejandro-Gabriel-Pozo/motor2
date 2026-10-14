@@ -318,7 +318,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/carta/secciones.ts",
     motivo:
-      "Hito 5, bloque D (D3): guardarSeccionCarta (con guardComandoGuardarSeccionCarta; la acción arma el ResultadoConId) y actualizarActivaSeccionCarta → carta/casos-de-uso/{guardar-seccion-carta,actualizar-activa-seccion-carta}.ts; escrituras en server/persistencia/carta/secciones.ts, con la base del contexto y sin transacción ni auditoría (una sección no es plata), como antes. El formato lo valida core/features/carta/secciones.guard.ts dentro de conPermisoDeEmpresa y la acción revalida la carta pública solo si salió bien. El archivo no tiene ninguna otra mutación.",
+      "Hito 5, bloque D (D3): guardarSeccionCarta (con guardComandoGuardarSeccionCarta; la acción arma el ResultadoConId) y actualizarActivaSeccionCarta → carta/casos-de-uso/{guardar-seccion-carta,actualizar-activa-seccion-carta}.ts; escrituras en server/persistencia/carta/secciones.ts, con la base del contexto y sin transacción ni auditoría (una sección no es plata), como antes. El formato lo valida core/features/carta/secciones.guard.ts dentro de conPermisoDeEmpresa y la acción revalida la carta pública solo si salió bien. CARTA-MANT F3: ordenarSeccionesCarta (con guardComandoOrdenarSeccionesCarta) → carta/casos-de-uso/ordenar-secciones-carta.ts (SERIALIZABLE, contra el orden visto, con auditoría de SeccionCarta.orden). El archivo no tiene ninguna otra mutación.",
   },
   {
     ruta: "src/server/actions/carta/generos.ts",

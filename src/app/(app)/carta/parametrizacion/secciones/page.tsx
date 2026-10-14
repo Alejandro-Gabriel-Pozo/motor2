@@ -6,7 +6,7 @@ import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoV
 import type { ProductoParaMantener } from "@/core/carta/public";
 import { cargarAdminCarta } from "@/server/consultas/carta/admin";
 import { cargarCartaParaMantener } from "@/server/consultas/carta/mantenimiento";
-import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
+import { actualizarActivaSeccionCarta, guardarSeccionCarta, ordenarSeccionesCarta } from "@/server/actions/carta/secciones";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
@@ -14,6 +14,7 @@ import estilos from "../../carta-mant.module.css";
 import { CLASE_BOTON, CLASE_ENLACE_DE_ACCION, CamposSeccion, ContenidoProducto, GrupoDeLaCarta, type UbicacionEnCarta } from "../formularios";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { OrdenarSecciones } from "./ordenar-secciones";
 
 /** Ayudantes puros de los closures "use server" de esta página (locales a propósito: `use-server-solo-donde-corresponde` solo los acepta definidos en el mismo archivo). */
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
@@ -23,7 +24,8 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 };
 
 /**
- * CARTA-MANT: Parametrización › Secciones (prototipo aprobado). Las secciones de la carta (de la EMPRESA: nombre, título, descripción, imagen, orden, prendida o apagada) y, debajo, la FICHA de cada
+ * CARTA-MANT: Parametrización › Secciones (prototipo aprobado). Arriba, «Secciones de la carta» con «Ordenar» y «⋯» (F3, `OrdenarSecciones`). Después, los datos de cada sección (de la EMPRESA:
+ * nombre, título, descripción, imagen, orden, prendida o apagada) y, debajo, la FICHA de cada
  * producto de la carta de esta sucursal, agrupada por sección (descripción, tags, ★, género, sección y orden, descuento y «Quitar de la carta»). Son los mismos formularios que antes estaban apilados en
  * `/carta`, con las mismas acciones y permisos: entrar pide «Ver» de `carta_ver`; cada formulario se dibuja solo con «Editar» de su clave (`carta_secciones`, `carta_contenido_producto`,
  * `carta_producto_descuento`).
@@ -72,20 +74,34 @@ export default async function SeccionesDeCartaPage() {
           <Link href="/carta/parametrizacion" className={`${estilos.boton} ${estilos.botonSuave} ${estilos.volver}`}>
             ← Volver
           </Link>
-          <p className={estilos.ayuda}>El orden se ve en la sucursal y en la carta pública. Las secciones son de toda la empresa; los productos de cada una, de esta sucursal.</p>
+          {!(puedeEditarSecciones || puedeEditarContenido || puedeDescuento) && <AvisoSoloLectura />}
+          <OrdenarSecciones
+            secciones={datos.secciones.map((x) => ({ id: x.id, nombre: x.nombre, activa: x.activa, orden: x.orden }))}
+            puede={puedeEditarSecciones}
+            acciones={{
+              ordenar: async (secciones: { seccionCartaId: string; ordenVisto: number }[]) => {
+                "use server";
+                return refrescarSiOk(await ordenarSeccionesCarta({ secciones }));
+              },
+              activa: async (seccionCartaId: string, activa: boolean) => {
+                "use server";
+                return refrescarSiOk(await actualizarActivaSeccionCarta(seccionCartaId, activa));
+              },
+            }}
+          />
+          <p className={estilos.ayuda}>Las secciones son de toda la empresa; los productos de cada una, de esta sucursal.</p>
           <div className={`${estilos.formulario} flex flex-col gap-10`}>
-            {!(puedeEditarSecciones || puedeEditarContenido || puedeDescuento) && <AvisoSoloLectura />}
       {/* 1. Secciones de carta */}
       <section aria-labelledby="titulo-secciones" className="flex flex-col gap-3">
         <h2 id="titulo-secciones" className="text-lg font-medium">
-          Secciones de carta
+          Datos de cada sección
         </h2>
         <ul className="flex flex-col gap-2">
           {datos.secciones.map((s) => {
             const id = s.id;
             const activa = s.activa;
             return (
-              <li key={s.id} className="rounded border p-3" data-seccion-carta={s.nombre}>
+              <li key={s.id} id={`datos-seccion-${s.id}`} className="rounded border p-3" data-seccion-carta={s.nombre}>
                 <details>
                   <summary className="cursor-pointer text-sm max-md:min-h-11 max-md:py-2">
                     <span className="font-medium">{s.nombre}</span>

@@ -123,10 +123,12 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
   "catalogo/recetas.ts": {
     guardarReceta: EMP("guardar_receta"),
   },
-  // Hito 5, bloque D (5.4-D): las 8 acciones de configuración de la carta (19 funciones; solo `copiar-carta` y `tema` son de contexto sucursal).
+  // Hito 5, bloque D (5.4-D): las 8 acciones de configuración de la carta (20 funciones; solo `copiar-carta` y `tema` son de contexto sucursal).
   "carta/secciones.ts": {
     guardarSeccionCarta: EMP("carta_secciones"),
     actualizarActivaSeccionCarta: EMP("carta_secciones"),
+    // CARTA-MANT F3: «Ordenar» las secciones (de la empresa), con la misma clave que editarlas.
+    ordenarSeccionesCarta: EMP("carta_secciones"),
   },
   // S-10/D1 (O.59): géneros, contenido y ítems agrupados escriben en la carta de la sucursal ACTIVA: entran por `conPermiso` (clave de contexto sucursal), ya no por `conPermisoDeEmpresa`.
   "carta/generos.ts": {
@@ -236,14 +238,14 @@ describe("tramo C (carta, catálogo y stock): cada Server Action entra por su en
     ).toEqual(esperadas);
   });
 
-  it("son las 51 mutaciones de la pieza en 17 archivos, más guardarReceta (y las 5 de la receta propia que comparten archivo), más las 19 de configuración de la carta en 8 archivos", () => {
+  it("son las 51 mutaciones de la pieza en 17 archivos, más guardarReceta (y las 5 de la receta propia que comparten archivo), más las 20 de configuración de la carta en 8 archivos", () => {
     const total = Object.values(DECLARADAS).reduce((n, fs) => n + Object.keys(fs).length, 0);
-    expect(total).toBe(51 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 19);
+    expect(total).toBe(51 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 20);
     expect(Object.keys(DECLARADAS).filter((a) => a !== "catalogo/recetas.ts")).toHaveLength(17 + 8);
     for (const f of RECETA_PROPIA_YA_MIGRADAS) expect(DECLARADAS["catalogo/receta-sucursal.ts"][f], f).toBeDefined();
-    // Bloque D: de las 19, 7 son de empresa (secciones, portal y registro público) y 12 de sucursal: copiar la carta y las dos del tema, y desde S-10/D1 (O.59) las 9 de géneros, contenido e ítems agrupados.
+    // Bloque D: de las 20, 8 son de empresa (secciones —con «Ordenar» de CARTA-MANT F3—, portal y registro público) y 12 de sucursal: copiar la carta y las dos del tema, y desde S-10/D1 (O.59) las 9 de géneros, contenido e ítems agrupados.
     const delBloqueD = ["carta/secciones.ts", "carta/generos.ts", "carta/contenido-producto.ts", "carta/items-agrupados.ts", "carta/portal-empresa.ts", "carta/registro-publico.ts", "carta/tema.ts", "carta/copiar-carta.ts"].flatMap((a) => Object.values(DECLARADAS[a]));
-    expect(delBloqueD).toHaveLength(19);
+    expect(delBloqueD).toHaveLength(20);
     expect(delBloqueD.filter((d) => d.envoltorio === "conPermiso")).toHaveLength(12);
   });
 });

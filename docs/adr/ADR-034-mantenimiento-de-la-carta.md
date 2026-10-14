@@ -59,6 +59,19 @@ El dueño rechazó la primera versión (la página larga vieja con «Fuera de ca
 5. **Las dos variantes**: una transacción SERIALIZABLE, todo o nada, contra el precio que mostró la vista previa (`precioVisto`, el de esta sucursal o el de lista): si alguno cambió, `PRECIO_DESACTUALIZADO` y no se cambia ninguno. Eso las hace **idempotentes** (repetir el pedido no aplica el ajuste dos veces) y resuelve la concurrencia sin columna de versión. Un producto que queda igual no se escribe (no se crea un precio local igual al de lista). Una auditoría por producto que cambia (en la empresa, la descripción dice en qué sucursales activas rige el precio de lista).
 6. **Se puede apagar**: «Precios» vive en archivos propios y la página tiene `PRECIOS_EDITABLES` (`src/app/(app)/carta/page.tsx`): en `false`, el nivel queda de solo lectura.
 
+## Decisión (F3: «Ordenar» las secciones, como en el prototipo)
+
+1. En Parametrización › Secciones, arriba, **«Secciones de la carta»**: la lista de las secciones de la EMPRESA en el orden en que salen (número, nombre, «Oculta» en las apagadas) y «⋯» con «Ocultar/Mostrar la sección», «Mover de lugar» y «Cambiar el nombre y los datos» (abre el formulario de siempre, más abajo, en «Datos de cada sección»). Componente `src/app/(app)/carta/parametrizacion/secciones/ordenar-secciones.tsx`.
+2. **«Ordenar» tocando**: se toca la sección que se quiere mover y después «Poner acá» (o «Poner al final») donde va; sin arrastrar (en el celular falla) ni flechas fila por fila. La lista misma es la vista del resultado; **«Listo» guarda todo junto** (`ordenarSeccionesCarta` en `src/server/actions/carta/secciones.ts` → `src/server/actions/carta/casos-de-uso/ordenar-secciones-carta.ts`) y después aparece «Deshacer» (el orden de antes). «Descartar el orden nuevo» sale sin guardar. Las reglas de mover son puras (`lugaresParaPoner`, `ponerEnElLugar` en `src/core/carta/mantenimiento.ts`).
+3. **Permiso**: la clave que ya gobierna las secciones (`carta_secciones`, de empresa); no hace falta una nueva. **Sin eco de sucursal**, a propósito: las secciones son de la empresa y el orden rige en todas las sucursales y en la carta pública (la pantalla lo dice); no hay ninguna fila de sucursal que atar.
+4. **Todo o nada contra lo que vio la pantalla**: una transacción SERIALIZABLE; la lista tiene que ser exactamente la de la empresa y cada sección tiene que seguir con el orden que vio la pantalla; si no, `ORDEN_DESACTUALIZADO` y no se cambia ninguna («Recargar»). Una sección que no es de la empresa: «No se encontró…». Si el orden ya es el pedido, éxito sin escribir (idempotente). El orden nuevo es la posición (0, 1, 2…), la misma escala que el alta de una sección (DA5: una nueva cae al final con `orden` = cuántas hay). **Auditoría** nueva: `SeccionCarta.orden`, una fila por sección que cambió de lugar (sumada a `ENTIDADES_AUDITABLES`).
+
+### Decisiones declaradas en F3
+
+- **No hay aviso de «cambios sin publicar» ni «publicar con un solo botón»**: en el código no existe un borrador de la carta (cada cambio rige al guardarse). La nota del prototipo «Los cambios de acá se publican con un solo botón cuando termines» no se muestra; lo más parecido que sí existe es que el orden nuevo se guarda junto, con «Listo».
+- «Renombrar» del menú «⋯» (en el prototipo, «pendiente») lleva al formulario de datos de la sección, que ya permitía cambiar el nombre.
+- «Ideas para conversar» del prototipo no se copia.
+
 ## Consecuencias
 
 - Cambian a propósito los e2e que dependían del recuadro ámbar, de la ficha de un PV sin contenido o de los formularios en `/carta` (que ahora viven en Parametrización): `carta-admin`, `accesibilidad`, `carta-orden-sugerido`, `carta-solo-ver`, `carta-descuento-producto`, `carta-promo-cupos-lista`, `movil-carta`, `form-con-resultado-enter` y `movimientos-opciones-agotadas`; las pantallas nuevas se suman a `rutas-sin-parametros` y a `movil-sin-desborde`.

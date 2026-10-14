@@ -3,9 +3,10 @@ import type { Prisma } from "@prisma/client";
 
 /**
  * Escrituras de las SECCIONES de la carta (`SeccionCarta`; Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1; mismo contrato que el resto de
- * `server/persistencia/`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio). Son EXACTAMENTE las tres escrituras que antes hacía en línea
+ * `server/persistencia/`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio). Las tres primeras son EXACTAMENTE las escrituras que antes hacía en línea
  * `src/server/actions/carta/secciones.ts`; las llaman solo los casos de uso `guardar-seccion-carta.ts` y `actualizar-activa-seccion-carta.ts` de
- * `src/server/actions/carta/casos-de-uso/`, con la base del contexto y sin transacción, como antes (una sección no es plata: sin auditoría).
+ * `src/server/actions/carta/casos-de-uso/`, con la base del contexto y sin transacción, como antes (una sección no es plata: sin auditoría). La cuarta (`fijarOrdenDeSeccionCarta`, CARTA-MANT F3)
+ * la llama `ordenar-secciones-carta.ts` dentro de su transacción, con su auditoría.
  */
 
 /** Los campos editables de una sección (siempre todos, alta y edición). */
@@ -37,4 +38,9 @@ export async function cambiarDatosDeSeccionCarta(db: Prisma.TransactionClient, a
 /** Apaga o prende una sección (nunca se borra: apagada deja de salir en la carta con todo lo suyo). */
 export async function fijarActivaDeSeccionCarta(db: Prisma.TransactionClient, args: { id: string; activa: boolean }): Promise<void> {
   await db.seccionCarta.update({ where: { id: args.id }, data: { activa: args.activa } });
+}
+
+/** CARTA-MANT F3: el orden de una sección (lo fija «Ordenar», todas juntas en una transacción). */
+export async function fijarOrdenDeSeccionCarta(db: Prisma.TransactionClient, args: { id: string; orden: number }): Promise<void> {
+  await db.seccionCarta.update({ where: { id: args.id }, data: { orden: args.orden } });
 }
