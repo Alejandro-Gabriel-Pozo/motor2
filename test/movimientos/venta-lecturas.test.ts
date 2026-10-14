@@ -128,6 +128,8 @@ describe("Lecturas de una venta (red de O.38b: idénticas en cada paso D1-D3)", 
   });
 });
 
+// O.430 (CAMBIO DECLARADO, deliberado): `producto.findMany` pasa de 2 a 3 en los DOS caminos: la barrera de las opciones obligatorias lee, UNA vez por lote, lo que admite cada producto de las líneas
+// sin configurar (`cargarOpcionesParaVender`). Ninguna otra lectura cambió.
 // Las lecturas de hoy (commit af4f1cde, antes de D1). Si un paso de O.38b las cambia, este test lo dice en rojo: los cargadores generalizados tienen que hacer,
 // para una sucursal, EXACTAMENTE las mismas lecturas que antes.
 // `$queryRaw` ×1 es el costo de reposición; `disponibilidadProducto.findMany` ×1, la disponibilidad del mapa de productos (las dos, de `calcularCostosYMargenes`).
@@ -139,7 +141,7 @@ const LECTURAS_DE_LA_VENTA_DE_MOSTRADOR: Record<string, number> = {
   "grupo.findMany": 1,
   "movimientoStock.groupBy": 2,
   "precioLocalProducto.findMany": 2,
-  "producto.findMany": 2,
+  "producto.findMany": 3,
   "producto.findUnique": 2,
   "recetaSucursal.findMany": 2,
   "recetaVersion.findFirst": 1,
@@ -156,7 +158,7 @@ const LECTURAS_DEL_CIERRE_DEL_POS: Record<string, number> = {
   "grupo.findMany": 1,
   "movimientoStock.groupBy": 3,
   "precioLocalProducto.findMany": 1,
-  "producto.findMany": 2,
+  "producto.findMany": 3,
   "producto.findUnique": 2,
   "recetaSucursal.findMany": 2,
   "recetaVersion.findFirst": 1,
