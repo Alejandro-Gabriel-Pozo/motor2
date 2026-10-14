@@ -96,6 +96,18 @@ const completos: Record<string, Valor> = {
       intento(c, ["productoPv2Id"], [{ sucursalId: c.propio.sucursalId, productoId: k.productoPv2Id, seccionCartaId: c.propio.seccionCartaId }]),
       intento(c, ["seccionCartaId"], [{ sucursalId: c.propio.sucursalId, productoId: c.propio.productoPv2Id, seccionCartaId: k.seccionCartaId }]),
     ),
+  // CARTA-MANT: «Quitar de la carta». El `pv` del mundo tiene contenido (oculto, con descripción): el control positivo lo quita confirmando que se pierde lo cargado.
+  "accion|actions/carta/mantenimiento.ts|quitarProductoDeLaCarta": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, productoId: c.propio.productoPvId, confirmado: true }]),
+      intento(c, ["productoPvId"], [{ sucursalId: c.propio.sucursalId, productoId: k.productoPvId, confirmado: true }]),
+    ),
+  // CARTA-MANT: «Hoy» (varios productos, todo o nada). Como `actualizarDisponibilidadProducto`: el control positivo PONE A LA VENTA la MP del kit (apagar exigiría que nada dependa de ella).
+  "accion|actions/carta/mantenimiento.ts|fijarDisponibilidadDeHoy": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, cambios: [{ productoId: c.propio.productoId, disponible: c.escenario === "controlMutacion" }] }]),
+      intento(c, ["productoId"], [{ sucursalId: c.propio.sucursalId, cambios: [{ productoId: k.productoId, disponible: c.escenario === "controlMutacion" }] }]),
+    ),
   "accion|actions/carta/generos.ts|guardarGeneroCarta": (k) => [{ id: k.generoCartaId, nombre: "Nombre nuevo" }],
   "accion|actions/carta/items-agrupados.ts|guardarItemAgrupadoCarta": (k, c) =>
     conVariantes(

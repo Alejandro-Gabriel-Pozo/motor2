@@ -13,7 +13,8 @@ import { crearContenidoVisibleDeProducto } from "@/server/persistencia/carta/con
  * género quedan vacíos: se completan después en su ficha.
  *
  * Dentro de UNA transacción SERIALIZABLE, sin escribir nada hasta el final:
- *  1. el producto: existe (la RLS oculta el de otra empresa), es de venta y no es el ancla de un adicional (que se vende solo como adicional, nunca suelto en la carta);
+ *  1. el producto: existe (la RLS oculta el de otra empresa), es de venta, no es el ancla de un adicional (que se vende solo como adicional, nunca suelto en la carta) y no está dentro de un
+ *     ítem agrupado de esta sucursal (D3: ahí ya sale; suelto quedaría duplicado y no se mostraría, `ES_MIEMBRO_DE_AGRUPADO`);
  *  2. su contenido en esta sucursal: si ya existe visible en ESA sección, no se escribe ni se audita (repetir no duplica); si existe de otra forma (otra sección u oculto), `YA_TIENE_CONTENIDO`: no se
  *     pisa lo que alguien cargó;
  *  3. la sección: existe y está activa (en una apagada no saldría);
@@ -42,11 +43,16 @@ export async function agregarProductoALaCartaCasoDeUso(
           tipo: true,
           opcionQueRespalda: { select: { id: true } },
           contenidosCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { visibleEnCarta: true, seccionCartaId: true } },
+          opcionesItemAgrupadoCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { itemAgrupadoCarta: { select: { nombre: true } } } },
         },
       });
       if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
       if (producto.tipo !== "PV") return fracaso("NO_ES_PV", "Solo un producto de venta (PV) puede ir en la carta.");
       if (producto.opcionQueRespalda) return fracaso("ES_ANCLA_DE_ADICIONAL", `«${producto.nombre}» es el producto de respaldo de un adicional: se vende solo como adicional, no va suelto en la carta.`);
+
+      // D3: un PV agrupado sale en la carta SOLO dentro de su ítem agrupado; suelto no se mostraría y quedaría duplicado. Se saca o se suma desde «Agrupados».
+      const agrupado = producto.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre;
+      if (agrupado) return fracaso("ES_MIEMBRO_DE_AGRUPADO", `«${producto.nombre}» ya sale en la carta dentro del agrupado «${agrupado}»: se maneja desde «Agrupados».`);
 
       const seccion = await tx.seccionCarta.findUnique({ where: { id: comando.seccionCartaId }, select: { id: true, nombre: true, activa: true } });
       if (!seccion) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección de carta.");

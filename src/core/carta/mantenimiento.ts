@@ -15,6 +15,9 @@
  *  6. sin contenido y no disponible acá → en ninguna (no se ofrece en esta sucursal).
  */
 
+import type { GrupoCartaV1, OpcionesSinCostoCartaV1 } from "./opciones-en-carta";
+import { formatearPrecioCarta } from "./precio-carta";
+
 export interface SeccionParaMantener {
   id: string;
   nombre: string;
@@ -33,6 +36,11 @@ export interface ProductoParaMantener {
   /** El nombre del ítem agrupado de esta sucursal que lo contiene, si hay. */
   agrupadoEn: string | null;
   contenido: { visibleEnCarta: boolean; seccionCartaId: string | null; orden: number } | null;
+  /**
+   * Solo para los de «Fuera de carta»: qué opciones va a mostrar la carta pública si se lo agrega (`vistaPreviaDeOpciones`, con la MISMA presentación que la carta: `opcionesParaLaCarta`).
+   * `null` en los demás.
+   */
+  vistaPrevia?: string | null;
 }
 
 export interface SeccionConProductos extends SeccionParaMantener {
@@ -95,4 +103,20 @@ const ORDEN_MAXIMO = 100_000;
 export function ordenAlFinalDeLaSeccion(ordenesDeLaSeccion: readonly number[]): number {
   if (ordenesDeLaSeccion.length === 0) return 0;
   return Math.min(ORDEN_MAXIMO, Math.max(0, ...ordenesDeLaSeccion) + 1);
+}
+
+/**
+ * La línea «Va a mostrar: …» del paso «¿En qué sección va?» de «Agregar a la carta». Lo que recibe es la salida de `opcionesParaLaCarta` (la misma que arma la carta pública) para el producto:
+ * sin grupos de opciones → «Sin opciones.»; con grupos pero sin poder pedirse hoy (un grupo obligatorio sin ninguna opción disponible) → el aviso, sin bloquear; si no, los tamaños con su precio, los
+ * recargos con su signo y las opciones sin costo, grupo por grupo.
+ */
+export function vistaPreviaDeOpciones(tieneGrupos: boolean, enCarta: { grupos: readonly GrupoCartaV1[]; sinCosto: readonly OpcionesSinCostoCartaV1[] } | null): string {
+  if (!tieneGrupos) return "Sin opciones.";
+  if (enCarta === null) return "Ojo: hoy no se puede pedir, le falta una opción obligatoria disponible o configurada. Se puede agregar igual; no sale en la carta hasta que la tenga.";
+  const recargo = (r: number) => `${r > 0 ? "+" : "−"}${formatearPrecioCarta(Math.abs(r))}`;
+  const partes = [
+    ...enCarta.grupos.map((g) => `${g.nombre}: ${g.opciones.map((o) => (o.precio !== undefined ? `${o.nombre} ${formatearPrecioCarta(o.precio)}` : `${o.nombre} ${recargo(o.recargo ?? 0)}`)).join(", ")}`),
+    ...enCarta.sinCosto.map((g) => `${g.grupo}: ${g.opciones.join(", ")}`),
+  ];
+  return partes.length ? `Va a mostrar: ${partes.join(" · ")}.` : "Sin opciones para elegir (las que tiene no cambian nada en la carta).";
 }

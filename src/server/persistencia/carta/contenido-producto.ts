@@ -47,3 +47,12 @@ export async function crearContenidoVisibleDeProducto(db: Prisma.TransactionClie
   const { sucursalId, productoId, seccionCartaId, orden } = args;
   await db.contenidoCartaProducto.create({ data: { sucursalId, productoId, visibleEnCarta: true, seccionCartaId, orden } });
 }
+
+/**
+ * CARTA-MANT («Quitar de la carta», decisión del dueño 2026-10-14): BORRA el contenido de carta del producto en la sucursal (vuelve a «Fuera de carta»). Ninguna tabla referencia esta fila (solo ella
+ * referencia al producto, la sección y el género), así que no deja nada colgado. `deleteMany` por la clave única: si otro ya la borró, borra 0 y no falla. Lo llama solo
+ * `casos-de-uso/quitar-producto-de-la-carta.ts`, dentro de su transacción y después de auditar cada dato que tenía.
+ */
+export async function borrarContenidoDeProducto(db: Prisma.TransactionClient, args: { sucursalId: string; productoId: string }): Promise<number> {
+  return (await db.contenidoCartaProducto.deleteMany({ where: { sucursalId: args.sucursalId, productoId: args.productoId } })).count;
+}

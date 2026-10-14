@@ -127,6 +127,14 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     ata: "SUCURSAL_ACTIVA",
     motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; el contenido se crea SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
   },
+  "carta/mantenimiento.ts|quitarProductoDeLaCarta": {
+    ata: "SUCURSAL_ACTIVA",
+    motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; el contenido se borra SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
+  },
+  "carta/mantenimiento.ts|fijarDisponibilidadDeHoy": {
+    ata: "SUCURSAL_ACTIVA",
+    motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; la disponibilidad se escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
+  },
   "carta/tema.ts|guardarTemaCarta": { ata: "SUCURSAL_ACTIVA", motivo: "`carta_tema` en la sucursal activa; el guard rechaza un id distinto de `ctx.sucursalId`" },
   "carta/tema.ts|cambiarAplicacionTema": { ata: "SUCURSAL_ACTIVA", motivo: "`carta_tema` en la sucursal activa; el guard rechaza un id distinto de `ctx.sucursalId`" },
   "catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": {
