@@ -14,7 +14,7 @@ import { GRUPOS_NAV } from "../../src/core/navegacion/estructura";
  */
 const RAIZ = join(__dirname, "../../src");
 const ARCHIVO_DE_ICONOS = "components/iconos.tsx";
-const COMPONENTES_ICONO = new Set(["Icono", "IconoDeModulo", "IconoDeAccion", "IconoAyuda"]);
+const COMPONENTES_ICONO = new Set(["Icono", "IconoDeModulo", "IconoDeAccion", "IconoAyuda", "IconoDeControl"]);
 const CONTROLES = new Set(["button", "a", "Link", "EnlaceInterno", "summary"]);
 
 function archivos(dir: string): string[] {

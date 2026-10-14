@@ -138,7 +138,7 @@ export function ElegirOpciones({
                 if (el) refs.current.set(g.grupoId, el);
                 else refs.current.delete(g.grupoId);
               }}
-              className="flex flex-col gap-2"
+              className="flex min-w-0 flex-col gap-2"
               data-grupo-opciones={g.nombre}
             >
               <legend className="mb-1 text-[14px] font-bold">

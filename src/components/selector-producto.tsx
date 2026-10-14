@@ -135,7 +135,7 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
         aria-autocomplete="list"
         aria-controls={abierto && hayLista ? listboxId : undefined}
         aria-activedescendant={abierto && hayLista && resaltado < opciones.length ? idOpcion(resaltado) : undefined}
-        className="w-full rounded border px-2 py-1.5 text-sm"
+        className="w-full rounded border px-2 py-1.5 text-sm max-md:min-h-11 max-md:text-base"
       />
       {abierto && (
         <div className={`absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-sm shadow-lg ${siempreClaro ? "" : "dark:border-neutral-700 dark:bg-neutral-900"}`}>
@@ -167,7 +167,7 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
                     elegir(op);
                   }}
                   onMouseEnter={() => setResaltado(i)}
-                  className={`cursor-pointer px-2 py-1.5 ${i === resaltado ? `bg-neutral-100 ${siempreClaro ? "" : "dark:bg-neutral-800"}` : ""}`}
+                  className={`cursor-pointer px-2 py-1.5 max-md:py-3 ${i === resaltado ? `bg-neutral-100 ${siempreClaro ? "" : "dark:bg-neutral-800"}` : ""}`}
                 >
                   {op.codigo} — {op.nombre}
                 </li>

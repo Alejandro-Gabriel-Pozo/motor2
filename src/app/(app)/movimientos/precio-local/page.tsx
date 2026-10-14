@@ -12,6 +12,18 @@ import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { formatearMonto } from "@/core/pos/public";
 
+/**
+ * MOVIL (O.463): las dos tablas de esta pantalla (4 y 5 columnas, con un campo y botones por fila) no entran en 375 px: se cortaban («Guardar» → «Guard», columnas «Habilitado» y «Volver…»
+ * invisibles). En celular (< 768 px) cada fila pasa a ser una TARJETA (`display: block`), con el nombre de la columna arriba de cada dato (`data-label`, que el CSS pone con `before:`) y el
+ * encabezado oculto solo a la vista (`sr-only`); desde `md` es la tabla de siempre. Como `display: block` en los elementos de una tabla hace que algunos lectores de pantalla la dejen de leer
+ * como tabla, los roles van explícitos (`table`, `rowgroup`, `row`, `columnheader`, `cell`: los mismos que ya tienen por defecto).
+ */
+const TABLA = "w-full text-sm max-md:block";
+const ENCABEZADO = "max-md:sr-only";
+const CUERPO = "max-md:block";
+const FILA = "border-b align-top max-md:mb-3 max-md:block max-md:rounded max-md:border max-md:p-3";
+const CELDA = "max-md:block max-md:py-1 max-md:before:block max-md:before:text-xs max-md:before:text-neutral-600 max-md:before:content-[attr(data-label)] dark:max-md:before:text-neutral-400";
+
 export default async function PrecioLocalPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
@@ -31,29 +43,29 @@ export default async function PrecioLocalPage() {
       <div>
         <h1 className="mb-4 text-xl font-semibold">Precio local (override por sucursal del precio de venta)</h1>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-neutral-500">
-                <th className="py-2">Producto</th>
-                <th>Precio local</th>
-                <th>Precio global</th>
-                <th>Habilitado</th>
-                <th><span className="sr-only">Acciones</span></th>
+          <table role="table" className={TABLA}>
+            <thead role="rowgroup" className={ENCABEZADO}>
+              <tr role="row" className="border-b text-left text-neutral-500">
+                <th role="columnheader" className="py-2 pr-3">Producto</th>
+                <th role="columnheader" className="pr-3">Precio local</th>
+                <th role="columnheader" className="pr-3">Precio global</th>
+                <th role="columnheader" className="pr-3">Habilitado</th>
+                <th role="columnheader"><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup" className={CUERPO}>
               {precios.map((p) => {
                 // Primitivos fuera del closure: lo que captura un closure "use server" viaja al cliente, y un Decimal de Prisma no puede
                 // viajar ("Only plain objects can be passed to Client Components...", warning del servidor de desarrollo).
                 const { productoId, habilitado } = p;
                 const precio = Number(p.precio);
                 return (
-                  <tr key={p.id} className="border-b align-top">
-                    <td className="py-2">{p.producto.nombre}</td>
-                    <td>{precio}</td>
-                    <td>{Number(p.producto.precioVenta)}</td>
-                    <td>{habilitado ? "Sí" : "No"}</td>
-                    <td>
+                  <tr key={p.id} role="row" className={FILA}>
+                    <td role="cell" className="py-2 pr-3 max-md:py-1 max-md:font-medium">{p.producto.nombre}</td>
+                    <td role="cell" data-label="Precio local" className={`pr-3 ${CELDA}`}>{precio}</td>
+                    <td role="cell" data-label="Precio global" className={`pr-3 ${CELDA}`}>{Number(p.producto.precioVenta)}</td>
+                    <td role="cell" data-label="Habilitado" className={`pr-3 ${CELDA}`}>{habilitado ? "Sí" : "No"}</td>
+                    <td role="cell" className="max-md:block">
                       <FormConResultado
                         accion={async () => {
                           "use server";
@@ -65,7 +77,7 @@ export default async function PrecioLocalPage() {
                           return r;
                         }}
                       >
-                        <button type="submit" className="text-sm underline">
+                        <button type="submit" className="text-sm underline max-md:inline-flex max-md:min-h-11 max-md:items-center">
                           {habilitado ? "Deshabilitar" : "Habilitar"}
                         </button>
                       </FormConResultado>
@@ -96,36 +108,36 @@ export default async function PrecioLocalPage() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table role="table" className={TABLA}>
               <caption className="sr-only">Precios por tamaño en esta sucursal</caption>
-              <thead>
-                <tr className="border-b text-left text-neutral-600 dark:text-neutral-400">
-                  <th scope="col" className="py-2 pr-2 font-medium">
+              <thead role="rowgroup" className={ENCABEZADO}>
+                <tr role="row" className="border-b text-left text-neutral-600 dark:text-neutral-400">
+                  <th role="columnheader" scope="col" className="py-2 pr-2 font-medium">
                     Producto y tamaño
                   </th>
-                  <th scope="col" className="pr-2 font-medium">
+                  <th role="columnheader" scope="col" className="pr-2 font-medium">
                     Precio de la empresa
                   </th>
-                  <th scope="col" className="pr-2 font-medium">
+                  <th role="columnheader" scope="col" className="pr-2 font-medium">
                     En esta sucursal
                   </th>
-                  <th scope="col" className="font-medium">
+                  <th role="columnheader" scope="col" className="font-medium">
                     Habilitado
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup" className={CUERPO}>
                 {tamanos.map((t) => {
                   const { productoId, opcionId } = t;
                   const esperado = t.enLaSucursal ? { precio: t.enLaSucursal.precio, habilitado: t.enLaSucursal.habilitado } : null;
                   const etiqueta = `${t.productoNombre} · ${t.opcionNombre}`;
                   return (
-                    <tr key={`${productoId}-${opcionId}`} className="border-b align-top" data-tamano={etiqueta}>
-                      <td className="py-2 pr-2">
+                    <tr key={`${productoId}-${opcionId}`} role="row" className={FILA} data-tamano={etiqueta}>
+                      <td role="cell" className="py-2 pr-2 max-md:py-1">
                         {t.productoNombre} · <span className="font-medium">{t.opcionNombre}</span> <span className="text-neutral-600 dark:text-neutral-400">({t.grupoNombre})</span>
                       </td>
-                      <td className="py-2 pr-2 tabular-nums">{t.precioDeLaEmpresa === null ? "Sin precio" : formatearMonto(t.precioDeLaEmpresa)}</td>
-                      <td className="py-2 pr-2">
+                      <td role="cell" data-label="Precio de la empresa" className={`py-2 pr-2 tabular-nums ${CELDA}`}>{t.precioDeLaEmpresa === null ? "Sin precio" : formatearMonto(t.precioDeLaEmpresa)}</td>
+                      <td role="cell" data-label="En esta sucursal" className={`py-2 pr-2 ${CELDA}`}>
                         <FormConResultado
                           ofrecerRecargar
                           accion={async (formData: FormData) => {
@@ -140,13 +152,13 @@ export default async function PrecioLocalPage() {
                             </label>
                             <CampoNumero id={`tamano-${productoId}-${opcionId}`} name="precio" defaultValue={t.enLaSucursal?.habilitado ? String(t.enLaSucursal.precio) : ""} prefijo="$" tipo="importe" etiqueta="El precio" tamano="compacto" required className="w-32" />
                             {/* Un botón por tamaño: el nombre accesible dice cuál (varios «Guardar» iguales en la misma pantalla no se distinguen con un lector de pantalla). */}
-                            <button type="submit" className="min-h-[44px] text-sm underline" aria-label={`Guardar el precio de ${etiqueta}`}>
+                            <button type="submit" className="min-h-[44px] min-w-[44px] text-sm underline" aria-label={`Guardar el precio de ${etiqueta}`}>
                               Guardar
                             </button>
                           </div>
                         </FormConResultado>
                       </td>
-                      <td className="py-2">
+                      <td role="cell" data-label="Habilitado" className={`py-2 ${CELDA}`}>
                         {/* El formulario se dibuja siempre (aunque no haya nada que dar de baja) para que su mensaje siga a la vista después de volver al precio de la empresa. */}
                         <FormConResultado
                           ofrecerRecargar

@@ -15,6 +15,9 @@ const CLAVE_STORAGE = "motor2:sidebar-colapsado";
  * mobile el efecto es mucho más grave: 224px fijos sobre ~400px de
  * pantalla le comen más de la mitad al contenido.
  *
+ * MOVIL (O.465): en celular (< 768 px) NADA de esto se dibuja (`max-md:hidden`): el menú es el cajón de `MenuCelular` (☰ en el encabezado), que abre desde un botón y no
+ * le quita ancho al contenido. El control «Ocultar menú» y su elección guardada son de escritorio y quedan como estaban.
+ *
  * Arranca siempre expandido (server y cliente coinciden, sin mismatch de
  * hidratación) y recién después de montado lee localStorage — quien tenía
  * el sidebar colapsado ve un flash breve de expandido en una recarga
@@ -62,7 +65,7 @@ export function SidebarColapsable({
   return (
     <>
       <aside
-        className={`flex flex-shrink-0 flex-col overflow-hidden border-neutral-200 transition-[width] duration-150 dark:border-neutral-800 ${
+        className={`flex flex-shrink-0 flex-col overflow-hidden border-neutral-200 transition-[width] duration-150 max-md:hidden dark:border-neutral-800 ${
           colapsado ? "w-0" : "w-56 border-r"
         }`}
       >
@@ -80,7 +83,7 @@ export function SidebarColapsable({
         onClick={alternar}
         aria-label={colapsado ? "Mostrar menú" : "Ocultar menú"}
         title={colapsado ? "Mostrar menú" : "Ocultar menú"}
-        className="flex w-5 flex-shrink-0 items-center justify-center border-r border-neutral-200 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+        className="flex w-5 flex-shrink-0 items-center justify-center max-md:hidden border-r border-neutral-200 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
       >
         {colapsado ? "›" : "‹"}
       </button>

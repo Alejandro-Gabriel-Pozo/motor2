@@ -79,7 +79,7 @@ export function PrecioLocalForm({ sucursalId }: { sucursalId: string }) {
         <CampoNumero value={precio} onChange={setPrecio} prefijo="$" required tipo="importe" etiqueta="El precio" />
       </label>
 
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex items-center gap-2 text-sm max-md:min-h-11">
         <input type="checkbox" checked={habilitado} onChange={(e) => setHabilitado(e.target.checked)} /> Habilitado (si no, se usa el precio global igual)
       </label>
 
@@ -104,7 +104,7 @@ export function PrecioLocalForm({ sucursalId }: { sucursalId: string }) {
         />
       )}
 
-      <button type="submit" disabled={pending} className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+      <button type="submit" disabled={pending} className="self-start rounded bg-neutral-900 px-4 py-2 text-white max-md:min-h-11 disabled:opacity-50">
         {pending ? "Guardando..." : "Guardar"}
       </button>
     </form>

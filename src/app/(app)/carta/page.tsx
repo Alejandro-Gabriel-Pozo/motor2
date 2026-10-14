@@ -54,8 +54,22 @@ const refrescarSiOk = (r: ResultadoAccion) => {
   return r;
 };
 
-const CLASE_INPUT = "rounded border px-2 py-1";
-const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
+// MOVIL (O.461): en celular (< 768 px) los campos y botones miden 44 px de alto como mínimo (se tocan con el dedo) y el texto de los campos 16 px (iOS hace zoom con menos); en escritorio, igual que siempre.
+const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
+const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11";
+/** Un número corto (mín./máx., orden…): a todo el ancho de su columna en celular, de 4 rem desde `sm`. */
+const CLASE_NUMERO = `${CLASE_INPUT} w-full sm:w-16`;
+/** Un botón con aspecto de enlace («Apagar «X» en esta sucursal»): en celular, una fila de 44 px de alto. */
+const CLASE_ENLACE_DE_ACCION = "text-sm underline max-md:inline-flex max-md:min-h-11 max-md:items-center";
+/** Una casilla con su texto: en celular, la fila entera (la etiqueta es el objetivo táctil) mide 44 px de alto. */
+const CLASE_CASILLA = "max-md:min-h-11";
+/**
+ * Una fila del bloque «Cupos» (una sección o un lugar de entradas). En celular es una tarjetita: el nombre con su casilla arriba, a todo el ancho, y «mín.» y «máx.» abajo, lado a lado
+ * (antes los cinco campos se rompían de a uno por renglón y no se sabía de quién era cada uno); desde `sm`, la fila de siempre.
+ */
+const CLASE_FILA_DE_CUPO = "grid grid-cols-2 gap-2 rounded border p-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:rounded-none sm:border-0 sm:p-0";
+const CLASE_NOMBRE_DE_CUPO = `col-span-2 flex items-center gap-2 sm:min-w-[10rem] ${CLASE_CASILLA} [overflow-wrap:anywhere]`;
+const CLASE_CANTIDAD_DE_CUPO = "flex flex-col gap-1 sm:flex-row sm:items-center";
 
 type OpcionSeccion = { id: string; nombre: string; activa: boolean };
 type OpcionGenero = { id: string; nombre: string; activo: boolean };
@@ -159,7 +173,7 @@ export default async function CartaPage() {
             return (
               <li key={s.id} className="rounded border p-3" data-seccion-carta={s.nombre}>
                 <details>
-                  <summary className="cursor-pointer text-sm">
+                  <summary className="cursor-pointer text-sm max-md:min-h-11 max-md:py-2">
                     <span className="font-medium">{s.nombre}</span>
                     {s.titulo ? ` — «${s.titulo}»` : ""} · orden {s.orden} · {s.cantidadItems} ítem(s) · {s.activa ? "activa" : "apagada"}
                   </summary>
@@ -200,7 +214,7 @@ export default async function CartaPage() {
                     }}
                     className="mt-2"
                   >
-                    <button type="submit" className="text-sm underline">
+                    <button type="submit" className={CLASE_ENLACE_DE_ACCION}>
                       {s.activa ? `Apagar «${s.nombre}»` : `Prender «${s.nombre}»`}
                     </button>
                   </FormConResultado>
@@ -250,7 +264,7 @@ export default async function CartaPage() {
             return (
               <li key={g.id} className="rounded border p-3" data-genero-carta={g.nombre}>
                 <details>
-                  <summary className="cursor-pointer text-sm">
+                  <summary className="cursor-pointer text-sm max-md:min-h-11 max-md:py-2">
                     <span className="font-medium">{g.nombre}</span> · orden {g.orden} · {g.activo ? "activo" : "apagado"}
                   </summary>
                   {puedeEditarGeneros ? (
@@ -283,7 +297,7 @@ export default async function CartaPage() {
                     }}
                     className="mt-2"
                   >
-                    <button type="submit" className="text-sm underline">
+                    <button type="submit" className={CLASE_ENLACE_DE_ACCION}>
                       {g.activo ? `Apagar «${g.nombre}»` : `Prender «${g.nombre}»`}
                     </button>
                   </FormConResultado>
@@ -395,7 +409,7 @@ export default async function CartaPage() {
             return (
               <li key={pr.id} className="rounded border p-3" data-promo-carta={pr.titulo}>
                 <details>
-                  <summary className="cursor-pointer text-sm">
+                  <summary className="cursor-pointer text-sm max-md:min-h-11 max-md:py-2">
                     <span className="font-medium">{pr.titulo}</span> · ${pr.precioAca.toLocaleString("es-AR")}
                     {pr.precioLocal !== null ? (datos.precioLocalActivo ? " (precio de esta sucursal)" : " (no rige: precio local apagado)") : ""} · {pr.seccionCarta} ·{" "}
                     {!pr.activa ? "apagada en toda la empresa" : pr.prendidaAca ? "prendida acá" : "apagada acá"} ·{" "}
@@ -556,7 +570,7 @@ export default async function CartaPage() {
                                           return refrescarSiOk(await actualizarActivaEntradaDeCupo({ entradaId, activa: !activaAhora }));
                                         }}
                                       >
-                                        <button type="submit" className="text-sm underline">
+                                        <button type="submit" className={CLASE_ENLACE_DE_ACCION}>
                                           {e.activa ? `Sacar «${e.nombre}»` : `Volver a ofrecer «${e.nombre}»`}
                                         </button>
                                       </FormConResultado>
@@ -616,7 +630,7 @@ export default async function CartaPage() {
                     }}
                     className="mt-2"
                   >
-                    <button type="submit" className="text-sm underline">
+                    <button type="submit" className={CLASE_ENLACE_DE_ACCION}>
                       {pr.prendidaAca ? `Apagar «${pr.titulo}» en esta sucursal` : `Prender «${pr.titulo}» en esta sucursal`}
                     </button>
                   </FormConResultado>
@@ -629,7 +643,7 @@ export default async function CartaPage() {
                     }}
                     className="mt-2"
                   >
-                    <button type="submit" className="text-sm underline">
+                    <button type="submit" className={CLASE_ENLACE_DE_ACCION}>
                       {pr.activa ? `Apagar «${pr.titulo}» en toda la empresa` : `Prender «${pr.titulo}» en toda la empresa`}
                     </button>
                   </FormConResultado>
@@ -808,7 +822,7 @@ function textoDeVigencia(v: VigenciaDePromoAdmin): string {
 function CamposVigencia({ vigencia }: { vigencia: VigenciaDePromoAdmin }) {
   return (
     <div className="flex flex-col gap-2 text-sm">
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <label className="flex flex-col gap-1">
           Desde (opcional)
           <input type="date" name="vigenteDesde" defaultValue={vigencia.vigenteDesde ?? ""} className={CLASE_INPUT} />
@@ -821,7 +835,7 @@ function CamposVigencia({ vigencia }: { vigencia: VigenciaDePromoAdmin }) {
       <fieldset className="flex flex-wrap gap-3">
         <legend className="mb-1">Días en que vale</legend>
         {NOMBRES_DE_DIAS.map((d, i) => (
-          <label key={d} className="flex items-center gap-1">
+          <label key={d} className={`flex items-center gap-1 ${CLASE_CASILLA}`}>
             <input type="checkbox" name={`dia_${i}`} defaultChecked={vigencia.diasDeSemana === null || (vigencia.diasDeSemana & (1 << i)) !== 0} />
             {d}
           </label>
@@ -840,44 +854,44 @@ function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
   return (
     <div className="flex flex-col gap-1">
       {lugares.map((l) => (
-        <div key={l.id} data-cupo-lugar={l.nombre} className="flex flex-wrap items-center gap-2 text-sm">
+        <div key={l.id} data-cupo-lugar={l.nombre} className={CLASE_FILA_DE_CUPO}>
           <input type="hidden" name="lugar_id" value={l.id} />
           <input type="hidden" name={`lugar_tipo_${l.id}`} value={l.tipo} />
           <input type="hidden" name={`lugar_nombre_${l.id}`} value={l.nombre} />
-          <label className="flex min-w-[10rem] items-center gap-2">
+          <label className={CLASE_NOMBRE_DE_CUPO}>
             <input type="checkbox" name={`lugar_incluir_${l.id}`} defaultChecked />
             {l.nombre} ({l.tipo === "DEL_DIA" ? "del día" : "lista"})
           </label>
-          <label className="flex items-center gap-1">
+          <label className={CLASE_CANTIDAD_DE_CUPO}>
             mín.
-            <input type="number" name={`lugar_min_${l.id}`} min={0} step={1} defaultValue={l.cantidadMinima} className={`${CLASE_INPUT} w-16`} />
+            <input type="number" name={`lugar_min_${l.id}`} min={0} step={1} defaultValue={l.cantidadMinima} className={CLASE_NUMERO} />
           </label>
-          <label className="flex items-center gap-1">
+          <label className={CLASE_CANTIDAD_DE_CUPO}>
             máx.
-            <input type="number" name={`lugar_max_${l.id}`} min={1} step={1} defaultValue={l.cantidadMaxima} className={`${CLASE_INPUT} w-16`} />
+            <input type="number" name={`lugar_max_${l.id}`} min={1} step={1} defaultValue={l.cantidadMaxima} className={CLASE_NUMERO} />
           </label>
         </div>
       ))}
-      <fieldset className="mt-1 flex flex-wrap items-end gap-2 text-sm">
+      <fieldset className="mt-1 grid min-w-0 grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-end">
         <legend className="mb-1 text-sm">Sumar un lugar (opcional)</legend>
-        <label className="flex flex-col gap-1">
+        <label className="col-span-2 flex flex-col gap-1">
           Tipo
           <select name="nuevo_lugar_tipo" defaultValue="LISTA" className={CLASE_INPUT}>
             <option value="LISTA">Lista de productos</option>
             <option value="DEL_DIA">Plato del día</option>
           </select>
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="col-span-2 flex flex-col gap-1">
           Nombre
           <input name="nuevo_lugar_nombre" maxLength={80} placeholder="Ej.: Bebida" className={CLASE_INPUT} />
         </label>
         <label className="flex flex-col gap-1">
           mín.
-          <input type="number" name="nuevo_lugar_min" min={0} step={1} defaultValue={1} className={`${CLASE_INPUT} w-16`} />
+          <input type="number" name="nuevo_lugar_min" min={0} step={1} defaultValue={1} className={CLASE_NUMERO} />
         </label>
         <label className="flex flex-col gap-1">
           máx.
-          <input type="number" name="nuevo_lugar_max" min={1} step={1} defaultValue={1} className={`${CLASE_INPUT} w-16`} />
+          <input type="number" name="nuevo_lugar_max" min={1} step={1} defaultValue={1} className={CLASE_NUMERO} />
         </label>
       </fieldset>
     </div>
@@ -897,19 +911,19 @@ function CamposCupos({
       {secciones.map((s) => {
         const g = porSeccion.get(s.id);
         return (
-          <div key={s.id} data-cupo-seccion={s.nombre} className="flex flex-wrap items-center gap-2 text-sm">
-            <label className="flex min-w-[10rem] items-center gap-2">
+          <div key={s.id} data-cupo-seccion={s.nombre} className={CLASE_FILA_DE_CUPO}>
+            <label className={CLASE_NOMBRE_DE_CUPO}>
               <input type="checkbox" name={`incluir_${s.id}`} defaultChecked={!!g} />
               {s.nombre}
               {s.activa ? "" : " (apagada)"}
             </label>
-            <label className="flex items-center gap-1">
+            <label className={CLASE_CANTIDAD_DE_CUPO}>
               mín.
-              <input type="number" name={`min_${s.id}`} min={0} step={1} defaultValue={g?.cantidadMinima ?? 0} className={`${CLASE_INPUT} w-16`} />
+              <input type="number" name={`min_${s.id}`} min={0} step={1} defaultValue={g?.cantidadMinima ?? 0} className={CLASE_NUMERO} />
             </label>
-            <label className="flex items-center gap-1">
+            <label className={CLASE_CANTIDAD_DE_CUPO}>
               máx.
-              <input type="number" name={`max_${s.id}`} min={1} step={1} defaultValue={g?.cantidadMaxima ?? 1} className={`${CLASE_INPUT} w-16`} />
+              <input type="number" name={`max_${s.id}`} min={1} step={1} defaultValue={g?.cantidadMaxima ?? 1} className={CLASE_NUMERO} />
             </label>
           </div>
         );
@@ -943,7 +957,7 @@ function ContenidoProducto({
   return (
     <li className="rounded border p-3" data-contenido-carta={p.nombre}>
       <details>
-        <summary className="cursor-pointer text-sm">
+        <summary className="cursor-pointer text-sm max-md:min-h-11 max-md:py-2">
           <span className="font-medium">{p.nombre}</span> · {p.seccionCarta ?? "sin sección de carta"} · ${p.precio.toLocaleString("es-AR")} ·{" "}
           {estado}
           {p.contenido?.especial ? " · ★" : ""}
@@ -979,10 +993,10 @@ function ContenidoProducto({
             }}
             className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
           >
-            <label className="flex items-center gap-2 text-sm">
+            <label className={`flex items-center gap-2 text-sm ${CLASE_CASILLA}`}>
               <input name="visibleEnCarta" type="checkbox" defaultChecked={p.contenido?.visibleEnCarta ?? true} /> Se muestra en la carta
             </label>
-            <label className="flex items-center gap-2 text-sm">
+            <label className={`flex items-center gap-2 text-sm ${CLASE_CASILLA}`}>
               <input name="especial" type="checkbox" defaultChecked={p.contenido?.especial ?? false} /> Especial (★)
             </label>
             <SeccionYOrden

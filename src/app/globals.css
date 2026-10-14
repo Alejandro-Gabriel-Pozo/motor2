@@ -258,6 +258,47 @@ html:has([data-carta-libro]) body {
   }
 }
 
+/* MOVIL (O.464): en celular (< md = 48rem) los botones y los enlaces de acción del panel miden 44 px de alto como mínimo. Antes, los de texto de las tablas y listas («Renombrar»,
+   «Desactivar», «+ Nuevo grupo», «Guardar»…) medían 16–21 px y no había cómo acertarles con el dedo. Una sola regla para todo el panel en vez de una clase por cada uno de los más de cien
+   (alcance: solo `<main data-panel>` de `AppShell`; el salón y la consola tienen la suya). Un enlace DENTRO de una oración queda como está (el criterio de tamaño lo exceptúa): solo
+   cuentan los enlaces que son hijos directos de una celda o de un ítem de lista, o sea la acción de esa fila. En escritorio no hay regla. */
+@media (max-width: 47.99rem) {
+  main[data-panel] button {
+    min-height: 2.75rem;
+  }
+  main[data-panel] :is(td, th, li, dd) > a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+}
+
+/* MOVIL (O.465): el cajón del menú de celular entra deslizándose desde la izquierda (y el fondo se oscurece); con «reducir movimiento» aparece sin animar. */
+@keyframes menu-celular-entra {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes menu-celular-fondo {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  dialog.menu-celular[open] {
+    animation: menu-celular-entra 0.2s ease-out;
+  }
+  dialog.menu-celular[open]::backdrop {
+    animation: menu-celular-fondo 0.2s ease-out;
+  }
+}
+
 @media print {
   .carta-shell [data-carta-nav],
   .carta-shell [data-carta-topbar],

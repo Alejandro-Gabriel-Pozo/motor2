@@ -168,7 +168,7 @@ export function CampoNumero({
           setEnFoco(false);
           setTexto(formatear(valorReal));
         }}
-        className={`w-full rounded border text-right text-sm ${tamano === "compacto" ? "px-2 py-1.5" : "px-3 py-2"} ${prefijo ? "pl-5" : ""}`}
+        className={`w-full rounded border text-right text-sm max-md:min-h-11 max-md:text-base ${tamano === "compacto" ? "px-2 py-1.5" : "px-3 py-2"} ${prefijo ? "pl-5" : ""}`}
       />
     </div>
   );
