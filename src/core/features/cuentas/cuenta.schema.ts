@@ -16,8 +16,11 @@ export interface ComandoCerrarCuenta {
 }
 
 /** Solo lo que produce el caso de uso: un `cuentaId` que no es un string lo rechaza antes el guard (`guardComandoCerrarCuenta`). */
-/** `PRODUCTO_SIN_RECETA` (ADR-033): un producto de la cuenta perdió su receta vigente en la sucursal entre el pedido y el cobro; la cuenta sigue abierta. */
-export type CodigoCerrarCuenta = "NO_ENCONTRADA" | "ITEMS_SIN_ENVIAR" | "VENTA_RECHAZADA" | "PRODUCTO_SIN_RECETA";
+/**
+ * `PRODUCTO_SIN_RECETA` (ADR-033): un producto de la cuenta perdió su receta vigente en la sucursal entre el pedido y el cobro; la cuenta sigue abierta. `PRODUCTO_REQUIERE_OPCIONES` (fila O.430): un ítem
+ * sin sus opciones de un producto que ahora tiene un grupo obligatorio (el grupo se volvió obligatorio entre el pedido y el cobro); la cuenta sigue abierta.
+ */
+export type CodigoCerrarCuenta = "NO_ENCONTRADA" | "ITEMS_SIN_ENVIAR" | "VENTA_RECHAZADA" | "PRODUCTO_SIN_RECETA" | "PRODUCTO_REQUIERE_OPCIONES";
 
 /**
  * Cómo terminó un cierre exitoso:

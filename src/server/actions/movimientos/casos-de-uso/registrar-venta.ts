@@ -77,7 +77,8 @@ async function registrarVentaEnTransaccion(
       },
       datos.claveIdempotencia ? { idempotencia: { clave: datos.claveIdempotencia, payloadHash } } : {}
     );
-    // RECETA (ADR-033): un PV sin origen de stock sale con su código propio (`PRODUCTO_SIN_RECETA`); todo otro rechazo del núcleo, `VENTA_RECHAZADA`.
+    // RECETA (ADR-033): un PV sin origen de stock sale con su código propio (`PRODUCTO_SIN_RECETA`); OPCIONES OBLIGATORIAS (fila O.430): un producto con un grupo obligatorio, que el mostrador no puede
+    // elegir, sale con `PRODUCTO_REQUIERE_OPCIONES` (el rechazo es del núcleo, antes de escribir nada: ni Operacion ni movimientos ni el comprobante de la clave); todo otro rechazo del núcleo, `VENTA_RECHAZADA`.
     return venta.ok ? exito(venta.mensaje, { operacionIds: venta.operacionIds, repetida: false }) : fracaso(venta.codigo ?? "VENTA_RECHAZADA", venta.mensaje);
   }, 5, {}, true);
 }

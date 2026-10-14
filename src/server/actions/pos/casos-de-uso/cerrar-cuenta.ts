@@ -120,6 +120,8 @@ export async function cerrarCuentaCasoDeUso(
     );
     // El núcleo valida todo antes de escribir: un rechazo no dejó nada escrito y la cuenta sigue abierta.
     // RECETA (ADR-033): un PV que perdió su receta entre el pedido y el cobro sale con `PRODUCTO_SIN_RECETA` (la cuenta sigue abierta: el núcleo no escribió nada).
+    // OPCIONES OBLIGATORIAS (fila O.430): un ítem SIN su foto de opciones de un producto que ahora tiene un grupo obligatorio (se volvió obligatorio entre el pedido y el cobro) sale con
+    // `PRODUCTO_REQUIERE_OPCIONES`; la cuenta sigue abierta (se anula el ítem y se vuelve a pedir con sus opciones).
     if (!venta.ok) return fracaso(venta.codigo ?? "VENTA_RECHAZADA", venta.mensaje);
     if (venta.operacionIds.length !== lineas.length) throw new Error("cerrarCuenta: la venta no devolvió una Operacion por línea.");
 
