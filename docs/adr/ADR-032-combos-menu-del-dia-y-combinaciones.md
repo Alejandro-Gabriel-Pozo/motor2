@@ -108,3 +108,19 @@ Hoy un combo (`PromoCarta` + `PromoCartaCupo` + `PromoCuenta`) solo deja «eleg�
 - **La venta de MOSTRADOR (`registrarVenta`) no rechaza un producto con un grupo obligatorio** (hallazgo de GO-2d): lo vende a precio base, sin opciones. I1 e I2 no tocan esa zona (es la venta por la cuenta), así que queda como pendiente aparte.
 - **IVA de los combos:** sigue bloqueado por D-2 (`COMBO_ALICUOTAS_DISTINTAS`) hasta que confirme el contador.
 - **Un plato del día no lleva opciones (D-6).** Un producto con un grupo obligatorio no puede ser plato del día en v1.
+
+## OPCIONES-LIMPIEZA G3: quitar componentes de un producto compuesto (2026-10-14; decisión del dueño)
+
+Los componentes de un producto compuesto (los lugares y las entradas de un combo, el plato del día, la receta propia de una combinación) no generan una venta por sí mismos: se sacan con
+un toque, con registro y con forma de volver atrás. Verificado contra el código, sin migraciones:
+
+- **Combo (lugares LISTA):** antes de guardar, un lugar se destilda en el formulario de cupos (`lugaresDelFormulario`) y queda fuera; ya guardado, cada entrada tiene «Sacar» y «Volver a
+  ofrecer» (`actualizarActivaEntradaDeCupo`: por estado y con auditoría de `EntradaDeCupo.activa`; volver a ofrecer revalida el componente). Esa pantalla es la de la carta (`/carta`): no se
+  tocó en esta rama.
+- **Menú del día:** «Quitar» un plato ahora es un toque con el aviso abajo y **«Deshacer»**, que vuelve a poner el MISMO plato en el mismo lugar y el mismo día (`agregarPlatoDelDia` es
+  «llevar al estado»: reactiva la misma fila de `EntradaDelDiaDeCupo`, con su auditoría). Pantalla `/movimientos/menu-del-dia`, con `src/components/aviso-con-deshacer.tsx`.
+- **Combinación:** «Se vende» se destilda y se vuelve a tildar (`guardarCombinacionDeProducto`, con versión y auditoría); la receta propia se quita guardando una versión sin ingredientes
+  (vuelve la regla general; el historial queda).
+- **Receta de un producto:** «Quitar» un ingrediente genera una versión nueva (el historial de versiones es el registro). NO se le agregó «Deshacer»: volver a la versión anterior perdería
+  las calibraciones locales de ese ingrediente (`RendimientoLocalIngrediente` se arrastra de la versión vigente, que ya no lo tiene) y eso es stock; queda como decisión del dueño (fila O.497
+  de `docs/pureza-integracion.md`).

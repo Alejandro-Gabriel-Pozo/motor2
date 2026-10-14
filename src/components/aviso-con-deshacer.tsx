@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useGrupoDeFormularios } from "@/components/grupo-de-formularios";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 
@@ -22,35 +22,31 @@ const ContextoDeDeshacer = createContext<Contexto | null>(null);
  * con el mensaje del servidor y, si salió bien, «Deshacer», que manda el cambio inverso (y ese ya no se deshace). Vive ARRIBA de las filas a propósito: al archivar, la fila
  * se va de la lista (la pantalla se refresca) y un aviso dentro de ella se perdería con su «Deshacer».
  *
- * Lo que se hace lo decide y lo escribe el servidor; acá solo se llama a la acción, se muestra su mensaje y se refresca la pantalla. Un segundo toque mientras el primero viaja no
- * se manda (cerrojo en un `ref`). Si la pantalla tiene un `GrupoDeFormularios`, lo ocupa mientras viaja: los formularios esperan y no salen con la versión de antes.
+ * Lo que se hace lo decide y lo escribe el servidor; acá solo se llama a la acción, se muestra su mensaje y se refresca la pantalla. Mientras un cambio viaja (`ocupado`, el estado de la
+ * transición) los botones se atenúan y un toque nuevo no sale (sin refs, como la pantalla de Mantenimiento de la carta; y aunque saliera, archivar y quitar son «llevar al estado»: el
+ * segundo no cambia nada). Si la pantalla tiene un `GrupoDeFormularios`, lo ocupa mientras viaja: los formularios esperan y no salen con la versión de antes.
  */
 export function AvisoConDeshacer({ children }: { children: ReactNode }) {
   const router = useRouter();
   const grupo = useGrupoDeFormularios();
   const [ultimo, setUltimo] = useState<{ resultado: ResultadoAccion; deshacer: (() => Promise<ResultadoAccion>) | null; vez: number } | null>(null);
   const [pendiente, startTransition] = useTransition();
-  const enviando = useRef(false);
-  const veces = useRef(0);
 
   const ejecutar = useCallback<Ejecutar>(
     (hacer, deshacer) => {
-      if (enviando.current) return;
-      enviando.current = true;
+      if (pendiente) return;
       const liberar = grupo?.ocupar();
       startTransition(async () => {
         try {
           const resultado = await hacer();
-          veces.current += 1;
-          setUltimo({ resultado, deshacer: resultado.ok ? deshacer : null, vez: veces.current });
+          setUltimo((anterior) => ({ resultado, deshacer: resultado.ok ? deshacer : null, vez: (anterior?.vez ?? 0) + 1 }));
           if (resultado.ok) router.refresh();
         } finally {
-          enviando.current = false;
           liberar?.();
         }
       });
     },
-    [grupo, router]
+    [grupo, pendiente, router]
   );
 
   const contexto = useMemo(() => ({ ejecutar, ocupado: pendiente }), [ejecutar, pendiente]);
