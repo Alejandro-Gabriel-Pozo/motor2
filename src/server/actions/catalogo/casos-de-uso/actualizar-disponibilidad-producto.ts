@@ -1,8 +1,9 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoActualizarDisponibilidadProducto, ResultadoActualizarDisponibilidadProducto } from "@/core/features/catalogo/productos.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { exito, fracaso } from "@/core/resultado-caso";
+import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
 import { dependenciasParaDesactivar } from "@/server/lecturas/catalogo/dependencias-para-desactivar";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { fijarDisponibilidadEnSucursal, tomarFilaDeProducto } from "@/server/persistencia/catalogo/productos";
@@ -46,42 +47,75 @@ export async function actualizarDisponibilidadProductoCasoDeUso(
   return actor.transaccion(async (tx): Promise<ResultadoActualizarDisponibilidadProducto> => {
     // D4: la fila se toma ANTES de leer el precio (ver arriba). Una id inexistente no toma nada y cae en el «no se encontró» de abajo.
     await tomarFilaDeProducto(tx, productoId);
-    const existente = await tx.producto.findUnique({ where: { id: productoId }, include: { opcionQueRespalda: { select: { id: true } } } });
-    if (!existente) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
-    // GO-2a (blindaje del ancla, D-1): el producto que respalda un adicional NO tiene disponibilidad a propósito (queda oculto por «sin fila = no disponible», ADR-009 `optin`) y se
-    // vende solo como la línea del adicional; ponerlo a la venta lo haría aparecer como un producto suelto. Apagarlo no hace falta ni molesta.
-    if (disponible && existente.opcionQueRespalda) {
-      return fracaso("ES_ANCLA_DE_ADICIONAL", `"${existente.nombre}" es el producto de respaldo de un adicional: se vende solo como adicional, no se pone a la venta suelto.`);
+    const validado = await validarCambioDeDisponibilidadEnTx(tx, actor, comando);
+    if (!validado.ok) return validado;
+    await escribirCambioDeDisponibilidadEnTx(tx, actor, validado.datos, disponible);
+    return exito(`Producto "${validado.datos.nombre}" ${disponible ? "activado" : "desactivado"} en "${actor.sucursalNombre}".`, null);
+  });
+}
+
+/** Lo que `validarCambioDeDisponibilidadEnTx` deja listo para escribir: el producto y su disponibilidad ANTERIOR en la sucursal (leída con la fila del producto ya tomada). */
+export interface CambioDeDisponibilidadValidado {
+  productoId: string;
+  nombre: string;
+  anterior: boolean;
+}
+
+/**
+ * Las reglas de «poner a la venta o sacar de la venta un producto en la sucursal activa», SIN escribir nada, dentro de la transacción de quien llama y con la fila del producto YA TOMADA
+ * (`tomarFilaDeProducto`, `FOR UPDATE`): que exista, el blindaje del ancla (GO-2a, D-1), D4 (activar un PV a $0 exige la clave fina) y, al desactivar, las dependencias en esta sucursal. Devuelve el
+ * valor anterior para la auditoría. CARTA-MANT: la usan este caso de uso (un producto) y `fijar-disponibilidad-de-hoy.ts` (varios, todo o nada: valida todos antes de escribir el primero).
+ */
+export async function validarCambioDeDisponibilidadEnTx(
+  tx: Prisma.TransactionClient,
+  actor: Pick<ContextoUsuario, "sucursalId" | "sucursalNombre">,
+  comando: ComandoActualizarDisponibilidadProducto,
+): Promise<ResultadoCaso<CambioDeDisponibilidadValidado, "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "ES_ANCLA_DE_ADICIONAL">> {
+  const { productoId, disponible } = comando;
+  const existente = await tx.producto.findUnique({ where: { id: productoId }, include: { opcionQueRespalda: { select: { id: true } } } });
+  if (!existente) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
+  // GO-2a (blindaje del ancla, D-1): el producto que respalda un adicional NO tiene disponibilidad a propósito (queda oculto por «sin fila = no disponible», ADR-009 `optin`) y se
+  // vende solo como la línea del adicional; ponerlo a la venta lo haría aparecer como un producto suelto. Apagarlo no hace falta ni molesta.
+  if (disponible && existente.opcionQueRespalda) {
+    return fracaso("ES_ANCLA_DE_ADICIONAL", `"${existente.nombre}" es el producto de respaldo de un adicional: se vende solo como adicional, no se pone a la venta suelto.`);
+  }
+  if (disponible && existente.tipo === "PV" && Number(existente.precioVenta) === 0 && !comando.puedeEditarCamposSensibles) {
+    return fracaso(
+      "SIN_PERMISO_CAMPOS_SENSIBLES",
+      `No se puede poner a la venta "${existente.nombre}" en "${actor.sucursalNombre}": todavía no tiene precio (está en $0) y ponerlo a la venta así lo decide quien tiene el permiso «campos sensibles del producto» (producto_campos_sensibles). ` +
+        `Pedile a un administrador que le cargue el precio, o que lo ponga a la venta.`,
+    );
+  }
+  if (!disponible) {
+    const { recetasVigentes, saldos } = await dependenciasParaDesactivar(productoId, actor.sucursalId, tx);
+    const motivos: string[] = [];
+    if (recetasVigentes.length) motivos.push(`está en la receta vigente de ${enumerar(recetasVigentes.map((r) => r.nombre))}: sacalo de esas recetas`);
+    if (saldos.length) {
+      const donde = enumerar(saldos.map((s) => `${s.sucursalNombre} / ${s.seccionNombre} (${s.saldo})`));
+      motivos.push(`tiene saldo en ${donde}: dejalo en cero con un ajuste`);
     }
-    if (disponible && existente.tipo === "PV" && Number(existente.precioVenta) === 0 && !comando.puedeEditarCamposSensibles) {
-      return fracaso(
-        "SIN_PERMISO_CAMPOS_SENSIBLES",
-        `No se puede poner a la venta "${existente.nombre}" en "${actor.sucursalNombre}": todavía no tiene precio (está en $0) y ponerlo a la venta así lo decide quien tiene el permiso «campos sensibles del producto» (producto_campos_sensibles). ` +
-          `Pedile a un administrador que le cargue el precio, o que lo ponga a la venta.`,
-      );
+    if (motivos.length) {
+      return fracaso("TIENE_DEPENDENCIAS", `No se puede desactivar "${existente.nombre}" en "${actor.sucursalNombre}": ${motivos.join("; y ")} antes de desactivarlo.`);
     }
-    if (!disponible) {
-      const { recetasVigentes, saldos } = await dependenciasParaDesactivar(productoId, actor.sucursalId, tx);
-      const motivos: string[] = [];
-      if (recetasVigentes.length) motivos.push(`está en la receta vigente de ${enumerar(recetasVigentes.map((r) => r.nombre))}: sacalo de esas recetas`);
-      if (saldos.length) {
-        const donde = enumerar(saldos.map((s) => `${s.sucursalNombre} / ${s.seccionNombre} (${s.saldo})`));
-        motivos.push(`tiene saldo en ${donde}: dejalo en cero con un ajuste`);
-      }
-      if (motivos.length) {
-        return fracaso("TIENE_DEPENDENCIAS", `No se puede desactivar "${existente.nombre}" en "${actor.sucursalNombre}": ${motivos.join("; y ")} antes de desactivarlo.`);
-      }
-    }
-    // El valor anterior se lee ANTES del upsert — registrarCambioAuditado necesita comparar contra el estado previo real, no
-    // contra el que se está por escribir (si no, "repetir el mismo estado no deja registro" dejaría de cumplirse).
-    const anterior = await productoDisponibleEn(actor.sucursalId, productoId, tx);
-    await fijarDisponibilidadEnSucursal(tx, { sucursalId: actor.sucursalId, productoId, disponible });
-    // Auditoría administrativa, como el cambio de activo de un rol. No-op si el valor no cambió (registrarCambioAuditado).
-    await registrarCambioAuditado(tx, {
-      entidad: "DisponibilidadProducto", entidadId: `${actor.sucursalId}:${productoId}`, campo: "disponible",
-      descripcion: `Producto "${existente.nombre}" en "${actor.sucursalNombre}": disponible`,
-      valorAnterior: anterior, valorNuevo: disponible, actorId: actor.usuarioId,
-    });
-    return exito(`Producto "${existente.nombre}" ${disponible ? "activado" : "desactivado"} en "${actor.sucursalNombre}".`, null);
+  }
+  // El valor anterior se lee ANTES del upsert — registrarCambioAuditado necesita comparar contra el estado previo real, no
+  // contra el que se está por escribir (si no, "repetir el mismo estado no deja registro" dejaría de cumplirse).
+  const anterior = await productoDisponibleEn(actor.sucursalId, productoId, tx);
+  return exito("", { productoId, nombre: existente.nombre, anterior });
+}
+
+/** La escritura de un cambio ya validado: la disponibilidad en la sucursal activa y su auditoría (no-op en la auditoría si no cambió), en la transacción de quien llama. */
+export async function escribirCambioDeDisponibilidadEnTx(
+  tx: Prisma.TransactionClient,
+  actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre">,
+  validado: CambioDeDisponibilidadValidado,
+  disponible: boolean,
+): Promise<void> {
+  await fijarDisponibilidadEnSucursal(tx, { sucursalId: actor.sucursalId, productoId: validado.productoId, disponible });
+  // Auditoría administrativa, como el cambio de activo de un rol. No-op si el valor no cambió (registrarCambioAuditado).
+  await registrarCambioAuditado(tx, {
+    entidad: "DisponibilidadProducto", entidadId: `${actor.sucursalId}:${validado.productoId}`, campo: "disponible",
+    descripcion: `Producto "${validado.nombre}" en "${actor.sucursalNombre}": disponible`,
+    valorAnterior: validado.anterior, valorNuevo: disponible, actorId: actor.usuarioId,
   });
 }

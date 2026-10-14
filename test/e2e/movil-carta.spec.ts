@@ -54,7 +54,8 @@ test("administración de la carta en celular (375 px): formularios de promo sin 
   const d = await sembrar(sucursalId);
   try {
     await fijarCelular(page);
-    await page.goto("/carta");
+    // CARTA-MANT: las promos viven en Parametrización › Promociones.
+    await page.goto("/carta/parametrizacion/promociones");
     await expect(page.getByRole("heading", { name: "Promos", exact: true })).toBeVisible();
     await expectSinDesborde(page, "carta con las fichas cerradas");
     await abrirTodosLosDetails(page);

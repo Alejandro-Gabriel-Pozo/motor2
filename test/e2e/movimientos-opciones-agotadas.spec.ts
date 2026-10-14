@@ -134,8 +134,9 @@ test("carta (mantenimiento): un plato que se muestra con un ingrediente en 0 en 
     const avisos = page.locator("[data-avisos-de-stock]");
     await expect(avisos).toContainText(`«E2E Bife ${m}»: E2E Carne ${m}: el sistema dice 0 kg. Si hay en el depósito, hacé un conteo físico.`);
     await expect(avisos.getByRole("link", { name: "hacé un conteo físico" }).first()).toHaveAttribute("href", "/movimientos/conteo-fisico");
-    // Avisa, no bloquea: el plato sigue «se muestra».
-    await expect(page.locator(`[data-contenido-carta='E2E Bife ${m}']`)).toContainText("se muestra");
+    // Avisa, no bloquea: el plato sigue en la carta (en «Hoy», «En carta»).
+    await page.locator(`[data-seccion-hoy='E2E Sección stock ${m}']`).getByRole("button", { name: new RegExp(`^E2E Sección stock ${m} \\d`) }).click();
+    await expect(page.getByRole("button", { name: `E2E Bife ${m}: En carta` })).toHaveAttribute("aria-pressed", "true");
     expect((await new AxeBuilder({ page }).include("[data-avisos-de-stock]").analyze()).violations, "el aviso de stock").toEqual([]);
   } finally {
     await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: plato.id } });

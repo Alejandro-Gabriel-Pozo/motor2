@@ -47,6 +47,10 @@ const ARCHIVOS_PERMITIDOS = [
   "server/actions/carta/casos-de-uso/copiar-carta-de-sucursal.ts",
   // GO-3b (ADR-032, D-2): las alícuotas de los componentes posibles de un combo miran los productos de las secciones de sus cupos, en la carta de cada sucursal pedida (con su filtro).
   "server/lecturas/carta/componentes-de-promo.ts",
+  // CARTA-MANT (ADR-034): la pantalla de mantenimiento lee las secciones (de la empresa) y, por la relación del producto, la carta de la sucursal; «Agregar a la carta» y «Quitar de la carta»
+  // leen la sección y lo que ya hay en ella (con su filtro) para decidir.
+  "server/consultas/carta/mantenimiento.ts",
+  "server/actions/carta/casos-de-uso/agregar-producto-a-la-carta.ts",
 ];
 const LECTURA = /\b(seccionCarta|generoCarta|itemAgrupadoCarta|contenidoCartaProducto|opcionItemAgrupadoCarta)\s*\.\s*(find|count|aggregate|groupBy)/;
 /** Los modelos PROPIOS de la sucursal: SeccionCarta queda afuera a propósito (es de la empresa). */

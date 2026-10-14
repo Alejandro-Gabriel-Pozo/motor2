@@ -41,6 +41,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   { archivo: "src/server/actions/catalogo/casos-de-uso/fijar-precio-local-de-opcion.ts", entidad: "PrecioLocalDeOpcion", campos: ["precio", "habilitado"] },
   // GO-2d: el orden de las opciones de un grupo («mover tocando»), una fila por opción que cambió de lugar.
   { archivo: "src/server/actions/catalogo/casos-de-uso/reordenar-opciones-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["orden"] },
+  // CARTA-MANT: «Agregar a la carta» un producto fuera de carta (de `null` a visible).
+  { archivo: "src/server/actions/carta/casos-de-uso/agregar-producto-a-la-carta.ts", entidad: "ContenidoCartaProducto", campos: ["visibleEnCarta"] },
 ];
 
 /** Los literales de texto de `campo: "<literal>"` y de `entidad: "<literal>"` que hay en el código (propiedades de un literal de objeto). */
