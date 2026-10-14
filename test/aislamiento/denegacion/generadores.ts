@@ -179,6 +179,8 @@ const completos: Record<string, Valor> = {
     ),
   "accion|actions/carta/registro-publico.ts|guardarSucursalPublica": (k) => [k.sucursalId, { slug: "slug-nuevo", publicada: true }],
   "accion|actions/carta/secciones.ts|guardarSeccionCarta": (k) => [{ id: k.seccionCartaId, nombre: "Nombre nuevo" }],
+  // CARTA-MANT F3: la empresa del mundo tiene UNA sección de carta (orden 0): el control positivo la deja en su lugar (éxito sin cambio); con la de otra empresa, «No se encontró…».
+  "accion|actions/carta/secciones.ts|ordenarSeccionesCarta": (k) => [{ secciones: [{ seccionCartaId: k.seccionCartaId, ordenVisto: 0 }] }],
 
   // --- catálogo ---
   "accion|actions/catalogo/productos.ts|actualizarProducto": (k, c) =>

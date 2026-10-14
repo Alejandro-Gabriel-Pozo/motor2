@@ -1,11 +1,12 @@
 "use server";
 
-import { guardComandoGuardarSeccionCarta } from "@/core/features/carta/secciones.guard";
+import { guardComandoGuardarSeccionCarta, guardComandoOrdenarSeccionesCarta } from "@/core/features/carta/secciones.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
 import { actualizarActivaSeccionCartaCasoDeUso } from "./casos-de-uso/actualizar-activa-seccion-carta";
 import { guardarSeccionCartaCasoDeUso } from "./casos-de-uso/guardar-seccion-carta";
+import { ordenarSeccionesCartaCasoDeUso } from "./casos-de-uso/ordenar-secciones-carta";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
@@ -53,6 +54,21 @@ export async function actualizarActivaSeccionCarta(seccionCartaId: string, activ
   return conPermisoDeEmpresa("carta_secciones", async (ctx) => {
     const resultado = await actualizarActivaSeccionCartaCasoDeUso(ctx, { seccionCartaId, activa });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
+    return aResultadoAccion(resultado);
+  });
+}
+
+/**
+ * CARTA-MANT F3 «Ordenar» (prototipo aprobado): el orden nuevo de TODAS las secciones de la empresa, de una vez. La misma clave que editar una sección (`carta_secciones`, de empresa: las secciones son
+ * de la empresa y el orden rige en todas las sucursales). Permiso → formato (`guardComandoOrdenarSeccionesCarta`) → caso de uso (`casos-de-uso/ordenar-secciones-carta.ts`, SERIALIZABLE, contra el
+ * orden visto, con auditoría) → revalidar la carta pública si cambió algo → `aResultadoAccion`.
+ */
+export async function ordenarSeccionesCarta(entrada: { secciones: unknown }): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("carta_secciones", async (ctx) => {
+    const comando = guardComandoOrdenarSeccionesCarta(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await ordenarSeccionesCartaCasoDeUso(ctx, comando.valor);
+    if (resultado.ok && resultado.datos.cambiadas > 0) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }
