@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
-import { clavesReservadasDe } from "../setup/claves-reservadas-en-base";
+import { ACCIONES } from "../../src/core/permisos/acciones";
+import { RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
 
 /**
  * GO-3 (ADR-032): SUBIR, BAJAR y SUBIR las migraciones de GO-3 sobre una base TEMPORAL que se fue migrando como una real (todas las migraciones anteriores aplicadas, con datos de antes: una empresa
@@ -146,7 +147,9 @@ describe("GO-3d: subir, bajar y subir (combos y menú del día, con su migració
     expect(await q(`SELECT "tipo", "nombre", "activo", "seccionCartaId" FROM "PromoCartaCupo" WHERE "id" = 'cupo_sec_go3'`), `${etiqueta}: el cupo de antes quedó como estaba`).toEqual([
       { tipo: "SECCION", nombre: null, activo: true, seccionCartaId: "sec_go3" },
     ]);
-    expect(clavesReservadasDe(GO3_D), "la clave de GO-3d").toEqual(["promo_menu_del_dia"]);
+    // GO-3b: la clave ya está en ACCIONES (con la descripción de la migración); dejó de estar reservada en la base.
+    expect(ACCIONES.find((a) => a.clave === "promo_menu_del_dia"), "la clave de GO-3d").toMatchObject({ descripcion: "Cargar el plato del día de los menús en la sucursal", contexto: "sucursal", nivelMinimo: "operario" });
+    expect("promo_menu_del_dia" in RESERVADAS_EN_BASE).toBe(false);
     expect(await q(`SELECT "rolId", "puedeVer", "puedeEditar" FROM "PermisoRol" WHERE "accionClave" = 'promo_menu_del_dia'`), `${etiqueta}: solo el admin, con Ver y Editar`).toEqual([
       { rolId: "rol_admin_go3", puedeVer: true, puedeEditar: true },
     ]);
@@ -233,7 +236,9 @@ describe("GO-3a: subir, bajar y subir (combinaciones, con su migración de polí
     for (const t of TABLAS) expect(f.rls.find((r) => r.tabla === t), `${etiqueta}: ${t} con RLS`).toEqual({ tabla: t, rls: true, forzado: false });
     for (const t of ["PrecioLocalDeCombinacion", "CombinacionEnLinea"]) expect(f.politicas.filter((p) => p.tabla === t).length, `${etiqueta}: ${t} con 5 políticas`).toBe(5);
     expect(await q(`SELECT "ejeDeCombinacion" FROM "ProductoAdmiteGrupo" WHERE "id" = 'pag_go3'`), `${etiqueta}: el grupo admitido de antes quedó sin eje`).toEqual([{ ejeDeCombinacion: null }]);
-    expect(clavesReservadasDe(GO3_A), "la clave de GO-3a").toEqual(["grupos_de_precio_definir"]);
+    // GO-3b: la clave ya está en ACCIONES (con la descripción de la migración); dejó de estar reservada en la base.
+    expect(ACCIONES.find((a) => a.clave === "grupos_de_precio_definir"), "la clave de GO-3a").toMatchObject({ descripcion: "Definir las tarifas compartidas (grupos de precio) de las combinaciones", contexto: "empresa", nivelMinimo: "administrador" });
+    expect("grupos_de_precio_definir" in RESERVADAS_EN_BASE).toBe(false);
     expect(await q(`SELECT "rolId" FROM "PermisoRol" WHERE "accionClave" = 'grupos_de_precio_definir'`), `${etiqueta}: solo el admin`).toEqual([{ rolId: "rol_admin_go3" }]);
     await comoApp({ lectura: "suc_a", escritura: "suc_a" }, async (c) => {
       expect(await falla(c, `UPDATE "ProductoAdmiteGrupo" SET "ejeDeCombinacion" = 1 WHERE "id" = 'pag_go3'`), `${etiqueta}: declarar el eje`).toBeNull();

@@ -84,6 +84,8 @@ const O = [
   "compra_recibir",
   // GO-2a: apagar una opción de venta en la sucursal (piso operario, semilla solo admin; delegable al encargado del turno).
   "opcion_apagar_en_sucursal",
+  // GO-3b: cargar el plato del día de los menús en la sucursal (piso operario, semilla solo admin; delegable al encargado, D-5).
+  "promo_menu_del_dia",
 ] as const satisfies readonly AccionClave[];
 
 const L = [
@@ -186,6 +188,8 @@ const A = [
   // GO-2a: definir el catálogo de opciones de venta y elegir qué admite cada producto (de empresa, piso administrador).
   "opciones_definir",
   "producto_opciones_admitidas",
+  // GO-3b: las tarifas compartidas (grupos de precio) de las combinaciones (de empresa, piso administrador).
+  "grupos_de_precio_definir",
 ] as const satisfies readonly AccionClave[];
 
 const DECLARADAS: Readonly<Record<Clase, readonly string[]>> = { G, O, L, A };
@@ -208,7 +212,7 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     const todas = [...G, ...O, ...L, ...A];
     expect(new Set(todas).size, "una clave declarada en dos clases").toBe(todas.length);
     expect(todas.length).toBe(ACCIONES.length);
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 21, 33, 62]);
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 22, 33, 63]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

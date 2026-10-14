@@ -1477,6 +1477,22 @@
       "rolesEditarSemilla": [
         "admin"
       ]
+    },
+    {
+      "clave": "promo_menu_del_dia",
+      "contexto": "sucursal",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
+      "clave": "grupos_de_precio_definir",
+      "contexto": "empresa",
+      "nivelMinimo": "administrador",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
     }
   ]
 }

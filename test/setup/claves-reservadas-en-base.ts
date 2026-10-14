@@ -3,7 +3,7 @@ import type { NivelDeAccion } from "../../src/core/permisos/acciones";
 /**
  * Las claves de permiso que una migración de datos da de alta en la BASE antes de que existan en el catálogo `ACCIONES` (src/core/permisos/acciones.ts): hoy las siete de los GASTOS (Paquete 3, M4.5; D1 y D4 del dueño), las tres de la
  * NOTA DE CRÉDITO DE PROVEEDOR (Paquete 4, M6.4; Decisión 3 del dueño) y las tres de los CENTROS DE COSTOS (Paquete 5, M7.4). Los módulos `gastos` y `centros_de_costos` están «en desarrollo» y `test/arquitectura/acciones-con-modulo.test.ts` prohíbe acciones de un módulo en desarrollo; además la matriz de permisos las
- * mostraría en todas las empresas. Entran a `ACCIONES` en la Etapa C, con su guarda: ese día salen de esta lista (el guardián de paridad lo exige en las dos direcciones). Las tres de los GRUPOS DE OPCIONES DE VENTA (GO-1a) ya salieron: entraron a `ACCIONES` en GO-2a, con su guarda.
+ * mostraría en todas las empresas. Entran a `ACCIONES` en la Etapa C, con su guarda: ese día salen de esta lista (el guardián de paridad lo exige en las dos direcciones). Las tres de los GRUPOS DE OPCIONES DE VENTA (GO-1a) ya salieron: entraron a `ACCIONES` en GO-2a, con su guarda; y las dos de GO-3 (`promo_menu_del_dia` y `grupos_de_precio_definir`), en GO-3b.
  *
  * Cada una lleva su descripción DEFINITIVA (la compara la paridad con la de la base, y después con la de `ACCIONES`), el contexto, el piso que va a tener, a quién se siembra y la MIGRACIÓN que la da de alta: cada prueba de una migración de
  * permisos mira solo las claves de la suya (`clavesReservadasDe`). Las comparten `paridad-catalogo-migraciones.test.ts`, `migracion-permisos-gastos.test.ts`, `migracion-permisos-notas-de-credito.test.ts`, `migracion-permisos-centros-de-costos.test.ts` y
@@ -28,7 +28,6 @@ const NOTAS_DE_CREDITO = "20261018103000_permisos_notas_de_credito";
 const CENTROS_DE_COSTOS = "20261019103000_permisos_centros_de_costos";
 
 export const RESERVADAS_EN_BASE: Readonly<Record<string, ClaveReservadaEnBase>> = {
-  ...reservadasDeGo3(),
   gasto_ver: { migracion: GASTOS, descripcion: "Ver los gastos de la sucursal", contexto: "sucursal", nivelMinimo: "administrador", semilla: ["admin"] },
   gasto_registrar: { migracion: GASTOS, descripcion: "Registrar un gasto en la sucursal", contexto: "sucursal", nivelMinimo: "administrador", semilla: ["admin"] },
   gasto_anular: { migracion: GASTOS, descripcion: "Anular un gasto de la sucursal", contexto: "sucursal", nivelMinimo: "administrador", semilla: ["admin"] },
@@ -50,16 +49,3 @@ export function clavesReservadasDe(migracion: string): string[] {
     .filter((c) => RESERVADAS_EN_BASE[c]!.migracion === migracion)
     .sort();
 }
-
-// GO-3 (ADR-032): las claves que dan de alta las migraciones de esquema de GO-3 (patrón GO-1a: viven en la base y entran a `ACCIONES` con su caso de uso, en GO-3 F3 y F4). Declarada como función (se
-// iza) para dejar el bloque al final del archivo. `promo_menu_del_dia` es de clase O, delegable al encargado (D-5); `grupos_de_precio_definir`, de clase A.
-function reservadasDeGo3(): Record<string, ClaveReservadaEnBase> {
-  return {
-    grupos_de_precio_definir: { migracion: "20261021110000_go3a_combinaciones", descripcion: "Definir las tarifas compartidas (grupos de precio) de las combinaciones", contexto: "empresa", nivelMinimo: "administrador", semilla: ["admin"] },
-    promo_menu_del_dia: { migracion: "20261021100000_go3d_combos_y_menu_del_dia", descripcion: "Cargar el plato del día de los menús en la sucursal", contexto: "sucursal", nivelMinimo: "operario", semilla: ["admin"] },
-  };
-}
-
-/** GO-3: el motivo de las claves reservadas de GO-3 (lo exige la paridad). */
-export const MOTIVO_DE_LAS_RESERVADAS_DE_GO3 =
-  "GO-3 (ADR-032): las claves del menú del día (GO-3d) y de los grupos de precio (GO-3a) las dan de alta las migraciones de esquema de GO-3 y entran a ACCIONES con su guarda y su caso de uso (GO-3 F3 y F4), cuando GO-2a y GO-2b ya estén fusionadas (docs/adr/ADR-032-combos-menu-del-dia-y-combinaciones.md).";
