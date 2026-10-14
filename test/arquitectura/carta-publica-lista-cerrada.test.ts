@@ -58,6 +58,8 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   // producto) no estaban en GO-0 porque el recargo en % llegó con GO-2a: sin ellos un recargo en % se mostraría mal. Los de `PrecioLocalDeOpcion`, `OpcionDeGrupo.grupo/grupoId/
   // productosQueLaAdmiten` y `ProductoAdmiteGrupo.grupoId/productoId` / `ProductoAdmiteOpcion.id/productoId` son del lector ÚNICO de la grilla (`precio-local-de-opciones.ts`); `ProductoAdmiteGrupo.id`,
   // del aviso «admite algún grupo» de `menu.ts` (así una carta sin opciones hace las mismas consultas que antes: lo fija `lecturas-tramo-a.golden.json`).
+  // CARTA-C (pastillas, 2026-10-14): NO suma ninguna lectura. Las opciones sin costo salen del MISMO resumen de precios que ya se lee (`nombre`, `esNinguna`, `diferenciaPrecio`); lo que cambia es la SALIDA (un campo por ítem, solo textos),
+  // que cierra `CLAVES_DE_LA_CARTA` en `test/carta/salida-publica-inventariada.test.ts`. Por eso esta lista y la cantidad de consultas (`lecturas-tramo-a.golden.json`) quedan exactamente igual.
   GrupoDeOpciones: ["activo", "cantidadMaxima", "cantidadMinima", "id", "nombre", "opciones", "tipo"],
   OpcionApagadaEnSucursal: ["apagada"],
   OpcionDeGrupo: ["activa", "apagadasEnSucursal", "esNinguna", "grupo", "grupoId", "id", "nombre", "orden", "productosQueLaAdmiten", "versiones"],

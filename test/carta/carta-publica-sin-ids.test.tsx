@@ -37,11 +37,15 @@ async function sembrar() {
   const grupo = await prisma.grupoDeOpciones.create({ data: { nombre: "Punto", tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1 } });
   const jugoso = await prisma.opcionDeGrupo.create({ data: { grupoId: grupo.id, nombre: "Jugoso", orden: 1 } });
   const aPunto = await prisma.opcionDeGrupo.create({ data: { grupoId: grupo.id, nombre: "A punto", orden: 2 } });
+  // CARTA-C: una tercera opción sin costo, para que el grupo tenga DOS (Jugoso y Bien cocido) y se dibujen como pastillas.
+  const bienCocido = await prisma.opcionDeGrupo.create({ data: { grupoId: grupo.id, nombre: "Bien cocido", orden: 3 } });
+  const versionBienCocido = await prisma.versionDeOpcion.create({ data: { opcionId: bienCocido.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "0.00", creadoPorId: autor.id } });
   const version = await prisma.versionDeOpcion.create({ data: { opcionId: jugoso.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "0.00", creadoPorId: autor.id } });
   await prisma.versionDeOpcion.create({ data: { opcionId: aPunto.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "100.00", creadoPorId: autor.id } });
   const admiteGrupo = await prisma.productoAdmiteGrupo.create({ data: { productoId: suelto.id, grupoId: grupo.id, orden: 0 } });
   const admiteOpcion = await prisma.productoAdmiteOpcion.create({ data: { productoId: suelto.id, opcionId: jugoso.id } });
   await prisma.productoAdmiteOpcion.create({ data: { productoId: suelto.id, opcionId: aPunto.id } });
+  const admiteBienCocido = await prisma.productoAdmiteOpcion.create({ data: { productoId: suelto.id, opcionId: bienCocido.id } });
   return {
     ids: {
       sucursal: central.id,
@@ -56,6 +60,9 @@ async function sembrar() {
       versionDeOpcion: version.id,
       admiteGrupo: admiteGrupo.id,
       admiteOpcion: admiteOpcion.id,
+      opcionSinCosto: bienCocido.id,
+      versionDeOpcionSinCosto: versionBienCocido.id,
+      admiteOpcionSinCosto: admiteBienCocido.id,
       autor: autor.id,
     },
   };
@@ -84,10 +91,13 @@ describe("S-25: la carta pública no emite ids internos", () => {
     const entregada = (await cartaPublica(empresa, "central", AHORA_DE_LA_CORRIDA))!;
     const html = renderToStaticMarkup(<CartaVista carta={entregada.carta} estilo={entregada.estilo} hrefVolver="/carta-publica/principal" />);
     expect(html).toContain("Bife");
-    // GO-2d y CARTA-B: la opción que SÍ cambia el precio se dibuja en la línea «Adicionales:» (y sin ids); «Jugoso», que no suma nada, no se dibuja.
+    // GO-2d, CARTA-B y CARTA-C: la opción que SÍ cambia el precio se dibuja en la línea «Adicionales:»; «Jugoso» y «Bien cocido», que no suman nada, se dibujan como pastillas bajo el nombre
+    // de su grupo («Punto»). Todo sin ids.
     expect(html).toContain("Adicionales:");
     expect(html).toContain("A punto +$100");
-    expect(html).not.toContain("Jugoso");
+    expect(html).toMatch(/data-opciones-sin-costo="Punto"[^>]*>.*Punto.*<ul aria-label="Punto".*Jugoso.*Bien cocido/);
+    expect(html).toContain("Jugoso");
+    expect(html).toContain("Bien cocido");
     expect(html).toContain('data-ir-a="seccion-0"');
     for (const [clase, id] of Object.entries(ids)) expect(html, `el HTML contiene el id de ${clase}`).not.toContain(id);
     expect(html).not.toMatch(CUID);

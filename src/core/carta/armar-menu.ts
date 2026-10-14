@@ -23,7 +23,7 @@
 // ---------------------------------------------------------------------------------------------------------------------
 
 import { aplicarDescuentoDeProducto } from "./descuento-producto";
-import { opcionesParaLaCarta, type GrupoCartaV1, type ResumenDePreciosParaCarta } from "./opciones-en-carta";
+import { opcionesParaLaCarta, type GrupoCartaV1, type OpcionesSinCostoCartaV1, type ResumenDePreciosParaCarta } from "./opciones-en-carta";
 
 export interface ItemCartaV1 {
   productoId: string;
@@ -63,11 +63,17 @@ export interface ItemCartaV1 {
   opciones?: OpcionItemCartaV1[];
   /**
    * GO-2d (ADR-030, aprobado por el dueño) y CARTA-B: SOLO en un PV con opciones de venta que CAMBIAN EL PRECIO (los tamaños con su precio final, y lo que suma o resta una variante o un
-   * adicional), lo que se puede elegir HOY en la sucursal (`opciones-en-carta.ts`). Lo que no cambia el precio (guarnición, punto de cocción) no viaja. En ese ítem `precio` es lo más barato con lo
+   * adicional), lo que se puede elegir HOY en la sucursal (`opciones-en-carta.ts`). Lo que no cambia el precio (guarnición, punto de cocción) viaja aparte, en `opcionesSinCosto`. En ese ítem `precio` es lo más barato con lo
    * que se puede pedir. Un ítem sin opciones que cambien el precio no lleva esta clave: su JSON queda igual que antes. Campo aditivo de la v1: `version` no cambia. (La clave `opciones` ya es de
    * los ítems agrupados.)
    */
   grupos?: GrupoCartaV1[];
+  /**
+   * CARTA-C (decisión del dueño, 2026-10-14): SOLO en un PV con opciones de venta que NO cambian el precio y se pueden elegir hoy (preparación «Solo»/«Flat white»/«Cortado», guarnición, punto de cocción):
+   * el nombre del grupo y los nombres de sus opciones sin costo, en el orden del grupo, para dibujarlas como «pastillas». Solo textos: sin ids ni precios. Un grupo con una sola opción sin costo, la
+   * «ninguna» y lo agotado no salen. Un ítem sin ninguna no lleva esta clave: su JSON queda igual que antes. Campo aditivo de la v1: `version` no cambia.
+   */
+  opcionesSinCosto?: OpcionesSinCostoCartaV1[];
 }
 
 /** Una opción (un PV real) dentro de un ítem agrupado de la carta. */
@@ -340,6 +346,7 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
         especial: p.contenido.especial,
         imagenUrl: null,
         ...(enCarta && enCarta.grupos.length > 0 ? { grupos: enCarta.grupos } : {}),
+        ...(enCarta && enCarta.sinCosto.length > 0 ? { opcionesSinCosto: enCarta.sinCosto } : {}),
       },
       p.contenido.orden
     );

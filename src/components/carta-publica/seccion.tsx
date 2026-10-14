@@ -72,7 +72,9 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
   // CARTA-B: lo que llega en `grupos` ya es SOLO lo que cambia el precio (lo decide el servidor): los tamaños con su precio final y lo que suma o resta una variante o un adicional.
   const tamanos = (item.grupos ?? []).map((g) => ({ nombre: g.nombre, filas: g.opciones.flatMap((o) => (o.precio === undefined ? [] : [{ nombre: o.nombre, precio: o.precio }])) })).filter((g) => g.filas.length > 0);
   const recargos = (item.grupos ?? []).flatMap((g) => g.opciones.flatMap((o) => (o.recargo === undefined ? [] : [{ nombre: o.nombre, recargo: o.recargo }])));
-  const conOpciones = tamanos.length > 0 || recargos.length > 0;
+  // CARTA-C: lo que NO cambia el precio (preparación, guarnición, punto de cocción) también llega, aparte y solo con nombres, para dibujarlo como pastillas bajo el nombre de su grupo.
+  const sinCosto = (item.opcionesSinCosto ?? []).filter((g) => g.opciones.length > 0);
+  const conOpciones = tamanos.length > 0 || recargos.length > 0 || sinCosto.length > 0;
   // Con una lista de tamaños el renglón del nombre va SIN precio (cada tamaño lo dice); sin ella, el precio base queda a la derecha como siempre.
   const tamanosEnLista = tamanos.length > 0;
   const fuenteNombre = conPiso(v.carta_fuente_item_nombre, PISO_NOMBRE_Y_PRECIO, conOpciones);
@@ -136,6 +138,9 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
       {tamanos.map((g, i) => (
         <TamanosDelItem key={`tamanos-${i}`} nombre={g.nombre} filas={g.filas} colorNombre={colorDesc} colorPrecio={colorPrecio} />
       ))}
+      {sinCosto.map((g, i) => (
+        <OpcionesSinCostoDelItem key={`sin-costo-${i}`} grupo={g.grupo} opciones={g.opciones} />
+      ))}
       {recargos.length > 0 && <RecargosDelItem recargos={recargos} color={colorDesc} />}
     </li>
   );
@@ -166,6 +171,40 @@ function TamanosDelItem({ nombre, filas, colorNombre, colorPrecio }: { nombre: s
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * CARTA-C (decisión del dueño, variante B «pastillas»): las opciones que NO cambian el precio (preparación «Solo» · «Flat white» · «Cortado», guarnición, punto de cocción), siempre a la vista, bajo el
+ * nombre de su grupo: una etiqueta en negrita y cada opción en una cajita redondeada. NO son botones (no se eligen acá: las elige el mozo en el POS), así que no llevan `role` ni `tabindex`. Es una lista
+ * (`ul`) con el nombre del grupo como etiqueta para el lector de pantalla (la etiqueta visible se oculta del lector para que no lo lea dos veces); las pastillas pasan a la línea siguiente si no entran
+ * (sin desborde horizontal). Los nombres son texto del negocio y se escapan como cualquier otro texto de React. Colores del tema de la sucursal (borde y fondo derivados de `--carta-ink-soft`).
+ * Letra de 14,5 px la etiqueta y 15 px las pastillas (los pisos de legibilidad).
+ */
+function OpcionesSinCostoDelItem({ grupo, opciones }: { grupo: string; opciones: string[] }) {
+  return (
+    <div data-opciones-sin-costo={grupo} className="mt-2.5">
+      <p aria-hidden="true" className="font-semibold leading-snug" style={{ fontSize: "0.90625rem", color: "var(--carta-ink)", overflowWrap: "anywhere" }}>
+        {grupo}
+      </p>
+      <ul aria-label={grupo} className="flex flex-wrap gap-x-1.5">
+        {opciones.map((nombre, i) => (
+          <li
+            key={`pastilla-${i}`}
+            className="mt-1 max-w-full rounded-full border px-3 py-[3px] leading-snug"
+            style={{
+              fontSize: "0.9375rem",
+              color: "var(--carta-ink)",
+              overflowWrap: "anywhere",
+              borderColor: "color-mix(in oklch, var(--carta-ink-soft) 40%, transparent)",
+              background: "color-mix(in oklch, var(--carta-ink-soft) 7%, transparent)",
+            }}
+          >
+            {nombre}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

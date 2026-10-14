@@ -1,5 +1,5 @@
 import type { CartaV1, ItemCartaV1, OpcionItemCartaV1, PromoCartaV1, SeccionCartaV1 } from "./armar-menu";
-import type { GrupoCartaV1 } from "./opciones-en-carta";
+import type { GrupoCartaV1, OpcionesSinCostoCartaV1 } from "./opciones-en-carta";
 
 /**
  * LO ÚNICO que la carta pública entrega a un anónimo (S-25 del plan de endurecimiento de seguridad, tanda T9; requisito del dueño: «la carta pública es la ÚNICA excepción
@@ -35,6 +35,13 @@ export interface ItemCartaPublico {
   opciones?: OpcionItemCartaPublica[];
   /** GO-2d y CARTA-B: SOLO en un PV con opciones que CAMBIAN EL PRECIO: los tamaños con su precio final y lo que suma o resta una variante o un adicional (nombre del grupo y cada opción con su precio o su recargo). */
   grupos?: GrupoCartaPublico[];
+  /** CARTA-C: SOLO en un PV con opciones que no cambian el precio: el nombre del grupo y los nombres de sus opciones sin costo (pastillas). Solo textos: sin ids ni precios. */
+  opcionesSinCosto?: OpcionesSinCostoCartaPublica[];
+}
+
+export interface OpcionesSinCostoCartaPublica {
+  grupo: string;
+  opciones: string[];
 }
 
 export interface OpcionDeGrupoCartaPublica {
@@ -80,6 +87,9 @@ const proyectarGrupo = (g: GrupoCartaV1): GrupoCartaPublico => ({
   opciones: g.opciones.map((o) => ({ nombre: o.nombre, ...(o.precio !== undefined ? { precio: o.precio } : {}), ...(o.recargo !== undefined ? { recargo: o.recargo } : {}) })),
 });
 
+/** CARTA-C: un grupo de opciones sin costo, campo por campo (solo textos). */
+const proyectarSinCosto = (g: OpcionesSinCostoCartaV1): OpcionesSinCostoCartaPublica => ({ grupo: g.grupo, opciones: [...g.opciones] });
+
 function proyectarItem(i: ItemCartaV1): ItemCartaPublico {
   return {
     nombre: i.nombre,
@@ -94,6 +104,7 @@ function proyectarItem(i: ItemCartaV1): ItemCartaPublico {
     imagenUrl: i.imagenUrl,
     ...(i.opciones !== undefined ? { opciones: i.opciones.map(proyectarOpcion) } : {}),
     ...(i.grupos !== undefined ? { grupos: i.grupos.map(proyectarGrupo) } : {}),
+    ...(i.opcionesSinCosto !== undefined ? { opcionesSinCosto: i.opcionesSinCosto.map(proyectarSinCosto) } : {}),
   };
 }
 
