@@ -26,6 +26,8 @@ export interface ItemParaAgregar {
   productoId: string;
   cantidad: number;
   opciones?: OpcionParaAgregar[];
+  /** GO-3b (ADR-032): el precio de LISTA por unidad que vio el mozo (opcional). Si ya no es el de hoy, `PRECIO_CAMBIO`: nunca se cobra distinto de lo que se vio. Ausente = como siempre. */
+  precioDeListaEsperado?: number;
 }
 
 /** Una promo armada por el mozo, para el tercer parámetro de `agregarItems` (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 8a). */
@@ -59,11 +61,22 @@ export interface ComandoAgregarItems {
  *    `OPCIONES_INVALIDAS` (lo elegido no cumple lo que el producto admite, su precio o su consumo están mal configurados, o con los adicionales se pasa el tope de
  *    líneas) y `PROMO_CON_OPCIONES` (un componente de una promo tiene un grupo obligatorio: en v1 los componentes no llevan opciones).
  *  - RECETA (ADR-033): `PRODUCTO_SIN_RECETA` — un ítem suelto (después de sus chequeos de producto) o un componente de una promo no tiene receta vigente en la sucursal ni stock propio.
+ *  - GO-3b (ADR-032): `COMBINACION_NO_DISPONIBLE` (la combinación elegida está apagada, o su tarifa) y `PRECIO_CAMBIO` (el precio de lista que vio el mozo ya no es el de hoy).
  * Todo se valida ANTES de la primera escritura: un rechazo no deja nada escrito.
  */
 export type ResultadoAgregarItems = ResultadoCaso<
   null,
-  "CONFLICTO_IDEMPOTENCIA" | "CUENTA_NO_ABIERTA" | "PROMO_NO_DISPONIBLE" | "PRODUCTO_INVALIDO" | "PROMO_INVALIDA" | "OPCIONES_INVALIDAS" | "OPCION_CAMBIO" | "PROMO_CON_OPCIONES" | "PRODUCTO_SIN_RECETA"
+  | "CONFLICTO_IDEMPOTENCIA"
+  | "CUENTA_NO_ABIERTA"
+  | "PROMO_NO_DISPONIBLE"
+  | "PRODUCTO_INVALIDO"
+  | "PROMO_INVALIDA"
+  | "OPCIONES_INVALIDAS"
+  | "OPCION_CAMBIO"
+  | "PROMO_CON_OPCIONES"
+  | "PRODUCTO_SIN_RECETA"
+  | "COMBINACION_NO_DISPONIBLE"
+  | "PRECIO_CAMBIO"
 >;
 
 /** Comando «quitar un ítem que todavía no salió a cocina»: lo que recibe `quitarItemSinEnviarCasoDeUso`. */

@@ -46,6 +46,17 @@ export interface FotoAEscribir {
   orden: number;
 }
 
+/** GO-3b: la FOTO de la combinación vendida (las columnas de `CombinacionEnLinea`, sin la línea: la pone `escribirLineaConfigurada`). */
+export interface CombinacionAEscribir {
+  combinacionId: string;
+  origenPrecio: string;
+  precioDeSucursal: boolean;
+  grupoDePrecioId: string | null;
+  nombreGrupoDePrecio: string | null;
+  precio: number | null;
+  recetaDeCombinacionVersionId: string | null;
+}
+
 /**
  * GO-2b (ADR-030): una LÍNEA CONFIGURADA sin enviar, ya validada y con el precio congelado por el caso de uso: un `cuentaItem.create` para la línea del producto
  * (devuelve el id, que referencian sus adicionales y su foto), un `create` por adicional con `lineaPadreId` (el padre ya existe: lo exige el disparador
@@ -58,7 +69,17 @@ export async function escribirLineaConfigurada(
   args: {
     cuentaId: string;
     creadoPorId: string;
-    linea: { productoId: string; cantidad: number; precioUnitario: number; precioCartaUnitario: number | null; huellaOpciones: string | null; fotos: readonly FotoAEscribir[] };
+    linea: {
+      productoId: string;
+      cantidad: number;
+      precioUnitario: number;
+      precioCartaUnitario: number | null;
+      huellaOpciones: string | null;
+      fotos: readonly FotoAEscribir[];
+      /** GO-3b: la foto de la combinación vendida (si la línea cae en una combinación que existe) y la PromoCuenta de la que la línea es componente (un combo con una entrada configurada). */
+      combinacion?: CombinacionAEscribir;
+      promoCuentaId?: string;
+    };
     adicionales: readonly { productoId: string; cantidad: number; precioUnitario: number; foto: FotoAEscribir }[];
   },
 ): Promise<{ lineaId: string; adicionalIds: string[] }> {
@@ -73,9 +94,12 @@ export async function escribirLineaConfigurada(
       huellaOpciones: linea.huellaOpciones,
       numeroEnvio: null,
       creadoPorId,
+      ...(linea.promoCuentaId ? { promoCuentaId: linea.promoCuentaId } : {}),
     },
     select: { id: true },
   });
+  // GO-3b: la foto de la combinación, 1 a 1 con la línea (solo se agrega; se va con el borrador de su línea, ON DELETE CASCADE).
+  if (linea.combinacion) await tx.combinacionEnLinea.create({ data: { cuentaItemId: padre.id, ...linea.combinacion } });
   const fotos: Prisma.OpcionElegidaEnLineaCreateManyInput[] = linea.fotos.map((f) => ({ ...f, cuentaItemId: padre.id }));
   const adicionalIds: string[] = [];
   for (const a of args.adicionales) {

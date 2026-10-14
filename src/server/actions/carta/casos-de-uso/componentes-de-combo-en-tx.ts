@@ -8,6 +8,7 @@ import { redondearMoneda } from "@/core/moneda";
 import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
 import { cargarAlicuotasPosiblesDeLugares, cargarLugaresActivosDePromo, cargarProductosComoComponentes, type LugaresDeCombo, type ProductoComponenteLeido } from "@/server/lecturas/carta/componentes-de-promo";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
+import { cargarCombinacionesParaVender } from "@/server/lecturas/catalogo/combinaciones";
 
 /**
  * Lo que los casos de uso de los combos y del menú del día (GO-3b, ADR-032) validan DENTRO de su transacción SERIALIZABLE, compartido (no es un caso de uso: ninguna Server Action lo importa).
@@ -47,7 +48,11 @@ export async function validarComponenteEnTx(
   let precioDeLista = precioBase;
   const grupos = producto.opciones.grupos.map((g) => ({ ...g, opciones: g.opciones.map((o) => ({ ...o, apagadaEnSucursal: false })) }));
   if (grupos.length > 0 || args.opciones.length > 0) {
-    const armada = armarLineaConfigurada({ grupos, elegidas: args.opciones, precioBase, descuentoDeProducto: null, cantidad: 1 });
+    // GO-3b: con ejes, la combinación de la configuración decide (apagada: no puede ser componente; con precio propio o tarifa: ese es su precio de referencia).
+    const combinaciones = grupos.some((g) => g.ejeDeCombinacion !== undefined)
+      ? (await cargarCombinacionesParaVender(tx, { sucursalId: args.sucursalId, productoIds: [producto.id] })).get(producto.id)
+      : undefined;
+    const armada = armarLineaConfigurada({ grupos, elegidas: args.opciones, precioBase, descuentoDeProducto: null, cantidad: 1, ...(combinaciones ? { combinaciones } : {}) });
     if (!armada.ok) return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}» ${args.etiqueta}: ${armada.mensaje}`);
     if (armada.linea !== null && armada.linea.adicionales.length > 0) {
       return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}»: un combo no lleva adicionales (se cobran aparte); sacá el adicional de la configuración.`);

@@ -1,4 +1,5 @@
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { CANTIDAD_MAXIMA_DE_OPCION } from "@/core/opciones/public";
 import { componentesDeEleccion, MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/public";
@@ -30,6 +31,8 @@ import type { ComandoAgregarItems, ComandoEnviarACocina, ComandoQuitarItemSinEnv
  * OMITE (el ítem pasa sin la clave `opciones`): así la huella de un pedido sin opciones es la de siempre. Un ítem sin `opciones` pasa TAL CUAL (el mismo objeto).
  * Lo demás de las opciones (que el producto las admita, los topes, los mínimos) lo decide el caso de uso con la base. El tope de líneas contando los adicionales
  * también: recién ahí se sabe cuáles son adicionales.
+ *
+ * GO-3b (ADR-032): el `precioDeListaEsperado` de cada ítem (opcional), si viene, es un importe de 0 o más con 2 decimales a lo sumo; si no, se rechaza (no se ignora).
  */
 export function guardComandoAgregarItems(entrada: unknown): ResultadoDato<ComandoAgregarItems> {
   const { cuentaId, items, promos, claveIdempotencia } = (entrada ?? {}) as { cuentaId?: unknown; items?: unknown; promos?: unknown; claveIdempotencia?: unknown };
@@ -58,6 +61,11 @@ function esTextoNoVacio(v: unknown): v is string {
 function itemsConOpcionesValidadas(items: ComandoAgregarItems["items"]): ResultadoDato<ComandoAgregarItems["items"]> {
   const salida: ComandoAgregarItems["items"] = [];
   for (const item of items) {
+    // GO-3b (ADR-032): el precio de lista que vio el mozo, si viene, es un importe (0 o más, con 2 decimales a lo sumo); otra cosa no se ignora en silencio.
+    const esperado: unknown = item !== null && typeof item === "object" && "precioDeListaEsperado" in item ? (item as { precioDeListaEsperado?: unknown }).precioDeListaEsperado : undefined;
+    if (esperado !== undefined && !(typeof esperado === "number" && Number.isFinite(esperado) && esperado >= 0 && tieneALoSumoDecimales(esperado, 2))) {
+      return rechazar("formato", "El precio que viste no es válido: volvé a elegir el producto.");
+    }
     const opciones: unknown = item !== null && typeof item === "object" && "opciones" in item ? (item as { opciones?: unknown }).opciones : undefined;
     if (opciones === undefined) {
       salida.push(item);
