@@ -4,6 +4,8 @@ import { AgregarColapsable } from "@/components/agregar-colapsable";
 import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { IconoDeAccion } from "@/components/iconos";
+import { LecturaDeCantidad } from "@/components/receta/lectura-de-cantidad";
+import type { UnidadDeLectura } from "@/core/catalogo/public";
 import {
   actualizarIngredienteDeRecetaPropia,
   agregarIngredienteARecetaPropia,
@@ -29,6 +31,7 @@ export function RecetaDeLaSucursal({
   otrasConRecetaPropia,
   puede,
   unidades,
+  lecturaPorUnidad,
   materiasPrimas,
   ingredienteEnEdicion,
   volver,
@@ -39,6 +42,8 @@ export function RecetaDeLaSucursal({
   otrasConRecetaPropia: Awaited<ReturnType<typeof listarSucursalesConRecetaPropia>>;
   puede: { editar: boolean; copiar: boolean; volverALaCentral: boolean };
   unidades: { id: string; nombre: string }[];
+  /** La lectura en vivo de la cantidad («= 300 g»), por id de unidad (`unidadesDeLectura`, la arma la página). */
+  lecturaPorUnidad: Record<string, UnidadDeLectura>;
   materiasPrimas: { id: string; nombre: string; unidadStockId: string }[];
   ingredienteEnEdicion: string | null;
   volver: string;
@@ -118,18 +123,27 @@ export function RecetaDeLaSucursal({
                           className="flex flex-wrap items-end gap-2"
                         >
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
-                          <CampoNumero name="cantidad" defaultValue={String(Number(ing.cantidad))} required ariaLabel={`Cantidad de ${ing.insumoProducto.nombre} en la receta propia`} className="w-28" />
+                          <LecturaDeCantidad campoId={`cantidad-propia-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null}>
+                            <CampoNumero
+                              id={`cantidad-propia-${ing.id}`}
+                              name="cantidad"
+                              defaultValue={String(Number(ing.cantidad))}
+                              required
+                              ariaLabel={`Cantidad de ${ing.insumoProducto.nombre} en la receta propia`}
+                              className="w-28"
+                            />
+                            {/* Unidad FIJA: la de stock de la MP (el servidor la exige y la relee al guardar). */}
+                            <input type="hidden" name="unidadId" value={ing.insumoProducto.unidadStockId} />
+                            <span title="Unidad de stock de la materia prima" className="rounded border bg-neutral-100 px-2 py-1.5 text-sm dark:bg-neutral-800">
+                              <span className="sr-only">Unidad de {ing.insumoProducto.nombre} en la receta propia: </span>
+                              {unidadDeStock}
+                            </span>
+                          </LecturaDeCantidad>
                           {avisoDeUnidad && (
                             <p role="alert" className="w-full text-xs text-amber-700 dark:text-amber-600">
                               {avisoDeUnidad}
                             </p>
                           )}
-                          {/* Unidad FIJA: la de stock de la MP (el servidor la exige y la relee al guardar). */}
-                          <input type="hidden" name="unidadId" value={ing.insumoProducto.unidadStockId} />
-                          <span title="Unidad de stock de la materia prima" className="rounded border bg-neutral-100 px-2 py-1.5 text-sm dark:bg-neutral-800">
-                            <span className="sr-only">Unidad de {ing.insumoProducto.nombre} en la receta propia: </span>
-                            {unidadDeStock}
-                          </span>
                           <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} ariaLabel={`Merma de ${ing.insumoProducto.nombre} en la receta propia`} placeholder="Merma %" className="w-24" />
                           <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
                             Guardar
@@ -154,7 +168,8 @@ export function RecetaDeLaSucursal({
                         <td>{Number(ing.mermaPorcentaje)}</td>
                         {puede.editar && (
                           <td>
-                            <div className="flex gap-3">
+                            {/* flex-wrap: en un celular angosto «Editar» y «Quitar» se apilan en vez de ensanchar la tabla (igual que en la receta central). */}
+                            <div className="flex flex-wrap gap-x-3">
                               <Link href={`${volver}?editarPropia=${ing.insumoProductoId}`} className="inline-flex items-center gap-1 text-sm underline">
                                 <IconoDeAccion id="editar" />
                                 Editar<span className="sr-only"> {ing.insumoProducto.nombre} en la receta propia</span>
@@ -214,19 +229,21 @@ export function RecetaDeLaSucursal({
             className="flex max-w-lg flex-col gap-2"
           >
             <h3 className="font-medium">Agregar ingrediente a la receta de {sucursalNombre} (genera su próxima versión)</h3>
-            <select name="insumoProductoId" required aria-label="Materia prima de la receta propia" className="rounded border px-3 py-2">
-              <option value="">Materia prima</option>
-              {materiasPrimas.map((mp) => (
-                <option key={mp.id} value={mp.id}>
-                  {mp.nombre} ({nombreDeUnidad(mp.unidadStockId)})
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-neutral-500">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
-            <div className="flex gap-2">
-              <CampoNumero name="cantidad" placeholder="Cantidad" ariaLabel="Cantidad en la receta propia" required className="flex-1" />
-              <CampoNumero name="mermaPorcentaje" placeholder="Merma %" ariaLabel="Merma en la receta propia" className="w-28" />
-            </div>
+            <LecturaDeCantidad campoId="cantidad-ingrediente-nuevo-propia" unidadDeStockPorMp={unidadDeStockPorMp} unidades={lecturaPorUnidad}>
+              <select name="insumoProductoId" required aria-label="Materia prima de la receta propia" className="rounded border px-3 py-2">
+                <option value="">Materia prima</option>
+                {materiasPrimas.map((mp) => (
+                  <option key={mp.id} value={mp.id}>
+                    {mp.nombre} ({nombreDeUnidad(mp.unidadStockId)})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-neutral-500">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
+              <div className="flex gap-2">
+                <CampoNumero id="cantidad-ingrediente-nuevo-propia" name="cantidad" placeholder="Cantidad" ariaLabel="Cantidad en la receta propia" required className="flex-1" />
+                <CampoNumero name="mermaPorcentaje" placeholder="Merma %" ariaLabel="Merma en la receta propia" className="w-28" />
+              </div>
+            </LecturaDeCantidad>
             <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
               Agregar a la receta propia
             </button>
