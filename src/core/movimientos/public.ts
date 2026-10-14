@@ -51,6 +51,10 @@ export type { IngredienteParaVender } from "./linea-de-venta";
 // GO-2b (ADR-030): el consumo de una línea configurada, que ahora usan la línea configurada del POS (`core/pos/linea-configurada.ts`) y la venta.
 export { consumoDeLineaConfigurada } from "./consumo-de-linea-configurada";
 export type { CodigoDeErrorDeConsumo, ConsumoDeOpcionParaVender, OpcionConConsumo } from "./consumo-de-linea-configurada";
+// OPCIONES-FACTOR: la vista previa del factor de un tamaño (lo que la receta descuenta por unidad, antes y con el factor), con la MISMA función de la venta. La usan la consulta y la
+// pantalla de un grupo de opciones (`/catalogo/opciones/[grupoId]`).
+export { consumoDeLaBaseConFactor } from "./consumo-de-la-base-con-factor";
+export type { IngredienteDeBase } from "./consumo-de-linea-configurada";
 export type { LineaConfiguradaEnTx } from "./registrar-venta";
 // RECETA (ADR-033, sin receta no se vende): la regla del origen de stock de un PV, que usan el agregado de ítems del POS y la venta.
 export { CODIGO_PRODUCTO_SIN_RECETA, rechazoSinOrigenDeStock } from "./origen-de-stock";
