@@ -42,7 +42,8 @@ async function sembrar(sucursalId: string) {
 test("un lugar «lista» con su entrada (queda fijo); volver a guardar los cupos no lo da de baja; destildarlo sí, sin borrar la entrada; la vigencia por días", async ({ paginaAutenticada: page, sucursalId }) => {
   const d = await sembrar(sucursalId);
   try {
-    await page.goto("/carta");
+    // CARTA-MANT: las promos viven en Parametrización › Promociones.
+    await page.goto("/carta/parametrizacion/promociones");
     const promo = page.locator(`[data-promo-carta="${d.titulo}"]`);
     await promo.locator("summary").first().click();
     await promo.locator('input[name="nuevo_lugar_nombre"]').fill("Bebida");

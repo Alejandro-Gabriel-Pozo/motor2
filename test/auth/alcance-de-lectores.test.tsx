@@ -199,7 +199,7 @@ describe("M.3-A5: los lectores de varias sucursales", () => {
     const ultima = () => vi.mocked(cargarAdminCarta).mock.calls.at(-1)!;
 
     it("quien puede copiar la carta y ve `carta_ver` en B lee con la base de lectura A y B (no C) y escritura solo A, de la carta de la activa", async () => {
-      await CartaPage();
+      await CartaPage({ searchParams: Promise.resolve({}) });
       const llamada = ultima();
       expect(llamada[0]).toBe(A);
       expect(await alcanceDe(llamada[1] as never)).toEqual({ lectura: [A, B].sort(), escritura: [A] });
@@ -207,18 +207,18 @@ describe("M.3-A5: los lectores de varias sucursales", () => {
 
     it("donde el rol no ve `carta_ver` (B como operador) o con una sola membresía, la base lee solo la activa", async () => {
       await prisma.usuarioSucursal.updateMany({ where: { usuarioId, sucursalId: B }, data: { rolId: rolOperadorId } });
-      await CartaPage();
+      await CartaPage({ searchParams: Promise.resolve({}) });
       expect(await alcanceDe(ultima()[1] as never)).toEqual({ lectura: [A], escritura: [A] });
 
       const solo = await crearUsuarioConMembresia({ email: "solo@test.com", sucursalId: A, rolId: rolAdminId });
       await como(solo.id, solo.email);
-      await CartaPage();
+      await CartaPage({ searchParams: Promise.resolve({}) });
       expect(await alcanceDe(ultima()[1] as never)).toEqual({ lectura: [A], escritura: [A] });
     });
 
     it("quien ve la carta pero NO puede copiarla (al rol se le quita `carta_copiar_de_sucursal`) no ensancha nada: la base es la de la activa", async () => {
       await prisma.permisoRol.update({ where: { rolId_accionClave: { rolId: rolAdminId, accionClave: "carta_copiar_de_sucursal" } }, data: { puedeEditar: false } });
-      await CartaPage();
+      await CartaPage({ searchParams: Promise.resolve({}) });
       expect(await alcanceDe(ultima()[1] as never)).toEqual({ lectura: [A], escritura: [A] });
     });
   });
