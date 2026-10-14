@@ -136,7 +136,8 @@ describe("S-52: los guards de la puerta de las acciones de la carta", () => {
   describe("guardarCuposPromoCarta: la lista y las cantidades de los cupos", () => {
     const guardarCupos = (promo: string, cupos: unknown) => sinTipos(guardarCuposPromoCarta)(promo, cupos);
     const cupo = (extra: object = {}) => ({ seccionCartaId: seccionId, cantidadMinima: 0, cantidadMaxima: 2, ...extra });
-    const cuposGuardados = () => prisma.promoCartaCupo.count({ where: { promoCartaId: promoId } });
+    // GO-3b D3: guardar no borra (un cupo que sale de la lista queda dado de baja): se cuentan los ACTIVOS.
+    const cuposGuardados = () => prisma.promoCartaCupo.count({ where: { promoCartaId: promoId, activo: true } });
 
     it("una lista que no es un arreglo, o con más de 50 cupos, se rechaza; un cupo nulo o con la sección que no es texto, también", async () => {
       for (const cupos of [null, undefined, {}, "x", 7]) expect(await guardarCupos(promoId, cupos), String(cupos)).toEqual({ ok: false, mensaje: "Los cupos de la promo no son válidos." });

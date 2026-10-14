@@ -471,6 +471,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "M0-IVA (O.266; ADITIVO, no cambia comportamiento): las filas de producto de la huella suman `alicuotaIvaCompra=null alicuotaIvaVenta=null` (13 líneas). Revisado con `git diff --word-diff`: ningún importe ni regla de dinero cambia.",
       },
+      {
+        blob: "ab9b9e4dff4d6dd3337be0b325ac264c4a46a14d",
+        // El commit PADRE de este (48741e0, GO-3b AB5) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "48741e0",
+        motivo:
+          "GO-3b D3 (CAMBIA COMPORTAMIENTO, decidido en el diseño de GO-3, ADR-032: guardar los cupos ya no borra): en el paso «promo: sin cupos vuelve a informativa» los dos cupos que antes se BORRABAN ahora quedan dados de baja (`activo=false`): la huella muestra la fila vieja y la nueva (2 líneas `+ PROMO_CUPO … activo=false`). Revisado con `git diff --word-diff`: el resultado, los efectos y las 4 líneas de auditoría son idénticos; ningún importe cambia.",
+      },
     ],
   },
 };

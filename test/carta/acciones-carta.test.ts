@@ -334,7 +334,8 @@ describe("Server Actions de la carta", () => {
       expect(cupos[1]).toMatchObject({ seccionCartaId: seccionPostresId, cantidadMinima: 0, cantidadMaxima: 1, orden: 1 });
     });
 
-    it("reemplaza TODO el conjunto: un cupo que ya no viene en la lista se borra, y una lista vacía vuelve la promo a informativa", async () => {
+    // GO-3b D3 (ADR-032): guardar ya no BORRA — un cupo que no viene en la lista queda dado de baja (`activo=false`), con su historia.
+    it("reemplaza TODO el conjunto: un cupo que ya no viene en la lista se da de baja (no se borra), y una lista vacía vuelve la promo a informativa", async () => {
       const { promoId, seccionEntradasId, seccionPostresId } = await sembrarPromoConDosSecciones();
       await guardarCuposPromoCarta(promoId, [
         { seccionCartaId: seccionEntradasId, cantidadMaxima: 2 },
@@ -344,13 +345,15 @@ describe("Server Actions de la carta", () => {
 
       const r2 = await guardarCuposPromoCarta(promoId, [{ seccionCartaId: seccionEntradasId, cantidadMaxima: 3 }]);
       expect(r2.ok).toBe(true);
-      const cuposRestantes = await prisma.promoCartaCupo.findMany({ where: { promoCartaId: promoId } });
+      const cuposRestantes = await prisma.promoCartaCupo.findMany({ where: { promoCartaId: promoId, activo: true } });
       expect(cuposRestantes).toHaveLength(1);
       expect(cuposRestantes[0]).toMatchObject({ seccionCartaId: seccionEntradasId, cantidadMaxima: 3 });
+      expect(await prisma.promoCartaCupo.findMany({ where: { promoCartaId: promoId, activo: false } })).toMatchObject([{ seccionCartaId: seccionPostresId }]);
 
       const r3 = await guardarCuposPromoCarta(promoId, []);
       expect(r3.ok).toBe(true);
-      expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: promoId } })).toBe(0);
+      expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: promoId, activo: true } })).toBe(0);
+      expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: promoId } })).toBe(2);
     });
 
     it("rechaza dos cupos de la MISMA sección en la misma promo, sin escribir nada", async () => {

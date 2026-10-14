@@ -190,7 +190,9 @@
   resultado: {"ok":true,"mensaje":"\"Menú del día\" volvió a ser informativa (sin cupos): el POS deja de ofrecerla para armar."}
   efectos: revalidarCartasPublicas=0 refrescar=0
   - PROMO_CUPO cupo1 cantidadMaxima=1 cantidadMinima=1 empresaId=empresa orden=1 promoCartaId=menu seccionCartaId=postres
+  + PROMO_CUPO cupo1 activo=false cantidadMaxima=1 cantidadMinima=1 empresaId=empresa orden=1 promoCartaId=menu seccionCartaId=postres
   - PROMO_CUPO cupo2 cantidadMaxima=2 cantidadMinima=0 empresaId=empresa orden=0 promoCartaId=menu seccionCartaId=platos
+  + PROMO_CUPO cupo2 activo=false cantidadMaxima=2 cantidadMinima=0 empresaId=empresa orden=0 promoCartaId=menu seccionCartaId=platos
   AUDITORIA actorId=admin campo=cantidadMinima descripcion=Promo "Menú del día": cupo de la sección "Platos", cantidad mínima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:platos sucursalId=null valorAnterior=0 valorNuevo=null
   AUDITORIA actorId=admin campo=cantidadMaxima descripcion=Promo "Menú del día": cupo de la sección "Platos", cantidad máxima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:platos sucursalId=null valorAnterior=2 valorNuevo=null
   AUDITORIA actorId=admin campo=cantidadMinima descripcion=Promo "Menú del día": cupo de la sección "Postres", cantidad mínima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:postres sucursalId=null valorAnterior=1 valorNuevo=null
