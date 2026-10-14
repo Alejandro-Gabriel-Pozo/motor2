@@ -94,7 +94,10 @@ export async function capturar(page: Page, nombre: string): Promise<void> {
  */
 export async function ocultarMenuSiHaceFalta(page: Page): Promise<void> {
   const ocultar = page.getByRole("button", { name: "Ocultar menú" });
-  if (await ocultar.isVisible()) await ocultar.click();
+  if (!(await ocultar.isVisible())) return;
+  await ocultar.click();
+  // El menú se cierra con una transición de ancho (150 ms): se espera a que termine, o se mediría el contenido con el menú todavía a medio cerrar.
+  await page.waitForFunction(() => (document.querySelector("aside")?.getBoundingClientRect().width ?? 0) === 0);
 }
 
 /** Abre todos los `<details>` de la pantalla (las fichas plegadas de la carta, etc.) para medir también lo que traen adentro. */

@@ -23,7 +23,7 @@ async function sembrar(sucursalId: string) {
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: gaseosa.id, disponible: true } });
   const reventa = await darRecetaDeReventa(prisma, gaseosa, { sucursalIds: [sucursalId], stock: { cantidad: 100, seccionIds: [seccionE2E.id], usuarioId: admin.id } });
   const nombresDeSecciones = ["Entradas y empanadas", "Platos principales de la casa", "Guarniciones", "Postres caseros", "Bebidas sin alcohol"].map((n) => `E2E ${n} ${m}`);
-  const secciones = [];
+  const secciones: Awaited<ReturnType<typeof prisma.seccionCarta.create>>[] = [];
   for (const [i, nombre] of nombresDeSecciones.entries()) secciones.push(await prisma.seccionCarta.create({ data: { nombre, orden: i + 1 } }));
   await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: gaseosa.id, visibleEnCarta: true, seccionCartaId: secciones[4]!.id, orden: 1 } });
   const titulo = `E2E Combo de la casa con bebida y postre ${m}`;
