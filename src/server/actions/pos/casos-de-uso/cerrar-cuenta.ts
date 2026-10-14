@@ -116,7 +116,8 @@ export async function cerrarCuentaCasoDeUso(
       { permitirStockNegativo: true }
     );
     // El núcleo valida todo antes de escribir: un rechazo no dejó nada escrito y la cuenta sigue abierta.
-    if (!venta.ok) return fracaso("VENTA_RECHAZADA", venta.mensaje);
+    // RECETA (ADR-033): un PV que perdió su receta entre el pedido y el cobro sale con `PRODUCTO_SIN_RECETA` (la cuenta sigue abierta: el núcleo no escribió nada).
+    if (!venta.ok) return fracaso(venta.codigo ?? "VENTA_RECHAZADA", venta.mensaje);
     if (venta.operacionIds.length !== lineas.length) throw new Error("cerrarCuenta: la venta no devolvió una Operacion por línea.");
 
     // Número del ticket (docs/plan-numeracion-ticket-2026-09-25.md): max + 1 de la sucursal, ejemplar A. Recién DESPUÉS de que la venta

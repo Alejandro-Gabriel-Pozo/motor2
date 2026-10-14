@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularVenta, registrarVenta } from "../../src/server/actions/movimientos/venta";
@@ -93,6 +94,7 @@ describe("anularVenta: D4 — anula a los hermanos de la misma promo", () => {
   let sucursalId: string;
   let sucursalNombre: string;
   let seccionId: string;
+  let gaseosaReventaId: string;
   let adminId: string;
   let gaseosaId: string;
   let empanadaId: string;
@@ -106,8 +108,14 @@ describe("anularVenta: D4 — anula a los hermanos de la misma promo", () => {
     seccionId = (await sembrarSeccion(sucursalId)).id;
     adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id })).id;
     await mockearUsuarioActual({ id: adminId, email: "admin@test.com", nombre: null });
-    gaseosaId = (await sembrarProductoDisponible({ codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: kg.id, precioVenta: 500 }, sucursalId)).id;
-    empanadaId = (await sembrarProductoDisponible({ codigo: "PV_EMPA", nombre: "Empanada", tipo: "PV", unidadStockId: kg.id, precioVenta: 700 }, sucursalId)).id;
+    const gaseosa = await sembrarProductoDisponible({ codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: kg.id, precioVenta: 500 }, sucursalId);
+    const empanada = await sembrarProductoDisponible({ codigo: "PV_EMPA", nombre: "Empanada", tipo: "PV", unidadStockId: kg.id, precioVenta: 700 }, sucursalId);
+    gaseosaId = gaseosa.id;
+    empanadaId = empanada.id;
+    // RECETA (ADR-033): las dos son de reventa (1 kg de su MP por unidad, con 10 en la sección); antes se vendían sin receta.
+    const reventa = { sucursalIds: [sucursalId], stock: { cantidad: 10, seccionIds: [seccionId], usuarioId: adminId } };
+    gaseosaReventaId = (await darRecetaDeReventa(prisma, gaseosa, reventa)).id;
+    await darRecetaDeReventa(prisma, empanada, reventa);
   });
 
   async function venderPromoDeDosComponentes() {
@@ -154,9 +162,11 @@ describe("anularVenta: D4 — anula a los hermanos de la misma promo", () => {
     const auditoria = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion", entidadId: { in: [opGaseosa, opEmpanada] } } });
     expect(auditoria).toHaveLength(2);
 
-    // El stock de los dos componentes quedó revertido (venta PV sin receta: solo la fila VENTA, -1 cada una, ya revertida).
+    // El stock quedó revertido: la fila VENTA (-1, ya revertida) y el consumo de su receta de reventa (vuelve a las 10 compradas).
     const saldoGaseosa = await prisma.movimientoStock.aggregate({ where: { productoId: gaseosaId }, _sum: { cantidad: true } });
     expect(Number(saldoGaseosa._sum.cantidad ?? 0)).toBe(0);
+    const saldoReventa = await prisma.movimientoStock.aggregate({ where: { productoId: gaseosaReventaId }, _sum: { cantidad: true } });
+    expect(Number(saldoReventa._sum.cantidad ?? 0)).toBe(10);
   });
 
   it("anular el otro componente primero da el mismo resultado (no importa cuál se elija)", async () => {

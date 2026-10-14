@@ -87,6 +87,7 @@ describe("Caracterización de la venta con opciones (GO-2b)", () => {
       [s.admin.id]: "admin",
       [s.seccion.id]: "salon",
       [s.flan.id]: "flan",
+      [s.flanReventa.id]: "flanReventa", // RECETA (ADR-033): la MP de la receta de reventa del flan (el fixture del salón)
       [c.cafeId]: "cafe",
       [c.lecheId]: "leche",
       [c.almendrasInsumoId]: "bebidaDeAlmendras",

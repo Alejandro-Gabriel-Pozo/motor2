@@ -154,8 +154,9 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
 
     it("Ventas sin receta: una venta anulada de un plato sin receta ya no figura", async () => {
       const sinReceta = await sembrarProductoDisponible({ codigo: "PV_SR", nombre: "Plato sin receta", tipo: "PV", unidadStockId: kgId, precioVenta: 50 }, sucursalId);
-      const venta = await registrarVenta({ fecha: d("2026-08-06"), seccionId, ventas: [{ productoId: sinReceta.id, cantidadVendida: 1 }] });
-      expect(venta.ok, venta.mensaje).toBe(true);
+      // RECETA (ADR-033): hoy una venta sin receta no se puede registrar; esta es una de ANTES de la regla, escrita directo en el Kardex como quedó (la fila VENTA, sin CONSUMO).
+      const historica = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: d("2026-08-06"), usuarioId: adminId } });
+      await prisma.movimientoStock.create({ data: { operacionId: historica.id, productoId: sinReceta.id, seccionId, proceso: "VENTA", cantidad: -1, detalle: "Venta", precioTotal: 50, precioPorUnidadStock: 50 } });
       expect((await generarReporteVentasSinReceta(sucursalId, prisma)).map((f) => f.productoId)).toContain(sinReceta.id);
 
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });

@@ -1,11 +1,12 @@
 import { prisma, sembrarBase, sembrarProductoDisponible, sembrarSeccion, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import type { AccionClave } from "../../src/core/permisos/acciones";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 
 /**
  * Escenario común de los tests de «tomar pedido» (test/pos/*-action.test.ts, cuenta-concurrencia.test.ts): la base de permisos,
- * una sucursal «Central» con la sección «Salón», dos PV sin receta (Milanesa, Flan), un PV con receta (Pizza: 0,25 kg de la MP
- * Muzzarella) y la mesa 4. Cada test file declara su propio `vi.mock("../../src/server/sesion/session", …)` (Vitest lo hoistea por
+ * una sucursal «Central» con la sección «Salón», dos PV con receta de REVENTA (Milanesa, Flan: 1 unidad de su MP «… (reventa)», con 1000
+ * en «Salón» a costo 0 — ADR-033, sin receta no se vende), un PV con receta (Pizza: 0,25 kg de la MP Muzzarella, sin stock) y la mesa 4. Cada test file declara su propio `vi.mock("../../src/server/sesion/session", …)` (Vitest lo hoistea por
  * archivo) antes de usar `entrarComo`.
  */
 export async function sembrarSalon() {
@@ -24,7 +25,11 @@ export async function sembrarSalon() {
   const seccion = await sembrarSeccion(sucursalId, "Salón");
   const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
   const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 4 } });
-  return { ...base, sucursalId, unidad, kg, milanesa, flan, muzzarella, pizza, seccion, admin, mesa };
+  // RECETA (ADR-033): la Milanesa y el Flan se venden; sin receta no se podrían pedir ni cobrar.
+  const reventa = { sucursalIds: [sucursalId], stock: { cantidad: 1000, seccionIds: [seccion.id], usuarioId: admin.id } };
+  const milanesaReventa = await darRecetaDeReventa(prisma, milanesa, reventa);
+  const flanReventa = await darRecetaDeReventa(prisma, flan, reventa);
+  return { ...base, sucursalId, unidad, kg, milanesa, flan, muzzarella, pizza, seccion, admin, mesa, milanesaReventa, flanReventa };
 }
 
 /** Un rol propio (el «mozo» se arma así, desde la matriz) con las filas de permiso dadas, y un usuario suyo en la sucursal. */

@@ -10,6 +10,7 @@ import { obtenerMapaDeMesas } from "../../src/server/consultas/pos/mesas";
 import { resolverMenuCarta } from "../../src/server/lecturas/carta/menu";
 import { crearMembresia } from "../setup/membresia";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 
 /** Toma de pedido (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 4): abrir, agregar, quitar, enviar, liberar. */
 describe("tomar pedido (server actions)", () => {
@@ -191,6 +192,8 @@ describe("tomar pedido (server actions)", () => {
         const bebidas = await prisma.seccionCarta.create({ data: { nombre: "Bebidas", orden: 1 } });
         const coca = await sembrarProductoDisponible({ codigo: "PV_COCA", nombre: "Coca-Cola 500cc", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: 5000 }, s.sucursalId);
         const sprite = await sembrarProductoDisponible({ codigo: "PV_SPRITE", nombre: "Sprite 500cc", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: 5000 }, s.sucursalId);
+        // RECETA (ADR-033): las dos se venden, así que llevan su receta de reventa.
+        for (const p of [coca, sprite]) await darRecetaDeReventa(prisma, p, { sucursalIds: [s.sucursalId] });
         const gaseosa = await prisma.itemAgrupadoCarta.create({ data: { sucursalId: s.sucursalId, nombre: "Gaseosa 500cc", seccionCartaId: bebidas.id } });
         await prisma.opcionItemAgrupadoCarta.createMany({ data: [coca, sprite].map((p, orden) => ({ sucursalId: s.sucursalId, itemAgrupadoCartaId: gaseosa.id, productoId: p.id, orden })) });
         return { coca, sprite, gaseosa };
@@ -281,7 +284,7 @@ describe("tomar pedido (server actions)", () => {
       const cerrada = await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } });
       expect(cerrada.cerradaEn).not.toBeNull();
       expect(cerrada.cerradaPorId).toBe(s.admin.id);
-      expect(await prisma.operacion.count()).toBe(0);
+      expect(await prisma.operacion.count({ where: { proceso: { not: "COMPRA" } } })).toBe(0); // RECETA: sin las COMPRA del stock de reventa del fixture
       expect((await obtenerMapaDeMesas(s.sucursalId, prisma, new Date())).mesas[0].estado).toBe("libre");
       expect(await liberarMesa(cuenta.id)).toEqual({ ok: false, mensaje: "La cuenta de la mesa 4 ya está cerrada." });
     });

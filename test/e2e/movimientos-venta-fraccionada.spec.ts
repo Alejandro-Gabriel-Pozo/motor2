@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
 
 /**
  * Venta fraccionada en el MOSTRADOR (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): la misma validación de `pasoVenta`
@@ -13,9 +14,15 @@ async function sembrarPizzaFraccionada(sucursalId: string) {
     data: { codigo: `E2E-VFM-${marca}`, nombre: `E2E Pizza mostrador ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 12000, pasoVenta: 0.5 },
   });
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: pizza.id, disponible: true } });
+  // RECETA (ADR-033, sin receta no se vende): la pizza lleva su receta de reventa, con stock en TODAS las secciones de la sucursal (el mostrador vende desde la que elige la pantalla
+  // y, sin stock, rechaza).
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const seccionIds = (await prisma.seccion.findMany({ where: { sucursalId }, select: { id: true } })).map((x) => x.id);
+  const reventa = await darRecetaDeReventa(prisma, pizza, { sucursalIds: [sucursalId], stock: { cantidad: 100, seccionIds, usuarioId: admin.id } });
   return {
     pizza,
     limpiar: async () => {
+      await borrarRecetasDeReventa(prisma, { pvIds: [pizza.id], mpIds: [reventa.id] });
       await prisma.movimientoStock.deleteMany({ where: { productoId: pizza.id } });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: pizza.id } });
       await prisma.producto.deleteMany({ where: { id: pizza.id } });

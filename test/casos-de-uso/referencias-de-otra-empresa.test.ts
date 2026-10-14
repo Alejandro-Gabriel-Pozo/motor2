@@ -5,6 +5,7 @@ import { darDeAltaProductoRapidoCasoDeUso } from "../../src/server/actions/catal
 import { actualizarProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/actualizar-producto";
 import { crearOActualizarGrupoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/crear-o-actualizar-grupo";
 import { registrarVentaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 import { azarDelProceso } from "../../src/lib/azar";
 import type { EntradaProducto } from "../../src/core/features/catalogo/productos.schema";
 import { guardComandoDatosDeProducto } from "../../src/core/features/catalogo/productos.guard";
@@ -147,7 +148,10 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
   describe("registrarVenta: a quién se vende (proveedor)", () => {
     let gaseosaId: string;
     beforeEach(async () => {
-      gaseosaId = (await sembrarProductoDisponible({ codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadId, precioVenta: 500 }, sucursalId)).id;
+      const gaseosa = await sembrarProductoDisponible({ codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadId, precioVenta: 500 }, sucursalId);
+      gaseosaId = gaseosa.id;
+      // RECETA (ADR-033, sin receta no se vende): la gaseosa es de reventa, con stock en la sección.
+      await darRecetaDeReventa(prisma, gaseosa, { sucursalIds: [sucursalId], stock: { cantidad: 10, seccionIds: [seccionId], usuarioId: adminId } });
     });
     const venta = (extra: { proveedorId?: string }) => ({ fecha: new Date("2026-08-06T12:00:00Z"), seccionId, nroFactura: "F-1", ventas: [{ productoId: gaseosaId, cantidadVendida: 1 }], ...extra });
 
@@ -155,7 +159,7 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
       const r = await registrarVentaCasoDeUso(actor(), venta({ proveedorId: ajeno.proveedorId }));
       expect(r).toMatchObject({ ok: false, codigo: "VENTA_RECHAZADA" });
       expect(r.mensaje).toMatch(/No se encontró el proveedor elegido\./);
-      expect(await prisma.operacion.count()).toBe(0);
+      expect(await prisma.operacion.count({ where: { proceso: { not: "COMPRA" } } })).toBe(0); // RECETA: sin la COMPRA del stock de reventa
     });
 
     it("control: con el proveedor propio la venta termina bien", async () => {

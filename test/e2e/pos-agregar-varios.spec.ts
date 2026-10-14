@@ -4,6 +4,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
+import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
 
 /**
  * Lista «Por agregar» del POS (docs/plan-pos-agregar-varios-2026-09-26.md): sumar productos de secciones distintas y del buscador
@@ -17,8 +18,11 @@ import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 async function sembrarCatalogo(sucursalId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
+  // RECETA (ADR-033, sin receta no se vende): cada PV del fixture lleva su receta de reventa (sin stock: acá solo se agrega a la cuenta).
+  const reventas: { pv: string; mp: string }[] = [];
   const crear = async (clave: string, nombre: string, precioVenta: number) => {
     const p = await prisma.producto.create({ data: { codigo: `E2E-AV-${clave}-${marca}`, nombre: `E2E ${nombre} ${marca}`, tipo: "PV", unidadStockId: unidad.id, precioVenta } });
+    reventas.push({ pv: p.id, mp: (await darRecetaDeReventa(prisma, p, { sucursalIds: [sucursalId] })).id });
     const disponibilidad = await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: p.id, disponible: true } });
     return { producto: p, disponibilidadId: disponibilidad.id };
   };
@@ -51,6 +55,7 @@ async function sembrarCatalogo(sucursalId: string) {
       await prisma.mesa.deleteMany({ where: { id: { in: mesaIds } } });
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.seccionCarta.deleteMany({ where: { id: { in: [platos.id, bebidas.id] } } });
+      await borrarRecetasDeReventa(prisma, { pvIds: reventas.map((r) => r.pv), mpIds: reventas.map((r) => r.mp) });
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: productoIds } } });
       await prisma.producto.deleteMany({ where: { id: { in: productoIds } } });
     },

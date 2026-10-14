@@ -102,5 +102,6 @@ export interface AvisoStockNegativo {
 
 export type ResultadoVentaEnTx =
   | { ok: true; mensaje: string; operacionIds: string[]; avisosStockNegativo: AvisoStockNegativo[] }
-  | { ok: false; mensaje: string };
+  // RECETA (ADR-033): `codigo` solo viene en el rechazo de un PV sin origen de stock (sin receta vigente en la sucursal, sin stock propio y sin ser el ancla de un adicional); todo otro rechazo, sin código.
+  | { ok: false; mensaje: string; codigo?: "PRODUCTO_SIN_RECETA" };
 

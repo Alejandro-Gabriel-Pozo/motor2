@@ -25,7 +25,8 @@ export interface DatosVentaInput {
   claveIdempotencia?: string;
 }
 
-export type CodigoRegistrarVenta = "CONFLICTO_IDEMPOTENCIA" | "VENTA_RECHAZADA";
+/** `PRODUCTO_SIN_RECETA` (ADR-033): un producto de la venta no tiene receta vigente en la sucursal (ni stock propio). */
+export type CodigoRegistrarVenta = "CONFLICTO_IDEMPOTENCIA" | "VENTA_RECHAZADA" | "PRODUCTO_SIN_RECETA";
 
 /**
  * `datos` de una venta registrada: las Operaciones VENTA creadas (una por línea, ver `registrarVentaEnTx`). Un reenvío con la misma clave
