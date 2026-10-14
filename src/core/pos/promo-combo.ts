@@ -266,8 +266,12 @@ function aplanarCupoDeEntradas(cupo: CupoDeEntradasDefinicion, eleccion: Eleccio
  * Todo lo elegido en todos los cupos de una promo, aplanado, SIN validar nada: solo sirve para CONTAR líneas antes de abrir la transacción (el tope de
  * `MAXIMO_ITEMS_POR_AGREGADO` del guard). Lo que se prorratea sale de `validarYAplanarEleccionPromo`, nunca de acá (S-01). Tolera la forma rota (una elección
  * que no es un objeto, o sin lista `elegidos`, cuenta como vacía) para que el guard no lance: la rechaza la validación, con un mensaje, y no un 500.
+ *
+ * GO-3b: también acepta las elecciones por cupo (sus elegidos llevan `entradaId`, no `productoId`); un componente fijo que completa el servidor no cuenta acá (lo cuenta el caso de uso).
  */
-export function componentesDeEleccion(elecciones: readonly EleccionDeCupo[]): ProductoElegidoEnCupo[] {
+export function componentesDeEleccion(elecciones: readonly EleccionDeCupo[]): ProductoElegidoEnCupo[];
+export function componentesDeEleccion(elecciones: readonly EleccionDePromo[]): (ProductoElegidoEnCupo | EleccionDeCupoPorId["elegidos"][number])[];
+export function componentesDeEleccion(elecciones: readonly EleccionDePromo[]): (ProductoElegidoEnCupo | EleccionDeCupoPorId["elegidos"][number])[] {
   return elecciones.flatMap((e) => (Array.isArray(e?.elegidos) ? e.elegidos : []));
 }
 

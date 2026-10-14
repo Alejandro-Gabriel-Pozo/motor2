@@ -69,6 +69,14 @@ export async function cargarProductosComoComponentes(
   );
 }
 
+/** GO-3b (I2): la alícuota de IVA de cada producto pedido (los componentes ELEGIDOS de un combo, para D-2 al vender), en una consulta. */
+export async function cargarAlicuotasDeProductos(tx: Prisma.TransactionClient, productoIds: readonly string[]): Promise<Map<string, ComponenteConAlicuota>> {
+  const ids = [...new Set(productoIds)];
+  if (ids.length === 0) return new Map();
+  const productos = await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, alicuotaIvaVenta: true } });
+  return new Map(productos.map((p) => [p.id, { productoId: p.id, nombre: p.nombre, alicuota: alicuotaDe(p.alicuotaIvaVenta) }]));
+}
+
 /** Los lugares de un combo cuyos componentes posibles se miran (los de la promo, o los que se están por guardar). */
 export interface LugaresDeCombo {
   seccionCartaIds: readonly string[];

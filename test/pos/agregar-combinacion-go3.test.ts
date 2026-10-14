@@ -1,3 +1,4 @@
+import { ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
@@ -29,6 +30,7 @@ const actor = () => ({
   empresaId: EMPRESA_POR_DEFECTO_ID,
   sucursalId: s.sucursalId,
   sucursalNombre: s.sucursal.nombre,
+  empresaZonaHoraria: ZONA_ARGENTINA,
   ahora: new Date(),
   ...baseDeTest({ lectura: [s.sucursalId], escritura: [s.sucursalId] }),
 });

@@ -32,7 +32,8 @@ import type { ComandoAgregarItems, ComandoEnviarACocina, ComandoQuitarItemSinEnv
  * Lo demás de las opciones (que el producto las admita, los topes, los mínimos) lo decide el caso de uso con la base. El tope de líneas contando los adicionales
  * también: recién ahí se sabe cuáles son adicionales.
  *
- * GO-3b (ADR-032): el `precioDeListaEsperado` de cada ítem (opcional), si viene, es un importe de 0 o más con 2 decimales a lo sumo; si no, se rechaza (no se ignora).
+ * GO-3b (ADR-032): el `precioDeListaEsperado` de cada ítem y el `precioEsperado` de cada promo (opcionales), si vienen, son importes de 0 o más con 2 decimales a lo sumo; si no,
+ * se rechaza (no se ignora).
  */
 export function guardComandoAgregarItems(entrada: unknown): ResultadoDato<ComandoAgregarItems> {
   const { cuentaId, items, promos, claveIdempotencia } = (entrada ?? {}) as { cuentaId?: unknown; items?: unknown; promos?: unknown; claveIdempotencia?: unknown };
@@ -45,6 +46,11 @@ export function guardComandoAgregarItems(entrada: unknown): ResultadoDato<Comand
   if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", "Clave de reintento inválida.");
   const conOpciones = itemsConOpcionesValidadas(items_);
   if (!conOpciones.ok) return conOpciones;
+  // GO-3b: el precio de la promo que vio el mozo, si viene, es un importe (como el de cada ítem); otra cosa no se ignora en silencio.
+  for (const p of promos_) {
+    const esperado: unknown = p !== null && typeof p === "object" && "precioEsperado" in p ? (p as { precioEsperado?: unknown }).precioEsperado : undefined;
+    if (esperado !== undefined && !esImporteVisto(esperado)) return rechazar("formato", "El precio de la promo que viste no es válido: volvé a elegirla.");
+  }
   return aceptar({ cuentaId, items: conOpciones.valor, promos: promos_, ...(claveIdempotencia !== undefined ? { claveIdempotencia } : {}) });
 }
 
@@ -52,6 +58,11 @@ export function guardComandoAgregarItems(entrada: unknown): ResultadoDato<Comand
 export const MAXIMO_OPCIONES_POR_ITEM = 20;
 
 const MENSAJE_OPCIONES_INVALIDAS = "Las opciones elegidas no son válidas: volvé a elegirlas.";
+
+/** GO-3b: un precio que vio el mozo: un número de 0 o más, con 2 decimales a lo sumo. */
+function esImporteVisto(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 && tieneALoSumoDecimales(v, 2);
+}
 
 function esTextoNoVacio(v: unknown): v is string {
   return typeof v === "string" && v.length > 0;
@@ -63,7 +74,7 @@ function itemsConOpcionesValidadas(items: ComandoAgregarItems["items"]): Resulta
   for (const item of items) {
     // GO-3b (ADR-032): el precio de lista que vio el mozo, si viene, es un importe (0 o más, con 2 decimales a lo sumo); otra cosa no se ignora en silencio.
     const esperado: unknown = item !== null && typeof item === "object" && "precioDeListaEsperado" in item ? (item as { precioDeListaEsperado?: unknown }).precioDeListaEsperado : undefined;
-    if (esperado !== undefined && !(typeof esperado === "number" && Number.isFinite(esperado) && esperado >= 0 && tieneALoSumoDecimales(esperado, 2))) {
+    if (esperado !== undefined && !esImporteVisto(esperado)) {
       return rechazar("formato", "El precio que viste no es válido: volvé a elegir el producto.");
     }
     const opciones: unknown = item !== null && typeof item === "object" && "opciones" in item ? (item as { opciones?: unknown }).opciones : undefined;

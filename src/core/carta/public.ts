@@ -15,7 +15,7 @@ export { etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica } from "./carta-
 export { precioDeCarta } from "./armar-menu";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "./promo-sucursal";
 // GO-3 (ADR-032): los tipos de cupo y la lectura tolerante del primer despliegue (solo los cupos de sección activos; una promo con un cupo activo de tipo nuevo no se ofrece).
-export { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos, tieneCupoActivoDeTipoNuevo } from "./cupos-de-promo";
+export { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos } from "./cupos-de-promo";
 export type { TipoDeCupo } from "./cupos-de-promo";
 // GO-3b (D3): la administración de los cupos sin borrar (la clave natural de cada cupo y la diferencia contra lo que hay) y los tipos de cupo para el guard.
 export { LARGO_MAXIMO_NOMBRE_DE_CUPO, TIPOS_DE_CUPO, claveNaturalDeCupo, diferenciaDeCupos } from "./cupos-de-promo";
@@ -76,7 +76,7 @@ export { estiloCartaPorDefecto } from "./estilo";
 export { posicionCompleta } from "./portal";
 export type { EntradaPortalCarta } from "./portal";
 // GO-3b (ADR-032, D-7): la vigencia de una promo (el guard de la administración la valida; la venta la evalúa al agregar).
-export { TODOS_LOS_DIAS, mascaraDeDias, validarVigenciaDePromo } from "./vigencia-de-promo";
+export { TODOS_LOS_DIAS, mascaraDeDias, promoVigenteEl, validarVigenciaDePromo } from "./vigencia-de-promo";
 export type { VigenciaDePromo } from "./vigencia-de-promo";
 // GO-3b (ADR-032, D-1): la fecha del menú del día (de hoy a hoy + 13, en la zona de la empresa).
 export { validarFechaDeMenuDelDia } from "./menu-del-dia";

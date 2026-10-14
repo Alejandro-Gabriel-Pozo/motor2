@@ -1,3 +1,4 @@
+import { ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
@@ -242,7 +243,7 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
 
     const agregar = (transaccion: Transaccion, comando: { cuentaId: string; productoId: string; claveIdempotencia: string }) =>
       agregarItemsCasoDeUso(
-        { usuarioId: s.admin.id, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: s.sucursalId, sucursalNombre: "Central", ahora: AHORA_DE_LA_CORRIDA, db: baseDelActor().db, transaccion },
+        { usuarioId: s.admin.id, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: s.sucursalId, sucursalNombre: "Central", empresaZonaHoraria: ZONA_ARGENTINA, ahora: AHORA_DE_LA_CORRIDA, db: baseDelActor().db, transaccion },
         { cuentaId: comando.cuentaId, items: [{ productoId: comando.productoId, cantidad: 1 }], promos: [], claveIdempotencia: comando.claveIdempotencia },
       );
 
