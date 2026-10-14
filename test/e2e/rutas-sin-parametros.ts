@@ -27,6 +27,7 @@ export const RUTAS_SIN_PARAMETROS = [
   "/catalogo/insumos-grupos",
   "/catalogo/margen-objetivo",
   "/catalogo/opciones",
+  "/catalogo/opciones/limpiar",
   "/catalogo/productos",
   "/catalogo/proveedores",
   "/catalogo/proveedores/comparativa",

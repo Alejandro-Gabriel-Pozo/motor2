@@ -115,7 +115,7 @@ export function OrdenarOpciones({ opciones, accion }: { opciones: OpcionParaOrde
               <span className="tabular-nums text-neutral-600 dark:text-neutral-400">{i + 1}.</span>
               <span>{o.nombre}</span>
               {o.esNinguna && <span className="text-xs text-neutral-600 dark:text-neutral-400">(ninguna)</span>}
-              {!o.activa && <span className="text-xs text-neutral-600 dark:text-neutral-400">(apagada)</span>}
+              {!o.activa && <span className="text-xs text-neutral-600 dark:text-neutral-400">(archivada)</span>}
               {elegida === o.id && <span className="ml-auto text-xs">Elegida</span>}
             </button>
           </li>,
