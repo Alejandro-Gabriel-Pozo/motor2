@@ -20,7 +20,7 @@ import {
 } from "@/server/actions/catalogo/recetas";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { disponibilidadDeProductoEnSucursales } from "@/server/consultas/catalogo/disponibilidad";
-import { secuenciaMoviendo } from "@/core/catalogo/public";
+import { secuenciaMoviendo, unidadesDeLectura } from "@/core/catalogo/public";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import {
   listarMpDisponiblesEnAlguna,
@@ -28,6 +28,7 @@ import {
   listarCalibracionesDeIngredientes,
 } from "@/server/consultas/catalogo/recetas";
 import { CampoNumero } from "@/components/campo-numero";
+import { LecturaDeCantidad } from "@/components/receta/lectura-de-cantidad";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
@@ -97,6 +98,8 @@ export default async function RecetaEditorPage({
   // U7 / D3: la receta se carga SIEMPRE en la unidad de stock de la materia prima (la conversión entre unidades viene más adelante); el servidor lo exige al guardar. Acá solo se la muestra fija.
   const nombreDeUnidad = (unidadId: string) => unidades.find((u) => u.id === unidadId)?.nombre ?? "la unidad de stock";
   const unidadDeStockPorMp: Record<string, string> = Object.fromEntries(mpDisponibles.map((mp) => [mp.id, mp.unidadStockId]));
+  // Lectura en vivo de la cantidad de cada ingrediente («= 300 g», aviso de «3.000»): en la unidad de stock, con su menor solo si existe en el catálogo.
+  const lecturaPorUnidad = unidadesDeLectura(unidades);
   const vigente = await obtenerRecetaVigente(producto.id);
   // La versión que ESTA pantalla muestra: cada cambio puntual la manda de vuelta, y si mientras tanto alguien guardó otra, el cambio se rechaza con un mensaje en vez de pisarlo (H7).
   const versionVista = vigente?.version ?? 0;
@@ -385,18 +388,20 @@ export default async function RecetaEditorPage({
                           className="flex flex-wrap items-end gap-2"
                         >
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
-                          <CampoNumero name="cantidad" defaultValue={String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
+                          <LecturaDeCantidad campoId={`cantidad-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null}>
+                            <CampoNumero id={`cantidad-${ing.id}`} name="cantidad" defaultValue={String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
+                            {/* Unidad FIJA: la de stock de la MP (el servidor la exige y la relee al guardar). */}
+                            <input type="hidden" name="unidadId" value={ing.insumoProducto.unidadStockId} />
+                            <span title="Unidad de stock de la materia prima" className="rounded border bg-neutral-100 px-2 py-1.5 text-sm dark:bg-neutral-800">
+                              <span className="sr-only">Unidad: </span>
+                              {unidadDeStock}
+                            </span>
+                          </LecturaDeCantidad>
                           {avisoDeUnidad && (
                             <p role="alert" className="w-full text-xs text-amber-700 dark:text-amber-600">
                               {avisoDeUnidad}
                             </p>
                           )}
-                          {/* Unidad FIJA: la de stock de la MP (el servidor la exige y la relee al guardar). */}
-                          <input type="hidden" name="unidadId" value={ing.insumoProducto.unidadStockId} />
-                          <span title="Unidad de stock de la materia prima" className="rounded border bg-neutral-100 px-2 py-1.5 text-sm dark:bg-neutral-800">
-                            <span className="sr-only">Unidad: </span>
-                            {unidadDeStock}
-                          </span>
                           <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} placeholder="Merma %" className="w-24" />
                           {aceptaSustitutos &&
                             (() => {
@@ -476,7 +481,8 @@ export default async function RecetaEditorPage({
                         <td>{ing.unidad.nombre}</td>
                         <td>{Number(ing.mermaPorcentaje)}</td>
                         <td>
-                          <div className="flex gap-3">
+                          {/* flex-wrap: en un celular angosto «Editar» y «Quitar» se apilan en vez de ensanchar la tabla más allá de la pantalla. */}
+                          <div className="flex flex-wrap gap-x-3">
                             <Link href={`${volver}?editar=${ing.insumoProductoId}`} className="text-sm underline inline-flex items-center gap-1">
                               <IconoDeAccion id="editar" />
                               Editar
@@ -520,19 +526,21 @@ export default async function RecetaEditorPage({
           className="flex max-w-lg flex-col gap-2"
         >
           <h3 className="font-medium">Agregar ingrediente (genera la próxima versión)</h3>
-          <select name="insumoProductoId" required className="rounded border px-3 py-2">
-            <option value="">Materia prima</option>
-            {mpDisponibles.map((mp) => (
-              <option key={mp.id} value={mp.id}>
-                {mp.nombre} ({nombreDeUnidad(mp.unidadStockId)})
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-neutral-500">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
-          <div className="flex gap-2">
-            <CampoNumero name="cantidad" placeholder="Cantidad" required className="flex-1" />
-            <CampoNumero name="mermaPorcentaje" placeholder="Merma %" className="w-28" />
-          </div>
+          <LecturaDeCantidad campoId="cantidad-ingrediente-nuevo" unidadDeStockPorMp={unidadDeStockPorMp} unidades={lecturaPorUnidad}>
+            <select name="insumoProductoId" required aria-label="Materia prima" className="rounded border px-3 py-2">
+              <option value="">Materia prima</option>
+              {mpDisponibles.map((mp) => (
+                <option key={mp.id} value={mp.id}>
+                  {mp.nombre} ({nombreDeUnidad(mp.unidadStockId)})
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-neutral-500">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
+            <div className="flex gap-2">
+              <CampoNumero id="cantidad-ingrediente-nuevo" name="cantidad" placeholder="Cantidad" required className="flex-1" />
+              <CampoNumero name="mermaPorcentaje" placeholder="Merma %" className="w-28" />
+            </div>
+          </LecturaDeCantidad>
           <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
             Agregar
           </button>
@@ -715,6 +723,7 @@ export default async function RecetaEditorPage({
         otrasConRecetaPropia={otrasConRecetaPropia}
         puede={{ editar: nivelEditar.editar, copiar: nivelCopiar.editar, volverALaCentral: nivelVolver.editar }}
         unidades={unidades}
+        lecturaPorUnidad={lecturaPorUnidad}
         materiasPrimas={mpDisponibles}
         ingredienteEnEdicion={editarPropia ?? null}
         volver={volver}

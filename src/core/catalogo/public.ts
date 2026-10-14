@@ -17,6 +17,9 @@ export { clasificarGruposNoComestibles } from "./no-comestibles";
 export type { ClasificacionNoComestibles } from "./no-comestibles";
 export type { FiltroSelectorProducto } from "./filtro-selector-producto";
 export { aplicarSecuencia, esPermutacionExacta, insertarEnPosicion, secuenciaMoviendo } from "./pasos-receta";
+// Lectura en vivo de la cantidad de un ingrediente («= 300 g», aviso de «3.000»): la arma la página y la muestra components/receta/lectura-de-cantidad.tsx.
+export { leerCantidadTecleada, unidadesDeLectura } from "./lectura-de-cantidad";
+export type { UnidadDeLectura } from "./lectura-de-cantidad";
 export { filtrarPreciosLocalesVigentes } from "./precio-local";
 export type { PrecioLocalVigente } from "./precio-local";
 export { productosUniversales } from "./disponibilidad-producto";

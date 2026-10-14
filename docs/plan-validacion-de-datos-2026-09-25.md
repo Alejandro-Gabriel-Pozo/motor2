@@ -170,3 +170,25 @@ llaman al guard en vez de a `validarCantidad`/`validarImporte`/`validarNroFactur
 
 **Fases futuras**: cuando se migre Ventas, Precios, Ajuste de stock, etc. (sección 6), cada una arma su propio
 `src/core/features/<feature>/<feature>.guard.ts` con el mismo patrón — no un guard genérico para todas.
+
+## 8. Lectura en vivo de una cantidad de receta (2026-10-14, pedido del dueño)
+
+El parser lee un separador solo como DECIMAL (tabla de la sección 3): «3.000» es 3 y «1.500» es 1,5. Es a propósito, pero quien tipea
+«3.000» pensando en tres mil gramos carga 3 kg y nada se lo marcaba. En el editor de recetas, debajo de la cantidad de cada ingrediente
+(alta y edición, receta central y receta propia de la sucursal), la pantalla ahora dice qué entendió el sistema y avisa la duda:
+
+- `src/core/catalogo/lectura-de-cantidad.ts` (puro, exportado por `src/core/catalogo/public.ts`): `leerCantidadTecleada` usa
+  `interpretarNumero` sin reinterpretar nada y arma la lectura («= 3 kg»; «= 300 g» para un valor entre 0 y 1 en kg; «= 500 ml» en l;
+  cualquier otra unidad tal cual, «= 3 unidad»). La lectura va SIN separador de miles («= 3000 kg», nunca «3.000»), así no vuelve a ser
+  ambigua. Avisa cuando hay UN solo separador con 1 a 3 dígitos antes y exactamente 3 después («3.000», «1,500», «0.300»): «Se leyó como
+  3 kg. Si quisiste decir 3000 kg, escribilo sin punto: 3000.». «1.000.000» (miles bien agrupados) y «1.234,5» no avisan.
+- El modelo `Unidad` no guarda relación entre unidades: la conversión sale de los pares que siembra el sistema en toda empresa
+  (`src/core/features/empresa/siembra-de-empresa.ts`: kg/g de PESO, l/ml de VOLUMEN) y se usa solo si las dos unidades existen activas
+  en el catálogo de la empresa (`unidadesDeLectura`). Sin la menor, se muestra la unidad de stock tal cual.
+- `src/components/receta/lectura-de-cantidad.tsx` solo presenta (`aria-live="polite"`, la advertencia con texto «Atención:» además del
+  color). Envuelve los campos sin tocar CampoNumero y lee el texto CRUDO del campo (lo que emite CampoNumero ya es canónico).
+- Es solo información: no cambia lo que se guarda ni bloquea el envío; la validación del servidor queda igual. Lo que ya venía cargado se
+  lee sin advertencia (avisa recién cuando se tipea). Pruebas: `test/core/lectura-de-cantidad.test.ts`,
+  `test/core/lectura-de-cantidad.propiedades.test.ts` y `test/e2e/receta-lectura-de-cantidad.spec.ts` (375 y 1280 px, axe, sin desborde).
+- Fuera: la receta de una combinación (`src/app/(app)/catalogo/productos/[id]/combinaciones/page.tsx`) tiene su propio formulario con un
+  `<input>` común, no CampoNumero; queda para otra tanda.
