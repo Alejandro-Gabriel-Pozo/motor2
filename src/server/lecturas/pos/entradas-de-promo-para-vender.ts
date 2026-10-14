@@ -43,6 +43,8 @@ export interface EntradasDePromoParaVender {
   lineaPorClave: Map<string, LineaConfigurada>;
   /** La alícuota de IVA de cada producto elegible (D-2, se revisa sobre lo elegido). */
   alicuotaPorProducto: Map<string, ComponenteConAlicuota>;
+  /** Para mostrar en el POS: «Café · Mediano · Almendras» (el producto y su configuración), por entrada elegible. */
+  nombrePorEntrada: Map<string, string>;
 }
 
 export async function cargarEntradasDePromoParaVender(
@@ -88,7 +90,7 @@ export async function cargarEntradasDePromoParaVender(
   const conEjes = [...opciones].filter(([, o]) => o.grupos.some((g) => g.ejeDeCombinacion !== undefined)).map(([id]) => id);
   const combinaciones = conEjes.length ? await cargarCombinacionesParaVender(tx, { sucursalId: args.sucursalId, productoIds: conEjes }) : new Map();
 
-  const resultado: EntradasDePromoParaVender = { cupos: new Map(), precioCartaPorClave: new Map(), lineaPorClave: new Map(), alicuotaPorProducto: new Map() };
+  const resultado: EntradasDePromoParaVender = { cupos: new Map(), precioCartaPorClave: new Map(), lineaPorClave: new Map(), alicuotaPorProducto: new Map(), nombrePorEntrada: new Map() };
   const elegiblesPorCupo = new Map<string, Map<string, EntradaElegibleDeCupo>>(args.cupos.map((c) => [c.id, new Map()]));
   for (const e of entradas) {
     const producto = productos.get(e.productoId);
@@ -111,6 +113,7 @@ export async function cargarEntradasDePromoParaVender(
     resultado.precioCartaPorClave.set(claveComponente, precioDeLista);
     if (linea !== null) resultado.lineaPorClave.set(claveComponente, linea);
     resultado.alicuotaPorProducto.set(producto.id, { productoId: producto.id, nombre: producto.nombre, alicuota: producto.alicuota });
+    resultado.nombrePorEntrada.set(e.id, [producto.nombre, ...(linea?.fotos ?? []).map((f) => (f.cantidad > 1 ? `${f.nombreOpcion} ×${f.cantidad}` : f.nombreOpcion))].join(" · "));
   }
   for (const c of args.cupos) {
     resultado.cupos.set(c.id, { cupoId: c.id, tipo: c.tipo, nombre: c.nombre, cantidadMinima: c.cantidadMinima, cantidadMaximaCupo: c.cantidadMaxima, entradas: elegiblesPorCupo.get(c.id) ?? new Map() });

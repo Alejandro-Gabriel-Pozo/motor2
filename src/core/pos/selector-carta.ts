@@ -91,6 +91,33 @@ export interface CupoSelectorCarta {
   elegibles: ProductoPedible[];
 }
 
+/** GO-3b (ADR-032): una entrada que se puede elegir HOY en un cupo LISTA o DEL_DIA (la arma la lectura de la venta: activa, disponible, con receta y su configuración armada hoy). */
+export interface EntradaDeCupoSelectorCarta {
+  entradaId: string;
+  productoId: string;
+  /** «Café · Mediano · Almendras»: el producto y su configuración fija, si la lleva. */
+  nombre: string;
+  /** El precio de lista con su configuración en la sucursal (la referencia del reparto). */
+  precioLista: number;
+}
+
+/** GO-3b (ADR-032): un cupo LISTA («Entrada»: una lista de productos, con o sin configuración) o DEL_DIA («Plato del día»: lo que el encargado cargó hoy en la sucursal). */
+export interface CupoDeEntradasSelectorCarta {
+  cupoId: string;
+  tipo: "LISTA" | "DEL_DIA";
+  nombre: string;
+  cantidadMinima: number;
+  cantidadMaximaCupo: number;
+  /** Un LISTA con una sola entrada y mínimo = máximo: viene FIJO (el servidor lo completa; el mozo no elige nada). */
+  fijo: boolean;
+  /** Las elegibles de hoy, en su orden. Vacío en un DEL_DIA = todavía no se cargó el plato de hoy. */
+  entradas: EntradaDeCupoSelectorCarta[];
+}
+
+/** Cualquier cupo de una promo armable en el selector: de sección (el de siempre) o de entradas (GO-3b). */
+export type CupoDePromoSelectorCarta = CupoSelectorCarta | CupoDeEntradasSelectorCarta;
+
+
 /** Una promo ARMABLE, entrada de nivel de sección (Task #16) — SOLO en la sección donde vive la promo (`PromoCarta.
  *  seccionCartaId`), nunca dentro de una carpeta de género (una promo no tiene género propio). */
 export interface EntradaPromoSelectorCarta {
@@ -100,8 +127,8 @@ export interface EntradaPromoSelectorCarta {
   /** Precio de la promo entera, ya congelado en `PromoCarta.precio` — se prorratea recién al agregarla (D3). */
   precio: number;
   /** En el orden de `PromoCartaCupo.orden`. Nunca vacío (una promo sin cupos es informativa: `armarSelectorCartaPos` nunca la
-   *  recibe acá — ver `PromosSelectorCartaPos`). */
-  cupos: CupoSelectorCarta[];
+   *  recibe acá — ver `PromosSelectorCartaPos`). GO-3b: también los cupos de entradas. */
+  cupos: CupoDePromoSelectorCarta[];
 }
 
 export type EntradaSelectorCarta = EntradaProductoSelectorCarta | EntradaAgrupadoSelectorCarta | EntradaCarpetaGeneroSelectorCarta | EntradaPromoSelectorCarta;
@@ -150,7 +177,7 @@ export interface PromoSelectorCartaPos {
   precio: number;
   /** Sin resolver los elegibles todavía — `armarSelectorCartaPos` los resuelve con los MISMOS pedibles que ya ubicó en cada
    *  sección (D5), no con una fuente propia. */
-  cupos: readonly { seccionCartaId: string; nombreSeccion: string; cantidadMinima: number; cantidadMaximaCupo: number }[];
+  cupos: readonly ({ seccionCartaId: string; nombreSeccion: string; cantidadMinima: number; cantidadMaximaCupo: number } | CupoDeEntradasSelectorCarta)[];
 }
 
 const comparar = (a: string, b: string) => a.localeCompare(b, "es");
@@ -244,13 +271,17 @@ export function armarSelectorCartaPos(
       promoCartaId: promo.promoCartaId,
       titulo: promo.titulo,
       precio: promo.precio,
-      cupos: promo.cupos.map((c) => ({
-        seccionCartaId: c.seccionCartaId,
-        nombreSeccion: c.nombreSeccion,
-        cantidadMinima: c.cantidadMinima,
-        cantidadMaximaCupo: c.cantidadMaximaCupo,
-        elegibles: (entradasPorSeccion.get(c.seccionCartaId) ?? []).flatMap(pediblesDeEntrada),
-      })),
+      cupos: promo.cupos.map((c) =>
+        "cupoId" in c
+          ? c // GO-3b: un cupo de entradas ya viene con sus elegibles de hoy (los resuelve la lectura de la venta, no la carta).
+          : {
+              seccionCartaId: c.seccionCartaId,
+              nombreSeccion: c.nombreSeccion,
+              cantidadMinima: c.cantidadMinima,
+              cantidadMaximaCupo: c.cantidadMaximaCupo,
+              elegibles: (entradasPorSeccion.get(c.seccionCartaId) ?? []).flatMap(pediblesDeEntrada),
+            }
+      ),
     };
     const lista = promoEntradasPorSeccion.get(promo.seccionCartaId) ?? [];
     lista.push(entrada);

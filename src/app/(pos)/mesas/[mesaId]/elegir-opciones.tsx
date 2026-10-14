@@ -11,8 +11,9 @@ import {
   grupoCompleto,
   gruposQueFaltan,
   opcionDisponible,
+  opcionesConCombinacionApagada,
   reducirElegirOpciones,
-  resumenDePrecios,
+  resumenDePreciosConCombinaciones,
   vistaPreviaDeConfiguracion,
   type ConfiguracionDelSelector,
 } from "@/core/pos/public";
@@ -40,6 +41,9 @@ const OPCION_RADIO =
  * - Pie fijo: la cantidad, el total con su desglose (en `aria-live`), «Falta elegir: Tamaño» y «Agregar · $ 3.300», deshabilitado hasta que se cumplan los mínimos.
  * Los precios que se ven salen de la configuración que armó el servidor y de la MISMA regla que la venta (`vistaPreviaDeConfiguracion`); al pedir, el servidor vuelve a armar la
  * línea con lo vigente (si algo cambió, responde que se vuelva a elegir y no cobra otra cosa).
+ *
+ * GO-3b (ADR-032): en un producto con EJES, los precios y el total son los de su combinación (la misma función que la venta) y una opción de un eje que, con lo ya elegido, cae en una combinación
+ * apagada se ve deshabilitada con «No disponible» (nunca se arma algo que la venta va a rechazar).
  */
 export function ElegirOpciones({
   nombre,
@@ -61,13 +65,16 @@ export function ElegirOpciones({
   onCerrar: () => void;
   onConfirmar: (elegidas: { opcionId: string; cantidad: number; versionDeOpcionId: string }[], cantidad: number) => void;
 }) {
-  const { precioBase, descuentoDeProducto, sinStock } = configuracion;
+  const { precioBase, descuentoDeProducto, sinStock, combinaciones } = configuracion;
   // Solo los grupos que hoy cuentan, con los obligatorios primero (orden estable del producto).
   const grupos = useMemo(() => {
     const vigentes = configuracion.grupos.filter((g) => g.admitido && g.activo).map((g) => ({ ...g, opciones: g.opciones.filter((o) => o.activa && o.admitida) }));
     return [...vigentes.filter((g) => g.cantidadMinima > 0), ...vigentes.filter((g) => g.cantidadMinima === 0)];
   }, [configuracion]);
-  const precios = useMemo(() => resumenDePrecios({ grupos, precioBase, descuentoDeProducto }), [grupos, precioBase, descuentoDeProducto]);
+  const precios = useMemo(
+    () => resumenDePreciosConCombinaciones({ grupos, precioBase, descuentoDeProducto, ...(combinaciones ? { combinaciones } : {}) }),
+    [grupos, precioBase, descuentoDeProducto, combinaciones]
+  );
   const [estado, despachar] = useReducer(reducirElegirOpciones, undefined, () => {
     const vacio = estadoInicialElegirOpciones();
     return inicial ? reducirElegirOpciones(vacio, { tipo: "precargar", grupos, elegidas: inicial }) : vacio;
@@ -76,7 +83,8 @@ export function ElegirOpciones({
 
   const elegidas = elegidasParaPedir(estado, grupos);
   const faltan = gruposQueFaltan(estado, grupos);
-  const vista = vistaPreviaDeConfiguracion({ grupos, elegidas, precioBase, descuentoDeProducto, cantidad: estado.cantidad });
+  const vista = vistaPreviaDeConfiguracion({ grupos, elegidas, precioBase, descuentoDeProducto, cantidad: estado.cantidad, ...(combinaciones ? { combinaciones } : {}) });
+  const conCombinacionApagada = opcionesConCombinacionApagada(grupos, elegidas, combinaciones);
   const puedeConfirmar = faltan.length === 0 && vista.ok;
 
   const precioDe = (grupoId: string, opcionId: string) => precios.grupos.find((g) => g.grupoId === grupoId)?.opciones.find((o) => o.opcionId === opcionId);
@@ -137,7 +145,9 @@ export function ElegirOpciones({
                 {g.nombre} · {g.cantidadMinima > 0 ? textoDeLimites(g.cantidadMinima, g.cantidadMaxima).replace(/^E/, "e") : textoDeLimites(g.cantidadMinima, g.cantidadMaxima).toLowerCase()}
               </legend>
               {g.opciones.map((o) => {
-                const disponible = opcionDisponible(o);
+                const apagadaPorCombinacion = conCombinacionApagada.has(o.opcionId);
+                const disponible = opcionDisponible(o) && !apagadaPorCombinacion;
+                const noDisponible = apagadaPorCombinacion ? "No disponible" : "Agotada hoy";
                 const precio = textoDePrecio(g.tipo, g.grupoId, o.opcionId);
                 const enCero = sinStock[o.opcionId];
                 const marca = enCero?.length ? <span className="block text-[11.5px] font-normal text-[var(--ink-soft)]">Sistema: stock 0 de {enCero.join(", ")}</span> : null;
@@ -162,7 +172,7 @@ export function ElegirOpciones({
                           {marca}
                         </span>
                       </span>
-                      <span className="text-[13px] font-normal tabular-nums">{disponible ? precio : "Agotada hoy"}</span>
+                      <span className="text-[13px] font-normal tabular-nums">{disponible ? precio : noDisponible}</span>
                     </label>
                   );
                 }
@@ -172,7 +182,7 @@ export function ElegirOpciones({
                     <span className="text-[14px] font-semibold">
                       {o.nombre}
                       <span className="block text-[12.5px] font-normal text-[var(--ink-soft)]">
-                        {disponible ? `${precio ? `${precio} · ` : ""}hasta ${o.cantidadMaxima}` : "Agotada hoy"}
+                        {disponible ? `${precio ? `${precio} · ` : ""}hasta ${o.cantidadMaxima}` : noDisponible}
                       </span>
                       {marca}
                     </span>

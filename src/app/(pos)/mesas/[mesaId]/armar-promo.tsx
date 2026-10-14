@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useReducer } from "react";
-import { type EntradaPromoSelectorCarta, cantidadElegida, eleccionParaAgregar, estadoInicialArmarPromo, puedeConfirmarArmarPromo, reducirArmarPromo, totalElegidoDelCupo, type EleccionParaAgregar, formatearMonto } from "@/core/pos/public";
+import { type EntradaPromoSelectorCarta, cantidadElegida, claveDeCupo, eleccionParaAgregar, estadoInicialArmarPromo, puedeConfirmarArmarPromo, reducirArmarPromo, totalElegidoDelCupo, type EleccionParaAgregar, formatearMonto } from "@/core/pos/public";
 import { BOTON_CHICO, BOTON_PRIMARIO, BOTON_SECUNDARIO } from "./estilos";
 
 /**
@@ -21,6 +21,10 @@ import { BOTON_CHICO, BOTON_PRIMARIO, BOTON_SECUNDARIO } from "./estilos";
  *
  * GO-2d (ADR-030): un producto con un grupo de opciones obligatorio se ve con su aviso («Con tamaño: pedilo suelto») y sin «+»: en una promo todavía no lleva opciones y el
  * servidor lo rechazaría (`PROMO_CON_OPCIONES`).
+ *
+ * GO-3b (ADR-032): un cupo de ENTRADAS (LISTA o DEL_DIA) muestra sus entradas de hoy por su nombre con la configuración («Café · Mediano · Almendras») y se elige con los mismos −/+; un
+ * cupo FIJO se ve como «Viene con: …», sin botones (lo completa el servidor); un lugar del día sin plato cargado lo dice y no deja confirmar. Lo de los productos con opciones (`noSeArman`) no
+ * aplica a una entrada: su configuración ya viene fijada.
  */
 export function ArmarPromo({
   entrada,
@@ -63,23 +67,34 @@ export function ArmarPromo({
 
         <div className="flex flex-col gap-4">
           {estado.cupos.map((cupo) => {
-            const total = totalElegidoDelCupo(estado, cupo.seccionCartaId);
+            const clave = claveDeCupo(cupo);
+            const total = totalElegidoDelCupo(estado, clave);
             const llegoAlMaximo = total >= cupo.cantidadMaximaCupo;
+            const nombreDelCupo = "cupoId" in cupo ? cupo.nombre : cupo.nombreSeccion;
+            const elegibles =
+              "cupoId" in cupo
+                ? cupo.entradas.map((e) => ({ clave: e.entradaId, nombre: e.nombre, noSeArma: undefined as string | undefined }))
+                : cupo.elegibles.map((p) => ({ clave: p.productoId, nombre: p.nombre, noSeArma: noSeArman?.get(p.productoId) }));
             return (
-              <fieldset key={cupo.seccionCartaId} data-cupo-armar-promo={cupo.seccionCartaId} className="flex flex-col gap-2 rounded-[12px] border border-[var(--border)] p-3">
+              <fieldset key={clave} data-cupo-armar-promo={clave} className="flex flex-col gap-2 rounded-[12px] border border-[var(--border)] p-3">
                 <legend className="px-1 text-[13px] font-semibold">
-                  {cupo.nombreSeccion} · {total}/{cupo.cantidadMaximaCupo}
+                  {nombreDelCupo} · {total}/{cupo.cantidadMaximaCupo}
                   {cupo.cantidadMinima > 0 ? ` (mínimo ${cupo.cantidadMinima})` : " (opcional)"}
                 </legend>
-                {cupo.elegibles.length === 0 ? (
-                  <p className="text-[13px] text-[var(--ink-soft)]">Nada disponible para elegir acá ahora.</p>
+                {"cupoId" in cupo && cupo.fijo && cupo.entradas[0] ? (
+                  <p data-cupo-fijo className="text-[13.5px]">
+                    Viene con: {cupo.cantidadMinima > 1 ? `${cupo.cantidadMinima} × ` : ""}
+                    {cupo.entradas[0].nombre}
+                  </p>
+                ) : elegibles.length === 0 ? (
+                  <p className="text-[13px] text-[var(--ink-soft)]">{"cupoId" in cupo && cupo.tipo === "DEL_DIA" ? "Todavía no se cargó el plato de hoy." : "Nada disponible para elegir acá ahora."}</p>
                 ) : (
                   <ul className="flex flex-col divide-y divide-[var(--border)]">
-                    {cupo.elegibles.map((p) => {
-                      const cantidad = cantidadElegida(estado, cupo.seccionCartaId, p.productoId);
-                      const noSeArma = noSeArman?.get(p.productoId);
+                    {elegibles.map((p) => {
+                      const cantidad = cantidadElegida(estado, clave, p.clave);
+                      const noSeArma = p.noSeArma;
                       return (
-                        <li key={p.productoId} data-producto-armar-promo={p.productoId} className="flex items-center justify-between gap-2 py-1.5">
+                        <li key={p.clave} data-producto-armar-promo={p.clave} className="flex items-center justify-between gap-2 py-1.5">
                           <span className="min-w-0 flex-1 text-[13.5px]">
                             {p.nombre}
                             {noSeArma && (
@@ -92,9 +107,9 @@ export function ArmarPromo({
                             <button
                               type="button"
                               className={BOTON_CHICO}
-                              aria-label={`Restar ${p.nombre} de ${cupo.nombreSeccion}`}
+                              aria-label={`Restar ${p.nombre} de ${nombreDelCupo}`}
                               disabled={cantidad === 0}
-                              onClick={() => despachar({ tipo: "decrementar", seccionCartaId: cupo.seccionCartaId, productoId: p.productoId })}
+                              onClick={() => despachar({ tipo: "decrementar", seccionCartaId: clave, productoId: p.clave })}
                             >
                               −
                             </button>
@@ -104,10 +119,10 @@ export function ArmarPromo({
                             <button
                               type="button"
                               className={BOTON_CHICO}
-                              aria-label={`Sumar ${p.nombre} a ${cupo.nombreSeccion}`}
+                              aria-label={`Sumar ${p.nombre} a ${nombreDelCupo}`}
                               disabled={llegoAlMaximo || noSeArma !== undefined}
-                              title={noSeArma ?? (llegoAlMaximo ? `Ya elegiste el máximo de ${cupo.nombreSeccion} (${cupo.cantidadMaximaCupo}).` : undefined)}
-                              onClick={() => despachar({ tipo: "incrementar", seccionCartaId: cupo.seccionCartaId, productoId: p.productoId })}
+                              title={noSeArma ?? (llegoAlMaximo ? `Ya elegiste el máximo de ${nombreDelCupo} (${cupo.cantidadMaximaCupo}).` : undefined)}
+                              onClick={() => despachar({ tipo: "incrementar", seccionCartaId: clave, productoId: p.clave })}
                             >
                               +
                             </button>

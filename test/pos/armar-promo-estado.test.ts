@@ -26,6 +26,10 @@ const entrada: EntradaPromoSelectorCarta = {
   ],
 };
 
+/** GO-3b: la elección de un cupo de SECCIÓN (la elección ahora también puede ser de un cupo de entradas, por su id). */
+const deSeccion = (estado: EstadoArmarPromo, seccionCartaId: string) =>
+  eleccionParaAgregar(estado).find((e): e is { seccionCartaId: string; elegidos: { productoId: string; cantidad: number }[] } => "seccionCartaId" in e && e.seccionCartaId === seccionCartaId);
+
 const aplicar = (estado: EstadoArmarPromo, ...acciones: AccionArmarPromo[]) => acciones.reduce(reducirArmarPromo, estado);
 
 describe("estadoInicialArmarPromo", () => {
@@ -57,7 +61,7 @@ describe("reducirArmarPromo — incrementar/decrementar (D1)", () => {
     let estado = aplicar(estadoInicialArmarPromo(entrada), { tipo: "incrementar", seccionCartaId: "s-entradas", productoId: "empanada" });
     estado = reducirArmarPromo(estado, { tipo: "decrementar", seccionCartaId: "s-entradas", productoId: "empanada" });
     expect(cantidadElegida(estado, "s-entradas", "empanada")).toBe(0);
-    expect(eleccionParaAgregar(estado).find((e) => e.seccionCartaId === "s-entradas")?.elegidos).toEqual([]);
+    expect(deSeccion(estado, "s-entradas")?.elegidos).toEqual([]);
   });
 
   it("decrementar por debajo de cero no hace nada", () => {
@@ -99,12 +103,12 @@ describe("eleccionParaAgregar", () => {
       { tipo: "incrementar", seccionCartaId: "s-entradas", productoId: "provoleta" },
       { tipo: "incrementar", seccionCartaId: "s-postres", productoId: "flan" }
     );
-    const entradas = eleccionParaAgregar(estado).find((e) => e.seccionCartaId === "s-entradas")!.elegidos;
+    const entradas = deSeccion(estado, "s-entradas")!.elegidos;
     expect(entradas.sort((a, b) => a.productoId.localeCompare(b.productoId))).toEqual([
       { productoId: "empanada", cantidad: 1 },
       { productoId: "provoleta", cantidad: 1 },
     ]);
-    expect(eleccionParaAgregar(estado).find((e) => e.seccionCartaId === "s-postres")?.elegidos).toEqual([{ productoId: "flan", cantidad: 1 }]);
+    expect(deSeccion(estado, "s-postres")?.elegidos).toEqual([{ productoId: "flan", cantidad: 1 }]);
   });
 
   it("un cupo sin nada elegido (mínimo 0, D1) da un array vacío de elegidos, no se omite el cupo", () => {

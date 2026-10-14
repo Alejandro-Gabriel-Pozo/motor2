@@ -9,7 +9,7 @@
  */
 export { estaEnListaPorAgregar, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar } from "./agregar-lista-estado";
 export type { EstadoListaPorAgregar } from "./agregar-lista-estado";
-export { cantidadElegida, eleccionParaAgregar, estadoInicialArmarPromo, puedeConfirmarArmarPromo, reducirArmarPromo, totalElegidoDelCupo } from "./armar-promo-estado";
+export { cantidadElegida, claveDeCupo, eleccionParaAgregar, estadoInicialArmarPromo, puedeConfirmarArmarPromo, reducirArmarPromo, totalElegidoDelCupo } from "./armar-promo-estado";
 export type { EleccionParaAgregar } from "./armar-promo-estado";
 export { MAXIMO_ITEMS_POR_AGREGADO } from "./cantidad-pedido";
 export { armarComandas } from "./comanda";
@@ -26,11 +26,11 @@ export type { NumeroDeTicket } from "./numeracion-ticket";
 export { componentesDeEleccion, precioMinimoPromo } from "./promo-combo";
 export type { CupoPromoDefinicion, EleccionDePromo } from "./promo-combo";
 // GO-3b (I2): los cupos de entradas (LISTA y DEL_DIA) que arma la lectura de la promo para agregar, y la clave de prorrateo de una entrada configurada.
-export { claveDeComponenteConfigurado } from "./promo-combo";
+export { claveDeComponenteConfigurado, esCupoFijo } from "./promo-combo";
 export type { CupoDePromo, CupoDeEntradasDefinicion, EntradaElegibleDeCupo } from "./promo-combo";
 export type { LineaConfigurada } from "./linea-configurada";
 export { armarSelectorCartaPos, pediblesDeEntrada } from "./selector-carta";
-export type { EntradaCarpetaSelectorCarta, EntradaPromoSelectorCarta, EntradaSelectorCarta, GenerosSelectorCartaPos, ProductoPedible, PromoSelectorCartaPos, SelectorCartaPos } from "./selector-carta";
+export type { CupoDeEntradasSelectorCarta, EntradaCarpetaSelectorCarta, EntradaPromoSelectorCarta, EntradaSelectorCarta, GenerosSelectorCartaPos, ProductoPedible, PromoSelectorCartaPos, SelectorCartaPos } from "./selector-carta";
 export { SECCION_FUERA_DE_CARTA, estadoInicialSelectorCarta, reducirSelectorCarta } from "./selector-carta-estado";
 export type { AccionSelectorCarta, EstadoSelectorCarta } from "./selector-carta-estado";
 export { TICKETS_RECIENTES_POR_MESA, armarTicketImpresoEn, armarTicketsDeCuentas, configuracionDeItemLeido, cuentaConOpciones, estadoDeTicket, itemParaLineaDeVenta } from "./ticket";
@@ -47,7 +47,9 @@ export { revisarAlicuotasDeCombo } from "./alicuotas-de-combo";
 export type { ComponenteConAlicuota } from "./alicuotas-de-combo";
 export { claveDeConfiguracion as claveDeConfiguracionFija } from "./promo-combo";
 // GO-2d (ADR-030 «Pantallas»): los precios PARA MOSTRAR de un producto con opciones (el «desde», cada tamaño, la vista previa del diálogo del POS), con la misma regla que la venta.
-export { opcionDisponible, resumenDePrecios, vistaPreviaDeConfiguracion } from "./precio-de-configuracion";
+export { opcionDisponible, opcionesConCombinacionApagada, resumenDePrecios, resumenDePreciosConCombinaciones, vistaPreviaDeConfiguracion } from "./precio-de-configuracion";
+// GO-3b (ADR-032): las combinaciones en la forma que viaja al cliente (el diálogo de opciones del POS).
+export { combinacionesParaMostrar } from "./combinacion-elegida";
 export type { ResumenDePrecios } from "./precio-de-configuracion";
 export { avisoEnPromo, claveDeConfiguracion, elegidasParaPedir, esDeUnaSolaEleccion, estadoInicialElegirOpciones, grupoCompleto, gruposQueFaltan, masPedidasParaElDialogo, reducirElegirOpciones, resumenDeConfiguracion } from "./elegir-opciones-estado";
 export type { ConfiguracionDelSelector } from "./elegir-opciones-estado";

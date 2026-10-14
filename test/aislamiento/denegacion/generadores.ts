@@ -407,6 +407,9 @@ const parametros: Record<string, Record<string, Valor>> = {
     }),
   },
   "lectura|lecturas/pos/promo-para-agregar.ts|cargarPromoCartaParaAgregar": { dia: () => DIA_DEL_PLATO_DEL_MUNDO },
+  // GO-3b (U5): el selector de la mesa con el día (o la zona) ofrece también los combos con cupos de entradas.
+  "lectura|lecturas/pos/selector-carta.ts|cargarSelectorCartaPos": { dia: () => DIA_DEL_PLATO_DEL_MUNDO },
+  "consulta|consultas/pos/selector-carta.ts|cargarSelectorCartaDeLaMesa": { zonaHoraria: () => "America/Argentina/Buenos_Aires" },
   "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|filaDePrecioLocalDeCombinacion": { clave: (k, c) => ({ sucursalId: c.propio.sucursalId, objetivo: { grupoDePrecioId: k.grupoDePrecioId } }) },
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoOpcion": { id: (k) => k.productoId },

@@ -1,15 +1,11 @@
 import { aplicarDescuentoDeProducto } from "@/core/carta/public";
 import { consumoDeLineaConfigurada, type ConsumoDeOpcionParaVender, type CodigoDeErrorDeConsumo, type OpcionConConsumo } from "@/core/movimientos/public";
 import { huellaDeOpciones } from "@/core/opciones/public-servidor";
+import { combinacionElegida, type CombinacionesDelProducto, type PrecioDeCombinacionVendible } from "./combinacion-elegida";
 import {
-  claveDeCombinacion,
   componerPrecioDeLinea,
   entradaConPrecioDeCombinacion,
-  identidadDeCombinacion,
-  resolverPrecioDeCombinacion,
-  validarEjesDeCombinacion,
   validarOpcionesElegidas,
-  type CombinacionParaPrecio,
   type CodigoDeErrorDeOpciones,
   type CodigoDeErrorDePrecio,
   type DiferenciaDePrecio,
@@ -100,17 +96,8 @@ export interface AdicionalArmado {
   foto: FotoDeOpcion;
 }
 
-/**
- * GO-3b (ADR-032, frente A): las COMBINACIONES de un producto con ejes, para venderlo: las filas que existen (sobrescritura dispersa: activa o no, precio propio o tarifa, y la versión vigente de su
- * receta propia, que se congela al agregar) y los precios locales VIGENTES de la sucursal (de la combinación y de las tarifas). Las arma la lectura de la venta.
- */
-export interface CombinacionesDelProducto {
-  /** Para los mensajes («Esa combinación de «Café» no está disponible»). */
-  nombreDelProducto: string;
-  /** Por `claveDeCombinacion` (las opciones de los ejes). */
-  filas: ReadonlyMap<string, CombinacionParaPrecio & { recetaDeCombinacionVersionId: string | null }>;
-  locales: { porCombinacion: ReadonlyMap<string, number>; porGrupo: ReadonlyMap<string, number> };
-}
+/** GO-3b (ADR-032, frente A): las COMBINACIONES de un producto con ejes, para venderlo (definidas junto a `combinacionElegida`, que las usa también para mostrar). */
+export type { CombinacionesDelProducto } from "./combinacion-elegida";
 
 /** GO-3b: la FOTO de la combinación vendida (las columnas de `CombinacionEnLinea`, sin la línea) y las opciones de sus ejes (para la receta propia al cerrar). */
 export interface FotoDeCombinacion {
@@ -261,41 +248,15 @@ export function armarLineaConfigurada(entrada: EntradaLineaConfigurada): Resulta
   };
 }
 
-/**
- * GO-3b: la combinación de la línea. Sin ningún grupo eje: nada (`precio: null`, sin foto). Con ejes: los ejes tienen que seguir siendo válidos con lo que el producto admite HOY (si alguien los dejó
- * de una sola opción o desactivó el grupo, falla cerrado), las combinaciones tienen que venir leídas, y la identidad elegida decide la fila (sin fila: aditivo y sin foto). La «ninguna» de un eje
- * no participa (rige el aditivo).
- */
+/** GO-3b: la combinación de la línea (`combinacionElegida`, compartida con los precios para mostrar) y su FOTO (solo si cae en una fila que existe). */
 function combinacionDeLaLinea(
   entrada: EntradaLineaConfigurada,
   queCuentan: readonly { grupo: GrupoParaVender; opcion: OpcionParaVender }[],
-): { ok: true; precio: ReturnType<typeof resolverPrecioDeCombinacion> | null; opcionesDeEjes: string[]; foto: FotoDeCombinacion | null } | { ok: false; codigo: CodigoDeLineaConfigurada; mensaje: string } {
-  const sinCombinacion = { ok: true as const, precio: null, opcionesDeEjes: [], foto: null };
-  const ejes = entrada.grupos.filter((g) => g.ejeDeCombinacion !== undefined);
-  if (ejes.length === 0) return sinCombinacion;
-  const invalido = { ok: false as const, codigo: "CONFIGURACION_INVALIDA" as const, mensaje: "los ejes de las combinaciones de este producto ya no son válidos: revisá lo que admite." };
-  if (ejes.some((g) => !g.activo || !g.admitido)) return invalido;
-  const validos = validarEjesDeCombinacion(ejes.map((g) => ({ grupoId: g.grupoId, nombre: g.nombre, tipo: g.tipo, cantidadMinima: g.cantidadMinima, cantidadMaxima: g.cantidadMaxima, eje: g.ejeDeCombinacion! })));
-  if (!validos.ok) return invalido;
-  const { combinaciones } = entrada;
-  if (!combinaciones) return { ok: false, codigo: "CONFIGURACION_INVALIDA", mensaje: "faltan las combinaciones del producto para venderlo." };
-  const identidad = identidadDeCombinacion(
-    validos.ejes,
-    queCuentan.map((e) => ({ opcionId: e.opcion.opcionId, grupoId: e.grupo.grupoId, esNinguna: e.opcion.esNinguna })),
-  );
-  if (identidad === null) return sinCombinacion;
-  const fila = combinaciones.filas.get(claveDeCombinacion(identidad)) ?? null;
-  const precio = resolverPrecioDeCombinacion(
-    fila,
-    {
-      deLaCombinacion: fila ? (combinaciones.locales.porCombinacion.get(fila.combinacionId) ?? null) : null,
-      delGrupo: fila?.grupo ? (combinaciones.locales.porGrupo.get(fila.grupo.grupoDePrecioId) ?? null) : null,
-    },
-    combinaciones.nombreDelProducto,
-  );
-  if (!precio.ok) return { ok: false, codigo: precio.codigo, mensaje: precio.mensaje };
-  const opcionesDeEjes = [identidad.opcionEje1Id, identidad.opcionEje2Id].filter((x): x is string => x !== null);
-  if (precio.origen === "SIN_COMBINACION" || fila === null) return { ok: true, precio, opcionesDeEjes, foto: null };
+): { ok: true; precio: PrecioDeCombinacionVendible | null; opcionesDeEjes: string[]; foto: FotoDeCombinacion | null } | { ok: false; codigo: CodigoDeLineaConfigurada; mensaje: string } {
+  const elegida = combinacionElegida(entrada.grupos, queCuentan, entrada.combinaciones);
+  if (!elegida.ok) return elegida;
+  const { precio, opcionesDeEjes, fila } = elegida;
+  if (precio === null || precio.origen === "SIN_COMBINACION" || fila === null) return { ok: true, precio, opcionesDeEjes, foto: null };
   const foto: FotoDeCombinacion =
     precio.origen === "ADITIVO"
       ? { combinacionId: fila.combinacionId, origenPrecio: "ADITIVO", precioDeSucursal: false, grupoDePrecioId: null, nombreGrupoDePrecio: null, precio: null, recetaDeCombinacionVersionId: fila.recetaDeCombinacionVersionId }
