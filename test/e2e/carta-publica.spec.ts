@@ -196,19 +196,19 @@ test.describe("carta de una sucursal", () => {
     }
   });
 
-  test("CARTA-B: la carta muestra SOLO lo que cambia el precio (tamaños en lista con puntitos, línea «Adicionales:»), sin la guarnición ni «Ver opciones»; marcar una opción agotada desde la app la saca al instante", async ({
+  test("CARTA-B y CARTA-C: tamaños en lista con puntitos, línea «Adicionales:» y las opciones sin costo (preparación, guarnición) como pastillas bajo el nombre de su grupo, sin «Ver opciones»; marcar una opción agotada desde la app la saca al instante", async ({
     page,
     paginaAutenticada,
     sucursalId,
   }) => {
     const m = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
     const slug = `e2e-opciones-${m}`;
-    // El café del dueño: tamaño 2.500 / 2.800 / 3.100 (diferencia 0 / +300 / +600 sobre 2.500), preparación «Solo» / «Con leche +400» y extras «Medialuna +600» y «Shot +500».
+    // El café del dueño: tamaño 2.500 / 2.800 / 3.100 (diferencia 0 / +300 / +600 sobre 2.500), preparación «Solo» / «Flat white» / «Cortado» sin costo y «Con leche +400», y extras «Medialuna +600» y «Shot +500».
     const tamano = await sembrarGrupo({ nombre: `Tamaño ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico", factorEscala: 0.75 }, { nombre: "Mediano", monto: 300, factorEscala: 1 }, { nombre: "Grande", monto: 600, factorEscala: 1.5 }] });
-    const preparacion = await sembrarGrupo({ nombre: `Preparación ${m}`, tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Solo" }, { nombre: "Con leche", monto: 400 }] });
+    const preparacion = await sembrarGrupo({ nombre: `Preparación ${m}`, tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Solo" }, { nombre: "Flat white" }, { nombre: "Cortado" }, { nombre: "Con leche", monto: 400 }] });
     const extras = await sembrarGrupo({ nombre: `Extras ${m}`, tipo: "ADICIONAL", cantidadMinima: 0, cantidadMaxima: 2, marca: m, opciones: [{ nombre: "Medialuna", monto: 600, conAncla: true }, { nombre: "Shot", monto: 500, conAncla: true }] });
-    // La milanesa: la guarnición no cambia el precio, así que no se muestra (la elige el mozo en el POS).
-    const guarnicion = await sembrarGrupo({ nombre: `Guarnición ${m}`, tipo: "INCLUIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Puré" }, { nombre: "Ensalada" }] });
+    // La milanesa: la guarnición no cambia el precio; se muestra como pastillas (la elige el mozo en el POS) y la «ninguna» no.
+    const guarnicion = await sembrarGrupo({ nombre: `Guarnición ${m}`, tipo: "INCLUIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Papas fritas" }, { nombre: "Puré" }, { nombre: "Ensalada" }, { nombre: "Sin guarnición", esNinguna: true }] });
     const cafe = `E2E Café carta ${m}`;
     const milanesa = `E2E Milanesa carta ${m}`;
     const flan = `E2E Flan carta ${m}`;
@@ -237,26 +237,44 @@ test.describe("carta de una sucursal", () => {
         await expect(filas.cafe).not.toContainText("desde");
         await expect(filas.cafe).not.toContainText("Ver opciones");
         expect(await filas.cafe.locator("details").count(), "ningún desplegable").toBe(0);
-        // La línea «Adicionales:» con lo que suma una variante o un adicional; «Solo» (sin costo) no está.
+        // La línea «Adicionales:» con lo que suma una variante o un adicional; «Solo», «Flat white» y «Cortado» (sin costo) NO están ahí: van como pastillas.
         const suma = filas.cafe.locator("[data-suma-carta]");
         await expect(suma).toBeVisible();
         await expect(suma).toHaveText("Adicionales: Con leche +$400 · Medialuna +$600 · Shot +$500");
         await expect(suma.locator("strong")).toHaveText("Adicionales:");
-        await expect(filas.cafe).not.toContainText("Solo");
-        // La milanesa: su precio base de siempre, SIN la guarnición (no cambia el precio); el flan, un producto común.
+        // Las pastillas de la preparación: bajo el nombre del grupo, a la vista, en el orden del grupo, en una lista con el nombre del grupo; no son botones.
+        const pastillasCafe = filas.cafe.locator(`[data-opciones-sin-costo='Preparación ${m}']`);
+        await expect(pastillasCafe).toBeVisible();
+        await expect(pastillasCafe.locator("p")).toHaveText(`Preparación ${m}`);
+        await expect(filas.cafe.getByRole("list", { name: `Preparación ${m}` }).getByRole("listitem")).toHaveText(["Solo", "Flat white", "Cortado"]);
+        await expect(pastillasCafe.locator("button, [role='button'], [tabindex], a")).toHaveCount(0);
+        // La milanesa: su precio base de siempre y la guarnición como pastillas bajo «Guarnición» (sin «Ver opciones» ni desplegable; sin la «ninguna»); el flan, un producto común.
         await expect(filas.milanesa).toContainText("$9.500");
-        await expect(filas.milanesa).not.toContainText(`Guarnición ${m}`);
-        await expect(filas.milanesa).not.toContainText("Puré");
+        const pastillasMila = filas.milanesa.locator(`[data-opciones-sin-costo='Guarnición ${m}']`);
+        await expect(pastillasMila).toBeVisible();
+        await expect(pastillasMila.locator("p")).toHaveText(`Guarnición ${m}`);
+        await expect(filas.milanesa.getByRole("list", { name: `Guarnición ${m}` }).getByRole("listitem")).toHaveText(["Papas fritas", "Puré", "Ensalada"]);
+        await expect(filas.milanesa).not.toContainText("Ver opciones");
+        await expect(filas.milanesa).not.toContainText("Sin guarnición");
+        expect(await filas.milanesa.locator("details").count(), "ningún desplegable").toBe(0);
         await expect(filas.milanesa.locator("[data-tamanos-carta], [data-suma-carta]")).toHaveCount(0);
         await expect(filas.flan).toContainText("$3.200");
-        await expect(page.locator("body")).not.toContainText("Guarnición");
-        // Legibilidad: nombre y precio del ítem con opciones ≥ 19 px, tamaños y «Adicionales» ≥ 16 px.
+        await expect(filas.flan.locator("[data-opciones-sin-costo]")).toHaveCount(0);
+        await expect(page.locator("body")).not.toContainText("Sin guarnición");
+        // Legibilidad: nombre y precio del ítem con opciones ≥ 19 px, tamaños y «Adicionales» ≥ 16 px, pastillas ≥ 15 px y su etiqueta ≥ 14,5 px.
         expect(await tamanoPx(filas.cafe.getByRole("heading", { name: cafe }))).toBeGreaterThanOrEqual(19);
         expect(await tamanoPx(lista.getByRole("listitem").first())).toBeGreaterThanOrEqual(16);
         expect(await tamanoPx(suma)).toBeGreaterThanOrEqual(16);
+        for (const pastillas of [pastillasCafe, pastillasMila]) {
+          expect(await tamanoPx(pastillas.locator("p"))).toBeGreaterThanOrEqual(14.5);
+          for (const pastilla of await pastillas.getByRole("listitem").all()) expect(await tamanoPx(pastilla)).toBeGreaterThanOrEqual(15);
+        }
+        // Sin desborde horizontal tampoco de las pastillas (envuelven a la línea siguiente).
+        for (const pastillas of [pastillasCafe, pastillasMila]) expect(await pastillas.evaluate((el) => el.scrollWidth <= el.clientWidth), `las pastillas se desbordan a ${ancho} px`).toBe(true);
         // Sin desborde horizontal: ni la página ni la fila del café.
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `la página se desborda a ${ancho} px`).toBe(true);
         expect(await filas.cafe.evaluate((el) => el.scrollWidth <= el.clientWidth), `el café se desborda a ${ancho} px`).toBe(true);
+        expect(await filas.milanesa.evaluate((el) => el.scrollWidth <= el.clientWidth), `la milanesa se desborda a ${ancho} px`).toBe(true);
         expect((await new AxeBuilder({ page }).analyze()).violations, `carta con opciones a ${ancho} px`).toEqual([]);
       }
 

@@ -52,6 +52,11 @@ const CLAVES_DE_LA_CARTA = [
   "carta.secciones[].items[].grupos[].opciones[].nombre",
   "carta.secciones[].items[].grupos[].opciones[].precio",
   "carta.secciones[].items[].grupos[].opciones[].recargo",
+  // CARTA-C (pastillas, decisión del dueño 2026-10-14): UN campo nuevo por ítem, SOLO textos: el nombre del grupo y los nombres de sus opciones SIN costo (preparación, guarnición, punto de
+  // cocción), que antes no salían. Sin ids, sin precios, sin la «ninguna» ni lo agotado (se decide en el servidor). El ítem sin ninguna no lleva la clave.
+  "carta.secciones[].items[].opcionesSinCosto",
+  "carta.secciones[].items[].opcionesSinCosto[].grupo",
+  "carta.secciones[].items[].opcionesSinCosto[].opciones",
   "carta.secciones[].items[].precioLista",
   "carta.secciones[].items[].tags",
   "carta.secciones[].nombre",
@@ -133,7 +138,7 @@ describe("la salida de la carta pública está inventariada", () => {
     await prisma.productoAdmiteOpcion.create({ data: { productoId: te.id, opcionId: unica.opcionId } });
     await prisma.opcionApagadaEnSucursal.create({ data: { sucursalId: central, opcionId: unica.opcionId, apagada: true, actualizadoPorId: autor.id } });
 
-    // CARTA-B: una milanesa cuya guarnición y punto de cocción no cambian el precio (no salen), y un jugo cuyos dos tamaños cuestan lo mismo (no sale la lista).
+    // CARTA-B y CARTA-C: una milanesa cuya guarnición (Puré, Papas) y punto de cocción (una sola opción) no cambian el precio, y un jugo cuyos dos tamaños cuestan lo mismo (no sale la lista de precios).
     const milanesa = await prisma.producto.create({ data: { codigo: "PV-MILA", nombre: "Milanesa", tipo: "PV", precioVenta: 9500, unidadStockId: u.id } });
     const jugo = await prisma.producto.create({ data: { codigo: "PV-JUGO", nombre: "Jugo", tipo: "PV", precioVenta: 2000, unidadStockId: u.id } });
     for (const [orden, p] of [milanesa, jugo].entries()) {
@@ -187,19 +192,39 @@ describe("la salida de la carta pública está inventariada", () => {
       imagenUrl: null,
       grupos: [
         { nombre: "Tamaño", opciones: [{ nombre: "Chico", precio: 810 }, { nombre: "Grande", precio: 1170 }] },
-        // «Leche» (Vaca, sin costo; la otra, agotada) no cambia el precio: no sale. El recargo del adicional NO lleva el descuento de producto.
+        // El recargo del adicional NO lleva el descuento de producto.
         { nombre: "Extras", opciones: [{ nombre: "Medialuna", recargo: 600 }] },
       ],
+      // «Leche» (Vaca, sin costo; la otra, agotada hoy) se queda con UNA sola opción disponible: no hay nada que elegir, no sale como pastillas.
     });
+    expect(Object.keys(items.find((i) => i.nombre === "Café")!)).not.toContain("opcionesSinCosto");
   });
 
-  it("CARTA-B: la milanesa (guarnición y punto de cocción sin costo) y el jugo (tamaños al mismo precio) salen como un producto común: sin `grupos`, con su precio", async () => {
+  it("CARTA-C: la milanesa lleva su guarnición como pastillas (el punto de cocción, con una sola opción, no), el jugo sus tamaños iguales como pastillas «Vaso», y ninguno lleva `grupos`", async () => {
     const { carta } = (await cartaPublica(empresa, "central", AHORA_DE_LA_CORRIDA))!;
     const items = carta.secciones[0].items;
-    expect(items.find((i) => i.nombre === "Milanesa")).toEqual({ nombre: "Milanesa", categoria: "Platos", descripcion: null, precio: 9500, tags: [], especial: false, imagenUrl: null });
-    expect(items.find((i) => i.nombre === "Jugo")).toEqual({ nombre: "Jugo", categoria: "Platos", descripcion: null, precio: 2000, tags: [], especial: false, imagenUrl: null });
+    expect(items.find((i) => i.nombre === "Milanesa")).toEqual({
+      nombre: "Milanesa",
+      categoria: "Platos",
+      descripcion: null,
+      precio: 9500,
+      tags: [],
+      especial: false,
+      imagenUrl: null,
+      opcionesSinCosto: [{ grupo: "Guarnición", opciones: ["Puré", "Papas"] }],
+    });
+    expect(items.find((i) => i.nombre === "Jugo")).toEqual({
+      nombre: "Jugo",
+      categoria: "Platos",
+      descripcion: null,
+      precio: 2000,
+      tags: [],
+      especial: false,
+      imagenUrl: null,
+      opcionesSinCosto: [{ grupo: "Vaso", opciones: ["Chico", "Grande"] }],
+    });
     const serializado = JSON.stringify(carta);
-    for (const oculto of ["Guarnición", "Punto de cocción", "Jugoso", "Puré", "Papas", "Vaso"]) expect(serializado, `la carta muestra «${oculto}», que no cambia el precio`).not.toContain(oculto);
+    for (const oculto of ["Punto de cocción", "Jugoso", "Agotada hoy", "Vaca"]) expect(serializado, `la carta muestra «${oculto}»: una sola opción o agotada, no hay nada que elegir`).not.toContain(oculto);
   });
 
   it("portal: solo slug/etiqueta/subtítulo/posición; la configuración del portal no trae ids ni datos de la empresa", async () => {
