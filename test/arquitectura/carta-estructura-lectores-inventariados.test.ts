@@ -51,6 +51,8 @@ const ARCHIVOS_PERMITIDOS = [
   // leen la sección y lo que ya hay en ella (con su filtro) para decidir.
   "server/consultas/carta/mantenimiento.ts",
   "server/actions/carta/casos-de-uso/agregar-producto-a-la-carta.ts",
+  // CARTA-MANT F3: «Ordenar» lee las secciones de la empresa (todas) para comparar la lista y el orden visto.
+  "server/actions/carta/casos-de-uso/ordenar-secciones-carta.ts",
 ];
 const LECTURA = /\b(seccionCarta|generoCarta|itemAgrupadoCarta|contenidoCartaProducto|opcionItemAgrupadoCarta)\s*\.\s*(find|count|aggregate|groupBy)/;
 /** Los modelos PROPIOS de la sucursal: SeccionCarta queda afuera a propósito (es de la empresa). */
