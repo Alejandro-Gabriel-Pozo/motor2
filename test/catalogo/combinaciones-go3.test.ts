@@ -241,9 +241,13 @@ describe("el precio por combinación: administración (GO-3b, AB4)", () => {
       await prisma.capacidadSucursal.deleteMany({ where: { accionClave: "precio_local" } });
       expect(await fijar(null, { precio: 4100, habilitado: true })).toMatchObject({ ok: true });
       expect([...(await leer()).porGrupo]).toEqual([]);
-      expect((await auditoria("PrecioLocalDeCombinacion")).map((f) => [f.entidadId, f.campo, f.valorAnterior, f.valorNuevo, f.sucursalId])).toEqual([
-        [`${e.sucursalA}:${tarifaId}`, "precio", null, "4000", e.sucursalA],
+      // Las dos filas de una misma operación (precio y habilitado) se escriben en UNA transacción y comparten `creadoEn`: el orden entre ellas no es
+      // parte de lo que se prueba. Se ordena por (valor anterior, campo) para que la comparación no dependa del desempate de la base.
+      const filas = (await auditoria("PrecioLocalDeCombinacion")).map((f) => [f.entidadId, f.campo, f.valorAnterior, f.valorNuevo, f.sucursalId] as const);
+      const porValorAnteriorYCampo = (a: (typeof filas)[number], b: (typeof filas)[number]) => String(a[2] ?? "").localeCompare(String(b[2] ?? "")) || String(a[1]).localeCompare(String(b[1]));
+      expect([...filas].sort(porValorAnteriorYCampo)).toEqual([
         [`${e.sucursalA}:${tarifaId}`, "habilitado", null, "true", e.sucursalA],
+        [`${e.sucursalA}:${tarifaId}`, "precio", null, "4000", e.sucursalA],
         [`${e.sucursalA}:${tarifaId}`, "precio", "4000", "4100", e.sucursalA],
         [`${e.sucursalA}:${tarifaId}`, "habilitado", "true", "false", e.sucursalA],
       ]);
