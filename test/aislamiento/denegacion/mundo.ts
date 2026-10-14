@@ -262,6 +262,10 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   // GO-3b (frente A): la tarifa compartida y la combinación «Grande» del PV con opciones (la medida es su eje 1), con esa tarifa.
   const grupoDePrecio = await db.grupoDePrecio.create({ data: { id: id("grupo-de-precio"), empresaId, nombre: `Tarifa ${marca}`, precio: 3300 } });
   const combinacion = await db.combinacionDeProducto.create({ data: { id: id("combinacion"), empresaId, productoId: pvOpciones.id, opcionEje1Id: opcionMedida.id, grupoDePrecioId: grupoDePrecio.id } });
+  // GO-3b (frente B): su receta propia, versión 1, con la MP del kit.
+  await db.recetaDeCombinacionVersion.create({
+    data: { id: id("receta-combinacion"), empresaId, combinacionId: combinacion.id, numero: 1, creadoPorId: usuarioId, ingredientes: { create: [{ id: id("ingrediente-combinacion"), insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } },
+  });
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
   return {
     marca,

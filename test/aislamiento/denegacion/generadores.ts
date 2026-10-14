@@ -143,6 +143,12 @@ const completos: Record<string, Valor> = {
       intento(c, ["grupoDePrecioId"], [{ sucursalId: c.propio.sucursalId, grupoDePrecioId: k.grupoDePrecioId, esperado: { precio: 1650, habilitado: true }, precio: 1700 }]),
       intento(c, ["combinacionId"], [{ sucursalId: c.propio.sucursalId, combinacionId: k.combinacionId, esperado: null, precio: 1700 }]),
     ),
+  // GO-3b (frente B): una versión nueva de la receta propia de la combinación (la vigente es la 1, sembrada), con la MP del kit.
+  "accion|actions/catalogo/combinaciones.ts|guardarRecetaDeCombinacion": (k, c) =>
+    conVariantes(
+      intento(c, ["combinacionId"], [{ combinacionId: k.combinacionId, numeroEsperado: 1, ingredientes: [{ insumoProductoId: c.propio.productoId, cantidad: 2 }] }]),
+      intento(c, ["productoId"], [{ combinacionId: c.propio.combinacionId, numeroEsperado: 1, ingredientes: [{ insumoProductoId: k.productoId, cantidad: 2 }] }]),
+    ),
   "accion|actions/carta/registro-publico.ts|guardarSucursalPublica": (k) => [k.sucursalId, { slug: "slug-nuevo", publicada: true }],
   "accion|actions/carta/secciones.ts|guardarSeccionCarta": (k) => [{ id: k.seccionCartaId, nombre: "Nombre nuevo" }],
 
@@ -370,6 +376,7 @@ const parametros: Record<string, Record<string, Valor>> = {
     args: (_k, c) => ({ desdeDia: "2000-01-01", sucursalIds: [c.propio.sucursalId] }),
   },
   // GO-3b (frente A): la combinación por su clave y el precio local de la tarifa en la sucursal.
+  "lectura|lecturas/catalogo/recetas-de-combinacion.ts|cargarRecetasVigentesDeCombinaciones": { combinacionIds: (k) => [k.combinacionId] },
   "lectura|lecturas/catalogo/combinaciones.ts|cargarCombinacionEnTx": { clave: (k) => ({ productoId: k.productoConOpcionesId, opcionEje1Id: k.opcionMedidaId, opcionEje2Id: null }) },
   "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|preciosLocalesDeCombinacionVigentes": { ids: (k) => ({ combinacionIds: [k.combinacionId], grupoDePrecioIds: [k.grupoDePrecioId] }), precioLocalActivo: () => true },
   "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|filaDePrecioLocalDeCombinacion": { clave: (k, c) => ({ sucursalId: c.propio.sucursalId, objetivo: { grupoDePrecioId: k.grupoDePrecioId } }) },

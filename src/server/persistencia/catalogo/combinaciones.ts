@@ -76,3 +76,17 @@ export async function fijarPrecioLocalDeCombinacion(
   const { grupoDePrecioId } = args.objetivo;
   await db.precioLocalDeCombinacion.upsert({ where: { sucursalId_grupoDePrecioId: { sucursalId: args.sucursalId, grupoDePrecioId } }, create: { sucursalId: args.sucursalId, grupoDePrecioId, ...datos }, update: datos });
 }
+
+/** Una versión NUEVA de la receta propia de una combinación, con sus ingredientes (todo solo se agrega). Devuelve su id. */
+export async function crearVersionDeRecetaDeCombinacion(
+  db: Tx,
+  args: { combinacionId: string; numero: number; creadoPorId: string; ahora: Date; ingredientes: readonly { insumoProductoId: string; cantidad: number; unidadId: string; mermaPorcentaje: number }[] },
+): Promise<{ id: string }> {
+  const v = await db.recetaDeCombinacionVersion.create({ data: { combinacionId: args.combinacionId, numero: args.numero, creadoPorId: args.creadoPorId, creadoEn: args.ahora }, select: { id: true } });
+  if (args.ingredientes.length) {
+    await db.recetaDeCombinacionIngrediente.createMany({
+      data: args.ingredientes.map((i, orden) => ({ versionId: v.id, insumoProductoId: i.insumoProductoId, cantidad: i.cantidad, unidadId: i.unidadId, mermaPorcentaje: i.mermaPorcentaje, orden })),
+    });
+  }
+  return { id: v.id };
+}
