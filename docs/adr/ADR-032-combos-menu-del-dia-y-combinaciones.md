@@ -1,6 +1,6 @@
 # ADR-032: GO-3. Precio y receta por combinación, combos y menú del día
 
-> **Estado: BASE construida en la rama `go3-base` (esquema, núcleo puro y lectores tolerantes). Las cuatro migraciones están APLICADAS a la base de producción desde el 2026-10-13 (respaldo `respaldo-pre-go3-20261013`, ensayo subir/bajar/subir y verificación por huella; ver `docs/deploy-con-migraciones.md`, sección GO-3); cada base nueva REQUIERE AUTORIZACIÓN EXPRESA.** Los casos de uso, la administración, la venta y las pantallas (F3 a F6 del plan) vienen después de que GO-2a y GO-2b estén fusionadas. Construye sobre GO-1 (`docs/adr/ADR-030-elemento-configurable-grupos-de-opciones.md`, ya aplicado).
+> **Estado: BASE construida en la rama `go3-base` (esquema, núcleo puro y lectores tolerantes). Las cuatro migraciones están APLICADAS a la base de producción desde el 2026-10-13 (respaldo `respaldo-pre-go3-20261013`, ensayo subir/bajar/subir y verificación por huella; ver `docs/deploy-con-migraciones.md`, sección GO-3); cada base nueva REQUIERE AUTORIZACIÓN EXPRESA.** Los casos de uso, la administración, la venta y las pantallas (F3 a F6 del plan) están CONSTRUIDOS en la rama `go3-tanda2` (sección «GO-3b» al final), sin migraciones nuevas y pendientes de la fusión. Construye sobre GO-1 (`docs/adr/ADR-030-elemento-configurable-grupos-de-opciones.md`, ya aplicado).
 
 ## Contexto
 
@@ -55,4 +55,56 @@ Hoy un combo (`PromoCarta` + `PromoCartaCupo` + `PromoCuenta`) solo deja «eleg�
 - **IVA de combos, no verificado con el contador:** bloqueado por D-2 hasta que se confirme.
 - **Rollback:** dos despliegues (ver `docs/deploy-con-migraciones.md`). Con combinaciones inactivas cargadas, el código de GO-2b sin GO-3 vendería una combinación apagada si se vuelve atrás.
 - **Bloqueo breve de `CuentaItem`** al crear la clave foránea de la foto: aplicar fuera de horario, con `lock_timeout`.
-- **Pendiente (F3 en adelante):** casos de uso con sus claves en `ACCIONES`, `guardar-cupos` sin borrar, entradas y configuración fija (D4b, después de la lectura de opciones de GO-2b), menú del día, administración de combinaciones y grupos, integración a la venta y pantallas.
+- **F3 en adelante:** construido en GO-3b (sección siguiente).
+
+## GO-3b (tanda 2: F3 a F6, rama `go3-tanda2`, 2026-10-13/14)
+
+> **Estado: construido en la rama, pendiente de CI y de la fusión que hace el dueño. SIN migraciones nuevas y sin tocar `prisma/schema.prisma`:** todo corre sobre el esquema de GO-3 que ya está en producción. Las filas están en `docs/pureza-integracion.md`, de O.410 a O.421 (bloque «// GO-3b»). Para el despliegue, ver `docs/deploy-con-migraciones.md`, sección GO-3, «Segundo despliegue».
+
+### Lo construido
+
+| Paso | Qué | Commit |
+|---|---|---|
+| D3 | Los cupos se guardan sin borrar. La lista es la FINAL de todos los tipos y un cupo que falta se da de baja. Admite lugares LISTA y DEL_DIA | `3f14bfcb`, `b0e35ffb` |
+| D4a+D4b | Las entradas de una lista, con su configuración fija y las reglas D-8, D-9 y D-2. La vigencia de la promo usa versión optimista | `562e914f` |
+| D6 | `promo_menu_del_dia` y `grupos_de_precio_definir` entran a `ACCIONES` | `6ed68ca0` |
+| D5 | Menú del día: cargar, quitar y copiar el día anterior, solo en la sucursal activa y con «hoy» en la zona de la empresa | `80bb9982` |
+| AB3+AB4 | Ejes, combinaciones, tarifas (grupos de precio) y precio local de combinación o de tarifa | `ed28edbf` |
+| AB5 | Receta propia de una combinación (versiones que solo se agregan) y su embudo de lectura | `48741e0a` |
+| I1 | La venta aplica la precedencia de la combinación, devuelve `PRECIO_CAMBIO` y escribe la foto `CombinacionEnLinea` | `ed95265a` |
+| I2 | La venta de un combo con entradas (fijos que completa el servidor, `PROMO_CAMBIO`, `ENTRADA_NO_DISPONIBLE`, `MENU_DEL_DIA_SIN_CARGAR`, vigencia, D-2) | `8d9503c1`, `2d7363a2`, `9acc2130` |
+| (merge) | `origin/main` con GO-2d (#114) y «sin receta no se vende» (#113) | `0dfb20e2` |
+| U5 | El POS ofrece y arma los combos de entradas; «Elegir opciones» usa la combinación; cobra lo que muestra | `39ce4ae8` |
+| I3 | El cierre consume la receta propia CONGELADA en la foto, nunca la vigente | `3ec84c62` |
+| I4 | Reportes con combos configurados y recetas propias (sin cambios de código) | `4b15c5c5` |
+| U1 a U4 | Pantallas: lugares, entradas y vigencia en «Carta → Promos», «Menú del día», «Combinaciones» del producto y «Tarifas» | `51b85f7e` |
+
+### Correcciones al plan (verificadas contra el código)
+
+1. **D2 ya estaba hecho en la base** (lectores tolerantes, junto con E1); en esta tanda no se tocó.
+2. **D4a y D4b van en un solo commit:** comparten el caso de uso del componente (`core/pos/componente-de-combo.ts`) y sus guardianes.
+3. **D6 va ANTES que D5:** el menú del día necesita su clave en `ACCIONES` para tener guarda.
+4. **El precio local de combinación tiene su archivo propio de lectura** (`server/lecturas/catalogo/precio-local-de-combinaciones.ts`), y no `precio-local.ts`: así no se ensancha la lista cerrada de los lectores de la carta pública.
+5. **El chequeo de alícuotas al VENDER (D-2) corre solo en las promos con cupos de entradas.** Una promo solo de secciones se vende igual que antes; sus alícuotas las revisa la administración al guardar los cupos.
+6. **El selector del POS ofrece las promos con entradas solo si recibe el día y la zona de la empresa.** Sin ellos, devuelve lo de siempre, y las caracterizaciones del selector no cambian.
+7. **U1 a U4 van en un solo commit:** comparten tipos y la página de la carta.
+8. **No se hizo un golden `venta-combos-go3`:** los tests de venta e I4 fijan los importes al centavo con números exactos, que dicen más que una huella.
+
+### Hallazgos (arreglados en la rama)
+
+- **Con D3, el formulario de cupos de antes habría dado de baja los lugares de entradas.** Solo mandaba los cupos de sección y, como guardar lleva la lista final, el resto se daba de baja. Ahora el formulario manda siempre todos los lugares (`lugares-del-formulario.ts`). Lo fija el e2e `carta-promo-cupos-lista`.
+- **Anular una promo enviada con un componente CONFIGURADO no copiaba la huella al espejo**, así que el espejo no neteaba al cerrar y el café se habría cobrado igual. Ahora `cargarPromoParaAnular` lee la huella y el espejo la repite (`test/pos/cerrar-combinacion-go3.test.ts`, «anular»).
+
+### Supuestos declarados
+
+- **El precio que ve el mozo es un contrato.** Si cambió entre la pantalla y el servidor, la venta se rechaza (`PRECIO_CAMBIO`, `PROMO_CAMBIO`) y nunca se cobra otro. Si no viene un precio esperado (clientes viejos), se cobra el de hoy, como antes.
+- **Las entradas elegibles HOY se calculan con una sola lectura** (`entradas-de-promo-para-vender.ts`), la misma para el selector y para la venta. Una entrada es elegible si está activa; si es un plato del día, tiene que ser de esta sucursal y de la fecha de hoy en la zona de la empresa; el producto tiene que estar disponible y seguir pudiendo ser componente, y su configuración tiene que armarse con la versión vigente.
+- **El prorrateo de un combo pesa cada entrada por su precio de lista con su configuración.** No se aplica el descuento de producto dentro de la promo.
+- **Un espejo de anulación hereda la versión de la receta propia de su original.** La receta propia vacía vuelve a la regla general.
+- **El stock teórico avisa y nunca bloquea** (decisión del dueño), también en el menú del día.
+
+### Pendientes y riesgos
+
+- **La venta de MOSTRADOR (`registrarVenta`) no rechaza un producto con un grupo obligatorio** (hallazgo de GO-2d): lo vende a precio base, sin opciones. I1 e I2 no tocan esa zona (es la venta por la cuenta), así que queda como pendiente aparte.
+- **IVA de los combos:** sigue bloqueado por D-2 (`COMBO_ALICUOTAS_DISTINTAS`) hasta que confirme el contador.
+- **Un plato del día no lleva opciones (D-6).** Un producto con un grupo obligatorio no puede ser plato del día en v1.
