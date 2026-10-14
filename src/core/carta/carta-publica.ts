@@ -33,10 +33,8 @@ export interface ItemCartaPublico {
   imagenUrl: null;
   /** SOLO en un ítem agrupado: sus opciones, por nombre y precio. */
   opciones?: OpcionItemCartaPublica[];
-  /** GO-2d: SOLO en un PV con opciones de venta: lo que se elige hoy (nombre, si es obligatorio, hasta cuántas, y cada opción con su precio o su recargo). */
+  /** GO-2d y CARTA-B: SOLO en un PV con opciones que CAMBIAN EL PRECIO: los tamaños con su precio final y lo que suma o resta una variante o un adicional (nombre del grupo y cada opción con su precio o su recargo). */
   grupos?: GrupoCartaPublico[];
-  /** GO-2d: SOLO si el precio cambia según lo que se elija: «desde». */
-  precioDesde?: number;
 }
 
 export interface OpcionDeGrupoCartaPublica {
@@ -47,8 +45,6 @@ export interface OpcionDeGrupoCartaPublica {
 
 export interface GrupoCartaPublico {
   nombre: string;
-  obligatorio: boolean;
-  maximo: number;
   opciones: OpcionDeGrupoCartaPublica[];
 }
 
@@ -81,8 +77,6 @@ const proyectarOpcion = (o: OpcionItemCartaV1): OpcionItemCartaPublica => ({ nom
 /** GO-2d: un grupo de opciones, campo por campo (las claves opcionales solo si están). */
 const proyectarGrupo = (g: GrupoCartaV1): GrupoCartaPublico => ({
   nombre: g.nombre,
-  obligatorio: g.obligatorio,
-  maximo: g.maximo,
   opciones: g.opciones.map((o) => ({ nombre: o.nombre, ...(o.precio !== undefined ? { precio: o.precio } : {}), ...(o.recargo !== undefined ? { recargo: o.recargo } : {}) })),
 });
 
@@ -100,7 +94,6 @@ function proyectarItem(i: ItemCartaV1): ItemCartaPublico {
     imagenUrl: i.imagenUrl,
     ...(i.opciones !== undefined ? { opciones: i.opciones.map(proyectarOpcion) } : {}),
     ...(i.grupos !== undefined ? { grupos: i.grupos.map(proyectarGrupo) } : {}),
-    ...(i.precioDesde !== undefined ? { precioDesde: i.precioDesde } : {}),
   };
 }
 

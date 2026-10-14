@@ -62,13 +62,12 @@ export interface ItemCartaV1 {
    */
   opciones?: OpcionItemCartaV1[];
   /**
-   * GO-2d (ADR-030, aprobado por el dueño): SOLO en un PV con opciones de venta (tamaños, variantes, guarniciones, adicionales), lo que se puede elegir HOY en la sucursal
-   * (`opciones-en-carta.ts`). En ese ítem `precio` es lo más barato con lo que se puede pedir. Un ítem sin opciones no lleva esta clave: su JSON queda igual que antes. Campo aditivo
-   * de la v1: `version` no cambia. (La clave `opciones` ya es de los ítems agrupados.)
+   * GO-2d (ADR-030, aprobado por el dueño) y CARTA-B: SOLO en un PV con opciones de venta que CAMBIAN EL PRECIO (los tamaños con su precio final, y lo que suma o resta una variante o un
+   * adicional), lo que se puede elegir HOY en la sucursal (`opciones-en-carta.ts`). Lo que no cambia el precio (guarnición, punto de cocción) no viaja. En ese ítem `precio` es lo más barato con lo
+   * que se puede pedir. Un ítem sin opciones que cambien el precio no lleva esta clave: su JSON queda igual que antes. Campo aditivo de la v1: `version` no cambia. (La clave `opciones` ya es de
+   * los ítems agrupados.)
    */
   grupos?: GrupoCartaV1[];
-  /** GO-2d: SOLO junto a `grupos` y si el precio cambia según lo que se elija: «desde $ X» (igual a `precio`). */
-  precioDesde?: number;
 }
 
 /** Una opción (un PV real) dentro de un ítem agrupado de la carta. */
@@ -340,7 +339,7 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
         tags: limpiarTags(p.contenido.tags),
         especial: p.contenido.especial,
         imagenUrl: null,
-        ...(enCarta && enCarta.grupos.length > 0 ? { grupos: enCarta.grupos, ...(enCarta.hayVariacion ? { precioDesde: enCarta.desde } : {}) } : {}),
+        ...(enCarta && enCarta.grupos.length > 0 ? { grupos: enCarta.grupos } : {}),
       },
       p.contenido.orden
     );

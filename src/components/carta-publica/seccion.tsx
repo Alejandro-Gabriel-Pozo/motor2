@@ -1,4 +1,5 @@
-import type { EstiloCarta, GrupoCartaPublico, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
+import { Fragment } from "react";
+import type { EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
 import { formatearPrecioCarta } from "@/core/carta/public";
 import { TagIcon } from "./iconos";
 
@@ -56,6 +57,11 @@ export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCa
   );
 }
 
+/** CARTA-B: los pisos de legibilidad de un ítem con opciones (nombre y precio 19 px, aclaraciones 14 px). El tema manda si pide más; nunca baja de ahí. */
+const PISO_NOMBRE_Y_PRECIO = "1.1875rem";
+const PISO_ACLARACION = "0.875rem";
+const conPiso = (valor: string, piso: string, aplica: boolean) => (aplica ? `max(${piso}, ${valor})` : valor);
+
 function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCarta }) {
   const v = estilo.valores;
   const esp = item.especial;
@@ -63,11 +69,20 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
   const colorPrecio = esp ? (v.color_especial_item_precio || "var(--carta-primary)") : v.color_item_precio || "var(--carta-primary)";
   const colorDesc = esp ? v.color_especial_item_descripcion || undefined : v.color_item_descripcion || undefined;
   const colorTags = esp ? (v.color_especial_item_tags || "var(--carta-primary)") : v.color_item_tags || "var(--carta-primary)";
+  // CARTA-B: lo que llega en `grupos` ya es SOLO lo que cambia el precio (lo decide el servidor): los tamaños con su precio final y lo que suma o resta una variante o un adicional.
+  const tamanos = (item.grupos ?? []).map((g) => ({ nombre: g.nombre, filas: g.opciones.flatMap((o) => (o.precio === undefined ? [] : [{ nombre: o.nombre, precio: o.precio }])) })).filter((g) => g.filas.length > 0);
+  const recargos = (item.grupos ?? []).flatMap((g) => g.opciones.flatMap((o) => (o.recargo === undefined ? [] : [{ nombre: o.nombre, recargo: o.recargo }])));
+  const conOpciones = tamanos.length > 0 || recargos.length > 0;
+  // Con una lista de tamaños el renglón del nombre va SIN precio (cada tamaño lo dice); sin ella, el precio base queda a la derecha como siempre.
+  const tamanosEnLista = tamanos.length > 0;
+  const fuenteNombre = conPiso(v.carta_fuente_item_nombre, PISO_NOMBRE_Y_PRECIO, conOpciones);
+  const fuentePrecio = conPiso(v.carta_fuente_item_precio, PISO_NOMBRE_Y_PRECIO, conOpciones);
+  const fuenteDescripcion = conPiso(v.carta_fuente_item_descripcion, PISO_ACLARACION, conOpciones);
 
   return (
     <li className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="min-w-0 flex-1 carta-titulo font-semibold leading-tight" style={{ fontSize: v.carta_fuente_item_nombre, color: colorNombre, overflowWrap: "anywhere" }}>
+        <h3 className="min-w-0 flex-1 carta-titulo font-semibold leading-tight" style={{ fontSize: fuenteNombre, color: colorNombre, overflowWrap: "anywhere" }}>
           {item.nombre}
           {esp && (
             <span className="ml-1 text-xs" style={{ color: v.color_especial_item_nombre || "var(--carta-primary)" }} aria-label="Especial">
@@ -75,27 +90,33 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
             </span>
           )}
         </h3>
-        {item.precioLista !== undefined ? (
-          <span className="shrink-0 flex flex-col items-end carta-titulo font-semibold" style={{ fontSize: v.carta_fuente_item_precio, color: colorPrecio }} data-descuento-producto>
-            <span className="sr-only">{`Antes ${formatearPrecioCarta(item.precioLista)}, ahora ${item.precioDesde !== undefined ? "desde " : ""}${formatearPrecioCarta(item.precio)}, ${item.descuentoPorcentaje} por ciento de descuento`}</span>
+        {tamanosEnLista ? (
+          item.descuentoPorcentaje !== undefined && (
+            // Los tamaños ya traen el descuento en su precio: acá solo se avisa el porcentaje.
+            <span className="shrink-0 carta-titulo font-semibold" style={{ fontSize: PISO_ACLARACION, color: colorPrecio }} data-descuento-producto>
+              <span className="sr-only">{`${item.descuentoPorcentaje} por ciento de descuento en todos los tamaños`}</span>
+              <span aria-hidden="true">{`−${item.descuentoPorcentaje} %`}</span>
+            </span>
+          )
+        ) : item.precioLista !== undefined ? (
+          <span className="shrink-0 flex flex-col items-end carta-titulo font-semibold" style={{ fontSize: fuentePrecio, color: colorPrecio }} data-descuento-producto>
+            <span className="sr-only">{`Antes ${formatearPrecioCarta(item.precioLista)}, ahora ${formatearPrecioCarta(item.precio)}, ${item.descuentoPorcentaje} por ciento de descuento`}</span>
             <s aria-hidden="true" className="text-xs font-light opacity-75">
               {formatearPrecioCarta(item.precioLista)}
             </s>
             <span aria-hidden="true">
-              {item.precioDesde !== undefined && <span className="mr-1 text-xs font-light">desde</span>}
               {formatearPrecioCarta(item.precio)}
               <span className="ml-1 text-xs font-light">{`−${item.descuentoPorcentaje} %`}</span>
             </span>
           </span>
         ) : (
-          <span className="shrink-0 carta-titulo font-semibold" style={{ fontSize: v.carta_fuente_item_precio, color: colorPrecio }}>
-            {item.precioDesde !== undefined && <span className="mr-1 text-xs font-light">desde</span>}
+          <span className="shrink-0 carta-titulo font-semibold" style={{ fontSize: fuentePrecio, color: colorPrecio }}>
             {formatearPrecioCarta(item.precio)}
           </span>
         )}
       </div>
       {item.descripcion && (
-        <p className="mt-0.5 font-light leading-snug opacity-75" style={{ fontSize: v.carta_fuente_item_descripcion, color: colorDesc }}>
+        <p className="mt-0.5 font-light leading-snug opacity-75" style={{ fontSize: fuenteDescripcion, color: colorDesc }}>
           {item.descripcion}
         </p>
       )}
@@ -112,52 +133,59 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
       {item.opciones && item.opciones.length > 0 && (
         <p className="mt-0.5 text-xs opacity-60">{item.opciones.map((o) => o.nombre).join(" · ")}</p>
       )}
-      {item.grupos && item.grupos.length > 0 && <OpcionesDelItem grupos={item.grupos} colorDesc={colorDesc} fuente={v.carta_fuente_item_descripcion} />}
+      {tamanos.map((g, i) => (
+        <TamanosDelItem key={`tamanos-${i}`} nombre={g.nombre} filas={g.filas} colorNombre={colorDesc} colorPrecio={colorPrecio} />
+      ))}
+      {recargos.length > 0 && <RecargosDelItem recargos={recargos} color={colorDesc} />}
     </li>
   );
 }
 
-/** «elegí 1», «opcional, hasta 2»: lo que se puede elegir de un grupo, en palabras (nunca su tipo interno). */
-function limitesDelGrupo(g: GrupoCartaPublico): string {
-  if (g.obligatorio) return g.maximo === 1 ? "elegí 1" : `elegí hasta ${g.maximo}`;
-  return g.maximo === 1 ? "opcional" : `opcional, hasta ${g.maximo}`;
-}
-
-/** «$ 2.800» (un tamaño), «+ $ 400» o «− $ 300» (un recargo), o nada (sin costo). */
-function precioDeLaOpcion(o: GrupoCartaPublico["opciones"][number]): string | null {
-  if (o.precio !== undefined) return formatearPrecioCarta(o.precio);
-  if (o.recargo === undefined) return null;
-  return `${o.recargo < 0 ? "−" : "+"} ${formatearPrecioCarta(Math.abs(o.recargo))}`;
+/** «+$400» o «−$300»: lo que una opción suma o resta al precio que se ve. */
+function recargoEnPesos(recargo: number): string {
+  return `${recargo < 0 ? "−" : "+"}${formatearPrecioCarta(Math.abs(recargo))}`;
 }
 
 /**
- * GO-2d (ADR-030, decisión del dueño): las opciones de un producto, plegadas en un `<details>` nativo (se abre con teclado y lector de pantalla, sin JavaScript): cada grupo con lo
- * que se elige y cada opción con su precio final (un tamaño) o su recargo. Lo agotado hoy no llega (lo saca la carta). Solo presentación: los precios vienen calculados del servidor.
+ * CARTA-B (decisión del dueño, variante B «lista clásica»): los tamaños de un producto como un renglón por tamaño, «Chico ........ $2.500», SIEMPRE a la vista (sin desplegable ni botón),
+ * con el precio FINAL de cada uno. Es una lista (`ul`) con el nombre del grupo como etiqueta para el lector de pantalla; los puntitos son decoración (`aria-hidden`) y usan el color de
+ * borde del tema. Solo presentación: los precios vienen calculados del servidor. Letra de 17 px, por encima del piso de 16 px de las opciones.
  */
-function OpcionesDelItem({ grupos, colorDesc, fuente }: { grupos: GrupoCartaPublico[]; colorDesc: string | undefined; fuente: string }) {
+function TamanosDelItem({ nombre, filas, colorNombre, colorPrecio }: { nombre: string; filas: { nombre: string; precio: number }[]; colorNombre: string | undefined; colorPrecio: string }) {
   return (
-    <details className="mt-1" data-opciones-carta>
-      <summary className="cursor-pointer text-xs font-medium underline underline-offset-2" style={{ color: colorDesc }}>
-        Ver opciones
-      </summary>
-      <dl className="mt-1 flex flex-col gap-1 font-light leading-snug" style={{ fontSize: fuente, color: colorDesc }}>
-        {grupos.map((g, i) => (
-          <div key={`grupo-${i}`} data-grupo-carta={g.nombre}>
-            <dt className="font-medium">
-              {g.nombre} <span className="font-light">({limitesDelGrupo(g)})</span>
-            </dt>
-            <dd>
-              {g.opciones
-                .map((o) => {
-                  const precio = precioDeLaOpcion(o);
-                  return precio ? `${o.nombre} ${precio}` : o.nombre;
-                })
-                .join(" · ")}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </details>
+    <ul aria-label={nombre} data-tamanos-carta={nombre} className="mt-1.5 flex flex-col">
+      {filas.map((f, i) => (
+        <li key={`tamano-${i}`} className="flex items-baseline gap-1.5 py-0.5 leading-snug" style={{ fontSize: "1.0625rem", color: colorNombre }}>
+          <span className="min-w-0" style={{ overflowWrap: "anywhere" }}>
+            {f.nombre}
+          </span>
+          <span aria-hidden="true" className="min-w-3 flex-1 -translate-y-1 border-b-[1.5px] border-dotted" style={{ borderColor: "color-mix(in oklch, var(--carta-ink-soft) 55%, transparent)" }} />
+          <span className="shrink-0 carta-titulo font-bold" style={{ color: colorPrecio }}>
+            {formatearPrecioCarta(f.precio)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * CARTA-B: lo que suma (o resta) una variante o un adicional, en UNA línea: «Sumá: Con leche +$400 · Medialuna +$600 · Shot +$500», siempre visible. Cada opción es un bloque en línea para
+ * que su nombre y su monto no queden en renglones distintos. Letra de 16 px (el piso de las opciones).
+ */
+function RecargosDelItem({ recargos, color }: { recargos: { nombre: string; recargo: number }[]; color: string | undefined }) {
+  return (
+    <p data-suma-carta className="mt-1.5 leading-snug" style={{ fontSize: "1rem", color: color ?? "var(--carta-ink-soft)" }}>
+      <strong className="font-semibold" style={{ color: "var(--carta-ink)" }}>
+        Sumá:
+      </strong>{" "}
+      {recargos.map((r, i) => (
+        <Fragment key={`suma-${i}`}>
+          {i > 0 && " · "}
+          <span className="inline-block max-w-full" style={{ overflowWrap: "anywhere" }}>{`${r.nombre} ${recargoEnPesos(r.recargo)}`}</span>
+        </Fragment>
+      ))}
+    </p>
   );
 }
 

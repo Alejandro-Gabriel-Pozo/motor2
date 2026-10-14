@@ -44,16 +44,14 @@ const CLAVES_DE_LA_CARTA = [
   "carta.secciones[].items[].opciones[].nombre",
   "carta.secciones[].items[].opciones[].precio",
   "carta.secciones[].items[].precio",
-  // GO-2d (GO-0 §4, aprobado por el dueño el 2026-10-13): las opciones de venta de un PV, sin el tipo interno ni ningún id.
+  // GO-2d (GO-0 §4, aprobado por el dueño el 2026-10-13) y CARTA-B (variante B, 2026-10-14): SOLO las opciones de venta de un PV que CAMBIAN EL PRECIO, sin el tipo interno, sin ningún id y sin los
+  // límites del grupo (obligatorio, máximo) ni el «desde»: la carta ya no los dibuja, así que dejaron de salir.
   "carta.secciones[].items[].grupos",
-  "carta.secciones[].items[].grupos[].maximo",
   "carta.secciones[].items[].grupos[].nombre",
-  "carta.secciones[].items[].grupos[].obligatorio",
   "carta.secciones[].items[].grupos[].opciones",
   "carta.secciones[].items[].grupos[].opciones[].nombre",
   "carta.secciones[].items[].grupos[].opciones[].precio",
   "carta.secciones[].items[].grupos[].opciones[].recargo",
-  "carta.secciones[].items[].precioDesde",
   "carta.secciones[].items[].precioLista",
   "carta.secciones[].items[].tags",
   "carta.secciones[].nombre",
@@ -134,6 +132,27 @@ describe("la salida de la carta pública está inventariada", () => {
     await prisma.productoAdmiteGrupo.create({ data: { productoId: te.id, grupoId: taza, orden: 0, modoPrecio: "DIFERENCIA" } });
     await prisma.productoAdmiteOpcion.create({ data: { productoId: te.id, opcionId: unica.opcionId } });
     await prisma.opcionApagadaEnSucursal.create({ data: { sucursalId: central, opcionId: unica.opcionId, apagada: true, actualizadoPorId: autor.id } });
+
+    // CARTA-B: una milanesa cuya guarnición y punto de cocción no cambian el precio (no salen), y un jugo cuyos dos tamaños cuestan lo mismo (no sale la lista).
+    const milanesa = await prisma.producto.create({ data: { codigo: "PV-MILA", nombre: "Milanesa", tipo: "PV", precioVenta: 9500, unidadStockId: u.id } });
+    const jugo = await prisma.producto.create({ data: { codigo: "PV-JUGO", nombre: "Jugo", tipo: "PV", precioVenta: 2000, unidadStockId: u.id } });
+    for (const [orden, p] of [milanesa, jugo].entries()) {
+      await prisma.disponibilidadProducto.create({ data: { sucursalId: central, productoId: p.id, disponible: true } });
+      await prisma.contenidoCartaProducto.create({ data: { sucursalId: central, productoId: p.id, visibleEnCarta: true, seccionCartaId: seccion.id, orden: 20 + orden } });
+    }
+    const guarnicion = await grupo("Guarnición", "INCLUIDA", 1, 1);
+    const pure = await opcion(guarnicion, "Puré", 1, "0.00");
+    const papas = await opcion(guarnicion, "Papas", 2, "0.00");
+    const cocion = await grupo("Punto de cocción", "VARIANTE", 1, 1);
+    const jugoso = await opcion(cocion, "Jugoso", 1, "0.00");
+    await prisma.productoAdmiteGrupo.create({ data: { productoId: milanesa.id, grupoId: guarnicion, orden: 0 } });
+    await prisma.productoAdmiteGrupo.create({ data: { productoId: milanesa.id, grupoId: cocion, orden: 1 } });
+    for (const o of [pure, papas, jugoso]) await prisma.productoAdmiteOpcion.create({ data: { productoId: milanesa.id, opcionId: o.opcionId } });
+    const vaso = await grupo("Vaso", "MEDIDA", 1, 1);
+    const chicoJugo = await opcion(vaso, "Chico", 1, "0.00");
+    const grandeJugo = await opcion(vaso, "Grande", 2, "0.00");
+    await prisma.productoAdmiteGrupo.create({ data: { productoId: jugo.id, grupoId: vaso, orden: 0, modoPrecio: "DIFERENCIA" } });
+    for (const o of [chicoJugo, grandeJugo]) await prisma.productoAdmiteOpcion.create({ data: { productoId: jugo.id, opcionId: o.opcionId } });
   });
 
   it("carta: cada clave que sale está en la lista cerrada, y el costo/consignación/observaciones internos no viajan", async () => {
@@ -151,7 +170,7 @@ describe("la salida de la carta pública está inventariada", () => {
     for (const interno of [CANARIO, "555.55", "4242", "COD-", "IVA_27", "1.2345", "0.7777", "ANCLA-", "MEDIDA", "ADICIONAL"]) expect(serializado, `la salida pública contiene «${interno}»`).not.toContain(interno);
   });
 
-  it("GO-2d: el café sale con sus opciones de hoy (lo agotado no), el descuento solo sobre el tamaño, y el té sin nada para elegir no sale", async () => {
+  it("GO-2d y CARTA-B: el café sale SOLO con lo que cambia el precio (lo agotado y lo gratis no), el descuento solo sobre el tamaño, y el té sin nada para elegir no sale", async () => {
     const { carta } = (await cartaPublica(empresa, "central", AHORA_DE_LA_CORRIDA))!;
     const items = carta.secciones[0].items;
     expect(items.map((i) => i.nombre)).not.toContain("Té");
@@ -167,13 +186,20 @@ describe("la salida de la carta pública está inventariada", () => {
       especial: false,
       imagenUrl: null,
       grupos: [
-        { nombre: "Tamaño", obligatorio: true, maximo: 1, opciones: [{ nombre: "Chico", precio: 810 }, { nombre: "Grande", precio: 1170 }] },
-        { nombre: "Leche", obligatorio: false, maximo: 1, opciones: [{ nombre: "Vaca" }] },
-        // El recargo del adicional NO lleva el descuento de producto.
-        { nombre: "Extras", obligatorio: false, maximo: 2, opciones: [{ nombre: "Medialuna", recargo: 600 }] },
+        { nombre: "Tamaño", opciones: [{ nombre: "Chico", precio: 810 }, { nombre: "Grande", precio: 1170 }] },
+        // «Leche» (Vaca, sin costo; la otra, agotada) no cambia el precio: no sale. El recargo del adicional NO lleva el descuento de producto.
+        { nombre: "Extras", opciones: [{ nombre: "Medialuna", recargo: 600 }] },
       ],
-      precioDesde: 810,
     });
+  });
+
+  it("CARTA-B: la milanesa (guarnición y punto de cocción sin costo) y el jugo (tamaños al mismo precio) salen como un producto común: sin `grupos`, con su precio", async () => {
+    const { carta } = (await cartaPublica(empresa, "central", AHORA_DE_LA_CORRIDA))!;
+    const items = carta.secciones[0].items;
+    expect(items.find((i) => i.nombre === "Milanesa")).toEqual({ nombre: "Milanesa", categoria: "Platos", descripcion: null, precio: 9500, tags: [], especial: false, imagenUrl: null });
+    expect(items.find((i) => i.nombre === "Jugo")).toEqual({ nombre: "Jugo", categoria: "Platos", descripcion: null, precio: 2000, tags: [], especial: false, imagenUrl: null });
+    const serializado = JSON.stringify(carta);
+    for (const oculto of ["Guarnición", "Punto de cocción", "Jugoso", "Puré", "Papas", "Vaso"]) expect(serializado, `la carta muestra «${oculto}», que no cambia el precio`).not.toContain(oculto);
   });
 
   it("portal: solo slug/etiqueta/subtítulo/posición; la configuración del portal no trae ids ni datos de la empresa", async () => {
