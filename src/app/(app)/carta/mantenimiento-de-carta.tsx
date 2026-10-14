@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { coincideConLaBusqueda } from "@/core/carta/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
@@ -97,8 +97,6 @@ export function MantenimientoDeCarta({
   const [buscar, setBuscar] = useState("");
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [pendiente, startTransition] = useTransition();
-  const enviando = useRef(false);
-  const secuencia = useRef(0);
 
   // El aviso se va solo a los 7 segundos (como en el prototipo); uno nuevo reemplaza al anterior.
   useEffect(() => {
@@ -118,19 +116,16 @@ export function MantenimientoDeCarta({
     }
   };
 
-  /** Un toque: lo hace el servidor; si salió bien se refresca y el aviso ofrece «Deshacer» (otro pedido, el inverso, que ya no se puede deshacer). */
+  /**
+   * Un toque: lo hace el servidor; si salió bien se refresca y el aviso ofrece «Deshacer» (otro pedido, el inverso, que ya no se puede deshacer). Mientras uno está en curso (`pendiente`) los
+   * controles están deshabilitados y un segundo toque no sale (sin refs: el estado de la transición alcanza).
+   */
   const ejecutar = (accion: () => Promise<ResultadoAccion>, deshacer?: () => Promise<ResultadoAccion>) => {
-    if (enviando.current) return;
-    enviando.current = true;
+    if (pendiente) return;
     startTransition(async () => {
-      try {
-        const r = await accion();
-        secuencia.current += 1;
-        setAviso({ id: secuencia.current, mensaje: r.mensaje, ok: r.ok, deshacer: r.ok ? deshacer : undefined });
-        if (r.ok) router.refresh();
-      } finally {
-        enviando.current = false;
-      }
+      const r = await accion();
+      setAviso((anterior) => ({ id: (anterior?.id ?? 0) + 1, mensaje: r.mensaje, ok: r.ok, deshacer: r.ok ? deshacer : undefined }));
+      if (r.ok) router.refresh();
     });
   };
 
