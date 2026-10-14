@@ -1,5 +1,6 @@
 import type { ResultadoDato } from "@/core/datos/resultado";
 import type { ResultadoCaso } from "@/core/resultado-caso";
+import type { CupoPedido } from "@/core/carta/public";
 
 /**
  * Tipos de la feature «promos de la carta» (Hito 4 de la pureza, bloque 4.2, pasos H4C-2 y H4C-3 — `docs/plan-hito-4-pureza.md` §3): los comandos y resultados de
@@ -58,16 +59,14 @@ export interface ComandoActivarPromoCarta {
 /** `PROMO_NO_ENCONTRADA`: el id no es de una promo de la empresa. */
 export type ResultadoActivarPromoCarta = ResultadoCaso<null, "PROMO_NO_ENCONTRADA">;
 
-/** Un cupo YA validado por `guardComandoGuardarCuposPromoCarta` (S-52): la sección elegida, el mínimo y el máximo enteros, y su posición. */
-export interface CupoValidadoPromoCarta {
-  seccionCartaId: string;
-  cantidadMinima: number;
-  cantidadMaxima: number;
-  orden: number;
-}
+/**
+ * Un cupo YA validado por `guardComandoGuardarCuposPromoCarta` (S-52): la sección elegida, el mínimo y el máximo enteros, y su posición. GO-3b (D3): con su `tipo`; un cupo SECCION
+ * lleva `seccionCartaId` (y `nombre` null), uno LISTA o DEL_DIA lleva `nombre` (y `seccionCartaId` null).
+ */
+export type CupoValidadoPromoCarta = CupoPedido;
 
 /**
- * Comando «reemplazar todos los cupos de una promo» (H4C-3): lo que recibe `guardarCuposPromoCartaCasoDeUso`. Los `cupos` son el RESULTADO de
+ * Comando «guardar los cupos de una promo» (H4C-3; desde GO-3b D3 sin borrar: la lista es la final y lo que no viene se da de baja): lo que recibe `guardarCuposPromoCartaCasoDeUso`. Los `cupos` son el RESULTADO de
  * `guardComandoGuardarCuposPromoCarta` (S-52: forma, tope de la lista, sección sin repetir y cantidades en rango, que la acción calcula con lo que mandó el cliente); el caso
  * de uso aplica su rechazo DESPUÉS de leer la promo (una promo inexistente gana sobre un cupo inválido: fijado por tests), nunca antes.
  */
@@ -78,7 +77,8 @@ export interface ComandoGuardarCuposPromoCarta {
 
 /**
  *  - `PROMO_NO_ENCONTRADA`: la promo no existe;
- *  - `CUPO_INVALIDO`: un cupo sin sección, con la sección repetida, o con cantidades fuera de rango (o el mínimo mayor que el máximo);
+ *  - `CUPO_INVALIDO`: un cupo sin sección, con la sección repetida, o con cantidades fuera de rango (o el mínimo mayor que el máximo); GO-3b: un lugar sin nombre, con el nombre
+ *    repetido o con el nombre de un lugar de otro tipo;
  *  - `SECCION_NO_ENCONTRADA`: alguna sección de los cupos no existe;
  *  - `BAJO_EL_PISO`: el precio de la empresa, o el precio local de alguna sucursal, no alcanza el piso de $0,01 por unidad del peor caso de los cupos nuevos.
  */

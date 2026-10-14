@@ -17,6 +17,9 @@ export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from 
 // GO-3 (ADR-032): los tipos de cupo y la lectura tolerante del primer despliegue (solo los cupos de sección activos; una promo con un cupo activo de tipo nuevo no se ofrece).
 export { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos, tieneCupoActivoDeTipoNuevo } from "./cupos-de-promo";
 export type { TipoDeCupo } from "./cupos-de-promo";
+// GO-3b (D3): la administración de los cupos sin borrar (la clave natural de cada cupo y la diferencia contra lo que hay) y los tipos de cupo para el guard.
+export { LARGO_MAXIMO_NOMBRE_DE_CUPO, TIPOS_DE_CUPO, claveNaturalDeCupo, diferenciaDeCupos } from "./cupos-de-promo";
+export type { CupoExistente, CupoPedido } from "./cupos-de-promo";
 export { aplicarDescuentoDeProducto, precioCobradoConDescuentos } from "./descuento-producto";
 export type { Resultado } from "./validaciones";
 // Hito 4, H4C-2: el guard de las promos (`core/features/carta/promos.guard.ts`) valida con los mismos validadores de la carta que usaba la Server Action.

@@ -1,13 +1,13 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { mensajePisoDePromo, mensajePisoLocalDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
-import { cuposDeSeccionActivos } from "@/core/carta/public";
+import { diferenciaDeCupos, type CupoExistente, type CupoPedido, type TipoDeCupo } from "@/core/carta/public";
 import type { ComandoGuardarCuposPromoCarta, ResultadoGuardarCuposPromoCarta } from "@/core/features/carta/promos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { reemplazarCuposDePromo } from "@/server/persistencia/carta/promos";
+import { cambiarCupoDePromo, crearCupoDePromo, darDeBajaCupoDePromo } from "@/server/persistencia/carta/promos";
 
 /**
  * Caso de uso «reemplazar TODOS los cupos de una promo» (Hito 4 de la pureza, bloque 4.2, paso H4C-3 — `docs/plan-hito-4-pureza.md` §3). Es el cuerpo que antes
@@ -24,13 +24,19 @@ import { reemplazarCuposDePromo } from "@/server/persistencia/carta/promos";
  * S-06 (plan de endurecimiento de seguridad, tanda T2): antes el reemplazo no dejaba rastro. Ahora lee la promo, los cupos de antes, las secciones y el piso DENTRO de la
  * transacción y audita cada columna de cada cupo que cambia (`PromoCartaCupo`, ver `auditarCupos`), en esa misma transacción.
  *
+ * GO-3b (ADR-032, paso D3): YA NO BORRA. Los cupos tienen una clave natural (la sección en un SECCION; el nombre sin mayúsculas en un LISTA o DEL_DIA) y guardar es llevar las filas
+ * al estado pedido (`diferenciaDeCupos`, `core/carta/cupos-de-promo.ts`): lo que sigue se cambia en el lugar, lo que vuelve se reactiva, lo que no vino se da de baja (`activo = false`)
+ * y lo nuevo se crea. Lee TODOS los cupos de la promo (también los dados de baja: un nombre dado de baja sigue ocupado y se reactiva, no se duplica). La auditoría es la misma de
+ * siempre para los de sección (`entidadId` `${promoCartaId}:${seccionCartaId}`; una baja se registra como antes, con el nuevo `null`; volver de una baja, con el anterior `null`) y,
+ * para los de entradas, con el id del cupo (`${promoCartaId}:${cupoId}`: la fila ya no cambia de id). Las entradas de una lista y los platos del día no se tocan acá.
+ *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos.
  *
  * @contract Deja exactamente los cupos pedidos en la promo (todo o nada), si cada uno es válido y todos los precios de la promo alcanzan el piso de los cupos nuevos; y deja una fila de auditoría por cada columna de cupo que cambió.
- * @idempotency No aplica — repetir el pedido borra y vuelve a crear los mismos cupos (sin filas de auditoría nuevas: no cambió nada).
- * @transaction conTransaccionSerializable (SERIALIZABLE + reintento): las lecturas (promo, cupos de antes, secciones, piso), el borrado y la creación de los cupos y su auditoría, todo junto.
+ * @idempotency Por estado — repetir el pedido no escribe ni audita nada (cada cupo ya está como se pide).
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, con `tambienChoqueDeUnico`: dos guardados a la vez que crean el MISMO cupo chocan con su único y el reintento relee y lo cambia en el lugar): las lecturas (promo, cupos de antes, secciones, piso), las escrituras de los cupos y su auditoría, todo junto.
  * @sideEffects registrarCambioAuditado (PromoCartaCupo.cantidadMinima y .cantidadMaxima por sección, del anterior al nuevo), en la misma transacción. Sin revalidación de la carta pública, como antes.
- * @ficha permiso=carta_promo_definir transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=carta_promo_definir transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function guardarCuposPromoCartaCasoDeUso(
   actor: Pick<ContextoUsuario, "transaccion" | "usuarioId" | "empresaId" | "db" | "alcance">,
@@ -45,90 +51,114 @@ export async function guardarCuposPromoCartaCasoDeUso(
   // (falla ABIERTO: se guardarían cupos que dejan bajo el piso el precio de otra sucursal). La transacción se abre con la lectura de verificación (toda la empresa, SOLO lectura): la escritura
   // (cupos y auditoría, de empresa) sigue como estaba.
   const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
-  return conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoGuardarCuposPromoCarta> => {
-    const promo = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, include: { sucursales: { select: { precioLocal: true } } } });
-    if (!promo) return fracaso("PROMO_NO_ENCONTRADA", "No se encontró la promo.");
+  return conTransaccionSerializable(
+    verificacion.transaccion,
+    async (tx): Promise<ResultadoGuardarCuposPromoCarta> => {
+      const promo = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, include: { sucursales: { select: { precioLocal: true } } } });
+      if (!promo) return fracaso("PROMO_NO_ENCONTRADA", "No se encontró la promo.");
 
-    // S-52: la forma, el tope de la lista y el rango de cada cupo los decidió `guardComandoGuardarCuposPromoCarta` (la acción lo calculó con lo que mandó el cliente); su rechazo se aplica ACÁ,
-    // después de leer la promo: una promo inexistente gana sobre un cupo inválido.
-    if (!cupos.ok) return fracaso("CUPO_INVALIDO", cupos.mensaje);
-    const cuposValidados = cupos.valor;
-    const seccionIds = new Set(cuposValidados.map((c) => c.seccionCartaId));
+      // S-52: la forma, el tope de la lista y el rango de cada cupo los decidió `guardComandoGuardarCuposPromoCarta` (la acción lo calculó con lo que mandó el cliente); su rechazo se aplica ACÁ,
+      // después de leer la promo: una promo inexistente gana sobre un cupo inválido.
+      if (!cupos.ok) return fracaso("CUPO_INVALIDO", cupos.mensaje);
+      const cuposValidados = cupos.valor;
+      const seccionIds = new Set(cuposValidados.flatMap((c) => (c.seccionCartaId === null ? [] : [c.seccionCartaId])));
 
-    // Los nombres de las secciones nuevas, para la descripción de la auditoría (los de las que se van salen de los cupos de antes).
-    const nombresDeSecciones = new Map<string, string>();
-    if (cuposValidados.length) {
-      const secciones = await tx.seccionCarta.findMany({ where: { id: { in: [...seccionIds] } }, select: { id: true, nombre: true } });
-      if (secciones.length !== seccionIds.size) return fracaso("SECCION_NO_ENCONTRADA", "Alguna sección de carta de los cupos no existe.");
-      for (const s of secciones) nombresDeSecciones.set(s.id, s.nombre);
-
-      // D3: peor caso = todos los cupos en su máximo — el precio tiene que alcanzar el piso de $0,01 por unidad ahí también,
-      // no solo en la elección mínima.
-      // Vale para el precio de la empresa y para el precio local de CUALQUIER sucursal que lo tenga.
-      const piso = pisoDePrecioDePromo(cuposValidados)!;
-      if (Number(promo.precio) < piso.minimo) return fracaso("BAJO_EL_PISO", mensajePisoDePromo(promo.titulo, Number(promo.precio), piso));
-      // El precio local de otra sucursal puede ser de una que quien guarda no ve: el rechazo no nombra ni el importe ni la sucursal.
-      if (promo.sucursales.some((s) => s.precioLocal !== null && Number(s.precioLocal) < piso.minimo)) {
-        return fracaso("BAJO_EL_PISO", mensajePisoLocalDePromo(promo.titulo, piso));
+      // Los nombres de las secciones nuevas, para la descripción de la auditoría (los de las que se van salen de los cupos de antes).
+      const nombresDeSecciones = new Map<string, string>();
+      if (seccionIds.size) {
+        const secciones = await tx.seccionCarta.findMany({ where: { id: { in: [...seccionIds] } }, select: { id: true, nombre: true } });
+        if (secciones.length !== seccionIds.size) return fracaso("SECCION_NO_ENCONTRADA", "Alguna sección de carta de los cupos no existe.");
+        for (const s of secciones) nombresDeSecciones.set(s.id, s.nombre);
       }
-    }
+      if (cuposValidados.length) {
+        // D3: peor caso = todos los cupos en su máximo — el precio tiene que alcanzar el piso de $0,01 por unidad ahí también,
+        // no solo en la elección mínima. GO-3b: cuentan los cupos de todos los tipos (un componente fijo cuenta como su máximo).
+        // Vale para el precio de la empresa y para el precio local de CUALQUIER sucursal que lo tenga.
+        const piso = pisoDePrecioDePromo(cuposValidados)!;
+        if (Number(promo.precio) < piso.minimo) return fracaso("BAJO_EL_PISO", mensajePisoDePromo(promo.titulo, Number(promo.precio), piso));
+        // El precio local de otra sucursal puede ser de una que quien guarda no ve: el rechazo no nombra ni el importe ni la sucursal.
+        if (promo.sucursales.some((s) => s.precioLocal !== null && Number(s.precioLocal) < piso.minimo)) {
+          return fracaso("BAJO_EL_PISO", mensajePisoLocalDePromo(promo.titulo, piso));
+        }
+      }
 
-    // GO-3 (primer despliegue): este caso de uso solo administra los cupos de SECCIÓN (los de tipo nuevo no se leen ni se tocan).
-    const previos = cuposDeSeccionActivos(
-      await tx.promoCartaCupo.findMany({
-        where: { promoCartaId, tipo: "SECCION" },
-        select: { tipo: true, activo: true, seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, seccionCarta: { select: { nombre: true } } },
-      }),
-    );
-    for (const p of previos) nombresDeSecciones.set(p.seccionCartaId, p.seccionCarta.nombre);
+      // GO-3b (D3): TODOS los cupos de la promo, activos y dados de baja (la diferencia es por clave natural; un nombre dado de baja se reactiva, no se duplica).
+      const existentes: (CupoExistente & { nombreDeSeccion: string | null })[] = (
+        await tx.promoCartaCupo.findMany({
+          where: { promoCartaId },
+          orderBy: [{ orden: "asc" }, { id: "asc" }],
+          select: { id: true, tipo: true, activo: true, seccionCartaId: true, nombre: true, cantidadMinima: true, cantidadMaxima: true, orden: true, seccionCarta: { select: { nombre: true } } },
+        })
+      ).map((c) => ({ ...c, tipo: c.tipo as TipoDeCupo, nombreDeSeccion: c.seccionCarta?.nombre ?? null }));
+      for (const c of existentes) if (c.seccionCartaId !== null && c.nombreDeSeccion !== null && !nombresDeSecciones.has(c.seccionCartaId)) nombresDeSecciones.set(c.seccionCartaId, c.nombreDeSeccion);
 
-    await reemplazarCuposDePromo(tx, { promoCartaId, cupos: cuposValidados });
-    await auditarCupos(tx, actor.usuarioId, { promoCartaId, titulo: promo.titulo, nombresDeSecciones, previos, nuevos: cuposValidados });
+      const diferencia = diferenciaDeCupos(existentes, cuposValidados);
+      if (!diferencia.ok) return fracaso("CUPO_INVALIDO", diferencia.mensaje);
+      const { crear, cambiar, darDeBaja } = diferencia.diferencia;
 
-    return exito(
-      cuposValidados.length
-        ? `Cupos de "${promo.titulo}" guardados (${cuposValidados.length}): ahora es una promo armable en el POS.`
-        : `"${promo.titulo}" volvió a ser informativa (sin cupos): el POS deja de ofrecerla para armar.`,
-      null,
-    );
-  });
+      // Todo validado: recién acá se escribe (los rechazos de arriba no dejaron nada). Cada escritura con su auditoría, en esta misma transacción.
+      const contexto = { promoCartaId, titulo: promo.titulo, nombresDeSecciones };
+      for (const c of darDeBaja) {
+        await darDeBajaCupoDePromo(tx, { id: c.id });
+        await auditarCupo(tx, actor.usuarioId, contexto, c, c, null);
+      }
+      for (const { estaba, queda } of cambiar) {
+        await cambiarCupoDePromo(tx, { id: estaba.id, nombre: queda.nombre, cantidadMinima: queda.cantidadMinima, cantidadMaxima: queda.cantidadMaxima, orden: queda.orden });
+        await auditarCupo(tx, actor.usuarioId, contexto, { id: estaba.id, ...queda }, estaba.activo ? estaba : null, queda);
+      }
+      for (const c of crear) {
+        const { id } = await crearCupoDePromo(tx, { promoCartaId, ...c });
+        await auditarCupo(tx, actor.usuarioId, contexto, { id, ...c }, null, c);
+      }
+
+      return exito(
+        cuposValidados.length
+          ? `Cupos de "${promo.titulo}" guardados (${cuposValidados.length}): ahora es una promo armable en el POS.`
+          : `"${promo.titulo}" volvió a ser informativa (sin cupos): el POS deja de ofrecerla para armar.`,
+        null,
+      );
+    },
+    undefined,
+    undefined,
+    true,
+  );
 }
 
 /**
  * S-06: una fila de auditoría por cada columna (`cantidadMinima`, `cantidadMaxima`) de cada cupo que cambia, aparece (anterior `null`) o desaparece (nuevo `null`). Los cupos fijan
- * cuántas unidades de cada sección entran por el precio de la promo: subir un máximo de 2 a 30 cambia cuánta mercadería sale por el mismo importe. `entidadId` es
- * `${promoCartaId}:${seccionCartaId}` (la clave natural del cupo: el reemplazo borra y recrea las filas, así que su id no sirve). La promo es de la empresa: `sucursalId` null.
- * Va dentro de la transacción del reemplazo; un cupo que no cambió no deja fila (`registrarCambioAuditado` ignora el «no cambió»).
+ * cuántas unidades de cada sección entran por el precio de la promo: subir un máximo de 2 a 30 cambia cuánta mercadería sale por el mismo importe. En un cupo de SECCIÓN `entidadId` es
+ * `${promoCartaId}:${seccionCartaId}` (la clave natural del cupo, la de siempre: hasta GO-3b el reemplazo borraba y recreaba las filas, así que su id no servía). La promo es de la empresa:
+ * `sucursalId` null. Va dentro de la transacción de la escritura; un cupo que no cambió no deja fila (`registrarCambioAuditado` ignora el «no cambió»).
+ *
+ * GO-3b (D3): un cupo dado de baja cuenta como «desaparece» (nuevo `null`) y uno que vuelve de una baja, como «aparece» (anterior `null`): la cadena de cada clave queda igual que con el
+ * reemplazo de antes. En un lugar de entradas (LISTA o DEL_DIA) `entidadId` es `${promoCartaId}:${cupoId}` (la fila ya es estable) y la descripción nombra el lugar.
  */
-async function auditarCupos(
+async function auditarCupo(
   tx: Parameters<typeof registrarCambioAuditado>[0],
   actorId: string,
-  datos: {
-    promoCartaId: string;
-    titulo: string;
-    nombresDeSecciones: ReadonlyMap<string, string>;
-    previos: readonly { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number }[];
-    nuevos: readonly { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number }[];
-  },
+  datos: { promoCartaId: string; titulo: string; nombresDeSecciones: ReadonlyMap<string, string> },
+  cupo: CupoPedido & { id: string },
+  antes: Pick<CupoPedido, "cantidadMinima" | "cantidadMaxima"> | null,
+  despues: Pick<CupoPedido, "cantidadMinima" | "cantidadMaxima"> | null,
 ): Promise<void> {
-  const antes = new Map(datos.previos.map((c) => [c.seccionCartaId, c]));
-  const despues = new Map(datos.nuevos.map((c) => [c.seccionCartaId, c]));
-  for (const seccionCartaId of new Set([...antes.keys(), ...despues.keys()])) {
-    const nombreDeSeccion = datos.nombresDeSecciones.get(seccionCartaId) ?? seccionCartaId;
-    const columnas = [
-      { campo: "cantidadMinima", etiqueta: "cantidad mínima" },
-      { campo: "cantidadMaxima", etiqueta: "cantidad máxima" },
-    ] as const;
-    for (const { campo, etiqueta } of columnas) {
-      await registrarCambioAuditado(tx, {
-        entidad: "PromoCartaCupo",
-        entidadId: `${datos.promoCartaId}:${seccionCartaId}`,
-        campo,
-        descripcion: `Promo "${datos.titulo}": cupo de la sección "${nombreDeSeccion}", ${etiqueta}`,
-        valorAnterior: antes.get(seccionCartaId)?.[campo] ?? null,
-        valorNuevo: despues.get(seccionCartaId)?.[campo] ?? null,
-        actorId,
-      });
-    }
+  const deSeccion = cupo.tipo === "SECCION" && cupo.seccionCartaId !== null;
+  const entidadId = deSeccion ? `${datos.promoCartaId}:${cupo.seccionCartaId}` : `${datos.promoCartaId}:${cupo.id}`;
+  const lugar = deSeccion
+    ? `cupo de la sección "${datos.nombresDeSecciones.get(cupo.seccionCartaId!) ?? cupo.seccionCartaId}"`
+    : `lugar «${cupo.nombre ?? ""}» (${cupo.tipo === "LISTA" ? "lista propia" : "plato del día"})`;
+  const columnas = [
+    { campo: "cantidadMinima", etiqueta: "cantidad mínima" },
+    { campo: "cantidadMaxima", etiqueta: "cantidad máxima" },
+  ] as const;
+  for (const { campo, etiqueta } of columnas) {
+    await registrarCambioAuditado(tx, {
+      entidad: "PromoCartaCupo",
+      entidadId,
+      campo,
+      descripcion: `Promo "${datos.titulo}": ${lugar}, ${etiqueta}`,
+      valorAnterior: antes?.[campo] ?? null,
+      valorNuevo: despues?.[campo] ?? null,
+      actorId,
+    });
   }
 }
