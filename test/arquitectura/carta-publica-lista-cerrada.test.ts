@@ -53,7 +53,7 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   SucursalPublica: ["etiqueta", "orden", "posH", "posW", "posX", "posY", "publicada", "slug", "subtituloPortal", "sucursal"],
   TemaCartaSucursal: ["aplicarEnCarta", "valores"],
   // GO-2d (ADR-030; GO-0 §4, ampliación aprobada por el dueño el 2026-10-13: la carta muestra tamaños, variantes, guarniciones y adicionales con su precio). Se LEE para calcular el
-  // precio con la regla de la venta; lo que SALE lo cierra `CLAVES_DE_LA_CARTA` (nombre, obligatorio, máximo, precio o recargo). NUNCA: `VersionDeOpcion.factorEscala`,
+  // precio con la regla de la venta; lo que SALE lo cierra `CLAVES_DE_LA_CARTA` (nombre del grupo y, por opción, nombre y precio o recargo: desde CARTA-B solo sale lo que CAMBIA EL PRECIO, decidido en el servidor, sin sumar ningún campo). NUNCA: `VersionDeOpcion.factorEscala`,
   // `ConsumoDeOpcion` (la receta), `OpcionDeGrupo.productoId` (el producto que respalda un adicional) ni la foto de lo vendido. `tipoDeDiferencia` y `porcentaje` (de la versión y del
   // producto) no estaban en GO-0 porque el recargo en % llegó con GO-2a: sin ellos un recargo en % se mostraría mal. Los de `PrecioLocalDeOpcion`, `OpcionDeGrupo.grupo/grupoId/
   // productosQueLaAdmiten` y `ProductoAdmiteGrupo.grupoId/productoId` / `ProductoAdmiteOpcion.id/productoId` son del lector ÚNICO de la grilla (`precio-local-de-opciones.ts`); `ProductoAdmiteGrupo.id`,

@@ -196,46 +196,80 @@ test.describe("carta de una sucursal", () => {
     }
   });
 
-  test("GO-2d: un PV con opciones muestra «desde», los tamaños con su precio, la guarnición y «+ $» del adicional; marcar una opción agotada desde la app la saca al instante", async ({
+  test("CARTA-B: la carta muestra SOLO lo que cambia el precio (tamaños en lista con puntitos, línea «Sumá:»), sin la guarnición ni «Ver opciones»; marcar una opción agotada desde la app la saca al instante", async ({
     page,
     paginaAutenticada,
     sucursalId,
   }) => {
     const m = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
     const slug = `e2e-opciones-${m}`;
-    const tamano = await sembrarGrupo({ nombre: `Tamaño ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico", monto: -300, factorEscala: 0.75 }, { nombre: "Mediano", factorEscala: 1 }, { nombre: "Grande", monto: 300, factorEscala: 1.5 }] });
+    // El café del dueño: tamaño 2.500 / 2.800 / 3.100 (diferencia 0 / +300 / +600 sobre 2.500), preparación «Solo» / «Con leche +400» y extras «Medialuna +600» y «Shot +500».
+    const tamano = await sembrarGrupo({ nombre: `Tamaño ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico", factorEscala: 0.75 }, { nombre: "Mediano", monto: 300, factorEscala: 1 }, { nombre: "Grande", monto: 600, factorEscala: 1.5 }] });
+    const preparacion = await sembrarGrupo({ nombre: `Preparación ${m}`, tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Solo" }, { nombre: "Con leche", monto: 400 }] });
+    const extras = await sembrarGrupo({ nombre: `Extras ${m}`, tipo: "ADICIONAL", cantidadMinima: 0, cantidadMaxima: 2, marca: m, opciones: [{ nombre: "Medialuna", monto: 600, conAncla: true }, { nombre: "Shot", monto: 500, conAncla: true }] });
+    // La milanesa: la guarnición no cambia el precio, así que no se muestra (la elige el mozo en el POS).
     const guarnicion = await sembrarGrupo({ nombre: `Guarnición ${m}`, tipo: "INCLUIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Puré" }, { nombre: "Ensalada" }] });
-    const extras = await sembrarGrupo({ nombre: `Extras ${m}`, tipo: "ADICIONAL", cantidadMinima: 0, cantidadMaxima: 2, marca: m, opciones: [{ nombre: "Huevo frito", monto: 600, conAncla: true }] });
-    const nombre = `E2E Milanesa carta ${m}`;
-    const { productoId } = await sembrarProductoConOpciones({ nombre, codigo: `E2E-CPO-${m}`, precioVenta: 2500, sucursalId, grupos: [{ grupo: tamano }, { grupo: guarnicion }, { grupo: extras }] });
+    const cafe = `E2E Café carta ${m}`;
+    const milanesa = `E2E Milanesa carta ${m}`;
+    const flan = `E2E Flan carta ${m}`;
+    const { productoId: cafeId } = await sembrarProductoConOpciones({ nombre: cafe, codigo: `E2E-CPO-${m}`, precioVenta: 2500, sucursalId, grupos: [{ grupo: tamano }, { grupo: preparacion }, { grupo: extras }] });
+    const { productoId: milanesaId } = await sembrarProductoConOpciones({ nombre: milanesa, codigo: `E2E-CPM-${m}`, precioVenta: 9500, sucursalId, grupos: [{ grupo: guarnicion }] });
+    const { productoId: flanId } = await sembrarProductoConOpciones({ nombre: flan, codigo: `E2E-CPF-${m}`, precioVenta: 3200, sucursalId, grupos: [] });
     const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Sección opciones ${m}` } });
-    await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId, visibleEnCarta: true, seccionCartaId: seccion.id } });
+    for (const [orden, productoId] of [cafeId, milanesaId, flanId].entries()) await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId, visibleEnCarta: true, seccionCartaId: seccion.id, orden } });
     await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
     await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
     const abrir = async () => {
       await page.goto(`/carta-publica/${EMPRESA}/${slug}`);
       await page.getByRole("button", { name: new RegExp(seccion.nombre) }).click();
-      const fila = page.locator("li", { has: page.getByRole("heading", { name: nombre }) });
-      await fila.getByText("Ver opciones").click();
-      return fila;
+      return { cafe: page.locator("li", { has: page.getByRole("heading", { name: cafe }) }), milanesa: page.locator("li", { has: page.getByRole("heading", { name: milanesa }) }), flan: page.locator("li", { has: page.getByRole("heading", { name: flan }) }) };
     };
+    const tamanoPx = (l: import("@playwright/test").Locator) => l.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     try {
-      await page.setViewportSize({ width: 375, height: 800 });
-      const fila = await abrir();
-      await expect(fila).toContainText("desde$2.200");
-      await expect(fila.locator(`[data-grupo-carta='Tamaño ${m}']`)).toContainText(`Tamaño ${m} (elegí 1)Chico $2.200 · Mediano $2.500 · Grande $2.800`);
-      await expect(fila.locator(`[data-grupo-carta='Guarnición ${m}']`)).toContainText("Puré · Ensalada");
-      await expect(fila.locator(`[data-grupo-carta='Extras ${m}']`)).toContainText(`Extras ${m} (opcional, hasta 2)Huevo frito + $600`);
-      expect((await new AxeBuilder({ page }).analyze()).violations, "carta con opciones, en el celular").toEqual([]);
+      for (const ancho of [375, 1280]) {
+        await page.setViewportSize({ width: ancho, height: ancho === 375 ? 800 : 900 });
+        const filas = await abrir();
+        const lista = filas.cafe.locator(`[data-tamanos-carta='Tamaño ${m}']`);
+        // La lista de tamaños está a la vista sin tocar nada: un renglón por tamaño con su precio FINAL, y el renglón del nombre va sin precio ni «desde».
+        await expect(lista).toBeVisible();
+        await expect(lista.getByRole("listitem")).toHaveText(["Chico$2.500", "Mediano$2.800", "Grande$3.100"]);
+        await expect(filas.cafe.locator("h3").locator("..")).not.toContainText("$");
+        await expect(filas.cafe).not.toContainText("desde");
+        await expect(filas.cafe).not.toContainText("Ver opciones");
+        expect(await filas.cafe.locator("details").count(), "ningún desplegable").toBe(0);
+        // La línea «Sumá:» con lo que suma una variante o un adicional; «Solo» (sin costo) no está.
+        const suma = filas.cafe.locator("[data-suma-carta]");
+        await expect(suma).toBeVisible();
+        await expect(suma).toHaveText("Sumá: Con leche +$400 · Medialuna +$600 · Shot +$500");
+        await expect(suma.locator("strong")).toHaveText("Sumá:");
+        await expect(filas.cafe).not.toContainText("Solo");
+        // La milanesa: su precio base de siempre, SIN la guarnición (no cambia el precio); el flan, un producto común.
+        await expect(filas.milanesa).toContainText("$9.500");
+        await expect(filas.milanesa).not.toContainText(`Guarnición ${m}`);
+        await expect(filas.milanesa).not.toContainText("Puré");
+        await expect(filas.milanesa.locator("[data-tamanos-carta], [data-suma-carta]")).toHaveCount(0);
+        await expect(filas.flan).toContainText("$3.200");
+        await expect(page.locator("body")).not.toContainText("Guarnición");
+        // Legibilidad: nombre y precio del ítem con opciones ≥ 19 px, tamaños y «Sumá» ≥ 16 px.
+        expect(await tamanoPx(filas.cafe.getByRole("heading", { name: cafe }))).toBeGreaterThanOrEqual(19);
+        expect(await tamanoPx(lista.getByRole("listitem").first())).toBeGreaterThanOrEqual(16);
+        expect(await tamanoPx(suma)).toBeGreaterThanOrEqual(16);
+        // Sin desborde horizontal: ni la página ni la fila del café.
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `la página se desborda a ${ancho} px`).toBe(true);
+        expect(await filas.cafe.evaluate((el) => el.scrollWidth <= el.clientWidth), `el café se desborda a ${ancho} px`).toBe(true);
+        expect((await new AxeBuilder({ page }).analyze()).violations, `carta con opciones a ${ancho} px`).toEqual([]);
+      }
 
       // El encargado marca «Mediano» agotado hoy: la carta (cacheada, ISR) lo deja de mostrar en la próxima visita, sin esperar el minuto.
+      await page.setViewportSize({ width: 375, height: 800 });
       await paginaAutenticada.goto("/movimientos/opciones-agotadas");
       const pildora = paginaAutenticada.getByRole("region", { name: new RegExp(`^Tamaño ${m}`) }).getByRole("button", { name: "Mediano: Disponible" });
       await pildora.click();
       await expect(paginaAutenticada.getByRole("status").filter({ hasText: "quedó agotada" })).toBeVisible();
       const despues = await abrir();
-      await expect(despues.locator(`[data-grupo-carta='Tamaño ${m}']`)).toContainText("Chico $2.200 · Grande $2.800");
-      await expect(despues).not.toContainText("Mediano");
+      await expect(despues.cafe.getByRole("listitem").filter({ hasText: "Chico" })).toBeVisible();
+      await expect(despues.cafe.locator(`[data-tamanos-carta='Tamaño ${m}']`).getByRole("listitem")).toHaveText(["Chico$2.500", "Grande$3.100"]);
+      await expect(despues.cafe).not.toContainText("Mediano");
     } finally {
       await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
       await prisma.contenidoCartaProducto.deleteMany({ where: { seccionCartaId: seccion.id } });
