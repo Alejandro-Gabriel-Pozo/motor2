@@ -84,7 +84,7 @@ export type { VigenciaDePromo } from "./vigencia-de-promo";
 export { DIAS_DE_ANTICIPACION_DEL_MENU, validarFechaDeMenuDelDia } from "./menu-del-dia";
 export type { CandidatoAPlato, MenuDelDiaDeLaSucursal } from "./menu-del-dia";
 // CARTA-MANT (mantenimiento de la carta): en qué lista va cada producto de la pantalla de la carta («Fuera de carta» es el POS y el menú del día, no un faltante).
-export { coincideConLaBusqueda, ordenAlFinalDeLaSeccion, organizarCartaParaMantener, vistaPreviaDeOpciones } from "./mantenimiento";
+export { coincideConLaBusqueda, lugaresParaPoner, ordenAlFinalDeLaSeccion, organizarCartaParaMantener, ponerEnElLugar, vistaPreviaDeOpciones } from "./mantenimiento";
 export type { CartaParaMantener, ProductoParaMantener } from "./mantenimiento";
 // CARTA-MANT: la vista previa de «Agregar a la carta» usa la MISMA presentación de opciones que la carta pública.
 export { opcionesParaLaCarta } from "./opciones-en-carta";

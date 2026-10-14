@@ -120,3 +120,20 @@ export function vistaPreviaDeOpciones(tieneGrupos: boolean, enCarta: { grupos: r
   ];
   return partes.length ? `Va a mostrar: ${partes.join(" · ")}.` : "Sin opciones para elegir (las que tiene no cambian nada en la carta).";
 }
+
+/**
+ * CARTA-MANT F3 «Ordenar» (prototipo aprobado: se toca lo que se quiere mover y después dónde va, sin arrastrar ni flechas fila por fila). Los lugares donde se puede «Poner» lo elegido: los huecos
+ * 0…n de la lista (antes del primero, entre dos, al final), menos los dos que lo dejarían donde está (justo antes y justo después de sí mismo). Sin nada elegido, ninguno.
+ */
+export function lugaresParaPoner(cantidad: number, elegido: number | null): number[] {
+  if (elegido === null || elegido < 0 || elegido >= cantidad) return [];
+  return Array.from({ length: cantidad + 1 }, (_, i) => i).filter((i) => i !== elegido && i !== elegido + 1);
+}
+
+/** La lista con el elemento `elegido` puesto en el hueco `destino` (0…n, como en `lugaresParaPoner`); los demás, en el mismo orden. Un índice fuera de rango deja la lista igual. */
+export function ponerEnElLugar<T>(lista: readonly T[], elegido: number, destino: number): T[] {
+  if (elegido < 0 || elegido >= lista.length || destino < 0 || destino > lista.length) return [...lista];
+  const sin = lista.filter((_, i) => i !== elegido);
+  const hueco = destino > elegido ? destino - 1 : destino;
+  return [...sin.slice(0, hueco), lista[elegido]!, ...sin.slice(hueco)];
+}

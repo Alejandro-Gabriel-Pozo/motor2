@@ -40,3 +40,21 @@ export interface ComandoActualizarActivaSeccionCarta {
 
 /** `SECCION_NO_ENCONTRADA`: el id no es de una sección de la empresa (la acción no revalida la carta en ese camino). */
 export type ResultadoActualizarActivaSeccionCarta = ResultadoCaso<null, "SECCION_NO_ENCONTRADA">;
+
+/** Tope de secciones en UN pedido de «ordenar tocando» (lo valida el guard). */
+export const MAXIMO_DE_SECCIONES_AL_ORDENAR = 200;
+
+/**
+ * CARTA-MANT F3 «Ordenar» (prototipo aprobado: se toca la sección y después dónde va): el orden nuevo de TODAS las secciones de la empresa, de una vez. Cada una lleva el `orden` que vio la
+ * pantalla (`ordenVisto`): es el control de concurrencia (la sección no tiene columna de versión).
+ */
+export interface ComandoOrdenarSeccionesCarta {
+  /** En el orden nuevo, sin repetidas, de 1 a `MAXIMO_DE_SECCIONES_AL_ORDENAR`. */
+  secciones: { seccionCartaId: string; ordenVisto: number }[];
+}
+
+/**
+ *  - `SECCION_NO_ENCONTRADA`: una de las secciones no es de la empresa (o ya no existe);
+ *  - `ORDEN_DESACTUALIZADO`: falta una sección (otra persona creó una) o el orden de alguna cambió desde que se cargó la pantalla: no se cambia ninguna.
+ */
+export type ResultadoOrdenarSeccionesCarta = ResultadoCaso<{ cambiadas: number }, "SECCION_NO_ENCONTRADA" | "ORDEN_DESACTUALIZADO">;

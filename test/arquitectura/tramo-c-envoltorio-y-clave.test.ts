@@ -127,6 +127,8 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
   "carta/secciones.ts": {
     guardarSeccionCarta: EMP("carta_secciones"),
     actualizarActivaSeccionCarta: EMP("carta_secciones"),
+    // CARTA-MANT F3: «Ordenar» las secciones (de la empresa), con la misma clave que editarlas.
+    ordenarSeccionesCarta: EMP("carta_secciones"),
   },
   // S-10/D1 (O.59): géneros, contenido y ítems agrupados escriben en la carta de la sucursal ACTIVA: entran por `conPermiso` (clave de contexto sucursal), ya no por `conPermisoDeEmpresa`.
   "carta/generos.ts": {
