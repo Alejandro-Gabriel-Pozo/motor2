@@ -8,7 +8,9 @@ import { cargarRecetaVigente, cargarRecetasVigentes } from "@/server/lecturas/ca
  * La receta vigente de un PV para venderlo en una sucursal (Hito 5, 5.1-2: mudada TAL CUAL desde `armarLinea`, en `server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts`):
  * la llamada a `cargarRecetaVigente` y su `include` son los mismos de siempre — receta EFECTIVA de la sucursal (la propia si la tiene habilitada, si no la central), ingredientes por `id`
  * ascendente (determinístico para el libro: de ese orden dependen el reparto del stock y el arrastre de redondeo), sustitutos por `orden` y SOLO las calibraciones locales de ESTA
- * sucursal. Devuelve `[]` si el plato no tiene receta. SIEMPRE con el `tx` de la venta (la lectura es parte de la transacción serializable que arbitra los conflictos).
+ * sucursal. Devuelve `[]` si el plato no tiene receta. En la venta, SIEMPRE con el `tx` de la venta (la lectura es parte de la transacción serializable que arbitra los conflictos).
+ * OPCIONES-FACTOR: la pantalla de un grupo de opciones la reusa, solo para LEER, con el `db` de la página (`cargarGrupoDelPanel`): así la vista previa del factor de un tamaño parte
+ * de la misma receta que descontaría la venta.
  */
 export async function cargarRecetaVigenteParaVender(tx: Prisma.TransactionClient, { productoId, sucursalId }: { productoId: string; sucursalId: string }): Promise<IngredienteParaVender[]> {
   const receta = await cargarRecetaVigente(tx, alcanceDeSucursal(sucursalId), productoId, {

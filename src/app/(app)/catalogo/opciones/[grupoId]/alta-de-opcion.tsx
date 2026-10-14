@@ -6,6 +6,7 @@ import type { TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CamposDeVersion, type ReferenciaDePrecio } from "./campos-de-version";
 import type { InsumoParaConsumo } from "./editor-de-consumos";
+import type { RecetaDeReferencia } from "./lectura-del-factor";
 
 /**
  * El alta de una opción en un grupo (GO-2d): el nombre, si es la opción «ninguna» (solo en una variante o en lo incluido, y una por grupo: «sin guarnición», «sin leche») y su
@@ -16,6 +17,7 @@ export function AltaDeOpcion({
   tipo,
   admiteNinguna,
   referencia,
+  receta,
   unidades,
   insumos,
   accion,
@@ -24,6 +26,8 @@ export function AltaDeOpcion({
   /** Si todavía se puede agregar la «ninguna» (el tipo la admite y el grupo no tiene una). */
   admiteNinguna: boolean;
   referencia: ReferenciaDePrecio | null;
+  /** OPCIONES-FACTOR: la receta de referencia para leer el factor de un tamaño (`null`: solo la frase). */
+  receta: RecetaDeReferencia | null;
   unidades: { id: string; nombre: string }[];
   /** Las materias primas para los consumos; `null` = la empresa no tiene el módulo Recetas (se guarda sin consumos). */
   insumos: InsumoParaConsumo[] | null;
@@ -58,7 +62,7 @@ export function AltaDeOpcion({
           Es la opción «ninguna» (por ejemplo, «Sin guarnición»): no lleva precio ni consumo
         </label>
       )}
-      <CamposDeVersion key={formulario} tipo={tipo} sinPrecio={esNinguna} referencia={referencia} consumos={insumos ? { insumos, inicial: [] } : null} />
+      <CamposDeVersion key={formulario} tipo={tipo} sinPrecio={esNinguna} referencia={referencia} receta={receta} consumos={insumos ? { insumos, inicial: [] } : null} />
       {tipo === "ADICIONAL" && (
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-unidad`} className="text-sm font-medium">

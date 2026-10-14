@@ -6,6 +6,7 @@ import type { DiferenciaDePrecio, TipoDeGrupoDeOpciones } from "@/core/opciones/
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CamposDeVersion, type ReferenciaDePrecio } from "./campos-de-version";
 import type { ConsumoEnEdicion, InsumoParaConsumo } from "./editor-de-consumos";
+import type { RecetaDeReferencia } from "./lectura-del-factor";
 
 /**
  * «Cambiar precio o consumo» de una opción (GO-2d): lo que cobra y lo que consume una opción no se edita en el lugar, se le carga un CAMBIO que rige desde que se guarda (el
@@ -17,6 +18,7 @@ export function CambiarPrecio({
   tipo,
   esNinguna,
   referencia,
+  receta,
   rige,
   insumos,
   accion,
@@ -25,6 +27,8 @@ export function CambiarPrecio({
   tipo: TipoDeGrupoDeOpciones;
   esNinguna: boolean;
   referencia: ReferenciaDePrecio | null;
+  /** OPCIONES-FACTOR: la receta de referencia para leer el factor de un tamaño (`null`: solo la frase). */
+  receta: RecetaDeReferencia | null;
   rige: { diferencia: DiferenciaDePrecio; factorEscala: number | null; consumos: ConsumoEnEdicion[] };
   insumos: InsumoParaConsumo[] | null;
   accion: (formData: FormData) => Promise<ResultadoAccion>;
@@ -41,7 +45,7 @@ export function CambiarPrecio({
     <div className="flex flex-col gap-2 rounded border p-3">
       <p className="text-sm font-medium">Cambio de precio o de consumo de «{nombre}» (rige desde que lo guardás)</p>
       <FormConResultado ofrecerRecargar accion={accion} className="flex flex-col gap-3">
-        <CamposDeVersion tipo={tipo} sinPrecio={esNinguna} referencia={referencia} inicial={rige} consumos={insumos ? { insumos, inicial: rige.consumos } : null} />
+        <CamposDeVersion tipo={tipo} sinPrecio={esNinguna} referencia={referencia} receta={receta} inicial={rige} consumos={insumos ? { insumos, inicial: rige.consumos } : null} />
         <button type="submit" className="self-start rounded bg-neutral-900 px-4 py-2 text-white">
           Guardar el cambio
         </button>
