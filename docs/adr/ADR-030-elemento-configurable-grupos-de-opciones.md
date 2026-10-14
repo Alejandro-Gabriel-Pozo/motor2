@@ -189,6 +189,10 @@ quitar) y con registro de quién, cuándo y qué, pero sin la rigidez del dinero
 3. **Borrar definitivo**: NO en esta etapa. El rol de la app no tiene `DELETE` sobre ninguna tabla del catálogo de opciones (GO-1b: solo `SELECT`, `INSERT` y `UPDATE` por columna); borrar exige
    una migración con el `GRANT DELETE` y, por la regla del dueño, un permiso más alto que archivar. Queda pendiente de autorización expresa (fila O.492 de `docs/pureza-integracion.md`).
 
+4. **Limpiar** (G2, `/catalogo/opciones/limpiar`, misma clave y exige Editar): propone archivar de una vez lo que no se usa —sin productos disponibles en alguna sucursal, o sin
+   ventas en 30, 90 o 180 días en cualquier sucursal— con la regla pura `src/core/opciones/limpieza.ts` y la consulta `src/server/consultas/catalogo/limpieza-de-opciones.ts`, que lee con la
+   base de verificación (de las ventas solo sale un sí o no por período). El lote va por `archivarOpciones` (todo o nada) y «Deshacer» lo restaura entero. No hay borrado masivo.
+
 Lo YA VENDIDO no cambia nunca: la foto de la línea (`OpcionElegidaEnLinea`, solo agregar) guarda el nombre, el tipo, la versión y el importe de lo vendido, y las claves foráneas `Restrict`
 impiden que desaparezca lo que una línea nombra. La interfaz es la del prototipo aprobado de Mantenimiento: un toque, sin pantalla de confirmación, y el aviso con «Deshacer» abajo
 (`src/components/aviso-con-deshacer.tsx`).

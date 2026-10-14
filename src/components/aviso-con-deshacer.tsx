@@ -86,6 +86,13 @@ export function AvisoConDeshacer({ children }: { children: ReactNode }) {
   );
 }
 
+/** El `ejecutar` del aviso, para una pantalla que arma su propio botón (el lote de «Limpiar»): va adentro de un `AvisoConDeshacer`. */
+export function useAvisoConDeshacer(): Contexto {
+  const contexto = useContext(ContextoDeDeshacer);
+  if (!contexto) throw new Error("useAvisoConDeshacer va adentro de un AvisoConDeshacer.");
+  return contexto;
+}
+
 /**
  * Un botón que hace un cambio con «Deshacer» (archivar o restaurar, quitar o volver a vincular): `accion(valor)` al tocarlo y `accion(!valor)` al deshacer. Va adentro de un
  * `AvisoConDeshacer`. Con la cara de los botones secundarios del prototipo (borde fino, cuadrado, 44 px de alto).
@@ -105,9 +112,7 @@ export function BotonConDeshacer({
   /** El botón destacado (relleno oscuro), para la acción principal de una tarjeta. */
   principal?: boolean;
 }) {
-  const contexto = useContext(ContextoDeDeshacer);
-  if (!contexto) throw new Error("BotonConDeshacer va adentro de un AvisoConDeshacer.");
-  const { ejecutar, ocupado } = contexto;
+  const { ejecutar, ocupado } = useAvisoConDeshacer();
   return (
     <button
       type="button"

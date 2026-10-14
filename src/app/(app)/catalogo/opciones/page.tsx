@@ -17,7 +17,8 @@ import { AltaDeGrupo } from "./alta-de-grupo";
  * de `opciones_definir`; el alta se dibuja solo con «Editar» (cortesía de la interfaz: la acción vuelve a exigir el permiso). El detalle de cada grupo (sus opciones y sus
  * cambios de precio) está en `/catalogo/opciones/[grupoId]`, de la misma familia y con la misma clave.
  *
- * OPCIONES-LIMPIEZA: la tabla muestra solo los grupos en uso; los ARCHIVADOS van aparte, con «Restaurar» de un toque (y su «Deshacer»). Archivar un grupo se hace en su pantalla.
+ * OPCIONES-LIMPIEZA: la tabla muestra solo los grupos en uso; los ARCHIVADOS van aparte, con «Restaurar» de un toque (y su «Deshacer»). Archivar un grupo se hace en su pantalla, y
+ * varios de una vez en «Limpiar opciones» (`/catalogo/opciones/limpiar`, misma familia y clave; el enlace se dibuja solo con «Editar»).
  *
  * Los closures "use server" capturan solo textos y ids: lo que captura viaja al cliente.
  */
@@ -60,6 +61,22 @@ export default async function OpcionesDeVentaPage() {
             se elige en su ficha.
           </p>
         </div>
+
+        {puedeEditar && enUso.length > 0 && (
+          <Link
+            href="/catalogo/opciones/limpiar"
+            data-enlace-limpiar=""
+            className="flex min-h-[64px] items-center gap-3 border border-[#cdd5dd] bg-white px-3 py-3 no-underline dark:border-neutral-700 dark:bg-neutral-900"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">Limpiar opciones</span>
+              <span className="block text-sm text-neutral-600 dark:text-neutral-400">Archivá de una vez los grupos y opciones sin productos o sin ventas.</span>
+            </span>
+            <span aria-hidden="true" className="text-xl text-neutral-500 dark:text-neutral-400">
+              ›
+            </span>
+          </Link>
+        )}
 
         <TablaDeDatos
           titulo="Grupos de opciones"
