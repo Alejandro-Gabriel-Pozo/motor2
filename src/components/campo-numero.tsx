@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { interpretarNumero, textoCanonico } from "@/core/datos/numero-tecleado";
 import { validarImporte } from "@/core/datos/importe";
 import { validarCantidad } from "@/core/datos/cantidad";
@@ -50,6 +50,23 @@ interface Props {
  * (sin reformatear en cada tecla, para no pelear con la posición del
  * cursor); al salir del campo se muestra formateado en es-AR.
  *
+ * Seleccionar todo al tomar el foco (así lo que se tipea REEMPLAZA al valor
+ * anterior) se hace en dos lugares, porque un `select()` en el `onFocus` se
+ * perdía en los dos casos (tocar un precio «0,02» y tipear «1,5» dejaba
+ * «1,50.02», y entrando con Tab, «0.021,5», que se leía como 21,5):
+ *  - DESPUÉS de que React pone el texto crudo (efecto de layout al pasar a
+ *    `enFoco`): cambiar el valor de un `<input>` deja el cursor al final y
+ *    borraba la selección hecha en el `onFocus`, con el texto todavía
+ *    formateado.
+ *  - De nuevo en el `mouseup` del MISMO toque o clic que dio el foco (en
+ *    táctil el navegador también dispara mousedown/mouseup), si para
+ *    entonces la selección quedó en un cursor: es el patrón de siempre para
+ *    Safari/WebKit, que ubica el cursor donde cae el dedo o el puntero
+ *    DESPUÉS del `focus`. En Chromium no hace falta (alcanza lo anterior;
+ *    test/e2e/campo-numero-tactil.spec.ts corre solo en Chromium). Solo en
+ *    ese primer toque y solo si no se arrastró una selección propia: con el
+ *    campo ya enfocado, tocar de nuevo ubica el cursor como siempre.
+ *
  * Lo tecleado se interpreta con el parser central `interpretarNumero`
  * (src/core/datos/numero-tecleado.ts, docs/plan-validacion-de-datos-2026-09-25.md):
  * coma o punto como decimal, miles bien agrupados ("1.000.000"), y nada de
@@ -74,6 +91,11 @@ function formatear(valor: string): string {
   const r = interpretarNumero(valor);
   if (!r.ok || r.valor === null) return r.ok ? "" : valor;
   return r.valor.toLocaleString("es-AR", { maximumFractionDigits: 4 });
+}
+
+/** `setSelectionRange` y no `select()`: en Safari de iOS `select()` no siempre selecciona el texto de un campo; `setSelectionRange` sí. */
+function seleccionarTodo(el: HTMLInputElement) {
+  el.setSelectionRange(0, el.value.length);
 }
 
 /** Sin `decimales` explícitos, una cantidad admite los 4 de las columnas Decimal(14,4). */
@@ -133,9 +155,17 @@ export function CampoNumero({
   // Validez nativa: se sincroniza el DOM (setCustomValidity no es estado de React) desde el valor emitido.
   const error = mensajeDeError(valorReal, { tipo, etiqueta, decimales, permitirNegativo });
   const entrada = useRef<HTMLInputElement>(null);
+  // true entre el mousedown que da el foco y su mouseup. Solo se lee y se escribe en manejadores de eventos (nunca en el render).
+  const punteroDaElFoco = useRef(false);
   useEffect(() => {
     entrada.current?.setCustomValidity(error ?? "");
   }, [error]);
+
+  // Con el texto crudo ya en el DOM: todo seleccionado (ver el comentario de arriba). Antes de pintar, así nada tecleado llega antes.
+  useLayoutEffect(() => {
+    const el = entrada.current;
+    if (enFoco && el && document.activeElement === el) seleccionarTodo(el);
+  }, [enFoco]);
 
   return (
     <div className={`relative ${className ?? ""}`}>
@@ -153,10 +183,21 @@ export function CampoNumero({
         required={required}
         autoFocus={autoFocus}
         aria-invalid={error ? true : undefined}
-        onFocus={(e) => {
+        onFocus={() => {
           setEnFoco(true);
           setTexto(valorReal);
-          e.target.select();
+        }}
+        onMouseDown={(e) => {
+          punteroDaElFoco.current = document.activeElement !== e.currentTarget;
+        }}
+        onMouseUp={(e) => {
+          if (!punteroDaElFoco.current) return;
+          punteroDaElFoco.current = false;
+          const el = e.currentTarget;
+          if (document.activeElement === el && el.selectionStart === el.selectionEnd) {
+            e.preventDefault();
+            seleccionarTodo(el);
+          }
         }}
         onChange={(e) => {
           setTexto(e.target.value);
@@ -165,6 +206,7 @@ export function CampoNumero({
           else setInterno(emitido);
         }}
         onBlur={() => {
+          punteroDaElFoco.current = false;
           setEnFoco(false);
           setTexto(formatear(valorReal));
         }}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import fc from "fast-check";
 import { interpretarNumero, numeroDelCampo, textoCanonico, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
 
 // Sin base de datos: el parser es puro. Tabla de compatibilidad con el `normalizar` que tenía CampoNumero
@@ -89,6 +90,114 @@ describe("interpretarNumero — pasan a ser error de formato (antes se guardaban
       expect(r.codigo).toBe("formato");
       expect(r.mensaje).toBe("No es un número válido.");
     }
+  });
+});
+
+describe("interpretarNumero — agrupación de miles mal formada: error de formato (antes 0.021.500 se leía 21500)", () => {
+  // Lo que deja tipear «1.500» o «1,5» DETRÁS de un «0.02» que el campo no reemplazó (src/components/campo-numero.tsx): un número con
+  // miles no empieza con 0, y cada grupo de miles tiene exactamente 3 cifras.
+  it.each([
+    "0.021.500", // antes 21500
+    "0,021,500", // antes 21500
+    "0.021,5", // antes 21,5
+    "0,021.5", // antes 21,5
+    "-0.021.500",
+    "0.000.000", // antes 0
+    "00.123.456",
+    "012.345.678",
+    "01.234,5",
+    "1.5000.02",
+    "12.34.5",
+    "1.00.000",
+    "1.0000.000",
+    "1.000.00",
+    "1.000,5.0",
+  ])("%j", (texto) => {
+    const r = interpretarNumero(texto);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.codigo).toBe("formato");
+      expect(r.mensaje).toBe("No es un número válido.");
+    }
+  });
+
+  it("propiedad: un grupo inicial que empieza con 0, seguido de miles (o de miles y decimal), nunca se acepta", () => {
+    fc.assert(
+      fc.property(
+        fc.stringMatching(/^0\d{0,2}$/),
+        fc.array(fc.stringMatching(/^\d{3}$/), { minLength: 1, maxLength: 4 }),
+        fc.option(fc.stringMatching(/^\d{1,4}$/), { nil: undefined }),
+        fc.constantFrom([".", ","] as const, [",", "."] as const),
+        fc.boolean(),
+        (inicial, grupos, decimal, [miles, sepDecimal], negativo) => {
+          // Un solo separador sin decimal ("0.021") es un DECIMAL (regla de siempre), no una agrupación: queda afuera.
+          fc.pre(grupos.length >= 2 || decimal !== undefined);
+          const texto = `${negativo ? "-" : ""}${[inicial, ...grupos].join(miles)}${decimal !== undefined ? `${sepDecimal}${decimal}` : ""}`;
+          expect(interpretarNumero(texto).ok, texto).toBe(false);
+        }
+      )
+    );
+  });
+});
+
+describe("interpretarNumero — los casos válidos de siempre no cambian con el endurecimiento", () => {
+  it.each([
+    ["3", 3],
+    ["0,30", 0.3],
+    ["0,300", 0.3],
+    ["0.300", 0.3],
+    ["3.000", 3], // un solo punto es decimal (documentado y fijado)
+    ["1.500", 1.5],
+    ["12.345", 12.345],
+    ["1.000.000", 1_000_000],
+    ["1.234,5", 1234.5],
+    [",5", 0.5],
+    ["0,021", 0.021], // un solo separador: decimal, aunque empiece con 0
+    ["0.02", 0.02],
+    ["007", 7], // sin miles, los ceros a la izquierda siguen valiendo
+    ["00,5", 0.5],
+    ["999.999.999", 999_999_999],
+    ["100.000,25", 100_000.25],
+  ])("%j → %d", (texto, esperado) => {
+    expect(valor(texto)).toBe(esperado);
+  });
+
+  /** Separador de miles cada 3 cifras desde la derecha (sin depender del Intl del entorno). */
+  function agrupar(entero: number, sep: string): string {
+    return String(entero).replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+  }
+
+  it("propiedad: un número bien agrupado con decimal (es-AR «1.234,56» o en «1,234.56») se lee igual que sus cifras", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 99_999_999_999 }),
+        fc.stringMatching(/^\d{1,4}$/),
+        fc.constantFrom([".", ","] as const, [",", "."] as const),
+        (entero, decimal, [miles, sepDecimal]) => {
+          expect(valor(`${agrupar(entero, miles)}${sepDecimal}${decimal}`)).toBe(Number(`${entero}.${decimal}`));
+        }
+      )
+    );
+  });
+
+  it("propiedad: un entero de un millón o más, agrupado de a 3 (dos separadores o más), se lee igual", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 1_000_000, max: 99_999_999_999 }), fc.constantFrom(".", ","), (entero, miles) => {
+        expect(valor(agrupar(entero, miles))).toBe(entero);
+      })
+    );
+  });
+
+  it("propiedad: lo que muestra el campo al salir (es-AR) se vuelve a leer como el mismo número", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 99_999_999_999 }), fc.integer({ min: 0, max: 99 }), (entero, centavos) => {
+        const n = Number(`${entero}.${String(centavos).padStart(2, "0")}`);
+        const mostrado = n.toLocaleString("es-AR", { maximumFractionDigits: 4 });
+        // Con un solo separador de miles y sin decimales («3.000») es un decimal a propósito: esa ambigüedad no es de este cambio.
+        fc.pre(!/^\d{1,3}\.\d{3}$/.test(mostrado));
+        expect(valor(mostrado)).toBe(n);
+      })
+    );
   });
 });
 
