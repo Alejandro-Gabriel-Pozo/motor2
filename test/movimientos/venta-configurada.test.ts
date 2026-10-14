@@ -147,6 +147,9 @@ describe("registrarVentaEnTx con una línea configurada (GO-2b)", () => {
   it("paridad del costo congelado: con una configuración NEUTRA (mediano ×1, sin consumo propio) es el mismo que el del café sin opciones; el adicional cuesta lo suyo", async () => {
     await sembrarCompraDeKardex({ sucursalId: s.sucursalId, seccionId: s.seccion.id, usuarioId: s.admin.id, productoId: c.lecheId, proveedorId: null, fecha: "2026-10-01T12:00:00Z", precioPorUnidadStock: 1500 });
     await sembrarCompraDeKardex({ sucursalId: s.sucursalId, seccionId: s.seccion.id, usuarioId: s.admin.id, productoId: c.granoId, proveedorId: null, fecha: "2026-10-01T12:00:00Z", precioPorUnidadStock: 20000 });
+    // O.430: el café tiene el tamaño OBLIGATORIO, así que una línea SIN configurar ya no se vende (es el hueco que cierra esa fila). La base de la paridad es el MISMO café con el tamaño opcional
+    // para el producto (mínimo 0 en su fila): lo que se compara es el costo congelado, que no depende de esa regla.
+    await prisma.productoAdmiteGrupo.updateMany({ where: { productoId: c.cafeId, grupoId: c.grupoMedidaId }, data: { cantidadMinima: 0 } });
     const sinOpciones = await vender([{ productoId: c.cafeId, cantidadVendida: 3, precioUnitario: 1000 }]);
     const neutra = await vender([
       { productoId: c.cafeId, cantidadVendida: 3, precioUnitario: 1000, configurada: { tipo: "PRODUCTO", opciones: [medida(c.medianoId, 1), variante(c.vacaId, [])] } },
