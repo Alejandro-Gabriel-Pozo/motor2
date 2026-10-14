@@ -55,7 +55,7 @@ export async function listarCandidatosALimpiar(db: Db, ahora: Date): Promise<Dat
   const productosDelGrupo = new Map<string, Set<string>>();
   for (const a of admisiones) {
     nombresDeProductos[a.producto.id] = a.producto.nombre;
-    productosDelGrupo.set(a.grupoId, (productosDelGrupo.get(a.grupoId) ?? new Set()).add(a.producto.id));
+    productosDelGrupo.set(a.grupoId, (productosDelGrupo.get(a.grupoId) ?? new Set<string>()).add(a.producto.id));
   }
   // Una opción la usa un producto solo si el producto además usa su grupo (una fila de opción con el grupo quitado del producto no se ofrece).
   const productosDeLaOpcion = new Map<string, string[]>();

@@ -40,7 +40,7 @@ export interface GrupoParaLimpiar {
 interface CandidatosDeLimpieza<G extends GrupoParaLimpiar = GrupoParaLimpiar> {
   grupos: G[];
   /** Las opciones candidatas de grupos que NO son candidatos, con su grupo. */
-  opciones: { grupo: G; opcion: G["opciones"][number] }[];
+  opciones: { grupo: G; opcion: OpcionParaLimpiar }[];
 }
 
 const sinVentas = (v: VentasRecientes, criterio: Exclude<CriterioDeLimpieza, "SIN_PRODUCTOS">): boolean =>
