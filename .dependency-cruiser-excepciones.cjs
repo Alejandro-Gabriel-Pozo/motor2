@@ -377,6 +377,12 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "GO-3b (ADR-032, D5): agregarPlatoDelDia, quitarPlatoDelDia y copiarMenuDelDiaAnterior (promo_menu_del_dia, sucursal) → carta/casos-de-uso/{agregar-plato-del-dia,quitar-plato-del-dia,copiar-menu-del-dia-anterior}.ts, con su guardComando… (eco de la sucursal activa, core/features/carta/menu-del-dia.guard.ts) dentro de conPermiso. Escrituras en server/persistencia/carta/combos.ts, SOLO en la sucursal activa; transacción SERIALIZABLE y auditoría con la sucursal en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
   },
+  // CARTA-MANT (mantenimiento de la carta): nace migrado.
+  {
+    ruta: "src/server/actions/carta/mantenimiento.ts",
+    motivo:
+      "CARTA-MANT (ADR-034): agregarProductoALaCarta y quitarProductoDeLaCarta (carta_contenido_producto, sucursal) → carta/casos-de-uso/{agregar-producto-a-la-carta,quitar-producto-de-la-carta}.ts, y fijarDisponibilidadDeHoy (producto_disponibilidad, sucursal) → catalogo/casos-de-uso/fijar-disponibilidad-de-hoy.ts (reusa las reglas de actualizar-disponibilidad-producto.ts), cada una con su guardComando… (eco de la sucursal activa, core/features/carta/mantenimiento.guard.ts) dentro de conPermiso. Escrituras en server/persistencia/carta/contenido-producto.ts (create y deleteMany) y server/persistencia/catalogo/productos.ts, SOLO en la sucursal activa; transacción y auditoría con la sucursal en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
+  },
   {
     ruta: "src/server/actions/carta/copiar-carta.ts",
     motivo:

@@ -15,6 +15,12 @@ export const RUTAS_SIN_PARAMETROS = [
   "/administracion/usuarios",
   "/carta",
   "/carta/agrupados",
+  // CARTA-MANT: la puerta «Parametrización» de la carta y sus pantallas.
+  "/carta/parametrizacion",
+  "/carta/parametrizacion/apariencia",
+  "/carta/parametrizacion/generos",
+  "/carta/parametrizacion/promociones",
+  "/carta/parametrizacion/secciones",
   "/carta/portal",
   "/carta/tema",
   "/catalogo/categorias",
