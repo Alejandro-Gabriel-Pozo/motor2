@@ -12,6 +12,7 @@ import {
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { azarDelProceso } from "@/lib/azar";
 import { conPermisoDeEmpresa } from "../con-permiso";
+import { revalidarCartasPublicas } from "../carta/revalidar";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, type ResultadoAccion } from "../tipos";
 import { agregarVersionDeOpcionCasoDeUso } from "./casos-de-uso/agregar-version-de-opcion";
@@ -29,8 +30,8 @@ import { reordenarOpcionesDeGrupoCasoDeUso } from "./casos-de-uso/reordenar-opci
  * - `opciones_definir` (empresa, piso administrador): los grupos, sus opciones y las versiones de cada opción.
  * - `producto_opciones_admitidas` (empresa, piso administrador): lo que admite cada producto.
  *
- * Todavía no hay pantallas (GO-2b): ningún cliente las importa, y Next no publica una Server Action que nadie importa (la saca del bundle), así que hoy no tienen punto de entrada.
- * Igual cada una lleva su guarda: el día que una pantalla la importe ya está protegida. Los argumentos se tipan como `unknown` a propósito: llegan de una puerta HTTP y los valida el guard.
+ * Las usan las pantallas de GO-2d (`/catalogo/opciones`, la edición de las opciones de un producto). Los argumentos se tipan como `unknown` a propósito: llegan de una puerta HTTP
+ * y los valida el guard. GO-2d: al salir bien invalidan la carta pública de la empresa (`revalidarCartasPublicas`): la carta muestra los tamaños, variantes y adicionales.
  */
 
 export async function crearGrupoDeOpciones(entrada: { nombre: unknown; tipo: unknown; cantidadMinima: unknown; cantidadMaxima: unknown }): Promise<ResultadoAccion> {
@@ -38,7 +39,11 @@ export async function crearGrupoDeOpciones(entrada: { nombre: unknown; tipo: unk
     const comando = guardComandoCrearGrupoDeOpciones(entrada);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await crearGrupoDeOpcionesCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) refrescarVistaSiHaceFalta();
+    if (resultado.ok) {
+      // GO-2d: la carta pública muestra las opciones (precios, agotadas): se invalida su caché, solo la de esta empresa.
+      revalidarCartasPublicas(ctx.empresaSlug);
+      refrescarVistaSiHaceFalta();
+    }
     return aResultadoAccion(resultado);
   });
 }
@@ -55,7 +60,11 @@ export async function editarGrupoDeOpciones(entrada: {
     const comando = guardComandoEditarGrupoDeOpciones(entrada);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await editarGrupoDeOpcionesCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) refrescarVistaSiHaceFalta();
+    if (resultado.ok) {
+      // GO-2d: la carta pública muestra las opciones (precios, agotadas): se invalida su caché, solo la de esta empresa.
+      revalidarCartasPublicas(ctx.empresaSlug);
+      refrescarVistaSiHaceFalta();
+    }
     return aResultadoAccion(resultado);
   });
 }
@@ -65,7 +74,11 @@ export async function crearOpcionDeGrupo(entrada: { grupoId: unknown; nombre: un
     const comando = guardComandoCrearOpcionDeGrupo(entrada);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await crearOpcionDeGrupoCasoDeUso(ctx, comando.valor, azarDelProceso);
-    if (resultado.ok) refrescarVistaSiHaceFalta();
+    if (resultado.ok) {
+      // GO-2d: la carta pública muestra las opciones (precios, agotadas): se invalida su caché, solo la de esta empresa.
+      revalidarCartasPublicas(ctx.empresaSlug);
+      refrescarVistaSiHaceFalta();
+    }
     return aResultadoAccion(resultado);
   });
 }
@@ -75,7 +88,11 @@ export async function editarOpcionDeGrupo(entrada: { opcionId: unknown; versionE
     const comando = guardComandoEditarOpcionDeGrupo(entrada);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await editarOpcionDeGrupoCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) refrescarVistaSiHaceFalta();
+    if (resultado.ok) {
+      // GO-2d: la carta pública muestra las opciones (precios, agotadas): se invalida su caché, solo la de esta empresa.
+      revalidarCartasPublicas(ctx.empresaSlug);
+      refrescarVistaSiHaceFalta();
+    }
     return aResultadoAccion(resultado);
   });
 }
@@ -85,7 +102,11 @@ export async function agregarVersionDeOpcion(entrada: { opcionId: unknown; numer
     const comando = guardComandoAgregarVersionDeOpcion(entrada);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await agregarVersionDeOpcionCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) refrescarVistaSiHaceFalta();
+    if (resultado.ok) {
+      // GO-2d: la carta pública muestra las opciones (precios, agotadas): se invalida su caché, solo la de esta empresa.
+      revalidarCartasPublicas(ctx.empresaSlug);
+      refrescarVistaSiHaceFalta();
+    }
     return aResultadoAccion(resultado);
   });
 }
@@ -105,7 +126,11 @@ export async function fijarAdmisionDeGrupoEnProducto(entrada: {
     const comando = guardComandoFijarAdmisionDeGrupo(entrada);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await fijarAdmisionDeGrupoEnProductoCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) refrescarVistaSiHaceFalta();
+    if (resultado.ok) {
+      // GO-2d: la carta pública muestra las opciones (precios, agotadas): se invalida su caché, solo la de esta empresa.
+      revalidarCartasPublicas(ctx.empresaSlug);
+      refrescarVistaSiHaceFalta();
+    }
     return aResultadoAccion(resultado);
   });
 }
@@ -116,7 +141,11 @@ export async function reordenarOpcionesDeGrupo(entrada: { grupoId: unknown; opci
     const comando = guardComandoReordenarOpcionesDeGrupo(entrada);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await reordenarOpcionesDeGrupoCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) refrescarVistaSiHaceFalta();
+    if (resultado.ok) {
+      // GO-2d: la carta pública muestra las opciones (precios, agotadas): se invalida su caché, solo la de esta empresa.
+      revalidarCartasPublicas(ctx.empresaSlug);
+      refrescarVistaSiHaceFalta();
+    }
     return aResultadoAccion(resultado);
   });
 }

@@ -1,4 +1,5 @@
-import "server-only";
+// GO-2d: SIN `import "server-only"` (como `precio-local.ts`): la carta pública lo alcanza (`lecturas/carta/menu.ts`) y a esa la carga una fixture de Playwright
+// (`test/e2e/fixtures/carta-menu.ts`), donde ese módulo revienta. Declarado en `test/arquitectura/server-only-en-consultas-y-lecturas.test.ts`.
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { precioLocalActivoEn } from "./precio-local";
 

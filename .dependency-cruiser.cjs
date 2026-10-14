@@ -47,6 +47,12 @@ const ALCANCE_CARTA_PUBLICA = [
   "^src/core/permisos/motivos\\.ts$",
   //  - la política de la empresa (`core/permisos/politica-de-empresa.ts`): tres constantes, sin imports; las importan los motivos para el texto de «la plataforma administra tus permisos».
   "^src/core/permisos/politica-de-empresa\\.ts$",
+  // GO-2d (ADR-030; ampliación de la lista cerrada aprobada por el dueño el 2026-10-13: la carta pública muestra las opciones de venta). Dos lecturas, sin sesión ni permisos, con la base de solo
+  // lectura de la sucursal; sus campos los cierra `PUBLICACION_CARTA` (test/arquitectura/carta-publica-lista-cerrada.test.ts):
+  //  - las opciones de los PV de la carta (`server/lecturas/carta/opciones.ts`), select campo por campo, sin factor de escala, consumos ni el producto que respalda un adicional;
+  "^src/server/lecturas/carta/opciones\\.ts$",
+  //  - el lector ÚNICO de la grilla del precio de un tamaño en la sucursal (`server/lecturas/catalogo/precio-local-de-opciones.ts`; lo fija `precio-local-en-un-solo-lugar`).
+  "^src/server/lecturas/catalogo/precio-local-de-opciones\\.ts$",
 ];
 
 /** Ruta literal (con `/`) → expresión regular anclada que matchea ESE archivo y nada más. */

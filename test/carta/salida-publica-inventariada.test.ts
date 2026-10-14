@@ -44,6 +44,16 @@ const CLAVES_DE_LA_CARTA = [
   "carta.secciones[].items[].opciones[].nombre",
   "carta.secciones[].items[].opciones[].precio",
   "carta.secciones[].items[].precio",
+  // GO-2d (GO-0 §4, aprobado por el dueño el 2026-10-13): las opciones de venta de un PV, sin el tipo interno ni ningún id.
+  "carta.secciones[].items[].grupos",
+  "carta.secciones[].items[].grupos[].maximo",
+  "carta.secciones[].items[].grupos[].nombre",
+  "carta.secciones[].items[].grupos[].obligatorio",
+  "carta.secciones[].items[].grupos[].opciones",
+  "carta.secciones[].items[].grupos[].opciones[].nombre",
+  "carta.secciones[].items[].grupos[].opciones[].precio",
+  "carta.secciones[].items[].grupos[].opciones[].recargo",
+  "carta.secciones[].items[].precioDesde",
   "carta.secciones[].items[].precioLista",
   "carta.secciones[].items[].tags",
   "carta.secciones[].nombre",
@@ -87,6 +97,43 @@ describe("la salida de la carta pública está inventariada", () => {
     const agrupado = await prisma.itemAgrupadoCarta.create({ data: { sucursalId: central, nombre: "Combo", seccionCartaId: seccion.id, orden: 2 } });
     await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId: central, itemAgrupadoCartaId: agrupado.id, productoId: otro.id, orden: 0 } });
     await prisma.promoCarta.create({ data: { seccionCartaId: seccion.id, titulo: "Promo", descripcion: "x", precio: 100, sucursales: { create: [{ sucursalId: central }] } } });
+
+    // GO-2d: un café con opciones (tamaño, leche con una agotada, un adicional) y 10 % de descuento, y un té cuyo único tamaño está agotado (no se puede pedir: no sale). Canarios de
+    // lo que NUNCA sale: la alícuota del producto, el factor de escala y el consumo de la versión, y el código del producto que respalda el adicional.
+    const autor = await prisma.user.create({ data: { email: "autor-opciones@test.com" } });
+    const leche = await prisma.producto.create({ data: { codigo: "MP-LECHE", nombre: "Leche", tipo: "MP", unidadStockId: u.id } });
+    const cafe = await prisma.producto.create({ data: { codigo: "PV-CAFE", nombre: "Café", tipo: "PV", precioVenta: 1000, unidadStockId: u.id, alicuotaIvaVenta: "IVA_27" } });
+    const te = await prisma.producto.create({ data: { codigo: "PV-TE", nombre: "Té", tipo: "PV", precioVenta: 800, unidadStockId: u.id } });
+    const ancla = await prisma.producto.create({ data: { codigo: `ANCLA-${CANARIO}`, nombre: "Medialuna", tipo: "PV", precioVenta: 0, unidadStockId: u.id } });
+    for (const [orden, p] of [cafe, te].entries()) {
+      await prisma.disponibilidadProducto.create({ data: { sucursalId: central, productoId: p.id, disponible: true } });
+      await prisma.contenidoCartaProducto.create({ data: { sucursalId: central, productoId: p.id, visibleEnCarta: true, seccionCartaId: seccion.id, orden: 10 + orden } });
+    }
+    await prisma.descuentoProductoSucursal.create({ data: { productoId: cafe.id, sucursalId: central, porcentaje: 10 } });
+    const grupo = async (nombre: string, tipo: string, cantidadMinima: number, cantidadMaxima: number) => (await prisma.grupoDeOpciones.create({ data: { nombre, tipo, cantidadMinima, cantidadMaxima } })).id;
+    const opcion = async (grupoId: string, nombre: string, orden: number, diferenciaPrecio: string, extra: { productoId?: string; factorEscala?: string } = {}) => {
+      const o = await prisma.opcionDeGrupo.create({ data: { grupoId, nombre, orden, ...(extra.productoId ? { productoId: extra.productoId } : {}) } });
+      const v = await prisma.versionDeOpcion.create({ data: { opcionId: o.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio, factorEscala: extra.factorEscala ?? null, creadoPorId: autor.id } });
+      return { opcionId: o.id, versionId: v.id };
+    };
+    const tamano = await grupo("Tamaño", "MEDIDA", 1, 1);
+    const chico = await opcion(tamano, "Chico", 1, "-100.00", { factorEscala: "1.2345" });
+    const grande = await opcion(tamano, "Grande", 2, "300.00", { factorEscala: "1.5000" });
+    const lecheGrupo = await grupo("Leche", "VARIANTE", 0, 1);
+    const vaca = await opcion(lecheGrupo, "Vaca", 1, "0.00");
+    const agotada = await opcion(lecheGrupo, "Agotada hoy", 2, "50.00");
+    const extras = await grupo("Extras", "ADICIONAL", 0, 2);
+    const medialuna = await opcion(extras, "Medialuna", 1, "600.00", { productoId: ancla.id });
+    await prisma.consumoDeOpcion.create({ data: { versionDeOpcionId: medialuna.versionId, efecto: "SUMA", insumoProductoId: leche.id, cantidad: "0.7777", unidadId: u.id } });
+    await prisma.opcionApagadaEnSucursal.create({ data: { sucursalId: central, opcionId: agotada.opcionId, apagada: true, actualizadoPorId: autor.id } });
+    for (const [orden, grupoId] of [tamano, lecheGrupo, extras].entries()) await prisma.productoAdmiteGrupo.create({ data: { productoId: cafe.id, grupoId, orden, ...(grupoId === tamano ? { modoPrecio: "DIFERENCIA" } : {}) } });
+    for (const o of [chico, grande, vaca, agotada]) await prisma.productoAdmiteOpcion.create({ data: { productoId: cafe.id, opcionId: o.opcionId } });
+    await prisma.productoAdmiteOpcion.create({ data: { productoId: cafe.id, opcionId: medialuna.opcionId, cantidadMaxima: 2 } });
+    const taza = await grupo("Taza", "MEDIDA", 1, 1);
+    const unica = await opcion(taza, "Única", 1, "0.00");
+    await prisma.productoAdmiteGrupo.create({ data: { productoId: te.id, grupoId: taza, orden: 0, modoPrecio: "DIFERENCIA" } });
+    await prisma.productoAdmiteOpcion.create({ data: { productoId: te.id, opcionId: unica.opcionId } });
+    await prisma.opcionApagadaEnSucursal.create({ data: { sucursalId: central, opcionId: unica.opcionId, apagada: true, actualizadoPorId: autor.id } });
   });
 
   it("carta: cada clave que sale está en la lista cerrada, y el costo/consignación/observaciones internos no viajan", async () => {
@@ -101,7 +148,32 @@ describe("la salida de la carta pública está inventariada", () => {
     expect(sobrantes, "la carta pública emite una clave nueva: revisá que sea pública y agregala a CLAVES_DE_LA_CARTA").toEqual([]);
 
     const serializado = JSON.stringify({ carta, estilo });
-    for (const interno of [CANARIO, "555.55", "4242", "COD-"]) expect(serializado, `la salida pública contiene «${interno}»`).not.toContain(interno);
+    for (const interno of [CANARIO, "555.55", "4242", "COD-", "IVA_27", "1.2345", "0.7777", "ANCLA-", "MEDIDA", "ADICIONAL"]) expect(serializado, `la salida pública contiene «${interno}»`).not.toContain(interno);
+  });
+
+  it("GO-2d: el café sale con sus opciones de hoy (lo agotado no), el descuento solo sobre el tamaño, y el té sin nada para elegir no sale", async () => {
+    const { carta } = (await cartaPublica(empresa, "central", AHORA_DE_LA_CORRIDA))!;
+    const items = carta.secciones[0].items;
+    expect(items.map((i) => i.nombre)).not.toContain("Té");
+    expect(items.find((i) => i.nombre === "Café")).toEqual({
+      nombre: "Café",
+      categoria: "Platos",
+      descripcion: null,
+      // Lo más barato con lo que se pide (Chico: 1.000 − 100) con el 10 % sobre el tamaño; el tachado, sin descuento.
+      precio: 810,
+      precioLista: 900,
+      descuentoPorcentaje: 10,
+      tags: [],
+      especial: false,
+      imagenUrl: null,
+      grupos: [
+        { nombre: "Tamaño", obligatorio: true, maximo: 1, opciones: [{ nombre: "Chico", precio: 810 }, { nombre: "Grande", precio: 1170 }] },
+        { nombre: "Leche", obligatorio: false, maximo: 1, opciones: [{ nombre: "Vaca" }] },
+        // El recargo del adicional NO lleva el descuento de producto.
+        { nombre: "Extras", obligatorio: false, maximo: 2, opciones: [{ nombre: "Medialuna", recargo: 600 }] },
+      ],
+      precioDesde: 810,
+    });
   });
 
   it("portal: solo slug/etiqueta/subtítulo/posición; la configuración del portal no trae ids ni datos de la empresa", async () => {
