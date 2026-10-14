@@ -89,6 +89,25 @@ const completos: Record<string, Valor> = {
       intento(c, ["seccionCartaId"], [c.propio.productoPvId, { visibleEnCarta: true, seccionCartaId: k.seccionCartaId, generoCartaId: c.propio.generoCartaId, descripcion: "texto" }]),
       intento(c, ["generoCartaId"], [c.propio.productoPvId, { visibleEnCarta: true, seccionCartaId: c.propio.seccionCartaId, generoCartaId: k.generoCartaId, descripcion: "texto" }]),
     ),
+  // CARTA-MANT: «Agregar a la carta» (eco de la sucursal primero). El `pv2` del mundo está disponible en S1 y SIN contenido de carta (el `pv` tiene uno oculto): el control positivo lo agrega.
+  "accion|actions/carta/mantenimiento.ts|agregarProductoALaCarta": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, productoId: c.propio.productoPv2Id, seccionCartaId: c.propio.seccionCartaId }]),
+      intento(c, ["productoPv2Id"], [{ sucursalId: c.propio.sucursalId, productoId: k.productoPv2Id, seccionCartaId: c.propio.seccionCartaId }]),
+      intento(c, ["seccionCartaId"], [{ sucursalId: c.propio.sucursalId, productoId: c.propio.productoPv2Id, seccionCartaId: k.seccionCartaId }]),
+    ),
+  // CARTA-MANT: «Quitar de la carta». El `pv` del mundo tiene contenido (oculto, con descripción): el control positivo lo quita confirmando que se pierde lo cargado.
+  "accion|actions/carta/mantenimiento.ts|quitarProductoDeLaCarta": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, productoId: c.propio.productoPvId, confirmado: true }]),
+      intento(c, ["productoPvId"], [{ sucursalId: c.propio.sucursalId, productoId: k.productoPvId, confirmado: true }]),
+    ),
+  // CARTA-MANT: «Hoy» (varios productos, todo o nada). Como `actualizarDisponibilidadProducto`: el control positivo PONE A LA VENTA la MP del kit (apagar exigiría que nada dependa de ella).
+  "accion|actions/carta/mantenimiento.ts|fijarDisponibilidadDeHoy": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, cambios: [{ productoId: c.propio.productoId, disponible: c.escenario === "controlMutacion" }] }]),
+      intento(c, ["productoId"], [{ sucursalId: c.propio.sucursalId, cambios: [{ productoId: k.productoId, disponible: c.escenario === "controlMutacion" }] }]),
+    ),
   "accion|actions/carta/generos.ts|guardarGeneroCarta": (k) => [{ id: k.generoCartaId, nombre: "Nombre nuevo" }],
   "accion|actions/carta/items-agrupados.ts|guardarItemAgrupadoCarta": (k, c) =>
     conVariantes(
@@ -329,6 +348,17 @@ const completos: Record<string, Valor> = {
     ),
   // GO-2d: el orden completo de las opciones de un grupo, con la opción ajena del kit.
   "accion|actions/catalogo/opciones-de-venta.ts|reordenarOpcionesDeGrupo": (k) => [{ grupoId: k.grupoDeOpcionesId, opciones: [{ opcionId: k.opcionDeGrupoId, versionEsperada: 1 }] }],
+  // OPCIONES-LIMPIEZA: archivar un grupo ajeno o una opción ajena (cada camino una variante); quitar de un producto con el producto ajeno o con el grupo ajeno (el PV con opciones admite el tamaño).
+  "accion|actions/catalogo/opciones-de-venta.ts|archivarOpciones": (k, c) =>
+    conVariantes(
+      intento(c, ["grupoDeOpcionesId"], [{ grupoIds: [k.grupoDeOpcionesId], opcionIds: [], archivar: true }]),
+      intento(c, ["opcionDeGrupoId"], [{ grupoIds: [], opcionIds: [k.opcionDeGrupoId], archivar: true }]),
+    ),
+  "accion|actions/catalogo/opciones-de-venta.ts|vincularGrupoEnProducto": (k, c) =>
+    conVariantes(
+      intento(c, ["productoConOpcionesId"], [{ productoId: k.productoConOpcionesId, grupoId: c.propio.grupoMedidaId, vinculado: false }]),
+      intento(c, ["grupoMedidaId"], [{ productoId: c.propio.productoConOpcionesId, grupoId: k.grupoMedidaId, vinculado: false }]),
+    ),
   // GO-2d: las opciones del selector del POS reciben el selector ya armado (con el PV que admite opciones del kit como pedible).
   "consulta|consultas/pos/opciones-del-selector.ts|cargarOpcionesDelSelector": (k, c) => [
     k.sucursalId,

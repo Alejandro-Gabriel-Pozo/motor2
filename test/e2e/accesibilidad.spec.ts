@@ -828,9 +828,9 @@ testAutenticado(
   }
 );
 
-testAutenticado("carta: sin violaciones de axe, con formularios abiertos y el aviso en ámbar de PV sin contenido", async ({ paginaAutenticada: page, sucursalId }) => {
-  // docs/plan-carta-catalogo-2026-09-24.md, M10. Con datos en los tres bloques (sección, un PV con contenido en esa sección y otro sin él
-  // —dibuja el aviso ámbar— y una promo), y con un formulario de cada tipo desplegado: cerrado, un <details> no expone sus campos (entre
+testAutenticado("carta: sin violaciones de axe, con formularios abiertos y «Fuera de carta» desplegado", async ({ paginaAutenticada: page, sucursalId }) => {
+  // docs/plan-carta-catalogo-2026-09-24.md, M10. Con datos en los bloques (sección, un PV con contenido en esa sección y otro sin él —va a «Fuera de carta (POS y menú del día)», que desde
+  // CARTA-MANT ya no es un aviso ámbar sino un contador plegado— y una promo), y con un formulario de cada tipo desplegado: cerrado, un <details> no expone sus campos (entre
   // ellos el select "Sección de carta" del contenido, docs/plan-carta-seccion-directa-2026-09-25.md).
   const marca = `${Date.now()}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
@@ -845,14 +845,28 @@ testAutenticado("carta: sin violaciones de axe, con formularios abiertos y el av
   await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: conContenido.id, visibleEnCarta: true, seccionCartaId: seccion.id, tags: ["Regional"], especial: true } });
   const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId: seccion.id, titulo: `E2E A11y Promo ${marca}`, precio: 1000 } });
   try {
+    // CARTA-MANT (prototipo aprobado): «Mantenimiento» (Hoy con una sección desplegada; Visibilidad con «Fuera de carta» y su «Agregar a la carta» abiertos) y «Parametrización»
+    // (Secciones con su ficha abierta, Promociones con la promo abierta): axe en 0 en cada una.
     await page.goto("/carta");
-    await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /PV disponibles acá sin contenido de carta/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Carta", level: 1 })).toBeVisible();
+    await page.locator(`[data-seccion-hoy="${seccion.nombre}"]`).getByRole("button", { name: new RegExp(`^${seccion.nombre} \\d`) }).click();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "carta: Hoy").toEqual([]);
+    await page.getByRole("button", { name: "Visibilidad", exact: true }).click();
+    await expect(page.getByText(/PV disponibles acá sin contenido de carta/)).toHaveCount(0);
+    await page.locator("[data-fuera-de-carta] > summary").click();
+    await page.locator(`[data-fuera-de-carta-producto="${sinContenido.nombre}"]`).getByRole("button", { name: /Agregar a la carta/ }).click();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "carta: Visibilidad").toEqual([]);
+    await page.goto("/carta/parametrizacion");
+    expect((await new AxeBuilder({ page }).analyze()).violations, "carta: Parametrización").toEqual([]);
+    await page.goto("/carta/parametrizacion/secciones");
     await page.locator(`[data-seccion-carta="${seccion.nombre}"] summary`).click();
+    await page.locator(`[data-grupo-de-la-carta="${seccion.nombre}"] > summary`).click();
     await page.locator(`[data-contenido-carta="${conContenido.nombre}"] summary`).click();
-    await page.locator(`[data-promo-carta="${promo.titulo}"] summary`).click();
     await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel("Especial (★)")).toBeChecked();
     await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel(/^Sección de carta/)).toHaveValue(seccion.id);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "carta: Parametrización › Secciones").toEqual([]);
+    await page.goto("/carta/parametrizacion/promociones");
+    await page.locator(`[data-promo-carta="${promo.titulo}"] summary`).click();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {
     await prisma.promoCartaSucursal.deleteMany({ where: { promoCarta: { id: promo.id } } });

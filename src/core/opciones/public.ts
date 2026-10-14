@@ -40,3 +40,7 @@ export type { CombinacionParaPrecio, PrecioDeCombinacion } from "./combinaciones
 
 // GO-2d (las pantallas de opciones de venta, ADR-030 «Pantallas»): los textos puros que comparten la administración, el selector del POS y la carta pública.
 export { ayudaDelTipoDeGrupo, espejoDeDiferencia, nombreDelTipoDeGrupo, resumenDeConsumos, textoDeDiferencia, textoDeLimites, textoDePorcentaje } from "./presentacion";
+
+// OPCIONES-LIMPIEZA (G2): «Limpiar» — los candidatos a archivar según un criterio y la vista previa de los productos afectados (puro; lo usa `/catalogo/opciones/limpiar`).
+export { CRITERIOS_DE_LIMPIEZA, candidatosALimpiar, productosAfectados } from "./limpieza";
+export type { CriterioDeLimpieza, GrupoParaLimpiar, OpcionParaLimpiar, VentasRecientes } from "./limpieza";

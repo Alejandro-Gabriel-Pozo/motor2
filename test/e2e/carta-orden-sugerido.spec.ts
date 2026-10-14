@@ -23,6 +23,8 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
   await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: ubicado.id, visibleEnCarta: true, seccionCartaId: llena.id, orden: 0 } });
   // Guardado en «Llena» con orden 7 (y oculto, así no cambia la cuenta de «Llena»).
   await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: conOrden.id, visibleEnCarta: false, seccionCartaId: llena.id, orden: 7 } });
+  // CARTA-MANT: un PV SIN contenido ya no tiene ficha (va a «Fuera de carta», con «Agregar a la carta»); el que se ubica por primera vez es uno oculto y sin sección.
+  await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: nuevo.id, visibleEnCarta: false, seccionCartaId: null, orden: 0 } });
   const agrupado = await prisma.itemAgrupadoCarta.create({ data: { sucursalId, nombre: `E2E Orden Agrupado ${marca}`, seccionCartaId: llena.id, orden: 3 } });
   await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId, itemAgrupadoCartaId: agrupado.id, productoId: opcion.id } });
   const nombreSeccionNueva = `E2E Orden Nueva ${marca}`;
@@ -30,7 +32,8 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
   try {
     // DA5: sección nueva.
     const cantidadSecciones = await prisma.seccionCarta.count();
-    await page.goto("/carta");
+    // CARTA-MANT: los formularios de las secciones y la ficha de cada producto viven en Parametrización › Secciones.
+    await page.goto("/carta/parametrizacion/secciones");
     const nuevaSeccion = page.locator("form", { has: page.getByRole("heading", { name: "Nueva sección de carta" }) });
     await expect(nuevaSeccion.getByLabel("Orden")).toHaveValue(String(cantidadSecciones));
     await nuevaSeccion.getByLabel("Nombre", { exact: true }).fill(nombreSeccionNueva);
@@ -40,7 +43,8 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
     // Tras el alta (y el refresco), el formulario vuelve a arrancar con el siguiente.
     await expect(nuevaSeccion.getByLabel("Orden")).toHaveValue(String(cantidadSecciones + 1));
 
-    // DA6 en /carta: un PV sin contenido.
+    // DA6 en /carta: un PV oculto y sin sección (grupo «Ocultos, sin sección»).
+    await page.locator(`[data-grupo-de-la-carta="Ocultos, sin sección"] > summary`).click();
     const filaNuevo = page.locator(`[data-contenido-carta="${nuevo.nombre}"]`);
     await filaNuevo.locator("summary").click();
     const seccionNuevo = filaNuevo.getByLabel(/^Sección de carta/);
@@ -53,11 +57,14 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
     // Sigue siendo editable a mano, y se guarda lo que quedó en el campo.
     await seccionNuevo.selectOption(llena.id);
     await expect(ordenNuevo).toHaveValue("2");
+    await filaNuevo.getByLabel("Se muestra en la carta").check();
     await filaNuevo.getByRole("button", { name: `Guardar contenido de «${nuevo.nombre}»` }).click();
-    await expect(filaNuevo.getByRole("status")).toHaveText(`Carta: "${nuevo.nombre}" se muestra.`);
-    expect(await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: nuevo.id } })).toMatchObject({ seccionCartaId: llena.id, orden: 2 });
+    // Al guardarse pasa del grupo «Ocultos, sin sección» al de «Llena» (el renglón se vuelve a dibujar ahí): se mira lo guardado.
+    await expect.poll(async () => (await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: nuevo.id } })).seccionCartaId).toBe(llena.id);
+    expect(await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: nuevo.id } })).toMatchObject({ seccionCartaId: llena.id, orden: 2, visibleEnCarta: true });
 
     // DA6: editar uno existente sin cambiar de sección conserva su orden; cambiar y volver lo recupera.
+    await page.locator(`[data-grupo-de-la-carta="${llena.nombre}"] > summary`).click();
     const filaConOrden = page.locator(`[data-contenido-carta="${conOrden.nombre}"]`);
     await filaConOrden.locator("summary").click();
     const seccionConOrden = filaConOrden.getByLabel(/^Sección de carta/);

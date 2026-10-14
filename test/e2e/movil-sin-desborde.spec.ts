@@ -8,9 +8,9 @@ import { capturar, expectSinDesborde, fijarCelular } from "./fixtures/movil";
  * cambio futuro hace que una pantalla desborde en el celular, este spec lo dice con la pantalla y los elementos que se salen. No siembra nada pesado: mide lo que cada pantalla muestra con
  * los datos de la base de pruebas (los casos con datos que hacen desbordar viven en los specs `movil-*` de cada pantalla). La mesa del salón se abre con una cuenta vacía.
  *
- * Pantallas: /inicio, /catalogo/opciones, /catalogo/productos, /movimientos/opciones-agotadas, /movimientos/precio-local, /carta y la mesa del POS.
+ * Pantallas: /inicio, /catalogo/opciones, /catalogo/productos, /movimientos/opciones-agotadas, /movimientos/precio-local, /carta (y su Parametrización, CARTA-MANT) y la mesa del POS.
  */
-const PANTALLAS = ["/inicio", "/catalogo/opciones", "/catalogo/productos", "/movimientos/opciones-agotadas", "/movimientos/precio-local", "/carta"];
+const PANTALLAS = ["/inicio", "/catalogo/opciones", "/catalogo/productos", "/movimientos/opciones-agotadas", "/movimientos/precio-local", "/carta", "/carta/parametrizacion", "/carta/parametrizacion/secciones"];
 
 test("celular (375 px): ninguna de las pantallas principales se sale por la derecha", async ({ paginaAutenticada: page, sucursalId }) => {
   test.setTimeout(240_000); // con el servidor de desarrollo la primera visita de cada pantalla compila

@@ -353,7 +353,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/catalogo/opciones-de-venta.ts",
     motivo:
-      "GO-2a (ADR-030): crearGrupoDeOpciones, editarGrupoDeOpciones, crearOpcionDeGrupo, editarOpcionDeGrupo y agregarVersionDeOpcion (opciones_definir) y fijarAdmisionDeGrupoEnProducto (producto_opciones_admitidas) → catalogo/casos-de-uso/{crear-grupo-de-opciones,editar-grupo-de-opciones,crear-opcion-de-grupo,editar-opcion-de-grupo,agregar-version-de-opcion,fijar-admision-de-grupo-en-producto}.ts, cada una con su guardComando… (core/features/catalogo/opciones-de-venta.guard.ts) dentro de conPermisoDeEmpresa. Escrituras en server/persistencia/catalogo/opciones-de-venta.ts (y el ancla del adicional en productos.ts); transacción SERIALIZABLE, versión optimista y auditoría en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
+      "GO-2a (ADR-030): crearGrupoDeOpciones, editarGrupoDeOpciones, crearOpcionDeGrupo, editarOpcionDeGrupo y agregarVersionDeOpcion (opciones_definir) y fijarAdmisionDeGrupoEnProducto (producto_opciones_admitidas) → catalogo/casos-de-uso/{crear-grupo-de-opciones,editar-grupo-de-opciones,crear-opcion-de-grupo,editar-opcion-de-grupo,agregar-version-de-opcion,fijar-admision-de-grupo-en-producto}.ts, cada una con su guardComando… (core/features/catalogo/opciones-de-venta.guard.ts) dentro de conPermisoDeEmpresa. Escrituras en server/persistencia/catalogo/opciones-de-venta.ts (y el ancla del adicional en productos.ts); transacción SERIALIZABLE, versión optimista y auditoría en el caso de uso. GO-2d sumó reordenarOpcionesDeGrupo y OPCIONES-LIMPIEZA archivarOpciones (opciones_definir) y vincularGrupoEnProducto (producto_opciones_admitidas) → catalogo/casos-de-uso/{reordenar-opciones-de-grupo,archivar-opciones,vincular-grupo-en-producto}.ts, igual que las demás. El archivo nace migrado: no tiene ninguna otra mutación.",
   },
   {
     ruta: "src/server/actions/catalogo/opciones-por-sucursal.ts",
@@ -376,6 +376,12 @@ const ACCIONES_CON_CASO_DE_USO = [
     ruta: "src/server/actions/carta/menu-del-dia.ts",
     motivo:
       "GO-3b (ADR-032, D5): agregarPlatoDelDia, quitarPlatoDelDia y copiarMenuDelDiaAnterior (promo_menu_del_dia, sucursal) → carta/casos-de-uso/{agregar-plato-del-dia,quitar-plato-del-dia,copiar-menu-del-dia-anterior}.ts, con su guardComando… (eco de la sucursal activa, core/features/carta/menu-del-dia.guard.ts) dentro de conPermiso. Escrituras en server/persistencia/carta/combos.ts, SOLO en la sucursal activa; transacción SERIALIZABLE y auditoría con la sucursal en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
+  },
+  // CARTA-MANT (mantenimiento de la carta): nace migrado.
+  {
+    ruta: "src/server/actions/carta/mantenimiento.ts",
+    motivo:
+      "CARTA-MANT (ADR-034): agregarProductoALaCarta y quitarProductoDeLaCarta (carta_contenido_producto, sucursal) → carta/casos-de-uso/{agregar-producto-a-la-carta,quitar-producto-de-la-carta}.ts, y fijarDisponibilidadDeHoy (producto_disponibilidad, sucursal) → catalogo/casos-de-uso/fijar-disponibilidad-de-hoy.ts (reusa las reglas de actualizar-disponibilidad-producto.ts), cada una con su guardComando… (eco de la sucursal activa, core/features/carta/mantenimiento.guard.ts) dentro de conPermiso. Escrituras en server/persistencia/carta/contenido-producto.ts (create y deleteMany) y server/persistencia/catalogo/productos.ts, SOLO en la sucursal activa; transacción y auditoría con la sucursal en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
   },
   {
     ruta: "src/server/actions/carta/copiar-carta.ts",
