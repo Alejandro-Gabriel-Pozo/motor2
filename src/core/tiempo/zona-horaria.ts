@@ -160,3 +160,17 @@ export function diaDeLaSemana(dia: string): number {
   return (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
 }
 
+
+// GO-3b (ADR-032): las columnas DATE de los combos (`PromoCarta.vigenteDesde`/`vigenteHasta`, `EntradaDelDiaDeCupo.fecha`) guardan un día de calendario SIN hora. Prisma las lee y escribe como
+// `Date` a las 00:00 UTC de ese día: estas dos son la única traducción entre ese `Date` y el día «AAAA-MM-DD» (ya en la zona de la empresa: no se convierte de zona).
+
+/** El `Date` con que se escribe un día «AAAA-MM-DD» en una columna DATE (00:00 UTC de ese día). */
+export function fechaDeColumnaDate(dia: string): Date {
+  const [y, m, d] = leerDia(dia);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+/** El día «AAAA-MM-DD» de un `Date` leído de una columna DATE. */
+export function diaDeColumnaDate(fecha: Date): string {
+  return fecha.toISOString().slice(0, 10);
+}

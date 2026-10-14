@@ -1,13 +1,16 @@
 import "server-only";
-import type { ContextoUsuario } from "@/server/sesion/contexto";
+import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { mensajePisoDePromo, mensajePisoLocalDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
-import { diferenciaDeCupos, type CupoExistente, type CupoPedido, type TipoDeCupo } from "@/core/carta/public";
+import { claveNaturalDeCupo, diferenciaDeCupos, type CupoExistente, type CupoPedido, type TipoDeCupo } from "@/core/carta/public";
 import type { ComandoGuardarCuposPromoCarta, ResultadoGuardarCuposPromoCarta } from "@/core/features/carta/promos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { cambiarCupoDePromo, crearCupoDePromo, darDeBajaCupoDePromo } from "@/server/persistencia/carta/promos";
+import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { revisarAlicuotasEnTx } from "./componentes-de-combo-en-tx";
+import { sucursalesDeLaEmpresa } from "@/server/lecturas/carta/componentes-de-promo";
 
 /**
  * Caso de uso «reemplazar TODOS los cupos de una promo» (Hito 4 de la pureza, bloque 4.2, paso H4C-3 — `docs/plan-hito-4-pureza.md` §3). Es el cuerpo que antes
@@ -32,6 +35,8 @@ import { cambiarCupoDePromo, crearCupoDePromo, darDeBajaCupoDePromo } from "@/se
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos.
  *
+ * GO-3b (D-2): antes de escribir, las alícuotas de IVA de todos los componentes POSIBLES del combo con los lugares pedidos (`revisarAlicuotasEnTx`): no se mezclan alícuotas declaradas distintas.
+ *
  * @contract Deja exactamente los cupos pedidos en la promo (todo o nada), si cada uno es válido y todos los precios de la promo alcanzan el piso de los cupos nuevos; y deja una fila de auditoría por cada columna de cupo que cambió.
  * @idempotency Por estado — repetir el pedido no escribe ni audita nada (cada cupo ya está como se pide).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento, con `tambienChoqueDeUnico`: dos guardados a la vez que crean el MISMO cupo chocan con su único y el reintento relee y lo cambia en el lugar): las lecturas (promo, cupos de antes, secciones, piso), las escrituras de los cupos y su auditoría, todo junto.
@@ -39,7 +44,7 @@ import { cambiarCupoDePromo, crearCupoDePromo, darDeBajaCupoDePromo } from "@/se
  * @ficha permiso=carta_promo_definir transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function guardarCuposPromoCartaCasoDeUso(
-  actor: Pick<ContextoUsuario, "transaccion" | "usuarioId" | "empresaId" | "db" | "alcance">,
+  actor: Pick<ContextoDeAccion, "transaccion" | "usuarioId" | "empresaId" | "db" | "alcance" | "ahora" | "empresaZonaHoraria">,
   comando: ComandoGuardarCuposPromoCarta,
 ): Promise<ResultadoGuardarCuposPromoCarta> {
   const { promoCartaId, cupos } = comando;
@@ -95,6 +100,18 @@ export async function guardarCuposPromoCartaCasoDeUso(
       const diferencia = diferenciaDeCupos(existentes, cuposValidados);
       if (!diferencia.ok) return fracaso("CUPO_INVALIDO", diferencia.mensaje);
       const { crear, cambiar, darDeBaja } = diferencia.diferencia;
+
+      // GO-3b (D-2): todos los componentes POSIBLES del combo con los lugares pedidos (los productos de sus secciones, las opciones activas de sus listas y los platos del día de hoy en adelante)
+      // no pueden mezclar alícuotas de IVA declaradas distintas. Un lugar nuevo todavía no tiene opciones: cuenta lo que ya existe con su clave.
+      const existentePorClave = new Map(existentes.map((c) => [claveNaturalDeCupo(c), c.id]));
+      const idsDe = (tipo: TipoDeCupo) => cuposValidados.filter((c) => c.tipo === tipo).flatMap((c) => existentePorClave.get(claveNaturalDeCupo(c)) ?? []);
+      const alicuotas = await revisarAlicuotasEnTx(tx, {
+        lugares: { seccionCartaIds: [...seccionIds], cupoListaIds: idsDe("LISTA"), cupoDelDiaIds: idsDe("DEL_DIA") },
+        desdeDia: diaDeCalendario(actor.ahora, actor.empresaZonaHoraria),
+        sucursalIds: await sucursalesDeLaEmpresa(tx, actor.empresaId),
+        producto: null,
+      });
+      if (!alicuotas.ok) return alicuotas;
 
       // Todo validado: recién acá se escribe (los rechazos de arriba no dejaron nada). Cada escritura con su auditoría, en esta misma transacción.
       const contexto = { promoCartaId, titulo: promo.titulo, nombresDeSecciones };

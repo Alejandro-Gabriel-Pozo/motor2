@@ -105,6 +105,14 @@ const completos: Record<string, Valor> = {
       intento(c, ["promoCartaId"], [k.promoCartaId, [{ seccionCartaId: c.propio.seccionCartaId, cantidadMaxima: 2 }]]),
       intento(c, ["seccionCartaId"], [c.propio.promoCartaId, [{ seccionCartaId: k.seccionCartaId, cantidadMaxima: 2 }]]),
     ),
+  // GO-3b (ADR-032): las opciones de un lugar LISTA (el `pv2`, con receta, todavía no es opción: con lo propio se agrega de verdad) y la vigencia del combo (versión 1, la sembrada).
+  "accion|actions/carta/combos.ts|agregarEntradaDeCupo": (k, c) =>
+    conVariantes(
+      intento(c, ["cupoListaId"], [{ cupoId: k.cupoListaId, productoId: c.propio.productoPv2Id }]),
+      intento(c, ["productoPv2Id"], [{ cupoId: c.propio.cupoListaId, productoId: k.productoPv2Id }]),
+    ),
+  "accion|actions/carta/combos.ts|actualizarActivaEntradaDeCupo": (k) => [{ entradaId: k.entradaDeCupoId, activa: false }],
+  "accion|actions/carta/combos.ts|guardarVigenciaPromoCarta": (k) => [{ promoCartaId: k.promoComboId, versionEsperada: 1, vigenteDesde: "2026-01-01", diasDeSemana: [0, 1, 2, 3, 4] }],
   "accion|actions/carta/registro-publico.ts|guardarSucursalPublica": (k) => [k.sucursalId, { slug: "slug-nuevo", publicada: true }],
   "accion|actions/carta/secciones.ts|guardarSeccionCarta": (k) => [{ id: k.seccionCartaId, nombre: "Nombre nuevo" }],
 
@@ -324,6 +332,12 @@ const parametros: Record<string, Record<string, Valor>> = {
   "lectura|lecturas/opciones/opciones-para-vender.ts|completarPreciosDeSucursal": {
     opciones: (k) => new Map([[k.productoConOpcionesId, { grupos: [medidaParaVender(k)], anclaDeOpcionId: null }]]),
     elegidas: (k) => [{ productoId: k.productoConOpcionesId, opcionIds: [k.opcionMedidaId] }],
+  },
+  // GO-3b: los componentes de un combo (el PV con receta) y las alícuotas de todo lo que el combo puede tener (la sección de carta, la lista y el plato del día; la carta de la sucursal activa).
+  "lectura|lecturas/carta/componentes-de-promo.ts|cargarProductosComoComponentes": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoPvId] }) },
+  "lectura|lecturas/carta/componentes-de-promo.ts|cargarAlicuotasPosiblesDeLugares": {
+    lugares: (k) => ({ seccionCartaIds: [k.seccionCartaId], cupoListaIds: [k.cupoListaId], cupoDelDiaIds: [k.cupoDelDiaId] }),
+    args: (_k, c) => ({ desdeDia: "2000-01-01", sucursalIds: [c.propio.sucursalId] }),
   },
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoOpcion": { id: (k) => k.productoId },

@@ -57,6 +57,14 @@ export interface KitDeEmpresa {
   grupoMedidaId: string;
   opcionMedidaId: string;
   grupoAdicionalId: string;
+  /**
+   * GO-3b (ADR-032): un COMBO aparte (la promo de siempre sigue con su cupo de sección, así el POS la sigue ofreciendo) con un lugar LISTA que tiene una opción (el `pv`, con receta) y un lugar
+   * DEL_DIA. Las opciones de la lista son de la empresa; el plato del día de cada sucursal va en su kit.
+   */
+  promoComboId: string;
+  cupoListaId: string;
+  entradaDeCupoId: string;
+  cupoDelDiaId: string;
 }
 
 export interface KitDeSucursal {
@@ -236,6 +244,11 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   }
   await db.productoAdmiteGrupo.create({ data: { id: id("admite-medida"), empresaId, productoId: pvOpciones.id, grupoId: grupoMedida.id, orden: 0, modoPrecio: "ABSOLUTO" } });
   await db.productoAdmiteOpcion.create({ data: { id: id("admite-grande"), empresaId, productoId: pvOpciones.id, opcionId: opcionMedida.id, precioAbsoluto: 1500 } });
+  // GO-3b (ADR-032): el combo con su lista (una opción: el `pv`) y su lugar del plato del día.
+  const promoCombo = await db.promoCarta.create({ data: { id: id("promo-combo"), empresaId, seccionCartaId: seccionCarta.id, titulo: `Combo ${marca}`, precio: 6000 } });
+  const cupoLista = await db.promoCartaCupo.create({ data: { id: id("cupo-lista"), empresaId, promoCartaId: promoCombo.id, tipo: "LISTA", nombre: `Entrada ${marca}`, cantidadMinima: 1, cantidadMaxima: 1, orden: 1 } });
+  const cupoDelDia = await db.promoCartaCupo.create({ data: { id: id("cupo-del-dia"), empresaId, promoCartaId: promoCombo.id, tipo: "DEL_DIA", nombre: `Plato ${marca}`, cantidadMinima: 1, cantidadMaxima: 1, orden: 2 } });
+  const entradaDeCupo = await db.entradaDeCupo.create({ data: { id: id("entrada-de-cupo"), empresaId, cupoId: cupoLista.id, productoId: pv.id } });
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
   return {
     marca,
@@ -267,6 +280,10 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
     grupoMedidaId: grupoMedida.id,
     opcionMedidaId: opcionMedida.id,
     grupoAdicionalId: grupoAdicional.id,
+    promoComboId: promoCombo.id,
+    cupoListaId: cupoLista.id,
+    entradaDeCupoId: entradaDeCupo.id,
+    cupoDelDiaId: cupoDelDia.id,
   };
 }
 

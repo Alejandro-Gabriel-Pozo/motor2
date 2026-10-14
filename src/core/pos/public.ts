@@ -33,3 +33,9 @@ export { TICKETS_RECIENTES_POR_MESA, armarTicketImpresoEn, armarTicketsDeCuentas
 export type { EstadoDeTicket, ItemConVenta, LineaDeTicket, TicketDeCuenta } from "./ticket";
 // GO-2b (ADR-030): la forma de lo que un producto admite para venderse, que arma la lectura de las opciones para vender (`server/lecturas/opciones/`).
 export type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
+// GO-3b (ADR-032): si un producto puede ser componente de un combo o plato del día (D-8 y D-9), las alícuotas de un combo (D-2) y la clave de una configuración fija.
+export { rechazoDeComponenteDeCombo } from "./componente-de-combo";
+export type { CodigoDeComponenteDeCombo } from "./componente-de-combo";
+export { revisarAlicuotasDeCombo } from "./alicuotas-de-combo";
+export type { ComponenteConAlicuota } from "./alicuotas-de-combo";
+export { claveDeConfiguracion } from "./promo-combo";

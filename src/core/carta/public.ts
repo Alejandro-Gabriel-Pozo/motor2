@@ -75,3 +75,6 @@ export { esHostDeEmpresaUnica } from "./carta-empresa-unica";
 export { estiloCartaPorDefecto } from "./estilo";
 export { posicionCompleta } from "./portal";
 export type { EntradaPortalCarta } from "./portal";
+// GO-3b (ADR-032, D-7): la vigencia de una promo (el guard de la administración la valida; la venta la evalúa al agregar).
+export { TODOS_LOS_DIAS, mascaraDeDias, validarVigenciaDePromo } from "./vigencia-de-promo";
+export type { VigenciaDePromo } from "./vigencia-de-promo";

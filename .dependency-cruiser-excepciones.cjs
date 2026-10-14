@@ -360,6 +360,12 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "GO-2a (ADR-030 §5): apagarOpcionEnSucursal (opcion_apagar_en_sucursal) y fijarPrecioLocalDeOpcion (precio_local) → catalogo/casos-de-uso/{apagar-opcion-en-sucursal,fijar-precio-local-de-opcion}.ts, con su guardComando… (eco de la sucursal activa, core/features/catalogo/opciones-por-sucursal.guard.ts) dentro de conPermiso. Escrituras en server/persistencia/catalogo/opciones-por-sucursal.ts, SOLO en la sucursal activa; transacción SERIALIZABLE y auditoría con la sucursal en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
   },
+  // GO-3b (ADR-032): los combos y el menú del día nacen migrados.
+  {
+    ruta: "src/server/actions/carta/combos.ts",
+    motivo:
+      "GO-3b (ADR-032, D4a y D4b): agregarEntradaDeCupo, actualizarActivaEntradaDeCupo y guardarVigenciaPromoCarta (carta_promo_definir) → carta/casos-de-uso/{agregar-entrada-de-cupo,actualizar-activa-entrada-de-cupo,guardar-vigencia-promo-carta}.ts, con su guardComando… (core/features/carta/combos.guard.ts) dentro de conPermisoDeEmpresa. Lecturas de los componentes en server/lecturas/carta/componentes-de-promo.ts, escrituras en server/persistencia/carta/combos.ts; transacción SERIALIZABLE y auditoría en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
+  },
   {
     ruta: "src/server/actions/carta/copiar-carta.ts",
     motivo:

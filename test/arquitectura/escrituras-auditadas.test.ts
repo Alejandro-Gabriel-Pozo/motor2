@@ -49,6 +49,11 @@ const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
   opcionApagadaEnSucursal: "*",
   grupoDeOpciones: ["cantidadMinima", "cantidadMaxima", "activo"],
   opcionDeGrupo: ["activa"],
+  // GO-3b (ADR-032): lo que cambia QUÉ entra en un combo por su precio sin ser `Decimal`: las opciones de un lugar LISTA (y su configuración fija), los platos del día y la vigencia de la promo.
+  entradaDeCupo: "*",
+  opcionDeEntradaDeCupo: "*",
+  entradaDelDiaDeCupo: "*",
+  promoCarta: ["vigenteDesde", "vigenteHasta", "diasDeSemana"],
 };
 
 /** Modelos cuya fila ES el rastro (un documento propio o un dato de fuente externa): no hay un valor anterior que se pierda al escribirlos. */

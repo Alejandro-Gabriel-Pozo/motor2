@@ -80,6 +80,7 @@ export interface ComandoGuardarCuposPromoCarta {
  *  - `CUPO_INVALIDO`: un cupo sin sección, con la sección repetida, o con cantidades fuera de rango (o el mínimo mayor que el máximo); GO-3b: un lugar sin nombre, con el nombre
  *    repetido o con el nombre de un lugar de otro tipo;
  *  - `SECCION_NO_ENCONTRADA`: alguna sección de los cupos no existe;
- *  - `BAJO_EL_PISO`: el precio de la empresa, o el precio local de alguna sucursal, no alcanza el piso de $0,01 por unidad del peor caso de los cupos nuevos.
+ *  - `BAJO_EL_PISO`: el precio de la empresa, o el precio local de alguna sucursal, no alcanza el piso de $0,01 por unidad del peor caso de los cupos nuevos;
+ *  - `COMBO_ALICUOTAS_DISTINTAS` (GO-3b, D-2): los componentes posibles del combo con estos lugares mezclan alícuotas de IVA declaradas distintas.
  */
-export type ResultadoGuardarCuposPromoCarta = ResultadoCaso<null, "PROMO_NO_ENCONTRADA" | "CUPO_INVALIDO" | "SECCION_NO_ENCONTRADA" | "BAJO_EL_PISO">;
+export type ResultadoGuardarCuposPromoCarta = ResultadoCaso<null, "PROMO_NO_ENCONTRADA" | "CUPO_INVALIDO" | "SECCION_NO_ENCONTRADA" | "BAJO_EL_PISO" | "COMBO_ALICUOTAS_DISTINTAS">;

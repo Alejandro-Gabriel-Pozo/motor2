@@ -17,7 +17,7 @@ import { actorDePrueba } from "../setup/opciones-de-venta";
 const ITERACIONES = 10;
 
 describe("los cupos de una promo se guardan sin borrar (GO-3b, D3)", () => {
-  let actor: ReturnType<typeof actorDePrueba>;
+  let actor: ReturnType<typeof actorDePrueba> & { empresaZonaHoraria: string };
   let promoCartaId: string;
   let entradasId: string;
   let postresId: string;
@@ -29,7 +29,7 @@ describe("los cupos de una promo se guardan sin borrar (GO-3b, D3)", () => {
     const base = await sembrarBase();
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
     adminId = admin.id;
-    actor = actorDePrueba(admin.id, base.sucursal.id);
+    actor = { ...actorDePrueba(admin.id, base.sucursal.id), empresaZonaHoraria: "America/Argentina/Buenos_Aires" };
     entradasId = (await prisma.seccionCarta.create({ data: { nombre: "Entradas" } })).id;
     postresId = (await prisma.seccionCarta.create({ data: { nombre: "Postres" } })).id;
     const menu = (await prisma.seccionCarta.create({ data: { nombre: "Menús" } })).id;

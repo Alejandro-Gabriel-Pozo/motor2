@@ -86,6 +86,12 @@ export const ENTIDADES_AUDITABLES = [
   "ProductoAdmiteOpcion",
   "PrecioLocalDeOpcion",
   "OpcionApagadaEnSucursal",
+  // GO-3b (ADR-032): los combos y el menú del día. `entidadId`:
+  //  - "EntradaDeCupo": el id de la entrada (una opción de un lugar LISTA: producto y configuración fija), `campo: "activa"` (`valorAnterior: null` en el alta), `sucursalId` null (de la empresa);
+  //  - "EntradaDelDiaDeCupo": el id del plato del día (lugar, sucursal, fecha y producto), `campo: "activa"` (`valorAnterior: null` en el alta), con `sucursalId`.
+  // La vigencia de la promo va con "PromoCarta" (`vigenteDesde`, `vigenteHasta`, `diasDeSemana`) y los lugares nuevos con "PromoCartaCupo" (`${promoCartaId}:${cupoId}`).
+  "EntradaDeCupo",
+  "EntradaDelDiaDeCupo",
 ] as const;
 
 /**
