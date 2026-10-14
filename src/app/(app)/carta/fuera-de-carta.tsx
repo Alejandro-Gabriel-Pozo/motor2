@@ -8,7 +8,8 @@ import type { ResultadoAccion } from "@/server/actions/tipos";
 export interface ProductoFueraDeCarta {
   id: string;
   nombre: string;
-  precioAca: number;
+  /** El precio de esta sucursal YA formateado por el servidor («$9.800»): formatearlo acá podría salir distinto en el navegador y romper la hidratación. */
+  precio: string;
 }
 
 /**
@@ -90,7 +91,7 @@ export function FueraDeCarta({
               <li key={p.id} className="flex flex-col gap-2 py-2" data-fuera-de-carta-producto={p.nombre}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">
-                    {p.nombre} <span className="text-neutral-600 dark:text-neutral-400">· ${p.precioAca.toLocaleString("es-AR")}</span>
+                    {p.nombre} <span className="text-neutral-600 dark:text-neutral-400">· {p.precio}</span>
                   </span>
                   {puedeAgregar && (
                     <button

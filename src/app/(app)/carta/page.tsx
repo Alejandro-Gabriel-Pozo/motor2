@@ -407,7 +407,7 @@ export default async function CartaPage() {
         )}
 
         <FueraDeCarta
-          productos={carta.fueraDeCarta.map((p) => ({ id: p.id, nombre: p.nombre, precioAca: p.precioAca }))}
+          productos={carta.fueraDeCarta.map((p) => ({ id: p.id, nombre: p.nombre, precio: `$${p.precioAca.toLocaleString("es-AR")}` }))}
           secciones={seccionesActivas.map((s) => ({ id: s.id, nombre: s.nombre }))}
           puedeAgregar={puedeEditarContenido}
           agregar={async (productoId: string, seccionCartaId: string) => {
