@@ -32,7 +32,33 @@ async function sembrar() {
   const agrupado = await prisma.itemAgrupadoCarta.create({ data: { sucursalId: central.id, nombre: "Combo", seccionCartaId: seccion.id, orden: 2 } });
   await prisma.opcionItemAgrupadoCarta.create({ data: { sucursalId: central.id, itemAgrupadoCartaId: agrupado.id, productoId: opcion.id, orden: 0 } });
   const promo = await prisma.promoCarta.create({ data: { seccionCartaId: seccion.id, titulo: "Promo", descripcion: "x", precio: 100, sucursales: { create: [{ sucursalId: central.id }] } } });
-  return { ids: { sucursal: central.id, seccion: seccion.id, suelto: suelto.id, opcion: opcion.id, agrupado: agrupado.id, promo: promo.id, empresa: EMPRESA_POR_DEFECTO_ID } };
+  // GO-2d: el Bife con opciones de venta (un punto obligatorio): sus ids (grupo, opción, versión, admisiones) tampoco salen.
+  const autor = await prisma.user.create({ data: { email: "autor-sin-ids@test.com" } });
+  const grupo = await prisma.grupoDeOpciones.create({ data: { nombre: "Punto", tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1 } });
+  const jugoso = await prisma.opcionDeGrupo.create({ data: { grupoId: grupo.id, nombre: "Jugoso", orden: 1 } });
+  const aPunto = await prisma.opcionDeGrupo.create({ data: { grupoId: grupo.id, nombre: "A punto", orden: 2 } });
+  const version = await prisma.versionDeOpcion.create({ data: { opcionId: jugoso.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "0.00", creadoPorId: autor.id } });
+  await prisma.versionDeOpcion.create({ data: { opcionId: aPunto.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "100.00", creadoPorId: autor.id } });
+  const admiteGrupo = await prisma.productoAdmiteGrupo.create({ data: { productoId: suelto.id, grupoId: grupo.id, orden: 0 } });
+  const admiteOpcion = await prisma.productoAdmiteOpcion.create({ data: { productoId: suelto.id, opcionId: jugoso.id } });
+  await prisma.productoAdmiteOpcion.create({ data: { productoId: suelto.id, opcionId: aPunto.id } });
+  return {
+    ids: {
+      sucursal: central.id,
+      seccion: seccion.id,
+      suelto: suelto.id,
+      opcion: opcion.id,
+      agrupado: agrupado.id,
+      promo: promo.id,
+      empresa: EMPRESA_POR_DEFECTO_ID,
+      grupoDeOpciones: grupo.id,
+      opcionDeGrupo: jugoso.id,
+      versionDeOpcion: version.id,
+      admiteGrupo: admiteGrupo.id,
+      admiteOpcion: admiteOpcion.id,
+      autor: autor.id,
+    },
+  };
 }
 
 describe("S-25: la carta pública no emite ids internos", () => {
@@ -58,6 +84,8 @@ describe("S-25: la carta pública no emite ids internos", () => {
     const entregada = (await cartaPublica(empresa, "central", AHORA_DE_LA_CORRIDA))!;
     const html = renderToStaticMarkup(<CartaVista carta={entregada.carta} estilo={entregada.estilo} hrefVolver="/carta-publica/principal" />);
     expect(html).toContain("Bife");
+    // GO-2d: las opciones se dibujan (y sin ids).
+    expect(html).toContain("A punto + ");
     expect(html).toContain('data-ir-a="seccion-0"');
     for (const [clase, id] of Object.entries(ids)) expect(html, `el HTML contiene el id de ${clase}`).not.toContain(id);
     expect(html).not.toMatch(CUID);

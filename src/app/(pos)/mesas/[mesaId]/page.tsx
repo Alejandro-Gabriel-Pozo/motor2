@@ -3,10 +3,11 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
-import { type ItemDeCuenta, type ItemEnEnvio, armarComandas, formatearCantidad, formatearMonto, nombreDeMesa } from "@/core/pos/public";
+import { type ItemDeCuenta, type ItemEnEnvio, agruparConAdicionales, armarComandas, elegidasDeLaLinea, formatearCantidad, formatearMonto, nombreDeMesa } from "@/core/pos/public";
 import { obtenerDetalleDeMesa } from "@/server/consultas/pos/detalle-de-mesa";
 import { obtenerTicketsRecientes } from "@/server/consultas/pos/tickets";
 import { cargarSelectorCartaDeLaMesa } from "@/server/consultas/pos/selector-carta";
+import { cargarOpcionesDelSelector } from "@/server/consultas/pos/opciones-del-selector";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarClientesParaCuenta } from "@/server/actions/clientes/cliente";
 import { AvisoMesaProvider } from "./aviso-mesa";
@@ -21,6 +22,7 @@ import { AnularItem } from "./anular-item";
 import { AnularPromo } from "./anular-promo";
 import { CerrarCuenta } from "./cerrar-cuenta";
 import { LiberarMesa } from "./liberar-mesa";
+import { OtroIgual, OtroIgualProvider } from "./otro-igual";
 
 /**
  * Pantalla de una mesa del salón (módulo POS, pendiente «tomar pedido», docs/plan-tomar-pedido-2026-09-25.md paso 8). A ella llevan
@@ -82,6 +84,11 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   // puede tomar pedido. Se lee acá, después de la guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`), sin Server
   // Action nueva. Aparte del `Promise.all` de arriba a propósito (no confundir con `secciones`, que son las de STOCK).
   const selectorCarta = cuenta && tomarPedido.editar ? await cargarSelectorCartaDeLaMesa(ctx.sucursalId, ctx.db, ahora) : null;
+  // GO-2d (ADR-030): de los productos del selector que admiten opciones, lo que necesita «Elegir opciones» (precios para mostrar, agotadas, stock 0). Y si el rol puede marcar
+  // opciones agotadas (el diálogo ofrece el enlace). Solo con el selector a la vista.
+  const [configuraciones, agotar] = selectorCarta
+    ? await Promise.all([cargarOpcionesDelSelector(ctx.sucursalId, ctx.db, selectorCarta, { ahora, zonaHoraria: ctx.empresaZonaHoraria }), obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "opcion_apagar_en_sucursal", ctx.db)])
+    : [{}, { ver: false, editar: false }];
   // Cliente con descuento (Task #14): la lista de clientes ACTIVOS solo se trae si hay algo que asignar — mismo criterio que
   // `selectorCarta`. `descuentoPorcentaje` se convierte a `number` acá (server): un `Decimal` de Prisma no se puede pasar tal cual
   // a un Client Component (`ClienteCuenta`).
@@ -129,6 +136,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
         </header>
 
         <ImpresionProvider mesa={titulo} sucursal={ctx.sucursalNombre} zonaHoraria={ctx.empresaZonaHoraria} comandas={comandas} tickets={tickets}>
+        <OtroIgualProvider>
           {!cuenta ? (
             <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-8">
               <p className="mb-4 font-semibold">La mesa está libre.</p>
@@ -140,7 +148,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                 <h2 id="agregar-titulo" className="mb-3 text-[15px] font-bold">
                   Agregar al pedido
                 </h2>
-                <AgregarItems cuentaId={cuenta.id} puede={tomarPedido.editar} selectorCarta={selectorCarta} />
+                <AgregarItems cuentaId={cuenta.id} puede={tomarPedido.editar} selectorCarta={selectorCarta} configuraciones={configuraciones} puedeAgotar={agotar.editar} />
               </section>
 
               <SinEnviar
@@ -153,6 +161,11 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                   precioListaUnitario: i.precioListaUnitario,
                   promoCuentaId: i.promoCuentaId,
                   promoTitulo: i.promoTitulo,
+                  // GO-2d: lo de las opciones, solo cuando hay (una cuenta sin opciones manda lo de siempre).
+                  ...(i.opciones || i.elegidas ? { productoId: i.productoId } : {}),
+                  ...(i.opciones ? { opciones: i.opciones } : {}),
+                  ...(i.lineaPadreId ? { lineaPadreId: i.lineaPadreId } : {}),
+                  ...(i.elegidas ? { elegidas: i.elegidas } : {}),
                 }))}
                 puede={tomarPedido.editar}
                 puedeEnviar={enviarACocina.editar}
@@ -169,7 +182,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                   <ul className="divide-y divide-[var(--border)]">
                     {agruparEnvioPorPromo(envio.items).map((fila) =>
                       fila.tipo === "suelto" ? (
-                        <ItemEnviado key={fila.item.id} item={fila.item} puedeAnular={anularItem.editar} />
+                        <ItemEnviado key={fila.item.id} item={fila.item} adicionales={fila.adicionales} puedeAnular={anularItem.editar} puedePedir={tomarPedido.editar} />
                       ) : (
                         <PromoEnviada key={fila.promoCuentaId} promoCuentaId={fila.promoCuentaId} titulo={fila.titulo} items={fila.items} puedeAnular={anularItem.editar} />
                       )
@@ -199,30 +212,53 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
               </Link>
             </p>
           )}
+        </OtroIgualProvider>
         </ImpresionProvider>
       </AvisoMesaProvider>
     </div>
   );
 }
 
-/** Un ítem ya enviado: lo que queda (con lo pedido si hubo anulaciones), su importe vigente, «Anular» y sus anulaciones tachadas. */
-function ItemEnviado({ item, puedeAnular }: { item: ItemEnEnvio<ItemDeCuenta>; puedeAnular: boolean }) {
+/**
+ * Un ítem ya enviado: lo que queda (con lo pedido si hubo anulaciones), su importe vigente, «Anular» y sus anulaciones tachadas. GO-2d (ADR-030): con opciones, sus nombres
+ * debajo, «Otro igual» y sus adicionales con sangría, sin «Anular» propio (se anulan con su producto: `anularItemEnviado`, que lo avisa en el diálogo).
+ */
+function ItemEnviado({ item, adicionales, puedeAnular, puedePedir }: { item: ItemEnEnvio<ItemDeCuenta>; adicionales: ItemEnEnvio<ItemDeCuenta>[]; puedeAnular: boolean; puedePedir: boolean }) {
   const anuladoEntero = item.restante <= 0;
+  const elegidas = elegidasDeLaLinea({ item, adicionales });
   return (
     <li data-item-enviado={item.productoNombre} className="py-2 text-[14px]">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <span className={anuladoEntero ? "text-[var(--ink-soft)] line-through" : undefined}>
           <span className="font-semibold tabular-nums">{formatearCantidad(anuladoEntero ? item.cantidad : item.restante)} ×</span> {item.productoNombre}
           {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-[12.5px] text-[var(--ink-soft)]"> (pedido {formatearCantidad(item.cantidad)})</span>}
+          {item.opciones && (
+            <span data-opciones-de-linea className="block text-[12.5px] text-[var(--ink-soft)]">
+              {item.opciones.join(" · ")}
+            </span>
+          )}
         </span>
-        <span className="flex items-center gap-3">
+        <span className="flex flex-wrap items-center gap-3">
           <span className="tabular-nums">
             {!anuladoEntero && item.precioListaUnitario !== null && <s data-precio-lista className="mr-1 text-[var(--ink-soft)]">{formatearMonto(item.restante * item.precioListaUnitario)}</s>}
             {anuladoEntero ? "Anulado" : formatearMonto(item.restante * item.precioUnitario)}
           </span>
-          {!anuladoEntero && <AnularItem item={{ id: item.id, productoNombre: item.productoNombre, restante: item.restante }} puede={puedeAnular} />}
+          {elegidas.length > 0 && <OtroIgual pedido={{ productoId: item.productoId, elegidas }} titulo={item.productoNombre} puede={puedePedir} />}
+          {!anuladoEntero && <AnularItem item={{ id: item.id, productoNombre: item.productoNombre, restante: item.restante }} conAdicionales={adicionales.some((a) => a.restante > 0)} puede={puedeAnular} />}
         </span>
       </div>
+      {adicionales.length > 0 && (
+        <ul aria-label={`Adicionales de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[13px]">
+          {adicionales.map((a) => (
+            <li key={a.id} data-adicional-enviado={a.productoNombre} className={`flex items-center justify-between gap-3${a.restante <= 0 ? " text-[var(--ink-soft)] line-through" : ""}`}>
+              <span>
+                + <span className="tabular-nums">{formatearCantidad(a.restante <= 0 ? a.cantidad : a.restante)} ×</span> {a.productoNombre}
+              </span>
+              <span className="tabular-nums">{a.restante <= 0 ? "Anulado" : formatearMonto(a.restante * a.precioUnitario)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       {item.anulaciones.length > 0 && (
         <ul aria-label={`Anulaciones de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[12.5px] text-[var(--ink-soft)]">
           {item.anulaciones.map((a) => (
@@ -236,16 +272,18 @@ function ItemEnviado({ item, puedeAnular }: { item: ItemEnEnvio<ItemDeCuenta>; p
   );
 }
 
-/** Un renglón de un envío a mostrar: un suelto de siempre, o el grupo entero de los componentes de UNA promo (Task #16, D4). */
-type FilaEnvio = { tipo: "suelto"; item: ItemEnEnvio<ItemDeCuenta> } | { tipo: "promo"; promoCuentaId: string; titulo: string; items: ItemEnEnvio<ItemDeCuenta>[] };
+/** Un renglón de un envío a mostrar: un suelto de siempre (GO-2d: con sus adicionales), o el grupo entero de los componentes de UNA promo (Task #16, D4). */
+type FilaEnvio =
+  | { tipo: "suelto"; item: ItemEnEnvio<ItemDeCuenta>; adicionales: ItemEnEnvio<ItemDeCuenta>[] }
+  | { tipo: "promo"; promoCuentaId: string; titulo: string; items: ItemEnEnvio<ItemDeCuenta>[] };
 
-/** Agrupa los ítems de UN envío por `promoCuentaId` (D4: la promo se anula entera, nunca un componente solo), en el orden recibido. */
+/** Agrupa los ítems de UN envío por `promoCuentaId` (D4: la promo se anula entera, nunca un componente solo), en el orden recibido. GO-2d: cada adicional va bajo su producto. */
 function agruparEnvioPorPromo(items: ItemEnEnvio<ItemDeCuenta>[]): FilaEnvio[] {
   const filas: FilaEnvio[] = [];
   const indicePorPromo = new Map<string, number>();
-  for (const item of items) {
+  for (const { item, adicionales } of agruparConAdicionales(items)) {
     if (!item.promoCuentaId) {
-      filas.push({ tipo: "suelto", item });
+      filas.push({ tipo: "suelto", item, adicionales });
       continue;
     }
     const indice = indicePorPromo.get(item.promoCuentaId);

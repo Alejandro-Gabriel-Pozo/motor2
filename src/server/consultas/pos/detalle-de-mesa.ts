@@ -22,8 +22,8 @@ export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, d
               producto: { select: { nombre: true, unidadStock: { select: { decimales: true } } } },
               creadoPor: { select: { name: true, email: true } },
               promoCuenta: { select: { id: true, titulo: true } },
-              // GO-2b: los nombres de lo elegido, anidados en la misma consulta (sin opciones, vacío).
-              opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true } },
+              // GO-2b: los nombres de lo elegido, anidados en la misma consulta (sin opciones, vacío). GO-2d: y la opción con cuántas, para «Otro igual».
+              opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, opcionId: true, cantidad: true } },
             },
           },
         },

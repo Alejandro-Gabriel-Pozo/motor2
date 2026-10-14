@@ -44,6 +44,12 @@ const DECLARADOS: Readonly<Record<string, Declaracion>> = {
     motivo:
       "Importa `descuentosDeProductoEnSucursal` (el descuento de PRODUCTO de la sucursal, un precio): P18 / D18 (decisión del dueño, 2026-10-11) lo aplica solo con el módulo Carta, igual que el selector (paridad fijada por test), y rechaza la promo sin el módulo Promociones. Lee el registro una vez por pedido (`modulosDelPosDeEmpresa`) y decide con `modulos.carta` / `modulos.promociones`.",
   },
+  // GO-2d
+  "src/server/consultas/pos/opciones-del-selector.ts": {
+    tipo: "EXENTO",
+    motivo:
+      "Importa `descuentosDeProductoEnSucursal` para componer el % de descuento de producto sobre la lista con opciones del diálogo «Elegir opciones», pero SOLO para los pedibles a los que el selector ya se lo aplicó (traen `precioLista`): el selector pregunta por `modulos.carta` y, sin el módulo, ningún pedible trae `precioLista` y no se lee nada. Repetir la pregunta acá sería una segunda fuente de la misma regla.",
+  },
 };
 
 function archivos(dir: string): string[] {

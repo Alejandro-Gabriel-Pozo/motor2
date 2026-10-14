@@ -24,6 +24,8 @@ import { FormConResultado } from "@/components/form-con-resultado";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { CopiarCartaDeSucursal } from "@/components/carta/copiar-carta-de-sucursal";
+import { saldosDeLosIngredientesDeLosPlatos } from "@/server/consultas/carta/avisos-de-stock";
+import { formatearCantidad } from "@/core/pos/public";
 
 /**
  * Admin de la carta pública (docs/plan-carta-catalogo-2026-09-24.md, M10): lo que muestra la carta pública interna
@@ -92,6 +94,16 @@ export default async function CartaPage() {
   // S-07 (O.56): solo se ofrecen de origen las sucursales donde el usuario tiene membresía y el «Ver» de la carta (las demás ni se nombran).
   const origenesDeCopia = datos.cartaVacia && puedeCopiarCarta ? await origenesDeCopiaVisibles(ctx.usuarioId, datos.sucursalesConCarta, ctx.db) : [];
   const seccionesActivas = datos.secciones.filter((s) => s.activa);
+  // GO-2d (el stock teórico AVISA, NUNCA BLOQUEA): de los productos que se muestran en la carta, los ingredientes que el sistema registra en 0 o menos acá. No saca nada de la carta.
+  const saldos = await saldosDeLosIngredientesDeLosPlatos(
+    ctx.db,
+    ctx.sucursalId,
+    datos.productos.filter((p) => p.contenido?.visibleEnCarta).map((p) => p.id)
+  );
+  const sinStock = new Map([...saldos].flatMap(([id, ingredientes]) => {
+    const enCero = ingredientes.filter((i) => i.saldo <= 0);
+    return enCero.length ? [[id, enCero] as const] : [];
+  }));
   const ubicacion: UbicacionEnCarta = {
     secciones: datos.secciones.map((s) => ({ id: s.id, nombre: s.nombre, activa: s.activa })),
     cantidadPorSeccion: Object.fromEntries(datos.secciones.map((s) => [s.id, s.cantidadItems])),
@@ -321,6 +333,30 @@ export default async function CartaPage() {
               {datos.visiblesSinSeccion.map((p) => (
                 <li key={p.productoId}>{p.nombre}</li>
               ))}
+            </ul>
+          </div>
+        )}
+
+        {sinStock.size > 0 && (
+          <div className="rounded border border-amber-300 p-3 dark:border-amber-700" data-avisos-de-stock>
+            <h3 className="text-sm font-medium text-amber-700 dark:text-amber-600">El sistema registra stock 0 de un ingrediente (siguen en la carta)</h3>
+            <ul className="mt-1 list-disc pl-5 text-sm">
+              {datos.productos
+                .filter((p) => sinStock.has(p.id))
+                .map((p) => (
+                  <li key={p.id}>
+                    «{p.nombre}»:{" "}
+                    {sinStock
+                      .get(p.id)!
+                      .map((i) => `${i.nombre}: el sistema dice ${formatearCantidad(i.saldo)} ${i.unidadNombre}`)
+                      .join("; ")}
+                    . Si hay en el depósito,{" "}
+                    <EnlaceInterno href="/movimientos/conteo-fisico" className="underline">
+                      hacé un conteo físico
+                    </EnlaceInterno>
+                    .
+                  </li>
+                ))}
             </ul>
           </div>
         )}

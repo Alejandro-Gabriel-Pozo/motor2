@@ -22,8 +22,10 @@ import { useAccionMesa } from "./usar-accion";
  *
  * Al salir bien pide imprimir el aviso para cocina («ANULACIÓN · NO PREPARAR»): la anulación nueva del ítem, la que no estaba entre
  * las que tenía al confirmar (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B4). Quitar un ítem SIN enviar no imprime nada.
+ *
+ * GO-2d: con `conAdicionales`, el diálogo avisa que se anulan también sus adicionales (lo hace el servidor, `anularItemEnviado`).
  */
-export function AnularItem({ item, puede }: { item: { id: string; productoNombre: string; restante: number }; puede: boolean }) {
+export function AnularItem({ item, puede, conAdicionales = false }: { item: { id: string; productoNombre: string; restante: number }; puede: boolean; conAdicionales?: boolean }) {
   const { ejecutar, pending, error, setError } = useAccionMesa();
   const { pedir, anulacionesDe } = useImpresion();
   const [abierto, setAbierto] = useState(false);
@@ -86,6 +88,8 @@ export function AnularItem({ item, puede }: { item: { id: string; productoNombre
               Anular «{item.productoNombre}»
             </h2>
             <p className="mb-4 text-[13px] text-[var(--ink-soft)]">Ya salió a cocina: queda registrado quién lo anuló y por qué. Quedan {formatearCantidad(item.restante)}.</p>
+            {/* GO-2d: un producto con adicionales los arrastra (el servidor los anula en la misma proporción). */}
+            {conAdicionales && <p className="-mt-2 mb-4 text-[13px] font-semibold">Se anulan también sus adicionales, en la misma proporción.</p>}
             <form onSubmit={enviar} className="flex flex-col gap-3">
               <label htmlFor={`${base}-cantidad`} className="text-[13px] font-semibold">
                 Cantidad a anular

@@ -28,6 +28,9 @@ export const SIN_SERVER_ONLY: Record<string, string> = {
   "src/server/lecturas/carta/empresa.ts": "test/e2e/carta-portal-admin.spec.ts",
   "src/server/lecturas/carta/menu.ts": "test/e2e/fixtures/carta-menu.ts",
   "src/server/lecturas/carta/publica.ts": "test/e2e/carta-portal-admin.spec.ts",
+  // GO-2d: la carta pública muestra las opciones de venta; las dos lecturas que suma las alcanza `lecturas/carta/menu.ts`.
+  "src/server/lecturas/carta/opciones.ts": "test/e2e/fixtures/carta-menu.ts",
+  "src/server/lecturas/catalogo/precio-local-de-opciones.ts": "test/e2e/fixtures/carta-menu.ts",
   "src/server/lecturas/catalogo/disponibilidad.ts": "test/e2e/conteo-fisico-grilla.spec.ts",
   "src/server/lecturas/catalogo/ofertas-de-proveedor.ts": "scripts/verificar-demo-invariantes.ts",
   "src/server/lecturas/catalogo/precio-local.ts": "test/e2e/fixtures/carta-menu.ts",

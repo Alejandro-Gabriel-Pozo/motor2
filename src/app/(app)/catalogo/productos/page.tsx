@@ -9,6 +9,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { actualizarDisponibilidadProducto, listarProductosPagina } from "@/server/actions/catalogo/productos";
 import { IconoDeAccion } from "@/components/iconos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { gruposDeOpcionesPorProducto } from "@/server/consultas/catalogo/opciones-de-venta";
 
 /**
  * Lista de productos. Ya no comparte pantalla con el formulario: el alta está en `/nuevo`, la ficha (solo lectura) en `/[id]` y la edición en
@@ -38,6 +39,8 @@ export default async function ProductosPage({
   if (id) redirect(`/catalogo/productos/${encodeURIComponent(id)}/editar`);
 
   const pagina = await listarProductosPagina(cursor, q);
+  // GO-2d: la etiqueta «Opciones: Tamaño, Leche» de cada producto de la página (una sola lectura).
+  const gruposDeOpciones = await gruposDeOpcionesPorProducto(ctx.db, pagina.items.map((p) => p.id));
 
   return (
     <div>
@@ -80,6 +83,11 @@ export default async function ProductosPage({
                   <Link href={`/catalogo/productos/${p.id}`} className="underline">
                     {p.nombre}
                   </Link>
+                  {gruposDeOpciones.has(p.id) && (
+                    <span className="ml-2 rounded bg-neutral-100 px-1.5 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300" data-etiqueta-opciones>
+                      Opciones: {gruposDeOpciones.get(p.id)!.join(", ")}
+                    </span>
+                  )}
                 </td>
                 <td>{p.tipo}</td>
                 <td>{p.disponibleAca ? "Sí" : "No"}</td>

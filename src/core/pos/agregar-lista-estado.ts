@@ -25,6 +25,12 @@ export interface LineaPorAgregar {
   cantidad: number;
   /** Mensaje de `validarCantidadPedido` (o del parser) si `cantidadTexto` no es una cantidad válida; bloquea confirmar. */
   error: string | null;
+  /**
+   * GO-2d: SOLO en una línea de un producto con opciones, la clave de su configuración (`claveDeConfiguracion`: el producto y lo elegido) y lo elegido, tal cual se pide. Cada
+   * configuración es su propia línea; la misma se acumula. Ausentes = la línea de siempre (un producto sin opciones, identificado por `productoId`).
+   */
+  clave?: string;
+  opciones?: { opcionId: string; cantidad: number; versionDeOpcionId: string }[];
 }
 
 export interface EstadoListaPorAgregar {
@@ -35,14 +41,16 @@ export type AccionListaPorAgregar =
   /** `tope`: MAXIMO_ITEMS_POR_AGREGADO, para no duplicar la constante en el reductor (viaja en la acción, no como parámetro extra —
    *  `useReducer` solo llama al reductor con `(estado, acción)`). */
   | { tipo: "sumarProducto"; productoId: string; tope: number }
-  | { tipo: "incrementar"; productoId: string }
-  | { tipo: "decrementar"; productoId: string }
-  | { tipo: "cambiarCantidadTexto"; productoId: string; texto: string }
+  | { tipo: "incrementar"; productoId: string; clave?: string }
+  | { tipo: "decrementar"; productoId: string; clave?: string }
+  | { tipo: "cambiarCantidadTexto"; productoId: string; texto: string; clave?: string }
   /** `pasoVenta`/`tieneStockReal` (Task #25, docs/plan-venta-fraccionada-2026-09-26.md): OPCIONALES — sin `pasoVenta` (o `null`), el
    *  comportamiento es IDÉNTICO al de siempre (redondea a `decimales`). Con `pasoVenta`, `validarCantidadPedido` rechaza lo que no
    *  sea un múltiplo exacto en vez de redondear. */
-  | { tipo: "normalizarCantidad"; productoId: string; decimales: number; pasoVenta?: number | null; tieneStockReal?: boolean }
-  | { tipo: "quitarLinea"; productoId: string }
+  | { tipo: "normalizarCantidad"; productoId: string; decimales: number; pasoVenta?: number | null; tieneStockReal?: boolean; clave?: string }
+  /** GO-2d: suma una CONFIGURACIÓN de un producto con opciones (desde el diálogo «Elegir opciones» o «Otro igual»): a su línea si ya está, si no una línea nueva. */
+  | { tipo: "sumarConfiguracion"; productoId: string; clave: string; opciones: { opcionId: string; cantidad: number; versionDeOpcionId: string }[]; cantidad: number; tope: number }
+  | { tipo: "quitarLinea"; productoId: string; clave?: string }
   | { tipo: "vaciar" };
 
 export function estadoInicialListaPorAgregar(): EstadoListaPorAgregar {
@@ -65,9 +73,17 @@ export function puedeConfirmarListaPorAgregar(estado: EstadoListaPorAgregar): bo
   return estado.lineas.length > 0 && estado.lineas.every((l) => l.error === null);
 }
 
-/** Lo que se manda a `agregarItems`: un `{ productoId, cantidad }` por línea, en el orden en que se agregaron. */
-export function itemsDeListaPorAgregar(estado: EstadoListaPorAgregar): { productoId: string; cantidad: number }[] {
-  return estado.lineas.map((l) => ({ productoId: l.productoId, cantidad: l.cantidad }));
+/** Lo que se manda a `agregarItems`: un `{ productoId, cantidad }` por línea, en el orden en que se agregaron (GO-2d: con sus `opciones`, solo si las tiene). */
+export function itemsDeListaPorAgregar(estado: EstadoListaPorAgregar): { productoId: string; cantidad: number; opciones?: { opcionId: string; cantidad: number; versionDeOpcionId: string }[] }[] {
+  return estado.lineas.map((l) => (l.opciones ? { productoId: l.productoId, cantidad: l.cantidad, opciones: l.opciones } : { productoId: l.productoId, cantidad: l.cantidad }));
+}
+
+/**
+ * GO-2d: si una línea es la que nombra una acción. Con `clave`, la línea de esa configuración; sin ella, la línea de SIEMPRE del producto (la que no tiene opciones). Sin líneas con
+ * opciones, es exactamente la comparación por `productoId` de antes.
+ */
+function esLaLinea(l: LineaPorAgregar, accion: { productoId: string; clave?: string }): boolean {
+  return accion.clave !== undefined ? l.clave === accion.clave : l.clave === undefined && l.productoId === accion.productoId;
 }
 
 function conCantidad(linea: LineaPorAgregar, cantidad: number): LineaPorAgregar {
@@ -78,28 +94,28 @@ function conCantidad(linea: LineaPorAgregar, cantidad: number): LineaPorAgregar 
 export function reducirListaPorAgregar(estado: EstadoListaPorAgregar, accion: AccionListaPorAgregar): EstadoListaPorAgregar {
   switch (accion.tipo) {
     case "sumarProducto": {
-      const existente = estado.lineas.find((l) => l.productoId === accion.productoId);
+      const existente = estado.lineas.find((l) => esLaLinea(l, accion));
       if (existente) {
         const nueva = Math.min(existente.cantidad + 1, CANTIDAD_MAXIMA_POR_ITEM);
-        return { lineas: estado.lineas.map((l) => (l.productoId === accion.productoId ? conCantidad(l, nueva) : l)) };
+        return { lineas: estado.lineas.map((l) => (esLaLinea(l, accion) ? conCantidad(l, nueva) : l)) };
       }
       if (estado.lineas.length >= accion.tope) return estado; // defensivo: la UI ya deshabilita sumar un producto NUEVO en el tope
       return { lineas: [...estado.lineas, { productoId: accion.productoId, cantidad: 1, cantidadTexto: "1", error: null }] };
     }
     case "incrementar":
       return {
-        lineas: estado.lineas.map((l) => (l.productoId === accion.productoId ? conCantidad(l, Math.min(l.cantidad + 1, CANTIDAD_MAXIMA_POR_ITEM)) : l)),
+        lineas: estado.lineas.map((l) => (esLaLinea(l, accion) ? conCantidad(l, Math.min(l.cantidad + 1, CANTIDAD_MAXIMA_POR_ITEM)) : l)),
       };
     case "decrementar": {
-      const linea = estado.lineas.find((l) => l.productoId === accion.productoId);
+      const linea = estado.lineas.find((l) => esLaLinea(l, accion));
       if (!linea) return estado;
-      if (linea.cantidad - 1 <= 0) return { lineas: estado.lineas.filter((l) => l.productoId !== accion.productoId) };
-      return { lineas: estado.lineas.map((l) => (l.productoId === accion.productoId ? conCantidad(l, l.cantidad - 1) : l)) };
+      if (linea.cantidad - 1 <= 0) return { lineas: estado.lineas.filter((l) => !esLaLinea(l, accion)) };
+      return { lineas: estado.lineas.map((l) => (esLaLinea(l, accion) ? conCantidad(l, l.cantidad - 1) : l)) };
     }
     case "cambiarCantidadTexto":
       return {
         lineas: estado.lineas.map((l) => {
-          if (l.productoId !== accion.productoId) return l;
+          if (!esLaLinea(l, accion)) return l;
           // Mientras se tipea no se marca error (un "," o un campo vacío a medio tipear no tienen por qué romper nada): el
           // subtotal sigue con la última cantidad válida hasta que el mozo termine de escribir (`normalizarCantidad`, al blur).
           const r = interpretarNumero(accion.texto);
@@ -110,7 +126,7 @@ export function reducirListaPorAgregar(estado: EstadoListaPorAgregar, accion: Ac
     case "normalizarCantidad":
       return {
         lineas: estado.lineas.map((l) => {
-          if (l.productoId !== accion.productoId) return l;
+          if (!esLaLinea(l, accion)) return l;
           const r = interpretarNumero(l.cantidadTexto);
           if (!r.ok) return { ...l, error: r.mensaje };
           if (r.valor === null) return { ...l, error: "La cantidad tiene que ser un número mayor que cero." };
@@ -123,7 +139,14 @@ export function reducirListaPorAgregar(estado: EstadoListaPorAgregar, accion: Ac
         }),
       };
     case "quitarLinea":
-      return { lineas: estado.lineas.filter((l) => l.productoId !== accion.productoId) };
+      return { lineas: estado.lineas.filter((l) => !esLaLinea(l, accion)) };
+    case "sumarConfiguracion": {
+      const existente = estado.lineas.find((l) => l.clave === accion.clave);
+      if (existente) return { lineas: estado.lineas.map((l) => (l.clave === accion.clave ? conCantidad(l, Math.min(l.cantidad + accion.cantidad, CANTIDAD_MAXIMA_POR_ITEM)) : l)) };
+      if (estado.lineas.length >= accion.tope) return estado; // defensivo: la UI ya deshabilita sumar una línea NUEVA en el tope
+      const cantidad = Math.min(accion.cantidad, CANTIDAD_MAXIMA_POR_ITEM);
+      return { lineas: [...estado.lineas, { productoId: accion.productoId, cantidad, cantidadTexto: textoCanonico(cantidad), error: null, clave: accion.clave, opciones: accion.opciones.map((o) => ({ ...o })) }] };
+    }
     case "vaciar":
       return { lineas: [] };
   }

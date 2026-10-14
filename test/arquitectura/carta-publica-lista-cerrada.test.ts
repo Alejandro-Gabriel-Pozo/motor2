@@ -44,13 +44,27 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   OpcionItemAgrupadoCarta: ["orden", "producto"],
   PortalCartaEmpresa: ["valores"],
   PrecioLocalProducto: ["habilitado", "precio", "productoId"],
-  Producto: ["categoria", "contenidosCarta", "id", "nombre", "precioVenta"],
+  // GO-2d: + `gruposAdmitidos` y `opcionesAdmitidas` (las opciones de venta que la carta muestra, decisión del dueño 2026-10-13; abajo, sus modelos).
+  Producto: ["categoria", "contenidosCarta", "gruposAdmitidos", "id", "nombre", "opcionesAdmitidas", "precioVenta"],
   PromoCarta: ["descripcion", "id", "orden", "precio", "seccionCartaId", "sucursales", "titulo"],
   PromoCartaSucursal: ["activa", "precioLocal"],
   SeccionCarta: ["descripcion", "id", "imagenUrl", "nombre", "orden", "titulo"],
   Sucursal: ["activo", "empresaId", "id", "nombre", "temaCarta"],
   SucursalPublica: ["etiqueta", "orden", "posH", "posW", "posX", "posY", "publicada", "slug", "subtituloPortal", "sucursal"],
   TemaCartaSucursal: ["aplicarEnCarta", "valores"],
+  // GO-2d (ADR-030; GO-0 §4, ampliación aprobada por el dueño el 2026-10-13: la carta muestra tamaños, variantes, guarniciones y adicionales con su precio). Se LEE para calcular el
+  // precio con la regla de la venta; lo que SALE lo cierra `CLAVES_DE_LA_CARTA` (nombre, obligatorio, máximo, precio o recargo). NUNCA: `VersionDeOpcion.factorEscala`,
+  // `ConsumoDeOpcion` (la receta), `OpcionDeGrupo.productoId` (el producto que respalda un adicional) ni la foto de lo vendido. `tipoDeDiferencia` y `porcentaje` (de la versión y del
+  // producto) no estaban en GO-0 porque el recargo en % llegó con GO-2a: sin ellos un recargo en % se mostraría mal. Los de `PrecioLocalDeOpcion`, `OpcionDeGrupo.grupo/grupoId/
+  // productosQueLaAdmiten` y `ProductoAdmiteGrupo.grupoId/productoId` / `ProductoAdmiteOpcion.id/productoId` son del lector ÚNICO de la grilla (`precio-local-de-opciones.ts`); `ProductoAdmiteGrupo.id`,
+  // del aviso «admite algún grupo» de `menu.ts` (así una carta sin opciones hace las mismas consultas que antes: lo fija `lecturas-tramo-a.golden.json`).
+  GrupoDeOpciones: ["activo", "cantidadMaxima", "cantidadMinima", "id", "nombre", "opciones", "tipo"],
+  OpcionApagadaEnSucursal: ["apagada"],
+  OpcionDeGrupo: ["activa", "apagadasEnSucursal", "esNinguna", "grupo", "grupoId", "id", "nombre", "orden", "productosQueLaAdmiten", "versiones"],
+  PrecioLocalDeOpcion: ["habilitado", "opcion", "opcionId", "precio", "productoId"],
+  ProductoAdmiteGrupo: ["activo", "cantidadMaxima", "cantidadMinima", "grupo", "grupoId", "id", "modoPrecio", "orden", "productoId"],
+  ProductoAdmiteOpcion: ["activo", "cantidadMaxima", "diferenciaPrecio", "id", "opcionId", "porcentaje", "precioAbsoluto", "productoId", "tipoDeDiferencia"],
+  VersionDeOpcion: ["diferenciaPrecio", "numero", "porcentaje", "tipoDeDiferencia"],
 };
 
 /** Los archivos del alcance de la carta que tocan un modelo de Prisma, con lo que hacen. Cerrada en las dos direcciones. */
@@ -62,6 +76,9 @@ const ARCHIVOS_QUE_LEEN_LA_BASE: Readonly<Record<string, string>> = {
   "src/server/lecturas/carta/menu.ts": "La carta armada de una sucursal: secciones, productos disponibles y visibles, promos e ítems agrupados.",
   "src/server/lecturas/carta/publica.ts": "El registro público de la empresa (portal y carta de cada sucursal publicada), el tema y la apariencia del portal.",
   "src/server/lecturas/catalogo/precio-local.ts": "El precio local vigente de los productos de la sucursal.",
+  // GO-2d
+  "src/server/lecturas/carta/opciones.ts": "Las opciones de venta de los PV de la carta (grupos, opciones, la versión vigente y lo agotado en la sucursal), para mostrarlas con su precio.",
+  "src/server/lecturas/catalogo/precio-local-de-opciones.ts": "El lector único de la grilla de la sucursal: el precio propio de un tamaño (MEDIDA en ABSOLUTO) en esta sucursal.",
 };
 
 /** Operaciones que no son una lectura de fila y SÍ están en el alcance: archivo|operación|modelo → por qué no es un problema. Vacía desde P2.1 (se borró `productoTieneDescuentoEnAlgunaSucursal`, el único `count` que estaba acá). */

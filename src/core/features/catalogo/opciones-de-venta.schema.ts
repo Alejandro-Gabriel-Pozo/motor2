@@ -135,3 +135,22 @@ export type ResultadoFijarAdmisionDeGrupo = ResultadoCaso<
   { admisionId: string; version: number; huboCambio: boolean; avisos: string[] },
   "PRODUCTO_NO_ENCONTRADO" | "PRODUCTO_NO_ELEGIBLE" | "GRUPO_NO_ENCONTRADO" | "VERSION_DESACTUALIZADA" | "GRUPO_INACTIVO" | "OPCION_INACTIVA" | ConfiguracionInvalida
 >;
+
+// ───────────────────────────── GO-2d: el orden de las opciones de un grupo ─────────────────────────────
+
+/** Una opción en el orden nuevo, con la `version` de su fila que vio la pantalla. */
+export interface OpcionEnElOrden {
+  opcionId: string;
+  versionEsperada: number;
+}
+
+/**
+ * «Mover tocando» (GO-2d): el orden COMPLETO de las opciones de un grupo, de la primera a la última. Tiene que traer TODAS las opciones del grupo (prendidas o no), cada una una
+ * sola vez: así un orden armado sobre una lista vieja (otra persona agregó una opción) se rechaza en vez de dejar una mitad ordenada.
+ */
+export interface ComandoReordenarOpcionesDeGrupo {
+  grupoId: string;
+  opciones: OpcionEnElOrden[];
+}
+
+export type ResultadoReordenarOpcionesDeGrupo = ResultadoCaso<{ huboCambio: boolean }, "GRUPO_NO_ENCONTRADO" | "VERSION_DESACTUALIZADA">;

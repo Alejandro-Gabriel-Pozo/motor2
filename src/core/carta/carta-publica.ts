@@ -1,4 +1,5 @@
 import type { CartaV1, ItemCartaV1, OpcionItemCartaV1, PromoCartaV1, SeccionCartaV1 } from "./armar-menu";
+import type { GrupoCartaV1 } from "./opciones-en-carta";
 
 /**
  * LO ÚNICO que la carta pública entrega a un anónimo (S-25 del plan de endurecimiento de seguridad, tanda T9; requisito del dueño: «la carta pública es la ÚNICA excepción
@@ -32,6 +33,23 @@ export interface ItemCartaPublico {
   imagenUrl: null;
   /** SOLO en un ítem agrupado: sus opciones, por nombre y precio. */
   opciones?: OpcionItemCartaPublica[];
+  /** GO-2d: SOLO en un PV con opciones de venta: lo que se elige hoy (nombre, si es obligatorio, hasta cuántas, y cada opción con su precio o su recargo). */
+  grupos?: GrupoCartaPublico[];
+  /** GO-2d: SOLO si el precio cambia según lo que se elija: «desde». */
+  precioDesde?: number;
+}
+
+export interface OpcionDeGrupoCartaPublica {
+  nombre: string;
+  precio?: number;
+  recargo?: number;
+}
+
+export interface GrupoCartaPublico {
+  nombre: string;
+  obligatorio: boolean;
+  maximo: number;
+  opciones: OpcionDeGrupoCartaPublica[];
 }
 
 export interface PromoCartaPublica {
@@ -60,6 +78,14 @@ export interface CartaPublicaV1 {
 
 const proyectarOpcion = (o: OpcionItemCartaV1): OpcionItemCartaPublica => ({ nombre: o.nombre, precio: o.precio });
 
+/** GO-2d: un grupo de opciones, campo por campo (las claves opcionales solo si están). */
+const proyectarGrupo = (g: GrupoCartaV1): GrupoCartaPublico => ({
+  nombre: g.nombre,
+  obligatorio: g.obligatorio,
+  maximo: g.maximo,
+  opciones: g.opciones.map((o) => ({ nombre: o.nombre, ...(o.precio !== undefined ? { precio: o.precio } : {}), ...(o.recargo !== undefined ? { recargo: o.recargo } : {}) })),
+});
+
 function proyectarItem(i: ItemCartaV1): ItemCartaPublico {
   return {
     nombre: i.nombre,
@@ -73,6 +99,8 @@ function proyectarItem(i: ItemCartaV1): ItemCartaPublico {
     especial: i.especial,
     imagenUrl: i.imagenUrl,
     ...(i.opciones !== undefined ? { opciones: i.opciones.map(proyectarOpcion) } : {}),
+    ...(i.grupos !== undefined ? { grupos: i.grupos.map(proyectarGrupo) } : {}),
+    ...(i.precioDesde !== undefined ? { precioDesde: i.precioDesde } : {}),
   };
 }
 

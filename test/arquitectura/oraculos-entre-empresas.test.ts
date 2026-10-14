@@ -57,6 +57,8 @@ const LECTURAS: Readonly<Record<string, { lecturas: number; clase: Clase; motivo
   "server/sesion/acceso.ts|emailPuedeIniciarSesion|user": { lecturas: 1, clase: "PREVIA_AL_CONTEXTO", motivo: "el gate de login: el kill-switch de la cuenta de quien llega con ese email de Google; contesta solo sí/no a su dueño" },
   "server/sesion/acceso.ts|decidirInicioDeSesion|user": { lecturas: 2, clase: "PREVIA_AL_CONTEXTO", motivo: "el login: «cuenta desactivada» y la cuenta de Google a vincular; quien llega probó que controla ese email con Google, y se le contesta sobre SU cuenta" },
   "server/sesion/invitacion.ts|invitacionDelToken|empresa": { lecturas: 1, clase: "PROPIA", motivo: "la empresa de la invitación leída por el hash del token (256 bits)" },
+  // GO-2d: el nombre de quien cargó cada cambio de precio de las opciones de un grupo («cargó X»).
+  "server/consultas/catalogo/opciones-de-venta.ts|cargarGrupoDelPanel|user": { lecturas: 1, clase: "PROPIA", motivo: "quienes cargaron los cambios de precio de las opciones del grupo, por el `creadoPorId` de filas de la empresa (nunca por un valor del cliente)" },
 };
 
 const METODOS_DE_LECTURA = new Set(["findUnique", "findUniqueOrThrow", "findFirst", "findFirstOrThrow", "findMany", "count", "aggregate", "groupBy"]);

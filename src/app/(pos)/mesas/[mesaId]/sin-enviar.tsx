@@ -2,8 +2,10 @@
 
 import { enviarACocina, quitarItemSinEnviar, quitarPromoSinEnviar } from "@/server/actions/pos/cuenta-pedido";
 import { BOTON_CHICO, BOTON_PRIMARIO } from "./estilos";
-import { formatearCantidad, formatearMonto } from "@/core/pos/public";
+import { useState } from "react";
+import { agruparConAdicionales, elegidasDeLaLinea, formatearCantidad, formatearMonto } from "@/core/pos/public";
 import { useImpresion } from "./imprimir";
+import { OtroIgual } from "./otro-igual";
 import { useAccionMesa } from "./usar-accion";
 
 export interface ItemSinEnviar {
@@ -16,18 +18,23 @@ export interface ItemSinEnviar {
   /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 11): la promo de la que este ítem es un componente — null en un suelto. */
   promoCuentaId: string | null;
   promoTitulo: string | null;
+  /** GO-2d (ADR-030): el producto, los nombres de sus opciones («Grande · Almendras»), la línea de la que cuelga un adicional y lo elegido (para «Otro igual»). Ausentes sin opciones. */
+  productoId?: string;
+  opciones?: string[];
+  lineaPadreId?: string;
+  elegidas?: { opcionId: string; cantidad: number }[];
 }
 
-/** Un renglón «sin enviar» a mostrar: un suelto de siempre, o el grupo entero de los componentes de UNA promo (D4). */
-type FilaSinEnviar = { tipo: "suelto"; item: ItemSinEnviar } | { tipo: "promo"; promoCuentaId: string; titulo: string; items: ItemSinEnviar[] };
+/** Un renglón «sin enviar» a mostrar: un suelto de siempre (GO-2d: con sus adicionales debajo), o el grupo entero de los componentes de UNA promo (D4). */
+type FilaSinEnviar = { tipo: "suelto"; item: ItemSinEnviar; adicionales: ItemSinEnviar[] } | { tipo: "promo"; promoCuentaId: string; titulo: string; items: ItemSinEnviar[] };
 
-/** Agrupa por `promoCuentaId` (D4: una promo se quita entera, nunca un componente suelto), en el orden de aparición. */
+/** Agrupa por `promoCuentaId` (D4: una promo se quita entera, nunca un componente suelto), en el orden de aparición. GO-2d: cada adicional va bajo su producto. */
 function agruparFilas(items: ItemSinEnviar[]): FilaSinEnviar[] {
   const filas: FilaSinEnviar[] = [];
   const indicePorPromo = new Map<string, number>();
-  for (const item of items) {
+  for (const { item, adicionales } of agruparConAdicionales(items)) {
     if (!item.promoCuentaId) {
-      filas.push({ tipo: "suelto", item });
+      filas.push({ tipo: "suelto", item, adicionales });
       continue;
     }
     const indice = indicePorPromo.get(item.promoCuentaId);
@@ -51,6 +58,10 @@ function agruparFilas(items: ItemSinEnviar[]): FilaSinEnviar[] {
  *
  * Al salir bien pide imprimir la comanda del envío que el SERVIDOR dice que creó ESTA llamada (`numeroEnvio` con `envioNuevo`). Si no
  * creó ninguno (pestaña vieja: otro ya los había enviado), no imprime: esa comanda ya salió desde donde se envió.
+ *
+ * GO-2d (ADR-030): una línea con opciones muestra sus nombres debajo y sus adicionales con sangría («+ 1 × Huevo frito», con su importe), sin «Quitar» propio: se quitan con su
+ * producto (lo hace el servidor, `quitarItemSinEnviar`), y por eso «Quitar» en un producto con adicionales pide confirmar avisándolo. «Otro igual» abre «Elegir opciones» con
+ * esa misma elección.
  */
 export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: string; items: ItemSinEnviar[]; puede: boolean; puedeEnviar: boolean }) {
   const { ejecutar, pending, error } = useAccionMesa();
@@ -71,7 +82,7 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
     <section aria-labelledby="sin-enviar-titulo" className="rounded-[14px] border border-[var(--border)] bg-white p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 id="sin-enviar-titulo" className="text-[15px] font-bold">
-          Sin enviar · {items.length}
+          Sin enviar · {items.filter((i) => !i.lineaPadreId).length}
         </h2>
         {items.length > 0 && (
           <button type="button" className={BOTON_PRIMARIO} disabled={!puedeEnviar || pending} title={sinPermisoEnviar} onClick={enviar}>
@@ -85,26 +96,45 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
         <ul className="divide-y divide-[var(--border)]">
           {filas.map((fila) =>
             fila.tipo === "suelto" ? (
-              <li key={fila.item.id} data-item-sin-enviar={fila.item.productoNombre} className="flex items-center justify-between gap-3 py-2 text-[14px]">
-                <span>
-                  <span className="font-semibold tabular-nums">{formatearCantidad(fila.item.cantidad)} ×</span> {fila.item.productoNombre}
-                </span>
-                <span className="flex items-center gap-3">
-                  <span className="tabular-nums">
-                    {fila.item.precioListaUnitario !== null && <s data-precio-lista className="mr-1 text-[var(--ink-soft)]">{formatearMonto(fila.item.cantidad * fila.item.precioListaUnitario)}</s>}
-                    {formatearMonto(fila.item.cantidad * fila.item.precioUnitario)}
+              <li key={fila.item.id} data-item-sin-enviar={fila.item.productoNombre} className="py-2 text-[14px]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span>
+                    <span className="font-semibold tabular-nums">{formatearCantidad(fila.item.cantidad)} ×</span> {fila.item.productoNombre}
+                    {fila.item.opciones && (
+                      <span data-opciones-de-linea className="block text-[12.5px] text-[var(--ink-soft)]">
+                        {fila.item.opciones.join(" · ")}
+                      </span>
+                    )}
                   </span>
-                  <button
-                    type="button"
-                    className={BOTON_CHICO}
-                    disabled={!puede || pending}
-                    title={sinPermiso}
-                    aria-label={`Quitar ${fila.item.productoNombre}`}
-                    onClick={() => ejecutar(() => quitarItemSinEnviar(fila.item.id))}
-                  >
-                    Quitar
-                  </button>
-                </span>
+                  <span className="flex flex-wrap items-center gap-3">
+                    <span className="tabular-nums">
+                      {fila.item.precioListaUnitario !== null && <s data-precio-lista className="mr-1 text-[var(--ink-soft)]">{formatearMonto(fila.item.cantidad * fila.item.precioListaUnitario)}</s>}
+                      {formatearMonto(fila.item.cantidad * fila.item.precioUnitario)}
+                    </span>
+                    {fila.item.productoId && elegidasDeLaLinea(fila).length > 0 && (
+                      <OtroIgual pedido={{ productoId: fila.item.productoId, elegidas: elegidasDeLaLinea(fila) }} titulo={fila.item.productoNombre} puede={puede} />
+                    )}
+                    <QuitarLinea
+                      nombre={fila.item.productoNombre}
+                      conAdicionales={fila.adicionales.length > 0}
+                      deshabilitado={!puede || pending}
+                      title={sinPermiso}
+                      quitar={() => ejecutar(() => quitarItemSinEnviar(fila.item.id))}
+                    />
+                  </span>
+                </div>
+                {fila.adicionales.length > 0 && (
+                  <ul aria-label={`Adicionales de ${fila.item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[13px]">
+                    {fila.adicionales.map((a) => (
+                      <li key={a.id} data-adicional-sin-enviar={a.productoNombre} className="flex items-center justify-between gap-3">
+                        <span>
+                          + <span className="tabular-nums">{formatearCantidad(a.cantidad)} ×</span> {a.productoNombre}
+                        </span>
+                        <span className="tabular-nums">{formatearMonto(a.cantidad * a.precioUnitario)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ) : (
               <li key={fila.promoCuentaId} data-promo-sin-enviar={fila.titulo} className="py-2 text-[14px]">
@@ -142,5 +172,46 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * GO-2d: «Quitar» de una línea sin enviar. Si el producto tiene adicionales, el primer toque pide confirmar («se quitan también sus adicionales»): el servidor los borra juntos.
+ * Sin adicionales, quita con un toque como siempre.
+ */
+function QuitarLinea({ nombre, conAdicionales, deshabilitado, title, quitar }: { nombre: string; conAdicionales: boolean; deshabilitado: boolean; title?: string; quitar: () => void }) {
+  const [confirmando, setConfirmando] = useState(false);
+  if (confirmando) {
+    return (
+      <span role="group" aria-label={`Quitar ${nombre} con sus adicionales`} className="flex flex-wrap items-center gap-2">
+        <span className="text-[12.5px] text-[var(--ink-soft)]">Se quitan también sus adicionales.</span>
+        <button
+          type="button"
+          className={BOTON_CHICO}
+          disabled={deshabilitado}
+          onClick={() => {
+            setConfirmando(false);
+            quitar();
+          }}
+        >
+          Sí, quitar
+        </button>
+        <button type="button" className={BOTON_CHICO} onClick={() => setConfirmando(false)}>
+          No
+        </button>
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className={BOTON_CHICO}
+      disabled={deshabilitado}
+      title={title}
+      aria-label={`Quitar ${nombre}`}
+      onClick={() => (conAdicionales ? setConfirmando(true) : quitar())}
+    >
+      Quitar
+    </button>
   );
 }

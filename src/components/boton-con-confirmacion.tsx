@@ -115,7 +115,7 @@ export function BotonConConfirmacion({
       ref={resultado.ok ? avisoDeExito : undefined}
       tabIndex={resultado.ok ? -1 : undefined}
       role={resultado.ok ? "status" : "alert"}
-      className={`text-sm ${resultado.ok ? "text-green-700" : "text-red-600"}`}
+      className={`text-sm ${resultado.ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
     >
       {resultado.mensaje}
     </p>

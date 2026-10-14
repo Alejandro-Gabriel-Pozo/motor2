@@ -39,6 +39,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   { archivo: "src/server/actions/catalogo/casos-de-uso/agregar-version-de-opcion.ts", entidad: "VersionDeOpcion", campos: ["numero", "tipoDeDiferencia", "diferenciaPrecio", "porcentaje", "factorEscala"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/apagar-opcion-en-sucursal.ts", entidad: "OpcionApagadaEnSucursal", campos: ["apagada"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/fijar-precio-local-de-opcion.ts", entidad: "PrecioLocalDeOpcion", campos: ["precio", "habilitado"] },
+  // GO-2d: el orden de las opciones de un grupo («mover tocando»), una fila por opción que cambió de lugar.
+  { archivo: "src/server/actions/catalogo/casos-de-uso/reordenar-opciones-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["orden"] },
 ];
 
 /** Los literales de texto de `campo: "<literal>"` y de `entidad: "<literal>"` que hay en el código (propiedades de un literal de objeto). */

@@ -93,6 +93,8 @@ export const NAV_MOVIMIENTOS: { href: string; label: string; accion?: AccionClav
   { href: "/movimientos/conteo-fisico", label: "Conteo físico", accion: "proceso_control", panel: "sucursal" },
   { href: "/movimientos/secciones", label: "Secciones", accion: "secciones", panel: "sucursal" },
   { href: "/movimientos/precio-local", label: "Precio local", accion: "precio_local", panel: "sucursal" },
+  // GO-2d (ADR-030 §5): lo que se acabó hoy en la sucursal (tamaños, guarniciones, adicionales); delegable al encargado del turno.
+  { href: "/movimientos/opciones-agotadas", label: "Opciones agotadas", accion: "opcion_apagar_en_sucursal", panel: "sucursal" },
   { href: "/movimientos/motivos-merma", label: "Motivos de Merma", accion: "motivos_merma", panel: "empresa" },
   { href: "/movimientos/destinos-consumo", label: "Destinos de Consumo", accion: "motivos_destino_consumo", panel: "empresa" },
 ];

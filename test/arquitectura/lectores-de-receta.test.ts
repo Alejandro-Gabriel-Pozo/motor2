@@ -127,6 +127,13 @@ const ARCHIVOS_CLASIFICADOS: readonly ArchivoClasificado[] = [
     motivo:
       "R3/R4 (obtenerEstadoDeRecetaPropia): lee la serie PROPIA de la sucursal (alcanceDeSucursal) y la central vigente (ALCANCE_CENTRAL) por separado, para decidir 'habilitada' y 'la central cambió' — compara las series, no resuelve una efectiva.",
   },
+  // GO-2d.
+  {
+    ruta: "server/consultas/carta/avisos-de-stock.ts",
+    clase: "efectivo",
+    motivo:
+      "saldosDeLosIngredientesDeLosPlatos: los ingredientes de la receta EFECTIVA de cada plato en la sucursal activa (alcanceDeSucursal: la propia si está habilitada, si no la central), con su saldo, para avisar cuáles el sistema registra en 0 — el aviso es de lo que se consume ACÁ.",
+  },
 ] as const;
 
 const RUTAS_CLASIFICADAS = new Set(ARCHIVOS_CLASIFICADOS.map((a) => a.ruta));

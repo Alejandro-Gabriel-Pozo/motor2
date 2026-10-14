@@ -25,6 +25,7 @@ import type {
   ComandoEditarGrupoDeOpciones,
   ComandoEditarOpcionDeGrupo,
   ComandoFijarAdmisionDeGrupo,
+  ComandoReordenarOpcionesDeGrupo,
   DatosDeVersionDeOpcion,
   OpcionAdmitidaEnComando,
 } from "./opciones-de-venta.schema";
@@ -323,4 +324,31 @@ export function guardComandoFijarAdmisionDeGrupo(entrada: {
     activo: activo.valor,
     opciones,
   });
+}
+
+// ───────────────────────────── GO-2d: el orden de las opciones de un grupo ─────────────────────────────
+
+/**
+ * El orden completo de las opciones de un grupo (`reordenarOpcionesDeGrupo`): el grupo, y la lista de opciones (de 1 a `MAXIMO_OPCIONES_POR_ADMISION`), cada una con su versión
+ * esperada y sin repetirse. Que sea EXACTAMENTE la lista del grupo lo decide el caso de uso, que la lee.
+ */
+export function guardComandoReordenarOpcionesDeGrupo(entrada: { grupoId: unknown; opciones: unknown }): ResultadoDato<ComandoReordenarOpcionesDeGrupo> {
+  const grupoId = id(entrada.grupoId, MENSAJE_GRUPO_NO_ENCONTRADO);
+  if (!grupoId.ok) return grupoId;
+  if (!Array.isArray(entrada.opciones) || entrada.opciones.length === 0) return rechazar("formato", "El orden de las opciones no es válido: recargá la pantalla.");
+  const tope = validarTopeDeLista(entrada.opciones, "Las opciones", MAXIMO_OPCIONES_POR_ADMISION);
+  if (tope) return rechazar("rango", tope);
+  const opciones: ComandoReordenarOpcionesDeGrupo["opciones"] = [];
+  const vistas = new Set<string>();
+  for (const o of entrada.opciones as unknown[]) {
+    const { opcionId, versionEsperada: version } = (o ?? {}) as { opcionId?: unknown; versionEsperada?: unknown };
+    const opcion = id(opcionId, "El orden de las opciones no es válido: recargá la pantalla.");
+    if (!opcion.ok) return opcion;
+    if (vistas.has(opcion.valor)) return rechazar("formato", "El orden repite una opción: recargá la pantalla.");
+    vistas.add(opcion.valor);
+    const v = versionEsperada(version, 1);
+    if (!v.ok) return v;
+    opciones.push({ opcionId: opcion.valor, versionEsperada: v.valor });
+  }
+  return aceptar({ grupoId: grupoId.valor, opciones });
 }
