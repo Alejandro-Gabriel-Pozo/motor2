@@ -38,7 +38,8 @@ test("precio local en celular (375 px): las dos tablas se leen como tarjetas, «
   await capturar(page, "precio-local");
 
   // Tabla por tamaño: cada fila es una tarjeta dentro de la pantalla, con sus datos uno debajo del otro.
-  const filas = page.locator("[data-tamano]");
+  // Solo las filas de MI producto (la base puede traer filas por tamaño de otros specs o de datos compartidos): se identifican por el nombre único que sembró este spec.
+  const filas = page.locator(`[data-tamano^="${d.nombre} · "]`);
   await expect(filas).toHaveCount(3);
   for (const fila of await filas.all()) {
     const caja = (await fila.boundingBox())!;

@@ -34,6 +34,7 @@ async function sembrar(sucursalId: string) {
   await prisma.promoCartaCupo.create({ data: { promoCartaId: promo.id, tipo: "DEL_DIA", nombre: "Plato del día", cantidadMinima: 1, cantidadMaxima: 1, orden: 11 } });
   return {
     titulo,
+    nombresDeSecciones,
     limpiar: async () => {
       await prismaAdmin.registroAuditoria.deleteMany({ where: { entidadId: { startsWith: promo.id } } });
       await prismaAdmin.entradaDeCupo.deleteMany({ where: { cupo: { promoCartaId: promo.id } } });
@@ -54,7 +55,7 @@ test("administración de la carta en celular (375 px): formularios de promo sin 
   try {
     await fijarCelular(page);
     await page.goto("/carta");
-    await expect(page.getByRole("heading", { name: "Promos" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Promos", exact: true })).toBeVisible();
     await expectSinDesborde(page, "carta con las fichas cerradas");
     await abrirTodosLosDetails(page);
     await capturar(page, "carta-fichas-abiertas");
@@ -77,7 +78,10 @@ test("administración de la carta en celular (375 px): formularios de promo sin 
 
     // Los cupos: cada fila (sección o lugar) con su nombre arriba y mín./máx. debajo, sin cortarse.
     const filas = promo.locator("[data-cupo-seccion], [data-cupo-lugar]");
-    expect(await filas.count()).toBe(7); // 5 secciones + «Bebida» + «Plato del día»
+    // Mis siete filas están (mis 5 secciones + «Bebida» + «Plato del día»); el formulario de cupos lista TODAS las secciones de carta, y la base puede traer otras: no se cuenta el total.
+    for (const nombreDeSeccion of d.nombresDeSecciones) await expect(promo.locator(`[data-cupo-seccion="${nombreDeSeccion}"]`)).toHaveCount(1);
+    await expect(promo.locator('[data-cupo-lugar="Bebida"]')).toHaveCount(1);
+    await expect(promo.locator('[data-cupo-lugar="Plato del día"]')).toHaveCount(1);
     for (const fila of await filas.all()) {
       const cajaFila = (await fila.boundingBox())!;
       for (const input of await fila.locator('input[type="number"]').all()) {
