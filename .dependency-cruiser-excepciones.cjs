@@ -360,6 +360,12 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "GO-2a (ADR-030 §5): apagarOpcionEnSucursal (opcion_apagar_en_sucursal) y fijarPrecioLocalDeOpcion (precio_local) → catalogo/casos-de-uso/{apagar-opcion-en-sucursal,fijar-precio-local-de-opcion}.ts, con su guardComando… (eco de la sucursal activa, core/features/catalogo/opciones-por-sucursal.guard.ts) dentro de conPermiso. Escrituras en server/persistencia/catalogo/opciones-por-sucursal.ts, SOLO en la sucursal activa; transacción SERIALIZABLE y auditoría con la sucursal en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
   },
+  // GO-3b (ADR-032): el precio por combinación nace migrado.
+  {
+    ruta: "src/server/actions/catalogo/combinaciones.ts",
+    motivo:
+      "GO-3b (ADR-032, frente A, AB4): fijarEjesDeCombinacion y guardarCombinacionDeProducto (producto_opciones_admitidas), crearGrupoDePrecio y editarGrupoDePrecio (grupos_de_precio_definir) y fijarPrecioLocalDeCombinacion (precio_local, con el eco de la sucursal activa) → catalogo/casos-de-uso/{fijar-ejes-de-combinacion,guardar-combinacion-de-producto,crear-grupo-de-precio,editar-grupo-de-precio,fijar-precio-local-de-combinacion}.ts, con su guardComando… (core/features/catalogo/combinaciones.guard.ts) dentro de la guarda. Lecturas en server/lecturas/catalogo/{combinaciones,precio-local-de-combinaciones}.ts, escrituras en server/persistencia/catalogo/combinaciones.ts; transacción SERIALIZABLE, versión optimista y auditoría en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
+  },
   // GO-3b (ADR-032): los combos y el menú del día nacen migrados.
   {
     ruta: "src/server/actions/carta/combos.ts",

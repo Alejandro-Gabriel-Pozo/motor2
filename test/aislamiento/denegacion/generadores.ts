@@ -128,6 +128,21 @@ const completos: Record<string, Valor> = {
       intento(c, ["platoDelDiaId"], [{ sucursalId: c.propio.sucursalId, platoId: k.platoDelDiaId }]),
     ),
   "accion|actions/carta/menu-del-dia.ts|copiarMenuDelDiaAnterior": (k) => [{ sucursalId: k.sucursalId, fecha: sumarDias(DIA_DEL_PLATO_DEL_MUNDO, 1) }],
+  // GO-3b (frente A): los ejes (ya son esos: por estado), la combinación «Grande» (versión 1, la sembrada), las tarifas y el precio local de la tarifa en la sucursal (el sembrado: 1650 en S1).
+  "accion|actions/catalogo/combinaciones.ts|fijarEjesDeCombinacion": (k) => [{ productoId: k.productoConOpcionesId, eje1GrupoId: k.grupoMedidaId, eje2GrupoId: null }],
+  "accion|actions/catalogo/combinaciones.ts|guardarCombinacionDeProducto": (k, c) =>
+    conVariantes(
+      intento(c, ["productoConOpcionesId"], [{ productoId: k.productoConOpcionesId, opcionEje1Id: k.opcionMedidaId, versionEsperada: 1, activa: false, grupoDePrecioId: k.grupoDePrecioId }]),
+      intento(c, ["grupoDePrecioId"], [{ productoId: c.propio.productoConOpcionesId, opcionEje1Id: c.propio.opcionMedidaId, versionEsperada: 1, activa: true, grupoDePrecioId: k.grupoDePrecioId }]),
+    ),
+  "accion|actions/catalogo/combinaciones.ts|crearGrupoDePrecio": () => [{ nombre: "Tarifa nueva", precio: 100 }],
+  "accion|actions/catalogo/combinaciones.ts|editarGrupoDePrecio": (k) => [{ grupoDePrecioId: k.grupoDePrecioId, versionEsperada: 1, nombre: "Tarifa cambiada", precio: 200, activo: true }],
+  "accion|actions/catalogo/combinaciones.ts|fijarPrecioLocalDeCombinacion": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, grupoDePrecioId: c.propio.grupoDePrecioId, esperado: { precio: 1650, habilitado: true }, precio: 1700 }]),
+      intento(c, ["grupoDePrecioId"], [{ sucursalId: c.propio.sucursalId, grupoDePrecioId: k.grupoDePrecioId, esperado: { precio: 1650, habilitado: true }, precio: 1700 }]),
+      intento(c, ["combinacionId"], [{ sucursalId: c.propio.sucursalId, combinacionId: k.combinacionId, esperado: null, precio: 1700 }]),
+    ),
   "accion|actions/carta/registro-publico.ts|guardarSucursalPublica": (k) => [k.sucursalId, { slug: "slug-nuevo", publicada: true }],
   "accion|actions/carta/secciones.ts|guardarSeccionCarta": (k) => [{ id: k.seccionCartaId, nombre: "Nombre nuevo" }],
 
@@ -354,6 +369,10 @@ const parametros: Record<string, Record<string, Valor>> = {
     lugares: (k) => ({ seccionCartaIds: [k.seccionCartaId], cupoListaIds: [k.cupoListaId], cupoDelDiaIds: [k.cupoDelDiaId] }),
     args: (_k, c) => ({ desdeDia: "2000-01-01", sucursalIds: [c.propio.sucursalId] }),
   },
+  // GO-3b (frente A): la combinación por su clave y el precio local de la tarifa en la sucursal.
+  "lectura|lecturas/catalogo/combinaciones.ts|cargarCombinacionEnTx": { clave: (k) => ({ productoId: k.productoConOpcionesId, opcionEje1Id: k.opcionMedidaId, opcionEje2Id: null }) },
+  "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|preciosLocalesDeCombinacionVigentes": { ids: (k) => ({ combinacionIds: [k.combinacionId], grupoDePrecioIds: [k.grupoDePrecioId] }), precioLocalActivo: () => true },
+  "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|filaDePrecioLocalDeCombinacion": { clave: (k, c) => ({ sucursalId: c.propio.sucursalId, objetivo: { grupoDePrecioId: k.grupoDePrecioId } }) },
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoOpcion": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoPorId": { id: (k) => k.productoId },
@@ -392,6 +411,8 @@ const porArchivo: Record<string, Record<string, Valor>> = {
   "actions/movimientos/precio-local.ts": { productoId: (k) => k.productoPvId },
   // GO-2a: en las lecturas del catálogo de opciones, `grupoId` es un grupo de OPCIONES (no el de insumos) y `productoId` el PV que las admite.
   "lecturas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId },
+  // GO-3b: en las lecturas de las combinaciones, `productoId` es el PV con opciones (el que tiene ejes y combinación).
+  "lecturas/catalogo/combinaciones.ts": { productoId: (k) => k.productoConOpcionesId },
 };
 
 export const GENERADORES: Generadores = { completos, parametros, porArchivo };

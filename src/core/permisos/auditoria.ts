@@ -92,6 +92,14 @@ export const ENTIDADES_AUDITABLES = [
   // La vigencia de la promo va con "PromoCarta" (`vigenteDesde`, `vigenteHasta`, `diasDeSemana`) y los lugares nuevos con "PromoCartaCupo" (`${promoCartaId}:${cupoId}`).
   "EntradaDeCupo",
   "EntradaDelDiaDeCupo",
+  // GO-3b (ADR-032): el precio y la receta por combinación. `entidadId`:
+  //  - "GrupoDePrecio" (la tarifa compartida) y "CombinacionDeProducto": el id de la fila (de la empresa, `sucursalId` null); los ejes van con "ProductoAdmiteGrupo" (`ejeDeCombinacion`);
+  //  - "PrecioLocalDeCombinacion": `${sucursalId}:${combinacionId}` o `${sucursalId}:${grupoDePrecioId}` (`campo` `precio` o `habilitado`), con `sucursalId`;
+  //  - "RecetaDeCombinacionVersion": el id de la versión NUEVA (`campo: "numero"`, del número anterior —`null` en la primera— al nuevo; el resumen de los ingredientes va en la descripción).
+  "GrupoDePrecio",
+  "CombinacionDeProducto",
+  "PrecioLocalDeCombinacion",
+  "RecetaDeCombinacionVersion",
 ] as const;
 
 /**

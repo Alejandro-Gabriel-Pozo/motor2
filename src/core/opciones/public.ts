@@ -31,3 +31,6 @@ export { componerPrecioDeLinea } from "./componer-precio-de-linea";
 export type { CodigoDeErrorDePrecio, OpcionParaPrecio } from "./componer-precio-de-linea";
 export { versionVigente } from "./version-vigente";
 export type { TipoDeDiferencia } from "./tipos";
+// GO-3b (ADR-032, frente A): el precio por combinación. Los ejes los valida la administración (`fijar-ejes-de-combinacion.ts`).
+export { validarEjesDeCombinacion } from "./combinaciones";
+export type { GrupoParaEjes } from "./combinaciones";

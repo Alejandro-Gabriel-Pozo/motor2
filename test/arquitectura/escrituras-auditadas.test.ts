@@ -54,6 +54,10 @@ const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
   opcionDeEntradaDeCupo: "*",
   entradaDelDiaDeCupo: "*",
   promoCarta: ["vigenteDesde", "vigenteHasta", "diasDeSemana"],
+  // GO-3b (frente A): si una combinación se vende y con qué tarifa, si una tarifa está activa y el precio local de una combinación o de una tarifa (habilitado o no).
+  combinacionDeProducto: ["activa", "grupoDePrecioId"],
+  grupoDePrecio: ["activo"],
+  precioLocalDeCombinacion: "*",
 };
 
 /** Modelos cuya fila ES el rastro (un documento propio o un dato de fuente externa): no hay un valor anterior que se pierda al escribirlos. */

@@ -181,8 +181,9 @@ describe("precio local: un solo lugar decide cuál rige (capacidad + fila habili
   });
 });
 
-// GO-3 (ADR-032, D-4): el precio local de las COMBINACIONES y de los GRUPOS DE PRECIO (`PrecioLocalDeCombinacion`) tiene el mismo embudo que el de las opciones: solo
-// `server/lecturas/catalogo/precio-local.ts` lo lee (con la capacidad `precio_local`). Bloque propio al final, para no pisarse con los cambios de GO-2a en este archivo.
+// GO-3 (ADR-032, D-4): el precio local de las COMBINACIONES y de los GRUPOS DE PRECIO (`PrecioLocalDeCombinacion`) tiene el mismo embudo que el de las opciones. Bloque propio al final, para no pisarse
+// con los cambios de GO-2a en este archivo. GO-3b: el embudo vive en un archivo PROPIO, `server/lecturas/catalogo/precio-local-de-combinaciones.ts` (como la grilla de las opciones,
+// `precio-local-de-opciones.ts`, y por el mismo motivo: la carta pública alcanza `precio-local.ts` y su lista cerrada crecería sin que la carta lo use); la capacidad sigue en `precioLocalActivoEn`.
 
 /** Las líneas (1-based) que leen `precioLocalDeCombinacion` (find*) fuera de un comentario. */
 function lineasQueLeenPrecioLocalDeCombinacionDirecto(fuente: string): number[] {
@@ -198,14 +199,18 @@ function lineasQueLeenPrecioLocalDeCombinacionDirecto(fuente: string): number[] 
 }
 
 describe("precio local de las combinaciones (GO-3): un solo lugar lo lee", () => {
-  it("ningún archivo fuera de `server/lecturas/catalogo/precio-local.ts` lee `precioLocalDeCombinacion.find*` directo", () => {
+  it("ningún archivo fuera de `server/lecturas/catalogo/precio-local-de-combinaciones.ts` lee `precioLocalDeCombinacion.find*` directo", () => {
     const problemas: string[] = [];
     for (const ruta of archivos(RAIZ)) {
       const nombre = relative(RAIZ, ruta).split(sep).join("/");
-      if (nombre === "server/lecturas/catalogo/precio-local.ts") continue;
+      if (nombre === "server/lecturas/catalogo/precio-local-de-combinaciones.ts") continue;
       for (const linea of lineasQueLeenPrecioLocalDeCombinacionDirecto(readFileSync(ruta, "utf8"))) problemas.push(`${nombre}:${linea}`);
     }
     expect(problemas, `Estas líneas leen PrecioLocalDeCombinacion a mano y se saltan el embudo del precio local:\n${problemas.join("\n")}`).toEqual([]);
+    expect(
+      lineasQueLeenPrecioLocalDeCombinacionDirecto(readFileSync(join(RAIZ, "server/lecturas/catalogo/precio-local-de-combinaciones.ts"), "utf8")).length,
+      "precio-local-de-combinaciones.ts ya no lee el precio local de las combinaciones: ¿se movió?",
+    ).toBeGreaterThan(0);
   });
 
   it("el detector marca la lectura directa (también sobre una transacción) y no una escritura ni un comentario", () => {
