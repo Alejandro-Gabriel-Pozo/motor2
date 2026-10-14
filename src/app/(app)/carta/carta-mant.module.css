@@ -59,19 +59,25 @@
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
-/* `:where` deja estas reglas base en especificidad 0 (como el `button,input,select{font:inherit}` del prototipo): las clases de cada control mandan sobre ellas. */
-:where(.raiz) button,
-:where(.raiz) input,
-:where(.raiz) select {
-  font: inherit;
-  color: inherit;
-}
-:where(.raiz) button {
-  cursor: pointer;
-}
-:where(.raiz) button[disabled] {
-  cursor: not-allowed;
-  opacity: 0.55;
+/*
+ * `:where` deja estas reglas base en especificidad 0 (como el `button,input,select{font:inherit}` del prototipo): las clases de cada control mandan sobre ellas. Y van en `@layer base`, como las
+ * de `globals.css`: fuera de una capa le ganaban a TODA utilidad de Tailwind (que vive en `@layer utilities`), así que un botón `text-white` de los formularios de siempre quedaba con el color del
+ * texto (contraste 1,08 en «Crear sección», lo marcó axe).
+ */
+@layer base {
+  :where(.raiz) button,
+  :where(.raiz) input,
+  :where(.raiz) select {
+    font: inherit;
+    color: inherit;
+  }
+  :where(.raiz) button {
+    cursor: pointer;
+  }
+  :where(.raiz) button[disabled] {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
 }
 
 /* Las dos pestañas de arriba (Mantenimiento | Parametrización). */

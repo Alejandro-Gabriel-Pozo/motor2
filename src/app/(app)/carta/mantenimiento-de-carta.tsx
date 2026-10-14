@@ -403,7 +403,20 @@ export function MantenimientoDeCarta({
                       <div className={s.nombre}>
                         <b>{p.nombre}</b>
                       </div>
-                      {siNo(p.visible, `«${p.nombre}» en la carta`, puede.contenido, (v) => ejecutar(() => acciones.visibleProducto(p.id, v), () => acciones.visibleProducto(p.id, !v)), s.segSiNo)}
+                      {siNo(
+                        p.visible,
+                        `«${p.nombre}» en la carta`,
+                        puede.contenido,
+                        (v) => {
+                          // La sección queda abierta: si se prende el último oculto, no se pliega bajo el dedo (arranca abierta solo por tener ocultos).
+                          setAbiertas((a) => ({ ...a, [clave]: true }));
+                          ejecutar(
+                            () => acciones.visibleProducto(p.id, v),
+                            () => acciones.visibleProducto(p.id, !v)
+                          );
+                        },
+                        s.segSiNo
+                      )}
                     </div>
                   ))}
                   {!sec.productos.length && (
