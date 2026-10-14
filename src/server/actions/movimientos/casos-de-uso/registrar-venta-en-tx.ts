@@ -13,6 +13,9 @@ import {
 } from "@/core/movimientos/linea-de-venta";
 import { cargarRecetaVigenteParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { CODIGO_PRODUCTO_SIN_RECETA, rechazoSinOrigenDeStock } from "@/core/movimientos/origen-de-stock";
+import { CODIGO_PRODUCTO_REQUIERE_OPCIONES, rechazoPorOpcionesObligatorias } from "@/core/movimientos/opciones-obligatorias";
+import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
+import type { GrupoPermitido } from "@/core/opciones/public";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { seccionesConStock } from "@/server/lecturas/movimientos/saldos";
 import { cargarDeudaDeRedondeo } from "@/server/lecturas/movimientos/deuda-de-redondeo";
@@ -33,6 +36,21 @@ import { escribirOperacionDeVenta } from "@/server/persistencia/movimientos/escr
 import type { ActorVenta, AvisoStockNegativo, DatosVentaEnTx, LineaVentaEnTx, OpcionesVentaEnTx, ResultadoVentaEnTx } from "@/core/movimientos/registrar-venta";
 
 type Obtener = ReturnType<typeof crearCacheProducto>;
+/** Lo que admite un producto de opciones en la sucursal que vende (ver `crearLectorDeGruposAdmitidos`). */
+type GruposAdmitidosDe = (productoId: string) => Promise<readonly GrupoPermitido[]>;
+
+/**
+ * OPCIONES OBLIGATORIAS (fila O.430): lo que admite cada producto de las líneas SIN configurar del lote, con el lector de las opciones de venta que usa el POS (`cargarOpcionesParaVender`) y el `tx` de
+ * quien llama (la decisión y la escritura ven la misma foto). Se lee UNA vez para todo el lote (nunca una consulta por línea), la PRIMERA vez que una línea llega a la barrera de `armarLinea`: una línea que
+ * rechaza antes (producto inexistente, no disponible, cantidad inválida) no suma esa lectura, y un lote sin líneas sin configurar (un cierre cuyas líneas traen todas su foto) no lee nada.
+ */
+function crearLectorDeGruposAdmitidos(tx: Prisma.TransactionClient, sucursalId: string, lineas: readonly LineaVentaEnTx[]): GruposAdmitidosDe {
+  let leidos: ReturnType<typeof cargarOpcionesParaVender> | null = null;
+  return async (productoId) => {
+    leidos ??= cargarOpcionesParaVender(tx, { sucursalId, productoIds: lineas.filter((l) => l.configurada === undefined).map((l) => l.productoId) });
+    return (await leidos).get(productoId)?.grupos ?? [];
+  };
+}
 
 /**
  * GO-2b: cada insumo que una OPCIÓN consume (su versión congelada) tiene que ser una materia prima, estar disponible en la sucursal y tener la unidad de stock que
@@ -81,8 +99,9 @@ async function armarLinea(
   tx: Prisma.TransactionClient,
   obtenerProducto: Obtener,
   costoUnitarioPorProducto: Map<string, number | null>,
-  costoDeInsumo: (productoId: string) => number | null
-): Promise<{ ok: true; linea: LineaArmada | null } | { ok: false; mensaje: string; codigo?: typeof CODIGO_PRODUCTO_SIN_RECETA }> {
+  costoDeInsumo: (productoId: string) => number | null,
+  gruposAdmitidosDe: GruposAdmitidosDe
+): Promise<{ ok: true; linea: LineaArmada | null } | { ok: false; mensaje: string; codigo?: typeof CODIGO_PRODUCTO_SIN_RECETA | typeof CODIGO_PRODUCTO_REQUIERE_OPCIONES }> {
   // Las reglas (qué cantidad saltea la línea, cuál es un error, qué mensaje gana) son puras y viven en `core/movimientos/linea-de-venta.ts`; acá queda el ORDEN: cada una se llama
   // en el mismo lugar donde estaba el `if`, antes o después de la lectura que le toca (los goldens registran las lecturas también en los rechazos).
   const leida = leerCantidadVendida(item.cantidadVendida);
@@ -104,6 +123,14 @@ async function armarLinea(
   if (configurada?.tipo === "ADICIONAL" && !esAnclaVerificada) return { ok: false, mensaje: `«${producto.nombre}» no es el producto que respalda ese adicional.` };
   if (configurada?.tipo === "PRODUCTO" && producto.seProduce) {
     return { ok: false, mensaje: `«${producto.nombre}» se produce por lote: todavía no se puede vender con opciones.` };
+  }
+  // OPCIONES OBLIGATORIAS (fila O.430): la BARRERA FINAL de una línea SIN configurar (la venta de mostrador, que no tiene selector de opciones; o una línea del cierre sin su foto). Un producto que
+  // admite un grupo obligatorio (activo para la empresa, o apagado: falla cerrado) no se cobra al precio base: con la MISMA lectura de los grupos que el POS (`cargarOpcionesParaVender`, una vez por lote:
+  // `crearLectorDeGruposAdmitidos`) y la MISMA regla (`validarOpcionesElegidas` con cero opciones), antes de leer la receta y de escribir nada. Una línea configurada (o un adicional) ya trae lo
+  // elegido y su precio de la foto de la cuenta: no pasa por acá.
+  if (configurada === undefined) {
+    const sinOpciones = rechazoPorOpcionesObligatorias(producto.nombre, await gruposAdmitidosDe(producto.id));
+    if (sinOpciones !== null) return { ok: false, codigo: CODIGO_PRODUCTO_REQUIERE_OPCIONES, mensaje: sinOpciones };
   }
 
   let pedidos: LineaArmada["pedidos"] = [];
@@ -199,8 +226,9 @@ export async function registrarVentaEnTx(
   // GO-2b: por cada línea armada, el índice (en `lineas`) de la de su padre si es un adicional; `null` en todas las demás.
   const padreDeLinea: (number | null)[] = [];
   const indiceEnLineas = new Map<number, number>();
+  const gruposAdmitidosDe = crearLectorDeGruposAdmitidos(tx, actor.sucursalId, datos.lineas);
   for (const [i, item] of datos.lineas.entries()) {
-    const armado = await armarLinea(item, actor.sucursalId, actor.sucursalNombre, tx, obtenerProducto, costoUnitarioPorProducto, costoDeInsumo);
+    const armado = await armarLinea(item, actor.sucursalId, actor.sucursalNombre, tx, obtenerProducto, costoUnitarioPorProducto, costoDeInsumo, gruposAdmitidosDe);
     if (!armado.ok) return armado.codigo ? { ok: false, codigo: armado.codigo, mensaje: armado.mensaje } : fallo(armado.mensaje);
     if (!armado.linea) continue;
     let padre: number | null = null;

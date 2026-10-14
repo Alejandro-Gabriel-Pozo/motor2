@@ -210,6 +210,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "GO-1d (O.324; ADITIVO, no cambia comportamiento): las líneas OPERACION suman `operacionPadreId=null`. Verificado con diff: el golden nuevo, sin esa columna en null, es idéntico al anterior.",
       },
+      {
+        blob: "85c7776d5e08d16a6892056dbcc156630435433e",
+        // El commit PADRE de este (9e0f5078, main con GO-3b) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "9e0f5078",
+        motivo:
+          "MOSTRADOR (O.430; CAMBIA LAS CONSULTAS, no la salida): la barrera de las opciones obligatorias de la venta (`armarLinea`) lee UNA vez por lote lo que admite cada producto de las líneas sin configurar (`cargarOpcionesParaVender`, un `producto.findMany`), la primera vez que una línea llega a ella. Cambia SOLO la línea `lecturas (N)` de 5 escenas (la que ya pasaba la barrera): N suma 1 y `producto.findMany` suma 1; ninguna fila OPERACION, KARDEX ni resultado cambia. Verificado con `git diff --word-diff`: cada línea cambiada, sin el número N y sin `producto.findMany×k`, es idéntica a la anterior.",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -267,6 +274,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "b1cd4c8",
         motivo:
           "RECETA (ADR-033; CAMBIA COMPORTAMIENTO, decisión del dueño del 2026-10-13: «sin receta no se vende»). El escenario cambia lo mínimo: el Agua y el Flan, que eran «PV sin receta», pasan a ser de REVENTA (receta de 1 unidad de «Agua (reventa)» / «Flan (reventa)»); el stock del Agua entra en la misma COMPRA que las Tapas (jornada A) y el del Flan en la misma que el Vino, en «Barra» (jornada D), sin Operaciones nuevas (la numeración opN no se corre); en la jornada B el Flan sigue sin stock. Diff revisado línea a línea y con un normalizador (sin las filas KARDEX de las dos MP de reventa, sin el renglón «lecturas» y con `costoUnitarioVenta` del Agua/Flan en null queda IDÉNTICO salvo): los títulos de A1, B y B5 (ya no dicen «sin receta»); B5 ahora avisa el stock negativo de «Flan (reventa)» en «Barra» (antes `avisos=[]`); D5 revierte 4 movimientos en vez de 3 (también el CONSUMO del Flan de la promo); y el paso nuevo R7 (al final: la Soda, un PV SIN receta, se rechaza con PRODUCTO_SIN_RECETA sin escribir nada). Las filas nuevas son los CONSUMO de las dos MP (y su COMPRA y reversión), el `costoUnitarioVenta` del Agua pasa de null a 300 y el del Flan a 1000 (el costo de su MP), y las lecturas suman las de la receta de reventa (disponibilidad, saldos y la ficha de la MP). Ninguna sección de una fila VENTA cambia.",
+      },
+      {
+        blob: "6b05b59d98702916f0a43cd16534040ef046d298",
+        // El commit PADRE de este (9e0f5078, main con GO-3b) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "9e0f5078",
+        motivo:
+          "MOSTRADOR (O.430; CAMBIA LAS CONSULTAS, no la salida): igual que la matriz de venta. La barrera de las opciones obligatorias lee UNA vez por lote lo que admite cada producto de las líneas sin configurar (`producto.findMany`), la primera vez que una línea llega a ella. Cambia SOLO la línea `lecturas (N)` de 19 escenas (las que pasan la barrera: ventas de mostrador, cierres del POS y sus rechazos posteriores a ella): N suma 1 y `producto.findMany` suma 1; los rechazos anteriores a la barrera (producto inexistente, no disponible, cantidad inválida) no cambian. Ninguna fila OPERACION, KARDEX ni resultado cambia. Verificado con `git diff --word-diff` y por programa: cada línea cambiada, sin N y sin `producto.findMany×k`, es idéntica a la anterior.",
       },
     ],
   },
