@@ -35,6 +35,7 @@
   PERMISO admin:gestion_permisos ver=true editar=true
   PERMISO admin:gestion_roles ver=true editar=true
   PERMISO admin:gestion_usuarios ver=true editar=true
+  PERMISO admin:grupos_de_precio_definir ver=true editar=true
   PERMISO admin:grupos_familia ver=true editar=true
   PERMISO admin:guardar_receta ver=true editar=true
   PERMISO admin:insumo_alta ver=true editar=true
@@ -79,6 +80,7 @@
   PERMISO admin:producto_presentaciones ver=true editar=true
   PERMISO admin:producto_sincronizar_precio_carta ver=true editar=true
   PERMISO admin:producto_ver_catalogo ver=true editar=true
+  PERMISO admin:promo_menu_del_dia ver=true editar=true
   PERMISO admin:proveedor_alta ver=true editar=true
   PERMISO admin:proveedores ver=true editar=true
   PERMISO admin:receta_sucursal_copiar ver=true editar=true
@@ -165,6 +167,7 @@
   PERMISO operador:gestion_permisos ver=false editar=false
   PERMISO operador:gestion_roles ver=false editar=false
   PERMISO operador:gestion_usuarios ver=false editar=false
+  PERMISO operador:grupos_de_precio_definir ver=false editar=false
   PERMISO operador:grupos_familia ver=false editar=false
   PERMISO operador:guardar_receta ver=false editar=false
   PERMISO operador:insumo_alta ver=true editar=true
@@ -209,6 +212,7 @@
   PERMISO operador:producto_presentaciones ver=true editar=true
   PERMISO operador:producto_sincronizar_precio_carta ver=false editar=false
   PERMISO operador:producto_ver_catalogo ver=true editar=true
+  PERMISO operador:promo_menu_del_dia ver=false editar=false
   PERMISO operador:proveedor_alta ver=true editar=true
   PERMISO operador:proveedores ver=false editar=false
   PERMISO operador:receta_sucursal_copiar ver=false editar=false
@@ -265,7 +269,7 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Central/true, Norte/true
-  ACCIONES 130
+  ACCIONES 132
 ### 0b. Primer gerente incorporado
   resultado: {"ok":true,"sucursalId":"sucursal1","sucursalNombre":"Central","membresiaId":"id#1"}
   EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
@@ -454,6 +458,7 @@
   PERMISO admin:gestion_permisos ver=true editar=true
   PERMISO admin:gestion_roles ver=true editar=true
   PERMISO admin:gestion_usuarios ver=true editar=true
+  PERMISO admin:grupos_de_precio_definir ver=true editar=true
   PERMISO admin:grupos_familia ver=true editar=true
   PERMISO admin:guardar_receta ver=true editar=true
   PERMISO admin:insumo_alta ver=true editar=true
@@ -498,6 +503,7 @@
   PERMISO admin:producto_presentaciones ver=true editar=true
   PERMISO admin:producto_sincronizar_precio_carta ver=true editar=true
   PERMISO admin:producto_ver_catalogo ver=true editar=true
+  PERMISO admin:promo_menu_del_dia ver=true editar=true
   PERMISO admin:proveedor_alta ver=true editar=true
   PERMISO admin:proveedores ver=true editar=true
   PERMISO admin:receta_sucursal_copiar ver=true editar=true
@@ -584,6 +590,7 @@
   PERMISO operador:gestion_permisos ver=false editar=false
   PERMISO operador:gestion_roles ver=false editar=false
   PERMISO operador:gestion_usuarios ver=false editar=false
+  PERMISO operador:grupos_de_precio_definir ver=false editar=false
   PERMISO operador:grupos_familia ver=false editar=false
   PERMISO operador:guardar_receta ver=false editar=false
   PERMISO operador:insumo_alta ver=true editar=true
@@ -628,6 +635,7 @@
   PERMISO operador:producto_presentaciones ver=true editar=true
   PERMISO operador:producto_sincronizar_precio_carta ver=false editar=false
   PERMISO operador:producto_ver_catalogo ver=true editar=true
+  PERMISO operador:promo_menu_del_dia ver=false editar=false
   PERMISO operador:proveedor_alta ver=true editar=true
   PERMISO operador:proveedores ver=false editar=false
   PERMISO operador:receta_sucursal_copiar ver=false editar=false
@@ -684,7 +692,7 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Casa central/true
-  ACCIONES 130
+  ACCIONES 132
 ### 7a. Aceptar con un CUIT inválido
   resultado: {"ok":false,"mensaje":"El CUIT no tiene un formato válido: son 11 dígitos, por ejemplo 30-12345678-1."}
   EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires

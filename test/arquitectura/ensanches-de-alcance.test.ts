@@ -219,7 +219,22 @@ const VERIFICACION: Readonly<Record<string, UsoDeVerificacion>> = {
     directos: [],
     transaccionA: { conTransaccionSerializable: 0 },
     devuelve: "MENSAJE",
-    motivo: "cupos de una promo: el piso de $0,01 por unidad se mide contra el precio local de CUALQUIER sucursal (`PromoCartaSucursal`); la transacción SERIALIZABLE lee toda la empresa y escribe solo cupos y auditoría de empresa; el rechazo no nombra importe ni sucursal",
+    motivo: "cupos de una promo: el piso de $0,01 por unidad se mide contra el precio local de CUALQUIER sucursal (`PromoCartaSucursal`); la transacción SERIALIZABLE lee toda la empresa y escribe solo cupos y auditoría de empresa; el rechazo no nombra importe ni sucursal. GO-3b (D-2): también las alícuotas de los productos de la carta de cualquier sucursal en las secciones de los cupos (el rechazo nombra dos productos del catálogo de la empresa, nunca una sucursal)",
+  },
+  // ── Carta: GO-3b, las opciones de un lugar LISTA (D-2: las alícuotas de los componentes posibles del combo, en la carta de CUALQUIER sucursal) ─────────────────────────────────────────────────
+  "src/server/actions/carta/casos-de-uso/agregar-entrada-de-cupo.ts": {
+    lectores: {},
+    directos: [],
+    transaccionA: { conTransaccionSerializable: 0 },
+    devuelve: "MENSAJE",
+    motivo: "opción de un lugar LISTA (GO-3b, D-2): las alícuotas de los componentes posibles del combo se miran en la carta de TODAS las sucursales; la transacción SERIALIZABLE lee toda la empresa y escribe solo la entrada y su auditoría (de empresa); el rechazo nombra dos productos del catálogo de la empresa, nunca una sucursal",
+  },
+  "src/server/actions/carta/casos-de-uso/actualizar-activa-entrada-de-cupo.ts": {
+    lectores: {},
+    directos: [],
+    transaccionA: { conTransaccionSerializable: 0 },
+    devuelve: "MENSAJE",
+    motivo: "prender una opción de un lugar LISTA (GO-3b, D-2): mismas alícuotas que el alta, en la carta de TODAS las sucursales; escribe solo la entrada y su auditoría (de empresa)",
   },
   // ── Compras: aviso C25 de posible factura repetida ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   "src/server/actions/movimientos/casos-de-uso/registrar-movimiento.ts": {

@@ -15,8 +15,11 @@ export { etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica } from "./carta-
 export { precioDeCarta } from "./armar-menu";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "./promo-sucursal";
 // GO-3 (ADR-032): los tipos de cupo y la lectura tolerante del primer despliegue (solo los cupos de sección activos; una promo con un cupo activo de tipo nuevo no se ofrece).
-export { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos, tieneCupoActivoDeTipoNuevo } from "./cupos-de-promo";
+export { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos } from "./cupos-de-promo";
 export type { TipoDeCupo } from "./cupos-de-promo";
+// GO-3b (D3): la administración de los cupos sin borrar (la clave natural de cada cupo y la diferencia contra lo que hay) y los tipos de cupo para el guard.
+export { LARGO_MAXIMO_NOMBRE_DE_CUPO, TIPOS_DE_CUPO, claveNaturalDeCupo, diferenciaDeCupos } from "./cupos-de-promo";
+export type { CupoExistente, CupoPedido } from "./cupos-de-promo";
 export { aplicarDescuentoDeProducto, precioCobradoConDescuentos } from "./descuento-producto";
 export type { Resultado } from "./validaciones";
 // Hito 4, H4C-2: el guard de las promos (`core/features/carta/promos.guard.ts`) valida con los mismos validadores de la carta que usaba la Server Action.
@@ -60,6 +63,8 @@ export { ZONAS_TEMA } from "./tema";
 export type { DefinicionClaveTema } from "./tema";
 export { ordenSugeridoAlElegirSeccion } from "./orden-sugerido";
 export type { SeccionCartaAdmin, GeneroCartaAdmin, SucursalConCartaPropia, DatosAdminCarta, OpcionItemAgrupadoAdmin, DatosAdminItemsAgrupados, PortalEmpresaAdmin } from "./admin-tipos";
+// GO-3b (U1): los combos de la carta (lugares de entradas, entradas y vigencia).
+export type { CombosDeLaCarta, LugarDeCombo, ProductoParaEntrada, VigenciaDePromoAdmin } from "./admin-tipos";
 export { esClavePortal } from "./portal";
 export { esClaveTema } from "./tema";
 export { ofrecerSincronizarPrecio } from "./grupo-de-producto";
@@ -72,3 +77,9 @@ export { esHostDeEmpresaUnica } from "./carta-empresa-unica";
 export { estiloCartaPorDefecto } from "./estilo";
 export { posicionCompleta } from "./portal";
 export type { EntradaPortalCarta } from "./portal";
+// GO-3b (ADR-032, D-7): la vigencia de una promo (el guard de la administración la valida; la venta la evalúa al agregar).
+export { TODOS_LOS_DIAS, mascaraDeDias, promoVigenteEl, validarVigenciaDePromo } from "./vigencia-de-promo";
+export type { VigenciaDePromo } from "./vigencia-de-promo";
+// GO-3b (ADR-032, D-1): la fecha del menú del día (de hoy a hoy + 13, en la zona de la empresa).
+export { DIAS_DE_ANTICIPACION_DEL_MENU, validarFechaDeMenuDelDia } from "./menu-del-dia";
+export type { CandidatoAPlato, MenuDelDiaDeLaSucursal } from "./menu-del-dia";

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { crearBaseTemporalMigrada, type BaseTemporalMigrada } from "../setup/base-temporal-migrada";
-import { MOTIVO_DE_LAS_RESERVADAS_DE_GO3, MOTIVO_DE_LAS_RESERVADAS_EN_BASE, RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
+import { MOTIVO_DE_LAS_RESERVADAS_EN_BASE, RESERVADAS_EN_BASE } from "../setup/claves-reservadas-en-base";
 
 /**
  * Paridad entre el catálogo de acciones del código (`ACCIONES`) y lo que una base REAL acaba teniendo en la tabla `Accion`.
@@ -149,13 +149,11 @@ describe("paridad ACCIONES ↔ migraciones: una base real termina con el catálo
     expect(sobrantes, "claves en la base que el código no conoce y nadie declaró retiradas ni reservadas").toEqual([]);
   });
 
-  it("toda clave RESERVADA EN LA BASE (los gastos, M4.5, la nota de crédito de proveedor, M6.4, los centros de costos, M7.4, y las de GO-3) está en una base migrada, con la descripción definitiva, y todavía NO está en ACCIONES (el día que entra, sale de la lista)", () => {
+  it("toda clave RESERVADA EN LA BASE (los gastos, M4.5, la nota de crédito de proveedor, M6.4, y los centros de costos, M7.4; las de GO-3 entraron a ACCIONES en GO-3b) está en una base migrada, con la descripción definitiva, y todavía NO está en ACCIONES (el día que entra, sale de la lista)", () => {
     const enCodigo = new Set<string>(ACCIONES.map((a) => a.clave));
     expect(MOTIVO_DE_LAS_RESERVADAS_EN_BASE.trim().length).toBeGreaterThan(10);
-    expect(MOTIVO_DE_LAS_RESERVADAS_DE_GO3, "el motivo tiene que explicar también las claves de GO-3").toContain("GO-3");
     expect(Object.keys(RESERVADAS_EN_BASE).sort()).toEqual(
       [
-        "promo_menu_del_dia", "grupos_de_precio_definir",
         "conceptos_gasto", "gasto_anular", "gasto_ver", "gasto_registrar", "gasto_reclasificar", "gasto_repartir", "reporte_gastos_empresa",
         "nota_credito_proveedor", "gasto_nota_credito", "anular_nota_credito_proveedor",
         "centros_costos", "distribucion_costos", "reporte_gastos_por_unidad",

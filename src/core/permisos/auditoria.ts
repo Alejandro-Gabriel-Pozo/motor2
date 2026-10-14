@@ -86,6 +86,20 @@ export const ENTIDADES_AUDITABLES = [
   "ProductoAdmiteOpcion",
   "PrecioLocalDeOpcion",
   "OpcionApagadaEnSucursal",
+  // GO-3b (ADR-032): los combos y el menú del día. `entidadId`:
+  //  - "EntradaDeCupo": el id de la entrada (una opción de un lugar LISTA: producto y configuración fija), `campo: "activa"` (`valorAnterior: null` en el alta), `sucursalId` null (de la empresa);
+  //  - "EntradaDelDiaDeCupo": el id del plato del día (lugar, sucursal, fecha y producto), `campo: "activa"` (`valorAnterior: null` en el alta), con `sucursalId`.
+  // La vigencia de la promo va con "PromoCarta" (`vigenteDesde`, `vigenteHasta`, `diasDeSemana`) y los lugares nuevos con "PromoCartaCupo" (`${promoCartaId}:${cupoId}`).
+  "EntradaDeCupo",
+  "EntradaDelDiaDeCupo",
+  // GO-3b (ADR-032): el precio y la receta por combinación. `entidadId`:
+  //  - "GrupoDePrecio" (la tarifa compartida) y "CombinacionDeProducto": el id de la fila (de la empresa, `sucursalId` null); los ejes van con "ProductoAdmiteGrupo" (`ejeDeCombinacion`);
+  //  - "PrecioLocalDeCombinacion": `${sucursalId}:${combinacionId}` o `${sucursalId}:${grupoDePrecioId}` (`campo` `precio` o `habilitado`), con `sucursalId`;
+  //  - "RecetaDeCombinacionVersion": el id de la versión NUEVA (`campo: "numero"`, del número anterior —`null` en la primera— al nuevo; el resumen de los ingredientes va en la descripción).
+  "GrupoDePrecio",
+  "CombinacionDeProducto",
+  "PrecioLocalDeCombinacion",
+  "RecetaDeCombinacionVersion",
 ] as const;
 
 /**

@@ -75,6 +75,9 @@ export interface ItemParaLineaDeVenta {
   /** GO-2b: SOLO en un adicional original, la versión de su opción (la de su foto): dos adicionales al mismo precio pero de versiones distintas consumen distinto y
    *  no se juntan en una línea. Un espejo la toma de su original. */
   versionDeAdicional?: string | null;
+  /** GO-3b (ADR-032): SOLO en una línea que cayó en una combinación con receta propia, la versión CONGELADA de esa receta (`CombinacionEnLinea`): dos ítems con la misma huella pero
+   *  versiones distintas (la receta cambió entre una ronda y otra) consumen distinto y no se juntan. Un espejo la toma de su original. */
+  recetaDeCombinacion?: string | null;
 }
 
 /**
@@ -102,13 +105,19 @@ export function lineasDeVenta(items: readonly ItemParaLineaDeVenta[]): LineaDeVe
     const precioCartaUnitario = !promoCuentaId && item.precioCartaUnitario != null ? item.precioCartaUnitario : undefined;
     return { productoId: item.productoId, precioUnitario: item.precioUnitario, promoCuentaId, precioCartaUnitario };
   };
+  // La clave de una línea que no es un adicional. GO-3b: la receta propia congelada de la combinación la separa (en la clave, no en la huella que sale); sin receta, la de siempre.
+  const claveDeProducto = (item: ItemParaLineaDeVenta): string => {
+    const receta = item.recetaDeCombinacion ?? (item.anulaAItemId ? porId.get(item.anulaAItemId)?.recetaDeCombinacion : null) ?? null;
+    const clave = claveDeLineaDeVentaConOpciones({ ...camposDeClave(item), huellaOpciones: item.huellaOpciones ?? null });
+    return receta !== null && (item.huellaOpciones ?? null) !== null ? `${clave}|r:${receta}` : clave;
+  };
   const claveDe = (item: ItemParaLineaDeVenta): { clave: string; clavePadre: string | null } => {
     const lineaPadreId = item.lineaPadreId ?? null;
-    if (lineaPadreId === null) return { clave: claveDeLineaDeVentaConOpciones({ ...camposDeClave(item), huellaOpciones: item.huellaOpciones ?? null }), clavePadre: null };
+    if (lineaPadreId === null) return { clave: claveDeProducto(item), clavePadre: null };
     const padre = porId.get(lineaPadreId);
     if (!padre) throw new Error("lineasDeVenta: un adicional cuya línea padre no está en la cuenta.");
     if ((padre.lineaPadreId ?? null) !== null) throw new Error("lineasDeVenta: la línea padre de un adicional no puede ser otro adicional.");
-    const clavePadre = claveDeLineaDeVentaConOpciones({ ...camposDeClave(padre), huellaOpciones: padre.huellaOpciones ?? null });
+    const clavePadre = claveDeProducto(padre);
     const original = item.anulaAItemId ? porId.get(item.anulaAItemId) : undefined;
     const version = item.versionDeAdicional ?? original?.versionDeAdicional ?? null;
     return { clave: claveDeLineaDeVentaConOpciones({ ...camposDeClave(item), clavePadre: version === null ? clavePadre : `${clavePadre}|v:${version}` }), clavePadre };

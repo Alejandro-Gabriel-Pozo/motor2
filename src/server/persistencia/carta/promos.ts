@@ -59,21 +59,40 @@ export async function fijarActivaDePromoEnSucursal(db: Prisma.TransactionClient,
 }
 
 /**
- * Reemplaza TODOS los cupos de SECCIÓN de la promo por la lista dada (todo o nada: lo llama el caso de uso dentro de su transacción). Una lista vacía deja la promo sin
- * cupos de sección (informativa, si no tiene otros).
- * GO-3 (primer despliegue): los cupos de un tipo nuevo (LISTA, DEL_DIA) no se tocan: este reemplazo es solo de los de sección, con la semántica de siempre. Dejar de borrar
- * (diferencia por clave natural con baja lógica) es el paso D3 de GO-3.
+ * GO-3b (ADR-032, D3): los cupos de una promo ya NO se borran (ni se reemplazan borrando): el caso de uso calcula la diferencia por clave natural (`diferenciaDeCupos`, `core/carta`) y
+ * escribe con estas tres, dentro de su transacción. Un cupo nuevo se crea (devuelve su id, para la auditoría); uno que sigue o vuelve se cambia en el lugar y queda ACTIVO; uno que no
+ * vino se da de baja (`activo = false`). Así las entradas de una lista y los platos del día nunca cuelgan de una fila borrada.
  */
-export async function reemplazarCuposDePromo(
+export async function crearCupoDePromo(
   db: Prisma.TransactionClient,
-  args: { promoCartaId: string; cupos: readonly { seccionCartaId: string; cantidadMinima: number; cantidadMaxima: number; orden: number }[] },
+  args: { promoCartaId: string; tipo: string; seccionCartaId: string | null; nombre: string | null; cantidadMinima: number; cantidadMaxima: number; orden: number },
+): Promise<{ id: string }> {
+  const creado = await db.promoCartaCupo.create({
+    data: {
+      promoCartaId: args.promoCartaId,
+      tipo: args.tipo,
+      seccionCartaId: args.seccionCartaId,
+      nombre: args.nombre,
+      cantidadMinima: args.cantidadMinima,
+      cantidadMaxima: args.cantidadMaxima,
+      orden: args.orden,
+    },
+    select: { id: true },
+  });
+  return { id: creado.id };
+}
+
+/** Deja ACTIVO un cupo que ya existía (sigue o vuelve), con sus cantidades, su orden y su nombre (el de un cupo de sección queda NULL). */
+export async function cambiarCupoDePromo(
+  db: Prisma.TransactionClient,
+  args: { id: string; nombre: string | null; cantidadMinima: number; cantidadMaxima: number; orden: number },
 ): Promise<void> {
-  await db.promoCartaCupo.deleteMany({ where: { promoCartaId: args.promoCartaId, tipo: "SECCION" } });
-  if (args.cupos.length) {
-    await db.promoCartaCupo.createMany({
-      data: args.cupos.map((c) => ({ promoCartaId: args.promoCartaId, seccionCartaId: c.seccionCartaId, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima, orden: c.orden })),
-    });
-  }
+  await db.promoCartaCupo.update({ where: { id: args.id }, data: { activo: true, nombre: args.nombre, cantidadMinima: args.cantidadMinima, cantidadMaxima: args.cantidadMaxima, orden: args.orden } });
+}
+
+/** Da de baja un cupo (baja lógica: la fila queda, con sus entradas y sus platos del día). */
+export async function darDeBajaCupoDePromo(db: Prisma.TransactionClient, args: { id: string }): Promise<void> {
+  await db.promoCartaCupo.update({ where: { id: args.id }, data: { activo: false } });
 }
 
 /**

@@ -4,6 +4,7 @@ import { crearEmpresa } from "../../setup/crear-empresa";
 import { crearMembresia } from "../../setup/membresia";
 import { activarTodosLosModulos } from "../../setup/modulos";
 import { enElPasado, HORA_MS, DIA_MS } from "../../setup/tiempo";
+import { ZONA_ARGENTINA, diaDeCalendario, fechaDeColumnaDate, sumarDias } from "../../../src/core/tiempo/zona-horaria";
 
 /**
  * El MUNDO de la matriz de denegación por defecto (GT-3b): lo que se siembra UNA vez por archivo de test (las puertas que se prueban no escriben nada, y la matriz lo verifica con la huella de toda la base)
@@ -57,6 +58,17 @@ export interface KitDeEmpresa {
   grupoMedidaId: string;
   opcionMedidaId: string;
   grupoAdicionalId: string;
+  /**
+   * GO-3b (ADR-032): un COMBO aparte (la promo de siempre sigue con su cupo de sección, así el POS la sigue ofreciendo) con un lugar LISTA que tiene una opción (el `pv`, con receta) y un lugar
+   * DEL_DIA. Las opciones de la lista son de la empresa; el plato del día de cada sucursal va en su kit.
+   */
+  promoComboId: string;
+  cupoListaId: string;
+  entradaDeCupoId: string;
+  cupoDelDiaId: string;
+  /** GO-3b (frente A): la medida del PV con opciones es el EJE 1 de sus combinaciones; su combinación «Grande» usa la tarifa `grupoDePrecioId`. */
+  grupoDePrecioId: string;
+  combinacionId: string;
 }
 
 export interface KitDeSucursal {
@@ -109,7 +121,12 @@ export interface KitDeSucursal {
   /** Una invitación pendiente con acceso a esta sucursal (y el acceso mismo). */
   invitacionId: string;
   invitacionDeSucursalId: string;
+  /** GO-3b: el plato del día de MAÑANA (`DIA_DEL_PLATO_DEL_MUNDO`) del lugar DEL_DIA del combo de la empresa, en esta sucursal (el `pv`). */
+  platoDelDiaId: string;
 }
+
+/** GO-3b: el día del plato del día que siembra el mundo (mañana en la zona de las empresas del mundo: siempre se puede quitar o copiar). */
+export const DIA_DEL_PLATO_DEL_MUNDO = sumarDias(diaDeCalendario(new Date(), ZONA_ARGENTINA), 1);
 
 /** Los campos que son de UNA sucursal (los demás del kit son de la empresa): en el escenario «otra sucursal de la misma empresa» solo estos son ajenos. Exhaustivo por construcción (`Record<keyof KitDeSucursal, true>`). */
 const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
@@ -152,6 +169,7 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   miembroId: true,
   invitacionId: true,
   invitacionDeSucursalId: true,
+  platoDelDiaId: true,
 };
 export const CAMPOS_DE_SUCURSAL: ReadonlySet<string> = new Set(Object.keys(CAMPOS_DE_SUCURSAL_REGISTRO));
 
@@ -234,8 +252,20 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   for (const o of [opcionDeGrupo, opcionMedida]) {
     await db.versionDeOpcion.create({ data: { id: `${o.id}-v1`, empresaId, opcionId: o.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: 0, creadoPorId: usuarioId } });
   }
-  await db.productoAdmiteGrupo.create({ data: { id: id("admite-medida"), empresaId, productoId: pvOpciones.id, grupoId: grupoMedida.id, orden: 0, modoPrecio: "ABSOLUTO" } });
+  await db.productoAdmiteGrupo.create({ data: { id: id("admite-medida"), empresaId, productoId: pvOpciones.id, grupoId: grupoMedida.id, orden: 0, modoPrecio: "ABSOLUTO", ejeDeCombinacion: 1 } });
   await db.productoAdmiteOpcion.create({ data: { id: id("admite-grande"), empresaId, productoId: pvOpciones.id, opcionId: opcionMedida.id, precioAbsoluto: 1500 } });
+  // GO-3b (ADR-032): el combo con su lista (una opción: el `pv`) y su lugar del plato del día.
+  const promoCombo = await db.promoCarta.create({ data: { id: id("promo-combo"), empresaId, seccionCartaId: seccionCarta.id, titulo: `Combo ${marca}`, precio: 6000 } });
+  const cupoLista = await db.promoCartaCupo.create({ data: { id: id("cupo-lista"), empresaId, promoCartaId: promoCombo.id, tipo: "LISTA", nombre: `Entrada ${marca}`, cantidadMinima: 1, cantidadMaxima: 1, orden: 1 } });
+  const cupoDelDia = await db.promoCartaCupo.create({ data: { id: id("cupo-del-dia"), empresaId, promoCartaId: promoCombo.id, tipo: "DEL_DIA", nombre: `Plato ${marca}`, cantidadMinima: 1, cantidadMaxima: 1, orden: 2 } });
+  const entradaDeCupo = await db.entradaDeCupo.create({ data: { id: id("entrada-de-cupo"), empresaId, cupoId: cupoLista.id, productoId: pv.id } });
+  // GO-3b (frente A): la tarifa compartida y la combinación «Grande» del PV con opciones (la medida es su eje 1), con esa tarifa.
+  const grupoDePrecio = await db.grupoDePrecio.create({ data: { id: id("grupo-de-precio"), empresaId, nombre: `Tarifa ${marca}`, precio: 3300 } });
+  const combinacion = await db.combinacionDeProducto.create({ data: { id: id("combinacion"), empresaId, productoId: pvOpciones.id, opcionEje1Id: opcionMedida.id, grupoDePrecioId: grupoDePrecio.id } });
+  // GO-3b (frente B): su receta propia, versión 1, con la MP del kit.
+  await db.recetaDeCombinacionVersion.create({
+    data: { id: id("receta-combinacion"), empresaId, combinacionId: combinacion.id, numero: 1, creadoPorId: usuarioId, ingredientes: { create: [{ id: id("ingrediente-combinacion"), insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } },
+  });
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
   return {
     marca,
@@ -267,6 +297,12 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
     grupoMedidaId: grupoMedida.id,
     opcionMedidaId: opcionMedida.id,
     grupoAdicionalId: grupoAdicional.id,
+    promoComboId: promoCombo.id,
+    cupoListaId: cupoLista.id,
+    entradaDeCupoId: entradaDeCupo.id,
+    cupoDelDiaId: cupoDelDia.id,
+    grupoDePrecioId: grupoDePrecio.id,
+    combinacionId: combinacion.id,
   };
 }
 
@@ -402,6 +438,12 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   // Opciones de venta en la sucursal (GO-2a): la medida con precio propio en la grilla (la huella numérica en S2 y E2) y apagada (quien la apagó es el miembro: su id lleva el marcador).
   await db.precioLocalDeOpcion.create({ data: { id: id("precio-local-opcion"), empresaId, sucursalId, productoId: k.productoConOpcionesId, opcionId: k.opcionMedidaId, precio: huella > 0 ? huella : 1600 } });
   await db.opcionApagadaEnSucursal.create({ data: { id: id("opcion-apagada"), empresaId, sucursalId, opcionId: k.opcionMedidaId, apagada: true, actualizadoPorId: miembro.id } });
+  // GO-3b (frente A): el precio de la tarifa en esta sucursal (la huella numérica en S2 y E2).
+  await db.precioLocalDeCombinacion.create({ data: { id: id("precio-local-tarifa"), empresaId, sucursalId, grupoDePrecioId: k.grupoDePrecioId, precio: huella > 0 ? huella : 1650 } });
+  // GO-3b: el plato del día de mañana del combo de la empresa, en esta sucursal (quien lo cargó es el miembro: su id lleva el marcador).
+  const platoDelDia = await db.entradaDelDiaDeCupo.create({
+    data: { id: id("plato-del-dia"), empresaId, cupoId: k.cupoDelDiaId, sucursalId, fecha: fechaDeColumnaDate(DIA_DEL_PLATO_DEL_MUNDO), productoId: k.productoPvId, actualizadoPorId: miembro.id },
+  });
 
   // Una invitación con acceso a esta sucursal y un registro de auditoría de la sucursal.
   const invitacion = await db.invitacion.create({
@@ -450,6 +492,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     miembroId: miembro.id,
     invitacionId: invitacion.id,
     invitacionDeSucursalId: invitacionSucursal.id,
+    platoDelDiaId: platoDelDia.id,
   };
 }
 

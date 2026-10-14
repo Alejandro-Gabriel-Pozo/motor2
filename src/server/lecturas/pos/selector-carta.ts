@@ -1,12 +1,14 @@
 import "server-only";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { whereDisponibleEn } from "@/core/catalogo/public";
-import { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, aplicarDescuentoDeProducto, cuposDeSeccionActivos, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal } from "@/core/carta/public";
+import { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, aplicarDescuentoDeProducto, cuposDeSeccionActivos, precioDeCarta, precioDePromo, promoVigenteEl, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal } from "@/core/carta/public";
+import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
+import { cargarEntradasDePromoParaVender, type CupoDeEntradasLeido } from "@/server/lecturas/pos/entradas-de-promo-para-vender";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCarta } from "@/server/lecturas/carta/menu";
 import { modulosDelPosDeSucursal, type ModulosDelPos } from "@/server/lecturas/pos/modulos-del-pos";
 import { tieneStockReal } from "@/core/movimientos/public";
-import { armarSelectorCartaPos, type GenerosSelectorCartaPos, type ProductoPedible, type PromoSelectorCartaPos, type SelectorCartaPos } from "@/core/pos/public";
+import { armarSelectorCartaPos, esCupoFijo, type CupoDeEntradasSelectorCarta, type GenerosSelectorCartaPos, type ProductoPedible, type PromoSelectorCartaPos, type SelectorCartaPos } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -49,7 +51,12 @@ export async function cargarSelectorCartaPos(
    * comparte para no leer el registro dos veces. Ausentes, SE LEEN acá: el selector nunca ofrece lo que la empresa no contrató, aunque quien lo llame no lo haya
    * preguntado (denegar por defecto).
    */
-  modulosCargados?: ModulosDelPos
+  modulosCargados?: ModulosDelPos,
+  /**
+   * GO-3b (ADR-032): el día de calendario de la zona de la empresa. CON él (la pantalla de la mesa) el selector ofrece también las promos con cupos de entradas (LISTA y DEL_DIA, con las entradas
+   * elegibles HOY: la MISMA lectura que valida la venta) y deja afuera las que no valen ese día (su vigencia). SIN él (la lectura de la promo para agregar, que solo usa las secciones), lo de siempre.
+   */
+  dia?: string
 ): Promise<SelectorCartaPos> {
   const modulos = modulosCargados ?? (await modulosDelPosDeSucursal(sucursalId, db));
   // La capacidad `precio_local` se lee UNA vez (o se toma la de quien llama) y la usan todos: la carta, los precios locales, los descuentos y el precio de
@@ -77,18 +84,24 @@ export async function cargarSelectorCartaPos(
     // Sin el módulo Promociones no se lee ninguna promo (ni se ofrece ni se acepta).
     conPromos
       ? db.promoCarta.findMany({
-          // GO-3 (primer despliegue): solo las promos con algún cupo de SECCIÓN activo y NINGÚN cupo activo de un tipo nuevo (este código no sabe armarlos: falla cerrado).
-          where: { ...wherePromoOfrecidaEn(sucursalId), cupos: { some: WHERE_CUPO_DE_SECCION_ACTIVO, none: WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO } },
+          // GO-3 (primer despliegue): solo las promos con algún cupo de SECCIÓN activo y NINGÚN cupo activo de un tipo nuevo. GO-3b: con el día, las que tienen algún cupo activo de cualquier tipo.
+          where:
+            dia === undefined
+              ? { ...wherePromoOfrecidaEn(sucursalId), cupos: { some: WHERE_CUPO_DE_SECCION_ACTIVO, none: WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO } }
+              : { ...wherePromoOfrecidaEn(sucursalId), cupos: { some: { activo: true } } },
           select: {
             id: true,
             seccionCartaId: true,
             titulo: true,
             precio: true,
             sucursales: seleccionDeSucursalDePromo(sucursalId),
+            vigenteDesde: true,
+            vigenteHasta: true,
+            diasDeSemana: true,
             cupos: {
               orderBy: { orden: "asc" },
-              where: WHERE_CUPO_DE_SECCION_ACTIVO,
-              select: { tipo: true, activo: true, seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, seccionCarta: { select: { nombre: true } } },
+              where: dia === undefined ? WHERE_CUPO_DE_SECCION_ACTIVO : { activo: true },
+              select: { id: true, tipo: true, nombre: true, activo: true, seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, seccionCarta: { select: { nombre: true } } },
             },
           },
         })
@@ -114,17 +127,44 @@ export async function cargarSelectorCartaPos(
     generoPorProducto: new Map(contenidosConGenero.map((c) => [c.productoId, c.generoCartaId!])),
     generoPorAgrupado: new Map(agrupadosConGenero.map((a) => [a.id, a.generoCartaId!])),
   };
-  const promos: PromoSelectorCartaPos[] = promosCarta.map((p) => ({
-    promoCartaId: p.id,
-    seccionCartaId: p.seccionCartaId,
-    titulo: p.titulo,
-    precio: precioDePromo(p.precio, p.sucursales[0], precioLocalActivo),
-    cupos: cuposDeSeccionActivos(p.cupos).map((c) => ({
-      seccionCartaId: c.seccionCartaId,
-      nombreSeccion: c.seccionCarta.nombre,
-      cantidadMinima: c.cantidadMinima,
-      cantidadMaximaCupo: c.cantidadMaxima,
-    })),
-  }));
+  // GO-3b: con el día, solo las promos que valen hoy (su vigencia) y, de las que tienen cupos de entradas, sus entradas elegibles de hoy (la MISMA lectura que valida la venta).
+  const promosDeHoy =
+    dia === undefined
+      ? promosCarta
+      : promosCarta.filter((p) => promoVigenteEl({ vigenteDesde: p.vigenteDesde && diaDeColumnaDate(p.vigenteDesde), vigenteHasta: p.vigenteHasta && diaDeColumnaDate(p.vigenteHasta), diasDeSemana: p.diasDeSemana }, dia));
+  const cuposDeEntradasDe = (p: (typeof promosCarta)[number]): CupoDeEntradasLeido[] =>
+    p.cupos.flatMap((c) => (c.activo && (c.tipo === "LISTA" || c.tipo === "DEL_DIA") && c.nombre !== null ? [{ id: c.id, tipo: c.tipo, nombre: c.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima }] : []));
+  const entradasPorPromo = new Map(
+    dia === undefined
+      ? []
+      : await Promise.all(
+          promosDeHoy
+            .filter((p) => cuposDeEntradasDe(p).length > 0)
+            .map(async (p) => [p.id, await cargarEntradasDePromoParaVender(db, { sucursalId, dia, cupos: cuposDeEntradasDe(p), precioLocalActivo: precioLocalActivoLeido })] as const)
+        )
+  );
+  const promos: PromoSelectorCartaPos[] = promosDeHoy.flatMap((p): PromoSelectorCartaPos[] => {
+    const entradas = entradasPorPromo.get(p.id);
+    const deSeccion = new Map(cuposDeSeccionActivos(p.cupos).map((c) => [c.id, { seccionCartaId: c.seccionCartaId, nombreSeccion: c.seccionCarta.nombre, cantidadMinima: c.cantidadMinima, cantidadMaximaCupo: c.cantidadMaxima }]));
+    const cupos = p.cupos.flatMap((c): PromoSelectorCartaPos["cupos"][number][] => {
+      const seccion = deSeccion.get(c.id);
+      if (seccion) return [seccion];
+      const definicion = entradas?.cupos.get(c.id);
+      if (!definicion || !entradas) return [];
+      const deEntradas: CupoDeEntradasSelectorCarta = {
+        cupoId: definicion.cupoId,
+        tipo: definicion.tipo,
+        nombre: definicion.nombre,
+        cantidadMinima: definicion.cantidadMinima,
+        cantidadMaximaCupo: definicion.cantidadMaximaCupo,
+        fijo: esCupoFijo(definicion),
+        entradas: [...definicion.entradas.values()].map((e) => ({ entradaId: e.entradaId, productoId: e.productoId, nombre: entradas.nombrePorEntrada.get(e.entradaId) ?? "", precioLista: entradas.precioCartaPorClave.get(e.claveComponente) ?? 0 })),
+      };
+      return [deEntradas];
+    });
+    // Un cupo activo de un tipo que este código no sabe mostrar (no puede pasar: CHECK): la promo no se ofrece (nunca a medias).
+    if (cupos.length !== p.cupos.filter((c) => c.activo).length || cupos.length === 0) return [];
+    return [{ promoCartaId: p.id, seccionCartaId: p.seccionCartaId, titulo: p.titulo, precio: precioDePromo(p.precio, p.sucursales[0], precioLocalActivo), cupos }];
+  });
   return armarSelectorCartaPos(carta, pedibles, generos, promos);
 }

@@ -30,7 +30,7 @@ describe("promos: el piso se lee y se escribe dentro de la transacción (M14, M-
   const baseDelActor = () => baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] });
   const actor = () => {
     const { transaccion, alcance } = baseDelActor();
-    return { usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, transaccion, alcance, db: dbSoloListaDeSucursales };
+    return { usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, transaccion, alcance, db: dbSoloListaDeSucursales, ahora: new Date(), empresaZonaHoraria: "America/Argentina/Buenos_Aires" };
   };
 
   beforeEach(async () => {

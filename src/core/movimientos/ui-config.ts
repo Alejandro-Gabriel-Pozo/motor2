@@ -95,6 +95,8 @@ export const NAV_MOVIMIENTOS: { href: string; label: string; accion?: AccionClav
   { href: "/movimientos/precio-local", label: "Precio local", accion: "precio_local", panel: "sucursal" },
   // GO-2d (ADR-030 §5): lo que se acabó hoy en la sucursal (tamaños, guarniciones, adicionales); delegable al encargado del turno.
   { href: "/movimientos/opciones-agotadas", label: "Opciones agotadas", accion: "opcion_apagar_en_sucursal", panel: "sucursal" },
+  // GO-3b (ADR-032): qué plato va cada día en los lugares «del día» de las promos de la sucursal; delegable al encargado.
+  { href: "/movimientos/menu-del-dia", label: "Menú del día", accion: "promo_menu_del_dia", panel: "sucursal" },
   { href: "/movimientos/motivos-merma", label: "Motivos de Merma", accion: "motivos_merma", panel: "empresa" },
   { href: "/movimientos/destinos-consumo", label: "Destinos de Consumo", accion: "motivos_destino_consumo", panel: "empresa" },
 ];

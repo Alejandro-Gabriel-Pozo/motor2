@@ -259,3 +259,46 @@ export function entradasVistaPreviaPortal(sucursales: readonly SucursalPortalAdm
     .sort((a, b) => a.orden - b.orden || a.etiqueta.localeCompare(b.etiqueta, "es"))
     .map(({ id, slug, etiqueta, subtitulo, posicion }) => ({ id, slug, etiqueta, subtitulo, posicion }));
 }
+// ---------------------------------------------------------------------------------------------------------------------------
+// GO-3b (ADR-032, F6 paso U1): los COMBOS de la carta — lugares de entradas, sus entradas y la vigencia de cada promo
+// ---------------------------------------------------------------------------------------------------------------------------
+
+/** Una entrada de un lugar LISTA: el producto con su configuración fija, si la lleva («Café · Mediano»). */
+export interface EntradaDeLugarAdmin {
+  id: string;
+  activa: boolean;
+  productoId: string;
+  nombre: string;
+}
+
+/** Un lugar de entradas de una promo: LISTA («Bebida»: se elige de una lista; con una sola entrada y mínimo = máximo, viene FIJO) o DEL_DIA («Plato del día»: lo carga cada sucursal por día). */
+export interface LugarDeCombo {
+  id: string;
+  tipo: "LISTA" | "DEL_DIA";
+  nombre: string;
+  cantidadMinima: number;
+  cantidadMaxima: number;
+  orden: number;
+  /** Solo en un LISTA (un DEL_DIA no tiene entradas fijas: sus platos se cargan por día en «Menú del día»). */
+  entradas: EntradaDeLugarAdmin[];
+}
+
+/** La vigencia de una promo, con la versión que vio la pantalla (control optimista). Días de la semana: máscara, bit 0 = lunes; `null` = todos. */
+export interface VigenciaDePromoAdmin {
+  version: number;
+  vigenteDesde: string | null;
+  vigenteHasta: string | null;
+  diasDeSemana: number | null;
+}
+
+/** Un producto de venta que se puede sumar a una lista, con los grupos de UNA sola elección que admite (para fijar su configuración). */
+export interface ProductoParaEntrada {
+  productoId: string;
+  nombre: string;
+  grupos: { grupoId: string; nombre: string; obligatorio: boolean; opciones: { opcionId: string; nombre: string }[] }[];
+}
+
+export interface CombosDeLaCarta {
+  porPromo: Record<string, { lugares: LugarDeCombo[]; vigencia: VigenciaDePromoAdmin }>;
+  productos: ProductoParaEntrada[];
+}

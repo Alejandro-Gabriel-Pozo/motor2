@@ -38,6 +38,11 @@ const DECLARADOS: Readonly<Record<string, Declaracion>> = {
     modulos: ["promociones"],
     motivo: "Es la fuente única con la que `agregarItems` valida cada promo: sin Promociones no devuelve ninguna.",
   },
+  "src/server/lecturas/pos/entradas-de-promo-para-vender.ts": {
+    tipo: "EXENTO",
+    motivo:
+      "GO-3b (I2): arma los cupos de entradas (LISTA y DEL_DIA) de UNA promo con la regla del componente (`cargarProductosComoComponentes`, de `lecturas/carta`). Solo la llama `promo-para-agregar.ts`, DESPUÉS de su pregunta por `modulos.promociones` (sin el módulo no llega acá).",
+  },
   "src/server/actions/pos/casos-de-uso/agregar-items.ts": {
     tipo: "PREGUNTA",
     modulos: ["carta", "promociones"],

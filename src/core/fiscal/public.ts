@@ -12,3 +12,5 @@ export { diagnosticarCuits } from "./diagnostico-cuit";
 export type { DiagnosticoDeCuit, FilaConCuit } from "./diagnostico-cuit";
 // GO-3 (ADR-032): las alícuotas dentro de un combo (`core/pos/alicuotas-de-combo.ts`, D-2) las nombran con este tipo.
 export type { AlicuotaIva } from "./iva";
+// GO-3b (ADR-032): la lectura de los componentes de un combo traduce `Producto.alicuotaIvaVenta` (texto con CHECK) a este tipo.
+export { ALICUOTAS_IVA } from "./iva";

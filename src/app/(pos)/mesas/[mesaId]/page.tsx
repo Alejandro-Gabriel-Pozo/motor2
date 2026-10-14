@@ -83,7 +83,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   // «Agregar al pedido» por sección de CARTA (docs/plan-selector-carta-pos-2026-09-25.md): solo con cuenta abierta y si quien mira
   // puede tomar pedido. Se lee acá, después de la guarda de Ver de `pos_mesas` (el mozo no tiene el permiso `carta`), sin Server
   // Action nueva. Aparte del `Promise.all` de arriba a propósito (no confundir con `secciones`, que son las de STOCK).
-  const selectorCarta = cuenta && tomarPedido.editar ? await cargarSelectorCartaDeLaMesa(ctx.sucursalId, ctx.db, ahora) : null;
+  const selectorCarta = cuenta && tomarPedido.editar ? await cargarSelectorCartaDeLaMesa(ctx.sucursalId, ctx.db, ahora, ctx.empresaZonaHoraria) : null;
   // GO-2d (ADR-030): de los productos del selector que admiten opciones, lo que necesita «Elegir opciones» (precios para mostrar, agotadas, stock 0). Y si el rol puede marcar
   // opciones agotadas (el diálogo ofrece el enlace). Solo con el selector a la vista.
   const [configuraciones, agotar] = selectorCarta

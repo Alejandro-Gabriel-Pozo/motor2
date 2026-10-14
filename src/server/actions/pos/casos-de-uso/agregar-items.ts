@@ -11,7 +11,7 @@ import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta"
 import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarYAplanarEleccionPromo, type ComponentePromoElegido, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
 import { MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/cantidad-pedido";
-import { armarLineaConfigurada, type LineaConfigurada } from "@/core/pos/linea-configurada";
+import { armarLineaConfigurada, type CombinacionesDelProducto, type LineaConfigurada } from "@/core/pos/linea-configurada";
 import { validarOpcionesElegidas } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
@@ -22,6 +22,10 @@ import { cargarOpcionesParaVender, completarPreciosDeSucursal } from "@/server/l
 import { cargarAgregadoDeCuentaPorClave, escribirAgregadoDeCuenta, escribirItemsDeCuenta, escribirLineaConfigurada, escribirPromoDeCuenta } from "@/server/persistencia/pos/pedido";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
 import { cargarOrigenDeStockParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
+import { cargarCombinacionesParaVender } from "@/server/lecturas/catalogo/combinaciones";
+import { cargarAlicuotasDeProductos } from "@/server/lecturas/carta/componentes-de-promo";
+import { revisarAlicuotasDeCombo } from "@/core/pos/public";
+import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 /**
  * Caso de uso «agregar ítems y promos sin enviar a una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 12a — `docs/plan-hito-4-pureza.md` §5). Es el
@@ -76,7 +80,8 @@ import { cargarOrigenDeStockParaVender } from "@/server/lecturas/movimientos/rec
 export async function agregarItemsCasoDeUso(
   // `ahora` (O.22-c): la hora del pedido que fija `conPermiso`; solo llega a la carta del selector que valida cada promo (`generadoEn`, que se descarta).
   // `db` (P3): solo para releer al ganador de una carrera por la misma clave, FUERA de la transacción que chocó.
-  actor: Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "sucursalId" | "sucursalNombre" | "transaccion" | "ahora" | "db">,
+  // `empresaZonaHoraria` (GO-3b): el día de calendario de la empresa, para la vigencia de las promos y los platos del día.
+  actor: Pick<ContextoDeAccion, "usuarioId" | "empresaId" | "sucursalId" | "sucursalNombre" | "empresaZonaHoraria" | "transaccion" | "ahora" | "db">,
   comando: ComandoAgregarItems,
 ): Promise<ResultadoAgregarItems> {
   const { items: items_, promos: promos_, claveIdempotencia } = comando;
@@ -105,7 +110,7 @@ export async function agregarItemsCasoDeUso(
     // MEDIDAS en ABSOLUTO elegidas. Antes de validar los ítems: la validación de cada uno la usa después de sus chequeos de siempre.
     const productoIdsDelPedido = [
       ...items_.map((i) => i?.productoId),
-      ...promos_.flatMap((p) => componentesDeEleccion(Array.isArray(p?.elecciones) ? p.elecciones : []).map((c) => c?.productoId)),
+      ...promos_.flatMap((p) => componentesDeEleccion(Array.isArray(p?.elecciones) ? p.elecciones : []).map((c) => (c && "productoId" in c ? c.productoId : undefined))),
     ].filter((id): id is string => typeof id === "string");
     const opcionesLeidas = await completarPreciosDeSucursal(
       tx,
@@ -113,6 +118,13 @@ export async function agregarItemsCasoDeUso(
       await cargarOpcionesParaVender(tx, { sucursalId: actor.sucursalId, productoIds: productoIdsDelPedido }),
       items_.flatMap((i) => (typeof i?.productoId === "string" && Array.isArray(i.opciones) ? [{ productoId: i.productoId, opcionIds: i.opciones.map((o) => o.opcionId) }] : []))
     );
+
+    // GO-3b (ADR-032, frente A): las combinaciones de los productos del pedido que tienen EJES (lo dice la lectura de arriba); sin ninguno, no se lee nada más.
+    const conEjes = [...opcionesLeidas].filter(([, o]) => o.grupos.some((g) => g.ejeDeCombinacion !== undefined)).map(([id]) => id);
+    const combinacionesLeidas =
+      conEjes.length > 0
+        ? await cargarCombinacionesParaVender(tx, { sucursalId: actor.sucursalId, productoIds: conEjes })
+        : new Map<string, CombinacionesDelProducto>();
 
     // RECETA (ADR-033, sin receta no se vende): de cada producto del pedido (sueltos y componentes), si tiene origen de stock — receta vigente en ESTA sucursal o stock propio —, en
     // lecturas agrupadas por pedido. Es el error temprano para el mozo: el cobro lo vuelve a mirar (`armarLinea`), por si la receta se desactivó entre medio.
@@ -144,14 +156,24 @@ export async function agregarItemsCasoDeUso(
       const rechazoReceta = sinReceta(producto.id, producto.nombre);
       if (rechazoReceta !== null) return fracaso(CODIGO_PRODUCTO_SIN_RECETA, rechazoReceta);
       const elegidas = item.opciones ?? [];
+      // GO-3b: el precio de LISTA que vio el mozo (opcional): si cambió desde entonces (la tarifa, la combinación, el precio local, una opción), no se cobra otro en silencio: `PRECIO_CAMBIO`.
+      const esperado = typeof item.precioDeListaEsperado === "number" ? item.precioDeListaEsperado : null;
+      const cambioElPrecio = (lista: number) => esperado !== null && redondearMoneda(lista) !== redondearMoneda(esperado);
+      const mensajeDePrecioCambiado = `«${producto.nombre}»: el precio cambió desde que lo elegiste. Volvé a mirarlo y agregalo de nuevo.`;
       if (admite.grupos.length > 0 || elegidas.length > 0) {
-        const armada = armarLineaConfigurada({ grupos: admite.grupos, elegidas, precioBase: precioDeLista, descuentoDeProducto: descuento, cantidad: cantidad.cantidad });
-        if (!armada.ok) return fracaso(armada.codigo === "OPCION_CAMBIO" ? "OPCION_CAMBIO" : "OPCIONES_INVALIDAS", `«${producto.nombre}»: ${armada.mensaje}`);
+        const combinaciones = combinacionesLeidas.get(producto.id);
+        const armada = armarLineaConfigurada({ grupos: admite.grupos, elegidas, precioBase: precioDeLista, descuentoDeProducto: descuento, cantidad: cantidad.cantidad, ...(combinaciones ? { combinaciones } : {}) });
+        if (!armada.ok) {
+          const codigo = armada.codigo === "OPCION_CAMBIO" || armada.codigo === "COMBINACION_NO_DISPONIBLE" ? armada.codigo : "OPCIONES_INVALIDAS";
+          return fracaso(codigo, `«${producto.nombre}»: ${armada.mensaje}`);
+        }
         if (armada.linea) {
+          if (cambioElPrecio(armada.linea.precioCartaUnitario ?? armada.linea.precioUnitario)) return fracaso("PRECIO_CAMBIO", mensajeDePrecioCambiado);
           configuradas.push({ productoId: producto.id, cantidad: cantidad.cantidad, linea: armada.linea });
           continue;
         }
       }
+      if (cambioElPrecio(precioDeLista)) return fracaso("PRECIO_CAMBIO", mensajeDePrecioCambiado);
       const aplicado = aplicarDescuentoDeProducto(precioDeLista, descuento);
       filasSueltas.push({
         cuentaId: abierta.cuenta.id,
@@ -164,25 +186,59 @@ export async function agregarItemsCasoDeUso(
       });
     }
 
-    const promosValidadas: { titulo: string; promoCartaId: string; precio: number; componentes: (ComponentePromoElegido & { precioCarta: number })[]; filas: FilaPromoProrrateada[] }[] = [];
+    const promosValidadas: {
+      titulo: string;
+      promoCartaId: string;
+      precio: number;
+      componentes: (ComponentePromoElegido & { precioCarta: number })[];
+      filas: FilaPromoProrrateada[];
+      /** GO-3b: la línea configurada de cada `claveComponente` de una entrada que la lleva (se escribe con su huella, sus fotos y su combinación). */
+      lineaPorClave: ReadonlyMap<string, LineaConfigurada>;
+    }[] = [];
+    // GO-3b: el día de calendario de la zona de la empresa (la vigencia de cada promo y los platos del día).
+    const dia = diaDeCalendario(actor.ahora, actor.empresaZonaHoraria);
     for (const p of promos_) {
-      const def = typeof p?.promoCartaId === "string" ? await cargarPromoCartaParaAgregar(actor.sucursalId, p.promoCartaId, tx, actor.ahora, modulos) : null;
+      const def = typeof p?.promoCartaId === "string" ? await cargarPromoCartaParaAgregar(actor.sucursalId, p.promoCartaId, tx, actor.ahora, modulos, dia) : null;
       if (!def) return fracaso("PROMO_INVALIDA", "No se encontró esa promo, o ya no está disponible.");
+      // GO-3b: el precio que vio el mozo (si lo manda) tiene que ser el de hoy: nunca se cobra otro.
+      if (typeof p.precioEsperado === "number" && redondearMoneda(p.precioEsperado) !== redondearMoneda(def.precio)) {
+        return fracaso("PROMO_CAMBIO", `«${def.titulo}»: el precio de la promo cambió desde que la elegiste. Volvé a mirarla y agregala de nuevo.`);
+      }
       const elecciones = Array.isArray(p.elecciones) ? p.elecciones : [];
-      // S-01 (O.50): los componentes salen de la elección YA VALIDADA (cupos, elegibles, sin repetidos), nunca de aplanar lo que mandó el cliente.
+      // S-01 (O.50): los componentes salen de la elección YA VALIDADA (cupos, elegibles, sin repetidos), nunca de aplanar lo que mandó el cliente. GO-3b: un componente fijo lo completa el
+      // servidor; una entrada que ya no se puede elegir hoy o un lugar del día sin plato tienen su propio código (la pantalla marca el lugar).
       const validacion = validarYAplanarEleccionPromo(def.cupos, elecciones);
-      if (!validacion.ok) return fracaso("PROMO_INVALIDA", `«${def.titulo}»: ${validacion.mensaje}`);
-      const componentes = validacion.componentes.map((c) => ({ ...c, precioCarta: def.precioCartaPorProducto.get(c.productoId) ?? 0 }));
+      if (!validacion.ok) {
+        const codigo = validacion.codigo === "ENTRADA_NO_DISPONIBLE" || validacion.codigo === "MENU_DEL_DIA_SIN_CARGAR" ? validacion.codigo : "PROMO_INVALIDA";
+        return fracaso(codigo, `«${def.titulo}»: ${validacion.mensaje}`);
+      }
+      const entradas = def.entradas;
+      // Un componente de un cupo de entradas pesa con el precio de lista de SU entrada (por `claveComponente`: con su configuración); uno de sección, con el de siempre.
+      const componentes = validacion.componentes.map((c) => ({
+        ...c,
+        precioCarta: c.entradaId !== undefined && c.claveComponente !== undefined ? (entradas?.precioCartaPorClave.get(c.claveComponente) ?? 0) : (def.precioCartaPorProducto.get(c.productoId) ?? 0),
+      }));
       const prorrateo = prorratearPrecioPromo(def.precio, componentes);
       if (!prorrateo.ok) return fracaso("PROMO_INVALIDA", `«${def.titulo}»: ${prorrateo.mensaje}`);
-      // GO-2b (v1): un componente de una promo no lleva opciones. Si su producto tiene un grupo obligatorio, no se puede armar en la promo; con grupos opcionales entra sin opciones.
+      // GO-2b (v1): un componente DE SECCIÓN no lleva opciones. Si su producto tiene un grupo obligatorio, no se puede armar en la promo; con grupos opcionales entra sin opciones. GO-3b: un
+      // componente de un cupo de ENTRADAS ya se validó al leerlo (su configuración armada hoy, receta y disponibilidad: `cargarEntradasDePromoParaVender`).
       for (const c of componentes) {
+        if (c.entradaId !== undefined) continue;
         const sinOpciones = validarOpcionesElegidas(opcionesLeidas.get(c.productoId)?.grupos ?? [], []);
         if (!sinOpciones.ok) return fracaso("PROMO_CON_OPCIONES", `«${def.titulo}»: uno de sus productos necesita que elijas opciones (${sinOpciones.mensaje}) y en una promo todavía no se puede: pedilo suelto.`);
         const rechazoReceta = sinReceta(c.productoId, "Un producto de la promo");
         if (rechazoReceta !== null) return fracaso(CODIGO_PRODUCTO_SIN_RECETA, `«${def.titulo}»: ${rechazoReceta}`);
       }
-      promosValidadas.push({ titulo: def.titulo, promoCartaId: def.id, precio: def.precio, componentes, filas: prorrateo.filas });
+      // GO-3b (D-2): un combo con cupos de entradas no mezcla alícuotas de IVA declaradas distintas entre lo ELEGIDO (las promos de solo secciones, como antes: se revisan al guardar sus cupos).
+      if (entradas) {
+        const deSeccion = await cargarAlicuotasDeProductos(tx, componentes.filter((c) => c.entradaId === undefined).map((c) => c.productoId));
+        const alicuotas = revisarAlicuotasDeCombo(componentes.flatMap((c) => {
+          const a = c.entradaId !== undefined ? entradas.alicuotaPorProducto.get(c.productoId) : deSeccion.get(c.productoId);
+          return a ? [a] : [];
+        }));
+        if (!alicuotas.ok) return fracaso(alicuotas.codigo, `«${def.titulo}»: ${alicuotas.mensaje}`);
+      }
+      promosValidadas.push({ titulo: def.titulo, promoCartaId: def.id, precio: def.precio, componentes, filas: prorrateo.filas, lineaPorClave: entradas?.lineaPorClave ?? new Map() });
     }
 
     // GO-2b: el tope de líneas, contando ahora los adicionales de las líneas configuradas (el guard no podía saber cuáles son).
@@ -193,10 +249,30 @@ export async function agregarItemsCasoDeUso(
     // Fase 2: ESCRIBIR — recién acá, con todo ya validado. Una PromoCuenta por promo (necesita su id antes de poder crear los
     // CuentaItem que la referencian); todos los CuentaItem sin opciones (sueltos y componentes) en UN solo createMany; después, cada línea configurada.
     const filas = [...filasSueltas];
+    // GO-3b: los componentes de una promo que llevan configuración (una entrada con configuración fija): se escriben como línea configurada, colgados de su PromoCuenta.
+    const componentesConfigurados: { promoCuentaId: string; productoId: string; cantidad: number; precioUnitario: number; linea: LineaConfigurada }[] = [];
     for (const p of promosValidadas) {
       const promoCuentaId = await escribirPromoDeCuenta(tx, { cuentaId: abierta.cuenta.id, promoCartaId: p.promoCartaId, precio: p.precio, titulo: p.titulo, creadoPorId: actor.usuarioId });
       const precioCartaDe = (productoId: string) => p.componentes.find((c) => c.productoId === productoId)?.precioCarta ?? null;
       for (const fila of p.filas) {
+        if (fila.claveComponente !== undefined) {
+          const linea = p.lineaPorClave.get(fila.claveComponente);
+          if (linea) {
+            componentesConfigurados.push({ promoCuentaId, productoId: fila.productoId, cantidad: fila.cantidad, precioUnitario: fila.precioUnitario, linea });
+            continue;
+          }
+          filas.push({
+            cuentaId: abierta.cuenta.id,
+            productoId: fila.productoId,
+            cantidad: fila.cantidad,
+            precioUnitario: fila.precioUnitario,
+            numeroEnvio: null,
+            creadoPorId: actor.usuarioId,
+            promoCuentaId,
+            precioCartaUnitario: p.componentes.find((c) => c.claveComponente === fila.claveComponente)?.precioCarta ?? null,
+          });
+          continue;
+        }
         filas.push({
           cuentaId: abierta.cuenta.id,
           productoId: fila.productoId,
@@ -211,17 +287,43 @@ export async function agregarItemsCasoDeUso(
     }
 
     // Sin líneas configuradas, el createMany va SIEMPRE (la forma de siempre); con alguna, solo si además hay líneas sin opciones.
-    if (filas.length > 0 || configuradas.length === 0) await escribirItemsDeCuenta(tx, filas);
+    if (filas.length > 0 || (configuradas.length === 0 && componentesConfigurados.length === 0)) await escribirItemsDeCuenta(tx, filas);
+    for (const c of componentesConfigurados) {
+      // El precio es el PRORRATEADO (lo que se cobra dentro del combo); la lista compuesta de la entrada queda en `precioCartaUnitario` (la referencia del reparto), como cualquier componente.
+      await escribirLineaConfigurada(tx, {
+        cuentaId: abierta.cuenta.id,
+        creadoPorId: actor.usuarioId,
+        linea: {
+          productoId: c.productoId,
+          cantidad: c.cantidad,
+          precioUnitario: c.precioUnitario,
+          precioCartaUnitario: c.linea.precioUnitario,
+          huellaOpciones: c.linea.huellaOpciones,
+          fotos: c.linea.fotos,
+          ...(c.linea.combinacion ? { combinacion: c.linea.combinacion } : {}),
+          promoCuentaId: c.promoCuentaId,
+        },
+        adicionales: [],
+      });
+    }
     for (const c of configuradas) {
       await escribirLineaConfigurada(tx, {
         cuentaId: abierta.cuenta.id,
         creadoPorId: actor.usuarioId,
-        linea: { productoId: c.productoId, cantidad: c.cantidad, precioUnitario: c.linea.precioUnitario, precioCartaUnitario: c.linea.precioCartaUnitario, huellaOpciones: c.linea.huellaOpciones, fotos: c.linea.fotos },
+        linea: {
+          productoId: c.productoId,
+          cantidad: c.cantidad,
+          precioUnitario: c.linea.precioUnitario,
+          precioCartaUnitario: c.linea.precioCartaUnitario,
+          huellaOpciones: c.linea.huellaOpciones,
+          fotos: c.linea.fotos,
+          ...(c.linea.combinacion ? { combinacion: c.linea.combinacion } : {}),
+        },
         adicionales: c.linea.adicionales.map((a) => ({ productoId: a.productoId, cantidad: a.cantidad, precioUnitario: a.precioUnitario, foto: a.foto })),
       });
     }
     // El mensaje cuenta los ítems PEDIDOS: los adicionales van con su producto, no suman.
-    const pedidos = filas.length + configuradas.length;
+    const pedidos = filas.length + configuradas.length + componentesConfigurados.length;
     const mensaje = `${pedidos === 1 ? "Se agregó 1 ítem" : `Se agregaron ${pedidos} ítems`} a la mesa ${abierta.cuenta.mesa.numero}.`;
     const nombresPromos = promosValidadas.map((p) => `«${p.titulo}»`);
     const mensajeFinal = nombresPromos.length ? `${mensaje} Incluye ${nombresPromos.join(", ")}.` : mensaje;

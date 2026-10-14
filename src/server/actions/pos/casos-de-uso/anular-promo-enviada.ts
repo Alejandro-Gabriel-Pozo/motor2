@@ -60,7 +60,8 @@ export async function anularPromoEnviadaCasoDeUso(
     const componentes: DatosAnularPromoEnviada["componentes"] = [];
     for (const { item, restante } of aAnular) {
       const espejoId = await escribirEspejoDeItem(tx, {
-        original: { id: item.id, cuentaId: item.cuentaId, productoId: item.productoId, precioUnitario: item.precioUnitario, precioCartaUnitario: item.precioCartaUnitario, numeroEnvio: item.numeroEnvio },
+        // GO-3b: un componente configurado (entrada de combo con configuración fija) pasa su huella: el espejo la repite para netear con su original.
+        original: { id: item.id, cuentaId: item.cuentaId, productoId: item.productoId, precioUnitario: item.precioUnitario, precioCartaUnitario: item.precioCartaUnitario, numeroEnvio: item.numeroEnvio, huellaOpciones: item.huellaOpciones },
         cantidadAnulada: restante,
         motivo: motivoValidado.motivo,
         creadoPorId: actor.usuarioId,

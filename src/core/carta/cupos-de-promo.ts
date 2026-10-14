@@ -40,3 +40,72 @@ export function cuposDeSeccionActivos<T extends CupoLeido>(cupos: readonly T[]):
 export function tieneCupoActivoDeTipoNuevo(cupos: readonly CupoLeido[]): boolean {
   return cupos.some((c) => c.activo && c.tipo !== "SECCION");
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// GO-3b (ADR-032, paso D3): la administración de los cupos deja de BORRAR. Cada cupo tiene una CLAVE NATURAL estable dentro de su promo —la sección en un cupo SECCION, el nombre sin
+// mayúsculas en un LISTA o DEL_DIA (el índice único `PromoCartaCupo_nombre_lower_key`)— y guardar la lista de cupos es llevar las filas al estado pedido: lo que sigue se cambia en el
+// lugar, lo que vuelve se reactiva, lo que no vino se da de baja (`activo = false`) y lo nuevo se crea. Así las entradas de una lista y los platos del día de un cupo nunca quedan colgando
+// de una fila borrada, y la auditoría del cupo de sección sigue con su `entidadId` de siempre (`${promoCartaId}:${seccionCartaId}`). Puro: sin Prisma.
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** El largo máximo del nombre de un lugar (el CHECK `PromoCartaCupo_nombre_chk`). */
+export const LARGO_MAXIMO_NOMBRE_DE_CUPO = 80;
+
+/** Un cupo tal como se lo pide guardar (ya validado de forma): de sección (con `seccionCartaId`) o de entradas (con `nombre`). */
+export interface CupoPedido {
+  tipo: TipoDeCupo;
+  seccionCartaId: string | null;
+  nombre: string | null;
+  cantidadMinima: number;
+  cantidadMaxima: number;
+  orden: number;
+}
+
+/** Un cupo de la base, activo o dado de baja. */
+export interface CupoExistente extends CupoPedido {
+  id: string;
+  activo: boolean;
+}
+
+/** La clave natural de un cupo dentro de su promo: la sección en un SECCION; el nombre en minúsculas (sin los espacios de las puntas) en un LISTA o DEL_DIA. */
+export function claveNaturalDeCupo(c: Pick<CupoPedido, "tipo" | "seccionCartaId" | "nombre">): string {
+  return c.tipo === "SECCION" ? `S:${c.seccionCartaId ?? ""}` : `N:${(c.nombre ?? "").trim().toLowerCase()}`;
+}
+
+/** Lo que hay que escribir para llevar los cupos de una promo a la lista pedida. */
+export interface DiferenciaDeCupos {
+  /** Los cupos nuevos (no había ninguna fila con esa clave). */
+  crear: CupoPedido[];
+  /** Los que ya existían (activos o dados de baja) y quedan ACTIVOS con estos valores; `estaba` es la fila de antes. Solo los que cambian algo. */
+  cambiar: { estaba: CupoExistente; queda: CupoPedido }[];
+  /** Los activos que no vinieron en la lista: se dan de baja. */
+  darDeBaja: CupoExistente[];
+}
+
+export type ResultadoDiferenciaDeCupos = { ok: true; diferencia: DiferenciaDeCupos } | { ok: false; mensaje: string };
+
+/**
+ * La diferencia entre los cupos que hay (todos, activos y dados de baja) y la lista pedida, por clave natural. Un nombre que ya usa un lugar de OTRO tipo (aunque esté dado de baja: el
+ * nombre sigue ocupado, el índice único es por nombre sin importar el tipo) se rechaza: el tipo es parte de lo que el lugar es (las entradas de una lista no son platos del día).
+ */
+export function diferenciaDeCupos(existentes: readonly CupoExistente[], pedidos: readonly CupoPedido[]): ResultadoDiferenciaDeCupos {
+  const porClave = new Map(existentes.map((c) => [claveNaturalDeCupo(c), c]));
+  const pedidas = new Set<string>();
+  const crear: CupoPedido[] = [];
+  const cambiar: DiferenciaDeCupos["cambiar"] = [];
+  for (const p of pedidos) {
+    const clave = claveNaturalDeCupo(p);
+    pedidas.add(clave);
+    const estaba = porClave.get(clave);
+    if (!estaba) {
+      crear.push(p);
+      continue;
+    }
+    if (estaba.tipo !== p.tipo) return { ok: false, mensaje: `Ya hay un lugar «${estaba.nombre ?? ""}» de otro tipo en esta promo (aunque esté dado de baja): usá otro nombre.` };
+    const igual =
+      estaba.activo && estaba.cantidadMinima === p.cantidadMinima && estaba.cantidadMaxima === p.cantidadMaxima && estaba.orden === p.orden && (p.tipo === "SECCION" || estaba.nombre === p.nombre);
+    if (!igual) cambiar.push({ estaba, queda: p });
+  }
+  const darDeBaja = existentes.filter((c) => c.activo && !pedidas.has(claveNaturalDeCupo(c)));
+  return { ok: true, diferencia: { crear, cambiar, darDeBaja } };
+}

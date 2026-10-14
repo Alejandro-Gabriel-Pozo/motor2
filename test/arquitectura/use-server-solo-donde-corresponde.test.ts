@@ -29,6 +29,8 @@ const IMPORTADOS_PUROS: Record<string, string> = {
   versionDelFormulario: "./version-del-formulario",
   // GO-2d: arma lo que admite un producto de un grupo desde el FormData de su formulario; tampoco valida ni escribe.
   admisionDelFormulario: "./admision-del-formulario",
+  // GO-3b (U1): arma los lugares de entradas (lista y del día) desde el FormData del formulario de cupos de una promo; no valida ni escribe.
+  lugaresDelFormulario: "./lugares-del-formulario",
 };
 /** Abrir/cerrar sesión: solo en estos archivos (el login y los dos shells). */
 const SESION: Record<string, string[]> = {

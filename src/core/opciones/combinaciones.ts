@@ -86,6 +86,11 @@ export function identidadDeCombinacion(
   return { opcionEje1Id: uno[0]!.opcionId, opcionEje2Id: dos[0]!.opcionId };
 }
 
+/** GO-3b: la clave con que se indexan las combinaciones de un producto (las opciones de sus ejes): eje 1 y eje 2 (vacío sin eje 2). Estable: no depende de versiones ni de precios. */
+export function claveDeCombinacion(identidad: { opcionEje1Id: string; opcionEje2Id: string | null }): string {
+  return `${identidad.opcionEje1Id}|${identidad.opcionEje2Id ?? ""}`;
+}
+
 /** La fila de la combinación vendida (si existe), con su grupo de precio ya leído. */
 export interface CombinacionParaPrecio {
   combinacionId: string;

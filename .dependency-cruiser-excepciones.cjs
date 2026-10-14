@@ -360,6 +360,23 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "GO-2a (ADR-030 §5): apagarOpcionEnSucursal (opcion_apagar_en_sucursal) y fijarPrecioLocalDeOpcion (precio_local) → catalogo/casos-de-uso/{apagar-opcion-en-sucursal,fijar-precio-local-de-opcion}.ts, con su guardComando… (eco de la sucursal activa, core/features/catalogo/opciones-por-sucursal.guard.ts) dentro de conPermiso. Escrituras en server/persistencia/catalogo/opciones-por-sucursal.ts, SOLO en la sucursal activa; transacción SERIALIZABLE y auditoría con la sucursal en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
   },
+  // GO-3b (ADR-032): el precio por combinación nace migrado.
+  {
+    ruta: "src/server/actions/catalogo/combinaciones.ts",
+    motivo:
+      "GO-3b (ADR-032, frente A, AB4): fijarEjesDeCombinacion y guardarCombinacionDeProducto (producto_opciones_admitidas), crearGrupoDePrecio y editarGrupoDePrecio (grupos_de_precio_definir) fijarPrecioLocalDeCombinacion (precio_local, con el eco de la sucursal activa) y, en AB5, guardarRecetaDeCombinacion (guardar_receta) → catalogo/casos-de-uso/{fijar-ejes-de-combinacion,guardar-combinacion-de-producto,crear-grupo-de-precio,editar-grupo-de-precio,fijar-precio-local-de-combinacion,guardar-receta-de-combinacion}.ts, con su guardComando… (core/features/catalogo/combinaciones.guard.ts) dentro de la guarda. Lecturas en server/lecturas/catalogo/{combinaciones,precio-local-de-combinaciones}.ts, escrituras en server/persistencia/catalogo/combinaciones.ts; transacción SERIALIZABLE, versión optimista y auditoría en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
+  },
+  // GO-3b (ADR-032): los combos y el menú del día nacen migrados.
+  {
+    ruta: "src/server/actions/carta/combos.ts",
+    motivo:
+      "GO-3b (ADR-032, D4a y D4b): agregarEntradaDeCupo, actualizarActivaEntradaDeCupo y guardarVigenciaPromoCarta (carta_promo_definir) → carta/casos-de-uso/{agregar-entrada-de-cupo,actualizar-activa-entrada-de-cupo,guardar-vigencia-promo-carta}.ts, con su guardComando… (core/features/carta/combos.guard.ts) dentro de conPermisoDeEmpresa. Lecturas de los componentes en server/lecturas/carta/componentes-de-promo.ts, escrituras en server/persistencia/carta/combos.ts; transacción SERIALIZABLE y auditoría en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
+  },
+  {
+    ruta: "src/server/actions/carta/menu-del-dia.ts",
+    motivo:
+      "GO-3b (ADR-032, D5): agregarPlatoDelDia, quitarPlatoDelDia y copiarMenuDelDiaAnterior (promo_menu_del_dia, sucursal) → carta/casos-de-uso/{agregar-plato-del-dia,quitar-plato-del-dia,copiar-menu-del-dia-anterior}.ts, con su guardComando… (eco de la sucursal activa, core/features/carta/menu-del-dia.guard.ts) dentro de conPermiso. Escrituras en server/persistencia/carta/combos.ts, SOLO en la sucursal activa; transacción SERIALIZABLE y auditoría con la sucursal en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
+  },
   {
     ruta: "src/server/actions/carta/copiar-carta.ts",
     motivo:

@@ -26,6 +26,11 @@ import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/dat
 import { CopiarCartaDeSucursal } from "@/components/carta/copiar-carta-de-sucursal";
 import { saldosDeLosIngredientesDeLosPlatos } from "@/server/consultas/carta/avisos-de-stock";
 import { formatearCantidad } from "@/core/pos/public";
+import type { LugarDeCombo, VigenciaDePromoAdmin } from "@/core/carta/public";
+import { cargarCombosDeLaCarta } from "@/server/consultas/carta/combos";
+import { actualizarActivaEntradaDeCupo, agregarEntradaDeCupo, guardarVigenciaPromoCarta } from "@/server/actions/carta/combos";
+import { AgregarEntradaDeLugar } from "./agregar-entrada-de-lugar";
+import { lugaresDelFormulario } from "./lugares-del-formulario";
 
 /**
  * Admin de la carta pública (docs/plan-carta-catalogo-2026-09-24.md, M10): lo que muestra la carta pública interna
@@ -91,6 +96,8 @@ export default async function CartaPage() {
   // rol ve `carta_ver` (el mismo «Ver» que exige `leerOrigenDeCopia` al copiar). Todo lo demás que lee esa consulta está atado a `ctx.sucursalId`, así que la base ampliada no cambia lo que muestra.
   const origenes = puedeCopiarCarta ? await lecturaEnSucursalesVisibles(ctx, "carta_ver") : ctx;
   const datos = await cargarAdminCarta(ctx.sucursalId, origenes.db, new Date());
+  // GO-3b (U1): los combos de cada promo (lugares de entradas, sus entradas y la vigencia), aparte de `cargarAdminCarta` (que no cambia).
+  const combos = await cargarCombosDeLaCarta(ctx.db, ctx.sucursalId);
   // S-07 (O.56): solo se ofrecen de origen las sucursales donde el usuario tiene membresía y el «Ver» de la carta (las demás ni se nombran).
   const origenesDeCopia = datos.cartaVacia && puedeCopiarCarta ? await origenesDeCopiaVisibles(ctx.usuarioId, datos.sucursalesConCarta, ctx.db) : [];
   const seccionesActivas = datos.secciones.filter((s) => s.activa);
@@ -382,6 +389,9 @@ export default async function CartaPage() {
             const id = pr.id;
             const activa = pr.activa;
             const prendidaAca = pr.prendidaAca;
+            const combo = combos.porPromo[pr.id] ?? { lugares: [], vigencia: { version: 1, vigenteDesde: null, vigenteHasta: null, diasDeSemana: null } };
+            const lugares = combo.lugares;
+            const versionDeLaPromo = combo.vigencia.version;
             return (
               <li key={pr.id} className="rounded border p-3" data-promo-carta={pr.titulo}>
                 <details>
@@ -389,9 +399,9 @@ export default async function CartaPage() {
                     <span className="font-medium">{pr.titulo}</span> · ${pr.precioAca.toLocaleString("es-AR")}
                     {pr.precioLocal !== null ? (datos.precioLocalActivo ? " (precio de esta sucursal)" : " (no rige: precio local apagado)") : ""} · {pr.seccionCarta} ·{" "}
                     {!pr.activa ? "apagada en toda la empresa" : pr.prendidaAca ? "prendida acá" : "apagada acá"} ·{" "}
-                    {pr.cupos.length ? (
+                    {pr.cupos.length + lugares.length ? (
                       <>
-                        Armable — {pr.cupos.length} cupo{pr.cupos.length === 1 ? "" : "s"}
+                        Armable — {pr.cupos.length + lugares.length} cupo{pr.cupos.length + lugares.length === 1 ? "" : "s"}
                       </>
                     ) : (
                       "Informativa (sin cupos)"
@@ -462,7 +472,9 @@ export default async function CartaPage() {
                           if (!fd.get(`incluir_${s.id}`)) return [];
                           return [{ seccionCartaId: s.id, cantidadMinima: campo(fd, `min_${s.id}`), cantidadMaxima: campo(fd, `max_${s.id}`) }];
                         });
-                        return refrescarSiOk(await guardarCuposPromoCarta(id, cupos));
+                        // GO-3b (D3): la lista que se guarda es la FINAL, de todos los tipos: los lugares de entradas que siguen tildados van también (si no, se darían de baja).
+                        const deEntradas = lugaresDelFormulario(fd);
+                        return refrescarSiOk(await guardarCuposPromoCarta(id, [...cupos, ...deEntradas]));
                       }}
                       className="mt-1 flex flex-col gap-2"
                     >
@@ -484,22 +496,116 @@ export default async function CartaPage() {
                           );
                         })()}
                       <CamposCupos secciones={datos.secciones} guardados={pr.cupos} />
+                      <CamposLugares lugares={lugares} />
                       <div>
                         <button type="submit" className={CLASE_BOTON}>
                           Guardar cupos
                         </button>
                       </div>
                     </FormConResultado>
-                  ) : pr.cupos.length ? (
+                  ) : pr.cupos.length + lugares.length ? (
                     <DatosSoloLectura className="mt-1">
                       {pr.cupos.map((c) => (
                         <Dato key={c.id} etiqueta={c.seccionCarta}>
                           {c.cantidadMinima} a {c.cantidadMaxima}
                         </Dato>
                       ))}
+                      {lugares.map((l) => (
+                        <Dato key={l.id} etiqueta={`${l.nombre} (${l.tipo === "DEL_DIA" ? "del día" : "lista"})`}>
+                          {l.cantidadMinima} a {l.cantidadMaxima}
+                        </Dato>
+                      ))}
                     </DatosSoloLectura>
                   ) : (
                     <p className="mt-1 text-sm text-neutral-500">Sin cupos: esta promo es solo informativa, el POS la ignora.</p>
+                  )}
+
+                  {/* GO-3b (U1): las entradas de cada lugar LISTA (con una sola y mínimo = máximo, viene FIJO). Los platos de un lugar «del día» se cargan en Movimientos → Menú del día. */}
+                  {lugares.map((l) => {
+                    // Los closures "use server" capturan solo el id del lugar (texto): lo que capturan viaja al cliente.
+                    const cupoId = l.id;
+                    return (
+                    <div key={l.id} className="mt-3 flex flex-col gap-1" data-lugar-de-combo={l.nombre}>
+                      <h4 className="text-sm font-medium">
+                        {l.nombre} · {l.tipo === "DEL_DIA" ? "del día" : esFijo(l) ? "viene fijo" : `se elige ${l.cantidadMinima === l.cantidadMaxima ? l.cantidadMaxima : `de ${l.cantidadMinima} a ${l.cantidadMaxima}`}`}
+                      </h4>
+                      {l.tipo === "DEL_DIA" ? (
+                        <p className="text-sm text-neutral-500">
+                          El plato lo carga cada sucursal por día en{" "}
+                          <EnlaceInterno href="/movimientos/menu-del-dia" className="underline">
+                            Menú del día
+                          </EnlaceInterno>
+                          .
+                        </p>
+                      ) : (
+                        <>
+                          {l.entradas.length === 0 ? (
+                            <p className="text-sm text-neutral-500">Sin entradas todavía: sumá los productos que se pueden elegir acá.</p>
+                          ) : (
+                            <ul className="flex flex-col divide-y text-sm">
+                              {l.entradas.map((e) => {
+                                const entradaId = e.id;
+                                const activaAhora = e.activa;
+                                return (
+                                  <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-1" data-entrada-de-lugar={e.nombre}>
+                                    <span className={e.activa ? "" : "text-neutral-500 line-through"}>{e.nombre}</span>
+                                    {puedeDefinirPromos && (
+                                      <FormConResultado
+                                        accion={async () => {
+                                          "use server";
+                                          return refrescarSiOk(await actualizarActivaEntradaDeCupo({ entradaId, activa: !activaAhora }));
+                                        }}
+                                      >
+                                        <button type="submit" className="text-sm underline">
+                                          {e.activa ? `Sacar «${e.nombre}»` : `Volver a ofrecer «${e.nombre}»`}
+                                        </button>
+                                      </FormConResultado>
+                                    )}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                          {puedeDefinirPromos && (
+                            <AgregarEntradaDeLugar
+                              lugar={l.nombre}
+                              productos={combos.productos}
+                              agregar={async (productoId: string, opciones: { opcionId: string; cantidad: number }[]) => {
+                                "use server";
+                                return refrescarSiOk(await agregarEntradaDeCupo({ cupoId, productoId, opciones }));
+                              }}
+                            />
+                          )}
+                        </>
+                      )}
+                    </div>
+                    );
+                  })}
+
+                  {/* GO-3b (D-7): la vigencia de la promo (fechas y días de la semana); sin nada = vale siempre. Se evalúa al agregarla a una mesa. */}
+                  <h3 className="mt-3 text-sm font-medium">Vigencia</h3>
+                  {puedeDefinirPromos ? (
+                    <FormConResultado
+                      accion={async (fd: FormData) => {
+                        "use server";
+                        const dias = [0, 1, 2, 3, 4, 5, 6].filter((d) => fd.get(`dia_${d}`));
+                        const desde = campo(fd, "vigenteDesde").trim();
+                        const hasta = campo(fd, "vigenteHasta").trim();
+                        return refrescarSiOk(
+                          await guardarVigenciaPromoCarta({ promoCartaId: id, versionEsperada: versionDeLaPromo, vigenteDesde: desde || null, vigenteHasta: hasta || null, diasDeSemana: dias })
+                        );
+                      }}
+                      className="mt-1 flex flex-col gap-2"
+                    >
+                      <CamposVigencia vigencia={combo.vigencia} />
+                      <div>
+                        <button type="submit" className={CLASE_BOTON}>
+                          Guardar vigencia
+                        </button>
+                      </div>
+                    </FormConResultado>
+                  ) : (
+                    <p className="mt-1 text-sm">{textoDeVigencia(combo.vigencia)}</p>
                   )}
                 </details>
                 {puedeActivarPromos && (
@@ -682,6 +788,102 @@ function CamposPromo({
  * nativo, `FormConResultado` ya resetea el form entero cuando la acción sale bien (vuelve a los `defaultValue`/`defaultChecked`
  * de lo recién guardado, en el próximo render del servidor).
  */
+/** GO-3b: ¿un lugar LISTA viene FIJO? (una sola entrada activa y mínimo = máximo, de 1 o más: lo completa el servidor). */
+function esFijo(l: LugarDeCombo): boolean {
+  return l.tipo === "LISTA" && l.entradas.filter((e) => e.activa).length === 1 && l.cantidadMinima >= 1 && l.cantidadMinima === l.cantidadMaxima;
+}
+
+const NOMBRES_DE_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
+/** GO-3b: «Vale siempre», «Del 2026-10-01 al 2026-10-31, lunes a viernes»… */
+function textoDeVigencia(v: VigenciaDePromoAdmin): string {
+  const partes: string[] = [];
+  if (v.vigenteDesde) partes.push(`desde el ${v.vigenteDesde}`);
+  if (v.vigenteHasta) partes.push(`hasta el ${v.vigenteHasta}`);
+  if (v.diasDeSemana !== null) partes.push(`los ${NOMBRES_DE_DIAS.filter((_d, i) => (v.diasDeSemana! & (1 << i)) !== 0).map((d) => d.toLowerCase()).join(", ")}`);
+  return partes.length ? `Vale ${partes.join(", ")}.` : "Vale siempre.";
+}
+
+/** GO-3b: los campos de la vigencia (las fechas son opcionales; los días, tildados todos = todos los días). */
+function CamposVigencia({ vigencia }: { vigencia: VigenciaDePromoAdmin }) {
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      <div className="flex flex-wrap gap-3">
+        <label className="flex flex-col gap-1">
+          Desde (opcional)
+          <input type="date" name="vigenteDesde" defaultValue={vigencia.vigenteDesde ?? ""} className={CLASE_INPUT} />
+        </label>
+        <label className="flex flex-col gap-1">
+          Hasta (opcional)
+          <input type="date" name="vigenteHasta" defaultValue={vigencia.vigenteHasta ?? ""} className={CLASE_INPUT} />
+        </label>
+      </div>
+      <fieldset className="flex flex-wrap gap-3">
+        <legend className="mb-1">Días en que vale</legend>
+        {NOMBRES_DE_DIAS.map((d, i) => (
+          <label key={d} className="flex items-center gap-1">
+            <input type="checkbox" name={`dia_${i}`} defaultChecked={vigencia.diasDeSemana === null || (vigencia.diasDeSemana & (1 << i)) !== 0} />
+            {d}
+          </label>
+        ))}
+      </fieldset>
+      <p className="text-xs text-neutral-500">{textoDeVigencia(vigencia)} Se mira al agregar la promo a una mesa: lo que ya está en una mesa no cambia.</p>
+    </div>
+  );
+}
+
+/**
+ * GO-3b (U1): los lugares de ENTRADAS de la promo en el formulario de cupos: cada uno con «incluir» (destildado, se da de baja: sus entradas quedan guardadas por si vuelve) y su mínimo y máximo;
+ * el nombre es su identidad (cambiarlo es otro lugar). Abajo, una fila para sumar un lugar nuevo: una LISTA («Bebida») o uno DEL DÍA («Plato del día»).
+ */
+function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
+  return (
+    <div className="flex flex-col gap-1">
+      {lugares.map((l) => (
+        <div key={l.id} data-cupo-lugar={l.nombre} className="flex flex-wrap items-center gap-2 text-sm">
+          <input type="hidden" name="lugar_id" value={l.id} />
+          <input type="hidden" name={`lugar_tipo_${l.id}`} value={l.tipo} />
+          <input type="hidden" name={`lugar_nombre_${l.id}`} value={l.nombre} />
+          <label className="flex min-w-[10rem] items-center gap-2">
+            <input type="checkbox" name={`lugar_incluir_${l.id}`} defaultChecked />
+            {l.nombre} ({l.tipo === "DEL_DIA" ? "del día" : "lista"})
+          </label>
+          <label className="flex items-center gap-1">
+            mín.
+            <input type="number" name={`lugar_min_${l.id}`} min={0} step={1} defaultValue={l.cantidadMinima} className={`${CLASE_INPUT} w-16`} />
+          </label>
+          <label className="flex items-center gap-1">
+            máx.
+            <input type="number" name={`lugar_max_${l.id}`} min={1} step={1} defaultValue={l.cantidadMaxima} className={`${CLASE_INPUT} w-16`} />
+          </label>
+        </div>
+      ))}
+      <fieldset className="mt-1 flex flex-wrap items-end gap-2 text-sm">
+        <legend className="mb-1 text-sm">Sumar un lugar (opcional)</legend>
+        <label className="flex flex-col gap-1">
+          Tipo
+          <select name="nuevo_lugar_tipo" defaultValue="LISTA" className={CLASE_INPUT}>
+            <option value="LISTA">Lista de productos</option>
+            <option value="DEL_DIA">Plato del día</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          Nombre
+          <input name="nuevo_lugar_nombre" maxLength={80} placeholder="Ej.: Bebida" className={CLASE_INPUT} />
+        </label>
+        <label className="flex flex-col gap-1">
+          mín.
+          <input type="number" name="nuevo_lugar_min" min={0} step={1} defaultValue={1} className={`${CLASE_INPUT} w-16`} />
+        </label>
+        <label className="flex flex-col gap-1">
+          máx.
+          <input type="number" name="nuevo_lugar_max" min={1} step={1} defaultValue={1} className={`${CLASE_INPUT} w-16`} />
+        </label>
+      </fieldset>
+    </div>
+  );
+}
+
 function CamposCupos({
   secciones,
   guardados,

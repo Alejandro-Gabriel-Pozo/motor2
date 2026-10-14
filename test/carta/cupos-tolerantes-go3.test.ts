@@ -1,7 +1,7 @@
+import { diaDeCalendario, ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
 import { beforeEach, describe, expect, it } from "vitest";
 import { cargarPromoCartaParaAgregar } from "../../src/server/lecturas/pos/promo-para-agregar";
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
-import { reemplazarCuposDePromo } from "../../src/server/persistencia/carta/promos";
 import { cuposDeSeccionActivos, tieneCupoActivoDeTipoNuevo } from "../../src/core/carta/cupos-de-promo";
 import { pisoDePrecioDePromo } from "../../src/core/carta/piso-de-promo";
 import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
@@ -16,6 +16,9 @@ import { sembrarSalon } from "../pos/salon-fixture";
  *
  * Mutaciones demostradas: sacar el `tieneCupoActivoDeTipoNuevo` de `promo-para-agregar.ts` (la promo con un cupo LISTA se ofrece armada a medias) y sacar el `tipo: "SECCION"` del `deleteMany` de
  * `reemplazarCuposDePromo` (borraría el cupo LISTA).
+ *
+ * GO-3b (D3): el reemplazo que borraba (`reemplazarCuposDePromo`) ya no existe: guardar los cupos los lleva al estado pedido sin borrar ninguno (`test/carta/cupos-sin-borrar-go3.test.ts`).
+ * El caso «el reemplazo solo toca los de sección» se mudó allá, con la semántica nueva (la lista es la final, de todos los tipos, y lo que no viene se da de baja).
  */
 describe("los lectores de cupos del primer despliegue de GO-3", () => {
   let s: Awaited<ReturnType<typeof sembrarSalon>>;
@@ -36,32 +39,27 @@ describe("los lectores de cupos del primer despliegue de GO-3", () => {
 
   it("con solo cupos de sección activos, la promo se ofrece como siempre (en el selector y para agregar)", async () => {
     expect((await promosDelSelector()).map((p) => (p.tipo === "promo" ? p.promoCartaId : null))).toEqual([promoCartaId]);
-    expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA))?.cupos.map((c) => c.seccionCartaId)).toEqual([seccionId]);
+    expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA))?.cupos.map((c) => ("seccionCartaId" in c ? c.seccionCartaId : c.cupoId))).toEqual([seccionId]);
   });
 
-  it("con un cupo LISTA o DEL_DIA ACTIVO la promo NO se ofrece (falla cerrado); dado de baja, no cuenta", async () => {
-    const lista = await prisma.promoCartaCupo.create({ data: { promoCartaId, tipo: "LISTA", nombre: "Entrada", cantidadMinima: 1, cantidadMaxima: 1 } });
+  // GO-3b (I2, el segundo despliegue): la lectura para AGREGAR ya arma los cupos LISTA y DEL_DIA (con sus entradas de hoy: `test/pos/agregar-combo-go3.test.ts`). El selector del POS los sigue sin
+  // ofrecer hasta su paso de pantalla (U5): nunca ofrece lo que no sabe mostrar.
+  it("con un cupo LISTA o DEL_DIA ACTIVO: el selector todavía no la ofrece; para agregar se arma con sus cupos (un DEL_DIA necesita el día); dado de baja, no cuenta", async () => {
+    const lista = await prisma.promoCartaCupo.create({ data: { promoCartaId, tipo: "LISTA", nombre: "Entrada", cantidadMinima: 1, cantidadMaxima: 1, orden: 1 } });
     expect(await promosDelSelector()).toEqual([]);
-    expect(await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA)).toBeNull();
+    expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA))?.cupos.map((c) => ("cupoId" in c ? c.cupoId : c.seccionCartaId))).toEqual([seccionId, lista.id]);
     await prismaAdmin.promoCartaCupo.update({ where: { id: lista.id }, data: { activo: false } });
     expect(await promosDelSelector()).toHaveLength(1);
     expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA))?.cupos).toHaveLength(1);
-    await prisma.promoCartaCupo.create({ data: { promoCartaId, tipo: "DEL_DIA", nombre: "Plato del día", cantidadMinima: 1, cantidadMaxima: 1 } });
+    await prisma.promoCartaCupo.create({ data: { promoCartaId, tipo: "DEL_DIA", nombre: "Plato del día", cantidadMinima: 1, cantidadMaxima: 1, orden: 2 } });
     expect(await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA)).toBeNull();
+    expect((await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA, undefined, diaDeCalendario(AHORA_DE_LA_CORRIDA, ZONA_ARGENTINA)))?.cupos).toHaveLength(2);
   });
 
   it("un cupo de sección dado de baja no se lee: si era el único, la promo vuelve a ser informativa", async () => {
     await prismaAdmin.promoCartaCupo.updateMany({ where: { promoCartaId }, data: { activo: false } });
     expect(await promosDelSelector()).toEqual([]);
     expect(await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA)).toBeNull();
-  });
-
-  it("el reemplazo de cupos de la administración de hoy solo toca los de SECCIÓN: un cupo LISTA queda intacto", async () => {
-    const lista = await prisma.promoCartaCupo.create({ data: { promoCartaId, tipo: "LISTA", nombre: "Entrada", cantidadMinima: 1, cantidadMaxima: 1, orden: 5 } });
-    await prismaAdmin.$transaction((tx) => reemplazarCuposDePromo(tx, { promoCartaId, cupos: [{ seccionCartaId: seccionId, cantidadMinima: 0, cantidadMaxima: 2, orden: 1 }] }));
-    const cupos = await prismaAdmin.promoCartaCupo.findMany({ where: { promoCartaId }, orderBy: { orden: "asc" } });
-    expect(cupos.map((c) => [c.tipo, c.seccionCartaId, c.cantidadMaxima])).toEqual([["SECCION", seccionId, 2], ["LISTA", null, 1]]);
-    expect(cupos[1]!.id).toBe(lista.id);
   });
 });
 

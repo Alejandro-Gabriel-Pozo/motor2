@@ -31,6 +31,12 @@ export { componerPrecioDeLinea } from "./componer-precio-de-linea";
 export type { CodigoDeErrorDePrecio, OpcionParaPrecio } from "./componer-precio-de-linea";
 export { versionVigente } from "./version-vigente";
 export type { TipoDeDiferencia } from "./tipos";
+// GO-3b (ADR-032, frente A): el precio por combinación. Los ejes los valida la administración (`fijar-ejes-de-combinacion.ts`).
+export { validarEjesDeCombinacion } from "./combinaciones";
+export type { GrupoParaEjes } from "./combinaciones";
+// GO-3b (F5, I1): la venta de una línea con combinación (`core/pos/linea-configurada.ts`).
+export { claveDeCombinacion, entradaConPrecioDeCombinacion, identidadDeCombinacion, resolverPrecioDeCombinacion } from "./combinaciones";
+export type { CombinacionParaPrecio, PrecioDeCombinacion } from "./combinaciones";
 
 // GO-2d (las pantallas de opciones de venta, ADR-030 «Pantallas»): los textos puros que comparten la administración, el selector del POS y la carta pública.
 export { ayudaDelTipoDeGrupo, espejoDeDiferencia, nombreDelTipoDeGrupo, resumenDeConsumos, textoDeDiferencia, textoDeLimites, textoDePorcentaje } from "./presentacion";

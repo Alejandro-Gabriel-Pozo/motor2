@@ -1,3 +1,4 @@
+import type { CombinacionesParaMostrar } from "./combinacion-elegida";
 import type { GrupoParaVender } from "./linea-configurada";
 import { opcionDisponible } from "./precio-de-configuracion";
 
@@ -190,4 +191,6 @@ export interface ConfiguracionDelSelector {
   sinStock: Readonly<Record<string, string[]>>;
   /** «Lo más pedido acá» (hasta 3, de mayor a menor): botones que precargan esa elección; igual se confirma viendo el precio. */
   masPedidas: { etiqueta: string; elegidas: { opcionId: string; cantidad: number }[] }[];
+  /** GO-3b (ADR-032): SOLO en un producto con ejes, sus combinaciones (forma serializable): la vista previa cobra lo que cobra la venta y una combinación apagada se deshabilita. */
+  combinaciones?: CombinacionesParaMostrar;
 }

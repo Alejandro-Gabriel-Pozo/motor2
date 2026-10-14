@@ -82,6 +82,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "GO-2a paso 3 (ADITIVO; las claves ya estaban en la base desde GO-1a, ahora entran a ACCIONES): `opciones_definir` y `producto_opciones_admitidas` (empresa, piso administrador) y `opcion_apagar_en_sucursal` (sucursal, piso operario, semilla admin) aparecen en las listas de claves de cada bloque y registro. Revisado con `git diff --word-diff` y comparando sin esas tres claves: lo único que queda distinto son 4 líneas de mensajes de denegación del rol «especial» y de «operador + especial», que nombran la ÚLTIMA clave del catálogo que no tienen (`opcion_apagar_en_sucursal` donde decía `compra_recibir`, `producto_opciones_admitidas` donde decía `compra_repartir`): el mismo artefacto del generador que en M.2. Ninguna respuesta de otra clave cambia.",
       },
+      {
+        blob: "866fcd0fc8c182b50125cdaee4bd27a747bb5216",
+        // El commit PADRE de este (562e914, GO-3b D4) es el último antes del cambio; la matriz se regenera en el commit siguiente (GO-3b D6).
+        commit: "562e914",
+        motivo:
+          "GO-3b D6 (ADITIVO; las claves ya estaban en la base desde las migraciones GO-3d y GO-3a, ahora entran a ACCIONES): `promo_menu_del_dia` (sucursal, piso operario, semilla admin) y `grupos_de_precio_definir` (empresa, piso administrador) aparecen en las listas de claves de cada bloque y registro. Revisado con `git diff --word-diff` (contando las líneas que cambian): solo se suman las dos claves a las listas; lo único que no es una suma son los mensajes de denegación del rol «especial» y de «operador + especial», que nombran la ÚLTIMA clave del catálogo que no tienen (ahora `promo_menu_del_dia`/`grupos_de_precio_definir` donde decía `opcion_apagar_en_sucursal`/`producto_opciones_admitidas`): el mismo artefacto del generador que en M.2 y GO-2a. Ninguna respuesta de otra clave cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -153,6 +160,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "ac290d8",
         motivo:
           "GO-2a paso 3 (ADITIVO): `ACCIONES 127 a 130` por las tres claves de los grupos de opciones de venta, que entran a ACCIONES (`opciones_definir`, `producto_opciones_admitidas` y `opcion_apagar_en_sucursal`: las recibe el rol admin de cada empresa; el operador las tiene sin Ver ni Editar). Revisado con `git diff --word-diff`: solo se suman esas filas PERMISO y el conteo.",
+      },
+      {
+        blob: "d36414573d1904eec2d6e2695f6b373d42b8739a",
+        // El commit PADRE de este (562e914, GO-3b D4) es el último antes del cambio; la huella se regenera en el commit siguiente (GO-3b D6).
+        commit: "562e914",
+        motivo:
+          "GO-3b D6 (ADITIVO): `ACCIONES 130 a 132` por las dos claves de GO-3 que entran a ACCIONES (`promo_menu_del_dia` y `grupos_de_precio_definir`: las recibe el rol admin de cada empresa; el operador las tiene sin Ver ni Editar). Revisado con `git diff --word-diff`: solo se suman esas filas PERMISO y el conteo.",
       },
     ],
   },
@@ -456,6 +470,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "7d4e2182",
         motivo:
           "M0-IVA (O.266; ADITIVO, no cambia comportamiento): las filas de producto de la huella suman `alicuotaIvaCompra=null alicuotaIvaVenta=null` (13 líneas). Revisado con `git diff --word-diff`: ningún importe ni regla de dinero cambia.",
+      },
+      {
+        blob: "ab9b9e4dff4d6dd3337be0b325ac264c4a46a14d",
+        // El commit PADRE de este (48741e0, GO-3b AB5) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "48741e0",
+        motivo:
+          "GO-3b D3 (CAMBIA COMPORTAMIENTO, decidido en el diseño de GO-3, ADR-032: guardar los cupos ya no borra): en el paso «promo: sin cupos vuelve a informativa» los dos cupos que antes se BORRABAN ahora quedan dados de baja (`activo=false`): la huella muestra la fila vieja y la nueva (2 líneas `+ PROMO_CUPO … activo=false`). Revisado con `git diff --word-diff`: el resultado, los efectos y las 4 líneas de auditoría son idénticos; ningún importe cambia.",
       },
     ],
   },

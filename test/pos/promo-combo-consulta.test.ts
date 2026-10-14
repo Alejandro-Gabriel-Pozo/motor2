@@ -5,6 +5,10 @@ import { cargarPromoCartaParaAgregar } from "../../src/server/lecturas/pos/promo
 import { cargarSelectorCartaPos } from "../../src/server/lecturas/pos/selector-carta";
 import { pediblesDeEntrada } from "../../src/core/pos/selector-carta";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
+import type { CupoDePromo, CupoPromoDefinicion } from "../../src/core/pos/promo-combo";
+
+/** GO-3b: los cupos de la definición pueden ser de sección o de entradas; estos tests son de promos de solo secciones. */
+const deSeccion = (cupos: readonly CupoDePromo[] | undefined) => (cupos ?? []).filter((c): c is CupoPromoDefinicion => "seccionCartaId" in c);
 
 /**
  * Task #16 (promo-combo, docs/plan-promo-combo-2026-09-26.md, paso 8a): `cargarPromoCartaParaAgregar` tiene que dar EXACTO los
@@ -68,17 +72,17 @@ describe("cargarPromoCartaParaAgregar", () => {
     expect(def).not.toBeNull();
     if (!def) return;
     const pediblesPorSeccion = new Map(selector.seccionesCarta.map((sec) => [sec.seccionCartaId, new Set(sec.entradas.flatMap(pediblesDeEntrada).map((p) => p.productoId))]));
-    for (const cupo of def.cupos) {
+    for (const cupo of deSeccion(def.cupos)) {
       expect(cupo.elegibles).toEqual(pediblesPorSeccion.get(cupo.seccionCartaId));
     }
-    expect(def.cupos[0].elegibles).toEqual(new Set([empanadaId]));
-    expect(def.cupos[1].elegibles).toEqual(new Set([s.flan.id]));
+    expect(deSeccion(def.cupos)[0]!.elegibles).toEqual(new Set([empanadaId]));
+    expect(deSeccion(def.cupos)[1]!.elegibles).toEqual(new Set([s.flan.id]));
   });
 
   it("un producto oculto, apagado o sin sección de carta NO es elegible, igual que en el selector", async () => {
     await prisma.contenidoCartaProducto.updateMany({ where: { productoId: empanadaId }, data: { visibleEnCarta: false } });
     const def = await cargarPromoCartaParaAgregar(s.sucursalId, promoCartaId, prisma, AHORA_DE_LA_CORRIDA);
-    expect(def?.cupos[0].elegibles).toEqual(new Set());
+    expect(deSeccion(def?.cupos)[0]!.elegibles).toEqual(new Set());
   });
 
   it("precioCartaPorProducto trae el precio de carta (Precio Local si lo hay) de cada elegible", async () => {

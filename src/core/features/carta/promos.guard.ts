@@ -1,6 +1,6 @@
 import { MAXIMO_CUPOS_POR_PROMO, validarTopeDeLista } from "@/core/datos/limites";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import { LARGO_MAXIMO_DESCRIPCION_CARTA, LARGO_MAXIMO_TITULO_CARTA, validarCantidadCupoPromo, validarOrdenCarta, validarPrecioCarta, validarTextoLibreCarta } from "@/core/carta/public";
+import { LARGO_MAXIMO_DESCRIPCION_CARTA, LARGO_MAXIMO_NOMBRE_DE_CUPO, LARGO_MAXIMO_TITULO_CARTA, TIPOS_DE_CUPO, validarCantidadCupoPromo, validarOrdenCarta, validarPrecioCarta, validarTextoLibreCarta, type TipoDeCupo } from "@/core/carta/public";
 import type { ComandoGuardarPromoCarta, CupoValidadoPromoCarta } from "./promos.schema";
 
 /**
@@ -63,10 +63,14 @@ export function guardComandoGuardarPrecioLocalPromoCarta(entrada: { precioLocal:
 }
 
 /**
- * Guard del comando «reemplazar todos los cupos de una promo» (S-52): EXACTAMENTE la validación del bucle que antes vivía en el caso de uso, con los MISMOS textos y en el MISMO
+ * Guard del comando «guardar los cupos de una promo» (S-52): EXACTAMENTE la validación del bucle que antes vivía en el caso de uso, con los MISMOS textos y en el MISMO
  * orden por cupo (la sección elegida, la sección repetida, el mínimo, el máximo, «al menos 1» y mínimo ≤ máximo), más lo que antes reventaba o no tenía tope: la lista tiene que
  * ser un arreglo de a lo sumo `MAXIMO_CUPOS_POR_PROMO` cupos y cada cupo un objeto con la sección como texto (un cupo `null` o con la sección numérica daba un error crudo). Lo
  * que dependa de la base (que las secciones existan, el piso del precio) lo decide el caso de uso. Lo calcula la acción; su rechazo lo aplica el caso de uso DESPUÉS de leer la promo.
+ *
+ * GO-3b (ADR-032, D3): un cupo puede ser de un TIPO nuevo (`tipo`: SECCION por defecto, como todo lo de antes; LISTA o DEL_DIA). Fuera de SECCION no lleva sección sino un `nombre` («Entrada»,
+ * «Plato del día»): obligatorio, con algún carácter visible y hasta `LARGO_MAXIMO_NOMBRE_DE_CUPO`, sin repetirse en la misma promo sin importar mayúsculas (el índice único de la base).
+ * Un cupo SECCION que trae un nombre, o uno de entradas que trae una sección, es una forma rota.
  */
 export function guardComandoGuardarCuposPromoCarta(entrada: { cupos: unknown }): ResultadoDato<readonly CupoValidadoPromoCarta[]> {
   const { cupos } = entrada;
@@ -74,12 +78,30 @@ export function guardComandoGuardarCuposPromoCarta(entrada: { cupos: unknown }):
   const excede = validarTopeDeLista(cupos, "Los cupos", MAXIMO_CUPOS_POR_PROMO);
   if (excede) return rechazar("rango", excede);
   const seccionIds = new Set<string>();
+  const nombres = new Set<string>();
   const validados: CupoValidadoPromoCarta[] = [];
   for (const [i, c] of (cupos as unknown[]).entries()) {
-    const cupo = (typeof c === "object" && c !== null ? c : {}) as { seccionCartaId?: unknown; cantidadMinima?: unknown; cantidadMaxima?: unknown };
-    if (typeof cupo.seccionCartaId !== "string" || !cupo.seccionCartaId) return rechazar("vacio", "Elegí la sección de cada cupo.");
-    if (seccionIds.has(cupo.seccionCartaId)) return rechazar("formato", "No se puede repetir la misma sección de carta en dos cupos de la misma promo.");
-    seccionIds.add(cupo.seccionCartaId);
+    const cupo = (typeof c === "object" && c !== null ? c : {}) as { tipo?: unknown; seccionCartaId?: unknown; nombre?: unknown; cantidadMinima?: unknown; cantidadMaxima?: unknown };
+    const tipo = cupo.tipo === undefined || cupo.tipo === null ? "SECCION" : cupo.tipo;
+    if (typeof tipo !== "string" || !(TIPOS_DE_CUPO as readonly string[]).includes(tipo)) return rechazar("formato", "El tipo de un cupo de la promo no es válido.");
+    let seccionCartaId: string | null = null;
+    let nombre: string | null = null;
+    if (tipo === "SECCION") {
+      if (typeof cupo.seccionCartaId !== "string" || !cupo.seccionCartaId) return rechazar("vacio", "Elegí la sección de cada cupo.");
+      if (seccionIds.has(cupo.seccionCartaId)) return rechazar("formato", "No se puede repetir la misma sección de carta en dos cupos de la misma promo.");
+      if (cupo.nombre !== undefined && cupo.nombre !== null) return rechazar("formato", "Un cupo de sección no lleva nombre: se llama como su sección.");
+      seccionIds.add(cupo.seccionCartaId);
+      seccionCartaId = cupo.seccionCartaId;
+    } else {
+      if (cupo.seccionCartaId !== undefined && cupo.seccionCartaId !== null) return rechazar("formato", "Un lugar con su propia lista o con el plato del día no elige de una sección de la carta.");
+      const n = typeof cupo.nombre === "string" ? cupo.nombre.trim() : "";
+      if (!n) return rechazar("vacio", "Poné un nombre a cada lugar de la promo («Entrada», «Plato del día»…).");
+      if (n.length > LARGO_MAXIMO_NOMBRE_DE_CUPO) return rechazar("largo", `El nombre de un lugar de la promo puede tener hasta ${LARGO_MAXIMO_NOMBRE_DE_CUPO} caracteres.`);
+      const clave = n.toLowerCase();
+      if (nombres.has(clave)) return rechazar("formato", `No se puede repetir el nombre «${n}» en dos lugares de la misma promo.`);
+      nombres.add(clave);
+      nombre = n;
+    }
 
     const minima = validarCantidadCupoPromo(cupo.cantidadMinima, "La cantidad mínima", 0);
     if (!minima.ok) return rechazar("rango", minima.mensaje);
@@ -88,7 +110,7 @@ export function guardComandoGuardarCuposPromoCarta(entrada: { cupos: unknown }):
     if (maxima.valor < 1) return rechazar("rango", "La cantidad máxima de un cupo tiene que ser al menos 1.");
     if (minima.valor > maxima.valor) return rechazar("rango", "En cada cupo, el mínimo no puede ser mayor que el máximo.");
 
-    validados.push({ seccionCartaId: cupo.seccionCartaId, cantidadMinima: minima.valor, cantidadMaxima: maxima.valor, orden: i });
+    validados.push({ tipo: tipo as TipoDeCupo, seccionCartaId, nombre, cantidadMinima: minima.valor, cantidadMaxima: maxima.valor, orden: i });
   }
   return aceptar(validados);
 }

@@ -1,3 +1,4 @@
+import { ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
@@ -24,7 +25,7 @@ import type { Transaccion } from "../../src/lib/db-tipos";
 let s: Awaited<ReturnType<typeof sembrarSalon>>;
 /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). */
 const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
-const actor = () => ({ usuarioId: s.admin.id, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: s.sucursalId, sucursalNombre: s.sucursal.nombre, email: "admin@test.com", ahora: new Date(), ...baseDe(s.sucursalId) });
+const actor = () => ({ usuarioId: s.admin.id, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: s.sucursalId, sucursalNombre: s.sucursal.nombre, email: "admin@test.com", empresaZonaHoraria: ZONA_ARGENTINA, ahora: new Date(), ...baseDe(s.sucursalId) });
 const sinReceta = (nombre: string) => `«${nombre}» no tiene receta: armala en Catálogo → Recetas para poder venderla.`;
 const CLAVE = "44444444-4444-4444-8444-444444444444";
 
