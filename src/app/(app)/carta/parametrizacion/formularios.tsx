@@ -14,8 +14,8 @@ import type { ResultadoAccion } from "@/server/actions/tipos";
  * (`/carta/parametrizacion/{secciones,generos,promociones}`). Son los MISMOS formularios, con las mismas Server Actions y los mismos permisos (movidos tal cual); se suma «Quitar de la carta» en la
  * ficha de cada producto. Los closures "use server" capturan solo ids (texto): lo que captura un closure viaja al cliente.
  */
-export const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
-export const refrescarSiOk = (r: ResultadoAccion) => {
+const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
+const refrescarSiOk = (r: ResultadoAccion) => {
   if (r.ok) refrescarVistaSiHaceFalta();
   return r;
 };

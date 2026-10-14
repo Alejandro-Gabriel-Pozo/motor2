@@ -9,7 +9,16 @@ import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
-import { CLASE_BOTON, CLASE_ENLACE_DE_ACCION, CamposGenero, campo, refrescarSiOk } from "../formularios";
+import { CLASE_BOTON, CLASE_ENLACE_DE_ACCION, CamposGenero } from "../formularios";
+import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
+import type { ResultadoAccion } from "@/server/actions/tipos";
+
+/** Ayudantes puros de los closures "use server" de esta página (locales a propósito: `use-server-solo-donde-corresponde` solo los acepta definidos en el mismo archivo). */
+const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
+const refrescarSiOk = (r: ResultadoAccion) => {
+  if (r.ok) refrescarVistaSiHaceFalta();
+  return r;
+};
 
 /**
  * CARTA-MANT: Parametrización › Géneros (prototipo aprobado). Los géneros de la carta de la sucursal activa (carpetas del selector del POS), con el MISMO bloque que antes estaba apilado en `/carta`:

@@ -76,8 +76,8 @@ export async function cargarCartaParaMantener(db: Db, sucursalId: string): Promi
 
 /** Lo que el hub de Parametrización muestra al lado de cada tarjeta (prototipo: «Secciones · 4 · 1 oculta», «Géneros · 5», «Promociones · 3 activas», «Publicada»). */
 export interface ResumenDeParametrizacion {
-  secciones: number;
-  seccionesOcultas: number;
+  /** Las secciones de la empresa, en su orden, con su nombre y si se muestran (el hub cuenta cuántas hay y cuántas están ocultas). */
+  secciones: { nombre: string; activa: boolean }[];
   generos: number;
   agrupados: number;
   promosActivas: number;
@@ -86,17 +86,16 @@ export interface ResumenDeParametrizacion {
 }
 
 /**
- * CARTA-MANT: los contadores del hub de Parametrización, en seis consultas chicas (conteos). Las secciones son de la empresa; los géneros y los agrupados, de la carta de ESTA sucursal (con su
+ * CARTA-MANT: los contadores del hub de Parametrización, en cinco consultas chicas. Las secciones son de la empresa (la lista, con nombre y si se muestran: son pocas); los géneros y los agrupados, de la carta de ESTA sucursal (con su
  * filtro); las promos, las ofrecidas acá (activas en la empresa y prendidas en la sucursal). Sin guarda de permiso adentro: la pone la página (`carta_ver`).
  */
 export async function resumirParametrizacionDeCarta(db: Db, sucursalId: string): Promise<ResumenDeParametrizacion> {
-  const [secciones, seccionesOcultas, generos, agrupados, promosActivas, sucursal] = await Promise.all([
-    db.seccionCarta.count(),
-    db.seccionCarta.count({ where: { activa: false } }),
+  const [secciones, generos, agrupados, promosActivas, sucursal] = await Promise.all([
+    db.seccionCarta.findMany({ select: { nombre: true, activa: true }, orderBy: [{ orden: "asc" }, { nombre: "asc" }] }),
     db.generoCarta.count({ where: { ...whereCartaDeSucursal(sucursalId), activo: true } }),
     db.itemAgrupadoCarta.count({ where: { ...whereCartaDeSucursal(sucursalId), activo: true } }),
     db.promoCarta.count({ where: wherePromoOfrecidaEn(sucursalId) }),
     db.sucursal.findUnique({ where: { id: sucursalId }, select: { publica: { select: { publicada: true } } } }),
   ]);
-  return { secciones, seccionesOcultas, generos, agrupados, promosActivas, publicada: sucursal?.publica ? sucursal.publica.publicada : null };
+  return { secciones, generos, agrupados, promosActivas, publicada: sucursal?.publica ? sucursal.publica.publicada : null };
 }

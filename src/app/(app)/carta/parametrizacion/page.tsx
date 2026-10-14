@@ -24,16 +24,17 @@ export default async function ParametrizacionDeCartaPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
   const r = await resumirParametrizacionDeCarta(ctx.db, ctx.sucursalId);
+  const ocultas = r.secciones.filter((x) => !x.activa).length;
 
-  const tarjetas: { href: string; titulo: string; cuenta: string; detalle: string; otraPantalla?: boolean }[] = [
+  const tarjetas: { href: string; titulo: string; cuenta: string; detalle: string }[] = [
     {
       href: "/carta/parametrizacion/secciones",
       titulo: "Secciones",
-      cuenta: `${r.secciones}${r.seccionesOcultas ? ` · ${r.seccionesOcultas} oculta${r.seccionesOcultas > 1 ? "s" : ""}` : ""}`,
+      cuenta: `${r.secciones.length}${ocultas ? ` · ${ocultas} oculta${ocultas > 1 ? "s" : ""}` : ""}`,
       detalle: "Cómo se agrupan, en qué orden se ven y cuáles se muestran; la ficha de cada producto",
     },
     { href: "/carta/parametrizacion/generos", titulo: "Géneros", cuenta: String(r.generos), detalle: "Carpetas del selector del POS, como «Cerveza» o «Vinos»" },
-    { href: "/carta/agrupados", titulo: "Agrupados", cuenta: String(r.agrupados), detalle: "Varios productos que se eligen como uno", otraPantalla: true },
+    { href: "/carta/agrupados", titulo: "Agrupados", cuenta: String(r.agrupados), detalle: "Varios productos que se eligen como uno" },
     { href: "/carta/parametrizacion/promociones", titulo: "Promociones", cuenta: `${r.promosActivas} activa${r.promosActivas === 1 ? "" : "s"}`, detalle: "Combos, cupos, precio de esta sucursal y vigencia" },
     {
       href: "/carta/parametrizacion/apariencia",
@@ -69,14 +70,12 @@ export default async function ParametrizacionDeCartaPage() {
                   </i>
                 </>
               );
-              return t.otraPantalla ? (
+              // Todas con `EnlaceInterno` (el guardián de enlaces no admite un `Link` con `href` variable): las que son de la carta abren con el mismo «Ver»; las de otra pantalla quedan en
+              // texto si el rol no puede abrirlas.
+              return (
                 <EnlaceInterno key={t.href} href={t.href} className={s.hubFila}>
                   {contenido}
                 </EnlaceInterno>
-              ) : (
-                <Link key={t.href} href={t.href} className={s.hubFila}>
-                  {contenido}
-                </Link>
               );
             })}
           </nav>

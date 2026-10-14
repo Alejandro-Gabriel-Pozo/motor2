@@ -18,10 +18,19 @@ import { precioMinimoPromo } from "@/core/pos/public";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { AgregarEntradaDeLugar } from "../../agregar-entrada-de-lugar";
-import { lugaresDelFormulario } from "../../lugares-del-formulario";
+import { lugaresDelFormulario } from "./lugares-del-formulario";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
-import { CLASE_BOTON, CLASE_ENLACE_DE_ACCION, CLASE_INPUT, CamposCupos, CamposLugares, CamposPromo, CamposVigencia, campo, esFijo, refrescarSiOk, textoDeVigencia } from "../formularios";
+import { CLASE_BOTON, CLASE_ENLACE_DE_ACCION, CLASE_INPUT, CamposCupos, CamposLugares, CamposPromo, CamposVigencia, esFijo, textoDeVigencia } from "../formularios";
+import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
+import type { ResultadoAccion } from "@/server/actions/tipos";
+
+/** Ayudantes puros de los closures "use server" de esta página (locales a propósito: `use-server-solo-donde-corresponde` solo los acepta definidos en el mismo archivo). */
+const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
+const refrescarSiOk = (r: ResultadoAccion) => {
+  if (r.ok) refrescarVistaSiHaceFalta();
+  return r;
+};
 
 /**
  * CARTA-MANT: Parametrización › Promociones (prototipo aprobado). Las promos de la empresa (prendidas o no en esta sucursal, con su precio local, sus cupos, sus lugares de entradas y su vigencia), con el
