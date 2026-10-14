@@ -90,7 +90,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
             los módulos contratados.
           </p>
         )}
-        <main className="flex-1 p-6">
+        <main data-panel className="flex-1 p-6">
           <AccionesVisiblesProvider acciones={[...puedeVer]}>{children}</AccionesVisiblesProvider>
         </main>
       </div>
