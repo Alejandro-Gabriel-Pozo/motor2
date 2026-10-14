@@ -25,6 +25,10 @@ export { formatearNumeroTicket } from "./numeracion-ticket";
 export type { NumeroDeTicket } from "./numeracion-ticket";
 export { componentesDeEleccion, precioMinimoPromo } from "./promo-combo";
 export type { CupoPromoDefinicion, EleccionDePromo } from "./promo-combo";
+// GO-3b (I2): los cupos de entradas (LISTA y DEL_DIA) que arma la lectura de la promo para agregar, y la clave de prorrateo de una entrada configurada.
+export { claveDeComponenteConfigurado } from "./promo-combo";
+export type { CupoDePromo, CupoDeEntradasDefinicion, EntradaElegibleDeCupo } from "./promo-combo";
+export type { LineaConfigurada } from "./linea-configurada";
 export { armarSelectorCartaPos, pediblesDeEntrada } from "./selector-carta";
 export type { EntradaCarpetaSelectorCarta, EntradaPromoSelectorCarta, EntradaSelectorCarta, GenerosSelectorCartaPos, ProductoPedible, PromoSelectorCartaPos, SelectorCartaPos } from "./selector-carta";
 export { SECCION_FUERA_DE_CARTA, estadoInicialSelectorCarta, reducirSelectorCarta } from "./selector-carta-estado";

@@ -1,8 +1,7 @@
 import "server-only";
 import { cuposDeSeccionActivos, precioDePromo, promoVigenteEl, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
 import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
-import { pediblesDeEntrada, type CupoPromoDefinicion } from "@/core/pos/public";
-import type { CupoDePromo } from "@/core/pos/promo-combo";
+import { pediblesDeEntrada, type CupoDePromo, type CupoPromoDefinicion } from "@/core/pos/public";
 import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { cargarEntradasDePromoParaVender, type CupoDeEntradasLeido, type EntradasDePromoParaVender } from "@/server/lecturas/pos/entradas-de-promo-para-vender";
 import { modulosDelPosDeSucursal, type ModulosDelPos } from "@/server/lecturas/pos/modulos-del-pos";
