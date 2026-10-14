@@ -44,6 +44,8 @@ export async function cargarCartaParaMantener(db: Db, sucursalId: string): Promi
       id: p.id,
       nombre: p.nombre,
       precioAca: precioDeCarta(Number(p.precioVenta), locales.get(p.id)),
+      precioDeLista: Number(p.precioVenta),
+      conPrecioLocal: locales.get(p.id)?.habilitado === true,
       disponibleAca: disponibles.get(p.id) === true,
       esAnclaDeAdicional: p.opcionQueRespalda !== null,
       agrupadoEn: p.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre ?? null,

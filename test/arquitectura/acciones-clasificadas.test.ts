@@ -18,6 +18,8 @@ const SIN_CASO_DE_USO = "todavía sin caso de uso: `accion-migrada-sin-orquestac
 const ACCIONES_SIN_CASO_DE_USO: Record<string, string> = {
   "auth/empresa-activa.ts": SIN_CASO_DE_USO,
   "auth/sucursal-activa.ts": SIN_CASO_DE_USO,
+  // CARTA-MANT F4: el aviso de «En toda la empresa» de «Precios» (en qué sucursales se ve el precio nuevo).
+  "carta/precios-en-sucursales.ts": SOLO_LECTURA,
   "catalogo/proveedor-por-producto.ts": SIN_CASO_DE_USO,
   "catalogo/recetas.ts": "la escritura de la receta ya vive en casos-de-uso/guardar-version-de-receta.ts (lo exige escrituras-auditadas.test.ts); el resto son lecturas.",
   "movimientos/lecturas-conteo-fisico.ts": SOLO_LECTURA,

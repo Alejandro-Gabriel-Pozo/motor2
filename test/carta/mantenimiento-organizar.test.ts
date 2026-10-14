@@ -18,6 +18,8 @@ const producto = (id: string, cambios: Partial<ProductoParaMantener> = {}): Prod
   id,
   nombre: id,
   precioAca: 1000,
+  precioDeLista: 1000,
+  conPrecioLocal: false,
   disponibleAca: true,
   esAnclaDeAdicional: false,
   agrupadoEn: null,

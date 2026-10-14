@@ -586,6 +586,7 @@
   gap: 12px;
   border-top: 3px solid var(--sel);
 }
+.hoja h2,
 .hoja h3 {
   margin: 0;
   font-size: 18px;
@@ -637,4 +638,71 @@
 }
 .formulario h2 {
   font-size: 18px;
+}
+
+/* F4 «Precios»: la hoja de «Ajustar sección» / «Cambiar precio» (prototipo: .field, .inp.big, .preview, .btns). */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.enLinea {
+  display: flex;
+  gap: 8px;
+}
+.enLinea > input {
+  flex: 1;
+  min-width: 0;
+}
+.enLinea .seg {
+  min-width: 110px;
+}
+.grande {
+  font-size: 26px;
+  font-weight: 600;
+  font-family: var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
+}
+.vistaDePrecios {
+  border: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.vistaDePrecios div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line2);
+}
+.vistaDePrecios div:last-child {
+  border-bottom: 0;
+}
+.vistaDePrecios b {
+  font-family: var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.listaDeAviso {
+  margin: 6px 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+}
+.confirmar {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-height: 44px;
+  padding-top: 6px;
+  font-weight: 600;
+}
+.confirmar input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+.botones {
+  display: flex;
+  gap: 8px;
+}
+.botones .boton {
+  flex: 1;
 }

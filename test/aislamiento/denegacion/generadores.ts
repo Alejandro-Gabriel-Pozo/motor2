@@ -108,6 +108,15 @@ const completos: Record<string, Valor> = {
       intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, cambios: [{ productoId: c.propio.productoId, disponible: c.escenario === "controlMutacion" }] }]),
       intento(c, ["productoId"], [{ sucursalId: c.propio.sucursalId, cambios: [{ productoId: k.productoId, disponible: c.escenario === "controlMutacion" }] }]),
     ),
+  // CARTA-MANT F4: «Precios». El `pv` del mundo vale 1000 de lista y tiene en cada sucursal un precio local habilitado de 1234 (`sembrarContenido`; la capacidad `precio_local` está prendida por
+  // defecto): el control positivo lo lleva a 1500 con el precio visto correcto (1234 en esta sucursal; 1000 el de lista en «toda la empresa»).
+  "accion|actions/carta/precios.ts|ajustarPreciosDeLaCarta": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, ajuste: { direccion: "subir", modo: "precio", valor: "1500", redondeo: 0 }, items: [{ productoId: c.propio.productoPvId, precioVisto: "1234.00" }] }]),
+      intento(c, ["productoPvId"], [{ sucursalId: c.propio.sucursalId, ajuste: { direccion: "subir", modo: "precio", valor: "1500", redondeo: 0 }, items: [{ productoId: k.productoPvId, precioVisto: "1234.00" }] }]),
+    ),
+  "accion|actions/carta/precios.ts|ajustarPreciosDeLaEmpresa": (k, c) =>
+    conVariantes(intento(c, ["productoPvId"], [{ ajuste: { direccion: "subir", modo: "precio", valor: "1500", redondeo: 0 }, items: [{ productoId: k.productoPvId, precioVisto: "1000.00" }], confirmado: true }])),
   "accion|actions/carta/generos.ts|guardarGeneroCarta": (k) => [{ id: k.generoCartaId, nombre: "Nombre nuevo" }],
   "accion|actions/carta/items-agrupados.ts|guardarItemAgrupadoCarta": (k, c) =>
     conVariantes(

@@ -9,6 +9,9 @@ import { cargarAdminCarta, origenesDeCopiaVisibles } from "@/server/consultas/ca
 import { cargarCartaParaMantener } from "@/server/consultas/carta/mantenimiento";
 import { saldosDeLosIngredientesDeLosPlatos } from "@/server/consultas/carta/avisos-de-stock";
 import { agregarProductoALaCarta, fijarDisponibilidadDeHoy, quitarProductoDeLaCarta } from "@/server/actions/carta/mantenimiento";
+import { ajustarPreciosDeLaCarta, ajustarPreciosDeLaEmpresa } from "@/server/actions/carta/precios";
+import { avisoDePrecioDeEmpresa } from "@/server/actions/carta/precios-en-sucursales";
+import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 import { actualizarVisibleEnCarta } from "@/server/actions/carta/contenido-producto";
 import { actualizarActivaSeccionCarta } from "@/server/actions/carta/secciones";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
@@ -38,6 +41,11 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 };
 
 const PESTANAS: readonly PestanaDeMantenimiento[] = ["hoy", "precios", "visibilidad"];
+/**
+ * F4 «Precios» (ADR-034): el interruptor para apagarlo sin tocar nada más. En `false` la pestaña queda de solo lectura («próximamente») y la pantalla no ofrece ajustar; las acciones
+ * (`src/server/actions/carta/precios.ts`) siguen exigiendo sus permisos de siempre.
+ */
+const PRECIOS_EDITABLES = true;
 const pesos = (n: number) => `$ ${n.toLocaleString("es-AR")}`;
 
 export default async function CartaPage({ searchParams }: { searchParams: Promise<{ [clave: string]: string | string[] | undefined }> }) {
@@ -48,13 +56,16 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
-  const [nivelHoy, nivelContenido, nivelSecciones, nivelCopiar] = await Promise.all([
+  const [nivelHoy, nivelContenido, nivelSecciones, nivelCopiar, nivelPrecioLocal, nivelProductoEditar, camposSensibles] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_contenido_producto", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_secciones", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_copiar_de_sucursal", ctx.db),
+    PRECIOS_EDITABLES ? obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "precio_local", ctx.db) : null,
+    PRECIOS_EDITABLES ? obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db) : null,
+    PRECIOS_EDITABLES ? puedeEditarCamposSensiblesDelProducto(ctx) : false,
   ]);
-  const puede = { hoy: nivelHoy.editar, contenido: nivelContenido.editar, secciones: nivelSecciones.editar };
+  const puedeBase = { hoy: nivelHoy.editar, contenido: nivelContenido.editar, secciones: nivelSecciones.editar };
   const puedeCopiarCarta = nivelCopiar.editar;
 
   const pedido = (await searchParams).nivel;
@@ -80,13 +91,21 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
     })
   );
   const sucursalId = ctx.sucursalId;
+  // F4 «Precios»: en esta sucursal, su precio local (`precio_local` y la capacidad prendida, la misma lectura de la carta); en toda la empresa, el precio de lista (las dos claves de Catálogo).
+  const puede = {
+    ...puedeBase,
+    preciosLocal: nivelPrecioLocal?.editar === true && datos.precioLocalActivo,
+    preciosEmpresa: nivelProductoEditar?.editar === true && camposSensibles,
+  };
+  type AjusteDeLaPantalla = { direccion: "subir" | "bajar"; modo: "porcentaje" | "monto" | "precio"; valor: string; redondeo: number };
+  type Vistos = { productoId: string; precioVisto: string }[];
 
   return (
     <div className={s.raiz}>
       <EncabezadoDeCarta puerta="mantenimiento" subtitulo="Mantenimiento" sucursal={ctx.sucursalNombre} />
       <div className={s.contenido}>
         <div className={s.pad}>
-          {!(puede.hoy || puede.contenido || puede.secciones) && <AvisoSoloLectura />}
+          {!(puede.hoy || puede.contenido || puede.secciones || puede.preciosLocal || puede.preciosEmpresa) && <AvisoSoloLectura />}
 
           {/* Carta PROPIA de cada sucursal (ADR-009, C3/C4): una sucursal sin carta propia no muestra nada hasta que la arma o la copia de otra. */}
           {datos.cartaVacia && (
@@ -142,7 +161,16 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
               id: x.id,
               nombre: x.nombre,
               activa: x.activa,
-              productos: x.productos.map((p) => ({ id: p.id, nombre: p.nombre, precio: pesos(p.precioAca), disponible: p.disponibleAca, visible: p.contenido?.visibleEnCarta === true })),
+              productos: x.productos.map((p) => ({
+                id: p.id,
+                nombre: p.nombre,
+                precio: pesos(p.precioAca),
+                disponible: p.disponibleAca,
+                visible: p.contenido?.visibleEnCarta === true,
+                precioVisto: p.precioAca.toFixed(2),
+                precioDeListaVisto: p.precioDeLista.toFixed(2),
+                conPrecioLocal: p.conPrecioLocal,
+              })),
             }))}
             ocultosSinSeccion={carta.sinSeccion.map((p) => ({ id: p.id, nombre: p.nombre }))}
             fueraDeCarta={carta.fueraDeCarta.map((p) => ({ id: p.id, nombre: p.nombre, precio: pesos(p.precioAca), vistaPrevia: p.vistaPrevia ?? "Sin opciones." }))}
@@ -167,6 +195,18 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
               quitar: async (productoId: string) => {
                 "use server";
                 return refrescarSiOk(await quitarProductoDeLaCarta({ sucursalId, productoId, confirmado: false }));
+              },
+              ajustarLocal: async (ajuste: AjusteDeLaPantalla, items: Vistos) => {
+                "use server";
+                return refrescarSiOk(await ajustarPreciosDeLaCarta({ sucursalId, ajuste, items }));
+              },
+              ajustarEmpresa: async (ajuste: AjusteDeLaPantalla, items: Vistos, confirmado: boolean) => {
+                "use server";
+                return refrescarSiOk(await ajustarPreciosDeLaEmpresa({ ajuste, items, confirmado }));
+              },
+              leerAvisoDeEmpresa: async (productoIds: string[]) => {
+                "use server";
+                return avisoDePrecioDeEmpresa(productoIds);
               },
             }}
           />
