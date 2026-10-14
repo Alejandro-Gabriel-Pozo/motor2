@@ -15,7 +15,7 @@ import { redondearMoneda } from "@/core/moneda";
  *  - la «ninguna» de un adicional («Sin extras») no se muestra: no es algo que el cliente pida;
  *  - un grupo que se queda sin nada que mostrar no sale;
  *  - lo agotado hoy en la sucursal NO llega (lo saca `resumenDePrecios`), y un producto con un grupo obligatorio sin nada para elegir sale de la carta (`vendible: false` → `null`).
- * Los grupos de tamaños los dibuja la carta como una lista con puntitos; los recargos de todos los demás grupos, en una sola línea «Sumá: …».
+ * Los grupos de tamaños los dibuja la carta como una lista con puntitos; los recargos de todos los demás grupos, en una sola línea «Adicionales: …».
  */
 
 /** Lo que este módulo lee del resumen de precios (estructural: `ResumenDePrecios` de `core/pos` cumple esta forma). */
