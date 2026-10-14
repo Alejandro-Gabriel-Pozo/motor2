@@ -41,3 +41,20 @@ export async function cambiarVigenciaDePromo(
   });
   return count;
 }
+
+/** Un plato del día nuevo de un lugar DEL_DIA en UNA sucursal y fecha. Devuelve el id. */
+export async function crearPlatoDelDia(
+  db: Prisma.TransactionClient,
+  args: { cupoId: string; sucursalId: string; fecha: Date; productoId: string; actualizadoPorId: string; ahora: Date },
+): Promise<{ id: string }> {
+  const creado = await db.entradaDelDiaDeCupo.create({
+    data: { cupoId: args.cupoId, sucursalId: args.sucursalId, fecha: args.fecha, productoId: args.productoId, actualizadoPorId: args.actualizadoPorId, creadoEn: args.ahora, actualizadoEn: args.ahora },
+    select: { id: true },
+  });
+  return { id: creado.id };
+}
+
+/** Prende o apaga un plato del día (quién lo hizo y cuándo quedan en la fila). */
+export async function fijarActivaDePlatoDelDia(db: Prisma.TransactionClient, args: { id: string; activa: boolean; actualizadoPorId: string; ahora: Date }): Promise<void> {
+  await db.entradaDelDiaDeCupo.update({ where: { id: args.id }, data: { activa: args.activa, actualizadoPorId: args.actualizadoPorId, actualizadoEn: args.ahora } });
+}

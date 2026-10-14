@@ -78,3 +78,5 @@ export type { EntradaPortalCarta } from "./portal";
 // GO-3b (ADR-032, D-7): la vigencia de una promo (el guard de la administración la valida; la venta la evalúa al agregar).
 export { TODOS_LOS_DIAS, mascaraDeDias, validarVigenciaDePromo } from "./vigencia-de-promo";
 export type { VigenciaDePromo } from "./vigencia-de-promo";
+// GO-3b (ADR-032, D-1): la fecha del menú del día (de hoy a hoy + 13, en la zona de la empresa).
+export { validarFechaDeMenuDelDia } from "./menu-del-dia";

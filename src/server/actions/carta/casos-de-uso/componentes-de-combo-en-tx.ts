@@ -4,7 +4,10 @@ import type { OpcionDeConfiguracionFija } from "@/core/features/carta/combos.sch
 import { fracaso, type Fracaso } from "@/core/resultado-caso";
 import { claveDeConfiguracion, rechazoDeComponenteDeCombo, revisarAlicuotasDeCombo, type CodigoDeComponenteDeCombo } from "@/core/pos/public";
 import { armarLineaConfigurada } from "@/core/pos/public-servidor";
-import { cargarAlicuotasPosiblesDeLugares, cargarProductosComoComponentes, type LugaresDeCombo, type ProductoComponenteLeido } from "@/server/lecturas/carta/componentes-de-promo";
+import { redondearMoneda } from "@/core/moneda";
+import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
+import { cargarAlicuotasPosiblesDeLugares, cargarLugaresActivosDePromo, cargarProductosComoComponentes, type LugaresDeCombo, type ProductoComponenteLeido } from "@/server/lecturas/carta/componentes-de-promo";
+import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 
 /**
  * Lo que los casos de uso de los combos y del menú del día (GO-3b, ADR-032) validan DENTRO de su transacción SERIALIZABLE, compartido (no es un caso de uso: ninguna Server Action lo importa).
@@ -28,7 +31,8 @@ export interface ComponenteValidadoEnTx {
 
 export async function validarComponenteEnTx(
   tx: Tx,
-  args: { sucursalId: string; productoId: string; opciones: readonly OpcionDeConfiguracionFija[]; etiqueta: string },
+  /** `precioDeLaSucursal`: el precio base es el de la sucursal (local si rige, `resolverPrecioVenta`), para lo que se carga en una sucursal (el plato del día); si no, el de la empresa. */
+  args: { sucursalId: string; productoId: string; opciones: readonly OpcionDeConfiguracionFija[]; etiqueta: string; precioDeLaSucursal?: boolean },
 ): Promise<{ ok: true; componente: ComponenteValidadoEnTx } | Fracaso<CodigoDeValidacion>> {
   const producto = (await cargarProductosComoComponentes(tx, { sucursalId: args.sucursalId, productoIds: [args.productoId] })).get(args.productoId);
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró ese producto.");
@@ -39,10 +43,11 @@ export async function validarComponenteEnTx(
 
   const clave = claveDeConfiguracion(args.opciones);
   if (clave === null) return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}»: la configuración repite una opción o tiene una cantidad fuera de 1 a 10.`);
-  let precioDeLista = producto.precioVenta;
+  const precioBase = args.precioDeLaSucursal ? redondearMoneda(await resolverPrecioVenta(args.sucursalId, producto.id, producto.precioVenta, tx)) : producto.precioVenta;
+  let precioDeLista = precioBase;
   const grupos = producto.opciones.grupos.map((g) => ({ ...g, opciones: g.opciones.map((o) => ({ ...o, apagadaEnSucursal: false })) }));
   if (grupos.length > 0 || args.opciones.length > 0) {
-    const armada = armarLineaConfigurada({ grupos, elegidas: args.opciones, precioBase: producto.precioVenta, descuentoDeProducto: null, cantidad: 1 });
+    const armada = armarLineaConfigurada({ grupos, elegidas: args.opciones, precioBase, descuentoDeProducto: null, cantidad: 1 });
     if (!armada.ok) return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}» ${args.etiqueta}: ${armada.mensaje}`);
     if (armada.linea !== null && armada.linea.adicionales.length > 0) {
       return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}»: un combo no lleva adicionales (se cobran aparte); sacá el adicional de la configuración.`);
@@ -71,4 +76,21 @@ export async function nombreDeLaEntrada(tx: Tx, nombreDelProducto: string, opcio
   const opciones = await tx.opcionDeGrupo.findMany({ where: { id: { in: [...opcionIds] } }, select: { id: true, nombre: true } });
   const porId = new Map(opciones.map((o) => [o.id, o.nombre]));
   return `«${[nombreDelProducto, ...opcionIds.map((id) => porId.get(id) ?? id)].join(" · ")}»`;
+}
+
+/**
+ * GO-3b (D5): un producto como PLATO DEL DÍA de un lugar DEL_DIA en la sucursal activa. Lo mismo que cualquier componente (`validarComponenteEnTx`, sin configuración: un plato del día no lleva
+ * opciones, D-6), con el precio de la sucursal, más que esté DISPONIBLE en la sucursal y las alícuotas contra los demás componentes posibles del menú (en la carta de esta sucursal).
+ */
+export async function validarPlatoDelDiaEnTx(
+  tx: Tx,
+  args: { sucursalId: string; sucursalNombre: string; promoCartaId: string; productoId: string; hoy: string },
+): Promise<{ ok: true; producto: ProductoComponenteLeido } | Fracaso<CodigoDeValidacion | "PRODUCTO_NO_DISPONIBLE" | "COMBO_ALICUOTAS_DISTINTAS">> {
+  const validado = await validarComponenteEnTx(tx, { sucursalId: args.sucursalId, productoId: args.productoId, opciones: [], etiqueta: "como plato del día (un plato del día no lleva opciones)", precioDeLaSucursal: true });
+  if (!validado.ok) return validado;
+  const { producto } = validado.componente;
+  if (!(await productoDisponibleEn(args.sucursalId, producto.id, tx))) return fracaso("PRODUCTO_NO_DISPONIBLE", `«${producto.nombre}» no está disponible en «${args.sucursalNombre}».`);
+  const alicuotas = await revisarAlicuotasEnTx(tx, { lugares: await cargarLugaresActivosDePromo(tx, args.promoCartaId), desdeDia: args.hoy, sucursalIds: [args.sucursalId], producto });
+  if (!alicuotas.ok) return alicuotas;
+  return { ok: true, producto };
 }

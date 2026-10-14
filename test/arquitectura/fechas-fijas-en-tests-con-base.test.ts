@@ -22,6 +22,8 @@ const USA_LA_BASE = /from\s+["'][^"']*setup\/(?:test-db|cliente-duenio|cliente-p
 const VENCIMIENTO_DE_LOTE =
   "fechas de vencimiento de LOTE: son la clave que agrupa el stock en el Kardex y los tests las comparan entre sí; ningún src/ compara loteVencimiento con la hora actual (verificado al crear la regla)";
 const EXCEPCIONES: Record<string, string> = {
+  // GO-3b (D5): la fecha fija es el «ahora» INYECTADO del caso de uso (las 23:30 del 13/10/2026 en Buenos Aires = 02:30 del 14 en UTC) y las demás fechas del caso se cuentan desde él: no depende del reloj y no se vence.
+  "carta/menu-del-dia-go3.test.ts": "GO-3b: el «ahora» inyectado (23:30 del 13/10 en ART, 02:30 del 14 en UTC) para probar que «hoy» es el de la zona de la empresa; las fechas del caso se cuentan desde él, no desde el reloj.",
   "movimientos/compras-anular.test.ts": VENCIMIENTO_DE_LOTE,
   "movimientos/venta-reparto-entre-lineas.test.ts": VENCIMIENTO_DE_LOTE,
   "pos/cerrar-cuenta-habitual.test.ts": VENCIMIENTO_DE_LOTE,

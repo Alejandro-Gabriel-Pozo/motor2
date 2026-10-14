@@ -4,6 +4,7 @@ import { crearEmpresa } from "../../setup/crear-empresa";
 import { crearMembresia } from "../../setup/membresia";
 import { activarTodosLosModulos } from "../../setup/modulos";
 import { enElPasado, HORA_MS, DIA_MS } from "../../setup/tiempo";
+import { ZONA_ARGENTINA, diaDeCalendario, fechaDeColumnaDate, sumarDias } from "../../../src/core/tiempo/zona-horaria";
 
 /**
  * El MUNDO de la matriz de denegación por defecto (GT-3b): lo que se siembra UNA vez por archivo de test (las puertas que se prueban no escriben nada, y la matriz lo verifica con la huella de toda la base)
@@ -117,7 +118,12 @@ export interface KitDeSucursal {
   /** Una invitación pendiente con acceso a esta sucursal (y el acceso mismo). */
   invitacionId: string;
   invitacionDeSucursalId: string;
+  /** GO-3b: el plato del día de MAÑANA (`DIA_DEL_PLATO_DEL_MUNDO`) del lugar DEL_DIA del combo de la empresa, en esta sucursal (el `pv`). */
+  platoDelDiaId: string;
 }
+
+/** GO-3b: el día del plato del día que siembra el mundo (mañana en la zona de las empresas del mundo: siempre se puede quitar o copiar). */
+export const DIA_DEL_PLATO_DEL_MUNDO = sumarDias(diaDeCalendario(new Date(), ZONA_ARGENTINA), 1);
 
 /** Los campos que son de UNA sucursal (los demás del kit son de la empresa): en el escenario «otra sucursal de la misma empresa» solo estos son ajenos. Exhaustivo por construcción (`Record<keyof KitDeSucursal, true>`). */
 const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
@@ -160,6 +166,7 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   miembroId: true,
   invitacionId: true,
   invitacionDeSucursalId: true,
+  platoDelDiaId: true,
 };
 export const CAMPOS_DE_SUCURSAL: ReadonlySet<string> = new Set(Object.keys(CAMPOS_DE_SUCURSAL_REGISTRO));
 
@@ -419,6 +426,10 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   // Opciones de venta en la sucursal (GO-2a): la medida con precio propio en la grilla (la huella numérica en S2 y E2) y apagada (quien la apagó es el miembro: su id lleva el marcador).
   await db.precioLocalDeOpcion.create({ data: { id: id("precio-local-opcion"), empresaId, sucursalId, productoId: k.productoConOpcionesId, opcionId: k.opcionMedidaId, precio: huella > 0 ? huella : 1600 } });
   await db.opcionApagadaEnSucursal.create({ data: { id: id("opcion-apagada"), empresaId, sucursalId, opcionId: k.opcionMedidaId, apagada: true, actualizadoPorId: miembro.id } });
+  // GO-3b: el plato del día de mañana del combo de la empresa, en esta sucursal (quien lo cargó es el miembro: su id lleva el marcador).
+  const platoDelDia = await db.entradaDelDiaDeCupo.create({
+    data: { id: id("plato-del-dia"), empresaId, cupoId: k.cupoDelDiaId, sucursalId, fecha: fechaDeColumnaDate(DIA_DEL_PLATO_DEL_MUNDO), productoId: k.productoPvId, actualizadoPorId: miembro.id },
+  });
 
   // Una invitación con acceso a esta sucursal y un registro de auditoría de la sucursal.
   const invitacion = await db.invitacion.create({
@@ -467,6 +478,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     miembroId: miembro.id,
     invitacionId: invitacion.id,
     invitacionDeSucursalId: invitacionSucursal.id,
+    platoDelDiaId: platoDelDia.id,
   };
 }
 

@@ -367,6 +367,11 @@ const ACCIONES_CON_CASO_DE_USO = [
       "GO-3b (ADR-032, D4a y D4b): agregarEntradaDeCupo, actualizarActivaEntradaDeCupo y guardarVigenciaPromoCarta (carta_promo_definir) → carta/casos-de-uso/{agregar-entrada-de-cupo,actualizar-activa-entrada-de-cupo,guardar-vigencia-promo-carta}.ts, con su guardComando… (core/features/carta/combos.guard.ts) dentro de conPermisoDeEmpresa. Lecturas de los componentes en server/lecturas/carta/componentes-de-promo.ts, escrituras en server/persistencia/carta/combos.ts; transacción SERIALIZABLE y auditoría en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
   },
   {
+    ruta: "src/server/actions/carta/menu-del-dia.ts",
+    motivo:
+      "GO-3b (ADR-032, D5): agregarPlatoDelDia, quitarPlatoDelDia y copiarMenuDelDiaAnterior (promo_menu_del_dia, sucursal) → carta/casos-de-uso/{agregar-plato-del-dia,quitar-plato-del-dia,copiar-menu-del-dia-anterior}.ts, con su guardComando… (eco de la sucursal activa, core/features/carta/menu-del-dia.guard.ts) dentro de conPermiso. Escrituras en server/persistencia/carta/combos.ts, SOLO en la sucursal activa; transacción SERIALIZABLE y auditoría con la sucursal en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
+  },
+  {
     ruta: "src/server/actions/carta/copiar-carta.ts",
     motivo:
       "Hito 5, bloque D (D13): copiarCartaDeSucursal (con guardComandoCopiarCartaDeSucursal: la confirmación y que el origen no sea la sucursal activa, antes de leer, con la sucursal activa del contexto) → carta/casos-de-uso/copiar-carta-de-sucursal.ts; las cuatro escrituras de la copia (género, ítem agrupado, sus opciones y los contenidos) en server/persistencia/carta/copiar-carta.ts. El origen se lee fuera de la transacción y todo lo demás, incluida la auditoría (registrarCambioAuditado con el tx del callback), va en UNA transacción SERIALIZABLE con reintento (conTransaccionSerializable) y el .catch del conflicto agotado, tal cual. Ordena que dos copias a la vez no se mezclen. La acción revalida la carta pública solo si salió bien: antes lo hacía dentro del callback, antes de confirmar (mismo precedente que fijarRendimientoLocal, H4C-5). El archivo no tiene ninguna otra mutación.",

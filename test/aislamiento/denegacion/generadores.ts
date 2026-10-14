@@ -1,4 +1,6 @@
 import { intento, variantes, type ContextoDeArgumentos, type Generadores, type Kit, type Valor } from "./argumentos";
+import { DIA_DEL_PLATO_DEL_MUNDO } from "./mundo";
+import { sumarDias } from "../../../src/core/tiempo/zona-horaria";
 
 /**
  * Los GENERADORES de argumentos de la matriz de denegación por defecto (GT-3b), solo para lo que `argumentos.ts` no deriva por nombre de parámetro: puertas con un objeto de entrada
@@ -113,6 +115,19 @@ const completos: Record<string, Valor> = {
     ),
   "accion|actions/carta/combos.ts|actualizarActivaEntradaDeCupo": (k) => [{ entradaId: k.entradaDeCupoId, activa: false }],
   "accion|actions/carta/combos.ts|guardarVigenciaPromoCarta": (k) => [{ promoCartaId: k.promoComboId, versionEsperada: 1, vigenteDesde: "2026-01-01", diasDeSemana: [0, 1, 2, 3, 4] }],
+  // GO-3b: el menú del día de la sucursal (eco de la sucursal primero). Cargar el `pv2` (con receta, disponible) el día del plato del mundo; quitar el plato del mundo; copiarlo al día siguiente.
+  "accion|actions/carta/menu-del-dia.ts|agregarPlatoDelDia": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, cupoId: c.propio.cupoDelDiaId, fecha: DIA_DEL_PLATO_DEL_MUNDO, productoId: c.propio.productoPv2Id }]),
+      intento(c, ["cupoDelDiaId"], [{ sucursalId: c.propio.sucursalId, cupoId: k.cupoDelDiaId, fecha: DIA_DEL_PLATO_DEL_MUNDO, productoId: c.propio.productoPv2Id }]),
+      intento(c, ["productoPv2Id"], [{ sucursalId: c.propio.sucursalId, cupoId: c.propio.cupoDelDiaId, fecha: DIA_DEL_PLATO_DEL_MUNDO, productoId: k.productoPv2Id }]),
+    ),
+  "accion|actions/carta/menu-del-dia.ts|quitarPlatoDelDia": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, platoId: c.propio.platoDelDiaId }]),
+      intento(c, ["platoDelDiaId"], [{ sucursalId: c.propio.sucursalId, platoId: k.platoDelDiaId }]),
+    ),
+  "accion|actions/carta/menu-del-dia.ts|copiarMenuDelDiaAnterior": (k) => [{ sucursalId: k.sucursalId, fecha: sumarDias(DIA_DEL_PLATO_DEL_MUNDO, 1) }],
   "accion|actions/carta/registro-publico.ts|guardarSucursalPublica": (k) => [k.sucursalId, { slug: "slug-nuevo", publicada: true }],
   "accion|actions/carta/secciones.ts|guardarSeccionCarta": (k) => [{ id: k.seccionCartaId, nombre: "Nombre nuevo" }],
 
