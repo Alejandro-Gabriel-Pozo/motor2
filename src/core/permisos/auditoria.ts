@@ -100,6 +100,9 @@ export const ENTIDADES_AUDITABLES = [
   "CombinacionDeProducto",
   "PrecioLocalDeCombinacion",
   "RecetaDeCombinacionVersion",
+  // CARTA-MANT (mantenimiento de la carta): «Agregar a la carta» un producto que estaba fuera de carta — `entidadId` es `${sucursalId}:${productoId}`, `campo: "visibleEnCarta"`, de `null`
+  // (no tenía contenido) a `true`, con `sucursalId`.
+  "ContenidoCartaProducto",
 ] as const;
 
 /**

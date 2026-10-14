@@ -38,3 +38,12 @@ export async function fijarVisibleEnCarta(db: Prisma.TransactionClient, args: { 
     create: { sucursalId, productoId, visibleEnCarta },
   });
 }
+
+/**
+ * CARTA-MANT («Agregar a la carta»): CREA el contenido de un producto que no tenía (visible, en su sección y con su orden; el resto vacío). `create`, no `upsert`: si otro lo creó a la vez, el
+ * único `(sucursalId, productoId)` choca (23505) y el caso de uso reintenta y relee; nunca pisa un contenido existente. Lo llama solo `casos-de-uso/agregar-producto-a-la-carta.ts`, dentro de su transacción.
+ */
+export async function crearContenidoVisibleDeProducto(db: Prisma.TransactionClient, args: { sucursalId: string; productoId: string; seccionCartaId: string; orden: number }): Promise<void> {
+  const { sucursalId, productoId, seccionCartaId, orden } = args;
+  await db.contenidoCartaProducto.create({ data: { sucursalId, productoId, visibleEnCarta: true, seccionCartaId, orden } });
+}

@@ -22,9 +22,11 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
   try {
     await page.goto("/carta");
     await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible();
-    // D3: un PV disponible acá sin contenido de carta se avisa (si no, pasaría desapercibido que no sale).
-    await expect(page.getByRole("heading", { name: /PV disponibles acá sin contenido de carta/ })).toBeVisible();
-    await expect(page.getByRole("listitem").filter({ hasText: new RegExp(`^${producto.nombre}$`) })).toBeVisible();
+    // CARTA-MANT (decisión del dueño): un PV disponible acá sin contenido de carta NO es un faltante (es el POS o el menú del día): ya no se avisa en ámbar, va plegado a «Fuera de carta».
+    await expect(page.getByRole("heading", { name: /PV disponibles acá sin contenido de carta/ })).toHaveCount(0);
+    const fueraDeCarta = page.locator("[data-fuera-de-carta]");
+    await fueraDeCarta.locator("> summary").click();
+    await expect(fueraDeCarta.locator(`[data-fuera-de-carta-producto="${producto.nombre}"]`)).toBeVisible();
 
     // 1. Sección de carta nueva.
     const nuevaSeccion = page.locator("form", { has: page.getByRole("heading", { name: "Nueva sección de carta" }) });
@@ -37,14 +39,17 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
     // Ya no existe el bloque "Qué categoría va en cada sección": la categoría no ubica nada en la carta.
     await expect(page.getByRole("heading", { name: "Qué categoría va en cada sección" })).toHaveCount(0);
 
-    // 2. Contenido de carta del PV, con su sección elegida directo. Sin imagen propia (solo la sección tiene imagen).
+    // 2. «Agregar a la carta» de un toque (CARTA-MANT): se elige la sección y el PV pasa a ella, visible y al final. Después se completa su contenido en su ficha. Sin imagen propia (solo la sección tiene imagen).
+    const enFuera = fueraDeCarta.locator(`[data-fuera-de-carta-producto="${producto.nombre}"]`);
+    await enFuera.getByRole("button", { name: /Agregar a la carta/ }).click();
+    await enFuera.getByRole("button", { name: nombreSeccion, exact: true }).click();
+    await expect(fueraDeCarta.locator("[data-resultado-pegado]")).toHaveText(`«${producto.nombre}» ya sale en la carta, al final de «${nombreSeccion}».`);
+    await expect(enFuera).toHaveCount(0);
+    await page.locator(`[data-grupo-de-la-carta="${nombreSeccion}"] > summary`).click();
     const filaProducto = page.locator(`[data-contenido-carta="${producto.nombre}"]`);
     await filaProducto.locator("summary").click();
     await expect(filaProducto.getByLabel(/^Imagen/)).toHaveCount(0);
-    // Visible sin sección: la acción lo rechaza (DA2) y el formulario no se limpia.
-    await filaProducto.getByRole("button", { name: `Guardar contenido de «${producto.nombre}»` }).click();
-    await expect(filaProducto.getByRole("alert")).toHaveText("Elegí la sección de carta donde se muestra (sin sección no puede salir en la carta).");
-    await filaProducto.getByLabel(/^Sección de carta/).selectOption({ label: nombreSeccion });
+    await expect(filaProducto.getByLabel(/^Sección de carta/)).toHaveValue((await prisma.seccionCarta.findFirstOrThrow({ where: { nombre: nombreSeccion } })).id);
     await filaProducto.getByLabel("Descripción (opcional)").fill("400 g a las brasas");
     await filaProducto.getByLabel("Tags (separados por coma)").fill("Regional, regional, Sin TACC");
     await filaProducto.getByLabel("Especial (★)").check();

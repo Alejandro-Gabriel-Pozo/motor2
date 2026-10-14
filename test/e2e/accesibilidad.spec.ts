@@ -828,9 +828,9 @@ testAutenticado(
   }
 );
 
-testAutenticado("carta: sin violaciones de axe, con formularios abiertos y el aviso en ámbar de PV sin contenido", async ({ paginaAutenticada: page, sucursalId }) => {
-  // docs/plan-carta-catalogo-2026-09-24.md, M10. Con datos en los tres bloques (sección, un PV con contenido en esa sección y otro sin él
-  // —dibuja el aviso ámbar— y una promo), y con un formulario de cada tipo desplegado: cerrado, un <details> no expone sus campos (entre
+testAutenticado("carta: sin violaciones de axe, con formularios abiertos y «Fuera de carta» desplegado", async ({ paginaAutenticada: page, sucursalId }) => {
+  // docs/plan-carta-catalogo-2026-09-24.md, M10. Con datos en los bloques (sección, un PV con contenido en esa sección y otro sin él —va a «Fuera de carta (POS y menú del día)», que desde
+  // CARTA-MANT ya no es un aviso ámbar sino un contador plegado— y una promo), y con un formulario de cada tipo desplegado: cerrado, un <details> no expone sus campos (entre
   // ellos el select "Sección de carta" del contenido, docs/plan-carta-seccion-directa-2026-09-25.md).
   const marca = `${Date.now()}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
@@ -847,8 +847,12 @@ testAutenticado("carta: sin violaciones de axe, con formularios abiertos y el av
   try {
     await page.goto("/carta");
     await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /PV disponibles acá sin contenido de carta/ })).toBeVisible();
+    // CARTA-MANT: el recuadro ámbar de «PV sin contenido» ya no existe; el producto está en «Fuera de carta», con su «Agregar a la carta» abierto (las secciones como botones).
+    await expect(page.getByRole("heading", { name: /PV disponibles acá sin contenido de carta/ })).toHaveCount(0);
+    await page.locator("[data-fuera-de-carta] > summary").click();
+    await page.locator(`[data-fuera-de-carta-producto="${sinContenido.nombre}"]`).getByRole("button", { name: /Agregar a la carta/ }).click();
     await page.locator(`[data-seccion-carta="${seccion.nombre}"] summary`).click();
+    await page.locator(`[data-grupo-de-la-carta="${seccion.nombre}"] > summary`).click();
     await page.locator(`[data-contenido-carta="${conContenido.nombre}"] summary`).click();
     await page.locator(`[data-promo-carta="${promo.titulo}"] summary`).click();
     await expect(page.locator(`[data-contenido-carta="${conContenido.nombre}"]`).getByLabel("Especial (★)")).toBeChecked();

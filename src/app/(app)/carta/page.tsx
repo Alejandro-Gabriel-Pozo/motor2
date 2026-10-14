@@ -4,8 +4,10 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
-import type { ProductoCartaAdmin } from "@/core/carta/public";
+import type { ProductoCartaAdmin, ProductoParaMantener } from "@/core/carta/public";
 import { cargarAdminCarta, origenesDeCopiaVisibles } from "@/server/consultas/carta/admin";
+import { cargarCartaParaMantener } from "@/server/consultas/carta/mantenimiento";
+import { agregarProductoALaCarta } from "@/server/actions/carta/mantenimiento";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "@/server/actions/carta/secciones";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "@/server/actions/carta/generos";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
@@ -31,13 +33,15 @@ import { cargarCombosDeLaCarta } from "@/server/consultas/carta/combos";
 import { actualizarActivaEntradaDeCupo, agregarEntradaDeCupo, guardarVigenciaPromoCarta } from "@/server/actions/carta/combos";
 import { AgregarEntradaDeLugar } from "./agregar-entrada-de-lugar";
 import { lugaresDelFormulario } from "./lugares-del-formulario";
+import { FueraDeCarta } from "./fuera-de-carta";
 
 /**
  * Admin de la carta pública (docs/plan-carta-catalogo-2026-09-24.md, M10): lo que muestra la carta pública interna
- * (ADR-006). Tres bloques: secciones de carta, el contenido de carta de cada PV disponible en esta sucursal (con
- * su sección de carta, elegida DIRECTO — docs/plan-carta-seccion-directa-2026-09-25.md —, y el aviso de los que todavía no tienen
- * contenido: sin contenido no salen, decisión D3) y las promos (de la empresa, prendidas o no en la sucursal activa). El nombre, el precio y la disponibilidad de
- * cada producto se siguen editando en Catálogo; la Categoría de producto no ubica nada en la carta.
+ * (ADR-006). Bloques: secciones de carta, géneros, los PRODUCTOS EN LA CARTA de esta sucursal agrupados por sección (cada uno con su contenido, su sección
+ * elegida DIRECTO — docs/plan-carta-seccion-directa-2026-09-25.md —) y, plegado, «Fuera de carta (POS y menú del día)», y las promos (de la empresa, prendidas o no en la
+ * sucursal activa). CARTA-MANT (decisión del dueño, 2026-10-14): un PV sin contenido de carta NO es un faltante —es el menú del día o algo que se vende solo en el POS, que nunca
+ * sale en la carta pública—, así que ya no se avisa en ámbar: es un contador informativo con buscador y «Agregar a la carta» de un toque. El ancla de un adicional no figura en
+ * ninguna lista (`organizarCartaParaMantener`). El nombre, el precio y la disponibilidad de cada producto se siguen editando en Catálogo; la Categoría de producto no ubica nada en la carta.
  *
  * Todas las mutaciones pasan por las Server Actions de src/server/actions/carta (una clave por bloque: carta_secciones, carta_generos,
  * carta_contenido_producto y, para las promos, carta_promo_definir / carta_promo_activar / carta_promo_precio_local); el refresco lo piden los
@@ -125,10 +129,25 @@ export default async function CartaPage() {
     const enCero = ingredientes.filter((i) => i.saldo <= 0);
     return enCero.length ? [[id, enCero] as const] : [];
   }));
+  // CARTA-MANT: en qué lista va cada producto (por sección, ocultos sin sección, dentro de un agrupado, «Fuera de carta»; el ancla de un adicional en ninguna).
+  const carta = await cargarCartaParaMantener(ctx.db, ctx.sucursalId);
+  const sucursalId = ctx.sucursalId;
+  const adminPorId = new Map(datos.productos.map((p) => [p.id, p]));
   const ubicacion: UbicacionEnCarta = {
     secciones: datos.secciones.map((s) => ({ id: s.id, nombre: s.nombre, activa: s.activa })),
     cantidadPorSeccion: Object.fromEntries(datos.secciones.map((s) => [s.id, s.cantidadItems])),
     generos: datos.generos.map((g) => ({ id: g.id, nombre: g.nombre, activo: g.activo })),
+  };
+
+  /** El renglón de un producto: con su ficha de contenido si está disponible acá (lo que lee `cargarAdminCarta`); si no, solo su nombre. */
+  const filaDeProducto = (p: ProductoParaMantener) => {
+    const admin = adminPorId.get(p.id);
+    if (admin) return <ContenidoProducto key={p.id} producto={admin} ubicacion={ubicacion} puedeEditar={puedeEditarContenido} puedeDescuento={puedeDescuento} precioLocalActivo={datos.precioLocalActivo} />;
+    return (
+      <li key={p.id} className="rounded border p-3 text-sm" data-contenido-carta={p.nombre}>
+        <span className="font-medium">{p.nombre}</span> · no disponible en esta sucursal
+      </li>
+    );
   };
 
   return (
@@ -327,26 +346,16 @@ export default async function CartaPage() {
         )}
       </section>
 
-      {/* 3. Contenido de carta por PV */}
+      {/* 3. Productos en la carta (CARTA-MANT F1): lo que ve el cliente, por sección; abajo, plegado, lo que está «Fuera de carta» (el POS y el menú del día), que NO es un faltante. */}
       <section aria-labelledby="titulo-contenido" className="flex flex-col gap-3">
         <h2 id="titulo-contenido" className="text-lg font-medium">
-          Contenido de carta de cada producto de venta
+          Productos en la carta
         </h2>
         <p className="text-sm text-neutral-500">
-          Solo los productos de venta disponibles en esta sucursal. Un producto sale en la carta cuando tiene contenido cargado, está marcado como visible y
-          está en una sección de carta activa.
+          Lo que ve el cliente en la carta pública de esta sucursal, por sección. Tocá una sección para ver sus productos y uno para editar su contenido. El nombre, el precio y la
+          disponibilidad se editan en Catálogo.
         </p>
 
-        {datos.sinContenido.length > 0 && (
-          <div className="rounded border border-amber-300 p-3 dark:border-amber-700">
-            <h3 className="text-sm font-medium text-amber-700 dark:text-amber-600">PV disponibles acá sin contenido de carta (no salen en la carta)</h3>
-            <ul className="mt-1 list-disc pl-5 text-sm">
-              {datos.sinContenido.map((p) => (
-                <li key={p.id}>{p.nombre}</li>
-              ))}
-            </ul>
-          </div>
-        )}
         {datos.visiblesSinSeccion.length > 0 && (
           <div className="rounded border border-amber-300 p-3 dark:border-amber-700">
             <h3 className="text-sm font-medium text-amber-700 dark:text-amber-600">Visibles pero sin sección de carta activa (no salen en la carta)</h3>
@@ -382,12 +391,30 @@ export default async function CartaPage() {
           </div>
         )}
 
-        <ul className="flex flex-col gap-2">
-          {datos.productos.map((p) => (
-            <ContenidoProducto key={p.id} producto={p} ubicacion={ubicacion} puedeEditar={puedeEditarContenido} puedeDescuento={puedeDescuento} precioLocalActivo={datos.precioLocalActivo} />
-          ))}
-          {!datos.productos.length && <li className="text-sm text-neutral-500">No hay productos de venta disponibles en esta sucursal.</li>}
-        </ul>
+        {carta.secciones.map((s) => (
+          <GrupoDeLaCarta
+            key={s.id}
+            nombre={s.nombre}
+            detalle={s.activa ? null : "sección apagada: no sale en la carta"}
+            productos={s.productos}
+            vacio="Todavía no tiene productos en esta sucursal."
+            fila={(p) => filaDeProducto(p)}
+          />
+        ))}
+        {carta.sinSeccion.length > 0 && <GrupoDeLaCarta nombre="Ocultos, sin sección" detalle={null} productos={carta.sinSeccion} vacio="" fila={(p) => filaDeProducto(p)} />}
+        {carta.enAgrupados.length > 0 && (
+          <GrupoDeLaCarta nombre="Dentro de un ítem agrupado" detalle="salen en la carta dentro de su agrupado" productos={carta.enAgrupados} vacio="" fila={(p) => filaDeProducto(p)} />
+        )}
+
+        <FueraDeCarta
+          productos={carta.fueraDeCarta.map((p) => ({ id: p.id, nombre: p.nombre, precioAca: p.precioAca }))}
+          secciones={seccionesActivas.map((s) => ({ id: s.id, nombre: s.nombre }))}
+          puedeAgregar={puedeEditarContenido}
+          agregar={async (productoId: string, seccionCartaId: string) => {
+            "use server";
+            return refrescarSiOk(await agregarProductoALaCarta({ sucursalId, productoId, seccionCartaId }));
+          }}
+        />
       </section>
 
       {/* 4. Promos (de la empresa; cada sucursal las prende y, si quiere, les pone su precio) */}
@@ -677,6 +704,42 @@ export default async function CartaPage() {
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * CARTA-MANT: un grupo plegado de la carta (una sección, los ocultos sin sección o los que están dentro de un agrupado): el nombre con cuántos productos tiene (y cuántos ocultos) en el resumen,
+ * y adentro el renglón de cada uno. Plegado por defecto, como en el prototipo («tocá una sección para ver sus productos»).
+ */
+function GrupoDeLaCarta({
+  nombre,
+  detalle,
+  productos,
+  vacio,
+  fila,
+}: {
+  nombre: string;
+  detalle: string | null;
+  productos: ProductoParaMantener[];
+  vacio: string;
+  fila: (p: ProductoParaMantener) => React.ReactNode;
+}) {
+  const ocultos = productos.filter((p) => p.contenido && !p.contenido.visibleEnCarta).length;
+  return (
+    <details className="rounded border" data-grupo-de-la-carta={nombre}>
+      <summary className="flex min-h-11 cursor-pointer flex-wrap items-baseline gap-x-2 px-3 py-2">
+        <span className="font-medium [overflow-wrap:anywhere]">{nombre}</span>
+        <span className="text-sm text-neutral-600 dark:text-neutral-400">
+          {productos.length} producto{productos.length === 1 ? "" : "s"}
+          {ocultos ? ` · ${ocultos} oculto${ocultos === 1 ? "" : "s"}` : ""}
+          {detalle ? ` · ${detalle}` : ""}
+        </span>
+      </summary>
+      <ul className="flex flex-col gap-2 border-t p-3">
+        {productos.map(fila)}
+        {!productos.length && vacio && <li className="text-sm text-neutral-500">{vacio}</li>}
+      </ul>
+    </details>
   );
 }
 

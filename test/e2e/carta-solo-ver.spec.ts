@@ -104,6 +104,8 @@ test("un rol que solo VE la carta ve secciones, contenido y promos en /carta com
     await expect(seccion.locator("[data-solo-lectura]")).toContainText(`Descripción de sección ${carta.marca}`);
     await expect(seccion.locator("[data-solo-lectura]")).toContainText("Del horno");
 
+    // CARTA-MANT: los productos van agrupados por sección (plegada).
+    await main.locator(`[data-grupo-de-la-carta="${carta.seccion.nombre}"] > summary`).click();
     const contenido = main.locator(`[data-contenido-carta="${carta.suelto.nombre}"]`);
     await contenido.locator("summary").click();
     const datosContenido = contenido.locator("[data-solo-lectura]").first();
@@ -117,7 +119,8 @@ test("un rol que solo VE la carta ve secciones, contenido y promos en /carta com
     await expect(promo.locator("[data-solo-lectura]").filter({ hasText: `Descripción de promo ${carta.marca}` })).toBeVisible();
 
     // …y no hay nada para editar: ni campos ni botones, ni las altas.
-    await expect(main.locator("input, textarea, select"), "no tenía que haber ningún campo editable").toHaveCount(0);
+    // El buscador de «Fuera de carta» (CARTA-MANT) solo filtra la lista en el navegador: no edita nada.
+    await expect(main.locator("input:not([type=search]), textarea, select"), "no tenía que haber ningún campo editable").toHaveCount(0);
     await expect(main.getByRole("button", { name: BOTONES_DE_EDICION }), "no tenía que haber botones de edición").toHaveCount(0);
     await expect(main.getByRole("heading", { name: "Nueva sección de carta" })).toHaveCount(0);
     await expect(main.getByRole("heading", { name: "Nueva promo" })).toHaveCount(0);

@@ -377,6 +377,12 @@ const ACCIONES_CON_CASO_DE_USO = [
     motivo:
       "GO-3b (ADR-032, D5): agregarPlatoDelDia, quitarPlatoDelDia y copiarMenuDelDiaAnterior (promo_menu_del_dia, sucursal) → carta/casos-de-uso/{agregar-plato-del-dia,quitar-plato-del-dia,copiar-menu-del-dia-anterior}.ts, con su guardComando… (eco de la sucursal activa, core/features/carta/menu-del-dia.guard.ts) dentro de conPermiso. Escrituras en server/persistencia/carta/combos.ts, SOLO en la sucursal activa; transacción SERIALIZABLE y auditoría con la sucursal en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
   },
+  // CARTA-MANT (mantenimiento de la carta): nace migrado.
+  {
+    ruta: "src/server/actions/carta/mantenimiento.ts",
+    motivo:
+      "CARTA-MANT (ADR-030, nota CARTA-MANT): agregarProductoALaCarta (carta_contenido_producto, sucursal) → carta/casos-de-uso/agregar-producto-a-la-carta.ts, con su guardComando… (eco de la sucursal activa, core/features/carta/mantenimiento.guard.ts) dentro de conPermiso. Escritura en server/persistencia/carta/contenido-producto.ts (un create, nunca upsert), SOLO en la sucursal activa; transacción SERIALIZABLE y auditoría con la sucursal en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
+  },
   {
     ruta: "src/server/actions/carta/copiar-carta.ts",
     motivo:

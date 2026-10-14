@@ -89,6 +89,13 @@ const completos: Record<string, Valor> = {
       intento(c, ["seccionCartaId"], [c.propio.productoPvId, { visibleEnCarta: true, seccionCartaId: k.seccionCartaId, generoCartaId: c.propio.generoCartaId, descripcion: "texto" }]),
       intento(c, ["generoCartaId"], [c.propio.productoPvId, { visibleEnCarta: true, seccionCartaId: c.propio.seccionCartaId, generoCartaId: k.generoCartaId, descripcion: "texto" }]),
     ),
+  // CARTA-MANT: «Agregar a la carta» (eco de la sucursal primero). El `pv2` del mundo está disponible en S1 y SIN contenido de carta (el `pv` tiene uno oculto): el control positivo lo agrega.
+  "accion|actions/carta/mantenimiento.ts|agregarProductoALaCarta": (k, c) =>
+    conVariantes(
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, productoId: c.propio.productoPv2Id, seccionCartaId: c.propio.seccionCartaId }]),
+      intento(c, ["productoPv2Id"], [{ sucursalId: c.propio.sucursalId, productoId: k.productoPv2Id, seccionCartaId: c.propio.seccionCartaId }]),
+      intento(c, ["seccionCartaId"], [{ sucursalId: c.propio.sucursalId, productoId: c.propio.productoPv2Id, seccionCartaId: k.seccionCartaId }]),
+    ),
   "accion|actions/carta/generos.ts|guardarGeneroCarta": (k) => [{ id: k.generoCartaId, nombre: "Nombre nuevo" }],
   "accion|actions/carta/items-agrupados.ts|guardarItemAgrupadoCarta": (k, c) =>
     conVariantes(
