@@ -154,3 +154,43 @@ export interface ComandoReordenarOpcionesDeGrupo {
 }
 
 export type ResultadoReordenarOpcionesDeGrupo = ResultadoCaso<{ huboCambio: boolean }, "GRUPO_NO_ENCONTRADO" | "VERSION_DESACTUALIZADA">;
+
+// ───────────────────────────── OPCIONES-LIMPIEZA: archivar, restaurar y quitar de un producto ─────────────────────────────
+
+/**
+ * ARCHIVAR (o RESTAURAR) grupos y opciones de una sola vez, todo o nada (decisión del dueño, 2026-10-14: lo que compone la venta se gestiona sin miedo). Archivar es
+ * `activo = false` en el grupo o `activa = false` en la opción: deja de ofrecerse en la venta, la carta y los listados activos, pero se conserva y se restaura con un toque. Lo YA
+ * VENDIDO no cambia (la foto de la línea, `OpcionElegidaEnLinea`, es de solo agregar). El mismo comando sirve para un elemento suelto y para un lote de «Limpiar»; restaurar es
+ * el mismo pedido con `archivar = false` (el «Deshacer»).
+ */
+export interface ComandoArchivarOpciones {
+  /** Sin repetidos (el guard los saca). */
+  grupoIds: string[];
+  /** Sin repetidos (el guard los saca). */
+  opcionIds: string[];
+  /** `true` archiva; `false` restaura. */
+  archivar: boolean;
+}
+
+/**
+ * `cambiados`: cuántos elementos cambiaron de estado (los que ya estaban así no cuentan ni se auditan). `productosAfectados` (D-4): cuántos productos quedan sin poder venderse
+ * porque un grupo obligatorio para ellos quedó archivado o sin opciones suficientes; se avisa, no se bloquea. `NO_ENCONTRADO`: algún id no es de la empresa o no existe; en ese caso
+ * no se toca NADA del lote.
+ */
+export type ResultadoArchivarOpciones = ResultadoCaso<{ cambiados: number; productosAfectados: number }, "NO_ENCONTRADO" | "VERSION_DESACTUALIZADA">;
+
+/**
+ * QUITAR un grupo de un producto (o VOLVER A VINCULARLO): «llevar al estado», sin la versión de la pantalla (así el «Deshacer» funciona aunque la pantalla ya se haya refrescado).
+ * Quitar es `ProductoAdmiteGrupo.activo = false`: la fila y lo que el producto admitía de cada opción se conservan, y volver a vincular deja todo como estaba.
+ */
+export interface ComandoVincularGrupoEnProducto {
+  productoId: string;
+  grupoId: string;
+  vinculado: boolean;
+}
+
+/** `NO_VINCULADO`: el producto nunca tuvo ese grupo (no hay nada que quitar ni que volver a vincular: se agrega desde «Agregar grupo»). */
+export type ResultadoVincularGrupoEnProducto = ResultadoCaso<
+  { huboCambio: boolean },
+  "PRODUCTO_NO_ENCONTRADO" | "PRODUCTO_NO_ELEGIBLE" | "GRUPO_NO_ENCONTRADO" | "NO_VINCULADO" | "VERSION_DESACTUALIZADA" | "GRUPO_INACTIVO" | "OPCION_INACTIVA" | ConfiguracionInvalida
+>;

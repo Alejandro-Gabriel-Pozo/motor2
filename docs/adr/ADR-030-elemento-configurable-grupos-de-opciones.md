@@ -172,6 +172,27 @@ Cambia la PRESENTACIÓN de la carta pública, no sus datos de origen ni su segur
 - Un PV con opciones dentro de un ítem agrupado de la carta se muestra como opción del agrupado, sin sus grupos.
 - **La prueba del dueño con el flujo del café** (alta del grupo, admisión, pedido en la mesa, comanda, ticket y carta) queda pendiente.
 
+## OPCIONES-LIMPIEZA: archivar, restaurar y quitar sin miedo (2026-10-14; decisión del dueño)
+
+Los grupos, las opciones y su vínculo con cada producto NO generan una venta por sí mismos: componen la venta de un producto. Por eso se gestionan con facilidad (deshacer, archivar,
+quitar) y con registro de quién, cuándo y qué, pero sin la rigidez del dinero o del stock. Tres niveles, **sin migraciones ni campos nuevos**:
+
+1. **Quitar de un producto** (`vincularGrupoEnProducto`, `src/server/actions/catalogo/casos-de-uso/vincular-grupo-en-producto.ts`): `ProductoAdmiteGrupo.activo = false`, «llevar al estado»
+   (sin la versión de la pantalla, para que el «Deshacer» funcione después del refresco; la versión se lee dentro de la transacción SERIALIZABLE y va en el `where`). Lo que el producto
+   admitía de cada opción se conserva tal cual; «Volver a vincular» pasa por el MISMO cuerpo de la admisión (`fijarAdmisionDeGrupoEnTx`), con sus reglas. Clave `producto_opciones_admitidas`
+   (la misma columna que el formulario ya cambiaba).
+2. **Archivar / restaurar** (`archivarOpciones`, `src/server/actions/catalogo/casos-de-uso/archivar-opciones.ts`): `GrupoDeOpciones.activo` y `OpcionDeGrupo.activa`, de a uno o en lote, TODO O
+   NADA, por estado (dos veces no duplica), con una auditoría por elemento y la versión + 1 (una edición abierta en otra pestaña recibe «cambió mientras la editabas»). Lo archivado sale de la
+   venta y de la carta por la vía que ya existía (las lecturas de la venta y de la carta filtran esas columnas) y queda en «Archivados» con «Restaurar». Clave `opciones_definir`: archivar es la
+   columna que el «Apagar» de esa clave ya cambiaba; no da ningún poder nuevo. «Apagado» en la empresa pasa a llamarse **archivado**; lo que se acaba por un día sigue siendo «agotada» en la
+   sucursal (`OpcionApagadaEnSucursal`), que no cambia.
+3. **Borrar definitivo**: NO en esta etapa. El rol de la app no tiene `DELETE` sobre ninguna tabla del catálogo de opciones (GO-1b: solo `SELECT`, `INSERT` y `UPDATE` por columna); borrar exige
+   una migración con el `GRANT DELETE` y, por la regla del dueño, un permiso más alto que archivar. Queda pendiente de autorización expresa (fila O.492 de `docs/pureza-integracion.md`).
+
+Lo YA VENDIDO no cambia nunca: la foto de la línea (`OpcionElegidaEnLinea`, solo agregar) guarda el nombre, el tipo, la versión y el importe de lo vendido, y las claves foráneas `Restrict`
+impiden que desaparezca lo que una línea nombra. La interfaz es la del prototipo aprobado de Mantenimiento: un toque, sin pantalla de confirmación, y el aviso con «Deshacer» abajo
+(`src/components/aviso-con-deshacer.tsx`).
+
 ## Consecuencias
 
 - Un producto sin opciones se vende igual, bit a bit. Lo cuidan los goldens: cuatro cambiaron solo con columnas nuevas en NULL (`operacionPadreId`, `huellaOpciones`, `lineaPadreId`), verificado con diff y declarado en el guardián de caracterizaciones congeladas.

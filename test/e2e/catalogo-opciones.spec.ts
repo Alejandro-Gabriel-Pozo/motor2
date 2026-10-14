@@ -50,7 +50,8 @@ test("la lista dice el tipo y los límites en palabras, y cuántos productos usa
   const fila = page.getByRole("region", { name: "Grupos de opciones" }).locator("tr", { hasText: nombre });
   await expect(fila).toContainText("Adicional con recargo");
   await expect(fila).toContainText("Opcional · hasta 2");
-  await expect(fila).toContainText("Prendido");
+  // OPCIONES-LIMPIEZA: la tabla es la de los grupos en uso (los archivados van aparte, con «Restaurar»): no hace falta la columna «Estado».
+  await expect(page.locator(`[data-grupo-archivado='${nombre}']`)).toHaveCount(0);
   expect((await new AxeBuilder({ page }).analyze()).violations, "lista").toEqual([]);
   await page.getByRole("button", { name: "+ Nuevo grupo" }).click();
   expect((await new AxeBuilder({ page }).analyze()).violations, "alta abierta").toEqual([]);
