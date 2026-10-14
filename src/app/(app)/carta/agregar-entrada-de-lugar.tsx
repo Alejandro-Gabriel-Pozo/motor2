@@ -48,7 +48,7 @@ export function AgregarEntradaDeLugar({
   return (
     <div className="mt-1 flex flex-col gap-2 text-sm" data-agregar-entrada={lugar}>
       <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1" htmlFor={`${base}-producto`}>
+        <label className="flex min-w-0 max-w-full flex-col gap-1" htmlFor={`${base}-producto`}>
           Sumar a «{lugar}»
           <select
             id={`${base}-producto`}
@@ -58,7 +58,7 @@ export function AgregarEntradaDeLugar({
               setElegidas({});
               setResultado(null);
             }}
-            className="min-h-[44px] rounded border px-2 py-1"
+            className="min-h-[44px] w-full min-w-0 max-w-full rounded border px-2 py-1 max-md:text-base"
           >
             <option value="">Elegí un producto…</option>
             {productos.map((p) => (
@@ -69,10 +69,10 @@ export function AgregarEntradaDeLugar({
           </select>
         </label>
         {producto?.grupos.map((g) => (
-          <label key={g.grupoId} className="flex flex-col gap-1" htmlFor={`${base}-${g.grupoId}`}>
+          <label key={g.grupoId} className="flex min-w-0 max-w-full flex-col gap-1" htmlFor={`${base}-${g.grupoId}`}>
             {g.nombre}
             {g.obligatorio ? "" : " (opcional)"}
-            <select id={`${base}-${g.grupoId}`} value={elegidas[g.grupoId] ?? ""} onChange={(e) => setElegidas((antes) => ({ ...antes, [g.grupoId]: e.target.value }))} className="min-h-[44px] rounded border px-2 py-1">
+            <select id={`${base}-${g.grupoId}`} value={elegidas[g.grupoId] ?? ""} onChange={(e) => setElegidas((antes) => ({ ...antes, [g.grupoId]: e.target.value }))} className="min-h-[44px] w-full min-w-0 max-w-full rounded border px-2 py-1 max-md:text-base">
               <option value="">{g.obligatorio ? "Elegí…" : "Sin elegir"}</option>
               {g.opciones.map((o) => (
                 <option key={o.opcionId} value={o.opcionId}>

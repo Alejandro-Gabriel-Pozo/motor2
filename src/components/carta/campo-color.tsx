@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-const CLASE_INPUT = "rounded border px-2 py-1";
+const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
 
 const RE_HEX6 = /^#[0-9a-f]{6}$/i;
 const RE_HEX3 = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i;

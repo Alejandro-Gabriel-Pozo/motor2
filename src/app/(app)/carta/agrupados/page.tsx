@@ -39,8 +39,8 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 };
 const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
-const CLASE_INPUT = "rounded border px-2 py-1";
-const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
+const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
+const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11";
 const CLASE_AVISO = "rounded border border-amber-300 p-3 text-sm dark:border-amber-700";
 
 type ProductoSinGrupo = { id: string; nombre: string; precioAca: number };
@@ -231,7 +231,7 @@ function ItemAgrupado({
                         return refrescarSiOk(await quitarOpcionItemAgrupadoCarta(opcionId));
                       }}
                     >
-                      <button type="submit" className="py-1 underline">
+                      <button type="submit" className="py-1 underline max-md:inline-flex max-md:min-h-11 max-md:items-center">
                         Quitar «{o.nombre}»
                       </button>
                     </FormConResultado>
@@ -313,7 +313,7 @@ function ItemAgrupado({
           }}
           className="mt-2"
         >
-          <button type="submit" className="text-sm underline">
+          <button type="submit" className="text-sm underline max-md:inline-flex max-md:min-h-11 max-md:items-center">
             {it.activo ? `Apagar «${it.nombre}»` : `Prender «${it.nombre}»`}
           </button>
         </FormConResultado>

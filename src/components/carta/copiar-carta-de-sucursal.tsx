@@ -25,7 +25,7 @@ export function CopiarCartaDeSucursal({ origenes }: { origenes: OrigenCopiable[]
       <label htmlFor={idSelect} className="text-sm font-medium">
         Copiar de otra sucursal
       </label>
-      <select id={idSelect} value={origenId} onChange={(e) => setOrigenId(e.target.value)} className="max-w-xs rounded border px-2 py-1">
+      <select id={idSelect} value={origenId} onChange={(e) => setOrigenId(e.target.value)} className="max-w-xs rounded border px-2 py-1 max-md:min-h-11 max-md:text-base">
         {origenes.map((o) => (
           <option key={o.id} value={o.id}>
             {o.nombre} ({o.cantidadProductos} producto(s))
@@ -39,7 +39,7 @@ export function CopiarCartaDeSucursal({ origenes }: { origenes: OrigenCopiable[]
         etiquetaConfirmar="Sí, copiar la carta"
         etiquetaEnCurso="Copiando…"
         etiquetaVolver="Volver"
-        claseDisparador="self-start rounded bg-neutral-900 px-3 py-1.5 text-sm text-white"
+        claseDisparador="self-start rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11"
         accion={() => copiarCartaDeSucursal(origenId, true)}
       />
     </div>

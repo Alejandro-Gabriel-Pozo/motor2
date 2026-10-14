@@ -22,10 +22,34 @@ async function medidasDeDesborde(page: Page): Promise<{ scrollWidth: number; cli
   return page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
 }
 
-/** Falla (con el valor real; `expect.soft`: el spec sigue y reporta TODAS las etapas rotas, no solo la primera) si la página tiene scroll horizontal. Un píxel de tolerancia por el redondeo de las medidas fraccionarias. */
+/** Los elementos visibles cuyo borde derecho pasa del ancho de la pantalla (los que provocan el scroll horizontal), con su medida: sirve para el mensaje del fallo. */
+async function elementosQueSeSalen(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const ancho = document.documentElement.clientWidth;
+    const salen: string[] = [];
+    for (const el of document.querySelectorAll("body *")) {
+      const caja = el.getBoundingClientRect();
+      if (caja.width === 0 || caja.height === 0 || caja.right <= ancho + 1) continue;
+      // Un elemento dentro de una caja con su propio scroll (una tabla ancha en `overflow-x-auto`) no ensancha la página: se descarta.
+      let dentroDeScroll = false;
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        const ox = getComputedStyle(p).overflowX;
+        if ((ox === "auto" || ox === "scroll" || ox === "hidden") && p.getBoundingClientRect().right <= ancho + 1) dentroDeScroll = true;
+      }
+      if (dentroDeScroll) continue;
+      const nombre = el.getAttribute("name") ?? el.getAttribute("aria-label") ?? el.id ?? "";
+      salen.push(`<${el.tagName.toLowerCase()}${nombre ? ` ${nombre}` : ""}> hasta ${Math.round(caja.right)}`);
+      if (salen.length >= 6) break;
+    }
+    return salen;
+  });
+}
+
+/** Falla (con el valor real y los elementos que se salen; `expect.soft`: el spec sigue y reporta TODAS las etapas rotas, no solo la primera) si la página tiene scroll horizontal. Un píxel de tolerancia por el redondeo de las medidas fraccionarias. */
 export async function expectSinDesborde(page: Page, donde: string): Promise<void> {
   const { scrollWidth, clientWidth } = await medidasDeDesborde(page);
-  expect.soft(scrollWidth, `${donde}: la página se sale por la derecha (scrollWidth ${scrollWidth} sobre clientWidth ${clientWidth})`).toBeLessThanOrEqual(clientWidth + 1);
+  const quienes = scrollWidth > clientWidth + 1 ? ` — se salen: ${(await elementosQueSeSalen(page)).join("; ")}` : "";
+  expect.soft(scrollWidth, `${donde}: la página se sale por la derecha (scrollWidth ${scrollWidth} sobre clientWidth ${clientWidth})${quienes}`).toBeLessThanOrEqual(clientWidth + 1);
 }
 
 /** Falla si el contenedor tiene contenido cortado por un lado (scroll interno inesperado). */
@@ -63,3 +87,18 @@ export async function capturar(page: Page, nombre: string): Promise<void> {
   mkdirSync(carpeta, { recursive: true });
   await page.screenshot({ path: join(carpeta, `${nombre}.png`), fullPage: true });
 }
+
+/**
+ * El menú lateral fijo de 224 px le deja ~130 px al contenido en el celular: para medir la pantalla y no el menú se lo oculta, como haría la persona
+ * (el control «Ocultar menú» existente; la elección queda en el navegador). Sin el botón (ya oculto, o un marco sin menú: el salón), no hace nada.
+ */
+export async function ocultarMenuSiHaceFalta(page: Page): Promise<void> {
+  const ocultar = page.getByRole("button", { name: "Ocultar menú" });
+  if (await ocultar.isVisible()) await ocultar.click();
+}
+
+/** Abre todos los `<details>` de la pantalla (las fichas plegadas de la carta, etc.) para medir también lo que traen adentro. */
+export async function abrirTodosLosDetails(page: Page): Promise<void> {
+  await page.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true)));
+}
+

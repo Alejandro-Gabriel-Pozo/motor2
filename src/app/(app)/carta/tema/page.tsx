@@ -105,7 +105,7 @@ export default async function TemaCartaPage() {
               ? "Desaplicarlo es la vuelta atrás: la carta vuelve al estilo por defecto y los valores se conservan."
               : "Aplica lo GUARDADO (guardá antes los cambios). No se puede aplicar un tema vacío."}
           </p>
-          <button type="submit" className="mt-2 rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+          <button type="submit" className="mt-2 rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11">
             {aplicado ? "Desaplicar el tema" : "Aplicar el tema"}
           </button>
         </FormConResultado>

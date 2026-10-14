@@ -24,7 +24,7 @@ export function EditorTema({ valoresIniciales, version, accion }: { valoresInici
     <FormConResultado accion={accion} className="flex flex-col gap-4">
       <CuerpoEditor key={version} valoresIniciales={valoresIniciales} />
       <div>
-        <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+        <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11">
           Guardar tema
         </button>
       </div>
@@ -32,7 +32,7 @@ export function EditorTema({ valoresIniciales, version, accion }: { valoresInici
   );
 }
 
-const CLASE_INPUT = "rounded border px-2 py-1";
+const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
 
 function leerValores(form: HTMLFormElement): Record<string, string> {
   const fd = new FormData(form);
