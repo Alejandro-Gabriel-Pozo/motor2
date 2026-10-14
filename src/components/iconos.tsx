@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Ban, BookOpen, Boxes, ChartColumn, CircleQuestionMark, Eye, History, Package, Pencil, Power, ShieldCheck, Trash2, Truck, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Ban, BookOpen, Boxes, ChartColumn, CircleQuestionMark, Eye, History, Menu, Package, Pencil, Power, ShieldCheck, Trash2, Truck, UtensilsCrossed, X, type LucideIcon } from "lucide-react";
 
 /**
  * Único archivo que importa `lucide-react` (lo comprueba test/arquitectura/iconos-accesibles.test.ts). Todo ícono es decorativo: va
@@ -42,4 +42,11 @@ export function IconoDeAccion({ id }: { id: keyof typeof ICONO_DE_ACCION }) {
 
 export function IconoAyuda() {
   return <Icono icono={CircleQuestionMark} className="h-3.5 w-3.5" />;
+}
+
+/** Los íconos del menú de celular (☰ y ✕): siempre junto a un `aria-label` («Abrir menú», «Cerrar menú»), que es el nombre del control. */
+const ICONO_DE_CONTROL: Record<"menu" | "cerrar", LucideIcon> = { menu: Menu, cerrar: X };
+
+export function IconoDeControl({ id }: { id: keyof typeof ICONO_DE_CONTROL }) {
+  return <Icono icono={ICONO_DE_CONTROL[id]} className="h-6 w-6 shrink-0" />;
 }

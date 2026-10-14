@@ -59,8 +59,7 @@ test("la lista dice el tipo y los límites en palabras, y cuántos productos usa
   // En el celular la tabla se lee como tarjetas, que no se salen de su caja.
   await page.emulateMedia({ colorScheme: "light" });
   await page.setViewportSize({ width: 375, height: 800 });
-  // El menú lateral del panel ocupa media pantalla en el celular: se oculta, como haría la persona, para medir la pantalla y no el menú.
-  await page.getByRole("button", { name: "Ocultar menú" }).click();
+  // En el celular el menú lateral ya no se dibuja (MOVIL, O.465: el menú es el cajón del ☰): no hay nada que ocultar para medir la pantalla.
   const tarjetas = page.getByRole("list", { name: "Grupos de opciones" });
   await expect(tarjetas.locator("li", { hasText: nombre })).toContainText("Opcional · hasta 2");
   expect(await tarjetas.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "las tarjetas no se salen de su caja").toBe(true);

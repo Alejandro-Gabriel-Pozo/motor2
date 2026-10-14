@@ -98,7 +98,7 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
             fila.tipo === "suelto" ? (
               <li key={fila.item.id} data-item-sin-enviar={fila.item.productoNombre} className="py-2 text-[14px]">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span>
+                  <span className="min-w-0 [overflow-wrap:anywhere]">
                     <span className="font-semibold tabular-nums">{formatearCantidad(fila.item.cantidad)} ×</span> {fila.item.productoNombre}
                     {fila.item.opciones && (
                       <span data-opciones-de-linea className="block text-[12.5px] text-[var(--ink-soft)]">
@@ -127,7 +127,7 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
                   <ul aria-label={`Adicionales de ${fila.item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[13px]">
                     {fila.adicionales.map((a) => (
                       <li key={a.id} data-adicional-sin-enviar={a.productoNombre} className="flex items-center justify-between gap-3">
-                        <span>
+                        <span className="min-w-0 [overflow-wrap:anywhere]">
                           + <span className="tabular-nums">{formatearCantidad(a.cantidad)} ×</span> {a.productoNombre}
                         </span>
                         <span className="tabular-nums">{formatearMonto(a.cantidad * a.precioUnitario)}</span>
@@ -139,7 +139,7 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
             ) : (
               <li key={fila.promoCuentaId} data-promo-sin-enviar={fila.titulo} className="py-2 text-[14px]">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="font-semibold">{fila.titulo}</span>
+                  <span className="min-w-0 font-semibold [overflow-wrap:anywhere]">{fila.titulo}</span>
                   <span className="flex items-center gap-3">
                     <span className="tabular-nums">{formatearMonto(fila.items.reduce((suma, i) => suma + i.cantidad * i.precioUnitario, 0))}</span>
                     <button

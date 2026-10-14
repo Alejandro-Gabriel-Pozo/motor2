@@ -30,8 +30,8 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 
 const valoresDelFormulario = (fd: FormData) => Object.fromEntries(CLAVES_PORTAL_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
 
-const CLASE_INPUT = "rounded border px-2 py-1";
-const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white";
+const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
+const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11";
 
 export default async function PortalSucursalesPage() {
   const ctx = await obtenerContextoUsuario();
@@ -207,7 +207,7 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
             className="mt-3 border-t pt-3"
           >
             <p className="text-sm text-neutral-500">Quitarla la saca del portal y de su dirección pública, pero conserva estos datos: el slug queda reservado para esta sucursal. Para volver a mostrarla, marcá «Publicada en el portal» y guardá.</p>
-            <button type="submit" className="text-sm underline">
+            <button type="submit" className="text-sm underline max-md:inline-flex max-md:min-h-11 max-md:items-center">
               Quitar «{s.nombre}» del portal
             </button>
           </FormConResultado>
