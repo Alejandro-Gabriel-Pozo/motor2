@@ -139,7 +139,8 @@ export default async function PrecioLocalPage() {
                               Precio de {etiqueta} en esta sucursal
                             </label>
                             <CampoNumero id={`tamano-${productoId}-${opcionId}`} name="precio" defaultValue={t.enLaSucursal?.habilitado ? String(t.enLaSucursal.precio) : ""} prefijo="$" tipo="importe" etiqueta="El precio" tamano="compacto" required className="w-32" />
-                            <button type="submit" className="min-h-[44px] text-sm underline">
+                            {/* Un botón por tamaño: el nombre accesible dice cuál (varios «Guardar» iguales en la misma pantalla no se distinguen con un lector de pantalla). */}
+                            <button type="submit" className="min-h-[44px] text-sm underline" aria-label={`Guardar el precio de ${etiqueta}`}>
                               Guardar
                             </button>
                           </div>
@@ -156,7 +157,7 @@ export default async function PrecioLocalPage() {
                         >
                           <span className="mr-2">{t.enLaSucursal?.habilitado ? "Sí" : "No"}</span>
                           {t.enLaSucursal?.habilitado && (
-                            <button type="submit" className="min-h-[44px] text-sm underline">
+                            <button type="submit" className="min-h-[44px] text-sm underline" aria-label={`Volver al de la empresa en ${etiqueta}`}>
                               Volver al de la empresa
                             </button>
                           )}

@@ -220,7 +220,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                             Nombre de {o.nombre}
                           </label>
                           <input id={`opcion-nombre-${o.id}`} name="nombre" required maxLength={120} defaultValue={nombre} className="w-48 rounded border px-2 py-1 text-sm" />
-                          <button type="submit" className="min-h-[44px] text-sm underline">
+                          <button type="submit" className="min-h-[44px] text-sm underline" aria-label={`Renombrar ${nombre}`}>
                             Renombrar
                           </button>
                         </div>

@@ -115,7 +115,10 @@ test("la mesa muestra las opciones y el adicional bajo su producto; la comanda l
     await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["comanda", "ticket"]);
     const ticket = (await impresiones(page))[1]!.texto;
     expect(ticket).toContain(`1 × ${d.nombreCafe}Grande`);
-    expect(ticket).toMatch(new RegExp(`\\+ 1 × ${d.nombreAncla.replace(/[()]/g, "\\$&")}\\s*\\$\\s?600 c/u`));
+    // El adicional en su línea con su precio: se busca el texto tal cual (sin armar una expresión regular con el nombre, que habría que escapar entera).
+    const adicionalEnTicket = ticket.indexOf(`+ 1 × ${d.nombreAncla}`);
+    expect(adicionalEnTicket, "el adicional va en su propia línea").toBeGreaterThan(-1);
+    expect(ticket.slice(adicionalEnTicket + `+ 1 × ${d.nombreAncla}`.length)).toMatch(/^\s*\$\s?600 c\/u/);
     expect(ticket).toMatch(/TOTAL\s*\$\s?3\.400/);
   } finally {
     await d.limpiar();
