@@ -42,7 +42,7 @@ interface Fila {
 }
 
 /**
- * Lo que admite un producto de UN grupo (GO-2d): si lo usa, en qué orden, sus límites propios (vacío = los del grupo), el modo de precio de un tamaño («Precio propio por tamaño» o
+ * Lo que admite un producto de UN grupo EN USO (GO-2d; quitarlo es «Quitar de este producto», OPCIONES-LIMPIEZA): en qué orden, sus límites propios (vacío = los del grupo), el modo de precio de un tamaño («Precio propio por tamaño» o
  * «Diferencia sobre el precio base», obligatorio) y, por opción, si la admite, su tope, su precio propio (en un tamaño con precio propio) o una diferencia propia (vacía = la de la
  * opción, que se muestra). Cada grupo guarda por separado, con la versión de sus filas que vio la pantalla: si otra persona cambió algo, el servidor lo rechaza y aparece «Recargar»
  * (lo tipeado no se pierde hasta recargar). Las reglas las valida el servidor (`validarAdmisionDeGrupo` y el control de precio de lista).
@@ -89,13 +89,11 @@ export function AdmisionDeGrupo({ grupo, accion }: { grupo: GrupoDeLaAdmision; a
         <h2 className="text-lg font-medium">{grupo.nombre}</h2>
         <span className="text-sm text-neutral-600 dark:text-neutral-400">
           {nombreDelTipoDeGrupo(grupo.tipo)} · del grupo: {textoDeLimites(grupo.cantidadMinimaDelGrupo, grupo.cantidadMaximaDelGrupo)}
-          {grupo.activoEnEmpresa ? "" : " · apagado para toda la empresa"}
+          {grupo.activoEnEmpresa ? "" : " · archivado: no se ofrece"}
         </span>
       </div>
-      <label className="flex min-h-[44px] items-center gap-2 text-sm">
-        <input type="checkbox" name="activo" defaultChecked={grupo.fila.activo} />
-        Este producto usa este grupo
-      </label>
+      {/* OPCIONES-LIMPIEZA: el formulario es el de un grupo EN USO; sacarlo es «Quitar de este producto» (con «Deshacer»), al pie de la tarjeta. */}
+      <input type="hidden" name="activo" value="on" />
       <div className="flex flex-wrap gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-orden`} className="text-sm font-medium">
@@ -164,7 +162,7 @@ export function AdmisionDeGrupo({ grupo, accion }: { grupo: GrupoDeLaAdmision; a
                     <span>
                       {o.nombre}
                       {o.esNinguna && " (ninguna)"}
-                      {!o.activaEnEmpresa && " (apagada para la empresa)"}
+                      {!o.activaEnEmpresa && " (archivada)"}
                     </span>
                   </label>
                 </td>

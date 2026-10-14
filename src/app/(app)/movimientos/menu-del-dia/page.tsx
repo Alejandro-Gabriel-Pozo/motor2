@@ -5,6 +5,7 @@ import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate"
 import { agregarPlatoDelDia, copiarMenuDelDiaAnterior, quitarPlatoDelDia } from "@/server/actions/carta/menu-del-dia";
 import { cargarMenuDelDia } from "@/server/consultas/carta/menu-del-dia";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { AvisoConDeshacer } from "@/components/aviso-con-deshacer";
 import { MenuDelDia } from "./menu-del-dia";
 
 /**
@@ -28,7 +29,7 @@ export default async function MenuDelDiaPage({ searchParams }: { searchParams: P
   const sucursalId = ctx.sucursalId;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex max-w-3xl flex-col gap-6 pb-24">
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">Menú del día en «{ctx.sucursalNombre}»</h1>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -40,22 +41,24 @@ export default async function MenuDelDiaPage({ searchParams }: { searchParams: P
           Todavía no hay promos con un lugar «del día». Se arman en Carta → Promociones (un lugar de tipo «del día»).
         </p>
       ) : (
-        <MenuDelDia
-          datos={datos}
-          puedeCambiar={puedeCambiar}
-          agregar={async (cupoId: string, productoId: string, dia: string) => {
-            "use server";
-            return agregarPlatoDelDia({ sucursalId, cupoId, fecha: dia, productoId });
-          }}
-          quitar={async (platoId: string) => {
-            "use server";
-            return quitarPlatoDelDia({ sucursalId, platoId });
-          }}
-          copiar={async (dia: string) => {
-            "use server";
-            return copiarMenuDelDiaAnterior({ sucursalId, fecha: dia });
-          }}
-        />
+        <AvisoConDeshacer>
+          <MenuDelDia
+            datos={datos}
+            puedeCambiar={puedeCambiar}
+            agregar={async (cupoId: string, productoId: string, dia: string) => {
+              "use server";
+              return agregarPlatoDelDia({ sucursalId, cupoId, fecha: dia, productoId });
+            }}
+            quitar={async (platoId: string) => {
+              "use server";
+              return quitarPlatoDelDia({ sucursalId, platoId });
+            }}
+            copiar={async (dia: string) => {
+              "use server";
+              return copiarMenuDelDiaAnterior({ sucursalId, fecha: dia });
+            }}
+          />
+        </AvisoConDeshacer>
       )}
     </div>
   );

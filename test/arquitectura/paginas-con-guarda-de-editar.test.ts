@@ -20,6 +20,8 @@ const PAGINAS_DE_EDICION = [
   { pagina: "catalogo/proveedores/nuevo/page.tsx", clave: "proveedor_alta" },
   // GO-2d: lo que admite un producto se edita en su propia página, con la clave de Editar de las opciones del producto.
   { pagina: "catalogo/productos/[id]/opciones/page.tsx", clave: "producto_opciones_admitidas" },
+  // OPCIONES-LIMPIEZA (G2): «Limpiar opciones» solo archiva: exige el Editar de `opciones_definir` además del Ver de su familia.
+  { pagina: "catalogo/opciones/limpiar/page.tsx", clave: "opciones_definir" },
 ];
 
 describe("páginas de edición: exigen el permiso de Editar en el servidor", () => {

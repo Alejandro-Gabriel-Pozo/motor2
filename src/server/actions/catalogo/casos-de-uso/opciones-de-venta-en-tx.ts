@@ -88,12 +88,21 @@ export function productosSinPoderVenderse(
   admisiones: readonly AdmisionActivaDelGrupo[],
   opcionesActivas: ReadonlySet<string>
 ): number {
-  let afectados = 0;
+  return idsDeProductosSinPoderVenderse(grupo, admisiones, opcionesActivas).length;
+}
+
+/** Los productos de `productosSinPoderVenderse` (sus ids): archivar un lote de «Limpiar» que toca varios grupos cuenta cada producto una sola vez. */
+export function idsDeProductosSinPoderVenderse(
+  grupo: { tipo: TipoDeGrupoDeOpciones; cantidadMinima: number; cantidadMaxima: number; activo: boolean },
+  admisiones: readonly AdmisionActivaDelGrupo[],
+  opcionesActivas: ReadonlySet<string>
+): string[] {
+  const afectados: string[] = [];
   for (const a of admisiones) {
     const { cantidadMinima } = cantidadesEfectivas(grupo, a);
     if (cantidadMinima === 0) continue;
     const alcanzable = a.opciones.filter((o) => opcionesActivas.has(o.opcionId)).reduce((suma, o) => suma + o.cantidadMaxima, 0);
-    if (!grupo.activo || alcanzable < cantidadMinima) afectados++;
+    if (!grupo.activo || alcanzable < cantidadMinima) afectados.push(a.productoId);
   }
   return afectados;
 }

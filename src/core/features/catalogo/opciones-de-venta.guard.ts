@@ -20,12 +20,14 @@ import {
 } from "@/core/opciones/public";
 import type {
   ComandoAgregarVersionDeOpcion,
+  ComandoArchivarOpciones,
   ComandoCrearGrupoDeOpciones,
   ComandoCrearOpcionDeGrupo,
   ComandoEditarGrupoDeOpciones,
   ComandoEditarOpcionDeGrupo,
   ComandoFijarAdmisionDeGrupo,
   ComandoReordenarOpcionesDeGrupo,
+  ComandoVincularGrupoEnProducto,
   DatosDeVersionDeOpcion,
   OpcionAdmitidaEnComando,
 } from "./opciones-de-venta.schema";
@@ -351,4 +353,52 @@ export function guardComandoReordenarOpcionesDeGrupo(entrada: { grupoId: unknown
     opciones.push({ opcionId: opcion.valor, versionEsperada: v.valor });
   }
   return aceptar({ grupoId: grupoId.valor, opciones });
+}
+
+// ───────────────────────────── OPCIONES-LIMPIEZA: archivar, restaurar y quitar de un producto ─────────────────────────────
+
+/** Tope de elementos (grupos más opciones) que se archivan o restauran de una vez: un lote de «Limpiar» entra holgado; una lista de diez mil no llega a la base. */
+const MAXIMO_ELEMENTOS_POR_LOTE = 200;
+
+/** Una lista de ids sin repetidos (los repetidos se descartan: el mismo elemento dos veces en un lote es el mismo pedido). `undefined` es la lista vacía. */
+function listaDeIds(valor: unknown, mensaje: string): ResultadoDato<string[]> {
+  if (valor === undefined || valor === null) return aceptar([]);
+  if (!Array.isArray(valor)) return rechazar("formato", mensaje);
+  const tope = validarTopeDeLista(valor, "Los elementos", MAXIMO_ELEMENTOS_POR_LOTE);
+  if (tope) return rechazar("rango", tope);
+  const ids: string[] = [];
+  for (const v of valor as unknown[]) {
+    const r = id(v, mensaje);
+    if (!r.ok) return r;
+    if (!ids.includes(r.valor)) ids.push(r.valor);
+  }
+  return aceptar(ids);
+}
+
+/**
+ * Archivar o restaurar (`archivarOpciones`): las listas de grupos y de opciones (al menos un elemento entre las dos y, juntas, hasta `MAXIMO_ELEMENTOS_POR_LOTE`) y si se archiva o
+ * se restaura. Que cada id sea de la empresa lo decide el caso de uso, que los lee (un id ajeno no se ve y el lote entero se rechaza).
+ */
+export function guardComandoArchivarOpciones(entrada: { grupoIds: unknown; opcionIds: unknown; archivar: unknown }): ResultadoDato<ComandoArchivarOpciones> {
+  const grupoIds = listaDeIds(entrada.grupoIds, MENSAJE_GRUPO_NO_ENCONTRADO);
+  if (!grupoIds.ok) return grupoIds;
+  const opcionIds = listaDeIds(entrada.opcionIds, MENSAJE_OPCION_NO_ENCONTRADA);
+  if (!opcionIds.ok) return opcionIds;
+  const total = grupoIds.valor.length + opcionIds.valor.length;
+  if (total === 0) return rechazar("formato", "Elegí al menos un grupo o una opción.");
+  if (total > MAXIMO_ELEMENTOS_POR_LOTE) return rechazar("rango", `Los elementos no pueden ser más de ${MAXIMO_ELEMENTOS_POR_LOTE} por vez.`);
+  const archivar = booleano(entrada.archivar, "«Archivar»");
+  if (!archivar.ok) return archivar;
+  return aceptar({ grupoIds: grupoIds.valor, opcionIds: opcionIds.valor, archivar: archivar.valor });
+}
+
+/** Quitar un grupo de un producto o volver a vincularlo (`vincularGrupoEnProducto`): el producto, el grupo y el estado pedido. */
+export function guardComandoVincularGrupoEnProducto(entrada: { productoId: unknown; grupoId: unknown; vinculado: unknown }): ResultadoDato<ComandoVincularGrupoEnProducto> {
+  const productoId = id(entrada.productoId, "No se encontró el producto.");
+  if (!productoId.ok) return productoId;
+  const grupoId = id(entrada.grupoId, MENSAJE_GRUPO_NO_ENCONTRADO);
+  if (!grupoId.ok) return grupoId;
+  const vinculado = booleano(entrada.vinculado, "«Vinculado»");
+  if (!vinculado.ok) return vinculado;
+  return aceptar({ productoId: productoId.valor, grupoId: grupoId.valor, vinculado: vinculado.valor });
 }

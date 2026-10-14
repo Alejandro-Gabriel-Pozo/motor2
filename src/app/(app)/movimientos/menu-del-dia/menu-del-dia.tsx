@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useState } from "react";
+import { useAvisoConDeshacer } from "@/components/aviso-con-deshacer";
 import type { MenuDelDiaDeLaSucursal } from "@/core/carta/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 
@@ -19,6 +19,9 @@ function nombreDelDia(dia: string, hoy: string): string {
  * «Menú del día» (GO-3b, U2): el día elegido (de hoy a hoy + 13), y por cada lugar del día de las promos, sus platos con «Quitar» y un selector para agregar uno de los productos disponibles en la
  * sucursal (los que no pueden ser plato se ven con su motivo y no se pueden elegir). «Copiar el día anterior» carga, todo o nada, lo del día anterior. Cada cambio lo decide y lo escribe el servidor
  * (con el eco de la sucursal que vio la pantalla) y la pantalla se refresca; un doble toque no manda dos veces.
+ *
+ * OPCIONES-LIMPIEZA (G3): un plato del día es un COMPONENTE del menú (no genera una venta por sí mismo): «Quitar» es un toque y el aviso de abajo trae «Deshacer», que lo vuelve a poner
+ * en el mismo lugar y el mismo día (la misma fila, `agregarPlatoDelDia` es «llevar al estado»: la vuelve a activar, con su auditoría). Va adentro de un `AvisoConDeshacer` (la página).
  */
 export function MenuDelDia({
   datos,
@@ -33,26 +36,9 @@ export function MenuDelDia({
   quitar: (platoId: string) => Promise<ResultadoAccion>;
   copiar: (dia: string) => Promise<ResultadoAccion>;
 }) {
-  const router = useRouter();
-  const [resultado, setResultado] = useState<ResultadoAccion | null>(null);
+  const { ejecutar, ocupado: pendiente } = useAvisoConDeshacer();
   const [elegidos, setElegidos] = useState<Record<string, string>>({});
-  const [pendiente, startTransition] = useTransition();
-  const enviando = useRef(false);
   const sinPermiso = puedeCambiar ? undefined : "Tu rol puede ver el menú del día pero no cambiarlo.";
-
-  const ejecutar = (accion: () => Promise<ResultadoAccion>) => {
-    if (enviando.current) return;
-    enviando.current = true;
-    startTransition(async () => {
-      try {
-        const r = await accion();
-        setResultado(r);
-        if (r.ok) router.refresh();
-      } finally {
-        enviando.current = false;
-      }
-    });
-  };
 
   const disponibles = datos.candidatos.filter((c) => c.aviso === null);
   const conAviso = datos.candidatos.filter((c) => c.aviso !== null);
@@ -78,18 +64,12 @@ export function MenuDelDia({
           type="button"
           disabled={!puedeCambiar || pendiente || !datos.hayDiaAnterior}
           title={sinPermiso ?? (datos.hayDiaAnterior ? undefined : "El día anterior no tiene platos cargados.")}
-          onClick={() => ejecutar(() => copiar(datos.fecha))}
+          onClick={() => ejecutar(() => copiar(datos.fecha), null)}
           className="min-h-[44px] rounded border px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
         >
           Copiar el día anterior
         </button>
       </div>
-
-      {resultado && (
-        <p role={resultado.ok ? "status" : "alert"} className={`text-sm ${resultado.ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-          {resultado.mensaje}
-        </p>
-      )}
 
       {datos.lugares.map((l) => {
         const idSelect = `plato-${l.cupoId}`;
@@ -110,7 +90,7 @@ export function MenuDelDia({
                       type="button"
                       disabled={!puedeCambiar || pendiente}
                       title={sinPermiso}
-                      onClick={() => ejecutar(() => quitar(p.platoId))}
+                      onClick={() => ejecutar(() => quitar(p.platoId), () => agregar(l.cupoId, p.productoId, datos.fecha))}
                       aria-label={`Quitar ${p.nombre} de ${l.nombre}`}
                       className="min-h-[44px] rounded border px-3 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                     >
@@ -121,7 +101,8 @@ export function MenuDelDia({
               </ul>
             )}
             <div className="flex flex-wrap items-end gap-2">
-              <div className="flex flex-col gap-1">
+              {/* MOVIL: con el nombre de un plato largo el <select> (hasta 20 rem) se salía de la tarjeta a 375 px: en el celular ocupa el ancho de la tarjeta y no más. */}
+              <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
                 <label htmlFor={idSelect} className="text-sm font-medium">
                   Agregar un plato
                 </label>
@@ -130,7 +111,7 @@ export function MenuDelDia({
                   value={elegidos[l.cupoId] ?? ""}
                   onChange={(e) => setElegidos((antes) => ({ ...antes, [l.cupoId]: e.target.value }))}
                   disabled={!puedeCambiar}
-                  className="min-h-[44px] max-w-xs rounded border px-3 py-2"
+                  className="min-h-[44px] w-full min-w-0 max-w-xs rounded border px-3 py-2"
                 >
                   <option value="">Elegí un producto…</option>
                   {disponibles.map((c) => (
@@ -153,7 +134,7 @@ export function MenuDelDia({
                 type="button"
                 disabled={!puedeCambiar || pendiente || !elegidos[l.cupoId]}
                 title={sinPermiso}
-                onClick={() => ejecutar(() => agregar(l.cupoId, elegidos[l.cupoId]!, datos.fecha))}
+                onClick={() => ejecutar(() => agregar(l.cupoId, elegidos[l.cupoId]!, datos.fecha), null)}
                 className="min-h-[44px] rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900"
               >
                 Agregar

@@ -6,7 +6,7 @@ import { formatearFechaHora } from "../../src/core/tiempo/zona-horaria";
 
 /**
  * GO-2d, pantalla de UN grupo de opciones (`/catalogo/opciones/[grupoId]`, clave `opciones_definir`): editar el grupo con su versión (dos pestañas: la vieja se rechaza y ofrece
- * «Recargar»), el alta de una opción con su precio y el espejo de referencia, la opción «ninguna», el orden con «mover tocando» (atómico) y apagar una opción. Lo sembrado de
+ * «Recargar»), el alta de una opción con su precio y el espejo de referencia, la opción «ninguna», el orden con «mover tocando» (atómico) y archivar una opción (OPCIONES-LIMPIEZA). Lo sembrado de
  * opciones no se borra (esas tablas solo se agregan; ver `fixtures/opciones.ts`).
  */
 
@@ -103,7 +103,7 @@ test("ordenar con «mover tocando»: se guarda de una vez y la «ninguna» nunca
   await expect(page.getByRole("list", { name: `Opciones de E2E Guarnición ${m}` }).locator("li").first()).toContainText("Ensalada");
 });
 
-test("apagar una opción pide confirmar y avisa; la lista dice «apagada»", async ({ paginaAutenticada: page }) => {
+test("archivar una opción es un toque, sin confirmar: el aviso con «Deshacer» y la opción pasa a «Opciones archivadas»", async ({ paginaAutenticada: page }) => {
   const m = marca();
   const g = await sembrarGrupo({ nombre: `E2E Tamaño ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico", monto: -300, factorEscala: 0.75 }, { nombre: "Grande", monto: 500, factorEscala: 1.5 }] });
   await page.goto(`/catalogo/opciones/${g.grupoId}`);
@@ -111,10 +111,11 @@ test("apagar una opción pide confirmar y avisa; la lista dice «apagada»", asy
   await expect(chico).toContainText("− $ 300");
   await expect(chico).toContainText("consume ×0,75");
   await expect(chico).toContainText(/Rige desde \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} · cargó/);
-  await chico.getByRole("button", { name: "Desactivar" }).click();
-  await expect(chico.getByRole("alert")).toContainText("no se ofrece en ningún producto");
-  await chico.getByRole("button", { name: "Sí, desactivar" }).click();
-  await expect(chico).toContainText("apagada");
+  // OPCIONES-LIMPIEZA: archivar no pide confirmación (se deshace con un toque); la opción sale de la lista y queda en «Opciones archivadas».
+  await chico.getByRole("button", { name: "Archivar Chico" }).click();
+  await expect(page.locator("[data-aviso-con-deshacer]")).toContainText("Opción «Chico» archivada.");
+  await expect(page.locator("[data-opcion-archivada='Chico']")).toBeVisible();
+  await expect(chico).toHaveCount(0);
   expect((await prisma.opcionDeGrupo.findUniqueOrThrow({ where: { id: g.opciones["Chico"]!.opcionId } })).activa).toBe(false);
   // Un tamaño se elige siempre una vez: los límites no se pueden tocar.
   await expect(page.getByLabel("Mínimo a elegir")).toHaveAttribute("readonly", "");
