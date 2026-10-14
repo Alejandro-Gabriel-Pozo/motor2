@@ -264,28 +264,19 @@
   color: var(--ink2);
 }
 .chevron {
-  width: 44px;
-  height: 44px;
+  width: 18px;
   flex: none;
-  border: 0;
-  background: transparent;
   display: grid;
   place-items: center;
   color: var(--ink3);
-  margin-right: -10px;
 }
 .chevron svg {
   width: 18px;
   height: 18px;
-  transition: transform 0.15s;
 }
-.abierta .chevron svg {
+/* «Fuera de carta» es un <details>: su chevron gira con el [open] nativo. */
+.fueraDeCarta[open] .chevron svg {
   transform: rotate(180deg);
-}
-@media (prefers-reduced-motion: reduce) {
-  .chevron svg {
-    transition: none;
-  }
 }
 .maestro {
   border: 1px solid var(--line);
@@ -610,6 +601,7 @@
 .ayuda a {
   color: inherit;
   text-decoration: underline;
+  overflow-wrap: anywhere;
 }
 .fueraDeCarta summary {
   list-style: none;

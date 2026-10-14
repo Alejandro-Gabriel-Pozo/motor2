@@ -27,8 +27,9 @@ test("cargar y sacar el descuento de un producto desde /carta se refleja en la c
   };
 
   try {
-    await page.goto("/carta");
-    await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible();
+    // CARTA-MANT: la ficha de cada producto vive en Parametrización › Secciones.
+    await page.goto("/carta/parametrizacion/secciones");
+    await expect(page.getByRole("heading", { name: "Carta", level: 1 })).toBeVisible();
     // CARTA-MANT: los productos van agrupados por sección (plegada).
     await page.locator(`[data-grupo-de-la-carta="${seccion.nombre}"] > summary`).click();
     const fila = page.locator(`[data-contenido-carta="${producto.nombre}"]`);

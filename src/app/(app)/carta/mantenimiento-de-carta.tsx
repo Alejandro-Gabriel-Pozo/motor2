@@ -50,11 +50,14 @@ const NIVELES: [NivelDeMantenimiento, string][] = [
   ["visibilidad", "Visibilidad"],
 ];
 
-function Chevron() {
+/** El chevron de la tarjeta, decorativo (el que pliega y despliega es el título): hacia abajo plegada, hacia arriba desplegada (dos trazos, sin girar el dibujo). */
+function Chevron({ abierta = false }: { abierta?: boolean }) {
   return (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M5 8l5 5 5-5" />
-    </svg>
+    <span className={s.chevron} aria-hidden="true">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d={abierta ? "M5 12l5-5 5 5" : "M5 8l5 5 5-5"} />
+      </svg>
+    </span>
   );
 }
 
@@ -204,9 +207,7 @@ export function MantenimientoDeCarta({
               <i className={s.punto} />
               {rotulo}
             </button>
-            <button type="button" className={s.chevron} aria-expanded={abierta} aria-label={`${abierta ? "Plegar" : "Desplegar"} ${sec.nombre}`} onClick={() => alternar(clave, filtroActivo)}>
-              <Chevron />
-            </button>
+            <Chevron abierta={abierta} />
           </div>
           {abierta && (
             <div className={s.filas}>
@@ -293,9 +294,7 @@ export function MantenimientoDeCarta({
                   <button type="button" className={s.boton} disabled title="Llega en la próxima entrega (F4)">
                     <span className="sr-only">{sec.nombre}: </span>Ajustar sección
                   </button>
-                  <button type="button" className={s.chevron} aria-expanded={abierta} aria-label={`${abierta ? "Plegar" : "Desplegar"} ${sec.nombre}`} onClick={() => alternar(clave, false)}>
-                    <Chevron />
-                  </button>
+                  <Chevron abierta={abierta} />
                 </div>
                 {abierta && (
                   <div className={s.filas}>
@@ -453,9 +452,7 @@ function FueraDeCarta({
           <b>Fuera de carta (POS y menú del día): {productos.length}</b>
           <span>Se venden en el POS o en el menú del día y no salen en la carta pública.</span>
         </span>
-        <span className={s.chevron} aria-hidden="true">
-          <Chevron />
-        </span>
+        <Chevron />
       </summary>
       <div className={`${s.filas} ${s.pad}`}>
         <p className={s.ayuda}>No hace falta hacer nada.{puedeAgregar ? " Para publicar uno, tocá «Agregar a la carta» y elegí la sección." : ""}</p>

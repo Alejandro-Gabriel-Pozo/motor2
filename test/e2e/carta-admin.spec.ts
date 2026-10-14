@@ -20,15 +20,18 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
 
   try {
-    await page.goto("/carta");
-    await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible();
-    // CARTA-MANT (decisión del dueño): un PV disponible acá sin contenido de carta NO es un faltante (es el POS o el menú del día): ya no se avisa en ámbar, va plegado a «Fuera de carta».
-    await expect(page.getByRole("heading", { name: /PV disponibles acá sin contenido de carta/ })).toHaveCount(0);
-    const fueraDeCarta = page.locator("[data-fuera-de-carta]");
+    // CARTA-MANT (prototipo aprobado): /carta es «Mantenimiento»; un PV disponible acá sin contenido de carta NO es un faltante (es el POS o el menú del día): no hay recuadro ámbar,
+    // va plegado a «Fuera de carta», al final de «Visibilidad».
+    await page.goto("/carta?nivel=visibilidad");
+    await expect(page.getByRole("heading", { name: "Carta", level: 1 })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Visibilidad", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText(/PV disponibles acá sin contenido de carta/)).toHaveCount(0);
+    let fueraDeCarta = page.locator("[data-fuera-de-carta]");
     await fueraDeCarta.locator("> summary").click();
     await expect(fueraDeCarta.locator(`[data-fuera-de-carta-producto="${producto.nombre}"]`)).toBeVisible();
 
-    // 1. Sección de carta nueva.
+    // 1. Sección de carta nueva: Parametrización › Secciones (los formularios de siempre).
+    await page.goto("/carta/parametrizacion/secciones");
     const nuevaSeccion = page.locator("form", { has: page.getByRole("heading", { name: "Nueva sección de carta" }) });
     await nuevaSeccion.getByLabel("Nombre", { exact: true }).fill(nombreSeccion);
     await nuevaSeccion.getByLabel(/^Título/).fill("Del fuego");
@@ -39,12 +42,17 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
     // Ya no existe el bloque "Qué categoría va en cada sección": la categoría no ubica nada en la carta.
     await expect(page.getByRole("heading", { name: "Qué categoría va en cada sección" })).toHaveCount(0);
 
-    // 2. «Agregar a la carta» de un toque (CARTA-MANT): se elige la sección y el PV pasa a ella, visible y al final. Después se completa su contenido en su ficha. Sin imagen propia (solo la sección tiene imagen).
+    // 2. «Agregar a la carta» de un toque (CARTA-MANT): se elige la sección y el PV pasa a ella, visible y al final. Después se completa su contenido en su ficha (Parametrización › Secciones).
+    await page.goto("/carta?nivel=visibilidad");
+    fueraDeCarta = page.locator("[data-fuera-de-carta]");
+    await fueraDeCarta.locator("> summary").click();
     const enFuera = fueraDeCarta.locator(`[data-fuera-de-carta-producto="${producto.nombre}"]`);
     await enFuera.getByRole("button", { name: /Agregar a la carta/ }).click();
+    await expect(enFuera.locator("[data-vista-previa]")).toHaveText("Sin opciones.");
     await enFuera.getByRole("button", { name: nombreSeccion, exact: true }).click();
-    await expect(fueraDeCarta.locator("[data-resultado-pegado]")).toHaveText(`«${producto.nombre}» ya sale en la carta, al final de «${nombreSeccion}».`);
+    await expect(page.locator("[data-aviso-carta] > span")).toHaveText(`«${producto.nombre}» ya sale en la carta, al final de «${nombreSeccion}».`);
     await expect(enFuera).toHaveCount(0);
+    await page.goto("/carta/parametrizacion/secciones");
     await page.locator(`[data-grupo-de-la-carta="${nombreSeccion}"] > summary`).click();
     const filaProducto = page.locator(`[data-contenido-carta="${producto.nombre}"]`);
     await filaProducto.locator("summary").click();
@@ -57,7 +65,8 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
     await filaProducto.getByRole("button", { name: `Guardar contenido de «${producto.nombre}»` }).click();
     await expect(filaProducto.getByRole("status")).toHaveText(`Carta: "${producto.nombre}" se muestra.`);
 
-    // 3. Una promo de la sucursal en esa sección.
+    // 3. Una promo de la sucursal en esa sección: Parametrización › Promociones.
+    await page.goto("/carta/parametrizacion/promociones");
     const nuevaPromo = page.locator("form", { has: page.getByRole("heading", { name: "Nueva promo" }) });
     await nuevaPromo.getByLabel("Título", { exact: true }).fill(nombrePromo);
     await nuevaPromo.getByLabel("Sección de carta").selectOption({ label: nombreSeccion });

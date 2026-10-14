@@ -27,6 +27,8 @@ async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucur
     carta_promo_activar: celda,
     carta_promo_precio_local: celda,
     carta_items_agrupados: celda,
+    // CARTA-MANT: «Hoy» de la carta es la disponibilidad por producto y sucursal de siempre.
+    producto_disponibilidad: celda,
   });
   const rol = { id: admin.rolId };
   const usuario = await prisma.user.create({ data: { email: `e2e-carta-${marca}@local.test`, activoGlobal: true } });
@@ -93,18 +95,29 @@ test("un rol que solo VE la carta ve secciones, contenido y promos en /carta com
   const carta = await crearCarta(sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, false);
   try {
+    // CARTA-MANT: «Mantenimiento» (/carta) se ve, con los interruptores deshabilitados y sin «Agregar a la carta».
     await page.goto("/carta");
     const main = page.locator("main");
-    await expect(page.getByRole("heading", { name: "Carta pública", level: 1 })).toBeVisible(); // la pantalla, no un mensaje de permiso
+    await expect(page.getByRole("heading", { name: "Carta", level: 1 })).toBeVisible(); // la pantalla, no un mensaje de permiso
     await expect(main.locator("[data-aviso-solo-lectura]")).toHaveText("Solo lectura: tu rol no tiene permiso para editar la carta.");
+    await main.locator(`[data-seccion-hoy="${carta.seccion.nombre}"]`).getByRole("button", { name: new RegExp(`^${carta.seccion.nombre} \\d`) }).click();
+    await expect(main.getByRole("button", { name: `${carta.suelto.nombre}: En carta` })).toBeDisabled();
+    await main.getByRole("button", { name: "Visibilidad", exact: true }).click();
+    await main.locator(`[data-seccion-visibilidad="${carta.seccion.nombre}"]`).getByRole("button", { name: new RegExp(`^${carta.seccion.nombre} \\d`) }).click();
+    await expect(main.locator(`[data-producto-visibilidad="${carta.suelto.nombre}"]`).getByRole("button", { name: "No" })).toBeDisabled();
+    await main.locator("[data-fuera-de-carta] > summary").click();
+    await expect(main.getByRole("button", { name: BOTONES_DE_EDICION }), "Mantenimiento sin botones de edición").toHaveCount(0);
+    await expect(main.locator("input:not([type=search]), textarea, select"), "Mantenimiento sin campos").toHaveCount(0);
 
-    // Los datos están, como texto.
+    // Parametrización › Secciones: los datos están, como texto.
+    await page.goto("/carta/parametrizacion/secciones");
+    await expect(main.locator("[data-aviso-solo-lectura]")).toHaveText("Solo lectura: tu rol no tiene permiso para editar la carta.");
     const seccion = main.locator(`[data-seccion-carta="${carta.seccion.nombre}"]`);
     await seccion.locator("summary").click();
     await expect(seccion.locator("[data-solo-lectura]")).toContainText(`Descripción de sección ${carta.marca}`);
     await expect(seccion.locator("[data-solo-lectura]")).toContainText("Del horno");
 
-    // CARTA-MANT: los productos van agrupados por sección (plegada).
+    // Los productos van agrupados por sección (plegada).
     await main.locator(`[data-grupo-de-la-carta="${carta.seccion.nombre}"] > summary`).click();
     const contenido = main.locator(`[data-contenido-carta="${carta.suelto.nombre}"]`);
     await contenido.locator("summary").click();
@@ -113,16 +126,20 @@ test("un rol que solo VE la carta ve secciones, contenido y promos en /carta com
     await expect(datosContenido).toContainText("Sin TACC");
     await expect(contenido.locator("[data-solo-lectura]").filter({ hasText: "Descuento en esta sucursal" })).toContainText("Sin descuento");
     await expect(datosContenido).toContainText(carta.seccion.nombre);
+    await expect(main.locator("input, textarea, select"), "no tenía que haber ningún campo editable").toHaveCount(0);
+    await expect(main.getByRole("button", { name: BOTONES_DE_EDICION }), "no tenía que haber botones de edición").toHaveCount(0);
+    await expect(main.getByRole("heading", { name: "Nueva sección de carta" })).toHaveCount(0);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "Secciones en solo lectura").toEqual([]);
 
+    // Parametrización › Promociones.
+    await page.goto("/carta/parametrizacion/promociones");
     const promo = main.locator(`[data-promo-carta="${carta.promo.titulo}"]`);
     await promo.locator("summary").click();
     await expect(promo.locator("[data-solo-lectura]").filter({ hasText: `Descripción de promo ${carta.marca}` })).toBeVisible();
 
     // …y no hay nada para editar: ni campos ni botones, ni las altas.
-    // El buscador de «Fuera de carta» (CARTA-MANT) solo filtra la lista en el navegador: no edita nada.
-    await expect(main.locator("input:not([type=search]), textarea, select"), "no tenía que haber ningún campo editable").toHaveCount(0);
+    await expect(main.locator("input, textarea, select"), "no tenía que haber ningún campo editable").toHaveCount(0);
     await expect(main.getByRole("button", { name: BOTONES_DE_EDICION }), "no tenía que haber botones de edición").toHaveCount(0);
-    await expect(main.getByRole("heading", { name: "Nueva sección de carta" })).toHaveCount(0);
     await expect(main.getByRole("heading", { name: "Nueva promo" })).toHaveCount(0);
     // El resumen de solo lectura también pasa axe (con los <details> abiertos).
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
@@ -167,8 +184,11 @@ test("un rol CON editar de la carta ve los formularios y las altas en las dos pa
     await page.goto("/carta");
     const main = page.locator("main");
     await expect(main.locator("[data-aviso-solo-lectura]")).toHaveCount(0);
-    await expect(main.getByRole("heading", { name: "Nueva sección de carta" })).toBeVisible();
+    await page.goto("/carta/parametrizacion/promociones");
     await expect(main.getByRole("heading", { name: "Nueva promo" })).toBeVisible();
+    await page.goto("/carta/parametrizacion/secciones");
+    await expect(main.locator("[data-aviso-solo-lectura]")).toHaveCount(0);
+    await expect(main.getByRole("heading", { name: "Nueva sección de carta" })).toBeVisible();
     const seccion = main.locator(`[data-seccion-carta="${carta.seccion.nombre}"]`);
     await seccion.locator("summary").click();
     await expect(seccion.getByRole("button", { name: "Guardar sección" })).toBeVisible();

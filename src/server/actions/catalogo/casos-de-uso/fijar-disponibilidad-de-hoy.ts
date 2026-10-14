@@ -52,5 +52,5 @@ function mensajeDeHoy(validados: { validado: CambioDeDisponibilidadValidado; dis
   }
   const todos = validados.every((x) => x.disponible === validados[0]!.disponible);
   if (!todos) return `${validados.length} productos vuelven a como estaban en «${sucursal}».`;
-  return `${validados.length} productos ${estado(validados[0]!.disponible)} en «${sucursal}»${cambiados < validados.length ? ` (${validados.length - cambiados} ya estaban así)` : ""}.`;
+  return `${validados.length} productos ${estado(validados[0]!.disponible)} en «${sucursal}»${cambiados < validados.length ? ` (${validados.length - cambiados} ya estaba${validados.length - cambiados > 1 ? "n" : ""} así)` : ""}.`;
 }

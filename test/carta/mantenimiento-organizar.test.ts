@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { coincideConLaBusqueda, ordenAlFinalDeLaSeccion, organizarCartaParaMantener, type ProductoParaMantener, type SeccionParaMantener } from "../../src/core/carta/mantenimiento";
+import { coincideConLaBusqueda, ordenAlFinalDeLaSeccion, organizarCartaParaMantener, vistaPreviaDeOpciones, type ProductoParaMantener, type SeccionParaMantener } from "../../src/core/carta/mantenimiento";
+import { guardComandoFijarDisponibilidadDeHoy, guardComandoQuitarProductoDeLaCarta } from "../../src/core/features/carta/mantenimiento.guard";
+import { MENSAJE_SUCURSAL_CAMBIADA } from "../../src/core/features/catalogo/opciones-por-sucursal.guard";
 
 /**
  * CARTA-MANT F1 (fila O.480 de docs/pureza-integracion.md): en qué lista de la pantalla de la carta cae cada producto de venta. La regla del dueño: sin contenido de carta y disponible acá es
@@ -114,5 +116,46 @@ describe("ordenAlFinalDeLaSeccion", () => {
     expect(ordenAlFinalDeLaSeccion([3, 1, 7])).toBe(8);
     expect(ordenAlFinalDeLaSeccion([-4, -2])).toBe(1);
     expect(ordenAlFinalDeLaSeccion([100_000])).toBe(100_000);
+  });
+});
+
+describe("vistaPreviaDeOpciones («Va a mostrar: …» de «Agregar a la carta»)", () => {
+  it("sin grupos, «Sin opciones.»; sin poder pedirse hoy, el aviso (no bloquea); si no, tamaños con precio, recargos con signo y las opciones sin costo", () => {
+    expect(vistaPreviaDeOpciones(false, null)).toBe("Sin opciones.");
+    expect(vistaPreviaDeOpciones(true, null)).toMatch(/^Ojo: hoy no se puede pedir/);
+    expect(
+      vistaPreviaDeOpciones(true, {
+        grupos: [
+          { nombre: "Tamaño", opciones: [{ nombre: "Chica", precio: 9000 }, { nombre: "Grande", precio: 10500 }] },
+          { nombre: "Extras", opciones: [{ nombre: "Huevo", recargo: 800 }, { nombre: "Sin pan", recargo: -300 }] },
+        ],
+        sinCosto: [{ grupo: "Guarnición", opciones: ["Papas fritas", "Puré"] }],
+      })
+    ).toBe("Va a mostrar: Tamaño: Chica $9.000, Grande $10.500 · Extras: Huevo +$800, Sin pan −$300 · Guarnición: Papas fritas, Puré.");
+    expect(vistaPreviaDeOpciones(true, { grupos: [], sinCosto: [] })).toBe("Sin opciones para elegir (las que tiene no cambian nada en la carta).");
+  });
+});
+
+describe("guards de «Hoy» y «Quitar de la carta»", () => {
+  const activa = "s1";
+  it("Hoy: primero el eco; después la lista (de 1 a 200, sin repetidos) y cada cambio (id y booleano)", () => {
+    expect(guardComandoFijarDisponibilidadDeHoy({ sucursalId: "otra", sucursalActivaId: activa, cambios: [{ productoId: "p", disponible: true }] })).toMatchObject({ ok: false, mensaje: MENSAJE_SUCURSAL_CAMBIADA });
+    expect(guardComandoFijarDisponibilidadDeHoy({ sucursalId: activa, sucursalActivaId: activa, cambios: [] }).ok).toBe(false);
+    expect(guardComandoFijarDisponibilidadDeHoy({ sucursalId: activa, sucursalActivaId: activa, cambios: "x" }).ok).toBe(false);
+    expect(guardComandoFijarDisponibilidadDeHoy({ sucursalId: activa, sucursalActivaId: activa, cambios: Array.from({ length: 201 }, (_, i) => ({ productoId: `p${i}`, disponible: true })) }).ok).toBe(false);
+    expect(guardComandoFijarDisponibilidadDeHoy({ sucursalId: activa, sucursalActivaId: activa, cambios: [{ productoId: "p", disponible: 1 }] }).ok).toBe(false);
+    expect(guardComandoFijarDisponibilidadDeHoy({ sucursalId: activa, sucursalActivaId: activa, cambios: [{ productoId: "p", disponible: true }, { productoId: "p", disponible: false }] }).ok).toBe(false);
+    expect(guardComandoFijarDisponibilidadDeHoy({ sucursalId: activa, sucursalActivaId: activa, cambios: [null] }).ok).toBe(false);
+    expect(guardComandoFijarDisponibilidadDeHoy({ sucursalId: activa, sucursalActivaId: activa, cambios: [{ productoId: "p", disponible: false }, { productoId: "q", disponible: true }] })).toEqual({
+      ok: true,
+      valor: { cambios: [{ productoId: "p", disponible: false }, { productoId: "q", disponible: true }] },
+    });
+  });
+
+  it("Quitar: el eco, el producto y `confirmado` solo si es exactamente `true`", () => {
+    expect(guardComandoQuitarProductoDeLaCarta({ sucursalId: "otra", sucursalActivaId: activa, productoId: "p" }).ok).toBe(false);
+    expect(guardComandoQuitarProductoDeLaCarta({ sucursalId: activa, sucursalActivaId: activa, productoId: 3 }).ok).toBe(false);
+    expect(guardComandoQuitarProductoDeLaCarta({ sucursalId: activa, sucursalActivaId: activa, productoId: "p", confirmado: "true" })).toEqual({ ok: true, valor: { productoId: "p", confirmado: false } });
+    expect(guardComandoQuitarProductoDeLaCarta({ sucursalId: activa, sucursalActivaId: activa, productoId: "p", confirmado: true })).toEqual({ ok: true, valor: { productoId: "p", confirmado: true } });
   });
 });

@@ -3,9 +3,10 @@ import type { Prisma } from "@prisma/client";
 
 /**
  * Escrituras del CONTENIDO de carta de un producto (`ContenidoCartaProducto`; Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1; mismo contrato que el resto de
- * `server/persistencia/`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio). Son EXACTAMENTE los dos `upsert` que antes hacía en línea
+ * `server/persistencia/`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio). Los dos `upsert` son EXACTAMENTE los que antes hacía en línea
  * `src/server/actions/carta/contenido-producto.ts`; los llaman solo los casos de uso `guardar-contenido-carta-producto.ts` y `actualizar-visible-en-carta.ts` de
- * `src/server/actions/carta/casos-de-uso/`, con la base del contexto y sin transacción, como antes (una fila por (sucursal, producto): la carta es propia de cada sucursal).
+ * `src/server/actions/carta/casos-de-uso/`, con la base del contexto y sin transacción, como antes (una fila por (sucursal, producto): la carta es propia de cada sucursal). CARTA-MANT suma
+ * el `create` de «Agregar a la carta» y el borrado de «Quitar de la carta», cada uno dentro de la transacción de su caso de uso.
  */
 
 /** Los campos que fija el formulario completo del contenido (siempre todos). */
