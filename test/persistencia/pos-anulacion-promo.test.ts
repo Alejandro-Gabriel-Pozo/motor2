@@ -45,6 +45,8 @@ describe("persistencia de la anulación de una promo enviada", () => {
           precioCartaUnitario: 9000.25,
           numeroEnvio: 2,
           anulaAItemId: null,
+          // GO-3b I3: la huella de opciones viaja para que el espejo la repita (sin opciones, null).
+          huellaOpciones: null,
           producto: { nombre: "Milanesa" },
           anulaciones: [{ cantidad: -0.5 }],
         },
@@ -57,6 +59,8 @@ describe("persistencia de la anulación de una promo enviada", () => {
           precioCartaUnitario: null,
           numeroEnvio: 2,
           anulaAItemId: mila.id,
+          // GO-3b I3: la huella de opciones viaja para que el espejo la repita (sin opciones, null).
+          huellaOpciones: null,
           producto: { nombre: "Milanesa" },
           anulaciones: [],
         },
