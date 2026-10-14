@@ -1,8 +1,10 @@
 import "server-only";
 import type { DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import type { IngredienteDeBase } from "@/core/movimientos/public";
 import { resumenDePrecios, type ResumenDePrecios } from "@/core/pos/public";
 import { cargarAdmisionDeProducto, cargarGrupoDeOpciones, listarGruposDeOpciones } from "@/server/lecturas/catalogo/opciones-de-venta";
 import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
+import { cargarRecetaVigenteParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { cargarOpcionesParaVender, completarPreciosDeSucursal } from "@/server/lecturas/opciones/opciones-para-vender";
 import type { Db } from "@/lib/db-tipos";
 
@@ -84,6 +86,19 @@ export interface GrupoDetalleDelPanel {
   productos: { id: string; nombre: string }[];
   /** El precio base del primer producto que lo usa, en la sucursal activa: la REFERENCIA del espejo de una diferencia (`null` si ningún producto lo usa). */
   referencia: { productoNombre: string; precio: number } | null;
+  /**
+   * OPCIONES-FACTOR: la receta de ESE MISMO producto de referencia, la que la venta usa en la sucursal activa (`cargarRecetaVigenteParaVender`: la propia si está habilitada, si no la
+   * central, con las calibraciones de ESTA sucursal), para mostrar al lado del factor de un tamaño cuánto descuenta antes y después. Solo se lee si la página lo pide (quien mira tiene
+   * el «Ver» de las recetas y la empresa tiene el módulo Recetas) y el grupo es de tamaños; `null` si no, o si ningún producto usa el grupo. Los sustitutos no viajan: no cambian la cantidad.
+   */
+  recetaDeReferencia: {
+    productoNombre: string;
+    /** Se produce por lote: al venderlo no descuenta su receta (y todavía no se vende con opciones). */
+    seProduce: boolean;
+    sucursalId: string;
+    /** Vacía si el producto no tiene receta vigente en la sucursal. */
+    ingredientes: { insumoNombre: string; unidadNombre: string; base: IngredienteDeBase }[];
+  } | null;
   /** Las materias primas de la empresa, para elegir el insumo de un consumo (el consumo va siempre en su unidad de stock, U7). */
   insumos: { id: string; nombre: string; unidadNombre: string; decimales: number }[];
   /** Las unidades activas, para la unidad de stock del producto interno de un adicional nuevo. */
@@ -93,9 +108,10 @@ export interface GrupoDetalleDelPanel {
 /**
  * La pantalla de UN grupo (`/catalogo/opciones/[grupoId]`): el grupo, sus opciones con su historial de cambios (la lectura de GO-2a, `cargarGrupoDeOpciones`) y lo que la pantalla
  * necesita para nombrar cada cosa. Sin N+1: una lectura del grupo y seis consultas más en paralelo (productos que lo usan, nombres de insumos, de quienes cargaron y de las unidades, materias
- * primas y unidades activas), más el precio de referencia. `null` si el grupo no existe o es de otra empresa (la RLS no lo deja ver).
+ * primas y unidades activas), más el precio de referencia y, con `conRecetaDeReferencia`, la receta de ese producto en la sucursal (OPCIONES-FACTOR). `null` si el grupo no existe o es de
+ * otra empresa (la RLS no lo deja ver).
  */
-export async function cargarGrupoDelPanel(db: Db, grupoId: string, sucursalId: string): Promise<GrupoDetalleDelPanel | null> {
+export async function cargarGrupoDelPanel(db: Db, grupoId: string, sucursalId: string, conRecetaDeReferencia: boolean): Promise<GrupoDetalleDelPanel | null> {
   const g = await cargarGrupoDeOpciones(db, grupoId);
   if (!g) return null;
   const versiones = g.opciones.flatMap((o) => o.versiones);
@@ -103,10 +119,10 @@ export async function cargarGrupoDelPanel(db: Db, grupoId: string, sucursalId: s
   const idsDeUsuarios = [...new Set(versiones.map((v) => v.creadoPorId))];
   const idsDeUnidades = [...new Set(versiones.flatMap((v) => v.consumos.map((c) => c.unidadId)))];
   const [admisiones, nombresDeProductos, usuarios, insumos, unidades, unidadesDeConsumos] = await Promise.all([
-    db.productoAdmiteGrupo.findMany({ where: { grupoId, activo: true }, select: { producto: { select: { id: true, nombre: true, precioVenta: true } } } }),
+    db.productoAdmiteGrupo.findMany({ where: { grupoId, activo: true }, select: { producto: { select: { id: true, nombre: true, precioVenta: true, seProduce: true } } } }),
     idsDeProductos.length ? db.producto.findMany({ where: { id: { in: idsDeProductos } }, select: { id: true, nombre: true } }) : Promise.resolve([]),
     idsDeUsuarios.length ? db.user.findMany({ where: { id: { in: idsDeUsuarios } }, select: { id: true, name: true } }) : Promise.resolve([]),
-    db.producto.findMany({ where: { tipo: "MP" }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true, unidadStock: { select: { nombre: true, decimales: true } } } }),
+    db.producto.findMany({ where: { tipo: "MP" }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true, unidadStockId: true, unidadStock: { select: { nombre: true, decimales: true } } } }),
     db.unidad.findMany({ where: { activa: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
     idsDeUnidades.length ? db.unidad.findMany({ where: { id: { in: idsDeUnidades } }, select: { id: true, nombre: true } }) : Promise.resolve([]),
   ]);
@@ -117,10 +133,28 @@ export async function cargarGrupoDelPanel(db: Db, grupoId: string, sucursalId: s
   const productos = admisiones.map((a) => a.producto).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
   let referencia: GrupoDetalleDelPanel["referencia"] = null;
+  let recetaDeReferencia: GrupoDetalleDelPanel["recetaDeReferencia"] = null;
   const primero = productos[0];
   if (primero) {
     const local = (await preciosLocalesVigentes(sucursalId, db, [primero.id])).get(primero.id);
     referencia = { productoNombre: primero.nombre, precio: local?.precio ?? Number(primero.precioVenta) };
+    // Solo un tamaño tiene factor: en los demás grupos la receta no se lee.
+    if (conRecetaDeReferencia && g.tipo === "MEDIDA") {
+      // La MISMA lectura de la receta que la venta (y por eso la misma receta efectiva); los nombres y la unidad de stock salen de las materias primas ya leídas arriba (la venta
+      // exige que cada ingrediente sea una MP: uno que no lo es no se muestra, porque esa venta se rechaza).
+      const mp = new Map(insumos.map((i) => [i.id, i]));
+      const receta = primero.seProduce ? [] : await cargarRecetaVigenteParaVender(db, { productoId: primero.id, sucursalId });
+      recetaDeReferencia = {
+        productoNombre: primero.nombre,
+        seProduce: primero.seProduce,
+        sucursalId,
+        ingredientes: receta.flatMap((ing) => {
+          const insumo = mp.get(ing.insumoProductoId);
+          if (!insumo) return [];
+          return [{ insumoNombre: insumo.nombre, unidadNombre: insumo.unidadStock.nombre, base: { ingrediente: { ...ing, insumoSustitutoIds: [] }, unidadStockId: insumo.unidadStockId } }];
+        }),
+      };
+    }
   }
 
   return {
@@ -154,6 +188,7 @@ export async function cargarGrupoDelPanel(db: Db, grupoId: string, sucursalId: s
     })),
     productos: productos.map((p) => ({ id: p.id, nombre: p.nombre })),
     referencia,
+    recetaDeReferencia,
     insumos: insumos.map((i) => ({ id: i.id, nombre: i.nombre, unidadNombre: i.unidadStock.nombre, decimales: i.unidadStock.decimales })),
     unidades,
   };

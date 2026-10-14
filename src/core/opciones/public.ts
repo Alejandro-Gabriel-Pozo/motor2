@@ -44,3 +44,6 @@ export { ayudaDelTipoDeGrupo, espejoDeDiferencia, nombreDelTipoDeGrupo, resumenD
 // OPCIONES-LIMPIEZA (G2): «Limpiar» — los candidatos a archivar según un criterio y la vista previa de los productos afectados (puro; lo usa `/catalogo/opciones/limpiar`).
 export { CRITERIOS_DE_LIMPIEZA, candidatosALimpiar, productosAfectados } from "./limpieza";
 export type { CriterioDeLimpieza, GrupoParaLimpiar, OpcionParaLimpiar, VentasRecientes } from "./limpieza";
+
+// OPCIONES-FACTOR: el factor de un tamaño en palabras («Factor 1,3 = lleva 30% más que el tamaño base»), para el campo «El factor» de `/catalogo/opciones/[grupoId]`.
+export { leerFactorDeEscala } from "./factor-de-escala";
