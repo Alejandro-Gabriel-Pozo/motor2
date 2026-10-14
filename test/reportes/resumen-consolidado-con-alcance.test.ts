@@ -8,6 +8,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { __setCookieDeTestParaSucursal } from "../setup/next-headers-stub";
 import { crearMembresia } from "../setup/membresia";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 import { obtenerResumenConsolidado } from "../../src/server/consultas/reportes/resumen-consolidado";
 
 /**
@@ -36,6 +37,9 @@ describe("el Consolidado (periodo.ts, varias sucursales) bajo el alcance de la b
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
     const pvA = await sembrarProductoDisponible({ codigo: "PV_A", nombre: "Pan Central", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 100 }, A);
     const pvB = await sembrarProductoDisponible({ codigo: "PV_B", nombre: "Pan Norte", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 50 }, B);
+    // RECETA (ADR-033, sin receta no se vende): cada pan es de reventa, con stock (comprado en el 2000 a costo 0) en la sección de su sucursal.
+    await darRecetaDeReventa(prisma, pvA, { sucursalIds: [A], stock: { cantidad: 10, seccionIds: [seccionA.id], usuarioId: admin.id } });
+    await darRecetaDeReventa(prisma, pvB, { sucursalIds: [B], stock: { cantidad: 10, seccionIds: [seccionB.id], usuarioId: admin.id } });
     __setCookieDeTestParaSucursal(A);
     await registrarVenta({ fecha: AHORA_DE_LA_CORRIDA, seccionId: seccionA.id, ventas: [{ productoId: pvA.id, cantidadVendida: 2 }] });
     __setCookieDeTestParaSucursal(B);

@@ -93,10 +93,11 @@ describe("cerrarCuenta: secciones que no sirven de respaldo automático", () => 
       expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).toBeNull();
     });
 
-    it("un PV SIN receta y sin habitual: el mismo error", async () => {
+    // RECETA (ADR-033): un PV sin receta ya no llega acá (se rechaza antes, por no tener receta); el Flan tiene su receta de reventa con el stock en «Salón», la excluida.
+    it("un PV de reventa (receta de 1 unidad, su insumo solo en la excluida) y sin habitual: el mismo error", async () => {
       const cuenta = await cuentaCon(s.flan.id, 1);
       expect(await cerrarCuenta(cuenta.id)).toEqual({ ok: false, mensaje: mensajeSinRespaldo("Flan") });
-      expect(await prisma.operacion.count()).toBe(0);
+      expect(await prisma.operacion.count({ where: { proceso: { not: "COMPRA" } } })).toBe(0); // sin las COMPRA del stock de reventa del fixture
     });
 
     it("si esa sección ES la habitual del PV, cierra bien (sin necesitar ningún respaldo)", async () => {

@@ -1,5 +1,5 @@
 import "server-only";
-import { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "@/core/carta/public";
+import { cuposDeSeccionActivos, precioDePromo, seleccionDeSucursalDePromo, tieneCupoActivoDeTipoNuevo, wherePromoOfrecidaEn } from "@/core/carta/public";
 import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
 import { pediblesDeEntrada, type CupoPromoDefinicion } from "@/core/pos/public";
 import { modulosDelPosDeSucursal, type ModulosDelPos } from "@/server/lecturas/pos/modulos-del-pos";
@@ -45,10 +45,14 @@ export async function cargarPromoCartaParaAgregar(
     typeof promoCartaId === "string"
       ? await db.promoCarta.findFirst({
           where: { id: promoCartaId, ...wherePromoOfrecidaEn(sucursalId) },
-          include: { sucursales: seleccionDeSucursalDePromo(sucursalId), cupos: { include: { seccionCarta: { select: { nombre: true } } }, orderBy: { orden: "asc" } } },
+          include: { sucursales: seleccionDeSucursalDePromo(sucursalId), cupos: { where: { activo: true }, include: { seccionCarta: { select: { nombre: true } } }, orderBy: { orden: "asc" } } },
         })
       : null;
-  if (!promo || !promo.cupos.length) return null;
+  // GO-3 (primer despliegue, «expandir y contraer»): este código solo arma cupos de SECCIÓN activos. Una promo con un cupo activo de un tipo nuevo (LISTA o DEL_DIA) no se ofrece
+  // (falla cerrado: nunca un combo a medias por su precio entero); los cupos dados de baja no cuentan.
+  if (!promo || tieneCupoActivoDeTipoNuevo(promo.cupos)) return null;
+  const cuposDeSeccion = cuposDeSeccionActivos(promo.cupos);
+  if (!cuposDeSeccion.length) return null;
 
   // La capacidad `precio_local` se lee una vez y la comparten el selector y el precio de la promo (O.39: antes 7 lecturas por carga).
   const precioLocalActivoLeido = precioLocalActivoEn(sucursalId, db);
@@ -56,7 +60,7 @@ export async function cargarPromoCartaParaAgregar(
   const pediblesPorSeccion = new Map(selector.seccionesCarta.map((s) => [s.seccionCartaId, s.entradas.flatMap(pediblesDeEntrada)]));
 
   const precioCartaPorProducto = new Map<string, number>();
-  const cupos: CupoPromoDefinicion[] = promo.cupos.map((c) => {
+  const cupos: CupoPromoDefinicion[] = cuposDeSeccion.map((c) => {
     const pedibles = pediblesPorSeccion.get(c.seccionCartaId) ?? [];
     // Los componentes de una promo se prorratean sobre el precio de LISTA: el descuento de producto no aplica dentro de una promo.
     for (const p of pedibles) precioCartaPorProducto.set(p.productoId, p.precioLista ?? p.precio);

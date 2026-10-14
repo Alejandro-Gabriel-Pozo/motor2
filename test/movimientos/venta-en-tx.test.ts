@@ -9,6 +9,7 @@ import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { type ActorVenta } from "../../src/core/movimientos/registrar-venta";
 import { registrarVentaEnTx } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 
 /**
  * Núcleo de la Venta extraído de `registrarVenta` (src/core/movimientos/registrar-venta.ts, docs/plan-tomar-pedido-2026-09-25.md,
@@ -35,7 +36,10 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
 
     mpHarinaId = (await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: catalogo.kg.id, insumoId: catalogo.insumo.id }, sucursalId)).id;
     pvPanId = (await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 100 }, sucursalId)).id;
-    pvGaseosaId = (await sembrarProductoDisponible({ codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 50 }, sucursalId)).id;
+    const gaseosa = await sembrarProductoDisponible({ codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 50 }, sucursalId);
+    pvGaseosaId = gaseosa.id;
+    // RECETA (ADR-033): la Gaseosa es de reventa (1 kg de su MP por unidad, con 100 en «Depósito»); antes se vendía sin receta.
+    await darRecetaDeReventa(prisma, gaseosa, { sucursalIds: [sucursalId], stock: { cantidad: 100, seccionIds: [seccionId], usuarioId: admin.id } });
     await prisma.recetaVersion.create({
       data: { productoId: pvPanId, version: 1, ingredientes: { create: [{ insumoProductoId: mpHarinaId, cantidad: 0.5, unidadId: catalogo.kg.id, mermaPorcentaje: 0 }] } },
     });
@@ -112,7 +116,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
     const ajena = await sembrarSeccion(norte.id, "Barra Norte");
     const r = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, { fecha: new Date(), origen: { tipo: "seccion", seccionId: ajena.id }, lineas: [{ productoId: pvGaseosaId, cantidadVendida: 1 }] }));
     expect(r).toEqual({ ok: false, mensaje: "No se encontró la sección." });
-    expect(await prisma.operacion.count()).toBe(0);
+    expect(await prisma.operacion.count({ where: { proceso: { not: "COMPRA" } } })).toBe(0); // RECETA: sin la COMPRA del stock de reventa
   });
 
   describe("permitirStockNegativo (B6bis)", () => {

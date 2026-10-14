@@ -4,6 +4,7 @@ import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembra
 import { registrarVentaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta";
 import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
 import type { DatosVentaInput } from "../../src/core/features/ventas/venta.schema";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 
 /**
  * Caso de uso `registrarVentaCasoDeUso` (src/server/actions/movimientos/casos-de-uso/registrar-venta.ts; Task #41, Fase M): la parte
@@ -37,7 +38,18 @@ describe("registrarVentaCasoDeUso", () => {
     const { kg } = await sembrarCatalogoBase();
     seccionId = (await sembrarSeccion(sucursalId)).id;
     adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id })).id;
-    gaseosaId = (await sembrarProductoDisponible({ codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: kg.id, precioVenta: 500 }, sucursalId)).id;
+    const gaseosa = await sembrarProductoDisponible({ codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: kg.id, precioVenta: 500 }, sucursalId);
+    gaseosaId = gaseosa.id;
+    // RECETA (ADR-033, sin receta no se vende): la gaseosa es de reventa, con stock en la sección.
+    await darRecetaDeReventa(prisma, gaseosa, { sucursalIds: [sucursalId], stock: { cantidad: 10, seccionIds: [seccionId], usuarioId: adminId } });
+  });
+
+  it("PRODUCTO_SIN_RECETA (ADR-033): un PV sin receta vigente se rechaza con su código y su mensaje, sin escribir nada", async () => {
+    const soda = await prisma.producto.findFirstOrThrow({ where: { id: gaseosaId }, select: { unidadStockId: true } });
+    const sinReceta = await sembrarProductoDisponible({ codigo: "PV_SODA", nombre: "Soda", tipo: "PV", unidadStockId: soda.unidadStockId, precioVenta: 300 }, sucursalId);
+    const r = await registrarVentaCasoDeUso(actor(), datos({ ventas: [{ productoId: sinReceta.id, cantidadVendida: 1 }] }));
+    expect(r).toEqual({ ok: false, codigo: "PRODUCTO_SIN_RECETA", mensaje: "«Soda» no tiene receta: armala en Catálogo → Recetas para poder venderla." });
+    expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(0);
   });
 
   it("éxito: datos con las Operaciones VENTA creadas, el mismo mensaje que el núcleo", async () => {
@@ -78,6 +90,6 @@ describe("registrarVentaCasoDeUso", () => {
     const r = await registrarVentaCasoDeUso(actor(), datos({ ventas: [{ productoId: "no-existe", cantidadVendida: 1 }] }));
 
     expect(r).toEqual({ ok: false, codigo: "VENTA_RECHAZADA", mensaje: "El producto no existe." });
-    expect(await prisma.operacion.count()).toBe(0);
+    expect(await prisma.operacion.count({ where: { proceso: { not: "COMPRA" } } })).toBe(0); // RECETA: sin la COMPRA del stock de reventa
   });
 });

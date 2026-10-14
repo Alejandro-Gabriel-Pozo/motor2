@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { generarReporteVentasPorCategoria } from "../../src/server/consultas/reportes/periodo";
@@ -99,8 +100,12 @@ describe("generarReporteVentasPorSeccion (contra Postgres)", () => {
     const entradas = await prisma.seccionCarta.create({ data: { nombre: "Entradas", orden: 1 } });
     const bebidas = await prisma.seccionCarta.create({ data: { nombre: "Bebidas", orden: 3 } });
 
-    const pv = (codigo: string, nombre: string, categoriaId: string | null, precioVenta: number) =>
-      sembrarProductoDisponible({ codigo, nombre, tipo: "PV", categoriaId, precioVenta, unidadStockId: u.id }, sucursalId);
+    // RECETA (ADR-033, sin receta no se vende): cada PV es de reventa, con stock en «Salón» para la venta de mostrador.
+    const pv = async (codigo: string, nombre: string, categoriaId: string | null, precioVenta: number) => {
+      const p = await sembrarProductoDisponible({ codigo, nombre, tipo: "PV", categoriaId, precioVenta, unidadStockId: u.id }, sucursalId);
+      await darRecetaDeReventa(prisma, p, { sucursalIds: [sucursalId], stock: { cantidad: 100, seccionIds: [seccionId], usuarioId: admin.id } });
+      return p;
+    };
     const bife = await pv("PV_BIFE", "Bife", cBife, 1000);
     const provoleta = await pv("PV_PROVO", "Provoleta", cBife, 500);
     const emp = await pv("PV_EMP", "Empanada", cEmp, 150);

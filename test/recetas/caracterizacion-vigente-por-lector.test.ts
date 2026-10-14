@@ -330,7 +330,8 @@ describe("Caracterización: qué versión de receta usa cada lector (vigente = m
     `);
   });
 
-  it("producción y venta: consumen los ingredientes de la versión vigente (Pan v4, Torta v5, Flan v6 sin ingredientes)", async () => {
+  // RECETA (ADR-033, sin receta no se vende): la vigente del Flan (v6) no tiene ingredientes, así que el Flan ya no se vende (antes salía sin consumo).
+  it("producción y venta: consumen los ingredientes de la versión vigente (Pan v4, Torta v5); el Flan, con la v6 vacía, no se vende", async () => {
     const produccion = await registrarMovimiento({ proceso: "PRODUCCION", fecha, seccionId, items: [{ productoId: ids.pan, cantidad: 3 }] });
     expect({ ok: produccion.ok, mensaje: produccion.mensaje }).toMatchInlineSnapshot(`
       {
@@ -368,8 +369,8 @@ describe("Caracterización: qué versión de receta usa cada lector (vigente = m
     const ventaFlan = await registrarVenta({ fecha, seccionId, ventas: [{ productoId: ids.flan, cantidadVendida: 1 }] });
     expect({ ok: ventaFlan.ok, mensaje: ventaFlan.mensaje }).toMatchInlineSnapshot(`
       {
-        "mensaje": "Se registraron 1 venta(s) correctamente.",
-        "ok": true,
+        "mensaje": "«Flan» no tiene receta: armala en Catálogo → Recetas para poder venderla.",
+        "ok": false,
       }
     `);
     expect(await filasDe("VENTA")).toMatchInlineSnapshot(`
@@ -388,11 +389,6 @@ describe("Caracterización: qué versión de receta usa cada lector (vigente = m
           "VENTA",
           "Torta",
           -2,
-        ],
-        [
-          "VENTA",
-          "Flan",
-          -1,
         ],
       ]
     `);

@@ -151,3 +151,12 @@ export function mediodiaDelDia(dia: string, zona: string): Date {
 export function rangoDeDias(desde: Date, hasta: Date, zona: string): { desde: Date; hasta: Date } {
   return { desde: inicioDelDia(diaDeCalendario(desde, ZONA_UTC), zona), hasta: finDelDia(diaDeCalendario(hasta, ZONA_UTC), zona) };
 }
+
+// GO-3 (ADR-032, D-7): el día de la semana de un día de calendario, para la vigencia de las promos por días (`core/carta/vigencia-de-promo.ts`).
+
+/** El día de la semana de un día «AAAA-MM-DD»: 0 = lunes … 6 = domingo (aritmética de calendario, sin zona: el día ya es el de la zona de la empresa). */
+export function diaDeLaSemana(dia: string): number {
+  const [y, m, d] = leerDia(dia);
+  return (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
+}
+

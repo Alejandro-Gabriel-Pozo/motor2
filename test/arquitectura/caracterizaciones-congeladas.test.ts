@@ -247,6 +247,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "GO-1d (O.324; ADITIVO, no cambia comportamiento): las líneas OPERACION suman `operacionPadreId=null` y las CUENTA_ITEM suman `huellaOpciones=null` y `lineaPadreId=null`. Verificado con diff: sin esas columnas en null, idéntico al anterior.",
       },
+      {
+        blob: "386a1e493df79adc0526112b8e5c971df3f175f8",
+        // El commit PADRE de este (b1cd4c8, main con GO-1, GO-2a y GO-2b) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "b1cd4c8",
+        motivo:
+          "RECETA (ADR-033; CAMBIA COMPORTAMIENTO, decisión del dueño del 2026-10-13: «sin receta no se vende»). El escenario cambia lo mínimo: el Agua y el Flan, que eran «PV sin receta», pasan a ser de REVENTA (receta de 1 unidad de «Agua (reventa)» / «Flan (reventa)»); el stock del Agua entra en la misma COMPRA que las Tapas (jornada A) y el del Flan en la misma que el Vino, en «Barra» (jornada D), sin Operaciones nuevas (la numeración opN no se corre); en la jornada B el Flan sigue sin stock. Diff revisado línea a línea y con un normalizador (sin las filas KARDEX de las dos MP de reventa, sin el renglón «lecturas» y con `costoUnitarioVenta` del Agua/Flan en null queda IDÉNTICO salvo): los títulos de A1, B y B5 (ya no dicen «sin receta»); B5 ahora avisa el stock negativo de «Flan (reventa)» en «Barra» (antes `avisos=[]`); D5 revierte 4 movimientos en vez de 3 (también el CONSUMO del Flan de la promo); y el paso nuevo R7 (al final: la Soda, un PV SIN receta, se rechaza con PRODUCTO_SIN_RECETA sin escribir nada). Las filas nuevas son los CONSUMO de las dos MP (y su COMPRA y reversión), el `costoUnitarioVenta` del Agua pasa de null a 300 y el del Flan a 1000 (el costo de su MP), y las lecturas suman las de la receta de reventa (disponibilidad, saldos y la ficha de la MP). Ninguna sección de una fila VENTA cambia.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
@@ -369,7 +376,15 @@ const CONGELADAS: Record<string, Congelada> = {
     desde: "ff53437",
     motivo:
       "GO-2b (ADR-030; NUEVA, no regenera ninguna vieja): la venta CON OPCIONES de punta a punta en el salón (agregar un café grande con almendras y dos shots, dos chicos y un flan; el mismo grande otra vez; enviar; cerrar con cliente al 10%) con todas las filas de CuentaItem, OpcionElegidaEnLinea, Operacion y MovimientoStock. Fija la huella en la clave (dos grandes iguales = una Operacion de ×2), el adicional en su línea con su padre, la Operacion hija con `operacionPadreId`, el consumo transformado por las opciones, el costo congelado de sus pedidos y que el adicional no lleva descuento de cliente.",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "d2f29ebd446bc622b422f4856dfa335511a03973",
+        // El commit PADRE de este (b1cd4c8, main con GO-1, GO-2a y GO-2b) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "b1cd4c8",
+        motivo:
+          "RECETA (ADR-033; CAMBIA COMPORTAMIENTO, decisión del dueño del 2026-10-13: «sin receta no se vende»): el flan del fixture del salón ahora tiene su receta de reventa (1 unidad de «Flan (reventa)», con stock), así que su venta CONSUME. Diff revisado línea a línea: UNA sola línea nueva, el MOVIMIENTO CONSUMO de `flanReventa` (-1, op1, sección salon); las demás filas son idénticas salvo el número correlativo `movN` de los movimientos, que se corre en uno. Ningún resultado, consulta, precio ni fila de la cuenta cambia.",
+      },
+    ],
   },
   "test/persistencia/__golden__/kardex-escritores.golden.json": {
     blob: "4ba48f056c55dbfc6c49ba4c8acac8adf67f9d1a",

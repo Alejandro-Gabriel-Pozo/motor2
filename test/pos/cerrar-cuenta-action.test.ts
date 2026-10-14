@@ -76,7 +76,8 @@ describe("cerrarCuenta (server action)", () => {
 
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
     const ventas = await ventasDeLaMesa();
-    expect(ventas.flatMap((v) => v.movimientos).map((m) => [m.productoId, Number(m.cantidad), Number(m.precioTotal)])).toEqual([[s.milanesa.id, -2, 18000]]);
+    // RECETA (ADR-033): la milanesa vendida consume su receta de reventa (2 de su MP); el flan anulado entero, nada.
+    expect(ventas.flatMap((v) => v.movimientos).map((m) => [m.productoId, Number(m.cantidad), Number(m.precioTotal)])).toEqual([[s.milanesaReventa.id, -2, 0], [s.milanesa.id, -2, 18000]]);
     // El flan anulado entero queda sin Operacion; la milanesa y su espejo, enlazados a la misma venta.
     const items = await prisma.cuentaItem.findMany({ where: { cuentaId: cuenta.id } });
     expect(items.filter((i) => i.productoId === s.flan.id).every((i) => i.operacionId === null)).toBe(true);
@@ -89,7 +90,7 @@ describe("cerrarCuenta (server action)", () => {
       { productoId: s.flan.id, cantidad: 2, precioUnitario: 3500, numeroEnvio: 2 },
     ]);
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
-    const lineas = (await ventasDeLaMesa()).flatMap((v) => v.movimientos).map((m) => [Number(m.cantidad), Number(m.precioPorUnidadStock)]);
+    const lineas = (await ventasDeLaMesa()).flatMap((v) => v.movimientos).filter((m) => m.proceso === "VENTA").map((m) => [Number(m.cantidad), Number(m.precioPorUnidadStock)]);
     expect(lineas).toEqual([[-1, 3000], [-2, 3500]]);
   });
 
@@ -108,7 +109,7 @@ describe("cerrarCuenta (server action)", () => {
       { productoId: s.milanesa.id, cantidad: 1, precioUnitario: 9000 },
     ]);
     expect(await cerrarCuenta(cuenta.id)).toEqual({ ok: false, mensaje: "Hay 2 ítems sin enviar: envialos o quitalos." });
-    expect(await prisma.operacion.count()).toBe(0);
+    expect(await prisma.operacion.count({ where: { proceso: { not: "COMPRA" } } })).toBe(0); // RECETA: sin las COMPRA del stock de reventa del fixture
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).toBeNull();
   });
 
@@ -125,7 +126,7 @@ describe("cerrarCuenta (server action)", () => {
     await sembrarSeccion(norte.id, "Barra Norte");
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, numeroEnvio: 1 }]);
     expect(await cerrarCuenta(cuenta.id)).toEqual({ ok: false, mensaje: "Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una." });
-    expect(await prisma.operacion.count()).toBe(0);
+    expect(await prisma.operacion.count({ where: { proceso: { not: "COMPRA" } } })).toBe(0); // RECETA: sin las COMPRA del stock de reventa del fixture
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).toBeNull();
   });
 
@@ -154,7 +155,7 @@ describe("cerrarCuenta (server action)", () => {
       expect(r.mensaje).toMatch(/No tenés permiso/);
       expect(r.mensaje).toContain('"pos_cerrar_cuenta"');
     }
-    expect(await prisma.operacion.count()).toBe(0);
+    expect(await prisma.operacion.count({ where: { proceso: { not: "COMPRA" } } })).toBe(0); // RECETA: sin las COMPRA del stock de reventa del fixture
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).toBeNull();
   });
 
@@ -268,6 +269,8 @@ describe("cerrarCuenta (server action)", () => {
       const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
       await sembrarSeccion(norte.id, "Salón Norte");
       await prisma.disponibilidadProducto.create({ data: { sucursalId: norte.id, productoId: s.flan.id, disponible: true } });
+      // RECETA (ADR-033): la receta de reventa del Flan es la central, así que en Norte su MP también tiene que estar disponible (sin stock: el POS vende igual, con aviso).
+      await prisma.disponibilidadProducto.create({ data: { sucursalId: norte.id, productoId: s.flanReventa.id, disponible: true } });
       // Solo con membresía en Norte: es su sucursal activa.
       const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
       const cajeroNorte = await crearUsuarioConMembresia({ email: "cajero-norte@test.com", sucursalId: norte.id, rolId: rolAdmin.id });

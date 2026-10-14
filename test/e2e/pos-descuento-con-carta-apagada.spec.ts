@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect, type Page } from "@playwright/test";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { fijarModulosActivos } from "../setup/modulos";
+import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
 import { activarEmpresaB, crearSesion, paginaConSesion, suspenderEmpresaB, type EmpresasDeLaPrueba } from "./fixtures/multiempresa";
 
 /**
@@ -20,6 +21,7 @@ const aviso = (page: Page) => page.locator('[role="status"][aria-live="polite"]'
 let e: EmpresasDeLaPrueba;
 let sesion: string;
 let producto: { id: string; nombre: string };
+let reventaId: string | undefined;
 const mesaIds: string[] = [];
 
 /** Una mesa de la sucursal de B con la cuenta abierta por su gerente. */
@@ -39,6 +41,8 @@ test.beforeAll(async () => {
     data: { empresaId: e.b.empresaId, codigo: `E2E-D18-${e.marca}`, nombre, tipo: "PV", unidadStockId: unidad.id, precioVenta: 3000 },
   });
   producto = { id: creado.id, nombre };
+  // RECETA (ADR-033, sin receta no se vende): el flan es de reventa (sin stock: acá solo se agrega a la cuenta).
+  reventaId = (await darRecetaDeReventa(prismaAdmin, creado, { sucursalIds: [e.b.sucursalId], empresaId: e.b.empresaId })).id;
   await prismaAdmin.disponibilidadProducto.create({ data: { empresaId: e.b.empresaId, sucursalId: e.b.sucursalId, productoId: creado.id, disponible: true } });
   await prismaAdmin.descuentoProductoSucursal.create({ data: { empresaId: e.b.empresaId, productoId: creado.id, sucursalId: e.b.sucursalId, porcentaje: 15 } });
 });
@@ -51,6 +55,7 @@ test.afterAll(async () => {
     await prismaAdmin.cuenta.deleteMany({ where: { mesaId: { in: mesaIds } } });
     await prismaAdmin.mesa.deleteMany({ where: { id: { in: mesaIds } } });
     await prismaAdmin.descuentoProductoSucursal.deleteMany({ where: { productoId: producto?.id } });
+    if (producto && reventaId) await borrarRecetasDeReventa(prismaAdmin, { pvIds: [producto.id], mpIds: [reventaId] });
     await prismaAdmin.disponibilidadProducto.deleteMany({ where: { productoId: producto?.id } });
     await prismaAdmin.producto.deleteMany({ where: { id: producto?.id } });
   } finally {

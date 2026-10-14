@@ -77,6 +77,7 @@ async function registrarVentaEnTransaccion(
       },
       datos.claveIdempotencia ? { idempotencia: { clave: datos.claveIdempotencia, payloadHash } } : {}
     );
-    return venta.ok ? exito(venta.mensaje, { operacionIds: venta.operacionIds, repetida: false }) : fracaso("VENTA_RECHAZADA", venta.mensaje);
+    // RECETA (ADR-033): un PV sin origen de stock sale con su código propio (`PRODUCTO_SIN_RECETA`); todo otro rechazo del núcleo, `VENTA_RECHAZADA`.
+    return venta.ok ? exito(venta.mensaje, { operacionIds: venta.operacionIds, repetida: false }) : fracaso(venta.codigo ?? "VENTA_RECHAZADA", venta.mensaje);
   }, 5, {}, true);
 }

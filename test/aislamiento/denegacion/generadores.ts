@@ -261,6 +261,8 @@ const completos: Record<string, Valor> = {
   "consulta|consultas/reportes/rendimiento-por-sucursal.ts|compararRendimientosPorSucursal": (k, c) => [[{ id: c.propio.sucursalId, nombre: "Central ZZ-A1" }], { productoId: k.productoPvId, todas: true }, c.db],
   "lectura|lecturas/auth/cupo-de-correo.ts|cupoDeCorreoDeEmpresa": (k, c) => [c.db, { empresaId: c.propio.empresaId, destinatario: `${k.marca.toLowerCase()}-invitado@ajeno.test`, ahora: hoy() }],
   "lectura|lecturas/movimientos/receta-para-vender.ts|cargarRecetaVigenteParaVender": (k, c) => [c.db, { productoId: k.productoPvId, sucursalId: c.propio.sucursalId }],
+  // RECETA (ADR-033): el origen de stock de los productos de un pedido (nombre, si se produce, ingredientes de la receta vigente): con un PV ajeno no ve nada de él.
+  "lectura|lecturas/movimientos/receta-para-vender.ts|cargarOrigenDeStockParaVender": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, productoIds: [k.productoPvId] }],
   "lectura|lecturas/permisos/gobierno.ts|invarianteRolSinUsuariosActivos": (k, c) => [c.db, { id: k.rolId, nombre: "Rol de prueba" }],
 
   // El ítem agrupado se resuelve desde el primer producto en la sucursal activa: el ajeno y el propio no se mezclan; la sucursal que llega tiene que ser la activa.

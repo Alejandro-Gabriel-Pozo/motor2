@@ -4,7 +4,7 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { aplicarDescuentoDeProducto } from "@/core/carta/public";
 import type { ComandoAgregarItems, ResultadoAgregarItems } from "@/core/features/cuentas/cuenta-pedido.schema";
 import { redondearMoneda } from "@/core/moneda";
-import { tieneStockReal } from "@/core/movimientos/public";
+import { CODIGO_PRODUCTO_SIN_RECETA, rechazoSinOrigenDeStock, tieneStockReal } from "@/core/movimientos/public";
 import { calcularPayloadHash, decidirIdempotencia, esChoqueDeIndiceUnico, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
@@ -21,6 +21,7 @@ import { cargarPromoCartaParaAgregar } from "@/server/lecturas/pos/promo-para-ag
 import { cargarOpcionesParaVender, completarPreciosDeSucursal } from "@/server/lecturas/opciones/opciones-para-vender";
 import { cargarAgregadoDeCuentaPorClave, escribirAgregadoDeCuenta, escribirItemsDeCuenta, escribirLineaConfigurada, escribirPromoDeCuenta } from "@/server/persistencia/pos/pedido";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
+import { cargarOrigenDeStockParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 
 /**
  * Caso de uso «agregar ítems y promos sin enviar a una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 12a — `docs/plan-hito-4-pureza.md` §5). Es el
@@ -113,6 +114,15 @@ export async function agregarItemsCasoDeUso(
       items_.flatMap((i) => (typeof i?.productoId === "string" && Array.isArray(i.opciones) ? [{ productoId: i.productoId, opcionIds: i.opciones.map((o) => o.opcionId) }] : []))
     );
 
+    // RECETA (ADR-033, sin receta no se vende): de cada producto del pedido (sueltos y componentes), si tiene origen de stock — receta vigente en ESTA sucursal o stock propio —, en
+    // lecturas agrupadas por pedido. Es el error temprano para el mozo: el cobro lo vuelve a mirar (`armarLinea`), por si la receta se desactivó entre medio.
+    const origenDeStock = await cargarOrigenDeStockParaVender(tx, { sucursalId: actor.sucursalId, productoIds: productoIdsDelPedido });
+    // Ni un suelto ni un componente es el ancla de un adicional (el ancla suelta ya se rechazó; los adicionales de una línea configurada no pasan por acá). Un id que la lectura no ve, sin receta.
+    const sinReceta = (productoId: string, nombreSiNoSeVe: string) => {
+      const leido = origenDeStock.get(productoId);
+      return rechazoSinOrigenDeStock(leido ? { ...leido, esAnclaDeAdicional: false } : { nombre: nombreSiNoSeVe, seProduce: false, esAnclaDeAdicional: false, ingredientesDeLaRecetaVigente: 0 });
+    };
+
     // Fase 1: VALIDAR todo, sin escribir nada — ni los sueltos ni las promos (mismo criterio que registrarVentaEnTx).
     const filasSueltas: Prisma.CuentaItemCreateManyInput[] = [];
     const configuradas: { productoId: string; cantidad: number; linea: LineaConfigurada }[] = [];
@@ -131,6 +141,8 @@ export async function agregarItemsCasoDeUso(
       // GO-2b: recién después de los chequeos de siempre, las opciones (sin grupos admitidos ni opciones pedidas, el ítem sigue igual que antes).
       const admite = opcionesLeidas.get(producto.id) ?? { grupos: [], anclaDeOpcionId: null };
       if (admite.anclaDeOpcionId !== null) return fracaso("PRODUCTO_INVALIDO", `«${producto.nombre}» se vende solo como adicional de otro producto.`);
+      const rechazoReceta = sinReceta(producto.id, producto.nombre);
+      if (rechazoReceta !== null) return fracaso(CODIGO_PRODUCTO_SIN_RECETA, rechazoReceta);
       const elegidas = item.opciones ?? [];
       if (admite.grupos.length > 0 || elegidas.length > 0) {
         const armada = armarLineaConfigurada({ grupos: admite.grupos, elegidas, precioBase: precioDeLista, descuentoDeProducto: descuento, cantidad: cantidad.cantidad });
@@ -167,6 +179,8 @@ export async function agregarItemsCasoDeUso(
       for (const c of componentes) {
         const sinOpciones = validarOpcionesElegidas(opcionesLeidas.get(c.productoId)?.grupos ?? [], []);
         if (!sinOpciones.ok) return fracaso("PROMO_CON_OPCIONES", `«${def.titulo}»: uno de sus productos necesita que elijas opciones (${sinOpciones.mensaje}) y en una promo todavía no se puede: pedilo suelto.`);
+        const rechazoReceta = sinReceta(c.productoId, "Un producto de la promo");
+        if (rechazoReceta !== null) return fracaso(CODIGO_PRODUCTO_SIN_RECETA, `«${def.titulo}»: ${rechazoReceta}`);
       }
       promosValidadas.push({ titulo: def.titulo, promoCartaId: def.id, precio: def.precio, componentes, filas: prorrateo.filas });
     }

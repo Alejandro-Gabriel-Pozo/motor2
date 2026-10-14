@@ -2,7 +2,7 @@ import "server-only";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { whereDisponibleEn } from "@/core/catalogo/public";
-import { esClavePortal, esClaveTema, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, type SeccionCartaAdmin, type ProductoCartaAdmin, type GeneroCartaAdmin, type SucursalConCartaPropia, type DatosAdminCarta, type OpcionItemAgrupadoAdmin, type DatosAdminItemsAgrupados, type SucursalPortalAdmin, type TemaAdmin, type PortalEmpresaAdmin } from "@/core/carta/public";
+import { WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos, esClavePortal, esClaveTema, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, type SeccionCartaAdmin, type ProductoCartaAdmin, type GeneroCartaAdmin, type SucursalConCartaPropia, type DatosAdminCarta, type OpcionItemAgrupadoAdmin, type DatosAdminItemsAgrupados, type SucursalPortalAdmin, type TemaAdmin, type PortalEmpresaAdmin } from "@/core/carta/public";
 import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCartaConDiagnostico } from "@/server/lecturas/carta/menu";
 import type { Db } from "@/lib/db-tipos";
@@ -108,7 +108,12 @@ export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date):
       include: {
         sucursales: seleccionDeSucursalDePromo(sucursalId),
         seccionCarta: { select: { nombre: true } },
-        cupos: { select: { id: true, seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, orden: true, seccionCarta: { select: { nombre: true } } }, orderBy: { orden: "asc" } },
+        // GO-3 (primer despliegue): la administración de hoy solo conoce los cupos de sección; los de tipo nuevo y los dados de baja no se listan (ni se tocan al guardar).
+        cupos: {
+          where: WHERE_CUPO_DE_SECCION_ACTIVO,
+          select: { id: true, tipo: true, activo: true, seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, orden: true, seccionCarta: { select: { nombre: true } } },
+          orderBy: { orden: "asc" },
+        },
       },
       orderBy: [{ activa: "desc" }, { orden: "asc" }, { titulo: "asc" }],
     }),
@@ -160,7 +165,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date):
       prendidaAca: pr.sucursales[0]?.activa ?? false,
       precioLocal: pr.sucursales[0]?.precioLocal != null ? Number(pr.sucursales[0].precioLocal) : null,
       precioAca: precioDePromo(pr.precio, pr.sucursales[0], precioLocalActivo),
-      cupos: pr.cupos.map((c) => ({ id: c.id, seccionCartaId: c.seccionCartaId, seccionCarta: c.seccionCarta.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima, orden: c.orden })),
+      cupos: cuposDeSeccionActivos(pr.cupos).map((c) => ({ id: c.id, seccionCartaId: c.seccionCartaId, seccionCarta: c.seccionCarta.nombre, cantidadMinima: c.cantidadMinima, cantidadMaxima: c.cantidadMaxima, orden: c.orden })),
     })),
     precioLocalActivo,
   };

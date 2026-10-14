@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
@@ -16,6 +17,12 @@ describe("registrarVenta", () => {
   /** `g`: 0 decimales — para probar `pasoVenta` sin que la unidad "tape" el bug (ver el describe de venta fraccionada). */
   let unidadGId: string;
   let insumoId: string;
+  let adminId: string;
+  // RECETA (ADR-033): un PV que se vende lleva receta; los que solo prueban otra cosa (factura, precio local, paso de venta) llevan la de reventa, con stock en la sección.
+  const conRecetaDeReventa = async <P extends { id: string; nombre: string; codigo: string; unidadStockId: string }>(pv: P) => {
+    await darRecetaDeReventa(prisma, pv, { sucursalIds: [sucursalId], stock: { cantidad: 100, seccionIds: [seccionId], usuarioId: adminId } });
+    return pv;
+  };
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -28,6 +35,7 @@ describe("registrarVenta", () => {
     seccionId = (await sembrarSeccion(sucursalId)).id;
 
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
+    adminId = admin.id;
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
@@ -56,7 +64,7 @@ describe("registrarVenta", () => {
   });
 
   it("rechaza un número de factura de más de 60 caracteres, y no crea la Operacion", async () => {
-    const pv = await sembrarProductoDisponible({ codigo: "PV_SIN_RECETA", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
+    const pv = await conRecetaDeReventa(await sembrarProductoDisponible({ codigo: "PV_GASEOSA_FAC", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId));
     const resultado = await registrarVenta({
       fecha: new Date(), seccionId, nroFactura: "A".repeat(61),
       ventas: [{ productoId: pv.id, cantidadVendida: 1 }],
@@ -122,7 +130,7 @@ describe("registrarVenta", () => {
   });
 
   it("Precio Local habilitado pisa el precio global; deshabilitado usa el global", async () => {
-    const pv = await sembrarProductoDisponible({ codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
+    const pv = await conRecetaDeReventa(await sembrarProductoDisponible({ codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId));
 
     await setPrecioLocalProducto(pv.id, 120, true);
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
@@ -149,7 +157,7 @@ describe("registrarVenta", () => {
 
   describe("venta fraccionada — pasoVenta (Task #25, docs/plan-venta-fraccionada-2026-09-26.md)", () => {
     it("sin pasoVenta, el mostrador sigue sin validar decimales de ningún tipo (comportamiento de siempre)", async () => {
-      const pv = await sembrarProductoDisponible({ codigo: "PV_SIN_PASO", nombre: "Empanada", tipo: "PV", unidadStockId: unidadGId, precioVenta: 500 }, sucursalId);
+      const pv = await conRecetaDeReventa(await sembrarProductoDisponible({ codigo: "PV_SIN_PASO", nombre: "Empanada", tipo: "PV", unidadStockId: unidadGId, precioVenta: 500 }, sucursalId));
       const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
       expect(resultado.ok).toBe(true);
       // Ni redondea ni rechaza: `g` tiene 0 decimales pero el mostrador nunca validó eso (a diferencia del POS).
@@ -157,10 +165,10 @@ describe("registrarVenta", () => {
     });
 
     it("con pasoVenta, un múltiplo exacto se acepta TAL CUAL (nunca se redondea a los decimales de la unidad)", async () => {
-      const pv = await sembrarProductoDisponible(
+      const pv = await conRecetaDeReventa(await sembrarProductoDisponible(
         { codigo: "PV_PASO_05", nombre: "Pizza fraccionada", tipo: "PV", unidadStockId: unidadGId, precioVenta: 12000, pasoVenta: 0.5 },
         sucursalId
-      );
+      ));
       const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
       expect(resultado.ok).toBe(true);
       expect(await calcularSaldoTotal(pv.id, seccionId, prisma)).toBe(-0.5);
@@ -169,20 +177,20 @@ describe("registrarVenta", () => {
     });
 
     it("con pasoVenta, lo que NO es múltiplo exacto se RECHAZA (nunca se redondea en silencio)", async () => {
-      const pv = await sembrarProductoDisponible(
+      const pv = await conRecetaDeReventa(await sembrarProductoDisponible(
         { codigo: "PV_PASO_05_R", nombre: "Pizza fraccionada", tipo: "PV", unidadStockId: unidadGId, precioVenta: 12000, pasoVenta: 0.5 },
         sucursalId
-      );
+      ));
       const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.3 }] });
       expect(resultado).toEqual({ ok: false, mensaje: '"Pizza fraccionada": Se vende de a 0,5: la cantidad tiene que ser un múltiplo exacto.' });
       expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(0);
     });
 
     it("una cantidad ENTERA sigue siendo válida aunque el producto tenga pasoVenta", async () => {
-      const pv = await sembrarProductoDisponible(
+      const pv = await conRecetaDeReventa(await sembrarProductoDisponible(
         { codigo: "PV_PASO_ENTERO", nombre: "Pizza entera", tipo: "PV", unidadStockId: unidadGId, precioVenta: 12000, pasoVenta: 0.25 },
         sucursalId
-      );
+      ));
       const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] });
       expect(resultado.ok).toBe(true);
     });

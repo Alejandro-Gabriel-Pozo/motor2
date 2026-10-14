@@ -46,6 +46,8 @@ describe("Mover un insumo a «No comestibles» cambia el ratio de un período pa
     harinaId = (await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kg.id }, sucursalId)).id;
     cajaId = (await sembrarProductoDisponible({ codigo: "MP_CAJA", nombre: "Caja de pizza", tipo: "MP", unidadStockId: kg.id }, sucursalId)).id;
     panId = (await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: kg.id, precioVenta: 100 }, sucursalId)).id;
+    // RECETA (ADR-033, sin receta no se vende): el pan lleva 0,1 kg de harina (el consumo no cambia ni las compras ni las ventas del período).
+    await prisma.recetaVersion.create({ data: { productoId: panId, version: 1, ingredientes: { create: [{ insumoProductoId: harinaId, cantidad: 0.1, unidadId: kg.id, mermaPorcentaje: 0 }] } } });
 
     // El grupo «No comestibles» ya existe (con «Packaging» adentro); la caja arranca en un grupo común, fuera de ese árbol.
     const noComestibles = await prisma.grupo.create({ data: { nombre: "No comestibles" } });

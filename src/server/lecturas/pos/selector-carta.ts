@@ -1,7 +1,7 @@
 import "server-only";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { whereDisponibleEn } from "@/core/catalogo/public";
-import { aplicarDescuentoDeProducto, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal } from "@/core/carta/public";
+import { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, aplicarDescuentoDeProducto, cuposDeSeccionActivos, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal } from "@/core/carta/public";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCarta } from "@/server/lecturas/carta/menu";
 import { modulosDelPosDeSucursal, type ModulosDelPos } from "@/server/lecturas/pos/modulos-del-pos";
@@ -77,7 +77,8 @@ export async function cargarSelectorCartaPos(
     // Sin el módulo Promociones no se lee ninguna promo (ni se ofrece ni se acepta).
     conPromos
       ? db.promoCarta.findMany({
-          where: { ...wherePromoOfrecidaEn(sucursalId), cupos: { some: {} } },
+          // GO-3 (primer despliegue): solo las promos con algún cupo de SECCIÓN activo y NINGÚN cupo activo de un tipo nuevo (este código no sabe armarlos: falla cerrado).
+          where: { ...wherePromoOfrecidaEn(sucursalId), cupos: { some: WHERE_CUPO_DE_SECCION_ACTIVO, none: WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO } },
           select: {
             id: true,
             seccionCartaId: true,
@@ -86,7 +87,8 @@ export async function cargarSelectorCartaPos(
             sucursales: seleccionDeSucursalDePromo(sucursalId),
             cupos: {
               orderBy: { orden: "asc" },
-              select: { seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, seccionCarta: { select: { nombre: true } } },
+              where: WHERE_CUPO_DE_SECCION_ACTIVO,
+              select: { tipo: true, activo: true, seccionCartaId: true, cantidadMinima: true, cantidadMaxima: true, seccionCarta: { select: { nombre: true } } },
             },
           },
         })
@@ -117,7 +119,7 @@ export async function cargarSelectorCartaPos(
     seccionCartaId: p.seccionCartaId,
     titulo: p.titulo,
     precio: precioDePromo(p.precio, p.sucursales[0], precioLocalActivo),
-    cupos: p.cupos.map((c) => ({
+    cupos: cuposDeSeccionActivos(p.cupos).map((c) => ({
       seccionCartaId: c.seccionCartaId,
       nombreSeccion: c.seccionCarta.nombre,
       cantidadMinima: c.cantidadMinima,

@@ -58,11 +58,12 @@ export interface ComandoAgregarItems {
  *  - GO-2b (ADR-030), después de los chequeos de producto de cada ítem: `OPCION_CAMBIO` (una opción cambió de versión desde que el mozo la eligió),
  *    `OPCIONES_INVALIDAS` (lo elegido no cumple lo que el producto admite, su precio o su consumo están mal configurados, o con los adicionales se pasa el tope de
  *    líneas) y `PROMO_CON_OPCIONES` (un componente de una promo tiene un grupo obligatorio: en v1 los componentes no llevan opciones).
+ *  - RECETA (ADR-033): `PRODUCTO_SIN_RECETA` — un ítem suelto (después de sus chequeos de producto) o un componente de una promo no tiene receta vigente en la sucursal ni stock propio.
  * Todo se valida ANTES de la primera escritura: un rechazo no deja nada escrito.
  */
 export type ResultadoAgregarItems = ResultadoCaso<
   null,
-  "CONFLICTO_IDEMPOTENCIA" | "CUENTA_NO_ABIERTA" | "PROMO_NO_DISPONIBLE" | "PRODUCTO_INVALIDO" | "PROMO_INVALIDA" | "OPCIONES_INVALIDAS" | "OPCION_CAMBIO" | "PROMO_CON_OPCIONES"
+  "CONFLICTO_IDEMPOTENCIA" | "CUENTA_NO_ABIERTA" | "PROMO_NO_DISPONIBLE" | "PRODUCTO_INVALIDO" | "PROMO_INVALIDA" | "OPCIONES_INVALIDAS" | "OPCION_CAMBIO" | "PROMO_CON_OPCIONES" | "PRODUCTO_SIN_RECETA"
 >;
 
 /** Comando «quitar un ítem que todavía no salió a cocina»: lo que recibe `quitarItemSinEnviarCasoDeUso`. */

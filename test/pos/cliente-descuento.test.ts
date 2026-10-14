@@ -9,6 +9,7 @@ import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { obtenerDetalleDeMesa } from "../../src/server/consultas/pos/detalle-de-mesa";
 import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
 import { altaCliente, actualizarActivoCliente } from "../../src/server/actions/clientes/cliente";
+import { darRecetaDeReventa } from "../setup/receta-de-venta";
 
 /**
  * Cliente con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md): `asignarClienteACuenta` (D3, cualquier mozo) y su
@@ -191,6 +192,7 @@ describe("Cliente con descuento", () => {
     it("piso de 0,01 (Task #14): un % altísimo nunca deja una venta en $0", async () => {
       const clienteId = await crearCliente("Fulano", 99.99);
       const barato = await sembrarProductoDisponible({ codigo: "PV_BARATO", nombre: "Café", tipo: "PV", unidadStockId: s.unidad.id, precioVenta: 1 }, s.sucursalId);
+      await darRecetaDeReventa(prisma, barato, { sucursalIds: [s.sucursalId], stock: { cantidad: 10, seccionIds: [s.seccion.id], usuarioId: s.admin.id } }); // RECETA (ADR-033)
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: barato.id, cantidad: 1, precioUnitario: 1, numeroEnvio: 1 }]);
       await asignarClienteACuenta(cuenta.id, clienteId);
 
