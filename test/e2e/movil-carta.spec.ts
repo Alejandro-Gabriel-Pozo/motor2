@@ -3,7 +3,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
-import { abrirTodosLosDetails, capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular, ocultarMenuSiHaceFalta } from "./fixtures/movil";
+import { abrirTodosLosDetails, capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular } from "./fixtures/movil";
 
 /**
  * MOVIL (pase visual en celular, 375 × 812): la administración de la carta (/carta) y sus formularios de promo (alta, edición, precio de la sucursal, cupos con filas de
@@ -55,7 +55,6 @@ test("administración de la carta en celular (375 px): formularios de promo sin 
     await fijarCelular(page);
     await page.goto("/carta");
     await expect(page.getByRole("heading", { name: "Promos" })).toBeVisible();
-    await ocultarMenuSiHaceFalta(page);
     await expectSinDesborde(page, "carta con las fichas cerradas");
     await abrirTodosLosDetails(page);
     await capturar(page, "carta-fichas-abiertas");

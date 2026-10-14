@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
-import { capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular, ocultarMenuSiHaceFalta } from "./fixtures/movil";
+import { capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular } from "./fixtures/movil";
 
 /**
  * MOVIL (pase visual en celular, 375 × 812): «Precio local». Las dos tablas (la de precio por producto, 5 columnas, y la de precio por tamaño, 4 columnas con un campo y botones por fila)
@@ -34,7 +34,6 @@ test("precio local en celular (375 px): las dos tablas se leen como tarjetas, «
   await fijarCelular(page);
   await page.goto("/movimientos/precio-local");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Precio local");
-  await ocultarMenuSiHaceFalta(page);
   await expectSinDesborde(page, "precio local");
   await capturar(page, "precio-local");
 

@@ -88,24 +88,6 @@ export async function capturar(page: Page, nombre: string): Promise<void> {
   await page.screenshot({ path: join(carpeta, `${nombre}.png`), fullPage: true });
 }
 
-/**
- * El menú lateral fijo de 224 px le deja ~130 px al contenido en el celular: para medir la pantalla y no el menú se lo oculta, como haría la persona
- * (el control «Ocultar menú» existente; la elección queda en el navegador). Sin el botón (ya oculto, o un marco sin menú: el salón), no hace nada.
- */
-export async function ocultarMenuSiHaceFalta(page: Page): Promise<void> {
-  const ancho = () => page.evaluate(() => document.querySelector("aside")?.getBoundingClientRect().width ?? 0);
-  // Si la elección anterior quedó guardada en el navegador, el menú arranca abierto y se cierra solo al montarse (un efecto): se espera a que esa lectura se asiente antes de decidir, o el
-  // clic de la comprobación lo volvería a abrir.
-  await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(300);
-  if ((await ancho()) === 0) return;
-  const ocultar = page.getByRole("button", { name: "Ocultar menú" });
-  if (!(await ocultar.isVisible())) return; // un marco sin menú
-  await ocultar.click();
-  // El menú se cierra con una transición de ancho (150 ms): se espera a que termine, o se mediría el contenido con el menú todavía a medio cerrar.
-  await page.waitForFunction(() => (document.querySelector("aside")?.getBoundingClientRect().width ?? 0) === 0);
-}
-
 /** Abre todos los `<details>` de la pantalla (las fichas plegadas de la carta, etc.) para medir también lo que traen adentro. */
 export async function abrirTodosLosDetails(page: Page): Promise<void> {
   await page.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true)));

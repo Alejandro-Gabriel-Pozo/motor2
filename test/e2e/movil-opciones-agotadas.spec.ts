@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { sembrarGrupo } from "./fixtures/opciones";
-import { capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular, ocultarMenuSiHaceFalta } from "./fixtures/movil";
+import { capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular } from "./fixtures/movil";
 
 /**
  * MOVIL (pase visual en celular, 375 × 812): «Opciones agotadas». El resultado de tocar una píldora («Papas fritas quedó agotada…») y su botón «Deshacer» salían ARRIBA de la lista:
@@ -18,7 +18,6 @@ test("opciones agotadas en celular: tocar una opción lejos deja el aviso y «De
   await fijarCelular(page);
   await page.goto("/movimientos/opciones-agotadas");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Opciones agotadas en");
-  await ocultarMenuSiHaceFalta(page);
   await expectSinDesborde(page, "opciones agotadas");
   await capturar(page, "opciones-agotadas-inicial");
 

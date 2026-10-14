@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures/auth";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
-import { capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular, ocultarMenuSiHaceFalta } from "./fixtures/movil";
+import { capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular } from "./fixtures/movil";
 
 /**
  * MOVIL (pase visual en celular, 375 × 812): los enlaces y botones de texto de acción de las tablas y listas del panel («Renombrar», «Desactivar», «+ Nuevo grupo», «Habilitar»…)
@@ -23,14 +23,12 @@ test("acciones de texto de las tablas y listas del panel en celular: 44 px de al
   for (const ruta of [...PANTALLAS, `/catalogo/opciones/${grupo.grupoId}`]) {
     await page.goto(ruta);
     await expect(page.locator("main")).toBeVisible();
-    await ocultarMenuSiHaceFalta(page);
     if (DESBORDE_CONTROLADO.includes(ruta.replace(/\/[a-z0-9]{20,}$/, "/[grupoId]"))) await expectSinDesborde(page, ruta);
     await capturar(page, `acciones${ruta.replace(/\//g, "-")}`);
     await expectObjetivosTactiles(page.locator(ACCIONES), `${ruta}: acciones de texto`, { ancho: 0 });
   }
   // «+ Nuevo grupo» (el botón que abre el alta) y el botón de «Renombrar» de una opción.
   await page.goto("/catalogo/opciones");
-  await ocultarMenuSiHaceFalta(page);
   await expectObjetivosTactiles(page.getByRole("button", { name: "+ Nuevo grupo" }), "«+ Nuevo grupo»", { ancho: 0 });
 
   // En escritorio, sin cambios: los botones de texto siguen siendo chicos (no se agrandó nada).
