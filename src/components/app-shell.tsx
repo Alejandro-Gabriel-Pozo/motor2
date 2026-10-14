@@ -12,6 +12,7 @@ import { obtenerUltimaCotizacionSinRomper } from "@/server/consultas/reportes/co
 import { reportarErrorUnaVez } from "@/lib/reportar-error";
 import { CotizacionEncabezado } from "./en-dolares";
 import { AccionesVisiblesProvider } from "./enlace-interno";
+import { MenuCelular } from "./menu-celular";
 import { SidebarColapsable } from "./sidebar-colapsable";
 import { RecordarPantallaDeGestion } from "./recordar-pantalla-de-gestion";
 import { SelectorEmpresa } from "./selector-empresa";
@@ -58,6 +59,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
           columna se queda del ancho que sobra junto al menú y el scroll es el de la tabla. */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-neutral-200 px-6 py-3 text-sm text-neutral-500 dark:border-neutral-800">
+          <MenuCelular grupos={grupos} hrefsDelMenu={hrefsDelMenu()} />
           <CotizacionEncabezado cotizacion={cotizacion} />
           <span className="flex items-center gap-1">
             {ctx.empresas.length > 1 && (

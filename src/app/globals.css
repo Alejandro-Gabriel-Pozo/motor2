@@ -273,6 +273,32 @@ html:has([data-carta-libro]) body {
   }
 }
 
+/* MOVIL (O.465): el cajón del menú de celular entra deslizándose desde la izquierda (y el fondo se oscurece); con «reducir movimiento» aparece sin animar. */
+@keyframes menu-celular-entra {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes menu-celular-fondo {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  dialog.menu-celular[open] {
+    animation: menu-celular-entra 0.2s ease-out;
+  }
+  dialog.menu-celular[open]::backdrop {
+    animation: menu-celular-fondo 0.2s ease-out;
+  }
+}
+
 @media print {
   .carta-shell [data-carta-nav],
   .carta-shell [data-carta-topbar],
