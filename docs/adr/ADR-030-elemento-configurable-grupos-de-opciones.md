@@ -197,6 +197,17 @@ Lo YA VENDIDO no cambia nunca: la foto de la línea (`OpcionElegidaEnLinea`, sol
 impiden que desaparezca lo que una línea nombra. La interfaz es la del prototipo aprobado de Mantenimiento: un toque, sin pantalla de confirmación, y el aviso con «Deshacer» abajo
 (`src/components/aviso-con-deshacer.tsx`).
 
+## OPCIONES-FACTOR: leer el factor de un tamaño mientras se tipea (2026-10-14; pedido del dueño)
+
+Solo lectura: no cambia lo que se guarda, ni su validación, ni el esquema. Debajo del campo «El factor» de un tamaño (alta de la opción y «Cambiar precio o consumo», `src/app/(app)/catalogo/opciones/[grupoId]/lectura-del-factor.tsx`)
+la pantalla dice qué quiere decir el número: «Factor 1,3 = lleva 30% más que el tamaño base», «0,7 = 30% menos», «2 = el doble» (`src/core/opciones/factor-de-escala.ts`, en decimal exacto y con la
+misma regla de qué factor es válido que el servidor). A quien tiene el «Ver» de `guardar_receta`, con el módulo Recetas activo, le muestra además cómo cambia lo que descuenta la receta del
+mismo producto de referencia del precio (el primero que usa el grupo), en la sucursal activa: «harina 0,25 kg → 0,325 kg». Esas cantidades NO salen de una cuenta propia: la receta se lee con la
+lectura de la venta (`cargarRecetaVigenteParaVender`, la receta efectiva de la sucursal con sus calibraciones) y se calcula con la función de la venta (`consumoDeLaBaseConFactor` en
+`src/core/movimientos/consumo-de-la-base-con-factor.ts`, que llama dos veces a `consumoDeLineaConfigurada`), así lo que el operario lee es lo que la venta pide descontar por unidad. La pantalla
+dice también lo que esa vista no muestra: los consumos propios de la opción se multiplican por el factor solo con «Escala con el tamaño», y la receta propia de una combinación cuyo eje es el
+tamaño ya es la de ese tamaño y no se escala (ADR-032). Sin el permiso o sin el módulo, solo la frase.
+
 ## Consecuencias
 
 - Un producto sin opciones se vende igual, bit a bit. Lo cuidan los goldens: cuatro cambiaron solo con columnas nuevas en NULL (`operacionPadreId`, `huellaOpciones`, `lineaPadreId`), verificado con diff y declarado en el guardián de caracterizaciones congeladas.

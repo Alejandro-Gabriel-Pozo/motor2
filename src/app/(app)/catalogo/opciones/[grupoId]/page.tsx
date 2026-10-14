@@ -56,12 +56,15 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
 
   const { grupoId } = await params;
-  const [{ editar: puedeEditar }, datos, sinRecetas] = await Promise.all([
+  const [{ editar: puedeEditar }, { ver: puedeVerRecetas }, sinRecetas] = await Promise.all([
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db),
-    cargarGrupoDelPanel(ctx.db, grupoId, ctx.sucursalId),
+    // OPCIONES-FACTOR: la receta de referencia del factor de un tamaño solo se lee y se muestra a quien ve las recetas (el «Ver» de `guardar_receta`).
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db),
     // D-3 (GO-2a): los consumos de una opción exigen el módulo Recetas; sin él, la opción se guarda sin consumos y la pantalla no ofrece el editor.
     denegacionDeModuloDeAccion("guardar_receta", ctx.empresaId, ctx.db),
   ]);
+  // Sin el módulo Recetas o sin su «Ver», el factor muestra solo la frase («30% más»), sin la receta.
+  const datos = await cargarGrupoDelPanel(ctx.db, grupoId, ctx.sucursalId, puedeVerRecetas && !sinRecetas);
   if (!datos) {
     return (
       <div className="flex flex-col gap-2">
@@ -85,6 +88,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
   const admiteNinguna = (tipo === "VARIANTE" || tipo === "INCLUIDA") && !opciones.some((o) => o.esNinguna);
   const siguienteOrden = (opciones.reduce((max, o) => Math.max(max, o.orden), 0) || 0) + PASO_DE_ORDEN;
   const referencia = datos.referencia ? { ...datos.referencia, sucursalNombre: ctx.sucursalNombre } : null;
+  const recetaDeReferencia = esTamano && datos.recetaDeReferencia ? { ...datos.recetaDeReferencia, sucursalNombre: ctx.sucursalNombre } : null;
   const insumos = sinRecetas ? null : datos.insumos;
   const usanElGrupo = productos.length === 1 ? "Lo usa 1 producto" : `Lo usan ${productos.length} productos`;
   const enUso = opciones.filter((o) => o.activa);
@@ -257,6 +261,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                             tipo={tipo}
                             esNinguna={o.esNinguna}
                             referencia={referencia}
+                            receta={recetaDeReferencia}
                             insumos={insumos}
                             rige={{
                               diferencia: rige.diferencia,
@@ -339,6 +344,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                 tipo={tipo}
                 admiteNinguna={admiteNinguna}
                 referencia={referencia}
+                receta={recetaDeReferencia}
                 unidades={datos.unidades}
                 insumos={insumos}
                 accion={async (formData: FormData) => {

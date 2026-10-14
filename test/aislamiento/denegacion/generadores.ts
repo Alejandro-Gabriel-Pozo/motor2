@@ -371,6 +371,9 @@ const parametros: Record<string, Record<string, Valor>> = {
   // `operacionId` por defecto es la compra; la venta lleva la suya.
   "accion|actions/movimientos/venta.ts|anularVenta": { operacionId: (k) => k.ventaId },
   "consulta|consultas/pos/tickets.ts|obtenerTicketsRecientes": { mesaId: (k) => k.mesaCerradaId },
+  // OPCIONES-FACTOR: la pantalla de un grupo pide también la receta de referencia (la página lo decide por el «Ver» de las recetas) y solo la lee en un grupo de TAMAÑOS: se ejerce con el
+  // tamaño del kit y CON la receta, el camino que lee más.
+  "consulta|consultas/catalogo/opciones-de-venta.ts|cargarGrupoDelPanel": { grupoId: (k) => k.grupoMedidaId, conRecetaDeReferencia: () => true },
   // Filtros y cursores opcionales con ids del cliente: sin esto la derivación los deja en `undefined` y el camino del filtro (y de la paginación) no se ejercería con un id ajeno.
   // (Solo en los escenarios con ids ajenos: con ids propios, un filtro y un cursor reales dejarían la lista vacía y el control positivo no probaría nada.)
   "accion|actions/movimientos/lecturas-conteo-fisico.ts|obtenerHistorialConteosFisicos": { filtro: (k, c) => (conIdsAjenos(c) ? { seccionId: k.seccionId, productoId: k.productoId, cursor: k.conteoId } : {}) },

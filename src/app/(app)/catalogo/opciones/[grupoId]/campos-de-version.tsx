@@ -6,6 +6,7 @@ import { interpretarNumero } from "@/core/datos/numero-tecleado";
 import { espejoDeDiferencia, textoDePorcentaje, type DiferenciaDePrecio, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import { formatearMonto } from "@/core/pos/public";
 import { EditorDeConsumos, type ConsumoEnEdicion, type InsumoParaConsumo } from "./editor-de-consumos";
+import { LecturaDelFactor, type RecetaDeReferencia } from "./lectura-del-factor";
 
 /** El precio de referencia del espejo: el precio base del primer producto que usa el grupo, en la sucursal activa (lo calcula el servidor). */
 export interface ReferenciaDePrecio {
@@ -26,11 +27,15 @@ export interface ReferenciaDePrecio {
  * cuenta exacta del núcleo (`espejoDeDiferencia`). Es una ayuda: el precio de cada venta lo compone el servidor.
  *
  * Lo elegido viaja en campos ocultos (`tipoDiferencia`, `valorDiferencia`, `factorEscala`) que el closure de la página arma en el comando; el servidor lo vuelve a validar todo.
+ *
+ * OPCIONES-FACTOR: debajo del factor de un tamaño, en vivo, qué quiere decir el número («Factor 1,3 = lleva 30% más que el tamaño base») y, con la receta de referencia, cómo cambia lo
+ * que descuenta (`LecturaDelFactor`). Es solo lectura: no cambia lo que se guarda.
  */
 export function CamposDeVersion({
   tipo,
   sinPrecio,
   referencia,
+  receta,
   inicial,
   consumos,
 }: {
@@ -38,6 +43,8 @@ export function CamposDeVersion({
   /** La opción «ninguna» o una INCLUIDA: no lleva precio. */
   sinPrecio: boolean;
   referencia: ReferenciaDePrecio | null;
+  /** Solo un tamaño: la receta del mismo producto de referencia, para leer el factor (`null` sin el «Ver» de las recetas o sin el módulo Recetas: solo la frase). */
+  receta: RecetaDeReferencia | null;
   inicial?: { diferencia: DiferenciaDePrecio; factorEscala: number | null };
   /** Lo que consume (con el módulo Recetas activo); `null` = la empresa no tiene Recetas: se guarda sin consumos y se avisa. La «ninguna» nunca consume. */
   consumos: { insumos: InsumoParaConsumo[]; inicial: ConsumoEnEdicion[] } | null;
@@ -71,6 +78,9 @@ export function CamposDeVersion({
   const diferencia: DiferenciaDePrecio | null = numero.ok && numero.valor !== null ? (modo === "MONTO" ? { tipo: "MONTO", monto: numero.valor } : { tipo: "PORCENTAJE", porcentaje: numero.valor }) : null;
   const espejo = diferencia && referencia ? espejoDeDiferencia(diferencia, referencia.precio) : null;
   const idEspejo = `${id}-espejo`;
+  // El factor tal cual lo interpreta el campo (vacío → null; un texto que no es número → NaN), para leerlo en vivo.
+  const factorLeido = interpretarNumero(factor);
+  const valorDelFactor = factorLeido.ok ? factorLeido.valor : Number.NaN;
 
   return (
     <div className="flex flex-col gap-3">
@@ -125,7 +135,8 @@ export function CamposDeVersion({
             Cuánto consume respecto del tamaño base
           </label>
           <CampoNumero id={`${id}-factor`} name="factorEscala" value={factor} onChange={setFactor} etiqueta="El factor" required className="w-28" />
-          <p className="text-xs text-neutral-600 dark:text-neutral-400">1 = lo mismo que la receta; 1,5 = la mitad más; 0,5 = la mitad. Hasta 10.</p>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400">Cuánto consume este tamaño respecto del base: 1 = igual, 1,5 = 50% más, 0,7 = 30% menos (máximo 10).</p>
+          <LecturaDelFactor valor={valorDelFactor} receta={receta} />
         </div>
       )}
       {editorDeConsumos}
