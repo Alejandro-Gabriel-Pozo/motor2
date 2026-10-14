@@ -1,4 +1,4 @@
-import type { EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
+import type { EstiloCarta, GrupoCartaPublico, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
 import { formatearPrecioCarta } from "@/core/carta/public";
 import { TagIcon } from "./iconos";
 
@@ -77,17 +77,19 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
         </h3>
         {item.precioLista !== undefined ? (
           <span className="shrink-0 flex flex-col items-end carta-titulo font-semibold" style={{ fontSize: v.carta_fuente_item_precio, color: colorPrecio }} data-descuento-producto>
-            <span className="sr-only">{`Antes ${formatearPrecioCarta(item.precioLista)}, ahora ${formatearPrecioCarta(item.precio)}, ${item.descuentoPorcentaje} por ciento de descuento`}</span>
+            <span className="sr-only">{`Antes ${formatearPrecioCarta(item.precioLista)}, ahora ${item.precioDesde !== undefined ? "desde " : ""}${formatearPrecioCarta(item.precio)}, ${item.descuentoPorcentaje} por ciento de descuento`}</span>
             <s aria-hidden="true" className="text-xs font-light opacity-75">
               {formatearPrecioCarta(item.precioLista)}
             </s>
             <span aria-hidden="true">
+              {item.precioDesde !== undefined && <span className="mr-1 text-xs font-light">desde</span>}
               {formatearPrecioCarta(item.precio)}
               <span className="ml-1 text-xs font-light">{`−${item.descuentoPorcentaje} %`}</span>
             </span>
           </span>
         ) : (
           <span className="shrink-0 carta-titulo font-semibold" style={{ fontSize: v.carta_fuente_item_precio, color: colorPrecio }}>
+            {item.precioDesde !== undefined && <span className="mr-1 text-xs font-light">desde</span>}
             {formatearPrecioCarta(item.precio)}
           </span>
         )}
@@ -110,7 +112,52 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
       {item.opciones && item.opciones.length > 0 && (
         <p className="mt-0.5 text-xs opacity-60">{item.opciones.map((o) => o.nombre).join(" · ")}</p>
       )}
+      {item.grupos && item.grupos.length > 0 && <OpcionesDelItem grupos={item.grupos} colorDesc={colorDesc} fuente={v.carta_fuente_item_descripcion} />}
     </li>
+  );
+}
+
+/** «elegí 1», «opcional, hasta 2»: lo que se puede elegir de un grupo, en palabras (nunca su tipo interno). */
+function limitesDelGrupo(g: GrupoCartaPublico): string {
+  if (g.obligatorio) return g.maximo === 1 ? "elegí 1" : `elegí hasta ${g.maximo}`;
+  return g.maximo === 1 ? "opcional" : `opcional, hasta ${g.maximo}`;
+}
+
+/** «$ 2.800» (un tamaño), «+ $ 400» o «− $ 300» (un recargo), o nada (sin costo). */
+function precioDeLaOpcion(o: GrupoCartaPublico["opciones"][number]): string | null {
+  if (o.precio !== undefined) return formatearPrecioCarta(o.precio);
+  if (o.recargo === undefined) return null;
+  return `${o.recargo < 0 ? "−" : "+"} ${formatearPrecioCarta(Math.abs(o.recargo))}`;
+}
+
+/**
+ * GO-2d (ADR-030, decisión del dueño): las opciones de un producto, plegadas en un `<details>` nativo (se abre con teclado y lector de pantalla, sin JavaScript): cada grupo con lo
+ * que se elige y cada opción con su precio final (un tamaño) o su recargo. Lo agotado hoy no llega (lo saca la carta). Solo presentación: los precios vienen calculados del servidor.
+ */
+function OpcionesDelItem({ grupos, colorDesc, fuente }: { grupos: GrupoCartaPublico[]; colorDesc: string | undefined; fuente: string }) {
+  return (
+    <details className="mt-1" data-opciones-carta>
+      <summary className="cursor-pointer text-xs font-medium underline underline-offset-2" style={{ color: colorDesc }}>
+        Ver opciones
+      </summary>
+      <dl className="mt-1 flex flex-col gap-1 font-light leading-snug" style={{ fontSize: fuente, color: colorDesc }}>
+        {grupos.map((g, i) => (
+          <div key={`grupo-${i}`} data-grupo-carta={g.nombre}>
+            <dt className="font-medium">
+              {g.nombre} <span className="font-light">({limitesDelGrupo(g)})</span>
+            </dt>
+            <dd>
+              {g.opciones
+                .map((o) => {
+                  const precio = precioDeLaOpcion(o);
+                  return precio ? `${o.nombre} ${precio}` : o.nombre;
+                })
+                .join(" · ")}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   );
 }
 

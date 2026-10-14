@@ -42,12 +42,12 @@ describe("opciones de venta en la sucursal (GO-2a)", () => {
 
   describe("apagar o prender", () => {
     it("apaga en la sucursal ACTIVA (sin fila = prendida, así que va de false a true), repetir no cambia nada, prender vuelve; cada cambio con la sucursal en la auditoría", async () => {
-      expect(await apagarOpcionEnSucursal({ sucursalId: e.sucursalA, opcionId: e.almendrasId, apagada: true })).toMatchObject({ ok: true, mensaje: "«Almendras» quedó apagada en «Central»." });
+      expect(await apagarOpcionEnSucursal({ sucursalId: e.sucursalA, opcionId: e.almendrasId, apagada: true })).toMatchObject({ ok: true, mensaje: "«Almendras» quedó agotada en «Central»." });
       const fila = await prisma.opcionApagadaEnSucursal.findUniqueOrThrow({ where: { sucursalId_opcionId: { sucursalId: e.sucursalA, opcionId: e.almendrasId } } });
       expect(fila).toMatchObject({ apagada: true, actualizadoPorId: e.usuarioId });
-      expect(await apagarOpcionEnSucursal({ sucursalId: e.sucursalA, opcionId: e.almendrasId, apagada: true })).toMatchObject({ ok: true, mensaje: "«Almendras» ya estaba apagada en «Central»." });
+      expect(await apagarOpcionEnSucursal({ sucursalId: e.sucursalA, opcionId: e.almendrasId, apagada: true })).toMatchObject({ ok: true, mensaje: "«Almendras» ya estaba agotada en «Central»." });
       expect(await apagarOpcionEnSucursal({ sucursalId: e.sucursalA, opcionId: e.almendrasId, apagada: false })).toMatchObject({ ok: true });
-      expect(await apagarOpcionEnSucursal({ sucursalId: e.sucursalA, opcionId: e.vacaId, apagada: false })).toMatchObject({ ok: true, mensaje: "«De vaca» ya estaba prendida en «Central»." });
+      expect(await apagarOpcionEnSucursal({ sucursalId: e.sucursalA, opcionId: e.vacaId, apagada: false })).toMatchObject({ ok: true, mensaje: "«De vaca» ya estaba disponible en «Central»." });
       expect(await auditoria("OpcionApagadaEnSucursal")).toEqual([
         { entidadId: `${e.sucursalA}:${e.almendrasId}`, campo: "apagada", valorAnterior: "false", valorNuevo: "true", sucursalId: e.sucursalA },
         { entidadId: `${e.sucursalA}:${e.almendrasId}`, campo: "apagada", valorAnterior: "true", valorNuevo: "false", sucursalId: e.sucursalA },

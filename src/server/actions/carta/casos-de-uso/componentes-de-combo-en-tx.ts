@@ -2,7 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import type { OpcionDeConfiguracionFija } from "@/core/features/carta/combos.schema";
 import { fracaso, type Fracaso } from "@/core/resultado-caso";
-import { claveDeConfiguracion, rechazoDeComponenteDeCombo, revisarAlicuotasDeCombo, type CodigoDeComponenteDeCombo } from "@/core/pos/public";
+import { claveDeConfiguracionFija, rechazoDeComponenteDeCombo, revisarAlicuotasDeCombo, type CodigoDeComponenteDeCombo } from "@/core/pos/public";
 import { armarLineaConfigurada } from "@/core/pos/public-servidor";
 import { redondearMoneda } from "@/core/moneda";
 import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
@@ -42,7 +42,7 @@ export async function validarComponenteEnTx(
   const deTipo = producto.tipo !== "PV" || producto.esAnclaDeAdicional ? comoComponente(producto.precioVenta) : null;
   if (deTipo) return fracaso(deTipo.codigo, deTipo.mensaje);
 
-  const clave = claveDeConfiguracion(args.opciones);
+  const clave = claveDeConfiguracionFija(args.opciones);
   if (clave === null) return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}»: la configuración repite una opción o tiene una cantidad fuera de 1 a 10.`);
   const precioBase = args.precioDeLaSucursal ? redondearMoneda(await resolverPrecioVenta(args.sucursalId, producto.id, producto.precioVenta, tx)) : producto.precioVenta;
   let precioDeLista = precioBase;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { type EntradaCarpetaSelectorCarta, type EntradaPromoSelectorCarta, type EntradaSelectorCarta, type ProductoPedible, type SelectorCartaPos, SECCION_FUERA_DE_CARTA, type AccionSelectorCarta, type EstadoSelectorCarta, estaEnListaPorAgregar, listaPorAgregarLlena, type EstadoListaPorAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearMonto } from "@/core/pos/public";
+import { type EntradaCarpetaSelectorCarta, type EntradaPromoSelectorCarta, type EntradaSelectorCarta, type ProductoPedible, type SelectorCartaPos, SECCION_FUERA_DE_CARTA, type AccionSelectorCarta, type EstadoSelectorCarta, estaEnListaPorAgregar, listaPorAgregarLlena, type EstadoListaPorAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearMonto, type ConfiguracionDelSelector } from "@/core/pos/public";
 
 /**
  * «Agregar al pedido» por SECCIÓN DE CARTA (docs/plan-selector-carta-pos-2026-09-25.md, §2.2), por CARPETA DE GÉNERO
@@ -61,9 +61,14 @@ interface Props {
   /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 11): toca una promo armable — abre el diálogo "Armar promo"
    *  (`ArmarPromo`, en el padre: una promo no se suma directo como un producto). */
   abrirPromo: (entrada: EntradaPromoSelectorCarta) => void;
+  /**
+   * GO-2d (opcional): los productos que admiten opciones. Su botón dice «desde $ X» y «Opciones» (no solo un color) y abre el diálogo «Elegir opciones» (`sumar` lo decide en el
+   * padre); si hoy no se puede vender (un grupo obligatorio sin opciones), queda deshabilitado y lo dice. Sin esto, todos los productos se suman con un toque, como siempre.
+   */
+  configuraciones?: Readonly<Record<string, ConfiguracionDelSelector>>;
 }
 
-export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrirPromo }: Props) {
+export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrirPromo, configuraciones = {} }: Props) {
   const idBase = useId();
   const llena = listaPorAgregarLlena(lista, MAXIMO_ITEMS_POR_AGREGADO);
   const pestanas = [
@@ -81,6 +86,29 @@ export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrir
 
   const botonProducto = (p: ProductoPedible) => {
     const enLista = estaEnListaPorAgregar(lista, p.productoId);
+    const configuracion = configuraciones[p.productoId];
+    if (configuracion) {
+      const sinLugar = llena;
+      return (
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          disabled={!configuracion.vendible || sinLugar}
+          title={!configuracion.vendible ? "Hoy no se puede vender: un grupo obligatorio se quedó sin opciones." : sinLugar ? `Llegaste al máximo de ${MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.` : undefined}
+          data-producto-carta={p.productoId}
+          data-con-opciones=""
+          onClick={() => sumar(p.productoId)}
+          className={BOTON_PRODUCTO}
+        >
+          <span>{p.nombre}</span>
+          <span className={PRECIO}>
+            {configuracion.vendible
+              ? `${configuracion.hayVariacion && configuracion.desde !== null ? `desde ${formatearMonto(configuracion.desde)}` : formatearMonto(configuracion.desde ?? p.precio)} · Opciones`
+              : "Sin opciones disponibles hoy"}
+          </span>
+        </button>
+      );
+    }
     return (
       <button
         type="button"

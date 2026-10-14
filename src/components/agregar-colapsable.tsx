@@ -26,7 +26,7 @@ export function AgregarColapsable({ etiqueta, children }: { etiqueta: string; ch
   return (
     <div className="flex flex-col gap-2">
       {children}
-      <button type="button" onClick={() => setAbierto(false)} className="self-start text-xs text-neutral-500 underline">
+      <button type="button" onClick={() => setAbierto(false)} className="self-start text-xs text-neutral-500 underline dark:text-neutral-400">
         Cerrar
       </button>
     </div>

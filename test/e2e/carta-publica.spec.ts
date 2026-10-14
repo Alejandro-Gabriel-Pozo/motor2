@@ -1,6 +1,8 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import AxeBuilder from "@axe-core/playwright";
 import { prismaAdmin } from "../setup/cliente-duenio";
+import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 
 /**
  * Carta pública nueva (ADR-006, Fase 3): `/carta-publica/<empresa>/...`, sin sesión. La empresa `e2e` es la de
@@ -191,6 +193,55 @@ test.describe("carta de una sucursal", () => {
       await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
       await prisma.seccionCarta.delete({ where: { id: seccion.id } });
       await prisma.producto.delete({ where: { id: producto.id } });
+    }
+  });
+
+  test("GO-2d: un PV con opciones muestra «desde», los tamaños con su precio, la guarnición y «+ $» del adicional; marcar una opción agotada desde la app la saca al instante", async ({
+    page,
+    paginaAutenticada,
+    sucursalId,
+  }) => {
+    const m = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+    const slug = `e2e-opciones-${m}`;
+    const tamano = await sembrarGrupo({ nombre: `Tamaño ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico", monto: -300, factorEscala: 0.75 }, { nombre: "Mediano", factorEscala: 1 }, { nombre: "Grande", monto: 300, factorEscala: 1.5 }] });
+    const guarnicion = await sembrarGrupo({ nombre: `Guarnición ${m}`, tipo: "INCLUIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Puré" }, { nombre: "Ensalada" }] });
+    const extras = await sembrarGrupo({ nombre: `Extras ${m}`, tipo: "ADICIONAL", cantidadMinima: 0, cantidadMaxima: 2, marca: m, opciones: [{ nombre: "Huevo frito", monto: 600, conAncla: true }] });
+    const nombre = `E2E Milanesa carta ${m}`;
+    const { productoId } = await sembrarProductoConOpciones({ nombre, codigo: `E2E-CPO-${m}`, precioVenta: 2500, sucursalId, grupos: [{ grupo: tamano }, { grupo: guarnicion }, { grupo: extras }] });
+    const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Sección opciones ${m}` } });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId, visibleEnCarta: true, seccionCartaId: seccion.id } });
+    await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+    await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
+    const abrir = async () => {
+      await page.goto(`/carta-publica/${EMPRESA}/${slug}`);
+      await page.getByRole("button", { name: new RegExp(seccion.nombre) }).click();
+      const fila = page.locator("li", { has: page.getByRole("heading", { name: nombre }) });
+      await fila.getByText("Ver opciones").click();
+      return fila;
+    };
+    try {
+      await page.setViewportSize({ width: 375, height: 800 });
+      const fila = await abrir();
+      await expect(fila).toContainText("desde$2.200");
+      await expect(fila.locator(`[data-grupo-carta='Tamaño ${m}']`)).toContainText(`Tamaño ${m} (elegí 1)Chico $2.200 · Mediano $2.500 · Grande $2.800`);
+      await expect(fila.locator(`[data-grupo-carta='Guarnición ${m}']`)).toContainText("Puré · Ensalada");
+      await expect(fila.locator(`[data-grupo-carta='Extras ${m}']`)).toContainText(`Extras ${m} (opcional, hasta 2)Huevo frito + $600`);
+      expect((await new AxeBuilder({ page }).analyze()).violations, "carta con opciones, en el celular").toEqual([]);
+
+      // El encargado marca «Mediano» agotado hoy: la carta (cacheada, ISR) lo deja de mostrar en la próxima visita, sin esperar el minuto.
+      await paginaAutenticada.goto("/movimientos/opciones-agotadas");
+      const pildora = paginaAutenticada.getByRole("region", { name: new RegExp(`^Tamaño ${m}`) }).getByRole("button", { name: "Mediano: Disponible" });
+      await pildora.click();
+      await expect(paginaAutenticada.getByRole("status").filter({ hasText: "quedó agotada" })).toBeVisible();
+      const despues = await abrir();
+      await expect(despues.locator(`[data-grupo-carta='Tamaño ${m}']`)).toContainText("Chico $2.200 · Grande $2.800");
+      await expect(despues).not.toContainText("Mediano");
+    } finally {
+      await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
+      await prisma.contenidoCartaProducto.deleteMany({ where: { seccionCartaId: seccion.id } });
+      await prisma.seccionCarta.delete({ where: { id: seccion.id } });
+      // La opción agotada se vuelve a prender (las filas de opciones no se borran: ver `fixtures/opciones.ts`).
+      await prisma.opcionApagadaEnSucursal.updateMany({ where: { sucursalId, opcionId: tamano.opciones["Mediano"]!.opcionId }, data: { apagada: false } });
     }
   });
 

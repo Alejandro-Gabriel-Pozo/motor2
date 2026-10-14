@@ -52,7 +52,7 @@ export async function editarGrupoDeOpcionesCasoDeUso(
       ]);
       if (cambios.length === 0) return exito(`El grupo «${grupo.nombre}» no tenía cambios.`, { version: grupo.version, huboCambio: false, productosAfectados: 0 });
       if (grupo.version !== comando.versionEsperada) {
-        return fracaso("VERSION_DESACTUALIZADA", `El grupo «${grupo.nombre}» cambió mientras lo editabas (ahora va por la versión ${grupo.version}). Recargá la pantalla y volvé a hacer el cambio.`);
+        return fracaso("VERSION_DESACTUALIZADA", `El grupo «${grupo.nombre}» cambió mientras lo editabas: otra persona lo guardó antes. Recargá la pantalla y volvé a hacer el cambio.`);
       }
 
       if (comando.nombre !== grupo.nombre) {

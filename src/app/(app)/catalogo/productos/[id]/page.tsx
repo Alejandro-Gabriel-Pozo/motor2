@@ -10,6 +10,8 @@ import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server
 import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { cargarOpcionesDelProducto } from "@/server/consultas/catalogo/opciones-de-venta";
+import { ResumenDeOpciones } from "@/components/catalogo/resumen-de-opciones";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -57,12 +59,16 @@ export default async function FichaProductoPage({
   // Primitivos para el closure "use server" de abajo: lo que captura viaja al cliente y `p` lleva Decimales de Prisma (ver precio-local).
   const productoId = p.id;
 
-  const [presentaciones, disponibilidadPorSucursal, seccionHabitual] = await Promise.all([
+  const [presentaciones, disponibilidadPorSucursal, seccionHabitual, opcionesDeVenta, nivelOpciones] = await Promise.all([
     p.tipo === "MP" ? listarPresentaciones(p.id) : Promise.resolve([]),
     disponibilidadPorSucursalDeProducto(p.id, ctx.db),
     // Solo lectura (se configura en Stock › Sección habitual): la de ESTA sucursal, y solo si apunta a una sección activa de acá — la misma regla
     // con la que la usa el cierre de cuenta del salón (docs/plan-seccion-habitual-stock-2026-09-25.md).
     p.tipo === "PV" ? obtenerSeccionHabitualEnSucursal(ctx.sucursalId, p.id, ctx.db) : Promise.resolve(null),
+    // GO-2d: las opciones de venta del producto, con los precios que calcula el servidor para la sucursal activa (solo leer). El enlace a editarlas, solo con «Editar» de
+    // `producto_opciones_admitidas` (cortesía: esa pantalla exige el permiso por su cuenta).
+    p.tipo === "PV" ? cargarOpcionesDelProducto(ctx.db, p.id, ctx.sucursalId) : Promise.resolve(null),
+    p.tipo === "PV" ? obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_opciones_admitidas", ctx.db) : Promise.resolve({ ver: false, editar: false }),
   ]);
   const tieneReceta = p.tipo === "PV" || p.seProduce;
   const disponibleAca = disponibilidadPorSucursal.find((d) => d.sucursalId === ctx.sucursalId)?.disponible ?? false;
@@ -150,6 +156,27 @@ export default async function FichaProductoPage({
           )}
         </dl>
       </section>
+
+      {opcionesDeVenta && !opcionesDeVenta.producto.esAnclaDeAdicional && (
+        <section aria-labelledby="titulo-opciones-de-venta">
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="titulo-opciones-de-venta" className="text-sm font-medium">
+              Opciones de venta
+            </h2>
+            {nivelOpciones.editar && (
+              <Link href={`/catalogo/productos/${p.id}/opciones`} className="text-sm underline">
+                Editar opciones
+              </Link>
+            )}
+          </div>
+          <div className="rounded border p-4">
+            <ResumenDeOpciones resumen={opcionesDeVenta.vistaPrevia} sucursalNombre={ctx.sucursalNombre} />
+          </div>
+        </section>
+      )}
+      {opcionesDeVenta?.producto.esAnclaDeAdicional && (
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">Este es el producto interno que respalda el stock de un adicional: lo maneja el sistema y se vende solo como adicional.</p>
+      )}
 
       <section>
         <h2 className="mb-2 text-sm font-medium">Disponibilidad por sucursal</h2>

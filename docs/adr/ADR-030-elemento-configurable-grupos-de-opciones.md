@@ -131,6 +131,35 @@ Lo que GO-2b escribió para cumplir «lo que GO-2 hereda», sin migraciones, sin
 - **IVA (fuera de alcance):** nada fiscal; la alícuota del adicional se deriva del producto padre por `operacionPadreId` (probado con `alicuotaDeLineaDeVenta`).
 - **Pendientes (fuera de GO-2b):** que el ancla no aparezca como «PV sin receta» en los reportes de catálogo (va con GO-2a); el margen NOMINAL del Período sigue costeando por la receta del producto (el real ya usa los consumos); en el rendimiento de recetas, el consumo de un adicional colgado de un producto SIN receta no se descuenta del pool de su insumo.
 
+## GO-2d: las pantallas (2026-10-14)
+
+**Estado: hecho en la rama `go2d-pantallas-opciones`, pendiente de CI y de revisión.** Sin migración ni cambio de esquema y sin claves de permiso nuevas (rigen `opciones_definir`, `producto_opciones_admitidas`, `opcion_apagar_en_sucursal`, `precio_local` y las del POS). Lo que el dueño decidió para esta parte (2026-10-13) y cómo quedó:
+
+1. **La carta pública muestra las opciones** (ampliación de la lista cerrada aprobada): «desde $ X», los tamaños con su precio final, la guarnición incluida y los adicionales con «+ $». Se calcula en el SERVIDOR con la regla de la venta (`resumenDePrecios`, `src/core/pos/precio-de-configuracion.ts`), se lee con una lectura propia campo por campo (`src/server/lecturas/carta/opciones.ts`: nunca el factor de escala, los consumos ni el producto que respalda un adicional) y sale por la proyección campo por campo (`src/core/carta/carta-publica.ts`). Guardianes ampliados con motivo: `test/arquitectura/carta-publica-lista-cerrada.test.ts`, `test/carta/salida-publica-inventariada.test.ts` (canarios de la alícuota, el factor, el consumo y el código del producto de respaldo) y `test/carta/carta-publica-sin-ids.test.tsx`; la caché sigue por empresa y las acciones de opciones la invalidan (`test/carta/revalida-al-cambiar-el-catalogo.test.ts`).
+2. **Lo agotado no se muestra en la carta**, y un producto con un grupo obligatorio sin nada para elegir tampoco sale.
+3. **«Agotada» dura hasta que alguien la prende** (`/movimientos/opciones-agotadas`, con «Deshacer»).
+4. **El stock teórico avisa, nunca bloquea**: «Opciones agotadas», la carta del admin y el diálogo del POS dicen «el sistema dice 0» con el enlace al conteo físico; vender sigue permitido. El saldo lo lee `saldosTeoricosEnSucursal` (`src/server/lecturas/movimientos/saldos.ts`), un agregado por sucursal sin N+1.
+5. **«Sin receta no se vende»** es otra tarea: estas pantallas no lo deciden ni lo suponen.
+
+### Supuestos de GO-2d (escritos así en el código; si el dueño decide otra cosa, cambia lo indicado)
+
+1. **«Otro igual» abre «Elegir opciones» con la misma elección** (en «Por agregar», en «Sin enviar» y en cada envío), en vez de copiar la línea directo: así el mozo ve el precio y lo agotado de HOY antes de confirmar. El «+» de «Por agregar» suma una igual sin abrir nada.
+2. **«Lo más pedido acá»** cuenta las líneas PEDIDAS en las mesas de la sucursal (no solo las cobradas) en los últimos 30 días contando hoy, con los días cortados en la zona de la empresa; agrupa por huella y junta la misma elección pedida con dos versiones de precio; no cuenta adicionales (no entran en la huella) y no ofrece una configuración con algo que hoy no se puede elegir (`src/server/lecturas/pos/mas-pedidas.ts`).
+3. **En la carta**, el precio de un producto con opciones es lo más barato con lo que se puede pedir; el tachado, ese mismo sin el descuento de producto (el descuento va sobre el tamaño, nunca sobre un recargo); «desde» solo si el precio cambia según lo elegido; un recargo en 0 no se escribe y la «ninguna» de un adicional no se muestra. El tope de cada adicional NO se muestra (GO-0 §4 lo pedía aprobar aparte). Solo la carta pública lee las opciones: el POS arma su diálogo y la vista del admin sigue como antes.
+4. **La carta lee también `tipoDeDiferencia` y `porcentaje`** (de la versión y del producto), que GO-0 §4 no listaba porque el recargo en % llegó con GO-2a: sin ellos un recargo en % se mostraría mal.
+5. **El lector de la grilla perdió `server-only`** (como `src/server/lecturas/catalogo/precio-local.ts`): la carta pública lo alcanza y a ella la carga una fixture de Playwright (`test/e2e/fixtures/carta-menu.ts`).
+6. **Ordenar las opciones de un grupo** es una acción nueva y atómica (`reordenarOpcionesDeGrupo`, `src/server/actions/catalogo/casos-de-uso/reordenar-opciones-de-grupo.ts`): una sola transacción, con la versión de cada opción y una auditoría por opción movida; la «ninguna» nunca va primera.
+7. **Los mensajes no dicen «versión»**: «cambio de precio», «otra persona lo guardó antes. Recargá la pantalla» (con el botón «Recargar»).
+8. **«Precios por tamaño en esta sucursal»** muestra también el precio cargado de un producto que ya no está disponible acá, para poder sacarlo.
+9. **En una promo** (v1) un producto con un grupo obligatorio se ve con «Con tamaño: pedilo suelto» y sin «+», como ya exigía el servidor.
+
+### Pendientes que GO-2d encontró (fuera de su alcance)
+
+- **La venta de mostrador** (`/movimientos/venta`) no rechaza hoy un producto con un grupo obligatorio: lo vende al precio base, sin opciones. El plan decía que ya lo rechazaba. Va con el caso de uso de la venta (`src/server/actions/movimientos/casos-de-uso/registrar-venta.ts`), que es de otra tarea en curso.
+- El aviso de «Enviar a cocina» cuenta los adicionales como ítems («2 ítems» para un café con un adicional).
+- Un PV con opciones dentro de un ítem agrupado de la carta se muestra como opción del agrupado, sin sus grupos.
+- **La prueba del dueño con el flujo del café** (alta del grupo, admisión, pedido en la mesa, comanda, ticket y carta) queda pendiente.
+
 ## Consecuencias
 
 - Un producto sin opciones se vende igual, bit a bit. Lo cuidan los goldens: cuatro cambiaron solo con columnas nuevas en NULL (`operacionPadreId`, `huellaOpciones`, `lineaPadreId`), verificado con diff y declarado en el guardián de caracterizaciones congeladas.

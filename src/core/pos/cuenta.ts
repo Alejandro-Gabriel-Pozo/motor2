@@ -256,6 +256,10 @@ export interface ItemDeCuenta {
   opciones?: string[];
   /** GO-2b: `true` SOLO en un adicional (cuelga de la línea de su producto: no lleva descuento de cliente y no se anula solo). */
   esAdicional?: true;
+  /** GO-2d: la línea de la que cuelga un adicional (para mostrarlo debajo de su producto). Ausente en las demás. */
+  lineaPadreId?: string;
+  /** GO-2d: lo elegido según la foto (opción y cuántas por unidad), para «Otro igual». Ausente sin opciones o si la consulta no lo leyó. */
+  elegidas?: { opcionId: string; cantidad: number }[];
 }
 
 export interface DetalleDeCuenta {
@@ -311,7 +315,7 @@ export interface MesaConCuentaLeida {
       promoCuenta: { id: string; titulo: string } | null;
       /** GO-2b: el padre de un adicional y la foto de lo elegido (opcionales: sin ellos, el detalle de siempre). */
       lineaPadreId?: string | null;
-      opcionesElegidas?: { nombreOpcion: string; tipoGrupo: string }[];
+      opcionesElegidas?: { nombreOpcion: string; tipoGrupo: string; opcionId?: string; cantidad?: number }[];
     }[];
   }[];
 }
@@ -328,6 +332,8 @@ export function armarDetalleDeMesa(mesa: MesaConCuentaLeida | null, ahora: Date)
 
   const items: ItemDeCuenta[] = fila.items.map((i) => {
     const opciones = (i.opcionesElegidas ?? []).filter((f) => f.tipoGrupo !== "ADICIONAL").map((f) => f.nombreOpcion);
+    // GO-2d: lo elegido (opción y cuántas), solo de las fotos que lo traen.
+    const elegidas = (i.opcionesElegidas ?? []).flatMap((f) => (f.opcionId !== undefined && f.cantidad !== undefined ? [{ opcionId: f.opcionId, cantidad: f.cantidad }] : []));
     return {
     id: i.id,
     productoId: i.productoId,
@@ -345,6 +351,8 @@ export function armarDetalleDeMesa(mesa: MesaConCuentaLeida | null, ahora: Date)
     promoTitulo: i.promoCuenta?.titulo ?? null,
     ...(opciones.length ? { opciones } : {}),
     ...(i.lineaPadreId ? { esAdicional: true as const } : {}),
+    ...(i.lineaPadreId ? { lineaPadreId: i.lineaPadreId } : {}),
+    ...(elegidas.length ? { elegidas } : {}),
     };
   });
   const { sinEnviar, envios } = agruparPorEnvio(items);

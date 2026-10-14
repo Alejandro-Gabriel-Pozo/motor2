@@ -20,6 +20,9 @@ type DocumentoDeTicket = Extract<DocumentoImprimible, { ticket: unknown }>;
  * Promo armada (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 2.6/10): la cabecera («1 × Menú del día») muestra el precio
  * cobrado por la promo entera; sus componentes van indentados, SIN precio propio impreso (ya está en la cabecera). `key` incluye
  * `promoCuentaId` — dos instancias de la misma promo (o dos promos con el mismo total, por casualidad) no colisionan.
+ *
+ * GO-2d (ADR-030): una línea con opciones lleva sus nombres debajo («Grande · Almendras») y un adicional va con sangría, «+» y SU precio, justo debajo de la línea de su producto
+ * (así lo arma `armarTicket`). La `key` suma las opciones, si es adicional y el orden: dos cafés del mismo precio con distinta leche son dos líneas.
  */
 export function TicketCuenta({ documento, mesa, sucursal, zonaHoraria }: { documento: DocumentoDeTicket; mesa: string; sucursal: string; zonaHoraria: string }) {
   const { ticket } = documento;
@@ -43,11 +46,17 @@ export function TicketCuenta({ documento, mesa, sucursal, zonaHoraria }: { docum
         </p>
       )}
       <ul className="ticket-separador">
-        {ticket.lineas.map((l) => (
-          <li key={`${l.producto}|${l.precioUnitario}|${l.precioListaUnitario ?? ""}|${l.promoCuentaId ?? ""}`} className={`ticket-linea${l.indentado ? " ticket-linea-indentada" : ""}`}>
+        {ticket.lineas.map((l, n) => (
+          <li
+            key={`${l.producto}|${l.precioUnitario}|${l.precioListaUnitario ?? ""}|${l.promoCuentaId ?? ""}${l.opciones || l.esAdicional ? `|${l.opciones?.join(",") ?? ""}|${l.esAdicional ? "a" : ""}|${n}` : ""}`}
+            className={`ticket-linea${l.indentado || l.esAdicional ? " ticket-linea-indentada" : ""}`}
+            {...(l.esAdicional ? { "data-adicional": true } : {})}
+          >
             <p className="ticket-item">
+              {l.esAdicional && "+ "}
               {formatearCantidad(l.cantidad)} × {l.producto}
             </p>
+            {l.opciones && <p className="ticket-dato">{l.opciones.join(" · ")}</p>}
             {!l.indentado && (
               <p className="ticket-monto">
                 <span>

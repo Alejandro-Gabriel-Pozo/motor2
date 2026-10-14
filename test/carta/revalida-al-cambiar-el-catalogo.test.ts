@@ -7,6 +7,8 @@ import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, sembrarProduc
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { revalidarCartasPublicas } from "../../src/server/actions/carta/revalidar";
 import { actualizarDisponibilidadProducto, actualizarProducto, sincronizarPrecioGrupoCarta } from "../../src/server/actions/catalogo/productos";
+import { crearGrupoDeOpciones } from "../../src/server/actions/catalogo/opciones-de-venta";
+import { apagarOpcionEnSucursal } from "../../src/server/actions/catalogo/opciones-por-sucursal";
 
 /**
  * La carta pública se cachea 5 minutos (ISR). Lo que ella muestra (nombre, precio, disponibilidad de un producto) también se cambia desde
@@ -48,6 +50,21 @@ describe("el catálogo invalida la carta pública al cambiar lo que ella muestra
 
   it("actualizarDisponibilidadProducto", async () => {
     expect((await actualizarDisponibilidadProducto(productoId, false)).ok).toBe(true);
+    expect(revalidarCartasPublicas).toHaveBeenCalledTimes(1);
+  });
+
+  // GO-2d: la carta pública muestra las opciones de venta: las acciones de GO-2a la invalidan (las siete del catálogo y las dos de la sucursal, con el mismo adaptador).
+  it("crearGrupoDeOpciones", async () => {
+    expect((await crearGrupoDeOpciones({ nombre: "Tamaño", tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1 })).ok).toBe(true);
+    expect(revalidarCartasPublicas).toHaveBeenCalledTimes(1);
+  });
+
+  it("apagarOpcionEnSucursal (una opción agotada sale de la carta)", async () => {
+    const grupo = await prisma.grupoDeOpciones.create({ data: { nombre: "Leche", tipo: "VARIANTE", cantidadMinima: 0, cantidadMaxima: 1 } });
+    const opcion = await prisma.opcionDeGrupo.create({ data: { grupoId: grupo.id, nombre: "Almendras", orden: 1 } });
+    expect((await apagarOpcionEnSucursal({ sucursalId, opcionId: opcion.id, apagada: true })).ok).toBe(true);
+    expect(revalidarCartasPublicas).toHaveBeenCalledTimes(1);
+    expect((await apagarOpcionEnSucursal({ sucursalId, opcionId: "no-existe", apagada: true })).ok).toBe(false);
     expect(revalidarCartasPublicas).toHaveBeenCalledTimes(1);
   });
 

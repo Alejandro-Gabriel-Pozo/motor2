@@ -37,7 +37,8 @@ export async function apagarOpcionEnSucursalCasoDeUso(
         select: { apagada: true },
       });
       const estaba = fila?.apagada ?? false;
-      const estado = comando.apagada ? "apagada" : "prendida";
+      // GO-2d: en palabras de la pantalla «Opciones agotadas» (lo que se acabó hoy), no «apagada».
+      const estado = comando.apagada ? "agotada" : "disponible";
       if (estaba === comando.apagada) return exito(`«${opcion.nombre}» ya estaba ${estado} en «${actor.sucursalNombre}».`, { huboCambio: false });
 
       await fijarApagadoDeOpcion(tx, { sucursalId: actor.sucursalId, opcionId: opcion.id, apagada: comando.apagada, actorId: actor.usuarioId, ahora: actor.ahora });

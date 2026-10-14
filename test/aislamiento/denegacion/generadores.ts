@@ -327,6 +327,15 @@ const completos: Record<string, Valor> = {
       intento(c, ["promoCartaId"], [c.propio.cuentaId, [], [{ promoCartaId: k.promoCartaId, elecciones: [{ seccionCartaId: c.propio.seccionCartaId, elegidos: [{ productoId: c.propio.productoPvId, cantidad: 1 }] }] }]]),
       intento(c, ["seccionCartaId", "productoPvId"], [c.propio.cuentaId, [], [{ promoCartaId: c.propio.promoCartaId, elecciones: [{ seccionCartaId: k.seccionCartaId, elegidos: [{ productoId: k.productoPvId, cantidad: 1 }] }] }]]),
     ),
+  // GO-2d: el orden completo de las opciones de un grupo, con la opción ajena del kit.
+  "accion|actions/catalogo/opciones-de-venta.ts|reordenarOpcionesDeGrupo": (k) => [{ grupoId: k.grupoDeOpcionesId, opciones: [{ opcionId: k.opcionDeGrupoId, versionEsperada: 1 }] }],
+  // GO-2d: las opciones del selector del POS reciben el selector ya armado (con el PV que admite opciones del kit como pedible).
+  "consulta|consultas/pos/opciones-del-selector.ts|cargarOpcionesDelSelector": (k, c) => [
+    k.sucursalId,
+    c.db,
+    { seccionesCarta: [], fueraDeCarta: [{ productoId: k.productoConOpcionesId, codigo: "codigo", nombre: "Pedible", precio: 1000, decimales: 0, pasoVenta: null, tieneStockReal: false }] },
+    { ahora: new Date(), zonaHoraria: "America/Argentina/Buenos_Aires" },
+  ],
 };
 
 const parametros: Record<string, Record<string, Valor>> = {
@@ -363,6 +372,10 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/traspasos/lecturas.ts|obtenerBandejaTransferencias": { cursorHistorial: (k, c) => (conIdsAjenos(c) ? k.traspasoId : undefined) },
   // GO-2a: la grilla de opciones de un producto (el que admite la medida con precio propio), con la capacidad de precio local prendida.
   "lectura|lecturas/catalogo/precio-local-de-opciones.ts|preciosLocalesDeOpcionVigentes": { productoId: (k) => k.productoConOpcionesId, precioLocalActivo: () => true },
+  // GO-2d: la misma grilla, para varios productos a la vez (el selector del POS).
+  "lectura|lecturas/catalogo/precio-local-de-opciones.ts|preciosLocalesDeOpcionVigentesEnProductos": { productoIds: (k) => [k.productoConOpcionesId], precioLocalActivo: () => true },
+  // GO-2d: «lo más pedido» del PV con opciones en la sucursal.
+  "lectura|lecturas/pos/mas-pedidas.ts|configuracionesMasPedidasEnSucursal": { productoIds: (k) => [k.productoConOpcionesId] },
   // GO-2b: lo que admite para vender el PV con opciones (la vigente, los consumos, lo apagado en la sucursal) y la grilla de la sucursal para su MEDIDA en ABSOLUTO elegida.
   "lectura|lecturas/opciones/opciones-para-vender.ts|cargarOpcionesParaVender": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoConOpcionesId] }) },
   "lectura|lecturas/opciones/opciones-para-vender.ts|completarPreciosDeSucursal": {
@@ -420,6 +433,10 @@ const porArchivo: Record<string, Record<string, Valor>> = {
   "lecturas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId },
   // GO-3b: en las lecturas de las combinaciones, `productoId` es el PV con opciones (el que tiene ejes y combinación).
   "lecturas/catalogo/combinaciones.ts": { productoId: (k) => k.productoConOpcionesId },
+  // GO-2d: lo mismo en las consultas de las pantallas de opciones de venta.
+  "consultas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId, productoIds: (k) => [k.productoConOpcionesId] },
+  // GO-2d: los avisos de stock de la carta son de platos (PV con receta).
+  "consultas/carta/avisos-de-stock.ts": { productoIds: (k) => [k.productoPvId, k.productoPv2Id] },
 };
 
 export const GENERADORES: Generadores = { completos, parametros, porArchivo };

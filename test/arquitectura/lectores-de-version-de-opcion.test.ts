@@ -38,6 +38,11 @@ const LECTORES_DE_ADMINISTRACION: readonly { ruta: string; motivo: string }[] = 
     motivo: "GO-2a: el catálogo de opciones para administrarlo (la vigente de cada opción para mostrarla y el historial de versiones de un grupo); no decide ningún precio de venta.",
   },
   {
+    // GO-2d: no es de administración, pero tampoco vende: muestra. Usa la MISMA regla (`versionVigente`) y el servidor vuelve a leer todo al pedir.
+    ruta: "server/lecturas/carta/opciones.ts",
+    motivo: "GO-2d: la carta pública muestra el precio de cada opción con la vigente (`versionVigente`, la misma regla); solo para mostrar, sin factor ni consumos: no decide lo que se cobra.",
+  },
+  {
     ruta: "server/actions/catalogo/casos-de-uso/opciones-de-venta-en-tx.ts",
     motivo: "GO-2a: `versionVigenteEnTx`, la vigente DENTRO de la transacción del caso de uso que carga una versión nueva (para no repetir una igual y numerar la siguiente); no vende.",
   },

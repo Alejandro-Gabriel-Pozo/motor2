@@ -23,6 +23,7 @@
 // ---------------------------------------------------------------------------------------------------------------------
 
 import { aplicarDescuentoDeProducto } from "./descuento-producto";
+import { opcionesParaLaCarta, type GrupoCartaV1, type ResumenDePreciosParaCarta } from "./opciones-en-carta";
 
 export interface ItemCartaV1 {
   productoId: string;
@@ -60,6 +61,14 @@ export interface ItemCartaV1 {
    * de la v1: `version` no cambia.
    */
   opciones?: OpcionItemCartaV1[];
+  /**
+   * GO-2d (ADR-030, aprobado por el dueño): SOLO en un PV con opciones de venta (tamaños, variantes, guarniciones, adicionales), lo que se puede elegir HOY en la sucursal
+   * (`opciones-en-carta.ts`). En ese ítem `precio` es lo más barato con lo que se puede pedir. Un ítem sin opciones no lleva esta clave: su JSON queda igual que antes. Campo aditivo
+   * de la v1: `version` no cambia. (La clave `opciones` ya es de los ítems agrupados.)
+   */
+  grupos?: GrupoCartaV1[];
+  /** GO-2d: SOLO junto a `grupos` y si el precio cambia según lo que se elija: «desde $ X» (igual a `precio`). */
+  precioDesde?: number;
 }
 
 /** Una opción (un PV real) dentro de un ítem agrupado de la carta. */
@@ -160,6 +169,18 @@ export interface EntradaArmarMenu {
   promos: readonly PromoCartaEntrada[];
   /** Ítems agrupados ACTIVOS (opcional: sin agrupados, la carta sale exactamente igual que antes). */
   agrupados?: readonly ItemAgrupadoEntrada[];
+  /**
+   * GO-2d (opcional: sin esto, la carta sale exactamente igual que antes): los PV con opciones de venta, con su resumen de precios ya calculado con la regla de la venta
+   * (`resumenDePrecios`), con el descuento de producto de la sucursal (`conDescuento`) y sin él (`sinDescuento`, para el precio tachado). Un PV que hoy no se puede pedir (un grupo
+   * obligatorio sin nada para elegir) no sale en la carta.
+   */
+  opcionesDeProductos?: readonly OpcionesDeProductoEntrada[];
+}
+
+export interface OpcionesDeProductoEntrada {
+  productoId: string;
+  conDescuento: ResumenDePreciosParaCarta;
+  sinDescuento: ResumenDePreciosParaCarta;
 }
 
 export interface OpcionAgrupadoEntrada {
@@ -288,15 +309,26 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
   // D3 (defensa): un producto que es opción de un ítem agrupado sale SOLO dentro del grupo, aunque venga también como suelto
   // (la consulta ya lo excluye; esto cubre cualquier entrada que no lo haga).
   const productosAgrupados = new Set(agrupados.flatMap((ag) => ag.opciones.map((o) => o.productoId)));
+  const opcionesPorProducto = new Map((entrada.opcionesDeProductos ?? []).map((o) => [o.productoId, o]));
 
   for (const p of entrada.productos) {
     if (productosAgrupados.has(p.id)) continue;
+    // GO-2d: un PV con opciones se muestra con lo que se puede elegir hoy; si hoy no se puede pedir, no sale.
+    const conOpciones = opcionesPorProducto.get(p.id);
+    const enCarta = conOpciones ? opcionesParaLaCarta(conOpciones.conDescuento) : undefined;
+    if (enCarta === null) continue;
     const seccionNombre = p.seccionCartaId ? nombreDeSeccion.get(p.seccionCartaId) : undefined;
     if (!p.seccionCartaId || seccionNombre === undefined) {
       visiblesSinSeccion.push({ productoId: p.id, nombre: p.nombre });
       continue;
     }
     const conDescuento = aplicarDescuentoDeProducto(precioDeCarta(p.precioVenta, precioLocalPorProducto.get(p.id)), descuentoPorProducto.get(p.id));
+    // GO-2d: con opciones, el precio es lo más barato con lo que se puede pedir (el descuento ya aplicado por la regla de la venta) y el tachado, ese mismo sin descuento.
+    const listaConOpciones = conOpciones && enCarta ? conOpciones.sinDescuento.desde : null;
+    const precios =
+      enCarta && conOpciones
+        ? { precio: enCarta.desde, ...(listaConOpciones !== null && listaConOpciones !== enCarta.desde && conDescuento.porcentaje !== null ? { precioLista: listaConOpciones, descuentoPorcentaje: conDescuento.porcentaje } : {}) }
+        : { precio: conDescuento.precio, ...(conDescuento.precioLista !== null ? { precioLista: conDescuento.precioLista, descuentoPorcentaje: conDescuento.porcentaje! } : {}) };
     ubicar(
       p.seccionCartaId,
       {
@@ -304,11 +336,11 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
         nombre: p.nombre,
         categoria: textoONull(p.categoriaNombre) ?? seccionNombre,
         descripcion: textoONull(p.contenido.descripcion),
-        precio: conDescuento.precio,
-        ...(conDescuento.precioLista !== null ? { precioLista: conDescuento.precioLista, descuentoPorcentaje: conDescuento.porcentaje! } : {}),
+        ...precios,
         tags: limpiarTags(p.contenido.tags),
         especial: p.contenido.especial,
         imagenUrl: null,
+        ...(enCarta && enCarta.grupos.length > 0 ? { grupos: enCarta.grupos, ...(enCarta.hayVariacion ? { precioDesde: enCarta.desde } : {}) } : {}),
       },
       p.contenido.orden
     );

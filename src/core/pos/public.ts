@@ -35,9 +35,16 @@ export type { EstadoDeTicket, ItemConVenta, LineaDeTicket, TicketDeCuenta } from
 export type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
 // GO-3b (F5): las combinaciones de un producto para venderlo.
 export type { CombinacionesDelProducto } from "./linea-configurada";
-// GO-3b (ADR-032): si un producto puede ser componente de un combo o plato del día (D-8 y D-9), las alícuotas de un combo (D-2) y la clave de una configuración fija.
+// GO-3b (ADR-032): si un producto puede ser componente de un combo o plato del día (D-8 y D-9), las alícuotas de un combo (D-2) y la clave canónica de una configuración FIJA de una entrada
+// (`claveDeConfiguracionFija`: otra cosa que la `claveDeConfiguracion` de la lista «Por agregar» de GO-2d, que identifica una línea en pantalla).
 export { rechazoDeComponenteDeCombo } from "./componente-de-combo";
 export type { CodigoDeComponenteDeCombo } from "./componente-de-combo";
 export { revisarAlicuotasDeCombo } from "./alicuotas-de-combo";
 export type { ComponenteConAlicuota } from "./alicuotas-de-combo";
-export { claveDeConfiguracion } from "./promo-combo";
+export { claveDeConfiguracion as claveDeConfiguracionFija } from "./promo-combo";
+// GO-2d (ADR-030 «Pantallas»): los precios PARA MOSTRAR de un producto con opciones (el «desde», cada tamaño, la vista previa del diálogo del POS), con la misma regla que la venta.
+export { opcionDisponible, resumenDePrecios, vistaPreviaDeConfiguracion } from "./precio-de-configuracion";
+export type { ResumenDePrecios } from "./precio-de-configuracion";
+export { avisoEnPromo, claveDeConfiguracion, elegidasParaPedir, esDeUnaSolaEleccion, estadoInicialElegirOpciones, grupoCompleto, gruposQueFaltan, masPedidasParaElDialogo, reducirElegirOpciones, resumenDeConfiguracion } from "./elegir-opciones-estado";
+export type { ConfiguracionDelSelector } from "./elegir-opciones-estado";
+export { agruparConAdicionales, elegidasDeLaLinea } from "./lineas-con-adicionales";

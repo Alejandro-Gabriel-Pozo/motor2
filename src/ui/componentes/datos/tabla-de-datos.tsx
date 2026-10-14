@@ -54,9 +54,11 @@ export function TablaDeDatos<T>({ titulo, columnas, filas, claveDeFila, vacio }:
       {/* Celular: tarjetas. */}
       <ul aria-label={titulo} className="flex flex-col gap-2 sm:hidden">
         {filas.map((fila) => (
-          <li key={claveDeFila(fila)} className="rounded border border-neutral-300 p-3 dark:border-neutral-700">
+          // La tarjeta nunca se sale de su caja, por angosta que quede (un nombre largo, o el menú lateral abierto en el celular): las palabras se cortan donde haga falta
+          // (`overflow-wrap: anywhere`) y la columna del valor puede achicarse por debajo de su palabra más larga (`minmax(0, 1fr)`).
+          <li key={claveDeFila(fila)} className="min-w-0 rounded border border-neutral-300 p-3 [overflow-wrap:anywhere] dark:border-neutral-700">
             {columnaTitulo ? <p className="font-medium">{columnaTitulo.celda(fila)}</p> : null}
-            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+            <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
               {columnasDeTarjeta.map((c) => (
                 <div key={c.id} className="contents">
                   <dt className="text-neutral-600 dark:text-neutral-400">{c.encabezado}</dt>

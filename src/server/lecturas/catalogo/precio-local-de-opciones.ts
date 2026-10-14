@@ -1,4 +1,5 @@
-import "server-only";
+// GO-2d: SIN `import "server-only"` (como `precio-local.ts`): la carta pública lo alcanza (`lecturas/carta/menu.ts`) y a esa la carga una fixture de Playwright
+// (`test/e2e/fixtures/carta-menu.ts`), donde ese módulo revienta. Declarado en `test/arquitectura/server-only-en-consultas-y-lecturas.test.ts`.
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { precioLocalActivoEn } from "./precio-local";
 
@@ -58,4 +59,51 @@ export async function filaDePrecioLocalDeOpcion(db: Db, clave: { sucursalId: str
     select: { precio: true, habilitado: true },
   });
   return fila ? { precio: Number(fila.precio), habilitado: fila.habilitado } : null;
+}
+
+/**
+ * GO-2d: TODAS las filas de la grilla de una sucursal (habilitadas o no), tal cual están, para la pantalla que las administra (`/movimientos/precio-local`, «Precios por tamaño en
+ * esta sucursal»). No decide qué precio rige (eso es `preciosLocalesDeOpcionVigentes`, con la capacidad y la admisión): la pantalla muestra lo cargado y su estado. Una consulta.
+ */
+export async function filasDePrecioLocalDeOpcionesEnSucursal(db: Db, sucursalId: string): Promise<{ productoId: string; opcionId: string; precio: number; habilitado: boolean }[]> {
+  const filas = await db.precioLocalDeOpcion.findMany({ where: { sucursalId }, select: { productoId: true, opcionId: true, precio: true, habilitado: true } });
+  return filas.map((f) => ({ productoId: f.productoId, opcionId: f.opcionId, precio: Number(f.precio), habilitado: f.habilitado }));
+}
+
+/**
+ * GO-2d: lo mismo que `preciosLocalesDeOpcionVigentes` (las MISMAS cuatro condiciones: la capacidad `precio_local`, la fila habilitada, la opción admitida por el producto y una
+ * MEDIDA que ese producto cobra en ABSOLUTO) pero para VARIOS productos a la vez, en tres consultas fijas: lo usa el selector del POS para mostrar el precio de cada tamaño de
+ * todos los productos de la carta sin una consulta por producto. El mapa va por `"<productoId>|<opcionId>"`. Lo que decide el precio al vender sigue siendo
+ * `preciosLocalesDeOpcionVigentes`, dentro de la transacción de la venta.
+ */
+export async function preciosLocalesDeOpcionVigentesEnProductos(sucursalId: string, db: Db, productoIds: readonly string[], precioLocalActivo?: boolean | Promise<boolean>): Promise<Map<string, number>> {
+  const ids = [...new Set(productoIds)];
+  if (ids.length === 0) return new Map();
+  const [capacidadActiva, filas] = await Promise.all([
+    precioLocalActivo ?? precioLocalActivoEn(sucursalId, db),
+    db.precioLocalDeOpcion.findMany({
+      where: { sucursalId, productoId: { in: ids }, habilitado: true },
+      select: {
+        productoId: true,
+        opcionId: true,
+        precio: true,
+        opcion: { select: { grupoId: true, grupo: { select: { tipo: true } }, productosQueLaAdmiten: { where: { productoId: { in: ids }, activo: true }, select: { productoId: true } } } },
+      },
+    }),
+  ]);
+  if (!capacidadActiva || filas.length === 0) return new Map();
+  const absolutos = new Set(
+    (
+      await db.productoAdmiteGrupo.findMany({
+        where: { productoId: { in: [...new Set(filas.map((f) => f.productoId))] }, grupoId: { in: [...new Set(filas.map((f) => f.opcion.grupoId))] }, activo: true, modoPrecio: "ABSOLUTO" },
+        select: { productoId: true, grupoId: true },
+      })
+    ).map((g) => `${g.productoId}|${g.grupoId}`)
+  );
+  const vigentes = new Map<string, number>();
+  for (const f of filas) {
+    if (f.opcion.grupo.tipo !== "MEDIDA" || !f.opcion.productosQueLaAdmiten.some((a) => a.productoId === f.productoId) || !absolutos.has(`${f.productoId}|${f.opcion.grupoId}`)) continue;
+    vigentes.set(`${f.productoId}|${f.opcionId}`, Number(f.precio));
+  }
+  return vigentes;
 }
