@@ -170,14 +170,14 @@ function TamanosDelItem({ nombre, filas, colorNombre, colorPrecio }: { nombre: s
 }
 
 /**
- * CARTA-B: lo que suma (o resta) una variante o un adicional, en UNA línea: «Sumá: Con leche +$400 · Medialuna +$600 · Shot +$500», siempre visible. Cada opción es un bloque en línea para
+ * CARTA-B: lo que suma (o resta) una variante o un adicional, en UNA línea: «Adicionales: Con leche +$400 · Medialuna +$600 · Shot +$500», siempre visible. Cada opción es un bloque en línea para
  * que su nombre y su monto no queden en renglones distintos. Letra de 16 px (el piso de las opciones).
  */
 function RecargosDelItem({ recargos, color }: { recargos: { nombre: string; recargo: number }[]; color: string | undefined }) {
   return (
     <p data-suma-carta className="mt-1.5 leading-snug" style={{ fontSize: "1rem", color: color ?? "var(--carta-ink-soft)" }}>
       <strong className="font-semibold" style={{ color: "var(--carta-ink)" }}>
-        Sumá:
+        Adicionales:
       </strong>{" "}
       {recargos.map((r, i) => (
         <Fragment key={`suma-${i}`}>
