@@ -43,6 +43,18 @@ export async function actualizarGrupoDeOpciones(
   return count;
 }
 
+/**
+ * OPCIONES-LIMPIEZA: archivar (`activo = false`) o restaurar un grupo, sin tocar el nombre ni las cantidades. Optimista como las demás ediciones: la `version` leída en la
+ * transacción va en el `where` y sube en 1. Devuelve cuántas filas tocó: 0 si la versión ya no es la esperada.
+ */
+export async function fijarActivoDeGrupoDeOpciones(tx: Tx, args: { id: string; versionEsperada: number; activo: boolean; ahora: Date }): Promise<number> {
+  const { count } = await tx.grupoDeOpciones.updateMany({
+    where: { id: args.id, version: args.versionEsperada },
+    data: { activo: args.activo, version: { increment: 1 }, actualizadoEn: args.ahora },
+  });
+  return count;
+}
+
 // ───────────────────────────── Opciones y versiones ─────────────────────────────
 
 export async function crearOpcionDeGrupo(
@@ -60,6 +72,15 @@ export async function actualizarOpcionDeGrupo(tx: Tx, args: { id: string; versio
   const { count } = await tx.opcionDeGrupo.updateMany({
     where: { id: args.id, version: args.versionEsperada },
     data: { nombre: args.nombre, orden: args.orden, activa: args.activa, version: { increment: 1 }, actualizadoEn: args.ahora },
+  });
+  return count;
+}
+
+/** OPCIONES-LIMPIEZA: archivar (`activa = false`) o restaurar una opción, sin tocar el nombre ni el orden. Optimista: 0 filas si la versión ya no es la esperada. */
+export async function fijarActivaDeOpcionDeGrupo(tx: Tx, args: { id: string; versionEsperada: number; activa: boolean; ahora: Date }): Promise<number> {
+  const { count } = await tx.opcionDeGrupo.updateMany({
+    where: { id: args.id, version: args.versionEsperada },
+    data: { activa: args.activa, version: { increment: 1 }, actualizadoEn: args.ahora },
   });
   return count;
 }

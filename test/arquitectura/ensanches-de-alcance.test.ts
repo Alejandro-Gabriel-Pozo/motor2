@@ -184,6 +184,13 @@ const VERIFICACION: Readonly<Record<string, UsoDeVerificacion>> = {
     devuelve: "FILAS_DE_EMPRESA",
     motivo: "ventas sin receta: el catálogo de productos del reporte (`construirMapaProductos(undefined, …)` marca «disponible en alguna sucursal»); recibe la base ampliada solo como `dbDelCatalogo`, las ventas se leen con la base de siempre",
   },
+  // OPCIONES-LIMPIEZA (G2): «Limpiar opciones» propone archivar lo que no se usa en TODA la empresa.
+  "src/app/(app)/catalogo/opciones/limpiar/page.tsx": {
+    lectores: { listarCandidatosALimpiar: 0 },
+    directos: [],
+    devuelve: "FILAS_DE_EMPRESA",
+    motivo: "limpiar opciones: los grupos y opciones de la empresa en uso, qué productos disponibles en ALGUNA sucursal los usan y, de las ventas de cualquier sucursal, solo un sí o no por período (30, 90, 180 días): sin fechas, cantidades ni sucursales",
+  },
   // ── Traspasos y apagado de una sucursal: controles de la OTRA sucursal ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   "src/server/actions/traspasos/casos-de-uso/crear-envio-directo-de-traspaso.ts": {
     lectores: {},

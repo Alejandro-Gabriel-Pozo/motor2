@@ -348,6 +348,17 @@ const completos: Record<string, Valor> = {
     ),
   // GO-2d: el orden completo de las opciones de un grupo, con la opción ajena del kit.
   "accion|actions/catalogo/opciones-de-venta.ts|reordenarOpcionesDeGrupo": (k) => [{ grupoId: k.grupoDeOpcionesId, opciones: [{ opcionId: k.opcionDeGrupoId, versionEsperada: 1 }] }],
+  // OPCIONES-LIMPIEZA: archivar un grupo ajeno o una opción ajena (cada camino una variante); quitar de un producto con el producto ajeno o con el grupo ajeno (el PV con opciones admite el tamaño).
+  "accion|actions/catalogo/opciones-de-venta.ts|archivarOpciones": (k, c) =>
+    conVariantes(
+      intento(c, ["grupoDeOpcionesId"], [{ grupoIds: [k.grupoDeOpcionesId], opcionIds: [], archivar: true }]),
+      intento(c, ["opcionDeGrupoId"], [{ grupoIds: [], opcionIds: [k.opcionDeGrupoId], archivar: true }]),
+    ),
+  "accion|actions/catalogo/opciones-de-venta.ts|vincularGrupoEnProducto": (k, c) =>
+    conVariantes(
+      intento(c, ["productoConOpcionesId"], [{ productoId: k.productoConOpcionesId, grupoId: c.propio.grupoMedidaId, vinculado: false }]),
+      intento(c, ["grupoMedidaId"], [{ productoId: c.propio.productoConOpcionesId, grupoId: k.grupoMedidaId, vinculado: false }]),
+    ),
   // GO-2d: las opciones del selector del POS reciben el selector ya armado (con el PV que admite opciones del kit como pedible).
   "consulta|consultas/pos/opciones-del-selector.ts|cargarOpcionesDelSelector": (k, c) => [
     k.sucursalId,

@@ -2,12 +2,14 @@
 
 import {
   guardComandoAgregarVersionDeOpcion,
+  guardComandoArchivarOpciones,
   guardComandoCrearGrupoDeOpciones,
   guardComandoCrearOpcionDeGrupo,
   guardComandoEditarGrupoDeOpciones,
   guardComandoEditarOpcionDeGrupo,
   guardComandoFijarAdmisionDeGrupo,
   guardComandoReordenarOpcionesDeGrupo,
+  guardComandoVincularGrupoEnProducto,
 } from "@/core/features/catalogo/opciones-de-venta.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { azarDelProceso } from "@/lib/azar";
@@ -16,12 +18,14 @@ import { revalidarCartasPublicas } from "../carta/revalidar";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, type ResultadoAccion } from "../tipos";
 import { agregarVersionDeOpcionCasoDeUso } from "./casos-de-uso/agregar-version-de-opcion";
+import { archivarOpcionesCasoDeUso } from "./casos-de-uso/archivar-opciones";
 import { crearGrupoDeOpcionesCasoDeUso } from "./casos-de-uso/crear-grupo-de-opciones";
 import { crearOpcionDeGrupoCasoDeUso } from "./casos-de-uso/crear-opcion-de-grupo";
 import { editarGrupoDeOpcionesCasoDeUso } from "./casos-de-uso/editar-grupo-de-opciones";
 import { editarOpcionDeGrupoCasoDeUso } from "./casos-de-uso/editar-opcion-de-grupo";
 import { fijarAdmisionDeGrupoEnProductoCasoDeUso } from "./casos-de-uso/fijar-admision-de-grupo-en-producto";
 import { reordenarOpcionesDeGrupoCasoDeUso } from "./casos-de-uso/reordenar-opciones-de-grupo";
+import { vincularGrupoEnProductoCasoDeUso } from "./casos-de-uso/vincular-grupo-en-producto";
 
 /**
  * Server Actions del CATÁLOGO DE OPCIONES DE VENTA (GO-2a; ADR-030). Cada una es un adaptador fino: permiso (la PRIMERA línea: `conPermisoDeEmpresa` con su clave) → formato y rango
@@ -143,6 +147,39 @@ export async function reordenarOpcionesDeGrupo(entrada: { grupoId: unknown; opci
     const resultado = await reordenarOpcionesDeGrupoCasoDeUso(ctx, comando.valor);
     if (resultado.ok) {
       // GO-2d: la carta pública muestra las opciones (precios, agotadas): se invalida su caché, solo la de esta empresa.
+      revalidarCartasPublicas(ctx.empresaSlug);
+      refrescarVistaSiHaceFalta();
+    }
+    return aResultadoAccion(resultado);
+  });
+}
+
+// OPCIONES-LIMPIEZA (decisión del dueño, 2026-10-14): ARCHIVAR o RESTAURAR grupos y opciones, de a uno («Archivar» con «Deshacer») o en lote («Limpiar»), todo o nada. Misma clave que
+// editar el grupo o la opción (`opciones_definir`, piso administrador): archivar es la misma columna (`activo`/`activa`) que el «Apagar» que esa clave ya permitía, ahora con su propia
+// pantalla de archivados para restaurar; no da ningún poder nuevo.
+export async function archivarOpciones(entrada: { grupoIds: unknown; opcionIds: unknown; archivar: unknown }): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("opciones_definir", async (ctx) => {
+    const comando = guardComandoArchivarOpciones(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await archivarOpcionesCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) {
+      // La carta pública muestra las opciones: archivar una la saca (y restaurarla la vuelve a poner). Solo la caché de esta empresa.
+      revalidarCartasPublicas(ctx.empresaSlug);
+      refrescarVistaSiHaceFalta();
+    }
+    return aResultadoAccion(resultado);
+  });
+}
+
+// OPCIONES-LIMPIEZA: «Quitar de este producto» un grupo (y su «Deshacer», volver a vincularlo). Misma clave que fijar lo que admite el producto (`producto_opciones_admitidas`): es la
+// misma columna (`ProductoAdmiteGrupo.activo`) que el formulario del grupo ya cambiaba; volver a vincular pasa por las mismas reglas de la admisión.
+export async function vincularGrupoEnProducto(entrada: { productoId: unknown; grupoId: unknown; vinculado: unknown }): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("producto_opciones_admitidas", async (ctx) => {
+    const comando = guardComandoVincularGrupoEnProducto(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await vincularGrupoEnProductoCasoDeUso(ctx, comando.valor);
+    if (resultado.ok) {
+      // La carta pública muestra las opciones de cada producto: quitar un grupo lo saca de ese producto.
       revalidarCartasPublicas(ctx.empresaSlug);
       refrescarVistaSiHaceFalta();
     }
