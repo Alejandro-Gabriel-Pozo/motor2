@@ -10,15 +10,17 @@ import { aceptar, rechazar, type ResultadoDato } from "./resultado";
  *    (`$`, espacios internos, `e`, `+`, `%`, `Infinity`) es error de formato.
  *  - Un solo separador es el DECIMAL, sea coma o punto ("1,5" = "1.5" = 1,5; "1.234" = 1,234 a propósito — si es un importe, lo frena la
  *    regla de 2 decimales).
- *  - El mismo separador repetido es de MILES y tiene que agrupar bien: el primer grupo de 1 a 3 dígitos y los siguientes de 3
- *    ("1.000.000" = 1000000; "1,2,3" y "1.2.3" son error).
+ *  - El mismo separador repetido es de MILES y tiene que agrupar bien: el primer grupo de 1 a 3 dígitos, SIN ceros a la izquierda
+ *    (un número con miles no empieza con 0), y los siguientes de 3 ("1.000.000" = 1000000; "1,2,3", "1.2.3", "12.34.5" y "1.5000.02"
+ *    son error; "0.021.500" y "0.021,5" también: es lo que queda al tipear «1.500» o «1,5» detrás de un «0.02» que no se reemplazó,
+ *    y leerlo como 21500 o 21,5 guardaba otro número). Sin miles, los ceros a la izquierda siguen valiendo ("007" = 7, "0,30" = 0,3).
  *  - Con los dos separadores, el último es el decimal (una sola vez) y el otro tiene que ser una agrupación de miles válida
  *    ("1.234,56" = "1,234.56" = 1234,56; "1.23,4" es error).
  *  - Acepta ",5" y "5," (tecleo a medias).
  */
 const MENSAJE_NUMERO_INVALIDO = "No es un número válido.";
 
-const RE_GRUPO_INICIAL = /^\d{1,3}$/;
+const RE_GRUPO_INICIAL = /^[1-9]\d{0,2}$/;
 const RE_GRUPO_MILES = /^\d{3}$/;
 
 function agrupacionDeMilesValida(partes: string[]): boolean {

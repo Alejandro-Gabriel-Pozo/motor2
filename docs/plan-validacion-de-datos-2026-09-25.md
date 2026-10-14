@@ -55,7 +55,7 @@ Server Actions siguen tipadas `number` en esta fase.
 - **Número tecleado** (`interpretarNumero`): recorta espacios; vacío → `null`. Un solo `-` al inicio (si el signo está permitido lo
   decide cada validador). Cualquier carácter que no sea dígito, `,` o `.` es error de formato (`$`, espacios internos, `e`, `+`, `%`,
   `Infinity`). Un solo separador es el DECIMAL, sea coma o punto. El mismo separador repetido es de MILES y tiene que agrupar bien
-  (primer grupo de 1 a 3 dígitos, los siguientes de 3). Con los dos separadores, el último es el decimal (una sola vez) y el otro tiene
+  (primer grupo de 1 a 3 dígitos sin ceros a la izquierda, los siguientes de 3; desde 2026-10-14 «0.021.500» o «0.021,5» son error). Con los dos separadores, el último es el decimal (una sola vez) y el otro tiene
   que ser una agrupación de miles válida. Acepta `,5` y `5,` (tecleo a medias).
 - **Importe**: número finito; no negativo salvo `permitirNegativo`; el 0 se acepta salvo `permitirCero: false`; menor que 1e12; a lo
   sumo 2 decimales. Vacío: `null`, o «Falta …» si es obligatorio.
@@ -80,6 +80,7 @@ Server Actions siguen tipadas `number` en esta fase.
 | `1.2.3`, `...,.,.,...` | NaN (→ 0 en el servidor) | error de formato |
 | `abc`, `Infinity`, `NaN` | `""` (→ `Number("")` = 0 en el formulario) | error de formato |
 | `1e3`, `5-3`, `--5`, `+5` | 13 / 53 / -5 / 5 | error de formato |
+| `0.021.500`, `0.021,5` (2026-10-14: lo que dejaba tipear detrás de un «0.02» que CampoNumero no reemplazaba) | no medido | error de formato (hasta esa fecha el parser los leía 21500 / 21,5) |
 | `$ 100`, `$100`, `1 000`, `10%` | 100 / 100 / 1000 / 10 | error de formato |
 
 (Columna «Antes» obtenida ejecutando el `normalizar` de `b7aaf98`, no leyéndolo.)
