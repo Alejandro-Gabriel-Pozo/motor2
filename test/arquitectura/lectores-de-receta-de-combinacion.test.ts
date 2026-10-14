@@ -16,7 +16,12 @@ import { describe, expect, it } from "vitest";
 const SRC = join(__dirname, "../../src");
 const EMBUDO = "server/lecturas/catalogo/recetas-de-combinacion.ts";
 
-const LECTORES_DE_LA_VERSION_CONGELADA: readonly { ruta: string; motivo: string }[] = [];
+const LECTORES_DE_LA_VERSION_CONGELADA: readonly { ruta: string; motivo: string }[] = [
+  {
+    ruta: "server/persistencia/pos/cargar-cuenta-para-cerrar.ts",
+    motivo: "GO-3b I3: el cierre de la cuenta lee la versión CONGELADA en `CombinacionEnLinea` (por su id, nunca la vigente) para consumir la receta propia de la combinación vendida.",
+  },
+];
 const RUTAS_CLASIFICADAS = new Set(LECTORES_DE_LA_VERSION_CONGELADA.map((a) => a.ruta));
 
 function archivosFuente(dir: string): string[] {

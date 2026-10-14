@@ -72,7 +72,10 @@ export async function cerrarCuentaCasoDeUso(
     // CuentaItem más abajo (CuentaItem.precioUnitario NUNCA cambia de semántica con el descuento de cliente, Task #14). `promoCuentaId`
     // (Task #16, D4) evita mezclar un suelto con un componente del mismo producto al mismo precio en la MISMA Operacion.
     // GO-2b: cada adicional lleva la versión de su opción (la de su foto) para no juntar dos versiones distintas en una línea.
-    const lineas = lineasDeVenta(cuenta.items.map((i) => ({ ...i, versionDeAdicional: i.fotos?.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null })));
+    // GO-3b: cada línea que cayó en una combinación con receta propia lleva la versión congelada (dos versiones distintas no se juntan: consumen distinto).
+    const lineas = lineasDeVenta(
+      cuenta.items.map((i) => ({ ...i, versionDeAdicional: i.fotos?.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null, recetaDeCombinacion: i.recetaDeCombinacion?.versionId ?? null }))
+    );
     if (!lineas.length) {
       await cerrar();
       return exito(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`, { desenlace: "SIN_VENTA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 });
@@ -210,5 +213,15 @@ function configuracionDeLaLinea(l: ReturnType<typeof lineasDeVenta>[number], ite
         consumos: f.esNinguna ? [] : consumosDeLaFoto(f),
       })
     );
-  return { tipo: "PRODUCTO", opciones };
+  // GO-3b: la receta propia CONGELADA de la combinación (la de la foto de su línea), si la tiene: el consumo la usa en lugar de la receta de la base.
+  const receta = original.recetaDeCombinacion;
+  if (!receta) return { tipo: "PRODUCTO", opciones };
+  return {
+    tipo: "PRODUCTO",
+    opciones,
+    excepcion: {
+      opcionesDeEjes: receta.opcionesDeEjes,
+      ingredientes: receta.ingredientes.map((i) => ({ insumoProductoId: i.insumoProductoId, cantidad: i.cantidad, mermaPorcentaje: i.mermaPorcentaje, unidadStockId: i.unidadId })),
+    },
+  };
 }

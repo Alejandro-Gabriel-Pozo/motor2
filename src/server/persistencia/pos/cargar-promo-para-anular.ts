@@ -22,6 +22,8 @@ export interface ComponenteDePromoParaAnular {
   numeroEnvio: number | null;
   /** No nulo = el ítem ya es una fila espejo. */
   anulaAItemId: string | null;
+  /** GO-3b: la huella de un componente CONFIGURADO (una entrada de combo con configuración fija); la fila espejo la repite para netear con su original. `null` en los demás. */
+  huellaOpciones: string | null;
   producto: { nombre: string };
   /** Las cantidades (negativas) de las filas espejo que ya lo anulan, para `restanteDe`. */
   anulaciones: { cantidad: number }[];
@@ -60,6 +62,7 @@ export async function cargarPromoParaAnular(tx: Prisma.TransactionClient, args: 
       precioCartaUnitario: item.precioCartaUnitario !== null ? Number(item.precioCartaUnitario) : null,
       numeroEnvio: item.numeroEnvio,
       anulaAItemId: item.anulaAItemId,
+      huellaOpciones: item.huellaOpciones,
       producto: { nombre: item.producto.nombre },
       anulaciones: item.anulaciones.map((a) => ({ cantidad: Number(a.cantidad) })),
     })),
