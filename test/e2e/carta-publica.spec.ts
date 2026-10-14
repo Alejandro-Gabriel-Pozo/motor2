@@ -196,7 +196,7 @@ test.describe("carta de una sucursal", () => {
     }
   });
 
-  test("CARTA-B: la carta muestra SOLO lo que cambia el precio (tamaños en lista con puntitos, línea «Sumá:»), sin la guarnición ni «Ver opciones»; marcar una opción agotada desde la app la saca al instante", async ({
+  test("CARTA-B: la carta muestra SOLO lo que cambia el precio (tamaños en lista con puntitos, línea «Adicionales:»), sin la guarnición ni «Ver opciones»; marcar una opción agotada desde la app la saca al instante", async ({
     page,
     paginaAutenticada,
     sucursalId,
@@ -237,11 +237,11 @@ test.describe("carta de una sucursal", () => {
         await expect(filas.cafe).not.toContainText("desde");
         await expect(filas.cafe).not.toContainText("Ver opciones");
         expect(await filas.cafe.locator("details").count(), "ningún desplegable").toBe(0);
-        // La línea «Sumá:» con lo que suma una variante o un adicional; «Solo» (sin costo) no está.
+        // La línea «Adicionales:» con lo que suma una variante o un adicional; «Solo» (sin costo) no está.
         const suma = filas.cafe.locator("[data-suma-carta]");
         await expect(suma).toBeVisible();
-        await expect(suma).toHaveText("Sumá: Con leche +$400 · Medialuna +$600 · Shot +$500");
-        await expect(suma.locator("strong")).toHaveText("Sumá:");
+        await expect(suma).toHaveText("Adicionales: Con leche +$400 · Medialuna +$600 · Shot +$500");
+        await expect(suma.locator("strong")).toHaveText("Adicionales:");
         await expect(filas.cafe).not.toContainText("Solo");
         // La milanesa: su precio base de siempre, SIN la guarnición (no cambia el precio); el flan, un producto común.
         await expect(filas.milanesa).toContainText("$9.500");
@@ -250,7 +250,7 @@ test.describe("carta de una sucursal", () => {
         await expect(filas.milanesa.locator("[data-tamanos-carta], [data-suma-carta]")).toHaveCount(0);
         await expect(filas.flan).toContainText("$3.200");
         await expect(page.locator("body")).not.toContainText("Guarnición");
-        // Legibilidad: nombre y precio del ítem con opciones ≥ 19 px, tamaños y «Sumá» ≥ 16 px.
+        // Legibilidad: nombre y precio del ítem con opciones ≥ 19 px, tamaños y «Adicionales» ≥ 16 px.
         expect(await tamanoPx(filas.cafe.getByRole("heading", { name: cafe }))).toBeGreaterThanOrEqual(19);
         expect(await tamanoPx(lista.getByRole("listitem").first())).toBeGreaterThanOrEqual(16);
         expect(await tamanoPx(suma)).toBeGreaterThanOrEqual(16);
