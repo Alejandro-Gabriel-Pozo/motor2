@@ -46,3 +46,5 @@ export type { AlcanceCentral, AlcanceDeReceta } from "./recetas-vigentes";
 // Hito 4, paso A5 (O.8a): el armado puro de la comparativa de precios por insumo (lo usa el lector de la comparativa, server/lecturas/catalogo/ofertas-de-proveedor.ts).
 export { armarComparativaDePrecios } from "./comparativa-de-precios";
 export type { FilaComparativaPrecios } from "./comparativa-de-precios";
+// GO-3b (U3/U4): lo que muestran las pantallas de combinaciones y tarifas.
+export type { CeldaDeCombinacion, CombinacionesDelProductoAdmin, TarifaAdmin } from "./combinaciones-admin";

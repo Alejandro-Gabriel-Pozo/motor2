@@ -48,3 +48,25 @@ export async function filaDePrecioLocalDeCombinacion(
   const fila = await db.precioLocalDeCombinacion.findFirst({ where: { sucursalId: clave.sucursalId, ...clave.objetivo }, select: { precio: true, habilitado: true } });
   return fila ? { precio: Number(fila.precio), habilitado: fila.habilitado } : null;
 }
+
+/**
+ * GO-3b (U3): las filas del precio local de VARIAS combinaciones y tarifas en la sucursal, tal cual están (habilitadas o no), en UNA consulta: lo que muestran las pantallas de combinaciones y de
+ * tarifas. No decide ningún precio (eso es `preciosLocalesDeCombinacionVigentes`).
+ */
+export async function filasDePrecioLocalDeCombinacionesEnSucursal(
+  db: Db,
+  args: { sucursalId: string; combinacionIds: readonly string[]; grupoDePrecioIds: readonly string[] },
+): Promise<{ porCombinacion: Map<string, { precio: number; habilitado: boolean }>; porGrupo: Map<string, { precio: number; habilitado: boolean }> }> {
+  const salida = { porCombinacion: new Map<string, { precio: number; habilitado: boolean }>(), porGrupo: new Map<string, { precio: number; habilitado: boolean }>() };
+  if (args.combinacionIds.length === 0 && args.grupoDePrecioIds.length === 0) return salida;
+  const filas = await db.precioLocalDeCombinacion.findMany({
+    where: { sucursalId: args.sucursalId, OR: [{ combinacionId: { in: [...args.combinacionIds] } }, { grupoDePrecioId: { in: [...args.grupoDePrecioIds] } }] },
+    select: { combinacionId: true, grupoDePrecioId: true, precio: true, habilitado: true },
+  });
+  for (const f of filas) {
+    const valor = { precio: Number(f.precio), habilitado: f.habilitado };
+    if (f.combinacionId !== null) salida.porCombinacion.set(f.combinacionId, valor);
+    else if (f.grupoDePrecioId !== null) salida.porGrupo.set(f.grupoDePrecioId, valor);
+  }
+  return salida;
+}

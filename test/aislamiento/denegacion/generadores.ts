@@ -409,6 +409,11 @@ const parametros: Record<string, Record<string, Valor>> = {
   "lectura|lecturas/pos/promo-para-agregar.ts|cargarPromoCartaParaAgregar": { dia: () => DIA_DEL_PLATO_DEL_MUNDO },
   // GO-3b (U5): el selector de la mesa con el día (o la zona) ofrece también los combos con cupos de entradas.
   "lectura|lecturas/pos/selector-carta.ts|cargarSelectorCartaPos": { dia: () => DIA_DEL_PLATO_DEL_MUNDO },
+  // GO-3b (F6): la pantalla «Menú del día» (el día del plato del mundo) y las filas del precio local de la combinación y la tarifa del mundo en la sucursal.
+  "consulta|consultas/carta/menu-del-dia.ts|cargarMenuDelDia": { args: (k) => ({ sucursalId: k.sucursalId, ahora: new Date(), zonaHoraria: "America/Argentina/Buenos_Aires", fecha: DIA_DEL_PLATO_DEL_MUNDO }) },
+  "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|filasDePrecioLocalDeCombinacionesEnSucursal": {
+    args: (k, c) => ({ sucursalId: c.propio.sucursalId, combinacionIds: [k.combinacionId], grupoDePrecioIds: [k.grupoDePrecioId] }),
+  },
   "consulta|consultas/pos/selector-carta.ts|cargarSelectorCartaDeLaMesa": { zonaHoraria: () => "America/Argentina/Buenos_Aires" },
   "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|filaDePrecioLocalDeCombinacion": { clave: (k, c) => ({ sucursalId: c.propio.sucursalId, objetivo: { grupoDePrecioId: k.grupoDePrecioId } }) },
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },

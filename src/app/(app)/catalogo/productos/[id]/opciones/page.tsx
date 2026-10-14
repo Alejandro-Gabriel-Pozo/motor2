@@ -76,6 +76,10 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
           <EnlaceInterno href="/catalogo/opciones" className="underline">
             Opciones de venta
           </EnlaceInterno>
+          . Las combinaciones (un precio o una receta propia para «grande con almendras») se arman en{" "}
+          <EnlaceInterno href={`/catalogo/productos/${productoId}/combinaciones`} className="underline">
+            Combinaciones
+          </EnlaceInterno>
           .
         </p>
       </div>

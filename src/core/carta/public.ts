@@ -63,6 +63,8 @@ export { ZONAS_TEMA } from "./tema";
 export type { DefinicionClaveTema } from "./tema";
 export { ordenSugeridoAlElegirSeccion } from "./orden-sugerido";
 export type { SeccionCartaAdmin, GeneroCartaAdmin, SucursalConCartaPropia, DatosAdminCarta, OpcionItemAgrupadoAdmin, DatosAdminItemsAgrupados, PortalEmpresaAdmin } from "./admin-tipos";
+// GO-3b (U1): los combos de la carta (lugares de entradas, entradas y vigencia).
+export type { CombosDeLaCarta, LugarDeCombo, ProductoParaEntrada, VigenciaDePromoAdmin } from "./admin-tipos";
 export { esClavePortal } from "./portal";
 export { esClaveTema } from "./tema";
 export { ofrecerSincronizarPrecio } from "./grupo-de-producto";
@@ -79,4 +81,5 @@ export type { EntradaPortalCarta } from "./portal";
 export { TODOS_LOS_DIAS, mascaraDeDias, promoVigenteEl, validarVigenciaDePromo } from "./vigencia-de-promo";
 export type { VigenciaDePromo } from "./vigencia-de-promo";
 // GO-3b (ADR-032, D-1): la fecha del menú del día (de hoy a hoy + 13, en la zona de la empresa).
-export { validarFechaDeMenuDelDia } from "./menu-del-dia";
+export { DIAS_DE_ANTICIPACION_DEL_MENU, validarFechaDeMenuDelDia } from "./menu-del-dia";
+export type { CandidatoAPlato, MenuDelDiaDeLaSucursal } from "./menu-del-dia";
