@@ -8,7 +8,7 @@ import { coincideConLaBusqueda } from "@/core/carta/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import s from "./carta-mant.module.css";
 
-export type NivelDeMantenimiento = "hoy" | "precios" | "visibilidad";
+export type PestanaDeMantenimiento = "hoy" | "precios" | "visibilidad";
 
 export interface ProductoDeMantenimiento {
   id: string;
@@ -44,7 +44,7 @@ interface Aviso {
   deshacer?: () => Promise<ResultadoAccion>;
 }
 
-const NIVELES: [NivelDeMantenimiento, string][] = [
+const PESTANAS: [PestanaDeMantenimiento, string][] = [
   ["hoy", "Hoy"],
   ["precios", "Precios"],
   ["visibilidad", "Visibilidad"],
@@ -70,14 +70,14 @@ function Chevron({ abierta = false }: { abierta?: boolean }) {
  * Cada cambio lo decide y lo escribe el servidor (las Server Actions, con el eco de la sucursal que vio la pantalla); la pantalla se refresca y avisa abajo, con «Deshacer» (el cambio inverso).
  */
 export function MantenimientoDeCarta({
-  nivelInicial,
+  pestanaInicial,
   secciones,
   ocultosSinSeccion,
   fueraDeCarta,
   puede,
   acciones,
 }: {
-  nivelInicial: NivelDeMantenimiento;
+  pestanaInicial: PestanaDeMantenimiento;
   secciones: SeccionDeMantenimiento[];
   ocultosSinSeccion: { id: string; nombre: string }[];
   fueraDeCarta: ProductoFueraDeCarta[];
@@ -91,7 +91,7 @@ export function MantenimientoDeCarta({
   };
 }) {
   const router = useRouter();
-  const [nivel, setNivel] = useState<NivelDeMantenimiento>(nivelInicial);
+  const [pestana, setPestana] = useState<PestanaDeMantenimiento>(pestanaInicial);
   const [abiertas, setAbiertas] = useState<Record<string, boolean>>({});
   const [soloSinStock, setSoloSinStock] = useState(false);
   const [buscar, setBuscar] = useState("");
@@ -105,14 +105,14 @@ export function MantenimientoDeCarta({
     return () => clearTimeout(t);
   }, [aviso]);
 
-  const cambiarNivel = (n: NivelDeMantenimiento) => {
-    setNivel(n);
+  const cambiarPestana = (n: PestanaDeMantenimiento) => {
+    setPestana(n);
     try {
       const url = new URL(window.location.href);
       url.searchParams.set("nivel", n);
       window.history.replaceState(null, "", url);
     } catch {
-      // Sin la URL (un navegador raro) el nivel igual cambia; solo no se recuerda al recargar.
+      // Sin la URL (un navegador raro) la pestaña igual cambia; solo no se recuerda al recargar.
     }
   };
 
@@ -390,13 +390,13 @@ export function MantenimientoDeCarta({
   return (
     <>
       <div className={s.nivel} role="group" aria-label="Nivel de mantenimiento">
-        {NIVELES.map(([n, etiqueta]) => (
-          <button key={n} type="button" aria-pressed={nivel === n} onClick={() => cambiarNivel(n)}>
+        {PESTANAS.map(([n, etiqueta]) => (
+          <button key={n} type="button" aria-pressed={pestana === n} onClick={() => cambiarPestana(n)}>
             {etiqueta}
           </button>
         ))}
       </div>
-      {nivel === "hoy" ? hoy() : nivel === "precios" ? precios() : visibilidad()}
+      {pestana === "hoy" ? hoy() : pestana === "precios" ? precios() : visibilidad()}
       <div className={`${s.tarjeta} ${s.irAParte}`}>
         <b>¿Secciones, géneros, promociones o apariencia?</b>
         <span className={s.ayuda}>Eso se cambia pocas veces y vive aparte.</span>

@@ -17,7 +17,7 @@ import { formatearCantidad } from "@/core/pos/public";
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { CopiarCartaDeSucursal } from "@/components/carta/copiar-carta-de-sucursal";
 import { EncabezadoDeCarta } from "./encabezado-de-carta";
-import { MantenimientoDeCarta, type NivelDeMantenimiento } from "./mantenimiento-de-carta";
+import { MantenimientoDeCarta, type PestanaDeMantenimiento } from "./mantenimiento-de-carta";
 import s from "./carta-mant.module.css";
 
 /**
@@ -37,7 +37,7 @@ const refrescarSiOk = (r: ResultadoAccion) => {
   return r;
 };
 
-const NIVELES: readonly NivelDeMantenimiento[] = ["hoy", "precios", "visibilidad"];
+const PESTANAS: readonly PestanaDeMantenimiento[] = ["hoy", "precios", "visibilidad"];
 const pesos = (n: number) => `$ ${n.toLocaleString("es-AR")}`;
 
 export default async function CartaPage({ searchParams }: { searchParams: Promise<{ [clave: string]: string | string[] | undefined }> }) {
@@ -58,7 +58,7 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
   const puedeCopiarCarta = nivelCopiar.editar;
 
   const pedido = (await searchParams).nivel;
-  const nivelInicial: NivelDeMantenimiento = NIVELES.find((n) => n === pedido) ?? "hoy";
+  const pestanaInicial: PestanaDeMantenimiento = PESTANAS.find((n) => n === pedido) ?? "hoy";
 
   // La hora se fija acá, en el borde (O.22-c).
   // M.3-A5: de dónde se puede copiar se lee de las OTRAS sucursales (`cargarAdminCarta` cuenta la carta propia de cada una): solo quien puede copiar la carta ensancha la LECTURA a las sucursales donde el
@@ -137,7 +137,7 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
           )}
 
           <MantenimientoDeCarta
-            nivelInicial={nivelInicial}
+            pestanaInicial={pestanaInicial}
             secciones={carta.secciones.map((x) => ({
               id: x.id,
               nombre: x.nombre,
