@@ -84,8 +84,10 @@ describe("S-25: la carta pública no emite ids internos", () => {
     const entregada = (await cartaPublica(empresa, "central", AHORA_DE_LA_CORRIDA))!;
     const html = renderToStaticMarkup(<CartaVista carta={entregada.carta} estilo={entregada.estilo} hrefVolver="/carta-publica/principal" />);
     expect(html).toContain("Bife");
-    // GO-2d: las opciones se dibujan (y sin ids).
-    expect(html).toContain("A punto + ");
+    // GO-2d y CARTA-B: la opción que SÍ cambia el precio se dibuja en la línea «Sumá:» (y sin ids); «Jugoso», que no suma nada, no se dibuja.
+    expect(html).toContain("Sumá:");
+    expect(html).toContain("A punto +$100");
+    expect(html).not.toContain("Jugoso");
     expect(html).toContain('data-ir-a="seccion-0"');
     for (const [clase, id] of Object.entries(ids)) expect(html, `el HTML contiene el id de ${clase}`).not.toContain(id);
     expect(html).not.toMatch(CUID);
