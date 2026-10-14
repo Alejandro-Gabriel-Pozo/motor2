@@ -56,12 +56,13 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   // precio con la regla de la venta; lo que SALE lo cierra `CLAVES_DE_LA_CARTA` (nombre, obligatorio, máximo, precio o recargo). NUNCA: `VersionDeOpcion.factorEscala`,
   // `ConsumoDeOpcion` (la receta), `OpcionDeGrupo.productoId` (el producto que respalda un adicional) ni la foto de lo vendido. `tipoDeDiferencia` y `porcentaje` (de la versión y del
   // producto) no estaban en GO-0 porque el recargo en % llegó con GO-2a: sin ellos un recargo en % se mostraría mal. Los de `PrecioLocalDeOpcion`, `OpcionDeGrupo.grupo/grupoId/
-  // productosQueLaAdmiten` y `ProductoAdmiteGrupo.grupoId/productoId` / `ProductoAdmiteOpcion.id/productoId` son del lector ÚNICO de la grilla (`precio-local-de-opciones.ts`).
+  // productosQueLaAdmiten` y `ProductoAdmiteGrupo.grupoId/productoId` / `ProductoAdmiteOpcion.id/productoId` son del lector ÚNICO de la grilla (`precio-local-de-opciones.ts`); `ProductoAdmiteGrupo.id`,
+  // del aviso «admite algún grupo» de `menu.ts` (así una carta sin opciones hace las mismas consultas que antes: lo fija `lecturas-tramo-a.golden.json`).
   GrupoDeOpciones: ["activo", "cantidadMaxima", "cantidadMinima", "id", "nombre", "opciones", "tipo"],
   OpcionApagadaEnSucursal: ["apagada"],
   OpcionDeGrupo: ["activa", "apagadasEnSucursal", "esNinguna", "grupo", "grupoId", "id", "nombre", "orden", "productosQueLaAdmiten", "versiones"],
   PrecioLocalDeOpcion: ["habilitado", "opcion", "opcionId", "precio", "productoId"],
-  ProductoAdmiteGrupo: ["activo", "cantidadMaxima", "cantidadMinima", "grupo", "grupoId", "modoPrecio", "orden", "productoId"],
+  ProductoAdmiteGrupo: ["activo", "cantidadMaxima", "cantidadMinima", "grupo", "grupoId", "id", "modoPrecio", "orden", "productoId"],
   ProductoAdmiteOpcion: ["activo", "cantidadMaxima", "diferenciaPrecio", "id", "opcionId", "porcentaje", "precioAbsoluto", "productoId", "tipoDeDiferencia"],
   VersionDeOpcion: ["diferenciaPrecio", "numero", "porcentaje", "tipoDeDiferencia"],
 };

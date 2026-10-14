@@ -59,6 +59,8 @@ export async function resolverMenuCartaConDiagnostico(
         precioVenta: true,
         categoria: { select: { nombre: true } },
         contenidosCarta: { where: whereCartaDeSucursal(sucursalId), select: { seccionCartaId: true, descripcion: true, tags: true, especial: true, orden: true }, take: 1 },
+        // GO-2d: si admite algún grupo de opciones (en la misma consulta): solo esos se leen después, así una carta sin opciones hace las mismas consultas que antes.
+        gruposAdmitidos: { where: { activo: true }, select: { id: true }, take: 1 },
       },
     }),
     db.seccionCarta.findMany({
@@ -99,12 +101,13 @@ export async function resolverMenuCartaConDiagnostico(
   const idsConPrecio = [...new Set([...productos.map((p) => p.id), ...agrupados.flatMap((ag) => ag.opciones.map((o) => o.producto.id))])];
   // La capacidad `precio_local` se lee UNA vez y la usan los tres (precios locales, descuentos y precio de las promos): antes la leía cada uno (O.39).
   const precioLocalActivoLeido = precioLocalActivoCargado ?? precioLocalActivoEn(sucursalId, db);
+  const conGrupos = conOpciones ? productos.filter((p) => p.gruposAdmitidos.length > 0).map((p) => p.id) : [];
   const [preciosLocales, descuentos, precioLocalActivo, opcionesLeidas, grillaDeTamanos] = await Promise.all([
     preciosLocalesVigentes(sucursalId, db, idsConPrecio, precioLocalActivoLeido),
     descuentosDeProductoEnSucursal(sucursalId, db, productos.map((p) => p.id), precioLocalActivoLeido),
     precioLocalActivoLeido,
-    conOpciones ? opcionesDeLosProductosDeLaCarta(db, sucursalId, productos.map((p) => p.id)) : Promise.resolve(new Map<string, GrupoParaVender[]>()),
-    conOpciones ? preciosLocalesDeOpcionVigentesEnProductos(sucursalId, db, productos.map((p) => p.id), precioLocalActivoLeido) : Promise.resolve(new Map<string, number>()),
+    conGrupos.length ? opcionesDeLosProductosDeLaCarta(db, sucursalId, conGrupos) : Promise.resolve(new Map<string, GrupoParaVender[]>()),
+    conGrupos.length ? preciosLocalesDeOpcionVigentesEnProductos(sucursalId, db, conGrupos, precioLocalActivoLeido) : Promise.resolve(new Map<string, number>()),
   ]);
   // GO-2d: el resumen de precios de cada PV con opciones (la regla de la venta), con y sin el descuento de producto; el precio base es el mismo que la carta muestra del producto suelto.
   const productoPorId = new Map(productos.map((p) => [p.id, p]));
