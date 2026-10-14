@@ -63,6 +63,13 @@ const LECTORES: Readonly<Record<string, Lector>> = {
     estado: "CABLEADO",
     motivo: "el origen de la copia de carta: cuenta la carta propia de las otras sucursales para ofrecer de dónde copiar (solo a quien puede copiar)",
   },
+  // CARTA-MANT F4 (decisión del dueño): el aviso de «Aplicar a toda la empresa» en «Precios»: nombra solo las sucursales donde el usuario ve `precio_local` (las demás se cuentan).
+  "src/server/actions/carta/precios-en-sucursales.ts": {
+    clave: "precio_local",
+    consultas: { avisoDelPrecioDeLaEmpresa: 0 },
+    estado: "CABLEADO",
+    motivo: "en qué sucursales se va a ver el precio nuevo de la empresa: la disponibilidad y el precio local vigente de cada producto en las sucursales que el usuario ve",
+  },
   "src/server/actions/catalogo/proveedor-por-producto.ts": {
     clave: "proceso_compra",
     consultas: { cargarProductosDeProveedorParaElCarrito: 0, cargarComparativaDePrecios: 0 },

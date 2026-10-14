@@ -71,6 +71,13 @@ const PARES: ParDePiso[] = [
         ayudante: "puedeEditarCamposSensiblesDelProducto",
         archivoDelAyudante: ARCHIVO_DEL_AYUDANTE_M2,
       },
+      {
+        // CARTA-MANT F4: «Precios» de la carta, «En toda la empresa», cambia el mismo precio de venta de la empresa.
+        archivo: "src/server/actions/carta/precios.ts",
+        funciones: ["ajustarPreciosDeLaEmpresa"],
+        ayudante: "puedeEditarCamposSensiblesDelProducto",
+        archivoDelAyudante: ARCHIVO_DEL_AYUDANTE_M2,
+      },
     ],
   },
   {

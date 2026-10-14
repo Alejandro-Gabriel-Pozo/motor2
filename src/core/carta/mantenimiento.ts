@@ -31,6 +31,10 @@ export interface ProductoParaMantener {
   nombre: string;
   /** El precio que rige en esta sucursal (el local vigente o el de lista), en pesos. */
   precioAca: number;
+  /** El precio de lista de la EMPRESA (`Producto.precioVenta`), en pesos. */
+  precioDeLista: number;
+  /** ¿Rige en esta sucursal un precio local propio (capacidad prendida y precio local habilitado)? */
+  conPrecioLocal: boolean;
   disponibleAca: boolean;
   esAnclaDeAdicional: boolean;
   /** El nombre del ítem agrupado de esta sucursal que lo contiene, si hay. */

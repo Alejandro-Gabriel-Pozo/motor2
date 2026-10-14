@@ -88,3 +88,6 @@ export { coincideConLaBusqueda, ordenAlFinalDeLaSeccion, organizarCartaParaMante
 export type { CartaParaMantener, ProductoParaMantener } from "./mantenimiento";
 // CARTA-MANT: la vista previa de «Agregar a la carta» usa la MISMA presentación de opciones que la carta pública.
 export { opcionesParaLaCarta } from "./opciones-en-carta";
+// CARTA-MANT F4: el ajuste de precios de una sección, en decimal exacto (centavos); sin redondeo en la pantalla (decisión del dueño, 2026-10-14).
+export { aCentavos, deCentavos, precioAjustado, validarAjusteDePrecio, REDONDEO_POR_DEFECTO } from "./ajuste-de-precios";
+export type { AjusteDePrecio } from "./ajuste-de-precios";

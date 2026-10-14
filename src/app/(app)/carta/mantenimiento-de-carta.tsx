@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { coincideConLaBusqueda } from "@/core/carta/public";
+import { REDONDEO_POR_DEFECTO, coincideConLaBusqueda, precioAjustado, validarAjusteDePrecio } from "@/core/carta/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import s from "./carta-mant.module.css";
 
@@ -17,6 +17,11 @@ export interface ProductoDeMantenimiento {
   precio: string;
   disponible: boolean;
   visible: boolean;
+  /** F4: el precio de esta sucursal y el de lista de la empresa, con dos decimales («14900.00»), tal como los leyó el servidor (son los «precios vistos» que la acción compara). */
+  precioVisto: string;
+  precioDeListaVisto: string;
+  /** Rige acá un precio local propio. */
+  conPrecioLocal: boolean;
 }
 
 export interface SeccionDeMantenimiento {
@@ -36,6 +41,16 @@ export interface ProductoFueraDeCarta {
 }
 
 type Cambio = { productoId: string; disponible: boolean };
+
+/** El ajuste tal como lo arma la hoja de «Precios» (sin selector de redondeo, decisión del dueño: va siempre `REDONDEO_POR_DEFECTO`, sin redondeo). */
+type AjusteDeLaHoja = { direccion: "subir" | "bajar"; modo: "porcentaje" | "monto" | "precio"; valor: string; redondeo: number };
+type PrecioVisto = { productoId: string; precioVisto: string };
+
+/** El aviso de «Aplicar a toda la empresa» (lo arma el servidor: `avisoDePrecioDeEmpresa`). */
+export interface AvisoDeEmpresa {
+  sucursales: { nombre: string; loVen: number; conPrecioLocal: number; noLoVenden: number }[];
+  otras: number;
+}
 
 interface Aviso {
   id: number;
@@ -81,16 +96,21 @@ export function MantenimientoDeCarta({
   secciones: SeccionDeMantenimiento[];
   ocultosSinSeccion: { id: string; nombre: string }[];
   fueraDeCarta: ProductoFueraDeCarta[];
-  puede: { hoy: boolean; contenido: boolean; secciones: boolean };
+  /** `preciosLocal`: «Precios» en esta sucursal (`precio_local` y la capacidad prendida); `preciosEmpresa`: también en toda la empresa (`producto_editar` y `producto_campos_sensibles`). */
+  puede: { hoy: boolean; contenido: boolean; secciones: boolean; preciosLocal: boolean; preciosEmpresa: boolean };
   acciones: {
     fijarHoy: (cambios: Cambio[]) => Promise<ResultadoAccion>;
     visibleProducto: (productoId: string, visible: boolean) => Promise<ResultadoAccion>;
     activaSeccion: (seccionId: string, activa: boolean) => Promise<ResultadoAccion>;
     agregar: (productoId: string, seccionCartaId: string) => Promise<ResultadoAccion>;
     quitar: (productoId: string) => Promise<ResultadoAccion>;
+    ajustarLocal: (ajuste: AjusteDeLaHoja, items: PrecioVisto[]) => Promise<ResultadoAccion>;
+    ajustarEmpresa: (ajuste: AjusteDeLaHoja, items: PrecioVisto[], confirmado: boolean) => Promise<ResultadoAccion>;
+    leerAvisoDeEmpresa: (productoIds: string[]) => Promise<AvisoDeEmpresa>;
   };
 }) {
   const router = useRouter();
+  const [hoja, setHoja] = useState<{ titulo: string; productos: ProductoDeMantenimiento[]; deUno: boolean } | null>(null);
   const [pestana, setPestana] = useState<PestanaDeMantenimiento>(pestanaInicial);
   const [abiertas, setAbiertas] = useState<Record<string, boolean>>({});
   const [soloSinStock, setSoloSinStock] = useState(false);
@@ -178,7 +198,7 @@ export function MantenimientoDeCarta({
       const rotulo = estado === "on" ? "Todo disponible" : estado === "off" ? "Todo agotado" : "Algunos agotados";
       const apagar = disponibles.length > 0;
       return (
-        <section key={sec.id} className={`${s.sec} ${abierta ? s.abierta : ""}`} data-seccion-hoy={sec.nombre}>
+        <section key={sec.id} className={s.sec} data-seccion-hoy={sec.nombre}>
           <div className={s.secCabeza}>
             <button type="button" className={s.secTitulo} aria-expanded={abierta} onClick={() => alternar(clave, filtroActivo)}>
               <b>{sec.nombre}</b>
@@ -265,13 +285,16 @@ export function MantenimientoDeCarta({
     );
   };
 
+  const puedePrecios = puede.preciosLocal || puede.preciosEmpresa;
   const precios = () => (
     <>
       <p className={s.ayuda}>Para cambiar precios, de a uno o por sección completa. Antes de aplicar ves cómo queda cada producto.</p>
-      <div className={`${s.nota}`}>
-        Cambiar precios desde acá llega en la próxima entrega: el ajuste por sección espera la decisión del dueño sobre el redondeo. Mientras tanto, los precios se cambian en Catálogo
-        (o el precio de esta sucursal en Precio local).
-      </div>
+      {!puedePrecios && (
+        <div className={s.nota}>
+          Desde acá no podés cambiar precios: hace falta el permiso «precio local» con el precio local prendido en esta sucursal, o los de editar el precio de la empresa. Los precios se cambian en Catálogo o en
+          Precio local.
+        </div>
+      )}
       <div className={s.secciones}>
         {secciones
           .filter((sec) => sec.activa)
@@ -280,13 +303,19 @@ export function MantenimientoDeCarta({
             const abierta = abiertas[clave] ?? false;
             const items = sec.productos.filter((p) => p.visible);
             return (
-              <section key={sec.id} className={`${s.sec} ${abierta ? s.abierta : ""}`} data-seccion-precios={sec.nombre}>
+              <section key={sec.id} className={s.sec} data-seccion-precios={sec.nombre}>
                 <div className={s.secCabeza}>
                   <button type="button" className={s.secTitulo} aria-expanded={abierta} onClick={() => alternar(clave, false)}>
                     <b>{sec.nombre}</b>
                     <span>{items.length} productos</span>
                   </button>
-                  <button type="button" className={s.boton} disabled title="Llega en la próxima entrega (F4)">
+                  <button
+                    type="button"
+                    className={s.boton}
+                    disabled={!puedePrecios || items.length === 0 || pendiente}
+                    title={sinPermiso(puedePrecios)}
+                    onClick={() => setHoja({ titulo: `Ajustar precios · ${sec.nombre}`, productos: items, deUno: false })}
+                  >
                     <span className="sr-only">{sec.nombre}: </span>Ajustar sección
                   </button>
                   <Chevron abierta={abierta} />
@@ -294,11 +323,21 @@ export function MantenimientoDeCarta({
                 {abierta && (
                   <div className={s.filas}>
                     {items.map((p) => (
-                      <div key={p.id} className={s.fila}>
+                      <div key={p.id} className={s.fila} data-producto-precios={p.nombre}>
                         <div className={s.nombre}>
                           <b>{p.nombre}</b>
+                          {p.conPrecioLocal && <small>Precio de esta sucursal</small>}
                         </div>
-                        <span className={s.precio}>{p.precio}</span>
+                        <button
+                          type="button"
+                          className={s.precio}
+                          disabled={!puedePrecios || pendiente}
+                          title={sinPermiso(puedePrecios)}
+                          aria-label={`Cambiar precio de ${p.nombre} (hoy ${p.precio})`}
+                          onClick={() => setHoja({ titulo: p.nombre, productos: [p], deUno: true })}
+                        >
+                          {p.precio}
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -307,6 +346,20 @@ export function MantenimientoDeCarta({
             );
           })}
       </div>
+      {hoja && (
+        <HojaDePrecios
+          titulo={hoja.titulo}
+          productos={hoja.productos}
+          deUno={hoja.deUno}
+          puede={puede}
+          leerAviso={acciones.leerAvisoDeEmpresa}
+          cerrar={() => setHoja(null)}
+          aplicar={(donde, ajuste, items, confirmado) => {
+            setHoja(null);
+            ejecutar(() => (donde === "empresa" ? acciones.ajustarEmpresa(ajuste, items, confirmado) : acciones.ajustarLocal(ajuste, items)));
+          }}
+        />
+      )}
     </>
   );
 
@@ -330,7 +383,7 @@ export function MantenimientoDeCarta({
           const ocultos = sec.productos.filter((p) => !p.visible).length;
           const abierta = sec.activa && (abiertas[clave] ?? ocultos > 0);
           return (
-            <section key={sec.id} className={`${s.sec} ${abierta ? s.abierta : ""}`} data-seccion-visibilidad={sec.nombre}>
+            <section key={sec.id} className={s.sec} data-seccion-visibilidad={sec.nombre}>
               <div className={s.secCabeza}>
                 <button type="button" className={s.secTitulo} aria-expanded={abierta} disabled={!sec.activa} onClick={() => alternar(clave, ocultos > 0)}>
                   <b className={sec.activa ? undefined : s.apagada}>{sec.nombre}</b>
@@ -507,5 +560,185 @@ function FueraDeCarta({
         {puedeAgregar && secciones.length === 0 && productos.length > 0 && <p className={s.ayuda}>Para agregar un producto a la carta hace falta al menos una sección activa.</p>}
       </div>
     </details>
+  );
+}
+
+/** Una línea del cartel por sucursal: cuántos de los productos verán el precio nuevo y por qué los demás no. */
+function detalleDelAviso(x: AvisoDeEmpresa["sucursales"][number], total: number): string {
+  if (total === 1) return x.loVen ? "ve el precio nuevo" : x.conPrecioLocal ? "tiene precio local propio: no ve el cambio" : "no lo vende";
+  const partes = [x.loVen === total ? "todos ven el precio nuevo" : `${x.loVen} de ${total} ven el precio nuevo`];
+  if (x.conPrecioLocal) partes.push(`${x.conPrecioLocal} con precio local propio (no ven el cambio)`);
+  if (x.noLoVenden) partes.push(`${x.noLoVenden} no se venden ahí`);
+  return partes.join(" · ");
+}
+
+const pesosEnPantalla = (texto: string) => `$ ${Number(texto).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+/**
+ * F4 «Precios» (prototipo aprobado; decisiones del dueño 2026-10-14): la hoja de «Ajustar sección» o «Cambiar precio» de un producto. Subir o bajar en % o en $ (o el precio nuevo de uno), SIN selector
+ * de redondeo (va sin redondeo, al centavo), con la vista previa de cada producto calculada con la MISMA regla que aplica el servidor (`precioAjustado`). Dónde: por defecto «Solo en esta sucursal» (su
+ * precio local); «En toda la empresa» solo si el rol puede editar el precio de lista, con el cartel «ESTE PRECIO SE MODIFICARÁ EN: …» (las sucursales que el usuario ve, con cuáles lo verán y cuáles no;
+ * las demás solo se cuentan) y la casilla de confirmación, sin la cual no se puede aplicar (el servidor la vuelve a exigir).
+ */
+function HojaDePrecios({
+  titulo,
+  productos,
+  deUno,
+  puede,
+  leerAviso,
+  cerrar,
+  aplicar,
+}: {
+  titulo: string;
+  productos: ProductoDeMantenimiento[];
+  deUno: boolean;
+  puede: { preciosLocal: boolean; preciosEmpresa: boolean };
+  leerAviso: (productoIds: string[]) => Promise<AvisoDeEmpresa>;
+  cerrar: () => void;
+  aplicar: (donde: "local" | "empresa", ajuste: AjusteDeLaHoja, items: PrecioVisto[], confirmado: boolean) => void;
+}) {
+  const [direccion, setDireccion] = useState<"subir" | "bajar">("subir");
+  const [modo, setModo] = useState<"porcentaje" | "monto">("porcentaje");
+  const [valor, setValor] = useState(deUno ? productos[0]!.precioVisto.replace(/\.00$/, "").replace(".", ",") : "10");
+  const [donde, setDonde] = useState<"local" | "empresa">(puede.preciosLocal ? "local" : "empresa");
+  const [confirmado, setConfirmado] = useState(false);
+  const [aviso, setAviso] = useState<AvisoDeEmpresa | null>(null);
+  const [sinAviso, setSinAviso] = useState(false);
+  const ids = productos.map((p) => p.id).join(",");
+
+  useEffect(() => {
+    if (donde !== "empresa") return;
+    let vigente = true;
+    // Sin el aviso no se puede aplicar a toda la empresa (la confirmación tiene que ver la lista).
+    void leerAviso(ids.split(",")).then(
+      (a) => vigente && setAviso(a),
+      () => vigente && setSinAviso(true)
+    );
+    return () => {
+      vigente = false;
+    };
+  }, [donde, ids, leerAviso]);
+
+  const ajuste: AjusteDeLaHoja = { direccion, modo: deUno ? "precio" : modo, valor, redondeo: REDONDEO_POR_DEFECTO };
+  const valido = validarAjusteDePrecio(ajuste);
+  const base = (p: ProductoDeMantenimiento) => (donde === "empresa" ? p.precioDeListaVisto : p.precioVisto);
+  const vista = valido.ok ? productos.map((p) => ({ p, antes: base(p), despues: precioAjustado(base(p), valido.valor) })) : [];
+  const puedeAplicar = valido.ok && (donde === "local" ? puede.preciosLocal : puede.preciosEmpresa && confirmado && aviso !== null);
+
+  return (
+    <div className={s.fondoHoja} onClick={cerrar} data-hoja-de-precios>
+      <div
+        className={s.hoja}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-hoja-precios"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") cerrar();
+        }}
+      >
+        <h2 id="titulo-hoja-precios">{titulo}</h2>
+        {!deUno && (
+          <div className={s.seg} role="group" aria-label="Subir o bajar">
+            <button type="button" aria-pressed={direccion === "subir"} onClick={() => setDireccion("subir")}>
+              Subir
+            </button>
+            <button type="button" aria-pressed={direccion === "bajar"} onClick={() => setDireccion("bajar")}>
+              Bajar
+            </button>
+          </div>
+        )}
+        <div className={s.campo}>
+          <label htmlFor="valor-hoja-precios" className={s.rotulo}>
+            {deUno ? "Precio nuevo (IVA incluido)" : "Cuánto"}
+          </label>
+          <div className={s.enLinea}>
+            <input id="valor-hoja-precios" className={`${s.buscar} ${s.grande}`} inputMode="decimal" autoFocus value={valor} onChange={(e) => setValor(e.target.value)} />
+            {!deUno && (
+              <div className={`${s.seg} ${s.segSiNo}`} role="group" aria-label="En porcentaje o en pesos">
+                <button type="button" aria-pressed={modo === "porcentaje"} onClick={() => setModo("porcentaje")}>
+                  %
+                </button>
+                <button type="button" aria-pressed={modo === "monto"} onClick={() => setModo("monto")}>
+                  $
+                </button>
+              </div>
+            )}
+          </div>
+          {!valido.ok && <span className={s.ayuda}>{valido.mensaje}</span>}
+          {deUno && <span className={s.ayuda}>Hoy: {pesosEnPantalla(base(productos[0]!))}</span>}
+        </div>
+        {puede.preciosEmpresa && (
+          <div className={s.campo}>
+            <span className={s.rotulo}>Dónde</span>
+            <div className={s.chips}>
+              <button type="button" className={s.chip} aria-pressed={donde === "local"} disabled={!puede.preciosLocal} onClick={() => setDonde("local")}>
+                Solo en esta sucursal
+              </button>
+              <button type="button" className={s.chip} aria-pressed={donde === "empresa"} onClick={() => setDonde("empresa")}>
+                En toda la empresa
+              </button>
+            </div>
+          </div>
+        )}
+        <div className={s.vistaDePrecios} aria-label="Vista previa">
+          {vista.map(({ p, antes, despues }) => (
+            <div key={p.id} data-vista-precio={p.nombre}>
+              <span>{p.nombre}</span>
+              <span>
+                {pesosEnPantalla(antes)} → <b>{pesosEnPantalla(despues)}</b>
+              </span>
+            </div>
+          ))}
+        </div>
+        {donde === "empresa" && (
+          <div className={`${s.nota} ${s.notaMal}`} role="note" data-aviso-de-empresa>
+            <b>ESTE PRECIO SE MODIFICARÁ EN:</b>
+            {aviso === null ? (
+              <p className={s.ayuda} role={sinAviso ? "alert" : undefined}>
+                {sinAviso ? "No se pudo saber en qué sucursales cambia: cerrá y volvé a intentar." : "Buscando las sucursales…"}
+              </p>
+            ) : (
+              <ul className={s.listaDeAviso}>
+                {aviso.sucursales.map((x) => (
+                  <li key={x.nombre}>
+                    «{x.nombre}»: {detalleDelAviso(x, productos.length)}
+                  </li>
+                ))}
+                {aviso.otras > 0 && (
+                  <li>
+                    Y {aviso.otras} sucursal{aviso.otras > 1 ? "es" : ""} más en las que no tenés acceso: el precio de la empresa también cambia ahí; no se puede saber acá si tienen precio local propio.
+                  </li>
+                )}
+              </ul>
+            )}
+            <label className={s.confirmar}>
+              <input type="checkbox" checked={confirmado} onChange={(e) => setConfirmado(e.target.checked)} /> Confirmo que quiero cambiar el precio en todas estas sucursales
+            </label>
+          </div>
+        )}
+        <div className={s.botones}>
+          <button type="button" className={`${s.boton} ${s.botonSuave}`} onClick={cerrar}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className={`${s.boton} ${s.botonPrincipal}`}
+            disabled={!puedeAplicar}
+            onClick={() =>
+              valido.ok &&
+              aplicar(
+                donde,
+                valido.valor,
+                productos.map((p) => ({ productoId: p.id, precioVisto: base(p) })),
+                confirmado
+              )
+            }
+          >
+            {deUno ? "Guardar precio" : `Aplicar a ${productos.length} producto${productos.length === 1 ? "" : "s"}`}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
