@@ -1,0 +1,392 @@
+# Caracterización del precio cobrado y mostrado (Fase 0). Foto de hoy, no aprobación.
+
+# PRODUCTOS (lo que muestran el POS y la carta pública)
+
+##### Gaseosa 500 cc (base 4000.00, descuento -)
+resumen del POS:
+  desde=4000.00 hayVariacion=false vendible=true
+resumen de la carta pública:
+  desde=4000.00 hayVariacion=false vendible=true
+carta: desde=4000.00
+
+##### Bife a la criolla (base 20000.00, descuento -)
+resumen del POS:
+  desde=20000.00 hayVariacion=false vendible=true
+    INCLUIDA «Guarnición» min=1 max=1
+      Ensalada: precioFinal=- diferencia=0.00
+      Papas fritas: precioFinal=- diferencia=0.00
+      Puré: precioFinal=- diferencia=0.00
+    ADICIONAL «Extras» min=0 max=3
+      Extra de papas: precioFinal=- diferencia=2000.00
+      Huevo frito: precioFinal=- diferencia=1500.00
+resumen de la carta pública:
+  desde=20000.00 hayVariacion=false vendible=true
+    INCLUIDA «Guarnición» min=1 max=1
+      Ensalada: precioFinal=- diferencia=0.00
+      Papas fritas: precioFinal=- diferencia=0.00
+      Puré: precioFinal=- diferencia=0.00
+    ADICIONAL «Extras» min=0 max=3
+      Extra de papas: precioFinal=- diferencia=2000.00
+      Huevo frito: precioFinal=- diferencia=1500.00
+carta: desde=20000.00
+  lista «Extras»: Extra de papas +2000.00 | Huevo frito +1500.00
+  pastillas «Guarnición»: Ensalada | Papas fritas | Puré
+
+##### Pizzas (base 18000.00, descuento -)
+resumen del POS:
+  desde=18000.00 hayVariacion=true vendible=true
+    MEDIDA «Tipos de Pizza» min=1 max=1
+      Pizza muzzarella: precioFinal=18000.00 diferencia=18000.00
+      Pizza de verduras asadas: precioFinal=20000.00 diferencia=20000.00
+      Pizza fugazzeta: precioFinal=22000.00 diferencia=22000.00
+      Pizza napolitana: precioFinal=22000.00 diferencia=22000.00
+      Pizza con papas fritas: precioFinal=25000.00 diferencia=25000.00
+      Pizza bomba: precioFinal=25000.00 diferencia=25000.00
+resumen de la carta pública:
+  desde=18000.00 hayVariacion=true vendible=true
+    MEDIDA «Tipos de Pizza» min=1 max=1
+      Pizza muzzarella: precioFinal=18000.00 diferencia=18000.00
+      Pizza de verduras asadas: precioFinal=20000.00 diferencia=20000.00
+      Pizza fugazzeta: precioFinal=22000.00 diferencia=22000.00
+      Pizza napolitana: precioFinal=22000.00 diferencia=22000.00
+      Pizza con papas fritas: precioFinal=25000.00 diferencia=25000.00
+      Pizza bomba: precioFinal=25000.00 diferencia=25000.00
+carta: desde=18000.00
+  lista «Tipos de Pizza»: Pizza muzzarella 18000.00 | Pizza de verduras asadas 20000.00 | Pizza fugazzeta 22000.00 | Pizza napolitana 22000.00 | Pizza con papas fritas 25000.00 | Pizza bomba 25000.00
+
+##### Milanesas (M1: terminación con precio absoluto) (base 20000.00, descuento -)
+resumen del POS:
+  desde=20000.00 hayVariacion=true vendible=true
+    MEDIDA «Tipo de Milanesa» min=1 max=1
+      Simple: precioFinal=20000.00 diferencia=20000.00
+      Napolitana: precioFinal=25000.00 diferencia=25000.00
+    VARIANTE «Milanesas de» min=1 max=1
+      Carne: precioFinal=- diferencia=0.00
+      Pollo: precioFinal=- diferencia=0.00
+resumen de la carta pública:
+  desde=20000.00 hayVariacion=true vendible=true
+    MEDIDA «Tipo de Milanesa» min=1 max=1
+      Simple: precioFinal=20000.00 diferencia=20000.00
+      Napolitana: precioFinal=25000.00 diferencia=25000.00
+    VARIANTE «Milanesas de» min=1 max=1
+      Carne: precioFinal=- diferencia=0.00
+      Pollo: precioFinal=- diferencia=0.00
+carta: desde=20000.00
+  lista «Tipo de Milanesa»: Simple 20000.00 | Napolitana 25000.00
+  pastillas «Milanesas de»: Carne | Pollo
+
+##### Milanesas (M2: terminación como variante con diferencia) (base 20000.00, descuento -)
+resumen del POS:
+  desde=20000.00 hayVariacion=true vendible=true
+    VARIANTE «Terminación» min=1 max=1
+      Simple: precioFinal=- diferencia=0.00
+      Napolitana: precioFinal=- diferencia=5000.00
+    VARIANTE «Milanesas de» min=1 max=1
+      Carne: precioFinal=- diferencia=0.00
+      Pollo: precioFinal=- diferencia=0.00
+resumen de la carta pública:
+  desde=20000.00 hayVariacion=true vendible=true
+    VARIANTE «Terminación» min=1 max=1
+      Simple: precioFinal=- diferencia=0.00
+      Napolitana: precioFinal=- diferencia=5000.00
+    VARIANTE «Milanesas de» min=1 max=1
+      Carne: precioFinal=- diferencia=0.00
+      Pollo: precioFinal=- diferencia=0.00
+carta: desde=20000.00
+  lista «Terminación»: Napolitana +5000.00
+  pastillas «Milanesas de»: Carne | Pollo
+
+##### Milanesas (M2 con base cargada por error) (base 18000.00, descuento -)
+resumen del POS:
+  desde=38000.00 hayVariacion=true vendible=true
+    VARIANTE «Terminación» min=1 max=1
+      Simple: precioFinal=- diferencia=20000.00
+      Napolitana: precioFinal=- diferencia=25000.00
+resumen de la carta pública:
+  desde=38000.00 hayVariacion=true vendible=true
+    VARIANTE «Terminación» min=1 max=1
+      Simple: precioFinal=- diferencia=20000.00
+      Napolitana: precioFinal=- diferencia=25000.00
+carta: desde=38000.00
+  lista «Terminación»: Napolitana +5000.00
+
+##### Café (base 4000.00, descuento -)
+resumen del POS:
+  desde=4000.00 hayVariacion=true vendible=true
+    MEDIDA «Tamaño del Café» min=1 max=1
+      Chico: precioFinal=4000.00 diferencia=4000.00
+      Mediano: precioFinal=4100.00 diferencia=4100.00
+      Grande: precioFinal=4300.00 diferencia=4300.00
+    VARIANTE «Preparación del café» min=0 max=1
+      Solo: precioFinal=- diferencia=0.00
+      Cortado: precioFinal=- diferencia=0.00
+      Lágrima: precioFinal=- diferencia=200.00
+      Con leche: precioFinal=- diferencia=300.00
+    VARIANTE «Intensidad» min=0 max=1
+      Doble: precioFinal=- diferencia=400.00
+    ADICIONAL «Extras» min=0 max=2
+      Shot: precioFinal=- diferencia=600.00
+resumen de la carta pública:
+  desde=4000.00 hayVariacion=true vendible=true
+    MEDIDA «Tamaño del Café» min=1 max=1
+      Chico: precioFinal=4000.00 diferencia=4000.00
+      Mediano: precioFinal=4100.00 diferencia=4100.00
+      Grande: precioFinal=4300.00 diferencia=4300.00
+    VARIANTE «Preparación del café» min=0 max=1
+      Solo: precioFinal=- diferencia=0.00
+      Cortado: precioFinal=- diferencia=0.00
+      Lágrima: precioFinal=- diferencia=200.00
+      Con leche: precioFinal=- diferencia=300.00
+    VARIANTE «Intensidad» min=0 max=1
+      Doble: precioFinal=- diferencia=400.00
+    ADICIONAL «Extras» min=0 max=2
+      Shot: precioFinal=- diferencia=600.00
+carta: desde=4000.00
+  lista «Tamaño del Café»: Chico 4000.00 | Mediano 4100.00 | Grande 4300.00
+  lista «Preparación del café»: Lágrima +200.00 | Con leche +300.00
+  lista «Intensidad»: Doble +400.00
+  lista «Extras»: Shot +600.00
+  pastillas «Preparación del café»: Solo | Cortado
+
+##### Café (precio local y grilla de sucursal) (base 4500.00, descuento -)
+resumen del POS:
+  desde=4000.00 hayVariacion=true vendible=true
+    MEDIDA «Tamaño del Café» min=1 max=1
+      Chico: precioFinal=4000.00 diferencia=4000.00
+      Mediano: precioFinal=4200.00 diferencia=4200.00
+      Grande: precioFinal=4300.00 diferencia=4300.00
+    VARIANTE «Preparación del café» min=0 max=1
+      Solo: precioFinal=- diferencia=0.00
+      Cortado: precioFinal=- diferencia=0.00
+      Lágrima: precioFinal=- diferencia=200.00
+      Con leche: precioFinal=- diferencia=300.00
+    VARIANTE «Intensidad» min=0 max=1
+      Doble: precioFinal=- diferencia=450.00
+    ADICIONAL «Extras» min=0 max=2
+      Shot: precioFinal=- diferencia=600.00
+resumen de la carta pública:
+  desde=4000.00 hayVariacion=true vendible=true
+    MEDIDA «Tamaño del Café» min=1 max=1
+      Chico: precioFinal=4000.00 diferencia=4000.00
+      Mediano: precioFinal=4200.00 diferencia=4200.00
+      Grande: precioFinal=4300.00 diferencia=4300.00
+    VARIANTE «Preparación del café» min=0 max=1
+      Solo: precioFinal=- diferencia=0.00
+      Cortado: precioFinal=- diferencia=0.00
+      Lágrima: precioFinal=- diferencia=200.00
+      Con leche: precioFinal=- diferencia=300.00
+    VARIANTE «Intensidad» min=0 max=1
+      Doble: precioFinal=- diferencia=450.00
+    ADICIONAL «Extras» min=0 max=2
+      Shot: precioFinal=- diferencia=600.00
+carta: desde=4000.00
+  lista «Tamaño del Café»: Chico 4000.00 | Mediano 4200.00 | Grande 4300.00
+  lista «Preparación del café»: Lágrima +200.00 | Con leche +300.00
+  lista «Intensidad»: Doble +450.00
+  lista «Extras»: Shot +600.00
+  pastillas «Preparación del café»: Solo | Cortado
+
+##### Café (descuento de producto 10 %) (base 4000.00, descuento 10)
+resumen del POS:
+  desde=3600.00 hayVariacion=true vendible=true
+    MEDIDA «Tamaño del Café» min=1 max=1
+      Chico: precioFinal=3600.00 diferencia=4000.00
+      Mediano: precioFinal=3690.00 diferencia=4100.00
+      Grande: precioFinal=3870.00 diferencia=4300.00
+    VARIANTE «Preparación del café» min=0 max=1
+      Solo: precioFinal=- diferencia=0.00
+      Cortado: precioFinal=- diferencia=0.00
+      Lágrima: precioFinal=- diferencia=200.00
+      Con leche: precioFinal=- diferencia=300.00
+    VARIANTE «Intensidad» min=0 max=1
+      Doble: precioFinal=- diferencia=400.00
+    ADICIONAL «Extras» min=0 max=2
+      Shot: precioFinal=- diferencia=600.00
+resumen de la carta pública:
+  desde=3600.00 hayVariacion=true vendible=true
+    MEDIDA «Tamaño del Café» min=1 max=1
+      Chico: precioFinal=3600.00 diferencia=4000.00
+      Mediano: precioFinal=3690.00 diferencia=4100.00
+      Grande: precioFinal=3870.00 diferencia=4300.00
+    VARIANTE «Preparación del café» min=0 max=1
+      Solo: precioFinal=- diferencia=0.00
+      Cortado: precioFinal=- diferencia=0.00
+      Lágrima: precioFinal=- diferencia=200.00
+      Con leche: precioFinal=- diferencia=300.00
+    VARIANTE «Intensidad» min=0 max=1
+      Doble: precioFinal=- diferencia=400.00
+    ADICIONAL «Extras» min=0 max=2
+      Shot: precioFinal=- diferencia=600.00
+carta: desde=3600.00
+  lista «Tamaño del Café»: Chico 3600.00 | Mediano 3690.00 | Grande 3870.00
+  lista «Preparación del café»: Lágrima +200.00 | Con leche +300.00
+  lista «Intensidad»: Doble +400.00
+  lista «Extras»: Shot +600.00
+  pastillas «Preparación del café»: Solo | Cortado
+
+##### Base en 0 con variante sin costo (base 0.00, descuento -)
+resumen del POS:
+  desde=- hayVariacion=false vendible=false
+    VARIANTE «Sabor» min=1 max=1
+resumen de la carta pública:
+  desde=- hayVariacion=false vendible=false
+    VARIANTE «Sabor» min=1 max=1
+carta: el producto no sale (no vendible)
+
+##### Base en 0 con tamaño absoluto (base 0.00, descuento -)
+resumen del POS:
+  desde=1500.00 hayVariacion=true vendible=true
+    MEDIDA «Tamaño» min=1 max=1
+      Chico: precioFinal=1500.00 diferencia=1500.00
+      Grande: precioFinal=2500.00 diferencia=2500.00
+resumen de la carta pública:
+  desde=1500.00 hayVariacion=true vendible=true
+    MEDIDA «Tamaño» min=1 max=1
+      Chico: precioFinal=1500.00 diferencia=1500.00
+      Grande: precioFinal=2500.00 diferencia=2500.00
+carta: desde=1500.00
+  lista «Tamaño»: Chico 1500.00 | Grande 2500.00
+
+# ESCENARIOS (lo que se cobra y lo que muestra la vista previa)
+
+===== CU-01 · gaseosa directa, sin opciones · Gaseosa 500 cc · cantidad 1
+venta: sin línea configurada (se pide como producto simple)
+vista previa: precioUnitario=4000.00 precioLista=- total=4000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-01 · gaseosa directa, 3 unidades · Gaseosa 500 cc · cantidad 3
+venta: sin línea configurada (se pide como producto simple)
+vista previa: precioUnitario=4000.00 precioLista=- total=12000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-02 · bife con guarnición incluida (papas fritas) · Bife a la criolla · cantidad 1
+venta: precioUnitario=20000.00 precioCartaUnitario=- huella=sí
+  foto INCLUIDA «Guarnición» Papas fritas x1 modo=- dif=- importe=0.00 sucursal=false
+vista previa: precioUnitario=20000.00 precioLista=- total=20000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-03 · bife con puré y un extra de papas · Bife a la criolla · cantidad 1
+venta: precioUnitario=20000.00 precioCartaUnitario=- huella=sí
+  foto INCLUIDA «Guarnición» Puré x1 modo=- dif=- importe=0.00 sucursal=false
+  adicional Extra de papas x1 precioUnitario=2000.00
+vista previa: precioUnitario=20000.00 precioLista=- total=22000.00 adicionales=[Extra de papas x1 2000.00]
+paridad venta/vista previa: coinciden
+
+===== CU-03 · bife con ensalada, extra de papas y huevo frito, 2 unidades · Bife a la criolla · cantidad 2
+venta: precioUnitario=20000.00 precioCartaUnitario=- huella=sí
+  foto INCLUIDA «Guarnición» Ensalada x1 modo=- dif=- importe=0.00 sucursal=false
+  adicional Extra de papas x2 precioUnitario=2000.00
+  adicional Huevo frito x2 precioUnitario=1500.00
+vista previa: precioUnitario=20000.00 precioLista=- total=47000.00 adicionales=[Extra de papas x2 2000.00, Huevo frito x2 1500.00]
+paridad venta/vista previa: coinciden
+
+===== CU-02 · bife sin elegir la guarnición obligatoria (rechazo) · Bife a la criolla · cantidad 1
+venta: RECHAZO GRUPO_MINIMO_NO_ALCANZADO
+vista previa: RECHAZO GRUPO_MINIMO_NO_ALCANZADO
+paridad venta/vista previa: coinciden
+
+===== CU-04 · pizza de verduras asadas (tamaño absoluto) · Pizzas · cantidad 1
+venta: precioUnitario=20000.00 precioCartaUnitario=- huella=sí
+  foto MEDIDA «Tipos de Pizza» Pizza de verduras asadas x1 modo=ABSOLUTO dif=- importe=20000.00 sucursal=false
+vista previa: precioUnitario=20000.00 precioLista=- total=20000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-08 · pizza muzzarella (tamaño absoluto) · Pizzas · cantidad 1
+venta: precioUnitario=18000.00 precioCartaUnitario=- huella=sí
+  foto MEDIDA «Tipos de Pizza» Pizza muzzarella x1 modo=ABSOLUTO dif=- importe=18000.00 sucursal=false
+vista previa: precioUnitario=18000.00 precioLista=- total=18000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-08 · pizza bomba, 2 unidades · Pizzas · cantidad 2
+venta: precioUnitario=25000.00 precioCartaUnitario=- huella=sí
+  foto MEDIDA «Tipos de Pizza» Pizza bomba x1 modo=ABSOLUTO dif=- importe=25000.00 sucursal=false
+vista previa: precioUnitario=25000.00 precioLista=- total=50000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-05 · M1: milanesa simple de carne · Milanesas (M1: terminación con precio absoluto) · cantidad 1
+venta: precioUnitario=20000.00 precioCartaUnitario=- huella=sí
+  foto MEDIDA «Tipo de Milanesa» Simple x1 modo=ABSOLUTO dif=- importe=20000.00 sucursal=false
+  foto VARIANTE «Milanesas de» Carne x1 modo=- dif=MONTO importe=0.00 sucursal=false
+vista previa: precioUnitario=20000.00 precioLista=- total=20000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-06 · M1: milanesa napolitana de pollo · Milanesas (M1: terminación con precio absoluto) · cantidad 1
+venta: precioUnitario=25000.00 precioCartaUnitario=- huella=sí
+  foto MEDIDA «Tipo de Milanesa» Napolitana x1 modo=ABSOLUTO dif=- importe=25000.00 sucursal=false
+  foto VARIANTE «Milanesas de» Pollo x1 modo=- dif=MONTO importe=0.00 sucursal=false
+vista previa: precioUnitario=25000.00 precioLista=- total=25000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-04 · M2: milanesa simple de carne (terminación como diferencia) · Milanesas (M2: terminación como variante con diferencia) · cantidad 1
+venta: precioUnitario=20000.00 precioCartaUnitario=- huella=sí
+  foto VARIANTE «Terminación» Simple x1 modo=- dif=MONTO importe=0.00 sucursal=false
+  foto VARIANTE «Milanesas de» Carne x1 modo=- dif=MONTO importe=0.00 sucursal=false
+vista previa: precioUnitario=20000.00 precioLista=- total=20000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-06 · M2: milanesa napolitana de pollo (base 20.000 + 5.000) · Milanesas (M2: terminación como variante con diferencia) · cantidad 1
+venta: precioUnitario=25000.00 precioCartaUnitario=- huella=sí
+  foto VARIANTE «Terminación» Napolitana x1 modo=- dif=MONTO importe=5000.00 sucursal=false
+  foto VARIANTE «Milanesas de» Pollo x1 modo=- dif=MONTO importe=0.00 sucursal=false
+vista previa: precioUnitario=25000.00 precioLista=- total=25000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-04 · M2 con base cargada por error: simple (la trampa de $38.000) · Milanesas (M2 con base cargada por error) · cantidad 1
+venta: precioUnitario=38000.00 precioCartaUnitario=- huella=sí
+  foto VARIANTE «Terminación» Simple x1 modo=- dif=MONTO importe=20000.00 sucursal=false
+vista previa: precioUnitario=38000.00 precioLista=- total=38000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-04 · M2 con base cargada por error: napolitana · Milanesas (M2 con base cargada por error) · cantidad 1
+venta: precioUnitario=43000.00 precioCartaUnitario=- huella=sí
+  foto VARIANTE «Terminación» Napolitana x1 modo=- dif=MONTO importe=25000.00 sucursal=false
+vista previa: precioUnitario=43000.00 precioLista=- total=43000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-10 · café chico solo · Café · cantidad 1
+venta: precioUnitario=4000.00 precioCartaUnitario=- huella=sí
+  foto MEDIDA «Tamaño del Café» Chico x1 modo=ABSOLUTO dif=- importe=4000.00 sucursal=false
+  foto VARIANTE «Preparación del café» Solo x1 modo=- dif=MONTO importe=0.00 sucursal=false
+vista previa: precioUnitario=4000.00 precioLista=- total=4000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-10 · café grande con leche y un shot · Café · cantidad 1
+venta: precioUnitario=4600.00 precioCartaUnitario=- huella=sí
+  foto MEDIDA «Tamaño del Café» Grande x1 modo=ABSOLUTO dif=- importe=4300.00 sucursal=false
+  foto VARIANTE «Preparación del café» Con leche x1 modo=- dif=MONTO importe=300.00 sucursal=false
+  adicional Shot x1 precioUnitario=600.00
+vista previa: precioUnitario=4600.00 precioLista=- total=5200.00 adicionales=[Shot x1 600.00]
+paridad venta/vista previa: coinciden
+
+===== CU-10 · café mediano doble (+10 % sobre la base), 2 unidades · Café · cantidad 2
+venta: precioUnitario=4500.00 precioCartaUnitario=- huella=sí
+  foto MEDIDA «Tamaño del Café» Mediano x1 modo=ABSOLUTO dif=- importe=4100.00 sucursal=false
+  foto VARIANTE «Intensidad» Doble x1 modo=- dif=PORCENTAJE(10%) importe=400.00 sucursal=false
+vista previa: precioUnitario=4500.00 precioLista=- total=9000.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-10 · café mediano con precio local y grilla de sucursal · Café (precio local y grilla de sucursal) · cantidad 1
+venta: precioUnitario=4400.00 precioCartaUnitario=- huella=sí
+  foto MEDIDA «Tamaño del Café» Mediano x1 modo=ABSOLUTO dif=- importe=4200.00 sucursal=true
+  foto VARIANTE «Preparación del café» Lágrima x1 modo=- dif=MONTO importe=200.00 sucursal=false
+vista previa: precioUnitario=4400.00 precioLista=- total=4400.00 adicionales=[]
+paridad venta/vista previa: coinciden
+
+===== CU-10 · café grande con descuento de producto 10 %, con un shot · Café (descuento de producto 10 %) · cantidad 1
+venta: precioUnitario=3870.00 precioCartaUnitario=4300.00 huella=sí
+  foto MEDIDA «Tamaño del Café» Grande x1 modo=ABSOLUTO dif=- importe=4300.00 sucursal=false
+  adicional Shot x1 precioUnitario=600.00
+vista previa: precioUnitario=3870.00 precioLista=4300.00 total=4470.00 adicionales=[Shot x1 600.00]
+paridad venta/vista previa: coinciden
+
+===== CU-04 · base en 0 con variante sin costo (rechazo por precio de lista) · Base en 0 con variante sin costo · cantidad 1
+venta: RECHAZO PRECIO_DE_LISTA_INVALIDO
+vista previa: RECHAZO PRECIO_DE_LISTA_INVALIDO
+paridad venta/vista previa: coinciden
+
+===== CU-04 · base en 0 con tamaño absoluto (el precio sale del tamaño) · Base en 0 con tamaño absoluto · cantidad 1
+venta: precioUnitario=2500.00 precioCartaUnitario=- huella=sí
+  foto MEDIDA «Tamaño» Grande x1 modo=ABSOLUTO dif=- importe=2500.00 sucursal=false
+vista previa: precioUnitario=2500.00 precioLista=- total=2500.00 adicionales=[]
+paridad venta/vista previa: coinciden
+

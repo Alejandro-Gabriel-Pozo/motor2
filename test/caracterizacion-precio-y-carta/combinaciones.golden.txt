@@ -1,0 +1,51 @@
+# Caracterización de las combinaciones GO-3a en el precio cobrado y mostrado (Fase 0). Foto de hoy, no aprobación.
+
+##### Milanesas (M3: dos ejes con combinaciones) (base 20000.00, descuento -)
+resumen del POS (con combinaciones):
+  desde=20000.00 hayVariacion=true vendible=true
+    VARIANTE «Terminación» min=1 max=1
+      Simple: precioFinal=- diferencia=0.00
+      Napolitana: precioFinal=- diferencia=5000.00
+    VARIANTE «De» min=1 max=1
+      Carne: precioFinal=- diferencia=0.00
+      Pollo: precioFinal=- diferencia=2000.00
+resumen de la carta pública (sin combinaciones):
+  desde=20000.00 hayVariacion=true vendible=true
+    VARIANTE «Terminación» min=1 max=1
+      Simple: precioFinal=- diferencia=0.00
+      Napolitana: precioFinal=- diferencia=5000.00
+    VARIANTE «De» min=1 max=1
+      Carne: precioFinal=- diferencia=0.00
+      Pollo: precioFinal=- diferencia=2000.00
+carta: desde=20000.00
+  lista «Terminación»: Napolitana +5000.00
+  lista «De»: Pollo +2000.00
+
+===== CU-07 · M3: simple de carne (sin fila: aditivo) · Milanesas (M3: dos ejes con combinaciones) · cantidad 1
+venta: precioUnitario=20000.00 precioCartaUnitario=- huella=sí
+  foto VARIANTE «Terminación» Simple x1 modo=- dif=MONTO importe=0.00 sucursal=false
+  foto VARIANTE «De» Carne x1 modo=- dif=MONTO importe=0.00 sucursal=false
+vista previa: precioUnitario=20000.00 precioLista=- total=20000.00
+paridad venta/vista previa: coinciden
+
+===== CU-07 · M3: simple de pollo (precio propio $22.000) · Milanesas (M3: dos ejes con combinaciones) · cantidad 1
+venta: precioUnitario=22000.00 precioCartaUnitario=- huella=sí
+  foto VARIANTE «Terminación» Simple x1 modo=- dif=- importe=0.00 sucursal=false
+  foto VARIANTE «De» Pollo x1 modo=- dif=- importe=0.00 sucursal=false
+  combinación: {"combinacionId":"c-simple-pollo","origenPrecio":"PROPIO","precioDeSucursal":false,"grupoDePrecioId":null,"nombreGrupoDePrecio":null,"precio":22000,"recetaDeCombinacionVersionId":null}
+vista previa: precioUnitario=22000.00 precioLista=- total=22000.00
+paridad venta/vista previa: coinciden
+
+===== CU-07 · M3: napolitana de pollo (precio propio $27.000) · Milanesas (M3: dos ejes con combinaciones) · cantidad 1
+venta: precioUnitario=27000.00 precioCartaUnitario=- huella=sí
+  foto VARIANTE «Terminación» Napolitana x1 modo=- dif=- importe=0.00 sucursal=false
+  foto VARIANTE «De» Pollo x1 modo=- dif=- importe=0.00 sucursal=false
+  combinación: {"combinacionId":"c-napolitana-pollo","origenPrecio":"PROPIO","precioDeSucursal":false,"grupoDePrecioId":null,"nombreGrupoDePrecio":null,"precio":27000,"recetaDeCombinacionVersionId":null}
+vista previa: precioUnitario=27000.00 precioLista=- total=27000.00
+paridad venta/vista previa: coinciden
+
+===== CU-11 · M3: napolitana de carne (combinación apagada) · Milanesas (M3: dos ejes con combinaciones) · cantidad 1
+venta: RECHAZO COMBINACION_NO_DISPONIBLE
+vista previa: RECHAZO COMBINACION_NO_DISPONIBLE
+paridad venta/vista previa: coinciden
+
