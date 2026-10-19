@@ -11,7 +11,7 @@ export interface ProductoConCombinaciones extends ProductoDeReferencia {
 }
 
 /** CU-07, CU-11 y CU-12 (GO-3): dos ejes (terminación y «de») con combinaciones: una con precio propio, una apagada, una sin fila (aditivo). Producción: sin ninguna combinación. */
-export const MILANESA_M3_COMBINACIONES: ProductoConCombinaciones = {
+const MILANESA_M3_COMBINACIONES: ProductoConCombinaciones = {
   nombre: "Milanesas (M3: dos ejes con combinaciones)",
   precioBase: 20000,
   descuentoDeProducto: null,

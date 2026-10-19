@@ -12,7 +12,7 @@ import type { DiferenciaDePrecio } from "../../src/core/opciones/public";
  */
 
 export const monto = (m: number): DiferenciaDePrecio => ({ tipo: "MONTO", monto: m });
-export const porcentaje = (p: number): DiferenciaDePrecio => ({ tipo: "PORCENTAJE", porcentaje: p });
+const porcentaje = (p: number): DiferenciaDePrecio => ({ tipo: "PORCENTAJE", porcentaje: p });
 
 export function opcion(opcionId: string, nombre: string, extra: Partial<OpcionParaVender> = {}): OpcionParaVender {
   return {
@@ -67,10 +67,10 @@ export const uno = (opcionId: string) => ({ opcionId, cantidad: 1 });
 // Productos
 
 /** CU-01: producto directo sin opciones. */
-export const GASEOSA: ProductoDeReferencia = { nombre: "Gaseosa 500 cc", precioBase: 4000, descuentoDeProducto: null, grupos: [] };
+const GASEOSA: ProductoDeReferencia = { nombre: "Gaseosa 500 cc", precioBase: 4000, descuentoDeProducto: null, grupos: [] };
 
 /** CU-02 y CU-03: bife con guarnición incluida (INCLUIDA, obligatoria) y extras (ADICIONAL, línea hija). Producción: «Bife a la criolla» ($20.000, grupo «Guarnicion»). */
-export const BIFE: ProductoDeReferencia = {
+const BIFE: ProductoDeReferencia = {
   nombre: "Bife a la criolla",
   precioBase: 20000,
   descuentoDeProducto: null,
@@ -100,7 +100,7 @@ export const BIFE: ProductoDeReferencia = {
 };
 
 /** CU-04 y CU-08: pizzas. Producción: «Pizzas» ($18.000) con el tamaño-absoluto «Tipos de Pizza» y 6 opciones (el precio base repite el de la más barata). */
-export const PIZZAS: ProductoDeReferencia = {
+const PIZZAS: ProductoDeReferencia = {
   nombre: "Pizzas",
   precioBase: 18000,
   descuentoDeProducto: null,
@@ -137,7 +137,7 @@ const milanesasDe = (orden: number, grupoId: string): GrupoParaVender =>
   });
 
 /** CU-05 y CU-06, modelado M1 (el de producción): «Tipo de Milanesa» es un tamaño con precio absoluto (Simple $20.000, Napolitana $25.000) y «Milanesas de» una variante sin diferencia. */
-export const MILANESA_M1: ProductoDeReferencia = {
+const MILANESA_M1: ProductoDeReferencia = {
   nombre: "Milanesas (M1: terminación con precio absoluto)",
   precioBase: 20000,
   descuentoDeProducto: null,
@@ -157,7 +157,7 @@ export const MILANESA_M1: ProductoDeReferencia = {
 };
 
 /** CU-04, modelado M2 (la trampa del paquete, §3.3): la terminación como VARIANTE con diferencia sobre el precio base. Con base $20.000 suma; con base 0 daría el precio final. */
-export const MILANESA_M2: ProductoDeReferencia = {
+const MILANESA_M2: ProductoDeReferencia = {
   nombre: "Milanesas (M2: terminación como variante con diferencia)",
   precioBase: 20000,
   descuentoDeProducto: null,
@@ -176,7 +176,7 @@ export const MILANESA_M2: ProductoDeReferencia = {
 };
 
 /** CU-04 con la trampa cargada a propósito: base $18.000 por error y la diferencia de la terminación cargada como precio final (Simple $20.000, Napolitana $25.000): se SUMAN a la base y dan $38.000 y $43.000. */
-export const MILANESA_M2_TRAMPA: ProductoDeReferencia = {
+const MILANESA_M2_TRAMPA: ProductoDeReferencia = {
   ...MILANESA_M2,
   nombre: "Milanesas (M2 con base cargada por error)",
   precioBase: 18000,
@@ -243,16 +243,16 @@ const cafeGrupos = (extra: { medianoDeSucursal?: number } = {}): GrupoParaVender
 ];
 
 /** CU-10: café con tamaño de precio absoluto, preparación y adicional. Producción: «Café» ($4.000) con «Tamaño del Café» (Chico 4.000, Mediano 4.100, Grande 4.300) y «Preparación del café». */
-export const CAFE: ProductoDeReferencia = { nombre: "Café", precioBase: 4000, descuentoDeProducto: null, grupos: cafeGrupos() };
+const CAFE: ProductoDeReferencia = { nombre: "Café", precioBase: 4000, descuentoDeProducto: null, grupos: cafeGrupos() };
 
 /** El mismo café con un precio local del producto (el base de la sucursal) y la grilla de la sucursal para el tamaño mediano. */
-export const CAFE_CON_PRECIOS_DE_SUCURSAL: ProductoDeReferencia = { nombre: "Café (precio local y grilla de sucursal)", precioBase: 4500, descuentoDeProducto: null, grupos: cafeGrupos({ medianoDeSucursal: 4200 }) };
+const CAFE_CON_PRECIOS_DE_SUCURSAL: ProductoDeReferencia = { nombre: "Café (precio local y grilla de sucursal)", precioBase: 4500, descuentoDeProducto: null, grupos: cafeGrupos({ medianoDeSucursal: 4200 }) };
 
 /** El mismo café con un descuento de producto del 10 % (va sobre la lista compuesta, nunca sobre el adicional). */
-export const CAFE_CON_DESCUENTO: ProductoDeReferencia = { nombre: "Café (descuento de producto 10 %)", precioBase: 4000, descuentoDeProducto: 10, grupos: cafeGrupos() };
+const CAFE_CON_DESCUENTO: ProductoDeReferencia = { nombre: "Café (descuento de producto 10 %)", precioBase: 4000, descuentoDeProducto: 10, grupos: cafeGrupos() };
 
 /** Un producto con precio base 0 y una variante sin costo: es lo que el paquete llamaba «producto sin precio propio». Hoy la composición lo rechaza (PRECIO_DE_LISTA_INVALIDO). */
-export const BASE_EN_CERO_CON_VARIANTE_SIN_COSTO: ProductoDeReferencia = {
+const BASE_EN_CERO_CON_VARIANTE_SIN_COSTO: ProductoDeReferencia = {
   nombre: "Base en 0 con variante sin costo",
   precioBase: 0,
   descuentoDeProducto: null,
@@ -262,7 +262,7 @@ export const BASE_EN_CERO_CON_VARIANTE_SIN_COSTO: ProductoDeReferencia = {
 };
 
 /** Un producto con precio base 0 cuyo tamaño trae precio absoluto: el precio sale del tamaño. */
-export const BASE_EN_CERO_CON_TAMANO_ABSOLUTO: ProductoDeReferencia = {
+const BASE_EN_CERO_CON_TAMANO_ABSOLUTO: ProductoDeReferencia = {
   nombre: "Base en 0 con tamaño absoluto",
   precioBase: 0,
   descuentoDeProducto: null,
