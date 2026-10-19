@@ -508,6 +508,13 @@ const CONGELADAS: Record<string, Congelada> = {
       "Ola «precio y carta», Fase 0: foto de las combinaciones GO-3a (CU-07 y CU-11) en el precio cobrado y mostrado. Aparte del golden de precios a propósito: la Fase 3 retira GO-3a entero (DEC-02, DEC-16) y borra este golden junto con su prueba.",
     regeneraciones: [],
   },
+  "test/caracterizacion-precio-y-carta/cobro-y-carta.golden.txt": {
+    blob: "c565330202519909cf9f0f931b6e737b2cede797",
+    desde: "9c88d3d",
+    motivo:
+      "Ola «precio y carta», Fase 0: foto de lo que HOY cobra la acción real del POS (agregarItems) y de la carta pública que recibe el navegador (CartaPublicaV1) sobre el catálogo de referencia sembrado en Postgres. NO es una aprobación. Las fases siguientes la regeneran declarándolo acá; el retiro de GO-3a (Fase 3) NO debe moverla.",
+    regeneraciones: [],
+  },
 };
 
 /** `git hash-object` del contenido normalizado a LF (lo que `core.autocrlf=true` guarda en el blob). */
