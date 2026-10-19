@@ -494,6 +494,20 @@ const CONGELADAS: Record<string, Congelada> = {
       },
     ],
   },
+  "test/caracterizacion-precio-y-carta/precios.golden.txt": {
+    blob: "4e643fae598c8916f23e2155158ef2dd0ef28bf8",
+    desde: "31354ad",
+    motivo:
+      "Ola «precio y carta», Fase 0: foto de lo que HOY se cobra y se muestra (venta, vista previa del POS, resumen del POS y de la carta pública) sobre el catálogo de referencia que reproduce producción y los casos CU-01 a CU-12. NO es una aprobación: incluye la trampa de la milanesa M2 con base cargada por error ($38.000). Las fases siguientes la regeneran declarándolo acá; el retiro de GO-3a (Fase 3) NO debe moverla.",
+    regeneraciones: [],
+  },
+  "test/caracterizacion-precio-y-carta/combinaciones.golden.txt": {
+    blob: "551283ff305dcfff5d8341fa2d50cdd18a1a744c",
+    desde: "31354ad",
+    motivo:
+      "Ola «precio y carta», Fase 0: foto de las combinaciones GO-3a (CU-07 y CU-11) en el precio cobrado y mostrado. Aparte del golden de precios a propósito: la Fase 3 retira GO-3a entero (DEC-02, DEC-16) y borra este golden junto con su prueba.",
+    regeneraciones: [],
+  },
 };
 
 /** `git hash-object` del contenido normalizado a LF (lo que `core.autocrlf=true` guarda en el blob). */
