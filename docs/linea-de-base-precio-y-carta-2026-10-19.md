@@ -35,7 +35,7 @@ Corrida del 2026-10-19 en un contenedor de 4 núcleos y 15 GB, contra Postgres 1
 Sobre el e2e: el único fallo fue `usuarios-invitacion.spec.ts:126` («con la sesión de la persona invitada…»: esperaba «Este enlace ya no sirve» al reusar el enlace). **Corrido solo, el archivo
 pasa 8 de 8**, así que depende del orden o del tiempo y no de un cambio de código; los 3 que no corrieron son del mismo archivo (dependen de ese test). Se toma como **falla intermitente
 preexistente**: si reaparece en el gate final de la ola no es una regresión de la ola. Condiciones del entorno: el navegador que busca Playwright (chromium 1243) no estaba instalado y se enlazó el
-instalado (Chromium 141); el rol de pruebas `motor2_app_pruebas` no estaba definido (los fixtures siembran con `motor2_app`, el aviso `[tests]` del log). Un primer intento del e2e falló entero
+instalado (Chromium 141); el rol de pruebas separado no estaba definido en esta máquina (los fixtures siembran con el rol de la app, es el aviso `[tests]` del log). Un primer intento del e2e falló entero
 (624 fallos) solo por el navegador faltante: no cuenta.
 
 Referencia para comparar al cierre de la ola: **13.298 tests** de Vitest y **676 tests** de Playwright (más los que agreguen las fases).
