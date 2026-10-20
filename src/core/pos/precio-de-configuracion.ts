@@ -3,6 +3,7 @@ import { totalDeLineas } from "@/core/moneda";
 import { componerPrecioDeLinea, entradaConPrecioDeCombinacion, validarOpcionesElegidas, type OpcionElegida, type OpcionParaPrecio, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import { combinacionElegida, combinacionesDesdeMostrar, type CombinacionesParaMostrar } from "./combinacion-elegida";
 import type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
+import { opcionParaPrecio } from "./opcion-para-precio";
 
 /**
  * Los PRECIOS PARA MOSTRAR de un producto con opciones (GO-2d): el «desde», el precio final de cada tamaño, la diferencia de cada variante, el recargo de cada adicional y el total
@@ -11,22 +12,9 @@ import type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
  *
  * La regla de cada precio es la MISMA que la venta (`armarLineaConfigurada`, `core/pos/linea-configurada.ts`): la diferencia del producto le gana a la de la opción; en un tamaño
  * con precio propio, la grilla de la sucursal le gana al precio del producto; la composición exacta es `componerPrecioDeLinea` y el descuento de producto va sobre la lista
- * compuesta, nunca sobre el adicional. `precioDeOpcion` es el espejo de su `opcionParaPrecio` (privada allá): la paridad la fija `test/pos/precio-de-configuracion.test.ts`, que
- * compara, para configuraciones al azar, este total con el de `armarLineaConfigurada`. NO decide lo que se cobra: al pedir, el servidor vuelve a armar la línea con lo vigente.
+ * compuesta, nunca sobre el adicional. El precio de cada opción es la MISMA función que usa la venta (`opcionParaPrecio`, `opcion-para-precio.ts`, que no importa
+ * `linea-configurada.ts`); la paridad la fija `test/pos/precio-de-configuracion.test.ts`, que compara, para configuraciones al azar, este total con el de `armarLineaConfigurada`. NO decide lo que se cobra: al pedir, el servidor vuelve a armar la línea con lo vigente.
  */
-
-/** El precio de una opción por prioridad, en la forma de `componerPrecioDeLinea` (espejo de `opcionParaPrecio` de `linea-configurada.ts`). */
-function precioDeOpcion(grupo: GrupoParaVender, opcion: OpcionParaVender, cantidad: number): OpcionParaPrecio {
-  const base = { opcionId: opcion.opcionId, versionDeOpcionId: opcion.versionVigenteId, nombre: opcion.nombre, tipo: grupo.tipo, cantidad };
-  if (grupo.tipo === "MEDIDA") {
-    if (grupo.modoPrecio === "ABSOLUTO") {
-      const precioDeSucursal = opcion.precioDeSucursal !== null;
-      return { ...base, factorEscala: opcion.factorEscala, modoPrecio: "ABSOLUTO", precioAbsoluto: precioDeSucursal ? opcion.precioDeSucursal : opcion.precioAbsoluto, precioDeSucursal, diferencia: null };
-    }
-    return { ...base, factorEscala: opcion.factorEscala, modoPrecio: grupo.modoPrecio, precioAbsoluto: null, diferencia: opcion.diferenciaDelProducto ?? opcion.diferenciaDeLaVersion };
-  }
-  return { ...base, factorEscala: opcion.factorEscala, modoPrecio: null, precioAbsoluto: opcion.precioAbsoluto, diferencia: opcion.esNinguna ? null : (opcion.diferenciaDelProducto ?? opcion.diferenciaDeLaVersion) };
-}
 
 /** Si una opción se puede elegir hoy en la sucursal: prendida para la empresa, admitida por el producto y no apagada (agotada) en la sucursal. */
 export function opcionDisponible(opcion: Pick<OpcionParaVender, "activa" | "admitida" | "apagadaEnSucursal">): boolean {
@@ -75,7 +63,7 @@ export interface ResumenDePrecios {
 
 /** Lo que aporta una sola opción, compuesta sola sobre el precio base (`null` si su precio no se compone: un tamaño sin precio, un modo de precio sin elegir). */
 function aporteDe(grupo: GrupoParaVender, opcion: OpcionParaVender, precioBase: number): { lista: number; diferencia: number } | null {
-  const r = componerPrecioDeLinea({ precioBase, cantidad: 1, opciones: [precioDeOpcion(grupo, opcion, 1)] });
+  const r = componerPrecioDeLinea({ precioBase, cantidad: 1, opciones: [opcionParaPrecio(grupo, opcion, 1)] });
   if (!r.ok) return null;
   if (grupo.tipo === "ADICIONAL") return { lista: r.precio.precioDeLista, diferencia: r.precio.adicionales[0]?.recargoUnitario ?? 0 };
   return { lista: r.precio.precioDeLista, diferencia: r.precio.dentroDelPrecio[0]?.importeUnitario ?? 0 };
@@ -105,7 +93,7 @@ export function resumenDePrecios(entrada: { grupos: readonly GrupoParaVender[]; 
     // Lo más barato de cada grupo obligatorio (un adicional va en su propia línea: no entra en el «desde» del producto).
     if (g.cantidadMinima > 0 && g.tipo !== "ADICIONAL" && conPrecio.length > 0) {
       const barata = conPrecio.reduce((a, b) => (b.aporte.lista < a.aporte.lista ? b : a));
-      if (!(barata.opcion.esNinguna && g.tipo === "MEDIDA")) masBaratas.push(precioDeOpcion(g, barata.opcion, 1));
+      if (!(barata.opcion.esNinguna && g.tipo === "MEDIDA")) masBaratas.push(opcionParaPrecio(g, barata.opcion, 1));
     }
     return {
       grupoId: g.grupoId,
@@ -169,7 +157,7 @@ export function vistaPreviaDeConfiguracion(entrada: {
     });
   const elegida = combinacionElegida(grupos, queCuentan, entrada.combinaciones ? combinacionesDesdeMostrar(entrada.combinaciones) : undefined);
   if (!elegida.ok) return { ok: false, codigo: elegida.codigo, mensaje: elegida.mensaje };
-  const entradaDePrecio = { precioBase, cantidad, opciones: queCuentan.map((e) => precioDeOpcion(e.grupo, e.opcion, e.cantidad)) };
+  const entradaDePrecio = { precioBase, cantidad, opciones: queCuentan.map((e) => opcionParaPrecio(e.grupo, e.opcion, e.cantidad)) };
   const r = componerPrecioDeLinea(elegida.precio === null ? entradaDePrecio : entradaConPrecioDeCombinacion(entradaDePrecio, elegida.precio, elegida.opcionesDeEjes));
   if (!r.ok) return { ok: false, codigo: r.codigo, mensaje: r.mensaje };
   const aplicado = aplicarDescuentoDeProducto(r.precio.precioDeLista, descuentoDeProducto);

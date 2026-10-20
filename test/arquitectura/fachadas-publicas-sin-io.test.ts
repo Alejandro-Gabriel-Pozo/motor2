@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve, dirname, sep } from "node:path";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { analizarFuente, delegadosDeModelos } from "../../scripts/arquitectura/analizar-fuente";
 
@@ -85,5 +86,46 @@ describe("las fachadas public.ts no hacen entrada/salida (C16)", () => {
   it("ninguna alcanza Prisma, una lectura/escritura de base, red, disco, servidor, React o node:crypto (lo que toca la base o el hash va en public-servidor.ts)", () => {
     const hallazgos = fachadas.flatMap(hallazgosDe).map((h) => `${h.fachada}: ${h.archivo} ${h.motivo} — llega por ${h.via}`);
     expect(hallazgos).toEqual([]);
+  });
+});
+
+/**
+ * Ola «precio y carta», Fase 2, C4: `core/pos/opcion-para-precio.ts` es la ÚNICA función del precio de una opción, para la venta (`linea-configurada.ts`) y para la vista
+ * previa del cliente (`precio-de-configuracion.ts`). De `linea-configurada.ts` (que arrastra `node:crypto`) no puede importar VALORES: ni un import de valor, ni uno de
+ * efecto, ni un `import { X }` sin `type` (que se borra al compilar solo mientras X se use como tipo); a lo sumo `import type` (hoy ni eso: `linea-configurada.ts` lo
+ * importa a él y la regla `sin-ciclos` de dependency-cruiser no deja ni un ciclo de solo tipos). La barrida de arriba lo cubre por transitividad; esto lo dice con nombre
+ * propio y fija que el archivo siga alcanzado desde `core/pos/public.ts` (si dejara de estarlo, la barrida no lo miraría).
+ */
+describe("core/pos/opcion-para-precio.ts no importa valores de linea-configurada.ts (C4)", () => {
+  const ARCHIVO = join(SRC, "core/pos/opcion-para-precio.ts");
+  const LINEA_CONFIGURADA = join(SRC, "core/pos/linea-configurada.ts");
+
+  it("está alcanzado desde core/pos/public.ts por imports de valor (lo mira la barrida C16)", () => {
+    const visto = new Set<string>();
+    const cola = [join(SRC, "core/pos/public.ts")];
+    while (cola.length) {
+      const archivo = cola.shift()!;
+      if (visto.has(archivo)) continue;
+      visto.add(archivo);
+      for (const e of analizarFuente(readFileSync(archivo, "utf8"), archivo, DELEGADOS).importsDeValor) {
+        const destino = resolverImport(archivo, e);
+        if (destino) cola.push(destino);
+      }
+    }
+    expect(visto.has(ARCHIVO)).toBe(true);
+  });
+
+  it("cada import o reexport que apunta a linea-configurada.ts es `import type` / `export type`", () => {
+    const fuente = ts.createSourceFile(ARCHIVO, readFileSync(ARCHIVO, "utf8"), ts.ScriptTarget.Latest, true);
+    const deValor: string[] = [];
+    for (const sentencia of fuente.statements) {
+      const esImport = ts.isImportDeclaration(sentencia);
+      if (!esImport && !ts.isExportDeclaration(sentencia)) continue;
+      const especificador = sentencia.moduleSpecifier;
+      if (!especificador || !ts.isStringLiteral(especificador) || resolverImport(ARCHIVO, especificador.text) !== LINEA_CONFIGURADA) continue;
+      const soloTipo = esImport ? sentencia.importClause?.isTypeOnly === true : sentencia.isTypeOnly;
+      if (!soloTipo) deValor.push(sentencia.getText(fuente));
+    }
+    expect(deValor).toEqual([]);
   });
 });

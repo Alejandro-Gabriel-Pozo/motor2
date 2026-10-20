@@ -2,6 +2,7 @@ import { aplicarDescuentoDeProducto } from "@/core/carta/public";
 import { consumoDeLineaConfigurada, type ConsumoDeOpcionParaVender, type CodigoDeErrorDeConsumo, type OpcionConConsumo } from "@/core/movimientos/public";
 import { huellaDeOpciones } from "@/core/opciones/public-servidor";
 import { combinacionElegida, type CombinacionesDelProducto, type PrecioDeCombinacionVendible } from "./combinacion-elegida";
+import { opcionParaPrecio } from "./opcion-para-precio";
 import {
   componerPrecioDeLinea,
   entradaConPrecioDeCombinacion,
@@ -12,7 +13,6 @@ import {
   type GrupoPermitido,
   type ModoDePrecioDeMedida,
   type OpcionElegida,
-  type OpcionParaPrecio,
   type OpcionPermitida,
   type TipoDeDiferencia,
   type TipoDeGrupoDeOpciones,
@@ -144,21 +144,6 @@ export interface EntradaLineaConfigurada {
    * hace falta y la línea es exactamente la de siempre.
    */
   combinaciones?: CombinacionesDelProducto;
-}
-
-/** El precio de una opción por prioridad (ver el docstring del módulo), en la forma que pide `componerPrecioDeLinea`. */
-function opcionParaPrecio(grupo: GrupoParaVender, opcion: OpcionParaVender, cantidad: number): OpcionParaPrecio {
-  const base = { opcionId: opcion.opcionId, versionDeOpcionId: opcion.versionVigenteId, nombre: opcion.nombre, tipo: grupo.tipo, cantidad };
-  if (grupo.tipo === "MEDIDA") {
-    if (grupo.modoPrecio === "ABSOLUTO") {
-      const precioDeSucursal = opcion.precioDeSucursal !== null;
-      return { ...base, factorEscala: opcion.factorEscala, modoPrecio: "ABSOLUTO", precioAbsoluto: precioDeSucursal ? opcion.precioDeSucursal : opcion.precioAbsoluto, precioDeSucursal, diferencia: null };
-    }
-    return { ...base, factorEscala: opcion.factorEscala, modoPrecio: grupo.modoPrecio, precioAbsoluto: null, diferencia: opcion.diferenciaDelProducto ?? opcion.diferenciaDeLaVersion };
-  }
-  // «Ninguna» en VARIANTE o INCLUIDA: importe 0, sin diferencia. Un precio absoluto en algo que no es MEDIDA es una configuración inválida: se pasa para que la
-  // composición lo rechace (`PRECIO_DE_OPCION_INVALIDO`), nunca se ignora en silencio. El factor de una versión que no es MEDIDA, ídem.
-  return { ...base, factorEscala: opcion.factorEscala, modoPrecio: null, precioAbsoluto: opcion.precioAbsoluto, diferencia: opcion.esNinguna ? null : (opcion.diferenciaDelProducto ?? opcion.diferenciaDeLaVersion) };
 }
 
 export function armarLineaConfigurada(entrada: EntradaLineaConfigurada): ResultadoLineaConfigurada {
