@@ -40,7 +40,6 @@ const RE_CASO_DE_USO = /^src\/server\/actions\/[^/]+\/casos-de-uso\/[^/]+\.ts$/;
 const SIN_CONTROL = "Deuda de la ola precio y carta (Fase 2):";
 
 const MOTIVOS: Readonly<Record<string, string>> = {
-  "src/server/actions/carta/casos-de-uso/guardar-precio-local-promo-carta.ts": `${SIN_CONTROL} guarda el precio local de una promo en la sucursal sin precio visto.`,
   "src/server/actions/movimientos/casos-de-uso/guardar-precio-local-en-tx.ts": `${SIN_CONTROL} paso compartido que escribe el precio local; el control lo pone solo uno de sus llamadores (ajustar-precios-de-la-carta), no él.`,
 };
 

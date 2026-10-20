@@ -389,6 +389,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   // Los hermanos de UN ítem agrupado de la carta: el PV (en el mundo, la única opción del ítem).
   // `preciosVistos` (ola «precio y carta», Fase 2, A5): el precio de venta que «vio» la pantalla, el del PV del mundo (1000).
   "accion|actions/catalogo/productos.ts|sincronizarPrecioGrupoCarta": { productoIds: (k) => [k.productoPvId], preciosVistos: (k) => ({ [k.productoPvId]: 1000 }) },
+  // El precio de la promo en esta sucursal que «vio» la pantalla (ola «precio y carta», Fase 2, A6): el del mundo en la sucursal propia (4000). No lleva ids.
+  "accion|actions/carta/promos.ts|guardarPrecioLocalPromoCarta": { precioVisto: () => 4000 },
   // El precio local que «vio» la pantalla (ola «precio y carta», Fase 2, A2): el del mundo en la sucursal propia (1234, habilitado). No lleva ids.
   "accion|actions/movimientos/precio-local.ts|setPrecioLocalProducto": { esperado: () => ({ precio: 1234, habilitado: true }) },
   "accion|actions/catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": { sucursalOrigenId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },

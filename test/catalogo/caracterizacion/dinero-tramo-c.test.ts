@@ -301,7 +301,7 @@ describe("Huella de dinero del tramo C", () => {
     enCentral();
     await paso("promo: precio local del Menú en Central", await guardarPrecioLocalPromoCarta(menu.id, 9000));
     await paso("promo: el mismo precio local (sin auditoría)", await guardarPrecioLocalPromoCarta(menu.id, "9000"));
-    await paso("promo: precio local vacío vuelve al de la empresa", await guardarPrecioLocalPromoCarta(menu.id, ""));
+    await paso("promo: precio local vacío vuelve al de la empresa", await guardarPrecioLocalPromoCarta(menu.id, "", 9000));
     await paso("promo: precio local de una inexistente", await guardarPrecioLocalPromoCarta("no-existe", 100));
     await paso("promo: precio local inválido", await guardarPrecioLocalPromoCarta(menu.id, "-3"));
     await paso(

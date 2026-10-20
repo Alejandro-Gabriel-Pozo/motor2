@@ -4,6 +4,7 @@ import { mensajePisoDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-pr
 import { seleccionDeSucursalDePromo } from "@/core/carta/promo-sucursal";
 import type { ComandoGuardarPrecioLocalPromoCarta, ResultadoGuardarPrecioLocalPromoCarta } from "@/core/features/carta/promos.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
+import { mismosCentavos } from "@/core/datos/importe";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { fijarPrecioLocalDePromo } from "@/server/persistencia/carta/promos";
@@ -22,18 +23,22 @@ import { fijarPrecioLocalDePromo } from "@/server/persistencia/carta/promos";
  * `null` o vacío = vuelve al precio de la empresa. Si la sucursal todavía no la ofrece, la fila se crea APAGADA (`fijarPrecioLocalDePromo`): el precio queda
  * guardado pero no la prende (prender es otra acción, con su propia clave).
  *
- * @contract Deja el precio de la promo en la sucursal activa (o ninguno), con su registro de auditoría si cambió: los dos o ninguno.
- * @idempotency No aplica — repetir el pedido vuelve a escribir el mismo precio (sin fila de auditoría nueva: se compara con el anterior).
+ * Control del VALOR VISTO (ola «precio y carta», Fase 2, paso A6): si la fila de la sucursal ya existe y ya tiene el precio pedido (al centavo, o los dos «el de la empresa»), éxito SIN escribir
+ * (el mismo pedido repetido: un solo cambio, con el mismo mensaje). Si no, el precio que mostraba la pantalla (`precioVisto`, `null` = no tenía) tiene que ser el de la base; si otra persona lo
+ * cambió, `PRECIO_DESACTUALIZADO` sin escribir. Sin fila, el atajo no aplica: se sigue creando apagada aunque el precio sea nulo (como siempre).
+ *
+ * @contract Deja el precio de la promo en la sucursal activa (o ninguno), con su registro de auditoría si cambió: los dos o ninguno; si el precio cambió desde que se cargó la pantalla, no escribe nada.
+ * @idempotency Optimista — el precio visto se compara dentro de la transacción; repetir el mismo pedido no escribe ni audita, y con un precio visto viejo da `PRECIO_DESACTUALIZADO`.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento; M14 / S-51): la promo con sus cupos, el piso, el precio anterior, la escritura y su auditoría, todo junto.
  * @sideEffects registrarCambioAuditado (PromoCartaSucursal.precioLocal, del anterior al nuevo), en la misma transacción. La revalidación de la carta pública la
  *   hace la Server Action cuando sale bien.
- * @ficha permiso=carta_promo_precio_local transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=carta_promo_precio_local transaccion=SERIALIZABLE idempotencia=OPTIMISTA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function guardarPrecioLocalPromoCartaCasoDeUso(
   actor: Pick<ContextoUsuario, "transaccion" | "usuarioId" | "sucursalId">,
   comando: ComandoGuardarPrecioLocalPromoCarta,
 ): Promise<ResultadoGuardarPrecioLocalPromoCarta> {
-  const { promoCartaId, precio } = comando;
+  const { promoCartaId, precio, precioVisto } = comando;
   // M14 (S-51): la promo con sus cupos, el piso, el precio anterior, la escritura y la auditoría van en UNA transacción SERIALIZABLE (antes la promo y sus cupos se leían con `actor.db`, afuera):
   // si `guardarCuposPromoCarta` cambia los cupos a la vez, uno de los dos aborta (40001) y el reintento relee. Los rechazos devuelven ANTES de escribir.
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoGuardarPrecioLocalPromoCarta> => {
@@ -51,7 +56,16 @@ export async function guardarPrecioLocalPromoCartaCasoDeUso(
     }
     // El precio anterior se lee por la relación de la promo (el embudo `seleccionDeSucursalDePromo`, ver promo-sucursal-en-un-solo-lugar.test.ts), en la misma transacción que lo cambia.
     const previa = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, select: { sucursales: seleccionDeSucursalDePromo(actor.sucursalId) } });
-    const precioAnterior = previa?.sucursales[0]?.precioLocal != null ? Number(previa.sucursales[0].precioLocal) : null;
+    const fila = previa?.sucursales[0];
+    const precioAnterior = fila?.precioLocal != null ? Number(fila.precioLocal) : null;
+    const listo = exito(valor === null ? `"${promo.titulo}" vuelve al precio de la empresa en esta sucursal.` : `Precio de "${promo.titulo}" en esta sucursal: $${valor}.`, null);
+    // Control del valor visto (A6): ya estaba así (solo con la fila: sin ella, se crea apagada como siempre) → nada que escribir; si no, lo que vio la pantalla tiene que ser lo que hay.
+    if (fila && mismosCentavos(precioAnterior, valor)) return listo;
+    if (!precioVisto.ok) return fracaso("PRECIO_INVALIDO", precioVisto.mensaje);
+    if (!mismosCentavos(precioAnterior, precioVisto.valor)) {
+      const ahora = precioAnterior === null ? "ahora rige el de la empresa" : `ahora es $${precioAnterior.toLocaleString("es-AR")}`;
+      return fracaso("PRECIO_DESACTUALIZADO", `El precio de "${promo.titulo}" en esta sucursal cambió mientras lo editabas (${ahora}). Recargá la pantalla y volvé a hacer el cambio.`);
+    }
     await fijarPrecioLocalDePromo(tx, { promoCartaId, sucursalId: actor.sucursalId, precioLocal: valor });
     if (precioAnterior !== valor) {
       await registrarCambioAuditado(tx, {
@@ -65,6 +79,6 @@ export async function guardarPrecioLocalPromoCartaCasoDeUso(
         sucursalId: actor.sucursalId,
       });
     }
-    return exito(valor === null ? `"${promo.titulo}" vuelve al precio de la empresa en esta sucursal.` : `Precio de "${promo.titulo}" en esta sucursal: $${valor}.`, null);
+    return listo;
   });
 }

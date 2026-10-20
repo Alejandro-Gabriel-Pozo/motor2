@@ -79,6 +79,8 @@ export default async function PromocionesDeCartaPage() {
         <ul className="flex flex-col gap-2">
           {datos.promos.map((pr) => {
             const id = pr.id;
+            // El precio de esta sucursal que muestra el formulario (lo que vio quien guarda: si otra persona lo cambió en el medio, la acción no lo pisa y pide recargar).
+            const precioLocalVisto = pr.precioLocal;
             const activa = pr.activa;
             const prendidaAca = pr.prendidaAca;
             const combo = combos.porPromo[pr.id] ?? { lugares: [], vigencia: { version: 1, vigenteDesde: null, vigenteHasta: null, diasDeSemana: null } };
@@ -134,7 +136,7 @@ export default async function PromocionesDeCartaPage() {
                       accion={async (fd: FormData) => {
                         "use server";
                         const texto = campo(fd, "precioLocal").trim();
-                        return refrescarSiOk(await guardarPrecioLocalPromoCarta(id, texto === "" ? null : texto));
+                        return refrescarSiOk(await guardarPrecioLocalPromoCarta(id, texto === "" ? null : texto, precioLocalVisto));
                       }}
                       className="mt-3 flex flex-wrap items-end gap-2"
                     >
