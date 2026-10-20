@@ -1,0 +1,900 @@
+# Línea de base de navegador (Fase 0 de la ola «precio y carta»): el texto visible de la carta pública y del catálogo de opciones HOY. Foto de hoy, no aprobación.
+# Catálogo de referencia (test/e2e/fixtures/siembra-precio-y-carta.ts) en la sucursal dedicada «LB Precio y carta». Regenerar a propósito: REGENERAR_LB_PRECIO_Y_CARTA=1.
+
+## CARTA PÚBLICA a 375 px (/carta-publica/e2e/lb-precio-y-carta)
+### Barra superior
+  enlace «← MENÚ»
+  botón «Imprimir carta»
+### Páginas del deslizador (en orden): portada · índice · sección · sección · sección · sección
+### Índice
+  título «Índice»
+  01 Pizzas
+  02 Platos
+  03 Cafetería
+  04 Bebidas
+### Sección «Pizzas» (banda «01 / 04»)
+  ÍTEM «Pizzas» · precio del renglón: (ninguno)
+    lista de tamaños «Tipos de Pizza»: Pizza muzzarella … $18.000 | Pizza de verduras asadas … $20.000 | Pizza fugazzeta … $22.000 | Pizza napolitana … $22.000 | Pizza con papas fritas … $25.000 | Pizza bomba … $25.000
+    texto visible: «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000» «Pizza bomba» «$25.000»
+### Sección «Platos» (banda «02 / 04»)
+  ÍTEM «Milanesas» · precio del renglón: (ninguno)
+    lista de tamaños «Tipo de Milanesa»: Simple … $20.000 | Napolitana … $25.000
+    pastillas «Milanesas de» (lista «Milanesas de»): Carne | Pollo
+    texto visible: «Milanesas» «Simple» «$20.000» «Napolitana» «$25.000» «Milanesas de» «Carne» «Pollo»
+  ÍTEM «Bife a la criolla» · precio del renglón: «$20.000»
+    pastillas «Guarnicion» (lista «Guarnicion»): Ensalada | Papas fritas | Puré
+    adicionales: «Adicionales: Extra de papas +$2.000 · Huevo frito +$1.500»
+    texto visible: «Bife a la criolla» «$20.000» «Guarnicion» «Ensalada» «Papas fritas» «Puré» «Adicionales: Extra de papas +$2.000 · Huevo frito +$1.500»
+  ÍTEM «Wok de verduras» · precio del renglón: «$19.000»
+    texto visible: «Wok de verduras» «$19.000»
+### Sección «Cafetería» (banda «03 / 04»)
+  ÍTEM «Café» · precio del renglón: (ninguno)
+    lista de tamaños «Tamaño del Café»: Chico … $4.000 | Mediano … $4.100 | Grande … $4.300
+    pastillas «Preparación del café» (lista «Preparación del café»): Solo | Cortado
+    adicionales: «Adicionales: Lágrima +$200 · Con leche +$300»
+    texto visible: «Café» «Chico» «$4.000» «Mediano» «$4.100» «Grande» «$4.300» «Preparación del café» «Solo» «Cortado» «Adicionales: Lágrima +$200 · Con leche +$300»
+### Sección «Bebidas» (banda «04 / 04»)
+  ÍTEM «Gaseosa 500 cc» · precio del renglón: «$4.000»
+    texto visible: «Gaseosa 500 cc» «$4.000»
+### Barra de navegación (en la portada)
+  botón «Página anterior» (deshabilitado)
+  botón «Página siguiente»
+### Texto plano de cada página (innerText, una línea por renglón)
+  [1 portada] «L» «LB Precio y carta»
+  [2 índice] «Índice» «01» «Pizzas» «02» «Platos» «03» «Cafetería» «04» «Bebidas»
+  [3 sección] «01 / 04» «Pizzas» «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000» «Pizza bomba» «$25.000»
+  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple» «$20.000» «Napolitana» «$25.000» «Milanesas de» «Carne» «Pollo» «Bife a la criolla» «$20.000» «Guarnicion» «Ensalada» «Papas fritas» «Puré» «Adicionales: Extra de papas +$2.000 · Huevo frito +$1.500» «Wok de verduras» «$19.000»
+  [5 sección] «03 / 04» «Cafetería» «Café» «Chico» «$4.000» «Mediano» «$4.100» «Grande» «$4.300» «Preparación del café» «Solo» «Cortado» «Adicionales: Lágrima +$200 · Con leche +$300»
+  [6 sección] «04 / 04» «Bebidas» «Gaseosa 500 cc» «$4.000»
+### Tipografía computada (getComputedStyle: fontSize / fontWeight) — FOTO DE HOY, NO APROBACIÓN: es la escala que la Fase 5 va a unificar
+  barra superior · volver (enlace): 12px / 300
+  portada · nombre (h1): 27.2px / 500
+  índice · título (h1): 19.2px / 500
+  índice · número de la sección: 11px / 300
+  índice · nombre de la sección: 13.12px / 500
+  banda · etiqueta «01 / NN» (p): 11px / 300
+  banda · título de la sección (h2): 15.2px / 500
+  ítem con lista de tamaños «Pizzas» · nombre (h3): 19px / 600
+  lista de tamaños «Pizzas» · fila (li): 17px / 400
+  lista de tamaños «Pizzas» · nombre del tamaño: 17px / 400
+  lista de tamaños «Pizzas» · precio del tamaño: 17px / 700
+  pastillas «Milanesas» · nombre del grupo (p): 14.5px / 600
+  pastillas «Milanesas» · pastilla (li): 15px / 400
+  ítem con opciones y precio en el renglón «Bife a la criolla» · nombre (h3): 19px / 600
+  ítem con opciones y precio en el renglón «Bife a la criolla» · precio del renglón: 19px / 600
+  adicionales «Bife a la criolla» · línea (p): 16px / 400
+  adicionales «Bife a la criolla» · «Adicionales:» (strong): 16px / 600
+  ítem sin opciones «Wok de verduras» · nombre (h3): 14.08px / 600
+  ítem sin opciones «Wok de verduras» · precio del renglón: 14.08px / 600
+
+## CARTA PÚBLICA a 1280 px (/carta-publica/e2e/lb-precio-y-carta)
+### Barra superior
+  enlace «← MENÚ»
+  botón «Imprimir carta»
+### Páginas del deslizador (en orden): portada · índice · sección · sección · sección · sección
+### Índice
+  título «Índice»
+  01 Pizzas
+  02 Platos
+  03 Cafetería
+  04 Bebidas
+### Sección «Pizzas» (banda «01 / 04»)
+  ÍTEM «Pizzas» · precio del renglón: (ninguno)
+    lista de tamaños «Tipos de Pizza»: Pizza muzzarella … $18.000 | Pizza de verduras asadas … $20.000 | Pizza fugazzeta … $22.000 | Pizza napolitana … $22.000 | Pizza con papas fritas … $25.000 | Pizza bomba … $25.000
+    texto visible: «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000» «Pizza bomba» «$25.000»
+### Sección «Platos» (banda «02 / 04»)
+  ÍTEM «Milanesas» · precio del renglón: (ninguno)
+    lista de tamaños «Tipo de Milanesa»: Simple … $20.000 | Napolitana … $25.000
+    pastillas «Milanesas de» (lista «Milanesas de»): Carne | Pollo
+    texto visible: «Milanesas» «Simple» «$20.000» «Napolitana» «$25.000» «Milanesas de» «Carne» «Pollo»
+  ÍTEM «Bife a la criolla» · precio del renglón: «$20.000»
+    pastillas «Guarnicion» (lista «Guarnicion»): Ensalada | Papas fritas | Puré
+    adicionales: «Adicionales: Extra de papas +$2.000 · Huevo frito +$1.500»
+    texto visible: «Bife a la criolla» «$20.000» «Guarnicion» «Ensalada» «Papas fritas» «Puré» «Adicionales: Extra de papas +$2.000 · Huevo frito +$1.500»
+  ÍTEM «Wok de verduras» · precio del renglón: «$19.000»
+    texto visible: «Wok de verduras» «$19.000»
+### Sección «Cafetería» (banda «03 / 04»)
+  ÍTEM «Café» · precio del renglón: (ninguno)
+    lista de tamaños «Tamaño del Café»: Chico … $4.000 | Mediano … $4.100 | Grande … $4.300
+    pastillas «Preparación del café» (lista «Preparación del café»): Solo | Cortado
+    adicionales: «Adicionales: Lágrima +$200 · Con leche +$300»
+    texto visible: «Café» «Chico» «$4.000» «Mediano» «$4.100» «Grande» «$4.300» «Preparación del café» «Solo» «Cortado» «Adicionales: Lágrima +$200 · Con leche +$300»
+### Sección «Bebidas» (banda «04 / 04»)
+  ÍTEM «Gaseosa 500 cc» · precio del renglón: «$4.000»
+    texto visible: «Gaseosa 500 cc» «$4.000»
+### Barra de navegación (en la portada)
+  botón «Página anterior» (deshabilitado)
+  botón «Página siguiente»
+### Texto plano de cada página (innerText, una línea por renglón)
+  [1 portada] «L» «LB Precio y carta»
+  [2 índice] «Índice» «01» «Pizzas» «02» «Platos» «03» «Cafetería» «04» «Bebidas»
+  [3 sección] «01 / 04» «Pizzas» «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000» «Pizza bomba» «$25.000»
+  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple» «$20.000» «Napolitana» «$25.000» «Milanesas de» «Carne» «Pollo» «Bife a la criolla» «$20.000» «Guarnicion» «Ensalada» «Papas fritas» «Puré» «Adicionales: Extra de papas +$2.000 · Huevo frito +$1.500» «Wok de verduras» «$19.000»
+  [5 sección] «03 / 04» «Cafetería» «Café» «Chico» «$4.000» «Mediano» «$4.100» «Grande» «$4.300» «Preparación del café» «Solo» «Cortado» «Adicionales: Lágrima +$200 · Con leche +$300»
+  [6 sección] «04 / 04» «Bebidas» «Gaseosa 500 cc» «$4.000»
+### Tipografía computada (getComputedStyle: fontSize / fontWeight) — FOTO DE HOY, NO APROBACIÓN: es la escala que la Fase 5 va a unificar
+  barra superior · volver (enlace): 12px / 300
+  portada · nombre (h1): 33.6px / 500
+  índice · título (h1): 28px / 500
+  índice · número de la sección: 11px / 300
+  índice · nombre de la sección: 15.2px / 500
+  banda · etiqueta «01 / NN» (p): 11px / 300
+  banda · título de la sección (h2): 22.8px / 500
+  ítem con lista de tamaños «Pizzas» · nombre (h3): 19px / 600
+  lista de tamaños «Pizzas» · fila (li): 17px / 400
+  lista de tamaños «Pizzas» · nombre del tamaño: 17px / 400
+  lista de tamaños «Pizzas» · precio del tamaño: 17px / 700
+  pastillas «Milanesas» · nombre del grupo (p): 14.5px / 600
+  pastillas «Milanesas» · pastilla (li): 15px / 400
+  ítem con opciones y precio en el renglón «Bife a la criolla» · nombre (h3): 19px / 600
+  ítem con opciones y precio en el renglón «Bife a la criolla» · precio del renglón: 19px / 600
+  adicionales «Bife a la criolla» · línea (p): 16px / 400
+  adicionales «Bife a la criolla» · «Adicionales:» (strong): 16px / 600
+  ítem sin opciones «Wok de verduras» · nombre (h3): 14.08px / 600
+  ítem sin opciones «Wok de verduras» · precio del renglón: 14.08px / 600
+
+## ADMINISTRACIÓN a 1280 px: Opciones de venta del producto «Pizzas» (/catalogo/productos/<id de Pizzas>/opciones)
+  [enlace: ← Pizzas]
+  # Opciones de venta de «Pizzas»
+  Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en [enlace: Opciones de venta]. Las combinaciones (un precio o una receta propia para «grande con almendras») se arman en [enlace: Combinaciones].
+  ## Agregar grupo
+  Grupo
+  [selección: Elegí un grupo]
+  [botón: Agregar]
+  Al agregarlo, marcá abajo qué opciones de ese grupo admite este producto.
+  ## Tipos de Pizza
+  Tamaño · del grupo: Elegí 1
+  Orden en el producto
+  [campo: «0»]
+  Cómo se cobra el tamaño en este producto
+  [x]
+  Precio propio por tamaño
+  [ ]
+  Diferencia sobre el precio base
+  [lector: Opciones de Tipos de Pizza en este producto]
+  Opción Precio en este producto
+  [x]
+  Pizza muzzarella
+  [lector: Precio de Pizza muzzarella en este producto]
+  $
+  [campo: «18.000»]
+  [x]
+  Pizza de verduras asadas
+  [lector: Precio de Pizza de verduras asadas en este producto]
+  $
+  [campo: «20.000»]
+  [x]
+  Pizza fugazzeta
+  [lector: Precio de Pizza fugazzeta en este producto]
+  $
+  [campo: «22.000»]
+  [x]
+  Pizza napolitana
+  [lector: Precio de Pizza napolitana en este producto]
+  $
+  [campo: «22.000»]
+  [x]
+  Pizza con papas fritas
+  [lector: Precio de Pizza con papas fritas en este producto]
+  $
+  [campo: «25.000»]
+  [x]
+  Pizza bomba
+  [lector: Precio de Pizza bomba en este producto]
+  $
+  [campo: «25.000»]
+  [botón: Guardar «Tipos de Pizza»]
+  [botón: Quitar de este producto (lector: «Quitar Tipos de Pizza de este producto»)]
+  No se borra nada: lo que admite de cada opción queda guardado.
+  ## [lector: Así se cobra]
+  Así se cobra en «LB Precio y carta» (precio de lista, sin descuentos) · desde $ 18.000
+  Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000 · Pizza de verduras asadas $ 20.000 · Pizza fugazzeta $ 22.000 · Pizza napolitana $ 22.000 · Pizza con papas fritas $ 25.000 · Pizza bomba $ 25.000
+
+## ADMINISTRACIÓN a 375 px: Opciones de venta del producto «Pizzas» (/catalogo/productos/<id de Pizzas>/opciones)
+  [enlace: ← Pizzas]
+  # Opciones de venta de «Pizzas»
+  Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en [enlace: Opciones de venta]. Las combinaciones (un precio o una receta propia para «grande con almendras») se arman en [enlace: Combinaciones].
+  ## Agregar grupo
+  Grupo
+  [selección: Elegí un grupo]
+  [botón: Agregar]
+  Al agregarlo, marcá abajo qué opciones de ese grupo admite este producto.
+  ## Tipos de Pizza
+  Tamaño · del grupo: Elegí 1
+  Orden en el producto
+  [campo: «0»]
+  Cómo se cobra el tamaño en este producto
+  [x]
+  Precio propio por tamaño
+  [ ]
+  Diferencia sobre el precio base
+  [lector: Opciones de Tipos de Pizza en este producto]
+  Opción Precio en este producto
+  [x]
+  Pizza muzzarella
+  [lector: Precio de Pizza muzzarella en este producto]
+  $
+  [campo: «18.000»]
+  [x]
+  Pizza de verduras asadas
+  [lector: Precio de Pizza de verduras asadas en este producto]
+  $
+  [campo: «20.000»]
+  [x]
+  Pizza fugazzeta
+  [lector: Precio de Pizza fugazzeta en este producto]
+  $
+  [campo: «22.000»]
+  [x]
+  Pizza napolitana
+  [lector: Precio de Pizza napolitana en este producto]
+  $
+  [campo: «22.000»]
+  [x]
+  Pizza con papas fritas
+  [lector: Precio de Pizza con papas fritas en este producto]
+  $
+  [campo: «25.000»]
+  [x]
+  Pizza bomba
+  [lector: Precio de Pizza bomba en este producto]
+  $
+  [campo: «25.000»]
+  [botón: Guardar «Tipos de Pizza»]
+  [botón: Quitar de este producto (lector: «Quitar Tipos de Pizza de este producto»)]
+  No se borra nada: lo que admite de cada opción queda guardado.
+  ## [lector: Así se cobra]
+  Así se cobra en «LB Precio y carta» (precio de lista, sin descuentos) · desde $ 18.000
+  Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000 · Pizza de verduras asadas $ 20.000 · Pizza fugazzeta $ 22.000 · Pizza napolitana $ 22.000 · Pizza con papas fritas $ 25.000 · Pizza bomba $ 25.000
+
+## ADMINISTRACIÓN a 1280 px: Grupo de opciones «Tipos de Pizza» (/catalogo/opciones/<id de Tipos de Pizza>)
+  [enlace: ← Opciones de venta]
+  # Tipos de Pizza
+  Tamaño (el tipo no se puede cambiar) · Elegí 1 · En uso
+  ## Datos del grupo
+  Nombre
+  [campo: «Tipos de Pizza»]
+  Mínimo a elegir
+  [campo: «1», solo lectura]
+  Máximo a elegir
+  [campo: «1», solo lectura]
+  Un tamaño se elige siempre una vez: mínimo 1 y máximo 1.
+  [botón: Guardar]
+  [botón: Archivar grupo (lector: «Archivar el grupo Tipos de Pizza»)]
+  Lo usa 1 producto: archivado, no se ofrece en ninguno y, como es obligatorio, esos productos no se van a poder vender. Se restaura con un toque desde «Archivados».
+  ## Opciones
+  Pizza muzzarella
+  Mismo precio
+  Consumo: sin consumo propio
+  Rige desde «fecha» · cargó alguien sin nombre cargado
+  [lector: Nombre de Pizza muzzarella]
+  [campo: «Pizza muzzarella»]
+  [botón: Renombrar (lector: «Renombrar Pizza muzzarella»)]
+  [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza muzzarella»)]
+  [botón: Archivar (lector: «Archivar Pizza muzzarella»)]
+  Pizza de verduras asadas
+  Mismo precio
+  Consumo: sin consumo propio
+  Rige desde «fecha» · cargó alguien sin nombre cargado
+  [lector: Nombre de Pizza de verduras asadas]
+  [campo: «Pizza de verduras asadas»]
+  [botón: Renombrar (lector: «Renombrar Pizza de verduras asadas»)]
+  [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza de verduras asadas»)]
+  [botón: Archivar (lector: «Archivar Pizza de verduras asadas»)]
+  Pizza fugazzeta
+  Mismo precio
+  Consumo: sin consumo propio
+  Rige desde «fecha» · cargó alguien sin nombre cargado
+  [lector: Nombre de Pizza fugazzeta]
+  [campo: «Pizza fugazzeta»]
+  [botón: Renombrar (lector: «Renombrar Pizza fugazzeta»)]
+  [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza fugazzeta»)]
+  [botón: Archivar (lector: «Archivar Pizza fugazzeta»)]
+  Pizza napolitana
+  Mismo precio
+  Consumo: sin consumo propio
+  Rige desde «fecha» · cargó alguien sin nombre cargado
+  [lector: Nombre de Pizza napolitana]
+  [campo: «Pizza napolitana»]
+  [botón: Renombrar (lector: «Renombrar Pizza napolitana»)]
+  [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza napolitana»)]
+  [botón: Archivar (lector: «Archivar Pizza napolitana»)]
+  Pizza con papas fritas
+  Mismo precio
+  Consumo: sin consumo propio
+  Rige desde «fecha» · cargó alguien sin nombre cargado
+  [lector: Nombre de Pizza con papas fritas]
+  [campo: «Pizza con papas fritas»]
+  [botón: Renombrar (lector: «Renombrar Pizza con papas fritas»)]
+  [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza con papas fritas»)]
+  [botón: Archivar (lector: «Archivar Pizza con papas fritas»)]
+  Pizza bomba
+  Mismo precio
+  Consumo: sin consumo propio
+  Rige desde «fecha» · cargó alguien sin nombre cargado
+  [lector: Nombre de Pizza bomba]
+  [campo: «Pizza bomba»]
+  [botón: Renombrar (lector: «Renombrar Pizza bomba»)]
+  [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza bomba»)]
+  [botón: Archivar (lector: «Archivar Pizza bomba»)]
+  [botón: Ordenar opciones]
+  [botón: + Agregar opción]
+  ## Productos que lo usan
+  [enlace: Pizzas]
+
+## ADMINISTRACIÓN a 375 px: Grupo de opciones «Tipos de Pizza» (/catalogo/opciones/<id de Tipos de Pizza>)
+  [enlace: ← Opciones de venta]
+  # Tipos de Pizza
+  Tamaño (el tipo no se puede cambiar) · Elegí 1 · En uso
+  ## Datos del grupo
+  Nombre
+  [campo: «Tipos de Pizza»]
+  Mínimo a elegir
+  [campo: «1», solo lectura]
+  Máximo a elegir
+  [campo: «1», solo lectura]
+  Un tamaño se elige siempre una vez: mínimo 1 y máximo 1.
+  [botón: Guardar]
+  [botón: Archivar grupo (lector: «Archivar el grupo Tipos de Pizza»)]
+  Lo usa 1 producto: archivado, no se ofrece en ninguno y, como es obligatorio, esos productos no se van a poder vender. Se restaura con un toque desde «Archivados».
+  ## Opciones
+  Pizza muzzarella
+  Mismo precio
+  Consumo: sin consumo propio
+  Rige desde «fecha» · cargó alguien sin nombre cargado
+  [lector: Nombre de Pizza muzzarella]
+  [campo: «Pizza muzzarella»]
+  [botón: Renombrar (lector: «Renombrar Pizza muzzarella»)]
+  [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza muzzarella»)]
+  [botón: Archivar (lector: «Archivar Pizza muzzarella»)]
+  Pizza de verduras asadas
+  Mismo precio
+  Consumo: sin consumo propio
+  Rige desde «fecha» · cargó alguien sin nombre cargado
+  [lector: Nombre de Pizza de verduras asadas]
+  [campo: «Pizza de verduras asadas»]
+  [botón: Renombrar (lector: «Renombrar Pizza de verduras asadas»)]
+  [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza de verduras asadas»)]
+  [botón: Archivar (lector: «Archivar Pizza de verduras asadas»)]
+  Pizza fugazzeta
+  Mismo precio
+  Consumo: sin consumo propio
+  Rige desde «fecha» · cargó alguien sin nombre cargado
+  [lector: Nombre de Pizza fugazzeta]
+  [campo: «Pizza fugazzeta»]
+  [botón: Renombrar (lector: «Renombrar Pizza fugazzeta»)]
+  [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza fugazzeta»)]
+  [botón: Archivar (lector: «Archivar Pizza fugazzeta»)]
+  Pizza napolitana
+  Mismo precio
+  Consumo: sin consumo propio
+  Rige desde «fecha» · cargó alguien sin nombre cargado
+  [lector: Nombre de Pizza napolitana]
+  [campo: «Pizza napolitana»]
+  [botón: Renombrar (lector: «Renombrar Pizza napolitana»)]
+  [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza napolitana»)]
+  [botón: Archivar (lector: «Archivar Pizza napolitana»)]
+  Pizza con papas fritas
+  Mismo precio
+  Consumo: sin consumo propio
+  Rige desde «fecha» · cargó alguien sin nombre cargado
+  [lector: Nombre de Pizza con papas fritas]
+  [campo: «Pizza con papas fritas»]
+  [botón: Renombrar (lector: «Renombrar Pizza con papas fritas»)]
+  [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza con papas fritas»)]
+  [botón: Archivar (lector: «Archivar Pizza con papas fritas»)]
+  Pizza bomba
+  Mismo precio
+  Consumo: sin consumo propio
+  Rige desde «fecha» · cargó alguien sin nombre cargado
+  [lector: Nombre de Pizza bomba]
+  [campo: «Pizza bomba»]
+  [botón: Renombrar (lector: «Renombrar Pizza bomba»)]
+  [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza bomba»)]
+  [botón: Archivar (lector: «Archivar Pizza bomba»)]
+  [botón: Ordenar opciones]
+  [botón: + Agregar opción]
+  ## Productos que lo usan
+  [enlace: Pizzas]
+
+## ADMINISTRACIÓN a 1280 px: Carta › Parametrización › Secciones (/carta/parametrizacion/secciones)
+  [enlace: Mantenimiento]
+  [enlace: Parametrización]
+  # Carta
+  Parametrización · Secciones
+  LB Precio y carta
+  [enlace: ← Volver]
+  ## Secciones de la carta
+  [botón: Ordenar]
+  El orden se ve en todas las sucursales y en la carta pública (las secciones son de la empresa). Con «⋯» podés ocultar o mostrar una sección, moverla o cambiar sus datos.
+  n
+  Pizzas
+  [botón: ⋯ (lector: «Opciones de Pizzas»)]
+  n
+  Platos
+  [botón: ⋯ (lector: «Opciones de Platos»)]
+  n
+  Cafetería
+  [botón: ⋯ (lector: «Opciones de Cafetería»)]
+  n
+  Bebidas
+  [botón: ⋯ (lector: «Opciones de Bebidas»)]
+  Las secciones son de toda la empresa; los productos de cada una, de esta sucursal.
+  ## Datos de cada sección
+  ▸ Pizzas · orden 1 · 1 ítem(s) · activa
+  [botón: Apagar «Pizzas»]
+  ▸ Platos · orden 2 · 3 ítem(s) · activa
+  [botón: Apagar «Platos»]
+  ▸ Cafetería · orden 3 · 1 ítem(s) · activa
+  [botón: Apagar «Cafetería»]
+  ▸ Bebidas · orden 4 · 1 ítem(s) · activa
+  [botón: Apagar «Bebidas»]
+  ### Nueva sección de carta
+  Nombre
+  [campo: vacío, ayuda «Platos Principales»]
+  Título (opcional, si no se usa el nombre)
+  [campo: vacío, ayuda «Del fuego»]
+  Descripción (opcional)
+  [campo: vacío]
+  Imagen (URL https, opcional)
+  [campo: vacío, ayuda «https://…»]
+  Orden
+  [campo: (depende de la base)]
+  [botón: Crear sección]
+  ## Productos de cada sección
+  La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en Mantenimiento › Visibilidad › «Fuera de carta».
+  ▸
+  Pizzas
+  1 producto
+  ▸
+  Platos
+  3 productos
+  ▸
+  Cafetería
+  1 producto
+  ▸
+  Bebidas
+  1 producto
+  --- data-seccion-carta=«Pizzas» (abierto)
+    ▾ Pizzas · orden 1 · 1 ítem(s) · activa
+    Nombre
+    [campo: «Pizzas», ayuda «Platos Principales»]
+    Título (opcional, si no se usa el nombre)
+    [campo: vacío, ayuda «Del fuego»]
+    Descripción (opcional)
+    [campo: vacío]
+    Imagen (URL https, opcional)
+    [campo: vacío, ayuda «https://…»]
+    Orden
+    [campo: «1»]
+    [botón: Guardar sección]
+    [botón: Apagar «Pizzas»]
+  --- data-seccion-carta=«Platos» (abierto)
+    ▾ Platos · orden 2 · 3 ítem(s) · activa
+    Nombre
+    [campo: «Platos», ayuda «Platos Principales»]
+    Título (opcional, si no se usa el nombre)
+    [campo: vacío, ayuda «Del fuego»]
+    Descripción (opcional)
+    [campo: vacío]
+    Imagen (URL https, opcional)
+    [campo: vacío, ayuda «https://…»]
+    Orden
+    [campo: «2»]
+    [botón: Guardar sección]
+    [botón: Apagar «Platos»]
+  --- data-seccion-carta=«Cafetería» (abierto)
+    ▾ Cafetería · orden 3 · 1 ítem(s) · activa
+    Nombre
+    [campo: «Cafetería», ayuda «Platos Principales»]
+    Título (opcional, si no se usa el nombre)
+    [campo: vacío, ayuda «Del fuego»]
+    Descripción (opcional)
+    [campo: vacío]
+    Imagen (URL https, opcional)
+    [campo: vacío, ayuda «https://…»]
+    Orden
+    [campo: «3»]
+    [botón: Guardar sección]
+    [botón: Apagar «Cafetería»]
+  --- data-seccion-carta=«Bebidas» (abierto)
+    ▾ Bebidas · orden 4 · 1 ítem(s) · activa
+    Nombre
+    [campo: «Bebidas», ayuda «Platos Principales»]
+    Título (opcional, si no se usa el nombre)
+    [campo: vacío, ayuda «Del fuego»]
+    Descripción (opcional)
+    [campo: vacío]
+    Imagen (URL https, opcional)
+    [campo: vacío, ayuda «https://…»]
+    Orden
+    [campo: «4»]
+    [botón: Guardar sección]
+    [botón: Apagar «Bebidas»]
+  --- data-grupo-de-la-carta=«Pizzas» (abierto)
+    ▾
+    Pizzas
+    1 producto
+    ▾ Pizzas · Pizzas · $18.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Pizzas]
+    Orden dentro de su sección
+    [campo: «0»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Pizzas»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Pizzas»]
+    [botón: Quitar «Pizzas» de la carta (vuelve a «Fuera de carta»)]
+  --- data-grupo-de-la-carta=«Platos» (abierto)
+    ▾
+    Platos
+    3 productos
+    ▾ Milanesas · Platos · $20.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Platos]
+    Orden dentro de su sección
+    [campo: «0»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Milanesas»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Milanesas»]
+    [botón: Quitar «Milanesas» de la carta (vuelve a «Fuera de carta»)]
+    ▾ Bife a la criolla · Platos · $20.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Platos]
+    Orden dentro de su sección
+    [campo: «1»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Bife a la criolla»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Bife a la criolla»]
+    [botón: Quitar «Bife a la criolla» de la carta (vuelve a «Fuera de carta»)]
+    ▾ Wok de verduras · Platos · $19.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Platos]
+    Orden dentro de su sección
+    [campo: «2»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Wok de verduras»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Wok de verduras»]
+    [botón: Quitar «Wok de verduras» de la carta (vuelve a «Fuera de carta»)]
+  --- data-grupo-de-la-carta=«Cafetería» (abierto)
+    ▾
+    Cafetería
+    1 producto
+    ▾ Café · Cafetería · $4.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Cafetería]
+    Orden dentro de su sección
+    [campo: «0»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Café»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Café»]
+    [botón: Quitar «Café» de la carta (vuelve a «Fuera de carta»)]
+  --- data-grupo-de-la-carta=«Bebidas» (abierto)
+    ▾
+    Bebidas
+    1 producto
+    ▾ Gaseosa 500 cc · Bebidas · $4.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Bebidas]
+    Orden dentro de su sección
+    [campo: «0»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Gaseosa 500 cc»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Gaseosa 500 cc»]
+    [botón: Quitar «Gaseosa 500 cc» de la carta (vuelve a «Fuera de carta»)]
+
+## ADMINISTRACIÓN a 375 px: Carta › Parametrización › Secciones (/carta/parametrizacion/secciones)
+  [enlace: Mantenimiento]
+  [enlace: Parametrización]
+  # Carta
+  Parametrización · Secciones
+  LB Precio y carta
+  [enlace: ← Volver]
+  ## Secciones de la carta
+  [botón: Ordenar]
+  El orden se ve en todas las sucursales y en la carta pública (las secciones son de la empresa). Con «⋯» podés ocultar o mostrar una sección, moverla o cambiar sus datos.
+  n
+  Pizzas
+  [botón: ⋯ (lector: «Opciones de Pizzas»)]
+  n
+  Platos
+  [botón: ⋯ (lector: «Opciones de Platos»)]
+  n
+  Cafetería
+  [botón: ⋯ (lector: «Opciones de Cafetería»)]
+  n
+  Bebidas
+  [botón: ⋯ (lector: «Opciones de Bebidas»)]
+  Las secciones son de toda la empresa; los productos de cada una, de esta sucursal.
+  ## Datos de cada sección
+  ▸ Pizzas · orden 1 · 1 ítem(s) · activa
+  [botón: Apagar «Pizzas»]
+  ▸ Platos · orden 2 · 3 ítem(s) · activa
+  [botón: Apagar «Platos»]
+  ▸ Cafetería · orden 3 · 1 ítem(s) · activa
+  [botón: Apagar «Cafetería»]
+  ▸ Bebidas · orden 4 · 1 ítem(s) · activa
+  [botón: Apagar «Bebidas»]
+  ### Nueva sección de carta
+  Nombre
+  [campo: vacío, ayuda «Platos Principales»]
+  Título (opcional, si no se usa el nombre)
+  [campo: vacío, ayuda «Del fuego»]
+  Descripción (opcional)
+  [campo: vacío]
+  Imagen (URL https, opcional)
+  [campo: vacío, ayuda «https://…»]
+  Orden
+  [campo: (depende de la base)]
+  [botón: Crear sección]
+  ## Productos de cada sección
+  La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en Mantenimiento › Visibilidad › «Fuera de carta».
+  ▸
+  Pizzas
+  1 producto
+  ▸
+  Platos
+  3 productos
+  ▸
+  Cafetería
+  1 producto
+  ▸
+  Bebidas
+  1 producto
+  --- data-seccion-carta=«Pizzas» (abierto)
+    ▾ Pizzas · orden 1 · 1 ítem(s) · activa
+    Nombre
+    [campo: «Pizzas», ayuda «Platos Principales»]
+    Título (opcional, si no se usa el nombre)
+    [campo: vacío, ayuda «Del fuego»]
+    Descripción (opcional)
+    [campo: vacío]
+    Imagen (URL https, opcional)
+    [campo: vacío, ayuda «https://…»]
+    Orden
+    [campo: «1»]
+    [botón: Guardar sección]
+    [botón: Apagar «Pizzas»]
+  --- data-seccion-carta=«Platos» (abierto)
+    ▾ Platos · orden 2 · 3 ítem(s) · activa
+    Nombre
+    [campo: «Platos», ayuda «Platos Principales»]
+    Título (opcional, si no se usa el nombre)
+    [campo: vacío, ayuda «Del fuego»]
+    Descripción (opcional)
+    [campo: vacío]
+    Imagen (URL https, opcional)
+    [campo: vacío, ayuda «https://…»]
+    Orden
+    [campo: «2»]
+    [botón: Guardar sección]
+    [botón: Apagar «Platos»]
+  --- data-seccion-carta=«Cafetería» (abierto)
+    ▾ Cafetería · orden 3 · 1 ítem(s) · activa
+    Nombre
+    [campo: «Cafetería», ayuda «Platos Principales»]
+    Título (opcional, si no se usa el nombre)
+    [campo: vacío, ayuda «Del fuego»]
+    Descripción (opcional)
+    [campo: vacío]
+    Imagen (URL https, opcional)
+    [campo: vacío, ayuda «https://…»]
+    Orden
+    [campo: «3»]
+    [botón: Guardar sección]
+    [botón: Apagar «Cafetería»]
+  --- data-seccion-carta=«Bebidas» (abierto)
+    ▾ Bebidas · orden 4 · 1 ítem(s) · activa
+    Nombre
+    [campo: «Bebidas», ayuda «Platos Principales»]
+    Título (opcional, si no se usa el nombre)
+    [campo: vacío, ayuda «Del fuego»]
+    Descripción (opcional)
+    [campo: vacío]
+    Imagen (URL https, opcional)
+    [campo: vacío, ayuda «https://…»]
+    Orden
+    [campo: «4»]
+    [botón: Guardar sección]
+    [botón: Apagar «Bebidas»]
+  --- data-grupo-de-la-carta=«Pizzas» (abierto)
+    ▾
+    Pizzas
+    1 producto
+    ▾ Pizzas · Pizzas · $18.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Pizzas]
+    Orden dentro de su sección
+    [campo: «0»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Pizzas»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Pizzas»]
+    [botón: Quitar «Pizzas» de la carta (vuelve a «Fuera de carta»)]
+  --- data-grupo-de-la-carta=«Platos» (abierto)
+    ▾
+    Platos
+    3 productos
+    ▾ Milanesas · Platos · $20.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Platos]
+    Orden dentro de su sección
+    [campo: «0»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Milanesas»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Milanesas»]
+    [botón: Quitar «Milanesas» de la carta (vuelve a «Fuera de carta»)]
+    ▾ Bife a la criolla · Platos · $20.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Platos]
+    Orden dentro de su sección
+    [campo: «1»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Bife a la criolla»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Bife a la criolla»]
+    [botón: Quitar «Bife a la criolla» de la carta (vuelve a «Fuera de carta»)]
+    ▾ Wok de verduras · Platos · $19.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Platos]
+    Orden dentro de su sección
+    [campo: «2»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Wok de verduras»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Wok de verduras»]
+    [botón: Quitar «Wok de verduras» de la carta (vuelve a «Fuera de carta»)]
+  --- data-grupo-de-la-carta=«Cafetería» (abierto)
+    ▾
+    Cafetería
+    1 producto
+    ▾ Café · Cafetería · $4.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Cafetería]
+    Orden dentro de su sección
+    [campo: «0»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Café»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Café»]
+    [botón: Quitar «Café» de la carta (vuelve a «Fuera de carta»)]
+  --- data-grupo-de-la-carta=«Bebidas» (abierto)
+    ▾
+    Bebidas
+    1 producto
+    ▾ Gaseosa 500 cc · Bebidas · $4.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Bebidas]
+    Orden dentro de su sección
+    [campo: «0»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Gaseosa 500 cc»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Gaseosa 500 cc»]
+    [botón: Quitar «Gaseosa 500 cc» de la carta (vuelve a «Fuera de carta»)]
