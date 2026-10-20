@@ -156,23 +156,6 @@ const completos: Record<string, Valor> = {
       intento(c, ["platoDelDiaId"], [{ sucursalId: c.propio.sucursalId, platoId: k.platoDelDiaId }]),
     ),
   "accion|actions/carta/menu-del-dia.ts|copiarMenuDelDiaAnterior": (k) => [{ sucursalId: k.sucursalId, fecha: sumarDias(DIA_DEL_PLATO_DEL_MUNDO, 1) }],
-  // GO-3b (frente A): los ejes (ya son esos: por estado), la combinación «Grande» (versión 1, la sembrada) y su precio local en la sucursal (las tarifas se retiraron en la Fase 3).
-  "accion|actions/catalogo/combinaciones.ts|fijarEjesDeCombinacion": (k) => [{ productoId: k.productoConOpcionesId, eje1GrupoId: k.grupoMedidaId, eje2GrupoId: null }],
-  "accion|actions/catalogo/combinaciones.ts|guardarCombinacionDeProducto": (k, c) =>
-    conVariantes(
-      intento(c, ["productoConOpcionesId"], [{ productoId: k.productoConOpcionesId, opcionEje1Id: k.opcionMedidaId, versionEsperada: 1, activa: false }]),
-    ),
-  "accion|actions/catalogo/combinaciones.ts|fijarPrecioLocalDeCombinacion": (k, c) =>
-    conVariantes(
-      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, combinacionId: c.propio.combinacionId, esperado: null, precio: 1700 }]),
-      intento(c, ["combinacionId"], [{ sucursalId: c.propio.sucursalId, combinacionId: k.combinacionId, esperado: null, precio: 1700 }]),
-    ),
-  // GO-3b (frente B): una versión nueva de la receta propia de la combinación (la vigente es la 1, sembrada), con la MP del kit.
-  "accion|actions/catalogo/combinaciones.ts|guardarRecetaDeCombinacion": (k, c) =>
-    conVariantes(
-      intento(c, ["combinacionId"], [{ combinacionId: k.combinacionId, numeroEsperado: 1, ingredientes: [{ insumoProductoId: c.propio.productoId, cantidad: 2 }] }]),
-      intento(c, ["productoId"], [{ combinacionId: c.propio.combinacionId, numeroEsperado: 1, ingredientes: [{ insumoProductoId: k.productoId, cantidad: 2 }] }]),
-    ),
   "accion|actions/carta/registro-publico.ts|guardarSucursalPublica": (k) => [k.sucursalId, { slug: "slug-nuevo", publicada: true }],
   "accion|actions/carta/secciones.ts|guardarSeccionCarta": (k) => [{ id: k.seccionCartaId, nombre: "Nombre nuevo" }],
   // CARTA-MANT F3: la empresa del mundo tiene UNA sección de carta (orden 0): el control positivo la deja en su lugar (éxito sin cambio); con la de otra empresa, «No se encontró…».
@@ -434,9 +417,8 @@ const parametros: Record<string, Record<string, Valor>> = {
     lugares: (k) => ({ seccionCartaIds: [k.seccionCartaId], cupoListaIds: [k.cupoListaId], cupoDelDiaIds: [k.cupoDelDiaId] }),
     args: (_k, c) => ({ desdeDia: "2000-01-01", sucursalIds: [c.propio.sucursalId] }),
   },
-  // GO-3b (frente A): la combinación por su clave y el precio local de la tarifa en la sucursal.
+  // GO-3b (frente A): la receta propia vigente de la combinación y los precios locales de la combinación y de la tarifa en la sucursal (lo que lee la venta).
   "lectura|lecturas/catalogo/recetas-de-combinacion.ts|cargarRecetasVigentesDeCombinaciones": { combinacionIds: (k) => [k.combinacionId] },
-  "lectura|lecturas/catalogo/combinaciones.ts|cargarCombinacionEnTx": { clave: (k) => ({ productoId: k.productoConOpcionesId, opcionEje1Id: k.opcionMedidaId, opcionEje2Id: null }) },
   "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|preciosLocalesDeCombinacionVigentes": { ids: (k) => ({ combinacionIds: [k.combinacionId], grupoDePrecioIds: [k.grupoDePrecioId] }), precioLocalActivo: () => true },
   // GO-3b (F5): las combinaciones del PV con opciones para venderlo (I1), los cupos de entradas del combo de la empresa tal como se venden el día del plato del mundo (I2) y ese día para la
   // promo a agregar (vigencia y platos del día).
@@ -455,13 +437,9 @@ const parametros: Record<string, Record<string, Valor>> = {
   "lectura|lecturas/pos/promo-para-agregar.ts|cargarPromoCartaParaAgregar": { dia: () => DIA_DEL_PLATO_DEL_MUNDO },
   // GO-3b (U5): el selector de la mesa con el día (o la zona) ofrece también los combos con cupos de entradas.
   "lectura|lecturas/pos/selector-carta.ts|cargarSelectorCartaPos": { dia: () => DIA_DEL_PLATO_DEL_MUNDO },
-  // GO-3b (F6): la pantalla «Menú del día» (el día del plato del mundo) y las filas del precio local de la combinación y la tarifa del mundo en la sucursal.
+  // GO-3b (F6): la pantalla «Menú del día» (el día del plato del mundo).
   "consulta|consultas/carta/menu-del-dia.ts|cargarMenuDelDia": { args: (k) => ({ sucursalId: k.sucursalId, ahora: new Date(), zonaHoraria: "America/Argentina/Buenos_Aires", fecha: DIA_DEL_PLATO_DEL_MUNDO }) },
-  "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|filasDePrecioLocalDeCombinacionesEnSucursal": {
-    args: (k, c) => ({ sucursalId: c.propio.sucursalId, combinacionIds: [k.combinacionId], grupoDePrecioIds: [k.grupoDePrecioId] }),
-  },
   "consulta|consultas/pos/selector-carta.ts|cargarSelectorCartaDeLaMesa": { zonaHoraria: () => "America/Argentina/Buenos_Aires" },
-  "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|filaDePrecioLocalDeCombinacion": { clave: (k, c) => ({ sucursalId: c.propio.sucursalId, objetivo: { grupoDePrecioId: k.grupoDePrecioId } }) },
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoOpcion": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoPorId": { id: (k) => k.productoId },
@@ -500,8 +478,6 @@ const porArchivo: Record<string, Record<string, Valor>> = {
   "actions/movimientos/precio-local.ts": { productoId: (k) => k.productoPvId },
   // GO-2a: en las lecturas del catálogo de opciones, `grupoId` es un grupo de OPCIONES (no el de insumos) y `productoId` el PV que las admite.
   "lecturas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId },
-  // GO-3b: en las lecturas de las combinaciones, `productoId` es el PV con opciones (el que tiene ejes y combinación).
-  "lecturas/catalogo/combinaciones.ts": { productoId: (k) => k.productoConOpcionesId },
   // GO-2d: lo mismo en las consultas de las pantallas de opciones de venta.
   "consultas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId, productoIds: (k) => [k.productoConOpcionesId] },
   // GO-2d: los avisos de stock de la carta son de platos (PV con receta).

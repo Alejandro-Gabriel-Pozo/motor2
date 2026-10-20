@@ -1,11 +1,11 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 453,
-  "entradas": 114,
+  "total": 447,
+  "entradas": 113,
   "porTipo": {
     "color-scheme-oscuro": 1,
-    "dark:": 449,
+    "dark:": 443,
     "prefers-color-scheme": 3
   },
   "cuentas": {
@@ -74,9 +74,6 @@
     },
     "src/app/(app)/catalogo/opciones/page.tsx": {
       "dark:": 9
-    },
-    "src/app/(app)/catalogo/productos/[id]/combinaciones/page.tsx": {
-      "dark:": 6
     },
     "src/app/(app)/catalogo/productos/[id]/opciones/admision-de-grupo.tsx": {
       "dark:": 3

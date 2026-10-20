@@ -104,11 +104,6 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     ata: "SUCURSAL_ACTIVA",
     motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; la grilla se escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
   },
-  // GO-3b (ADR-032, frente A): el precio local de una combinación, con el mismo eco que la grilla de las opciones.
-  "catalogo/combinaciones.ts|fijarPrecioLocalDeCombinacion": {
-    ata: "SUCURSAL_ACTIVA",
-    motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; el precio local se escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
-  },
   // GO-3b (ADR-032, D5): el menú del día de la sucursal, con el mismo eco que las opciones por sucursal.
   "carta/menu-del-dia.ts|agregarPlatoDelDia": {
     ata: "SUCURSAL_ACTIVA",

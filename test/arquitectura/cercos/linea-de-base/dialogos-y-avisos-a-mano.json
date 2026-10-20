@@ -1,10 +1,10 @@
 {
   "regla": "dialogos-y-avisos-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: diálogos y avisos salen de las primitivas de src/ui (Dialogo, Aviso)",
-  "total": 122,
-  "entradas": 70,
+  "total": 121,
+  "entradas": 69,
   "porTipo": {
-    "role-alert": 60,
+    "role-alert": 59,
     "role-dialog": 10,
     "role-status": 52
   },
@@ -88,9 +88,6 @@
     },
     "src/app/(app)/catalogo/opciones/limpiar/limpiar-opciones.tsx": {
       "role-status": 1
-    },
-    "src/app/(app)/catalogo/productos/[id]/combinaciones/page.tsx": {
-      "role-alert": 1
     },
     "src/app/(app)/catalogo/productos/[id]/opciones/page.tsx": {
       "role-status": 1
