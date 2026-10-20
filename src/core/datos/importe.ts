@@ -10,6 +10,30 @@ import { aceptar, enMinuscula, rechazar, type ResultadoDato } from "./resultado"
 export const DECIMALES_IMPORTE = 2;
 /** Tope de las columnas `Decimal(14,2)` (mismo criterio que validarPrecioCarta): el importe tiene que ser menor. */
 export const IMPORTE_MAXIMO = 1e12;
+/** El mismo tope en CENTAVOS enteros, para las cuentas con `bigint`: el importe más grande que entra en la columna (99.999.999.999,99 → 99999999999999). */
+export const CENTAVOS_MAXIMOS = BigInt(IMPORTE_MAXIMO * 100) - BigInt(1);
+
+/**
+ * NÚCLEO de los validadores de importe (ola «precio y carta», Fase 2, C): un `number` finito con a lo sumo 2 decimales, de cualquier signo y SIN tope. Es lo único que
+ * comparten; el signo, el mínimo, el tope y los mensajes son la regla PROPIA de cada validador y se quedan en él (un precio que vio la pantalla no tiene tope; una
+ * diferencia admite negativos; un precio de opción exige 0,01 o más). Para un importe que se va a GUARDAR, `esImporteDeColumna`.
+ */
+export function esImporteAlCentavo(n: number): boolean {
+  return Number.isFinite(n) && tieneALoSumoDecimales(n, DECIMALES_IMPORTE);
+}
+
+/** Un importe que entra en una columna `Decimal(14,2)`: el núcleo (`esImporteAlCentavo`) y, en valor absoluto, menor que `IMPORTE_MAXIMO`. Cualquier signo: el signo lo decide quien llama. */
+export function esImporteDeColumna(n: number): boolean {
+  return esImporteAlCentavo(n) && Math.abs(n) < IMPORTE_MAXIMO;
+}
+
+/**
+ * Un porcentaje de DIFERENCIA de precio en una columna `Decimal(7,4)` (`VersionDeOpcion_porcentaje_chk`): finito, mayor que -100 (bajar el 100 % deja el precio en 0),
+ * hasta 999,9999 y con a lo sumo 4 decimales.
+ */
+export function esPorcentajeDeDiferencia(p: number): boolean {
+  return Number.isFinite(p) && p > -100 && p <= 999.9999 && tieneALoSumoDecimales(p, 4);
+}
 
 export interface OpcionesImporte {
   /** Sujeto del mensaje, en mayúscula y masculino ("El precio", `El precio de "Harina"`): "El precio no puede ser negativo." */
