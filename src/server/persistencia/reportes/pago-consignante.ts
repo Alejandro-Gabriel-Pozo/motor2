@@ -19,6 +19,15 @@ export async function cargarProveedorActivo(db: Prisma.TransactionClient, provee
   return { id: proveedor.id, nombre: proveedor.nombre };
 }
 
+/**
+ * ¿El proveedor es el consignante de algún producto de la empresa? (ola «precio y carta», Fase 2, B2). En cualquier estado del producto: el consignante no se puede cambiar una vez que hay
+ * liquidaciones (`actualizar-producto.ts`, `CONSIGNANTE_CON_HISTORIA`), así que un proveedor con deuda de consignación lo sigue siendo. La base es la de la empresa (RLS): un producto de otra
+ * empresa no cuenta.
+ */
+export async function esConsignanteDeAlgunProducto(db: Prisma.TransactionClient, proveedorId: string): Promise<boolean> {
+  return (await db.producto.findFirst({ where: { proveedorConsignacionId: proveedorId }, select: { id: true } })) !== null;
+}
+
 /** `null` si ningún pago tiene esa clave todavía. */
 export async function cargarPagoConsignantePorClave(
   db: Prisma.TransactionClient,

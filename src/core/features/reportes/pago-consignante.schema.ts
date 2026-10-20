@@ -26,7 +26,8 @@ export interface ComandoRegistrarPagoConsignante {
   claveIdempotencia: string;
 }
 
-export type CodigoRegistrarPagoConsignante = "CONFLICTO_IDEMPOTENCIA" | "PROVEEDOR_NO_ENCONTRADO";
+/** `PROVEEDOR_NO_ES_CONSIGNANTE` (ola «precio y carta», Fase 2, B2): el proveedor existe y está activo pero no es el consignante de ningún producto de la empresa. */
+export type CodigoRegistrarPagoConsignante = "CONFLICTO_IDEMPOTENCIA" | "PROVEEDOR_NO_ENCONTRADO" | "PROVEEDOR_NO_ES_CONSIGNANTE";
 
 /**
  * `datos` de un pago registrado con éxito — discriminado por `repetido` (backlog post-cierre de Task #41, 2026-09-28,

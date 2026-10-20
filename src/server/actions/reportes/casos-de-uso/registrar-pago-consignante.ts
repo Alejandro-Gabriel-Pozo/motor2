@@ -4,7 +4,7 @@ import { calcularPayloadHash, esChoqueDeIndiceUnico, MENSAJE_CONFLICTO_IDEMPOTEN
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComandoRegistrarPagoConsignante, ResultadoRegistrarPagoConsignante } from "@/core/features/reportes/pago-consignante.schema";
-import { cargarPagoConsignantePorClave, cargarProveedorActivo, crearPagoConsignante } from "@/server/persistencia/reportes/pago-consignante";
+import { cargarPagoConsignantePorClave, cargarProveedorActivo, crearPagoConsignante, esConsignanteDeAlgunProducto } from "@/server/persistencia/reportes/pago-consignante";
 
 /**
  * Caso de uso «registrar un pago a un proveedor de consignación» (Task #41, Fase M, M14 —
@@ -24,7 +24,8 @@ import { cargarPagoConsignantePorClave, cargarProveedorActivo, crearPagoConsigna
  * Orden (la clave es obligatoria desde la ola «precio y carta», Fase 2, B1: el guard la rechaza ausente, así que no hay camino «sin clave»):
  *  1. `cargarPagoConsignantePorClave` — mismo payload (mismo hash) y ya resuelto → éxito repetido, sin volver a escribir nada; distinto
  *     hash → conflicto;
- *  2. `cargarProveedorActivo` — no existe o inactivo → el mismo mensaje de siempre;
+ *  2. `cargarProveedorActivo` — no existe o inactivo → el mismo mensaje de siempre; y (B2, ola «precio y carta», Fase 2) tiene que ser el consignante de algún producto de la empresa
+ *     (`esConsignanteDeAlgunProducto`, en cualquier estado del producto) → si no, `PROVEEDOR_NO_ES_CONSIGNANTE`;
  *  3. el mensaje de éxito se arma ANTES del insert (Opción B: proveedor e importe ya se conocen, a diferencia de `Operacion`, donde
  *     el mensaje puede depender de algo escrito después en la misma transacción);
  *  4. `crearPagoConsignante` con `resultadoMensaje` ya adentro (un solo `create`, sin `update` posterior);
@@ -55,6 +56,10 @@ export async function registrarPagoConsignanteCasoDeUso(
 
       const proveedor = await cargarProveedorActivo(tx, comando.proveedorId);
       if (!proveedor) return fracaso("PROVEEDOR_NO_ENCONTRADO", "No se encontró el proveedor, o está inactivo.");
+      // B2 (ola «precio y carta», Fase 2): solo se le paga deuda de consignación a quien es consignante de algún producto de la empresa; a un proveedor común no (sería un pago sin deuda que saldar).
+      if (!(await esConsignanteDeAlgunProducto(tx, proveedor.id))) {
+        return fracaso("PROVEEDOR_NO_ES_CONSIGNANTE", `"${proveedor.nombre}" no es el proveedor de consignación de ningún producto: no hay deuda de consignación que pagarle.`);
+      }
 
       const mensaje = `Pago de $${comando.importe.toLocaleString("es-AR")} a "${proveedor.nombre}" registrado.`;
 

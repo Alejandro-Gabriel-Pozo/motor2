@@ -225,6 +225,8 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   const pv2 = await producto("pv2", "PV", { seProduce: true, precioVenta: 1234 });
   const proveedor = await db.proveedor.create({ data: { id: id("proveedor"), empresaId, codigo: id("PRV"), nombre: `Proveedor ${marca}`, contacto: `contacto ${marca}`, email: `${marca.toLowerCase()}-prov@ajeno.test`, cuit: null } });
   await db.proveedorPorProducto.create({ data: { id: id("ppp"), empresaId, productoId: mp.id, proveedorId: proveedor.id, unidadCompraId: kg.id, precioUnitario: 100, precioPorUnidadStock: 100, referenciaProveedor: `ref ${marca}` } });
+  // Ola «precio y carta», Fase 2, B2: el pago a un consignante exige que el proveedor lo sea de algún producto. El mundo ya le registra un pago (`pagoConsignante`, abajo), así que lo es de uno.
+  await producto("consignado", "MP", { esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 10 });
   const presentacion = await db.presentacion.create({ data: { id: id("presentacion"), empresaId, productoId: mp.id, unidadCompraId: g.id, factorConversion: 1000 } });
   const cliente = await db.cliente.create({ data: { id: id("cliente"), empresaId, nombre: `Cliente ${marca}`, descuentoPorcentaje: 10 } });
   const rol = await db.rol.create({ data: { id: id("rol"), empresaId, nombre: `Rol ${marca}`, clave: null } });

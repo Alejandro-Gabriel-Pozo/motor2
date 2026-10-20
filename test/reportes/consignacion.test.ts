@@ -142,6 +142,22 @@ describe("generarReporteConsignacion", () => {
       expect(await prisma.registroAuditoria.count({ where: { entidad: "PagoConsignante" } })).toBe(0);
     });
 
+    // Ola «precio y carta», Fase 2, B2: antes bastaba con que el proveedor estuviera activo (`cargarProveedorActivo`): se le podía «pagar deuda de consignación» a un proveedor común, que no la tiene.
+    it("a un proveedor COMÚN (activo, pero no es consignante de ningún producto) no se le registra un pago: ni pago ni auditoría", async () => {
+      const comun = await prisma.proveedor.create({ data: { codigo: "PRV_COMUN", nombre: "Distribuidora común" } });
+      const resultado = await registrarPagoConsignante(comun.id, 40, new Date(), undefined, crypto.randomUUID());
+      expect(resultado).toEqual({ ok: false, mensaje: '"Distribuidora común" no es el proveedor de consignación de ningún producto: no hay deuda de consignación que pagarle.' });
+      expect(await prisma.pagoConsignante.count()).toBe(0);
+      expect(await prisma.registroAuditoria.count({ where: { entidad: "PagoConsignante" } })).toBe(0);
+    });
+
+    it("sí se le paga al consignante aunque hoy no tenga deuda (el criterio es ser consignante de algún producto, en cualquier estado)", async () => {
+      const consignante = await prisma.proveedor.create({ data: { codigo: "PRV_CONS", nombre: "Bodega" } });
+      await prisma.producto.create({ data: { codigo: "MP_X", nombre: "Vino X", tipo: "MP", unidadStockId: unidadKgId, esConsignacion: true, proveedorConsignacionId: consignante.id, precioConsignacion: 20 } });
+      expect((await registrarPagoConsignante(consignante.id, 40, new Date(), undefined, crypto.randomUUID())).ok).toBe(true);
+      expect(await prisma.pagoConsignante.count()).toBe(1);
+    });
+
     it("rechaza un proveedor inexistente", async () => {
       const resultado = await registrarPagoConsignante("no-existe", 10, new Date(), undefined, crypto.randomUUID());
       expect(resultado.ok).toBe(false);

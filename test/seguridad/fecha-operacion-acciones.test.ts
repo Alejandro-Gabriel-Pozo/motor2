@@ -72,6 +72,9 @@ describe("las acciones que registran operaciones validan la fecha", () => {
   it("una fecha de hoy y una de ayer siguen funcionando", async () => {
     expect((await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId, cantidad: 3, precioTotal: 30 }] })).ok).toBe(true);
     expect((await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(Date.now() - DIA), seccionId, items: [{ productoId, cantidad: 3, precioTotal: 30 }] })).ok).toBe(true);
+    // B2 (ola «precio y carta», Fase 2): el pago es a un consignante, el de algún producto.
+    const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+    await prisma.producto.create({ data: { codigo: "MP_CONSIGNADO", nombre: "Vino consignado", tipo: "MP", unidadStockId: kg.id, esConsignacion: true, proveedorConsignacionId: proveedorId, precioConsignacion: 20 } });
     expect((await registrarPagoConsignante(proveedorId, 40, new Date(), undefined, crypto.randomUUID())).ok).toBe(true);
   });
 });

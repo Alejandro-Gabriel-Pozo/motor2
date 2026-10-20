@@ -37,6 +37,9 @@ describe("Consignación: un pago del día D entra en el período D..D", () => {
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
     proveedorId = (await prisma.proveedor.create({ data: { codigo: "PRV_PERIODO", nombre: "Consignante del período" } })).id;
+    // Desde la Fase 2 de la ola «precio y carta» (B2) solo se le paga a quien es consignante de algún producto.
+    const unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;
+    await prisma.producto.create({ data: { codigo: "MP_CONSIGNADO", nombre: "Vino consignado", tipo: "MP", unidadStockId: unidadId, esConsignacion: true, proveedorConsignacionId: proveedorId, precioConsignacion: 20 } });
   });
 
   it("el pago de mediodía del día D se guarda tal cual y aparece en D..D, no en el día anterior ni en el siguiente", async () => {
