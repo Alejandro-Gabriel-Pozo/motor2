@@ -57,7 +57,7 @@ export interface ComandoFijarDisponibilidadDeHoy {
 /** Si UNO no se puede (no existe, es el ancla de un adicional, está a $0 sin la clave fina o tiene dependencias al apagarlo), no se escribe NINGUNO y el mensaje dice cuál y por qué. */
 export type ResultadoFijarDisponibilidadDeHoy = ResultadoCaso<
   { cambiados: number },
-  "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "ES_ANCLA_DE_ADICIONAL"
+  "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "ES_ANCLA_DE_ADICIONAL" | "BASE_INVALIDA"
 >;
 
 /** Tope de productos en UN ajuste de precios (una sección entera): lo valida el guard. */

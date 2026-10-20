@@ -4,9 +4,11 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoActualizarDisponibilidadProducto, ResultadoActualizarDisponibilidadProducto } from "@/core/features/catalogo/productos.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso, type ResultadoCaso } from "@/core/resultado-caso";
+import { esBaseConfigurable, rechazoDeAdmisionesDeBase } from "@/core/opciones/public";
 import { dependenciasParaDesactivar } from "@/server/lecturas/catalogo/dependencias-para-desactivar";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { fijarDisponibilidadEnSucursal, tomarFilaDeProducto } from "@/server/persistencia/catalogo/productos";
+import { admisionesParaSerBase } from "./opciones-de-venta-en-tx";
 
 /** «A, B y C» / «A, B y 2 más»: para que un mensaje de error no crezca sin límite con un catálogo grande. */
 function enumerar(items: string[], tope = 4): string {
@@ -29,6 +31,9 @@ function enumerar(items: string[], tope = 4): string {
  * hace que un PV creado sin esa clave nazca a $0 y apagado, pero nadie miraba el precio al prenderlo. La Server Action calcula `comando.puedeEditarCamposSensibles` con el gate y acá, sin ella, activar un PV a $0 es
  * `SIN_PERMISO_CAMPOS_SENSIBLES`. Todo va en UNA transacción que toma primero la fila del producto (`tomarFilaDeProducto`, `FOR UPDATE`): un cambio de precio concurrente espera a que ésta termine (o ésta espera a que aquél confirme y ve el
  * precio nuevo), así que no hay un «leí $4500, me cambiaron a $0, lo prendí» que deje el producto vendible a $0 sin la clave. Apagar nunca exige la clave.
+ *
+ * Fase 4 (ADR-035): D4 es solo para un producto DIRECTO; uno que se vende por opción no cobra su precio guardado, así que ponerlo a la venta exige, en cambio, que cumpla la regla de la base
+ * (`rechazoDeAdmisionesDeBase`: su grupo de precio final; si no, `BASE_INVALIDA`). Con la fila del producto tomada, como siempre.
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos. Escribe siempre en `actor.sucursalId`.
  *
@@ -70,7 +75,7 @@ export async function validarCambioDeDisponibilidadEnTx(
   tx: Prisma.TransactionClient,
   actor: Pick<ContextoUsuario, "sucursalId" | "sucursalNombre">,
   comando: ComandoActualizarDisponibilidadProducto,
-): Promise<ResultadoCaso<CambioDeDisponibilidadValidado, "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "ES_ANCLA_DE_ADICIONAL">> {
+): Promise<ResultadoCaso<CambioDeDisponibilidadValidado, "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "ES_ANCLA_DE_ADICIONAL" | "BASE_INVALIDA">> {
   const { productoId, disponible } = comando;
   const existente = await tx.producto.findUnique({ where: { id: productoId }, include: { opcionQueRespalda: { select: { id: true } } } });
   if (!existente) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
@@ -79,7 +84,13 @@ export async function validarCambioDeDisponibilidadEnTx(
   if (disponible && existente.opcionQueRespalda) {
     return fracaso("ES_ANCLA_DE_ADICIONAL", `"${existente.nombre}" es el producto de respaldo de un adicional: se vende solo como adicional, no se pone a la venta suelto.`);
   }
-  if (disponible && existente.tipo === "PV" && Number(existente.precioVenta) === 0 && !comando.puedeEditarCamposSensibles) {
+  // Fase 4 (ADR-035): una base no se cobra a su precio guardado, así que D4 (el precio en $0) no le aplica; ponerla a la venta exige, en cambio, que cumpla la regla de la base (falla cerrado).
+  const esBase = existente.tipo === "PV" && esBaseConfigurable(existente.modoDeVenta);
+  if (disponible && esBase) {
+    const rechazo = rechazoDeAdmisionesDeBase(await admisionesParaSerBase(tx, productoId));
+    if (rechazo) return fracaso("BASE_INVALIDA", `"${existente.nombre}" se vende por opción y no se puede poner a la venta así: ${rechazo}`);
+  }
+  if (disponible && !esBase && existente.tipo === "PV" && Number(existente.precioVenta) === 0 && !comando.puedeEditarCamposSensibles) {
     return fracaso(
       "SIN_PERMISO_CAMPOS_SENSIBLES",
       `No se puede poner a la venta "${existente.nombre}" en "${actor.sucursalNombre}": todavía no tiene precio (está en $0) y ponerlo a la venta así lo decide quien tiene el permiso «campos sensibles del producto» (producto_campos_sensibles). ` +

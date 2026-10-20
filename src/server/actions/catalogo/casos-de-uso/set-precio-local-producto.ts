@@ -2,6 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoSetPrecioLocalProducto, ResultadoSetPrecioLocalProducto } from "@/core/features/catalogo/precio-local.schema";
 import { mismosCentavos } from "@/core/datos/importe";
+import { esBaseConfigurable } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { leerPrecioLocal } from "@/server/persistencia/catalogo/precio-local";
@@ -20,6 +21,7 @@ import { guardarPrecioLocalEnTx } from "./guardar-precio-local-en-tx";
  *  3. si no, lo que vio la pantalla (`esperado`: la fila como estaba, o «no había») tiene que ser lo que hay; si otra persona lo cambió, `PRECIO_DESACTUALIZADO`
  *     sin escribir (la tabla no tiene `version`: se compara el valor, como `fijar-precio-local-de-opcion`);
  *  4. el paso compartido `guardarPrecioLocalEnTx` escribe el precio y sus dos filas de auditoría, en la misma transacción.
+ * Fase 4 (ADR-035): un producto que se vende por opción no tiene precio propio que cobrar: HABILITAR su precio local es `ES_BASE_CONFIGURABLE` (su precio en la sucursal es la grilla de cada opción).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos ni el formato del precio (el guard).
  *
@@ -38,8 +40,14 @@ export async function setPrecioLocalProductoCasoDeUso(
   return conTransaccionSerializable(
     actor.transaccion,
     async (tx): Promise<ResultadoSetPrecioLocalProducto> => {
-      const producto = await tx.producto.findUnique({ where: { id: productoId }, select: { id: true, nombre: true } });
+      const producto = await tx.producto.findUnique({ where: { id: productoId }, select: { id: true, nombre: true, modoDeVenta: true } });
       if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
+      if (habilitado && esBaseConfigurable(producto.modoDeVenta)) {
+        return fracaso(
+          "ES_BASE_CONFIGURABLE",
+          `«${producto.nombre}» se vende por opción: su precio en esta sucursal es el de cada opción. Cargalo en las opciones de venta del producto (precio por sucursal), no acá.`,
+        );
+      }
 
       const listo = exito(`Precio local de "${producto.nombre}" ${habilitado ? `fijado en ${precio}` : "cargado (deshabilitado, se usa el precio global)"}.`, null);
       const fila = await leerPrecioLocal(tx, { sucursalId: actor.sucursalId, productoId });

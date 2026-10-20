@@ -174,9 +174,10 @@ export interface PedidoSincronizarPrecioGrupoCarta extends ComandoSincronizarPre
 /**
  *  - `NO_MISMO_ITEM`: los productos no son todos del mismo ítem agrupado de la carta (en la sucursal activa);
  *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (M.2, D-3): quien lo pide no tiene `producto_campos_sensibles`; se decide antes de leer el ítem agrupado;
- *  - `PRECIO_DESACTUALIZADO`: el precio de venta de alguno cambió desde que se ofreció igualarlo (o la pantalla no lo mandó): no se cambia ninguno.
+ *  - `PRECIO_DESACTUALIZADO`: el precio de venta de alguno cambió desde que se ofreció igualarlo (o la pantalla no lo mandó): no se cambia ninguno;
+ *  - `ES_BASE_CONFIGURABLE` (Fase 4, ADR-035; defensa: una base no puede estar en un ítem agrupado): alguno se vende por opción y su precio guardado no se toca.
  */
-export type ResultadoSincronizarPrecioGrupoCarta = ResultadoCaso<null, "NO_MISMO_ITEM" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "PRECIO_DESACTUALIZADO">;
+export type ResultadoSincronizarPrecioGrupoCarta = ResultadoCaso<null, "NO_MISMO_ITEM" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "PRECIO_DESACTUALIZADO" | "ES_BASE_CONFIGURABLE">;
 
 /** Comando «asignar un insumo a una materia prima existente» (la mitad retroactiva del asistente de hermanar): los dos ids, sin validar (sin guard). */
 export interface ComandoAsignarInsumoAProducto {
@@ -245,6 +246,7 @@ export interface ComandoActualizarDisponibilidadProducto {
 /**
  *  - `PRODUCTO_NO_ENCONTRADO`: el id no es de un producto;
  *  - `TIENE_DEPENDENCIAS`: al desactivar, algo depende de él en esta sucursal (la receta vigente de un plato disponible acá, o saldo en una sección de acá);
- *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (D4): al activar, es un producto de venta con precio de venta 0 («sin precio definido») y quien lo pide no tiene `producto_campos_sensibles`. Apagar nunca lo devuelve.
+ *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (D4): al activar, es un producto de venta DIRECTO con precio de venta 0 («sin precio definido») y quien lo pide no tiene `producto_campos_sensibles`. Apagar nunca lo devuelve;
+ *  - `BASE_INVALIDA` (Fase 4, ADR-035): al activar, el producto se vende por opción y no cumple la regla de la base (sin grupo de precio final, por ejemplo). Apagar nunca lo devuelve.
  */
-export type ResultadoActualizarDisponibilidadProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "ES_ANCLA_DE_ADICIONAL">;
+export type ResultadoActualizarDisponibilidadProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "ES_ANCLA_DE_ADICIONAL" | "BASE_INVALIDA">;

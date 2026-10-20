@@ -1,6 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { mismosCentavos } from "@/core/datos/importe";
+import { esBaseConfigurable } from "@/core/opciones/public";
 import { MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
 import type { PedidoSincronizarPrecioGrupoCarta, ResultadoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.schema";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -24,6 +25,7 @@ import { fijarPrecioVentaDeProducto } from "@/server/persistencia/catalogo/produ
  *  2. los productos que ya tienen el precio pedido (al centavo) no se tocan; para los demás, el precio de venta que mostró la pantalla (`preciosVistos`) tiene que ser el guardado: si alguno
  *     cambió (o la pantalla no lo mandó), `PRECIO_DESACTUALIZADO` y NO se cambia ninguno;
  *  3. el precio y su auditoría, producto por producto en orden de nombre: o quedan todos con su rastro, o ninguno.
+ * Fase 4 (ADR-035), defensa: si alguno se vende por opción (no debería estar en un ítem agrupado), `ES_BASE_CONFIGURABLE` y no se cambia ninguno.
  * Repetir el mismo «Aplicar también» es un solo cambio: la segunda vez ya están todos como se pide (éxito, mismo mensaje, sin escribir).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos ni el formato del precio, la lista y los precios vistos (el guard).
@@ -47,7 +49,10 @@ export async function sincronizarPrecioGrupoCartaCasoDeUso(
     const delGrupo = new Set(grupo ? [ids[0], ...grupo.hermanos.map((h) => h.productoId)] : []);
     if (!grupo || ids.some((id) => !delGrupo.has(id))) return fracaso("NO_MISMO_ITEM", "Esos productos no están todos en el mismo ítem agrupado de la carta.");
 
-    const productos = await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, precioVenta: true }, orderBy: { nombre: "asc" } });
+    const productos = await tx.producto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, precioVenta: true, modoDeVenta: true }, orderBy: { nombre: "asc" } });
+    // Fase 4 (ADR-035), defensa: una base no puede estar en un ítem agrupado (lo rechazan el alta en el ítem y el paso a base); si igual hay una, su precio guardado no se toca.
+    const base = productos.find((p) => esBaseConfigurable(p.modoDeVenta));
+    if (base) return fracaso("ES_BASE_CONFIGURABLE", `«${base.nombre}» se vende por opción: su precio guardado no se iguala (el precio final está en cada opción). Sacalo del ítem agrupado.`);
     const aCambiar: { id: string; nombre: string; anterior: number }[] = [];
     for (const p of productos) {
       const guardado = Number(p.precioVenta);

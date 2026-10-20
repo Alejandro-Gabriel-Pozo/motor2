@@ -30,9 +30,10 @@ export interface PrecioLocalDeProductoVisto {
 
 /**
  * `PRODUCTO_NO_ENCONTRADO`: el id no es de un producto de la empresa (el formato del precio lo rechaza antes el guard). `PRECIO_DESACTUALIZADO`: el precio local
- * cambió desde que se cargó la pantalla (otra persona lo fijó, lo habilitó o lo deshabilitó): no se escribe nada.
+ * cambió desde que se cargó la pantalla (otra persona lo fijó, lo habilitó o lo deshabilitó): no se escribe nada. `ES_BASE_CONFIGURABLE` (Fase 4, ADR-035): el producto se vende por opción y se pide
+ * HABILITAR un precio local: lo local de una base es la grilla de sus opciones (deshabilitarlo sí se puede).
  */
-export type ResultadoSetPrecioLocalProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "PRECIO_DESACTUALIZADO">;
+export type ResultadoSetPrecioLocalProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "PRECIO_DESACTUALIZADO" | "ES_BASE_CONFIGURABLE">;
 
 /**
  * Comando «aplicar el mismo precio local a los productos de UN ítem agrupado de la carta»: lo que recibe `sincronizarPrecioLocalGrupoCartaCasoDeUso`, YA
