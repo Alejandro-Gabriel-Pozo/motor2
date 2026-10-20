@@ -28,10 +28,10 @@ export { prismaDuenioSinEmpresa } from "./cliente-duenio";
 /**
  * Vacía las operaciones y sus movimientos de un golpe. Los tests de volumen siembran decenas de miles de filas: borrarlas con el
  * `deleteMany` de `limpiarBaseDeTest` (con el chequeo de FK fila por fila) puede pasar los 10 s del hook y arrastra a los tests siguientes.
- * Postgres no deja truncar `Operacion` si otra tabla la referencia, aunque esté vacía: `FacturaProveedorSucursal` (M3b) la referencia con `operacionId`, `NotaCreditoProveedorImputacion` (M6) con `operacionDevolucionId` y `OpcionElegidaEnLinea` (GO-1d) y `CombinacionEnLinea` (GO-3a) referencian a `CuentaItem`, así que van en el mismo `TRUNCATE`.
+ * Postgres no deja truncar `Operacion` si otra tabla la referencia, aunque esté vacía: `FacturaProveedorSucursal` (M3b) la referencia con `operacionId`, `NotaCreditoProveedorImputacion` (M6) con `operacionDevolucionId` y `OpcionElegidaEnLinea` (GO-1d) referencia a `CuentaItem`, así que van en el mismo `TRUNCATE` (`CombinacionEnLinea`, de GO-3a, también estaba: se retiró en la Fase 3).
  */
 export async function vaciarOperacionesPorVolumen() {
-  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "OpcionElegidaEnLinea", "CombinacionEnLinea", "MovimientoStock", "CuentaItem", "FacturaProveedorSucursal", "NotaCreditoProveedorImputacion", "Operacion"');
+  await prismaAdmin.$executeRawUnsafe('TRUNCATE TABLE "OpcionElegidaEnLinea", "MovimientoStock", "CuentaItem", "FacturaProveedorSucursal", "NotaCreditoProveedorImputacion", "Operacion"');
 }
 
 /**
@@ -387,15 +387,9 @@ export async function sembrarMotivosYDestinos() {
   };
 }
 
-// GO-3 (ADR-032): las tablas de combos y menú del día (GO-3d) y de combinaciones (GO-3a). Nadie las referencia y ellas referencian a la carta, al catálogo, a las opciones, a la sucursal,
-// al User y a `CuentaItem` (RESTRICT, salvo la foto, en CASCADE): se borran PRIMERO, hijas antes que padres. Declarada como función (se iza) para dejar el bloque al final del archivo.
+// GO-3 (ADR-032): las tablas de combos y menú del día (GO-3d; las de combinaciones, de GO-3a, se retiraron en la Fase 3). Nadie las referencia y ellas referencian a la carta, al catálogo, a las
+// opciones, a la sucursal y al User (RESTRICT): se borran PRIMERO, hijas antes que padres. Declarada como función (se iza) para dejar el bloque al final del archivo.
 async function limpiarTablasDeGo3() {
-  await prismaAdmin.combinacionEnLinea.deleteMany();
-  await prismaAdmin.recetaDeCombinacionIngrediente.deleteMany();
-  await prismaAdmin.recetaDeCombinacionVersion.deleteMany();
-  await prismaAdmin.precioLocalDeCombinacion.deleteMany();
-  await prismaAdmin.combinacionDeProducto.deleteMany();
-  await prismaAdmin.grupoDePrecio.deleteMany();
   await prismaAdmin.entradaDelDiaDeCupo.deleteMany();
   await prismaAdmin.opcionDeEntradaDeCupo.deleteMany();
   await prismaAdmin.entradaDeCupo.deleteMany();

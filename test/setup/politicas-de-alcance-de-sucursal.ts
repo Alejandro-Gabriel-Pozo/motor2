@@ -1,4 +1,5 @@
 import { ALCANCE_DE_TABLAS, TABLAS_CON_POLITICA_DE_SUCURSAL } from "./clasificacion-de-tablas";
+import { ALCANCE_DE_TABLAS_RETIRADAS } from "./migraciones-de-alcance-de-sucursal";
 
 /**
  * GENERADOR del SQL de la RLS por sucursal (M.3, Fase A, paso A9; plan `_planes/plan-m3-rls-por-sucursal-2026-10-10.md` §2). Lee la segunda dimensión de la clasificación
@@ -46,7 +47,8 @@ function identificador(valor: string): string {
 /** La condición de visibilidad/escritura de UNA tabla para un modo. Sale solo de la clasificación; una tabla sin alcance de sucursal es un error. */
 function condicion(tabla: string, modo: Modo, profundidad = 0): string {
   if (profundidad > PROFUNDIDAD_MAXIMA_DE_PADRES) throw new Error(`politicas-de-alcance-de-sucursal: la cadena de padres de "${tabla}" es demasiado larga (¿un ciclo?).`);
-  const declaracion = ALCANCE_DE_TABLAS[tabla];
+  // Una tabla RETIRADA (ya no existe en la base) conserva su alcance histórico solo para reproducir el SQL de las migraciones viejas que la nombran (B7).
+  const declaracion = ALCANCE_DE_TABLAS[tabla] ?? ALCANCE_DE_TABLAS_RETIRADAS[tabla];
   if (!declaracion) throw new Error(`politicas-de-alcance-de-sucursal: "${tabla}" no está en la clasificación de alcance.`);
   const lista = `ANY((SELECT ${FUNCION[modo]}())::text[])`;
   switch (declaracion.alcance) {

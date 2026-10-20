@@ -84,8 +84,7 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
     ]);
     expect(forma("ProductoAdmiteGrupo")).toEqual([
       "id:text:NO", "empresaId:text:NO", "productoId:text:NO", "grupoId:text:NO", "orden:integer:NO", "cantidadMinima:integer:YES", "cantidadMaxima:integer:YES", "modoPrecio:text:YES", "activo:boolean:NO", "version:integer:NO", `creadoEn:${T}:NO`, `actualizadoEn:${T}:NO`,
-      // GO-3a (ADR-032): el eje de las combinaciones del producto, nulable.
-      "ejeDeCombinacion:smallint:YES",
+      // (GO-3a sumó `ejeDeCombinacion`; su retiro, Fase 3 paso 3.7, la borró.)
     ]);
     expect(forma("ProductoAdmiteOpcion")).toEqual([
       "id:text:NO", "empresaId:text:NO", "productoId:text:NO", "opcionId:text:NO", "cantidadMaxima:integer:NO", "precioAbsoluto:numeric(14,2):YES", "tipoDeDiferencia:text:YES", "diferenciaPrecio:numeric(14,2):YES", "porcentaje:numeric(7,4):YES",
@@ -121,7 +120,6 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
       "ProductoAdmiteGrupo|ProductoAdmiteGrupo_empresaId_id_key|true",
       "ProductoAdmiteGrupo|ProductoAdmiteGrupo_grupoId_idx|false",
       "ProductoAdmiteGrupo|ProductoAdmiteGrupo_productoId_grupoId_key|true",
-      "ProductoAdmiteGrupo|ProductoAdmiteGrupo_un_grupo_por_eje_key|true", // GO-3a (ADR-032): un grupo por eje de combinación (parcial; lo mide migracion-go3a)
       "ProductoAdmiteOpcion|ProductoAdmiteOpcion_empresaId_id_key|true",
       "ProductoAdmiteOpcion|ProductoAdmiteOpcion_opcionId_idx|false",
       "ProductoAdmiteOpcion|ProductoAdmiteOpcion_productoId_opcionId_key|true",
@@ -171,7 +169,7 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
       "ConsumoDeOpcion_cantidad_chk", "ConsumoDeOpcion_efecto_chk", "ConsumoDeOpcion_merma_chk", "ConsumoDeOpcion_orden_chk", "ConsumoDeOpcion_reemplazo_chk",
       "GrupoDeOpciones_cantidades_chk", "GrupoDeOpciones_incluida_chk", "GrupoDeOpciones_medida_chk", "GrupoDeOpciones_nombre_chk", "GrupoDeOpciones_tipo_chk", "GrupoDeOpciones_version_chk",
       "OpcionDeGrupo_nombre_chk", "OpcionDeGrupo_ninguna_sin_producto_chk", "OpcionDeGrupo_orden_chk", "OpcionDeGrupo_version_chk",
-      "ProductoAdmiteGrupo_cantidades_chk", "ProductoAdmiteGrupo_eje_de_combinacion_chk" /* GO-3a */, "ProductoAdmiteGrupo_modo_precio_chk", "ProductoAdmiteGrupo_orden_chk", "ProductoAdmiteGrupo_version_chk",
+      "ProductoAdmiteGrupo_cantidades_chk", "ProductoAdmiteGrupo_modo_precio_chk", "ProductoAdmiteGrupo_orden_chk", "ProductoAdmiteGrupo_version_chk",
       "ProductoAdmiteOpcion_absoluto_o_diferencia_chk", "ProductoAdmiteOpcion_cantidad_maxima_chk", "ProductoAdmiteOpcion_diferencia_chk", "ProductoAdmiteOpcion_porcentaje_chk", "ProductoAdmiteOpcion_precio_absoluto_chk", "ProductoAdmiteOpcion_tipo_de_diferencia_chk", "ProductoAdmiteOpcion_version_chk",
       "VersionDeOpcion_diferencia_chk", "VersionDeOpcion_factor_chk", "VersionDeOpcion_numero_chk", "VersionDeOpcion_porcentaje_chk", "VersionDeOpcion_tipo_de_diferencia_chk",
     ].sort());
@@ -200,8 +198,8 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
       )).map((c) => c.columna);
     expect(await actualizables("GrupoDeOpciones")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "nombre", "version"]);
     expect(await actualizables("OpcionDeGrupo")).toEqual(["activa", "actualizadoEn", "nombre", "orden", "version"]);
-    // GO-3a (ADR-032) suma `ejeDeCombinacion` (el eje de las combinaciones, editable).
-    expect(await actualizables("ProductoAdmiteGrupo")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "ejeDeCombinacion", "modoPrecio", "orden", "version"]);
+    // (GO-3a sumó `ejeDeCombinacion`, editable; su retiro, Fase 3 paso 3.7, borró la columna y su permiso.)
+    expect(await actualizables("ProductoAdmiteGrupo")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "modoPrecio", "orden", "version"]);
     expect(await actualizables("ProductoAdmiteOpcion")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "diferenciaPrecio", "porcentaje", "precioAbsoluto", "tipoDeDiferencia", "version"]);
     expect(await actualizables("VersionDeOpcion")).toEqual([]);
     expect(await actualizables("ConsumoDeOpcion")).toEqual([]);

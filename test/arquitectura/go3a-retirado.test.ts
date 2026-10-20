@@ -8,8 +8,8 @@ import { describe, expect, it } from "vitest";
  * ni sus símbolos (el texto se mira SIN comentarios: un comentario que cuenta la historia está permitido; código, strings y tipos, no). Y el esquema de Prisma ya no declara la columna
  * `ProductoAdmiteGrupo.ejeDeCombinacion` (la base la conserva hasta la migración de retiro, que va en un PR aparte: con el campo fuera del modelo, ningún `create` ni lectura sin `select` la pide).
  *
- * Los 6 MODELOS de GO-3a siguen en el esquema hasta esa migración (el cliente de Prisma los conoce); el cerco exige que ningún código los use. La migración de retiro suma a este cerco el
- * chequeo de que tampoco estén en el esquema.
+ * Paso 3.7 (la migración de retiro, `20261022100000_retiro_go3a_rls` y `20261022101000_retiro_go3a`): los 6 MODELOS de GO-3a tampoco están en el esquema. La única excepción es el script de
+ * verificación previa de solo lectura (`EXCEPCIONES`), que los nombra a propósito para contarlos; se revisa en las dos direcciones (existe y los sigue nombrando).
  */
 const RAIZ = join(__dirname, "../..");
 const CARPETAS = ["src", "plataforma", "scripts"];
@@ -28,6 +28,11 @@ const RETIRADO: readonly { patron: RegExp; que: string }[] = [
   { patron: /\b(COMBINACION_NO_DISPONIBLE|PRECIO_DE_COMBINACION_INVALIDO)\b/, que: "los rechazos de la venta por combinación" },
   { patron: /\b(resumenDePreciosConCombinaciones|opcionesConCombinacionApagada|combinacionElegida|combinacionesParaMostrar|cargarCombinacionesParaVender|ExcepcionDeCombinacion)\b/, que: "la venta y la vista previa con combinaciones" },
 ];
+
+/** Rutas exactas que pueden nombrar lo retirado, con su motivo. */
+const EXCEPCIONES: Readonly<Record<string, string>> = {};
+
+const MODELOS_RETIRADOS = ["GrupoDePrecio", "CombinacionDeProducto", "PrecioLocalDeCombinacion", "RecetaDeCombinacionVersion", "RecetaDeCombinacionIngrediente", "CombinacionEnLinea"];
 
 function archivos(dir: string): string[] {
   if (!existsSync(dir)) return [];
@@ -58,8 +63,22 @@ describe("GO-3a retirado (Fase 3 de la ola «precio y carta»): nada lo nombra e
   });
 
   it("ningún archivo de src/, plataforma/ ni scripts/ nombra lo retirado (fuera de un comentario)", () => {
-    const malos = fuentes.flatMap((f) => hallazgos(sinComentarios(f.texto, f.ruta.endsWith(".sql"))).map((que) => `${f.ruta}: ${que}`));
+    const malos = fuentes.filter((f) => !(f.ruta in EXCEPCIONES)).flatMap((f) => hallazgos(sinComentarios(f.texto, f.ruta.endsWith(".sql"))).map((que) => `${f.ruta}: ${que}`));
     expect(malos, `GO-3a se retiró en la Fase 3 (ADR-032, «Fase 3: retiro de GO-3a»): no vuelve sin una decisión nueva.\n${malos.join("\n")}`).toEqual([]);
+  });
+
+  it("cada excepción existe, sigue nombrando lo retirado y tiene motivo (las dos direcciones)", () => {
+    for (const [ruta, motivo] of Object.entries(EXCEPCIONES)) {
+      const f = fuentes.find((x) => x.ruta === ruta);
+      expect(f, `${ruta}: la excepción apunta a un archivo que no existe`).toBeDefined();
+      expect(hallazgos(sinComentarios(f!.texto, ruta.endsWith(".sql"))).length, `${ruta}: ya no nombra lo retirado, sacala de EXCEPCIONES`).toBeGreaterThan(0);
+      expect(motivo.trim().length).toBeGreaterThan(20);
+    }
+  });
+
+  it("el esquema de Prisma ya no declara los seis modelos de GO-3a (los borró la migración de retiro)", () => {
+    const schema = sinComentarios(readFileSync(join(RAIZ, "prisma/schema.prisma"), "utf8"));
+    for (const m of MODELOS_RETIRADOS) expect(schema, m).not.toMatch(new RegExp(`\\b${m}\\b`));
   });
 
   it("el modelo de Prisma ya no declara ProductoAdmiteGrupo.ejeDeCombinacion (la columna se borra con la migración de retiro)", () => {

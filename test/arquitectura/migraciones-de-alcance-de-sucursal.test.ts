@@ -3,10 +3,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ALCANCE_DE_TABLAS, TABLAS_CON_POLITICA_DE_SUCURSAL, politicasEsperadas } from "../setup/clasificacion-de-tablas";
 import {
+  ALCANCE_DE_TABLAS_RETIRADAS,
   MIGRACION_B1_FUNCIONES,
   MIGRACION_P3_AGREGADO_DE_CUENTA,
   MIGRACIONES_DE_POLITICAS_DE_SUCURSAL,
   MIGRACIONES_DE_POLITICAS_POSTERIORES,
+  MIGRACIONES_DE_RETIRO_DE_POLITICAS,
   TABLAS_DEL_PAQUETE_1,
   ULTIMA_MIGRACION_DEL_PAQUETE_1,
 } from "../setup/migraciones-de-alcance-de-sucursal";
@@ -26,6 +28,9 @@ import {
  * se pone en rojo: la corrección es una migración NUEVA (las ya aplicadas no se editan), no retocar la salida.
  *
  * Sin base de datos. La mutación (alterar un byte de una migración) está demostrada en el último bloque con la misma función que usa el chequeo real.
+ *
+ * Una tabla con política que se RETIRA (ola «precio y carta», Fase 3: GO-3a) sale de la clasificación y su retiro es otra migración de políticas: `MIGRACIONES_DE_RETIRO_DE_POLITICAS`, cuyo
+ * `migration.sql` es la REVERSA del generador y su `down.sql`, el generador. Las migraciones viejas que la nombran se siguen reproduciendo con su alcance histórico (`ALCANCE_DE_TABLAS_RETIRADAS`).
  */
 const RAIZ = join(__dirname, "../../prisma/migrations");
 
@@ -44,7 +49,16 @@ const ESPERADAS: readonly Esperada[] = [
     migrationSql: sqlDePoliticasDeAlcance(tablas),
     downSql: sqlDeReversaDePoliticasDeAlcance(tablas),
   })),
+  // El retiro: al revés (la migración saca las políticas; la reversa las vuelve a crear).
+  ...MIGRACIONES_DE_RETIRO_DE_POLITICAS.map(({ migracion, tablas }) => ({
+    migracion,
+    tablas,
+    migrationSql: sqlDeReversaDePoliticasDeAlcance(tablas),
+    downSql: sqlDePoliticasDeAlcance(tablas),
+  })),
 ];
+
+const TABLAS_RETIRADAS = MIGRACIONES_DE_RETIRO_DE_POLITICAS.flatMap((g) => g.tablas);
 
 /**
  * Todo lo que está mal en un archivo de migración (vacío = es el encabezado de comentarios y, después, EXACTAMENTE lo que genera el generador). El encabezado puede decir lo que quiera, pero
@@ -73,6 +87,13 @@ describe("B7: las migraciones de la RLS por sucursal (B1 a B6) son la salida del
     expect(MIGRACION_P3_AGREGADO_DE_CUENTA < MIGRACION_B1_FUNCIONES, "B4 incluye AgregadoDeCuenta: la tabla tiene que existir antes").toBe(true);
     expect(ULTIMA_MIGRACION_DEL_PAQUETE_1, "la última del Paquete 1 es la del último grupo (B6)").toBe(MIGRACIONES_DE_POLITICAS_DE_SUCURSAL.at(-1)!.migracion);
     for (const { migracion } of MIGRACIONES_DE_POLITICAS_POSTERIORES) expect(migracion > ULTIMA_MIGRACION_DEL_PAQUETE_1, `${migracion}: una posterior va después de B6`).toBe(true);
+    for (const { migracion, tablas } of MIGRACIONES_DE_RETIRO_DE_POLITICAS) {
+      for (const tabla of tablas) {
+        const altas = MIGRACIONES_DE_POLITICAS_POSTERIORES.filter((g) => g.tablas.includes(tabla)).map((g) => g.migracion);
+        expect(altas, `${migracion}: ${tabla} se retira y alguna migración posterior le dio sus políticas`).not.toEqual([]);
+        for (const alta of altas) expect(migracion > alta, `${migracion}: el retiro de ${tabla} va después de ${alta}`).toBe(true);
+      }
+    }
     for (const e of ESPERADAS) {
       expect(carpetas, e.migracion).toContain(e.migracion);
       expect(existsSync(join(RAIZ, e.migracion, "migration.sql")), `${e.migracion}/migration.sql`).toBe(true);
@@ -101,10 +122,17 @@ describe("B7: las migraciones de la RLS por sucursal (B1 a B6) son la salida del
     expect(MIGRACIONES_DE_POLITICAS_DE_SUCURSAL).toHaveLength(5);
   });
 
-  it("el Paquete 1 más las migraciones posteriores son EXACTAMENTE TABLAS_CON_POLITICA_DE_SUCURSAL (sin repetir ninguna tabla)", () => {
+  it("el Paquete 1 más las migraciones posteriores, menos las retiradas, son EXACTAMENTE TABLAS_CON_POLITICA_DE_SUCURSAL (sin repetir ninguna tabla)", () => {
     const todas = [...TABLAS_DEL_PAQUETE_1, ...MIGRACIONES_DE_POLITICAS_POSTERIORES.flatMap((g) => g.tablas)];
     expect(new Set(todas).size, "ninguna tabla en dos grupos (del Paquete 1 o posteriores)").toBe(todas.length);
-    expect([...todas].sort()).toEqual([...TABLAS_CON_POLITICA_DE_SUCURSAL].sort());
+    expect(new Set(TABLAS_RETIRADAS).size, "ninguna tabla retirada dos veces").toBe(TABLAS_RETIRADAS.length);
+    for (const t of TABLAS_RETIRADAS) expect(todas, `${t}: se retira una tabla que alguna migración dio de alta`).toContain(t);
+    expect(todas.filter((t) => !TABLAS_RETIRADAS.includes(t)).sort()).toEqual([...TABLAS_CON_POLITICA_DE_SUCURSAL].sort());
+  });
+
+  it("las tablas retiradas tienen su alcance histórico y ya no están en la clasificación (las dos direcciones)", () => {
+    expect(Object.keys(ALCANCE_DE_TABLAS_RETIRADAS).sort()).toEqual([...TABLAS_RETIRADAS].sort());
+    for (const t of TABLAS_RETIRADAS) expect(t in ALCANCE_DE_TABLAS, `${t} está retirada y sigue en ALCANCE_DE_TABLAS`).toBe(false);
   });
 
   it("los padres de cada tabla HEREDADA van en el mismo grupo (ningún grupo depende de otro, salvo de B1 y de la tabla de P3)", () => {
@@ -142,8 +170,8 @@ describe("B7: la mutación — alterar un byte de una migración la pone en rojo
       for (const [archivo, generado] of [["migration.sql", e.migrationSql], ["down.sql", e.downSql]] as const) {
         const real = leer(e.migracion, archivo);
         expect(defectosDelArchivo(real, generado), `${e.migracion}/${archivo} sin tocar`).toEqual([]);
-        // Se cambia un carácter dentro de la parte generada (el último "TO motor2_app"/"DROP" que aparezca): una letra por otra.
-        const posicion = real.lastIndexOf(archivo === "migration.sql" ? (e.tablas === null ? "STABLE" : "RESTRICTIVE") : "DROP");
+        // Se cambia un carácter dentro de la parte generada (el último "STABLE"/"RESTRICTIVE"/"DROP" que aparezca, según lo que genere): una letra por otra.
+        const posicion = real.lastIndexOf(generado.includes("RESTRICTIVE") ? "RESTRICTIVE" : generado.includes("STABLE") ? "STABLE" : "DROP");
         expect(posicion, `${e.migracion}/${archivo}: hay algo que alterar`).toBeGreaterThan(0);
         const mutado = `${real.slice(0, posicion)}X${real.slice(posicion + 1)}`;
         expect(mutado.length).toBe(real.length);

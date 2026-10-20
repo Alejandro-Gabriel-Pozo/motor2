@@ -1,3 +1,5 @@
+import type { DeclaracionDeAlcance } from "./clasificacion-de-tablas";
+
 /**
  * Paquete 1, migraciones B1 a B6 (RLS por sucursal): sus carpetas y qué tablas lleva cada una. Lo comparten el guardián B7 (`test/arquitectura/migraciones-de-alcance-de-sucursal.test.ts`)
  * y la prueba de subir/bajar/subir (`test/aislamiento/paquete-1-subir-bajar-subir.test.ts`).
@@ -57,6 +59,29 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   // GO-3 (ADR-032): el precio local de las combinaciones y de los grupos, y la foto de la combinación vendida (GO-3a-rls).
   { migracion: "20261021111000_go3a_rls_sucursal_combinaciones", tablas: ["CombinacionEnLinea", "PrecioLocalDeCombinacion"] },
 ];
+
+/**
+ * Las migraciones que RETIRAN políticas de alcance de sucursal porque sus tablas se retiran (en orden ascendente por nombre): su `migration.sql` es el encabezado más la salida exacta de la REVERSA del
+ * generador para sus tablas, y su `down.sql`, el encabezado más la salida exacta del generador (las vuelve a crear). B7 las verifica byte a byte como a las demás, y la regla de la unión pasa a
+ * ser: (Paquete 1 + posteriores) − retiradas = `TABLAS_CON_POLITICA_DE_SUCURSAL`. Cada una tiene que ser posterior a la migración que creó esas políticas.
+ *
+ * Ola «precio y carta», Fase 3, paso 3.7 (retiro de GO-3a, ADR-032): las dos tablas de GO-3a-rls. Va en una carpeta propia, ANTES de la migración de esquema que borra las tablas
+ * (`20261022101000_retiro_go3a`): B7 exige que una migración de políticas sea solo el encabezado y la salida del generador.
+ */
+export const MIGRACIONES_DE_RETIRO_DE_POLITICAS: readonly { readonly migracion: string; readonly tablas: readonly string[] }[] = [
+  { migracion: "20261022100000_retiro_go3a_rls", tablas: ["CombinacionEnLinea", "PrecioLocalDeCombinacion"] },
+];
+
+/**
+ * El alcance que TENÍAN las tablas retiradas (ya no están en la clasificación porque no existen en la base): el generador lo usa SOLO para reproducir el SQL de las migraciones viejas que las
+ * nombran (las de alta y la de retiro), que B7 sigue exigiendo byte a byte. Ninguna tabla de acá puede estar también en `ALCANCE_DE_TABLAS` (lo comprueba B7).
+ */
+export const ALCANCE_DE_TABLAS_RETIRADAS: Readonly<Record<string, DeclaracionDeAlcance>> = Object.freeze({
+  // GO-3a (retirada en la Fase 3): el precio local de una combinación o de una tarifa, de una sucursal.
+  PrecioLocalDeCombinacion: { alcance: "PROPIA" },
+  // GO-3a (retirada en la Fase 3): la foto de la combinación vendida, de la sucursal de la mesa de su línea.
+  CombinacionEnLinea: { alcance: "HEREDADA", padre: "CuentaItem", columna: "cuentaItemId" },
+});
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */
 export const MIGRACION_P3_AGREGADO_DE_CUENTA = "20261014100000_i3_agregado_de_cuenta";
