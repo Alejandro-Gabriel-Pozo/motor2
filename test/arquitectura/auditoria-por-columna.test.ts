@@ -34,8 +34,9 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   // GO-2a: el catálogo de opciones de venta y lo que decide cada sucursal. Cada caso de uso audita por columna, con el antes y el después. Los que auditan DOS o más entidades (la admisión:
   // `ProductoAdmiteGrupo` y `ProductoAdmiteOpcion`; el alta de una opción: la opción, su versión 1 y el ancla) no entran en esta lista de una entidad por archivo: su auditoría por columna la
   // prueban `test/catalogo/opciones-admision.test.ts` y `opciones-versiones.test.ts`, y `escrituras-auditadas` exige la cadena.
-  { archivo: "src/server/actions/catalogo/casos-de-uso/crear-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "tipo", "cantidadMinima", "cantidadMaxima"] },
-  { archivo: "src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "cantidadMinima", "cantidadMaxima", "activo"] },
+  // Fase 4 de la ola «precio y carta» (ADR-035): + `prefijoEnCarta` («se lee en la carta como»).
+  { archivo: "src/server/actions/catalogo/casos-de-uso/crear-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "tipo", "cantidadMinima", "cantidadMaxima", "prefijoEnCarta"] },
+  { archivo: "src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "cantidadMinima", "cantidadMaxima", "activo", "prefijoEnCarta"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["nombre", "orden", "activa"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/agregar-version-de-opcion.ts", entidad: "VersionDeOpcion", campos: ["numero", "tipoDeDiferencia", "diferenciaPrecio", "porcentaje", "factorEscala"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/apagar-opcion-en-sucursal.ts", entidad: "OpcionApagadaEnSucursal", campos: ["apagada"] },

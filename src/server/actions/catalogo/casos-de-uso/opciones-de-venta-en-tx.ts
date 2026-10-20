@@ -30,12 +30,14 @@ export interface GrupoEnTx {
   cantidadMaxima: number;
   activo: boolean;
   version: number;
+  /** Fase 4 (ADR-035): «se lee en la carta como» (`null` = sin prefijo). */
+  prefijoEnCarta: string | null;
 }
 
 export async function cargarGrupoEnTx(tx: Tx, grupoId: string): Promise<GrupoEnTx | null> {
   const g = await tx.grupoDeOpciones.findFirst({
     where: { id: grupoId },
-    select: { id: true, nombre: true, tipo: true, cantidadMinima: true, cantidadMaxima: true, activo: true, version: true },
+    select: { id: true, nombre: true, tipo: true, cantidadMinima: true, cantidadMaxima: true, activo: true, version: true, prefijoEnCarta: true },
   });
   return g ? { ...g, tipo: g.tipo as TipoDeGrupoDeOpciones } : null;
 }
@@ -44,7 +46,7 @@ export async function cargarGrupoEnTx(tx: Tx, grupoId: string): Promise<GrupoEnT
 export async function grupoConElMismoNombre(tx: Tx, nombre: string, exceptoId: string | null) {
   return tx.grupoDeOpciones.findFirst({
     where: { nombre: { equals: nombre, mode: "insensitive" }, ...(exceptoId ? { id: { not: exceptoId } } : {}) },
-    select: { id: true, nombre: true, tipo: true, cantidadMinima: true, cantidadMaxima: true },
+    select: { id: true, nombre: true, tipo: true, cantidadMinima: true, cantidadMaxima: true, prefijoEnCarta: true },
   });
 }
 

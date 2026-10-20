@@ -5,8 +5,10 @@ import { validarNombreCatalogo } from "@/core/datos/nombre-catalogo";
 import { numeroDeEntrada, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
 import { validarFactorDeEscala, validarPorcentajeDeDiferencia } from "@/core/datos/porcentaje-y-factor";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import { validarTextoCatalogo } from "@/core/texto";
 import {
   CANTIDAD_MAXIMA_DE_OPCION,
+  LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA,
   EFECTOS_DE_CONSUMO_DE_OPCION,
   MAXIMO_CONSUMOS_POR_VERSION,
   MERMA_MAXIMA_DE_CONSUMO,
@@ -165,7 +167,24 @@ function datosDeVersion(valor: unknown): ResultadoDato<DatosDeVersionDeOpcion> {
 
 // ───────────────────────────── Grupos ─────────────────────────────
 
-export function guardComandoCrearGrupoDeOpciones(entrada: { nombre: unknown; tipo: unknown; cantidadMinima: unknown; cantidadMaxima: unknown }): ResultadoDato<ComandoCrearGrupoDeOpciones> {
+/**
+ * Fase 4 (ADR-035): «se lee en la carta como». Ausente (`undefined`) queda ausente; `null`, vacío o solo espacios es «sin prefijo» (`null`); si no, un texto sin espacios a los costados (no se recorta: se
+ * avisa), de hasta 20 caracteres y con el juego de caracteres del catálogo. El CHECK `GrupoDeOpciones_prefijo_en_carta_chk` de la base repite el tope y los costados.
+ */
+function prefijoEnCarta(valor: unknown): ResultadoDato<string | null | undefined> {
+  if (valor === undefined) return aceptar(undefined);
+  if (valor === null) return aceptar(null);
+  const etiqueta = "«Se lee en la carta como»";
+  if (typeof valor !== "string") return rechazar("formato", `${etiqueta} no es un texto válido.`);
+  if (valor.trim() === "") return aceptar(null);
+  if (valor !== valor.trim()) return rechazar("formato", `${etiqueta} no puede empezar ni terminar con espacios: borralos y volvé a guardar.`);
+  if (Array.from(valor).length > LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA) return rechazar("largo", `${etiqueta} tiene hasta ${LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA} caracteres: acortalo (por ejemplo «De» o «Con»).`);
+  const invalido = validarTextoCatalogo(valor, etiqueta);
+  if (invalido) return rechazar("formato", invalido);
+  return aceptar(valor);
+}
+
+export function guardComandoCrearGrupoDeOpciones(entrada: { nombre: unknown; tipo: unknown; cantidadMinima: unknown; cantidadMaxima: unknown; prefijoEnCarta?: unknown }): ResultadoDato<ComandoCrearGrupoDeOpciones> {
   const n = nombre(entrada.nombre, "El nombre del grupo");
   if (!n.ok) return n;
   const tipo = deLista<TipoDeGrupoDeOpciones>(entrada.tipo, TIPOS_DE_GRUPO_DE_OPCIONES, "El tipo de grupo no es válido.");
@@ -174,7 +193,9 @@ export function guardComandoCrearGrupoDeOpciones(entrada: { nombre: unknown; tip
   if (!minimo.ok) return minimo;
   const maximo = entero(entrada.cantidadMaxima, "El máximo de opciones", 1, CANTIDAD_MAXIMA_DE_OPCION);
   if (!maximo.ok) return maximo;
-  return aceptar({ nombre: n.valor, tipo: tipo.valor, cantidadMinima: minimo.valor, cantidadMaxima: maximo.valor });
+  const prefijo = prefijoEnCarta(entrada.prefijoEnCarta);
+  if (!prefijo.ok) return prefijo;
+  return aceptar({ nombre: n.valor, tipo: tipo.valor, cantidadMinima: minimo.valor, cantidadMaxima: maximo.valor, prefijoEnCarta: prefijo.valor ?? null });
 }
 
 export function guardComandoEditarGrupoDeOpciones(entrada: {
@@ -184,6 +205,7 @@ export function guardComandoEditarGrupoDeOpciones(entrada: {
   cantidadMinima: unknown;
   cantidadMaxima: unknown;
   activo: unknown;
+  prefijoEnCarta?: unknown;
 }): ResultadoDato<ComandoEditarGrupoDeOpciones> {
   const grupoId = id(entrada.grupoId, MENSAJE_GRUPO_NO_ENCONTRADO);
   if (!grupoId.ok) return grupoId;
@@ -197,7 +219,17 @@ export function guardComandoEditarGrupoDeOpciones(entrada: {
   if (!maximo.ok) return maximo;
   const activo = booleano(entrada.activo, "«Activo»");
   if (!activo.ok) return activo;
-  return aceptar({ grupoId: grupoId.valor, versionEsperada: version.valor, nombre: n.valor, cantidadMinima: minimo.valor, cantidadMaxima: maximo.valor, activo: activo.valor });
+  const prefijo = prefijoEnCarta(entrada.prefijoEnCarta);
+  if (!prefijo.ok) return prefijo;
+  return aceptar({
+    grupoId: grupoId.valor,
+    versionEsperada: version.valor,
+    nombre: n.valor,
+    cantidadMinima: minimo.valor,
+    cantidadMaxima: maximo.valor,
+    activo: activo.valor,
+    ...(prefijo.valor === undefined ? {} : { prefijoEnCarta: prefijo.valor }),
+  });
 }
 
 // ───────────────────────────── Opciones y versiones ─────────────────────────────

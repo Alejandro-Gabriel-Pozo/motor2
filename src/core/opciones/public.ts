@@ -48,3 +48,4 @@ export { MENSAJE_FALTA_PRECIO_FINAL, esBaseConfigurable, precioDeReferenciaDeAdm
 export type { AdmisionParaSerBase, ProductoParaSerBase } from "./modo-de-venta";
 export { MODOS_DE_VENTA } from "./tipos";
 export type { ModoDeVenta } from "./tipos";
+export { LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA, MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA, admitePrefijoEnCarta, leerOpcionEnCarta } from "./lectura-en-carta";

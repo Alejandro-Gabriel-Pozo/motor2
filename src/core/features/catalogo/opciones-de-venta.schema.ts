@@ -28,10 +28,12 @@ export interface ComandoCrearGrupoDeOpciones {
   tipo: TipoDeGrupoDeOpciones;
   cantidadMinima: number;
   cantidadMaxima: number;
+  /** Fase 4 (ADR-035): «se lee en la carta como» (`null` o ausente = sin prefijo). Solo VARIANTE y MEDIDA. */
+  prefijoEnCarta?: string | null;
 }
 
 /**
- * `yaExistia`: había un grupo con ese nombre (sin distinguir mayúsculas), el mismo tipo y las mismas cantidades — repetir el alta (un doble clic, un reintento) devuelve el existente
+ * `yaExistia`: había un grupo con ese nombre (sin distinguir mayúsculas), el mismo tipo, las mismas cantidades y el mismo «se lee en la carta como» — repetir el alta (un doble clic, un reintento) devuelve el existente
  * en vez de crear otro. Con el nombre de otro grupo distinto, `NOMBRE_REPETIDO`.
  */
 export type ResultadoCrearGrupoDeOpciones = ResultadoCaso<{ grupoId: string; yaExistia: boolean }, "NOMBRE_REPETIDO" | ConfiguracionInvalida>;
@@ -43,6 +45,11 @@ export interface ComandoEditarGrupoDeOpciones {
   cantidadMinima: number;
   cantidadMaxima: number;
   activo: boolean;
+  /**
+   * Fase 4 (ADR-035): «se lee en la carta como» (`null` = sin prefijo; solo VARIANTE y MEDIDA). `undefined` = queda como estaba (un pedido que no lo manda). Como el resto de la fila, entra en la
+   * comparación de la versión: un formulario viejo que cambia otra cosa arrastra el prefijo viejo y se rechaza con `VERSION_DESACTUALIZADA`.
+   */
+  prefijoEnCarta?: string | null;
 }
 
 /** `productosAfectados` (D-4): cuántos productos que admiten el grupo quedan sin poder venderse con este cambio (un grupo obligatorio apagado). Se avisa, no se bloquea. */

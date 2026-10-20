@@ -80,7 +80,8 @@ export interface OpcionDelPanel {
 }
 
 export interface GrupoDetalleDelPanel {
-  grupo: { id: string; nombre: string; tipo: TipoDeGrupoDeOpciones; cantidadMinima: number; cantidadMaxima: number; activo: boolean; version: number };
+  /** `prefijoEnCarta` (Fase 4, ADR-035): «se lee en la carta como» (`null` = sin prefijo). */
+  grupo: { id: string; nombre: string; tipo: TipoDeGrupoDeOpciones; cantidadMinima: number; cantidadMaxima: number; activo: boolean; version: number; prefijoEnCarta: string | null };
   opciones: OpcionDelPanel[];
   /** Los productos que lo admiten (filas activas), por nombre. */
   productos: { id: string; nombre: string }[];
@@ -158,7 +159,7 @@ export async function cargarGrupoDelPanel(db: Db, grupoId: string, sucursalId: s
   }
 
   return {
-    grupo: { id: g.id, nombre: g.nombre, tipo: g.tipo as TipoDeGrupoDeOpciones, cantidadMinima: g.cantidadMinima, cantidadMaxima: g.cantidadMaxima, activo: g.activo, version: g.version },
+    grupo: { id: g.id, nombre: g.nombre, tipo: g.tipo as TipoDeGrupoDeOpciones, cantidadMinima: g.cantidadMinima, cantidadMaxima: g.cantidadMaxima, activo: g.activo, version: g.version, prefijoEnCarta: g.prefijoEnCarta },
     opciones: g.opciones.map((o) => ({
       id: o.id,
       nombre: o.nombre,

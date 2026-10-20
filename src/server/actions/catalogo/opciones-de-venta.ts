@@ -38,7 +38,7 @@ import { vincularGrupoEnProductoCasoDeUso } from "./casos-de-uso/vincular-grupo-
  * y los valida el guard. GO-2d: al salir bien invalidan la carta pública de la empresa (`revalidarCartasPublicas`): la carta muestra los tamaños, variantes y adicionales.
  */
 
-export async function crearGrupoDeOpciones(entrada: { nombre: unknown; tipo: unknown; cantidadMinima: unknown; cantidadMaxima: unknown }): Promise<ResultadoAccion> {
+export async function crearGrupoDeOpciones(entrada: { nombre: unknown; tipo: unknown; cantidadMinima: unknown; cantidadMaxima: unknown; prefijoEnCarta?: unknown }): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("opciones_definir", async (ctx) => {
     const comando = guardComandoCrearGrupoDeOpciones(entrada);
     if (!comando.ok) return error(comando.mensaje);
@@ -59,6 +59,8 @@ export async function editarGrupoDeOpciones(entrada: {
   cantidadMinima: unknown;
   cantidadMaxima: unknown;
   activo: unknown;
+  /** Fase 4 (ADR-035): «se lee en la carta como»; no viene = queda como estaba. */
+  prefijoEnCarta?: unknown;
 }): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("opciones_definir", async (ctx) => {
     const comando = guardComandoEditarGrupoDeOpciones(entrada);

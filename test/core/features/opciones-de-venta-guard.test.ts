@@ -58,7 +58,8 @@ describe("guardComandoCrearGrupoDeOpciones y guardComandoEditarGrupoDeOpciones",
   const alta = { nombre: "  Tamaño  ", tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1 };
 
   it("camino feliz: el nombre recortado", () => {
-    expect(guardComandoCrearGrupoDeOpciones(alta)).toEqual({ ok: true, valor: { nombre: "Tamaño", tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1 } });
+    // Fase 4 (ADR-035): el alta sin «se lee en la carta como» lo deja en null (sin prefijo).
+    expect(guardComandoCrearGrupoDeOpciones(alta)).toEqual({ ok: true, valor: { nombre: "Tamaño", tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, prefijoEnCarta: null } });
   });
 
   it("nombre vacío, de más de 80 o sin letras; tipo desconocido; cantidades fuera de rango o no enteras", () => {
