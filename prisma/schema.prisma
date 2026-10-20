@@ -1864,6 +1864,10 @@ model ContenidoCartaProducto {
   especial       Boolean       @default(false)
   /// Orden dentro de su sección de carta (misma escala que ItemAgrupadoCarta.orden).
   orden          Int           @default(0)
+  /// Fase 5 de la ola «precio y carta» (DEC-11): en un producto BASE con un solo eje en la carta, `true` = el nombre del producto va arriba como encabezado y las opciones debajo; `false` (default) = la
+  /// base sale OCULTA (cada opción, una fila con su nombre completo). En un producto directo o en una base de dos ejes (que sale siempre como tabla) no decide nada. Lo escribe solo
+  /// `guardarContenidoCartaProducto` (auditado por columna) y lo copia «copiar carta».
+  mostrarNombreArriba Boolean @default(false)
   /// Carpeta VISUAL de género del POS (docs/plan-genero-carta-2026-09-26.md, G1/G2), opcional. No implica precio ni
   /// sustituibilidad (eso es ItemAgrupadoCarta) ni tiene nada que ver con Grupo (Insumo/stock) ni con CategoriaProducto (que no
   /// ubica nada en la carta): solo visual, solo del POS por ahora (G4, la carta pública `CartaV1` no lo usa).
