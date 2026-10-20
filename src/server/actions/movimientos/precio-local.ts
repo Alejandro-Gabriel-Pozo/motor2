@@ -2,6 +2,7 @@
 
 import { ofrecerSincronizarPrecio } from "@/core/carta/public";
 import { guardComandoSetPrecioLocalProducto, guardComandoSincronizarPrecioLocalGrupoCarta } from "@/core/features/movimientos/precio-local.guard";
+import type { PrecioLocalDeProductoVisto } from "@/core/features/movimientos/precio-local.schema";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { conPermiso } from "../con-permiso";
@@ -41,14 +42,22 @@ export async function listarPreciosLocales(sucursalId: string) {
  * SUCURSAL, el resultado trae además `sincronizable` (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8): la pantalla ofrece
  * aplicar el mismo precio local con un botón aparte (`sincronizarPrecioLocalGrupoCarta`). Nunca se sincroniza solo.
  *
+ * `esperado` (ola «precio y carta», Fase 2, paso A2): el precio local que mostraba la pantalla (la fila como estaba, o `null`/ausente si no había). Si cambió
+ * desde entonces, no se escribe nada y el mensaje pide recargar (`PRECIO_DESACTUALIZADO`); el mismo pedido repetido no vuelve a escribir.
+ *
  * Desde el Hito 4 (H4C-4): permiso (`conPermiso("precio_local")`) → formato del precio (`guardComandoSetPrecioLocalProducto`,
  * core/features/movimientos/precio-local.guard.ts, DENTRO del envoltorio) → caso de uso (`casos-de-uso/set-precio-local-producto.ts`) → revalidar la carta
  * pública → y DESPUÉS de revalidar, el `sincronizable` (lee el ítem agrupado con la base del contexto, como antes) → el resultado sin `datos` ni `codigo`
  * (`aResultadoAccion`, más el `sincronizable` elegido a mano).
  */
-export async function setPrecioLocalProducto(productoId: string, precio: number, habilitado: boolean): Promise<ResultadoConSincronizable> {
+export async function setPrecioLocalProducto(
+  productoId: string,
+  precio: number,
+  habilitado: boolean,
+  esperado?: PrecioLocalDeProductoVisto | null,
+): Promise<ResultadoConSincronizable> {
   return conPermiso<ResultadoConSincronizable>("precio_local", async (ctx) => {
-    const comando = guardComandoSetPrecioLocalProducto({ productoId, precio, habilitado });
+    const comando = guardComandoSetPrecioLocalProducto({ productoId, precio, habilitado, esperado });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await setPrecioLocalProductoCasoDeUso(ctx, comando.valor);
     const base = aResultadoAccion(resultado);

@@ -1,6 +1,6 @@
 import { validarImporte } from "@/core/datos/importe";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import type { ComandoSetPrecioLocalProducto, ComandoSincronizarPrecioLocalGrupoCarta } from "./precio-local.schema";
+import type { ComandoSetPrecioLocalProducto, ComandoSincronizarPrecioLocalGrupoCarta, PrecioLocalDeProductoVisto } from "./precio-local.schema";
 
 /**
  * Guard de la feature «precio local de un producto en la sucursal» (convención «guard por feature», 2026-09-25; Hito 4, bloque 4.2, paso H4C-4). Formato de los
@@ -15,11 +15,31 @@ function validarPrecio(precio: unknown): ResultadoDato<number> {
   return aceptar(validado.valor!); // obligatorio: nunca null
 }
 
-/** Guard de `setPrecioLocalProducto`: solo el precio (el producto lo resuelve el caso de uso, «No se encontró el producto.»). */
-export function guardComandoSetPrecioLocalProducto(entrada: { productoId: string; precio: unknown; habilitado: boolean }): ResultadoDato<ComandoSetPrecioLocalProducto> {
+const MENSAJE_VISTO_INVALIDO = "El precio local que mostraba la pantalla no es válido: recargala.";
+
+/**
+ * El precio local que vio la pantalla (ola «precio y carta», Fase 2, paso A2): `undefined` o `null` es «no había precio local» (falla cerrado: si en la base hay
+ * una fila, el caso de uso rechaza); si viene, un objeto con un precio válido y `habilitado` booleano.
+ */
+function validarVisto(esperado: unknown): ResultadoDato<PrecioLocalDeProductoVisto | null> {
+  if (esperado === null || esperado === undefined) return aceptar(null);
+  if (typeof esperado !== "object") return rechazar("formato", MENSAJE_VISTO_INVALIDO);
+  const visto = esperado as { precio?: unknown; habilitado?: unknown };
+  const precio = validarImporte(visto.precio, { etiqueta: "El precio local que mostraba la pantalla", obligatorio: true });
+  if (!precio.ok || typeof visto.habilitado !== "boolean") return rechazar("formato", MENSAJE_VISTO_INVALIDO);
+  return aceptar({ precio: precio.valor!, habilitado: visto.habilitado });
+}
+
+/**
+ * Guard de `setPrecioLocalProducto`: el precio (con los mensajes de siempre, primero) y después el precio local que vio la pantalla (el producto lo resuelve el
+ * caso de uso, «No se encontró el producto.»).
+ */
+export function guardComandoSetPrecioLocalProducto(entrada: { productoId: string; precio: unknown; habilitado: boolean; esperado?: unknown }): ResultadoDato<ComandoSetPrecioLocalProducto> {
   const precio = validarPrecio(entrada.precio);
   if (!precio.ok) return rechazar(precio.codigo, precio.mensaje);
-  return aceptar({ productoId: entrada.productoId, precio: precio.valor, habilitado: entrada.habilitado });
+  const esperado = validarVisto(entrada.esperado);
+  if (!esperado.ok) return rechazar(esperado.codigo, esperado.mensaje);
+  return aceptar({ productoId: entrada.productoId, precio: precio.valor, habilitado: entrada.habilitado, esperado: esperado.valor });
 }
 
 /**

@@ -10,9 +10,13 @@ import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
+import type { PrecioLocalDeProductoVisto } from "@/core/features/movimientos/precio-local.schema";
 
-/** `sucursalId`: la sucursal activa que ve la pantalla (la acción de sincronizar la vuelve a comparar con la del servidor). */
-export function PrecioLocalForm({ sucursalId }: { sucursalId: string }) {
+/**
+ * `sucursalId`: la sucursal activa que ve la pantalla (la acción de sincronizar la vuelve a comparar con la del servidor). `preciosLocales`: el precio local que
+ * la página cargó de cada producto en esta sucursal (habilitado o no); se manda como lo que vio quien guarda (si cambió en el medio, la acción no escribe).
+ */
+export function PrecioLocalForm({ sucursalId, preciosLocales }: { sucursalId: string; preciosLocales: Readonly<Record<string, PrecioLocalDeProductoVisto>> }) {
   const router = useRouter();
   const [productoId, setProductoId] = useState("");
   const [precio, setPrecio] = useState("");
@@ -25,6 +29,7 @@ export function PrecioLocalForm({ sucursalId }: { sucursalId: string }) {
   // D11/M8 (docs/plan-agrupacion-items-carta-2026-09-24.md): hermanos del ítem agrupado de la carta que quedaron a otro precio acá.
   const [sincronizable, setSincronizable] = useState<SincronizablePrecioGrupo | null>(null);
   const leer = useLeerServidor();
+  const precioLocalActual = productoId ? (preciosLocales[productoId] ?? null) : null;
 
   useEffect(() => {
     if (!productoId) return;
@@ -51,7 +56,7 @@ export function PrecioLocalForm({ sucursalId }: { sucursalId: string }) {
         e.preventDefault();
         startTransition(async () => {
           // numeroDelCampo: un texto inválido llega como NaN y el servidor lo rechaza; nunca el 0 que daba convertir un texto vacío.
-          const resultado = await setPrecioLocalProducto(productoId, numeroDelCampo(precio) ?? Number.NaN, habilitado);
+          const resultado = await setPrecioLocalProducto(productoId, numeroDelCampo(precio) ?? Number.NaN, habilitado, precioLocalActual);
           setMensaje(resultado.mensaje);
           setOk(resultado.ok);
           setSincronizable(resultado.ok ? (resultado.sincronizable ?? null) : null);
@@ -72,7 +77,16 @@ export function PrecioLocalForm({ sucursalId }: { sucursalId: string }) {
         <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ tipo: "PV", soloDisponibles: true }} limpiarSenal={resetCount} required />
       </label>
 
-      {productoId && precioGlobal !== null && <p className="text-xs text-neutral-500">Precio global actual: ${precioGlobal.toLocaleString("es-AR")}</p>}
+      {productoId && (
+        <p className="text-xs text-neutral-500">
+          {precioGlobal !== null && <span className="block">Precio global actual: ${precioGlobal.toLocaleString("es-AR")}</span>}
+          <span className="block">
+            {precioLocalActual
+              ? `Precio local actual: $${precioLocalActual.precio.toLocaleString("es-AR")}${precioLocalActual.habilitado ? "" : " (deshabilitado)"}`
+              : "Sin precio local en esta sucursal."}
+          </span>
+        </p>
+      )}
 
       <label className="flex flex-col gap-1 text-sm">
         Precio local

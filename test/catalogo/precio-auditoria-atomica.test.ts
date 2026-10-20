@@ -106,7 +106,7 @@ describe("cambio de precio y su auditoría son atómicos", () => {
     it("falla la auditoría del precio → el precio local existente NO cambia", async () => {
       await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: ids.coca, precio: 6000, habilitado: true } });
       interruptor.fallarEnLlamada = 1;
-      await expect(setPrecioLocalProducto(ids.coca, 7000, true)).rejects.toThrow("auditoría caída");
+      await expect(setPrecioLocalProducto(ids.coca, 7000, true, { precio: 6000, habilitado: true })).rejects.toThrow("auditoría caída");
       expect(Number((await precioLocal(ids.coca))!.precio)).toBe(6000);
       expect(await prisma.registroAuditoria.count()).toBe(0);
     });

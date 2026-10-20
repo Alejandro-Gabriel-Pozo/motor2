@@ -330,7 +330,7 @@ describe("Huella de dinero del tramo C", () => {
     // ── C. Precio local (Central; la Pizza y la Fainá en el mismo ítem agrupado) ─────────────────────────────────────────────────────────────────────────
     await paso("precio local: alta de la Pizza en $13000 (ofrece sincronizar)", await setPrecioLocalProducto(pizza.id, 13000, true));
     await paso("precio local: el mismo valor otra vez", await setPrecioLocalProducto(pizza.id, 13000, true));
-    await paso("precio local: deshabilitado", await setPrecioLocalProducto(pizza.id, 13000, false));
+    await paso("precio local: deshabilitado", await setPrecioLocalProducto(pizza.id, 13000, false, { precio: 13000, habilitado: true }));
     await paso("precio local: Flan (sin ítem agrupado)", await setPrecioLocalProducto(flan.id, 3500.5, true));
     await paso("precio local: negativo", await setPrecioLocalProducto(flan.id, -1, true));
     await paso("precio local: tres decimales", await setPrecioLocalProducto(flan.id, 1.234, true));

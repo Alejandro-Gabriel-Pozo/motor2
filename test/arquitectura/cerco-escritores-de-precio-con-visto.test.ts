@@ -44,7 +44,6 @@ const MOTIVOS: Readonly<Record<string, string>> = {
   "src/server/actions/catalogo/casos-de-uso/sincronizar-precio-grupo-carta.ts": `${SIN_CONTROL} sincroniza el precio de lista de los productos de un ítem agrupado de la carta sin precio visto.`,
   "src/server/actions/carta/casos-de-uso/guardar-precio-local-promo-carta.ts": `${SIN_CONTROL} guarda el precio local de una promo en la sucursal sin precio visto.`,
   "src/server/actions/movimientos/casos-de-uso/guardar-precio-local-en-tx.ts": `${SIN_CONTROL} paso compartido que escribe el precio local; el control lo pone solo uno de sus llamadores (ajustar-precios-de-la-carta), no él.`,
-  "src/server/actions/movimientos/casos-de-uso/set-precio-local-producto.ts": `${SIN_CONTROL} fija el precio local de un producto en la sucursal (pantalla de precio local) sin precio visto.`,
   "src/server/actions/movimientos/casos-de-uso/sincronizar-precio-local-grupo-carta.ts": `${SIN_CONTROL} sincroniza el precio local de los productos de un ítem agrupado sin precio visto.`,
 };
 

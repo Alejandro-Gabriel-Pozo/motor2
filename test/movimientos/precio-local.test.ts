@@ -57,7 +57,7 @@ describe("precio local: validación del precio (src/core/datos)", () => {
       const r = await setPrecioLocalProducto(productoId, 1234.56, true);
       expect(r).toEqual({ ok: true, mensaje: 'Precio local de "Coca-Cola 500cc" fijado en 1234.56.' });
       expect(Number((await prisma.precioLocalProducto.findFirstOrThrow({ where: { productoId } })).precio)).toBe(1234.56);
-      expect((await setPrecioLocalProducto(productoId, 0, true)).ok).toBe(true);
+      expect((await setPrecioLocalProducto(productoId, 0, true, { precio: 1234.56, habilitado: true })).ok).toBe(true);
     });
   });
 

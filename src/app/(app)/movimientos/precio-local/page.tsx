@@ -11,6 +11,7 @@ import { cargarGrillaDeTamanosDeLaSucursal } from "@/server/consultas/catalogo/o
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { formatearMonto } from "@/core/pos/public";
+import type { PrecioLocalDeProductoVisto } from "@/core/features/movimientos/precio-local.schema";
 
 /**
  * MOVIL (O.463): las dos tablas de esta pantalla (4 y 5 columnas, con un campo y botones por fila) no entran en 375 px: se cortaban («Guardar» → «Guard», columnas «Habilitado» y «Volver…»
@@ -35,6 +36,8 @@ export default async function PrecioLocalPage() {
 
   const [precios, tamanos] = await Promise.all([listarPreciosLocales(ctx.sucursalId), cargarGrillaDeTamanosDeLaSucursal(ctx.db, ctx.sucursalId)]);
   const sucursalId = ctx.sucursalId;
+  // El precio local que esta pantalla muestra de cada producto (habilitado o no): lo que vio quien guarda (control del valor visto, ola «precio y carta», Fase 2).
+  const preciosLocales: Record<string, PrecioLocalDeProductoVisto> = Object.fromEntries(precios.map((p) => [p.productoId, { precio: Number(p.precio), habilitado: p.habilitado }]));
 
   return (
     // minmax(0,1fr) y no 1fr: un `1fr` pelado tiene mínimo automático (el ancho mínimo de la tabla) y, junto a los 380 px del formulario, empujaba la
@@ -69,7 +72,8 @@ export default async function PrecioLocalPage() {
                       <FormConResultado
                         accion={async () => {
                           "use server";
-                          const r = await setPrecioLocalProducto(productoId, precio, !habilitado);
+                          // Lo que mostraba la fila (precio y estado): si alguien lo cambió desde que se cargó la pantalla, la acción no escribe y pide recargar.
+                          const r = await setPrecioLocalProducto(productoId, precio, !habilitado, { precio, habilitado });
                           // El refresco se pide ACÁ y no en la acción: la acción también la usa el formulario cliente de alta, que ya hace su propio
                           // router.refresh() (ver refrescar.ts). Sin esto la columna «Habilitado» no cambiaba hasta recargar a mano.
                           // Solo si salió bien: con un error no cambió nada.
@@ -91,7 +95,7 @@ export default async function PrecioLocalPage() {
       </div>
 
       <div>
-        <PrecioLocalForm sucursalId={ctx.sucursalId} />
+        <PrecioLocalForm sucursalId={ctx.sucursalId} preciosLocales={preciosLocales} />
       </div>
 
       {/* GO-2d (ADR-030 §5): el precio de cada TAMAÑO que un producto cobra con precio propio, en esta sucursal. Vacío = rige el de la empresa. */}

@@ -387,6 +387,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/catalogo/productos.ts|actualizarDisponibilidadProducto": { disponible: (_k, c) => c.escenario === "controlMutacion" },
   // Los hermanos de UN ítem agrupado de la carta: el PV (en el mundo, la única opción del ítem).
   "accion|actions/catalogo/productos.ts|sincronizarPrecioGrupoCarta": { productoIds: (k) => [k.productoPvId] },
+  // El precio local que «vio» la pantalla (ola «precio y carta», Fase 2, A2): el del mundo en la sucursal propia (1234, habilitado). No lleva ids.
+  "accion|actions/movimientos/precio-local.ts|setPrecioLocalProducto": { esperado: () => ({ precio: 1234, habilitado: true }) },
   "accion|actions/catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": { sucursalOrigenId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
   "accion|actions/carta/registro-publico.ts|agregarSucursalAlPortal": { sucursalId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
   "accion|actions/pos/cuenta-anulacion.ts|anularItemEnviado": { cuentaItemId: (k) => k.cuentaItemEnviadoId, restanteVisto: () => 2 },

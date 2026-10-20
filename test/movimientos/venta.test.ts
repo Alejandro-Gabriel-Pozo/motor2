@@ -137,7 +137,7 @@ describe("registrarVenta", () => {
     let venta = await prisma.movimientoStock.findFirst({ where: { productoId: pv.id, proceso: "VENTA" }, orderBy: { creadoEn: "desc" } });
     expect(Number(venta!.precioTotal)).toBe(120);
 
-    await setPrecioLocalProducto(pv.id, 120, false);
+    await setPrecioLocalProducto(pv.id, 120, false, { precio: 120, habilitado: true });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
     venta = await prisma.movimientoStock.findFirst({ where: { productoId: pv.id, proceso: "VENTA" }, orderBy: { creadoEn: "desc" } });
     expect(Number(venta!.precioTotal)).toBe(100);

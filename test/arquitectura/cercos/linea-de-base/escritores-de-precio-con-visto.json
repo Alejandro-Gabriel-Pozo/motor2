@@ -1,10 +1,10 @@
 {
   "regla": "escritores-de-precio-con-visto",
   "meta": "0 en la Fase 2: todo caso de uso que escribe un precio compara el valor visto y responde PRECIO_DESACTUALIZADO/VERSION_DESACTUALIZADA",
-  "total": 6,
-  "entradas": 6,
+  "total": 5,
+  "entradas": 5,
   "porTipo": {
-    "PrecioLocalProducto": 3,
+    "PrecioLocalProducto": 2,
     "Producto.precioVenta": 2,
     "PromoCartaSucursal.precioLocal": 1
   },
@@ -19,9 +19,6 @@
       "Producto.precioVenta": 1
     },
     "src/server/actions/movimientos/casos-de-uso/guardar-precio-local-en-tx.ts": {
-      "PrecioLocalProducto": 1
-    },
-    "src/server/actions/movimientos/casos-de-uso/set-precio-local-producto.ts": {
       "PrecioLocalProducto": 1
     },
     "src/server/actions/movimientos/casos-de-uso/sincronizar-precio-local-grupo-carta.ts": {

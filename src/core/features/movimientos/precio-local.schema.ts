@@ -14,10 +14,25 @@ export interface ComandoSetPrecioLocalProducto {
   productoId: string;
   precio: number;
   habilitado: boolean;
+  /**
+   * El precio local que MOSTRABA la pantalla (ola «precio y carta», Fase 2, paso A2): la fila tal como estaba (precio y si estaba habilitada), o `null` si el
+   * producto no tenía precio local en la sucursal. Si la pantalla no lo manda, el guard lo toma como `null` (falla cerrado: si ya hay una fila, el cambio se
+   * rechaza con `PRECIO_DESACTUALIZADO`).
+   */
+  esperado: PrecioLocalDeProductoVisto | null;
 }
 
-/** `PRODUCTO_NO_ENCONTRADO`: el id no es de un producto de la empresa (el formato del precio lo rechaza antes el guard). */
-export type ResultadoSetPrecioLocalProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO">;
+/** La fila del precio local que vio la pantalla (habilitada o no). */
+export interface PrecioLocalDeProductoVisto {
+  precio: number;
+  habilitado: boolean;
+}
+
+/**
+ * `PRODUCTO_NO_ENCONTRADO`: el id no es de un producto de la empresa (el formato del precio lo rechaza antes el guard). `PRECIO_DESACTUALIZADO`: el precio local
+ * cambió desde que se cargó la pantalla (otra persona lo fijó, lo habilitó o lo deshabilitó): no se escribe nada.
+ */
+export type ResultadoSetPrecioLocalProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "PRECIO_DESACTUALIZADO">;
 
 /**
  * Comando «aplicar el mismo precio local a los productos de UN ítem agrupado de la carta»: lo que recibe `sincronizarPrecioLocalGrupoCartaCasoDeUso`, YA
