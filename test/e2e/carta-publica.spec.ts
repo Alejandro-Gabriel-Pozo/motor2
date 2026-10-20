@@ -230,7 +230,7 @@ test.describe("carta de una sucursal", () => {
         await page.setViewportSize({ width: ancho, height: ancho === 375 ? 800 : 900 });
         const filas = await abrir();
         // Fase 5 («carta pareja»), forma «tabla»: el café tiene DOS ejes (el tamaño define el precio y la preparación suma: «Con leche +400»), así que se lee como una tabla real con el
-        // nombre arriba, los tamaños como columnas y una fila por preparación con el precio FINAL de cada celda; sin «desde», sin «Ver opciones», sin desplegables.
+        // nombre como RÓTULO arriba (con su línea fina), los tamaños como columnas y una fila por preparación (un plato) con el precio FINAL de cada celda; sin «desde», sin «Ver opciones», sin desplegables.
         const tabla = filas.cafe.locator("table");
         await expect(tabla).toBeVisible();
         await expect(tabla.getByRole("columnheader")).toHaveText(["Chico", "Mediano", "Grande"]);
@@ -259,11 +259,12 @@ test.describe("carta de una sucursal", () => {
         await expect(filas.flan).toContainText("$3.200");
         await expect(filas.flan.locator("[data-opciones-sin-costo]")).toHaveCount(0);
         await expect(page.locator("body")).not.toContainText("Sin guarnición");
-        // Legibilidad (escala única, DEC-35): nombre del ítem 19 px (rol Producto, con o sin opciones), filas y celdas 16 px (rol Opción), la etiqueta del grupo 14 px (rol Aclaración 600) y la línea de lo que no cuesta 15 px (rol Elección).
-        expect(await tamanoPx(filas.cafe.getByRole("heading", { name: cafe }))).toBe(19);
+        // Legibilidad (escala única, DEC-35; jerarquía «BC2»): el nombre de la tabla es un rótulo de 13 px (rol Rótulo) y el del flan 19 px (rol Producto); las filas de la tabla (los platos) y sus precios 19 px;
+        // la etiqueta del grupo 14 px (rol Aclaración 600) y la línea de lo que no cuesta 15 px (rol Elección).
+        expect(await tamanoPx(filas.cafe.getByRole("heading", { name: cafe }))).toBe(13);
         expect(await tamanoPx(filas.flan.getByRole("heading", { name: flan }))).toBe(19);
-        expect(await tamanoPx(tabla.getByRole("rowheader").first())).toBe(16);
-        expect(await tamanoPx(tabla.getByRole("cell").first().locator("span"))).toBe(16);
+        expect(await tamanoPx(tabla.getByRole("rowheader").first().locator("[data-rol=producto]"))).toBe(19);
+        expect(await tamanoPx(tabla.locator("tbody [data-rol=precio]").first())).toBe(19);
         expect(await tamanoPx(extrasCafe.locator("[data-rol=aclaracion-rotulo]"))).toBe(14);
         expect(await tamanoPx(guarnicionMila.locator("[data-rol=eleccion]"))).toBe(15);
         // Sin desborde horizontal: ni la página ni la fila del café.

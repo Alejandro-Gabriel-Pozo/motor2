@@ -193,17 +193,45 @@ describe("8c: tabla de dos ejes (la milanesa: Simple | Napolitana × De carne / 
   });
   const html = filaCon(dibujar([milanesas]), "Milanesas");
 
-  it("el nombre arriba como h3 (en la esquina, nunca dentro de un th), los rótulos como encabezados de columna y una fila por opción del otro eje", () => {
+  it("«BC2»: el nombre es un RÓTULO (h3, rol Rótulo) con su línea fina ANTES de la tabla, que no lleva ningún título; los rótulos de las columnas son encabezados de columna (rol Columna)", () => {
     expect(html).toMatch(/^<li data-forma="tabla"/);
-    expect(html).toMatch(/<thead><tr><td[^>]*><h3 data-rol="producto"[^>]*>Milanesas<\/h3><\/td>/);
+    expect(html).toMatch(/<div class="carta-linea-fina[^"]*"><h3 data-rol="rotulo" class="carta-rol-rotulo[^"]*"[^>]*>Milanesas<\/h3><\/div>/);
+    expect(html.indexOf('<h3 data-rol="rotulo"')).toBeGreaterThan(-1);
+    expect(html.indexOf('<h3 data-rol="rotulo"')).toBeLessThan(html.indexOf("<table"));
+    const tabla = html.slice(html.indexOf("<table"), html.indexOf("</table>"));
+    expect(tabla).not.toMatch(/<h[1-6][\s>]/);
     expect(html).not.toMatch(/<th(?=[\s>])[^>]*>(?:(?!<\/th>)[\s\S])*<h[1-6]/);
-    expect(html.match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map((t) => texto(t))).toEqual(["Simple", "Napolitana"]);
-    expect(html.match(/<th scope="row" data-rol="opcion"[^>]*>([^<]*)<\/th>/g)?.map((t) => texto(t))).toEqual(["De carne", "De pollo", "De trucha"]);
+    expect(tabla).toMatch(/<thead><tr><td><\/td><th scope="col" data-rol="columna" class="carta-rol-columna/);
+    expect(tabla.match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map((t) => texto(t))).toEqual(["Simple", "Napolitana"]);
+  });
+
+  it("las opciones protagonizan: cada fila (encabezado de fila) es un plato en rol Producto y cada celda un precio en rol Precio (nunca Opción), con una línea fina entre filas", () => {
+    const tabla = html.slice(html.indexOf("<table"), html.indexOf("</table>"));
+    expect(tabla.match(/<th scope="row"[^>]*><span data-rol="producto" class="carta-rol-producto[^"]*"[^>]*>([^<]*)<\/span><\/th>/g)?.map((t) => texto(t))).toEqual(["De carne", "De pollo", "De trucha"]);
+    // 3 filas × 2 columnas: incluida la raya de «De trucha» × Napolitana, que lleva el mismo rol que el precio.
+    expect(tabla.match(/data-rol="precio"/g)).toHaveLength(6);
+    expect(tabla).not.toContain('data-rol="opcion-precio"');
+    expect(tabla).not.toContain('data-rol="opcion"');
+    const trs = tabla.slice(tabla.indexOf("<tbody>")).split("<tr");
+    expect(trs[1]).not.toContain("border-top-width");
+    expect(trs[2]).toContain("border-top-width:1px");
+    expect(trs[3]).toContain("border-top-width:1px");
+    expect(html).toContain('class="carta-linea-fina');
   });
 
   it("las filas no se juntan aunque cuesten igual (DEC-10); «–» donde no se ofrece; sin «desde»; debajo, la descripción y las aclaraciones", () => {
     expect(texto(html)).toBe("Milanesas Simple Napolitana De carne $20.000 $25.000 De pollo $20.000 $25.000 De trucha $23.000 – Con papas Guarnición Elegí: papas fritas o puré");
     expect(html).not.toMatch(/desde/i);
+    expect(html).toContain('<span class="sr-only">no se ofrece</span>');
+  });
+
+  it("con descuento de producto: «−x %» una sola vez, dentro del bloque del rótulo (no en las celdas)", () => {
+    const conDescuento = filaCon(dibujar([{ ...milanesas, descuentoPorcentaje: 10 }]), "Milanesas");
+    expect(conDescuento.match(/data-descuento-producto/g)).toHaveLength(1);
+    const rotulo = conDescuento.slice(0, conDescuento.indexOf("<table"));
+    expect(rotulo).toContain("data-descuento-producto");
+    expect(rotulo).toContain('<h3 data-rol="rotulo"');
+    expect(conDescuento).not.toMatch(/<s[ >]/);
   });
 });
 
@@ -223,15 +251,40 @@ describe("8d: lista de un eje (la base de las pizzas: oculta por defecto; con «
     expect(texto(html)).toBe("Pizza muzzarella $18.000 Pizza napolitana $22.000 Masa Elegí: fina o al molde");
     expect(html).toMatch(/<ul aria-label="Pizzas" data-filas-carta/);
     expect(html).not.toMatch(/>Pizzas</);
+    expect(html).not.toMatch(/data-rol="rotulo"/);
+    expect(html).not.toContain("carta-linea-fina");
   });
 
-  it("CON EL NOMBRE ARRIBA: el nombre sin precio, la descripción y los tags, y una fila por opción (rol Opción) con su precio final; las aclaraciones al final", () => {
+  it("CON EL NOMBRE ARRIBA («BC2»): «Pizzas» es un rótulo (h3, rol Rótulo) con su línea fina; cada pizza es un plato (h3, rol Producto) con su precio (rol Precio); las aclaraciones al final", () => {
     const html = filaCon(dibujar([pizzas(true)]), "Pizzas");
     expect(html).toMatch(/^<li data-forma="lista"/);
-    expect(html.match(/<h3 data-rol="producto"[^>]*>([^<]*)<\/h3>/g)?.map((h) => texto(h))).toEqual(["Pizzas"]);
-    expect(html).not.toMatch(/data-rol="precio"/);
-    expect(html.match(/data-rol="opcion" class="carta-rol-opcion[ "]/g)).toHaveLength(2);
+    expect(html).not.toContain("data-protagonista");
+    expect(html.match(/<h3 data-rol="rotulo"[^>]*>([^<]*)<\/h3>/g)?.map((h) => texto(h))).toEqual(["Pizzas"]);
+    expect(html).toMatch(/<div class="carta-linea-fina[^"]*"><h3 data-rol="rotulo"/);
+    expect(html.match(/<h3 data-rol="producto"[^>]*>([^<]*)<\/h3>/g)?.map((h) => texto(h))).toEqual(["Pizza muzzarella", "Pizza napolitana"]);
+    expect([...html.matchAll(/data-rol="precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$18.000", "$22.000"]);
+    expect(html).not.toMatch(/data-rol="opcion"/);
     expect(texto(html)).toBe("Pizzas A la piedra veggie Pizza muzzarella $18.000 Pizza napolitana $22.000 Masa Elegí: fina o al molde");
+  });
+
+  it("lista con el NOMBRE protagonista (la caída de una tanda de más de 3 tamaños): el nombre (h3, rol Producto) con su línea fina y los tamaños como filas de opción; sin rótulo", () => {
+    const cafe = item({
+      nombre: "Café",
+      precio: 2500,
+      presentacion: {
+        forma: "lista",
+        encabezado: true,
+        protagonista: "nombre",
+        filas: [{ rotulo: "Mini", precio: 2000 }, { rotulo: "Chico", precio: 2500 }, { rotulo: "Mediano", precio: 2800 }, { rotulo: "Grande", precio: 3100 }],
+        aclaraciones: [],
+      },
+    });
+    const html = filaCon(dibujar([cafe]), "Café");
+    expect(html).toMatch(/^<li data-forma="lista" data-protagonista="nombre"/);
+    expect(html).toMatch(/<div class="carta-linea-fina[^"]*"><h3 data-rol="producto"[^>]*>Café<\/h3>/);
+    expect(html).not.toMatch(/data-rol="rotulo"/);
+    expect(html.match(/data-rol="opcion" class="carta-rol-opcion[ "]/g)).toHaveLength(4);
+    expect(texto(html)).toBe("Café Mini $2.000 Chico $2.500 Mediano $2.800 Grande $3.100");
   });
 
   it("con descuento de producto: «−x %» una vez, sin tachar fila por fila", () => {
