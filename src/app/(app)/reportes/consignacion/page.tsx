@@ -2,7 +2,7 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { requierePermisoVer } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { generarReporteConsignacion } from "@/server/consultas/reportes/consignacion";
 import { TablaDebidoConsignante, TablaStockSinVenderConsignacion } from "./tabla-consignacion";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
@@ -16,6 +16,9 @@ export default async function ConsignacionPage({ searchParams }: { searchParams:
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  // Ver ≠ pagar (Fase 2b, D3): con «Ver» de `pagar_consignante` se ve el reporte; el botón «Registrar pago» solo lo recibe quien tiene «Editar». Es cortesía de la
+  // pantalla: la acción (`registrarPagoConsignante`) vuelve a exigir «Editar» en el servidor.
+  const { editar: puedePagar } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
 
   const { desde, hasta } = unicosDeUrl(await searchParams);
   // Sin filtro por defecto: "Debido por consignante" es un saldo acumulado
@@ -65,7 +68,7 @@ export default async function ConsignacionPage({ searchParams }: { searchParams:
             ? "Movimiento del período elegido, no el saldo acumulado — para lo que se le debe HOY a cada consignante, sacá el filtro."
             : "Saldo acumulado desde siempre (liquidado − pagado)."}
         </p>
-        <TablaDebidoConsignante filas={rep.debidoPorConsignante} />
+        <TablaDebidoConsignante filas={rep.debidoPorConsignante} puedePagar={puedePagar} />
       </div>
 
       <div>

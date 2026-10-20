@@ -150,7 +150,7 @@ export const ACCIONES = [
   // Reportes: UNA clave por reporte (decisión del dueño, 2026-09-30; reemplaza la agrupación `ver_reportes_*` del 2026-09-19). Son claves de
   // «Ver»: no hay nada que editar. Los reportes de dinero y de control tienen piso de administrador (un operario nunca los recibe); los
   // operativos son de operario, así que un rol de depósito los puede recibir. Las pantallas de /reportes que además operan (consignación)
-  // siguen con la clave de su acción: ver la pantalla y operarla es lo mismo ahí.
+  // siguen con la clave de su acción, con sus dos niveles (Fase 2b, D3): «Ver» muestra el reporte y solo «Editar» registra un pago.
   { clave: "reporte_resumen", modulo: "stock", descripcion: "Ver el reporte «Resumen operativo»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_consolidado", modulo: "stock", descripcion: "Ver el reporte «Consolidado (mis sucursales)»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_periodo", modulo: "stock", descripcion: "Ver el reporte «Período»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
