@@ -4,7 +4,7 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import type { ProductoParaMantener } from "@/core/carta/public";
-import { cargarAdminCarta } from "@/server/consultas/carta/admin";
+import { basesDeUnEjeEnLaCarta, cargarAdminCarta } from "@/server/consultas/carta/admin";
 import { cargarCartaParaMantener } from "@/server/consultas/carta/mantenimiento";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta, ordenarSeccionesCarta } from "@/server/actions/carta/secciones";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -47,7 +47,7 @@ export default async function SeccionesDeCartaPage() {
   const puedeEditarContenido = nivelContenido.editar;
   const puedeDescuento = nivelDescuento.editar;
   // La hora se fija acá, en el borde (O.22-c).
-  const [datos, carta] = await Promise.all([cargarAdminCarta(ctx.sucursalId, ctx.db, new Date()), cargarCartaParaMantener(ctx.db, ctx.sucursalId)]);
+  const [datos, carta, basesDeUnEje] = await Promise.all([cargarAdminCarta(ctx.sucursalId, ctx.db, new Date()), cargarCartaParaMantener(ctx.db, ctx.sucursalId), basesDeUnEjeEnLaCarta(ctx.sucursalId, ctx.db)]);
   const sucursalId = ctx.sucursalId;
   const adminPorId = new Map(datos.productos.map((p) => [p.id, p]));
   const ubicacion: UbicacionEnCarta = {
@@ -58,7 +58,19 @@ export default async function SeccionesDeCartaPage() {
   /** La ficha de un producto: con su formulario si está disponible acá (lo que lee `cargarAdminCarta`); si no, solo su nombre. */
   const filaDeProducto = (p: ProductoParaMantener) => {
     const admin = adminPorId.get(p.id);
-    if (admin) return <ContenidoProducto key={p.id} producto={admin} ubicacion={ubicacion} puedeEditar={puedeEditarContenido} puedeDescuento={puedeDescuento} precioLocalActivo={datos.precioLocalActivo} sucursalId={sucursalId} />;
+    if (admin)
+      return (
+        <ContenidoProducto
+          key={p.id}
+          producto={admin}
+          ubicacion={ubicacion}
+          puedeEditar={puedeEditarContenido}
+          puedeDescuento={puedeDescuento}
+          precioLocalActivo={datos.precioLocalActivo}
+          sucursalId={sucursalId}
+          mostrarNombreArriba={basesDeUnEje.get(p.id)}
+        />
+      );
     return (
       <li key={p.id} className="rounded border p-3 text-sm" data-contenido-carta={p.nombre}>
         <span className="font-medium">{p.nombre}</span> · no disponible en esta sucursal

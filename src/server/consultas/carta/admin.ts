@@ -5,6 +5,8 @@ import { whereDisponibleEn } from "@/core/catalogo/public";
 import { WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos, esClavePortal, esClaveTema, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, type SeccionCartaAdmin, type ProductoCartaAdmin, type GeneroCartaAdmin, type SucursalConCartaPropia, type DatosAdminCarta, type OpcionItemAgrupadoAdmin, type DatosAdminItemsAgrupados, type SucursalPortalAdmin, type TemaAdmin, type PortalEmpresaAdmin } from "@/core/carta/public";
 import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCartaConDiagnostico } from "@/server/lecturas/carta/menu";
+import { opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
+import { tablaDePreciosParaLaCarta } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 import type { PrismaClient } from "@prisma/client";
 import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
@@ -68,6 +70,27 @@ async function estadoCartaPropia(sucursalId: string, db: Db): Promise<{ cartaVac
 export async function origenesDeCopiaVisibles(usuarioId: string, origenes: readonly SucursalConCartaPropia[], db: PrismaClient): Promise<SucursalConCartaPropia[]> {
   const visibles = await sucursalesDondeElUsuarioPuedeVer(usuarioId, origenes.map((o) => o.id), "carta_ver", db);
   return origenes.filter((o) => visibles.has(o.id));
+}
+
+/**
+ * Fase 5 de la ola «precio y carta» (DEC-11): los productos que se venden por opción (BASE) con UN SOLO eje en la carta de esta sucursal —los únicos en que «Mostrar el nombre arriba» decide algo:
+ * una base de dos ejes sale siempre en tabla con el nombre arriba, y un producto directo no es una base—, con el valor guardado en su contenido (`false` si no tiene fila). El eje sale de la MISMA
+ * cuenta que la carta (`tablaDePreciosParaLaCarta` con las opciones que hoy se pueden elegir; una base se compone sobre su precio de referencia, así que no lee el precio guardado). Lo usa el formulario
+ * del contenido de cada producto (`carta/parametrizacion/secciones`) para mostrar el interruptor solo donde aplica. Lee de ESTA sucursal.
+ */
+export async function basesDeUnEjeEnLaCarta(sucursalId: string, db: Db): Promise<Map<string, boolean>> {
+  const bases = await db.producto.findMany({
+    where: { tipo: "PV", modoDeVenta: "BASE_CONFIGURABLE", ...whereDisponibleEn(sucursalId) },
+    select: { id: true, contenidosCarta: { where: whereCartaDeSucursal(sucursalId), take: 1, select: { mostrarNombreArriba: true } } },
+  });
+  if (bases.length === 0) return new Map();
+  const grupos = await opcionesDeLosProductosDeLaCarta(db, sucursalId, bases.map((b) => b.id));
+  const salida = new Map<string, boolean>();
+  for (const b of bases) {
+    const tabla = tablaDePreciosParaLaCarta({ grupos: grupos.get(b.id) ?? [], precioBase: 0, descuentoDeProducto: null, esBase: true });
+    if (tabla && tabla.ejes.columnas !== null && tabla.ejes.filas === null && tabla.ejes.sinLugar.length === 0) salida.set(b.id, b.contenidosCarta[0]?.mostrarNombreArriba ?? false);
+  }
+  return salida;
 }
 
 /**

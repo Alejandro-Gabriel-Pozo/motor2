@@ -565,6 +565,18 @@ Son ANTERIORES por nombre a la migración de retiro de GO-3a (`20261022100000…
 
 **Vuelta atrás:** volver primero el código (Instant Rollback a un despliegue anterior a la Fase 4 funciona con las columnas puestas: no las lee). Si además hay que sacar las columnas: volver a «Directo» cada base y vaciar cada prefijo desde las pantallas (quedan auditados; los dos `down.sql` ABORTAN si queda alguno), y después, como dueño y en este orden, `psql -1 -v ON_ERROR_STOP=1 -f prisma/migrations/20261021131000_grupo_prefijo_en_carta/down.sql` y el de `20261021130000_producto_modo_de_venta`. Ojo: `prisma migrate resolve --rolled-back` solo acepta migraciones FALLIDAS (P3012); para una aplicada, marcarla a mano: `UPDATE "_prisma_migrations" SET "rolled_back_at" = now() WHERE "migration_name" = '…' AND "rolled_back_at" IS NULL` (así se probó en la base local). La vuelta total es restaurar desde `respaldo-pre-fase-4-…`.
 
+## Fase 5 de la ola «precio y carta»: «Mostrar el nombre arriba» del contenido de carta, 1 migración aditiva, un solo OK
+
+> **NO APLICADA en ninguna base real. REQUIERE AUTORIZACIÓN EXPRESA PARA APLICARSE, base por base**, con respaldo y ensayo. Decisión: DEC-11 (la base sale OCULTA por defecto; el interruptor pone el nombre del producto arriba). Probada solo contra la base local descartable (subir, bajar —aborta con una fila prendida—, bajar dos veces y subir; paridad `schema.prisma` ↔ base) y por `test/carta/migracion-contenido-carta-mostrar-nombre-arriba.test.ts`.
+
+**Qué se aplica:** `20261021140000_contenido_carta_mostrar_nombre_arriba`: `ContenidoCartaProducto.mostrarNombreArriba` BOOLEAN NOT NULL DEFAULT false. El default constante solo toca el catálogo; todas las filas quedan en `false`. Sin políticas ni GRANT nuevos (la tabla tiene privilegios de TABLA para `motor2_app` y su RLS es por fila). Es posterior por nombre a las dos de la Fase 4 y ANTERIOR a la de retiro de GO-3a (`20261022100000…`, PR 2), y no depende de ninguna.
+
+**Orden con el código:** la base va PRIMERO. Es aditiva: el código anterior no la lee y sus INSERT (también los de «copiar carta») toman el default. El código de esta rama SÍ la lee (la carta pública en `menu.ts`, el formulario del contenido en `carta/parametrizacion/secciones`) y la escribe (`guardarContenidoCartaProducto`, auditada por columna; «copiar carta»): desplegarlo sin ella falla, y el build en modo `verificar` lo frena por la migración pendiente.
+
+**Respaldo, ensayo y chequeos:** como la Fase 4 (rama `respaldo-pre-fase-5-AAAAMMDD`; ensayo subir/bajar/subir en una rama descartable). Después (solo lectura): `migrate status` sin pendientes y `SELECT count(*) FROM "ContenidoCartaProducto" WHERE "mostrarNombreArriba"` = 0.
+
+**Vuelta atrás:** volver primero el código (un despliegue anterior funciona con la columna puesta: no la lee). Si además hay que sacarla: apagar cada interruptor desde la pantalla (queda auditado; el `down.sql` ABORTA si queda alguno), `psql -1 -v ON_ERROR_STOP=1 -f prisma/migrations/20261021140000_contenido_carta_mostrar_nombre_arriba/down.sql` como dueño y marcarla revertida a mano en `_prisma_migrations` (`prisma migrate resolve --rolled-back` solo acepta migraciones FALLIDAS: P3012).
+
 ## Server Actions: clave de cifrado de los closures y versiones entre deploys
 
 > O.3 de la lista de control (`docs/pureza-integracion.md`; Hito 4, bloque D, paso G1 de `docs/plan-hito-4-pureza.md` §4). Solo documentación: no se tocó

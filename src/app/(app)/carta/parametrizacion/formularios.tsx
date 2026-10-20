@@ -1,6 +1,7 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
+import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
 import { Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import type { LugarDeCombo, ProductoCartaAdmin, ProductoParaMantener, VigenciaDePromoAdmin } from "@/core/carta/public";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
@@ -337,6 +338,7 @@ export function ContenidoProducto({
   puedeDescuento,
   precioLocalActivo,
   sucursalId,
+  mostrarNombreArriba,
 }: {
   producto: ProductoCartaAdmin;
   ubicacion: UbicacionEnCarta;
@@ -345,6 +347,11 @@ export function ContenidoProducto({
   precioLocalActivo: boolean;
   /** La sucursal que vio la pantalla (el eco de «Quitar de la carta»). */
   sucursalId: string;
+  /**
+   * Fase 5 (DEC-11): SOLO en un producto base con un solo eje en la carta (`basesDeUnEjeEnLaCarta`), el valor guardado de «Mostrar el nombre del producto arriba»; `undefined` en los demás: el
+   * formulario no lo muestra ni lo manda (queda como estaba). Pantalla mínima: la definitiva es del paso «En la carta» del espacio del producto (Fase 6).
+   */
+  mostrarNombreArriba?: boolean;
 }) {
   const productoId = p.id;
   // CARTA-MANT: lo que se pierde al «Quitar de la carta» (si hay algo, se pide confirmarlo).
@@ -377,7 +384,7 @@ export function ContenidoProducto({
           </p>
         )}
         {!puedeEditar ? (
-          <ContenidoSoloLectura producto={p} ubicacion={ubicacion} />
+          <ContenidoSoloLectura producto={p} ubicacion={ubicacion} mostrarNombreArriba={mostrarNombreArriba} />
         ) : (
           <FormConResultado
             accion={async (fd: FormData) => {
@@ -391,6 +398,8 @@ export function ContenidoProducto({
                   especial: fd.get("especial") === "on",
                   orden: campo(fd, "orden"),
                   generoCartaId: campo(fd, "generoCartaId") || null,
+                  // Fase 5 (DEC-11): solo si el formulario lo mostró (una base de un eje); si no, no viaja y queda como estaba.
+                  ...(fd.get("mostrarNombreArriba") === null ? {} : { mostrarNombreArriba: fd.get("mostrarNombreArriba") === "si" }),
                 })
               );
             }}
@@ -409,6 +418,20 @@ export function ContenidoProducto({
               etiquetaSeccion="Sección de carta (obligatoria si se muestra)"
             />
             <SelectGenero generos={ubicacion.generos} guardado={p.contenido?.generoCartaId ?? null} />
+            {mostrarNombreArriba !== undefined && (
+              <div className="sm:col-span-2" data-mostrar-nombre-arriba={p.nombre}>
+                {/* Dos opciones excluyentes (la primitiva de `src/ui`): no hay primitiva de casilla y el cerco de controles a mano no deja sumar un `<input>` suelto. */}
+                <OpcionesExcluyentes
+                  leyenda="Mostrar el nombre del producto arriba"
+                  nombre="mostrarNombreArriba"
+                  valorInicial={mostrarNombreArriba ? "si" : "no"}
+                  opciones={[
+                    { valor: "no", etiqueta: "No: cada opción sale sola en la carta, con su nombre completo" },
+                    { valor: "si", etiqueta: `Sí: «${p.nombre}» arriba y las opciones debajo` },
+                  ]}
+                />
+              </div>
+            )}
             <label className="flex flex-col gap-1 text-sm sm:col-span-2">
               Descripción (opcional)
               <textarea name="descripcion" rows={2} defaultValue={p.contenido?.descripcion ?? ""} className={CLASE_INPUT} />
@@ -478,7 +501,7 @@ export function ContenidoProducto({
 }
 
 /** El contenido de carta de un PV como texto, para quien puede ver la carta pero no editarla. */
-function ContenidoSoloLectura({ producto: p, ubicacion }: { producto: ProductoCartaAdmin; ubicacion: UbicacionEnCarta }) {
+function ContenidoSoloLectura({ producto: p, ubicacion, mostrarNombreArriba }: { producto: ProductoCartaAdmin; ubicacion: UbicacionEnCarta; mostrarNombreArriba?: boolean }) {
   const c = p.contenido;
   if (!c) return <p className="mt-3 text-sm text-neutral-500">Todavía no tiene contenido de carta.</p>;
   const seccion = ubicacion.secciones.find((s) => s.id === c.seccionCartaId);
@@ -490,6 +513,7 @@ function ContenidoSoloLectura({ producto: p, ubicacion }: { producto: ProductoCa
       <Dato etiqueta="Sección de carta">{seccion && `${seccion.nombre}${seccion.activa ? "" : " (apagada)"}`}</Dato>
       <Dato etiqueta="Género">{genero && `${genero.nombre}${genero.activo ? "" : " (apagado)"}`}</Dato>
       <Dato etiqueta="Orden">{c.orden}</Dato>
+      {mostrarNombreArriba !== undefined && <Dato etiqueta="Nombre del producto arriba">{mostrarNombreArriba ? "Sí" : "No: cada opción sale sola"}</Dato>}
       <Dato etiqueta="Descripción" ancho>
         {c.descripcion}
       </Dato>
