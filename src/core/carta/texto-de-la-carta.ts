@@ -1,4 +1,5 @@
 import { unirConO } from "@/core/opciones/public";
+import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { formatearPrecioCarta } from "./precio-carta";
 
 /**
@@ -21,4 +22,14 @@ export function recargoEnPesos(recargo: number): string {
  */
 export function textoDeLaAclaracion(a: Aclaracion): string {
   return a.tipo === "eleccion" ? unirConO(a.opciones) : a.opciones.map((o) => (o.recargo === 0 ? o.nombre : `${o.nombre} ${recargoEnPesos(o.recargo)}`)).join(", ");
+}
+
+/**
+ * El PIE de la carta impresa (DEC-20, Fase 5 paso 10): «Precios vigentes al 20/10/2026 · https://la-cuadra.cartas.ar/centro». La fecha es la del armado de la carta (`generadoEn`), en la hora de
+ * Argentina (la carta no lleva la zona de la empresa; la convención de la carta es es-AR fija, como el precio); la dirección pública, EN TEXTO (decisión del dueño: no se genera QR), solo si la
+ * instalación tiene dominio de cartas.
+ */
+export function pieDeLaCartaImpresa(generadoEn: string, direccionPublica: string | null): string {
+  const [anio, mes, dia] = diaDeCalendario(new Date(generadoEn), ZONA_ARGENTINA).split("-");
+  return `Precios vigentes al ${dia}/${mes}/${anio}${direccionPublica ? ` · ${direccionPublica}` : ""}`;
 }

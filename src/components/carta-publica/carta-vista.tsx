@@ -1,4 +1,4 @@
-import type { CartaPublicaV1, EstiloCarta } from "@/core/carta/public";
+import { pieDeLaCartaImpresa, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
 import { NavegacionCarta, type PaginaCarta, type RedSocial } from "./navegacion-carta";
 import { Portada } from "./portada";
 import { Seccion } from "./seccion";
@@ -8,7 +8,20 @@ import { Seccion } from "./seccion";
  * (`restaurant-menu-design/components/carta-view.tsx`). Las páginas del slider (`paginas`) se calculan acá, en el
  * servidor, a partir de `carta.secciones` — nunca descubiertas del DOM (ver `navegacion-carta.tsx`).
  */
-export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: CartaPublicaV1; estilo: EstiloCarta; hrefVolver?: string; embebida?: boolean }) {
+export function CartaVista({
+  carta,
+  estilo,
+  hrefVolver,
+  embebida,
+  direccionPublica = null,
+}: {
+  carta: CartaPublicaV1;
+  estilo: EstiloCarta;
+  hrefVolver?: string;
+  embebida?: boolean;
+  /** La dirección pública de esta carta (`direccionPublicaDeCarta(...).url`), para el pie impreso; `null` sin dominio de cartas. */
+  direccionPublica?: string | null;
+}) {
   const restauranteNombre = estilo.valores.restaurante_nombre || carta.sucursal.nombre;
   // S-25: el id de una página del slider es su POSICIÓN (`seccion-0`, `seccion-1`…), nunca el id de la fila: acá se arma el `data-ir-a` del HTML y las `paginas` que viajan al
   // componente de cliente, y los dos salen al navegador. `CartaPublicaV1` ni siquiera trae el id de la sección.
@@ -79,6 +92,11 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
       {carta.secciones.map((seccion, i) => (
         <Seccion key={paginaDeSeccion(i)} seccion={seccion} indice={i} total={carta.secciones.length} estilo={estilo} />
       ))}
+
+      {/* DEC-20 (Fase 5, paso 10): el pie de la carta IMPRESA, con la fecha de los precios y la dirección pública en texto (sin QR, decisión del dueño). En pantalla no se ve. */}
+      <p data-carta-pie-impreso className="carta-solo-papel carta-rol-aclaracion px-6 pt-4 sm:px-10">
+        {pieDeLaCartaImpresa(carta.generadoEn, direccionPublica)}
+      </p>
     </NavegacionCarta>
   );
 }

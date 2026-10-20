@@ -176,6 +176,11 @@ body {
   font-weight: 500;
 }
 
+/* Lo que solo sale en PAPEL (el pie de la carta impresa): en pantalla no se ve. */
+.carta-shell .carta-solo-papel {
+  display: none;
+}
+
 /* Portal de sucursales (`PortalVista`): colores y tamaños llegan como `--portal-*` desde `resolverEstiloPortal` (config de
    `PortalCartaEmpresa`). Sin valor cargado cae a los tokens `--carta-*` (contraste AA). */
 .carta-shell .portal {
@@ -381,6 +386,48 @@ html:has([data-carta-libro]) body {
   /* Los colores del tema van inline (texto claro sobre fondo oscuro): sin esto, imprimir sobre papel blanco dejaría texto blanco. */
   .carta-shell [data-carta-libro] * {
     color: #000 !important;
+  }
+  /* Fase 5, paso 10 (DEC-20): la carta sale COMPLETA. Las listas con scroll de cada página se liberan (si no, el papel corta lo que no entraba en la pantalla); un plato o una tabla no se
+     parten entre dos hojas y los rótulos de una tabla se repiten en cada hoja. */
+  .carta-shell .carta-pagina {
+    overflow: visible !important;
+  }
+  .carta-shell [data-carta-scroll] {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex: none !important;
+  }
+  .carta-shell [data-carta-scroll] > li,
+  .carta-shell [data-carta-scroll] table {
+    break-inside: avoid;
+  }
+  .carta-shell thead {
+    display: table-header-group;
+  }
+  /* La escala de letra en papel (puntos, `ESCALA_IMPRESA` de src/core/carta/escala.ts): el tema no cuenta en papel, igual que sus colores. */
+  .carta-shell .carta-rol-producto,
+  .carta-shell .carta-rol-precio {
+    font-size: var(--carta-fs-producto-impresa) !important;
+  }
+  .carta-shell .carta-rol-opcion,
+  .carta-shell .carta-rol-opcion-precio {
+    font-size: var(--carta-fs-opcion-impresa) !important;
+  }
+  .carta-shell .carta-rol-aclaracion,
+  .carta-shell .carta-rol-aclaracion-rotulo {
+    font-size: var(--carta-fs-aclaracion-impresa) !important;
+  }
+  .carta-shell .carta-rol-etiqueta {
+    font-size: var(--carta-fs-etiqueta-impresa) !important;
+  }
+  /* El pie (fecha de los precios y dirección pública) va al final, sin una hoja en blanco antes. */
+  .carta-shell .carta-solo-papel {
+    display: block !important;
+  }
+  .carta-shell .carta-pagina:has(+ [data-carta-pie-impreso]) {
+    page-break-after: auto;
+    break-after: auto;
   }
 }
 
