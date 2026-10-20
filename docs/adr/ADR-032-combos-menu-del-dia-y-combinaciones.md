@@ -152,3 +152,8 @@ un toque, con registro y con forma de volver atrás. Verificado contra el códig
 3. Volver atrás: antes de la migración, Instant Rollback sin restricción. Después de la migración, Instant Rollback SOLO a un despliegue ≥ 3.5: antes de 3.3 la lectura de las opciones de toda venta y de la carta pide `ejeDeCombinacion`; antes de 3.4 el cierre de una cuenta con opciones lee `CombinacionEnLinea`; y antes de 3.5 el modelo de Prisma todavía declara la columna (un `create` de `ProductoAdmiteGrupo` la devolvería). Para ir más atrás, primero las reversas de la migración.
 
 **Riesgos.** Los previews viejos comparten la base de producción y se rompen al borrar las tablas. Borrar `CombinacionEnLinea` toma un bloqueo breve sobre `CuentaItem` (fuera de horario, `lock_timeout`). Si `RegistroAuditoria` tiene filas de las entidades retiradas, la pantalla de auditoría ya no las ofrece como filtro (las filas quedan).
+
+## Actualización (2026-10-20): el «Menú del día» se oculta (decisión del dueño)
+
+Hasta que se rediseñe, el «Menú del día» no se ve: un interruptor de una sola constante (`MENU_DEL_DIA_VISIBLE` en `src/core/carta/menu-del-dia.ts`, mismo patrón que `PRECIOS_EDITABLES`) saca su entrada de Movimientos, hace que su pantalla responda «no existe», no ofrece el lugar «Plato del día» al armar una promo, y el servidor rechaza sumar un lugar del día o cargar y copiar platos. No se borra nada ni se toca la base: los lugares y platos que ya existían quedan como están. Volver a `true` lo restituye (`test/carta/menu-del-dia-interruptor.test.tsx`).
+

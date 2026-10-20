@@ -230,3 +230,13 @@ describe("paso 9: sin forma (lo que la carta no puede leer exacto, o una carta g
     expect(texto(flan)).toBe("Flan $3.200");
   });
 });
+
+describe("la carta de ejemplo del editor del tema muestra las cuatro formas (paso 12)", () => {
+  it("simple, base oculta, tabla de dos ejes y una tanda, en «Entradas»", async () => {
+    const { CARTA_EJEMPLO } = await import("../../src/components/carta/carta-ejemplo");
+    const entradas = CARTA_EJEMPLO.secciones[0]!;
+    const html = renderToStaticMarkup(<Seccion seccion={entradas} indice={0} total={2} estilo={resolverEstiloCarta({})} />);
+    for (const forma of ['data-forma="simple"', 'data-forma="lista-sin-encabezado"', 'data-forma="tabla"', "data-tanda"]) expect(html, forma).toContain(forma);
+    expect(html).toContain("Salsa:</span> ketchup, mayonesa o alioli");
+  });
+});
