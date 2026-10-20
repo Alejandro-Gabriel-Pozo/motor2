@@ -165,7 +165,8 @@ function Aclaraciones({ aclaraciones, color }: { aclaraciones: readonly Aclaraci
  * tamaño y un solo peso por rol).
  *
  * Con opciones, el ítem se DIBUJA SEGÚN SU FORMA (`presentacion`, que resuelve el servidor: `core/carta/presentacion-en-carta.ts`; ADR-035): `simple` (el nombre y su precio, con las aclaraciones
- * debajo); `tabla` (dos ejes: el nombre arriba y una tabla real); `columnas` va dentro de su tanda (`TandaFila`). Sin `presentacion` (un producto sin opciones, o una carta guardada por el código anterior) se dibuja como antes.
+ * debajo); `tabla` (dos ejes: el nombre arriba y una tabla real); `lista` (un eje en filas: con el nombre arriba, o la base OCULTA, cada opción como un plato); `columnas` va dentro de
+ * su tanda (`TandaFila`). Sin `presentacion` (un producto sin opciones, o una carta guardada por el código anterior) se dibuja como antes.
  */
 function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCarta }) {
   const colores = coloresDelItem(item.especial, estilo.valores);
@@ -217,7 +218,69 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
       </li>
     );
   }
+  if (p?.forma === "lista" && p.encabezado) {
+    // Un eje en filas con el nombre arriba (un producto directo con filas, o una base con «Mostrar el nombre arriba»; DEC-11): el nombre sin precio y una fila por opción con su precio final.
+    return (
+      <li data-forma="lista" className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
+        <div className="flex items-baseline justify-between gap-3">
+          <NombreDelItem item={item} colores={colores} />
+          {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
+        </div>
+        <DescripcionYTags item={item} colores={colores} />
+        <FilasDeOpcion nombre={item.nombre} filas={p.filas} colorPrecio={colores.precio} />
+        <Aclaraciones aclaraciones={p.aclaraciones} color={colores.descripcion} />
+      </li>
+    );
+  }
+  if (p?.forma === "lista") {
+    // Una BASE de un eje, OCULTA (DEC-11, el default: las pizzas): cada opción se lee como un plato, con su nombre completo (h3, rol Producto) y su precio (rol Precio): «Pizza muzzarella $18.000».
+    // El producto base no se nombra (su descripción, sus tags y su ★ no salen: lo avisa el diagnóstico interno); la lista lleva su nombre para el lector de pantalla.
+    return (
+      <li data-forma="lista-sin-encabezado" style={{ borderColor: "var(--carta-border)" }}>
+        <ul aria-label={item.nombre} data-filas-carta className="flex flex-col divide-y" style={{ borderColor: "var(--carta-border)" }}>
+          {p.filas.map((f, i) => (
+            <li key={`fila-${i}`} className="flex items-baseline justify-between gap-3 py-2.5" style={{ borderColor: "var(--carta-border)" }}>
+              <h3 data-rol="producto" className="carta-rol-producto min-w-0 flex-1 carta-titulo" style={{ color: colores.nombre, overflowWrap: "anywhere" }}>
+                {f.rotulo}
+              </h3>
+              <span data-rol="precio" className="carta-rol-precio shrink-0 carta-titulo" style={{ color: colores.precio }}>
+                {formatearPrecioCarta(f.precio)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {(item.descuentoPorcentaje !== undefined || p.aclaraciones.length > 0) && (
+          <div className="pb-2.5">
+            {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
+            <Aclaraciones aclaraciones={p.aclaraciones} color={colores.descripcion} />
+          </div>
+        )}
+      </li>
+    );
+  }
   return <ItemComoAntes item={item} colores={colores} />;
+}
+
+/**
+ * Las filas de un eje bajo el nombre del plato (rol Opción): «Chico ........ $2.500», siempre a la vista (sin desplegable), con el precio FINAL de cada una. Una lista (`ul`) con el nombre del plato
+ * para el lector de pantalla; los puntitos son decoración (`aria-hidden`).
+ */
+function FilasDeOpcion({ nombre, filas, colorPrecio }: { nombre: string; filas: readonly { rotulo: string; precio: number }[]; colorPrecio: string }) {
+  return (
+    <ul aria-label={nombre} data-filas-carta className="mt-1.5 flex flex-col">
+      {filas.map((f, i) => (
+        <li key={`fila-${i}`} className="flex items-baseline gap-1.5 py-0.5">
+          <span data-rol="opcion" className="carta-rol-opcion min-w-0" style={{ overflowWrap: "anywhere" }}>
+            {f.rotulo}
+          </span>
+          <span aria-hidden="true" className="min-w-3 flex-1 -translate-y-1 border-b-[1.5px] border-dotted" style={{ borderColor: "color-mix(in oklch, var(--carta-ink-soft) 55%, transparent)" }} />
+          <span data-rol="opcion-precio" className="carta-rol-opcion-precio shrink-0 carta-titulo" style={{ color: colorPrecio }}>
+            {formatearPrecioCarta(f.precio)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /** Una celda de precio de una tabla (rol Opción, 600), o «–» donde el producto no ofrece esa opción (con «no se ofrece» para el lector de pantalla: no depende de ver la raya). */

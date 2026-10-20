@@ -91,13 +91,9 @@ describe("S-25: la carta pública no emite ids internos", () => {
     const entregada = (await cartaPublica(empresa, "central", AHORA_DE_LA_CORRIDA))!;
     const html = renderToStaticMarkup(<CartaVista carta={entregada.carta} estilo={entregada.estilo} hrefVolver="/carta-publica/principal" />);
     expect(html).toContain("Bife");
-    // GO-2d, CARTA-B y CARTA-C: la opción que SÍ cambia el precio se dibuja en la línea «Adicionales:»; «Jugoso» y «Bien cocido», que no suman nada, se dibujan como pastillas bajo el nombre
-    // de su grupo («Punto»). Todo sin ids.
-    expect(html).toContain("Adicionales:");
-    expect(html).toContain("A punto +$100");
-    expect(html).toMatch(/data-opciones-sin-costo="Punto"[^>]*>.*Punto.*<ul aria-label="Punto".*Jugoso.*Bien cocido/);
-    expect(html).toContain("Jugoso");
-    expect(html).toContain("Bien cocido");
+    // Fase 5 («carta pareja»): el punto es una variante obligatoria que suma («A punto +$100»), así que el bife se lee como una LISTA con el nombre arriba: una fila por punto con su precio
+    // final (con el 10 % de descuento ya aplicado). Todo sin ids.
+    expect(html).toMatch(/<li data-forma="lista"[^>]*>.*<ul aria-label="Bife" data-filas-carta[^>]*>.*Jugoso.*\$900.*A punto.*\$990.*Bien cocido.*\$900/);
     expect(html).toContain('data-ir-a="seccion-0"');
     for (const [clase, id] of Object.entries(ids)) expect(html, `el HTML contiene el id de ${clase}`).not.toContain(id);
     expect(html).not.toMatch(CUID);

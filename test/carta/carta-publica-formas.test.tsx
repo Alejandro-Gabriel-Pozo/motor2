@@ -30,11 +30,23 @@ const texto = (html: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-/** El `<li>` de la sección que contiene `marca`. */
-const filaCon = (html: string, marca: string) => {
-  const lis = html.slice(html.indexOf("data-carta-scroll")).split(/(?=<li data-forma|<li class|<li data-tanda)/);
-  return lis.find((l) => l.includes(marca)) ?? "";
-};
+/** Los `<li>` de primer nivel de la lista de la sección (un ítem o una tanda cada uno, con lo que tengan adentro). */
+function filasDeLaSeccion(html: string): string[] {
+  const lista = html.slice(html.indexOf("<ul data-carta-scroll"));
+  const salida: string[] = [];
+  let profundidad = 0;
+  let inicio = -1;
+  for (const m of lista.matchAll(/<li[\s>]|<\/li>/g)) {
+    if (m[0].startsWith("<li")) {
+      if (profundidad === 0) inicio = m.index;
+      profundidad++;
+    } else if (--profundidad === 0) salida.push(lista.slice(inicio, m.index + 5));
+  }
+  return salida;
+}
+
+/** El `<li>` de primer nivel de la sección que contiene `marca`. */
+const filaCon = (html: string, marca: string) => filasDeLaSeccion(html).find((l) => l.includes(marca)) ?? "";
 
 describe("los textos de la forma (compartidos con la vista previa de la administración)", () => {
   it("una elección se une con «o» (y «u» delante de o/ho); unos extras, con comas y lo que suma cada uno", () => {
@@ -157,5 +169,39 @@ describe("8c: tabla de dos ejes (la milanesa: Simple | Napolitana × De carne / 
   it("las filas no se juntan aunque cuesten igual (DEC-10); «–» donde no se ofrece; sin «desde»; debajo, la descripción y las aclaraciones", () => {
     expect(texto(html)).toBe("Milanesas Simple Napolitana De carne $20.000 $25.000 De pollo $20.000 $25.000 De trucha $23.000 – Con papas Guarnición: papas fritas o puré");
     expect(html).not.toMatch(/desde/i);
+  });
+});
+
+describe("8d: lista de un eje (la base de las pizzas: oculta por defecto; con «Mostrar el nombre arriba», con encabezado)", () => {
+  const filas = [
+    { rotulo: "Pizza muzzarella", precio: 18000 },
+    { rotulo: "Pizza napolitana", precio: 22000 },
+  ];
+  const pizzas = (encabezado: boolean) =>
+    item({ nombre: "Pizzas", descripcion: "A la piedra", tags: ["veggie"], precio: 18000, presentacion: { forma: "lista", encabezado, filas, aclaraciones: [{ tipo: "eleccion", rotulo: "Masa", opciones: ["fina", "al molde"] }] } });
+
+  it("OCULTA (DEC-11): cada opción es un plato con su nombre completo (h3, rol Producto) y su precio (rol Precio); el producto base no se nombra", () => {
+    const html = filaCon(dibujar([pizzas(false)]), "Pizza muzzarella");
+    expect(html).toMatch(/^<li data-forma="lista-sin-encabezado"/);
+    expect(html.match(/<h3 data-rol="producto"[^>]*>([^<]*)<\/h3>/g)?.map((h) => texto(h))).toEqual(["Pizza muzzarella", "Pizza napolitana"]);
+    expect([...html.matchAll(/data-rol="precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$18.000", "$22.000"]);
+    expect(texto(html)).toBe("Pizza muzzarella $18.000 Pizza napolitana $22.000 Masa: fina o al molde");
+    expect(html).toMatch(/<ul aria-label="Pizzas" data-filas-carta/);
+    expect(html).not.toMatch(/>Pizzas</);
+  });
+
+  it("CON EL NOMBRE ARRIBA: el nombre sin precio, la descripción y los tags, y una fila por opción (rol Opción) con su precio final; las aclaraciones al final", () => {
+    const html = filaCon(dibujar([pizzas(true)]), "Pizzas");
+    expect(html).toMatch(/^<li data-forma="lista"/);
+    expect(html.match(/<h3 data-rol="producto"[^>]*>([^<]*)<\/h3>/g)?.map((h) => texto(h))).toEqual(["Pizzas"]);
+    expect(html).not.toMatch(/data-rol="precio"/);
+    expect(html.match(/data-rol="opcion" class="carta-rol-opcion[ "]/g)).toHaveLength(2);
+    expect(texto(html)).toBe("Pizzas A la piedra veggie Pizza muzzarella $18.000 Pizza napolitana $22.000 Masa: fina o al molde");
+  });
+
+  it("con descuento de producto: «−x %» una vez, sin tachar fila por fila", () => {
+    const html = filaCon(dibujar([{ ...pizzas(false), descuentoPorcentaje: 10 }]), "Pizza muzzarella");
+    expect(html.match(/data-descuento-producto/g)).toHaveLength(1);
+    expect(html).not.toMatch(/<s[ >]/);
   });
 });
