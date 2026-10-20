@@ -68,7 +68,7 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
       data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 },
     });
 
-    await actualizarProducto(producto.id, { nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, precioVenta: 150 });
+    await actualizarProducto(producto.id, { nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, precioVenta: 150, precioVentaVisto: 100 });
 
     const { items } = await listarRegistrosAuditoria({ entidad: "Producto", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
     const registro = items.find((r) => r.campo === "precioVenta")!;

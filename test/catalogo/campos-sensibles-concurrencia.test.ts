@@ -15,6 +15,11 @@ import { guardComandoAgregarPresentacionAlternativa, guardComandoDatosDeProducto
  * escribe `activa`.
  *
  * El escenario se arma con DOS transacciones y una barrera: la del operador lee la fila y, antes de seguir, espera a que otra conexión (el administrador) cambie los valores y confirme.
+ *
+ * Desde la ola «precio y carta» (Fase 2, paso A4) la edición del producto corre en una transacción SERIALIZABLE: la escritura del operador después del cambio confirmado del administrador es un conflicto de
+ * serialización y el cuerpo se repite entero, ya con la fila nueva. Un formulario que manda los cuatro valores VIEJOS sin la clave ya no «guarda el nombre y deja lo del administrador»: se rechaza
+ * (`SIN_PERMISO_CAMPOS_SENSIBLES`, cuyo mensaje pide recargar porque otra persona pudo haberlos cambiado) y no se guarda nada. El formulario de P6 (no los manda) sigue guardando el nombre. En los dos casos lo del
+ * administrador queda intacto, que es lo que este archivo protege.
  */
 describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió entre su lectura y su escritura", () => {
   let sucursalId: string;
@@ -73,7 +78,7 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
     ).id;
   });
 
-  it("EL DEFECTO (edición): el operador sin la clave edita el nombre con el formulario viejo mientras un administrador cambia precio, factor y unidad de compra → lo del administrador NO se pisa", async () => {
+  it("EL DEFECTO (edición): el operador sin la clave edita el nombre con el formulario viejo mientras un administrador cambia precio, factor y unidad de compra → lo del administrador NO se pisa (y, con la transacción SERIALIZABLE, el formulario viejo se rechaza)", async () => {
     const formularioViejo = { nombre: "Queso cremoso", tipo: "MP" as const, unidadStockId: kgId, unidadCompraId: gId, factorConversion: 25, precioVenta: 500 };
     const actor = actorConBarrera("producto", async () => {
       // El administrador cambia los tres campos y confirma, mientras la transacción del operador ya leyó la fila (precio 500, factor 25).
@@ -86,9 +91,9 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
       puedeGestionarConsignacion: false,
       puedeEditarCamposSensibles: false,
     });
-    expect(r.ok, r.mensaje).toBe(true);
+    expect(r).toMatchObject({ ok: false, codigo: "SIN_PERMISO_CAMPOS_SENSIBLES" }); // el reintento ve lo del administrador: el formulario viejo trae otros valores
     const p = await prisma.producto.findUniqueOrThrow({ where: { id: productoId } });
-    expect(p.nombre).toBe("Queso cremoso"); // lo que el operador SÍ podía cambiar, se guardó
+    expect(p.nombre).toBe("Queso"); // todo o nada: tampoco el nombre
     expect([Number(p.precioVenta), Number(p.factorConversion), p.unidadCompraId, p.unidadStockId]).toEqual([600, 20, kgId, kgId]); // lo del administrador, intacto
   });
 
@@ -112,7 +117,7 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
   });
 
   it("control: con la clave, la escritura incluye los campos (quien tiene la clave define el valor)", async () => {
-    const formulario = { nombre: "Queso", tipo: "MP" as const, unidadStockId: kgId, unidadCompraId: gId, factorConversion: 25, precioVenta: 700 };
+    const formulario = { nombre: "Queso", tipo: "MP" as const, unidadStockId: kgId, unidadCompraId: gId, factorConversion: 25, precioVenta: 700, precioVentaVisto: 500 };
     const r = await actualizarProductoCasoDeUso(actorConBarrera("producto", async () => undefined), {
       productoId,
       datos: formulario,
@@ -137,8 +142,9 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
       { campo: "unidadCompraId", cambio: () => ({ unidadCompraId: kgId }), esperado: () => kgId, leer: (p) => p.unidadCompraId },
       { campo: "unidadStockId", cambio: () => ({ unidadStockId: gId }), esperado: () => gId, leer: (p) => p.unidadStockId },
     ];
-    const FORMULARIOS: [string, (v: { nombre: string; tipo: "MP"; unidadStockId: string; unidadCompraId: string; factorConversion: number; precioVenta: number }, campo: Campo) => Record<string, unknown>][] = [
-      ["el formulario que manda los cuatro valores", (v) => v],
+    // El tercer valor: si el nombre se guarda (el de P6) o el formulario se rechaza entero porque trae valores viejos (el que manda los cuatro: con la transacción SERIALIZABLE el reintento ve lo del administrador).
+    const FORMULARIOS: [string, (v: { nombre: string; tipo: "MP"; unidadStockId: string; unidadCompraId: string; factorConversion: number; precioVenta: number }, campo: Campo) => Record<string, unknown>, "guarda" | "rechaza"][] = [
+      ["el formulario que manda los cuatro valores", (v) => v, "rechaza"],
       [
         "el formulario de P6, que no los manda",
         (v) => {
@@ -146,11 +152,12 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
           void [unidadStockId, unidadCompraId, factorConversion, precioVenta];
           return sinSensibles;
         },
+        "guarda",
       ],
     ];
 
-    for (const [formulario, armar] of FORMULARIOS) {
-      it.each(CAMBIOS)(`${formulario}, mientras el administrador cambia $campo → ese campo NO se pisa y el nombre sí se guarda`, async ({ campo, cambio, esperado, leer }) => {
+    for (const [formulario, armar, nombre] of FORMULARIOS) {
+      it.each(CAMBIOS)(`${formulario}, mientras el administrador cambia $campo → ese campo NO se pisa y el nombre ${nombre === "guarda" ? "sí se guarda" : "tampoco (se rechaza entero)"}`, async ({ campo, cambio, esperado, leer }) => {
         const vistoAlAbrir = { nombre: "Queso cremoso", tipo: "MP" as const, unidadStockId: kgId, unidadCompraId: gId, factorConversion: 25, precioVenta: 500 };
         const datos = armar(vistoAlAbrir, campo);
         const actor = actorConBarrera("producto", async () => {
@@ -163,9 +170,10 @@ describe("M.2: quien no tiene la clave fina no pisa lo que otra persona cambió 
           puedeGestionarConsignacion: false,
           puedeEditarCamposSensibles: false,
         });
-        expect(r.ok, r.mensaje).toBe(true);
+        if (nombre === "guarda") expect(r.ok, r.mensaje).toBe(true);
+        else expect(r).toMatchObject({ ok: false, codigo: "SIN_PERMISO_CAMPOS_SENSIBLES" });
         const p = await prisma.producto.findUniqueOrThrow({ where: { id: productoId } });
-        expect(p.nombre).toBe("Queso cremoso");
+        expect(p.nombre).toBe(nombre === "guarda" ? "Queso cremoso" : "Queso");
         expect(leer(p), `${campo}: el valor del administrador`).toEqual(esperado());
       });
     }

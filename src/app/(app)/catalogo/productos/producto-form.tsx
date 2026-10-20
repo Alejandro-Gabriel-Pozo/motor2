@@ -148,7 +148,8 @@ export function ProductoForm({
 
         startTransition(async () => {
           const resultado = editando
-            ? await actualizarProducto(productoExistente!.id, { ...datos, ...sensiblesDeLaEdicion })
+            ? // El precio que mostraba el formulario (control del valor visto): si otra persona lo cambió mientras se editaba, el servidor no pisa su cambio y pide recargar.
+              await actualizarProducto(productoExistente!.id, { ...datos, ...sensiblesDeLaEdicion, precioVentaVisto: productoExistente!.precioVenta })
             : await darDeAltaProducto({ ...datos, ...sensiblesDelAlta });
           setMensaje(resultado.mensaje);
           setSincronizable(null);

@@ -276,7 +276,14 @@ export interface DatosProducto {
  * `producto_campos_sensibles` quien edita—: el formulario abierto sin la clave no los manda, y la clave puede llegar mientras edita. `null` en la unidad de compra sigue siendo «sin unidad de compra». El alta
  * (`darDeAltaProducto`) los sigue pidiendo.
  */
-export type DatosProductoEdicion = Omit<DatosProducto, CampoSensibleDelProducto> & Partial<Pick<DatosProducto, CampoSensibleDelProducto>>;
+export type DatosProductoEdicion = Omit<DatosProducto, CampoSensibleDelProducto> &
+  Partial<Pick<DatosProducto, CampoSensibleDelProducto>> & {
+    /**
+     * El precio de venta que mostraba el formulario al abrirse (ola «precio y carta», Fase 2, paso A4): si el precio cambia y este ya no es el guardado (otra persona lo cambió mientras se editaba), no
+     * se guarda nada y el mensaje pide recargar. Si no viene y el precio cambia, también (falla cerrado).
+     */
+    precioVentaVisto?: number;
+  };
 
 /**
  * Alta rápida inline de una MP nueva, sin salir del wizard de Compra por

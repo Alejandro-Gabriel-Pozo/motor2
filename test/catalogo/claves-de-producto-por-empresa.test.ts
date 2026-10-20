@@ -55,7 +55,8 @@ describe("claves de producto: valen con cualquier membresía de la empresa", () 
         expect((await requierePermisoDeEmpresa(usuario.id, empresaId, clave, prismaAdmin)).ok, `${clave} (caso ${i})`).toBe(true);
       }
       await mockearUsuarioActual({ id: usuario.id, email: usuario.email, nombre: null });
-      expect((await actualizarProducto(productoId, datosPV(1100 + i))).ok, `actualizarProducto (caso ${i})`).toBe(true);
+      // El precio que mostraba el formulario: el de la siembra en la primera vuelta, el que dejó la sincronización de la vuelta anterior en la segunda.
+      expect((await actualizarProducto(productoId, { ...datosPV(1100 + i), precioVentaVisto: i === 0 ? 1000 : 1200 })).ok, `actualizarProducto (caso ${i})`).toBe(true);
       expect((await sincronizarPrecioGrupoCarta([productoId, hermanoId], 1200 + i)).ok, `sincronizarPrecioGrupoCarta (caso ${i})`).toBe(true);
     }
   });

@@ -40,7 +40,14 @@ export type CampoSensibleDelProducto = "unidadCompraId" | "unidadStockId" | "fac
  * `producto_campos_sensibles` no los manda (un input deshabilitado no viaja), y si mientras edita le dan la clave el servidor, con la clave, los completa igual con lo guardado. Distinto de `null` en
  * la unidad de compra, que es «sin unidad de compra» a propósito. El alta NO los acepta ausentes (`EntradaProducto`).
  */
-export type EntradaEdicionProducto = Omit<EntradaProducto, CampoSensibleDelProducto> & Partial<Pick<EntradaProducto, CampoSensibleDelProducto>>;
+export type EntradaEdicionProducto = Omit<EntradaProducto, CampoSensibleDelProducto> &
+  Partial<Pick<EntradaProducto, CampoSensibleDelProducto>> & {
+    /**
+     * El precio de venta que mostraba el formulario al abrirse (ola «precio y carta», Fase 2, paso A4). Si el precio que se guardaría es distinto del guardado, este tiene que ser el
+     * guardado: si no, `PRECIO_DESACTUALIZADO` y no se guarda nada (también si no viene: falla cerrado). Si el precio no cambia, no se mira.
+     */
+    precioVentaVisto?: number;
+  };
 
 /**
  * El resultado de `guardComandoDatosDeProducto` (S-52), POR ETAPA: lo que decide el formato y el rango de los datos de un producto sin mirar la base. `validarDatosDeProducto` aplica
@@ -115,11 +122,20 @@ export interface DatosActualizarProducto {
  *  - `CONSIGNANTE_CON_HISTORIA`: el formulario cambia el consignante (o el «es consignación») de un producto que ya tiene liquidaciones (S-05);
  *  - `SIN_PERMISO_COSTO`: el formulario cambia el costo de consignación (es consignación, proveedor o precio) y quien lo pide no tiene `pagar_consignante` (S-12, D8);
  *  - `SIN_PERMISO_CAMPOS_SENSIBLES`: el formulario cambia el precio de venta, el factor de conversión o una unidad (de stock o de compra) y quien lo pide no tiene `producto_campos_sensibles` (M.2); va ANTES de `UNIDAD_CON_HISTORIA` y `CONSIGNANTE_CON_HISTORIA`;
- *  - `REFERENCIA_NO_ENCONTRADA`: un id del formulario (categoría, insumo, unidad, proveedor de consignación) no es de esta empresa o no existe: la clave foránea compuesta de la base rechazó el `update` y se traduce a «No se encontró …» fuera de la transacción abortada (O.175).
+ *  - `REFERENCIA_NO_ENCONTRADA`: un id del formulario (categoría, insumo, unidad, proveedor de consignación) no es de esta empresa o no existe: la clave foránea compuesta de la base rechazó el `update` y se traduce a «No se encontró …» fuera de la transacción abortada (O.175);
+ *  - `PRECIO_DESACTUALIZADO`: el formulario cambia el precio de venta y el que mostraba (`precioVentaVisto`) ya no es el guardado (otra persona lo cambió mientras editaba, o no vino): no se guarda nada.
  */
 export type ResultadoActualizarProducto = ResultadoCaso<
   DatosActualizarProducto,
-  "PRODUCTO_NO_ENCONTRADO" | "TIPO_DISTINTO" | "DATOS_INVALIDOS" | "UNIDAD_CON_HISTORIA" | "CONSIGNANTE_CON_HISTORIA" | "SIN_PERMISO_COSTO" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "REFERENCIA_NO_ENCONTRADA"
+  | "PRODUCTO_NO_ENCONTRADO"
+  | "TIPO_DISTINTO"
+  | "DATOS_INVALIDOS"
+  | "UNIDAD_CON_HISTORIA"
+  | "CONSIGNANTE_CON_HISTORIA"
+  | "SIN_PERMISO_COSTO"
+  | "SIN_PERMISO_CAMPOS_SENSIBLES"
+  | "REFERENCIA_NO_ENCONTRADA"
+  | "PRECIO_DESACTUALIZADO"
 >;
 
 /**

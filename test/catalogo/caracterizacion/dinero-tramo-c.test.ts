@@ -376,7 +376,7 @@ describe("Huella de dinero del tramo C", () => {
     await paso("producto: alta con nombre repetido", await darDeAltaProducto({ codigo: "PV_X", nombre: "tarta", tipo: "PV", unidadStockId: u.id, factorConversion: 1 }));
     await paso(
       "producto: la Fainá pasa a $5200 (ofrece sincronizar)",
-      await actualizarProducto(faina.id, { nombre: "Fainá", tipo: "PV", unidadStockId: u.id, factorConversion: 1, precioVenta: 5200, precioConsignacion: 0 }),
+      await actualizarProducto(faina.id, { nombre: "Fainá", tipo: "PV", unidadStockId: u.id, factorConversion: 1, precioVenta: 5200, precioConsignacion: 0, precioVentaVisto: 5000 }),
     );
     await paso("producto: la Fainá sin cambios de precio", await actualizarProducto(faina.id, { nombre: "Fainá", tipo: "PV", unidadStockId: u.id, factorConversion: 1, precioVenta: 5200 }));
     await paso("producto: cambiar el tipo", await actualizarProducto(faina.id, { nombre: "Fainá", tipo: "MP", unidadStockId: u.id, factorConversion: 1 }));

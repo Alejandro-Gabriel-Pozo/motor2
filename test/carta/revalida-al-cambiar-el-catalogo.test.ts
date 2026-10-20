@@ -38,7 +38,7 @@ describe("el catálogo invalida la carta pública al cambiar lo que ella muestra
   });
 
   it("actualizarProducto", async () => {
-    const r = await actualizarProducto(productoId, { nombre: "Coca", tipo: "PV", unidadStockId: unidadId, factorConversion: 1, precioVenta: 1200 });
+    const r = await actualizarProducto(productoId, { nombre: "Coca", tipo: "PV", unidadStockId: unidadId, factorConversion: 1, precioVenta: 1200, precioVentaVisto: 1000 });
     expect(r.ok).toBe(true);
     expect(revalidarCartasPublicas).toHaveBeenCalledTimes(1);
   });

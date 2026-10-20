@@ -72,21 +72,21 @@ describe("cambio de precio y su auditoría son atómicos", () => {
   describe("actualizarProducto (precio de venta global)", () => {
     it("falla la auditoría del precio de venta → el precio NO cambia", async () => {
       interruptor.fallarEnLlamada = 1;
-      await expect(actualizarProducto(ids.coca, datosPV("Coca-Cola 500cc", 5500))).rejects.toThrow("auditoría caída");
+      await expect(actualizarProducto(ids.coca, { ...datosPV("Coca-Cola 500cc", 5500), precioVentaVisto: 5000 })).rejects.toThrow("auditoría caída");
       expect(await precioVenta(ids.coca)).toBe(5000);
       expect(await prisma.registroAuditoria.count()).toBe(0);
     });
 
     it("falla la ÚLTIMA auditoría (paso de venta) → ni el precio ni las auditorías ya escritas quedan", async () => {
       interruptor.fallarEnLlamada = 3;
-      await expect(actualizarProducto(ids.coca, datosPV("Coca-Cola 500cc", 5500, { precioConsignacion: 10, pasoVenta: 1 }))).rejects.toThrow("auditoría caída");
+      await expect(actualizarProducto(ids.coca, { ...datosPV("Coca-Cola 500cc", 5500, { precioConsignacion: 10, pasoVenta: 1 }), precioVentaVisto: 5000 })).rejects.toThrow("auditoría caída");
       expect(await precioVenta(ids.coca)).toBe(5000);
       expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: ids.coca } })).precioConsignacion)).toBe(0);
       expect(await prisma.registroAuditoria.count()).toBe(0);
     });
 
     it("sin falla → precio y auditoría quedan (control)", async () => {
-      expect((await actualizarProducto(ids.coca, datosPV("Coca-Cola 500cc", 5500))).ok).toBe(true);
+      expect((await actualizarProducto(ids.coca, { ...datosPV("Coca-Cola 500cc", 5500), precioVentaVisto: 5000 })).ok).toBe(true);
       expect(await precioVenta(ids.coca)).toBe(5500);
       expect(await prisma.registroAuditoria.count({ where: { entidadId: ids.coca, campo: "precioVenta" } })).toBe(1);
     });

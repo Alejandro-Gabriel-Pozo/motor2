@@ -66,7 +66,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
     it("hermanos IGUALES al nuevo precio → no ofrece sincronizar (sin `sincronizable`)", async () => {
       // Coca y Sprite ya estaban a $5500: subir Fanta a $5500 no deja a nadie distinto.
       await prisma.producto.updateMany({ where: { id: { in: [ids.coca, ids.sprite] } }, data: { precioVenta: 5500 } });
-      const r = await actualizarProducto(ids.fanta, datosPV("Fanta 500cc", 5500));
+      const r = await actualizarProducto(ids.fanta, { ...datosPV("Fanta 500cc", 5500), precioVentaVisto: 5000 });
       expect(r).toEqual({ ok: true, mensaje: 'Producto "Fanta 500cc" actualizado.' });
       expect(r).not.toHaveProperty("sincronizable");
     });
@@ -80,7 +80,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
       }
       const operador = await crearUsuarioConMembresia({ email: "op@test.com", sucursalId, rolId: rolDePrecios.id });
       await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
-      const r = await actualizarProducto(ids.fanta, datosPV("Fanta 500cc", 5500));
+      const r = await actualizarProducto(ids.fanta, { ...datosPV("Fanta 500cc", 5500), precioVentaVisto: 5000 });
       expect(r).toEqual({ ok: true, mensaje: 'Producto "Fanta 500cc" actualizado.' });
       expect(r).not.toHaveProperty("sincronizable");
       expect(await precioVenta(ids.fanta)).toBe(5500);
@@ -89,7 +89,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
     });
 
     it("hermanos DISTINTOS → `sincronizable` trae el grupo, el precio nuevo y los hermanos con su precio; no sincroniza solo", async () => {
-      const r = await actualizarProducto(ids.fanta, datosPV("Fanta 500cc", 5500));
+      const r = await actualizarProducto(ids.fanta, { ...datosPV("Fanta 500cc", 5500), precioVentaVisto: 5000 });
       expect(r).toEqual({
         ok: true,
         mensaje: 'Producto "Fanta 500cc" actualizado.',
@@ -118,7 +118,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
     });
 
     it("sincronizarPrecioGrupoCarta aplica el precio SOLO a los productoIds pasados, con su auditoría; la carta ya no avisa", async () => {
-      await actualizarProducto(ids.fanta, datosPV("Fanta 500cc", 5500));
+      await actualizarProducto(ids.fanta, { ...datosPV("Fanta 500cc", 5500), precioVentaVisto: 5000 });
       const r = await sincronizarPrecioGrupoCarta([ids.coca, ids.sprite], 5500);
       expect(r).toEqual({ ok: true, mensaje: 'Precio de venta de "Coca-Cola 500cc", "Sprite 500cc" actualizado a $5.500 («Gaseosa 500 CC»).' });
       expect(await precioVenta(ids.coca)).toBe(5500);
@@ -146,7 +146,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
     });
 
     it("regresión: un producto NO agrupado nunca ofrece sincronizar", async () => {
-      const r = await actualizarProducto(ids.suelto, datosPV("Tónica 500cc", 7000));
+      const r = await actualizarProducto(ids.suelto, { ...datosPV("Tónica 500cc", 7000), precioVentaVisto: 5000 });
       expect(r).toEqual({ ok: true, mensaje: 'Producto "Tónica 500cc" actualizado.' });
     });
 

@@ -132,7 +132,8 @@ const VERIFICACION: Readonly<Record<string, UsoDeVerificacion>> = {
   "src/server/actions/catalogo/casos-de-uso/actualizar-producto.ts": {
     lectores: {},
     directos: [],
-    transaccion: true,
+    // Desde la ola «precio y carta» (Fase 2, A4) la transacción de verificación se abre SERIALIZABLE (control del precio de venta visto).
+    transaccionA: { conTransaccionSerializable: 0 },
     devuelve: "MENSAJE",
     motivo: "edición: la transacción corre con la lectura en toda la empresa para el nombre repetido, la unidad del insumo y CAT-1 (`productoTieneHistoria`, `productoTieneLiquidaciones`: historia en cualquier sucursal); la escritura NO se ensancha. Sale un mensaje de rechazo",
   },
