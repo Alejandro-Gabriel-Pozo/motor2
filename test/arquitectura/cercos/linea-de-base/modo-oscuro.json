@@ -1,0 +1,359 @@
+{
+  "regla": "modo-oscuro",
+  "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
+  "total": 458,
+  "entradas": 115,
+  "porTipo": {
+    "color-scheme-oscuro": 1,
+    "dark:": 454,
+    "prefers-color-scheme": 3
+  },
+  "cuentas": {
+    "plataforma/src/app/globals.css": {
+      "prefers-color-scheme": 1
+    },
+    "src/app/(app)/administracion/auditoria/tabla-auditoria.tsx": {
+      "dark:": 3
+    },
+    "src/app/(app)/administracion/empresa/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/administracion/gerencia/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/administracion/gerencia/traspaso-gerencia.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/administracion/permisos/permisos-matriz.tsx": {
+      "dark:": 2
+    },
+    "src/app/(app)/administracion/usuarios/usuarios-tabla.tsx": {
+      "dark:": 3
+    },
+    "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
+      "dark:": 2
+    },
+    "src/app/(app)/carta/agrupados/page.tsx": {
+      "dark:": 4
+    },
+    "src/app/(app)/carta/carta-mant.module.css": {
+      "prefers-color-scheme": 1
+    },
+    "src/app/(app)/carta/parametrizacion/formularios.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/alta-de-opcion.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/cambiar-precio.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/campos-de-version.tsx": {
+      "dark:": 7
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/editor-de-consumos.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/lectura-del-factor.tsx": {
+      "dark:": 10
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/ordenar-opciones.tsx": {
+      "dark:": 7
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/page.tsx": {
+      "dark:": 22
+    },
+    "src/app/(app)/catalogo/opciones/alta-de-grupo.tsx": {
+      "dark:": 5
+    },
+    "src/app/(app)/catalogo/opciones/limpiar/limpiar-opciones.tsx": {
+      "dark:": 21
+    },
+    "src/app/(app)/catalogo/opciones/limpiar/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/catalogo/opciones/page.tsx": {
+      "dark:": 9
+    },
+    "src/app/(app)/catalogo/productos/[id]/combinaciones/page.tsx": {
+      "dark:": 7
+    },
+    "src/app/(app)/catalogo/productos/[id]/opciones/admision-de-grupo.tsx": {
+      "dark:": 3
+    },
+    "src/app/(app)/catalogo/productos/[id]/opciones/page.tsx": {
+      "dark:": 8
+    },
+    "src/app/(app)/catalogo/productos/[id]/page.tsx": {
+      "dark:": 8
+    },
+    "src/app/(app)/catalogo/productos/page.tsx": {
+      "dark:": 2
+    },
+    "src/app/(app)/catalogo/proveedores/[id]/page.tsx": {
+      "dark:": 6
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/historial/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
+      "dark:": 5
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/receta-de-la-sucursal.tsx": {
+      "dark:": 4
+    },
+    "src/app/(app)/catalogo/recetas/nueva-receta.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/catalogo/tarifas/page.tsx": {
+      "dark:": 4
+    },
+    "src/app/(app)/catalogo/unidades/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/inicio/page.tsx": {
+      "dark:": 4
+    },
+    "src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": {
+      "dark:": 10
+    },
+    "src/app/(app)/movimientos/conteo-fisico/acciones-historial.tsx": {
+      "dark:": 2
+    },
+    "src/app/(app)/movimientos/conteo-fisico/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/movimientos/menu-del-dia/menu-del-dia.tsx": {
+      "dark:": 5
+    },
+    "src/app/(app)/movimientos/menu-del-dia/page.tsx": {
+      "dark:": 2
+    },
+    "src/app/(app)/movimientos/opciones-agotadas/opciones-agotadas.tsx": {
+      "dark:": 13
+    },
+    "src/app/(app)/movimientos/opciones-agotadas/page.tsx": {
+      "dark:": 4
+    },
+    "src/app/(app)/movimientos/precio-local/page.tsx": {
+      "dark:": 5
+    },
+    "src/app/(app)/movimientos/secciones/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/categorias/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/compras/page.tsx": {
+      "dark:": 3
+    },
+    "src/app/(app)/reportes/costos/tabla-costos.tsx": {
+      "dark:": 2
+    },
+    "src/app/(app)/reportes/descuentos-clientes/tabla-descuentos-clientes.tsx": {
+      "dark:": 2
+    },
+    "src/app/(app)/reportes/devoluciones/tabla-devoluciones.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/diferencias/tabla-diferencias.tsx": {
+      "dark:": 2
+    },
+    "src/app/(app)/reportes/historial/cartel-sin-stock-propio.tsx": {
+      "dark:": 3
+    },
+    "src/app/(app)/reportes/historial/como-se-compro.tsx": {
+      "dark:": 2
+    },
+    "src/app/(app)/reportes/historial/grafico-saldo.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/historial/tabla-historial.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/insumos-sin-receta/tabla-insumos-sin-receta.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/loading.tsx": {
+      "dark:": 4
+    },
+    "src/app/(app)/reportes/margen-promociones/tabla-margen-promociones.tsx": {
+      "dark:": 3
+    },
+    "src/app/(app)/reportes/page.tsx": {
+      "dark:": 4
+    },
+    "src/app/(app)/reportes/perdidas/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/perdidas/tabla-perdidas.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/periodo/digest-alertas.tsx": {
+      "dark:": 4
+    },
+    "src/app/(app)/reportes/periodo/grafico-gasto-grupo.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/periodo/page.tsx": {
+      "dark:": 3
+    },
+    "src/app/(app)/reportes/periodo/tabla-periodo.tsx": {
+      "dark:": 13
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/fila-compartida.tsx": {
+      "dark:": 10
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/fila-simple.tsx": {
+      "dark:": 12
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/tabla-por-sucursal.tsx": {
+      "dark:": 5
+    },
+    "src/app/(app)/reportes/rotacion-mesas/page.tsx": {
+      "dark:": 3
+    },
+    "src/app/(app)/reportes/tickets/page.tsx": {
+      "dark:": 3
+    },
+    "src/app/(app)/reportes/trazabilidad/boton-anular-venta.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/trazabilidad/tabla-trazabilidad.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/valuacion/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/reportes/ventas-por-seccion/page.tsx": {
+      "dark:": 2
+    },
+    "src/app/(app)/stock/alertas/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/stock/conteo-frecuencia/boton-eliminar.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/stock/conteo-frecuencia/page.tsx": {
+      "dark:": 3
+    },
+    "src/app/(app)/stock/minimo/boton-eliminar.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/stock/por-familia/page.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/stock/reclasificar/reclasificar-form.tsx": {
+      "dark:": 1
+    },
+    "src/app/(app)/stock/seccion-habitual/boton-quitar.tsx": {
+      "dark:": 5
+    },
+    "src/app/(app)/stock/seccion-habitual/page.tsx": {
+      "dark:": 3
+    },
+    "src/app/(app)/stock/seccion-habitual/seccion-habitual-form.tsx": {
+      "dark:": 2
+    },
+    "src/app/globals.css": {
+      "color-scheme-oscuro": 1,
+      "prefers-color-scheme": 1
+    },
+    "src/app/invitacion/abrir-invitacion.tsx": {
+      "dark:": 1
+    },
+    "src/app/invitacion/formulario-de-aceptacion.tsx": {
+      "dark:": 9
+    },
+    "src/app/invitacion/page.tsx": {
+      "dark:": 2
+    },
+    "src/app/login/page.tsx": {
+      "dark:": 10
+    },
+    "src/components/activar-desactivar-fila.tsx": {
+      "dark:": 2
+    },
+    "src/components/agregar-colapsable.tsx": {
+      "dark:": 1
+    },
+    "src/components/app-shell.tsx": {
+      "dark:": 4
+    },
+    "src/components/aviso-con-deshacer.tsx": {
+      "dark:": 8
+    },
+    "src/components/avisos-de-accion.tsx": {
+      "dark:": 2
+    },
+    "src/components/boton-con-confirmacion.tsx": {
+      "dark:": 2
+    },
+    "src/components/campo-numero.tsx": {
+      "dark:": 1
+    },
+    "src/components/carta/datos-solo-lectura.tsx": {
+      "dark:": 1
+    },
+    "src/components/carta/editor-portal.tsx": {
+      "dark:": 1
+    },
+    "src/components/carta/sincronizar-precio-grupo.tsx": {
+      "dark:": 3
+    },
+    "src/components/catalogo/asistente-hermanar.tsx": {
+      "dark:": 2
+    },
+    "src/components/catalogo/campos-sensibles-solo-lectura.tsx": {
+      "dark:": 6
+    },
+    "src/components/catalogo/form-renombrar-insumo.tsx": {
+      "dark:": 1
+    },
+    "src/components/catalogo/resumen-de-opciones.tsx": {
+      "dark:": 4
+    },
+    "src/components/form-con-resultado.tsx": {
+      "dark:": 4
+    },
+    "src/components/menu-celular.tsx": {
+      "dark:": 24
+    },
+    "src/components/modal.tsx": {
+      "dark:": 1
+    },
+    "src/components/receta/lectura-de-cantidad.tsx": {
+      "dark:": 3
+    },
+    "src/components/selector-producto.tsx": {
+      "dark:": 3
+    },
+    "src/components/selector-rango.tsx": {
+      "dark:": 3
+    },
+    "src/components/sidebar-colapsable.tsx": {
+      "dark:": 6
+    },
+    "src/components/sidebar-nav.tsx": {
+      "dark:": 15
+    },
+    "src/ui/componentes/datos/tabla-de-datos.tsx": {
+      "dark:": 4
+    },
+    "src/ui/componentes/selectores/campo-fecha.tsx": {
+      "dark:": 2
+    },
+    "src/ui/componentes/superposiciones/dialogo.tsx": {
+      "dark:": 5
+    },
+    "src/ui/primitivas/boton.tsx": {
+      "dark:": 8
+    },
+    "src/ui/primitivas/campo.tsx": {
+      "dark:": 6
+    }
+  }
+}
