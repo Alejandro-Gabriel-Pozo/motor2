@@ -159,18 +159,9 @@ async function armarLinea(
       const consumosDeOpciones = configurada.tipo === "PRODUCTO" ? configurada.opciones.flatMap((o) => o.consumos) : configurada.consumos;
       const insumosMal = await revisarInsumosDeOpciones(consumosDeOpciones, producto.nombre, sucursalId, sucursalNombre, tx, obtenerProducto);
       if (insumosMal) return insumosMal;
-      // GO-3b: los insumos de la receta propia congelada de la combinación (si la tiene): materias primas disponibles en la sucursal y en la unidad de su stock, como los de una opción.
-      const excepcion = configurada.tipo === "PRODUCTO" ? configurada.excepcion : undefined;
-      for (const i of excepcion?.ingredientes ?? []) {
-        const revisada = revisarMateriaPrima(await obtenerProducto(i.insumoProductoId), producto.nombre);
-        if (!revisada.ok) return { ok: false, mensaje: revisada.mensaje };
-        const mp = revisada.materiaPrima;
-        if (!(await productoDisponibleEn(sucursalId, mp.id, tx))) return { ok: false, mensaje: mensajeMateriaPrimaNoDisponible(producto.nombre, mp.nombre, sucursalNombre) };
-        if (mp.unidadStockId !== i.unidadStockId) return { ok: false, mensaje: `La receta propia de «${producto.nombre}» usa «${mp.nombre}» en otra unidad que la de su stock: revisala.` };
-      }
       const consumo = consumoDeLineaConfigurada(
         configurada.tipo === "PRODUCTO"
-          ? { cantidad, sucursalId, base, opciones: configurada.opciones, adicionales: [], ...(excepcion ? { excepcion } : {}) }
+          ? { cantidad, sucursalId, base, opciones: configurada.opciones, adicionales: [] }
           : { cantidad, sucursalId, base: [], opciones: [], adicionales: [{ opcionId: configurada.opcionId, nombre: producto.nombre, cantidadPorUnidad: 1, consumos: configurada.consumos }] }
       );
       if (!consumo.ok) return { ok: false, mensaje: `«${producto.nombre}»: ${consumo.mensaje}` };

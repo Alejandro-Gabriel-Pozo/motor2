@@ -70,8 +70,7 @@ export function LecturaDelFactor({ valor, receta }: { valor: number | null; rece
             </>
           )}
           <p className="text-xs text-neutral-700 dark:text-neutral-300">
-            Lo que esta opción suma o reemplaza («Qué consume», abajo) va aparte: se multiplica por el factor solo si marcás «Escala con el tamaño». En un producto con receta propia por
-            combinación de tamaño, esa receta ya es la de ese tamaño y no se escala.
+            Lo que esta opción suma o reemplaza («Qué consume», abajo) va aparte: se multiplica por el factor solo si marcás «Escala con el tamaño».
           </p>
         </section>
       )}

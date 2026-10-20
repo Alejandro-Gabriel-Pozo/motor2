@@ -33,6 +33,8 @@ const RUTAS_HISTORICAS: Record<string, string> = {
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/core/opciones/combinaciones.test.ts": "su prueba, borrada con él en la Fase 3 (paso 3.3)",
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/persistencia/migracion-go3a.test.ts": "la prueba de la migración de GO-3a, borrada en la Fase 3 (paso 3.3): la migración queda como historia y la prueba su retiro (paso 3.7)",
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|server/lecturas/catalogo/precio-local-de-combinaciones.ts": "el embudo del precio local de las combinaciones, borrado en la Fase 3 (paso 3.3): la venta ya no lee combinaciones",
+  "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/pos/cerrar-combinacion-go3.test.ts": "el cierre con la receta propia congelada, borrado en la Fase 3 (paso 3.4); los combos configurados viven en cerrar-combo-configurado-go3.test.ts",
+  "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/core/opciones/consumo-con-excepcion.test.ts": "renombrado en la Fase 3 (paso 3.4) a consumo-paridad-con-el-anterior.test.ts, sin los casos de la receta propia",
 };
 
 /** `adr|clave` → clave o guarda retirada que el ADR nombra a propósito, como historia. */

@@ -45,15 +45,6 @@ export interface ItemParaCerrar {
   huellaOpciones?: string;
   lineaPadreId?: string;
   fotos?: FotoParaCerrar[];
-  /** GO-3b (ADR-032): SOLO en una línea original que cayó en una combinación con receta propia: la versión CONGELADA al agregarla (sus ingredientes, en su orden) y las opciones de los ejes. */
-  recetaDeCombinacion?: RecetaDeCombinacionParaCerrar;
-}
-
-/** GO-3b: la receta propia congelada de la combinación de una línea (de `CombinacionEnLinea.recetaDeCombinacionVersionId`, nunca la vigente). */
-export interface RecetaDeCombinacionParaCerrar {
-  versionId: string;
-  opcionesDeEjes: string[];
-  ingredientes: { insumoProductoId: string; cantidad: number; mermaPorcentaje: number; unidadId: string }[];
 }
 
 export interface CuentaParaCerrar {
@@ -107,35 +98,6 @@ export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args:
   // GO-2b: los campos de las opciones van SOLO cuando hay datos; el `id` (y el original de un espejo), solo si la cuenta tiene alguna línea con opciones: sin ellas,
   // los ítems son exactamente los de antes.
   const conOpciones = cuenta.items.some((i) => i.huellaOpciones !== null || i.lineaPadreId !== null);
-  // GO-3b: la receta propia CONGELADA de la combinación de cada línea con opciones (una consulta, solo si la cuenta tiene alguna línea con huella; sin ellas, nada).
-  const conHuella = cuenta.items.filter((i) => i.huellaOpciones !== null && i.anulaAItemId === null).map((i) => i.id);
-  const recetas = new Map(
-    conHuella.length === 0
-      ? []
-      : (
-          await tx.combinacionEnLinea.findMany({
-            where: { cuentaItemId: { in: conHuella }, recetaDeCombinacionVersionId: { not: null } },
-            select: {
-              cuentaItemId: true,
-              combinacion: { select: { opcionEje1Id: true, opcionEje2Id: true } },
-              recetaDeCombinacionVersion: { select: { id: true, ingredientes: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { insumoProductoId: true, cantidad: true, mermaPorcentaje: true, unidadId: true } } } },
-            },
-          })
-        ).flatMap((c): [string, RecetaDeCombinacionParaCerrar][] =>
-          c.recetaDeCombinacionVersion
-            ? [
-                [
-                  c.cuentaItemId,
-                  {
-                    versionId: c.recetaDeCombinacionVersion.id,
-                    opcionesDeEjes: [c.combinacion.opcionEje1Id, c.combinacion.opcionEje2Id].filter((x): x is string => x !== null),
-                    ingredientes: c.recetaDeCombinacionVersion.ingredientes.map((i) => ({ insumoProductoId: i.insumoProductoId, cantidad: Number(i.cantidad), mermaPorcentaje: Number(i.mermaPorcentaje), unidadId: i.unidadId })),
-                  },
-                ],
-              ]
-            : []
-        )
-  );
   return {
     id: cuenta.id,
     mesaNumero: cuenta.mesa.numero,
@@ -155,7 +117,6 @@ export async function cargarCuentaParaCerrar(tx: Prisma.TransactionClient, args:
       ...(i.huellaOpciones !== null ? { huellaOpciones: i.huellaOpciones } : {}),
       ...(i.lineaPadreId !== null ? { lineaPadreId: i.lineaPadreId } : {}),
       ...(i.opcionesElegidas.length > 0 ? { fotos: fotosDe(i.opcionesElegidas) } : {}),
-      ...(recetas.has(i.id) ? { recetaDeCombinacion: recetas.get(i.id)! } : {}),
     })),
   };
 }

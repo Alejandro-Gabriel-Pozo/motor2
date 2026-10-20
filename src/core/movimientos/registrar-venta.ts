@@ -1,5 +1,5 @@
 import type { OrigenVenta } from "@/core/movimientos/origen-venta-datos";
-import type { ConsumoDeOpcionParaVender, ExcepcionDeCombinacion, OpcionConConsumo } from "./consumo-de-linea-configurada";
+import type { ConsumoDeOpcionParaVender, OpcionConConsumo } from "./consumo-de-linea-configurada";
 
 /**
  * TIPOS del núcleo de la Venta (Pureza Fase 4: la función `registrarVentaEnTx` vive ahora en `server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts`). Núcleo de la Venta, SIN permisos ni transacción propia (no es una Server Action: sin "use server"). Extraído tal cual de
@@ -64,11 +64,10 @@ export interface LineaVentaEnTx {
  * - `ADICIONAL`: su producto ancla (`anclaVerificada`: el `OpcionDeGrupo.productoId` LEÍDO DE LA BASE, el único que saltea la disponibilidad de la sucursal, y solo si
  *   es un PV que no se produce), el consumo de la versión de la foto (solo SUMA) y el índice, en `lineas`, de la línea de su PADRE (que va antes y no es un adicional):
  *   su Operacion nace con `operacionPadreId`.
- * - GO-3b (ADR-032, frente B): `PRODUCTO` con `excepcion`: la RECETA PROPIA de la combinación vendida, la versión CONGELADA al agregar el ítem (`CombinacionEnLinea`), con las opciones de
- *   sus ejes. El consumo la usa en lugar de la receta de la base (`consumoDeLineaConfigurada`, rama `excepcion`); la base tiene que seguir teniendo receta vigente (ADR-033).
+ * (GO-3b sumaba la RECETA PROPIA de una combinación como `excepcion` de un `PRODUCTO`: se retiró con GO-3a en la Fase 3 de la ola «precio y carta».)
  */
 export type LineaConfiguradaEnTx =
-  | { tipo: "PRODUCTO"; opciones: OpcionConConsumo[]; excepcion?: ExcepcionDeCombinacion }
+  | { tipo: "PRODUCTO"; opciones: OpcionConConsumo[] }
   | { tipo: "ADICIONAL"; opcionId: string; anclaVerificada: string; consumos: ConsumoDeOpcionParaVender[]; indiceLineaPadre: number };
 
 export interface DatosVentaEnTx {
