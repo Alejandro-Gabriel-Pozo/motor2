@@ -1,0 +1,23 @@
+{
+  "regla": "carta-publica-tipografia",
+  "meta": "0 en la Fase 5 (DEC-35: un solo piso de letra para todo plato; ningún bloque de la carta escribe su propio tamaño)",
+  "total": 8,
+  "entradas": 3,
+  "porTipo": {
+    "clase-arbitraria": 2,
+    "constante-de-tamano": 2,
+    "fontSize-literal": 4
+  },
+  "cuentas": {
+    "src/components/carta-publica/navegacion-carta.tsx": {
+      "clase-arbitraria": 1
+    },
+    "src/components/carta-publica/portada.tsx": {
+      "clase-arbitraria": 1
+    },
+    "src/components/carta-publica/seccion.tsx": {
+      "constante-de-tamano": 2,
+      "fontSize-literal": 4
+    }
+  }
+}
