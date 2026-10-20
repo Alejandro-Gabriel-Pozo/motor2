@@ -45,6 +45,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   { archivo: "src/server/actions/catalogo/casos-de-uso/reordenar-opciones-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["orden"] },
   // CARTA-MANT: «Agregar a la carta» un producto fuera de carta (de `null` a visible).
   { archivo: "src/server/actions/carta/casos-de-uso/agregar-producto-a-la-carta.ts", entidad: "ContenidoCartaProducto", campos: ["visibleEnCarta"] },
+  // Fase 5 de la ola «precio y carta» (DEC-11): «Mostrar el nombre arriba» de un producto base con un solo eje (cómo se LEE en la carta pública). El resto del contenido sigue sin auditoría.
+  { archivo: "src/server/actions/carta/casos-de-uso/guardar-contenido-carta-producto.ts", entidad: "ContenidoCartaProducto", campos: ["mostrarNombreArriba"] },
   // CARTA-MANT F3: «Ordenar» las secciones de la empresa, una fila por sección que cambió de lugar.
   { archivo: "src/server/actions/carta/casos-de-uso/ordenar-secciones-carta.ts", entidad: "SeccionCarta", campos: ["orden"] },
 ];

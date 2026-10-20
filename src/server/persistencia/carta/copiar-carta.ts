@@ -68,6 +68,7 @@ export async function copiarContenidosDeCarta(
       especial: boolean;
       orden: number;
       generoCartaId: string | null;
+      mostrarNombreArriba: boolean;
     }[];
   },
 ): Promise<void> {
@@ -82,6 +83,7 @@ export async function copiarContenidosDeCarta(
       especial: c.especial,
       orden: c.orden,
       generoCartaId: c.generoCartaId,
+      mostrarNombreArriba: c.mostrarNombreArriba,
     })),
   });
 }

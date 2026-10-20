@@ -55,6 +55,9 @@ const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
   opcionDeEntradaDeCupo: "*",
   entradaDelDiaDeCupo: "*",
   promoCarta: ["vigenteDesde", "vigenteHasta", "diasDeSemana"],
+  // Fase 5 de la ola «precio y carta» (DEC-11): «Mostrar el nombre arriba» decide cómo se LEE en la carta pública un producto base (encabezado u oculto): toda escritura tiene su cadena de auditoría
+  // (guardar el contenido audita la columna; «copiar carta» audita la copia entera).
+  contenidoCartaProducto: ["mostrarNombreArriba"],
   // (GO-3b sumaba acá la administración de las combinaciones —`combinacionDeProducto`, `grupoDePrecio`, `precioLocalDeCombinacion`—: se retiró con GO-3a en la Fase 3 de la ola «precio y carta».)
 };
 

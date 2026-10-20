@@ -103,6 +103,8 @@ export async function copiarCartaDeSucursalCasoDeUso(
           especial: c.especial,
           orden: c.orden,
           generoCartaId: remapearGenero(c.generoCartaId),
+          // Fase 5 (DEC-11): «Mostrar el nombre arriba» es del contenido de la sucursal: se copia como el resto.
+          mostrarNombreArriba: c.mostrarNombreArriba,
         })),
       });
     }
