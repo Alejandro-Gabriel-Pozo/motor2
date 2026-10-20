@@ -1,6 +1,6 @@
 import { Fragment } from "react";
-import type { EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
-import { formatearPrecioCarta } from "@/core/carta/public";
+import type { AclaracionCartaPublica, EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
+import { formatearPrecioCarta, recargoEnPesos, textoDeLaAclaracion } from "@/core/carta/public";
 import { TagIcon } from "./iconos";
 
 /**
@@ -57,18 +57,133 @@ export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCa
   );
 }
 
+/** Los colores del tema para un ítem (los de siempre; el especial, con los suyos). */
+function coloresDelItem(especial: boolean, v: EstiloCarta["valores"]) {
+  return {
+    nombre: especial ? (v.color_especial_item_nombre || "var(--carta-primary)") : v.color_item_nombre || undefined,
+    precio: especial ? (v.color_especial_item_precio || "var(--carta-primary)") : v.color_item_precio || "var(--carta-primary)",
+    descripcion: especial ? v.color_especial_item_descripcion || undefined : v.color_item_descripcion || undefined,
+    tags: especial ? (v.color_especial_item_tags || "var(--carta-primary)") : v.color_item_tags || "var(--carta-primary)",
+    estrella: v.color_especial_item_nombre || "var(--carta-primary)",
+  };
+}
+type ColoresDelItem = ReturnType<typeof coloresDelItem>;
+
+/** La ★ de un plato especial (un glifo: no depende solo del color). */
+function Estrella({ color }: { color: string }) {
+  return (
+    <span className="ml-1" style={{ color }} aria-label="Especial">
+      {" ★"}
+    </span>
+  );
+}
+
+/** El nombre de un plato, en el rol Producto (un `h3`: la carta se recorre por sus títulos). */
+function NombreDelItem({ item, colores }: { item: ItemCartaPublico; colores: ColoresDelItem }) {
+  return (
+    <h3 data-rol="producto" className="carta-rol-producto min-w-0 flex-1 carta-titulo" style={{ color: colores.nombre, overflowWrap: "anywhere" }}>
+      {item.nombre}
+      {item.especial && <Estrella color={colores.estrella} />}
+    </h3>
+  );
+}
+
+/** El precio a la derecha del nombre (rol Precio). Con descuento de producto: el de lista tachado, el que se cobra y «−x %» (en texto: no depende del color). */
+function PrecioDelRenglon({ item, color }: { item: ItemCartaPublico; color: string }) {
+  if (item.precioLista === undefined) {
+    return (
+      <span data-rol="precio" className="carta-rol-precio shrink-0 carta-titulo" style={{ color }}>
+        {formatearPrecioCarta(item.precio)}
+      </span>
+    );
+  }
+  return (
+    <span data-rol="precio" className="carta-rol-precio shrink-0 flex flex-col items-end carta-titulo" style={{ color }} data-descuento-producto>
+      <span className="sr-only">{`Antes ${formatearPrecioCarta(item.precioLista)}, ahora ${formatearPrecioCarta(item.precio)}, ${item.descuentoPorcentaje} por ciento de descuento`}</span>
+      <s aria-hidden="true" data-rol="aclaracion" className="carta-rol-aclaracion">
+        {formatearPrecioCarta(item.precioLista)}
+      </s>
+      <span aria-hidden="true">
+        {formatearPrecioCarta(item.precio)}
+        <span data-rol="aclaracion" className="carta-rol-aclaracion ml-1">{`−${item.descuentoPorcentaje} %`}</span>
+      </span>
+    </span>
+  );
+}
+
+/** El aviso del descuento de un producto cuyos precios (varios: una lista, una tabla) ya lo traen: «−10 %», sin tachar celda por celda (decisión del dueño). */
+function AvisoDeDescuento({ porcentaje, color }: { porcentaje: number; color: string }) {
+  return (
+    <span data-rol="aclaracion" className="carta-rol-aclaracion shrink-0" style={{ color }} data-descuento-producto>
+      <span className="sr-only">{`${porcentaje} por ciento de descuento en todos los precios`}</span>
+      <span aria-hidden="true">{`−${porcentaje} %`}</span>
+    </span>
+  );
+}
+
+/** La descripción (rol Aclaración) y los tags (rol Etiqueta, con su ícono). */
+function DescripcionYTags({ item, colores }: { item: ItemCartaPublico; colores: ColoresDelItem }) {
+  return (
+    <>
+      {item.descripcion && (
+        <p data-rol="aclaracion" className="carta-rol-aclaracion mt-0.5" style={{ color: colores.descripcion }}>
+          {item.descripcion}
+        </p>
+      )}
+      {item.tags.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {item.tags.map((tag) => (
+            <span key={tag} data-rol="etiqueta" className="carta-rol-etiqueta inline-flex items-center gap-0.5 uppercase tracking-wider" style={{ color: colores.tags }}>
+              <TagIcon tag={tag} />
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * Lo que se lee DEBAJO del plato (DEC-07), una línea por grupo en el orden del producto: «Guarnición: ensalada, papas fritas o puré», «Extras: extra de papas +$2.000, huevo frito +$1.500». El
+ * rótulo (el nombre del grupo) en Aclaración 600 y el resto en Aclaración: el mismo texto que la vista previa de la administración (`textoDeLaAclaracion`).
+ */
+function Aclaraciones({ aclaraciones, color }: { aclaraciones: readonly AclaracionCartaPublica[]; color: string | undefined }) {
+  return aclaraciones.map((a, i) => (
+    <p key={`aclaracion-${i}`} data-aclaracion={a.rotulo} data-rol="aclaracion" className="carta-rol-aclaracion mt-0.5" style={{ color, overflowWrap: "anywhere" }}>
+      <span data-rol="aclaracion-rotulo" className="carta-rol-aclaracion-rotulo" style={{ color: "var(--carta-ink)" }}>{`${a.rotulo}:`}</span> {textoDeLaAclaracion(a)}
+    </p>
+  ));
+}
+
 /**
  * Un ítem de la sección. Fase 5 (DEC-35): cada texto con su ROL de la escala única (`carta-rol-*`, `src/core/carta/escala.ts`): el nombre y el precio en Producto, la descripción y lo que se lee
- * debajo en Aclaración, los tags en Etiqueta. El mismo tamaño para todo ítem, con o sin opciones (antes solo los que tenían opciones llevaban el piso); el tema solo puede pedir más. `data-rol`
- * marca el rol en el HTML (lo miden los tests: un solo tamaño y un solo peso por rol).
+ * debajo en Aclaración, los tags en Etiqueta. El mismo tamaño para todo ítem, con o sin opciones; el tema solo puede pedir más. `data-rol` marca el rol en el HTML (lo miden los tests: un solo
+ * tamaño y un solo peso por rol).
+ *
+ * Con opciones, el ítem se DIBUJA SEGÚN SU FORMA (`presentacion`, que resuelve el servidor: `core/carta/presentacion-en-carta.ts`; ADR-035): `simple` (el nombre y su precio, con las aclaraciones
+ * debajo). Sin `presentacion` (un producto sin opciones, o una carta guardada por el código anterior) se dibuja como antes.
  */
 function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCarta }) {
-  const v = estilo.valores;
-  const esp = item.especial;
-  const colorNombre = esp ? (v.color_especial_item_nombre || "var(--carta-primary)") : v.color_item_nombre || undefined;
-  const colorPrecio = esp ? (v.color_especial_item_precio || "var(--carta-primary)") : v.color_item_precio || "var(--carta-primary)";
-  const colorDesc = esp ? v.color_especial_item_descripcion || undefined : v.color_item_descripcion || undefined;
-  const colorTags = esp ? (v.color_especial_item_tags || "var(--carta-primary)") : v.color_item_tags || "var(--carta-primary)";
+  const colores = coloresDelItem(item.especial, estilo.valores);
+  const p = item.presentacion;
+  if (p?.forma === "simple") {
+    return (
+      <li data-forma="simple" className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
+        <div className="flex items-baseline justify-between gap-3">
+          <NombreDelItem item={item} colores={colores} />
+          <PrecioDelRenglon item={item} color={colores.precio} />
+        </div>
+        <DescripcionYTags item={item} colores={colores} />
+        <Aclaraciones aclaraciones={p.aclaraciones} color={colores.descripcion} />
+      </li>
+    );
+  }
+  return <ItemComoAntes item={item} colores={colores} />;
+}
+
+/** Un ítem sin forma: sin opciones (el renglón de siempre) o con las listas de antes (`grupos` y `opcionesSinCosto`), mientras falte `presentacion`. */
+function ItemComoAntes({ item, colores }: { item: ItemCartaPublico; colores: ColoresDelItem }) {
   // CARTA-B: lo que llega en `grupos` ya es SOLO lo que cambia el precio (lo decide el servidor): los tamaños con su precio final y lo que suma o resta una variante o un adicional.
   const tamanos = (item.grupos ?? []).map((g) => ({ nombre: g.nombre, filas: g.opciones.flatMap((o) => (o.tipo === "final" ? [{ nombre: o.nombre, precio: o.precio }] : [])) })).filter((g) => g.filas.length > 0);
   const recargos = (item.grupos ?? []).flatMap((g) => g.opciones.flatMap((o) => (o.tipo === "recargo" ? [{ nombre: o.nombre, recargo: o.recargo }] : [])));
@@ -80,73 +195,28 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
   return (
     <li className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
       <div className="flex items-baseline justify-between gap-3">
-        <h3 data-rol="producto" className="carta-rol-producto min-w-0 flex-1 carta-titulo" style={{ color: colorNombre, overflowWrap: "anywhere" }}>
-          {item.nombre}
-          {esp && (
-            <span className="ml-1" style={{ color: v.color_especial_item_nombre || "var(--carta-primary)" }} aria-label="Especial">
-              {" ★"}
-            </span>
-          )}
-        </h3>
+        <NombreDelItem item={item} colores={colores} />
         {tamanosEnLista ? (
-          item.descuentoPorcentaje !== undefined && (
-            // Los tamaños ya traen el descuento en su precio: acá solo se avisa el porcentaje.
-            <span data-rol="aclaracion" className="carta-rol-aclaracion shrink-0" style={{ color: colorPrecio }} data-descuento-producto>
-              <span className="sr-only">{`${item.descuentoPorcentaje} por ciento de descuento en todos los tamaños`}</span>
-              <span aria-hidden="true">{`−${item.descuentoPorcentaje} %`}</span>
-            </span>
-          )
-        ) : item.precioLista !== undefined ? (
-          <span data-rol="precio" className="carta-rol-precio shrink-0 flex flex-col items-end carta-titulo" style={{ color: colorPrecio }} data-descuento-producto>
-            <span className="sr-only">{`Antes ${formatearPrecioCarta(item.precioLista)}, ahora ${formatearPrecioCarta(item.precio)}, ${item.descuentoPorcentaje} por ciento de descuento`}</span>
-            <s aria-hidden="true" data-rol="aclaracion" className="carta-rol-aclaracion">
-              {formatearPrecioCarta(item.precioLista)}
-            </s>
-            <span aria-hidden="true">
-              {formatearPrecioCarta(item.precio)}
-              <span data-rol="aclaracion" className="carta-rol-aclaracion ml-1">{`−${item.descuentoPorcentaje} %`}</span>
-            </span>
-          </span>
+          item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />
         ) : (
-          <span data-rol="precio" className="carta-rol-precio shrink-0 carta-titulo" style={{ color: colorPrecio }}>
-            {formatearPrecioCarta(item.precio)}
-          </span>
+          <PrecioDelRenglon item={item} color={colores.precio} />
         )}
       </div>
-      {item.descripcion && (
-        <p data-rol="aclaracion" className="carta-rol-aclaracion mt-0.5" style={{ color: colorDesc }}>
-          {item.descripcion}
-        </p>
-      )}
-      {item.tags.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1.5">
-          {item.tags.map((tag) => (
-            <span key={tag} data-rol="etiqueta" className="carta-rol-etiqueta inline-flex items-center gap-0.5 uppercase tracking-wider" style={{ color: colorTags }}>
-              <TagIcon tag={tag} />
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
+      <DescripcionYTags item={item} colores={colores} />
       {item.opciones && item.opciones.length > 0 && (
         <p data-rol="aclaracion" className="carta-rol-aclaracion mt-0.5">
           {item.opciones.map((o) => o.nombre).join(" · ")}
         </p>
       )}
       {tamanos.map((g, i) => (
-        <TamanosDelItem key={`tamanos-${i}`} nombre={g.nombre} filas={g.filas} colorNombre={colorDesc} colorPrecio={colorPrecio} />
+        <TamanosDelItem key={`tamanos-${i}`} nombre={g.nombre} filas={g.filas} colorNombre={colores.descripcion} colorPrecio={colores.precio} />
       ))}
       {sinCosto.map((g, i) => (
         <OpcionesSinCostoDelItem key={`sin-costo-${i}`} grupo={g.grupo} opciones={g.opciones} />
       ))}
-      {recargos.length > 0 && <RecargosDelItem recargos={recargos} color={colorDesc} />}
+      {recargos.length > 0 && <RecargosDelItem recargos={recargos} color={colores.descripcion} />}
     </li>
   );
-}
-
-/** «+$400» o «−$300»: lo que una opción suma o resta al precio que se ve. */
-function recargoEnPesos(recargo: number): string {
-  return `${recargo < 0 ? "−" : "+"}${formatearPrecioCarta(Math.abs(recargo))}`;
 }
 
 /**

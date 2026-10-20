@@ -207,7 +207,7 @@ test.describe("carta de una sucursal", () => {
     const tamano = await sembrarGrupo({ nombre: `Tamaño ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico", factorEscala: 0.75 }, { nombre: "Mediano", monto: 300, factorEscala: 1 }, { nombre: "Grande", monto: 600, factorEscala: 1.5 }] });
     const preparacion = await sembrarGrupo({ nombre: `Preparación ${m}`, tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Solo" }, { nombre: "Flat white" }, { nombre: "Cortado" }, { nombre: "Con leche", monto: 400 }] });
     const extras = await sembrarGrupo({ nombre: `Extras ${m}`, tipo: "ADICIONAL", cantidadMinima: 0, cantidadMaxima: 2, marca: m, opciones: [{ nombre: "Medialuna", monto: 600, conAncla: true }, { nombre: "Shot", monto: 500, conAncla: true }] });
-    // La milanesa: la guarnición no cambia el precio; se muestra como pastillas (la elige el mozo en el POS) y la «ninguna» no.
+    // La milanesa: la guarnición no cambia el precio; se lee debajo del plato (la elige el mozo en el POS) y la «ninguna» no.
     const guarnicion = await sembrarGrupo({ nombre: `Guarnición ${m}`, tipo: "INCLUIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Papas fritas" }, { nombre: "Puré" }, { nombre: "Ensalada" }, { nombre: "Sin guarnición", esNinguna: true }] });
     const cafe = `E2E Café carta ${m}`;
     const milanesa = `E2E Milanesa carta ${m}`;
@@ -248,12 +248,11 @@ test.describe("carta de una sucursal", () => {
         await expect(pastillasCafe.locator("p")).toHaveText(`Preparación ${m}`);
         await expect(filas.cafe.getByRole("list", { name: `Preparación ${m}` }).getByRole("listitem")).toHaveText(["Solo", "Flat white", "Cortado"]);
         await expect(pastillasCafe.locator("button, [role='button'], [tabindex], a")).toHaveCount(0);
-        // La milanesa: su precio base de siempre y la guarnición como pastillas bajo «Guarnición» (sin «Ver opciones» ni desplegable; sin la «ninguna»); el flan, un producto común.
+        // La milanesa (Fase 5, forma «simple»): su precio base de siempre y, debajo, la aclaración «Guarnición: papas fritas, puré o ensalada» (sin «Ver opciones» ni desplegable; sin la «ninguna»); el flan, un producto común.
         await expect(filas.milanesa).toContainText("$9.500");
-        const pastillasMila = filas.milanesa.locator(`[data-opciones-sin-costo='Guarnición ${m}']`);
-        await expect(pastillasMila).toBeVisible();
-        await expect(pastillasMila.locator("p")).toHaveText(`Guarnición ${m}`);
-        await expect(filas.milanesa.getByRole("list", { name: `Guarnición ${m}` }).getByRole("listitem")).toHaveText(["Papas fritas", "Puré", "Ensalada"]);
+        const guarnicionMila = filas.milanesa.locator(`[data-aclaracion='Guarnición ${m}']`);
+        await expect(guarnicionMila).toBeVisible();
+        await expect(guarnicionMila).toHaveText(`Guarnición ${m}: papas fritas, puré o ensalada`);
         await expect(filas.milanesa).not.toContainText("Ver opciones");
         await expect(filas.milanesa).not.toContainText("Sin guarnición");
         expect(await filas.milanesa.locator("details").count(), "ningún desplegable").toBe(0);
@@ -266,12 +265,11 @@ test.describe("carta de una sucursal", () => {
         expect(await tamanoPx(filas.flan.getByRole("heading", { name: flan }))).toBeGreaterThanOrEqual(19);
         expect(await tamanoPx(lista.getByRole("listitem").first().locator("span").first())).toBeGreaterThanOrEqual(16);
         expect(await tamanoPx(suma)).toBeGreaterThanOrEqual(14);
-        for (const pastillas of [pastillasCafe, pastillasMila]) {
-          expect(await tamanoPx(pastillas.locator("p"))).toBeGreaterThanOrEqual(14);
-          for (const pastilla of await pastillas.getByRole("listitem").all()) expect(await tamanoPx(pastilla)).toBeGreaterThanOrEqual(14);
-        }
+        expect(await tamanoPx(pastillasCafe.locator("p"))).toBeGreaterThanOrEqual(14);
+        for (const pastilla of await pastillasCafe.getByRole("listitem").all()) expect(await tamanoPx(pastilla)).toBeGreaterThanOrEqual(14);
+        expect(await tamanoPx(guarnicionMila)).toBeGreaterThanOrEqual(14);
         // Sin desborde horizontal tampoco de las pastillas (envuelven a la línea siguiente).
-        for (const pastillas of [pastillasCafe, pastillasMila]) expect(await pastillas.evaluate((el) => el.scrollWidth <= el.clientWidth), `las pastillas se desbordan a ${ancho} px`).toBe(true);
+        expect(await pastillasCafe.evaluate((el) => el.scrollWidth <= el.clientWidth), `las pastillas se desbordan a ${ancho} px`).toBe(true);
         // Sin desborde horizontal: ni la página ni la fila del café.
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `la página se desborda a ${ancho} px`).toBe(true);
         expect(await filas.cafe.evaluate((el) => el.scrollWidth <= el.clientWidth), `el café se desborda a ${ancho} px`).toBe(true);

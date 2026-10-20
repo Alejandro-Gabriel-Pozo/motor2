@@ -10,7 +10,8 @@
  */
 export type { CartaV1 } from "./armar-menu";
 // S-25: lo único que la carta pública entrega a un anónimo (la carta armada SIN los ids internos) y la proyección que la arma; ver `carta-publica.ts`.
-export type { CartaPublicaV1, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "./carta-publica";
+export type { AclaracionCartaPublica, CartaPublicaV1, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "./carta-publica";
+export { recargoEnPesos, textoDeLaAclaracion } from "./texto-de-la-carta";
 export { VERSION_DE_LA_CARTA_EN_CACHE, etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica } from "./carta-publica";
 export { precioDeCarta } from "./armar-menu";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "./promo-sucursal";
