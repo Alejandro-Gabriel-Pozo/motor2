@@ -4,7 +4,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { setPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
+import { setPrecioLocalProducto } from "../../src/server/actions/catalogo/precio-local";
 import type { ResultadoConSincronizable } from "../../src/server/actions/tipos";
 
 /**

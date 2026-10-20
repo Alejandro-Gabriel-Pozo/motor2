@@ -2,7 +2,7 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
  * Tipos de la feature «precio local de un producto en la sucursal» (Hito 4 de la pureza, bloque 4.2, paso H4C-4 — `docs/plan-hito-4-pureza.md` §3): los comandos y
- * resultados de los casos de uso de `src/server/actions/movimientos/casos-de-uso/` que vienen de la Server Action `src/server/actions/movimientos/precio-local.ts`
+ * resultados de los casos de uso de `src/server/actions/catalogo/casos-de-uso/` que vienen de la Server Action `src/server/actions/catalogo/precio-local.ts`
  * (`setPrecioLocalProducto` y `sincronizarPrecioLocalGrupoCarta`). Mismo criterio que `core/features/mesas/mesas.schema.ts`.
  */
 

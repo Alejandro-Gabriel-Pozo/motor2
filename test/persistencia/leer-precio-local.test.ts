@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, sembrarProductoDisponible } from "../setup/test-db";
-import { escribirPrecioLocal, leerPrecioLocal } from "../../src/server/persistencia/movimientos/precio-local";
+import { escribirPrecioLocal, leerPrecioLocal } from "../../src/server/persistencia/catalogo/precio-local";
 
 /**
  * `leerPrecioLocal` (ola «precio y carta», Fase 2, paso A0): la fila del precio local TAL COMO ESTÁ (habilitada o no), que el caso de uso compara con lo que

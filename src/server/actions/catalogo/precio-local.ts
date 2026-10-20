@@ -20,7 +20,7 @@ import { sincronizarPrecioLocalGrupoCartaCasoDeUso } from "./casos-de-uso/sincro
  *
  * Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-4) las dos mutaciones son adaptadores finos de sus casos de uso
  * (`./casos-de-uso/{set-precio-local-producto,sincronizar-precio-local-grupo-carta}.ts`, con el paso compartido `guardar-precio-local-en-tx.ts` que escribe en
- * server/persistencia/movimientos/precio-local.ts y audita): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las dos lecturas de abajo siguen acá.
+ * server/persistencia/catalogo/precio-local.ts y audita): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las dos lecturas de abajo siguen acá.
  */
 export async function obtenerPrecioLocalProducto(sucursalId: string, productoId: string) {
   const ctx = await requerirVerEnSucursal(sucursalId, "precio_local");

@@ -320,7 +320,7 @@ const completos: Record<string, Valor> = {
 
   // El ítem agrupado se resuelve desde el primer producto en la sucursal activa: el ajeno y el propio no se mezclan; la sucursal que llega tiene que ser la activa. El último argumento es el precio que
   // «vio» la pantalla de cada producto (ola «precio y carta», Fase 2, A3): el del mundo en la sucursal propia (precio local de 1234, habilitado).
-  "accion|actions/movimientos/precio-local.ts|sincronizarPrecioLocalGrupoCarta": (k, c) =>
+  "accion|actions/catalogo/precio-local.ts|sincronizarPrecioLocalGrupoCarta": (k, c) =>
     conVariantes(
       intento(c, ["sucursalId"], [k.sucursalId, [c.propio.productoPvId], 1, false, { [c.propio.productoPvId]: 1234 }]),
       intento(c, ["productoPvId"], [c.propio.sucursalId, [k.productoPvId], 1, false, { [k.productoPvId]: 1234 }]),
@@ -371,7 +371,7 @@ const parametros: Record<string, Record<string, Valor>> = {
   // El precio de la promo en esta sucursal que «vio» la pantalla (ola «precio y carta», Fase 2, A6): el del mundo en la sucursal propia (4000). No lleva ids.
   "accion|actions/carta/promos.ts|guardarPrecioLocalPromoCarta": { precioVisto: () => 4000 },
   // El precio local que «vio» la pantalla (ola «precio y carta», Fase 2, A2): el del mundo en la sucursal propia (1234, habilitado). No lleva ids.
-  "accion|actions/movimientos/precio-local.ts|setPrecioLocalProducto": { esperado: () => ({ precio: 1234, habilitado: true }) },
+  "accion|actions/catalogo/precio-local.ts|setPrecioLocalProducto": { esperado: () => ({ precio: 1234, habilitado: true }) },
   "accion|actions/catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": { sucursalOrigenId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
   "accion|actions/carta/registro-publico.ts|agregarSucursalAlPortal": { sucursalId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
   "accion|actions/pos/cuenta-anulacion.ts|anularItemEnviado": { cuentaItemId: (k) => k.cuentaItemEnviadoId, restanteVisto: () => 2 },
@@ -470,7 +470,7 @@ const porArchivo: Record<string, Record<string, Valor>> = {
   "actions/carta/contenido-producto.ts": { productoId: (k) => k.productoPvId },
   // El descuento no se puede poner a una opción de un ítem agrupado: el PV que está en el ítem (`pv`) no sirve, el otro (`pv2`) sí.
   "actions/carta/descuento-producto.ts": { productoId: (k) => k.productoPv2Id },
-  "actions/movimientos/precio-local.ts": { productoId: (k) => k.productoPvId },
+  "actions/catalogo/precio-local.ts": { productoId: (k) => k.productoPvId },
   // GO-2a: en las lecturas del catálogo de opciones, `grupoId` es un grupo de OPCIONES (no el de insumos) y `productoId` el PV que las admite.
   "lecturas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId },
   // GO-2d: lo mismo en las consultas de las pantallas de opciones de venta.

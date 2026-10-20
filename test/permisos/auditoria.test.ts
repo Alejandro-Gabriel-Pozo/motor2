@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarCambioAuditado } from "../../src/server/auditoria/registrar-cambio-auditado";
 import { listarRegistrosAuditoria } from "../../src/server/consultas/permisos/auditoria";
 import { actualizarProducto } from "../../src/server/actions/catalogo/productos";
-import { setPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
+import { setPrecioLocalProducto } from "../../src/server/actions/catalogo/precio-local";
 import { guardarPermisos } from "../../src/server/actions/permisos/permisos";
 import { actualizarCapacidad } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { crearRol, actualizarActivoRol } from "../../src/server/actions/permisos/roles";

@@ -22,13 +22,13 @@ const DEL_SERVIDOR: Regla[] = ["esNumeroFinito(", "validarLargoTexto("];
 const DE_PANTALLA: Regla[] = [...DEL_SERVIDOR, "Number("];
 
 const MIGRADOS: { archivo: string; prohibido: Regla[] }[] = [
-  { archivo: "server/actions/movimientos/precio-local.ts", prohibido: DEL_SERVIDOR },
+  { archivo: "server/actions/catalogo/precio-local.ts", prohibido: DEL_SERVIDOR },
   // Hito 4, H4C-4: la validación y la escritura del precio local se mudaron al guard, a los casos de uso, al paso compartido y a la persistencia.
   { archivo: "core/features/catalogo/precio-local.guard.ts", prohibido: DEL_SERVIDOR },
-  { archivo: "server/actions/movimientos/casos-de-uso/set-precio-local-producto.ts", prohibido: DEL_SERVIDOR },
-  { archivo: "server/actions/movimientos/casos-de-uso/sincronizar-precio-local-grupo-carta.ts", prohibido: DEL_SERVIDOR },
-  { archivo: "server/actions/movimientos/casos-de-uso/guardar-precio-local-en-tx.ts", prohibido: DEL_SERVIDOR },
-  { archivo: "server/persistencia/movimientos/precio-local.ts", prohibido: DEL_SERVIDOR },
+  { archivo: "server/actions/catalogo/casos-de-uso/set-precio-local-producto.ts", prohibido: DEL_SERVIDOR },
+  { archivo: "server/actions/catalogo/casos-de-uso/sincronizar-precio-local-grupo-carta.ts", prohibido: DEL_SERVIDOR },
+  { archivo: "server/actions/catalogo/casos-de-uso/guardar-precio-local-en-tx.ts", prohibido: DEL_SERVIDOR },
+  { archivo: "server/persistencia/catalogo/precio-local.ts", prohibido: DEL_SERVIDOR },
   { archivo: "core/compras/correccion.ts", prohibido: DEL_SERVIDOR },
   // GO-2a: los guards del catálogo de opciones de venta y de la sucursal nacen con `core/datos` (importe, porcentaje de diferencia, factor de escala, nombre de catálogo).
   { archivo: "core/features/catalogo/opciones-de-venta.guard.ts", prohibido: DEL_SERVIDOR },

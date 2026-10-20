@@ -7,7 +7,7 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
-import { leerPrecioLocal } from "@/server/persistencia/movimientos/precio-local";
+import { leerPrecioLocal } from "@/server/persistencia/catalogo/precio-local";
 import { guardarPrecioLocalEnTx } from "./guardar-precio-local-en-tx";
 
 /**

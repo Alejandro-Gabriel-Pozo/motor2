@@ -4,8 +4,8 @@ import type { Prisma } from "@prisma/client";
 /**
  * Escritura del PRECIO LOCAL de un producto en una sucursal (`PrecioLocalProducto`; Hito 4 de la pureza, bloque 4.2, paso H4C-4 — `docs/plan-hito-4-pureza.md` §3;
  * mismo contrato que el resto de `server/persistencia/`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio). Es EXACTAMENTE lo que antes
- * hacía en línea el ayudante `guardarPrecioLocal` de `src/server/actions/movimientos/precio-local.ts`: leer la fila actual del par (sucursal, producto) y
- * hacer el upsert, en ese orden. La llama solo el paso compartido `src/server/actions/movimientos/casos-de-uso/guardar-precio-local-en-tx.ts`, dentro de la
+ * hacía en línea el ayudante `guardarPrecioLocal` de `src/server/actions/catalogo/precio-local.ts`: leer la fila actual del par (sucursal, producto) y
+ * hacer el upsert, en ese orden. La llama solo el paso compartido `src/server/actions/catalogo/casos-de-uso/guardar-precio-local-en-tx.ts`, dentro de la
  * transacción del caso de uso y antes de sus dos filas de auditoría (que escribe él: la persistencia no audita, `escrituras-auditadas.test.ts` exige la cadena).
  *
  * Es uno de los lectores crudos de `PrecioLocalProducto` que admite `precio-local-en-un-solo-lugar.test.ts`: lee la fila ANTERIOR para la auditoría y la fila

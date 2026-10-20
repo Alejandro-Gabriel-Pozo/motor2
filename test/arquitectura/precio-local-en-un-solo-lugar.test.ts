@@ -8,8 +8,8 @@ import { describe, expect, it } from "vitest";
  * lector que consulte `PrecioLocalProducto` por su cuenta se salta la capacidad: la sucursal que la tiene apagada seguiría
  * cobrando (y mostrando) el precio local, y TypeScript no lo detecta — los dos tipan igual.
  *
- * Lo que sí puede leer la tabla cruda: el CRUD administrativo (`server/actions/movimientos/precio-local.ts`: lista las filas, con capacidad
- * apagada o no; desde el Hito 4, H4C-4, la escritura y la lectura de la fila ANTERIOR para la auditoría viven en `server/persistencia/movimientos/precio-local.ts`)
+ * Lo que sí puede leer la tabla cruda: el CRUD administrativo (`server/actions/catalogo/precio-local.ts`: lista las filas, con capacidad
+ * apagada o no; desde el Hito 4, H4C-4, la escritura y la lectura de la fila ANTERIOR para la auditoría viven en `server/persistencia/catalogo/precio-local.ts`)
  * y el reporte de la comparativa de precios (`core/reportes/periodo-precios.ts`, que solo traduce el id de una fila auditada a su producto, sin leer ningún
  * precio).
  *
@@ -22,8 +22,8 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "../../src");
 const ARCHIVOS_PERMITIDOS = [
   "server/lecturas/catalogo/precio-local.ts",
-  "server/actions/movimientos/precio-local.ts",
-  "server/persistencia/movimientos/precio-local.ts",
+  "server/actions/catalogo/precio-local.ts",
+  "server/persistencia/catalogo/precio-local.ts",
   "server/consultas/reportes/periodo-precios.ts",
 ];
 

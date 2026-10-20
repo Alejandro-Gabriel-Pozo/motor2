@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularCompra } from "../../src/server/actions/movimientos/compras";
-import { obtenerPrecioLocalProducto, listarPreciosLocales } from "../../src/server/actions/movimientos/precio-local";
+import { obtenerPrecioLocalProducto, listarPreciosLocales } from "../../src/server/actions/catalogo/precio-local";
 
 /**
  * Fase 0.3 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md, sección "Fase 0"): tests de

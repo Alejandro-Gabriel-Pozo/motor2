@@ -28,7 +28,7 @@ const MOTIVO_ATAJO = (dominio: string, accion: string) =>
 const MOTIVOS: Readonly<Record<string, string>> = {
   "src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts": MOTIVO_ATAJO("Catálogo", "carta/precios.ts (ajustarPreciosDeLaEmpresa)"),
   "src/server/actions/catalogo/casos-de-uso/fijar-disponibilidad-de-hoy.ts": MOTIVO_ATAJO("Catálogo", "carta/mantenimiento.ts (fijarDisponibilidadDeHoy)"),
-  "src/server/actions/movimientos/casos-de-uso/ajustar-precios-de-la-carta.ts": MOTIVO_ATAJO("Movimientos", "carta/precios.ts (ajustarPreciosDeLaCarta)"),
+  "src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-carta.ts": MOTIVO_ATAJO("Catálogo", "carta/precios.ts (ajustarPreciosDeLaCarta)"),
 };
 
 /** El archivo de `src/` al que apunta un especificador de import (`@/…` o relativo), si es uno de `candidatos`. */

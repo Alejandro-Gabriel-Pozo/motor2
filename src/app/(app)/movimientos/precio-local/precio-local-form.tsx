@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "@/server/actions/movimientos/precio-local";
+import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "@/server/actions/catalogo/precio-local";
 import { obtenerPrecioVentaProducto } from "@/server/actions/catalogo/productos";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { SelectorProducto } from "@/components/selector-producto";

@@ -1,13 +1,13 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { escribirPrecioLocal } from "@/server/persistencia/movimientos/precio-local";
+import { escribirPrecioLocal } from "@/server/persistencia/catalogo/precio-local";
 
 /**
  * PASO COMPARTIDO (no es un caso de uso: no lo importa ninguna Server Action, solo los casos de uso de esta carpeta) del precio local de UN producto en la
  * sucursal activa, con su auditoría (A3, Pivote 6). Hito 4 de la pureza (bloque 4.2, paso H4C-4): es el ayudante `guardarPrecioLocal` que antes vivía en
- * `src/server/actions/movimientos/precio-local.ts`, movido TAL CUAL (mismo orden: la fila anterior, el upsert —los dos en `escribirPrecioLocal`,
- * server/persistencia/movimientos/precio-local.ts—, la fila de auditoría del precio y la de `habilitado`). Lo usan `setPrecioLocalProductoCasoDeUso` (un
+ * `src/server/actions/catalogo/precio-local.ts`, movido TAL CUAL (mismo orden: la fila anterior, el upsert —los dos en `escribirPrecioLocal`,
+ * server/persistencia/catalogo/precio-local.ts—, la fila de auditoría del precio y la de `habilitado`). Lo usan `setPrecioLocalProductoCasoDeUso` (un
  * producto) y `sincronizarPrecioLocalGrupoCartaCasoDeUso` (cada producto del ítem agrupado, en la misma transacción).
  *
  * Recibe el cliente de la transacción de quien llama (Task #41, M10): el upsert y sus dos filas de auditoría quedan o todos o ninguno. Importa

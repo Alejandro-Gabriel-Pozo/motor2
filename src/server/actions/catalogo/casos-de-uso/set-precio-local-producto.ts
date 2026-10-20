@@ -4,7 +4,7 @@ import type { ComandoSetPrecioLocalProducto, ResultadoSetPrecioLocalProducto } f
 import { mismosCentavos } from "@/core/datos/importe";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { leerPrecioLocal } from "@/server/persistencia/movimientos/precio-local";
+import { leerPrecioLocal } from "@/server/persistencia/catalogo/precio-local";
 import { guardarPrecioLocalEnTx } from "./guardar-precio-local-en-tx";
 
 /**

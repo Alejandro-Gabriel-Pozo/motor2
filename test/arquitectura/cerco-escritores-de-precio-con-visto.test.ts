@@ -173,7 +173,7 @@ const CERCO_ESCRITORES_DE_PRECIO: Cerco = {
 describe("cerco «escritores de precio con visto»: el cálculo", () => {
   it("encuentra los escritores de precio de la persistencia (y los indirectos declarados existen y escriben el producto)", () => {
     const persistencia = escritoresEnPersistencia(RAIZ_DEL_REPO);
-    expect(persistencia.get("src/server/persistencia/movimientos/precio-local.ts")?.get("escribirPrecioLocal")).toEqual(["PrecioLocalProducto"]);
+    expect(persistencia.get("src/server/persistencia/catalogo/precio-local.ts")?.get("escribirPrecioLocal")).toEqual(["PrecioLocalProducto"]);
     expect(persistencia.get("src/server/persistencia/carta/promos.ts")?.get("fijarPrecioLocalDePromo")).toEqual(["PromoCartaSucursal.precioLocal"]);
     expect(persistencia.get("src/server/persistencia/catalogo/productos.ts")?.get("fijarPrecioVentaDeProducto")).toEqual(["Producto.precioVenta"]);
     for (const e of ESCRITORES_INDIRECTOS) {
@@ -186,10 +186,10 @@ describe("cerco «escritores de precio con visto»: el cálculo", () => {
   it("ve los escritores CON control del valor visto (no pasa en vacío) y el paso compartido por transitividad", () => {
     const escritores = escritoresDePrecio(RAIZ_DEL_REPO);
     expect(escritores.get("src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts")).toEqual({ precios: new Set(["Producto.precioVenta"]), conVisto: true, heredado: false });
-    expect(escritores.get("src/server/actions/movimientos/casos-de-uso/ajustar-precios-de-la-carta.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true, heredado: false });
-    expect(escritores.get("src/server/actions/movimientos/casos-de-uso/set-precio-local-producto.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true, heredado: false });
+    expect(escritores.get("src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-carta.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true, heredado: false });
+    expect(escritores.get("src/server/actions/catalogo/casos-de-uso/set-precio-local-producto.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true, heredado: false });
     // El paso compartido lo hereda: sus tres llamadores controlan el valor visto.
-    expect(escritores.get("src/server/actions/movimientos/casos-de-uso/guardar-precio-local-en-tx.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true, heredado: true });
+    expect(escritores.get("src/server/actions/catalogo/casos-de-uso/guardar-precio-local-en-tx.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true, heredado: true });
   });
 
   it("la herencia del paso compartido: lo hereda solo si TODOS sus llamadores son casos de uso con control (en un repo de mentira)", () => {

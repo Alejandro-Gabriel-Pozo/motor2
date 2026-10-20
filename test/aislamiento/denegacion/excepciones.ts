@@ -153,7 +153,7 @@ export const RECHAZOS_DE_ESTADO_ADMITIDOS: Readonly<Record<string, RechazoAdmiti
     mensaje: /no tiene receta central de la que partir/,
     motivo: "la receta central del producto de otra empresa no se ve: «no tiene receta central»; con el PV propio sin receta propia el control positivo termina en ok: true",
   },
-  "accion|actions/movimientos/precio-local.ts|sincronizarPrecioLocalGrupoCarta|ajenaEmpresa": {
+  "accion|actions/catalogo/precio-local.ts|sincronizarPrecioLocalGrupoCarta|ajenaEmpresa": {
     mensaje: /no están todos en el mismo ítem agrupado/,
     motivo: "ídem `sincronizarPrecioGrupoCarta` (ítem agrupado de la sucursal activa resuelto desde el primer producto)",
   },

@@ -26,7 +26,7 @@ vi.mock("../../src/server/auditoria/registrar-cambio-auditado", async (importOri
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, sembrarProductoDisponible, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto } from "../../src/server/actions/catalogo/productos";
-import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../src/server/actions/movimientos/precio-local";
+import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../src/server/actions/catalogo/precio-local";
 
 /**
  * Cambio de precio + su auditoría, atómicos (Task #41, Fase M10). Antes, las cuatro acciones que cambian un precio hacían el

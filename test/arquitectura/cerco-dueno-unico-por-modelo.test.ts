@@ -35,7 +35,7 @@ const PENDIENTE = "pendiente";
 /** Dueño declarado de los modelos clave del precio (DEC-22, DEC-36, DEC-31). `pendiente`: el dueño no está decidido y queda como deuda. */
 const DUENO_DECLARADO: Readonly<Record<string, string>> = {
   Producto: "catalogo",
-  PrecioLocalProducto: "catalogo", // DEC-22: el precio local es de Catálogo (hoy lo persiste movimientos/precio-local.ts).
+  PrecioLocalProducto: "catalogo", // DEC-22: el precio local es de Catálogo (lo persiste persistencia/catalogo/precio-local.ts desde la Fase 2b).
   PromoCartaSucursal: "carta",
   PrecioLocalDeOpcion: "catalogo",
   GrupoDeOpciones: "catalogo",
@@ -45,8 +45,6 @@ const DUENO_DECLARADO: Readonly<Record<string, string>> = {
 };
 
 const MOTIVOS: Readonly<Record<string, string>> = {
-  PrecioLocalProducto:
-    "Deuda de la ola precio y carta (DEC-22): el dueño del precio local es Catálogo, pero lo persiste persistencia/movimientos/precio-local.ts. La Fase 2 lo muda a Catálogo y esta entrada se va.",
   PagoConsignante:
     "Deuda de la ola precio y carta (DEC-31): el pago a consignante se deja en reportes (persistencia/reportes/pago-consignante.ts) sin dueño decidido; queda registrado hasta que se decida.",
   DisponibilidadProducto:
