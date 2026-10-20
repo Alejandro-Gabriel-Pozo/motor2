@@ -89,6 +89,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "GO-3b D6 (ADITIVO; las claves ya estaban en la base desde las migraciones GO-3d y GO-3a, ahora entran a ACCIONES): `promo_menu_del_dia` (sucursal, piso operario, semilla admin) y `grupos_de_precio_definir` (empresa, piso administrador) aparecen en las listas de claves de cada bloque y registro. Revisado con `git diff --word-diff` (contando las líneas que cambian): solo se suman las dos claves a las listas; lo único que no es una suma son los mensajes de denegación del rol «especial» y de «operador + especial», que nombran la ÚLTIMA clave del catálogo que no tienen (ahora `promo_menu_del_dia`/`grupos_de_precio_definir` donde decía `opcion_apagar_en_sucursal`/`producto_opciones_admitidas`): el mismo artefacto del generador que en M.2 y GO-2a. Ninguna respuesta de otra clave cambia.",
       },
+      {
+        blob: "0008bd2b00a7ac268897930ff324f069f4d9ee7f",
+        // El commit PADRE de este (0c12131, Fase 3 paso 3.0b) es el último antes del cambio; la matriz se regenera en el commit siguiente (paso 3.1).
+        commit: "0c12131",
+        motivo:
+          "Ola «precio y carta», Fase 3, paso 3.1 (retiro de GO-3a; SACA una clave, no cambia ninguna otra): `grupos_de_precio_definir` (las tarifas compartidas de las combinaciones) sale de ACCIONES y desaparece de las listas de claves de cada bloque y registro. Revisado con `git diff --word-diff=porcelain … | grep '^[-+][^-+]' | sort | uniq -c`: 120 líneas pierden `, grupos_de_precio_definir` (108 donde la lista terminaba en `producto_opciones_admitidas, grupos_de_precio_definir` y 12 en el medio de una lista) y lo único que no es una resta son los 2 mensajes de denegación de «operador + especial», que nombran la ÚLTIMA clave del catálogo que no tienen: vuelven a nombrar `producto_opciones_admitidas` (como antes de GO-3b), el mismo artefacto del generador que en M.2, GO-2a y GO-3b. Ninguna respuesta de otra clave cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -167,6 +174,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "562e914",
         motivo:
           "GO-3b D6 (ADITIVO): `ACCIONES 130 a 132` por las dos claves de GO-3 que entran a ACCIONES (`promo_menu_del_dia` y `grupos_de_precio_definir`: las recibe el rol admin de cada empresa; el operador las tiene sin Ver ni Editar). Revisado con `git diff --word-diff`: solo se suman esas filas PERMISO y el conteo.",
+      },
+      {
+        blob: "a8154f10e6a90daa5806b46bee128fca2b1a6adb",
+        // El commit PADRE de este (0c12131, Fase 3 paso 3.0b) es el último antes del cambio; la huella se regenera en el commit siguiente (paso 3.1).
+        commit: "0c12131",
+        motivo:
+          "Ola «precio y carta», Fase 3, paso 3.1 (retiro de GO-3a; SACA una clave): `ACCIONES 132 a 131` y desaparecen las 2 filas PERMISO de `grupos_de_precio_definir` (admin con Ver y Editar, operador sin) de cada una de las 2 empresas sembradas: 4 líneas menos y los 2 conteos (diff revisado línea a línea). Ningún resultado, mensaje ni otra fila cambia.",
       },
     ],
   },

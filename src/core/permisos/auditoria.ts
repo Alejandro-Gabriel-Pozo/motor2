@@ -93,10 +93,10 @@ export const ENTIDADES_AUDITABLES = [
   "EntradaDeCupo",
   "EntradaDelDiaDeCupo",
   // GO-3b (ADR-032): el precio y la receta por combinación. `entidadId`:
-  //  - "GrupoDePrecio" (la tarifa compartida) y "CombinacionDeProducto": el id de la fila (de la empresa, `sucursalId` null); los ejes van con "ProductoAdmiteGrupo" (`ejeDeCombinacion`);
-  //  - "PrecioLocalDeCombinacion": `${sucursalId}:${combinacionId}` o `${sucursalId}:${grupoDePrecioId}` (`campo` `precio` o `habilitado`), con `sucursalId`;
+  //  - "CombinacionDeProducto": el id de la fila (de la empresa, `sucursalId` null); los ejes van con "ProductoAdmiteGrupo" (`ejeDeCombinacion`);
+  //  - "PrecioLocalDeCombinacion": `${sucursalId}:${combinacionId}` (`campo` `precio` o `habilitado`), con `sucursalId`;
   //  - "RecetaDeCombinacionVersion": el id de la versión NUEVA (`campo: "numero"`, del número anterior —`null` en la primera— al nuevo; el resumen de los ingredientes va en la descripción).
-  "GrupoDePrecio",
+  // ("GrupoDePrecio", la tarifa compartida, se retiró en la Fase 3 de la ola «precio y carta».)
   "CombinacionDeProducto",
   "PrecioLocalDeCombinacion",
   "RecetaDeCombinacionVersion",

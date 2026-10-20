@@ -54,9 +54,8 @@ const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
   opcionDeEntradaDeCupo: "*",
   entradaDelDiaDeCupo: "*",
   promoCarta: ["vigenteDesde", "vigenteHasta", "diasDeSemana"],
-  // GO-3b (frente A): si una combinación se vende y con qué tarifa, si una tarifa está activa y el precio local de una combinación o de una tarifa (habilitado o no).
-  combinacionDeProducto: ["activa", "grupoDePrecioId"],
-  grupoDePrecio: ["activo"],
+  // GO-3b (frente A): si una combinación se vende y el precio local de una combinación (habilitado o no). (Las tarifas —`grupoDePrecio` y la tarifa de una combinación— se retiraron en la Fase 3.)
+  combinacionDeProducto: ["activa"],
   precioLocalDeCombinacion: "*",
 };
 

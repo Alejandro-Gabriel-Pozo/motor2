@@ -1,14 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fijarEjesDeCombinacionCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/fijar-ejes-de-combinacion";
 import { guardarCombinacionDeProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/guardar-combinacion-de-producto";
-import { crearGrupoDePrecioCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/crear-grupo-de-precio";
-import { editarGrupoDePrecioCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/editar-grupo-de-precio";
 import { fijarPrecioLocalDeCombinacionCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/fijar-precio-local-de-combinacion";
 import { guardComandoFijarPrecioLocalDeCombinacion, guardComandoGuardarCombinacion } from "../../src/core/features/catalogo/combinaciones.guard";
 import { preciosLocalesDeCombinacionVigentes } from "../../src/server/lecturas/catalogo/precio-local-de-combinaciones";
 import { fijarPrecioLocalDeCombinacion } from "../../src/server/persistencia/catalogo/combinaciones";
-import { clienteConEmpresaDePrueba, EMPRESA_TESTIGO_ID } from "../setup/empresa-de-prueba";
-import { urlDeSembradoDeVitest } from "../setup/rol-de-pruebas";
 import { limpiarBaseDeTest, prisma, prismaAdmin, prismaSinEmpresa } from "../setup/test-db";
 import { sembrarEscenarioDeOpciones, type EscenarioDeOpciones } from "../setup/opciones";
 import { actorDeCombos } from "../setup/combos-go3b";
@@ -17,13 +13,13 @@ import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 /**
  * GO-3b (ADR-032, frente A, paso AB4): la administración del PRECIO POR COMBINACIÓN. Contra Postgres real, como `motor2_app` con el alcance de la sucursal A.
  *  - Ejes: a lo sumo dos grupos admitidos, MEDIDA o VARIANTE de exactamente una opción (`EJES_INVALIDOS`); inmutables mientras haya combinaciones (`EJES_CON_COMBINACIONES`).
- *  - Combinación: sobrescritura dispersa (activa, precio propio O tarifa), identidad estable, control optimista (`VERSION_DESACTUALIZADA`), auditoría por columna.
- *  - Tarifas: nombre único sin mayúsculas, edición optimista, no se desactiva con miembros activos.
- *  - Precio local de una tarifa o una combinación en la sucursal activa: eco, precio esperado, capacidad `precio_local` y RLS por sucursal.
- *  - Concurrencia real (loop de 10, con la guarda contra el falso verde): dos editores de la misma combinación; write skew ejes contra combinación; desactivar la tarifa contra asignarla.
+ *  - Combinación: sobrescritura dispersa (activa, precio propio), identidad estable, control optimista (`VERSION_DESACTUALIZADA`), auditoría por columna.
+ *  - Precio local de una combinación en la sucursal activa: eco, precio esperado, capacidad `precio_local` y RLS por sucursal.
+ *  - Concurrencia real (loop de 10, con la guarda contra el falso verde): dos editores de la misma combinación; write skew ejes contra combinación.
+ * (Las tarifas compartidas se retiraron en la Fase 3 de la ola «precio y carta», paso 3.1: sus casos salieron de acá.)
  *
  * Mutaciones demostradas (rojo y revertidas): sacar el chequeo de `tieneCombinaciones` (rojo: «inmutables» y el write skew); sacar el `version: esperada` del `updateMany` de la combinación junto con
- * la comparación de la versión leída (rojo: «dos editores»); sacar el chequeo de miembros al desactivar (rojo: «con miembros» y su write skew).
+ * la comparación de la versión leída (rojo: «dos editores»).
  */
 const ITERACIONES = 10;
 
@@ -95,26 +91,14 @@ describe("el precio por combinación: administración (GO-3b, AB4)", () => {
       expect(await combinacion({ versionEsperada: 1, activa: true, precio: 4000 })).toMatchObject({ ok: false, codigo: "VERSION_DESACTUALIZADA" });
     });
 
-    it("COMBINACION_INVALIDA: una opción que no es de su eje, la «ninguna», o falta la del eje 2; el guard no deja precio y tarifa juntos", async () => {
+    it("COMBINACION_INVALIDA: una opción que no es de su eje, la «ninguna», o falta la del eje 2; el guard no deja un precio con más de 2 decimales", async () => {
       expect(await combinacion({ opcionEje1Id: e.vacaId, opcionEje2Id: e.chicoId })).toMatchObject({ ok: false, codigo: "COMBINACION_INVALIDA" });
       expect(await combinacion({ opcionEje2Id: null })).toMatchObject({ ok: false, codigo: "COMBINACION_INVALIDA" });
       const ninguna = (await prisma.opcionDeGrupo.create({ data: { grupoId: e.grupoVarianteId, nombre: "Sin leche", esNinguna: true, orden: 9 } })).id;
       await prisma.productoAdmiteOpcion.create({ data: { productoId: e.cafeId, opcionId: ninguna } });
       expect(await combinacion({ opcionEje2Id: ninguna })).toMatchObject({ ok: false, codigo: "COMBINACION_INVALIDA" });
-      expect(guardComandoGuardarCombinacion({ productoId: e.cafeId, opcionEje1Id: e.chicoId, versionEsperada: 0, activa: true, precio: 10, grupoDePrecioId: "g" }).ok).toBe(false);
       expect(guardComandoGuardarCombinacion({ productoId: e.cafeId, opcionEje1Id: e.chicoId, versionEsperada: 0, activa: true, precio: 10.123 }).ok).toBe(false);
       expect(await prisma.combinacionDeProducto.count()).toBe(0);
-    });
-
-    it("con una tarifa: activa sí, desactivada no; una tarifa de otra empresa no existe", async () => {
-      const tarifa = await crearGrupoDePrecioCasoDeUso(actor(), { nombre: "Café chico", precio: 2800 });
-      const tarifaId = tarifa.ok ? tarifa.datos.grupoDePrecioId : "";
-      expect(await combinacion({ grupoDePrecioId: tarifaId })).toMatchObject({ ok: true });
-      await prismaAdmin.grupoDePrecio.update({ where: { id: tarifaId }, data: { activo: false } });
-      expect(await combinacion({ opcionEje2Id: e.almendrasId, grupoDePrecioId: tarifaId })).toMatchObject({ ok: false, codigo: "GRUPO_DE_PRECIO_INACTIVO" });
-      const testigo = clienteConEmpresaDePrueba(urlDeSembradoDeVitest(), EMPRESA_TESTIGO_ID);
-      const ajena = await testigo.grupoDePrecio.create({ data: { nombre: "Ajena", precio: 1000 } });
-      expect(await combinacion({ opcionEje2Id: e.almendrasId, grupoDePrecioId: ajena.id })).toMatchObject({ ok: false, codigo: "GRUPO_DE_PRECIO_NO_ENCONTRADO" });
     });
 
     it("concurrencia real: dos editores sobre la misma versión, uno gana y el otro VERSION_DESACTUALIZADA (loop de 10)", async () => {
@@ -162,70 +146,15 @@ describe("el precio por combinación: administración (GO-3b, AB4)", () => {
     });
   });
 
-  describe("las tarifas (grupos de precio)", () => {
-    it("crear, nombre único sin mayúsculas, editar optimista y auditado; no se desactiva con combinaciones activas", async () => {
-      const r = await crearGrupoDePrecioCasoDeUso(actor(), { nombre: "Café mediano", precio: 3300 });
-      const id = r.ok ? r.datos.grupoDePrecioId : "";
-      expect(await crearGrupoDePrecioCasoDeUso(actor(), { nombre: "CAFÉ MEDIANO", precio: 1 })).toMatchObject({ ok: false, codigo: "NOMBRE_REPETIDO" });
-      expect(await editarGrupoDePrecioCasoDeUso(actor(), { grupoDePrecioId: id, versionEsperada: 1, nombre: "Café mediano", precio: 3500, activo: true })).toMatchObject({ ok: true });
-      expect(await editarGrupoDePrecioCasoDeUso(actor(), { grupoDePrecioId: id, versionEsperada: 1, nombre: "Café mediano", precio: 3600, activo: true })).toMatchObject({ ok: false, codigo: "VERSION_DESACTUALIZADA" });
-      expect((await auditoria("GrupoDePrecio")).map((f) => [f.campo, f.valorAnterior, f.valorNuevo])).toEqual([
-        ["nombre", null, "Café mediano"],
-        ["precio", null, "3300"],
-        ["precio", "3300", "3500"],
-      ]);
-      expect(await ejes(e.grupoMedidaId, e.grupoVarianteId)).toMatchObject({ ok: true });
-      expect(await combinacion({ grupoDePrecioId: id })).toMatchObject({ ok: true });
-      expect(await editarGrupoDePrecioCasoDeUso(actor(), { grupoDePrecioId: id, versionEsperada: 2, nombre: "Café mediano", precio: 3500, activo: false })).toMatchObject({ ok: false, codigo: "GRUPO_DE_PRECIO_CON_MIEMBROS" });
-      // Con la combinación desactivada, ya se puede.
-      await prismaAdmin.combinacionDeProducto.updateMany({ data: { activa: false } });
-      expect(await editarGrupoDePrecioCasoDeUso(actor(), { grupoDePrecioId: id, versionEsperada: 2, nombre: "Café mediano", precio: 3500, activo: false })).toMatchObject({ ok: true });
-    });
-
-    it("concurrencia real: dos altas a la vez con el mismo nombre dejan una sola tarifa (loop de 10)", async () => {
-      for (let i = 0; i < ITERACIONES; i++) {
-        const resultados = await Promise.allSettled([crearGrupoDePrecioCasoDeUso(actor(), { nombre: `Tarifa ${i}`, precio: 100 }), crearGrupoDePrecioCasoDeUso(actor(), { nombre: `TARIFA ${i}`, precio: 200 })]);
-        expect(resultados.map((r) => r.status), `iteración ${i}`).toEqual(["fulfilled", "fulfilled"]);
-        const valores = resultados.map((r) => (r.status === "fulfilled" ? r.value : null));
-        expect(valores.filter((v) => v?.ok), `iteración ${i}`).toHaveLength(1);
-        expect(valores.filter((v) => v && !v.ok).map((v) => (v && !v.ok ? v.codigo : ""))).toEqual(["NOMBRE_REPETIDO"]);
-        expect(await prisma.grupoDePrecio.count({ where: { nombre: { equals: `tarifa ${i}`, mode: "insensitive" } } })).toBe(1);
-      }
-    });
-
-    it("write skew real: desactivar la tarifa contra asignarla a una combinación — nunca queda una combinación activa con una tarifa inactiva (loop de 10)", async () => {
-      expect(await ejes(e.grupoMedidaId, e.grupoVarianteId)).toMatchObject({ ok: true });
-      let ganoLaAsignacion = 0;
-      for (let i = 0; i < ITERACIONES; i++) {
-        const t = await crearGrupoDePrecioCasoDeUso(actor(), { nombre: `Skew ${i}`, precio: 100 });
-        const tarifaId = t.ok ? t.datos.grupoDePrecioId : "";
-        const opcionEje2Id = i % 2 === 0 ? e.vacaId : e.almendrasId;
-        const v = (await prisma.combinacionDeProducto.findFirst({ where: { opcionEje1Id: e.chicoId, opcionEje2Id } }))?.version ?? 0;
-        // El orden de llegada se alterna (como en el write skew de GO-2a): en las vueltas impares la baja sale con una demora creciente, así también se ejercita «gana la asignación».
-        const demora = i % 2 === 0 ? 0 : 15 * i;
-        const [baja, alta] = await Promise.all([
-          new Promise((r) => setTimeout(r, demora)).then(() => editarGrupoDePrecioCasoDeUso(actor(), { grupoDePrecioId: tarifaId, versionEsperada: 1, nombre: `Skew ${i}`, precio: 100, activo: false })),
-          combinacion({ opcionEje2Id, versionEsperada: v, grupoDePrecioId: tarifaId }),
-        ]);
-        expect([baja.ok, alta.ok].filter(Boolean), `iteración ${i}: ${baja.mensaje} | ${alta.mensaje}`).toHaveLength(1);
-        if (alta.ok) ganoLaAsignacion++;
-        const enUso = await prisma.combinacionDeProducto.count({ where: { grupoDePrecioId: tarifaId, activa: true } });
-        const tarifa = await prisma.grupoDePrecio.findUniqueOrThrow({ where: { id: tarifaId } });
-        expect(tarifa.activo || enUso === 0, `iteración ${i}`).toBe(true);
-      }
-      expect(ganoLaAsignacion, "ninguna vuelta la ganó la asignación: no se probó que la baja mire los miembros").toBeGreaterThan(0);
-      expect(ganoLaAsignacion, "ninguna vuelta la ganó la baja").toBeLessThan(ITERACIONES);
-    });
-  });
-
-  describe("el precio local de una tarifa o una combinación", () => {
-    let tarifaId: string;
+  describe("el precio local de una combinación", () => {
+    let combinacionId: string;
     beforeEach(async () => {
-      const t = await crearGrupoDePrecioCasoDeUso(actor(), { nombre: "Café grande", precio: 3800 });
-      tarifaId = t.ok ? t.datos.grupoDePrecioId : "";
+      expect(await ejes(e.grupoMedidaId, e.grupoVarianteId)).toMatchObject({ ok: true });
+      const r = await combinacion({ precio: 3800 });
+      combinacionId = r.ok ? r.datos.combinacionId : "";
     });
     const fijar = (precio: number | null, esperado: { precio: number; habilitado: boolean } | null) => {
-      const c = guardComandoFijarPrecioLocalDeCombinacion({ sucursalId: e.sucursalA, sucursalActivaId: e.sucursalA, grupoDePrecioId: tarifaId, esperado, precio });
+      const c = guardComandoFijarPrecioLocalDeCombinacion({ sucursalId: e.sucursalA, sucursalActivaId: e.sucursalA, combinacionId, esperado, precio });
       if (!c.ok) throw new Error(c.mensaje);
       return fijarPrecioLocalDeCombinacionCasoDeUso(actor(), c.valor);
     };
@@ -234,29 +163,29 @@ describe("el precio por combinación: administración (GO-3b, AB4)", () => {
       expect(await fijar(4000, null)).toMatchObject({ ok: true });
       expect(await fijar(4100, null)).toMatchObject({ ok: false, codigo: "PRECIO_DESACTUALIZADO" });
       expect(await fijar(4100, { precio: 4000, habilitado: true })).toMatchObject({ ok: true });
-      const leer = () => preciosLocalesDeCombinacionVigentes(e.sucursalA, prisma, { combinacionIds: [], grupoDePrecioIds: [tarifaId] });
-      expect([...(await leer()).porGrupo]).toEqual([[tarifaId, 4100]]);
+      const leer = () => preciosLocalesDeCombinacionVigentes(e.sucursalA, prisma, { combinacionIds: [combinacionId], grupoDePrecioIds: [] });
+      expect([...(await leer()).porCombinacion]).toEqual([[combinacionId, 4100]]);
       await prisma.capacidadSucursal.create({ data: { accionClave: "precio_local", sucursalId: e.sucursalA, habilitado: false } });
-      expect([...(await leer()).porGrupo]).toEqual([]);
+      expect([...(await leer()).porCombinacion]).toEqual([]);
       await prisma.capacidadSucursal.deleteMany({ where: { accionClave: "precio_local" } });
       expect(await fijar(null, { precio: 4100, habilitado: true })).toMatchObject({ ok: true });
-      expect([...(await leer()).porGrupo]).toEqual([]);
+      expect([...(await leer()).porCombinacion]).toEqual([]);
       // Las dos filas de una misma operación (precio y habilitado) se escriben en UNA transacción y comparten `creadoEn`: el orden entre ellas no es
       // parte de lo que se prueba. Se ordena por (valor anterior, campo) para que la comparación no dependa del desempate de la base.
       const filas = (await auditoria("PrecioLocalDeCombinacion")).map((f) => [f.entidadId, f.campo, f.valorAnterior, f.valorNuevo, f.sucursalId] as const);
       const porValorAnteriorYCampo = (a: (typeof filas)[number], b: (typeof filas)[number]) => String(a[2] ?? "").localeCompare(String(b[2] ?? "")) || String(a[1]).localeCompare(String(b[1]));
       expect([...filas].sort(porValorAnteriorYCampo)).toEqual([
-        [`${e.sucursalA}:${tarifaId}`, "habilitado", null, "true", e.sucursalA],
-        [`${e.sucursalA}:${tarifaId}`, "precio", null, "4000", e.sucursalA],
-        [`${e.sucursalA}:${tarifaId}`, "precio", "4000", "4100", e.sucursalA],
-        [`${e.sucursalA}:${tarifaId}`, "habilitado", "true", "false", e.sucursalA],
+        [`${e.sucursalA}:${combinacionId}`, "habilitado", null, "true", e.sucursalA],
+        [`${e.sucursalA}:${combinacionId}`, "precio", null, "4000", e.sucursalA],
+        [`${e.sucursalA}:${combinacionId}`, "precio", "4000", "4100", e.sucursalA],
+        [`${e.sucursalA}:${combinacionId}`, "habilitado", "true", "false", e.sucursalA],
       ]);
     });
 
     it("aislamiento: el eco rechaza otra sucursal y la base no deja escribir en B desde el alcance de A (42501)", async () => {
-      expect(guardComandoFijarPrecioLocalDeCombinacion({ sucursalId: e.sucursalB, sucursalActivaId: e.sucursalA, grupoDePrecioId: tarifaId, esperado: null, precio: 1 }).ok).toBe(false);
+      expect(guardComandoFijarPrecioLocalDeCombinacion({ sucursalId: e.sucursalB, sucursalActivaId: e.sucursalA, combinacionId, esperado: null, precio: 1 }).ok).toBe(false);
       await expect(
-        actor().transaccion((tx) => fijarPrecioLocalDeCombinacion(tx, { sucursalId: e.sucursalB, objetivo: { grupoDePrecioId: tarifaId }, precio: 1, habilitado: true, ahora: AHORA_DE_LA_CORRIDA })),
+        actor().transaccion((tx) => fijarPrecioLocalDeCombinacion(tx, { sucursalId: e.sucursalB, objetivo: { combinacionId }, precio: 1, habilitado: true, ahora: AHORA_DE_LA_CORRIDA })),
       ).rejects.toThrow(/row-level security|42501/);
       expect(await prisma.precioLocalDeCombinacion.count()).toBe(0);
     });

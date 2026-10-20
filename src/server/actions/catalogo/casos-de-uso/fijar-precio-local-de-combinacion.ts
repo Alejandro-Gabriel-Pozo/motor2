@@ -9,14 +9,14 @@ import { filaDePrecioLocalDeCombinacion } from "@/server/lecturas/catalogo/preci
 import { fijarPrecioLocalDeCombinacion } from "@/server/persistencia/catalogo/combinaciones";
 
 /**
- * Caso de uso «el precio de una combinación o de una tarifa en la sucursal ACTIVA» (GO-3b, ADR-032, D-4, paso AB4; ADR-009 familia `override`: sin fila habilitada rige el de la empresa). Va con la
+ * Caso de uso «el precio de una combinación en la sucursal ACTIVA» (GO-3b, ADR-032, D-4, paso AB4; ADR-009 familia `override`: sin fila habilitada rige el de la empresa). Va con la
  * clave `precio_local`, cuyo gate ya exige la capacidad `precio_local` de la sucursal. Escribe SOLO en `actor.sucursalId` (el guard comparó el eco; las políticas por sucursal son la segunda barrera).
  *
- * Dentro de UNA transacción SERIALIZABLE: la combinación o la tarifa existen (otra empresa no se ve); si ya está como se pide, éxito sin escribir; si no, el precio que vio la pantalla tiene que ser el de
+ * Dentro de UNA transacción SERIALIZABLE: la combinación existe (otra empresa no se ve); si ya está como se pide, éxito sin escribir; si no, el precio que vio la pantalla tiene que ser el de
  * la base (`PRECIO_DESACTUALIZADO`: la tabla no tiene `version`, se compara el valor, como la grilla de las opciones); `upsert` (la baja es `habilitado = false`) y la auditoría de `precio` y
- * `habilitado` (solo lo que cambió), con la sucursal. Si la combinación usa una tarifa, rige el precio local de la TARIFA (la precedencia es pura: `resolverPrecioDeCombinacion`).
+ * `habilitado` (solo lo que cambió), con la sucursal.
  *
- * @contract Deja el precio local pedido de la combinación o de la tarifa en la sucursal activa, o lo da de baja, con su auditoría.
+ * @contract Deja el precio local pedido de la combinación en la sucursal activa, o lo da de baja, con su auditoría.
  * @idempotency Optimista — el precio esperado se compara dentro de la transacción; el mismo pedido repetido no escribe ni audita.
  * @transaction conTransaccionSerializable (SERIALIZABLE) con `tambienChoqueDeUnico`: dos primeras altas de la misma celda chocan con su único y el reintento rechaza a la perdedora.
  * @sideEffects registrarCambioAuditado (`PrecioLocalDeCombinacion`, `precio` y `habilitado`, con la sucursal), con el mismo `tx`.
@@ -29,22 +29,13 @@ export async function fijarPrecioLocalDeCombinacionCasoDeUso(
   return conTransaccionSerializable(
     actor.transaccion,
     async (tx): Promise<ResultadoFijarPrecioLocalDeCombinacion> => {
-      let nombre: string;
-      let entidadId: string;
-      if ("combinacionId" in comando.objetivo) {
-        const c = await tx.combinacionDeProducto.findFirst({
-          where: { id: comando.objetivo.combinacionId },
-          select: { id: true, producto: { select: { nombre: true } }, opcionEje1: { select: { nombre: true } }, opcionEje2: { select: { nombre: true } } },
-        });
-        if (!c) return fracaso("COMBINACION_NO_ENCONTRADA", "No se encontró esa combinación.");
-        nombre = `la combinación «${[c.producto.nombre, c.opcionEje1.nombre, c.opcionEje2?.nombre].filter(Boolean).join(" · ")}»`;
-        entidadId = `${actor.sucursalId}:${c.id}`;
-      } else {
-        const g = await tx.grupoDePrecio.findFirst({ where: { id: comando.objetivo.grupoDePrecioId }, select: { id: true, nombre: true } });
-        if (!g) return fracaso("GRUPO_DE_PRECIO_NO_ENCONTRADO", "No se encontró esa tarifa.");
-        nombre = `la tarifa «${g.nombre}»`;
-        entidadId = `${actor.sucursalId}:${g.id}`;
-      }
+      const c = await tx.combinacionDeProducto.findFirst({
+        where: { id: comando.objetivo.combinacionId },
+        select: { id: true, producto: { select: { nombre: true } }, opcionEje1: { select: { nombre: true } }, opcionEje2: { select: { nombre: true } } },
+      });
+      if (!c) return fracaso("COMBINACION_NO_ENCONTRADA", "No se encontró esa combinación.");
+      const nombre = `la combinación «${[c.producto.nombre, c.opcionEje1.nombre, c.opcionEje2?.nombre].filter(Boolean).join(" · ")}»`;
+      const entidadId = `${actor.sucursalId}:${c.id}`;
       const clave = { sucursalId: actor.sucursalId, objetivo: comando.objetivo };
       const fila = await filaDePrecioLocalDeCombinacion(tx, clave);
       const nueva = comando.precio === null ? (fila ? { precio: fila.precio, habilitado: false } : null) : { precio: comando.precio, habilitado: true };

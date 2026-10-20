@@ -156,19 +156,15 @@ const completos: Record<string, Valor> = {
       intento(c, ["platoDelDiaId"], [{ sucursalId: c.propio.sucursalId, platoId: k.platoDelDiaId }]),
     ),
   "accion|actions/carta/menu-del-dia.ts|copiarMenuDelDiaAnterior": (k) => [{ sucursalId: k.sucursalId, fecha: sumarDias(DIA_DEL_PLATO_DEL_MUNDO, 1) }],
-  // GO-3b (frente A): los ejes (ya son esos: por estado), la combinación «Grande» (versión 1, la sembrada), las tarifas y el precio local de la tarifa en la sucursal (el sembrado: 1650 en S1).
+  // GO-3b (frente A): los ejes (ya son esos: por estado), la combinación «Grande» (versión 1, la sembrada) y su precio local en la sucursal (las tarifas se retiraron en la Fase 3).
   "accion|actions/catalogo/combinaciones.ts|fijarEjesDeCombinacion": (k) => [{ productoId: k.productoConOpcionesId, eje1GrupoId: k.grupoMedidaId, eje2GrupoId: null }],
   "accion|actions/catalogo/combinaciones.ts|guardarCombinacionDeProducto": (k, c) =>
     conVariantes(
-      intento(c, ["productoConOpcionesId"], [{ productoId: k.productoConOpcionesId, opcionEje1Id: k.opcionMedidaId, versionEsperada: 1, activa: false, grupoDePrecioId: k.grupoDePrecioId }]),
-      intento(c, ["grupoDePrecioId"], [{ productoId: c.propio.productoConOpcionesId, opcionEje1Id: c.propio.opcionMedidaId, versionEsperada: 1, activa: true, grupoDePrecioId: k.grupoDePrecioId }]),
+      intento(c, ["productoConOpcionesId"], [{ productoId: k.productoConOpcionesId, opcionEje1Id: k.opcionMedidaId, versionEsperada: 1, activa: false }]),
     ),
-  "accion|actions/catalogo/combinaciones.ts|crearGrupoDePrecio": () => [{ nombre: "Tarifa nueva", precio: 100 }],
-  "accion|actions/catalogo/combinaciones.ts|editarGrupoDePrecio": (k) => [{ grupoDePrecioId: k.grupoDePrecioId, versionEsperada: 1, nombre: "Tarifa cambiada", precio: 200, activo: true }],
   "accion|actions/catalogo/combinaciones.ts|fijarPrecioLocalDeCombinacion": (k, c) =>
     conVariantes(
-      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, grupoDePrecioId: c.propio.grupoDePrecioId, esperado: { precio: 1650, habilitado: true }, precio: 1700 }]),
-      intento(c, ["grupoDePrecioId"], [{ sucursalId: c.propio.sucursalId, grupoDePrecioId: k.grupoDePrecioId, esperado: { precio: 1650, habilitado: true }, precio: 1700 }]),
+      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, combinacionId: c.propio.combinacionId, esperado: null, precio: 1700 }]),
       intento(c, ["combinacionId"], [{ sucursalId: c.propio.sucursalId, combinacionId: k.combinacionId, esperado: null, precio: 1700 }]),
     ),
   // GO-3b (frente B): una versión nueva de la receta propia de la combinación (la vigente es la 1, sembrada), con la MP del kit.

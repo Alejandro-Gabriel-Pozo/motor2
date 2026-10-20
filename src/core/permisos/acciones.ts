@@ -250,11 +250,10 @@ export const ACCIONES = [
   { clave: "opciones_definir", modulo: "catalogo_basico", descripcion: "Definir los grupos de opciones de venta y sus opciones", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "producto_opciones_admitidas", modulo: "catalogo_basico", descripcion: "Elegir qué grupos y opciones de venta admite cada producto", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "opcion_apagar_en_sucursal", modulo: "catalogo_basico", descripcion: "Apagar o prender una opción de venta en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
-  // GO-3b (ADR-032): las dos claves que dan de alta las migraciones de esquema de GO-3 (`20261021100000_go3d_combos_y_menu_del_dia` y `20261021110000_go3a_combinaciones`, que se las dieron al rol
-  // `admin` de cada empresa) entran a ACCIONES con su guarda y su caso de uso, con la descripción IDÉNTICA a la de la base. Cargar el plato del día de los menús es de la SUCURSAL, piso operario y
-  // semilla solo admin (clase O: el gerente la delega al encargado, D-5); definir las tarifas compartidas de las combinaciones es de la EMPRESA, piso administrador (clase A).
+  // GO-3b (ADR-032): la clave que da de alta la migración de esquema `20261021100000_go3d_combos_y_menu_del_dia` (que se la dio al rol `admin` de cada empresa) entra a ACCIONES con su guarda y su
+  // caso de uso, con la descripción IDÉNTICA a la de la base. Cargar el plato del día de los menús es de la SUCURSAL, piso operario y semilla solo admin (clase O: el gerente la delega al encargado,
+  // D-5). La de las tarifas compartidas de las combinaciones (`grupos_de_precio_definir`, GO-3a) se retiró en la Fase 3 de la ola «precio y carta»: la base la conserva hasta la migración de retiro.
   { clave: "promo_menu_del_dia", modulo: "promociones", descripcion: "Cargar el plato del día de los menús en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
-  { clave: "grupos_de_precio_definir", modulo: "catalogo_basico", descripcion: "Definir las tarifas compartidas (grupos de precio) de las combinaciones", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
 ] as const satisfies readonly AccionSemilla[];
 
 export type AccionClave = (typeof ACCIONES)[number]["clave"];

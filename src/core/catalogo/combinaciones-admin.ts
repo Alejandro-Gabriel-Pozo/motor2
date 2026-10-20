@@ -1,7 +1,7 @@
 import type { TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 
 /**
- * GO-3b (ADR-032, F6 pasos U3 y U4): lo que muestran las pantallas de COMBINACIONES de un producto y de TARIFAS (los arma `server/consultas/catalogo/combinaciones.ts`). Solo tipos.
+ * GO-3b (ADR-032, F6 paso U4): lo que muestra la pantalla de COMBINACIONES de un producto (lo arma `server/consultas/catalogo/combinaciones.ts`). Solo tipos.
  */
 
 /** Una celda de la grilla: el par de opciones de los ejes, el precio de la regla general (sin combinación) y la fila de la combinación, si existe. */
@@ -16,8 +16,6 @@ export interface CeldaDeCombinacion {
     activa: boolean;
     /** Precio propio, o `null`. */
     precio: number | null;
-    /** La tarifa, o `null`. */
-    grupoDePrecioId: string | null;
     /** El precio de esta combinación en la sucursal activa (habilitado o no), o `null`. */
     precioLocal: { precio: number; habilitado: boolean } | null;
     /** La receta propia vigente, o `null` (sin versión: la regla general). */
@@ -35,18 +33,6 @@ export interface CombinacionesDelProductoAdmin {
   eje1: { grupoId: string; nombre: string } | null;
   eje2: { grupoId: string; nombre: string } | null;
   celdas: CeldaDeCombinacion[];
-  tarifas: { grupoDePrecioId: string; nombre: string; precio: number; activo: boolean }[];
   /** Las materias primas de la empresa (para la receta propia), con su unidad de stock. */
   materiasPrimas: { productoId: string; nombre: string; unidad: string }[];
-}
-
-/** Una tarifa (grupo de precio) de la empresa, con su versión, cuántas combinaciones la usan y su precio en la sucursal activa. */
-export interface TarifaAdmin {
-  grupoDePrecioId: string;
-  nombre: string;
-  precio: number;
-  activo: boolean;
-  version: number;
-  miembros: number;
-  precioLocal: { precio: number; habilitado: boolean } | null;
 }

@@ -4,9 +4,9 @@ import { prisma } from "./fixtures/db";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 
 /**
- * GO-3b (ADR-032, F6 pasos U3 y U4): las COMBINACIONES de un producto y las TARIFAS, de punta a punta en la pantalla. Fija: elegir el tamaño como eje; darle al grande un precio propio (queda en la
- * base con su versión), apagar el chico y cargarle al grande su receta propia (versión 1); crear una tarifa y asignarla; que el doble clic guarda una sola vez; y axe en las dos pantallas (son
- * pantallas de administración: su maquetación en escritorio la barre `maquetacion-general`, que ya las incluye). Lo sembrado de opciones no se borra (ver `fixtures/opciones.ts`): cada corrida usa su marca.
+ * GO-3b (ADR-032, F6 paso U4): las COMBINACIONES de un producto, de punta a punta en la pantalla. Fija: elegir el tamaño como eje; darle al grande un precio propio (queda en la base con su
+ * versión), apagar el chico y cargarle al grande su receta propia (versión 1); que el doble clic guarda una sola vez; y axe en la pantalla (es de administración: su maquetación en escritorio la barre
+ * `maquetacion-general`). Las TARIFAS (y su test) se retiraron en la Fase 3 de la ola «precio y carta», paso 3.1. Lo sembrado de opciones no se borra (ver `fixtures/opciones.ts`): cada corrida usa su marca.
  */
 
 async function sembrar(sucursalId: string) {
@@ -59,26 +59,4 @@ test("ejes, precio propio del grande, el chico que no se vende y la receta propi
   expect(version.ingredientes.map((i) => [i.insumoProductoId, Number(i.cantidad)])).toEqual([[d.grano.id, 0.036]]);
 
   expect((await new AxeBuilder({ page }).include("main").analyze()).violations).toEqual([]);
-});
-
-test("tarifas: crear una, verla en la lista y asignarla a una combinación; axe sin violaciones", async ({ paginaAutenticada: page, sucursalId }) => {
-  const d = await sembrar(sucursalId);
-  await page.goto("/catalogo/tarifas");
-  await expect(page.getByRole("heading", { level: 1, name: "Tarifas" })).toBeVisible();
-  const nombre = `E2E Tarifa ${d.m}`;
-  await page.locator('input[name="nombre"]').first().fill(nombre);
-  await page.locator('input[name="precio"]').first().fill("3000");
-  await page.getByRole("button", { name: "Crear tarifa" }).click();
-  await expect(page.locator(`[data-tarifa="${nombre}"]`)).toBeVisible();
-  expect((await new AxeBuilder({ page }).include("main").analyze()).violations).toEqual([]);
-
-  await prisma.productoAdmiteGrupo.updateMany({ where: { productoId: d.productoId }, data: { ejeDeCombinacion: 1 } });
-  await page.goto(`/catalogo/productos/${d.productoId}/combinaciones`);
-  const grande = page.locator('[data-combinacion="Grande"]');
-  await grande.locator("summary").click();
-  await grande.locator('select[name="modo"]').selectOption("TARIFA");
-  await grande.locator('select[name="tarifa"]').selectOption({ label: `${nombre} ($ 3.000)` });
-  await grande.getByRole("button", { name: "Guardar combinación" }).click();
-  const tarifa = await prisma.grupoDePrecio.findFirstOrThrow({ where: { nombre } });
-  await expect.poll(async () => (await prisma.combinacionDeProducto.findFirst({ where: { productoId: d.productoId } }))?.grupoDePrecioId).toBe(tarifa.id);
 });

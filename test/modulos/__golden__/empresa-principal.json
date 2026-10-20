@@ -16,7 +16,6 @@
         "gestion_permisos",
         "gestion_roles",
         "gestion_usuarios",
-        "grupos_de_precio_definir",
         "grupos_familia",
         "guardar_receta",
         "margen_objetivo_editar",
@@ -93,7 +92,6 @@
         "catalogo|/catalogo/clientes",
         "catalogo|/catalogo/recetas",
         "catalogo|/catalogo/opciones",
-        "catalogo|/catalogo/tarifas",
         "catalogo|/catalogo/insumos-grupos",
         "catalogo|/catalogo/categorias",
         "catalogo|/catalogo/unidades",
@@ -170,7 +168,6 @@
         "catalogo|/catalogo/clientes",
         "catalogo|/catalogo/recetas",
         "catalogo|/catalogo/opciones",
-        "catalogo|/catalogo/tarifas",
         "catalogo|/catalogo/insumos-grupos",
         "catalogo|/catalogo/categorias",
         "catalogo|/catalogo/unidades",
@@ -355,7 +352,6 @@
     "/catalogo/clientes",
     "/catalogo/recetas",
     "/catalogo/opciones",
-    "/catalogo/tarifas",
     "/catalogo/insumos-grupos",
     "/catalogo/categorias",
     "/catalogo/unidades",
@@ -1498,14 +1494,6 @@
       "clave": "promo_menu_del_dia",
       "contexto": "sucursal",
       "nivelMinimo": "operario",
-      "rolesEditarSemilla": [
-        "admin"
-      ]
-    },
-    {
-      "clave": "grupos_de_precio_definir",
-      "contexto": "empresa",
-      "nivelMinimo": "administrador",
       "rolesEditarSemilla": [
         "admin"
       ]

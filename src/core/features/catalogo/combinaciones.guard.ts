@@ -3,11 +3,8 @@ import { validarImporte } from "@/core/datos/importe";
 import { ENTERO_MAXIMO_RAZONABLE, MAXIMO_INGREDIENTES_RECETA } from "@/core/datos/limites";
 import { numeroDeEntrada, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import { texto } from "@/core/texto";
 import { MENSAJE_SUCURSAL_CAMBIADA } from "./opciones-por-sucursal.guard";
 import type {
-  ComandoCrearGrupoDePrecio,
-  ComandoEditarGrupoDePrecio,
   ComandoFijarEjesDeProducto,
   ComandoFijarPrecioLocalDeCombinacion,
   ComandoGuardarCombinacion,
@@ -23,7 +20,6 @@ import type {
  */
 
 const LARGO_MAXIMO_DE_ID = 64;
-const LARGO_MAXIMO_NOMBRE_DE_GRUPO = 80;
 const CANTIDAD_MAXIMA_DE_INGREDIENTE = 1e10;
 
 function id(valor: unknown, mensaje: string): ResultadoDato<string> {
@@ -40,7 +36,7 @@ function version(valor: unknown, minimo: 0 | 1): ResultadoDato<number> {
   return aceptar(n.valor);
 }
 
-/** Un precio de lista: 0,01 o más, con hasta 2 decimales (los CHECK de las tres tablas de precio). */
+/** Un precio de lista: 0,01 o más, con hasta 2 decimales (los CHECK de las tablas de precio). */
 function precio(valor: unknown, etiqueta: string): ResultadoDato<number> {
   const p = validarImporte(valor, { etiqueta, obligatorio: true, permitirCero: false });
   return p.ok ? aceptar(p.valor!) : rechazar(p.codigo, p.mensaje);
@@ -69,7 +65,6 @@ export function guardComandoGuardarCombinacion(entrada: {
   versionEsperada: unknown;
   activa: unknown;
   precio?: unknown;
-  grupoDePrecioId?: unknown;
 }): ResultadoDato<ComandoGuardarCombinacion> {
   const productoId = id(entrada.productoId, "No se encontró el producto.");
   if (!productoId.ok) return productoId;
@@ -82,55 +77,20 @@ export function guardComandoGuardarCombinacion(entrada: {
   if (typeof entrada.activa !== "boolean") return rechazar("formato", "Elegí si la combinación se vende o no.");
   const p = precioONulo(entrada.precio, "El precio de la combinación");
   if (!p.ok) return p;
-  const grupo = idONulo(entrada.grupoDePrecioId, "El grupo de precio no es válido.");
-  if (!grupo.ok) return grupo;
-  if (p.valor !== null && grupo.valor !== null) return rechazar("formato", "Una combinación lleva un precio propio O una tarifa compartida, no las dos.");
-  return aceptar({ productoId: productoId.valor, opcionEje1Id: eje1.valor, opcionEje2Id: eje2.valor, versionEsperada: v.valor, activa: entrada.activa, precio: p.valor, grupoDePrecioId: grupo.valor });
+  return aceptar({ productoId: productoId.valor, opcionEje1Id: eje1.valor, opcionEje2Id: eje2.valor, versionEsperada: v.valor, activa: entrada.activa, precio: p.valor });
 }
 
-function nombreDeGrupo(valor: unknown): ResultadoDato<string> {
-  const n = texto(valor).trim();
-  if (!n) return rechazar("vacio", "La tarifa necesita un nombre.");
-  if (n.length > LARGO_MAXIMO_NOMBRE_DE_GRUPO) return rechazar("largo", `El nombre de una tarifa puede tener hasta ${LARGO_MAXIMO_NOMBRE_DE_GRUPO} caracteres.`);
-  return aceptar(n);
-}
-
-export function guardComandoCrearGrupoDePrecio(entrada: { nombre: unknown; precio: unknown }): ResultadoDato<ComandoCrearGrupoDePrecio> {
-  const n = nombreDeGrupo(entrada.nombre);
-  if (!n.ok) return n;
-  const p = precio(entrada.precio, "El precio de la tarifa");
-  if (!p.ok) return p;
-  return aceptar({ nombre: n.valor, precio: p.valor });
-}
-
-export function guardComandoEditarGrupoDePrecio(entrada: { grupoDePrecioId: unknown; versionEsperada: unknown; nombre: unknown; precio: unknown; activo: unknown }): ResultadoDato<ComandoEditarGrupoDePrecio> {
-  const grupoDePrecioId = id(entrada.grupoDePrecioId, "No se encontró la tarifa.");
-  if (!grupoDePrecioId.ok) return grupoDePrecioId;
-  const v = version(entrada.versionEsperada, 1);
-  if (!v.ok) return v;
-  const n = nombreDeGrupo(entrada.nombre);
-  if (!n.ok) return n;
-  const p = precio(entrada.precio, "El precio de la tarifa");
-  if (!p.ok) return p;
-  if (typeof entrada.activo !== "boolean") return rechazar("formato", "Elegí si la tarifa queda activa o no.");
-  return aceptar({ grupoDePrecioId: grupoDePrecioId.valor, versionEsperada: v.valor, nombre: n.valor, precio: p.valor, activo: entrada.activo });
-}
-
-/** El precio local de una combinación o de una tarifa en la sucursal ACTIVA: lo primero es el eco de la sucursal (la pantalla manda la que tenía cargada). */
+/** El precio local de una combinación en la sucursal ACTIVA: lo primero es el eco de la sucursal (la pantalla manda la que tenía cargada). */
 export function guardComandoFijarPrecioLocalDeCombinacion(entrada: {
   sucursalId: unknown;
   sucursalActivaId: string;
-  combinacionId?: unknown;
-  grupoDePrecioId?: unknown;
+  combinacionId: unknown;
   esperado: unknown;
   precio: unknown;
 }): ResultadoDato<ComandoFijarPrecioLocalDeCombinacion> {
   if (entrada.sucursalId !== entrada.sucursalActivaId) return rechazar("formato", MENSAJE_SUCURSAL_CAMBIADA);
-  const combinacion = idONulo(entrada.combinacionId, "No se encontró la combinación.");
+  const combinacion = id(entrada.combinacionId, "No se encontró la combinación.");
   if (!combinacion.ok) return combinacion;
-  const grupo = idONulo(entrada.grupoDePrecioId, "No se encontró la tarifa.");
-  if (!grupo.ok) return grupo;
-  if ((combinacion.valor === null) === (grupo.valor === null)) return rechazar("formato", "El precio local es de una combinación O de una tarifa.");
   let esperado: PrecioLocalDeCombinacionVisto | null = null;
   if (entrada.esperado !== null && entrada.esperado !== undefined) {
     if (typeof entrada.esperado !== "object") return rechazar("formato", "El precio que mostraba la pantalla no es válido: recargala.");
@@ -142,8 +102,7 @@ export function guardComandoFijarPrecioLocalDeCombinacion(entrada: {
   }
   const nuevo = precioONulo(entrada.precio, "El precio");
   if (!nuevo.ok) return nuevo;
-  const objetivo = combinacion.valor !== null ? { combinacionId: combinacion.valor } : { grupoDePrecioId: grupo.valor! };
-  return aceptar({ objetivo, esperado, precio: nuevo.valor });
+  return aceptar({ objetivo: { combinacionId: combinacion.valor }, esperado, precio: nuevo.valor });
 }
 
 function ingrediente(valor: unknown): ResultadoDato<IngredienteDeCombinacionEnComando> {

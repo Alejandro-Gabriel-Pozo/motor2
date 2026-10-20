@@ -10,7 +10,6 @@ import type { CeldaDeCombinacion } from "@/core/catalogo/public";
 import { formatearMonto } from "@/core/pos/public";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
-import { EnlaceInterno } from "@/components/enlace-interno";
 
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
 /** Filas de la receta propia que se ofrecen además de las cargadas (para sumar ingredientes sin JavaScript). */
@@ -19,8 +18,8 @@ const CLASE_INPUT = "min-h-[44px] rounded border px-2 py-1";
 const CLASE_BOTON = "min-h-[44px] rounded bg-neutral-900 px-3 py-1.5 text-sm text-white dark:bg-neutral-100 dark:text-neutral-900";
 
 /**
- * «Combinaciones» de UN producto (GO-3b, ADR-032, F6 pasos U3 y U4): qué grupos son los EJES (el tamaño y la leche), y de cada combinación de sus opciones si se vende, con qué precio (propio, de una
- * tarifa compartida o la regla general de siempre), su precio en esta sucursal y su RECETA PROPIA (el flat white grande lleva 36 g de café, no «lo del mediano × 1,5»). Es una página de EDICIÓN: la
+ * «Combinaciones» de UN producto (GO-3b, ADR-032, F6 pasos U3 y U4): qué grupos son los EJES (el tamaño y la leche), y de cada combinación de sus opciones si se vende, con qué precio (propio o la
+ * regla general de siempre; las tarifas compartidas se retiraron en la Fase 3), su precio en esta sucursal y su RECETA PROPIA (el flat white grande lleva 36 g de café, no «lo del mediano × 1,5»). Es una página de EDICIÓN: la
  * familia es la de la ficha (`producto_ver_catalogo`, el primer gate) y además exige Editar de `producto_opciones_admitidas`; la receta propia se edita con `guardar_receta` y el precio de la
  * sucursal con `precio_local` (sin ellos, se ven como texto). Cada formulario manda la versión que vio la pantalla: si otra persona guardó antes, el servidor lo dice y no pisa nada.
  */
@@ -57,7 +56,7 @@ export default async function CombinacionesDelProductoPage({ params }: { params:
         {volver}
         <h1 className="mt-2 text-xl font-semibold">Combinaciones de «{datos.producto.nombre}»</h1>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Solo hace falta cargar lo que se sale de la regla general: una combinación que no se vende, un precio propio o de una tarifa, o una receta propia. Lo demás se cobra y se consume como siempre.
+          Solo hace falta cargar lo que se sale de la regla general: una combinación que no se vende, un precio propio o una receta propia. Lo demás se cobra y se consume como siempre.
         </p>
       </div>
 
@@ -114,7 +113,7 @@ export default async function CombinacionesDelProductoPage({ params }: { params:
               const versionEsperada = c.fila?.version ?? 0;
               const combinacionId = c.fila?.combinacionId ?? null;
               const nombre = nombreDe(c);
-              const precioActual = c.fila?.grupoDePrecioId ? `tarifa «${datos.tarifas.find((t) => t.grupoDePrecioId === c.fila!.grupoDePrecioId)?.nombre ?? "?"}»` : c.fila?.precio != null ? formatearMonto(c.fila.precio) : c.precioAditivo !== null ? `${formatearMonto(c.precioAditivo)} (regla general)` : "regla general";
+              const precioActual = c.fila?.precio != null ? formatearMonto(c.fila.precio) : c.precioAditivo !== null ? `${formatearMonto(c.precioAditivo)} (regla general)` : "regla general";
               const numeroEsperado = c.fila?.receta?.numero ?? 0;
               const localVisto = c.fila?.precioLocal ?? null;
               return (
@@ -135,7 +134,6 @@ export default async function CombinacionesDelProductoPage({ params }: { params:
                           versionEsperada,
                           activa: fd.get("activa") === "on",
                           precio: modo === "PROPIO" ? campo(fd, "precio") : null,
-                          grupoDePrecioId: modo === "TARIFA" ? campo(fd, "tarifa") || null : null,
                         });
                       }}
                       className="mt-3 flex flex-wrap items-end gap-3 text-sm"
@@ -145,26 +143,14 @@ export default async function CombinacionesDelProductoPage({ params }: { params:
                       </label>
                       <label className="flex flex-col gap-1">
                         Precio
-                        <select name="modo" defaultValue={c.fila?.grupoDePrecioId ? "TARIFA" : c.fila?.precio != null ? "PROPIO" : "GENERAL"} className={CLASE_INPUT}>
+                        <select name="modo" defaultValue={c.fila?.precio != null ? "PROPIO" : "GENERAL"} className={CLASE_INPUT}>
                           <option value="GENERAL">Regla general{c.precioAditivo !== null ? ` (${formatearMonto(c.precioAditivo)})` : ""}</option>
                           <option value="PROPIO">Precio propio</option>
-                          <option value="TARIFA">Tarifa compartida</option>
                         </select>
                       </label>
                       <label className="flex flex-col gap-1">
                         Precio propio
                         <input name="precio" inputMode="decimal" defaultValue={c.fila?.precio ?? ""} className={`${CLASE_INPUT} w-28`} />
-                      </label>
-                      <label className="flex flex-col gap-1">
-                        Tarifa
-                        <select name="tarifa" defaultValue={c.fila?.grupoDePrecioId ?? ""} className={CLASE_INPUT}>
-                          <option value="">—</option>
-                          {datos.tarifas.filter((t) => t.activo || t.grupoDePrecioId === c.fila?.grupoDePrecioId).map((t) => (
-                            <option key={t.grupoDePrecioId} value={t.grupoDePrecioId}>
-                              {t.nombre} ({formatearMonto(t.precio)})
-                            </option>
-                          ))}
-                        </select>
                       </label>
                       <button type="submit" className={CLASE_BOTON}>
                         Guardar combinación
@@ -263,13 +249,6 @@ export default async function CombinacionesDelProductoPage({ params }: { params:
               );
             })}
           </ul>
-          <p className="text-xs text-neutral-600 dark:text-neutral-400">
-            Las tarifas compartidas se arman en{" "}
-            <EnlaceInterno href="/catalogo/tarifas" className="underline">
-              Tarifas
-            </EnlaceInterno>
-            .
-          </p>
         </section>
       )}
     </GrupoDeFormularios>

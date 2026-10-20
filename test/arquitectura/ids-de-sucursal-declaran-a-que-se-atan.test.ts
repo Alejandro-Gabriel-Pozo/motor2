@@ -104,7 +104,7 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     ata: "SUCURSAL_ACTIVA",
     motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; la grilla se escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
   },
-  // GO-3b (ADR-032, frente A): el precio local de una combinación o de una tarifa, con el mismo eco que la grilla de las opciones.
+  // GO-3b (ADR-032, frente A): el precio local de una combinación, con el mismo eco que la grilla de las opciones.
   "catalogo/combinaciones.ts|fijarPrecioLocalDeCombinacion": {
     ata: "SUCURSAL_ACTIVA",
     motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; el precio local se escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",

@@ -1,7 +1,7 @@
 import "server-only";
 import { validarEjesDeCombinacion } from "@/core/opciones/public";
 import { vistaPreviaDeConfiguracion } from "@/core/pos/public";
-import type { CeldaDeCombinacion, CombinacionesDelProductoAdmin, TarifaAdmin } from "@/core/catalogo/public";
+import type { CeldaDeCombinacion, CombinacionesDelProductoAdmin } from "@/core/catalogo/public";
 import { cargarProductoConEjesEnTx } from "@/server/lecturas/catalogo/combinaciones";
 import { cargarRecetasVigentesDeCombinaciones } from "@/server/lecturas/catalogo/recetas-de-combinacion";
 import { filasDePrecioLocalDeCombinacionesEnSucursal } from "@/server/lecturas/catalogo/precio-local-de-combinaciones";
@@ -9,7 +9,7 @@ import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-pa
 import type { Db } from "@/lib/db-tipos";
 
 /**
- * Las CONSULTAS de las pantallas de COMBINACIONES y TARIFAS (GO-3b, ADR-032, F6 pasos U3 y U4). Sin guarda de permiso adentro: las páginas la ponen antes. Lo que se cobra lo decide la venta; acá
+ * La CONSULTA de la pantalla de COMBINACIONES de un producto (GO-3b, ADR-032, F6 paso U4; la de TARIFAS se retiró en la Fase 3). Sin guarda de permiso adentro: las páginas la ponen antes. Lo que se cobra lo decide la venta; acá
  * se muestra el estado de cada combinación (sin fila = la regla general, con el precio que daría), su receta propia vigente y el precio local de la sucursal activa.
  */
 
@@ -21,12 +21,11 @@ export async function cargarCombinacionesDelProducto(db: Db, productoId: string,
   const posiblesEjes = producto.grupos
     .filter((g) => g.activo && (g.tipo === "MEDIDA" || g.tipo === "VARIANTE") && g.cantidadMinima === 1 && g.cantidadMaxima === 1)
     .map((g) => ({ grupoId: g.grupoId, nombre: g.nombre, tipo: g.tipo }));
-  const [filas, tarifas, materiasPrimas] = await Promise.all([
+  const [filas, materiasPrimas] = await Promise.all([
     db.combinacionDeProducto.findMany({
       where: { productoId },
-      select: { id: true, opcionEje1Id: true, opcionEje2Id: true, activa: true, precio: true, grupoDePrecioId: true, version: true },
+      select: { id: true, opcionEje1Id: true, opcionEje2Id: true, activa: true, precio: true, version: true },
     }),
-    db.grupoDePrecio.findMany({ orderBy: [{ activo: "desc" }, { nombre: "asc" }], select: { id: true, nombre: true, precio: true, activo: true } }),
     db.producto.findMany({ where: { tipo: "MP" }, orderBy: [{ nombre: "asc" }, { id: "asc" }], select: { id: true, nombre: true, unidadStock: { select: { nombre: true } } } }),
   ]);
   const recetas = await cargarRecetasVigentesDeCombinaciones(db, filas.map((f) => f.id));
@@ -63,7 +62,6 @@ export async function cargarCombinacionesDelProducto(db: Db, productoId: string,
               version: fila.version,
               activa: fila.activa,
               precio: fila.precio === null ? null : Number(fila.precio),
-              grupoDePrecioId: fila.grupoDePrecioId,
               precioLocal: local ?? null,
               receta: receta ? { numero: receta.numero, ingredientes: receta.ingredientes.map((i) => ({ insumoProductoId: i.insumoProductoId, cantidad: i.cantidad, mermaPorcentaje: i.mermaPorcentaje })) } : null,
             }
@@ -79,25 +77,6 @@ export async function cargarCombinacionesDelProducto(db: Db, productoId: string,
     eje1: eje1 ? { grupoId: eje1.grupoId, nombre: eje1.nombre } : null,
     eje2: eje2 ? { grupoId: eje2.grupoId, nombre: eje2.nombre } : null,
     celdas,
-    tarifas: tarifas.map((t) => ({ grupoDePrecioId: t.id, nombre: t.nombre, precio: Number(t.precio), activo: t.activo })),
     materiasPrimas: materiasPrimas.map((m) => ({ productoId: m.id, nombre: m.nombre, unidad: m.unidadStock.nombre })),
   };
-}
-
-/** Las TARIFAS (grupos de precio) de la empresa, con cuántas combinaciones las usan y su precio en la sucursal activa (si tiene uno). */
-export async function cargarTarifas(db: Db, sucursalId: string): Promise<TarifaAdmin[]> {
-  const tarifas = await db.grupoDePrecio.findMany({
-    orderBy: [{ activo: "desc" }, { nombre: "asc" }],
-    select: { id: true, nombre: true, precio: true, activo: true, version: true, _count: { select: { combinaciones: true } } },
-  });
-  const locales = (await filasDePrecioLocalDeCombinacionesEnSucursal(db, { sucursalId, combinacionIds: [], grupoDePrecioIds: tarifas.map((t) => t.id) })).porGrupo;
-  return tarifas.map((t) => ({
-    grupoDePrecioId: t.id,
-    nombre: t.nombre,
-    precio: Number(t.precio),
-    activo: t.activo,
-    version: t.version,
-    miembros: t._count.combinaciones,
-    precioLocal: locales.get(t.id) ?? null,
-  }));
 }

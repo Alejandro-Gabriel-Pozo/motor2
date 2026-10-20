@@ -1,11 +1,11 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 458,
-  "entradas": 115,
+  "total": 453,
+  "entradas": 114,
   "porTipo": {
     "color-scheme-oscuro": 1,
-    "dark:": 454,
+    "dark:": 449,
     "prefers-color-scheme": 3
   },
   "cuentas": {
@@ -76,7 +76,7 @@
       "dark:": 9
     },
     "src/app/(app)/catalogo/productos/[id]/combinaciones/page.tsx": {
-      "dark:": 7
+      "dark:": 6
     },
     "src/app/(app)/catalogo/productos/[id]/opciones/admision-de-grupo.tsx": {
       "dark:": 3
@@ -104,9 +104,6 @@
     },
     "src/app/(app)/catalogo/recetas/nueva-receta.tsx": {
       "dark:": 1
-    },
-    "src/app/(app)/catalogo/tarifas/page.tsx": {
-      "dark:": 4
     },
     "src/app/(app)/catalogo/unidades/page.tsx": {
       "dark:": 1

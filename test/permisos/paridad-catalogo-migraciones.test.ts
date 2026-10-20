@@ -78,6 +78,8 @@ const RETIRADAS: Record<string, string> = {
   ver_reportes_control: "padre de las claves reporte_*: la partición no lo borra",
   ver_reportes_operativos: "padre de las claves reporte_*: la partición no lo borra",
   ver_reportes_catalogo: "padre de las claves reporte_*: la partición no lo borra",
+  // Fase 3 de la ola «precio y carta» (retiro de GO-3a): el código ya no la tiene; la base la conserva hasta la migración de retiro (que la borra de `Accion` y `PermisoRol`, y ese día sale de acá).
+  grupos_de_precio_definir: "las tarifas compartidas de las combinaciones (GO-3a), retiradas del código en la Fase 3; la base la conserva hasta la migración de retiro",
 };
 
 /**
