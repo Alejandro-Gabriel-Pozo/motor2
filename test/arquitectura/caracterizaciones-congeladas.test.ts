@@ -527,7 +527,15 @@ const CONGELADAS: Record<string, Congelada> = {
     desde: "30a9994",
     motivo:
       "Ola «precio y carta», Fase 0: foto en navegador (375 y 1280 px) del texto visible de la carta pública, con su tipografía computada de hoy (ítems sin opciones a 14,08 px frente a 19 px con opciones), y de las pantallas de opciones de Pizzas, del grupo «Tipos de Pizza» y de la parametrización de secciones. NO es una aprobación. Las Fases 5 (escala de letra única, carta pareja) y 6 (interfaz del producto) la regeneran declarándolo acá.",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "c79b78a136676d86c10b2bb4ce64a9501b813b75",
+        // El commit PADRE de este (9750d6b, Fase 3 paso 3.3) es el último antes de la corrección; el texto lo cambió el paso 3.2 (ed9ff97), que borró el enlace y no regeneró este golden.
+        commit: "9750d6b",
+        motivo:
+          "Ola «precio y carta», Fase 3, paso 3.2 (retiro de GO-3a; CAMBIA UN TEXTO de administración, no la carta): la pantalla de opciones del producto deja de enlazar a «Combinaciones» (la pantalla se borró). Cambian SOLO 2 líneas (la de Pizzas a 1280 px y la de 375 px): «… se arman en [enlace: Opciones de venta]. Las combinaciones (un precio o una receta propia para «grande con almendras») se arman en [enlace: Combinaciones].» pasa a «… se arman en [enlace: Opciones de venta].». Regenerado A MANO (el e2e no se corre en esta tanda; el texto sale del JSX: `en{\" \"}<EnlaceInterno>…</EnlaceInterno>` seguido de `.`): a confirmar con `npm run test:e2e` en el gate final. Ni una línea de la carta pública ni de la tipografía cambia.",
+      },
+    ],
   },
 };
 

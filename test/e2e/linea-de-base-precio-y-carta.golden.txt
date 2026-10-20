@@ -136,7 +136,7 @@
 ## ADMINISTRACIÓN a 1280 px: Opciones de venta del producto «Pizzas» (/catalogo/productos/<id de Pizzas>/opciones)
   [enlace: ← Pizzas]
   # Opciones de venta de «Pizzas»
-  Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en [enlace: Opciones de venta]. Las combinaciones (un precio o una receta propia para «grande con almendras») se arman en [enlace: Combinaciones].
+  Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en [enlace: Opciones de venta].
   ## Agregar grupo
   Grupo
   [selección: Elegí un grupo]
@@ -193,7 +193,7 @@
 ## ADMINISTRACIÓN a 375 px: Opciones de venta del producto «Pizzas» (/catalogo/productos/<id de Pizzas>/opciones)
   [enlace: ← Pizzas]
   # Opciones de venta de «Pizzas»
-  Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en [enlace: Opciones de venta]. Las combinaciones (un precio o una receta propia para «grande con almendras») se arman en [enlace: Combinaciones].
+  Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en [enlace: Opciones de venta].
   ## Agregar grupo
   Grupo
   [selección: Elegí un grupo]
