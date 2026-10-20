@@ -70,8 +70,8 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
   const colorDesc = esp ? v.color_especial_item_descripcion || undefined : v.color_item_descripcion || undefined;
   const colorTags = esp ? (v.color_especial_item_tags || "var(--carta-primary)") : v.color_item_tags || "var(--carta-primary)";
   // CARTA-B: lo que llega en `grupos` ya es SOLO lo que cambia el precio (lo decide el servidor): los tamaños con su precio final y lo que suma o resta una variante o un adicional.
-  const tamanos = (item.grupos ?? []).map((g) => ({ nombre: g.nombre, filas: g.opciones.flatMap((o) => (o.precio === undefined ? [] : [{ nombre: o.nombre, precio: o.precio }])) })).filter((g) => g.filas.length > 0);
-  const recargos = (item.grupos ?? []).flatMap((g) => g.opciones.flatMap((o) => (o.recargo === undefined ? [] : [{ nombre: o.nombre, recargo: o.recargo }])));
+  const tamanos = (item.grupos ?? []).map((g) => ({ nombre: g.nombre, filas: g.opciones.flatMap((o) => (o.tipo === "final" ? [{ nombre: o.nombre, precio: o.precio }] : [])) })).filter((g) => g.filas.length > 0);
+  const recargos = (item.grupos ?? []).flatMap((g) => g.opciones.flatMap((o) => (o.tipo === "recargo" ? [{ nombre: o.nombre, recargo: o.recargo }] : [])));
   // CARTA-C: lo que NO cambia el precio (preparación, guarnición, punto de cocción) también llega, aparte y solo con nombres, para dibujarlo como pastillas bajo el nombre de su grupo.
   const sinCosto = (item.opcionesSinCosto ?? []).filter((g) => g.opciones.length > 0);
   const conOpciones = tamanos.length > 0 || recargos.length > 0 || sinCosto.length > 0;

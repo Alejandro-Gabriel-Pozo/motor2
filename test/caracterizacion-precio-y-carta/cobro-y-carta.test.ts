@@ -56,7 +56,7 @@ function textoDelItem(i: ItemCartaPublico): string[] {
   const out = [`  ITEM «${i.nombre}» ${claves(i, ["nombre", "grupos", "opcionesSinCosto", "opciones"])}`];
   for (const o of i.opciones ?? []) out.push(`    agrupada «${o.nombre}» ${claves(o, ["nombre"])}`);
   for (const g of i.grupos ?? []) {
-    out.push(`    lista «${g.nombre}»: ${g.opciones.map((o) => `${o.nombre} ${o.precio !== undefined ? `precio=${valorDeCarta(o.precio)}` : ""}${o.recargo !== undefined ? `recargo=${o.recargo < 0 ? "" : "+"}${valorDeCarta(o.recargo)}` : ""}`).join(" | ")}`);
+    out.push(`    lista «${g.nombre}»: ${g.opciones.map((o) => `${o.nombre} ${o.tipo === "final" ? `precio=${valorDeCarta(o.precio)}` : `recargo=${o.recargo < 0 ? "" : "+"}${valorDeCarta(o.recargo)}`}`).join(" | ")}`);
   }
   for (const s of i.opcionesSinCosto ?? []) out.push(`    pastillas «${s.grupo}»: ${s.opciones.join(" | ")}`);
   return out;

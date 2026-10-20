@@ -21,7 +21,7 @@ export function textoDeCarta(r: ResumenDePrecios): string[] {
   const c = opcionesParaLaCarta(r);
   if (c === null) return ["carta: el producto no sale (no vendible)"];
   const out = [`carta: desde=${n(c.desde)}`];
-  for (const g of c.grupos) out.push(`  lista «${g.nombre}»: ${g.opciones.map((o) => (o.precio !== undefined ? `${o.nombre} ${n(o.precio)}` : `${o.nombre} ${(o.recargo ?? 0) < 0 ? "" : "+"}${n(o.recargo)}`)).join(" | ")}`);
+  for (const g of c.grupos) out.push(`  lista «${g.nombre}»: ${g.opciones.map((o) => (o.tipo === "final" ? `${o.nombre} ${n(o.precio)}` : `${o.nombre} ${o.recargo < 0 ? "" : "+"}${n(o.recargo)}`)).join(" | ")}`);
   for (const s of c.sinCosto) out.push(`  pastillas «${s.grupo}»: ${s.opciones.join(" | ")}`);
   return out;
 }

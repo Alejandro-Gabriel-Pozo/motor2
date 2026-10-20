@@ -52,6 +52,9 @@ const CLAVES_DE_LA_CARTA = [
   "carta.secciones[].items[].grupos[].opciones[].nombre",
   "carta.secciones[].items[].grupos[].opciones[].precio",
   "carta.secciones[].items[].grupos[].opciones[].recargo",
+  // Fase 5 («carta pareja», paso 2): la opción pasa a ser una unión DISCRIMINADA: `tipo` dice si es un precio final («final») o un recargo («recargo»). Una sola clave nueva, con dos valores fijos (no
+  // es el tipo interno del grupo: «MEDIDA»/«ADICIONAL» siguen sin salir, lo vigila el canario de abajo).
+  "carta.secciones[].items[].grupos[].opciones[].tipo",
   // CARTA-C (pastillas, decisión del dueño 2026-10-14): UN campo nuevo por ítem, SOLO textos: el nombre del grupo y los nombres de sus opciones SIN costo (preparación, guarnición, punto de
   // cocción), que antes no salían. Sin ids, sin precios, sin la «ninguna» ni lo agotado (se decide en el servidor). El ítem sin ninguna no lleva la clave.
   "carta.secciones[].items[].opcionesSinCosto",
@@ -191,9 +194,9 @@ describe("la salida de la carta pública está inventariada", () => {
       especial: false,
       imagenUrl: null,
       grupos: [
-        { nombre: "Tamaño", opciones: [{ nombre: "Chico", precio: 810 }, { nombre: "Grande", precio: 1170 }] },
+        { nombre: "Tamaño", opciones: [{ nombre: "Chico", tipo: "final", precio: 810 }, { nombre: "Grande", tipo: "final", precio: 1170 }] },
         // El recargo del adicional NO lleva el descuento de producto.
-        { nombre: "Extras", opciones: [{ nombre: "Medialuna", recargo: 600 }] },
+        { nombre: "Extras", opciones: [{ nombre: "Medialuna", tipo: "recargo", recargo: 600 }] },
       ],
       // «Leche» (Vaca, sin costo; la otra, agotada hoy) se queda con UNA sola opción disponible: no hay nada que elegir, no sale como pastillas.
     });

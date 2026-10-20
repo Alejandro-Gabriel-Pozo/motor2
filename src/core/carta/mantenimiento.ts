@@ -121,7 +121,7 @@ export function vistaPreviaDeOpciones(tieneGrupos: boolean, enCarta: { grupos: r
   if (enCarta === null) return "Ojo: hoy no se puede pedir, le falta una opción obligatoria disponible o configurada. Se puede agregar igual; no sale en la carta hasta que la tenga.";
   const recargo = (r: number) => `${r > 0 ? "+" : "−"}${formatearPrecioCarta(Math.abs(r))}`;
   const partes = [
-    ...enCarta.grupos.map((g) => `${g.nombre}: ${g.opciones.map((o) => (o.precio !== undefined ? `${o.nombre} ${formatearPrecioCarta(o.precio)}` : `${o.nombre} ${recargo(o.recargo ?? 0)}`)).join(", ")}`),
+    ...enCarta.grupos.map((g) => `${g.nombre}: ${g.opciones.map((o) => (o.tipo === "final" ? `${o.nombre} ${formatearPrecioCarta(o.precio)}` : `${o.nombre} ${recargo(o.recargo)}`)).join(", ")}`),
     ...enCarta.sinCosto.map((g) => `${g.grupo}: ${g.opciones.join(", ")}`),
   ];
   return partes.length ? `Va a mostrar: ${partes.join(" · ")}.` : "Sin opciones para elegir (las que tiene no cambian nada en la carta).";

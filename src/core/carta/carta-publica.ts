@@ -44,11 +44,8 @@ export interface OpcionesSinCostoCartaPublica {
   opciones: string[];
 }
 
-export interface OpcionDeGrupoCartaPublica {
-  nombre: string;
-  precio?: number;
-  recargo?: number;
-}
+/** Fase 5: la misma unión discriminada que `OpcionDeGrupoCartaV1` (un tamaño con su precio final, o un recargo). */
+export type OpcionDeGrupoCartaPublica = { nombre: string } & ({ tipo: "final"; precio: number } | { tipo: "recargo"; recargo: number });
 
 export interface GrupoCartaPublico {
   nombre: string;
@@ -81,10 +78,10 @@ export interface CartaPublicaV1 {
 
 const proyectarOpcion = (o: OpcionItemCartaV1): OpcionItemCartaPublica => ({ nombre: o.nombre, precio: o.precio });
 
-/** GO-2d: un grupo de opciones, campo por campo (las claves opcionales solo si están). */
+/** GO-2d: un grupo de opciones, campo por campo (Fase 5: según el `tipo`, el precio final o el recargo). */
 const proyectarGrupo = (g: GrupoCartaV1): GrupoCartaPublico => ({
   nombre: g.nombre,
-  opciones: g.opciones.map((o) => ({ nombre: o.nombre, ...(o.precio !== undefined ? { precio: o.precio } : {}), ...(o.recargo !== undefined ? { recargo: o.recargo } : {}) })),
+  opciones: g.opciones.map((o): OpcionDeGrupoCartaPublica => (o.tipo === "final" ? { nombre: o.nombre, tipo: "final", precio: o.precio } : { nombre: o.nombre, tipo: "recargo", recargo: o.recargo })),
 });
 
 /** CARTA-C: un grupo de opciones sin costo, campo por campo (solo textos). */

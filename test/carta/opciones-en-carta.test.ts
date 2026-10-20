@@ -40,9 +40,9 @@ describe("opcionesParaLaCarta · qué grupos se muestran (CARTA-B)", () => {
   it("el café del dueño: tamaños con precio final distinto → lista; «Con leche +400» y los extras → recargos; «Solo», «Flat white» y «Cortado» → pastillas de «Preparación»; «Sin extras» no sale", () => {
     expect(opcionesParaLaCarta(resumen([CHICO_MEDIANO_GRANDE, PREPARACION_DE_CAFE, EXTRAS]))).toEqual({
       grupos: [
-        { nombre: "Tamaño", opciones: [{ nombre: "Chico", precio: 2500 }, { nombre: "Mediano", precio: 2800 }, { nombre: "Grande", precio: 3100 }] },
-        { nombre: "Preparación", opciones: [{ nombre: "Con leche", recargo: 400 }] },
-        { nombre: "Extras", opciones: [{ nombre: "Medialuna", recargo: 600 }, { nombre: "Shot", recargo: 500 }] },
+        { nombre: "Tamaño", opciones: [{ nombre: "Chico", tipo: "final", precio: 2500 }, { nombre: "Mediano", tipo: "final", precio: 2800 }, { nombre: "Grande", tipo: "final", precio: 3100 }] },
+        { nombre: "Preparación", opciones: [{ nombre: "Con leche", tipo: "recargo", recargo: 400 }] },
+        { nombre: "Extras", opciones: [{ nombre: "Medialuna", tipo: "recargo", recargo: 600 }, { nombre: "Shot", tipo: "recargo", recargo: 500 }] },
       ],
       sinCosto: [{ grupo: "Preparación", opciones: ["Solo", "Flat white", "Cortado"] }],
       desde: 2500,
@@ -52,7 +52,7 @@ describe("opcionesParaLaCarta · qué grupos se muestran (CARTA-B)", () => {
   it("un grupo sin costo en todas sus opciones (café: Solo, Flat white, Cortado, todas $0) sale solo como pastillas, sin recargos", () => {
     const g: Grupo = { ...PREPARACION_DE_CAFE, opciones: [op("Solo"), op("Flat white"), op("Cortado")] };
     expect(opcionesParaLaCarta(resumen([CHICO_MEDIANO_GRANDE, g]))).toEqual({
-      grupos: [{ nombre: "Tamaño", opciones: [{ nombre: "Chico", precio: 2500 }, { nombre: "Mediano", precio: 2800 }, { nombre: "Grande", precio: 3100 }] }],
+      grupos: [{ nombre: "Tamaño", opciones: [{ nombre: "Chico", tipo: "final", precio: 2500 }, { nombre: "Mediano", tipo: "final", precio: 2800 }, { nombre: "Grande", tipo: "final", precio: 3100 }] }],
       sinCosto: [{ grupo: "Preparación", opciones: ["Solo", "Flat white", "Cortado"] }],
       desde: 2500,
     });
@@ -61,14 +61,14 @@ describe("opcionesParaLaCarta · qué grupos se muestran (CARTA-B)", () => {
   it("un grupo mixto (Solo $0, Flat white $0, Con leche +$400): pastillas Solo y Flat white, y «Con leche +400» en los recargos", () => {
     const g: Grupo = { ...PREPARACION_DE_CAFE, opciones: [op("Solo"), op("Flat white"), op("Con leche", { diferencia: 400 })] };
     expect(opcionesParaLaCarta(resumen([g]))).toEqual({
-      grupos: [{ nombre: "Preparación", opciones: [{ nombre: "Con leche", recargo: 400 }] }],
+      grupos: [{ nombre: "Preparación", opciones: [{ nombre: "Con leche", tipo: "recargo", recargo: 400 }] }],
       sinCosto: [{ grupo: "Preparación", opciones: ["Solo", "Flat white"] }],
       desde: 2500,
     });
   });
 
   it("un grupo con UNA sola opción sin costo no muestra pastillas (no hay nada que elegir), pero sus recargos sí: «Solo» y «Con leche +400» → solo el recargo", () => {
-    expect(opcionesParaLaCarta(resumen([PREPARACION]))).toEqual({ grupos: [{ nombre: "Preparación", opciones: [{ nombre: "Con leche", recargo: 400 }] }], sinCosto: [], desde: 2500 });
+    expect(opcionesParaLaCarta(resumen([PREPARACION]))).toEqual({ grupos: [{ nombre: "Preparación", opciones: [{ nombre: "Con leche", tipo: "recargo", recargo: 400 }] }], sinCosto: [], desde: 2500 });
     const unica: Grupo = { nombre: "Cocción", tipo: "VARIANTE", cantidadMinima: 1, opciones: [op("A punto")] };
     expect(opcionesParaLaCarta(resumen([unica]))).toEqual({ grupos: [], sinCosto: [], desde: 2500 });
   });
@@ -87,7 +87,7 @@ describe("opcionesParaLaCarta · qué grupos se muestran (CARTA-B)", () => {
 
   it("dos tamaños que difieren por un centavo SÍ cambian el precio; 0,1 + 0,2 contra 0,3 es el mismo precio (sin ruido de coma flotante)", () => {
     const centavo = tamanos([op("Chico", { precioFinal: 2500 }), op("Grande", { precioFinal: 2500.01 })]);
-    expect(opcionesParaLaCarta(resumen([centavo]))!.grupos).toEqual([{ nombre: "Tamaño", opciones: [{ nombre: "Chico", precio: 2500 }, { nombre: "Grande", precio: 2500.01 }] }]);
+    expect(opcionesParaLaCarta(resumen([centavo]))!.grupos).toEqual([{ nombre: "Tamaño", opciones: [{ nombre: "Chico", tipo: "final", precio: 2500 }, { nombre: "Grande", tipo: "final", precio: 2500.01 }] }]);
     const ruido = tamanos([op("Chico", { precioFinal: 0.1 + 0.2 }), op("Grande", { precioFinal: 0.3 })]);
     // 0,1 + 0,2 es 0,3: el mismo precio, así que NO es una lista de precios sino pastillas.
     expect(opcionesParaLaCarta(resumen([ruido], { desde: 0.3 }))).toEqual({ grupos: [], sinCosto: [{ grupo: "Tamaño", opciones: ["Chico", "Grande"] }], desde: 0.3 });
@@ -95,7 +95,7 @@ describe("opcionesParaLaCarta · qué grupos se muestran (CARTA-B)", () => {
 
   it("un tamaño repetido entre distintos sigue en la lista: Chico 2.500, Mediano 2.500, Grande 3.100", () => {
     const g = tamanos([op("Chico", { precioFinal: 2500 }), op("Mediano", { precioFinal: 2500 }), op("Grande", { precioFinal: 3100 })]);
-    expect(opcionesParaLaCarta(resumen([g]))!.grupos).toEqual([{ nombre: "Tamaño", opciones: [{ nombre: "Chico", precio: 2500 }, { nombre: "Mediano", precio: 2500 }, { nombre: "Grande", precio: 3100 }] }]);
+    expect(opcionesParaLaCarta(resumen([g]))!.grupos).toEqual([{ nombre: "Tamaño", opciones: [{ nombre: "Chico", tipo: "final", precio: 2500 }, { nombre: "Mediano", tipo: "final", precio: 2500 }, { nombre: "Grande", tipo: "final", precio: 3100 }] }]);
   });
 
   it("un tamaño sin precio que se componga no se lista (ni como pastilla)", () => {
@@ -135,25 +135,25 @@ describe("opcionesParaLaCarta · qué grupos se muestran (CARTA-B)", () => {
   });
 
   it("solo extras: el precio base queda y sale la línea de recargos; sin extras con costo, nada", () => {
-    expect(opcionesParaLaCarta(resumen([EXTRAS], { desde: 3200 }))).toEqual({ grupos: [{ nombre: "Extras", opciones: [{ nombre: "Medialuna", recargo: 600 }, { nombre: "Shot", recargo: 500 }] }], sinCosto: [], desde: 3200 });
+    expect(opcionesParaLaCarta(resumen([EXTRAS], { desde: 3200 }))).toEqual({ grupos: [{ nombre: "Extras", opciones: [{ nombre: "Medialuna", tipo: "recargo", recargo: 600 }, { nombre: "Shot", tipo: "recargo", recargo: 500 }] }], sinCosto: [], desde: 3200 });
     const sinCosto: Grupo = { ...EXTRAS, opciones: [op("Sin extras", { esNinguna: true }), op("Sal", { diferencia: 0 })] };
     expect(opcionesParaLaCarta(resumen([sinCosto], { desde: 3200 }))).toEqual({ grupos: [], sinCosto: [], desde: 3200 });
   });
 
   it("la «ninguna» de un adicional no se muestra aunque traiga una diferencia", () => {
     const g: Grupo = { ...EXTRAS, opciones: [op("Sin extras", { esNinguna: true, diferencia: 100 }), op("Shot", { diferencia: 500 })] };
-    expect(opcionesParaLaCarta(resumen([g]))!.grupos).toEqual([{ nombre: "Extras", opciones: [{ nombre: "Shot", recargo: 500 }] }]);
+    expect(opcionesParaLaCarta(resumen([g]))!.grupos).toEqual([{ nombre: "Extras", opciones: [{ nombre: "Shot", tipo: "recargo", recargo: 500 }] }]);
   });
 
   it("un grupo obligatorio ya está en el precio con su opción más barata: «Pollo +500 / Carne +800» sale como «Carne +300» (y «Pollo», la única sin costo, no es pastilla)", () => {
     const g: Grupo = { nombre: "Relleno", tipo: "VARIANTE", cantidadMinima: 1, opciones: [op("Pollo", { diferencia: 500 }), op("Carne", { diferencia: 800 })] };
-    expect(opcionesParaLaCarta(resumen([g], { desde: 3000 }))).toEqual({ grupos: [{ nombre: "Relleno", opciones: [{ nombre: "Carne", recargo: 300 }] }], sinCosto: [], desde: 3000 });
+    expect(opcionesParaLaCarta(resumen([g], { desde: 3000 }))).toEqual({ grupos: [{ nombre: "Relleno", opciones: [{ nombre: "Carne", tipo: "recargo", recargo: 300 }] }], sinCosto: [], desde: 3000 });
   });
 
   it("un grupo obligatorio con dos opciones al precio más barato las muestra como pastillas: «Pollo +500 / Jamón +500 / Carne +800» → pastillas Pollo y Jamón, «Carne +300»", () => {
     const g: Grupo = { nombre: "Relleno", tipo: "VARIANTE", cantidadMinima: 1, opciones: [op("Pollo", { diferencia: 500 }), op("Jamón", { diferencia: 500 }), op("Carne", { diferencia: 800 })] };
     expect(opcionesParaLaCarta(resumen([g], { desde: 3000 }))).toEqual({
-      grupos: [{ nombre: "Relleno", opciones: [{ nombre: "Carne", recargo: 300 }] }],
+      grupos: [{ nombre: "Relleno", opciones: [{ nombre: "Carne", tipo: "recargo", recargo: 300 }] }],
       sinCosto: [{ grupo: "Relleno", opciones: ["Pollo", "Jamón"] }],
       desde: 3000,
     });
@@ -161,12 +161,12 @@ describe("opcionesParaLaCarta · qué grupos se muestran (CARTA-B)", () => {
 
   it("un grupo opcional cuenta sobre el precio base (sin elegir nada): un descuento sale con su signo", () => {
     const g: Grupo = { nombre: "Quitar", tipo: "VARIANTE", cantidadMinima: 0, opciones: [op("Sin queso", { diferencia: -300 }), op("Con jamón", { diferencia: 450.5 })] };
-    expect(opcionesParaLaCarta(resumen([g]))!.grupos).toEqual([{ nombre: "Quitar", opciones: [{ nombre: "Sin queso", recargo: -300 }, { nombre: "Con jamón", recargo: 450.5 }] }]);
+    expect(opcionesParaLaCarta(resumen([g]))!.grupos).toEqual([{ nombre: "Quitar", opciones: [{ nombre: "Sin queso", tipo: "recargo", recargo: -300 }, { nombre: "Con jamón", tipo: "recargo", recargo: 450.5 }] }]);
   });
 
   it("los recargos se restan en decimal exacto: 0,3 − 0,1 es 0,2, no 0,19999999999999998", () => {
     const g: Grupo = { nombre: "Salsa", tipo: "VARIANTE", cantidadMinima: 1, opciones: [op("Común", { diferencia: 0.1 }), op("Especial", { diferencia: 0.3 })] };
-    expect(opcionesParaLaCarta(resumen([g]))!.grupos).toEqual([{ nombre: "Salsa", opciones: [{ nombre: "Especial", recargo: 0.2 }] }]);
+    expect(opcionesParaLaCarta(resumen([g]))!.grupos).toEqual([{ nombre: "Salsa", opciones: [{ nombre: "Especial", tipo: "recargo", recargo: 0.2 }] }]);
   });
 
   it("un grupo sin ninguna opción disponible (todas agotadas) y no obligatorio no sale; el producto sigue", () => {
@@ -210,9 +210,9 @@ describe("la carta armada con las opciones (CARTA-B y CARTA-C)", () => {
     const cafe = items.find((i) => i.nombre === "Café")!;
     expect(cafe.precio).toBe(2500);
     expect(cafe.grupos).toEqual([
-      { nombre: "Tamaño", opciones: [{ nombre: "Chico", precio: 2500 }, { nombre: "Mediano", precio: 2800 }, { nombre: "Grande", precio: 3100 }] },
-      { nombre: "Preparación", opciones: [{ nombre: "Con leche", recargo: 400 }] },
-      { nombre: "Extras", opciones: [{ nombre: "Medialuna", recargo: 600 }, { nombre: "Shot", recargo: 500 }] },
+      { nombre: "Tamaño", opciones: [{ nombre: "Chico", tipo: "final", precio: 2500 }, { nombre: "Mediano", tipo: "final", precio: 2800 }, { nombre: "Grande", tipo: "final", precio: 3100 }] },
+      { nombre: "Preparación", opciones: [{ nombre: "Con leche", tipo: "recargo", recargo: 400 }] },
+      { nombre: "Extras", opciones: [{ nombre: "Medialuna", tipo: "recargo", recargo: 600 }, { nombre: "Shot", tipo: "recargo", recargo: 500 }] },
     ]);
     expect(cafe.opcionesSinCosto).toEqual([{ grupo: "Preparación", opciones: ["Solo", "Flat white", "Cortado"] }]);
     const milanesa = items.find((i) => i.nombre === "Milanesa")!;
