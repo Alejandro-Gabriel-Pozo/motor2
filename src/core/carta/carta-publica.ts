@@ -1,5 +1,6 @@
 import type { CartaV1, ItemCartaV1, OpcionItemCartaV1, PromoCartaV1, SeccionCartaV1 } from "./armar-menu";
 import type { GrupoCartaV1, OpcionesSinCostoCartaV1 } from "./opciones-en-carta";
+import type { AclaracionCartaV1, PresentacionCartaV1, TandaCartaV1 } from "./presentacion-en-carta";
 
 /**
  * LO ÚNICO que la carta pública entrega a un anónimo (S-25 del plan de endurecimiento de seguridad, tanda T9; requisito del dueño: «la carta pública es la ÚNICA excepción
@@ -37,6 +38,28 @@ export interface ItemCartaPublico {
   grupos?: GrupoCartaPublico[];
   /** CARTA-C: SOLO en un PV con opciones que no cambian el precio: el nombre del grupo y los nombres de sus opciones sin costo (pastillas). Solo textos: sin ids ni precios. */
   opcionesSinCosto?: OpcionesSinCostoCartaPublica[];
+  /**
+   * Fase 5 («carta pareja», `presentacion-en-carta.ts`): SOLO en un PV con opciones cuya forma la carta puede leer con el precio exacto: cómo se lee (simple, fila de una tanda, tabla o lista), con
+   * cada precio ya resuelto en el servidor y las aclaraciones debajo del plato. Solo rótulos y precios: sin ids, sin el tipo interno del grupo. Sin ella, quien dibuja cae a `grupos`/`opcionesSinCosto`.
+   */
+  presentacion?: PresentacionCartaPublica;
+}
+
+/** Una línea debajo del plato (Fase 5). */
+export type AclaracionCartaPublica = { tipo: "eleccion"; rotulo: string; opciones: string[] } | { tipo: "extras"; rotulo: string; opciones: { nombre: string; recargo: number }[] };
+
+/** La forma de un producto con opciones (Fase 5). `null` en una celda = no se ofrece («–»). */
+export type PresentacionCartaPublica =
+  | { forma: "simple"; aclaraciones: AclaracionCartaPublica[] }
+  | { forma: "columnas"; celdas: (number | null)[]; aclaraciones: AclaracionCartaPublica[] }
+  | { forma: "tabla"; columnas: string[]; filas: { rotulo: string; celdas: (number | null)[] }[]; aclaraciones: AclaracionCartaPublica[] }
+  | { forma: "lista"; encabezado: boolean; filas: { rotulo: string; precio: number }[]; aclaraciones: AclaracionCartaPublica[] };
+
+/** Fase 5: los ítems `primero`…`ultimo` de la sección (índices en `items`) comparten los rótulos de sus columnas. */
+export interface TandaCartaPublica {
+  primero: number;
+  ultimo: number;
+  rotulos: string[];
 }
 
 export interface OpcionesSinCostoCartaPublica {
@@ -67,6 +90,8 @@ export interface SeccionCartaPublica {
   orden: number;
   items: ItemCartaPublico[];
   promos: PromoCartaPublica[];
+  /** Fase 5: SOLO si la sección tiene alguna tanda de columnas compartidas. */
+  tandas?: TandaCartaPublica[];
 }
 
 export interface CartaPublicaV1 {
@@ -83,6 +108,27 @@ const proyectarGrupo = (g: GrupoCartaV1): GrupoCartaPublico => ({
   nombre: g.nombre,
   opciones: g.opciones.map((o): OpcionDeGrupoCartaPublica => (o.tipo === "final" ? { nombre: o.nombre, tipo: "final", precio: o.precio } : { nombre: o.nombre, tipo: "recargo", recargo: o.recargo })),
 });
+
+/** Fase 5: una aclaración, campo por campo. */
+const proyectarAclaracion = (a: AclaracionCartaV1): AclaracionCartaPublica =>
+  a.tipo === "eleccion" ? { tipo: "eleccion", rotulo: a.rotulo, opciones: [...a.opciones] } : { tipo: "extras", rotulo: a.rotulo, opciones: a.opciones.map((o) => ({ nombre: o.nombre, recargo: o.recargo })) };
+
+/** Fase 5: la forma de un producto, campo por campo según la forma (nunca `{ ...presentacion }`: un campo interno nuevo no sale solo). */
+function proyectarPresentacion(p: PresentacionCartaV1): PresentacionCartaPublica {
+  const aclaraciones = p.aclaraciones.map(proyectarAclaracion);
+  switch (p.forma) {
+    case "simple":
+      return { forma: "simple", aclaraciones };
+    case "columnas":
+      return { forma: "columnas", celdas: [...p.celdas], aclaraciones };
+    case "tabla":
+      return { forma: "tabla", columnas: [...p.columnas], filas: p.filas.map((f) => ({ rotulo: f.rotulo, celdas: [...f.celdas] })), aclaraciones };
+    case "lista":
+      return { forma: "lista", encabezado: p.encabezado, filas: p.filas.map((f) => ({ rotulo: f.rotulo, precio: f.precio })), aclaraciones };
+  }
+}
+
+const proyectarTanda = (t: TandaCartaV1): TandaCartaPublica => ({ primero: t.primero, ultimo: t.ultimo, rotulos: [...t.rotulos] });
 
 /** CARTA-C: un grupo de opciones sin costo, campo por campo (solo textos). */
 const proyectarSinCosto = (g: OpcionesSinCostoCartaV1): OpcionesSinCostoCartaPublica => ({ grupo: g.grupo, opciones: [...g.opciones] });
@@ -102,6 +148,7 @@ function proyectarItem(i: ItemCartaV1): ItemCartaPublico {
     ...(i.opciones !== undefined ? { opciones: i.opciones.map(proyectarOpcion) } : {}),
     ...(i.grupos !== undefined ? { grupos: i.grupos.map(proyectarGrupo) } : {}),
     ...(i.opcionesSinCosto !== undefined ? { opcionesSinCosto: i.opcionesSinCosto.map(proyectarSinCosto) } : {}),
+    ...(i.presentacion !== undefined ? { presentacion: proyectarPresentacion(i.presentacion) } : {}),
   };
 }
 
@@ -115,6 +162,7 @@ const proyectarSeccion = (s: SeccionCartaV1): SeccionCartaPublica => ({
   orden: s.orden,
   items: s.items.map(proyectarItem),
   promos: s.promos.map(proyectarPromo),
+  ...(s.tandas !== undefined ? { tandas: s.tandas.map(proyectarTanda) } : {}),
 });
 
 /**

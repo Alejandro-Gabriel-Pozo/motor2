@@ -53,12 +53,14 @@ const claves = (o: object, salvo: readonly string[]) =>
     .join(" ");
 
 function textoDelItem(i: ItemCartaPublico): string[] {
-  const out = [`  ITEM «${i.nombre}» ${claves(i, ["nombre", "grupos", "opcionesSinCosto", "opciones"])}`];
+  const out = [`  ITEM «${i.nombre}» ${claves(i, ["nombre", "grupos", "opcionesSinCosto", "opciones", "presentacion"])}`];
   for (const o of i.opciones ?? []) out.push(`    agrupada «${o.nombre}» ${claves(o, ["nombre"])}`);
   for (const g of i.grupos ?? []) {
     out.push(`    lista «${g.nombre}»: ${g.opciones.map((o) => `${o.nombre} ${o.tipo === "final" ? `precio=${valorDeCarta(o.precio)}` : `recargo=${o.recargo < 0 ? "" : "+"}${valorDeCarta(o.recargo)}`}`).join(" | ")}`);
   }
   for (const s of i.opcionesSinCosto ?? []) out.push(`    pastillas «${s.grupo}»: ${s.opciones.join(" | ")}`);
+  // Fase 5 («carta pareja», paso 7): la forma ya resuelta, en su propia línea y ENTERA (JSON tal como viaja: una clave nueva adentro aparece acá).
+  if (i.presentacion !== undefined) out.push(`    presentacion ${valorDeCarta(i.presentacion)}`);
   return out;
 }
 
@@ -67,7 +69,9 @@ function textoDeCarta(c: CartaPublicaV1, soloItem?: string): string[] {
   if (soloItem === undefined) out.push(`carta: version=${c.version} generadoEn=<fecha> sucursal=${JSON.stringify(c.sucursal)} secciones=${c.secciones.length}`);
   for (const s of c.secciones) {
     const items = soloItem === undefined ? s.items : s.items.filter((i) => i.nombre === soloItem);
-    if (soloItem === undefined) out.push(`SECCION «${s.nombre}» ${claves(s, ["nombre", "items", "promos"])} items=${s.items.length} promos=${s.promos.length}`);
+    if (soloItem === undefined) out.push(`SECCION «${s.nombre}» ${claves(s, ["nombre", "items", "promos", "tandas"])} items=${s.items.length} promos=${s.promos.length}`);
+    // Fase 5 (paso 7): las tandas de la sección, en su propia línea (JSON tal como viaja).
+    if (soloItem === undefined && s.tandas !== undefined) out.push(`  tandas ${valorDeCarta(s.tandas)}`);
     for (const i of items) out.push(...textoDelItem(i));
     for (const p of s.promos) out.push(`  PROMO ${claves(p, [])}`);
   }

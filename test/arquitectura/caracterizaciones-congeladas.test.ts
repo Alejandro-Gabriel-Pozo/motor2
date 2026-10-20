@@ -534,7 +534,15 @@ const CONGELADAS: Record<string, Congelada> = {
     desde: "9c88d3d",
     motivo:
       "Ola «precio y carta», Fase 0: foto de lo que HOY cobra la acción real del POS (agregarItems) y de la carta pública que recibe el navegador (CartaPublicaV1) sobre el catálogo de referencia sembrado en Postgres. NO es una aprobación. Las fases siguientes la regeneran declarándolo acá; el retiro de GO-3a (Fase 3) NO debe moverla.",
-    regeneraciones: [],
+    regeneraciones: [
+      {
+        blob: "ca337d00ddf8fe04d116c635eddb3327febfd9a6",
+        // El commit PADRE de este (274a43c5, Fase 5 paso 6) es el último antes del cambio; el golden se regenera en el commit siguiente (paso 7).
+        commit: "274a43c5",
+        motivo:
+          "Ola «precio y carta», Fase 5 («carta pareja»), paso 7 (ADITIVO; SOLO la parte de CARTA, el COBRO idéntico): la carta pública suma, por PV con opciones, la forma ya resuelta en el servidor (`presentacion`) y, por sección, sus `tandas` de columnas compartidas. El test las vuelca en su PROPIA línea (`presentacion {…}` y `tandas […]`, JSON tal como viaja) y las saca de la línea ITEM/SECCION (que quedan idénticas). Cambian SOLO 7 líneas, todas agregadas: 5 `presentacion` (Pizzas, Milanesas, Bife a la criolla, Café, y el Café de la carta con la grilla de la sucursal, con Mediano 4200) y 2 `tandas` (Platos y Cafetería; la carta del café con la grilla solo vuelca su ítem). Revisado con `git diff -U0`: ninguna línea quitada ni cambiada; de `## COBRO` en adelante la ÚNICA diferencia es la línea `presentacion` del café con la grilla (que es carta). Pizzas y Milanesas salen como productos DIRECTOS (la semilla no los marca como base): Pizzas cae a lista con el nombre arriba (6 columnas > 3) y Milanesas en columnas con «Milanesas de» como aclaración (sin prefijo cargado). Ningún texto visible cambia en esta tanda: el dibujo nuevo es de la tanda B.",
+      },
+    ],
   },
   "test/e2e/linea-de-base-precio-y-carta.golden.txt": {
     blob: "11a7b90078489a6eb2cc26e499b2aa363c5a3ead",
