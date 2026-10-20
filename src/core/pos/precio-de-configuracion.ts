@@ -174,7 +174,8 @@ export interface GrupoDeLaTablaDeLaCarta {
   cantidadMinima: number;
   cantidadMaxima: number;
   prefijoEnCarta: string | null;
-  rol: RolDelGrupoEnCarta;
+  /** El papel del grupo en la carta (`rolDelGrupo`). */
+  papel: RolDelGrupoEnCarta;
   opciones: { opcionId: string; nombre: string; esNinguna: boolean; orden: number; precioFinal: number | null; diferencia: number }[];
 }
 
@@ -223,7 +224,7 @@ export function tablaDePreciosParaLaCarta(entrada: {
       cantidadMinima: r.cantidadMinima,
       cantidadMaxima: r.cantidadMaxima,
       prefijoEnCarta: conRol.prefijoEnCarta,
-      rol: rolDelGrupo(conRol),
+      papel: rolDelGrupo(conRol),
       opciones: r.opciones.map((o) => ({ opcionId: o.opcionId, nombre: o.nombre, esNinguna: o.esNinguna, orden: orden.get(o.opcionId) ?? 0, precioFinal: o.precioFinal, diferencia: o.diferencia })),
     };
   });

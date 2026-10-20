@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { dbDeEmpresa, verificarRolDeEjecucionDelProceso } from "@/server/sesion/base";
 import { unstable_cache } from "next/cache";
-import { etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica, resolverEstiloPortal, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
+import { VERSION_DE_LA_CARTA_EN_CACHE, etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica, resolverEstiloPortal, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
 import { modulosEfectivosDeEmpresa } from "@/server/acceso/modulos-de-empresa";
 import type { Db } from "@/lib/db-tipos";
 import { resolverEmpresaCarta, type EmpresaCarta } from "@/server/lecturas/carta/empresa";
@@ -52,12 +52,6 @@ function lecturaDeUnaSolaSucursal(empresaId: string, sucursalId: string): Db {
  * en verse en la carta pública un cambio que NO pasó por una acción que invalida la etiqueta de la empresa (`revalidarCartasPublicas`).
  */
 const SEGUNDOS_DE_CACHE_DE_LA_CARTA = 60;
-
-/**
- * La VERSIÓN de la forma de la carta armada que se guarda en el caché (Fase 5, «carta pareja»): va en la clave de `unstable_cache`, así un despliegue que cambia lo que arma el servidor (la
- * `presentacion` de cada ítem y las `tandas` de cada sección) no sirve durante 60 s una carta guardada por el código anterior. Se cambia cada vez que cambia la FORMA de `CartaV1` (no los datos).
- */
-export const VERSION_DE_LA_CARTA_EN_CACHE = "carta-pareja-1";
 
 /** Lo que la carta de una sucursal entrega al anónimo: la carta SIN ids internos y su estilo. */
 interface CartaPublicaEntregada {

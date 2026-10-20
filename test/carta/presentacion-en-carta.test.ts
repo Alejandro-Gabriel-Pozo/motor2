@@ -329,10 +329,12 @@ describe("6g · límites y diagnóstico interno", () => {
     expect(item(conAclaracion, "Café")!.presentacion).toMatchObject({ forma: "tabla", aclaraciones: [{ tipo: "eleccion", rotulo: "Punto", opciones: ["carne", "pollo"] }] });
   });
 
-  it("una carta sin opciones arma el mismo diagnóstico de siempre (sin claves nuevas) y nada de la forma sale todavía al público", () => {
+  it("una carta sin opciones arma el mismo diagnóstico de siempre (sin claves nuevas); el diagnóstico nunca sale al público y la forma sale tal cual (paso 7)", () => {
     const sinOpciones = carta([{ id: "gaseosa", nombre: "Gaseosa", precioBase: 4000, grupos: [] }]);
     expect(Object.keys(sinOpciones.diagnostico).sort()).toEqual(["agrupadosConPreciosDistintos", "agrupadosSinOpciones", "agrupadosSinSeccion", "visiblesSinSeccion"]);
-    const conOpciones = carta([milanesaConTrucha()]);
-    expect(JSON.stringify(proyectarCartaPublica(conOpciones.carta))).not.toContain("presentacion");
+    const conOpciones = carta([{ id: "pizzas", nombre: "Pizzas", precioBase: PIZZAS.precioBase, esBase: true, grupos: PIZZAS.grupos }]);
+    const publica = proyectarCartaPublica(conOpciones.carta);
+    expect(JSON.stringify(publica)).not.toContain("basesOcultas");
+    expect(publica.secciones[0]!.items[0]!.presentacion).toEqual(item(conOpciones, "Pizzas")!.presentacion);
   });
 });

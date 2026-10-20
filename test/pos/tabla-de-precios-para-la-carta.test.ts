@@ -146,7 +146,7 @@ describe("tablaDePreciosParaLaCarta: paridad de cada celda con el POS y con la v
     const tablaCafe = revisarParidad(cafe.grupos, cafe.precioBase, cafe.descuentoDeProducto, false)!;
     expect(tablaCafe.ejes).toEqual({ columnas: "g-tamano-del-cafe", filas: null, sinLugar: [] });
     expect(tablaCafe.celdas).toEqual([[3600, 3690, 3870]]);
-    expect(tablaCafe.grupos.map((g) => [g.nombre, g.rol])).toEqual([
+    expect(tablaCafe.grupos.map((g) => [g.nombre, g.papel])).toEqual([
       ["Tamaño del Café", "define-el-precio"],
       ["Preparación del café", "adicional"],
       ["Intensidad", "adicional"],

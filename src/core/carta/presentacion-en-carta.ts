@@ -32,7 +32,7 @@ export interface TablaDePreciosParaCarta {
     cantidadMinima: number;
     cantidadMaxima: number;
     prefijoEnCarta: string | null;
-    rol: RolDelGrupoEnCarta;
+    papel: RolDelGrupoEnCarta;
     opciones: readonly { opcionId: string; nombre: string; esNinguna: boolean; orden: number; precioFinal: number | null; diferencia: number }[];
   }[];
   ejes: EjesDeLaCarta;

@@ -12,7 +12,8 @@ vi.mock("@/server/acceso/modulos-de-empresa", () => ({ modulosEfectivosDeEmpresa
 vi.mock("@/server/lecturas/carta/publica", () => ({ resolverCartaPublica: vi.fn(async () => null), resolverPortalCarta: vi.fn(), resolverConfigPortal: vi.fn() }));
 vi.mock("@/server/lecturas/carta/empresa", () => ({ resolverEmpresaCarta: vi.fn() }));
 
-import { VERSION_DE_LA_CARTA_EN_CACHE, cartaPublica } from "@/server/carta-publica/sin-sesion";
+import { cartaPublica } from "@/server/carta-publica/sin-sesion";
+import { VERSION_DE_LA_CARTA_EN_CACHE } from "@/core/carta/public";
 import { revalidarCartasPublicas } from "@/server/actions/carta/revalidar";
 
 /**

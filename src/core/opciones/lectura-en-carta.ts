@@ -79,8 +79,8 @@ const ORDEN_DEL_ROL: Readonly<Record<RolDelGrupoEnCarta, number>> = { "define-el
  */
 export function ordenarPorRol<G extends { cantidadMinima: number }>(grupos: readonly G[], rolDe: (g: G) => RolDelGrupoEnCarta): G[] {
   return grupos
-    .map((g, i) => ({ g, i, rol: ORDEN_DEL_ROL[rolDe(g)], opcional: g.cantidadMinima > 0 ? 0 : 1 }))
-    .sort((a, b) => a.rol - b.rol || a.opcional - b.opcional || a.i - b.i)
+    .map((g, i) => ({ g, i, papel: ORDEN_DEL_ROL[rolDe(g)], opcional: g.cantidadMinima > 0 ? 0 : 1 }))
+    .sort((a, b) => a.papel - b.papel || a.opcional - b.opcional || a.i - b.i)
     .map((x) => x.g);
 }
 
@@ -103,13 +103,14 @@ export interface EjesDeLaCarta {
  *  - sin columnas pero con filas (un producto directo con «De carne / De pollo»), las filas solas.
  */
 export function ejesDeLaCarta<G extends GrupoParaRol & { grupoId: string }>(grupos: readonly G[], esBase: boolean): EjesDeLaCarta {
-  const conRol = grupos.map((g) => ({ g, rol: rolDelGrupo(g), eje: esDeUnaObligatoria(g) }));
-  const definen = conRol.filter((x) => x.eje && x.rol === "define-el-precio").map((x) => x.g.grupoId);
-  const enFilas = conRol.filter((x) => x.eje && x.rol === "filas").map((x) => x.g.grupoId);
+  // `papel` (y no `rol`): el guardián de acceso trata toda comparación de una propiedad `rol` como una decisión de permisos.
+  const conRol = grupos.map((g) => ({ g, papel: rolDelGrupo(g), eje: esDeUnaObligatoria(g) }));
+  const definen = conRol.filter((x) => x.eje && x.papel === "define-el-precio").map((x) => x.g.grupoId);
+  const enFilas = conRol.filter((x) => x.eje && x.papel === "filas").map((x) => x.g.grupoId);
   const deRespaldo = esBase && definen.length === 0 ? conRol.find((x) => x.eje && x.g.tipo === "MEDIDA")?.g.grupoId : undefined;
   const columnas = definen[0] ?? deRespaldo ?? null;
   const filas = definen[1] ?? enFilas[0] ?? null;
-  const cambiaElPrecio = (x: (typeof conRol)[number]) => x.rol === "define-el-precio" || (x.rol === "filas" && x.g.opciones.some((o) => o.diferencia !== 0));
+  const cambiaElPrecio = (x: (typeof conRol)[number]) => x.papel === "define-el-precio" || (x.papel === "filas" && x.g.opciones.some((o) => o.diferencia !== 0));
   const sinLugar = conRol.filter((x) => cambiaElPrecio(x) && x.g.grupoId !== columnas && x.g.grupoId !== filas).map((x) => x.g.grupoId);
   return { columnas, filas, sinLugar };
 }

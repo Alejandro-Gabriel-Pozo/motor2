@@ -178,6 +178,13 @@ export function etiquetaDeCacheDeCartasPublicas(empresaSlug: string): string {
   return `carta-publica:${empresaSlug}`;
 }
 
+/**
+ * La VERSIÓN de la forma de la carta armada que se guarda en el caché de la carta pública (Fase 5, «carta pareja»): va en la clave de `unstable_cache` (`server/carta-publica/sin-sesion.ts`), así un
+ * despliegue que cambia lo que arma el servidor (la `presentacion` de cada ítem y las `tandas` de cada sección) no sirve durante 60 s una carta guardada por el código anterior. Se cambia cada vez que
+ * cambia la FORMA de `CartaV1` (no los datos).
+ */
+export const VERSION_DE_LA_CARTA_EN_CACHE = "carta-pareja-1";
+
 /** La carta armada, sin los ids internos: lo que la carta pública emite hacia el navegador. */
 export function proyectarCartaPublica(carta: CartaV1): CartaPublicaV1 {
   return { version: carta.version, generadoEn: carta.generadoEn, sucursal: { nombre: carta.sucursal.nombre }, secciones: carta.secciones.map(proyectarSeccion) };
