@@ -136,5 +136,14 @@ describe("C4: una base cobra y se muestra igual que antes, aunque su precio guar
     await prismaAdmin.producto.update({ where: { id: cat.producto.pizzas! }, data: { modoDeVenta: "DIRECTO" } });
     expect((await items()).find((i) => i.nombre === "Pizzas")).toMatchObject({ precio: 18000 });
   });
+
+  it("CARACTERIZACIÓN (la Fase 4 no lo cambia): un producto DIRECTO en $0 por error, sin grupos, HOY se agrega a la cuenta a $0", async () => {
+    await prismaAdmin.producto.update({ where: { id: cat.producto.gaseosa! }, data: { precioVenta: 0 } });
+    const mesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 98 } });
+    const cuenta = await sembrarCuenta(mesa.id, s.admin.id);
+    expect(await agregarItems(cuenta.id, [{ productoId: cat.producto.gaseosa!, cantidad: 1 }])).toMatchObject({ ok: true });
+    const lineas = await prismaAdmin.cuentaItem.findMany({ where: { empresaId: EMPRESA_POR_DEFECTO_ID, cuentaId: cuenta.id }, select: { precioUnitario: true } });
+    expect(lineas.map((l) => l.precioUnitario.toFixed(2)), "hoy: a $0 (decisión pendiente de la Fase 2 o del dueño; no es de esta fase)").toEqual(["0.00"]);
+  });
 });
 
