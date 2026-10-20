@@ -4,7 +4,7 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { aplicarDescuentoDeProducto } from "@/core/carta/public";
 import type { ComandoAgregarItems, ResultadoAgregarItems } from "@/core/features/cuentas/cuenta-pedido.schema";
 import { redondearMoneda } from "@/core/moneda";
-import { CODIGO_PRODUCTO_SIN_RECETA, rechazoSinOrigenDeStock, tieneStockReal } from "@/core/movimientos/public";
+import { CODIGO_PRODUCTO_SIN_RECETA, mensajeBaseSinOpcion, rechazoSinOrigenDeStock, tieneStockReal } from "@/core/movimientos/public";
 import { calcularPayloadHash, decidirIdempotencia, esChoqueDeIndiceUnico, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
@@ -143,7 +143,7 @@ export async function agregarItemsCasoDeUso(
       // módulo Carta (sin él, `null`: precio de lista y `precioCartaUnitario` nulo, así que el cierre aplica solo el descuento del cliente); lo mismo hace el selector (paridad).
       const descuento = modulos.carta ? ((await descuentosDeProductoEnSucursal(actor.sucursalId, tx, [producto.id])).get(producto.id) ?? null) : null;
       // GO-2b: recién después de los chequeos de siempre, las opciones (sin grupos admitidos ni opciones pedidas, el ítem sigue igual que antes).
-      const admite = opcionesLeidas.get(producto.id) ?? { grupos: [], anclaDeOpcionId: null };
+      const admite = opcionesLeidas.get(producto.id) ?? { grupos: [], anclaDeOpcionId: null, esBase: false };
       if (admite.anclaDeOpcionId !== null) return fracaso("PRODUCTO_INVALIDO", `«${producto.nombre}» se vende solo como adicional de otro producto.`);
       const rechazoReceta = sinReceta(producto.id, producto.nombre);
       if (rechazoReceta !== null) return fracaso(CODIGO_PRODUCTO_SIN_RECETA, rechazoReceta);
@@ -164,6 +164,8 @@ export async function agregarItemsCasoDeUso(
           continue;
         }
       }
+      // Fase 4 (ADR-035): un producto que se vende por opción nunca cae a la línea suelta a su precio guardado (defensa; la barrera del cobro lo repite).
+      if (admite.esBase) return fracaso("OPCIONES_INVALIDAS", mensajeBaseSinOpcion(producto.nombre));
       if (cambioElPrecio(precioDeLista)) return fracaso("PRECIO_CAMBIO", mensajeDePrecioCambiado);
       const aplicado = aplicarDescuentoDeProducto(precioDeLista, descuento);
       filasSueltas.push({

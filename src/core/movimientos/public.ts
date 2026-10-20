@@ -58,3 +58,6 @@ export type { IngredienteDeBase } from "./consumo-de-linea-configurada";
 export type { LineaConfiguradaEnTx } from "./registrar-venta";
 // RECETA (ADR-033, sin receta no se vende): la regla del origen de stock de un PV, que usan el agregado de ítems del POS y la venta.
 export { CODIGO_PRODUCTO_SIN_RECETA, rechazoSinOrigenDeStock } from "./origen-de-stock";
+
+// Fase 4 de la ola «precio y carta» (ADR-035): el rechazo de una línea suelta de un producto que se vende por opción (el agregado de ítems del POS lo usa como defensa; el núcleo de la venta, como barrera).
+export { mensajeBaseSinOpcion } from "./opciones-obligatorias";

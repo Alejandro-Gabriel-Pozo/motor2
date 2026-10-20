@@ -242,3 +242,15 @@ describe("la lectura de los grupos: una por lote y dentro de la transacción", (
     }
   });
 });
+
+describe("Fase 4 (ADR-035): un producto que se vende por opción no se cobra suelto (defensa del núcleo)", () => {
+  it("una base SIN ninguna admisión (escrita a mano por SQL) se rechaza en el mostrador con PRODUCTO_REQUIERE_OPCIONES y no se escribe nada; como directo, se vende", async () => {
+    await prisma.producto.update({ where: { id: gaseosaId }, data: { modoDeVenta: "BASE_CONFIGURABLE" } });
+    const antes = await escrito();
+    const r = await registrarVentaCasoDeUso(actor(), datos([{ productoId: gaseosaId, cantidadVendida: 1 }]));
+    expect(r).toEqual({ ok: false, codigo: "PRODUCTO_REQUIERE_OPCIONES", mensaje: "«Gaseosa» se vende por opción: no tiene un precio propio que cobrar suelto. Cobralo desde las mesas/POS, eligiendo su opción." });
+    expect(await escrito()).toEqual(antes);
+    await prisma.producto.update({ where: { id: gaseosaId }, data: { modoDeVenta: "DIRECTO" } });
+    expect(await registrarVentaCasoDeUso(actor(), datos([{ productoId: gaseosaId, cantidadVendida: 1 }]))).toMatchObject({ ok: true });
+  });
+});

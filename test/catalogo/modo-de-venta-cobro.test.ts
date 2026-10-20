@@ -102,4 +102,23 @@ describe("C4: una base cobra y se muestra igual que antes, aunque su precio guar
     await marcarBase(cat.producto.milanesas!);
     expect(await fotos()).toEqual(antes);
   });
+
+  it("defensa (C6): una base sin línea configurada no se agrega suelta a la cuenta al precio guardado: sin admisiones, o con el grupo de precio apagado por SQL", async () => {
+    const mesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 99 } });
+    const cuenta = await sembrarCuenta(mesa.id, s.admin.id);
+    const lineas = () => prismaAdmin.cuentaItem.count({ where: { empresaId: EMPRESA_POR_DEFECTO_ID, cuentaId: cuenta.id } });
+    await prismaAdmin.producto.update({ where: { id: cat.producto.gaseosa! }, data: { modoDeVenta: "BASE_CONFIGURABLE" } });
+    const r = await agregarItems(cuenta.id, [{ productoId: cat.producto.gaseosa!, cantidad: 1 }]);
+    expect(r).toMatchObject({ ok: false, mensaje: "«Gaseosa 500 cc» se vende por opción: no tiene un precio propio que cobrar suelto. Cobralo desde las mesas/POS, eligiendo su opción." });
+    expect(await lineas()).toBe(0);
+    // Pizzas base con su grupo de precio apagado a mano: ni suelta ni con una opción.
+    await marcarBase(cat.producto.pizzas!);
+    await prismaAdmin.productoAdmiteGrupo.updateMany({ where: { productoId: cat.producto.pizzas! }, data: { activo: false } });
+    expect(await agregarItems(cuenta.id, [{ productoId: cat.producto.pizzas!, cantidad: 1 }])).toMatchObject({ ok: false });
+    expect(await agregarItems(cuenta.id, [{ productoId: cat.producto.pizzas!, cantidad: 1, opciones: [u("pizzaMuzzarella")] }])).toMatchObject({ ok: false });
+    expect(await lineas()).toBe(0);
+    // Directo, la gaseosa se agrega como siempre.
+    await prismaAdmin.producto.update({ where: { id: cat.producto.gaseosa! }, data: { modoDeVenta: "DIRECTO" } });
+    expect(await agregarItems(cuenta.id, [{ productoId: cat.producto.gaseosa!, cantidad: 1 }])).toMatchObject({ ok: true });
+  });
 });
