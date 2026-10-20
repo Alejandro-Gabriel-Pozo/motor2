@@ -189,8 +189,11 @@ export interface ComandoVincularGrupoEnProducto {
   vinculado: boolean;
 }
 
-/** `NO_VINCULADO`: el producto nunca tuvo ese grupo (no hay nada que quitar ni que volver a vincular: se agrega desde «Agregar grupo»). */
+/**
+ * `NO_VINCULADO`: el producto nunca tuvo ese grupo (no hay nada que quitar ni que volver a vincular: se agrega desde «Agregar grupo»). `BASE_SIN_PRECIO_FINAL` (Fase 4, ADR-035): el producto se vende
+ * por opción y quitar ese grupo lo deja sin grupo de precio final (se vendería suelto a su precio guardado): primero se cambia «¿Cómo se vende?» a Directo.
+ */
 export type ResultadoVincularGrupoEnProducto = ResultadoCaso<
   { huboCambio: boolean },
-  "PRODUCTO_NO_ENCONTRADO" | "PRODUCTO_NO_ELEGIBLE" | "GRUPO_NO_ENCONTRADO" | "NO_VINCULADO" | "VERSION_DESACTUALIZADA" | "GRUPO_INACTIVO" | "OPCION_INACTIVA" | ConfiguracionInvalida
+  "PRODUCTO_NO_ENCONTRADO" | "PRODUCTO_NO_ELEGIBLE" | "GRUPO_NO_ENCONTRADO" | "NO_VINCULADO" | "VERSION_DESACTUALIZADA" | "GRUPO_INACTIVO" | "OPCION_INACTIVA" | "BASE_SIN_PRECIO_FINAL" | ConfiguracionInvalida
 >;

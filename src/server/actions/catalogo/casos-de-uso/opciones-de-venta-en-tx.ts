@@ -247,12 +247,12 @@ const diferenciaDeFilaDeProducto = (tipo: string | null, monto: unknown, porcent
 /**
  * Fase 4 de la ola «precio y carta» (ADR-035): TODO lo que el producto tiene asignado (cada grupo, activo o no en el producto, con sus opciones como las admite y la diferencia que rige: la del producto
  * si la sobrescribe, si no la de la versión vigente), en la forma de la regla pura de la base configurable (`rechazoDeAdmisionesDeBase`). Se lee con el mismo `tx` que después escribe: quien llama ya
- * tomó la fila del producto (`tomarFilaDeProducto`).
+ * tomó la fila del producto (`tomarFilaDeProducto`). `exceptoGrupoId`: sin ese grupo (el que el escritor está cambiando: él suma su estado RESULTANTE, o lo quita).
  */
-export async function admisionesParaSerBase(tx: Tx, productoId: string): Promise<AdmisionParaSerBase[]> {
+export async function admisionesParaSerBase(tx: Tx, productoId: string, opciones: { exceptoGrupoId?: string } = {}): Promise<AdmisionParaSerBase[]> {
   const [grupos, filas] = await Promise.all([
     tx.productoAdmiteGrupo.findMany({
-      where: { productoId },
+      where: { productoId, ...(opciones.exceptoGrupoId ? { grupoId: { not: opciones.exceptoGrupoId } } : {}) },
       orderBy: [{ orden: "asc" }, { id: "asc" }],
       select: { activo: true, modoPrecio: true, grupo: { select: { nombre: true, tipo: true, activo: true, opciones: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { id: true, nombre: true, activa: true, esNinguna: true } } } } },
     }),
