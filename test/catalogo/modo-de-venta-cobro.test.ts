@@ -11,6 +11,7 @@ import { sembrarCatalogoPrecioYCarta, type CatalogoPrecioYCarta } from "../setup
 import { entrarComo, sembrarCuenta, sembrarSalon } from "../pos/salon-fixture";
 import { agregarItems } from "../../src/server/actions/pos/cuenta-pedido";
 import { cartaPublica, empresaCartaPublica } from "../../src/server/carta-publica/sin-sesion";
+import { cargarCartaParaMantener } from "../../src/server/consultas/carta/mantenimiento";
 import { actualizarProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/actualizar-producto";
 import { guardComandoDatosDeProducto } from "../../src/core/features/catalogo/productos.guard";
 
@@ -121,4 +122,19 @@ describe("C4: una base cobra y se muestra igual que antes, aunque su precio guar
     await prismaAdmin.producto.update({ where: { id: cat.producto.gaseosa! }, data: { modoDeVenta: "DIRECTO" } });
     expect(await agregarItems(cuenta.id, [{ productoId: cat.producto.gaseosa!, cantidad: 1 }])).toMatchObject({ ok: true });
   });
+
+  it("C7b: una base sin grupo vigente sale de la carta pública (no se muestra a su precio guardado); en Mantenimiento de la carta se lee «por opción»", async () => {
+    await marcarBase(cat.producto.pizzas!);
+    expect(await carta()).toContain("Pizzas");
+    const mantener = async () => (await cargarCartaParaMantener(prisma, s.sucursalId)).secciones.flatMap((sc) => sc.productos).find((p) => p.id === cat.producto.pizzas!);
+    expect(await mantener()).toMatchObject({ seVendePorOpcion: true });
+    expect((await cargarCartaParaMantener(prisma, s.sucursalId)).secciones.flatMap((sc) => sc.productos).find((p) => p.id === cat.producto.gaseosa!)).not.toHaveProperty("seVendePorOpcion");
+    await prismaAdmin.productoAdmiteGrupo.updateMany({ where: { productoId: cat.producto.pizzas! }, data: { activo: false } });
+    const items = async () => (JSON.parse(await carta()) as { items: { nombre: string; precio?: number }[] }[]).flatMap((sc) => sc.items);
+    expect((await items()).map((i) => i.nombre), "sin grupo, la base no sale").not.toContain("Pizzas");
+    // Directo y sin grupos, sale a su precio, como siempre.
+    await prismaAdmin.producto.update({ where: { id: cat.producto.pizzas! }, data: { modoDeVenta: "DIRECTO" } });
+    expect((await items()).find((i) => i.nombre === "Pizzas")).toMatchObject({ precio: 18000 });
+  });
 });
+

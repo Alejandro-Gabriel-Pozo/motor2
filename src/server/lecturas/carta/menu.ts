@@ -124,6 +124,13 @@ export async function resolverMenuCartaConDiagnostico(
     const esBase = esBaseConfigurable(p.modoDeVenta);
     return [{ productoId, conDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto: descuentos.get(productoId) ?? null, esBase }), sinDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto: null, esBase }) }];
   });
+  // Fase 4 (ADR-035): una base sin ningún grupo vigente (quitado o archivado) no sale en la carta con su precio guardado: falla cerrado, como un grupo obligatorio sin opciones.
+  const conResumen = new Set(opcionesDeProductos.map((o) => o.productoId));
+  for (const p of conOpciones ? productos : []) {
+    if (!esBaseConfigurable(p.modoDeVenta) || conResumen.has(p.id)) continue;
+    const sinPrecio = resumenDePrecios({ grupos: [], precioBase: 0, descuentoDeProducto: null, esBase: true });
+    opcionesDeProductos.push({ productoId: p.id, conDescuento: sinPrecio, sinDescuento: sinPrecio });
+  }
 
   return armarMenuCarta({
     sucursal: { id: sucursal.id, nombre: sucursal.nombre },

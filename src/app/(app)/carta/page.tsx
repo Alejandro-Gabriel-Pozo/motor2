@@ -165,7 +165,8 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
               productos: x.productos.map((p) => ({
                 id: p.id,
                 nombre: p.nombre,
-                precio: pesos(p.precioAca),
+                // Fase 4 (ADR-035): de una base no se muestra su precio guardado (no se cobra).
+                precio: p.seVendePorOpcion ? "Por opción" : pesos(p.precioAca),
                 disponible: p.disponibleAca,
                 visible: p.contenido?.visibleEnCarta === true,
                 precioVisto: p.precioAca.toFixed(2),
@@ -174,7 +175,7 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
               })),
             }))}
             ocultosSinSeccion={carta.sinSeccion.map((p) => ({ id: p.id, nombre: p.nombre }))}
-            fueraDeCarta={carta.fueraDeCarta.map((p) => ({ id: p.id, nombre: p.nombre, precio: pesos(p.precioAca), vistaPrevia: p.vistaPrevia ?? "Sin opciones." }))}
+            fueraDeCarta={carta.fueraDeCarta.map((p) => ({ id: p.id, nombre: p.nombre, precio: p.seVendePorOpcion ? "Por opción" : pesos(p.precioAca), vistaPrevia: p.vistaPrevia ?? "Sin opciones." }))}
             puede={puede}
             acciones={{
               fijarHoy: async (cambios: { productoId: string; disponible: boolean }[]) => {

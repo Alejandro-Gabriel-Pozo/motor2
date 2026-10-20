@@ -1,4 +1,5 @@
 import { rendimientoEfectivo } from "@/core/catalogo/public";
+import { esBaseConfigurable } from "@/core/opciones/public";
 import type { ClasificacionNoComestibles } from "@/core/catalogo/public";
 
 /**
@@ -37,6 +38,11 @@ export interface InfoProductoReporte {
   unidadStockNombre: string;
   esConsignacion: boolean;
   proveedorConsignacionNombre: string | null;
+  /**
+   * Fase 4 de la ola «precio y carta» (ADR-035): el producto se vende por opción. Su `precioVenta` es el guardado, que NO se cobra: el margen y el food cost contra él no dicen nada (el reporte de
+   * costos muestra «Por opción», sin margen). Ausente = directo.
+   */
+  esBase?: boolean;
 }
 
 /** Una fila de producto con lo que el mapa necesita (la forma del `findMany` con `categoria`, `insumo.grupo`, `unidadStock` y `proveedorConsignacion`). */
@@ -53,6 +59,8 @@ export interface FilaDeProductoParaReporte {
   unidadStock: { nombre: string };
   esConsignacion: boolean;
   proveedorConsignacion: { nombre: string } | null;
+  /** Fase 4 (ADR-035): `Producto.modoDeVenta`; opcional para quien arma filas a mano (sin él, DIRECTO). */
+  modoDeVenta?: string;
 }
 
 /**
@@ -101,6 +109,8 @@ export function armarMapaProductos(
         unidadStockNombre: p.unidadStock.nombre,
         esConsignacion: p.esConsignacion,
         proveedorConsignacionNombre: p.proveedorConsignacion?.nombre ?? null,
+        // Fase 4: solo se marca la base (un producto directo queda con la forma de siempre).
+        ...(p.modoDeVenta !== undefined && esBaseConfigurable(p.modoDeVenta) ? { esBase: true } : {}),
       },
     ])
   );

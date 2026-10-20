@@ -35,6 +35,8 @@ export interface ProductoParaMantener {
   precioDeLista: number;
   /** ¿Rige en esta sucursal un precio local propio (capacidad prendida y precio local habilitado)? */
   conPrecioLocal: boolean;
+  /** Fase 4 (ADR-035): se vende por opción; `precioAca` y `precioDeLista` son el guardado, que no se cobra (la pantalla dice «Por opción»). Opcional: ausente = directo. */
+  seVendePorOpcion?: boolean;
   disponibleAca: boolean;
   esAnclaDeAdicional: boolean;
   /** El nombre del ítem agrupado de esta sucursal que lo contiene, si hay. */
